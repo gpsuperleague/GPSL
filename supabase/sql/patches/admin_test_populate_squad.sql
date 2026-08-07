@@ -181,6 +181,7 @@ DECLARE
   v_skipped jsonb := '[]'::jsonb;
   v_placed int := 0;
   v_i int;
+  v_retry int;
   v_player record;
   v_player_found boolean;
   v_mode text;
@@ -404,6 +405,15 @@ BEGIN
       FROM public."Player_Transfer_Listings" l
       WHERE l.player_id = p."Konami_ID"::text
         AND l.status = 'Active'
+    )
+    -- Soft locks / season exclusions (preview must match live assign filters)
+    AND (
+      to_regprocedure('public.player_foreign_contract_locked(text)') IS NULL
+      OR NOT public.player_foreign_contract_locked(p."Konami_ID"::text)
+    )
+    AND (
+      to_regprocedure('public.gpdb_player_is_season_excluded(text)') IS NULL
+      OR NOT public.gpdb_player_is_season_excluded(p."Konami_ID"::text)
     );
 
   CREATE INDEX ON _admin_populate_pool (pos_group);
@@ -424,206 +434,211 @@ BEGIN
   FOR v_i IN 1..v_need LOOP
     EXIT WHEN v_squad >= v_target_size;
 
-    v_slots_left := v_target_size - v_squad;
-    v_need_hg := greatest(v_min_hg - v_hg, 0);
-    v_need_u21 := greatest(v_min_u21 - v_u21, 0);
-    v_need_star := greatest(v_star_cap - v_stars, 0);
+    -- Retry within this slot if live assign fails (preview cannot see club-specific blocks).
+    <<slot_pick>>
+    FOR v_retry IN 1..40 LOOP
+      v_slots_left := v_target_size - v_squad;
+      v_need_hg := greatest(v_min_hg - v_hg, 0);
+      v_need_u21 := greatest(v_min_u21 - v_u21, 0);
+      v_need_star := greatest(v_star_cap - v_stars, 0);
 
-    v_def_gk := greatest(v_target_gk - v_gk, 0);
-    v_def_def := greatest(v_target_def - v_def, 0);
-    v_def_mid := greatest(v_target_mid - v_mid, 0);
-    v_def_fwd := greatest(v_target_fwd - v_fwd, 0);
+      v_def_gk := greatest(v_target_gk - v_gk, 0);
+      v_def_def := greatest(v_target_def - v_def, 0);
+      v_def_mid := greatest(v_target_mid - v_mid, 0);
+      v_def_fwd := greatest(v_target_fwd - v_fwd, 0);
 
-    v_need_pos := NULL;
-    v_pos_deficit := 0;
-    IF v_def_gk > v_pos_deficit THEN
-      v_need_pos := 'gk';
-      v_pos_deficit := v_def_gk;
-    END IF;
-    IF v_def_def > v_pos_deficit THEN
-      v_need_pos := 'def';
-      v_pos_deficit := v_def_def;
-    END IF;
-    IF v_def_mid > v_pos_deficit THEN
-      v_need_pos := 'mid';
-      v_pos_deficit := v_def_mid;
-    END IF;
-    IF v_def_fwd > v_pos_deficit THEN
-      v_need_pos := 'fwd';
-      v_pos_deficit := v_def_fwd;
-    END IF;
-
-    v_force_star := v_need_star > 0 AND v_slots_left <= v_need_star;
-    v_force_hg := v_need_hg > 0 AND v_slots_left <= v_need_hg;
-    v_force_u21 := v_need_u21 > 0 AND v_slots_left <= v_need_u21;
-
-    v_compliance_met := (
-      v_need_hg = 0
-      AND v_need_u21 = 0
-      AND v_need_star = 0
-      AND v_gk >= v_target_gk
-      AND v_def >= v_target_def
-      AND v_mid >= v_target_mid
-      AND v_fwd >= v_target_fwd
-    );
-
-    IF v_force_star THEN
-      v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
-    ELSIF v_force_hg THEN
-      v_pick_modes := ARRAY['hg', 'star', 'u21', 'pos', 'any'];
-    ELSIF v_force_u21 THEN
-      v_pick_modes := ARRAY['u21', 'hg', 'star', 'pos', 'any'];
-    ELSIF v_compliance_met THEN
-      v_pick_modes := ARRAY['any'];
-    ELSE
-      v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
-    END IF;
-
-    v_player_found := false;
-
-    FOREACH v_mode IN ARRAY v_pick_modes LOOP
-      IF v_mode = 'star' AND v_need_star <= 0 THEN CONTINUE; END IF;
-      IF v_mode = 'hg' AND v_need_hg <= 0 THEN CONTINUE; END IF;
-      IF v_mode = 'u21' AND v_need_u21 <= 0 THEN CONTINUE; END IF;
-      IF v_mode = 'pos' AND (v_need_pos IS NULL OR v_pos_deficit <= 0) THEN CONTINUE; END IF;
-
-      SELECT
-        pool.player_id,
-        pool.player_name,
-        pool.player_position,
-        pool.market_value,
-        pool.rating,
-        pool.age,
-        pool.is_home_grown,
-        pool.pos_group
-      INTO v_player
-      FROM _admin_populate_pool pool
-      WHERE (NOT v_force_star OR pool.is_star)
-        AND (NOT v_force_hg OR pool.is_home_grown)
-        AND (NOT v_force_u21 OR pool.is_u21)
-        AND (v_mode <> 'star' OR pool.is_star)
-        AND (v_mode <> 'hg' OR pool.is_home_grown)
-        AND (v_mode <> 'u21' OR pool.is_u21)
-        AND (v_mode <> 'pos' OR pool.pos_group = v_need_pos)
-        AND (NOT pool.is_star OR v_stars < v_star_cap)
-      ORDER BY
-        CASE WHEN v_need_star > 0 AND pool.is_star THEN 0 ELSE 1 END,
-        CASE WHEN v_need_hg > 0 AND pool.is_home_grown THEN 0 ELSE 1 END,
-        CASE WHEN v_need_u21 > 0 AND pool.is_u21 THEN 0 ELSE 1 END,
-        CASE WHEN v_need_pos IS NOT NULL AND pool.pos_group = v_need_pos THEN 0 ELSE 1 END,
-        pool.pick_rand
-      LIMIT 1;
-
-      IF FOUND THEN
-        v_player_found := true;
-        EXIT;
+      v_need_pos := NULL;
+      v_pos_deficit := 0;
+      IF v_def_gk > v_pos_deficit THEN
+        v_need_pos := 'gk';
+        v_pos_deficit := v_def_gk;
       END IF;
-    END LOOP;
+      IF v_def_def > v_pos_deficit THEN
+        v_need_pos := 'def';
+        v_pos_deficit := v_def_def;
+      END IF;
+      IF v_def_mid > v_pos_deficit THEN
+        v_need_pos := 'mid';
+        v_pos_deficit := v_def_mid;
+      END IF;
+      IF v_def_fwd > v_pos_deficit THEN
+        v_need_pos := 'fwd';
+        v_pos_deficit := v_def_fwd;
+      END IF;
 
-    IF NOT v_player_found THEN
-      v_skipped := v_skipped || jsonb_build_array(
-        jsonb_build_object(
-          'reason', 'no_eligible_player',
-          'attempt', v_i,
-          'slots_left', v_target_size - v_squad,
-          'pool_remaining', (SELECT count(*)::int FROM _admin_populate_pool)
-        )
+      v_force_star := v_need_star > 0 AND v_slots_left <= v_need_star;
+      v_force_hg := v_need_hg > 0 AND v_slots_left <= v_need_hg;
+      v_force_u21 := v_need_u21 > 0 AND v_slots_left <= v_need_u21;
+
+      v_compliance_met := (
+        v_need_hg = 0
+        AND v_need_u21 = 0
+        AND v_need_star = 0
+        AND v_gk >= v_target_gk
+        AND v_def >= v_target_def
+        AND v_mid >= v_target_mid
+        AND v_fwd >= v_target_fwd
       );
-      EXIT;
-    END IF;
 
-    v_rating := coalesce(v_player.rating, 0);
-    v_is_hg := coalesce(v_player.is_home_grown, false);
-    v_is_u21 := coalesce(v_player.age, 99) <= 21;
-    v_pos_group := v_player.pos_group;
-    v_amount := coalesce(v_player.market_value, 0);
+      IF v_force_star THEN
+        v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
+      ELSIF v_force_hg THEN
+        v_pick_modes := ARRAY['hg', 'star', 'u21', 'pos', 'any'];
+      ELSIF v_force_u21 THEN
+        v_pick_modes := ARRAY['u21', 'hg', 'star', 'pos', 'any'];
+      ELSIF v_compliance_met THEN
+        v_pick_modes := ARRAY['any'];
+      ELSE
+        v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
+      END IF;
 
-    DELETE FROM _admin_populate_pool WHERE player_id = v_player.player_id;
+      v_player_found := false;
 
-    IF v_amount <= 0 THEN
-      CONTINUE;
-    END IF;
+      FOREACH v_mode IN ARRAY v_pick_modes LOOP
+        IF v_mode = 'star' AND v_need_star <= 0 THEN CONTINUE; END IF;
+        IF v_mode = 'hg' AND v_need_hg <= 0 THEN CONTINUE; END IF;
+        IF v_mode = 'u21' AND v_need_u21 <= 0 THEN CONTINUE; END IF;
+        IF v_mode = 'pos' AND (v_need_pos IS NULL OR v_pos_deficit <= 0) THEN CONTINUE; END IF;
 
-    IF NOT p_dry_run THEN
-      BEGIN
-        IF to_regprocedure('public.assert_player_available_for_signing(text)') IS NOT NULL THEN
-          PERFORM public.assert_player_available_for_signing(v_player.player_id);
+        SELECT
+          pool.player_id,
+          pool.player_name,
+          pool.player_position,
+          pool.market_value,
+          pool.rating,
+          pool.age,
+          pool.is_home_grown,
+          pool.pos_group
+        INTO v_player
+        FROM _admin_populate_pool pool
+        WHERE (NOT v_force_star OR pool.is_star)
+          AND (NOT v_force_hg OR pool.is_home_grown)
+          AND (NOT v_force_u21 OR pool.is_u21)
+          AND (v_mode <> 'star' OR pool.is_star)
+          AND (v_mode <> 'hg' OR pool.is_home_grown)
+          AND (v_mode <> 'u21' OR pool.is_u21)
+          AND (v_mode <> 'pos' OR pool.pos_group = v_need_pos)
+          AND (NOT pool.is_star OR v_stars < v_star_cap)
+        ORDER BY
+          CASE WHEN v_need_star > 0 AND pool.is_star THEN 0 ELSE 1 END,
+          CASE WHEN v_need_hg > 0 AND pool.is_home_grown THEN 0 ELSE 1 END,
+          CASE WHEN v_need_u21 > 0 AND pool.is_u21 THEN 0 ELSE 1 END,
+          CASE WHEN v_need_pos IS NOT NULL AND pool.pos_group = v_need_pos THEN 0 ELSE 1 END,
+          pool.pick_rand
+        LIMIT 1;
+
+        IF FOUND THEN
+          v_player_found := true;
+          EXIT;
         END IF;
+      END LOOP;
 
-        PERFORM public.player_assign_to_club(
-          v_player.player_id,
-          v_club,
-          NULL::numeric,
-          false
-        );
-
-        INSERT INTO public."Transfer_History" (
-          player_id,
-          seller_club_id,
-          buyer_club_id,
-          fee,
-          agent_fee,
-          transfer_time,
-          listing_id,
-          transfer_sale_note
-        )
-        VALUES (
-          v_player.player_id,
-          NULL,
-          v_club,
-          v_amount,
-          0,
-          now(),
-          NULL,
-          'admin_test_populate_squad'
-        )
-        RETURNING id INTO v_history_id;
-
-        IF to_regprocedure('public.post_transfer_ledger_for_history(bigint)') IS NOT NULL THEN
-          PERFORM public.post_transfer_ledger_for_history(v_history_id);
-        ELSIF to_regprocedure('public.post_transfer_ledger_for_history(bigint, boolean)') IS NOT NULL THEN
-          PERFORM public.post_transfer_ledger_for_history(v_history_id, true);
-        END IF;
-      EXCEPTION WHEN OTHERS THEN
+      IF NOT v_player_found THEN
         v_skipped := v_skipped || jsonb_build_array(
           jsonb_build_object(
-            'reason', 'sign_blocked',
-            'detail', SQLERRM,
-            'player_id', v_player.player_id,
-            'player_name', v_player.player_name
+            'reason', 'no_eligible_player',
+            'attempt', v_i,
+            'slots_left', v_target_size - v_squad,
+            'pool_remaining', (SELECT count(*)::int FROM _admin_populate_pool)
           )
         );
+        EXIT slot_pick;
+      END IF;
+
+      v_rating := coalesce(v_player.rating, 0);
+      v_is_hg := coalesce(v_player.is_home_grown, false);
+      v_is_u21 := coalesce(v_player.age, 99) <= 21;
+      v_pos_group := v_player.pos_group;
+      v_amount := coalesce(v_player.market_value, 0);
+
+      DELETE FROM _admin_populate_pool WHERE player_id = v_player.player_id;
+
+      IF v_amount <= 0 THEN
         CONTINUE;
-      END;
-    END IF;
+      END IF;
 
-    v_placed := v_placed + 1;
-    v_spent := v_spent + v_amount;
-    v_squad := v_squad + 1;
-    IF v_is_hg THEN v_hg := v_hg + 1; END IF;
-    IF v_is_u21 THEN v_u21 := v_u21 + 1; END IF;
-    IF v_rating >= v_star_min THEN v_stars := v_stars + 1; END IF;
-    IF v_pos_group = 'gk' THEN v_gk := v_gk + 1;
-    ELSIF v_pos_group = 'def' THEN v_def := v_def + 1;
-    ELSIF v_pos_group = 'mid' THEN v_mid := v_mid + 1;
-    ELSIF v_pos_group = 'fwd' THEN v_fwd := v_fwd + 1;
-    END IF;
+      IF NOT p_dry_run THEN
+        BEGIN
+          IF to_regprocedure('public.assert_player_available_for_signing(text)') IS NOT NULL THEN
+            PERFORM public.assert_player_available_for_signing(v_player.player_id);
+          END IF;
 
-    v_signed := v_signed || jsonb_build_array(
-      jsonb_build_object(
-        'player_id', v_player.player_id,
-        'player_name', v_player.player_name,
-        'position', v_player.player_position,
-        'pos_group', v_pos_group,
-        'rating', v_rating,
-        'age', v_player.age,
-        'home_grown', v_is_hg,
-        'under_21', v_is_u21,
-        'is_star', v_rating >= v_star_min,
-        'market_value', v_amount,
-        'fee', v_amount
-      )
-    );
+          PERFORM public.player_assign_to_club(
+            v_player.player_id,
+            v_club,
+            NULL::numeric,
+            false
+          );
+
+          INSERT INTO public."Transfer_History" (
+            player_id,
+            seller_club_id,
+            buyer_club_id,
+            fee,
+            agent_fee,
+            transfer_time,
+            listing_id,
+            transfer_sale_note
+          )
+          VALUES (
+            v_player.player_id,
+            NULL,
+            v_club,
+            v_amount,
+            0,
+            now(),
+            NULL,
+            'admin_test_populate_squad'
+          )
+          RETURNING id INTO v_history_id;
+
+          IF to_regprocedure('public.post_transfer_ledger_for_history(bigint)') IS NOT NULL THEN
+            PERFORM public.post_transfer_ledger_for_history(v_history_id);
+          ELSIF to_regprocedure('public.post_transfer_ledger_for_history(bigint, boolean)') IS NOT NULL THEN
+            PERFORM public.post_transfer_ledger_for_history(v_history_id, true);
+          END IF;
+        EXCEPTION WHEN OTHERS THEN
+          v_skipped := v_skipped || jsonb_build_array(
+            jsonb_build_object(
+              'reason', 'sign_blocked',
+              'detail', SQLERRM,
+              'player_id', v_player.player_id,
+              'player_name', v_player.player_name
+            )
+          );
+          CONTINUE; -- try another player for this same empty slot
+        END;
+      END IF;
+
+      v_placed := v_placed + 1;
+      v_spent := v_spent + v_amount;
+      v_squad := v_squad + 1;
+      IF v_is_hg THEN v_hg := v_hg + 1; END IF;
+      IF v_is_u21 THEN v_u21 := v_u21 + 1; END IF;
+      IF v_rating >= v_star_min THEN v_stars := v_stars + 1; END IF;
+      IF v_pos_group = 'gk' THEN v_gk := v_gk + 1;
+      ELSIF v_pos_group = 'def' THEN v_def := v_def + 1;
+      ELSIF v_pos_group = 'mid' THEN v_mid := v_mid + 1;
+      ELSIF v_pos_group = 'fwd' THEN v_fwd := v_fwd + 1;
+      END IF;
+
+      v_signed := v_signed || jsonb_build_array(
+        jsonb_build_object(
+          'player_id', v_player.player_id,
+          'player_name', v_player.player_name,
+          'position', v_player.player_position,
+          'pos_group', v_pos_group,
+          'rating', v_rating,
+          'age', v_player.age,
+          'home_grown', v_is_hg,
+          'under_21', v_is_u21,
+          'is_star', v_rating >= v_star_min,
+          'market_value', v_amount,
+          'fee', v_amount
+        )
+      );
+      EXIT slot_pick; -- slot filled
+    END LOOP slot_pick;
   END LOOP;
 
   DROP TABLE IF EXISTS _admin_populate_pool;

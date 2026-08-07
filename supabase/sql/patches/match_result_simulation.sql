@@ -177,6 +177,24 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $function$;
 
+-- Players."Rating" is text in GPDB — never coalesce(text, int).
+CREATE OR REPLACE FUNCTION public.match_sim_player_rating_num(
+  p_rating text,
+  p_default numeric DEFAULT 70
+)
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT coalesce(
+    nullif(
+      regexp_replace(coalesce(btrim(p_rating), ''), '[^0-9.]', '', 'g'),
+      ''
+    )::numeric,
+    p_default
+  );
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Load XI (+ up to 5 bench) from matchday squad, else top contracted by Rating
 -- ---------------------------------------------------------------------------
@@ -196,12 +214,14 @@ BEGIN
       jsonb_build_object(
         'player_id', sp.player_id,
         'name', p."Name",
-        'rating', coalesce(p."Rating", 70)::numeric,
+        'rating', public.match_sim_player_rating_num(p."Rating"::text, 70),
         'role', public.match_sim_role_from_slot(sp.pitch_slot, p."Position"),
         'pitch_slot', sp.pitch_slot,
         'started', true,
         'subbed_on', false,
-        'is_star', public.match_sim_is_star(p."Rating"::numeric)
+        'is_star', public.match_sim_is_star(
+          public.match_sim_player_rating_num(p."Rating"::text, 70)
+        )
       )
       ORDER BY sp.sort_order NULLS LAST, sp.pitch_slot, p."Name"
     ),
@@ -227,14 +247,18 @@ BEGIN
         jsonb_build_object(
           'player_id', p."Konami_ID"::text,
           'name', p."Name",
-          'rating', coalesce(p."Rating", 70)::numeric,
+          'rating', public.match_sim_player_rating_num(p."Rating"::text, 70),
           'role', public.match_sim_role_from_slot(NULL, p."Position"),
           'pitch_slot', NULL,
           'started', true,
           'subbed_on', false,
-          'is_star', public.match_sim_is_star(p."Rating"::numeric)
+          'is_star', public.match_sim_is_star(
+            public.match_sim_player_rating_num(p."Rating"::text, 70)
+          )
         ) AS obj,
-        row_number() OVER (ORDER BY coalesce(p."Rating", 0) DESC, p."Name") AS ord
+        row_number() OVER (
+          ORDER BY public.match_sim_player_rating_num(p."Rating"::text, 0) DESC, p."Name"
+        ) AS ord
       FROM public."Players" p
       WHERE p."Contracted_Team" = v_club
       LIMIT 11
@@ -257,12 +281,14 @@ BEGIN
           jsonb_build_object(
             'player_id', sp.player_id,
             'name', p."Name",
-            'rating', coalesce(p."Rating", 70)::numeric,
+            'rating', public.match_sim_player_rating_num(p."Rating"::text, 70),
             'role', public.match_sim_role_from_slot(NULL, p."Position"),
             'pitch_slot', NULL,
             'started', false,
             'subbed_on', true,
-            'is_star', public.match_sim_is_star(p."Rating"::numeric)
+            'is_star', public.match_sim_is_star(
+              public.match_sim_player_rating_num(p."Rating"::text, 70)
+            )
           )
           ORDER BY sp.sort_order NULLS LAST, p."Name"
         )
@@ -285,14 +311,18 @@ BEGIN
             jsonb_build_object(
               'player_id', p."Konami_ID"::text,
               'name', p."Name",
-              'rating', coalesce(p."Rating", 70)::numeric,
+              'rating', public.match_sim_player_rating_num(p."Rating"::text, 70),
               'role', public.match_sim_role_from_slot(NULL, p."Position"),
               'pitch_slot', NULL,
               'started', false,
               'subbed_on', true,
-              'is_star', public.match_sim_is_star(p."Rating"::numeric)
+              'is_star', public.match_sim_is_star(
+                public.match_sim_player_rating_num(p."Rating"::text, 70)
+              )
             ) AS obj,
-            row_number() OVER (ORDER BY coalesce(p."Rating", 0) DESC, p."Name") AS ord
+            row_number() OVER (
+              ORDER BY public.match_sim_player_rating_num(p."Rating"::text, 0) DESC, p."Name"
+            ) AS ord
           FROM public."Players" p
           WHERE p."Contracted_Team" = v_club
             AND NOT EXISTS (
@@ -969,5 +999,6 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.competition_simulate_fixture_result(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.match_sim_load_club_side(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.match_sim_player_rating_num(text, numeric) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
