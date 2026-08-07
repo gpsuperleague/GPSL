@@ -503,6 +503,12 @@ BEGIN
   END IF;
 
   -- Phase F1c: season FK blockers (no ON DELETE CASCADE) - clear before wiping seasons
+  -- Reports point at friendlies (matched_fk); friendlies point at reports — clear match link first.
+  IF to_regclass('public.gpsl_friendly_reports') IS NOT NULL THEN
+    UPDATE public.gpsl_friendly_reports
+    SET matched_friendly_id = NULL
+    WHERE matched_friendly_id IS NOT NULL;
+  END IF;
   IF to_regclass('public.gpsl_friendlies') IS NOT NULL THEN
     DELETE FROM public.gpsl_friendlies WHERE true;
     GET DIAGNOSTICS v_deleted = ROW_COUNT;
