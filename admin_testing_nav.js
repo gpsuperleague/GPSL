@@ -27,6 +27,12 @@ export const TESTING_ADMIN_NAV = [
     navDanger: true,
   },
   {
+    label: "Populate squad (24)",
+    href: "admin_test_populate_squad.html",
+    page: "admin_test_populate_squad",
+    navDanger: true,
+  },
+  {
     label: "Match result simulation",
     href: "admin_match_sim.html",
     page: "admin_match_sim",

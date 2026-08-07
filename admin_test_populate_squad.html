@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Populate squad (test) — GPSL Admin Testing</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .form-grid { display: grid; gap: 12px; max-width: 560px; }
+    .form-grid label { display: block; font-size: 13px; color: #bbb; }
+    .form-grid select, .form-grid input[type="number"] {
+      width: 100%; max-width: 560px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .hint { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45; }
+    .pos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px 14px;
+      max-width: 520px;
+    }
+    .pos-grid label { display: block; font-size: 13px; color: #bbb; }
+    .pos-grid input[type="number"] {
+      width: 100%; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .counts-box {
+      margin-top: 12px; padding: 12px; background: #161616; border: 1px solid #333;
+      border-radius: 6px; font-size: 13px; line-height: 1.55;
+    }
+    .counts-box .row { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+    .counts-box strong { color: #ff9900; }
+    .preview-box {
+      margin-top: 16px; padding: 12px; background: #161616; border: 1px solid #333;
+      border-radius: 6px; font-size: 12px; line-height: 1.5; max-height: 480px; overflow: auto;
+    }
+    .preview-box table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .preview-box th, .preview-box td { padding: 5px 8px; border-bottom: 1px solid #2a2a2a; text-align: left; }
+    .preview-box th { color: #ff9900; }
+    .tag { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px; margin-right: 4px; }
+    .tag-hg { background: #1a3a2a; color: #8ddf8d; }
+    .tag-u21 { background: #1a2a3a; color: #8ec8ff; }
+    .tag-star { background: #3a2a1a; color: #ffcc66; }
+    .compliance-ok { color: #8ddf8d; }
+    .compliance-warn { color: #e8c547; }
+    .actions { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Populate squad (test)</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Instantly signs free agents at market value into a club (assign + transfer ledger + Central Bank),
+        filling up to <b>24</b> players. Position mins below reset when you pick another club.
+        Run <code>admin_test_populate_squad.sql</code> in Supabase first.
+      </p>
+
+      <div class="card">
+        <h2>Club</h2>
+        <div class="form-grid">
+          <label>
+            Squad
+            <select id="clubSelect"><option value="">Loading…</option></select>
+          </label>
+        </div>
+        <div id="countsBox" class="counts-box" hidden></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h2>Position minimums (this club only)</h2>
+        <p class="hint" style="margin:0 0 10px;">
+          Defaults: GK 2 · DEF 8 · MID 8 · FWD 6 (sum 24). Adjust temporarily for this club;
+          changing the club dropdown restores defaults. Fixed rules: min 8 home-grown, min 5 under-21,
+          stars ≤ division cap. Does not replace existing players — only fills empty slots up to 24.
+        </p>
+        <div class="pos-grid">
+          <label>GK min<input type="number" id="posGk" min="0" max="24" value="2"></label>
+          <label>DEF min<input type="number" id="posDef" min="0" max="24" value="8"></label>
+          <label>MID min<input type="number" id="posMid" min="0" max="24" value="8"></label>
+          <label>FWD min<input type="number" id="posFwd" min="0" max="24" value="6"></label>
+        </div>
+        <p class="hint" id="posSumLine" style="margin-top:8px;">Position mins total: 24 / 24</p>
+        <div class="actions">
+          <button type="button" class="button" id="previewBtn">Preview plan</button>
+          <button type="button" class="button" id="populateBtn" style="background:#228822;">Populate squad</button>
+          <button type="button" class="button" id="resetPosBtn" style="background:#333;">Reset mins</button>
+        </div>
+        <div id="pageStatus" class="status-line"></div>
+        <div id="previewBox" class="preview-box" hidden></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_test_populate_squad.js?v=20260807-populate-squad"></script>
+</body>
+</html>
