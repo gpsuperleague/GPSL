@@ -8,6 +8,7 @@ import {
   CUP_LABELS,
   DIVISION_LABELS,
   canSubmitResult,
+  canSimulateMatchResult,
   needsInboxConfirm,
   fixtureInvolvesClub,
   leagueBadgeHtml,
@@ -156,8 +157,9 @@ function actionHtml(f) {
 
   if (
     matchSimStatus.enabled &&
-    f.status === "scheduled" &&
-    fixtureInvolvesClub(f, myClub) &&
+    canSimulateMatchResult(f, myClub, calendarStatus, holidayContext, {
+      bypassCalendar: matchSimStatus.isAdmin,
+    }) &&
     !needsInboxConfirm(f, myClub)
   ) {
     parts.push(matchSimButtonHtml(f.id));

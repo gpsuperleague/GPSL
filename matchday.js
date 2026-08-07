@@ -10,6 +10,7 @@ import {
   rejectFixtureResult,
   loadPendingSubmission,
   canSubmitResult,
+  canSimulateMatchResult,
   needsInboxConfirm,
   normalizeClubKey,
   LEAGUE_DIVISIONS,
@@ -50,7 +51,8 @@ import {
 let myClub = { short: null, name: null };
 let calendarStatus = null;
 let holidayContext = null;
-let matchSimEnabled = false;
+/** @type {{ enabled: boolean, isAdmin: boolean, error: string|null }} */
+let matchSimStatus = { enabled: false, isAdmin: false, error: null };
 let confirmMode = null;
 let myDivision = null;
 let upcomingFixtures = [];
@@ -1439,9 +1441,10 @@ async function updateFixturePreview() {
   const instantBtn = document.getElementById("instantResultBtn");
   if (simWrap) {
     const showSim =
-      matchSimEnabled &&
-      f.status === "scheduled" &&
-      fixtureInvolvesClub(f, myClub) &&
+      matchSimStatus.enabled &&
+      canSimulateMatchResult(f, myClub, calendarStatus, holidayContext, {
+        bypassCalendar: matchSimStatus.isAdmin,
+      }) &&
       !needsInboxConfirm(f, myClub);
     simWrap.style.display = showSim ? "inline-flex" : "none";
     if (simBtn) {
@@ -1479,11 +1482,18 @@ async function updateFixturePreview() {
       deferred || "Result confirmed."
     );
   } else {
+    const canSim =
+      matchSimStatus.enabled &&
+      canSimulateMatchResult(f, myClub, calendarStatus, holidayContext, {
+        bypassCalendar: matchSimStatus.isAdmin,
+      });
     setStatus(
       "submitStatus",
-      matchSimEnabled && f.status === "scheduled"
+      canSim
         ? "Use Instant result or Simulate match (test mode), or arrange kick-off / wait for the play month."
-        : "This fixture cannot accept a new result."
+        : matchSimStatus.enabled && f.status === "scheduled"
+          ? "This fixture’s GPSL month is not active yet (locked until that month unlocks, unless you have a holiday early-play)."
+          : "This fixture cannot accept a new result."
     );
   }
 }
@@ -1779,8 +1789,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("simulateResultBtn")?.addEventListener("click", () => runMatchdaySim("play"));
   document.getElementById("instantResultBtn")?.addEventListener("click", () => runMatchdaySim("instant"));
 
-  const simStatus = await loadMatchSimStatus();
-  matchSimEnabled = !!simStatus.enabled;
+  matchSimStatus = await loadMatchSimStatus();
 
   wireAllMatchdaySelectOnFocus();
 

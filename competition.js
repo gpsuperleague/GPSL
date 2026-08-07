@@ -1034,6 +1034,72 @@ export async function rejectFixtureResult(supabase, submissionId, reason = null)
 }
 
 /**
+ * Month unlock / holiday-early gate shared by result submit and match simulation.
+ * Does not require agreed kick-off or check-in.
+ * @param {object} fixture
+ * @param {string|{ short?: string }} clubIdentity
+ * @param {{ calendar_configured?: boolean, active_gpsl_month?: string|null }|null} [calendarStatus]
+ * @param {{ holidays?: object[], calendarMonths?: object[] }|null} [holidayContext]
+ */
+export function isFixtureMonthPlayable(
+  fixture,
+  clubIdentity,
+  calendarStatus = null,
+  holidayContext = null
+) {
+  if (!fixture) return false;
+  if (!calendarStatus?.calendar_configured) return true;
+
+  const active = calendarStatus.active_gpsl_month;
+  const inActiveMonth =
+    active &&
+    String(fixture.gpsl_month || "").toLowerCase() ===
+      String(active).toLowerCase();
+  const catchUp = fixture.is_catch_up === true;
+
+  if (
+    !inActiveMonth &&
+    !catchUp &&
+    !isFixtureHolidayPlayable(fixture, clubIdentity, holidayContext)
+  ) {
+    return false;
+  }
+
+  if (catchUp && !active) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Instant result / Simulate match — same month unlock as submit, without kick-off window.
+ * @param {object} fixture
+ * @param {string|{ short?: string }} clubIdentity
+ * @param {{ calendar_configured?: boolean, active_gpsl_month?: string|null }|null} [calendarStatus]
+ * @param {{ holidays?: object[], calendarMonths?: object[] }|null} [holidayContext]
+ * @param {{ bypassCalendar?: boolean }|null} [opts] admin bypass (matches SQL is_gpsl_admin)
+ */
+export function canSimulateMatchResult(
+  fixture,
+  clubIdentity,
+  calendarStatus = null,
+  holidayContext = null,
+  opts = null
+) {
+  if (!fixture || !clubIdentity) return false;
+  if (!fixtureInvolvesClub(fixture, clubIdentity)) return false;
+  if (fixture.status !== "scheduled" || fixture.submission_id) return false;
+  if (opts?.bypassCalendar) return true;
+  return isFixtureMonthPlayable(
+    fixture,
+    clubIdentity,
+    calendarStatus,
+    holidayContext
+  );
+}
+
+/**
  * @param {object} fixture
  * @param {string|{ short?: string }} clubIdentity
  * @param {{ calendar_configured?: boolean, active_gpsl_month?: string|null }|null} [calendarStatus]
@@ -1049,25 +1115,15 @@ export function canSubmitResult(
   if (!fixtureInvolvesClub(fixture, clubIdentity)) return false;
   if (fixture.status !== "scheduled" || fixture.submission_id) return false;
 
-  if (calendarStatus?.calendar_configured) {
-    const active = calendarStatus.active_gpsl_month;
-    const inActiveMonth =
-      active &&
-      String(fixture.gpsl_month || "").toLowerCase() ===
-        String(active).toLowerCase();
-    const catchUp = fixture.is_catch_up === true;
-
-    if (
-      !inActiveMonth &&
-      !catchUp &&
-      !isFixtureHolidayPlayable(fixture, clubIdentity, holidayContext)
-    ) {
-      return false;
-    }
-
-    if (catchUp && !active) {
-      return false;
-    }
+  if (
+    !isFixtureMonthPlayable(
+      fixture,
+      clubIdentity,
+      calendarStatus,
+      holidayContext
+    )
+  ) {
+    return false;
   }
 
   if (

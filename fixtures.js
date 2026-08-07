@@ -12,6 +12,7 @@ import {
   LEAGUE_DIVISIONS,
   GPSL_MONTH_LABELS,
   canSubmitResult,
+  canSimulateMatchResult,
   needsInboxConfirm,
   deferredResultNote,
   leagueBadgeHtml,
@@ -134,7 +135,13 @@ function actionCell(fixture) {
 
   if (
     matchSimStatus.enabled &&
-    fixture.status === "scheduled" &&
+    canSimulateMatchResult(
+      fixture,
+      myClub,
+      calendarStatus,
+      holidayContext,
+      { bypassCalendar: matchSimStatus.isAdmin }
+    ) &&
     !needsInboxConfirm(fixture, myClub)
   ) {
     parts.push(matchSimButtonHtml(fixture.id));

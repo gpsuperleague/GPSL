@@ -986,6 +986,9 @@ BEGIN
     RAISE EXCEPTION 'A result is already awaiting confirmation for this fixture';
   END IF;
 
+  -- Same month unlock / holiday-early rules as manual result submit
+  PERFORM public.competition_assert_fixture_month_unlocked(p_fixture_id, v_club);
+
   IF v_fixture.result_sim_lock_club IS NOT NULL
      AND v_fixture.result_sim_lock_club IS DISTINCT FROM v_club
      AND v_fixture.result_sim_lock_at IS NOT NULL
