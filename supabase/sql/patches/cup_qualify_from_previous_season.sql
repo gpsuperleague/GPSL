@@ -336,7 +336,7 @@ BEGIN
           'position', p.sort_key,
           'reason',
             public.competition_cup_division_label('superleague')
-            || ' · finished '
+            || ' - finished '
             || public.competition_cup_ordinal(p.sort_key)
         )
         ORDER BY p.sort_key, p.club_short_name
@@ -368,7 +368,7 @@ BEGIN
         p.sort_key AS pos,
         p.sort_key AS sort_key,
         public.competition_cup_division_label('superleague')
-          || ' · finished '
+          || ' - finished '
           || public.competition_cup_ordinal(p.sort_key) AS reason
       FROM public.competition_cup_source_league_places(
         v_src, 'superleague', 9, 16
@@ -380,7 +380,7 @@ BEGIN
         p.sort_key,
         100 + p.sort_key,
         public.competition_cup_division_label('championship_a')
-          || ' · finished '
+          || ' - finished '
           || public.competition_cup_ordinal(p.sort_key)
       FROM public.competition_cup_source_league_places(
         v_src, 'championship_a', 1, 4
@@ -392,7 +392,7 @@ BEGIN
         p.sort_key,
         200 + p.sort_key,
         public.competition_cup_division_label('championship_b')
-          || ' · finished '
+          || ' - finished '
           || public.competition_cup_ordinal(p.sort_key)
       FROM public.competition_cup_source_league_places(
         v_src, 'championship_b', 1, 4
@@ -419,7 +419,7 @@ BEGIN
         p.sort_key AS pos,
         p.sort_key AS sort_key,
         public.competition_cup_division_label('superleague')
-          || ' · finished '
+          || ' - finished '
           || public.competition_cup_ordinal(p.sort_key) AS reason
       FROM public.competition_cup_source_league_places(
         v_src, 'superleague', 17, 20
@@ -431,7 +431,7 @@ BEGIN
         p.sort_key,
         100 + p.sort_key,
         public.competition_cup_division_label('championship_a')
-          || ' · finished '
+          || ' - finished '
           || public.competition_cup_ordinal(p.sort_key)
       FROM public.competition_cup_source_league_places(
         v_src, 'championship_a', 5, 15
@@ -443,7 +443,7 @@ BEGIN
         p.sort_key,
         200 + p.sort_key,
         public.competition_cup_division_label('championship_b')
-          || ' · finished '
+          || ' - finished '
           || public.competition_cup_ordinal(p.sort_key)
       FROM public.competition_cup_source_league_places(
         v_src, 'championship_b', 5, 15
@@ -481,7 +481,7 @@ BEGIN
         p.sort_key AS pos,
         p.sort_key AS sort_key,
         public.competition_cup_division_label('championship_a')
-          || ' · finished '
+          || ' - finished '
           || public.competition_cup_ordinal(p.sort_key) AS reason
       FROM public.competition_cup_source_league_places(
         v_src, 'championship_a', 18, 20
@@ -493,7 +493,7 @@ BEGIN
         p.sort_key,
         100 + p.sort_key,
         public.competition_cup_division_label('championship_b')
-          || ' · finished '
+          || ' - finished '
           || public.competition_cup_ordinal(p.sort_key)
       FROM public.competition_cup_source_league_places(
         v_src, 'championship_b', 18, 20
@@ -519,7 +519,7 @@ BEGIN
           'position', NULL,
           'reason',
             public.competition_cup_division_label(ccs.division)
-            || ' · current season entry'
+            || ' - current season entry'
         )
         ORDER BY
           CASE ccs.division
