@@ -23,8 +23,8 @@
         <h2>Owner waiting list</h2>
         <p class="note">
           Members without a club. New admin adds go to the <b>bottom</b>; owners removed from a club rejoin
-          <b>above new joins</b> but below people already waiting. Invite to club auction or assign a
-          vacant club directly from here.
+          <b>above new joins</b> but below people already waiting.
+          Tick <b>Auction</b> to invite to the club draft auction; untick to put them back on the waiting list.
           <b>Test</b> / <b>Live</b> ticks are saved on the owner and stay until you clear them.
         </p>
         <div class="row" style="margin-bottom:12px;">
@@ -32,8 +32,6 @@
           <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
         </div>
         <div id="wlAdminTableWrap" style="overflow-x:auto;"></div>
-        <h3 style="margin:20px 0 8px;font-size:15px;color:#ccc;">Invited to club auction</h3>
-        <div id="wlAuctionInviteWrap"></div>
         <hr style="border-color:#333;margin:20px 0;">
         <h3 style="margin:0 0 8px;font-size:15px;color:#ccc;">Quick actions</h3>
         <div class="row">
@@ -42,7 +40,6 @@
           <div><input id="wlAssignDiscordTag" placeholder="Discord tag (if not set yet)" autocomplete="off"></div>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-          <button type="button" id="wlInviteAuctionBtn" class="button">Invite to club auction</button>
           <button type="button" id="wlDirectAssignBtn" class="button">Assign club directly</button>
           <button type="button" id="wlRemoveBtn" class="button secondary">Remove from waiting list</button>
           <button type="button" id="wlAbsenceOnBtn" class="button secondary">Mark on absence</button>
@@ -52,6 +49,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js?v=20260807-wl-totals"></script>
+  <script type="module" src="admin_owners.js?v=20260807-wl-auction-tick"></script>
 </body>
 </html>

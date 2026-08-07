@@ -59,7 +59,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("wlRefreshBtn")?.addEventListener("click", loadWaitingListAdmin);
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
-  document.getElementById("wlInviteAuctionBtn")?.addEventListener("click", inviteWaitingListAuction);
   document.getElementById("wlDirectAssignBtn")?.addEventListener("click", directAssignFromWaitingList);
   document.getElementById("wlRemoveBtn")?.addEventListener("click", () =>
     removeFromWaitingList({ email: wlActionEmail() })
@@ -908,7 +907,6 @@ function setWlActionStatus(msg, ok) {
 
 async function loadWaitingListAdmin() {
   const tableWrap = document.getElementById("wlAdminTableWrap");
-  const auctionWrap = document.getElementById("wlAuctionInviteWrap");
   if (!tableWrap) return;
 
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
@@ -918,81 +916,119 @@ async function loadWaitingListAdmin() {
     return;
   }
 
-  const rows = data?.waiting || [];
+  const waiting = data?.waiting || [];
+  const invited = (data?.invited_to_auction || []).map((r) => ({
+    ...r,
+    position: null,
+    tier: "—",
+    invited_auction: true,
+  }));
+  const rows = [
+    ...waiting.map((r) => ({ ...r, invited_auction: false })),
+    ...invited,
+  ];
+
   if (!rows.length) {
-    tableWrap.innerHTML = "<p class='note'>No one on the waiting list.</p>";
-  } else {
-    const testTotal = rows.filter((r) => !!r.confirmed_test_season).length;
-    const liveTotal = rows.filter((r) => !!r.confirmed_live_season).length;
-    let html =
-      "<table class='admin-table' style='width:100%;font-size:13px;border-collapse:collapse'>" +
-      "<thead><tr>" +
-      "<th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>" +
-      `<th title='Confirmed for test season' style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
-      `<th title='Confirmed for live season' style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
-      "<th></th></tr></thead><tbody>";
-    for (const row of rows) {
-      const email = row.email || "";
-      const testOn = !!row.confirmed_test_season;
-      const liveOn = !!row.confirmed_live_season;
-      html += `<tr>
-        <td>${row.position}</td>
-        <td>${escapeWl(row.owner_tag)}</td>
-        <td>${escapeWl(email)}</td>
-        <td>${escapeWl(row.tier || "—")}</td>
-        <td>${escapeWl(row.status)}</td>
-        <td style="text-align:center">
-          <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="test"
-            title="Confirmed test season" ${testOn ? "checked" : ""}>
-        </td>
-        <td style="text-align:center">
-          <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"
-            title="Confirmed live season" ${liveOn ? "checked" : ""}>
-        </td>
-        <td style="white-space:nowrap">
-          <button type="button" class="button secondary wl-up" data-id="${row.owner_id}" data-email="${escapeWl(email)}">↑</button>
-          <button type="button" class="button secondary wl-down" data-id="${row.owner_id}" data-email="${escapeWl(email)}">↓</button>
-          <button type="button" class="button secondary wl-remove" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}">Remove</button>
-        </td>
-      </tr>`;
-    }
-    html += "</tbody></table>";
-    tableWrap.innerHTML = html;
-
-    tableWrap.querySelectorAll(".wl-up").forEach((btn) => {
-      btn.addEventListener("click", () => moveWaitingList(btn.dataset.id, -1));
-    });
-    tableWrap.querySelectorAll(".wl-down").forEach((btn) => {
-      btn.addEventListener("click", () => moveWaitingList(btn.dataset.id, 1));
-    });
-    tableWrap.querySelectorAll(".wl-remove").forEach((btn) => {
-      btn.addEventListener("click", () =>
-        removeFromWaitingList({
-          ownerId: btn.dataset.id,
-          email: btn.dataset.email,
-          tag: btn.dataset.tag,
-        })
-      );
-    });
-    tableWrap.querySelectorAll(".wl-confirm-season").forEach((cb) => {
-      cb.addEventListener("change", () =>
-        setWaitingListSeasonConfirmed(cb.dataset.id, cb.dataset.which, cb.checked, cb)
-      );
-    });
-  }
-
-  const invited = data?.invited_to_auction || [];
-  if (!auctionWrap) return;
-  if (!invited.length) {
-    auctionWrap.innerHTML = "<p class='note'>No one currently invited to club auction.</p>";
+    tableWrap.innerHTML = "<p class='note'>No one on the waiting list or invited to club auction.</p>";
     return;
   }
-  auctionWrap.innerHTML = invited
-    .map(
-      (r) =>
-        `<div class="note">${escapeWl(r.owner_tag || "—")} — ${escapeWl(r.email)} — <code>awaiting_club_auction</code></div>`
-    )
-    .join("");
+
+  const listCount = waiting.length;
+  const auctionTotal = invited.length;
+  const testTotal = rows.filter((r) => !!r.confirmed_test_season).length;
+  const liveTotal = rows.filter((r) => !!r.confirmed_live_season).length;
+  let html =
+    "<table class='admin-table' style='width:100%;font-size:13px;border-collapse:collapse'>" +
+    "<thead><tr>" +
+    "<th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>" +
+    `<th title='Invite to / remove from club draft auction' style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
+    `<th title='Confirmed for test season' style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
+    `<th title='Confirmed for live season' style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
+    "<th></th></tr></thead><tbody>";
+
+  if (listCount && auctionTotal) {
+    html +=
+      `<tr><td colspan="9" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333">` +
+      `Waiting list (${listCount})</td></tr>`;
+  }
+
+  for (const row of waiting) {
+    html += renderWaitingListAdminRow(row, { invited: false });
+  }
+
+  if (auctionTotal) {
+    html +=
+      `<tr><td colspan="9" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333;border-top:1px solid #333">` +
+      `Invited to club auction (${auctionTotal}) — untick Auction to return to waiting list</td></tr>`;
+    for (const row of invited) {
+      html += renderWaitingListAdminRow(row, { invited: true });
+    }
+  }
+
+  html += "</tbody></table>";
+  tableWrap.innerHTML = html;
+
+  tableWrap.querySelectorAll(".wl-up").forEach((btn) => {
+    btn.addEventListener("click", () => moveWaitingList(btn.dataset.id, -1));
+  });
+  tableWrap.querySelectorAll(".wl-down").forEach((btn) => {
+    btn.addEventListener("click", () => moveWaitingList(btn.dataset.id, 1));
+  });
+  tableWrap.querySelectorAll(".wl-remove").forEach((btn) => {
+    btn.addEventListener("click", () =>
+      removeFromWaitingList({
+        ownerId: btn.dataset.id,
+        email: btn.dataset.email,
+        tag: btn.dataset.tag,
+      })
+    );
+  });
+  tableWrap.querySelectorAll(".wl-confirm-season").forEach((cb) => {
+    cb.addEventListener("change", () =>
+      setWaitingListSeasonConfirmed(cb.dataset.id, cb.dataset.which, cb.checked, cb)
+    );
+  });
+  tableWrap.querySelectorAll(".wl-auction-invite").forEach((cb) => {
+    cb.addEventListener("change", () =>
+      setWaitingListAuctionInvite(cb.dataset.id, cb.checked, cb)
+    );
+  });
+}
+
+function renderWaitingListAdminRow(row, { invited }) {
+  const email = row.email || "";
+  const testOn = !!row.confirmed_test_season;
+  const liveOn = !!row.confirmed_live_season;
+  const pos = invited ? "—" : row.position;
+  const status = invited ? "awaiting_club_auction" : row.status;
+  const moveBtns = invited
+    ? ""
+    : `<button type="button" class="button secondary wl-up" data-id="${row.owner_id}">↑</button>
+       <button type="button" class="button secondary wl-down" data-id="${row.owner_id}">↓</button>`;
+  return `<tr${invited ? ' style="background:#1a1814"' : ""}>
+    <td>${pos ?? "—"}</td>
+    <td>${escapeWl(row.owner_tag)}</td>
+    <td>${escapeWl(email)}</td>
+    <td>${escapeWl(row.tier || "—")}</td>
+    <td>${escapeWl(status)}</td>
+    <td style="text-align:center">
+      <input type="checkbox" class="wl-auction-invite" data-id="${row.owner_id}"
+        title="${invited ? "Remove from club auction (back to waiting list)" : "Invite to club auction"}"
+        ${invited ? "checked" : ""}>
+    </td>
+    <td style="text-align:center">
+      <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="test"
+        title="Confirmed test season" ${testOn ? "checked" : ""}>
+    </td>
+    <td style="text-align:center">
+      <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"
+        title="Confirmed live season" ${liveOn ? "checked" : ""}>
+    </td>
+    <td style="white-space:nowrap">
+      ${moveBtns}
+      <button type="button" class="button secondary wl-remove" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}">Remove</button>
+    </td>
+  </tr>`;
 }
 
 function escapeWl(s) {
@@ -1007,10 +1043,34 @@ function refreshWaitingListConfirmTotals() {
   if (!wrap) return;
   const testBoxes = [...wrap.querySelectorAll('.wl-confirm-season[data-which="test"]')];
   const liveBoxes = [...wrap.querySelectorAll('.wl-confirm-season[data-which="live"]')];
+  const auctionBoxes = [...wrap.querySelectorAll(".wl-auction-invite")];
   const testEl = document.getElementById("wlTestTotal");
   const liveEl = document.getElementById("wlLiveTotal");
+  const auctionEl = document.getElementById("wlAuctionTotal");
   if (testEl) testEl.textContent = String(testBoxes.filter((c) => c.checked).length);
   if (liveEl) liveEl.textContent = String(liveBoxes.filter((c) => c.checked).length);
+  if (auctionEl) auctionEl.textContent = String(auctionBoxes.filter((c) => c.checked).length);
+}
+
+async function setWaitingListAuctionInvite(ownerId, invited, checkboxEl) {
+  const { error } = await supabase.rpc("admin_waiting_list_set_auction_invite", {
+    p_owner_id: ownerId,
+    p_invited: !!invited,
+    p_starting_balance: clubAuctionStartingBalance,
+  });
+  if (error) {
+    if (checkboxEl) checkboxEl.checked = !invited;
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  await loadWaitingListAdmin();
+  await loadOwnerList();
+  setWlActionStatus(
+    invited
+      ? "✅ Invited to club auction."
+      : "✅ Removed from club auction — back on waiting list.",
+    true
+  );
 }
 
 async function setWaitingListSeasonConfirmed(ownerId, which, confirmed, checkboxEl) {
@@ -1060,26 +1120,6 @@ async function restoreWaitingListOrder() {
 
 function wlActionEmail() {
   return document.getElementById("wlActionEmail")?.value?.trim() || "";
-}
-
-async function inviteWaitingListAuction() {
-  const email = wlActionEmail();
-  if (!email) {
-    setWlActionStatus("Enter member email.", false);
-    return;
-  }
-  setWlActionStatus("Inviting…");
-  const { error } = await supabase.rpc("admin_waiting_list_invite_auction", {
-    p_owner_email: email,
-    p_starting_balance: clubAuctionStartingBalance,
-  });
-  if (error) {
-    setWlActionStatus("❌ " + error.message, false);
-    return;
-  }
-  await loadWaitingListAdmin();
-  await loadOwnerList();
-  setWlActionStatus(`✅ ${email} invited to club auction.`, true);
 }
 
 async function directAssignFromWaitingList() {
