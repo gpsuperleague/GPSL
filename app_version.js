@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260807-sim-400";
+export const APP_VERSION = "20260807-arrow-live";

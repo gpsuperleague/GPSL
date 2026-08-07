@@ -225,6 +225,7 @@ export function playMatchMomentum(data, labels = {}) {
 
     const playback = data?.playback || {};
     const duration = Math.max(8, Number(playback.duration_sec) || 20) * 1000;
+    const durationSec = duration / 1000;
     const events = Array.isArray(playback.events) ? [...playback.events] : [];
     events.sort((a, b) => Number(a.t) - Number(b.t));
 
@@ -233,22 +234,40 @@ export function playMatchMomentum(data, labels = {}) {
     scoreEl.textContent = "0 – 0";
     clockEl.textContent = "1'";
     feed.innerHTML = "";
-    setArrow("home", 0.5);
+
+    // Momentum 0 = deep away attack (left), 1 = deep home attack (right)
+    let momentum = 0.5;
+    let target = 0.55;
+    let surgeUntil = 0;
+    let lastSide = "home";
 
     overlay.hidden = false;
     const started = performance.now();
     let idx = 0;
     let raf = 0;
     let done = false;
+    let prevNow = started;
 
-    function setArrow(side, pressure = 0.6) {
-      const p = Math.max(0.35, Math.min(0.92, Number(pressure) || 0.6));
-      // Arrow position: home attack → right side of bar; away attack → left
-      const pct = side === "away" ? (1 - p) * 42 + 8 : p * 42 + 50;
+    function eventTarget(ev) {
+      const pressure = Math.max(0.35, Math.min(0.95, Number(ev.pressure) || 0.7));
+      if (ev.side === "away") return (1 - pressure) * 0.42; // push left
+      if (ev.side === "home") return 0.58 + pressure * 0.38; // push right
+      return 0.5;
+    }
+
+    function paintArrow(m) {
+      const pct = 8 + m * 84; // 8%..92%
+      const homeAttack = m >= 0.5;
       arrow.style.left = `${pct}%`;
-      arrow.textContent = side === "away" ? "◀" : "▶";
-      arrow.style.color = side === "away" ? awayColor : homeColor;
-      arrow.classList.toggle("msim-arrow--pulse", true);
+      if (homeAttack !== (lastSide === "home")) {
+        arrow.classList.remove("msim-arrow--pulse");
+        // force reflow so pulse restarts on direction change
+        void arrow.offsetWidth;
+        arrow.classList.add("msim-arrow--pulse");
+      }
+      lastSide = homeAttack ? "home" : "away";
+      arrow.textContent = homeAttack ? "▶" : "◀";
+      arrow.style.color = homeAttack ? homeColor : awayColor;
     }
 
     function pushFeed(ev) {
@@ -277,13 +296,19 @@ export function playMatchMomentum(data, labels = {}) {
       if (done) return;
       const elapsed = now - started;
       const tSec = elapsed / 1000;
+      const dt = Math.min(0.05, (now - prevNow) / 1000);
+      prevNow = now;
 
       while (idx < events.length && Number(events[idx].t) <= tSec) {
         const ev = events[idx++];
-        if (ev.type === "momentum" || ev.type === "goal" || ev.type === "red") {
-          if (ev.side === "home" || ev.side === "away") {
-            setArrow(ev.side, ev.pressure);
-          }
+        if (
+          (ev.type === "momentum" || ev.type === "goal" || ev.type === "red") &&
+          (ev.side === "home" || ev.side === "away")
+        ) {
+          target = eventTarget(ev);
+          // Hard surge toward scoring / pressure side, then keep drifting
+          surgeUntil = tSec + (ev.type === "goal" ? 1.4 : 0.85);
+          momentum += (target - momentum) * (ev.type === "goal" ? 0.55 : 0.35);
         }
         if (ev.type === "goal") {
           hg = ev.score_home ?? hg;
@@ -300,6 +325,36 @@ export function playMatchMomentum(data, labels = {}) {
         }
       }
 
+      // Live sway: layered waves so the arrow constantly moves both ways
+      const wave =
+        Math.sin(tSec * 2.4) * 0.14 +
+        Math.sin(tSec * 5.1 + 1.3) * 0.08 +
+        Math.sin(tSec * 0.9 + 0.4) * 0.1;
+      // Slow bias drift across the match so it isn't stuck midfield
+      const bias = 0.5 + Math.sin(tSec * 0.55) * 0.12;
+      let liveTarget = bias + wave;
+
+      if (tSec < surgeUntil) {
+        // During/after events, blend event target with live motion
+        const blend = Math.min(1, (surgeUntil - tSec) / 0.9);
+        liveTarget = target * (0.55 + 0.35 * blend) + liveTarget * (0.45 - 0.25 * blend);
+      }
+
+      liveTarget = Math.max(0.06, Math.min(0.94, liveTarget));
+      // Smooth chase — snappy enough to feel live
+      const chase = tSec < surgeUntil ? 7.5 : 4.2;
+      momentum += (liveTarget - momentum) * (1 - Math.exp(-chase * dt));
+      momentum = Math.max(0.04, Math.min(0.96, momentum));
+      paintArrow(momentum);
+
+      // Soft clock advance even between events
+      if (durationSec > 0) {
+        const approxMin = Math.max(1, Math.min(90, Math.round((tSec / durationSec) * 90)));
+        if (!events[idx] || Number(events[idx].minute) == null) {
+          clockEl.textContent = `${approxMin}'`;
+        }
+      }
+
       if (elapsed >= duration) {
         finish();
         return;
@@ -307,6 +362,7 @@ export function playMatchMomentum(data, labels = {}) {
       raf = requestAnimationFrame(tick);
     }
 
+    paintArrow(momentum);
     skipBtn.onclick = () => finish();
     raf = requestAnimationFrame(tick);
   });
@@ -362,11 +418,15 @@ export const MATCH_SIM_BANNER_STYLE = `
 .msim-home-zone, .msim-away-zone { flex:1; opacity:.9; }
 .msim-arrow {
   position:absolute; top:50%; transform:translate(-50%,-50%);
-  font-size:22px; font-weight:900; text-shadow:0 1px 3px #000;
-  transition:left .35s ease, color .25s ease; pointer-events:none;
+  font-size:24px; font-weight:900; text-shadow:0 1px 4px #000;
+  transition:color .15s ease; pointer-events:none; will-change:left;
 }
-.msim-arrow--pulse { animation:msimPulse .45s ease; }
-@keyframes msimPulse { 0%{transform:translate(-50%,-50%) scale(1)} 40%{transform:translate(-50%,-50%) scale(1.25)} 100%{transform:translate(-50%,-50%) scale(1)} }
+.msim-arrow--pulse { animation:msimPulse .4s ease; }
+@keyframes msimPulse {
+  0%{transform:translate(-50%,-50%) scale(1)}
+  35%{transform:translate(-50%,-50%) scale(1.35)}
+  100%{transform:translate(-50%,-50%) scale(1)}
+}
 .msim-feed {
   max-height:160px; overflow:auto; font-size:13px; line-height:1.45;
   border:1px solid #2a2a2a; border-radius:6px; background:#0d0d0d; padding:8px 10px;
