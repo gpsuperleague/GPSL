@@ -1,5 +1,5 @@
 /**
- * Learning GPSL — handbook renderer (content in learning_gpsl_content.js).
+ * Learning GPSL — handbook renderer (content in learning_gpsl_content/).
  */
 import { initGlobal } from "./global.js";
 import {
@@ -37,12 +37,12 @@ function renderBlock(block) {
     case "ul":
       return `<ul>${renderListItems(block.items)}</ul>`;
     case "tip":
-      return `<p class="tip">${block.html || ""}</p>`;
+      return `<p class="learning-tip">${block.html || ""}</p>`;
     case "warn":
-      return `<p class="warn">${block.html || ""}</p>`;
+      return `<p class="learning-warn">${block.html || ""}</p>`;
     case "links":
       return `
-        <div class="link-grid">
+        <div class="learning-links">
           ${(block.items || [])
             .map(
               (link) =>
@@ -57,7 +57,7 @@ function renderBlock(block) {
 
 function renderToc(sections) {
   return `
-    <nav class="toc" aria-label="Contents">
+    <nav class="learning-toc" aria-label="Contents">
       <h2>Contents</h2>
       <ul>
         ${sections
@@ -72,10 +72,11 @@ function renderToc(sections) {
 
 function renderSection(section) {
   return `
-    <div class="section" id="${escapeAttr(section.id)}">
+    <section class="learning-section" id="${escapeAttr(section.id)}">
       <h2>${section.title}</h2>
       ${(section.blocks || []).map(renderBlock).join("")}
-    </div>`;
+      <a class="learning-back-top" href="#learning-toc">↑ Contents</a>
+    </section>`;
 }
 
 export function renderLearningGpslGuide(rootEl) {
@@ -84,13 +85,14 @@ export function renderLearningGpslGuide(rootEl) {
 
   root.innerHTML = `
     <h1>Learning GPSL</h1>
-    <p class="meta">${LEARNING_GPSL_META_HTML}</p>
-    ${renderToc(LEARNING_GPSL_SECTIONS)}
+    <p class="learning-meta">${LEARNING_GPSL_META_HTML}</p>
+    <div id="learning-toc">${renderToc(LEARNING_GPSL_SECTIONS)}</div>
     ${LEARNING_GPSL_SECTIONS.map(renderSection).join("")}
   `;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  document.body.classList.add("learning-gpsl-page");
   renderLearningGpslGuide();
   initGlobal();
 });

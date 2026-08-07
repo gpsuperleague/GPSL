@@ -2112,6 +2112,11 @@ export async function buildNav() {
               label: "Club draft auction",
               page: "club_auction",
             },
+            {
+              href: "learning_gpsl.html",
+              label: "Learning GPSL",
+              page: "learning_gpsl",
+            },
           ],
         },
       ];

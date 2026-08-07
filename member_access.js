@@ -13,7 +13,7 @@ export const AUTH_PAGES = new Set([
 
 /**
  * Pre-club owners (waiting list + club auction invitees):
- * waiting list, databases, owner setup (tag/timezone/availability/bank), club draft auction.
+ * waiting list, owner setup, databases, club draft auction, Learning GPSL.
  */
 export const MEMBER_ALLOWED_PAGES = new Set([
   "waiting_list",
@@ -22,6 +22,7 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   "club_database",
   "gpdb",
   "mgdb",
+  "learning_gpsl",
 ]);
 
 /** Same surface for auction invitees (kept for callers / clarity). */
@@ -105,5 +106,10 @@ export const PRE_CLUB_NAV_ITEMS = [
     href: "club_auction.html",
     label: "Club draft auction",
     page: "club_auction",
+  },
+  {
+    href: "learning_gpsl.html",
+    label: "Learning GPSL",
+    page: "learning_gpsl",
   },
 ];
