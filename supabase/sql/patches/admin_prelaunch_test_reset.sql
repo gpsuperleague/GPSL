@@ -4,11 +4,15 @@
 -- Run once in Supabase SQL Editor. Safe to re-run (CREATE OR REPLACE).
 --
 -- KEEP: Players GPDB, auth users, Clubs rows, Managers catalog, nation catalog,
---       global rule/config templates (tax tariffs, prize templates, etc.).
+--       global rule/config templates (tax tariffs, prize templates, etc.),
+--       waiting-list / registry admin state (tiers, confirm ticks, prizes inventory),
+--       admin workflow checklist.
 -- WIPE: owners on clubs, squads/contracts, finances/ledger, transfers, seasons,
 --       league+cup fixtures/results/player stats, archives/awards/owner points,
 --       GPSL Sport, Natter, inbox, manager career history, internationals
---       (fixtures/results/cycles/assignments/caps), club auction (optional re-seed).
+--       (fixtures/results/cycles/assignments/caps), medical room state,
+--       friendlies / transfer rumours (also unblocks season delete),
+--       club auction (optional re-seed).
 -- =============================================================================
 
 ALTER TABLE public.global_settings
@@ -469,6 +473,44 @@ BEGIN
 
   DELETE FROM public.competition_inbox WHERE true;
 
+  -- Phase F1b: medical room (club state only; keep consultancy catalog / prize inventory)
+  IF to_regclass('public.club_medical_token_use') IS NOT NULL THEN
+    DELETE FROM public.club_medical_token_use WHERE true;
+  END IF;
+  IF to_regclass('public.club_medical_consults') IS NOT NULL THEN
+    DELETE FROM public.club_medical_consults WHERE true;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+    v_result := v_result || jsonb_build_object('deleted_medical_consults', v_deleted);
+  END IF;
+  IF to_regclass('public.club_medical_staff') IS NOT NULL THEN
+    DELETE FROM public.club_medical_staff WHERE true;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+    v_result := v_result || jsonb_build_object('deleted_medical_staff', v_deleted);
+  END IF;
+  IF to_regclass('public.club_medical_centre') IS NOT NULL THEN
+    DELETE FROM public.club_medical_centre WHERE true;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+    v_result := v_result || jsonb_build_object('deleted_medical_centres', v_deleted);
+  END IF;
+
+  -- Phase F1c: season FK blockers (no ON DELETE CASCADE) - clear before wiping seasons
+  IF to_regclass('public.gpsl_friendlies') IS NOT NULL THEN
+    DELETE FROM public.gpsl_friendlies WHERE true;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+    v_result := v_result || jsonb_build_object('deleted_friendlies', v_deleted);
+  END IF;
+  IF to_regclass('public.gpsl_friendly_reports') IS NOT NULL THEN
+    DELETE FROM public.gpsl_friendly_reports WHERE true;
+  END IF;
+  IF to_regclass('public.gpsl_transfer_rumours') IS NOT NULL THEN
+    DELETE FROM public.gpsl_transfer_rumours WHERE true;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+    v_result := v_result || jsonb_build_object('deleted_transfer_rumours', v_deleted);
+  END IF;
+  IF to_regclass('public.club_one_of_our_own_draws') IS NOT NULL THEN
+    DELETE FROM public.club_one_of_our_own_draws WHERE true;
+  END IF;
+
   -- Phase F2: vanilla history / media / manager career (always)
   IF to_regclass('public.manager_club_sack_blocks') IS NOT NULL THEN
     DELETE FROM public.manager_club_sack_blocks WHERE true;
@@ -510,9 +552,7 @@ BEGIN
     UPDATE public."Clubs" SET sport_comment_draft = NULL WHERE sport_comment_draft IS NOT NULL;
   END IF;
 
-  IF to_regclass('public.admin_workflow_checklist') IS NOT NULL THEN
-    DELETE FROM public.admin_workflow_checklist WHERE true;
-  END IF;
+  -- Note: admin_workflow_checklist is intentionally NOT deleted (admin data kept).
 
   IF to_regclass('public.competition_period_team_member') IS NOT NULL THEN
     DELETE FROM public.competition_period_team_member WHERE true;
@@ -638,15 +678,20 @@ BEGIN
     PERFORM public.club_reset_voluntary_contract_releases();
   END IF;
 
-  -- Phase H: owner registry → awaiting club auction
+  -- Phase H: vacated / active owners → club auction only.
+  -- Keep waiting-list (member / on_absence), confirm ticks, tiers, prizes inventory.
   IF v_reset_owners THEN
     UPDATE public.gpsl_owner_registry r
     SET status = 'awaiting_club_auction',
         pending_starting_balance = v_starting,
-        last_club_short_name = NULL,
         last_nation_code = NULL,
         status_changed_at = now()
-    WHERE r.status IS DISTINCT FROM 'archived';
+    WHERE r.status = 'active';
+
+    UPDATE public.gpsl_owner_registry r
+    SET pending_starting_balance = v_starting,
+        status_changed_at = now()
+    WHERE r.status = 'awaiting_club_auction';
   END IF;
 
   IF v_seed_club THEN

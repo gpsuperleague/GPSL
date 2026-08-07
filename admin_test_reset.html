@@ -41,11 +41,16 @@
           <li><b>History</b> — player/club season archives, cup winners, awards, <b>owner points</b></li>
           <li><b>Assignments</b> — player contracts, managers, nation assignments, matchday squads</li>
           <li><b>Money</b> — ledgers, balances → 0, loans, transfer history</li>
+          <li><b>Medical room</b> — centre tokens, staff, consults, token uses (consultancy catalog kept)</li>
+          <li><b>Friendlies</b> / <b>transfer rumours</b> / one-of-our-own draws</li>
           <li><b>Inbox</b>, <b>GPSL Sport</b> editions, <b>Natter</b> posts</li>
           <li><b>Manager career</b> stints / sack blocks</li>
           <li><b>Internationals</b> — WC cycles, fixtures/results, call-ups, caps/career stats (nation list kept)</li>
-          <li><b>Admin checklist</b> ticks for the wiped seasons</li>
         </ul>
+        <p class="note" style="margin-top:10px;">
+          <b>Kept:</b> waiting list (order, tiers, Test/Live confirms), prize inventory, admin checklist,
+          GPDB / clubs / auth / config templates.
+        </p>
       </div>
 
       <div class="card danger-card">
@@ -70,7 +75,7 @@
         <h2>3. Execute vanilla reset</h2>
         <p class="note">Type exactly: <code id="phraseHint">RESET TEST ENVIRONMENT</code></p>
         <label>
-          <input type="checkbox" id="optResetOwners" checked> Reset owners → awaiting club auction
+          <input type="checkbox" id="optResetOwners" checked> Vacated/active owners → awaiting club auction (waiting list kept)
         </label><br>
         <label>
           <input type="checkbox" id="optClearHistory" checked disabled> Clear all competition / history / Sport / Natter / internationals (always on)
@@ -93,6 +98,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_reset.js"></script>
+  <script type="module" src="admin_test_reset.js?v=20260807-reset-med"></script>
 </body>
 </html>
