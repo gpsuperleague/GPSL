@@ -25,6 +25,31 @@
       margin:0 0 10px; font-size:16px; color:#ff9900;
       border-bottom:1px solid #333; padding-bottom:6px;
     }
+    .wf-first-season {
+      margin:0 0 18px;
+      border:1px solid #3a3428;
+      border-radius:6px;
+      background:#161410;
+      padding:0 12px 10px;
+    }
+    .wf-first-season > summary {
+      cursor:pointer;
+      list-style:none;
+      padding:12px 0 8px;
+    }
+    .wf-first-season > summary::-webkit-details-marker { display:none; }
+    .wf-first-season > summary h2 {
+      margin:0; font-size:16px; color:#e8d9b0;
+      display:flex; align-items:center; gap:8px;
+    }
+    .wf-first-season > summary h2::before {
+      content:"▸"; color:#c4a35a; font-size:14px;
+      transition:transform 0.15s ease;
+    }
+    .wf-first-season[open] > summary h2::before { transform:rotate(90deg); }
+    .wf-first-season .wf-note { margin-top:4px; }
+    .wf-first-season .wf-meta { margin-top:8px; font-size:13px; }
+    .wf-first-season .wf-meta a { color:#8cf; font-weight:bold; }
     .wf-group-label {
       margin:12px 0 6px; font-size:12px; color:#888; text-transform:uppercase;
       letter-spacing:0.04em;
@@ -67,6 +92,28 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card">
+        <details class="wf-first-season" id="wfFirstSeason" open>
+          <summary><h2>First Season</h2></summary>
+          <p class="wf-note">
+            Day-zero setup before a normal season cycle: run the club auction for new owners,
+            then manager draft auction and player draft auction (in whatever order you choose).
+          </p>
+          <div class="wf-meta">
+            <a href="admin_transfers.html#sb-draft-auctions">Open auction switches</a>
+            — enable/disable <b>Club auction</b>, <b>Manager draft</b>, and <b>Player draft</b>,
+            then save transfer settings.
+          </div>
+          <div class="wf-meta" style="margin-top:6px;">
+            Related:
+            <a href="admin_transfers.html#sb-club-auction">Club auction seed</a>
+            ·
+            <a href="club_auction.html">Club auction (owner view)</a>
+            ·
+            <a href="manager_draftauction.html">Manager draft</a>
+            ·
+            <a href="draftauction.html">Player draft</a>
+          </div>
+        </details>
         <div id="wfRules" class="wf-rules"></div>
         <div class="wf-summary">
           <span class="pill" id="wfSeasonLabel">Season: …</span>
@@ -84,6 +131,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_workflow_checklist.js?v=20260807-prizes-in-create"></script>
+  <script type="module" src="admin_workflow_checklist.js?v=20260807-first-season"></script>
 </body>
 </html>

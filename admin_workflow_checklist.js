@@ -255,7 +255,7 @@ function updateSummary() {
 }
 
 function setAllDetails(open) {
-  document.querySelectorAll("#wfRoot details").forEach((el) => {
+  document.querySelectorAll("#wfRoot details, #wfFirstSeason").forEach((el) => {
     el.open = open;
   });
 }
