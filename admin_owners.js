@@ -2,7 +2,7 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 
 primeAdminPageChrome();
 
-let clubAuctionStartingBalance = 600000000;
+let clubAuctionStartingBalance = 650000000;
 
 function formatBudgetLabel(n) {
   const v = Math.round(Number(n) || 0);

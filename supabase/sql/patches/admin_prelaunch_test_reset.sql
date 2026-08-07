@@ -19,7 +19,7 @@ ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS allow_test_environment_reset boolean NOT NULL DEFAULT false;
 
 ALTER TABLE public.global_settings
-  ADD COLUMN IF NOT EXISTS club_auction_starting_balance numeric(14, 2) NOT NULL DEFAULT 600000000;
+  ADD COLUMN IF NOT EXISTS club_auction_starting_balance numeric(14, 2) NOT NULL DEFAULT 650000000;
 
 COMMENT ON COLUMN public.global_settings.allow_test_environment_reset IS
   'When true, admin_test_reset_execute() may run. Off by default — pre-launch only.';
@@ -58,7 +58,7 @@ SET search_path = public
 AS $$
   SELECT coalesce(
     (SELECT g.club_auction_starting_balance FROM public.global_settings g WHERE g.id = 1),
-    600000000::numeric
+    650000000::numeric
   );
 $$;
 
@@ -295,7 +295,7 @@ BEGIN
     RAISE EXCEPTION 'Confirmation phrase incorrect. Type exactly: RESET TEST ENVIRONMENT';
   END IF;
 
-  v_starting := greatest(coalesce((p_options ->> 'starting_balance')::numeric, 600000000), 0);
+  v_starting := greatest(coalesce((p_options ->> 'starting_balance')::numeric, 650000000), 0);
   v_reset_owners := coalesce((p_options ->> 'reset_owners_to_auction')::boolean, true);
   -- Vanilla reset always clears competition / history archives (option kept for audit only).
   v_clear_history := true;

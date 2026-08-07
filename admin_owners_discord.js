@@ -4,7 +4,7 @@ primeAdminPageChrome();
 
 /** @type {Array<Record<string, unknown>>} */
 let allMembers = [];
-let clubAuctionStartingBalance = 600000000;
+let clubAuctionStartingBalance = 650000000;
 /** @type {string|null} */
 let openPanelId = null;
 /** @type {"add"|"tag"|null} */
