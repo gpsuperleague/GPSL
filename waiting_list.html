@@ -68,7 +68,7 @@
     <div class="wl-panels">
       <div class="wl-card wl-panel">
         <h2>I'm on board <span class="wl-count" id="wlOnBoardCount"></span></h2>
-        <p id="wlOnBoardIntro">Owners confirmed for this season, in the order they joined.</p>
+        <p id="wlOnBoardIntro">Owners confirmed for the test season, in the order they joined.</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th></tr>
@@ -78,7 +78,7 @@
       </div>
       <div class="wl-card wl-panel">
         <h2>Owner waiting list <span class="wl-count" id="wlWaitingCount"></span></h2>
-        <p>Queue order for the next club slot. Admin invites from the top when a club opens.</p>
+        <p>Still waiting — not yet confirmed for the test season. Queue order for the next club slot.</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th></tr>
@@ -99,8 +99,8 @@
   </div>
   <script type="module">
     window.CURRENT_PAGE = "waiting_list";
-    import { initGlobal } from "./global.js?v=20260808-wl-onboard";
-    import { initWaitingListPage } from "./waiting_list.js?v=20260808-wl-onboard";
+    import { initGlobal } from "./global.js?v=20260808-wl-filter";
+    import { initWaitingListPage } from "./waiting_list.js?v=20260808-wl-filter";
     initGlobal().then(() => initWaitingListPage());
   </script>
 </body>

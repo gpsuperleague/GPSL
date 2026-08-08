@@ -49,16 +49,13 @@ export async function initWaitingListPage() {
     const list = await loadWaitingListPublic();
     const rows = list?.rows || [];
     const onBoard = list?.on_board || [];
-    const mode = list?.on_board_mode === "live" ? "live" : "test";
     const highlightWaiting =
       self?.is_member && list?.my_position ? list.my_position : null;
     const highlightOnBoard = list?.my_on_board_position || null;
 
     if (onBoardIntro) {
       onBoardIntro.textContent =
-        mode === "live"
-          ? "Owners confirmed for the live season, in the order they joined."
-          : "Owners confirmed for the test season, in the order they joined.";
+        "Owners confirmed for the test season, in the order they joined.";
     }
     if (onBoardCount) {
       onBoardCount.textContent = `(${list?.on_board_total ?? onBoard.length})`;
@@ -70,7 +67,7 @@ export async function initWaitingListPage() {
     if (onBoardBody) {
       if (!onBoard.length) {
         onBoardBody.innerHTML =
-          '<tr><td colspan="2" style="color:#666">No one confirmed yet — admin ticks Test/Live on the waiting list.</td></tr>';
+          '<tr><td colspan="2" style="color:#666">No one confirmed yet — admin ticks Test on the waiting list.</td></tr>';
       } else {
         renderTagRows(onBoardBody, onBoard, highlightOnBoard);
       }
@@ -83,17 +80,19 @@ export async function initWaitingListPage() {
       renderTagRows(body, rows, highlightWaiting);
     }
 
-    if (self?.is_member && list?.my_position) {
+    if (self?.is_member && (list?.my_on_board_position || list?.my_position)) {
       myCard.hidden = false;
-      const parts = [`#${list.my_position} of ${list.total || rows.length} on the waiting list`];
       if (list.my_on_board_position) {
-        parts.push(`#${list.my_on_board_position} on board`);
+        myPos.textContent = `#${list.my_on_board_position} of ${list.on_board_total || onBoard.length} on board`;
+        mySummary.textContent =
+          "You are confirmed for the test season (I'm on board).";
+      } else {
+        myPos.textContent = `#${list.my_position} of ${list.total || rows.length} on the waiting list`;
+        mySummary.textContent =
+          list.my_position === 1
+            ? "You are next in line when a club slot opens."
+            : `${list.my_position - 1} member(s) ahead of you.`;
       }
-      myPos.textContent = parts.join(" · ");
-      mySummary.textContent =
-        list.my_position === 1
-          ? "You are next in line when a club slot opens."
-          : `${list.my_position - 1} member(s) ahead of you.`;
     }
   } catch (err) {
     console.error(err);

@@ -3,7 +3,8 @@
 --
 -- - Timestamps when admin ticks Test / Live season confirmed
 -- - waiting_list_public() returns on_board rows (tag only) in join order
--- - Prefer Live board when anyone has live confirm; else Test
+-- - Public on_board panel = test-season confirms only
+-- - Public waiting panel filters those out (display only — registry/queue unchanged)
 --
 -- Run after gpsl_waiting_list_season_confirm.sql. Safe re-run.
 -- =============================================================================
@@ -131,48 +132,17 @@ DECLARE
   v_on_board_total int;
   v_self_on_board_pos int;
 BEGIN
-  SELECT coalesce(jsonb_agg(
-    jsonb_build_object(
-      'position', w.list_position,
-      'owner_tag', w.owner_tag,
-      'status', w.registry_status
-    )
-    ORDER BY w.list_position
-  ), '[]'::jsonb)
-  INTO v_rows
-  FROM public.waiting_list_ordered_rows(false) w;
-
-  SELECT count(*)::int INTO v_total FROM public.waiting_list_ordered_rows(false);
-
-  SELECT w.list_position INTO v_self_pos
-  FROM public.waiting_list_ordered_rows(false) w
-  WHERE w.owner_id = auth.uid();
-
-  -- Prefer Live board when anyone is live-confirmed; otherwise Test.
-  IF EXISTS (
-    SELECT 1 FROM public.gpsl_owner_registry r
-    WHERE r.confirmed_live_season = true
-      AND coalesce(r.status, '') IS DISTINCT FROM 'archived'
-  ) THEN
-    v_on_board_mode := 'live';
-  ELSE
-    v_on_board_mode := 'test';
-  END IF;
+  -- Public "I'm on board" = test-season confirms only (admin Live tick stays admin-only).
+  v_on_board_mode := 'test';
 
   WITH onboard AS (
     SELECT
       r.owner_id,
       public.owner_registry_resolve_tag(r.owner_id) AS owner_tag,
-      CASE
-        WHEN v_on_board_mode = 'live' THEN r.confirmed_live_season_at
-        ELSE r.confirmed_test_season_at
-      END AS joined_at
+      r.confirmed_test_season_at AS joined_at
     FROM public.gpsl_owner_registry r
     WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
-      AND (
-        (v_on_board_mode = 'live' AND r.confirmed_live_season = true)
-        OR (v_on_board_mode = 'test' AND r.confirmed_test_season = true)
-      )
+      AND r.confirmed_test_season = true
   ),
   ranked AS (
     SELECT
@@ -195,9 +165,45 @@ BEGIN
   INTO v_on_board, v_on_board_total, v_self_on_board_pos
   FROM ranked;
 
+  -- Waiting panel: same queue, but hide anyone already on the test "I'm on board" list.
+  -- Display renumber only — does not change waiting_list_ordered_rows / admin order.
+  WITH waiting AS (
+    SELECT
+      w.owner_id,
+      w.owner_tag,
+      w.registry_status,
+      w.list_position AS queue_position
+    FROM public.waiting_list_ordered_rows(false) w
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM public.gpsl_owner_registry r
+      WHERE r.owner_id = w.owner_id
+        AND r.confirmed_test_season = true
+    )
+  ),
+  waiting_ranked AS (
+    SELECT
+      waiting.*,
+      row_number() OVER (ORDER BY waiting.queue_position)::int AS position
+    FROM waiting
+  )
+  SELECT
+    coalesce(jsonb_agg(
+      jsonb_build_object(
+        'position', waiting_ranked.position,
+        'owner_tag', waiting_ranked.owner_tag,
+        'status', waiting_ranked.registry_status
+      )
+      ORDER BY waiting_ranked.position
+    ), '[]'::jsonb),
+    count(*)::int,
+    max(CASE WHEN waiting_ranked.owner_id = auth.uid() THEN waiting_ranked.position END)
+  INTO v_rows, v_total, v_self_pos
+  FROM waiting_ranked;
+
   RETURN jsonb_build_object(
     'total', coalesce(v_total, 0),
-    'rows', v_rows,
+    'rows', coalesce(v_rows, '[]'::jsonb),
     'my_position', v_self_pos,
     'on_board_mode', v_on_board_mode,
     'on_board', coalesce(v_on_board, '[]'::jsonb),
