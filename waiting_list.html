@@ -98,10 +98,8 @@
     </p>
   </div>
   <script type="module">
-    window.CURRENT_PAGE = "waiting_list";
-    import { initGlobal } from "./global.js?v=20260808-wl-cd-flash";
-    import { initWaitingListPage } from "./waiting_list.js?v=20260808-wl-cd-flash";
-    initGlobal().then(() => initWaitingListPage());
+    import { initWaitingListPage } from "./waiting_list.js?v=20260808-wl-cd-fix";
+    initWaitingListPage();
   </script>
 </body>
 </html>

@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260808-wl-filter";
+export const APP_VERSION = "20260808-wl-cd-fix";

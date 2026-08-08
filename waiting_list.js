@@ -1,5 +1,5 @@
 import { supabase } from "./supabase_client.js";
-import { isPageDraftCountdownActive } from "./global.js";
+import { initGlobal } from "./global.js";
 
 export async function loadWaitingListPublic() {
   const { data, error } = await supabase.rpc("waiting_list_public");
@@ -7,14 +7,19 @@ export async function loadWaitingListPublic() {
   return data;
 }
 
+/**
+ * Show/hide the club-auction card from the same DOM state wireDraftCountdownUI set.
+ * Do not call isPageDraftCountdownActive() from a second global.js instance
+ * (HTML ?v= query vs bare import) — that hid the card while the timer still ticked.
+ */
 function syncAuctionCountdownCard() {
   const card = document.getElementById("wlAuctionCountdownCard");
-  if (!card) return;
-  // Card starts hidden in HTML so it does not flash before global settings load.
-  const active = isPageDraftCountdownActive();
-  card.hidden = !active;
   const container = document.getElementById("draftCountdownContainer");
-  if (container && active) container.style.display = "";
+  if (!card) return;
+
+  // wireDraftCountdownUI sets container display "" when active, "none" when not.
+  // First tick is async — do not require #draftCountdown text yet.
+  card.hidden = !container || container.style.display === "none";
 }
 
 function renderTagRows(tbody, rows, highlightPosition) {
@@ -36,6 +41,9 @@ function renderTagRows(tbody, rows, highlightPosition) {
 }
 
 export async function initWaitingListPage() {
+  window.CURRENT_PAGE = "waiting_list";
+  await initGlobal();
+
   const body = document.getElementById("wlBody");
   const onBoardBody = document.getElementById("wlOnBoardBody");
   const myCard = document.getElementById("wlMyCard");
@@ -45,7 +53,10 @@ export async function initWaitingListPage() {
   const onBoardCount = document.getElementById("wlOnBoardCount");
   const waitingCount = document.getElementById("wlWaitingCount");
 
+  // After initGlobal's wireDraftCountdownUI has painted the first tick.
   syncAuctionCountdownCard();
+  // One more frame in case the first countdown tick is still settling.
+  requestAnimationFrame(() => syncAuctionCountdownCard());
 
   try {
     const { data: self } = await supabase.rpc("owner_registry_get_self");
@@ -97,6 +108,8 @@ export async function initWaitingListPage() {
             : `${list.my_position - 1} member(s) ahead of you.`;
       }
     }
+
+    syncAuctionCountdownCard();
   } catch (err) {
     console.error(err);
     const msg =
