@@ -1,4 +1,5 @@
 import { supabase } from "./supabase_client.js";
+import { isPageDraftCountdownActive } from "./global.js";
 
 export async function loadWaitingListPublic() {
   const { data, error } = await supabase.rpc("waiting_list_public");
@@ -6,11 +7,20 @@ export async function loadWaitingListPublic() {
   return data;
 }
 
+function syncAuctionCountdownCard() {
+  const card = document.getElementById("wlAuctionCountdownCard");
+  if (!card) return;
+  // Same #draftCountdown wiring as awaiting_club / club_auction — hide the card when no schedule.
+  card.hidden = !isPageDraftCountdownActive();
+}
+
 export async function initWaitingListPage() {
   const body = document.getElementById("wlBody");
   const myCard = document.getElementById("wlMyCard");
   const myPos = document.getElementById("wlMyPos");
   const mySummary = document.getElementById("wlMySummary");
+
+  syncAuctionCountdownCard();
 
   try {
     const { data: self } = await supabase.rpc("owner_registry_get_self");

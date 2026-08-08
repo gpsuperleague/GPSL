@@ -25,11 +25,28 @@
     .wl-you { background: #1a2218; }
     .wl-status-absence { color: #c96; font-size: 12px; }
     .wl-links a { color: #ff9900; margin-right: 14px; }
+    #draftCountdownContainer {
+      margin-top: 4px;
+      padding: 10px 12px;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+    #draftCountdown { font-size: 15px; color: #ff9900; font-weight: bold; }
+    #draftLocalStart { font-size: 11px; color: #aaa; margin-top: 4px; white-space: pre-line; line-height: 1.4; }
   </style>
 </head>
 <body>
   <div id="nav"></div>
   <div class="wl-wrap">
+    <div class="wl-card" id="wlAuctionCountdownCard">
+      <h1>Club auction</h1>
+      <p>Countdown to the club draft auction window (UK schedule).</p>
+      <div id="draftCountdownContainer">
+        <div id="draftCountdown"></div>
+        <div id="draftLocalStart"></div>
+      </div>
+    </div>
     <div class="wl-card" id="wlMyCard" hidden>
       <h1>Your place</h1>
       <p id="wlMySummary"></p>
@@ -56,8 +73,8 @@
   </div>
   <script type="module">
     window.CURRENT_PAGE = "waiting_list";
-    import { initGlobal } from "./global.js";
-    import { initWaitingListPage } from "./waiting_list.js";
+    import { initGlobal } from "./global.js?v=20260808-wl-auction-cd";
+    import { initWaitingListPage } from "./waiting_list.js?v=20260808-wl-auction-cd";
     initGlobal().then(() => initWaitingListPage());
   </script>
 </body>

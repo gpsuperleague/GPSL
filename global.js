@@ -466,7 +466,12 @@ function pageDraftKindHint() {
   ) {
     return "player";
   }
-  if (page === "awaiting_club" || /awaiting_club|club_auction/.test(path)) {
+  if (
+    page === "awaiting_club" ||
+    page === "waiting_list" ||
+    page === "club_auction" ||
+    /awaiting_club|waiting_list|club_auction/.test(path)
+  ) {
     return "club";
   }
   return null;
