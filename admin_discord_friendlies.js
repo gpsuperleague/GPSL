@@ -143,36 +143,38 @@ function renderConfirmed(rows) {
 
 async function loadAutoSettings() {
   const urlEl = document.getElementById("autoUrl");
-  const keyEl = document.getElementById("autoKey");
   const enEl = document.getElementById("autoEnabled");
+  const keyStatus = document.getElementById("autoKeyStatus");
   if (!urlEl) return;
 
-  const { data, error } = await supabase
-    .from("gpsl_discord_friendlies_settings")
-    .select("edge_function_url, invoke_key, auto_poll_enabled")
-    .eq("id", 1)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("admin_discord_friendlies_get_auto");
 
   if (error) {
     setStatus(
       "autoStatus",
-      `Auto-poll settings unavailable — run discord_friendlies_cron.sql (${error.message})`,
+      `Auto-poll settings unavailable — run security_hardening_safe.sql (${error.message})`,
       false
     );
     if (!urlEl.value) urlEl.value = DEFAULT_URL;
+    if (keyStatus) keyStatus.textContent = "Invoke key: unavailable";
     return;
   }
 
   urlEl.value = data?.edge_function_url || DEFAULT_URL;
-  if (data?.invoke_key) keyEl.placeholder = "•••• saved (enter to replace)";
   enEl.checked = data?.auto_poll_enabled === true;
+  if (keyStatus) {
+    keyStatus.textContent = data?.has_key
+      ? "Invoke key: saved on server (copied from Discord News when possible)."
+      : "Invoke key: missing — set News key via SQL Editor first.";
+    keyStatus.style.color = data?.has_key ? "#9d9" : "#f88";
+  }
 
-  if (data?.edge_function_url && data?.invoke_key && data?.auto_poll_enabled) {
+  if (data?.edge_function_url && data?.has_key && data?.auto_poll_enabled) {
     setStatus("autoStatus", "Auto-poll ON — Discord is checked every 2 minutes.");
   } else {
     setStatus(
       "autoStatus",
-      "Auto-poll OFF — run discord_friendlies_cron.sql, then save URL + service_role key.",
+      "Auto-poll OFF — save URL here; ensure News invoke_key exists in the database.",
       false
     );
   }
@@ -180,27 +182,25 @@ async function loadAutoSettings() {
 
 async function saveAutoSettings() {
   const url = document.getElementById("autoUrl")?.value?.trim() || "";
-  const key = document.getElementById("autoKey")?.value?.trim() || "";
   const enabled = !!document.getElementById("autoEnabled")?.checked;
 
   const { data, error } = await supabase.rpc("admin_discord_friendlies_set_auto", {
     p_edge_function_url: url || DEFAULT_URL,
-    p_invoke_key: key || null,
+    p_invoke_key: null,
     p_enabled: enabled,
   });
 
   if (error) {
     setStatus(
       "autoStatus",
-      error.message?.includes("admin_discord_friendlies_set_auto")
-        ? "Run discord_friendlies_cron.sql first, then save again."
+      error.message?.includes("admin_discord_friendlies")
+        ? "Run discord_friendlies_cron.sql + security_hardening_safe.sql, then save again."
         : error.message,
       false
     );
     return;
   }
 
-  document.getElementById("autoKey").value = "";
   await loadAutoSettings();
   setStatus(
     "autoStatus",
@@ -208,7 +208,7 @@ async function saveAutoSettings() {
       ? enabled
         ? "Saved — auto-poll enabled (every 2 minutes)."
         : "Saved — auto-poll disabled."
-      : "Saved URL, but still need service_role key (same as Discord News).",
+      : "Saved URL, but invoke key is still missing (set News key via SQL Editor).",
     !!data?.has_key && enabled
   );
 }

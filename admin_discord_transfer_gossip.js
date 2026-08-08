@@ -84,53 +84,53 @@ function renderActive(rows) {
 
 async function loadAuto() {
   const urlEl = document.getElementById("autoUrl");
-  const keyEl = document.getElementById("autoKey");
   const enEl = document.getElementById("autoEnabled");
+  const keyStatus = document.getElementById("autoKeyStatus");
   if (!urlEl) return;
 
-  const { data, error } = await supabase
-    .from("gpsl_discord_transfer_gossip_settings")
-    .select("edge_function_url, invoke_key, auto_poll_enabled")
-    .eq("id", 1)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("admin_discord_transfer_gossip_get_auto");
 
   if (error) {
     setStatus(
       "autoStatus",
-      `Run discord_transfer_gossip_cron.sql (${error.message})`,
+      `Run security_hardening_safe.sql (${error.message})`,
       false
     );
     urlEl.value = DEFAULT_URL;
+    if (keyStatus) keyStatus.textContent = "Invoke key: unavailable";
     return;
   }
 
   urlEl.value = data?.edge_function_url || DEFAULT_URL;
-  if (data?.invoke_key) keyEl.placeholder = "•••• saved (enter to replace)";
   enEl.checked = data?.auto_poll_enabled === true;
+  if (keyStatus) {
+    keyStatus.textContent = data?.has_key
+      ? "Invoke key: saved on server (copied from Discord News when possible)."
+      : "Invoke key: missing — set News key via SQL Editor first.";
+    keyStatus.style.color = data?.has_key ? "#9d9" : "#f88";
+  }
   setStatus(
     "autoStatus",
-    data?.invoke_key && data?.auto_poll_enabled
+    data?.has_key && data?.auto_poll_enabled
       ? "Auto-poll ON (every 2 minutes)."
-      : "Auto-poll OFF — save URL + service_role key.",
-    !!(data?.invoke_key && data?.auto_poll_enabled)
+      : "Auto-poll OFF — save URL; ensure News invoke_key exists in the database.",
+    !!(data?.has_key && data?.auto_poll_enabled)
   );
 }
 
 async function saveAuto() {
   const url = document.getElementById("autoUrl")?.value?.trim() || DEFAULT_URL;
-  const key = document.getElementById("autoKey")?.value?.trim() || null;
   const enabled = !!document.getElementById("autoEnabled")?.checked;
 
   const { error } = await supabase.rpc("admin_discord_transfer_gossip_set_auto", {
     p_edge_function_url: url,
-    p_invoke_key: key,
+    p_invoke_key: null,
     p_enabled: enabled,
   });
   if (error) {
     setStatus("autoStatus", error.message, false);
     return;
   }
-  document.getElementById("autoKey").value = "";
   await loadAuto();
 }
 

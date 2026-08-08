@@ -50,61 +50,58 @@ async function invokeFeed(body) {
 
 async function loadAutoSettings() {
   const urlEl = document.getElementById("autoUrl");
-  const keyEl = document.getElementById("autoKey");
   const enEl = document.getElementById("autoEnabled");
+  const keyStatus = document.getElementById("autoKeyStatus");
   if (!urlEl) return;
 
-  const { data, error } = await supabase
-    .from("gpsl_discord_feed_settings")
-    .select("edge_function_url, invoke_key, auto_flush_enabled")
-    .eq("id", 1)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("admin_discord_feed_get_auto");
 
   if (error) {
     setStatus(
       "autoStatus",
-      `Auto-post settings unavailable — run gpsl_discord_sky_feed_events_auto.sql (${error.message})`,
+      `Auto-post settings unavailable — run security_hardening_safe.sql (${error.message})`,
       false
     );
     if (!urlEl.value) urlEl.value = DEFAULT_FEED_URL;
+    if (keyStatus) keyStatus.textContent = "Invoke key: unavailable";
     return;
   }
 
   urlEl.value = data?.edge_function_url || DEFAULT_FEED_URL;
-  if (data?.invoke_key) keyEl.placeholder = "•••• saved (enter to replace)";
   enEl.checked = data?.auto_flush_enabled !== false;
+  if (keyStatus) {
+    keyStatus.textContent = data?.has_key
+      ? "Invoke key: saved on server (not shown in the browser)."
+      : "Invoke key: missing — set once in SQL Editor (see security_hardening_safe.sql).";
+    keyStatus.style.color = data?.has_key ? "#9d9" : "#f88";
+  }
 
-  if (data?.edge_function_url && data?.invoke_key && data?.auto_flush_enabled !== false) {
+  if (data?.edge_function_url && data?.has_key && data?.auto_flush_enabled !== false) {
     setStatus("autoStatus", "Auto-post configured and enabled.");
+  } else if (!data?.has_key) {
+    setStatus(
+      "autoStatus",
+      "Save the Edge URL here; set invoke_key once via SQL Editor (not in this form).",
+      false
+    );
   } else {
-    setStatus("autoStatus", "Save URL + invoke key to enable hands-free posting.", false);
+    setStatus("autoStatus", "Save URL and enable auto-flush for hands-free posting.", false);
   }
 }
 
 async function saveAutoSettings() {
   const url = document.getElementById("autoUrl")?.value?.trim() || "";
-  const keyInput = document.getElementById("autoKey")?.value?.trim() || "";
   const enabled = !!document.getElementById("autoEnabled")?.checked;
 
-  let key = keyInput;
-  if (!key) {
-    const { data } = await supabase
-      .from("gpsl_discord_feed_settings")
-      .select("invoke_key")
-      .eq("id", 1)
-      .maybeSingle();
-    key = data?.invoke_key || "";
-  }
-
-  if (!url || !key) {
-    setStatus("autoStatus", "URL and service_role key are required.", false);
+  if (!url) {
+    setStatus("autoStatus", "Edge function URL is required.", false);
     return;
   }
 
   setStatus("autoStatus", "Saving…");
   const { data, error } = await supabase.rpc("admin_discord_feed_set_auto", {
     p_edge_function_url: url,
-    p_invoke_key: key,
+    p_invoke_key: null,
     p_enabled: enabled,
   });
 
@@ -113,13 +110,13 @@ async function saveAutoSettings() {
     return;
   }
 
-  document.getElementById("autoKey").value = "";
-  document.getElementById("autoKey").placeholder = "•••• saved (enter to replace)";
+  await loadAutoSettings();
   setStatus(
     "autoStatus",
-    data?.ok
+    data?.has_key
       ? `Saved. Auto-flush ${enabled ? "ON" : "OFF"}. Use Test auto-flush to verify.`
-      : "Saved."
+      : "Saved URL, but invoke_key is still missing in the database (set via SQL Editor).",
+    !!data?.has_key
   );
 }
 

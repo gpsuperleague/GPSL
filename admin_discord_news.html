@@ -106,20 +106,16 @@
         </p>
         <p class="note">
           Manual <b>Push</b> uses your admin login (works even when auto doesn’t).<br>
-          Auto-post must use the project <b>service_role</b> key
-          (Supabase → Project Settings → API → <code>service_role</code>),
-          not a random string — the gateway rejects custom keys.<br>
-          Also run <code>gpsl_discord_feed_auto_flush_fix.sql</code> and enable <code>pg_net</code>.
+          Auto-post uses a server-side invoke key stored in the database
+          (set once in the SQL Editor — never pasted in this browser).<br>
+          Also run <code>security_hardening_safe.sql</code> and enable <code>pg_net</code>.
         </p>
         <div class="auto-form">
           <label>
             Edge function URL
             <input type="text" id="autoUrl" placeholder="https://….supabase.co/functions/v1/discord-sky-feed">
           </label>
-          <label>
-            API key for auto-post (service_role)
-            <input type="password" id="autoKey" autocomplete="off" placeholder="eyJ… service_role secret">
-          </label>
+          <p class="note" id="autoKeyStatus" style="margin:0">Invoke key: checking…</p>
           <label class="check">
             <input type="checkbox" id="autoEnabled" checked>
             Auto-flush enabled
@@ -168,6 +164,6 @@
       </div>
     </div>
   </div>
-    <script type="module" src="admin_discord_news.js?v=20260803-results-digest"></script>
+    <script type="module" src="admin_discord_news.js?v=20260808-sec"></script>
 </body>
 </html>

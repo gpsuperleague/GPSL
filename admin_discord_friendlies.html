@@ -64,22 +64,18 @@
     <h2 class="section">Auto-detect (hands-free)</h2>
     <p class="note">
       Once enabled, Postgres polls Discord every <strong>2 minutes</strong> — no Poll now needed.
-      Use the same <code>service_role</code> key as Discord News auto-post
-      (Supabase → Project Settings → API → <code>service_role</code>).
+      The invoke key is copied from Discord News (server-side) — not pasted in this browser.
     </p>
     <p class="note">
-      First run <code>supabase/sql/patches/discord_friendlies_cron.sql</code> in the SQL editor
-      (schedules the cron job; copies News key if already saved).
+      Run <code>discord_friendlies_cron.sql</code> then <code>security_hardening_safe.sql</code>
+      (schedules cron; copies News key if already saved).
     </p>
     <div class="auto-form">
       <label>
         Edge function URL
         <input type="text" id="autoUrl" placeholder="https://….supabase.co/functions/v1/discord-friendlies-ingest">
       </label>
-      <label>
-        API key for auto-poll (service_role)
-        <input type="password" id="autoKey" autocomplete="off" placeholder="eyJ… service_role secret">
-      </label>
+      <p class="note" id="autoKeyStatus" style="margin:0">Invoke key: checking…</p>
       <label class="check">
         <input type="checkbox" id="autoEnabled" checked>
         Auto-poll enabled
@@ -105,6 +101,6 @@
     <div id="confirmedWrap"><p class="note">Loading…</p></div>
   </div>
 
-  <script type="module" src="admin_discord_friendlies.js?v=20260719-refresh"></script>
+  <script type="module" src="admin_discord_friendlies.js?v=20260808-sec"></script>
 </body>
 </html>

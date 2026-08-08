@@ -27,6 +27,7 @@ import {
   maxBidStatusText,
   parseMaxBidInput,
 } from "./auction_max_bid.js";
+import { escapeHtml } from "./escape_html.js";
 
 const GATE_PRICE_PER_SEAT = 20;
 const STADIUM_VALUE_PER_SEAT = 1500;
@@ -446,7 +447,7 @@ async function loadListings() {
     .order("prestige_rank", { ascending: true, nullsFirst: false });
 
   if (error) {
-    tbody.innerHTML = `<tr><td colspan="${TABLE_COLS}" class="empty-row">Could not load listings — ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${TABLE_COLS}" class="empty-row">Could not load listings — ${escapeHtml(error.message)}</td></tr>`;
     return;
   }
 
@@ -481,7 +482,7 @@ async function loadListings() {
       <td class="exp-pos">${ordinal(expPos)}<span class="stat-sub">league table</span></td>
       <td class="stat-num">${formatMoney(cost)}<span class="stat-sub">capacity × ₿1,000</span></td>
       <td class="stat-num">${highBidHtml}</td>
-      <td>${row.current_leader_tag ? `<span class="club-owner-tag">${row.current_leader_tag}</span>` : "—"}${isLeader ? ' <span class="leader-you">(you)</span>' : ""}</td>
+      <td>${row.current_leader_tag ? `<span class="club-owner-tag">${escapeHtml(row.current_leader_tag)}</span>` : "—"}${isLeader ? ' <span class="leader-you">(you)</span>' : ""}</td>
       <td class="bid-col"></td>
     `;
     tr.firstElementChild.appendChild(renderClubCell(row));
@@ -542,7 +543,8 @@ async function loadBidHistory(listingId) {
   tbody.innerHTML = bids
     .map((b) => {
       const isYou = b.bidder_owner_id === ownerId;
-      const tag = isYou ? `${tagMap[b.bidder_owner_id] || "—"} (you)` : tagMap[b.bidder_owner_id] || "—";
+      const rawTag = tagMap[b.bidder_owner_id] || "—";
+      const tag = isYou ? `${escapeHtml(rawTag)} (you)` : escapeHtml(rawTag);
       return `<tr>
         <td>${tag}</td>
         <td>${formatMoney(b.bid_amount)}</td>

@@ -51,9 +51,10 @@
   <div class="card">
     <h2 class="section">Auto-poll</h2>
     <p class="note">
-      Run <code>discord_transfer_gossip.sql</code> then <code>discord_transfer_gossip_cron.sql</code>.
+      Run <code>discord_transfer_gossip.sql</code>, <code>discord_transfer_gossip_cron.sql</code>,
+      then <code>security_hardening_safe.sql</code>.
       Secret: <code>DISCORD_TRANSFER_GOSSIP_CHANNEL_ID</code>. Deploy
-      <code>discord-transfer-gossip-ingest</code>. Use same <code>service_role</code> as Friendlies/News.
+      <code>discord-transfer-gossip-ingest</code>. Invoke key is copied from Discord News (not pasted here).
     </p>
     <div class="auto-form">
       <label>
@@ -61,10 +62,7 @@
         <input type="text" id="autoUrl"
           placeholder="https://….supabase.co/functions/v1/discord-transfer-gossip-ingest">
       </label>
-      <label>
-        API key (service_role)
-        <input type="password" id="autoKey" autocomplete="off" placeholder="eyJ…">
-      </label>
+      <p class="note" id="autoKeyStatus" style="margin:0">Invoke key: checking…</p>
       <label class="check">
         <input type="checkbox" id="autoEnabled" checked>
         Auto-poll enabled
@@ -84,6 +82,6 @@
     <div id="activeWrap"><p class="note">Loading…</p></div>
   </div>
 
-  <script type="module" src="admin_discord_transfer_gossip.js?v=20260719-player-interest"></script>
+  <script type="module" src="admin_discord_transfer_gossip.js?v=20260808-sec"></script>
 </body>
 </html>

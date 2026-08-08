@@ -155,6 +155,7 @@
 
   <script type="module">
     import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+    import { escapeHtml } from "./escape_html.js";
 
     const supabase = window.supabase;
 
@@ -194,13 +195,13 @@
       if (user) {
         const { label, badgeSrc } = await resolveClubDashboard(user);
         const badgeHtml = badgeSrc
-          ? `<img class="club-badge" src="${badgeSrc}" alt="" onerror="this.style.display='none'">`
+          ? `<img class="club-badge" src="${escapeHtml(badgeSrc)}" alt="" onerror="this.style.display='none'">`
           : "";
 
         container.innerHTML = `
           <a href="dashboard.html" class="dashboard-entry">
             ${badgeHtml}
-            <span class="dashboard-label">${label}</span>
+            <span class="dashboard-label">${escapeHtml(label)}</span>
           </a>
           <button type="button" id="logoutBtn" class="button logout">Logout</button>
         `;
