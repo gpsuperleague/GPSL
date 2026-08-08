@@ -9,7 +9,7 @@ ALTER TABLE public."Clubs"
   ADD COLUMN IF NOT EXISTS continent text CHECK (
     continent IS NULL OR continent IN (
       'south_america', 'north_america', 'northern_europe',
-      'southern_europe', 'western_europe', 'asia'
+      'southern_europe', 'western_europe', 'asia', 'africa'
     )
   );
 
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS public.competition_continental_condition_config (
   continent text NOT NULL CHECK (
     continent IN (
       'south_america', 'north_america', 'northern_europe',
-      'southern_europe', 'western_europe', 'asia'
+      'southern_europe', 'western_europe', 'asia', 'africa'
     )
   ),
   meteorological_season text NOT NULL CHECK (
@@ -66,8 +66,8 @@ AS $$
     regexp_replace(
       translate(
         btrim(coalesce(p_value, '')),
-        'ÜüÖöÄäÉéÍíÓóÚúÇç',
-        'UuOoAaEeIiOoUuCc'
+        'ÜüÖöÔôÄäÉéÈèÊêËëÍíÓóÚúÇçÀàÂâÃãÑñ',
+        'UuOoOoAaEeEeEeIiOoUuCcAaAaAaNn'
       ),
       '\s+',
       ' ',
@@ -123,6 +123,21 @@ BEGIN
     'turkey', 'turkiye', 'türkiye'
   ]) THEN
     RETURN 'asia';
+  END IF;
+
+  IF v = ANY (ARRAY[
+    'cote d''ivoire', 'ivory coast', 'civ',
+    'senegal', 'ghana', 'nigeria', 'cameroon', 'mali', 'guinea',
+    'burkina faso', 'benin', 'togo', 'niger', 'liberia', 'sierra leone',
+    'gambia', 'gabon', 'congo', 'congo dr', 'dr congo',
+    'democratic republic of the congo', 'republic of the congo',
+    'angola', 'zambia', 'zimbabwe', 'kenya', 'uganda', 'tanzania',
+    'ethiopia', 'rwanda', 'sudan', 'south sudan',
+    'morocco', 'egypt', 'tunisia', 'algeria', 'libya',
+    'south africa', 'republic of south africa', 'rsa',
+    'mozambique', 'madagascar', 'botswana', 'namibia', 'malawi'
+  ]) OR v LIKE '%ivoire%' OR v LIKE '%ivory coast%' THEN
+    RETURN 'africa';
   END IF;
 
   IF v = ANY (ARRAY[
@@ -200,6 +215,19 @@ AS $$
       WHEN 'december' THEN 'winter'
       WHEN 'january' THEN 'winter'
       WHEN 'february' THEN 'winter'
+      ELSE 'spring'
+    END
+    WHEN 'africa' THEN CASE p_gpsl_month
+      WHEN 'august' THEN 'summer'
+      WHEN 'september' THEN 'summer'
+      WHEN 'october' THEN 'autumn'
+      WHEN 'november' THEN 'autumn'
+      WHEN 'december' THEN 'winter'
+      WHEN 'january' THEN 'winter'
+      WHEN 'february' THEN 'winter'
+      WHEN 'march' THEN 'spring'
+      WHEN 'april' THEN 'spring'
+      WHEN 'may' THEN 'spring'
       ELSE 'spring'
     END
     ELSE CASE p_gpsl_month
@@ -353,7 +381,11 @@ VALUES
   ('asia', 'spring', 55, 40, 5, 45, 30, 25),
   ('asia', 'summer', 65, 30, 5, 35, 40, 25),
   ('asia', 'autumn', 50, 45, 5, 40, 30, 30),
-  ('asia', 'winter', 40, 45, 15, 45, 20, 35)
+  ('asia', 'winter', 40, 45, 15, 45, 20, 35),
+  ('africa', 'spring', 45, 55, 0, 40, 25, 35),
+  ('africa', 'summer', 30, 70, 0, 30, 15, 55),
+  ('africa', 'autumn', 50, 50, 0, 40, 30, 30),
+  ('africa', 'winter', 80, 20, 0, 35, 50, 15)
 ON CONFLICT (continent, meteorological_season) DO NOTHING;
 
 -- ---------------------------------------------------------------------------

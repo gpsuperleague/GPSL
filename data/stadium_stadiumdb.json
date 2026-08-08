@@ -97,12 +97,12 @@
     "imageUrl": "https://stadiumdb.com/pic-projects/estadio_atanasio_girardot/estadio_atanasio_girardot05.jpg",
     "fetchedAt": "2026-06-04T12:00:00.000Z"
   },
-  "NMU": {
-    "stadium": "Isotopes Park",
-    "nation": "United States",
-    "pageUrl": "https://en.wikipedia.org/wiki/File:New_Mexico_United%27s_Chris_Wehan_send_in_a_corner_kick_vs._Portland_Timbers_2_on_April_26th,_2019.jpg",
-    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/7/76/New_Mexico_United%27s_Chris_Wehan_send_in_a_corner_kick_vs._Portland_Timbers_2_on_April_26th%2C_2019.jpg",
-    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  "SOA": {
+    "stadium": "Stade Charles Konan Banny",
+    "nation": "Côte d'Ivoire",
+    "pageUrl": "https://stadiumdb.com/stadiums/civ/stade_de_yamoussoukro",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Le_stade_de_Yamoussoukro(Bosson).jpg",
+    "fetchedAt": "2026-08-08T00:00:00.000Z"
   },
   "RMA": {
     "stadium": "Santiago Bernabéu",

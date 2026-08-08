@@ -91,6 +91,7 @@ export const COF_CLUB_SLUG_OVERRIDES = {
   COP: "fck",
   JEJ: "jeju_united",
   JUB: "jubilo_iwata",
+  SOA: "soa",
 };
 
 /** When slug alone is not enough (page stem differs from folder name) */

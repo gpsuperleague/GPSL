@@ -3,14 +3,11 @@
 -- =============================================================================
 -- Societe Omnisports de l'Armee (SOA). Keeps squad, fixtures, league position,
 -- finances, ledgers, transfer history, cups, expansions, and owner. Identity
--- changes — incl. Nation (United States -> Cote d'Ivoire) and continent
--- (north_america -> southern_europe stand-in; there is no Africa weather bucket).
+-- changes — incl. Nation (United States -> Côte d'Ivoire) and continent
+-- (north_america -> africa).
 --
--- Nation spelling: GPDB often uses "Cote d'Ivoire". Confirm before/after with:
---   SELECT DISTINCT "Nation" FROM public."Players"
---   WHERE "Nation" ILIKE '%ivoire%' OR "Nation" ILIKE '%ivory%';
--- If your GPDB uses a different string, edit v_nation below to match exactly
--- (home-grown rules compare club Nation to player Nation).
+-- PREREQUISITE: run competition_continent_africa.sql first (adds africa to the
+-- weather system CHECK + config). Nation spelling matches GPDB: Côte d'Ivoire.
 --
 -- HOW IT STAYS SAFE (single atomic DO block — any error rolls everything back):
 --   1. Captures every FOREIGN KEY referencing public."Clubs"("ShortName").
@@ -25,7 +22,7 @@
 --   images/clubs_kits/SOA_{home,away,third}.png  (or upload via admin_club_kits)
 --
 -- NOTE: existing home fixtures keep weather/pitch baked from north_america.
--- New fixtures use the new continent. To re-roll existing ones:
+-- New fixtures use africa. To re-roll existing ones:
 --   SELECT public.competition_admin_reapply_fixture_conditions();
 -- =============================================================================
 
@@ -37,8 +34,8 @@ DECLARE
   v_club_name  text := 'Societe Omnisports de l''Armee';
   v_stadium    text := 'Stade Charles Konan Banny';
   v_capacity   integer := 20000;
-  v_nation     text := 'Cote d''Ivoire';  -- match Players."Nation" spelling
-  v_continent  text := 'southern_europe'; -- warm stand-in (no africa in CHECK)
+  v_nation     text := 'Côte d''Ivoire';  -- exact GPDB Players."Nation" spelling
+  v_continent  text := 'africa';
   v_matches    int;
   r            record;
 BEGIN

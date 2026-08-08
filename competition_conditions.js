@@ -7,6 +7,7 @@ export const CONTINENTS = [
   { id: "southern_europe", label: "Southern Europe" },
   { id: "western_europe", label: "Western Europe" },
   { id: "asia", label: "Asia" },
+  { id: "africa", label: "Africa" },
 ];
 
 export const CONTINENT_LABELS = Object.fromEntries(
@@ -93,6 +94,18 @@ export const GPSL_MONTH_SEASON_BY_CONTINENT = {
     december: "winter",
     january: "winter",
     february: "winter",
+  },
+  africa: {
+    august: "summer",
+    september: "summer",
+    october: "autumn",
+    november: "autumn",
+    december: "winter",
+    january: "winter",
+    february: "winter",
+    march: "spring",
+    april: "spring",
+    may: "spring",
   },
 };
 

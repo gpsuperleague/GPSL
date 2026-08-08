@@ -371,17 +371,17 @@
     },
     "fetchedAt": "2026-06-19T17:25:44Z"
   },
-  "NMU": {
-    "club": "New Mexico United",
-    "nation": "United States",
-    "cof_name": "New Mexico United",
-    "slug": "new_mexico_united",
+  "SOA": {
+    "club": "Societe Omnisports de l'Armee",
+    "nation": "Côte d'Ivoire",
+    "cof_name": "SOA",
+    "slug": "soa",
     "kits": {
-      "home": "images/clubs_kits/NMU_home.png",
-      "away": "images/clubs_kits/NMU_away.png",
-      "third": "images/clubs_kits/NMU_third.png"
+      "home": "images/clubs_kits/SOA_home.png",
+      "away": "images/clubs_kits/SOA_away.png",
+      "third": "images/clubs_kits/SOA_third.png"
     },
-    "fetchedAt": "2026-06-19T17:25:53Z"
+    "fetchedAt": "2026-08-08T00:00:00Z"
   },
   "LYO": {
     "club": "Olympique Lyonnais",
