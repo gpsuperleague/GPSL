@@ -166,6 +166,21 @@
           <button type="button" class="club-bid-inc-btn" data-delta="-1000000">−1m</button>
         </div>
         <button type="button" class="club-bid-submit" id="clubBidSubmitBtn" disabled>Submit bid</button>
+        <div class="club-bid-max-block" style="margin-top:14px;padding-top:12px;border-top:1px solid #333;">
+          <div class="club-bid-meta" style="margin-bottom:6px;">
+            <label>Max bid (auto)</label>
+            <span id="clubBidMaxStatus" style="color:#9f9;">—</span>
+          </div>
+          <p style="margin:0 0 8px;font-size:12px;color:#999;line-height:1.4;">
+            Set a ceiling. If someone else outbids you, the system bids the minimum step (usually +₿500k, rounded) up to this max. It will not outbid you while you lead.
+          </p>
+          <div class="club-bid-input-row">
+            <span class="currency">₿</span>
+            <input type="text" id="clubBidMaxAmount" inputmode="numeric" autocomplete="off" placeholder="Max bid">
+            <button type="button" class="club-bid-quick-btn" id="clubBidMaxSetBtn">Set max</button>
+            <button type="button" class="club-bid-quick-btn" id="clubBidMaxClearBtn" style="background:#333;">Clear</button>
+          </div>
+        </div>
         <p id="clubBidError"></p>
       </div>
 
@@ -177,6 +192,6 @@
     </div>
   </div>
 
-  <script type="module" src="club_auction.js?v=20260728-ics"></script>
+  <script type="module" src="club_auction.js?v=20260808-maxbid"></script>
 </body>
 </html>

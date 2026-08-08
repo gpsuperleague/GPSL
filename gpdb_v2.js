@@ -89,6 +89,12 @@ import {
   scoutingStarChar,
   isScoutingAvailable,
 } from "./scouting_targets.js?v=20260805-owner-scout";
+import {
+  playerDraftGetMyMaxBid,
+  playerDraftSetMaxBid,
+  playerDraftClearMaxBid,
+  parseMaxBidInput,
+} from "./auction_max_bid.js";
 
 let draftAuctionStartTime = null;
 let draftJoinWindowEnd = null;
@@ -2287,8 +2293,36 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    const maxBlock = document.getElementById("draftMaxBidBlock");
+    if (maxBlock) maxBlock.style.display = sellerClub ? "none" : "";
+    if (!sellerClub) {
+      await refreshGpdbMaxBidUi(konamiId);
+    }
+
     const backdrop = document.getElementById("make-offer-modal-backdrop");
     backdrop.style.display = "flex";
+  }
+
+  async function refreshGpdbMaxBidUi(playerId) {
+    const statusEl = document.getElementById("gpdbMaxBidStatus");
+    const maxInput = document.getElementById("gpdbMaxBidAmount");
+    if (!statusEl) return;
+    try {
+      const max = await playerDraftGetMyMaxBid(playerId);
+      if (max) {
+        statusEl.textContent = formatMoney(max);
+        statusEl.style.color = "#9f9";
+        if (maxInput && document.activeElement !== maxInput) {
+          maxInput.value = Math.round(max).toLocaleString("en-GB");
+        }
+      } else {
+        statusEl.textContent = "Off";
+        statusEl.style.color = "#aaa";
+      }
+    } catch {
+      statusEl.textContent = "Unavailable (run auction_max_bids.sql)";
+      statusEl.style.color = "#c96";
+    }
   }
 
   function closeMakeOfferModal() {
@@ -2301,6 +2335,44 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cancelOfferBtn").onclick = () => {
     closeMakeOfferModal();
   };
+
+  document.getElementById("gpdbMaxBidSetBtn")?.addEventListener("click", async () => {
+    const errorBox = document.getElementById("offerError");
+    if (!CURRENT_OFFER_PLAYER || CURRENT_OFFER_PLAYER.Contracted_Team) return;
+    const amount = parseMaxBidInput(
+      document.getElementById("gpdbMaxBidAmount")?.value
+    );
+    if (!amount) {
+      if (errorBox) errorBox.textContent = "Enter a valid max bid.";
+      return;
+    }
+    try {
+      await playerDraftSetMaxBid(CURRENT_OFFER_PLAYER.Konami_ID, amount);
+      if (errorBox) errorBox.textContent = "";
+      await refreshGpdbMaxBidUi(CURRENT_OFFER_PLAYER.Konami_ID);
+      alert("Max bid saved. Auto-bid will use the minimum step when you are outbid.");
+    } catch (e) {
+      if (errorBox) {
+        errorBox.textContent =
+          e?.message ||
+          "Not enough draft credits to join this auction.";
+      }
+    }
+  });
+
+  document.getElementById("gpdbMaxBidClearBtn")?.addEventListener("click", async () => {
+    const errorBox = document.getElementById("offerError");
+    if (!CURRENT_OFFER_PLAYER) return;
+    try {
+      await playerDraftClearMaxBid(CURRENT_OFFER_PLAYER.Konami_ID);
+      const maxInput = document.getElementById("gpdbMaxBidAmount");
+      if (maxInput) maxInput.value = "";
+      if (errorBox) errorBox.textContent = "";
+      await refreshGpdbMaxBidUi(CURRENT_OFFER_PLAYER.Konami_ID);
+    } catch (e) {
+      if (errorBox) errorBox.textContent = e?.message || "Could not clear max bid.";
+    }
+  });
 
   document.getElementById("confirmOfferBtn").onclick = async () => {
     console.log("CONFIRM OFFER CLICKED", CURRENT_OFFER_PLAYER);

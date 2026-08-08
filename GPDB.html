@@ -812,6 +812,21 @@
           <button class="button" id="quickBidBtn">Quick Bid</button>
         </div>
 
+        <div id="draftMaxBidBlock" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid #333;">
+          <div class="status-note" style="margin:0 0 6px;font-size:12px;color:#ccc;">
+            Max bid (auto): <span id="gpdbMaxBidStatus" style="color:#9f9;">Off</span>
+          </div>
+          <div class="status-note" style="margin:0 0 8px;font-size:11px;color:#999;">
+            Auto-bids +₿500k when outbid, up to your max. Needs draft credits to join an existing thread.
+          </div>
+          <div class="bid-row">
+            <label>Max bid (₿):</label>
+            <input type="text" id="gpdbMaxBidAmount" inputmode="numeric" style="width:140px; padding:6px; border-radius:4px; border:1px solid #444; background:#111; color:#ddd; font-size:15px;">
+            <button type="button" class="button" id="gpdbMaxBidSetBtn">Set max</button>
+            <button type="button" class="button" id="gpdbMaxBidClearBtn" style="background:#333;">Clear</button>
+          </div>
+        </div>
+
         <div id="offerError"></div>
 
         <div class="modal-buttons">
@@ -826,7 +841,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js?v=20260722-bank-bal-row"></script>
-  <script type="module" src="gpdb_v2.js?v=20260808-wl-scout"></script>
+  <script type="module" src="gpdb_v2.js?v=20260808-maxbid"></script>
 
 </body>
 </html>

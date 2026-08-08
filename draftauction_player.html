@@ -133,6 +133,20 @@
         <button class="dec-btn" data-delta="-5000000">–5m</button>
         <button id="submitBidBtn" class="submit-btn">Submit Bid</button>
       </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #333;">
+        <p style="margin:0 0 6px;font-size:13px;color:#ccc;">
+          Max bid (auto): <span id="playerMaxBidStatus" style="color:#9f9;">Off</span>
+        </p>
+        <p style="margin:0 0 8px;font-size:12px;color:#999;line-height:1.4;">
+          Auto-bids +₿500k when outbid, up to your max. Joining a thread still needs draft credits — setting max without credits is rejected.
+        </p>
+        <div class="bid-row">
+          <span style="font-size:18px; color:#ff9900; font-weight:bold;">₿</span>
+          <input type="text" id="playerMaxBidAmount" placeholder="Max bid">
+          <button type="button" id="playerMaxBidSetBtn" class="quick-btn">Set max</button>
+          <button type="button" id="playerMaxBidClearBtn" class="quick-btn" style="background:#333;">Clear</button>
+        </div>
+      </div>
       <div id="bidSquadWarning" role="status" aria-live="polite"></div>
       <div class="status-note" id="bidStatus"></div>
     </div>
@@ -203,6 +217,13 @@
       pesdbPlayerUrl,
       pesdbPlayerCardUrl,
     } from "./player_links.js";
+    import {
+      playerDraftGetMyMaxBid,
+      playerDraftSetMaxBid,
+      playerDraftClearMaxBid,
+      parseMaxBidInput,
+    } from "./auction_max_bid.js";
+    import { formatMoney } from "./competition.js";
 
     /* ============================================================
        STATE
@@ -540,6 +561,29 @@
       applyViewOnlyMode();
       updateBidControlsState();
       await refreshSquadBidWarnings();
+      await refreshPlayerMaxBidUi();
+    }
+
+    async function refreshPlayerMaxBidUi() {
+      const statusEl = document.getElementById("playerMaxBidStatus");
+      const maxInput = document.getElementById("playerMaxBidAmount");
+      if (!statusEl || !playerId) return;
+      try {
+        const max = await playerDraftGetMyMaxBid(playerId);
+        if (max) {
+          statusEl.textContent = formatMoney(max);
+          statusEl.style.color = "#9f9";
+          if (maxInput && document.activeElement !== maxInput) {
+            maxInput.value = Math.round(max).toLocaleString("en-GB");
+          }
+        } else {
+          statusEl.textContent = "Off";
+          statusEl.style.color = "#aaa";
+        }
+      } catch {
+        statusEl.textContent = "Unavailable (run auction_max_bids.sql)";
+        statusEl.style.color = "#c96";
+      }
     }
 
     /* ============================================================
@@ -631,6 +675,46 @@
       });
 
       submitBtn.onclick = submitBid;
+
+      document.getElementById("playerMaxBidSetBtn")?.addEventListener("click", async () => {
+        const status = document.getElementById("bidStatus");
+        if (!buyerShortName || !playerId) {
+          if (status) status.textContent = "No club linked to your account.";
+          return;
+        }
+        const amount = parseMaxBidInput(
+          document.getElementById("playerMaxBidAmount")?.value
+        );
+        if (!amount) {
+          if (status) status.textContent = "Enter a valid max bid.";
+          return;
+        }
+        try {
+          await playerDraftSetMaxBid(playerId, amount);
+          if (status) status.textContent = "Max bid saved. Auto-bid is on.";
+          await loadPlayerAndBids();
+        } catch (e) {
+          if (status) {
+            status.textContent =
+              e?.message ||
+              "Could not set max bid. Not enough draft credits to join this auction.";
+          }
+        }
+      });
+
+      document.getElementById("playerMaxBidClearBtn")?.addEventListener("click", async () => {
+        const status = document.getElementById("bidStatus");
+        if (!playerId) return;
+        try {
+          await playerDraftClearMaxBid(playerId);
+          const maxInput = document.getElementById("playerMaxBidAmount");
+          if (maxInput) maxInput.value = "";
+          if (status) status.textContent = "Max bid cleared.";
+          await refreshPlayerMaxBidUi();
+        } catch (e) {
+          if (status) status.textContent = e?.message || "Could not clear max bid.";
+        }
+      });
     }
 
     function updateBidControlsState() {

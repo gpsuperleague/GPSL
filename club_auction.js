@@ -20,6 +20,13 @@ import {
 import { stadiumImageUrl } from "./stadium_images.js";
 import { mountClubBankBalance, setClubBankBalance } from "./club_bank_balance_ui.js";
 import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
+import {
+  clubAuctionGetMyMaxBid,
+  clubAuctionSetMaxBid,
+  clubAuctionClearMaxBid,
+  maxBidStatusText,
+  parseMaxBidInput,
+} from "./auction_max_bid.js";
 
 const GATE_PRICE_PER_SEAT = 20;
 const STADIUM_VALUE_PER_SEAT = 1500;
@@ -677,10 +684,30 @@ async function openClubBidModal(row, allowBid = true) {
   if (submitBtn) submitBtn.disabled = !allowBid;
 
   await loadBidHistory(row.id);
+  await refreshClubMaxBidUi(row.club_short_name);
 
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
   validateClubBidInput();
+}
+
+async function refreshClubMaxBidUi(clubShortName) {
+  const statusEl = document.getElementById("clubBidMaxStatus");
+  const maxInput = document.getElementById("clubBidMaxAmount");
+  if (!statusEl) return;
+  try {
+    const max = await clubAuctionGetMyMaxBid(clubShortName);
+    statusEl.textContent = maxBidStatusText(max).replace(/^Max bid /, "").replace(/^No max.*/, "Off");
+    statusEl.style.color = max ? "#9f9" : "#aaa";
+    if (maxInput && max) {
+      maxInput.value = roundBidToMillion(max).toLocaleString("en-GB");
+    } else if (maxInput && !maxInput.value) {
+      maxInput.value = "";
+    }
+  } catch (err) {
+    statusEl.textContent = "Max bid unavailable (run auction_max_bids.sql)";
+    statusEl.style.color = "#c96";
+  }
 }
 
 function closeClubBidModal() {
@@ -723,6 +750,49 @@ function wireClubBidModal() {
       return;
     }
     await placeBid(selectedListing.club_short_name, amount, document.getElementById("clubBidSubmitBtn"));
+  });
+
+  document.getElementById("clubBidMaxSetBtn")?.addEventListener("click", async () => {
+    if (!selectedListing) return;
+    const errEl = document.getElementById("clubBidError");
+    const amount = roundBidToMillion(
+      parseMaxBidInput(document.getElementById("clubBidMaxAmount")?.value)
+    );
+    if (!amount) {
+      if (errEl) errEl.textContent = "Enter a valid max bid.";
+      return;
+    }
+    try {
+      await clubAuctionSetMaxBid(selectedListing.club_short_name, amount);
+      if (errEl) errEl.textContent = "";
+      await refreshClubMaxBidUi(selectedListing.club_short_name);
+      await refreshAll();
+      const refreshed = listingsCache.find(
+        (r) => r.club_short_name === selectedListing.club_short_name
+      );
+      if (refreshed) {
+        selectedListing = refreshed;
+        document.getElementById("clubBidModalHighBid").textContent =
+          refreshed.current_highest_bid
+            ? formatMoney(refreshed.current_highest_bid)
+            : "—";
+      }
+    } catch (err) {
+      if (errEl) errEl.textContent = err?.message || "Could not set max bid.";
+    }
+  });
+
+  document.getElementById("clubBidMaxClearBtn")?.addEventListener("click", async () => {
+    if (!selectedListing) return;
+    try {
+      await clubAuctionClearMaxBid(selectedListing.club_short_name);
+      const maxInput = document.getElementById("clubBidMaxAmount");
+      if (maxInput) maxInput.value = "";
+      await refreshClubMaxBidUi(selectedListing.club_short_name);
+    } catch (err) {
+      const errEl = document.getElementById("clubBidError");
+      if (errEl) errEl.textContent = err?.message || "Could not clear max bid.";
+    }
   });
 }
 

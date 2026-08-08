@@ -79,6 +79,20 @@
         <button type="button" class="inc-btn" data-delta="5000000">+5m</button>
         <button type="button" id="submitBidBtn">Submit bid</button>
       </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #333;">
+        <p style="margin:0 0 6px;font-size:13px;color:#ccc;">
+          Max bid (auto): <span id="managerMaxBidStatus" style="color:#9f9;">Off</span>
+        </p>
+        <p style="margin:0 0 8px;font-size:12px;color:#999;line-height:1.4;">
+          Auto-bids the minimum step (+₿500k) when outbid, up to your max. Does not outbid yourself while you lead.
+        </p>
+        <div class="bid-row">
+          <span style="color:#ff9900;font-weight:bold;font-size:18px;">₿</span>
+          <input type="text" id="managerMaxBidAmount" inputmode="numeric" autocomplete="off" placeholder="Max bid">
+          <button type="button" id="managerMaxBidSetBtn" class="quick-btn">Set max</button>
+          <button type="button" id="managerMaxBidClearBtn" class="quick-btn" style="background:#333;">Clear</button>
+        </div>
+      </div>
       <p id="bidError"></p>
     </div>
 
@@ -89,6 +103,6 @@
     </table>
   </div>
   <script type="module" src="global.js?v=20260722-bank-bal-row"></script>
-  <script type="module" src="manager_draftauction_manager.js?v=20260722-bank-bal-row"></script>
+  <script type="module" src="manager_draftauction_manager.js?v=20260808-maxbid"></script>
 </body>
 </html>

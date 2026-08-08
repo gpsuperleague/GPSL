@@ -33,6 +33,12 @@ import {
 } from "./countdown_display.js";
 import { formatMoney } from "./competition.js";
 import {
+  managerDraftGetMyMaxBid,
+  managerDraftSetMaxBid,
+  managerDraftClearMaxBid,
+  parseMaxBidInput,
+} from "./auction_max_bid.js";
+import {
   parseMoneyInput,
   setMoneyInputValue,
   wireMoneyBidInput,
@@ -222,8 +228,31 @@ async function loadManager() {
     `Market value: ${formatMoney(mgr.market_value)}`;
 
   await refreshBids();
+  await refreshManagerMaxBidUi();
   await refreshLeadPanel();
   updateBidControls();
+}
+
+async function refreshManagerMaxBidUi() {
+  const statusEl = document.getElementById("managerMaxBidStatus");
+  const maxInput = document.getElementById("managerMaxBidAmount");
+  if (!statusEl || !currentManager) return;
+  try {
+    const max = await managerDraftGetMyMaxBid(currentManager.id);
+    if (max) {
+      statusEl.textContent = formatMoney(max);
+      statusEl.style.color = "#9f9";
+      if (maxInput && document.activeElement !== maxInput) {
+        maxInput.value = Math.round(max).toLocaleString("en-GB");
+      }
+    } else {
+      statusEl.textContent = "Off";
+      statusEl.style.color = "#aaa";
+    }
+  } catch {
+    statusEl.textContent = "Unavailable (run auction_max_bids.sql)";
+    statusEl.style.color = "#c96";
+  }
 }
 
 async function refreshBids() {
@@ -391,11 +420,50 @@ function wireBidControls() {
       `Bid placed: ${formatMoney(amount)} for ${currentManager.name}.\n\nYou are now the leading bidder unless someone outbids you.`
     );
     await refreshBids();
+    await refreshManagerMaxBidUi();
     await refreshLeadPanel();
     mountClubBankBalance("clubBankBalance", {
       clubShortName: buyerShortName,
       advisory: true,
     }).catch((err) => console.warn("advisory transfer budget:", err));
+  });
+
+  document.getElementById("managerMaxBidSetBtn")?.addEventListener("click", async () => {
+    const err = document.getElementById("bidError");
+    if (!currentManager || !buyerShortName) {
+      if (err) err.textContent = "No club linked to your account.";
+      return;
+    }
+    const amount = parseMaxBidInput(
+      document.getElementById("managerMaxBidAmount")?.value
+    );
+    if (!amount) {
+      if (err) err.textContent = "Enter a valid max bid.";
+      return;
+    }
+    try {
+      await managerDraftSetMaxBid(currentManager.id, amount);
+      if (err) err.textContent = "";
+      await refreshBids();
+      await refreshManagerMaxBidUi();
+      await refreshLeadPanel();
+    } catch (e) {
+      if (err) err.textContent = e?.message || "Could not set max bid.";
+    }
+  });
+
+  document.getElementById("managerMaxBidClearBtn")?.addEventListener("click", async () => {
+    const err = document.getElementById("bidError");
+    if (!currentManager) return;
+    try {
+      await managerDraftClearMaxBid(currentManager.id);
+      const maxInput = document.getElementById("managerMaxBidAmount");
+      if (maxInput) maxInput.value = "";
+      if (err) err.textContent = "";
+      await refreshManagerMaxBidUi();
+    } catch (e) {
+      if (err) err.textContent = e?.message || "Could not clear max bid.";
+    }
   });
 }
 
