@@ -40,7 +40,37 @@ DECLARE
   r            record;
 BEGIN
   -- ---------------------------------------------------------------------------
-  -- 0. Resolve New Mexico United (ShortName NMU).
+  -- 0a. Already swapped (ShortName SOA) — just refresh identity fields & exit.
+  --     Happens if a prior run / partial update already renamed NMU → SOA.
+  -- ---------------------------------------------------------------------------
+  IF EXISTS (SELECT 1 FROM public."Clubs" WHERE "ShortName" = v_new) THEN
+    UPDATE public."Clubs"
+    SET "Club"     = v_club_name,
+        "Stadium"  = v_stadium,
+        "Capacity" = v_capacity,
+        "Nation"   = v_nation
+    WHERE "ShortName" = v_new;
+
+    BEGIN
+      EXECUTE 'UPDATE public."Clubs" SET base_capacity = $1 WHERE "ShortName" = $2'
+        USING v_capacity, v_new;
+    EXCEPTION WHEN undefined_column THEN NULL;
+    END;
+
+    BEGIN
+      EXECUTE 'UPDATE public."Clubs" SET continent = $1 WHERE "ShortName" = $2'
+        USING v_continent, v_new;
+    EXCEPTION WHEN undefined_column THEN NULL;
+    END;
+
+    RAISE NOTICE
+      'SOA already present — identity refreshed (Nation=%, continent=%). No ShortName rewrite.',
+      v_nation, v_continent;
+    RETURN;
+  END IF;
+
+  -- ---------------------------------------------------------------------------
+  -- 0b. Resolve New Mexico United (ShortName NMU).
   -- ---------------------------------------------------------------------------
   SELECT count(*) INTO v_matches
   FROM public."Clubs"
@@ -61,10 +91,6 @@ BEGIN
      OR btrim("Club") ILIKE ANY (ARRAY[
        'New Mexico United', 'New Mexico', 'NM United'
      ]);
-
-  IF EXISTS (SELECT 1 FROM public."Clubs" WHERE "ShortName" = v_new) THEN
-    RAISE EXCEPTION 'Target club code % already exists in Clubs', v_new;
-  END IF;
 
   RAISE NOTICE 'Resolved source code: % -> %', v_old, v_new;
 

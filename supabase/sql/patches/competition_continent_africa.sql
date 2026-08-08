@@ -12,28 +12,40 @@
 
 -- ---------------------------------------------------------------------------
 -- 1) Widen CHECK constraints to allow 'africa'
+-- Postgres auto-names the Clubs check as "Clubs_continent_check" (capital C).
+-- Drop by catalog lookup (not regclass text) so the old constraint is gone
+-- before we add the widened one.
 -- ---------------------------------------------------------------------------
 DO $$
 DECLARE
   r record;
 BEGIN
   FOR r IN
-    SELECT c.conname, c.conrelid::regclass AS tbl
+    SELECT
+      n.nspname AS nsp,
+      cl.relname AS rel,
+      c.conname AS conname
     FROM pg_constraint c
+    JOIN pg_class cl ON cl.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = cl.relnamespace
     JOIN pg_attribute a
       ON a.attrelid = c.conrelid
      AND a.attnum = ANY (c.conkey)
+     AND NOT a.attisdropped
     WHERE c.contype = 'c'
       AND a.attname = 'continent'
-      AND c.conrelid::regclass::text IN (
-        'public."Clubs"',
-        'public.competition_continental_condition_config'
-      )
+      AND n.nspname = 'public'
+      AND cl.relname IN ('Clubs', 'competition_continental_condition_config')
   LOOP
-    EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.tbl, r.conname);
+    EXECUTE format(
+      'ALTER TABLE %I.%I DROP CONSTRAINT %I',
+      r.nsp, r.rel, r.conname
+    );
   END LOOP;
 END $$;
 
+-- Belt-and-braces: both casings used across installs
+ALTER TABLE public."Clubs" DROP CONSTRAINT IF EXISTS "Clubs_continent_check";
 ALTER TABLE public."Clubs" DROP CONSTRAINT IF EXISTS clubs_continent_check;
 ALTER TABLE public."Clubs"
   ADD CONSTRAINT clubs_continent_check CHECK (
@@ -45,6 +57,8 @@ ALTER TABLE public."Clubs"
 
 ALTER TABLE public.competition_continental_condition_config
   DROP CONSTRAINT IF EXISTS competition_continental_condition_config_continent_check;
+ALTER TABLE public.competition_continental_condition_config
+  DROP CONSTRAINT IF EXISTS "competition_continental_condition_config_continent_check";
 ALTER TABLE public.competition_continental_condition_config
   ADD CONSTRAINT competition_continental_condition_config_continent_check CHECK (
     continent IN (
