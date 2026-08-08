@@ -15,6 +15,11 @@ export const TESTING_ADMIN_NAV = [
     page: "admin_site_map",
   },
   {
+    label: "Security hardening",
+    href: "admin_security_hardening.html",
+    page: "admin_security_hardening",
+  },
+  {
     label: "Reset League (vanilla)",
     href: "admin_test_reset.html",
     page: "admin_test_reset",

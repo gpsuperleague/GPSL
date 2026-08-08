@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Security hardening — GPSL Admin Testing</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .sh-summary {
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+      margin-bottom:16px; font-size:13px;
+    }
+    .sh-summary .pill {
+      padding:6px 10px; background:#1a1a1a; border:1px solid #333; border-radius:4px;
+    }
+    .sh-summary .pill strong { color:#e8d9b0; }
+    .sh-toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    .sh-intro {
+      margin:0 0 14px; font-size:13px; line-height:1.5; color:#bbb;
+    }
+    .sh-intro code {
+      font-size:12px; color:#c9b896; background:#1a1814; padding:1px 5px; border-radius:3px;
+    }
+    .sh-section { margin:0 0 18px; }
+    .sh-section > summary {
+      cursor:pointer; list-style:none; padding:4px 0;
+    }
+    .sh-section > summary::-webkit-details-marker { display:none; }
+    .sh-section h2 {
+      margin:0; font-size:16px; color:#ff9900;
+      border-bottom:1px solid #333; padding-bottom:6px;
+      display:flex; align-items:center; gap:8px;
+    }
+    .sh-section h2::before {
+      content:"▸"; color:#c4a35a; font-size:14px;
+      transition:transform 0.15s ease;
+    }
+    .sh-section[open] > summary h2::before { transform:rotate(90deg); }
+    .sh-risk {
+      font-size:11px; font-weight:600; letter-spacing:0.03em;
+      text-transform:uppercase; padding:2px 7px; border-radius:3px;
+      border:1px solid #444; color:#aaa;
+    }
+    .sh-risk.done-phase { color:#8c8; border-color:#364; }
+    .sh-risk.low { color:#9c9; border-color:#363; }
+    .sh-risk.medium { color:#cc9; border-color:#663; }
+    .sh-risk.high { color:#e88; border-color:#633; }
+    .sh-list { list-style:none; margin:10px 0 0; padding:0; }
+    .sh-item {
+      display:flex; align-items:flex-start; gap:10px;
+      padding:8px 10px; border-radius:4px; border:1px solid transparent;
+    }
+    .sh-item:hover { background:#181818; border-color:#2a2a2a; }
+    .sh-item.done { opacity:0.72; }
+    .sh-item.done .sh-label { text-decoration:line-through; color:#888; }
+    .sh-item input[type="checkbox"] {
+      margin-top:3px; width:16px; height:16px; flex-shrink:0; accent-color:#c4a35a;
+    }
+    .sh-body { flex:1; min-width:0; }
+    .sh-label { font-size:14px; color:#ddd; }
+    .sh-note {
+      margin-top:6px; font-size:12px; line-height:1.45; color:#c9b896;
+      padding:8px 10px; background:#1a1814; border:1px solid #3a3428; border-radius:4px;
+    }
+    .sh-meta { margin-top:4px; font-size:12px; color:#888; }
+    .sh-meta a { color:#8cf; text-decoration:none; }
+    .sh-meta a:hover { text-decoration:underline; }
+    .sh-progress-bar {
+      height:8px; background:#222; border-radius:4px; overflow:hidden;
+      flex:1; min-width:120px; max-width:280px;
+    }
+    .sh-progress-bar > span {
+      display:block; height:100%; background:#c4a35a; width:0%;
+      transition:width 0.2s ease;
+    }
+    .status-line { margin-top:8px; font-size:13px; color:#aaa; }
+    .status-line.error { color:#f88; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Security hardening</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="sh-intro">
+          Track the security audit plan over time. Tick items as you apply them.
+          Phase 1 is already shipped (<code>security_hardening_safe.sql</code>) — tick it when you’ve verified.
+          For shared ticks across admins, run
+          <code>supabase/sql/patches/admin_security_hardening_checklist.sql</code> once.
+        </p>
+        <div class="sh-summary">
+          <span class="pill"><strong id="shDoneCount">0</strong> / <span id="shTotalCount">0</span> done</span>
+          <div class="sh-progress-bar" title="Progress"><span id="shProgressFill"></span></div>
+          <span class="pill" id="shStorageLabel">…</span>
+        </div>
+        <div class="sh-toolbar">
+          <button type="button" id="shExpandAll" class="button secondary">Expand all</button>
+          <button type="button" id="shCollapseAll" class="button secondary">Collapse all</button>
+          <button type="button" id="shHideDone" class="button secondary">Hide completed</button>
+          <button type="button" id="shClearAll" class="button secondary">Clear all ticks</button>
+        </div>
+        <div id="shRoot"></div>
+        <div id="shStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_security_hardening.js?v=20260808-sec-checklist"></script>
+</body>
+</html>

@@ -79,6 +79,7 @@ const TILE_IMAGE_BY_ID = {
   admin_prize_appeals: `${PANEL_BG}/Finances.png`,
   admin_club_checklist: `${PANEL_BG}/Club_Details.png`,
   admin_workflow_checklist: `${PANEL_BG}/Progress.png`,
+  admin_security_hardening: `${PANEL_BG}/Progress.png`,
   admin_special_auctions: `${PANEL_BG}/Transfer.png`,
   admin_international: `${PANEL_BG}/Fixtures.png`,
   admin_club_kits: `${PANEL_BG}/Club_Details.png`,
@@ -196,6 +197,9 @@ export const DASHBOARD_PANELS = [
   p("dashboard", "Dashboard", "dashboard.html", { noPagePin: true }),
   p("admin", "GPSL Admin", "admin.html", { adminOnly: true }),
   p("admin_site_map", "Site map", "admin_site_map.html", { adminOnly: true }),
+  p("admin_security_hardening", "Security hardening", "admin_security_hardening.html", {
+    adminOnly: true,
+  }),
   p("admin_owners", "Owner Admin", "admin_owners.html", { adminOnly: true }),
   p("admin_workflow_checklist", "Admin Checklist", "admin_workflow_checklist.html", {
     adminOnly: true,
