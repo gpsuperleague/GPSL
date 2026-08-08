@@ -729,21 +729,22 @@
     }
 
     async function loadBuyerClubShortName(authId) {
+      // maybeSingle: waiting-list / unassigned owners have no club (0 rows is fine).
       const { data, error } = await supabase
         .from("Clubs")
         .select("ShortName, Nation")
         .eq("owner_id", authId)
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
+      if (error) {
         console.error("Could not resolve buyer club from owner_id", error);
         buyerShortName = null;
         buyerClubNation = null;
         return;
       }
 
-      buyerShortName = data.ShortName;
-      buyerClubNation = data.Nation ?? null;
+      buyerShortName = data?.ShortName ?? null;
+      buyerClubNation = data?.Nation ?? null;
     }
 
     const params = new URLSearchParams(window.location.search);
