@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260807-learning";
+export const APP_VERSION = "20260808-wl-scout";

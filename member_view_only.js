@@ -42,7 +42,7 @@ export function applyMemberViewOnlyChrome({ homeHref = "waiting_list.html" } = {
     const bar = document.createElement("div");
     bar.id = BAR_ID;
     bar.innerHTML = `
-      <span class="gpsl-vo-note">No club yet — waiting list, databases, owner details, and club draft auction only.</span>
+      <span class="gpsl-vo-note">No club yet — waiting list, owner details, databases, scouting, and club draft auction only.</span>
       <span style="display:flex;align-items:center;gap:12px;">
         <span class="gpsl-vo-bank" id="gpslPreClubBank" hidden></span>
         <a class="gpsl-view-ok" href="${homeHref}">Home · Waiting list</a>

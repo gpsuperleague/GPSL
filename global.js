@@ -2107,6 +2107,7 @@ export async function buildNav() {
             { href: "club_database.html", label: "Club Database", page: "club_database" },
             { href: "GPDB.html", label: "Player Database", page: "gpdb" },
             { href: "MGDB.html", label: "Manager Database", page: "mgdb" },
+            { href: "scouting.html", label: "Scouting", page: "scouting" },
             {
               href: "club_auction.html",
               label: "Club draft auction",

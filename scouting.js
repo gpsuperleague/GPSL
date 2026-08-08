@@ -235,10 +235,16 @@ function playersForPlanner() {
   }));
 }
 
+function canUseDraftBidding() {
+  return Boolean(clubShort);
+}
+
 function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
   if (!rows.length) {
     return `<p class="scout-empty">No players — star targets in GPDB (☆).</p>`;
   }
+
+  const showDraft = canUseDraftBidding();
 
   return `
     <table class="scout-table">
@@ -253,10 +259,7 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
           <th>MV</th>
           <th>Playstyle</th>
           <th>Club</th>
-          <th>Draft</th>
-          <th>Leading</th>
-          <th>Your bid</th>
-          <th>Manage bid</th>
+          ${showDraft ? "<th>Draft</th><th>Leading</th><th>Your bid</th><th>Manage bid</th>" : ""}
           <th>Tier</th>
           <th></th>
         </tr>
@@ -288,6 +291,12 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
               isLeading: false,
             };
             const yourBidClass = draftUi.isLeading ? "scout-leading-bid" : "";
+            const draftCells = showDraft
+              ? `<td class="scout-draft-status">${draftUi.status}</td>
+            <td>${draftUi.leadingText}</td>
+            <td class="${yourBidClass}">${draftUi.yourBidText}</td>
+            <td>${renderDraftManageCell(draftUi)}</td>`
+              : "";
 
             return `
           <tr data-player-id="${pid}">
@@ -300,10 +309,7 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
             <td>${mv}</td>
             <td>${p?.Playstyle || "—"}</td>
             <td>${club}</td>
-            <td class="scout-draft-status">${draftUi.status}</td>
-            <td>${draftUi.leadingText}</td>
-            <td class="${yourBidClass}">${draftUi.yourBidText}</td>
-            <td>${renderDraftManageCell(draftUi)}</td>
+            ${draftCells}
             <td>
               <select class="scout-tier-select" data-player-id="${pid}" aria-label="Tier for ${name}">
                 ${[1, 2, 3, 4]
@@ -408,11 +414,13 @@ async function renderScoutingLists() {
       .filter(Boolean)
   );
 
-  draftContext = await loadScoutingDraftContext(
-    supabase,
-    clubShort,
-    scoutingRows.map((r) => r.player_id)
-  );
+  draftContext = canUseDraftBidding()
+    ? await loadScoutingDraftContext(
+        supabase,
+        clubShort,
+        scoutingRows.map((r) => r.player_id)
+      )
+    : null;
   const draftUiByPlayer = await buildDraftUiMap(playerMap);
 
   wrap.innerHTML = [1, 2, 3, 4]
@@ -554,20 +562,35 @@ document.addEventListener("DOMContentLoaded", async () => {
     .eq("owner_id", user.id)
     .maybeSingle();
 
-  if (!club?.ShortName) {
-    document.getElementById("scoutingListsWrap").innerHTML =
-      '<p class="scout-empty">Link a club to your account to use scouting lists.</p>';
-    return;
-  }
-
-  clubShort = club.ShortName;
-  clubNation = club.Nation || null;
+  clubShort = club?.ShortName || null;
+  clubNation = club?.Nation || null;
   await loadClubsMap();
 
-  const fullName = fullClubName(clubShort) || club.Club || clubShort;
-  document.getElementById("pageTitle").textContent = `${fullName} — Scouting`;
-  document.getElementById("clubBadgeHeader").src =
-    `images/club_badges/${clubShort}.png`;
+  const badgeEl = document.getElementById("clubBadgeHeader");
+  const titleEl = document.getElementById("pageTitle");
+  const metaEl = document.getElementById("scoutingPageMeta");
+
+  if (clubShort) {
+    const fullName = fullClubName(clubShort) || club.Club || clubShort;
+    titleEl.textContent = `${fullName} — Scouting`;
+    if (badgeEl) {
+      badgeEl.src = `images/club_badges/${clubShort}.png`;
+      badgeEl.alt = fullName;
+      badgeEl.hidden = false;
+    }
+  } else {
+    titleEl.textContent = "Your scouting board";
+    if (badgeEl) {
+      badgeEl.hidden = true;
+      badgeEl.removeAttribute("src");
+    }
+    if (metaEl) {
+      metaEl.innerHTML =
+        "Star players in <a href=\"GPDB.html\" style=\"color:#ff9900;\">GPDB</a> (☆ column) to add them here. " +
+        "Targets and the tactic board are saved to <b>you</b> — they stay with you when you get a club. " +
+        "Draft bidding unlocks after you are assigned a club.";
+    }
+  }
 
   await renderScoutingLists();
   await initPlanner();

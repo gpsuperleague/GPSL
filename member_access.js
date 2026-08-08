@@ -22,6 +22,7 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   "club_database",
   "gpdb",
   "mgdb",
+  "scouting",
   "learning_gpsl",
 ]);
 
@@ -102,6 +103,7 @@ export const PRE_CLUB_NAV_ITEMS = [
   },
   { href: "GPDB.html", label: "Player Database", page: "gpdb" },
   { href: "MGDB.html", label: "Manager Database", page: "mgdb" },
+  { href: "scouting.html", label: "Scouting", page: "scouting" },
   {
     href: "club_auction.html",
     label: "Club draft auction",

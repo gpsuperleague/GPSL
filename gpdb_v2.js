@@ -927,7 +927,8 @@ document.addEventListener("DOMContentLoaded", () => {
       CURRENT_USER_CLUB_FULL = club?.Club ?? null;
       const scoutedBtn = document.getElementById("myScoutedFilterBtn");
       if (scoutedBtn) {
-        scoutedBtn.hidden = !CURRENT_USER_CLUB_SHORT;
+        // Owner-scoped shortlist — available before a club is assigned
+        scoutedBtn.hidden = false;
         scoutedBtn.classList.toggle("is-active", SCOUTED_ONLY);
       }
       const myClubBtn = document.getElementById("myClubFilterBtn");
@@ -935,16 +936,14 @@ document.addEventListener("DOMContentLoaded", () => {
         myClubBtn.hidden = !CURRENT_USER_CLUB_SHORT;
         myClubBtn.classList.toggle("is-active", MY_CLUB_ONLY);
       }
-      if (CURRENT_USER_CLUB_SHORT) {
-        try {
-          SCOUTING_TARGET_MAP = await loadScoutingTargetMap(
-            supabase,
-            CURRENT_USER_CLUB_SHORT
-          );
-        } catch (err) {
-          console.warn("Scouting targets:", err);
-          SCOUTING_TARGET_MAP = new Map();
-        }
+      try {
+        SCOUTING_TARGET_MAP = await loadScoutingTargetMap(
+          supabase,
+          CURRENT_USER_CLUB_SHORT
+        );
+      } catch (err) {
+        console.warn("Scouting targets:", err);
+        SCOUTING_TARGET_MAP = new Map();
       }
     }
   }
@@ -1114,7 +1113,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    if (SCOUTED_ONLY && CURRENT_USER_CLUB_SHORT) {
+    if (SCOUTED_ONLY && CURRENT_USER) {
       const scoutIds = Array.from(SCOUTING_TARGET_MAP.keys()).filter(Boolean);
       if (!scoutIds.length) {
         TOTAL_ROWS = 0;
@@ -1921,7 +1920,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function toggleScoutedOnlyFilter() {
-    if (!CURRENT_USER_CLUB_SHORT) return;
+    if (!CURRENT_USER) return;
     SCOUTED_ONLY = !SCOUTED_ONLY;
     const btn = document.getElementById("myScoutedFilterBtn");
     if (btn) btn.classList.toggle("is-active", SCOUTED_ONLY);
@@ -1957,7 +1956,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const showCallUpCol = !!MY_NATION?.code;
-    const showScoutCol = !!CURRENT_USER_CLUB_SHORT;
+    const showScoutCol = !!CURRENT_USER;
 
     tableHead.innerHTML = `
       <tr>
@@ -2136,9 +2135,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".scout-btn").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        if (!CURRENT_USER_CLUB_SHORT) return;
+        if (!CURRENT_USER) return;
         if (!isScoutingAvailable()) {
-          alert("Scouting lists are not set up yet — ask admin to run club_scouting_targets.sql");
+          alert("Scouting lists are not set up yet — ask admin to run owner_scouting_persist.sql");
           return;
         }
         const pid = btn.dataset.playerId;
