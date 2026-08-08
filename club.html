@@ -42,6 +42,8 @@
     }
 
     .club-header {
+      position: relative;
+      overflow: hidden;
       display: flex;
       align-items: center;
       gap: 20px;
@@ -50,12 +52,49 @@
       background: #1a1a1a;
       border: 1px solid #333;
       border-radius: 8px;
+      min-height: 140px;
     }
 
-    .club-header img {
+    /* Stadium photo beneath the info panel (set via --club-stadium-bg) */
+    .club-header::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: var(--club-stadium-bg, none);
+      background-size: cover;
+      background-position: center;
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Soft dark wash so name / stadium / capacity text stays readable */
+    .club-header::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        100deg,
+        rgba(12, 12, 12, 0.88) 0%,
+        rgba(12, 12, 12, 0.62) 48%,
+        rgba(12, 12, 12, 0.28) 100%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .club-header > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .club-header img,
+    .club-header-badge {
       width: 120px;
       height: 120px;
       object-fit: contain;
+      flex-shrink: 0;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.65));
     }
 
     .club-header-meta {
@@ -63,6 +102,7 @@
       flex-direction: column;
       gap: 4px;
       line-height: 1.45;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
     }
 
     .club-header-meta h1 {
@@ -296,7 +336,8 @@
         margin: 12px;
         padding: 12px;
       }
-      .club-header img {
+      .club-header img,
+      .club-header-badge {
         width: 72px;
         height: 72px;
       }
@@ -764,8 +805,11 @@
           ? ownerLabel
           : "<em>Unowned</em>";
 
-      document.getElementById("clubHeader").innerHTML = `
-        <img src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
+      const headerEl = document.getElementById("clubHeader");
+      const stadiumUrl = `images/stadiums/${encodeURIComponent(club.ShortName)}.jpg`;
+      headerEl.style.setProperty("--club-stadium-bg", `url("${stadiumUrl}")`);
+      headerEl.innerHTML = `
+        <img class="club-header-badge" src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
         <div class="club-header-meta">
           <h1>${club.Club}</h1>
           <div><strong>Stadium:</strong> ${club.Stadium}</div>
