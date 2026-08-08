@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <style>
     body { background: #111; color: #ddd; }
-    .wl-wrap { max-width: 720px; margin: 24px auto; padding: 0 16px; }
+    .wl-wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
     .wl-card {
       background: #1a1a1a;
       border: 1px solid #333;
@@ -17,13 +17,23 @@
       margin-bottom: 16px;
     }
     .wl-card h1 { margin: 0 0 8px; color: #ff9900; font-size: 22px; }
+    .wl-card h2 { margin: 0 0 8px; color: #ff9900; font-size: 18px; }
     .wl-card p { color: #999; line-height: 1.5; margin: 0 0 12px; }
     .wl-pos { font-size: 28px; font-weight: bold; color: #9d9; }
+    .wl-panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+    .wl-panel { margin-bottom: 0; min-width: 0; }
     .wl-table { width: 100%; border-collapse: collapse; font-size: 14px; }
     .wl-table th, .wl-table td { padding: 8px 10px; border-bottom: 1px solid #2a2a2a; text-align: left; }
     .wl-table th { color: #888; font-weight: 600; font-size: 12px; text-transform: uppercase; }
     .wl-you { background: #1a2218; }
     .wl-status-absence { color: #c96; font-size: 12px; }
+    .wl-count { color: #888; font-weight: normal; font-size: 14px; }
     .wl-links a { color: #ff9900; margin-right: 14px; }
     #draftCountdownContainer {
       margin-top: 4px;
@@ -34,6 +44,9 @@
     }
     #draftCountdown { font-size: 15px; color: #ff9900; font-weight: bold; }
     #draftLocalStart { font-size: 11px; color: #aaa; margin-top: 4px; white-space: pre-line; line-height: 1.4; }
+    @media (max-width: 800px) {
+      .wl-panels { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -52,29 +65,42 @@
       <p id="wlMySummary"></p>
       <div class="wl-pos" id="wlMyPos"></div>
     </div>
-    <div class="wl-card">
-      <h1>Owner waiting list</h1>
-      <p>Position and owner tag only. When a club becomes available, admin will invite the next person for a club auction or direct assignment.</p>
-      <table class="wl-table">
-        <thead>
-          <tr><th>#</th><th>Tag</th><th></th></tr>
-        </thead>
-        <tbody id="wlBody"></tbody>
-      </table>
+    <div class="wl-panels">
+      <div class="wl-card wl-panel">
+        <h2>I'm on board <span class="wl-count" id="wlOnBoardCount"></span></h2>
+        <p id="wlOnBoardIntro">Owners confirmed for this season, in the order they joined.</p>
+        <table class="wl-table">
+          <thead>
+            <tr><th>#</th><th>Tag</th></tr>
+          </thead>
+          <tbody id="wlOnBoardBody"></tbody>
+        </table>
+      </div>
+      <div class="wl-card wl-panel">
+        <h2>Owner waiting list <span class="wl-count" id="wlWaitingCount"></span></h2>
+        <p>Queue order for the next club slot. Admin invites from the top when a club opens.</p>
+        <table class="wl-table">
+          <thead>
+            <tr><th>#</th><th>Tag</th></tr>
+          </thead>
+          <tbody id="wlBody"></tbody>
+        </table>
+      </div>
     </div>
     <p class="wl-links">
       <a href="awaiting_club.html">Owner details</a>
       <a href="club_database.html">Club Database</a>
       <a href="GPDB.html">Player Database</a>
       <a href="MGDB.html">Manager Database</a>
+      <a href="scouting.html">Scouting</a>
       <a href="club_auction.html">Club draft auction</a>
       <a href="learning_gpsl.html">Learning GPSL</a>
     </p>
   </div>
   <script type="module">
     window.CURRENT_PAGE = "waiting_list";
-    import { initGlobal } from "./global.js?v=20260808-wl-auction-cd";
-    import { initWaitingListPage } from "./waiting_list.js?v=20260808-wl-auction-cd";
+    import { initGlobal } from "./global.js?v=20260808-wl-onboard";
+    import { initWaitingListPage } from "./waiting_list.js?v=20260808-wl-onboard";
     initGlobal().then(() => initWaitingListPage());
   </script>
 </body>

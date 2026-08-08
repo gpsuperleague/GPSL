@@ -14,11 +14,33 @@ function syncAuctionCountdownCard() {
   card.hidden = !isPageDraftCountdownActive();
 }
 
+function renderTagRows(tbody, rows, highlightPosition) {
+  tbody.innerHTML = "";
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    if (highlightPosition && row.position === highlightPosition) {
+      tr.className = "wl-you";
+    }
+    const statusExtra =
+      row.status === "on_absence"
+        ? ' <span class="wl-status-absence">(absence)</span>'
+        : "";
+    tr.innerHTML =
+      `<td>${row.position}</td>` +
+      `<td>${escapeHtml(row.owner_tag || "—")}${statusExtra}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
 export async function initWaitingListPage() {
   const body = document.getElementById("wlBody");
+  const onBoardBody = document.getElementById("wlOnBoardBody");
   const myCard = document.getElementById("wlMyCard");
   const myPos = document.getElementById("wlMyPos");
   const mySummary = document.getElementById("wlMySummary");
+  const onBoardIntro = document.getElementById("wlOnBoardIntro");
+  const onBoardCount = document.getElementById("wlOnBoardCount");
+  const waitingCount = document.getElementById("wlWaitingCount");
 
   syncAuctionCountdownCard();
 
@@ -26,31 +48,48 @@ export async function initWaitingListPage() {
     const { data: self } = await supabase.rpc("owner_registry_get_self");
     const list = await loadWaitingListPublic();
     const rows = list?.rows || [];
+    const onBoard = list?.on_board || [];
+    const mode = list?.on_board_mode === "live" ? "live" : "test";
+    const highlightWaiting =
+      self?.is_member && list?.my_position ? list.my_position : null;
+    const highlightOnBoard = list?.my_on_board_position || null;
 
-    body.innerHTML = "";
-    for (const row of rows) {
-      const tr = document.createElement("tr");
-      if (self?.is_member && row.position === list?.my_position) {
-        tr.className = "wl-you";
+    if (onBoardIntro) {
+      onBoardIntro.textContent =
+        mode === "live"
+          ? "Owners confirmed for the live season, in the order they joined."
+          : "Owners confirmed for the test season, in the order they joined.";
+    }
+    if (onBoardCount) {
+      onBoardCount.textContent = `(${list?.on_board_total ?? onBoard.length})`;
+    }
+    if (waitingCount) {
+      waitingCount.textContent = `(${list?.total ?? rows.length})`;
+    }
+
+    if (onBoardBody) {
+      if (!onBoard.length) {
+        onBoardBody.innerHTML =
+          '<tr><td colspan="2" style="color:#666">No one confirmed yet — admin ticks Test/Live on the waiting list.</td></tr>';
+      } else {
+        renderTagRows(onBoardBody, onBoard, highlightOnBoard);
       }
-      const statusExtra =
-        row.status === "on_absence"
-          ? ' <span class="wl-status-absence">(absence)</span>'
-          : "";
-      tr.innerHTML =
-        `<td>${row.position}</td>` +
-        `<td>${escapeHtml(row.owner_tag || "—")}${statusExtra}</td>` +
-        `<td></td>`;
-      body.appendChild(tr);
     }
 
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="3" style="color:#666">No one on the waiting list.</td></tr>';
+      body.innerHTML =
+        '<tr><td colspan="2" style="color:#666">No one on the waiting list.</td></tr>';
+    } else {
+      renderTagRows(body, rows, highlightWaiting);
     }
 
     if (self?.is_member && list?.my_position) {
       myCard.hidden = false;
-      myPos.textContent = `#${list.my_position} of ${list.total || rows.length}`;
+      const parts = [`#${list.my_position} of ${list.total || rows.length} on the waiting list`];
+      if (list.my_on_board_position) {
+        parts.push(`#${list.my_on_board_position} on board`);
+      }
+      myPos.textContent = parts.join(" · ");
       mySummary.textContent =
         list.my_position === 1
           ? "You are next in line when a club slot opens."
@@ -58,8 +97,14 @@ export async function initWaitingListPage() {
     }
   } catch (err) {
     console.error(err);
-    body.innerHTML =
-      '<tr><td colspan="3" style="color:#c66">Could not load waiting list.</td></tr>';
+    const msg =
+      err?.message && /on_board|confirmed_.*_at/i.test(String(err.message))
+        ? "Could not load waiting list — run gpsl_waiting_list_on_board_public.sql in Supabase."
+        : "Could not load waiting list.";
+    body.innerHTML = `<tr><td colspan="2" style="color:#c66">${msg}</td></tr>`;
+    if (onBoardBody) {
+      onBoardBody.innerHTML = `<tr><td colspan="2" style="color:#c66">${msg}</td></tr>`;
+    }
   }
 }
 
