@@ -52,7 +52,7 @@
 <body>
   <div id="nav"></div>
   <div class="wl-wrap">
-    <div class="wl-card" id="wlAuctionCountdownCard">
+    <div class="wl-card" id="wlAuctionCountdownCard" hidden>
       <h1>Club auction</h1>
       <p>Countdown to the club draft auction window (UK schedule).</p>
       <div id="draftCountdownContainer">
@@ -99,8 +99,8 @@
   </div>
   <script type="module">
     window.CURRENT_PAGE = "waiting_list";
-    import { initGlobal } from "./global.js?v=20260808-wl-filter";
-    import { initWaitingListPage } from "./waiting_list.js?v=20260808-wl-filter";
+    import { initGlobal } from "./global.js?v=20260808-wl-cd-flash";
+    import { initWaitingListPage } from "./waiting_list.js?v=20260808-wl-cd-flash";
     initGlobal().then(() => initWaitingListPage());
   </script>
 </body>

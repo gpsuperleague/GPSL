@@ -10,8 +10,11 @@ export async function loadWaitingListPublic() {
 function syncAuctionCountdownCard() {
   const card = document.getElementById("wlAuctionCountdownCard");
   if (!card) return;
-  // Same #draftCountdown wiring as awaiting_club / club_auction — hide the card when no schedule.
-  card.hidden = !isPageDraftCountdownActive();
+  // Card starts hidden in HTML so it does not flash before global settings load.
+  const active = isPageDraftCountdownActive();
+  card.hidden = !active;
+  const container = document.getElementById("draftCountdownContainer");
+  if (container && active) container.style.display = "";
 }
 
 function renderTagRows(tbody, rows, highlightPosition) {
