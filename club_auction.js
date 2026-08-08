@@ -525,9 +525,11 @@ async function loadBidHistory(listingId) {
 
   const { data: bids, error } = await supabase
     .from("Club_Auction_Bids")
-    .select("bid_amount, bid_time, bidder_owner_id")
+    .select("id, bid_amount, bid_time, bidder_owner_id")
     .eq("listing_id", listingId)
-    .order("bid_time", { ascending: false });
+    .order("bid_time", { ascending: false })
+    .order("bid_amount", { ascending: false })
+    .order("id", { ascending: false });
 
   if (error) {
     tbody.innerHTML = `<tr><td colspan="3">Could not load bids — ${error.message}</td></tr>`;
@@ -539,8 +541,17 @@ async function loadBidHistory(listingId) {
     return;
   }
 
-  const tagMap = await resolveOwnerTags(bids.map((b) => b.bidder_owner_id));
-  tbody.innerHTML = bids
+  // Same-second max-bid bursts can share bid_time — keep highest amount on top.
+  const sorted = [...bids].sort((a, b) => {
+    const t = new Date(b.bid_time).getTime() - new Date(a.bid_time).getTime();
+    if (t !== 0) return t;
+    const amt = Number(b.bid_amount || 0) - Number(a.bid_amount || 0);
+    if (amt !== 0) return amt;
+    return Number(b.id || 0) - Number(a.id || 0);
+  });
+
+  const tagMap = await resolveOwnerTags(sorted.map((b) => b.bidder_owner_id));
+  tbody.innerHTML = sorted
     .map((b) => {
       const isYou = b.bidder_owner_id === ownerId;
       const rawTag = tagMap[b.bidder_owner_id] || "—";
