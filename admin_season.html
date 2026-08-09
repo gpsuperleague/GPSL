@@ -92,8 +92,12 @@
           <div class="card">
             <h2>Divisions (pre-season)</h2>
             <p class="note">
-              Copy who is Super League vs Championship from the <b>last finished season</b>
-              (after playoffs / Apply movements), then draw Championship A/B, then start the season.
+              For <b>Season 1</b> (or any fresh setup): assign from the current
+              <a href="admin_club_attendance.html" style="color:#ff9900;">prestige order</a>
+              (top 20 → Super League; ranks 21+ alternate Championship A / B).
+              For later seasons: copy who is Super League vs Championship from the
+              <b>last finished season</b> (after playoffs / Apply movements), then draw
+              Championship A/B, then start the season.
             </p>
             <div class="row">
               <div>
@@ -121,6 +125,7 @@
               </table>
             </div>
             <div class="row">
+              <button id="compAssignPrestigeBtn" class="button" style="background:#225544;" type="button">Assign from prestige (top 20 SL, then alt A/B)</button>
               <button id="compSeedMovementsBtn" class="button" style="background:#664422;">Copy divisions from selected season</button>
               <button id="compSaveAssignBtn" class="button">Save assignments</button>
               <button id="compDrawBtn" class="button" style="background:#336699;">Draw Championship A / B</button>
@@ -192,6 +197,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260807-seed-simplify"></script>
+  <script type="module" src="admin_season.js?v=20260809-prestige-div"></script>
 </body>
 </html>

@@ -141,21 +141,21 @@ export const ADMIN_MAIN_NAV = [
           "admin_season.html",
           "wf-divisions",
           null,
-          "Place / confirm the 20 Super League clubs for the new season before Championship draw."
+          "Place / confirm the 20 Super League clubs. Season 1: use Assign from prestige (top 20)."
         ),
         L(
           "Setup Championship Teams",
           "admin_season.html",
           "wf-divisions",
           null,
-          "Place remaining clubs into the Championship pool ready for the A/B draw."
+          "Place remaining clubs into Championship (prestige assign alternates A/B from rank 21, or use pool + random draw)."
         ),
         L(
           "Draw Championship Divisions",
           "admin_season.html",
           "wf-divisions",
           null,
-          "Randomly split the Championship pool into Championship A and B."
+          "Randomly split the Championship pool into Championship A and B (skip if you used Assign from prestige)."
         ),
       ]),
       link(

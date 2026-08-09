@@ -2,7 +2,7 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
-} from "./admin_main_nav.js?v=20260809-intl-create-season";
+} from "./admin_main_nav.js?v=20260809-prestige-div";
 import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-expiry-fa";
 
 primeAdminPageChrome();
@@ -109,6 +109,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renewDeadlineBtn.onclick = processManagerRenewalDeadline;
   }
   document.getElementById("compSetupSeasonSelect").onchange = onCompSeasonSelected;
+  document.getElementById("compAssignPrestigeBtn").onclick = assignDivisionsFromPrestige;
   document.getElementById("compSeedMovementsBtn").onclick = seedDivisionsFromMovements;
   document.getElementById("compSaveAssignBtn").onclick = saveCompetitionAssignments;
   document.getElementById("compAssignBody").addEventListener("change", (e) => {
@@ -843,6 +844,47 @@ function updateCompSetupCounts() {
   }
   document.getElementById("compResetDrawBtn").disabled =
     counts.championship_a === 0 && counts.championship_b === 0;
+}
+
+async function assignDivisionsFromPrestige() {
+  if (!compSelectedSeasonId) {
+    setCompStatus("Select a pre-season year.", false);
+    return;
+  }
+
+  if (
+    !confirm(
+      "Assign divisions from the current prestige order (Admin → Club attendance / prestige)?\n\n" +
+        "• Ranks 1–20 → Super League\n" +
+        "• Ranks 21+ → Championship A / B alternating (21=A, 22=B, …)\n\n" +
+        "Overwrites current SL / pool / A–B on this pre-season. Usually used for Season 1."
+    )
+  ) {
+    return;
+  }
+
+  setCompStatus("Assigning from prestige…");
+  const { data, error } = await supabase.rpc("competition_assign_divisions_from_prestige", {
+    p_season_id: compSelectedSeasonId,
+  });
+
+  if (error) {
+    const detail = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
+    setCompStatus(
+      `❌ ${detail}${
+        /prestige|Prestige/i.test(detail)
+          ? " — run patches/assign_divisions_from_prestige.sql (and prestige setup) then retry."
+          : ""
+      }`,
+      false
+    );
+    return;
+  }
+
+  setCompStatus(
+    `✅ Prestige assign — SL ${data?.superleague ?? 20}, CH A ${data?.championship_a ?? 20}, CH B ${data?.championship_b ?? 20}.`
+  );
+  await loadCompSeasonData(compSelectedSeasonId);
 }
 
 async function seedDivisionsFromMovements() {
