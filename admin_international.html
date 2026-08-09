@@ -100,7 +100,9 @@
         <button type="button" class="button secondary" id="wcEnsureSeasonsBtn">Create missing seasons</button>
       </div>
       <p class="note" style="margin-top:0;">
-        Example: set <b>5</b> then click create → adds Season 2–5 if only Season 1 exists.
+        Manual only — this page no longer auto-creates seasons on load.
+        Example: set <b>5</b> then click create → adds Season 1–5 shells if the table is empty.
+        Skip after a vanilla reset until you are ready for WC (shells are status <code>setup</code>, not Create Pre-Season).
         Typical first WC: qual = Season 3 + Season 4, finals = Season 5 pre-season.
       </p>
 
@@ -225,6 +227,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="admin_international.js?v=20260716-release"></script>
+  <script type="module" src="admin_international.js?v=20260809-season-setup-ignore"></script>
 </body>
 </html>
