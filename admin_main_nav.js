@@ -579,13 +579,6 @@ export const ADMIN_MAIN_NAV = [
           "Confirm playoff bracket / fixtures are in place."
         ),
         L(
-          "Complete playoff fixtures (deploy results)",
-          "admin_test_deploy_month.html",
-          null,
-          null,
-          "Deploy results for all playoff ties as they are played."
-        ),
-        L(
           "Apply playoff movements",
           "admin_fixtures-playoffs.html",
           null,
