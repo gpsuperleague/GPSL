@@ -63,8 +63,27 @@ BEGIN
     EXCEPTION WHEN undefined_column THEN NULL;
     END;
 
+    -- Still migrate non-FK orphans (max bids etc.) left on NMU after a prior swap
+    IF to_regprocedure('public.club_auction_migrate_short_name_orphans(text,text)') IS NOT NULL THEN
+      PERFORM public.club_auction_migrate_short_name_orphans('NMU', 'SOA');
+    ELSE
+      BEGIN
+        EXECUTE $m$
+          UPDATE public.club_auction_max_bids m
+          SET club_short_name = 'SOA', updated_at = now()
+          WHERE m.club_short_name = 'NMU'
+            AND NOT EXISTS (
+              SELECT 1 FROM public.club_auction_max_bids x
+              WHERE x.owner_id = m.owner_id AND x.club_short_name = 'SOA'
+            );
+          DELETE FROM public.club_auction_max_bids WHERE club_short_name = 'NMU';
+        $m$;
+      EXCEPTION WHEN undefined_table THEN NULL;
+      END;
+    END IF;
+
     RAISE NOTICE
-      'SOA already present — identity refreshed (Nation=%, continent=%). No ShortName rewrite.',
+      'SOA already present — identity refreshed (Nation=%, continent=%). Orphan NMU keys migrated.',
       v_nation, v_continent;
     RETURN;
   END IF;
@@ -169,7 +188,9 @@ BEGIN
       ('public.special_auctions',                'winning_club_id'),
       ('public.special_auction_bids',            'club_id'),
       ('public.draft_auction_favourites',        'club_id'),
-      ('public.contract_expiry_wage_bids',       'bidder_club_short_name')
+      ('public.contract_expiry_wage_bids',       'bidder_club_short_name'),
+      -- Club auction proxy bids have no FK to Clubs — must rewrite on rename
+      ('public.club_auction_max_bids',           'club_short_name')
     ) AS t(tbl, col)
   LOOP
     BEGIN
