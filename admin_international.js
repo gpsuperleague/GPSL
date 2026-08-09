@@ -188,7 +188,7 @@ async function loadSeasonOptions(preferred = {}) {
   const selects = ["wcQual1", "wcQual2", "wcFinalsAfter"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
-  if (!selects.length) return;
+  if (!selects.length) return [];
 
   const prev = {
     wcQual1: preferred.wcQual1 ?? document.getElementById("wcQual1")?.value,
@@ -206,7 +206,7 @@ async function loadSeasonOptions(preferred = {}) {
     for (const sel of selects) {
       sel.innerHTML = `<option value="">❌ ${escapeOpt(error.message)}</option>`;
     }
-    return;
+    return [];
   }
 
   function seasonTag(s) {
@@ -253,6 +253,8 @@ async function loadSeasonOptions(preferred = {}) {
     if (q2 && !q2.value) q2.value = byOrd(4);
     if (fin && !fin.value) fin.value = byOrd(5);
   }
+
+  return rows;
 }
 
 async function refreshWcCycleLive() {
@@ -374,16 +376,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const isAdmin = isGpslAdminUser(user);
 
   if (isAdmin) {
-    await loadSeasonOptions();
-    // First WC needs Season 5 as finals pre-season host — create placeholders if missing
+    // Do not auto-create Season 1–5 shells — that resurrects "Season 5" after a
+    // vanilla reset. Placeholders are created only via "Create missing seasons".
     const ensureEl = document.getElementById("wcEnsureThrough");
-    const through = Math.max(5, Number(ensureEl?.value || 5));
-    if (ensureEl) ensureEl.value = String(through);
-    const ensured = await ensureSeasonsThrough(through, { quiet: true });
-    if (!ensured) {
+    if (ensureEl && !String(ensureEl.value || "").trim()) ensureEl.value = "5";
+    const seasons = (await loadSeasonOptions()) || [];
+    if (seasons.length < 5) {
       setStatus(
         "wcStatus",
-        "Season 5 not available yet — click Create missing seasons (through #5), or run international_wc_ensure_future_seasons.sql",
+        `WC finals bind to Season 5 — ${seasons.length} season row(s) exist. Use “Create missing seasons” when you are ready (skip after a fresh vanilla reset).`,
         false
       );
     }
@@ -394,12 +395,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener("hashchange", scrollToAdminHash);
 
   document.getElementById("wcRefreshBtn")?.addEventListener("click", async () => {
-    await loadSeasonOptions();
-    await ensureSeasonsThrough(Math.max(5, Number(document.getElementById("wcEnsureThrough")?.value || 5)), {
-      quiet: true,
-    });
+    const seasons = (await loadSeasonOptions()) || [];
     await refreshWcCycleLive();
-    setStatus("wcStatus", "✅ Refreshed", true);
+    setStatus(
+      "wcStatus",
+      seasons.length < 5
+        ? `✅ Refreshed — ${seasons.length} season(s); use “Create missing seasons” if you need WC placeholders through #5`
+        : "✅ Refreshed",
+      true
+    );
   });
 
   document.getElementById("wcEnsureSeasonsBtn")?.addEventListener("click", async () => {
@@ -408,8 +412,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (
       !confirm(
         `Create any missing competition seasons up through #${through}?\n\n` +
-          `Placeholder seasons only (not started).\n` +
-          `Season 5 is required as the finals pre-season host (after Season 4 qualifying).`
+          `Placeholder seasons only (status setup — not started).\n` +
+          `Season 5 is required as the finals pre-season host (after Season 4 qualifying).\n\n` +
+          `Do not run this right after a vanilla reset unless you are setting up WC.`
       )
     ) {
       return;
