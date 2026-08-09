@@ -148,6 +148,24 @@ body.squad-page .manager-badge .foreign-interest-main {
   text-align: left;
 }
 
+body.squad-page .manager-badge--ghost {
+  border-color: rgba(120, 160, 200, 0.55);
+  background: rgba(30, 45, 60, 0.55);
+  color: #d8e8f5;
+  border-style: dashed;
+}
+
+body.squad-page .manager-badge--ghost .manager-ghost-link {
+  color: #9cf;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+body.squad-page .manager-badge--ghost .manager-ghost-link:hover {
+  color: #cfe9ff;
+  text-decoration: underline;
+}
+
 body.squad-page .squad-sack-btn {
   flex: 0 0 auto;
   margin: 0;

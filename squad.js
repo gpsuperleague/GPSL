@@ -126,7 +126,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js";
+} from "./squad_info_tips.js?v=20260809-mgr-ghost";
 
 window.supabase = supabase;
 
@@ -297,6 +297,10 @@ let squadManagerState = {
   sackWindowOpen: false,
   pendingOwnerRenewal: false,
   contractSeasonsRemaining: 0,
+  /** Leading manager-draft bid (not contracted yet) */
+  ghostDraft: false,
+  ghostBidAmount: null,
+  ghostHref: null,
 };
 let playerPurchaseFeeById = new Map();
 let squadDesignationsState = null;
@@ -822,6 +826,43 @@ function renderNewOwnerReleaseBadge() {
     <span class="foreign-interest-main">${main}</span><span class="foreign-interest-hint">${hint}</span>`;
 }
 
+async function loadManagerDraftGhostLead() {
+  if (!currentUserShort) return null;
+
+  const { data: listing, error } = await supabase
+    .from("Manager_Transfer_Listings")
+    .select("manager_id, current_highest_bid, current_highest_bidder")
+    .eq("listing_type", "draft")
+    .eq("status", "Active")
+    .eq("current_highest_bidder", currentUserShort)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("manager draft ghost lead:", error);
+    return null;
+  }
+  if (!listing?.manager_id) return null;
+
+  const { data: mgr } = await supabase
+    .from("Managers")
+    .select("id, name, rating, market_value, contracted_club")
+    .eq("id", listing.manager_id)
+    .maybeSingle();
+
+  if (!mgr || mgr.contracted_club) return null;
+
+  return {
+    managerId: mgr.id,
+    managerName: mgr.name,
+    managerRating: mgr.rating,
+    marketValue: Number(mgr.market_value) || 0,
+    ghostBidAmount: Number(listing.current_highest_bid) || null,
+    ghostHref: `manager_draftauction_manager.html?manager=${mgr.id}`,
+  };
+}
+
 async function loadSquadManagerState() {
   const badge = document.getElementById("managerBadge");
   if (!badge || !currentUserShort) return;
@@ -847,16 +888,30 @@ async function loadSquadManagerState() {
     return;
   }
 
+  const hasSigned =
+    mgr?.manager_id != null &&
+    String(mgr?.manager_name || "").trim() !== "";
+
+  let ghost = null;
+  if (!hasSigned) {
+    ghost = await loadManagerDraftGhostLead();
+  }
+
   squadManagerState = {
     loaded: true,
-    managerId: mgr?.manager_id ?? null,
-    managerName: mgr?.manager_name ?? null,
-    managerRating: mgr?.manager_rating ?? null,
-    marketValue: Number(mgr?.market_value) || 0,
+    managerId: hasSigned ? mgr.manager_id : ghost?.managerId ?? null,
+    managerName: hasSigned ? mgr.manager_name : ghost?.managerName ?? null,
+    managerRating: hasSigned ? mgr.manager_rating : ghost?.managerRating ?? null,
+    marketValue: hasSigned
+      ? Number(mgr.market_value) || 0
+      : ghost?.marketValue || 0,
     sacksRemaining: Number(mgr?.manager_sacks_remaining) || 0,
     sackWindowOpen: winErr ? newOwnerReleaseState.windowOpen : Boolean(sackOpen),
     pendingOwnerRenewal: Boolean(mgr?.pending_owner_renewal),
     contractSeasonsRemaining: Number(mgr?.contract_seasons_remaining) || 0,
+    ghostDraft: Boolean(ghost && !hasSigned),
+    ghostBidAmount: ghost?.ghostBidAmount ?? null,
+    ghostHref: ghost?.ghostHref ?? null,
   };
 
   renderSquadManagerBadge();
@@ -876,6 +931,7 @@ function renderSquadManagerBadge() {
 
   if (!hasManager) {
     badge.hidden = true;
+    badge.classList.remove("manager-badge--ghost");
     mainEl.textContent = "";
     if (listBtn) {
       listBtn.hidden = true;
@@ -894,10 +950,42 @@ function renderSquadManagerBadge() {
 
   badge.hidden = false;
   badge.classList.add("gpsl-has-tip");
-  badge.setAttribute("data-gpsl-tip", SQUAD_TIPS.manager);
   badge.tabIndex = 0;
-  const mv = formatMoney(squadManagerState.marketValue);
   const rating = squadManagerState.managerRating ?? "—";
+  const isGhost = !!squadManagerState.ghostDraft;
+
+  if (isGhost) {
+    badge.classList.add("manager-badge--ghost");
+    badge.setAttribute("data-gpsl-tip", SQUAD_TIPS.managerDraftGhost);
+    const bid =
+      squadManagerState.ghostBidAmount != null
+        ? formatMoney(squadManagerState.ghostBidAmount)
+        : "—";
+    const href = squadManagerState.ghostHref || "manager_draftauction.html";
+    mainEl.innerHTML =
+      `👻 Manager draft · leading: ` +
+      `<a href="${href}" class="manager-ghost-link">${escapeHtml(
+        squadManagerState.managerName
+      )}</a>` +
+      ` (rating ${escapeHtml(String(rating))}) · Bid ${escapeHtml(bid)}`;
+    if (listBtn) {
+      listBtn.hidden = true;
+      listBtn.disabled = true;
+    }
+    if (sackBtn) {
+      sackBtn.hidden = true;
+      sackBtn.disabled = true;
+    }
+    if (renewBtn) {
+      renewBtn.hidden = true;
+      renewBtn.disabled = true;
+    }
+    return;
+  }
+
+  badge.classList.remove("manager-badge--ghost");
+  badge.setAttribute("data-gpsl-tip", SQUAD_TIPS.manager);
+  const mv = formatMoney(squadManagerState.marketValue);
   const pending = squadManagerState.pendingOwnerRenewal;
   mainEl.textContent = pending
     ? `Manager: ${squadManagerState.managerName} (rating ${rating}) · renew before August`

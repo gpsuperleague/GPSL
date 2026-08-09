@@ -64,6 +64,9 @@ export const SQUAD_TIPS = {
   manager:
     "Your club manager. Rating sets a season finish target for your division. Miss both seasons of a 2-season deal and they leave for market value (2-season rehire ban). Hit ≥1 target and you may renew in June/July — if not renewed before August starts, they are released for market value.\n\nList / Sack only in June, July, and January (not August). Sack costs half market value (once per season) and needs mid-spell tenure. List puts them on the Manager Transfer Market.\n\nNo manager? You cannot check in or play fixtures until one is signed.",
 
+  managerDraftGhost:
+    "Ghost manager — you currently hold the highest bid in the manager draft auction. They are not signed yet. If someone outbids you, this disappears. Click through to manage the auction.",
+
   foreignInterest:
     "Foreign club sale slots left this season. Selling abroad at market value frees a squad place and can avoid overflow fines. Use Sell to foreign club in Action.",
 
