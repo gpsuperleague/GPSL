@@ -131,13 +131,6 @@ export const ADMIN_MAIN_NAV = [
           "Enable or disable the player draft auction for pre-season."
         ),
         L(
-          "Auction Exclusions",
-          "admin_auction_exclusions.html",
-          null,
-          null,
-          "Exclude specific players from draft / auction pools."
-        ),
-        L(
           "Special Auction",
           "admin_special-auctions.html",
           null,
@@ -226,6 +219,15 @@ export const ADMIN_MAIN_NAV = [
           null,
           null,
           "Regenerate / refresh the Next Gen youth pool for the coming season."
+        ),
+      ]),
+      group("Auctions", [
+        L(
+          "Auction Exclusions",
+          "admin_auction_exclusions.html",
+          null,
+          null,
+          "Exclude specific players from draft / auction pools."
         ),
       ]),
       group("One of our Own", [
@@ -791,16 +793,19 @@ export function checklistItemSeasonNeed(sectionId, item) {
       return "season_row";
     }
     if (/Prize Money|Cup Prize|League Prize/i.test(label)) return "season_row";
-    // Transfer window / draft switches / special auction / exclusions — global flags, no season id
+    // Transfer window / draft switches / special auction — global flags, no season id
     return null;
   }
 
   if (sectionId === "season_break") {
-    // GPDB / kits / weather tables — not season-bound
-    if (/gpdb|kits|weather|pitch/i.test(label) || /admin_gpdb|admin_club_kits|admin_weather/i.test(href)) {
+    // GPDB / kits / weather / auction exclusions — not season-bound
+    if (
+      /gpdb|kits|weather|pitch|Auction Exclusions/i.test(label) ||
+      /admin_gpdb|admin_club_kits|admin_weather|admin_auction_exclusions/i.test(href)
+    ) {
       return null;
     }
-    // Discord / nation catalog bits that are structural
+    // Nation catalog bits that are structural
     if (/Nation Setup|Clear Nation Assignments/i.test(label)) return null;
     // Homegrown draw, challenges, bills, attendance, stadium, manager targets, WC/selection — season-scoped
     return "season_row";

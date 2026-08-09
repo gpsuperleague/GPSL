@@ -4,8 +4,8 @@ import {
   CHECKLIST_SEASON_NEED_META,
   checklistItemSeasonNeed,
   getAdminWorkflowChecklist,
-} from "./admin_main_nav.js?v=20260809-season-need";
-import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260809-season-need";
+} from "./admin_main_nav.js?v=20260809-sb-move";
+import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260809-sb-move";
 
 primeAdminPageChrome();
 
