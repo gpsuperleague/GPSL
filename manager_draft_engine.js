@@ -240,7 +240,7 @@ export async function getManagerDraftBidEligibility({
     return { allowed: false, reason: "Draft schedule is not set." };
   }
 
-  const open = getDraftBiddingOpen();
+  const open = getDraftBiddingOpen("manager");
   const phase = getManagerDraftEffectivePhase(
     nowUK,
     start,

@@ -154,6 +154,31 @@ async function executeCancelOpenTransfers() {
     );
   }
 }
+function ukDraftFmt() {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function formatKindScheduleLine(label, startRaw, finishRaw) {
+  const fmt = ukDraftFmt();
+  if (!startRaw) return `${label}: —`;
+  const start = new Date(startRaw);
+  const finish = finishRaw ? new Date(finishRaw) : null;
+  const expired = isDraftScheduleExpired(start);
+  return (
+    `${label}: ${fmt.format(start)} UK` +
+    (finish ? ` → finish ${fmt.format(finish)} UK` : " · ⚠ no secret finish") +
+    (expired ? " · ended" : "")
+  );
+}
+
 async function loadSettings() {
   const { data } = await supabase.from("global_settings").select("*").eq("id", 1).single();
   if (!data) return;
@@ -171,34 +196,41 @@ async function loadSettings() {
   }
 
   const el = document.getElementById("draftStartTime");
-  const anyDraft =
-    data.draft_auction_enabled ||
-    data.manager_draft_auction_enabled ||
-    data.club_auction_enabled;
-  if (anyDraft && data.draft_auction_start_time) {
-    const ukFmt = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Europe/London",
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    const start = new Date(data.draft_auction_start_time);
-    const finish = data.draft_random_finish_time
-      ? new Date(data.draft_random_finish_time)
-      : null;
-    const expired = isDraftScheduleExpired(start);
-    el.textContent =
-      `Draft start: ${ukFmt.format(start)} UK` +
-      (finish ? ` · Secret finish: ${ukFmt.format(finish)} UK` : " · ⚠ No secret finish set") +
-      (expired ? " · ⚠ Window ended — Save settings to schedule the next 7pm UK auction" : "");
-  } else if (anyDraft) {
-    el.textContent = "⚠ No draft start time — Save settings to schedule the next 7pm UK auction.";
-  } else {
-    el.textContent = "";
-  }
+  if (!el) return;
+  el.textContent = [
+    formatKindScheduleLine(
+      "Player",
+      data.draft_auction_start_time,
+      data.draft_random_finish_time
+    ),
+    formatKindScheduleLine(
+      "Manager",
+      data.manager_draft_auction_start_time,
+      data.manager_draft_random_finish_time
+    ),
+    formatKindScheduleLine(
+      "Club",
+      data.club_auction_start_time,
+      data.club_auction_random_finish_time
+    ),
+  ].join("\n");
+}
+
+function pickTimesForKind(kindStart) {
+  const expired =
+    !kindStart || isDraftScheduleExpired(kindStart ? new Date(kindStart) : null);
+  if (!expired && kindStart) return null; // keep existing
+  if (isPastNominalDraftStartUk()) return computeLateDraftStartNow();
+  return computeNextDraftTimesFromNow();
+}
+
+async function setKindSchedule(kind, times) {
+  const { error } = await supabase.rpc("admin_set_draft_schedule", {
+    p_kind: kind,
+    p_start: times.draftStartISO,
+    p_finish: times.randomFinishISO,
+  });
+  if (error) throw error;
 }
 
 async function saveSettings() {
@@ -212,150 +244,125 @@ async function saveSettings() {
   const { data: current } = await supabase
     .from("global_settings")
     .select(
-      "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, club_auction_enabled, draft_auction_start_time, draft_random_finish_time"
+      "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, club_auction_enabled, draft_auction_start_time, draft_random_finish_time, manager_draft_auction_start_time, manager_draft_random_finish_time, club_auction_start_time, club_auction_random_finish_time"
     )
     .eq("id", 1)
     .single();
 
   const transfer_window_open = current?.transfer_window_open === true;
 
-  const wasAnyDraft =
-    current?.draft_auction_enabled ||
-    current?.manager_draft_auction_enabled ||
-    current?.club_auction_enabled;
-  const isAnyDraft =
-    draft_auction_enabled || manager_draft_auction_enabled || club_auction_enabled;
+  const turningOn = [];
+  if (draft_auction_enabled && !current?.draft_auction_enabled) turningOn.push("player");
+  if (manager_draft_auction_enabled && !current?.manager_draft_auction_enabled) {
+    turningOn.push("manager");
+  }
+  if (club_auction_enabled && !current?.club_auction_enabled) turningOn.push("club");
 
-  const enablingExtraType =
-    (draft_auction_enabled && !current?.draft_auction_enabled) ||
-    (manager_draft_auction_enabled && !current?.manager_draft_auction_enabled) ||
-    (club_auction_enabled && !current?.club_auction_enabled);
-  const otherAlreadyOn = wasAnyDraft && enablingExtraType;
-  if (
-    otherAlreadyOn &&
-    current?.draft_auction_start_time &&
-    !isDraftScheduleExpired(new Date(current.draft_auction_start_time))
-  ) {
+  const needLateConfirm =
+    isPastNominalDraftStartUk() &&
+    turningOn.some((kind) => {
+      const start =
+        kind === "player"
+          ? current?.draft_auction_start_time
+          : kind === "manager"
+            ? current?.manager_draft_auction_start_time
+            : current?.club_auction_start_time;
+      return !start || isDraftScheduleExpired(new Date(start));
+    });
+
+  if (needLateConfirm) {
     if (
       !confirm(
-        "Player, manager, and club auctions SHARE one start/finish clock.\n\n" +
-          "Another auction type is already using the current schedule. " +
-          "Turning this on will ride that same window — it will not create a separate timer.\n\n" +
-          "Continue?"
+        "It is after 19:00 UK.\n\n" +
+          `Turning on: ${turningOn.join(", ") || "draft type(s)"}.\n` +
+          "Use LATE START for any type that needs a new clock?\n" +
+          "• Day-1 = tonight 19:00 UK (bidding live now)\n" +
+          "• Day-2 finish = tomorrow 18:50–18:59 UK\n" +
+          "Other types keep their own clocks.\n\n" +
+          "OK = continue · Cancel = abort."
       )
     ) {
       return;
     }
   }
 
-  let draft_auction_start_time = current?.draft_auction_start_time || null;
-  let draft_random_finish_time = current?.draft_random_finish_time || null;
-
-  const scheduleExpired =
-    isAnyDraft &&
-    isDraftScheduleExpired(
-      draft_auction_start_time ? new Date(draft_auction_start_time) : null
-    );
-
-  let pendingDraftListings = 0;
-  if (scheduleExpired) {
-    const { count } = await supabase
-      .from("Player_Transfer_Listings")
-      .select("*", { count: "exact", head: true })
-      .eq("listing_type", "draft")
-      .eq("status", "Active");
-    pendingDraftListings = count ?? 0;
-  }
-
-  if (
-    isAnyDraft &&
-    (!wasAnyDraft || scheduleExpired || !draft_auction_start_time) &&
-    pendingDraftListings === 0
-  ) {
-    // After 19:00 UK, "next 7pm" is tomorrow — use late start so bidding opens tonight.
-    const times = isPastNominalDraftStartUk()
-      ? computeLateDraftStartNow()
-      : computeNextDraftTimesFromNow();
-    if (isPastNominalDraftStartUk()) {
-      if (
-        !confirm(
-          "It is after 19:00 UK. A normal Save would schedule tomorrow 19:00.\n\n" +
-            "Use LATE START instead (normal manager draft rules)?\n" +
-            "• Day-1 = tonight 19:00 UK (bidding live now)\n" +
-            "• Day-2 finish = tomorrow 18:50–18:59 UK\n\n" +
-            "OK = late start · Cancel = abort."
-        )
-      ) {
-        return;
-      }
-    }
-    draft_auction_start_time = times.draftStartISO;
-    draft_random_finish_time = times.randomFinishISO;
-  } else if (!isAnyDraft && pendingDraftListings === 0) {
-    draft_auction_start_time = null;
-    draft_random_finish_time = null;
+  // Player flag + player schedule via edge (player columns only)
+  let playerTimes = null;
+  if (draft_auction_enabled) {
+    playerTimes = pickTimesForKind(current?.draft_auction_start_time);
   }
 
   const { error } = await supabase.functions.invoke("update-global-settings", {
     body: {
       transfer_window_open,
       draft_auction_enabled,
-      draft_random_finish_time,
-      draft_auction_start_time,
+      ...(playerTimes
+        ? {
+            draft_auction_start_time: playerTimes.draftStartISO,
+            draft_random_finish_time: playerTimes.randomFinishISO,
+          }
+        : draft_auction_enabled
+          ? {}
+          : {
+              draft_auction_start_time: null,
+              draft_random_finish_time: null,
+            }),
     },
   });
 
   if (error) {
     setStatus("settingsMessage", "❌ " + (error.message || "Error"), false);
-  } else {
+    return;
+  }
+
+  try {
     const { error: mgrErr } = await supabase.rpc("admin_set_manager_draft_enabled", {
       p_enabled: manager_draft_auction_enabled,
     });
-    if (mgrErr) {
-      setStatus(
-        "settingsMessage",
-        "❌ Manager draft flag: " +
-          (mgrErr.message || "failed") +
-          " — run managers_system.sql.",
-        false
-      );
-    } else {
-      const { error: clubErr } = await supabase.rpc("admin_set_club_auction_enabled", {
-        p_enabled: club_auction_enabled,
-      });
-      if (clubErr) {
-        setStatus(
-          "settingsMessage",
-          "❌ Club auction flag: " +
-            (clubErr.message || "failed") +
-            " — run patches/club_auction.sql.",
-          false
-        );
-      } else if (isAnyDraft && draft_auction_start_time) {
-        const { error: schedErr } = await supabase.rpc("admin_set_draft_auction_schedule", {
-          p_start: draft_auction_start_time,
-          p_finish: draft_random_finish_time,
-        });
-        if (schedErr) {
-          setStatus(
-            "settingsMessage",
-            "✅ Flags saved. Schedule RPC missing — run managers_draft_schedule.sql, then save again.",
-            true
-          );
-        } else if (pendingDraftListings > 0 && scheduleExpired) {
-          setStatus(
-            "settingsMessage",
-            `✅ Settings updated. ${pendingDraftListings} draft listing(s) still settling — kept previous secret finish time.`,
-            true
-          );
-        } else {
-          setStatus("settingsMessage", "✅ Settings updated.", true);
-        }
-      } else {
-        setStatus("settingsMessage", "✅ Settings updated.", true);
-      }
+    if (mgrErr) throw mgrErr;
+
+    const { error: clubErr } = await supabase.rpc("admin_set_club_auction_enabled", {
+      p_enabled: club_auction_enabled,
+    });
+    if (clubErr) throw clubErr;
+
+    if (playerTimes) {
+      await setKindSchedule("player", playerTimes);
     }
+
+    if (manager_draft_auction_enabled) {
+      const mgrTimes = pickTimesForKind(current?.manager_draft_auction_start_time);
+      if (mgrTimes) await setKindSchedule("manager", mgrTimes);
+    } else {
+      await supabase.rpc("admin_set_draft_schedule", {
+        p_kind: "manager",
+        p_start: null,
+        p_finish: null,
+      });
+    }
+
+    if (club_auction_enabled) {
+      const clubTimes = pickTimesForKind(current?.club_auction_start_time);
+      if (clubTimes) await setKindSchedule("club", clubTimes);
+    } else {
+      await supabase.rpc("admin_set_draft_schedule", {
+        p_kind: "club",
+        p_start: null,
+        p_finish: null,
+      });
+    }
+
+    setStatus("settingsMessage", "✅ Settings updated (independent clocks).", true);
+  } catch (err) {
+    setStatus(
+      "settingsMessage",
+      "❌ " +
+        (err.message || "Failed") +
+        " — run patches/draft_schedules_per_type.sql",
+      false
+    );
   }
+
   await loadGlobalSettings();
   await loadSettings();
 }
@@ -407,87 +414,58 @@ async function settleClubAuctionsNow() {
   }
 }
 
-async function applyDraftScheduleTimes(times, { ensureManagerOn = false } = {}) {
-  if (!times?.draftStartISO || !times?.randomFinishISO) {
-    throw new Error("Could not compute schedule times");
-  }
-
-  if (ensureManagerOn) {
-    const { error: mgrErr } = await supabase.rpc("admin_set_manager_draft_enabled", {
-      p_enabled: true,
-    });
-    if (mgrErr) throw mgrErr;
-  }
-
-  const { error: schedErr } = await supabase.rpc("admin_set_draft_auction_schedule", {
-    p_start: times.draftStartISO,
-    p_finish: times.randomFinishISO,
-  });
-  if (schedErr) throw schedErr;
-}
-
 async function lateStartDraftSchedule() {
-  const managerOn =
-    document.getElementById("managerDraftAuctionSelect")?.value === "true";
-  const playerOn = document.getElementById("draftAuctionSelect")?.value === "true";
-  const clubOn = document.getElementById("clubAuctionSelect")?.value === "true";
-
-  if (clubOn) {
-    if (
-      !confirm(
-        "Club auction is still set to On.\n\n" +
-          "That will keep sharing this new clock. For a clean manager-only night, set Club auction to Off and Save first, then click Late start again.\n\n" +
-          "Continue anyway with Club still On?"
-      )
-    ) {
-      return;
-    }
-  }
+  const kind = document.getElementById("lateStartKind")?.value || "manager";
+  const label =
+    kind === "player" ? "Player" : kind === "club" ? "Club" : "Manager";
 
   if (
     !confirm(
-      "LATE START — normal manager draft rules\n\n" +
-        "• Day-1 start = tonight 19:00 UK (already open — not tomorrow)\n" +
-        "• Day-2 secret finish = tomorrow 18:50–18:59:58 UK (same as usual)\n" +
-        "• Overwrites the shared player/manager/club clock\n\n" +
-        (managerOn || playerOn || clubOn
-          ? "Turn Manager draft On in the dropdown before this if it is not already.\n\n"
-          : "No auction type is On — this will set the clock and turn Manager draft On.\n\n") +
+      `LATE START — ${label} draft only\n\n` +
+        "• Day-1 = tonight 19:00 UK (bidding live now)\n" +
+        "• Day-2 secret finish = tomorrow 18:50–18:59:58 UK\n" +
+        "• Other auction types keep their own clocks\n\n" +
         "Continue?"
     )
   ) {
     return;
   }
 
-  setStatus("settingsMessage", "Starting schedule now…");
+  setStatus("settingsMessage", `Starting ${label} schedule now…`);
   try {
     const times = computeLateDraftStartNow();
-    const ensureManagerOn = !managerOn && !playerOn && !clubOn;
-    await applyDraftScheduleTimes(times, { ensureManagerOn: true });
+    if (!times?.draftStartISO || !times?.randomFinishISO) {
+      throw new Error("Could not compute schedule times");
+    }
 
-    // Ensure manager is on for tonight; leave player/club flags as currently saved
-    // unless dropdown says manager On (or we had to force it).
-    if (managerOn || ensureManagerOn) {
+    if (kind === "manager") {
       const { error: mgrErr } = await supabase.rpc("admin_set_manager_draft_enabled", {
         p_enabled: true,
       });
       if (mgrErr) throw mgrErr;
+    } else if (kind === "club") {
+      const { error: clubErr } = await supabase.rpc("admin_set_club_auction_enabled", {
+        p_enabled: true,
+      });
+      if (clubErr) throw clubErr;
+    } else {
+      const { error } = await supabase.functions.invoke("update-global-settings", {
+        body: {
+          draft_auction_enabled: true,
+          draft_auction_start_time: times.draftStartISO,
+          draft_random_finish_time: times.randomFinishISO,
+        },
+      });
+      if (error) throw error;
     }
 
-    const ukFmt = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Europe/London",
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    });
+    await setKindSchedule(kind, times);
+
+    const fmt = ukDraftFmt();
     setStatus(
       "settingsMessage",
-      `✅ Late start set — bidding open from ${ukFmt.format(new Date(times.draftStartISO))} UK. ` +
-        `Secret finish ${ukFmt.format(new Date(times.randomFinishISO))} UK. Refresh MGDB / Manager Draft.`,
+      `✅ ${label} late start — open from ${fmt.format(new Date(times.draftStartISO))} UK · ` +
+        `finish ${fmt.format(new Date(times.randomFinishISO))} UK.`,
       true
     );
     await loadGlobalSettings();
@@ -497,7 +475,7 @@ async function lateStartDraftSchedule() {
       "settingsMessage",
       "❌ " +
         (err.message || "Failed") +
-        " — run managers_draft_schedule.sql if the schedule RPC is missing.",
+        " — run patches/draft_schedules_per_type.sql",
       false
     );
   }

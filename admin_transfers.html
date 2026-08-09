@@ -44,21 +44,25 @@
           </div>
         </div>
         <button class="button" id="saveSettingsBtn">Save transfer settings</button>
-        <button class="button" id="lateStartDraftBtn" style="background:#2f5f2f;margin-left:8px;">Start schedule now (late)</button>
-        <button class="button" id="resetDraftBtn" style="background:#664400;margin-left:8px;">Reset draft schedule</button>
+        <button class="button" id="resetDraftBtn" style="background:#664400;margin-left:8px;">Reset all draft schedules</button>
         <div id="settingsMessage" class="status-line"></div>
         <div id="resetDraftStatus" class="status-line"></div>
-        <p id="draftStartTime" class="note" style="margin-top:10px;"></p>
-        <p class="note" style="color:#c96;">
-          Player, manager, and club auctions share <b>one</b> start/finish clock.
-          When a club auction’s random finish hits, that schedule is over for everyone —
-          turn the finished type Off, then use <b>Start schedule now (late)</b> for the next type
-          (or Save before 19:00 UK for a normal next-evening open).
-        </p>
+        <p id="draftStartTime" class="note" style="margin-top:10px;white-space:pre-line;"></p>
+        <div class="row" style="margin-top:10px;align-items:flex-end;">
+          <div>
+            <label for="lateStartKind">Late start kind</label>
+            <select id="lateStartKind">
+              <option value="manager" selected>Manager</option>
+              <option value="player">Player</option>
+              <option value="club">Club</option>
+            </select>
+          </div>
+          <button class="button" id="lateStartDraftBtn" style="background:#2f5f2f;">Start that schedule now (late)</button>
+        </div>
         <p class="note">
-          <b>Start schedule now (late)</b> — Day-1 = tonight 19:00 UK (bidding live now), Day-2 finish in the usual tomorrow 18:50–18:59 UK window.
-          Not tomorrow’s 19:00 open. Use after 19:00 UK or when another auction ate the shared timer.
-          Reset clears start/finish and turns player + manager + club draft off (bids kept).
+          Player, manager, and club each have their <b>own</b> start/finish clock (can overlap).
+          Save schedules only the types you turn On. Late start = Day-1 tonight 19:00 UK (live now) + usual Day-2 18:50–18:59 finish for that kind only.
+          Requires <code>patches/draft_schedules_per_type.sql</code>.
         </p>
       </div>
       <div class="card" id="sb-cancel-open">
@@ -128,6 +132,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_transfers.js?v=20260809-late-start-day1"></script>
+  <script type="module" src="admin_transfers.js?v=20260809-per-type-schedules"></script>
 </body>
 </html>

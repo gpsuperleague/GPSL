@@ -303,7 +303,7 @@ async function loadLiveOverlays(status) {
     supabase
       .from("global_settings_public")
       .select(
-        "transfer_window_open, draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_auction_enabled, manager_draft_bidding_open, league_phase"
+        "transfer_window_open, draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_auction_enabled, manager_draft_auction_start_time, manager_draft_bidding_open, club_auction_enabled, club_auction_start_time, club_auction_bidding_open, league_phase"
       )
       .maybeSingle(),
     supabase
@@ -384,19 +384,38 @@ async function loadLiveOverlays(status) {
       });
     }
   }
-  if (draftStart && settings.manager_draft_auction_enabled) {
-    const mk = monthKeyFromIso(draftStart);
+  const managerStart =
+    settings.manager_draft_auction_start_time || draftStart;
+  if (managerStart && settings.manager_draft_auction_enabled) {
+    const mk = monthKeyFromIso(managerStart);
     if (mk && byMonth[mk]) {
       const live = settings.manager_draft_bidding_open === true;
       byMonth[mk].push({
         kind: "manager-auction",
         short: live ? "Manager draft — live" : "Manager draft auction",
         detail: live
-          ? `Manager draft auction is live (started ${formatUkDateTime(draftStart)} UK).`
-          : `Manager draft auction scheduled for ${formatUkDateTime(draftStart)} UK.`,
+          ? `Manager draft auction is live (started ${formatUkDateTime(managerStart)} UK).`
+          : `Manager draft auction scheduled for ${formatUkDateTime(managerStart)} UK.`,
         links: [
           { href: "manager_draftauction.html", label: "Open manager draft" },
         ],
+        live,
+      });
+    }
+  }
+
+  const clubStart = settings.club_auction_start_time;
+  if (clubStart && settings.club_auction_enabled) {
+    const mk = monthKeyFromIso(clubStart);
+    if (mk && byMonth[mk]) {
+      const live = settings.club_auction_bidding_open === true;
+      byMonth[mk].push({
+        kind: "club-auction",
+        short: live ? "Club auction — live" : "Club auction",
+        detail: live
+          ? `Club auction is live (started ${formatUkDateTime(clubStart)} UK).`
+          : `Club auction scheduled for ${formatUkDateTime(clubStart)} UK.`,
+        links: [{ href: "club_auction.html", label: "Open club auction" }],
         live,
       });
     }

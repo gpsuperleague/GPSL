@@ -728,12 +728,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   managerDraftOn = getManagerDraftEnabled();
   const { data: settings } = await supabase
     .from("global_settings_public")
-    .select("manager_draft_auction_enabled, transfer_window_open, draft_auction_start_time")
+    .select(
+      "manager_draft_auction_enabled, transfer_window_open, manager_draft_auction_start_time, draft_auction_start_time"
+    )
     .eq("id", 1)
     .maybeSingle();
-  draftStartTime = settings?.draft_auction_start_time
-    ? new Date(settings.draft_auction_start_time)
-    : null;
+  const mgrStart =
+    settings?.manager_draft_auction_start_time || settings?.draft_auction_start_time;
+  draftStartTime = mgrStart ? new Date(mgrStart) : null;
 
   if (status) {
     const parts = [];

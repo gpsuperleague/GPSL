@@ -299,7 +299,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.warn("advisory transfer budget:", err)
   );
   managerDraftEnabled = getManagerDraftEnabled();
-  draftAuctionStartTime = getDraftAuctionStartTime();
+  draftAuctionStartTime = getDraftAuctionStartTime("manager");
 
   const mgrCalBtn = document.getElementById("mgrDraftAuctionCalBtn");
   if (mgrCalBtn) {

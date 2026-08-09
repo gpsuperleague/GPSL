@@ -352,7 +352,7 @@
       const nowUK = getUKNow();
       const el = document.getElementById("timeRemaining");
       const sub = document.getElementById("timeRemainingSub");
-      const open = getDraftBiddingOpen();
+      const open = getDraftBiddingOpen("player");
       const tick = getDraftCountdownTick(
         nowUK,
         draftAuctionStartTimeUK,

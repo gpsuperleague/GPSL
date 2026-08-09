@@ -285,7 +285,7 @@ export function canClubBidOnPlayerDraftSync({
   if (!buyerShortName) return false;
   if (!timeline) return false;
 
-  const open = getDraftBiddingOpen();
+  const open = getDraftBiddingOpen("player");
   const phase = getEffectiveDraftPhase(
     nowUK,
     start,

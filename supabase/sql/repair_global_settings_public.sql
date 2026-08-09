@@ -52,7 +52,11 @@ ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS emergency_tac_threshold numeric(14, 2) NOT NULL DEFAULT 100000000,
   ADD COLUMN IF NOT EXISTS gov_income_tax_pct numeric(6, 3) NOT NULL DEFAULT 0.000,
   ADD COLUMN IF NOT EXISTS manager_draft_auction_enabled boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS club_auction_enabled boolean NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS club_auction_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS manager_draft_auction_start_time timestamptz,
+  ADD COLUMN IF NOT EXISTS manager_draft_random_finish_time timestamptz,
+  ADD COLUMN IF NOT EXISTS club_auction_start_time timestamptz,
+  ADD COLUMN IF NOT EXISTS club_auction_random_finish_time timestamptz;
 
 DROP VIEW IF EXISTS public.global_settings_public;
 
@@ -66,6 +70,8 @@ SELECT
   manager_draft_auction_enabled,
   club_auction_enabled,
   draft_auction_start_time,
+  manager_draft_auction_start_time,
+  club_auction_start_time,
   updated_at,
   league_phase,
   wage_pct_superleague,
@@ -121,24 +127,36 @@ SELECT
   ) AS draft_bidding_open,
   (
     COALESCE(manager_draft_auction_enabled, false)
-    AND draft_auction_start_time IS NOT NULL
-    AND draft_random_finish_time IS NOT NULL
-    AND now() >= draft_auction_start_time
-    AND now() < draft_random_finish_time
+    AND manager_draft_auction_start_time IS NOT NULL
+    AND manager_draft_random_finish_time IS NOT NULL
+    AND now() >= manager_draft_auction_start_time
+    AND now() < manager_draft_random_finish_time
   ) AS manager_draft_bidding_open,
   (
     COALESCE(club_auction_enabled, false)
-    AND draft_auction_start_time IS NOT NULL
-    AND draft_random_finish_time IS NOT NULL
-    AND now() >= draft_auction_start_time
-    AND now() < draft_random_finish_time
+    AND club_auction_start_time IS NOT NULL
+    AND club_auction_random_finish_time IS NOT NULL
+    AND now() >= club_auction_start_time
+    AND now() < club_auction_random_finish_time
   ) AS club_auction_bidding_open,
   CASE
     WHEN draft_random_finish_time IS NOT NULL
      AND now() >= draft_random_finish_time
     THEN draft_random_finish_time
     ELSE NULL
-  END AS draft_random_finish_revealed
+  END AS draft_random_finish_revealed,
+  CASE
+    WHEN manager_draft_random_finish_time IS NOT NULL
+     AND now() >= manager_draft_random_finish_time
+    THEN manager_draft_random_finish_time
+    ELSE NULL
+  END AS manager_draft_random_finish_revealed,
+  CASE
+    WHEN club_auction_random_finish_time IS NOT NULL
+     AND now() >= club_auction_random_finish_time
+    THEN club_auction_random_finish_time
+    ELSE NULL
+  END AS club_auction_random_finish_revealed
 FROM public.global_settings;
 
 GRANT SELECT ON public.global_settings_public TO authenticated;

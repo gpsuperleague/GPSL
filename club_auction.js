@@ -273,7 +273,7 @@ function resolveClubAuctionFinishInstant() {
     const d = new Date(fromState);
     if (!Number.isNaN(d.getTime())) return d;
   }
-  const revealed = getDraftRandomFinishRevealed();
+  const revealed = getDraftRandomFinishRevealed("club");
   if (revealed) {
     const d = new Date(revealed);
     if (!Number.isNaN(d.getTime())) return d;
@@ -299,7 +299,7 @@ function renderClosedAuctionStatus(el) {
     return;
   }
 
-  const start = getDraftAuctionStartTime();
+  const start = getDraftAuctionStartTime("club");
   const phase = start
     ? getClubAuctionEffectivePhase(getUKNow(), start, getDraftCountdownOptions())
     : null;
@@ -326,7 +326,7 @@ function renderStatus() {
   if (!el) return;
 
   const calBtn = document.getElementById("clubAuctionCalBtn");
-  const startIso = auctionState?.start_time || getDraftAuctionStartTime();
+  const startIso = auctionState?.start_time || getDraftAuctionStartTime("club");
   if (calBtn) {
     const show = Boolean(auctionState?.enabled && startIso);
     calBtn.hidden = !show;
@@ -357,7 +357,7 @@ function renderStatus() {
   }
 
   if (viewOnly) {
-    const start = getDraftAuctionStartTime();
+    const start = getDraftAuctionStartTime("club");
     const phase = start
       ? getClubAuctionEffectivePhase(getUKNow(), start, getDraftCountdownOptions())
       : null;
@@ -386,7 +386,7 @@ function renderStatus() {
   }
 
   if (auctionState.bidding_open) {
-    const start = getDraftAuctionStartTime();
+    const start = getDraftAuctionStartTime("club");
     const phase = start
       ? getClubAuctionEffectivePhase(getUKNow(), start, getDraftCountdownOptions())
       : null;

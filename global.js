@@ -214,11 +214,15 @@ export function isAdminPagePath(pathNorm) {
 let draftEnabled = false;
 let managerDraftEnabled = false;
 let clubAuctionEnabled = false;
-let draftStart = null;        // Day 1 @ 19:00 UK
-let draftCutoff = null;       // Day 2 @ 18:00 UK
-let draftRandomStart = null;  // Day 2 @ 18:50 UK
-let draftPublicEnd = null;    // Latest possible end (18:59:59 day 2) — not secret finish
-let draftBiddingOpen = null;  // combined bid gate for engine helpers
+let playerDraftStart = null;
+let managerDraftStart = null;
+let clubDraftStart = null;
+/** Active countdown clock (synced from page kind). */
+let draftStart = null;
+let draftCutoff = null;
+let draftRandomStart = null;
+let draftPublicEnd = null;
+let draftBiddingOpen = null; // combined / legacy
 let playerDraftBiddingOpen = null;
 let managerDraftBiddingOpen = null;
 let clubAuctionBiddingOpen = null;
@@ -232,13 +236,21 @@ let isGpslAdminNav = false;
 let isGpslModOnlyNav = false;
 let navClubPlayerListed = false;
 let navClubManagerListed = false;
-let draftRandomLockedMs = null; // frozen count-up offset when secret finish fires
-let draftRandomFinishRevealed = null; // exposed only after now() >= secret finish
+let draftRandomLockedMs = null;
+let playerDraftRandomFinishRevealed = null;
+let managerDraftRandomFinishRevealed = null;
+let clubDraftRandomFinishRevealed = null;
+/** Active countdown revealed finish (synced from page kind). */
+let draftRandomFinishRevealed = null;
 
 // Countdown interval
 let __draftCountdownInterval = null;
 
-export function getDraftBiddingOpen() {
+/** @param {'player'|'manager'|'club'|null|undefined} kind */
+export function getDraftBiddingOpen(kind = null) {
+  if (kind === "player") return playerDraftBiddingOpen;
+  if (kind === "manager") return managerDraftBiddingOpen;
+  if (kind === "club") return clubAuctionBiddingOpen;
   return draftBiddingOpen;
 }
 
@@ -287,13 +299,21 @@ export function hasAnyNavAuctionActive() {
   );
 }
 
-export function getDraftAuctionStartTime() {
-  return draftStart;
+/** @param {'player'|'manager'|'club'|null|undefined} kind */
+export function getDraftAuctionStartTime(kind = null) {
+  const k = kind || pageDraftKindHint() || "player";
+  if (k === "manager") return managerDraftStart;
+  if (k === "club") return clubDraftStart;
+  return playerDraftStart;
 }
 
 /** ISO timestamp of secret random finish — only exposed after that instant has passed. */
-export function getDraftRandomFinishRevealed() {
-  return draftRandomFinishRevealed;
+/** @param {'player'|'manager'|'club'|null|undefined} kind */
+export function getDraftRandomFinishRevealed(kind = null) {
+  const k = kind || pageDraftKindHint() || "player";
+  if (k === "manager") return managerDraftRandomFinishRevealed;
+  if (k === "club") return clubDraftRandomFinishRevealed;
+  return playerDraftRandomFinishRevealed;
 }
 
 function isDraftKindEnabled(kind) {
@@ -303,9 +323,22 @@ function isDraftKindEnabled(kind) {
   return false;
 }
 
+/** Point countdown helpers at this page's auction clock. */
+function syncActiveDraftClockFromKind(kind = null) {
+  const k = kind || getPageDraftCountdownKind() || "player";
+  draftStart = getDraftAuctionStartTime(k);
+  draftRandomFinishRevealed = getDraftRandomFinishRevealed(k);
+  const timeline = getDraftTimelineFromStart(draftStart);
+  draftCutoff = timeline?.cutoff ?? null;
+  draftRandomStart = timeline?.randomStart ?? null;
+  draftPublicEnd = timeline?.publicEnd ?? null;
+  ensureDraftRandomWindowFrozen();
+  return k;
+}
+
 function isDraftCountdownActive() {
+  const kind = syncActiveDraftClockFromKind();
   if (!isValidDate(draftStart)) return false;
-  const kind = getPageDraftCountdownKind();
   if (kind === "club") {
     if (clubAuctionEnabled) return true;
     if (draftRandomFinishRevealed) return true;
@@ -347,22 +380,38 @@ function ensureDraftRandomWindowFrozen() {
 
 function applyDraftRandomFinishRevealed(data) {
   if (!data) return;
-  const raw = data.draft_random_finish_revealed;
-  if (raw) {
-    draftRandomFinishRevealed = raw;
-    syncDraftRandomLockFromRevealedFinish();
-    return;
+
+  if ("draft_random_finish_revealed" in data) {
+    playerDraftRandomFinishRevealed = data.draft_random_finish_revealed || null;
+    if (data.draft_bidding_open === true) playerDraftRandomFinishRevealed = null;
   }
-  if (!("draft_random_finish_revealed" in data)) return;
-  const biddingOpenNow =
-    ("draft_bidding_open" in data && data.draft_bidding_open === true) ||
-    ("manager_draft_bidding_open" in data &&
-      data.manager_draft_bidding_open === true) ||
-    ("club_auction_bidding_open" in data &&
-      data.club_auction_bidding_open === true);
-  if (biddingOpenNow) {
-    draftRandomFinishRevealed = null;
+  if ("manager_draft_random_finish_revealed" in data) {
+    managerDraftRandomFinishRevealed =
+      data.manager_draft_random_finish_revealed || null;
+    if (data.manager_draft_bidding_open === true) {
+      managerDraftRandomFinishRevealed = null;
+    }
   }
+  if ("club_auction_random_finish_revealed" in data) {
+    clubDraftRandomFinishRevealed = data.club_auction_random_finish_revealed || null;
+    if (data.club_auction_bidding_open === true) clubDraftRandomFinishRevealed = null;
+  }
+
+  // Legacy fallback: only player revealed column present
+  if (
+    !("manager_draft_random_finish_revealed" in data) &&
+    !("club_auction_random_finish_revealed" in data) &&
+    "draft_random_finish_revealed" in data
+  ) {
+    const raw = data.draft_random_finish_revealed;
+    if (raw) {
+      playerDraftRandomFinishRevealed = raw;
+      if (managerDraftEnabled) managerDraftRandomFinishRevealed = raw;
+      if (clubAuctionEnabled) clubDraftRandomFinishRevealed = raw;
+    }
+  }
+
+  syncActiveDraftClockFromKind();
 }
 
 function resolveRevealedFinishInstant(tickFinish) {
@@ -375,16 +424,25 @@ function resolveRevealedFinishInstant(tickFinish) {
 }
 
 function recomputeCombinedDraftBiddingOpen() {
-  if (draftEnabled && managerDraftEnabled) {
-    draftBiddingOpen =
-      playerDraftBiddingOpen === true || managerDraftBiddingOpen === true;
-  } else if (draftEnabled) {
+  // Legacy combined flag — prefer page kind when possible; engines should pass kind.
+  const kind = pageDraftKindHint();
+  if (kind === "player") {
     draftBiddingOpen = playerDraftBiddingOpen;
-  } else if (managerDraftEnabled) {
-    draftBiddingOpen =
-      managerDraftBiddingOpen !== null ? managerDraftBiddingOpen : playerDraftBiddingOpen;
+  } else if (kind === "manager") {
+    draftBiddingOpen = managerDraftBiddingOpen;
+  } else if (kind === "club") {
+    draftBiddingOpen = clubAuctionBiddingOpen;
+  } else if (draftEnabled && !managerDraftEnabled) {
+    draftBiddingOpen = playerDraftBiddingOpen;
+  } else if (managerDraftEnabled && !draftEnabled) {
+    draftBiddingOpen = managerDraftBiddingOpen;
+  } else if (clubAuctionEnabled && !draftEnabled && !managerDraftEnabled) {
+    draftBiddingOpen = clubAuctionBiddingOpen;
   } else {
-    draftBiddingOpen = false;
+    draftBiddingOpen =
+      playerDraftBiddingOpen === true ||
+      managerDraftBiddingOpen === true ||
+      clubAuctionBiddingOpen === true;
   }
 }
 
@@ -412,6 +470,7 @@ function draftEnginePhaseOptions() {
 }
 
 function draftCountdownUiBiddingOpen() {
+  const kind = syncActiveDraftClockFromKind();
   if (draftRandomFinishRevealed) return false;
 
   const timeline = getDraftTimelineFromStart(draftStart);
@@ -419,17 +478,16 @@ function draftCountdownUiBiddingOpen() {
   const inRandomWindow =
     timeline && now >= timeline.randomStart && now < timeline.publicEnd;
 
-  const kind = pageDraftKindHint() || getDraftCountdownKind();
-
   if (kind === "club") {
     if (clubAuctionBiddingOpen === false && inRandomWindow) return true;
     return clubAuctionBiddingOpen;
   }
-
-  // Server closed bids but finish not revealed yet — keep count-up running in UI.
-  if (draftBiddingOpen === false && inRandomWindow) return true;
-
-  return draftBiddingOpen;
+  if (kind === "manager") {
+    if (managerDraftBiddingOpen === false && inRandomWindow) return true;
+    return managerDraftBiddingOpen;
+  }
+  if (playerDraftBiddingOpen === false && inRandomWindow) return true;
+  return playerDraftBiddingOpen;
 }
 
 function draftCountdownUiOptions() {
@@ -482,22 +540,22 @@ export function getDraftCountdownKind() {
   const hint = pageDraftKindHint();
   if (hint) return hint;
 
-  if (managerDraftEnabled && !draftEnabled) return "manager";
-  if (draftEnabled && !managerDraftEnabled) return "player";
+  if (clubAuctionEnabled && !draftEnabled && !managerDraftEnabled) return "club";
+  if (managerDraftEnabled && !draftEnabled && !clubAuctionEnabled) return "manager";
+  if (draftEnabled && !managerDraftEnabled && !clubAuctionEnabled) return "player";
 
-  if (managerDraftEnabled && draftEnabled) {
-    if (managerDraftBiddingOpen === true && playerDraftBiddingOpen !== true) {
-      return "manager";
-    }
-    if (playerDraftBiddingOpen === true && managerDraftBiddingOpen !== true) {
-      return "player";
-    }
+  if (managerDraftBiddingOpen === true && playerDraftBiddingOpen !== true) {
     return "manager";
   }
+  if (playerDraftBiddingOpen === true && managerDraftBiddingOpen !== true) {
+    return "player";
+  }
+  if (clubAuctionBiddingOpen === true) return "club";
 
-  if (clubAuctionEnabled && !draftEnabled && !managerDraftEnabled) return "club";
-
-  return managerDraftEnabled ? "manager" : "player";
+  if (managerDraftEnabled) return "manager";
+  if (draftEnabled) return "player";
+  if (clubAuctionEnabled) return "club";
+  return "player";
 }
 
 function getPageDraftCountdownKind() {
@@ -506,7 +564,7 @@ function getPageDraftCountdownKind() {
 
 function draftCountdownEndedSubline(kind) {
   if (kind === "club") {
-    const finish = getDraftRandomFinishRevealed();
+    const finish = getDraftRandomFinishRevealed("club");
     if (finish) {
       const { subline } = formatDraftConclusionLines(new Date(finish), "club");
       return `${subline}\nWinners assign when the transfer engine runs (scheduled in Supabase, about every 5 minutes).`;
@@ -514,23 +572,21 @@ function draftCountdownEndedSubline(kind) {
     return "Club auction finished. Exact random finish time appears once the secret window closes. Winners assign via transfer engine or Admin → Settle club auctions.";
   }
   if (kind === "manager") {
-    return "Manager draft finished. Player draft may still be on — check Player Draft Auction / GPDB.";
+    return "Manager draft finished. Other auction types use their own clocks.";
   }
-  if (managerDraftEnabled && draftEnabled) {
-    return "Player draft finished. Manager draft may still be on — see Manager Draft Auction / MGDB.";
-  }
-  return "Previous player draft window finished. Admin → Transfer window → Save settings to schedule the next 7pm UK start.";
+  return "Previous player draft window finished. Admin → Transfer management to schedule the next player draft.";
 }
 
 function getPageDraftCountdownTick(nowUK, start, options) {
-  const kind = getPageDraftCountdownKind();
+  const kind = syncActiveDraftClockFromKind();
+  const clockStart = start || draftStart;
   if (kind === "club") {
-    return getClubAuctionCountdownTick(nowUK, start, options);
+    return getClubAuctionCountdownTick(nowUK, clockStart, options);
   }
   if (kind === "manager") {
-    return getManagerDraftCountdownTick(nowUK, start, options);
+    return getManagerDraftCountdownTick(nowUK, clockStart, options);
   }
-  return getDraftCountdownTick(nowUK, start, options);
+  return getDraftCountdownTick(nowUK, clockStart, options);
 }
 
 export function isDraftAuctionEnded(nowUK, draftAuctionStartTime) {
@@ -892,12 +948,14 @@ export function startDraftCountdown(onTick) {
 
   const tick = async () => {
     const nowMs = Date.now();
+    syncActiveDraftClockFromKind();
     if (
       isDraftCountdownActive() &&
       nowMs - __lastCountdownBiddingRefreshMs >= DRAFT_BIDDING_OPEN_POLL_MS
     ) {
       __lastCountdownBiddingRefreshMs = nowMs;
       await refreshDraftBiddingOpen();
+      syncActiveDraftClockFromKind();
     }
     const tickData = getPageDraftCountdownTick(
       getUKNow(),
@@ -1073,6 +1131,7 @@ function applyDraftBiddingOpenFromSettings(data) {
 export async function loadGlobalSettings() {
   let data = null;
   const selects = [
+    "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, club_auction_enabled, draft_auction_start_time, manager_draft_auction_start_time, club_auction_start_time, draft_bidding_open, manager_draft_bidding_open, club_auction_bidding_open, draft_random_finish_revealed, manager_draft_random_finish_revealed, club_auction_random_finish_revealed",
     "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, club_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open, club_auction_bidding_open, draft_random_finish_revealed",
     "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open, draft_random_finish_revealed",
     "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open",
@@ -1094,7 +1153,7 @@ export async function loadGlobalSettings() {
       console.error("loadGlobalSettings:", error);
     } else if (i === 0 && isGlobalSettingsSchemaColumnError(error)) {
       console.warn(
-        "loadGlobalSettings: manager draft columns missing — run repair_global_settings_public.sql",
+        "loadGlobalSettings: per-type schedule columns missing — run patches/draft_schedules_per_type.sql",
         error
       );
     }
@@ -1102,22 +1161,30 @@ export async function loadGlobalSettings() {
 
   applyDraftBiddingOpenFromSettings(data);
 
-  const rawStart = new Date(data?.draft_auction_start_time);
-  draftStart = isValidDate(rawStart) ? new Date(rawStart) : null;
+  const parseStart = (raw) => {
+    const d = new Date(raw);
+    return isValidDate(d) ? new Date(d) : null;
+  };
 
-  const timeline = getDraftTimelineFromStart(draftStart);
-  draftCutoff = timeline?.cutoff ?? null;
-  draftRandomStart = timeline?.randomStart ?? null;
-  draftPublicEnd = timeline?.publicEnd ?? null;
+  playerDraftStart = parseStart(data?.draft_auction_start_time);
+  managerDraftStart = parseStart(
+    data?.manager_draft_auction_start_time ?? data?.draft_auction_start_time
+  );
+  clubDraftStart = parseStart(
+    data?.club_auction_start_time ?? data?.draft_auction_start_time
+  );
 
   applyDraftRandomFinishRevealed(data);
-  ensureDraftRandomWindowFrozen();
+  syncActiveDraftClockFromKind();
 
   return {
     draftEnabled,
     managerDraftEnabled,
     clubAuctionEnabled,
     draftStart,
+    playerDraftStart,
+    managerDraftStart,
+    clubDraftStart,
     draftCutoff,
     draftRandomStart,
     draftPublicEnd,
