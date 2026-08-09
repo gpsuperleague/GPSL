@@ -271,6 +271,7 @@ export const ADMIN_NAV_SECTION = {
     { testingMega: true, label: "Testing" },
     { adminMainMega: true, section: "owners", label: "Owners" },
     { adminMainMega: true, section: "season_break", label: "Season Break" },
+    { adminMainMega: true, section: "pre_season_setup", label: "Pre-Season setup" },
     { adminMainMega: true, section: "create_season", label: "Create Season" },
     { adminMainMega: true, section: "pre_season", label: "Pre-Season (June & July)" },
     { adminMainMega: true, section: "season_management", label: "Season Management" },

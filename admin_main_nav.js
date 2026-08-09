@@ -213,13 +213,6 @@ export const ADMIN_MAIN_NAV = [
           null,
           "Maintain the exclusion list so unwanted players are not imported."
         ),
-        L(
-          "Refresh Next Gen Youth",
-          "admin_nextgen_youth.html",
-          null,
-          null,
-          "Regenerate / refresh the Next Gen youth pool for the coming season."
-        ),
       ]),
       group("Auctions", [
         L(
@@ -230,15 +223,6 @@ export const ADMIN_MAIN_NAV = [
           "Exclude specific players from draft / auction pools."
         ),
       ]),
-      group("One of our Own", [
-        L(
-          "Homegrown Star Draw",
-          "admin_one_of_our_own.html",
-          null,
-          null,
-          "Run the One of our Own / homegrown star draw for eligible clubs."
-        ),
-      ]),
       group("Club Kits", [
         L(
           "Download Latest Kits",
@@ -246,6 +230,53 @@ export const ADMIN_MAIN_NAV = [
           null,
           null,
           "Refresh club kit images for the new season."
+        ),
+      ]),
+      group("Weather", [
+        L(
+          "Weather & Pitch conditions",
+          "admin_weather.html",
+          null,
+          null,
+          "Configure weather and pitch condition tables used on matchday."
+        ),
+      ]),
+      group("Internationals", [
+        L(
+          "Nation Setup",
+          "admin_international.html",
+          "sb-nation-setup",
+          null,
+          "Confirm nations and international competition setup."
+        ),
+        L(
+          "Clear Nation Assignments",
+          "admin_international_selection_clear.html",
+          null,
+          null,
+          "Clear nation squad assignments (repair / reset)."
+        ),
+      ]),
+    ],
+  },
+  {
+    id: "pre_season_setup",
+    label: "Pre-Season setup",
+    entries: [
+      group("Youth & Homegrown", [
+        L(
+          "Refresh Next Gen Youth",
+          "admin_nextgen_youth.html",
+          null,
+          null,
+          "Regenerate / refresh the Next Gen youth pool for the coming season."
+        ),
+        L(
+          "Homegrown Star Draw",
+          "admin_one_of_our_own.html",
+          null,
+          null,
+          "Run the One of our Own / homegrown star draw for eligible clubs."
         ),
       ]),
       group("Club, Stadium & Manager", [
@@ -262,13 +293,6 @@ export const ADMIN_MAIN_NAV = [
           null,
           null,
           "Stadium capacity / upgrade / settings for the new season."
-        ),
-        L(
-          "Weather & Pitch conditions",
-          "admin_weather.html",
-          null,
-          null,
-          "Configure weather and pitch condition tables used on matchday."
         ),
         L(
           "Manager Contract Targets",
@@ -340,13 +364,6 @@ export const ADMIN_MAIN_NAV = [
       ]),
       group("Internationals", [
         L(
-          "Nation Setup",
-          "admin_international.html",
-          "sb-nation-setup",
-          null,
-          "Confirm nations and international competition setup."
-        ),
-        L(
           "World Cup Cycle",
           "admin_international.html",
           "sb-wc-cycle",
@@ -373,13 +390,6 @@ export const ADMIN_MAIN_NAV = [
           null,
           null,
           "Close the owner selection window when the deadline has passed."
-        ),
-        L(
-          "Clear Nation Assignments",
-          "admin_international_selection_clear.html",
-          null,
-          null,
-          "Clear nation squad assignments (repair / reset)."
         ),
         L(
           "Verify owner rankings",
@@ -750,6 +760,7 @@ export const ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS = new Set(["testing", "owners"]
 export const ADMIN_CHECKLIST_SECTION_ORDER = [
   "first_season",
   "season_break",
+  "pre_season_setup",
   "create_season",
   "pre_season",
   "season_management",
@@ -798,18 +809,11 @@ export function checklistItemSeasonNeed(sectionId, item) {
   }
 
   if (sectionId === "season_break") {
-    // GPDB / kits / weather / auction exclusions — not season-bound
-    if (
-      /gpdb|kits|weather|pitch|Auction Exclusions/i.test(label) ||
-      /admin_gpdb|admin_club_kits|admin_weather|admin_auction_exclusions/i.test(href)
-    ) {
-      return null;
-    }
-    // Nation catalog bits that are structural
-    if (/Nation Setup|Clear Nation Assignments/i.test(label)) return null;
-    // Homegrown draw, challenges, bills, attendance, stadium, manager targets, WC/selection — season-scoped
-    return "season_row";
+    // GPDB / kits / weather / auction exclusions / nation catalog — not season-bound
+    return null;
   }
+
+  if (sectionId === "pre_season_setup") return "season_row";
 
   if (sectionId === "pre_season") return "season_row";
 
