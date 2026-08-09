@@ -97,6 +97,22 @@ export const ADMIN_MAIN_NAV = [
         null,
         "Needs the new season number (after Create Pre-Season). Exclude players / nations from GPDB import, transfers, and call-ups for that season."
       ),
+      group("Internationals", [
+        L(
+          "Nation Setup",
+          "admin_international.html",
+          "sb-nation-setup",
+          null,
+          "Confirm nations and international competition setup."
+        ),
+        L(
+          "Clear Nation Assignments",
+          "admin_international_selection_clear.html",
+          null,
+          null,
+          "Clear nation squad assignments (repair / reset)."
+        ),
+      ]),
       link(
         "Tick player contracts (catch-up)",
         "admin_season.html",
@@ -213,22 +229,6 @@ export const ADMIN_MAIN_NAV = [
           null,
           null,
           "Configure weather and pitch condition tables used on matchday."
-        ),
-      ]),
-      group("Internationals", [
-        L(
-          "Nation Setup",
-          "admin_international.html",
-          "sb-nation-setup",
-          null,
-          "Confirm nations and international competition setup."
-        ),
-        L(
-          "Clear Nation Assignments",
-          "admin_international_selection_clear.html",
-          null,
-          null,
-          "Clear nation squad assignments (repair / reset)."
         ),
       ]),
     ],
@@ -767,7 +767,7 @@ export function checklistItemSeasonNeed(sectionId, item) {
   }
 
   if (sectionId === "season_break") {
-    // GPDB sync/dedup / kits / weather / auction exclusions / nation catalog — not season-bound
+    // GPDB sync/dedup / kits / weather / auction exclusions — not season-bound
     return null;
   }
 
@@ -829,7 +829,7 @@ export const CHECKLIST_SEASON_NEED_META = {
  * Flatten Admin menu into checklist sections (excludes Testing & Owners).
  * Empty groups (e.g. months with no tasks) are omitted.
  * Order: Season Break → Create Season → … → Close Season → End Of Season.
- * (GPDB exclusions / prize money / transfers / auctions under Create Season, after Create Pre-Season.)
+ * (GPDB exclusions / internationals nation setup / prize money under Create Season, after Create Pre-Season.)
  */
 /** Day-zero / first-season setup (not in the normal Admin menu tree). */
 function getFirstSeasonChecklistSection() {
