@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260809-mod-submenus";
+export const APP_VERSION = "20260809-first-season-draft-setup";

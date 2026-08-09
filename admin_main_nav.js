@@ -840,18 +840,21 @@ function getFirstSeasonChecklistSection() {
     },
     {
       label: "Club draft auction",
-      href: "club_auction.html",
-      note: "Run when club draft is required.",
+      href: "admin_transfers.html",
+      hash: "sb-draft-auctions",
+      note: "Turn Club auction (new owners) on/off under Draft auctions & schedule, then Save.",
     },
     {
       label: "Manager draft auction",
-      href: "manager_draftauction.html",
-      note: "Run when manager draft is required.",
+      href: "admin_transfers.html",
+      hash: "sb-draft-auctions",
+      note: "Turn Manager draft auction on/off under Draft auctions & schedule, then Save.",
     },
     {
       label: "Player draft auction",
-      href: "draftauction.html",
-      note: "Run when player draft is required.",
+      href: "admin_transfers.html",
+      hash: "sb-draft-auctions",
+      note: "Turn Draft auction enabled (players) on/off under Draft auctions & schedule, then Save.",
     },
   ].map((item) => ({
     ...item,
