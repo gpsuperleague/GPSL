@@ -776,32 +776,25 @@ export function adminChecklistTaskKey(sectionId, groupLabel, item) {
 function getFirstSeasonChecklistSection() {
   const items = [
     {
-      label: "Auction switches (club / manager / player draft)",
-      href: "admin_transfers.html",
-      hash: "sb-draft-auctions",
-      note:
-        "Enable Club auction, Manager draft auction, and Player draft auction, then Save transfer settings.",
-    },
-    {
       label: "Club auction — seed vacant clubs",
       href: "admin_transfers.html",
       hash: "sb-club-auction",
       note: "Seed listings after owners are invited / awaiting club auction.",
     },
     {
-      label: "Club auction (owner view)",
+      label: "Club draft auction",
       href: "club_auction.html",
-      note: "Check the live club auction board.",
+      note: "Run when club draft is required.",
     },
     {
       label: "Manager draft auction",
       href: "manager_draftauction.html",
-      note: "Run when manager draft is enabled.",
+      note: "Run when manager draft is required.",
     },
     {
       label: "Player draft auction",
       href: "draftauction.html",
-      note: "Run when player draft is enabled.",
+      note: "Run when player draft is required.",
     },
   ].map((item) => ({
     ...item,
