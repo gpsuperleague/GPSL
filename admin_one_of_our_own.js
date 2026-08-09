@@ -28,7 +28,11 @@ async function loadOverview() {
   setStatus("pageStatus", "Loading…");
   const { data, error } = await supabase.rpc("competition_admin_one_of_our_own_overview");
   if (error) {
-    setStatus("pageStatus", "❌ " + error.message + " — run patches/one_of_our_own_draw.sql", false);
+    setStatus(
+      "pageStatus",
+      "❌ " + error.message + " — run patches/one_of_our_own_78_fallback.sql",
+      false
+    );
     return;
   }
   overview = Array.isArray(data) ? data : [];
@@ -47,6 +51,8 @@ function renderRows() {
   tbody.innerHTML = overview
     .map((c) => {
       const eligible = Number(c.eligible_count || 0);
+      const band = String(c.eligible_band || "79+");
+      const eligibleLabel = `${eligible} · ${escapeHtml(band)}`;
       if (c.already_drawn) {
         const player = escapeHtml(c.drawn_player_name || c.drawn_player_id || "—");
         const fee = formatMoney(Number(c.drawn_fee || 0));
@@ -54,7 +60,7 @@ function renderRows() {
           <td></td>
           <td>${escapeHtml(c.club || c.short_name)}</td>
           <td>${escapeHtml(c.nation || "—")}</td>
-          <td>${eligible}</td>
+          <td>${eligibleLabel}</td>
           <td><span class="ooo-badge">${player} · ${fee}</span></td>
         </tr>`;
       }
@@ -64,7 +70,7 @@ function renderRows() {
         <td><input type="checkbox" class="ooo-cb" value="${escapeHtml(c.short_name)}" ${disabled}></td>
         <td>${escapeHtml(c.club || c.short_name)}</td>
         <td>${escapeHtml(c.nation || "—")}</td>
-        <td class="${countClass}">${eligible}</td>
+        <td class="${countClass}">${eligibleLabel}</td>
         <td><span class="ooo-badge none">Not drawn</span></td>
       </tr>`;
     })
@@ -91,8 +97,8 @@ async function drawSelected() {
   }
   if (
     !confirm(
-      `Draw a homegrown star for ${clubs.length} club(s)?\n\n` +
-        "Each gets a random free agent (79+, matching nationality), signed as a transfer and charged the market value. This cannot be undone and each club can only ever be drawn once."
+      `Draw a One of our Own for ${clubs.length} club(s)?\n\n` +
+        "Each gets a random free agent matching nationality (79+ if that nation has a free-agent star, otherwise 78), signed as a transfer and charged the market value. This cannot be undone and each club can only ever be drawn once."
     )
   ) {
     return;
@@ -128,11 +134,11 @@ function renderResults(data) {
   const labelFor = (r) => {
     switch (r.status) {
       case "drawn":
-        return `✅ <b>${escapeHtml(r.club)}</b> drew ${escapeHtml(r.player_name || r.player_id)} (${escapeHtml(r.nation || "")}) for ${formatMoney(Number(r.fee || 0))}`;
+        return `✅ <b>${escapeHtml(r.club)}</b> drew ${escapeHtml(r.player_name || r.player_id)} (${escapeHtml(r.nation || "")}, ${escapeHtml(r.eligible_band || "?")}) for ${formatMoney(Number(r.fee || 0))}`;
       case "skipped_already":
         return `↪︎ <b>${escapeHtml(r.club)}</b> already has its One of our Own (skipped)`;
       case "no_eligible_player":
-        return `⚠️ <b>${escapeHtml(r.club)}</b> — no eligible free agent (${escapeHtml(r.nation || "")}, 79+)`;
+        return `⚠️ <b>${escapeHtml(r.club)}</b> — no eligible free agent (${escapeHtml(r.nation || "")}, ${escapeHtml(r.eligible_band || "79+/78")})`;
       case "club_not_found":
         return `⚠️ <b>${escapeHtml(r.club)}</b> — club not found`;
       case "error":

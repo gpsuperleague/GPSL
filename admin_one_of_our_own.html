@@ -33,10 +33,12 @@
       <div class="card">
         <p class="ooo-note">
           Draws each selected club a random <b>free-agent</b> player that is <b>home grown</b>
-          (Nation matches the club) with a base <b>Rating of 79+</b>. The draw acts as a real
-          transfer: the player is signed on a contract, appears in the Transfer Centre, and the
-          club is charged the player's <b>market value</b> (balance may go negative) with the fee
-          paid to the GPSL Central Bank. Each club can receive this <b>only once, ever</b>.
+          (Nation matches the club). Nations with a free-agent <b>star (79+)</b> draw from that
+          pool; nations <b>without a star</b> draw a random <b>78-rated</b> free agent instead.
+          The draw acts as a real transfer: the player is signed on a contract, appears in the
+          Transfer Centre, and the club is charged the player's <b>market value</b> (balance may
+          go negative) with the fee paid to the GPSL Central Bank. Each club can receive this
+          <b>only once, ever</b>.
         </p>
         <div class="ooo-toolbar">
           <button type="button" id="selectAllBtn" class="button">Select all eligible</button>
@@ -51,7 +53,7 @@
               <th style="width:34px;"></th>
               <th>Club</th>
               <th>Nation</th>
-              <th>Eligible free agents</th>
+              <th>Eligible (band)</th>
               <th>One of our Own</th>
             </tr>
           </thead>
@@ -63,6 +65,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_one_of_our_own.js"></script>
+  <script type="module" src="admin_one_of_our_own.js?v=20260809-ooo-78"></script>
 </body>
 </html>
