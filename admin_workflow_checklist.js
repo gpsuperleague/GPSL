@@ -84,13 +84,13 @@ async function loadSeason() {
     return;
   }
 
-  // 2) Summer break: no is_current — bind to next preseason/setup (blank checklist)
-  //    Do NOT reopen a completed season's ticks as the live workflow list.
-  if (!data || data.status === "complete") {
+  // 2) Summer break: no is_current — bind to next real preseason (blank checklist).
+  //    Ignore WC status=setup placeholders (they are not Create Pre-Season).
+  if (!data || data.status === "complete" || data.status === "setup") {
     const { data: nextRow, error: nextErr } = await supabase
       .from("competition_seasons")
       .select("id, label, status, is_current")
-      .in("status", ["preseason", "setup"])
+      .eq("status", "preseason")
       .order("id", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -106,7 +106,7 @@ async function loadSeason() {
   const statusBit = data?.status ? ` · ${data.status}` : "";
   seasonLabel = data
     ? `${data.label || `Season ${data.id}`}${statusBit}`
-    : "Summer break — create Pre-Season for a fresh checklist";
+    : "No season — create Pre-Season for a fresh checklist";
   const el = document.getElementById("wfSeasonLabel");
   if (el) el.textContent = `Season: ${seasonLabel}`;
 }

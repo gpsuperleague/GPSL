@@ -161,10 +161,10 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
-/** Readable strip label — e.g. DB "1" → "Season 1". */
+/** Readable strip label — e.g. DB "1" → "Season 1". Empty → "". */
 export function formatSeasonStripLabel(raw) {
   const s = String(raw ?? "").trim();
-  if (!s) return "Season";
+  if (!s) return "";
   if (/^season\b/i.test(s)) {
     return s.replace(/^season/i, "Season");
   }
@@ -233,15 +233,20 @@ function gpslHeadlineHtml(schedule) {
     "ssc-gpsl-headline",
     pre ? "ssc-gpsl-headline--pre" : "",
     summer ? "ssc-gpsl-headline--summer" : "",
+    !seasonLabel ? "ssc-gpsl-headline--noseason" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
+  const seasonBit = seasonLabel
+    ? `<span class="ssc-gpsl-season">${escapeHtml(seasonLabel)}</span>` +
+      `<span class="ssc-gpsl-colon">:</span> `
+    : `<span class="ssc-gpsl-colon">:</span> `;
+
   return (
     `<span class="${classes}" title="${escapeHtml(title)}">` +
     `<span class="ssc-gpsl-brand">GPSL</span> ` +
-    `<span class="ssc-gpsl-season">${escapeHtml(seasonLabel)}</span>` +
-    `<span class="ssc-gpsl-colon">:</span> ` +
+    seasonBit +
     `<span class="ssc-gpsl-month">${escapeHtml(month)}</span>` +
     `</span>` +
     `<span class="ssc-sep" aria-hidden="true"></span>`
