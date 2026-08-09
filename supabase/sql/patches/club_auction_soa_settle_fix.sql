@@ -470,6 +470,126 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.transferengine_accept_club_auction_sale(bigint) TO authenticated;
 
 -- ---------------------------------------------------------------------------
+-- Find winner for a club auction listing (bids → listing high → max_bids)
+-- Searches SOA + NMU so rename orphans still resolve.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.club_auction_find_winner(
+  p_listing_id bigint,
+  p_club_short_name text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_listing public."Club_Auction_Listings"%rowtype;
+  v_club text := upper(btrim(coalesce(p_club_short_name, '')));
+  v_winner uuid;
+  v_amount numeric;
+  v_source text;
+  v_aliases text[];
+BEGIN
+  IF p_listing_id IS NOT NULL THEN
+    SELECT * INTO v_listing
+    FROM public."Club_Auction_Listings"
+    WHERE id = p_listing_id;
+  END IF;
+
+  IF v_club = '' AND FOUND THEN
+    v_club := upper(btrim(v_listing.club_short_name));
+  END IF;
+
+  IF v_club IN ('SOA', 'NMU') THEN
+    v_aliases := ARRAY['SOA', 'NMU'];
+  ELSIF v_club <> '' THEN
+    v_aliases := ARRAY[v_club];
+  ELSE
+    v_aliases := ARRAY[]::text[];
+  END IF;
+
+  -- 1) Bids on this listing
+  IF p_listing_id IS NOT NULL THEN
+    SELECT b.bidder_owner_id, b.bid_amount
+    INTO v_winner, v_amount
+    FROM public."Club_Auction_Bids" b
+    WHERE b.listing_id = p_listing_id
+    ORDER BY b.bid_amount DESC, b.bid_time ASC
+    LIMIT 1;
+    IF v_winner IS NOT NULL THEN
+      v_source := 'bids_on_listing';
+    END IF;
+  END IF;
+
+  -- 2) Listing high-bid columns
+  IF v_winner IS NULL AND v_listing.current_highest_bidder IS NOT NULL THEN
+    v_winner := v_listing.current_highest_bidder;
+    v_amount := v_listing.current_highest_bid;
+    v_source := 'listing_current_highest';
+  END IF;
+
+  -- 3) Any bid row keyed to SOA/NMU (wrong listing_id after re-seed)
+  IF v_winner IS NULL AND cardinality(v_aliases) > 0 THEN
+    SELECT b.bidder_owner_id, b.bid_amount
+    INTO v_winner, v_amount
+    FROM public."Club_Auction_Bids" b
+    WHERE b.club_short_name = ANY (v_aliases)
+    ORDER BY b.bid_amount DESC, b.bid_time ASC
+    LIMIT 1;
+    IF v_winner IS NOT NULL THEN
+      v_source := 'bids_by_club_short_name';
+    END IF;
+  END IF;
+
+  -- 4) Proxy max bids (no FK — often left on NMU after swap)
+  IF v_winner IS NULL
+     AND cardinality(v_aliases) > 0
+     AND to_regclass('public.club_auction_max_bids') IS NOT NULL THEN
+    SELECT m.owner_id, m.max_amount
+    INTO v_winner, v_amount
+    FROM public.club_auction_max_bids m
+    JOIN public.gpsl_owner_registry r ON r.owner_id = m.owner_id
+    WHERE m.club_short_name = ANY (v_aliases)
+      AND r.status IS DISTINCT FROM 'archived'
+      AND NOT EXISTS (
+        SELECT 1 FROM public."Clubs" c WHERE c.owner_id = m.owner_id
+      )
+    ORDER BY m.max_amount DESC, m.updated_at ASC
+    LIMIT 1;
+
+    IF v_winner IS NOT NULL THEN
+      v_source := 'max_bids';
+      -- Settle at listing opening/reserve (max is only a ceiling)
+      IF v_listing.id IS NOT NULL THEN
+        v_amount := greatest(
+          coalesce(v_listing.opening_bid, 0),
+          coalesce(v_listing.reserve_price, 0),
+          coalesce(v_listing.current_highest_bid, 0)
+        );
+        IF v_amount <= 0 THEN
+          SELECT m.max_amount INTO v_amount
+          FROM public.club_auction_max_bids m
+          WHERE m.owner_id = v_winner
+            AND m.club_short_name = ANY (v_aliases)
+          ORDER BY m.max_amount DESC
+          LIMIT 1;
+        END IF;
+      END IF;
+    END IF;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'winner_owner_id', v_winner,
+    'amount', v_amount,
+    'source', v_source,
+    'club', nullif(v_club, ''),
+    'listing_id', p_listing_id
+  );
+END;
+$function$;
+
+-- ---------------------------------------------------------------------------
 -- Admin repair: diagnose + settle one club (SOA by default)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.admin_repair_club_auction_club(
@@ -489,6 +609,11 @@ DECLARE
   v_amount numeric;
   v_owner uuid;
   v_diag jsonb;
+  v_found jsonb;
+  v_err text;
+  v_bid_count int := 0;
+  v_max_count int := 0;
+  v_opening numeric;
 BEGIN
   IF NOT public.is_gpsl_admin()
      AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
@@ -510,12 +635,22 @@ BEGIN
     );
   END IF;
 
-  SELECT * INTO v_listing
+  -- Prefer listing that still has a high bidder / bid rows / incomplete transfer
+  SELECT l.* INTO v_listing
   FROM public."Club_Auction_Listings" l
-  WHERE l.club_short_name = v_club
+  WHERE (
+      (v_club IN ('SOA', 'NMU') AND l.club_short_name IN ('SOA', 'NMU'))
+      OR (v_club NOT IN ('SOA', 'NMU') AND l.club_short_name = v_club)
+    )
   ORDER BY
-    CASE l.status WHEN 'Active' THEN 0 WHEN 'Closed' THEN 1 ELSE 2 END,
-    l.transfer_completed DESC,
+    CASE WHEN l.club_short_name = v_club THEN 0 ELSE 1 END,
+    CASE WHEN coalesce(l.transfer_completed, false) THEN 2
+         WHEN l.status = 'Active' THEN 0
+         ELSE 1 END,
+    CASE WHEN l.current_highest_bidder IS NOT NULL THEN 0 ELSE 1 END,
+    (
+      SELECT count(*)::int FROM public."Club_Auction_Bids" b WHERE b.listing_id = l.id
+    ) DESC,
     l.id DESC
   LIMIT 1;
 
@@ -527,30 +662,48 @@ BEGIN
     );
   END IF;
 
+  -- Ensure listing points at live ShortName
+  IF v_listing.club_short_name IS DISTINCT FROM v_club THEN
+    UPDATE public."Club_Auction_Listings"
+    SET club_short_name = v_club, updated_at = now()
+    WHERE id = v_listing.id;
+    v_listing.club_short_name := v_club;
+  END IF;
+
   SELECT c.owner_id INTO v_owner
   FROM public."Clubs" c
   WHERE c."ShortName" = v_club;
 
-  SELECT b.bid_amount, b.bidder_owner_id
-  INTO v_amount, v_winner
+  SELECT count(*)::int INTO v_bid_count
   FROM public."Club_Auction_Bids" b
   WHERE b.listing_id = v_listing.id
-  ORDER BY b.bid_amount DESC, b.bid_time ASC
-  LIMIT 1;
+     OR b.club_short_name IN (v_club, 'SOA', 'NMU');
 
-  IF v_winner IS NULL THEN
-    v_winner := v_listing.current_highest_bidder;
-    v_amount := v_listing.current_highest_bid;
+  IF to_regclass('public.club_auction_max_bids') IS NOT NULL THEN
+    SELECT count(*)::int INTO v_max_count
+    FROM public.club_auction_max_bids m
+    WHERE m.club_short_name IN (v_club, 'SOA', 'NMU');
   END IF;
+
+  v_found := public.club_auction_find_winner(v_listing.id, v_club);
+  v_winner := nullif(v_found->>'winner_owner_id', '')::uuid;
+  v_amount := nullif(v_found->>'amount', '')::numeric;
 
   v_diag := jsonb_build_object(
     'club', v_club,
     'listing_id', v_listing.id,
     'listing_status', v_listing.status,
     'transfer_completed', v_listing.transfer_completed,
+    'opening_bid', v_listing.opening_bid,
+    'reserve_price', v_listing.reserve_price,
+    'current_highest_bid', v_listing.current_highest_bid,
+    'current_highest_bidder', v_listing.current_highest_bidder,
     'club_owner_id', v_owner,
     'winner_owner_id', v_winner,
     'winning_bid', v_amount,
+    'winner_source', v_found->>'source',
+    'bid_rows_seen', v_bid_count,
+    'max_bid_rows_seen', v_max_count,
     'migrate', v_migrate
   );
 
@@ -589,7 +742,6 @@ BEGIN
     RETURN v_diag || jsonb_build_object('ok', true, 'action', 'closed_listing_for_existing_owner');
   END IF;
 
-  -- Do not auto-clear a different owner — that needs a conscious admin action.
   IF v_owner IS NOT NULL AND v_winner IS NOT NULL AND v_owner IS DISTINCT FROM v_winner THEN
     RETURN v_diag || jsonb_build_object(
       'ok', false,
@@ -598,34 +750,62 @@ BEGIN
     );
   END IF;
 
-  -- Re-open incomplete closed listing so accept_sale can run
-  IF v_listing.status IS DISTINCT FROM 'Active' THEN
-    IF v_winner IS NULL THEN
-      RETURN v_diag || jsonb_build_object(
-        'ok', false,
-        'error', 'no_winner_to_settle'
-      );
-    END IF;
-    UPDATE public."Club_Auction_Listings"
-    SET status = 'Active',
-        transfer_completed = false,
-        updated_at = now()
-    WHERE id = v_listing.id;
+  IF v_winner IS NULL THEN
+    RETURN v_diag || jsonb_build_object(
+      'ok', false,
+      'error', 'no_winner_to_settle',
+      'hint', 'No Club_Auction_Bids / current_highest / max_bids for SOA|NMU. Paste the diagnose queries below, or force-assign with admin_force_club_auction_assign(email).'
+    );
+  END IF;
+
+  -- Restore high-bid on listing so accept_sale can see a winner
+  v_opening := coalesce(v_listing.opening_bid, v_listing.reserve_price, v_amount, 0);
+  v_amount := greatest(coalesce(v_amount, 0), v_opening);
+
+  UPDATE public."Club_Auction_Listings"
+  SET status = 'Active',
+      transfer_completed = false,
+      club_short_name = v_club,
+      current_highest_bid = v_amount,
+      current_highest_bidder = v_winner,
+      reserve_price = least(coalesce(reserve_price, v_amount), v_amount),
+      updated_at = now()
+  WHERE id = v_listing.id;
+
+  -- Ensure a bid row exists (accept prefers Bids table)
+  IF NOT EXISTS (
+    SELECT 1 FROM public."Club_Auction_Bids" b
+    WHERE b.listing_id = v_listing.id
+      AND b.bidder_owner_id = v_winner
+      AND b.bid_amount = v_amount
+  ) THEN
+    INSERT INTO public."Club_Auction_Bids" (
+      listing_id, club_short_name, bidder_owner_id, bid_amount, bid_time
+    ) VALUES (
+      v_listing.id, v_club, v_winner, v_amount, now()
+    );
   END IF;
 
   -- Ensure winner can take the club
-  IF v_winner IS NOT NULL THEN
-    UPDATE public.gpsl_owner_registry
-    SET status = 'awaiting_club_auction',
-        status_changed_at = now()
-    WHERE owner_id = v_winner
-      AND status IS DISTINCT FROM 'archived'
-      AND NOT EXISTS (
-        SELECT 1 FROM public."Clubs" c WHERE c.owner_id = v_winner
-      );
-  END IF;
+  UPDATE public.gpsl_owner_registry
+  SET status = 'awaiting_club_auction',
+      pending_starting_balance = greatest(
+        coalesce(pending_starting_balance, 0),
+        v_amount,
+        coalesce(public.club_auction_default_starting_balance(), 650000000)
+      ),
+      status_changed_at = now()
+  WHERE owner_id = v_winner
+    AND status IS DISTINCT FROM 'archived'
+    AND NOT EXISTS (
+      SELECT 1 FROM public."Clubs" c WHERE c.owner_id = v_winner
+    );
 
-  PERFORM public.transferengine_accept_club_auction_sale(v_listing.id);
+  BEGIN
+    PERFORM public.transferengine_accept_club_auction_sale(v_listing.id);
+  EXCEPTION WHEN OTHERS THEN
+    v_err := SQLERRM;
+  END;
 
   SELECT c.owner_id INTO v_owner
   FROM public."Clubs" c
@@ -639,6 +819,7 @@ BEGIN
   RETURN v_diag || jsonb_build_object(
     'ok', (v_owner IS NOT NULL AND coalesce(v_listing.transfer_completed, false)),
     'action', 'settle_attempted',
+    'accept_error', v_err,
     'after_owner_id', v_owner,
     'after_status', v_listing.status,
     'after_transfer_completed', v_listing.transfer_completed,
@@ -648,26 +829,167 @@ BEGIN
 END;
 $function$;
 
+-- Force-assign when bid history is gone but you know the buyer email
+CREATE OR REPLACE FUNCTION public.admin_force_club_auction_assign(
+  p_owner_email text,
+  p_club_short_name text DEFAULT 'SOA',
+  p_bid_amount numeric DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_email text := lower(btrim(coalesce(p_owner_email, '')));
+  v_club text;
+  v_user_id uuid;
+  v_listing public."Club_Auction_Listings"%rowtype;
+  v_amount numeric;
+  v_repair jsonb;
+BEGIN
+  IF NOT public.is_gpsl_admin()
+     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  IF v_email = '' THEN
+    RAISE EXCEPTION 'Owner email is required';
+  END IF;
+
+  v_club := public.club_auction_resolve_short_name(p_club_short_name);
+  IF v_club IS NULL THEN
+    RAISE EXCEPTION 'Club % not found', p_club_short_name;
+  END IF;
+
+  SELECT u.id INTO v_user_id
+  FROM auth.users u
+  WHERE lower(u.email) = v_email
+  LIMIT 1;
+
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'No auth user with email %', p_owner_email;
+  END IF;
+
+  IF v_club IN ('SOA', 'NMU') THEN
+    PERFORM public.club_auction_migrate_short_name_orphans('NMU', 'SOA');
+    v_club := 'SOA';
+  END IF;
+
+  SELECT * INTO v_listing
+  FROM public."Club_Auction_Listings" l
+  WHERE l.club_short_name = v_club
+  ORDER BY
+    CASE WHEN coalesce(l.transfer_completed, false) THEN 2
+         WHEN l.status = 'Active' THEN 0
+         ELSE 1 END,
+    l.id DESC
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    -- Create a listing shell so settle/repair has a row
+    INSERT INTO public."Club_Auction_Listings" (
+      club_short_name, status, opening_bid, reserve_price, created_at, updated_at
+    )
+    VALUES (
+      v_club,
+      'Active',
+      coalesce(
+        public.club_stadium_infra_purchase_cost(v_club),
+        public.club_auction_opening_bid_for_capacity(
+          (SELECT coalesce(c."Capacity", 0)::bigint FROM public."Clubs" c WHERE c."ShortName" = v_club)
+        ),
+        0
+      ),
+      coalesce(
+        public.club_stadium_infra_purchase_cost(v_club),
+        0
+      ),
+      now(),
+      now()
+    )
+    RETURNING * INTO v_listing;
+  END IF;
+
+  v_amount := coalesce(
+    nullif(p_bid_amount, 0),
+    v_listing.current_highest_bid,
+    v_listing.opening_bid,
+    v_listing.reserve_price,
+    public.club_stadium_infra_purchase_cost(v_club),
+    0
+  );
+
+  UPDATE public."Club_Auction_Listings"
+  SET status = 'Active',
+      transfer_completed = false,
+      current_highest_bid = v_amount,
+      current_highest_bidder = v_user_id,
+      reserve_price = least(coalesce(reserve_price, v_amount), v_amount),
+      updated_at = now()
+  WHERE id = v_listing.id;
+
+  INSERT INTO public."Club_Auction_Bids" (
+    listing_id, club_short_name, bidder_owner_id, bid_amount, bid_time
+  ) VALUES (
+    v_listing.id, v_club, v_user_id, v_amount, now()
+  );
+
+  INSERT INTO public.gpsl_owner_registry (
+    owner_id, status, pending_starting_balance, status_changed_at
+  )
+  VALUES (
+    v_user_id,
+    'awaiting_club_auction',
+    coalesce(public.club_auction_default_starting_balance(), 650000000),
+    now()
+  )
+  ON CONFLICT (owner_id) DO UPDATE
+  SET status = CASE
+        WHEN gpsl_owner_registry.status = 'archived' THEN gpsl_owner_registry.status
+        ELSE 'awaiting_club_auction'
+      END,
+      pending_starting_balance = greatest(
+        coalesce(gpsl_owner_registry.pending_starting_balance, 0),
+        v_amount,
+        coalesce(public.club_auction_default_starting_balance(), 650000000)
+      ),
+      status_changed_at = now()
+  WHERE gpsl_owner_registry.status <> 'archived';
+
+  -- Vacate club if somehow owned by this same user already (noop) — block others
+  IF EXISTS (
+    SELECT 1 FROM public."Clubs" c
+    WHERE c."ShortName" = v_club
+      AND c.owner_id IS NOT NULL
+      AND c.owner_id IS DISTINCT FROM v_user_id
+  ) THEN
+    RAISE EXCEPTION 'Club % already has a different owner', v_club;
+  END IF;
+
+  v_repair := public.admin_repair_club_auction_club(v_club);
+  RETURN jsonb_build_object(
+    'ok', coalesce((v_repair->>'ok')::boolean, false),
+    'forced_owner_email', v_email,
+    'forced_owner_id', v_user_id,
+    'forced_bid', v_amount,
+    'listing_id', v_listing.id,
+    'repair', v_repair
+  );
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.club_auction_find_winner(bigint, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_repair_club_auction_club(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_force_club_auction_assign(text, text, numeric) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 
--- ---------------------------------------------------------------------------
--- Also keep franchise-swap orphans covered next time NMU→SOA is re-run
--- (documentation note: add club_auction_max_bids to swap legacy list)
--- ---------------------------------------------------------------------------
+-- =============================================================================
+-- RUN THESE — paste results back if still stuck
+-- =============================================================================
 
--- Diagnose SOA / NMU before repair
-SELECT
-  c."ShortName",
-  c."Club",
-  c.owner_id,
-  c."Capacity",
-  c.continent,
-  c."Nation"
-FROM public."Clubs" c
-WHERE c."ShortName" IN ('SOA', 'NMU');
-
+-- A) Listings (note current_highest_* — earlier confirm omitted them)
 SELECT
   l.id,
   l.club_short_name,
@@ -678,25 +1000,51 @@ SELECT
   l.current_highest_bid,
   l.current_highest_bidder,
   l.winning_bid,
-  l.winning_owner_id
+  l.winning_owner_id,
+  (SELECT count(*) FROM public."Club_Auction_Bids" b WHERE b.listing_id = l.id) AS bid_count
 FROM public."Club_Auction_Listings" l
 WHERE l.club_short_name IN ('SOA', 'NMU')
 ORDER BY l.id DESC;
 
--- Repair stuck SOA purchase (safe if already complete)
+-- B) Bid rows
+SELECT b.*
+FROM public."Club_Auction_Bids" b
+WHERE b.club_short_name IN ('SOA', 'NMU')
+   OR b.listing_id IN (
+     SELECT l.id FROM public."Club_Auction_Listings" l
+     WHERE l.club_short_name IN ('SOA', 'NMU')
+   )
+ORDER BY b.bid_amount DESC, b.bid_time ASC;
+
+-- C) Max bids (often still NMU after rename)
+SELECT m.*, r.status, r.owner_tag, r.pending_starting_balance, u.email
+FROM public.club_auction_max_bids m
+JOIN public.gpsl_owner_registry r ON r.owner_id = m.owner_id
+LEFT JOIN auth.users u ON u.id = m.owner_id
+WHERE m.club_short_name IN ('SOA', 'NMU')
+ORDER BY m.max_amount DESC;
+
+-- D) Owners still waiting for a club
+SELECT r.owner_id, r.status, r.owner_tag, r.pending_starting_balance, u.email
+FROM public.gpsl_owner_registry r
+LEFT JOIN auth.users u ON u.id = r.owner_id
+WHERE r.status = 'awaiting_club_auction'
+ORDER BY r.status_changed_at DESC NULLS LAST;
+
+-- E) Repair (returns JSON — paste this)
 SELECT public.admin_repair_club_auction_club('SOA');
 
--- Confirm
+-- F) Confirm
 SELECT
   c."ShortName",
-  c."Club",
   c.owner_id,
   r.status AS registry_status,
   r.owner_tag,
-  r.last_club_short_name,
   f.balance,
   l.status AS listing_status,
   l.transfer_completed,
+  l.current_highest_bid,
+  l.current_highest_bidder,
   l.winning_bid,
   l.winning_owner_id
 FROM public."Clubs" c
@@ -710,3 +1058,6 @@ LEFT JOIN LATERAL (
   LIMIT 1
 ) l ON true
 WHERE c."ShortName" = 'SOA';
+
+-- If E returns no_winner_to_settle, force with the member's email:
+-- SELECT public.admin_force_club_auction_assign('owner@example.com', 'SOA', NULL);
