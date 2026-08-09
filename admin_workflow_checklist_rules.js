@@ -1,7 +1,7 @@
 /**
  * Admin workflow checklist — intro copy (modular cards).
  */
-import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-nav-checklist-nested";
+import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260809-season-need";
 
 export function getAdminWorkflowChecklistRules() {
   return {
@@ -11,7 +11,7 @@ export function getAdminWorkflowChecklistRules() {
       {
         heading: "Order of work",
         items: [
-          "<b>First Season</b> — day-zero auctions: club auction, manager draft, player draft (auction switches).",
+          "<b>First Season</b> — day-zero auctions: seed club auction, then club / manager / player draft when required.",
           "<b>Season Break</b> — GPDB, One of our Own, kits, club/stadium, challenges, bills, internationals.",
           "<b>Create Season</b> — Create Pre-Season (contract tick + ledger), then prize money, transfers, auctions, divisions, calendar, go live, fixtures, cups.",
           "<b>Pre-Season (June &amp; July)</b> — manager renewal deadline before August.",
@@ -26,6 +26,15 @@ export function getAdminWorkflowChecklistRules() {
           "While a season is <b>current</b>, ticks bind to that season.",
           "After <b>End season → Summer Break</b>, the list follows the next <b>preseason/setup</b> season (blank) so finished-year ticks are not reused.",
           "Use <b>Clear all ticks</b> to reset the season shown in the summary above.",
+        ],
+      },
+      {
+        heading: "Season dependency badges",
+        items: [
+          "<b>Needs active season</b> — live/current season id (Season Management, monthly checklist, Close Season).",
+          "<b>Needs season #</b> — a season row (preseason/setup or closing year), not necessarily live.",
+          "<b>Creates season</b> / <b>Activates season</b> / <b>Ends season</b> — Create Pre-Season, Start season (go live), End season.",
+          "No badge = global / config / assets (GPDB, kits, weather, auction switches, First Season auctions).",
         ],
       },
       {

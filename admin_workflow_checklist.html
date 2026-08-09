@@ -67,6 +67,20 @@
     }
     .wf-body { flex:1; min-width:0; }
     .wf-label { font-size:14px; color:#ddd; }
+    .wf-season-pill {
+      display:inline-block; margin-left:6px; padding:1px 7px; border-radius:3px;
+      font-size:10px; font-weight:600; letter-spacing:0.03em; text-transform:uppercase;
+      vertical-align:middle; border:1px solid #444; color:#aaa;
+    }
+    .wf-season-pill-active { color:#f8c48c; border-color:#8a5a28; background:#2a1c10; }
+    .wf-season-pill-creates { color:#9ecbff; border-color:#3a5a7a; background:#152030; }
+    .wf-season-pill-activates { color:#9fd89f; border-color:#3a6a3a; background:#152415; }
+    .wf-season-pill-ends { color:#f0a0a0; border-color:#6a3a3a; background:#241515; }
+    .wf-season-pill-season_row { color:#e0d08a; border-color:#6a5a28; background:#221e10; }
+    .wf-item.wf-season-active { border-color:#3a2a18; background:#16120e; }
+    .wf-item.wf-season-creates,
+    .wf-item.wf-season-activates { border-color:#1e2a38; }
+    .wf-item.wf-season-ends { border-color:#3a2222; }
     .wf-meta { margin-top:4px; font-size:12px; }
     .wf-meta a { color:#8cf; text-decoration:none; }
     .wf-meta a:hover { text-decoration:underline; }
@@ -109,6 +123,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_workflow_checklist.js?v=20260807-first-season2"></script>
+  <script type="module" src="admin_workflow_checklist.js?v=20260809-season-need"></script>
 </body>
 </html>

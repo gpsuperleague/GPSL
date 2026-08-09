@@ -767,6 +767,90 @@ export function adminChecklistTaskKey(sectionId, groupLabel, item) {
 }
 
 /**
+ * Season dependency for Admin checklist highlighting.
+ * @returns {"active"|"creates"|"activates"|"ends"|"season_row"|null}
+ *   active     — needs a live/current season id
+ *   creates    — creates Season N+1 (preseason row)
+ *   activates  — makes a season current / go-live
+ *   ends       — marks the current season complete
+ *   season_row — needs a season id (preseason/setup or closing year OK)
+ *   null       — no season id required (global / config / assets)
+ */
+export function checklistItemSeasonNeed(sectionId, item) {
+  const label = String(item?.label || "");
+  const href = String(item?.href || "");
+  const hash = String(item?.hash || "");
+
+  if (sectionId === "first_season") return null;
+
+  if (sectionId === "create_season") {
+    if (/Create Pre-Season/i.test(label)) return "creates";
+    if (/Start season/i.test(label)) return "activates";
+    if (/Tick player contracts/i.test(label)) return "season_row";
+    if (/Create Season Calendar|Create League Fixtures|Setup Cups|Setup Superleague|Setup Championship|Draw Championship/i.test(label)) {
+      return "season_row";
+    }
+    if (/Prize Money|Cup Prize|League Prize/i.test(label)) return "season_row";
+    // Transfer window / draft switches / special auction / exclusions — global flags, no season id
+    return null;
+  }
+
+  if (sectionId === "season_break") {
+    // GPDB / kits / weather tables — not season-bound
+    if (/gpdb|kits|weather|pitch/i.test(label) || /admin_gpdb|admin_club_kits|admin_weather/i.test(href)) {
+      return null;
+    }
+    // Discord / nation catalog bits that are structural
+    if (/Nation Setup|Clear Nation Assignments/i.test(label)) return null;
+    // Homegrown draw, challenges, bills, attendance, stadium, manager targets, WC/selection — season-scoped
+    return "season_row";
+  }
+
+  if (sectionId === "pre_season") return "season_row";
+
+  if (sectionId === "season_management") {
+    if (/Cancel open listings/i.test(label)) return null;
+    if (/Republish GPSL Sport/i.test(label)) return "season_row";
+    return "active";
+  }
+
+  if (sectionId === "season_checklist") {
+    if (/Push Discord|Discord queue/i.test(label)) return null;
+    if (/Refresh Next Gen/i.test(label)) return "season_row";
+    return "active";
+  }
+
+  if (sectionId === "close_season") return "active";
+
+  if (sectionId === "end_of_season") return "ends";
+
+  return null;
+}
+
+export const CHECKLIST_SEASON_NEED_META = {
+  active: {
+    short: "Needs active season",
+    tip: "Requires a live/current competition season id.",
+  },
+  creates: {
+    short: "Creates season",
+    tip: "Creates the next Season N+1 preseason row.",
+  },
+  activates: {
+    short: "Activates season",
+    tip: "Makes the new season current / go-live.",
+  },
+  ends: {
+    short: "Ends season",
+    tip: "Marks the current season complete (summer break).",
+  },
+  season_row: {
+    short: "Needs season #",
+    tip: "Needs a season id (preseason/setup or the closing year) — not necessarily live.",
+  },
+};
+
+/**
  * Flatten Admin menu into checklist sections (excludes Testing & Owners).
  * Empty groups (e.g. months with no tasks) are omitted.
  * Order: Season Break → Create Season → … → Close Season → End Of Season.

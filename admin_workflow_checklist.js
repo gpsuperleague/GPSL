@@ -1,9 +1,11 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase, whenDomReady } from "./admin_common.js";
 import {
   adminMainNavHref,
+  CHECKLIST_SEASON_NEED_META,
+  checklistItemSeasonNeed,
   getAdminWorkflowChecklist,
-} from "./admin_main_nav.js?v=20260807-first-season2";
-import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260807-first-season2";
+} from "./admin_main_nav.js?v=20260809-season-need";
+import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260809-season-need";
 
 primeAdminPageChrome();
 
@@ -320,10 +322,20 @@ function render() {
         const done = Boolean(doneMap.get(item.taskKey));
         const href = adminMainNavHref(item);
         const hidden = hideDone && done ? " hidden" : "";
-        html += `<li class="wf-item${done ? " done" : ""}"${hidden} data-task-key="${escapeHtml(item.taskKey)}">`;
+        const seasonNeed = checklistItemSeasonNeed(section.id, item);
+        const seasonMeta = seasonNeed ? CHECKLIST_SEASON_NEED_META[seasonNeed] : null;
+        html += `<li class="wf-item${done ? " done" : ""}${
+          seasonNeed ? ` wf-season-${escapeHtml(seasonNeed)}` : ""
+        }"${hidden} data-task-key="${escapeHtml(item.taskKey)}">`;
         html += `<input type="checkbox" ${done ? "checked" : ""} aria-label="Mark ${escapeHtml(item.label)} done">`;
         html += `<div class="wf-body">`;
-        html += `<div class="wf-label">${escapeHtml(item.label)}</div>`;
+        html += `<div class="wf-label">${escapeHtml(item.label)}`;
+        if (seasonMeta) {
+          html += ` <span class="wf-season-pill wf-season-pill-${escapeHtml(
+            seasonNeed
+          )}" title="${escapeHtml(seasonMeta.tip)}">${escapeHtml(seasonMeta.short)}</span>`;
+        }
+        html += `</div>`;
         html += `<div class="wf-meta"><a href="${escapeHtml(href)}">Open task</a></div>`;
         if (item.note) {
           html += `<div class="wf-note">${escapeHtml(item.note)}</div>`;
