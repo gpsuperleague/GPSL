@@ -247,7 +247,7 @@ export function getManagerDraftCountdownTick(nowUK, draftAuctionStartTime, optio
       return {
         phase,
         ms: Math.max(0, timeline.randomStart.getTime() - nowUK.getTime()),
-        label: "Bidding open — Day-2 random close in",
+        label: "Random window begins in",
         target: timeline.randomStart,
         countUp: false,
       };
@@ -255,7 +255,7 @@ export function getManagerDraftCountdownTick(nowUK, draftAuctionStartTime, optio
       return {
         phase,
         ms: Math.max(0, nowUK.getTime() - timeline.randomStart.getTime()),
-        label: "Random window (bidding still open)",
+        label: "Random window (bidding open)",
         target: timeline.randomStart,
         countUp: true,
       };
@@ -300,7 +300,7 @@ export function managerDraftPhaseLabel(phase) {
     case "before_start":
       return "Manager draft opens at 7pm UK (Day 1)";
     case "live":
-      return "Bidding is open now — closes in Day-2 random window (6:50–6:59pm UK)";
+      return "Live bidding — random window at 6:50pm UK (Day 2)";
     case "random_active":
       return "Random window — bidding closes at a random second between 6:50 and 6:59pm UK";
     case "random_locked":
@@ -344,7 +344,7 @@ export function getClubAuctionCountdownTick(nowUK, draftAuctionStartTime, option
       return {
         phase,
         ms: Math.max(0, timeline.randomStart.getTime() - nowUK.getTime()),
-        label: "Bidding open — Day-2 random close in",
+        label: "Random window begins in",
         target: timeline.randomStart,
         countUp: false,
       };
@@ -352,7 +352,7 @@ export function getClubAuctionCountdownTick(nowUK, draftAuctionStartTime, option
       return {
         phase,
         ms: Math.max(0, nowUK.getTime() - timeline.randomStart.getTime()),
-        label: "Random window (bidding still open)",
+        label: "Random window (bidding open)",
         target: timeline.randomStart,
         countUp: true,
       };
@@ -397,7 +397,7 @@ export function clubAuctionPhaseLabel(phase) {
     case "before_start":
       return "Club auction opens at 7pm UK (Day 1)";
     case "live":
-      return "Bidding is open now — closes in Day-2 random window (6:50–6:59:59pm UK)";
+      return "Live bidding — random window at 6:50pm UK (Day 2)";
     case "random_active":
       return "Random window — bidding closes at a random second between 6:50 and 6:59:59pm UK";
     case "random_locked":

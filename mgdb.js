@@ -740,14 +740,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (status) {
     const parts = [];
     if (settings?.manager_draft_auction_enabled) {
-      const started =
-        draftStartTime && !Number.isNaN(draftStartTime.getTime())
-          ? Date.now() >= draftStartTime.getTime()
-          : false;
       parts.push(
-        started
-          ? 'Manager draft is <b>live now</b> — <a href="manager_draftauction.html" style="color:#ff9900;">Manager Draft Auction</a> · bidding open until Day 2 18:50–18:59 UK random close.'
-          : 'Manager draft is <b>on</b> — <a href="manager_draftauction.html" style="color:#ff9900;">Manager Draft Auction</a> · opens Day 1 19:00 UK, closes Day 2 18:50–18:59 UK random window.'
+        'Manager draft is <b>on</b> — <a href="manager_draftauction.html" style="color:#ff9900;">Manager Draft Auction</a> · bidding from Day 1 7pm UK until the Day 2 6:50pm random window.'
       );
     }
     if (settings?.transfer_window_open) {
