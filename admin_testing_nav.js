@@ -22,37 +22,26 @@ function group(label, items = []) {
 
 export const TESTING_ADMIN_NAV = [
   T("Site map", "admin_site_map.html"),
+  // Only Critical child links use navDanger (red). Testing + other subgroups stay standard.
   group("Critical", [
-    T("Security hardening", "admin_security_hardening.html"),
+    T("Security hardening", "admin_security_hardening.html", { navDanger: true }),
     T("Reset League (vanilla)", "admin_test_reset.html", { navDanger: true }),
     T("Reset stadium capacity", "admin_test_stadium_reset.html", {
       navDanger: true,
     }),
-    T("Inbox test (all clubs)", "admin_test_inbox.html"),
+    T("Inbox test (all clubs)", "admin_test_inbox.html", { navDanger: true }),
     T("End GPSL month early", "admin_test_end_month.html", { navDanger: true }),
   ]),
   group("Squad", [
-    T("Populate squad (24)", "admin_test_populate_squad.html", {
-      navDanger: true,
-    }),
-    T("Set default squad", "admin_test_set_default_squad.html", {
-      navDanger: true,
-    }),
-    T("Draft Auction (Auto) Bids", "admin_test_draft_seed.html", {
-      navDanger: true,
-    }),
-    T("Injuries & suspensions (test seed)", "admin_injuries.html", {
-      navDanger: true,
-    }),
+    T("Populate squad (24)", "admin_test_populate_squad.html"),
+    T("Set default squad", "admin_test_set_default_squad.html"),
+    T("Draft Auction (Auto) Bids", "admin_test_draft_seed.html"),
+    T("Injuries & suspensions (test seed)", "admin_injuries.html"),
   ]),
   group("Fixtures", [
-    T("Match simulation settings", "admin_match_sim.html", { navDanger: true }),
-    T("Deploy month results", "admin_test_deploy_month.html", {
-      navDanger: true,
-    }),
-    T("Deploy single fixture", "admin_test_deploy_fixture.html", {
-      navDanger: true,
-    }),
+    T("Match simulation settings", "admin_match_sim.html"),
+    T("Deploy month results", "admin_test_deploy_month.html"),
+    T("Deploy single fixture", "admin_test_deploy_fixture.html"),
   ]),
   group("Owners", [
     T("Club availability & timezone", "admin_test_club_availability.html"),
