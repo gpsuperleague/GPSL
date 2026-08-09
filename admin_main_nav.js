@@ -760,8 +760,8 @@ export const ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS = new Set(["testing", "owners"]
 export const ADMIN_CHECKLIST_SECTION_ORDER = [
   "first_season",
   "season_break",
-  "pre_season_setup",
   "create_season",
+  "pre_season_setup",
   "pre_season",
   "season_management",
   "season_checklist",
