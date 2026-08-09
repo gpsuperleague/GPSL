@@ -5,6 +5,7 @@ import {
   refreshDraftBiddingOpen,
   getDraftCountdownOptions,
   getDraftPhaseOptions,
+  getDraftAuctionStartTime,
 } from "./global.js";
 import {
   supabase,
@@ -18,7 +19,7 @@ import {
   getClubLeadingManagerDraftId,
   getClubManagerVacancy,
   submitManagerDraftBid,
-} from "./manager_draft_engine.js";
+} from "./manager_draft_engine.js?v=20260809-mgr-maxbid";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   applyManagerPortrait,
@@ -37,7 +38,7 @@ import {
   managerDraftSetMaxBid,
   managerDraftClearMaxBid,
   parseMaxBidInput,
-} from "./auction_max_bid.js";
+} from "./auction_max_bid.js?v=20260809-mgr-maxbid";
 import {
   parseMoneyInput,
   setMoneyInputValue,
@@ -345,6 +346,9 @@ function wireBidControls() {
   const input = getBidInput();
   bidAmountControl = wireMoneyBidInput(input, { min: resolveMinBid });
 
+  const maxInput = document.getElementById("managerMaxBidAmount");
+  wireMoneyBidInput(maxInput, { min: 0 });
+
   input?.addEventListener("focus", () => {
     input.dataset.touched = "1";
   });
@@ -478,7 +482,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const settings = await loadGlobalSettings();
   managerDraftEnabled = settings.managerDraftEnabled;
-  draftAuctionStartTime = settings.draftStart;
+  draftAuctionStartTime =
+    settings.managerDraftStart || getDraftAuctionStartTime("manager");
 
   await buildNav();
   await loadBuyerClub(user.id);

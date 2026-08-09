@@ -19,6 +19,18 @@ import {
   getDraftBiddingOpen,
 } from "./global.js";
 
+function managerDraftBidWindowEndIso(timeline) {
+  if (!timeline) return null;
+  // While server says bidding is still open, include bids past the public
+  // Day-2 wall (secret random finish can be later / clocks can diverge).
+  const publicEnd = timeline.publicEnd;
+  if (getDraftBiddingOpen("manager") === true) {
+    const floor = new Date(Date.now() + 60_000);
+    return (floor > publicEnd ? floor : publicEnd).toISOString();
+  }
+  return publicEnd.toISOString();
+}
+
 export { supabase };
 
 export {
@@ -39,7 +51,7 @@ export function getManagerDraftBidWindowBounds(draftAuctionStartTime) {
   if (!timeline) return null;
   return {
     startIso: timeline.start.toISOString(),
-    endIso: timeline.publicEnd.toISOString(),
+    endIso: managerDraftBidWindowEndIso(timeline),
   };
 }
 
@@ -62,17 +74,21 @@ export async function fetchManagerDraftBidsGrouped(managerIds, draftAuctionStart
   const ids = [...new Set((managerIds || []).map((id) => Number(id)).filter(Number.isFinite))];
   const map = new Map();
   for (const id of ids) map.set(id, []);
-  if (!bounds || !ids.length) return map;
+  if (!ids.length) return map;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("Manager_Transfer_Bids")
     .select(
       "bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time, bid_amount, id, manager_id, listing_id"
     )
-    .gte("bid_time", bounds.startIso)
-    .lt("bid_time", bounds.endIso)
     .in("manager_id", ids)
     .order("bid_time", { ascending: true });
+
+  if (bounds) {
+    query = query.gte("bid_time", bounds.startIso).lt("bid_time", bounds.endIso);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("fetchManagerDraftBidsGrouped:", error);
@@ -84,6 +100,27 @@ export async function fetchManagerDraftBidsGrouped(managerIds, draftAuctionStart
     if (!map.has(mid)) continue;
     map.get(mid).push(row);
   }
+
+  // Fallback: window filter missed bids (wrong clock / finish) — pull by listing
+  const missing = ids.filter((id) => !(map.get(id) || []).length);
+  if (missing.length) {
+    const { data: fallback, error: fbErr } = await supabase
+      .from("Manager_Transfer_Bids")
+      .select(
+        "bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time, bid_amount, id, manager_id, listing_id"
+      )
+      .in("manager_id", missing)
+      .eq("is_direct", true)
+      .order("bid_time", { ascending: true });
+    if (!fbErr) {
+      for (const row of fallback || []) {
+        const mid = Number(row.manager_id);
+        if (!map.has(mid)) continue;
+        map.get(mid).push(row);
+      }
+    }
+  }
+
   for (const [mid, rows] of map) {
     map.set(mid, dedupeManagerDraftBidRows(rows));
   }
@@ -351,9 +388,21 @@ export async function ensureManagerDraftListing(manager) {
 }
 
 export async function syncManagerDraftListingHighBid(listingId, managerId, draftAuctionStartTime) {
-  const bids = await fetchCurrentManagerDraftBids(managerId, draftAuctionStartTime);
-  const top = highestManagerDraftBid(bids);
-  if (!top || !listingId) return;
+  if (!listingId) return;
+  let bids = await fetchCurrentManagerDraftBids(managerId, draftAuctionStartTime);
+  let top = highestManagerDraftBid(bids);
+  if (!top) {
+    const { data } = await supabase
+      .from("Manager_Transfer_Bids")
+      .select("bid_amount, bidder_club_id")
+      .eq("listing_id", listingId)
+      .eq("is_direct", true)
+      .order("bid_amount", { ascending: false })
+      .order("bid_time", { ascending: true })
+      .limit(1);
+    top = data?.[0] || null;
+  }
+  if (!top) return;
   await supabase
     .from("Manager_Transfer_Listings")
     .update({

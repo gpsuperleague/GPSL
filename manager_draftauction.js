@@ -15,7 +15,7 @@ import {
   highestManagerDraftBid,
   getManagerDraftBidEligibility,
   getClubLeadingManagerDraftId,
-} from "./manager_draft_engine.js";
+} from "./manager_draft_engine.js?v=20260809-mgr-maxbid";
 import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 import { managerListCellHtml, loadManagerPortraitManifest } from "./manager_images.js";

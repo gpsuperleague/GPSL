@@ -101,26 +101,37 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_gs public.global_settings%rowtype;
+  v_enabled boolean;
+  v_start timestamptz;
+  v_finish timestamptz;
 BEGIN
-  SELECT * INTO v_gs FROM public.global_settings WHERE id = 1;
-  draft_enabled := coalesce(v_gs.draft_auction_enabled, false);
-  draft_start := v_gs.draft_auction_start_time;
-  IF draft_start IS NULL THEN
+  -- draft_bidding_open is VIEW-only (global_settings_public) — never read from %rowtype
+  SELECT
+    coalesce(gs.draft_auction_enabled, false),
+    gs.draft_auction_start_time,
+    gs.draft_random_finish_time
+  INTO v_enabled, v_start, v_finish
+  FROM public.global_settings gs
+  WHERE gs.id = 1;
+
+  draft_enabled := v_enabled;
+  draft_start := v_start;
+  IF v_start IS NULL THEN
     draft_cutoff := NULL;
     draft_window_end := NULL;
     bidding_open := false;
     RETURN NEXT;
     RETURN;
   END IF;
-  draft_cutoff := draft_start + interval '23 hours';
+  draft_cutoff := v_start + interval '23 hours';
   draft_window_end := coalesce(
-    v_gs.draft_random_finish_time,
-    draft_start + interval '23 hours 59 minutes 59 seconds'
+    v_finish,
+    v_start + interval '23 hours 59 minutes 59 seconds'
   );
-  bidding_open := coalesce(v_gs.draft_bidding_open, false)
-    AND now() >= draft_start
-    AND now() < draft_window_end;
+  bidding_open := v_enabled
+    AND v_finish IS NOT NULL
+    AND now() >= v_start
+    AND now() < v_finish;
   RETURN NEXT;
 END;
 $function$;
