@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260809-cs-po";
+export const APP_VERSION = "20260809-test-menu";

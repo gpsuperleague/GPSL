@@ -1,5 +1,5 @@
 import { formatNavLabel } from "./nav_label.js";
-import { TESTING_ADMIN_NAV } from "./admin_testing_nav.js";
+import { flattenTestingAdminNav } from "./admin_testing_nav.js";
 
 /**
  * Primary Admin workflow menu (new).
@@ -40,7 +40,7 @@ export const ADMIN_MAIN_NAV = [
     id: "testing",
     label: "Testing",
     // Kept for checklist exclusion / section id only — live menu uses testingMega.
-    entries: TESTING_ADMIN_NAV.map((item) => link(item.label, item.href)),
+    entries: flattenTestingAdminNav().map((item) => link(item.label, item.href)),
   },
   {
     id: "owners",
