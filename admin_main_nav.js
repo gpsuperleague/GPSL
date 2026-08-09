@@ -113,31 +113,6 @@ export const ADMIN_MAIN_NAV = [
           "Review / set league finishing prize tables per division (after Create Pre-Season)."
         ),
       ]),
-      group("Transfers", [
-        L(
-          "Set transfer window on/off",
-          "admin_transfer_window.html",
-          null,
-          null,
-          "Open or close the transfer window for pre-season trading."
-        ),
-      ]),
-      group("Auctions", [
-        L(
-          "Set Draft Auction On/Off",
-          "admin_transfers.html",
-          null,
-          null,
-          "Enable or disable the player draft auction for pre-season."
-        ),
-        L(
-          "Special Auction",
-          "admin_special-auctions.html",
-          null,
-          null,
-          "Configure or run a special auction event."
-        ),
-      ]),
       group("Assign divisions", [
         L(
           "Setup Superleague Teams",
@@ -405,6 +380,31 @@ export const ADMIN_MAIN_NAV = [
     id: "pre_season",
     label: "Pre-Season (June & July)",
     entries: [
+      group("Transfers", [
+        L(
+          "Set transfer window on/off",
+          "admin_transfer_window.html",
+          null,
+          null,
+          "Open or close the transfer window for pre-season trading."
+        ),
+      ]),
+      group("Auctions", [
+        L(
+          "Set Draft Auction On/Off",
+          "admin_transfers.html",
+          null,
+          null,
+          "Enable or disable the player draft auction for pre-season."
+        ),
+        L(
+          "Special Auction",
+          "admin_special-auctions.html",
+          null,
+          null,
+          "Configure or run a special auction event."
+        ),
+      ]),
       group("Managers", [
         L(
           "Process manager renewal deadline (before August)",
@@ -804,7 +804,6 @@ export function checklistItemSeasonNeed(sectionId, item) {
       return "season_row";
     }
     if (/Prize Money|Cup Prize|League Prize/i.test(label)) return "season_row";
-    // Transfer window / draft switches / special auction — global flags, no season id
     return null;
   }
 
@@ -815,7 +814,15 @@ export function checklistItemSeasonNeed(sectionId, item) {
 
   if (sectionId === "pre_season_setup") return "season_row";
 
-  if (sectionId === "pre_season") return "season_row";
+  if (sectionId === "pre_season") {
+    if (
+      /transfer window|Draft Auction On\/Off|Special Auction/i.test(label) ||
+      /admin_transfer_window|admin_transfers|admin_special/i.test(href)
+    ) {
+      return null;
+    }
+    return "season_row";
+  }
 
   if (sectionId === "season_management") {
     if (/Cancel open listings/i.test(label)) return null;
