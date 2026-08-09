@@ -507,13 +507,6 @@ export const ADMIN_MAIN_NAV = [
           null,
           "Run / close the August special auction if scheduled."
         ),
-        L(
-          "Refresh Next Gen Youth",
-          "admin_nextgen_youth.html",
-          null,
-          null,
-          "Refresh Next Gen youth during August if required."
-        ),
       ]),
       group("September", [
         L(
