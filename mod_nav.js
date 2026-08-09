@@ -18,32 +18,48 @@ function L(label, href, hash = null) {
   return item;
 }
 
+function H(label) {
+  return { heading: true, label };
+}
+
 export const MOD_NAV_SECTION = {
   id: "mod",
   label: "Mod",
   items: [
+    H("Owners"),
     L("Staff alerts", "admin_staff_alerts.html"),
     L("Waiting list", "admin_owners_waiting_list.html"),
     L("Discord join order", "admin_owners_discord.html"),
     L("Set Owner Tag", "admin_owners_tag.html"),
     L("Owner Last Login", "owner_last_login.html"),
-    L("Remove Natter", "admin_natter.html"),
     L("Owner holidays", "admin_owner_holidays.html"),
+    L("Remove Natter", "admin_natter.html"),
+
+    H("Discord & media"),
     L("Discord News Feed", "admin_discord_news.html"),
     L("Discord Friendlies", "admin_discord_friendlies.html"),
     L("Transfer Gossip", "admin_discord_transfer_gossip.html"),
     L("Republish GPSL Sport", "admin_gpsl_sport.html"),
+
+    H("Season ops"),
     L("Club Season Checklist", "admin_club_checklist.html"),
     L("Apply fines", "admin_fines.html"),
     L("Red card appeal review", "admin_prize_appeals.html"),
     L("Injuries", "admin_injuries.html"),
     L("Cancel open listings & bids", "admin_transfers.html", "sb-cancel-open"),
+
+    H("Nations"),
     L("Open Nation Selection", "admin_international_selection_open.html"),
     L("Close Nation Selection", "admin_international_selection_close.html"),
     L("Manual National Team Selection", "admin_international.html", "sb-nation-assign"),
     L("Verify owner rankings", "admin_international.html", "sb-owner-rankings"),
   ],
 };
+
+/** Flat link items only (no headings). */
+export function flattenModNavItems(items = MOD_NAV_SECTION.items) {
+  return (items || []).filter((item) => item?.href && !item.heading);
+}
 
 function escapeNavText(text) {
   return String(text ?? "")
@@ -71,13 +87,14 @@ function isModPreviewItemActive(item, pathname) {
 }
 
 export function modMenuPreviewHasActive(pathname) {
-  return (MOD_NAV_SECTION.items || []).some((item) =>
+  return flattenModNavItems().some((item) =>
     isModPreviewItemActive(item, pathname)
   );
 }
 
 /**
  * Ghosted Mod menu inside Admin dropdown — links still work for admin tweaking.
+ * Nested subgroups match the Mod top-nav categories.
  */
 export function renderModMenuPreviewHtml(pathname) {
   const items = MOD_NAV_SECTION.items || [];
@@ -95,12 +112,39 @@ export function renderModMenuPreviewHtml(pathname) {
   html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
   html += `<div class="nav-mod-preview-note">Ghosted view of the Mod top-nav. Links still open for admins.</div>`;
 
+  let panelLabel = "";
+  let panelHtml = "";
+  let panelOpen = false;
+
+  const flushPanel = () => {
+    if (!panelLabel) return;
+    html += `<div class="nav-subgroup nav-subgroup-nested${
+      panelOpen ? " open" : ""
+    }" data-nav-subgroup>`;
+    html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
+      panelOpen ? "true" : "false"
+    }">${escapeNavText(formatNavLabel(panelLabel))}</button>`;
+    html += `<div class="nav-subgroup-panel" role="group">${panelHtml}</div>`;
+    html += `</div>`;
+    panelLabel = "";
+    panelHtml = "";
+    panelOpen = false;
+  };
+
   for (const item of items) {
+    if (item.heading) {
+      flushPanel();
+      panelLabel = item.label;
+      continue;
+    }
+    if (!item.href) continue;
     const active = isModPreviewItemActive(item, pathname);
-    html += `<a href="${escapeNavText(modItemHref(item))}" class="nav-link nav-link-sub nav-link-ghost${
+    if (active) panelOpen = true;
+    panelHtml += `<a href="${escapeNavText(modItemHref(item))}" class="nav-link nav-link-sub nav-link-ghost${
       active ? " active" : ""
     }">${escapeNavText(formatNavLabel(item.label))}</a>`;
   }
+  flushPanel();
 
   html += `</div></div>`;
   return html;
@@ -108,7 +152,7 @@ export function renderModMenuPreviewHtml(pathname) {
 
 /** Pages mods may open (admin always can). */
 export const MOD_ALLOWED_PAGES = new Set(
-  MOD_NAV_SECTION.items.map((i) =>
+  flattenModNavItems().map((i) =>
     String(i.href || "")
       .split("?")[0]
       .split("#")[0]
