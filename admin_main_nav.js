@@ -585,20 +585,6 @@ export const ADMIN_MAIN_NAV = [
           null,
           "Usually automatic when the SL playoff final is played. Use only to re-run/repair."
         ),
-        L(
-          "Push Discord queue (results / news)",
-          "admin_discord_news.html",
-          null,
-          null,
-          "Flush queued Discord result / news posts after playoffs."
-        ),
-        L(
-          "Lock Playoffs month (end GPSL month early)",
-          "admin_test_end_month.html",
-          null,
-          null,
-          "Playoffs is the last GPSL month — uncheck “Also unlock next month now”. Confirmation phrase: END GPSL MONTH (not END MONTH OPEN NEXT). Preview → End current month now."
-        ),
       ]),
     ],
   },
