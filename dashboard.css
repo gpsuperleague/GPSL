@@ -924,6 +924,36 @@ table.gpsl-table td {
   background: #2a1818;
 }
 
+/* Admin → Mod menu (preview): ghosted but still clickable */
+.nav-subgroup-ghost > .nav-subgroup-summary {
+  color: #777 !important;
+  font-style: italic;
+  opacity: 0.85;
+}
+.nav-subgroup-ghost.open > .nav-subgroup-summary {
+  color: #999 !important;
+}
+.nav-mod-preview-note {
+  margin: 4px 10px 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #777;
+  border: 1px dashed #333;
+  border-radius: 4px;
+  background: #141414;
+}
+.nav-link-ghost {
+  color: #666 !important;
+  opacity: 0.72;
+}
+.nav-link-ghost:hover,
+.nav-link-ghost.active {
+  color: #aaa !important;
+  opacity: 1;
+  background: #1c1c1c;
+}
+
 /* Top-level Admin → Admin checklist (distinct from submenu links) */
 .nav-dropdown .nav-link.nav-link-checklist {
   margin: 4px 8px 10px;

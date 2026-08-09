@@ -20,14 +20,18 @@ const {
   renderAdminMainSectionHtml,
   adminMainSectionHasActive,
 } = adminMainNavMod;
+const { renderModMenuPreviewHtml, modMenuPreviewHasActive } = modNavMod;
 
-/** Render Admin mega-menu blocks (adminMainMega + Testing only). */
+/** Render Admin mega-menu blocks (adminMainMega + Testing + Mod preview). */
 export function renderAdminMegaNavHtml(item, pathname, search = "") {
   if (item?.adminMainMega && item.section) {
     return renderAdminMainSectionHtml(item.section, pathname, search);
   }
   if (item?.testingMega) {
     return renderTestingAdminNavHtml(pathname, search);
+  }
+  if (item?.modPreviewMega) {
+    return renderModMenuPreviewHtml(pathname, search);
   }
   return "";
 }
@@ -270,6 +274,10 @@ export const ADMIN_NAV_SECTION = {
     },
     { testingMega: true, label: "Testing" },
     { adminMainMega: true, section: "owners", label: "Owners" },
+    {
+      modPreviewMega: true,
+      label: "Mod menu (preview)",
+    },
     { adminMainMega: true, section: "season_break", label: "Season Break" },
     { adminMainMega: true, section: "create_season", label: "Create Season" },
     { adminMainMega: true, section: "pre_season_setup", label: "Pre-Season setup" },
@@ -336,6 +344,9 @@ export function sectionHasActiveItem(section, pathname, search) {
     }
     if (item.testingMega) {
       return testingAdminNavHasActive(pathname, search);
+    }
+    if (item.modPreviewMega) {
+      return modMenuPreviewHasActive(pathname, search);
     }
     if (item.heading || !item.href) return false;
     return isNavItemActive(item, pathname, search);

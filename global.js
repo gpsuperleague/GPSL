@@ -1708,7 +1708,8 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     (item) =>
       item.heading ||
       item.adminMainMega ||
-      item.testingMega
+      item.testingMega ||
+      item.modPreviewMega
   );
   if (!hasHeadings) {
     let flat = "";
@@ -1778,7 +1779,8 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   for (const item of items) {
     if (
       item.adminMainMega ||
-      item.testingMega
+      item.testingMega ||
+      item.modPreviewMega
     ) {
       if (renderMegaNavHtml) {
         flushPanel();
