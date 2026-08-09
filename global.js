@@ -596,22 +596,70 @@ export function isValidDate(d) {
   return d instanceof Date && !isNaN(d.getTime());
 }
 
-/** Day-2 draft start (7pm UK) and secret random finish (6:50:00–6:59:58 UK). */
+function pickSecretFinishFromTimeline(timeline) {
+  if (!timeline) return null;
+  const maxOffsetSec = 9 * 60 + 58;
+  const offsetSec = Math.floor(Math.random() * (maxOffsetSec + 1));
+  return new Date(timeline.randomStart.getTime() + offsetSec * 1000);
+}
+
+/** True at/after 19:00:01 UK — next nominal Day-1 open is tomorrow 19:00. */
+export function isPastNominalDraftStartUk(at = getUKNow()) {
+  const uk = getUKWallClockParts(at);
+  return uk.hour > 19 || (uk.hour === 19 && (uk.minute > 0 || uk.second > 0));
+}
+
+/**
+ * Next nominal Day-1 19:00 UK + secret Day-2 finish (18:50–18:59:58 UK window).
+ * After 19:00 UK this rolls to tomorrow — use computeLateDraftStartNow() instead
+ * when you need bidding to open tonight.
+ */
 export function computeNextDraftTimesFromNow() {
   const uk = getUKWallClockParts(getUKNow());
-  const startDay = uk.hour >= 19 ? uk.day + 1 : uk.day;
+  const startDay = isPastNominalDraftStartUk() ? uk.day + 1 : uk.day;
   const start = ukLocalToInstant(uk.year, uk.month, startDay, 19, 0, 0);
   const timeline = getDraftTimelineFromStart(start);
-  if (!timeline) {
+  const finish = pickSecretFinishFromTimeline(timeline);
+  if (!timeline || !finish) {
     return { draftStartISO: null, randomFinishISO: null };
   }
 
-  const maxOffsetSec = 9 * 60 + 58;
-  const offsetSec = Math.floor(Math.random() * (maxOffsetSec + 1));
-  const finish = new Date(timeline.randomStart.getTime() + offsetSec * 1000);
-
   return {
     draftStartISO: start.toISOString(),
+    randomFinishISO: finish.toISOString(),
+  };
+}
+
+/**
+ * Late / salvage start — same rules as a normal manager/club draft window:
+ *   Day-1 anchor = today's 19:00 UK (if that time has already passed)
+ *   Day-2 secret finish = Day-1 + 23h50m + random 0–9m58s  (18:50–18:59:58 UK window)
+ * Bidding is already open because start is in the past (tonight's 19:00).
+ *
+ * If it is still before today's 19:00 UK: start = now (immediate), finish still
+ * from tonight's 19:00 Day-1 so Day-2 lands at the usual tomorrow evening window.
+ */
+export function computeLateDraftStartNow() {
+  const now = getUKNow();
+  const uk = getUKWallClockParts(now);
+  const day1Tonight = ukLocalToInstant(uk.year, uk.month, uk.day, 19, 0, 0);
+  const timeline = getDraftTimelineFromStart(day1Tonight);
+  const finish = pickSecretFinishFromTimeline(timeline);
+  if (!timeline || !finish) {
+    return { draftStartISO: null, randomFinishISO: null };
+  }
+
+  // After (or at) tonight's 19:00 → exact normal Day-1 = 19:00 UK (live now)
+  if (now.getTime() >= day1Tonight.getTime()) {
+    return {
+      draftStartISO: day1Tonight.toISOString(),
+      randomFinishISO: finish.toISOString(),
+    };
+  }
+
+  // Before 19:00 → open immediately, keep the usual Day-2 finish from tonight's 19:00
+  return {
+    draftStartISO: new Date(now.getTime() - 5000).toISOString(),
     randomFinishISO: finish.toISOString(),
   };
 }

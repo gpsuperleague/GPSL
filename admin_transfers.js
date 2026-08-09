@@ -2,7 +2,9 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 import {
   loadGlobalSettings,
   computeNextDraftTimesFromNow,
+  computeLateDraftStartNow,
   isDraftScheduleExpired,
+  isPastNominalDraftStartUk,
 } from "./global.js";
 
 primeAdminPageChrome();
@@ -12,6 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadSettings();
   document.getElementById("saveSettingsBtn").onclick = saveSettings;
   document.getElementById("resetDraftBtn").onclick = resetDraftSchedule;
+  document.getElementById("lateStartDraftBtn")?.addEventListener("click", lateStartDraftSchedule);
   document.getElementById("runTransferEngineBtn").onclick = runTransferEngine;
   document.getElementById("settlePlayerDraftsBtn").onclick = forceSettlePlayerDrafts;
   document.getElementById("settleManagerDraftsBtn").onclick = settleManagerDraftsNow;
@@ -223,6 +226,28 @@ async function saveSettings() {
   const isAnyDraft =
     draft_auction_enabled || manager_draft_auction_enabled || club_auction_enabled;
 
+  const enablingExtraType =
+    (draft_auction_enabled && !current?.draft_auction_enabled) ||
+    (manager_draft_auction_enabled && !current?.manager_draft_auction_enabled) ||
+    (club_auction_enabled && !current?.club_auction_enabled);
+  const otherAlreadyOn = wasAnyDraft && enablingExtraType;
+  if (
+    otherAlreadyOn &&
+    current?.draft_auction_start_time &&
+    !isDraftScheduleExpired(new Date(current.draft_auction_start_time))
+  ) {
+    if (
+      !confirm(
+        "Player, manager, and club auctions SHARE one start/finish clock.\n\n" +
+          "Another auction type is already using the current schedule. " +
+          "Turning this on will ride that same window — it will not create a separate timer.\n\n" +
+          "Continue?"
+      )
+    ) {
+      return;
+    }
+  }
+
   let draft_auction_start_time = current?.draft_auction_start_time || null;
   let draft_random_finish_time = current?.draft_random_finish_time || null;
 
@@ -247,7 +272,23 @@ async function saveSettings() {
     (!wasAnyDraft || scheduleExpired || !draft_auction_start_time) &&
     pendingDraftListings === 0
   ) {
-    const times = computeNextDraftTimesFromNow();
+    // After 19:00 UK, "next 7pm" is tomorrow — use late start so bidding opens tonight.
+    const times = isPastNominalDraftStartUk()
+      ? computeLateDraftStartNow()
+      : computeNextDraftTimesFromNow();
+    if (isPastNominalDraftStartUk()) {
+      if (
+        !confirm(
+          "It is after 19:00 UK. A normal Save would schedule tomorrow 19:00.\n\n" +
+            "Use LATE START instead (normal manager draft rules)?\n" +
+            "• Day-1 = tonight 19:00 UK (bidding live now)\n" +
+            "• Day-2 finish = tomorrow 18:50–18:59 UK\n\n" +
+            "OK = late start · Cancel = abort."
+        )
+      ) {
+        return;
+      }
+    }
     draft_auction_start_time = times.draftStartISO;
     draft_random_finish_time = times.randomFinishISO;
   } else if (!isAnyDraft && pendingDraftListings === 0) {
@@ -366,10 +407,106 @@ async function settleClubAuctionsNow() {
   }
 }
 
+async function applyDraftScheduleTimes(times, { ensureManagerOn = false } = {}) {
+  if (!times?.draftStartISO || !times?.randomFinishISO) {
+    throw new Error("Could not compute schedule times");
+  }
+
+  if (ensureManagerOn) {
+    const { error: mgrErr } = await supabase.rpc("admin_set_manager_draft_enabled", {
+      p_enabled: true,
+    });
+    if (mgrErr) throw mgrErr;
+  }
+
+  const { error: schedErr } = await supabase.rpc("admin_set_draft_auction_schedule", {
+    p_start: times.draftStartISO,
+    p_finish: times.randomFinishISO,
+  });
+  if (schedErr) throw schedErr;
+}
+
+async function lateStartDraftSchedule() {
+  const managerOn =
+    document.getElementById("managerDraftAuctionSelect")?.value === "true";
+  const playerOn = document.getElementById("draftAuctionSelect")?.value === "true";
+  const clubOn = document.getElementById("clubAuctionSelect")?.value === "true";
+
+  if (clubOn) {
+    if (
+      !confirm(
+        "Club auction is still set to On.\n\n" +
+          "That will keep sharing this new clock. For a clean manager-only night, set Club auction to Off and Save first, then click Late start again.\n\n" +
+          "Continue anyway with Club still On?"
+      )
+    ) {
+      return;
+    }
+  }
+
+  if (
+    !confirm(
+      "LATE START — normal manager draft rules\n\n" +
+        "• Day-1 start = tonight 19:00 UK (already open — not tomorrow)\n" +
+        "• Day-2 secret finish = tomorrow 18:50–18:59:58 UK (same as usual)\n" +
+        "• Overwrites the shared player/manager/club clock\n\n" +
+        (managerOn || playerOn || clubOn
+          ? "Turn Manager draft On in the dropdown before this if it is not already.\n\n"
+          : "No auction type is On — this will set the clock and turn Manager draft On.\n\n") +
+        "Continue?"
+    )
+  ) {
+    return;
+  }
+
+  setStatus("settingsMessage", "Starting schedule now…");
+  try {
+    const times = computeLateDraftStartNow();
+    const ensureManagerOn = !managerOn && !playerOn && !clubOn;
+    await applyDraftScheduleTimes(times, { ensureManagerOn: true });
+
+    // Ensure manager is on for tonight; leave player/club flags as currently saved
+    // unless dropdown says manager On (or we had to force it).
+    if (managerOn || ensureManagerOn) {
+      const { error: mgrErr } = await supabase.rpc("admin_set_manager_draft_enabled", {
+        p_enabled: true,
+      });
+      if (mgrErr) throw mgrErr;
+    }
+
+    const ukFmt = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/London",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+    setStatus(
+      "settingsMessage",
+      `✅ Late start set — bidding open from ${ukFmt.format(new Date(times.draftStartISO))} UK. ` +
+        `Secret finish ${ukFmt.format(new Date(times.randomFinishISO))} UK. Refresh MGDB / Manager Draft.`,
+      true
+    );
+    await loadGlobalSettings();
+    await loadSettings();
+  } catch (err) {
+    setStatus(
+      "settingsMessage",
+      "❌ " +
+        (err.message || "Failed") +
+        " — run managers_draft_schedule.sql if the schedule RPC is missing.",
+      false
+    );
+  }
+}
+
 async function resetDraftSchedule() {
   if (
     !confirm(
-      "Reset draft schedule?\n\nClears start/finish times and turns the auction off. Completed transfers and bids are kept."
+      "Reset draft schedule?\n\nClears start/finish times and turns player + manager + club auctions off. Completed transfers and bids are kept."
     )
   ) {
     return;
