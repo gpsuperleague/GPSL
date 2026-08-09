@@ -4,6 +4,7 @@ import { formatMoney } from "./competition.js";
 const COLUMNS = [
   { key: "club_name", label: "Club", sort: "club_name" },
   { key: "stadium_name", label: "Stadium", sort: "stadium_name" },
+  { key: "nation", label: "Nation", sort: "nation" },
   { key: "stadium_capacity", label: "Capacity", sort: "stadium_capacity" },
   { key: "stadium_max_capacity", label: "Max capacity", sort: "stadium_max_capacity" },
   { key: "stadium_expansion_potential", label: "Expansion headroom", sort: "stadium_expansion_potential" },
@@ -13,7 +14,6 @@ const COLUMNS = [
   { key: "stadium_maintenance_cost", label: "Stadium maintenance", sort: "stadium_maintenance_cost" },
   { key: "gate_money_full", label: "Gate 100%", sort: "gate_money_full" },
   { key: "gate_money_80", label: "Gate 80%", sort: "gate_money_80" },
-  { key: "nation", label: "Nation", sort: "nation" },
   { key: "owner_tag", label: "Owner", sort: "owner_tag" },
   { key: "prestige_rank", label: "Prestige", sort: "prestige_rank" },
 ];
@@ -122,6 +122,7 @@ function render() {
       return `<tr>
         <td class="left"><a class="club-link" href="${clubHref}">${escapeHtml(r.club_name || r.club_short_name)}</a></td>
         <td class="left">${escapeHtml(r.stadium_name || "—")}</td>
+        <td class="left">${escapeHtml(r.nation || "—")}</td>
         <td>${fmtInt(r.stadium_capacity)}</td>
         <td>${fmtInt(r.stadium_max_capacity)}</td>
         <td>${fmtInt(r.stadium_expansion_potential)}</td>
@@ -133,7 +134,6 @@ function render() {
         <td>${moneyCell(r.stadium_maintenance_cost)}</td>
         <td>${moneyCell(r.gate_money_full)}</td>
         <td>${moneyCell(r.gate_money_80)}</td>
-        <td>${escapeHtml(r.nation || "—")}</td>
         <td>${escapeHtml(r.owner_tag || "—")}</td>
         <td>${r.prestige_rank != null ? escapeHtml(String(r.prestige_rank)) : "—"}</td>
       </tr>`;
