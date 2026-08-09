@@ -92,6 +92,12 @@ export const ADMIN_MAIN_NAV = [
         "Do this AFTER Close Finances + End season. Creates Season N+1 and ticks player contracts: expiry wage bids / FA releases post money to the NEW season (not the closed year). Run patches/contract_expiry_rollover_new_season_ledger.sql first. If the browser times out, use Tick contracts only / SQL catch-up."
       ),
       link(
+        "GPDB Player Exclusions",
+        "admin_gpdb_exclusions.html",
+        null,
+        "Needs the new season number (after Create Pre-Season). Exclude players / nations from GPDB import, transfers, and call-ups for that season."
+      ),
+      link(
         "Tick player contracts (catch-up)",
         "admin_season.html",
         "wf-kickoff",
@@ -180,13 +186,6 @@ export const ADMIN_MAIN_NAV = [
           null,
           null,
           "Merge / resolve duplicate player records after a sync."
-        ),
-        L(
-          "GPDB Player Exclusions",
-          "admin_gpdb_exclusions.html",
-          null,
-          null,
-          "Maintain the exclusion list so unwanted players are not imported."
         ),
       ]),
       group("Auctions", [
@@ -757,6 +756,9 @@ export function checklistItemSeasonNeed(sectionId, item) {
     if (/Create Pre-Season/i.test(label)) return "creates";
     if (/Start season/i.test(label)) return "activates";
     if (/Tick player contracts/i.test(label)) return "season_row";
+    if (/GPDB Player Exclusions/i.test(label) || /admin_gpdb_exclusions/i.test(href)) {
+      return "season_row";
+    }
     if (/Create Season Calendar|Create League Fixtures|Setup Cups|Setup Superleague|Setup Championship|Draw Championship/i.test(label)) {
       return "season_row";
     }
@@ -765,7 +767,7 @@ export function checklistItemSeasonNeed(sectionId, item) {
   }
 
   if (sectionId === "season_break") {
-    // GPDB / kits / weather / auction exclusions / nation catalog — not season-bound
+    // GPDB sync/dedup / kits / weather / auction exclusions / nation catalog — not season-bound
     return null;
   }
 
@@ -827,7 +829,7 @@ export const CHECKLIST_SEASON_NEED_META = {
  * Flatten Admin menu into checklist sections (excludes Testing & Owners).
  * Empty groups (e.g. months with no tasks) are omitted.
  * Order: Season Break → Create Season → … → Close Season → End Of Season.
- * (Prize money / transfers / auctions live under Create Season, after Create Pre-Season.)
+ * (GPDB exclusions / prize money / transfers / auctions under Create Season, after Create Pre-Season.)
  */
 /** Day-zero / first-season setup (not in the normal Admin menu tree). */
 function getFirstSeasonChecklistSection() {

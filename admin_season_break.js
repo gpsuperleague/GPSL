@@ -2,7 +2,7 @@ import { initAdminPage, primeAdminPageChrome } from "./admin_common.js";
 import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
-} from "./admin_main_nav.js?v=20260809-pre-setup";
+} from "./admin_main_nav.js?v=20260809-gpdb-excl-create-season";
 
 primeAdminPageChrome();
 

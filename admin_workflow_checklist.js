@@ -4,7 +4,7 @@ import {
   CHECKLIST_SEASON_NEED_META,
   checklistItemSeasonNeed,
   getAdminWorkflowChecklist,
-} from "./admin_main_nav.js?v=20260809-first-season-draft-setup";
+} from "./admin_main_nav.js?v=20260809-gpdb-excl-create-season";
 import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260809-cs-po";
 
 primeAdminPageChrome();

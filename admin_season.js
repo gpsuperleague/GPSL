@@ -2,7 +2,7 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
-} from "./admin_main_nav.js?v=20260807-prizes-in-create";
+} from "./admin_main_nav.js?v=20260809-gpdb-excl-create-season";
 import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-expiry-fa";
 
 primeAdminPageChrome();

@@ -12,8 +12,8 @@ export function getAdminWorkflowChecklistRules() {
         heading: "Order of work",
         items: [
           "<b>First Season</b> — day-zero auctions: seed club auction, then club / manager / player draft when required.",
-          "<b>Season Break</b> — GPDB, auction exclusions, kits, weather, nation setup / clear assignments.",
-          "<b>Create Season</b> — Create Pre-Season (contract tick + ledger), then prize money, divisions, calendar, go live, fixtures, cups.",
+          "<b>Season Break</b> — GPDB sync/dedup, auction exclusions, kits, weather, nation setup / clear assignments.",
+          "<b>Create Season</b> — Create Pre-Season (contract tick + ledger), then GPDB season exclusions, prize money, divisions, calendar, go live, fixtures, cups.",
           "<b>Pre-Season setup</b> — Next Gen, Homegrown draw, club/stadium/manager, challenges, bills, internationals selection.",
           "<b>Pre-Season (June &amp; July)</b> — transfer window, draft/special auctions, manager renewal deadline before August.",
           "<b>Season Management</b> — live-season ops (club checklist, fines, holidays…).",
