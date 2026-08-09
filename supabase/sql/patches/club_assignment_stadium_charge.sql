@@ -1,5 +1,5 @@
 -- =============================================================================
--- Club assignment — stadium infra purchase (capacity × ₿1,000)
+-- Club assignment — stadium infra purchase (capacity × ₿1,500)
 -- Matches finances_accounts → Infrastructure purchases / club auction stadium cost.
 -- Run after club_auction_capacity_pricing.sql + central_bank_phase1.sql
 --        (+ club_auction_settle_no_active_season.sql if already applied)
@@ -38,7 +38,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION public.club_stadium_infra_purchase_cost(text) IS
-  'Stadium purchase line on season accounts: capacity × ₿1,000 (same as club auction opening bid).';
+  'Stadium purchase line on season accounts: capacity × ₿1,500 (same as club auction opening bid / Club Database stadium value).';
 
 -- ---------------------------------------------------------------------------
 -- Apply starting budget → club balance after assignment; post infra_purchase ledger
@@ -123,7 +123,7 @@ BEGIN
       v_desc := coalesce(
         nullif(btrim(p_description), ''),
         format(
-          'Stadium purchase — %s (%s) — ₿%s (capacity × ₿1,000)',
+          'Stadium purchase — %s (%s) — ₿%s (capacity × ₿1,500)',
           coalesce(v_club_name, v_club),
           v_club,
           to_char(v_stadium, 'FM999,999,999,999')

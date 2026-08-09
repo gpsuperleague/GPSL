@@ -1,7 +1,8 @@
 -- =============================================================================
 -- Club auction — capacity-based stadium cost + enriched public listing view
--- Opening / reserve bid = stadium capacity × ₿1,000
--- Run after patches/club_auction.sql
+-- Opening / reserve bid = stadium capacity × ₿1,500
+-- (same as Club Database stadium_value). Run after patches/club_auction.sql
+-- Later override: club_auction_stadium_value_1500.sql
 -- =============================================================================
 
 DROP FUNCTION IF EXISTS public.club_auction_opening_bid_for_capacity(integer);
@@ -11,11 +12,11 @@ RETURNS numeric
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  SELECT greatest(coalesce(p_capacity, 0), 0)::numeric * 1000;
+  SELECT greatest(coalesce(p_capacity, 0), 0)::numeric * 1500;
 $$;
 
 COMMENT ON FUNCTION public.club_auction_opening_bid_for_capacity(bigint) IS
-  'Club auction opening bid = stadium capacity × ₿1,000.';
+  'Club auction opening bid = stadium capacity × ₿1,500 (same as clubs_database stadium_value).';
 
 -- Keep rank helper for legacy scripts; seed uses capacity now.
 CREATE OR REPLACE FUNCTION public.club_auction_opening_bid_for_rank(p_rank smallint)
@@ -179,7 +180,7 @@ GRANT SELECT ON public.club_auction_listings_public TO anon;
 GRANT EXECUTE ON FUNCTION public.club_auction_opening_bid_for_capacity(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_club_auction_refresh_opening_bids() TO authenticated;
 
--- Align active listings with capacity × ₿1,000 (safe to re-run)
+-- Align active listings with capacity × ₿1,500 (safe to re-run)
 UPDATE public."Club_Auction_Listings" l
 SET opening_bid = public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)::bigint),
     reserve_price = public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)::bigint),

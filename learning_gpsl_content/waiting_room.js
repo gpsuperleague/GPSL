@@ -38,7 +38,7 @@ export const SECTION_WAITING_ROOM = {
       type: "ul",
       items: [
         `You must be <b>invited</b> by admin (Auction tick on the admin waiting list) — status <code>awaiting_club_auction</code>.`,
-        `<b>Opening bids</b> reflect club prestige and stadium (stadium cost ≈ capacity × ₿1,000). Check capacity, expected finish, gate income, and maintenance on the auction page before you bid.`,
+        `<b>Opening bids</b> reflect club prestige and stadium (stadium cost = capacity × ₿1,500, same as Club Database stadium value). Check capacity, expected finish, gate income, and maintenance on the auction page before you bid.`,
         `<b>Countdown</b> — same timed window style as other drafts (Day 1 19:00 UK start when enabled). The timer only appears when the <b>club</b> auction is on — not when player/manager drafts are on.`,
         `You may only <b>lead one club</b> at a time. When the window closes, the highest bidder wins; settlement assigns the club and opens the full site.`,
       ],

@@ -503,7 +503,7 @@ BEGIN
       v_desc := coalesce(
         nullif(btrim(p_description), ''),
         format(
-          'Stadium purchase — %s (%s) — ₿%s (capacity × ₿1,000)',
+          'Stadium purchase — %s (%s) — ₿%s (capacity × ₿1,500)',
           coalesce(v_club_name, v_club),
           v_club,
           to_char(v_stadium, 'FM999,999,999,999')

@@ -64,7 +64,7 @@ function minimumBidHelpText(row) {
   const high = Number(row.current_highest_bid) || 0;
   const cost = stadiumCost(row);
   if (!high) {
-    return `Opening bid is stadium cost (${formatMoney(cost)} = capacity × ₿1,000). Bids round to the nearest ₿1,000,000.`;
+    return `Opening bid is stadium cost (${formatMoney(cost)} = capacity × ₿1,500). Bids round to the nearest ₿1,000,000.`;
   }
   return `Minimum bid is ${formatMoney(min)} (stadium cost or ₿500,000 above the current highest). Bids round to the nearest ₿1,000,000.`;
 }
@@ -110,7 +110,7 @@ function stadiumCost(row) {
   const fromView = Number(row.stadium_cost);
   if (Number.isFinite(fromView) && fromView > 0) return fromView;
   const cap = Number(row.capacity) || 0;
-  return cap * 1000;
+  return cap * STADIUM_VALUE_PER_SEAT;
 }
 
 function season1Expected(row) {
@@ -480,7 +480,7 @@ async function loadListings() {
       <td class="stat-num">${formatMoney(gate)}<span class="stat-sub">100% fill · ₿${GATE_PRICE_PER_SEAT}/seat</span></td>
       <td class="stat-num">${formatMoney(maint)}<span class="stat-sub">12.5% × cap × ₿${STADIUM_VALUE_PER_SEAT.toLocaleString("en-GB")}</span></td>
       <td class="exp-pos">${ordinal(expPos)}<span class="stat-sub">league table</span></td>
-      <td class="stat-num">${formatMoney(cost)}<span class="stat-sub">capacity × ₿1,000</span></td>
+      <td class="stat-num">${formatMoney(cost)}<span class="stat-sub">capacity × ₿1,500</span></td>
       <td class="stat-num">${highBidHtml}</td>
       <td>${row.current_leader_tag ? `<span class="club-owner-tag">${escapeHtml(row.current_leader_tag)}</span>` : "—"}${isLeader ? ' <span class="leader-you">(you)</span>' : ""}</td>
       <td class="bid-col"></td>
