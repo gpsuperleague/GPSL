@@ -46,17 +46,20 @@ function parseMoneyInput(value) {
   return Number(String(value).replace(/,/g, "")) || 0;
 }
 
-function roundBidToMillion(amount) {
-  return Math.round(amount / 1000000) * 1000000;
+/** Always round UP to the nearest ₿500,000 (matches club auction step). */
+function ceilBidToIncrement(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.ceil(n / BID_INCREMENT) * BID_INCREMENT;
 }
 
 function listingMinimumBid(row) {
   const min = Number(row.min_next_bid);
-  if (Number.isFinite(min) && min > 0) return min;
+  if (Number.isFinite(min) && min > 0) return ceilBidToIncrement(min);
   const opening = Number(row.opening_bid) || stadiumCost(row);
   const high = Number(row.current_highest_bid) || 0;
-  if (!high) return opening;
-  return Math.max(opening, high + BID_INCREMENT);
+  if (!high) return ceilBidToIncrement(opening);
+  return ceilBidToIncrement(Math.max(opening, high + BID_INCREMENT));
 }
 
 function minimumBidHelpText(row) {
@@ -64,9 +67,9 @@ function minimumBidHelpText(row) {
   const high = Number(row.current_highest_bid) || 0;
   const cost = stadiumCost(row);
   if (!high) {
-    return `Opening bid is stadium cost (${formatMoney(cost)} = capacity × ₿1,500). Bids round to the nearest ₿1,000,000.`;
+    return `Opening bid is stadium cost (${formatMoney(cost)} = capacity × ₿1,500), rounded up to the nearest ₿500,000 → ${formatMoney(min)}.`;
   }
-  return `Minimum bid is ${formatMoney(min)} (stadium cost or ₿500,000 above the current highest). Bids round to the nearest ₿1,000,000.`;
+  return `Minimum bid is ${formatMoney(min)} (stadium cost or ₿500,000 above the current highest, rounded up to the nearest ₿500,000).`;
 }
 
 function formatNum(n) {
@@ -572,7 +575,7 @@ function validateClubBidInput() {
   if (!input || !selectedListing) return;
 
   const raw = parseMoneyInput(input.value);
-  const rounded = raw > 0 ? roundBidToMillion(raw) : 0;
+  const rounded = raw > 0 ? ceilBidToIncrement(raw) : 0;
   const minBid = listingMinimumBid(selectedListing);
 
   if (input.value !== "" && rounded > 0) {
@@ -583,7 +586,7 @@ function validateClubBidInput() {
     input.style.border = "2px solid #a44";
     if (errorBox) {
       errorBox.textContent = rounded && rounded < minBid
-        ? `Minimum bid is ${formatMoney(minBid)} (after rounding to nearest ₿1m).`
+        ? `Minimum bid is ${formatMoney(minBid)} (after rounding up to nearest ₿500k).`
         : `Enter at least ${formatMoney(minBid)}.`;
     }
     if (submitBtn) submitBtn.disabled = true;
@@ -611,7 +614,7 @@ function adjustClubBid(delta) {
   current = Math.max(0, current + delta);
   const minBid = listingMinimumBid(selectedListing);
   if (current < minBid) current = minBid;
-  input.value = roundBidToMillion(current).toLocaleString("en-GB");
+  input.value = ceilBidToIncrement(current).toLocaleString("en-GB");
   validateClubBidInput();
 }
 
@@ -689,7 +692,7 @@ async function openClubBidModal(row, allowBid = true) {
   const submitBtn = document.getElementById("clubBidSubmitBtn");
   if (input) {
     const minBid = listingMinimumBid(row);
-    input.value = roundBidToMillion(minBid).toLocaleString("en-GB");
+    input.value = ceilBidToIncrement(minBid).toLocaleString("en-GB");
     input.style.border = "1px solid #444";
     input.oninput = validateClubBidInput;
   }
@@ -713,7 +716,7 @@ async function refreshClubMaxBidUi(clubShortName) {
     statusEl.textContent = maxBidStatusText(max).replace(/^Max bid /, "").replace(/^No max.*/, "Off");
     statusEl.style.color = max ? "#9f9" : "#aaa";
     if (maxInput && max) {
-      maxInput.value = roundBidToMillion(max).toLocaleString("en-GB");
+      maxInput.value = ceilBidToIncrement(max).toLocaleString("en-GB");
     } else if (maxInput && !maxInput.value) {
       maxInput.value = "";
     }
@@ -743,7 +746,7 @@ function wireClubBidModal() {
   document.getElementById("clubBidQuickBtn")?.addEventListener("click", () => {
     if (!selectedListing) return;
     const input = document.getElementById("clubBidAmount");
-    input.value = roundBidToMillion(listingMinimumBid(selectedListing)).toLocaleString("en-GB");
+    input.value = ceilBidToIncrement(listingMinimumBid(selectedListing)).toLocaleString("en-GB");
     validateClubBidInput();
   });
 
@@ -756,7 +759,7 @@ function wireClubBidModal() {
   document.getElementById("clubBidSubmitBtn")?.addEventListener("click", async () => {
     if (!selectedListing) return;
     const input = document.getElementById("clubBidAmount");
-    const amount = roundBidToMillion(parseMoneyInput(input?.value));
+    const amount = ceilBidToIncrement(parseMoneyInput(input?.value));
     const minBid = listingMinimumBid(selectedListing);
     if (!amount || amount < minBid) {
       validateClubBidInput();
@@ -768,7 +771,7 @@ function wireClubBidModal() {
   document.getElementById("clubBidMaxSetBtn")?.addEventListener("click", async () => {
     if (!selectedListing) return;
     const errEl = document.getElementById("clubBidError");
-    const amount = roundBidToMillion(
+    const amount = ceilBidToIncrement(
       parseMaxBidInput(document.getElementById("clubBidMaxAmount")?.value)
     );
     if (!amount) {
@@ -810,7 +813,7 @@ function wireClubBidModal() {
 }
 
 async function placeBid(shortName, rawAmount, btn) {
-  const amount = roundBidToMillion(Number(rawAmount));
+  const amount = ceilBidToIncrement(Number(rawAmount));
   if (!Number.isFinite(amount) || amount <= 0) {
     alert("Enter a valid bid amount.");
     return;
@@ -851,7 +854,7 @@ async function placeBid(shortName, rawAmount, btn) {
       await loadBidHistory(refreshed.id);
       const input = document.getElementById("clubBidAmount");
       if (input) {
-        input.value = roundBidToMillion(listingMinimumBid(refreshed)).toLocaleString("en-GB");
+        input.value = ceilBidToIncrement(listingMinimumBid(refreshed)).toLocaleString("en-GB");
       }
       validateClubBidInput();
     }
