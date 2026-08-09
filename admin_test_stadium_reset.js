@@ -38,16 +38,33 @@ async function loadClubs() {
     .order("Club");
 
   if (error) throw error;
-  clubs = data || [];
+
+  // Only clubs whose live capacity is above original base_capacity
+  clubs = (data || []).filter((c) => {
+    if (c.base_capacity == null) return false;
+    return Number(c.Capacity) > Number(c.base_capacity);
+  });
 
   const sel = document.getElementById("clubSelect");
   if (!sel) return;
+
+  if (!clubs.length) {
+    sel.innerHTML = '<option value="">— No expanded stadiums —</option>';
+    sel.onchange = updateClubMeta;
+    updateClubMeta();
+    setStatus(
+      "resetStatus",
+      "No clubs currently have capacity above their original base.",
+      true
+    );
+    return;
+  }
 
   sel.innerHTML =
     '<option value="">— Select club —</option>' +
     clubs
       .map((c) => {
-        const base = c.base_capacity != null ? c.base_capacity : c.Capacity;
+        const base = c.base_capacity;
         const label = `${c.Club || c.ShortName} (${c.ShortName}) — ${formatCap(c.Capacity)} → base ${formatCap(base)}`;
         return `<option value="${escapeHtml(c.ShortName)}">${escapeHtml(label)}</option>`;
       })
@@ -104,7 +121,12 @@ async function resetStadium() {
 
   await loadClubs();
   const sel = document.getElementById("clubSelect");
-  if (sel) sel.value = short;
+  // Club drops out of the list once capacity matches base again
+  if (sel && clubs.some((row) => row.ShortName === short)) {
+    sel.value = short;
+  } else if (sel) {
+    sel.value = "";
+  }
   updateClubMeta();
 }
 
