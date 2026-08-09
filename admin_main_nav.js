@@ -593,12 +593,6 @@ export const ADMIN_MAIN_NAV = [
     label: "Close Season",
     entries: [
       link(
-        "Apply playoff movements",
-        "admin_fixtures-playoffs.html",
-        null,
-        "Usually automatic when the SL playoff final is played. Use only to re-run/repair."
-      ),
-      link(
         "Mid-Season Challenge payouts",
         "admin_challenges.html",
         null,
