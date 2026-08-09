@@ -420,60 +420,79 @@ export const ADMIN_MAIN_NAV = [
     id: "season_management",
     label: "Season Management",
     entries: [
-      link(
-        "Club Season Checklist",
-        "admin_club_checklist.html",
-        null,
-        "Review owned clubs against season compliance rules (squad, manager, etc.)."
-      ),
-      link(
-        "Season expectations",
-        "admin_season_expectations.html",
-        null,
-        "Club/owner/manager board: prestige & manager expect vs actual, plus projected end-of-season consequences."
-      ),
-      link(
-        "Owner holidays",
-        "admin_owner_holidays.html",
-        null,
-        "View / manage owner holiday periods that affect arranging fixtures."
-      ),
-      link(
-        "Apply fines",
-        "admin_fines.html",
-        null,
-        "Issue admin fines to clubs (ledger + inbox)."
-      ),
-      link(
-        "Inject cash",
-        "admin_cash_injection.html",
-        null,
-        "Credit a fixed ₿ amount to all season clubs or selected clubs (admin_one_off_injection + inbox)."
-      ),
-      link(
-        "Charge Emergency Tax",
-        "admin_emergency_tax.html",
-        null,
-        "Debit a fixed ₿ amount from all or selected clubs (gov_emergency_tax + inbox). Also hosts season-end threshold % formula."
-      ),
-      link(
-        "Red card appeal review",
-        "admin_prize_appeals.html",
-        null,
-        "Review owner red-card / prize appeals and apply outcomes."
-      ),
-      link(
-        "Republish GPSL Sport",
-        "admin_gpsl_sport.html",
-        null,
-        "Rebuild / republish the GPSL Sport public pages after results or awards change."
-      ),
-      link(
-        "Cancel open listings & bids",
-        "admin_transfers.html",
-        "sb-cancel-open",
-        "Soft-cancel open market/draft listings, bids, and pending direct offers (not completed sales)."
-      ),
+      group("Clubs & owners", [
+        L(
+          "Club Season Checklist",
+          "admin_club_checklist.html",
+          null,
+          null,
+          "Review owned clubs against season compliance rules (squad, manager, etc.)."
+        ),
+        L(
+          "Season expectations",
+          "admin_season_expectations.html",
+          null,
+          null,
+          "Club/owner/manager board: prestige & manager expect vs actual, plus projected end-of-season consequences."
+        ),
+        L(
+          "Owner holidays",
+          "admin_owner_holidays.html",
+          null,
+          null,
+          "View / manage owner holiday periods that affect arranging fixtures."
+        ),
+      ]),
+      group("Finances", [
+        L(
+          "Apply fines",
+          "admin_fines.html",
+          null,
+          null,
+          "Issue admin fines to clubs (ledger + inbox)."
+        ),
+        L(
+          "Inject cash",
+          "admin_cash_injection.html",
+          null,
+          null,
+          "Credit a fixed ₿ amount to all season clubs or selected clubs (admin_one_off_injection + inbox)."
+        ),
+        L(
+          "Charge Emergency Tax",
+          "admin_emergency_tax.html",
+          null,
+          null,
+          "Debit a fixed ₿ amount from all or selected clubs (gov_emergency_tax + inbox). Also hosts season-end threshold % formula."
+        ),
+      ]),
+      group("Appeals", [
+        L(
+          "Red card appeal review",
+          "admin_prize_appeals.html",
+          null,
+          null,
+          "Review owner red-card / prize appeals and apply outcomes."
+        ),
+      ]),
+      group("Media", [
+        L(
+          "Republish GPSL Sport",
+          "admin_gpsl_sport.html",
+          null,
+          null,
+          "Rebuild / republish the GPSL Sport public pages after results or awards change."
+        ),
+      ]),
+      group("Transfers", [
+        L(
+          "Cancel open listings & bids",
+          "admin_transfers.html",
+          "sb-cancel-open",
+          null,
+          "Soft-cancel open market/draft listings, bids, and pending direct offers (not completed sales)."
+        ),
+      ]),
     ],
   },
   {
