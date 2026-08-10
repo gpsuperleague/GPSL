@@ -95,7 +95,7 @@ import {
   newOwnerReleaseOptionLabel,
   newOwnerListOptionLabel,
   newOwnerSlotBadgeText,
-} from "./new_owner_release.js";
+} from "./new_owner_release.js?v=20260810-aug-window";
 import {
   loadSquadDesignationsState,
   setSquadDesignation,
@@ -126,7 +126,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20260809-mgr-ghost";
+} from "./squad_info_tips.js?v=20260810-aug-window";
 
 window.supabase = supabase;
 

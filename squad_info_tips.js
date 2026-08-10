@@ -74,7 +74,7 @@ export const SQUAD_TIPS = {
     "Voluntary releases left this season (max 3). You keep paying wages; the player is out until next season. Useful when you cannot sell.",
 
   newOwnerRelease:
-    "First-season owner tools — limited free releases / listings while you settle into the club. Check the badge hint for what’s left and when the window is open.",
+    "First-season owner tools — up to 3 release or transfer-list slots in your first season at the club. Window: pre-season through GPSL August, plus January when the transfer window is open.",
 };
 
 export function squadContractTip(player, clubNation) {

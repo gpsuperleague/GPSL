@@ -1,12 +1,6 @@
 -- =============================================================================
--- Fix: New Owner release/list window during GPSL June & July
---
--- Bug: club_new_owner_release_window_open() returned true for season status
--- 'preseason', or January + TW, but once Start season activates the calendar and
--- June/July become the live GPSL months (status = 'active'), the window closed.
--- New owners then saw greyed "pre-season / January only" while TW was open.
---
--- Fix: treat active GPSL months june and july as the pre-season window.
+-- New Owner release/list window — include GPSL August
+-- Transfer window runs through August; first-season slots should stay available.
 -- Safe re-run.
 -- =============================================================================
 

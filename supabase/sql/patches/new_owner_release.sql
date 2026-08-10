@@ -200,8 +200,8 @@ BEGIN
     RETURN true;
   END IF;
 
-  -- GPSL pre-season months (June / July) — same window as status = preseason
-  IF v_month IN ('june', 'july') THEN
+  -- GPSL pre-season / opening window months (June–August)
+  IF v_month IN ('june', 'july', 'august') THEN
     RETURN true;
   END IF;
 
