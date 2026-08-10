@@ -7,7 +7,7 @@
   <title>Boardroom — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="boardroom.css?v=20260805-finances">
+  <link rel="stylesheet" href="boardroom.css?v=20260810-analysis-chart">
 </head>
 <body class="boardroom-page">
   <div id="nav"></div>
@@ -110,6 +110,17 @@
       </div>
     </section>
 
+    <section class="board-panel" id="boardAnalysisPanel">
+      <h2>Analysis</h2>
+      <p class="board-intro" id="boardAnalysisIntro"><!-- Filled by boardroom_rules.js --></p>
+      <h3 class="board-subhead">Final league position by season</h3>
+      <p class="chart-note">Last two seasons (current live finish when available, plus the previous archived season). 1st at the top.</p>
+      <div class="chart-wrap">
+        <canvas id="seasonPositionChart"></canvas>
+      </div>
+      <p class="board-empty" id="seasonPositionEmpty" style="display:none;"></p>
+    </section>
+
     <section class="board-panel">
       <h2>Further reading</h2>
       <p class="board-intro" style="margin:0;">
@@ -123,6 +134,6 @@
     </section>
   </main>
 
-  <script type="module" src="boardroom.js?v=20260806-league-badges"></script>
+  <script type="module" src="boardroom.js?v=20260810-analysis-chart"></script>
 </body>
 </html>

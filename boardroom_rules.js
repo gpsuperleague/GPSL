@@ -3,10 +3,15 @@
  */
 
 export function getBoardroomIntroHtml() {
-  return `The board reviews <b>club finances</b>, <b>prestige expectations</b>, the <b>manager’s deal target</b>, and
-        <b>government subsidies</b> in one place.
+  return `The board reviews <b>club finances</b>, <b>prestige expectations</b>, the <b>manager’s deal target</b>,
+        <b>government subsidies</b>, and <b>league-position analysis</b> in one place.
         Missing season expectation affects stadium gate fill and can trigger player transfer requests.
         Manager targets are reviewed each season of a 2-season deal.`;
+}
+
+export function getBoardroomAnalysisIntroHtml() {
+  return `Recent league finishes for the board’s review. Full season-by-season table and monthly chart remain on
+        <a href="history.html">Club History</a>.`;
 }
 
 export function getBoardroomSubsidyIntroHtml() {
@@ -135,6 +140,10 @@ export function getBoardroomAgendaCards() {
       heading: "Subsidies",
       body: "Homegrown, Youth, and Weak squad bonus status from the current squad.",
     },
+    {
+      heading: "Analysis",
+      body: "Final league position over the last two seasons for board review.",
+    },
   ];
 }
 
@@ -147,6 +156,9 @@ export function renderBoardroomIntro() {
 
   const financeIntro = document.getElementById("boardFinanceIntro");
   if (financeIntro) financeIntro.innerHTML = getBoardroomFinanceIntroHtml();
+
+  const analysisIntro = document.getElementById("boardAnalysisIntro");
+  if (analysisIntro) analysisIntro.innerHTML = getBoardroomAnalysisIntroHtml();
 
   const agenda = document.getElementById("boardAgenda");
   if (!agenda) return;

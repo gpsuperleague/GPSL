@@ -20,6 +20,7 @@ import {
   computeBoardFinanceRating,
   renderBoardroomIntro,
 } from "./boardroom_rules.js";
+import { loadSeasonPositionChart } from "./club_season_position_chart.js";
 
 let pageClubShort = null;
 
@@ -754,7 +755,7 @@ async function initBoardroom() {
   if (title) title.textContent = `${clubLabel} Boardroom`;
   const tagline = document.getElementById("boardTagline");
   if (tagline) {
-    tagline.textContent = `Finances · expectations · manager deal · subsidies`;
+    tagline.textContent = `Finances · expectations · manager deal · subsidies · analysis`;
   }
 
   wireManagerActions();
@@ -764,6 +765,7 @@ async function initBoardroom() {
     loadManagerSection(club.ShortName),
     loadSubsidyStatus(club.ShortName),
     loadBoardFinanceSection(club.ShortName),
+    loadSeasonPositionChart(supabase, club.ShortName, { maxSeasons: 2 }),
   ]);
 
   renderHeroStats({

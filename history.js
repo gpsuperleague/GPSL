@@ -265,92 +265,6 @@ function renderMonthlyChart(data) {
   });
 }
 
-function renderSeasonChart(data) {
-  const canvas = document.getElementById("seasonPositionChart");
-  const empty = document.getElementById("seasonPositionEmpty");
-  const wrap = canvas?.closest(".chart-wrap");
-  if (!canvas || !empty) return;
-
-  const rows = data?.seasons || [];
-  if (!rows.length) {
-    if (wrap) wrap.style.display = "none";
-    empty.style.display = "block";
-    empty.textContent =
-      "No season position history yet. Archive past seasons from Admin → Season management, or wait for live standings this year.";
-    return;
-  }
-
-  if (wrap) wrap.style.display = "block";
-  empty.style.display = "none";
-
-  const labels = rows.map((r) => {
-    const base = r.season_label || "Season";
-    return r.is_current && !r.is_final ? `${base} (live)` : base;
-  });
-  const positions = rows.map((r) => Number(r.position));
-  const maxPos = Math.max(
-    20,
-    ...positions.filter((n) => Number.isFinite(n)),
-    Number(data.division_size) || 0
-  );
-
-  new Chart(canvas, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Final position",
-          data: positions,
-          borderColor: "#6cf",
-          backgroundColor: "rgba(102,204,255,0.12)",
-          pointBackgroundColor: rows.map((r) =>
-            r.is_current && !r.is_final ? "#ffcc66" : "#9fd4ff"
-          ),
-          pointBorderColor: rows.map((r) =>
-            r.is_current && !r.is_final ? "#ff9900" : "#6cf"
-          ),
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          tension: 0.25,
-          fill: true,
-          spanGaps: true,
-        },
-      ],
-    },
-    options: {
-      ...chartDefaults(),
-      plugins: {
-        ...chartDefaults().plugins,
-        tooltip: {
-          ...chartDefaults().plugins.tooltip,
-          callbacks: {
-            label(ctx) {
-              const row = rows[ctx.dataIndex];
-              const pos = row?.position ?? ctx.parsed.y;
-              const div = divisionLabel(row?.division);
-              const tag =
-                row?.is_current && !row?.is_final
-                  ? "live"
-                  : row?.is_final
-                    ? "final"
-                    : "";
-              return `${pos}${ordinalSuffix(pos)} · ${div}${tag ? ` · ${tag}` : ""}`;
-            },
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: { color: "#aaa", maxRotation: 45, minRotation: 0 },
-          grid: { color: "rgba(255,255,255,0.04)" },
-        },
-        y: positionYScale(maxPos),
-      },
-    },
-  });
-}
-
 function ordinalSuffix(n) {
   const num = Number(n);
   if (!Number.isFinite(num)) return "";
@@ -376,15 +290,10 @@ async function loadPositionCharts(shortName) {
   if (error) {
     console.warn("competition_club_position_charts:", error.message);
     const monthlyEmpty = document.getElementById("monthlyPositionEmpty");
-    const seasonEmpty = document.getElementById("seasonPositionEmpty");
     const monthlyWrap = document
       .getElementById("monthlyPositionChart")
       ?.closest(".chart-wrap");
-    const seasonWrap = document
-      .getElementById("seasonPositionChart")
-      ?.closest(".chart-wrap");
     if (monthlyWrap) monthlyWrap.style.display = "none";
-    if (seasonWrap) seasonWrap.style.display = "none";
     if (monthlyEmpty) {
       monthlyEmpty.style.display = "block";
       monthlyEmpty.textContent = error.message.includes(
@@ -393,19 +302,10 @@ async function loadPositionCharts(shortName) {
         ? "Run supabase/sql/patches/competition_club_position_charts.sql in Supabase to enable position charts."
         : `Could not load monthly chart (${error.message}).`;
     }
-    if (seasonEmpty) {
-      seasonEmpty.style.display = "block";
-      seasonEmpty.textContent = error.message.includes(
-        "competition_club_position_charts"
-      )
-        ? "Run supabase/sql/patches/competition_club_position_charts.sql in Supabase to enable position charts."
-        : `Could not load season chart (${error.message}).`;
-    }
     return;
   }
 
   renderMonthlyChart(data || {});
-  renderSeasonChart(data || {});
 }
 
 function renderHonours(honours) {
