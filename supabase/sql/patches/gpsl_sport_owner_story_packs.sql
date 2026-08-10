@@ -70,6 +70,14 @@ BEGIN
         'owner_takeover', v_seed, v_vars, NULL, v_exclude, 3
       );
     END IF;
+
+    -- More owners than packs: reuse the bank (still paired) instead of
+    -- falling back to unpaired headline/body arrays that collide.
+    IF v_pack IS NULL AND coalesce(array_length(v_exclude, 1), 0) > 0 THEN
+      v_pack := public.gpsl_sport_compose_story_from_packs(
+        'owner_takeover', v_seed || ':recycle', v_vars, NULL, '{}'::text[], 0
+      );
+    END IF;
   END IF;
 
   IF v_pack IS NOT NULL THEN

@@ -387,7 +387,15 @@ BEGIN
     RETURN jsonb_build_object('front_page', v_front, 'back_page', v_back, 'story_type', 'transfer_quiet');
   END IF;
 
-  v_owners := public.gpsl_sport_list_owner_takeovers(p_window_start, p_window_end);
+  -- Pre-season: include early club links from season reset / auction that land
+  -- before the official June publish window (otherwise owners_page stays empty).
+  v_owners := public.gpsl_sport_list_owner_takeovers(
+    CASE
+      WHEN p_preseason THEN p_window_start - interval '21 days'
+      ELSE p_window_start
+    END,
+    p_window_end
+  );
   v_owner_count := coalesce(jsonb_array_length(v_owners), 0);
 
   v_managers := public.gpsl_sport_list_manager_signings(p_window_start, p_window_end);

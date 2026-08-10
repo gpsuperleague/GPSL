@@ -218,7 +218,13 @@ DECLARE
   v_owner_pack_used text[] := '{}';
 BEGIN
   IF p_window_start IS NOT NULL AND p_window_end IS NOT NULL AND p_window_end > p_window_start THEN
-    v_owners := public.gpsl_sport_list_owner_takeovers(p_window_start, p_window_end);
+    v_owners := public.gpsl_sport_list_owner_takeovers(
+      CASE
+        WHEN p_preseason THEN p_window_start - interval '21 days'
+        ELSE p_window_start
+      END,
+      p_window_end
+    );
     v_owner_count := coalesce(jsonb_array_length(v_owners), 0);
 
     IF v_owner_count > 0 THEN
