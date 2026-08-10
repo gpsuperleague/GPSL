@@ -4,7 +4,6 @@ import {
   computeNextDraftTimesFromNow,
   computeLateDraftStartNow,
   isDraftScheduleExpired,
-  isPastNominalDraftStartUk,
 } from "./global.js";
 
 primeAdminPageChrome();
@@ -219,8 +218,9 @@ async function loadSettings() {
 function pickTimesForKind(kindStart) {
   const expired =
     !kindStart || isDraftScheduleExpired(kindStart ? new Date(kindStart) : null);
-  if (!expired && kindStart) return null; // keep existing
-  if (isPastNominalDraftStartUk()) return computeLateDraftStartNow();
+  if (!expired && kindStart) return null; // keep existing active window
+  // Normal Save → next future Day-1 19:00 UK (never open mid-evening).
+  // Use Admin → Late start if you need bidding live tonight after 19:00.
   return computeNextDraftTimesFromNow();
 }
 
@@ -258,28 +258,32 @@ async function saveSettings() {
   }
   if (club_auction_enabled && !current?.club_auction_enabled) turningOn.push("club");
 
-  const needLateConfirm =
-    isPastNominalDraftStartUk() &&
-    turningOn.some((kind) => {
+  // Preview next clocks for types that need a new schedule (expired / missing).
+  const previewNext = turningOn
+    .map((kind) => {
       const start =
         kind === "player"
           ? current?.draft_auction_start_time
           : kind === "manager"
             ? current?.manager_draft_auction_start_time
             : current?.club_auction_start_time;
-      return !start || isDraftScheduleExpired(new Date(start));
-    });
+      const needsNew = !start || isDraftScheduleExpired(new Date(start));
+      if (!needsNew) return null;
+      const times = computeNextDraftTimesFromNow();
+      if (!times?.draftStartISO) return null;
+      const fmt = ukDraftFmt();
+      return `${kind}: opens ${fmt.format(new Date(times.draftStartISO))} UK`;
+    })
+    .filter(Boolean);
 
-  if (needLateConfirm) {
+  if (previewNext.length) {
     if (
       !confirm(
-        "It is after 19:00 UK.\n\n" +
-          `Turning on: ${turningOn.join(", ") || "draft type(s)"}.\n` +
-          "Use LATE START for any type that needs a new clock?\n" +
-          "• Day-1 = tonight 19:00 UK (bidding live now)\n" +
-          "• Day-2 finish = tomorrow 18:50–18:59 UK\n" +
-          "Other types keep their own clocks.\n\n" +
-          "OK = continue · Cancel = abort."
+        `Turning on: ${turningOn.join(", ")}.\n\n` +
+          "New schedules use the next Day-1 19:00 UK slot (not live now):\n" +
+          previewNext.map((l) => `• ${l}`).join("\n") +
+          "\n\nNeed bidding open tonight after 19:00? Cancel and use Late start instead.\n\n" +
+          "OK = save · Cancel = abort."
       )
     ) {
       return;
