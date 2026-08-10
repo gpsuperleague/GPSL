@@ -728,7 +728,10 @@ BEGIN
   SET foreign_interest_remaining = CASE WHEN "ShortName" = 'FOREIGN' THEN 0 ELSE 3 END,
       foreign_tracking_teams = '{}'::text[],
       voluntary_contract_releases_remaining = 3,
-      manager_sacks_remaining = 1
+      manager_sacks_remaining = 1,
+      -- New Owner first-season slots (also cleared by vacate trigger + season FK ON DELETE SET NULL)
+      owner_assigned_season_id = NULL,
+      new_owner_releases_remaining = 0
   WHERE "ShortName" IS NOT NULL;
 
   IF to_regprocedure('public.manager_reset_season_quotas()') IS NOT NULL THEN
