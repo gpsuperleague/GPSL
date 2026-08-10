@@ -1,2 +1,103 @@
-scenario,field,template,placeholders,notes,priority
-shock_result,headline,{{WINNER}} SHOCK THE LEAGUE — {{LOSER}} CRUMBLE {{SCORE}},"WINNER,LOSER,SCORE",example row — delete and add your variants,high
+scenario,pack_id,field,template,placeholders,notes,priority
+shock_result,shock_ruin_night,headline,{{WINNER}} RUIN {{LOSER}}'S NIGHT — {{SCORE}},"WINNER,LOSER,SCORE",paired pack,high
+shock_result,shock_ruin_night,subhead,{{DIVISION}} form guide in the bin after this one,"DIVISION",paired pack,high
+shock_result,shock_ruin_night,body,"Nobody had {{WINNER}} down for this. {{LOSER}} looked favourite on paper and still walked into a {{SCORE}} mess in {{DIVISION}}. One bad night, and the group chats were already rewriting the table.","WINNER,LOSER,SCORE,DIVISION",human voice,high
+shock_result,shock_inbox_alight,headline,INBOX ALIGHT: {{WINNER}} DUMP {{LOSER}} {{SCORE}},"WINNER,LOSER,SCORE",paired pack,high
+shock_result,shock_inbox_alight,subhead,{{MONTH}}'s loudest scoreline so far,MONTH,paired pack,high
+shock_result,shock_inbox_alight,body,"You could feel this one land. {{WINNER}} beat {{LOSER}} {{SCORE}} and suddenly every owner had an opinion. Prestige said one thing. The scoreboard said another. That's the GPSL.","WINNER,LOSER,SCORE",human voice,high
+shock_result,shock_script_ripped,headline,{{LOSER}} FOLLOW THE SCRIPT — THEN {{WINNER}} RIP IT UP,"LOSER,WINNER",paired pack,high
+shock_result,shock_script_ripped,subhead,{{SCORE}} in {{DIVISION}} — the upset of {{MONTH}},"SCORE,DIVISION,MONTH",paired pack,high
+shock_result,shock_script_ripped,body,"{{LOSER}} were supposed to take care of business. Instead {{WINNER}} nicked a {{SCORE}} that will follow them into next month. No need for poetry — the table just got interesting.","LOSER,WINNER,SCORE",human voice,high
+shock_result,shock_owners_fuming,headline,{{WINNER_OWNER}}'S {{WINNER}} LEAVE {{LOSER_OWNER}} FUMING,"WINNER_OWNER,WINNER,LOSER_OWNER",paired pack,high
+shock_result,shock_owners_fuming,subhead,{{SCORE}} and a long night for the favourites,"SCORE",paired pack,high
+shock_result,shock_owners_fuming,body,"Credit where it's due: {{WINNER_OWNER}}'s {{WINNER}} turned up. {{LOSER_OWNER}}'s {{LOSER}} did not. {{SCORE}} in {{DIVISION}}, and the inbox was brutal before full-time had even settled.","WINNER_OWNER,WINNER,LOSER_OWNER,LOSER,SCORE,DIVISION",human voice,high
+shock_result,shock_no_alibi,headline,NO ALIBIS FOR {{LOSER}} AFTER {{SCORE}} TO {{WINNER}},"LOSER,SCORE,WINNER",paired pack,high
+shock_result,shock_no_alibi,subhead,{{DIVISION}} shock that needs no spin,DIVISION,paired pack,high
+shock_result,shock_no_alibi,body,"{{LOSER}} can talk about bad luck if they want. The rest of the league saw {{WINNER}} win {{SCORE}} and move on. In {{MONTH}}, that is the story that stuck.","LOSER,WINNER,SCORE,MONTH",human voice,high
+shock_result,shock_quiet_kill,headline,{{WINNER}} DO A QUIET NUMBER ON {{LOSER}},"WINNER,LOSER",paired pack,high
+shock_result,shock_quiet_kill,subhead,{{SCORE}} — not flashy. Just finished.,SCORE,paired pack,high
+shock_result,shock_quiet_kill,body,"Not every upset is a carnival. {{WINNER}} just got the job done {{SCORE}} against {{LOSER}} and left {{DIVISION}} looking over its shoulder. Sometimes the calm ones hurt more.","WINNER,SCORE,LOSER,DIVISION",human voice,high
+shock_result,shock_experts_wrong,headline,THE TIPSTERS WERE WRONG — {{WINNER}} BEAT {{LOSER}},"WINNER,LOSER",paired pack,high
+shock_result,shock_experts_wrong,subhead,{{MONTH}} reminder: GPSL does not do tidy favourites,MONTH,paired pack,high
+shock_result,shock_experts_wrong,body,"If you had {{LOSER}} pencilled in for three points, join the club. {{WINNER}} had other ideas and the board read {{SCORE}}. {{DIVISION}} will be talking about it all week.","LOSER,WINNER,SCORE,DIVISION",human voice,high
+shock_result,shock_table_tilt,headline,{{DIVISION}} TILTS AS {{WINNER}} FLOOR {{LOSER}},"DIVISION,WINNER,LOSER",paired pack,high
+shock_result,shock_table_tilt,subhead,{{SCORE}} changes the mood of the month,"SCORE",paired pack,high
+shock_result,shock_table_tilt,body,"One result. Different mood. {{WINNER}}'s {{SCORE}} over {{LOSER}} did not just fill a column — it made the {{DIVISION}} race look open again. {{MONTH}} needed a jolt. It got one.","WINNER,SCORE,LOSER,DIVISION,MONTH",human voice,high
+cup_upset,cup_earthquake,headline,CUP EARTHQUAKE: {{WINNER}} DUMP {{LOSER}} OUT,"WINNER,LOSER",paired pack,high
+cup_upset,cup_earthquake,subhead,{{SCORE}} and the favourites are gone,SCORE,paired pack,high
+cup_upset,cup_earthquake,body,"Knockout football does not care about prestige. {{WINNER}} knocked {{LOSER}} out {{SCORE}} and that is the whole story. No rematch. No soft landing. Just the exit door.","WINNER,LOSER,SCORE",human voice,high
+cup_upset,cup_other_ideas,headline,{{LOSER}} TURNED UP FOR A ROUTINE NIGHT. {{WINNER}} HAD OTHER IDEAS.,"LOSER,WINNER",paired pack,high
+cup_upset,cup_other_ideas,subhead,Giant-killing chapter written in {{DIVISION}},DIVISION,paired pack,high
+cup_upset,cup_other_ideas,body,"{{LOSER}} expected progress. {{WINNER}} expected a fight — and won it {{SCORE}}. Cups are cruel like that. One slip, and you are writing next season's excuses.","LOSER,WINNER,SCORE",human voice,high
+cup_upset,cup_folklore,headline,{{WINNER}} WRITE {{MONTH}} CUP FOLKLORE,"WINNER,MONTH",paired pack,high
+cup_upset,cup_folklore,subhead,"{{LOSER}} out — {{SCORE}} will linger","LOSER,SCORE",paired pack,high
+cup_upset,cup_folklore,body,"Years from now someone will still quote this. {{WINNER}} beat {{LOSER}} {{SCORE}} when nobody outside their chat group believed it. Cup nights do not get much cleaner than that.","WINNER,LOSER,SCORE",human voice,high
+cup_upset,cup_chat_groups,headline,GIANT-KILLING ALERT — {{WINNER}} KO {{LOSER}},"WINNER,LOSER",paired pack,high
+cup_upset,cup_chat_groups,subhead,Replay this one in the group chats for weeks,,paired pack,high
+cup_upset,cup_chat_groups,body,"The cups delivered again. {{WINNER}} sent {{LOSER}} packing {{SCORE}} and the favourites' fans will be muting notifications until Friday. That is knockout football, full stop.","WINNER,LOSER,SCORE",human voice,high
+cup_upset,cup_no_mercy,headline,NO MERCY IN THE CUPS: {{WINNER}} END {{LOSER}},"WINNER,LOSER",paired pack,high
+cup_upset,cup_no_mercy,subhead,{{DIVISION}} tie settled the hard way,DIVISION,paired pack,high
+cup_upset,cup_no_mercy,body,"{{LOSER}} can call it a bad day. {{WINNER}} will call it a scalp. {{SCORE}} and out — the GPSL cup does not do consolation prizes.","LOSER,WINNER,SCORE",human voice,high
+cup_upset,cup_paper_team,headline,PAPER FAVOURITES {{LOSER}} RIPPED UP BY {{WINNER}},"LOSER,WINNER",paired pack,high
+cup_upset,cup_paper_team,subhead,{{SCORE}} — the cup does not read prestige tables,SCORE,paired pack,high
+cup_upset,cup_paper_team,body,"On paper this was {{LOSER}}'s night. On the pitch it was {{WINNER}}'s. {{SCORE}} later, the underdogs are still in and the big boys are clearing their calendar.","LOSER,WINNER,SCORE",human voice,high
+manager_pressure,press_heat_rising,headline,HEAT RISING AT {{WINNER}} AFTER ANOTHER POOR {{MONTH}},"WINNER,MONTH",paired pack,high
+manager_pressure,press_heat_rising,subhead,{{POINTS}} points is not what this club was built for,POINTS,paired pack,high
+manager_pressure,press_heat_rising,body,"{{WINNER}} are not mid-table furniture. Sitting on {{POINTS}} points after {{MONTH}} has the inbox restless and the board quieter than usual — which is never a good sign. The manager still has time. Not forever.","WINNER,POINTS,MONTH",human voice,high
+manager_pressure,press_ambition_gap,headline,{{WINNER}}: AMBITION UP HERE — RESULTS DOWN THERE,WINNER,paired pack,high
+manager_pressure,press_ambition_gap,subhead,{{DIVISION}} position {{POSITION}} with {{POINTS}} points,"DIVISION,POSITION,POINTS",paired pack,high
+manager_pressure,press_ambition_gap,body,"Something is off at {{WINNER}}. The squad says top half. The table says {{POSITION}} on {{POINTS}}. {{MONTH}} did not fix it. If anything, it turned the whispers into open chat.","WINNER,POSITION,POINTS,MONTH",human voice,high
+manager_pressure,press_exit_links,headline,EXIT LINKS ALREADY — {{WINNER}} FLOUNDERING,WINNER,paired pack,high
+manager_pressure,press_exit_links,subhead,Prestige club stuck in the pack,,paired pack,high
+manager_pressure,press_exit_links,body,"When the rumour mill starts naming {{WINNER}} players for the door, you know the month went badly. {{POINTS}} points will not calm anyone. The dugout needs a response before the next GPSL month writes the next chapter.","WINNER,POINTS",human voice,high
+manager_pressure,press_board_watching,headline,BOARD WATCHING: {{WINNER}} FAIL THEIR OWN STANDARD,WINNER,paired pack,high
+manager_pressure,press_board_watching,subhead,{{MONTH}} another month of drift,MONTH,paired pack,high
+manager_pressure,press_board_watching,body,"Nobody is sacking anyone at breakfast. But {{WINNER}} after {{MONTH}} — {{POINTS}} points, {{POSITION}} in {{DIVISION}} — is the sort of stretch where every training ground rumour gets oxygen.","WINNER,MONTH,POINTS,POSITION,DIVISION",human voice,high
+manager_pressure,press_questions,headline,SERIOUS QUESTIONS AT {{WINNER}},WINNER,paired pack,high
+manager_pressure,press_questions,subhead,A club this size should not look this stuck,,paired pack,high
+manager_pressure,press_questions,body,"Strip out the spin and you are left with this: {{WINNER}} are underwhelming. {{MONTH}} added more of the same. {{POINTS}} points is a number that follows you into the next fixtures whether you like it or not.","WINNER,MONTH,POINTS",human voice,high
+manager_pressure,press_disconnect,headline,BOARDROOM VS PITCH: {{WINNER}} LOOK LOST,WINNER,paired pack,high
+manager_pressure,press_disconnect,subhead,{{DIVISION}} campaign drifting off course,DIVISION,paired pack,high
+manager_pressure,press_disconnect,body,"There is a gap at {{WINNER}} between what the board expects and what {{MONTH}} delivered. Fans see it. Rivals smell it. {{POINTS}} points will not quiet either camp.","WINNER,MONTH,POINTS",human voice,high
+manager_pressure,press_microscope,headline,{{WINNER}} UNDER THE MICROSCOPE,WINNER,paired pack,high
+manager_pressure,press_microscope,subhead,Patience wearing thin after {{MONTH}},MONTH,paired pack,high
+manager_pressure,press_microscope,body,"Every dropped point at {{WINNER}} gets dissected now. That is the cost of being a big club in a bad run. {{MONTH}} left them on {{POINTS}} — and the microscope is not going away.","WINNER,MONTH,POINTS",human voice,high
+manager_pressure,press_not_good_enough,headline,NOT GOOD ENOUGH — {{WINNER}} OWNERS KNOW IT,WINNER,paired pack,high
+manager_pressure,press_not_good_enough,subhead,{{POSITION}} in the table is the loudest stat,"POSITION",paired pack,high
+manager_pressure,press_not_good_enough,body,"You can dress {{MONTH}} up however you like. {{WINNER}} are {{POSITION}} with {{POINTS}} points. For a club of this stature, that sentence does the damage on its own.","MONTH,WINNER,POSITION,POINTS",human voice,high
+poor_start,poor_promise_gap,headline,{{WINNER}} PROMISED MUCH — {{MONTH}} SAID OTHERWISE,"WINNER,MONTH",paired pack,high
+poor_start,poor_promise_gap,subhead,Already adrift of where they hoped to be,,paired pack,high
+poor_start,poor_promise_gap,body,"Pre-season chat around {{WINNER}} was hopeful. {{MONTH}} was not. {{POINTS}} points later, the gap between plan and reality is the story — and patience in this league is not endless.","WINNER,MONTH,POINTS",human voice,high
+poor_start,poor_off_pace,headline,{{WINNER}} ALREADY OFF THE PACE IN {{DIVISION}},"WINNER,DIVISION",paired pack,high
+poor_start,poor_off_pace,subhead,Squad value not showing up in the points column,,paired pack,high
+poor_start,poor_off_pace,body,"{{WINNER}} were meant to be in the mix. Right now they are chasing it. {{MONTH}} did not light the fuse — and rivals who were supposed to be looking up at them have already moved on.","WINNER,MONTH",human voice,high
+poor_start,poor_grind,headline,ANOTHER GRINDING MONTH FOR {{WINNER}},WINNER,paired pack,high
+poor_start,poor_grind,subhead,{{POINTS}} points — the slow start continues,POINTS,paired pack,high
+poor_start,poor_grind,body,"No crisis banners yet. Just a nagging feeling at {{WINNER}} that this season is starting wrong. {{MONTH}} added another quiet disappointment. At some point quiet becomes loud.","WINNER,MONTH",human voice,high
+poor_start,poor_expectation,headline,EXPECTATION VS REALITY: {{WINNER}} STUCK IN {{MONTH}},"WINNER,MONTH",paired pack,high
+poor_start,poor_expectation,subhead,Medium-club ambitions look a long way off,,paired pack,high
+poor_start,poor_expectation,body,"{{WINNER}} do not need to win the league. They do need to look like a side with a plan. {{POINTS}} points after {{MONTH}} is not that look. The next stretch matters more than the press notes.","WINNER,POINTS,MONTH",human voice,high
+poor_start,poor_paper_wrong,headline,ON PAPER {{WINNER}} SHOULD BE HIGHER — THEY ARE NOT,WINNER,paired pack,high
+poor_start,poor_paper_wrong,subhead,{{DIVISION}} table telling an awkward truth,DIVISION,paired pack,high
+poor_start,poor_paper_wrong,body,"Ratings. Manager. Pre-season chat. All of it said {{WINNER}} would be fine. The table says {{POINTS}}. {{MONTH}} was another month where the paper version of this club failed to show up.","WINNER,POINTS,MONTH",human voice,high
+poor_start,poor_need_spark,headline,{{WINNER}} STILL WAITING FOR A SPARK,WINNER,paired pack,high
+poor_start,poor_need_spark,subhead,{{MONTH}} came and went without a lift,MONTH,paired pack,high
+poor_start,poor_need_spark,body,"Every side hits a flat patch. {{WINNER}}'s problem is the patch arrived early. {{POINTS}} points is survivable — if {{MONTH}} is the floor, not the ceiling.","WINNER,POINTS,MONTH",human voice,high
+roundup,round_wide_open,headline,{{MONTH}} GPSL ROUND-UP: TABLE STILL WIDE OPEN,MONTH,paired pack,medium
+roundup,round_wide_open,subhead,Fixtures, inbox drama and a league that will not settle,,paired pack,medium
+roundup,round_wide_open,body,"{{MONTH}} is filed. SuperLeague and the Championships all shifted again, owners argued with calendars and the inbox did what the inbox does. GPSL Sport will be back next edition — the race is nowhere near done.","MONTH",human voice,medium
+roundup,round_had_it_all,headline,{{MONTH}} HAD A BIT OF EVERYTHING,MONTH,paired pack,medium
+roundup,round_had_it_all,subhead,Shocks, slog and the usual late check-ins,,paired pack,medium
+roundup,round_had_it_all,body,"From odd scorelines to familiar grind, {{MONTH}} covered the GPSL spectrum. Clubs reset, points still matter, and pride is never far behind. See you when the next month locks.","MONTH",human voice,medium
+roundup,round_leaders_grip,headline,LEADERS TIGHTEN THE SCREWS AS {{MONTH}} CLOSES,MONTH,paired pack,medium
+roundup,round_leaders_grip,subhead,Chase pack still in touch — just,,paired pack,medium
+roundup,round_leaders_grip,body,"{{MONTH}} belonged to the sides who kept winning the ugly ones. The table looks clearer than it did four weeks ago — clearer, not decided. That is usually when the GPSL gets spicy.","MONTH",human voice,medium
+roundup,round_reset,headline,{{MONTH}} DONE — EVERYONE RESETS,MONTH,paired pack,medium
+roundup,round_reset,subhead,GPSL Sport's monthly sweep,,paired pack,medium
+roundup,round_reset,body,"Another GPSL month in the books. Some owners will sleep well. Others will open the squad screen first thing. {{MONTH}} changed enough to matter and left enough undecided to keep Friday interesting.","MONTH",human voice,medium
+roundup,round_noise,headline,NOISE, POINTS AND {{MONTH}},MONTH,paired pack,medium
+roundup,round_noise,subhead,The league kept moving whether anyone liked it or not,,paired pack,medium
+roundup,round_noise,body,"Ignore the noise for a second and look at the table — that is {{MONTH}}'s real headline. Everything else was colour. GPSL Sport will unpack the next chapter when the calendar says so.","MONTH",human voice,medium
+roundup,round_still_racing,headline,STILL RACING AFTER {{MONTH}},MONTH,paired pack,medium
+roundup,round_still_racing,subhead,No clean narratives — just a live league,,paired pack,medium
+roundup,round_still_racing,body,"If you wanted a tidy story from {{MONTH}}, you came to the wrong league. Results scrambled the picture again. That is fine. Messy months make better seasons.","MONTH",human voice,medium

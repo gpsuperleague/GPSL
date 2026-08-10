@@ -86,6 +86,9 @@ DECLARE
   v_i int := 0;
   v_first_shock jsonb;
   v_club_news jsonb := '[]'::jsonb;
+  v_pack jsonb;
+  v_used_packs text[] := '{}';
+  v_pack_uses jsonb := '[]'::jsonb;
 BEGIN
   IF p_season_id IS NULL OR v_gpsl_month IS NULL OR v_gpsl_month = '' THEN
     RETURN jsonb_build_object('error', 'invalid_args');
@@ -429,31 +432,9 @@ BEGIN
     LIMIT 1
   ) x;
 
-  -- Front-page secondary stories: shocks + table lines
-  FOR v_shock_row IN
-    SELECT value AS shock
-    FROM jsonb_array_elements(v_shocks)
-    LIMIT 4
-  LOOP
-    v_stories := v_stories || jsonb_build_array(jsonb_build_object(
-      'kicker', v_shock_row.shock->>'division',
-      'headline', (v_shock_row.shock->>'winner_name') || ' ' || (v_shock_row.shock->>'score') || ' ' || (v_shock_row.shock->>'loser_name'),
-      'body', format(
-        E'%s''s %s stunned %s''s %s in %s — GPSL Sport has it as one of the shock results of %s.',
-        v_shock_row.shock->>'winner_owner',
-        v_shock_row.shock->>'winner_name',
-        v_shock_row.shock->>'loser_owner',
-        v_shock_row.shock->>'loser_name',
-        v_shock_row.shock->>'division',
-        v_month_label
-      ),
-      'club_short', v_shock_row.shock->>'winner_club',
-      'story_kind', 'shock_result'
-    ));
-  END LOOP;
-
-  -- Lead headline
+  -- Lead headline (paired pack — exclude from secondary shocks)
   IF v_first_shock IS NOT NULL THEN
+    v_story_type := 'shock_result';
     v_vars := jsonb_build_object(
       'winner', v_first_shock->>'winner_name',
       'loser', v_first_shock->>'loser_name',
@@ -463,26 +444,47 @@ BEGIN
       'division', v_first_shock->>'division',
       'month', v_month_label
     );
-    v_headline := public.gpsl_sport_apply_template(
-      public.gpsl_sport_pick_template(v_seed || ':h', ARRAY[
-        '{{WINNER_OWNER}}''S {{WINNER}} STUN {{LOSER}} IN {{SCORE}} SHOCKER',
-        'UPSET OF {{MONTH}}: {{WINNER}} BEAT {{LOSER}} {{SCORE}}',
-        '{{LOSER_OWNER}} LEFT REELING AS {{WINNER}} PULL OFF {{DIVISION}} SHOCK'
-      ]),
-      v_vars
-    );
-    v_subhead := format('%s leads our %s review — plus TOTM, top scorers and match report',
-      v_first_shock->>'division', v_month_label);
-    v_lead := format(
-      E'It was the result that set the inbox alight. %s''s %s beat %s''s %s %s in %s — and GPSL Sport has plenty more from a hectic %s across the league.\n\nInside: Team of the Month, division leaders, monthly golden boot charts, and our Match of the Month report.',
-      v_first_shock->>'winner_owner',
-      v_first_shock->>'winner_name',
-      v_first_shock->>'loser_owner',
-      v_first_shock->>'loser_name',
-      v_first_shock->>'score',
-      v_first_shock->>'division',
-      v_month_label
-    );
+    IF to_regprocedure(
+         'public.gpsl_sport_compose_story_from_packs(text,text,jsonb,bigint,text[],integer)'
+       ) IS NOT NULL THEN
+      v_pack := public.gpsl_sport_compose_story_from_packs(
+        'shock_result', v_seed || ':lead', v_vars, p_season_id, v_used_packs, 3
+      );
+    END IF;
+    IF v_pack IS NOT NULL THEN
+      v_headline := v_pack->>'headline';
+      v_subhead := coalesce(
+        nullif(v_pack->>'subhead', ''),
+        format('%s leads our %s review — plus TOTM, top scorers and match report',
+          v_first_shock->>'division', v_month_label)
+      );
+      v_lead := (v_pack->>'body') || E'\n\nInside: Team of the Month, division leaders, monthly golden boot charts, and our Match of the Month report.';
+      v_used_packs := array_append(v_used_packs, v_pack->>'pack_id');
+      v_pack_uses := v_pack_uses || jsonb_build_array(jsonb_build_object(
+        'scenario', 'shock_result', 'pack_id', v_pack->>'pack_id', 'slot', 'lead'
+      ));
+    ELSE
+      v_headline := public.gpsl_sport_apply_template(
+        public.gpsl_sport_pick_template(v_seed || ':h', ARRAY[
+          '{{WINNER_OWNER}}''S {{WINNER}} STUN {{LOSER}} IN {{SCORE}} SHOCKER',
+          'UPSET OF {{MONTH}}: {{WINNER}} BEAT {{LOSER}} {{SCORE}}',
+          '{{LOSER_OWNER}} LEFT REELING AS {{WINNER}} PULL OFF {{DIVISION}} SHOCK'
+        ]),
+        v_vars
+      );
+      v_subhead := format('%s leads our %s review — plus TOTM, top scorers and match report',
+        v_first_shock->>'division', v_month_label);
+      v_lead := format(
+        E'It was the result that set the inbox alight. %s''s %s beat %s''s %s %s in %s — and GPSL Sport has plenty more from a hectic %s across the league.\n\nInside: Team of the Month, division leaders, monthly golden boot charts, and our Match of the Month report.',
+        v_first_shock->>'winner_owner',
+        v_first_shock->>'winner_name',
+        v_first_shock->>'loser_owner',
+        v_first_shock->>'loser_name',
+        v_first_shock->>'score',
+        v_first_shock->>'division',
+        v_month_label
+      );
+    END IF;
   ELSIF v_match IS NOT NULL THEN
     v_headline := format('MATCH OF THE MONTH: %s %s-%s %s',
       v_match->>'home_name', v_match->>'home_goals', v_match->>'away_goals', v_match->>'away_name');
@@ -496,13 +498,94 @@ BEGIN
     );
   ELSE
     v_story_type := 'roundup';
-    v_headline := v_month_label || ' GPSL ROUND-UP: TABLES TAKE SHAPE';
-    v_subhead := 'Team of the Month, top scorers and division leaders';
-    v_lead := format(
-      E'%s is in the books. GPSL Sport rounds up the Team of the Month, golden boot charts for SuperLeague and both Championships, and the owners leading the charge at the top of the tables.',
-      v_month_label
-    );
+    v_pack := NULL;
+    v_vars := jsonb_build_object('month', v_month_label, 'division', 'GPSL');
+    IF to_regprocedure(
+         'public.gpsl_sport_compose_story_from_packs(text,text,jsonb,bigint,text[],integer)'
+       ) IS NOT NULL THEN
+      v_pack := public.gpsl_sport_compose_story_from_packs(
+        'roundup', v_seed || ':lead', v_vars, p_season_id, v_used_packs, 3
+      );
+    END IF;
+    IF v_pack IS NOT NULL THEN
+      v_headline := v_pack->>'headline';
+      v_subhead := coalesce(nullif(v_pack->>'subhead', ''), 'Team of the Month, top scorers and division leaders');
+      v_lead := v_pack->>'body';
+      v_used_packs := array_append(v_used_packs, v_pack->>'pack_id');
+      v_pack_uses := v_pack_uses || jsonb_build_array(jsonb_build_object(
+        'scenario', 'roundup', 'pack_id', v_pack->>'pack_id', 'slot', 'lead'
+      ));
+    ELSE
+      v_headline := v_month_label || ' GPSL ROUND-UP: TABLES TAKE SHAPE';
+      v_subhead := 'Team of the Month, top scorers and division leaders';
+      v_lead := format(
+        E'%s is in the books. GPSL Sport rounds up the Team of the Month, golden boot charts for SuperLeague and both Championships, and the owners leading the charge at the top of the tables.',
+        v_month_label
+      );
+    END IF;
   END IF;
+
+  -- Front-page secondary stories: shocks (different packs than lead)
+  FOR v_shock_row IN
+    SELECT value AS shock
+    FROM jsonb_array_elements(v_shocks)
+    LIMIT 4
+  LOOP
+    v_pack := NULL;
+    v_vars := jsonb_build_object(
+      'winner', v_shock_row.shock->>'winner_name',
+      'loser', v_shock_row.shock->>'loser_name',
+      'winner_owner', v_shock_row.shock->>'winner_owner',
+      'loser_owner', v_shock_row.shock->>'loser_owner',
+      'score', v_shock_row.shock->>'score',
+      'division', v_shock_row.shock->>'division',
+      'month', v_month_label
+    );
+    IF to_regprocedure(
+         'public.gpsl_sport_compose_story_from_packs(text,text,jsonb,bigint,text[],integer)'
+       ) IS NOT NULL THEN
+      v_pack := public.gpsl_sport_compose_story_from_packs(
+        'shock_result',
+        v_seed || ':shock:' || coalesce(v_shock_row.shock->>'winner_club', ''),
+        v_vars,
+        p_season_id,
+        v_used_packs,
+        3
+      );
+    END IF;
+    IF v_pack IS NOT NULL THEN
+      v_used_packs := array_append(v_used_packs, v_pack->>'pack_id');
+      v_pack_uses := v_pack_uses || jsonb_build_array(jsonb_build_object(
+        'scenario', 'shock_result',
+        'pack_id', v_pack->>'pack_id',
+        'slot', 'shock:' || coalesce(v_shock_row.shock->>'winner_club', '')
+      ));
+      v_stories := v_stories || jsonb_build_array(jsonb_build_object(
+        'kicker', v_shock_row.shock->>'division',
+        'headline', v_pack->>'headline',
+        'body', v_pack->>'body',
+        'club_short', v_shock_row.shock->>'winner_club',
+        'story_kind', 'shock_result',
+        'pack_id', v_pack->>'pack_id'
+      ));
+    ELSE
+      v_stories := v_stories || jsonb_build_array(jsonb_build_object(
+        'kicker', v_shock_row.shock->>'division',
+        'headline', (v_shock_row.shock->>'winner_name') || ' ' || (v_shock_row.shock->>'score') || ' ' || (v_shock_row.shock->>'loser_name'),
+        'body', format(
+          E'%s''s %s stunned %s''s %s in %s — GPSL Sport has it as one of the shock results of %s.',
+          v_shock_row.shock->>'winner_owner',
+          v_shock_row.shock->>'winner_name',
+          v_shock_row.shock->>'loser_owner',
+          v_shock_row.shock->>'loser_name',
+          v_shock_row.shock->>'division',
+          v_month_label
+        ),
+        'club_short', v_shock_row.shock->>'winner_club',
+        'story_kind', 'shock_result'
+      ));
+    END IF;
+  END LOOP;
 
   IF to_regprocedure('public.gpsl_sport_fetch_club_news(bigint,text)') IS NOT NULL THEN
     v_club_news := public.gpsl_sport_fetch_club_news(p_season_id, v_gpsl_month);
@@ -520,6 +603,7 @@ BEGIN
     'shock_results', v_shocks,
     'standings_snapshot', v_standings,
     'club_news', coalesce(v_club_news, '[]'::jsonb),
+    'pack_uses', coalesce(v_pack_uses, '[]'::jsonb),
     'hero', CASE
       WHEN v_first_shock IS NOT NULL THEN jsonb_build_object(
         'kind', 'stadium',
@@ -651,6 +735,7 @@ DECLARE
   v_month_label text;
   v_month text;
   v_id bigint;
+  v_use record;
 BEGIN
   IF p_edition_id IS NULL THEN
     RETURN NULL;
@@ -702,6 +787,28 @@ BEGIN
   END IF;
 
   DELETE FROM public.gpsl_sport_reads r WHERE r.edition_id = v_id;
+
+  IF to_regclass('public.gpsl_sport_template_usage') IS NOT NULL THEN
+    DELETE FROM public.gpsl_sport_template_usage u WHERE u.edition_id = v_id;
+  END IF;
+  IF to_regprocedure(
+       'public.gpsl_sport_record_pack_usage(bigint,bigint,text,text,text,text)'
+     ) IS NOT NULL THEN
+    FOR v_use IN
+      SELECT value AS u
+      FROM jsonb_array_elements(coalesce(v_built->'front_page'->'pack_uses', '[]'::jsonb))
+    LOOP
+      PERFORM public.gpsl_sport_record_pack_usage(
+        v_id,
+        v_row.season_id,
+        v_month,
+        v_use.u->>'scenario',
+        v_use.u->>'pack_id',
+        coalesce(v_use.u->>'slot', 'lead')
+      );
+    END LOOP;
+  END IF;
+
   RETURN v_id;
 END;
 $function$;
@@ -848,6 +955,7 @@ DECLARE
   v_built jsonb;
   v_month_label text;
   v_month text := lower(btrim(p_gpsl_month));
+  v_use record;
 BEGIN
   IF p_season_id IS NULL OR v_month IS NULL OR v_month = '' THEN
     RETURN NULL;
@@ -895,6 +1003,24 @@ BEGIN
     )
   )
   RETURNING id INTO v_existing;
+
+  IF to_regprocedure(
+       'public.gpsl_sport_record_pack_usage(bigint,bigint,text,text,text,text)'
+     ) IS NOT NULL THEN
+    FOR v_use IN
+      SELECT value AS u
+      FROM jsonb_array_elements(coalesce(v_built->'front_page'->'pack_uses', '[]'::jsonb))
+    LOOP
+      PERFORM public.gpsl_sport_record_pack_usage(
+        v_existing,
+        p_season_id,
+        v_month,
+        v_use.u->>'scenario',
+        v_use.u->>'pack_id',
+        coalesce(v_use.u->>'slot', 'lead')
+      );
+    END LOOP;
+  END IF;
 
   RETURN v_existing;
 END;

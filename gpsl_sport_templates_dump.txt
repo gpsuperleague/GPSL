@@ -46,10 +46,14 @@ AUTHORITATIVE SQL (later patches win)
   May       : gpsl_sport_may_preseason.sql / may_relegation_fix.sql
   Legacy    : gpsl_sport_phase1.sql still has the biggest ARRAY banks for shock/cup/pressure
 
-CSV FEEDBACK FORMAT (suggested columns)
-  scenario,field,template,placeholders,notes,priority
-  Example:
-  shock_result,headline,"{{WINNER}} SHOCK THE LEAGUE - {{LOSER}} CRUMBLE {{SCORE}}","WINNER,LOSER,SCORE",new variant,high
+CSV FEEDBACK FORMAT (paired packs — preferred)
+  scenario,pack_id,field,template,placeholders,notes,priority
+  Each pack_id must have headline + subhead + body rows (never mix across packs).
+  See gpsl_sport_templates_FEEDBACK.csv (34 human-voice packs).
+  Engine: gpsl_sport_template_packs.sql
+    - pick via gpsl_sport_compose_story_from_packs
+    - no same pack twice in one edition
+    - cooldown = last 3 published editions
 
 ========================================================================================
 FILE: gpsl_sport_phase1.sql  — 43 ARRAY template lines
