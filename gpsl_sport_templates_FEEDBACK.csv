@@ -1,0 +1,2 @@
+scenario,field,template,placeholders,notes,priority
+shock_result,headline,{{WINNER}} SHOCK THE LEAGUE — {{LOSER}} CRUMBLE {{SCORE}},"WINNER,LOSER,SCORE",example row — delete and add your variants,high

@@ -1,0 +1,275 @@
+GPSL SPORT — NEWSPAPER TEMPLATE DUMP
+Grab this file + gpsl_sport_templates_dump.csv to expand variants.
+
+================================================================================
+SCENARIO CATALOG (for your CSV expansion)
+================================================================================
+Use these scenario keys when adding many random templates. Fields to expand:
+  headline | subhead | body | pull_quote | blurb
+
+PRESEASON
+  owner_takeover          - new owner assigned / club auction win
+                            placeholders: OWNER, CLUB, MONTH; bodies also branch on
+                            assign_source: club_auction | admin_assign | default
+  manager_signing         - manager draft / dugout appointment
+                            placeholders: MANAGER, CLUB, MONTH, FEE, rating via format()
+  transfer                - big fee transfer lead + pull quotes
+                            placeholders: BUYER, SELLER, PLAYER, FEE, MONTH
+  preseason_quiet         - no big moves yet (mostly fixed format() copy)
+  preseason_pending       - waiting for auction/window activity
+
+IN-SEASON (Aug-Apr)
+  shock_result            - prestige/favourite upset in league
+                            placeholders: WINNER, LOSER, SCORE, DIVISION, MONTH
+                            (rich edition also: WINNER_OWNER, LOSER_OWNER)
+  cup_upset               - knockout giant-killing
+  manager_pressure        - big/prestige club underperforming
+                            placeholders: WINNER(=club), POINTS, POSITION, DIVISION, MONTH
+  poor_start              - medium club off expected pace
+  roundup                 - generic monthly wrap when no shock
+  motm                    - Match of the Month report (mostly format() chains + pull-quote bank)
+  standings               - climber / home form / away form / goals / defence blurbs
+  transfer (in-season)    - monthly transfer round-up headlines (format-heavy)
+
+MAY
+  season_review           - champions, promo/rel, cups, awards (CASE/format heavy)
+
+ENGINE
+  gpsl_sport_pick_template(seed, text[])  - deterministic random from array
+  gpsl_sport_apply_template(tpl, jsonb)   - replaces {{KEY}} (keys uppercased)
+
+AUTHORITATIVE SQL (later patches win)
+  Preseason : gpsl_sport_preseason_phase3.sql (+ owner story in phase2 still used)
+  In-season : gpsl_sport_inseason_rich_edition.sql
+              + gpsl_sport_motm_longform.sql
+              + gpsl_sport_standings_snapshot.sql
+  May       : gpsl_sport_may_preseason.sql / may_relegation_fix.sql
+  Legacy    : gpsl_sport_phase1.sql still has the biggest ARRAY banks for shock/cup/pressure
+
+CSV FEEDBACK FORMAT (suggested columns)
+  scenario,field,template,placeholders,notes,priority
+  Example:
+  shock_result,headline,"{{WINNER}} SHOCK THE LEAGUE - {{LOSER}} CRUMBLE {{SCORE}}","WINNER,LOSER,SCORE",new variant,high
+
+========================================================================================
+FILE: gpsl_sport_phase1.sql  — 43 ARRAY template lines
+========================================================================================
+
+--- scenario=shock_result | field=headline | seed=— ---
+  [1] {{WINNER}} STUN {{LOSER}} IN {{DIVISION}} SHOCKER
+  [2] DRAMA IN {{DIVISION}}: {{WINNER}} TOPPLE {{LOSER}} {{SCORE}}
+  [3] {{LOSER}} LEFT REELING AFTER {{WINNER}} PULL OFF MAJOR UPSET
+  [4] FORM GUIDE TORN UP AS {{WINNER}} BEAT {{LOSER}}
+  [5] EXPERTS WRONG AGAIN — {{WINNER}} SEE OFF {{LOSER}}
+
+--- scenario=unknown | field=subhead | seed=— ---
+  [1] Result sends ripples through the {{DIVISION}} table
+  [2] Owners' group chat erupts after {{SCORE}} scoreline
+  [3] Pre-match favourites {{LOSER}} left searching for answers
+
+--- scenario=unknown | field=body | seed=— ---
+  [1] In the standout result of {{MONTH}}, {{WINNER}} claimed a {{SCORE}} victory over {{LOSER}} that few saw coming. /  / Pundits had written off the winners before a ball was kicked, but the GPSL never follows the script. {{LOSER}} must regroup quickly with the table tightening.
+  [2] {{WINNER}} produced the performance of the GPSL month so far, dismantling {{LOSER}} {{SCORE}} in {{DIVISION}} action. /  / The losers' manager faces awkward questions as expectation and reality drift further apart.
+  [3] It was the kind of night that defines a season: {{WINNER}} ruthless, {{LOSER}} ragged, the scoreboard reading {{SCORE}} when the virtual whistle blew.
+
+--- scenario=cup_upset | field=headline | seed=— ---
+  [1] CUP EARTHQUAKE: {{WINNER}} DUMP {{LOSER}} OUT
+  [2] {{WINNER}} WRITE {{DIVISION}} HEADLINES WITH {{SCORE}} WIN
+  [3] GIANT-KILLING ALERT AS {{WINNER}} KO {{LOSER}}
+  [1] Knockout football at its cruellest for {{LOSER}}
+  [2] {{DIVISION}} tie will be replayed in chat groups for weeks
+
+--- scenario=cup_upset | field=subhead | seed=— ---
+  [1] Cup football delivered again as {{WINNER}} knocked out {{LOSER}} {{SCORE}} in the {{DIVISION}}. /  / The favourites crumbled under pressure and the underdogs march on.
+  [2] {{LOSER}} arrived expecting routine progress. {{WINNER}} had other ideas, winning {{SCORE}} in a tie that will live long in GPSL folklore.
+
+--- scenario=manager_pressure | field=headline | seed=— ---
+  [1] {{WINNER}} IN CRISIS AFTER DISAPPOINTING {{MONTH}}
+  [2] MANAGER UNDER PRESSURE AT {{WINNER}}
+  [3] {{WINNER}} FAIL TO MEET STATURE — BOARD WATCHING
+  [4] BIG CLUB {{WINNER}} FLOUNDERING BELOW EXPECTATION
+
+--- scenario=manager_pressure | field=subhead | seed=— ---
+  [1] Prestige club sitting well below where history says they should be
+  [2] Stars already linked with exits as results disappoint
+
+--- scenario=unknown | field=subhead | seed=— ---
+  [1] {{WINNER}} head into the next GPSL month with serious questions to answer. A club of their stature expected to be pushing the top of {{DIVISION}}, not lingering in the pack on {{POINTS}} points. /  / Whispers in the inbox suggest players are already circling the exit door. The manager's job is not under immediate threat — but the temperature is rising.
+  [2] There is a growing disconnect at {{WINNER}} between boardroom ambition and on-pitch delivery. {{MONTH}} results left fans fuming and rivals sensing blood. /  / Unless form turns quickly, the GPSL rumour mill will have a field day.
+
+--- scenario=poor_start | field=headline | seed=— ---
+  [1] {{WINNER}} MAKE POOR START TO GPSL SEASON
+  [2] {{WINNER}} ALREADY OFF THE PACE IN {{DIVISION}}
+  [3] EXPECTATION VS REALITY: {{WINNER}} STRUGGLE IN {{MONTH}}
+  [1] Medium-club ambitions look a long way off on current form
+  [2] Squad value not translating to league points
+
+--- scenario=unknown | field=subhead | seed=— ---
+  [1] {{WINNER}} promised much in pre-season but {{MONTH}} told a different story. Sitting on {{POINTS}} points, they are already adrift of where their manager rating suggested they should be. /  / Patience is a virtue in the GPSL — but not an unlimited one.
+  [2] Another frustrating month for {{WINNER}}, whose {{DIVISION}} campaign has failed to ignite. Rivals who were supposed to be behind them on paper have pulled clear.
+
+--- scenario=roundup | field=headline | seed=— ---
+  [1] {{MONTH}} GPSL ROUND-UP: TABLE STILL WIDE OPEN
+  [2] ANOTHER DRAMATIC MONTH IN GPSL FOOTBALL
+  [3] LEAGUE LEADERS TIGHTEN GRIP AS {{MONTH}} CLOSES
+  [1] Fixtures, fines and inbox drama across the league
+  [2] GPSL Sport reviews the month that was
+
+--- scenario=unknown | field=subhead | seed=— ---
+  [1] {{MONTH}} is in the books and the GPSL rolls on. Results across SuperLeague and the Championships reshaped the table while owners battled scheduling, transfers and the inbox. /  / GPSL Sport will be back next Friday with another edition.
+  [2] From shock scorelines to late check-ins, {{MONTH}} had it all. Clubs reset for the next GPSL month with points on the line and pride at stake.
+
+--- scenario=transfer | field=headline | seed=:xfer ---
+  [1] {{BUYER}} SPLASH {{FEE}} ON {{PLAYER}} — CAN HE BE THE SAVIOUR?
+  [2] BLOCKBUSTER DEAL: {{PLAYER}} HEADS TO {{BUYER}} FOR {{FEE}}
+  [3] {{BUYER}} BREAK TRANSFER RECORD WITH {{FEE}} MOVE FOR {{PLAYER}}
+
+========================================================================================
+FILE: gpsl_sport_preseason_phase2.sql  — 14 ARRAY template lines
+========================================================================================
+
+--- scenario=owner_takeover | field=headline | seed=:oh ---
+  [1] TAKES THE HELM AT
+  [2] NEW ERA DAWNS AS
+  [3] ASSIGNED TO
+  [4] WELCOME NEW OWNER
+
+--- scenario=preseason | field=pull_quote | seed=:op ---
+  [1] "This is a special club — I cannot wait to get started."
+  [2] "The squad has quality. My job is to unlock it."
+  [3] "I have followed GPSL for years. Now it is my turn."
+  [4] "Expect ambition. I did not come here to finish mid-table."
+
+--- scenario=transfer | field=headline | seed=:xfer ---
+  [1] {{BUYER}} SPLASH {{FEE}} ON {{PLAYER}}
+  [2] BLOCKBUSTER DEAL: {{PLAYER}} HEADS TO {{BUYER}} FOR {{FEE}}
+  [3] {{BUYER}} LEAD {{MONTH}} SPENDING WITH {{FEE}} MOVE FOR {{PLAYER}}
+
+--- scenario=transfer | field=pull_quote | seed=:tp ---
+  [1] "We identified him early. The fee reflects his quality."
+  [2] "He is the missing piece — the board backed us."
+  [3] "Rivals strengthened. We had to act."
+
+========================================================================================
+FILE: gpsl_sport_preseason_phase3.sql  — 13 ARRAY template lines
+========================================================================================
+
+--- scenario=manager_signing | field=headline | seed=:mh ---
+  [1] TAKES CHARGE AT
+  [2] WIN MANAGER DRAFT RACE FOR
+  [3] AFTER AUCTION BATTLE
+
+--- scenario=manager_signing | field=pull_quote | seed=:mp ---
+  [1] "I know this league. Now I get to lead a club with real ambition."
+  [2] "The board backed me in the auction — I will repay that faith."
+  [3] "We have talent in the squad. My job is to coach it into something special."
+  [4] "Pre-season is when habits are built. We start now."
+
+--- scenario=preseason_quiet | field=headline | seed=:xfer ---
+  [1] {{BUYER}} SPLASH {{FEE}} ON {{PLAYER}}
+  [2] BLOCKBUSTER DEAL: {{PLAYER}} HEADS TO {{BUYER}} FOR {{FEE}}
+  [3] {{BUYER}} LEAD {{MONTH}} SPENDING WITH {{FEE}} MOVE FOR {{PLAYER}}
+
+--- scenario=owner_takeover | field=pull_quote | seed=:tp ---
+  [1] "We identified him early. The fee reflects his quality."
+  [2] "He is the missing piece — the board backed us."
+  [3] "Rivals strengthened. We had to act."
+
+========================================================================================
+FILE: gpsl_sport_may_preseason.sql  — 29 ARRAY template lines
+========================================================================================
+
+--- scenario=transfer | field=headline | seed=:xfer ---
+  [1] {{BUYER}} SPLASH {{FEE}} ON {{PLAYER}}
+  [2] BLOCKBUSTER DEAL: {{PLAYER}} HEADS TO {{BUYER}} FOR {{FEE}}
+  [3] {{BUYER}} LEAD {{MONTH}} SPENDING WITH {{FEE}} MOVE FOR {{PLAYER}}
+
+--- scenario=preseason_quiet | field=headline | seed=:h ---
+  [1] %s PRE-SEASON: TRANSFER MARKET HEATS UP
+  [2] %s WINDOW — %s LEAD THE SPENDERS
+  [3] DEALS, DEALS, DEALS: %s PRE-SEASON SPECIAL
+
+--- scenario=shock_result | field=headline | seed=— ---
+  [1] SHOCK IN {{DIVISION}}: {{LOSER}} FALL TO {{WINNER}}
+  [2] {{WINNER}} STUN {{LOSER}} IN {{SCORE}} {{DIVISION}} UPSET
+  [3] {{LOSER}} LEFT REELING AFTER {{SCORE}} DEFEAT TO {{WINNER}}
+
+--- scenario=shock_result | field=subhead | seed=— ---
+  [1] Prestige gap makes result all the more remarkable
+  [2] GPSL Sport names the scoreline of the month
+
+--- scenario=unknown | field=subhead | seed=— ---
+  [1] {{WINNER}} pulled off the result of {{MONTH}} with a {{SCORE}} victory over {{LOSER}} in the {{DIVISION}}. /  / The GPSL table does not lie — but sometimes it is turned on its head.
+  [2] Few saw this coming. {{WINNER}}'s {{SCORE}} win over {{LOSER}} sent shockwaves through the {{DIVISION}} and dominated inbox chatter across the league.
+
+--- scenario=cup_upset | field=headline | seed=— ---
+  [1] CUP SHOCK: {{WINNER}} ELIMINATE {{LOSER}}
+  [2] {{WINNER}} PULL OFF CUP UPSET AGAINST {{LOSER}}
+  [1] Knockout football at its cruellest
+  [2] Giant-killing headline act
+  [1] {{WINNER}} knocked out {{LOSER}} in the cups with a {{SCORE}} scoreline that will live long in GPSL folklore.
+  [2] The cups delivered again. {{WINNER}}'s {{SCORE}} defeat of {{LOSER}} was the story {{MONTH}} needed.
+
+--- scenario=manager_pressure | field=headline | seed=— ---
+  [1] MANAGER UNDER PRESSURE: {{WINNER}} FLOUNDER IN {{MONTH}}
+  [2] {{WINNER}} OWNER FACING QUESTIONS AFTER POOR {{MONTH}}
+  [1] Points tally nowhere near expectation
+  [2] Prestige club in the relegation conversation
+
+--- scenario=manager_pressure | field=subhead | seed=— ---
+  [1] {{WINNER}} sit on just {{POINTS}} points — far below what their squad prestige promised. {{MONTH}} was another month of frustration for one of the GPSL's biggest clubs.
+  [2] Expectation versus reality: {{WINNER}} are {{POSITION}} in the table with {{POINTS}} points. Patience is wearing thin.
+
+--- scenario=roundup | field=headline | seed=— ---
+  [1] {{MONTH}} GPSL ROUND-UP: TABLE STILL WIDE OPEN
+  [2] ANOTHER DRAMATIC MONTH IN GPSL FOOTBALL
+
+--- scenario=roundup | field=subhead | seed=— ---
+  [1] {{MONTH}} is in the books and the GPSL rolls on. Results across SuperLeague and the Championships reshaped the table.
+  [2] From shock scorelines to late check-ins, {{MONTH}} had it all.
+
+========================================================================================
+FILE: gpsl_sport_inseason_rich_edition.sql  — 3 ARRAY template lines
+========================================================================================
+
+--- scenario=unknown | field=headline | seed=:h ---
+  [1] {{WINNER_OWNER}}'S {{WINNER}} STUN {{LOSER}} IN {{SCORE}} SHOCKER
+  [2] UPSET OF {{MONTH}}: {{WINNER}} BEAT {{LOSER}} {{SCORE}}
+  [3] {{LOSER_OWNER}} LEFT REELING AS {{WINNER}} PULL OFF {{DIVISION}} SHOCK
+
+========================================================================================
+FILE: gpsl_sport_motm_longform.sql  — 0 ARRAY template lines
+========================================================================================
+
+========================================================================================
+FILE: gpsl_sport_standings_snapshot.sql  — 0 ARRAY template lines
+========================================================================================
+
+========================================================================================
+FILE: gpsl_sport_may_relegation_fix.sql  — 0 ARRAY template lines
+========================================================================================
+
+========================================================================================
+FILE: gpsl_sport_visual_heroes.sql  — 6 ARRAY template lines
+========================================================================================
+
+--- scenario=transfer | field=headline | seed=:xfer ---
+  [1] {{BUYER}} SPLASH {{FEE}} ON {{PLAYER}}
+  [2] BLOCKBUSTER DEAL: {{PLAYER}} HEADS TO {{BUYER}} FOR {{FEE}}
+  [3] {{BUYER}} LEAD {{MONTH}} SPENDING WITH {{FEE}} MOVE FOR {{PLAYER}}
+
+--- scenario=preseason_quiet | field=headline | seed=:h ---
+  [1] %s PRE-SEASON: TRANSFER MARKET HEATS UP
+  [2] %s WINDOW — %s LEAD THE SPENDERS
+  [3] DEALS, DEALS, DEALS: %s PRE-SEASON SPECIAL
+
+========================================================================================
+FORMAT()/CASE-ONLY COPY (not always in ARRAY banks)
+See these files for additional prose to rewrite/expand:
+  - gpsl_sport_preseason_phase2.sql :: gpsl_sport_build_owner_story bodies
+  - gpsl_sport_preseason_phase3.sql :: manager bodies, quiet/pending leads
+  - gpsl_sport_inseason_rich_edition.sql :: MotM short lead, transfer round-up
+  - gpsl_sport_motm_longform.sql :: full match report + pull-quote CASE bank
+  - gpsl_sport_standings_snapshot.sql :: standings highlight blurbs
+  - gpsl_sport_may_preseason.sql :: May season_review CASE headlines/leads
+========================================================================================
