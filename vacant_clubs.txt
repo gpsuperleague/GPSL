@@ -1,0 +1,46 @@
+Vacant clubs (owner_id null, excluding FOREIGN) — 41 clubs
+Generated: 2026-08-10
+
+Short  Club                        Nation           Stadium                                      Capacity
+-----  --------------------------  ---------------  -------------------------------------------  --------
+AND    Anderlecht                  Belgium          Lotto Park                                      21500
+ARS    Arsenal                     England          Emirates Stadium                                60704
+AVL    Aston Villa                 England          Villa Park                                      42918
+ATA    Atalanta                    Italy            Gewiss Stadium                                  17472
+ATM    Atletico Madrid             Spain            Metroploitano Stadium                           70692
+NAC    Atletico Nacional           Colombia         Stadium of Light                                50000
+BEN    Benfica                     Portugal         Estadio da Luz                                  64642
+BES    Besiktas                    Türkiye          Tüpraş Stadium                                  42590
+BOC    Boca                        Argentina        Alberto J.Armando                               57000
+CEL    Celtic                      Scotland         Celtic Park                                     60832
+BRU    Club Brugge                 Belgium          JanBreydel Stadium                              29062
+CRU    Cruzeiro                    Brazil           Mineirão                                        66658
+ESP    Espanyol                    Spain            Estadi Cornella-ElPrat                          45500
+EST    Estudiantes                 Argentina        Estadio Jorge Luis Hirsch                       32530
+COP    F.C. Copenhagen             Denmark          Telia Parken                                    38065
+FIO    Fiorentina                  Italy            Stadio Artemio Franchi                          47282
+FLA    Flamengo                    Brazil           Estádio Jornalista Mário Filho                  73139
+GCZ    Grasshoppers Club Zurich    Switzerland      Letzigrund Stadium                              26105
+IND    Independiente               Argentina        Estadio Libertadores de América                 42000
+INT    Inter Milan                 Italy            Stadio Giuseppe Meazza                          75923
+JEJ    Jeju United                 Korea Republic   Jeju World Cup Stadium                          29791
+KAS    Kasimpasa                   Türkiye          Recep Tayyip Erdogan Stadium                    19234
+LAZ    Lazio                       Italy            Stadio Olimpico                                 72698
+LEV    Leverkusen                  Germany          Bay Arena                                       30210
+LIL    Lille                       France           Stade Pierre-Mauroy                             50186
+MAR    Marseille                   France           Orange Vélodrome                                67394
+PAL    Palmeiras                   Brazil           Allianz Parque                                  43713
+POR    Porto                       Portugal         Estádio do Dragão                               50033
+PSV    PSV                         Netherlands      Philips Stadion                                 35119
+RAC    Racing Club                 Argentina        Estadio Juan Domingo Perón                      50000
+BET    Real Betis                  Spain            Estadio Benito Villamarín                       60721
+RMA    Real Madrid                 Spain            Santiago Bernabeu                               85000
+RIV    River Plate                 Argentina        Estádio Monumental                              85018
+ROS    Rosario Central             Argentina        Estadio Gigante de Arroyito                     46955
+SAN    Santos                      Brazil           Estádio Urbano Caldeira                         16068
+SAP    Sao Paulo                   Brazil           MorumBIS                                        72039
+SCI    SC Internacional            Brazil           Estádio Beira-Rio                               50848
+SPO    Sporting CP                 Portugal         Estadio Jose Alvalade                           50095
+STE    St Etienne                  France           Stade Geoffroy-Guichard                         41965
+TOT    Tottenham Hotspur           England          Tottenham Hotspur Stadium                       62850
+WOL    Wolves                      England          Molineux Stadium                                31750
