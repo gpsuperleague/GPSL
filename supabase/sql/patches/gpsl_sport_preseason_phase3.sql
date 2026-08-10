@@ -315,6 +315,7 @@ DECLARE
   v_managers jsonb;
   v_owner jsonb;
   v_manager jsonb;
+  v_owner_pack_used text[] := '{}';
   v_i int := 0;
   v_o int := 0;
   v_m int := 0;
@@ -396,10 +397,14 @@ BEGIN
     FOR v_o IN 0..(v_owner_count - 1) LOOP
       v_owner := v_owners->v_o;
       v_owner_story := public.gpsl_sport_build_owner_story(
-        p_seed || ':o' || v_o::text,
+        p_seed || ':o' || v_o::text || ':' || coalesce(v_owner->>'club_short', ''),
         v_owner,
-        p_month_label
+        p_month_label,
+        v_owner_pack_used
       );
+      IF nullif(v_owner_story->>'pack_id', '') IS NOT NULL THEN
+        v_owner_pack_used := array_append(v_owner_pack_used, v_owner_story->>'pack_id');
+      END IF;
       v_owner_stories := v_owner_stories || jsonb_build_array(v_owner_story);
     END LOOP;
     v_owner_score := 40 + greatest(0, 30 - coalesce((v_owners->0->>'prestige_rank')::int, 30));

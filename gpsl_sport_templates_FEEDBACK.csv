@@ -101,3 +101,33 @@ roundup,round_noise,body,"Ignore the noise for a second and look at the table �
 roundup,round_still_racing,headline,STILL RACING AFTER {{MONTH}},MONTH,paired pack,medium
 roundup,round_still_racing,subhead,No clean narratives — just a live league,,paired pack,medium
 roundup,round_still_racing,body,"If you wanted a tidy story from {{MONTH}}, you came to the wrong league. Results scrambled the picture again. That is fine. Messy months make better seasons.","MONTH",human voice,medium
+owner_takeover,own_helm,headline,{{OWNER}} TAKES THE HELM AT {{CLUB}},"OWNER,CLUB",paired pack,high
+owner_takeover,own_helm,subhead,"""This is a special club — I cannot wait to get started.""",,pull quote field,high
+owner_takeover,own_helm,body,"{{OWNER}} is in at {{CLUB}}. Not a rumour — the link is live, the inbox is open, and pre-season {{MONTH}} is already on the clock. GPSL Sport will be watching how quickly they put a stamp on the squad.","OWNER,CLUB,MONTH",human voice,high
+owner_takeover,own_new_era,headline,NEW ERA AT {{CLUB}} — {{OWNER}} INSTALLED,"CLUB,OWNER",paired pack,high
+owner_takeover,own_new_era,subhead,"""The squad has quality. My job is to unlock it.""",,pull quote field,high
+owner_takeover,own_new_era,body,"{{CLUB}} have a new name above the door: {{OWNER}}. Boardroom seat taken, transfer budget live, Learning GPSL probably open in another tab. Pre-season is short. Ambition usually is not.","CLUB,OWNER",human voice,high
+owner_takeover,own_welcome,headline,{{CLUB}} WELCOME {{OWNER}},"CLUB,OWNER",paired pack,high
+owner_takeover,own_welcome,subhead,"""I have followed GPSL for years. Now it is my turn.""",,pull quote field,high
+owner_takeover,own_welcome,body,"Official welcome confirmed for {{OWNER}} at {{CLUB}} this {{MONTH}}. The takeover chatter can stop — they are in. Now comes the harder bit: turning a linked club into a project.","OWNER,CLUB,MONTH",human voice,high
+owner_takeover,own_keys,headline,KEYS HANDED OVER — {{OWNER}} AT {{CLUB}},"OWNER,CLUB",paired pack,high
+owner_takeover,own_keys,subhead,"""Expect ambition. I did not come here to finish mid-table.""",,pull quote field,high
+owner_takeover,own_keys,body,"{{OWNER}} has the keys at {{CLUB}}. Stadium costs settled, squad inherited, expectations waiting in the inbox. Rivals will pretend not to care. They will care the first time the new owner wins ugly.","OWNER,CLUB",human voice,high
+owner_takeover,own_hot_seat,headline,{{OWNER}} DROPS INTO THE {{CLUB}} HOT SEAT,"OWNER,CLUB",paired pack,high
+owner_takeover,own_hot_seat,subhead,"""Build something. That is the brief.""",,pull quote field,high
+owner_takeover,own_hot_seat,body,"Another GPSL hot seat filled: {{OWNER}} → {{CLUB}}. {{MONTH}} pre-season is the calm before the inbox storms. GPSL Sport's advice is the same as always — read the guide, then get busy.","OWNER,CLUB,MONTH",human voice,high
+owner_takeover,own_project,headline,{{CLUB}} PROJECT BEGINS UNDER {{OWNER}},"CLUB,OWNER",paired pack,high
+owner_takeover,own_project,subhead,"""No honeymoon. Just work.""",,pull quote field,high
+owner_takeover,own_project,body,"Call it a project or a privilege — {{OWNER}} now runs {{CLUB}}. The welcome message is the easy part. Building a side that survives Fridays is the rest.","OWNER,CLUB",human voice,high
+owner_takeover,own_chat_groups,headline,GROUP CHATS NOTICE: {{OWNER}} HAS {{CLUB}},"OWNER,CLUB",paired pack,high
+owner_takeover,own_chat_groups,subhead,"""I know the league. Now I get a club.""",,pull quote field,high
+owner_takeover,own_chat_groups,body,"The owner tags updated and the chat groups did what chat groups do. {{OWNER}} is confirmed at {{CLUB}} for {{MONTH}}. Formalities done. Judgement starts with the first window.","OWNER,CLUB,MONTH",human voice,high
+owner_takeover,own_quiet_arrival,headline,QUIET ARRIVAL: {{OWNER}} LINKED TO {{CLUB}},"OWNER,CLUB",paired pack,high
+owner_takeover,own_quiet_arrival,subhead,"""Let the football do the talking.""",,pull quote field,high
+owner_takeover,own_quiet_arrival,body,"No parade needed. {{OWNER}} is linked to {{CLUB}}, finances are live, and the squad is theirs to shape. In GPSL, quiet arrivals still get loud scorelines eventually.","OWNER,CLUB",human voice,high
+owner_takeover,own_auction_win,headline,AUCTION WINNER: {{OWNER}} LANDS {{CLUB}},"OWNER,CLUB",paired pack,high
+owner_takeover,own_auction_win,subhead,"""We bid what we had to. Now we build.""",,pull quote field,high
+owner_takeover,own_auction_win,body,"{{OWNER}} won the club auction race for {{CLUB}} — fee cleared, assignment locked, inbox pinging. That is the glamorous bit. Pre-season {{MONTH}} is where the real work starts.","OWNER,CLUB,MONTH",human voice — prefer when assign_source=club_auction,high
+owner_takeover,own_office_appoint,headline,LEAGUE OFFICE APPOINTS {{OWNER}} AT {{CLUB}},"OWNER,CLUB",paired pack,high
+owner_takeover,own_office_appoint,subhead,"""The board backed the appointment. Results will judge it.""",,pull quote field,high
+owner_takeover,own_office_appoint,body,"{{OWNER}} has been appointed to run {{CLUB}} ahead of the campaign. Assignment confirmed by the league office; stadium and books are in place. Rivals will be timing how fast the new regime moves.","OWNER,CLUB",human voice — prefer when assign_source=admin_assign,high

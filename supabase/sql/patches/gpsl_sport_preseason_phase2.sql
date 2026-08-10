@@ -215,6 +215,7 @@ DECLARE
   v_owner_score numeric := 0;
   v_transfer_score numeric := 0;
   v_owner_story jsonb;
+  v_owner_pack_used text[] := '{}';
 BEGIN
   IF p_window_start IS NOT NULL AND p_window_end IS NOT NULL AND p_window_end > p_window_start THEN
     v_owners := public.gpsl_sport_list_owner_takeovers(p_window_start, p_window_end);
@@ -227,10 +228,14 @@ BEGIN
       FOR v_o IN 0..(v_owner_count - 1) LOOP
         v_owner := v_owners->v_o;
         v_owner_story := public.gpsl_sport_build_owner_story(
-          p_seed || ':o' || v_o::text,
+          p_seed || ':o' || v_o::text || ':' || coalesce(v_owner->>'club_short', ''),
           v_owner,
-          p_month_label
+          p_month_label,
+          v_owner_pack_used
         );
+        IF nullif(v_owner_story->>'pack_id', '') IS NOT NULL THEN
+          v_owner_pack_used := array_append(v_owner_pack_used, v_owner_story->>'pack_id');
+        END IF;
         v_owner_stories := v_owner_stories || jsonb_build_array(v_owner_story);
       END LOOP;
     END IF;
