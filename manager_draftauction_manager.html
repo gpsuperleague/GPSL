@@ -32,6 +32,13 @@
     .dec-btn { padding:6px 10px; background:#222; color:#ddd; border:1px solid #555; border-radius:4px; cursor:pointer; }
     #submitBidBtn { padding:8px 14px; background:#2f7a2f; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; }
     #submitBidBtn:disabled { background:#444; color:#999; }
+    .bid-panel.view-only { opacity:0.95; border-color:#555; }
+    .bid-panel.view-only .bid-controls { display:none; }
+    .bid-ended-banner, .bid-view-banner {
+      margin:0 0 12px; padding:10px 12px; border-radius:6px; font-size:13px; line-height:1.45;
+    }
+    .bid-ended-banner { background:#2a2208; border:1px solid #886; color:#ddc; }
+    .bid-view-banner { background:#1a2430; border:1px solid #456; color:#bcd; }
     table.history { width:100%; border-collapse:collapse; margin-top:12px; }
     table.history th, table.history td { border:1px solid #333; padding:6px; font-size:12px; }
     table.history th { color:#ff9900; background:#222; }
@@ -65,8 +72,9 @@
       </div>
     </div>
 
-    <div class="bid-panel">
-      <h3 style="color:#ff9900;margin-top:0;">Place bid</h3>
+    <div class="bid-panel" id="bidPanel">
+      <h3 id="bidPanelTitle" style="color:#ff9900;margin-top:0;">Place bid</h3>
+      <div class="bid-controls">
       <div class="bid-row">
         <span style="color:#ff9900;font-weight:bold;font-size:18px;">₿</span>
         <input type="text" id="bidAmount" inputmode="numeric" autocomplete="off">
@@ -85,6 +93,7 @@
         </p>
         <p style="margin:0 0 8px;font-size:12px;color:#999;line-height:1.4;">
           Auto-bids the minimum step (+₿500k) when outbid, up to your max. Does not outbid yourself while you lead.
+          Do not open rooms just to force rivals’ auto-bids upward — that is against fair play.
         </p>
         <div class="bid-row">
           <span style="color:#ff9900;font-weight:bold;font-size:18px;">₿</span>
@@ -94,15 +103,17 @@
         </div>
       </div>
       <p id="bidError"></p>
+      </div>
     </div>
 
     <h3 style="color:#ff9900;">Bid history</h3>
+    <p style="margin:0 0 8px;font-size:12px;color:#999;">Live list of bids on this manager (newest first). Safe to check via View without placing a bid.</p>
     <table class="history">
-      <thead><tr><th>Club</th><th>Amount</th><th>Time</th></tr></thead>
+      <thead><tr><th>Club</th><th>Owner</th><th>Amount</th><th>Time</th></tr></thead>
       <tbody id="bidHistory"></tbody>
     </table>
   </div>
-  <script type="module" src="global.js?v=20260809-mgr-maxbid"></script>
-  <script type="module" src="manager_draftauction_manager.js?v=20260809-mgr-maxbid"></script>
+  <script type="module" src="global.js?v=20260810-mgr-view"></script>
+  <script type="module" src="manager_draftauction_manager.js?v=20260810-mgr-view"></script>
 </body>
 </html>

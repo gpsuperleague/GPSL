@@ -91,6 +91,7 @@ export const SECTION_MANAGERS = {
         `<b>August without a manager</b> — you may still hire from the <a href="manager_listings.html">Manager Transfer Market</a> / FA board, but you <b>cannot arrange kick-offs, check in, or play fixtures</b> until a manager is signed.`,
         `<b>Manager Market FA board</b> — at the start of each of those four months, <b>10 random free-agent</b> managers are listed (rating mix). Unsold ones from the previous month are cleared. Bid like a normal listing; fee goes to the league (no seller club). <b>Clubs that already have a manager cannot bid</b> (sack or transfer first).`,
         `Manager draft auctions use the same timed window as player drafts but are controlled by a <b>separate enable flag</b> — only active when admin turns on the manager draft.`,
+        `Use <b>View</b> to check live bids and history without bidding. Do <b>not</b> open auctions just to force rivals’ max/auto-bids upward — probing to inflate prices is against fair play.`,
         `When the random finish passes, winning bids are settled automatically (manager assigned, fee debited). If a club already has a manager, that auction closes without a transfer.`,
         `Season expectations message arrives in your <a href="inbox.html">Inbox</a> when a manager is signed.`,
       ],

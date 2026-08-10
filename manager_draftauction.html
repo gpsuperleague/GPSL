@@ -31,7 +31,13 @@
     }
     .bid-btn.enabled { background:#ff9900; color:#111; }
     .bid-btn.disabled { background:#444; color:#999; cursor:not-allowed; }
-    .bid-btn.view-only { background:#444; color:#ddd; }
+    .bid-btn.view-only { background:#555; color:#ddd; }
+    .bid-btn.view-only:hover { background:#666; }
+    .auction-actions { display:inline-flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .high-bid-link {
+      color:#6cf; cursor:pointer; text-decoration:underline; text-underline-offset:2px;
+    }
+    .high-bid-link:hover { color:#9df; }
     .player-link { color:#ff9900; font-weight:bold; text-decoration:none; }
     .manager-list-cell { display:inline-flex; align-items:center; gap:10px; }
     .manager-list-thumb-wrap {
@@ -88,14 +94,14 @@
           <th>Highest Bid</th>
           <th>Leading Club</th>
           <th>Owner</th>
-          <th>Bid</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody id="draftTableBody"></tbody>
     </table>
   </div>
 
-  <script type="module" src="global.js?v=20260809-mgr-maxbid"></script>
-  <script type="module" src="manager_draftauction.js?v=20260809-mgr-maxbid"></script>
+  <script type="module" src="global.js?v=20260810-mgr-view"></script>
+  <script type="module" src="manager_draftauction.js?v=20260810-mgr-view"></script>
 </body>
 </html>

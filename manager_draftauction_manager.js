@@ -20,7 +20,7 @@ import {
   getClubManagerVacancy,
   submitManagerDraftBid,
 } from "./manager_draft_engine.js?v=20260809-mgr-maxbid";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
 import {
   applyManagerPortrait,
   managerInitials,
@@ -52,6 +52,8 @@ let draftAuctionStartTime = null;
 let currentManager = null;
 let auctionEnded = false;
 let managerVacancyBlocked = "";
+let bidEligibility = { allowed: false, reason: "" };
+let preferViewOnly = false;
 let bidAmountControl = null;
 let currentMinBid = 0;
 let countdownTimer = null;
@@ -81,6 +83,60 @@ function isBidInputFocused() {
   return input && document.activeElement === input;
 }
 
+function isViewOnlyMode() {
+  return preferViewOnly || auctionEnded || !bidEligibility.allowed;
+}
+
+function applyViewOnlyMode() {
+  const panel = document.getElementById("bidPanel");
+  const title = document.getElementById("bidPanelTitle");
+  if (!panel) return;
+
+  const viewOnly = isViewOnlyMode();
+  panel.classList.toggle("view-only", viewOnly);
+
+  let banner = document.getElementById("bidModeBanner");
+  if (viewOnly) {
+    if (title) {
+      title.textContent = auctionEnded ? "Bidding (view only)" : "Viewing bids";
+    }
+    if (!banner) {
+      banner = document.createElement("p");
+      banner.id = "bidModeBanner";
+      panel.insertBefore(banner, panel.firstChild);
+    }
+    if (auctionEnded) {
+      banner.className = "bid-ended-banner";
+      banner.textContent =
+        "Auction ended — you can review bid history below but cannot place new bids.";
+    } else {
+      banner.className = "bid-view-banner";
+      banner.textContent =
+        (bidEligibility.reason
+          ? `${bidEligibility.reason} `
+          : "View only — ") +
+        "Bid history below updates live. Opening View does not place or bump bids.";
+    }
+  } else {
+    if (title) title.textContent = "Place bid";
+    if (banner) banner.remove();
+  }
+}
+
+async function refreshBidEligibility() {
+  if (!currentManager) {
+    bidEligibility = { allowed: false, reason: "No manager selected." };
+    return bidEligibility;
+  }
+  bidEligibility = await getManagerDraftBidEligibility({
+    managerId: currentManager.id,
+    buyerShortName,
+    managerDraftEnabled,
+    draftAuctionStartTime,
+  });
+  return bidEligibility;
+}
+
 async function refreshAuctionState() {
   if (managerDraftEnabled && draftAuctionStartTime) {
     await refreshDraftBiddingOpen();
@@ -89,6 +145,7 @@ async function refreshAuctionState() {
   await updateCountdownDisplay();
   if (!wasEnded && auctionEnded) {
     await refreshBids();
+    await refreshBidEligibility();
     updateBidControls();
   }
 }
@@ -110,6 +167,7 @@ function scheduleManagerRoomTimers() {
     if (document.hidden || auctionEnded || isBidInputFocused()) return;
     refreshBids();
     refreshLeadPanel();
+    refreshBidEligibility().then(() => updateBidControls());
   }, BIDS_POLL_MS);
 }
 
@@ -189,6 +247,7 @@ async function updateCountdownDisplay() {
 async function loadManager() {
   const params = new URLSearchParams(window.location.search);
   const managerId = Number(params.get("manager"));
+  preferViewOnly = params.get("view") === "1";
   if (!Number.isFinite(managerId)) {
     document.getElementById("managerName").textContent = "No manager selected.";
     return;
@@ -212,6 +271,9 @@ async function loadManager() {
   }
 
   currentManager = mgr;
+  document.title = preferViewOnly
+    ? `Manager Draft — View · ${mgr.name}`
+    : `Manager Draft — Bid · ${mgr.name}`;
   document.getElementById("managerName").textContent = mgr.name;
   document.getElementById("managerMeta").textContent =
     `${mgr.nation || "—"} · Rating ${mgr.rating} · Age ${mgr.age ?? "—"}`;
@@ -228,6 +290,7 @@ async function loadManager() {
   document.getElementById("managerValue").textContent =
     `Market value: ${formatMoney(mgr.market_value)}`;
 
+  await refreshBidEligibility();
   await refreshBids();
   await refreshManagerMaxBidUi();
   await refreshLeadPanel();
@@ -279,20 +342,23 @@ async function refreshBids() {
     ? bids
         .slice()
         .reverse()
-        .map(
-          (b) => `<tr>
-        <td>${fullClubName(b.bidder_club_id) || b.bidder_club_id}</td>
+        .map((b) => {
+          const club = fullClubName(b.bidder_club_id) || b.bidder_club_id;
+          const owner = ownerTagForClub(b.bidder_club_id) || "—";
+          return `<tr>
+        <td>${club}</td>
+        <td><span class="club-owner-tag">${owner}</span></td>
         <td>${formatMoney(b.bid_amount)}</td>
         <td>${new Date(b.bid_time).toLocaleString("en-GB")}</td>
-      </tr>`
-        )
+      </tr>`;
+        })
         .join("")
-    : `<tr><td colspan="3">No bids yet</td></tr>`;
+    : `<tr><td colspan="4">No bids yet</td></tr>`;
 
   const min = managerDraftMinimumBid(currentManager.market_value, bids);
   currentMinBid = min;
   const input = getBidInput();
-  if (input && !input.dataset.touched) {
+  if (input && !input.dataset.touched && !isViewOnlyMode()) {
     setMoneyInputValue(input, min);
   }
 }
@@ -324,20 +390,32 @@ async function refreshLeadPanel() {
 }
 
 function updateBidControls() {
+  applyViewOnlyMode();
   const submit = document.getElementById("submitBidBtn");
   const err = document.getElementById("bidError");
-  const blocked = auctionEnded || Boolean(managerVacancyBlocked);
+  const blocked = isViewOnlyMode();
   if (submit) {
     submit.disabled = blocked;
     submit.textContent = auctionEnded
       ? "Auction ended"
-      : managerVacancyBlocked
-        ? "Manager vacancy required"
+      : !bidEligibility.allowed
+        ? "Bidding locked"
         : "Submit bid";
   }
-  if (err && managerVacancyBlocked) {
+  const maxSet = document.getElementById("managerMaxBidSetBtn");
+  const maxClear = document.getElementById("managerMaxBidClearBtn");
+  const maxInput = document.getElementById("managerMaxBidAmount");
+  if (maxSet) maxSet.disabled = blocked;
+  if (maxClear) maxClear.disabled = blocked;
+  if (maxInput) maxInput.disabled = blocked;
+
+  if (err && blocked && !auctionEnded && bidEligibility.reason) {
+    err.textContent = bidEligibility.reason;
+  } else if (err && managerVacancyBlocked && !blocked) {
     err.textContent = managerVacancyBlocked;
   } else if (auctionEnded && err) {
+    err.textContent = "";
+  } else if (err && !blocked) {
     err.textContent = "";
   }
 }
@@ -370,7 +448,7 @@ function wireBidControls() {
   });
 
   document.getElementById("quickBidBtn")?.addEventListener("click", async () => {
-    if (!currentManager) return;
+    if (!currentManager || isViewOnlyMode()) return;
     const bids = await fetchCurrentManagerDraftBids(
       currentManager.id,
       draftAuctionStartTime
@@ -388,6 +466,12 @@ function wireBidControls() {
       if (err) err.textContent = "No club linked to your account.";
       return;
     }
+    await refreshBidEligibility();
+    if (isViewOnlyMode()) {
+      updateBidControls();
+      if (err) err.textContent = bidEligibility.reason || "Bidding is locked.";
+      return;
+    }
     const amount = parseMoneyInput(getBidInput()?.value);
     if (amount < currentMinBid) {
       if (err) {
@@ -395,17 +479,6 @@ function wireBidControls() {
       }
       return;
     }
-    const eligibility = await getManagerDraftBidEligibility({
-      managerId: currentManager.id,
-      buyerShortName,
-      managerDraftEnabled,
-      draftAuctionStartTime,
-    });
-    if (!eligibility.allowed && !auctionEnded) {
-      if (err) err.textContent = eligibility.reason;
-      return;
-    }
-    if (auctionEnded) return;
 
     const result = await submitManagerDraftBid(
       currentManager,
@@ -426,6 +499,8 @@ function wireBidControls() {
     await refreshBids();
     await refreshManagerMaxBidUi();
     await refreshLeadPanel();
+    await refreshBidEligibility();
+    updateBidControls();
     mountClubBankBalance("clubBankBalance", {
       clubShortName: buyerShortName,
       advisory: true,
@@ -436,6 +511,12 @@ function wireBidControls() {
     const err = document.getElementById("bidError");
     if (!currentManager || !buyerShortName) {
       if (err) err.textContent = "No club linked to your account.";
+      return;
+    }
+    await refreshBidEligibility();
+    if (isViewOnlyMode()) {
+      updateBidControls();
+      if (err) err.textContent = bidEligibility.reason || "Bidding is locked.";
       return;
     }
     const amount = parseMaxBidInput(
@@ -459,6 +540,12 @@ function wireBidControls() {
   document.getElementById("managerMaxBidClearBtn")?.addEventListener("click", async () => {
     const err = document.getElementById("bidError");
     if (!currentManager) return;
+    await refreshBidEligibility();
+    if (isViewOnlyMode()) {
+      updateBidControls();
+      if (err) err.textContent = bidEligibility.reason || "Bidding is locked.";
+      return;
+    }
     try {
       await managerDraftClearMaxBid(currentManager.id);
       const maxInput = document.getElementById("managerMaxBidAmount");

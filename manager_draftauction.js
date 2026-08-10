@@ -246,10 +246,17 @@ async function loadManagerDraftListings(options = {}) {
       draftAuctionStartTime,
     });
     const canBid = eligibility.allowed;
-
-    const btnClass = auctionEnded ? "view-only" : canBid ? "enabled" : "disabled";
-    const btnLabel = auctionEnded ? "View" : canBid ? "Bid" : "Locked";
     const lockTitle = !auctionEnded && !canBid ? eligibility.reason : "";
+    const highHtml =
+      high != null
+        ? `<span class="high-bid-link" data-manager-id="${mgr.id}" title="View bid history">${formatMoney(high)}</span>`
+        : "—";
+
+    const bidBtn = auctionEnded
+      ? ""
+      : canBid
+        ? `<button type="button" class="bid-btn enabled" data-manager-id="${mgr.id}" data-mode="bid">Bid</button>`
+        : `<button type="button" class="bid-btn disabled" title="${lockTitle.replace(/"/g, "&quot;")}" disabled>Locked</button>`;
 
     const tr = document.createElement("tr");
     tr.dataset.managerId = String(mgr.id);
@@ -258,13 +265,14 @@ async function loadManagerDraftListings(options = {}) {
       <td>${mgr.nation || "—"}</td>
       <td>${mgr.rating}</td>
       <td>${formatMoney(mgr.market_value)}</td>
-      <td>${high != null ? formatMoney(high) : "—"}</td>
+      <td>${highHtml}</td>
       <td>${leaderClub}</td>
       <td><span class="club-owner-tag">${leaderOwner}</span></td>
       <td>
-        <button class="bid-btn ${btnClass}" data-manager-id="${mgr.id}" title="${lockTitle.replace(/"/g, "&quot;")}" ${auctionEnded || canBid ? "" : "disabled"}>
-          ${btnLabel}
-        </button>
+        <div class="auction-actions">
+          <button type="button" class="bid-btn view-only" data-manager-id="${mgr.id}" data-mode="view" title="View bids and history (no bidding)">View</button>
+          ${bidBtn}
+        </div>
       </td>
     `;
     tbody.appendChild(tr);
@@ -274,12 +282,25 @@ async function loadManagerDraftListings(options = {}) {
   scheduleListPoll(auctionEnded);
 }
 
+function openManagerAuction(managerId, mode = "view") {
+  if (!managerId) return;
+  const q = new URLSearchParams({ manager: String(managerId) });
+  if (mode === "view") q.set("view", "1");
+  window.location = `manager_draftauction_manager.html?${q.toString()}`;
+}
+
 function wireTable() {
   document.getElementById("draftTableBody")?.addEventListener("click", (e) => {
+    const link = e.target.closest(".high-bid-link");
+    if (link) {
+      openManagerAuction(link.getAttribute("data-manager-id"), "view");
+      return;
+    }
     const btn = e.target.closest(".bid-btn.enabled, .bid-btn.view-only");
     if (!btn) return;
     const id = btn.getAttribute("data-manager-id");
-    if (id) window.location = `manager_draftauction_manager.html?manager=${id}`;
+    const mode = btn.getAttribute("data-mode") === "bid" ? "bid" : "view";
+    openManagerAuction(id, mode);
   });
 }
 

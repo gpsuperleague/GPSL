@@ -22,6 +22,21 @@ export function getManagerDraftAuctionRules() {
           "Get outbid elsewhere, or wait for that auction to settle, before leading another.",
         ],
       },
+      {
+        heading: "View vs bid",
+        items: [
+          "<b>View</b> always opens the auction room so you can check the live high bid and full bid history.",
+          "<b>Bid</b> is only available when you are eligible; otherwise it shows <b>Locked</b> (you can still View).",
+        ],
+      },
+      {
+        heading: "Fair play — no auto-bid probing",
+        items: [
+          "Do <b>not</b> open auctions just to nudge prices up by forcing rivals’ <b>max / auto-bids</b> to fire.",
+          "Min-step probes and repeated “bump then walk away” bids to inflate a listing are against fair play.",
+          "Admins may remove abusive bids and sanction repeat offenders.",
+        ],
+      },
     ],
   };
 }
