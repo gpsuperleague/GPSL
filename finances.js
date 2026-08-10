@@ -8,14 +8,14 @@ import {
 import {
   applyFinanceClubHeader,
   applyHistoricalFinanceBanner,
+  ensureStaffFinancePicker,
   loadFinanceSeasonContext,
-  mountAdminFinancePicker,
   renderFinanceSeasonHistoryNav,
   renderFinanceSubnav,
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20260804-loan-catchup";
+} from "./finance_page_common.js?v=20260810-staff-fin-preview";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20260806-help-blocks";
 
 function setAdvisoryBudgetDisplay(advisory, { historical = false } = {}) {
@@ -105,7 +105,7 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
 
   const pageMeta = document.getElementById("pageMeta");
   if (pageMeta && adminPreview) {
-    pageMeta.textContent = `Admin preview — viewing ${shortName}. You do not own this club.`;
+    pageMeta.textContent = `Staff preview — viewing ${shortName}. You do not own this club.`;
   }
   applyHistoricalFinanceBanner(seasonView);
   renderFinanceSeasonHistoryNav(document.getElementById("financeSeasonHistory"), {
@@ -216,10 +216,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   if (ctx.needsAdminPicker) {
-    await mountAdminFinancePicker();
+    await ensureStaffFinancePicker(ctx);
     return;
   }
 
+  await ensureStaffFinancePicker(ctx);
   await loadFinancesForClub(ctx.shortName, ctx.clubLabel, {
     adminPreview: ctx.adminPreview,
   });

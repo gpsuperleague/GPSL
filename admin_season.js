@@ -2,7 +2,7 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
-} from "./admin_main_nav.js?v=20260809-prestige-div";
+} from "./admin_main_nav.js?v=20260810-staff-fin-preview";
 import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-expiry-fa";
 
 primeAdminPageChrome();

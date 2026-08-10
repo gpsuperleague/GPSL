@@ -2,7 +2,7 @@ import { initAdminPage, primeAdminPageChrome } from "./admin_common.js";
 import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
-} from "./admin_main_nav.js?v=20260809-prestige-div";
+} from "./admin_main_nav.js?v=20260810-staff-fin-preview";
 
 primeAdminPageChrome();
 

@@ -444,6 +444,13 @@ export const ADMIN_MAIN_NAV = [
       ]),
       group("Finances", [
         L(
+          "Preview club finances",
+          "finances.html",
+          null,
+          null,
+          "Open Finances with a club selector — view any club’s accounts as a staff preview (Admin/Mod)."
+        ),
+        L(
           "Apply fines",
           "admin_fines.html",
           null,

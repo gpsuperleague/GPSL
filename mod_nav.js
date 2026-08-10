@@ -42,6 +42,7 @@ export const MOD_NAV_SECTION = {
     L("Republish GPSL Sport", "admin_gpsl_sport.html"),
 
     H("Season ops"),
+    L("Preview club finances", "finances.html"),
     L("Club Season Checklist", "admin_club_checklist.html"),
     L("Apply fines", "admin_fines.html"),
     L("Red card appeal review", "admin_prize_appeals.html"),

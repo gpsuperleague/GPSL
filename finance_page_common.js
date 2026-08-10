@@ -1,4 +1,9 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
+import {
+  supabase,
+  initGlobal,
+  isGpslAdminUser,
+  fetchIsGpslModUser,
+} from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   formatMoney,
@@ -27,6 +32,13 @@ import {
 } from "./finance_transfers.js";
 
 export const ADMIN_FINANCE_CLUB_KEY = "gpsl_admin_finance_club";
+
+/** Admin or Mod may preview any club's finances. */
+export async function canStaffPreviewFinances(user) {
+  if (!user) return false;
+  if (isGpslAdminUser(user)) return true;
+  return (await fetchIsGpslModUser(true)) === true;
+}
 
 export const FINANCE_SUBNAV = [
   { id: "finances", href: "finances.html", label: "Overview" },
@@ -334,7 +346,7 @@ export function renderFinanceSubnav(activePageId, shortName, adminPreview, seaso
 
 export async function resolveFinanceClubContext(user) {
   const params = new URLSearchParams(window.location.search);
-  const clubParam = params.get("club")?.trim();
+  const clubParam = (params.get("club") || "").trim().toUpperCase() || null;
 
   const { data: owned } = await supabase
     .from("Clubs")
@@ -342,17 +354,16 @@ export async function resolveFinanceClubContext(user) {
     .eq("owner_id", user.id)
     .maybeSingle();
 
-  if (owned?.ShortName) {
-    return {
-      shortName: owned.ShortName,
-      clubLabel: owned.Club,
-      adminPreview: false,
-    };
-  }
+  const ownedShort = owned?.ShortName || null;
+  const staff = await canStaffPreviewFinances(user);
 
-  if (isGpslAdminUser(user)) {
-    const shortName =
-      clubParam || sessionStorage.getItem(ADMIN_FINANCE_CLUB_KEY) || null;
+  if (staff) {
+    const saved = (sessionStorage.getItem(ADMIN_FINANCE_CLUB_KEY) || "")
+      .trim()
+      .toUpperCase() || null;
+
+    // Explicit ?club= wins; else own club; else last previewed; else picker-only.
+    const shortName = clubParam || ownedShort || saved || null;
 
     if (!shortName) {
       return {
@@ -360,10 +371,15 @@ export async function resolveFinanceClubContext(user) {
         clubLabel: null,
         adminPreview: true,
         needsAdminPicker: true,
+        staffPicker: true,
+        ownedShort,
+        ownedLabel: owned?.Club || null,
       };
     }
 
-    sessionStorage.setItem(ADMIN_FINANCE_CLUB_KEY, shortName);
+    if (clubParam || !ownedShort) {
+      sessionStorage.setItem(ADMIN_FINANCE_CLUB_KEY, shortName);
+    }
 
     const { data: clubRow } = await supabase
       .from("Clubs")
@@ -371,14 +387,36 @@ export async function resolveFinanceClubContext(user) {
       .eq("ShortName", shortName)
       .maybeSingle();
 
+    const viewingOwn = ownedShort && shortName === ownedShort && !clubParam;
+
     return {
       shortName,
       clubLabel: clubRow?.Club || shortName,
-      adminPreview: true,
+      adminPreview: !viewingOwn,
+      staffPicker: true,
+      ownedShort,
+      ownedLabel: owned?.Club || null,
     };
   }
 
-  return { shortName: null, clubLabel: null, adminPreview: false, noClub: true };
+  if (ownedShort) {
+    return {
+      shortName: ownedShort,
+      clubLabel: owned.Club,
+      adminPreview: false,
+      staffPicker: false,
+      ownedShort,
+      ownedLabel: owned.Club,
+    };
+  }
+
+  return {
+    shortName: null,
+    clubLabel: null,
+    adminPreview: false,
+    noClub: true,
+    staffPicker: false,
+  };
 }
 
 export async function applyFinanceClubHeader(
@@ -391,16 +429,31 @@ export async function applyFinanceClubHeader(
   const titleEl = document.getElementById("pageTitle");
   if (titleEl) {
     titleEl.textContent = adminPreview
-      ? `${fullName} — ${pageSuffix} (admin preview)`
+      ? `${fullName} — ${pageSuffix} (staff preview)`
       : `${fullName} — ${pageSuffix}`;
   }
   const badge = document.getElementById("clubBadgeHeader");
   if (badge) badge.src = `images/club_badges/${shortName}.png`;
 }
 
-export async function mountAdminFinancePicker(onSelect) {
-  const anchor = document.getElementById("pageMeta");
-  if (!anchor) return null;
+/**
+ * Club selector for Admin/Mod finance preview.
+ * @param {object} [opts]
+ * @param {string|null} [opts.selectedShort]
+ * @param {string|null} [opts.ownedShort]
+ * @param {string|null} [opts.ownedLabel]
+ * @param {(short: string) => void} [opts.onSelect]
+ */
+export async function mountAdminFinancePicker(opts = {}) {
+  const onSelect = typeof opts === "function" ? opts : opts.onSelect;
+  const selectedShort = (typeof opts === "function" ? null : opts.selectedShort) || null;
+  const ownedShort = (typeof opts === "function" ? null : opts.ownedShort) || null;
+  const ownedLabel = (typeof opts === "function" ? null : opts.ownedLabel) || null;
+
+  const host =
+    document.getElementById("adminFinancePickerHost") ||
+    document.getElementById("pageMeta");
+  if (!host) return null;
 
   const { data: clubs, error } = await supabase
     .from("Clubs")
@@ -409,8 +462,13 @@ export async function mountAdminFinancePicker(onSelect) {
     .order("Club");
 
   if (error || !clubs?.length) {
-    anchor.textContent = "Admin preview — could not load club list.";
+    host.textContent = "Staff preview — could not load club list.";
     return null;
+  }
+
+  host.replaceChildren();
+  if (host.id === "pageMeta") {
+    host.classList.remove("meta");
   }
 
   const wrap = document.createElement("div");
@@ -419,12 +477,21 @@ export async function mountAdminFinancePicker(onSelect) {
     "margin-top:8px;padding:10px 12px;background:#222;border:1px solid #444;border-radius:6px;font-size:13px;";
 
   const label = document.createElement("label");
-  label.textContent = "Preview club: ";
+  label.htmlFor = "adminFinanceClubSelect";
+  label.textContent = "Preview club finances: ";
   label.style.marginRight = "8px";
 
   const select = document.createElement("select");
+  select.id = "adminFinanceClubSelect";
   select.style.cssText =
-    "padding:6px 8px;background:#111;border:1px solid #555;color:#ddd;border-radius:4px;min-width:220px;";
+    "padding:6px 8px;background:#111;border:1px solid #555;color:#ddd;border-radius:4px;min-width:260px;max-width:100%;";
+
+  if (ownedShort) {
+    const ownOpt = document.createElement("option");
+    ownOpt.value = "__own__";
+    ownOpt.textContent = `My club — ${ownedLabel || ownedShort} (${ownedShort})`;
+    select.appendChild(ownOpt);
+  }
 
   for (const c of clubs) {
     const opt = document.createElement("option");
@@ -433,24 +500,56 @@ export async function mountAdminFinancePicker(onSelect) {
     select.appendChild(opt);
   }
 
-  const saved = sessionStorage.getItem(ADMIN_FINANCE_CLUB_KEY);
-  if (saved && [...select.options].some((o) => o.value === saved)) {
-    select.value = saved;
+  const params = new URLSearchParams(window.location.search);
+  const clubParam = (params.get("club") || "").trim().toUpperCase() || null;
+  const preferred =
+    (selectedShort || "").toUpperCase() ||
+    clubParam ||
+    (sessionStorage.getItem(ADMIN_FINANCE_CLUB_KEY) || "").toUpperCase() ||
+    null;
+
+  if (!clubParam && ownedShort && (!preferred || preferred === ownedShort)) {
+    select.value = "__own__";
+  } else if (preferred && [...select.options].some((o) => o.value === preferred)) {
+    select.value = preferred;
+  } else if (ownedShort) {
+    select.value = "__own__";
   }
+
+  const hint = document.createElement("div");
+  hint.style.cssText = "margin-top:6px;color:#888;font-size:12px;line-height:1.35;";
+  hint.textContent =
+    "Admin/Mod only — pick any club to view their finances screens (read-only as that club).";
 
   wrap.appendChild(label);
   wrap.appendChild(select);
-  anchor.replaceWith(wrap);
+  wrap.appendChild(hint);
+  host.appendChild(wrap);
 
   select.addEventListener("change", () => {
-    sessionStorage.setItem(ADMIN_FINANCE_CLUB_KEY, select.value);
     const url = new URL(window.location.href);
-    url.searchParams.set("club", select.value);
+    if (select.value === "__own__") {
+      sessionStorage.removeItem(ADMIN_FINANCE_CLUB_KEY);
+      url.searchParams.delete("club");
+    } else {
+      sessionStorage.setItem(ADMIN_FINANCE_CLUB_KEY, select.value);
+      url.searchParams.set("club", select.value);
+    }
     window.location.href = url.toString();
   });
 
   if (typeof onSelect === "function") onSelect(select.value);
   return select;
+}
+
+/** Mount picker when context says staff; no-op for owners. */
+export async function ensureStaffFinancePicker(ctx) {
+  if (!ctx?.staffPicker && !ctx?.needsAdminPicker) return null;
+  return mountAdminFinancePicker({
+    selectedShort: ctx.shortName,
+    ownedShort: ctx.ownedShort,
+    ownedLabel: ctx.ownedLabel,
+  });
 }
 
 /** @param {"all"|"income"|"cost"} filter */
@@ -704,9 +803,11 @@ export async function initFinanceAccountsPage() {
   }
 
   if (ctx.needsAdminPicker) {
-    await mountAdminFinancePicker();
+    await ensureStaffFinancePicker(ctx);
     return;
   }
+
+  await ensureStaffFinancePicker(ctx);
 
   const { shortName, clubLabel, adminPreview } = ctx;
   const seasonView = await resolveFinanceSeasonView(supabase, shortName);
@@ -723,7 +824,7 @@ export async function initFinanceAccountsPage() {
 
   const meta = document.getElementById("pageMeta");
   if (meta && adminPreview) {
-    meta.textContent = `Admin preview — ${shortName}.`;
+    meta.textContent = `Staff preview — viewing ${shortName}.`;
   }
   applyHistoricalFinanceBanner(seasonView);
   renderFinanceSeasonHistoryNav(document.getElementById("financeSeasonHistory"), {
@@ -786,9 +887,11 @@ export async function initFinanceSubPage({
   }
 
   if (ctx.needsAdminPicker) {
-    await mountAdminFinancePicker();
+    await ensureStaffFinancePicker(ctx);
     return;
   }
+
+  await ensureStaffFinancePicker(ctx);
 
   const { shortName, clubLabel, adminPreview } = ctx;
   const seasonView = await resolveFinanceSeasonView(supabase, shortName);
@@ -805,7 +908,7 @@ export async function initFinanceSubPage({
 
   const meta = document.getElementById("pageMeta");
   if (meta && adminPreview) {
-    meta.textContent = `Admin preview — ${shortName}.`;
+    meta.textContent = `Staff preview — viewing ${shortName}.`;
   }
   applyHistoricalFinanceBanner(seasonView);
   renderFinanceSeasonHistoryNav(document.getElementById("financeSeasonHistory"), {
