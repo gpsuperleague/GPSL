@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
         "gpsl_staff_alert_notify_member_joined",
         {
           p_owner_id: userId,
-          p_email: email,
+          p_email: null,
           p_owner_tag: ownerTag,
           p_discord_user_id: discordUserId,
           p_discord_username: ticketRow.discord_username || null,

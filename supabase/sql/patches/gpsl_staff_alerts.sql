@@ -142,7 +142,6 @@ AS $function$
 DECLARE
   v_id bigint;
   v_tag text := coalesce(nullif(btrim(p_owner_tag), ''), '—');
-  v_email text := coalesce(nullif(btrim(p_email), ''), '—');
   v_discord text := coalesce(nullif(btrim(p_discord_username), ''), nullif(btrim(p_discord_user_id), ''), '—');
   v_joined text;
   v_body text;
@@ -152,6 +151,8 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- p_email intentionally unused — private details stay with the account holder only.
+
   v_joined := CASE
     WHEN p_discord_joined_at IS NOT NULL THEN
       to_char(p_discord_joined_at AT TIME ZONE 'Europe/London', 'Dy DD Mon YYYY HH24:MI')
@@ -159,10 +160,10 @@ BEGIN
   END;
 
   v_headline := format('New GPSL member: %s', v_tag);
+  -- No private account details (email etc.) — Discord + staff share this body.
   v_body := format(
-    E'Owner tag: %s\nEmail: %s\nDiscord: %s\nDiscord server joined: %s (UK)\n\nThey are on the waiting list.',
+    E'Owner tag: %s\nDiscord: %s\nDiscord server joined: %s (UK)\n\nThey are on the waiting list.',
     v_tag,
-    v_email,
     v_discord,
     v_joined
   );
@@ -174,7 +175,6 @@ BEGIN
     'admin_owners_waiting_list.html',
     jsonb_build_object(
       'owner_id', p_owner_id,
-      'email', p_email,
       'owner_tag', p_owner_tag,
       'discord_user_id', p_discord_user_id,
       'discord_username', p_discord_username,

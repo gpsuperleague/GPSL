@@ -1,16 +1,14 @@
 -- =============================================================================
--- Fix: staff alerts on new GPSL joins (missed notifications)
+-- Privacy harden: member emails never leave the account holder
 --
--- Cause: alerts were only called from discord-join-complete edge code. If that
--- function was not redeployed after gpsl_staff_alerts.sql, joins succeed with
--- no in-app alert and no Discord #gpsl-notifications ping.
+-- Rule: private details (email etc.) are for the logged-in user only —
+-- never Discord, never staff-alert body/metadata shared across staff.
 --
--- Fix:
---   • DB trigger on gpsl_owner_registry (source of truth for new members)
---   • Discord enqueue uses event_type = notification
---   • Backfill alerts for recent joins that never got one
+-- • Stop storing / resolving email in gpsl_staff_alert_notify_member_joined
+-- • Scrub existing member_joined alerts (body + metadata)
+-- • Scrub pending Discord feed rows that still contain an Email: line
 --
--- Safe re-run. Still redeploy discord-join-complete (belt + suspenders).
+-- Safe re-run. p_email kept on signature for callers; ignored.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.gpsl_staff_alert_notify_member_joined(
@@ -42,7 +40,8 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  -- p_email intentionally unused — private details stay with the account holder only.
+  -- Intentionally unused: private email must not be copied into shared alerts.
+  PERFORM p_email;
 
   v_joined := CASE
     WHEN p_discord_joined_at IS NOT NULL THEN
@@ -51,7 +50,6 @@ BEGIN
   END;
 
   v_headline := format('New GPSL member: %s', v_tag);
-  -- No private account details (email etc.) — Discord + staff share this body.
   v_body := format(
     E'Owner tag: %s\nDiscord: %s\nDiscord server joined: %s (UK)\n\nThey are on the waiting list.',
     v_tag,
@@ -74,7 +72,6 @@ BEGIN
     'member_joined:' || p_owner_id::text
   );
 
-  -- Discord #gpsl-notifications (best-effort)
   BEGIN
     IF to_regprocedure(
       'public.gpsl_discord_feed_enqueue_notification(text,text,text,integer,text,jsonb)'
@@ -101,7 +98,13 @@ BEGIN
 END;
 $function$;
 
--- Fire on registry insert / first join completion (does not rely on edge deploy)
+COMMENT ON FUNCTION public.gpsl_staff_alert_notify_member_joined(uuid, text, text, text, text, timestamptz) IS
+  'Staff + Discord alert for new waiting-list members. Never includes email or other private account details.';
+
+GRANT EXECUTE ON FUNCTION public.gpsl_staff_alert_notify_member_joined(uuid, text, text, text, text, timestamptz)
+  TO service_role;
+
+-- Trigger: do not look up or pass email
 CREATE OR REPLACE FUNCTION public.trg_gpsl_owner_registry_staff_alert_joined()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -121,7 +124,6 @@ BEGIN
     v_fire := NEW.waiting_list_tier IS NOT NULL
       AND NEW.status IN ('member', 'waiting', 'active');
   ELSIF TG_OP = 'UPDATE' THEN
-    -- Join form completion: fairplay accepted for the first time while on waiting list
     v_fire := NEW.waiting_list_tier IS NOT NULL
       AND NEW.fairplay_accepted_at IS NOT NULL
       AND OLD.fairplay_accepted_at IS NULL;
@@ -148,83 +150,28 @@ BEGIN
 END;
 $function$;
 
-DROP TRIGGER IF EXISTS gpsl_owner_registry_staff_alert_joined ON public.gpsl_owner_registry;
-CREATE TRIGGER gpsl_owner_registry_staff_alert_joined
-  AFTER INSERT OR UPDATE OF fairplay_accepted_at, waiting_list_tier, status, discord_user_id
-  ON public.gpsl_owner_registry
-  FOR EACH ROW
-  EXECUTE FUNCTION public.trg_gpsl_owner_registry_staff_alert_joined();
-
--- Backfill: anyone on waiting list (last 14 days) without a member_joined alert
-CREATE OR REPLACE FUNCTION public.admin_staff_alerts_backfill_recent_joins(
-  p_days int DEFAULT 14
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_days int := greatest(1, least(coalesce(p_days, 14), 90));
-  v_r record;
-  v_id bigint;
-  v_n int := 0;
-  v_details jsonb := '[]'::jsonb;
-BEGIN
-  IF NOT public.is_gpsl_admin()
-     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
-    RAISE EXCEPTION 'Admin only';
-  END IF;
-
-  FOR v_r IN
-    SELECT r.*
-    FROM public.gpsl_owner_registry r
-    WHERE r.waiting_list_tier IS NOT NULL
-      AND coalesce(r.fairplay_accepted_at, r.status_changed_at, r.discord_joined_at) >=
-          (now() - make_interval(days => v_days))
-      AND NOT EXISTS (
-        SELECT 1
-        FROM public.gpsl_staff_alerts a
-        WHERE a.alert_type = 'member_joined'
-          AND a.metadata ->> 'dedupe_key' = 'member_joined:' || r.owner_id::text
-      )
-    ORDER BY coalesce(r.fairplay_accepted_at, r.status_changed_at) DESC NULLS LAST
-  LOOP
-    v_id := public.gpsl_staff_alert_notify_member_joined(
-      v_r.owner_id,
-      NULL, -- never pass email into shared alerts
-      v_r.owner_tag,
-      v_r.discord_user_id,
-      NULL,
-      v_r.discord_joined_at
-    );
-
-    IF v_id IS NOT NULL THEN
-      v_n := v_n + 1;
-      v_details := v_details || jsonb_build_array(
-        jsonb_build_object(
-          'owner_id', v_r.owner_id,
-          'owner_tag', v_r.owner_tag,
-          'alert_id', v_id
-        )
-      );
-    END IF;
-  END LOOP;
-
-  RETURN jsonb_build_object(
-    'ok', true,
-    'days', v_days,
-    'alerts_created', v_n,
-    'details', v_details
+-- Scrub historical staff alerts that already stored email
+UPDATE public.gpsl_staff_alerts a
+SET
+  body = regexp_replace(a.body, E'(?m)^Email:.*\\n?', '', 'g'),
+  metadata = coalesce(a.metadata, '{}'::jsonb) - 'email'
+WHERE a.alert_type = 'member_joined'
+  AND (
+    a.body ~* E'(?m)^Email:'
+    OR (a.metadata ? 'email')
   );
+
+-- Scrub pending Discord queue rows (if table exists) that still have Email in body
+DO $scrub$
+BEGIN
+  IF to_regclass('public.gpsl_discord_feed_queue') IS NOT NULL THEN
+    EXECUTE $q$
+      UPDATE public.gpsl_discord_feed_queue q
+      SET body = regexp_replace(q.body, E'(?m)^Email:.*\\n?', '', 'g'),
+          metadata = coalesce(q.metadata, '{}'::jsonb) - 'email'
+      WHERE q.body ~* E'(?m)^Email:'
+         OR (q.metadata ? 'email')
+    $q$;
+  END IF;
 END;
-$function$;
-
-GRANT EXECUTE ON FUNCTION public.gpsl_staff_alert_notify_member_joined(uuid, text, text, text, text, timestamptz)
-  TO service_role, authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_staff_alerts_backfill_recent_joins(int) TO authenticated;
-
-NOTIFY pgrst, 'reload schema';
-
--- Create missing alerts for recent joins now:
-SELECT public.admin_staff_alerts_backfill_recent_joins(14);
+$scrub$;

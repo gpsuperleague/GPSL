@@ -1,0 +1,2 @@
+-- Superseded by staff_alert_no_private_email.sql (applied live).
+-- Re-run that patch if you need to restore the hardened function + scrub.
