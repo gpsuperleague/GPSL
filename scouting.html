@@ -154,6 +154,41 @@
       cursor: pointer;
       accent-color: #ff9900;
     }
+    .scout-reg-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 8px;
+      margin: 0 0 14px;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    .scout-reg-label {
+      color: #888;
+      font-weight: bold;
+      letter-spacing: 0.03em;
+      margin-right: 2px;
+    }
+    .scout-reg-chip {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 3px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      background: #151515;
+      border: 1px solid #333;
+      color: #bbb;
+      white-space: nowrap;
+    }
+    .scout-reg-chip b { color: #eee; font-weight: bold; }
+    .scout-reg-chip i { font-style: normal; color: #777; font-size: 10px; }
+    .scout-reg-chip.ok { border-color: #2a4a2a; }
+    .scout-reg-chip.ok b { color: #8d8; }
+    .scout-reg-chip.short { border-color: #5a4a20; }
+    .scout-reg-chip.short b { color: #e8c547; }
+    .scout-reg-chip.bad { border-color: #5a2a2a; }
+    .scout-reg-chip.bad b { color: #f88; }
+    .scout-reg-muted { color: #666; font-style: italic; }
   </style>
 </head>
 <body class="dashboard-page">
@@ -192,6 +227,7 @@
           <div id="scoutAdvisoryBudget" hidden></div>
         </div>
       </div>
+      <div id="scoutRegStrip" class="scout-reg-strip" hidden></div>
       <div id="scoutingListsWrap"><i>Loading…</i></div>
     </div>
 
@@ -205,6 +241,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260811-active-targets"></script>
+  <script type="module" src="scouting.js?v=20260811-scout-reg"></script>
 </body>
 </html>

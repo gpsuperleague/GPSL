@@ -16,7 +16,7 @@ import {
   toggleScoutingTarget,
   loadScoutingPlannerState,
   saveScoutingPlanner,
-} from "./scouting_targets.js?v=20260811-active-targets";
+} from "./scouting_targets.js?v=20260811-scout-reg";
 import { initMatchdaySquadPanel } from "./matchday_squad.js";
 import {
   loadScoutingDraftContext,
@@ -24,7 +24,23 @@ import {
   renderDraftManageCell,
   submitScoutingDraftBid,
 } from "./scouting_draft_actions.js?v=20260811-active-targets";
-import { confirmSquadRulesBeforeBid } from "./squad_rules.js";
+import {
+  confirmSquadRulesBeforeBid,
+  analyseSquadComposition,
+  isHomeGrownPlayer,
+  isUnder21,
+  isGoalkeeper,
+  MIN_HOME_GROWN,
+  MIN_UNDER_21,
+  MIN_GOALKEEPERS,
+  MIN_SQUAD_SIZE,
+  SQUAD_SIZE,
+} from "./squad_rules.js";
+import {
+  loadSquadDesignationsState,
+  playerEligibleStar,
+  DESIGNATION_OOO,
+} from "./squad_designations.js";
 import { mountAdvisoryTransferBudget } from "./club_bank_balance_ui.js";
 
 const PLAYER_COLUMNS =
@@ -32,6 +48,8 @@ const PLAYER_COLUMNS =
 
 const PLAYER_COLUMNS_LEGACY =
   "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Contracted_Team";
+
+const SQUAD_REG_COLUMNS = "Konami_ID, Nation, Position, Rating, Age";
 
 let clubShort = null;
 let clubNation = null;
@@ -41,6 +59,10 @@ let playerMapCache = new Map();
 let draftUiByPlayerCache = new Map();
 let draftContext = null;
 let plannerApi = null;
+/** @type {object[]|null} */
+let ownedSquadPlayers = null;
+/** @type {object|null} */
+let squadDesignationsState = null;
 
 function activeTargetBudgetForPlayer(pid) {
   const p = playerMapCache.get(String(pid));
@@ -86,6 +108,145 @@ function updateActiveTargetsHeader() {
       count === 0
         ? "Tick Active Targets to budget draft spends"
         : `${count} active · MV or your bid / next increment if outbid`;
+  }
+  updateRegistrationStrip();
+}
+
+function countStarEligible(players, minRating, oooId) {
+  const ooo = oooId != null ? String(oooId) : null;
+  let n = 0;
+  for (const p of players || []) {
+    if (ooo && String(p.Konami_ID) === ooo) continue;
+    if (playerEligibleStar(p, minRating)) n += 1;
+  }
+  return n;
+}
+
+function activeTargetPlayersNotOwned() {
+  const owned = new Set(
+    (ownedSquadPlayers || []).map((p) => String(p.Konami_ID))
+  );
+  const out = [];
+  for (const row of scoutingRows) {
+    if (!row.is_active_target) continue;
+    const pid = String(row.player_id);
+    if (owned.has(pid)) continue;
+    const p = playerMapCache.get(pid);
+    if (p) out.push(p);
+  }
+  return out;
+}
+
+function tallyAdds(players, nation) {
+  let gk = 0;
+  let hg = 0;
+  let u21 = 0;
+  for (const p of players) {
+    if (isGoalkeeper(p)) gk += 1;
+    if (isHomeGrownPlayer(p, nation)) hg += 1;
+    if (isUnder21(p)) u21 += 1;
+  }
+  return { gk, hg, u21, n: players.length };
+}
+
+/**
+ * Compact chip: owned (+adds) → proj vs target.
+ * @param {"min"|"max"|"range"} mode
+ */
+function regChip(label, owned, add, target, mode, title) {
+  const proj = owned + add;
+  let ok;
+  let targetTxt;
+  if (mode === "min") {
+    ok = proj >= target;
+    targetTxt = `≥${target}`;
+  } else if (mode === "max") {
+    ok = proj <= target;
+    targetTxt = `≤${target}`;
+  } else {
+    const [lo, hi] = target;
+    ok = proj >= lo && proj <= hi;
+    targetTxt = `${lo}–${hi}`;
+  }
+  const addBit = add > 0 ? `+${add}` : "";
+  const cls = ok ? "ok" : mode === "max" && proj > (Array.isArray(target) ? target[1] : target) ? "bad" : "short";
+  return `<span class="scout-reg-chip ${cls}" title="${title}">${label} <b>${owned}${addBit}→${proj}</b> <i>${targetTxt}</i></span>`;
+}
+
+function updateRegistrationStrip() {
+  const el = document.getElementById("scoutRegStrip");
+  if (!el) return;
+
+  if (!clubShort) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+
+  if (!ownedSquadPlayers) {
+    el.hidden = false;
+    el.innerHTML = `<span class="scout-reg-muted">Squad registration…</span>`;
+    return;
+  }
+
+  const nation = clubNation;
+  const owned = analyseSquadComposition(ownedSquadPlayers, nation);
+  const adds = activeTargetPlayersNotOwned();
+  const addT = tallyAdds(adds, nation);
+  const minStar = Number(squadDesignationsState?.star_min_rating ?? 79);
+  const starCap = Number(squadDesignationsState?.star_cap ?? 2);
+  const oooId =
+    squadDesignationsState?.one_of_our_own_player_id ??
+    Object.entries(squadDesignationsState?.designations || {}).find(
+      ([, d]) => d === DESIGNATION_OOO
+    )?.[0] ??
+    null;
+
+  // Prefer live designation count when available; else count eligible on squad
+  const ownedStars =
+    squadDesignationsState?.star_count != null
+      ? Number(squadDesignationsState.star_count)
+      : countStarEligible(ownedSquadPlayers, minStar, oooId);
+  const addStars = countStarEligible(adds, minStar, null);
+
+  const tip =
+    "Squad now → if you signed all Active Targets (not already owned). Green = registration OK.";
+
+  el.hidden = false;
+  el.innerHTML = `
+    <span class="scout-reg-label" title="${tip}">Reg</span>
+    ${regChip("Sq", owned.total, addT.n, [MIN_SQUAD_SIZE, SQUAD_SIZE], "range", `Squad size: owned ${owned.total}, active +${addT.n} → ${owned.total + addT.n} (need ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`)}
+    ${regChip("GK", owned.goalkeepers, addT.gk, MIN_GOALKEEPERS, "min", `Goalkeepers: owned ${owned.goalkeepers}, active +${addT.gk}`)}
+    ${regChip("HG", owned.homeGrown, addT.hg, MIN_HOME_GROWN, "min", `Home-grown (Nation match): owned ${owned.homeGrown}, active +${addT.hg}`)}
+    ${regChip("U21", owned.under21, addT.u21, MIN_UNDER_21, "min", `Under-21: owned ${owned.under21}, active +${addT.u21}`)}
+    ${regChip("★", ownedStars, addStars, starCap, "max", `Stars (rating ${minStar}+, OooO excluded): owned ${ownedStars}, active +${addStars}, cap ${starCap}`)}
+  `;
+}
+
+async function loadOwnedSquadForReg() {
+  if (!clubShort) {
+    ownedSquadPlayers = [];
+    squadDesignationsState = null;
+    return;
+  }
+
+  const [squadRes, desig] = await Promise.all([
+    supabase
+      .from("Players")
+      .select(SQUAD_REG_COLUMNS)
+      .eq("Contracted_Team", clubShort),
+    loadSquadDesignationsState(supabase, clubShort),
+  ]);
+
+  if (squadRes.error) {
+    console.warn("scouting squad load:", squadRes.error);
+    ownedSquadPlayers = [];
+  } else {
+    ownedSquadPlayers = squadRes.data || [];
+  }
+  squadDesignationsState = desig;
+  if (desig?.club_nation && !clubNation) {
+    clubNation = desig.club_nation;
   }
 }
 
@@ -479,6 +640,11 @@ async function renderScoutingLists() {
       '<p class="scout-empty">No scouting targets yet. Open <a href="GPDB.html" style="color:#ff9900;">GPDB</a> and click ☆ on players to add them.</p>';
     scoutingPlayers = [];
     draftUiByPlayerCache = new Map();
+    if (clubShort) await loadOwnedSquadForReg();
+    else {
+      ownedSquadPlayers = [];
+      squadDesignationsState = null;
+    }
     updateActiveTargetsHeader();
     await refreshAdvisoryBudgetBadge();
     return;
@@ -519,6 +685,13 @@ async function renderScoutingLists() {
         </div>`;
     })
     .join("");
+
+  if (clubShort) {
+    await loadOwnedSquadForReg();
+  } else {
+    ownedSquadPlayers = [];
+    squadDesignationsState = null;
+  }
 
   updateActiveTargetsHeader();
   await refreshAdvisoryBudgetBadge();
