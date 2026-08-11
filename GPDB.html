@@ -813,12 +813,13 @@
           <button class="button gpsl-has-tip" id="quickBidBtn" data-gpsl-tip="Raises your offer by one standard increment toward / above the minimum. Use ± buttons for fine control." tabindex="0">Quick Bid</button>
         </div>
 
-        <div id="draftMaxBidBlock" class="gpsl-has-tip" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid #333;" data-gpsl-tip="Optional auto max-bid on draft threads: when outbid, the system raises by ₿500k up to your ceiling (needs join credits)." tabindex="0">
+        <div id="draftMaxBidBlock" class="gpsl-has-tip" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid #333;" data-gpsl-tip="Optional auto max-bid on draft threads: when outbid, the system raises by ₿500k up to your ceiling (needs join credits). Do not probe rivals’ max-bids — against fair play." tabindex="0">
           <div class="status-note" style="margin:0 0 6px;font-size:12px;color:#ccc;">
             Max bid (auto): <span id="gpdbMaxBidStatus" style="color:#9f9;">Off</span>
           </div>
           <div class="status-note" style="margin:0 0 8px;font-size:11px;color:#999;">
             Auto-bids +₿500k when outbid, up to your max. Needs draft credits to join an existing thread.
+            Do not open auctions just to force rivals’ auto-bids upward — against fair play.
           </div>
           <div class="bid-row">
             <label>Max bid (₿):</label>
@@ -842,7 +843,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js?v=20260722-bank-bal-row"></script>
-  <script type="module" src="gpdb_v2.js?v=20260811-tips2"></script>
+  <script type="module" src="gpdb_v2.js?v=20260811-fair-bid"></script>
 
 </body>
 </html>

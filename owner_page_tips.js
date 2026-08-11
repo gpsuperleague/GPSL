@@ -79,7 +79,7 @@ export const GPDB_TIPS = {
   quickBid:
     "Raises your offer by one standard increment toward / above the minimum. Use ± buttons for fine control.",
   maxBid:
-    "Optional auto max-bid on draft threads: when outbid, the system raises by ₿500k up to your ceiling (needs join credits).",
+    "Optional auto max-bid on draft threads: when outbid, the system raises by ₿500k up to your ceiling (needs join credits).\n\nFair play: do not open or min-step probe auctions just to force rivals’ auto-bids up.",
 };
 
 export const EXPIRING_TIPS = {
@@ -121,7 +121,7 @@ export const DRAFT_TIPS = {
   fav: "Star a thread to pin it under Saved draft auctions in Transfer Centre.",
   mv: "GPSL market value — usual reference for bidding. Minimum bid rules still apply on the player page.",
   highestBid:
-    "Highest bid so far. Use Bid / Max bid on the player page. Auto max-bid raises for you up to your ceiling when rivals bid.",
+    "Highest bid so far. Use Bid / Max bid on the player page. Auto max-bid raises for you up to your ceiling when rivals bid.\n\nFair play: do not min-step probe just to inflate prices against someone’s max bid.",
   leadingClub: "Club currently holding the high bid (empty if none yet).",
   owner: "Owner tag of the leading club (when known).",
   bidCol: "Open the player auction page to place or raise a bid (or view history).",

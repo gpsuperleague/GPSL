@@ -44,6 +44,14 @@ export function getDraftAuctionRules() {
           "<b>☆</b> saves a thread (also in Transfer Centre).",
         ],
       },
+      {
+        heading: "Fair play — no auto-bid probing",
+        items: [
+          "Do <b>not</b> open or bid on auctions just to nudge prices up by forcing rivals’ <b>max / auto-bids</b> to fire.",
+          "Min-step probes and repeated “bump then walk away” bids to inflate a listing are against fair play.",
+          "Admins may remove abusive bids and sanction repeat offenders.",
+        ],
+      },
     ],
   };
 }

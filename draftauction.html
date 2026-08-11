@@ -736,7 +736,9 @@
           <th class="col-compact">Pos</th>
           <th class="col-compact gpsl-has-tip" data-gpsl-tip="Overall rating. Also drives automatic star status (usually ≥79)." tabindex="0">Rating</th>
           <th class="col-money gpsl-has-tip" data-gpsl-tip="GPSL market value — usual reference for bidding. Minimum bid rules still apply on the player page." tabindex="0">Market Value</th>
-          <th class="col-money gpsl-has-tip" data-gpsl-tip="Highest bid so far. Use Bid / Max bid on the player page. Auto max-bid raises for you up to your ceiling when rivals bid." tabindex="0">Highest Bid</th>
+          <th class="col-money gpsl-has-tip" data-gpsl-tip="Highest bid so far. Use Bid / Max bid on the player page. Auto max-bid raises for you up to your ceiling when rivals bid.
+
+Fair play: do not min-step probe just to inflate prices against someone’s max bid." tabindex="0">Highest Bid</th>
           <th class="col-leading-club gpsl-has-tip" data-gpsl-tip="Club currently holding the high bid (empty if none yet)." tabindex="0">Leading Club</th>
           <th class="col-owner gpsl-has-tip" data-gpsl-tip="Owner tag of the leading club (when known)." tabindex="0">Owner</th>
           <th class="col-compact gpsl-has-tip" data-gpsl-tip="Open the player auction page to place or raise a bid (or view history)." tabindex="0">Bid</th>
@@ -756,7 +758,7 @@
     import { DRAFT_TIPS } from "./owner_page_tips.js";
     import { mountClubBankBalance } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
     import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
-    import { renderDraftAuctionRules } from "./draftauction_rules.js?v=20260811-copy";
+    import { renderDraftAuctionRules } from "./draftauction_rules.js?v=20260811-fair-bid";
     import {
       supabase,
       getUKNow,

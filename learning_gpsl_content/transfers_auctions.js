@@ -81,7 +81,8 @@ export const SECTION_AUCTIONS = {
       items: [
         `Timed window: opens <b>Day 1 19:00 UK</b>, bids until Day 2 18:00, then a secret random finish between 18:50 and 18:59 — the countdown never shows the exact finish time in advance.`,
         `<b>Draft credits</b> limit how many players you can win. Favourite listings on GPDB for quick access.`,
-        `Highest bid wins each player when the draft settles.`,
+        `Highest bid wins each player when the draft settles. Optional <b>max bid</b> auto-raises by the min step when you are outbid.`,
+        `Do <b>not</b> open or min-step probe auctions just to force rivals’ max/auto-bids upward — that is against fair play.`,
       ],
     },
     { type: "h3", html: "Manager draft auction" },
