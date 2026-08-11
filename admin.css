@@ -9,6 +9,17 @@ html.admin-root body.admin-page {
   padding: 0;
 }
 
+/* Inline links: orange on dark (browser default blue is unreadable) */
+.admin-page a:not(.button) {
+  color: #ff9900;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.admin-page a:not(.button):hover {
+  color: #ffcc66;
+}
+
 .admin-page a.button,
 .admin-page button.button {
   display: inline-block;
