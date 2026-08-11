@@ -1548,10 +1548,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const disabled = sliderMax <= sliderMin ? "disabled" : "";
 
     const wageHint = col === "contract_wage" ? contractWageFilterHintHtml() : "";
+    const rangeTip =
+      col === "Age"
+        ? GPDB_TIPS.age
+        : col === "Rating"
+          ? GPDB_TIPS.rating
+          : col === "market_value"
+            ? GPDB_TIPS.marketValue
+            : col === "contract_wage"
+              ? GPDB_TIPS.contractWage
+              : col === "contract_seasons_remaining"
+                ? GPDB_TIPS.seasonsRemaining
+                : "";
 
     return `
       <div class="range-filter" data-col="${col}">
-        <div class="range-filter-label">${label} <span class="range-filter-range" id="filter-${col}-range">${formatRangeBracket(col)}</span></div>
+        <div${rangeTip ? tipAttrs(rangeTip, "range-filter-label") : ' class="range-filter-label"'}>${label} <span class="range-filter-range" id="filter-${col}-range">${formatRangeBracket(col)}</span></div>
         <div class="range-filter-sliders" id="filter-${col}-sliders">
           <div class="range-filter-track"></div>
           <input type="range" class="range-filter-min" id="filter-${col}-min" min="${sliderMin}" max="${sliderMax}" value="${minVal}" step="${step}" aria-label="${label} minimum" ${disabled}>
@@ -1971,9 +1983,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const colTip = (col) => {
       if (col === "market_value") return GPDB_TIPS.marketValue;
       if (col === "contract_wage") return GPDB_TIPS.contractWage;
-      if (col === "Age") return "Player age. Home-grown / U21 registration and uncontested expiry renewals use age bands.";
-      if (col === "Rating") return "Overall rating. Also drives automatic star status (≥79 by default).";
-      if (col === "Nation") return "Nationality — matches your club nation for home-grown (HG) counts.";
+      if (col === "Age") return GPDB_TIPS.age;
+      if (col === "Rating") return GPDB_TIPS.rating;
+      if (col === "Nation") return GPDB_TIPS.nation;
+      if (col === "Position") return GPDB_TIPS.position;
+      if (col === "Potential" || col === "Calc_Potential") return GPDB_TIPS.potential;
+      if (col === "Contracted_Team") return GPDB_TIPS.contractedTeam;
+      if (col === "contract_seasons_remaining") return GPDB_TIPS.seasonsRemaining;
+      if (col === "Playstyle")
+        return "Card playstyle (e.g. Goal Poacher, Anchor Man). Useful for squad planning.";
       return "";
     };
 
@@ -1993,7 +2011,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return `<th data-col="${col}" class="${cls}">${formatHeader(col)}</th>`;
           })
           .join("")}
-        ${showCallUpCol ? '<th class="gpdb-callup-col">Call up</th>' : ""}
+        ${showCallUpCol ? `<th class="gpdb-callup-col"${tipAttrs(GPDB_TIPS.callUpCol)}>Call up</th>` : ""}
         ${showScoutCol ? `<th class="gpdb-scout-col"${tipAttrs(GPDB_TIPS.scoutCol)}>Scout</th>` : ""}
         <th${tipAttrs(GPDB_TIPS.bidCol)}>Bid</th>
       </tr>

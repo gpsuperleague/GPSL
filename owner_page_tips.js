@@ -44,8 +44,14 @@ export const TRANSFER_CENTER_TIPS = {
 };
 
 export const GPDB_TIPS = {
+  page:
+    "Full player database. Filter, scout (☆), and bid: draft free agents when the window is open, or make a direct offer to contracted clubs. Watch same-season locks, final-year rules, and squad overflow (max 28).",
   draftCredits:
     "Draft auction join credits for this season. Listing a free agent on the draft spends a credit when the auction is created.",
+  countdown:
+    "Draft auction window timer. Bidding / listing free agents is only available while the draft phase is open.",
+  filters:
+    "Narrow by nation, position, age, rating, market value, wage, and more. Age/rating ±1 and market value ±₿500k via the stepper buttons when shown.",
   finalYear:
     "Show only players in their final contract year (1 season left). Contested ones appear on Expiring Contracts; young HG / non-HG renew on Squad.",
   myClubNation:
@@ -54,10 +60,26 @@ export const GPDB_TIPS = {
     "Add or remove this player from your scouting shortlist. Manage tiers and draft plans on the Scouting board.",
   bidCol:
     "Bid / offer depending on status: draft auction for free agents (when open), direct offer to contracted clubs, or locked messaging when unavailable.",
+  callUpCol:
+    "Call a player into your national squad (when you manage that nation). Separate from club contracts.",
   marketValue:
     "GPSL market value — usual floor for offers and draft bidding. Wage forecast for free agents uses a % of MV.",
   contractWage:
     "Seasonal contract wage when signed. Free agents show a forecast wage from market value for filter planning.",
+  age: "Player age. Used for U21 registration (≥5) and uncontested expiry renewals (HG ≤23 / non-HG ≤21).",
+  rating:
+    "Overall rating. Also drives automatic star status (usually ≥79). Super League star cap 3 / Championship 2.",
+  nation: "Nationality — matches your club nation for home-grown (HG) counts (≥8 required).",
+  position: "Registered playing position from the card.",
+  potential: "GPSL calculated potential (not always the raw pesdb max level).",
+  contractedTeam:
+    "Current club (or FREE AGENT). Contracted players need a direct offer; free agents use the draft when open.",
+  seasonsRemaining:
+    "Seasons left on the contract. Final year (1) cannot be listed/sold — contested players go to Expiring Contracts.",
+  quickBid:
+    "Raises your offer by one standard increment toward / above the minimum. Use ± buttons for fine control.",
+  maxBid:
+    "Optional auto max-bid on draft threads: when outbid, the system raises by ₿500k up to your ceiling (needs join credits).",
 };
 
 export const EXPIRING_TIPS = {
@@ -72,12 +94,39 @@ export const EXPIRING_TIPS = {
 };
 
 export const DRAFT_TIPS = {
+  page:
+    "Free-agent player draft. Bid while the auction window is open. Leading bids show as ghosts on Squad until settled — watch max 28, star cap, HG and U21.",
   credits:
-    "Join credits let you list free agents into the draft auction. Winning bids settle when the auction ends — watch squad overflow and star cap.",
-  currentBid:
-    "Highest bid so far. Use Bid / Max bid on the player page. Auto max-bid raises for you up to your ceiling when rivals bid.",
+    "Join credits let you list free agents into the draft auction. Winning bids settle when each listing ends — watch squad overflow and star cap on Squad.",
   status:
-    "Listing state — active bidding, ended, or settled. Favourites pin threads for Transfer Centre.",
+    "Draft phase / window status for this season (open, closed, or countdown). Bidding only works while the window is live.",
+  timer:
+    "Countdown to draft open or close (UK time). Add to calendar so you do not miss the window.",
+  myBids:
+    "Show only auctions where your club has placed a bid (leading or outbid).",
+  showHidden:
+    "Auctions you hid from this list (view only — your bids stay active). Tick to show them again and Unhide.",
+  myClubLeading: "Show only auctions your club is currently leading.",
+  scouted: "Show only players on your scouting shortlist (☆ from GPDB / Scouting board).",
+  myNation: "Filter to your national team’s nation.",
+  clubNation: "Filter to your club’s home nation (HG planning).",
+  refresh:
+    "How often the listing table reloads (1–300 seconds). Refresh now forces an immediate update.",
+  age: "Filter by player age. Use − / + steppers for ±1 when shown.",
+  rating: "Filter by overall rating. Use − / + for ±1 when shown.",
+  currentBidRange:
+    "Filter by highest bid amount. Money steps are ₿500,000 when using − / + steppers.",
+  wage:
+    "Filter by seasonal wage (signed wage, or forecast % of MV for free agents).",
+  fav: "Star a thread to pin it under Saved draft auctions in Transfer Centre.",
+  mv: "GPSL market value — usual reference for bidding. Minimum bid rules still apply on the player page.",
+  highestBid:
+    "Highest bid so far. Use Bid / Max bid on the player page. Auto max-bid raises for you up to your ceiling when rivals bid.",
+  leadingClub: "Club currently holding the high bid (empty if none yet).",
+  owner: "Owner tag of the leading club (when known).",
+  bidCol: "Open the player auction page to place or raise a bid (or view history).",
+  hide:
+    "Hide this auction from your list only (view). Bids stay live. Use Show hidden to restore.",
 };
 
 export const OWNER_DETAILS_TIPS = {

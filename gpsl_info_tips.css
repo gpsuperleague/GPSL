@@ -27,10 +27,17 @@ td.gpsl-has-tip,
 .gpsl-has-tip.owner-detail-label,
 .gpsl-has-tip.stat-sub-hdr,
 .gpsl-has-tip.stats-hint,
+.gpsl-has-tip.draft-timer,
+.gpsl-has-tip.club-bank-balance,
+.gpsl-has-tip.filter-check,
+.gpsl-has-tip.range-filter-label,
+.gpsl-has-tip.fav-btn,
+.gpsl-has-tip.draft-hide-btn,
 h1.gpsl-has-tip,
 h2.gpsl-has-tip,
 h3.gpsl-has-tip,
-button.gpsl-has-tip {
+button.gpsl-has-tip,
+strong.gpsl-has-tip {
   border-bottom: none;
 }
 
