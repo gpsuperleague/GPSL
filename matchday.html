@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="matchday_squad.css">
   <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260806-squad-rules2">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:900px; margin:20px auto 40px; }
@@ -215,7 +216,7 @@
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1>Match Day</h1>
+    <h1 class="gpsl-has-tip" data-gpsl-tip="Set your default matchday 23 (11 + 12) and submit results with optional squad stats. Opponent confirms via Inbox." tabindex="0">Match Day</h1>
     <p id="pageMeta" class="meta">Loading…</p>
     <p id="calendarBanner" class="meta" style="display:none;border:1px solid #444;background:#1a1a22;padding:10px 12px;border-radius:6px;"></p>
 
@@ -225,7 +226,7 @@
     </div>
 
     <div class="panel squad-panel-wrap active" id="squadPanel">
-      <h2>Default matchday squad</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Default season matchday squad: 11 starters + 12 bench. Starters auto-tick Started on match stats. Formation presets only apply when you click Apply Default Formation." tabindex="0">Default matchday squad</h2>
       <div class="info-box" id="matchdaySquadRules" style="margin:0 0 14px;max-width:none;padding:12px 14px;" aria-label="Matchday squad help">
         <div class="rules-grid">
           <section class="rules-card">
@@ -258,7 +259,7 @@
     </div>
 
     <div class="panel submit-panel-wrap hidden" id="submitPanel">
-      <h2>Submit result</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Optional stats: exactly 11 Started, 0–5 Subbed on, goals must match your open-play total, one POTM." tabindex="0">Submit result</h2>
       <p class="meta" style="margin-top:0;">
         Pick a fixture and enter the score (and optional squad stats below). You can also use
         <a href="fixtures.html" style="color:#ff9900;">Fixtures</a>
@@ -329,7 +330,7 @@
       <div id="playerStatsPanel" class="stats-panel" style="display:none;">
         <h3>Your squad — match stats</h3>
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:8px;">
-          <p id="lineupCounter" class="stats-hint" style="margin:0;">Starters: 0/11 · Subs: 0/5</p>
+          <p id="lineupCounter" class="stats-hint gpsl-has-tip" style="margin:0;" data-gpsl-tip="Exactly 11 Started required. Subs optional (0–5 Subbed on). Suspended players cannot be selected." tabindex="0">Starters: 0/11 · Subs: 0/5</p>
           <button type="button" id="fillTestStatsBtn" class="button secondary" style="margin:0;padding:6px 12px;font-size:12px;">
             Auto-fill test stats
           </button>
@@ -357,8 +358,8 @@
               <tr>
                 <th class="stat-sub-hdr">Started</th>
                 <th class="stat-sub-hdr">Subbed on</th>
-                <th class="stat-sub-hdr" title="Yellow card">Y</th>
-                <th class="stat-sub-hdr" title="Red card (2-match ban)">R</th>
+                <th class="stat-sub-hdr gpsl-has-tip" data-gpsl-tip="Yellow card. Player must have played. Eight yellows in a season = 2-match ban." tabindex="0">Y</th>
+                <th class="stat-sub-hdr gpsl-has-tip" data-gpsl-tip="Red card = 2-match ban. Player must have played. Appeals via Rewards Centre / Squad Action." tabindex="0">R</th>
               </tr>
             </thead>
             <tbody id="playerStatsBody"></tbody>
@@ -378,6 +379,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20260807-simlock"></script>
+  <script type="module" src="matchday.js?v=20260811-tips"></script>
 </body>
 </html>

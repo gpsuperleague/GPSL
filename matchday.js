@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import {
   loadLeagueFixtures,
   loadCupFixtures,
@@ -1701,6 +1702,7 @@ async function preselectFixtureFromUrl() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
 
   const { data: { user } } = await supabase.auth.getUser();

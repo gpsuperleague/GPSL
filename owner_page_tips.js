@@ -79,3 +79,117 @@ export const DRAFT_TIPS = {
   status:
     "Listing state — active bidding, ended, or settled. Favourites pin threads for Transfer Centre.",
 };
+
+export const OWNER_DETAILS_TIPS = {
+  page:
+    "Your owner account: login, Discord tag, profile badge, weekly match availability, and holiday booking. Club kits and theme stay on Club Details.",
+  availability:
+    "Weekly free slots (30-minute blocks, UK time) used when proposing or responding to fixture times. Holidays overlay as unavailable — set your timezone for accurate proposals.",
+  holiday:
+    "Season allowance: 14 days total. Book real-world dates before the overlapping GPSL month opens so those fixtures unlock for arrange/play in the current GPSL week (both clubs need min 24 squad). Cancel/amend only while upcoming.",
+  ownerTag:
+    "Discord username shown publicly on fixtures and markets. Save locks it — use Edit to change later.",
+  badge:
+    "Your owner icon (not the club badge). Square image ideally 512×512, under 1 MB (PNG/JPEG/WebP), then Save badge.",
+  email:
+    "Confirmation link goes to the new email. Login only updates after you click that link.",
+  password: "Minimum 6 characters. Requires your current password.",
+};
+
+export const BOARDROOM_TIPS = {
+  page:
+    "Board reviews finances, prestige expectations, manager deal, government subsidies, and league-position analysis. Missing expectation can hurt gate fill and may force a transfer listing.",
+  finances:
+    "Snapshot from club books. Advisory transfer budget is soft guidance and does not block bids. Full detail on Finances; loans at Central Bank.",
+  financeRating:
+    "Board cash confidence (A–E) from balance, projected end-of-season, wages, and loans. Hover for the numeric score.",
+  expectations:
+    "Prestige sets your baseline finish target. A strong manager can raise the bar on medium and low prestige clubs. Underperformance drifts gate fill down.",
+  manager:
+    "Managers sign 2-season deals. Hit ≥1 season target to renew; miss both → leave at market value with a 2-season rehire ban. List/sack in June, July, August, and January (Jan needs transfer window). Sack costs half MV once per season.",
+  subsidies:
+    "Status from your current squad. Payouts at season end when all divisions finish 38/38. HG bands: Quota ≤5, Flying 6–8, Pride 9+. Weak squad pays if enough ≤72-rated players.",
+  analysis:
+    "Last two seasons’ final league positions (1st at top). Full history on Club History.",
+};
+
+export const STADIUM_TIPS = {
+  page:
+    "Venue capacity, expansion orders, and estimated home gate. Actual receipts post to Club Finances after results are confirmed.",
+  venue:
+    "Current capacity vs club max / original base. Expansion is only available if you are at or below the new-build cap (typically ~55k).",
+  expansion:
+    "One expansion order per season. Cost per seat rises with current size. Payment posts immediately to Club Finances. Pre-build runs 7 days before building (+25% seats each GPSL month).",
+  quote:
+    "Get a quote for seats to add, then place the order to pay now. During pre-build you can cancel for a full refund before day 7.",
+  gate:
+    "Prestige sets base fill; on-target runs raise toward a full house; underperformance drifts fill down. League home: 100% to home; cup: 50/50 split.",
+};
+
+export const REWARDS_TIPS = {
+  page:
+    "Tokens and cards from challenge period bonuses (first club to finish all Start or Mid targets). Spend here, in Medical Room, Squad Action, or Special Auction.",
+  inventory:
+    "Your prize items and status (available, locked, or pending appeal). Empty until you win a period bonus.",
+  discount:
+    "Lock one fee discount to a transfer listing, draft listing, or special auction. Seller still gets the full fee; Central Bank tops up the gap. Only one discount locked at a time.",
+  medical:
+    "Doctor must be hired. One consult per injury (−2 / −4 / −6 / −8 / −10 matches). Same flow on Medical Room and Squad Action.",
+  appeal:
+    "Spend an appeal card on an active red-card ban. Admin reviews — DOGSO / clear goal-scoring chances are usually rejected.",
+  draftToken:
+    "Sign any uncontracted player at market value (paid to Central Bank). If squad is full (28), release someone first for MV credit.",
+};
+
+export const CHALLENGES_TIPS = {
+  page:
+    "Hit each target for cash when the result is confirmed. First club to finish every challenge in a window wins the big prize pack (auto to Rewards Centre + inbox).",
+  bigPrize:
+    "First to complete all Start or Mid challenges wins that pack (cash, medical tokens, fee discounts, appeal cards, draft tokens). Stays claimable until the latest deadline in that phase.",
+  catalog:
+    "Each card is a seasonal target (stat ≥ value in the GPSL month range) with a cash prize. Progress is tracked for your club.",
+  standings:
+    "Ranked by challenges completed, then overall progress. Your club is highlighted. Use Overall / Start / Mid tabs to filter.",
+};
+
+export const MATCHDAY_TIPS = {
+  page:
+    "Set your default matchday 23 (11 + 12) and submit results with optional squad stats. Opponent confirms via Inbox.",
+  squad:
+    "Default season matchday squad: 11 starters + 12 bench. Starters auto-tick Started on match stats. Formation presets only apply when you click Apply Default Formation.",
+  submit:
+    "Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Optional stats: exactly 11 Started, 0–5 Subbed on, goals must match your open-play total, one POTM.",
+  yellow:
+    "Yellow card. Player must have played. Eight yellows in a season = 2-match ban.",
+  red: "Red card = 2-match ban. Player must have played. Appeals via Rewards Centre / Squad Action.",
+  lineup:
+    "Exactly 11 Started required. Subs optional (0–5 Subbed on). Suspended players cannot be selected.",
+};
+
+export const FIXTURES_TIPS = {
+  page:
+    "Your games are highlighted. Stadium/Continent = home venue (Wembley for cup finals). Propose time needs availability on Owner Details. Enter result opens Match Day for score + squad stats.",
+  calendar:
+    "Current GPSL play-month / calendar gate for arranging fixtures and submitting results.",
+  propose:
+    "Opens match scheduling. Home usually proposes first; respond before the deadline (misses can fine ₿2.5m each).",
+};
+
+export const MEDICAL_EXTRA_TIPS = {
+  injuries:
+    "Active injuries after doctor assessment. Refer to a specialist consultant (token) to shorten recovery — one consult per injury.",
+};
+
+export const SCOUTING_EXTRA_TIPS = {
+  tacticBoard:
+    "Drag scouting targets onto the pitch to preview a potential XI. Saved separately from your Match Day default squad.",
+  targetsHeading:
+    "Tiered shortlist from GPDB stars. Tick Active Targets to highlight spend and project registration (Sq / GK / HG / U21 / ★).",
+};
+
+export const TC_EXTRA_TIPS = {
+  transfersIn:
+    "Buying side: scouting, live high bids, deals waiting on sellers, and this season’s signings.",
+  transfersOut:
+    "Selling side: your live listings, closed listings, seller decisions, and this season’s sales.",
+};

@@ -1,4 +1,5 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { formatMoney } from "./competition.js";
 
 let inventory = [];
@@ -381,6 +382,7 @@ async function useDraftToken() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
   const user = await getAuthUserFast();
   if (!user) {

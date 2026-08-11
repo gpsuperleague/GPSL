@@ -7,6 +7,7 @@
   <title>Rewards Centre — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:900px; margin:20px auto 40px; }
@@ -36,7 +37,7 @@
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1>Rewards Centre</h1>
+    <h1 class="gpsl-has-tip" data-gpsl-tip="Tokens and cards from challenge period bonuses (first club to finish all Start or Mid targets). Spend here, in Medical Room, Squad Action, or Special Auction." tabindex="0">Rewards Centre</h1>
     <p class="meta">
       Tokens and cards won from challenge period bonuses (first to complete all Start / Mid targets).
       <a href="challenges.html">Season challenges</a> ·
@@ -45,12 +46,12 @@
     </p>
 
     <div class="panel">
-      <h2>Inventory</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Your prize items and status (available, locked, or pending appeal). Empty until you win a period bonus." tabindex="0">Inventory</h2>
       <div id="prizeInventory"></div>
     </div>
 
     <div class="panel">
-      <h2>Lock fee discount (one at a time)</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Lock one fee discount to a transfer listing, draft listing, or special auction. Seller still gets the full fee; Central Bank tops up the gap. Only one discount locked at a time." tabindex="0">Lock fee discount (one at a time)</h2>
       <p class="meta">Select a discount token, then lock it to a listing or special auction. Seller still receives the full fee; the central bank tops up the difference. Only one discount can be locked at once.</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
         <div>
@@ -75,7 +76,7 @@
     </div>
 
     <div class="panel">
-      <h2>Specialist consultant (injury reduction)</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Doctor must be hired. One consult per injury (−2 / −4 / −6 / −8 / −10 matches). Same flow on Medical Room and Squad Action." tabindex="0">Specialist consultant (injury reduction)</h2>
       <p class="meta">
         Your club doctor assesses the injury, then refers the player to a specialist consultant.
         That spends one consult (−2 / −4 / −6 / −8 / −10 matches). Requires a hired doctor.
@@ -96,7 +97,7 @@
     </div>
 
     <div class="panel">
-      <h2>Red card appeal</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Spend an appeal card on an active red-card ban. Admin reviews — DOGSO / clear goal-scoring chances are usually rejected." tabindex="0">Red card appeal</h2>
       <p class="meta">Spend an appeal card on an active red-card ban. Admin reviews (DOGSO / clear goal-scoring opportunities are usually rejected).</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
         <div>
@@ -116,7 +117,7 @@
     </div>
 
     <div class="panel">
-      <h2>Use draft token</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Sign any uncontracted player at market value (paid to Central Bank). If squad is full (28), release someone first for MV credit." tabindex="0">Use draft token</h2>
       <p class="meta">
         Sign any <b>uncontracted</b> player at market value (paid to the central bank). If your squad is full (28),
         release a current player first — they leave for market value credit. Find player IDs on
@@ -143,6 +144,6 @@
 
     <div id="prizeStatus" class="status"></div>
   </div>
-  <script type="module" src="club_prizes.js?v=20260717-named-consults"></script>
+  <script type="module" src="club_prizes.js?v=20260811-tips"></script>
 </body>
 </html>

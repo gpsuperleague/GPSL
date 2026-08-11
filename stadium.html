@@ -7,6 +7,7 @@
   <title>Stadium — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:900px; margin:20px auto 40px; }
@@ -78,11 +79,11 @@
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1 id="pageTitle">Stadium</h1>
+    <h1 id="pageTitle" class="gpsl-has-tip" data-gpsl-tip="Venue capacity, expansion orders, and estimated home gate. Actual receipts post to Club Finances after results are confirmed." tabindex="0">Stadium</h1>
     <p id="pageMeta" class="meta"></p>
 
     <div class="panel panel-venue">
-      <h2>Venue</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Current capacity vs club max / original base. Expansion is only available if you are at or below the new-build cap (typically ~55k)." tabindex="0">Venue</h2>
       <div id="stadiumPhotoSlot"></div>
       <div class="venue-content">
         <p><b>Name:</b> <span id="stadiumName">—</span></p>
@@ -95,7 +96,7 @@
     </div>
 
     <div class="panel" id="expansionPanel">
-      <h2>Stadium expansion</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="One expansion order per season. Cost per seat rises with current size. Payment posts immediately to Club Finances. Pre-build runs 7 days before building (+25% seats each GPSL month)." tabindex="0">Stadium expansion</h2>
       <div id="expansionBlocked"></div>
       <div id="expansionBuildStatus"></div>
       <div id="expansionActiveForm">
@@ -105,7 +106,7 @@
             Seats to add
             <input type="number" id="expansionSeats" min="1" step="1" placeholder="e.g. 2000">
           </label>
-          <button type="button" id="expansionQuoteBtn" class="btn-result">Get quote</button>
+          <button type="button" id="expansionQuoteBtn" class="btn-result gpsl-has-tip" data-gpsl-tip="Get a quote for seats to add, then place the order to pay now. During pre-build you can cancel for a full refund before day 7." tabindex="0">Get quote</button>
         </div>
         <p id="expansionHint" class="expansion-hint" role="status"></p>
         <div class="expansion-form" id="expansionOrderRow" style="display:none;">
@@ -121,7 +122,7 @@
     </div>
 
     <div class="panel">
-      <h2>Estimated gate (next home league match)</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Prestige sets base fill; on-target runs raise toward a full house; underperformance drifts fill down. League home: 100% to home; cup: 50/50 split." tabindex="0">Estimated gate (next home league match)</h2>
       <div id="gateBreakdown"></div>
     </div>
 
@@ -133,6 +134,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="stadium.js?v=20260719-cancel-btn"></script>
+  <script type="module" src="stadium.js?v=20260811-tips"></script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 import { renderChallengesIntro } from "./challenges_rules.js";
@@ -74,6 +75,7 @@ function phaseWindowOpen(progressItems, phase) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   renderChallengesIntro();
   await initGlobal();
   await loadClubsMap();

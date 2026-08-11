@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { stadiumImageUrl } from "./stadium_images.js";
 import {
@@ -359,6 +360,7 @@ function wireExpansionForm() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
 
   const {

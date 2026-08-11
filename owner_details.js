@@ -1,6 +1,7 @@
 // Owner Details page — login, Discord tag, badge, availability, holidays
 
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadCurrentSeason } from "./competition.js";
 import {
   HOLIDAY_DAYS_PER_SEASON,
@@ -690,6 +691,7 @@ function wireHolidayBooking() {
 }
 
 async function initOwnerDetailsPage() {
+  initGpslInfoTips();
   await initGlobal();
 
   const {

@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import {
   loadCurrentSeason,
   loadLeagueFixtures,
@@ -426,6 +427,7 @@ function wireFixtureSimButtons(root) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   const root = document.getElementById("fixturesRoot");
   try {
   await initGlobal();

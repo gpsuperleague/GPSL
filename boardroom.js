@@ -7,6 +7,7 @@ import {
   refreshNavClubListingState,
   refreshNavListingIndicators,
 } from "./global.js";
+import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, loadClubLoans, leagueBadgeHtml } from "./competition.js";
 import { loadCalendarStatus } from "./competition_calendar.js";
@@ -436,7 +437,7 @@ function renderBoardFinanceSection({
   if (ratingEl) {
     ratingEl.hidden = false;
     ratingEl.innerHTML = `
-      <div class="board-rating-grade ${rating.className}" title="Score ${rating.score}/100">${rating.grade}</div>
+      <div${tipAttrs(`Board finance rating ${rating.grade} — score ${rating.score}/100. Based on balance, projected end-of-season, wages, and loans.`, `board-rating-grade ${rating.className}`)}>${rating.grade}</div>
       <div class="board-rating-copy">
         <p class="title">Board finance rating — ${rating.label}</p>
         <p class="detail">${rating.detail}</p>
@@ -718,6 +719,7 @@ function wireManagerActions() {
 }
 
 async function initBoardroom() {
+  initGpslInfoTips();
   renderBoardroomIntro();
   await initGlobal();
   await loadClubsMap();

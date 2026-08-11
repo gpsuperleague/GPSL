@@ -7,6 +7,7 @@
   <title>Season challenges — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
@@ -95,16 +96,16 @@
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1>Season challenges</h1>
+    <h1 class="gpsl-has-tip" data-gpsl-tip="Hit each target for cash when the result is confirmed. First club to finish every challenge in a window wins the big prize pack (auto to Rewards Centre + inbox)." tabindex="0">Season challenges</h1>
     <p class="meta" id="challengesIntro"><!-- Filled by challenges_rules.js --></p>
 
     <div class="panel">
-      <h2>Big prize (first to finish all)</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="First to complete all Start or Mid challenges wins that pack (cash, medical tokens, fee discounts, appeal cards, draft tokens). Stays claimable until the latest deadline in that phase." tabindex="0">Big prize (first to finish all)</h2>
       <div id="challengeBigPrize" class="meta">Loading…</div>
     </div>
 
     <div class="panel">
-      <h2>All season targets</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Each card is a seasonal target (stat ≥ value in the GPSL month range) with a cash prize. Progress is tracked for your club." tabindex="0">All season targets</h2>
       <h3>Start of season</h3>
       <div id="catalogStart" class="challenge-grid">
         <p class="phase-empty">Loading…</p>
@@ -116,7 +117,7 @@
     </div>
 
     <div class="panel">
-      <h2>Challenge league table</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Ranked by challenges completed, then overall progress. Your club is highlighted. Use Overall / Start / Mid tabs to filter." tabindex="0">Challenge league table</h2>
       <p class="standings-note">
         Ranked by challenges completed, then overall progress toward remaining targets.
         Your club is highlighted.
@@ -131,6 +132,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="challenges.js?v=20260811-chal-labels"></script>
+  <script type="module" src="challenges.js?v=20260811-tips"></script>
 </body>
 </html>

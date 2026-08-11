@@ -7,6 +7,7 @@
   <title>Boardroom — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <link rel="stylesheet" href="boardroom.css?v=20260810-analysis-chart">
 </head>
 <body class="boardroom-page">
@@ -52,7 +53,7 @@
     </div>
     <div class="board-hero-text">
       <p class="board-welcome">Committee in session</p>
-      <h1 id="boardTitle">The Boardroom</h1>
+      <h1 id="boardTitle" class="gpsl-has-tip" data-gpsl-tip="Board reviews finances, prestige expectations, manager deal, government subsidies, and league-position analysis. Missing expectation can hurt gate fill and may force a transfer listing." tabindex="0">The Boardroom</h1>
       <p class="board-tagline" id="boardTagline">Club expectations · Manager deal · Season delivery</p>
       <div class="board-hero-stats" id="heroStats"></div>
     </div>
@@ -68,7 +69,7 @@
     </section>
 
     <section class="board-panel" id="boardFinancePanel">
-      <h2>Finances</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Snapshot from club books. Advisory transfer budget is soft guidance and does not block bids. Full detail on Finances; loans at Central Bank." tabindex="0">Finances</h2>
       <p class="board-intro" id="boardFinanceIntro"><!-- Filled by boardroom_rules.js --></p>
       <div class="board-finance-grid" id="boardFinanceGrid">
         <p class="board-meta">Loading…</p>
@@ -78,7 +79,7 @@
 
     <div class="board-grid">
       <section class="board-panel" id="expectationPanel">
-        <h2>Club expectations</h2>
+        <h2 class="gpsl-has-tip" data-gpsl-tip="Prestige sets your baseline finish target. A strong manager can raise the bar on medium and low prestige clubs. Underperformance drifts gate fill down." tabindex="0">Club expectations</h2>
         <p class="board-intro">
           Prestige sets your club baseline. A strong manager can raise the bar on medium and low clubs.
         </p>
@@ -86,11 +87,11 @@
       </section>
 
       <section class="board-panel" id="managerPanel">
-        <h2>Manager</h2>
+        <h2 class="gpsl-has-tip" data-gpsl-tip="Managers sign 2-season deals. Hit ≥1 season target to renew; miss both → leave at market value with a 2-season rehire ban. List/sack in June, July, August, and January (Jan needs transfer window). Sack costs half MV once per season." tabindex="0">Manager</h2>
         <p class="board-intro">
           Managers sign <b>2-season</b> deals. Targets are reviewed each season; at the end of the deal
           you can renew if they hit in at least one season, or they leave (market value) with a 2-season rehire ban if they miss both.
-          List for transfer or sack once per season in <b>June, July, or January</b> (not August) — half market value on sack.
+          List for transfer or sack once per season in <b>June, July, August, or January</b> — half market value on sack.
         </p>
         <div id="managerStatus" class="board-meta">Loading…</div>
         <div class="board-actions">
@@ -103,7 +104,7 @@
     </div>
 
     <section class="board-panel" id="govSubsidyPanel">
-      <h2>Government subsidies</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Status from your current squad. Payouts at season end when all divisions finish 38/38. HG bands: Quota ≤5, Flying 6–8, Pride 9+. Weak squad pays if enough ≤72-rated players." tabindex="0">Government subsidies</h2>
       <p class="board-intro" id="boardSubsidyIntro"><!-- Filled by boardroom_rules.js --></p>
       <div id="subsidyGrid" class="subsidy-grid">
         <p class="subsidy-meta">Loading…</p>
@@ -111,7 +112,7 @@
     </section>
 
     <section class="board-panel" id="boardAnalysisPanel">
-      <h2>Analysis</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Last two seasons’ final league positions (1st at top). Full history on Club History." tabindex="0">Analysis</h2>
       <p class="board-intro" id="boardAnalysisIntro"><!-- Filled by boardroom_rules.js --></p>
       <h3 class="board-subhead">Final league position by season</h3>
       <p class="chart-note">Last two seasons (current live finish when available, plus the previous archived season). 1st at the top.</p>
@@ -134,6 +135,6 @@
     </section>
   </main>
 
-  <script type="module" src="boardroom.js?v=20260810-analysis-chart"></script>
+  <script type="module" src="boardroom.js?v=20260811-tips"></script>
 </body>
 </html>

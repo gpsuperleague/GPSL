@@ -11,6 +11,7 @@
   <link rel="icon" href="favicon.ico">
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <link rel="stylesheet" href="club_dashboard_theme.css">
 
   <style>
@@ -377,7 +378,7 @@
   <div id="nav"></div>
 
   <div class="page-container">
-    <h1>Owner Details</h1>
+    <h1 class="gpsl-has-tip" data-gpsl-tip="Your owner account: login, Discord tag, profile badge, weekly match availability, and holiday booking. Club kits and theme stay on Club Details." tabindex="0">Owner Details</h1>
     <p class="page-intro">
       Login, Discord tag, profile badge, match availability, and holiday booking.
       Club identity, kits, and theme stay on
@@ -413,14 +414,14 @@
           </div>
         </div>
 
-        <div class="owner-detail-cell" id="availabilityCell">
+        <div class="owner-detail-cell gpsl-has-tip" id="availabilityCell" data-gpsl-tip="Weekly free slots (30-minute blocks, UK time) used when proposing or responding to fixture times. Holidays overlay as unavailable — set your timezone for accurate proposals." tabindex="0">
           <span class="owner-detail-label">Match availability</span>
           <p class="owner-detail-summary">Weekly slots for league and cup scheduling.</p>
           <button type="button" id="editAvailabilityBtn" class="owner-detail-link">Edit availability</button>
         </div>
 
         <div class="owner-detail-cell owner-detail-cell--wide owner-detail-cell--owner">
-          <label class="owner-detail-label" for="ownerInput">Owner tag (Discord username)</label>
+          <label class="owner-detail-label gpsl-has-tip" for="ownerInput" data-gpsl-tip="Discord username shown publicly on fixtures and markets. Save locks it — use Edit to change later." tabindex="0">Owner tag (Discord username)</label>
           <div class="owner-tag-field">
             <input
               type="text"
@@ -437,7 +438,7 @@
             <img id="ownerBadgePreview" class="owner-badge-preview" alt="" hidden>
             <div id="ownerBadgeFallback" class="owner-badge-fallback">?</div>
             <div class="owner-badge-controls">
-              <span class="owner-detail-label" style="margin:0">Profile badge</span>
+              <span class="owner-detail-label gpsl-has-tip" style="margin:0" data-gpsl-tip="Your owner icon (not the club badge). Square image ideally 512×512, under 1 MB (PNG/JPEG/WebP), then Save badge." tabindex="0">Profile badge</span>
               <p class="owner-detail-summary" style="margin:0">
                 Your owner icon (not the club badge). Choose a file, then click
                 <b>Save badge</b> to apply it. <b>Remove badge</b> clears it.
@@ -459,7 +460,7 @@
           </p>
         </div>
 
-        <div class="owner-detail-cell owner-detail-cell--wide" id="holidayCell">
+        <div class="owner-detail-cell owner-detail-cell--wide gpsl-has-tip" id="holidayCell" data-gpsl-tip="Season allowance: 14 days total. Book real-world dates before the overlapping GPSL month opens so those fixtures unlock for arrange/play in the current GPSL week (both clubs need min 24 squad). Cancel/amend only while upcoming." tabindex="0">
           <span class="owner-detail-label">Holiday booking</span>
           <p id="holidayQuota" class="owner-detail-summary">Loading allowance…</p>
           <button
@@ -505,7 +506,7 @@
       </div>
 
       <div class="club-account-expand" id="accountEmailChange" hidden>
-        <h3 class="club-account-expand-title">Change email</h3>
+        <h3 class="club-account-expand-title gpsl-has-tip" data-gpsl-tip="Confirmation link goes to the new email. Login only updates after you click that link." tabindex="0">Change email</h3>
         <p class="account-hint">
           Enter a new address and your current password. Supabase sends a confirmation link to the
           <b>new</b> email — your login only updates after you click it.
@@ -529,7 +530,7 @@
       </div>
 
       <div class="club-account-expand" id="accountPasswordChange" hidden>
-        <h3 class="club-account-expand-title">Change password</h3>
+        <h3 class="club-account-expand-title gpsl-has-tip" data-gpsl-tip="Minimum 6 characters. Requires your current password." tabindex="0">Change password</h3>
         <p class="account-hint">Choose a new password (minimum 6 characters). Enter your current password to confirm.</p>
         <div class="account-fields">
           <input
@@ -557,6 +558,6 @@
     </div>
   </div>
 
-  <script type="module" src="owner_details.js?v=20260714-owner-details"></script>
+  <script type="module" src="owner_details.js?v=20260811-tips"></script>
 </body>
 </html>
