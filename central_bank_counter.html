@@ -47,7 +47,7 @@
             <form class="counter-form" id="loanTakeForm">
               <h3>Take a loan</h3>
               <label for="loanAmount">Amount (₿)</label>
-              <input type="number" id="loanAmount" step="1000000" required>
+              <input type="text" id="loanAmount" inputmode="numeric" autocomplete="off" placeholder="e.g. 22,000,000" required>
               <p class="bank-hint" id="loanLimits"></p>
               <button type="submit" id="loanTakeBtn" class="counter-btn">Request loan</button>
               <div class="counter-msg" id="loanTakeMsg"></div>
@@ -75,7 +75,7 @@
               <h3>Repay / early settle</h3>
               <p class="bank-hint" id="loanEarlyHint">Early repayment is principal only — remaining interest is waived.</p>
               <label for="repayAmount">Amount (₿)</label>
-              <input type="number" id="repayAmount" step="1000000" required>
+              <input type="text" id="repayAmount" inputmode="numeric" autocomplete="off" placeholder="e.g. 5,000,000" required>
               <label for="repayLoanId">Loan</label>
               <select id="repayLoanId"></select>
               <button type="submit" id="loanRepayBtn" class="counter-btn secondary">Make repayment</button>
@@ -92,6 +92,6 @@
     </section>
   </main>
 
-  <script type="module" src="central_bank_counter.js?v=20260804-loan-catchup"></script>
+  <script type="module" src="central_bank_counter.js?v=20260811-loan-money"></script>
 </body>
 </html>

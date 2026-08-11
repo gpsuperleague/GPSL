@@ -14,6 +14,39 @@ import {
   clubTookLoanThisSeason,
 } from "./competition.js";
 
+function parseMoneyInput(raw) {
+  const n = Number(String(raw ?? "").replace(/,/g, "").trim());
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function formatMoneyInput(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return Math.round(n).toLocaleString("en-GB");
+}
+
+function wireLoanMoneyInputs() {
+  for (const id of ["loanAmount", "repayAmount"]) {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.moneyWired === "1") continue;
+    el.dataset.moneyWired = "1";
+    el.addEventListener("focus", () => {
+      const n = parseMoneyInput(el.value);
+      el.value =
+        Number.isFinite(n) && String(el.value).trim() !== ""
+          ? String(Math.round(n))
+          : "";
+    });
+    el.addEventListener("blur", () => {
+      if (String(el.value).trim() === "") {
+        el.value = "";
+        return;
+      }
+      el.value = formatMoneyInput(parseMoneyInput(el.value));
+    });
+  }
+}
+
 function sumInterestDue(inst, pendingOnly = false) {
   return inst.reduce((s, i) => {
     if (pendingOnly && i.status !== "pending") return s;
@@ -210,10 +243,19 @@ function paintLimits(bank, loans, options = {}) {
 
   const amountInput = document.getElementById("loanAmount");
   if (amountInput) {
-    amountInput.min = String(min);
-    amountInput.max = effectiveMax > 0 ? String(effectiveMax) : String(min);
+    amountInput.dataset.minAmount = String(min);
+    amountInput.dataset.maxAmount = String(
+      effectiveMax > 0 ? effectiveMax : min
+    );
     amountInput.disabled = seasonLoanUsed;
+    if (
+      String(amountInput.value).trim() !== "" &&
+      Number.isFinite(parseMoneyInput(amountInput.value))
+    ) {
+      amountInput.value = formatMoneyInput(parseMoneyInput(amountInput.value));
+    }
   }
+  wireLoanMoneyInputs();
 
   const takeBtn = document.getElementById("loanTakeBtn");
   if (takeBtn) takeBtn.disabled = seasonLoanUsed || effectiveMax < min;
@@ -371,7 +413,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
     const min = Number(bankNow?.loan_min_drawdown || 1000000);
     const maxDraw = Number(bankNow?.loan_max_drawdown || 50000000);
     const effectiveMax = Math.min(maxDraw, headroom);
-    const amt = Number(amountInput?.value);
+    const amt = parseMoneyInput(amountInput?.value);
 
     if (!Number.isFinite(amt) || amt < min) {
       showCounterMsg("loanTakeMsg", `Minimum draw is ${formatMoney(min)}.`, false);
@@ -428,7 +470,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
   repayForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const repayBtn = document.getElementById("loanRepayBtn");
-    const amt = Number(document.getElementById("repayAmount")?.value);
+    const amt = parseMoneyInput(document.getElementById("repayAmount")?.value);
     const loanIdRaw = document.getElementById("repayLoanId")?.value;
     const loanId = loanIdRaw ? Number(loanIdRaw) : null;
     if (!Number.isFinite(amt) || amt <= 0) {
