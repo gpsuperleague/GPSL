@@ -3,6 +3,55 @@ import { formatMoney, loadCurrentSeason } from "./competition.js";
 
 primeAdminPageChrome();
 
+const CHALLENGE_MONEY_IDS = [
+  "challengeDefaultPrize",
+  "challengePeriodBonus",
+  "packStartCash",
+  "packMidCash",
+  "challengePrize",
+];
+
+function parseMoneyInput(raw) {
+  const n = Number(String(raw ?? "").replace(/,/g, "").trim());
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatMoneyInput(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return Math.round(n).toLocaleString("en-GB");
+}
+
+function setMoneyInput(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = formatMoneyInput(value);
+}
+
+function readMoneyInput(id) {
+  const el = document.getElementById(id);
+  return parseMoneyInput(el?.value);
+}
+
+function wireMoneyInputs() {
+  for (const id of CHALLENGE_MONEY_IDS) {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.moneyWired === "1") continue;
+    el.dataset.moneyWired = "1";
+    el.addEventListener("focus", () => {
+      const n = parseMoneyInput(el.value);
+      el.value = Number.isFinite(n) && String(el.value).trim() !== "" ? String(Math.round(n)) : "";
+    });
+    el.addEventListener("blur", () => {
+      if (String(el.value).trim() === "") {
+        el.value = "";
+        return;
+      }
+      el.value = formatMoneyInput(parseMoneyInput(el.value));
+    });
+  }
+}
+
 const STAT_LABELS = {
   player_max_goals: "Best player goals (at least X)",
   player_max_assists: "Best player assists (at least X)",
@@ -84,6 +133,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const season = await loadCurrentSeason(supabase);
   currentSeasonId = season?.id ?? null;
 
+  wireMoneyInputs();
+
   document.getElementById("challengeWindow").onchange = syncWindowMonths;
   document.getElementById("challengeStatType").onchange = syncStatParamVisibility;
   document.getElementById("saveChallengeDefaultsBtn").onclick = saveChallengeDefaults;
@@ -121,7 +172,7 @@ function fillPackFields(phase, row) {
       row?.pack_name ||
       (phase === "start" ? "Start of Season Challenge Prize" : "Mid-Season Challenge Prize");
   }
-  document.getElementById(`${prefix}Cash`).value = row?.cash_amount ?? 0;
+  setMoneyInput(`${prefix}Cash`, row?.cash_amount ?? 0);
   document.getElementById(`${prefix}Medical`).value = (pack.medical_tokens || []).join(",");
   document.getElementById(`${prefix}Discount`).value = (pack.fee_discounts || []).join(",");
   document.getElementById(`${prefix}Appeals`).value = pack.appeal_cards ?? 0;
@@ -149,7 +200,7 @@ function packPayload(phase) {
   return {
     window_phase: phase,
     pack_name: (document.getElementById(`${prefix}Name`)?.value || "").trim() || null,
-    cash_amount: Number(document.getElementById(`${prefix}Cash`).value) || 0,
+    cash_amount: readMoneyInput(`${prefix}Cash`),
     pack: {
       medical_tokens: parseIntList(document.getElementById(`${prefix}Medical`).value, [2, 4, 6, 8, 10]),
       fee_discounts: parseIntList(document.getElementById(`${prefix}Discount`).value).filter((n) => n <= 50),
@@ -262,11 +313,11 @@ async function loadChallengeDefaults() {
     setStatus("challengeDefaultsStatus", "❌ " + error.message, false);
     return;
   }
-  document.getElementById("challengeDefaultPrize").value = data.challenge_default_prize ?? 1000000;
-  document.getElementById("challengePeriodBonus").value = data.challenge_period_bonus ?? 5000000;
+  setMoneyInput("challengeDefaultPrize", data.challenge_default_prize ?? 1000000);
+  setMoneyInput("challengePeriodBonus", data.challenge_period_bonus ?? 5000000);
   const prizeEl = document.getElementById("challengePrize");
-  if (prizeEl && !prizeEl.value) {
-    prizeEl.value = String(data.challenge_default_prize ?? 1000000);
+  if (prizeEl && !String(prizeEl.value || "").trim()) {
+    setMoneyInput("challengePrize", data.challenge_default_prize ?? 1000000);
   }
 }
 
@@ -274,8 +325,8 @@ async function saveChallengeDefaults() {
   setStatus("challengeDefaultsStatus", "Saving…");
   const { error } = await supabase.rpc("admin_update_challenge_settings", {
     p_settings: {
-      challenge_default_prize: Number(document.getElementById("challengeDefaultPrize").value),
-      challenge_period_bonus: Number(document.getElementById("challengePeriodBonus").value),
+      challenge_default_prize: readMoneyInput("challengeDefaultPrize"),
+      challenge_period_bonus: readMoneyInput("challengePeriodBonus"),
     },
   });
   if (error) {
@@ -323,7 +374,7 @@ function fillChallengeForm(row) {
     }
   }
   document.getElementById("challengeTarget").value = String(row.target_value);
-  document.getElementById("challengePrize").value = String(row.prize_amount);
+  setMoneyInput("challengePrize", row.prize_amount);
   document.getElementById("challengeIncludeLeague").checked = row.include_league !== false;
   document.getElementById("challengeIncludeCup").checked = !!row.include_cup;
   document.getElementById("challengeActive").checked = row.is_active !== false;
@@ -599,7 +650,7 @@ async function saveChallenge() {
     stat_type: statType,
     stat_param: statParam,
     target_value: Number(document.getElementById("challengeTarget").value),
-    prize_amount: Number(document.getElementById("challengePrize").value),
+    prize_amount: readMoneyInput("challengePrize"),
     include_league: document.getElementById("challengeIncludeLeague").checked,
     include_cup: document.getElementById("challengeIncludeCup").checked,
     is_active: document.getElementById("challengeActive").checked,

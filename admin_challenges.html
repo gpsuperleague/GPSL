@@ -73,11 +73,11 @@
         <div class="row gov-subsidy-row">
           <div>
             <label>Default prize per challenge</label>
-            <input type="number" id="challengeDefaultPrize" min="0" step="50000" style="width:120px;">
+            <input type="text" id="challengeDefaultPrize" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;">
           </div>
           <div>
             <label>Legacy period bonus (fallback)</label>
-            <input type="number" id="challengePeriodBonus" min="0" step="50000" style="width:120px;">
+            <input type="text" id="challengePeriodBonus" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;">
           </div>
         </div>
         <button type="button" id="saveChallengeDefaultsBtn" class="button">Save defaults</button>
@@ -96,7 +96,7 @@
             <label>Prize name</label>
             <input type="text" id="packStartName" placeholder="Start of Season Challenge Prize" style="width:220px;"><br>
             <label>Cash ₿</label>
-            <input type="number" id="packStartCash" min="0" step="50000" style="width:120px;"><br>
+            <input type="text" id="packStartCash" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;"><br>
             <label>Medical tokens (comma, e.g. 4,6)</label>
             <input type="text" id="packStartMedical" placeholder="4,6" style="width:160px;"><br>
             <label>Fee discounts % (comma, e.g. 10,15)</label>
@@ -111,7 +111,7 @@
             <label>Prize name</label>
             <input type="text" id="packMidName" placeholder="Mid-Season Challenge Prize" style="width:220px;"><br>
             <label>Cash ₿</label>
-            <input type="number" id="packMidCash" min="0" step="50000" style="width:120px;"><br>
+            <input type="text" id="packMidCash" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;"><br>
             <label>Medical tokens (comma)</label>
             <input type="text" id="packMidMedical" placeholder="2,4" style="width:160px;"><br>
             <label>Fee discounts % (comma)</label>
@@ -173,7 +173,7 @@
           </div>
           <div>
             <label>Prize ₿</label>
-            <input type="number" id="challengePrize" min="0" step="50000" style="width:120px;">
+            <input type="text" id="challengePrize" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;">
           </div>
         </div>
         <div class="row gov-subsidy-row" style="margin-top:8px;align-items:flex-end;">
@@ -298,6 +298,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_challenges.js?v=20260811-chal-labels"></script>
+  <script type="module" src="admin_challenges.js?v=20260811-chal-money"></script>
 </body>
 </html>
