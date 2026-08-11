@@ -4,6 +4,7 @@
 
 import { wageFromMarketValue } from "./wages.js";
 import { textMatchesSearch } from "./search_normalize.js";
+import { installRangeSteppers, RANGE_STEP_MONEY } from "./range_filter_steppers.js";
 
 const POSITION_ORDER = [
   "GK", "LB", "CB", "RB",
@@ -207,6 +208,14 @@ export function createDraftAdvancedFilterController(opts = {}) {
     minEl.max = String(bounds.max);
     maxEl.min = String(bounds.min);
     maxEl.max = String(bounds.max);
+    const step =
+      col === "current_bid"
+        ? RANGE_STEP_MONEY
+        : col === "contract_wage"
+          ? Math.max(1, Math.round((bounds.max - bounds.min) / 100) || 1)
+          : 1;
+    minEl.step = String(step);
+    maxEl.step = String(step);
     minEl.value = String(active.min);
     maxEl.value = String(active.max);
     updateRangeReadout(col);
@@ -317,6 +326,11 @@ export function createDraftAdvancedFilterController(opts = {}) {
       minEl.addEventListener("input", onInput);
       maxEl.addEventListener("input", onInput);
     }
+
+    installRangeSteppers({
+      root: root() || document,
+      cols: ["Age", "Rating", "current_bid"],
+    });
   }
 
   function setWageSettings(settings) {

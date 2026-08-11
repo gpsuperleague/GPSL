@@ -9,6 +9,7 @@ import { renderExpiringContractRules, CHAMP_SL_SIGNING_FEE_PCT } from "./expirin
 import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260805-opt-row";
 import { textMatchesSearch } from "./search_normalize.js";
 import { leagueBadgeHtml } from "./competition.js";
+import { installRangeSteppers } from "./range_filter_steppers.js";
 
 const POSITION_ORDER = [
   "GK",
@@ -340,6 +341,11 @@ function wireRangeFilters() {
     maxEl.addEventListener("focus", syncThumbZIndex);
     applyRangeToInputs(col);
   }
+
+  installRangeSteppers({
+    root: document.getElementById("filters") || document,
+    cols: ["Age", "Rating"],
+  });
 }
 
 function syncMyClubFilterBtn() {
