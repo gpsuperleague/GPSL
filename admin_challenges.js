@@ -4,8 +4,8 @@ import { formatMoney, loadCurrentSeason } from "./competition.js";
 primeAdminPageChrome();
 
 const STAT_LABELS = {
-  player_max_goals: "Player max goals",
-  player_max_assists: "Player max assists",
+  player_max_goals: "Best player goals (at least X)",
+  player_max_assists: "Best player assists (at least X)",
   club_wins: "Club wins",
   club_goals_for: "Club goals",
   club_clean_sheets: "Clean sheets",
@@ -212,11 +212,11 @@ function syncTargetLabel(stat) {
     },
     player_max_goals: {
       label: "Target (goals)",
-      hint: "Best single player’s total goals in the window must reach this.",
+      hint: "At least one player must reach this many goals in the window (your best scorer’s total).",
     },
     player_max_assists: {
       label: "Target (assists)",
-      hint: "Best single player’s total assists in the window must reach this.",
+      hint: "At least one player must reach this many assists in the window (your best assister’s total).",
     },
     club_wins: { label: "Target (wins)", hint: "Club wins needed in the window." },
     club_goals_for: { label: "Target (goals)", hint: "Club goals scored needed in the window." },

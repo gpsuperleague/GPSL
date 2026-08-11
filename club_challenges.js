@@ -3,8 +3,8 @@ import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, loadCurrentSeason } from "./competition.js";
 
 const STAT_LABELS = {
-  player_max_goals: "Player max goals",
-  player_max_assists: "Player max assists",
+  player_max_goals: "Best player goals (at least X)",
+  player_max_assists: "Best player assists (at least X)",
   club_wins: "League/cup wins",
   club_goals_for: "Goals scored",
   club_clean_sheets: "Clean sheets",
