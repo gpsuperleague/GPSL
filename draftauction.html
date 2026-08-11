@@ -10,7 +10,7 @@
   <title>Draft Auction</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260805-rules">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260811-draft-guide">
 
   <style>
     body {
@@ -55,42 +55,6 @@
       font-size:13px;
       color:#ccc;
       margin:0 20px 10px 20px;
-    }
-
-    .important-notice {
-      background:#2a2208;
-      border:1px solid #ff9900;
-      border-left:4px solid #ff9900;
-      padding:14px 16px;
-      margin:0 20px 16px 20px;
-      border-radius:8px;
-      font-size:13px;
-      line-height:1.55;
-      color:#eee;
-    }
-
-    .important-notice strong {
-      color:#ff9900;
-      font-size:14px;
-    }
-
-    .important-notice a {
-      color:#ffcc66;
-      font-weight:bold;
-    }
-
-    .important-notice a:hover {
-      color:#ffe08a;
-    }
-
-    .important-notice a.gpdb-notice-btn {
-      background:#b35f00;
-      color:#111;
-    }
-
-    .important-notice a.gpdb-notice-btn:hover {
-      background:#c96f00;
-      color:#111;
     }
 
     .panel {
@@ -637,16 +601,7 @@
     </div>
   </div>
 
-  <div class="important-notice" role="note">
-    <strong>Important — credits before you bid here</strong><br>
-    Bids on the threads below (players someone has already opened) cost <b>1 draft credit</b> per player.
-    You only earn credits by making an <b>opening Draft Offer</b> on a <b>free agent</b> in
-    <a href="GPDB.html">GPDB</a> — be the first club to bid on that player in the live draft window
-    (you cannot join a thread here with zero credits).<br>
-    <a href="GPDB.html" class="button gpdb-notice-btn" style="margin-top:10px;">Go to GPDB — earn credits</a>
-  </div>
-
-  <div class="info-box" id="draftAuctionRules" aria-label="Draft auction rules">
+  <div class="info-box" id="draftAuctionRules" aria-label="Draft auction instructions">
     <!-- Filled by draftauction_rules.js -->
   </div>
 
@@ -798,7 +753,7 @@
     import { initGlobal, loadGlobalSettings } from "./global.js";
     import { mountClubBankBalance } from "./club_bank_balance_ui.js";
     import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
-    import { renderDraftAuctionRules } from "./draftauction_rules.js";
+    import { renderDraftAuctionRules } from "./draftauction_rules.js?v=20260811-guide";
     import {
       supabase,
       getUKNow,

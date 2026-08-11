@@ -25,7 +25,124 @@
   color: #bbb;
 }
 
+.info-box .rules-lead a {
+  color: #ff9900;
+}
+
 .info-box .rules-lead:last-child {
+  margin-bottom: 0;
+}
+
+/* Highlighted callout (e.g. credits warning) */
+.rules-notice {
+  background: #2a2208;
+  border: 1px solid #ff9900;
+  border-left: 4px solid #ff9900;
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  border-radius: 6px;
+  color: #eee;
+}
+
+.rules-notice-title {
+  display: block;
+  color: #ff9900;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.rules-notice-body {
+  color: #ddd;
+  line-height: 1.5;
+}
+
+.rules-notice-body a {
+  color: #ffcc66;
+  font-weight: 600;
+}
+
+.rules-notice-cta {
+  margin: 10px 0 0;
+}
+
+.rules-notice-btn,
+a.rules-notice-btn {
+  background: #b35f00 !important;
+  color: #111 !important;
+  display: inline-block;
+}
+
+.rules-notice-btn:hover,
+a.rules-notice-btn:hover {
+  background: #c96f00 !important;
+  color: #111 !important;
+}
+
+/* Numbered how-to steps */
+.rules-steps {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rules-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: #151515;
+  border: 1px solid #2e2e2e;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.rules-step-num {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #3d2a00;
+  border: 1px solid #ff9900;
+  color: #ffcc66;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.rules-step-body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.rules-step-body h3 {
+  margin: 0 0 4px;
+  color: #ffcc66;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.rules-step-body p {
+  margin: 0;
+  color: #bbb;
+  line-height: 1.45;
+}
+
+.rules-step-body ul {
+  margin: 6px 0 0;
+  padding-left: 1.1em;
+  color: #bbb;
+}
+
+.rules-step-body li {
+  margin-bottom: 4px;
+}
+
+.rules-step-body li:last-child {
   margin-bottom: 0;
 }
 
