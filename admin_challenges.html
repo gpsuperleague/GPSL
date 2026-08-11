@@ -257,21 +257,23 @@
 
         <h3 style="margin-top:18px;">Saved target templates</h3>
         <p class="note">
-          Save the current season’s targets for reuse after a league/season reset.
-          Templates are <b>not</b> tied to a season, so they survive wipe/reset.
-          Apply to <b>Start</b> or <b>Mid</b> separately. If the template only has the other window,
-          those targets are copied across with default months (Start: Aug–Dec, Mid: Jan–May)
-          so you can edit them afterwards.
+          <b>To save for future seasons:</b> add/edit challenges in the list above first, then enter a
+          template name and click <b>Save as template</b>. That snapshots every active target on the
+          current season. Templates are <b>not</b> tied to a season, so they survive wipe/reset.
+          Later use <b>Apply → Start</b> or <b>Apply → Mid</b> on a template to load it into this season.
+          If the template only has the other window, those targets are copied across with default months
+          (Start: Aug–Dec, Mid: Jan–May) so you can edit them afterwards.
         </p>
-        <div class="row gov-subsidy-row" style="align-items:flex-end;margin-bottom:10px;">
+        <div class="row gov-subsidy-row" style="align-items:flex-end;margin-bottom:10px;padding:12px;background:#1a1a1a;border:1px solid #333;border-radius:6px;">
           <div>
-            <label>Template name</label>
-            <input type="text" id="challengeTemplateName" placeholder="e.g. S26 Start+Mid" style="width:220px;">
+            <label for="challengeTemplateName">New template name</label>
+            <input type="text" id="challengeTemplateName" placeholder="e.g. S26 Start+Mid pack" style="width:260px;">
           </div>
           <div>
-            <button type="button" id="saveChallengeTemplateBtn" class="button">Save current targets</button>
+            <button type="button" id="saveChallengeTemplateBtn" class="button">Save as template</button>
           </div>
         </div>
+        <p class="note" style="margin-top:0;">Saved templates (apply or delete):</p>
         <div id="challengeTemplateList" class="challenge-admin-list"></div>
         <div id="challengeTemplateStatus" class="status-line"></div>
       </div>
@@ -298,6 +300,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_challenges.js?v=20260811-chal-money"></script>
+  <script type="module" src="admin_challenges.js?v=20260811-chal-tpl"></script>
 </body>
 </html>
