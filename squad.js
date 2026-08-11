@@ -123,6 +123,10 @@ import {
 } from "./player_links.js";
 import { initGpslInfoTips, withInfoTip, tipAttrs, tipDataAttrs } from "./gpsl_info_tips.js";
 import {
+  resolveStaffClubContext,
+  mountStaffClubPicker,
+} from "./staff_club_preview.js?v=20260811-squad-preview";
+import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
@@ -249,6 +253,9 @@ function isMissingEconomicsColumnError(error) {
 let userObj = null;
 let userId = null;
 let currentUserShort = null;
+/** True when Admin/Mod is viewing another club (or staff-only with ?club=). */
+let staffPreview = false;
+const STAFF_SQUAD_CLUB_KEY = "gpsl_admin_squad_club";
 let clubNation = null;
 let selectedPlayerForListing = null;
 
@@ -333,6 +340,42 @@ async function setSquadLeagueBadge(clubShort) {
   }
 }
 
+async function loadClubRowByShort(shortName) {
+  let club = null;
+  let clubErr = null;
+  const clubRes = await supabase
+    .from("Clubs")
+    .select(
+      "ShortName, Club, Nation, foreign_interest_remaining, voluntary_contract_releases_remaining"
+    )
+    .eq("ShortName", shortName)
+    .maybeSingle();
+  club = clubRes.data;
+  clubErr = clubRes.error;
+  if (clubErr?.code === "42703") {
+    const fallback = await supabase
+      .from("Clubs")
+      .select("ShortName, Club, Nation, foreign_interest_remaining")
+      .eq("ShortName", shortName)
+      .maybeSingle();
+    club = fallback.data;
+    clubErr = fallback.error;
+  }
+  return { club, clubErr };
+}
+
+function renderStaffPreviewBanner(clubLabel) {
+  const el = document.getElementById("staffSquadPreviewBanner");
+  if (!el) return;
+  if (!staffPreview) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  el.hidden = false;
+  el.textContent = `Staff preview — viewing ${clubLabel || currentUserShort}. You can inspect Action options (e.g. One of our own / Star) but cannot execute anything.`;
+}
+
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
   initGpslInfoTips();
@@ -351,33 +394,33 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("userEmail").textContent = user.email;
 
-  // Load club
-  let club = null;
-  let clubErr = null;
+  const ctx = await resolveStaffClubContext(user, STAFF_SQUAD_CLUB_KEY);
 
-  const clubRes = await supabase
-    .from("Clubs")
-    .select(
-      "ShortName, Club, Nation, foreign_interest_remaining, voluntary_contract_releases_remaining"
-    )
-    .eq("owner_id", user.id)
-    .single();
-
-  club = clubRes.data;
-  clubErr = clubRes.error;
-
-  if (clubErr?.code === "42703") {
-    const fallback = await supabase
-      .from("Clubs")
-      .select("ShortName, Club, Nation, foreign_interest_remaining")
-      .eq("owner_id", user.id)
-      .single();
-    club = fallback.data;
-    clubErr = fallback.error;
+  if (ctx.staffPicker) {
+    await mountStaffClubPicker({
+      sessionKey: STAFF_SQUAD_CLUB_KEY,
+      hostId: "staffClubPickerHost",
+      selectId: "staffSquadClubSelect",
+      label: "Preview club squad: ",
+      hint: "Admin/Mod only — pick any club to view their squad (read-only when not your club). Action menus stay visible so you can check eligibility.",
+      selectedShort: ctx.shortName,
+      ownedShort: ctx.ownedShort,
+      ownedLabel: ctx.ownedLabel,
+    });
   }
 
+  if (ctx.needsAdminPicker || !ctx.shortName) {
+    if (ctx.noClub) {
+      alert("No club assigned to this account.");
+    }
+    return;
+  }
+
+  staffPreview = !!ctx.adminPreview;
+
+  const { club, clubErr } = await loadClubRowByShort(ctx.shortName);
   if (clubErr || !club) {
-    alert("No club assigned to this account.");
+    alert(staffPreview ? "Club not found." : "No club assigned to this account.");
     return;
   }
 
@@ -385,10 +428,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   clubNation = club.Nation ?? null;
   window.GPSL_CLUB_SHORTNAME = currentUserShort;
 
-  document.getElementById("dashboardTitle").textContent = `${club.Club} Squad`;
+  const titleBase = club.Club || ctx.clubLabel || currentUserShort;
+  document.getElementById("dashboardTitle").textContent = staffPreview
+    ? `${titleBase} Squad (staff preview)`
+    : `${titleBase} Squad`;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
   await setSquadLeagueBadge(currentUserShort);
+  renderStaffPreviewBanner(titleBase);
 
   foreignInterestRemaining = normalizeForeignInterest(
     club.foreign_interest_remaining
@@ -396,32 +443,43 @@ document.addEventListener("DOMContentLoaded", async () => {
   voluntaryReleasesRemaining = normalizeVoluntaryReleasesRemaining(
     club.voluntary_contract_releases_remaining
   );
-  await Promise.all([
-    loadForeignInterestState(),
-    loadVoluntaryReleaseState(),
-    loadNewOwnerReleaseState(),
-    loadSquadManagerState(),
-  ]);
-  renderForeignInterestBadge();
-  renderVoluntaryReleaseBadge();
-  renderNewOwnerReleaseBadge();
-  renderSquadManagerBadge();
-  applyForeignSaleOptionState();
-  applyVoluntaryReleaseOptionState();
+
+  if (staffPreview) {
+    // Club-scoped owner RPCs would hit the staff user's club — skip; badges use Clubs row.
+    renderForeignInterestBadge();
+    renderVoluntaryReleaseBadge();
+    await loadSquadManagerState();
+    renderSquadManagerBadge();
+  } else {
+    await Promise.all([
+      loadForeignInterestState(),
+      loadVoluntaryReleaseState(),
+      loadNewOwnerReleaseState(),
+      loadSquadManagerState(),
+    ]);
+    renderForeignInterestBadge();
+    renderVoluntaryReleaseBadge();
+    renderNewOwnerReleaseBadge();
+    renderSquadManagerBadge();
+    applyForeignSaleOptionState();
+    applyVoluntaryReleaseOptionState();
+  }
 
   wireButtons();
   wireSquadTable();
 
   await loadTransferWindowStatus();
-  applyNewOwnerReleaseOptionState();
+  if (!staffPreview) applyNewOwnerReleaseOptionState();
   await loadSquad();
 
   setInterval(async () => {
     await loadTransferWindowStatus();
-    await loadNewOwnerReleaseState();
-    syncNewOwnerListAvailability();
-    renderNewOwnerReleaseBadge();
-    applyNewOwnerReleaseOptionState();
+    if (!staffPreview) {
+      await loadNewOwnerReleaseState();
+      syncNewOwnerListAvailability();
+      renderNewOwnerReleaseBadge();
+      applyNewOwnerReleaseOptionState();
+    }
     await loadSquad();
   }, 30000);
 });
@@ -992,12 +1050,12 @@ function renderSquadManagerBadge() {
     : `Manager: ${squadManagerState.managerName} (rating ${rating}) · MV ${mv}`;
 
   if (renewBtn) {
-    renewBtn.hidden = !pending;
-    renewBtn.disabled = !pending;
+    renewBtn.hidden = staffPreview || !pending;
+    renewBtn.disabled = staffPreview || !pending;
   }
 
   const windowOpen = !!squadManagerState.sackWindowOpen;
-  const canAct = !pending && windowOpen;
+  const canAct = !staffPreview && !pending && windowOpen;
 
   if (listBtn) {
     listBtn.hidden = !canAct;
@@ -1277,6 +1335,9 @@ async function loadSquadRewardContext() {
     appealCards: [],
     appealableByPlayer: new Map(),
   };
+
+  // Owner-scoped RPCs — skip in staff preview (actions are blocked anyway).
+  if (staffPreview) return;
 
   const [medRes, prizeTokRes, invRes, appealRes] = await Promise.all([
     supabase.rpc("medical_room_state", { p_club: null }),
@@ -2008,6 +2069,11 @@ async function refreshAfterDesignationChange() {
 
 // Blocks listing when transfer window is closed
 async function handlePlayerAction(playerId, action, selectEl) {
+  if (staffPreview) {
+    alert("Staff preview — read only. Actions are disabled on another club’s squad.");
+    resetActionSelect(selectEl);
+    return;
+  }
   if (!action) {
     resetActionSelect(selectEl);
     return;
@@ -2825,6 +2891,10 @@ async function validateAndCreateListing() {
 }
 
 function wireButtons() {
+  if (staffPreview) {
+    // Listing modal + manager mutators stay unwired in staff preview.
+    return;
+  }
   const dec500 = document.getElementById("dec-500k-list");
   const dec1m = document.getElementById("dec-1m-list");
   const dec5m = document.getElementById("dec-5m-list");

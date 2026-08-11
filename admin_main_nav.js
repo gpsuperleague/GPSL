@@ -451,6 +451,13 @@ export const ADMIN_MAIN_NAV = [
           "Open Finances with a club selector — view any club’s accounts as a staff preview (Admin/Mod)."
         ),
         L(
+          "Preview club squad",
+          "squad.html",
+          null,
+          null,
+          "Open Squad with a club selector — view any club’s squad read-only (Admin/Mod). Inspect Action options without executing."
+        ),
+        L(
           "Apply fines",
           "admin_fines.html",
           null,
