@@ -17,7 +17,8 @@ export function seasonLoanTerminateOptionLabel(canTerminate) {
 export function seasonLoanTerminateOptionHtml(canTerminate) {
   const label = seasonLoanTerminateOptionLabel(canTerminate);
   if (!canTerminate) {
-    return `<option value="" disabled>${label}</option>`;
+    // Enabled noop — iOS Safari hides disabled <option>s ("No Options").
+    return `<option value="noop:loan">${label}</option>`;
   }
   return `<option value="${TERMINATE_SEASON_LOAN_ACTION}">${label}</option>`;
 }

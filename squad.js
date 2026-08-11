@@ -66,7 +66,7 @@ import {
   isContractFinalYear,
   isPesdbLegacyCard,
   analyseSquadContractOutlook,
-} from "./player_contracts.js";
+} from "./player_contracts.js?v=20260811-ios-action";
 import { isExpiryAuctionExempt } from "./squad_rules.js";
 import { loadCalendarStatus } from "./competition_calendar.js";
 import { formatWage } from "./wages.js";
@@ -107,7 +107,7 @@ import {
   oooComplianceRow,
   DESIGNATION_STAR,
   DESIGNATION_OOO,
-} from "./squad_designations.js";
+} from "./squad_designations.js?v=20260811-ios-action";
 import {
   loadActiveSeasonLoanPlayerIds,
   loadClubSquadMinimumStatus,
@@ -115,7 +115,7 @@ import {
   seasonLoanTerminateOptionHtml,
   TERMINATE_SEASON_LOAN_ACTION,
   terminateSeasonLoan,
-} from "./season_loan.js";
+} from "./season_loan.js?v=20260811-ios-action";
 import {
   playerThumbLinkHtml,
   playerNameLinkHtml,
@@ -125,7 +125,7 @@ import { initGpslInfoTips, withInfoTip, tipAttrs, tipDataAttrs } from "./gpsl_in
 import {
   resolveStaffClubContext,
   mountStaffClubPicker,
-} from "./staff_club_preview.js?v=20260811-squad-preview";
+} from "./staff_club_preview.js?v=20260811-ios-action";
 import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
@@ -570,13 +570,19 @@ function renderForeignInterestBadge() {
     <span class="foreign-interest-main">${escapeHtml(main)}</span><span class="foreign-interest-hint"> · Sell via Action at market value</span>`;
 }
 
+/** iOS Safari hides disabled <option>s and can show "No Options" if nothing else remains. */
+function squadInfoOptionHtml(label) {
+  const text = String(label || "").trim() || "Unavailable";
+  return `<option value="noop:info">${text}</option>`;
+}
+
 function voluntaryReleaseOptionHtml(player) {
   const cost = calculateVoluntaryReleaseCost(
     player?.contract_wage,
     player?.contract_seasons_remaining
   );
   if (voluntaryReleasesRemaining <= 0) {
-    return `<option value="" disabled>${voluntaryReleaseOptionLabel(0, cost)}</option>`;
+    return squadInfoOptionHtml(voluntaryReleaseOptionLabel(0, cost));
   }
   return `<option value="${VOLUNTARY_RELEASE_ACTION}">${voluntaryReleaseOptionLabel(
     voluntaryReleasesRemaining,
@@ -602,24 +608,30 @@ function newOwnerReleaseOptionHtml(player) {
   }
 
   if (remaining <= 0) {
-    return `<option value="" disabled>${newOwnerReleaseOptionLabel(0, fee, {
-      firstSeason: true,
-      availableNow: false,
-    })}</option>`;
+    return squadInfoOptionHtml(
+      newOwnerReleaseOptionLabel(0, fee, {
+        firstSeason: true,
+        availableNow: false,
+      })
+    );
   }
 
   if (!availableNow) {
-    return `<option value="" disabled>${newOwnerReleaseOptionLabel(remaining, fee, {
-      firstSeason: true,
-      availableNow: false,
-    })}</option>`;
+    return squadInfoOptionHtml(
+      newOwnerReleaseOptionLabel(remaining, fee, {
+        firstSeason: true,
+        availableNow: false,
+      })
+    );
   }
 
   if (!eligibleFee) {
-    return `<option value="" disabled>${newOwnerReleaseOptionLabel(remaining, fee, {
-      firstSeason: true,
-      availableNow: true,
-    })}</option>`;
+    return squadInfoOptionHtml(
+      newOwnerReleaseOptionLabel(remaining, fee, {
+        firstSeason: true,
+        availableNow: true,
+      })
+    );
   }
 
   return `<option value="${NEW_OWNER_RELEASE_ACTION}">${newOwnerReleaseOptionLabel(
@@ -640,35 +652,43 @@ function newOwnerListOptionHtml(player) {
   const blockedReason = newOwnerListBlockedReason(player);
 
   if (remaining <= 0) {
-    return `<option value="" disabled>${newOwnerListOptionLabel(remaining, {
-      firstSeason: true,
-      availableNow: false,
-      transferWindowOpen: transferWindowOpen,
-    })}</option>`;
+    return squadInfoOptionHtml(
+      newOwnerListOptionLabel(remaining, {
+        firstSeason: true,
+        availableNow: false,
+        transferWindowOpen: transferWindowOpen,
+      })
+    );
   }
 
   if (!availableNow) {
-    return `<option value="" disabled>${newOwnerListOptionLabel(remaining, {
-      firstSeason: true,
-      availableNow: false,
-      transferWindowOpen: transferWindowOpen,
-    })}</option>`;
+    return squadInfoOptionHtml(
+      newOwnerListOptionLabel(remaining, {
+        firstSeason: true,
+        availableNow: false,
+        transferWindowOpen: transferWindowOpen,
+      })
+    );
   }
 
   if (blockedReason) {
-    return `<option value="" disabled>${newOwnerListOptionLabel(remaining, {
-      firstSeason: true,
-      availableNow: true,
-      transferWindowOpen: transferWindowOpen,
-    })} — ${blockedReason}</option>`;
+    return squadInfoOptionHtml(
+      `${newOwnerListOptionLabel(remaining, {
+        firstSeason: true,
+        availableNow: true,
+        transferWindowOpen: transferWindowOpen,
+      })} — ${blockedReason}`
+    );
   }
 
   if (!listNow) {
-    return `<option value="" disabled>${newOwnerListOptionLabel(remaining, {
-      firstSeason: true,
-      availableNow: true,
-      transferWindowOpen: false,
-    })}</option>`;
+    return squadInfoOptionHtml(
+      newOwnerListOptionLabel(remaining, {
+        firstSeason: true,
+        availableNow: true,
+        transferWindowOpen: false,
+      })
+    );
   }
 
   return `<option value="${NEW_OWNER_LIST_ACTION}">${newOwnerListOptionLabel(remaining, {
@@ -751,10 +771,10 @@ function squadActionOptionsHtml(player) {
 
   if (!playerCanListOrSellLocal(player)) {
     if (isContractFinalYear(player)) {
-      return `${rewardOpts}<option value="" disabled>Final contract year</option>${releaseGroup}`;
+      return `${rewardOpts}${squadInfoOptionHtml("Final contract year")}${releaseGroup}`;
     }
     return `${rewardOpts}${releaseGroup}
-            <option value="" disabled>Signed this season</option>`;
+            ${squadInfoOptionHtml("Signed this season — not listable")}`;
   }
   const foreignOpts =
     foreignTrackingTeams.length > 0
@@ -1104,21 +1124,34 @@ function applyVoluntaryReleaseOptionState() {
   const allow = voluntaryReleasesRemaining > 0;
   document.querySelectorAll("select.squad-action-select").forEach((sel) => {
     const releaseOpt = sel.querySelector(
-      `option[value="${VOLUNTARY_RELEASE_ACTION}"]`
-    );
-    const disabledRelease = sel.querySelector(
-      'option[value=""][disabled]'
+      `option[value="${VOLUNTARY_RELEASE_ACTION}"], option[data-live-value="${VOLUNTARY_RELEASE_ACTION}"]`
     );
     if (releaseOpt) {
-      releaseOpt.disabled = !allow;
-    }
-    if (
-      disabledRelease &&
-      disabledRelease.textContent.includes("voluntary")
-    ) {
-      disabledRelease.disabled = true;
+      setSquadOptionAvailable(
+        releaseOpt,
+        allow,
+        null,
+        releaseOpt.textContent || "Voluntary release unavailable"
+      );
     }
   });
+}
+
+/** Prefer enabled "noop" options over disabled — iOS hides disabled options. */
+function setSquadOptionAvailable(opt, available, availableLabel, unavailableLabel) {
+  if (!opt) return;
+  if (!opt.dataset.liveValue && opt.value && !opt.value.startsWith("noop:")) {
+    opt.dataset.liveValue = opt.value;
+  }
+  if (available) {
+    if (opt.dataset.liveValue) opt.value = opt.dataset.liveValue;
+    opt.disabled = false;
+    if (availableLabel != null) opt.textContent = availableLabel;
+  } else {
+    opt.value = "noop:ua";
+    opt.disabled = false;
+    if (unavailableLabel != null) opt.textContent = unavailableLabel;
+  }
 }
 
 function applyForeignSaleOptionState() {
@@ -1132,42 +1165,58 @@ function applyForeignSaleOptionState() {
       contract_seasons_remaining: row?.dataset.contractSeasons,
     });
 
-    const listOpt = sel.querySelector('option[value="list"]');
+    const listOpt = sel.querySelector(
+      'option[value="list"], option[data-live-value="list"]'
+    );
     const foreignOpts = sel.querySelectorAll(
-      'option[value="foreign"], option[value^="foreign:"]'
+      'option[value="foreign"], option[value^="foreign:"], option[data-live-value="foreign"], option[data-live-value^="foreign:"]'
     );
 
     if (blocked) {
-      if (listOpt) listOpt.disabled = true;
+      setSquadOptionAvailable(listOpt, false, null, "Signed this season");
       foreignOpts.forEach((opt) => {
-        opt.disabled = true;
-        if (opt.value === "foreign") {
-          opt.textContent = "Signed this season";
-        }
+        setSquadOptionAvailable(opt, false, null, "Signed this season");
       });
       return;
     }
 
-    if (listOpt) {
-      listOpt.disabled = !transferWindowOpen;
-      listOpt.textContent = transferWindowOpen
-        ? "Transfer List"
-        : "Transfer Window Shut";
-    }
+    setSquadOptionAvailable(
+      listOpt,
+      transferWindowOpen,
+      "Transfer List",
+      "Transfer Window Shut"
+    );
 
     const finalYear = row?.dataset.contractSeasons === "1";
     foreignOpts.forEach((opt) => {
-      opt.disabled = !allowForeign || finalYear;
+      const ok = allowForeign && !finalYear;
+      const label = finalYear
+        ? "Final contract year"
+        : allowForeign
+          ? opt.dataset.liveLabel || opt.textContent
+          : "No foreign interest left";
+      if (!opt.dataset.liveLabel && opt.value && !opt.value.startsWith("noop:")) {
+        opt.dataset.liveLabel = opt.textContent;
+      }
+      setSquadOptionAvailable(opt, ok, opt.dataset.liveLabel || null, label);
     });
 
-    const legacyForeign = sel.querySelector('option[value="foreign"]');
+    const legacyForeign = sel.querySelector(
+      'option[value="foreign"], option[data-live-value="foreign"]'
+    );
     if (legacyForeign && foreignTrackingTeams.length === 0) {
-      legacyForeign.disabled = !allowForeign || finalYear;
-      legacyForeign.textContent = finalYear
+      const ok = allowForeign && !finalYear;
+      const label = finalYear
         ? "Final contract year"
         : allowForeign
           ? "Sell to foreign club"
           : "No foreign interest left";
+      setSquadOptionAvailable(
+        legacyForeign,
+        ok,
+        "Sell to foreign club",
+        label
+      );
     }
   });
 }
@@ -1175,16 +1224,18 @@ function applyForeignSaleOptionState() {
 function applyNewOwnerReleaseOptionState() {
   document.querySelectorAll("select.squad-action-select").forEach((sel) => {
     const releaseOpt = sel.querySelector(
-      `option[value="${NEW_OWNER_RELEASE_ACTION}"]`
+      `option[value="${NEW_OWNER_RELEASE_ACTION}"], option[data-live-value="${NEW_OWNER_RELEASE_ACTION}"]`
     );
-    const listOpt = sel.querySelector(`option[value="${NEW_OWNER_LIST_ACTION}"]`);
+    const listOpt = sel.querySelector(
+      `option[value="${NEW_OWNER_LIST_ACTION}"], option[data-live-value="${NEW_OWNER_LIST_ACTION}"]`
+    );
     const allowRelease =
       newOwnerReleaseState.availableNow && newOwnerReleaseState.remaining > 0;
     const allowList =
       newOwnerReleaseState.listAvailableNow &&
       newOwnerReleaseState.remaining > 0;
-    if (releaseOpt) releaseOpt.disabled = !allowRelease;
-    if (listOpt) listOpt.disabled = !allowList;
+    setSquadOptionAvailable(releaseOpt, allowRelease, null, null);
+    setSquadOptionAvailable(listOpt, allowList, null, null);
   });
 }
 
@@ -1773,7 +1824,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
           </div>
         </td>
         <td class="squad-col-action">
-          <select class="squad-action-select gpsl-has-tip" data-player-id="${pid}"${tipDataAttrs(SQUAD_TIPS.action)}>
+          <select class="squad-action-select" data-player-id="${pid}" aria-label="Player actions">
             <option value="">Action</option>
             ${squadRoleActionOptionsHtml(p, designationsState, clubNation)}
             ${squadActionOptionsHtml(p)}
@@ -2075,6 +2126,12 @@ async function handlePlayerAction(playerId, action, selectEl) {
     return;
   }
   if (!action) {
+    resetActionSelect(selectEl);
+    return;
+  }
+
+  // Info-only rows (iOS-safe stand-ins for disabled options)
+  if (action.startsWith("noop:")) {
     resetActionSelect(selectEl);
     return;
   }

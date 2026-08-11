@@ -68,10 +68,17 @@ export function squadDesignationOptionsHtml(player, state, clubNation) {
         : " — home-grown only"
     : "";
 
+  // Avoid emoji + disabled-only menus: iOS hides disabled options and may show "No Options".
+  const starLabel = starDisabled
+    ? `Star player${starHint}`
+    : "Star player";
+  const oooLabel = oooDisabled
+    ? `One of our own${oooHint}`
+    : "One of our own";
   return `
     <option value=""${current ? "" : " selected"}>Normal</option>
-    <option value="${DESIGNATION_STAR}"${current === DESIGNATION_STAR ? " selected" : ""}${starDisabled ? " disabled" : ""}>★ Star player${starHint}</option>
-    <option value="${DESIGNATION_OOO}"${current === DESIGNATION_OOO ? " selected" : ""}${oooDisabled ? " disabled" : ""}>🏠 One of our own${oooHint}</option>
+    <option value="${starDisabled ? "noop:star" : DESIGNATION_STAR}"${current === DESIGNATION_STAR ? " selected" : ""}>${starLabel}</option>
+    <option value="${oooDisabled ? "noop:ooo" : DESIGNATION_OOO}"${current === DESIGNATION_OOO ? " selected" : ""}>${oooLabel}</option>
   `;
 }
 
@@ -93,13 +100,14 @@ export function squadRoleActionOptionsHtml(player, state, clubNation) {
     : null;
 
   if (current === DESIGNATION_OOO) {
-    return `<option value="role:">✕ Remove One of our own</option>`;
+    // No emoji in <option> text — iOS Safari can drop those options entirely.
+    return `<option value="role:">Remove One of our own</option>`;
   }
 
   const canOoo =
     playerEligibleOoo(player, clubNation, minRating) && (!oooId || oooId === pid);
   if (canOoo) {
-    return `<option value="role:${DESIGNATION_OOO}">🏠 Set as One of our own</option>`;
+    return `<option value="role:${DESIGNATION_OOO}">Set as One of our own</option>`;
   }
   return "";
 }

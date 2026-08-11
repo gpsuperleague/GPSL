@@ -75,7 +75,7 @@ export function squadContractActionOptionsHtml(
   if (!exempt && !legacy) {
     if (hasWageBid) {
       return `
-            <option value="" disabled>Wage bid locked — Pending EOS</option>
+            <option value="noop:wage_bid_locked">Wage bid locked — Pending EOS</option>
             ${releaseOpt}`;
     }
     return `

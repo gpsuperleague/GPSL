@@ -927,6 +927,11 @@ body.squad-page select.squad-action-select {
   max-width: 11rem;
   margin: 0 auto;
   box-sizing: border-box;
+  /* iOS Safari often paints a light native control; force readable label text */
+  color-scheme: dark;
+  -webkit-text-fill-color: #f2f2f2;
+  color: #f2f2f2 !important;
+  background-color: #1a1a1a !important;
 }
 
 /* Action column scrolls with the table (not sticky) so it never overlays other columns */
@@ -1246,8 +1251,10 @@ body.squad-page .status-offer-pending {
    ========================================================== */
 
 body.squad-page select {
+  color-scheme: dark;
   background: #111 !important;
-  color: #ddd !important;
+  color: #f2f2f2 !important;
+  -webkit-text-fill-color: #f2f2f2;
   border: 1px solid #444 !important;
   padding: 4px 6px;
   font-size: 12px;
