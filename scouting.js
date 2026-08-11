@@ -23,7 +23,7 @@ import {
   buildPlayerDraftUiState,
   renderDraftManageCell,
   submitScoutingDraftBid,
-} from "./scouting_draft_actions.js?v=20260811-active-targets";
+} from "./scouting_draft_actions.js?v=20260811-draft-list-fix";
 import {
   confirmSquadRulesBeforeBid,
   analyseSquadComposition,

@@ -2591,13 +2591,36 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function ensureDraftListingForPlayer(player) {
-    const konamiId = Number(player.Konami_ID);
+    const konamiId = String(player.Konami_ID ?? "").trim();
     console.log("ensureDraftListingForPlayer START for", konamiId);
+
+    // Preferred: SECURITY DEFINER RPC (handles FA transferability + grants)
+    const rpc = await supabase.rpc("player_draft_ensure_listing", {
+      p_player_id: konamiId,
+    });
+    if (!rpc.error && rpc.data != null) {
+      console.log("ensureDraftListingForPlayer END OK listingId =", rpc.data);
+      return { ok: true, listingId: rpc.data };
+    }
+    if (rpc.error) {
+      console.warn("player_draft_ensure_listing:", rpc.error);
+      const msg = String(rpc.error.message || "");
+      // Fall through only if RPC missing; otherwise show real reason
+      if (
+        !msg.includes("player_draft_ensure_listing") &&
+        rpc.error.code !== "PGRST202"
+      ) {
+        return {
+          ok: false,
+          msg: msg || "Error creating draft listing.",
+        };
+      }
+    }
 
     const { data: existing, error: existingErr } = await supabase
       .from("Player_Transfer_Listings")
       .select("id, player_id, listing_type, status")
-      .eq("player_id", String(konamiId))
+      .eq("player_id", konamiId)
       .eq("listing_type", "draft")
       .eq("status", "Active")
       .maybeSingle();
@@ -2618,7 +2641,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const { data: listing, error } = await supabase
       .from("Player_Transfer_Listings")
       .insert({
-        player_id: String(konamiId),
+        player_id: konamiId,
         seller_club_id: null,
         reserve_price: player.market_value || 0,
         listing_type: "draft",
@@ -2636,7 +2659,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (error || !listing) {
       console.error("Error creating draft listing:", error);
-      return { ok: false, msg: "Error creating draft listing." };
+      return {
+        ok: false,
+        msg:
+          error?.message ||
+          "Error creating draft listing. Deploy draft_listing_free_agent_fix.sql if this persists.",
+      };
     }
 
     console.log("ensureDraftListingForPlayer END OK listingId =", listing.id);

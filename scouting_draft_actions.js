@@ -36,6 +36,22 @@ function getDraftAuctionTimesForNewListing() {
 export async function ensureDraftListingForPlayer(supabase, player) {
   const konamiId = String(player.Konami_ID).trim();
 
+  const rpc = await supabase.rpc("player_draft_ensure_listing", {
+    p_player_id: konamiId,
+  });
+  if (!rpc.error && rpc.data != null) {
+    return { ok: true, listingId: rpc.data };
+  }
+  if (rpc.error) {
+    const msg = String(rpc.error.message || "");
+    if (
+      !msg.includes("player_draft_ensure_listing") &&
+      rpc.error.code !== "PGRST202"
+    ) {
+      return { ok: false, msg: msg || "Could not open draft auction." };
+    }
+  }
+
   const { data: existing } = await supabase
     .from("Player_Transfer_Listings")
     .select("id")
@@ -67,7 +83,12 @@ export async function ensureDraftListingForPlayer(supabase, player) {
     .single();
 
   if (error || !listing) {
-    return { ok: false, msg: error?.message || "Could not open draft auction." };
+    return {
+      ok: false,
+      msg:
+        error?.message ||
+        "Could not open draft auction. Deploy draft_listing_free_agent_fix.sql if this persists.",
+    };
   }
 
   return { ok: true, listingId: listing.id };
