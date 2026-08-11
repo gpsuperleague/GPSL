@@ -105,9 +105,7 @@ function updateActiveTargetsHeader() {
   totalEl.classList.toggle("is-over", false);
   if (metaEl) {
     metaEl.textContent =
-      count === 0
-        ? "Tick Active Targets to budget draft spends"
-        : `${count} active · MV or your bid / next increment if outbid`;
+      count === 0 ? "None selected" : `${count} selected`;
   }
   updateRegistrationStrip();
 }
@@ -251,13 +249,17 @@ async function loadOwnedSquadForReg() {
 }
 
 async function refreshAdvisoryBudgetBadge() {
+  const card = document.getElementById("scoutAdvisoryCard");
   const el = document.getElementById("scoutAdvisoryBudget");
   if (!el) return;
   if (!clubShort) {
+    if (card) card.hidden = true;
     el.hidden = true;
     el.innerHTML = "";
     return;
   }
+  if (card) card.hidden = false;
+  el.hidden = false;
   await mountAdvisoryTransferBudget(el, {
     clubShortName: clubShort,
     href: "finances.html",
