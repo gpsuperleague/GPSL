@@ -248,7 +248,8 @@ async function loadOverview() {
 
 async function pollNow() {
   setStatus("pollStatus", "Polling Discord friendlies channel…");
-  const { data, error } = await invokeIngest({ limit: 50 });
+  // force:true rescans recent channel history past the watermark (recovery)
+  const { data, error } = await invokeIngest({ limit: 50, force: true });
   if (error) {
     setStatus("pollStatus", error.message, false);
     return;
