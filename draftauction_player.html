@@ -142,7 +142,7 @@
         </p>
         <div class="bid-row">
           <span style="font-size:18px; color:#ff9900; font-weight:bold;">₿</span>
-          <input type="text" id="playerMaxBidAmount" placeholder="Max bid">
+          <input type="text" id="playerMaxBidAmount" inputmode="numeric" autocomplete="off" placeholder="22,000,000">
           <button type="button" id="playerMaxBidSetBtn" class="quick-btn">Set max</button>
           <button type="button" id="playerMaxBidClearBtn" class="quick-btn" style="background:#333;">Clear</button>
         </div>
@@ -224,6 +224,7 @@
       parseMaxBidInput,
     } from "./auction_max_bid.js";
     import { formatMoney } from "./competition.js";
+    import { wireMoneyBidInput } from "./money_input.js";
 
     /* ============================================================
        STATE
@@ -676,15 +677,16 @@
 
       submitBtn.onclick = submitBid;
 
+      const maxBidInput = document.getElementById("playerMaxBidAmount");
+      wireMoneyBidInput(maxBidInput, { min: 0 });
+
       document.getElementById("playerMaxBidSetBtn")?.addEventListener("click", async () => {
         const status = document.getElementById("bidStatus");
         if (!buyerShortName || !playerId) {
           if (status) status.textContent = "No club linked to your account.";
           return;
         }
-        const amount = parseMaxBidInput(
-          document.getElementById("playerMaxBidAmount")?.value
-        );
+        const amount = parseMaxBidInput(maxBidInput?.value);
         if (!amount) {
           if (status) status.textContent = "Enter a valid max bid.";
           return;
