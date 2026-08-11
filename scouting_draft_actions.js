@@ -244,6 +244,8 @@ export async function buildPlayerDraftUiState(ctx, player) {
     player?.Contracted_Team && String(player.Contracted_Team).trim()
   );
 
+  const mvFallback = Number(player?.market_value) || 0;
+
   if (hasContract) {
     return {
       status: "Under contract",
@@ -253,6 +255,10 @@ export async function buildPlayerDraftUiState(ctx, player) {
       canBidInline: false,
       minBid: null,
       playerPageUrl: null,
+      isLeading: false,
+      highBidAmount: null,
+      budgetAmount: mvFallback,
+      budgetKind: "mv",
     };
   }
 
@@ -265,6 +271,10 @@ export async function buildPlayerDraftUiState(ctx, player) {
       canBidInline: false,
       minBid: null,
       playerPageUrl: `draftauction_player.html?player=${encodeURIComponent(pid)}`,
+      isLeading: false,
+      highBidAmount: null,
+      budgetAmount: mvFallback,
+      budgetKind: "mv",
     };
   }
 
@@ -313,6 +323,21 @@ export async function buildPlayerDraftUiState(ctx, player) {
   }
 
   const playerPageUrl = `draftauction_player.html?player=${encodeURIComponent(pid)}`;
+  const isLeading = high?.bidder_club_id === ctx.clubShort;
+  const mv = Number(player.market_value) || 0;
+
+  /** Amount to count toward Active Targets budget total. */
+  let budgetAmount = mv;
+  let budgetKind = "mv";
+  if (high) {
+    if (isLeading) {
+      budgetAmount = Number(high.bid_amount) || 0;
+      budgetKind = "leading";
+    } else {
+      budgetAmount = draftMinimumBidAmount(player.market_value, bids);
+      budgetKind = "to_overtake";
+    }
+  }
 
   return {
     playerId: pid,
@@ -323,7 +348,10 @@ export async function buildPlayerDraftUiState(ctx, player) {
     canBidInline: canBid,
     minBid,
     playerPageUrl,
-    isLeading: high?.bidder_club_id === ctx.clubShort,
+    isLeading,
+    highBidAmount: high ? Number(high.bid_amount) || 0 : null,
+    budgetAmount,
+    budgetKind,
   };
 }
 

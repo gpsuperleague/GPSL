@@ -12,18 +12,20 @@ import {
   scoutingSetupHint,
   loadScoutingTargets,
   setScoutingTargetTier,
+  setScoutingActiveTarget,
   toggleScoutingTarget,
   loadScoutingPlannerState,
   saveScoutingPlanner,
-} from "./scouting_targets.js?v=20260805-owner-scout";
+} from "./scouting_targets.js?v=20260811-active-targets";
 import { initMatchdaySquadPanel } from "./matchday_squad.js";
 import {
   loadScoutingDraftContext,
   buildPlayerDraftUiState,
   renderDraftManageCell,
   submitScoutingDraftBid,
-} from "./scouting_draft_actions.js";
+} from "./scouting_draft_actions.js?v=20260811-active-targets";
 import { confirmSquadRulesBeforeBid } from "./squad_rules.js";
+import { mountAdvisoryTransferBudget } from "./club_bank_balance_ui.js";
 
 const PLAYER_COLUMNS =
   "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Contracted_Team";
@@ -36,8 +38,71 @@ let clubNation = null;
 let scoutingRows = [];
 let scoutingPlayers = [];
 let playerMapCache = new Map();
+let draftUiByPlayerCache = new Map();
 let draftContext = null;
 let plannerApi = null;
+
+function activeTargetBudgetForPlayer(pid) {
+  const p = playerMapCache.get(String(pid));
+  const ui = draftUiByPlayerCache.get(String(pid));
+  if (ui?.budgetAmount != null && Number.isFinite(Number(ui.budgetAmount))) {
+    return Number(ui.budgetAmount);
+  }
+  return Number(p?.market_value) || 0;
+}
+
+function activeTargetBudgetTitle(pid) {
+  const ui = draftUiByPlayerCache.get(String(pid));
+  const amt = formatMoney(activeTargetBudgetForPlayer(pid));
+  if (ui?.budgetKind === "leading") {
+    return `Active target: your leading bid ${amt}`;
+  }
+  if (ui?.budgetKind === "to_overtake") {
+    return `Active target: next bid to lead ${amt}`;
+  }
+  return `Active target: market value ${amt}`;
+}
+
+function sumActiveTargetsBudget() {
+  let total = 0;
+  let count = 0;
+  for (const row of scoutingRows) {
+    if (!row.is_active_target) continue;
+    total += activeTargetBudgetForPlayer(row.player_id);
+    count += 1;
+  }
+  return { total, count };
+}
+
+function updateActiveTargetsHeader() {
+  const totalEl = document.getElementById("scoutActiveTotal");
+  const metaEl = document.getElementById("scoutActiveMeta");
+  if (!totalEl) return;
+  const { total, count } = sumActiveTargetsBudget();
+  totalEl.textContent = formatMoney(total);
+  totalEl.classList.toggle("is-over", false);
+  if (metaEl) {
+    metaEl.textContent =
+      count === 0
+        ? "Tick Active Targets to budget draft spends"
+        : `${count} active · MV or your bid / next increment if outbid`;
+  }
+}
+
+async function refreshAdvisoryBudgetBadge() {
+  const el = document.getElementById("scoutAdvisoryBudget");
+  if (!el) return;
+  if (!clubShort) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  await mountAdvisoryTransferBudget(el, {
+    clubShortName: clubShort,
+    href: "finances.html",
+    hideIfUnknown: false,
+  });
+}
 
 const SCOUTING_POSITION_ORDER = [
   "GK",
@@ -260,6 +325,7 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
           <th>Playstyle</th>
           <th>Club</th>
           ${showDraft ? "<th>Draft</th><th>Leading</th><th>Your bid</th><th>Manage bid</th>" : ""}
+          <th title="Count toward Active Targets budget total">Active Targets</th>
           <th>Tier</th>
           <th></th>
         </tr>
@@ -289,6 +355,8 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
               minBid: null,
               playerPageUrl: null,
               isLeading: false,
+              budgetAmount: Number(p?.market_value) || 0,
+              budgetKind: "mv",
             };
             const yourBidClass = draftUi.isLeading ? "scout-leading-bid" : "";
             const draftCells = showDraft
@@ -297,9 +365,11 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
             <td class="${yourBidClass}">${draftUi.yourBidText}</td>
             <td>${renderDraftManageCell(draftUi)}</td>`
               : "";
+            const isActive = row.is_active_target === true;
+            const activeTitle = activeTargetBudgetTitle(pid);
 
             return `
-          <tr data-player-id="${pid}">
+          <tr data-player-id="${pid}" class="${isActive ? "scout-active-row" : ""}">
             <td>${playerThumbLinkHtml(pid, { className: "scout-thumb", alt: name })}</td>
             <td class="name">${playerNameLinkHtml(pid, name)}</td>
             <td>${p?.Nation || "—"}</td>
@@ -310,6 +380,11 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
             <td>${p?.Playstyle || "—"}</td>
             <td>${club}</td>
             ${draftCells}
+            <td>
+              <input type="checkbox" class="scout-active-check" data-player-id="${pid}"
+                ${isActive ? "checked" : ""} title="${activeTitle}"
+                aria-label="Active target for ${name}">
+            </td>
             <td>
               <select class="scout-tier-select" data-player-id="${pid}" aria-label="Tier for ${name}">
                 ${[1, 2, 3, 4]
@@ -403,6 +478,9 @@ async function renderScoutingLists() {
     wrap.innerHTML =
       '<p class="scout-empty">No scouting targets yet. Open <a href="GPDB.html" style="color:#ff9900;">GPDB</a> and click ☆ on players to add them.</p>';
     scoutingPlayers = [];
+    draftUiByPlayerCache = new Map();
+    updateActiveTargetsHeader();
+    await refreshAdvisoryBudgetBadge();
     return;
   }
 
@@ -422,6 +500,7 @@ async function renderScoutingLists() {
       )
     : null;
   const draftUiByPlayer = await buildDraftUiMap(playerMap);
+  draftUiByPlayerCache = draftUiByPlayer;
 
   wrap.innerHTML = [1, 2, 3, 4]
     .map((tier) => {
@@ -441,7 +520,34 @@ async function renderScoutingLists() {
     })
     .join("");
 
+  updateActiveTargetsHeader();
+  await refreshAdvisoryBudgetBadge();
+
   wireDraftActions(wrap);
+
+  wrap.querySelectorAll(".scout-active-check").forEach((cb) => {
+    cb.addEventListener("change", async () => {
+      const pid = cb.dataset.playerId;
+      const active = cb.checked;
+      const row = scoutingRows.find((r) => String(r.player_id) === String(pid));
+      if (row) row.is_active_target = active;
+      wrap.querySelectorAll(`tr[data-player-id="${pid}"]`).forEach((tr) => {
+        tr.classList.toggle("scout-active-row", active);
+      });
+      updateActiveTargetsHeader();
+      try {
+        await setScoutingActiveTarget(supabase, pid, active);
+      } catch (err) {
+        if (row) row.is_active_target = !active;
+        cb.checked = !active;
+        wrap.querySelectorAll(`tr[data-player-id="${pid}"]`).forEach((tr) => {
+          tr.classList.toggle("scout-active-row", !active);
+        });
+        updateActiveTargetsHeader();
+        alert(err?.message || "Could not update Active Target.");
+      }
+    });
+  });
 
   wrap.querySelectorAll(".scout-tier-select").forEach((sel) => {
     sel.addEventListener("change", async () => {

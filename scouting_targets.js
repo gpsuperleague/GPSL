@@ -3,6 +3,9 @@
 const SQL_SETUP_HINT =
   "Run supabase/sql/patches/owner_scouting_persist.sql in the Supabase SQL Editor (after club_scouting_targets.sql), then reload.";
 
+const ACTIVE_TARGET_SQL_HINT =
+  "Run supabase/sql/patches/owner_scouting_active_targets.sql in the Supabase SQL Editor, then reload.";
+
 export const SCOUTING_TIER_LABELS = {
   1: "Top targets",
   2: "Backup targets",
@@ -51,13 +54,31 @@ export async function loadScoutingTargets(supabase, _clubShortName) {
   const ownerId = await currentOwnerId(supabase);
   if (!ownerId) return [];
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("owner_scouting_targets")
-    .select("player_id, tier, sort_order, created_at")
+    .select("player_id, tier, sort_order, created_at, is_active_target")
     .eq("owner_id", ownerId)
     .order("tier")
     .order("sort_order")
     .order("created_at");
+
+  // Column may be missing until owner_scouting_active_targets.sql is deployed
+  if (
+    error &&
+    (String(error.message || "").includes("is_active_target") ||
+      error.code === "42703")
+  ) {
+    ({ data, error } = await supabase
+      .from("owner_scouting_targets")
+      .select("player_id, tier, sort_order, created_at")
+      .eq("owner_id", ownerId)
+      .order("tier")
+      .order("sort_order")
+      .order("created_at"));
+    if (!error && data) {
+      data = data.map((r) => ({ ...r, is_active_target: false }));
+    }
+  }
 
   if (error) {
     if (isScoutingSchemaMissingError(error)) {
@@ -68,7 +89,10 @@ export async function loadScoutingTargets(supabase, _clubShortName) {
   }
 
   scoutingSchemaMissing = false;
-  return data || [];
+  return (data || []).map((r) => ({
+    ...r,
+    is_active_target: r.is_active_target === true,
+  }));
 }
 
 export async function loadScoutingTargetMap(supabase, clubShortName) {
@@ -121,6 +145,33 @@ export async function setScoutingTargetTier(supabase, playerId, tier) {
   }
 
   scoutingSchemaMissing = false;
+  return data;
+}
+
+export async function setScoutingActiveTarget(supabase, playerId, active) {
+  if (scoutingSchemaMissing) {
+    throw new Error(SQL_SETUP_HINT);
+  }
+
+  const { data, error } = await supabase.rpc("scouting_set_active_target", {
+    p_player_id: String(playerId),
+    p_active: Boolean(active),
+  });
+
+  if (error) {
+    if (
+      String(error.message || "").includes("scouting_set_active_target") ||
+      error.code === "PGRST202"
+    ) {
+      throw new Error(ACTIVE_TARGET_SQL_HINT);
+    }
+    if (isScoutingSchemaMissingError(error)) {
+      scoutingSchemaMissing = true;
+      throw new Error(SQL_SETUP_HINT);
+    }
+    throw error;
+  }
+
   return data;
 }
 
