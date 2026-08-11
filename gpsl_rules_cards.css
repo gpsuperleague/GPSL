@@ -78,35 +78,36 @@ a.rules-notice-btn:hover {
   color: #111 !important;
 }
 
-/* Numbered how-to steps */
+/* Numbered how-to steps — left-to-right modules */
 .rules-steps {
   list-style: none;
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 12px;
 }
 
 .rules-step {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-start;
   background: #151515;
   border: 1px solid #2e2e2e;
   border-radius: 6px;
   padding: 10px 12px;
+  min-width: 0;
 }
 
 .rules-step-num {
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #3d2a00;
   border: 1px solid #ff9900;
   color: #ffcc66;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -129,17 +130,19 @@ a.rules-notice-btn:hover {
 .rules-step-body p {
   margin: 0;
   color: #bbb;
-  line-height: 1.45;
+  line-height: 1.4;
+  font-size: 12px;
 }
 
 .rules-step-body ul {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   padding-left: 1.1em;
   color: #bbb;
+  font-size: 12px;
 }
 
 .rules-step-body li {
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .rules-step-body li:last-child {
@@ -148,8 +151,8 @@ a.rules-notice-btn:hover {
 
 .rules-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 12px;
 }
 
 .rules-card {
