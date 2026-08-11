@@ -1,5 +1,5 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
-import { installRangeSteppers, RANGE_STEP_MONEY } from "./range_filter_steppers.js";
+import { installRangeSteppers, RANGE_STEP_MONEY } from "./range_filter_steppers.js?v=20260811-step-pairs";
 
 primeAdminPageChrome();
 

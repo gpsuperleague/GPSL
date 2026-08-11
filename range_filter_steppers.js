@@ -1,5 +1,6 @@
 /**
  * − / + steppers flanking dual-range age / rating / market-value filters.
+ * Left pair controls the min thumb; right pair controls the max thumb.
  * Age & rating: step 1. Market-value-like money cols: step ₿500,000.
  */
 
@@ -22,9 +23,11 @@ export function rangeStepperStep(col) {
 }
 
 export function ensureRangeStepperStyles() {
-  if (document.getElementById("range-stepper-styles")) return;
+  const STYLE_ID = "range-stepper-styles-v2";
+  if (document.getElementById(STYLE_ID)) return;
+  document.getElementById("range-stepper-styles")?.remove();
   const style = document.createElement("style");
-  style.id = "range-stepper-styles";
+  style.id = STYLE_ID;
   style.textContent = `
     .range-filter-step-row {
       display: flex;
@@ -37,16 +40,26 @@ export function ensureRangeStepperStyles() {
       min-width: 0;
       margin-top: 0;
     }
+    .range-step-pair {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 3px;
+      padding: 2px;
+      border: 1px solid #3a3a3a;
+      border-radius: 5px;
+      background: #181818;
+    }
     .range-step-btn {
       flex: 0 0 auto;
-      width: 28px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       padding: 0;
-      border: 1px solid #666;
-      border-radius: 4px;
-      background: #222;
+      border: 1px solid #555;
+      border-radius: 3px;
+      background: #252525;
       color: #ffaa22;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       line-height: 1;
       cursor: pointer;
@@ -55,6 +68,10 @@ export function ensureRangeStepperStyles() {
     .range-step-btn:hover:not(:disabled) {
       background: #333;
       border-color: #ff9900;
+      color: #ffcc66;
+    }
+    .range-step-btn:active:not(:disabled) {
+      background: #3d2a00;
     }
     .range-step-btn:disabled {
       opacity: 0.4;
@@ -64,10 +81,30 @@ export function ensureRangeStepperStyles() {
   document.head.appendChild(style);
 }
 
+function makeStepButton(dir, end, col) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "range-step-btn";
+  btn.dataset.dir = String(dir);
+  btn.dataset.end = end;
+  const verb = dir < 0 ? "Decrease" : "Increase";
+  const which = end === "min" ? "minimum" : "maximum";
+  btn.setAttribute("aria-label", `${verb} ${col} ${which}`);
+  btn.textContent = dir < 0 ? "−" : "+";
+  return btn;
+}
+
+function makeStepPair(end, col) {
+  const pair = document.createElement("div");
+  pair.className = "range-step-pair";
+  pair.dataset.end = end;
+  pair.append(makeStepButton(-1, end, col), makeStepButton(1, end, col));
+  return pair;
+}
+
 /**
- * Wrap each matching .range-filter's sliders with − (left) and + (right).
- * Nudges the last-used thumb (default: − → min, + → max) by the input's step
- * (or stepForCol), then dispatches `input` so existing handlers run.
+ * Wrap each matching .range-filter's sliders with −/+ on both sides.
+ * Left pair → min thumb; right pair → max thumb.
  *
  * @param {{
  *   root?: ParentNode,
@@ -83,7 +120,15 @@ export function installRangeSteppers(opts = {}) {
   root.querySelectorAll(".range-filter[data-col]").forEach((wrap) => {
     const col = wrap.getAttribute("data-col") || "";
     if (!allow.has(col)) return;
-    if (wrap.querySelector(".range-filter-step-row")) return;
+
+    // Upgrade older single-button layout if present.
+    const existingRow = wrap.querySelector(".range-filter-step-row");
+    if (existingRow?.querySelector(".range-step-pair")) return;
+    if (existingRow) {
+      const keep = existingRow.querySelector(".range-filter-sliders");
+      if (keep) existingRow.replaceWith(keep);
+      else existingRow.remove();
+    }
 
     const sliders = wrap.querySelector(".range-filter-sliders");
     if (!sliders) return;
@@ -94,39 +139,18 @@ export function installRangeSteppers(opts = {}) {
 
     const row = document.createElement("div");
     row.className = "range-filter-step-row";
-
-    const minus = document.createElement("button");
-    minus.type = "button";
-    minus.className = "range-step-btn";
-    minus.dataset.dir = "-1";
-    minus.setAttribute("aria-label", `Decrease ${col} filter`);
-    minus.textContent = "−";
-
-    const plus = document.createElement("button");
-    plus.type = "button";
-    plus.className = "range-step-btn";
-    plus.dataset.dir = "1";
-    plus.setAttribute("aria-label", `Increase ${col} filter`);
-    plus.textContent = "+";
+    const leftPair = makeStepPair("min", col);
+    const rightPair = makeStepPair("max", col);
 
     sliders.replaceWith(row);
-    row.append(minus, sliders, plus);
+    row.append(leftPair, sliders, rightPair);
 
-    let activeEnd = null;
+    const allBtns = [...leftPair.querySelectorAll(".range-step-btn"), ...rightPair.querySelectorAll(".range-step-btn")];
 
     const syncDisabled = () => {
       const dis = minEl.disabled || maxEl.disabled;
-      minus.disabled = dis;
-      plus.disabled = dis;
+      for (const btn of allBtns) btn.disabled = dis;
     };
-
-    const mark = (end) => {
-      activeEnd = end;
-    };
-    minEl.addEventListener("pointerdown", () => mark("min"));
-    maxEl.addEventListener("pointerdown", () => mark("max"));
-    minEl.addEventListener("focus", () => mark("min"));
-    maxEl.addEventListener("focus", () => mark("max"));
 
     const stepSize = () => {
       if (typeof opts.stepForCol === "function") {
@@ -138,9 +162,8 @@ export function installRangeSteppers(opts = {}) {
       return rangeStepperStep(col);
     };
 
-    const nudge = (dir) => {
+    const nudge = (end, dir) => {
       if (minEl.disabled || maxEl.disabled) return;
-      const end = activeEnd || (dir < 0 ? "min" : "max");
       const el = end === "min" ? minEl : maxEl;
       const step = stepSize();
       const floor = Number(el.min);
@@ -154,20 +177,18 @@ export function installRangeSteppers(opts = {}) {
       if (end === "max" && next < otherVal) next = otherVal;
 
       el.value = String(next);
-      activeEnd = end;
       el.dispatchEvent(new Event("input", { bubbles: true }));
       syncDisabled();
     };
 
-    minus.addEventListener("click", (e) => {
+    row.addEventListener("click", (e) => {
+      const btn = e.target?.closest?.(".range-step-btn");
+      if (!btn || !row.contains(btn)) return;
       e.preventDefault();
       e.stopPropagation();
-      nudge(-1);
-    });
-    plus.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      nudge(1);
+      const end = btn.dataset.end === "max" ? "max" : "min";
+      const dir = Number(btn.dataset.dir) < 0 ? -1 : 1;
+      nudge(end, dir);
     });
 
     const mo = new MutationObserver(syncDisabled);

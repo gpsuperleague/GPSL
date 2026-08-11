@@ -36,7 +36,7 @@ import {
   buildGpdbContractedBidCellHtml,
   formatForeignContractGpdbHtml,
 } from "./player_transfer_status.js";
-import { installRangeSteppers } from "./range_filter_steppers.js";
+import { installRangeSteppers } from "./range_filter_steppers.js?v=20260811-step-pairs";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,

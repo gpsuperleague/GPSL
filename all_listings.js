@@ -23,7 +23,7 @@ import {
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
 import { textMatchesSearch } from "./search_normalize.js";
-import { installRangeSteppers, RANGE_STEP_MONEY } from "./range_filter_steppers.js";
+import { installRangeSteppers, RANGE_STEP_MONEY } from "./range_filter_steppers.js?v=20260811-step-pairs";
 import {
   loadScoutingTargetMap,
   isScoutingAvailable,

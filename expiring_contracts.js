@@ -6,10 +6,10 @@ import {
   minExpiryWageOffer,
 } from "./wages.js?v=20260805-nbsp";
 import { renderExpiringContractRules, CHAMP_SL_SIGNING_FEE_PCT } from "./expiring_contracts_rules.js?v=20260806-league-fee2";
-import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260811-range-steppers";
+import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260811-step-pairs";
 import { textMatchesSearch } from "./search_normalize.js";
 import { leagueBadgeHtml } from "./competition.js";
-import { installRangeSteppers } from "./range_filter_steppers.js";
+import { installRangeSteppers } from "./range_filter_steppers.js?v=20260811-step-pairs";
 
 const POSITION_ORDER = [
   "GK",

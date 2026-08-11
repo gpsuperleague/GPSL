@@ -16,7 +16,7 @@ import {
 } from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
-import { installRangeSteppers } from "./range_filter_steppers.js";
+import { installRangeSteppers } from "./range_filter_steppers.js?v=20260811-step-pairs";
 
 const TABLE_COLUMNS = [
   { key: "name", label: "Manager" },

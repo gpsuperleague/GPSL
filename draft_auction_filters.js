@@ -4,7 +4,7 @@
 
 import { wageFromMarketValue } from "./wages.js";
 import { textMatchesSearch } from "./search_normalize.js";
-import { installRangeSteppers, RANGE_STEP_MONEY } from "./range_filter_steppers.js";
+import { installRangeSteppers, RANGE_STEP_MONEY } from "./range_filter_steppers.js?v=20260811-step-pairs";
 
 const POSITION_ORDER = [
   "GK", "LB", "CB", "RB",
