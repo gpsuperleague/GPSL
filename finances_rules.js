@@ -32,8 +32,6 @@ export function getFinancesOverviewNotes() {
         <li>League prize pending follows your <b>current table position</b> (if that finish holds).</li>
       </ul>
       <p class="fin-help-foot">Soft only — does not block bids.</p>`,
-    banking: `Loans, treasury, and repayments are handled at the
-            <strong style="color:#e8c86a;">GPSL Central Bank</strong> — separate from your club accounts.`,
     seasonHistory: `Final finances for up to the last five completed seasons. Select a season to view its archived accounts and ledger.`,
   };
 }
@@ -45,7 +43,6 @@ export function renderFinancesOverviewNotes() {
     ["finBalanceNote", notes.balance],
     ["finPredictedNote", notes.predicted],
     ["advisoryTransferBudgetNote", notes.advisory],
-    ["finBankingBlurb", notes.banking],
     ["finSeasonHistoryNote", notes.seasonHistory],
   ];
   for (const [id, html] of map) {

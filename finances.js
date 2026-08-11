@@ -1,6 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
-import { formatMoney, loadClubSeasonArchive } from "./competition.js";
+import { formatMoney } from "./competition.js";
 import { loadClubWageBillSummary } from "./club_wage_bill.js";
 import {
   advisoryBudgetTitle,
@@ -67,28 +67,6 @@ function setWageBillDisplay(bill) {
   playersEl.textContent = formatMoney(bill.players);
   managerEl.textContent = formatMoney(bill.manager);
   totalEl.textContent = formatMoney(bill.total);
-}
-
-function renderArchive(rows) {
-  const el = document.getElementById("archiveList");
-  if (!el) return;
-
-  if (!rows.length) {
-    el.innerHTML =
-      '<p class="empty">No archived seasons — gate history uses a neutral mid-table boost until rows are added.</p>';
-    return;
-  }
-
-  el.innerHTML = `
-    <ul class="archive-ul">
-      ${rows
-        .map(
-          (r) =>
-            `<li><b>${r.season_label}</b> — ${r.division}, finished <b>${r.final_position}</b></li>`
-        )
-        .join("")}
-    </ul>
-  `;
 }
 
 async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false } = {}) {
@@ -191,7 +169,6 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     }
   }
 
-  renderArchive(await loadClubSeasonArchive(supabase, shortName));
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

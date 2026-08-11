@@ -104,10 +104,6 @@
         grid-template-columns:1fr;
       }
     }
-    .bank-note {
-      background:#222; border:1px solid #444; border-radius:6px;
-      padding:12px; font-size:13px; color:#bbb;
-    }
     a { color:#ff9900; }
     .toolbar { margin-bottom:12px; }
     .toolbar a.button { font-size:13px; margin-right:8px; }
@@ -185,19 +181,6 @@
     }
     .stat-box.stat-link:hover .link-hint { color:#ff9900; }
 
-    .empty { color:#888; font-size:13px; }
-    .archive-ul { margin:0; padding-left:20px; color:#ccc; }
-    .bank-visit-card {
-      display:flex; align-items:center; gap:20px; flex-wrap:wrap;
-      background: linear-gradient(135deg, #1f1f28 0%, #1a1a22 100%);
-      border:1px solid #4a4030; border-radius:8px; padding:20px;
-    }
-    .bank-visit-card .bank-mini { font-size:48px; }
-    .bank-visit-card a.bank-link {
-      display:inline-block; margin-top:10px; padding:10px 18px;
-      background: linear-gradient(180deg, #d4af37, #8b6914);
-      color:#111; font-weight:bold; text-decoration:none; border-radius:4px;
-    }
   </style>
 </head>
 <body>
@@ -278,28 +261,11 @@
     </div>
 
     <div class="panel">
-      <h2>Banking</h2>
-      <div class="bank-visit-card">
-        <div class="bank-mini" aria-hidden="true">🏛️</div>
-        <div>
-          <p id="finBankingBlurb" style="margin:0 0 8px;color:#ccc;"><!-- Filled by finances_rules.js --></p>
-          <a href="central_bank_counter.html" class="bank-link">Visit the service counter →</a>
-          <a href="central_bank.html" class="bank-link" style="margin-left:12px;">Bank balance →</a>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>5-year record (gate multiplier)</h2>
-      <div id="archiveList"></div>
-    </div>
-
-    <div class="panel">
       <h2>Season history</h2>
       <p class="footer-note" id="finSeasonHistoryNote" style="margin-top:0;"><!-- Filled by finances_rules.js --></p>
       <div id="financeSeasonHistory"></div>
     </div>
   </div>
-  <script type="module" src="finances.js?v=20260811-tips"></script>
+  <script type="module" src="finances.js?v=20260811-trim-panels"></script>
 </body>
 </html>
