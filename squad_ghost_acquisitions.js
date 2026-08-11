@@ -8,7 +8,7 @@ import {
   isBuyerBidOnLiveAuction,
   isBuyerBidAwaitingSellerReview,
   getBidPlayerId,
-} from "./direct_offers.js";
+} from "./direct_offers.js?v=20260811-ghost-lead";
 
 const GHOST_PLAYER_COLUMNS =
   "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Contracted_Team";

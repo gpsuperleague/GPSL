@@ -13,11 +13,11 @@ export function getBidPlayerId(row) {
 }
 
 function isBuyerLeadingOnListing(listing, buyerClubShort) {
-  const club = String(buyerClubShort || "").trim();
-  return (
-    !!listing?.current_highest_bidder &&
-    String(listing.current_highest_bidder) === club
-  );
+  const club = String(buyerClubShort || "").trim().toUpperCase();
+  const leader = String(listing?.current_highest_bidder || "")
+    .trim()
+    .toUpperCase();
+  return !!club && !!leader && leader === club;
 }
 
 /** Open auction on the transfer list — matches market “Active” rows where you lead. */
@@ -33,7 +33,9 @@ export function isBuyerBidOnLiveAuction(bid, listing, buyerClubShort, options = 
     if (!listing || String(listing.listing_type || "").toLowerCase() !== "draft") {
       return false;
     }
-    return String(listing.status || "") === "Active";
+    if (String(listing.status || "") !== "Active") return false;
+    // Must still be leading — outbid clubs keep active bid rows but leave the ghost
+    return isBuyerLeadingOnListing(listing, club);
   }
 
   if (isPendingContractedDirectOffer(bid)) return false;
@@ -46,7 +48,7 @@ export function isBuyerBidOnLiveAuction(bid, listing, buyerClubShort, options = 
   const lt = String(listing.listing_type || "").toLowerCase();
   if (lt === "draft") {
     if (draftEnded) return false;
-    return true;
+    return isBuyerLeadingOnListing(listing, club);
   }
 
   const end = listing.end_time ? new Date(listing.end_time) : null;

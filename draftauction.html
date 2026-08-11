@@ -275,6 +275,34 @@
     }
     .bid-btn.view-only:hover { background:#555; }
 
+    .draft-row-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .draft-hide-btn {
+      background: transparent;
+      color: #999;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      line-height: 1.3;
+    }
+    .draft-hide-btn:hover {
+      color: #ffcc66;
+      border-color: #886600;
+    }
+    .draft-hide-btn.is-hidden-row {
+      color: #8d8;
+      border-color: #3a5a3a;
+    }
+    tr.draft-row-hidden td {
+      opacity: 0.55;
+    }
+
     button.button.button-secondary {
       background:#333;
       color:#ddd;
@@ -637,6 +665,10 @@
       <input type="checkbox" id="draftMyBidsOnly">
       <span>My club&apos;s bids only</span>
     </label>
+    <label class="filter-check" title="Show auctions you hid from this page (bids are unchanged)">
+      <input type="checkbox" id="draftShowHidden">
+      <span>Show hidden</span>
+    </label>
     <div class="filter-action">
       <span class="filter-action-label">Club</span>
       <div class="filter-action-btns">
@@ -787,6 +819,11 @@
       favouriteStarChar,
       favouriteButtonLabel,
     } from "./draft_favourites.js";
+    import {
+      loadDraftHiddenIds,
+      toggleDraftPlayerHidden,
+      draftHideButtonLabel,
+    } from "./draft_hidden.js?v=20260811-draft-hide";
     import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
     import {
       playerThumbLinkHtml,
@@ -820,6 +857,7 @@
     let draftEnabled = false;
     let draftAuctionStartTimeUK = null;
     let favouriteIds = new Set();
+    let hiddenIds = new Set();
     /** @type {Map<string, number>} */
     let scoutingTargetMap = new Map();
     let scoutedOnly = false;
@@ -876,6 +914,7 @@
       const search = document.getElementById("draftPlayerSearch");
       const leading = document.getElementById("draftLeadingClubFilter");
       const myBids = document.getElementById("draftMyBidsOnly");
+      const showHidden = document.getElementById("draftShowHidden");
       const scoutedBtn = document.getElementById("draftScoutedFilterBtn");
 
       if (search && typeof saved.nameQuery === "string") {
@@ -888,6 +927,9 @@
       }
       if (myBids && buyerShortName && typeof saved.myBidsOnly === "boolean") {
         myBids.checked = saved.myBidsOnly;
+      }
+      if (showHidden && typeof saved.showHidden === "boolean") {
+        showHidden.checked = saved.showHidden;
       }
       if (typeof saved.scoutedOnly === "boolean") {
         scoutedOnly = saved.scoutedOnly && Boolean(buyerShortName);
@@ -1134,6 +1176,7 @@
       restorePersistedDraftFilters();
       applyDraftRefreshInterval();
       favouriteIds = await loadDraftFavouriteIds(supabase, buyerShortName);
+      hiddenIds = loadDraftHiddenIds(buyerShortName);
       wireDraftTableActions();
       wireDraftRefreshButton();
       wireDraftFilters();
@@ -1199,12 +1242,40 @@
       renderDraftTable();
     }
 
+    function applyDraftHiddenLocal(konamiId, isHidden) {
+      const key = String(konamiId);
+      for (const row of draftRowsCache) {
+        if (String(row.player.Konami_ID) === key) {
+          row.isHidden = isHidden;
+        }
+      }
+      renderDraftTable();
+    }
+
     function wireDraftTableActions() {
       if (draftTableWired) return;
       draftTableWired = true;
 
       const tbody = document.getElementById("draftTableBody");
       tbody.addEventListener("click", async (e) => {
+        const hideBtn = e.target.closest(".draft-hide-btn");
+        if (hideBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!buyerShortName) {
+            alert("Link a club to your account to hide draft threads.");
+            return;
+          }
+          const konamiId = hideBtn.getAttribute("data-konami-id");
+          const nowHidden = toggleDraftPlayerHidden(
+            buyerShortName,
+            hiddenIds,
+            konamiId
+          );
+          applyDraftHiddenLocal(konamiId, nowHidden);
+          return;
+        }
+
         const favBtn = e.target.closest(".fav-btn");
         if (favBtn) {
           e.preventDefault();
@@ -1280,6 +1351,7 @@
       const search = document.getElementById("draftPlayerSearch");
       const leading = document.getElementById("draftLeadingClubFilter");
       const myBids = document.getElementById("draftMyBidsOnly");
+      const showHidden = document.getElementById("draftShowHidden");
       const scoutedBtn = document.getElementById("draftScoutedFilterBtn");
       const myClubBtn = document.getElementById("draftMyClubFilterBtn");
       const myNationBtn = document.getElementById("draftMyNationBtn");
@@ -1304,6 +1376,10 @@
         savePersistedDraftFilters();
       });
       myBids?.addEventListener("change", () => {
+        renderDraftTable();
+        savePersistedDraftFilters();
+      });
+      showHidden?.addEventListener("change", () => {
         renderDraftTable();
         savePersistedDraftFilters();
       });
@@ -1365,6 +1441,7 @@
         if (search) search.value = "";
         if (leading) leading.value = "";
         if (myBids) myBids.checked = false;
+        if (showHidden) showHidden.checked = false;
         scoutedOnly = false;
         myClubLeadingOnly = false;
         scoutedBtn?.classList.remove("is-active");
@@ -1378,6 +1455,10 @@
         myBids.disabled = true;
         myBids.title = "Link a club to your account to use this filter";
       }
+      if (showHidden && !buyerShortName) {
+        showHidden.disabled = true;
+        showHidden.title = "Link a club to hide or restore draft threads";
+      }
     }
 
     function getDraftFilterState() {
@@ -1385,6 +1466,7 @@
         nameQuery: document.getElementById("draftPlayerSearch")?.value.trim() || "",
         leadingClub: document.getElementById("draftLeadingClubFilter")?.value || "",
         myBidsOnly: document.getElementById("draftMyBidsOnly")?.checked === true,
+        showHidden: document.getElementById("draftShowHidden")?.checked === true,
         scoutedOnly,
         myClubLeadingOnly,
         refreshIntervalSec: getDraftRefreshIntervalSec(),
@@ -1393,7 +1475,8 @@
     }
 
     function applyDraftFilters(rows) {
-      const { nameQuery, leadingClub, myBidsOnly } = getDraftFilterState();
+      const { nameQuery, leadingClub, myBidsOnly, showHidden } =
+        getDraftFilterState();
       let filtered = rows;
 
       if (nameQuery) {
@@ -1412,6 +1495,10 @@
 
       if (myBidsOnly && buyerShortName) {
         filtered = filtered.filter((row) => row.myClubBid);
+      }
+
+      if (!showHidden) {
+        filtered = filtered.filter((row) => !row.isHidden);
       }
 
       if (scoutedOnly) {
@@ -1433,13 +1520,16 @@
       const el = document.getElementById("draftFilterSummary");
       if (!el) return;
 
-      const { nameQuery, leadingClub, myBidsOnly } = getDraftFilterState();
+      const { nameQuery, leadingClub, myBidsOnly, showHidden } =
+        getDraftFilterState();
+      const hiddenCount = draftRowsCache.filter((r) => r.isHidden).length;
       const active =
         nameQuery ||
         leadingClub ||
         myBidsOnly ||
         scoutedOnly ||
         myClubLeadingOnly ||
+        (!showHidden && hiddenCount > 0) ||
         advancedFilters.isActive();
 
       if (!active || total === 0) {
@@ -1449,10 +1539,16 @@
       }
 
       el.hidden = false;
+      const hideNote =
+        !showHidden && hiddenCount > 0
+          ? ` · ${hiddenCount} hidden`
+          : showHidden && hiddenCount > 0
+            ? ` · including ${hiddenCount} hidden`
+            : "";
       el.textContent =
         shown === total
-          ? `Showing all ${total} thread${total === 1 ? "" : "s"} (filtered)`
-          : `Showing ${shown} of ${total} thread${total === 1 ? "" : "s"}`;
+          ? `Showing all ${total} thread${total === 1 ? "" : "s"} (filtered)${hideNote}`
+          : `Showing ${shown} of ${total} thread${total === 1 ? "" : "s"}${hideNote}`;
     }
 
     function renderDraftTable() {
@@ -1476,8 +1572,22 @@
       for (const row of filtered) {
         const tr = document.createElement("tr");
         if (row.isFav) tr.classList.add("draft-fav-row");
+        if (row.isHidden) tr.classList.add("draft-row-hidden");
         if (row.myClubLeading) tr.classList.add("draft-row-my-leading");
         else if (row.myClubBid) tr.classList.add("draft-row-my-bid");
+
+        const hideBtn = row.myClubBid
+          ? `<button
+              type="button"
+              class="draft-hide-btn${row.isHidden ? " is-hidden-row" : ""}"
+              data-konami-id="${row.player.Konami_ID}"
+              title="${
+                row.isHidden
+                  ? "Show this auction in the list again (does not change your bid)"
+                  : "Hide this auction from your list (does not change your bid)"
+              }"
+            >${draftHideButtonLabel(row.isHidden)}</button>`
+          : "";
 
         tr.innerHTML = `
           <td class="col-fav">
@@ -1501,13 +1611,16 @@
           <td class="col-leading-club">${row.leadingClubFull}</td>
           <td class="col-owner"><span class="club-owner-tag">${row.leadingOwner}</span></td>
           <td class="col-compact">
-            <button
-              class="bid-btn ${row.btnClass}"
-              data-konami-id="${row.player.Konami_ID}"
-              ${row.auctionEnded || row.canBid ? "" : "disabled"}
-            >
-              ${row.btnLabel}
-            </button>
+            <div class="draft-row-actions">
+              <button
+                class="bid-btn ${row.btnClass}"
+                data-konami-id="${row.player.Konami_ID}"
+                ${row.auctionEnded || row.canBid ? "" : "disabled"}
+              >
+                ${row.btnLabel}
+              </button>
+              ${hideBtn}
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
@@ -1657,6 +1770,7 @@
             : "disabled";
         const btnLabel = auctionEnded ? "View" : canBid ? "Bid" : "Locked";
         const isFav = favouriteIds.has(String(player.Konami_ID));
+        const isHidden = hiddenIds.has(String(player.Konami_ID));
 
         draftRowsCache.push({
           player,
@@ -1671,6 +1785,7 @@
           btnClass,
           btnLabel,
           isFav,
+          isHidden,
           auctionEnded,
         });
       }
