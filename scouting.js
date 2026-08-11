@@ -41,6 +41,30 @@ import {
   playerEligibleStar,
   DESIGNATION_OOO,
 } from "./squad_designations.js";
+
+/** Compact HG / ★ / U21 markers for scouting name cells. */
+function scoutingPlayerBadgesHtml(player) {
+  if (!player) return "";
+  const minStar = Number(squadDesignationsState?.star_min_rating ?? 79);
+  const bits = [];
+  if (isHomeGrownPlayer(player, clubNation)) {
+    bits.push(
+      `<span class="scout-badge scout-badge-hg" title="Home-grown (Nation matches your club)">HG</span>`
+    );
+  }
+  if (playerEligibleStar(player, minStar)) {
+    bits.push(
+      `<span class="scout-badge scout-badge-star" title="Star-rated (${minStar}+)">★</span>`
+    );
+  }
+  if (isUnder21(player)) {
+    bits.push(
+      `<span class="scout-badge scout-badge-u21" title="Under-21 (age 21 or younger)">U21</span>`
+    );
+  }
+  if (!bits.length) return "";
+  return ` <span class="scout-badges">${bits.join("")}</span>`;
+}
 import { mountAdvisoryTransferBudget } from "./club_bank_balance_ui.js";
 
 const PLAYER_COLUMNS =
@@ -104,8 +128,7 @@ function updateActiveTargetsHeader() {
   totalEl.textContent = formatMoney(total);
   totalEl.classList.toggle("is-over", false);
   if (metaEl) {
-    metaEl.textContent =
-      count === 0 ? "None selected" : `${count} selected`;
+    metaEl.textContent = count > 0 ? `(${count})` : "";
   }
   updateRegistrationStrip();
 }
@@ -212,7 +235,7 @@ function updateRegistrationStrip() {
 
   el.hidden = false;
   el.innerHTML = `
-    <span class="scout-reg-label" title="${tip}">Reg</span>
+    <span class="scout-reg-label" title="${tip}">Reg:</span>
     ${regChip("Sq", owned.total, addT.n, [MIN_SQUAD_SIZE, SQUAD_SIZE], "range", `Squad size: owned ${owned.total}, active +${addT.n} → ${owned.total + addT.n} (need ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`)}
     ${regChip("GK", owned.goalkeepers, addT.gk, MIN_GOALKEEPERS, "min", `Goalkeepers: owned ${owned.goalkeepers}, active +${addT.gk}`)}
     ${regChip("HG", owned.homeGrown, addT.hg, MIN_HOME_GROWN, "min", `Home-grown (Nation match): owned ${owned.homeGrown}, active +${addT.hg}`)}
@@ -534,7 +557,7 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
             return `
           <tr data-player-id="${pid}" class="${isActive ? "scout-active-row" : ""}">
             <td>${playerThumbLinkHtml(pid, { className: "scout-thumb", alt: name })}</td>
-            <td class="name">${playerNameLinkHtml(pid, name)}</td>
+            <td class="name">${playerNameLinkHtml(pid, name)}${scoutingPlayerBadgesHtml(p)}</td>
             <td>${p?.Nation || "—"}</td>
             <td>${p?.Position || "—"}</td>
             <td>${p?.Age ?? "—"}</td>
