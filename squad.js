@@ -104,6 +104,7 @@ import {
   designationRoleBadge,
   playerEligibleStar,
   starComplianceRow,
+  projectedStarComplianceRow,
   oooComplianceRow,
   DESIGNATION_STAR,
   DESIGNATION_OOO,
@@ -1583,6 +1584,12 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
     ? squadComplianceRuleRows(projected, clubNation, squadMinimumStatus)
     : [];
   const projectedByRule = new Map(projectedRows.map((r) => [r.rule, r]));
+  if (hasGhosts && designationsState) {
+    projectedByRule.set(
+      "Star players",
+      projectedStarComplianceRow(designationsState, ghosts)
+    );
+  }
 
   const preAugust = !squadMinimumStatus?.punishments_active;
   const registrationOk = c.compliant && c.minSquadOk;
@@ -1602,9 +1609,13 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
             ? `−${c.minSquadShort} pre-Aug`
             : shortComplianceStatus(r)
           : shortComplianceStatus(r);
+      const projDisplay =
+        projCount != null && r.rule === "Star players"
+          ? `${projCount} / ${Number(designationsState?.star_cap ?? 2)}`
+          : projCount;
       const projCell =
         hasGhosts && projCount != null
-          ? `<td class="squad-rules-count squad-rules-count--ghost" title="If ${ghosts.length} pending bid${ghosts.length === 1 ? "" : "s"} complete"><strong>${projCount}</strong></td>`
+          ? `<td class="squad-rules-count squad-rules-count--ghost" title="If ${ghosts.length} pending bid${ghosts.length === 1 ? "" : "s"} complete"><strong>${projDisplay}</strong></td>`
           : hasGhosts
             ? `<td class="squad-rules-count squad-rules-count--ghost muted">—</td>`
             : "";

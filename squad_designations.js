@@ -158,6 +158,38 @@ export function starComplianceRow(state) {
   };
 }
 
+/**
+ * Star count if pending (ghost) acquisitions complete.
+ * Ghosts that are already star-eligible count toward the cap (OooO still excused).
+ */
+export function projectedStarCount(state, ghostPlayers = []) {
+  const owned = Number(state?.star_count ?? 0);
+  const minRating = Number(state?.star_min_rating ?? 79);
+  const oooId =
+    state?.one_of_our_own_player_id != null
+      ? String(state.one_of_our_own_player_id)
+      : null;
+  let add = 0;
+  for (const p of ghostPlayers || []) {
+    if (!p) continue;
+    if (oooId && String(p.Konami_ID) === oooId) continue;
+    if (playerEligibleStar(p, minRating)) add += 1;
+  }
+  return owned + add;
+}
+
+export function projectedStarComplianceRow(state, ghostPlayers = []) {
+  const cap = Number(state?.star_cap ?? 2);
+  const count = projectedStarCount(state, ghostPlayers);
+  const base = starComplianceRow(state);
+  return {
+    ...base,
+    count,
+    ok: count <= cap,
+    status: count <= cap ? "Within limit" : "Over limit",
+  };
+}
+
 export function oooComplianceRow(state) {
   const has = !!state?.one_of_our_own_player_id;
   return {
