@@ -35,6 +35,32 @@
     .stat-box .value.negative { color:#f88; }
     .stat-box .value.neutral { color:#ff9900; }
     .stat-box .value.muted { color:#888; font-size:16px; }
+
+    /* Keep balance amounts on one horizontal baseline across boxes */
+    .balance-grid--totals > .stat-box {
+      display:grid;
+      grid-template-rows: 2.7em auto 1.35em;
+      align-items:center;
+      gap:6px;
+      box-sizing:border-box;
+    }
+    .balance-grid--totals .stat-box .label {
+      margin:0;
+      height:100%;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+    }
+    .balance-grid--totals .stat-box .value,
+    .balance-grid--totals .stat-box .value.muted {
+      font-size:20px;
+      line-height:1.25;
+      margin:0;
+    }
+    .balance-grid--totals .stat-box .link-hint {
+      margin-top:0;
+      align-self:end;
+    }
     .footer-note { color:#888; font-size:12px; line-height:1.5; margin:8px 0 0; }
     .fin-help-blocks {
       display:grid;
@@ -145,11 +171,17 @@
       display:block; text-decoration:none; color:inherit;
       border:1px solid transparent; transition:border-color 0.15s, background 0.15s;
     }
+    .balance-grid--totals > .stat-box.stat-link {
+      display:grid;
+    }
     .stat-box.stat-link:hover {
       border-color:#ff9900; background:#2a2a2a;
     }
     .stat-box.stat-link .link-hint {
       display:block; font-size:10px; color:#888; margin-top:4px; font-weight:normal;
+    }
+    .balance-grid--totals .stat-box.stat-link .link-hint {
+      margin-top:0;
     }
     .stat-box.stat-link:hover .link-hint { color:#ff9900; }
 
@@ -203,7 +235,7 @@
 
     <div class="panel">
       <h2>Balance</h2>
-      <div class="balance-grid">
+      <div class="balance-grid balance-grid--totals">
         <div class="stat-box gpsl-has-tip" data-gpsl-tip="GPSL starting budget for the season (before auctions), or last season’s archived closing balance carried forward." tabindex="0">
           <div class="label">Season opening balance</div>
           <div class="value muted" id="openingBalance">—</div>
