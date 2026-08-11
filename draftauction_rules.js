@@ -6,36 +6,30 @@ import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260811-draft-ltr";
 export function getDraftAuctionRules() {
   return {
     title: "How player draft works",
-    lead: "Live threads are listed below. Open a new free agent from <a href=\"GPDB.html\">GPDB</a>; join or raise bids here.",
+    lead: "Live threads below. Open free agents from <a href=\"GPDB.html\">GPDB</a>; join or raise bids here.",
     cards: [
       {
-        heading: "1 · Earn bid credits",
+        heading: "1 · Credits",
         items: [
-          "In <a href=\"GPDB.html\">GPDB</a>, be the <b>first</b> club to place a Draft Offer on a free agent.",
-          "That opening bid earns you <b>2 credits</b> for later.",
+          "First Draft Offer on a FA in <a href=\"GPDB.html\">GPDB</a> earns <b>2 credits</b>.",
         ],
       },
       {
-        heading: "2 · Join or raise here",
+        heading: "2 · Join / raise",
         items: [
-          "Each existing player thread you join costs <b>1 draft credit</b>.",
-          "You cannot join with <b>zero</b> credits — earn one in GPDB first.",
-          "Outbid rivals until the window ends.",
+          "Joining a thread costs <b>1 credit</b> (need ≥1). Outbid until the window ends.",
         ],
       },
       {
-        heading: "3 · Highest bid wins",
+        heading: "3 · Winner",
         items: [
-          "Draft closes with a random finish after <b>6:50pm UK</b> on Day 2.",
-          "Leading bid on each player wins at settlement.",
+          "Random finish after <b>6:50pm UK</b> Day 2. Leading bid wins.",
         ],
       },
       {
         heading: "Timing (UK)",
         items: [
-          "No bids by <b>6pm</b> → no bids after 6pm.",
-          "No free agent openings after <b>6pm</b>.",
-          "Countdowns show <b>your local</b> time.",
+          "No new bids or FA openings after <b>6pm</b>. Countdowns use local time.",
         ],
       },
       {
@@ -45,11 +39,9 @@ export function getDraftAuctionRules() {
         ],
       },
       {
-        heading: "Fair play — no auto-bid probing",
+        heading: "Fair play",
         items: [
-          "Do <b>not</b> open or bid on auctions just to nudge prices up by forcing rivals’ <b>max / auto-bids</b> to fire.",
-          "Min-step probes and repeated “bump then walk away” bids to inflate a listing are against fair play.",
-          "Admins may remove abusive bids and sanction repeat offenders.",
+          "Don’t probe to force rivals’ <b>max / auto-bids</b> up. Admins may remove bids / sanction.",
         ],
       },
     ],
