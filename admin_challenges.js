@@ -10,8 +10,71 @@ const STAT_LABELS = {
   club_goals_for: "Club goals",
   club_clean_sheets: "Clean sheets",
   club_potm_awards: "POTM awards",
+  player_hattrick_matchday: "Hat-trick on matchday",
   transfer_sign_nation: "Sign by nationality",
+  transfer_sign_homegrown: "Sign home-grown",
+  transfer_sign_rated: "Sign low-rated player",
 };
+
+function formatStatParamDetail(statType, param) {
+  if (!param) return "";
+  if (statType === "transfer_sign_nation") return ` (${param})`;
+  if (statType === "player_hattrick_matchday") {
+    const md = String(param).replace(/[^0-9]/g, "") || param;
+    return md === "1" ? " (opening day / MD1)" : ` (MD${md})`;
+  }
+  if (statType === "transfer_sign_rated") {
+    try {
+      const o = typeof param === "object" ? param : JSON.parse(param);
+      const bits = [`≤${o.max_rating}`];
+      if (o.require_age) bits.push(`age≤${o.max_age ?? 21}`);
+      if (o.require_hg) bits.push("HG");
+      return ` (${bits.join(", ")})`;
+    } catch {
+      return ` (${param})`;
+    }
+  }
+  return "";
+}
+
+function buildRatedStatParam() {
+  const maxRating = Number(document.getElementById("challengeMaxRating")?.value);
+  const requireAge = !!document.getElementById("challengeRequireAge")?.checked;
+  const maxAge = Number(document.getElementById("challengeMaxAge")?.value) || 21;
+  const requireHg = !!document.getElementById("challengeRequireHg")?.checked;
+  if (!Number.isFinite(maxRating) || maxRating < 1 || maxRating > 99) {
+    throw new Error("Max rating must be between 1 and 99.");
+  }
+  if (requireAge && (maxAge < 15 || maxAge > 45)) {
+    throw new Error("Max age must be between 15 and 45.");
+  }
+  return JSON.stringify({
+    max_rating: maxRating,
+    require_age: requireAge,
+    max_age: maxAge,
+    require_hg: requireHg,
+  });
+}
+
+function fillRatedOptsFromParam(param) {
+  let o = { max_rating: 65, require_age: false, max_age: 21, require_hg: false };
+  if (param) {
+    try {
+      o = { ...o, ...(typeof param === "object" ? param : JSON.parse(param)) };
+    } catch {
+      const n = Number(param);
+      if (Number.isFinite(n)) o.max_rating = n;
+    }
+  }
+  const ratingEl = document.getElementById("challengeMaxRating");
+  const ageChk = document.getElementById("challengeRequireAge");
+  const ageEl = document.getElementById("challengeMaxAge");
+  const hgChk = document.getElementById("challengeRequireHg");
+  if (ratingEl) ratingEl.value = String(o.max_rating ?? 65);
+  if (ageChk) ageChk.checked = !!o.require_age;
+  if (ageEl) ageEl.value = String(o.max_age ?? 21);
+  if (hgChk) hgChk.checked = !!o.require_hg;
+}
 
 let currentSeasonId = null;
 
@@ -127,10 +190,19 @@ function syncWindowMonths() {
 
 function syncStatParamVisibility() {
   const stat = document.getElementById("challengeStatType").value;
-  const wrap = document.getElementById("challengeStatParamWrap");
-  if (!wrap) return;
-  wrap.hidden = stat !== "transfer_sign_nation";
-  if (stat === "transfer_sign_nation") {
+  const nationWrap = document.getElementById("challengeStatParamWrap");
+  const ratedWrap = document.getElementById("challengeRatedOptsWrap");
+  const mdWrap = document.getElementById("challengeMatchdayWrap");
+  if (nationWrap) nationWrap.hidden = stat !== "transfer_sign_nation";
+  if (ratedWrap) ratedWrap.hidden = stat !== "transfer_sign_rated";
+  if (mdWrap) mdWrap.hidden = stat !== "player_hattrick_matchday";
+
+  if (
+    stat === "transfer_sign_nation" ||
+    stat === "transfer_sign_homegrown" ||
+    stat === "transfer_sign_rated" ||
+    stat === "player_hattrick_matchday"
+  ) {
     const target = document.getElementById("challengeTarget");
     if (target && !target.value) target.value = "1";
   }
@@ -173,6 +245,9 @@ function clearChallengeForm() {
   document.getElementById("challengeWindow").value = "start";
   syncWindowMonths();
   document.getElementById("challengeStatType").value = "club_wins";
+  fillRatedOptsFromParam(null);
+  const mdEl = document.getElementById("challengeMatchday");
+  if (mdEl) mdEl.value = "1";
   syncStatParamVisibility();
   document.getElementById("challengeIncludeLeague").checked = true;
   document.getElementById("challengeIncludeCup").checked = false;
@@ -188,7 +263,17 @@ function fillChallengeForm(row) {
   document.getElementById("challengeMonthFrom").value = row.gpsl_month_from;
   document.getElementById("challengeMonthTo").value = row.gpsl_month_to;
   document.getElementById("challengeStatType").value = row.stat_type;
-  document.getElementById("challengeStatParam").value = row.stat_param || "";
+  document.getElementById("challengeStatParam").value =
+    row.stat_type === "transfer_sign_nation" ? row.stat_param || "" : "";
+  if (row.stat_type === "transfer_sign_rated") {
+    fillRatedOptsFromParam(row.stat_param);
+  }
+  if (row.stat_type === "player_hattrick_matchday") {
+    const mdEl = document.getElementById("challengeMatchday");
+    if (mdEl) {
+      mdEl.value = String(row.stat_param || "1").replace(/[^0-9]/g, "") || "1";
+    }
+  }
   document.getElementById("challengeTarget").value = String(row.target_value);
   document.getElementById("challengePrize").value = String(row.prize_amount);
   document.getElementById("challengeIncludeLeague").checked = row.include_league !== false;
@@ -229,9 +314,7 @@ async function loadChallengeList() {
   function renderRow(row) {
     const comps = [row.include_league && "league", row.include_cup && "cup"].filter(Boolean).join("+");
     const nation =
-      row.stat_type === "transfer_sign_nation" && row.stat_param
-        ? ` (${row.stat_param})`
-        : "";
+      formatStatParamDetail(row.stat_type, row.stat_param);
     return `
       <div class="challenge-admin-item">
         <div>
@@ -365,9 +448,10 @@ async function loadChallengeProgressBoard() {
           <div>
             <b>${c.title}</b>
             <span class="challenge-admin-meta">
-              ${c.window_phase} · ${STAT_LABELS[c.stat_type] || c.stat_type}${
-                c.stat_param ? ` (${c.stat_param})` : ""
-              } ≥ ${c.target_value} · ${formatMoney(c.prize_amount)} · ${openTag}
+              ${c.window_phase} · ${STAT_LABELS[c.stat_type] || c.stat_type}${formatStatParamDetail(
+                c.stat_type,
+                c.stat_param
+              )} ≥ ${c.target_value} · ${formatMoney(c.prize_amount)} · ${openTag}
               · ${c.achiever_count || 0} club(s)
             </span>
           </div>
@@ -420,6 +504,43 @@ async function saveChallenge() {
     return;
   }
 
+  const statType = document.getElementById("challengeStatType").value;
+  let statParam = null;
+  try {
+    if (statType === "transfer_sign_nation") {
+      statParam =
+        (document.getElementById("challengeStatParam").value || "")
+          .trim()
+          .toUpperCase() || null;
+      if (!statParam) {
+        setStatus(
+          "challengeFormStatus",
+          "Nation code required (e.g. NOR, ESP, TPE).",
+          false
+        );
+        return;
+      }
+    } else if (statType === "transfer_sign_rated") {
+      statParam = buildRatedStatParam();
+    } else if (statType === "player_hattrick_matchday") {
+      const md = Number(document.getElementById("challengeMatchday")?.value);
+      if (!Number.isFinite(md) || md < 1) {
+        setStatus(
+          "challengeFormStatus",
+          "Matchday required (1 = opening day).",
+          false
+        );
+        return;
+      }
+      statParam = String(md);
+    } else if (statType === "transfer_sign_homegrown") {
+      statParam = null;
+    }
+  } catch (err) {
+    setStatus("challengeFormStatus", err.message || String(err), false);
+    return;
+  }
+
   const payload = {
     season_id: currentSeasonId,
     id: document.getElementById("challengeEditId").value || null,
@@ -427,19 +548,14 @@ async function saveChallenge() {
     window_phase: document.getElementById("challengeWindow").value,
     gpsl_month_from: document.getElementById("challengeMonthFrom").value,
     gpsl_month_to: document.getElementById("challengeMonthTo").value,
-    stat_type: document.getElementById("challengeStatType").value,
-    stat_param: (document.getElementById("challengeStatParam").value || "").trim().toUpperCase() || null,
+    stat_type: statType,
+    stat_param: statParam,
     target_value: Number(document.getElementById("challengeTarget").value),
     prize_amount: Number(document.getElementById("challengePrize").value),
     include_league: document.getElementById("challengeIncludeLeague").checked,
     include_cup: document.getElementById("challengeIncludeCup").checked,
     is_active: document.getElementById("challengeActive").checked,
   };
-
-  if (payload.stat_type === "transfer_sign_nation" && !payload.stat_param) {
-    setStatus("challengeFormStatus", "Nation code required (e.g. NOR, ESP, TPE).", false);
-    return;
-  }
 
   setStatus("challengeFormStatus", "Saving…");
   const { data, error } = await supabase.rpc("competition_admin_save_challenge", {

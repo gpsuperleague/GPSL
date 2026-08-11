@@ -99,12 +99,20 @@
               <option value="club_goals_for">Club goals scored</option>
               <option value="club_clean_sheets">Club clean sheets</option>
               <option value="club_potm_awards">Club POTM awards</option>
+              <option value="player_hattrick_matchday">Hat-trick on matchday</option>
               <option value="transfer_sign_nation">Sign player by nationality</option>
+              <option value="transfer_sign_homegrown">Sign a home-grown player</option>
+              <option value="transfer_sign_rated">Sign a low-rated player</option>
             </select>
           </div>
           <div id="challengeStatParamWrap" hidden>
             <label>Nation code</label>
             <input type="text" id="challengeStatParam" placeholder="NOR / ESP / TPE" style="width:120px;text-transform:uppercase;" maxlength="8">
+          </div>
+          <div id="challengeMatchdayWrap" hidden>
+            <label>Matchday</label>
+            <input type="number" id="challengeMatchday" min="1" max="50" step="1" value="1" style="width:80px;" title="1 = opening day of the season">
+            <span class="note" style="margin-left:6px;">1 = opening day</span>
           </div>
           <div>
             <label>Target</label>
@@ -158,6 +166,19 @@
           </div>
           <div>
             <label><input type="checkbox" id="challengeActive" checked> Active</label>
+          </div>
+        </div>
+        <div id="challengeRatedOptsWrap" class="row gov-subsidy-row" style="margin-top:8px;" hidden>
+          <div>
+            <label>Max rating (at or below)</label>
+            <input type="number" id="challengeMaxRating" min="40" max="99" step="1" value="65" style="width:80px;">
+          </div>
+          <div>
+            <label><input type="checkbox" id="challengeRequireAge"> Age at or below</label>
+            <input type="number" id="challengeMaxAge" min="15" max="45" step="1" value="21" style="width:70px;margin-left:6px;">
+          </div>
+          <div>
+            <label><input type="checkbox" id="challengeRequireHg"> Must be home-grown (club nation)</label>
           </div>
         </div>
         <div class="row" style="margin-top:12px;">
@@ -224,6 +245,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_challenges.js?v=20260717-tpl-remap"></script>
+  <script type="module" src="admin_challenges.js?v=20260811-chal-types"></script>
 </body>
 </html>
