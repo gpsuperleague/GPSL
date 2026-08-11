@@ -287,6 +287,13 @@ export const ADMIN_MAIN_NAV = [
       ]),
       group("Bills & Income", [
         L(
+          "League finance balance",
+          "admin_league_finance_balance.html",
+          null,
+          null,
+          "Season P&L ecosystem check (ops profit vs target; transfers excluded)."
+        ),
+        L(
           "Set TV Revenue",
           "admin_tv_revenue.html",
           null,

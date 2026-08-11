@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>League finance balance — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css?v=20260811-fin-balance">
+  <style>
+    .admin-layout.fin-balance-layout { max-width: 1200px; }
+    .fin-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .fin-kpi {
+      background: #151515;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .fin-kpi .lbl { display: block; color: #888; font-size: 11px; margin-bottom: 4px; }
+    .fin-kpi .val { color: #ff9900; font-size: 16px; font-weight: bold; }
+    .fin-kpi .val.pos { color: #8d8; }
+    .fin-kpi .val.neg { color: #f88; }
+    .fin-hint-box {
+      margin: 12px 0 16px;
+      padding: 10px 12px;
+      background: #1c1810;
+      border-left: 3px solid #ff9900;
+      color: #ccc;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .fin-cat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px 12px;
+      margin: 10px 0 16px;
+      font-size: 12px;
+    }
+    .fin-cat-grid span { color: #888; display: block; font-size: 11px; }
+    .fin-table-wrap { overflow-x: auto; margin-top: 8px; }
+    table.fin-balance-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 980px;
+    }
+    table.fin-balance-table th,
+    table.fin-balance-table td {
+      border-bottom: 1px solid #333;
+      padding: 6px 8px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    table.fin-balance-table th:first-child,
+    table.fin-balance-table td:first-child,
+    table.fin-balance-table th:nth-child(2),
+    table.fin-balance-table td:nth-child(2) {
+      text-align: left;
+    }
+    table.fin-balance-table th {
+      color: #ff9900;
+      font-weight: bold;
+      position: sticky;
+      top: 0;
+      background: #1a1a1a;
+    }
+    table.fin-balance-table tr:hover td { background: #222; }
+    table.fin-balance-table .pos { color: #8d8; }
+    table.fin-balance-table .neg { color: #f88; }
+    table.fin-balance-table tfoot td {
+      color: #ffcc66;
+      font-weight: bold;
+      border-top: 1px solid #555;
+    }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">League finance balance</h1>
+  <div id="adminLayout" class="admin-layout fin-balance-layout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Season ecosystem check</h2>
+        <p class="note">
+          Aggregates every club’s season ledger into operating income and costs
+          (<b>transfers and Central Bank loans excluded</b>). Use this at season end
+          (or mid-season) to see whether the average club is near your target ops profit
+          — then tune prizes, TV, subsidies, wages or tax.
+        </p>
+        <p class="note">
+          Deploy SQL once: <code>supabase/sql/patches/admin_league_finance_balance.sql</code>
+        </p>
+
+        <div class="row">
+          <div>
+            <label>Season</label>
+            <select id="finBalSeason"></select>
+          </div>
+          <div>
+            <label>Target avg ops profit (₿)</label>
+            <input type="text" id="finBalTarget" value="10,000,000" inputmode="numeric">
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:8px;">
+            <button type="button" id="finBalRunBtn" class="button">Run analysis</button>
+          </div>
+        </div>
+        <div id="finBalStatus" class="status-line"></div>
+
+        <div id="finBalSummary" hidden>
+          <div class="fin-kpi-grid">
+            <div class="fin-kpi"><span class="lbl">Clubs</span><span class="val" id="kpiClubs">—</span></div>
+            <div class="fin-kpi"><span class="lbl">Avg ops net</span><span class="val" id="kpiAvg">—</span></div>
+            <div class="fin-kpi"><span class="lbl">Median ops net</span><span class="val" id="kpiMed">—</span></div>
+            <div class="fin-kpi"><span class="lbl">Target avg</span><span class="val" id="kpiTarget">—</span></div>
+            <div class="fin-kpi"><span class="lbl">Gap / club</span><span class="val" id="kpiGapClub">—</span></div>
+            <div class="fin-kpi"><span class="lbl">Gap league-wide</span><span class="val" id="kpiGapTotal">—</span></div>
+          </div>
+          <div class="fin-hint-box" id="finBalHint"></div>
+
+          <h3 style="color:#ff9900;font-size:15px;margin:0 0 6px;">League category totals (ops)</h3>
+          <div class="fin-cat-grid" id="finBalCats"></div>
+
+          <h3 style="color:#ff9900;font-size:15px;margin:12px 0 6px;">Per club</h3>
+          <p class="note" style="margin-bottom:6px;">
+            Ops net = gates + prizes + TV + subsidies + wages + stadium + tax/fines + staff + EOS + admin ± other
+            (transfers &amp; loans shown separately, not in ops net).
+          </p>
+          <div class="fin-table-wrap">
+            <table class="fin-balance-table">
+              <thead>
+                <tr>
+                  <th>Club</th>
+                  <th>Div</th>
+                  <th>Opening</th>
+                  <th>Gates</th>
+                  <th>Prizes</th>
+                  <th>TV</th>
+                  <th>Subsidies</th>
+                  <th>Wages</th>
+                  <th>Stadium</th>
+                  <th>Tax/fines</th>
+                  <th>Staff</th>
+                  <th>Ops net</th>
+                  <th>Transfers</th>
+                  <th>Balance</th>
+                </tr>
+              </thead>
+              <tbody id="finBalBody"></tbody>
+              <tfoot id="finBalFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_league_finance_balance.js?v=20260811-fin-balance"></script>
+</body>
+</html>
