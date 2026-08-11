@@ -65,7 +65,7 @@ function scoutingPlayerBadgesHtml(player) {
   if (!bits.length) return "";
   return ` <span class="scout-badges">${bits.join("")}</span>`;
 }
-import { mountAdvisoryTransferBudget } from "./club_bank_balance_ui.js";
+import { mountAdvisoryTransferBudget } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
 
 const PLAYER_COLUMNS =
   "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Contracted_Team";

@@ -13,7 +13,7 @@ import {
 
 import { formatMoney } from "./competition.js";
 import { loadWagePercentages, wageFromMarketValue } from "./wages.js";
-import { mountClubBankBalance } from "./club_bank_balance_ui.js";
+import { mountClubBankBalance } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
 
 import {
   loadGlobalSettings as loadGlobalSettingsEngine,

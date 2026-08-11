@@ -40,7 +40,7 @@ export function ensureClubBankBalanceStyles() {
     }
     .club-bank-balance {
       display: inline-flex;
-      align-items: baseline;
+      align-items: center;
       gap: 8px;
       margin: 0;
       padding: 6px 12px;
@@ -51,6 +51,37 @@ export function ensureClubBankBalanceStyles() {
       color: #ccc;
       line-height: 1.3;
       flex-shrink: 0;
+    }
+    .club-bank-balance .cbb-refresh-btn {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      margin: 0;
+      padding: 0;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: #252525;
+      color: #ffaa22;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      align-self: center;
+    }
+    .club-bank-balance .cbb-refresh-btn:hover:not(:disabled) {
+      background: #333;
+      border-color: #ff9900;
+      color: #ffcc66;
+    }
+    .club-bank-balance .cbb-refresh-btn:disabled,
+    .club-bank-balance .cbb-refresh-btn.is-busy {
+      opacity: 0.55;
+      cursor: wait;
+    }
+    .club-bank-balance .cbb-refresh-btn.is-busy {
+      animation: cbb-spin 0.8s linear infinite;
+    }
+    @keyframes cbb-spin {
+      to { transform: rotate(360deg); }
     }
     .club-bank-balance[hidden] { display: none !important; }
     .club-bank-balance .cbb-label { color: #888; }
@@ -193,6 +224,7 @@ export async function mountClubBankBalance(target, opts = {}) {
  *   clubShortName?: string|null,
  *   href?: string|null,
  *   hideIfUnknown?: boolean,
+ *   refreshButton?: boolean,
  * }} [opts]
  */
 export async function mountAdvisoryTransferBudget(target, opts = {}) {
@@ -220,6 +252,7 @@ export async function mountAdvisoryTransferBudget(target, opts = {}) {
   }
 
   const href = opts.href === undefined ? "finances.html" : opts.href;
+  const showRefresh = opts.refreshButton !== false;
   const zeroSpend = advisory.spendable < 0.5;
   const classes = [
     "club-bank-balance",
@@ -233,7 +266,30 @@ export async function mountAdvisoryTransferBudget(target, opts = {}) {
   el.hidden = false;
   el.className = classes;
   el.title = advisoryBudgetTitle(advisory);
-  el.innerHTML = renderAdvisoryBudgetBadgeHtml(advisory, { href });
+  const badgeHtml = renderAdvisoryBudgetBadgeHtml(advisory, { href });
+  el.innerHTML = showRefresh
+    ? `${badgeHtml}<button type="button" class="cbb-refresh-btn" title="Refresh advisory transfer budget" aria-label="Refresh advisory transfer budget">↻</button>`
+    : badgeHtml;
+
+  if (showRefresh) {
+    const btn = el.querySelector(".cbb-refresh-btn");
+    btn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.classList.add("is-busy");
+      mountAdvisoryTransferBudget(el, {
+        ...opts,
+        clubShortName: clubShort,
+        refreshButton: true,
+      }).catch((err) => {
+        console.warn("advisory transfer budget refresh:", err);
+        btn.disabled = false;
+        btn.classList.remove("is-busy");
+      });
+    });
+  }
 
   return { clubShortName: clubShort, advisory };
 }
