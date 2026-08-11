@@ -12,8 +12,7 @@ html.admin-root body.admin-page {
 /* Inline links: orange on dark (browser default blue is unreadable) */
 .admin-page a:not(.button) {
   color: #ff9900;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
 }
 
 .admin-page a:not(.button):hover {
