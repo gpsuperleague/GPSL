@@ -1533,7 +1533,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let minVal = active.min;
     let maxVal = active.max;
 
-    // Market value: UI in whole millions so min/step/max stay browser-valid.
+    // Market value: UI in ₿500k units so min/step/max stay browser-valid.
     if (col === "market_value") {
       sliderMin = 0;
       sliderMax = MARKET_VALUE_SLIDER_MAX_M;
