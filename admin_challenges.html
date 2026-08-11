@@ -7,7 +7,59 @@
   <title>Season challenges — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css?v=20260811-chal-form">
+  <style>
+    /* Challenge form: keep option panels truly hidden (admin .row { display:flex } can fight [hidden]) */
+    #challengeStatParamWrap[hidden],
+    #challengeMatchdayWrap[hidden],
+    #challengeRatedOptsWrap[hidden] {
+      display: none !important;
+    }
+    /* Checkboxes must not inherit full-width row input styling */
+    .challenge-form-card .challenge-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      min-height: 40px;
+      color: #ddd;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .challenge-form-card .challenge-check input[type="checkbox"] {
+      width: 16px !important;
+      min-width: 16px;
+      height: 16px;
+      margin: 0;
+      padding: 0;
+      flex: 0 0 auto;
+      accent-color: #ff9900;
+    }
+    .challenge-form-card .challenge-check-field {
+      flex: 0 1 auto;
+      min-width: 140px;
+    }
+    .challenge-form-card .challenge-target-hint {
+      display: block;
+      margin-top: 4px;
+      color: #888;
+      font-size: 12px;
+      line-height: 1.35;
+      max-width: 220px;
+    }
+    .challenge-form-card .challenge-age-field {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .challenge-form-card .challenge-age-field input[type="number"] {
+      width: 70px !important;
+      min-width: 70px;
+      flex: 0 0 auto;
+    }
+  </style>
 </head>
 <body class="admin-page">
   <div id="nav"></div>
@@ -75,7 +127,7 @@
         <p class="note" style="margin-top:8px;"><a href="admin_prize_appeals.html">Review red-card appeal cards →</a></p>
       </div>
 
-      <div class="card">
+      <div class="card challenge-form-card">
         <h2>Add / edit challenge</h2>
         <input type="hidden" id="challengeEditId" value="">
         <div class="row gov-subsidy-row">
@@ -112,18 +164,19 @@
           <div id="challengeMatchdayWrap" hidden>
             <label>Matchday</label>
             <input type="number" id="challengeMatchday" min="1" max="50" step="1" value="1" style="width:80px;" title="1 = opening day of the season">
-            <span class="note" style="margin-left:6px;">1 = opening day</span>
+            <span class="note" style="display:block;margin-top:4px;">1 = opening day</span>
           </div>
           <div>
-            <label>Target</label>
+            <label id="challengeTargetLabel">Target</label>
             <input type="number" id="challengeTarget" min="1" step="1" style="width:80px;">
+            <span id="challengeTargetHint" class="challenge-target-hint"></span>
           </div>
           <div>
             <label>Prize ₿</label>
             <input type="number" id="challengePrize" min="0" step="50000" style="width:120px;">
           </div>
         </div>
-        <div class="row gov-subsidy-row" style="margin-top:8px;">
+        <div class="row gov-subsidy-row" style="margin-top:8px;align-items:flex-end;">
           <div>
             <label>From month</label>
             <select id="challengeMonthFrom">
@@ -158,27 +211,27 @@
               <option value="may">May</option>
             </select>
           </div>
-          <div>
-            <label><input type="checkbox" id="challengeIncludeLeague" checked> League</label>
+          <div class="challenge-check-field">
+            <label class="challenge-check"><input type="checkbox" id="challengeIncludeLeague" checked> League</label>
           </div>
-          <div>
-            <label><input type="checkbox" id="challengeIncludeCup"> Cup</label>
+          <div class="challenge-check-field">
+            <label class="challenge-check"><input type="checkbox" id="challengeIncludeCup"> Cup</label>
           </div>
-          <div>
-            <label><input type="checkbox" id="challengeActive" checked> Active</label>
+          <div class="challenge-check-field">
+            <label class="challenge-check"><input type="checkbox" id="challengeActive" checked> Active</label>
           </div>
         </div>
-        <div id="challengeRatedOptsWrap" class="row gov-subsidy-row" style="margin-top:8px;" hidden>
+        <div id="challengeRatedOptsWrap" class="row gov-subsidy-row" style="margin-top:8px;align-items:flex-end;" hidden>
           <div>
             <label>Max rating (at or below)</label>
             <input type="number" id="challengeMaxRating" min="40" max="99" step="1" value="65" style="width:80px;">
           </div>
-          <div>
-            <label><input type="checkbox" id="challengeRequireAge"> Age at or below</label>
-            <input type="number" id="challengeMaxAge" min="15" max="45" step="1" value="21" style="width:70px;margin-left:6px;">
+          <div class="challenge-age-field">
+            <label class="challenge-check"><input type="checkbox" id="challengeRequireAge"> Age at or below</label>
+            <input type="number" id="challengeMaxAge" min="15" max="45" step="1" value="21" aria-label="Maximum age">
           </div>
-          <div>
-            <label><input type="checkbox" id="challengeRequireHg"> Must be home-grown (club nation)</label>
+          <div class="challenge-check-field">
+            <label class="challenge-check"><input type="checkbox" id="challengeRequireHg"> Must be home-grown (club nation)</label>
           </div>
         </div>
         <div class="row" style="margin-top:12px;">
@@ -245,6 +298,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_challenges.js?v=20260811-chal-types"></script>
+  <script type="module" src="admin_challenges.js?v=20260811-chal-form"></script>
 </body>
 </html>

@@ -188,6 +188,53 @@ function syncWindowMonths() {
   }
 }
 
+function syncTargetLabel(stat) {
+  const labelEl = document.getElementById("challengeTargetLabel");
+  const hintEl = document.getElementById("challengeTargetHint");
+  if (!labelEl) return;
+
+  const hints = {
+    player_hattrick_matchday: {
+      label: "Target (hat-tricks)",
+      hint: "How many hat-trick matches to complete. 1 = one player scores 3+ goals in a single match on that matchday — not total goals.",
+    },
+    transfer_sign_nation: {
+      label: "Target (signings)",
+      hint: "How many qualifying signings are required (usually 1).",
+    },
+    transfer_sign_homegrown: {
+      label: "Target (signings)",
+      hint: "How many home-grown signings are required (usually 1).",
+    },
+    transfer_sign_rated: {
+      label: "Target (signings)",
+      hint: "How many qualifying low-rated signings are required (usually 1).",
+    },
+    player_max_goals: {
+      label: "Target (goals)",
+      hint: "Best single player’s total goals in the window must reach this.",
+    },
+    player_max_assists: {
+      label: "Target (assists)",
+      hint: "Best single player’s total assists in the window must reach this.",
+    },
+    club_wins: { label: "Target (wins)", hint: "Club wins needed in the window." },
+    club_goals_for: { label: "Target (goals)", hint: "Club goals scored needed in the window." },
+    club_clean_sheets: {
+      label: "Target (clean sheets)",
+      hint: "Clean sheets needed in the window.",
+    },
+    club_potm_awards: {
+      label: "Target (POTM)",
+      hint: "Player-of-the-match awards needed in the window.",
+    },
+  };
+
+  const conf = hints[stat] || { label: "Target", hint: "" };
+  labelEl.textContent = conf.label;
+  if (hintEl) hintEl.textContent = conf.hint || "";
+}
+
 function syncStatParamVisibility() {
   const stat = document.getElementById("challengeStatType").value;
   const nationWrap = document.getElementById("challengeStatParamWrap");
@@ -196,6 +243,7 @@ function syncStatParamVisibility() {
   if (nationWrap) nationWrap.hidden = stat !== "transfer_sign_nation";
   if (ratedWrap) ratedWrap.hidden = stat !== "transfer_sign_rated";
   if (mdWrap) mdWrap.hidden = stat !== "player_hattrick_matchday";
+  syncTargetLabel(stat);
 
   if (
     stat === "transfer_sign_nation" ||
