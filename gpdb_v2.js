@@ -36,6 +36,7 @@ import {
   buildGpdbContractedBidCellHtml,
   formatForeignContractGpdbHtml,
 } from "./player_transfer_status.js";
+import { installRangeSteppers } from "./range_filter_steppers.js";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -267,9 +268,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const MARKET_VALUE_FILTER_MIN = 0;
   const MARKET_VALUE_FILTER_MAX = 200_000_000;
-  const MARKET_VALUE_FILTER_STEP = 1_000_000;
-  /** Dual-range UI uses whole millions (0–200) so step aligns with the browser. */
-  const MARKET_VALUE_SLIDER_MAX_M = 200;
+  const MARKET_VALUE_FILTER_STEP = 500_000;
+  /** Dual-range UI uses ₿500k units (0–400) so ± buttons and step align. */
+  const MARKET_VALUE_SLIDER_MAX_M = MARKET_VALUE_FILTER_MAX / MARKET_VALUE_FILTER_STEP;
 
   /** Championship % of MV — forecast wage for unsigned players in GPDB filters. */
   const WAGE_FORECAST_TIER = "championship";
@@ -3277,6 +3278,12 @@ document.addEventListener("DOMContentLoaded", () => {
     applySavedGpdbFilterState(loadSavedGpdbFilters());
     setupFilters();
     setupRangeFilters();
+    installRangeSteppers({
+      root: document.getElementById("filters") || document,
+      cols: ["Age", "Rating", "market_value"],
+      // MV slider is indexed in ₿500k units with step=1 on the input.
+      stepForCol: (col) => (col === "market_value" ? 1 : 1),
+    });
     setupTextFilters();
     await populateDropdowns();
     restoreGpdbFilterUi();

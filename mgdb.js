@@ -62,17 +62,8 @@ let viewerSackedManagerIds = new Set();
 let multiFilterClickWired = false;
 
 function rangeStep(col) {
-  if (col !== "market_value") return 1;
-  const bounds = RANGE_BOUNDS[col];
-  if (!bounds) return 100000;
-  const span = Math.max(bounds.max - bounds.min, 1);
-  // ~100 steps across the range, snapped to nice money increments
-  const rough = span / 100;
-  if (rough <= 100000) return 100000;
-  if (rough <= 250000) return 250000;
-  if (rough <= 500000) return 500000;
-  if (rough <= 1000000) return 1000000;
-  return Math.ceil(rough / 1000000) * 1000000;
+  if (col === "market_value") return 500_000;
+  return 1;
 }
 
 function snapRangeValue(col, n) {
