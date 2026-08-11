@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { formatMoney, loadClubSeasonArchive } from "./competition.js";
 import { loadClubWageBillSummary } from "./club_wage_bill.js";
 import {
@@ -194,6 +195,7 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   renderFinancesOverviewNotes();
   await initGlobal();
 

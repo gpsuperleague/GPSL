@@ -1,4 +1,5 @@
 import { initGlobal, supabase } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, displayClubName } from "./clubs_lookup.js";
 import {
   formatWage,
@@ -76,6 +77,7 @@ function marketRowAsFilterRow(row) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
   await loadClubsMap();
   renderExpiringContractRules();

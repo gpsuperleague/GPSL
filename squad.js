@@ -131,7 +131,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20260810-aug-window";
+} from "./squad_info_tips.js?v=20260811-tips-refresh";
 
 window.supabase = supabase;
 
@@ -212,9 +212,13 @@ function createSquadPosSection(groupName, { ghost = false } = {}) {
 
   const title = document.createElement("h3");
   title.className = ghost
-    ? "squad-pos-section-title squad-pos-section-title--ghost"
+    ? "squad-pos-section-title squad-pos-section-title--ghost gpsl-has-tip"
     : "squad-pos-section-title";
   title.textContent = groupName;
+  if (ghost) {
+    title.setAttribute("data-gpsl-tip", SQUAD_TIPS.ghosts);
+    title.tabIndex = 0;
+  }
   section.appendChild(title);
 
   const scroll = document.createElement("div");
@@ -842,7 +846,7 @@ function renderVoluntaryReleaseBadge() {
   }
 
   el.innerHTML = `
-    <span class="foreign-interest-main">${n} voluntary ${n === 1 ? "release" : "releases"} left · max 3/season</span><span class="foreign-interest-hint"> · Pays wages · out until next season</span>`;
+    <span class="foreign-interest-main">${n} voluntary ${n === 1 ? "release" : "releases"} left · max 3/season</span><span class="foreign-interest-hint"> · Wage × seasons buy-out · out until next season</span>`;
 }
 
 async function loadNewOwnerReleaseState() {
@@ -1073,6 +1077,9 @@ function renderSquadManagerBadge() {
   if (renewBtn) {
     renewBtn.hidden = staffPreview || !pending;
     renewBtn.disabled = staffPreview || !pending;
+    renewBtn.classList.add("gpsl-has-tip");
+    renewBtn.setAttribute("data-gpsl-tip", SQUAD_TIPS.managerRenew);
+    renewBtn.tabIndex = 0;
   }
 
   const windowOpen = !!squadManagerState.sackWindowOpen;
@@ -1082,12 +1089,18 @@ function renderSquadManagerBadge() {
     listBtn.hidden = !canAct;
     listBtn.disabled = !canAct;
     listBtn.dataset.managerId = String(squadManagerState.managerId);
+    listBtn.classList.add("gpsl-has-tip");
+    listBtn.setAttribute("data-gpsl-tip", SQUAD_TIPS.managerList);
+    listBtn.tabIndex = 0;
   }
 
   if (sackBtn) {
     const canSack = canAct && squadManagerState.sacksRemaining > 0;
     sackBtn.hidden = !canSack;
     sackBtn.disabled = !canSack;
+    sackBtn.classList.add("gpsl-has-tip");
+    sackBtn.setAttribute("data-gpsl-tip", SQUAD_TIPS.managerSack);
+    sackBtn.tabIndex = 0;
   }
 }
 
@@ -1559,7 +1572,7 @@ function renderContractOutlookHtml(players) {
 
   return `
     <div class="squad-contract-outlook" aria-label="Contract outlook">
-      <h3 class="squad-contract-outlook-title">Contract outlook</h3>
+      <h3 class="squad-contract-outlook-title gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.contractOutlook)}>Contract outlook</h3>
       ${parts.join("")}
     </div>`;
 }
@@ -1613,9 +1626,13 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
         projCount != null && r.rule === "Star players"
           ? `${projCount} / ${Number(designationsState?.star_cap ?? 2)}`
           : projCount;
+      const projTip =
+        hasGhosts && projCount != null
+          ? `${SQUAD_TIPS.ifWon}\n\nIf ${ghosts.length} pending bid${ghosts.length === 1 ? "" : "s"} complete.`
+          : "";
       const projCell =
         hasGhosts && projCount != null
-          ? `<td class="squad-rules-count squad-rules-count--ghost" title="If ${ghosts.length} pending bid${ghosts.length === 1 ? "" : "s"} complete"><strong>${projDisplay}</strong></td>`
+          ? `<td class="squad-rules-count squad-rules-count--ghost gpsl-has-tip"${tipDataAttrs(projTip)}><strong>${projDisplay}</strong></td>`
           : hasGhosts
             ? `<td class="squad-rules-count squad-rules-count--ghost muted">—</td>`
             : "";
@@ -1623,11 +1640,15 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
         proj && !proj.ok && rowOk
           ? ` → ${shortComplianceStatus(proj)} if won`
           : "";
+      const rowTip =
+        r.rule === "Star players" || r.rule === "One of our own"
+          ? [complianceRowTooltip(r), SQUAD_TIPS.starOoo].filter(Boolean).join("\n\n")
+          : complianceRowTooltip(r);
 
       return `
     <tr class="${rowOk ? "squad-rules-row--ok" : "squad-rules-row--fail"}">
-      <th scope="row" title="${escapeHtml(complianceRowTooltip(r))}">${r.rule}</th>
-      <td class="squad-rules-req-compact" title="${escapeHtml(complianceRowTooltip(r))}">${shortComplianceRequirement(r)}</td>
+      <th scope="row" class="gpsl-has-tip"${tipDataAttrs(rowTip)}>${r.rule}</th>
+      <td class="squad-rules-req-compact gpsl-has-tip"${tipDataAttrs(rowTip)}>${shortComplianceRequirement(r)}</td>
       <td class="squad-rules-count"><strong>${r.count}</strong></td>
       ${projCell}
       <td class="squad-rules-status-compact">
@@ -1672,7 +1693,7 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
             <th scope="col">Rule</th>
             <th scope="col">Req</th>
             <th scope="col">Now</th>
-            ${hasGhosts ? '<th scope="col" title="If pending winning bids complete">If won</th>' : ""}
+            ${hasGhosts ? `<th scope="col" class="gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.ifWon)}>If won</th>` : ""}
             <th scope="col">Status</th>
           </tr>
         </thead>

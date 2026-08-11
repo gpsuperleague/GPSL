@@ -9,6 +9,7 @@
 import { supabase } from "./supabase_client.js";
 import { formatMoney } from "./competition.js";
 import { initGlobal, computeStandardListingEndTime, loadGlobalSettings } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { getUKNow, isDraftAuctionEnded } from "./draft_engine.js";
 import {
   loadClubsMap,
@@ -108,6 +109,7 @@ function startSellerDeadlineTicker() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
 
   const {

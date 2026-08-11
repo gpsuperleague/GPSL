@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260805-rules">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     #nav { padding:15px; background:#1a1a1a; border-bottom:1px solid #333; text-align:center; }
@@ -269,7 +270,7 @@
 </head>
 <body>
   <div id="nav"></div>
-  <h1>Expiring Contracts</h1>
+  <h1 class="gpsl-has-tip" data-gpsl-tip="Contested final-year players only. Place one hidden wage bid per player — locked once submitted. Highest wage wins a new 3-season deal at season rollover; ties favour the holding club." tabindex="0">Expiring Contracts</h1>
 
   <div class="info-box" id="expiringRules" aria-label="Expiring contract rules">
     <!-- Filled by expiring_contracts_rules.js -->
@@ -348,11 +349,11 @@
             <th>Age</th>
             <th>Rating</th>
             <th>Playstyle</th>
-            <th>MV</th>
+            <th class="gpsl-has-tip" data-gpsl-tip="Market value paid to the holding club if another club wins the wage auction at season rollover." tabindex="0">MV</th>
             <th>Holding club</th>
-            <th style="color:#ffcc66;">League</th>
-            <th>Current wage</th>
-            <th>Your bid</th>
+            <th class="gpsl-has-tip" style="color:#ffcc66;" data-gpsl-tip="Holding club’s division. Championship clubs taking a Super League player also pay a signing-on fee % of MV to the player at rollover." tabindex="0">League</th>
+            <th class="gpsl-has-tip" data-gpsl-tip="Player’s current seasonal contract wage. Bids must clear the minimum uplift above this." tabindex="0">Current wage</th>
+            <th class="gpsl-has-tip" data-gpsl-tip="Your locked wage offer for this player (hidden from rivals until rollover). Cannot be changed after submit." tabindex="0">Your bid</th>
             <th></th>
           </tr>
         </thead>
@@ -381,6 +382,6 @@
     </div>
   </div>
 
-  <script type="module" src="expiring_contracts.js?v=20260811-step-pairs"></script>
+  <script type="module" src="expiring_contracts.js?v=20260811-tips"></script>
 </body>
 </html>

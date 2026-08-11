@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 import { formatMoney } from "./competition.js";
 import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
 import {
@@ -231,11 +232,11 @@ function updateRegistrationStrip() {
   const addStars = countStarEligible(adds, minStar, null);
 
   const tip =
-    "Squad now → if you signed all Active Targets (not already owned). Green = registration OK.";
+    "Squad now → if you signed all Active Targets (not already owned). Green = registration OK. Sq 24–28 · ≥1 GK · ≥8 HG · ≥5 U21 · star cap (SL 3 / Champ 2).";
 
   el.hidden = false;
   el.innerHTML = `
-    <span class="scout-reg-label" title="${tip}">Reg:</span>
+    <span${tipAttrs(tip, "scout-reg-label")}>Reg:</span>
     ${regChip("Sq", owned.total, addT.n, [MIN_SQUAD_SIZE, SQUAD_SIZE], "range", `Squad size: owned ${owned.total}, active +${addT.n} → ${owned.total + addT.n} (need ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`)}
     ${regChip("GK", owned.goalkeepers, addT.gk, MIN_GOALKEEPERS, "min", `Goalkeepers: owned ${owned.goalkeepers}, active +${addT.gk}`)}
     ${regChip("HG", owned.homeGrown, addT.hg, MIN_HOME_GROWN, "min", `Home-grown (Nation match): owned ${owned.homeGrown}, active +${addT.hg}`)}
@@ -846,6 +847,7 @@ function wireTabs() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
   await loadPlayerValueTables();
   wireTabs();

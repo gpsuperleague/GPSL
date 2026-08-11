@@ -13,15 +13,16 @@ export const SQUAD_TIPS = {
     "Player name — click to open this player’s GPSL career page (appearances, goals, transfer history, clubs).",
 
   nation:
-    "Player’s nationality. Used for home-grown (HG) counts when it matches your club’s nation.",
+    "Player’s nationality. Counts toward home-grown (HG) when it matches your club’s nation.",
 
   position:
     "Registered playing position from the card. Used for squad balance and match selection.",
 
-  age: "Current age. Home-grown contract protection for young HG players ends at age 24.",
+  age:
+    "Current age. Uncontested final-year renewal: home-grown ≤23, or non-home-grown ≤21. Once they age out of that band they enter the contested expiry wage market.",
 
   rating:
-    "Overall rating (and calculated potential in brackets when shown). Pot. is GPSL’s formula — not always the raw pesdb max level.",
+    "Overall rating (and calculated potential in brackets when shown). Pot. is GPSL’s formula — not always the raw pesdb max level.\n\nRating also drives automatic star status (≥79 by default).",
 
   apps: "Appearances for your club this GPSL season (competition matches counted on this page).",
 
@@ -35,19 +36,28 @@ export const SQUAD_TIPS = {
     "Card playstyle (e.g. Goal Poacher, Anchor Man). Affects how the player plays in eFootball; shown here for squad planning.",
 
   marketValue:
-    "GPSL market value (MV). Floor for transfer bids and foreign sales. Releases / expire payouts often use MV or a % of MV.",
+    "GPSL market value (MV). Floor for transfer bids and foreign sales. Overflow releases and many settle payouts use MV (or a % of MV).",
 
   status:
-    "Current availability — transfer-listed, injured, suspended, yellow-card tally, etc. Stacked badges explain what’s blocking selection or sales.",
+    "Current availability — transfer-listed, injured, suspended, yellow-card tally, same-season lock, etc.\n\nSigned this season? Cannot Transfer List or sell until next season (New Owner list can bypass that lock).",
 
   action:
-    "Player actions: Transfer List, sell abroad (uses a foreign-interest slot), renew/expire in the final contract year, medical consults, red-card appeals, captain/OooO roles, and voluntary releases when available.\n\nScroll sideways if the column is off-screen.",
+    "Player actions: Transfer List, sell abroad (uses a foreign-interest slot), final-year renew / wage bid / legacy renew, medical consults, red-card appeals, set or remove One of our own (HG star), and voluntary / New Owner releases when available.\n\nScroll sideways if the column is off-screen.",
 
   contractHeader:
-    "Contract length + seasonal wage.\n\nStandard deals are 3 seasons. When 1 season remains (“Final year”), the player cannot be listed or sold — they enter the expiry wage auction unless legacy / young HG rules apply.",
+    "Contract length + seasonal wage.\n\nStandard deals are 3 seasons. In the final year the player cannot be listed or sold — they enter the expiry wage auction unless legacy or young HG / non-HG uncontested rules apply (hover a contract cell for that player’s path).",
 
   registration:
-    "Squad registration rules for your club this season.\n\nAim for at least 24 contracted players from August, never more than 28, at least 1 GK, plus home-grown / U21 / star-cap rules. Failures can mean fines and emergency loans in August.\n\nContract outlook (below the table): in December/January, players with 2 seasons left get a January-window sell warning; final-year players show leavers vs re-signable (HG≤23 / non-HG≤21).",
+    "Squad registration for your club this season.\n\n• Size: at least 24 contracted players from August, never more than 28\n• ≥1 GK · ≥8 home-grown · ≥5 U21 (age ≤21)\n• Star cap (automatic by rating ≥79): Super League 3 / Championship 2 — One of our own (HG star you set) is excused from the cap\n\nFrom August, shortfalls and over-cap trigger ₿2.5m fines and emergency loans. Going over 28 on a signing: prefer a foreign-interest sell, else overflow release at MV + ₿10m fine.\n\nContract outlook (below): December/January heads-up for 2-season deals; final-year split into re-signable vs contested wage market.",
+
+  ifWon:
+    "Projected count if your pending leading bids complete (transfer list, draft, or your expiry wage bid).\n\nGhost players are not contracted yet — if you are outbid, they drop off.",
+
+  ghosts:
+    "Pending acquisitions — players you are leading on (or have a locked expiry wage bid for) but do not own yet.\n\nShown for planning only. They count in the Registration “If won” column, including toward the star cap when eligible.",
+
+  contractOutlook:
+    "Season contract planning.\n\nIn December/January, players with 2 seasons left get a January-window sell warning (next season they enter final year and cannot be sold).\n\nFinal-year block: re-signable on Squad (HG ≤23 / non-HG ≤21 / legacy) vs contested players on Expiring Contracts.",
 
   wageBillTitle:
     "Estimated seasonal wage bill for Close Finances — player contract wages plus manager salary (weekly × 52).",
@@ -62,19 +72,31 @@ export const SQUAD_TIPS = {
     "Player wages + manager salary. Plan signings against this — wages hit the books at Close Finances.",
 
   manager:
-    "Your club manager. Rating sets a season finish target for your division. Miss both seasons of a 2-season deal and they leave for market value (2-season rehire ban). Hit ≥1 target and you may renew in June/July — if not renewed before August starts, they are released for market value.\n\nList / Sack only in June, July, and January (not August). Sack costs half market value (once per season) and needs mid-spell tenure. List puts them on the Manager Transfer Market.\n\nNo manager? You cannot check in or play fixtures until one is signed.",
+    "Your club manager. Rating sets a season finish target for your division. Miss both seasons of a 2-season deal and they leave for market value (2-season rehire ban). Hit ≥1 target and you may renew in June/July — if not renewed before August starts, they are released for market value.\n\nList / Sack in June, July, August, and January (January needs the transfer window open; also available in pre-season). Sack costs half market value (once per season) and needs mid-spell tenure. List puts them on the Manager Transfer Market.\n\nNo manager? You cannot check in or play fixtures until one is signed.",
 
   managerDraftGhost:
     "Ghost manager — you currently hold the highest bid in the manager draft auction. They are not signed yet. If someone outbids you, this disappears. Click through to manage the auction.",
 
+  managerList:
+    "List your manager on the Manager Transfer Market. Available in June, July, August, and January (Jan needs transfer window). Vacant clubs can still hire in August, but you cannot play without a manager.",
+
+  managerSack:
+    "Sack costs half market value (once per season) and needs mid-spell tenure. Re-signing that manager is blocked until next season. Same month window as List.",
+
+  managerRenew:
+    "Renew for another 2-season deal after hitting at least one finish target. Must be done before August starts or they are released for market value.",
+
   foreignInterest:
-    "Foreign club sale slots left this season. Selling abroad at market value frees a squad place and can avoid overflow fines. Use Sell to foreign club in Action.",
+    "Foreign club sale slots left this season (max 3). Selling abroad at market value frees a squad place and can avoid overflow fines. Player is unavailable until next season. Use Sell to foreign club in Action.",
 
   voluntaryRelease:
-    "Voluntary releases left this season (max 3). You keep paying wages; the player is out until next season. Useful when you cannot sell.",
+    "Voluntary releases left this season (max 3). Buy-out = seasonal wage × seasons remaining (paid immediately, even if overdrawn). Player leaves as a free agent but cannot be signed by anyone until next season. Useful when you cannot sell.",
 
   newOwnerRelease:
-    "First-season owner tools — up to 3 release or transfer-list slots in your first season at the club. Window: pre-season through GPSL August, plus January when the transfer window is open.",
+    "First-season owner tools — up to 3 shared slots (release or transfer-list) in your first season at the club.\n\nWindow: pre-season through GPSL August, plus January when the transfer window is open.\n\nRelease refunds the recorded purchase fee. Transfer list at market value (slot returns if unsold). New Owner list can bypass the same-season lock.",
+
+  starOoo:
+    "Stars are automatic by rating (usually ≥79). Super League cap 3 / Championship 2. One of our own is a home-grown star you assign in Action — excused from the star cap. Over-cap from August triggers fines and forced releases.",
 };
 
 export function squadContractTip(player, clubNation) {
@@ -127,6 +149,7 @@ export function squadContractTip(player, clubNation) {
     return (
       "Two seasons remaining on this 3-season contract.\n\n" +
       "Next season becomes the final year — then no sales until you renew or they hit the expiry auction.\n\n" +
+      "In December/January, Contract outlook warns you to consider selling while they can still be listed.\n\n" +
       wageNote
     );
   }

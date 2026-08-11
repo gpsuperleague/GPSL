@@ -7,6 +7,7 @@
   <title>Club Finances — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1280px; margin:20px auto 40px; }
@@ -174,15 +175,15 @@
     <div class="panel">
       <h2>Seasonal wage bill</h2>
       <div class="balance-grid" id="wageBillGrid">
-        <div class="stat-box">
+        <div class="stat-box gpsl-has-tip" data-gpsl-tip="Sum of contracted player wages for the season. Posted when finances are closed (Close Finances / post season wage bills) — not weekly." tabindex="0">
           <div class="label">Player wages (season)</div>
           <div class="value neutral" id="wageBillPlayers">—</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-box gpsl-has-tip" data-gpsl-tip="Manager weekly wage × 52. Included in the seasonal wage bill charged at Close Finances." tabindex="0">
           <div class="label">Manager salary (season)</div>
           <div class="value neutral" id="wageBillManager">—</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-box gpsl-has-tip" data-gpsl-tip="Player wages + manager salary. Plan signings against this figure — it hits the books when finances are closed." tabindex="0">
           <div class="label">Total wage bill</div>
           <div class="value" id="wageBillTotal" style="color:#ffcc66;">—</div>
         </div>
@@ -193,35 +194,35 @@
     <div class="panel">
       <h2>Balance</h2>
       <div class="balance-grid">
-        <div class="stat-box">
+        <div class="stat-box gpsl-has-tip" data-gpsl-tip="GPSL starting budget for the season (before auctions), or last season’s archived closing balance carried forward." tabindex="0">
           <div class="label">Season opening balance</div>
           <div class="value muted" id="openingBalance">—</div>
         </div>
-        <a class="stat-box stat-link" id="linkLedger" href="finances_ledger.html" title="View full activity ledger">
+        <a class="stat-box stat-link gpsl-has-tip" id="linkLedger" href="finances_ledger.html" data-gpsl-tip="Spendable cash: opening balance plus all income and costs posted to the ledger so far. Click for the full activity ledger." tabindex="0">
           <div class="label">Current balance</div>
           <div class="value neutral" id="balanceAmount">—</div>
           <span class="link-hint">View activity ledger →</span>
         </a>
-        <div class="stat-box">
+        <div class="stat-box gpsl-has-tip" data-gpsl-tip="Current balance plus pending forecasts from Season accounts (upcoming gates, wages, maintenance, unsettled winning bids, etc.)." tabindex="0">
           <div class="label">Predicted end-of-season balance</div>
           <div class="value muted" id="predictedBalance">—</div>
         </div>
-        <a class="stat-box stat-link" id="linkAdvisoryBudget" href="transfer_center.html" title="Advisory season transfer budget">
+        <a class="stat-box stat-link gpsl-has-tip" id="linkAdvisoryBudget" href="transfer_center.html" data-gpsl-tip="Soft spend guidance: current balance + predicted ops income − predicted ops costs (excluding transfer sales/purchases), minus live winning bids. Shown as ₿0 minimum; does not block bids." tabindex="0">
           <div class="label">Advisory transfer budget</div>
           <div class="value muted" id="advisoryTransferBudget">—</div>
           <span class="link-hint" id="advisoryTransferBudgetHint">Ops forecast excl. transfers →</span>
         </a>
-        <a class="stat-box stat-link" id="linkIncoming" href="finances_incoming.html" title="View posted income lines">
+        <a class="stat-box stat-link gpsl-has-tip" id="linkIncoming" href="finances_incoming.html" data-gpsl-tip="Income lines already posted to this season’s ledger (gates, prizes, sales, subsidies, etc.)." tabindex="0">
           <div class="label">Posted income (season ledger)</div>
           <div class="value positive" id="incomeSeasonTotal">—</div>
           <span class="link-hint">View incoming →</span>
         </a>
-        <a class="stat-box stat-link" id="linkOutgoing" href="finances_outgoing.html" title="View posted cost lines">
+        <a class="stat-box stat-link gpsl-has-tip" id="linkOutgoing" href="finances_outgoing.html" data-gpsl-tip="Cost lines already posted to this season’s ledger (purchases, wages, maintenance, fines, etc.)." tabindex="0">
           <div class="label">Posted costs (season ledger)</div>
           <div class="value negative" id="costSeasonTotal">—</div>
           <span class="link-hint">View outgoings →</span>
         </a>
-        <a class="stat-box stat-link" id="linkAccounts" href="finances_accounts.html" title="View season accounts workbook">
+        <a class="stat-box stat-link gpsl-has-tip" id="linkAccounts" href="finances_accounts.html" data-gpsl-tip="Posted income minus posted costs this season. Open Season accounts for the workbook view with pending forecasts." tabindex="0">
           <div class="label">Posted net (ledger)</div>
           <div class="value" id="netSeasonTotal">—</div>
           <span class="link-hint">View season accounts →</span>
@@ -257,6 +258,6 @@
       <div id="financeSeasonHistory"></div>
     </div>
   </div>
-  <script type="module" src="finances.js?v=20260810-staff-fin-preview"></script>
+  <script type="module" src="finances.js?v=20260811-tips"></script>
 </body>
 </html>

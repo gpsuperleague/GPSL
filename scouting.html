@@ -7,6 +7,7 @@
   <title>Scouting — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <link rel="stylesheet" href="matchday_squad.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
@@ -270,7 +271,7 @@
     <div id="headerContainer" style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
       <img id="clubBadgeHeader" src="" alt="" style="width:48px;height:48px;">
       <div>
-        <h1 id="pageTitle">Scouting</h1>
+        <h1 id="pageTitle" class="gpsl-has-tip" data-gpsl-tip="Shortlist from GPDB (☆). Tick Active Targets to highlight players and sum draft spend. Reg strip projects squad rules if those targets join. Bid opens draft auctions for free agents when the window is open." tabindex="0">Scouting</h1>
         <div id="userEmail" class="meta" style="margin:0;"></div>
       </div>
     </div>
@@ -292,7 +293,7 @@
       <div class="scout-board-top">
         <h2>Scouting targets</h2>
         <div class="scout-budget-line">
-          <span class="scout-budget-item" title="Sum of Active Targets: MV if no bids; your bid if leading; next increment above the high bid if outbid">
+          <span class="scout-budget-item gpsl-has-tip" data-gpsl-tip="Sum of Active Targets: market value if no bids; your bid if leading; next increment above the high bid if outbid." tabindex="0">
             <span class="lbl">Active targets</span>
             <span class="val" id="scoutActiveTotal">₿0</span>
             <span class="meta" id="scoutActiveMeta"></span>
@@ -317,6 +318,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260811-budget-refresh"></script>
+  <script type="module" src="scouting.js?v=20260811-tips"></script>
 </body>
 </html>

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260811-draft-ltr">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
 
   <style>
     body {
@@ -582,14 +583,14 @@
 
   <div id="nav"></div>
 
-  <h1>Draft Auction</h1>
+  <h1 class="gpsl-has-tip" data-gpsl-tip="Free-agent player draft. Bid while the auction window is open. Watch squad size (max 28), star cap, and home-grown / U21 rules — leading bids show as ghosts on Squad until settled." tabindex="0">Draft Auction</h1>
 
   <div class="draft-header-row">
     <div class="club-bank-status-left">
       <div id="clubBankBalance" class="club-bank-balance" hidden></div>
       <div>
         <p id="draftStatus" class="status-note" style="margin:0 0 6px 0;"></p>
-        <p id="creditPanel" class="status-note" style="margin:0;"></p>
+        <p id="creditPanel" class="status-note gpsl-has-tip" style="margin:0;" data-gpsl-tip="Join credits let you list free agents into the draft auction. Winning bids settle when each listing ends — watch squad overflow and star cap on Squad." tabindex="0"></p>
       </div>
     </div>
     <div id="draftCountdownContainer" class="draft-timer">
@@ -729,16 +730,16 @@
     <table class="gpsl-table">
       <thead>
         <tr>
-          <th class="col-fav" title="Save thread">★</th>
+          <th class="col-fav gpsl-has-tip" data-gpsl-tip="Star a thread to pin it under Saved draft auctions in Transfer Centre." tabindex="0">★</th>
           <th class="col-thumb"></th>
           <th class="col-player">Player</th>
           <th class="col-compact">Pos</th>
           <th class="col-compact">Rating</th>
-          <th class="col-money">Market Value</th>
-          <th class="col-money">Highest Bid</th>
+          <th class="col-money gpsl-has-tip" data-gpsl-tip="GPSL market value — usual reference for bidding. Minimum bid rules still apply on the player page." tabindex="0">Market Value</th>
+          <th class="col-money gpsl-has-tip" data-gpsl-tip="Highest bid so far. Use Bid / Max bid on the player page. Auto max-bid raises for you up to your ceiling when rivals bid." tabindex="0">Highest Bid</th>
           <th class="col-leading-club">Leading Club</th>
           <th class="col-owner">Owner</th>
-          <th class="col-compact">Bid</th>
+          <th class="col-compact gpsl-has-tip" data-gpsl-tip="Open the player auction page to place or raise a bid (or view history)." tabindex="0">Bid</th>
         </tr>
       </thead>
       <tbody id="draftTableBody"></tbody>
@@ -751,6 +752,7 @@
        ============================================================ */
 
     import { initGlobal, loadGlobalSettings } from "./global.js";
+    import { initGpslInfoTips } from "./gpsl_info_tips.js";
     import { mountClubBankBalance } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
     import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
     import { renderDraftAuctionRules } from "./draftauction_rules.js?v=20260811-copy";
@@ -1090,6 +1092,7 @@
        ============================================================ */
 
     document.addEventListener("DOMContentLoaded", async () => {
+      initGpslInfoTips();
       renderDraftAuctionRules();
 
       const { data: { user } } = await supabase.auth.getUser();

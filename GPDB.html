@@ -11,6 +11,7 @@
   <title>GPSL Player Database</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
 
   <style>
     body {
@@ -732,7 +733,7 @@
   <div class="club-bank-status-row">
     <div class="club-bank-status-left">
       <div id="clubBankBalance" class="club-bank-balance" hidden></div>
-      <p id="draftCreditsPanel" class="status-note" style="margin:0;"></p>
+      <p id="draftCreditsPanel" class="status-note gpsl-has-tip" style="margin:0;" data-gpsl-tip="Draft auction join credits for this season. Listing a free agent on the draft spends a credit when the auction is created." tabindex="0"></p>
     </div>
     <div id="draftCountdownContainer" class="draft-timer" style="flex-direction:column; align-items:flex-end;">
       <span id="draftCountdown"></span>
@@ -743,11 +744,11 @@
   <div id="controls">
     <div class="filter-group">
       <button id="clearFiltersBtn" class="button">Clear Filters</button>
-      <button id="myClubFilterBtn" class="button secondary" type="button" hidden>My Club</button>
-      <button id="finalYearFilterBtn" class="button secondary" type="button">Final year only</button>
-      <button id="myScoutedFilterBtn" class="button secondary" type="button" hidden>★ My scouting targets</button>
-      <button id="myNationFilterBtn" class="button secondary" type="button" hidden>My National Team</button>
-      <button id="myClubNationFilterBtn" class="button secondary" type="button" hidden>My Club Nation</button>
+      <button id="myClubFilterBtn" class="button secondary gpsl-has-tip" type="button" hidden data-gpsl-tip="Show only players currently contracted to your club." tabindex="0">My Club</button>
+      <button id="finalYearFilterBtn" class="button secondary gpsl-has-tip" type="button" data-gpsl-tip="Show only players in their final contract year (1 season left). Contested ones appear on Expiring Contracts; young HG / non-HG renew on Squad." tabindex="0">Final year only</button>
+      <button id="myScoutedFilterBtn" class="button secondary gpsl-has-tip" type="button" hidden data-gpsl-tip="Show only players on your scouting shortlist (☆ in the Scout column)." tabindex="0">★ My scouting targets</button>
+      <button id="myNationFilterBtn" class="button secondary gpsl-has-tip" type="button" hidden data-gpsl-tip="Filter to your national team’s nation (call-ups / international planning)." tabindex="0">My National Team</button>
+      <button id="myClubNationFilterBtn" class="button secondary gpsl-has-tip" type="button" hidden data-gpsl-tip="Filter to your club’s home nation — useful for home-grown planning (≥8 HG required)." tabindex="0">My Club Nation</button>
       <span id="gpdbPlayerCount" class="gpdb-player-count" aria-live="polite"></span>
     </div>
 
@@ -841,7 +842,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js?v=20260722-bank-bal-row"></script>
-  <script type="module" src="gpdb_v2.js?v=20260811-budget-refresh"></script>
+  <script type="module" src="gpdb_v2.js?v=20260811-tips"></script>
 
 </body>
 </html>

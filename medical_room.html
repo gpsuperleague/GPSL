@@ -8,6 +8,7 @@
   <link rel="icon" href="favicon.ico">
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <link rel="stylesheet" href="medical_room.css">
 </head>
 <body class="medical-page">
@@ -36,7 +37,7 @@
     </div>
     <div class="med-hero-text">
       <p class="med-welcome">Club facilities</p>
-      <h1>Medical Room</h1>
+      <h1 class="gpsl-has-tip" data-gpsl-tip="Hire a club doctor (required for consults), up to 5 physios (each −0.5% injury chance), and spend specialist consult tokens to shorten injuries (−2 to −10 matches)." tabindex="0">Medical Room</h1>
       <p class="med-tagline" id="medTagline">Doctor · Physios · Specialist consultants</p>
       <div class="med-hero-stats" id="heroStats"></div>
     </div>
@@ -46,7 +47,7 @@
     <div id="medStatus" class="med-status"></div>
 
     <section class="med-panel" id="doctorPanel">
-      <h2>Club doctor</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Required. Assesses injuries and must be hired before specialist consults work. While hired, every new injury is shortened by 1 match. 3-season contract, then retires." tabindex="0">Club doctor</h2>
       <p class="med-intro" id="medDoctorIntro"><!-- Filled by medical_room_rules.js --></p>
       <div class="equipment-row equipment-inline" aria-hidden="true">
         <div class="equip-tile">
@@ -58,7 +59,7 @@
     </section>
 
     <section class="med-panel" id="physioPanel">
-      <h2>Physiotherapists</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Up to 5 physios at ₿3,000,000 each. Each reduces this club’s injury chance by 0.5%. 3-season contracts." tabindex="0">Physiotherapists</h2>
       <p class="med-intro" id="medPhysioIntro"><!-- Filled by medical_room_rules.js --></p>
       <div class="equipment-row equipment-inline" aria-hidden="true">
         <div class="equip-tile">
@@ -78,7 +79,7 @@
     </section>
 
     <section class="med-panel" id="tokenPanel">
-      <h2>Specialist consultants</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="After the doctor assesses an injury, spend one consult token (−2 / −4 / −6 / −8 / −10 matches). One consult per injury. Same tokens work from Rewards Centre and Squad Action." tabindex="0">Specialist consultants</h2>
       <p class="med-intro" id="medConsultantsIntro"><!-- Filled by medical_room_rules.js --></p>
       <div class="token-vault" id="tokenVault"></div>
       <h3 style="color:#9ed4f0;font-size:15px;margin:16px 0 8px;">Active injuries</h3>
@@ -86,6 +87,6 @@
     </section>
   </main>
 
-  <script type="module" src="medical_room.js?v=20260805-rules"></script>
+  <script type="module" src="medical_room.js?v=20260811-tips"></script>
 </body>
 </html>

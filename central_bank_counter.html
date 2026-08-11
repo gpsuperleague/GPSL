@@ -7,6 +7,7 @@
   <title>Service counter — GPSL Central Bank</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <link rel="stylesheet" href="central_bank.css?v=20260720-loan-reject-ui">
 </head>
 <body class="bank-page">
@@ -15,7 +16,7 @@
   <header class="bank-hero bank-hero-compact">
     <div class="bank-hero-text">
       <p class="bank-welcome">GPSL Central Bank</p>
-      <h1>Service counter</h1>
+      <h1 class="gpsl-has-tip" data-gpsl-tip="Borrow against your credit headroom or repay loans here. Interest is charged on the schedule; early settle waives remaining interest (principal only)." tabindex="0">Service counter</h1>
       <p class="bank-tagline" id="bankTagline">Apply for credit or make a repayment at the desk</p>
       <div class="bank-hero-stats" id="heroStats"></div>
     </div>
@@ -37,15 +38,15 @@
 
         <div class="counter-desk" id="counterDesk">
           <div class="counter-your-account">
-            <h3>Your loans</h3>
+            <h3 class="gpsl-has-tip" data-gpsl-tip="Open loans with remaining principal and interest. Season accounts only show payments already posted — full terms live here." tabindex="0">Your loans</h3>
             <p class="bank-hint">Full terms, interest, and early repayment — Season accounts only lists payments already made.</p>
-            <p>Available to borrow: <strong id="counterHeadroom">—</strong></p>
+            <p class="gpsl-has-tip" data-gpsl-tip="Credit headroom left for new borrowing after existing loans. Requests still go through a credit check." tabindex="0">Available to borrow: <strong id="counterHeadroom">—</strong></p>
             <div id="counterLoanList"></div>
           </div>
 
           <div class="counter-forms">
             <form class="counter-form" id="loanTakeForm">
-              <h3>Take a loan</h3>
+              <h3 class="gpsl-has-tip" data-gpsl-tip="Request a new bank loan within your available headroom. Instalments follow the GPSL month calendar. Rejected requests show the bank manager’s reason." tabindex="0">Take a loan</h3>
               <label for="loanAmount">Amount (₿)</label>
               <input type="text" id="loanAmount" inputmode="numeric" autocomplete="off" placeholder="e.g. 22,000,000" required>
               <p class="bank-hint" id="loanLimits"></p>
@@ -72,8 +73,8 @@
             </form>
 
             <form class="counter-form" id="loanRepayForm">
-              <h3>Repay / early settle</h3>
-              <p class="bank-hint" id="loanEarlyHint">Early repayment is principal only — remaining interest is waived.</p>
+              <h3 class="gpsl-has-tip" data-gpsl-tip="Pay toward a loan or early-settle. Early repayment is principal only — remaining interest is waived." tabindex="0">Repay / early settle</h3>
+              <p class="bank-hint gpsl-has-tip" id="loanEarlyHint" data-gpsl-tip="Early repayment is principal only — remaining interest is waived." tabindex="0">Early repayment is principal only — remaining interest is waived.</p>
               <label for="repayAmount">Amount (₿)</label>
               <input type="text" id="repayAmount" inputmode="numeric" autocomplete="off" placeholder="e.g. 5,000,000" required>
               <label for="repayLoanId">Loan</label>
@@ -92,6 +93,6 @@
     </section>
   </main>
 
-  <script type="module" src="central_bank_counter.js?v=20260811-loan-money"></script>
+  <script type="module" src="central_bank_counter.js?v=20260811-tips"></script>
 </body>
 </html>

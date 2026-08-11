@@ -10,6 +10,7 @@ import {
   processMyDueLoanInstallments,
 } from "./competition.js";
 import { initBankCounter } from "./bank_counter.js?v=20260811-loan-money";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 
 // Month lock is primary; visit catch-up settles installment_no <= expected only.
 const AUTO_COLLECT_DUE_LOANS_ON_VISIT = true;
@@ -53,6 +54,7 @@ function setupCounterForClub(fullName, shortName) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   const ctx = await initBankPage();
   if (!ctx) return;
 

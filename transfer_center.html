@@ -12,6 +12,7 @@
 
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
   <style>
     body {
       background: #111;
@@ -296,7 +297,7 @@
 
       <div class="tc-grid">
         <div id="scouting-targets" data-dashboard-panel="tc_scouting" class="panel tc-panel">
-          <h2>Scouting targets</h2>
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Players you starred in GPDB (☆ column). Open the scouting board to plan draft bids and track active targets against registration rules." tabindex="0">Scouting targets</h2>
           <p class="tc-note">
             Star players in <a href="GPDB.html" class="gpsl-link">GPDB</a> (☆ column) for a tiered shortlist.
             Manage draft bids on the <a href="scouting.html" class="gpsl-link">scouting board</a>.
@@ -308,7 +309,7 @@
             <a href="scouting.html" class="button secondary" style="display:inline-block;padding:8px 14px;background:#333;color:#ff9900;border:1px solid #666;border-radius:6px;text-decoration:none;font-weight:bold;">Open scouting board →</a>
           </p>
           <hr style="border:none;border-top:1px solid #333;margin:18px 0 14px;">
-          <h3>Saved draft auctions</h3>
+          <h3 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Draft auction threads you starred on the Draft Auction page — quick jump back to those listings." tabindex="0">Saved draft auctions</h3>
           <p class="tc-note">Threads you starred on the Draft Auction page.</p>
           <div id="draftFavouritesContainer" class="tc-scroll">
             <i>Loading…</i>
@@ -316,7 +317,7 @@
         </div>
 
         <div id="active-bids" data-dashboard-panel="tc_active_bids" class="panel tc-panel">
-          <h2>Active Bids</h2>
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Open transfer-list auctions where you are currently the high bidder. Outbid rivals before the listing ends." tabindex="0">Active Bids</h2>
           <p class="tc-note">
             Open transfer-list auctions where you are the high bidder.
           </p>
@@ -324,7 +325,7 @@
         </div>
 
         <div id="awaiting-seller" data-dashboard-panel="tc_awaiting_seller" class="panel tc-panel">
-          <h2>Awaiting seller</h2>
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Not on the open market anymore — ended below reserve, direct GPDB offers, or seller review. Below-reserve rows show an accept/reject cutoff with a countdown." tabindex="0">Awaiting seller</h2>
           <p class="tc-note">
             Auction ended below reserve, direct offers, or seller review — not on the open market.
             Below-reserve items show the accept/reject cutoff with a live countdown.
@@ -333,7 +334,7 @@
         </div>
 
         <div id="season-signings" data-dashboard-panel="tc_season_signings" class="panel tc-panel">
-          <h2>Season Signings</h2>
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Players you signed this GPSL season. Same-season lock: you generally cannot list or sell them until next season." tabindex="0">Season Signings</h2>
           <div id="seasonSigningsContainer" class="tc-scroll"></div>
         </div>
       </div>
@@ -350,12 +351,12 @@
 
       <div class="tc-grid">
         <div id="active-listings" data-dashboard-panel="tc_active_listings" class="panel tc-panel">
-          <h2>Active Listings</h2>
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Your players currently on the transfer list. Reserve price and live high bid appear here." tabindex="0">Active Listings</h2>
           <div id="activeListingsContainer" class="tc-scroll"></div>
         </div>
 
         <div id="closed-listings" data-dashboard-panel="tc_closed_listings" class="panel tc-panel">
-          <h2>
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Finished listings (sold, expired, withdrawn). Clear hides them from this view only." tabindex="0">
             Closed Listings
             <button type="button" id="clearClosedListingsBtn" class="tc-clear-closed" title="Hide closed listings from this view" hidden>Clear</button>
           </h2>
@@ -363,7 +364,7 @@
         </div>
 
         <div id="seller-review" data-dashboard-panel="tc_seller_review" class="panel tc-panel">
-          <h2>Seller Review</h2>
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Decisions waiting on you: accept/reject below-reserve bids before the cutoff, or respond to direct GPDB offers." tabindex="0">Seller Review</h2>
           <p class="tc-note">
             <b>Below reserve:</b> accept or reject before the cutoff (live countdown).
             <b>Direct offers:</b> GPDB offers awaiting your decision.
@@ -372,7 +373,7 @@
         </div>
 
         <div id="season-sales" data-dashboard-panel="tc_season_sales" class="panel tc-panel">
-          <h2>Season Sales</h2>
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Players you sold this GPSL season (fees already settled or recorded)." tabindex="0">Season Sales</h2>
           <div id="seasonSalesContainer" class="tc-scroll"></div>
         </div>
       </div>
@@ -408,7 +409,7 @@
   <script type="module" src="global.js?v=20260706-v18"></script>
   <script type="module" src="global_ui.js"></script>
   <script type="module" src="clubs_lookup.js"></script>
-  <script type="module" src="transfer_center.js?v=20260802-advisory-budget"></script>
+  <script type="module" src="transfer_center.js?v=20260811-tips"></script>
 
 </body>
 </html>

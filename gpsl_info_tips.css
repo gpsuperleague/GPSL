@@ -9,10 +9,22 @@
 }
 
 th.gpsl-has-tip,
+td.gpsl-has-tip,
 .gpsl-has-tip.squad-rules-title,
+.gpsl-has-tip.squad-contract-outlook-title,
+.gpsl-has-tip.squad-pos-section-title,
 .gpsl-has-tip.wage-bill-stat,
 .gpsl-has-tip.foreign-interest-badge,
-.gpsl-has-tip.manager-badge {
+.gpsl-has-tip.manager-badge,
+.gpsl-has-tip.squad-sack-btn,
+.gpsl-has-tip.stat-box,
+.gpsl-has-tip.tc-tip-heading,
+.gpsl-has-tip.scout-budget-item,
+.gpsl-has-tip.scout-reg-label,
+h1.gpsl-has-tip,
+h2.gpsl-has-tip,
+h3.gpsl-has-tip,
+button.gpsl-has-tip {
   border-bottom: none;
 }
 

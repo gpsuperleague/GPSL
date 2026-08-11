@@ -37,6 +37,8 @@ import {
   formatForeignContractGpdbHtml,
 } from "./player_transfer_status.js";
 import { installRangeSteppers } from "./range_filter_steppers.js?v=20260811-step-pairs";
+import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
+import { GPDB_TIPS } from "./owner_page_tips.js";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -161,6 +163,7 @@ async function getDraftCreditsForGPDB(clubShortName) {
    ============================================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
+  initGpslInfoTips();
 
   /* ============================================================
      MODULE B: Column Definitions
@@ -1965,20 +1968,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const showCallUpCol = !!MY_NATION?.code;
     const showScoutCol = !!CURRENT_USER;
 
+    const colTip = (col) => {
+      if (col === "market_value") return GPDB_TIPS.marketValue;
+      if (col === "contract_wage") return GPDB_TIPS.contractWage;
+      if (col === "Age") return "Player age. Home-grown / U21 registration and uncontested expiry renewals use age bands.";
+      if (col === "Rating") return "Overall rating. Also drives automatic star status (≥79 by default).";
+      if (col === "Nation") return "Nationality — matches your club nation for home-grown (HG) counts.";
+      return "";
+    };
+
     tableHead.innerHTML = `
       <tr>
         <th></th>
         ${TABLE_DISPLAY_COLUMNS.map((col) => {
-            let cls = "";
-            if (CURRENT_SORT_COLUMN === col) {
-              cls = CURRENT_SORT_DIR === "asc" ? "sort-asc" : "sort-desc";
+            let cls = CURRENT_SORT_COLUMN === col
+              ? CURRENT_SORT_DIR === "asc"
+                ? "sort-asc"
+                : "sort-desc"
+              : "";
+            const tip = colTip(col);
+            if (tip) {
+              return `<th data-col="${col}"${tipAttrs(tip, cls)}>${formatHeader(col)}</th>`;
             }
             return `<th data-col="${col}" class="${cls}">${formatHeader(col)}</th>`;
           })
           .join("")}
         ${showCallUpCol ? '<th class="gpdb-callup-col">Call up</th>' : ""}
-        ${showScoutCol ? '<th class="gpdb-scout-col" title="Scouting shortlist">Scout</th>' : ""}
-        <th>Bid</th>
+        ${showScoutCol ? `<th class="gpdb-scout-col"${tipAttrs(GPDB_TIPS.scoutCol)}>Scout</th>` : ""}
+        <th${tipAttrs(GPDB_TIPS.bidCol)}>Bid</th>
       </tr>
     `;
 
