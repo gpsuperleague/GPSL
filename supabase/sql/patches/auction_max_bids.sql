@@ -1014,12 +1014,13 @@ BEGIN
 
   v_listing_id := public.player_draft_ensure_listing(v_pid);
 
+  -- player_id holds Konami id (text). direct_bid_id is integer legacy — leave NULL.
   INSERT INTO public."Player_Transfer_Bids" (
     listing_id, player_id, direct_bid_id, bidder_club_id, seller_club_id,
     bid_amount, is_direct, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time
   )
   VALUES (
-    v_listing_id, v_pid, v_pid, p_club_short_name, NULL,
+    v_listing_id, v_pid, NULL, p_club_short_name, NULL,
     p_amount, true, v_is_first, v_is_join, v_consume, now()
   );
 
