@@ -16,6 +16,7 @@ import {
 } from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
+import { installRangeSteppers } from "./range_filter_steppers.js";
 
 const TABLE_COLUMNS = [
   { key: "name", label: "Manager" },
@@ -669,6 +670,10 @@ function buildFilterControls() {
   }
 
   setupRangeFilters();
+  installRangeSteppers({
+    root: container,
+    cols: ["age", "rating", "market_value"],
+  });
   wireMultiFilterClicks();
 
   document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {

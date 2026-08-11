@@ -23,6 +23,7 @@ import {
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
 import { textMatchesSearch } from "./search_normalize.js";
+import { installRangeSteppers, RANGE_STEP_MONEY } from "./range_filter_steppers.js";
 import {
   loadScoutingTargetMap,
   isScoutingAvailable,
@@ -866,6 +867,11 @@ function wireAdvancedListingFilters() {
     minEl.addEventListener("input", onInput);
     maxEl.addEventListener("input", onInput);
   }
+
+  installRangeSteppers({
+    root: document.getElementById("listingsAdvancedFilters") || document,
+    cols: ["Age", "Rating", "listed_price"],
+  });
 }
 
 function sortMultiOptions(col, values) {
@@ -1001,9 +1007,11 @@ function syncRangeInputs(col) {
   if (!bounds || !minEl || !maxEl) return;
 
   const step =
-    col === "listed_price" || col === "contract_wage"
-      ? Math.max(1, Math.round((bounds.max - bounds.min) / 100) || 1)
-      : 1;
+    col === "listed_price"
+      ? RANGE_STEP_MONEY
+      : col === "contract_wage"
+        ? Math.max(1, Math.round((bounds.max - bounds.min) / 100) || 1)
+        : 1;
 
   minEl.min = String(bounds.min);
   minEl.max = String(bounds.max);

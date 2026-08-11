@@ -1,4 +1,5 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import { installRangeSteppers, RANGE_STEP_MONEY } from "./range_filter_steppers.js";
 
 primeAdminPageChrome();
 
@@ -10,7 +11,7 @@ const POSITION_ORDER = [
 
 const DROPDOWN_COLS = ["Position", "Nation", "Playstyle"];
 const RANGE_COLS = ["Age", "Rating", "market_value"];
-const MV_STEP = 1_000_000;
+const MV_STEP = RANGE_STEP_MONEY;
 
 const FILTER_OPTIONS = {
   Position: [],
@@ -580,6 +581,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadFilterOptions();
   buildFiltersHtml();
   wireFilters();
+  installRangeSteppers({
+    root: document.getElementById("filters") || document,
+    cols: ["Age", "Rating", "market_value"],
+  });
   DROPDOWN_COLS.forEach((col) => {
     updateMultiDisplay(col);
     renderMultiOptions(col);

@@ -3278,11 +3278,10 @@ document.addEventListener("DOMContentLoaded", () => {
     applySavedGpdbFilterState(loadSavedGpdbFilters());
     setupFilters();
     setupRangeFilters();
+    // MV slider uses ₿500k index units (step=1 on the input).
     installRangeSteppers({
       root: document.getElementById("filters") || document,
       cols: ["Age", "Rating", "market_value"],
-      // MV slider is indexed in ₿500k units with step=1 on the input.
-      stepForCol: (col) => (col === "market_value" ? 1 : 1),
     });
     setupTextFilters();
     await populateDropdowns();
