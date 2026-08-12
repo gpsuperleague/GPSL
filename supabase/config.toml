@@ -30,3 +30,7 @@ verify_jwt = false
 # Auth checked inside (admin JWT / gossip invoke key / service_role).
 [functions.discord-transfer-gossip-ingest]
 verify_jwt = false
+
+# Auth checked inside (admin JWT / feed invoke key / service_role).
+[functions.discord-threads-keepalive]
+verify_jwt = false
