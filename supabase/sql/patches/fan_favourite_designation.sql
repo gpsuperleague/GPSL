@@ -96,13 +96,53 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.club_squad_designation_edit_window_open()
 RETURNS boolean
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
+SECURITY DEFINER
 SET search_path = public
-AS $$
-  -- Pre-season (June/July) and January only (Europe/London wall calendar).
-  SELECT EXTRACT(MONTH FROM (timezone('Europe/London', now())))::int IN (1, 6, 7);
-$$;
+AS $function$
+DECLARE
+  v_season_id bigint;
+  v_status text;
+  v_month text;
+BEGIN
+  IF to_regprocedure('public.competition_finances_current_season_id()') IS NOT NULL THEN
+    v_season_id := public.competition_finances_current_season_id();
+  ELSIF to_regprocedure('public.current_gpsl_season_id()') IS NOT NULL THEN
+    v_season_id := public.current_gpsl_season_id();
+  ELSE
+    SELECT s.id INTO v_season_id
+    FROM public.competition_seasons s
+    WHERE s.is_current = true
+    ORDER BY s.id DESC
+    LIMIT 1;
+  END IF;
+
+  IF v_season_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  SELECT s.status INTO v_status
+  FROM public.competition_seasons s
+  WHERE s.id = v_season_id;
+
+  IF v_status IN ('preseason', 'setup') THEN
+    RETURN true;
+  END IF;
+
+  IF to_regprocedure('public.competition_active_gpsl_month(bigint, timestamptz)') IS NOT NULL THEN
+    v_month := lower(btrim(coalesce(
+      public.competition_active_gpsl_month(v_season_id, now()),
+      ''
+    )));
+  END IF;
+
+  RETURN v_month IN ('june', 'july', 'january');
+END;
+$function$;
+
+COMMENT ON FUNCTION public.club_squad_designation_edit_window_open() IS
+  'OooO / Fan Favourite editable in GPSL preseason/setup, or GPSL months june/july/january.';
 
 CREATE OR REPLACE FUNCTION public.club_nation_has_gpdb_star(p_club_short_name text)
 RETURNS boolean
@@ -351,7 +391,7 @@ BEGIN
 
   IF NOT v_admin AND NOT public.club_squad_designation_edit_window_open() THEN
     RAISE EXCEPTION
-      'One of our own / Fan Favourite can only be changed in June, July, or January (UK time)';
+      'One of our own / Fan Favourite can only be changed in GPSL preseason (June/July) or January';
   END IF;
 
   IF NOT EXISTS (
@@ -432,7 +472,7 @@ BEGIN
   IF NOT public.is_gpsl_admin()
      AND NOT public.club_squad_designation_edit_window_open() THEN
     RAISE EXCEPTION
-      'One of our own / Fan Favourite can only be changed in June, July, or January (UK time)';
+      'One of our own / Fan Favourite can only be changed in GPSL preseason (June/July) or January';
   END IF;
 
   IF NOT public.club_nation_has_gpdb_star(v_club) THEN

@@ -196,8 +196,8 @@ export function oooComplianceRow(state) {
     whoCounts: "Home-grown star — Action menu (XOR Fan Favourite)",
     requirement: "Optional (1 slot)",
     note: editOpen
-      ? "Excused from star cap/tax. Editable Jun / Jul / Jan only."
-      : "Excused from star cap/tax. Locked until Jun / Jul / Jan.",
+      ? "Excused from star cap/tax. Editable in GPSL preseason or January."
+      : "Excused from star cap/tax. Locked until GPSL preseason or January.",
     count: has ? 1 : 0,
     ok: true,
     status: has ? "Assigned" : "Not assigned",
@@ -215,8 +215,8 @@ export function fanFavouriteComplianceRow(state) {
       : "Any nationality rated 76–78 (only option — no nation stars)",
     requirement: "Optional (1 slot)",
     note: editOpen
-      ? "Central Bank pays 50% of their wage. Editable Jun / Jul / Jan only."
-      : "Central Bank pays 50% of their wage. Locked until Jun / Jul / Jan.",
+      ? "Central Bank pays 50% of their wage. Editable in GPSL preseason or January."
+      : "Central Bank pays 50% of their wage. Locked until GPSL preseason or January.",
     count: has ? 1 : 0,
     ok: true,
     status: has ? "Assigned" : "Not assigned",
