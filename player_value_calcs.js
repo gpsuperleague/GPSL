@@ -29,12 +29,13 @@ function sortedMapKeys(map) {
 }
 
 /**
- * GPSL base value by current rating — uses full 60-93 table; linear interpolation
- * between defined points for any other rating (clamp below 60 / above 93).
+ * Base value by current rating — table 60–92; below 60 = 0; above max clamps to max.
+ * Linear interpolation between defined points for any other in-range rating.
  */
 export function getBaseValueByRating(rating) {
   const r = Math.round(Number(rating));
   if (!Number.isFinite(r)) return 0;
+  if (r < 60) return 0;
 
   const map = tables().baseValueByRating;
   const key = String(r);

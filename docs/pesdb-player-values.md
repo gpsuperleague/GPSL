@@ -53,22 +53,21 @@ Source: league Excel (columns match `Current GPDB.csv`).
 
 **Logic:** Start from base value by **current Rating**, add % adjustments from **Calc Value**, **Age**, optional **young star** ages (16–19), and **Position**. Floor ₿5M if age &lt; 30, else ₿2M.
 
-## GPSL extension: base value for ratings 60–64
+## GPSL base value by rating
 
-Your Excel **X** column does not list every rating 60–64. `XLOOKUP(..., 0)` returns **0** for those rows, so market value often collapses to the **₿5M floor** only.
+Base values live in `data/player_value_tables.json` (`baseValueByRating`) and the SQL twin `gpsl_pv_base_value`.
 
-**GPSL keeps the same J2 formula** but uses `getBaseValueByRating()` from `player_value_calcs.js`:
-
-| Rating | Excel (typical) | GPSL extended base |
-|--------|-----------------|-------------------|
-| 60–64 | 0 → floor ₿5M | ₿2.5M–₿4.5M stepped toward 70 |
-| 65+ | values from sheet | same knots, filled 65–93 between anchors |
+- **Rating &lt; 60** → base **0** (MV still hits the age floor: ₿5M / ₿2M unless other rules apply).
+- **60–92** → league sheet table (see JSON).
+- **&gt; 92** → clamps to rating 92 base.
 
 - **G2 (Calc Potential)** — unchanged (still your LOOKUP + age bonus).
 - **Potential / Age / Position %** — same tables as Excel (`XLOOKUP` exact; potential % also interpolates between rows if Calc Value is between keys).
 - **Maximum reserve** — still **1.5 × market_value**.
 
-The extended bases are in `data/player_value_tables.json` under `baseValueByRating` and `baseValuePolicy`. They do **not** modify your `.xlsx`; only the site import path.
+Optional post-MV boosts (online only): international +5%, Next Gen Youth +10%.
+
+To change bases: edit the JSON, mirror in `player_value_base_table_*.sql` / `gpsl_pv_base_value`, then preview + apply recalc.
 
 ## Current setup (live now)
 

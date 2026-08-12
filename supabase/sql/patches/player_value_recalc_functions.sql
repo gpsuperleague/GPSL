@@ -2,7 +2,7 @@
 -- Recalculate player market values — SQL port of player_value_calcs.js
 -- =============================================================================
 -- Mirrors the JS exactly (data/player_value_tables.json):
---   * base value by Rating (60-93; clamp below 60 / above 93)
+--   * base value by Rating (60-92; below 60 = 0; above 92 clamps to 92)
 --   * Calc Potential (G): if Rating = Pes Max -> Pes Max + tier bonus + (age<=19?2:0)
 --   * Market Value (J): base + base*potential% + base*age% + base*youngStar%
 --                       + base*position%, floored ₿5M (<30) / ₿2M (>=30)
@@ -27,19 +27,24 @@ RETURNS integer LANGUAGE sql IMMUTABLE AS $$
   END;
 $$;
 
--- Base value by Rating (every integer 60-93 defined; clamp outside).
+-- Base value by Rating (every integer 60-92 defined; <60 = 0; >92 clamps to 92).
 CREATE OR REPLACE FUNCTION public.gpsl_pv_base_value(p_rating integer)
 RETURNS numeric LANGUAGE sql IMMUTABLE AS $$
-  SELECT v FROM (VALUES
-    (60,2500000),(61,3000000),(62,3500000),(63,4000000),(64,4500000),
-    (65,5000000),(66,5500000),(67,6000000),(68,6500000),(69,7500000),
-    (70,10000000),(71,12500000),(72,15000000),(73,17500000),(74,20000000),
-    (75,22500000),(76,25000000),(77,27500000),(78,30000000),(79,32500000),
-    (80,40000000),(81,50000000),(82,60000000),(83,70000000),(84,80000000),
-    (85,90000000),(86,100000000),(87,110000000),(88,115000000),(89,120000000),
-    (90,130000000),(91,135000000),(92,140000000),(93,150000000)
-  ) t(k, v)
-  WHERE k = LEAST(93, GREATEST(60, p_rating));
+  SELECT CASE
+    WHEN p_rating IS NULL OR p_rating < 60 THEN 0
+    ELSE (
+      SELECT v FROM (VALUES
+        (60,100000),(61,250000),(62,500000),(63,750000),(64,1000000),
+        (65,1500000),(66,2000000),(67,3000000),(68,4000000),(69,5000000),
+        (70,6000000),(71,8000000),(72,10000000),(73,12000000),(74,14000000),
+        (75,16000000),(76,18000000),(77,20000000),(78,25000000),(79,30000000),
+        (80,40000000),(81,50000000),(82,60000000),(83,75000000),(84,85000000),
+        (85,90000000),(86,95000000),(87,100000000),(88,110000000),(89,120000000),
+        (90,130000000),(91,140000000),(92,150000000)
+      ) t(k, v)
+      WHERE k = LEAST(92, p_rating)
+    )
+  END;
 $$;
 
 -- Rating -> tier bonus (Excel LOOKUP: largest key <= rating).
