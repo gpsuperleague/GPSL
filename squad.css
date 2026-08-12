@@ -1241,6 +1241,12 @@ body.squad-page .squad-role-ooo {
   border: 1px solid #3a6a3a;
 }
 
+body.squad-page .squad-role-ff {
+  background: #1a2233;
+  color: #9cf;
+  border: 1px solid #3a5a8a;
+}
+
 body.squad-page .status-offer-pending {
   background: #555;
   color: #ddd;

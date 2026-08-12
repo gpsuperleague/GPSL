@@ -1571,6 +1571,7 @@ export const GATE_ENTRY_LABELS = {
   wage_squad: "Wages",
   wage_renewal_34plus: "34+ renewals",
   wage_star_tax: "Star tax",
+  wage_fan_favourite_subsidy: "Fan Favourite wage subsidy",
   staff_manager_salary: "Manager salary",
   medical_doctor_hire: "Doctor hire",
   medical_physio_hire: "Physio hire",

@@ -42,13 +42,13 @@ export const SQUAD_TIPS = {
     "Current availability — transfer-listed, injured, suspended, yellow-card tally, same-season lock, etc.\n\nSigned this season? Cannot Transfer List or sell until next season (New Owner list can bypass that lock).",
 
   action:
-    "Player actions: Transfer List, sell abroad (uses a foreign-interest slot), final-year renew / wage bid / legacy renew, medical consults, red-card appeals, set or remove One of our own (HG star), and voluntary / New Owner releases when available.\n\nScroll sideways if the column is off-screen.",
+    "Player actions: Transfer List, sell abroad (uses a foreign-interest slot), final-year renew / wage bid / legacy renew, medical consults, red-card appeals, set One of our own (HG star) or Fan Favourite (76–78, 50% wage — XOR, editable Jun/Jul/Jan only), and voluntary / New Owner releases when available.\n\nScroll sideways if the column is off-screen.",
 
   contractHeader:
     "Contract length + seasonal wage.\n\nStandard deals are 3 seasons. In the final year the player cannot be listed or sold — they enter the expiry wage auction unless legacy or young HG / non-HG uncontested rules apply (hover a contract cell for that player’s path).",
 
   registration:
-    "Squad registration for your club this season.\n\n• Size: at least 24 contracted players from August, never more than 28\n• ≥1 GK · ≥8 home-grown · ≥5 U21 (age ≤21)\n• Star cap (automatic by rating ≥79): Super League 3 / Championship 2 — One of our own (HG star you set) is excused from the cap\n\nFrom August, shortfalls and over-cap trigger ₿2.5m fines and emergency loans. Going over 28 on a signing: prefer a foreign-interest sell, else overflow release at MV + ₿10m fine.\n\nContract outlook (below): December/January heads-up for 2-season deals; final-year split into re-signable vs contested wage market.",
+    "Squad registration for your club this season.\n\n• Size: at least 24 contracted players from August, never more than 28\n• ≥1 GK · ≥8 home-grown · ≥5 U21 (age ≤21)\n• Star cap (automatic by rating ≥79): Super League 3 / Championship 2 — One of our own (HG star you set) is excused from the cap\n• One of our own XOR Fan Favourite (76–78 any nation, Central Bank pays 50% wage). Nations with no GPDB 79+ get Fan Favourite only. Change in June, July, or January only.\n\nFrom August, shortfalls and over-cap trigger ₿2.5m fines and emergency loans. Going over 28 on a signing: prefer a foreign-interest sell, else overflow release at MV + ₿10m fine.\n\nContract outlook (below): December/January heads-up for 2-season deals; final-year split into re-signable vs contested wage market.",
 
   ifWon:
     "Projected count if your pending leading bids complete (transfer list, draft, or your expiry wage bid).\n\nGhost players are not contracted yet — if you are outbid, they drop off.",
@@ -96,7 +96,7 @@ export const SQUAD_TIPS = {
     "First-season owner tools — up to 3 shared slots (release or transfer-list) in your first season at the club.\n\nWindow: pre-season through GPSL August, plus January when the transfer window is open.\n\nRelease refunds the recorded purchase fee. Transfer list at market value (slot returns if unsold). New Owner list can bypass the same-season lock.",
 
   starOoo:
-    "Stars are automatic by rating (usually ≥79). Super League cap 3 / Championship 2. One of our own is a home-grown star you assign in Action — excused from the star cap. Over-cap from August triggers fines and forced releases.",
+    "Stars are automatic by rating (usually ≥79). Super League cap 3 / Championship 2. One of our own is a home-grown star you assign in Action — excused from the star cap. Fan Favourite is a 76–78 (any nation) with 50% wage paid by Central Bank. You may set only one of OooO or Fan Favourite; editable in June, July, and January. Nations with no GPDB 79+ get Fan Favourite only. Over-cap from August triggers fines and forced releases.",
 };
 
 export function squadContractTip(player, clubNation) {

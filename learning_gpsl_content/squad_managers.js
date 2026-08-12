@@ -17,6 +17,7 @@ export const SECTION_SQUAD = {
         `<b>Home-grown</b> — minimum <b>8</b> players whose nation matches your club nation.`,
         `<b>Under-21</b> — minimum <b>5</b> players aged 21 or younger.`,
         `<b>Star players</b> — automatic from rating (OooO excluded from the cap). Super League max <b>3</b>, Championship max <b>2</b>.`,
+        `<b>One of our own</b> or <b>Fan Favourite</b> — choose one (not both). OooO = home-grown star (excused from star cap/tax), only if your nation has GPDB 79+ players. Fan Favourite = any 76–78 (any nation); Central Bank pays <b>50%</b> of their wage. Editable in <b>June, July, January</b> only. Nations with no GPDB stars get Fan Favourite only.`,
         {
           html: `<b>August enforcement</b> — from GPSL August, clubs still short on size / HG / U21, or over the star cap, are auto-fixed once:`,
           children: [

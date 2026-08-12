@@ -1,11 +1,12 @@
 /**
- * Squad designations: Star player & One of our own
+ * Squad designations: Star (automatic), One of our own, Fan Favourite
  */
 
 import { isHomeGrownPlayer } from "./squad_rules.js";
 
 export const DESIGNATION_STAR = "star";
 export const DESIGNATION_OOO = "one_of_our_own";
+export const DESIGNATION_FF = "fan_favourite";
 
 export function parsePlayerRating(player) {
   const raw = String(player?.Rating ?? "").replace(/[^0-9]/g, "");
@@ -19,10 +20,14 @@ export function playerEligibleStar(player, minRating = 79) {
 }
 
 export function playerEligibleOoo(player, clubNation, minRating = 79) {
-  // Must be home-grown (Nation matches club) AND a star (rated minRating+).
   return (
     isHomeGrownPlayer(player, clubNation) && playerEligibleStar(player, minRating)
   );
+}
+
+export function playerEligibleFanFavourite(player) {
+  const r = parsePlayerRating(player);
+  return r != null && r >= 76 && r <= 78;
 }
 
 export function designationForPlayer(state, playerId) {
@@ -30,65 +35,13 @@ export function designationForPlayer(state, playerId) {
   return state?.designations?.[id] || null;
 }
 
-export function squadDesignationOptionsHtml(player, state, clubNation) {
-  if (!state) {
-    return '<option value="" selected>Role unavailable</option>';
-  }
-  const pid = String(player.Konami_ID);
-  const current = designationForPlayer(state, pid);
-  const minRating = Number(state?.star_min_rating ?? 79);
-  const starCap = Number(state?.star_cap ?? 2);
-  const starCount = Number(state?.star_count ?? 0);
-  const oooId = state?.one_of_our_own_player_id
-    ? String(state.one_of_our_own_player_id)
-    : null;
-
-  const canStar =
-    playerEligibleStar(player, minRating) &&
-    (current === DESIGNATION_STAR || starCount < starCap);
-  const canOoo =
-    playerEligibleOoo(player, clubNation) &&
-    (!oooId || oooId === pid);
-
-  const starDisabled = !canStar && current !== DESIGNATION_STAR;
-  const oooDisabled = !canOoo && current !== DESIGNATION_OOO;
-
-  const starHint = starDisabled
-    ? current === DESIGNATION_STAR
-      ? ""
-      : starCount >= starCap
-        ? ` — limit ${starCap} reached`
-        : ` — need ${minRating}+ rating`
-    : "";
-  const oooHint = oooDisabled
-    ? current === DESIGNATION_OOO
-      ? ""
-      : oooId && oooId !== pid
-        ? " — club already has One of our own"
-        : " — home-grown only"
-    : "";
-
-  // Avoid emoji + disabled-only menus: iOS hides disabled options and may show "No Options".
-  const starLabel = starDisabled
-    ? `Star player${starHint}`
-    : "Star player";
-  const oooLabel = oooDisabled
-    ? `One of our own${oooHint}`
-    : "One of our own";
-  return `
-    <option value=""${current ? "" : " selected"}>Normal</option>
-    <option value="${starDisabled ? "noop:star" : DESIGNATION_STAR}"${current === DESIGNATION_STAR ? " selected" : ""}>${starLabel}</option>
-    <option value="${oooDisabled ? "noop:ooo" : DESIGNATION_OOO}"${current === DESIGNATION_OOO ? " selected" : ""}>${oooLabel}</option>
-  `;
+export function designationEditOpen(state) {
+  return state?.designation_edit_open !== false;
 }
 
 /**
  * Role options for the per-player Action dropdown (Squad page).
- * Stars are automatic (rating-based) and are NOT set here. The only manual role
- * is "One of our own": the owner nominates ONE home-grown star (Nation matches
- * club, rated minRating+). The option only appears for eligible players and only
- * while the club's single OOO slot is free (or already this player).
- * Values are prefixed "role:" so the action handler can route them.
+ * Stars are automatic. Manual: One of our own XOR Fan Favourite.
  */
 export function squadRoleActionOptionsHtml(player, state, clubNation) {
   if (!state) return "";
@@ -98,18 +51,52 @@ export function squadRoleActionOptionsHtml(player, state, clubNation) {
   const oooId = state?.one_of_our_own_player_id
     ? String(state.one_of_our_own_player_id)
     : null;
+  const ffId = state?.fan_favourite_player_id
+    ? String(state.fan_favourite_player_id)
+    : null;
+  const oooAllowed = state?.ooo_allowed !== false;
+  const editOpen = designationEditOpen(state);
 
   if (current === DESIGNATION_OOO) {
-    // No emoji in <option> text — iOS Safari can drop those options entirely.
+    if (!editOpen) return "";
     return `<option value="role:">Remove One of our own</option>`;
   }
+  if (current === DESIGNATION_FF) {
+    if (!editOpen) return "";
+    return `<option value="role:">Remove Fan Favourite</option>`;
+  }
+
+  if (!editOpen) return "";
+
+  const parts = [];
 
   const canOoo =
-    playerEligibleOoo(player, clubNation, minRating) && (!oooId || oooId === pid);
+    oooAllowed &&
+    playerEligibleOoo(player, clubNation, minRating) &&
+    !ffId &&
+    (!oooId || oooId === pid);
   if (canOoo) {
-    return `<option value="role:${DESIGNATION_OOO}">Set as One of our own</option>`;
+    parts.push(
+      `<option value="role:${DESIGNATION_OOO}">Set as One of our own</option>`
+    );
   }
-  return "";
+
+  const canFf =
+    playerEligibleFanFavourite(player) &&
+    !oooId &&
+    (!ffId || ffId === pid);
+  if (canFf) {
+    parts.push(
+      `<option value="role:${DESIGNATION_FF}">Set as Fan Favourite (50% wage)</option>`
+    );
+  }
+
+  return parts.join("");
+}
+
+/** @deprecated Prefer squadRoleActionOptionsHtml — kept for older callers */
+export function squadDesignationOptionsHtml(player, state, clubNation) {
+  return squadRoleActionOptionsHtml(player, state, clubNation);
 }
 
 export function designationRoleBadge(designation) {
@@ -118,6 +105,9 @@ export function designationRoleBadge(designation) {
   }
   if (designation === DESIGNATION_OOO) {
     return `<span class="squad-role-badge squad-role-ooo" title="One of our own">OOO</span>`;
+  }
+  if (designation === DESIGNATION_FF) {
+    return `<span class="squad-role-badge squad-role-ff" title="Fan Favourite — Central Bank pays 50% wage">FF</span>`;
   }
   return "";
 }
@@ -158,10 +148,6 @@ export function starComplianceRow(state) {
   };
 }
 
-/**
- * Star count if pending (ghost) acquisitions complete.
- * Ghosts that are already star-eligible count toward the cap (OooO still excused).
- */
 export function projectedStarCount(state, ghostPlayers = []) {
   const owned = Number(state?.star_count ?? 0);
   const minRating = Number(state?.star_min_rating ?? 79);
@@ -192,13 +178,47 @@ export function projectedStarComplianceRow(state, ghostPlayers = []) {
 
 export function oooComplianceRow(state) {
   const has = !!state?.one_of_our_own_player_id;
+  const oooAllowed = state?.ooo_allowed !== false;
+  const editOpen = designationEditOpen(state);
+  if (!oooAllowed) {
+    return {
+      rule: "One of our own",
+      whoCounts: "Nation has no 79+ in GPDB pool",
+      requirement: "Not available",
+      note: "Use Fan Favourite instead (76–78, 50% wage paid by Central Bank)",
+      count: 0,
+      ok: true,
+      status: "N/A — Fan Favourite only",
+    };
+  }
   return {
     rule: "One of our own",
-    whoCounts: "Home-grown talisman — set via the Action menu",
-    requirement: "1 recommended",
-    note: "Does not count toward star limit",
+    whoCounts: "Home-grown star — Action menu (XOR Fan Favourite)",
+    requirement: "Optional (1 slot)",
+    note: editOpen
+      ? "Excused from star cap/tax. Editable Jun / Jul / Jan only."
+      : "Excused from star cap/tax. Locked until Jun / Jul / Jan.",
     count: has ? 1 : 0,
-    ok: has,
+    ok: true,
+    status: has ? "Assigned" : "Not assigned",
+  };
+}
+
+export function fanFavouriteComplianceRow(state) {
+  const has = !!state?.fan_favourite_player_id;
+  const oooAllowed = state?.ooo_allowed !== false;
+  const editOpen = designationEditOpen(state);
+  return {
+    rule: "Fan Favourite",
+    whoCounts: oooAllowed
+      ? "Any nationality rated 76–78 — XOR One of our own"
+      : "Any nationality rated 76–78 (only option — no nation stars)",
+    requirement: "Optional (1 slot)",
+    note: editOpen
+      ? "Central Bank pays 50% of their wage. Editable Jun / Jul / Jan only."
+      : "Central Bank pays 50% of their wage. Locked until Jun / Jul / Jan.",
+    count: has ? 1 : 0,
+    ok: true,
     status: has ? "Assigned" : "Not assigned",
   };
 }

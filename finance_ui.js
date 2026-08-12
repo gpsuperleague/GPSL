@@ -37,6 +37,7 @@ export const LEDGER_TYPE_TO_LINE = {
   gov_emergency_tax: "gov_emergency_tax",
   gov_income_tax: "gov_income_tax",
   wage_squad: "upkeep_wages",
+  wage_fan_favourite_subsidy: "upkeep_wages",
   wage_renewal_34plus: "upkeep_34plus",
   wage_star_tax: "upkeep_star_tax",
   staff_manager_salary: "staff_manager",
@@ -211,8 +212,8 @@ export const FINANCE_UI_SECTIONS = [
       {
         id: "upkeep_wages",
         label: "Wages",
-        types: ["wage_squad"],
-        note: "Season squad wage bill (sum of contract wages) — admin Post season wage bills.",
+        types: ["wage_squad", "wage_fan_favourite_subsidy"],
+        note: "Season squad wage bill (sum of contract wages). Fan Favourite: Central Bank credits 50% of that player's wage.",
       },
       {
         id: "upkeep_34plus",

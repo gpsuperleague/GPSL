@@ -106,9 +106,11 @@ import {
   starComplianceRow,
   projectedStarComplianceRow,
   oooComplianceRow,
+  fanFavouriteComplianceRow,
   DESIGNATION_STAR,
   DESIGNATION_OOO,
-} from "./squad_designations.js?v=20260811-ios-action";
+  DESIGNATION_FF,
+} from "./squad_designations.js?v=20260812-fan-favourite";
 import {
   loadActiveSeasonLoanPlayerIds,
   loadClubSquadMinimumStatus,
@@ -131,7 +133,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20260811-tips-refresh";
+} from "./squad_info_tips.js?v=20260812-fan-favourite";
 
 window.supabase = supabase;
 
@@ -1586,6 +1588,7 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
   if (designationsState) {
     rows.push(starComplianceRow(designationsState));
     rows.push(oooComplianceRow(designationsState));
+    rows.push(fanFavouriteComplianceRow(designationsState));
   }
 
   const ghosts = ghostPlayers || [];
@@ -2120,6 +2123,7 @@ function wireSquadTable() {
 function roleBadgeForPlayer(player, state) {
   const role = designationForPlayer(state, player?.Konami_ID);
   if (role === DESIGNATION_OOO) return designationRoleBadge(DESIGNATION_OOO);
+  if (role === DESIGNATION_FF) return designationRoleBadge(DESIGNATION_FF);
   const min = Number(state?.star_min_rating ?? 79);
   if (state && playerEligibleStar(player, min)) {
     return designationRoleBadge(DESIGNATION_STAR);
