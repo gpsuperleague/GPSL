@@ -22,6 +22,9 @@ export const NATION_HEALTHY_CLUB_REQUIREMENTS = [
   { key: "u21", min: 8, label: "U21" },
 ];
 
+/** Star (79+) can be waived when pool is deep and has a 76–78 (e.g. a 78). */
+export const NATION_HEALTHY_CLUB_NO_STAR_MIN_TOTAL = 100;
+
 export function nationPoolSection(row, key) {
   return row?.pool?.[key] || { total: 0, gk: 0, def: 0, mid: 0, fwd: 0 };
 }
@@ -38,8 +41,24 @@ export function nationPoolStatus(row) {
   return { key: "bad", label: "Short" };
 }
 
+/**
+ * How many owned clubs this nation pool can support.
+ * Same band floors as NATION_HEALTHY_CLUB_REQUIREMENTS, except: if there are
+ * no 79+ stars, the star requirement is waived when total players > 100 and
+ * there is at least one 76–78 (covers a 78-rated lead player).
+ */
 export function nationHealthyClubCapacity(row) {
-  const caps = NATION_HEALTHY_CLUB_REQUIREMENTS.map(({ key, min }) => {
+  const stars = nationPoolSection(row, "r79_plus").total;
+  const nearStars = nationPoolSection(row, "r76_78").total;
+  const total = nationPoolSection(row, "all").total;
+  const waiveStar =
+    stars <= 0 &&
+    nearStars >= 1 &&
+    total > NATION_HEALTHY_CLUB_NO_STAR_MIN_TOTAL;
+
+  const caps = NATION_HEALTHY_CLUB_REQUIREMENTS.filter(
+    ({ key }) => !(waiveStar && key === "r79_plus")
+  ).map(({ key, min }) => {
     const available = nationPoolSection(row, key).total;
     return Math.floor(available / min);
   });

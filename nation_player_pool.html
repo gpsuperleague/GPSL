@@ -227,8 +227,10 @@
       GPDB counts for each selectable nation — rating bands, U21 (age ≤21), and position breakdown
       (GK / DEF / MID / FWD). GPDB uses LWF/RWF for wide forwards. Uses the same nation matching as international call-ups.
       <b>Healthy clubs</b> is how many owned clubs the pool can support (min per club: 1×79+, 1×76–78, 5×73–75,
-      10×70–72, 10×66–69, 5×≤65, 8×U21). <b>GPSL clubs</b> is every club in the database whose nation matches
-      (owned or vacant). <b>Owned clubs</b> counts those with an owner (green when owned ≤ healthy).
+      10×70–72, 10×66–69, 5×≤65, 8×U21). If there is <b>no 79+ star</b>, a club is still allowed when the pool has
+      <b>over 100 players</b> and at least one <b>76–78</b> (e.g. a 78), with the other band floors unchanged.
+      <b>GPSL clubs</b> is every club in the database whose nation matches (owned or vacant).
+      <b>Owned clubs</b> counts those with an owner (green when owned ≤ healthy).
       <b>% of healthy</b> is owned ÷ healthy capacity (how full that nation’s club slots are).
     </p>
 
@@ -283,7 +285,7 @@
             <th>76–78</th>
             <th>79+</th>
             <th>GK</th>
-            <th title="Clubs supportable from pool (bottleneck band)">Healthy clubs</th>
+            <th title="Clubs supportable from pool. No 79+ OK if total &gt;100 and a 76–78 exists.">Healthy clubs</th>
             <th title="All GPSL clubs with this nation (owned or vacant)">GPSL Clubs</th>
             <th title="Owned clubs with this nation (Clubs.Nation)">Owned clubs</th>
             <th title="Owned clubs ÷ healthy club capacity">% of healthy</th>
@@ -295,6 +297,6 @@
     </div>
   </div>
 
-  <script type="module" src="nation_player_pool.js?v=20260812-gpsl-clubs"></script>
+  <script type="module" src="nation_player_pool.js?v=20260812-healthy-no-star"></script>
 </body>
 </html>

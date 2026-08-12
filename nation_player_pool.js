@@ -11,7 +11,7 @@ import {
   nationPoolStatus,
   nationHealthyClubCapacity,
   nationPoolIsFaint,
-} from "./international.js";
+} from "./international.js?v=20260812-healthy-no-star";
 
 const POOL_MIN_PLAYERS = 24;
 
@@ -354,7 +354,9 @@ function renderTable() {
           <td>${countCell(u21.total)}</td>
           ${bandCells}
           <td>${countCell(all.gk)}</td>
-          <td title="${HEALTHY_CLUB_REQUIREMENTS.map((r) => `${r.min}× ${r.label}`).join(", ")}">${countCell(healthy)}</td>
+          <td title="${
+            HEALTHY_CLUB_REQUIREMENTS.map((r) => `${r.min}× ${r.label}`).join(", ")
+          }. No 79+ OK if total &gt;100 and a 76–78 exists.">${countCell(healthy)}</td>
           <td title="All clubs in GPSL for this nation">${countCell(gpslClubCount(row))}</td>
           <td>${ownedClubsCell(row)}</td>
           <td>${healthyClubsPctCell(row)}</td>

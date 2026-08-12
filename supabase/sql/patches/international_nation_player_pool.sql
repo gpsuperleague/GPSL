@@ -440,6 +440,9 @@ DECLARE
   v_band record;
   v_avail integer;
   v_band_cap integer;
+  v_stars integer;
+  v_near integer;
+  v_waive_star boolean;
 BEGIN
   SELECT cache.pool INTO v_pool
   FROM public.international_nation_player_pool_cache cache
@@ -458,6 +461,11 @@ BEGIN
   END IF;
 
   v_cap := NULL;
+  -- Star (79+) waived when pool has no stars, total > 100, and at least one 76–78.
+  v_stars := coalesce((v_pool->'r79_plus'->>'total')::integer, 0);
+  v_near := coalesce((v_pool->'r76_78'->>'total')::integer, 0);
+  v_waive_star := (v_stars <= 0 AND v_near >= 1 AND v_total > 100);
+
   FOR v_band IN
     SELECT *
     FROM (
@@ -471,6 +479,9 @@ BEGIN
         ('u21', 8)
     ) AS bands(key, min_players)
   LOOP
+    IF v_waive_star AND v_band.key = 'r79_plus' THEN
+      CONTINUE;
+    END IF;
     v_avail := coalesce((v_pool->v_band.key->>'total')::integer, 0);
     v_band_cap := v_avail / v_band.min_players;
     IF v_cap IS NULL OR v_band_cap < v_cap THEN
