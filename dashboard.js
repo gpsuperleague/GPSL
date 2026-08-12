@@ -2,7 +2,7 @@
 // DASHBOARD.JS — Customizable owner tiles (grouped sections)
 // ===============================
 
-import { supabase, initGlobal, isGpslAdminUser, wireDraftCountdownUI } from "./global.js?v=20260728-nav-dropdown-fix";
+import { supabase, initGlobal, isGpslAdminUser, wireDraftCountdownUI, ukLocalToInstant } from "./global.js?v=20260728-nav-dropdown-fix";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
 import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js";
@@ -208,6 +208,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await initDashboardGrid(user.id, dashboardCtx);
   wireDashboardToolbar();
+  startEfootballRevealPromo();
   bindDragAutoScroll();
 
   if (!club) {
@@ -866,6 +867,52 @@ function wireDashboardToolbar() {
     const ctx = await refreshDashboardCtx();
     renderDashboardTiles(ctx);
   });
+}
+
+/** Temporary Konami eFootball 6.0 Connect reveal (UK 11:57 on 12 Aug 2026). Remove after. */
+function startEfootballRevealPromo() {
+  const promo = document.getElementById("efootballRevealPromo");
+  const countdownEl = document.getElementById("efootballRevealCountdown");
+  const subEl = document.getElementById("efootballRevealSub");
+  if (!promo || !countdownEl) return;
+
+  const revealAt = ukLocalToInstant(2026, 7, 12, 11, 57, 0); // 12 Aug 2026 11:57 UK
+  const hideAfter = ukLocalToInstant(2026, 7, 13, 0, 0, 0); // hide after that UK day
+
+  function formatRemaining(ms) {
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (h > 0) {
+      return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  function tick() {
+    const now = Date.now();
+    if (now >= hideAfter.getTime()) {
+      promo.hidden = true;
+      return false;
+    }
+
+    promo.hidden = false;
+    const remaining = revealAt.getTime() - now;
+    if (remaining > 0) {
+      countdownEl.textContent = formatRemaining(remaining);
+      if (subEl) subEl.textContent = "Opens the official Connect stream on YouTube at 11:57 UK";
+    } else {
+      countdownEl.textContent = "LIVE NOW";
+      if (subEl) subEl.textContent = "Tap to watch the official Connect stream on YouTube";
+    }
+    return true;
+  }
+
+  if (!tick()) return;
+  const timer = setInterval(() => {
+    if (!tick()) clearInterval(timer);
+  }, 1000);
 }
 
 function showNoClubBanner(email) {

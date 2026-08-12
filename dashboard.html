@@ -297,6 +297,71 @@
       }
     }
 
+    /* Temporary eFootball 6.0 Connect promo */
+    #efootballRevealPromo {
+      display: block;
+      margin: 0 0 22px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: inherit;
+      background:
+        linear-gradient(110deg, rgba(255, 153, 0, 0.16), rgba(26, 26, 26, 0.95) 42%, rgba(20, 40, 70, 0.55));
+      border: 1px solid rgba(255, 153, 0, 0.45);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    #efootballRevealPromo:hover {
+      border-color: #ff9900;
+      transform: translateY(-1px);
+    }
+
+    #efootballRevealPromo:focus-visible {
+      outline: 2px solid #ff9900;
+      outline-offset: 2px;
+    }
+
+    .ef-reveal-kicker {
+      margin: 0 0 4px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #ffb84d;
+      font-weight: 700;
+    }
+
+    .ef-reveal-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.35;
+    }
+
+    .ef-reveal-title #efootballRevealCountdown {
+      color: var(--club-accent, #ff9900);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+
+    .ef-reveal-sub {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    @media (max-width: 640px) {
+      #efootballRevealPromo {
+        padding: 12px 14px;
+        margin-bottom: 16px;
+      }
+
+      .ef-reveal-title {
+        font-size: 14px;
+      }
+    }
+
     @media (max-width: 420px) {
       #userEmail {
         max-width: 38vw;
@@ -348,6 +413,22 @@
 
     </div>
 
+    <a
+      id="efootballRevealPromo"
+      href="https://youtu.be/Nk0xrl9Ju8c?si=HMOH7jjupAm63sl6"
+      target="_blank"
+      rel="noopener noreferrer"
+      hidden
+      aria-label="eFootball 6.0 Connect big reveal on YouTube"
+    >
+      <p class="ef-reveal-kicker">Konami · eFootball CONNECT</p>
+      <p class="ef-reveal-title">
+        Big reveal 6.0 update:
+        <span id="efootballRevealCountdown">—</span>
+      </p>
+      <p class="ef-reveal-sub" id="efootballRevealSub">Opens the official Connect stream on YouTube</p>
+    </a>
+
     <p id="dashboardLayoutWarn" class="dashboard-layout-warn" hidden></p>
 
     <div class="dashboard-toolbar">
@@ -375,7 +456,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20260806-league-badges"></script>
+  <script type="module" src="dashboard.js?v=20260812-ef60-reveal"></script>
 
 </body>
 </html>
