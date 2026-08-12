@@ -117,6 +117,10 @@ function ownedClubCount(row) {
   return Number(row?.owned_clubs_count ?? 0);
 }
 
+function gpslClubCount(row) {
+  return Number(row?.gpsl_clubs_count ?? 0);
+}
+
 function ownedClubsCell(row) {
   const owned = ownedClubCount(row);
   const healthy = healthyClubCapacity(row);
@@ -302,7 +306,7 @@ function renderTable() {
 
   if (!visible.length) {
     tbody.innerHTML =
-      '<tr><td colspan="15" style="padding:20px;color:#888;">No nations match this filter.</td></tr>';
+      '<tr><td colspan="16" style="padding:20px;color:#888;">No nations match this filter.</td></tr>';
     return;
   }
 
@@ -351,13 +355,14 @@ function renderTable() {
           ${bandCells}
           <td>${countCell(all.gk)}</td>
           <td title="${HEALTHY_CLUB_REQUIREMENTS.map((r) => `${r.min}× ${r.label}`).join(", ")}">${countCell(healthy)}</td>
+          <td title="All clubs in GPSL for this nation">${countCell(gpslClubCount(row))}</td>
           <td>${ownedClubsCell(row)}</td>
           <td>${healthyClubsPctCell(row)}</td>
           <td class="pool-status-${status.key}">${status.label}</td>
         </tr>`;
 
       const detailRow = isOpen
-        ? `<tr class="pool-detail-row"><td colspan="15">${detailTable(row)}</td></tr>`
+        ? `<tr class="pool-detail-row"><td colspan="16">${detailTable(row)}</td></tr>`
         : "";
 
       return mainRow + detailRow;
