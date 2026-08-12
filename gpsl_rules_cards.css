@@ -228,21 +228,27 @@ a.rules-notice-btn:hover {
 }
 
 #draftAuctionRules .rules-card {
-  padding: 8px 10px;
+  padding: 10px 10px 12px;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 #draftAuctionRules .rules-card h3 {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   font-size: 12px;
 }
 
 #draftAuctionRules .rules-card ul {
   font-size: 11px;
-  line-height: 1.35;
+  line-height: 1.4;
   padding-left: 1em;
 }
 
 #draftAuctionRules .rules-card li {
+  margin-bottom: 5px;
+}
+
+#draftAuctionRules .rules-card li:last-child {
   margin-bottom: 0;
 }
 
