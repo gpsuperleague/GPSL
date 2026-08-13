@@ -156,6 +156,17 @@
   font-weight: normal;
 }
 
+a.club-owner-tag {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.club-owner-tag:hover,
+a.club-owner-tag:focus {
+  color: #bbb;
+  text-decoration: underline;
+}
+
 .fixture-club {
   display: inline-block;
   line-height: 1.25;

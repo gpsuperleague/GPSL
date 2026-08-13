@@ -784,7 +784,13 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
       toggleDraftPlayerHidden,
       draftHideButtonLabel,
     } from "./draft_hidden.js?v=20260811-draft-hide";
-    import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
+    import {
+      loadClubsMap,
+      fullClubName,
+      ownerTagForClub,
+      ownerIdForClub,
+      ownerTagLinkHtml,
+    } from "./clubs_lookup.js";
     import {
       playerThumbLinkHtml,
       playerNameLinkHtml,
@@ -1571,7 +1577,7 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
           <td class="col-money">₿ ${Number(row.player.market_value).toLocaleString("en-GB")}</td>
           <td class="col-money">${row.highestAmount !== null ? `₿ ${Number(row.highestAmount).toLocaleString("en-GB")}` : "None"}</td>
           <td class="col-leading-club">${row.leadingClubFull}</td>
-          <td class="col-owner"><span class="club-owner-tag">${row.leadingOwner}</span></td>
+          <td class="col-owner">${row.leadingOwner}</td>
           <td class="col-compact">
             <div class="draft-row-actions">
               <button
@@ -1706,7 +1712,10 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
           ? (fullClubName(leadingClubShort) || leadingClubShort)
           : "None";
         const leadingOwner = leadingClubShort
-          ? (ownerTagForClub(leadingClubShort) || "—")
+          ? ownerTagLinkHtml(
+              ownerTagForClub(leadingClubShort),
+              ownerIdForClub(leadingClubShort)
+            ) || "—"
           : "—";
 
         const myClubBid = buyerShortName

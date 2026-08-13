@@ -3,6 +3,8 @@
 let clubsMap = new Map();
 let stadiumMap = new Map();
 let ownerTagsMap = new Map();
+/** @type {Map<string, string>} club ShortName → owner uuid */
+let ownerIdsMap = new Map();
 
 function getSupabase() {
   return window.supabase;
@@ -23,7 +25,7 @@ export async function loadClubsMap() {
 
   const { data, error } = await supabase
     .from("Clubs")
-    .select("ShortName, Club, Stadium, owner");
+    .select("ShortName, Club, Stadium, owner, owner_id");
 
   if (error) {
     console.error("Failed to load clubs map:", error);
@@ -33,12 +35,15 @@ export async function loadClubsMap() {
   clubsMap.clear();
   stadiumMap.clear();
   ownerTagsMap.clear();
+  ownerIdsMap.clear();
 
   data.forEach(row => {
     clubsMap.set(row.ShortName, row.Club);
     if (row.Stadium?.trim()) stadiumMap.set(row.ShortName, row.Stadium.trim());
     const tag = row.owner?.trim();
     if (tag) ownerTagsMap.set(row.ShortName, tag);
+    const oid = row.owner_id ? String(row.owner_id).trim() : "";
+    if (oid) ownerIdsMap.set(row.ShortName, oid);
   });
 
 }
@@ -60,6 +65,23 @@ export function ownerTagForClub(shortName) {
   return ownerTagsMap.get(key) || null;
 }
 
+export function ownerIdForClub(shortName) {
+  const key = String(shortName || "").trim();
+  if (!key) return null;
+  return ownerIdsMap.get(key) || null;
+}
+
+/** Owner profile / history page for a club’s current owner. */
+export function ownerProfileHref(ownerId) {
+  const id = String(ownerId || "").trim();
+  if (!id) return null;
+  return `owner_profile.html?owner=${encodeURIComponent(id)}`;
+}
+
+export function ownerProfileHrefForClub(shortName) {
+  return ownerProfileHref(ownerIdForClub(shortName));
+}
+
 function escapeHtml(text) {
   return String(text ?? "")
     .replace(/&/g, "&amp;")
@@ -68,14 +90,21 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
+/** Discord owner tag → owner profile when owner_id is known. */
+export function ownerTagLinkHtml(tag, ownerId) {
+  const label = String(tag || "").trim();
+  if (!label) return "";
+  const escaped = escapeHtml(label);
+  const href = ownerProfileHref(ownerId);
+  if (!href) return `<span class="club-owner-tag">${escaped}</span>`;
+  return `<a class="club-owner-tag" href="${escapeHtml(href)}" title="Owner history">${escaped}</a>`;
+}
+
 /** Club name plus optional Discord owner tag (layout: block = fixtures, inline = tables).
- *  Name → club history; use clubPageHref for details (badge / “club page”). */
+ *  Name → club history; tag → owner profile; use clubPageHref for details (badge / “club page”). */
 export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
   const name = escapeHtml(clubName || shortName || "—");
-  const tag = ownerTagForClub(shortName);
-  const tagHtml = tag
-    ? `<span class="club-owner-tag">${escapeHtml(tag)}</span>`
-    : "";
+  const tagHtml = ownerTagLinkHtml(ownerTagForClub(shortName), ownerIdForClub(shortName));
   const href = clubHistoryHref(shortName);
   const linkedName = href
     ? `<a href="${escapeHtml(href)}" class="standings-club-link" title="Club history">${name}</a>`

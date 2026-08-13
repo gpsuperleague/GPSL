@@ -20,7 +20,13 @@ import {
   getClubManagerVacancy,
   submitManagerDraftBid,
 } from "./manager_draft_engine.js?v=20260809-mgr-maxbid";
-import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
+import {
+  loadClubsMap,
+  fullClubName,
+  ownerTagForClub,
+  ownerIdForClub,
+  ownerTagLinkHtml,
+} from "./clubs_lookup.js";
 import {
   applyManagerPortrait,
   managerInitials,
@@ -344,10 +350,14 @@ async function refreshBids() {
         .reverse()
         .map((b) => {
           const club = fullClubName(b.bidder_club_id) || b.bidder_club_id;
-          const owner = ownerTagForClub(b.bidder_club_id) || "—";
+          const owner =
+            ownerTagLinkHtml(
+              ownerTagForClub(b.bidder_club_id),
+              ownerIdForClub(b.bidder_club_id)
+            ) || "—";
           return `<tr>
         <td>${club}</td>
-        <td><span class="club-owner-tag">${owner}</span></td>
+        <td>${owner}</td>
         <td>${formatMoney(b.bid_amount)}</td>
         <td>${new Date(b.bid_time).toLocaleString("en-GB")}</td>
       </tr>`;

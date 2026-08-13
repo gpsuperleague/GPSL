@@ -1,5 +1,11 @@
 import { supabase, initGlobal } from "./global.js";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import {
+  loadClubsMap,
+  fullClubName,
+  ownerTagForClub,
+  ownerIdForClub,
+  ownerProfileHref,
+} from "./clubs_lookup.js";
 import {
   loadInternationalNations,
   loadNationalSquad,
@@ -303,21 +309,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (flagEl) flagEl.innerHTML = renderNationFlag(nation, "lg");
   document.getElementById("natTitle").textContent = nation.name;
   let ownerTag = nation.owner_tag?.trim() || "";
-  if (!ownerTag && nation.owner_club) {
-    const { data: clubRow } = await supabase
-      .from("Clubs")
-      .select("owner")
-      .eq("ShortName", nation.owner_club)
-      .maybeSingle();
-    ownerTag = clubRow?.owner?.trim() || nation.owner_club.trim();
+  let ownerId = nation.owner_id || null;
+  if (nation.owner_club) {
+    await loadClubsMap();
+    if (!ownerTag) ownerTag = ownerTagForClub(nation.owner_club) || "";
+    if (!ownerId) ownerId = ownerIdForClub(nation.owner_club);
+    if (!ownerTag) ownerTag = nation.owner_club.trim();
   }
+  const ownerHref = ownerProfileHref(ownerId);
+  const ownerEsc = String(ownerTag || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const ownerHtml = ownerTag
+    ? ownerHref
+      ? `<a class="gpsl-link" href="${ownerHref}" title="Owner history"><b>${ownerEsc}</b></a>`
+      : `<b>${ownerEsc}</b>`
+    : "<b>—</b>";
   const managerLine = nation.manager_name
     ? ` · Manager <b>${nation.manager_name}</b>${
         nation.manager_rating != null ? ` (${nation.manager_rating})` : ""
       }`
     : "";
   document.getElementById("natMeta").innerHTML = nation.owner_club
-    ? `Managed by <b>${ownerTag}</b>${managerLine}`
+    ? `Managed by ${ownerHtml}${managerLine}`
     : "Unassigned — available in nation selection";
 
   if (!code && nation.code) {

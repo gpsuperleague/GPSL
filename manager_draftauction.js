@@ -16,7 +16,13 @@ import {
   getManagerDraftBidEligibility,
   getClubLeadingManagerDraftId,
 } from "./manager_draft_engine.js?v=20260809-mgr-maxbid";
-import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
+import {
+  loadClubsMap,
+  fullClubName,
+  ownerTagForClub,
+  ownerIdForClub,
+  ownerTagLinkHtml,
+} from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 import { managerListCellHtml, loadManagerPortraitManifest } from "./manager_images.js";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js";
@@ -238,7 +244,9 @@ async function loadManagerDraftListings(options = {}) {
     const high = top?.bid_amount ?? listing.current_highest_bid;
     const leader = top?.bidder_club_id ?? listing.current_highest_bidder;
     const leaderClub = leader ? fullClubName(leader) || leader : "—";
-    const leaderOwner = leader ? ownerTagForClub(leader) || "—" : "—";
+    const leaderOwner = leader
+      ? ownerTagLinkHtml(ownerTagForClub(leader), ownerIdForClub(leader)) || "—"
+      : "—";
     const eligibility = await getManagerDraftBidEligibility({
       managerId: mgr.id,
       buyerShortName,
@@ -267,7 +275,7 @@ async function loadManagerDraftListings(options = {}) {
       <td>${formatMoney(mgr.market_value)}</td>
       <td>${highHtml}</td>
       <td>${leaderClub}</td>
-      <td><span class="club-owner-tag">${leaderOwner}</span></td>
+      <td>${leaderOwner}</td>
       <td>
         <div class="auction-actions">
           <button type="button" class="bid-btn view-only" data-manager-id="${mgr.id}" data-mode="view" title="View bids and history (no bidding)">View</button>
