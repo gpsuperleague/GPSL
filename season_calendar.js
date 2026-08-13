@@ -78,6 +78,7 @@ const CUP_BY_MONTH = {
 
 /** Transfer window by calendar month key (owner-facing season guide). */
 const TRANSFER_BY_MONTH = {
+  pre_season: "open",
   june: "open",
   july: "open",
   august: "open",
@@ -94,6 +95,7 @@ const TRANSFER_BY_MONTH = {
 };
 
 const SEASON_MONTH_ORDER = [
+  "pre_season",
   "june",
   "july",
   "august",
@@ -110,10 +112,18 @@ const SEASON_MONTH_ORDER = [
 ];
 
 const MONTH_LABELS = {
+  pre_season: "Pre-Season",
   june: "June",
   july: "July",
   ...GPSL_MONTH_LABELS,
 };
+
+/** True pre-season: calendar phase before any GPSL month (June+) is unlocked. */
+function isTruePreSeason(status) {
+  if (!isPreSeasonPhase(status)) return false;
+  const active = String(status?.active_gpsl_month || "").toLowerCase();
+  return !active || active === "pre_season";
+}
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -134,11 +144,14 @@ function nextPlayMonth(monthKey) {
   const i = SEASON_MONTH_ORDER.indexOf(monthKey);
   if (i < 0 || i >= SEASON_MONTH_ORDER.length - 1) return null;
   const next = SEASON_MONTH_ORDER[i + 1];
-  if (next === "june" || next === "july") return null;
+  if (next === "pre_season" || next === "june" || next === "july") return null;
   return next;
 }
 
 function messagingDeadlineText(monthKey) {
+  if (monthKey === "pre_season") {
+    return "Pre-season: build your squad, list players (auctions start when the transfer window opens), and prepare for June–July.";
+  }
   if (monthKey === "june" || monthKey === "july") {
     return "Message opponents & arrange kick-offs from when fixtures are published (including pre-season).";
   }
@@ -166,12 +179,32 @@ function staticEventsForMonth(monthKey) {
   const events = [];
   const monthLabel = MONTH_LABELS[monthKey] || monthKey;
 
+  if (monthKey === "pre_season") {
+    events.push({
+      kind: "phase",
+      short: "Pre-season phase",
+      detail:
+        "Before GPSL June unlocks. Squad building, New Owner actions, drafts/auctions when scheduled, and transfer listings (bidding starts when the admin opens the window). World Cup finals and other pre-season internationals will sit in this slot.",
+      links: [
+        { href: "squad.html", label: "Squad" },
+        { href: "learning_gpsl.html", label: "Learning GPSL", secondary: true },
+      ],
+    });
+    events.push({
+      kind: "world-cup",
+      short: "World Cup (pre-season)",
+      detail:
+        "World Cup finals and other pre-season international windows use this Pre-Season calendar slot. Qualifying still appears in its GPSL months (Aug/Oct/Dec/Feb/Apr).",
+      links: [{ href: "world_cup.html", label: "World Cup" }],
+    });
+  }
+
   if (monthKey === "june" || monthKey === "july") {
     events.push({
       kind: "phase",
-      short: "Pre-season",
+      short: "Early season months",
       detail:
-        "June & July sit before GPSL August. Use this window for squad building, manager auctions, and arranging early fixtures.",
+        "June & July are GPSL months before August league kick-off. Use them for squad building, manager auctions, and arranging early fixtures after Pre-Season.",
       links: [{ href: "learning_gpsl.html", label: "Learning GPSL" }],
     });
   }
@@ -240,7 +273,12 @@ function staticEventsForMonth(monthKey) {
     });
   }
 
-  if (monthKey === "june" || monthKey === "july" || monthKey === "january") {
+  if (
+    monthKey === "pre_season" ||
+    monthKey === "june" ||
+    monthKey === "july" ||
+    monthKey === "january"
+  ) {
     events.push({
       kind: "manager-auction",
       short: "Manager auctions",
@@ -248,6 +286,19 @@ function staticEventsForMonth(monthKey) {
       links: [
         { href: "manager_draftauction.html", label: "Manager draft" },
         { href: "MGDB.html", label: "Managers database", secondary: true },
+      ],
+    });
+  }
+
+  if (monthKey === "pre_season") {
+    events.push({
+      kind: "draft",
+      short: "Player draft / club auction",
+      detail:
+        "Player draft and club auctions are often scheduled in Pre-Season. When one is live, it also appears here as a highlighted bullet.",
+      links: [
+        { href: "draftauction.html", label: "Player draft" },
+        { href: "club_auction.html", label: "Club auction", secondary: true },
       ],
     });
   }
@@ -287,6 +338,12 @@ function monthKeyFromIso(iso) {
   }).formatToParts(d);
   const month = parts.find((p) => p.type === "month")?.value?.toLowerCase();
   return month || null;
+}
+
+/** Pin live overlays to Pre-Season while no GPSL month is unlocked yet. */
+function overlayMonthKey(iso, status) {
+  if (isTruePreSeason(status)) return "pre_season";
+  return monthKeyFromIso(iso);
 }
 
 async function loadLiveOverlays(status) {
@@ -370,7 +427,7 @@ async function loadLiveOverlays(status) {
   const settings = settingsRes.data || {};
   const draftStart = settings.draft_auction_start_time;
   if (draftStart && settings.draft_auction_enabled) {
-    const mk = monthKeyFromIso(draftStart);
+    const mk = overlayMonthKey(draftStart, status);
     if (mk && byMonth[mk]) {
       const live = settings.draft_bidding_open === true;
       byMonth[mk].push({
@@ -387,7 +444,7 @@ async function loadLiveOverlays(status) {
   const managerStart =
     settings.manager_draft_auction_start_time || draftStart;
   if (managerStart && settings.manager_draft_auction_enabled) {
-    const mk = monthKeyFromIso(managerStart);
+    const mk = overlayMonthKey(managerStart, status);
     if (mk && byMonth[mk]) {
       const live = settings.manager_draft_bidding_open === true;
       byMonth[mk].push({
@@ -406,7 +463,7 @@ async function loadLiveOverlays(status) {
 
   const clubStart = settings.club_auction_start_time;
   if (clubStart && settings.club_auction_enabled) {
-    const mk = monthKeyFromIso(clubStart);
+    const mk = overlayMonthKey(clubStart, status);
     if (mk && byMonth[mk]) {
       const live = settings.club_auction_bidding_open === true;
       byMonth[mk].push({
@@ -426,7 +483,7 @@ async function loadLiveOverlays(status) {
     const parsed = parseDraftScheduleDedupe(row.dedupe_key);
     if (!parsed) continue;
     const when = parsed.createdAtHint || row.created_at;
-    const mk = monthKeyFromIso(when);
+    const mk = overlayMonthKey(when, status);
     if (!mk || !byMonth[mk]) continue;
     const dedupe = `${parsed.kind}:${when}`;
     if (seenDraftKeys.has(dedupe)) continue;
@@ -446,7 +503,7 @@ async function loadLiveOverlays(status) {
   }
 
   for (const row of specialRes.data || []) {
-    const mk = monthKeyFromIso(row.start_time);
+    const mk = overlayMonthKey(row.start_time, status);
     if (!mk || !byMonth[mk]) continue;
     const live =
       row.status === "active" ||
@@ -486,15 +543,14 @@ async function loadLiveOverlays(status) {
       noteParts.length > 0
         ? `World Cup — ${noteParts.join(" · ")}`
         : "World Cup cycle active";
-    // Generic cycle reminder on pre-season months only (fixtures pin to real months below)
-    for (const mk of ["june", "july"]) {
-      byMonth[mk].push({
-        kind: "world-cup",
-        short: "World Cup",
-        detail: wcText,
-        links: [{ href: "world_cup.html", label: "World Cup" }],
-      });
-    }
+    // Cycle reminder on Pre-Season (finals home); June/July keep early-season notes
+    byMonth.pre_season.push({
+      kind: "world-cup",
+      short: "World Cup",
+      detail: wcText,
+      links: [{ href: "world_cup.html", label: "World Cup" }],
+      live: String(wc.status || "").toLowerCase() !== "idle",
+    });
   }
 
   // Owner's unplayed internationals → correct GPSL month (and only for current season)
@@ -521,9 +577,13 @@ async function loadLiveOverlays(status) {
     }
 
     let mk = String(fix.gpsl_month || "").toLowerCase();
-    if (!mk || !byMonth[mk]) {
-      // Fallback if month missing: pin to active GPSL month
-      if (isPreSeasonPhase(status)) mk = "july";
+    const isFinalsPhase =
+      fix.phase === "finals_group" || fix.phase === "knockout";
+    if (isFinalsPhase) {
+      mk = "pre_season";
+    } else if (!mk || !byMonth[mk]) {
+      // Fallback if month missing: pin to active GPSL month / Pre-Season
+      if (isTruePreSeason(status)) mk = "pre_season";
       else if (status?.active_gpsl_month) {
         mk = String(status.active_gpsl_month).toLowerCase();
       } else if (status?.next_gpsl_month) {
@@ -645,15 +705,15 @@ function isCurrentMonth(monthKey, status) {
   if (!status) return false;
   // Prefer the unlocked active month (June must not also light up July).
   const active = String(status.active_gpsl_month || "").toLowerCase();
-  if (active) {
+  if (active && active !== "pre_season") {
     return active === monthKey;
   }
   if (status.calendar_phase === "between_months") {
     return String(status.next_gpsl_month || "").toLowerCase() === monthKey;
   }
-  // True pre-season (nothing unlocked yet): only June is "now"
-  if (isPreSeasonPhase(status)) {
-    return monthKey === "june";
+  // True pre-season (nothing unlocked yet): Pre-Season card is "now"
+  if (isTruePreSeason(status)) {
+    return monthKey === "pre_season";
   }
   return false;
 }
@@ -767,7 +827,8 @@ function renderBullet(ev, monthKey, ctx, idx) {
 
 function renderMonthCard(monthKey, ctx) {
   const label = MONTH_LABELS[monthKey] || monthKey;
-  const isPre = monthKey === "june" || monthKey === "july";
+  const isPreSeasonCard = monthKey === "pre_season";
+  const isEarlyMonth = monthKey === "june" || monthKey === "july";
   const current = isCurrentMonth(monthKey, ctx.status);
   const calRow = ctx.calendarMonths.find(
     (r) => String(r.gpsl_month || "").toLowerCase() === monthKey
@@ -786,14 +847,16 @@ function renderMonthCard(monthKey, ctx) {
         : "") +
       (calRow.unlock_at && calRow.lock_at ? " · " : "") +
       (calRow.lock_at ? `Locks ${formatUkDateTime(calRow.lock_at)} UK` : "");
-  } else if (isPre && ctx.status?.anchor_unlock_at) {
-    windowNote = `GPSL August unlocks ${formatUkDateTime(ctx.status.anchor_unlock_at)} UK`;
+  } else if (isPreSeasonCard && ctx.status?.anchor_unlock_at) {
+    windowNote = `GPSL June unlocks ${formatUkDateTime(ctx.status.anchor_unlock_at)} UK`;
+  } else if (isEarlyMonth && ctx.status?.anchor_unlock_at && !calRow) {
+    windowNote = `Season calendar anchored from ${formatUkDateTime(ctx.status.anchor_unlock_at)} UK`;
   }
 
   if (windowNote) {
     events.unshift({
       kind: "phase",
-      short: isPre ? "Calendar window" : "Month window",
+      short: isPreSeasonCard ? "Until June unlocks" : "Month window",
       detail: windowNote,
       links: [],
     });
@@ -807,13 +870,17 @@ function renderMonthCard(monthKey, ctx) {
       : `<p class="sc-empty-bullets">No listed activities</p>`;
 
   return (
-    `<article class="sc-month${isPre ? " sc-month--pre" : ""}${
-      current ? " sc-month--current" : ""
-    }" id="month-${escapeHtml(monthKey)}" data-month="${escapeHtml(monthKey)}">` +
+    `<article class="sc-month${
+      isPreSeasonCard || isEarlyMonth ? " sc-month--pre" : ""
+    }${current ? " sc-month--current" : ""}" id="month-${escapeHtml(
+      monthKey
+    )}" data-month="${escapeHtml(monthKey)}">` +
     `<header class="sc-month-banner">` +
     `<h2>${escapeHtml(label)}</h2>` +
     (current ? `<span class="sc-now-badge">Now</span>` : "") +
-    (isPre && !current ? `<span class="sc-pre-badge">Pre</span>` : "") +
+    (isPreSeasonCard && !current
+      ? `<span class="sc-pre-badge">Pre</span>`
+      : "") +
     `</header>` +
     `<div class="sc-month-body">${bullets}</div>` +
     `</article>`
@@ -922,8 +989,8 @@ async function renderPage(user) {
     `<p class="sc-footnote">` +
     `Click a bullet for details and links. League matchdays: Aug 1–3, then four per month Sep–Apr, May 36–38. ` +
     `Playoffs is Week 11 after May (promotion/relegation ties). Cup rounds follow the published schedule. ` +
-    `Your World Cup internationals appear in their GPSL month (Aug/Oct/Dec/Feb/Apr for qualifying).` +
-    ` <span class="sc-build">Calendar build 20260728-ics</span>` +
+    `World Cup qualifying appears in its GPSL months (Aug/Oct/Dec/Feb/Apr); finals and other pre-season internationals use the Pre-Season card.` +
+    ` <span class="sc-build">Calendar build 20260813-preseason</span>` +
     `</p>`;
 
   wireBulletToggles(root);

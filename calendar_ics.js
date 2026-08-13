@@ -217,6 +217,7 @@ export function gpslMonthEvents(p) {
 
 function monthLabel(month) {
   const map = {
+    pre_season: "Pre-Season",
     june: "June",
     july: "July",
     august: "August",
