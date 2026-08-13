@@ -16,8 +16,8 @@ import {
   aggregateLedgerByLine,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20260804-loan-catchup";
-import { buildFinanceProjections } from "./finance_projections.js?v=20260804-loan-catchup";
+} from "./finance_ui.js?v=20260813-34plus-age";
+import { buildFinanceProjections } from "./finance_projections.js?v=20260813-34plus-age";
 import {
   appendAssignmentInfraPurchaseLedger,
   ledgerStartingBudget,

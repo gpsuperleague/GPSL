@@ -214,7 +214,7 @@ export async function buildFinanceProjections(
         pendingByLine,
         "upkeep_34plus",
         -(amt34 - posted34),
-        `${upkeepPreview.players_34plus ?? 0} player(s) rated ${upkeepPreview.settings?.wage_34plus_min_rating ?? 34}+`,
+        `${upkeepPreview.players_34plus ?? 0} player(s) aged ${upkeepPreview.settings?.wage_34plus_min_rating ?? 34}+`,
         byLine
       );
     }

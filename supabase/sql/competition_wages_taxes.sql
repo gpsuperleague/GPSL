@@ -249,15 +249,15 @@ AS $function$
 DECLARE
   v_min int;
 BEGIN
+  -- Column name is historical; value is the minimum AGE threshold.
   v_min := (SELECT wage_34plus_min_rating FROM public.global_settings WHERE id = 1);
 
   RETURN (
     SELECT count(*)::int
     FROM public."Players" p
     WHERE p."Contracted_Team" = p_club_short_name
-      AND p."Rating" IS NOT NULL
-      AND btrim(p."Rating"::text) <> ''
-      AND btrim(p."Rating"::text)::int >= coalesce(v_min, 34)
+      AND nullif(btrim(p."Age"::text), '') ~ '^[0-9]+$'
+      AND nullif(btrim(p."Age"::text), '')::int >= coalesce(v_min, 34)
   );
 END;
 $function$;
@@ -552,8 +552,12 @@ BEGIN
     p_club_short_name,
     'wage_renewal_34plus',
     v_amount,
-    format('%s+ rating fee — %s player(s)', coalesce(v_min, 34), v_count),
-    jsonb_build_object('player_count', v_count, 'min_rating', v_min)
+    format('%s+ age fee — %s player(s)', coalesce(v_min, 34), v_count),
+    jsonb_build_object(
+      'player_count', v_count,
+      'min_age', v_min,
+      'min_rating', v_min
+    )
   );
 END;
 $function$;

@@ -1569,7 +1569,7 @@ export const GATE_ENTRY_LABELS = {
   gov_emergency_tax: "Emergency tax",
   gov_income_tax: "Income tax",
   wage_squad: "Wages",
-  wage_renewal_34plus: "34+ renewals",
+  wage_renewal_34plus: "34+ age fee",
   wage_star_tax: "Star tax",
   wage_fan_favourite_subsidy: "Fan Favourite wage subsidy",
   staff_manager_salary: "Manager salary",

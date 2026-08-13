@@ -312,7 +312,7 @@ export const ADMIN_MAIN_NAV = [
           "admin_tax_34.html",
           null,
           null,
-          "Set the over-34 player fee parameters."
+          "Set the over-34 age fee (per player aged at/above the minimum)."
         ),
         L(
           "Set Star Fee",
