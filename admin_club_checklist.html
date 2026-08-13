@@ -89,24 +89,56 @@
     .chk-issues-cell {
       white-space: nowrap;
       width: 1%;
+      min-width: 7.5rem;
       font-size: 11px;
-      line-height: 1.35;
+      line-height: 1.4;
       vertical-align: middle;
+    }
+    /* Distinct from per-column red breaches — magenta summary hub */
+    .chk-table td.chk-issues-cell.chk-cell-bad,
+    .chk-table td.chk-issues-cell.chk-issues-hot {
+      background: linear-gradient(
+        110deg,
+        rgba(190, 40, 140, 0.55),
+        rgba(120, 30, 160, 0.42)
+      ) !important;
+      color: #ffe6f7;
+      font-weight: 700;
+      box-shadow:
+        inset 4px 0 0 #ff4fc2,
+        inset 0 0 0 1px rgba(255, 100, 200, 0.35);
+    }
+    .chk-table tbody tr:hover td.chk-issues-cell.chk-cell-bad,
+    .chk-table tbody tr:hover td.chk-issues-cell.chk-issues-hot {
+      background: linear-gradient(
+        110deg,
+        rgba(210, 50, 155, 0.65),
+        rgba(140, 40, 180, 0.5)
+      ) !important;
+    }
+    .chk-table th[data-sort="_issues"] {
+      color: #ff8ad4;
     }
     .chk-issue-tag {
       display: inline-block;
       margin: 1px 3px 1px 0;
-      padding: 1px 6px;
-      border-radius: 3px;
-      background: rgba(232,92,92,0.25);
-      color: #ffc0c0;
-      border: 1px solid rgba(232,92,92,0.45);
-      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.35);
+      color: #ffe0f4;
+      border: 1px solid rgba(255, 140, 210, 0.65);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
     }
     .chk-issue-tag.warn {
-      background: rgba(232,160,71,0.22);
-      color: #ffd28a;
-      border-color: rgba(232,160,71,0.5);
+      background: rgba(0, 0, 0, 0.3);
+      color: #ffe9b8;
+      border-color: rgba(255, 200, 100, 0.7);
+    }
+    .chk-legend .lg-issues i {
+      background: linear-gradient(110deg, #be288c, #781ea0);
+      border: 1px solid #ff4fc2;
     }
     .chk-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#999; margin-bottom:10px; }
     .chk-legend span { display:inline-flex; align-items:center; gap:6px; }
@@ -173,9 +205,9 @@
           <span id="rowCount" class="note"></span>
         </div>
         <div class="chk-legend">
+          <span class="lg-issues"><i></i> Issues column (all deficiencies)</span>
           <span class="lg-bad"><i></i> Missing / below rule (red column + left bar)</span>
           <span class="lg-warn"><i></i> Warning (fines, negative projected EOS)</span>
-          <span>Issues column lists each fail</span>
         </div>
         <div id="summaryStrip" class="chk-summary"></div>
         <div id="pageStatus" class="status-line"></div>
@@ -185,6 +217,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20260813-gk-ff-red"></script>
+  <script type="module" src="admin_club_checklist.js?v=20260813-issues-magenta"></script>
 </body>
 </html>

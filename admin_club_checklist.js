@@ -621,10 +621,9 @@ function renderTable() {
                 row.division ? ` · ${escapeHtml(row.division)}` : ""
               }</div>
             </td>
-            <td class="chk-issues-cell ${issues.size ? cellClass("bad") : cellClass("ok")}">${issueTagsHtml(
-              issues,
-              row
-            )}</td>
+            <td class="chk-issues-cell ${
+              issues.size ? "chk-cell-bad chk-issues-hot" : cellClass("ok")
+            }">${issueTagsHtml(issues, row)}</td>
             ${textCell(
               manager,
               issues.has("manager") ? "bad" : "ok",
