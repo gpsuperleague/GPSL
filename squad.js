@@ -42,7 +42,7 @@ import {
   loadTransferStatusState,
   resolvePlayerTransferStatus,
   formatSquadStatusHtml,
-} from "./player_transfer_status.js?v=20260813-pending-window";
+} from "./player_transfer_status.js?v=20260813-squad-unlist";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -753,6 +753,21 @@ function squadRewardActionOptionsHtml(player) {
   return opts.join("\n");
 }
 
+function playerOpenListingKind(playerId) {
+  const pid = String(playerId ?? "").trim();
+  if (!pid || !transferStatusState) return null;
+  if (transferStatusState.awaitingWindowPlayerIds?.has(pid)) {
+    return "pending_window";
+  }
+  if (transferStatusState.activeListedPlayerIds?.has(pid)) {
+    return "active";
+  }
+  if (transferStatusState.sellerReviewPlayerIds?.has(pid)) {
+    return "review";
+  }
+  return null;
+}
+
 function squadActionOptionsHtml(player) {
   const pid = String(player?.Konami_ID ?? "");
   if (seasonLoanPlayerIds.has(pid)) {
@@ -762,6 +777,26 @@ function squadActionOptionsHtml(player) {
   }
 
   const rewardOpts = squadRewardActionOptionsHtml(player);
+  const listingKind = playerOpenListingKind(pid);
+
+  // Already on the market (or waiting for the window): no re-list / foreign / new-owner list
+  if (listingKind === "pending_window") {
+    return `
+            ${rewardOpts}
+            <option value="unlist">Remove from transfer list</option>
+            ${squadInfoOptionHtml("Listed — awaiting transfer window")}`;
+  }
+  if (listingKind === "active") {
+    return `
+            ${rewardOpts}
+            ${squadInfoOptionHtml("Listed on transfer market")}`;
+  }
+  if (listingKind === "review") {
+    return `
+            ${rewardOpts}
+            ${squadInfoOptionHtml("Seller review — Transfer Centre")}`;
+  }
+
   const releaseOpt = voluntaryReleaseOptionHtml(player);
   const newOwnerOpt = newOwnerReleaseOptionHtml(player);
   const newOwnerListOpt = newOwnerListOptionHtml(player);
@@ -2199,6 +2234,11 @@ async function handlePlayerAction(playerId, action, selectEl) {
   try {
     if (action === "list") {
       resetActionSelect(selectEl);
+      if (playerOpenListingKind(playerId)) {
+        alert("This player is already on the transfer list.");
+        await loadSquad();
+        return;
+      }
       const { data: pRow } = await supabase
         .from("Players")
         .select("Konami_ID, Name, market_value, Maximum_Reserve_Price, Season_Signed")
@@ -2213,6 +2253,12 @@ async function handlePlayerAction(playerId, action, selectEl) {
         return;
       }
       await openListPlayerModalByID(pRow || { Konami_ID: playerId });
+      return;
+    }
+
+    if (action === "unlist") {
+      resetActionSelect(selectEl);
+      await unlistPlayerFromTransferMarket(playerId);
       return;
     }
 
@@ -2250,6 +2296,11 @@ async function handlePlayerAction(playerId, action, selectEl) {
 
     if (action === NEW_OWNER_LIST_ACTION) {
       resetActionSelect(selectEl);
+      if (playerOpenListingKind(playerId)) {
+        alert("This player is already on the transfer list.");
+        await loadSquad();
+        return;
+      }
       await listPlayerNewOwner(playerId);
       return;
     }
@@ -2545,6 +2596,71 @@ async function releasePlayerNewOwner(playerId) {
       `Central Bank refund: ${formatMoney(data?.refund ?? data?.fee ?? fee)}.\n` +
       `Unavailable until ${data?.unavailable_until_season || "next season"}.`
   );
+  await loadSquad();
+}
+
+async function unlistPlayerFromTransferMarket(playerId) {
+  const pid = String(playerId ?? "").trim();
+  if (!pid || !currentUserShort) {
+    alert("Could not determine club or player.");
+    return;
+  }
+
+  const { data: listings, error: loadErr } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("id, status, perpetual_renew, new_owner_slot, player_id")
+    .eq("player_id", pid)
+    .eq("seller_club_id", currentUserShort)
+    .eq("status", "Pending Window")
+    .neq("listing_type", "draft")
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (loadErr) {
+    console.error("unlist load:", loadErr);
+    alert("Could not load listing.");
+    return;
+  }
+  const listing = listings?.[0];
+  if (!listing) {
+    alert("No retractable listing found for this player (awaiting-window only).");
+    await loadSquad();
+    return;
+  }
+  if (listing.perpetual_renew) {
+    alert(
+      "This listing was created after club underperformance and cannot be removed manually."
+    );
+    return;
+  }
+
+  const confirmed = window.confirm(
+    "Remove this player from the transfer list?\n\n" +
+      "The auction has not started yet, so this is free to retract." +
+      (listing.new_owner_slot
+        ? "\nYour New Owner first-season slot will be returned."
+        : "")
+  );
+  if (!confirmed) return;
+
+  const { error } = await supabase
+    .from("Player_Transfer_Listings")
+    .update({ status: "Closed", transfer_completed: false })
+    .eq("id", listing.id)
+    .eq("status", "Pending Window");
+
+  if (error) {
+    console.error("unlist update:", error);
+    alert(error.message || "Could not remove listing.");
+    return;
+  }
+
+  await loadNewOwnerReleaseState();
+  syncNewOwnerListAvailability();
+  renderNewOwnerReleaseBadge();
+  applyNewOwnerReleaseOptionState();
+  await refreshNavClubListingState(currentUserShort);
+  refreshNavListingIndicators();
   await loadSquad();
 }
 

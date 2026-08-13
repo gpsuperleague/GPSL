@@ -47,7 +47,7 @@ export const TRANSFER_STATUS = {
 export const TRANSFER_STATUS_LABELS = {
   [TRANSFER_STATUS.LISTED]: "Listed on market",
   [TRANSFER_STATUS.AWAITING_WINDOW]:
-    "Listed — auction starts when transfer window opens",
+    "Transfer listed — awaiting window",
   [TRANSFER_STATUS.SELLER_REVIEW]: "Seller review",
   [TRANSFER_STATUS.DIRECT_OFFER_SELLER]:
     "Direct offer — review in Transfer Centre",
@@ -290,24 +290,17 @@ export function resolvePlayerTransferStatus({
     };
   }
 
-  if (
-    playerSignedCurrentSeason(
-      { Season_Signed: seasonSigned },
-      state?.currentSeasonLabel
-    )
-  ) {
-    return {
-      code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
-      label: "Recently signed",
-      subLabel: "Not available for transfer",
-      pillClass: PILL_CLASS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
-    };
-  }
+  const recentlySigned = playerSignedCurrentSeason(
+    { Season_Signed: seasonSigned },
+    state?.currentSeasonLabel
+  );
 
+  // Listing / window status wins over same-season lock (New Owner list can bypass it)
   if (playerHasActiveListing(state.activeListedPlayerIds, pid)) {
     return {
       code: TRANSFER_STATUS.LISTED,
       label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.LISTED],
+      subLabel: recentlySigned ? "Recently signed" : undefined,
       pillClass: PILL_CLASS[TRANSFER_STATUS.LISTED],
     };
   }
@@ -316,6 +309,7 @@ export function resolvePlayerTransferStatus({
     return {
       code: TRANSFER_STATUS.AWAITING_WINDOW,
       label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.AWAITING_WINDOW],
+      subLabel: recentlySigned ? "Recently signed" : undefined,
       pillClass: PILL_CLASS[TRANSFER_STATUS.AWAITING_WINDOW],
     };
   }
@@ -324,7 +318,17 @@ export function resolvePlayerTransferStatus({
     return {
       code: TRANSFER_STATUS.SELLER_REVIEW,
       label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.SELLER_REVIEW],
+      subLabel: recentlySigned ? "Recently signed" : undefined,
       pillClass: PILL_CLASS[TRANSFER_STATUS.SELLER_REVIEW],
+    };
+  }
+
+  if (recentlySigned) {
+    return {
+      code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
+      label: "Recently signed",
+      subLabel: "Not available for transfer",
+      pillClass: PILL_CLASS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
     };
   }
 
