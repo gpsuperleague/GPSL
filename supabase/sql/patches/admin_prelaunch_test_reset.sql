@@ -26,6 +26,7 @@ ALTER TABLE public.global_settings
 ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS is_archived boolean NOT NULL DEFAULT false;
 ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS archived_at timestamptz;
 ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS archived_note text;
+ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS gp_saved bigint;
 
 COMMENT ON COLUMN public.global_settings.allow_test_environment_reset IS
   'When true, admin_test_reset_execute() may run. Off by default — pre-launch only.';
@@ -752,7 +753,8 @@ BEGIN
       new_owner_releases_remaining = 0,
       is_archived = false,
       archived_at = NULL,
-      archived_note = NULL
+      archived_note = NULL,
+      gp_saved = NULL
   WHERE "ShortName" IS NOT NULL;
 
   IF to_regprocedure('public.manager_reset_season_quotas()') IS NOT NULL THEN

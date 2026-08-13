@@ -19,6 +19,99 @@ import {
 } from "./finance_page_common.js?v=20260810-staff-fin-preview";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20260806-help-blocks";
 
+function parseGpAmount(raw) {
+  const s = String(raw ?? "")
+    .trim()
+    .replace(/,/g, "")
+    .replace(/\s/g, "");
+  if (!s) return null;
+  if (!/^\d+$/.test(s)) return NaN;
+  const n = Number(s);
+  if (!Number.isSafeInteger(n)) return NaN;
+  return n;
+}
+
+function formatGpAmount(n) {
+  if (n == null || n === "") return "";
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "";
+  return Math.trunc(v).toLocaleString("en-GB");
+}
+
+function setGpSavedStatus(msg, ok = null) {
+  const el = document.getElementById("gpSavedStatus");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.className = "gp-saved-status" + (ok === true ? " ok" : ok === false ? " err" : "");
+}
+
+async function loadGpSavedWidget(shortName, { canEdit = true } = {}) {
+  const widget = document.getElementById("gpSavedWidget");
+  const input = document.getElementById("gpSavedInput");
+  const btn = document.getElementById("gpSavedSaveBtn");
+  if (!widget || !input || !btn) return;
+
+  widget.hidden = false;
+  setGpSavedStatus("");
+
+  const { data, error } = await supabase.rpc("club_gp_saved_get", {
+    p_club_short: shortName,
+  });
+
+  if (error) {
+    console.warn("GP Saved:", error.message);
+    if (/club_gp_saved_get|gp_saved/i.test(error.message || "")) {
+      setGpSavedStatus("Run club_gp_saved_20260813.sql", false);
+      input.disabled = true;
+      btn.disabled = true;
+      return;
+    }
+    setGpSavedStatus(error.message, false);
+    return;
+  }
+
+  const editable = canEdit && data?.can_edit !== false;
+  input.value = formatGpAmount(data?.gp_saved);
+  input.disabled = !editable;
+  btn.hidden = !editable;
+  btn.disabled = !editable;
+  btn.dataset.club = shortName;
+
+  if (!editable) {
+    setGpSavedStatus("View only");
+  }
+}
+
+async function saveGpSaved() {
+  const input = document.getElementById("gpSavedInput");
+  const btn = document.getElementById("gpSavedSaveBtn");
+  if (!input || !btn) return;
+
+  const amount = parseGpAmount(input.value);
+  if (Number.isNaN(amount)) {
+    setGpSavedStatus("Enter a whole number (or blank to clear)", false);
+    return;
+  }
+
+  btn.disabled = true;
+  setGpSavedStatus("Saving…");
+
+  const { data, error } = await supabase.rpc("club_gp_saved_set", {
+    p_amount: amount,
+    p_club_short: btn.dataset.club || null,
+  });
+
+  btn.disabled = false;
+
+  if (error) {
+    setGpSavedStatus(error.message, false);
+    return;
+  }
+
+  input.value = formatGpAmount(data?.gp_saved);
+  setGpSavedStatus("Saved", true);
+}
+
 function setAdvisoryBudgetDisplay(advisory, { historical = false } = {}) {
   const el = document.getElementById("advisoryTransferBudget");
   const hint = document.getElementById("advisoryTransferBudgetHint");
@@ -81,6 +174,8 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     adminPreview,
     pageSuffix: seasonView.isHistorical ? "Finances (archive)" : "Finances",
   });
+
+  await loadGpSavedWidget(shortName, { canEdit: !adminPreview });
 
   const pageMeta = document.getElementById("pageMeta");
   if (pageMeta && adminPreview) {
@@ -185,6 +280,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("userEmail").textContent = user.email;
+
+  document.getElementById("gpSavedSaveBtn")?.addEventListener("click", () => {
+    saveGpSaved();
+  });
+  document.getElementById("gpSavedInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveGpSaved();
+    }
+  });
 
   const ctx = await resolveFinanceClubContext(user);
 

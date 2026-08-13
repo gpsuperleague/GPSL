@@ -17,7 +17,43 @@
     .header-row {
       display:flex; align-items:center; gap:20px; margin-bottom:24px; flex-wrap:wrap;
     }
+    .header-title-block { min-width:0; flex:1 1 220px; }
     #clubBadgeHeader { width:80px; height:80px; object-fit:contain; }
+    .gp-saved-widget {
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      margin-left:auto;
+      padding:10px 12px;
+      background:#1a1a1a;
+      border:1px solid #333;
+      border-radius:8px;
+      max-width:100%;
+    }
+    .gp-saved-badge {
+      width:36px; height:36px; object-fit:contain; flex-shrink:0;
+      border-radius:50%;
+    }
+    .gp-saved-label {
+      font-size:12px; font-weight:bold; color:#9ecbff; letter-spacing:0.02em;
+      white-space:nowrap;
+    }
+    .gp-saved-input {
+      width:9.5em; max-width:40vw; padding:7px 8px;
+      background:#111; border:1px solid #555; color:#ddd; border-radius:4px;
+      font-size:14px; font-variant-numeric:tabular-nums;
+    }
+    .gp-saved-input:focus { outline:none; border-color:#5a9bd5; }
+    .gp-saved-input:disabled { opacity:0.7; cursor:default; }
+    .gp-saved-save {
+      padding:7px 12px; font-size:12px; font-weight:bold;
+      background:#2a4a6a; color:#dff; border:1px solid #4a7aaa; border-radius:4px;
+      cursor:pointer;
+    }
+    .gp-saved-save:hover:not(:disabled) { background:#355a7a; }
+    .gp-saved-save:disabled { opacity:0.5; cursor:default; }
+    .gp-saved-status { font-size:11px; color:#888; min-width:4em; }
+    .gp-saved-status.ok { color:#6f6; }
+    .gp-saved-status.err { color:#f88; }
+    .gp-saved-hint { font-size:10px; color:#666; width:100%; margin:0; line-height:1.3; }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:20px; margin-bottom:24px;
@@ -188,12 +224,21 @@
   <div class="page-container">
     <div class="header-row">
       <img id="clubBadgeHeader" src="" alt="">
-      <div>
+      <div class="header-title-block">
         <h1 id="pageTitle">Club Finances</h1>
         <div id="userEmail" class="meta"></div>
         <p id="pageMeta" class="meta" style="margin:0;"></p>
         <div id="adminFinancePickerHost"></div>
         <nav id="financeSubnav" class="finance-subnav" aria-label="Finances sections"></nav>
+      </div>
+      <div id="gpSavedWidget" class="gp-saved-widget" hidden>
+        <img class="gp-saved-badge" src="images/gp_badge.png" alt="" width="36" height="36">
+        <span class="gp-saved-label">GP Saved</span>
+        <input id="gpSavedInput" class="gp-saved-input" type="text" inputmode="numeric"
+          placeholder="0" autocomplete="off" aria-label="GP Saved amount">
+        <button type="button" id="gpSavedSaveBtn" class="gp-saved-save">Save</button>
+        <span id="gpSavedStatus" class="gp-saved-status" aria-live="polite"></span>
+        <p class="gp-saved-hint">In-game eFootball GP tracker — awareness only, not league money.</p>
       </div>
     </div>
 
@@ -266,6 +311,6 @@
       <div id="financeSeasonHistory"></div>
     </div>
   </div>
-  <script type="module" src="finances.js?v=20260811-trim-panels"></script>
+  <script type="module" src="finances.js?v=20260813-gp-saved"></script>
 </body>
 </html>
