@@ -51,6 +51,10 @@ function repoKitPath(clubShort: string, kind: string, ext: string): string {
   return `images/clubs_kits/${clubShort}_${kind}.${ext}`;
 }
 
+function repoBadgePath(clubShort: string): string {
+  return `images/club_badges/${clubShort}.png`;
+}
+
 async function githubCommitClubKitImages(
   token: string,
   clubShort: string,
@@ -357,6 +361,174 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
         ok: true,
         club_short_name: short,
         kind,
+        path,
+        github: { commit_sha: commitSha },
+      });
+    }
+
+    if (action === "upload_club_badge") {
+      const short = String(body?.club_short_name || "").trim().toUpperCase();
+      if (!short) return jsonResponse({ error: "club_short_name required" }, 400);
+
+      const { data: club, error: clubErr } = await adminClient
+        .from("Clubs")
+        .select("ShortName")
+        .eq("ShortName", short)
+        .maybeSingle();
+      if (clubErr || !club) {
+        return jsonResponse({ error: `Club not found: ${short}` }, 404);
+      }
+
+      let raw = String(body?.image_base64 || "").trim();
+      if (!raw) return jsonResponse({ error: "image_base64 required" }, 400);
+      if (raw.includes(",")) raw = raw.split(",")[1] || raw;
+      raw = raw.replace(/\s/g, "");
+
+      let bytes: Uint8Array;
+      try {
+        bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+      } catch {
+        return jsonResponse({ error: "Invalid image_base64" }, 400);
+      }
+      if (bytes.length < 32) {
+        return jsonResponse({ error: "Image data too small" }, 400);
+      }
+      if (bytes.length > 4_000_000) {
+        return jsonResponse({ error: "Image too large (max ~4MB)" }, 400);
+      }
+      if (
+        bytes.length < 8 ||
+        bytes[0] !== 0x89 ||
+        bytes[1] !== 0x50 ||
+        bytes[2] !== 0x4e ||
+        bytes[3] !== 0x47
+      ) {
+        return jsonResponse(
+          { error: "Badge must be PNG (convert SVG in the admin UI first)" },
+          400
+        );
+      }
+
+      if (!ghToken) {
+        return jsonResponse(
+          {
+            error:
+              "GITHUB_TOKEN not set — add a GitHub PAT with repo contents write access in Supabase → Edge Functions → Secrets.",
+          },
+          400
+        );
+      }
+
+      // Reuse kit commit helper with a synthetic "badge" path via absolute tree entry
+      const api = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`;
+      const path = repoBadgePath(short);
+      let lastErr: Error | null = null;
+      let commitSha = "";
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const headRes = await fetch(`${api}/git/ref/heads/${GITHUB_BRANCH}`, {
+            headers: githubHeaders(ghToken),
+          });
+          if (!headRes.ok) throw new Error(`GitHub ref failed (${headRes.status})`);
+          const headRef = await headRes.json();
+          const headCommitSha = headRef.object.sha as string;
+
+          const commitMetaRes = await fetch(
+            `${api}/git/commits/${headCommitSha}`,
+            { headers: githubHeaders(ghToken) }
+          );
+          if (!commitMetaRes.ok) {
+            throw new Error(`GitHub commit read failed (${commitMetaRes.status})`);
+          }
+          const commitMeta = await commitMetaRes.json();
+          const baseTreeSha = commitMeta.tree.sha as string;
+
+          const blobRes = await fetch(`${api}/git/blobs`, {
+            method: "POST",
+            headers: {
+              ...githubHeaders(ghToken),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              content: bytesToBase64(bytes),
+              encoding: "base64",
+            }),
+          });
+          if (!blobRes.ok) throw new Error(`GitHub blob failed (${blobRes.status})`);
+          const blob = await blobRes.json();
+
+          const treeRes = await fetch(`${api}/git/trees`, {
+            method: "POST",
+            headers: {
+              ...githubHeaders(ghToken),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              base_tree: baseTreeSha,
+              tree: [
+                {
+                  path,
+                  mode: "100644",
+                  type: "blob",
+                  sha: blob.sha as string,
+                },
+              ],
+            }),
+          });
+          if (!treeRes.ok) throw new Error(`GitHub tree failed (${treeRes.status})`);
+          const newTree = await treeRes.json();
+
+          const newCommitRes = await fetch(`${api}/git/commits`, {
+            method: "POST",
+            headers: {
+              ...githubHeaders(ghToken),
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              message: `Update ${short} club badge`,
+              tree: newTree.sha,
+              parents: [headCommitSha],
+            }),
+          });
+          if (!newCommitRes.ok) {
+            throw new Error(`GitHub commit failed (${newCommitRes.status})`);
+          }
+          const newCommit = await newCommitRes.json();
+
+          const updateRefRes = await fetch(
+            `${api}/git/refs/heads/${GITHUB_BRANCH}`,
+            {
+              method: "PATCH",
+              headers: {
+                ...githubHeaders(ghToken),
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ sha: newCommit.sha }),
+            }
+          );
+          if (!updateRefRes.ok) {
+            throw new Error(`GitHub ref update failed (${updateRefRes.status})`);
+          }
+          commitSha = newCommit.sha as string;
+          lastErr = null;
+          break;
+        } catch (err) {
+          lastErr = err instanceof Error ? err : new Error(String(err));
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+          }
+        }
+      }
+      if (lastErr || !commitSha) {
+        return jsonResponse(
+          { error: lastErr?.message || "GitHub commit failed" },
+          500
+        );
+      }
+
+      return jsonResponse({
+        ok: true,
+        club_short_name: short,
         path,
         github: { commit_sha: commitSha },
       });

@@ -118,9 +118,11 @@
         <h2>Upload club badge</h2>
         <p class="note">
           Download the crest from the club’s Wikipedia page (PNG or SVG), then upload here.
-          Saved as <code>images/club_badges/{ShortName}.png</code> on GitHub
-          (uses edge function <code>club-stadiums-sync</code> + <code>GITHUB_TOKEN</code>).
+          Saved as <code>images/club_badges/{ShortName}.png</code> on GitHub via
+          <code>club-stadiums-sync</code> + <code>GITHUB_TOKEN</code>.
           SVG is converted to PNG in the browser.
+          After code updates: redeploy <b>club-stadiums-sync</b>
+          (paste <code>supabase/functions/club-stadiums-sync/index.ts</code>, JWT off).
         </p>
         <div class="badge-upload-row">
           <div class="badge-preview-box">
@@ -152,6 +154,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_management.js?v=20260813-badge-upload"></script>
+  <script type="module" src="admin_club_management.js?v=20260813-badge-kits-fn"></script>
 </body>
 </html>

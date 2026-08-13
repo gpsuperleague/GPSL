@@ -185,8 +185,8 @@ async function uploadClubBadge() {
     if (error) {
       const msg = String(error.message || error);
       throw new Error(
-        /Failed to send a request to the Edge Function/i.test(msg)
-          ? `${msg} — redeploy club-stadiums-sync (paste updated index.ts), JWT off.`
+        /Failed to send a request to the Edge Function|BOOT_ERROR/i.test(msg)
+          ? `${msg} — redeploy club-stadiums-sync (paste updated index.ts), JWT off. Check function logs if BOOT_ERROR.`
           : msg
       );
     }

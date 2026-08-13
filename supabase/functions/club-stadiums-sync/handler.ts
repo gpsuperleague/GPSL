@@ -56,7 +56,7 @@ function repoBadgePath(clubShort: string): string {
   return `images/club_badges/${clubShort}.png`;
 }
 
-async function sleep(ms: number) {
+async function sleepMs(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
@@ -176,7 +176,7 @@ async function githubCommitRepoFile(
     } catch (err) {
       lastErr = err instanceof Error ? err : new Error(String(err));
       if (attempt < 2) {
-        await sleep(1500 * (attempt + 1));
+        await sleepMs(1500 * (attempt + 1));
       }
     }
   }
@@ -476,7 +476,7 @@ async function handleClubStadiumsSync(req: Request): Promise<Response> {
         onlyMissing,
       });
       results.push(entry);
-      await sleep(STADIUM_FETCH_DELAY_MS);
+      await sleepMs(STADIUM_FETCH_DELAY_MS);
     }
 
     const nextOffset = offset + rows.length;
