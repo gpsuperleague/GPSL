@@ -51,7 +51,7 @@ const COF_NATION_MAP = {
   serbia: { folder: "serbia", index: "serbia.html" },
   chile: { folder: "chile", index: "chile.html" },
   colombia: { folder: "col", index: "colombia.html" },
-  uruguay: { folder: "uru", index: "uru.html" },
+  uruguay: { folder: "uru", index: "uruguay.html" },
   paraguay: { folder: "paraguay", index: "paraguay.html" },
   peru: { folder: "peru", index: "peru.html" },
   ecuador: { folder: "ecuador", index: "ecuador.html" },
@@ -100,6 +100,8 @@ const COF_CLUB_SLUG_OVERRIDES = {
   SOA: "soa",
   // COF lists as "IFK Goteborg" under swe/goteborg/ (not "Gothenburg")
   IFK: "goteborg",
+  // COF: uru/danubio/danubio_*.html (index is uruguay.html, not uru.html)
+  DAN: "danubio",
 };
 
 /** When slug alone is not enough (page stem differs from folder name) */
