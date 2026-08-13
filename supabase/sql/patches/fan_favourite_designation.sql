@@ -23,6 +23,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS club_squad_player_designations_one_ff_per_club
   WHERE designation = 'fan_favourite';
 
 -- 2) Ledger allow-list + central-bank routing for subsidy
+-- IMPORTANT: always union the FULL catalogue — never rebuild from live rows +
+-- a tiny wage-only list (that dropped transfer_purchase and stalled draft settlement).
 DO $ledger_types$
 DECLARE
   v_list text;
@@ -35,23 +37,74 @@ BEGIN
     WHERE entry_type IS NOT NULL
     UNION
     SELECT unnest(ARRAY[
+      'gate_league_home',
+      'gate_cup_share',
+      'gate_friendlies',
+      'prize',
+      'prize_league',
+      'prize_cup',
+      'prize_challenge',
+      'tv_revenue',
+      'gov_hg_subsidy',
+      'gov_youth_subsidy',
+      'gov_bnb_subsidy',
+      'gov_fine_compensation',
+      'gov_emergency_tax',
+      'gov_income_tax',
       'wage_squad',
       'wage_renewal_34plus',
       'wage_star_tax',
-      'wage_fan_favourite_subsidy'
+      'wage_fan_favourite_subsidy',
+      'adjustment',
+      'admin_one_off_injection',
+      'admin_purchase_payment',
+      'transfer_sale',
+      'transfer_purchase',
+      'transfer_agent_fee',
+      'transfer_foreign_sale',
+      'transfer_overflow_release',
+      'loan_drawdown',
+      'loan_repayment_principal',
+      'loan_interest_payment',
+      'infra_maintenance',
+      'infra_purchase',
+      'infra_expansion',
+      'infra_expansion_refund',
+      'infra_expansion_penalty',
+      'contract_release_comp',
+      'contract_release_comp_received',
+      'contract_termination',
+      'contract_signing_offer',
+      'contract_expiry_compensation',
+      'contract_expiry_champ_signing_fee',
+      'staff_manager_salary',
+      'eos_debt_interest',
+      'eos_ffp_charge',
+      'eos_balance_interest',
+      'eos_injection',
+      'special_auction_fee',
+      'special_auction_prize',
+      'season_loan_fee',
+      'season_loan_refund',
+      'new_owner_release',
+      'voluntary_contract_release',
+      'medical_physio_hire',
+      'medical_doctor_hire'
     ])
   ) s;
 
-  IF v_list IS NOT NULL THEN
-    ALTER TABLE public.competition_finance_ledger
-      DROP CONSTRAINT IF EXISTS competition_finance_ledger_entry_type_check;
-    EXECUTE format(
-      'ALTER TABLE public.competition_finance_ledger
-         ADD CONSTRAINT competition_finance_ledger_entry_type_check
-         CHECK (entry_type IN (%s))',
-      v_list
-    );
+  IF v_list IS NULL OR length(v_list) < 3 THEN
+    RAISE EXCEPTION 'Could not build entry_type allow-list';
   END IF;
+
+  ALTER TABLE public.competition_finance_ledger
+    DROP CONSTRAINT IF EXISTS competition_finance_ledger_entry_type_check;
+  EXECUTE format(
+    'ALTER TABLE public.competition_finance_ledger
+       ADD CONSTRAINT competition_finance_ledger_entry_type_check
+       CHECK (entry_type IN (%s))',
+    v_list
+  );
 END;
 $ledger_types$;
 

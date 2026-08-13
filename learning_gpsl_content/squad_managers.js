@@ -24,7 +24,7 @@ export const SECTION_SQUAD = {
             `<b>₿2.5m fine</b> per missing player (or per star released) + <b>₿2.5m</b> season-loan fee when a loan is issued.`,
             `Emergency loans are rating <b>≤72</b>, prefer home-grown, else any nation; picks favour positional gaps (2 GK / 8 DEF / 8 MID / 6 ATT) for the loan only.`,
             `At 28 players, lowest eligible players are released (100% MV) to make room — never HG when fixing HG, never U21 when fixing U21, and <b>never OooO</b>.`,
-            `Over the star cap: lowest-rated stars released at <b>125% MV</b> + ₿2.5m fine each (OooO protected); if that would drop under 24, a loan is taken first.`,
+            `Over the star cap: lowest-rated stars released at <b>market value</b> + ₿2.5m fine each (OooO protected); if that would drop under 24, a loan is taken first.`,
             `Released players are unavailable for auction until next season.`,
           ],
         },

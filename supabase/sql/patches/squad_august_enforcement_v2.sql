@@ -8,7 +8,7 @@
 --     loan-picking only, not an everyday registration rule
 --   * Loan pool: HG ≤72 first, else any nation ≤72
 --   * At 28: release lowest eligible (OooO never) to make room for loans
---   * Stars: release lowest-rated stars @ 125% MV + ₿2.5m fine; loan first
+--   * Stars: release lowest-rated stars @ MV + ₿2.5m fine; loan first
 --     if release would drop under 24; OooO protected always
 --
 -- Run after squad_minimum_august.sql (+ club_squad_designations.sql,
@@ -597,6 +597,22 @@ BEGIN
     now(), NULL, p_buyer_label, p_sale_note
   );
 
+  -- Ledger only (balance already applied above)
+  IF to_regprocedure('public.post_transfer_ledger_for_history(bigint, boolean)') IS NOT NULL THEN
+    PERFORM public.post_transfer_ledger_for_history(
+      (
+        SELECT h.id
+        FROM public."Transfer_History" h
+        WHERE h.player_id::text = v_pid
+          AND h.seller_club_id = v_club
+          AND h.buyer_club_id = 'FOREIGN'
+        ORDER BY h.transfer_time DESC, h.id DESC
+        LIMIT 1
+      ),
+      false
+    );
+  END IF;
+
   -- Unavailable for auctions until next season (same as overflow paid-up)
   IF to_regprocedure('public.player_apply_overflow_paid_up_lock(text, text)') IS NOT NULL THEN
     PERFORM public.player_apply_overflow_paid_up_lock(v_pid, v_club);
@@ -920,8 +936,8 @@ BEGIN
 
     BEGIN
       v_rel := public.club_august_release_player(
-        v_club, v_pid, 1.25, 'august_star_compliance',
-        'Market value 125% (August star cap)'
+        v_club, v_pid, 1.0, 'august_star_compliance',
+        'Market value (August star cap)'
       );
       v_releases := v_releases + 1;
 

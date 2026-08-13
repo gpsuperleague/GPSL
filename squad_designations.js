@@ -141,7 +141,7 @@ export function starComplianceRow(state) {
     rule: "Star players",
     whoCounts: `All players rated ${minRating}+ (automatic; ${tier})`,
     requirement: `Up to ${cap}`,
-    note: "OooO excused. August over-cap: lowest stars released @ 125% MV + ₿2.5m fine each",
+    note: "OooO excused. August over-cap: lowest stars released @ MV + ₿2.5m fine each",
     count: `${count} / ${cap}`,
     ok: count <= cap,
     status: count <= cap ? "Within limit" : "Over limit",

@@ -1,12 +1,23 @@
 -- =============================================================================
--- Repair: widen competition_finance_ledger entry_type check (safe re-run)
+-- HOTFIX 2026-08-13 — Draft settlement stuck (97 Active)
 --
--- Always unions:
---   • every distinct entry_type already on the ledger (so no live row fails)
---   • the full known GPSL type list (including EOS / medical / friendlies / …)
+-- Diagnose error on every accept_draft_sale:
+--   competition_finance_ledger_entry_type_check violated
 --
--- Fixes errors like:
---   check constraint "competition_finance_ledger_entry_type_check" ... violated
+-- Cause: Fan Favourite ledger allow-list rebuild used live rows + wage-only
+--        types, dropping transfer_purchase (and related transfer types).
+--
+-- Run order:
+--   1) This whole file
+--   2) SELECT public.transferengine_diagnose_stuck_drafts(5);
+--      → samples should show ok:true (dry_run)
+--   3) SELECT public.transferengine_settle_player_draft_listings_report(50);
+--      Repeat until active_remaining = 0
+--   4) Deploy helpers in draft_settlement_incident_20260813.sql if not yet, then:
+--      SELECT public.admin_repair_draft_missing_purchase_ledgers(true);
+--      SELECT public.admin_repair_draft_missing_purchase_ledgers(false);
+--      SELECT public.admin_enforce_all_squad_overflow(true);
+--      SELECT public.admin_enforce_all_squad_overflow(false);
 -- =============================================================================
 
 DO $ledger_types$
@@ -14,7 +25,6 @@ DECLARE
   v_list text;
   v_unknown text;
 BEGIN
-  -- Show any live types not in the known catalogue (informational)
   SELECT string_agg(t, ', ' ORDER BY t)
   INTO v_unknown
   FROM (
@@ -163,5 +173,13 @@ BEGIN
   RAISE NOTICE 'competition_finance_ledger_entry_type_check rebuilt successfully';
 END;
 $ledger_types$;
+
+-- Confirm transfer_purchase is allowed
+SELECT
+  pg_get_constraintdef(c.oid) LIKE '%transfer_purchase%' AS allows_transfer_purchase,
+  pg_get_constraintdef(c.oid) LIKE '%transfer_overflow_release%' AS allows_overflow_release,
+  pg_get_constraintdef(c.oid) LIKE '%wage_fan_favourite_subsidy%' AS allows_fan_favourite
+FROM pg_constraint c
+WHERE c.conname = 'competition_finance_ledger_entry_type_check';
 
 NOTIFY pgrst, 'reload schema';

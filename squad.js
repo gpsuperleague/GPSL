@@ -110,7 +110,7 @@ import {
   DESIGNATION_STAR,
   DESIGNATION_OOO,
   DESIGNATION_FF,
-} from "./squad_designations.js?v=20260812-ff-preseason";
+} from "./squad_designations.js?v=20260813-star-mv";
 import {
   loadActiveSeasonLoanPlayerIds,
   loadClubSquadMinimumStatus,
