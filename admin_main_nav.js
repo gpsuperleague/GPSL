@@ -65,7 +65,6 @@ export const ADMIN_MAIN_NAV = [
         L("Link existing login to club", "admin_owners_link.html"),
         L("Change Owner Club", "admin_owners_change_club.html"),
         L("Remove Owner From Club", "admin_owners_remove.html"),
-        L("Assign Manager to club", "admin_test_manager_assign.html"),
       ]),
       group("Archive", [
         L("Archive Owner (left GPSL)", "admin_owners_archive.html"),
@@ -213,15 +212,6 @@ export const ADMIN_MAIN_NAV = [
           "Exclude specific players from draft / auction pools."
         ),
       ]),
-      group("Club Kits", [
-        L(
-          "Download Latest Kits",
-          "admin_club_kits.html",
-          null,
-          null,
-          "Refresh club kit images for the new season."
-        ),
-      ]),
       group("Club Management", [
         L(
           "Archive / Add clubs",
@@ -229,6 +219,20 @@ export const ADMIN_MAIN_NAV = [
           null,
           null,
           "Soft-archive clubs (history kept) or create vacant clubs for assignment / auction."
+        ),
+        L(
+          "Assign Manager to club",
+          "admin_test_manager_assign.html",
+          null,
+          null,
+          "Sign a manager directly to a club (bypasses draft / transfer market)."
+        ),
+        L(
+          "Download Latest Kits",
+          "admin_club_kits.html",
+          null,
+          null,
+          "Refresh club kit images for the new season."
         ),
       ]),
       group("Weather", [
