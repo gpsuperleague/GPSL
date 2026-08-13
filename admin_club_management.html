@@ -24,6 +24,16 @@
     .pill-live { color:#9fd4b0; font-size:11px; font-weight:bold; }
     .row.tight label { display:block; font-size:12px; color:#aaa; margin-bottom:4px; }
     .row.tight input, .row.tight select { width:100%; max-width:280px; }
+    .badge-upload-row {
+      display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start;
+    }
+    .badge-preview-box {
+      width:96px; height:96px; background:#151515; border:1px solid #333; border-radius:8px;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    }
+    .badge-preview-box img {
+      max-width:88px; max-height:88px; object-fit:contain;
+    }
   </style>
 </head>
 <body class="admin-page">
@@ -40,7 +50,7 @@
       <div class="club-mgmt-grid">
         <div class="card">
           <h2>Add club</h2>
-          <p class="note">Creates a vacant club. Add badge/stadium/kit images named by ShortName afterwards.</p>
+          <p class="note">Creates a vacant club. Upload the badge below (or kits/stadiums via Club Management menu) using ShortName.</p>
           <div class="row tight" style="display:flex;flex-wrap:wrap;gap:12px;">
             <div>
               <label for="newShort">ShortName</label>
@@ -105,6 +115,35 @@
       </div>
 
       <div class="card" style="margin-top:16px;">
+        <h2>Upload club badge</h2>
+        <p class="note">
+          Download the crest from the club’s Wikipedia page (PNG or SVG), then upload here.
+          Saved as <code>images/club_badges/{ShortName}.png</code> on GitHub
+          (uses edge function <code>club-stadiums-sync</code> + <code>GITHUB_TOKEN</code>).
+          SVG is converted to PNG in the browser.
+        </p>
+        <div class="badge-upload-row">
+          <div class="badge-preview-box">
+            <img id="badgePreview" alt="Badge preview" hidden>
+          </div>
+          <div class="row tight" style="display:flex;flex-wrap:wrap;gap:12px;flex:1;">
+            <div>
+              <label for="badgeClubSelect">Club</label>
+              <select id="badgeClubSelect"><option value="">Select club…</option></select>
+            </div>
+            <div>
+              <label for="badgeFileInput">Badge file (PNG or SVG)</label>
+              <input id="badgeFileInput" type="file" accept="image/png,image/svg+xml,.png,.svg">
+            </div>
+            <div style="align-self:flex-end;">
+              <button type="button" id="uploadBadgeBtn" class="button">Upload badge → GitHub</button>
+            </div>
+          </div>
+        </div>
+        <div id="badgeUploadStatus" class="status-line"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
         <h2>All clubs</h2>
         <p class="note">
           History: <code>history.html?club=SHORT</code> · Details: <code>club.html?club=SHORT</code>
@@ -113,6 +152,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_management.js?v=20260813"></script>
+  <script type="module" src="admin_club_management.js?v=20260813-badge-upload"></script>
 </body>
 </html>

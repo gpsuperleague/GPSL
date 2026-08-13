@@ -38,11 +38,8 @@ async function loadClubs() {
   renderClubList();
 }
 
-function renderClubSelect() {
-  const sel = document.getElementById("archiveClubSelect");
-  if (!sel) return;
-  const cur = sel.value;
-  sel.innerHTML =
+function clubOptionsHtml(selected = "") {
+  return (
     `<option value="">Select club…</option>` +
     clubs
       .map((c) => {
@@ -51,8 +48,167 @@ function renderClubSelect() {
           c.club_name
         )} [${escapeHtml(c.short_name)}]${arch}</option>`;
       })
-      .join("");
+      .join("")
+  );
+}
+
+function fillClubSelect(selId) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = clubOptionsHtml(cur);
   if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+}
+
+function renderClubSelect() {
+  fillClubSelect("archiveClubSelect");
+  fillClubSelect("badgeClubSelect");
+}
+
+function badgePath(short) {
+  return `images/club_badges/${short}.png`;
+}
+
+function refreshBadgePreview() {
+  const short = document.getElementById("badgeClubSelect")?.value || "";
+  const img = document.getElementById("badgePreview");
+  const file = document.getElementById("badgeFileInput")?.files?.[0];
+  if (!img) return;
+
+  if (file) {
+    img.hidden = false;
+    img.src = URL.createObjectURL(file);
+    return;
+  }
+
+  if (!short) {
+    img.hidden = true;
+    img.removeAttribute("src");
+    return;
+  }
+
+  img.hidden = false;
+  img.onerror = () => {
+    img.hidden = true;
+  };
+  img.src = `${badgePath(short)}?t=${Date.now()}`;
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const b64 = result.includes(",") ? result.split(",")[1] : result;
+      resolve(b64);
+    };
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Wiki SVGs → PNG for images/club_badges/{SHORT}.png */
+async function fileToPngBase64(file) {
+  const isSvg =
+    /svg/i.test(file.type) || /\.svg$/i.test(file.name || "");
+  if (!isSvg && /^image\/png$/i.test(file.type)) {
+    return readFileAsBase64(file);
+  }
+  if (!isSvg && !/^image\//i.test(file.type)) {
+    throw new Error("Use a PNG or SVG badge file from Wikipedia.");
+  }
+
+  const url = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () =>
+        reject(new Error("Could not load image (try exporting PNG from Wikipedia)."));
+      img.src = url;
+    });
+    const size = Math.max(128, Math.min(512, image.naturalWidth || 256));
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas not available");
+    const scale = Math.min(
+      size / (image.naturalWidth || size),
+      size / (image.naturalHeight || size)
+    );
+    const w = (image.naturalWidth || size) * scale;
+    const h = (image.naturalHeight || size) * scale;
+    ctx.clearRect(0, 0, size, size);
+    ctx.drawImage(image, (size - w) / 2, (size - h) / 2, w, h);
+    const dataUrl = canvas.toDataURL("image/png");
+    return dataUrl.split(",")[1] || "";
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function uploadClubBadge() {
+  const short = document.getElementById("badgeClubSelect")?.value || "";
+  const file = document.getElementById("badgeFileInput")?.files?.[0];
+  if (!short) {
+    setStatus("badgeUploadStatus", "Select a club.", false);
+    return;
+  }
+  if (!file) {
+    setStatus("badgeUploadStatus", "Choose a PNG or SVG file first.", false);
+    return;
+  }
+
+  const path = badgePath(short);
+  if (!confirm(`Upload ${file.name} as ${path} on GitHub for ${short}?`)) {
+    return;
+  }
+
+  const btn = document.getElementById("uploadBadgeBtn");
+  if (btn) btn.disabled = true;
+  setStatus("badgeUploadStatus", "Uploading badge…");
+
+  try {
+    const image_base64 = await fileToPngBase64(file);
+    const { data, error } = await supabase.functions.invoke(
+      "club-stadiums-sync",
+      {
+        body: {
+          action: "upload_club_badge",
+          club_short_name: short,
+          image_base64,
+        },
+      }
+    );
+
+    if (error) {
+      const msg = String(error.message || error);
+      throw new Error(
+        /Failed to send a request to the Edge Function/i.test(msg)
+          ? `${msg} — redeploy club-stadiums-sync (paste updated index.ts), JWT off.`
+          : msg
+      );
+    }
+    if (data?.error) throw new Error(data.error);
+
+    setStatus(
+      "badgeUploadStatus",
+      `✅ Uploaded ${data?.path || path}` +
+        (data?.github?.commit_sha
+          ? ` (commit ${String(data.github.commit_sha).slice(0, 7)})`
+          : "") +
+        ". Live after GitHub Pages updates.",
+      true
+    );
+    const input = document.getElementById("badgeFileInput");
+    if (input) input.value = "";
+    refreshBadgePreview();
+  } catch (err) {
+    setStatus("badgeUploadStatus", "❌ " + (err?.message || err), false);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 function renderClubList() {
@@ -191,5 +347,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("createClubBtn").onclick = createClub;
   document.getElementById("archiveClubBtn").onclick = archiveClub;
   document.getElementById("unarchiveClubBtn").onclick = unarchiveClub;
+  document.getElementById("uploadBadgeBtn").onclick = uploadClubBadge;
+  document.getElementById("badgeClubSelect")?.addEventListener("change", () => {
+    const input = document.getElementById("badgeFileInput");
+    if (input) input.value = "";
+    refreshBadgePreview();
+  });
+  document.getElementById("badgeFileInput")?.addEventListener("change", () => {
+    refreshBadgePreview();
+  });
   await loadClubs();
 });

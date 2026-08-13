@@ -413,6 +413,10 @@ function repoStadiumPath(clubShort: string): string {
   return `images/stadiums/${clubShort}.jpg`;
 }
 
+function repoBadgePath(clubShort: string): string {
+  return `images/club_badges/${clubShort}.png`;
+}
+
 async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
@@ -428,13 +432,13 @@ async function githubFileExists(
   return res.ok;
 }
 
-async function githubCommitStadiumImage(
+async function githubCommitRepoFile(
   token: string,
-  clubShort: string,
-  bytes: Uint8Array
+  repoPath: string,
+  bytes: Uint8Array,
+  commitMessage: string
 ): Promise<{ path: string; commitSha: string }> {
   let lastErr: Error | null = null;
-  const repoPath = repoStadiumPath(clubShort);
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -504,7 +508,7 @@ async function githubCommitStadiumImage(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: `Update ${clubShort} stadium image`,
+          message: commitMessage,
           tree: newTree.sha,
           parents: [headCommitSha],
         }),
@@ -539,6 +543,19 @@ async function githubCommitStadiumImage(
   }
 
   throw lastErr || new Error("GitHub commit failed");
+}
+
+async function githubCommitStadiumImage(
+  token: string,
+  clubShort: string,
+  bytes: Uint8Array
+): Promise<{ path: string; commitSha: string }> {
+  return githubCommitRepoFile(
+    token,
+    repoStadiumPath(clubShort),
+    bytes,
+    `Update ${clubShort} stadium image`
+  );
 }
 
 type ClubRow = {
@@ -602,6 +619,78 @@ async function handleClubStadiumsSync(req: Request): Promise<Response> {
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const deadline = Date.now() + INVOCATION_BUDGET_MS;
     const ghToken = githubToken();
+
+    if (action === "upload_club_badge") {
+      const short = String(body?.club_short_name || "").trim().toUpperCase();
+      if (!short) {
+        return jsonResponse({ error: "club_short_name required" }, 400);
+      }
+
+      const { data: club, error: clubErr } = await adminClient
+        .from("Clubs")
+        .select("ShortName")
+        .eq("ShortName", short)
+        .maybeSingle();
+      if (clubErr || !club) {
+        return jsonResponse({ error: `Club not found: ${short}` }, 404);
+      }
+
+      let raw = String(body?.image_base64 || "").trim();
+      if (!raw) return jsonResponse({ error: "image_base64 required" }, 400);
+      if (raw.includes(",")) raw = raw.split(",")[1] || raw;
+      raw = raw.replace(/\s/g, "");
+
+      let bytes: Uint8Array;
+      try {
+        bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+      } catch {
+        return jsonResponse({ error: "Invalid image_base64" }, 400);
+      }
+      if (bytes.length < 32) {
+        return jsonResponse({ error: "Image data too small" }, 400);
+      }
+      if (bytes.length > 4_000_000) {
+        return jsonResponse({ error: "Image too large (max ~4MB)" }, 400);
+      }
+
+      // PNG signature
+      if (
+        bytes.length < 8 ||
+        bytes[0] !== 0x89 ||
+        bytes[1] !== 0x50 ||
+        bytes[2] !== 0x4e ||
+        bytes[3] !== 0x47
+      ) {
+        return jsonResponse(
+          { error: "Badge must be PNG (convert SVG in the admin UI first)" },
+          400
+        );
+      }
+
+      if (!ghToken) {
+        return jsonResponse(
+          {
+            error:
+              "GITHUB_TOKEN not set — add a GitHub PAT with repo contents write access in Supabase → Edge Functions → Secrets.",
+          },
+          400
+        );
+      }
+
+      const { path, commitSha } = await githubCommitRepoFile(
+        ghToken,
+        repoBadgePath(short),
+        bytes,
+        `Update ${short} club badge`
+      );
+
+      return jsonResponse({
+        ok: true,
+        club_short_name: short,
+        path,
+        github: { commit_sha: commitSha },
+      });
+    }
 
     if (action === "preview") {
       const short = String(body?.club_short_name || "").trim().toUpperCase();
