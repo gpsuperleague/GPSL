@@ -1195,12 +1195,8 @@ function applyForeignSaleOptionState() {
       return;
     }
 
-    setSquadOptionAvailable(
-      listOpt,
-      transferWindowOpen,
-      "Transfer List",
-      "Transfer Window Shut"
-    );
+    // Listings allowed with TW shut; bidding stays window-gated server-side
+    setSquadOptionAvailable(listOpt, true, "Transfer List", null);
 
     const finalYear = row?.dataset.contractSeasons === "1";
     foreignOpts.forEach((opt) => {
@@ -2202,10 +2198,6 @@ async function handlePlayerAction(playerId, action, selectEl) {
 
   try {
     if (action === "list") {
-      if (!transferWindowOpen) {
-        resetActionSelect(selectEl);
-        return;
-      }
       resetActionSelect(selectEl);
       const { data: pRow } = await supabase
         .from("Players")
@@ -2586,10 +2578,6 @@ async function listPlayerNewOwner(playerId) {
   }
   if (!newOwnerReleaseState.windowOpen) {
     alert("New Owner actions are only available in the pre-season window or the January transfer window.");
-    return;
-  }
-  if (!transferWindowOpen) {
-    alert("Transfer window is closed — listings are disabled.");
     return;
   }
   if (newOwnerReleaseState.remaining <= 0) {

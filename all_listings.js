@@ -48,6 +48,7 @@ let myNationalTeam = null;
 let myClubNation = null;
 let selectedBidPlayer = null;
 let openListings = [];
+let transferWindowOpen = true;
 let reviewListings = [];
 let selectedListing = null;
 let renderGeneration = 0;
@@ -166,6 +167,7 @@ function parseMoneyInput(value) {
     clubShortName: currentUserShort,
     advisory: true,
   }).catch((err) => console.warn("advisory transfer budget:", err));
+  await loadTransferWindowStatus();
   await loadScoutingTargetsForClub();
   await refreshNationFilterButtons();
   restorePersistedListingFilters();
@@ -183,6 +185,26 @@ function parseMoneyInput(value) {
 
   console.log("all_listings.js initialized successfully");
 })();
+
+async function loadTransferWindowStatus() {
+  const { data, error } = await supabase
+    .from("global_settings")
+    .select("transfer_window_open")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("loadTransferWindowStatus:", error);
+    transferWindowOpen = true; // fail-open for UI; DB trigger still enforces
+  } else {
+    transferWindowOpen = data?.transfer_window_open === true;
+  }
+
+  const banner = document.getElementById("windowClosedMessage");
+  if (banner) {
+    banner.style.display = transferWindowOpen ? "none" : "block";
+  }
+}
 
 // ======================================================
 // MODULE A: SUPABASE → SHORTNAME
@@ -255,6 +277,7 @@ async function loadListings() {
   if (listingsLoading) return;
   listingsLoading = true;
   try {
+    await loadTransferWindowStatus();
     const nowIso = new Date().toISOString();
 
     const [openRes, reviewRes] = await Promise.all([
@@ -1312,7 +1335,18 @@ async function renderListings() {
     const end = new Date(listing.end_time);
     const isOpen = listing.status === "Active" && end > now;
     const canBid =
-      isOpen && listing.seller_club_id !== currentUserShort && !!currentUserShort;
+      isOpen &&
+      transferWindowOpen &&
+      listing.seller_club_id !== currentUserShort &&
+      !!currentUserShort;
+    const bidCellHtml = canBid
+      ? `<button type="button" class="make-offer-btn" data-id="${listing.id}">Make Offer</button>`
+      : isOpen &&
+          listing.seller_club_id !== currentUserShort &&
+          !!currentUserShort &&
+          !transferWindowOpen
+        ? `<span class="locked-msg" title="Bidding opens with the transfer window (June–August and January)">Window closed</span>`
+        : "-";
 
     const isFav = favouriteListingIds.has(String(listing.id));
 
@@ -1354,11 +1388,7 @@ async function renderListings() {
       <td class="money-cell">${formatMoney(listing.current_highest_bid)}</td>
       <td>${highestClubText}</td>
       <td>
-        ${
-          canBid
-            ? `<button type="button" class="make-offer-btn" data-id="${listing.id}">Make Offer</button>`
-            : "-"
-        }
+        ${bidCellHtml}
       </td>
     `;
 
@@ -1458,6 +1488,13 @@ async function fetchPlayerByID(kid) {
 async function openBidModal(listing, player) {
   if (listing.seller_club_id === currentUserShort) {
     alert("You already own this player. You cannot bid on your own listing.");
+    return;
+  }
+
+  if (!transferWindowOpen) {
+    alert(
+      "Transfer window is closed — bidding opens in June–August and January."
+    );
     return;
   }
 
@@ -1677,6 +1714,13 @@ async function placeBid() {
     return;
   }
 
+  await loadTransferWindowStatus();
+  if (!transferWindowOpen) {
+    errorBox.textContent =
+      "Transfer window is closed — bidding opens in June–August and January.";
+    return;
+  }
+
   const rawInput = document.getElementById("bid-amount").value;
   const bidAmount = parseMoneyInput(rawInput);
   const minBid = listingMinimumBid(selectedListing);
@@ -1712,7 +1756,13 @@ async function placeBid() {
   if (bidError) {
     console.error("Bid insert error", bidError);
     const msg = String(bidError.message || "");
-    if (msg.includes("current season")) {
+    if (/transfer window is closed/i.test(msg)) {
+      errorBox.textContent =
+        "Transfer window is closed — bidding opens in June–August and January.";
+      transferWindowOpen = false;
+      const banner = document.getElementById("windowClosedMessage");
+      if (banner) banner.style.display = "block";
+    } else if (msg.includes("current season")) {
       errorBox.textContent =
         "This player was signed in the current season and is not available on the transfer market until next season.";
     } else if (/bid must be at least/i.test(msg)) {
