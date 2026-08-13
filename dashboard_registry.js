@@ -83,6 +83,7 @@ const TILE_IMAGE_BY_ID = {
   admin_special_auctions: `${PANEL_BG}/Transfer.png`,
   admin_international: `${PANEL_BG}/Fixtures.png`,
   admin_club_kits: `${PANEL_BG}/Club_Details.png`,
+  admin_club_stadiums: `${PANEL_BG}/stadium.png`,
   admin_wage_bills: `${PANEL_BG}/Finances.png`,
   admin_fines: `${PANEL_BG}/Finances.png`,
   admin_cup_prizes: `${PANEL_BG}/Fixtures.png`,
@@ -235,6 +236,9 @@ export const DASHBOARD_PANELS = [
   p("admin_international_selection_close", "Close Nation Selection", "admin_international_selection_close.html", { adminOnly: true }),
   p("admin_international_selection_clear", "Clear Nation Assignments", "admin_international_selection_clear.html", { adminOnly: true }),
   p("admin_club_kits", "Club Kits Admin", "admin_club_kits.html", { adminOnly: true }),
+  p("admin_club_stadiums", "Club Stadiums Admin", "admin_club_stadiums.html", {
+    adminOnly: true,
+  }),
   p("admin_wage_bills", "Season wage bills", "admin_wage_bills.html", { adminOnly: true }),
   p("admin_tv_revenue", "TV revenue", "admin_tv_revenue.html", { adminOnly: true }),
   p("admin_gov_subsidies", "Government subsidies", "admin_gov_subsidies.html", { adminOnly: true }),

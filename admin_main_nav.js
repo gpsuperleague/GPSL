@@ -234,6 +234,13 @@ export const ADMIN_MAIN_NAV = [
           null,
           "Refresh club kit images for the new season."
         ),
+        L(
+          "Download Club Stadiums",
+          "admin_club_stadiums.html",
+          null,
+          null,
+          "Fetch stadium photos from StadiumDB into images/stadiums/."
+        ),
       ]),
       group("Weather", [
         L(
