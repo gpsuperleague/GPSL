@@ -239,6 +239,9 @@ export const DASHBOARD_PANELS = [
   p("admin_tv_revenue", "TV revenue", "admin_tv_revenue.html", { adminOnly: true }),
   p("admin_gov_subsidies", "Government subsidies", "admin_gov_subsidies.html", { adminOnly: true }),
   p("admin_tax_34", "34+ fee", "admin_tax_34.html", { adminOnly: true }),
+  p("admin_club_management", "Club Management", "admin_club_management.html", {
+    adminOnly: true,
+  }),
   p("admin_star_tax", "Star tax", "admin_star_tax.html", { adminOnly: true }),
   p("admin_wage_pct", "Wage %", "admin_wage_pct.html", { adminOnly: true }),
   p("admin_tax_pct", "Tax %", "admin_tax_pct.html", { adminOnly: true }),

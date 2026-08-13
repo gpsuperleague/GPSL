@@ -5,6 +5,8 @@ import {
   displayClubName,
   formatSeasonSaleDestination,
   formatSeasonSaleType,
+  clubPageHref,
+  resolveClubShortName,
 } from "./clubs_lookup.js";
 import { DIVISION_LABELS } from "./competition.js";
 import { renderTrophyCabinet } from "./history_trophies.js";
@@ -489,6 +491,129 @@ function renderBallon(rows) {
     </table>`;
 }
 
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderOwners(owners) {
+  const el = document.getElementById("ownersPanel");
+  if (!el) return;
+  if (!owners?.length) {
+    el.innerHTML =
+      '<p class="empty">No owner seasons archived for this club yet. Current owner appears after season ranking is written at archive.</p>';
+    return;
+  }
+
+  el.innerHTML = `
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Owner</th>
+          <th>Seasons</th>
+          <th>Charge</th>
+          <th class="num">W-D-L</th>
+          <th>Trophies</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${owners
+          .map((o) => {
+            const tag = o.owner_tag || o.owner_name || "Owner";
+            const nameLink = o.owner_id
+              ? `<a class="gpsl-link" href="owner_profile.html?owner=${encodeURIComponent(
+                  o.owner_id
+                )}">${escapeHtml(tag)}</a>`
+              : escapeHtml(tag);
+            const current = o.is_current
+              ? ` <span style="color:#9fd4b0;font-size:11px;">(current)</span>`
+              : "";
+            const first = seasonLabelText(o.first_season_label) || o.first_season_label;
+            const last = seasonLabelText(o.last_season_label) || o.last_season_label;
+            let charge = "—";
+            if (first && last && first !== last) charge = `${first} → ${last}`;
+            else if (first || last) charge = first || last;
+            else if (o.is_current) charge = "Current season";
+
+            const trophies = Array.isArray(o.trophies) ? o.trophies : [];
+            const trophyHtml = trophies.length
+              ? trophies
+                  .map(
+                    (t) =>
+                      `<div style="font-size:12px;margin:1px 0;">${escapeHtml(
+                        t.honour_label || t.honour_type || "Trophy"
+                      )} <span style="color:#888;">(${escapeHtml(
+                        seasonLabelText(t.season_label) || t.season_label || "—"
+                      )})</span></div>`
+                  )
+                  .join("")
+              : '<span class="empty">—</span>';
+
+            return `<tr>
+              <td>${nameLink}${current}</td>
+              <td class="num">${o.seasons_count ?? 0}</td>
+              <td>${escapeHtml(charge)}</td>
+              <td class="num">${o.won ?? 0}-${o.drawn ?? 0}-${o.lost ?? 0}</td>
+              <td>${trophyHtml}</td>
+            </tr>`;
+          })
+          .join("")}
+      </tbody>
+    </table>`;
+}
+
+async function resolveHistoryClub(user) {
+  const params = new URLSearchParams(window.location.search);
+  const q = (params.get("club") || "").trim();
+  if (q) {
+    const short = resolveClubShortName(q) || q.toUpperCase();
+    const { data: row } = await supabase
+      .from("Clubs")
+      .select("ShortName, Club, is_archived")
+      .eq("ShortName", short)
+      .maybeSingle();
+    if (row?.ShortName) {
+      return {
+        shortName: row.ShortName,
+        title: fullClubName(row.ShortName) || row.Club || row.ShortName,
+        archived: row.is_archived === true,
+      };
+    }
+    // Fallback if is_archived column missing
+    const { data: row2 } = await supabase
+      .from("Clubs")
+      .select("ShortName, Club")
+      .eq("ShortName", short)
+      .maybeSingle();
+    if (row2?.ShortName) {
+      return {
+        shortName: row2.ShortName,
+        title: fullClubName(row2.ShortName) || row2.Club || row2.ShortName,
+        archived: false,
+      };
+    }
+    return { error: `Club not found: ${q}` };
+  }
+
+  const { data: club, error: clubErr } = await supabase
+    .from("Clubs")
+    .select("ShortName, Club")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (clubErr || !club?.ShortName) {
+    return { error: "No club linked to your account. Open history via a club name link, or use ?club=SHORT." };
+  }
+  return {
+    shortName: club.ShortName,
+    title: fullClubName(club.ShortName) || club.Club || club.ShortName,
+    archived: false,
+  };
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
   await loadClubsMap();
@@ -501,26 +626,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  const { data: club, error: clubErr } = await supabase
-    .from("Clubs")
-    .select("ShortName, Club")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  if (clubErr || !club?.ShortName) {
-    showError("No club linked to your account.");
+  const resolved = await resolveHistoryClub(user);
+  if (resolved.error) {
+    showError(resolved.error);
     return;
   }
 
-  const shortName = club.ShortName;
-  const title = fullClubName(shortName) || club.Club || shortName;
-  document.getElementById("historyTitle").textContent = `${title} — History`;
-  document.getElementById("historySubtitle").textContent =
-    "Honours, league positions, records (incl. signings & sales) & Ballon d'Or winners.";
+  const shortName = resolved.shortName;
+  const detailsHref = clubPageHref(shortName);
+  document.getElementById("historyTitle").textContent = `${resolved.title} — History`;
+  document.getElementById("historySubtitle").innerHTML =
+    `Owners, honours, league positions, records &amp; Ballon d'Or.` +
+    (resolved.archived
+      ? ` <span style="color:#f8a;">(Archived club — history retained.)</span>`
+      : "") +
+    (detailsHref
+      ? ` · <a class="gpsl-link" href="${detailsHref}">Club details</a>`
+      : "");
 
-  const { data, error } = await supabase.rpc("competition_club_history_bundle", {
-    p_club_short_name: shortName,
-  });
+  const [{ data, error }, ownersRes] = await Promise.all([
+    supabase.rpc("competition_club_history_bundle", {
+      p_club_short_name: shortName,
+    }),
+    supabase.rpc("competition_club_owners_roster", {
+      p_club_short_name: shortName,
+    }),
+  ]);
 
   if (error) {
     console.error("competition_club_history_bundle:", error);
@@ -530,6 +661,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         : error.message
     );
     return;
+  }
+
+  if (ownersRes.error) {
+    console.warn("competition_club_owners_roster:", ownersRes.error);
+    const el = document.getElementById("ownersPanel");
+    if (el) {
+      el.innerHTML =
+        '<p class="empty">Owners roster unavailable — run club_management_archive_owners_20260813.sql</p>';
+    }
+  } else {
+    renderOwners(ownersRes.data?.owners || []);
   }
 
   const bundle = data || {};

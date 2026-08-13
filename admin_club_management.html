@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Club Management — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+    button.button.danger { background:#662222; color:#fcc; }
+    .club-mgmt-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media (max-width:900px) { .club-mgmt-grid { grid-template-columns:1fr; } }
+    .club-list { max-height:420px; overflow:auto; border:1px solid #333; border-radius:6px; }
+    .club-list table { width:100%; border-collapse:collapse; font-size:13px; }
+    .club-list th { position:sticky; top:0; background:#222; color:#ff9900; text-align:left; padding:8px; }
+    .club-list td { padding:7px 8px; border-top:1px solid #2a2a2a; }
+    .club-list tr:hover td { background:#1f1f1f; }
+    .pill-arch { color:#f8a; font-size:11px; font-weight:bold; }
+    .pill-live { color:#9fd4b0; font-size:11px; font-weight:bold; }
+    .row.tight label { display:block; font-size:12px; color:#aaa; margin-bottom:4px; }
+    .row.tight input, .row.tight select { width:100%; max-width:280px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Club Management</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note" style="margin:0 0 16px;">
+        Soft-archive keeps the club row and <b>all history</b> (seasons, trophies, transfers).
+        Archived clubs are vacated (no owner) and hidden from normal pickers.
+        New clubs start unowned — assign via Owners or leave for club auction.
+      </p>
+
+      <div class="club-mgmt-grid">
+        <div class="card">
+          <h2>Add club</h2>
+          <p class="note">Creates a vacant club. Add badge/stadium/kit images named by ShortName afterwards.</p>
+          <div class="row tight" style="display:flex;flex-wrap:wrap;gap:12px;">
+            <div>
+              <label for="newShort">ShortName</label>
+              <input id="newShort" placeholder="e.g. NEWC" maxlength="12" autocomplete="off">
+            </div>
+            <div>
+              <label for="newName">Club name</label>
+              <input id="newName" placeholder="Full name" autocomplete="off">
+            </div>
+            <div>
+              <label for="newStadium">Stadium</label>
+              <input id="newStadium" placeholder="Optional" autocomplete="off">
+            </div>
+            <div>
+              <label for="newCapacity">Capacity</label>
+              <input id="newCapacity" type="number" min="1000" max="200000" step="100" value="30000">
+            </div>
+            <div>
+              <label for="newNation">Nation</label>
+              <input id="newNation" placeholder="e.g. England" autocomplete="off">
+            </div>
+            <div>
+              <label for="newContinent">Continent</label>
+              <select id="newContinent">
+                <option value="">—</option>
+                <option value="europe">Europe</option>
+                <option value="south_america">South America</option>
+                <option value="north_america">North America</option>
+                <option value="africa">Africa</option>
+                <option value="asia">Asia</option>
+                <option value="oceania">Oceania</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <button type="button" id="createClubBtn" class="button">Create club</button>
+          </div>
+          <div id="createClubStatus" class="status-line"></div>
+        </div>
+
+        <div class="card">
+          <h2>Archive / restore</h2>
+          <p class="note">Archive vacates any owner. Unarchive restores the club as vacant for reassignment.</p>
+          <div class="row tight" style="display:flex;flex-wrap:wrap;gap:12px;">
+            <div>
+              <label for="archiveClubSelect">Club</label>
+              <select id="archiveClubSelect"><option value="">Loading…</option></select>
+            </div>
+            <div>
+              <label for="archiveNote">Note (optional)</label>
+              <input id="archiveNote" placeholder="e.g. Left GPSL 2026">
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
+            <button type="button" id="archiveClubBtn" class="button danger">Archive club</button>
+            <button type="button" id="unarchiveClubBtn" class="button secondary">Unarchive club</button>
+          </div>
+          <div id="archiveClubStatus" class="status-line"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>All clubs</h2>
+        <p class="note">
+          History: <code>history.html?club=SHORT</code> · Details: <code>club.html?club=SHORT</code>
+        </p>
+        <div class="club-list" id="clubListHost">Loading…</div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_club_management.js?v=20260813"></script>
+</body>
+</html>

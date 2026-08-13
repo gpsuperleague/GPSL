@@ -4,7 +4,7 @@
  *   • Player name    → player_career.html (GPSL player file)
  */
 
-import { clubPageHref, fullClubName } from "./clubs_lookup.js";
+import { clubPageHref, clubHistoryHref, fullClubName } from "./clubs_lookup.js";
 
 export const PESDB_FALLBACK_CARD_IMG = "https://i.imgur.com/3s8XQ7Y.png";
 
@@ -108,7 +108,8 @@ export function clubNameWrappedLinkHtml(shortName, name, options = {}) {
   const { className = "gpsl-club-link" } = options;
   const short = String(shortName ?? "").trim();
   const label = name || fullClubName(short) || short || "—";
-  const href = clubPageHref(short);
+  // Club name → history (owners / trophies); badge/details use clubPageHref
+  const href = clubHistoryHref(short) || clubPageHref(short);
 
   if (!href) return wrapWordsHtml(label);
 
@@ -117,21 +118,21 @@ export function clubNameWrappedLinkHtml(shortName, name, options = {}) {
     .map((part) => `<span class="lb-word">${escapePlayerHtml(part)}</span>`)
     .join(" ");
 
-  return `<a href="${href}" class="${className}">${inner}</a>`;
+  return `<a href="${href}" class="${className}" title="Club history">${inner}</a>`;
 }
 
 /**
- * Linked GPSL club squad page (white plain text, same as player links).
+ * Linked club history (owners / trophies). Details page: clubPageHref / badge.
  */
 export function clubNameLinkHtml(shortName, name, options = {}) {
   const { className = "gpsl-club-link" } = options;
   const short = String(shortName ?? "").trim();
   const label = name || fullClubName(short) || short || "—";
-  const href = clubPageHref(short);
+  const href = clubHistoryHref(short) || clubPageHref(short);
 
   if (!href) return escapePlayerHtml(label);
 
-  return `<a href="${href}" class="${className}">${escapePlayerHtml(label)}</a>`;
+  return `<a href="${href}" class="${className}" title="Club history">${escapePlayerHtml(label)}</a>`;
 }
 
 /** Standard table cells: thumb (PESDB) + name (GPSL). */

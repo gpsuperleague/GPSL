@@ -222,6 +222,15 @@ export const ADMIN_MAIN_NAV = [
           "Refresh club kit images for the new season."
         ),
       ]),
+      group("Club Management", [
+        L(
+          "Archive / Add clubs",
+          "admin_club_management.html",
+          null,
+          null,
+          "Soft-archive clubs (history kept) or create vacant clubs for assignment / auction."
+        ),
+      ]),
       group("Weather", [
         L(
           "Weather & Pitch conditions",

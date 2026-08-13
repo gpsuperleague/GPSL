@@ -108,6 +108,18 @@
     .club-header-meta h1 {
       margin: 0 0 6px;
     }
+    .club-header-meta h1 a.gpsl-link {
+      color: inherit;
+      text-decoration: none;
+    }
+    .club-header-meta h1 a.gpsl-link:hover {
+      color: #ffcc66;
+      text-decoration: underline;
+    }
+    a:has(> .club-header-badge) {
+      display: inline-block;
+      line-height: 0;
+    }
 
     .club-header-meta a.gpsl-link {
       color: #ff9900;
@@ -590,7 +602,7 @@
     <p class="window-closed-note" style="margin:0 0 12px;color:#999;font-style:normal;">
       League titles and cup wins appear here when the season is <b>archived</b>
       (not as soon as the final is played).
-      <a href="history.html" style="color:#6cf;">Full club history</a>
+      <a id="clubHistoryLink" href="history.html" style="color:#6cf;">Full club history</a>
       ·
       <a href="history_trophy_preview.html" style="color:#6cf;">Cabinet preview</a>
     </p>
@@ -809,10 +821,15 @@
       const headerEl = document.getElementById("clubHeader");
       const stadiumUrl = `images/stadiums/${encodeURIComponent(club.ShortName)}.jpg`;
       headerEl.style.setProperty("--club-stadium-bg", `url("${stadiumUrl}")`);
+      const historyHref = `history.html?club=${encodeURIComponent(club.ShortName)}`;
+      const detailsHref = `club.html?club=${encodeURIComponent(club.ShortName)}`;
+      // Badge → club details (this page); name → club history (owners / trophies)
       headerEl.innerHTML = `
-        <img class="club-header-badge" src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
+        <a href="${detailsHref}" title="Club details" aria-label="${club.Club} details">
+          <img class="club-header-badge" src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
+        </a>
         <div class="club-header-meta">
-          <h1>${club.Club}</h1>
+          <h1><a class="gpsl-link" href="${historyHref}" title="Club history">${club.Club}</a></h1>
           <div><strong>Stadium:</strong> ${club.Stadium}</div>
           <div><strong>Capacity:</strong> ${club.Capacity.toLocaleString()}</div>
           <div><strong>Nation:</strong> ${club.Nation}</div>
@@ -820,6 +837,8 @@
           ${managerLine}
         </div>
       `;
+      const histLink = document.getElementById("clubHistoryLink");
+      if (histLink) histLink.href = historyHref;
     }
 
     async function loadClubTrophyCabinet() {

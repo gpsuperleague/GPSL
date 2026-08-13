@@ -5,7 +5,7 @@ import {
   displayClubName,
   displayTransferBuyer,
   formatSeasonSaleDestination,
-  clubPageHref,
+  clubHistoryHref,
   isForeignBuyerClub,
 } from "./clubs_lookup.js";
 import { playerNameLinkHtml } from "./player_links.js";
@@ -75,10 +75,10 @@ function dealTypeLabel(kind) {
 
 function sellerCell(row) {
   if (!row.seller_club_id) return "Free agent";
-  const href = clubPageHref(row.seller_club_id);
+  const href = clubHistoryHref(row.seller_club_id);
   const label = displayClubName(row.seller_club_id);
   return href
-    ? `<a class="gpsl-link" href="${href}">${escapeHtml(label)}</a>`
+    ? `<a class="gpsl-link" href="${href}" title="Club history">${escapeHtml(label)}</a>`
     : escapeHtml(label);
 }
 
@@ -87,9 +87,9 @@ function buyerCell(row) {
   if (isForeignBuyerClub(row.buyer_club_id)) {
     return escapeHtml(label);
   }
-  const href = clubPageHref(row.buyer_club_id);
+  const href = clubHistoryHref(row.buyer_club_id);
   return href
-    ? `<a class="gpsl-link" href="${href}">${escapeHtml(label)}</a>`
+    ? `<a class="gpsl-link" href="${href}" title="Club history">${escapeHtml(label)}</a>`
     : escapeHtml(label);
 }
 

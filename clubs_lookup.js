@@ -68,21 +68,22 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
-/** Club name plus optional Discord owner tag (layout: block = fixtures, inline = tables). */
+/** Club name plus optional Discord owner tag (layout: block = fixtures, inline = tables).
+ *  Name → club history; use clubPageHref for details (badge / “club page”). */
 export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
   const name = escapeHtml(clubName || shortName || "—");
   const tag = ownerTagForClub(shortName);
   const tagHtml = tag
     ? `<span class="club-owner-tag">${escapeHtml(tag)}</span>`
     : "";
-  const href = clubPageHref(shortName);
+  const href = clubHistoryHref(shortName);
   const linkedName = href
-    ? `<a href="${escapeHtml(href)}" class="standings-club-link">${name}</a>`
+    ? `<a href="${escapeHtml(href)}" class="standings-club-link" title="Club history">${name}</a>`
     : name;
 
   if (layout === "block") {
     const blockName = href
-      ? `<a href="${escapeHtml(href)}" class="fixture-club-link">${name}</a>`
+      ? `<a href="${escapeHtml(href)}" class="fixture-club-link" title="Club history">${name}</a>`
       : name;
     return `<span class="fixture-club"><span class="fixture-club-name">${blockName}</span>${tagHtml}</span>`;
   }
@@ -172,10 +173,18 @@ export function formatSeasonSaleType(row) {
   return "Transfer";
 }
 
-/** Link to club page. Uses ShortName (club.html resolves ShortName or full Club name). */
+/** Link to club details (squad / stadium). Badge and “club page” targets. */
 export function clubPageHref(shortName) {
   if (isForeignBuyerClub(shortName)) return null;
   const short = resolveClubShortName(shortName);
   if (!short || isForeignBuyerClub(short)) return null;
   return `club.html?club=${encodeURIComponent(short)}`;
+}
+
+/** Link to club history (owners roster, trophies, seasons). Club name targets. */
+export function clubHistoryHref(shortName) {
+  if (isForeignBuyerClub(shortName)) return null;
+  const short = resolveClubShortName(shortName);
+  if (!short || isForeignBuyerClub(short)) return null;
+  return `history.html?club=${encodeURIComponent(short)}`;
 }
