@@ -180,12 +180,19 @@ function renderTable() {
   wrap.querySelectorAll(".stad-thumb").forEach((img) => {
     const short = img.getAttribute("data-short");
     if (!short) return;
-    img.addEventListener("load", () => markPresence(short, true));
-    img.addEventListener("error", () => markPresence(short, false));
-    // If already resolved (cached), fire handlers
+    const onOk = () => {
+      img.style.opacity = "1";
+      markPresence(short, true);
+    };
+    const onBad = () => {
+      img.style.opacity = "0.2";
+      markPresence(short, false);
+    };
+    img.addEventListener("load", onOk);
+    img.addEventListener("error", onBad);
     if (img.complete) {
-      if (img.naturalWidth > 0) markPresence(short, true);
-      else markPresence(short, false);
+      if (img.naturalWidth > 0) onOk();
+      else onBad();
     }
   });
 
