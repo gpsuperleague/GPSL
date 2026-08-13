@@ -10,8 +10,8 @@ export function getTransferMarketRules() {
       {
         heading: "Listing &amp; bidding",
         items: [
-          "Owners may <b>list anytime</b>; bidding only while the transfer window is open (typically <b>June–August</b> and <b>January</b>).",
-          "Runs at least <b>24 hours</b>, until the later of that or <b>7pm UK</b>.",
+          "Owners may <b>list anytime</b>. If the transfer window is shut, the listing waits — the auction clock (min <b>24 hours</b> / <b>7pm UK</b>) and bidding start when the window opens (typically <b>June–August</b> and <b>January</b>).",
+          "While the window is open, listings run at least <b>24 hours</b>, until the later of that or <b>7pm UK</b>.",
           "First bid ≥ <b>market value</b> (Value column).",
           "Later bids ≥ highest + <b>₿500,000</b> (and still ≥ market value).",
           "<b>Direct offers</b> (GPDB → Make Offer) also ≥ market value and only while the window is open; seller reviews in Transfer Centre.",

@@ -27,6 +27,7 @@ import {
 
 export const TRANSFER_STATUS = {
   LISTED: "listed",
+  AWAITING_WINDOW: "awaiting_window",
   SELLER_REVIEW: "seller_review",
   DIRECT_OFFER_SELLER: "direct_offer_seller",
   OFFER_PENDING: "offer_pending",
@@ -45,6 +46,8 @@ export const TRANSFER_STATUS = {
 /** Canonical user-facing copy (keep in sync across pages). */
 export const TRANSFER_STATUS_LABELS = {
   [TRANSFER_STATUS.LISTED]: "Listed on market",
+  [TRANSFER_STATUS.AWAITING_WINDOW]:
+    "Listed — auction starts when transfer window opens",
   [TRANSFER_STATUS.SELLER_REVIEW]: "Seller review",
   [TRANSFER_STATUS.DIRECT_OFFER_SELLER]:
     "Direct offer — review in Transfer Centre",
@@ -67,6 +70,7 @@ export const TRANSFER_STATUS_LABELS = {
 
 const PILL_CLASS = {
   [TRANSFER_STATUS.LISTED]: "status-listed",
+  [TRANSFER_STATUS.AWAITING_WINDOW]: "status-listed",
   [TRANSFER_STATUS.SELLER_REVIEW]: "status-seller-review",
   [TRANSFER_STATUS.DIRECT_OFFER_SELLER]: "status-direct-offer",
   [TRANSFER_STATUS.OFFER_PENDING]: "status-offer-pending",
@@ -130,7 +134,7 @@ function playerHasPendingOfferForSeller(state, konamiId, sellerRaw) {
 export async function loadTransferStatusState(supabase) {
   const nowIso = new Date().toISOString();
 
-  const [pendingState, clubsRes, activeRes, reviewRes, expiryMarketRes] =
+  const [pendingState, clubsRes, activeRes, pendingWindowRes, reviewRes, expiryMarketRes] =
     await Promise.all([
       loadPendingDirectOfferState(supabase),
       supabase.from("Clubs").select("ShortName, Club"),
@@ -139,6 +143,10 @@ export async function loadTransferStatusState(supabase) {
         .select("player_id, listing_type, status, end_time")
         .eq("status", "Active")
         .gt("end_time", nowIso),
+      supabase
+        .from("Player_Transfer_Listings")
+        .select("player_id, listing_type, status")
+        .eq("status", "Pending Window"),
       supabase
         .from("Player_Transfer_Listings")
         .select("player_id, listing_type, status")
@@ -156,6 +164,21 @@ export async function loadTransferStatusState(supabase) {
     }
   } else {
     console.error("loadTransferStatusState active listings:", activeRes.error);
+  }
+
+  const awaitingWindowPlayerIds = new Set();
+  if (!pendingWindowRes.error) {
+    for (const row of pendingWindowRes.data || []) {
+      const lt = String(row.listing_type || "").toLowerCase();
+      if (lt === "draft") continue;
+      if (row.player_id == null) continue;
+      awaitingWindowPlayerIds.add(String(row.player_id).trim());
+    }
+  } else {
+    console.error(
+      "loadTransferStatusState pending window listings:",
+      pendingWindowRes.error
+    );
   }
 
   const sellerReviewPlayerIds = new Set();
@@ -201,6 +224,7 @@ export async function loadTransferStatusState(supabase) {
     pendingDirectAll: pendingState.allPlayerIds,
     pendingDirectBySeller,
     activeListedPlayerIds,
+    awaitingWindowPlayerIds,
     sellerReviewPlayerIds,
     myExpiryWageBidPlayerIds,
     currentSeasonLabel,
@@ -285,6 +309,14 @@ export function resolvePlayerTransferStatus({
       code: TRANSFER_STATUS.LISTED,
       label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.LISTED],
       pillClass: PILL_CLASS[TRANSFER_STATUS.LISTED],
+    };
+  }
+
+  if (state.awaitingWindowPlayerIds?.has(pid)) {
+    return {
+      code: TRANSFER_STATUS.AWAITING_WINDOW,
+      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.AWAITING_WINDOW],
+      pillClass: PILL_CLASS[TRANSFER_STATUS.AWAITING_WINDOW],
     };
   }
 

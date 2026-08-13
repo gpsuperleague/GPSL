@@ -1646,7 +1646,7 @@ async function loadNavClubListingFlags(clubShort) {
       .select("id", { count: "exact", head: true })
       .eq("seller_club_id", clubShort)
       .neq("listing_type", "draft")
-      .in("status", ["Active", "Review", "Seller Review"]),
+      .in("status", ["Active", "Pending Window", "Review", "Seller Review"]),
     supabase
       .from("Manager_Transfer_Listings")
       .select("id", { count: "exact", head: true })

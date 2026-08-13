@@ -404,7 +404,7 @@ async function loadActiveListings(shortName) {
     .from("Player_Transfer_Listings")
     .select("*")
     .eq("seller_club_id", shortName)
-    .eq("status", "Active")
+    .in("status", ["Active", "Pending Window"])
     .order("created_at", { ascending: false });
 
   if (!listings || listings.length === 0) {
@@ -446,6 +446,7 @@ async function loadActiveListings(shortName) {
           const player = playerFromMap(players, row.player_id);
           const name = player?.Name || "Unknown";
           const reserve = Number(row.reserve_price).toLocaleString("en-GB");
+          const pendingWindow = row.status === "Pending Window";
           const endTime = row.end_time ? new Date(row.end_time) : null;
           const bidsCount = bidsCountMap.get(row.id) || 0;
           const forced = row.perpetual_renew === true;
@@ -454,9 +455,19 @@ async function loadActiveListings(shortName) {
           const forcedNote = forced
             ? `<div style="font-size:11px;color:#e8a87c;margin-top:2px;">Underperformance — auto-relists at MV</div>`
             : "";
+          const pendingNote = pendingWindow
+            ? `<div style="font-size:11px;color:#e8a87c;margin-top:2px;">Awaiting transfer window — clock starts when it opens</div>`
+            : "";
+
+          // Pending window: allow remove before the auction starts
+          if (pendingWindow && !forced) {
+            actionsHtml = `
+              <button class="expire-listing-btn" data-id="${row.id}" data-player-id="${row.player_id}">Remove</button>
+            `;
+          }
 
           // Only after cutoff AND no bids: show Extend / Remove (not for forced listings)
-          if (!forced && endTime && now > endTime && bidsCount === 0) {
+          if (!pendingWindow && !forced && endTime && now > endTime && bidsCount === 0) {
             actionsHtml = `
               <button class="extend-listing-btn" data-id="${row.id}">Extend</button>
               <button class="expire-listing-btn" data-id="${row.id}" data-player-id="${row.player_id}">Remove</button>
@@ -465,9 +476,15 @@ async function loadActiveListings(shortName) {
 
           return `
             <tr>
-              <td>${playerLinkCell(row.player_id, player, name)}${forcedNote}</td>
+              <td>${playerLinkCell(row.player_id, player, name)}${forcedNote}${pendingNote}</td>
               <td>₿ ${reserve}</td>
-              <td>${endTime ? endTime.toLocaleString() : "-"}</td>
+              <td>${
+                pendingWindow
+                  ? "When window opens"
+                  : endTime
+                    ? endTime.toLocaleString()
+                    : "-"
+              }</td>
               <td>${actionsHtml}</td>
             </tr>
           `;
@@ -1362,19 +1379,21 @@ function setupListPlayerModal(shortName) {
       return;
     }
 
+    const settings = await loadGlobalSettings();
+    const deferUntilWindow = settings?.transferWindowOpen !== true;
     const now = new Date();
-    const endTime = computeStandardListingEndTime();
+    const endTime = deferUntilWindow ? null : computeStandardListingEndTime();
 
     const { error: listErr } = await supabase.from("Player_Transfer_Listings").insert({
       player_id: playerId,
       seller_club_id: shortName,
       reserve_price: reserve,
-      status: "Active",
+      status: deferUntilWindow ? "Pending Window" : "Active",
       listing_type: "standard",
       created_at: now.toISOString(),
-      start_time: now.toISOString(),
-      end_time: endTime.toISOString(),
-      initial_end_time: endTime.toISOString(),
+      start_time: deferUntilWindow ? null : now.toISOString(),
+      end_time: endTime ? endTime.toISOString() : null,
+      initial_end_time: endTime ? endTime.toISOString() : null,
     });
 
     if (listErr) {

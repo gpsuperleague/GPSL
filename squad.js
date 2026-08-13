@@ -42,7 +42,7 @@ import {
   loadTransferStatusState,
   resolvePlayerTransferStatus,
   formatSquadStatusHtml,
-} from "./player_transfer_status.js";
+} from "./player_transfer_status.js?v=20260813-pending-window";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -2903,8 +2903,12 @@ async function validateAndCreateListing() {
   }
 
   const playerId = String(selectedPlayerForListing.Konami_ID);
+  await loadTransferWindowStatus();
+  const deferUntilWindow = !transferWindowOpen;
   const now = new Date().toISOString();
-  const endTime = computeStandardListingEndTime().toISOString();
+  const endTime = deferUntilWindow
+    ? null
+    : computeStandardListingEndTime().toISOString();
 
   // Close any stale listings for this player (expired engine not run yet, re-list, etc.)
   await supabase
@@ -2915,7 +2919,7 @@ async function validateAndCreateListing() {
     })
     .eq("player_id", playerId)
     .eq("seller_club_id", currentUserShort)
-    .in("status", ["Active", "expired"]);
+    .in("status", ["Active", "Pending Window", "expired"]);
 
   const { error } = await supabase
     .from("Player_Transfer_Listings")
@@ -2924,9 +2928,9 @@ async function validateAndCreateListing() {
       seller_club_id: currentUserShort,
       reserve_price: reserve,
       market_value: mv,
-      start_time: now,
+      start_time: deferUntilWindow ? null : now,
       end_time: endTime,
-      status: "Active",
+      status: deferUntilWindow ? "Pending Window" : "Active",
       listing_type: "standard",
       hidden_bids: false,
       random_end_time: null,
@@ -2962,6 +2966,12 @@ async function validateAndCreateListing() {
   }
 
   document.getElementById("list-player-modal-backdrop").style.display = "none";
+
+  if (deferUntilWindow) {
+    alert(
+      "Player listed. The auction clock starts when the transfer window opens (June–August / January)."
+    );
+  }
 
   await refreshNavClubListingState(currentUserShort);
   refreshNavListingIndicators();

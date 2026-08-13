@@ -280,7 +280,7 @@ async function loadListings() {
     await loadTransferWindowStatus();
     const nowIso = new Date().toISOString();
 
-    const [openRes, reviewRes] = await Promise.all([
+    const [openRes, pendingRes, reviewRes] = await Promise.all([
       supabase
         .from("Player_Transfer_Listings")
         .select("*")
@@ -288,6 +288,12 @@ async function loadListings() {
         .eq("status", "Active")
         .gt("end_time", nowIso)
         .order("end_time", { ascending: true }),
+      supabase
+        .from("Player_Transfer_Listings")
+        .select("*")
+        .neq("listing_type", "draft")
+        .eq("status", "Pending Window")
+        .order("created_at", { ascending: true }),
       supabase
         .from("Player_Transfer_Listings")
         .select("*")
@@ -300,12 +306,19 @@ async function loadListings() {
       console.error("Open listings error", openRes.error);
       return;
     }
+    if (pendingRes.error) {
+      console.error("Pending window listings error", pendingRes.error);
+      return;
+    }
     if (reviewRes.error) {
       console.error("Review listings error", reviewRes.error);
       return;
     }
 
-    openListings = dedupeOpenListingsByPlayer(openRes.data || []);
+    openListings = dedupeOpenListingsByPlayer([
+      ...(openRes.data || []),
+      ...(pendingRes.data || []),
+    ]);
     reviewListings = reviewRes.data || [];
     await renderListings();
     updateListingsRefreshNote(`Updated ${new Date().toLocaleTimeString("en-GB")}`);
@@ -342,9 +355,14 @@ function dedupeOpenListingsByPlayer(listings) {
       byPlayer.set(key, row);
     }
   }
-  return [...byPlayer.values()].sort(
-    (a, b) => new Date(a.end_time) - new Date(b.end_time)
-  );
+  return [...byPlayer.values()].sort((a, b) => {
+    const aPending = a.status === "Pending Window";
+    const bPending = b.status === "Pending Window";
+    if (aPending !== bPending) return aPending ? 1 : -1;
+    const aEnd = a.end_time ? new Date(a.end_time).getTime() : Infinity;
+    const bEnd = b.end_time ? new Date(b.end_time).getTime() : Infinity;
+    return aEnd - bEnd;
+  });
 }
 
 function applyHighBidToListing(listing, bid) {
@@ -1332,8 +1350,13 @@ async function renderListings() {
     const clubLabel = fullClubName(listing.seller_club_id);
     const playerName = player?.Name || "Unknown";
 
-    const end = new Date(listing.end_time);
-    const isOpen = listing.status === "Active" && end > now;
+    const isPendingWindow = listing.status === "Pending Window";
+    const end = listing.end_time ? new Date(listing.end_time) : null;
+    const isOpen =
+      !isPendingWindow &&
+      listing.status === "Active" &&
+      end &&
+      end > now;
     const canBid =
       isOpen &&
       transferWindowOpen &&
@@ -1341,12 +1364,14 @@ async function renderListings() {
       !!currentUserShort;
     const bidCellHtml = canBid
       ? `<button type="button" class="make-offer-btn" data-id="${listing.id}">Make Offer</button>`
-      : isOpen &&
-          listing.seller_club_id !== currentUserShort &&
-          !!currentUserShort &&
-          !transferWindowOpen
-        ? `<span class="locked-msg" title="Bidding opens with the transfer window (June–August and January)">Window closed</span>`
-        : "-";
+      : isPendingWindow
+        ? `<span class="locked-msg" title="Auction clock starts when the transfer window opens">Awaiting window</span>`
+        : isOpen &&
+            listing.seller_club_id !== currentUserShort &&
+            !!currentUserShort &&
+            !transferWindowOpen
+          ? `<span class="locked-msg" title="Bidding opens with the transfer window (June–August and January)">Window closed</span>`
+          : "-";
 
     const isFav = favouriteListingIds.has(String(listing.id));
 
@@ -1382,9 +1407,15 @@ async function renderListings() {
         (listing.status === "Review" || listing.status === "Seller Review") &&
         listing.seller_club_id === currentUserShort
           ? `<a href="transfer_center.html#seller-review" class="gpsl-link">Below reserve — decide in Transfer Centre</a>${extendedLabel}`
-          : `${listing.status} ${extendedLabel}`
+          : isPendingWindow
+            ? `Awaiting window`
+            : `${listing.status} ${extendedLabel}`
       }</td>
-      <td class="countdown-cell">${formatTimeRemainingHtml(listing.end_time)}</td>
+      <td class="countdown-cell">${
+        isPendingWindow
+          ? `<span class="locked-msg" title="Starts when the transfer window opens">—</span>`
+          : formatTimeRemainingHtml(listing.end_time)
+      }</td>
       <td class="money-cell">${formatMoney(listing.current_highest_bid)}</td>
       <td>${highestClubText}</td>
       <td>
@@ -1429,7 +1460,18 @@ async function renderListings() {
         return;
       }
 
-      if (listing.status !== "Active" || endClick <= nowClick) {
+      if (listing.status === "Pending Window") {
+        alert(
+          "This listing is waiting for the transfer window — the auction clock starts when it opens."
+        );
+        return;
+      }
+
+      if (
+        listing.status !== "Active" ||
+        !listing.end_time ||
+        endClick <= nowClick
+      ) {
         alert("This listing is no longer open for bidding.");
         return;
       }
