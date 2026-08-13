@@ -132,10 +132,10 @@ function evaluateRowIssues(row) {
   if (hasOwner && !(row.nation_code || row.nation_name)) issues.add("nation");
   if (squad < MIN_SQUAD_SIZE) issues.add("squad_low");
   if (squad > SQUAD_SIZE) issues.add("squad_high");
-  if (hasOwner && gk < MIN_GK) issues.add("gk");
+  if (gk < MIN_GK) issues.add("gk");
   if (stars > starCap) issues.add("stars");
-  if (hasOwner && u21 < MIN_U21) issues.add("u21");
-  if (hasOwner && hg < MIN_HOME_GROWN) issues.add("hg");
+  if (u21 < MIN_U21) issues.add("u21");
+  if (hg < MIN_HOME_GROWN) issues.add("hg");
   if (Number(row.current_balance) < 0) issues.add("balance");
   if (
     row.projected_eos_balance != null &&
@@ -388,11 +388,11 @@ function renderSummary(rows) {
     else vacant += 1;
     if (Number(row.squad_size) < MIN_SQUAD_SIZE) underMin += 1;
     if (Number(row.squad_size) > SQUAD_SIZE) overMax += 1;
-    if (rowHasOwner(row) && rowGkCount(row) < MIN_GK) gkShort += 1;
+    if (rowGkCount(row) < MIN_GK) gkShort += 1;
     if (rowStarCount(row) > rowStarCap(row)) starsOver += 1;
     if (rowHasOwner(row) && !rowHasManager(row)) noManager += 1;
-    if (rowHasOwner(row) && Number(row.hg_count ?? 0) < MIN_HOME_GROWN) hgShort += 1;
-    if (rowHasOwner(row) && Number(row.u21_count ?? 0) < MIN_U21) u21Short += 1;
+    if (Number(row.hg_count ?? 0) < MIN_HOME_GROWN) hgShort += 1;
+    if (Number(row.u21_count ?? 0) < MIN_U21) u21Short += 1;
     if (row.ff_player_name) withFf += 1;
     if (row.ooo_player_name) withOoo += 1;
     if (Number(row.current_balance) < 0) negative += 1;
@@ -562,7 +562,7 @@ function renderTable() {
 
             let gkLevel = "ok";
             let gkTip = `${gk} goalkeeper(s)`;
-            if (hasOwner && gk < MIN_GK) {
+            if (gk < MIN_GK) {
               gkLevel = "bad";
               gkTip = ISSUE_META.gk.tip;
             }
@@ -575,14 +575,14 @@ function renderTable() {
 
             let u21Level = "ok";
             let u21Tip = "";
-            if (hasOwner && u21 < MIN_U21) {
+            if (u21 < MIN_U21) {
               u21Level = "bad";
               u21Tip = ISSUE_META.u21.tip;
             }
 
             let hgLevel = "ok";
             let hgTip = "";
-            if (hasOwner && hg < MIN_HOME_GROWN) {
+            if (hg < MIN_HOME_GROWN) {
               hgLevel = "bad";
               hgTip = ISSUE_META.hg.tip;
             }

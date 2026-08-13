@@ -44,21 +44,15 @@
     }
     .chk-group-fin { background:#1a1a1a !important; color:#aaa !important; }
     .chk-table th.chk-col-squad,
-    .chk-table td.chk-col-squad {
+    .chk-table td.chk-col-squad.chk-cell-ok {
       background: rgba(255, 153, 0, 0.04);
     }
     .chk-table th.chk-col-squad:first-of-type,
     .chk-table td.chk-col-squad:first-of-type {
       border-left: 2px solid rgba(255, 153, 0, 0.35);
     }
-    .chk-table tbody tr:hover td.chk-col-squad {
+    .chk-table tbody tr:hover td.chk-col-squad.chk-cell-ok {
       background: rgba(255, 153, 0, 0.08);
-    }
-    .chk-table tbody tr:hover td.chk-col-squad.chk-cell-bad {
-      background: rgba(232, 92, 92, 0.28) !important;
-    }
-    .chk-table tbody tr:hover td.chk-col-squad.chk-cell-warn {
-      background: rgba(232, 160, 71, 0.22) !important;
     }
     .chk-table th.sorted-asc::after { content:" ▲"; font-size:9px; }
     .chk-table th.sorted-desc::after { content:" ▼"; font-size:9px; }
@@ -191,6 +185,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20260813-gk-ff"></script>
+  <script type="module" src="admin_club_checklist.js?v=20260813-gk-ff-red"></script>
 </body>
 </html>
