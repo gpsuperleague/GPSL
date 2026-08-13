@@ -221,6 +221,13 @@ export const ADMIN_MAIN_NAV = [
           "Soft-archive clubs (history kept) or create vacant clubs for assignment / auction."
         ),
         L(
+          "Upload Club Badge",
+          "admin_club_management.html#upload-badge",
+          null,
+          null,
+          "Upload a Wikipedia PNG/SVG crest to images/club_badges/{ShortName}.png on GitHub."
+        ),
+        L(
           "Assign Manager to club",
           "admin_test_manager_assign.html",
           null,
