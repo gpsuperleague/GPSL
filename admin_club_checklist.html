@@ -13,11 +13,53 @@
     .chk-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
     .chk-summary { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; font-size:13px; }
     .chk-summary span { padding:6px 10px; background:#1a1a1a; border-radius:4px; }
+    .chk-summary .chk-sum-squad {
+      background: rgba(255, 153, 0, 0.08);
+      border: 1px solid rgba(255, 153, 0, 0.25);
+    }
     .chk-table-wrap { overflow:auto; max-height:calc(100vh - 240px); border:1px solid #333; border-radius:6px; }
     .chk-table { width:100%; border-collapse:collapse; font-size:12px; }
     .chk-table th, .chk-table td { padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left; vertical-align:top; white-space:nowrap; }
     .chk-table th { position:sticky; top:0; background:#1e1e1e; z-index:1; color:#ff9900; cursor:pointer; user-select:none; }
     .chk-table th:hover { background:#252525; }
+    .chk-table thead tr.chk-group-row th {
+      top: 0;
+      z-index: 2;
+      cursor: default;
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 5px 8px;
+      border-bottom: 1px solid #333;
+    }
+    .chk-table thead tr.chk-group-row th:hover { background: inherit; }
+    .chk-table thead tr:nth-child(2) th { top: 28px; }
+    .chk-group-club { background:#1a1a1a !important; color:#aaa !important; }
+    .chk-group-squad {
+      background: rgba(255, 153, 0, 0.12) !important;
+      color: #ffcc66 !important;
+      border-left: 2px solid rgba(255, 153, 0, 0.55);
+      border-right: 2px solid rgba(255, 153, 0, 0.55);
+    }
+    .chk-group-fin { background:#1a1a1a !important; color:#aaa !important; }
+    .chk-table th.chk-col-squad,
+    .chk-table td.chk-col-squad {
+      background: rgba(255, 153, 0, 0.04);
+    }
+    .chk-table th.chk-col-squad:first-of-type,
+    .chk-table td.chk-col-squad:first-of-type {
+      border-left: 2px solid rgba(255, 153, 0, 0.35);
+    }
+    .chk-table tbody tr:hover td.chk-col-squad {
+      background: rgba(255, 153, 0, 0.08);
+    }
+    .chk-table tbody tr:hover td.chk-col-squad.chk-cell-bad {
+      background: rgba(232, 92, 92, 0.28) !important;
+    }
+    .chk-table tbody tr:hover td.chk-col-squad.chk-cell-warn {
+      background: rgba(232, 160, 71, 0.22) !important;
+    }
     .chk-table th.sorted-asc::after { content:" ▲"; font-size:9px; }
     .chk-table th.sorted-desc::after { content:" ▼"; font-size:9px; }
     .chk-table tbody tr:hover { background:#1a1a1a; }
@@ -94,12 +136,12 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <p class="chk-note">
-          All GPSL clubs at a glance for the active season. <b>Projected EOS balance</b> loads after the table
-          (pending gates, prizes, wages, etc.). Owned clubs without a <b>manager</b> or nation are flagged.
-          Run <code>admin_club_season_checklist_star_cap.sql</code> (and notify patch if using the button) in Supabase.
-          Stars show as <b>count/cap</b> (SL 3 / Champ 2); over-cap clubs get a red Stars cell and an Issues tag.
+          All GPSL clubs at a glance. The highlighted <b>Squad registration</b> block groups
+          <b>Squad</b> (24–28), <b>GK</b> (≥1), <b>HG</b> (≥8), <b>U21</b> (≥5), <b>Stars</b> (SL 3 / Champ 2),
+          <b>OooO</b> and <b>Fan Fav</b> for a quick status check.
+          <b>Projected EOS</b> loads after the table. Owned clubs without a manager, nation, or GK are flagged.
+          Deploy <code>admin_club_season_checklist_gk_ff.sql</code> (and notify patch if using the button) in Supabase.
           Nav: <b>Admin → Season Management → Club Season Checklist</b>.
-          Use <b>Notify owners of issues</b> to inbox each owned club with current deficiencies (including no manager).
         </p>
         <div class="chk-toolbar">
           <button type="button" id="reloadBtn" class="button">Reload</button>
@@ -149,6 +191,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20260723-no-manager"></script>
+  <script type="module" src="admin_club_checklist.js?v=20260813-gk-ff"></script>
 </body>
 </html>

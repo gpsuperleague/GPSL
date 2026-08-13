@@ -1,11 +1,18 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { formatMoney } from "./competition.js";
 import { loadFinanceSeasonContext } from "./finance_page_common.js";
-import { MIN_HOME_GROWN, MIN_SQUAD_SIZE, MIN_UNDER_21, SQUAD_SIZE } from "./squad_rules.js";
+import {
+  MIN_GOALKEEPERS,
+  MIN_HOME_GROWN,
+  MIN_SQUAD_SIZE,
+  MIN_UNDER_21,
+  SQUAD_SIZE,
+} from "./squad_rules.js";
 
 primeAdminPageChrome();
 
 const MIN_U21 = MIN_UNDER_21;
+const MIN_GK = MIN_GOALKEEPERS;
 /** Super League star registration cap (matches club_squad_star_cap). */
 const STAR_CAP_SUPERLEAGUE = 3;
 /** Championship / unassigned star registration cap. */
@@ -35,6 +42,11 @@ function rowStarCount(row) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function rowGkCount(row) {
+  const n = Number(row?.gk_count ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
 const ISSUE_META = {
   owner: { label: "Owner", level: "bad", tip: "No owner assigned" },
   manager: {
@@ -52,6 +64,11 @@ const ISSUE_META = {
     label: `Squad >${SQUAD_SIZE}`,
     level: "bad",
     tip: `Squad above maximum (${SQUAD_SIZE})`,
+  },
+  gk: {
+    label: `GK <${MIN_GK}`,
+    level: "bad",
+    tip: `Fewer than ${MIN_GK} goalkeeper(s) registered`,
   },
   stars: {
     label: "Stars",
@@ -108,12 +125,14 @@ function evaluateRowIssues(row) {
   const starCap = rowStarCap(row);
   const u21 = Number(row.u21_count ?? 0);
   const hg = Number(row.hg_count ?? 0);
+  const gk = rowGkCount(row);
 
   if (!hasOwner) issues.add("owner");
   if (hasOwner && !rowHasManager(row)) issues.add("manager");
   if (hasOwner && !(row.nation_code || row.nation_name)) issues.add("nation");
   if (squad < MIN_SQUAD_SIZE) issues.add("squad_low");
   if (squad > SQUAD_SIZE) issues.add("squad_high");
+  if (hasOwner && gk < MIN_GK) issues.add("gk");
   if (stars > starCap) issues.add("stars");
   if (hasOwner && u21 < MIN_U21) issues.add("u21");
   if (hasOwner && hg < MIN_HOME_GROWN) issues.add("hg");
@@ -140,6 +159,9 @@ function issueTagsHtml(issues, row = null) {
       if (key === "stars" && row) {
         label = `Stars ${rowStarCount(row)}/${rowStarCap(row)}`;
       }
+      if (key === "gk" && row) {
+        label = `GK ${rowGkCount(row)}/${MIN_GK}`;
+      }
       const cls = meta.level === "warn" ? "chk-issue-tag warn" : "chk-issue-tag";
       return `<span class="${cls}" title="${escapeHtml(meta.tip || meta.label)}">${escapeHtml(
         label
@@ -157,6 +179,9 @@ function buildChecklistIssueBody(row, issues) {
   });
 
   const extras = [];
+  if (issues.has("gk")) {
+    extras.push(`Goalkeepers: ${rowGkCount(row)} (minimum ${MIN_GK})`);
+  }
   if (issues.has("hg")) {
     extras.push(`Home-grown count: ${Number(row.hg_count ?? 0)} (minimum ${MIN_HOME_GROWN})`);
   }
@@ -285,6 +310,7 @@ function compareValues(a, b, key) {
 
   if (
     key === "squad_size" ||
+    key === "gk_count" ||
     key === "star_count" ||
     key === "contract_releases_remaining" ||
     key === "foreign_sales_remaining" ||
@@ -346,9 +372,14 @@ function renderSummary(rows) {
   let owned = 0;
   let vacant = 0;
   let underMin = 0;
+  let overMax = 0;
+  let gkShort = 0;
   let starsOver = 0;
   let noManager = 0;
   let hgShort = 0;
+  let u21Short = 0;
+  let withFf = 0;
+  let withOoo = 0;
   let negative = 0;
   let flagged = 0;
 
@@ -356,9 +387,14 @@ function renderSummary(rows) {
     if (rowHasOwner(row)) owned += 1;
     else vacant += 1;
     if (Number(row.squad_size) < MIN_SQUAD_SIZE) underMin += 1;
+    if (Number(row.squad_size) > SQUAD_SIZE) overMax += 1;
+    if (rowHasOwner(row) && rowGkCount(row) < MIN_GK) gkShort += 1;
     if (rowStarCount(row) > rowStarCap(row)) starsOver += 1;
     if (rowHasOwner(row) && !rowHasManager(row)) noManager += 1;
     if (rowHasOwner(row) && Number(row.hg_count ?? 0) < MIN_HOME_GROWN) hgShort += 1;
+    if (rowHasOwner(row) && Number(row.u21_count ?? 0) < MIN_U21) u21Short += 1;
+    if (row.ff_player_name) withFf += 1;
+    if (row.ooo_player_name) withOoo += 1;
     if (Number(row.current_balance) < 0) negative += 1;
     if (evaluateRowIssues(row).size > 0) flagged += 1;
   }
@@ -368,9 +404,13 @@ function renderSummary(rows) {
     <span>${owned} owned · ${vacant} vacant</span>
     <span>${flagged} with issues</span>
     <span>${noManager} without manager</span>
-    <span>${underMin} below ${MIN_SQUAD_SIZE} squad</span>
-    <span>${starsOver} over star cap</span>
-    <span>${hgShort} below ${MIN_HOME_GROWN} HG</span>
+    <span class="chk-sum-squad">${underMin} below ${MIN_SQUAD_SIZE}</span>
+    <span class="chk-sum-squad">${overMax} over ${SQUAD_SIZE}</span>
+    <span class="chk-sum-squad">${gkShort} need GK</span>
+    <span class="chk-sum-squad">${hgShort} below ${MIN_HOME_GROWN} HG</span>
+    <span class="chk-sum-squad">${u21Short} below ${MIN_U21} U21</span>
+    <span class="chk-sum-squad">${starsOver} over star cap</span>
+    <span class="chk-sum-squad">${withOoo} OooO · ${withFf} Fan Fav</span>
     <span>${negative} negative balance</span>
   `;
 }
@@ -381,21 +421,22 @@ function cellClass(level) {
   return "chk-cell-ok";
 }
 
-function moneyCell(value, level = "ok", title = "") {
+function moneyCell(value, level = "ok", title = "", extraClass = "") {
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+  const cls = `${cellClass(level)}${extraClass ? ` ${extraClass}` : ""}`;
   if (value === undefined) {
-    return `<td class="money chk-cell-ok proj-loading"${titleAttr}>…</td>`;
+    return `<td class="money chk-cell-ok proj-loading${extraClass ? ` ${extraClass}` : ""}"${titleAttr}>…</td>`;
   }
   if (value == null || value === "" || Number.isNaN(Number(value))) {
-    return `<td class="money ${cellClass("bad")}"${titleAttr || ' title="Missing value"'}>—</td>`;
+    return `<td class="money ${cls}"${titleAttr || ' title="Missing value"'}>—</td>`;
   }
-  return `<td class="money ${cellClass(level)}"${titleAttr}>${formatMoney(Number(value))}</td>`;
+  return `<td class="money ${cls}"${titleAttr}>${formatMoney(Number(value))}</td>`;
 }
 
-function numCell(value, level = "ok", title = "") {
+function numCell(value, level = "ok", title = "", extraClass = "") {
   const n = Number(value ?? 0);
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
-  return `<td class="num ${cellClass(level)}"${titleAttr}>${n}</td>`;
+  return `<td class="num ${cellClass(level)}${extraClass ? ` ${extraClass}` : ""}"${titleAttr}>${n}</td>`;
 }
 
 /** Stars column: always show count/cap so over-limit is obvious in the value cell. */
@@ -403,12 +444,17 @@ function starsCell(row, level, title) {
   const stars = rowStarCount(row);
   const cap = rowStarCap(row);
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
-  return `<td class="num ${cellClass(level)}"${titleAttr}><strong>${stars}</strong>/${cap}</td>`;
+  return `<td class="num ${cellClass(level)} chk-col-squad"${titleAttr}><strong>${stars}</strong>/${cap}</td>`;
 }
 
-function textCell(content, level = "ok", title = "") {
+function textCell(content, level = "ok", title = "", extraClass = "") {
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
-  return `<td class="${cellClass(level)}"${titleAttr}>${content}</td>`;
+  return `<td class="${cellClass(level)}${extraClass ? ` ${extraClass}` : ""}"${titleAttr}>${content}</td>`;
+}
+
+function sortClass(key) {
+  if (sortKey !== key) return "";
+  return sortDir === "asc" ? " sorted-asc" : " sorted-desc";
 }
 
 function renderTable() {
@@ -431,34 +477,42 @@ function renderTable() {
     return;
   }
 
+  /** Identity → Squad registration (grouped) → Finances */
   const headers = [
-    ["owner_tag", "Owner"],
-    ["club_name", "Club"],
-    ["_issues", "Issues"],
-    ["manager_name", "Manager"],
-    ["nation_name", "Nation"],
-    ["ooo_player_name", "OooO"],
-    ["squad_size", "Squad"],
-    ["star_count", "Stars"],
-    ["current_balance", "Balance"],
-    ["projected_eos_balance", "Proj. EOS"],
-    ["total_wages", "Wages"],
-    ["contract_releases_remaining", "Releases"],
-    ["foreign_sales_remaining", "Foreign"],
-    ["fines_count", "Fines"],
-    ["hg_count", "HG"],
-    ["u21_count", "U21"],
+    ["owner_tag", "Owner", ""],
+    ["club_name", "Club", ""],
+    ["_issues", "Issues", ""],
+    ["manager_name", "Manager", ""],
+    ["nation_name", "Nation", ""],
+    ["squad_size", "Squad", "chk-col-squad"],
+    ["gk_count", "GK", "chk-col-squad"],
+    ["hg_count", "HG", "chk-col-squad"],
+    ["u21_count", "U21", "chk-col-squad"],
+    ["star_count", "Stars", "chk-col-squad"],
+    ["ooo_player_name", "OooO", "chk-col-squad"],
+    ["ff_player_name", "Fan Fav", "chk-col-squad"],
+    ["current_balance", "Balance", ""],
+    ["projected_eos_balance", "Proj. EOS", ""],
+    ["total_wages", "Wages", ""],
+    ["contract_releases_remaining", "Releases", ""],
+    ["foreign_sales_remaining", "Foreign", ""],
+    ["fines_count", "Fines", ""],
   ];
 
   wrap.innerHTML = `
     <table class="chk-table">
       <thead>
+        <tr class="chk-group-row">
+          <th colspan="5" class="chk-group-club">Club</th>
+          <th colspan="7" class="chk-group-squad">Squad registration</th>
+          <th colspan="6" class="chk-group-fin">Finances &amp; allowances</th>
+        </tr>
         <tr>
           ${headers
-            .map(([key, label]) => {
-              const sorted =
-                sortKey === key ? ` sorted-${sortDir === "asc" ? "asc" : "desc"}` : "";
-              return `<th data-sort="${key}" class="${sorted.trim()}">${label}</th>`;
+            .map(([key, label, groupCls]) => {
+              return `<th data-sort="${key}" class="${sortClass(key).trim()}${
+                groupCls ? ` ${groupCls}` : ""
+              }">${label}</th>`;
             })
             .join("")}
         </tr>
@@ -473,6 +527,7 @@ function renderTable() {
             const starCap = rowStarCap(row);
             const u21 = Number(row.u21_count ?? 0);
             const hg = Number(row.hg_count ?? 0);
+            const gk = rowGkCount(row);
             const rowFlagged = issues.size > 0 ? " chk-row-flagged" : "";
 
             const owner = row.owner_tag || row.owner_email;
@@ -493,15 +548,23 @@ function renderTable() {
               : "—";
 
             const ooo = row.ooo_player_name ? escapeHtml(row.ooo_player_name) : "—";
+            const ff = row.ff_player_name ? escapeHtml(row.ff_player_name) : "—";
 
             let squadLevel = "ok";
-            let squadTip = "";
+            let squadTip = `${squad} / ${MIN_SQUAD_SIZE}–${SQUAD_SIZE}`;
             if (squad < MIN_SQUAD_SIZE) {
               squadLevel = "bad";
               squadTip = ISSUE_META.squad_low.tip;
             } else if (squad > SQUAD_SIZE) {
               squadLevel = "bad";
               squadTip = ISSUE_META.squad_high.tip;
+            }
+
+            let gkLevel = "ok";
+            let gkTip = `${gk} goalkeeper(s)`;
+            if (hasOwner && gk < MIN_GK) {
+              gkLevel = "bad";
+              gkTip = ISSUE_META.gk.tip;
             }
 
             const starsOver = stars > starCap;
@@ -572,21 +635,31 @@ function renderTable() {
               issues.has("nation") ? "bad" : "ok",
               issues.has("nation") ? ISSUE_META.nation.tip : ""
             )}
+            ${numCell(row.squad_size, squadLevel, squadTip, "chk-col-squad")}
+            ${numCell(gk, gkLevel, gkTip, "chk-col-squad")}
+            ${numCell(row.hg_count, hgLevel, hgTip, "chk-col-squad")}
+            ${numCell(row.u21_count, u21Level, u21Tip, "chk-col-squad")}
+            ${starsCell(row, starLevel, starTip)}
             ${textCell(
               ooo,
               "ok",
-              row.ooo_player_name ? "" : "One of Our Own not set (optional)"
+              row.ooo_player_name ? "One of Our Own" : "One of Our Own not set (optional)",
+              "chk-col-squad"
             )}
-            ${numCell(row.squad_size, squadLevel, squadTip)}
-            ${starsCell(row, starLevel, starTip)}
+            ${textCell(
+              ff,
+              "ok",
+              row.ff_player_name
+                ? "Fan Favourite (50% wage via Central Bank)"
+                : "Fan Favourite not set (optional; XOR with OooO)",
+              "chk-col-squad"
+            )}
             ${moneyCell(row.current_balance, balanceLevel, balanceTip)}
             ${moneyCell(row.projected_eos_balance, projLevel, projTip)}
             ${moneyCell(row.total_wages)}
             ${numCell(row.contract_releases_remaining)}
             ${numCell(row.foreign_sales_remaining)}
             ${numCell(row.fines_count, finesLevel, finesTip)}
-            ${numCell(row.hg_count, hgLevel, hgTip)}
-            ${numCell(row.u21_count, u21Level, u21Tip)}
           </tr>`;
           })
           .join("")}
@@ -656,7 +729,7 @@ async function loadTable() {
     const msg = [error.message, error.hint].filter(Boolean).join(" — ");
     setStatus(
       "pageStatus",
-      `❌ ${msg}. Run supabase/sql/patches/admin_club_season_checklist_star_cap.sql in Supabase.`,
+      `❌ ${msg}. Run supabase/sql/patches/admin_club_season_checklist_gk_ff.sql in Supabase.`,
       false
     );
     if (wrap) wrap.innerHTML = `<p class="note">${escapeHtml(msg)}</p>`;
