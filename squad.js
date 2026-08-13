@@ -95,7 +95,7 @@ import {
   newOwnerReleaseOptionLabel,
   newOwnerListOptionLabel,
   newOwnerSlotBadgeText,
-} from "./new_owner_release.js?v=20260810-aug-window";
+} from "./new_owner_release.js?v=20260813-preseason-window";
 import {
   loadSquadDesignationsState,
   setSquadDesignation,
@@ -510,10 +510,9 @@ async function loadTransferWindowStatus() {
 }
 
 function syncNewOwnerListAvailability() {
+  // List uses the same first-season window as release (not global TW)
   newOwnerReleaseState.listAvailableNow =
-    newOwnerReleaseState.availableNow &&
-    newOwnerReleaseState.remaining > 0 &&
-    transferWindowOpen;
+    newOwnerReleaseState.availableNow && newOwnerReleaseState.remaining > 0;
 }
 
 // ⭐ NEW: Apply UI rules when window is closed

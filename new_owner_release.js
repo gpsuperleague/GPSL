@@ -1,6 +1,7 @@
 /**
  * New Owner first-season actions — up to 3 total (release OR transfer list).
  * Release: Central Bank refund of purchase fee. List: standard listing at MV; slot returns if unsold.
+ * Window: pre-season, June, July, August, January (first season at club).
  */
 
 export const MAX_NEW_OWNER_RELEASES = 3;
@@ -22,8 +23,8 @@ export function newOwnerSlotBadgeText(remaining, { windowOpen = false } = {}) {
     };
   }
   const windowHint = windowOpen
-    ? " · Pre-season / Aug / January open"
-    : " · Pre-season / Aug / January only";
+    ? " · Pre-season / June–Aug / January open"
+    : " · Pre-season / June–Aug / January only";
   return {
     main: `${n} first-season ${n === 1 ? "slot" : "slots"} left · max 3/season`,
     hint: `${windowHint} · Release (fee refund) or transfer list (slot returns if unsold)`,
@@ -38,7 +39,7 @@ export function newOwnerReleaseOptionLabel(remaining, fee, { availableNow = fals
     return "No first-season slots left (0/3)";
   }
   if (!availableNow) {
-    return `New Owner release (${remaining}/3) — pre-season / Aug / January only`;
+    return `New Owner release (${remaining}/3) — pre-season / June–Aug / January only`;
   }
   const feeStr =
     fee != null && fee > 0
@@ -57,10 +58,9 @@ export function newOwnerListOptionLabel(remaining, { availableNow = false, first
     return "No first-season slots left (0/3)";
   }
   if (!availableNow) {
-    return `New Owner transfer list (${remaining}/3) — pre-season / Aug / January only`;
+    return `New Owner transfer list (${remaining}/3) — pre-season / June–Aug / January only`;
   }
-  if (!transferWindowOpen) {
-    return `New Owner transfer list (${remaining}/3) — transfer window shut`;
-  }
+  // List is gated by the new-owner window, not the global transfer window.
+  void transferWindowOpen;
   return `New Owner transfer list (${remaining}/3) — at market value`;
 }
