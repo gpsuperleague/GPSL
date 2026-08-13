@@ -1443,18 +1443,28 @@ async function updateFixturePreview() {
   if (simWrap) {
     const showSim =
       matchSimStatus.enabled &&
-      canSimulateMatchResult(f, myClub, calendarStatus, holidayContext, {
-        bypassCalendar: matchSimStatus.isAdmin,
-      }) &&
-      !needsInboxConfirm(f, myClub);
+      f.status === "scheduled" &&
+      !f.submission_id &&
+      !needsInboxConfirm(f, myClub) &&
+      fixtureInvolvesClub(f, myClub);
+    const canSim =
+      showSim &&
+      canSimulateMatchResult(f, myClub, calendarStatus, holidayContext);
     simWrap.style.display = showSim ? "inline-flex" : "none";
+    const lockTitle = canSim
+      ? ""
+      : "Available when this fixture’s GPSL month is active";
     if (simBtn) {
-      simBtn.disabled = false;
+      simBtn.disabled = !canSim;
       simBtn.textContent = "Simulate match";
+      simBtn.title = lockTitle;
+      simBtn.classList.toggle("sim-month-locked", showSim && !canSim);
     }
     if (instantBtn) {
-      instantBtn.disabled = false;
+      instantBtn.disabled = !canSim;
       instantBtn.textContent = "Instant result";
+      instantBtn.title = lockTitle;
+      instantBtn.classList.toggle("sim-month-locked", showSim && !canSim);
     }
   }
 
@@ -1485,15 +1495,13 @@ async function updateFixturePreview() {
   } else {
     const canSim =
       matchSimStatus.enabled &&
-      canSimulateMatchResult(f, myClub, calendarStatus, holidayContext, {
-        bypassCalendar: matchSimStatus.isAdmin,
-      });
+      canSimulateMatchResult(f, myClub, calendarStatus, holidayContext);
     setStatus(
       "submitStatus",
       canSim
         ? "Use Instant result or Simulate match (test mode), or arrange kick-off / wait for the play month."
         : matchSimStatus.enabled && f.status === "scheduled"
-          ? "This fixture’s GPSL month is not active yet (locked until that month unlocks, unless you have a holiday early-play)."
+          ? "Propose / arrange kick-off anytime. Instant result & Simulate match unlock when this fixture’s GPSL month is active."
           : "This fixture cannot accept a new result."
     );
   }
@@ -1756,6 +1764,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function runMatchdaySim(mode) {
     const f = selectedFixture();
     if (!f) return;
+    if (
+      !canSimulateMatchResult(f, myClub, calendarStatus, holidayContext)
+    ) {
+      setStatus(
+        "submitStatus",
+        "Available when this fixture’s GPSL month is active.",
+        true
+      );
+      return;
+    }
     const play = mode === "play";
     if (
       !confirm(

@@ -82,15 +82,26 @@ export function wireMatchSimBannerToggle(onChanged) {
 }
 
 /** @deprecated use matchSimActionsHtml */
-export function matchSimButtonHtml(fixtureId) {
-  return matchSimActionsHtml(fixtureId);
+export function matchSimButtonHtml(fixtureId, opts) {
+  return matchSimActionsHtml(fixtureId, opts);
 }
 
-export function matchSimActionsHtml(fixtureId) {
+/**
+ * @param {string|number} fixtureId
+ * @param {{ disabled?: boolean, title?: string }} [opts]
+ */
+export function matchSimActionsHtml(fixtureId, opts = {}) {
   const id = escapeHtml(String(fixtureId));
+  const disabled = opts.disabled === true;
+  const title = opts.title
+    ? ` title="${escapeHtml(opts.title)}"`
+    : disabled
+      ? ` title="Available when this fixture’s GPSL month is active"`
+      : "";
+  const disAttr = disabled ? " disabled" : "";
   return `<span class="sim-actions">
-    <button type="button" class="btn-link sim-result-btn sim-instant-btn" data-sim-fixture="${id}" data-sim-mode="instant">Instant result</button>
-    <button type="button" class="btn-link sim-result-btn sim-play-btn" data-sim-fixture="${id}" data-sim-mode="play">Simulate match</button>
+    <button type="button" class="btn-link sim-result-btn sim-instant-btn"${disAttr}${title} data-sim-fixture="${id}" data-sim-mode="instant">Instant result</button>
+    <button type="button" class="btn-link sim-result-btn sim-play-btn"${disAttr}${title} data-sim-fixture="${id}" data-sim-mode="play">Simulate match</button>
   </span>`;
 }
 
@@ -100,6 +111,7 @@ export function matchSimActionsHtml(fixtureId) {
 export function wireMatchSimButtons(root, handler) {
   root?.querySelectorAll("[data-sim-fixture]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      if (btn.disabled) return;
       const id = btn.getAttribute("data-sim-fixture");
       if (!id) return;
       const mode = btn.getAttribute("data-sim-mode") === "play" ? "play" : "instant";
@@ -125,6 +137,7 @@ export async function runMatchSimulation(fixtureId, btn, mode = "instant", meta 
 
   buttons.forEach((b) => {
     b.disabled = true;
+    b.classList.add("sim-busy");
     if (b === btn) b.textContent = play ? "Simulating…" : "Result…";
   });
 
@@ -135,6 +148,7 @@ export async function runMatchSimulation(fixtureId, btn, mode = "instant", meta 
   if (error) {
     buttons.forEach((b) => {
       b.disabled = false;
+      b.classList.remove("sim-busy");
       if (b.classList.contains("sim-play-btn")) b.textContent = "Simulate match";
       else if (b.classList.contains("sim-instant-btn")) b.textContent = "Instant result";
       else b.textContent = "Simulate";
@@ -658,7 +672,14 @@ export const MATCH_SIM_BANNER_STYLE = `
   background:#2a5535; color:#cfc; border:1px solid #3a6; border-radius:4px; cursor:pointer;
 }
 .btn-link.sim-instant-btn { background:#333; border-color:#555; color:#ddd; }
-.btn-link.sim-result-btn:disabled, button.sim-result-btn:disabled { opacity:.6; cursor:wait; }
+.btn-link.sim-result-btn:disabled, button.sim-result-btn:disabled,
+button.sim-instant-btn:disabled, button.sim-play-btn:disabled {
+  opacity:.4; cursor:not-allowed; background:#2a2a2a !important; border-color:#444 !important; color:#777 !important;
+}
+.btn-link.sim-result-btn.sim-busy:disabled, button.sim-result-btn.sim-busy:disabled,
+button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled {
+  opacity:.6; cursor:wait;
+}
 .match-sim-toggle { margin-left:8px; background:#444; color:#eee; border:0; }
 
 .msim-overlay {

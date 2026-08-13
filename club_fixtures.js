@@ -157,12 +157,24 @@ function actionHtml(f) {
 
   if (
     matchSimStatus.enabled &&
-    canSimulateMatchResult(f, myClub, calendarStatus, holidayContext, {
-      bypassCalendar: matchSimStatus.isAdmin,
-    }) &&
+    f.status === "scheduled" &&
+    !f.submission_id &&
     !needsInboxConfirm(f, myClub)
   ) {
-    parts.push(matchSimButtonHtml(f.id));
+    const canSim = canSimulateMatchResult(
+      f,
+      myClub,
+      calendarStatus,
+      holidayContext
+    );
+    parts.push(
+      matchSimButtonHtml(f.id, {
+        disabled: !canSim,
+        title: canSim
+          ? ""
+          : "Available when this fixture’s GPSL month is active",
+      })
+    );
   }
 
   if (f.schedule_status === "agreed" && f.agreed_kickoff_at && f.status !== "played") {

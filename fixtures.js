@@ -136,16 +136,25 @@ function actionCell(fixture) {
 
   if (
     matchSimStatus.enabled &&
-    canSimulateMatchResult(
+    fixture.status === "scheduled" &&
+    !fixture.submission_id &&
+    !needsInboxConfirm(fixture, myClub) &&
+    fixtureInvolvesClub(fixture, myClub)
+  ) {
+    const canSim = canSimulateMatchResult(
       fixture,
       myClub,
       calendarStatus,
-      holidayContext,
-      { bypassCalendar: matchSimStatus.isAdmin }
-    ) &&
-    !needsInboxConfirm(fixture, myClub)
-  ) {
-    parts.push(matchSimButtonHtml(fixture.id));
+      holidayContext
+    );
+    parts.push(
+      matchSimButtonHtml(fixture.id, {
+        disabled: !canSim,
+        title: canSim
+          ? ""
+          : "Available when this fixture’s GPSL month is active",
+      })
+    );
   }
 
   return parts.join(" ");
