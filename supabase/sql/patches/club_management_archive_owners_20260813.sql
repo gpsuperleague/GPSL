@@ -67,6 +67,15 @@ BEGIN
     RAISE EXCEPTION 'Capacity must be between 1,000 and 200,000';
   END IF;
 
+  IF v_continent IS NOT NULL AND v_continent NOT IN (
+    'south_america', 'north_america',
+    'northern_europe', 'western_europe', 'southern_europe', 'eastern_europe',
+    'asia', 'africa'
+  ) THEN
+    RAISE EXCEPTION
+      'Continent must be northern/western/southern/eastern Europe, South/North America, Asia, or Africa';
+  END IF;
+
   IF EXISTS (SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = v_short) THEN
     RAISE EXCEPTION 'Club ShortName % already exists', v_short;
   END IF;

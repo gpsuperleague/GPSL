@@ -20,40 +20,38 @@
     .header-title-block { min-width:0; flex:1 1 220px; }
     #clubBadgeHeader { width:80px; height:80px; object-fit:contain; }
     .gp-saved-widget {
-      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-      margin-left:auto;
-      padding:10px 12px;
-      background:#1a1a1a;
-      border:1px solid #333;
-      border-radius:8px;
-      max-width:100%;
+      display:inline-flex; align-items:center; gap:6px;
+      margin-left:auto; align-self:flex-start;
+      padding:0; background:transparent; border:none;
+      opacity:0.85;
     }
+    .gp-saved-widget:hover,
+    .gp-saved-widget:focus-within { opacity:1; }
     .gp-saved-badge {
-      width:36px; height:36px; object-fit:contain; flex-shrink:0;
+      width:22px; height:22px; object-fit:contain; flex-shrink:0;
       border-radius:50%;
     }
     .gp-saved-label {
-      font-size:12px; font-weight:bold; color:#9ecbff; letter-spacing:0.02em;
+      font-size:11px; font-weight:normal; color:#777;
       white-space:nowrap;
     }
     .gp-saved-input {
-      width:9.5em; max-width:40vw; padding:7px 8px;
-      background:#111; border:1px solid #555; color:#ddd; border-radius:4px;
-      font-size:14px; font-variant-numeric:tabular-nums;
+      width:7em; padding:3px 6px;
+      background:transparent; border:1px solid #3a3a3a; color:#bbb; border-radius:3px;
+      font-size:12px; font-variant-numeric:tabular-nums; line-height:1.3;
     }
-    .gp-saved-input:focus { outline:none; border-color:#5a9bd5; }
-    .gp-saved-input:disabled { opacity:0.7; cursor:default; }
+    .gp-saved-input:focus { outline:none; border-color:#555; color:#ddd; }
+    .gp-saved-input:disabled { opacity:0.65; cursor:default; }
     .gp-saved-save {
-      padding:7px 12px; font-size:12px; font-weight:bold;
-      background:#2a4a6a; color:#dff; border:1px solid #4a7aaa; border-radius:4px;
-      cursor:pointer;
+      padding:3px 8px; font-size:11px; font-weight:normal;
+      background:transparent; color:#888; border:1px solid #3a3a3a; border-radius:3px;
+      cursor:pointer; line-height:1.3;
     }
-    .gp-saved-save:hover:not(:disabled) { background:#355a7a; }
-    .gp-saved-save:disabled { opacity:0.5; cursor:default; }
-    .gp-saved-status { font-size:11px; color:#888; min-width:4em; }
-    .gp-saved-status.ok { color:#6f6; }
-    .gp-saved-status.err { color:#f88; }
-    .gp-saved-hint { font-size:10px; color:#666; width:100%; margin:0; line-height:1.3; }
+    .gp-saved-save:hover:not(:disabled) { color:#bbb; border-color:#555; }
+    .gp-saved-save:disabled { opacity:0.45; cursor:default; }
+    .gp-saved-status { font-size:10px; color:#666; min-width:0; }
+    .gp-saved-status.ok { color:#5a8; }
+    .gp-saved-status.err { color:#c77; }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:20px; margin-bottom:24px;
@@ -231,14 +229,14 @@
         <div id="adminFinancePickerHost"></div>
         <nav id="financeSubnav" class="finance-subnav" aria-label="Finances sections"></nav>
       </div>
-      <div id="gpSavedWidget" class="gp-saved-widget" hidden>
-        <img class="gp-saved-badge" src="images/gp_badge.png" alt="" width="36" height="36">
+      <div id="gpSavedWidget" class="gp-saved-widget" hidden
+           title="In-game eFootball GP — awareness only, not league money">
+        <img class="gp-saved-badge" src="images/gp_badge.png" alt="" width="22" height="22">
         <span class="gp-saved-label">GP Saved</span>
         <input id="gpSavedInput" class="gp-saved-input" type="text" inputmode="numeric"
           placeholder="0" autocomplete="off" aria-label="GP Saved amount">
         <button type="button" id="gpSavedSaveBtn" class="gp-saved-save">Save</button>
         <span id="gpSavedStatus" class="gp-saved-status" aria-live="polite"></span>
-        <p class="gp-saved-hint">In-game eFootball GP tracker — awareness only, not league money.</p>
       </div>
     </div>
 
