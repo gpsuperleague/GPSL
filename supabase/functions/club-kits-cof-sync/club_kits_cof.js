@@ -17,14 +17,14 @@ export const COF_NATION_MAP = {
   turkey: { folder: "tur", index: "tur.html" },
   turkiye: { folder: "tur", index: "tur.html" },
   brazil: { folder: "bra", index: "bra.html" },
-  argentina: { folder: "arg", index: "arg.html" },
+  argentina: { folder: "arg", index: "argentina.html" },
   usa: { folder: "usa", index: "usa.html" },
   "united states": { folder: "usa", index: "usa.html" },
   mexico: { folder: "mex", index: "mex.html" },
-  japan: { folder: "jap", index: "jap.html" },
-  korea: { folder: "kor", index: "kor.html" },
-  "south korea": { folder: "kor", index: "kor.html" },
-  "korea republic": { folder: "kor", index: "kor.html" },
+  japan: { folder: "jap", index: "jpn.html" },
+  korea: { folder: "kor", index: "korea.html" },
+  "south korea": { folder: "kor", index: "korea.html" },
+  "korea republic": { folder: "kor", index: "korea.html" },
   denmark: { folder: "den", index: "den.html" },
   sweden: { folder: "swe", index: "swe.html" },
   norway: { folder: "nor", index: "nor.html" },
@@ -44,7 +44,7 @@ export const COF_NATION_MAP = {
   wales: { folder: "wales", index: "wales.html" },
   serbia: { folder: "serbia", index: "serbia.html" },
   chile: { folder: "chile", index: "chile.html" },
-  colombia: { folder: "col", index: "col.html" },
+  colombia: { folder: "col", index: "colombia.html" },
   uruguay: { folder: "uru", index: "uru.html" },
   paraguay: { folder: "paraguay", index: "paraguay.html" },
   peru: { folder: "peru", index: "peru.html" },
@@ -78,17 +78,28 @@ export const COF_CLUB_SLUG_OVERRIDES = {
   BEN: "benfica",
   POR: "porto",
   SPO: "sporting",
-  BOC: "boca",
+  BOC: "boca_juniors",
+  EST: "estudiantes",
   COR: "corinthians",
   NAC: "atletico_nacional",
   AND: "anderlecht",
   PAL: "palmeiras",
   CVI: "celta",
+  LAZ: "lazio",
+  LIL: "lille",
+  LYO: "lyon",
+  COP: "fck",
+  JEJ: "jeju_united",
+  JUB: "jubilo_iwata",
+  SOA: "soa",
+  // COF lists as "IFK Goteborg" under swe/goteborg/ (not "Gothenburg")
+  IFK: "goteborg",
 };
 
 /** When slug alone is not enough (page stem differs from folder name) */
 export const COF_CLUB_PATH_OVERRIDES = {
   WOL: { slug: "wolverhmp", pageStem: "wolves" },
+  COR: { slug: "corinthians", pageStem: "carinthians" },
 };
 
 const USER_AGENT =
@@ -164,6 +175,8 @@ export function normalizeClubName(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
+    // English spelling vs COF Swedish (IFK Gothenburg ↔ IFK Goteborg)
+    .replace(/\bgothenburg\b/g, "goteborg")
     .replace(
       /\b(fc|afc|cf|sc|ac|sv|sk|united|city|town|rovers|wanderers|hotspur|athletic|club|deportivo|real|balompie|sporting)\b/g,
       " "
@@ -287,6 +300,15 @@ export function findLatestSeasonFromHtml(html) {
     consider(seasonCodeFromYearPair(m[1], m[2]));
   }
 
+  for (const m of html.matchAll(
+    /(?:home|away|third)\s+kit\s+(\d{4})(?!\s*[-–/]\s*\d)/gi
+  )) {
+    const y = Number(m[1]);
+    if (y >= 1990 && y <= 2040) {
+      consider(startYearToSeasonCode(y));
+    }
+  }
+
   return bestCode || null;
 }
 
@@ -341,19 +363,38 @@ export function parseCofSeasonDigits(raw) {
   return null;
 }
 
-/** eng_liverpool_1_2526.png → { kitNum, seasonStartYear, seasonCode, variant } */
+/** eng_liverpool_1_2526.png / bra_cruzeiro_1_24.png → kit + season */
 export function parseCofKitFileName(file) {
-  const km = String(file || "").match(
-    /_(\d)[a-z]?_(\d{4})(?:_(\d+))?\.(?:png|gif)$/i
-  );
-  if (!km) return null;
+  const name = String(file || "");
 
-  const kitNum = Number(km[1]);
-  const variant = km[3] ? Number(km[3]) : 0;
-  const season = parseCofSeasonDigits(km[2]);
-  if (!season || kitNum < 1 || kitNum > 3) return null;
+  const four = name.match(/_(\d)[a-z]?_(\d{4})(?:_(\d+))?\.(?:png|gif)$/i);
+  if (four) {
+    const kitNum = Number(four[1]);
+    const variant = four[3] ? Number(four[3]) : 0;
+    const season = parseCofSeasonDigits(four[2]);
+    if (season && kitNum >= 1 && kitNum <= 3) {
+      return { kitNum, variant, file: name, ...season };
+    }
+  }
 
-  return { kitNum, variant, file, ...season };
+  const two = name.match(/_(\d)[a-z]?_(\d{2})(?:_(\d+))?\.(?:png|gif)$/i);
+  if (two) {
+    const kitNum = Number(two[1]);
+    const variant = two[3] ? Number(two[3]) : 0;
+    const yy = Number(two[2]);
+    const startYear = yy <= 30 ? 2000 + yy : 1900 + yy;
+    if (kitNum >= 1 && kitNum <= 3 && startYear >= 1990 && startYear <= 2040) {
+      return {
+        kitNum,
+        variant,
+        file: name,
+        seasonStartYear: startYear,
+        seasonCode: startYearToSeasonCode(startYear),
+      };
+    }
+  }
+
+  return null;
 }
 
 export function seasonStartFromKitUrl(url) {

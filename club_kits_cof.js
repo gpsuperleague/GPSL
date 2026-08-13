@@ -92,6 +92,8 @@ export const COF_CLUB_SLUG_OVERRIDES = {
   JEJ: "jeju_united",
   JUB: "jubilo_iwata",
   SOA: "soa",
+  // COF lists as "IFK Goteborg" under swe/goteborg/ (not "Gothenburg")
+  IFK: "goteborg",
 };
 
 /** When slug alone is not enough (page stem differs from folder name) */
@@ -173,6 +175,8 @@ export function normalizeClubName(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
+    // English spelling vs COF Swedish (IFK Gothenburg ↔ IFK Goteborg)
+    .replace(/\bgothenburg\b/g, "goteborg")
     .replace(
       /\b(fc|afc|cf|sc|ac|sv|sk|united|city|town|rovers|wanderers|hotspur|athletic|club|deportivo|real|balompie|sporting)\b/g,
       " "
