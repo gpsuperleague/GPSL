@@ -4,6 +4,7 @@ primeAdminPageChrome();
 
 const COUNT_LABELS = {
   clubs_with_owner: "Clubs with owner",
+  clubs_soft_archived: "Clubs soft-archived",
   contracted_players: "Contracted players",
   contracted_managers: "Contracted managers",
   club_finances_nonzero: "Non-zero club balances",

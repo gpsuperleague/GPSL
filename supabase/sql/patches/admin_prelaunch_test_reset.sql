@@ -12,7 +12,8 @@
 --       GPSL Sport, Natter, inbox, manager career history, internationals
 --       (fixtures/results/cycles/assignments/caps), medical room state,
 --       friendlies / transfer rumours (also unblocks season delete),
---       club auction (optional re-seed).
+--       club auction (optional re-seed), Club Management soft-archive flags
+--       (is_archived / archived_at / archived_note → cleared; club rows kept).
 -- =============================================================================
 
 ALTER TABLE public.global_settings
@@ -20,6 +21,11 @@ ALTER TABLE public.global_settings
 
 ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS club_auction_starting_balance numeric(14, 2) NOT NULL DEFAULT 650000000;
+
+-- Club Management soft-archive (cleared by vanilla reset Phase G)
+ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS is_archived boolean NOT NULL DEFAULT false;
+ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS archived_note text;
 
 COMMENT ON COLUMN public.global_settings.allow_test_environment_reset IS
   'When true, admin_test_reset_execute() may run. Off by default — pre-launch only.';
@@ -114,6 +120,17 @@ BEGIN
   RETURN jsonb_build_object(
     'clubs_with_owner', (
       SELECT count(*)::int FROM public."Clubs" c WHERE c.owner_id IS NOT NULL
+    ),
+    'clubs_soft_archived', (
+      SELECT CASE
+        WHEN NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'Clubs' AND column_name = 'is_archived'
+        ) THEN 0
+        ELSE (
+          SELECT count(*)::int FROM public."Clubs" c WHERE coalesce(c.is_archived, false)
+        )
+      END
     ),
     'contracted_players', (
       SELECT count(*)::int FROM public."Players" p
@@ -724,6 +741,7 @@ BEGIN
   v_result := v_result || jsonb_build_object('vanilla_history_cleared', true);
 
   -- Phase G: per-club counters (WHERE required by Supabase safe-update)
+  -- Also clear Club Management soft-archive so archived clubs return for next test cycle.
   UPDATE public."Clubs"
   SET foreign_interest_remaining = CASE WHEN "ShortName" = 'FOREIGN' THEN 0 ELSE 3 END,
       foreign_tracking_teams = '{}'::text[],
@@ -731,7 +749,10 @@ BEGIN
       manager_sacks_remaining = 1,
       -- New Owner first-season slots (also cleared by vacate trigger + season FK ON DELETE SET NULL)
       owner_assigned_season_id = NULL,
-      new_owner_releases_remaining = 0
+      new_owner_releases_remaining = 0,
+      is_archived = false,
+      archived_at = NULL,
+      archived_note = NULL
   WHERE "ShortName" IS NOT NULL;
 
   IF to_regprocedure('public.manager_reset_season_quotas()') IS NOT NULL THEN
