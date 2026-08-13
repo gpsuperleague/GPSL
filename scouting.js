@@ -17,7 +17,11 @@ import {
   toggleScoutingTarget,
   loadScoutingPlannerState,
   saveScoutingPlanner,
-} from "./scouting_targets.js?v=20260811-scout-reg";
+  ensureScoutingBoards,
+  renameScoutingBoard,
+  getStoredScoutingBoardNo,
+  setStoredScoutingBoardNo,
+} from "./scouting_targets.js?v=20260813-multi-board";
 import { initMatchdaySquadPanel } from "./matchday_squad.js";
 import {
   loadScoutingDraftContext,
@@ -84,6 +88,10 @@ let playerMapCache = new Map();
 let draftUiByPlayerCache = new Map();
 let draftContext = null;
 let plannerApi = null;
+/** @type {{ board_no: number, name: string }[]} */
+let scoutingBoards = [];
+let activeBoardNo = getStoredScoutingBoardNo();
+let multiBoardEnabled = true;
 /** @type {object[]|null} */
 let ownedSquadPlayers = null;
 /** @type {object|null} */
@@ -780,9 +788,71 @@ async function renderScoutingLists() {
   });
 }
 
+function boardLabel(boardNo) {
+  const row = scoutingBoards.find((b) => Number(b.board_no) === Number(boardNo));
+  const name = row?.name || `Board ${boardNo}`;
+  return name;
+}
+
+function renderBoardPicker() {
+  const sel = document.getElementById("scoutBoardSelect");
+  const bar = document.getElementById("scoutBoardBar");
+  if (!sel || !bar) return;
+
+  if (!multiBoardEnabled) {
+    bar.hidden = true;
+    return;
+  }
+
+  bar.hidden = false;
+  const boards =
+    scoutingBoards.length > 0
+      ? scoutingBoards
+      : [1, 2, 3, 4].map((n) => ({ board_no: n, name: `Board ${n}` }));
+
+  sel.innerHTML = boards
+    .map(
+      (b) =>
+        `<option value="${b.board_no}">${escapeHtml(b.name || `Board ${b.board_no}`)}</option>`
+    )
+    .join("");
+  sel.value = String(activeBoardNo);
+}
+
+function escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function refreshBoardList() {
+  try {
+    scoutingBoards = await ensureScoutingBoards(supabase);
+    multiBoardEnabled = true;
+  } catch (err) {
+    const msg = String(err?.message || err);
+    if (/owner_scouting_multi_boards/i.test(msg)) {
+      multiBoardEnabled = false;
+      scoutingBoards = [{ board_no: 1, name: "Board 1" }];
+      setPlannerStatus(msg, true);
+    } else {
+      throw err;
+    }
+  }
+  if (!scoutingBoards.some((b) => Number(b.board_no) === activeBoardNo)) {
+    activeBoardNo = 1;
+  }
+  setStoredScoutingBoardNo(activeBoardNo);
+  renderBoardPicker();
+}
+
 async function initPlanner() {
   const root = document.getElementById("scoutingPlannerRoot");
   if (!root || !isScoutingAvailable()) return;
+
+  await refreshBoardList();
 
   if (!scoutingPlayers.length) {
     root.innerHTML =
@@ -790,7 +860,16 @@ async function initPlanner() {
     return;
   }
 
-  const { pitchLayout, rows } = await loadScoutingPlannerState(supabase, clubShort);
+  const state = await loadScoutingPlannerState(
+    supabase,
+    clubShort,
+    activeBoardNo
+  );
+  if (state.multiBoard === false) {
+    multiBoardEnabled = false;
+    renderBoardPicker();
+  }
+  const { pitchLayout, rows } = state;
 
   plannerApi = initMatchdaySquadPanel({
     root,
@@ -801,8 +880,18 @@ async function initPlanner() {
     onChange: () => {},
     onSave: async (slots, pitchLayoutFromPanel) => {
       try {
-        await saveScoutingPlanner(supabase, slots, pitchLayoutFromPanel);
-        setPlannerStatus("Tactic board saved.");
+        await saveScoutingPlanner(
+          supabase,
+          slots,
+          pitchLayoutFromPanel,
+          activeBoardNo
+        );
+        const label = boardLabel(activeBoardNo);
+        setPlannerStatus(
+          multiBoardEnabled
+            ? `Saved “${label}”.`
+            : "Tactic board saved."
+        );
       } catch (err) {
         setPlannerStatus(err?.message || "Save failed.", true);
         throw err;
@@ -816,7 +905,11 @@ async function initPlanner() {
   });
 
   const saveBtn = root.querySelector("#squadSaveBtn");
-  if (saveBtn) saveBtn.textContent = "Save tactic board";
+  if (saveBtn) {
+    saveBtn.textContent = multiBoardEnabled
+      ? `Save “${boardLabel(activeBoardNo)}”`
+      : "Save tactic board";
+  }
 
   const formBar = root.querySelector(".squad-formations-bar");
   if (formBar) {
@@ -826,15 +919,59 @@ async function initPlanner() {
 
   const hint = root.querySelector(".squad-hint");
   if (hint) {
-    hint.innerHTML =
-      "Drag <b>scouting targets</b> onto the pitch (11) and bench (12) to plan a potential lineup. " +
-      "Click position labels to change roles. This is for planning only — not your matchday squad.";
+    hint.innerHTML = multiBoardEnabled
+      ? "Drag <b>scouting targets</b> onto the pitch (11) and bench (12). " +
+        "You have <b>4 named tactic boards</b> sharing one shortlist — switch boards above. " +
+        "Planning only — not your matchday squad."
+      : "Drag <b>scouting targets</b> onto the pitch (11) and bench (12) to plan a potential lineup. " +
+        "Click position labels to change roles. This is for planning only — not your matchday squad.";
   }
+}
+
+function wireBoardControls() {
+  const sel = document.getElementById("scoutBoardSelect");
+  const renameBtn = document.getElementById("scoutBoardRenameBtn");
+
+  sel?.addEventListener("change", async () => {
+    activeBoardNo = setStoredScoutingBoardNo(sel.value);
+    setPlannerStatus("");
+    try {
+      await initPlanner();
+    } catch (err) {
+      setPlannerStatus(err?.message || "Could not load board.", true);
+    }
+  });
+
+  renameBtn?.addEventListener("click", async () => {
+    if (!multiBoardEnabled) {
+      alert(
+        "Run supabase/sql/patches/owner_scouting_multi_boards_20260813.sql first."
+      );
+      return;
+    }
+    const current = boardLabel(activeBoardNo);
+    const next = prompt("Name for this tactic board:", current);
+    if (next == null) return;
+    const trimmed = String(next).trim();
+    if (!trimmed) {
+      alert("Name cannot be empty.");
+      return;
+    }
+    try {
+      await renameScoutingBoard(supabase, activeBoardNo, trimmed);
+      await refreshBoardList();
+      const saveBtn = document.querySelector("#scoutingPlannerRoot #squadSaveBtn");
+      if (saveBtn) saveBtn.textContent = `Save “${boardLabel(activeBoardNo)}”`;
+      setPlannerStatus(`Renamed to “${boardLabel(activeBoardNo)}”.`);
+    } catch (err) {
+      alert(err?.message || "Could not rename board.");
+    }
+  });
 }
 
 function wireTabs() {
   document.querySelectorAll(".scout-tabs button[data-tab]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const tab = btn.dataset.tab;
       document.querySelectorAll(".scout-tabs button").forEach((b) => {
         b.classList.toggle("active", b.dataset.tab === tab);
@@ -842,6 +979,13 @@ function wireTabs() {
       document.querySelectorAll(".scout-tab-panel").forEach((panel) => {
         panel.classList.toggle("active", panel.id === `tab-${tab}`);
       });
+      if (tab === "planner") {
+        try {
+          await initPlanner();
+        } catch (err) {
+          setPlannerStatus(err?.message || "Could not load tactic board.", true);
+        }
+      }
     });
   });
 }
@@ -893,11 +1037,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (metaEl) {
       metaEl.innerHTML =
         "Star players in <a href=\"GPDB.html\" style=\"color:#ff9900;\">GPDB</a> (☆ column) to add them here. " +
-        "Targets and the tactic board are saved to <b>you</b> — they stay with you when you get a club. " +
+        "Targets and up to <b>4 named tactic boards</b> are saved to <b>you</b> — they stay with you when you get a club. " +
         "Draft bidding unlocks after you are assigned a club.";
     }
   }
 
+  wireBoardControls();
   await renderScoutingLists();
   await initPlanner();
 });

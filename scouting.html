@@ -60,6 +60,32 @@
     }
     #plannerStatus { color:#8c8; font-size:13px; margin-top:8px; min-height:1.2em; }
     #plannerStatus.err { color:#f88; }
+    .scout-board-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 10px;
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+    .scout-board-bar label {
+      color: #888;
+      font-size: 12px;
+      margin: 0;
+    }
+    .scout-board-select {
+      min-width: 160px;
+      max-width: 280px;
+      background: #111;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 13px;
+    }
     .scout-tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
     .scout-tabs button {
       padding:8px 14px; background:#333; color:#ddd; border:1px solid #555;
@@ -280,7 +306,7 @@
       Targets and the tactic board are saved to <b>you (the owner)</b> — they stay with you across season reset, archive, and club moves.
       Tick <b>Active Targets</b> to highlight players and sum a draft budget (market value, your leading bid, or the next increment if outbid).
       When the draft window opens, use <b>Bid</b> on free agents (first bid opens the auction thread at market value). You can also use the full bid page.
-      Plan lineups on the <b>Tactic board</b> tab.
+      Plan lineups on the <b>Tactic board</b> tab — up to <b>4 named boards</b> sharing one shortlist.
       <a href="transfer_center.html#scouting-targets" class="button-link" style="margin-left:8px;">Transfer Centre</a>
     </p>
 
@@ -309,15 +335,20 @@
     </div>
 
     <div id="tab-planner" class="scout-tab-panel panel panel-bg panel-transfer">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="Drag scouting targets onto the pitch to preview a potential XI. Saved separately from your Match Day default squad." tabindex="0">Tactic board</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Drag scouting targets onto the pitch to preview a potential XI. Up to 4 named boards per owner, sharing one shortlist. Saved separately from Match Day." tabindex="0">Tactic board</h2>
       <p class="meta" style="margin-top:0;">
         Drag scouting targets onto the pitch to see how a potential XI fits. Saved separately from your matchday squad.
       </p>
+      <div id="scoutBoardBar" class="scout-board-bar">
+        <label for="scoutBoardSelect">Board</label>
+        <select id="scoutBoardSelect" class="scout-board-select" title="Switch tactic board"></select>
+        <button type="button" class="button secondary" id="scoutBoardRenameBtn">Rename</button>
+      </div>
       <div id="scoutingPlannerRoot"></div>
       <div id="plannerStatus"></div>
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260811-tips2"></script>
+  <script type="module" src="scouting.js?v=20260813-multi-board"></script>
 </body>
 </html>
