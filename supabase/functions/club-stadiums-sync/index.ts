@@ -125,7 +125,7 @@ const SLUG_OVERRIDES = {
   BHA: "eng/american_express_community_stadium",
   // IFK Göteborg — Gamla Ullevi
   IFK: "swe/gamla_ullevi",
-  // DAN (Danubio / Jardines del Hipódromo) — not on StadiumDB; leave for auto / manual later
+  // DAN (Danubio) — StadiumDB Uruguay list is thin; use IMAGE_URL_OVERRIDES when needed
 };
 
 /** Direct image URL when page HTML has no parseable picture (ShortName → jpg URL) */
@@ -149,6 +149,10 @@ const IMAGE_URL_OVERRIDES = {
   SAN: "https://stadiumdb.com/img/news/2025/08/58Cal02.jpg",
   VAL: "https://stadiumdb.com/pictures/stadiums/esp/ciutat_de_valencia/ciutat_de_valencia28.jpg",
   VIL: "https://stadiumdb.com/pictures/stadiums/esp/el_madrigal/el_madrigal29.jpg",
+  // Gamla Ullevi images live under /pictures/historical/ on StadiumDB
+  IFK: "https://stadiumdb.com/pictures/historical/swe/gamla_ullevi_2007/gamla_ullevi01.jpg",
+  // Danubio — not listed on StadiumDB Uruguay; Wikimedia Commons photo
+  DAN: "https://upload.wikimedia.org/wikipedia/commons/0/01/Jardines_del_hipodromo.jpg",
 };
 
 const UA = "GPSL-StadiumSync/1.0 (personal league project)";
@@ -169,16 +173,24 @@ function nationCode(nation) {
 }
 
 function extractImageUrl(html) {
+  // Prefer current galleries; also accept historical / pic-buildings / pic-projects.
   const urls = [
     ...String(html || "").matchAll(
-      /https:\/\/stadiumdb\.com\/pictures\/stadiums\/[a-z0-9_/]+\.jpg/gi
+      /https:\/\/stadiumdb\.com\/(?:pictures\/(?:stadiums|historical)|pic-buildings|pic-projects)\/[a-z0-9_/.-]+\.jpg/gi
     ),
   ].map((m) => m[0]);
 
-  const full = urls.find((u) => !u.endsWith("m.jpg"));
+  const prefer = (list) =>
+    list.find((u) => u.includes("/pictures/stadiums/")) ||
+    list.find((u) => u.includes("/pic-buildings/")) ||
+    list.find((u) => u.includes("/pic-projects/")) ||
+    list.find((u) => u.includes("/pictures/historical/")) ||
+    list[0];
+
+  const full = prefer(urls.filter((u) => !u.endsWith("m.jpg")));
   if (full) return full;
 
-  const thumb = urls.find((u) => u.endsWith("m.jpg"));
+  const thumb = prefer(urls.filter((u) => u.endsWith("m.jpg")));
   if (thumb) return thumb.replace(/m\.jpg$/i, ".jpg");
   return null;
 }

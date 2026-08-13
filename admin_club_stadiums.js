@@ -284,7 +284,7 @@ async function invokeStadiumSync(body, { retries = 4 } = {}) {
     if (!retryable || attempt >= retries - 1) {
       if (detail.includes("Failed to send") || /520|502/.test(detail)) {
         detail +=
-          " — edge function unreachable. Redeploy club-stadiums-sync, then retry.";
+          " — function missing or JWT still enforced. Deploy club-stadiums-sync (paste index.ts), turn OFF JWT verify, then retry.";
       }
       throw new Error(detail);
     }

@@ -133,15 +133,19 @@
   <div class="stad-actions card" style="padding:14px;margin-bottom:16px;background:#1a2a1a;border:1px solid #3a5a3a;border-radius:8px;">
     <h2 style="margin:0 0 8px;font-size:16px;color:#7ddf7d;">One-time setup (required)</h2>
     <p style="margin:0 0 8px;font-size:12px;color:#aaa;line-height:1.5;">
-      GitHub deploy alone does <b>not</b> install the edge function. Until this is done,
-      download buttons will fail to reach the function.
+      A <b>CORS</b> / “Failed to send a request to the Edge Function” error means
+      <code>club-stadiums-sync</code> is <b>not deployed</b> yet (or JWT verify is still on).
+      GitHub Pages alone does not install it — do this once:
     </p>
     <ol style="margin:0 0 8px;padding-left:20px;font-size:12px;color:#ccc;line-height:1.55;">
-      <li>Supabase Dashboard → <b>Edge Functions</b> → <b>Create function</b></li>
-      <li>Name exactly: <code>club-stadiums-sync</code></li>
-      <li>Paste all of <code>supabase/functions/club-stadiums-sync/index.ts</code> from this repo</li>
-      <li>Deploy → Settings → turn <b>OFF</b> “Enforce JWT verification” (same as kits / GPDB scrape)</li>
-      <li>Edge Functions → <b>Secrets</b> → ensure <code>GITHUB_TOKEN</code> is set (same PAT as <code>club-kits-cof-sync</code>)</li>
+      <li>Supabase Dashboard → your project → <b>Edge Functions</b></li>
+      <li><b>Deploy a new function</b> → name exactly <code>club-stadiums-sync</code></li>
+      <li>Open <code>supabase/functions/club-stadiums-sync/index.ts</code> in Cursor → Select all → Copy</li>
+      <li>Paste into the editor → <b>Deploy</b></li>
+      <li>Open the function → <b>Details / Settings</b> → <b>Enforce JWT verification</b> = <b>OFF</b>
+          (same as <code>club-kits-cof-sync</code>)</li>
+      <li><b>Project Settings → Edge Functions → Secrets</b>: <code>GITHUB_TOKEN</code> must already exist
+          (reuse the kits PAT)</li>
     </ol>
     <p style="margin:0;font-size:11px;color:#888;">
       See <code>scripts/README_stadium_images.md</code>.
