@@ -10,7 +10,7 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- Schema: board_no + name on planner
+-- Schema: board_no + name (drop player FK BEFORE changing planner PK)
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE public.owner_scouting_planner
@@ -53,41 +53,6 @@ BEGIN
   END IF;
 END $$;
 
--- Drop old single-owner PK if still present
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'owner_scouting_planner_pkey'
-      AND conrelid = 'public.owner_scouting_planner'::regclass
-  ) THEN
-    ALTER TABLE public.owner_scouting_planner
-      DROP CONSTRAINT owner_scouting_planner_pkey;
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'owner_scouting_planner_pkey'
-      AND conrelid = 'public.owner_scouting_planner'::regclass
-  ) THEN
-    ALTER TABLE public.owner_scouting_planner
-      ADD CONSTRAINT owner_scouting_planner_pkey
-      PRIMARY KEY (owner_id, board_no);
-  END IF;
-END $$;
-
-COMMENT ON TABLE public.owner_scouting_planner IS
-  'Owner scouting tactic boards (up to 4 named boards per owner; shared shortlist).';
-
--- ---------------------------------------------------------------------------
--- Planner players: scope uniques / FK to board_no
--- ---------------------------------------------------------------------------
-
 ALTER TABLE public.owner_scouting_planner_player
   ADD COLUMN IF NOT EXISTS board_no smallint;
 
@@ -115,14 +80,78 @@ BEGIN
   END IF;
 END $$;
 
+-- Must drop dependent FKs before changing planner primary key
 ALTER TABLE public.owner_scouting_planner_player
   DROP CONSTRAINT IF EXISTS owner_scouting_planner_player_owner_id_fkey;
+
+ALTER TABLE public.owner_scouting_planner_player
+  DROP CONSTRAINT IF EXISTS owner_scouting_planner_player_board_fkey;
+
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT c.conname
+    FROM pg_constraint c
+    WHERE c.conrelid = 'public.owner_scouting_planner_player'::regclass
+      AND c.contype = 'f'
+      AND c.confrelid = 'public.owner_scouting_planner'::regclass
+  LOOP
+    EXECUTE format(
+      'ALTER TABLE public.owner_scouting_planner_player DROP CONSTRAINT %I',
+      r.conname
+    );
+  END LOOP;
+END $$;
 
 ALTER TABLE public.owner_scouting_planner_player
   DROP CONSTRAINT IF EXISTS owner_scouting_planner_player_unique;
 
 ALTER TABLE public.owner_scouting_planner_player
   DROP CONSTRAINT IF EXISTS owner_scouting_planner_pitch_slot_unique;
+
+-- Drop single-column (owner_id) PK only — keep composite PK on re-run
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    WHERE c.conname = 'owner_scouting_planner_pkey'
+      AND c.conrelid = 'public.owner_scouting_planner'::regclass
+      AND c.contype = 'p'
+      AND (
+        SELECT count(*) FROM unnest(c.conkey) AS k
+      ) = 1
+      AND EXISTS (
+        SELECT 1
+        FROM pg_attribute a
+        WHERE a.attrelid = c.conrelid
+          AND a.attnum = c.conkey[1]
+          AND a.attname = 'owner_id'
+      )
+  ) THEN
+    ALTER TABLE public.owner_scouting_planner
+      DROP CONSTRAINT owner_scouting_planner_pkey;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'owner_scouting_planner_pkey'
+      AND conrelid = 'public.owner_scouting_planner'::regclass
+  ) THEN
+    ALTER TABLE public.owner_scouting_planner
+      ADD CONSTRAINT owner_scouting_planner_pkey
+      PRIMARY KEY (owner_id, board_no);
+  END IF;
+END $$;
+
+COMMENT ON TABLE public.owner_scouting_planner IS
+  'Owner scouting tactic boards (up to 4 named boards per owner; shared shortlist).';
 
 DO $$
 BEGIN
