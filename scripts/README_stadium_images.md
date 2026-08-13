@@ -45,6 +45,8 @@ Photos are © their credited photographers on [StadiumDB](https://stadiumdb.com/
 
 ## Fixing a missing club
 
+If the club’s **Nation** has no StadiumDB country code in `NATION_TO_CODE` (e.g. Morocco → `mar`), add that first or the admin tool will always report “no StadiumDB page”.
+
 1. Find the page on stadiumdb.com (e.g. England list links use slugs like `anfield_road`, not `anfield`).
 2. Add to `SLUG_OVERRIDES` in `stadium_stadiumdb.js` (and re-bundle the edge function):
 

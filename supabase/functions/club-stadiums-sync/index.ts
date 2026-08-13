@@ -55,6 +55,7 @@ const NATION_TO_CODE = {
   turkiye: "tur",
   unitedstates: "usa",
   united_states: "usa",
+  morocco: "mar",
 };
 
 /** Manual overrides when auto-slug fails (ShortName → stadiumdb path after /stadiums/) */
@@ -126,6 +127,9 @@ const SLUG_OVERRIDES = {
   // IFK Göteborg — Gamla Ullevi
   IFK: "swe/gamla_ullevi",
   // DAN (Danubio) — StadiumDB Uruguay list is thin; use IMAGE_URL_OVERRIDES when needed
+  // Morocco — nation code was missing; pin StadiumDB slugs
+  RCA: "mar/stade_mohammed_v",
+  HSA: "mar/grand_stade_agadir",
 };
 
 /** Direct image URL when page HTML has no parseable picture (ShortName → jpg URL) */
@@ -153,6 +157,9 @@ const IMAGE_URL_OVERRIDES = {
   IFK: "https://stadiumdb.com/pictures/historical/swe/gamla_ullevi_2007/gamla_ullevi01.jpg",
   // Danubio — not listed on StadiumDB Uruguay; Wikimedia Commons photo
   DAN: "https://upload.wikimedia.org/wikipedia/commons/0/01/Jardines_del_hipodromo.jpg",
+  // Morocco (Raja / Hassania) — force a clean gallery shot
+  RCA: "https://stadiumdb.com/pictures/stadiums/mar/stade_mohammed_v/stade_mohammed_v34.jpg",
+  HSA: "https://stadiumdb.com/pictures/stadiums/mar/grand_stade_agadir/grand_stade_agadir09.jpg",
 };
 
 const UA = "GPSL-StadiumSync/1.0 (personal league project)";
