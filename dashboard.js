@@ -208,9 +208,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await initDashboardGrid(user.id, dashboardCtx);
   wireDashboardToolbar();
-  // eFootball 6.0 Connect promo — retired after 12 Aug 2026
-  const retiredPromo = document.getElementById("efootballRevealPromo");
-  if (retiredPromo) retiredPromo.hidden = true;
   bindDragAutoScroll();
 
   if (!club) {
