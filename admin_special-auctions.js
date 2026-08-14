@@ -116,13 +116,23 @@ async function refreshSpecialAuctionSelect() {
     .join("");
 }
 
-function gauntletPackPayload() {
+function prizePackPayload() {
   return {
     medical_tokens: parseIntList(document.getElementById("saGauntletMedical")?.value, [2, 4, 6, 8, 10]),
     fee_discounts: parseIntList(document.getElementById("saGauntletDiscount")?.value).filter((n) => n <= 50),
     appeal_cards: Math.max(0, Number(document.getElementById("saGauntletAppeals")?.value) || 0),
     draft_tokens: Math.max(0, Number(document.getElementById("saGauntletDraft")?.value) || 0),
   };
+}
+
+function prizePackNonEmpty(pack) {
+  if (!pack) return false;
+  return (
+    (pack.medical_tokens && pack.medical_tokens.length > 0) ||
+    (pack.fee_discounts && pack.fee_discounts.length > 0) ||
+    (pack.appeal_cards || 0) > 0 ||
+    (pack.draft_tokens || 0) > 0
+  );
 }
 
 async function createAuction() {
@@ -160,6 +170,23 @@ async function createAuction() {
     if (!discountLabel) discountLabel = `${discountPct}% fee discount`;
   }
 
+  const cashAmount =
+    Number(document.getElementById("saPrizeCash").value.replace(/[^\d]/g, "")) || null;
+  const pack = prizePackPayload();
+
+  const hasPrimary =
+    (prizeType === "player" && !!prizePlayerId) ||
+    (prizeType === "cash" && cashAmount > 0) ||
+    (prizeType === "discount" && discountPct != null);
+  if (!hasPrimary && !prizePackNonEmpty(pack)) {
+    setStatus(
+      "saCreateStatus",
+      "❌ Set a primary prize (cash / player / discount) and/or at least one bonus prize.",
+      false
+    );
+    return;
+  }
+
   const row = {
     auction_type: type,
     title: document.getElementById("saTitle").value.trim() || "Special auction",
@@ -168,8 +195,7 @@ async function createAuction() {
     end_time: end,
     prize_type: prizeType,
     prize_player_id: prizeType === "player" ? prizePlayerId : null,
-    prize_cash_amount:
-      Number(document.getElementById("saPrizeCash").value.replace(/[^\d]/g, "")) || null,
+    prize_cash_amount: prizeType === "cash" ? cashAmount : null,
     prize_discount_pct: prizeType === "discount" ? discountPct : null,
     prize_discount_label: prizeType === "discount" ? discountLabel : null,
     player_mode: document.getElementById("saPlayerMode").value,
@@ -180,11 +206,11 @@ async function createAuction() {
     clue_3: document.getElementById("saClue3")?.value?.trim() || null,
     clue_4: document.getElementById("saClue4")?.value?.trim() || null,
     snap_bid_fee: 300000,
+    gauntlet_prize_pack: pack,
   };
 
   if (type === "blind_gauntlet") {
     row.gauntlet_phase = "phase1";
-    row.gauntlet_prize_pack = gauntletPackPayload();
   }
 
   if (!start || !end) {
@@ -206,11 +232,13 @@ async function createAuction() {
 
   if (error) {
     const hint =
-      error.message?.includes("prize_discount_pct")
-        ? " — run special_auction_discount_pct_grant.sql"
-        : type === "blind_gauntlet"
-          ? " — run special_auction_blind_gauntlet.sql"
-          : "";
+      error.message?.includes("gauntlet_prize_pack") || error.message?.includes("prize_pack")
+        ? " — run special_auction_multi_prize_pack_20260814.sql"
+        : error.message?.includes("prize_discount_pct")
+          ? " — run special_auction_discount_pct_grant.sql"
+          : type === "blind_gauntlet"
+            ? " — run special_auction_blind_gauntlet.sql"
+            : "";
     setStatus("saCreateStatus", "❌ " + error.message + hint, false);
     return;
   }

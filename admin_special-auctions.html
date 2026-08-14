@@ -114,20 +114,24 @@
             <input id="saMysteryClue" placeholder="Optional single clue">
           </div>
         </div>
-        <div class="gauntlet-only">
-          <h3 style="color:#ccc;font-size:14px;margin:16px 0 6px;">Blind Gauntlet winner extras (optional)</h3>
-          <p class="note">Granted to the Phase 2 winner with the player/cash prize. Same inventory as Club prizes.</p>
+        <div>
+          <h3 style="color:#ccc;font-size:14px;margin:16px 0 6px;">Bonus prizes (optional — stack with primary)</h3>
+          <p class="note">
+            Combine with cash / player / discount — e.g. cash + specialist consult, player + red-card appeal,
+            or bonus-only (leave cash blank). Items go to Club Prizes / Medical Room like challenge packs.
+            Run <code>special_auction_multi_prize_pack_20260814.sql</code> once.
+          </p>
           <div class="row">
             <div>
-              <label>Medical tokens (e.g. 4,6)</label>
+              <label>Specialist consults (match cuts, e.g. 4,6)</label>
               <input id="saGauntletMedical" placeholder="4,6" style="width:120px;">
             </div>
             <div>
-              <label>Fee discounts % (e.g. 10)</label>
+              <label>Extra fee discounts % (e.g. 10)</label>
               <input id="saGauntletDiscount" placeholder="10" style="width:120px;">
             </div>
             <div>
-              <label>Appeal cards</label>
+              <label>Red card appeal cards</label>
               <input id="saGauntletAppeals" type="number" min="0" max="5" value="0" style="width:80px;">
             </div>
             <div>
@@ -158,6 +162,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_special-auctions.js?v=20260719-discount-pct"></script>
+  <script type="module" src="admin_special-auctions.js?v=20260814-multi-prize"></script>
 </body>
 </html>

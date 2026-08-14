@@ -14,7 +14,8 @@ import {
   winnerReleaseSquadForKeep,
   fetchSquadPlayersForPrizeKeepPrep,
   SPECIAL_AUCTION_SQUAD_MAX,
-} from "./special_auction.js";
+  formatPrizePackHtml,
+} from "./special_auction.js?v=20260814-multi-prize";
 import { playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { parseMoneyInput, wireMoneyBidInput } from "./money_input.js";
 import { renderHonoursHtml } from "./player_career_medals.js";
@@ -96,15 +97,7 @@ function renderBidsTable(rows, cols) {
 }
 
 function packExtrasLine(pack) {
-  if (!pack || typeof pack !== "object") return "";
-  const bits = [];
-  const med = pack.medical_tokens || [];
-  const disc = pack.fee_discounts || [];
-  if (med.length) bits.push(`Medical: ${med.map((n) => `${n}-match`).join(", ")}`);
-  if (disc.length) bits.push(`Fee discounts: ${disc.map((n) => `${n}%`).join(", ")}`);
-  if (pack.appeal_cards > 0) bits.push(`Appeal cards: ${pack.appeal_cards}`);
-  if (pack.draft_tokens > 0) bits.push(`Draft tokens: ${pack.draft_tokens}`);
-  return bits.length ? `<div style="margin-top:6px;color:#aaa;">Extras: ${bits.join(" · ")}</div>` : "";
+  return formatPrizePackHtml(pack);
 }
 
 async function loadPrizeBlock() {

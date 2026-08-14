@@ -482,28 +482,30 @@ export function formatAuctionTimerText(label, endIso) {
 
 export function prizeDescription(auction) {
   if (!auction) return "";
+  const bits = [];
   if (auction.prize_type === "player") {
     if (snapIdentityHidden(auction)) {
-      return "Mystery player prize (identity revealed when the snap ends)";
+      bits.push("Mystery player prize (identity revealed when the snap ends)");
+    } else if (auction.prize_player_id) {
+      bits.push(`Player prize (ID ${auction.prize_player_id})`);
+    } else {
+      bits.push("Player prize");
     }
-    if (auction.prize_player_id) {
-      return `Player prize (ID ${auction.prize_player_id})`;
-    }
-    return "Player prize";
-  }
-  if (auction.prize_type === "cash" && auction.prize_cash_amount) {
-    return `Cash prize ${formatMoney(auction.prize_cash_amount)}`;
-  }
-  if (auction.prize_type === "discount") {
+  } else if (auction.prize_type === "cash" && auction.prize_cash_amount) {
+    bits.push(`Cash prize ${formatMoney(auction.prize_cash_amount)}`);
+  } else if (auction.prize_type === "discount") {
     const pct = resolveDiscountPct(auction);
     if (pct != null) {
-      return `${pct}% off your next signing fee`;
+      bits.push(`${pct}% off your next signing fee`);
+    } else {
+      const label = String(auction.prize_discount_label || "").trim();
+      bits.push(label || "Fee discount prize");
     }
-    const label = String(auction.prize_discount_label || "").trim();
-    if (label) return label;
-    return "Fee discount prize";
   }
-  return "Prize TBC";
+  const packLine = formatPrizePackPlain(auction?.gauntlet_prize_pack);
+  if (packLine) bits.push(packLine);
+  if (!bits.length) return "Prize TBC";
+  return bits.join(" · ");
 }
 
 /** Resolve fee-discount % from column or label like "25 %". */
@@ -518,6 +520,34 @@ export function resolveDiscountPct(auction) {
   return Number.isFinite(n) && n > 0 && n <= 50 ? n : null;
 }
 
+/** Plain-text bonus pack summary (medical / appeals / etc.). */
+export function formatPrizePackPlain(pack) {
+  if (!pack || typeof pack !== "object") return "";
+  const bits = [];
+  const med = pack.medical_tokens || [];
+  const disc = pack.fee_discounts || [];
+  if (med.length) {
+    bits.push(
+      `Specialist consult${med.length > 1 ? "s" : ""}: ${med.map((n) => `−${n} matches`).join(", ")}`
+    );
+  }
+  if (disc.length) bits.push(`Fee discount${disc.length > 1 ? "s" : ""}: ${disc.map((n) => `${n}%`).join(", ")}`);
+  const appeals = Number(pack.appeal_cards) || 0;
+  if (appeals > 0) {
+    bits.push(`${appeals} red card appeal card${appeals > 1 ? "s" : ""}`);
+  }
+  const drafts = Number(pack.draft_tokens) || 0;
+  if (drafts > 0) bits.push(`${drafts} draft token${drafts > 1 ? "s" : ""}`);
+  return bits.join(" · ");
+}
+
+/** HTML extras line for prize blocks. */
+export function formatPrizePackHtml(pack) {
+  const plain = formatPrizePackPlain(pack);
+  if (!plain) return "";
+  return `<div style="margin-top:6px;color:#aaa;">Also: ${plain}</div>`;
+}
+
 /**
  * Rich prize block HTML for the owner auction page.
  * @returns {{ headline: string, detail: string, kind: string }}
@@ -526,38 +556,67 @@ export function prizePresentation(auction) {
   if (!auction) {
     return { headline: "Prize TBC", detail: "", kind: "unknown" };
   }
+  const packPlain = formatPrizePackPlain(auction.gauntlet_prize_pack);
+  const packDetail = packPlain
+    ? ` Also includes: ${packPlain} (Club Prizes / Medical Room).`
+    : "";
+
   if (auction.prize_type === "discount") {
     const pct = resolveDiscountPct(auction);
     const headline =
-      pct != null ? `${pct}% fee discount` : "Fee discount prize";
+      pct != null
+        ? packPlain
+          ? `${pct}% fee discount + bonuses`
+          : `${pct}% fee discount`
+        : packPlain
+          ? `Fee discount + bonuses`
+          : "Fee discount prize";
     return {
       kind: "discount",
       headline,
       detail:
-        pct != null
+        (pct != null
           ? `Winner receives a Club Prizes token for ${pct}% off the fee on their next transfer market purchase or special-auction buy. Lock it when you bid or buy — seller still gets full fee; GPSL tops up the difference.`
-          : "Winner receives a Club Prizes fee-discount token for their next signing.",
+          : "Winner receives a Club Prizes fee-discount token for their next signing.") +
+        packDetail,
     };
   }
   if (auction.prize_type === "cash") {
+    const cashBit = auction.prize_cash_amount
+      ? `Cash ${formatMoney(auction.prize_cash_amount)}`
+      : null;
+    const headline = cashBit
+      ? packPlain
+        ? `${cashBit} + bonuses`
+        : cashBit
+      : packPlain || "Cash prize";
     return {
       kind: "cash",
-      headline: auction.prize_cash_amount
-        ? `Cash ${formatMoney(auction.prize_cash_amount)}`
-        : "Cash prize",
-      detail: "Paid to the winning club’s balance when the auction settles.",
+      headline,
+      detail:
+        (cashBit
+          ? "Cash paid to the winning club’s balance when the auction settles."
+          : "Bonus prizes granted to Club Prizes when the auction settles.") + packDetail,
     };
   }
   if (auction.prize_type === "player") {
     return {
       kind: "player",
       headline: snapIdentityHidden(auction)
-        ? "Mystery player"
-        : "Player prize",
-      detail: snapIdentityHidden(auction)
-        ? "Identity stays hidden until this snap finishes."
-        : "Winner takes the player (squad rules apply).",
+        ? packPlain
+          ? "Mystery player + bonuses"
+          : "Mystery player"
+        : packPlain
+          ? "Player prize + bonuses"
+          : "Player prize",
+      detail:
+        (snapIdentityHidden(auction)
+          ? "Identity stays hidden until this snap finishes."
+          : "Winner takes the player (squad rules apply).") + packDetail,
     };
+  }
+  if (packPlain) {
+    return { headline: packPlain, detail: "Granted to Club Prizes on settle.", kind: "pack" };
   }
   return { headline: prizeDescription(auction), detail: "", kind: "other" };
 }
