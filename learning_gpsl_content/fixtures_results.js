@@ -44,6 +44,7 @@ export const SECTION_MATCH_SCHEDULING = {
       items: [
         `<b>Home club proposes first</b> — pick a slot from <b>your</b> weekly availability (opponent does not need theirs set yet).`,
         `Away owner gets an <a href="inbox.html">Inbox</a> message — <b>Accept</b> or counter-propose from their own availability when ready.`,
+        `<b>No double-booking</b> — a 30-minute kick-off already agreed (or pending) for either club is blocked for other fixtures.`,
         `After two proposals each, the site suggests agreeing on <b>Discord</b>, then picking a slot on the schedule page.`,
         `<b>Response deadlines</b> apply while negotiating — the site tracks overdue turns during the month. <b>Missed response fines (default ₿2.5m)</b> are assessed when that fixture’s <b>play GPSL month locks</b>, not instantly mid-week.`,
         `<b>Weekly availability</b> is tied to your owner account and survives vanilla reset / new seasons — set it once on Owner Details (or in the waiting room).`,

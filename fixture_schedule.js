@@ -551,7 +551,7 @@ function render() {
   const emptySlotsMsg = !selectableSlots.length
     ? slots.length
       ? '<p class="meta" style="color:#f88;">All listed slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
-      : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a> first.</p>'
+      : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a>, or free a time already booked for another match.</p>'
     : "";
 
   root.innerHTML = `
