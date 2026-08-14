@@ -450,7 +450,11 @@ function render() {
     return;
   }
 
-  const slots = ctx.intersection_slots || [];
+  const hasOwnSlotsField = Array.isArray(ctx.my_window_slots);
+  const slots = hasOwnSlotsField
+    ? ctx.my_window_slots
+    : ctx.intersection_slots || [];
+  const usingOwnSlots = hasOwnSlotsField;
   const homeTz = ctx.home_timezone || UK_TZ;
   const awayTz = ctx.away_timezone || UK_TZ;
   const ownerTz = ctx.my_timezone || UK_TZ;
@@ -537,8 +541,18 @@ function render() {
 
   const slotCountLine =
     selectableSlots.length === slots.length
-      ? `${selectableSlots.length} mutual slot${selectableSlots.length === 1 ? "" : "s"} in ${propMonth}`
+      ? `${selectableSlots.length} slot${selectableSlots.length === 1 ? "" : "s"} in ${propMonth}`
       : `${selectableSlots.length} future slot${selectableSlots.length === 1 ? "" : "s"} (${pastHidden} past slot${pastHidden === 1 ? "" : "s"} hidden for your timezone)`;
+
+  const slotIntro = usingOwnSlots
+    ? `Home proposes first from <b>your</b> weekly availability (opponent does not need slots set yet). They can accept or counter from theirs when ready (${slotCountLine}).`
+    : `Home proposes first. Pick a 30-minute block from available times (${slotCountLine}).`;
+
+  const emptySlotsMsg = !selectableSlots.length
+    ? slots.length
+      ? '<p class="meta" style="color:#f88;">All listed slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
+      : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a> first.</p>'
+    : "";
 
   root.innerHTML = `
     ${catchUpBannerHtml()}
@@ -548,17 +562,8 @@ function render() {
       <div class="fixture-head">${fixtureTitle(f)}</div>
       ${responseHtml}
       ${unavailablePanelHtml(f)}
-      <p class="meta">
-        Home proposes first. Pick a 30-minute block where <b>both</b> clubs are available
-        (${slotCountLine}).
-      </p>
-      ${
-        !selectableSlots.length
-          ? slots.length
-            ? '<p class="meta" style="color:#f88;">All mutual slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
-            : '<p class="meta" style="color:#f88;">No mutual slots — update your availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a> and ask your opponent to do the same.</p>'
-          : ""
-      }
+      <p class="meta">${slotIntro}</p>
+      ${emptySlotsMsg}
       ${
         ctx.my_has_manager !== false &&
         (ctx.allowances?.can_replay_reset || ctx.allowances?.can_catch_up_reset)
@@ -577,7 +582,7 @@ function render() {
       ctx.my_has_manager === false
         ? ""
         : `<div class="panel">
-      <h2>Mutual slots</h2>
+      <h2>${usingOwnSlots ? "Your availability slots" : "Available slots"}</h2>
       <div class="slot-list" id="slotList"></div>
       ${
         canPick && selectableSlots.length
