@@ -156,6 +156,11 @@
   font-weight: normal;
 }
 
+.club-owner-tag--vacant {
+  color: #a89878;
+  font-style: italic;
+}
+
 a.club-owner-tag {
   text-decoration: none;
   cursor: pointer;
@@ -170,6 +175,7 @@ a.club-owner-tag:focus {
 .fixture-club {
   display: inline-block;
   line-height: 1.25;
+  vertical-align: top;
 }
 
 .fixture-club .club-owner-tag {

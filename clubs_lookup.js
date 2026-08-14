@@ -71,6 +71,27 @@ export function ownerIdForClub(shortName) {
   return ownerIdsMap.get(key) || null;
 }
 
+/** True when the club has a linked owner account (owner_id). */
+export function clubHasOwner(shortName) {
+  return Boolean(ownerIdForClub(shortName));
+}
+
+/**
+ * @param {string} homeShort
+ * @param {string} awayShort
+ * @returns {{ homeOwned: boolean, awayOwned: boolean, isPartialVacant: boolean, isVacantVsVacant: boolean }}
+ */
+export function fixtureOwnerOccupancy(homeShort, awayShort) {
+  const homeOwned = clubHasOwner(homeShort);
+  const awayOwned = clubHasOwner(awayShort);
+  return {
+    homeOwned,
+    awayOwned,
+    isPartialVacant: homeOwned !== awayOwned,
+    isVacantVsVacant: !homeOwned && !awayOwned,
+  };
+}
+
 /** Owner profile / history page for a club’s current owner. */
 export function ownerProfileHref(ownerId) {
   const id = String(ownerId || "").trim();
@@ -104,7 +125,12 @@ export function ownerTagLinkHtml(tag, ownerId) {
  *  Name → club history; tag → owner profile; use clubPageHref for details (badge / “club page”). */
 export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
   const name = escapeHtml(clubName || shortName || "—");
-  const tagHtml = ownerTagLinkHtml(ownerTagForClub(shortName), ownerIdForClub(shortName));
+  const tag = ownerTagForClub(shortName);
+  const oid = ownerIdForClub(shortName);
+  let tagHtml = ownerTagLinkHtml(tag, oid);
+  if (!tagHtml && layout === "block" && shortName && !oid) {
+    tagHtml = `<span class="club-owner-tag club-owner-tag--vacant">Vacant</span>`;
+  }
   const href = clubHistoryHref(shortName);
   const linkedName = href
     ? `<a href="${escapeHtml(href)}" class="standings-club-link" title="Club history">${name}</a>`

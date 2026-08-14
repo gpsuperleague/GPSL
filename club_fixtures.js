@@ -1,5 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
-import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
+import { loadClubsMap, clubWithOwnerHtml, fixtureOwnerOccupancy } from "./clubs_lookup.js";
 import {
   loadCurrentSeason,
   formatFixtureScore,
@@ -40,8 +40,8 @@ let calendarStatus = null;
 let holidayContext = null;
 /** @type {any[]} */
 let lastFixtures = [];
-/** @type {{ enabled: boolean, isAdmin: boolean, error: string|null }} */
-let matchSimStatus = { enabled: false, isAdmin: false, error: null };
+/** @type {{ enabled: boolean, isAdmin: boolean, isStaff?: boolean, error: string|null }} */
+let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: null };
 
 function showError(msg) {
   const el = document.getElementById("clubFixturesError");
@@ -129,10 +129,21 @@ function matchLineHtml(f) {
       ? "mine"
       : "";
   return `
-    <span class="${homeCls}">${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "inline")}</span>
+    <span class="${homeCls}">${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</span>
     <span style="color:#666;margin:0 4px;">vs</span>
-    <span class="${awayCls}">${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "inline")}</span>
+    <span class="${awayCls}">${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</span>
   `;
+}
+
+function canShowSimButtons(f) {
+  const occ = fixtureOwnerOccupancy(
+    f.home_club_short_name,
+    f.away_club_short_name
+  );
+  if (occ.isVacantVsVacant) {
+    return matchSimStatus.isStaff === true || matchSimStatus.isAdmin === true;
+  }
+  return true;
 }
 
 function actionHtml(f) {
@@ -159,7 +170,8 @@ function actionHtml(f) {
     matchSimStatus.enabled &&
     f.status === "scheduled" &&
     !f.submission_id &&
-    !needsInboxConfirm(f, myClub)
+    !needsInboxConfirm(f, myClub) &&
+    canShowSimButtons(f)
   ) {
     const canSim = canSimulateMatchResult(
       f,
@@ -195,6 +207,20 @@ function fixtureCardHtml(f) {
   const pitch = formatPitchLabel(f.pitch_condition);
   const continent = formatFixtureContinent(f);
   const stadium = fixtureStadiumLabel(f, myClub.short, f.venue_name || null);
+  const occ = fixtureOwnerOccupancy(
+    f.home_club_short_name,
+    f.away_club_short_name
+  );
+  const simClass = occ.isPartialVacant
+    ? " fixture-card--sim"
+    : occ.isVacantVsVacant
+      ? " fixture-card--vacant-pair"
+      : "";
+  const simBadge = occ.isPartialVacant
+    ? `<span class="fixture-badge sim" title="One club has no owner — simulation match">Simulation</span>`
+    : occ.isVacantVsVacant
+      ? `<span class="fixture-badge sim-vacant" title="Neither club has an owner">Vacant vs vacant</span>`
+      : "";
 
   let playedBlock = "";
   if (f.status === "played") {
@@ -255,10 +281,11 @@ function fixtureCardHtml(f) {
       : competitionLabel(f);
 
   return `
-    <div class="fixture-card">
+    <div class="fixture-card${simClass}">
       <div class="fixture-top">
         <span class="fixture-badge ${badgeCls}">${leagueBadgeHtml(f.division || f.cup_code, { size: "xs" })}${competitionLabel(f)}</span>
         ${tvFixtureBadgeHtml(f.id)}
+        ${simBadge}
         <span class="fixture-match">${matchLineHtml(f)}</span>
         <span class="fixture-score">${score}</span>
       </div>

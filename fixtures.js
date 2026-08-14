@@ -23,7 +23,7 @@ import {
   loadCalendarStatus,
   calendarStatusBanner,
 } from "./competition_calendar.js";
-import { loadClubsMap, clubWithOwnerHtml, stadiumName } from "./clubs_lookup.js";
+import { loadClubsMap, clubWithOwnerHtml, stadiumName, fixtureOwnerOccupancy } from "./clubs_lookup.js";
 import {
   formatMatchConditions,
   formatFixtureContinent,
@@ -49,7 +49,7 @@ let currentDivision = "superleague";
 let fixtureView = "league";
 let currentCup = "league_cup";
 /** @type {{ enabled: boolean, isAdmin: boolean, error: string|null }} */
-let matchSimStatus = { enabled: false, isAdmin: false, error: null };
+let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: null };
 let allFixtures = [];
 
 const FIXTURE_TABLE_HEAD = `
@@ -141,20 +141,28 @@ function actionCell(fixture) {
     !needsInboxConfirm(fixture, myClub) &&
     fixtureInvolvesClub(fixture, myClub)
   ) {
-    const canSim = canSimulateMatchResult(
-      fixture,
-      myClub,
-      calendarStatus,
-      holidayContext
+    const occ = fixtureOwnerOccupancy(
+      fixture.home_club_short_name,
+      fixture.away_club_short_name
     );
-    parts.push(
-      matchSimButtonHtml(fixture.id, {
-        disabled: !canSim,
-        title: canSim
-          ? ""
-          : "Available when this fixture’s GPSL month is active",
-      })
-    );
+    const staffOk =
+      matchSimStatus.isStaff === true || matchSimStatus.isAdmin === true;
+    if (!occ.isVacantVsVacant || staffOk) {
+      const canSim = canSimulateMatchResult(
+        fixture,
+        myClub,
+        calendarStatus,
+        holidayContext
+      );
+      parts.push(
+        matchSimButtonHtml(fixture.id, {
+          disabled: !canSim,
+          title: canSim
+            ? ""
+            : "Available when this fixture’s GPSL month is active",
+        })
+      );
+    }
   }
 
   return parts.join(" ");
@@ -174,6 +182,16 @@ function fixtureRowHtml(fixture) {
     <td class="fixture-conditions">${fixtureConditionsCell(fixture)}</td>
     <td class="my-actions">${actionCell(fixture)}</td>
   `;
+}
+
+function applyFixtureRowClasses(tr, fixture) {
+  if (fixtureInvolvesClub(fixture, myClub)) tr.classList.add("my-fixture");
+  const occ = fixtureOwnerOccupancy(
+    fixture.home_club_short_name,
+    fixture.away_club_short_name
+  );
+  if (occ.isPartialVacant) tr.classList.add("fixture-sim");
+  else if (occ.isVacantVsVacant) tr.classList.add("fixture-vacant-pair");
 }
 
 function divisionFromUrl() {
@@ -281,7 +299,7 @@ function renderCupFixtures() {
     const tbody = block.querySelector("tbody");
     for (const f of rows) {
       const tr = document.createElement("tr");
-      if (fixtureInvolvesClub(f, myClub)) tr.classList.add("my-fixture");
+      applyFixtureRowClasses(tr, f);
       tr.innerHTML = `<td>M${f.cup_match}</td>${fixtureRowHtml(f)}`;
       tbody.appendChild(tr);
     }
@@ -379,7 +397,7 @@ function renderFixtures() {
     const tbody = block.querySelector("tbody");
     for (const f of rows) {
       const tr = document.createElement("tr");
-      if (fixtureInvolvesClub(f, myClub)) tr.className = "my-fixture";
+      applyFixtureRowClasses(tr, f);
       tr.innerHTML = fixtureRowHtml(f);
       tbody.appendChild(tr);
     }

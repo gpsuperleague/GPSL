@@ -29,14 +29,25 @@
       padding:14px 16px; border-top:1px solid #2a2a2a;
     }
     .fixture-card:first-of-type { border-top:none; }
+    /* Owner vs vacant — soft amber wash (simulation match) */
+    .fixture-card--sim {
+      background: linear-gradient(90deg, rgba(255, 170, 80, 0.10), rgba(255, 153, 0, 0.04) 55%, transparent);
+      box-shadow: inset 3px 0 0 rgba(255, 170, 90, 0.55);
+    }
+    .fixture-card--vacant-pair {
+      background: linear-gradient(90deg, rgba(140, 150, 170, 0.12), rgba(90, 100, 120, 0.04) 55%, transparent);
+      box-shadow: inset 3px 0 0 rgba(150, 160, 180, 0.45);
+    }
     .fixture-top {
-      display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px;
+      display:flex; flex-wrap:wrap; align-items:flex-start; gap:10px 16px;
       margin-bottom:8px;
     }
     .fixture-match {
       font-size:15px; color:#fff; font-weight:bold;
+      display:inline-flex; flex-wrap:wrap; align-items:flex-start; gap:4px 0;
     }
     .fixture-match .mine { color:#ffcc66; }
+    .fixture-match .mine .fixture-club-name { color:#ffcc66; }
     .fixture-score {
       font-size:16px; font-weight:bold; color:#fff;
       background:#2a2a2a; padding:2px 10px; border-radius:4px;
@@ -47,6 +58,16 @@
     }
     .fixture-badge.league { background:#1e3a2f; color:#9fd4b0; }
     .fixture-badge.cup { background:#2a2540; color:#c4b5fd; }
+    .fixture-badge.sim {
+      background: rgba(255, 186, 120, 0.18);
+      color: #e6c49a;
+      border: 1px solid rgba(255, 170, 90, 0.35);
+    }
+    .fixture-badge.sim-vacant {
+      background: rgba(150, 160, 180, 0.16);
+      color: #b0b8c8;
+      border: 1px solid rgba(140, 150, 170, 0.35);
+    }
     .fixture-meta {
       display:flex; flex-wrap:wrap; gap:8px 18px; font-size:13px; color:#aaa;
       margin-bottom:6px;
@@ -95,11 +116,11 @@
   <div id="nav"></div>
   <div class="page-container">
     <h1 id="clubFixturesTitle">My Club Fixtures</h1>
-    <p class="meta" id="clubFixturesMeta">Your season matches — grouped by month. Agreed kick-offs can be added to your phone or desktop calendar.</p>
+    <p class="meta" id="clubFixturesMeta">Your season matches — grouped by month. Owner tags show under each club. Matches vs a vacant club are highlighted as simulations. Agreed kick-offs can be added to your calendar.</p>
     <div id="matchSimBannerHost"></div>
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20260813-sim-month-lock"></script>
+  <script type="module" src="club_fixtures.js?v=20260814-owners-sim"></script>
 </body>
 </html>

@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260813-scouting-boards";
+export const APP_VERSION = "20260814-fixture-owners";

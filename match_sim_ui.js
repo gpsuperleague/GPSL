@@ -12,23 +12,33 @@ function ensureMatchSimStyles() {
 }
 
 /**
- * @returns {Promise<{ enabled: boolean, isAdmin: boolean, error: string|null }>}
+ * @returns {Promise<{ enabled: boolean, isAdmin: boolean, isStaff: boolean, error: string|null }>}
  */
 export async function loadMatchSimStatus() {
   ensureMatchSimStyles();
-  const { data, error } = await supabase.rpc("match_result_simulation_status");
+  const [{ data, error }, staffRes] = await Promise.all([
+    supabase.rpc("match_result_simulation_status"),
+    supabase.rpc("is_gpsl_admin_or_mod"),
+  ]);
   if (error) {
     console.warn("match_result_simulation_status:", error);
     return {
       enabled: false,
       isAdmin: false,
+      isStaff: false,
       error: error.message || "Simulation status unavailable (run match_result_simulation.sql)",
     };
   }
   const row = data && typeof data === "object" ? data : {};
+  const isAdmin = row.is_admin === true;
+  const isStaff =
+    isAdmin ||
+    staffRes.data === true ||
+    (staffRes.error ? false : Boolean(staffRes.data));
   return {
     enabled: row.enabled === true || row.match_result_simulation_enabled === true,
-    isAdmin: row.is_admin === true,
+    isAdmin,
+    isStaff,
     error: null,
   };
 }
