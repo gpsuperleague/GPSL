@@ -18,8 +18,8 @@ export function newOwnerSlotBadgeText(remaining, { windowOpen = false } = {}) {
   const n = normalizeNewOwnerReleasesRemaining(remaining);
   if (n <= 0) {
     return {
-      main: "No first-season slots left (0/3)",
-      hint: " · Release or transfer list · max 3 total",
+      main: "No New Owner releases or transfer lists left",
+      hint: " · Max 3 total in first season",
     };
   }
   const windowHint = windowOpen
@@ -36,7 +36,7 @@ export function newOwnerReleaseOptionLabel(remaining, fee, { availableNow = fals
     return "New Owner release (first season only)";
   }
   if (remaining <= 0) {
-    return "No first-season slots left (0/3)";
+    return "No New Owner releases left";
   }
   if (!availableNow) {
     return `New Owner release (${remaining}/3) — pre-season / June–Aug / January only`;
@@ -55,7 +55,7 @@ export function newOwnerListOptionLabel(remaining, { availableNow = false, first
     return "New Owner transfer list (first season only)";
   }
   if (remaining <= 0) {
-    return "No first-season slots left (0/3)";
+    return "No New Owner transfer lists left";
   }
   if (!availableNow) {
     return `New Owner transfer list (${remaining}/3) — pre-season / June–Aug / January only`;

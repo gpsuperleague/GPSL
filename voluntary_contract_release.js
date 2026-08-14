@@ -21,7 +21,7 @@ export function calculateVoluntaryReleaseCost(contractWage, seasonsRemaining) {
 
 export function voluntaryReleaseOptionLabel(remaining, cost) {
   if (remaining <= 0) {
-    return "No voluntary releases left (0/3)";
+    return "No voluntary contract releases left";
   }
   const costStr =
     cost > 0

@@ -86,7 +86,7 @@ import {
   calculateVoluntaryReleaseCost,
   normalizeVoluntaryReleasesRemaining,
   voluntaryReleaseOptionLabel,
-} from "./voluntary_contract_release.js";
+} from "./voluntary_contract_release.js?v=20260814-empty-labels";
 import {
   MAX_NEW_OWNER_RELEASES,
   NEW_OWNER_RELEASE_ACTION,
@@ -95,7 +95,7 @@ import {
   newOwnerReleaseOptionLabel,
   newOwnerListOptionLabel,
   newOwnerSlotBadgeText,
-} from "./new_owner_release.js?v=20260813-preseason-window";
+} from "./new_owner_release.js?v=20260814-empty-labels";
 import {
   loadSquadDesignationsState,
   setSquadDesignation,
@@ -877,7 +877,7 @@ function renderVoluntaryReleaseBadge() {
   const n = voluntaryReleasesRemaining;
   el.classList.toggle("foreign-interest-badge--empty", n <= 0);
   if (n <= 0) {
-    el.textContent = "No voluntary releases left (0/3)";
+    el.textContent = "No voluntary contract releases left";
     return;
   }
 
