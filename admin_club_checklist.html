@@ -150,6 +150,13 @@
     .chk-filter input[type="search"] { min-width:160px; }
     .chk-filter input[type="checkbox"] { margin:0; }
     .chk-table .muted { color:#777; }
+    .chk-table .chk-sub { font-size:10px; color:#999; font-weight:500; line-height:1.3; }
+    .chk-table .chk-tag-ok { color:#9fd4b0; font-weight:700; }
+    .chk-table .chk-avail-count { font-weight:600; color:#ccc; }
+    .chk-table .chk-avail-times {
+      font-size:10px; color:#999; font-weight:500; white-space:normal; max-width:220px; line-height:1.35;
+    }
+    .chk-table td.chk-cell-bad .chk-avail-times { color:#ffc8c8; }
   </style>
 </head>
 <body class="admin-page">
@@ -162,8 +169,10 @@
           All GPSL clubs at a glance. The highlighted <b>Squad registration</b> block groups
           <b>Squad</b> (24–28), <b>GK</b> (≥1), <b>HG</b> (≥8), <b>U21</b> (≥5), <b>Stars</b> (SL 3 / Champ 2),
           <b>OooO</b> and <b>Fan Fav</b> for a quick status check.
+          <b>Discord tag</b> checks registry tag vs <code>Clubs.owner</code> (must match).
+          <b>Availability</b> lists weekly match times for the current season (flagged if unset on owned clubs).
           <b>Projected EOS</b> loads after the table. Owned clubs without a manager, nation, or GK are flagged.
-          Deploy <code>admin_club_season_checklist_gk_ff.sql</code> (and notify patch if using the button) in Supabase.
+          Deploy <code>admin_club_season_checklist_avail_tag_20260814.sql</code> in Supabase for tag/availability columns.
           Nav: <b>Admin → Season Management → Club Season Checklist</b>.
         </p>
         <div class="chk-toolbar">
@@ -214,6 +223,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20260813-issues-hdr"></script>
+  <script type="module" src="admin_club_checklist.js?v=20260814-avail-tag"></script>
 </body>
 </html>

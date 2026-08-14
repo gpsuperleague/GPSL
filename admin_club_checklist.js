@@ -49,6 +49,21 @@ function rowGkCount(row) {
 
 const ISSUE_META = {
   owner: { label: "Owner", level: "bad", tip: "No owner assigned" },
+  tag_missing: {
+    label: "Tag",
+    level: "bad",
+    tip: "Discord owner tag missing on registry and/or club (Clubs.owner)",
+  },
+  tag_mismatch: {
+    label: "Tag ≠ Discord",
+    level: "bad",
+    tip: "Registry owner tag does not match Clubs.owner (Discord tag on club)",
+  },
+  availability: {
+    label: "Availability",
+    level: "bad",
+    tip: "Match availability not set for the current season — owner must add weekly times",
+  },
   manager: {
     label: "No manager",
     level: "bad",
@@ -128,6 +143,17 @@ function evaluateRowIssues(row) {
   const gk = rowGkCount(row);
 
   if (!hasOwner) issues.add("owner");
+  if (hasOwner) {
+    const tagStatus = String(row.owner_tag_status || "").toLowerCase();
+    if (tagStatus === "missing") issues.add("tag_missing");
+    else if (tagStatus === "mismatch") issues.add("tag_mismatch");
+    if (
+      Object.prototype.hasOwnProperty.call(row, "availability_slot_count") &&
+      Number(row.availability_slot_count ?? 0) < 1
+    ) {
+      issues.add("availability");
+    }
+  }
   if (hasOwner && !rowHasManager(row)) issues.add("manager");
   if (hasOwner && !(row.nation_code || row.nation_name)) issues.add("nation");
   if (squad < MIN_SQUAD_SIZE) issues.add("squad_low");
@@ -200,6 +226,16 @@ function buildChecklistIssueBody(row, issues) {
   if (issues.has("manager")) {
     extras.push(
       "No signed manager on contract — use Manager Market / FA window listings to hire one."
+    );
+  }
+  if (issues.has("tag_missing") || issues.has("tag_mismatch")) {
+    extras.push(
+      `Owner tag (registry): ${row.registry_owner_tag || "—"} · Club Discord tag: ${row.club_discord_tag || "—"}`
+    );
+  }
+  if (issues.has("availability")) {
+    extras.push(
+      "Match availability: no weekly times set — open Owner Details / Club Details and save your availability calendar."
     );
   }
   if (issues.has("balance")) {
@@ -382,6 +418,8 @@ function renderSummary(rows) {
   let withOoo = 0;
   let negative = 0;
   let flagged = 0;
+  let tagBad = 0;
+  let availMissing = 0;
 
   for (const row of allRows) {
     if (rowHasOwner(row)) owned += 1;
@@ -396,7 +434,10 @@ function renderSummary(rows) {
     if (row.ff_player_name) withFf += 1;
     if (row.ooo_player_name) withOoo += 1;
     if (Number(row.current_balance) < 0) negative += 1;
-    if (evaluateRowIssues(row).size > 0) flagged += 1;
+    const issues = evaluateRowIssues(row);
+    if (issues.size > 0) flagged += 1;
+    if (issues.has("tag_missing") || issues.has("tag_mismatch")) tagBad += 1;
+    if (issues.has("availability")) availMissing += 1;
   }
 
   el.innerHTML = `
@@ -404,6 +445,8 @@ function renderSummary(rows) {
     <span>${owned} owned · ${vacant} vacant</span>
     <span>${flagged} with issues</span>
     <span>${noManager} without manager</span>
+    <span>${tagBad} Discord tag issue</span>
+    <span>${availMissing} missing availability</span>
     <span class="chk-sum-squad">${underMin} below ${MIN_SQUAD_SIZE}</span>
     <span class="chk-sum-squad">${overMax} over ${SQUAD_SIZE}</span>
     <span class="chk-sum-squad">${gkShort} need GK</span>
@@ -480,6 +523,8 @@ function renderTable() {
   /** Identity → Squad registration (grouped) → Finances */
   const headers = [
     ["owner_tag", "Owner", ""],
+    ["owner_tag_status", "Discord tag", ""],
+    ["availability_slot_count", "Availability", ""],
     ["club_name", "Club", ""],
     ["_issues", "Issues", ""],
     ["manager_name", "Manager", ""],
@@ -503,7 +548,7 @@ function renderTable() {
     <table class="chk-table">
       <thead>
         <tr class="chk-group-row">
-          <th colspan="5" class="chk-group-club">Club</th>
+          <th colspan="7" class="chk-group-club">Club</th>
           <th colspan="7" class="chk-group-squad">Squad registration</th>
           <th colspan="6" class="chk-group-fin">Finances &amp; allowances</th>
         </tr>
@@ -529,11 +574,62 @@ function renderTable() {
             const hg = Number(row.hg_count ?? 0);
             const gk = rowGkCount(row);
             const rowFlagged = issues.size > 0 ? " chk-row-flagged" : "";
+            const availCount = Number(row.availability_slot_count ?? 0);
+            const availSummary = String(row.availability_summary || "").trim();
 
             const owner = row.owner_tag || row.owner_email;
             const ownerHtml = owner
               ? escapeHtml(owner)
               : '<span class="vacant">Vacant</span>';
+
+            const tagStatus = String(row.owner_tag_status || "").toLowerCase();
+            let tagHtml = "—";
+            let tagLevel = "ok";
+            let tagTip = "";
+            if (!hasOwner || tagStatus === "n/a") {
+              tagHtml = '<span class="muted">—</span>';
+            } else if (tagStatus === "ok") {
+              tagHtml = `<span class="chk-tag-ok">OK</span> <span class="muted">${escapeHtml(
+                row.registry_owner_tag || row.owner_tag || ""
+              )}</span>`;
+              tagTip = `Registry: ${row.registry_owner_tag || "—"} · Club: ${row.club_discord_tag || "—"}`;
+            } else if (tagStatus === "mismatch") {
+              tagHtml = `<strong>Mismatch</strong><div class="chk-sub">Reg: ${escapeHtml(
+                row.registry_owner_tag || "—"
+              )}</div><div class="chk-sub">Club: ${escapeHtml(
+                row.club_discord_tag || "—"
+              )}</div>`;
+              tagLevel = "bad";
+              tagTip = ISSUE_META.tag_mismatch.tip;
+            } else {
+              tagHtml = `<strong>Not set</strong><div class="chk-sub">Reg: ${escapeHtml(
+                row.registry_owner_tag || "—"
+              )}</div><div class="chk-sub">Club: ${escapeHtml(
+                row.club_discord_tag || "—"
+              )}</div>`;
+              tagLevel = "bad";
+              tagTip = ISSUE_META.tag_missing.tip;
+            }
+
+            let availHtml = "—";
+            let availLevel = "ok";
+            let availTip = "";
+            if (!hasOwner) {
+              availHtml = '<span class="muted">—</span>';
+            } else if (availCount < 1) {
+              availHtml = "<strong>Not set</strong>";
+              availLevel = "bad";
+              availTip = ISSUE_META.availability.tip;
+            } else {
+              const short =
+                availSummary.length > 72
+                  ? `${availSummary.slice(0, 70)}…`
+                  : availSummary;
+              availHtml = `<div class="chk-avail-count">${availCount} slots</div><div class="chk-avail-times">${escapeHtml(
+                short || "Set"
+              )}</div>`;
+              availTip = availSummary || `${availCount} weekly slot(s)`;
+            }
 
             const manager = rowHasManager(row)
               ? `${escapeHtml(row.manager_name)}${
@@ -615,6 +711,8 @@ function renderTable() {
               issues.has("owner") ? "bad" : "ok",
               issues.has("owner") ? ISSUE_META.owner.tip : ""
             )}
+            ${textCell(tagHtml, tagLevel, tagTip)}
+            ${textCell(availHtml, availLevel, availTip)}
             <td class="club-cell ${cellClass("ok")}">
               <div class="club-name">${escapeHtml(row.club_name || row.club_short_name)}</div>
               <div class="club-short">${escapeHtml(row.club_short_name)}${
