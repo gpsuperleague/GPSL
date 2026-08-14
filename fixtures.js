@@ -134,31 +134,39 @@ function actionCell(fixture) {
     }
   }
 
+  const occ = fixtureOwnerOccupancy(
+    fixture.home_club_short_name,
+    fixture.away_club_short_name
+  );
+  const staffOk =
+    matchSimStatus.isStaff === true || matchSimStatus.isAdmin === true;
+  const vacantPairStaff = occ.isVacantVsVacant && staffOk;
+  const involvesMe = fixtureInvolvesClub(fixture, myClub);
+
   if (
     matchSimStatus.enabled &&
     fixture.status === "scheduled" &&
     !fixture.submission_id &&
     !needsInboxConfirm(fixture, myClub) &&
-    fixtureInvolvesClub(fixture, myClub)
+    (involvesMe || vacantPairStaff)
   ) {
-    const occ = fixtureOwnerOccupancy(
-      fixture.home_club_short_name,
-      fixture.away_club_short_name
-    );
-    const staffOk =
-      matchSimStatus.isStaff === true || matchSimStatus.isAdmin === true;
     if (!occ.isVacantVsVacant || staffOk) {
-      const canSim = canSimulateMatchResult(
-        fixture,
-        myClub,
-        calendarStatus,
-        holidayContext
-      );
+      const canSim = vacantPairStaff
+        ? true
+        : canSimulateMatchResult(
+            fixture,
+            myClub,
+            calendarStatus,
+            holidayContext,
+            staffOk ? { bypassCalendar: true } : null
+          );
       parts.push(
         matchSimButtonHtml(fixture.id, {
           disabled: !canSim,
           title: canSim
-            ? ""
+            ? vacantPairStaff
+              ? "Admin/mod: simulate vacant vs vacant"
+              : ""
             : "Available when this fixture’s GPSL month is active",
         })
       );
