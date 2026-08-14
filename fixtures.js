@@ -18,6 +18,7 @@ import {
   deferredResultNote,
   leagueBadgeHtml,
   divisionLabelWithBadgeHtml,
+  isFixtureMonthPlayable,
 } from "./competition.js";
 import {
   loadCalendarStatus,
@@ -154,14 +155,19 @@ function actionCell(fixture) {
     (involvesMe || vacantPairStaff)
   ) {
     if (!occ.isVacantVsVacant || staffOk) {
+      const monthOk = isFixtureMonthPlayable(
+        fixture,
+        involvesMe ? myClub : { short: fixture.home_club_short_name },
+        calendarStatus,
+        holidayContext
+      );
       const canSim = vacantPairStaff
-        ? true
+        ? monthOk
         : canSimulateMatchResult(
             fixture,
             myClub,
             calendarStatus,
-            holidayContext,
-            staffOk ? { bypassCalendar: true } : null
+            holidayContext
           );
       parts.push(
         matchSimButtonHtml(fixture.id, {

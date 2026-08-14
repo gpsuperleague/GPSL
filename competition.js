@@ -1078,7 +1078,7 @@ export function isFixtureMonthPlayable(
  * @param {string|{ short?: string }} clubIdentity
  * @param {{ calendar_configured?: boolean, active_gpsl_month?: string|null }|null} [calendarStatus]
  * @param {{ holidays?: object[], calendarMonths?: object[] }|null} [holidayContext]
- * @param {{ bypassCalendar?: boolean }|null} [opts] admin bypass (matches SQL is_gpsl_admin)
+ * @param {{ allowWithoutInvolve?: boolean }|null} [opts]
  */
 export function canSimulateMatchResult(
   fixture,
@@ -1088,9 +1088,10 @@ export function canSimulateMatchResult(
   opts = null
 ) {
   if (!fixture || !clubIdentity) return false;
-  if (!fixtureInvolvesClub(fixture, clubIdentity)) return false;
+  if (!opts?.allowWithoutInvolve && !fixtureInvolvesClub(fixture, clubIdentity)) {
+    return false;
+  }
   if (fixture.status !== "scheduled" || fixture.submission_id) return false;
-  if (opts?.bypassCalendar) return true;
   return isFixtureMonthPlayable(
     fixture,
     clubIdentity,

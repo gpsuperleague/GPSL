@@ -7,8 +7,8 @@
 -- Approach:
 --   1) my_club_shortname() honours transaction-local GUC gpsl.sim_acting_club
 --   2) competition_simulate_fixture_result wrapper sets that GUC to the home
---      club when staff simulate a vacant vs vacant fixture (month lock skipped
---      for staff on that path — admins already bypass; mods need this too)
+--      club when staff simulate a vacant vs vacant fixture
+--   3) Month unlock still applies (see match_sim_month_lock_all_roles_20260814.sql)
 --
 -- Run after match_result_simulation_month_lock.sql. Safe re-run.
 -- =============================================================================
@@ -98,7 +98,7 @@ BEGIN
   -- Admin/mod: vacant vs vacant (neither club has an owner)
   IF v_staff AND NOT v_home_owned AND NOT v_away_owned THEN
     PERFORM set_config('gpsl.sim_acting_club', v_home, true);
-    -- Staff may clear these in any GPSL month / preseason
+    PERFORM public.competition_assert_fixture_month_unlocked(p_fixture_id, v_home);
     RETURN public.competition_simulate_fixture_result_core(p_fixture_id);
   END IF;
 
@@ -106,7 +106,7 @@ BEGIN
     RAISE EXCEPTION 'No club linked to this account';
   END IF;
 
-  -- Month unlock / catch-up / holiday early (admins bypass inside assert)
+  -- Month unlock / catch-up / holiday early (admins are NOT exempt)
   PERFORM public.competition_assert_fixture_month_unlocked(p_fixture_id, v_club);
 
   RETURN public.competition_simulate_fixture_result_core(p_fixture_id);
