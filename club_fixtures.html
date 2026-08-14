@@ -103,6 +103,15 @@
     .cal-toolbar { margin:0 0 14px; }
     .fixture-actions .cal-ics-btn,
     .fixture-actions .btn-link { margin:2px 4px 2px 0; }
+    .cal-added-label {
+      display:inline-flex; align-items:center; gap:6px;
+      margin:2px 8px 2px 0; font-size:12px; color:#bbb; cursor:pointer;
+      user-select:none; vertical-align:middle;
+    }
+    .cal-added-label input {
+      width:14px; height:14px; accent-color:#ff9900; cursor:pointer;
+    }
+    .cal-added-label.is-on { color:#9fd4b0; }
     .btn-link.sim-result-btn { background:#2a5535; color:#cfc; border:1px solid #3a6; cursor:pointer; }
     .btn-link.sim-result-btn:disabled { opacity:.6; cursor:wait; }
     .match-sim-banner { font-size:13px; color:#bbb; margin:0 0 12px; padding:8px 12px; background:#1a221a; border:1px solid #345; border-radius:6px; }
@@ -121,6 +130,6 @@
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20260814-owners-sim"></script>
+  <script type="module" src="club_fixtures.js?v=20260814-cal-mark"></script>
 </body>
 </html>

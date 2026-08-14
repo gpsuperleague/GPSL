@@ -193,6 +193,14 @@ function actionHtml(f) {
     parts.push(
       `<button type="button" class="btn-link secondary cal-ics-btn" data-cal-fixture="${f.id}">Add to calendar</button>`
     );
+    const checked = f.calendar_added ? " checked" : "";
+    const onCls = f.calendar_added ? " is-on" : "";
+    parts.push(
+      `<label class="cal-added-label${onCls}" title="Manual reminder — only you see this tick">` +
+        `<input type="checkbox" class="cal-added-cb" data-cal-mark="${f.id}"${checked}>` +
+        `Added to calendar` +
+      `</label>`
+    );
   }
 
   return parts.join(" ");
@@ -417,6 +425,28 @@ function wireCalendarButtons(root) {
         kickoffAt: f.agreed_kickoff_at,
       });
       downloadIcs(`gpsl-fixture-${f.id}.ics`, [ev]);
+    });
+  });
+  root?.querySelectorAll(".cal-added-cb").forEach((cb) => {
+    cb.addEventListener("change", async () => {
+      const id = Number(cb.getAttribute("data-cal-mark"));
+      const added = !!cb.checked;
+      const label = cb.closest(".cal-added-label");
+      cb.disabled = true;
+      const { data, error } = await supabase.rpc("club_fixture_calendar_mark_set", {
+        p_fixture_id: id,
+        p_added: added,
+      });
+      cb.disabled = false;
+      if (error) {
+        cb.checked = !added;
+        showError(error.message || "Could not save calendar mark");
+        return;
+      }
+      showError("");
+      const f = lastFixtures.find((row) => Number(row.id) === id);
+      if (f) f.calendar_added = data?.calendar_added ?? added;
+      if (label) label.classList.toggle("is-on", !!cb.checked);
     });
   });
   const bulk = document.getElementById("clubFixturesCalBulk");
