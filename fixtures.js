@@ -85,55 +85,6 @@ function matchdayUrl(fixtureId) {
 }
 
 function actionCell(fixture) {
-  if (!myClub.short || !fixtureInvolvesClub(fixture, myClub)) {
-    return "";
-  }
-
-  const parts = [];
-
-  if (canSubmitResult(fixture, myClub, calendarStatus, holidayContext)) {
-    parts.push(
-      `<a href="${matchdayUrl(fixture.id)}" class="btn-result" style="text-decoration:none;display:inline-block;">Enter result</a>`
-    );
-  } else if (needsInboxConfirm(fixture, myClub)) {
-    parts.push(
-      `<a href="${matchdayUrl(fixture.id)}" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Confirm result</a>`
-    );
-  } else if (
-    fixture.submission_status === "pending" &&
-    fixture.submitted_by_club &&
-    fixture.submitted_by_club.toUpperCase() === (myClub.short || "").toUpperCase()
-  ) {
-    parts.push(`<span style="color:#888;font-size:12px;">Awaiting confirm</span>`);
-  } else if (fixture.status === "played") {
-    const deferred = deferredResultNote(fixture, calendarStatus);
-    if (deferred) {
-      parts.push(
-        `<span style="color:#c9a227;font-size:12px;" title="${deferred}">Played · pending table</span>`
-      );
-    } else {
-      parts.push(`<span style="color:#888;font-size:12px;">Played</span>`);
-    }
-  } else {
-    const sched = scheduleActionLabel(fixture, myClub.short);
-    if (sched) {
-      const agreed =
-        fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at;
-      let kickoffLabel = "";
-      if (agreed) {
-        const ci =
-          fixture.home_checked_in && fixture.away_checked_in
-            ? "Both checked in"
-            : "Check in at kick-off";
-        kickoffLabel = `<span style="display:block;color:#8c8;font-size:11px;margin-top:2px;">${formatKickoff(fixture.agreed_kickoff_at, UK_TZ)} UK · ${ci}</span>`;
-      }
-      const cls = sched.muted ? "btn-result secondary" : "btn-result";
-      parts.push(
-        `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>${kickoffLabel}`
-      );
-    }
-  }
-
   const occ = fixtureOwnerOccupancy(
     fixture.home_club_short_name,
     fixture.away_club_short_name
@@ -141,13 +92,65 @@ function actionCell(fixture) {
   const staffOk =
     matchSimStatus.isStaff === true || matchSimStatus.isAdmin === true;
   const vacantPairStaff = occ.isVacantVsVacant && staffOk;
-  const involvesMe = fixtureInvolvesClub(fixture, myClub);
+  const involvesMe = Boolean(myClub.short && fixtureInvolvesClub(fixture, myClub));
+
+  // Non-involved rows are blank — except admin/mod vacant vs vacant sim controls
+  if (!involvesMe && !vacantPairStaff) {
+    return "";
+  }
+
+  const parts = [];
+
+  if (involvesMe) {
+    if (canSubmitResult(fixture, myClub, calendarStatus, holidayContext)) {
+      parts.push(
+        `<a href="${matchdayUrl(fixture.id)}" class="btn-result" style="text-decoration:none;display:inline-block;">Enter result</a>`
+      );
+    } else if (needsInboxConfirm(fixture, myClub)) {
+      parts.push(
+        `<a href="${matchdayUrl(fixture.id)}" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Confirm result</a>`
+      );
+    } else if (
+      fixture.submission_status === "pending" &&
+      fixture.submitted_by_club &&
+      fixture.submitted_by_club.toUpperCase() === (myClub.short || "").toUpperCase()
+    ) {
+      parts.push(`<span style="color:#888;font-size:12px;">Awaiting confirm</span>`);
+    } else if (fixture.status === "played") {
+      const deferred = deferredResultNote(fixture, calendarStatus);
+      if (deferred) {
+        parts.push(
+          `<span style="color:#c9a227;font-size:12px;" title="${deferred}">Played · pending table</span>`
+        );
+      } else {
+        parts.push(`<span style="color:#888;font-size:12px;">Played</span>`);
+      }
+    } else {
+      const sched = scheduleActionLabel(fixture, myClub.short);
+      if (sched) {
+        const agreed =
+          fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at;
+        let kickoffLabel = "";
+        if (agreed) {
+          const ci =
+            fixture.home_checked_in && fixture.away_checked_in
+              ? "Both checked in"
+              : "Check in at kick-off";
+          kickoffLabel = `<span style="display:block;color:#8c8;font-size:11px;margin-top:2px;">${formatKickoff(fixture.agreed_kickoff_at, UK_TZ)} UK · ${ci}</span>`;
+        }
+        const cls = sched.muted ? "btn-result secondary" : "btn-result";
+        parts.push(
+          `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>${kickoffLabel}`
+        );
+      }
+    }
+  }
 
   if (
     matchSimStatus.enabled &&
     fixture.status === "scheduled" &&
     !fixture.submission_id &&
-    !needsInboxConfirm(fixture, myClub) &&
+    !(involvesMe && needsInboxConfirm(fixture, myClub)) &&
     (involvesMe || vacantPairStaff)
   ) {
     if (!occ.isVacantVsVacant || staffOk) {
