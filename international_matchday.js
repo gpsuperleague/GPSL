@@ -264,7 +264,7 @@ function renderSquadPicker() {
   const countEl = $("squadCount");
   if (!root) return;
   if (!callupRows.length) {
-    root.innerHTML = `<p class="note" style="padding:10px;">No active call-ups — build your 23 on <a href="national_team.html">National team</a> / GPDB.</p>`;
+    root.innerHTML = `<p class="note" style="padding:10px;">No active call-ups — build your 26–28 on <a href="national_team.html">National team</a> / GPDB.</p>`;
     if (countEl) countEl.textContent = "";
     return;
   }

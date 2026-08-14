@@ -7,9 +7,16 @@ import { nationFlagSrc, renderNationFlag } from "./international_flags.js";
 
 export { nationFlagSrc, renderNationFlag };
 
-export const NATIONAL_SQUAD_MAX = 23;
+/** Tournament national squad: max size, min eligible size, min goalkeepers. */
+export const NATIONAL_SQUAD_MAX = 28;
+export const NATIONAL_SQUAD_MIN = 26;
 export const NATIONAL_SQUAD_MIN_GK = 2;
-export const NATION_POOL_MIN_PLAYERS = 24;
+
+/**
+ * Minimum GPDB players (any OVR) with ≥2 GKs for a nation to be claimable.
+ * Aligns with the minimum eligible call-up; depth bands remain informational.
+ */
+export const NATION_POOL_MIN_PLAYERS = 26;
 
 /** Min GPDB players per band to support one GPSL club on this nation. */
 export const NATION_HEALTHY_CLUB_REQUIREMENTS = [
@@ -35,7 +42,7 @@ export function nationPoolStatus(row) {
   if (all.total >= NATION_POOL_MIN_PLAYERS && all.gk >= NATIONAL_SQUAD_MIN_GK) {
     return { key: "ok", label: "OK" };
   }
-  if (all.total >= 23 && all.gk >= NATIONAL_SQUAD_MIN_GK) {
+  if (all.total >= NATIONAL_SQUAD_MIN && all.gk >= NATIONAL_SQUAD_MIN_GK) {
     return { key: "warn", label: "Tight" };
   }
   return { key: "bad", label: "Short" };
@@ -79,7 +86,7 @@ export function nationPoolIsFaint(row) {
   return !nationHasViableSquad(row);
 }
 
-/** Nations owners may claim during nation selection (23-man squad bar only). */
+/** Nations owners may claim during nation selection (min call-up pool bar only). */
 export function nationPoolIsSelectable(row) {
   if (!row?.pool) return true;
   return nationHasViableSquad(row);
@@ -88,7 +95,7 @@ export function nationPoolIsSelectable(row) {
 export function nationPoolFaintTitle(row) {
   if (!row?.pool || !nationPoolIsFaint(row)) return "";
   if (!nationHasViableSquad(row)) {
-    return `Needs ≥${NATION_POOL_MIN_PLAYERS} GPDB players and ≥${NATIONAL_SQUAD_MIN_GK} GKs for a 23-man squad`;
+    return `Needs ≥${NATION_POOL_MIN_PLAYERS} GPDB players and ≥${NATIONAL_SQUAD_MIN_GK} GKs for a ${NATIONAL_SQUAD_MIN}–${NATIONAL_SQUAD_MAX} call-up`;
   }
   return "";
 }
@@ -225,13 +232,22 @@ export function playerBelongsToNation(player, nation) {
 export function summarizeNationalSquad(rows) {
   const squad = rows || [];
   const gkCount = squad.filter((r) => isGoalkeeper(r.player_position)).length;
+  const total = squad.length;
+  const sizeOk = total <= NATIONAL_SQUAD_MAX;
+  const minOk = total >= NATIONAL_SQUAD_MIN;
+  const gkOk = gkCount >= NATIONAL_SQUAD_MIN_GK;
   return {
-    total: squad.length,
+    total,
     gkCount,
     max: NATIONAL_SQUAD_MAX,
+    min: NATIONAL_SQUAD_MIN,
     minGk: NATIONAL_SQUAD_MIN_GK,
-    gkOk: gkCount >= NATIONAL_SQUAD_MIN_GK,
-    full: squad.length >= NATIONAL_SQUAD_MAX,
+    gkOk,
+    sizeOk,
+    minOk,
+    full: total >= NATIONAL_SQUAD_MAX,
+    /** Tournament-ready: within max, at least min size, enough GKs. */
+    eligible: sizeOk && minOk && gkOk,
   };
 }
 

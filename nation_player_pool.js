@@ -6,14 +6,15 @@ import {
   renderNationFlag,
   nationLink,
   NATIONAL_SQUAD_MIN_GK,
+  NATION_POOL_MIN_PLAYERS,
   NATION_HEALTHY_CLUB_REQUIREMENTS,
   nationPoolSection,
   nationPoolStatus,
   nationHealthyClubCapacity,
   nationPoolIsFaint,
-} from "./international.js?v=20260812-healthy-no-star";
+} from "./international.js?v=20260814-squad-26-28";
 
-const POOL_MIN_PLAYERS = 24;
+const POOL_MIN_PLAYERS = NATION_POOL_MIN_PLAYERS;
 
 const SECTIONS = [
   { key: "all", label: "All players" },

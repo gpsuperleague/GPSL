@@ -15,6 +15,7 @@ import {
   isGoalkeeper,
   renderNationFlag,
   NATIONAL_SQUAD_MAX,
+  NATIONAL_SQUAD_MIN,
   NATIONAL_SQUAD_MIN_GK,
 } from "./international.js";
 import {
@@ -103,20 +104,24 @@ function getNationCode() {
 
 function nationalSquadRuleRows(summary) {
   const slotsLeft = Math.max(0, NATIONAL_SQUAD_MAX - summary.total);
+  const belowMin = Math.max(0, NATIONAL_SQUAD_MIN - summary.total);
   const gkShort = Math.max(0, NATIONAL_SQUAD_MIN_GK - summary.gkCount);
-  const sizeOk = summary.total <= NATIONAL_SQUAD_MAX;
+  const sizeOk = summary.sizeOk !== false && summary.total <= NATIONAL_SQUAD_MAX;
+  const minOk = summary.minOk !== false && summary.total >= NATIONAL_SQUAD_MIN;
 
   return [
     {
       rule: "Squad size",
-      req: `≤${NATIONAL_SQUAD_MAX}`,
+      req: `${NATIONAL_SQUAD_MIN}–${NATIONAL_SQUAD_MAX}`,
       count: summary.total,
-      ok: sizeOk,
+      ok: sizeOk && minOk,
       status: !sizeOk
         ? "Over limit"
-        : summary.full
-          ? "At max"
-          : `${slotsLeft} slot${slotsLeft === 1 ? "" : "s"} left`,
+        : !minOk
+          ? `Need ${belowMin} more`
+          : summary.full
+            ? "At max"
+            : `${slotsLeft} slot${slotsLeft === 1 ? "" : "s"} left`,
     },
     {
       rule: "Goalkeepers",
@@ -157,15 +162,17 @@ function renderSummary(summary, isMyNation) {
   if (!allOk) {
     const issues = rows
       .filter((r) => !r.ok)
-      .map((r) =>
-        r.rule === "Goalkeepers"
-          ? `need ${NATIONAL_SQUAD_MIN_GK} GKs`
-          : "over 23 players"
-      )
+      .map((r) => {
+        if (r.rule === "Goalkeepers") return `need ${NATIONAL_SQUAD_MIN_GK} GKs`;
+        if (summary.total > NATIONAL_SQUAD_MAX) return `over ${NATIONAL_SQUAD_MAX} players`;
+        return `need ${NATIONAL_SQUAD_MIN}–${NATIONAL_SQUAD_MAX} players`;
+      })
       .join(" · ");
     footnote = `<p class="squad-rules-footnote squad-rules-footnote--warn">${issues}.</p>`;
   } else if (summary.full) {
-    footnote = `<p class="squad-rules-footnote squad-rules-footnote--ok">23-man squad complete · ${summary.gkCount} GKs.</p>`;
+    footnote = `<p class="squad-rules-footnote squad-rules-footnote--ok">${NATIONAL_SQUAD_MAX}-man squad complete · ${summary.gkCount} GKs.</p>`;
+  } else if (summary.eligible) {
+    footnote = `<p class="squad-rules-footnote squad-rules-footnote--ok">Eligible call-up (${NATIONAL_SQUAD_MIN}–${NATIONAL_SQUAD_MAX}) · ${summary.gkCount} GKs.</p>`;
   } else {
     footnote = `<p class="squad-rules-footnote squad-rules-footnote--ok">Within limits · call up in GPDB to fill remaining slots.</p>`;
   }
@@ -179,7 +186,7 @@ function renderSummary(summary, isMyNation) {
       <header class="squad-rules-header squad-rules-header--compact">
         <h2 class="squad-rules-title">International squad</h2>
         <p class="squad-rules-intro squad-rules-intro--compact">
-          Max ${NATIONAL_SQUAD_MAX} · min ${NATIONAL_SQUAD_MIN_GK} goalkeepers
+          ${NATIONAL_SQUAD_MIN}–${NATIONAL_SQUAD_MAX} players · min ${NATIONAL_SQUAD_MIN_GK} goalkeepers
         </p>
       </header>
       <table class="squad-rules-table squad-rules-table--compact">

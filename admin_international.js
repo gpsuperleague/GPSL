@@ -729,7 +729,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("syncGpdbNationsBtn")?.addEventListener("click", async () => {
     if (
       !confirm(
-        "Step 3 — Apply selectable flags from the existing pool cache?\n\nActivates nations with ≥24 GPDB players and ≥2 GKs (enough for a 23-man squad). Thin nations are deactivated (assigned nations stay active).\n\nFast — requires step 2 cache to exist."
+        "Step 3 — Apply selectable flags from the existing pool cache?\n\nActivates nations with ≥26 GPDB players and ≥2 GKs (enough for a 26–28 call-up). Thin nations are deactivated (assigned nations stay active).\n\nFast — requires step 2 cache to exist."
       )
     ) {
       return;

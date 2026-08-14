@@ -49,3 +49,4 @@ NOTIFY pgrst, 'reload schema';
 -- Optional check (Austria):
 -- SELECT public.international_nation_pool_is_selectable('AUT');
 -- Expect true when pool cache has ≥24 players and ≥2 GKs for AUT.
+-- Superseded by international_squad_size_26_28_20260814.sql (≥26 / max 28).
