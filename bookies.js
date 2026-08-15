@@ -124,6 +124,12 @@ async function loadMyBets() {
   if (el) el.textContent = String(openN);
 }
 
+function alreadyBetOnMarket(marketId) {
+  return myBets.some(
+    (b) => Number(b.market_id) === Number(marketId) && b.status !== "void"
+  );
+}
+
 function alreadyBetOn(selectionId) {
   return myBets.some(
     (b) => Number(b.selection_id) === Number(selectionId) && b.status !== "void"
@@ -147,6 +153,7 @@ function renderMarkets() {
   root.innerHTML = markets
     .map((m) => {
       const sels = selectionsByMarket.get(m.id) || [];
+      const marketTaken = alreadyBetOnMarket(m.id);
       const pill =
         m.status === "open"
           ? "open"
@@ -156,9 +163,9 @@ function renderMarkets() {
       const rows = sels
         .map((s) => {
           const taken = alreadyBetOn(s.id);
-          const canBet = m.status === "open" && currentClub && !taken;
+          const canBet = m.status === "open" && currentClub && !marketTaken;
           return `<tr>
-            <td>${escapeHtml(s.label)}</td>
+            <td>${escapeHtml(s.label)}${taken ? ` <span class="bk-muted">(your slip)</span>` : ""}</td>
             <td class="bk-odds">${escapeHtml(formatFractionalOdds(s.odds_decimal, s.odds_fractional))}</td>
             <td>
               ${
@@ -168,8 +175,8 @@ function renderMarkets() {
                         data-stake-for="${s.id}" aria-label="Stake" />
                       <button type="button" class="bk-btn bk-btn--gold" data-place="${s.id}">Bet</button>
                     </div>`
-                  : taken
-                    ? `<span class="bk-muted">Already bet</span>`
+                  : marketTaken
+                    ? `<span class="bk-muted">${taken ? "Your bet" : "Already bet this market"}</span>`
                     : `<span class="bk-muted">${m.status !== "open" ? m.status : "—"}</span>`
               }
             </td>
@@ -280,7 +287,8 @@ async function placeBet(selectionId) {
     return;
   }
   setStatus(
-    `Bet placed — potential return ${formatMoney(data?.potential_return)}.`,
+    `Bet placed @ ${formatFractionalOdds(data?.odds, data?.odds_fractional)}` +
+      ` — return ${formatMoney(data?.potential_return)}. Board odds updated.`,
     true
   );
   await refreshAll();
