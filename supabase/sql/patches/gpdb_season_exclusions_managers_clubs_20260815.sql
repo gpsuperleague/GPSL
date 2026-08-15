@@ -22,9 +22,14 @@ AS $function$
 DECLARE
   v_key text := public.normalize_nation_key(p_nation_text);
   v_raw text := upper(btrim(coalesce(p_nation_text, '')));
+  v_norm text := NULL;
 BEGIN
   IF v_raw = '' THEN
     RETURN false;
+  END IF;
+
+  IF to_regprocedure('public.international_normalize_nation_label(text)') IS NOT NULL THEN
+    v_norm := public.international_normalize_nation_label(p_nation_text);
   END IF;
 
   RETURN EXISTS (
@@ -42,12 +47,13 @@ BEGIN
         OR v_key = public.normalize_nation_key(n.name)
         OR v_key = public.normalize_nation_key(n.code)
         OR (
-          to_regclass('public.international_gpdb_label_map') IS NOT NULL
+          v_norm IS NOT NULL
+          AND to_regclass('public.international_gpdb_label_map') IS NOT NULL
           AND EXISTS (
             SELECT 1
             FROM public.international_gpdb_label_map m
             WHERE m.nation_code = en.nation_code
-              AND public.normalize_nation_key(m.gpdb_label) = v_key
+              AND m.norm_label = v_norm
           )
         )
       )
