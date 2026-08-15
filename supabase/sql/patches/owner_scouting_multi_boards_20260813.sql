@@ -385,8 +385,8 @@ BEGIN
   IF v_pitch_count > 11 THEN
     RAISE EXCEPTION 'Maximum 11 on pitch';
   END IF;
-  IF v_bench_count > 12 THEN
-    RAISE EXCEPTION 'Maximum 12 on bench';
+  IF v_bench_count > 17 THEN
+    RAISE EXCEPTION 'Maximum 17 on bench';
   END IF;
 
   INSERT INTO public.owner_scouting_planner (

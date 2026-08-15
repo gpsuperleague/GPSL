@@ -310,6 +310,7 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.bench-slots-grid,
 .bench-slots-12 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
@@ -320,6 +321,7 @@
   min-width: 90px;
   max-width: 120px;
 }
+.bench-slots-grid .bench-slot,
 .bench-slots-12 .bench-slot {
   flex: none;
   min-width: 0;

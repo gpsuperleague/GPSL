@@ -134,13 +134,14 @@ function isInSquad(state, id) {
 function placePlayer(state, target, player) {
   if (!player) return null;
   const id = playerKey(player);
+  const maxSquad = state.maxSquad ?? MAX_SQUAD;
 
   if (
     !isInSquad(state, id) &&
     target.area !== "pool" &&
-    squadCount(state) >= MAX_SQUAD
+    squadCount(state) >= maxSquad
   ) {
-    return { error: `Matchday squad is full (${MAX_SQUAD} players).` };
+    return { error: `Squad is full (${maxSquad} players).` };
   }
 
   removePlayerFromState(state, id);
@@ -208,11 +209,12 @@ export function getSquadPlayerIds(savedRows) {
   return new Set(savedRows.map((r) => String(r.player_id)));
 }
 
-function buildStateFromSaved(allPlayers, savedRows) {
+function buildStateFromSaved(allPlayers, savedRows, maxBench = MAX_BENCH) {
   const byId = new Map(allPlayers.map((p) => [playerKey(p), p]));
+  const benchSize = Math.max(1, Number(maxBench) || MAX_BENCH);
   const state = {
     pitch: emptyPitchMap(),
-    bench: Array(MAX_BENCH).fill(null),
+    bench: Array(benchSize).fill(null),
     pool: [],
   };
 
@@ -225,7 +227,7 @@ function buildStateFromSaved(allPlayers, savedRows) {
       state.pitch.set(row.pitch_slot, clonePlayer(p));
       used.add(pid);
     } else if (row.slot_kind === "bench") {
-      const idx = Math.min(Math.max(Number(row.sort_order) || 0, 0), MAX_BENCH - 1);
+      const idx = Math.min(Math.max(Number(row.sort_order) || 0, 0), benchSize - 1);
       if (!state.bench[idx]) {
         state.bench[idx] = clonePlayer(p);
         used.add(pid);
@@ -246,10 +248,11 @@ function buildStateFromSaved(allPlayers, savedRows) {
   return state;
 }
 
-function autoFillBestXi(allPlayers) {
+function autoFillBestXi(allPlayers, maxBench = MAX_BENCH) {
+  const benchSize = Math.max(1, Number(maxBench) || MAX_BENCH);
   const state = {
     pitch: emptyPitchMap(),
-    bench: Array(MAX_BENCH).fill(null),
+    bench: Array(benchSize).fill(null),
     pool: [],
   };
   const sorted = [...allPlayers].sort(
@@ -282,7 +285,7 @@ function autoFillBestXi(allPlayers) {
   const remaining = sorted.filter((p) => !used.has(playerKey(p)));
   let benchIdx = 0;
   for (const p of remaining) {
-    if (benchIdx < MAX_BENCH) {
+    if (benchIdx < benchSize) {
       state.bench[benchIdx++] = clonePlayer(p);
       used.add(playerKey(p));
     }
@@ -635,12 +638,20 @@ export function initMatchdaySquadPanel({
   savedRows = [],
   savedPitchLayout = null,
   savedFormations = [],
+  maxBench = MAX_BENCH,
+  maxSquad = null,
   onChange,
   onSave,
   onSaveFormation,
   onLoadFormation,
   onDeleteFormation,
 }) {
+  const benchLimit = Math.max(1, Number(maxBench) || MAX_BENCH);
+  const effectiveSquadLimit =
+    maxSquad != null
+      ? Math.max(MAX_PITCH, Number(maxSquad) || MAX_PITCH + benchLimit)
+      : MAX_PITCH + benchLimit;
+
   let editPositionsMode = false;
   const resolved = resolvePitchLayout(savedPitchLayout);
   let currentFormationId = resolved.formationId;
@@ -648,12 +659,14 @@ export function initMatchdaySquadPanel({
   let slotLabels = { ...resolved.labels };
   let state =
     savedRows?.length > 0
-      ? buildStateFromSaved(allPlayers, savedRows)
+      ? buildStateFromSaved(allPlayers, savedRows, benchLimit)
       : {
           pitch: emptyPitchMap(),
-          bench: Array(MAX_BENCH).fill(null),
+          bench: Array(benchLimit).fill(null),
           pool: allPlayers.map(clonePlayer),
         };
+  state.maxBench = benchLimit;
+  state.maxSquad = effectiveSquadLimit;
 
   root.innerHTML = `
     <div class="squad-formations-bar">
@@ -695,8 +708,8 @@ export function initMatchdaySquadPanel({
           <div class="pitch-center-circle" aria-hidden="true"></div>
         </div>
         <div class="squad-bench">
-          <h4>Bench (12 subs)</h4>
-          <div class="bench-slots bench-slots-12" id="benchSlots"></div>
+          <h4>Bench (${benchLimit} subs)</h4>
+          <div class="bench-slots bench-slots-grid" id="benchSlots"></div>
         </div>
       </div>
     </div>`;
@@ -832,7 +845,7 @@ export function initMatchdaySquadPanel({
 
   buildPitchSlotElements();
 
-  for (let i = 0; i < MAX_BENCH; i++) {
+  for (let i = 0; i < benchLimit; i++) {
     const wrap = document.createElement("div");
     wrap.className = "bench-slot";
     wrap.innerHTML = `
@@ -855,7 +868,7 @@ export function initMatchdaySquadPanel({
     const pitchN = [...state.pitch.values()].filter(Boolean).length;
     const benchN = state.bench.filter(Boolean).length;
     const total = squadCount(state);
-    statusText.textContent = `Squad: ${total}/${MAX_SQUAD} · Pitch ${pitchN}/${MAX_PITCH} · Bench ${benchN}/${MAX_BENCH}`;
+    statusText.textContent = `Squad: ${total}/${effectiveSquadLimit} · Pitch ${pitchN}/${MAX_PITCH} · Bench ${benchN}/${benchLimit}`;
     root.querySelector("#squadPoolCount").textContent = `${state.pool.length} players available`;
     onChange?.(buildSlotsPayload(state), state);
   }
@@ -1008,7 +1021,9 @@ export function initMatchdaySquadPanel({
   });
 
   root.querySelector("#squadAutoFillBtn").addEventListener("click", () => {
-    state = autoFillBestXi(allPlayers);
+    state = autoFillBestXi(allPlayers, benchLimit);
+    state.maxBench = benchLimit;
+    state.maxSquad = effectiveSquadLimit;
     rerender();
   });
 
@@ -1016,8 +1031,10 @@ export function initMatchdaySquadPanel({
     if (!confirm("Clear your saved matchday squad layout?")) return;
     state = {
       pitch: emptyPitchMap(),
-      bench: Array(MAX_BENCH).fill(null),
+      bench: Array(benchLimit).fill(null),
       pool: allPlayers.map(clonePlayer),
+      maxBench: benchLimit,
+      maxSquad: effectiveSquadLimit,
     };
     rerender();
   });

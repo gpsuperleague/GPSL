@@ -231,7 +231,7 @@ export const MEDICAL_EXTRA_TIPS = {
 
 export const SCOUTING_EXTRA_TIPS = {
   tacticBoard:
-    "Drag scouting targets onto the pitch to preview a potential XI. Saved separately from your Match Day default squad.",
+    "Drag scouting targets onto the pitch (11) and bench (17) to plan a full buying squad. Saved separately from your Match Day default squad.",
   targetsHeading:
     "Tiered shortlist from GPDB stars. Tick Active Targets to highlight spend and project registration (Sq / GK / HG / U21 / ★).",
 };

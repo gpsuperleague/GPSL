@@ -877,6 +877,8 @@ async function initPlanner() {
     savedRows: rows,
     savedPitchLayout: pitchLayout,
     savedFormations: [],
+    maxBench: 17,
+    maxSquad: 28,
     onChange: () => {},
     onSave: async (slots, pitchLayoutFromPanel) => {
       try {
@@ -920,10 +922,10 @@ async function initPlanner() {
   const hint = root.querySelector(".squad-hint");
   if (hint) {
     hint.innerHTML = multiBoardEnabled
-      ? "Drag <b>scouting targets</b> onto the pitch (11) and bench (12). " +
+      ? "Drag <b>scouting targets</b> onto the pitch (11) and bench (17). " +
         "You have <b>4 named tactic boards</b> sharing one shortlist — switch boards above. " +
         "Planning only — not your matchday squad."
-      : "Drag <b>scouting targets</b> onto the pitch (11) and bench (12) to plan a potential lineup. " +
+      : "Drag <b>scouting targets</b> onto the pitch (11) and bench (17) to plan a potential lineup. " +
         "Click position labels to change roles. This is for planning only — not your matchday squad.";
   }
 }
