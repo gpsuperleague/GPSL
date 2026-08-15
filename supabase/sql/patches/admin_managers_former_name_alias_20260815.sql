@@ -4,7 +4,7 @@
 -- Safe re-run.
 -- =============================================================================
 
-CREATE OR REPLACE FUNCTION public.admin_managers_normalize_row(v jsonb)
+CREATE OR REPLACE FUNCTION public.admin_managers_normalize_row(p_row jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
@@ -12,6 +12,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
+  v jsonb := coalesce(p_row, '{}'::jsonb);
   v_name text;
   v_prev text;
   v_slug text;
