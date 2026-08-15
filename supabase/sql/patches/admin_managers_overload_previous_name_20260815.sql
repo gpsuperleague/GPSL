@@ -93,6 +93,7 @@ BEGIN
   )), '');
   v_prev := nullif(btrim(coalesce(
     v->>'previous_name', v->>'Previous Name', v->>'previousName',
+    v->>'former_name', v->>'Former Name', v->>'Former name', v->>'formerName',
     v->>'old_name', v->>'Old Name', ''
   )), '');
 

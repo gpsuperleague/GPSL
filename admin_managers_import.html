@@ -59,13 +59,15 @@
           <b>Manager Name</b>, <b>Nation</b>, <b>Age</b>,
           <b>Possession</b>, <b>Quick Counter</b>, <b>Long Ball Counter</b>,
           <b>Out Wide</b>, <b>Long Ball</b>, <b>Overload</b>.
-          Optional: <b>Previous Name</b> (for renames — keeps the same manager id/contract/history),
+          Optional: <b>Former Name</b> / <b>Previous Name</b> (old DB name for renames —
+          keeps the same manager id/contract/history; <b>Manager Name</b> becomes the new display name),
           <b>slug</b>.
         </p>
         <p class="note">
-          Run <code>supabase/sql/patches/admin_managers_overload_previous_name_20260815.sql</code>
-          then <code>supabase/sql/patches/admin_managers_archive_catalog_20260815.sql</code>
-          (archive + Overload/previous-name). Older import patch alone is not enough.
+          Run <code>supabase/sql/patches/admin_managers_overload_previous_name_20260815.sql</code>,
+          <code>supabase/sql/patches/admin_managers_archive_catalog_20260815.sql</code>,
+          then <code>supabase/sql/patches/admin_managers_former_name_alias_20260815.sql</code>
+          (Former Name column + archive). Older import patch alone is not enough.
         </p>
         <div class="row" style="align-items:center;gap:12px;margin-bottom:12px;">
           <input type="file" id="csvFile" accept=".csv,text/csv" />
