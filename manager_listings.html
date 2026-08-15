@@ -14,9 +14,9 @@
     body { background: #111; color: #ddd; font-family: Arial, sans-serif; }
     h1 {
       background: #222; color: #ff9900; padding: 10px 16px; border-radius: 6px;
-      width: fit-content; margin: 20px auto; font-size: 26px;
+      width: fit-content; margin: 16px auto 10px; font-size: 26px;
     }
-    #nav { text-align: center; margin-bottom: 20px; }
+    #nav { text-align: center; margin-bottom: 12px; }
     table {
       width: 95%; max-width: 1100px; margin: 0 auto 30px;
       border-collapse: collapse; background: #1a1a1a;
@@ -32,22 +32,95 @@
     .modal-box { background: #1a1a1a; border: 1px solid #444; padding: 20px; border-radius: 8px; width: 420px; }
     #bidError { color: #f88; font-size: 12px; min-height: 16px; }
     .muted { color: #888; font-size: 12px; }
+
+    .mgr-market-toolbar {
+      width: 95%;
+      max-width: 1100px;
+      margin: 0 auto 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: 8px;
+    }
+    .mgr-market-mod {
+      flex: 1 1 160px;
+      min-width: 140px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 12px;
+      line-height: 1.35;
+      color: #bbb;
+    }
+    .mgr-market-mod b {
+      display: block;
+      color: #ff9900;
+      font-size: 11px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .mgr-market-mod a { color: #ff9900; }
+    #hasManagerBanner {
+      width: 95%;
+      max-width: 1100px;
+      margin: 0 auto 12px;
+      text-align: center;
+      color: #f88;
+      font-size: 13px;
+      background: rgba(120, 40, 40, 0.25);
+      border: 1px solid rgba(200, 80, 80, 0.45);
+      border-radius: 6px;
+      padding: 6px 12px;
+    }
+    #hasManagerBanner[hidden] { display: none !important; }
+    .club-bank-wrap {
+      width: 95%;
+      max-width: 1100px;
+      margin: 0 auto 8px;
+      display: flex;
+      justify-content: center;
+    }
   </style>
 </head>
 <body>
   <div id="nav"></div>
   <h1>Manager Transfer Market</h1>
-  <div style="text-align:center;margin:0 auto 12px;">
+  <div class="club-bank-wrap">
     <div id="clubBankBalance" class="club-bank-balance" hidden></div>
   </div>
-  <p style="text-align:center;color:#aaa;font-size:13px;max-width:720px;margin:0 auto 16px;">
-    Club-listed managers and the monthly <b>free-agent board</b> (10 managers each June / July / August / January).
-    Club listings use the same auction clock as the player market: <b>at least 24 hours</b>, ending at <b>7pm UK</b>.
-    Clubs that already have a manager cannot bid — sack or list them first (list/sack: June, July, August, or January).
-    Vacant clubs may still hire here in <b>August</b>, but cannot play matches until a manager is signed.
-    Draft free agents still appear in <a href="MGDB.html" style="color:#ff9900;">MGDB</a> when manager draft is on.
-  </p>
-  <p id="hasManagerBanner" hidden style="text-align:center;color:#f88;font-size:13px;max-width:720px;margin:0 auto 16px;"></p>
+
+  <div class="mgr-market-toolbar" aria-label="Market rules">
+    <div class="mgr-market-mod">
+      <b>Listings</b>
+      Club-listed managers + monthly free-agent board of 10
+    </div>
+    <div class="mgr-market-mod">
+      <b>FA board months</b>
+      June · July · August · January
+    </div>
+    <div class="mgr-market-mod">
+      <b>Auction clock</b>
+      ≥24 hours, ends at 7pm UK (same as players)
+    </div>
+    <div class="mgr-market-mod">
+      <b>Already have a manager?</b>
+      Cannot bid — sack or list first (Jun / Jul / Aug / Jan)
+    </div>
+    <div class="mgr-market-mod">
+      <b>August vacant</b>
+      May hire here; cannot play until a manager is signed
+    </div>
+    <div class="mgr-market-mod">
+      <b>Draft FAs</b>
+      Still in <a href="MGDB.html">MGDB</a> when manager draft is on
+    </div>
+  </div>
+
+  <p id="hasManagerBanner" hidden></p>
+
   <table>
     <thead>
       <tr>
@@ -89,6 +162,6 @@
   </div>
 
   <script type="module" src="global.js?v=20260706-v18"></script>
-  <script type="module" src="manager_listings.js?v=20260802-advisory-budget"></script>
+  <script type="module" src="manager_listings.js?v=20260815-mod-toolbar"></script>
 </body>
 </html>
