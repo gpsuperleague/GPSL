@@ -487,6 +487,19 @@ async function fetchPlayersByIds(ids) {
   return map;
 }
 
+function playersForPlanner() {
+  return sortPlayersByScoutingPosition(scoutingPlayers).map((p) => ({
+    Konami_ID: p.Konami_ID,
+    Name: p.Name,
+    Nation: p.Nation,
+    Position: p.Position,
+    Rating: p.Rating,
+    Age: p.Age,
+    market_value: p.market_value,
+    Playstyle: p.Playstyle,
+  }));
+}
+
 function playersOnPlannerBoard(state) {
   const out = [];
   if (!state?.pitch) return out;
@@ -554,6 +567,11 @@ function updatePlannerCompositionStrip(state) {
   const nation = clubNation || squadDesignationsState?.club_nation || null;
   const totals = tallyAdds(players, nation);
   const stars = countStarEligible(players, minStar, plannerOooPlayerId);
+  let mvTotal = 0;
+  for (const p of players) {
+    const mv = Number(p.market_value);
+    if (Number.isFinite(mv) && mv > 0) mvTotal += mv;
+  }
 
   const oooOptions = players
     .filter((p) => playerEligibleOoo(p, nation, minStar))
@@ -564,7 +582,7 @@ function updatePlannerCompositionStrip(state) {
     );
 
   const tip =
-    "Counts players currently on this tactic board (pitch + bench). Green = registration OK for a 24–28 squad. ★ excludes your planned One of our Own.";
+    "Counts players currently on this tactic board (pitch + bench). Green = registration OK for a 24–28 squad. ★ excludes your planned One of our Own. MV = sum of market values on the board (minimum buy cost if all signed at MV).";
 
   el.hidden = false;
   el.innerHTML = `
@@ -574,6 +592,9 @@ function updatePlannerCompositionStrip(state) {
     ${boardChip("HG", totals.hg, MIN_HOME_GROWN, "min", `Home-grown on board: ${totals.hg}`)}
     ${boardChip("U21", totals.u21, MIN_UNDER_21, "min", `Under-21 on board: ${totals.u21}`)}
     ${boardChip("★", stars, starCap, "max", `Stars on board (rating ${minStar}+, planned OooO excluded): ${stars} / cap ${starCap}`)}
+    <span class="scout-reg-chip scout-planner-mv" title="Sum of market values for players on this board (pitch + bench). Approximate minimum cost if all were signed at MV.">MV <b>${formatMoney(
+      mvTotal
+    )}</b></span>
     <div class="scout-planner-ooo">
       <label for="scoutPlannerOooSelect">One of our Own</label>
       <select id="scoutPlannerOooSelect" title="Planning only — excludes this player from the ★ count on this board">
