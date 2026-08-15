@@ -279,6 +279,14 @@ export function specialAuctionEffectiveEnd(auction) {
 export function isSpecialAuctionLive(auction) {
   if (!auction) return false;
   if (!["scheduled", "active"].includes(String(auction.status || ""))) return false;
+
+  // Blind Gauntlet: live through Phase 1 / reveal / Phase 2
+  if (auction.auction_type === "blind_gauntlet") {
+    const phase = String(auction.gauntlet_phase || "").toLowerCase();
+    if (["phase1", "reveal", "phase2"].includes(phase)) return true;
+    if (phase === "complete") return false;
+  }
+
   if (auction.auction_type === "snap" && typeof auction.snap_bidding_open === "boolean") {
     return auction.snap_bidding_open;
   }

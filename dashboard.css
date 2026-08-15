@@ -1650,6 +1650,17 @@ button.nav-admin-trigger {
   box-shadow: inset 3px 0 0 #5cb85c;
 }
 
+/* Same green left stripe on live auction links (Draft / Special / Expiring / Club). */
+.nav-link.nav-auction-path {
+  box-shadow: inset 3px 0 0 #5cb85c;
+}
+
+.nav-link.nav-listing-path .nav-link-marker,
+.nav-link.nav-auction-path .nav-link-marker {
+  background: #5cb85c;
+  border-color: #6fd06f;
+}
+
 /* Same green path on Transfers + Players/Managers subgroup while you have a live listing. */
 .nav-group.nav-listing-path > .nav-group-summary,
 .nav-subgroup.nav-listing-path > .nav-subgroup-summary {

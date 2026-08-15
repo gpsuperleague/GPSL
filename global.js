@@ -1593,12 +1593,20 @@ function navListingPathClass(item, currentFile = currentNavPageFile()) {
   return " nav-listing-path";
 }
 
+/** Green left path on live auction links (same stripe as Transfer Market). */
+function navAuctionPathClass(item, currentFile = currentNavPageFile()) {
+  if (!item?.auctionNav) return "";
+  if (!isNavAuctionActive(item.auctionNav)) return "";
+  if (isOnNavAuctionRelatedPage(item.auctionNav, currentFile)) return "";
+  return " nav-auction-path";
+}
+
 /** Live auction pages + related databases (path highlight stops on these). */
 const NAV_AUCTION_RELATED_PAGES = {
   player: ["draftauction.html", "gpdb.html"],
   manager: ["manager_draftauction.html", "mgdb.html"],
   club: ["club_auction.html", "club_database.html"],
-  special: ["special_auction.html"],
+  special: ["special_auction.html", "special_auction_gauntlet.html"],
   expiring: ["expiring_contracts.html"],
 };
 
@@ -1690,7 +1698,7 @@ function currentNavPageFile() {
   return (window.location.pathname || "").toLowerCase().replace(/\\/g, "/").split("/").pop() || "";
 }
 
-/** Vertical path bars on Transfers + subgroup until the auction page is open. */
+/** Vertical path bars on Transfers + subgroup + live auction links until the page is open. */
 function refreshNavAuctionPathIndicators() {
   const nav = document.getElementById("nav");
   if (!nav) return;
@@ -1718,6 +1726,14 @@ function refreshNavAuctionPathIndicators() {
       }
     });
   }
+
+  nav.querySelectorAll("[data-auction-nav]").forEach((link) => {
+    const kind = link.dataset.auctionNav;
+    if (!kind) return;
+    const show =
+      isNavAuctionActive(kind) && !isOnNavAuctionRelatedPage(kind, currentFile);
+    link.classList.toggle("nav-auction-path", show);
+  });
 
   if (showTransfersPath && transfersGroup) {
     transfersGroup.classList.add("nav-auction-path");
@@ -1841,7 +1857,10 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
         : "";
       flat += `<a href="${item.href}" class="nav-link${indent}${
         active ? " active" : ""
-      }${navListingPathClass(item, currentFile)}"${auctionAttr}${listingAttr}>${navLinkInnerHtml(item)}</a>`;
+      }${navListingPathClass(item, currentFile)}${navAuctionPathClass(
+        item,
+        currentFile
+      )}"${auctionAttr}${listingAttr}>${navLinkInnerHtml(item)}</a>`;
     }
     return flat;
   }
@@ -1867,7 +1886,10 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
       : "";
     return `<a href="${item.href}" class="nav-link${indent}${danger}${checklist}${
       active ? " active" : ""
-    }${navListingPathClass(item, currentFile)}"${auctionAttr}${listingAttr}>${navLinkInnerHtml(item)}</a>`;
+    }${navListingPathClass(item, currentFile)}${navAuctionPathClass(
+      item,
+      currentFile
+    )}"${auctionAttr}${listingAttr}>${navLinkInnerHtml(item)}</a>`;
   };
 
   const flushPanel = () => {
