@@ -1558,6 +1558,8 @@ export const GATE_ENTRY_LABELS = {
   contract_expiry_compensation: "Contract end (Central Bank)",
   special_auction_fee: "Special auction fee",
   special_auction_prize: "Special auction prize",
+  bookies_income: "Bookies Income",
+  bookies_expenditure: "Bookies Expenditure",
   infra_maintenance: "Stadium maintenance",
   infra_purchase: "Infrastructure purchase",
   infra_expansion: "Stadium expansion",
@@ -1616,6 +1618,7 @@ const INCOME_TYPES = new Set([
   "eos_injection",
   "contract_release_comp_received",
   "special_auction_prize",
+  "bookies_income",
 ]);
 
 export function financeEntryLabel(type) {

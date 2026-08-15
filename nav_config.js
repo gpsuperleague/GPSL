@@ -257,6 +257,7 @@ export const NAV_SECTIONS = [
       { href: "season_calendar.html", label: "Season calendar", page: "season_calendar" },
       { href: "natter.html", label: "Natter", page: "natter" },
       { href: "challenges.html", label: "Season challenges", page: "challenges" },
+      { href: "bookies.html", label: "Bookies", page: "bookies" },
     ],
   },
 ];

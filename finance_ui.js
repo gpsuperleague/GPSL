@@ -17,6 +17,8 @@ export const LEDGER_TYPE_TO_LINE = {
   new_owner_release: "transfer_sales",
   special_auction_fee: "transfer_purchases",
   special_auction_prize: "prize_other",
+  bookies_income: "bookies_income",
+  bookies_expenditure: "bookies_expenditure",
   transfer_purchase: "transfer_purchases",
   transfer_agent_fee: "transfer_purchases",
   gate_league_home: "infra_gates",
@@ -85,6 +87,26 @@ export const FINANCE_UI_SECTIONS = [
         types: ["transfer_purchase", "transfer_agent_fee", "special_auction_fee"],
         note:
           "All players bought: draft auction wins, transfer market, special auction fees. Agent fees included. Winning draft bids show as pending until outbid or settled.",
+      },
+    ],
+  },
+  {
+    id: "bookies",
+    title: "Bookies",
+    intro:
+      "Play-money season & cup markets. Each stake and win is listed individually under Expenditure / Income.",
+    lines: [
+      {
+        id: "bookies_income",
+        label: "Bookies Income",
+        types: ["bookies_income"],
+        note: "Winning returns — one ledger line per settled bet (market, selection, odds, stake).",
+      },
+      {
+        id: "bookies_expenditure",
+        label: "Bookies Expenditure",
+        types: ["bookies_expenditure"],
+        note: "Stakes placed — one ledger line per bet (max ₿1,000, once per option).",
       },
     ],
   },
@@ -429,6 +451,16 @@ function ledgerBreakdownLabel(row) {
   const type = row.entry_type || "other";
   if (LOAN_LEDGER_TYPES.has(type)) {
     return compactLoanBreakdownLabel(row);
+  }
+  if (type === "bookies_income" || type === "bookies_expenditure") {
+    const desc = String(row.description || "").trim();
+    if (desc) {
+      return desc
+        .replace(/^Bookies stake:\s*/i, "")
+        .replace(/^Bookies win:\s*/i, "")
+        .trim();
+    }
+    return financeEntryLabel(type);
   }
   if (type === "infra_purchase") {
     const md = parseMetadata(row.metadata);
