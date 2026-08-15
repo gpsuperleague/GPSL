@@ -175,6 +175,8 @@ body.bookies-page {
   font-weight: 700;
   color: #ffcc66;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .bk-bet-row {

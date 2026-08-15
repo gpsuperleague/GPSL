@@ -261,23 +261,32 @@ BEGIN
 
   IF v_sum <= 0 THEN
     UPDATE public.bookies_selections
-    SET odds_decimal = 10.00
+    SET odds_decimal = 11
     WHERE market_id = p_market_id;
     RETURN;
   END IF;
 
-  UPDATE public.bookies_selections s
-  SET odds_decimal = least(
-        101.00,
-        greatest(
-          1.20,
-          round(
-            ((v_sum / greatest(s.weight, 0.25)) * (1.0 + v_margin))::numeric,
-            2
+  -- Prefer UK ladder snap when available (see gpsl_bookies_fractional_odds_20260815.sql)
+  IF to_regprocedure('public.bookies_snap_uk_odds(numeric)') IS NOT NULL THEN
+    UPDATE public.bookies_selections s
+    SET odds_decimal = public.bookies_snap_uk_odds(
+          (v_sum / greatest(s.weight, 0.25)) * (1.0 + v_margin)
+        )
+    WHERE s.market_id = p_market_id;
+  ELSE
+    UPDATE public.bookies_selections s
+    SET odds_decimal = least(
+          101,
+          greatest(
+            2,
+            round(
+              ((v_sum / greatest(s.weight, 0.25)) * (1.0 + v_margin))::numeric,
+              0
+            )
           )
         )
-      )
-  WHERE s.market_id = p_market_id;
+    WHERE s.market_id = p_market_id;
+  END IF;
 END;
 $function$;
 

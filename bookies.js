@@ -1,11 +1,34 @@
 import { supabase, initGlobal } from "./global.js";
 import { formatMoney } from "./competition.js";
 
-let currentClub = null;
-let isAdmin = false;
-let markets = [];
-let selectionsByMarket = new Map();
-let myBets = [];
+function formatFractionalOdds(decimalOdds, fractionalLabel) {
+  if (fractionalLabel && String(fractionalLabel).trim() && fractionalLabel !== "—") {
+    return String(fractionalLabel).trim();
+  }
+  const d = Number(decimalOdds);
+  if (!Number.isFinite(d) || d <= 1) return "—";
+  const profit = d - 1;
+  let bestN = 1;
+  let bestD = 1;
+  let bestErr = Infinity;
+  for (let den = 1; den <= 20; den++) {
+    const num = Math.max(1, Math.round(profit * den));
+    const err = Math.abs(num / den - profit);
+    if (err < bestErr - 1e-12 || (Math.abs(err - bestErr) < 1e-12 && den < bestD)) {
+      bestErr = err;
+      bestN = num;
+      bestD = den;
+    }
+  }
+  let g = 1;
+  for (let i = Math.min(bestN, bestD); i >= 1; i--) {
+    if (bestN % i === 0 && bestD % i === 0) {
+      g = i;
+      break;
+    }
+  }
+  return `${bestN / g}-${bestD / g}`;
+}
 
 function setStatus(msg, ok = true) {
   const el = document.getElementById("bkStatus");
@@ -130,7 +153,7 @@ function renderMarkets() {
           const canBet = m.status === "open" && currentClub && !taken;
           return `<tr>
             <td>${escapeHtml(s.label)}</td>
-            <td class="bk-odds">${Number(s.odds_decimal).toFixed(2)}</td>
+            <td class="bk-odds">${escapeHtml(formatFractionalOdds(s.odds_decimal, s.odds_fractional))}</td>
             <td>
               ${
                 canBet
@@ -213,7 +236,7 @@ function renderMyBets() {
       return `<div class="bk-bet-card">
         <div>
           <div><b>${escapeHtml(b.market_title)}</b></div>
-          <div class="bk-muted">${escapeHtml(b.selection_label)} @ ${Number(b.odds_decimal).toFixed(2)}</div>
+          <div class="bk-muted">${escapeHtml(b.selection_label)} @ ${escapeHtml(formatFractionalOdds(b.odds_decimal, b.odds_fractional))}</div>
           <div>Stake ${formatMoney(b.stake)} · returns ${formatMoney(b.potential_return)}</div>
         </div>
         <div class="status-${st}">${escapeHtml(st)}</div>
