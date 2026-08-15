@@ -200,7 +200,8 @@ BEGIN
     FOR v_id IN
       SELECT m.id
       FROM public."Managers" m
-      WHERE (m.contracted_club IS NULL OR btrim(m.contracted_club) = '')
+      WHERE coalesce(m.archived, false) = false
+        AND (m.contracted_club IS NULL OR btrim(m.contracted_club) = '')
         AND NOT EXISTS (
           SELECT 1
           FROM public."Manager_Transfer_Listings" l
@@ -226,7 +227,8 @@ BEGIN
   WHILE coalesce(array_length(v_ids, 1), 0) < v_limit LOOP
     SELECT m.id INTO v_id
     FROM public."Managers" m
-    WHERE (m.contracted_club IS NULL OR btrim(m.contracted_club) = '')
+    WHERE coalesce(m.archived, false) = false
+      AND (m.contracted_club IS NULL OR btrim(m.contracted_club) = '')
       AND NOT EXISTS (
         SELECT 1
         FROM public."Manager_Transfer_Listings" l
@@ -331,7 +333,8 @@ BEGIN
 
   SELECT count(*)::int INTO v_fa_pool
   FROM public."Managers" m
-  WHERE (m.contracted_club IS NULL OR btrim(m.contracted_club) = '')
+  WHERE coalesce(m.archived, false) = false
+    AND (m.contracted_club IS NULL OR btrim(m.contracted_club) = '')
     AND NOT EXISTS (
       SELECT 1
       FROM public."Manager_Transfer_Listings" l
@@ -587,11 +590,13 @@ BEGIN
 
   SELECT count(*)::int INTO v_fa
   FROM public."Managers" m
-  WHERE m.contracted_club IS NULL OR btrim(m.contracted_club) = '';
+  WHERE coalesce(m.archived, false) = false
+    AND (m.contracted_club IS NULL OR btrim(m.contracted_club) = '');
 
   SELECT count(*)::int INTO v_fa_blocked_draft
   FROM public."Managers" m
-  WHERE (m.contracted_club IS NULL OR btrim(m.contracted_club) = '')
+  WHERE coalesce(m.archived, false) = false
+    AND (m.contracted_club IS NULL OR btrim(m.contracted_club) = '')
     AND EXISTS (
       SELECT 1 FROM public."Manager_Transfer_Listings" l
       WHERE l.manager_id = m.id AND l.status = 'Active' AND l.listing_type = 'draft'

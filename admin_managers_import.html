@@ -50,7 +50,9 @@
           Upload or paste a CSV (same columns as <code>data/Managers.xlsx</code>).
           Rows upsert by <b>slug</b> (from name). Existing <b>contracts, wages (if signed),
           career stints, listings, and IDs</b> are kept. New names are inserted as free agents.
-          Managers missing from the file are <b>not</b> deleted.
+          Managers missing from the file are <b>archived</b> (kept in DB / history; hidden from MGDB
+          and the transfer market). Clubs may keep an archived manager until the deal ends
+          (sack only; full MV refund when the contract ends).
         </p>
         <p class="note col-list">
           Required headers (aliases accepted):
@@ -62,12 +64,17 @@
         </p>
         <p class="note">
           Run <code>supabase/sql/patches/admin_managers_overload_previous_name_20260815.sql</code>
-          (adds Overload + previous-name matching). Older import patch alone is not enough.
+          then <code>supabase/sql/patches/admin_managers_archive_catalog_20260815.sql</code>
+          (archive + Overload/previous-name). Older import patch alone is not enough.
         </p>
         <div class="row" style="align-items:center;gap:12px;margin-bottom:12px;">
           <input type="file" id="csvFile" accept=".csv,text/csv" />
           <button type="button" class="button secondary" id="clearBtn">Clear</button>
         </div>
+        <label class="note" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px;">
+          <input type="checkbox" id="archiveMissing" checked />
+          Archive managers missing from this sheet (recommended)
+        </label>
         <label for="importCsv">CSV text</label>
         <textarea id="importCsv" placeholder="Manager Name,Previous Name,Nation,Age,Possession,Quick Counter,Long Ball Counter,Out Wide,Long Ball,Overload&#10;Jose Mourinho,Jose Mourinho,Portugal,62,60,57,78,62,66,40"></textarea>
         <div style="margin-top:12px;">
@@ -79,6 +86,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_managers_import.js?v=20260815-overload"></script>
+  <script type="module" src="admin_managers_import.js?v=20260815-archive"></script>
 </body>
 </html>

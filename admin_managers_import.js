@@ -114,12 +114,23 @@ function formatPreview(data) {
     `Renames (name/slug): ${data.would_rename ?? data.renamed ?? 0}`,
     `Unchanged: ${data.unchanged ?? 0}`,
   ];
+  if (data.would_archive != null || data.archived_missing != null) {
+    lines.push(
+      `Would archive (missing from sheet): ${data.would_archive ?? data.archived_missing ?? 0}` +
+        (data.archive_missing_enabled === false ? " (disabled)" : "")
+    );
+  }
+  if (data.unarchived != null) {
+    lines.push(`Un-archived (back on sheet): ${data.unarchived}`);
+  }
   if (data.clubs_manager_rating_synced != null) {
     lines.push(`Clubs manager_rating synced: ${data.clubs_manager_rating_synced}`);
   }
   if (data.note) lines.push(`\n${data.note}`);
   if (data.retained) {
-    lines.push("\nRetained: contracts, signed wages, ids, career stints, listings/bids.");
+    lines.push(
+      "\nRetained: contracts, signed wages, ids, career stints, history. Archived stay in DB (hidden from MGDB/market)."
+    );
   }
   const errors = Array.isArray(data.errors) ? data.errors : [];
   if (errors.length) {
@@ -165,12 +176,17 @@ async function runImport(apply) {
     return;
   }
 
+  const archiveMissing = Boolean(document.getElementById("archiveMissing")?.checked);
+
   if (apply) {
+    const archiveLine = archiveMissing
+      ? `Managers not in this file will be archived (kept in DB; hidden from MGDB/market).`
+      : `Managers not in this file will be left active (archive option off).`;
     if (
       !confirm(
         `Upsert ${objects.length} manager row(s)?\n\n` +
           `Existing contracts, career history, and IDs are kept.\n` +
-          `Managers not in this file are not deleted.`
+          archiveLine
       )
     ) {
       return;
@@ -180,14 +196,20 @@ async function runImport(apply) {
   setStatus("importStatus", apply ? "Applying…" : "Previewing…");
   const rpc = apply ? "admin_managers_catalog_upsert" : "admin_managers_catalog_preview";
   try {
-    const { data, error } = await supabase.rpc(rpc, { p_rows: objects });
+    const { data, error } = await supabase.rpc(rpc, {
+      p_rows: objects,
+      p_archive_missing: archiveMissing,
+    });
     if (error) throw error;
     if (out) out.textContent = formatPreview(data);
     const errCount = Array.isArray(data?.errors) ? data.errors.length : 0;
+    const archivedN = data?.archived_missing ?? data?.would_archive ?? 0;
     if (apply) {
       setStatus(
         "importStatus",
-        `✅ Done — inserted ${data?.inserted ?? 0}, updated ${data?.updated ?? 0}, unchanged ${data?.unchanged ?? 0}` +
+        `✅ Done — inserted ${data?.inserted ?? 0}, updated ${data?.updated ?? 0}` +
+          (data?.unarchived ? `, un-archived ${data.unarchived}` : "") +
+          `, archived ${archivedN}` +
           (errCount ? `, ${errCount} row error(s)` : "") +
           ".",
         true
@@ -195,7 +217,7 @@ async function runImport(apply) {
     } else {
       setStatus(
         "importStatus",
-        `✅ Preview — insert ${data?.would_insert ?? 0}, update ${data?.would_update ?? 0}, unchanged ${data?.unchanged ?? 0}` +
+        `✅ Preview — insert ${data?.would_insert ?? 0}, update ${data?.would_update ?? 0}, archive ${archivedN}` +
           (errCount ? `, ${errCount} row error(s)` : "") +
           ". Apply when ready.",
         true

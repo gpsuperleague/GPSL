@@ -555,6 +555,7 @@ async function loadManagerSection(clubShortName) {
   }
 
   const pendingRenewal = Boolean(data.pending_owner_renewal);
+  const archived = Boolean(data.manager_archived);
   const dealRecord = formatDealRecord(data);
   const targetProgress = formatTargetProgress(data);
   const currentPos =
@@ -563,12 +564,18 @@ async function loadManagerSection(clubShortName) {
   if (statusEl) {
     statusEl.innerHTML = `
       <dl class="expectation-dl">
-        <dt>Manager</dt><dd><b>${data.manager_name}</b> (rating ${data.manager_rating})</dd>
+        <dt>Manager</dt><dd><b>${data.manager_name}</b> (rating ${data.manager_rating})${
+          archived
+            ? ` <span class="manager-archived-tag">No longer in game</span>`
+            : ""
+        }</dd>
         <dt>Market value</dt><dd>${formatMoney(Number(data.market_value || 0))}</dd>
         <dt>Contract</dt><dd>${
-          pendingRenewal
-            ? "Deal complete — renew before August to keep them"
-            : `${data.contract_seasons_remaining ?? 0} season(s) remaining`
+          archived && pendingRenewal
+            ? "Deal complete — cannot renew (catalog exit); full MV when they leave"
+            : pendingRenewal
+              ? "Deal complete — renew before August to keep them"
+              : `${data.contract_seasons_remaining ?? 0} season(s) remaining`
         }</dd>
         <dt>Weekly wage</dt><dd>${formatMoney(Number(data.weekly_wage || 0))}</dd>
         <dt>Division</dt><dd>${leagueBadgeHtml(data.division, { size: "sm" })}${formatDivisionLabel(data.division)}</dd>
@@ -580,17 +587,19 @@ async function loadManagerSection(clubShortName) {
         <dt>Sack allowance</dt><dd>${data.manager_sacks_remaining ? "Available this season" : "Used"}</dd>
       </dl>
       ${
-        pendingRenewal
-          ? `<p class="expectation-note">They hit their target in at least one season of the deal. Renew in June or July for another 2 seasons — if not renewed before August starts, they are released for market value.</p>`
-          : `<p class="expectation-note">On target uses the live league table vs their deal target for this season. Final hit/miss is locked when you run Process manager contracts.</p>`
+        archived
+          ? `<p class="expectation-note expectation-note--archived">Removed from the live manager catalog. Keep them until the deal ends (full market value refund) or sack them. They cannot be listed or renewed. History is retained.</p>`
+          : pendingRenewal
+            ? `<p class="expectation-note">They hit their target in at least one season of the deal. Renew in June or July for another 2 seasons — if not renewed before August starts, they are released for market value.</p>`
+            : `<p class="expectation-note">On target uses the live league table vs their deal target for this season. Final hit/miss is locked when you run Process manager contracts.</p>`
       }
     `;
   }
 
   const januaryWindow = await isManagerListSackWindow();
 
-  setBtnVisible(renewBtn, pendingRenewal);
-  setBtnVisible(listBtn, januaryWindow && !pendingRenewal);
+  setBtnVisible(renewBtn, pendingRenewal && !archived);
+  setBtnVisible(listBtn, januaryWindow && !pendingRenewal && !archived);
   setBtnVisible(
     sackBtn,
     januaryWindow && !pendingRenewal && Boolean(data.manager_sacks_remaining)
@@ -603,7 +612,10 @@ async function loadManagerSection(clubShortName) {
   }
 
   if (hintEl) {
-    if (pendingRenewal) {
+    if (archived) {
+      hintEl.textContent =
+        "No longer in game — sack only (or keep until contract ends for full MV). Cannot list or renew.";
+    } else if (pendingRenewal) {
       hintEl.textContent =
         "Renewal available in June/July only (also on Squad). Must be done before August or they leave for market value.";
     } else if (!januaryWindow) {

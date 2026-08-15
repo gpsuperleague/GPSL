@@ -155,6 +155,12 @@ body.squad-page .manager-badge--ghost {
   border-style: dashed;
 }
 
+body.squad-page .manager-badge--archived {
+  border-color: rgba(180, 100, 100, 0.7);
+  background: rgba(70, 28, 28, 0.45);
+  color: #f5d8d8;
+}
+
 body.squad-page .manager-badge--ghost .manager-ghost-link {
   color: #9cf;
   font-weight: 700;

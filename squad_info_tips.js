@@ -74,6 +74,12 @@ export const SQUAD_TIPS = {
   manager:
     "Your club manager. Rating sets a season finish target for your division. Miss both seasons of a 2-season deal and they leave for market value (2-season rehire ban). Hit ≥1 target and you may renew in June/July — if not renewed before August starts, they are released for market value.\n\nList / Sack in June, July, August, and January (January needs the transfer window open; also available in pre-season). Sack costs half market value (once per season) and needs mid-spell tenure. List puts them on the Manager Transfer Market.\n\nNo manager? You cannot check in or play fixtures until one is signed.",
 
+  managerArchived:
+    "This manager is no longer in the live eFootball catalog. You may keep them until the deal ends. They cannot be listed on the transfer market or renewed — sack only. When the contract ends you receive full market value and they return to the archived database (history kept).",
+
+  managerArchivedList:
+    "Archived managers cannot be listed on the Manager Transfer Market. Keep them until the deal ends (full MV refund) or sack them.",
+
   managerDraftGhost:
     "Ghost manager — you currently hold the highest bid in the manager draft auction. They are not signed yet. If someone outbids you, this disappears. Click through to manage the auction.",
 

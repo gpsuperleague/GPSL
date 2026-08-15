@@ -133,7 +133,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20260812-fan-favourite";
+} from "./squad_info_tips.js?v=20260815-mgr-archive";
 
 window.supabase = supabase;
 
@@ -311,6 +311,7 @@ let squadManagerState = {
   sackWindowOpen: false,
   pendingOwnerRenewal: false,
   contractSeasonsRemaining: 0,
+  managerArchived: false,
   /** Leading manager-draft bid (not contracted yet) */
   ghostDraft: false,
   ghostBidAmount: null,
@@ -991,7 +992,7 @@ async function loadSquadManagerState() {
       supabase
         .from("manager_club_status_public")
         .select(
-          "manager_id, manager_name, manager_rating, market_value, manager_sacks_remaining, pending_owner_renewal, contract_seasons_remaining"
+          "manager_id, manager_name, manager_rating, market_value, manager_sacks_remaining, pending_owner_renewal, contract_seasons_remaining, manager_archived"
         )
         .eq("club_short_name", currentUserShort)
         .maybeSingle(),
@@ -1028,6 +1029,7 @@ async function loadSquadManagerState() {
     sackWindowOpen: winErr ? newOwnerReleaseState.windowOpen : Boolean(sackOpen),
     pendingOwnerRenewal: Boolean(mgr?.pending_owner_renewal),
     contractSeasonsRemaining: Number(mgr?.contract_seasons_remaining) || 0,
+    managerArchived: Boolean(mgr?.manager_archived),
     ghostDraft: Boolean(ghost && !hasSigned),
     ghostBidAmount: ghost?.ghostBidAmount ?? null,
     ghostHref: ghost?.ghostHref ?? null,
@@ -1050,7 +1052,7 @@ function renderSquadManagerBadge() {
 
   if (!hasManager) {
     badge.hidden = true;
-    badge.classList.remove("manager-badge--ghost");
+    badge.classList.remove("manager-badge--ghost", "manager-badge--archived");
     mainEl.textContent = "";
     if (listBtn) {
       listBtn.hidden = true;
@@ -1075,6 +1077,7 @@ function renderSquadManagerBadge() {
 
   if (isGhost) {
     badge.classList.add("manager-badge--ghost");
+    badge.classList.remove("manager-badge--archived");
     badge.setAttribute("data-gpsl-tip", SQUAD_TIPS.managerDraftGhost);
     const bid =
       squadManagerState.ghostBidAmount != null
@@ -1103,16 +1106,27 @@ function renderSquadManagerBadge() {
   }
 
   badge.classList.remove("manager-badge--ghost");
-  badge.setAttribute("data-gpsl-tip", SQUAD_TIPS.manager);
+  const archived = !!squadManagerState.managerArchived;
+  badge.classList.toggle("manager-badge--archived", archived);
+  badge.setAttribute(
+    "data-gpsl-tip",
+    archived ? SQUAD_TIPS.managerArchived : SQUAD_TIPS.manager
+  );
   const mv = formatMoney(squadManagerState.marketValue);
   const pending = squadManagerState.pendingOwnerRenewal;
-  mainEl.textContent = pending
-    ? `Manager: ${squadManagerState.managerName} (rating ${rating}) · renew before August`
-    : `Manager: ${squadManagerState.managerName} (rating ${rating}) · MV ${mv}`;
+  if (archived) {
+    mainEl.textContent = pending
+      ? `Manager: ${squadManagerState.managerName} (rating ${rating}) · no longer in game · leaves for full MV`
+      : `Manager: ${squadManagerState.managerName} (rating ${rating}) · no longer in game · MV ${mv}`;
+  } else {
+    mainEl.textContent = pending
+      ? `Manager: ${squadManagerState.managerName} (rating ${rating}) · renew before August`
+      : `Manager: ${squadManagerState.managerName} (rating ${rating}) · MV ${mv}`;
+  }
 
   if (renewBtn) {
-    renewBtn.hidden = staffPreview || !pending;
-    renewBtn.disabled = staffPreview || !pending;
+    renewBtn.hidden = staffPreview || !pending || archived;
+    renewBtn.disabled = staffPreview || !pending || archived;
     renewBtn.classList.add("gpsl-has-tip");
     renewBtn.setAttribute("data-gpsl-tip", SQUAD_TIPS.managerRenew);
     renewBtn.tabIndex = 0;
@@ -1122,11 +1136,14 @@ function renderSquadManagerBadge() {
   const canAct = !staffPreview && !pending && windowOpen;
 
   if (listBtn) {
-    listBtn.hidden = !canAct;
-    listBtn.disabled = !canAct;
+    listBtn.hidden = !canAct || archived;
+    listBtn.disabled = !canAct || archived;
     listBtn.dataset.managerId = String(squadManagerState.managerId);
     listBtn.classList.add("gpsl-has-tip");
-    listBtn.setAttribute("data-gpsl-tip", SQUAD_TIPS.managerList);
+    listBtn.setAttribute(
+      "data-gpsl-tip",
+      archived ? SQUAD_TIPS.managerArchivedList : SQUAD_TIPS.managerList
+    );
     listBtn.tabIndex = 0;
   }
 
