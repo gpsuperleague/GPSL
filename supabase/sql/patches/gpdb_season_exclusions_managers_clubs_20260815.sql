@@ -152,6 +152,27 @@ GRANT SELECT ON public.managers_gpdb_public TO anon;
 -- ---------------------------------------------------------------------------
 -- Club Database: hide clubs of excluded nations
 -- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.competition_club_expectation_label(p_position smallint)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN p_position IS NULL THEN NULL
+    WHEN p_position <= 1 THEN 'Win the league'
+    WHEN p_position <= 2 THEN 'Finish top 2'
+    WHEN p_position <= 4 THEN 'Finish top 4'
+    WHEN p_position <= 6 THEN 'Finish top 6'
+    WHEN p_position <= 10 THEN 'Finish top 10'
+    WHEN p_position <= 14 THEN 'Mid-table finish'
+    WHEN p_position <= 17 THEN 'Lower mid-table'
+    ELSE 'Avoid relegation'
+  END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.competition_club_expectation_label(smallint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_club_expectation_label(smallint) TO anon;
+
 DROP VIEW IF EXISTS public.clubs_database_public;
 
 CREATE VIEW public.clubs_database_public
@@ -207,7 +228,7 @@ base AS (
     public.competition_club_baseline_expected_position(
       coalesce(pr.prestige_rank, cn.n)::smallint,
       cn.n
-    ) AS club_expectation,
+    )::smallint AS club_expectation,
     coalesce(sm.club_market_value, 0)::numeric AS club_market_value,
     round(coalesce(c."Capacity", 0)::numeric * 1500) AS stadium_value,
     round(coalesce(c."Capacity", 0)::numeric * 1500 * 0.125) AS stadium_maintenance_cost,
@@ -227,7 +248,7 @@ base AS (
 )
 SELECT
   b.*,
-  public.competition_club_expectation_label(b.club_expectation) AS club_expectation_label
+  public.competition_club_expectation_label(b.club_expectation::smallint) AS club_expectation_label
 FROM base b;
 
 GRANT SELECT ON public.clubs_database_public TO authenticated;
