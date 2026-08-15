@@ -231,7 +231,7 @@ export const MEDICAL_EXTRA_TIPS = {
 
 export const SCOUTING_EXTRA_TIPS = {
   tacticBoard:
-    "Drag scouting targets onto the pitch (11) and bench (17). Live GK / HG / U21 / ★ counts update as you place players. Set a planned One of our Own on the board to exclude them from the star count. Saved separately from Match Day.",
+    "Drag scouting targets onto the pitch (11) and bench (17). Set Plan nation per board for HG / OooO when planning different clubs. Live GK / HG / U21 / ★ / MV update as you place players. Set a planned One of our Own to exclude them from the star count. Saved separately from Match Day.",
   targetsHeading:
     "Tiered shortlist from GPDB stars. Tick Active Targets to highlight spend and project registration (Sq / GK / HG / U21 / ★).",
 };

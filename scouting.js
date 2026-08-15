@@ -91,6 +91,10 @@ let draftContext = null;
 let plannerApi = null;
 /** Planner-local One of our Own (planning only — excludes that player from ★ count). */
 let plannerOooPlayerId = null;
+/** Nation used for HG / OooO on this tactic board (planning for a club). */
+let plannerPlanNation = null;
+/** Distinct club nations for the board nation picker. */
+let plannerNationOptions = [];
 /** @type {{ board_no: number, name: string }[]} */
 let scoutingBoards = [];
 let activeBoardNo = getStoredScoutingBoardNo();
@@ -518,14 +522,66 @@ function extractPlannerOooFromLayout(layout) {
   return id != null && String(id).trim() !== "" ? String(id).trim() : null;
 }
 
-function pitchLayoutWithPlannerOoo(layout, oooId) {
+function extractPlannerNationFromLayout(layout) {
+  if (!layout || typeof layout !== "object") return null;
+  const n = layout.scouting_plan_nation;
+  return n != null && String(n).trim() !== "" ? String(n).trim() : null;
+}
+
+function pitchLayoutWithPlannerMeta(layout, { oooId = null, planNation = null } = {}) {
   const base =
     layout && typeof layout === "object" && !Array.isArray(layout)
       ? { ...layout }
       : {};
   if (oooId) base.scouting_ooo_player_id = String(oooId);
   else delete base.scouting_ooo_player_id;
+  if (planNation) base.scouting_plan_nation = String(planNation);
+  else delete base.scouting_plan_nation;
   return base;
+}
+
+/** @deprecated use pitchLayoutWithPlannerMeta */
+function pitchLayoutWithPlannerOoo(layout, oooId) {
+  return pitchLayoutWithPlannerMeta(layout, {
+    oooId,
+    planNation: plannerPlanNation,
+  });
+}
+
+async function loadPlannerNationOptions() {
+  const set = new Set();
+  const add = (n) => {
+    const t = String(n || "").trim();
+    if (t) set.add(t);
+  };
+  add(clubNation);
+  add(squadDesignationsState?.club_nation);
+  for (const p of scoutingPlayers || []) add(p.Nation);
+
+  try {
+    const { data, error } = await supabase
+      .from("Clubs")
+      .select("Nation")
+      .neq("ShortName", "FOREIGN");
+    if (!error) {
+      for (const row of data || []) add(row.Nation);
+    }
+  } catch (err) {
+    console.warn("planner nation options:", err);
+  }
+
+  plannerNationOptions = [...set].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" })
+  );
+}
+
+function effectivePlannerNation() {
+  return (
+    plannerPlanNation ||
+    clubNation ||
+    squadDesignationsState?.club_nation ||
+    null
+  );
 }
 
 function boardChip(label, value, target, mode, title) {
@@ -564,7 +620,7 @@ function updatePlannerCompositionStrip(state) {
 
   const minStar = Number(squadDesignationsState?.star_min_rating ?? 79);
   const starCap = Number(squadDesignationsState?.star_cap ?? 2);
-  const nation = clubNation || squadDesignationsState?.club_nation || null;
+  const nation = effectivePlannerNation();
   const totals = tallyAdds(players, nation);
   const stars = countStarEligible(players, minStar, plannerOooPlayerId);
   let mvTotal = 0;
@@ -581,21 +637,39 @@ function updatePlannerCompositionStrip(state) {
       })
     );
 
+  const nationOptions = [...plannerNationOptions];
+  if (nation && !nationOptions.includes(nation)) {
+    nationOptions.unshift(nation);
+  }
+
   const tip =
-    "Counts players currently on this tactic board (pitch + bench). Green = registration OK for a 24–28 squad. ★ excludes your planned One of our Own. MV = sum of market values on the board (minimum buy cost if all signed at MV).";
+    "Counts players currently on this tactic board (pitch + bench). Pick the club nation you are planning for — HG and OooO use that nation. ★ excludes your planned One of our Own. MV = sum of market values on the board.";
 
   el.hidden = false;
   el.innerHTML = `
     <span${tipAttrs(tip, "scout-reg-label")}>Board:</span>
     ${boardChip("Sq", totals.n, [MIN_SQUAD_SIZE, SQUAD_SIZE], "range", `On board: ${totals.n} (need ${MIN_SQUAD_SIZE}–${SQUAD_SIZE} when registered)`)}
     ${boardChip("GK", totals.gk, MIN_GOALKEEPERS, "min", `Goalkeepers on board: ${totals.gk}`)}
-    ${boardChip("HG", totals.hg, MIN_HOME_GROWN, "min", `Home-grown on board: ${totals.hg}`)}
+    ${boardChip("HG", totals.hg, MIN_HOME_GROWN, "min", `Home-grown vs ${nation || "—"}: ${totals.hg}`)}
     ${boardChip("U21", totals.u21, MIN_UNDER_21, "min", `Under-21 on board: ${totals.u21}`)}
     ${boardChip("★", stars, starCap, "max", `Stars on board (rating ${minStar}+, planned OooO excluded): ${stars} / cap ${starCap}`)}
     <span class="scout-reg-chip scout-planner-mv" title="Sum of market values for players on this board (pitch + bench). Approximate minimum cost if all were signed at MV.">MV <b>${formatMoney(
       mvTotal
     )}</b></span>
     <div class="scout-planner-ooo">
+      <label for="scoutPlannerNationSelect">Plan nation</label>
+      <select id="scoutPlannerNationSelect" title="Nation of the club you are planning this board for (drives HG / OooO)">
+        <option value="">— Select nation —</option>
+        ${nationOptions
+          .map((n) => {
+            const sel =
+              nation && String(n) === String(nation) ? " selected" : "";
+            return `<option value="${escapeHtml(n)}"${sel}>${escapeHtml(
+              n
+            )}</option>`;
+          })
+          .join("")}
+      </select>
       <label for="scoutPlannerOooSelect">One of our Own</label>
       <select id="scoutPlannerOooSelect" title="Planning only — excludes this player from the ★ count on this board">
         <option value="">— None —</option>
@@ -609,7 +683,7 @@ function updatePlannerCompositionStrip(state) {
           })
           .join("")}
       </select>
-      <span class="scout-ooo-hint">Planning only · HG stars on this board · reduces ★ count</span>
+      <span class="scout-ooo-hint">Per board · HG uses plan nation · OooO reduces ★</span>
     </div>
   `;
 }
@@ -619,6 +693,29 @@ function wirePlannerCompositionStrip() {
   if (!el || el.dataset.oooWired === "1") return;
   el.dataset.oooWired = "1";
   el.addEventListener("change", (e) => {
+    const nationSel = e.target?.closest?.("#scoutPlannerNationSelect");
+    if (nationSel) {
+      plannerPlanNation = nationSel.value ? String(nationSel.value) : null;
+      // OooO may no longer be HG for the new nation
+      const st = plannerApi?.getState?.() || null;
+      const onBoard = playersOnPlannerBoard(st);
+      if (
+        plannerOooPlayerId &&
+        !onBoard.some(
+          (p) =>
+            String(p.Konami_ID) === String(plannerOooPlayerId) &&
+            playerEligibleOoo(
+              p,
+              plannerPlanNation,
+              Number(squadDesignationsState?.star_min_rating ?? 79)
+            )
+        )
+      ) {
+        plannerOooPlayerId = null;
+      }
+      updatePlannerCompositionStrip(st);
+      return;
+    }
     const sel = e.target?.closest?.("#scoutPlannerOooSelect");
     if (!sel) return;
     plannerOooPlayerId = sel.value ? String(sel.value) : null;
@@ -1008,6 +1105,12 @@ async function initPlanner() {
   }
   const { pitchLayout, rows } = state;
   plannerOooPlayerId = extractPlannerOooFromLayout(pitchLayout);
+  plannerPlanNation =
+    extractPlannerNationFromLayout(pitchLayout) ||
+    clubNation ||
+    squadDesignationsState?.club_nation ||
+    null;
+  await loadPlannerNationOptions();
   wirePlannerCompositionStrip();
 
   plannerApi = initMatchdaySquadPanel({
@@ -1026,7 +1129,10 @@ async function initPlanner() {
         await saveScoutingPlanner(
           supabase,
           slots,
-          pitchLayoutWithPlannerOoo(pitchLayoutFromPanel, plannerOooPlayerId),
+          pitchLayoutWithPlannerMeta(pitchLayoutFromPanel, {
+            oooId: plannerOooPlayerId,
+            planNation: plannerPlanNation,
+          }),
           activeBoardNo
         );
         const label = boardLabel(activeBoardNo);
