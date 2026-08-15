@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("cancelExecuteBtn").onclick = executeCancelOpenTransfers;
   document.getElementById("restockManagerFaBtn")?.addEventListener("click", () => restockManagerFaBoard(false));
   document.getElementById("freshManagerFaBtn")?.addEventListener("click", () => restockManagerFaBoard(true));
+  document.getElementById("diagnoseManagerFaBtn")?.addEventListener("click", diagnoseManagerFaBoard);
 
   const hash = (window.location.hash || "").replace("#", "");
   if (hash) {
@@ -659,22 +660,28 @@ async function restockManagerFaBoard(forceFresh) {
     if (error) throw error;
     const ens = data?.ensure_board || {};
     const spawn = data?.spawn || {};
+    const after = data?.after || {};
     const created = ens.created ?? spawn.created ?? 0;
-    const after = ens.active_after ?? ens.active ?? "?";
+    const visible = after.window_fa_active_visible ?? ens.active_after ?? "?";
     const reason = ens.reason || spawn.reason || "";
-    if (ens.ok === false || spawn.ok === false) {
+    if (ens.ok === false || (spawn && spawn.ok === false)) {
       setStatus(
         "managerFaStatus",
-        `❌ ${reason || "Restock failed"} — check GPSL month is June/July/August/January.`,
+        `❌ ${reason || "Restock failed"}` +
+          (ens.hint ? ` — ${ens.hint}` : "") +
+          ` · month=${after.resolved_fa_month ?? ens.month ?? "?"} season=${after.season_status ?? "?"}`,
         false
       );
       return;
     }
     setStatus(
       "managerFaStatus",
-      `✅ ${label}: created ${created}, board now ${after}/10` +
-        (ens.fa_pool_available != null ? ` (FA pool ${ens.fa_pool_available})` : "") +
-        (ens.shortfall > 0 ? ` · shortfall ${ens.shortfall}` : ""),
+      `✅ ${label}: created ${created}, visible on market ${visible}/10` +
+        (ens.closed_stale_drafts ? ` · closed ${ens.closed_stale_drafts} stale draft(s)` : "") +
+        (ens.renewed_end ? ` · revived ${ens.renewed_end} expired end_time` : "") +
+        (ens.fa_pool_available != null ? ` · FA pool ${ens.fa_pool_available}` : "") +
+        (ens.shortfall > 0 ? ` · shortfall ${ens.shortfall}` : "") +
+        ` · month ${after.resolved_fa_month || ens.month || "?"}`,
       true
     );
   } catch (err) {
@@ -682,7 +689,36 @@ async function restockManagerFaBoard(forceFresh) {
       "managerFaStatus",
       "❌ " +
         (err.message || "Failed") +
-        " — run supabase/sql/patches/manager_window_fa_preseason_june_fix_20260815.sql",
+        " — run supabase/sql/patches/manager_window_fa_board_fill_fix_20260815.sql",
+      false
+    );
+  }
+}
+
+async function diagnoseManagerFaBoard() {
+  setStatus("managerFaStatus", "Diagnosing…");
+  try {
+    const { data, error } = await supabase.rpc("admin_manager_window_fa_diagnose");
+    if (error) throw error;
+    setStatus(
+      "managerFaStatus",
+      `Diagnose: season=${data.season_id} (${data.season_status})` +
+        ` · active_month=${data.active_gpsl_month ?? "null"}` +
+        ` · resolved=${data.resolved_fa_month ?? "null"}` +
+        ` · FA=${data.free_agent_managers}` +
+        ` · blocked_by_draft=${data.free_agents_blocked_by_draft_listing}` +
+        ` · window_fa visible=${data.window_fa_active_visible}` +
+        ` / expired=${data.window_fa_active_expired_end}` +
+        ` · draft_active=${data.draft_listings_active}` +
+        ` · manager_draft_on=${data.manager_draft_on}`,
+      true
+    );
+  } catch (err) {
+    setStatus(
+      "managerFaStatus",
+      "❌ " +
+        (err.message || "Failed") +
+        " — run supabase/sql/patches/manager_window_fa_board_fill_fix_20260815.sql",
       false
     );
   }

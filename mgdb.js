@@ -30,6 +30,7 @@ const TABLE_COLUMNS = [
   { key: "long_ball_counter", label: "Long Ball Counter" },
   { key: "out_wide", label: "Out Wide" },
   { key: "long_ball", label: "Long Ball" },
+  { key: "overload", label: "Overload" },
   { key: "age", label: "Age" },
   { key: "market_value", label: "Market Value" },
 ];
@@ -142,7 +143,7 @@ function sortRows(rows) {
   return [...rows].sort((a, b) => {
     const av = a[col];
     const bv = b[col];
-    if (col === "market_value" || col === "age" || col === "rating" || col.includes("counter") || col === "possession" || col === "out_wide" || col === "long_ball") {
+    if (col === "market_value" || col === "age" || col === "rating" || col.includes("counter") || col === "possession" || col === "out_wide" || col === "long_ball" || col === "overload") {
       const an = Number(av) || 0;
       const bn = Number(bv) || 0;
       return asc ? an - bn : bn - an;

@@ -302,6 +302,13 @@ export const ADMIN_MAIN_NAV = [
           null,
           "Set or refresh manager board targets for the new season."
         ),
+        L(
+          "Import manager catalog",
+          "admin_managers_import.html",
+          null,
+          null,
+          "Upsert Managers from CSV (ratings/MV). Keeps contracts, career history, and IDs."
+        ),
       ]),
       group("Challenges", [
         L(
@@ -439,6 +446,13 @@ export const ADMIN_MAIN_NAV = [
         ),
       ]),
       group("Managers", [
+        L(
+          "Import manager catalog",
+          "admin_managers_import.html",
+          null,
+          null,
+          "Upsert Managers from CSV. Keeps contracts and career history."
+        ),
         L(
           "Process manager renewal deadline (before August)",
           "admin_season.html",

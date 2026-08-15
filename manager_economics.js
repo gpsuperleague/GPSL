@@ -27,7 +27,7 @@ export function managerPlaystyleTierValue(rating, tables = tablesCache) {
   return 0;
 }
 
-/** Sum all five playstyle columns → market value. */
+/** Sum all playstyle columns (incl. Overload) → market value. */
 export function managerMarketValueFromPlaystyles(manager, tables = tablesCache) {
   const styles = [
     manager?.possession,
@@ -35,6 +35,7 @@ export function managerMarketValueFromPlaystyles(manager, tables = tablesCache) 
     manager?.long_ball_counter,
     manager?.out_wide,
     manager?.long_ball,
+    manager?.overload,
   ];
   return styles.reduce(
     (sum, s) => sum + managerPlaystyleTierValue(s, tables),

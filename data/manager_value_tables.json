@@ -1,5 +1,5 @@
 {
-  "_comment": "Manager MV = sum of tier value for each of the five playstyle proficiencies.",
+  "_comment": "Manager MV = sum of tier value for each playstyle proficiency (Possession, QC, LBC, Out Wide, Long Ball, Overload).",
   "playstyleTiers": [
     { "min": 0, "max": 60, "value": 0 },
     { "min": 61, "max": 65, "value": 1000000 },

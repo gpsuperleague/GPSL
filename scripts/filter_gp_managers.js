@@ -15,6 +15,7 @@ const STYLES = [
   "longBallCounter",
   "outWide",
   "longBall",
+  "overload",
 ];
 
 const STYLE_LABELS = {
@@ -23,6 +24,7 @@ const STYLE_LABELS = {
   longBallCounter: "LBC",
   outWide: "Out Wide",
   longBall: "Long Ball",
+  overload: "Overload",
 };
 
 async function main() {

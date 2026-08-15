@@ -123,8 +123,9 @@
         <p class="note">
           June / July / August / January should keep <b>10 free-agent managers</b> listed
           (<code>window_fa</code>). Transfer engine tops up automatically; use these if the board is empty.
-          Requires <code>patches/manager_window_fa_preseason_june_fix_20260815.sql</code> (and earlier FA patches).
+          Requires <code>patches/manager_window_fa_board_fill_fix_20260815.sql</code>.
         </p>
+        <button class="button" id="diagnoseManagerFaBtn" type="button">Diagnose FA board</button>
         <button class="button" id="restockManagerFaBtn" style="background:#2f5f2f;">Top up FA board to 10</button>
         <button class="button" id="freshManagerFaBtn" style="background:#664400;margin-left:8px;">Fresh board of 10</button>
         <div id="managerFaStatus" class="status-line"></div>
@@ -144,6 +145,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_transfers.js?v=20260815-manager-fa"></script>
+  <script type="module" src="admin_transfers.js?v=20260815-manager-fa-diag"></script>
 </body>
 </html>

@@ -93,6 +93,7 @@ const TILE_IMAGE_BY_ID = {
   admin_season_break: `${PANEL_BG}/Progress.png`,
   admin_one_of_our_own: `${PANEL_BG}/Squad.png`,
   admin_manager_targets: `${PANEL_BG}/Squad.png`,
+  admin_managers_import: `${PANEL_BG}/Squad.png`,
   admin_club_attendance: `${PANEL_BG}/stadium.png`,
   admin_natter: `${PANEL_BG}/History.png`,
 };
@@ -262,6 +263,7 @@ export const DASHBOARD_PANELS = [
   p("admin_season_break", "Season Break Admin", "admin_season_break.html", { adminOnly: true }),
   p("admin_one_of_our_own", "One Of Our Own", "admin_one_of_our_own.html", { adminOnly: true }),
   p("admin_manager_targets", "Manager Targets", "admin_manager_targets.html", { adminOnly: true }),
+  p("admin_managers_import", "Import Managers", "admin_managers_import.html", { adminOnly: true }),
   p("admin_club_attendance", "Club Attendance", "admin_club_attendance.html", { adminOnly: true }),
   p("admin_natter", "Natter Admin", "admin_natter.html", { adminOnly: true }),
   p("tc_scouting", "Scouting Targets", "transfer_center.html#scouting-targets", {

@@ -57,6 +57,7 @@ def main() -> None:
             int(r["Long Ball Counter"]),
             int(r["Out Wide"]),
             int(r["Long Ball"]),
+            int(r["Overload"]) if "Overload" in r.index and pd.notna(r.get("Overload")) else 0,
         ]
         rating = max(styles)
         age = int(r["Age"])
@@ -71,6 +72,7 @@ def main() -> None:
                 "long_ball_counter": styles[2],
                 "out_wide": styles[3],
                 "long_ball": styles[4],
+                "overload": styles[5],
                 "age": age,
                 "rating": rating,
                 "mv": mv,
@@ -85,12 +87,12 @@ def main() -> None:
         f"-- {len(rows)} managers (MV = sum of playstyle tier values)",
         "",
         'INSERT INTO public."Managers"',
-        "  (slug, name, nation, possession, quick_counter, long_ball_counter, out_wide, long_ball, age, rating, market_value)",
+        "  (slug, name, nation, possession, quick_counter, long_ball_counter, out_wide, long_ball, overload, age, rating, market_value)",
         "VALUES",
     ]
     value_lines = [
         "  ('{slug}', '{name}', '{nation}', {possession}, {quick_counter}, {long_ball_counter}, "
-        "{out_wide}, {long_ball}, {age}, {rating}, {mv})".format(**x)
+        "{out_wide}, {long_ball}, {overload}, {age}, {rating}, {mv})".format(**x)
         for x in rows
     ]
     lines.append(",\n".join(value_lines))
@@ -104,6 +106,7 @@ def main() -> None:
             "  long_ball_counter = EXCLUDED.long_ball_counter,",
             "  out_wide = EXCLUDED.out_wide,",
             "  long_ball = EXCLUDED.long_ball,",
+            "  overload = EXCLUDED.overload,",
             "  age = EXCLUDED.age,",
             "  rating = EXCLUDED.rating,",
             "  market_value = EXCLUDED.market_value;",

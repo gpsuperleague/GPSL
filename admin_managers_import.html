@@ -1,0 +1,84 @@
+<script>window.CURRENT_PAGE = "admin_managers_import";</script>
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Import managers — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .note { color:#999; font-size:13px; line-height:1.5; margin:0 0 12px; max-width:920px; }
+    textarea#importCsv {
+      width: 100%;
+      max-width: 920px;
+      min-height: 220px;
+      background: #1a1a1a;
+      color: #ddd;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 10px;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 12px;
+      box-sizing: border-box;
+    }
+    #previewOut {
+      white-space: pre-wrap;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 12px;
+      max-width: 920px;
+      background: #161616;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 12px;
+      min-height: 2em;
+    }
+    .col-list { color:#bbb; font-size:12px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Import manager catalog</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Update Managers list</h2>
+        <p class="note">
+          Upload or paste a CSV (same columns as <code>data/Managers.xlsx</code>).
+          Rows upsert by <b>slug</b> (from name). Existing <b>contracts, wages (if signed),
+          career stints, listings, and IDs</b> are kept. New names are inserted as free agents.
+          Managers missing from the file are <b>not</b> deleted.
+        </p>
+        <p class="note col-list">
+          Required headers (aliases accepted):
+          <b>Manager Name</b>, <b>Nation</b>, <b>Age</b>,
+          <b>Possession</b>, <b>Quick Counter</b>, <b>Long Ball Counter</b>,
+          <b>Out Wide</b>, <b>Long Ball</b>, <b>Overload</b>.
+          Optional: <b>Previous Name</b> (for renames — keeps the same manager id/contract/history),
+          <b>slug</b>.
+        </p>
+        <p class="note">
+          Run <code>supabase/sql/patches/admin_managers_overload_previous_name_20260815.sql</code>
+          (adds Overload + previous-name matching). Older import patch alone is not enough.
+        </p>
+        <div class="row" style="align-items:center;gap:12px;margin-bottom:12px;">
+          <input type="file" id="csvFile" accept=".csv,text/csv" />
+          <button type="button" class="button secondary" id="clearBtn">Clear</button>
+        </div>
+        <label for="importCsv">CSV text</label>
+        <textarea id="importCsv" placeholder="Manager Name,Previous Name,Nation,Age,Possession,Quick Counter,Long Ball Counter,Out Wide,Long Ball,Overload&#10;Jose Mourinho,Jose Mourinho,Portugal,62,60,57,78,62,66,40"></textarea>
+        <div style="margin-top:12px;">
+          <button type="button" class="button" id="previewBtn">Preview changes</button>
+          <button type="button" class="button" id="applyBtn" style="background:#2f5f2f;margin-left:8px;">Apply upsert</button>
+        </div>
+        <div id="importStatus" class="status-line"></div>
+        <div id="previewOut"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_managers_import.js?v=20260815-overload"></script>
+</body>
+</html>
