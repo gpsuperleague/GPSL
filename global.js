@@ -1957,11 +1957,151 @@ function wireNavLogout() {
   };
 }
 
+function adminNavText(el) {
+  return (el?.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function adminNavShowAllUnder(el) {
+  if (!el) return;
+  el.classList.remove("nav-search-hidden");
+  el.querySelectorAll(".nav-search-hidden").forEach((node) => {
+    node.classList.remove("nav-search-hidden");
+  });
+  if (el.matches?.("[data-nav-subgroup]")) adminNavForceOpen(el);
+  el.querySelectorAll?.("[data-nav-subgroup]").forEach((subgroup) => {
+    adminNavForceOpen(subgroup);
+  });
+}
+
+function adminNavRememberOpen(subgroup) {
+  if (subgroup.dataset.searchOpened === "1") return;
+  subgroup.dataset.searchWasOpen = subgroup.classList.contains("open") ? "1" : "0";
+  subgroup.dataset.searchOpened = "1";
+}
+
+function adminNavForceOpen(subgroup) {
+  adminNavRememberOpen(subgroup);
+  subgroup.classList.add("open");
+  subgroup
+    .querySelector(":scope > .nav-subgroup-summary")
+    ?.setAttribute("aria-expanded", "true");
+}
+
+function adminNavRestoreOpen(dropdown) {
+  dropdown.querySelectorAll("[data-search-opened]").forEach((subgroup) => {
+    const wasOpen = subgroup.dataset.searchWasOpen === "1";
+    subgroup.classList.toggle("open", wasOpen);
+    subgroup
+      .querySelector(":scope > .nav-subgroup-summary")
+      ?.setAttribute("aria-expanded", wasOpen ? "true" : "false");
+    delete subgroup.dataset.searchOpened;
+    delete subgroup.dataset.searchWasOpen;
+  });
+}
+
+function adminNavApplyFilterToNode(el, query, filtering) {
+  if (!(el instanceof Element)) return false;
+  if (
+    el.classList.contains("nav-admin-search") ||
+    el.classList.contains("nav-admin-search-empty")
+  ) {
+    return false;
+  }
+
+  if (el.matches("a.nav-link")) {
+    const match = !filtering || adminNavText(el).includes(query);
+    el.classList.toggle("nav-search-hidden", !match);
+    return match;
+  }
+
+  if (el.matches("[data-nav-subgroup]")) {
+    const summary = el.querySelector(":scope > .nav-subgroup-summary");
+    const panel = el.querySelector(":scope > .nav-subgroup-panel");
+    const labelMatch =
+      !filtering || adminNavText(summary).includes(query);
+
+    let childMatch = false;
+    for (const child of panel?.children || []) {
+      if (filtering && labelMatch) {
+        adminNavShowAllUnder(child);
+        childMatch = true;
+        continue;
+      }
+      if (adminNavApplyFilterToNode(child, query, filtering)) childMatch = true;
+    }
+
+    const show = !filtering || labelMatch || childMatch;
+    el.classList.toggle("nav-search-hidden", !show);
+    if (filtering && show) adminNavForceOpen(el);
+    return show;
+  }
+
+  return false;
+}
+
+function applyAdminNavSearch(dropdown, rawQuery) {
+  if (!dropdown) return;
+  const query = String(rawQuery || "")
+    .trim()
+    .toLowerCase();
+  const filtering = query.length > 0;
+  const emptyEl = dropdown.querySelector(".nav-admin-search-empty");
+
+  if (!filtering) {
+    dropdown.querySelectorAll(".nav-search-hidden").forEach((node) => {
+      node.classList.remove("nav-search-hidden");
+    });
+    adminNavRestoreOpen(dropdown);
+    if (emptyEl) emptyEl.hidden = true;
+    dropdown.classList.remove("nav-admin-filtering");
+    return;
+  }
+
+  dropdown.classList.add("nav-admin-filtering");
+  let any = false;
+  for (const child of dropdown.children) {
+    if (adminNavApplyFilterToNode(child, query, true)) any = true;
+  }
+  if (emptyEl) emptyEl.hidden = any;
+}
+
+function clearAdminNavSearch(group) {
+  const dropdown = group?.querySelector(".nav-dropdown-admin");
+  if (!dropdown) return;
+  const input = dropdown.querySelector(".nav-admin-search-input");
+  if (input) input.value = "";
+  applyAdminNavSearch(dropdown, "");
+}
+
+function wireAdminNavSearch(nav) {
+  nav.querySelectorAll("[data-nav-admin-search]").forEach((wrap) => {
+    const input = wrap.querySelector(".nav-admin-search-input");
+    const dropdown = wrap.closest(".nav-dropdown");
+    if (!input || !dropdown || input.dataset.wired === "1") return;
+    input.dataset.wired = "1";
+
+    input.addEventListener("click", (e) => e.stopPropagation());
+    input.addEventListener("mousedown", (e) => e.stopPropagation());
+    input.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Escape") {
+        input.value = "";
+        applyAdminNavSearch(dropdown, "");
+        e.preventDefault();
+      }
+    });
+    input.addEventListener("input", () => {
+      applyAdminNavSearch(dropdown, input.value);
+    });
+  });
+}
+
 function wireNavGroups(nav) {
   const groups = nav.querySelectorAll("[data-nav-group]");
 
   const closeAll = () => {
     groups.forEach((group) => {
+      clearAdminNavSearch(group);
       group.classList.remove("open");
       const btn = group.querySelector(".nav-group-summary");
       btn?.setAttribute("aria-expanded", "false");
@@ -1980,6 +2120,10 @@ function wireNavGroups(nav) {
       if (willOpen) {
         group.classList.add("open");
         btn.setAttribute("aria-expanded", "true");
+        const searchInput = group.querySelector(".nav-admin-search-input");
+        if (searchInput) {
+          requestAnimationFrame(() => searchInput.focus());
+        }
       }
     });
   });
@@ -2000,6 +2144,8 @@ function wireNavGroups(nav) {
       btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
     });
   });
+
+  wireAdminNavSearch(nav);
 
   if (!nav.dataset.outsideClose) {
     nav.dataset.outsideClose = "1";
@@ -2397,7 +2543,14 @@ export async function buildNav() {
       section.id === "admin" || section.id === "mod" || section.id === "transfers"
         ? "nav-dropdown nav-dropdown-scrollable"
         : "nav-dropdown";
-    html += `<div class="${dropdownClass}" role="menu">`;
+    const adminSearchClass = section.id === "admin" ? " nav-dropdown-admin" : "";
+    html += `<div class="${dropdownClass}${adminSearchClass}" role="menu">`;
+    if (section.id === "admin") {
+      html += `<div class="nav-admin-search" data-nav-admin-search>`;
+      html += `<input type="search" class="nav-admin-search-input" placeholder="Search admin menu…" aria-label="Search admin menu" autocomplete="off" spellcheck="false" />`;
+      html += `<p class="nav-admin-search-empty" hidden>No matching pages</p>`;
+      html += `</div>`;
+    }
     html += renderNavDropdownItems(
       items,
       pathname,
