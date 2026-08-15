@@ -341,6 +341,53 @@ function renderNations(rows) {
   });
 }
 
+function renderManagers(rows) {
+  const tbody = document.getElementById("managerBody");
+  setCount("seasonManagerCount", rows?.length || 0);
+  if (!tbody) return;
+  if (!rows?.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="muted">No managers match excluded nations.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows
+    .map(
+      (r) => `
+    <tr>
+      <td>
+        <b>${escapeHtml(r.manager_name || r.manager_id)}</b>
+        ${r.archived ? `<br><small class="muted">archived catalog</small>` : ""}
+        <br><small>id ${escapeHtml(r.manager_id)} · rating ${escapeHtml(r.rating ?? "—")}</small>
+      </td>
+      <td>${escapeHtml(r.nation || "—")}</td>
+      <td>${escapeHtml(r.club || "FA")}</td>
+    </tr>`
+    )
+    .join("");
+}
+
+function renderClubs(rows) {
+  const tbody = document.getElementById("clubBody");
+  setCount("seasonClubCount", rows?.length || 0);
+  if (!tbody) return;
+  if (!rows?.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="muted">No clubs match excluded nations.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows
+    .map(
+      (r) => `
+    <tr>
+      <td>
+        <b>${escapeHtml(r.club_name || r.club_short_name)}</b><br>
+        <small>${escapeHtml(r.club_short_name)}</small>
+      </td>
+      <td>${escapeHtml(r.nation || "—")}</td>
+      <td>${r.has_owner ? "Yes" : "Vacant"}</td>
+    </tr>`
+    )
+    .join("");
+}
+
 async function reloadLists() {
   setStatus("listStatus", "Loading…", true);
   const { data, error } = await supabase.rpc("admin_gpdb_exclusions_list", {
@@ -363,9 +410,14 @@ async function reloadLists() {
   }
   renderPlayers(data?.players || []);
   renderNations(data?.nations || []);
+  renderManagers(data?.managers_from_nations || []);
+  renderClubs(data?.clubs_from_nations || []);
+  const mgrN = (data?.managers_from_nations || []).length;
+  const clubN = (data?.clubs_from_nations || []).length;
   setStatus(
     "listStatus",
-    `${(data?.players || []).length} player(s), ${(data?.nations || []).length} nation(s) excluded for this season.`,
+    `${(data?.players || []).length} player(s), ${(data?.nations || []).length} nation(s) excluded` +
+      ` · ${mgrN} manager(s) / ${clubN} club(s) via those nations.`,
     true
   );
   await reloadActiveExclusions();

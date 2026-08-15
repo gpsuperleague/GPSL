@@ -36,11 +36,13 @@
         <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
         · Season Break tool to remove <b>players</b> or <b>nations</b> from GPSL for a season
         (e.g. misconduct, conflict zones). Excluded players are hidden from GPDB and cannot be
-        signed, drafted, or called up. Excluded nations cannot be claimed and their players are
-        treated as excluded. Lists are per season — creating a new season auto-copies the previous
+        signed, drafted, or called up. Excluded nations cannot be claimed — their <b>players</b>,
+        <b>managers</b> (MGDB / manager market), and <b>clubs</b> (Club Database) are treated as
+        excluded too. Lists are per season — creating a new season auto-copies the previous
         season’s exclusions. You can also copy manually below. Requires
-        <code>patches/gpdb_season_exclusions.sql</code> and
-        <code>patches/gpdb_season_exclusions_persist.sql</code>.
+        <code>patches/gpdb_season_exclusions.sql</code>,
+        <code>patches/gpdb_season_exclusions_persist.sql</code>, and
+        <code>patches/gpdb_season_exclusions_managers_clubs_20260815.sql</code>.
       </p>
 
       <div class="card">
@@ -169,6 +171,55 @@
       </div>
 
       <div class="card">
+        <h2>From excluded nations (auto)</h2>
+        <p class="note">
+          Managers and clubs whose nationality matches an excluded nation for the
+          <b>selected season</b> below. Not a separate list — driven by nation exclusions.
+          Managers leave MGDB / FA board; clubs leave Club Database browse.
+        </p>
+        <div class="excl-grid">
+          <div>
+            <h3 style="margin:0 0 6px;font-size:14px;color:#ff9900;">
+              Managers <span class="excl-count" id="seasonManagerCount">(0)</span>
+            </h3>
+            <div class="excl-table-wrap" style="max-height:280px;">
+              <table class="excl-table">
+                <thead>
+                  <tr>
+                    <th>Manager</th>
+                    <th>Nation</th>
+                    <th>Club</th>
+                  </tr>
+                </thead>
+                <tbody id="managerBody">
+                  <tr><td colspan="3" class="muted">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h3 style="margin:0 0 6px;font-size:14px;color:#ff9900;">
+              Clubs <span class="excl-count" id="seasonClubCount">(0)</span>
+            </h3>
+            <div class="excl-table-wrap" style="max-height:280px;">
+              <table class="excl-table">
+                <thead>
+                  <tr>
+                    <th>Club</th>
+                    <th>Nation</th>
+                    <th>Owner?</th>
+                  </tr>
+                </thead>
+                <tbody id="clubBody">
+                  <tr><td colspan="3" class="muted">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>After changes</h2>
         <ol class="note">
           <li>Re-run <a href="admin_international.html" style="color:#ff9900;">Internationals</a> → refresh pool cache → apply selectable (excluded nations stay inactive).</li>
@@ -177,6 +228,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_exclusions.js?v=20260805-active-list"></script>
+  <script type="module" src="admin_gpdb_exclusions.js?v=20260815-mgr-clubs"></script>
 </body>
 </html>
