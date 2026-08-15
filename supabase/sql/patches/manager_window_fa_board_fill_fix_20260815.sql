@@ -99,16 +99,14 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_lock timestamptz;
   v_end timestamptz;
 BEGIN
-  v_lock := public.manager_gpsl_month_lock_at(p_season_id, p_month);
-  v_end := now() + interval '48 hours';
-  IF v_lock IS NOT NULL AND v_lock > now() + interval '1 hour' THEN
-    v_end := least(v_lock, v_end);
-  END IF;
-  IF v_end <= now() THEN
-    v_end := now() + interval '48 hours';
+  -- Same as player transfer market / owner-listed managers:
+  -- ≥24h from now, then next 19:00 Europe/London.
+  -- (p_season_id / p_month kept for callers; month close uses close_batch.)
+  v_end := public.compute_standard_listing_end_time(now());
+  IF v_end IS NULL OR v_end <= now() THEN
+    v_end := public.compute_standard_listing_end_time(now() + interval '1 second');
   END IF;
   RETURN v_end;
 END;
