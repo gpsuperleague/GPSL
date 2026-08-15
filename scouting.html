@@ -245,6 +245,43 @@
     .scout-reg-chip.short b { color: #e8c547; }
     .scout-reg-chip.bad b { color: #f88; }
     .scout-reg-muted { color: #666; font-style: italic; }
+    .scout-planner-comp {
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      gap: 8px 12px;
+    }
+    .scout-planner-ooo {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 8px;
+      width: 100%;
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px solid #2a2a2a;
+    }
+    .scout-planner-ooo label {
+      color: #888;
+      font-size: 12px;
+      margin: 0;
+    }
+    .scout-planner-ooo select {
+      min-width: 180px;
+      max-width: 320px;
+      background: #111;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 12px;
+    }
+    .scout-planner-ooo .scout-ooo-hint {
+      color: #777;
+      font-size: 11px;
+    }
     table.scout-table tr.scout-active-row td {
       background: rgba(255, 153, 0, 0.14);
     }
@@ -335,20 +372,21 @@
     </div>
 
     <div id="tab-planner" class="scout-tab-panel panel panel-bg panel-transfer">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="Drag scouting targets onto the pitch to preview a potential XI. Up to 4 named boards per owner, sharing one shortlist. Saved separately from Match Day." tabindex="0">Tactic board</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Drag scouting targets onto the pitch (11) and bench (17). Live GK / HG / U21 / ★ counts update as you place players. Set a planned One of our Own to exclude them from the star count. Up to 4 named boards; saved separately from Match Day." tabindex="0">Tactic board</h2>
       <p class="meta" style="margin-top:0;">
-        Drag scouting targets onto the pitch to see how a potential XI fits. Saved separately from your matchday squad.
+        Drag scouting targets onto the pitch (11) and bench (17). Live GK / HG / U21 / ★ counts update as you place players. Set a planned <b>One of our Own</b> below to exclude them from the star count.
       </p>
       <div id="scoutBoardBar" class="scout-board-bar">
         <label for="scoutBoardSelect">Board</label>
         <select id="scoutBoardSelect" class="scout-board-select" title="Switch tactic board"></select>
         <button type="button" class="button secondary" id="scoutBoardRenameBtn">Rename</button>
       </div>
+      <div id="scoutPlannerComp" class="scout-reg-strip scout-planner-comp" hidden></div>
       <div id="scoutingPlannerRoot"></div>
       <div id="plannerStatus"></div>
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260815-bench17"></script>
+  <script type="module" src="scouting.js?v=20260815-planner-comp"></script>
 </body>
 </html>

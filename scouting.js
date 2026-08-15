@@ -44,6 +44,7 @@ import {
 import {
   loadSquadDesignationsState,
   playerEligibleStar,
+  playerEligibleOoo,
   DESIGNATION_OOO,
 } from "./squad_designations.js";
 
@@ -88,6 +89,8 @@ let playerMapCache = new Map();
 let draftUiByPlayerCache = new Map();
 let draftContext = null;
 let plannerApi = null;
+/** Planner-local One of our Own (planning only — excludes that player from ★ count). */
+let plannerOooPlayerId = null;
 /** @type {{ board_no: number, name: string }[]} */
 let scoutingBoards = [];
 let activeBoardNo = getStoredScoutingBoardNo();
@@ -484,16 +487,124 @@ async function fetchPlayersByIds(ids) {
   return map;
 }
 
-function playersForPlanner() {
-  return sortPlayersByScoutingPosition(scoutingPlayers).map((p) => ({
-    Konami_ID: p.Konami_ID,
-    Name: p.Name,
-    Nation: p.Nation,
-    Position: p.Position,
-    Rating: p.Rating,
-    Playstyle: p.Playstyle,
-  }));
+function playersOnPlannerBoard(state) {
+  const out = [];
+  if (!state?.pitch) return out;
+  for (const p of state.pitch.values()) {
+    if (p) out.push(p);
+  }
+  for (const p of state.bench || []) {
+    if (p) out.push(p);
+  }
+  return out;
 }
+
+function extractPlannerOooFromLayout(layout) {
+  if (!layout || typeof layout !== "object") return null;
+  const id = layout.scouting_ooo_player_id;
+  return id != null && String(id).trim() !== "" ? String(id).trim() : null;
+}
+
+function pitchLayoutWithPlannerOoo(layout, oooId) {
+  const base =
+    layout && typeof layout === "object" && !Array.isArray(layout)
+      ? { ...layout }
+      : {};
+  if (oooId) base.scouting_ooo_player_id = String(oooId);
+  else delete base.scouting_ooo_player_id;
+  return base;
+}
+
+function boardChip(label, value, target, mode, title) {
+  let ok;
+  let targetTxt;
+  if (mode === "min") {
+    ok = value >= target;
+    targetTxt = `≥${target}`;
+  } else if (mode === "max") {
+    ok = value <= target;
+    targetTxt = `≤${target}`;
+  } else {
+    const [lo, hi] = target;
+    ok = value >= lo && value <= hi;
+    targetTxt = `${lo}–${hi}`;
+  }
+  const cls =
+    ok
+      ? "ok"
+      : mode === "max" && value > (Array.isArray(target) ? target[1] : target)
+        ? "bad"
+        : "short";
+  return `<span class="scout-reg-chip ${cls}" title="${title}">${label} <b>${value}</b> <i>${targetTxt}</i></span>`;
+}
+
+function updatePlannerCompositionStrip(state) {
+  const el = document.getElementById("scoutPlannerComp");
+  if (!el) return;
+
+  const players = playersOnPlannerBoard(state);
+  const onBoardIds = new Set(players.map((p) => String(p.Konami_ID)));
+
+  if (plannerOooPlayerId && !onBoardIds.has(String(plannerOooPlayerId))) {
+    plannerOooPlayerId = null;
+  }
+
+  const minStar = Number(squadDesignationsState?.star_min_rating ?? 79);
+  const starCap = Number(squadDesignationsState?.star_cap ?? 2);
+  const nation = clubNation || squadDesignationsState?.club_nation || null;
+  const totals = tallyAdds(players, nation);
+  const stars = countStarEligible(players, minStar, plannerOooPlayerId);
+
+  const oooOptions = players
+    .filter((p) => playerEligibleOoo(p, nation, minStar))
+    .sort((a, b) =>
+      String(a.Name || "").localeCompare(String(b.Name || ""), undefined, {
+        sensitivity: "base",
+      })
+    );
+
+  const tip =
+    "Counts players currently on this tactic board (pitch + bench). Green = registration OK for a 24–28 squad. ★ excludes your planned One of our Own.";
+
+  el.hidden = false;
+  el.innerHTML = `
+    <span${tipAttrs(tip, "scout-reg-label")}>Board:</span>
+    ${boardChip("Sq", totals.n, [MIN_SQUAD_SIZE, SQUAD_SIZE], "range", `On board: ${totals.n} (need ${MIN_SQUAD_SIZE}–${SQUAD_SIZE} when registered)`)}
+    ${boardChip("GK", totals.gk, MIN_GOALKEEPERS, "min", `Goalkeepers on board: ${totals.gk}`)}
+    ${boardChip("HG", totals.hg, MIN_HOME_GROWN, "min", `Home-grown on board: ${totals.hg}`)}
+    ${boardChip("U21", totals.u21, MIN_UNDER_21, "min", `Under-21 on board: ${totals.u21}`)}
+    ${boardChip("★", stars, starCap, "max", `Stars on board (rating ${minStar}+, planned OooO excluded): ${stars} / cap ${starCap}`)}
+    <div class="scout-planner-ooo">
+      <label for="scoutPlannerOooSelect">One of our Own</label>
+      <select id="scoutPlannerOooSelect" title="Planning only — excludes this player from the ★ count on this board">
+        <option value="">— None —</option>
+        ${oooOptions
+          .map((p) => {
+            const id = String(p.Konami_ID);
+            const sel = plannerOooPlayerId === id ? " selected" : "";
+            return `<option value="${escapeHtml(id)}"${sel}>${escapeHtml(
+              p.Name || id
+            )} (${escapeHtml(String(p.Rating ?? ""))})</option>`;
+          })
+          .join("")}
+      </select>
+      <span class="scout-ooo-hint">Planning only · HG stars on this board · reduces ★ count</span>
+    </div>
+  `;
+}
+
+function wirePlannerCompositionStrip() {
+  const el = document.getElementById("scoutPlannerComp");
+  if (!el || el.dataset.oooWired === "1") return;
+  el.dataset.oooWired = "1";
+  el.addEventListener("change", (e) => {
+    const sel = e.target?.closest?.("#scoutPlannerOooSelect");
+    if (!sel) return;
+    plannerOooPlayerId = sel.value ? String(sel.value) : null;
+    updatePlannerCompositionStrip(plannerApi?.getState?.() || null);
+  });
+}
+
 
 function canUseDraftBidding() {
   return Boolean(clubShort);
@@ -857,6 +968,11 @@ async function initPlanner() {
   if (!scoutingPlayers.length) {
     root.innerHTML =
       '<p class="scout-empty">Add scouting targets in GPDB first, then plan a lineup here.</p>';
+    const comp = document.getElementById("scoutPlannerComp");
+    if (comp) {
+      comp.hidden = true;
+      comp.innerHTML = "";
+    }
     return;
   }
 
@@ -870,6 +986,8 @@ async function initPlanner() {
     renderBoardPicker();
   }
   const { pitchLayout, rows } = state;
+  plannerOooPlayerId = extractPlannerOooFromLayout(pitchLayout);
+  wirePlannerCompositionStrip();
 
   plannerApi = initMatchdaySquadPanel({
     root,
@@ -879,13 +997,15 @@ async function initPlanner() {
     savedFormations: [],
     maxBench: 17,
     maxSquad: 28,
-    onChange: () => {},
+    onChange: (_slots, panelState) => {
+      updatePlannerCompositionStrip(panelState);
+    },
     onSave: async (slots, pitchLayoutFromPanel) => {
       try {
         await saveScoutingPlanner(
           supabase,
           slots,
-          pitchLayoutFromPanel,
+          pitchLayoutWithPlannerOoo(pitchLayoutFromPanel, plannerOooPlayerId),
           activeBoardNo
         );
         const label = boardLabel(activeBoardNo);
@@ -905,6 +1025,8 @@ async function initPlanner() {
     onLoadFormation: async () => null,
     onDeleteFormation: async () => null,
   });
+
+  updatePlannerCompositionStrip(plannerApi?.getState?.() || null);
 
   const saveBtn = root.querySelector("#squadSaveBtn");
   if (saveBtn) {
