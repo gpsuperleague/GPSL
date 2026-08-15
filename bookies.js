@@ -30,6 +30,12 @@ function formatFractionalOdds(decimalOdds, fractionalLabel) {
   return `${bestN / g}-${bestD / g}`;
 }
 
+let currentClub = null;
+let isAdmin = false;
+let markets = [];
+let selectionsByMarket = new Map();
+let myBets = [];
+
 function setStatus(msg, ok = true) {
   const el = document.getElementById("bkStatus");
   if (!el) return;
