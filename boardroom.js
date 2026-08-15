@@ -597,18 +597,26 @@ async function loadManagerSection(clubShortName) {
   }
 
   const januaryWindow = await isManagerListSackWindow();
+  const tenureOk =
+    archived || data.sack_tenure_eligible == null || Boolean(data.sack_tenure_eligible);
 
   setBtnVisible(renewBtn, pendingRenewal && !archived);
-  setBtnVisible(listBtn, januaryWindow && !pendingRenewal && !archived);
+  setBtnVisible(
+    listBtn,
+    januaryWindow && !pendingRenewal && !archived && tenureOk
+  );
   setBtnVisible(
     sackBtn,
-    januaryWindow && !pendingRenewal && Boolean(data.manager_sacks_remaining)
+    januaryWindow &&
+      !pendingRenewal &&
+      Boolean(data.manager_sacks_remaining) &&
+      tenureOk
   );
 
   if (listBtn) listBtn.dataset.managerId = String(data.manager_id);
   if (sackBtn) {
     sackBtn.dataset.clubShort = clubShortName;
-    sackBtn.disabled = !data.manager_sacks_remaining;
+    sackBtn.disabled = !data.manager_sacks_remaining || !tenureOk;
   }
 
   if (hintEl) {
@@ -621,9 +629,12 @@ async function loadManagerSection(clubShortName) {
     } else if (!januaryWindow) {
       hintEl.textContent =
         "List for transfer and sack are available in June, July, and January (not August).";
+    } else if (!tenureOk) {
+      hintEl.textContent =
+        "List and sack: not until mid-season of this spell (summer signing → January; January signing → next June–July).";
     } else {
       hintEl.textContent =
-        "Sack: not until mid-season of this spell (summer signing → January; January signing → next June–July).";
+        "List puts them on the Manager Transfer Market. Sack pays half MV (once per season).";
     }
   }
 

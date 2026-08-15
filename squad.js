@@ -309,6 +309,7 @@ let squadManagerState = {
   marketValue: 0,
   sacksRemaining: 0,
   sackWindowOpen: false,
+  sackTenureEligible: false,
   pendingOwnerRenewal: false,
   contractSeasonsRemaining: 0,
   managerArchived: false,
@@ -992,7 +993,7 @@ async function loadSquadManagerState() {
       supabase
         .from("manager_club_status_public")
         .select(
-          "manager_id, manager_name, manager_rating, market_value, manager_sacks_remaining, pending_owner_renewal, contract_seasons_remaining, manager_archived"
+          "manager_id, manager_name, manager_rating, market_value, manager_sacks_remaining, pending_owner_renewal, contract_seasons_remaining, manager_archived, sack_tenure_eligible"
         )
         .eq("club_short_name", currentUserShort)
         .maybeSingle(),
@@ -1027,6 +1028,10 @@ async function loadSquadManagerState() {
       : ghost?.marketValue || 0,
     sacksRemaining: Number(mgr?.manager_sacks_remaining) || 0,
     sackWindowOpen: winErr ? newOwnerReleaseState.windowOpen : Boolean(sackOpen),
+    sackTenureEligible:
+      mgr?.sack_tenure_eligible == null
+        ? true
+        : Boolean(mgr.sack_tenure_eligible),
     pendingOwnerRenewal: Boolean(mgr?.pending_owner_renewal),
     contractSeasonsRemaining: Number(mgr?.contract_seasons_remaining) || 0,
     managerArchived: Boolean(mgr?.manager_archived),
@@ -1133,7 +1138,9 @@ function renderSquadManagerBadge() {
   }
 
   const windowOpen = !!squadManagerState.sackWindowOpen;
-  const canAct = !staffPreview && !pending && windowOpen;
+  const tenureOk =
+    archived || squadManagerState.sackTenureEligible !== false;
+  const canAct = !staffPreview && !pending && windowOpen && tenureOk;
 
   if (listBtn) {
     listBtn.hidden = !canAct || archived;
@@ -1148,7 +1155,12 @@ function renderSquadManagerBadge() {
   }
 
   if (sackBtn) {
-    const canSack = canAct && squadManagerState.sacksRemaining > 0;
+    const canSack =
+      !staffPreview &&
+      !pending &&
+      windowOpen &&
+      squadManagerState.sacksRemaining > 0 &&
+      (archived || tenureOk);
     sackBtn.hidden = !canSack;
     sackBtn.disabled = !canSack;
     sackBtn.classList.add("gpsl-has-tip");

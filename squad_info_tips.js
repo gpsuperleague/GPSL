@@ -72,7 +72,7 @@ export const SQUAD_TIPS = {
     "Player wages + manager salary. Plan signings against this — wages hit the books at Close Finances.",
 
   manager:
-    "Your club manager. Rating sets a season finish target for your division. Miss both seasons of a 2-season deal and they leave for market value (2-season rehire ban). Hit ≥1 target and you may renew in June/July — if not renewed before August starts, they are released for market value.\n\nList / Sack in June, July, August, and January (January needs the transfer window open; also available in pre-season). Sack costs half market value (once per season) and needs mid-spell tenure. List puts them on the Manager Transfer Market.\n\nNo manager? You cannot check in or play fixtures until one is signed.",
+    "Your club manager. Rating sets a season finish target for your division. Miss both seasons of a 2-season deal and they leave for market value (2-season rehire ban). Hit ≥1 target and you may renew in June/July — if not renewed before August starts, they are released for market value.\n\nList / Sack in June, July, and January (Jan needs the transfer window; also pre-season), and only from mid first spell (summer signing → January; January signing → next June–July). Sack costs half market value (once per season). List puts them on the Manager Transfer Market.\n\nNo manager? You cannot check in or play fixtures until one is signed.",
 
   managerArchived:
     "This manager is no longer in the live eFootball catalog. You may keep them until the deal ends. They cannot be listed on the transfer market or renewed — sack only. When the contract ends you receive full market value and they return to the archived database (history kept).",
@@ -84,10 +84,10 @@ export const SQUAD_TIPS = {
     "Ghost manager — you currently hold the highest bid in the manager draft auction. They are not signed yet. If someone outbids you, this disappears. Click through to manage the auction.",
 
   managerList:
-    "List your manager on the Manager Transfer Market. Available in June, July, August, and January (Jan needs transfer window). Vacant clubs can still hire in August, but you cannot play without a manager.",
+    "List your manager on the Manager Transfer Market. Needs the list/sack month window (June, July, January) and mid-spell tenure — summer signing: first chance in January; January signing: next June–July. Vacant clubs can still hire in August, but you cannot play without a manager.",
 
   managerSack:
-    "Sack costs half market value (once per season) and needs mid-spell tenure. Re-signing that manager is blocked until next season. Same month window as List.",
+    "Sack costs half market value (once per season). Needs the same month window and mid-spell tenure as List. Re-signing that manager is blocked until next season.",
 
   managerRenew:
     "Renew for another 2-season deal after hitting at least one finish target. Must be done before August starts or they are released for market value.",
