@@ -419,7 +419,7 @@ BEGIN
           SELECT
             p."Konami_ID"::text AS player_id,
             p."Name" AS player_name,
-            p."Club" AS club_short_name,
+            public.player_contracted_club_key(p."Contracted_Team") AS club_short_name,
             coalesce(st.goals, 0) AS goals,
             greatest(0.5, coalesce(st.goals, 0)::numeric * 3 + coalesce(st.appearances, 0)::numeric * 0.15
               + public.bookies_player_rating_num(p."Rating"::text) / 40.0) AS w
@@ -427,9 +427,9 @@ BEGIN
           LEFT JOIN public.competition_player_season_stats_public st
             ON st.player_id = p."Konami_ID"::text
            AND st.season_id = v_season_id
-          WHERE p."Club" IS NOT NULL AND btrim(p."Club") <> ''
+          WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL AND btrim(public.player_contracted_club_key(p."Contracted_Team")) <> ''
             AND EXISTS (
-              SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = p."Club"
+              SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = public.player_contracted_club_key(p."Contracted_Team")
             )
           ORDER BY w DESC, p."Name"
           LIMIT 40
@@ -462,7 +462,7 @@ BEGIN
             AND f.status = 'played'
             AND f.competition_type = 'cup'
             AND lower(coalesce(f.cup_code, '')) = 'league_cup'
-            AND p."Club" IS NOT NULL AND btrim(p."Club") <> ''
+            AND public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL AND btrim(public.player_contracted_club_key(p."Contracted_Team")) <> ''
           GROUP BY m.player_id
           ORDER BY w DESC
           LIMIT 40
@@ -473,14 +473,14 @@ BEGIN
           SELECT
             v_market_id,
             p."Konami_ID"::text,
-            p."Name" || ' (' || p."Club" || ')',
+            p."Name" || ' (' || public.player_contracted_club_key(p."Contracted_Team") || ')',
             10.00,
             row_number() OVER (ORDER BY public.bookies_player_rating_num(p."Rating"::text) DESC, p."Name")::int,
             greatest(0.5, public.bookies_player_rating_num(p."Rating"::text) / 40.0),
-            jsonb_build_object('club', p."Club", 'fallback', true)
+            jsonb_build_object('club', public.player_contracted_club_key(p."Contracted_Team"), 'fallback', true)
           FROM public."Players" p
-          WHERE p."Club" IS NOT NULL AND btrim(p."Club") <> ''
-            AND EXISTS (SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = p."Club")
+          WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL AND btrim(public.player_contracted_club_key(p."Contracted_Team")) <> ''
+            AND EXISTS (SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = public.player_contracted_club_key(p."Contracted_Team"))
           ORDER BY public.bookies_player_rating_num(p."Rating"::text) DESC
           LIMIT 40;
         END IF;
@@ -512,7 +512,7 @@ BEGIN
             AND f.status = 'played'
             AND f.competition_type = 'cup'
             AND lower(coalesce(f.cup_code, '')) IN ('super8', 'plate', 'shield', 'bowl')
-            AND p."Club" IS NOT NULL AND btrim(p."Club") <> ''
+            AND public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL AND btrim(public.player_contracted_club_key(p."Contracted_Team")) <> ''
           GROUP BY m.player_id
           ORDER BY w DESC
           LIMIT 40
@@ -522,14 +522,14 @@ BEGIN
           SELECT
             v_market_id,
             p."Konami_ID"::text,
-            p."Name" || ' (' || p."Club" || ')',
+            p."Name" || ' (' || public.player_contracted_club_key(p."Contracted_Team") || ')',
             10.00,
             row_number() OVER (ORDER BY public.bookies_player_rating_num(p."Rating"::text) DESC, p."Name")::int,
             greatest(0.5, public.bookies_player_rating_num(p."Rating"::text) / 40.0),
-            jsonb_build_object('club', p."Club", 'fallback', true)
+            jsonb_build_object('club', public.player_contracted_club_key(p."Contracted_Team"), 'fallback', true)
           FROM public."Players" p
-          WHERE p."Club" IS NOT NULL AND btrim(p."Club") <> ''
-            AND EXISTS (SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = p."Club")
+          WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL AND btrim(public.player_contracted_club_key(p."Contracted_Team")) <> ''
+            AND EXISTS (SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = public.player_contracted_club_key(p."Contracted_Team"))
           ORDER BY public.bookies_player_rating_num(p."Rating"::text) DESC
           LIMIT 40;
         END IF;
@@ -538,7 +538,7 @@ BEGIN
         SELECT
           v_market_id,
           p."Konami_ID"::text,
-          p."Name" || ' (' || p."Club" || ')',
+          p."Name" || ' (' || public.player_contracted_club_key(p."Contracted_Team") || ')',
           10.00,
           row_number() OVER (
             ORDER BY coalesce(ipc.goals, 0) DESC,
@@ -552,15 +552,15 @@ BEGIN
               + public.bookies_player_rating_num(p."Rating"::text) / 50.0
           ),
           jsonb_build_object(
-            'club', p."Club",
+            'club', public.player_contracted_club_key(p."Contracted_Team"),
             'intl_goals', coalesce(ipc.goals, 0),
             'caps', coalesce(ipc.caps, 0)
           )
         FROM public."Players" p
         LEFT JOIN public.international_player_career ipc
           ON ipc.player_id = p."Konami_ID"::text
-        WHERE p."Club" IS NOT NULL AND btrim(p."Club") <> ''
-          AND EXISTS (SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = p."Club")
+        WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL AND btrim(public.player_contracted_club_key(p."Contracted_Team")) <> ''
+          AND EXISTS (SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = public.player_contracted_club_key(p."Contracted_Team"))
         ORDER BY coalesce(ipc.goals, 0) DESC, public.bookies_player_rating_num(p."Rating"::text) DESC
         LIMIT 40;
       END IF;
