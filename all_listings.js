@@ -187,10 +187,10 @@ function parseMoneyInput(value) {
 })();
 
 async function loadTransferWindowStatus() {
+  // Owners cannot reliably SELECT global_settings (admin RLS); use the public view.
   const { data, error } = await supabase
-    .from("global_settings")
+    .from("global_settings_public")
     .select("transfer_window_open")
-    .eq("id", 1)
     .maybeSingle();
 
   if (error) {
