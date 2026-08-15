@@ -21,6 +21,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("settleClubAuctionsBtn").onclick = settleClubAuctionsNow;
   document.getElementById("cancelPreviewBtn").onclick = previewCancelOpenTransfers;
   document.getElementById("cancelExecuteBtn").onclick = executeCancelOpenTransfers;
+  document.getElementById("restockManagerFaBtn")?.addEventListener("click", () => restockManagerFaBoard(false));
+  document.getElementById("freshManagerFaBtn")?.addEventListener("click", () => restockManagerFaBoard(true));
 
   const hash = (window.location.hash || "").replace("#", "");
   if (hash) {
@@ -635,5 +637,53 @@ async function runTransferEngine() {
         " — re-run the FULL file supabase/sql/patches/draft_settlement_skip_season_excluded.sql in Supabase SQL Editor (must succeed with no errors), then Run transfer engine again.";
     }
     setStatus("transferEngineStatus", "❌ " + msg + hint, false);
+  }
+}
+
+async function restockManagerFaBoard(forceFresh) {
+  const label = forceFresh ? "Fresh board of 10" : "Top up to 10";
+  if (
+    forceFresh &&
+    !confirm(
+      "Close any current FA-board listings and list a fresh random 10 free-agent managers?"
+    )
+  ) {
+    return;
+  }
+  setStatus("managerFaStatus", `${label}…`);
+  try {
+    const { data, error } = await supabase.rpc("admin_manager_window_fa_restock", {
+      p_force_fresh: !!forceFresh,
+      p_target: 10,
+    });
+    if (error) throw error;
+    const ens = data?.ensure_board || {};
+    const spawn = data?.spawn || {};
+    const created = ens.created ?? spawn.created ?? 0;
+    const after = ens.active_after ?? ens.active ?? "?";
+    const reason = ens.reason || spawn.reason || "";
+    if (ens.ok === false || spawn.ok === false) {
+      setStatus(
+        "managerFaStatus",
+        `❌ ${reason || "Restock failed"} — check GPSL month is June/July/August/January.`,
+        false
+      );
+      return;
+    }
+    setStatus(
+      "managerFaStatus",
+      `✅ ${label}: created ${created}, board now ${after}/10` +
+        (ens.fa_pool_available != null ? ` (FA pool ${ens.fa_pool_available})` : "") +
+        (ens.shortfall > 0 ? ` · shortfall ${ens.shortfall}` : ""),
+      true
+    );
+  } catch (err) {
+    setStatus(
+      "managerFaStatus",
+      "❌ " +
+        (err.message || "Failed") +
+        " — run supabase/sql/patches/manager_window_fa_preseason_june_fix_20260815.sql",
+      false
+    );
   }
 }
