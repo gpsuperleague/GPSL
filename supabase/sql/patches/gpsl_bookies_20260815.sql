@@ -18,32 +18,50 @@
 -- ---------------------------------------------------------------------------
 -- Ledger entry types
 -- ---------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- Ledger entry types (use durable helper — never live+new-only rebuild)
+-- ---------------------------------------------------------------------------
+-- Requires gpsl_ledger_ensure_entry_types_20260816.sql (or later) already run.
+-- If the helper is missing, fall back to a full-catalogue-safe rebuild inline.
 DO $ledger_types$
 DECLARE
   v_list text;
 BEGIN
-  SELECT string_agg(quote_literal(t), ', ' ORDER BY t)
-  INTO v_list
-  FROM (
-    SELECT DISTINCT entry_type AS t
-    FROM public.competition_finance_ledger
-    WHERE entry_type IS NOT NULL
-    UNION
-    SELECT unnest(ARRAY[
-      'bookies_expenditure',
-      'bookies_income'
-    ])
-  ) s;
+  IF to_regprocedure('public.gpsl_ledger_ensure_entry_types(text[])') IS NOT NULL THEN
+    PERFORM public.gpsl_ledger_ensure_entry_types(
+      ARRAY['bookies_expenditure', 'bookies_income']
+    );
+  ELSE
+    SELECT string_agg(quote_literal(t), ', ' ORDER BY t)
+    INTO v_list
+    FROM (
+      SELECT DISTINCT entry_type AS t
+      FROM public.competition_finance_ledger
+      WHERE entry_type IS NOT NULL
+      UNION
+      SELECT unnest(ARRAY[
+        'bookies_expenditure',
+        'bookies_income',
+        'special_auction_fee',
+        'special_auction_prize',
+        'transfer_sale',
+        'transfer_purchase',
+        'transfer_agent_fee',
+        'gov_income_tax',
+        'adjustment'
+      ])
+    ) s;
 
-  ALTER TABLE public.competition_finance_ledger
-    DROP CONSTRAINT IF EXISTS competition_finance_ledger_entry_type_check;
+    ALTER TABLE public.competition_finance_ledger
+      DROP CONSTRAINT IF EXISTS competition_finance_ledger_entry_type_check;
 
-  EXECUTE format(
-    'ALTER TABLE public.competition_finance_ledger
-       ADD CONSTRAINT competition_finance_ledger_entry_type_check
-       CHECK (entry_type IN (%s))',
-    v_list
-  );
+    EXECUTE format(
+      'ALTER TABLE public.competition_finance_ledger
+         ADD CONSTRAINT competition_finance_ledger_entry_type_check
+         CHECK (entry_type IN (%s))',
+      v_list
+    );
+  END IF;
 END;
 $ledger_types$;
 

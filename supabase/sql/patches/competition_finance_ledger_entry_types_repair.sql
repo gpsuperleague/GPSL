@@ -142,9 +142,13 @@ BEGIN
       'new_owner_release',
       'voluntary_contract_release',
       'medical_physio_hire',
-      'medical_doctor_hire'
+      'medical_doctor_hire',
+      'bookies_expenditure',
+      'bookies_income'
     ])
   ) s;
+
+  -- Prefer public.gpsl_ledger_ensure_entry_types() for future rebuilds.
 
   IF v_list IS NULL OR length(v_list) < 3 THEN
     RAISE EXCEPTION 'Could not build entry_type allow-list';
