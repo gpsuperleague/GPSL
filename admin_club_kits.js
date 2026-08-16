@@ -5,8 +5,10 @@ import {
   resolveKitImageSrc,
 } from "./club_kits_common.js";
 import { currentKitSeasonStartYear } from "./club_kits_cof.js";
+import { renderAdminClubKitsRules } from "./admin_club_kits_rules.js?v=20260816-rules";
 
 primeAdminPageChrome();
+renderAdminClubKitsRules();
 
 const COF_SYNC_FUNCTION = "club-kits-cof-sync";
 
