@@ -546,6 +546,25 @@ async function refreshProgressPanel(statusId = "progressStatus") {
   }
 }
 
+async function clearStagingTable() {
+  const { data, error } = await supabase.rpc("gpdb_pesdb_staging_clear");
+  if (error) {
+    throw new Error(
+      error.message ||
+        "Could not clear staging (is gpdb_pesdb_staging_clear deployed? Admin only)."
+    );
+  }
+  const cleared = data?.cleared;
+  const stats = await fetchStagingStats().catch(() => null);
+  const remaining = stats?.staging_count;
+  if (typeof remaining === "number" && remaining > 0) {
+    throw new Error(
+      `Staging clear reported ${cleared ?? "?"} deleted, but ${remaining} rows remain. Try again or clear in SQL: DELETE FROM gpdb_pesdb_staging;`
+    );
+  }
+  return data;
+}
+
 async function clearStagingAndProgress() {
   if (
     !window.confirm(
@@ -555,7 +574,7 @@ async function clearStagingAndProgress() {
     return;
   }
   setStatus("progressStatus", "Clearing staging…", true);
-  await supabase.rpc("gpdb_pesdb_staging_clear");
+  await clearStagingTable();
   await clearScrapeJob();
   clearProgress();
   const startInput = document.getElementById("scrapeStartPage");
@@ -563,7 +582,11 @@ async function clearStagingAndProgress() {
   document.getElementById("scrapeClearStaging") &&
     (document.getElementById("scrapeClearStaging").checked = false);
   await refreshProgressPanel("progressStatus");
-  setStatus("progressStatus", "Staging cleared. Set end page (Detect pages) and start fresh scrape.", true);
+  setStatus(
+    "progressStatus",
+    "Staging cleared (0 rows). Set end page (Detect pages) and start fresh scrape.",
+    true
+  );
 }
 
 function applyResumeFromStorage() {
@@ -771,7 +794,7 @@ async function uploadStagingRows(rows, statusId = "importStatus") {
   const unique = dedupeRowsByKonamiId(rows);
   if (!unique?.length) throw new Error("No rows to upload");
 
-  await supabase.rpc("gpdb_pesdb_staging_clear");
+  await clearStagingTable();
   const chunks = chunkRows(unique);
   let stagingCount = 0;
 
@@ -1251,7 +1274,7 @@ async function runPesdbScrape() {
 
   try {
     if (clearStaging) {
-      await supabase.rpc("gpdb_pesdb_staging_clear");
+      await clearStagingTable();
       await clearScrapeJob();
       clearProgress();
     } else {
