@@ -10,7 +10,6 @@ HANDLER = ROOT / "supabase/functions/club-kits-cof-sync/handler.ts"
 OUT = ROOT / "supabase/functions/club-kits-cof-sync/index.ts"
 
 CREATE_IMPORT = 'import { createClient } from "npm:@supabase/supabase-js@2";'
-IMAGE_IMPORT = 'import { Image } from "npm:imagescript@1.3.0";'
 RUNTIME_IMPORT = 'import "jsr:@supabase/functions-js/edge-runtime.d.ts";'
 
 
@@ -23,11 +22,11 @@ def strip_exports(text: str) -> str:
 
 def extract_handler_source() -> str:
     raw = HANDLER.read_text(encoding="utf-8")
-    # Drop imports — re-emitted at top of bundle
     if CREATE_IMPORT in raw:
         raw = raw.split(CREATE_IMPORT, 1)[1].lstrip("\n")
-    if IMAGE_IMPORT in raw:
-        raw = raw.replace(IMAGE_IMPORT + "\n", "").replace(IMAGE_IMPORT, "")
+    # Strip leftover Image import if present
+    raw = raw.replace('import { Image } from "npm:imagescript@1.3.0";\n', "")
+    raw = raw.replace('import { Image } from "npm:imagescript@1.3.0";', "")
     return raw.lstrip("\n")
 
 
@@ -40,8 +39,7 @@ def main() -> None:
         "// GPSL club-kits-cof-sync — single file for Supabase Dashboard deploy\n"
         "// Re-bundle: python scripts/bundle_club_kits_edge.py\n\n"
         f"{RUNTIME_IMPORT}\n"
-        f"{CREATE_IMPORT}\n"
-        f"{IMAGE_IMPORT}\n\n"
+        f"{CREATE_IMPORT}\n\n"
         f"{cof.rstrip()}\n\n"
         f"{wiki.rstrip()}\n\n"
         f"{handler.lstrip()}"

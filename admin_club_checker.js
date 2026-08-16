@@ -51,7 +51,7 @@ function setWikiKitButtons({ extractEnabled, saveEnabled }) {
 async function invokeFn(name, body) {
   const { data, error } = await supabase.functions.invoke(name, { body });
   if (!error) {
-    if (data?.error && !data?.page_url && !data?.result && !data?.ok) {
+    if (data?.error && !data?.page_url && !data?.result && !data?.ok && !data?.kits) {
       throw new Error(String(data.error));
     }
     return data;
@@ -63,6 +63,11 @@ async function invokeFn(name, body) {
     if (ctx && typeof ctx.json === "function") {
       const payload = await ctx.json();
       if (payload?.error) detail = String(payload.error);
+      else if (payload?.msg) detail = String(payload.msg);
+      else if (typeof payload === "string") detail = payload;
+    } else if (ctx && typeof ctx.text === "function") {
+      const text = await ctx.text();
+      if (text) detail = text.slice(0, 400);
     }
   } catch (_) {
     /* ignore */
@@ -73,6 +78,9 @@ async function invokeFn(name, body) {
       `${name} is still the old deploy (no preview_freeform). Paste updated index.ts in Supabase → Deploy (JWT OFF).`;
   } else if (/failed to send|cors|520|502/i.test(detail)) {
     detail += ` — deploy ${name} (paste index.ts), JWT verify OFF, then retry.`;
+  } else if (/non-2xx|internal server error|500/i.test(detail)) {
+    detail +=
+      " — check Supabase → Edge Functions → club-kits-cof-sync → Logs. Redeploy latest index.ts if you just added Wikipedia kits.";
   }
   throw new Error(detail);
 }

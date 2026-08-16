@@ -3,7 +3,6 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { Image } from "npm:imagescript@1.3.0";
 
 /** Colours-of-Football.com kit lookup — shared by edge function + local sync script */
 
@@ -1315,20 +1314,46 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
       action === "preview_wikipedia_kits" ||
       action === "sync_wikipedia_kits"
     ) {
-      const page =
+      const wikiPage =
         String(body?.wikipedia_url || body?.wikipedia_title || body?.page || "")
           .trim() || String(body?.club_name || "").trim();
-      if (!page) {
+      if (!wikiPage) {
         return jsonResponse(
           { error: "wikipedia_url or wikipedia_title required" },
           400
         );
       }
 
-      const wiki = await fetchWikipediaKitPngs(page, {
-        fetchImpl: fetch,
-        Image,
-      });
+      let ImageMod: { Image: unknown };
+      try {
+        ImageMod = await import("npm:imagescript@1.3.0");
+      } catch (err) {
+        return jsonResponse(
+          {
+            error: `Could not load ImageScript for Wikipedia kit composite: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+          500
+        );
+      }
+
+      let wiki;
+      try {
+        wiki = await fetchWikipediaKitPngs(wikiPage, {
+          fetchImpl: fetch,
+          Image: ImageMod.Image,
+        });
+      } catch (err) {
+        return jsonResponse(
+          {
+            error: `Wikipedia kit extract failed: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+          500
+        );
+      }
       if (wiki.error) {
         return jsonResponse({
           ok: false,
