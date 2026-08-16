@@ -514,8 +514,11 @@ async function syncClubStadium(
   };
 
   try {
-    if (!club.Stadium?.toString().trim()) {
-      entry.error = "no Stadium name in DB";
+    if (
+      !club.Stadium?.toString().trim() &&
+      !club.Club?.toString().trim()
+    ) {
+      entry.error = "no Stadium or Club name in DB";
       return entry;
     }
 

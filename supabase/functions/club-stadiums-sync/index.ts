@@ -206,16 +206,36 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function slugCandidates(stadiumName) {
-  const base = slugify(stadiumName);
+function slugCandidates(name) {
+  const base = slugify(name);
+  if (!base) return [];
   const out = [base];
   const stripped = base
     .replace(/_stadium$/, "")
     .replace(/_arena$/, "")
     .replace(/_park$/, "")
-    .replace(/_ground$/, "");
+    .replace(/_ground$/, "")
+    .replace(/_fc$/, "")
+    .replace(/_cf$/, "")
+    .replace(/_afc$/, "")
+    .replace(/^afc_/, "")
+    .replace(/_sc$/, "")
+    .replace(/^ac_/, "")
+    .replace(/_ac$/, "");
   if (stripped && stripped !== base) out.push(stripped);
   return [...new Set(out)];
+}
+
+/** Prefer Stadium, then Club — both help StadiumDB matching. */
+function lookupNames(club) {
+  const names = [];
+  const stadium = String(club?.Stadium || "").trim();
+  const clubName = String(club?.Club || club?.club_name || "").trim();
+  if (stadium) names.push(stadium);
+  if (clubName && clubName.toLowerCase() !== stadium.toLowerCase()) {
+    names.push(clubName);
+  }
+  return names;
 }
 
 async function fetchPageHtml(pageUrl, fetchImpl) {
@@ -232,37 +252,65 @@ async function pageExists(pageUrl, fetchImpl) {
   return !html.includes("404") && html.includes("stadiumdb.com");
 }
 
-async function searchCountryIndex(stadiumName, country, fetchImpl) {
+/**
+ * Score country-index links against stadium and/or club name tokens.
+ * @param {string|string[]} queryNames
+ */
+async function searchCountryIndex(queryNames, country, fetchImpl) {
+  const names = (Array.isArray(queryNames) ? queryNames : [queryNames])
+    .map((n) => String(n || "").trim())
+    .filter(Boolean);
+  if (!names.length) return null;
+
   const html = await fetchPageHtml(
     `https://stadiumdb.com/stadiums/${country}/`,
     fetchImpl
   );
   if (!html) return null;
 
-  const tokens = slugify(stadiumName)
-    .split("_")
-    .filter((t) => t.length > 3);
+  const tokenSets = names.map((name) =>
+    slugify(name)
+      .split("_")
+      .filter((t) => t.length > 2 && !["fc", "cf", "afc", "sc", "ac"].includes(t))
+  );
+  const nameSlugs = names.flatMap((n) => slugCandidates(n));
+
   const re =
     /href="(https:\/\/stadiumdb\.com\/stadiums\/[a-z]{3}\/[^"]+)"[^>]*>([^<]+)<\/a>/gi;
   let best = null;
   let bestScore = 0;
   let m;
   while ((m = re.exec(html))) {
+    const href = m[1];
     const label = slugify(m[2]);
+    const hrefSlug = slugify(href.split("/").pop() || "");
     let score = 0;
-    for (const t of tokens) {
-      if (label.includes(t)) score += t.length;
+
+    for (const slug of nameSlugs) {
+      if (label === slug || hrefSlug === slug) score = Math.max(score, 40 + slug.length);
+      else if (label.includes(slug) || hrefSlug.includes(slug)) {
+        score = Math.max(score, 12 + slug.length);
+      }
     }
+
+    for (const tokens of tokenSets) {
+      let setScore = 0;
+      for (const t of tokens) {
+        if (label.includes(t) || hrefSlug.includes(t)) setScore += t.length;
+      }
+      score = Math.max(score, setScore);
+    }
+
     if (score > bestScore) {
       bestScore = score;
-      best = m[1];
+      best = href;
     }
   }
-  return bestScore >= 6 ? best : null;
+  return bestScore >= 5 ? best : null;
 }
 
 /**
- * @param {{ ShortName?: string, Stadium?: string, Nation?: string }} club
+ * @param {{ ShortName?: string, Club?: string, Stadium?: string, Nation?: string }} club
  * @param {{ fetchImpl?: typeof fetch, cache?: Record<string, { pageUrl?: string }> }} [opts]
  */
 async function resolveStadiumPageUrl(club, opts = {}) {
@@ -276,22 +324,28 @@ async function resolveStadiumPageUrl(club, opts = {}) {
   }
 
   const country = nationCode(club?.Nation);
-  if (!country || !club?.Stadium) return null;
+  const names = lookupNames(club);
+  if (!country || !names.length) return null;
 
-  const fromIndex = await searchCountryIndex(club.Stadium, country, fetchImpl);
+  const fromIndex = await searchCountryIndex(names, country, fetchImpl);
   if (fromIndex) return fromIndex;
 
-  for (const slug of slugCandidates(club.Stadium)) {
-    const pageUrl = `https://stadiumdb.com/stadiums/${country}/${slug}`;
-    if (await pageExists(pageUrl, fetchImpl)) return pageUrl;
-    await sleep(400);
+  const tried = new Set();
+  for (const name of names) {
+    for (const slug of slugCandidates(name)) {
+      if (tried.has(slug)) continue;
+      tried.add(slug);
+      const pageUrl = `https://stadiumdb.com/stadiums/${country}/${slug}`;
+      if (await pageExists(pageUrl, fetchImpl)) return pageUrl;
+      await sleep(400);
+    }
   }
   return null;
 }
 
 /**
  * Resolve StadiumDB page + image; optionally download bytes.
- * @param {{ ShortName?: string, Stadium?: string, Nation?: string }} club
+ * @param {{ ShortName?: string, Club?: string, Stadium?: string, Nation?: string }} club
  * @param {{ fetchImpl?: typeof fetch, cache?: Record<string, unknown>, skipBytes?: boolean }} [opts]
  * @returns {Promise<{ pageUrl: string|null, imageUrl: string|null, bytes: Uint8Array|null, error: string|null }>}
  */
@@ -301,12 +355,13 @@ async function fetchStadiumImage(club, opts = {}) {
 
   try {
     const short = String(club?.ShortName || "").trim();
-    if (!club?.Stadium?.toString().trim()) {
+    const names = lookupNames(club);
+    if (!names.length) {
       return {
         pageUrl: null,
         imageUrl: null,
         bytes: null,
-        error: "no Stadium name in DB",
+        error: "no Stadium or Club name in DB",
       };
     }
 
@@ -320,7 +375,7 @@ async function fetchStadiumImage(club, opts = {}) {
           pageUrl: null,
           imageUrl: null,
           bytes: null,
-          error: "no StadiumDB page",
+          error: `no StadiumDB page (tried: ${names.join(" / ")})`,
         };
       }
       const html = await fetchPageHtml(pageUrl, fetchImpl);
@@ -882,8 +937,11 @@ async function syncClubStadium(
   };
 
   try {
-    if (!club.Stadium?.toString().trim()) {
-      entry.error = "no Stadium name in DB";
+    if (
+      !club.Stadium?.toString().trim() &&
+      !club.Club?.toString().trim()
+    ) {
+      entry.error = "no Stadium or Club name in DB";
       return entry;
     }
 

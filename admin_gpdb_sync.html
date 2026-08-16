@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260816-gpdb-sync">
   <style>
     .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 16px; margin-top: 12px; font-size: 13px; }
     .preview-grid div { padding: 6px 8px; background: #111; border: 1px solid #333; border-radius: 4px; }
@@ -21,9 +22,6 @@
     .tag-warn { color: #fc8; }
     #confirmInput { max-width: 360px; width: 100%; padding: 8px; margin-top: 8px; background: #111; border: 1px solid #844; color: #ddd; border-radius: 4px; }
     #csvFile { max-width: 100%; margin-top: 8px; color: #ccc; }
-    .step-num { color: #ff9900; font-weight: bold; margin-right: 6px; }
-    ol.workflow { margin: 0; padding-left: 20px; line-height: 1.55; color: #aaa; font-size: 13px; }
-    ol.workflow code { color: #ccc; }
     .scrape-range { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 10px; }
     .scrape-range label { font-size: 13px; color: #aaa; }
     .scrape-range input[type="number"] { width: 72px; padding: 6px 8px; background: #111; border: 1px solid #444; color: #eee; border-radius: 4px; }
@@ -32,6 +30,7 @@
     #scrapeProgressLabel { font-size: 12px; color: #888; margin-top: 6px; }
     .scrape-options { margin-top: 10px; font-size: 13px; color: #aaa; }
     #syncProgressGrid { margin-top: 10px; }
+    .gpdb-sync-rules { margin: 0 0 16px; max-width: none; }
   </style>
 </head>
 <body class="admin-page">
@@ -39,27 +38,10 @@
   <h1 class="admin-title">GPDB ↔ PESDB sync</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <p class="note">
-        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
-        · Scrape from <a href="https://pesdb.net/efootball/" target="_blank" rel="noopener">pesdb.net</a> in-admin,
-        preview, then apply.
-        Requires <code>patches/gpdb_pesdb_sync.sql</code> and edge function <code>gpdb-pesdb-scrape</code>
-        (deploy in Supabase Dashboard — paste <code>index.ts</code> only, not terminal commands; see <code>scripts/README_pesdb_sync.md</code>).
-        <b>Back up Players</b> first (<code>export_players_csv.sql</code>).
-      </p>
-
-      <div class="card">
-        <h2>Workflow</h2>
-        <ol class="workflow">
-          <li><span class="step-num">1</span><b>Scrape PESDB</b> below (or upload a CSV as fallback).</li>
-          <li><span class="step-num">2</span>Preview differences vs live <code>Players</code>.</li>
-          <li><span class="step-num">3</span>Apply — off-PESDB cards become <b>legacy</b> (stay at club, not sellable, 1-season renewals).</li>
-        </ol>
-      </div>
+      <div id="gpdbSyncRules" class="info-box info-box--wide gpdb-sync-rules"></div>
 
       <div class="card" id="syncProgressCard">
         <h2>Scrape progress</h2>
-        <p class="note">Stored in Supabase <code>gpdb_pesdb_staging</code>. Job state is saved to the database — <b>safe to refresh</b>; scrape auto-continues when you reopen this page.</p>
         <div id="syncProgressGrid" class="preview-grid">
           <div><span id="progJobStatus">—</span> scrape job</div>
           <div><span id="progStagingCount">—</span> players in staging</div>
@@ -79,14 +61,6 @@
 
       <div class="card">
         <h2>1. Scrape PESDB → staging</h2>
-        <p class="note">
-          PESDB allows about <b>2 list pages per session</b> (~32 players each, ~2 min/page with details).
-          This scraper works in <b>2-page batches</b>: full list + max rating + playing style per player,
-          then a short cooldown before the next batch (same logic as the local Python script).
-          Progress is saved to the database after each page — <b>you can refresh this tab</b> and the scrape will auto-continue.
-          Closing the browser entirely pauses until you open this page again.
-          Test with pages <b>1–2</b> first. CSV upload still available as fallback.
-        </p>
         <div class="scrape-range">
           <label>Start page <input type="number" id="scrapeStartPage" min="1" value="1"></label>
           <label>End page <input type="number" id="scrapeEndPage" min="1" value="2"></label>
@@ -123,11 +97,6 @@
 
       <div class="card">
         <h2>2. Preview sync</h2>
-        <p class="note">
-          Dry run — no changes to <code>Players</code>.
-          Check the <b>summary counts</b> first; the table defaults to <b>Updates (existing GPDB)</b> so you can compare ratings/MV.
-          New PESDB cards are listed separately (often thousands — not shown in the first 250 by default).
-        </p>
         <button type="button" class="button" id="previewBtn">Run preview</button>
         <div id="previewStatus" class="status-line"></div>
         <div id="previewGrid" class="preview-grid" hidden></div>
@@ -163,9 +132,6 @@
 
       <div class="card" style="border-color:#844;background:#1a1212;">
         <h2 style="color:#f88;">3. Apply sync</h2>
-        <p class="note">
-          Updates matched players; marks missing cards as legacy; inserts new cards as free agents.
-        </p>
         <label for="confirmInput">Type <b>SYNC GPDB</b> to confirm</label>
         <input id="confirmInput" type="text" autocomplete="off" spellcheck="false">
         <div class="row" style="margin-top:12px;">
@@ -176,7 +142,6 @@
 
       <div class="card">
         <h2>Legacy cards (off PESDB)</h2>
-        <p class="note">Owners may keep these at their club. Not sellable. Renew 1 season at a time. Restore manually if a card returns before the next full sync.</p>
         <button type="button" class="button" id="refreshLegacyBtn">Refresh list</button>
         <div id="legacyStatus" class="status-line"></div>
         <div id="legacyTableWrap" class="sync-table-wrap" hidden>
@@ -197,6 +162,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20260617-apply-batch"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20260816-rules"></script>
 </body>
 </html>

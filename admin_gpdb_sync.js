@@ -5,8 +5,10 @@ import {
   enrichRowsWithEconomics,
   dedupeRowsByKonamiId,
 } from "./gpdb_pesdb_import.js";
+import { renderAdminGpdbSyncRules } from "./admin_gpdb_sync_rules.js?v=20260816-rules";
 
 primeAdminPageChrome();
+renderAdminGpdbSyncRules();
 
 const CONFIRM_TEXT = "SYNC GPDB";
 const SCRAPE_FUNCTION = "gpdb-pesdb-scrape";
