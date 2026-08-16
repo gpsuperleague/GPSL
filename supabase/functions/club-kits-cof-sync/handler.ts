@@ -281,6 +281,39 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
       return jsonResponse({ ok: true, club, result });
     }
 
+    if (action === "preview_freeform") {
+      const clubName = String(body?.club_name || body?.Club || "").trim();
+      const nation = String(body?.nation || body?.Nation || "").trim();
+      const short = String(body?.club_short_name || "").trim().toUpperCase() || null;
+      if (!clubName) {
+        return jsonResponse({ error: "club_name required" }, 400);
+      }
+      if (!nation) {
+        return jsonResponse({ error: "nation required" }, 400);
+      }
+
+      const club = {
+        ShortName: short || "",
+        Club: clubName,
+        Nation: nation,
+      };
+
+      const result = await fetchLatestCofKits(
+        nation,
+        clubName,
+        short,
+        fetch,
+        cofCache,
+        cofOptions
+      );
+      return jsonResponse({
+        ok: !result?.error,
+        club,
+        result,
+        error: result?.error || null,
+      });
+    }
+
     if (action === "upload_club_kit") {
       const short = String(body?.club_short_name || "").trim().toUpperCase();
       const kind = String(body?.kind || "").trim().toLowerCase();

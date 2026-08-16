@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Club checker — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260816-club-checker">
+  <style>
+    .club-checker-rules { margin: 0 0 16px; max-width: none; }
+    .checker-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+      padding: 14px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+    }
+    .checker-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #bbb;
+      min-width: 180px;
+      flex: 1 1 180px;
+    }
+    .checker-form input {
+      padding: 8px 10px;
+      background: #111;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #eee;
+      font-size: 13px;
+    }
+    .checker-form .checker-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .checker-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 1000px) {
+      .checker-grid { grid-template-columns: 1fr; }
+    }
+    .checker-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 220px;
+    }
+    .checker-card h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: #ff9900;
+    }
+    .checker-card .checker-meta {
+      font-size: 12px;
+      color: #999;
+      line-height: 1.45;
+      margin: 0 0 10px;
+      word-break: break-word;
+    }
+    .checker-card .checker-meta a { color: #ff9900; }
+    .checker-card .checker-status {
+      font-size: 12px;
+      margin: 0 0 10px;
+      color: #888;
+    }
+    .checker-card .checker-status.is-ok { color: #7ddf7d; }
+    .checker-card .checker-status.is-err { color: #f88; }
+    .checker-card .checker-status.is-loading { color: #fc8; }
+    .checker-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .checker-preview figure {
+      margin: 0;
+      text-align: center;
+      flex: 1 1 90px;
+      max-width: 160px;
+    }
+    .checker-preview img {
+      max-width: 100%;
+      max-height: 140px;
+      object-fit: contain;
+      background: #111;
+      border-radius: 4px;
+      border: 1px solid #2a2a2a;
+    }
+    .checker-preview figcaption {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .wiki-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .wiki-list li {
+      margin: 0 0 10px;
+      padding: 8px 10px;
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+    }
+    .wiki-list a {
+      color: #ff9900;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .wiki-list .wiki-snip {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      color: #999;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Club checker</h1>
+
+  <div id="clubCheckerRules" class="info-box info-box--wide club-checker-rules"></div>
+
+  <form class="checker-form" id="checkerForm">
+    <label>
+      Club name
+      <input type="text" id="clubName" required placeholder="e.g. Tigres UANL" autocomplete="off">
+    </label>
+    <label>
+      Stadium name
+      <input type="text" id="stadiumName" placeholder="e.g. Estadio Universitario" autocomplete="off">
+    </label>
+    <label>
+      Nation
+      <input type="text" id="nationName" required placeholder="e.g. Mexico" autocomplete="off">
+    </label>
+    <div class="checker-actions">
+      <button type="submit" class="button" id="lookupBtn">Lookup</button>
+    </div>
+  </form>
+
+  <p id="statusLine" class="status-line" role="status"></p>
+
+  <div class="checker-grid" id="resultsGrid" hidden>
+    <section class="checker-card" id="stadiumCard">
+      <h2>StadiumDB</h2>
+      <p class="checker-status" id="stadiumStatus">—</p>
+      <p class="checker-meta" id="stadiumMeta"></p>
+      <div class="checker-preview" id="stadiumPreview"></div>
+    </section>
+    <section class="checker-card" id="kitsCard">
+      <h2>Colours of Football</h2>
+      <p class="checker-status" id="kitsStatus">—</p>
+      <p class="checker-meta" id="kitsMeta"></p>
+      <div class="checker-preview" id="kitsPreview"></div>
+    </section>
+    <section class="checker-card" id="wikiCard">
+      <h2>Wikipedia</h2>
+      <p class="checker-status" id="wikiStatus">—</p>
+      <p class="checker-meta" id="wikiMeta"></p>
+      <ul class="wiki-list" id="wikiList"></ul>
+    </section>
+  </div>
+
+  <script type="module" src="admin_club_checker.js?v=20260816-checker"></script>
+</body>
+</html>

@@ -235,6 +235,13 @@ export const ADMIN_MAIN_NAV = [
           "Sign a manager directly to a club (bypasses draft / transfer market)."
         ),
         L(
+          "Club checker",
+          "admin_club_checker.html",
+          null,
+          null,
+          "Freeform lookup: StadiumDB image, COF kits, and Wikipedia club page."
+        ),
+        L(
           "Download Latest Kits",
           "admin_club_kits.html",
           null,

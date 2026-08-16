@@ -783,6 +783,40 @@ async function handleClubStadiumsSync(req: Request): Promise<Response> {
       });
     }
 
+    if (action === "preview_freeform") {
+      const clubName = String(body?.club_name || body?.Club || "").trim();
+      const stadium = String(body?.stadium || body?.Stadium || "").trim();
+      const nation = String(body?.nation || body?.Nation || "").trim();
+      if (!nation) {
+        return jsonResponse({ error: "nation required" }, 400);
+      }
+      if (!stadium && !clubName) {
+        return jsonResponse(
+          { error: "stadium or club_name required" },
+          400
+        );
+      }
+
+      const club = {
+        ShortName: String(body?.club_short_name || "").trim().toUpperCase(),
+        Club: clubName || stadium,
+        Stadium: stadium || null,
+        Nation: nation,
+      };
+
+      const result = await fetchStadiumImage(club as ClubRow, {
+        fetchImpl: fetch,
+        skipBytes: true,
+      });
+      return jsonResponse({
+        ok: !result.error,
+        club,
+        page_url: result.pageUrl,
+        image_url: result.imageUrl,
+        error: result.error,
+      });
+    }
+
     if (action === "sync_one") {
       const short = String(body?.club_short_name || "").trim().toUpperCase();
       if (!short) {
