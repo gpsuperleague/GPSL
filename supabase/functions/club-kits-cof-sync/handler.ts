@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { Image } from "npm:imagescript@1.3.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -311,6 +312,123 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
         club,
         result,
         error: result?.error || null,
+      });
+    }
+
+    if (
+      action === "preview_wikipedia_kits" ||
+      action === "sync_wikipedia_kits"
+    ) {
+      const page =
+        String(body?.wikipedia_url || body?.wikipedia_title || body?.page || "")
+          .trim() || String(body?.club_name || "").trim();
+      if (!page) {
+        return jsonResponse(
+          { error: "wikipedia_url or wikipedia_title required" },
+          400
+        );
+      }
+
+      const wiki = await fetchWikipediaKitPngs(page, {
+        fetchImpl: fetch,
+        Image,
+      });
+      if (wiki.error) {
+        return jsonResponse({
+          ok: false,
+          title: wiki.title || null,
+          page_url: wiki.pageUrl || null,
+          error: wiki.error,
+          kits: {},
+        });
+      }
+
+      const kitsOut: Record<string, unknown> = {};
+      for (const kind of ["home", "away", "third"] as const) {
+        const entry = wiki.kits?.[kind];
+        if (!entry?.png) continue;
+        kitsOut[kind] = {
+          label: entry.label,
+          layers: entry.layers,
+          image_base64: bytesToBase64(entry.png),
+          data_url: `data:image/png;base64,${bytesToBase64(entry.png)}`,
+        };
+      }
+
+      if (action === "preview_wikipedia_kits") {
+        return jsonResponse({
+          ok: true,
+          title: wiki.title,
+          page_url: wiki.pageUrl,
+          kits: kitsOut,
+          source: "wikipedia",
+        });
+      }
+
+      const short = String(body?.club_short_name || "").trim().toUpperCase();
+      if (!short) {
+        return jsonResponse(
+          { error: "club_short_name required to save Wikipedia kits" },
+          400
+        );
+      }
+
+      const { data: club, error: clubErr } = await adminClient
+        .from("Clubs")
+        .select("ShortName")
+        .eq("ShortName", short)
+        .maybeSingle();
+      if (clubErr || !club) {
+        return jsonResponse({ error: `Club not found: ${short}` }, 404);
+      }
+      if (!ghToken) {
+        return jsonResponse(
+          {
+            error:
+              "GITHUB_TOKEN not set — add a GitHub PAT with repo contents write access in Supabase → Edge Functions → Secrets.",
+          },
+          400
+        );
+      }
+
+      const files = (["home", "away", "third"] as const)
+        .filter((kind) => wiki.kits?.[kind]?.png)
+        .map((kind) => ({
+          kind,
+          bytes: wiki.kits[kind].png,
+          ext: "png",
+        }));
+      if (!files.length) {
+        return jsonResponse({ error: "No Wikipedia kit PNGs to save" }, 400);
+      }
+
+      const { paths, commitSha } = await githubCommitClubKitImages(
+        ghToken,
+        short,
+        files
+      );
+
+      const upsert: Record<string, unknown> = {
+        club_short_name: short,
+        home_image_url: paths.home || null,
+        away_image_url: paths.away || null,
+        third_image_url: paths.third || null,
+        updated_at: new Date().toISOString(),
+      };
+      const { error: saveErr } = await adminClient
+        .from("club_kits")
+        .upsert(upsert, { onConflict: "club_short_name" });
+      if (saveErr) return jsonResponse({ error: saveErr.message }, 500);
+
+      return jsonResponse({
+        ok: true,
+        club_short_name: short,
+        title: wiki.title,
+        page_url: wiki.pageUrl,
+        paths,
+        github: { commit_sha: commitSha },
+        kits: kitsOut,
+        source: "wikipedia",
       });
     }
 

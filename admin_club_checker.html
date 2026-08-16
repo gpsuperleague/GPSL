@@ -152,8 +152,14 @@
       Nation
       <input type="text" id="nationName" required placeholder="e.g. Mexico" autocomplete="off">
     </label>
+    <label>
+      GPSL ShortName <span style="color:#666;">(optional — to save kits)</span>
+      <input type="text" id="clubShort" placeholder="e.g. JAR" autocomplete="off" maxlength="8">
+    </label>
     <div class="checker-actions">
       <button type="submit" class="button" id="lookupBtn">Lookup</button>
+      <button type="button" class="button secondary" id="wikiKitsBtn" disabled>Extract kits from Wikipedia</button>
+      <button type="button" class="button" id="saveWikiKitsBtn" disabled style="background:#335533;">Save wiki kits → GitHub</button>
     </div>
   </form>
 
@@ -177,9 +183,11 @@
       <p class="checker-status" id="wikiStatus">—</p>
       <p class="checker-meta" id="wikiMeta"></p>
       <ul class="wiki-list" id="wikiList"></ul>
+      <div class="checker-preview" id="wikiKitsPreview" style="margin-top:12px;"></div>
+      <p class="checker-meta" id="wikiKitsMeta"></p>
     </section>
   </div>
 
-  <script type="module" src="admin_club_checker.js?v=20260816-checker2"></script>
+  <script type="module" src="admin_club_checker.js?v=20260816-wiki-kits"></script>
 </body>
 </html>

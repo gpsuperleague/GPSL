@@ -9,6 +9,11 @@ primeAdminPageChrome();
 const STADIUM_FN = "club-stadiums-sync";
 const KITS_FN = "club-kits-cof-sync";
 
+/** @type {{ title: string, url: string } | null} */
+let lastWikiHit = null;
+/** @type {Record<string, { data_url?: string, image_base64?: string }> | null} */
+let lastWikiKits = null;
+
 function escapeHtml(text) {
   return String(text ?? "")
     .replace(/&/g, "&amp;")
@@ -30,7 +35,17 @@ function formValues() {
     clubName: document.getElementById("clubName")?.value?.trim() || "",
     stadiumName: document.getElementById("stadiumName")?.value?.trim() || "",
     nationName: document.getElementById("nationName")?.value?.trim() || "",
+    clubShort: (document.getElementById("clubShort")?.value || "")
+      .trim()
+      .toUpperCase(),
   };
+}
+
+function setWikiKitButtons({ extractEnabled, saveEnabled }) {
+  const extractBtn = document.getElementById("wikiKitsBtn");
+  const saveBtn = document.getElementById("saveWikiKitsBtn");
+  if (extractBtn) extractBtn.disabled = !extractEnabled;
+  if (saveBtn) saveBtn.disabled = !saveEnabled;
 }
 
 async function invokeFn(name, body) {
@@ -192,8 +207,15 @@ function renderKits(data, err) {
 function renderWiki(hit, err) {
   const meta = document.getElementById("wikiMeta");
   const list = document.getElementById("wikiList");
+  const kitsPreview = document.getElementById("wikiKitsPreview");
+  const kitsMeta = document.getElementById("wikiKitsMeta");
   meta.innerHTML = "";
   list.innerHTML = "";
+  if (kitsPreview) kitsPreview.innerHTML = "";
+  if (kitsMeta) kitsMeta.innerHTML = "";
+  lastWikiHit = null;
+  lastWikiKits = null;
+  setWikiKitButtons({ extractEnabled: false, saveEnabled: false });
 
   if (err) {
     setCardStatus("wikiStatus", err.message || String(err), "err");
@@ -206,11 +228,141 @@ function renderWiki(hit, err) {
     return;
   }
 
+  lastWikiHit = { title: hit.title, url: hit.url };
   setCardStatus("wikiStatus", "Found", "ok");
   meta.innerHTML = `Club page:
     <a href="${escapeHtml(hit.url)}" target="_blank" rel="noopener">${escapeHtml(hit.title)}</a>`;
   if (hit.description) {
     list.innerHTML = `<li><span class="wiki-snip">${escapeHtml(hit.description)}</span></li>`;
+  }
+  setWikiKitButtons({ extractEnabled: true, saveEnabled: false });
+}
+
+function renderWikiKitPreviews(data, err) {
+  const preview = document.getElementById("wikiKitsPreview");
+  const meta = document.getElementById("wikiKitsMeta");
+  if (!preview || !meta) return;
+  preview.innerHTML = "";
+  meta.innerHTML = "";
+
+  if (err) {
+    meta.innerHTML = `<span style="color:#f88;">${escapeHtml(err.message || String(err))}</span>`;
+    lastWikiKits = null;
+    setWikiKitButtons({
+      extractEnabled: !!lastWikiHit,
+      saveEnabled: false,
+    });
+    return;
+  }
+
+  if (data?.error) {
+    meta.innerHTML = `<span style="color:#f88;">${escapeHtml(data.error)}</span>`;
+    lastWikiKits = null;
+    setWikiKitButtons({
+      extractEnabled: !!lastWikiHit,
+      saveEnabled: false,
+    });
+    return;
+  }
+
+  lastWikiKits = data?.kits || null;
+  const kits = lastWikiKits || {};
+  const figures = ["home", "away", "third"]
+    .filter((kind) => kits[kind]?.data_url)
+    .map(
+      (kind) => `
+      <figure>
+        <img src="${escapeHtml(kits[kind].data_url)}" alt="Wiki ${kind} kit">
+        <figcaption>wiki ${kind}</figcaption>
+      </figure>`
+    )
+    .join("");
+  preview.innerHTML =
+    figures ||
+    "<span style='color:#777;font-size:12px;'>No home/away/third kit templates on the page.</span>";
+  meta.innerHTML = data?.page_url
+    ? `Composited from Wikipedia kit templates (not a single photo). Source:
+       <a href="${escapeHtml(data.page_url)}" target="_blank" rel="noopener">${escapeHtml(data.title || "page")}</a>`
+    : "Composited from Wikipedia kit templates.";
+
+  const short = formValues().clubShort;
+  setWikiKitButtons({
+    extractEnabled: !!lastWikiHit,
+    saveEnabled: !!(lastWikiKits && Object.keys(lastWikiKits).length && short),
+  });
+}
+
+async function extractWikipediaKits() {
+  if (!lastWikiHit?.url) {
+    setStatus("statusLine", "Run Lookup first to find the Wikipedia club page.", false);
+    return;
+  }
+  setStatus("statusLine", "Compositing Wikipedia kits (home/away/third)…", true);
+  setWikiKitButtons({ extractEnabled: false, saveEnabled: false });
+  try {
+    const data = await invokeFn(KITS_FN, {
+      action: "preview_wikipedia_kits",
+      wikipedia_url: lastWikiHit.url,
+      wikipedia_title: lastWikiHit.title,
+    });
+    renderWikiKitPreviews(data, null);
+    setStatus(
+      "statusLine",
+      data?.error
+        ? data.error
+        : "Wikipedia kits ready. Enter GPSL ShortName and Save to push PNGs.",
+      !data?.error
+    );
+  } catch (err) {
+    renderWikiKitPreviews(null, err);
+    setStatus("statusLine", err.message || String(err), false);
+  }
+}
+
+async function saveWikipediaKits() {
+  const short = formValues().clubShort;
+  if (!short) {
+    setStatus(
+      "statusLine",
+      "Enter GPSL ShortName (club must exist) before saving kits.",
+      false
+    );
+    return;
+  }
+  if (!lastWikiHit?.url) {
+    setStatus("statusLine", "Run Lookup + Extract kits first.", false);
+    return;
+  }
+  if (
+    !window.confirm(
+      `Composite Wikipedia kits and commit to images/clubs_kits/${short}_home|away|third.png on GitHub?`
+    )
+  ) {
+    return;
+  }
+  setStatus("statusLine", `Saving Wikipedia kits for ${short}…`, true);
+  setWikiKitButtons({ extractEnabled: false, saveEnabled: false });
+  try {
+    const data = await invokeFn(KITS_FN, {
+      action: "sync_wikipedia_kits",
+      wikipedia_url: lastWikiHit.url,
+      wikipedia_title: lastWikiHit.title,
+      club_short_name: short,
+    });
+    renderWikiKitPreviews(data, null);
+    setStatus(
+      "statusLine",
+      data?.error
+        ? data.error
+        : `Saved wiki kits for ${short} → GitHub (${data?.github?.commit_sha || "ok"}).`,
+      !data?.error
+    );
+  } catch (err) {
+    setStatus("statusLine", err.message || String(err), false);
+    setWikiKitButtons({
+      extractEnabled: !!lastWikiHit,
+      saveEnabled: !!lastWikiKits,
+    });
   }
 }
 
@@ -234,6 +386,13 @@ async function runLookup(event) {
   document.getElementById("stadiumPreview").innerHTML = "";
   document.getElementById("kitsPreview").innerHTML = "";
   document.getElementById("wikiList").innerHTML = "";
+  document.getElementById("wikiKitsPreview") &&
+    (document.getElementById("wikiKitsPreview").innerHTML = "");
+  document.getElementById("wikiKitsMeta") &&
+    (document.getElementById("wikiKitsMeta").innerHTML = "");
+  lastWikiHit = null;
+  lastWikiKits = null;
+  setWikiKitButtons({ extractEnabled: false, saveEnabled: false });
 
   const btn = document.getElementById("lookupBtn");
   if (btn) btn.disabled = true;
@@ -283,9 +442,9 @@ function renderCheckerRules() {
       title: "Club checker",
       lead: `Enter a club (not necessarily in GPSL yet). Lookup runs <b>StadiumDB</b>, <b>Colours of Football</b>, and <b>Wikipedia</b> in parallel.`,
       notice: {
-        title: "Edge functions required for stadium + kits",
-        body: `Redeploy <code>club-stadiums-sync</code> and <code>club-kits-cof-sync</code> after this update (paste each <code>index.ts</code>, JWT OFF).
-          Wikipedia runs in the browser and needs no edge deploy.`,
+        title: "Edge functions required",
+        body: `Redeploy <code>club-stadiums-sync</code> and <code>club-kits-cof-sync</code> (paste each <code>index.ts</code>, JWT OFF).
+          Wikipedia <b>page link</b> works in-browser; <b>kit extraction</b> needs the updated kits edge function.`,
       },
       cards: [
         {
@@ -303,10 +462,11 @@ function renderCheckerRules() {
           ],
         },
         {
-          heading: "Wikipedia",
+          heading: "Wikipedia kits",
           items: [
-            "Searches English Wikipedia by <b>club name only</b> (not stadium or nation).",
-            "Returns the single best club page link — useful for crests / badge upload.",
+            "Lookup finds the club page by <b>club name only</b>.",
+            "Wikipedia kits are <b>layered templates</b> (not one PNG) — <b>Extract kits</b> composites home/away/third.",
+            "Enter GPSL <b>ShortName</b> → <b>Save wiki kits → GitHub</b> writes <code>images/clubs_kits/{SHORT}_*.png</code>.",
           ],
         },
       ],
@@ -318,5 +478,18 @@ function renderCheckerRules() {
 document.addEventListener("DOMContentLoaded", async () => {
   renderCheckerRules();
   document.getElementById("checkerForm")?.addEventListener("submit", runLookup);
+  document.getElementById("wikiKitsBtn")?.addEventListener("click", () =>
+    extractWikipediaKits()
+  );
+  document.getElementById("saveWikiKitsBtn")?.addEventListener("click", () =>
+    saveWikipediaKits()
+  );
+  document.getElementById("clubShort")?.addEventListener("input", () => {
+    const short = formValues().clubShort;
+    setWikiKitButtons({
+      extractEnabled: !!lastWikiHit,
+      saveEnabled: !!(lastWikiKits && Object.keys(lastWikiKits).length && short),
+    });
+  });
   await initAdminPage();
 });

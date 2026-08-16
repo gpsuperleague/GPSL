@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Bundle club_kits_cof.js into index.ts for single-file Supabase Dashboard deploy."""
+"""Bundle club_kits_cof.js + wiki_football_kits.js into index.ts for Dashboard deploy."""
 
 from pathlib import Path
-import re
 
 ROOT = Path(__file__).resolve().parents[1]
 COF = ROOT / "club_kits_cof.js"
+WIKI = ROOT / "wiki_football_kits.js"
 HANDLER = ROOT / "supabase/functions/club-kits-cof-sync/handler.ts"
 OUT = ROOT / "supabase/functions/club-kits-cof-sync/index.ts"
 
 CREATE_IMPORT = 'import { createClient } from "npm:@supabase/supabase-js@2";'
+IMAGE_IMPORT = 'import { Image } from "npm:imagescript@1.3.0";'
 RUNTIME_IMPORT = 'import "jsr:@supabase/functions-js/edge-runtime.d.ts";'
 
 
@@ -21,33 +22,32 @@ def strip_exports(text: str) -> str:
 
 
 def extract_handler_source() -> str:
-    """Read handler body (cors + Deno.serve) from handler.ts or legacy index.ts."""
-    if HANDLER.exists():
-        raw = HANDLER.read_text(encoding="utf-8")
-        if CREATE_IMPORT in raw:
-            return raw.split(CREATE_IMPORT, 1)[1].lstrip("\n")
-        return raw
-
-    raw = OUT.read_text(encoding="utf-8")
-    m = re.search(r"\nconst corsHeaders = \{", raw)
-    if not m:
-        raise SystemExit("Could not find handler section (const corsHeaders)")
-    return raw[m.start() + 1 :]
+    raw = HANDLER.read_text(encoding="utf-8")
+    # Drop imports — re-emitted at top of bundle
+    if CREATE_IMPORT in raw:
+        raw = raw.split(CREATE_IMPORT, 1)[1].lstrip("\n")
+    if IMAGE_IMPORT in raw:
+        raw = raw.replace(IMAGE_IMPORT + "\n", "").replace(IMAGE_IMPORT, "")
+    return raw.lstrip("\n")
 
 
 def main() -> None:
     cof = strip_exports(COF.read_text(encoding="utf-8"))
+    wiki = strip_exports(WIKI.read_text(encoding="utf-8"))
     handler = extract_handler_source()
 
     out = (
         "// GPSL club-kits-cof-sync — single file for Supabase Dashboard deploy\n"
         "// Re-bundle: python scripts/bundle_club_kits_edge.py\n\n"
         f"{RUNTIME_IMPORT}\n"
-        f"{CREATE_IMPORT}\n\n"
+        f"{CREATE_IMPORT}\n"
+        f"{IMAGE_IMPORT}\n\n"
         f"{cof.rstrip()}\n\n"
+        f"{wiki.rstrip()}\n\n"
         f"{handler.lstrip()}"
     )
 
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(out, encoding="utf-8")
     print(f"Wrote bundled {OUT} ({len(out)} chars)")
 
