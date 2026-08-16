@@ -136,6 +136,7 @@ async function createAccount() {
   const password = document.getElementById("password").value;
   const password2 = document.getElementById("password2").value;
   const fairplayAccepted = document.getElementById("fairplayCheck").checked;
+  const ageConfirmed = document.getElementById("ageCheck").checked;
 
   if (!ownerTag) {
     setStatus("formStatus", "Owner tag is required.", false);
@@ -157,6 +158,14 @@ async function createAccount() {
     setStatus("formStatus", "You must accept the fair-play agreement.", false);
     return;
   }
+  if (!ageConfirmed) {
+    setStatus(
+      "formStatus",
+      "You must confirm that you are 18 years of age or older.",
+      false
+    );
+    return;
+  }
 
   const btn = document.getElementById("createBtn");
   btn.disabled = true;
@@ -169,6 +178,7 @@ async function createAccount() {
       password,
       ownerTag,
       fairplayAccepted: true,
+      ageConfirmed: true,
     });
     sessionStorage.removeItem("gpsl_join_ticket");
     document.getElementById("stepForm").hidden = true;

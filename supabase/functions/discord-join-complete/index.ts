@@ -7,6 +7,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
  */
 
 const FAIRPLAY_VERSION = "2026-07-fairplay-v1";
+const AGE_CONFIRMATION_VERSION = "2026-08-age-18-v1";
 const DEFAULT_STARTING_BALANCE = 600000000;
 
 const corsHeaders = {
@@ -59,6 +60,7 @@ Deno.serve(async (req) => {
     const password = String(body?.password || "").trim();
     const ownerTag = String(body?.ownerTag || "").trim().slice(0, 64);
     const fairplayAccepted = body?.fairplayAccepted === true;
+    const ageConfirmed = body?.ageConfirmed === true;
 
     if (!ticket) return jsonResponse({ error: "Missing join ticket" }, 400);
     if (!email || !email.includes("@")) {
@@ -76,6 +78,15 @@ Deno.serve(async (req) => {
     if (!fairplayAccepted) {
       return jsonResponse(
         { error: "You must accept the GPSL fair-play agreement" },
+        400
+      );
+    }
+    if (!ageConfirmed) {
+      return jsonResponse(
+        {
+          error:
+            "You must confirm that you are 18 years of age or older to create an account",
+        },
         400
       );
     }
@@ -177,6 +188,8 @@ Deno.serve(async (req) => {
         discord_joined_at: ticketRow.discord_joined_at || null,
         fairplay_accepted_at: nowIso,
         fairplay_version: FAIRPLAY_VERSION,
+        age_confirmed_at: nowIso,
+        age_confirmation_version: AGE_CONFIRMATION_VERSION,
         status_changed_at: nowIso,
       },
       { onConflict: "owner_id" }
@@ -225,6 +238,7 @@ Deno.serve(async (req) => {
       owner_tag: ownerTag,
       discord_joined_at: ticketRow.discord_joined_at || null,
       fairplay_version: FAIRPLAY_VERSION,
+      age_confirmation_version: AGE_CONFIRMATION_VERSION,
       message:
         "Account created. You are on the waiting list (ordered by Discord join date). You can log in now.",
     });

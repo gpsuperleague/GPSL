@@ -110,12 +110,26 @@
           Further terms may be published in Discord and on Learning GPSL; continued
           participation means you accept updates announced by the league.
         </p>
-        <p style="color:#888;margin-bottom:0;">Version: <span id="fairplayVersion">2026-07-fairplay-v1</span></p>
+        <h3 style="margin-top:14px;">Age requirement (18+)</h3>
+        <p>
+          GPSL is for adults only. You must be <b>at least 18 years old</b> to create
+          an account and take part. By continuing you confirm that you meet this
+          minimum age. False confirmation may result in immediate removal.
+        </p>
+        <p style="color:#888;margin-bottom:0;">
+          Fair play: <span id="fairplayVersion">2026-07-fairplay-v1</span>
+          · Age: <span id="ageVersion">2026-08-age-18-v1</span>
+        </p>
       </div>
 
       <label class="check">
         <input type="checkbox" id="fairplayCheck">
         <span>I have read and agree to the GPSL Fair Play Agreement.</span>
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="ageCheck">
+        <span>I confirm that I am <b>18 years of age or older</b> and agree to this age requirement.</span>
       </label>
 
       <button type="button" class="btn primary" id="createBtn">Create account &amp; join waiting list</button>
@@ -133,6 +147,6 @@
     </p>
   </div>
 
-  <script type="module" src="join_gpsl.js"></script>
+  <script type="module" src="join_gpsl.js?v=20260816-age18"></script>
 </body>
 </html>
