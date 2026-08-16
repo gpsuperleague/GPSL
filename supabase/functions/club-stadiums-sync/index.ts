@@ -56,6 +56,7 @@ const NATION_TO_CODE = {
   unitedstates: "usa",
   united_states: "usa",
   morocco: "mar",
+  senegal: "sen",
 };
 
 /** Manual overrides when auto-slug fails (ShortName → stadiumdb path after /stadiums/) */

@@ -17,16 +17,6 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
-function stripWikiHtml(html) {
-  return String(html ?? "")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
-}
-
 function setCardStatus(id, text, state) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -63,7 +53,10 @@ async function invokeFn(name, body) {
     /* ignore */
   }
   if (data?.error) detail = String(data.error);
-  if (/failed to send|cors|520|502/i.test(detail)) {
+  if (/unknown action:\s*preview_freeform/i.test(detail)) {
+    detail =
+      `${name} is still the old deploy (no preview_freeform). Paste updated index.ts in Supabase → Deploy (JWT OFF).`;
+  } else if (/failed to send|cors|520|502/i.test(detail)) {
     detail += ` — deploy ${name} (paste index.ts), JWT verify OFF, then retry.`;
   }
   throw new Error(detail);
@@ -86,27 +79,23 @@ async function lookupKits({ clubName, nationName }) {
   });
 }
 
-async function lookupWikipedia({ clubName, nationName }) {
-  const query = [clubName, nationName, "football club"].filter(Boolean).join(" ");
+async function lookupWikipedia({ clubName }) {
   const url = new URL("https://en.wikipedia.org/w/api.php");
-  url.searchParams.set("action", "query");
-  url.searchParams.set("list", "search");
-  url.searchParams.set("srsearch", query);
-  url.searchParams.set("srlimit", "5");
+  url.searchParams.set("action", "opensearch");
+  url.searchParams.set("search", clubName);
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("namespace", "0");
   url.searchParams.set("format", "json");
   url.searchParams.set("origin", "*");
 
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`Wikipedia search failed (${res.status})`);
   const data = await res.json();
-  const hits = data?.query?.search || [];
-  return hits.map((hit) => ({
-    title: hit.title,
-    snippet: stripWikiHtml(hit.snippet || ""),
-    url: `https://en.wikipedia.org/wiki/${encodeURIComponent(
-      String(hit.title).replace(/ /g, "_")
-    )}`,
-  }));
+  const title = data?.[1]?.[0];
+  const pageUrl = data?.[3]?.[0];
+  const description = data?.[2]?.[0] || "";
+  if (!title || !pageUrl) return null;
+  return { title, url: pageUrl, description };
 }
 
 function renderStadium(data, err) {
@@ -200,7 +189,7 @@ function renderKits(data, err) {
   preview.innerHTML = figures || "<span style='color:#777;font-size:12px;'>No kit images.</span>";
 }
 
-function renderWiki(hits, err) {
+function renderWiki(hit, err) {
   const meta = document.getElementById("wikiMeta");
   const list = document.getElementById("wikiList");
   meta.innerHTML = "";
@@ -211,25 +200,18 @@ function renderWiki(hits, err) {
     return;
   }
 
-  if (!hits?.length) {
-    setCardStatus("wikiStatus", "No Wikipedia hits", "err");
-    meta.textContent = "Try a fuller club name or different nation spelling.";
+  if (!hit?.url) {
+    setCardStatus("wikiStatus", "No Wikipedia page", "err");
+    meta.textContent = "No page found for that club name.";
     return;
   }
 
-  setCardStatus("wikiStatus", `${hits.length} result(s)`, "ok");
-  meta.innerHTML = `Top hit:
-    <a href="${escapeHtml(hits[0].url)}" target="_blank" rel="noopener">${escapeHtml(hits[0].title)}</a>`;
-
-  list.innerHTML = hits
-    .map(
-      (hit) => `
-      <li>
-        <a href="${escapeHtml(hit.url)}" target="_blank" rel="noopener">${escapeHtml(hit.title)}</a>
-        <span class="wiki-snip">${escapeHtml(hit.snippet)}</span>
-      </li>`
-    )
-    .join("");
+  setCardStatus("wikiStatus", "Found", "ok");
+  meta.innerHTML = `Club page:
+    <a href="${escapeHtml(hit.url)}" target="_blank" rel="noopener">${escapeHtml(hit.title)}</a>`;
+  if (hit.description) {
+    list.innerHTML = `<li><span class="wiki-snip">${escapeHtml(hit.description)}</span></li>`;
+  }
 }
 
 async function runLookup(event) {
@@ -323,8 +305,8 @@ function renderCheckerRules() {
         {
           heading: "Wikipedia",
           items: [
-            "Searches English Wikipedia for “{club} {nation} football club”.",
-            "Shows top links — useful for crests / manual badge upload.",
+            "Searches English Wikipedia by <b>club name only</b> (not stadium or nation).",
+            "Returns the single best club page link — useful for crests / badge upload.",
           ],
         },
       ],
