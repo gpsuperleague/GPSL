@@ -26,7 +26,9 @@ const COF_NATION_MAP = {
   argentina: { folder: "arg", index: "argentina.html" },
   usa: { folder: "usa", index: "usa.html" },
   "united states": { folder: "usa", index: "usa.html" },
-  mexico: { folder: "mex", index: "mex.html" },
+  // COF folder is mex/, but the nation index is mexico.html (not mex.html)
+  mexico: { folder: "mex", index: "mexico.html" },
+  mex: { folder: "mex", index: "mexico.html" },
   japan: { folder: "jap", index: "jpn.html" },
   korea: { folder: "kor", index: "korea.html" },
   "south korea": { folder: "kor", index: "korea.html" },
@@ -102,6 +104,8 @@ const COF_CLUB_SLUG_OVERRIDES = {
   IFK: "goteborg",
   // COF: uru/danubio/danubio_*.html (index is uruguay.html, not uru.html)
   DAN: "danubio",
+  // COF: mex/tigres/tigres_*.html (index is mexico.html)
+  TIG: "tigres",
 };
 
 /** When slug alone is not enough (page stem differs from folder name) */
