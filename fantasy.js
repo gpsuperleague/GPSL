@@ -117,7 +117,8 @@ function renderSquad(data) {
           ${fa ? `<span class="gpfl-badge gpfl-badge--fa">FA — replace</span>` : ""}
           ${p.is_captain ? `<span class="gpfl-badge gpfl-badge--c">C</span>` : ""}
         </td>
-        <td>${esc(p.club_short_name || "—")}</td>
+        <td>${esc(p.club_name || p.club_short_name || "—")}</td>
+        <td>${esc(p.owner_name || "—")}</td>
         <td>${esc((p.position_group || "").toUpperCase())}</td>
         <td class="num">${money(p.purchase_price)}</td>
         <td><button type="button" class="gpfl-btn gpfl-rm" data-id="${esc(p.player_id)}">${fa ? "Clear" : "Sell"}</button></td>
@@ -125,7 +126,7 @@ function renderSquad(data) {
     })
     .join("");
   root.innerHTML = `<table class="gpfl-table">
-    <thead><tr><th>XI</th><th>C</th><th>Player</th><th>Club</th><th>Pos</th><th class="num">Paid</th><th></th></tr></thead>
+    <thead><tr><th>XI</th><th>C</th><th>Player</th><th>Club</th><th>Owner</th><th>Pos</th><th class="num">Paid</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 
@@ -197,13 +198,14 @@ async function loadPool() {
   }
   root.innerHTML = `<p class="gpfl-muted" style="margin:0 0 8px;">${esc(data.total)} in filter · showing ${players.length}</p>
     <table class="gpfl-table">
-      <thead><tr><th>Player</th><th>Club</th><th>Div</th><th>Pos</th><th class="num">GPFL price</th><th></th></tr></thead>
+      <thead><tr><th>Player</th><th>Club</th><th>Owner</th><th>Div</th><th>Pos</th><th class="num">GPFL price</th><th></th></tr></thead>
       <tbody>
         ${players
           .map(
             (p) => `<tr>
               <td>${esc(p.player_name)}</td>
-              <td>${esc(p.club_short_name)}</td>
+              <td>${esc(p.club_name || p.club_short_name)}</td>
+              <td>${esc(p.owner_name || "Vacant")}</td>
               <td>${esc(p.division || "")}</td>
               <td>${esc(p.position || p.position_group)}</td>
               <td class="num">${money(p.price)}</td>
