@@ -5,7 +5,14 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadMyNation, loadNationalSquad } from "./international.js";
 import { loadCalendarStatus } from "./competition_calendar.js";
-import { isFixtureMonthPlayable } from "./competition.js";
+import { isFixtureMonthPlayable, GPSL_MONTH_LABELS } from "./competition.js";
+import {
+  formatKickoffPair,
+  filterSelectableKickoffSlots,
+  isSelectableKickoffSlot,
+  formatOwnerNowLine,
+  UK_TZ,
+} from "./match_scheduling.js";
 import {
   loadMatchSimStatus,
   matchSimBannerHtml,
@@ -29,6 +36,10 @@ let savedSquadByPlayer = new Map();
 let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: null };
 /** @type {any} */
 let calendarStatus = null;
+/** @type {any} */
+let scheduleCtx = null;
+/** @type {string|null} */
+let selectedKickoffIso = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -482,36 +493,11 @@ async function selectFixture(id) {
     el.checked = false;
   });
   $("submitBtn").disabled = !!f.played;
-  $("proposeBtn").disabled = !!f.played;
 
   renderCheckin(f);
   updateKoScoreUi();
   renderIntlSimActions(f);
-
-  const { data: props } = await supabase
-    .from("international_fixture_schedule_proposal")
-    .select("*")
-    .eq("fixture_id", id)
-    .eq("status", "pending")
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  const prop = props?.[0];
-  const acceptBtn = $("acceptBtn");
-  if (prop && prop.proposed_by_nation !== myNation.code) {
-    pendingProposalId = prop.id;
-    acceptBtn.hidden = false;
-    $("scheduleStatus").textContent = `Pending proposal from ${prop.proposed_by_nation}: ${new Date(
-      prop.kickoff_at
-    ).toLocaleString()}`;
-  } else {
-    acceptBtn.hidden = true;
-    $("scheduleStatus").textContent = prop
-      ? `Your proposal pending (${new Date(prop.kickoff_at).toLocaleString()})`
-      : f.agreed_kickoff_at
-        ? `Agreed: ${new Date(f.agreed_kickoff_at).toLocaleString()}`
-        : "No kickoff agreed yet.";
-  }
+  await renderSchedulePanel(f);
 
   const { data: subs } = await supabase
     .from("international_result_submissions")
@@ -551,6 +537,154 @@ async function selectFixture(id) {
     } else {
       setStatus("", null);
     }
+  }
+}
+
+async function renderSchedulePanel(f) {
+  selectedKickoffIso = null;
+  pendingProposalId = null;
+  scheduleCtx = null;
+  const meta = $("scheduleMeta");
+  const list = $("kickoffSlotList");
+  const pendingPanel = $("pendingSchedulePanel");
+  const proposeBtn = $("proposeBtn");
+  const acceptBtn = $("acceptBtn");
+  const statusEl = $("scheduleStatus");
+
+  if (list) list.innerHTML = "";
+  if (pendingPanel) {
+    pendingPanel.hidden = true;
+    pendingPanel.innerHTML = "";
+  }
+  if (proposeBtn) {
+    proposeBtn.disabled = true;
+    proposeBtn.textContent = "Propose kick-off";
+  }
+  if (acceptBtn) acceptBtn.hidden = true;
+  if (statusEl) statusEl.textContent = "";
+
+  if (!f || f.played) {
+    if (meta) meta.textContent = "Fixture already played.";
+    return;
+  }
+
+  if (meta) meta.textContent = "Loading schedule slots…";
+
+  const { data, error } = await supabase.rpc(
+    "international_match_schedule_fixture_context",
+    { p_fixture_id: f.id }
+  );
+
+  if (error) {
+    if (meta) {
+      meta.textContent = `❌ ${error.message} — run patches/international_match_schedule_availability_20260817.sql`;
+    }
+    return;
+  }
+
+  scheduleCtx = data;
+  const sch = data.schedule || {};
+  const pending = data.pending_proposal;
+  const homeTz = data.home_timezone || UK_TZ;
+  const awayTz = data.away_timezone || UK_TZ;
+  const ownerTz = data.my_timezone || UK_TZ;
+  const monthKey = data.proposal_window?.gpsl_month || f.gpsl_month;
+  const monthLabel = GPSL_MONTH_LABELS[monthKey] || monthKey || "—";
+
+  if (meta) {
+    meta.textContent =
+      `${monthLabel} · Your role: ${data.my_role || "—"} · ${formatOwnerNowLine(ownerTz)}` +
+      (data.away_vacant || data.home_vacant
+        ? " · Vacant nation(s) in this fixture — kick-off auto-agrees if you propose vs vacant."
+        : "");
+  }
+
+  if (sch.status === "agreed" && sch.agreed_kickoff_at) {
+    if (statusEl) {
+      statusEl.textContent = `Agreed: ${formatKickoffPair(
+        sch.agreed_kickoff_at,
+        homeTz,
+        awayTz
+      )}`;
+    }
+    if (proposeBtn) proposeBtn.disabled = true;
+    return;
+  }
+
+  if (pending) {
+    pendingProposalId = pending.id;
+    const fromOpp = pending.proposed_by_nation !== myNation?.code;
+    const stillValid = isSelectableKickoffSlot(pending.kickoff_at, ownerTz);
+    if (pendingPanel) {
+      pendingPanel.hidden = false;
+      pendingPanel.innerHTML = `
+        <p class="note" style="color:#fc6;margin:8px 0;">
+          <b>${escapeHtml(pending.proposed_by_nation)}</b> proposed
+          ${escapeHtml(formatKickoffPair(pending.kickoff_at, homeTz, awayTz))}
+        </p>
+        ${
+          !stillValid
+            ? `<p class="note" style="color:#f88;">This time has passed — counter-propose a future slot.</p>`
+            : ""
+        }
+      `;
+    }
+    if (acceptBtn) {
+      acceptBtn.hidden = !(fromOpp && data.can_respond && stillValid);
+    }
+    if (statusEl && fromOpp && !data.can_respond) {
+      statusEl.textContent = "Waiting for opponent to respond.";
+    } else if (statusEl && !fromOpp) {
+      statusEl.textContent = "Your proposal is pending — waiting for opponent.";
+    }
+  }
+
+  const canPick = !!(data.can_propose || data.can_propose_first || data.can_respond);
+  if (proposeBtn) {
+    proposeBtn.textContent = data.can_propose_first
+      ? "Propose kick-off"
+      : data.can_respond
+        ? "Counter-propose"
+        : "Propose kick-off";
+  }
+
+  if (!canPick) {
+    if (!pending && data.my_role === "away" && statusEl) {
+      statusEl.textContent = "Home nation must propose first.";
+    }
+    if (!data.my_club_short_name && statusEl) {
+      statusEl.textContent =
+        "No owner club on your nation — cannot propose from availability.";
+    }
+    return;
+  }
+
+  const rawSlots = Array.isArray(data.my_window_slots) ? data.my_window_slots : [];
+  // RPC may return jsonb array of timestamptz strings or wrapped values
+  const slots = rawSlots
+    .map((s) => (typeof s === "string" ? s : s?.kickoff_at || String(s)))
+    .filter(Boolean);
+  const selectable = filterSelectableKickoffSlots(slots, ownerTz);
+
+  if (!list) return;
+  if (!selectable.length) {
+    list.innerHTML =
+      '<p class="note" style="color:#888;">No available slots in this GPSL month. Set weekly availability on Owner Details (and wait until the month unlocks).</p>';
+    return;
+  }
+
+  for (const iso of selectable) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "slot-btn";
+    btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
+    btn.onclick = () => {
+      selectedKickoffIso = iso;
+      list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      if (proposeBtn) proposeBtn.disabled = false;
+    };
+    list.appendChild(btn);
   }
 }
 
@@ -632,17 +766,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   $("proposeBtn")?.addEventListener("click", async () => {
-    if (!selectedId) return;
-    const raw = $("kickoffInput")?.value;
-    if (!raw) {
-      setStatus("Pick a kickoff time.", false);
+    if (!selectedId || !selectedKickoffIso) {
+      setStatus("Pick a kick-off slot first.", false);
       return;
     }
-    const iso = new Date(raw).toISOString();
     setStatus("Proposing…");
     const { error } = await supabase.rpc("international_propose_kickoff", {
       p_fixture_id: selectedId,
-      p_kickoff_at: iso,
+      p_kickoff_at: selectedKickoffIso,
     });
     if (error) {
       setStatus(`❌ ${error.message}`, false);

@@ -48,6 +48,13 @@
     .squad-picker { max-height:320px; overflow:auto; border:1px solid #333; border-radius:6px; }
     .squad-picker table { margin:0; }
     .squad-picker select { font-size:12px; padding:4px 6px; }
+    .slot-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    .slot-btn {
+      padding:8px 12px; background:#222; border:1px solid #444; color:#ddd;
+      border-radius:6px; cursor:pointer; font-size:12px; text-align:left;
+    }
+    .slot-btn:hover { border-color:#ff9900; color:#ff9900; }
+    .slot-btn.selected { background:#3d3200; border-color:#ff9900; }
     .sim-actions { display:inline-flex; flex-wrap:wrap; gap:8px; }
     .btn-link.sim-result-btn {
       background:#2a5535; color:#cfc; border:1px solid #3a6; cursor:pointer;
@@ -98,13 +105,19 @@
 
       <div id="scheduleBlock">
         <h2 style="margin-top:14px;">Arrange kickoff</h2>
-        <div class="row">
-          <div>
-            <label for="kickoffInput">Proposed kickoff (local)</label>
-            <input type="datetime-local" id="kickoffInput">
+        <p class="note" style="margin-top:0;">
+          Same as league/cup: pick a slot from <b>your Owner Details weekly availability</b>
+          inside this fixture’s GPSL month. Home nation proposes first.
+        </p>
+        <p id="scheduleMeta" class="note"></p>
+        <div id="pendingSchedulePanel" hidden></div>
+        <div id="slotPickerPanel">
+          <div id="kickoffSlotList" class="slot-list"></div>
+          <div class="row" style="margin-top:10px;">
+            <button type="button" class="button" id="proposeBtn" disabled>Propose kick-off</button>
+            <button type="button" class="button secondary" id="acceptBtn" hidden>Accept pending proposal</button>
+            <a class="button secondary" href="owner_details.html" style="text-decoration:none;">Edit availability</a>
           </div>
-          <button type="button" class="button" id="proposeBtn">Propose</button>
-          <button type="button" class="button secondary" id="acceptBtn" hidden>Accept pending proposal</button>
         </div>
         <p id="scheduleStatus" class="note"></p>
       </div>
@@ -185,6 +198,6 @@
 
     <div id="pageStatus" class="status"></div>
   </div>
-  <script type="module" src="international_matchday.js?v=20260817-intl-sim-month"></script>
+  <script type="module" src="international_matchday.js?v=20260817-intl-sched"></script>
 </body>
 </html>
