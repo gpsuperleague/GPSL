@@ -57,25 +57,6 @@ function posFitsSlot(playerPos, requiredPos) {
   return false;
 }
 
-function setStatus(msg, ok = true) {
-  const el = document.getElementById("gpflStatus");
-  if (!el) return;
-  el.textContent = msg || "";
-  el.classList.toggle("err", !ok);
-}
-
-function esc(s) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function money(n) {
-  return formatMoney(n ?? 0);
-}
-
 async function resolveAdmin() {
   try {
     const { data, error } = await supabase.rpc("is_gpsl_admin");
