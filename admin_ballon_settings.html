@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Ballon d'Or settings — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260817-ballon">
+  <style>
+    .ballon-rules { margin: 0 0 16px; max-width: none; }
+    .ballon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .ballon-grid label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #bbb;
+    }
+    .ballon-grid input {
+      padding: 8px 10px;
+      background: #111;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #eee;
+      font-size: 13px;
+    }
+    .ballon-section { margin: 0 0 18px; padding: 14px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; }
+    .ballon-section h2 { margin: 0 0 10px; font-size: 15px; color: #ff9900; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Ballon d'Or settings</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div id="ballonRules" class="info-box info-box--wide ballon-rules"></div>
+      <p id="statusLine" class="status-line" role="status"></p>
+
+      <form id="ballonForm">
+        <div class="ballon-section">
+          <h2>Eligibility</h2>
+          <div class="ballon-grid">
+            <label>Ballon min appearances <input type="number" id="min_appearances" min="1" step="1"></label>
+            <label>Championship POTY min apps <input type="number" id="champ_min_appearances" min="1" step="1"></label>
+          </div>
+        </div>
+        <div class="ballon-section">
+          <h2>Stat weights</h2>
+          <div class="ballon-grid">
+            <label>Avg rating <input type="number" id="weight_rating" step="0.1"></label>
+            <label>Goals (ATT / AMF / WG) <input type="number" id="weight_goals_att_am" step="0.1"></label>
+            <label>Goals (other) <input type="number" id="weight_goals_other" step="0.1"></label>
+            <label>Assists (MID / ATT / FB) <input type="number" id="weight_assists_mid_att_fb" step="0.1"></label>
+            <label>Assists (other) <input type="number" id="weight_assists_other" step="0.1"></label>
+            <label>Clean sheets (GK / DEF / DMF) <input type="number" id="weight_cs_gk_def_dmf" step="0.1"></label>
+            <label>Clean sheets (other) <input type="number" id="weight_cs_other" step="0.1"></label>
+            <label>POTM awards <input type="number" id="weight_potm" step="0.1"></label>
+            <label>Appearances <input type="number" id="weight_apps" step="0.05"></label>
+          </div>
+        </div>
+        <div class="ballon-section">
+          <h2>Trophy bonuses (points added when earned)</h2>
+          <div class="ballon-grid">
+            <label>Super League title <input type="number" id="trophy_superleague" step="1"></label>
+            <label>Super 8 <input type="number" id="trophy_super8" step="1"></label>
+            <label>Plate <input type="number" id="trophy_plate" step="1"></label>
+            <label>Shield <input type="number" id="trophy_shield" step="1"></label>
+            <label>World Cup (nation) <input type="number" id="trophy_world_cup" step="1"></label>
+          </div>
+        </div>
+        <div class="row">
+          <button type="submit" class="button" id="saveBtn">Save settings</button>
+          <button type="button" class="button secondary" id="reloadBtn">Reload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script type="module" src="admin_ballon_settings.js?v=20260817"></script>
+</body>
+</html>

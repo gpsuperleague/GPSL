@@ -26,6 +26,10 @@ const DIVISION_TITLES = {
 
 const LEADERBOARD_TOP_COUNT = 10;
 
+/** @type {'ballon'|'championship'} */
+let ballonRaceScope = "ballon";
+let ballonRaceSeasonId = null;
+
 const LEADERBOARD_COLGROUP = `
   <colgroup>
     <col class="lb-col-rank">
@@ -804,7 +808,90 @@ function renderAwardSeasonTabs({
   });
 }
 
-async function loadTotmMonthsForSeason(seasonId) {
+async function loadBallonRace() {
+  const el = document.getElementById("ballonRaceTable");
+  if (!el) return;
+  el.innerHTML = `<span class="empty">Loading…</span>`;
+  const { data, error } = await supabase.rpc("competition_ballon_race_public", {
+    p_season_id: ballonRaceSeasonId,
+    p_limit: 20,
+    p_scope: ballonRaceScope,
+  });
+  if (error) {
+    el.innerHTML = `<span class="empty">${
+      error.message.includes("competition_ballon_race_public")
+        ? "Run ballon_dor_settings_race_20260817.sql to enable the live race."
+        : error.message
+    }</span>`;
+    return;
+  }
+  if (!data?.ok) {
+    el.innerHTML = `<span class="empty">${data?.error || "No race data."}</span>`;
+    return;
+  }
+  const rows = Array.isArray(data.rows) ? data.rows : [];
+  const minApps = data.min_appearances ?? 20;
+  if (!rows.length) {
+    el.innerHTML = `<span class="empty">No eligible players yet (min ${minApps} appearances).</span>`;
+    return;
+  }
+  const isChamp = ballonRaceScope === "championship";
+  const headVal = isChamp ? "Score" : "Points";
+  el.innerHTML = `
+    <p class="meta" style="margin:0 0 8px;font-size:12px;">
+      ${data.season_label || "Season"} · min ${minApps} apps · top ${rows.length}
+    </p>
+    <table class="lb">
+      ${LEADERBOARD_COLGROUP}
+      <thead>
+        <tr>
+          <th class="lb-rank">#</th>
+          <th></th>
+          <th>Player</th>
+          <th>Club</th>
+          <th class="lb-extra-col">Form</th>
+          <th class="num lb-val-col">${headVal}</th>
+          <th class="num lb-apps-col">Apps</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map((r, i) => {
+            const form = [
+              r.goals != null ? `${r.goals} G` : null,
+              r.assists != null ? `${r.assists} A` : null,
+              r.avg_rating != null ? `★${r.avg_rating}` : null,
+              r.clean_sheets ? `${r.clean_sheets} CS` : null,
+              r.trophy_bonus ? `+${r.trophy_bonus} trophies` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            return `<tr>
+              <td class="lb-rank">${i + 1}</td>
+              <td class="lb-thumb">${playerThumbLinkHtml(r.player_id)}</td>
+              <td class="lb-player-name">${playerNameWrappedLinkHtml(r.player_id, r.player_name)}</td>
+              <td class="lb-club-name">${clubNameWrappedLinkHtml(r.club_short_name, r.club_name)}</td>
+              <td class="lb-extra-col">${wrapWordsHtml(form || "—")}</td>
+              <td class="num lb-val-col">${Number(r.score || 0).toFixed(1)}</td>
+              <td class="num lb-apps-col">${r.appearances ?? 0}</td>
+            </tr>`;
+          })
+          .join("")}
+      </tbody>
+    </table>`;
+}
+
+function wireBallonRaceTabs() {
+  document.querySelectorAll("#ballonRaceTabs .award-month-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      ballonRaceScope = btn.dataset.race === "championship" ? "championship" : "ballon";
+      document.querySelectorAll("#ballonRaceTabs .award-month-tab").forEach((b) => {
+        b.classList.toggle("active", b === btn);
+      });
+      void loadBallonRace();
+    });
+  });
+}
   if (seasonId == null) {
     totmMonths = [];
     totmSelectedMonth = null;
@@ -1066,6 +1153,7 @@ function setActiveTab(tab) {
     renderLeague();
     void refreshTotmSelectorsAndPanels();
     void renderTeamOfYear();
+    void loadBallonRace();
   } else if (tab === "cups") renderCups();
   else renderWorldCup();
 }
@@ -1106,6 +1194,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   meta.textContent = `${season.label || "Season"} — league, cup, and international leaderboards`;
+  ballonRaceSeasonId = season.id ?? null;
 
   await loadRollingSeasonOptions(season);
 
@@ -1117,6 +1206,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("divisionFilter")?.addEventListener("change", renderLeague);
   document.getElementById("cupFilter")?.addEventListener("change", renderCups);
+  wireBallonRaceTabs();
+  void loadBallonRace();
   document.querySelectorAll(".stats-tab").forEach((btn) => {
     btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
   });

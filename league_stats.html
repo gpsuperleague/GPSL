@@ -305,6 +305,19 @@
         </select>
       </div>
       <div class="stats-grid" id="leagueStatsGrid">
+        <div class="panel panel--wide" id="ballonRacePanel">
+          <h2>Ballon d'Or race</h2>
+          <p class="meta" style="margin:0 0 8px;font-size:12px;">
+            Live Super League top 20 (configurable weights). Championship clubs compete for
+            <b>Championship Player of the Season</b> instead.
+            Min appearances and weights are set in Admin → Ballon d'Or settings.
+          </p>
+          <div class="award-month-tabs" id="ballonRaceTabs" role="tablist" aria-label="Award race">
+            <button type="button" class="award-month-tab active" data-race="ballon">Ballon d'Or</button>
+            <button type="button" class="award-month-tab" data-race="championship">Championship POTY</button>
+          </div>
+          <div id="ballonRaceTable"><span class="empty">Loading…</span></div>
+        </div>
         <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Top scorers</h2></div>
           <div id="scorersTable"></div>
@@ -450,6 +463,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="league_stats.js?v=20260802-totm-season-window"></script>
+  <script type="module" src="league_stats.js?v=20260817-ballon-race"></script>
 </body>
 </html>
