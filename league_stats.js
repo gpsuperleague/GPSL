@@ -892,6 +892,8 @@ function wireBallonRaceTabs() {
     });
   });
 }
+
+async function loadTotmMonthsForSeason(seasonId) {
   if (seasonId == null) {
     totmMonths = [];
     totmSelectedMonth = null;
