@@ -120,10 +120,15 @@ function renderEntryStats(data) {
   const el = document.getElementById("gpflEntryStats");
   if (!el) return;
   const needs = (data.squad || []).filter((p) => p.slot_status === "needs_replace").length;
+  const cap = Number(data.season?.budget_snapshot ?? s.budget ?? 0);
+  const remaining = Number(e.budget_remaining ?? 0);
+  const spent = Math.max(0, cap - remaining);
   el.innerHTML = `
+    <div class="gpfl-stat">Bank left <b>${money(remaining)}</b></div>
+    <div class="gpfl-stat">Spent on squad <b>${money(spent)}</b></div>
+    <div class="gpfl-stat">Season budget <b>${money(cap)}</b></div>
     <div class="gpfl-stat">Status <b>${esc(e.status)}</b></div>
     <div class="gpfl-stat">Formation <b>${esc(e.formation_id || "—")}</b></div>
-    <div class="gpfl-stat">GPFL budget <b>${money(e.budget_remaining)}</b> / ${money(s.budget ?? data.season?.budget_snapshot)}</div>
     <div class="gpfl-stat">Points <b>${esc(e.total_points ?? 0)}</b></div>
     <div class="gpfl-stat">Free transfers <b>${esc(e.free_transfers_remaining ?? 0)}</b></div>
     <div class="gpfl-stat">Squad <b>${(data.squad || []).filter((p) => p.slot_status === "active").length}/${esc(s.squad_size ?? 15)}</b></div>
