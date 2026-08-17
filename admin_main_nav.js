@@ -691,6 +691,12 @@ export const ADMIN_MAIN_NAV = [
         "Weights, min appearances, and trophy bonuses for Ballon d'Or / Championship Player of the Season."
       ),
       link(
+        "GPFL (fantasy) settings",
+        "admin_gpfl_settings.html",
+        null,
+        "Optional fantasy league: budget, squad slots, scoring (incl. yellows/reds), divisions. Play-money only."
+      ),
+      link(
         "Process manager contracts (season end)",
         "admin_season.html",
         "wf-close-season",

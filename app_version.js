@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260817-ballon-dor";
+export const APP_VERSION = "20260817-gpfl";

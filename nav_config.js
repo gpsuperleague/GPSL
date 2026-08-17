@@ -258,6 +258,7 @@ export const NAV_SECTIONS = [
       { href: "natter.html", label: "Natter", page: "natter" },
       { href: "challenges.html", label: "Season challenges", page: "challenges" },
       { href: "bookies.html", label: "Bookies", page: "bookies" },
+      { href: "fantasy.html", label: "GP Fantasy League", page: "fantasy" },
     ],
   },
 ];

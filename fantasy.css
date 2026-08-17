@@ -1,0 +1,197 @@
+/* GPFL — GPSL Fantasy League (owners side-game; not club money) */
+body.gpfl-page {
+  background: linear-gradient(180deg, #101820 0%, #152028 40%, #111 100%);
+  color: #ddd;
+  margin: 0;
+  min-height: 100vh;
+}
+
+.gpfl-hero {
+  display: grid;
+  grid-template-columns: minmax(160px, 260px) 1fr;
+  gap: 22px;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 20px 18px;
+  border-bottom: 2px solid #2a4058;
+  background: radial-gradient(ellipse at 30% 0%, rgba(40, 90, 140, 0.2) 0%, transparent 55%);
+}
+
+@media (max-width: 720px) {
+  .gpfl-hero { grid-template-columns: 1fr; text-align: center; }
+  .gpfl-svg { max-width: 200px; margin: 0 auto; display: block; }
+}
+
+.gpfl-svg { width: 100%; height: auto; filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5)); }
+
+.gpfl-welcome {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #6a90b0;
+}
+
+.gpfl-hero h1 {
+  margin: 4px 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(26px, 4vw, 34px);
+  color: #c8dff0;
+}
+
+.gpfl-tagline {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #9ab0c4;
+  max-width: 44em;
+}
+
+.gpfl-disclaimer {
+  max-width: 1100px;
+  margin: 10px auto 0;
+  padding: 0 20px;
+  font-size: 12px;
+  color: #888;
+}
+
+.gpfl-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px 20px 48px;
+}
+
+.gpfl-status {
+  min-height: 1.2em;
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #9fdf9f;
+}
+.gpfl-status.err { color: #ff8899; }
+
+.gpfl-panel {
+  background: #161e28;
+  border: 1px solid #2a3a4a;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.gpfl-panel h2 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: #7eb8e8;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.gpfl-muted { color: #8899aa; font-size: 13px; }
+
+.gpfl-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.gpfl-stat {
+  background: rgba(20, 32, 48, 0.9);
+  border: 1px solid #334858;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #9ab;
+}
+.gpfl-stat b { color: #e8f0f8; margin-left: 4px; }
+
+.gpfl-btn {
+  appearance: none;
+  border: 1px solid #456;
+  background: #1a2838;
+  color: #dde;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.gpfl-btn:hover { border-color: #6af; color: #fff; }
+.gpfl-btn--gold {
+  border-color: #8a7040;
+  background: #2a2418;
+  color: #f0d080;
+}
+.gpfl-btn--danger { border-color: #844; color: #fbb; }
+.gpfl-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.gpfl-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.gpfl-filters input,
+.gpfl-filters select {
+  background: #111820;
+  border: 1px solid #445;
+  color: #eee;
+  border-radius: 4px;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.gpfl-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.gpfl-tab {
+  border: 1px solid #456;
+  background: transparent;
+  color: #9ab;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.gpfl-tab.active {
+  border-color: #6af;
+  color: #dff;
+  background: rgba(60, 120, 180, 0.2);
+}
+
+.gpfl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.gpfl-table th,
+.gpfl-table td {
+  text-align: left;
+  padding: 7px 8px;
+  border-bottom: 1px solid #2a3545;
+}
+.gpfl-table th { color: #8ab; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+.gpfl-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.gpfl-table tr.needs-replace { background: rgba(120, 40, 40, 0.18); }
+
+.gpfl-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #243040;
+  color: #9cf;
+  margin-left: 4px;
+}
+.gpfl-badge--fa { background: #402020; color: #f99; }
+.gpfl-badge--c { background: #403010; color: #fc6; }
+
+.gpfl-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 900px) {
+  .gpfl-grid-2 { grid-template-columns: 1fr; }
+}
