@@ -7,7 +7,7 @@
   <title>GP Fantasy League — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="fantasy.css?v=20260817-gpfl-owner">
+  <link rel="stylesheet" href="fantasy.css?v=20260817-gpfl-form">
 </head>
 <body class="gpfl-page">
   <div id="nav"></div>
@@ -72,10 +72,26 @@
         <div class="gpfl-stats" id="gpflEntryStats"></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
           <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflConfirmBtn">Confirm squad</button>
-          <button type="button" class="gpfl-btn" id="gpflSaveXiBtn">Save XI + captain</button>
+          <button type="button" class="gpfl-btn" id="gpflSaveXiBtn">Save formation XI</button>
           <button type="button" class="gpfl-btn gpfl-btn--danger" id="gpflWithdrawBtn">Withdraw</button>
         </div>
-        <p class="gpfl-muted" style="margin:10px 0 0;">While building, transfers are free. After confirm, each add costs one free transfer (remove is free). Tick starters and set one captain, then Save XI.</p>
+        <p class="gpfl-muted" style="margin:10px 0 0;">
+          Pick a GPSL formation, fill every pitch slot with a position-legal player, set a captain, then Save.
+          Flex: LMF↔LWF, RMF↔RWF, CF↔SS — all other positions fixed.
+        </p>
+      </section>
+
+      <section class="gpfl-panel">
+        <h2>Formation XI</h2>
+        <div class="gpfl-filters" style="align-items:center;">
+          <label class="gpfl-muted">Formation
+            <select id="gpflFormation" style="margin-left:6px;min-width:220px;"></select>
+          </label>
+          <label class="gpfl-muted">Captain
+            <select id="gpflCaptain" style="margin-left:6px;min-width:180px;"></select>
+          </label>
+        </div>
+        <div id="gpflXi"></div>
       </section>
 
       <div class="gpfl-grid-2">
@@ -107,6 +123,6 @@
     </div>
   </main>
 
-  <script type="module" src="fantasy.js?v=20260817-gpfl-owner"></script>
+  <script type="module" src="fantasy.js?v=20260817-gpfl-form"></script>
 </body>
 </html>
