@@ -48,6 +48,18 @@
     .squad-picker { max-height:320px; overflow:auto; border:1px solid #333; border-radius:6px; }
     .squad-picker table { margin:0; }
     .squad-picker select { font-size:12px; padding:4px 6px; }
+    .sim-actions { display:inline-flex; flex-wrap:wrap; gap:8px; }
+    .btn-link.sim-result-btn {
+      background:#2a5535; color:#cfc; border:1px solid #3a6; cursor:pointer;
+      display:inline-block; padding:6px 12px; font-size:12px; font-weight:bold;
+      border-radius:4px; text-decoration:none;
+    }
+    .btn-link.sim-result-btn:disabled { opacity:.6; cursor:wait; }
+    .match-sim-banner { font-size:13px; color:#bbb; margin:0 0 12px; padding:8px 12px; background:#1a221a; border:1px solid #345; border-radius:6px; }
+    .match-sim-banner--err { background:#2a1515; border-color:#633; color:#f88; }
+    .match-sim-on { color:#9fd4b0; font-weight:bold; }
+    .match-sim-off { color:#f88; font-weight:bold; }
+    .match-sim-toggle { margin-left:8px; background:#444; color:#eee; border:0; display:inline-block; padding:4px 10px; font-size:12px; font-weight:bold; border-radius:4px; cursor:pointer; }
     .next-intl {
       background:#1a2210; border:1px solid #3a5a28; border-radius:8px;
       padding:12px 14px; margin-bottom:16px; font-size:14px;
@@ -62,7 +74,9 @@
     <p class="note">
       Arrange kickoffs and submit/confirm results for your national team.
       Knockout ties that finish level after 90 minutes need <b>extra time</b> (total goals) and, if still level, a <b>penalty winner</b>.
+      When match simulation is <b>ON</b>, Instant result / Simulate use the same engine as league &amp; cup (turn off after this season).
     </p>
+    <div id="matchSimBannerHost"></div>
     <div class="toolbar">
       <a class="button" href="national_team.html" id="nationLink">National team</a>
       <a class="button" href="world_cup.html">World Cup</a>
@@ -148,6 +162,7 @@
           <button type="button" class="button" id="confirmBtn" hidden>Confirm pending</button>
           <button type="button" class="button secondary" id="rejectBtn" hidden>Reject</button>
         </div>
+        <div class="row" id="intlSimRow" style="margin-top:8px;"></div>
         <p class="note">
           Player stats JSON (optional on submit; confirmer should add their XI stats):
           <code>[{"player_id":"…","goals":0,"assists":0,"rating":7.5,"potm":false,"clean_sheet":false}]</code>
@@ -170,6 +185,6 @@
 
     <div id="pageStatus" class="status"></div>
   </div>
-  <script type="module" src="international_matchday.js?v=20260814-squad-26-28"></script>
+  <script type="module" src="international_matchday.js?v=20260817-intl-sim"></script>
 </body>
 </html>

@@ -30,6 +30,7 @@ import {
   loadMatchSimStatus,
   matchSimBannerHtml,
   matchSimButtonHtml,
+  matchSimActionsHtml,
   wireMatchSimBannerToggle,
   wireMatchSimButtons,
   runMatchSimulation,
@@ -370,6 +371,13 @@ function intlFixtureCardHtml(f) {
       <div class="fixture-actions">
         <a class="btn-link" href="${href}">Open matchday</a>
         <a class="btn-link secondary" href="world_cup.html">World Cup</a>
+        ${
+          !f.played && matchSimStatus.enabled
+            ? matchSimActionsHtml(f.id, {
+                title: "International match simulation (same engine as league/cup)",
+              })
+            : ""
+        }
       </div>
     </div>
   `;
@@ -583,7 +591,43 @@ async function simulateFixture(fixtureId, btn, mode = "instant") {
 }
 
 function wireSimButtons(root) {
-  wireMatchSimButtons(root, (id, btn, mode) => simulateFixture(id, btn, mode));
+  wireMatchSimButtons(root, (id, btn, mode) => {
+    const f = lastFixtures.find((row) => String(row.id) === String(id));
+    if (f?._intl) {
+      void simulateIntlFixture(id, btn, mode);
+      return;
+    }
+    simulateFixture(id, btn, mode);
+  });
+}
+
+async function simulateIntlFixture(fixtureId, btn, mode = "instant") {
+  const f = lastFixtures.find((row) => String(row.id) === String(fixtureId));
+  const label = f
+    ? `${f.home_nation_name || f.home_nation} vs ${f.away_nation_name || f.away_nation}`
+    : `fixture ${fixtureId}`;
+  const play = mode === "play";
+  if (
+    !confirm(
+      play
+        ? `Simulate international for ${label}?\n\nPlays a ~20s graphic, then finalises.`
+        : `Instant result for ${label}?\n\nFinalises immediately.`
+    )
+  ) {
+    return;
+  }
+
+  showError("");
+  try {
+    await runMatchSimulation(fixtureId, btn, mode, {
+      rpc: "international_simulate_fixture_result",
+      homeName: f?.home_nation_name || f?.home_nation,
+      awayName: f?.away_nation_name || f?.away_nation,
+    });
+    await refreshFixtures(currentSeasonId);
+  } catch (err) {
+    showError(err?.message || "Simulation failed");
+  }
 }
 
 function renderSimBanner() {

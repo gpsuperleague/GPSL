@@ -4,6 +4,14 @@
  */
 import { supabase, initGlobal } from "./global.js";
 import { loadMyNation, loadNationalSquad } from "./international.js";
+import {
+  loadMatchSimStatus,
+  matchSimBannerHtml,
+  matchSimActionsHtml,
+  wireMatchSimBannerToggle,
+  wireMatchSimButtons,
+  runMatchSimulation,
+} from "./match_sim_ui.js";
 
 /** Result entry: from agreed kickoff until +48h (soft guidance). */
 const RESULT_WINDOW_HOURS_AFTER = 48;
@@ -15,6 +23,8 @@ let pendingProposalId = null;
 let pendingSubmissionId = null;
 let callupRows = [];
 let savedSquadByPlayer = new Map();
+/** @type {{ enabled: boolean, isAdmin: boolean, isStaff?: boolean, error: string|null }} */
+let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: null };
 
 function $(id) {
   return document.getElementById(id);
@@ -472,6 +482,7 @@ async function selectFixture(id) {
 
   renderCheckin(f);
   updateKoScoreUi();
+  renderIntlSimActions(f);
 
   const { data: props } = await supabase
     .from("international_fixture_schedule_proposal")
@@ -539,8 +550,64 @@ async function selectFixture(id) {
   }
 }
 
+function renderIntlSimActions(f) {
+  const row = $("intlSimRow");
+  if (!row) return;
+  if (!f || f.played || !matchSimStatus.enabled) {
+    row.innerHTML = "";
+    return;
+  }
+  row.innerHTML = matchSimActionsHtml(f.id, {
+    title: "Uses the same match simulation engine as league & cup (while sim is ON)",
+  });
+  wireMatchSimButtons(row, async (id, btn, mode) => {
+    const fix = fixtures.find((x) => String(x.id) === String(id));
+    const play = mode === "play";
+    if (
+      !confirm(
+        play
+          ? `Simulate this international?\n\nPlays a ~20s graphic, then finalises (no opponent confirm).`
+          : `Instant result for this international?\n\nFinalises immediately (no opponent confirm).`
+      )
+    ) {
+      return;
+    }
+    setStatus(play ? "Simulating…" : "Generating result…");
+    try {
+      const data = await runMatchSimulation(id, btn, mode, {
+        rpc: "international_simulate_fixture_result",
+        homeName: fix?.home_nation_name || fix?.home_nation,
+        awayName: fix?.away_nation_name || fix?.away_nation,
+      });
+      const score =
+        data?.home_goals != null ? `${data.home_goals}–${data.away_goals}` : "";
+      setStatus(`✅ Simulated ${score}`, true);
+      await loadFixtures();
+      await selectFixture(Number(id));
+    } catch (err) {
+      setStatus(`❌ ${err?.message || "Simulation failed"}`, false);
+    }
+  });
+}
+
+function renderSimBanner() {
+  const host = $("matchSimBannerHost");
+  if (!host) return;
+  host.innerHTML = matchSimBannerHtml(matchSimStatus);
+  wireMatchSimBannerToggle(async () => {
+    matchSimStatus = await loadMatchSimStatus();
+    renderSimBanner();
+    if (selectedId) {
+      const f = fixtures.find((x) => x.id === selectedId);
+      if (f) renderIntlSimActions(f);
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
+  matchSimStatus = await loadMatchSimStatus();
+  renderSimBanner();
   await loadFixtures();
 
   ["homeGoals", "awayGoals", "etHomeGoals", "etAwayGoals"].forEach((id) => {

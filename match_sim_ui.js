@@ -151,7 +151,8 @@ export async function runMatchSimulation(fixtureId, btn, mode = "instant", meta 
     if (b === btn) b.textContent = play ? "Simulating…" : "Result…";
   });
 
-  const { data, error } = await supabase.rpc("competition_simulate_fixture_result", {
+  const rpcName = meta.rpc || "competition_simulate_fixture_result";
+  const { data, error } = await supabase.rpc(rpcName, {
     p_fixture_id: Number(fixtureId),
   });
 
