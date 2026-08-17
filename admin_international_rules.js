@@ -1,7 +1,7 @@
 /**
  * International & World Cup admin — intro / process notes (modular horizontal cards).
  */
-import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260817-popup-wc";
+import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260817-qual-fill";
 
 export function getAdminInternationalRules() {
   return {
@@ -43,6 +43,7 @@ export function getAdminInternationalRules() {
           "<b>Popup (test):</b> one season only — qual + finals June→May (single RR, play once).",
           "Qualifying: <b>12 groups × 5</b> (pots by seed rank).",
           "Finals: top 2 + 8 best thirds → <b>8×4</b> → knockout.",
+          "Draw field: <b>all owned nations</b>, then fill to 60 with <b>unassigned active</b> nations (by seed). Fillers have no owner — force-play those fixtures when testing.",
         ],
       },
       {

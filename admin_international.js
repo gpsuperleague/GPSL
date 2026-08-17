@@ -6,7 +6,7 @@ import {
   refreshNationPlayerPoolCache,
 } from "./international.js";
 import { refreshSelectionLive } from "./admin_international_selection.js";
-import { renderAdminInternationalRules } from "./admin_international_rules.js?v=20260817-popup-wc";
+import { renderAdminInternationalRules } from "./admin_international_rules.js?v=20260817-qual-fill";
 
 primeAdminPageChrome();
 renderAdminInternationalRules();
@@ -560,8 +560,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     if (!ready?.ok) {
+      const owned = ready?.active_assigned_nations ?? "?";
+      const fillersNeeded = ready?.fillers_needed ?? "?";
+      const fillersAvail = ready?.unassigned_active_nations ?? "?";
       const parts = [
-        `Need 60 active owner nations (have ${ready?.active_assigned_nations ?? "?"}).`,
+        `Need 60 nations for the draw (owned ${owned}; need ${fillersNeeded} unassigned fillers; ${fillersAvail} unassigned active available).`,
       ];
       if (ready?.clubs_without_nation) {
         parts.push(`Clubs without a nation: ${ready.clubs_without_nation}`);
@@ -569,20 +572,44 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (ready?.assigned_inactive_nations) {
         parts.push(`Assigned but inactive: ${ready.assigned_inactive_nations}`);
       }
-      parts.push("Assign the missing nation on Manual National Team Assignment, then retry.");
+      parts.push(
+        "Owned nations are always included; fillers are unassigned active nations by seed. Run Setup → Apply selectable if the filler pool is short."
+      );
       setStatus("wcStatus", `❌ ${parts.join(" ")}`, false);
       alert(parts.join("\n\n"));
       return;
     }
 
+    const ownedN = Number(ready?.active_assigned_nations ?? 0);
+    const fillN = Number(ready?.fillers_needed ?? Math.max(0, 60 - ownedN));
     if (
       !confirm(
-        "Draw qualifying groups?\n\n60 owner nations → 5 pots by seed_rank (1–12, 13–24…).\nOne from each pot into each of 12 groups (A–L).\nReplaces any existing undrawn/unplayed qual draw."
+        "Draw qualifying groups?\n\n" +
+          `• ${ownedN} owned nation(s) included\n` +
+          (fillN > 0
+            ? `• ${fillN} unassigned active nation(s) added to make 60 (by seed_rank)\n`
+            : "• No fillers needed (already 60 owned)\n") +
+          "• 5 pots by seed_rank (1–12, 13–24…); one from each pot → groups A–L\n" +
+          "• Unassigned fillers have no owner — use force-play / admin for those fixtures\n" +
+          "Replaces any existing undrawn/unplayed qual draw."
       )
     ) {
       return;
     }
-    await wcRpc("international_admin_draw_qual_groups", { p_cycle_id: id }, "Qualifying groups drawn");
+    const drawn = await wcRpc(
+      "international_admin_draw_qual_groups",
+      { p_cycle_id: id },
+      null
+    );
+    if (drawn?.ok) {
+      setStatus(
+        "wcStatus",
+        `✅ Qualifying groups drawn (${drawn.owned_nations ?? ownedN} owned + ${
+          drawn.filler_nations ?? fillN
+        } fillers)`,
+        true
+      );
+    }
   });
 
   document.getElementById("wcGenQualFixBtn")?.addEventListener("click", async () => {
