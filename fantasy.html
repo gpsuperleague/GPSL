@@ -72,13 +72,13 @@
         <h2>Your entry</h2>
         <div class="gpfl-stats" id="gpflEntryStats"></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflConfirmBtn">Confirm squad</button>
+          <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflConfirmBtn">Confirm squad (needs 15)</button>
           <button type="button" class="gpfl-btn" id="gpflSaveXiBtn">Save formation XI</button>
           <button type="button" class="gpfl-btn gpfl-btn--danger" id="gpflWithdrawBtn">Withdraw</button>
         </div>
         <p class="gpfl-muted" style="margin:10px 0 0;">
-          Pick a GPSL formation, fill every pitch slot with a position-legal player, set a captain, then Save.
-          Flex: LMF↔LWF, RMF↔RWF, CF↔SS — all other positions fixed.
+          Build all <b>15</b> players first (2 GK / 5 DEF / 5 MID / 3 FWD), set formation XI + captain, then Confirm.
+          Confirm locks the squad for the season scoring — you do not need it to add players.
         </p>
       </section>
 
@@ -125,6 +125,6 @@
     </div>
   </main>
 
-  <script type="module" src="fantasy.js?v=20260817-gpfl-xi-sticky"></script>
+  <script type="module" src="fantasy.js?v=20260817-gpfl-confirm-gate"></script>
 </body>
 </html>

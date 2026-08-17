@@ -121,21 +121,52 @@ function renderGate(data) {
   play.hidden = false;
 }
 
+function slotCounts(data) {
+  const s = data?.settings || {};
+  const caps = {
+    gk: Number(s.slot_gk ?? 2),
+    def: Number(s.slot_def ?? 5),
+    mid: Number(s.slot_mid ?? 5),
+    fwd: Number(s.slot_fwd ?? 3),
+  };
+  const have = { gk: 0, def: 0, mid: 0, fwd: 0 };
+  for (const p of data?.squad || []) {
+    if (p.slot_status !== "active") continue;
+    const g = String(p.position_group || "").toLowerCase();
+    if (have[g] != null) have[g] += 1;
+  }
+  return { caps, have };
+}
+
 function renderEntryStats(data) {
   const e = data.entry || {};
   const s = data.settings || {};
   const el = document.getElementById("gpflEntryStats");
   if (!el) return;
   const squad = data.squad || [];
+  const active = squad.filter((p) => p.slot_status === "active");
   const needs = squad.filter((p) => p.slot_status === "needs_replace").length;
   const cap = Number(data.season?.budget_snapshot ?? s.budget ?? 0);
-  const spent = squad
-    .filter((p) => p.slot_status === "active")
-    .reduce((sum, p) => sum + Number(p.purchase_price || 0), 0);
-  // Prefer live remaining from squad cost; fall back to stored bank
-  const remaining = Number.isFinite(cap) && cap > 0
-    ? Math.max(0, cap - spent)
-    : Number(e.budget_remaining ?? 0);
+  const spent = active.reduce((sum, p) => sum + Number(p.purchase_price || 0), 0);
+  const remaining =
+    Number.isFinite(cap) && cap > 0 ? Math.max(0, cap - spent) : Number(e.budget_remaining ?? 0);
+  const { caps, have } = slotCounts(data);
+  const size = Number(s.squad_size ?? 15);
+  const confirmBtn = document.getElementById("gpflConfirmBtn");
+  if (confirmBtn) {
+    const xiReady =
+      active.filter((p) => p.is_starter).length === Number(s.starters ?? 11) &&
+      active.some((p) => p.is_captain) &&
+      Boolean(e.formation_id);
+    const ready = active.length >= size && needs === 0 && xiReady;
+    confirmBtn.disabled = !ready;
+    confirmBtn.title = ready
+      ? "Lock your 15-man squad for scoring"
+      : `Need ${size} players, saved formation XI + captain (have ${active.length})`;
+    confirmBtn.textContent = ready
+      ? "Confirm squad"
+      : `Confirm squad (${active.length}/${size})`;
+  }
   el.innerHTML = `
     <div class="gpfl-stat">Bank left <b>${money(remaining)}</b></div>
     <div class="gpfl-stat">Spent on squad <b>${money(spent)}</b></div>
@@ -144,7 +175,8 @@ function renderEntryStats(data) {
     <div class="gpfl-stat">Formation <b>${esc(e.formation_id || "—")}</b></div>
     <div class="gpfl-stat">Points <b>${esc(e.total_points ?? 0)}</b></div>
     <div class="gpfl-stat">Free transfers <b>${esc(e.free_transfers_remaining ?? 0)}</b></div>
-    <div class="gpfl-stat">Squad <b>${squad.filter((p) => p.slot_status === "active").length}/${esc(s.squad_size ?? 15)}</b></div>
+    <div class="gpfl-stat">Squad <b>${active.length}/${esc(size)}</b></div>
+    <div class="gpfl-stat">Slots <b>GK ${have.gk}/${caps.gk} · DEF ${have.def}/${caps.def} · MID ${have.mid}/${caps.mid} · FWD ${have.fwd}/${caps.fwd}</b></div>
     ${needs ? `<div class="gpfl-stat">FA to replace <b>${needs}</b></div>` : ""}
   `;
 }
@@ -387,9 +419,19 @@ async function loadPool() {
 
   root.querySelectorAll(".gpfl-add").forEach((btn) => {
     btn.onclick = async () => {
+      const { caps, have } = slotCounts(state.payload || {});
+      const row = state.pool.find((p) => p.player_id === btn.dataset.id);
+      const g = String(row?.position_group || "").toLowerCase();
+      if (g && caps[g] != null && have[g] >= caps[g]) {
+        setStatus(
+          `No ${g.toUpperCase()} slots left (${have[g]}/${caps[g]}). Sell one or pick another position.`,
+          false
+        );
+        return;
+      }
       setStatus("Adding…");
       const { error: err } = await supabase.rpc("gpfl_add_player", { p_player_id: btn.dataset.id });
-      if (err) return setStatus(err.message, false);
+      if (err) return setStatus(err.message || String(err), false);
       await refresh();
       setStatus("Added.");
     };
@@ -472,6 +514,15 @@ function wire() {
   });
 
   document.getElementById("gpflConfirmBtn")?.addEventListener("click", async () => {
+    const active = (state.payload?.squad || []).filter((p) => p.slot_status === "active");
+    const need = Number(state.payload?.settings?.squad_size ?? 15);
+    if (active.length < need) {
+      setStatus(
+        `Confirm needs a full ${need}-man squad — you have ${active.length}. Keep using Add until you reach ${need}.`,
+        false
+      );
+      return;
+    }
     setStatus("Confirming…");
     const { error } = await supabase.rpc("gpfl_confirm_squad");
     if (error) return setStatus(error.message, false);
