@@ -31,8 +31,15 @@ function esc(s) {
     .replace(/"/g, "&quot;");
 }
 
+function moneyNum(n) {
+  const v = Number(n ?? 0);
+  if (!Number.isFinite(v)) return "—";
+  return v.toLocaleString("en-GB", { maximumFractionDigits: 0 });
+}
+
+/** Keep ₿ and digits on one line (non-breaking space). */
 function money(n) {
-  return formatMoney(n ?? 0);
+  return `₿\u00A0${moneyNum(n)}`;
 }
 
 function normalizePos(pos) {
@@ -119,10 +126,16 @@ function renderEntryStats(data) {
   const s = data.settings || {};
   const el = document.getElementById("gpflEntryStats");
   if (!el) return;
-  const needs = (data.squad || []).filter((p) => p.slot_status === "needs_replace").length;
+  const squad = data.squad || [];
+  const needs = squad.filter((p) => p.slot_status === "needs_replace").length;
   const cap = Number(data.season?.budget_snapshot ?? s.budget ?? 0);
-  const remaining = Number(e.budget_remaining ?? 0);
-  const spent = Math.max(0, cap - remaining);
+  const spent = squad
+    .filter((p) => p.slot_status === "active")
+    .reduce((sum, p) => sum + Number(p.purchase_price || 0), 0);
+  // Prefer live remaining from squad cost; fall back to stored bank
+  const remaining = Number.isFinite(cap) && cap > 0
+    ? Math.max(0, cap - spent)
+    : Number(e.budget_remaining ?? 0);
   el.innerHTML = `
     <div class="gpfl-stat">Bank left <b>${money(remaining)}</b></div>
     <div class="gpfl-stat">Spent on squad <b>${money(spent)}</b></div>
@@ -131,7 +144,7 @@ function renderEntryStats(data) {
     <div class="gpfl-stat">Formation <b>${esc(e.formation_id || "—")}</b></div>
     <div class="gpfl-stat">Points <b>${esc(e.total_points ?? 0)}</b></div>
     <div class="gpfl-stat">Free transfers <b>${esc(e.free_transfers_remaining ?? 0)}</b></div>
-    <div class="gpfl-stat">Squad <b>${(data.squad || []).filter((p) => p.slot_status === "active").length}/${esc(s.squad_size ?? 15)}</b></div>
+    <div class="gpfl-stat">Squad <b>${squad.filter((p) => p.slot_status === "active").length}/${esc(s.squad_size ?? 15)}</b></div>
     ${needs ? `<div class="gpfl-stat">FA to replace <b>${needs}</b></div>` : ""}
   `;
 }
@@ -161,7 +174,7 @@ function renderSquad(data) {
     })
     .join("");
   root.innerHTML = `<table class="gpfl-table">
-    <thead><tr><th>Player</th><th>Pos</th><th>Club</th><th>Owner</th><th class="num">Paid</th><th></th></tr></thead>
+    <thead><tr><th>Player</th><th>Pos</th><th>Club</th><th>Owner</th><th class="num">Paid (₿)</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 
@@ -495,6 +508,18 @@ function wire() {
     if (error) return setStatus(error.message, false);
     await refresh();
     setStatus(`Synced FA slots (${data?.refunded_slots ?? 0} refunds).`);
+  });
+
+  document.getElementById("gpflRebaseBudgetBtn")?.addEventListener("click", async () => {
+    setStatus("Rebasing GPFL banks…");
+    const { data, error } = await supabase.rpc("gpfl_rebase_entry_budgets", {
+      p_gpfl_season_id: null,
+    });
+    if (error) return setStatus(error.message, false);
+    await refresh();
+    setStatus(
+      `Rebased ${data?.entries_updated ?? 0} entries to ₿${Number(data?.budget_cap || 0).toLocaleString("en-GB")}.`
+    );
   });
 
   document.getElementById("gpflScoreBtn")?.addEventListener("click", async () => {
