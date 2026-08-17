@@ -529,6 +529,24 @@ function downloadAgreedKickoffs(fixtures) {
   downloadIcs("gpsl-my-fixtures.ics", events);
 }
 
+/** Safe .ics download name, e.g. "MD21 - Monaco vs Urawa.ics" */
+function fixtureCalendarFilename(f) {
+  const home = String(f?.home_club_name || f?.home_club_short_name || "Home").trim();
+  const away = String(f?.away_club_name || f?.away_club_short_name || "Away").trim();
+  let prefix;
+  if (f?.competition_type === "league" && f.matchday != null && f.matchday !== "") {
+    prefix = `MD${f.matchday}`;
+  } else {
+    prefix = String(competitionLabel(f) || "GPSL")
+      .replace(/[·•]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  const raw = `${prefix} - ${home} vs ${away}`;
+  const safe = raw.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim();
+  return `${safe || "gpsl-fixture"}.ics`;
+}
+
 function wireCalendarButtons(root) {
   root?.querySelectorAll("[data-cal-fixture]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -541,7 +559,7 @@ function wireCalendarButtons(root) {
         away: f.away_club_name || f.away_club_short_name,
         kickoffAt: f.agreed_kickoff_at,
       });
-      downloadIcs(`gpsl-fixture-${f.id}.ics`, [ev]);
+      downloadIcs(fixtureCalendarFilename(f), [ev]);
     });
   });
   root?.querySelectorAll(".cal-added-cb").forEach((cb) => {
