@@ -189,11 +189,25 @@ function renderSquad(data) {
   });
 }
 
+function seedSlotMapFromSquad(squad) {
+  const next = {};
+  for (const p of squad || []) {
+    if (p.slot_status === "active" && p.pitch_slot && p.is_starter) {
+      next[p.pitch_slot] = p.player_id;
+    }
+  }
+  return next;
+}
+
 function fillFormationSelect(data) {
   const sel = document.getElementById("gpflFormation");
   if (!sel) return;
   const current = data?.entry?.formation_id || state.formationId || DEFAULT_FORMATION_ID;
   state.formationId = current;
+
+  // Avoid spurious change events while rebuilding options
+  sel.onchange = null;
+
   const opts = [];
   for (const group of FORMATION_GROUP_ORDER) {
     const list = FORMATION_LIST.filter((f) => f.group === group);
@@ -207,8 +221,13 @@ function fillFormationSelect(data) {
     opts.push(`</optgroup>`);
   }
   sel.innerHTML = opts.join("");
+  sel.value = current;
+
   sel.onchange = () => {
-    state.formationId = sel.value;
+    const next = sel.value;
+    if (next === state.formationId) return;
+    state.formationId = next;
+    // Only clear XI when the formation itself changes
     state.slotMap = {};
     renderXi(state.payload);
   };
@@ -226,25 +245,27 @@ function renderXi(data) {
   }
 
   if (!Object.keys(state.slotMap).length) {
-    for (const p of squad) {
-      if (p.pitch_slot && p.is_starter) state.slotMap[p.pitch_slot] = p.player_id;
-    }
+    state.slotMap = seedSlotMapFromSquad(squad);
   }
 
   const used = new Set(Object.values(state.slotMap).filter(Boolean));
+  const prevCap = capSel?.value || "";
 
   const rows = formation.slots
     .map((slot) => {
       const required = slot.label;
       const selected = state.slotMap[slot.id] || "";
-      const eligible = squad.filter((p) => posFitsSlot(p.position, required));
+      // Always keep the current pick visible even if position metadata is missing
+      const eligible = squad.filter(
+        (p) => posFitsSlot(p.position, required) || p.player_id === selected
+      );
       const options = [
         `<option value="">— pick ${esc(required)} —</option>`,
         ...eligible.map((p) => {
           const taken = used.has(p.player_id) && state.slotMap[slot.id] !== p.player_id;
           return `<option value="${esc(p.player_id)}" ${
             selected === p.player_id ? "selected" : ""
-          } ${taken ? "disabled" : ""}>${esc(p.player_name)} (${esc(p.position)})${
+          } ${taken ? "disabled" : ""}>${esc(p.player_name)} (${esc(p.position || "?")})${
             taken ? " · in XI" : ""
           }</option>`;
         }),
@@ -262,9 +283,11 @@ function renderXi(data) {
     <tbody>${rows}</tbody>
   </table>`;
 
+  // Restore values explicitly (avoids blank selects after rebuild)
   root.querySelectorAll(".gpfl-slot").forEach((sel) => {
+    const slotId = sel.dataset.slot;
+    if (state.slotMap[slotId]) sel.value = state.slotMap[slotId];
     sel.onchange = () => {
-      const slotId = sel.dataset.slot;
       const pid = sel.value || "";
       if (pid) {
         for (const [k, v] of Object.entries(state.slotMap)) {
@@ -282,17 +305,17 @@ function renderXi(data) {
   const starters = squad.filter((p) => starterIds.includes(p.player_id));
   const savedCap = squad.find((p) => p.is_captain)?.player_id || "";
   if (capSel) {
-    const prefer = savedCap && starterIds.includes(savedCap) ? savedCap : capSel.value;
     capSel.innerHTML =
       `<option value="">— captain —</option>` +
       starters
-        .map(
-          (p) =>
-            `<option value="${esc(p.player_id)}">${esc(p.player_name)}</option>`
-        )
+        .map((p) => `<option value="${esc(p.player_id)}">${esc(p.player_name)}</option>`)
         .join("");
-    if (prefer && starterIds.includes(prefer)) capSel.value = prefer;
-    else if (starters.length) capSel.value = starters[0].player_id;
+    const prefer =
+      (prevCap && starterIds.includes(prevCap) && prevCap) ||
+      (savedCap && starterIds.includes(savedCap) && savedCap) ||
+      (starters[0] && starters[0].player_id) ||
+      "";
+    if (prefer) capSel.value = prefer;
   }
 }
 
@@ -417,10 +440,9 @@ async function refresh() {
   renderGate(data);
   if (data.joined) {
     state.formationId = data.entry?.formation_id || state.formationId || DEFAULT_FORMATION_ID;
-    state.slotMap = {};
-    for (const p of data.squad || []) {
-      if (p.pitch_slot && p.is_starter) state.slotMap[p.pitch_slot] = p.player_id;
-    }
+    // Prefer saved pitch XI from server; keep in-progress picks if nothing saved yet
+    const fromServer = seedSlotMapFromSquad(data.squad);
+    state.slotMap = Object.keys(fromServer).length ? fromServer : state.slotMap;
     renderEntryStats(data);
     fillFormationSelect(data);
     renderXi(data);
@@ -476,12 +498,16 @@ function wire() {
       return;
     }
     setStatus("Saving formation XI…");
-    const { error } = await supabase.rpc("gpfl_set_xi", {
+    const { data, error } = await supabase.rpc("gpfl_set_xi", {
       p_formation_id: formationId,
       p_slot_map: slotMap,
       p_captain_id: cap,
     });
     if (error) return setStatus(error.message, false);
+    // Keep the XI we just saved (don't blank while reloading)
+    state.formationId = formationId;
+    state.slotMap = { ...slotMap };
+    if (data) state.payload = data;
     await refresh();
     setStatus("Formation XI saved.");
   });
