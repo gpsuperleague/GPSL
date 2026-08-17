@@ -863,7 +863,7 @@ export function formatFixtureScore(f, clubIdentity = null) {
   ) {
     return `${f.proposed_home_goals} – ${f.proposed_away_goals}?`;
   }
-  return "vs";
+  return "–";
 }
 
 /**

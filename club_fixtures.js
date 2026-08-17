@@ -342,7 +342,7 @@ function intlFixtureCardHtml(f) {
   const score =
     f.played || f.status === "played"
       ? `${f.home_goals ?? 0}–${f.away_goals ?? 0}`
-      : "vs";
+      : "–";
   const groupBit = f.group_code ? `Group ${f.group_code}` : null;
   const weekBit = f.week_in_month != null ? `Week ${f.week_in_month}` : null;
   const kickoff = f.agreed_kickoff_at
