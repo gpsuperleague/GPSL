@@ -1,7 +1,7 @@
 /**
  * International & World Cup admin — intro / process notes (modular horizontal cards).
  */
-import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260817-intl";
+import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260817-popup-wc";
 
 export function getAdminInternationalRules() {
   return {
@@ -39,7 +39,8 @@ export function getAdminInternationalRules() {
       {
         heading: "World Cup cycle",
         items: [
-          "Create a cycle, bind two qualifying seasons + the season whose <b>pre-season</b> hosts finals.",
+          "<b>Standard:</b> create a cycle, bind two qualifying seasons + the season whose <b>pre-season</b> hosts finals.",
+          "<b>Popup (test):</b> one season only — qual + finals June→May (single RR, play once).",
           "Qualifying: <b>12 groups × 5</b> (pots by seed rank).",
           "Finals: top 2 + 8 best thirds → <b>8×4</b> → knockout.",
         ],
@@ -47,17 +48,26 @@ export function getAdminInternationalRules() {
       {
         heading: "Qualifying calendar",
         items: [
-          "Each nation plays <b>8 matches</b> (H&amp;A vs the other four) — <b>4 per season</b> across Season 3 + 4.",
-          "Group size 5 → <b>5 international windows</b> per season (one bye each window).",
-          "Windows spaced Aug / Oct / Dec / Feb / Apr — not pre-season.",
+          "<b>Standard:</b> each nation plays <b>8 matches</b> (H&amp;A) — <b>4 per season</b> across two seasons; windows Aug/Oct/Dec/Feb/Apr.",
+          "<b>Popup:</b> each nation plays <b>4 matches</b> (once vs each other) — windows <b>June / Aug / Oct / Dec / Feb</b>.",
+          "Group size 5 → <b>5 international windows</b> (one bye each window).",
         ],
       },
       {
         heading: "Finals &amp; seasons",
         items: [
-          "Finals in <b>pre-season of the next season</b> (June/July) — e.g. after S4 → S5 pre-season.",
-          "If S3 / S4 / S5 are missing, use <b>Create missing seasons</b> first (placeholder shells only).",
+          "<b>Standard finals:</b> pre-season of the next season (June/July).",
+          "<b>Popup finals:</b> same season — groups Mar–Apr, knockout <b>May</b> (not pre-season).",
+          "If S3 / S4 / S5 are missing for a standard cycle, use <b>Create missing seasons</b> first.",
           "Shells are status <code>setup</code> — does not start those seasons or Create Pre-Season.",
+        ],
+      },
+      {
+        heading: "Fixtures surfaces",
+        items: [
+          "World Cup page lists all cycle fixtures.",
+          "Owners also see their nation’s matches on <b>My Club Fixtures</b> (month groups) and season calendar.",
+          "Play / arrange via <b>International matchday</b>.",
         ],
       },
       {

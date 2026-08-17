@@ -6,7 +6,7 @@ import {
   refreshNationPlayerPoolCache,
 } from "./international.js";
 import { refreshSelectionLive } from "./admin_international_selection.js";
-import { renderAdminInternationalRules } from "./admin_international_rules.js?v=20260817-rules";
+import { renderAdminInternationalRules } from "./admin_international_rules.js?v=20260817-popup-wc";
 
 primeAdminPageChrome();
 renderAdminInternationalRules();
@@ -185,9 +185,32 @@ function showTopSeeds(rows) {
 
 /** @type {number|null} */
 let activeWcCycleId = null;
+/** @type {string} */
+let activeWcCycleMode = "standard";
+
+function selectedWcCycleMode() {
+  const checked = document.querySelector('input[name="wcCycleMode"]:checked');
+  return checked?.value === "popup_single_season"
+    ? "popup_single_season"
+    : "standard";
+}
+
+function syncWcModeUi() {
+  const popup = selectedWcCycleMode() === "popup_single_season";
+  const stdRow = document.getElementById("wcStandardSeasonsRow");
+  const popRow = document.getElementById("wcPopupSeasonRow");
+  if (stdRow) stdRow.style.display = popup ? "none" : "flex";
+  if (popRow) popRow.style.display = popup ? "flex" : "none";
+  const label = document.getElementById("wcLabel");
+  if (label && !label.value.trim()) {
+    label.placeholder = popup
+      ? "e.g. Popup World Cup (Season 1 test)"
+      : "e.g. World Cup 1 (Season 5 pre-season)";
+  }
+}
 
 async function loadSeasonOptions(preferred = {}) {
-  const selects = ["wcQual1", "wcQual2", "wcFinalsAfter"]
+  const selects = ["wcQual1", "wcQual2", "wcFinalsAfter", "wcPopupSeason"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
   if (!selects.length) return [];
@@ -197,6 +220,8 @@ async function loadSeasonOptions(preferred = {}) {
     wcQual2: preferred.wcQual2 ?? document.getElementById("wcQual2")?.value,
     wcFinalsAfter:
       preferred.wcFinalsAfter ?? document.getElementById("wcFinalsAfter")?.value,
+    wcPopupSeason:
+      preferred.wcPopupSeason ?? document.getElementById("wcPopupSeason")?.value,
   };
 
   const { data, error } = await supabase
@@ -256,6 +281,13 @@ async function loadSeasonOptions(preferred = {}) {
     if (fin && !fin.value) fin.value = byOrd(5);
   }
 
+  const pop = document.getElementById("wcPopupSeason");
+  if (pop && !pop.value && rows.length) {
+    const current = rows.find((s) => s.is_current) || rows[0];
+    pop.value = String(current.id);
+  }
+
+  syncWcModeUi();
   return rows;
 }
 
@@ -272,6 +304,7 @@ async function refreshWcCycleLive() {
   if (error) {
     live.textContent = `❌ ${error.message} — run international_wc_competition_engine.sql`;
     activeWcCycleId = null;
+    activeWcCycleMode = "standard";
     return;
   }
 
@@ -279,27 +312,44 @@ async function refreshWcCycleLive() {
   if (!c) {
     live.textContent = "No World Cup cycle yet — create one above.";
     activeWcCycleId = null;
+    activeWcCycleMode = "standard";
     return;
   }
 
   activeWcCycleId = c.id ?? null;
+  activeWcCycleMode =
+    String(c.cycle_mode || "standard").toLowerCase() === "popup_single_season"
+      ? "popup_single_season"
+      : "standard";
   // public view may not expose id — fall back via RPC list if needed
   if (activeWcCycleId == null) {
     const { data: raw } = await supabase
       .from("international_wc_cycles")
-      .select("id, cycle_no, status, label")
+      .select("id, cycle_no, status, label, cycle_mode")
       .order("cycle_no", { ascending: false })
       .limit(1);
     activeWcCycleId = raw?.[0]?.id ?? null;
+    if (raw?.[0]?.cycle_mode) {
+      activeWcCycleMode =
+        String(raw[0].cycle_mode).toLowerCase() === "popup_single_season"
+          ? "popup_single_season"
+          : "standard";
+    }
   }
 
+  const mode = String(c.cycle_mode || "standard").toLowerCase();
+  const isPopup = mode === "popup_single_season";
+  const modeLabel = isPopup ? "popup single-season" : "standard";
+  const seasonLine = isPopup
+    ? `Season: ${escapeOpt(c.qual_season_1_label || c.finals_after_season_label || "—")} · Qual June–Feb (single RR) · Finals Mar–Apr · KO May`
+    : `Qual: ${escapeOpt(c.qual_season_1_label || "—")} &amp; ${escapeOpt(
+        c.qual_season_2_label || "—"
+      )} · Finals in pre-season of ${escapeOpt(c.finals_after_season_label || "—")}`;
+
   live.innerHTML =
-    `<b>${escapeOpt(c.label)}</b> · cycle #${escapeOpt(c.cycle_no)} · status <b>${escapeOpt(
-      c.status
-    )}</b><br>` +
-    `Qual: ${escapeOpt(c.qual_season_1_label || "—")} &amp; ${escapeOpt(
-      c.qual_season_2_label || "—"
-    )} · Finals in pre-season of ${escapeOpt(c.finals_after_season_label || "—")}`;
+    `<b>${escapeOpt(c.label)}</b> · cycle #${escapeOpt(c.cycle_no)} · ` +
+    `<b>${escapeOpt(modeLabel)}</b> · status <b>${escapeOpt(c.status)}</b><br>` +
+    seasonLine;
 }
 
 function requireWcCycleId() {
@@ -408,6 +458,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   });
 
+  document.getElementById("wcModeStandard")?.addEventListener("change", syncWcModeUi);
+  document.getElementById("wcModePopup")?.addEventListener("change", syncWcModeUi);
+  syncWcModeUi();
+
   document.getElementById("wcEnsureSeasonsBtn")?.addEventListener("click", async () => {
     const through = Math.max(5, Number(document.getElementById("wcEnsureThrough")?.value || 5));
     document.getElementById("wcEnsureThrough").value = String(through);
@@ -426,28 +480,52 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("wcCreateBtn")?.addEventListener("click", async () => {
     const label = document.getElementById("wcLabel")?.value?.trim();
-    const q1Sel = document.getElementById("wcQual1");
-    const q2Sel = document.getElementById("wcQual2");
-    const finSel = document.getElementById("wcFinalsAfter");
-    const q1 = Number(q1Sel?.value || 0);
-    const q2 = Number(q2Sel?.value || 0);
-    const fin = Number(finSel?.value || 0);
-    const q1Text = q1Sel?.selectedOptions?.[0]?.textContent?.trim() || String(q1);
-    const q2Text = q2Sel?.selectedOptions?.[0]?.textContent?.trim() || String(q2);
-    const finText = finSel?.selectedOptions?.[0]?.textContent?.trim() || String(fin);
-    if (!label || !q1 || !q2 || !fin) {
-      setStatus("wcStatus", "Label and all three seasons are required.", false);
-      return;
-    }
-    if (
-      !confirm(
+    const mode = selectedWcCycleMode();
+    const isPopup = mode === "popup_single_season";
+
+    let q1;
+    let q2;
+    let fin;
+    let confirmBody;
+
+    if (isPopup) {
+      const popSel = document.getElementById("wcPopupSeason");
+      const seasonId = Number(popSel?.value || 0);
+      const seasonText =
+        popSel?.selectedOptions?.[0]?.textContent?.trim() || String(seasonId);
+      if (!label || !seasonId) {
+        setStatus("wcStatus", "Label and season are required for popup WC.", false);
+        return;
+      }
+      q1 = q2 = fin = seasonId;
+      confirmBody =
+        `Create POPUP single-season World Cup?\n\n${label}\n` +
+        `Season: ${seasonText}\n` +
+        `Qual: single RR (play once) · June/Aug/Oct/Dec/Feb\n` +
+        `Finals groups: March–April · Knockout: May\n` +
+        `(Fixtures also appear on club fixtures + World Cup page.)`;
+    } else {
+      const q1Sel = document.getElementById("wcQual1");
+      const q2Sel = document.getElementById("wcQual2");
+      const finSel = document.getElementById("wcFinalsAfter");
+      q1 = Number(q1Sel?.value || 0);
+      q2 = Number(q2Sel?.value || 0);
+      fin = Number(finSel?.value || 0);
+      const q1Text = q1Sel?.selectedOptions?.[0]?.textContent?.trim() || String(q1);
+      const q2Text = q2Sel?.selectedOptions?.[0]?.textContent?.trim() || String(q2);
+      const finText = finSel?.selectedOptions?.[0]?.textContent?.trim() || String(fin);
+      if (!label || !q1 || !q2 || !fin) {
+        setStatus("wcStatus", "Label and all three seasons are required.", false);
+        return;
+      }
+      confirmBody =
         `Create World Cup cycle?\n\n${label}\n` +
-          `Qual seasons:\n  • ${q1Text}\n  • ${q2Text}\n` +
-          `Finals (pre-season of):\n  • ${finText}`
-      )
-    ) {
-      return;
+        `Qual seasons:\n  • ${q1Text}\n  • ${q2Text}\n` +
+        `Finals (pre-season of):\n  • ${finText}`;
     }
+
+    if (!confirm(confirmBody)) return;
+
     const data = await wcRpc(
       "international_admin_create_wc_cycle",
       {
@@ -455,10 +533,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         p_qual_season_id_1: q1,
         p_qual_season_id_2: q2,
         p_finals_after_season_id: fin,
+        p_cycle_mode: mode,
       },
       "Cycle created"
     );
-    if (data?.cycle_id) activeWcCycleId = data.cycle_id;
+    if (data?.cycle_id) {
+      activeWcCycleId = data.cycle_id;
+      activeWcCycleMode = mode;
+    }
   });
 
   document.getElementById("wcDrawQualBtn")?.addEventListener("click", async () => {
@@ -506,18 +588,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wcGenQualFixBtn")?.addEventListener("click", async () => {
     const id = requireWcCycleId();
     if (!id) return;
-    if (
-      !confirm(
-        "Generate qualifying fixtures?\n\n" +
-          "Double round-robin in groups of 5:\n" +
-          "• Each nation plays 8 matches (4 per season) — home & away vs the other four\n" +
-          "• 5 calendar windows per season (one bye each round) × 2 seasons\n" +
-          "• Season 1 windows → Aug/Oct/Dec/Feb/Apr; Season 2 same spread\n" +
-          "• 20 fixtures per group, 240 total"
-      )
-    ) {
-      return;
-    }
+    const popup = activeWcCycleMode === "popup_single_season";
+    const confirmMsg = popup
+      ? "Generate POPUP qualifying fixtures?\n\n" +
+        "Single round-robin in groups of 5:\n" +
+        "• Each nation plays 4 matches (once vs each other nation)\n" +
+        "• 5 calendar windows: June / Aug / Oct / Dec / Feb (one bye each round)\n" +
+        "• 10 fixtures per group, 120 total\n" +
+        "• Shown on club fixtures + World Cup page"
+      : "Generate qualifying fixtures?\n\n" +
+        "Double round-robin in groups of 5:\n" +
+        "• Each nation plays 8 matches (4 per season) — home & away vs the other four\n" +
+        "• 5 calendar windows per season (one bye each round) × 2 seasons\n" +
+        "• Season 1 windows → Aug/Oct/Dec/Feb/Apr; Season 2 same spread\n" +
+        "• 20 fixtures per group, 240 total";
+    if (!confirm(confirmMsg)) return;
     const data = await wcRpc(
       "international_generate_qual_fixtures",
       { p_cycle_id: id },
@@ -558,7 +643,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wcGenFinalsFixBtn")?.addEventListener("click", async () => {
     const id = requireWcCycleId();
     if (!id) return;
-    if (!confirm("Generate finals group fixtures (single round-robin, 6 games per group)?")) return;
+    const popup = activeWcCycleMode === "popup_single_season";
+    const confirmMsg = popup
+      ? "Generate POPUP finals group fixtures?\n\nSingle RR (6 games per group).\nMonths: March (MD1–2) and April (MD3) — same season, not pre-season."
+      : "Generate finals group fixtures (single round-robin, 6 games per group)?\n\nPre-season June/July of the finals host season.";
+    if (!confirm(confirmMsg)) return;
     const data = await wcRpc(
       "international_generate_finals_group_fixtures",
       { p_cycle_id: id },
@@ -572,9 +661,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wcSeedKoBtn")?.addEventListener("click", async () => {
     const id = requireWcCycleId();
     if (!id) return;
+    const popup = activeWcCycleMode === "popup_single_season";
     if (
       !confirm(
-        "Seed knockout bracket from finals group winners/runners-up?\n\nRequires all finals group fixtures played.\nCreates R16 + empty QF/SF/3rd place/Final."
+        "Seed knockout bracket from finals group winners/runners-up?\n\nRequires all finals group fixtures played.\nCreates R16 + empty QF/SF/3rd place/Final." +
+          (popup ? "\nPopup calendar: knockout in May." : "\nStandard calendar: knockout in July (pre-season).")
       )
     ) {
       return;

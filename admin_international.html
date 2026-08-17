@@ -88,7 +88,19 @@
       <label for="wcLabel">Cycle label</label>
       <input id="wcLabel" placeholder="e.g. World Cup 1 (Season 5 pre-season)" maxlength="80">
 
-      <div class="row" style="align-items:flex-start;">
+      <p class="section-label" style="margin-top:12px;">Format</p>
+      <div class="row" style="align-items:center; gap:18px; margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;">
+          <input type="radio" name="wcCycleMode" id="wcModeStandard" value="standard" checked>
+          Standard (2-season qual + pre-season finals)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;">
+          <input type="radio" name="wcCycleMode" id="wcModePopup" value="popup_single_season">
+          Popup single-season (test)
+        </label>
+      </div>
+
+      <div class="row" id="wcStandardSeasonsRow" style="align-items:flex-start; margin-top:10px;">
         <div>
           <label for="wcQual1">Qualifying season 1</label>
           <select id="wcQual1" style="max-width:280px;"><option value="">Loading…</option></select>
@@ -100,6 +112,13 @@
         <div>
           <label for="wcFinalsAfter">Finals season (pre-season)</label>
           <select id="wcFinalsAfter" style="max-width:280px;"><option value="">Loading…</option></select>
+        </div>
+      </div>
+
+      <div class="row" id="wcPopupSeasonRow" style="align-items:flex-start; margin-top:10px; display:none;">
+        <div>
+          <label for="wcPopupSeason">Season (qual + finals, June–May)</label>
+          <select id="wcPopupSeason" style="max-width:320px;"><option value="">Loading…</option></select>
         </div>
       </div>
 
@@ -188,6 +207,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="admin_international.js?v=20260817-rules"></script>
+  <script type="module" src="admin_international.js?v=20260817-popup-wc"></script>
 </body>
 </html>

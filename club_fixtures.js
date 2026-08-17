@@ -34,8 +34,11 @@ import {
   wireMatchSimButtons,
   runMatchSimulation,
 } from "./match_sim_ui.js";
+import { loadMyNation, loadInternationalFixtures } from "./international.js";
 
 let myClub = { short: null, name: null };
+let myNationCode = null;
+let currentSeasonId = null;
 let calendarStatus = null;
 let holidayContext = null;
 /** @type {any[]} */
@@ -68,6 +71,15 @@ function formatAttendance(n) {
 }
 
 function competitionLabel(f) {
+  if (f._intl) {
+    if (f.phase === "qualifying") return "WC Qualifying";
+    if (f.phase === "finals_group") return "WC Finals";
+    if (f.phase === "knockout") {
+      const stage = String(f.knockout_stage || "").toUpperCase() || "KO";
+      return `WC ${stage}`;
+    }
+    return "World Cup";
+  }
   if (f.competition_type === "cup") {
     const cup = CUP_LABELS[f.cup_code] || f.cup_code || "Cup";
     const round = f.cup_round ? ` · R${f.cup_round}` : "";
@@ -207,6 +219,8 @@ function actionHtml(f) {
 }
 
 function fixtureCardHtml(f) {
+  if (f._intl) return intlFixtureCardHtml(f);
+
   const isLeague = f.competition_type === "league";
   const badgeCls = isLeague ? "league" : "cup";
   const ha = f.is_home ? "Home" : "Away";
@@ -314,6 +328,86 @@ function fixtureCardHtml(f) {
   `;
 }
 
+function intlFixtureCardHtml(f) {
+  const mine = String(myNationCode || "").toUpperCase();
+  const homeCode = String(f.home_nation || "").toUpperCase();
+  const awayCode = String(f.away_nation || "").toUpperCase();
+  const homeMine = mine && homeCode === mine;
+  const awayMine = mine && awayCode === mine;
+  const ha = homeMine ? "Home" : awayMine ? "Away" : "Intl";
+  const homeName = f.home_nation_name || f.home_nation || "?";
+  const awayName = f.away_nation_name || f.away_nation || "?";
+  const score =
+    f.played || f.status === "played"
+      ? `${f.home_goals ?? 0}–${f.away_goals ?? 0}`
+      : "vs";
+  const groupBit = f.group_code ? `Group ${f.group_code}` : null;
+  const weekBit = f.week_in_month != null ? `Week ${f.week_in_month}` : null;
+  const kickoff = f.agreed_kickoff_at
+    ? new Date(f.agreed_kickoff_at).toLocaleString()
+    : f.schedule_status === "agreed"
+      ? "Kick-off agreed"
+      : "Arrange on matchday";
+  const href = `international_matchday.html?fixture=${encodeURIComponent(f.id)}`;
+
+  return `
+    <div class="fixture-card fixture-card--intl">
+      <div class="fixture-top">
+        <span class="fixture-badge intl">${competitionLabel(f)}</span>
+        <span class="fixture-match">
+          <span class="${homeMine ? "mine" : ""}">${escapeHtml(f.home_flag || "")} ${escapeHtml(homeName)}</span>
+          &nbsp;vs&nbsp;
+          <span class="${awayMine ? "mine" : ""}">${escapeHtml(f.away_flag || "")} ${escapeHtml(awayName)}</span>
+        </span>
+        <span class="fixture-score">${escapeHtml(score)}</span>
+      </div>
+      <div class="fixture-meta">
+        <span><b>${ha}</b></span>
+        ${groupBit ? `<span><b>${escapeHtml(groupBit)}</b></span>` : ""}
+        ${weekBit ? `<span>${escapeHtml(weekBit)}</span>` : ""}
+        <span>${escapeHtml(kickoff)}</span>
+      </div>
+      <div class="fixture-actions">
+        <a class="btn-link" href="${href}">Open matchday</a>
+        <a class="btn-link secondary" href="world_cup.html">World Cup</a>
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function loadMyInternationalFixtures(seasonId) {
+  if (!myNationCode) return [];
+  const rows = await loadInternationalFixtures(null, null, supabase);
+  const nation = String(myNationCode).toUpperCase();
+  const seasonNum = seasonId != null ? Number(seasonId) : null;
+  return (rows || [])
+    .filter((f) => {
+      const home = String(f.home_nation || "").toUpperCase();
+      const away = String(f.away_nation || "").toUpperCase();
+      if (home !== nation && away !== nation) return false;
+      if (seasonNum != null && f.season_id != null && Number(f.season_id) !== seasonNum) {
+        return false;
+      }
+      return true;
+    })
+    .map((f) => ({
+      ...f,
+      _intl: true,
+      competition_type: "international",
+      gpsl_month: String(f.gpsl_month || "").toLowerCase() || "may",
+      matchday: Number(f.match_no) || 0,
+      status: f.played ? "played" : f.status || "scheduled",
+    }));
+}
+
 function mergeFixtureActions(rpcRows, publicRows) {
   const byId = new Map((publicRows || []).map((f) => [f.id, f]));
   const actionFields = [
@@ -379,7 +473,12 @@ function groupByMonth(fixtures) {
   return [...groups.values()]
     .sort((a, b) => a.sort - b.sort)
     .map((g) => {
-      g.fixtures.sort((a, b) => (a.matchday || 0) - (b.matchday || 0) || a.id - b.id);
+      g.fixtures.sort((a, b) => {
+        const aIntl = a._intl ? 1 : 0;
+        const bIntl = b._intl ? 1 : 0;
+        if (aIntl !== bIntl) return bIntl - aIntl; // internationals first in month
+        return (a.matchday || 0) - (b.matchday || 0) || a.id - b.id;
+      });
       return g;
     });
 }
@@ -477,7 +576,7 @@ async function simulateFixture(fixtureId, btn, mode = "instant") {
       homeName: f?.home_club_name || f?.home_club_short_name,
       awayName: f?.away_club_name || f?.away_club_short_name,
     });
-    await refreshFixtures();
+    await refreshFixtures(currentSeasonId);
   } catch (err) {
     showError(err?.message || "Simulation failed");
   }
@@ -494,7 +593,7 @@ function renderSimBanner() {
   wireMatchSimBannerToggle(async () => {
     matchSimStatus = await loadMatchSimStatus();
     renderSimBanner();
-    await refreshFixtures();
+    await refreshFixtures(currentSeasonId);
   });
 }
 
@@ -570,7 +669,7 @@ async function loadMyClub(user) {
   }
 }
 
-async function refreshFixtures() {
+async function refreshFixtures(seasonId = null) {
   const root = document.getElementById("clubFixturesRoot");
   const { data, error } = await supabase.rpc("club_fixtures_my_club");
   if (error) {
@@ -578,10 +677,12 @@ async function refreshFixtures() {
     return;
   }
   const publicFixtures = await loadPublicFixturesForClub();
-  const fixtures = mergeFixtureActions(
+  const clubFixtures = mergeFixtureActions(
     Array.isArray(data) ? data : [],
     publicFixtures
   );
+  const intlFixtures = await loadMyInternationalFixtures(seasonId);
+  const fixtures = [...clubFixtures, ...intlFixtures];
   renderFixtures(fixtures);
   if (root && !fixtures.length) {
     root.innerHTML =
@@ -620,7 +721,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (title) title.textContent = `${myClub.name || myClub.short} — Fixtures`;
     if (meta) {
       meta.textContent =
-        "Your club’s matches this season, grouped by month. Played games show attendance, score, contributors, league position, weather and pitch.";
+        "Your club’s matches this season, grouped by month — including your national team World Cup fixtures when scheduled. Played club games show attendance, score, contributors, league position, weather and pitch.";
     }
 
     const season = await loadCurrentSeason(supabase);
@@ -629,6 +730,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         '<p class="empty">Fixtures appear once the league admin activates a season.</p>';
       return;
     }
+    currentSeasonId = season.id;
+
+    const nationRow = await loadMyNation(supabase);
+    myNationCode = nationRow?.code || null;
 
     await loadTvFixtureIds(supabase, season.id);
     await loadMatchSimEnabled();
@@ -636,7 +741,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     calendarStatus = await loadCalendarStatus(supabase);
     holidayContext = await loadHolidayPlayContext(supabase, myClub.short);
 
-    await refreshFixtures();
+    await refreshFixtures(season.id);
   } catch (err) {
     console.error(err);
     showError(err.message || "Failed to load fixtures.");

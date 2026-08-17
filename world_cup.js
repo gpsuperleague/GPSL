@@ -51,14 +51,20 @@ function renderCycle(cycles) {
       }
     </div>`;
   }
-  el.innerHTML = `
-    <b>${escapeHtml(c.label)}</b> — status: <b>${escapeHtml(c.status)}</b><br>
-    Qualifying seasons: ${escapeHtml(c.qual_season_1_label || "—")} &amp; ${escapeHtml(
-      c.qual_season_2_label || "—"
-    )}<br>
+  const mode = String(c.cycle_mode || "standard").toLowerCase();
+  const isPopup = mode === "popup_single_season";
+  const scheduleLine = isPopup
+    ? `Popup single-season · ${escapeHtml(c.qual_season_1_label || c.finals_after_season_label || "—")}<br>
+       Qual: June–Feb (single RR) · Finals groups: Mar–Apr · Knockout: May`
+    : `Qualifying seasons: ${escapeHtml(c.qual_season_1_label || "—")} &amp; ${escapeHtml(
+        c.qual_season_2_label || "—"
+      )}<br>
     Finals: pre-season of ${escapeHtml(c.finals_after_season_label || "—")} (season ${escapeHtml(
       c.finals_after_season_ordinal || "—"
-    )})
+    )})`;
+  el.innerHTML = `
+    <b>${escapeHtml(c.label)}</b> — status: <b>${escapeHtml(c.status)}</b><br>
+    ${scheduleLine}
     ${podium}
   `;
 }
@@ -227,8 +233,12 @@ function monthLabel(m) {
 function seasonTabLabel(sample, cycle) {
   if (sample?.season_label) return String(sample.season_label);
   if (sample?.season_ordinal != null) return `Season ${sample.season_ordinal}`;
+  const mode = String(cycle?.cycle_mode || sample?.cycle_mode || "standard").toLowerCase();
   const mn = Number(sample?.match_no) || 0;
   if (sample?.phase === "qualifying" && cycle) {
+    if (mode === "popup_single_season") {
+      return cycle.qual_season_1_label || "Season";
+    }
     if (mn >= 1 && mn <= 5) return cycle.qual_season_1_label || "Season 1";
     if (mn >= 6 && mn <= 10) return cycle.qual_season_2_label || "Season 2";
   }

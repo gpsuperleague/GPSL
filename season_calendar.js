@@ -194,7 +194,7 @@ function staticEventsForMonth(monthKey) {
       kind: "world-cup",
       short: "World Cup (pre-season)",
       detail:
-        "World Cup finals and other pre-season international windows use this Pre-Season calendar slot. Qualifying still appears in its GPSL months (Aug/Oct/Dec/Feb/Apr).",
+        "World Cup finals (standard cycle) and other pre-season international windows use this Pre-Season calendar slot. Qualifying still appears in its GPSL months. Popup single-season finals stay in March–May.",
       links: [{ href: "world_cup.html", label: "World Cup" }],
     });
   }
@@ -536,14 +536,18 @@ async function loadLiveOverlays(status) {
     if (wc.cycle_no != null) noteParts.push(`Cycle ${wc.cycle_no}`);
     if (wc.label) noteParts.push(String(wc.label));
     if (wc.status) noteParts.push(String(wc.status).replace(/_/g, " "));
-    if (wc.finals_after_season_label) {
+    const isPopup =
+      String(wc.cycle_mode || "").toLowerCase() === "popup_single_season";
+    if (isPopup) {
+      noteParts.push("popup single-season (June–May)");
+    } else if (wc.finals_after_season_label) {
       noteParts.push(`finals in pre-season of ${wc.finals_after_season_label}`);
     }
     const wcText =
       noteParts.length > 0
         ? `World Cup — ${noteParts.join(" · ")}`
         : "World Cup cycle active";
-    // Cycle reminder on Pre-Season (finals home); June/July keep early-season notes
+    // Cycle reminder: standard finals live on Pre-Season; popup sits in-season months
     byMonth.pre_season.push({
       kind: "world-cup",
       short: "World Cup",
@@ -566,7 +570,7 @@ async function loadLiveOverlays(status) {
     if (!mine) continue;
 
     // Qualifying spans two seasons — only show fixtures for the calendar's current season.
-    // Finals/knockout use finals season id (pre-season months).
+    // Finals/knockout use finals season id (pre-season months for standard; in-season for popup).
     if (
       fix.phase === "qualifying" &&
       currentSeasonId != null &&
@@ -579,7 +583,10 @@ async function loadLiveOverlays(status) {
     let mk = String(fix.gpsl_month || "").toLowerCase();
     const isFinalsPhase =
       fix.phase === "finals_group" || fix.phase === "knockout";
-    if (isFinalsPhase) {
+    const isPopupFix =
+      String(fix.cycle_mode || wc?.cycle_mode || "").toLowerCase() ===
+      "popup_single_season";
+    if (isFinalsPhase && !isPopupFix) {
       mk = "pre_season";
     } else if (!mk || !byMonth[mk]) {
       // Fallback if month missing: pin to active GPSL month / Pre-Season
@@ -989,7 +996,7 @@ async function renderPage(user) {
     `<p class="sc-footnote">` +
     `Click a bullet for details and links. League matchdays: Aug 1–3, then four per month Sep–Apr, May 36–38. ` +
     `Playoffs is Week 11 after May (promotion/relegation ties). Cup rounds follow the published schedule. ` +
-    `World Cup qualifying appears in its GPSL months (Aug/Oct/Dec/Feb/Apr); finals and other pre-season internationals use the Pre-Season card.` +
+    `World Cup qualifying appears in its GPSL months; standard finals use the Pre-Season card; popup single-season finals/KO stay in March–May.` +
     ` <span class="sc-build">Calendar build 20260813-preseason</span>` +
     `</p>`;
 
