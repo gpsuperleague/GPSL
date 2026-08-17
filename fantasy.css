@@ -172,7 +172,7 @@ body.gpfl-page {
   border-bottom: 1px solid #2a3545;
 }
 .gpfl-table th { color: #8ab; font-weight: 600; font-size: 11px; text-transform: uppercase; }
-.gpfl-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.gpfl-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .gpfl-table tr.needs-replace { background: rgba(120, 40, 40, 0.18); }
 
 .gpfl-badge {

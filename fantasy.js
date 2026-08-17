@@ -1,5 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
-import { formatMoney, GPSL_MONTH_LABELS } from "./competition.js";
+import { GPSL_MONTH_LABELS } from "./competition.js";
 import {
   FORMATION_LIST,
   FORMATION_GROUP_ORDER,
@@ -168,7 +168,7 @@ function renderSquad(data) {
         <td>${esc(p.position || p.position_group || "—")}</td>
         <td>${esc(p.club_name || p.club_short_name || "—")}</td>
         <td>${esc(p.owner_name || "—")}</td>
-        <td class="num">${money(p.purchase_price)}</td>
+        <td class="num">${moneyNum(p.purchase_price)}</td>
         <td><button type="button" class="gpfl-btn gpfl-rm" data-id="${esc(p.player_id)}">${fa ? "Clear" : "Sell"}</button></td>
       </tr>`;
     })
@@ -344,7 +344,7 @@ async function loadPool() {
   }
   root.innerHTML = `<p class="gpfl-muted" style="margin:0 0 8px;">${esc(data.total)} in filter · showing ${players.length}</p>
     <table class="gpfl-table">
-      <thead><tr><th>Player</th><th>Club</th><th>Owner</th><th>Div</th><th>Pos</th><th class="num">GPFL price</th><th></th></tr></thead>
+      <thead><tr><th>Player</th><th>Club</th><th>Owner</th><th>Div</th><th>Pos</th><th class="num">GPFL price (₿)</th><th></th></tr></thead>
       <tbody>
         ${players
           .map(
@@ -354,7 +354,7 @@ async function loadPool() {
               <td>${esc(p.owner_name || "Vacant")}</td>
               <td>${esc(p.division || "")}</td>
               <td>${esc(p.position || p.position_group)}</td>
-              <td class="num">${money(p.price)}</td>
+              <td class="num">${moneyNum(p.price)}</td>
               <td><button type="button" class="gpfl-btn gpfl-add" data-id="${esc(p.player_id)}">Add</button></td>
             </tr>`
           )
