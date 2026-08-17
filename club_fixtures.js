@@ -40,6 +40,8 @@ import { loadMyNation, loadInternationalFixtures } from "./international.js";
 
 let myClub = { short: null, name: null };
 let myNationCode = null;
+/** @type {Map<string, string>} nation code → owner club ShortName */
+let nationOwnerClubMap = new Map();
 let currentSeasonId = null;
 let calendarStatus = null;
 let holidayContext = null;
@@ -330,6 +332,16 @@ function fixtureCardHtml(f) {
   `;
 }
 
+function nationWithOwnerHtml(nationName, nationCode) {
+  const code = String(nationCode || "").toUpperCase();
+  const clubShort = nationOwnerClubMap.get(code) || null;
+  if (clubShort) {
+    return clubWithOwnerHtml(nationName || code || "—", clubShort, "block");
+  }
+  const name = escapeHtml(nationName || code || "—");
+  return `<span class="fixture-club"><span class="fixture-club-name">${name}</span><span class="club-owner-tag club-owner-tag--vacant">Vacant</span></span>`;
+}
+
 function intlFixtureCardHtml(f) {
   const mine = String(myNationCode || "").toUpperCase();
   const homeCode = String(f.home_nation || "").toUpperCase();
@@ -363,9 +375,9 @@ function intlFixtureCardHtml(f) {
       <div class="fixture-top">
         <span class="fixture-badge intl">${competitionLabel(f)}</span>
         <span class="fixture-match">
-          <span class="${homeMine ? "mine" : ""}">${escapeHtml(homeName)}</span>
+          <span class="${homeMine ? "mine" : ""}">${nationWithOwnerHtml(homeName, homeCode)}</span>
           &nbsp;vs&nbsp;
-          <span class="${awayMine ? "mine" : ""}">${escapeHtml(awayName)}</span>
+          <span class="${awayMine ? "mine" : ""}">${nationWithOwnerHtml(awayName, awayCode)}</span>
         </span>
         <span class="fixture-score">${escapeHtml(score)}</span>
       </div>
@@ -399,6 +411,22 @@ function escapeHtml(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+async function loadNationOwnerClubs() {
+  nationOwnerClubMap = new Map();
+  const { data, error } = await supabase
+    .from("international_nations_public")
+    .select("code, owner_club");
+  if (error) {
+    console.warn("international_nations_public:", error);
+    return;
+  }
+  for (const row of data || []) {
+    const code = String(row?.code || "").toUpperCase();
+    const club = String(row?.owner_club || "").trim();
+    if (code && club) nationOwnerClubMap.set(code, club);
+  }
 }
 
 async function loadMyInternationalFixtures(seasonId) {
@@ -810,6 +838,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const nationRow = await loadMyNation(supabase);
     myNationCode = nationRow?.code || null;
+    await loadNationOwnerClubs();
 
     await loadTvFixtureIds(supabase, season.id);
     await loadMatchSimEnabled();
