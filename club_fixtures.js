@@ -363,9 +363,9 @@ function intlFixtureCardHtml(f) {
       <div class="fixture-top">
         <span class="fixture-badge intl">${competitionLabel(f)}</span>
         <span class="fixture-match">
-          <span class="${homeMine ? "mine" : ""}">${escapeHtml(f.home_flag || "")} ${escapeHtml(homeName)}</span>
+          <span class="${homeMine ? "mine" : ""}">${escapeHtml(homeName)}</span>
           &nbsp;vs&nbsp;
-          <span class="${awayMine ? "mine" : ""}">${escapeHtml(f.away_flag || "")} ${escapeHtml(awayName)}</span>
+          <span class="${awayMine ? "mine" : ""}">${escapeHtml(awayName)}</span>
         </span>
         <span class="fixture-score">${escapeHtml(score)}</span>
       </div>
