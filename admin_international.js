@@ -6,8 +6,10 @@ import {
   refreshNationPlayerPoolCache,
 } from "./international.js";
 import { refreshSelectionLive } from "./admin_international_selection.js";
+import { renderAdminInternationalRules } from "./admin_international_rules.js?v=20260817-rules";
 
 primeAdminPageChrome();
+renderAdminInternationalRules();
 
 /** @type {Map<string, string>} owner_id → email */
 let ownerEmailById = new Map();

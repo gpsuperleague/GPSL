@@ -7,9 +7,10 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260817-intl">
   <style>
     body.admin-page { background:#111; color:#ddd; }
-    .admin-wrap { max-width:900px; margin:24px auto; padding:0 16px 40px; }
+    .admin-wrap { max-width:1100px; margin:24px auto; padding:0 16px 40px; }
     h1 { color:#ff9900; }
     .card { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:20px; margin-bottom:20px; }
     .card h2 { color:#ff9900; font-size:17px; margin:0 0 12px; }
@@ -43,6 +44,14 @@
       width: 100%;
       max-width: 560px;
     }
+    .intl-rules { margin: 0 0 16px; max-width: none; }
+    .section-label {
+      margin: 14px 0 6px;
+      font-size: 13px;
+      color: #ffcc66;
+      font-weight: 600;
+    }
+    .section-label:first-of-type { margin-top: 0; }
   </style>
 </head>
 <body class="admin-page">
@@ -50,46 +59,22 @@
   <div class="admin-wrap">
     <h1>International &amp; World Cup</h1>
 
+    <div id="intlRules" class="info-box info-box--wide intl-rules"></div>
+
     <div class="card" id="sb-nation-setup" data-admin-only>
       <h2>Setup</h2>
-      <p class="note">
-        Run these <b>one step at a time</b> (each can take up to ~1–2 min). Do not combine them in one SQL query —
-        Supabase times out long combined jobs.
-      </p>
-      <p class="note">
-        <b>1. Import GPDB labels</b> — add missing nationalities from the player database.<br>
-        <b>2. Refresh pool cache</b> — recount players by rating band (slowest step).<br>
-        <b>3. Apply selectable</b> — activate nations with ≥26 GPDB players and ≥2 GKs (26–28 call-up bar). Club-depth bands on the pool page are informational only.<br>
-        <b>4. Recompute seed ranks</b> — order active nations by <b>average rating of top 100 GPDB players</b> (seed 1 = strongest for qualifying pots).
-      </p>
       <div class="row">
         <button type="button" class="button secondary" id="importLabelsBtn">1. Import GPDB labels</button>
         <button type="button" class="button secondary" id="refreshPoolCacheBtn">2. Refresh pool cache</button>
         <button type="button" class="button" id="syncGpdbNationsBtn">3. Apply selectable</button>
         <button type="button" class="button" id="seedNationsBtn">4. Recompute seed ranks</button>
       </div>
-      <p class="note">
-        First deploy: run <code>supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql</code> in Supabase.
-        If a button times out, run the matching <code>SELECT …</code> alone in the SQL Editor.
-      </p>
       <div id="setupStatus" class="status-line"></div>
       <div id="topSeedsPreview"></div>
     </div>
 
     <div class="card" id="sb-wc-cycle" data-admin-only>
       <h2>World Cup cycle</h2>
-      <p class="note">
-        Create a cycle, bind the two qualifying seasons and the season whose <b>pre-season</b> hosts the finals,
-        then draw groups and generate fixtures. Qualifying: 12 groups × 5 (pots by seed rank).
-        Finals: top 2 + 8 best thirds → 8×4 → knockout.
-        <br><b>Qualifying calendar:</b> each nation plays <b>8 matches</b> (home &amp; away vs the other four) —
-        <b>4 per season</b> across Season 3 and Season 4. Group size 5 means <b>5 international windows</b>
-        per season (one nation has a bye each window), spaced Aug/Oct/Dec/Feb/Apr — not pre-season.
-        <br><b>Finals:</b> played in <b>pre-season of the next season</b> (June/July) — e.g. after Season 4 ends →
-        Season 5 pre-season.
-        <br><b>Future seasons:</b> if Season 3 / 4 / 5 are not in the dropdowns yet, create them below first
-        (placeholder rows only — does not start those seasons).
-      </p>
       <p class="note" id="wcCycleLive">No cycle loaded yet.</p>
 
       <div class="row" style="align-items:flex-end; margin-bottom:8px;">
@@ -99,12 +84,6 @@
         </div>
         <button type="button" class="button secondary" id="wcEnsureSeasonsBtn">Create missing seasons</button>
       </div>
-      <p class="note" style="margin-top:0;">
-        Manual only — this page no longer auto-creates seasons on load.
-        Example: set <b>5</b> then click create → adds Season 1–5 shells if the table is empty.
-        Skip after a vanilla reset until you are ready for WC (shells are status <code>setup</code>, not Create Pre-Season).
-        Typical first WC: qual = Season 3 + Season 4, finals = Season 5 pre-season.
-      </p>
 
       <label for="wcLabel">Cycle label</label>
       <input id="wcLabel" placeholder="e.g. World Cup 1 (Season 5 pre-season)" maxlength="80">
@@ -131,25 +110,21 @@
 
       <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
 
-      <p class="note"><b>Qualifying</b></p>
+      <p class="section-label">Qualifying</p>
       <div class="row">
         <button type="button" class="button" id="wcDrawQualBtn">1. Draw qual groups (seed pots)</button>
         <button type="button" class="button" id="wcGenQualFixBtn">2. Generate qual fixtures</button>
         <button type="button" class="button secondary" id="wcRankThirdsBtn">3. Rank thirds / qualify 32</button>
       </div>
 
-      <p class="note" style="margin-top:14px;"><b>Finals</b></p>
+      <p class="section-label">Finals</p>
       <div class="row">
         <button type="button" class="button" id="wcDrawFinalsBtn">4. Draw finals groups</button>
         <button type="button" class="button" id="wcGenFinalsFixBtn">5. Generate finals fixtures</button>
         <button type="button" class="button" id="wcSeedKoBtn">6. Seed knockout (after groups)</button>
       </div>
 
-      <p class="note" style="margin-top:14px;"><b>Dry-run / testing</b></p>
-      <p class="note" style="margin-top:0;">
-        Force-play remaining fixtures with deterministic scores (knockout avoids 90-min draws).
-        Use to smoke-test thirds ranking, finals draw, and KO advance. Does not replace real owner results.
-      </p>
+      <p class="section-label">Dry-run / testing</p>
       <div class="row">
         <button type="button" class="button secondary" id="wcForceQualBtn">Force-play remaining qual</button>
         <button type="button" class="button secondary" id="wcForceFinalsBtn">Force-play remaining finals groups</button>
@@ -157,7 +132,7 @@
         <button type="button" class="button secondary" id="wcForceAllBtn">Force-play ALL remaining</button>
       </div>
 
-      <p class="note" style="margin-top:14px;"><b>Status / post-WC</b></p>
+      <p class="section-label">Status / post-WC</p>
       <div class="row">
         <button type="button" class="button secondary" id="wcStatusQualBtn">Set status → qualifying</button>
         <button type="button" class="button secondary" id="wcStatusFinalsBtn">Set status → finals</button>
@@ -168,12 +143,6 @@
 
     <div class="card" id="sb-owner-rankings">
       <h2>Owner rankings</h2>
-      <p class="note">
-        Nation draft order uses <b>rolling points from the last four seasons</b>, computed automatically
-        when a season is archived. You do not set ranks manually — use recompute only for backfill
-        or after a formula patch. Public profiles: <a href="owner_rankings.html">Owner rankings</a>
-        (click an owner). Run <code>competition_owner_ranking.sql</code> once if missing.
-      </p>
       <div class="row">
         <button type="button" class="button" id="recomputeRanksBtn">Recompute all seasons</button>
         <a class="button" href="owner_rankings.html">View rankings</a>
@@ -183,11 +152,6 @@
 
     <div class="card" id="sb-nation-assign">
       <h2>Assign / change national team (admin override)</h2>
-      <p class="note">
-        Pick a club and a nation (ordered by seed rank). Clubs that already have a nation can be
-        <b>reassigned</b> (their old nation is freed). Nations already taken by another club stay greyed out.<br>
-        <b>Remove from nation</b> — frees that club’s national team only (selection window stays as-is).
-      </p>
       <label for="assignClubSelect">Owner / club</label>
       <select id="assignClubSelect" style="max-width:100%;">
         <option value="">Loading…</option>
@@ -206,9 +170,6 @@
 
     <div class="card" id="sb-nation-selection">
       <h2>Nation selection</h2>
-      <p class="note">
-        Open, close, and clear each have their own admin page (separate checklist ticks):
-      </p>
       <p>
         <a class="button" href="admin_international_selection_open.html">Open Nation Selection</a>
         <a class="button secondary" href="admin_international_selection_close.html">Close Nation Selection</a>
@@ -227,6 +188,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="admin_international.js?v=20260814-squad-26-28"></script>
+  <script type="module" src="admin_international.js?v=20260817-rules"></script>
 </body>
 </html>
