@@ -4,6 +4,8 @@
  */
 import { supabase, initGlobal } from "./global.js";
 import { loadMyNation, loadNationalSquad } from "./international.js";
+import { loadCalendarStatus } from "./competition_calendar.js";
+import { isFixtureMonthPlayable } from "./competition.js";
 import {
   loadMatchSimStatus,
   matchSimBannerHtml,
@@ -25,6 +27,8 @@ let callupRows = [];
 let savedSquadByPlayer = new Map();
 /** @type {{ enabled: boolean, isAdmin: boolean, isStaff?: boolean, error: string|null }} */
 let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: null };
+/** @type {any} */
+let calendarStatus = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -557,11 +561,20 @@ function renderIntlSimActions(f) {
     row.innerHTML = "";
     return;
   }
+  const canSim = isFixtureMonthPlayable(f, myNation?.club_short_name || {}, calendarStatus, null);
   row.innerHTML = matchSimActionsHtml(f.id, {
-    title: "Uses the same match simulation engine as league & cup (while sim is ON)",
+    disabled: !canSim,
+    title: canSim
+      ? "Uses the same match simulation engine as league & cup (while sim is ON)"
+      : "Available when this fixture’s GPSL month is active",
   });
   wireMatchSimButtons(row, async (id, btn, mode) => {
+    if (btn?.disabled) return;
     const fix = fixtures.find((x) => String(x.id) === String(id));
+    if (!isFixtureMonthPlayable(fix, myNation?.club_short_name || {}, calendarStatus, null)) {
+      setStatus("Simulation unlocks when this fixture’s GPSL month is active.", false);
+      return;
+    }
     const play = mode === "play";
     if (
       !confirm(
@@ -607,6 +620,7 @@ function renderSimBanner() {
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
   matchSimStatus = await loadMatchSimStatus();
+  calendarStatus = await loadCalendarStatus(supabase);
   renderSimBanner();
   await loadFixtures();
 

@@ -12,6 +12,7 @@ import {
   needsInboxConfirm,
   fixtureInvolvesClub,
   leagueBadgeHtml,
+  isFixtureMonthPlayable,
 } from "./competition.js";
 import {
   formatWeatherLabel,
@@ -349,6 +350,12 @@ function intlFixtureCardHtml(f) {
     : f.schedule_status === "agreed"
       ? "Kick-off agreed"
       : "Arrange on matchday";
+  const canSimMonth = isFixtureMonthPlayable(
+    f,
+    myClub,
+    calendarStatus,
+    null
+  );
   const href = `international_matchday.html?fixture=${encodeURIComponent(f.id)}`;
 
   return `
@@ -374,7 +381,10 @@ function intlFixtureCardHtml(f) {
         ${
           !f.played && matchSimStatus.enabled
             ? matchSimActionsHtml(f.id, {
-                title: "International match simulation (same engine as league/cup)",
+                disabled: !canSimMonth,
+                title: canSimMonth
+                  ? "International match simulation (same engine as league/cup)"
+                  : "Available when this fixture’s GPSL month is active",
               })
             : ""
         }
@@ -603,6 +613,10 @@ function wireSimButtons(root) {
 
 async function simulateIntlFixture(fixtureId, btn, mode = "instant") {
   const f = lastFixtures.find((row) => String(row.id) === String(fixtureId));
+  if (!isFixtureMonthPlayable(f, myClub, calendarStatus, null)) {
+    showError("Simulation unlocks when this fixture’s GPSL month is active.");
+    return;
+  }
   const label = f
     ? `${f.home_nation_name || f.home_nation} vs ${f.away_nation_name || f.away_nation}`
     : `fixture ${fixtureId}`;
