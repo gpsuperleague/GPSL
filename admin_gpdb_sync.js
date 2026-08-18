@@ -82,6 +82,15 @@ function isRateLimitError(message) {
   return /429|rate limit/i.test(String(message || ""));
 }
 
+/** Gateway / edge timeouts (504) and flaky network — retry instead of aborting the sync. */
+function isTransientEdgeError(message, error) {
+  const status = error?.context?.status ?? error?.status;
+  if (status === 502 || status === 503 || status === 504 || status === 546) return true;
+  return /504|502|503|546|timeout|timed out|gateway|non-2xx|Failed to send|network|fetch failed/i.test(
+    String(message || "")
+  );
+}
+
 function readProgress() {
   try {
     return JSON.parse(localStorage.getItem(PROGRESS_KEY) || "null");
@@ -329,6 +338,8 @@ function readScrapeParams() {
 }
 
 const RATE_LIMIT_RETRY_MS = 60000;
+const TRANSIENT_RETRY_MS = 5000;
+const TRANSIENT_MAX_RETRIES = 6;
 const EMPTY_PAGE_RETRY_MS = 45000;
 const EMPTY_PAGE_MAX_RETRIES = 6;
 
