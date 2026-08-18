@@ -7,7 +7,7 @@
   <title>GP Fantasy League — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="fantasy.css?v=20260818-gpfl-pitch2">
+  <link rel="stylesheet" href="fantasy.css?v=20260818-pool-align">
 </head>
 <body class="gpfl-page">
   <div id="nav"></div>
@@ -62,6 +62,7 @@
       <button type="button" class="gpfl-btn" id="gpflSyncFaBtn" style="margin-left:8px;">Sync free agents</button>
       <button type="button" class="gpfl-btn" id="gpflRebaseBudgetBtn" style="margin-left:8px;">Rebase banks to budget</button>
       <button type="button" class="gpfl-btn" id="gpflRefreshProvBtn" style="margin-left:8px;">Refresh provisional</button>
+      <button type="button" class="gpfl-btn gpfl-btn--danger" id="gpflResetSeasonBtn" style="margin-left:8px;" title="Wipes all entries for this GPFL season">Reset all entries</button>
       <label class="gpfl-muted" style="margin-left:12px;">Score month
         <select id="gpflScoreMonth" style="margin-left:6px;background:#111820;border:1px solid #445;color:#eee;padding:6px;"></select>
       </label>
@@ -172,6 +173,6 @@
     <div id="gpflCardBody" class="gpfl-dialog-body"></div>
   </dialog>
 
-  <script type="module" src="fantasy.js?v=20260818-pool-price-sort"></script>
+  <script type="module" src="fantasy.js?v=20260818-pool-align"></script>
 </body>
 </html>

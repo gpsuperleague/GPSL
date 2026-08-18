@@ -426,18 +426,30 @@ body.gpfl-page {
   font-size: 13px;
   color: #c8dff0;
   list-style: none;
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 18px 9.5em 1fr;
+  gap: 8px;
+  align-items: center;
 }
 .gpfl-acc > summary::-webkit-details-marker { display: none; }
 .gpfl-acc > summary::before {
   content: "▸";
   color: #6af;
-  margin-right: 6px;
+  grid-column: 1;
 }
 .gpfl-acc[open] > summary::before { content: "▾"; }
+.gpfl-acc-label {
+  grid-column: 2;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.gpfl-acc-pos {
+  grid-column: 3;
+  justify-self: end;
+  text-align: right;
+  font-size: 12px;
+  white-space: nowrap;
+}
 .gpfl-acc-body {
   padding: 0 10px 10px;
   max-height: 360px;

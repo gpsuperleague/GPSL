@@ -650,7 +650,10 @@ function renderPoolShell() {
     const open = Boolean(state.poolOpen[sec.id]);
     const cached = state.poolByGroup[sec.id];
     return `<details class="gpfl-acc" data-sec="${esc(sec.id)}" ${open ? "open" : ""}>
-      <summary>${esc(sec.label)} <span class="gpfl-muted">${esc(sec.positions.join(" · "))}</span></summary>
+      <summary>
+        <span class="gpfl-acc-label">${esc(sec.label)}</span>
+        <span class="gpfl-acc-pos gpfl-muted">${esc(sec.positions.join(" · "))}</span>
+      </summary>
       <div class="gpfl-acc-body" id="gpflPoolBody-${esc(sec.id)}">
         ${
           cached
@@ -1230,6 +1233,34 @@ function wire() {
     if (error) return setStatus(error.message, false);
     await refresh();
     setStatus(`GPFL season ready (${data?.price_rows_touched ?? "?"} price rows).`);
+  });
+
+  document.getElementById("gpflResetSeasonBtn")?.addEventListener("click", async () => {
+    const typed = prompt(
+      "This deletes ALL GPFL entries, squads, transfers and month scores for the current season.\nPrices stay. Type RESET GPFL to confirm:"
+    );
+    if (typed == null) return;
+    if (String(typed).trim().toUpperCase() !== "RESET GPFL") {
+      setStatus("Reset cancelled — confirmation text did not match.", false);
+      return;
+    }
+    setStatus("Resetting GPFL entries…");
+    const { data, error } = await supabase.rpc("admin_gpfl_reset_season", {
+      p_gpfl_season_id: null,
+      p_confirm: "RESET GPFL",
+    });
+    if (error) {
+      return setStatus(
+        patchMissingHint(error) ||
+          "Reset failed — run supabase/sql/patches/gpfl_admin_reset_season_20260818.sql first.",
+        false
+      );
+    }
+    state.poolByGroup = {};
+    await refresh();
+    setStatus(
+      `GPFL reset: ${data?.entries_deleted ?? 0} entries removed. Owners must join again.`
+    );
   });
 
   document.getElementById("gpflSyncFaBtn")?.addEventListener("click", async () => {
