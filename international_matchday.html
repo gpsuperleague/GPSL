@@ -130,16 +130,14 @@
       <div id="scheduleBlock">
         <h2 style="margin-top:14px;">Arrange kickoff</h2>
         <p class="note" style="margin-top:0;">
-          Same as league/cup: pick a slot from <b>your Owner Details weekly availability</b>
-          inside this fixture’s GPSL month. Home nation proposes first; away can accept or counter.
+          <b>Home nation proposes</b> a kick-off from their Owner Details weekly availability
+          inside this fixture’s GPSL month. <b>Away Accepts only</b> (no counter-propose).
+          Home can withdraw or propose a new time if needed.
         </p>
         <p id="scheduleMeta" class="note"></p>
         <div id="pendingSchedulePanel" hidden></div>
         <div id="proposalHistory" class="note" hidden></div>
         <div id="slotPickerPanel">
-          <button type="button" class="button secondary" id="showCounterBtn" hidden style="margin-bottom:8px;">
-            Want a different time? Counter-propose…
-          </button>
           <div id="kickoffSlotList" class="slot-list"></div>
           <div class="row" style="margin-top:10px;">
             <button type="button" class="button" id="proposeBtn" disabled>Propose kick-off</button>
@@ -227,6 +225,6 @@
 
     <div id="pageStatus" class="status"></div>
   </div>
-  <script type="module" src="international_matchday.js?v=20260818-withdraw-ux"></script>
+  <script type="module" src="international_matchday.js?v=20260818-home-only"></script>
 </body>
 </html>

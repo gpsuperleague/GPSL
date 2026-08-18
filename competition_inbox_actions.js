@@ -36,7 +36,7 @@ export const INBOX_ACTION_DEFAULTS = {
   match_mutual_override_requested: { label: "Confirm kick-off change", href: "fixture_schedule.html" },
   match_mutual_override_applied: { label: "View schedule", href: "fixture_schedule.html" },
   intl_kickoff_proposal: { label: "Schedule international", href: "international_matchday.html" },
-  intl_kickoff_counter: { label: "Respond to international", href: "international_matchday.html" },
+  intl_kickoff_counter: { label: "Accept international kick-off", href: "international_matchday.html" },
   intl_kickoff_proposal_sent: { label: "International Matchday", href: "international_matchday.html" },
   intl_kickoff_counter_sent: { label: "International Matchday", href: "international_matchday.html" },
   intl_kickoff_accepted: { label: "International Matchday", href: "international_matchday.html" },

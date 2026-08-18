@@ -657,7 +657,6 @@ async function renderSchedulePanel(f) {
   const proposeBtn = $("proposeBtn");
   const acceptBtn = $("acceptBtn");
   const withdrawBtn = $("withdrawBtn");
-  const showCounterBtn = $("showCounterBtn");
   const statusEl = $("scheduleStatus");
 
   if (list) list.innerHTML = "";
@@ -676,10 +675,6 @@ async function renderSchedulePanel(f) {
   }
   if (acceptBtn) acceptBtn.hidden = true;
   if (withdrawBtn) withdrawBtn.hidden = true;
-  if (showCounterBtn) {
-    showCounterBtn.hidden = true;
-    showCounterBtn.onclick = null;
-  }
   if (statusEl) statusEl.textContent = "";
 
   if (!f || f.played) {
@@ -759,11 +754,6 @@ async function renderSchedulePanel(f) {
     pendingProposalId = pending.id;
     const fromOpp = pending.proposed_by_nation !== myNation?.code;
     const stillValid = isSelectableKickoffSlot(pending.kickoff_at, ownerTz);
-    const supersededOpp = recent.find(
-      (p) =>
-        p.status === "superseded" &&
-        p.proposed_by_nation !== myNation?.code
-    );
     if (pendingPanel) {
       pendingPanel.hidden = false;
       pendingPanel.innerHTML = `
@@ -783,19 +773,23 @@ async function renderSchedulePanel(f) {
         ${
           !fromOpp
             ? `<p class="note" style="margin:0 0 8px;color:#fc6;">
-                <b>You</b> hold the pending offer — only <b>${escapeHtml(oppLabel)}</b> can Accept it.
+                <b>You</b> hold the pending offer.
                 ${
-                  supersededOpp
-                    ? ` Their earlier proposal was replaced when you counter-proposed.`
-                    : ""
+                  data.my_role === "away"
+                    ? ` Away should not propose — <b>Withdraw my proposal</b> so home can propose, then you Accept.`
+                    : ` Waiting for <b>${escapeHtml(oppLabel)}</b> to Accept, or propose a new time / withdraw.`
                 }
-                Ask them to Accept, or use <b>Withdraw my proposal</b> so home can propose again.
               </p>`
             : ""
         }
         ${
+          fromOpp && data.my_role === "away"
+            ? `<p class="note" style="margin:0 0 8px;">Away cannot propose a different time — Accept, or ask home to withdraw and re-propose.</p>`
+            : ""
+        }
+        ${
           !stillValid
-            ? `<p class="note" style="color:#f88;margin:0;">This time has passed — counter-propose a future slot.</p>`
+            ? `<p class="note" style="color:#f88;margin:0;">This time has passed — home must propose a future slot.</p>`
             : ""
         }
       `;
@@ -819,23 +813,24 @@ async function renderSchedulePanel(f) {
     }
   }
 
-  const canPick = !!(data.can_propose || data.can_propose_first || data.can_respond);
+  const canPick = !!(data.can_propose || data.can_propose_first);
   if (proposeBtn) {
-    proposeBtn.textContent = data.can_propose_first
-      ? "Propose kick-off"
-      : data.can_respond
-        ? "Counter-propose"
-        : "Propose kick-off";
+    proposeBtn.hidden = !canPick;
+    proposeBtn.textContent =
+      data.can_propose_first || data.schedule?.status === "unscheduled"
+        ? "Propose kick-off"
+        : "Propose new time";
   }
 
   if (!canPick) {
     if (!pending && data.my_role === "away" && statusEl) {
-      statusEl.textContent = "Home nation must propose first.";
+      statusEl.textContent = "Home nation must propose — away Accepts only.";
     }
     if (!data.my_club_short_name && statusEl) {
       statusEl.textContent =
-        "No owner club on your nation — cannot propose from availability.";
+        "No owner club on your nation — cannot arrange kick-off from availability.";
     }
+    if (list) list.innerHTML = "";
     return;
   }
 
@@ -846,48 +841,23 @@ async function renderSchedulePanel(f) {
   const selectable = filterSelectableKickoffSlots(slots, ownerTz);
 
   if (!list) return;
-
-  const fillSlots = () => {
-    list.innerHTML = "";
-    if (!selectable.length) {
-      list.innerHTML =
-        '<p class="note" style="color:#888;">No available slots in this GPSL month. Set weekly availability on Owner Details (and wait until the month unlocks).</p>';
-      return;
-    }
-    for (const iso of selectable) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "slot-btn";
-      btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
-      btn.onclick = () => {
-        selectedKickoffIso = iso;
-        list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
-        btn.classList.add("selected");
-        if (proposeBtn) proposeBtn.disabled = false;
-      };
-      list.appendChild(btn);
-    }
-  };
-
-  // Opponent proposed: hide slots until they explicitly choose to counter
-  // (avoids accidental counter replacing their Accept option).
-  if (pending && data.can_respond && showCounterBtn) {
-    proposeBtn.hidden = true;
-    proposeBtn.disabled = true;
-    list.innerHTML = "";
-    showCounterBtn.hidden = false;
-    showCounterBtn.onclick = () => {
-      showCounterBtn.hidden = true;
-      proposeBtn.hidden = false;
-      proposeBtn.disabled = true;
-      fillSlots();
-      if (statusEl) {
-        statusEl.textContent =
-          "Pick a slot then Counter-propose — this replaces their pending time.";
-      }
+  if (!selectable.length) {
+    list.innerHTML =
+      '<p class="note" style="color:#888;">No available slots in this GPSL month. Set weekly availability on Owner Details (and wait until the month unlocks).</p>';
+    return;
+  }
+  for (const iso of selectable) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "slot-btn";
+    btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
+    btn.onclick = () => {
+      selectedKickoffIso = iso;
+      list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      if (proposeBtn) proposeBtn.disabled = false;
     };
-  } else {
-    fillSlots();
+    list.appendChild(btn);
   }
 }
 
@@ -971,15 +941,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("proposeBtn")?.addEventListener("click", async () => {
     if (!selectedId || !selectedKickoffIso) {
       setStatus("Pick a kick-off slot first.", false);
-      return;
-    }
-    const isCounter = $("proposeBtn")?.textContent === "Counter-propose";
-    if (
-      isCounter &&
-      !confirm(
-        "Counter-propose replaces their pending kick-off. They will need to Accept your new time (you will not see Accept for theirs). Continue?"
-      )
-    ) {
       return;
     }
     setStatus("Proposing…");
