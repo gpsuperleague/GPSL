@@ -313,7 +313,6 @@ function renderEntryStats(data) {
       : `Confirm squad (${active.length}/${size})`;
   }
   el.innerHTML = `
-    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.budget)}>Budget <b>${money(remaining)}</b></div>
     <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.points)}>Total Points <b>${esc(e.total_points ?? 0)}</b></div>
     ${
       prov.month || Number(prov.points) > 0
@@ -331,6 +330,7 @@ function renderEntryStats(data) {
     capsEl.innerHTML = `
       <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.squadSize)}>Squad <b>${active.length}/${esc(size)}</b></div>
       <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.slots)}>Slots <b>GK ${have.gk}/${caps.gk} · DEF ${have.def}/${caps.def} · MID ${have.mid}/${caps.mid} · FWD ${have.fwd}/${caps.fwd}</b></div>
+      <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.budget)}>Budget <b>${money(remaining)}</b></div>
     `;
   }
   setEditLocked(!canTransfer(data));
