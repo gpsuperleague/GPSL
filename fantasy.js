@@ -672,6 +672,7 @@ function renderPitchBench(data) {
 
 function renderSquad(data) {
   const root = document.getElementById("gpflSquad");
+  if (!root) return;
   const squad = data.squad || [];
   if (!squad.length) {
     root.innerHTML = `<p class="gpfl-muted">Empty squad — expand the pool and sign players.</p>`;
@@ -686,20 +687,14 @@ function renderSquad(data) {
   ];
 
   const open = canTransfer(data);
-  const blocks = sections
+  root.innerHTML = sections
     .map((sec) => {
       const rows = sortPlayersByPos(
         squad.filter((p) => String(p.position_group || "").toLowerCase() === sec.group)
       );
-      if (!rows.length) {
-        return `<div class="gpfl-squad-sec"><h3 class="gpfl-subhead">${esc(sec.label)}</h3>
-          <p class="gpfl-muted">None yet.</p></div>`;
-      }
-      return `<div class="gpfl-squad-sec">
-        <h3 class="gpfl-subhead">${esc(sec.label)} <span class="gpfl-muted">(${rows.length})</span></h3>
-        <table class="gpfl-table">
-          <thead><tr><th></th><th>Player</th><th>Pos</th><th>Club</th><th class="num">Paid</th><th></th></tr></thead>
-          <tbody>
+      const body = !rows.length
+        ? `<p class="gpfl-muted gpfl-squad-empty">None yet.</p>`
+        : `<ul class="gpfl-squad-list">
             ${rows
               .map((p) => {
                 const fa = p.slot_status === "needs_replace";
@@ -708,32 +703,37 @@ function renderSquad(data) {
                   : p.bench_order
                     ? `B${p.bench_order}`
                     : "Bench";
-                return `<tr class="${fa ? "needs-replace" : ""}">
-                  <td><img class="gpfl-mini-thumb" src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'"></td>
-                  <td>
+                return `<li class="gpfl-squad-card${fa ? " needs-replace" : ""}">
+                  <img class="gpfl-mini-thumb" src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
+                  <div class="gpfl-squad-card-main">
                     <button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(
                       p.player_id
                     )}">${esc(p.player_name || p.player_id)}</button>
-                    ${fa ? `<span class="gpfl-badge gpfl-badge--fa">FA</span>` : ""}
-                    ${p.is_captain ? `<span class="gpfl-badge gpfl-badge--c">C</span>` : ""}
-                    <span class="gpfl-badge">${esc(role)}</span>
-                  </td>
-                  <td>${esc(normalizePos(p.position) || "—")}</td>
-                  <td>${esc(p.club_name || p.club_short_name || "—")}</td>
-                  <td class="num">${moneyNum(p.purchase_price)}</td>
-                  <td><button type="button" class="gpfl-btn gpfl-rm" data-id="${esc(p.player_id)}" ${
+                    <div class="gpfl-squad-card-meta">
+                      <span>${esc(normalizePos(p.position) || "—")}</span>
+                      <span>${esc(p.club_short_name || p.club_name || "—")}</span>
+                      <span>${moneyNum(p.purchase_price)}</span>
+                    </div>
+                    <div class="gpfl-squad-card-badges">
+                      ${fa ? `<span class="gpfl-badge gpfl-badge--fa">FA</span>` : ""}
+                      ${p.is_captain ? `<span class="gpfl-badge gpfl-badge--c">C</span>` : ""}
+                      <span class="gpfl-badge">${esc(role)}</span>
+                    </div>
+                  </div>
+                  <button type="button" class="gpfl-btn gpfl-rm" data-id="${esc(p.player_id)}" ${
                     open ? "" : "disabled"
-                  }>${fa ? "Clear" : "Sell"}</button></td>
-                </tr>`;
+                  }>${fa ? "Clear" : "Sell"}</button>
+                </li>`;
               })
               .join("")}
-          </tbody>
-        </table>
+          </ul>`;
+
+      return `<div class="gpfl-squad-sec" data-group="${esc(sec.id)}">
+        <h3 class="gpfl-subhead">${esc(sec.label)} <span class="gpfl-muted">(${rows.length})</span></h3>
+        ${body}
       </div>`;
     })
     .join("");
-
-  root.innerHTML = blocks;
 
   root.querySelectorAll(".gpfl-rm").forEach((btn) => {
     btn.onclick = async () => {

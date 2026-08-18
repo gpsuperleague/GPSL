@@ -213,6 +213,17 @@ body.gpfl-page {
   grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
+.gpfl-chips-pool-row {
+  align-items: start;
+  grid-template-columns: minmax(220px, 0.75fr) minmax(280px, 1.25fr);
+}
+.gpfl-chips-pool-row #gpflChipsPanel {
+  min-width: 0;
+}
+.gpfl-chips-pool-row #gpflChipsPanel[hidden] + .gpfl-panel,
+.gpfl-chips-pool-row:has(#gpflChipsPanel[hidden]) {
+  grid-template-columns: 1fr;
+}
 @media (max-width: 900px) {
   .gpfl-grid-2 { grid-template-columns: 1fr; }
 }
@@ -492,9 +503,88 @@ body.gpfl-page {
 .gpfl-bench-actions { display: flex; gap: 4px; }
 .gpfl-bench-actions .gpfl-btn { padding: 4px 8px; }
 
-/* Squad sections */
-.gpfl-squad-sec { margin-bottom: 14px; }
-.gpfl-squad-sec:last-child { margin-bottom: 0; }
+/* Squad — horizontal GK / DEF / MID / FWD panels */
+.gpfl-squad-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .gpfl-squad-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .gpfl-squad-board { grid-template-columns: 1fr; }
+}
+.gpfl-squad-sec {
+  margin: 0;
+  min-width: 0;
+  background: rgba(12, 20, 28, 0.55);
+  border: 1px solid #2a3a4a;
+  border-radius: 8px;
+  padding: 8px 10px 10px;
+}
+.gpfl-squad-sec .gpfl-subhead {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.gpfl-squad-empty {
+  margin: 0;
+  font-size: 12px;
+}
+.gpfl-squad-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gpfl-squad-card {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 6px;
+  align-items: start;
+  padding: 6px 4px;
+  border-radius: 6px;
+  background: rgba(8, 14, 20, 0.45);
+  border: 1px solid #243040;
+}
+.gpfl-squad-card.needs-replace {
+  border-color: #804040;
+  background: rgba(60, 20, 20, 0.35);
+}
+.gpfl-squad-card-main {
+  min-width: 0;
+}
+.gpfl-squad-card-main .gpfl-link {
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.gpfl-squad-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #8899aa;
+}
+.gpfl-squad-card-badges {
+  margin-top: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.gpfl-squad-card .gpfl-rm {
+  padding: 4px 8px;
+  font-size: 11px;
+  align-self: center;
+}
 
 /* Pool accordion */
 .gpfl-pool-acc { display: flex; flex-direction: column; gap: 8px; }
