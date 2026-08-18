@@ -264,50 +264,103 @@ body.gpfl-page {
   .gpfl-pitch-wrap { grid-template-columns: 1fr; }
 }
 
+/* Half-pitch: halfway line at top, goal at bottom (attack up the page) */
 .gpfl-pitch {
   position: relative;
   isolation: isolate;
   width: 100%;
-  min-height: 520px;
-  height: min(70vh, 640px);
+  aspect-ratio: 68 / 55;
+  min-height: 420px;
+  max-height: min(72vh, 620px);
   border-radius: 10px;
-  border: 2px solid #3a6a50;
+  border: 2px solid rgba(232, 232, 232, 0.65);
   background:
-    linear-gradient(180deg, rgba(26, 58, 40, 0.95) 0%, rgba(14, 26, 20, 0.98) 100%),
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 11%,
-      rgba(58, 106, 80, 0.18) 11%,
-      rgba(58, 106, 80, 0.18) 12%
-    );
+    linear-gradient(180deg, #2d6a2d 0%, #3d8b3d 42%, #2d6a2d 100%);
   overflow: visible;
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.28);
 }
-.gpfl-pitch::before {
+.gpfl-pitch-markings {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.gpfl-pitch-markings::before {
+  /* touchline / side rails */
   content: "";
   position: absolute;
+  inset: 2% 4% 3% 4%;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-top: none;
+  pointer-events: none;
+}
+.gpfl-pitch-halfway {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 2%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.55);
+}
+.gpfl-pitch-halfway::after {
+  /* center-circle arc into our half */
+  content: "";
+  position: absolute;
+  left: 50%;
   top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-  background: rgba(58, 106, 80, 0.55);
-  transform: translateX(-50%);
-  pointer-events: none;
-  z-index: 0;
+  width: 22%;
+  aspect-ratio: 1;
+  transform: translate(-50%, 0);
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  clip-path: inset(0 0 50% 0);
 }
-.gpfl-pitch::after {
-  content: "";
+.gpfl-pitch-penalty {
+  /* ~16.5m box — top edge ≈ defender line */
   position: absolute;
   left: 50%;
-  top: 50%;
-  width: min(22%, 90px);
-  aspect-ratio: 1;
-  border: 1.5px solid rgba(58, 106, 80, 0.55);
+  bottom: 3%;
+  width: 54%;
+  height: 32%;
+  transform: translateX(-50%);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-bottom: none;
+}
+.gpfl-pitch-six {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  width: 28%;
+  height: 12%;
+  transform: translateX(-50%);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-bottom: none;
+}
+.gpfl-pitch-spot {
+  position: absolute;
+  left: 50%;
+  bottom: calc(3% + 20%);
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, 50%);
   border-radius: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 0;
+  background: rgba(255, 255, 255, 0.7);
+}
+.gpfl-pitch-goal {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 16%;
+  height: 3%;
+  transform: translateX(-50%);
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-top: none;
+  background: rgba(0, 0, 0, 0.15);
+}
+.gpfl-pitch-slots {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
 }
 
 .gpfl-pitch-slot {

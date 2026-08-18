@@ -369,6 +369,14 @@ function renderChips(data) {
   });
 }
 
+/** Matchday formation y% on half-pitch (halfway at top, goal at bottom). */
+function halfPitchTopPct(y) {
+  const n = Number(y);
+  if (!Number.isFinite(n)) return 50;
+  // Keep defenders on the penalty-box edge (~68%); clamp so markers aren't clipped
+  return Math.min(92, Math.max(7, n));
+}
+
 /**
  * Prefer saved pitch_slot; otherwise seat is_starter players into matching empty slots.
  */
@@ -442,7 +450,7 @@ function fillFormationSelect(data) {
 }
 
 function renderPitchBench(data) {
-  const pitchRoot = document.getElementById("gpflPitch");
+  const pitchRoot = document.getElementById("gpflPitchSlots");
   const benchRoot = document.getElementById("gpflBench");
   const capSel = document.getElementById("gpflCaptain");
   const hint = document.getElementById("gpflPitchHint");
@@ -487,39 +495,48 @@ function renderPitchBench(data) {
   const prevCap = capSel?.value || "";
 
   pitchRoot.hidden = false;
-  pitchRoot.innerHTML = formation.slots
-    .map((slot) => {
-      const selected = state.slotMap[slot.id] || "";
-      const eligible = sortPlayersByPos(
-        squad.filter((p) => posFitsSlot(p.position, slot.label) || p.player_id === selected)
-      );
-      const pl = playerById(squad, selected);
-      const isCap =
-        selected && (prevCap === selected || playerById(squad, selected)?.is_captain);
-      const options = [
-        `<option value="">${esc(slot.label)}</option>`,
-        ...eligible.map((p) => {
-          const taken = used.has(p.player_id) && state.slotMap[slot.id] !== p.player_id;
-          return `<option value="${esc(p.player_id)}" ${
-            selected === p.player_id ? "selected" : ""
-          } ${taken ? "disabled" : ""}>${esc(p.player_name)}${taken ? " · used" : ""}</option>`;
-        }),
-      ];
-      return `<div class="gpfl-pitch-slot ${selected ? "filled" : ""} ${isCap ? "captain" : ""} ${
-        eligible.length || selected ? "" : "empty-eligible"
-      }" style="left:${Number(slot.x)}%;top:${Number(slot.y)}%;">
-        <div class="gpfl-pitch-pos">${esc(slot.label)}</div>
-        ${
-          pl
-            ? `<img class="gpfl-pitch-thumb" src="${pesdbPlayerCardUrl(selected)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">`
-            : `<div class="gpfl-pitch-thumb gpfl-pitch-thumb--empty" aria-hidden="true"></div>`
-        }
-        <select class="gpfl-pitch-pick" data-slot="${esc(slot.id)}" title="${esc(slot.label)}" ${
-          open ? "" : "disabled"
-        }>${options.join("")}</select>
-      </div>`;
-    })
-    .join("");
+  // Build slots with createElement (matchday-style) so markers always land on the board
+  pitchRoot.replaceChildren();
+  for (const slot of formation.slots) {
+    const selected = state.slotMap[slot.id] || "";
+    const eligible = sortPlayersByPos(
+      squad.filter((p) => posFitsSlot(p.position, slot.label) || p.player_id === selected)
+    );
+    const pl = playerById(squad, selected);
+    const isCap =
+      selected && (prevCap === selected || playerById(squad, selected)?.is_captain);
+
+    const wrap = document.createElement("div");
+    wrap.className = `gpfl-pitch-slot${selected ? " filled" : ""}${isCap ? " captain" : ""}${
+      eligible.length || selected ? "" : " empty-eligible"
+    }`;
+    wrap.dataset.slotId = slot.id;
+    // Same formation x/y as matchday: attack near halfway (top), GK by goal (bottom)
+    wrap.style.left = `${Number(slot.x)}%`;
+    wrap.style.top = `${halfPitchTopPct(slot.y)}%`;
+
+    const options = [
+      `<option value="">${esc(slot.label)}</option>`,
+      ...eligible.map((p) => {
+        const taken = used.has(p.player_id) && state.slotMap[slot.id] !== p.player_id;
+        return `<option value="${esc(p.player_id)}" ${
+          selected === p.player_id ? "selected" : ""
+        } ${taken ? "disabled" : ""}>${esc(p.player_name)}${taken ? " · used" : ""}</option>`;
+      }),
+    ];
+
+    wrap.innerHTML = `
+      <div class="gpfl-pitch-pos">${esc(slot.label)}</div>
+      ${
+        pl
+          ? `<img class="gpfl-pitch-thumb" src="${pesdbPlayerCardUrl(selected)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">`
+          : `<div class="gpfl-pitch-thumb gpfl-pitch-thumb--empty" aria-hidden="true"></div>`
+      }
+      <select class="gpfl-pitch-pick" data-slot="${esc(slot.id)}" title="${esc(slot.label)}" ${
+        open ? "" : "disabled"
+      }>${options.join("")}</select>`;
+    pitchRoot.appendChild(wrap);
+  }
 
   pitchRoot.querySelectorAll(".gpfl-pitch-pick").forEach((sel) => {
     const slotId = sel.dataset.slot;

@@ -7,7 +7,7 @@
   <title>GP Fantasy League — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="fantasy.css?v=20260818-pitch-picks">
+  <link rel="stylesheet" href="fantasy.css?v=20260818-half-pitch">
 </head>
 <body class="gpfl-page">
   <div id="nav"></div>
@@ -16,12 +16,12 @@
     <div aria-hidden="true">
       <svg class="gpfl-svg" viewBox="0 0 280 180" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="gpflPitch" x1="0%" y1="0%" x2="0%" y2="100%">
+          <linearGradient id="gpflHeroPitchGrad" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" style="stop-color:#1a3a28"/>
             <stop offset="100%" style="stop-color:#0e1a14"/>
           </linearGradient>
         </defs>
-        <rect x="20" y="28" width="240" height="130" rx="8" fill="url(#gpflPitch)" stroke="#4a8a68" stroke-width="2"/>
+        <rect x="20" y="28" width="240" height="130" rx="8" fill="url(#gpflHeroPitchGrad)" stroke="#4a8a68" stroke-width="2"/>
         <line x1="140" y1="28" x2="140" y2="158" stroke="#3a6a50" stroke-width="1.5"/>
         <circle cx="140" cy="93" r="22" fill="none" stroke="#3a6a50" stroke-width="1.5"/>
         <text x="140" y="18" text-anchor="middle" fill="#7eb8e8" font-family="Georgia,serif" font-size="12" font-weight="bold">GPFL</text>
@@ -125,10 +125,19 @@
           </label>
         </div>
         <p id="gpflPitchHint" class="gpfl-muted" style="margin:0 0 10px;">
-          Each marker on the pitch is a dropdown — pick eligible players from your signed squad.
+          Half-pitch view (goal at the bottom). Each position marker is a dropdown from your signed squad.
         </p>
         <div class="gpfl-pitch-wrap">
-          <div id="gpflPitch" class="gpfl-pitch" aria-label="Formation pitch"></div>
+          <div id="gpflPitchBoard" class="gpfl-pitch" aria-label="Formation pitch">
+            <div class="gpfl-pitch-markings" aria-hidden="true">
+              <div class="gpfl-pitch-halfway"></div>
+              <div class="gpfl-pitch-penalty"></div>
+              <div class="gpfl-pitch-six"></div>
+              <div class="gpfl-pitch-spot"></div>
+              <div class="gpfl-pitch-goal"></div>
+            </div>
+            <div id="gpflPitchSlots" class="gpfl-pitch-slots"></div>
+          </div>
           <div class="gpfl-bench-col">
             <h3 class="gpfl-subhead">Subs bench</h3>
             <p class="gpfl-muted" style="margin:0 0 8px;font-size:12px;">Anyone not in the XI. Order 1 = first auto-sub.</p>
@@ -180,6 +189,6 @@
     <div id="gpflCardBody" class="gpfl-dialog-body"></div>
   </dialog>
 
-  <script type="module" src="fantasy.js?v=20260818-pitch-picks"></script>
+  <script type="module" src="fantasy.js?v=20260818-half-pitch"></script>
 </body>
 </html>
