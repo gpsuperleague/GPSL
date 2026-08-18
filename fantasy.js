@@ -139,6 +139,15 @@ function editingOpen(data = state.payload) {
   return data?.editing_open !== false;
 }
 
+/** Initial squad build (and FA replaces) stay open even if the month deadline has locked. */
+function canTransfer(data = state.payload) {
+  if (!data?.joined) return false;
+  const status = data?.entry?.status;
+  if (status === "building") return true;
+  if ((data?.squad || []).some((p) => p.slot_status === "needs_replace")) return true;
+  return editingOpen(data);
+}
+
 function patchMissingHint(err) {
   const m = String(err?.message || err || "");
   if (/gpfl_|column .* does not exist|Could not find the function/i.test(m)) {
@@ -277,8 +286,8 @@ function renderEntryStats(data) {
       active.some((p) => p.is_captain) &&
       Boolean(e.formation_id);
     const ready = active.length >= size && needs === 0 && xiReady;
-    confirmBtn.disabled = !ready || !editingOpen(data);
-    confirmBtn.title = !editingOpen(data)
+    confirmBtn.disabled = !ready || !canTransfer(data);
+    confirmBtn.title = !canTransfer(data)
       ? "Editing locked until month ends"
       : ready
         ? "Lock your 15-man squad for scoring"
@@ -301,7 +310,7 @@ function renderEntryStats(data) {
     <div class="gpfl-stat">Slots <b>GK ${have.gk}/${caps.gk} · DEF ${have.def}/${caps.def} · MID ${have.mid}/${caps.mid} · FWD ${have.fwd}/${caps.fwd}</b></div>
     ${needs ? `<div class="gpfl-stat">FA to replace <b>${needs}</b></div>` : ""}
   `;
-  setEditLocked(!editingOpen(data));
+  setEditLocked(!canTransfer(data));
 }
 
 function renderChips(data) {
@@ -733,23 +742,38 @@ function renderPoolRowsHtml(sec, payload) {
         <div class="gpfl-pool-pos-label">${esc(pos === "OTHER" ? "Other" : pos)} · ${list.length}</div>
         <ul class="gpfl-pool-list">
           ${list
-            .map(
-              (p) => `<li>
-                <button type="button" class="gpfl-pool-row" data-id="${esc(p.player_id)}" data-sign="1">
-                  <img src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
-                  <span class="gpfl-pool-row-main">
-                    <b>${esc(p.player_name)}</b>
-                    <span class="gpfl-muted">${esc(p.club_name || p.club_short_name || "")} · ${esc(
-                      p.owner_name || "—"
-                    )}</span>
-                  </span>
-                  <span class="gpfl-pool-row-meta">
-                    <span>${esc(p.ownership_pct ?? "—")}%</span>
-                    <span>${moneyNum(p.price)}</span>
-                  </span>
-                </button>
-              </li>`
-            )
+            .map((p) => {
+              const inSquad = (state.payload?.squad || []).some(
+                (s) => s.player_id === p.player_id && s.slot_status === "active"
+              );
+              const allowSign = canTransfer() && !inSquad;
+              return `<li>
+                <div class="gpfl-pool-row-wrap">
+                  <button type="button" class="gpfl-pool-row" data-id="${esc(p.player_id)}" data-sign="1">
+                    <img src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
+                    <span class="gpfl-pool-row-main">
+                      <b>${esc(p.player_name)}</b>
+                      <span class="gpfl-muted">${esc(p.club_name || p.club_short_name || "")} · ${esc(
+                        p.owner_name || "—"
+                      )}</span>
+                    </span>
+                    <span class="gpfl-pool-row-meta">
+                      <span>${esc(p.ownership_pct ?? "—")}%</span>
+                      <span>${moneyNum(p.price)}</span>
+                    </span>
+                  </button>
+                  ${
+                    inSquad
+                      ? `<span class="gpfl-badge">In squad</span>`
+                      : `<button type="button" class="gpfl-btn gpfl-btn--gold gpfl-pool-sign" data-id="${esc(
+                          p.player_id
+                        )}" ${allowSign ? "" : "disabled"} title="${
+                          allowSign ? "Sign to GPFL squad" : "Transfers locked or unavailable"
+                        }">Sign</button>`
+                  }
+                </div>
+              </li>`;
+            })
             .join("")}
         </ul>
       </div>`;
@@ -764,8 +788,25 @@ function renderPoolRowsHtml(sec, payload) {
 
 function wirePoolRows(root) {
   root.querySelectorAll(".gpfl-pool-row").forEach((btn) => {
-    btn.onclick = () =>
-      openPlayerCard(btn.dataset.id, { canSign: btn.dataset.sign === "1" && editingOpen() });
+    btn.onclick = (ev) => {
+      // Don't open card when clicking the inline Sign control
+      if (ev.target.closest?.(".gpfl-pool-sign")) return;
+      openPlayerCard(btn.dataset.id, { canSign: true });
+    };
+  });
+  root.querySelectorAll(".gpfl-pool-sign").forEach((btn) => {
+    btn.onclick = async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (!canTransfer()) {
+        setStatus(
+          "Transfers locked while the GPSL month is live. Finish your initial squad before confirming, or wait until the month locks.",
+          false
+        );
+        return;
+      }
+      await signPlayer(btn.dataset.id);
+    };
   });
 }
 
@@ -891,7 +932,8 @@ async function openPlayerCard(playerId, { canSign = false } = {}) {
   const alreadyIn = (state.payload?.squad || []).some(
     (p) => p.player_id === playerId && p.slot_status === "active"
   );
-  const showSign = canSign && editingOpen() && !alreadyIn;
+  const allowSign = canSign && canTransfer() && !alreadyIn;
+  const lockedOut = canSign && !alreadyIn && !canTransfer();
 
   body.innerHTML = `
     <div class="gpfl-card-hero">
@@ -915,13 +957,19 @@ async function openPlayerCard(playerId, { canSign = false } = {}) {
     </div>
     <div class="gpfl-card-actions">
       ${
-        showSign
+        allowSign
           ? `<button type="button" class="gpfl-btn gpfl-btn--gold gpfl-sign-btn" data-id="${esc(
               playerId
-            )}">Sign to squad</button>`
+            )}">Sign to GPFL squad · ${money(data.price)}</button>`
           : alreadyIn
             ? `<span class="gpfl-badge">In your squad</span>`
-            : ""
+            : lockedOut
+              ? `<span class="gpfl-muted">Transfers locked while the GPSL month is live.</span>`
+              : canSign
+                ? `<button type="button" class="gpfl-btn gpfl-btn--gold gpfl-sign-btn" data-id="${esc(
+                    playerId
+                  )}" disabled>Sign unavailable</button>`
+                : ""
       }
       <a class="gpfl-btn" href="${gpslPlayerCareerUrl(playerId)}" target="_blank" rel="noopener">Full GPSL career</a>
       <a class="gpfl-btn" href="${pesdbPlayerUrl(playerId)}" target="_blank" rel="noopener">PESDB</a>

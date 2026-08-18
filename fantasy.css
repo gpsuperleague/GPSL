@@ -470,6 +470,22 @@ body.gpfl-page {
   margin: 0;
   padding: 0;
 }
+.gpfl-pool-row-wrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid #243040;
+  padding: 2px 0;
+}
+.gpfl-pool-row-wrap .gpfl-pool-row {
+  border-bottom: none;
+}
+.gpfl-pool-sign {
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
 .gpfl-pool-row {
   width: 100%;
   display: grid;
@@ -478,7 +494,6 @@ body.gpfl-page {
   align-items: center;
   padding: 6px 4px;
   border: none;
-  border-bottom: 1px solid #243040;
   background: transparent;
   color: inherit;
   text-align: left;
