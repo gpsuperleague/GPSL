@@ -7,7 +7,7 @@
   <title>GP Fantasy League — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="fantasy.css?v=20260818-pitch-flow">
+  <link rel="stylesheet" href="fantasy.css?v=20260818-xi-slots">
 </head>
 <body class="gpfl-page">
   <div id="nav"></div>
@@ -125,17 +125,21 @@
           </label>
         </div>
         <p id="gpflPitchHint" class="gpfl-muted" style="margin:0 0 10px;">
-          Each pitch slot is a dropdown of <b>your signed squad</b> who can play there. Pick 11, order the bench, then Save.
+          Use the slot dropdowns below to pick your XI from signed players. Then order the bench and Save.
         </p>
         <div class="gpfl-pitch-wrap">
-          <div id="gpflPitch" class="gpfl-pitch" aria-label="Formation pitch"></div>
+          <div>
+            <div id="gpflXiSlots" class="gpfl-xi-slots" aria-label="Formation slot picks"></div>
+            <div id="gpflPitch" class="gpfl-pitch" aria-label="Formation pitch preview" hidden></div>
+          </div>
           <div class="gpfl-bench-col">
             <h3 class="gpfl-subhead">Subs bench</h3>
+            <p class="gpfl-muted" style="margin:0 0 8px;font-size:12px;">Anyone not in the XI. Order 1 = first auto-sub.</p>
             <div id="gpflBench"></div>
           </div>
         </div>
         <div style="margin-top:12px;">
-          <button type="button" class="gpfl-btn" id="gpflSaveXiBtn2">Save pitch XI + bench</button>
+          <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflSaveXiBtn2">Save pitch XI + bench</button>
         </div>
       </section>
 
@@ -179,6 +183,6 @@
     <div id="gpflCardBody" class="gpfl-dialog-body"></div>
   </dialog>
 
-  <script type="module" src="fantasy.js?v=20260818-pitch-flow"></script>
+  <script type="module" src="fantasy.js?v=20260818-xi-slots"></script>
 </body>
 </html>
