@@ -684,9 +684,14 @@ function renderPoolRowsHtml(sec, payload) {
         .includes(q)
     );
   }
-  players = sortPlayersByPos(players);
+  players = [...players].sort(
+    (a, b) =>
+      Number(b.price ?? 0) - Number(a.price ?? 0) ||
+      posRank(a.position) - posRank(b.position) ||
+      String(a.player_name || "").localeCompare(String(b.player_name || ""))
+  );
 
-  // Sub-group by exact position within section
+  // Sub-group by exact position within section (keep price order within each)
   const byPos = {};
   for (const pos of sec.positions) byPos[pos] = [];
   const other = [];
