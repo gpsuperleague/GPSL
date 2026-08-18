@@ -256,7 +256,7 @@ function slotCounts(data) {
 function setEditLocked(locked) {
   document
     .querySelectorAll(
-      "#gpflConfirmBtn, #gpflSaveXiBtn, #gpflFormation, #gpflCaptain, .gpfl-rm, .gpfl-chip-btn, .gpfl-bench-move, .gpfl-pitch-pick, .gpfl-sign-btn"
+      "#gpflConfirmBtn, #gpflSaveXiBtn, #gpflFormation, #gpflCaptain, .gpfl-rm, .gpfl-chip-btn, .gpfl-bench-move, .gpfl-pitch-pick, .gpfl-sign-btn, .gpfl-pool-sign"
     )
     .forEach((el) => {
       el.disabled = locked;
@@ -324,7 +324,7 @@ function renderChips(data) {
     return;
   }
   if (panel) panel.hidden = false;
-  const open = editingOpen(data);
+  const open = canTransfer(data);
   const defs = [
     ["wildcard", "Wildcard", "Unlimited free transfers this window"],
     ["triple_captain", "Triple Captain", "Captain scores ×3 this month"],
@@ -429,7 +429,7 @@ function fillFormationSelect(data) {
   }
   sel.innerHTML = opts.join("");
   sel.value = current;
-  sel.disabled = !editingOpen(data);
+  sel.disabled = !canTransfer(data);
 
   sel.onchange = () => {
     const next = sel.value;
@@ -449,7 +449,7 @@ function renderPitchBench(data) {
 
   const squad = (data?.squad || []).filter((p) => p.slot_status === "active");
   const formation = getFormation(state.formationId);
-  const open = editingOpen(data);
+  const open = canTransfer(data);
 
   if (!Object.keys(state.slotMap).length) {
     state.slotMap = hydrateSlotMap(squad, state.formationId);
@@ -601,7 +601,7 @@ function renderSquad(data) {
     { id: "fwd", label: "Forwards", group: "fwd" },
   ];
 
-  const open = editingOpen(data);
+  const open = canTransfer(data);
   const blocks = sections
     .map((sec) => {
       const rows = sortPlayersByPos(
