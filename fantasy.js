@@ -129,8 +129,13 @@ function posFitsSlot(playerPos, requiredPos) {
   if (p === "DMF" && s === "CB") return true;
   if (p === "CB" && s === "DMF") return true;
 
-  // Wide mids can also cover full-back
+  // Wide mid ↔ wing (side-specific), in addition to mid/attack groups above
+  if ((p === "LMF" && s === "LWF") || (p === "LWF" && s === "LMF")) return true;
+  if ((p === "RMF" && s === "RWF") || (p === "RWF" && s === "RMF")) return true;
+
+  // Wide mid ↔ full-back (both directions)
   if ((p === "LMF" || p === "RMF") && (s === "LB" || s === "RB")) return true;
+  if ((p === "LB" || p === "RB") && (s === "LMF" || s === "RMF")) return true;
 
   return false;
 }

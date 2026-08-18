@@ -4,7 +4,8 @@
 --   GK  → GK only
 --   RWF/LWF/CF/SS ↔ any of RWF, LWF, CF, SS
 --   LMF/RMF/CMF/AMF ↔ any of LMF, RMF, CMF, AMF
---   LMF/RMF also → LB, RB
+--   LMF ↔ LWF  and  RMF ↔ RWF  (in addition to the groups above)
+--   LMF/RMF ↔ LB/RB  (both directions)
 --   LB/RB/CB ↔ any of LB, RB, CB
 --   CB ↔ DMF (both ways)
 --   DMF → DMF, CB
@@ -71,8 +72,19 @@ BEGIN
     RETURN true;
   END IF;
 
-  -- Wide mids can cover full-back
+  -- Wide mid ↔ wing (side-specific), on top of mid/attack groups
+  IF (v_p = 'LMF' AND v_s = 'LWF') OR (v_p = 'LWF' AND v_s = 'LMF') THEN
+    RETURN true;
+  END IF;
+  IF (v_p = 'RMF' AND v_s = 'RWF') OR (v_p = 'RWF' AND v_s = 'RMF') THEN
+    RETURN true;
+  END IF;
+
+  -- Wide mid ↔ full-back (both directions)
   IF v_p IN ('LMF', 'RMF') AND v_s IN ('LB', 'RB') THEN
+    RETURN true;
+  END IF;
+  IF v_p IN ('LB', 'RB') AND v_s IN ('LMF', 'RMF') THEN
     RETURN true;
   END IF;
 
