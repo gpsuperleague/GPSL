@@ -115,6 +115,10 @@
     <div class="panel">
       <h2>Your fixtures</h2>
       <p id="nationBanner" class="note">Loading…</p>
+      <p class="note" style="margin-top:0;">
+        Kick-off arrange / accept is <b>not</b> in this table — click <b>Open</b> on a fixture and use
+        <b>Arrange kickoff</b> in the panel that appears below.
+      </p>
       <div id="fixtureList"></div>
     </div>
 
@@ -127,7 +131,7 @@
         <h2 style="margin-top:14px;">Arrange kickoff</h2>
         <p class="note" style="margin-top:0;">
           Same as league/cup: pick a slot from <b>your Owner Details weekly availability</b>
-          inside this fixture’s GPSL month. Home nation proposes first.
+          inside this fixture’s GPSL month. Home nation proposes first; away can accept or counter.
         </p>
         <p id="scheduleMeta" class="note"></p>
         <div id="pendingSchedulePanel" hidden></div>
@@ -218,6 +222,6 @@
 
     <div id="pageStatus" class="status"></div>
   </div>
-  <script type="module" src="international_matchday.js?v=20260818-accept-ux"></script>
+  <script type="module" src="international_matchday.js?v=20260818-arrange-visible"></script>
 </body>
 </html>

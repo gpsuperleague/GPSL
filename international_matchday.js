@@ -434,9 +434,11 @@ async function enrichNegotiatingFixtures() {
         const prop = data.pending_proposal;
         f._pendingProposal = prop;
         f._canRespond = !!data.can_respond;
+        f._pendingFromMe = prop.proposed_by_nation === myNation?.code;
+        f._myClub = data.my_club_short_name || null;
         f._needsAccept =
           !!data.can_respond &&
-          prop.proposed_by_nation !== myNation?.code &&
+          !f._pendingFromMe &&
           isSelectableKickoffSlot(prop.kickoff_at, data.my_timezone || UK_TZ);
         f._pendingLabel = formatKickoffPair(
           prop.kickoff_at,
@@ -514,8 +516,20 @@ function renderList() {
                   ? `<br><span class="note">${escapeHtml(f._pendingLabel)}</span>`
                   : ""
               }`;
+            } else if (sch === "negotiating" && f._pendingFromMe) {
+              schHtml = `<span style="color:#9cdc9c;">Waiting for opponent</span>${
+                f._pendingLabel
+                  ? `<br><span class="note">${escapeHtml(f._pendingLabel)}</span>`
+                  : ""
+              }`;
+            } else if (sch === "negotiating" && !f._myClub) {
+              schHtml = `<span style="color:#f88;">Link club to accept</span>${
+                f._pendingLabel
+                  ? `<br><span class="note">${escapeHtml(f._pendingLabel)}</span>`
+                  : ""
+              }`;
             } else if (sch === "negotiating" && f._pendingLabel) {
-              schHtml = `negotiating<br><span class="note">${escapeHtml(
+              schHtml = `negotiating — open below to arrange<br><span class="note">${escapeHtml(
                 f._pendingLabel
               )}</span>`;
             } else if (f.agreed_kickoff_at) {
@@ -523,6 +537,11 @@ function renderList() {
                 new Date(f.agreed_kickoff_at).toLocaleString()
               )}</span>`;
             }
+            const openLabel = f._needsAccept
+              ? "Accept"
+              : sch === "negotiating" || sch === "unscheduled"
+                ? "Arrange"
+                : "Open";
             return `<tr class="${f.id === selectedId ? "active" : ""}${
               f._needsAccept ? " needs-you" : ""
             }" data-id="${f.id}">
@@ -531,9 +550,7 @@ function renderList() {
                 vs ${escapeHtml(f.away_flag || "")} ${escapeHtml(f.away_nation)}</td>
               <td>${escapeHtml(score)}</td>
               <td>${schHtml}</td>
-              <td><button type="button" class="button secondary pick-fix" data-id="${f.id}">${
-                f._needsAccept ? "Accept" : "Open"
-              }</button></td>
+              <td><button type="button" class="button secondary pick-fix" data-id="${f.id}">${openLabel}</button></td>
             </tr>`;
           })
           .join("")}
@@ -555,6 +572,10 @@ async function selectFixture(id) {
   const panel = $("detailPanel");
   if (!f || !panel) return;
   panel.hidden = false;
+  // Kick-off UI lives here — scroll so Arrange kickoff is obvious after Open/Arrange.
+  requestAnimationFrame(() => {
+    $("scheduleBlock")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   $("detailTitle").textContent = `${f.home_nation_name || f.home_nation} vs ${
     f.away_nation_name || f.away_nation
