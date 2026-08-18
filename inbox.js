@@ -1,7 +1,7 @@
 import { supabase, initGlobal, refreshInboxNavBadge, getAuthUserFast } from "./global.js";
 import { rejectFixtureResult, normalizeClubKey } from "./competition.js";
-import { loadInboxMessages, INBOX_CATEGORY_FILTERS, filterInboxByCategory } from "./competition_inbox.js?v=8-discipline-filter";
-import { inboxActionForMessage } from "./competition_inbox_actions.js";
+import { loadInboxMessages, INBOX_CATEGORY_FILTERS, filterInboxByCategory } from "./competition_inbox.js?v=20260818-intl-notify";
+import { inboxActionForMessage } from "./competition_inbox_actions.js?v=20260818-intl-notify";
 import { acceptProposal, confirmMutualOverride } from "./match_scheduling.js";
 
 let myClub = { short: null, name: null };

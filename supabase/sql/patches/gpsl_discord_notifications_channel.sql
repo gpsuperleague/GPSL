@@ -430,6 +430,7 @@ DECLARE
   v_key text;
   v_count int;
   v_cup int;
+  v_intl int;
   v_names text;
   v_done text[] := ARRAY[]::text[];
   v_gs public.global_settings%rowtype;
@@ -560,7 +561,9 @@ BEGIN
     BEGIN
       SELECT count(*)::int INTO v_count
       FROM public.international_fixtures f
-      WHERE lower(f.gpsl_month) = lower(v_month);
+      WHERE lower(f.gpsl_month) = lower(v_month)
+        AND coalesce(f.played, false) = false
+        AND coalesce(f.status, '') IS DISTINCT FROM 'played';
     EXCEPTION WHEN OTHERS THEN
       v_count := 0;
     END;
@@ -570,8 +573,11 @@ BEGIN
       IF v_state.last_intl_week_key IS DISTINCT FROM v_key THEN
         PERFORM public.gpsl_discord_feed_enqueue_notification(
           'notification',
-          format('🌐 INTERNATIONAL MATCH WEEK — %s', initcap(v_month)),
-          format('%s international fixture(s) are scheduled this GPSL month. Check International Matchday.', v_count),
+          format('🌐 INTERNATIONAL / WORLD CUP — %s', initcap(v_month)),
+          format(
+            E'%s international fixture(s) this GPSL month (qualifiers / finals).\nArrange kick-offs and submit results on International Matchday.',
+            v_count
+          ),
           5793266,
           v_key,
           jsonb_build_object('kind', 'international_week', 'count', v_count)
@@ -584,7 +590,7 @@ BEGIN
     END IF;
   END IF;
 
-  -- Match reminders: scheduled league + cup fixtures still outstanding this month
+  -- Match reminders: league + cup + international still outstanding this month
   IF v_season_id IS NOT NULL AND v_month IS NOT NULL THEN
     v_key := 'matches:' || v_season_id::text || ':' || v_month || ':' ||
              to_char(now() AT TIME ZONE 'Europe/London', 'IYYY-IW');
@@ -604,21 +610,36 @@ BEGIN
         AND f.status = 'scheduled'
         AND f.competition_type = 'cup';
 
-      IF coalesce(v_count, 0) > 0 OR coalesce(v_cup, 0) > 0 THEN
+      v_intl := 0;
+      IF to_regclass('public.international_fixtures') IS NOT NULL THEN
+        BEGIN
+          SELECT count(*)::int INTO v_intl
+          FROM public.international_fixtures f
+          WHERE lower(f.gpsl_month) = lower(v_month)
+            AND coalesce(f.played, false) = false
+            AND coalesce(f.status, '') IS DISTINCT FROM 'played';
+        EXCEPTION WHEN OTHERS THEN
+          v_intl := 0;
+        END;
+      END IF;
+
+      IF coalesce(v_count, 0) > 0 OR coalesce(v_cup, 0) > 0 OR coalesce(v_intl, 0) > 0 THEN
         PERFORM public.gpsl_discord_feed_enqueue_notification(
           'notification',
           format('⚽ MATCHES DUE — %s', initcap(v_month)),
           format(
-            E'Weekly reminder for outstanding fixtures this GPSL month:\nLeague: %s scheduled\nCup: %s scheduled\nPlease arrange kick-offs and submit results.',
+            E'Weekly reminder for outstanding fixtures this GPSL month:\nLeague: %s scheduled\nCup: %s scheduled\nWorld Cup / international: %s outstanding\nPlease arrange kick-offs and submit results.',
             coalesce(v_count, 0),
-            coalesce(v_cup, 0)
+            coalesce(v_cup, 0),
+            coalesce(v_intl, 0)
           ),
           15158332,
           v_key,
           jsonb_build_object(
             'kind', 'match_reminder',
             'league_scheduled', coalesce(v_count, 0),
-            'cup_scheduled', coalesce(v_cup, 0)
+            'cup_scheduled', coalesce(v_cup, 0),
+            'intl_outstanding', coalesce(v_intl, 0)
           )
         );
         UPDATE public.gpsl_discord_notifications_state

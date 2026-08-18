@@ -35,6 +35,15 @@ export const INBOX_ACTION_DEFAULTS = {
   match_checkin_open: { label: "Check in", href: "fixture_schedule.html" },
   match_mutual_override_requested: { label: "Confirm kick-off change", href: "fixture_schedule.html" },
   match_mutual_override_applied: { label: "View schedule", href: "fixture_schedule.html" },
+  intl_kickoff_proposal: { label: "Schedule international", href: "international_matchday.html" },
+  intl_kickoff_counter: { label: "Respond to international", href: "international_matchday.html" },
+  intl_kickoff_proposal_sent: { label: "International Matchday", href: "international_matchday.html" },
+  intl_kickoff_counter_sent: { label: "International Matchday", href: "international_matchday.html" },
+  intl_kickoff_accepted: { label: "International Matchday", href: "international_matchday.html" },
+  intl_result_to_confirm: { label: "Confirm international result", href: "international_matchday.html" },
+  intl_result_submitted: { label: "International Matchday", href: "international_matchday.html" },
+  intl_result_confirmed: { label: "World Cup", href: "world_cup.html" },
+  intl_result_rejected: { label: "Re-submit result", href: "international_matchday.html" },
 };
 
 export function inboxActionForMessage(msg) {
