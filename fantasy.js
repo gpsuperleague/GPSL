@@ -43,6 +43,7 @@ let state = {
   poolByGroup: {},
   poolOpen: {},
   formationId: DEFAULT_FORMATION_ID,
+  formationTouched: false,
   slotMap: {},
   benchOrder: [],
   cardContext: null, // { playerId, canSign }
@@ -421,10 +422,42 @@ function seedBenchFromSquad(squad, slotMap) {
     .map((p) => p.player_id);
 }
 
+/** Keep in-progress pitch picks; fill empty slots from saved XI / defaults. */
+function mergeSlotMap(squad, formationId, localMap) {
+  const active = (squad || []).filter((p) => p.slot_status === "active");
+  const fromServer = hydrateSlotMap(active, formationId);
+  const merged = { ...fromServer };
+  for (const [slotId, pid] of Object.entries(localMap || {})) {
+    if (!pid) continue;
+    if (!active.some((p) => p.player_id === pid)) continue;
+    for (const [k, v] of Object.entries(merged)) {
+      if (k !== slotId && v === pid) delete merged[k];
+    }
+    merged[slotId] = pid;
+  }
+  for (const [slotId, pid] of Object.entries(merged)) {
+    if (!active.some((p) => p.player_id === pid)) delete merged[slotId];
+  }
+  return merged;
+}
+
+/** Keep bench order across sign/remove; append newly signed players. */
+function mergeBenchOrder(squad, slotMap, prevBench) {
+  const starters = new Set(Object.values(slotMap || {}).filter(Boolean));
+  const activeIds = new Set(
+    (squad || []).filter((p) => p.slot_status === "active").map((p) => p.player_id)
+  );
+  const order = (prevBench || []).filter((id) => activeIds.has(id) && !starters.has(id));
+  for (const id of seedBenchFromSquad(squad, slotMap)) {
+    if (!order.includes(id)) order.push(id);
+  }
+  return order;
+}
+
 function fillFormationSelect(data) {
   const sel = document.getElementById("gpflFormation");
   if (!sel) return;
-  const current = data?.entry?.formation_id || state.formationId || DEFAULT_FORMATION_ID;
+  const current = state.formationId || data?.entry?.formation_id || DEFAULT_FORMATION_ID;
   state.formationId = current;
   sel.onchange = null;
 
@@ -447,6 +480,7 @@ function fillFormationSelect(data) {
   sel.onchange = () => {
     const next = sel.value;
     if (next === state.formationId) return;
+    state.formationTouched = true;
     state.formationId = next;
     state.slotMap = hydrateSlotMap(state.payload?.squad, next);
     state.benchOrder = seedBenchFromSquad(state.payload?.squad, state.slotMap);
@@ -476,16 +510,8 @@ function renderPitchBench(data) {
     }
   }
 
-  // Keep in-progress picks; fill gaps from saved XI / sensible defaults
-  const fromServer = hydrateSlotMap(squad, state.formationId);
-  const merged = { ...fromServer };
-  for (const [slotId, pid] of Object.entries(state.slotMap || {})) {
-    if (pid && squad.some((p) => p.player_id === pid)) merged[slotId] = pid;
-  }
-  for (const [slotId, pid] of Object.entries(merged)) {
-    if (!squad.some((p) => p.player_id === pid)) delete merged[slotId];
-  }
-  state.slotMap = merged;
+  state.slotMap = mergeSlotMap(squad, state.formationId, state.slotMap);
+  state.benchOrder = mergeBenchOrder(squad, state.slotMap, state.benchOrder);
 
   // Helpful default: free GK → GK slot
   const gkSlot = formation.slots.find((s) => normalizePos(s.label) === "GK");
@@ -556,7 +582,7 @@ function renderPitchBench(data) {
       } else {
         delete state.slotMap[slotId];
       }
-      state.benchOrder = seedBenchFromSquad(squad, state.slotMap);
+      state.benchOrder = mergeBenchOrder(squad, state.slotMap, state.benchOrder);
       renderPitchBench(state.payload);
     };
   });
@@ -1249,9 +1275,21 @@ async function refresh() {
   renderDeadlineBanner(data);
   fillMonthSelects();
   if (data.joined) {
-    state.formationId = data.entry?.formation_id || state.formationId || DEFAULT_FORMATION_ID;
-    state.slotMap = hydrateSlotMap(data.squad, state.formationId);
-    state.benchOrder = seedBenchFromSquad(data.squad, state.slotMap);
+    const prevSlots = { ...state.slotMap };
+    const prevBench = [...state.benchOrder];
+    const formFromUi = document.getElementById("gpflFormation")?.value;
+
+    if (state.formationTouched) {
+      state.formationId =
+        formFromUi || state.formationId || data.entry?.formation_id || DEFAULT_FORMATION_ID;
+    } else {
+      state.formationId =
+        data.entry?.formation_id || state.formationId || DEFAULT_FORMATION_ID;
+    }
+
+    state.slotMap = mergeSlotMap(data.squad, state.formationId, prevSlots);
+    state.benchOrder = mergeBenchOrder(data.squad, state.slotMap, prevBench);
+
     renderEntryStats(data);
     renderChips(data);
     fillFormationSelect(data);
@@ -1331,6 +1369,7 @@ function wire() {
       p_bench_ids: benchIds,
     });
     if (error) return setStatus(patchMissingHint(error), false);
+    state.formationTouched = false;
     state.formationId = formationId;
     state.slotMap = { ...slotMap };
     state.benchOrder = benchIds;
