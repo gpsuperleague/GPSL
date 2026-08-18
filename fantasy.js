@@ -81,6 +81,14 @@ function monthLabel(id) {
   return GPSL_MONTH_LABELS?.[id] || String(id);
 }
 
+function statusLabel(status) {
+  const s = String(status || "").toLowerCase();
+  if (s === "building") return "Building";
+  if (s === "active") return "Active";
+  if (s === "withdrawn") return "Withdrawn";
+  return s ? s.replace(/_/g, " ") : "—";
+}
+
 function normalizePos(pos) {
   const p = String(pos || "").trim().toUpperCase();
   if (p === "LW") return "LWF";
@@ -306,18 +314,25 @@ function renderEntryStats(data) {
   }
   el.innerHTML = `
     <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.budget)}>Budget <b>${money(remaining)}</b></div>
-    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.points)}>Points <b>${esc(e.total_points ?? 0)}</b></div>
+    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.points)}>Total Points <b>${esc(e.total_points ?? 0)}</b></div>
     ${
       prov.month || Number(prov.points) > 0
         ? `<div class="gpfl-stat"${tipAttrs(GPFL_TIPS.provisional)}>Provisional <b>${esc(prov.points ?? 0)}</b></div>`
         : ""
     }
+    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.status)}>Status <b>${esc(statusLabel(e.status))}</b></div>
     <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.freeTransfers)}>Free transfers <b>${esc(e.free_transfers_remaining ?? 0)}</b></div>
     <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.hitCost)}>Hit cost <b>${esc(hitPts)}</b></div>
-    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.squadSize)}>Squad <b>${active.length}/${esc(size)}</b></div>
-    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.slots)}>Slots <b>GK ${have.gk}/${caps.gk} · DEF ${have.def}/${caps.def} · MID ${have.mid}/${caps.mid} · FWD ${have.fwd}/${caps.fwd}</b></div>
     ${needs ? `<div class="gpfl-stat"${tipAttrs(GPFL_TIPS.faReplace)}>FA to replace <b>${needs}</b></div>` : ""}
   `;
+
+  const capsEl = document.getElementById("gpflSignCaps");
+  if (capsEl) {
+    capsEl.innerHTML = `
+      <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.squadSize)}>Squad <b>${active.length}/${esc(size)}</b></div>
+      <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.slots)}>Slots <b>GK ${have.gk}/${caps.gk} · DEF ${have.def}/${caps.def} · MID ${have.mid}/${caps.mid} · FWD ${have.fwd}/${caps.fwd}</b></div>
+    `;
+  }
   setEditLocked(!canTransfer(data));
 }
 

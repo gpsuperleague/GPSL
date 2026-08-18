@@ -12,6 +12,9 @@ export const GPFL_TIPS = {
   provisional:
     "Live / provisional points for the current GPSL month before it is finalised.\n\nAuto-subs and chips are reflected when scoring refreshes.",
 
+  status:
+    "Entry status.\n\nBuilding — still assembling your 15 before Confirm. Active — confirmed and scoring; transfers use free slots then hit points.",
+
   freeTransfers:
     "Free transfers remaining this window.\n\nWhile your entry is still Building, you can keep signing toward 15 even if the month deadline has locked. Once confirmed Active, transfers beyond free ones cost hit points.",
 

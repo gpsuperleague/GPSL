@@ -121,6 +121,9 @@ body.gpfl-page {
   gap: 10px;
   margin-bottom: 10px;
 }
+.gpfl-sign-caps {
+  margin: 0 0 10px;
+}
 
 .gpfl-stat {
   background: rgba(20, 32, 48, 0.9);
