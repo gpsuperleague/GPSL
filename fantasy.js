@@ -256,7 +256,7 @@ function slotCounts(data) {
 function setEditLocked(locked) {
   document
     .querySelectorAll(
-      "#gpflConfirmBtn, #gpflSaveXiBtn, #gpflFormation, #gpflCaptain, .gpfl-rm, .gpfl-chip-btn, .gpfl-bench-move, .gpfl-pitch-pick, .gpfl-sign-btn, .gpfl-pool-sign"
+      "#gpflConfirmBtn, #gpflSaveXiBtn, #gpflSaveXiBtn2, #gpflFormation, #gpflCaptain, .gpfl-rm, .gpfl-chip-btn, .gpfl-bench-move, .gpfl-pitch-pick, .gpfl-sign-btn, .gpfl-pool-sign"
     )
     .forEach((el) => {
       el.disabled = locked;
@@ -445,11 +445,22 @@ function renderPitchBench(data) {
   const pitchRoot = document.getElementById("gpflPitch");
   const benchRoot = document.getElementById("gpflBench");
   const capSel = document.getElementById("gpflCaptain");
+  const hint = document.getElementById("gpflPitchHint");
   if (!pitchRoot || !benchRoot) return;
 
   const squad = (data?.squad || []).filter((p) => p.slot_status === "active");
   const formation = getFormation(state.formationId);
   const open = canTransfer(data);
+
+  if (hint) {
+    if (!squad.length) {
+      hint.innerHTML =
+        `<b style="color:#f0b080;">No signed players yet.</b> Use step 1 — expand Goalkeepers / Defenders / … and click <b>Sign</b>. Pitch dropdowns only list players already in your GPFL squad.`;
+    } else {
+      hint.innerHTML =
+        `Each pitch slot is a dropdown of <b>your ${squad.length} signed player${squad.length === 1 ? "" : "s"}</b> who can play there. Pick 11, order the bench, then Save.`;
+    }
+  }
 
   if (!Object.keys(state.slotMap).length) {
     state.slotMap = hydrateSlotMap(squad, state.formationId);
@@ -465,7 +476,9 @@ function renderPitchBench(data) {
         squad.filter((p) => posFitsSlot(p.position, slot.label) || p.player_id === selected)
       );
       const options = [
-        `<option value="">— ${esc(slot.label)} —</option>`,
+        `<option value="">— ${esc(slot.label)}${
+          eligible.length ? "" : squad.length ? " · none fit" : " · sign first"
+        } —</option>`,
         ...eligible.map((p) => {
           const taken = used.has(p.player_id) && state.slotMap[slot.id] !== p.player_id;
           return `<option value="${esc(p.player_id)}" ${
@@ -478,12 +491,13 @@ function renderPitchBench(data) {
       const isCap = selected && (prevCap === selected || playerById(squad, selected)?.is_captain);
       const thumb = selected
         ? `<img class="gpfl-pitch-thumb" src="${pesdbPlayerCardUrl(selected)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">`
-        : `<div class="gpfl-pitch-thumb gpfl-pitch-thumb--empty"></div>`;
-      return `<div class="gpfl-pitch-slot ${selected ? "filled" : ""} ${isCap ? "captain" : ""}"
-        style="left:${slot.x}%;top:${slot.y}%;">
+        : `<div class="gpfl-pitch-thumb gpfl-pitch-thumb--empty" aria-hidden="true"></div>`;
+      return `<div class="gpfl-pitch-slot ${selected ? "filled" : ""} ${isCap ? "captain" : ""} ${
+        eligible.length || selected ? "" : "empty-eligible"
+      }" style="left:${slot.x}%;top:${slot.y}%;">
         <div class="gpfl-pitch-pos">${esc(slot.label)}</div>
         ${thumb}
-        <select class="gpfl-pitch-pick" data-slot="${esc(slot.id)}" title="${esc(slot.label)}" ${
+        <select class="gpfl-pitch-pick" data-slot="${esc(slot.id)}" aria-label="${esc(slot.label)} slot" ${
           open ? "" : "disabled"
         }>${options.join("")}</select>
       </div>`;
@@ -1243,7 +1257,10 @@ function wire() {
     setStatus("Squad confirmed.");
   });
 
-  document.getElementById("gpflSaveXiBtn")?.addEventListener("click", async () => {
+  document.getElementById("gpflSaveXiBtn")?.addEventListener("click", saveXi);
+  document.getElementById("gpflSaveXiBtn2")?.addEventListener("click", saveXi);
+
+  async function saveXi() {
     const formationId =
       document.getElementById("gpflFormation")?.value || state.formationId;
     const formation = getFormation(formationId);
@@ -1277,7 +1294,7 @@ function wire() {
     if (data) state.payload = data;
     await refresh();
     setStatus("Pitch XI + bench saved.");
-  });
+  }
 
   let searchTimer = null;
   document.getElementById("gpflSearch")?.addEventListener("input", () => {
