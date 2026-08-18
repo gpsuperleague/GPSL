@@ -653,8 +653,11 @@ async function renderSchedulePanel(f) {
   const meta = $("scheduleMeta");
   const list = $("kickoffSlotList");
   const pendingPanel = $("pendingSchedulePanel");
+  const historyEl = $("proposalHistory");
   const proposeBtn = $("proposeBtn");
   const acceptBtn = $("acceptBtn");
+  const withdrawBtn = $("withdrawBtn");
+  const showCounterBtn = $("showCounterBtn");
   const statusEl = $("scheduleStatus");
 
   if (list) list.innerHTML = "";
@@ -662,11 +665,21 @@ async function renderSchedulePanel(f) {
     pendingPanel.hidden = true;
     pendingPanel.innerHTML = "";
   }
+  if (historyEl) {
+    historyEl.hidden = true;
+    historyEl.innerHTML = "";
+  }
   if (proposeBtn) {
     proposeBtn.disabled = true;
+    proposeBtn.hidden = false;
     proposeBtn.textContent = "Propose kick-off";
   }
   if (acceptBtn) acceptBtn.hidden = true;
+  if (withdrawBtn) withdrawBtn.hidden = true;
+  if (showCounterBtn) {
+    showCounterBtn.hidden = true;
+    showCounterBtn.onclick = null;
+  }
   if (statusEl) statusEl.textContent = "";
 
   if (!f || f.played) {
@@ -683,7 +696,7 @@ async function renderSchedulePanel(f) {
 
   if (error) {
     if (meta) {
-      meta.textContent = `❌ ${error.message} — run patches/international_match_schedule_availability_20260817.sql`;
+      meta.textContent = `❌ ${error.message} — run patches/international_match_schedule_availability_20260817.sql (or international_kickoff_withdraw_20260818.sql)`;
     }
     return;
   }
@@ -696,6 +709,11 @@ async function renderSchedulePanel(f) {
   const ownerTz = data.my_timezone || UK_TZ;
   const monthKey = data.proposal_window?.gpsl_month || f.gpsl_month;
   const monthLabel = GPSL_MONTH_LABELS[monthKey] || monthKey || "—";
+  const recent = Array.isArray(data.recent_proposals) ? data.recent_proposals : [];
+  const oppLabel =
+    data.my_role === "away"
+      ? data.fixture?.home_nation_name || data.fixture?.home_nation || "Home"
+      : data.fixture?.away_nation_name || data.fixture?.away_nation || "Away";
 
   if (meta) {
     meta.textContent =
@@ -703,6 +721,26 @@ async function renderSchedulePanel(f) {
       (data.away_vacant || data.home_vacant
         ? " · Vacant nation(s) in this fixture — kick-off auto-agrees if you propose vs vacant."
         : "");
+  }
+
+  if (historyEl && recent.length) {
+    historyEl.hidden = false;
+    historyEl.innerHTML =
+      `<b>Proposal history</b><ul style="margin:6px 0 0;padding-left:18px;">` +
+      recent
+        .map((p) => {
+          const who =
+            p.proposed_by_nation === myNation?.code
+              ? "You"
+              : escapeHtml(p.proposed_by_nation || "?");
+          const when = escapeHtml(
+            formatKickoffPair(p.kickoff_at, homeTz, awayTz)
+          );
+          const st = escapeHtml(p.status || "");
+          return `<li>${who}: ${when} <span style="opacity:.75;">(${st})</span></li>`;
+        })
+        .join("") +
+      `</ul>`;
   }
 
   if (sch.status === "agreed" && sch.agreed_kickoff_at) {
@@ -721,6 +759,11 @@ async function renderSchedulePanel(f) {
     pendingProposalId = pending.id;
     const fromOpp = pending.proposed_by_nation !== myNation?.code;
     const stillValid = isSelectableKickoffSlot(pending.kickoff_at, ownerTz);
+    const supersededOpp = recent.find(
+      (p) =>
+        p.status === "superseded" &&
+        p.proposed_by_nation !== myNation?.code
+    );
     if (pendingPanel) {
       pendingPanel.hidden = false;
       pendingPanel.innerHTML = `
@@ -738,8 +781,21 @@ async function renderSchedulePanel(f) {
             : ""
         }
         ${
+          !fromOpp
+            ? `<p class="note" style="margin:0 0 8px;color:#fc6;">
+                <b>You</b> hold the pending offer — only <b>${escapeHtml(oppLabel)}</b> can Accept it.
+                ${
+                  supersededOpp
+                    ? ` Their earlier proposal was replaced when you counter-proposed.`
+                    : ""
+                }
+                Ask them to Accept, or use <b>Withdraw my proposal</b> so home can propose again.
+              </p>`
+            : ""
+        }
+        ${
           !stillValid
-            ? `<p class="note" style="color:#f88;margin:0;">This time has passed — counter-propose a future slot from the list below.</p>`
+            ? `<p class="note" style="color:#f88;margin:0;">This time has passed — counter-propose a future slot.</p>`
             : ""
         }
       `;
@@ -751,11 +807,15 @@ async function renderSchedulePanel(f) {
         acceptBtn.focus();
       }
     }
+    if (withdrawBtn) {
+      withdrawBtn.hidden = !(data.can_withdraw || (!fromOpp && pending));
+    }
     if (statusEl && fromOpp && !data.can_respond) {
       statusEl.textContent =
         "Cannot accept yet — check you have a nation club linked, or wait for the proposer.";
     } else if (statusEl && !fromOpp) {
-      statusEl.textContent = "Your proposal is pending — waiting for opponent.";
+      statusEl.textContent =
+        "Your proposal is pending — opponent must Accept (or you can withdraw).";
     }
   }
 
@@ -780,31 +840,54 @@ async function renderSchedulePanel(f) {
   }
 
   const rawSlots = Array.isArray(data.my_window_slots) ? data.my_window_slots : [];
-  // RPC may return jsonb array of timestamptz strings or wrapped values
   const slots = rawSlots
     .map((s) => (typeof s === "string" ? s : s?.kickoff_at || String(s)))
     .filter(Boolean);
   const selectable = filterSelectableKickoffSlots(slots, ownerTz);
 
   if (!list) return;
-  if (!selectable.length) {
-    list.innerHTML =
-      '<p class="note" style="color:#888;">No available slots in this GPSL month. Set weekly availability on Owner Details (and wait until the month unlocks).</p>';
-    return;
-  }
 
-  for (const iso of selectable) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "slot-btn";
-    btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
-    btn.onclick = () => {
-      selectedKickoffIso = iso;
-      list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
-      btn.classList.add("selected");
-      if (proposeBtn) proposeBtn.disabled = false;
+  const fillSlots = () => {
+    list.innerHTML = "";
+    if (!selectable.length) {
+      list.innerHTML =
+        '<p class="note" style="color:#888;">No available slots in this GPSL month. Set weekly availability on Owner Details (and wait until the month unlocks).</p>';
+      return;
+    }
+    for (const iso of selectable) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "slot-btn";
+      btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
+      btn.onclick = () => {
+        selectedKickoffIso = iso;
+        list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        if (proposeBtn) proposeBtn.disabled = false;
+      };
+      list.appendChild(btn);
+    }
+  };
+
+  // Opponent proposed: hide slots until they explicitly choose to counter
+  // (avoids accidental counter replacing their Accept option).
+  if (pending && data.can_respond && showCounterBtn) {
+    proposeBtn.hidden = true;
+    proposeBtn.disabled = true;
+    list.innerHTML = "";
+    showCounterBtn.hidden = false;
+    showCounterBtn.onclick = () => {
+      showCounterBtn.hidden = true;
+      proposeBtn.hidden = false;
+      proposeBtn.disabled = true;
+      fillSlots();
+      if (statusEl) {
+        statusEl.textContent =
+          "Pick a slot then Counter-propose — this replaces their pending time.";
+      }
     };
-    list.appendChild(btn);
+  } else {
+    fillSlots();
   }
 }
 
@@ -890,6 +973,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       setStatus("Pick a kick-off slot first.", false);
       return;
     }
+    const isCounter = $("proposeBtn")?.textContent === "Counter-propose";
+    if (
+      isCounter &&
+      !confirm(
+        "Counter-propose replaces their pending kick-off. They will need to Accept your new time (you will not see Accept for theirs). Continue?"
+      )
+    ) {
+      return;
+    }
     setStatus("Proposing…");
     const { error } = await supabase.rpc("international_propose_kickoff", {
       p_fixture_id: selectedId,
@@ -900,6 +992,31 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     setStatus("✅ Kickoff proposed", true);
+    await loadFixtures();
+    await selectFixture(selectedId);
+  });
+
+  $("withdrawBtn")?.addEventListener("click", async () => {
+    if (!selectedId) return;
+    if (
+      !confirm(
+        "Withdraw your pending kick-off? The fixture goes back to unscheduled so home can propose again."
+      )
+    ) {
+      return;
+    }
+    setStatus("Withdrawing…");
+    const { error } = await supabase.rpc("international_withdraw_kickoff_proposal", {
+      p_fixture_id: selectedId,
+    });
+    if (error) {
+      setStatus(
+        `❌ ${error.message} — run patches/international_kickoff_withdraw_20260818.sql`,
+        false
+      );
+      return;
+    }
+    setStatus("✅ Proposal withdrawn — home can propose again", true);
     await loadFixtures();
     await selectFixture(selectedId);
   });

@@ -135,11 +135,16 @@
         </p>
         <p id="scheduleMeta" class="note"></p>
         <div id="pendingSchedulePanel" hidden></div>
+        <div id="proposalHistory" class="note" hidden></div>
         <div id="slotPickerPanel">
+          <button type="button" class="button secondary" id="showCounterBtn" hidden style="margin-bottom:8px;">
+            Want a different time? Counter-propose…
+          </button>
           <div id="kickoffSlotList" class="slot-list"></div>
           <div class="row" style="margin-top:10px;">
             <button type="button" class="button" id="proposeBtn" disabled>Propose kick-off</button>
             <button type="button" class="button" id="acceptBtn" hidden>Accept pending proposal</button>
+            <button type="button" class="button secondary" id="withdrawBtn" hidden>Withdraw my proposal</button>
             <a class="button secondary" href="owner_details.html" style="text-decoration:none;">Edit availability</a>
           </div>
         </div>
@@ -222,6 +227,6 @@
 
     <div id="pageStatus" class="status"></div>
   </div>
-  <script type="module" src="international_matchday.js?v=20260818-arrange-visible"></script>
+  <script type="module" src="international_matchday.js?v=20260818-withdraw-ux"></script>
 </body>
 </html>

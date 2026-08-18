@@ -42,6 +42,7 @@ const INBOX_CATEGORY_TYPES = {
     "intl_kickoff_proposal_sent",
     "intl_kickoff_counter_sent",
     "intl_kickoff_accepted",
+    "intl_kickoff_withdrawn",
   ]),
   discipline: new Set([
     "prize_appeal_submitted",

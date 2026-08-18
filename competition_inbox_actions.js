@@ -40,6 +40,7 @@ export const INBOX_ACTION_DEFAULTS = {
   intl_kickoff_proposal_sent: { label: "International Matchday", href: "international_matchday.html" },
   intl_kickoff_counter_sent: { label: "International Matchday", href: "international_matchday.html" },
   intl_kickoff_accepted: { label: "International Matchday", href: "international_matchday.html" },
+  intl_kickoff_withdrawn: { label: "Propose kick-off again", href: "international_matchday.html" },
   intl_result_to_confirm: { label: "Confirm international result", href: "international_matchday.html" },
   intl_result_submitted: { label: "International Matchday", href: "international_matchday.html" },
   intl_result_confirmed: { label: "World Cup", href: "world_cup.html" },
