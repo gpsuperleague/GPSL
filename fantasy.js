@@ -442,12 +442,11 @@ function fillFormationSelect(data) {
 }
 
 function renderPitchBench(data) {
-  const slotsRoot = document.getElementById("gpflXiSlots");
   const pitchRoot = document.getElementById("gpflPitch");
   const benchRoot = document.getElementById("gpflBench");
   const capSel = document.getElementById("gpflCaptain");
   const hint = document.getElementById("gpflPitchHint");
-  if (!slotsRoot || !benchRoot) return;
+  if (!pitchRoot || !benchRoot) return;
 
   const squad = (data?.squad || []).filter((p) => p.slot_status === "active");
   const formation = getFormation(state.formationId);
@@ -456,9 +455,9 @@ function renderPitchBench(data) {
   if (hint) {
     if (!squad.length) {
       hint.innerHTML =
-        `<b style="color:#f0b080;">No signed players yet.</b> Use step 1 — expand a position and click <b>Sign</b>. Then pick them in the slot dropdowns here.`;
+        `<b style="color:#f0b080;">No signed players yet.</b> Use step 1 — Sign from the pool. Pitch markers will then list eligible players.`;
     } else {
-      hint.innerHTML = `Pick your 11 below from your <b>${squad.length}</b> signed player${
+      hint.innerHTML = `Click a marker on the pitch to pick from your <b>${squad.length}</b> signed player${
         squad.length === 1 ? "" : "s"
       }. Only eligible positions appear in each dropdown.`;
     }
@@ -470,13 +469,12 @@ function renderPitchBench(data) {
   for (const [slotId, pid] of Object.entries(state.slotMap || {})) {
     if (pid && squad.some((p) => p.player_id === pid)) merged[slotId] = pid;
   }
-  // Drop picks no longer in squad
   for (const [slotId, pid] of Object.entries(merged)) {
     if (!squad.some((p) => p.player_id === pid)) delete merged[slotId];
   }
   state.slotMap = merged;
 
-  // Helpful default: sole GK → GK slot
+  // Helpful default: free GK → GK slot
   const gkSlot = formation.slots.find((s) => normalizePos(s.label) === "GK");
   if (gkSlot && !state.slotMap[gkSlot.id]) {
     const gks = squad.filter((p) => normalizePos(p.position) === "GK" || p.position_group === "gk");
@@ -488,99 +486,58 @@ function renderPitchBench(data) {
   const used = new Set(Object.values(state.slotMap).filter(Boolean));
   const prevCap = capSel?.value || "";
 
-  const slotSelectHtml = (slot) => {
-    const selected = state.slotMap[slot.id] || "";
-    const eligible = sortPlayersByPos(
-      squad.filter((p) => posFitsSlot(p.position, slot.label) || p.player_id === selected)
-    );
-    const options = [
-      `<option value="">— pick ${esc(slot.label)} —</option>`,
-      ...eligible.map((p) => {
-        const taken = used.has(p.player_id) && state.slotMap[slot.id] !== p.player_id;
-        return `<option value="${esc(p.player_id)}" ${
-          selected === p.player_id ? "selected" : ""
-        } ${taken ? "disabled" : ""}>${esc(p.player_name)} (${esc(normalizePos(p.position))})${
-          taken ? " · used" : ""
-        }</option>`;
-      }),
-    ];
-    return `<label class="gpfl-xi-slot">
-      <span class="gpfl-xi-slot-pos">${esc(slot.label)}</span>
-      <select class="gpfl-pitch-pick" data-slot="${esc(slot.id)}" ${open ? "" : "disabled"}>
-        ${options.join("")}
-      </select>
-      ${
-        eligible.length === 0 && !selected
-          ? `<span class="gpfl-xi-slot-warn">${
-              squad.length ? "No signed player fits this slot yet" : "Sign players first"
-            }</span>`
-          : ""
-      }
-    </label>`;
-  };
-
-  // Group slots roughly by pitch line for readability
-  const lines = { gk: [], def: [], mid: [], fwd: [] };
-  for (const slot of formation.slots) {
-    const pos = normalizePos(slot.label);
-    if (pos === "GK") lines.gk.push(slot);
-    else if (["LB", "RB", "CB", "LWB", "RWB"].includes(pos)) lines.def.push(slot);
-    else if (["DMF", "CMF", "AMF", "LMF", "RMF"].includes(pos)) lines.mid.push(slot);
-    else lines.fwd.push(slot);
-  }
-
-  slotsRoot.innerHTML = [
-    ["Attack", lines.fwd],
-    ["Midfield", lines.mid],
-    ["Defence", lines.def],
-    ["Goalkeeper", lines.gk],
-  ]
-    .filter(([, list]) => list.length)
-    .map(
-      ([title, list]) => `<div class="gpfl-xi-line">
-        <div class="gpfl-xi-line-title">${esc(title)}</div>
-        <div class="gpfl-xi-line-slots">${list.map(slotSelectHtml).join("")}</div>
-      </div>`
-    )
+  pitchRoot.hidden = false;
+  pitchRoot.innerHTML = formation.slots
+    .map((slot) => {
+      const selected = state.slotMap[slot.id] || "";
+      const eligible = sortPlayersByPos(
+        squad.filter((p) => posFitsSlot(p.position, slot.label) || p.player_id === selected)
+      );
+      const pl = playerById(squad, selected);
+      const isCap =
+        selected && (prevCap === selected || playerById(squad, selected)?.is_captain);
+      const options = [
+        `<option value="">${esc(slot.label)}</option>`,
+        ...eligible.map((p) => {
+          const taken = used.has(p.player_id) && state.slotMap[slot.id] !== p.player_id;
+          return `<option value="${esc(p.player_id)}" ${
+            selected === p.player_id ? "selected" : ""
+          } ${taken ? "disabled" : ""}>${esc(p.player_name)}${taken ? " · used" : ""}</option>`;
+        }),
+      ];
+      return `<div class="gpfl-pitch-slot ${selected ? "filled" : ""} ${isCap ? "captain" : ""} ${
+        eligible.length || selected ? "" : "empty-eligible"
+      }" style="left:${Number(slot.x)}%;top:${Number(slot.y)}%;">
+        <div class="gpfl-pitch-pos">${esc(slot.label)}</div>
+        ${
+          pl
+            ? `<img class="gpfl-pitch-thumb" src="${pesdbPlayerCardUrl(selected)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">`
+            : `<div class="gpfl-pitch-thumb gpfl-pitch-thumb--empty" aria-hidden="true"></div>`
+        }
+        <select class="gpfl-pitch-pick" data-slot="${esc(slot.id)}" title="${esc(slot.label)}" ${
+          open ? "" : "disabled"
+        }>${options.join("")}</select>
+      </div>`;
+    })
     .join("");
 
-  // Optional compact pitch preview (names only)
-  if (pitchRoot) {
-    pitchRoot.hidden = false;
-    pitchRoot.innerHTML = formation.slots
-      .map((slot) => {
-        const selected = state.slotMap[slot.id] || "";
-        const pl = playerById(squad, selected);
-        return `<div class="gpfl-pitch-slot ${selected ? "filled" : ""}" style="left:${slot.x}%;top:${slot.y}%;">
-          <div class="gpfl-pitch-pos">${esc(slot.label)}</div>
-          <div class="gpfl-pitch-name ${pl ? "" : "empty"}">${
-            pl ? esc(pl.player_name) : "—"
-          }</div>
-        </div>`;
-      })
-      .join("");
-  }
-
-  const bindSlotSelects = (root) => {
-    root.querySelectorAll(".gpfl-pitch-pick").forEach((sel) => {
-      const slotId = sel.dataset.slot;
-      if (state.slotMap[slotId]) sel.value = state.slotMap[slotId];
-      sel.onchange = () => {
-        const pid = sel.value || "";
-        if (pid) {
-          for (const [k, v] of Object.entries(state.slotMap)) {
-            if (v === pid && k !== slotId) delete state.slotMap[k];
-          }
-          state.slotMap[slotId] = pid;
-        } else {
-          delete state.slotMap[slotId];
+  pitchRoot.querySelectorAll(".gpfl-pitch-pick").forEach((sel) => {
+    const slotId = sel.dataset.slot;
+    if (state.slotMap[slotId]) sel.value = state.slotMap[slotId];
+    sel.onchange = () => {
+      const pid = sel.value || "";
+      if (pid) {
+        for (const [k, v] of Object.entries(state.slotMap)) {
+          if (v === pid && k !== slotId) delete state.slotMap[k];
         }
-        state.benchOrder = seedBenchFromSquad(squad, state.slotMap);
-        renderPitchBench(state.payload);
-      };
-    });
-  };
-  bindSlotSelects(slotsRoot);
+        state.slotMap[slotId] = pid;
+      } else {
+        delete state.slotMap[slotId];
+      }
+      state.benchOrder = seedBenchFromSquad(squad, state.slotMap);
+      renderPitchBench(state.payload);
+    };
+  });
 
   // Captain options from current XI
   const starterIds = formation.slots.map((s) => state.slotMap[s.id]).filter(Boolean);
