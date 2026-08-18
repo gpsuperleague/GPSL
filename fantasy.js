@@ -268,14 +268,15 @@ function renderEntryStats(data) {
       : `Confirm squad (${active.length}/${size})`;
   }
   el.innerHTML = `
-    <div class="gpfl-stat">Bank left <b>${money(remaining)}</b></div>
-    <div class="gpfl-stat">Spent <b>${money(spent)}</b></div>
-    <div class="gpfl-stat">Budget <b>${money(cap)}</b></div>
-    <div class="gpfl-stat">Status <b>${esc(e.status)}</b></div>
+    <div class="gpfl-stat">Budget <b>${money(remaining)}</b></div>
     <div class="gpfl-stat">Points <b>${esc(e.total_points ?? 0)}</b></div>
-    <div class="gpfl-stat">Provisional <b>${esc(prov.points ?? 0)}</b></div>
+    ${
+      prov.month || Number(prov.points) > 0
+        ? `<div class="gpfl-stat">Provisional <b>${esc(prov.points ?? 0)}</b></div>`
+        : ""
+    }
     <div class="gpfl-stat">Free transfers <b>${esc(e.free_transfers_remaining ?? 0)}</b></div>
-    <div class="gpfl-stat">Hit <b>${esc(hitPts)} pts</b></div>
+    <div class="gpfl-stat">Hit cost <b>${esc(hitPts)}</b></div>
     <div class="gpfl-stat">Squad <b>${active.length}/${esc(size)}</b></div>
     <div class="gpfl-stat">Slots <b>GK ${have.gk}/${caps.gk} · DEF ${have.def}/${caps.def} · MID ${have.mid}/${caps.mid} · FWD ${have.fwd}/${caps.fwd}</b></div>
     ${needs ? `<div class="gpfl-stat">FA to replace <b>${needs}</b></div>` : ""}
