@@ -230,17 +230,34 @@ body.gpfl-page {
   display: block;
 }
 
-/* Chips */
+/* Chips — horizontal: Wildcard | Triple Captain | Bench Boost */
+.gpfl-chips-bar {
+  margin-top: 12px;
+  background: rgba(12, 20, 28, 0.55);
+  border: 1px solid #2a3a4a;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.gpfl-chips-bar .gpfl-subhead {
+  margin: 0 0 8px;
+}
 .gpfl-chips {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+@media (max-width: 700px) {
+  .gpfl-chips { grid-template-columns: 1fr; }
 }
 .gpfl-chip {
   border: 1px solid #3a4a5a;
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: rgba(18, 28, 40, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 .gpfl-chip--active {
   border-color: #c0a050;
@@ -250,12 +267,19 @@ body.gpfl-page {
 .gpfl-chip-name {
   font-family: Georgia, "Times New Roman", serif;
   color: #d8e8f8;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.2;
 }
 .gpfl-chip-tip { font-size: 11px; color: #8899aa; margin: 4px 0 8px; }
-.gpfl-chip-state { font-size: 12px; color: #9cf; margin-bottom: 8px; }
+.gpfl-chip-state { font-size: 11px; color: #9cf; }
+.gpfl-chip .gpfl-btn {
+  margin-top: 4px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  font-size: 12px;
+}
 
-/* Pitch + bench + chips — picks live on the pitch graphic */
+/* Pitch + bench — picks live on the pitch graphic */
 .gpfl-pitch-wrap {
   display: grid;
   grid-template-columns: minmax(300px, 1.2fr) minmax(220px, 0.8fr);
@@ -263,9 +287,15 @@ body.gpfl-page {
   align-items: start;
   overflow: visible;
 }
+.gpfl-pitch-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
 .gpfl-entry-below-pitch {
-  margin-top: 16px;
-  padding-top: 14px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid #2a3a4a;
 }
 .gpfl-entry-below-pitch > h2 {
@@ -462,15 +492,6 @@ body.gpfl-page {
   border: 1px solid #2a3a4a;
   border-radius: 8px;
   padding: 10px 12px;
-}
-.gpfl-chips-col {
-  background: rgba(12, 20, 28, 0.55);
-  border: 1px solid #2a3a4a;
-  border-radius: 8px;
-  padding: 10px 12px;
-}
-.gpfl-chips-col .gpfl-subhead {
-  margin: 0 0 8px;
 }
 .gpfl-bench-list {
   list-style: none;
