@@ -140,6 +140,7 @@ body.gpfl-page {
   padding: 8px 14px;
   font-size: 13px;
   cursor: pointer;
+  text-decoration: none;
 }
 .gpfl-btn:hover { border-color: #6af; color: #fff; }
 .gpfl-btn--gold {
@@ -178,27 +179,6 @@ body.gpfl-page {
   font-size: 13px;
 }
 
-.gpfl-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.gpfl-tab {
-  border: 1px solid #456;
-  background: transparent;
-  color: #9ab;
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-size: 12px;
-  cursor: pointer;
-}
-.gpfl-tab.active {
-  border-color: #6af;
-  color: #dff;
-  background: rgba(60, 120, 180, 0.2);
-}
-
 .gpfl-table {
   width: 100%;
   border-collapse: collapse;
@@ -209,6 +189,7 @@ body.gpfl-page {
   text-align: left;
   padding: 7px 8px;
   border-bottom: 1px solid #2a3545;
+  vertical-align: middle;
 }
 .gpfl-table th { color: #8ab; font-weight: 600; font-size: 11px; text-transform: uppercase; }
 .gpfl-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -233,6 +214,16 @@ body.gpfl-page {
 }
 @media (max-width: 900px) {
   .gpfl-grid-2 { grid-template-columns: 1fr; }
+}
+
+.gpfl-mini-thumb {
+  width: 28px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid #345;
+  background: #111;
+  display: block;
 }
 
 /* Chips */
@@ -260,10 +251,10 @@ body.gpfl-page {
 .gpfl-chip-tip { font-size: 11px; color: #8899aa; margin: 4px 0 8px; }
 .gpfl-chip-state { font-size: 12px; color: #9cf; margin-bottom: 8px; }
 
-/* Pitch + bench */
+/* Pitch + bench — overflow visible so dropdowns open */
 .gpfl-pitch-wrap {
   display: grid;
-  grid-template-columns: minmax(260px, 1.2fr) minmax(220px, 0.8fr);
+  grid-template-columns: minmax(280px, 1.15fr) minmax(240px, 0.85fr);
   gap: 16px;
   align-items: start;
 }
@@ -275,7 +266,7 @@ body.gpfl-page {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 4;
-  max-height: 520px;
+  max-height: 560px;
   border-radius: 10px;
   border: 2px solid #3a6a50;
   background:
@@ -287,8 +278,9 @@ body.gpfl-page {
       rgba(58, 106, 80, 0.18) 11%,
       rgba(58, 106, 80, 0.18) 12%
     );
-  overflow: hidden;
+  overflow: visible;
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35);
+  z-index: 1;
 }
 .gpfl-pitch::before {
   content: "";
@@ -317,52 +309,66 @@ body.gpfl-page {
 .gpfl-pitch-slot {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: min(28%, 96px);
+  width: min(32%, 118px);
   text-align: center;
-  z-index: 1;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
+.gpfl-pitch-slot:focus-within { z-index: 20; }
 .gpfl-pitch-pos {
   font-size: 9px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #7aaa88;
-  margin-bottom: 2px;
+  color: #8ecaa0;
+  font-weight: 700;
+  text-shadow: 0 1px 2px #000;
 }
-.gpfl-pitch-name {
-  display: block;
-  width: 100%;
-  font-size: 11px;
-  line-height: 1.2;
-  color: #e8f4ec;
-  background: rgba(10, 20, 14, 0.72);
-  border: 1px solid #4a7a58;
+.gpfl-pitch-thumb {
+  width: 36px;
+  height: 46px;
+  object-fit: cover;
   border-radius: 4px;
-  padding: 4px 4px;
-  margin-bottom: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
+  border: 1px solid #4a7a58;
+  background: #0e1812;
+  display: block;
 }
-.gpfl-pitch-name.empty {
-  color: #6a8070;
-  cursor: default;
+.gpfl-pitch-thumb--empty {
   border-style: dashed;
+  opacity: 0.45;
 }
-.gpfl-pitch-slot.captain .gpfl-pitch-name {
+.gpfl-pitch-slot.captain .gpfl-pitch-thumb {
   border-color: #c0a050;
-  color: #f0d080;
+  box-shadow: 0 0 0 1px #c0a050;
 }
 .gpfl-pitch-pick {
   width: 100%;
-  font-size: 10px;
-  background: #0e1812;
-  border: 1px solid #3a5040;
-  color: #cde;
-  border-radius: 3px;
-  padding: 2px;
+  max-width: 118px;
+  font-size: 11px;
+  line-height: 1.2;
+  background: rgba(8, 16, 12, 0.92);
+  border: 1px solid #4a7a58;
+  color: #e8f4ec;
+  border-radius: 4px;
+  padding: 4px 2px;
+  cursor: pointer;
+}
+.gpfl-pitch-slot.filled .gpfl-pitch-pick {
+  border-color: #6aaa78;
+}
+.gpfl-pitch-slot.captain .gpfl-pitch-pick {
+  border-color: #c0a050;
+  color: #f0d080;
 }
 
+.gpfl-bench-col {
+  background: rgba(12, 20, 28, 0.55);
+  border: 1px solid #2a3a4a;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
 .gpfl-bench-list {
   list-style: none;
   margin: 0;
@@ -370,10 +376,10 @@ body.gpfl-page {
 }
 .gpfl-bench-item {
   display: grid;
-  grid-template-columns: 28px 1fr auto auto;
+  grid-template-columns: 28px 34px 1fr auto;
   gap: 8px;
   align-items: center;
-  padding: 6px 0;
+  padding: 7px 0;
   border-bottom: 1px solid #2a3545;
   font-size: 13px;
 }
@@ -387,15 +393,116 @@ body.gpfl-page {
   color: #9cf;
   font-size: 12px;
 }
+.gpfl-bench-thumb {
+  width: 28px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid #345;
+}
+.gpfl-bench-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
 .gpfl-bench-actions { display: flex; gap: 4px; }
 .gpfl-bench-actions .gpfl-btn { padding: 4px 8px; }
 
-.gpfl-xi-details {
-  margin-top: 12px;
-  color: #8899aa;
-  font-size: 12px;
+/* Squad sections */
+.gpfl-squad-sec { margin-bottom: 14px; }
+.gpfl-squad-sec:last-child { margin-bottom: 0; }
+
+/* Pool accordion */
+.gpfl-pool-acc { display: flex; flex-direction: column; gap: 8px; }
+.gpfl-acc {
+  border: 1px solid #2a3a4a;
+  border-radius: 6px;
+  background: rgba(12, 20, 28, 0.6);
 }
-.gpfl-xi-details summary { cursor: pointer; margin-bottom: 8px; }
+.gpfl-acc > summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #c8dff0;
+  list-style: none;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.gpfl-acc > summary::-webkit-details-marker { display: none; }
+.gpfl-acc > summary::before {
+  content: "▸";
+  color: #6af;
+  margin-right: 6px;
+}
+.gpfl-acc[open] > summary::before { content: "▾"; }
+.gpfl-acc-body {
+  padding: 0 10px 10px;
+  max-height: 360px;
+  overflow: auto;
+  border-top: 1px solid #2a3545;
+}
+
+.gpfl-pool-pos { margin-top: 10px; }
+.gpfl-pool-pos-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #7a9ab0;
+  margin-bottom: 4px;
+}
+.gpfl-pool-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.gpfl-pool-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 4px;
+  border: none;
+  border-bottom: 1px solid #243040;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.gpfl-pool-row:hover { background: rgba(60, 100, 140, 0.15); }
+.gpfl-pool-row img {
+  width: 28px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid #345;
+}
+.gpfl-pool-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.gpfl-pool-row-main b {
+  color: #e8f0f8;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gpfl-pool-row-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 11px;
+  color: #9ab;
+  font-variant-numeric: tabular-nums;
+}
 
 /* FDR */
 .gpfl-fdr {
@@ -420,7 +527,7 @@ body.gpfl-page {
   background: #141c24;
   color: #ddd;
   padding: 0;
-  max-width: min(520px, 94vw);
+  max-width: min(560px, 94vw);
   width: 100%;
 }
 .gpfl-dialog::backdrop { background: rgba(0, 0, 0, 0.65); }
@@ -439,25 +546,48 @@ body.gpfl-page {
   font-family: Georgia, "Times New Roman", serif;
   color: #c8dff0;
 }
-.gpfl-dialog-body { padding: 14px; max-height: min(70vh, 560px); overflow: auto; }
+.gpfl-dialog-body { padding: 14px; max-height: min(75vh, 640px); overflow: auto; }
 
+.gpfl-card-hero {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+@media (max-width: 480px) {
+  .gpfl-card-hero { grid-template-columns: 1fr; }
+}
+.gpfl-card-pic {
+  width: 110px;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid #456;
+  background: #111;
+  display: block;
+}
 .gpfl-card-meta {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
 }
 .gpfl-card-meta > div {
   background: rgba(20, 32, 48, 0.9);
   border: 1px solid #334858;
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 12px;
+  font-size: 11px;
 }
-.gpfl-card-meta b { color: #e8f0f8; font-size: 14px; }
+.gpfl-card-meta b { color: #e8f0f8; font-size: 13px; }
+
+.gpfl-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
 
 .gpfl-form-row {
   display: flex;

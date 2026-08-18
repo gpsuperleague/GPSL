@@ -6,15 +6,46 @@ import {
   DEFAULT_FORMATION_ID,
   getFormation,
 } from "./matchday_formations.js";
+import {
+  pesdbPlayerCardUrl,
+  pesdbPlayerUrl,
+  gpslPlayerCareerUrl,
+  PESDB_FALLBACK_CARD_IMG,
+} from "./player_links.js";
+
+/** Pitch / squad display order (GKs are their own section, not defenders). */
+const POS_ORDER = [
+  "GK",
+  "LB",
+  "CB",
+  "RB",
+  "DMF",
+  "LMF",
+  "CMF",
+  "RMF",
+  "AMF",
+  "LWF",
+  "SS",
+  "RWF",
+  "CF",
+];
+
+const POOL_SECTIONS = [
+  { id: "gk", label: "Goalkeepers", group: "gk", positions: ["GK"] },
+  { id: "def", label: "Defenders", group: "def", positions: ["LB", "CB", "RB"] },
+  { id: "mid", label: "Midfielders", group: "mid", positions: ["DMF", "LMF", "CMF", "RMF", "AMF"] },
+  { id: "fwd", label: "Forwards", group: "fwd", positions: ["LWF", "SS", "RWF", "CF"] },
+];
 
 let state = {
   isAdmin: false,
   payload: null,
-  posGroup: "fwd",
-  pool: [],
+  poolByGroup: {},
+  poolOpen: {},
   formationId: DEFAULT_FORMATION_ID,
-  slotMap: {}, // slot_id -> player_id
-  benchOrder: [], // player_id[] priority 1..n
+  slotMap: {},
+  benchOrder: [],
+  cardContext: null, // { playerId, canSign }
 };
 
 function setStatus(msg, ok = true) {
@@ -54,7 +85,22 @@ function normalizePos(pos) {
   if (p === "LM") return "LMF";
   if (p === "RM") return "RMF";
   if (p === "WG") return "LWF";
+  if (p === "CB1" || p === "CB2" || p === "CB3") return "CB";
   return p;
+}
+
+function posRank(pos) {
+  const p = normalizePos(pos);
+  const i = POS_ORDER.indexOf(p);
+  return i < 0 ? 99 : i;
+}
+
+function sortPlayersByPos(list) {
+  return [...(list || [])].sort((a, b) => {
+    const d = posRank(a.position) - posRank(b.position);
+    if (d) return d;
+    return String(a.player_name || "").localeCompare(String(b.player_name || ""));
+  });
 }
 
 /** GPFL flex: LMF↔LWF, RMF↔RWF, CF↔SS; else exact. */
@@ -82,6 +128,10 @@ function patchMissingHint(err) {
     );
   }
   return m;
+}
+
+function playerById(squad, id) {
+  return (squad || []).find((p) => p.player_id === id);
 }
 
 async function resolveAdmin() {
@@ -175,12 +225,13 @@ function slotCounts(data) {
 }
 
 function setEditLocked(locked) {
-  document.querySelectorAll(
-    "#gpflConfirmBtn, #gpflSaveXiBtn, #gpflFormation, #gpflCaptain, .gpfl-add, .gpfl-rm, .gpfl-chip-btn, .gpfl-bench-move, .gpfl-slot, .gpfl-pitch-pick"
-  ).forEach((el) => {
-    if (el.classList?.contains("gpfl-chip-btn") && el.dataset.chip === "info") return;
-    el.disabled = locked;
-  });
+  document
+    .querySelectorAll(
+      "#gpflConfirmBtn, #gpflSaveXiBtn, #gpflFormation, #gpflCaptain, .gpfl-rm, .gpfl-chip-btn, .gpfl-bench-move, .gpfl-pitch-pick, .gpfl-sign-btn"
+    )
+    .forEach((el) => {
+      el.disabled = locked;
+    });
 }
 
 function renderEntryStats(data) {
@@ -218,17 +269,13 @@ function renderEntryStats(data) {
   }
   el.innerHTML = `
     <div class="gpfl-stat">Bank left <b>${money(remaining)}</b></div>
-    <div class="gpfl-stat">Spent on squad <b>${money(spent)}</b></div>
-    <div class="gpfl-stat">Season budget <b>${money(cap)}</b></div>
+    <div class="gpfl-stat">Spent <b>${money(spent)}</b></div>
+    <div class="gpfl-stat">Budget <b>${money(cap)}</b></div>
     <div class="gpfl-stat">Status <b>${esc(e.status)}</b></div>
-    <div class="gpfl-stat">Formation <b>${esc(e.formation_id || "—")}</b></div>
     <div class="gpfl-stat">Points <b>${esc(e.total_points ?? 0)}</b></div>
-    <div class="gpfl-stat">Provisional <b>${esc(prov.points ?? 0)}</b>${
-      prov.month ? ` <span class="gpfl-muted">(${esc(monthLabel(prov.month))})</span>` : ""
-    }</div>
+    <div class="gpfl-stat">Provisional <b>${esc(prov.points ?? 0)}</b></div>
     <div class="gpfl-stat">Free transfers <b>${esc(e.free_transfers_remaining ?? 0)}</b></div>
-    <div class="gpfl-stat">Hit cost <b>${esc(hitPts)} pts</b></div>
-    <div class="gpfl-stat">Hits taken <b>${esc(e.transfer_hits_season ?? 0)}</b></div>
+    <div class="gpfl-stat">Hit <b>${esc(hitPts)} pts</b></div>
     <div class="gpfl-stat">Squad <b>${active.length}/${esc(size)}</b></div>
     <div class="gpfl-stat">Slots <b>GK ${have.gk}/${caps.gk} · DEF ${have.def}/${caps.def} · MID ${have.mid}/${caps.mid} · FWD ${have.fwd}/${caps.fwd}</b></div>
     ${needs ? `<div class="gpfl-stat">FA to replace <b>${needs}</b></div>` : ""}
@@ -243,7 +290,7 @@ function renderChips(data) {
   const chips = data?.chips;
   if (!chips?.enabled) {
     if (panel) panel.hidden = true;
-    root.innerHTML = `<p class="gpfl-muted">Chips disabled by admin.</p>`;
+    root.innerHTML = "";
     return;
   }
   if (panel) panel.hidden = false;
@@ -259,7 +306,7 @@ function renderChips(data) {
       const enabled = meta.enabled !== false;
       const available = meta.available !== false;
       const active = chips.active === id;
-      let stateLabel = !enabled
+      const stateLabel = !enabled
         ? "Off"
         : active
           ? `Active · ${monthLabel(chips.active_month)}`
@@ -292,30 +339,42 @@ function renderChips(data) {
   });
 }
 
-function seedSlotMapFromSquad(squad) {
+/**
+ * Prefer saved pitch_slot; otherwise seat is_starter players into matching empty slots.
+ */
+function hydrateSlotMap(squad, formationId) {
+  const formation = getFormation(formationId);
   const next = {};
-  for (const p of squad || []) {
-    if (p.slot_status === "active" && p.pitch_slot && p.is_starter) {
-      next[p.pitch_slot] = p.player_id;
-    }
+  const active = (squad || []).filter((p) => p.slot_status === "active");
+
+  for (const p of active) {
+    if (p.pitch_slot && p.is_starter) next[p.pitch_slot] = p.player_id;
+  }
+
+  const used = new Set(Object.values(next));
+  const starters = active.filter((p) => p.is_starter && !used.has(p.player_id));
+
+  for (const slot of formation.slots) {
+    if (next[slot.id]) continue;
+    const idx = starters.findIndex((p) => posFitsSlot(p.position, slot.label));
+    if (idx < 0) continue;
+    next[slot.id] = starters[idx].player_id;
+    used.add(starters[idx].player_id);
+    starters.splice(idx, 1);
   }
   return next;
 }
 
 function seedBenchFromSquad(squad, slotMap) {
   const starters = new Set(Object.values(slotMap || {}).filter(Boolean));
-  const bench = (squad || [])
-    .filter((p) => p.slot_status === "active" && !starters.has(p.player_id) && !p.is_starter)
-    .sort((a, b) => (a.bench_order ?? 99) - (b.bench_order ?? 99));
-  // Also include non-starters that still have is_starter false but weren't in pitch map
-  const extras = (squad || []).filter(
-    (p) =>
-      p.slot_status === "active" &&
-      !starters.has(p.player_id) &&
-      !bench.some((b) => b.player_id === p.player_id)
-  );
-  return [...bench, ...extras]
-    .sort((a, b) => (a.bench_order ?? 99) - (b.bench_order ?? 99))
+  return (squad || [])
+    .filter((p) => p.slot_status === "active" && !starters.has(p.player_id))
+    .sort(
+      (a, b) =>
+        (a.bench_order ?? 99) - (b.bench_order ?? 99) ||
+        posRank(a.position) - posRank(b.position) ||
+        String(a.player_name || "").localeCompare(String(b.player_name || ""))
+    )
     .map((p) => p.player_id);
 }
 
@@ -346,127 +405,62 @@ function fillFormationSelect(data) {
     const next = sel.value;
     if (next === state.formationId) return;
     state.formationId = next;
-    state.slotMap = {};
-    state.benchOrder = seedBenchFromSquad(state.payload?.squad, {});
-    renderPitchAndXi(state.payload);
+    state.slotMap = hydrateSlotMap(state.payload?.squad, next);
+    state.benchOrder = seedBenchFromSquad(state.payload?.squad, state.slotMap);
+    renderPitchBench(state.payload);
   };
 }
 
-function playerById(squad, id) {
-  return (squad || []).find((p) => p.player_id === id);
-}
+function renderPitchBench(data) {
+  const pitchRoot = document.getElementById("gpflPitch");
+  const benchRoot = document.getElementById("gpflBench");
+  const capSel = document.getElementById("gpflCaptain");
+  if (!pitchRoot || !benchRoot) return;
 
-function renderBench(data) {
-  const root = document.getElementById("gpflBench");
-  if (!root) return;
-  const squad = (data?.squad || []).filter((p) => p.slot_status === "active");
-  const starters = new Set(Object.values(state.slotMap).filter(Boolean));
-  let order = state.benchOrder.filter((id) => !starters.has(id));
-  const missing = squad
-    .filter((p) => !starters.has(p.player_id) && !order.includes(p.player_id))
-    .map((p) => p.player_id);
-  order = [...order, ...missing];
-  state.benchOrder = order;
-
-  if (!order.length) {
-    root.innerHTML = `<p class="gpfl-muted">Fill the XI — remaining players become the ordered bench.</p>`;
-    return;
-  }
-
-  root.innerHTML = `<ol class="gpfl-bench-list">
-    ${order
-      .map((id, i) => {
-        const p = playerById(squad, id);
-        if (!p) return "";
-        return `<li class="gpfl-bench-item">
-          <span class="gpfl-bench-rank">${i + 1}</span>
-          <button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(id)}">${esc(
-            p.player_name || id
-          )}</button>
-          <span class="gpfl-muted">${esc(p.position || p.position_group || "")}</span>
-          <span class="gpfl-bench-actions">
-            <button type="button" class="gpfl-btn gpfl-bench-move" data-dir="-1" data-id="${esc(id)}" ${
-              i === 0 || !editingOpen(data) ? "disabled" : ""
-            }>↑</button>
-            <button type="button" class="gpfl-btn gpfl-bench-move" data-dir="1" data-id="${esc(id)}" ${
-              i === order.length - 1 || !editingOpen(data) ? "disabled" : ""
-            }>↓</button>
-          </span>
-        </li>`;
-      })
-      .join("")}
-  </ol>`;
-
-  root.querySelectorAll(".gpfl-bench-move").forEach((btn) => {
-    btn.onclick = () => {
-      const id = btn.dataset.id;
-      const dir = Number(btn.dataset.dir);
-      const idx = state.benchOrder.indexOf(id);
-      const j = idx + dir;
-      if (idx < 0 || j < 0 || j >= state.benchOrder.length) return;
-      const next = [...state.benchOrder];
-      [next[idx], next[j]] = [next[j], next[idx]];
-      state.benchOrder = next;
-      renderBench(state.payload);
-    };
-  });
-  root.querySelectorAll(".gpfl-card-link").forEach((btn) => {
-    btn.onclick = () => openPlayerCard(btn.dataset.id);
-  });
-}
-
-function renderPitch(data) {
-  const root = document.getElementById("gpflPitch");
-  if (!root) return;
   const squad = (data?.squad || []).filter((p) => p.slot_status === "active");
   const formation = getFormation(state.formationId);
-  if (!formation) {
-    root.innerHTML = `<p class="gpfl-muted">Unknown formation.</p>`;
-    return;
-  }
-  if (!Object.keys(state.slotMap).length) {
-    state.slotMap = seedSlotMapFromSquad(squad);
-  }
-  const used = new Set(Object.values(state.slotMap).filter(Boolean));
   const open = editingOpen(data);
 
-  root.innerHTML = formation.slots
+  if (!Object.keys(state.slotMap).length) {
+    state.slotMap = hydrateSlotMap(squad, state.formationId);
+  }
+
+  const used = new Set(Object.values(state.slotMap).filter(Boolean));
+  const prevCap = capSel?.value || "";
+
+  pitchRoot.innerHTML = formation.slots
     .map((slot) => {
       const selected = state.slotMap[slot.id] || "";
-      const pl = playerById(squad, selected);
-      const eligible = squad.filter(
-        (p) => posFitsSlot(p.position, slot.label) || p.player_id === selected
+      const eligible = sortPlayersByPos(
+        squad.filter((p) => posFitsSlot(p.position, slot.label) || p.player_id === selected)
       );
-      const opts = [
-        `<option value="">${esc(slot.label)}</option>`,
+      const options = [
+        `<option value="">— ${esc(slot.label)} —</option>`,
         ...eligible.map((p) => {
           const taken = used.has(p.player_id) && state.slotMap[slot.id] !== p.player_id;
           return `<option value="${esc(p.player_id)}" ${
             selected === p.player_id ? "selected" : ""
-          } ${taken ? "disabled" : ""}>${esc(p.player_name)}${taken ? " · XI" : ""}</option>`;
+          } ${taken ? "disabled" : ""}>${esc(p.player_name)} (${esc(normalizePos(p.position))})${
+            taken ? " · used" : ""
+          }</option>`;
         }),
       ];
-      const isCap =
-        selected &&
-        (document.getElementById("gpflCaptain")?.value === selected || pl?.is_captain);
+      const isCap = selected && (prevCap === selected || playerById(squad, selected)?.is_captain);
+      const thumb = selected
+        ? `<img class="gpfl-pitch-thumb" src="${pesdbPlayerCardUrl(selected)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">`
+        : `<div class="gpfl-pitch-thumb gpfl-pitch-thumb--empty"></div>`;
       return `<div class="gpfl-pitch-slot ${selected ? "filled" : ""} ${isCap ? "captain" : ""}"
         style="left:${slot.x}%;top:${slot.y}%;">
         <div class="gpfl-pitch-pos">${esc(slot.label)}</div>
-        ${
-          pl
-            ? `<button type="button" class="gpfl-pitch-name gpfl-card-link" data-id="${esc(
-                selected
-              )}">${esc(pl.player_name)}</button>`
-            : `<div class="gpfl-pitch-name empty">Empty</div>`
-        }
-        <select class="gpfl-pitch-pick" data-slot="${esc(slot.id)}" ${open ? "" : "disabled"}>
-          ${opts.join("")}
-        </select>
+        ${thumb}
+        <select class="gpfl-pitch-pick" data-slot="${esc(slot.id)}" title="${esc(slot.label)}" ${
+          open ? "" : "disabled"
+        }>${options.join("")}</select>
       </div>`;
     })
     .join("");
 
-  root.querySelectorAll(".gpfl-pitch-pick").forEach((sel) => {
+  pitchRoot.querySelectorAll(".gpfl-pitch-pick").forEach((sel) => {
     const slotId = sel.dataset.slot;
     if (state.slotMap[slotId]) sel.value = state.slotMap[slotId];
     sel.onchange = () => {
@@ -480,80 +474,11 @@ function renderPitch(data) {
         delete state.slotMap[slotId];
       }
       state.benchOrder = seedBenchFromSquad(squad, state.slotMap);
-      renderPitchAndXi(state.payload);
-    };
-  });
-  root.querySelectorAll(".gpfl-card-link").forEach((btn) => {
-    btn.onclick = () => openPlayerCard(btn.dataset.id);
-  });
-}
-
-function renderXiDropdowns(data) {
-  const root = document.getElementById("gpflXi");
-  const capSel = document.getElementById("gpflCaptain");
-  if (!root) return;
-  const squad = (data?.squad || []).filter((p) => p.slot_status === "active");
-  const formation = getFormation(state.formationId);
-  if (!formation) {
-    root.innerHTML = "";
-    return;
-  }
-  const used = new Set(Object.values(state.slotMap).filter(Boolean));
-  const prevCap = capSel?.value || "";
-  const open = editingOpen(data);
-
-  const rows = formation.slots
-    .map((slot) => {
-      const required = slot.label;
-      const selected = state.slotMap[slot.id] || "";
-      const eligible = squad.filter(
-        (p) => posFitsSlot(p.position, required) || p.player_id === selected
-      );
-      const options = [
-        `<option value="">— pick ${esc(required)} —</option>`,
-        ...eligible.map((p) => {
-          const taken = used.has(p.player_id) && state.slotMap[slot.id] !== p.player_id;
-          return `<option value="${esc(p.player_id)}" ${
-            selected === p.player_id ? "selected" : ""
-          } ${taken ? "disabled" : ""}>${esc(p.player_name)} (${esc(p.position || "?")})${
-            taken ? " · in XI" : ""
-          }</option>`;
-        }),
-      ];
-      return `<tr>
-        <td><b>${esc(slot.id)}</b></td>
-        <td>${esc(required)}</td>
-        <td><select class="gpfl-slot" data-slot="${esc(slot.id)}" ${open ? "" : "disabled"}
-          style="width:100%;min-width:160px;background:#111820;border:1px solid #445;color:#eee;padding:6px;border-radius:4px;">${options.join(
-            ""
-          )}</select></td>
-      </tr>`;
-    })
-    .join("");
-
-  root.innerHTML = `<table class="gpfl-table">
-    <thead><tr><th>Slot</th><th>Needs</th><th>Player</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
-
-  root.querySelectorAll(".gpfl-slot").forEach((sel) => {
-    const slotId = sel.dataset.slot;
-    if (state.slotMap[slotId]) sel.value = state.slotMap[slotId];
-    sel.onchange = () => {
-      const pid = sel.value || "";
-      if (pid) {
-        for (const [k, v] of Object.entries(state.slotMap)) {
-          if (v === pid && k !== slotId) delete state.slotMap[k];
-        }
-        state.slotMap[slotId] = pid;
-      } else {
-        delete state.slotMap[slotId];
-      }
-      state.benchOrder = seedBenchFromSquad(squad, state.slotMap);
-      renderPitchAndXi(state.payload);
+      renderPitchBench(state.payload);
     };
   });
 
+  // Captain options from current XI
   const starterIds = formation.slots.map((s) => state.slotMap[s.id]).filter(Boolean);
   const starters = squad.filter((p) => starterIds.includes(p.player_id));
   const savedCap = squad.find((p) => p.is_captain)?.player_id || "";
@@ -570,54 +495,131 @@ function renderXiDropdowns(data) {
       (starters[0] && starters[0].player_id) ||
       "";
     if (prefer) capSel.value = prefer;
-    capSel.onchange = () => renderPitch(state.payload);
+    capSel.onchange = () => renderPitchBench(state.payload);
   }
-}
 
-function renderPitchAndXi(data) {
-  renderPitch(data);
-  renderXiDropdowns(data);
-  renderBench(data);
+  // Bench
+  let order = state.benchOrder.filter((id) => !starterIds.includes(id));
+  const missing = squad
+    .filter((p) => !starterIds.includes(p.player_id) && !order.includes(p.player_id))
+    .map((p) => p.player_id);
+  order = [...order, ...missing];
+  state.benchOrder = order;
+
+  if (!order.length) {
+    benchRoot.innerHTML = `<p class="gpfl-muted">Players not in the XI appear here as ordered subs.</p>`;
+    return;
+  }
+
+  benchRoot.innerHTML = `<ol class="gpfl-bench-list">
+    ${order
+      .map((id, i) => {
+        const p = playerById(squad, id);
+        if (!p) return "";
+        return `<li class="gpfl-bench-item">
+          <span class="gpfl-bench-rank">${i + 1}</span>
+          <img class="gpfl-bench-thumb" src="${pesdbPlayerCardUrl(id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
+          <div class="gpfl-bench-meta">
+            <button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(id)}">${esc(
+              p.player_name || id
+            )}</button>
+            <span class="gpfl-muted">${esc(normalizePos(p.position) || p.position_group || "")}</span>
+          </div>
+          <span class="gpfl-bench-actions">
+            <button type="button" class="gpfl-btn gpfl-bench-move" data-dir="-1" data-id="${esc(id)}" ${
+              i === 0 || !open ? "disabled" : ""
+            }>↑</button>
+            <button type="button" class="gpfl-btn gpfl-bench-move" data-dir="1" data-id="${esc(id)}" ${
+              i === order.length - 1 || !open ? "disabled" : ""
+            }>↓</button>
+          </span>
+        </li>`;
+      })
+      .join("")}
+  </ol>`;
+
+  benchRoot.querySelectorAll(".gpfl-bench-move").forEach((btn) => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const dir = Number(btn.dataset.dir);
+      const idx = state.benchOrder.indexOf(id);
+      const j = idx + dir;
+      if (idx < 0 || j < 0 || j >= state.benchOrder.length) return;
+      const next = [...state.benchOrder];
+      [next[idx], next[j]] = [next[j], next[idx]];
+      state.benchOrder = next;
+      renderPitchBench(state.payload);
+    };
+  });
+  benchRoot.querySelectorAll(".gpfl-card-link").forEach((btn) => {
+    btn.onclick = () => openPlayerCard(btn.dataset.id, { canSign: false });
+  });
 }
 
 function renderSquad(data) {
   const root = document.getElementById("gpflSquad");
   const squad = data.squad || [];
   if (!squad.length) {
-    root.innerHTML = `<p class="gpfl-muted">Empty squad — pick players from the pool.</p>`;
+    root.innerHTML = `<p class="gpfl-muted">Empty squad — expand the pool and sign players.</p>`;
     return;
   }
-  const rows = squad
-    .map((p) => {
-      const fa = p.slot_status === "needs_replace";
-      const role = p.is_starter
-        ? p.pitch_slot || "XI"
-        : p.bench_order
-          ? `B${p.bench_order}`
-          : "Bench";
-      return `<tr class="${fa ? "needs-replace" : ""}">
-        <td>
-          <button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(p.player_id)}">${esc(
-            p.player_name || p.player_id
-          )}</button>
-          ${fa ? `<span class="gpfl-badge gpfl-badge--fa">FA — replace</span>` : ""}
-          ${p.is_captain ? `<span class="gpfl-badge gpfl-badge--c">C</span>` : ""}
-          <span class="gpfl-badge">${esc(role)}</span>
-        </td>
-        <td>${esc(p.position || p.position_group || "—")}</td>
-        <td>${esc(p.club_name || p.club_short_name || "—")}</td>
-        <td class="num">${p.month_points != null ? esc(p.month_points) : "—"}</td>
-        <td class="num">${moneyNum(p.purchase_price)}</td>
-        <td><button type="button" class="gpfl-btn gpfl-rm" data-id="${esc(p.player_id)}" ${
-          editingOpen(data) ? "" : "disabled"
-        }>${fa ? "Clear" : "Sell"}</button></td>
-      </tr>`;
+
+  const sections = [
+    { id: "gk", label: "Goalkeepers", group: "gk" },
+    { id: "def", label: "Defenders", group: "def" },
+    { id: "mid", label: "Midfielders", group: "mid" },
+    { id: "fwd", label: "Forwards", group: "fwd" },
+  ];
+
+  const open = editingOpen(data);
+  const blocks = sections
+    .map((sec) => {
+      const rows = sortPlayersByPos(
+        squad.filter((p) => String(p.position_group || "").toLowerCase() === sec.group)
+      );
+      if (!rows.length) {
+        return `<div class="gpfl-squad-sec"><h3 class="gpfl-subhead">${esc(sec.label)}</h3>
+          <p class="gpfl-muted">None yet.</p></div>`;
+      }
+      return `<div class="gpfl-squad-sec">
+        <h3 class="gpfl-subhead">${esc(sec.label)} <span class="gpfl-muted">(${rows.length})</span></h3>
+        <table class="gpfl-table">
+          <thead><tr><th></th><th>Player</th><th>Pos</th><th>Club</th><th class="num">Paid</th><th></th></tr></thead>
+          <tbody>
+            ${rows
+              .map((p) => {
+                const fa = p.slot_status === "needs_replace";
+                const role = p.is_starter
+                  ? p.pitch_slot || "XI"
+                  : p.bench_order
+                    ? `B${p.bench_order}`
+                    : "Bench";
+                return `<tr class="${fa ? "needs-replace" : ""}">
+                  <td><img class="gpfl-mini-thumb" src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'"></td>
+                  <td>
+                    <button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(
+                      p.player_id
+                    )}">${esc(p.player_name || p.player_id)}</button>
+                    ${fa ? `<span class="gpfl-badge gpfl-badge--fa">FA</span>` : ""}
+                    ${p.is_captain ? `<span class="gpfl-badge gpfl-badge--c">C</span>` : ""}
+                    <span class="gpfl-badge">${esc(role)}</span>
+                  </td>
+                  <td>${esc(normalizePos(p.position) || "—")}</td>
+                  <td>${esc(p.club_name || p.club_short_name || "—")}</td>
+                  <td class="num">${moneyNum(p.purchase_price)}</td>
+                  <td><button type="button" class="gpfl-btn gpfl-rm" data-id="${esc(p.player_id)}" ${
+                    open ? "" : "disabled"
+                  }>${fa ? "Clear" : "Sell"}</button></td>
+                </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>`;
     })
     .join("");
-  root.innerHTML = `<table class="gpfl-table">
-    <thead><tr><th>Player</th><th>Pos</th><th>Club</th><th class="num">Mo pts</th><th class="num">Paid (₿)</th><th></th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
+
+  root.innerHTML = blocks;
 
   root.querySelectorAll(".gpfl-rm").forEach((btn) => {
     btn.onclick = async () => {
@@ -632,7 +634,7 @@ function renderSquad(data) {
     };
   });
   root.querySelectorAll(".gpfl-card-link").forEach((btn) => {
-    btn.onclick = () => openPlayerCard(btn.dataset.id);
+    btn.onclick = () => openPlayerCard(btn.dataset.id, { canSign: false });
   });
 }
 
@@ -641,167 +643,325 @@ function fdrClass(fdr) {
   return `gpfl-fdr gpfl-fdr--${Math.min(5, Math.max(1, n))}`;
 }
 
-async function openPlayerCard(playerId) {
+function renderPoolShell() {
+  const root = document.getElementById("gpflPool");
+  if (!root) return;
+  root.innerHTML = POOL_SECTIONS.map((sec) => {
+    const open = Boolean(state.poolOpen[sec.id]);
+    const cached = state.poolByGroup[sec.id];
+    return `<details class="gpfl-acc" data-sec="${esc(sec.id)}" ${open ? "open" : ""}>
+      <summary>${esc(sec.label)} <span class="gpfl-muted">${esc(sec.positions.join(" · "))}</span></summary>
+      <div class="gpfl-acc-body" id="gpflPoolBody-${esc(sec.id)}">
+        ${
+          cached
+            ? renderPoolRowsHtml(sec, cached)
+            : `<p class="gpfl-muted">Loading…</p>`
+        }
+      </div>
+    </details>`;
+  }).join("");
+
+  root.querySelectorAll("details.gpfl-acc").forEach((det) => {
+    det.addEventListener("toggle", async () => {
+      const id = det.dataset.sec;
+      state.poolOpen[id] = det.open;
+      if (det.open) await ensurePoolGroup(id);
+    });
+  });
+  wirePoolRows(root);
+}
+
+function renderPoolRowsHtml(sec, payload) {
+  let players = payload?.players || [];
+  const q = String(document.getElementById("gpflSearch")?.value || "")
+    .trim()
+    .toLowerCase();
+  if (q) {
+    players = players.filter((p) =>
+      [p.player_name, p.club_name, p.club_short_name, p.owner_name, p.position]
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }
+  players = sortPlayersByPos(players);
+
+  // Sub-group by exact position within section
+  const byPos = {};
+  for (const pos of sec.positions) byPos[pos] = [];
+  const other = [];
+  for (const p of players) {
+    const pos = normalizePos(p.position);
+    if (byPos[pos]) byPos[pos].push(p);
+    else other.push(p);
+  }
+
+  const chunks = [...sec.positions, ...(other.length ? ["OTHER"] : [])]
+    .map((pos) => {
+      const list = pos === "OTHER" ? other : byPos[pos] || [];
+      if (!list.length) return "";
+      return `<div class="gpfl-pool-pos">
+        <div class="gpfl-pool-pos-label">${esc(pos === "OTHER" ? "Other" : pos)} · ${list.length}</div>
+        <ul class="gpfl-pool-list">
+          ${list
+            .map(
+              (p) => `<li>
+                <button type="button" class="gpfl-pool-row" data-id="${esc(p.player_id)}" data-sign="1">
+                  <img src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
+                  <span class="gpfl-pool-row-main">
+                    <b>${esc(p.player_name)}</b>
+                    <span class="gpfl-muted">${esc(p.club_name || p.club_short_name || "")} · ${esc(
+                      p.owner_name || "—"
+                    )}</span>
+                  </span>
+                  <span class="gpfl-pool-row-meta">
+                    <span>${esc(p.ownership_pct ?? "—")}%</span>
+                    <span>${moneyNum(p.price)}</span>
+                  </span>
+                </button>
+              </li>`
+            )
+            .join("")}
+        </ul>
+      </div>`;
+    })
+    .join("");
+
+  if (!chunks) {
+    return `<p class="gpfl-muted">No players in this group${q ? " for this filter" : ""}.</p>`;
+  }
+  return `<p class="gpfl-muted" style="margin:0 0 8px;">${esc(payload.total ?? players.length)} in group · click a player for profile &amp; sign</p>${chunks}`;
+}
+
+function wirePoolRows(root) {
+  root.querySelectorAll(".gpfl-pool-row").forEach((btn) => {
+    btn.onclick = () =>
+      openPlayerCard(btn.dataset.id, { canSign: btn.dataset.sign === "1" && editingOpen() });
+  });
+}
+
+async function ensurePoolGroup(secId) {
+  const sec = POOL_SECTIONS.find((s) => s.id === secId);
+  if (!sec) return;
+  const body = document.getElementById(`gpflPoolBody-${secId}`);
+  if (!body) return;
+
+  const div = document.getElementById("gpflDivFilter")?.value || null;
+  body.innerHTML = `<p class="gpfl-muted">Loading…</p>`;
+
+  const { data, error } = await supabase.rpc("gpfl_list_players", {
+    p_position_group: sec.group,
+    p_division: div || null,
+    p_club: null,
+    p_search: null,
+    p_max_price: null,
+    p_limit: 200,
+    p_offset: 0,
+  });
+
+  if (error) {
+    body.innerHTML = `<p class="gpfl-muted">${esc(patchMissingHint(error))}</p>`;
+    return;
+  }
+  state.poolByGroup[secId] = data;
+  body.innerHTML = renderPoolRowsHtml(sec, data);
+  wirePoolRows(body);
+}
+
+function refreshOpenPoolBodies() {
+  for (const sec of POOL_SECTIONS) {
+    if (!state.poolOpen[sec.id]) continue;
+    const body = document.getElementById(`gpflPoolBody-${sec.id}`);
+    const cached = state.poolByGroup[sec.id];
+    if (body && cached) {
+      body.innerHTML = renderPoolRowsHtml(sec, cached);
+      wirePoolRows(body);
+    }
+  }
+}
+
+async function openPlayerCard(playerId, { canSign = false } = {}) {
   const dlg = document.getElementById("gpflCardDialog");
   const body = document.getElementById("gpflCardBody");
   const title = document.getElementById("gpflCardTitle");
   if (!dlg || !body) return;
+  state.cardContext = { playerId, canSign };
   title.textContent = "Loading…";
-  body.innerHTML = `<p class="gpfl-muted">Fetching card…</p>`;
+  body.innerHTML = `<p class="gpfl-muted">Fetching profile…</p>`;
   dlg.showModal();
-  const { data, error } = await supabase.rpc("gpfl_player_card", { p_player_id: playerId });
-  if (error || !data?.ok) {
+
+  const [cardRes, careerRes] = await Promise.all([
+    supabase.rpc("gpfl_player_card", { p_player_id: playerId }),
+    supabase.rpc("competition_player_career_bundle", { p_player_id: playerId }),
+  ]);
+
+  const data = cardRes.data;
+  if (cardRes.error || !data?.ok) {
     title.textContent = "Player";
-    body.innerHTML = `<p class="gpfl-muted">${esc(patchMissingHint(error || data?.reason))}</p>`;
+    body.innerHTML = `<p class="gpfl-muted">${esc(
+      patchMissingHint(cardRes.error || data?.reason)
+    )}</p>`;
     return;
   }
+
   title.textContent = data.player_name || playerId;
+  const career = careerRes.data || {};
+  const stints = career.stints || [];
+  const transfers = career.transfers || [];
+  const totals = career.totals || {};
+
   const form = (data.form || [])
     .map(
       (f) =>
         `<span class="gpfl-form-chip">${esc(monthLabel(f.gpsl_month))}: <b>${esc(f.points)}</b></span>`
     )
-    .join("") || `<span class="gpfl-muted">No scored months yet</span>`;
+    .join("") || `<span class="gpfl-muted">No scored GPFL months yet</span>`;
+
   const fixtures = (data.next_fixtures || [])
     .map((fx) => {
       const ha = fx.is_home ? "H" : "A";
       return `<tr>
         <td>${esc(monthLabel(fx.gpsl_month))} MD${esc(fx.matchday)}</td>
         <td>${esc(ha)} ${esc(fx.opponent_name || fx.opponent_short_name)}</td>
-        <td><span class="${fdrClass(fx.fdr)}" title="Fixture difficulty">${esc(fx.fdr ?? "—")}</span></td>
+        <td><span class="${fdrClass(fx.fdr)}">${esc(fx.fdr ?? "—")}</span></td>
       </tr>`;
     })
     .join("");
+
+  const stintRows = stints.length
+    ? stints
+        .map(
+          (s) => `<tr>
+            <td>${esc(s.season_label || "—")}</td>
+            <td>${esc(s.club_name || s.club_short_name || "—")}</td>
+            <td class="num">${esc(s.appearances ?? 0)}</td>
+            <td class="num">${esc(s.goals ?? 0)}</td>
+            <td class="num">${esc(s.assists ?? 0)}</td>
+            <td class="num">${esc(s.avg_rating ?? "—")}</td>
+            <td class="num">${esc(s.potm_awards ?? 0)}</td>
+          </tr>`
+        )
+        .join("")
+    : "";
+
+  const xferRows = transfers.length
+    ? transfers
+        .slice(0, 12)
+        .map(
+          (t) => `<tr>
+            <td>${esc(t.season_label || "—")}</td>
+            <td>${esc(t.seller_club_short_name || "—")} → ${esc(
+              t.buyer_club_short_name || t.foreign_buyer_name || "—"
+            )}</td>
+            <td class="num">${moneyNum(t.fee)}</td>
+          </tr>`
+        )
+        .join("")
+    : "";
+
+  const alreadyIn = (state.payload?.squad || []).some(
+    (p) => p.player_id === playerId && p.slot_status === "active"
+  );
+  const showSign = canSign && editingOpen() && !alreadyIn;
+
   body.innerHTML = `
-    <div class="gpfl-card-meta">
-      <div><span class="gpfl-muted">Club</span><b>${esc(data.club_name || data.club_short_name || "—")}</b></div>
-      <div><span class="gpfl-muted">Pos</span><b>${esc(data.position || data.position_group)}</b></div>
-      <div><span class="gpfl-muted">Price</span><b>${money(data.price)}</b></div>
-      <div><span class="gpfl-muted">Owned by</span><b>${esc(data.ownership_pct ?? 0)}%</b></div>
-      <div><span class="gpfl-muted">Total pts</span><b>${esc(data.total_points ?? 0)}</b></div>
-      <div><span class="gpfl-muted">Apps</span><b>${esc(data.apps ?? 0)}</b></div>
-      <div><span class="gpfl-muted">G / A</span><b>${esc(data.goals ?? 0)} / ${esc(data.assists ?? 0)}</b></div>
-      <div><span class="gpfl-muted">POTM</span><b>${esc(data.potm ?? 0)}</b></div>
+    <div class="gpfl-card-hero">
+      <a href="${pesdbPlayerUrl(playerId)}" target="_blank" rel="noopener" title="PESDB card">
+        <img class="gpfl-card-pic" src="${pesdbPlayerCardUrl(playerId)}" alt="" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
+      </a>
+      <div class="gpfl-card-meta">
+        <div><span class="gpfl-muted">Club</span><b>${esc(data.club_name || data.club_short_name || "—")}</b></div>
+        <div><span class="gpfl-muted">Pos</span><b>${esc(normalizePos(data.position) || data.position_group)}</b></div>
+        <div><span class="gpfl-muted">GPFL price</span><b>${money(data.price)}</b></div>
+        <div><span class="gpfl-muted">Owned by</span><b>${esc(data.ownership_pct ?? 0)}%</b></div>
+        <div><span class="gpfl-muted">GPFL pts</span><b>${esc(data.total_points ?? 0)}</b></div>
+        <div><span class="gpfl-muted">Apps / G / A</span><b>${esc(data.apps ?? 0)} / ${esc(
+          data.goals ?? 0
+        )} / ${esc(data.assists ?? 0)}</b></div>
+        <div><span class="gpfl-muted">Career apps</span><b>${esc(totals.appearances ?? 0)}</b></div>
+        <div><span class="gpfl-muted">Career G/A</span><b>${esc(totals.goals ?? 0)} / ${esc(
+          totals.assists ?? 0
+        )}</b></div>
+      </div>
     </div>
-    <h3 class="gpfl-subhead">Form (recent months)</h3>
+    <div class="gpfl-card-actions">
+      ${
+        showSign
+          ? `<button type="button" class="gpfl-btn gpfl-btn--gold gpfl-sign-btn" data-id="${esc(
+              playerId
+            )}">Sign to squad</button>`
+          : alreadyIn
+            ? `<span class="gpfl-badge">In your squad</span>`
+            : ""
+      }
+      <a class="gpfl-btn" href="${gpslPlayerCareerUrl(playerId)}" target="_blank" rel="noopener">Full GPSL career</a>
+      <a class="gpfl-btn" href="${pesdbPlayerUrl(playerId)}" target="_blank" rel="noopener">PESDB</a>
+    </div>
+    <h3 class="gpfl-subhead">GPFL form</h3>
     <div class="gpfl-form-row">${form}</div>
-    <h3 class="gpfl-subhead">Next fixtures · FDR (1 easy → 5 hard)</h3>
+    <h3 class="gpfl-subhead">Next fixtures · FDR</h3>
     ${
       fixtures
         ? `<table class="gpfl-table"><thead><tr><th>When</th><th>Opp</th><th>FDR</th></tr></thead><tbody>${fixtures}</tbody></table>`
         : `<p class="gpfl-muted">No upcoming fixtures.</p>`
     }
+    <h3 class="gpfl-subhead">GPSL club history (by season)</h3>
+    ${
+      stintRows
+        ? `<table class="gpfl-table">
+            <thead><tr><th>Season</th><th>Club</th><th class="num">Apps</th><th class="num">G</th><th class="num">A</th><th class="num">Avg</th><th class="num">POTM</th></tr></thead>
+            <tbody>${stintRows}</tbody>
+          </table>
+          <p class="gpfl-muted" style="margin-top:6px;">Stats while at each GPSL club / owner spell.</p>`
+        : `<p class="gpfl-muted">No GPSL match history yet.</p>`
+    }
+    ${
+      xferRows
+        ? `<h3 class="gpfl-subhead">Transfer history</h3>
+           <table class="gpfl-table">
+             <thead><tr><th>Season</th><th>Move</th><th class="num">Fee</th></tr></thead>
+             <tbody>${xferRows}</tbody>
+           </table>`
+        : ""
+    }
   `;
-}
 
-function renderPosTabs() {
-  const tabs = document.getElementById("gpflPosTabs");
-  const groups = [
-    ["gk", "GK"],
-    ["def", "DEF"],
-    ["mid", "MID"],
-    ["fwd", "FWD"],
-  ];
-  tabs.innerHTML = groups
-    .map(
-      ([id, label]) =>
-        `<button type="button" class="gpfl-tab ${state.posGroup === id ? "active" : ""}" data-g="${id}">${label}</button>`
-    )
-    .join("");
-  tabs.querySelectorAll(".gpfl-tab").forEach((b) => {
-    b.onclick = () => {
-      state.posGroup = b.dataset.g;
-      renderPosTabs();
-      loadPool();
-    };
+  body.querySelector(".gpfl-sign-btn")?.addEventListener("click", async () => {
+    await signPlayer(playerId);
+    dlg.close();
   });
 }
 
-async function loadPool() {
-  const search = document.getElementById("gpflSearch")?.value || null;
-  const div = document.getElementById("gpflDivFilter")?.value || null;
-  const { data, error } = await supabase.rpc("gpfl_list_players", {
-    p_position_group: state.posGroup,
-    p_division: div || null,
-    p_club: null,
-    p_search: search,
-    p_max_price: null,
-    p_limit: 60,
-    p_offset: 0,
-  });
-  const root = document.getElementById("gpflPool");
-  if (error) {
-    root.innerHTML = `<p class="gpfl-muted">${esc(patchMissingHint(error))}</p>`;
+async function signPlayer(playerId) {
+  const { caps, have } = slotCounts(state.payload || {});
+  const poolHit = Object.values(state.poolByGroup)
+    .flatMap((g) => g?.players || [])
+    .find((p) => p.player_id === playerId);
+  const g = String(poolHit?.position_group || "").toLowerCase();
+  if (g && caps[g] != null && have[g] >= caps[g]) {
+    setStatus(
+      `No ${g.toUpperCase()} slots left (${have[g]}/${caps[g]}). Sell one first.`,
+      false
+    );
     return;
   }
-  const players = data?.players || [];
-  state.pool = players;
-  if (!players.length) {
-    root.innerHTML = `<p class="gpfl-muted">No players (open season / refresh pool as admin).</p>`;
-    return;
+  const free = Number(state.payload?.entry?.free_transfers_remaining ?? 0);
+  const status = state.payload?.entry?.status;
+  const hit = Number(state.payload?.transfer_hit_points ?? -4);
+  if (status === "active" && free <= 0) {
+    if (!confirm(`No free transfers left. This transfer costs ${hit} points. Continue?`)) {
+      return;
+    }
   }
-  const open = editingOpen(state.payload);
-  root.innerHTML = `<p class="gpfl-muted" style="margin:0 0 8px;">${esc(data.total)} in filter · showing ${players.length}</p>
-    <table class="gpfl-table">
-      <thead><tr><th>Player</th><th>Club</th><th>Own%</th><th>Pts</th><th>Pos</th><th class="num">Price (₿)</th><th></th></tr></thead>
-      <tbody>
-        ${players
-          .map(
-            (p) => `<tr>
-              <td><button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(
-                p.player_id
-              )}">${esc(p.player_name)}</button></td>
-              <td>${esc(p.club_name || p.club_short_name)}</td>
-              <td class="num">${esc(p.ownership_pct ?? "—")}</td>
-              <td class="num">${esc(p.total_points ?? 0)}</td>
-              <td>${esc(p.position || p.position_group)}</td>
-              <td class="num">${moneyNum(p.price)}</td>
-              <td><button type="button" class="gpfl-btn gpfl-add" data-id="${esc(p.player_id)}" ${
-                open ? "" : "disabled"
-              }>Add</button></td>
-            </tr>`
-          )
-          .join("")}
-      </tbody>
-    </table>`;
-
-  root.querySelectorAll(".gpfl-add").forEach((btn) => {
-    btn.onclick = async () => {
-      const { caps, have } = slotCounts(state.payload || {});
-      const row = state.pool.find((p) => p.player_id === btn.dataset.id);
-      const g = String(row?.position_group || "").toLowerCase();
-      if (g && caps[g] != null && have[g] >= caps[g]) {
-        setStatus(
-          `No ${g.toUpperCase()} slots left (${have[g]}/${caps[g]}). Sell one or pick another position.`,
-          false
-        );
-        return;
-      }
-      const free = Number(state.payload?.entry?.free_transfers_remaining ?? 0);
-      const status = state.payload?.entry?.status;
-      const hit = Number(state.payload?.transfer_hit_points ?? -4);
-      if (status === "active" && free <= 0) {
-        if (
-          !confirm(
-            `No free transfers left. This transfer costs ${hit} points. Continue?`
-          )
-        ) {
-          return;
-        }
-      }
-      setStatus("Adding…");
-      const { data: next, error: err } = await supabase.rpc("gpfl_add_player", {
-        p_player_id: btn.dataset.id,
-      });
-      if (err) return setStatus(patchMissingHint(err), false);
-      if (next) state.payload = next;
-      await refresh();
-      setStatus("Added.");
-    };
+  setStatus("Signing…");
+  const { data: next, error } = await supabase.rpc("gpfl_add_player", {
+    p_player_id: playerId,
   });
-  root.querySelectorAll(".gpfl-card-link").forEach((btn) => {
-    btn.onclick = () => openPlayerCard(btn.dataset.id);
-  });
+  if (error) return setStatus(patchMissingHint(error), false);
+  if (next) state.payload = next;
+  state.poolByGroup = {};
+  await refresh();
+  setStatus("Signed.");
 }
 
 function renderMonthScores(data) {
@@ -809,7 +969,7 @@ function renderMonthScores(data) {
   if (!root) return;
   const rows = data?.month_points || [];
   if (!rows.length) {
-    root.innerHTML = `<p class="gpfl-muted">No month scores yet. Provisional updates as results come in; finalise on Score month.</p>`;
+    root.innerHTML = `<p class="gpfl-muted">No month scores yet.</p>`;
     return;
   }
   root.innerHTML = `<table class="gpfl-table">
@@ -891,25 +1051,23 @@ async function loadContent() {
   if (dream.error) {
     dreamRoot.innerHTML = `<p class="gpfl-muted">${esc(patchMissingHint(dream.error))}</p>`;
   } else if (!dream.data?.ok || !(dream.data.players || []).length) {
-    dreamRoot.innerHTML = `<p class="gpfl-muted">No dream team yet for ${esc(
-      monthLabel(month)
-    )} (needs scored fixtures).</p>`;
+    dreamRoot.innerHTML = `<p class="gpfl-muted">No dream team yet for ${esc(monthLabel(month))}.</p>`;
   } else {
     const players = dream.data.players || [];
     dreamRoot.innerHTML = `<p class="gpfl-muted" style="margin:0 0 8px;">Total ${esc(
       dream.data.total_points
-    )} pts · ${esc(dream.data.shape || "4-4-2")}</p>
+    )} pts</p>
       <table class="gpfl-table">
-        <thead><tr><th>Player</th><th>Pos</th><th>Own%</th><th class="num">Pts</th></tr></thead>
+        <thead><tr><th></th><th>Player</th><th>Pos</th><th>Own%</th><th class="num">Pts</th></tr></thead>
         <tbody>
           ${players
             .map(
               (p) => `<tr>
+                <td><img class="gpfl-mini-thumb" src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'"></td>
                 <td><button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(
                   p.player_id
-                )}">${esc(p.player_name)}</button>
-                <div class="gpfl-muted" style="font-size:11px;">${esc(p.club_name || "")}</div></td>
-                <td>${esc(p.position || p.position_group)}</td>
+                )}">${esc(p.player_name)}</button></td>
+                <td>${esc(normalizePos(p.position) || p.position_group)}</td>
                 <td class="num">${esc(p.ownership_pct ?? "—")}</td>
                 <td class="num">${esc(p.points)}</td>
               </tr>`
@@ -918,7 +1076,7 @@ async function loadContent() {
         </tbody>
       </table>`;
     dreamRoot.querySelectorAll(".gpfl-card-link").forEach((btn) => {
-      btn.onclick = () => openPlayerCard(btn.dataset.id);
+      btn.onclick = () => openPlayerCard(btn.dataset.id, { canSign: false });
     });
   }
 
@@ -945,7 +1103,7 @@ async function loadContent() {
         : `<p class="gpfl-muted">None yet.</p>`);
     xferRoot.innerHTML = block("In", tin) + block("Out", tout);
     xferRoot.querySelectorAll(".gpfl-card-link").forEach((btn) => {
-      btn.onclick = () => openPlayerCard(btn.dataset.id);
+      btn.onclick = () => openPlayerCard(btn.dataset.id, { canSign: false });
     });
   }
 }
@@ -958,17 +1116,19 @@ async function refresh() {
   fillMonthSelects();
   if (data.joined) {
     state.formationId = data.entry?.formation_id || state.formationId || DEFAULT_FORMATION_ID;
-    const fromServer = seedSlotMapFromSquad(data.squad);
-    state.slotMap = Object.keys(fromServer).length ? fromServer : state.slotMap;
+    state.slotMap = hydrateSlotMap(data.squad, state.formationId);
     state.benchOrder = seedBenchFromSquad(data.squad, state.slotMap);
     renderEntryStats(data);
     renderChips(data);
     fillFormationSelect(data);
-    renderPitchAndXi(data);
+    renderPitchBench(data);
     renderSquad(data);
     renderMonthScores(data);
-    renderPosTabs();
-    await loadPool();
+    renderPoolShell();
+    // Prefetch nothing — accordion loads on open
+    for (const id of Object.keys(state.poolOpen)) {
+      if (state.poolOpen[id]) await ensurePoolGroup(id);
+    }
     await loadBoard();
   }
   await loadContent();
@@ -996,10 +1156,7 @@ function wire() {
     const active = (state.payload?.squad || []).filter((p) => p.slot_status === "active");
     const need = Number(state.payload?.settings?.squad_size ?? 15);
     if (active.length < need) {
-      setStatus(
-        `Confirm needs a full ${need}-man squad — you have ${active.length}. Keep using Add until you reach ${need}.`,
-        false
-      );
+      setStatus(`Confirm needs a full ${need}-man squad — you have ${active.length}.`, false);
       return;
     }
     setStatus("Confirming…");
@@ -1017,7 +1174,7 @@ function wire() {
     for (const slot of formation.slots) {
       const pid = state.slotMap[slot.id];
       if (!pid) {
-        setStatus(`Fill ${slot.id} (${slot.label}) before saving.`, false);
+        setStatus(`Fill ${slot.label} (${slot.id}) before saving.`, false);
         return;
       }
       slotMap[slot.id] = pid;
@@ -1029,7 +1186,7 @@ function wire() {
     }
     const starters = new Set(Object.values(slotMap));
     const benchIds = state.benchOrder.filter((id) => id && !starters.has(id));
-    setStatus("Saving formation XI + bench…");
+    setStatus("Saving pitch XI + bench…");
     const { data, error } = await supabase.rpc("gpfl_set_xi", {
       p_formation_id: formationId,
       p_slot_map: slotMap,
@@ -1042,14 +1199,20 @@ function wire() {
     state.benchOrder = benchIds;
     if (data) state.payload = data;
     await refresh();
-    setStatus("Formation XI + bench saved.");
+    setStatus("Pitch XI + bench saved.");
   });
 
-  document.getElementById("gpflSearchBtn")?.addEventListener("click", () => loadPool());
-  document.getElementById("gpflSearch")?.addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter") loadPool();
+  let searchTimer = null;
+  document.getElementById("gpflSearch")?.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => refreshOpenPoolBodies(), 200);
   });
-  document.getElementById("gpflDivFilter")?.addEventListener("change", () => loadPool());
+  document.getElementById("gpflDivFilter")?.addEventListener("change", async () => {
+    state.poolByGroup = {};
+    for (const id of Object.keys(state.poolOpen)) {
+      if (state.poolOpen[id]) await ensurePoolGroup(id);
+    }
+  });
   document.getElementById("gpflContentRefresh")?.addEventListener("click", () => loadContent());
   document.getElementById("gpflContentMonth")?.addEventListener("change", () => loadContent());
 

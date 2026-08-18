@@ -7,7 +7,7 @@
   <title>GP Fantasy League — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="fantasy.css?v=20260818-gpfl-v2">
+  <link rel="stylesheet" href="fantasy.css?v=20260818-gpfl-pitch2">
 </head>
 <body class="gpfl-page">
   <div id="nav"></div>
@@ -32,16 +32,15 @@
       <p class="gpfl-welcome">Owners lounge</p>
       <h1>GP Fantasy League</h1>
       <p class="gpfl-tagline">
-        Optional side-game. Pick a 15-man squad from Super League &amp; Championship contracted players at owned clubs.
-        Prices are GPSL market values rounded to the nearest million (GPFL budget only — never club money).
+        Optional side-game. Pick a 15-man squad, set your pitch XI from dropdowns on the formation,
+        and order the bench for auto-subs. GPFL budget only — never club money.
       </p>
     </div>
   </header>
 
   <p class="gpfl-disclaimer">
     GPFL is financially separate from GPSL club finances, Bookies, and the Central Bank.
-    Points stay if a player becomes a free agent; you get a GPFL budget refund and must replace them.
-    Auto-subs replace blank starters; extra transfers after free ones cost hit points (configurable).
+    Auto-subs replace blank starters; extra transfers after free ones cost hit points.
   </p>
 
   <main class="gpfl-main">
@@ -76,41 +75,38 @@
         <div class="gpfl-stats" id="gpflEntryStats"></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
           <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflConfirmBtn">Confirm squad (needs 15)</button>
-          <button type="button" class="gpfl-btn" id="gpflSaveXiBtn">Save formation XI + bench</button>
+          <button type="button" class="gpfl-btn" id="gpflSaveXiBtn">Save pitch XI + bench</button>
           <button type="button" class="gpfl-btn gpfl-btn--danger" id="gpflWithdrawBtn">Withdraw</button>
         </div>
         <p class="gpfl-muted" style="margin:10px 0 0;">
-          Build all <b>15</b> players (2 GK / 5 DEF / 5 MID / 3 FWD), set pitch XI + ordered bench + captain, then Confirm.
-          After confirm, free transfers apply each GPSL month; extras cost hit points.
+          Sign <b>15</b> players from the pool (2 GK / 5 DEF / 5 MID / 3 FWD), place XI on the pitch, order the bench, pick captain, then Confirm.
         </p>
       </section>
 
       <section class="gpfl-panel" id="gpflChipsPanel">
         <h2>Chips</h2>
-        <p class="gpfl-muted" style="margin:0 0 10px;">One use each per season when editing is open. Active for the target GPSL month.</p>
         <div class="gpfl-chips" id="gpflChips"></div>
       </section>
 
       <section class="gpfl-panel">
-        <h2>Pitch &amp; bench</h2>
+        <h2>Pitch XI &amp; bench</h2>
         <div class="gpfl-filters" style="align-items:center;">
           <label class="gpfl-muted">Formation
-            <select id="gpflFormation" style="margin-left:6px;min-width:220px;"></select>
+            <select id="gpflFormation" style="margin-left:6px;min-width:200px;"></select>
           </label>
           <label class="gpfl-muted">Captain
             <select id="gpflCaptain" style="margin-left:6px;min-width:180px;"></select>
           </label>
         </div>
+        <p class="gpfl-muted" style="margin:0 0 10px;">
+          Each pitch marker is a dropdown of squad players who can play that slot (with GPFL position flex).
+          Bench order (1→4) drives auto-subs when a starter blanks.
+        </p>
         <div class="gpfl-pitch-wrap">
           <div id="gpflPitch" class="gpfl-pitch" aria-label="Formation pitch"></div>
           <div class="gpfl-bench-col">
-            <h3 class="gpfl-subhead">Bench order (auto-subs)</h3>
-            <p class="gpfl-muted" style="margin:0 0 8px;font-size:12px;">1 = first off the bench when a starter blanks (same position group).</p>
+            <h3 class="gpfl-subhead">Subs bench</h3>
             <div id="gpflBench"></div>
-            <details class="gpfl-xi-details">
-              <summary>Slot dropdowns (accessibility)</summary>
-              <div id="gpflXi"></div>
-            </details>
           </div>
         </div>
       </section>
@@ -122,19 +118,17 @@
         </section>
         <section class="gpfl-panel">
           <h2>Player pool</h2>
-          <div class="gpfl-tabs" id="gpflPosTabs"></div>
-          <p class="gpfl-muted" style="margin:0 0 8px;">Owned clubs only · click a name for the player card (form, ownership, FDR).</p>
+          <p class="gpfl-muted" style="margin:0 0 8px;">Expand a position, open a player profile, then Sign. Owned clubs only.</p>
           <div class="gpfl-filters">
-            <input id="gpflSearch" type="search" placeholder="Search name / club / owner" style="min-width:180px;">
+            <input id="gpflSearch" type="search" placeholder="Filter names / clubs / owners" style="min-width:180px;">
             <select id="gpflDivFilter">
               <option value="">All divisions</option>
               <option value="superleague">Super League</option>
               <option value="championship_a">Championship A</option>
               <option value="championship_b">Championship B</option>
             </select>
-            <button type="button" class="gpfl-btn" id="gpflSearchBtn">Filter</button>
           </div>
-          <div id="gpflPool"></div>
+          <div id="gpflPool" class="gpfl-pool-acc"></div>
         </section>
       </div>
 
@@ -178,6 +172,6 @@
     <div id="gpflCardBody" class="gpfl-dialog-body"></div>
   </dialog>
 
-  <script type="module" src="fantasy.js?v=20260818-gpfl-v2"></script>
+  <script type="module" src="fantasy.js?v=20260818-gpfl-pitch2"></script>
 </body>
 </html>
