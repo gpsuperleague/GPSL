@@ -272,7 +272,7 @@ function slotCounts(data) {
 function setEditLocked(locked) {
   document
     .querySelectorAll(
-      "#gpflConfirmBtn, #gpflSaveXiBtn, #gpflSaveXiBtn2, #gpflFormation, #gpflCaptain, .gpfl-rm, .gpfl-chip-btn, .gpfl-bench-move, .gpfl-pitch-pick, .gpfl-sign-btn, .gpfl-pool-sign"
+      "#gpflConfirmBtn, #gpflSaveXiBtn, #gpflFormation, #gpflCaptain, .gpfl-rm, .gpfl-chip-btn, .gpfl-bench-move, .gpfl-pitch-pick, .gpfl-sign-btn, .gpfl-pool-sign"
     )
     .forEach((el) => {
       el.disabled = locked;
@@ -1356,7 +1356,6 @@ function wire() {
   });
 
   document.getElementById("gpflSaveXiBtn")?.addEventListener("click", saveXi);
-  document.getElementById("gpflSaveXiBtn2")?.addEventListener("click", saveXi);
 
   async function saveXi() {
     const formationId =

@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260818-gpfl-tips">
-  <link rel="stylesheet" href="fantasy.css?v=20260818-sign-caps">
+  <link rel="stylesheet" href="fantasy.css?v=20260818-entry-below">
 </head>
 <body class="gpfl-page">
   <div id="nav"></div>
@@ -74,18 +74,6 @@
 
     <div id="gpflPlay" hidden>
       <section class="gpfl-panel">
-        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Your GPFL entry for this season — budget, points, transfers, and confirm / save actions. Hover stats and buttons for details.">Your entry</h2>
-        <div class="gpfl-stats" id="gpflEntryStats"></div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button type="button" class="gpfl-btn gpfl-btn--gold gpsl-has-tip" id="gpflConfirmBtn" tabindex="0" data-gpsl-tip="Locks your 15-man squad for GPFL scoring. Needs: full 15, a saved pitch XI (formation + 11 starters), and a captain.">Confirm squad (needs 15)</button>
-          <button type="button" class="gpfl-btn gpsl-has-tip" id="gpflSaveXiBtn" tabindex="0" data-gpsl-tip="Saves formation, pitch XI dropdowns, captain, and bench order (1 = first auto-sub). You can re-save while editing is open for the month.">Save pitch XI + bench</button>
-        </div>
-        <p class="gpfl-muted" style="margin:10px 0 0;">
-          Build all <b>15</b>: Squad Building → place XI on the pitch → Confirm.
-        </p>
-      </section>
-
-      <section class="gpfl-panel">
         <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Sign players into your GPFL squad from the contracted GPSL pool. Players at clubs you own in GPSL are excluded. Gold Sign adds them if you have budget and a free slot in that position group.">Squad Building</h2>
         <div class="gpfl-stats gpfl-sign-caps" id="gpflSignCaps"></div>
         <p class="gpfl-muted" style="margin:0 0 8px;">
@@ -145,8 +133,17 @@
             </div>
           </div>
         </div>
-        <div style="margin-top:12px;">
-          <button type="button" class="gpfl-btn gpfl-btn--gold gpsl-has-tip" id="gpflSaveXiBtn2" tabindex="0" data-gpsl-tip="Saves formation, pitch XI dropdowns, captain, and bench order (1 = first auto-sub). You can re-save while editing is open for the month.">Save pitch XI + bench</button>
+
+        <div class="gpfl-entry-below-pitch" id="gpflEntryPanel">
+          <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Your GPFL entry for this season — budget, points, transfers, and confirm / save actions. Hover stats and buttons for details.">Your entry</h2>
+          <div class="gpfl-stats" id="gpflEntryStats"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <button type="button" class="gpfl-btn gpfl-btn--gold gpsl-has-tip" id="gpflConfirmBtn" tabindex="0" data-gpsl-tip="Locks your 15-man squad for GPFL scoring. Needs: full 15, a saved pitch XI (formation + 11 starters), and a captain.">Confirm squad (needs 15)</button>
+            <button type="button" class="gpfl-btn gpsl-has-tip" id="gpflSaveXiBtn" tabindex="0" data-gpsl-tip="Saves formation, pitch XI dropdowns, captain, and bench order (1 = first auto-sub). You can re-save while editing is open for the month.">Save pitch XI + bench</button>
+          </div>
+          <p class="gpfl-muted" style="margin:10px 0 0;">
+            Build all <b>15</b>: Squad Building → place XI on the pitch → Confirm.
+          </p>
         </div>
       </section>
 
@@ -190,6 +187,6 @@
     <div id="gpflCardBody" class="gpfl-dialog-body"></div>
   </dialog>
 
-  <script type="module" src="fantasy.js?v=20260818-squad-labels"></script>
+  <script type="module" src="fantasy.js?v=20260818-entry-below"></script>
 </body>
 </html>

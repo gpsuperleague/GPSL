@@ -263,11 +263,13 @@ body.gpfl-page {
   align-items: start;
   overflow: visible;
 }
-.gpfl-pitch-side {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
+.gpfl-entry-below-pitch {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #2a3a4a;
+}
+.gpfl-entry-below-pitch > h2 {
+  margin-top: 0;
 }
 @media (max-width: 800px) {
   .gpfl-pitch-wrap { grid-template-columns: 1fr; }
