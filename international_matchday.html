@@ -72,6 +72,25 @@
       padding:12px 14px; margin-bottom:16px; font-size:14px;
     }
     .next-intl b { color:#ffaa22; }
+    .action-needed {
+      background:#2a2010; border:1px solid #c0a050; border-radius:8px;
+      padding:12px 14px; margin-bottom:16px; font-size:14px;
+    }
+    .action-needed b { color:#ffcc66; }
+    .action-needed ul { margin:8px 0 0; padding-left:18px; }
+    .action-needed button {
+      margin-left:8px; padding:4px 10px; font-size:12px; cursor:pointer;
+      background:#c0a050; color:#111; border:0; border-radius:4px; font-weight:700;
+    }
+    tr.needs-you { background:#2a2410; }
+    #pendingSchedulePanel {
+      margin:10px 0; padding:12px 14px; border-radius:8px;
+      border:1px solid #c0a050; background:#241c0c;
+    }
+    #acceptBtn {
+      background:#c0a050 !important; color:#111 !important; font-weight:700;
+      border:0 !important;
+    }
   </style>
 </head>
 <body>
@@ -84,6 +103,7 @@
       When match simulation is <b>ON</b>, Instant result / Simulate use the same engine as league &amp; cup (turn off after this season).
     </p>
     <div id="matchSimBannerHost"></div>
+    <div id="actionNeededBanner" class="action-needed" hidden></div>
     <div class="toolbar">
       <a class="button" href="national_team.html" id="nationLink">National team</a>
       <a class="button" href="world_cup.html">World Cup</a>
@@ -115,7 +135,7 @@
           <div id="kickoffSlotList" class="slot-list"></div>
           <div class="row" style="margin-top:10px;">
             <button type="button" class="button" id="proposeBtn" disabled>Propose kick-off</button>
-            <button type="button" class="button secondary" id="acceptBtn" hidden>Accept pending proposal</button>
+            <button type="button" class="button" id="acceptBtn" hidden>Accept pending proposal</button>
             <a class="button secondary" href="owner_details.html" style="text-decoration:none;">Edit availability</a>
           </div>
         </div>
@@ -198,6 +218,6 @@
 
     <div id="pageStatus" class="status"></div>
   </div>
-  <script type="module" src="international_matchday.js?v=20260817-intl-sched"></script>
+  <script type="module" src="international_matchday.js?v=20260818-accept-ux"></script>
 </body>
 </html>

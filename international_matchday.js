@@ -402,13 +402,84 @@ async function loadFixtures() {
   fixtures = data || [];
   callupRows = await loadNationalSquad(code, supabase);
   await loadSavedSquad();
+  await enrichNegotiatingFixtures();
   renderList();
+  renderActionNeeded();
   renderNextIntl();
   renderSquadPicker();
 
   const params = new URLSearchParams(location.search);
   const qid = Number(params.get("fixture") || 0);
-  if (qid) selectFixture(qid);
+  if (qid) {
+    selectFixture(qid);
+  } else {
+    const needsYou = fixtures.find((f) => f._needsAccept);
+    if (needsYou) selectFixture(needsYou.id);
+  }
+}
+
+/** Load pending proposal details for negotiating fixtures so Accept is discoverable. */
+async function enrichNegotiatingFixtures() {
+  const pending = fixtures.filter(
+    (f) => !f.played && String(f.schedule_status || "").toLowerCase() === "negotiating"
+  );
+  await Promise.all(
+    pending.map(async (f) => {
+      try {
+        const { data, error } = await supabase.rpc(
+          "international_match_schedule_fixture_context",
+          { p_fixture_id: f.id }
+        );
+        if (error || !data?.pending_proposal) return;
+        const prop = data.pending_proposal;
+        f._pendingProposal = prop;
+        f._canRespond = !!data.can_respond;
+        f._needsAccept =
+          !!data.can_respond &&
+          prop.proposed_by_nation !== myNation?.code &&
+          isSelectableKickoffSlot(prop.kickoff_at, data.my_timezone || UK_TZ);
+        f._pendingLabel = formatKickoffPair(
+          prop.kickoff_at,
+          data.home_timezone || UK_TZ,
+          data.away_timezone || UK_TZ
+        );
+      } catch {
+        /* ignore */
+      }
+    })
+  );
+}
+
+function renderActionNeeded() {
+  const box = $("actionNeededBanner");
+  if (!box) return;
+  const rows = fixtures.filter((f) => f._needsAccept);
+  if (!rows.length) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  box.hidden = false;
+  box.innerHTML = `
+    <b>Kick-off waiting for you</b> — open the fixture and click <b>Accept pending proposal</b>.
+    <ul>
+      ${rows
+        .map(
+          (f) => `<li>
+            ${escapeHtml(f.home_nation_name || f.home_nation)} vs
+            ${escapeHtml(f.away_nation_name || f.away_nation)}
+            ${f._pendingLabel ? ` · ${escapeHtml(f._pendingLabel)}` : ""}
+            <button type="button" data-id="${f.id}" class="open-accept">Review &amp; accept</button>
+          </li>`
+        )
+        .join("")}
+    </ul>`;
+  box.querySelectorAll(".open-accept").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectFixture(Number(btn.dataset.id));
+      $("scheduleBlock")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
 }
 
 function renderList() {
@@ -436,19 +507,33 @@ function renderList() {
               ? `${f.home_goals}–${f.away_goals}`
               : "–";
             const sch = f.schedule_status || "unscheduled";
-            return `<tr class="${f.id === selectedId ? "active" : ""}" data-id="${f.id}">
+            let schHtml = escapeHtml(sch);
+            if (f._needsAccept) {
+              schHtml = `<span style="color:#fc6;font-weight:700;">Your action — accept kick-off</span>${
+                f._pendingLabel
+                  ? `<br><span class="note">${escapeHtml(f._pendingLabel)}</span>`
+                  : ""
+              }`;
+            } else if (sch === "negotiating" && f._pendingLabel) {
+              schHtml = `negotiating<br><span class="note">${escapeHtml(
+                f._pendingLabel
+              )}</span>`;
+            } else if (f.agreed_kickoff_at) {
+              schHtml = `${escapeHtml(sch)}<br><span class="note">${escapeHtml(
+                new Date(f.agreed_kickoff_at).toLocaleString()
+              )}</span>`;
+            }
+            return `<tr class="${f.id === selectedId ? "active" : ""}${
+              f._needsAccept ? " needs-you" : ""
+            }" data-id="${f.id}">
               <td>${escapeHtml(phaseLabel(f))}</td>
               <td>${escapeHtml(f.home_flag || "")} ${escapeHtml(f.home_nation)}
                 vs ${escapeHtml(f.away_flag || "")} ${escapeHtml(f.away_nation)}</td>
               <td>${escapeHtml(score)}</td>
-              <td>${escapeHtml(sch)}${
-                f.agreed_kickoff_at
-                  ? `<br><span class="note">${escapeHtml(
-                      new Date(f.agreed_kickoff_at).toLocaleString()
-                    )}</span>`
-                  : ""
-              }</td>
-              <td><button type="button" class="button secondary pick-fix" data-id="${f.id}">Open</button></td>
+              <td>${schHtml}</td>
+              <td><button type="button" class="button secondary pick-fix" data-id="${f.id}">${
+                f._needsAccept ? "Accept" : "Open"
+              }</button></td>
             </tr>`;
           })
           .join("")}
@@ -618,22 +703,36 @@ async function renderSchedulePanel(f) {
     if (pendingPanel) {
       pendingPanel.hidden = false;
       pendingPanel.innerHTML = `
-        <p class="note" style="color:#fc6;margin:8px 0;">
-          <b>${escapeHtml(pending.proposed_by_nation)}</b> proposed
-          ${escapeHtml(formatKickoffPair(pending.kickoff_at, homeTz, awayTz))}
+        <p style="color:#fc6;margin:0 0 8px;font-size:14px;">
+          <b>${escapeHtml(
+            pending.proposed_by_nation === myNation?.code
+              ? "You"
+              : pending.proposed_by_nation
+          )}</b> proposed
+          <b>${escapeHtml(formatKickoffPair(pending.kickoff_at, homeTz, awayTz))}</b>
         </p>
         ${
+          fromOpp && data.can_respond && stillValid
+            ? `<p class="note" style="margin:0 0 8px;color:#9cdc9c;">Click <b>Accept pending proposal</b> below to agree this kick-off.</p>`
+            : ""
+        }
+        ${
           !stillValid
-            ? `<p class="note" style="color:#f88;">This time has passed — counter-propose a future slot.</p>`
+            ? `<p class="note" style="color:#f88;margin:0;">This time has passed — counter-propose a future slot from the list below.</p>`
             : ""
         }
       `;
     }
     if (acceptBtn) {
       acceptBtn.hidden = !(fromOpp && data.can_respond && stillValid);
+      if (!acceptBtn.hidden) {
+        acceptBtn.textContent = "Accept pending proposal";
+        acceptBtn.focus();
+      }
     }
     if (statusEl && fromOpp && !data.can_respond) {
-      statusEl.textContent = "Waiting for opponent to respond.";
+      statusEl.textContent =
+        "Cannot accept yet — check you have a nation club linked, or wait for the proposer.";
     } else if (statusEl && !fromOpp) {
       statusEl.textContent = "Your proposal is pending — waiting for opponent.";
     }
