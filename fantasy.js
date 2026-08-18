@@ -103,15 +103,35 @@ function sortPlayersByPos(list) {
   });
 }
 
-/** GPFL flex: LMF↔LWF, RMF↔RWF, CF↔SS; else exact. */
+/** GPFL position flex — which native positions can fill a pitch slot. */
 function posFitsSlot(playerPos, requiredPos) {
   const p = normalizePos(playerPos);
   const s = normalizePos(requiredPos);
   if (!p || !s) return false;
   if (p === s) return true;
-  if ((p === "LMF" || p === "LWF") && (s === "LMF" || s === "LWF")) return true;
-  if ((p === "RMF" || p === "RWF") && (s === "RMF" || s === "RWF")) return true;
-  if ((p === "CF" || p === "SS") && (s === "CF" || s === "SS")) return true;
+
+  // GK only as GK
+  if (p === "GK" || s === "GK") return false;
+
+  // Attackers: RWF / LWF / CF / SS ↔ any of those
+  const attack = new Set(["RWF", "LWF", "CF", "SS"]);
+  if (attack.has(p) && attack.has(s)) return true;
+
+  // Advanced mids: LMF / RMF / CMF / AMF ↔ any of those
+  const mid = new Set(["LMF", "RMF", "CMF", "AMF"]);
+  if (mid.has(p) && mid.has(s)) return true;
+
+  // Full-backs + CB: LB / RB / CB ↔ any of those
+  const back = new Set(["LB", "RB", "CB"]);
+  if (back.has(p) && back.has(s)) return true;
+
+  // DMF ↔ CB (and DMF exact already handled)
+  if (p === "DMF" && s === "CB") return true;
+  if (p === "CB" && s === "DMF") return true;
+
+  // Wide mids can also cover full-back
+  if ((p === "LMF" || p === "RMF") && (s === "LB" || s === "RB")) return true;
+
   return false;
 }
 
