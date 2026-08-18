@@ -12,6 +12,8 @@ import {
   gpslPlayerCareerUrl,
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
+import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
+import { GPFL_TIPS } from "./fantasy_info_tips.js";
 
 /** Pitch / squad display order (GKs are their own section, not defenders). */
 const POS_ORDER = [
@@ -303,18 +305,18 @@ function renderEntryStats(data) {
       : `Confirm squad (${active.length}/${size})`;
   }
   el.innerHTML = `
-    <div class="gpfl-stat">Budget <b>${money(remaining)}</b></div>
-    <div class="gpfl-stat">Points <b>${esc(e.total_points ?? 0)}</b></div>
+    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.budget)}>Budget <b>${money(remaining)}</b></div>
+    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.points)}>Points <b>${esc(e.total_points ?? 0)}</b></div>
     ${
       prov.month || Number(prov.points) > 0
-        ? `<div class="gpfl-stat">Provisional <b>${esc(prov.points ?? 0)}</b></div>`
+        ? `<div class="gpfl-stat"${tipAttrs(GPFL_TIPS.provisional)}>Provisional <b>${esc(prov.points ?? 0)}</b></div>`
         : ""
     }
-    <div class="gpfl-stat">Free transfers <b>${esc(e.free_transfers_remaining ?? 0)}</b></div>
-    <div class="gpfl-stat">Hit cost <b>${esc(hitPts)}</b></div>
-    <div class="gpfl-stat">Squad <b>${active.length}/${esc(size)}</b></div>
-    <div class="gpfl-stat">Slots <b>GK ${have.gk}/${caps.gk} · DEF ${have.def}/${caps.def} · MID ${have.mid}/${caps.mid} · FWD ${have.fwd}/${caps.fwd}</b></div>
-    ${needs ? `<div class="gpfl-stat">FA to replace <b>${needs}</b></div>` : ""}
+    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.freeTransfers)}>Free transfers <b>${esc(e.free_transfers_remaining ?? 0)}</b></div>
+    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.hitCost)}>Hit cost <b>${esc(hitPts)}</b></div>
+    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.squadSize)}>Squad <b>${active.length}/${esc(size)}</b></div>
+    <div class="gpfl-stat"${tipAttrs(GPFL_TIPS.slots)}>Slots <b>GK ${have.gk}/${caps.gk} · DEF ${have.def}/${caps.def} · MID ${have.mid}/${caps.mid} · FWD ${have.fwd}/${caps.fwd}</b></div>
+    ${needs ? `<div class="gpfl-stat"${tipAttrs(GPFL_TIPS.faReplace)}>FA to replace <b>${needs}</b></div>` : ""}
   `;
   setEditLocked(!canTransfer(data));
 }
@@ -350,9 +352,8 @@ function renderChips(data) {
             ? "Available"
             : "Used";
       const canPlay = open && enabled && available && !chips.active;
-      return `<div class="gpfl-chip ${active ? "gpfl-chip--active" : ""} ${!available || !enabled ? "gpfl-chip--used" : ""}">
+      return `<div class="gpfl-chip ${active ? "gpfl-chip--active" : ""} ${!available || !enabled ? "gpfl-chip--used" : ""}"${tipAttrs(tip)}>
         <div class="gpfl-chip-name">${esc(label)}</div>
-        <div class="gpfl-chip-tip">${esc(tip)}</div>
         <div class="gpfl-chip-state">${esc(stateLabel)}</div>
         <button type="button" class="gpfl-btn gpfl-chip-btn" data-chip="${id}" ${
           canPlay ? "" : "disabled"
@@ -1059,7 +1060,7 @@ async function openPlayerCard(playerId, { canSign = false } = {}) {
     </div>
     <h3 class="gpfl-subhead">GPFL form</h3>
     <div class="gpfl-form-row">${form}</div>
-    <h3 class="gpfl-subhead">Next fixtures · FDR</h3>
+    <h3 class="gpfl-subhead"${tipAttrs(GPFL_TIPS.fdr)}>Next fixtures · FDR</h3>
     ${
       fixtures
         ? `<table class="gpfl-table"><thead><tr><th>When</th><th>Opp</th><th>FDR</th></tr></thead><tbody>${fixtures}</tbody></table>`
@@ -1316,14 +1317,6 @@ function wire() {
     setStatus("Joined GPFL.");
   });
 
-  document.getElementById("gpflWithdrawBtn")?.addEventListener("click", async () => {
-    if (!confirm("Withdraw from GPFL this season?")) return;
-    const { error } = await supabase.rpc("gpfl_withdraw");
-    if (error) return setStatus(error.message, false);
-    await refresh();
-    setStatus("Withdrawn.");
-  });
-
   document.getElementById("gpflConfirmBtn")?.addEventListener("click", async () => {
     const active = (state.payload?.squad || []).filter((p) => p.slot_status === "active");
     const need = Number(state.payload?.settings?.squad_size ?? 15);
@@ -1480,6 +1473,7 @@ function wire() {
 
 async function main() {
   await initGlobal();
+  initGpslInfoTips();
   state.isAdmin = await resolveAdmin();
   const adminPanel = document.getElementById("gpflAdminPanel");
   if (adminPanel) adminPanel.hidden = !state.isAdmin;

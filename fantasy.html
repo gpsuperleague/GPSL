@@ -7,6 +7,7 @@
   <title>GP Fantasy League — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260818-gpfl-tips">
   <link rel="stylesheet" href="fantasy.css?v=20260818-half-pitch">
 </head>
 <body class="gpfl-page">
@@ -38,7 +39,7 @@
     </div>
   </header>
 
-  <p class="gpfl-disclaimer">
+  <p class="gpfl-disclaimer gpsl-has-tip" tabindex="0" data-gpsl-tip="GPFL is optional and financially separate from GPSL club money. You cannot pick players contracted to clubs you own. Auto-subs cover blank starters; extra transfers after free ones cost hit points.">
     GPFL is financially separate from GPSL club finances, Bookies, and the Central Bank.
     Auto-subs replace blank starters; extra transfers after free ones cost hit points.
     You cannot pick players contracted to clubs you own in GPSL.
@@ -73,12 +74,11 @@
 
     <div id="gpflPlay" hidden>
       <section class="gpfl-panel">
-        <h2>Your entry</h2>
+        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Your GPFL entry for this season — budget, points, transfers, and confirm / save actions. Hover stats and buttons for details.">Your entry</h2>
         <div class="gpfl-stats" id="gpflEntryStats"></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflConfirmBtn">Confirm squad (needs 15)</button>
-          <button type="button" class="gpfl-btn" id="gpflSaveXiBtn">Save pitch XI + bench</button>
-          <button type="button" class="gpfl-btn gpfl-btn--danger" id="gpflWithdrawBtn">Withdraw</button>
+          <button type="button" class="gpfl-btn gpfl-btn--gold gpsl-has-tip" id="gpflConfirmBtn" tabindex="0" data-gpsl-tip="Locks your 15-man squad for GPFL scoring. Needs: full 15, a saved pitch XI (formation + 11 starters), and a captain.">Confirm squad (needs 15)</button>
+          <button type="button" class="gpfl-btn gpsl-has-tip" id="gpflSaveXiBtn" tabindex="0" data-gpsl-tip="Saves formation, pitch XI dropdowns, captain, and bench order (1 = first auto-sub). You can re-save while editing is open for the month.">Save pitch XI + bench</button>
         </div>
         <p class="gpfl-muted" style="margin:10px 0 0;">
           Build all <b>15</b>: (1) Sign from the pool → (2) place XI on the pitch dropdowns → (3) Confirm.
@@ -86,13 +86,13 @@
       </section>
 
       <section class="gpfl-panel" id="gpflChipsPanel">
-        <h2>Chips</h2>
+        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Optional one-shot chips for a GPSL month. Wildcard: free transfers that window. Triple Captain: captain ×3. Bench Boost: bench scores too. Each chip once per season when enabled.">Chips</h2>
         <div class="gpfl-chips" id="gpflChips"></div>
       </section>
 
       <div class="gpfl-grid-2">
         <section class="gpfl-panel">
-          <h2>1. Sign from the player pool</h2>
+          <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Sign players into your GPFL squad from the contracted GPSL pool. Players at clubs you own in GPSL are excluded. Gold Sign adds them if you have budget and a free slot in that position group.">1. Sign from the player pool</h2>
           <p class="gpfl-muted" style="margin:0 0 8px;">
             Expand a position → click gold <b>Sign</b>. Players at <b>your own GPSL clubs</b> are excluded.
           </p>
@@ -108,19 +108,19 @@
           <div id="gpflPool" class="gpfl-pool-acc"></div>
         </section>
         <section class="gpfl-panel">
-          <h2>2. Your squad</h2>
+          <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Everyone you have signed for GPFL. Next step: put 11 of them into the pitch markers (step 3). Extras sit on the subs bench.">2. Your squad</h2>
           <p class="gpfl-muted" style="margin:0 0 8px;">Players you’ve signed. Next, place 11 of them on the pitch.</p>
           <div id="gpflSquad"></div>
         </section>
       </div>
 
       <section class="gpfl-panel">
-        <h2>3. Pitch XI &amp; bench</h2>
+        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Half-pitch view (goal at the bottom). Each marker is a dropdown from your signed squad — only eligible positions appear. Formation flex lets nearby roles cover (e.g. LMF↔LWF, LB↔LMF). Save XI + bench when ready.">3. Pitch XI &amp; bench</h2>
         <div class="gpfl-filters" style="align-items:center;">
-          <label class="gpfl-muted">Formation
+          <label class="gpfl-muted gpsl-has-tip" tabindex="0" data-gpsl-tip="Choose a formation — markers rearrange like Matchday. Changing formation clears unsaved slot picks into a fresh layout from any saved starters.">Formation
             <select id="gpflFormation" style="margin-left:6px;min-width:200px;"></select>
           </label>
-          <label class="gpfl-muted">Captain
+          <label class="gpfl-muted gpsl-has-tip" tabindex="0" data-gpsl-tip="Captain must be one of the XI. They score double (or ×3 with Triple Captain).">Captain
             <select id="gpflCaptain" style="margin-left:6px;min-width:180px;"></select>
           </label>
         </div>
@@ -139,29 +139,29 @@
             <div id="gpflPitchSlots" class="gpfl-pitch-slots"></div>
           </div>
           <div class="gpfl-bench-col">
-            <h3 class="gpfl-subhead">Subs bench</h3>
+            <h3 class="gpfl-subhead gpsl-has-tip" tabindex="0" data-gpsl-tip="Anyone not in the XI. Order 1 = first auto-sub if a starter blanks. Use the arrows to reorder.">Subs bench</h3>
             <p class="gpfl-muted" style="margin:0 0 8px;font-size:12px;">Anyone not in the XI. Order 1 = first auto-sub.</p>
             <div id="gpflBench"></div>
           </div>
         </div>
         <div style="margin-top:12px;">
-          <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflSaveXiBtn2">Save pitch XI + bench</button>
+          <button type="button" class="gpfl-btn gpfl-btn--gold gpsl-has-tip" id="gpflSaveXiBtn2" tabindex="0" data-gpsl-tip="Saves formation, pitch XI dropdowns, captain, and bench order (1 = first auto-sub). You can re-save while editing is open for the month.">Save pitch XI + bench</button>
         </div>
       </section>
 
       <section class="gpfl-panel">
-        <h2>Month scores</h2>
+        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Per GPSL month: points, transfer hits, chip used, and whether the month is still provisional or final.">Month scores</h2>
         <div id="gpflMonthScores"></div>
       </section>
 
       <section class="gpfl-panel">
-        <h2>Leaderboard</h2>
+        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Season standings among GPFL entries (total points).">Leaderboard</h2>
         <div id="gpflBoard"></div>
       </section>
     </div>
 
     <section class="gpfl-panel" id="gpflContentPanel">
-      <h2>Dream Team &amp; top transfers</h2>
+      <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Best XI and most common transfers for a GPSL month across GPFL managers.">Dream Team &amp; top transfers</h2>
       <div class="gpfl-filters" style="align-items:center;">
         <label class="gpfl-muted">GPSL month
           <select id="gpflContentMonth" style="margin-left:6px;min-width:160px;"></select>
@@ -170,11 +170,11 @@
       </div>
       <div class="gpfl-grid-2">
         <div>
-          <h3 class="gpfl-subhead">Dream Team (4-4-2)</h3>
+          <h3 class="gpfl-subhead gpsl-has-tip" tabindex="0" data-gpsl-tip="Best XI for the selected GPSL month (fixed 4-4-2 dream-team shape) from scored performances.">Dream Team (4-4-2)</h3>
           <div id="gpflDreamTeam"></div>
         </div>
         <div>
-          <h3 class="gpfl-subhead">Most transferred</h3>
+          <h3 class="gpfl-subhead gpsl-has-tip" tabindex="0" data-gpsl-tip="Most common in/out moves for the selected GPSL month among GPFL managers.">Most transferred</h3>
           <div id="gpflTopTransfers"></div>
         </div>
       </div>
@@ -189,6 +189,6 @@
     <div id="gpflCardBody" class="gpfl-dialog-body"></div>
   </dialog>
 
-  <script type="module" src="fantasy.js?v=20260818-keep-xi"></script>
+  <script type="module" src="fantasy.js?v=20260818-tips-nowithdraw"></script>
 </body>
 </html>

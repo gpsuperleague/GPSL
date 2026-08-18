@@ -321,22 +321,33 @@ GRANT EXECUTE ON FUNCTION public.gpfl_ownership_pct(bigint, text) TO authenticat
 
 -- ---------------------------------------------------------------------------
 -- 6c. Fixture difficulty (1 = easiest, 5 = hardest)
+-- Prefer owner rolling-4 rank; club prestige as fallback / balance.
+-- Full logic also in gpfl_fdr_owner_prestige_20260818.sql (safe re-run).
 -- ---------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.gpfl_fdr_from_table_pos(p_pos int)
+CREATE OR REPLACE FUNCTION public.gpfl_fdr_from_strength_rank(p_rank numeric)
 RETURNS int
 LANGUAGE sql
 IMMUTABLE
 AS $$
   SELECT CASE
-    WHEN p_pos IS NULL THEN 3
-    WHEN p_pos <= 4 THEN 5
-    WHEN p_pos <= 8 THEN 4
-    WHEN p_pos <= 12 THEN 3
-    WHEN p_pos <= 16 THEN 2
+    WHEN p_rank IS NULL THEN 3
+    WHEN p_rank <= 4 THEN 5
+    WHEN p_rank <= 8 THEN 4
+    WHEN p_rank <= 14 THEN 3
+    WHEN p_rank <= 22 THEN 2
     ELSE 1
   END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.gpfl_fdr_from_table_pos(p_pos int)
+RETURNS int
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT public.gpfl_fdr_from_strength_rank(p_pos::numeric);
+$$;
+
+GRANT EXECUTE ON FUNCTION public.gpfl_fdr_from_strength_rank(numeric) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.gpfl_fdr_from_table_pos(int) TO authenticated, anon;
 
 -- ---------------------------------------------------------------------------
