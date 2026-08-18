@@ -230,59 +230,10 @@ body.gpfl-page {
   display: block;
 }
 
-/* Chips — horizontal: Wildcard | Triple Captain | Bench Boost */
-.gpfl-chips-bar {
-  margin-top: 12px;
-  background: rgba(12, 20, 28, 0.55);
-  border: 1px solid #2a3a4a;
-  border-radius: 8px;
-  padding: 10px 12px;
-}
-.gpfl-chips-bar .gpfl-subhead {
-  margin: 0 0 8px;
-}
-.gpfl-chips {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-@media (max-width: 700px) {
-  .gpfl-chips { grid-template-columns: 1fr; }
-}
-.gpfl-chip {
-  border: 1px solid #3a4a5a;
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: rgba(18, 28, 40, 0.9);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.gpfl-chip--active {
-  border-color: #c0a050;
-  background: rgba(50, 40, 18, 0.55);
-}
-.gpfl-chip--used { opacity: 0.55; }
-.gpfl-chip-name {
-  font-family: Georgia, "Times New Roman", serif;
-  color: #d8e8f8;
-  font-size: 13px;
-  line-height: 1.2;
-}
-.gpfl-chip-tip { font-size: 11px; color: #8899aa; margin: 4px 0 8px; }
-.gpfl-chip-state { font-size: 11px; color: #9cf; }
-.gpfl-chip .gpfl-btn {
-  margin-top: 4px;
-  align-self: flex-start;
-  padding: 4px 10px;
-  font-size: 12px;
-}
-
-/* Pitch + bench — picks live on the pitch graphic */
+/* Pitch | (Subs bench + Chips) — Your entry full width below */
 .gpfl-pitch-wrap {
   display: grid;
-  grid-template-columns: minmax(300px, 1.2fr) minmax(220px, 0.8fr);
+  grid-template-columns: minmax(300px, 1.35fr) minmax(260px, 0.9fr);
   gap: 16px;
   align-items: start;
   overflow: visible;
@@ -303,6 +254,52 @@ body.gpfl-page {
 }
 @media (max-width: 800px) {
   .gpfl-pitch-wrap { grid-template-columns: 1fr; }
+}
+
+/* Chips panel (right of pitch, under bench) — horizontal chip cards */
+.gpfl-chips-col {
+  background: rgba(12, 20, 28, 0.55);
+  border: 1px solid #2a3a4a;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.gpfl-chips-col .gpfl-subhead {
+  margin: 0 0 8px;
+}
+.gpfl-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.gpfl-chip {
+  border: 1px solid #3a4a5a;
+  border-radius: 8px;
+  padding: 8px 6px;
+  background: rgba(18, 28, 40, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  text-align: center;
+  align-items: center;
+}
+.gpfl-chip--active {
+  border-color: #c0a050;
+  background: rgba(50, 40, 18, 0.55);
+}
+.gpfl-chip--used { opacity: 0.55; }
+.gpfl-chip-name {
+  font-family: Georgia, "Times New Roman", serif;
+  color: #d8e8f8;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.gpfl-chip-tip { display: none; }
+.gpfl-chip-state { font-size: 10px; color: #9cf; }
+.gpfl-chip .gpfl-btn {
+  margin-top: 2px;
+  padding: 3px 8px;
+  font-size: 11px;
 }
 
 /* Half-pitch: halfway line at top, goal at bottom (attack up the page) */
