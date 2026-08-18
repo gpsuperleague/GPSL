@@ -870,6 +870,17 @@ async function invokePesdbScrape(body, attempt = 1) {
       return invokePesdbScrape(body, attempt + 1);
     }
 
+    if (isTransientEdgeError(detail, error) && attempt < TRANSIENT_MAX_RETRIES && !scrapeAbort) {
+      const waitMs = TRANSIENT_RETRY_MS * attempt;
+      setStatus(
+        "scrapeStatus",
+        `Edge timeout/gateway (504) — retrying in ${Math.round(waitMs / 1000)}s (${attempt}/${TRANSIENT_MAX_RETRIES - 1})…`,
+        true
+      );
+      await sleep(waitMs);
+      return invokePesdbScrape(body, attempt + 1);
+    }
+
     const hint = detail.includes("Failed to send")
       ? ` — deploy edge function ${SCRAPE_FUNCTION} in Supabase`
       : "";
@@ -881,6 +892,20 @@ async function invokePesdbScrape(body, attempt = 1) {
       setStatus(
         "scrapeStatus",
         `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/7)…`,
+        true
+      );
+      await sleep(waitMs);
+      return invokePesdbScrape(body, attempt + 1);
+    }
+    if (
+      isTransientEdgeError(data.error) &&
+      attempt < TRANSIENT_MAX_RETRIES &&
+      !scrapeAbort
+    ) {
+      const waitMs = TRANSIENT_RETRY_MS * attempt;
+      setStatus(
+        "scrapeStatus",
+        `Edge timeout/gateway (504) — retrying in ${Math.round(waitMs / 1000)}s (${attempt}/${TRANSIENT_MAX_RETRIES - 1})…`,
         true
       );
       await sleep(waitMs);
@@ -911,20 +936,43 @@ async function enrichPagePlayers(listPlayers, page, endPage, playerDelayMs, star
     const pos = player.position ? ` (${player.position})` : "";
     const isFirst = i === 0 && page === 1 && startIndex === 0;
 
-    const data = await withLiveProgress(
-      "scrapeStatus",
-      (sec) => {
-        const cold = isFirst && sec >= 8
-          ? " — first request can take up to 60s (edge cold start)"
-          : "";
-        return `Page ${page}/${endPage} · ${i + 1}/${total}: ${name}${pos} — fetching max rating + style… ${sec}s${cold}`;
-      },
-      () =>
-        invokePesdbScrape({
-          action: "enrich_players",
-          players: [player],
-        })
-    );
+    let data;
+    try {
+      data = await withLiveProgress(
+        "scrapeStatus",
+        (sec) => {
+          const cold = isFirst && sec >= 8
+            ? " — first request can take up to 60s (edge cold start)"
+            : "";
+          return `Page ${page}/${endPage} · ${i + 1}/${total}: ${name}${pos} — fetching max rating + style… ${sec}s${cold}`;
+        },
+        () =>
+          invokePesdbScrape({
+            action: "enrich_players",
+            players: [player],
+          })
+      );
+    } catch (err) {
+      // Don't abort the whole sync for one flaky player after retries.
+      if (isTransientEdgeError(err?.message || err, err) || /non-2xx|504/i.test(String(err?.message || err))) {
+        console.warn("pesdb enrich skip after retries:", name, err);
+        setPlayerLabel(`✗ ${name} — skipped after edge timeouts (${i + 1}/${total})`);
+        setStatus(
+          "scrapeStatus",
+          `Page ${page}/${endPage} — skipped ${name} after timeouts; continuing…`,
+          true
+        );
+        if (i < listPlayers.length - 1 && !scrapeAbort) {
+          await sleepWithCountdown(
+            "scrapeStatus",
+            `Pause before next player on page ${page}:`,
+            playerDelayMs
+          );
+        }
+        continue;
+      }
+      throw err;
+    }
 
     const row = (data.players || [])[0];
     if (row) {
