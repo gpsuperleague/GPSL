@@ -14,6 +14,7 @@ const NUM = [
   "price_round_to",
   "price_floor",
   "free_transfers_per_month",
+  "transfer_hit_points",
   "pts_appear",
   "pts_goal_gk",
   "pts_goal_def",
@@ -30,7 +31,15 @@ const NUM = [
   "captain_multiplier",
 ];
 
-const BOOL = ["enabled", "opt_in_only", "require_stats_to_score"];
+const BOOL = [
+  "enabled",
+  "opt_in_only",
+  "require_stats_to_score",
+  "chips_enabled",
+  "chip_wildcard_enabled",
+  "chip_triple_captain_enabled",
+  "chip_bench_boost_enabled",
+];
 
 function fillForm(s) {
   for (const key of BOOL) {
@@ -41,6 +50,8 @@ function fillForm(s) {
     const el = document.getElementById(key);
     if (el && s?.[key] != null) el.value = s[key];
   }
+  const mode = document.getElementById("deadline_mode");
+  if (mode && s?.deadline_mode) mode.value = s.deadline_mode;
   const div = document.getElementById("divisions");
   if (div) div.value = Array.isArray(s?.divisions) ? s.divisions.join(", ") : "";
   const ct = document.getElementById("competition_types");
@@ -57,6 +68,8 @@ function readForm() {
     if (!el) continue;
     out[key] = Number(el.value);
   }
+  const mode = document.getElementById("deadline_mode")?.value;
+  if (mode) out.deadline_mode = mode;
   out.divisions = String(document.getElementById("divisions")?.value || "")
     .split(",")
     .map((x) => x.trim())
@@ -75,7 +88,7 @@ async function load() {
     setStatus(
       "status",
       error.message.includes("admin_gpfl_settings_get")
-        ? "Run supabase/sql/patches/gpfl_fantasy_league_20260817.sql first."
+        ? "Run gpfl_fantasy_league_20260817.sql (then gpfl_v2 patches) first."
         : error.message,
       false
     );

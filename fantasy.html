@@ -7,7 +7,7 @@
   <title>GP Fantasy League — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="fantasy.css?v=20260817-gpfl-price">
+  <link rel="stylesheet" href="fantasy.css?v=20260818-gpfl-v2">
 </head>
 <body class="gpfl-page">
   <div id="nav"></div>
@@ -32,7 +32,7 @@
       <p class="gpfl-welcome">Owners lounge</p>
       <h1>GP Fantasy League</h1>
       <p class="gpfl-tagline">
-        Optional side-game. Pick a 15-man squad from Super League &amp; Championship contracted players.
+        Optional side-game. Pick a 15-man squad from Super League &amp; Championship contracted players at owned clubs.
         Prices are GPSL market values rounded to the nearest million (GPFL budget only — never club money).
       </p>
     </div>
@@ -41,10 +41,12 @@
   <p class="gpfl-disclaimer">
     GPFL is financially separate from GPSL club finances, Bookies, and the Central Bank.
     Points stay if a player becomes a free agent; you get a GPFL budget refund and must replace them.
+    Auto-subs replace blank starters; extra transfers after free ones cost hit points (configurable).
   </p>
 
   <main class="gpfl-main">
     <p id="gpflStatus" class="gpfl-status" aria-live="polite"></p>
+    <div id="gpflDeadlineBanner" class="gpfl-deadline" hidden></div>
 
     <section class="gpfl-panel" id="gpflGate" hidden>
       <h2>Join GPFL</h2>
@@ -60,6 +62,7 @@
       <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflOpenSeasonBtn">Open / refresh GPFL season</button>
       <button type="button" class="gpfl-btn" id="gpflSyncFaBtn" style="margin-left:8px;">Sync free agents</button>
       <button type="button" class="gpfl-btn" id="gpflRebaseBudgetBtn" style="margin-left:8px;">Rebase banks to budget</button>
+      <button type="button" class="gpfl-btn" id="gpflRefreshProvBtn" style="margin-left:8px;">Refresh provisional</button>
       <label class="gpfl-muted" style="margin-left:12px;">Score month
         <select id="gpflScoreMonth" style="margin-left:6px;background:#111820;border:1px solid #445;color:#eee;padding:6px;"></select>
       </label>
@@ -73,17 +76,23 @@
         <div class="gpfl-stats" id="gpflEntryStats"></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
           <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflConfirmBtn">Confirm squad (needs 15)</button>
-          <button type="button" class="gpfl-btn" id="gpflSaveXiBtn">Save formation XI</button>
+          <button type="button" class="gpfl-btn" id="gpflSaveXiBtn">Save formation XI + bench</button>
           <button type="button" class="gpfl-btn gpfl-btn--danger" id="gpflWithdrawBtn">Withdraw</button>
         </div>
         <p class="gpfl-muted" style="margin:10px 0 0;">
-          Build all <b>15</b> players first (2 GK / 5 DEF / 5 MID / 3 FWD), set formation XI + captain, then Confirm.
-          Confirm locks the squad for the season scoring — you do not need it to add players.
+          Build all <b>15</b> players (2 GK / 5 DEF / 5 MID / 3 FWD), set pitch XI + ordered bench + captain, then Confirm.
+          After confirm, free transfers apply each GPSL month; extras cost hit points.
         </p>
       </section>
 
+      <section class="gpfl-panel" id="gpflChipsPanel">
+        <h2>Chips</h2>
+        <p class="gpfl-muted" style="margin:0 0 10px;">One use each per season when editing is open. Active for the target GPSL month.</p>
+        <div class="gpfl-chips" id="gpflChips"></div>
+      </section>
+
       <section class="gpfl-panel">
-        <h2>Formation XI</h2>
+        <h2>Pitch &amp; bench</h2>
         <div class="gpfl-filters" style="align-items:center;">
           <label class="gpfl-muted">Formation
             <select id="gpflFormation" style="margin-left:6px;min-width:220px;"></select>
@@ -92,7 +101,18 @@
             <select id="gpflCaptain" style="margin-left:6px;min-width:180px;"></select>
           </label>
         </div>
-        <div id="gpflXi"></div>
+        <div class="gpfl-pitch-wrap">
+          <div id="gpflPitch" class="gpfl-pitch" aria-label="Formation pitch"></div>
+          <div class="gpfl-bench-col">
+            <h3 class="gpfl-subhead">Bench order (auto-subs)</h3>
+            <p class="gpfl-muted" style="margin:0 0 8px;font-size:12px;">1 = first off the bench when a starter blanks (same position group).</p>
+            <div id="gpflBench"></div>
+            <details class="gpfl-xi-details">
+              <summary>Slot dropdowns (accessibility)</summary>
+              <div id="gpflXi"></div>
+            </details>
+          </div>
+        </div>
       </section>
 
       <div class="gpfl-grid-2">
@@ -103,7 +123,7 @@
         <section class="gpfl-panel">
           <h2>Player pool</h2>
           <div class="gpfl-tabs" id="gpflPosTabs"></div>
-          <p class="gpfl-muted" style="margin:0 0 8px;">Pool shows <b>contracted players at owned clubs</b> only (free agents and vacant clubs are hidden).</p>
+          <p class="gpfl-muted" style="margin:0 0 8px;">Owned clubs only · click a name for the player card (form, ownership, FDR).</p>
           <div class="gpfl-filters">
             <input id="gpflSearch" type="search" placeholder="Search name / club / owner" style="min-width:180px;">
             <select id="gpflDivFilter">
@@ -119,12 +139,45 @@
       </div>
 
       <section class="gpfl-panel">
+        <h2>Month scores</h2>
+        <div id="gpflMonthScores"></div>
+      </section>
+
+      <section class="gpfl-panel">
         <h2>Leaderboard</h2>
         <div id="gpflBoard"></div>
       </section>
     </div>
+
+    <section class="gpfl-panel" id="gpflContentPanel">
+      <h2>Dream Team &amp; top transfers</h2>
+      <div class="gpfl-filters" style="align-items:center;">
+        <label class="gpfl-muted">GPSL month
+          <select id="gpflContentMonth" style="margin-left:6px;min-width:160px;"></select>
+        </label>
+        <button type="button" class="gpfl-btn" id="gpflContentRefresh">Refresh</button>
+      </div>
+      <div class="gpfl-grid-2">
+        <div>
+          <h3 class="gpfl-subhead">Dream Team (4-4-2)</h3>
+          <div id="gpflDreamTeam"></div>
+        </div>
+        <div>
+          <h3 class="gpfl-subhead">Most transferred</h3>
+          <div id="gpflTopTransfers"></div>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <script type="module" src="fantasy.js?v=20260817-gpfl-confirm-gate"></script>
+  <dialog id="gpflCardDialog" class="gpfl-dialog">
+    <form method="dialog" class="gpfl-dialog-head">
+      <h2 id="gpflCardTitle">Player</h2>
+      <button type="submit" class="gpfl-btn" value="close">Close</button>
+    </form>
+    <div id="gpflCardBody" class="gpfl-dialog-body"></div>
+  </dialog>
+
+  <script type="module" src="fantasy.js?v=20260818-gpfl-v2"></script>
 </body>
 </html>

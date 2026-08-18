@@ -75,11 +75,28 @@
         <label>Price round-to <input id="price_round_to" type="number" step="100000"></label>
         <label>Price floor <input id="price_floor" type="number" step="100000"></label>
         <label>Free transfers / month <input id="free_transfers_per_month" type="number" min="0" max="15"></label>
+        <label>Transfer hit points <input id="transfer_hit_points" type="number" step="1" max="0" title="Stored as negative (e.g. -4)"></label>
+        <label>Deadline mode
+          <select id="deadline_mode">
+            <option value="month_unlock">Lock when GPSL month unlocks</option>
+            <option value="none">Always open</option>
+          </select>
+        </label>
       </div>
       <p style="font-size:12px;color:#888;margin:0;">Divisions (comma-separated): superleague, championship_a, championship_b</p>
       <input id="divisions" type="text" style="width:100%;max-width:520px;margin-top:6px;padding:8px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;">
       <p style="font-size:12px;color:#888;margin:10px 0 0;">Competition types (comma-separated): league</p>
       <input id="competition_types" type="text" style="width:100%;max-width:520px;margin-top:6px;padding:8px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;">
+    </section>
+
+    <section class="gpfl-section">
+      <h2>Chips (1 each / season)</h2>
+      <div class="gpfl-grid">
+        <label class="gpfl-check"><input type="checkbox" id="chips_enabled"> Chips enabled</label>
+        <label class="gpfl-check"><input type="checkbox" id="chip_wildcard_enabled"> Wildcard</label>
+        <label class="gpfl-check"><input type="checkbox" id="chip_triple_captain_enabled"> Triple Captain</label>
+        <label class="gpfl-check"><input type="checkbox" id="chip_bench_boost_enabled"> Bench Boost</label>
+      </div>
     </section>
 
     <section class="gpfl-section">
@@ -104,6 +121,6 @@
 
     <button type="button" id="saveBtn" class="admin-btn" style="padding:10px 18px;">Save settings</button>
   </main>
-  <script type="module" src="admin_gpfl_settings.js?v=20260817-gpfl"></script>
+  <script type="module" src="admin_gpfl_settings.js?v=20260818-gpfl-v2"></script>
 </body>
 </html>
