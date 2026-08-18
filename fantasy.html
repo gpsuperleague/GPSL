@@ -81,12 +81,12 @@
           <button type="button" class="gpfl-btn gpsl-has-tip" id="gpflSaveXiBtn" tabindex="0" data-gpsl-tip="Saves formation, pitch XI dropdowns, captain, and bench order (1 = first auto-sub). You can re-save while editing is open for the month.">Save pitch XI + bench</button>
         </div>
         <p class="gpfl-muted" style="margin:10px 0 0;">
-          Build all <b>15</b>: (1) Sign from the pool → (2) place XI on the pitch dropdowns → (3) Confirm.
+          Build all <b>15</b>: Squad Building → place XI on the pitch → Confirm.
         </p>
       </section>
 
       <section class="gpfl-panel">
-        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Sign players into your GPFL squad from the contracted GPSL pool. Players at clubs you own in GPSL are excluded. Gold Sign adds them if you have budget and a free slot in that position group.">1. Sign from the player pool</h2>
+        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Sign players into your GPFL squad from the contracted GPSL pool. Players at clubs you own in GPSL are excluded. Gold Sign adds them if you have budget and a free slot in that position group.">Squad Building</h2>
         <div class="gpfl-stats gpfl-sign-caps" id="gpflSignCaps"></div>
         <p class="gpfl-muted" style="margin:0 0 8px;">
           Expand a position → click gold <b>Sign</b>. Players at <b>your own GPSL clubs</b> are excluded.
@@ -104,13 +104,13 @@
       </section>
 
       <section class="gpfl-panel">
-        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Everyone you have signed for GPFL. Next step: put 11 of them into the pitch markers. Extras sit on the subs bench. Groups sit side-by-side to keep the page short.">2. Your squad</h2>
+        <h2 id="gpflSquadTitle" class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Everyone you have signed for GPFL. Next step: put 11 of them into the pitch markers. Extras sit on the subs bench. Groups sit side-by-side to keep the page short.">Your Squad</h2>
         <p class="gpfl-muted" style="margin:0 0 8px;">Players you’ve signed — place 11 on the pitch next. Groups are side-by-side.</p>
         <div id="gpflSquad" class="gpfl-squad-board"></div>
       </section>
 
       <section class="gpfl-panel">
-        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Half-pitch view (goal at the bottom). Each marker is a dropdown from your signed squad — only eligible positions appear. Formation flex lets nearby roles cover (e.g. LMF↔LWF, LB↔LMF). Save XI + bench when ready.">3. Pitch XI &amp; bench</h2>
+        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Half-pitch view (goal at the bottom). Each marker is a dropdown from your signed squad — only eligible positions appear. Formation flex lets nearby roles cover (e.g. LMF↔LWF, LB↔LMF). Save XI + bench when ready.">Pitch XI &amp; bench</h2>
         <div class="gpfl-filters" style="align-items:center;">
           <label class="gpfl-muted gpsl-has-tip" tabindex="0" data-gpsl-tip="Choose a formation — markers rearrange like Matchday. Changing formation clears unsaved slot picks into a fresh layout from any saved starters.">Formation
             <select id="gpflFormation" style="margin-left:6px;min-width:200px;"></select>
@@ -190,6 +190,6 @@
     <div id="gpflCardBody" class="gpfl-dialog-body"></div>
   </dialog>
 
-  <script type="module" src="fantasy.js?v=20260818-sign-caps"></script>
+  <script type="module" src="fantasy.js?v=20260818-squad-labels"></script>
 </body>
 </html>

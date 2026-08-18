@@ -688,9 +688,18 @@ function renderPitchBench(data) {
 function renderSquad(data) {
   const root = document.getElementById("gpflSquad");
   if (!root) return;
+
+  const titleEl = document.getElementById("gpflSquadTitle");
+  if (titleEl) {
+    const team =
+      String(data?.entry?.team_name || "").trim() ||
+      "Your";
+    titleEl.textContent = `${team} Squad`;
+  }
+
   const squad = data.squad || [];
   if (!squad.length) {
-    root.innerHTML = `<p class="gpfl-muted">Empty squad — expand the pool and sign players.</p>`;
+    root.innerHTML = `<p class="gpfl-muted">Empty squad — expand Squad Building and sign players.</p>`;
     return;
   }
 
@@ -1179,14 +1188,14 @@ async function loadBoard() {
     return;
   }
   root.innerHTML = `<table class="gpfl-table">
-    <thead><tr><th>#</th><th>Team</th><th>Club</th><th class="num">Pts</th></tr></thead>
+    <thead><tr><th>#</th><th>Team</th><th>Owner</th><th class="num">Pts</th></tr></thead>
     <tbody>
       ${rows
         .map(
           (r) => `<tr ${r.is_me ? 'style="background:rgba(60,120,180,0.15)"' : ""}>
             <td>${esc(r.rank)}</td>
             <td>${esc(r.team_name || "—")}${r.is_me ? ' <span class="gpfl-badge">you</span>' : ""}</td>
-            <td>${esc(r.club_short_name || "—")}</td>
+            <td>${esc(r.owner_name || r.owner_tag || r.club_short_name || "—")}</td>
             <td class="num">${esc(r.total_points ?? 0)}</td>
           </tr>`
         )
