@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260818-gpfl-tips">
-  <link rel="stylesheet" href="fantasy.css?v=20260818-chips-right">
+  <link rel="stylesheet" href="fantasy.css?v=20260819-tabs">
 </head>
 <body class="gpfl-page">
   <div id="nav"></div>
@@ -73,6 +73,12 @@
     </section>
 
     <div id="gpflPlay" hidden>
+      <div class="gpfl-tabs" role="tablist" aria-label="GPFL sections">
+        <button type="button" class="gpfl-tab active" data-gpfl-tab="squad" role="tab" aria-selected="true">Squad building</button>
+        <button type="button" class="gpfl-tab" data-gpfl-tab="standings" role="tab" aria-selected="false">Scores &amp; standings</button>
+      </div>
+
+      <div class="gpfl-tab-panel active" id="gpflTabSquad" data-gpfl-panel="squad" role="tabpanel">
       <section class="gpfl-panel">
         <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Sign players into your GPFL squad from the contracted GPSL pool. Players at clubs you own in GPSL are excluded. Gold Sign adds them if you have budget and a free slot in that position group.">Squad Building</h2>
         <div class="gpfl-stats gpfl-sign-caps" id="gpflSignCaps"></div>
@@ -146,7 +152,9 @@
           </p>
         </div>
       </section>
+      </div>
 
+      <div class="gpfl-tab-panel" id="gpflTabStandings" data-gpfl-panel="standings" role="tabpanel" hidden>
       <section class="gpfl-panel">
         <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Per GPSL month: points, transfer hits, chip used, and whether the month is still provisional or final.">Month scores</h2>
         <div id="gpflMonthScores"></div>
@@ -156,27 +164,28 @@
         <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Season standings among GPFL entries (total points).">Leaderboard</h2>
         <div id="gpflBoard"></div>
       </section>
-    </div>
 
-    <section class="gpfl-panel" id="gpflContentPanel">
-      <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Best XI and most common transfers for a GPSL month across GPFL managers.">Dream Team &amp; top transfers</h2>
-      <div class="gpfl-filters" style="align-items:center;">
-        <label class="gpfl-muted">GPSL month
-          <select id="gpflContentMonth" style="margin-left:6px;min-width:160px;"></select>
-        </label>
-        <button type="button" class="gpfl-btn" id="gpflContentRefresh">Refresh</button>
-      </div>
-      <div class="gpfl-grid-2">
-        <div>
-          <h3 class="gpfl-subhead gpsl-has-tip" tabindex="0" data-gpsl-tip="Best XI for the selected GPSL month (fixed 4-4-2 dream-team shape) from scored performances.">Dream Team (4-4-2)</h3>
-          <div id="gpflDreamTeam"></div>
+      <section class="gpfl-panel" id="gpflContentPanel">
+        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Best XI and most common transfers for a GPSL month across GPFL managers.">Dream Team &amp; top transfers</h2>
+        <div class="gpfl-filters" style="align-items:center;">
+          <label class="gpfl-muted">GPSL month
+            <select id="gpflContentMonth" style="margin-left:6px;min-width:160px;"></select>
+          </label>
+          <button type="button" class="gpfl-btn" id="gpflContentRefresh">Refresh</button>
         </div>
-        <div>
-          <h3 class="gpfl-subhead gpsl-has-tip" tabindex="0" data-gpsl-tip="Most common in/out moves for the selected GPSL month among GPFL managers.">Most transferred</h3>
-          <div id="gpflTopTransfers"></div>
+        <div class="gpfl-grid-2">
+          <div>
+            <h3 class="gpfl-subhead gpsl-has-tip" tabindex="0" data-gpsl-tip="Best XI for the selected GPSL month (fixed 4-4-2 dream-team shape) from scored performances.">Dream Team (4-4-2)</h3>
+            <div id="gpflDreamTeam"></div>
+          </div>
+          <div>
+            <h3 class="gpfl-subhead gpsl-has-tip" tabindex="0" data-gpsl-tip="Most common in/out moves for the selected GPSL month among GPFL managers.">Most transferred</h3>
+            <div id="gpflTopTransfers"></div>
+          </div>
         </div>
+      </section>
       </div>
-    </section>
+    </div>
   </main>
 
   <dialog id="gpflCardDialog" class="gpfl-dialog">
@@ -187,6 +196,6 @@
     <div id="gpflCardBody" class="gpfl-dialog-body"></div>
   </dialog>
 
-  <script type="module" src="fantasy.js?v=20260818-budget-caps"></script>
+  <script type="module" src="fantasy.js?v=20260819-tabs"></script>
 </body>
 </html>

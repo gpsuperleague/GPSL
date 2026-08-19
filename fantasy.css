@@ -62,6 +62,38 @@ body.gpfl-page {
   padding: 16px 20px 48px;
 }
 
+.gpfl-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.gpfl-tab {
+  padding: 10px 16px;
+  background: #111820;
+  border: 1px solid #3a4558;
+  color: #9ab0c4;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.gpfl-tab:hover {
+  border-color: #c9a227;
+  color: #e8d5a0;
+}
+.gpfl-tab.active {
+  background: rgba(201, 162, 39, 0.15);
+  border-color: #c9a227;
+  color: #f0d878;
+}
+.gpfl-tab-panel[hidden] {
+  display: none !important;
+}
+.gpfl-tab-panel.active {
+  display: block;
+}
+
 .gpfl-status {
   min-height: 1.2em;
   margin: 0 0 12px;

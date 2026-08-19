@@ -1331,7 +1331,35 @@ async function refresh() {
   await loadContent();
 }
 
+function setGpflTab(tab) {
+  const id = tab === "standings" ? "standings" : "squad";
+  document.querySelectorAll(".gpfl-tab").forEach((btn) => {
+    const on = btn.dataset.gpflTab === id;
+    btn.classList.toggle("active", on);
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  document.querySelectorAll(".gpfl-tab-panel").forEach((panel) => {
+    const on = panel.dataset.gpflPanel === id;
+    panel.classList.toggle("active", on);
+    panel.hidden = !on;
+  });
+  try {
+    const url = new URL(location.href);
+    if (id === "squad") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", id);
+    history.replaceState(null, "", url);
+  } catch {
+    /* ignore */
+  }
+}
+
 function wire() {
+  document.querySelectorAll(".gpfl-tab").forEach((btn) => {
+    btn.addEventListener("click", () => setGpflTab(btn.dataset.gpflTab));
+  });
+  const qTab = new URLSearchParams(location.search).get("tab");
+  if (qTab === "standings") setGpflTab("standings");
+
   document.getElementById("gpflJoinBtn")?.addEventListener("click", async () => {
     const name = document.getElementById("gpflTeamName")?.value || null;
     setStatus("Joining…");
