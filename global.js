@@ -1855,12 +1855,15 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
       const listingAttr = item.listingNav
         ? ` data-listing-nav="${item.listingNav}"`
         : "";
+      const externalAttr = item.external
+        ? ` target="_blank" rel="noopener noreferrer"`
+        : "";
       flat += `<a href="${item.href}" class="nav-link${indent}${
         active ? " active" : ""
       }${navListingPathClass(item, currentFile)}${navAuctionPathClass(
         item,
         currentFile
-      )}"${auctionAttr}${listingAttr}>${navLinkInnerHtml(item)}</a>`;
+      )}"${auctionAttr}${listingAttr}${externalAttr}>${navLinkInnerHtml(item)}</a>`;
     }
     return flat;
   }
@@ -1884,12 +1887,15 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     const listingAttr = item.listingNav
       ? ` data-listing-nav="${item.listingNav}"`
       : "";
+    const externalAttr = item.external
+      ? ` target="_blank" rel="noopener noreferrer"`
+      : "";
     return `<a href="${item.href}" class="nav-link${indent}${danger}${checklist}${
       active ? " active" : ""
     }${navListingPathClass(item, currentFile)}${navAuctionPathClass(
       item,
       currentFile
-    )}"${auctionAttr}${listingAttr}>${navLinkInnerHtml(item)}</a>`;
+    )}"${auctionAttr}${listingAttr}${externalAttr}>${navLinkInnerHtml(item)}</a>`;
   };
 
   const flushPanel = () => {
