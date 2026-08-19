@@ -1,0 +1,429 @@
+/* International matchday — World Cup themed layout */
+
+:root {
+  --intl-gold: #d4a84b;
+  --intl-gold-bright: #f0c86a;
+  --intl-navy: #0c1424;
+  --intl-panel: #121a2a;
+  --intl-border: #2a3a55;
+  --intl-accent: #3d6ea8;
+  --intl-text: #e4e8ef;
+  --intl-muted: #8a96a8;
+}
+
+body.intl-matchday {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(61, 110, 168, 0.22), transparent 55%),
+    linear-gradient(180deg, #0a101c 0%, #111 40%, #0e1218 100%);
+  color: var(--intl-text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  margin: 0;
+}
+
+.intl-matchday .page-container {
+  width: 95%;
+  max-width: 1100px;
+  margin: 20px auto 48px;
+}
+
+.intl-matchday .page-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.intl-matchday .page-hero img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(212, 168, 75, 0.35));
+}
+
+.intl-matchday h1 {
+  color: var(--intl-gold-bright);
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: 0.02em;
+}
+
+.intl-matchday h2 {
+  color: var(--intl-gold);
+  font-size: 17px;
+  margin: 0 0 10px;
+}
+
+.intl-matchday .note {
+  color: var(--intl-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.intl-matchday .panel {
+  background: var(--intl-panel);
+  border: 1px solid var(--intl-border);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+.intl-matchday .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.intl-matchday table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.intl-matchday th,
+.intl-matchday td {
+  text-align: left;
+  padding: 8px 8px;
+  border-bottom: 1px solid #1e2a3c;
+}
+
+.intl-matchday th {
+  color: var(--intl-gold);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.intl-matchday tr.active {
+  background: rgba(61, 110, 168, 0.18);
+}
+
+.intl-matchday tr.needs-you {
+  background: rgba(212, 168, 75, 0.12);
+}
+
+.intl-matchday tr.waiting-row {
+  opacity: 0.92;
+}
+
+.intl-matchday .status {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--intl-gold-bright);
+}
+.intl-matchday .status.err { color: #f88; }
+.intl-matchday .status.ok { color: #8d8; }
+
+.intl-matchday input,
+.intl-matchday select,
+.intl-matchday textarea {
+  background: #0e1624;
+  border: 1px solid var(--intl-border);
+  color: var(--intl-text);
+  padding: 7px 8px;
+  border-radius: 4px;
+}
+
+.intl-matchday .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin-top: 10px;
+}
+
+.intl-matchday label {
+  display: block;
+  font-size: 12px;
+  color: var(--intl-muted);
+  margin-bottom: 4px;
+}
+
+.intl-matchday a { color: var(--intl-gold-bright); }
+
+.intl-matchday .button {
+  padding: 9px 16px;
+  background: var(--intl-gold);
+  color: #111;
+  border: none;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: 0;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 13px;
+}
+.intl-matchday .button.secondary {
+  background: #243044;
+  color: var(--intl-text);
+  border: 1px solid var(--intl-border);
+}
+.intl-matchday .button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.intl-matchday .button.waiting-btn {
+  background: #1a2435;
+  color: var(--intl-muted);
+  border: 1px solid var(--intl-border);
+  font-weight: 600;
+}
+.intl-matchday .button.accept-btn {
+  background: var(--intl-gold);
+  color: #111;
+}
+
+.intl-matchday .checkin-box {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--intl-border);
+  background: #0e1624;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.intl-matchday .checkin-box.open {
+  border-color: #2e7d4f;
+  background: #142018;
+  color: #9cdc9c;
+}
+.intl-matchday .checkin-box.warn {
+  border-color: #6b5a28;
+  background: #1e1a10;
+  color: #d4b85a;
+}
+.intl-matchday .checkin-box.closed {
+  border-color: #633;
+  background: #1a1212;
+  color: #e8a87c;
+}
+
+.intl-matchday .score-hint { color: #9c9; font-size: 12px; margin: 8px 0 0; }
+.intl-matchday #koEtRow,
+.intl-matchday #koPenRow { margin-top: 12px; }
+.intl-matchday .pen-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 6px;
+}
+.intl-matchday .pen-pick label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--intl-text);
+  margin: 0;
+}
+
+.intl-matchday .slot-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.intl-matchday .slot-btn {
+  padding: 8px 12px;
+  background: #0e1624;
+  border: 1px solid var(--intl-border);
+  color: var(--intl-text);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+.intl-matchday .slot-btn:hover {
+  border-color: var(--intl-gold);
+  color: var(--intl-gold-bright);
+}
+.intl-matchday .slot-btn.selected {
+  background: rgba(212, 168, 75, 0.18);
+  border-color: var(--intl-gold);
+}
+
+.intl-matchday .sim-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.intl-matchday .btn-link.sim-result-btn {
+  background: #1a3a2a;
+  color: #cfc;
+  border: 1px solid #3a6;
+  cursor: pointer;
+  display: inline-block;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 4px;
+  text-decoration: none;
+}
+.intl-matchday .btn-link.sim-result-btn:disabled { opacity: 0.6; cursor: wait; }
+
+.intl-matchday .match-sim-banner {
+  font-size: 13px;
+  color: #bbb;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: #121a22;
+  border: 1px solid #345;
+  border-radius: 6px;
+}
+.intl-matchday .match-sim-banner--err {
+  background: #2a1515;
+  border-color: #633;
+  color: #f88;
+}
+.intl-matchday .match-sim-on { color: #9fd4b0; font-weight: bold; }
+.intl-matchday .match-sim-off { color: #f88; font-weight: bold; }
+.intl-matchday .match-sim-toggle {
+  margin-left: 8px;
+  background: #243044;
+  color: #eee;
+  border: 0;
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.intl-matchday .next-intl {
+  background: linear-gradient(135deg, #152038, #1a2818);
+  border: 1px solid #3a5a48;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.intl-matchday .next-intl b { color: var(--intl-gold-bright); }
+
+.intl-matchday .action-needed {
+  background: rgba(212, 168, 75, 0.1);
+  border: 1px solid var(--intl-gold);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.intl-matchday .action-needed b { color: var(--intl-gold-bright); }
+.intl-matchday .action-needed ul { margin: 8px 0 0; padding-left: 18px; }
+.intl-matchday .action-needed button {
+  margin-left: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--intl-gold);
+  color: #111;
+  border: 0;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.intl-matchday #pendingSchedulePanel {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--intl-gold);
+  background: rgba(212, 168, 75, 0.08);
+}
+
+.intl-matchday #acceptBtn {
+  background: var(--intl-gold) !important;
+  color: #111 !important;
+  font-weight: 700;
+  border: 0 !important;
+}
+
+/* Tabs — club matchday pattern, WC colours */
+.intl-matchday .matchday-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.intl-matchday .matchday-tabs button {
+  padding: 10px 16px;
+  background: #0e1624;
+  border: 1px solid var(--intl-border);
+  color: var(--intl-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.intl-matchday .matchday-tabs button.active {
+  background: rgba(61, 110, 168, 0.25);
+  border-color: var(--intl-gold);
+  color: var(--intl-gold-bright);
+}
+
+.intl-matchday .tab-panel { display: none; margin-top: 14px; }
+.intl-matchday .tab-panel.active { display: block; }
+
+.intl-matchday .score-entry { margin-bottom: 14px; width: fit-content; max-width: 100%; }
+.intl-matchday .score-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.intl-matchday .score-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.intl-matchday .score-field label {
+  font-size: 11px;
+  color: var(--intl-muted);
+  margin: 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.intl-matchday .score-input {
+  width: 52px;
+  padding: 6px 4px;
+  margin: 0;
+  background: #0e1624;
+  border: 1px solid var(--intl-border);
+  color: var(--intl-text);
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  box-sizing: border-box;
+}
+.intl-matchday .score-vs {
+  color: var(--intl-gold);
+  font-weight: bold;
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.intl-matchday .fixture-head {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--intl-text);
+  margin: 0 0 4px;
+}
+.intl-matchday .fixture-sub {
+  color: var(--intl-muted);
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+.intl-matchday .sch-waiting { color: #9cdc9c; font-weight: 600; }
+.intl-matchday .sch-action { color: var(--intl-gold-bright); font-weight: 700; }
+.intl-matchday .sch-muted { color: var(--intl-muted); }
+
+/* Pitch panel inherits matchday_squad.css; nudge accents toward gold */
+.intl-matchday .squad-pool h4,
+.intl-matchday .squad-bench h4 {
+  color: var(--intl-gold) !important;
+}
+.intl-matchday .matchday-tabs + .tab-panel .football-pitch {
+  box-shadow: 0 0 0 1px rgba(212, 168, 75, 0.15);
+}

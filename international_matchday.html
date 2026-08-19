@@ -9,105 +9,29 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="international.css?v=20260710-md-ko">
-  <style>
-    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    .page-container { width:95%; max-width:960px; margin:20px auto 40px; }
-    h1 { color:#ff9900; }
-    h2 { color:#ff9900; font-size:17px; margin:0 0 10px; }
-    .panel {
-      background:#1a1a1a; border:1px solid #333; border-radius:8px;
-      padding:18px; margin-bottom:18px;
-    }
-    .note { color:#999; font-size:13px; line-height:1.45; }
-    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
-    table { width:100%; border-collapse:collapse; font-size:13px; }
-    th, td { text-align:left; padding:7px 8px; border-bottom:1px solid #2a2a2a; }
-    th { color:#ffaa22; font-size:11px; text-transform:uppercase; }
-    tr.active { background:#222a18; }
-    .status { margin-top:10px; font-size:13px; color:#ffcc00; }
-    .status.err { color:#f88; }
-    .status.ok { color:#8d8; }
-    input, select {
-      background:#222; border:1px solid #444; color:#eee;
-      padding:7px 8px; border-radius:4px;
-    }
-    .row { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-top:10px; }
-    label { display:block; font-size:12px; color:#aaa; margin-bottom:4px; }
-    a { color:#ff9900; }
-    .checkin-box {
-      margin-top:10px; padding:10px 12px; border-radius:6px;
-      border:1px solid #333; background:#151515; font-size:13px; line-height:1.45;
-    }
-    .checkin-box.open { border-color:#2e7d4f; background:#142018; color:#9cdc9c; }
-    .checkin-box.warn { border-color:#6b5a28; background:#1e1a10; color:#d4b85a; }
-    .checkin-box.closed { border-color:#633; background:#1a1212; color:#e8a87c; }
-    .score-hint { color:#9c9; font-size:12px; margin:8px 0 0; }
-    #koEtRow, #koPenRow { margin-top:12px; }
-    .pen-pick { display:flex; flex-wrap:wrap; gap:16px; margin-top:6px; }
-    .pen-pick label { display:flex; align-items:center; gap:6px; cursor:pointer; color:#ddd; margin:0; }
-    .squad-picker { max-height:320px; overflow:auto; border:1px solid #333; border-radius:6px; }
-    .squad-picker table { margin:0; }
-    .squad-picker select { font-size:12px; padding:4px 6px; }
-    .slot-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
-    .slot-btn {
-      padding:8px 12px; background:#222; border:1px solid #444; color:#ddd;
-      border-radius:6px; cursor:pointer; font-size:12px; text-align:left;
-    }
-    .slot-btn:hover { border-color:#ff9900; color:#ff9900; }
-    .slot-btn.selected { background:#3d3200; border-color:#ff9900; }
-    .sim-actions { display:inline-flex; flex-wrap:wrap; gap:8px; }
-    .btn-link.sim-result-btn {
-      background:#2a5535; color:#cfc; border:1px solid #3a6; cursor:pointer;
-      display:inline-block; padding:6px 12px; font-size:12px; font-weight:bold;
-      border-radius:4px; text-decoration:none;
-    }
-    .btn-link.sim-result-btn:disabled { opacity:.6; cursor:wait; }
-    .match-sim-banner { font-size:13px; color:#bbb; margin:0 0 12px; padding:8px 12px; background:#1a221a; border:1px solid #345; border-radius:6px; }
-    .match-sim-banner--err { background:#2a1515; border-color:#633; color:#f88; }
-    .match-sim-on { color:#9fd4b0; font-weight:bold; }
-    .match-sim-off { color:#f88; font-weight:bold; }
-    .match-sim-toggle { margin-left:8px; background:#444; color:#eee; border:0; display:inline-block; padding:4px 10px; font-size:12px; font-weight:bold; border-radius:4px; cursor:pointer; }
-    .next-intl {
-      background:#1a2210; border:1px solid #3a5a28; border-radius:8px;
-      padding:12px 14px; margin-bottom:16px; font-size:14px;
-    }
-    .next-intl b { color:#ffaa22; }
-    .action-needed {
-      background:#2a2010; border:1px solid #c0a050; border-radius:8px;
-      padding:12px 14px; margin-bottom:16px; font-size:14px;
-    }
-    .action-needed b { color:#ffcc66; }
-    .action-needed ul { margin:8px 0 0; padding-left:18px; }
-    .action-needed button {
-      margin-left:8px; padding:4px 10px; font-size:12px; cursor:pointer;
-      background:#c0a050; color:#111; border:0; border-radius:4px; font-weight:700;
-    }
-    tr.needs-you { background:#2a2410; }
-    #pendingSchedulePanel {
-      margin:10px 0; padding:12px 14px; border-radius:8px;
-      border:1px solid #c0a050; background:#241c0c;
-    }
-    #acceptBtn {
-      background:#c0a050 !important; color:#111 !important; font-weight:700;
-      border:0 !important;
-    }
-  </style>
+  <link rel="stylesheet" href="matchday_squad.css?v=20260819-intl">
+  <link rel="stylesheet" href="international_matchday.css?v=20260819-wc">
 </head>
-<body>
+<body class="intl-matchday">
   <div id="nav"></div>
   <div class="page-container">
-    <h1>International matchday</h1>
-    <p class="note">
-      Arrange kickoffs and submit/confirm results for your national team.
-      Knockout ties that finish level after 90 minutes need <b>extra time</b> (total goals) and, if still level, a <b>penalty winner</b>.
-      When match simulation is <b>ON</b>, Instant result / Simulate use the same engine as league &amp; cup (turn off after this season).
-    </p>
+    <div class="page-hero">
+      <img src="images/trophies/world_cup.png" alt="" width="48" height="48">
+      <div>
+        <h1>International matchday</h1>
+        <p class="note" style="margin:4px 0 0;">
+          World Cup &amp; internationals — arrange kick-offs, set your national XI, submit results.
+          Same propose / accept / counter rules as league &amp; cup.
+        </p>
+      </div>
+    </div>
+
     <div id="matchSimBannerHost"></div>
     <div id="actionNeededBanner" class="action-needed" hidden></div>
     <div class="toolbar">
-      <a class="button" href="national_team.html" id="nationLink">National team</a>
-      <a class="button" href="world_cup.html">World Cup</a>
-      <a class="button" href="season_calendar.html">Season calendar</a>
+      <a class="button secondary" href="national_team.html" id="nationLink">National team</a>
+      <a class="button secondary" href="world_cup.html">World Cup</a>
+      <a class="button secondary" href="season_calendar.html">Season calendar</a>
     </div>
 
     <div id="nextIntlBanner" class="next-intl" hidden></div>
@@ -116,115 +40,128 @@
       <h2>Your fixtures</h2>
       <p id="nationBanner" class="note">Loading…</p>
       <p class="note" style="margin-top:0;">
-        Kick-off arrange / accept is <b>not</b> in this table — click <b>Open</b> on a fixture and use
-        <b>Arrange kickoff</b> in the panel that appears below.
+        <b>Arrange</b> = you propose (home). <b>Waiting</b> = home or opponent must act first.
+        <b>Accept</b> / <b>Respond</b> = your turn. Every row stays clickable for details.
       </p>
       <div id="fixtureList"></div>
     </div>
 
     <div class="panel" id="detailPanel" hidden>
-      <h2 id="detailTitle">Fixture</h2>
-      <p id="detailMeta" class="note"></p>
+      <p class="fixture-head" id="detailTitle">Fixture</p>
+      <p class="fixture-sub" id="detailMeta"></p>
       <div id="checkinBox" class="checkin-box" hidden></div>
 
-      <div id="scheduleBlock">
-        <h2 style="margin-top:14px;">Arrange kickoff</h2>
-        <p class="note" style="margin-top:0;">
-          Same rules as league/cup: <b>home proposes first</b> from Owner Details weekly availability
-          in this fixture’s GPSL month. Opponent may <b>Accept</b> or <b>Counter-propose</b> from their own slots.
-          Only one pending offer at a time — a counter replaces the previous time.
-        </p>
-        <p id="scheduleMeta" class="note"></p>
-        <div id="pendingSchedulePanel" hidden></div>
-        <div id="proposalHistory" class="note" hidden></div>
-        <div id="slotPickerPanel">
-          <div id="kickoffSlotList" class="slot-list"></div>
-          <div class="row" style="margin-top:10px;">
-            <button type="button" class="button" id="proposeBtn" disabled>Propose kick-off</button>
-            <button type="button" class="button" id="acceptBtn" hidden>Accept pending proposal</button>
-            <button type="button" class="button secondary" id="withdrawBtn" hidden>Withdraw my proposal</button>
-            <a class="button secondary" href="owner_details.html" style="text-decoration:none;">Edit availability</a>
-          </div>
-        </div>
-        <p id="scheduleStatus" class="note"></p>
+      <div class="matchday-tabs" role="tablist">
+        <button type="button" class="active" data-tab="kickoff" role="tab">Kick-off</button>
+        <button type="button" data-tab="squad" role="tab">Squad &amp; pitch</button>
+        <button type="button" data-tab="result" role="tab">Result</button>
       </div>
 
-      <div id="resultBlock" style="margin-top:16px;">
-        <h2>Result</h2>
-        <p id="scorePeriodHint" class="note" hidden>
-          Knockout: enter 90-minute score first. If level, enter <b>total goals after extra time</b>
-          (e.g. 1–1 then 2–2 after ET), then pick the penalty winner if still level.
-        </p>
-        <div class="row">
-          <div>
-            <label for="homeGoals" id="homeGoalsLabel">Home goals (90)</label>
-            <input type="number" id="homeGoals" min="0" max="30" value="0" style="width:80px;">
-          </div>
-          <div>
-            <label for="awayGoals" id="awayGoalsLabel">Away goals (90)</label>
-            <input type="number" id="awayGoals" min="0" max="30" value="0" style="width:80px;">
-          </div>
-        </div>
-
-        <div id="koEtRow" hidden>
-          <p class="note" style="margin:0 0 8px;">
-            Level after 90 — enter <b>total score after extra time</b> (90-min goals carry over).
+      <div class="tab-panel active" id="tabKickoff" data-panel="kickoff">
+        <div id="scheduleBlock">
+          <h2>Arrange kickoff</h2>
+          <p class="note" style="margin-top:0;">
+            Same as league/cup: <b>home proposes first</b> from Owner Details weekly availability
+            in this fixture’s GPSL month. Opponent may <b>Accept</b> or <b>Counter-propose</b>.
+            Only one pending offer at a time.
           </p>
-          <div class="row" style="margin-top:0;">
-            <div>
-              <label for="etHomeGoals" id="etHomeLabel">Home ET total</label>
-              <input type="number" id="etHomeGoals" min="0" max="30" value="" style="width:80px;" placeholder="—">
-            </div>
-            <div>
-              <label for="etAwayGoals" id="etAwayLabel">Away ET total</label>
-              <input type="number" id="etAwayGoals" min="0" max="30" value="" style="width:80px;" placeholder="—">
+          <p id="scheduleMeta" class="note"></p>
+          <div id="pendingSchedulePanel" hidden></div>
+          <div id="proposalHistory" class="note" hidden></div>
+          <div id="slotPickerPanel">
+            <div id="kickoffSlotList" class="slot-list"></div>
+            <div class="row" style="margin-top:10px;">
+              <button type="button" class="button" id="proposeBtn" disabled>Propose kick-off</button>
+              <button type="button" class="button" id="acceptBtn" hidden>Accept pending proposal</button>
+              <button type="button" class="button secondary" id="withdrawBtn" hidden>Withdraw my proposal</button>
+              <a class="button secondary" href="owner_details.html" style="text-decoration:none;">Edit availability</a>
             </div>
           </div>
-          <p id="etPreview" class="score-hint"></p>
+          <p id="scheduleStatus" class="note"></p>
         </div>
-
-        <div id="koPenRow" hidden>
-          <p class="note" style="margin:0 0 6px;">Still level after ET — who won the penalty shootout?</p>
-          <div class="pen-pick">
-            <label>
-              <input type="radio" name="penWinner" id="penWinnerHome" value="home">
-              <span id="penWinnerHomeLabel">Home</span>
-            </label>
-            <label>
-              <input type="radio" name="penWinner" id="penWinnerAway" value="away">
-              <span id="penWinnerAwayLabel">Away</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="row">
-          <button type="button" class="button" id="submitBtn">Submit result</button>
-          <button type="button" class="button" id="confirmBtn" hidden>Confirm pending</button>
-          <button type="button" class="button secondary" id="rejectBtn" hidden>Reject</button>
-        </div>
-        <div class="row" id="intlSimRow" style="margin-top:8px;"></div>
-        <p class="note">
-          Player stats JSON (optional on submit; confirmer should add their XI stats):
-          <code>[{"player_id":"…","goals":0,"assists":0,"rating":7.5,"potm":false,"clean_sheet":false}]</code>
-        </p>
-        <textarea id="statsJson" rows="4" style="width:100%;max-width:100%;background:#222;color:#eee;border:1px solid #444;border-radius:4px;padding:8px;font-family:monospace;font-size:12px;"></textarea>
       </div>
 
-      <div id="squadBlock" style="margin-top:16px;">
-        <h2>Default matchday squad</h2>
-        <p class="note">
-          Pick XI / bench / reserve from your current 26–28 call-up. Saved as your nation default for internationals.
+      <div class="tab-panel" id="tabSquad" data-panel="squad">
+        <h2>Default national matchday squad</h2>
+        <p class="note" style="margin-top:0;">
+          Drag call-up players onto the pitch (XI) and bench — same tools as club Match Day.
+          Saved as your nation default for internationals.
         </p>
-        <div id="squadPicker" class="squad-picker"></div>
-        <div class="row">
-          <button type="button" class="button secondary" id="saveSquadBtn">Save default squad</button>
-          <span id="squadCount" class="note"></span>
+        <div id="matchdaySquadRoot"></div>
+        <p id="squadPanelStatus" class="note" style="margin-top:10px;"></p>
+      </div>
+
+      <div class="tab-panel" id="tabResult" data-panel="result">
+        <div id="resultBlock">
+          <h2>Result</h2>
+          <p id="scorePeriodHint" class="note" hidden>
+            Knockout: enter 90-minute score first. If level, enter <b>total goals after extra time</b>,
+            then pick the penalty winner if still level.
+          </p>
+          <div class="score-entry" id="scoreEntryRow">
+            <div class="score-inputs">
+              <div class="score-field">
+                <label for="homeGoals" id="homeGoalsLabel">Home</label>
+                <input type="number" id="homeGoals" class="score-input" min="0" max="30" value="0">
+              </div>
+              <span class="score-vs" aria-hidden="true">–</span>
+              <div class="score-field">
+                <label for="awayGoals" id="awayGoalsLabel">Away</label>
+                <input type="number" id="awayGoals" class="score-input" min="0" max="30" value="0">
+              </div>
+            </div>
+          </div>
+
+          <div id="koEtRow" hidden>
+            <p class="note" style="margin:0 0 8px;">
+              Level after 90 — enter <b>total score after extra time</b> (90-min goals carry over).
+            </p>
+            <div class="score-entry" style="margin-top:0;">
+              <div class="score-inputs">
+                <div class="score-field">
+                  <label for="etHomeGoals" id="etHomeLabel">Home ET</label>
+                  <input type="number" id="etHomeGoals" class="score-input" min="0" max="30" value="" placeholder="—">
+                </div>
+                <span class="score-vs" aria-hidden="true">–</span>
+                <div class="score-field">
+                  <label for="etAwayGoals" id="etAwayLabel">Away ET</label>
+                  <input type="number" id="etAwayGoals" class="score-input" min="0" max="30" value="" placeholder="—">
+                </div>
+              </div>
+            </div>
+            <p id="etPreview" class="score-hint"></p>
+          </div>
+
+          <div id="koPenRow" hidden>
+            <p class="note" style="margin:0 0 6px;">Still level after ET — who won the penalty shootout?</p>
+            <div class="pen-pick">
+              <label>
+                <input type="radio" name="penWinner" id="penWinnerHome" value="home">
+                <span id="penWinnerHomeLabel">Home</span>
+              </label>
+              <label>
+                <input type="radio" name="penWinner" id="penWinnerAway" value="away">
+                <span id="penWinnerAwayLabel">Away</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="row">
+            <button type="button" class="button" id="submitBtn">Submit result</button>
+            <button type="button" class="button" id="confirmBtn" hidden>Confirm pending</button>
+            <button type="button" class="button secondary" id="rejectBtn" hidden>Reject</button>
+          </div>
+          <div class="row" id="intlSimRow" style="margin-top:8px;"></div>
+          <p class="note" style="margin-top:12px;">
+            Player stats JSON (optional on submit; confirmer should add their XI stats):
+          </p>
+          <textarea id="statsJson" rows="4" style="width:100%;max-width:100%;font-family:monospace;font-size:12px;"></textarea>
         </div>
       </div>
     </div>
 
     <div id="pageStatus" class="status"></div>
   </div>
-  <script type="module" src="international_matchday.js?v=20260819-away-wait"></script>
+  <script type="module" src="international_matchday.js?v=20260819-wc-tabs"></script>
 </body>
 </html>

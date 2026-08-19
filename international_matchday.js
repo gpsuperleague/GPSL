@@ -1,5 +1,5 @@
 /**
- * International matchday — arrange kickoff + submit/confirm results for your nation.
+ * International matchday — arrange kickoff + national XI (pitch) + results.
  * Knockout: ET totals + penalty winner when level.
  */
 import { supabase, initGlobal } from "./global.js";
@@ -21,9 +21,13 @@ import {
   wireMatchSimButtons,
   runMatchSimulation,
 } from "./match_sim_ui.js";
+import { initMatchdaySquadPanel } from "./matchday_squad.js";
 
 /** Result entry: from agreed kickoff until +48h (soft guidance). */
 const RESULT_WINDOW_HOURS_AFTER = 48;
+/** National call-up size ≈ 26–28 → XI + deep bench */
+const INTL_MAX_BENCH = 15;
+const INTL_MAX_SQUAD = 28;
 
 let myNation = null;
 let fixtures = [];
@@ -31,7 +35,10 @@ let selectedId = null;
 let pendingProposalId = null;
 let pendingSubmissionId = null;
 let callupRows = [];
-let savedSquadByPlayer = new Map();
+let savedSquadRows = [];
+let savedPitchLayout = null;
+/** @type {ReturnType<typeof initMatchdaySquadPanel>|null} */
+let squadPanelApi = null;
 /** @type {{ enabled: boolean, isAdmin: boolean, isStaff?: boolean, error: string|null }} */
 let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: null };
 /** @type {any} */
@@ -273,95 +280,115 @@ function renderNextIntl() {
 }
 
 async function loadSavedSquad() {
-  savedSquadByPlayer = new Map();
+  savedSquadRows = [];
+  savedPitchLayout = null;
   if (!myNation?.code) return;
-  const { data } = await supabase
-    .from("international_matchday_squad_player")
-    .select("player_id, slot_kind, pitch_slot, sort_order")
-    .eq("nation_code", myNation.code);
-  for (const row of data || []) {
-    savedSquadByPlayer.set(String(row.player_id), row);
-  }
+  const [{ data: players }, { data: header }] = await Promise.all([
+    supabase
+      .from("international_matchday_squad_player")
+      .select("player_id, slot_kind, pitch_slot, sort_order")
+      .eq("nation_code", myNation.code)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("international_matchday_squad")
+      .select("pitch_layout")
+      .eq("nation_code", myNation.code)
+      .maybeSingle(),
+  ]);
+  savedSquadRows = players || [];
+  savedPitchLayout = header?.pitch_layout || null;
 }
 
-function renderSquadPicker() {
-  const root = $("squadPicker");
-  const countEl = $("squadCount");
+function callupAsMatchdayPlayers() {
+  return (callupRows || []).map((p) => ({
+    Konami_ID: String(p.player_id),
+    player_id: String(p.player_id),
+    Name: p.player_name || String(p.player_id),
+    player_name: p.player_name || String(p.player_id),
+    Position: String(p.player_position || "").toUpperCase(),
+    Preferred_Position: p.player_position || "",
+    Rating: Number(p.rating || p.overall || 0) || 0,
+  }));
+}
+
+function initOrRefreshSquadPanel() {
+  const root = $("matchdaySquadRoot");
   if (!root) return;
   if (!callupRows.length) {
-    root.innerHTML = `<p class="note" style="padding:10px;">No active call-ups — build your 26–28 on <a href="national_team.html">National team</a> / GPDB.</p>`;
-    if (countEl) countEl.textContent = "";
+    root.innerHTML =
+      '<p class="note" style="padding:10px;">No active call-ups — build your 26–28 on <a href="national_team.html">National team</a>.</p>';
+    squadPanelApi = null;
     return;
   }
-
-  const rows = callupRows
-    .slice()
-    .sort((a, b) =>
-      String(a.player_name || a.player_id).localeCompare(String(b.player_name || b.player_id))
-    );
-
-  root.innerHTML = `
-    <table>
-      <thead>
-        <tr><th>Player</th><th>Pos</th><th>Role</th></tr>
-      </thead>
-      <tbody>
-        ${rows
-          .map((p) => {
-            const id = String(p.player_id);
-            const saved = savedSquadByPlayer.get(id);
-            const kind = saved?.slot_kind || "";
-            return `<tr data-pid="${escapeHtml(id)}">
-              <td>${escapeHtml(p.player_name || id)}</td>
-              <td>${escapeHtml(p.player_position || "—")}</td>
-              <td>
-                <select class="squad-role">
-                  <option value="" ${!kind ? "selected" : ""}>—</option>
-                  <option value="pitch" ${kind === "pitch" ? "selected" : ""}>Pitch (XI)</option>
-                  <option value="bench" ${kind === "bench" ? "selected" : ""}>Bench</option>
-                  <option value="reserve" ${kind === "reserve" ? "selected" : ""}>Reserve</option>
-                </select>
-              </td>
-            </tr>`;
-          })
-          .join("")}
-      </tbody>
-    </table>`;
-
-  const syncCount = () => {
-    let pitch = 0;
-    let bench = 0;
-    root.querySelectorAll(".squad-role").forEach((sel) => {
-      if (sel.value === "pitch") pitch += 1;
-      if (sel.value === "bench") bench += 1;
-    });
-    if (countEl) {
-      countEl.textContent = `XI ${pitch}/11 · Bench ${bench}/7`;
-      countEl.style.color = pitch === 11 ? "#8d8" : "#d4b85a";
-    }
-  };
-  root.querySelectorAll(".squad-role").forEach((sel) => {
-    sel.addEventListener("change", syncCount);
+  const allPlayers = callupAsMatchdayPlayers();
+  squadPanelApi = initMatchdaySquadPanel({
+    root,
+    allPlayers,
+    savedRows: savedSquadRows,
+    savedPitchLayout,
+    savedFormations: [],
+    maxBench: INTL_MAX_BENCH,
+    maxSquad: INTL_MAX_SQUAD,
+    onSave: async (slots, pitchLayout) => {
+      const statusEl = $("squadPanelStatus");
+      if (statusEl) statusEl.textContent = "Saving…";
+      const { error } = await supabase.rpc("international_save_matchday_squad", {
+        p_players: slots,
+        p_pitch_layout: pitchLayout || {},
+      });
+      if (error) {
+        if (statusEl) statusEl.textContent = "";
+        throw new Error(error.message);
+      }
+      await loadSavedSquad();
+      if (statusEl) {
+        statusEl.textContent = `✅ Saved ${slots.length} players (nation default).`;
+      }
+      setStatus("✅ Default national squad saved", true);
+    },
+    onChange: () => {},
   });
-  syncCount();
 }
 
-function collectSquadPayload() {
-  const root = $("squadPicker");
-  const players = [];
-  let ord = 0;
-  root?.querySelectorAll("tbody tr").forEach((tr) => {
-    const pid = tr.getAttribute("data-pid");
-    const kind = tr.querySelector(".squad-role")?.value;
-    if (!pid || !kind) return;
-    players.push({
-      player_id: pid,
-      slot_kind: kind,
-      pitch_slot: kind === "pitch" ? (ord === 0 ? "gk" : `p${ord}`) : null,
-      sort_order: ord++,
-    });
+function setMatchdayTab(tab) {
+  document.querySelectorAll(".matchday-tabs button").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === tab);
   });
-  return players;
+  document.querySelectorAll(".tab-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.panel === tab);
+  });
+  if (tab === "squad") initOrRefreshSquadPanel();
+}
+
+function isHomeFixture(f) {
+  return f?.home_nation === myNation?.code;
+}
+
+/** Button label — always opens the fixture; wording reflects whose turn it is. */
+function fixtureActionMeta(f) {
+  const sch = String(f.schedule_status || "unscheduled").toLowerCase();
+  const home = isHomeFixture(f);
+  if (f.played) {
+    return { label: "Open", cls: "", tab: "result" };
+  }
+  if (f._needsAccept) {
+    return { label: "Accept", cls: "accept-btn", tab: "kickoff" };
+  }
+  if (sch === "agreed") {
+    return { label: "Open", cls: "", tab: "result" };
+  }
+  if (sch === "negotiating" && f._pendingFromMe) {
+    return { label: "Waiting", cls: "waiting-btn", tab: "kickoff" };
+  }
+  if (sch === "negotiating") {
+    return { label: "Respond", cls: "accept-btn", tab: "kickoff" };
+  }
+  if (sch === "unscheduled") {
+    return home
+      ? { label: "Arrange", cls: "", tab: "kickoff" }
+      : { label: "Waiting", cls: "waiting-btn", tab: "kickoff" };
+  }
+  return { label: "Open", cls: "", tab: "kickoff" };
 }
 
 async function loadFixtures() {
@@ -406,7 +433,7 @@ async function loadFixtures() {
   renderList();
   renderActionNeeded();
   renderNextIntl();
-  renderSquadPicker();
+  initOrRefreshSquadPanel();
 
   const params = new URLSearchParams(location.search);
   const qid = Number(params.get("fixture") || 0);
@@ -508,49 +535,59 @@ function renderList() {
             const score = f.played
               ? `${f.home_goals}–${f.away_goals}`
               : "–";
-            const sch = f.schedule_status || "unscheduled";
+            const sch = String(f.schedule_status || "unscheduled").toLowerCase();
+            const home = isHomeFixture(f);
+            const action = fixtureActionMeta(f);
             let schHtml = escapeHtml(sch);
             if (f._needsAccept) {
-              schHtml = `<span style="color:#fc6;font-weight:700;">Your action — accept kick-off</span>${
+              schHtml = `<span class="sch-action">Your turn — accept or counter</span>${
                 f._pendingLabel
                   ? `<br><span class="note">${escapeHtml(f._pendingLabel)}</span>`
                   : ""
               }`;
             } else if (sch === "negotiating" && f._pendingFromMe) {
-              schHtml = `<span style="color:#9cdc9c;">Waiting for opponent</span>${
+              schHtml = `<span class="sch-waiting">Waiting for opponent</span>${
                 f._pendingLabel
                   ? `<br><span class="note">${escapeHtml(f._pendingLabel)}</span>`
                   : ""
               }`;
             } else if (sch === "negotiating" && !f._myClub) {
-              schHtml = `<span style="color:#f88;">Link club to accept</span>${
+              schHtml = `<span style="color:#f88;">Link club to respond</span>${
                 f._pendingLabel
                   ? `<br><span class="note">${escapeHtml(f._pendingLabel)}</span>`
                   : ""
               }`;
             } else if (sch === "negotiating" && f._pendingLabel) {
-              schHtml = `negotiating — open below to arrange<br><span class="note">${escapeHtml(
+              schHtml = `<span class="sch-action">Respond to proposal</span><br><span class="note">${escapeHtml(
                 f._pendingLabel
               )}</span>`;
+            } else if (sch === "unscheduled") {
+              schHtml = home
+                ? `<span class="sch-action">Unscheduled — you propose</span>`
+                : `<span class="sch-waiting">Waiting for home to propose</span>`;
             } else if (f.agreed_kickoff_at) {
-              schHtml = `${escapeHtml(sch)}<br><span class="note">${escapeHtml(
+              schHtml = `<span class="sch-muted">Agreed</span><br><span class="note">${escapeHtml(
                 new Date(f.agreed_kickoff_at).toLocaleString()
               )}</span>`;
             }
-            const openLabel = f._needsAccept
-              ? "Accept"
-              : sch === "negotiating" || sch === "unscheduled"
-                ? "Arrange"
-                : "Open";
-            return `<tr class="${f.id === selectedId ? "active" : ""}${
-              f._needsAccept ? " needs-you" : ""
-            }" data-id="${f.id}">
+            const rowCls = [
+              f.id === selectedId ? "active" : "",
+              f._needsAccept ? "needs-you" : "",
+              action.label === "Waiting" ? "waiting-row" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
+            return `<tr class="${rowCls}" data-id="${f.id}">
               <td>${escapeHtml(phaseLabel(f))}</td>
               <td>${escapeHtml(f.home_flag || "")} ${escapeHtml(f.home_nation)}
                 vs ${escapeHtml(f.away_flag || "")} ${escapeHtml(f.away_nation)}</td>
               <td>${escapeHtml(score)}</td>
               <td>${schHtml}</td>
-              <td><button type="button" class="button secondary pick-fix" data-id="${f.id}">${openLabel}</button></td>
+              <td><button type="button" class="button secondary pick-fix ${escapeHtml(
+                action.cls
+              )}" data-id="${f.id}" data-tab="${escapeHtml(action.tab)}">${escapeHtml(
+              action.label
+            )}</button></td>
             </tr>`;
           })
           .join("")}
@@ -558,11 +595,13 @@ function renderList() {
     </table>`;
 
   root.querySelectorAll(".pick-fix").forEach((btn) => {
-    btn.addEventListener("click", () => selectFixture(Number(btn.dataset.id)));
+    btn.addEventListener("click", () => {
+      selectFixture(Number(btn.dataset.id), btn.dataset.tab || "kickoff");
+    });
   });
 }
 
-async function selectFixture(id) {
+async function selectFixture(id, preferTab) {
   selectedId = id;
   pendingProposalId = null;
   pendingSubmissionId = null;
@@ -572,9 +611,11 @@ async function selectFixture(id) {
   const panel = $("detailPanel");
   if (!f || !panel) return;
   panel.hidden = false;
-  // Kick-off UI lives here — scroll so Arrange kickoff is obvious after Open/Arrange.
+  const action = fixtureActionMeta(f);
+  const tab = preferTab || action.tab || "kickoff";
+  setMatchdayTab(tab);
   requestAnimationFrame(() => {
-    $("scheduleBlock")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   $("detailTitle").textContent = `${f.home_nation_name || f.home_nation} vs ${
@@ -1089,23 +1130,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await selectFixture(selectedId);
   });
 
-  $("saveSquadBtn")?.addEventListener("click", async () => {
-    const players = collectSquadPayload();
-    const pitch = players.filter((p) => p.slot_kind === "pitch").length;
-    if (pitch > 0 && pitch !== 11) {
-      if (!confirm(`You have ${pitch} pitch players (expected 11). Save anyway?`)) return;
-    }
-    setStatus("Saving squad…");
-    const { error } = await supabase.rpc("international_save_matchday_squad", {
-      p_players: players,
-      p_pitch_layout: {},
-    });
-    if (error) {
-      setStatus(`❌ ${error.message}`, false);
-      return;
-    }
-    setStatus("✅ Default squad saved", true);
-    await loadSavedSquad();
-    renderSquadPicker();
+  document.querySelectorAll(".matchday-tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => setMatchdayTab(btn.dataset.tab));
   });
 });
