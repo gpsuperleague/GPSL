@@ -1,0 +1,30 @@
+{
+  "selectors": [
+    "font[color='red']",
+    "font[color='Red']",
+    "font[color='#FF0000']",
+    "font[color='#ff0000']",
+    "font[color='#f00']",
+    "[style*='color:red']",
+    "[style*='color: red']",
+    "[style*='color:#ff0000']",
+    "[style*='color: #ff0000']",
+    "[style*='color:#FF0000']",
+    "[style*='color: #FF0000']",
+    "[style*='color:#f00']",
+    "[style*='color: #f00']",
+    ".fail",
+    ".failed",
+    ".error",
+    ".red",
+    ".text-danger",
+    ".alert-danger"
+  ],
+  "numberPattern": "^\\s*(\\d+)\\.\\s+",
+  "findRedNumberedIssues": true,
+  "redHueMax": 40,
+  "redMinChannel": 140,
+  "checkboxLabel": "Done",
+  "storageNamespace": "html-failure-checklist",
+  "skipIfAlreadyAnnotated": true
+}

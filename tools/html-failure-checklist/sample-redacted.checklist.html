@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Health Check Report - REDACTED SAMPLE</title>
+</head>
+<body bgcolor="#FFFFFF">
+<h2>SERVER01</h2>
+<!-- Typical generator style: HTML tags in the file, red via font/color or style -->
+<font color="red">1. The DNS servers do not appear to be cross site</font><br>
+<font color="red">2. The drive D: has less than 25 percent free disk space</font><br>
+<font color="red">3. There is a pending reboot for this server</font><br>
+<span style="color:#FF0000">4. There are 4 pending updates on the server</span><br>
+<p>Non-failure line in normal colour.</p>
+
+<h2>SERVER02</h2>
+<pre>
+OK something
+</pre>
+<div style="color:red">1. The following Kerberos-related ports are not reachable from this server: IP.IP.IP.IP:88</div>
+<div style="color: red">2. The GPOs applied to the servers in this input batch are not identical. Please refer to the design</div>
+
+<!-- html-failure-checklist begin -->
+<style id="html-failure-checklist-css">
+  .hfc-wrap {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-right: 6px;
+    vertical-align: top;
+  }
+  .hfc-wrap input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 2px 0 0;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .hfc-done-row,
+  .hfc-done-row td,
+  .hfc-done {
+    opacity: 0.55;
+    text-decoration: line-through;
+  }
+  .hfc-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 12px;
+    margin: 0 0 12px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    color: #ddd;
+    font: 13px/1.4 Segoe UI, Arial, sans-serif;
+  }
+  .hfc-toolbar button {
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid #666;
+    background: #333;
+    color: #eee;
+  }
+</style>
+<script data-html-failure-checklist="1">
+(function () {
+  var CFG = {"selectors":["font[color=\u0027red\u0027]","font[color=\u0027Red\u0027]","font[color=\u0027#FF0000\u0027]","font[color=\u0027#ff0000\u0027]","font[color=\u0027#f00\u0027]","[style*=\u0027color:red\u0027]","[style*=\u0027color: red\u0027]","[style*=\u0027color:#ff0000\u0027]","[style*=\u0027color: #ff0000\u0027]","[style*=\u0027color:#FF0000\u0027]","[style*=\u0027color: #FF0000\u0027]","[style*=\u0027color:#f00\u0027]","[style*=\u0027color: #f00\u0027]",".fail",".failed",".error",".red",".text-danger",".alert-danger"],"storageNamespace":"html-failure-checklist","checkboxLabel":"Done","numberPattern":"^\\s*(\\d+)\\.\\s+","reportKey":"sample-redacted.html","findRedNumberedIssues":true,"redHueMax":40,"redMinChannel":140};
+  var SEL = (CFG.selectors || []).filter(Boolean).join(",");
+
+  function hash(s) {
+    var h = 2166136261;
+    for (var i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(16);
+  }
+
+  function ownText(el) {
+    var t = "";
+    for (var i = 0; i < el.childNodes.length; i++) {
+      var n = el.childNodes[i];
+      if (n.nodeType === 3) t += n.nodeValue || "";
+    }
+    return t.replace(/\s+/g, " ").trim();
+  }
+
+  function fullText(el) {
+    return (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function isNumberedIssue(el) {
+    var pat = CFG.numberPattern || "^\\s*(\\d+)\\.\\s+";
+    var re;
+    try { re = new RegExp(pat); } catch (e) { return false; }
+    var t = ownText(el) || fullText(el);
+    if (t.length > 800) return false;
+    return re.test(t);
+  }
+
+  function isReddish(el) {
+    try {
+      // Explicit HTML attributes / inline styles (common in generated reports)
+      if (el.tagName && el.tagName.toLowerCase() === "font") {
+        var fc = (el.getAttribute("color") || "").trim().toLowerCase();
+        if (fc === "red" || fc === "#ff0000" || fc === "#f00" || fc === "ff0000") return true;
+      }
+      var st = (el.getAttribute("style") || "").toLowerCase().replace(/\s+/g, "");
+      if (
+        st.indexOf("color:red") >= 0 ||
+        st.indexOf("color:#ff0000") >= 0 ||
+        st.indexOf("color:#f00") >= 0 ||
+        st.indexOf("color:#c00") >= 0 ||
+        st.indexOf("color:#cc0000") >= 0
+      ) {
+        return true;
+      }
+
+      var c = window.getComputedStyle(el).color || "";
+      var m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+      if (!m) return false;
+      var r = +m[1], g = +m[2], b = +m[3];
+      var minR = CFG.redMinChannel != null ? CFG.redMinChannel : 140;
+      var maxGB = CFG.redHueMax != null ? CFG.redHueMax : 55;
+      return r >= minR && g <= maxGB && b <= maxGB && r > g + 30 && r > b + 30;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function serverHintFor(el) {
+    var cur = el;
+    for (var depth = 0; depth < 12 && cur; depth++) {
+      var p = cur.previousElementSibling;
+      while (p) {
+        if (/^H[1-6]$/i.test(p.tagName)) {
+          return (p.innerText || "").trim().slice(0, 80) + "|";
+        }
+        p = p.previousElementSibling;
+      }
+      cur = cur.parentElement;
+    }
+    return "";
+  }
+
+  function issueId(el, index) {
+    var text = fullText(el);
+    var num = "";
+    if (CFG.numberPattern) {
+      try {
+        var m = text.match(new RegExp(CFG.numberPattern));
+        if (m && m[1]) num = "n" + m[1] + ":";
+      } catch (e) {}
+    }
+    var serverHint = serverHintFor(el);
+    return CFG.storageNamespace + ":" + (CFG.reportKey || "report") + ":" + num + hash(serverHint + text + "#" + index);
+  }
+
+  function storageKey(id) {
+    return id;
+  }
+
+  function applyDoneClass(el, on) {
+    el.classList.toggle("hfc-done", on);
+    var tr = el.closest("tr");
+    if (tr) tr.classList.toggle("hfc-done-row", on);
+  }
+
+  function collectNodes() {
+    var set = [];
+    var seen = typeof WeakSet !== "undefined" ? new WeakSet() : null;
+
+    function add(el) {
+      if (!el || el.nodeType !== 1) return;
+      if (el.closest && el.closest(".hfc-toolbar, script, style")) return;
+      if (seen) {
+        if (seen.has(el)) return;
+        seen.add(el);
+      } else if (set.indexOf(el) >= 0) {
+        return;
+      }
+      set.push(el);
+    }
+
+    if (SEL) {
+      try {
+        Array.prototype.forEach.call(document.querySelectorAll(SEL), add);
+      } catch (e) {
+        console.warn("html-failure-checklist selector error", e);
+      }
+    }
+
+    if (CFG.findRedNumberedIssues !== false) {
+      var all = document.body ? document.body.getElementsByTagName("*") : [];
+      for (var i = 0; i < all.length; i++) {
+        var el = all[i];
+        if (/^(SCRIPT|STYLE|SVG|PATH|BUTTON|INPUT|TEXTAREA)$/i.test(el.tagName)) continue;
+        if (!isNumberedIssue(el)) continue;
+        if (!isReddish(el)) continue;
+        var childHit = false;
+        for (var c = 0; c < el.children.length; c++) {
+          if (isNumberedIssue(el.children[c]) && isReddish(el.children[c])) {
+            childHit = true;
+            break;
+          }
+        }
+        if (childHit) continue;
+        add(el);
+      }
+    }
+
+    return set.filter(function (el, i, arr) {
+      return !arr.some(function (other, j) {
+        return j !== i && other !== el && other.contains(el);
+      });
+    });
+  }
+
+  function annotate() {
+    if (document.documentElement.getAttribute("data-hfc-ready") === "1") return;
+    document.documentElement.setAttribute("data-hfc-ready", "1");
+
+    var bar = document.createElement("div");
+    bar.className = "hfc-toolbar";
+    bar.innerHTML =
+      "<strong>Failure checklist</strong>" +
+      "<span id=\"hfc-count\"></span>" +
+      "<button type=\"button\" id=\"hfc-clear\">Clear ticks (this report)</button>" +
+      "<button type=\"button\" id=\"hfc-export\">Download HTML with ticks</button>";
+    document.body.insertBefore(bar, document.body.firstChild);
+
+    var nodes = collectNodes();
+    if (!nodes.length) {
+      bar.innerHTML +=
+        " <span style=\"color:#fc6\">No numbered red failures found 窶・adjust selectors in config.json</span>";
+    }
+
+    var checked = 0;
+    nodes.forEach(function (el, index) {
+      if (el.querySelector(":scope > .hfc-wrap, .hfc-wrap")) return;
+
+      var id = issueId(el, index);
+      var wrap = document.createElement("span");
+      wrap.className = "hfc-wrap";
+      wrap.setAttribute("data-hfc-id", id);
+
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.title = (CFG.checkboxLabel || "Done") + " 窶・" + id.slice(-12);
+      cb.setAttribute("aria-label", CFG.checkboxLabel || "Done");
+
+      var on = false;
+      try {
+        on = localStorage.getItem(storageKey(id)) === "1";
+      } catch (e) {}
+      cb.checked = on;
+      applyDoneClass(el, on);
+      if (on) checked++;
+
+      cb.addEventListener("change", function () {
+        try {
+          if (cb.checked) localStorage.setItem(storageKey(id), "1");
+          else localStorage.removeItem(storageKey(id));
+        } catch (e) {}
+        applyDoneClass(el, cb.checked);
+        updateCount();
+      });
+
+      wrap.appendChild(cb);
+      if (el.firstChild) el.insertBefore(wrap, el.firstChild);
+      else el.appendChild(wrap);
+    });
+
+    function updateCount() {
+      var total = nodes.length;
+      var n = 0;
+      nodes.forEach(function (el) {
+        var cb = el.querySelector(".hfc-wrap input[type=checkbox]");
+        if (cb && cb.checked) n++;
+      });
+      var el = document.getElementById("hfc-count");
+      if (el) el.textContent = n + " / " + total + " ticked";
+    }
+
+    document.getElementById("hfc-clear").addEventListener("click", function () {
+      if (!confirm("Clear all checklist ticks for this report in this browser?")) return;
+      nodes.forEach(function (el) {
+        var wrap = el.querySelector(".hfc-wrap");
+        var id = wrap && wrap.getAttribute("data-hfc-id");
+        var cb = wrap && wrap.querySelector("input");
+        if (id) {
+          try { localStorage.removeItem(storageKey(id)); } catch (e) {}
+        }
+        if (cb) cb.checked = false;
+        applyDoneClass(el, false);
+      });
+      updateCount();
+    });
+
+    document.getElementById("hfc-export").addEventListener("click", function () {
+      var clone = document.documentElement.cloneNode(true);
+      clone.querySelectorAll(".hfc-wrap input[type=checkbox]").forEach(function (cb) {
+        if (cb.checked) cb.setAttribute("checked", "checked");
+        else cb.removeAttribute("checked");
+      });
+      var htmlOut = "<!DOCTYPE html>\n" + clone.outerHTML;
+      var blob = new Blob([htmlOut], { type: "text/html;charset=utf-8" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = (CFG.reportKey || "report").replace(/\.html$/i, "") + ".ticked.html";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    updateCount();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", annotate);
+  } else {
+    annotate();
+  }
+})();
+</script>
+<!-- html-failure-checklist end -->
+</body>
+</html>
