@@ -804,8 +804,19 @@ async function renderSchedulePanel(f) {
     }
   }
 
-  // Club parity: show slots when you can open (home) or respond (accept/counter turn)
-  const canPick = !!(data.can_propose_first || data.can_respond || data.can_propose);
+  const slotPanel = $("slotPickerPanel");
+  if (slotPanel) slotPanel.hidden = false;
+
+  // Club parity: show slots when you can open (home) or respond (accept/counter turn).
+  // Extra guard: away + unscheduled never shows a picker (even if staff flags leak).
+  const waitingOnHome =
+    !pending &&
+    String(sch.status || "").toLowerCase() === "unscheduled" &&
+    data.my_role === "away";
+  const canPick =
+    !waitingOnHome &&
+    !!(data.can_propose_first || data.can_respond || data.can_propose);
+
   if (proposeBtn) {
     proposeBtn.hidden = !canPick;
     proposeBtn.textContent = data.can_propose_first
@@ -816,7 +827,9 @@ async function renderSchedulePanel(f) {
   }
 
   if (!canPick) {
-    if (!pending && data.my_role === "away" && statusEl) {
+    if (waitingOnHome && statusEl) {
+      statusEl.textContent = `Waiting for ${oppLabel} (home) to propose a kick-off — then you can Accept or Counter (same as league/cup).`;
+    } else if (!pending && data.my_role === "away" && statusEl) {
       statusEl.textContent =
         "Home nation must propose first — then you can Accept or Counter (same as league/cup).";
     }
@@ -825,8 +838,12 @@ async function renderSchedulePanel(f) {
         "No owner club on your nation — cannot arrange kick-off from availability.";
     }
     if (list) list.innerHTML = "";
+    if (slotPanel) slotPanel.hidden = true;
+    if (proposeBtn) proposeBtn.hidden = true;
     return;
   }
+
+  if (slotPanel) slotPanel.hidden = false;
 
   const rawSlots = Array.isArray(data.my_window_slots) ? data.my_window_slots : [];
   const slots = rawSlots

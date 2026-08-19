@@ -130,15 +130,25 @@ BEGIN
     FROM public.international_match_schedule_club_window_slots(p_fixture_id, v_my_club) s;
   END IF;
 
-  -- Same as club: home proposes first; respondent can accept or counter
+  -- Same as club: home proposes first; respondent can accept or counter.
+  -- Do NOT grant staff propose-as-away (owners who are also admin were seeing the slot grid).
   IF NOT v_fix.played AND v_status <> 'agreed' AND v_my_club IS NOT NULL THEN
     IF v_status = 'unscheduled' THEN
-      v_can_propose := (v_nation = v_fix.home_nation) OR v_staff;
+      v_can_propose := (v_nation = v_fix.home_nation);
     ELSIF v_status = 'negotiating' AND v_pending.id IS NOT NULL THEN
       v_can_propose := v_pending.proposed_by_nation IS DISTINCT FROM v_nation;
       v_can_respond := v_pending.proposed_by_nation IS DISTINCT FROM v_nation;
       v_can_withdraw := v_pending.proposed_by_nation = v_nation OR v_staff;
     END IF;
+  END IF;
+
+  -- Staff with no nation seat in this fixture (admin role) may propose for testing
+  IF NOT v_fix.played
+     AND v_status = 'unscheduled'
+     AND v_role = 'admin'
+     AND v_staff
+  THEN
+    v_can_propose := true;
   END IF;
 
   IF NOT v_fix.played
@@ -316,9 +326,9 @@ BEGIN
 
   v_is_counter := v_sched.status <> 'unscheduled';
 
-  -- Club parity: home opens; either side may counter when it is their turn
+  -- Club parity: home opens. Staff who also own the away nation must wait like everyone else.
   IF v_sched.status = 'unscheduled' THEN
-    IF v_nation <> v_fix.home_nation AND NOT v_staff THEN
+    IF v_nation <> v_fix.home_nation THEN
       RAISE EXCEPTION 'Home nation must propose the first kick-off time';
     END IF;
   ELSE
