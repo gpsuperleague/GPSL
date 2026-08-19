@@ -207,20 +207,9 @@ document.addEventListener("DOMContentLoaded", () => {
     "Season_Signed",
     "intl_caps",
     "intl_goals",
-    "intl_assists",
-    "intl_potm",
-    "intl_clean_sheets",
-    "intl_avg_rating",
   ];
 
-  const INTL_STAT_COLUMNS = new Set([
-    "intl_caps",
-    "intl_goals",
-    "intl_assists",
-    "intl_potm",
-    "intl_clean_sheets",
-    "intl_avg_rating",
-  ]);
+  const INTL_STAT_COLUMNS = new Set(["intl_caps", "intl_goals"]);
 
   const FILTER_EXCLUDE = [
     "Maximum_Reserve_Price",
@@ -234,10 +223,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "foreign_contract_lock_kind",
     "intl_caps",
     "intl_goals",
-    "intl_assists",
-    "intl_potm",
-    "intl_clean_sheets",
-    "intl_avg_rating",
   ];
 
   const ECONOMICS_DB_COLS = ["Potential", "Calc_Potential"];
@@ -1288,10 +1273,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (col === "Contracted_Team") return "Contracted Team";
     if (col === "intl_caps") return "Intl Apps";
     if (col === "intl_goals") return "Intl G";
-    if (col === "intl_assists") return "Intl A";
-    if (col === "intl_potm") return "Intl POTM";
-    if (col === "intl_clean_sheets") return "Intl CS";
-    if (col === "intl_avg_rating") return "Intl Avg";
     return col.replace(/_/g, " ");
   }
 
@@ -1733,11 +1714,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (INTL_STAT_COLUMNS.has(col)) {
-      if (col === "intl_avg_rating") {
-        return value != null && Number.isFinite(Number(value))
-          ? Number(value).toFixed(2)
-          : "—";
-      }
       return value != null ? value : 0;
     }
 
@@ -1751,10 +1727,6 @@ document.addEventListener("DOMContentLoaded", () => {
         ...p,
         intl_caps: st?.caps ?? 0,
         intl_goals: st?.goals ?? 0,
-        intl_assists: st?.assists ?? 0,
-        intl_potm: st?.potm ?? 0,
-        intl_clean_sheets: st?.clean_sheets ?? 0,
-        intl_avg_rating: st?.avg_rating ?? null,
       };
     });
   }
