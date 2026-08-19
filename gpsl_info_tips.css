@@ -8,8 +8,8 @@
   border-bottom: 1px dotted rgba(255, 153, 0, 0.45);
 }
 
-th.gpsl-has-tip,
-td.gpsl-has-tip,
+/* th/td already skip the dotted underline via :not(th):not(td) above —
+   do not clear their borders (that made GPDB header dividers uneven). */
 .gpsl-has-tip.squad-rules-title,
 .gpsl-has-tip.squad-contract-outlook-title,
 .gpsl-has-tip.squad-pos-section-title,
