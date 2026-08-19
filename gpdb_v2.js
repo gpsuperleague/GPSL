@@ -36,7 +36,7 @@ import {
   buildGpdbContractedBidCellHtml,
   formatForeignContractGpdbHtml,
 } from "./player_transfer_status.js";
-import { installRangeSteppers } from "./range_filter_steppers.js?v=20260811-step-pairs";
+import { installRangeSteppers } from "./range_filter_steppers.js?v=20260819-range-width";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 import { GPDB_TIPS } from "./owner_page_tips.js";
 import {
@@ -530,8 +530,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const FILTER_LAYOUT_ROWS = [
-    ["Position", "Nation", "Age", "Rating", "Playstyle"],
-    ["Name", "market_value", "Contracted_Team"],
+    ["Position", "Nation", "Playstyle", "Name", "Contracted_Team"],
+    ["Age", "Rating", "market_value"],
     ["Season_Signed", "contract_seasons_remaining", "contract_wage"],
   ];
 

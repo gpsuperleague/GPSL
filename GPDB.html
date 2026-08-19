@@ -531,7 +531,10 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
-      min-width: 168px;
+      /* Match Market Value track length — Age/Rating were too narrow in crowded filter rows */
+      flex: 0 0 280px;
+      width: 280px;
+      min-width: 280px;
       max-width: 280px;
       font-size: 12px;
       color: #ffaa22;
@@ -843,7 +846,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js?v=20260722-bank-bal-row"></script>
-  <script type="module" src="gpdb_v2.js?v=20260814-squad-26-28"></script>
+  <script type="module" src="gpdb_v2.js?v=20260819-range-width"></script>
 
 </body>
 </html>

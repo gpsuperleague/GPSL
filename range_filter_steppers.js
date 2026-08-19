@@ -37,8 +37,7 @@ export function ensureRangeStepperStyles() {
     }
     .range-filter-step-row .range-filter-sliders {
       flex: 1 1 auto;
-      min-width: 0;
-      margin-top: 0;
+      min-width: 160px;
     }
     .range-step-pair {
       display: inline-flex;
