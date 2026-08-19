@@ -691,7 +691,7 @@ async function renderSchedulePanel(f) {
 
   if (error) {
     if (meta) {
-      meta.textContent = `❌ ${error.message} — run patches/international_match_schedule_availability_20260817.sql (or international_kickoff_withdraw_20260818.sql)`;
+      meta.textContent = `❌ ${error.message} — run patches/international_kickoff_club_parity_20260819.sql`;
     }
     return;
   }
@@ -767,29 +767,20 @@ async function renderSchedulePanel(f) {
         </p>
         ${
           fromOpp && data.can_respond && stillValid
-            ? `<p class="note" style="margin:0 0 8px;color:#9cdc9c;">Click <b>Accept pending proposal</b> below to agree this kick-off.</p>`
+            ? `<p class="note" style="margin:0 0 8px;color:#9cdc9c;">Click <b>Accept pending proposal</b>, or pick one of your slots below to <b>Counter-propose</b> (same as league/cup).</p>`
             : ""
         }
         ${
           !fromOpp
             ? `<p class="note" style="margin:0 0 8px;color:#fc6;">
-                <b>You</b> hold the pending offer.
-                ${
-                  data.my_role === "away"
-                    ? ` Away should not propose — <b>Withdraw my proposal</b> so home can propose, then you Accept.`
-                    : ` Waiting for <b>${escapeHtml(oppLabel)}</b> to Accept, or propose a new time / withdraw.`
-                }
+                <b>You</b> hold the pending offer — waiting for <b>${escapeHtml(oppLabel)}</b> to Accept or Counter.
+                You can <b>Withdraw my proposal</b> to reset.
               </p>`
             : ""
         }
         ${
-          fromOpp && data.my_role === "away"
-            ? `<p class="note" style="margin:0 0 8px;">Away cannot propose a different time — Accept, or ask home to withdraw and re-propose.</p>`
-            : ""
-        }
-        ${
           !stillValid
-            ? `<p class="note" style="color:#f88;margin:0;">This time has passed — home must propose a future slot.</p>`
+            ? `<p class="note" style="color:#f88;margin:0;">This time has passed — counter-propose a future slot from your availability.</p>`
             : ""
         }
       `;
@@ -806,25 +797,28 @@ async function renderSchedulePanel(f) {
     }
     if (statusEl && fromOpp && !data.can_respond) {
       statusEl.textContent =
-        "Cannot accept yet — check you have a nation club linked, or wait for the proposer.";
+        "Cannot respond yet — check you have a nation club linked.";
     } else if (statusEl && !fromOpp) {
       statusEl.textContent =
-        "Your proposal is pending — opponent must Accept (or you can withdraw).";
+        "Your proposal is pending — opponent must Accept or Counter (or you can withdraw).";
     }
   }
 
-  const canPick = !!(data.can_propose || data.can_propose_first);
+  // Club parity: show slots when you can open (home) or respond (accept/counter turn)
+  const canPick = !!(data.can_propose_first || data.can_respond || data.can_propose);
   if (proposeBtn) {
     proposeBtn.hidden = !canPick;
-    proposeBtn.textContent =
-      data.can_propose_first || data.schedule?.status === "unscheduled"
-        ? "Propose kick-off"
-        : "Propose new time";
+    proposeBtn.textContent = data.can_propose_first
+      ? "Propose kick-off"
+      : data.can_respond
+        ? "Counter-propose"
+        : "Propose kick-off";
   }
 
   if (!canPick) {
     if (!pending && data.my_role === "away" && statusEl) {
-      statusEl.textContent = "Home nation must propose — away Accepts only.";
+      statusEl.textContent =
+        "Home nation must propose first — then you can Accept or Counter (same as league/cup).";
     }
     if (!data.my_club_short_name && statusEl) {
       statusEl.textContent =
@@ -943,6 +937,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       setStatus("Pick a kick-off slot first.", false);
       return;
     }
+    const isCounter = $("proposeBtn")?.textContent === "Counter-propose";
+    if (
+      isCounter &&
+      !confirm(
+        "Counter-propose replaces their pending kick-off (same as league/cup). They will need to Accept or Counter your new time. Continue?"
+      )
+    ) {
+      return;
+    }
     setStatus("Proposing…");
     const { error } = await supabase.rpc("international_propose_kickoff", {
       p_fixture_id: selectedId,
@@ -952,7 +955,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       setStatus(`❌ ${error.message}`, false);
       return;
     }
-    setStatus("✅ Kickoff proposed", true);
+    setStatus(isCounter ? "✅ Counter-proposed" : "✅ Kickoff proposed", true);
     await loadFixtures();
     await selectFixture(selectedId);
   });
