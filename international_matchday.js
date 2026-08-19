@@ -403,7 +403,7 @@ async function loadFixtures() {
   }
 
   if (banner) {
-    banner.innerHTML = `${escapeHtml(myNation.flag_emoji || "")} <b>${escapeHtml(
+    banner.innerHTML = `<b>${escapeHtml(
       myNation.name || myNation.code
     )}</b> (${escapeHtml(myNation.code)})`;
   }
@@ -579,8 +579,8 @@ function renderList() {
               .join(" ");
             return `<tr class="${rowCls}" data-id="${f.id}">
               <td>${escapeHtml(phaseLabel(f))}</td>
-              <td>${escapeHtml(f.home_flag || "")} ${escapeHtml(f.home_nation)}
-                vs ${escapeHtml(f.away_flag || "")} ${escapeHtml(f.away_nation)}</td>
+              <td>${escapeHtml(f.home_nation_name || f.home_nation)}
+                vs ${escapeHtml(f.away_nation_name || f.away_nation)}</td>
               <td>${escapeHtml(score)}</td>
               <td>${schHtml}</td>
               <td><button type="button" class="button secondary pick-fix ${escapeHtml(
