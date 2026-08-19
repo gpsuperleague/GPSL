@@ -1,7 +1,7 @@
 /**
- * − / + steppers flanking dual-range age / rating / market-value filters.
+ * − / + steppers flanking dual-range filters (age / rating / MV / contract cols).
  * Left pair controls the min thumb; right pair controls the max thumb.
- * Age & rating: step 1. Market-value-like money cols: step ₿500,000.
+ * Default step 1; market-value-like money cols: ₿500,000 (or input step when set).
  */
 
 export const RANGE_STEP_MONEY = 500_000;
@@ -16,6 +16,9 @@ const DEFAULT_STEPPER_COLS = new Set([
   "market_value",
   "listed_price",
   "current_bid",
+  "Season_Signed",
+  "contract_seasons_remaining",
+  "contract_wage",
 ]);
 
 export function rangeStepperStep(col) {

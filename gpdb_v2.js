@@ -36,7 +36,7 @@ import {
   buildGpdbContractedBidCellHtml,
   formatForeignContractGpdbHtml,
 } from "./player_transfer_status.js";
-import { installRangeSteppers } from "./range_filter_steppers.js?v=20260819-range-width";
+import { installRangeSteppers } from "./range_filter_steppers.js?v=20260819-contract-steppers";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 import { GPDB_TIPS } from "./owner_page_tips.js";
 import {
@@ -3285,10 +3285,17 @@ document.addEventListener("DOMContentLoaded", () => {
     applySavedGpdbFilterState(loadSavedGpdbFilters());
     setupFilters();
     setupRangeFilters();
-    // MV slider uses ₿500k index units (step=1 on the input).
+    // Same −/+ stepper UX as Age / Rating / Market Value (wage uses input step).
     installRangeSteppers({
       root: document.getElementById("filters") || document,
-      cols: ["Age", "Rating", "market_value"],
+      cols: [
+        "Age",
+        "Rating",
+        "market_value",
+        "Season_Signed",
+        "contract_seasons_remaining",
+        "contract_wage",
+      ],
     });
     setupTextFilters();
     await populateDropdowns();
