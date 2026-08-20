@@ -639,6 +639,8 @@ export function initMatchdaySquadPanel({
   savedPitchLayout = null,
   savedFormations = [],
   maxBench = MAX_BENCH,
+  /** First N bench slots labelled Sub; remaining labelled Squad (scouting fillers). */
+  benchSubSlots = null,
   maxSquad = null,
   onChange,
   onSave,
@@ -647,6 +649,14 @@ export function initMatchdaySquadPanel({
   onDeleteFormation,
 }) {
   const benchLimit = Math.max(1, Number(maxBench) || MAX_BENCH);
+  const subSlotCount = Math.max(
+    0,
+    Math.min(
+      benchLimit,
+      benchSubSlots == null ? benchLimit : Number(benchSubSlots) || benchLimit
+    )
+  );
+  const squadFillerCount = Math.max(0, benchLimit - subSlotCount);
   const effectiveSquadLimit =
     maxSquad != null
       ? Math.max(MAX_PITCH, Number(maxSquad) || MAX_PITCH + benchLimit)
@@ -667,6 +677,11 @@ export function initMatchdaySquadPanel({
         };
   state.maxBench = benchLimit;
   state.maxSquad = effectiveSquadLimit;
+
+  const benchHeading =
+    squadFillerCount > 0
+      ? `Subs (${subSlotCount}) + Squad (${squadFillerCount})`
+      : `Bench (${benchLimit} subs)`;
 
   root.innerHTML = `
     <div class="squad-formations-bar">
@@ -708,7 +723,7 @@ export function initMatchdaySquadPanel({
           <div class="pitch-center-circle" aria-hidden="true"></div>
         </div>
         <div class="squad-bench">
-          <h4>Bench (${benchLimit} subs)</h4>
+          <h4>${benchHeading}</h4>
           <div class="bench-slots bench-slots-grid" id="benchSlots"></div>
         </div>
       </div>
@@ -847,9 +862,11 @@ export function initMatchdaySquadPanel({
 
   for (let i = 0; i < benchLimit; i++) {
     const wrap = document.createElement("div");
-    wrap.className = "bench-slot";
+    const isSub = i < subSlotCount;
+    wrap.className = isSub ? "bench-slot bench-slot--sub" : "bench-slot bench-slot--squad";
+    const label = isSub ? `Sub ${i + 1}` : `Squad ${i + 1}`;
     wrap.innerHTML = `
-      <div class="bench-slot-label">Sub ${i + 1}</div>
+      <div class="bench-slot-label">${label}</div>
       <div class="bench-slot-drop" data-bench-idx="${i}"></div>`;
     benchSlots.appendChild(wrap);
   }
@@ -866,9 +883,16 @@ export function initMatchdaySquadPanel({
 
   function updateStatus() {
     const pitchN = [...state.pitch.values()].filter(Boolean).length;
-    const benchN = state.bench.filter(Boolean).length;
+    const subN = state.bench.slice(0, subSlotCount).filter(Boolean).length;
+    const fillerN =
+      squadFillerCount > 0
+        ? state.bench.slice(subSlotCount).filter(Boolean).length
+        : 0;
     const total = squadCount(state);
-    statusText.textContent = `Squad: ${total}/${effectiveSquadLimit} · Pitch ${pitchN}/${MAX_PITCH} · Bench ${benchN}/${benchLimit}`;
+    statusText.textContent =
+      squadFillerCount > 0
+        ? `Squad: ${total}/${effectiveSquadLimit} · Pitch ${pitchN}/${MAX_PITCH} · Subs ${subN}/${subSlotCount} · Squad ${fillerN}/${squadFillerCount}`
+        : `Squad: ${total}/${effectiveSquadLimit} · Pitch ${pitchN}/${MAX_PITCH} · Bench ${subN}/${benchLimit}`;
     root.querySelector("#squadPoolCount").textContent = `${state.pool.length} players available`;
     onChange?.(buildSlotsPayload(state), state);
   }

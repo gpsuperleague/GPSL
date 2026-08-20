@@ -332,6 +332,14 @@
   color: #888;
   margin-bottom: 4px;
 }
+.bench-slot--squad .bench-slot-label {
+  color: #9a9a6a;
+}
+.bench-slot--squad .bench-slot-drop {
+  border-style: dotted;
+  border-color: #4a4a3a;
+  background: #181816;
+}
 .bench-slot-drop {
   min-height: 88px;
   border: 2px dashed #555;
