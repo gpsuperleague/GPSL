@@ -1927,16 +1927,16 @@ async function runPlaystyleRefresh() {
             : "";
         let resultLabel;
         if (style === "") {
-          resultLabel = "(blank — both Basic)";
+          resultLabel = "no specialised style on PESDB (Att/Def Basic) · cleared on GPDB";
         } else if (style === "None") {
           resultLabel = existingStyle
-            ? `(could not read — keeping existing: ${existingStyle})`
-            : "(could not read playstyle)";
+            ? `PESDB page failed · left GPDB as “${existingStyle}”`
+            : "PESDB page failed · no GPDB playstyle to keep";
         } else {
-          resultLabel = style;
+          resultLabel = `set GPDB to “${style}”`;
         }
         document.getElementById("playstylePlayerLabel").textContent =
-          `${style === "None" ? "⚠" : "✓"} ${name} → ${resultLabel} · Att: ${attLabel} · Def: ${defLabel}`;
+          `${style === "None" ? "⚠" : "✓"} ${name} → ${resultLabel} · PESDB Att: ${attLabel} · Def: ${defLabel}`;
 
         const applyResult = await applyPlaystyleRows([
           { konami_id: kid, playing_style: style },
