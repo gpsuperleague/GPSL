@@ -33,6 +33,7 @@ export function getAdminGpdbSyncRules() {
           "eFootball cards now have <b>Attacking</b> + <b>Defensive</b> playstyles; one side is often <code>Basic</code>.",
           "GPSL keeps <b>one</b> Playstyle: prefer Att if real, else Def.",
           "Use <b>Refresh playstyles only</b> to rewrite live <code>Players.Playstyle</code> without a full sync apply.",
+          "Progress is <b>checkpointed in the DB</b> — reload the page and Start again with <b>Resume</b> checked.",
           "SQL: <code>gpdb_pesdb_playstyle_att_def_20260820.sql</code> + redeploy <code>gpdb-pesdb-scrape</code>.",
         ],
       },

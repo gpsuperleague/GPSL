@@ -1631,6 +1631,7 @@ async function restorePlayer(playerId) {
 
 /* ============================================================
    Playstyle-only refresh (Att/Def dual styles → one GPSL value)
+   Checkpointed in gpdb_pesdb_playstyle_jobs (survives crash/refresh).
    ============================================================ */
 
 function stopPlaystyleRefresh() {
@@ -1638,11 +1639,68 @@ function stopPlaystyleRefresh() {
   setStatus("playstyleStatus", "Stopping after current player…", true);
 }
 
-async function fetchPlaystyleQueueBatch(offset, limit, forceAll) {
+async function fetchPlaystyleJob() {
+  const { data, error } = await supabase.rpc("gpdb_pesdb_playstyle_job_get");
+  if (error) throw error;
+  return data;
+}
+
+async function savePlaystyleJob(patch) {
+  const { data, error } = await supabase.rpc("gpdb_pesdb_playstyle_job_save", {
+    p_patch: patch,
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function clearPlaystyleJob() {
+  const { data, error } = await supabase.rpc("gpdb_pesdb_playstyle_job_clear");
+  if (error) throw error;
+  return data;
+}
+
+function renderPlaystyleCheckpoint(job) {
+  const el = document.getElementById("playstyleCheckpointLabel");
+  if (!el) return;
+  if (!job || job.status === "idle" || !job.last_konami_id) {
+    el.textContent = "Checkpoint: none (will start from the beginning).";
+    return;
+  }
+  const mode = job.force_all ? "force all" : "blank/None/Basic only";
+  el.textContent =
+    `Checkpoint: ${job.status} · ${mode} · last ${job.last_player_name || "?"} (${job.last_konami_id})` +
+    ` · processed ${(job.processed_count ?? 0).toLocaleString()}` +
+    ` · updated ${(job.updated_count ?? 0).toLocaleString()}` +
+    ` · skipped ${(job.skipped_count ?? 0).toLocaleString()}` +
+    (job.total_count != null ? ` · remaining queue ~${Number(job.total_count).toLocaleString()}` : "");
+}
+
+async function refreshPlaystyleCheckpointLabel() {
+  try {
+    const job = await fetchPlaystyleJob();
+    renderPlaystyleCheckpoint(job);
+    if (job?.force_all) {
+      const box = document.getElementById("playstyleForceAll");
+      if (box && job.status !== "idle" && job.status !== "done") box.checked = !!job.force_all;
+    }
+    if (job?.player_delay_sec) {
+      const delay = document.getElementById("playstylePlayerDelay");
+      if (delay && !delay.dataset.userEdited) delay.value = String(job.player_delay_sec);
+    }
+  } catch (err) {
+    const el = document.getElementById("playstyleCheckpointLabel");
+    if (el) {
+      el.textContent =
+        "Checkpoint unavailable — re-run gpdb_pesdb_playstyle_att_def_20260820.sql";
+    }
+  }
+}
+
+async function fetchPlaystyleQueueBatch(limit, forceAll, afterKonamiId) {
   const { data, error } = await supabase.rpc("gpdb_pesdb_playstyle_refresh_queue", {
-    p_offset: offset,
     p_limit: limit,
     p_force_all: !!forceAll,
+    p_after_konami_id: afterKonamiId || null,
   });
   if (error) {
     throw new Error(
@@ -1674,21 +1732,63 @@ async function runPlaystyleRefresh() {
     return;
   }
 
-  const forceAll = !!document.getElementById("playstyleForceAll")?.checked;
+  let forceAll = !!document.getElementById("playstyleForceAll")?.checked;
+  const wantResume = !!document.getElementById("playstyleResume")?.checked;
   const delaySec = Math.max(
     2,
     Number(document.getElementById("playstylePlayerDelay")?.value) || 3.5
   );
   const delayMs = Math.round(delaySec * 1000);
 
+  let afterId = null;
+  let updatedTotal = 0;
+  let skippedTotal = 0;
+  let processed = 0;
+  let totalExpected = null;
+  let existingJob = null;
+
+  try {
+    existingJob = await fetchPlaystyleJob();
+  } catch (_) {
+    existingJob = null;
+  }
+
+  const canResume =
+    wantResume &&
+    existingJob &&
+    existingJob.last_konami_id &&
+    ["running", "stopped", "error"].includes(String(existingJob.status || ""));
+
+  if (canResume) {
+    afterId = String(existingJob.last_konami_id);
+    forceAll = !!existingJob.force_all;
+    updatedTotal = Number(existingJob.updated_count) || 0;
+    skippedTotal = Number(existingJob.skipped_count) || 0;
+    processed = Number(existingJob.processed_count) || 0;
+    totalExpected = existingJob.total_count != null ? Number(existingJob.total_count) : null;
+    const forceBox = document.getElementById("playstyleForceAll");
+    if (forceBox) forceBox.checked = forceAll;
+  }
+
   if (
     !window.confirm(
-      forceAll
-        ? "Refresh Playstyle for ALL live Players from PESDB (Att→Def preference)? This can take hours."
-        : "Refresh Playstyle for blank/None/Basic players from PESDB (Att→Def preference)?"
+      canResume
+        ? `Resume playstyle refresh after ${existingJob.last_player_name || "?"} (${afterId})?\n` +
+            `Already processed ${processed.toLocaleString()} · updated ${updatedTotal.toLocaleString()}.`
+        : forceAll
+          ? "Refresh Playstyle for ALL live Players from PESDB (Att→Def preference)? This can take hours. Progress is checkpointed in the DB."
+          : "Refresh Playstyle for blank/None/Basic players from PESDB (Att→Def preference)? Progress is checkpointed in the DB."
     )
   ) {
     return;
+  }
+
+  if (!canResume && existingJob?.last_konami_id && wantResume === false) {
+    try {
+      await clearPlaystyleJob();
+    } catch (_) {
+      /* ignore */
+    }
   }
 
   playstyleAbort = false;
@@ -1696,48 +1796,52 @@ async function runPlaystyleRefresh() {
   document.getElementById("playstyleRefreshBtn")?.setAttribute("disabled", "disabled");
   document.getElementById("playstyleStopBtn")?.removeAttribute("disabled");
 
-  let offset = 0;
-  let updatedTotal = 0;
-  let skippedTotal = 0;
-  let processed = 0;
-  let totalExpected = null;
   const batchSize = 40;
-  const attempted = new Set();
 
   try {
+    await savePlaystyleJob({
+      status: "running",
+      force_all: forceAll,
+      player_delay_sec: delaySec,
+      last_konami_id: afterId,
+      last_player_name: canResume ? existingJob.last_player_name : null,
+      processed_count: processed,
+      updated_count: updatedTotal,
+      skipped_count: skippedTotal,
+      total_count: totalExpected,
+      last_error: null,
+      started_at: canResume ? existingJob.started_at : new Date().toISOString(),
+    });
+
     setStatus(
       "playstyleStatus",
-      forceAll
-        ? "Loading all players for playstyle refresh…"
-        : "Loading players with blank/None/Basic playstyle…",
+      canResume
+        ? `Resuming after ${afterId}…`
+        : forceAll
+          ? "Loading all players for playstyle refresh…"
+          : "Loading players with blank/None/Basic playstyle…",
       true
     );
 
     while (!playstyleAbort) {
-      const batch = await fetchPlaystyleQueueBatch(offset, batchSize, forceAll);
+      const batch = await fetchPlaystyleQueueBatch(batchSize, forceAll, afterId);
       if (!batch.length) break;
 
       if (totalExpected == null) {
         totalExpected = Number(batch[0]?.total_count) || null;
       }
 
-      const todo = forceAll
-        ? batch
-        : batch.filter((r) => !attempted.has(String(r.konami_id || "")));
-      if (!todo.length) break;
-
-      for (let i = 0; i < todo.length; i++) {
+      for (let i = 0; i < batch.length; i++) {
         if (playstyleAbort) break;
-        const row = todo[i];
+        const row = batch[i];
         const kid = String(row.konami_id || "");
         const name = row.player_name || kid;
         if (!kid) continue;
-        attempted.add(kid);
-        processed += 1;
 
+        processed += 1;
         const prog =
           totalExpected != null
-            ? `${processed.toLocaleString()} / ${totalExpected.toLocaleString()}`
+            ? `${processed.toLocaleString()} done · ~${Number(batch[0]?.total_count || 0).toLocaleString()} left in queue`
             : String(processed);
 
         document.getElementById("playstyleProgressLabel").textContent =
@@ -1772,8 +1876,22 @@ async function runPlaystyleRefresh() {
         } catch (err) {
           console.warn("playstyle enrich skip:", name, err);
           skippedTotal += 1;
+          afterId = kid;
           document.getElementById("playstylePlayerLabel").textContent =
             `✗ ${name} — skipped (${err.message || err})`;
+          await savePlaystyleJob({
+            status: "running",
+            force_all: forceAll,
+            player_delay_sec: delaySec,
+            last_konami_id: kid,
+            last_player_name: name,
+            processed_count: processed,
+            updated_count: updatedTotal,
+            skipped_count: skippedTotal,
+            total_count: totalExpected,
+            last_error: String(err.message || err).slice(0, 300),
+          });
+          renderPlaystyleCheckpoint(await fetchPlaystyleJob().catch(() => null));
           if (!playstyleAbort) {
             await sleepWithCountdown(
               "playstyleStatus",
@@ -1785,7 +1903,6 @@ async function runPlaystyleRefresh() {
         }
 
         const scraped = (detail.players || [])[0];
-        // "" = both Att/Def Basic (intentional blank). "None" = scrape miss (skip write).
         const style =
           scraped && Object.prototype.hasOwnProperty.call(scraped, "playing_style")
             ? String(scraped.playing_style ?? "")
@@ -1805,6 +1922,20 @@ async function runPlaystyleRefresh() {
         ]);
         updatedTotal += Number(applyResult.updated) || 0;
         skippedTotal += Number(applyResult.skipped) || 0;
+        afterId = kid;
+
+        await savePlaystyleJob({
+          status: "running",
+          force_all: forceAll,
+          player_delay_sec: delaySec,
+          last_konami_id: kid,
+          last_player_name: name,
+          processed_count: processed,
+          updated_count: updatedTotal,
+          skipped_count: skippedTotal,
+          total_count: Number(batch[0]?.total_count) || totalExpected,
+          last_error: null,
+        });
 
         if (!playstyleAbort) {
           await sleepWithCountdown(
@@ -1816,31 +1947,63 @@ async function runPlaystyleRefresh() {
       }
 
       if (playstyleAbort) break;
-
-      if (forceAll) {
-        offset += batch.length;
-        if (batch.length < batchSize) break;
-        if (totalExpected != null && offset >= totalExpected) break;
-      }
-      // Non-force: queue shrinks as styles fill in; offset stays 0.
-      // Stop when a fetch returns only already-attempted rows (handled above).
+      if (batch.length < batchSize) break;
     }
+
+    const finalStatus = playstyleAbort ? "stopped" : "done";
+    await savePlaystyleJob({
+      status: finalStatus,
+      force_all: forceAll,
+      last_konami_id: afterId,
+      processed_count: processed,
+      updated_count: updatedTotal,
+      skipped_count: skippedTotal,
+      total_count: totalExpected,
+      last_error: null,
+    });
+    await refreshPlaystyleCheckpointLabel();
 
     setStatus(
       "playstyleStatus",
       playstyleAbort
-        ? `Stopped. Updated ${updatedTotal.toLocaleString()}, skipped ${skippedTotal.toLocaleString()} (${processed.toLocaleString()} processed).`
+        ? `Stopped (checkpoint saved). Updated ${updatedTotal.toLocaleString()}, skipped ${skippedTotal.toLocaleString()} (${processed.toLocaleString()} processed). Re-open page / Start again with Resume checked.`
         : `Done. Updated ${updatedTotal.toLocaleString()}, skipped ${skippedTotal.toLocaleString()} (${processed.toLocaleString()} processed).`,
       true
     );
   } catch (err) {
     console.error("playstyle refresh:", err);
+    try {
+      await savePlaystyleJob({
+        status: "error",
+        last_konami_id: afterId,
+        processed_count: processed,
+        updated_count: updatedTotal,
+        skipped_count: skippedTotal,
+        last_error: String(err.message || err).slice(0, 300),
+      });
+    } catch (_) {
+      /* ignore */
+    }
     setStatus("playstyleStatus", err.message || "Playstyle refresh failed.", false);
   } finally {
     playstyleRunning = false;
     playstyleAbort = false;
     document.getElementById("playstyleRefreshBtn")?.removeAttribute("disabled");
     document.getElementById("playstyleStopBtn")?.setAttribute("disabled", "disabled");
+    await refreshPlaystyleCheckpointLabel();
+  }
+}
+
+async function clearPlaystyleCheckpointUi() {
+  if (!window.confirm("Clear playstyle refresh checkpoint and start from the beginning next time?")) {
+    return;
+  }
+  try {
+    await clearPlaystyleJob();
+    await refreshPlaystyleCheckpointLabel();
+    setStatus("playstyleStatus", "Checkpoint cleared.", true);
+  } catch (err) {
+    setStatus("playstyleStatus", err.message || "Could not clear checkpoint.", false);
   }
 }
 
@@ -1848,6 +2011,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
   applyResumeFromStorage();
   await refreshProgressPanel(null);
+  await refreshPlaystyleCheckpointLabel();
   await maybeAutoResumeScrape();
 
   document.getElementById("scrapeEndPage")?.addEventListener("input", (e) => {
@@ -1868,6 +2032,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("scrapeStopBtn")?.addEventListener("click", stopPesdbScrape);
   document.getElementById("playstyleRefreshBtn")?.addEventListener("click", runPlaystyleRefresh);
   document.getElementById("playstyleStopBtn")?.addEventListener("click", stopPlaystyleRefresh);
+  document.getElementById("playstyleClearCheckpointBtn")?.addEventListener("click", clearPlaystyleCheckpointUi);
+  document.getElementById("playstylePlayerDelay")?.addEventListener("input", (e) => {
+    e.target.dataset.userEdited = "1";
+  });
   document.getElementById("previewBtn")?.addEventListener("click", runPreview);
   document.getElementById("previewFilter")?.addEventListener("change", async () => {
     const filter = document.getElementById("previewFilter")?.value ?? "updates";

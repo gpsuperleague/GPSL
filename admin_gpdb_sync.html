@@ -108,12 +108,15 @@
         </p>
         <div class="scrape-options">
           <label><input type="checkbox" id="playstyleForceAll"> Force refresh all players (not only blank/None/Basic)</label>
+          <label><input type="checkbox" id="playstyleResume" checked> Resume from DB checkpoint</label>
           <label>Delay per player (sec) <input type="number" id="playstylePlayerDelay" min="2" value="3.5" step="0.5" style="width:52px;padding:4px 6px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;"></label>
         </div>
         <div class="row" style="margin-top:12px;">
           <button type="button" class="button" id="playstyleRefreshBtn" style="background:#335533;">Start playstyle refresh</button>
           <button type="button" class="button" id="playstyleStopBtn" disabled style="background:#444;">Stop</button>
+          <button type="button" class="button" id="playstyleClearCheckpointBtn" style="background:#444;">Clear checkpoint</button>
         </div>
+        <div id="playstyleCheckpointLabel" style="font-size:12px;color:#8a8;margin-top:8px;"></div>
         <div id="playstyleProgressLabel" style="font-size:12px;color:#888;margin-top:8px;"></div>
         <div id="playstylePlayerLabel" style="font-size:13px;color:#ccc;margin-top:6px;min-height:1.3em;"></div>
         <div id="playstyleStatus" class="status-line"></div>
@@ -186,6 +189,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20260820-playstyle-blank-timeout"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20260820-playstyle-checkpoint"></script>
 </body>
 </html>
