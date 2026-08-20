@@ -1615,6 +1615,212 @@ async function restorePlayer(playerId) {
   }
 }
 
+/* ============================================================
+   Playstyle-only refresh (Att/Def dual styles → one GPSL value)
+   ============================================================ */
+
+let playstyleAbort = false;
+let playstyleRunning = false;
+
+function stopPlaystyleRefresh() {
+  playstyleAbort = true;
+  setStatus("playstyleStatus", "Stopping after current player…", true);
+}
+
+async function fetchPlaystyleQueueBatch(offset, limit, forceAll) {
+  const { data, error } = await supabase.rpc("gpdb_pesdb_playstyle_refresh_queue", {
+    p_offset: offset,
+    p_limit: limit,
+    p_force_all: !!forceAll,
+  });
+  if (error) {
+    throw new Error(
+      error.message ||
+        "Playstyle queue RPC missing — run patches/gpdb_pesdb_playstyle_att_def_20260820.sql"
+    );
+  }
+  return Array.isArray(data) ? data : [];
+}
+
+async function applyPlaystyleRows(rows) {
+  if (!rows?.length) return { updated: 0, skipped: 0 };
+  const { data, error } = await supabase.rpc("gpdb_pesdb_apply_playstyles", {
+    p_rows: rows,
+  });
+  if (error) throw error;
+  return data || { updated: 0, skipped: 0 };
+}
+
+async function runPlaystyleRefresh() {
+  if (playstyleRunning || scrapeRunning) {
+    setStatus(
+      "playstyleStatus",
+      scrapeRunning
+        ? "Stop the main PESDB scrape first."
+        : "Playstyle refresh already running.",
+      false
+    );
+    return;
+  }
+
+  const forceAll = !!document.getElementById("playstyleForceAll")?.checked;
+  const delaySec = Math.max(
+    2,
+    Number(document.getElementById("playstylePlayerDelay")?.value) || 3.5
+  );
+  const delayMs = Math.round(delaySec * 1000);
+
+  if (
+    !window.confirm(
+      forceAll
+        ? "Refresh Playstyle for ALL live Players from PESDB (Att→Def preference)? This can take hours."
+        : "Refresh Playstyle for blank/None/Basic players from PESDB (Att→Def preference)?"
+    )
+  ) {
+    return;
+  }
+
+  playstyleAbort = false;
+  playstyleRunning = true;
+  document.getElementById("playstyleRefreshBtn")?.setAttribute("disabled", "disabled");
+  document.getElementById("playstyleStopBtn")?.removeAttribute("disabled");
+
+  let offset = 0;
+  let updatedTotal = 0;
+  let skippedTotal = 0;
+  let processed = 0;
+  let totalExpected = null;
+  const batchSize = 40;
+  const attempted = new Set();
+
+  try {
+    setStatus(
+      "playstyleStatus",
+      forceAll
+        ? "Loading all players for playstyle refresh…"
+        : "Loading players with blank/None/Basic playstyle…",
+      true
+    );
+
+    while (!playstyleAbort) {
+      const batch = await fetchPlaystyleQueueBatch(offset, batchSize, forceAll);
+      if (!batch.length) break;
+
+      if (totalExpected == null) {
+        totalExpected = Number(batch[0]?.total_count) || null;
+      }
+
+      const todo = forceAll
+        ? batch
+        : batch.filter((r) => !attempted.has(String(r.konami_id || "")));
+      if (!todo.length) break;
+
+      for (let i = 0; i < todo.length; i++) {
+        if (playstyleAbort) break;
+        const row = todo[i];
+        const kid = String(row.konami_id || "");
+        const name = row.player_name || kid;
+        if (!kid) continue;
+        attempted.add(kid);
+        processed += 1;
+
+        const prog =
+          totalExpected != null
+            ? `${processed.toLocaleString()} / ${totalExpected.toLocaleString()}`
+            : String(processed);
+
+        document.getElementById("playstyleProgressLabel").textContent =
+          `${prog} · updated ${updatedTotal.toLocaleString()} · skipped ${skippedTotal.toLocaleString()}`;
+        document.getElementById("playstylePlayerLabel").textContent =
+          `Fetching ${name} (${kid})…`;
+
+        let detail;
+        try {
+          detail = await withLiveProgress(
+            "playstyleStatus",
+            (sec) => `Playstyle refresh ${prog}: ${name}… ${sec}s`,
+            () =>
+              invokePesdbScrape({
+                action: "enrich_players",
+                players: [
+                  {
+                    konami_id: kid,
+                    player_name: name,
+                    position: "CF",
+                    nationality: "",
+                    age: 25,
+                    rating: 60,
+                  },
+                ],
+              })
+          );
+        } catch (err) {
+          console.warn("playstyle enrich skip:", name, err);
+          skippedTotal += 1;
+          document.getElementById("playstylePlayerLabel").textContent =
+            `✗ ${name} — skipped (${err.message || err})`;
+          if (!playstyleAbort) {
+            await sleepWithCountdown(
+              "playstyleStatus",
+              "Pause before next playstyle fetch:",
+              delayMs
+            );
+          }
+          continue;
+        }
+
+        const scraped = (detail.players || [])[0];
+        const style = scraped?.playing_style || "None";
+        document.getElementById("playstylePlayerLabel").textContent =
+          `✓ ${name} → ${style}` +
+          (scraped?.playing_style_att || scraped?.playing_style_def
+            ? ` (Att: ${scraped.playing_style_att || "—"} / Def: ${scraped.playing_style_def || "—"})`
+            : "");
+
+        const applyResult = await applyPlaystyleRows([
+          { konami_id: kid, playing_style: style },
+        ]);
+        updatedTotal += Number(applyResult.updated) || 0;
+        skippedTotal += Number(applyResult.skipped) || 0;
+
+        if (!playstyleAbort) {
+          await sleepWithCountdown(
+            "playstyleStatus",
+            "Pause before next playstyle fetch:",
+            delayMs
+          );
+        }
+      }
+
+      if (playstyleAbort) break;
+
+      if (forceAll) {
+        offset += batch.length;
+        if (batch.length < batchSize) break;
+        if (totalExpected != null && offset >= totalExpected) break;
+      }
+      // Non-force: queue shrinks as styles fill in; offset stays 0.
+      // Stop when a fetch returns only already-attempted rows (handled above).
+    }
+
+    setStatus(
+      "playstyleStatus",
+      playstyleAbort
+        ? `Stopped. Updated ${updatedTotal.toLocaleString()}, skipped ${skippedTotal.toLocaleString()} (${processed.toLocaleString()} processed).`
+        : `Done. Updated ${updatedTotal.toLocaleString()}, skipped ${skippedTotal.toLocaleString()} (${processed.toLocaleString()} processed).`,
+      true
+    );
+  } catch (err) {
+    console.error("playstyle refresh:", err);
+    setStatus("playstyleStatus", err.message || "Playstyle refresh failed.", false);
+  } finally {
+    playstyleRunning = false;
+    playstyleAbort = false;
+    document.getElementById("playstyleRefreshBtn")?.removeAttribute("disabled");
+    document.getElementById("playstyleStopBtn")?.setAttribute("disabled", "disabled");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
   applyResumeFromStorage();
@@ -1637,6 +1843,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("detectPagesBtn")?.addEventListener("click", detectPesdbPages);
   document.getElementById("scrapeBtn")?.addEventListener("click", runPesdbScrape);
   document.getElementById("scrapeStopBtn")?.addEventListener("click", stopPesdbScrape);
+  document.getElementById("playstyleRefreshBtn")?.addEventListener("click", runPlaystyleRefresh);
+  document.getElementById("playstyleStopBtn")?.addEventListener("click", stopPlaystyleRefresh);
   document.getElementById("previewBtn")?.addEventListener("click", runPreview);
   document.getElementById("previewFilter")?.addEventListener("change", async () => {
     const filter = document.getElementById("previewFilter")?.value ?? "updates";

@@ -58,7 +58,19 @@ PLAYING_STYLES = [
     "Build Up", "Offensive Goalkeeper", "Defensive Goalkeeper",
     "Roaming Flank", "Cross Specialist", "Orchestrator", "Full-back Finisher",
     "Deep-Lying Forward",
+    "Attacking Full-back", "Attacking GK", "Defensive GK",
+    "High Line GK", "Front Line Pressure", "Front Line Poacher",
+    "Attack Outlet", "All-action Defender", "Pass Disruptor",
+    "Covering Role", "High Line Master", "Sweeper GK",
 ]
+PLAYSTYLE_ALIASES = {
+    "attacking full-back": "Offensive Full-back",
+    "offensive full-back": "Offensive Full-back",
+    "attacking gk": "Offensive Goalkeeper",
+    "offensive goalkeeper": "Offensive Goalkeeper",
+    "defensive gk": "Defensive Goalkeeper",
+    "defensive goalkeeper": "Defensive Goalkeeper",
+}
 CSV_HEADER = [
     "player_id", "Position", "player_name", "nationality", "age",
     "rating", "max_level_rating", "playing_style",
@@ -308,20 +320,88 @@ def parse_max_rating(page_text: str, soup: BeautifulSoup) -> str:
     return "Unknown"
 
 
+def _is_blank_or_basic_style(raw: str | None) -> bool:
+    s = (raw or "").strip().lower()
+    return (not s) or s in {"basic", "none", "unknown", "—", "-"}
+
+
+def _strip_att_def_prefix(raw: str) -> str:
+    return re.sub(r"^(att|def)\s*:\s*", "", (raw or "").strip(), flags=re.I).strip()
+
+
+def canonicalize_playing_style(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    stripped = _strip_att_def_prefix(str(raw))
+    if _is_blank_or_basic_style(stripped):
+        return None
+    key = stripped.lower()
+    if key in PLAYSTYLE_ALIASES:
+        return PLAYSTYLE_ALIASES[key]
+    for style in PLAYING_STYLES:
+        if style.lower() == key:
+            return style
+    if 3 <= len(stripped) <= 40:
+        return stripped
+    return None
+
+
+def pick_playing_style(att: str | None, defn: str | None, fallback: str | None = None) -> str:
+    """Prefer Attacking when real; else Defensive. Ignore Basic on either side."""
+    for candidate in (att, defn, fallback):
+        resolved = canonicalize_playing_style(candidate)
+        if resolved:
+            return resolved
+    return "None"
+
+
 def parse_playing_style(page_text: str, soup: BeautifulSoup, page_html: str = "") -> str:
     html = page_html or str(soup)
 
-    # PESDB max-level layout: <tr><th>Playing Style</th></tr><tr><td>Goal Poacher</td></tr>
-    m = re.search(
-        r"<tr>\s*<th>\s*Playing Style\s*</th>\s*</tr>\s*<tr>\s*<td>([^<]+)</td>",
-        html,
-        re.I,
-    )
-    if m:
-        candidate = m.group(1).strip()
-        for style in PLAYING_STYLES:
-            if style.lower() == candidate.lower():
-                return style
+    att = defn = legacy = None
+
+    # Prefer the dedicated playing_styles table (Att/Def labels live in <span>)
+    style_soup = soup.select_one("table.playing_styles") if soup else None
+    if style_soup is not None:
+        for td in style_soup.find_all("td"):
+            text = " ".join(td.stripped_strings)
+            if re.match(r"^att\s*:", text, re.I):
+                att = text
+            elif re.match(r"^def\s*:", text, re.I):
+                defn = text
+
+    if att is None and defn is None:
+        # PESDB 2027 HTML: <td><span>Att:</span> Goal Poacher</td>
+        m_att = re.search(
+            r"<td[^>]*>\s*(?:<span[^>]*>\s*)?Att:\s*(?:</span>)?\s*([^<]+)\s*</td>",
+            html,
+            re.I,
+        ) or re.search(r"Att:</span>\s*([^<\n]+)", html, re.I)
+        m_def = re.search(
+            r"<td[^>]*>\s*(?:<span[^>]*>\s*)?Def:\s*(?:</span>)?\s*([^<]+)\s*</td>",
+            html,
+            re.I,
+        ) or re.search(r"Def:</span>\s*([^<\n]+)", html, re.I)
+        if m_att:
+            att = m_att.group(1).strip()
+        if m_def:
+            defn = m_def.group(1).strip()
+
+    # Legacy single-style layout
+    if att is None and defn is None:
+        m = re.search(
+            r"<tr>\s*<th>\s*Playing Style\s*</th>\s*</tr>\s*<tr>\s*<td>([^<]+)</td>",
+            html,
+            re.I,
+        )
+        if m:
+            candidate = m.group(1).strip()
+            if not re.match(r"^(att|def)\s*:", candidate, re.I):
+                legacy = candidate
+
+    picked = pick_playing_style(att, defn, legacy)
+    if picked != "None":
+        return picked
 
     for table in soup.find_all("table"):
         rows = table.find_all("tr")
@@ -332,27 +412,30 @@ def parse_playing_style(page_text: str, soup: BeautifulSoup, page_html: str = ""
             if "playing style" not in headers[0].get_text(strip=True).lower():
                 continue
 
-            row_tds = row.find_all("td")
-            if row_tds:
-                candidate = row_tds[0].get_text(strip=True)
-                for style in PLAYING_STYLES:
-                    if style.lower() == candidate.lower():
-                        return style
-
-            if i + 1 < len(rows):
-                next_row = rows[i + 1]
+            att_c = def_c = None
+            for j in range(i + 1, min(i + 4, len(rows))):
+                next_row = rows[j]
                 if next_row.find("th"):
-                    continue
-                next_tds = next_row.find_all("td")
-                if len(next_tds) == 1:
-                    candidate = next_tds[0].get_text(strip=True)
-                    for style in PLAYING_STYLES:
-                        if style.lower() == candidate.lower():
-                            return style
+                    break
+                for td in next_row.find_all("td"):
+                    text = " ".join(td.stripped_strings)
+                    if re.match(r"^att\s*:", text, re.I):
+                        att_c = text
+                    elif re.match(r"^def\s*:", text, re.I):
+                        def_c = text
+                    elif not att_c and not def_c:
+                        legacy = text
+            picked = pick_playing_style(att_c, def_c, legacy)
+            if picked != "None":
+                return picked
 
     for style in PLAYING_STYLES:
-        if re.search(rf"<td>\s*{re.escape(style)}\s*</td>", html, re.I):
-            return style
+        if re.search(
+            rf"<td[^>]*>\s*(?:<span[^>]*>\s*)?(?:Att:\s*|Def:\s*)?(?:</span>)?\s*{re.escape(style)}\s*</td>",
+            html,
+            re.I,
+        ):
+            return canonicalize_playing_style(style) or style
 
     for style in PLAYING_STYLES:
         if f"Playing Style: {style}" in page_text or f"playing style: {style}" in page_text.lower():

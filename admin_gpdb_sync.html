@@ -95,6 +95,30 @@
         <div id="importStatus" class="status-line"></div>
       </div>
 
+      <div class="card" style="border-color:#446644;background:#121a12;">
+        <h2 style="color:#8c8;">Refresh playstyles only (live Players)</h2>
+        <p class="note" style="margin-top:0;">
+          eFootball now has <b>Att</b> + <b>Def</b> playstyles (one side is often <code>Basic</code>).
+          This scrape picks the populated real style (prefer Att, else Def) and writes
+          <b>only</b> <code>Players.Playstyle</code> — no MV/rating apply.
+        </p>
+        <p class="note">
+          Run SQL patch <code>gpdb_pesdb_playstyle_att_def_20260820.sql</code> first,
+          then redeploy edge function <code>gpdb-pesdb-scrape</code>.
+        </p>
+        <div class="scrape-options">
+          <label><input type="checkbox" id="playstyleForceAll"> Force refresh all players (not only blank/None/Basic)</label>
+          <label>Delay per player (sec) <input type="number" id="playstylePlayerDelay" min="2" value="3.5" step="0.5" style="width:52px;padding:4px 6px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;"></label>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" class="button" id="playstyleRefreshBtn" style="background:#335533;">Start playstyle refresh</button>
+          <button type="button" class="button" id="playstyleStopBtn" disabled style="background:#444;">Stop</button>
+        </div>
+        <div id="playstyleProgressLabel" style="font-size:12px;color:#888;margin-top:8px;"></div>
+        <div id="playstylePlayerLabel" style="font-size:13px;color:#ccc;margin-top:6px;min-height:1.3em;"></div>
+        <div id="playstyleStatus" class="status-line"></div>
+      </div>
+
       <div class="card">
         <h2>2. Preview sync</h2>
         <button type="button" class="button" id="previewBtn">Run preview</button>
@@ -162,6 +186,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20260818-504-retry"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20260820-playstyle-att-def"></script>
 </body>
 </html>

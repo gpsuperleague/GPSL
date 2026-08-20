@@ -28,6 +28,15 @@ export function getAdminGpdbSyncRules() {
     ],
     cards: [
       {
+        heading: "Playstyles (Att / Def)",
+        items: [
+          "eFootball cards now have <b>Attacking</b> + <b>Defensive</b> playstyles; one side is often <code>Basic</code>.",
+          "GPSL keeps <b>one</b> Playstyle: prefer Att if real, else Def.",
+          "Use <b>Refresh playstyles only</b> to rewrite live <code>Players.Playstyle</code> without a full sync apply.",
+          "SQL: <code>gpdb_pesdb_playstyle_att_def_20260820.sql</code> + redeploy <code>gpdb-pesdb-scrape</code>.",
+        ],
+      },
+      {
         heading: "Scrape pace",
         items: [
           "~<b>2 list pages</b> per session (~32 players each).",

@@ -119,6 +119,18 @@ Upload CSV on the same admin page. Preview/apply still work after the SQL patch.
 
 ---
 
+## Playstyles (eFootball Att / Def)
+
+PESDB now shows **Att:** and **Def:** playstyles (one side is often `Basic`).
+
+GPSL stores **one** `Players.Playstyle`: prefer Attacking if it is a real style, otherwise Defensive.
+
+1. Run `supabase/sql/patches/gpdb_pesdb_playstyle_att_def_20260820.sql` (also restores from `Players_backup_20260820` if present).
+2. Redeploy edge function `gpdb-pesdb-scrape`.
+3. Admin → **Refresh playstyles only** (blank/None/Basic by default, or force all).
+
+---
+
 ## Legacy cards
 
 Players off pesdb.net stay at club, not sellable, renew 1 season at a time.

@@ -9,6 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+/** Canonical GPSL playstyles (eFootball Att/Def dual styles — ignore "Basic"). */
 const PLAYING_STYLES = [
   "Goal Poacher", "Dummy Runner", "Fox in the Box", "Prolific Winger",
   "Classic No. 10", "Hole Player", "Box-to-Box", "Anchor Man",
@@ -17,7 +18,93 @@ const PLAYING_STYLES = [
   "Build Up", "Offensive Goalkeeper", "Defensive Goalkeeper",
   "Roaming Flank", "Cross Specialist", "Orchestrator", "Full-back Finisher",
   "Deep-Lying Forward",
+  // eFootball 2027 renames / additions
+  "Attacking Full-back", "Attacking GK", "Defensive GK",
+  "High Line GK", "Front Line Pressure", "Front Line Poacher",
+  "Attack Outlet", "All-action Defender", "Pass Disruptor",
+  "Covering Role", "High Line Master", "Sweeper GK",
 ];
+
+/** Map PESDB renames → GPSL-familiar names where useful. */
+const PLAYSTYLE_ALIASES: Record<string, string> = {
+  "attacking full-back": "Offensive Full-back",
+  "offensive full-back": "Offensive Full-back",
+  "attacking gk": "Offensive Goalkeeper",
+  "offensive goalkeeper": "Offensive Goalkeeper",
+  "defensive gk": "Defensive Goalkeeper",
+  "defensive goalkeeper": "Defensive Goalkeeper",
+};
+
+function isBlankOrBasicStyle(raw: string | null | undefined): boolean {
+  const s = String(raw || "").trim().toLowerCase();
+  return !s || s === "basic" || s === "none" || s === "unknown" || s === "—";
+}
+
+function stripAttDefPrefix(raw: string): string {
+  return decodeHtml(raw).replace(/^(att|def)\s*:\s*/i, "").trim();
+}
+
+function canonicalizePlayingStyle(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const stripped = stripAttDefPrefix(String(raw));
+  if (isBlankOrBasicStyle(stripped)) return null;
+  const key = stripped.toLowerCase();
+  if (PLAYSTYLE_ALIASES[key]) return PLAYSTYLE_ALIASES[key];
+  const exact = PLAYING_STYLES.find((s) => s.toLowerCase() === key);
+  if (exact) return exact;
+  // Allow unknown-but-real labels (not Basic) so new PESDB styles still land.
+  if (stripped.length >= 3 && stripped.length <= 40) return stripped;
+  return null;
+}
+
+/**
+ * eFootball 2027: players have Att + Def playstyles; one side is often "Basic".
+ * Prefer Attacking when it is a real style; otherwise Defensive.
+ */
+function pickPlayingStyle(attRaw: string | null, defRaw: string | null, fallbackRaw: string | null = null): string {
+  const att = canonicalizePlayingStyle(attRaw);
+  if (att) return att;
+  const def = canonicalizePlayingStyle(defRaw);
+  if (def) return def;
+  const fb = canonicalizePlayingStyle(fallbackRaw);
+  if (fb) return fb;
+  return "None";
+}
+
+function extractAttDefStyles(html: string): { att: string | null; def: string | null; legacy: string | null } {
+  // PESDB 2027:
+  //   <table class="playing_styles">
+  //     <tr><th>Playing Style</th></tr>
+  //     <tr><td><span …>Att:</span> Goal Poacher</td></tr>
+  //     <tr><td><span …>Def:</span> Basic</td></tr>
+  const styleTable =
+    html.match(/<table[^>]*class=["'][^"']*playing_styles[^"']*["'][^>]*>([\s\S]*?)<\/table>/i)?.[1] ||
+    html;
+
+  const attMatch =
+    styleTable.match(
+      /<td[^>]*>\s*(?:<span[^>]*>\s*)?Att:\s*(?:<\/span>)?\s*([^<]+)\s*<\/td>/i
+    ) || styleTable.match(/Att:<\/span>\s*([^<\n]+)/i);
+  const defMatch =
+    styleTable.match(
+      /<td[^>]*>\s*(?:<span[^>]*>\s*)?Def:\s*(?:<\/span>)?\s*([^<]+)\s*<\/td>/i
+    ) || styleTable.match(/Def:<\/span>\s*([^<\n]+)/i);
+
+  const legacyBlock = styleTable.match(
+    /<tr>\s*<th>\s*Playing Style\s*<\/th>\s*<\/tr>\s*<tr>\s*<td>([\s\S]*?)<\/td>/i
+  );
+  let legacy: string | null = null;
+  if (legacyBlock) {
+    const raw = stripTags(legacyBlock[1]);
+    // Skip if this row is actually an Att:/Def: line (new layout).
+    if (!/^(att|def)\s*:/i.test(raw)) legacy = raw;
+  }
+  return {
+    att: attMatch ? decodeHtml(attMatch[1]) : null,
+    def: defMatch ? decodeHtml(defMatch[1]) : null,
+    legacy,
+  };
+}
 
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -128,20 +215,15 @@ function parsePesdbMaxLevelPage(html: string) {
     if (alt) max_level_rating = Number(alt[1]);
   }
 
-  let playing_style = "None";
-  const styleBlock = html.match(
-    /<tr>\s*<th>\s*Playing Style\s*<\/th>\s*<\/tr>\s*<tr>\s*<td>([^<]+)<\/td>/i
-  );
-  if (styleBlock) {
-    const candidate = decodeHtml(styleBlock[1]);
-    if (PLAYING_STYLES.includes(candidate)) {
-      playing_style = candidate;
-    } else {
-      for (const style of PLAYING_STYLES) {
-        if (html.includes(`<td>${style}</td>`)) {
-          playing_style = style;
-          break;
-        }
+  const { att, def, legacy } = extractAttDefStyles(html);
+  let playing_style = pickPlayingStyle(att, def, legacy);
+
+  // Last resort: any known style sitting in a lone <td>…</td>
+  if (playing_style === "None") {
+    for (const style of PLAYING_STYLES) {
+      if (new RegExp(`<td[^>]*>\\s*(?:Att:\\s*|Def:\\s*)?${style.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*</td>`, "i").test(html)) {
+        playing_style = canonicalizePlayingStyle(style) || style;
+        break;
       }
     }
   }
@@ -149,6 +231,8 @@ function parsePesdbMaxLevelPage(html: string) {
   return {
     max_level_rating: Number.isFinite(max_level_rating) ? max_level_rating : null,
     playing_style,
+    playing_style_att: att,
+    playing_style_def: def,
   };
 }
 
@@ -308,6 +392,8 @@ Deno.serve(async (req) => {
             ...base,
             max_level_rating: detail.max_level_rating ?? base.rating,
             playing_style: detail.playing_style,
+            playing_style_att: detail.playing_style_att ?? null,
+            playing_style_def: detail.playing_style_def ?? null,
           });
         } catch (err) {
           console.error(`detail ${base.konami_id}:`, err);
