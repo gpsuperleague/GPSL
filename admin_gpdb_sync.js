@@ -1920,16 +1920,23 @@ async function runPlaystyleRefresh() {
             : "None";
         const attLabel = scraped?.playing_style_att || "—";
         const defLabel = scraped?.playing_style_def || "—";
+        const existingRaw = String(row.playstyle ?? "").trim();
+        const existingStyle =
+          existingRaw && !["none", "basic", "unknown"].includes(existingRaw.toLowerCase())
+            ? existingRaw
+            : "";
         let resultLabel;
         if (style === "") {
           resultLabel = "(blank — both Basic)";
         } else if (style === "None") {
-          resultLabel = "(could not read playstyle)";
+          resultLabel = existingStyle
+            ? `(could not read — keeping existing: ${existingStyle})`
+            : "(could not read playstyle)";
         } else {
           resultLabel = style;
         }
         document.getElementById("playstylePlayerLabel").textContent =
-          `${style === "None" ? "✗" : "✓"} ${name} → ${resultLabel} · Att: ${attLabel} · Def: ${defLabel}`;
+          `${style === "None" ? "⚠" : "✓"} ${name} → ${resultLabel} · Att: ${attLabel} · Def: ${defLabel}`;
 
         const applyResult = await applyPlaystyleRows([
           { konami_id: kid, playing_style: style },
