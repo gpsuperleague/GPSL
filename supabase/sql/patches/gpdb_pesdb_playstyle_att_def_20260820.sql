@@ -162,21 +162,30 @@ BEGIN
   LOOP
     v_seen := v_seen + 1;
     v_kid := nullif(btrim(coalesce(v_row->>'konami_id', v_row->>'Konami_ID', '')), '');
-    v_style := nullif(btrim(coalesce(v_row->>'playing_style', v_row->>'Playstyle', '')), '');
+    -- Distinguish missing key / scrape miss ("None") from intentional blank ("").
+    v_style := CASE
+      WHEN NOT (v_row ? 'playing_style' OR v_row ? 'Playstyle') THEN NULL
+      ELSE btrim(coalesce(v_row->>'playing_style', v_row->>'Playstyle', ''))
+    END;
 
     IF v_kid IS NULL THEN
       v_skipped := v_skipped + 1;
       CONTINUE;
     END IF;
 
-    -- Never wipe a real style with None/Basic/blank
-    IF v_style IS NULL OR lower(v_style) IN ('none', 'basic', 'unknown') THEN
+    -- Scrape miss — do not wipe a real style
+    IF v_style IS NULL OR lower(v_style) IN ('none', 'unknown') THEN
       v_skipped := v_skipped + 1;
       CONTINUE;
     END IF;
 
+    -- Real style, or intentional blank (both Att/Def were Basic → '')
+    IF lower(v_style) = 'basic' THEN
+      v_style := '';
+    END IF;
+
     UPDATE public."Players" p
-    SET "Playstyle" = v_style
+    SET "Playstyle" = nullif(v_style, '')
     WHERE p."Konami_ID"::text = v_kid
       AND coalesce(nullif(btrim(p."Playstyle"::text), ''), '') IS DISTINCT FROM v_style;
 

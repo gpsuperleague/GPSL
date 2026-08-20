@@ -60,14 +60,22 @@ function canonicalizePlayingStyle(raw: string | null | undefined): string | null
 /**
  * eFootball 2027: players have Att + Def playstyles; one side is often "Basic".
  * Prefer Attacking when it is a real style; otherwise Defensive.
+ * Both Basic (or Att/Def present but no real style) → blank "" (not "None").
+ * "None" only when we could not read a playstyle block at all (treat as scrape miss).
  */
-function pickPlayingStyle(attRaw: string | null, defRaw: string | null, fallbackRaw: string | null = null): string {
+function pickPlayingStyle(
+  attRaw: string | null,
+  defRaw: string | null,
+  fallbackRaw: string | null = null
+): string {
   const att = canonicalizePlayingStyle(attRaw);
   if (att) return att;
   const def = canonicalizePlayingStyle(defRaw);
   if (def) return def;
   const fb = canonicalizePlayingStyle(fallbackRaw);
   if (fb) return fb;
+  // Saw Att/Def (or legacy) labels but nothing usable → intentional blank
+  if (attRaw != null || defRaw != null || fallbackRaw != null) return "";
   return "None";
 }
 

@@ -17,6 +17,8 @@ const PROGRESS_KEY = "gpdb_pesdb_scrape_progress";
 const LAST_APPLY_KEY = "gpdb_pesdb_last_apply";
 let scrapeAbort = false;
 let scrapeRunning = false;
+let playstyleAbort = false;
+let playstyleRunning = false;
 let liveTimerId = null;
 let lastAuditRows = [];
 let lastPreviewResult = null;
@@ -843,6 +845,7 @@ async function appendStagingRows(rows) {
 }
 
 async function invokePesdbScrape(body, attempt = 1) {
+  const aborted = () => scrapeAbort || playstyleAbort;
   const { data, error } = await supabase.functions.invoke(SCRAPE_FUNCTION, {
     body: { ...body, pace: SCRAPE_PACE },
   });
@@ -859,10 +862,10 @@ async function invokePesdbScrape(body, attempt = 1) {
     }
     if (data?.error) detail = String(data.error);
 
-    if (isRateLimitError(detail) && attempt < 8 && !scrapeAbort) {
+    if (isRateLimitError(detail) && attempt < 8 && !aborted()) {
       const waitMs = RATE_LIMIT_RETRY_MS * attempt;
       setStatus(
-        "scrapeStatus",
+        scrapeRunning ? "scrapeStatus" : "playstyleStatus",
         `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/7)…`,
         true
       );
@@ -870,10 +873,10 @@ async function invokePesdbScrape(body, attempt = 1) {
       return invokePesdbScrape(body, attempt + 1);
     }
 
-    if (isTransientEdgeError(detail, error) && attempt < TRANSIENT_MAX_RETRIES && !scrapeAbort) {
+    if (isTransientEdgeError(detail, error) && attempt < TRANSIENT_MAX_RETRIES && !aborted()) {
       const waitMs = TRANSIENT_RETRY_MS * attempt;
       setStatus(
-        "scrapeStatus",
+        scrapeRunning ? "scrapeStatus" : "playstyleStatus",
         `Edge timeout/gateway (504) — retrying in ${Math.round(waitMs / 1000)}s (${attempt}/${TRANSIENT_MAX_RETRIES - 1})…`,
         true
       );
@@ -887,10 +890,10 @@ async function invokePesdbScrape(body, attempt = 1) {
     throw new Error(detail + hint);
   }
   if (data?.error) {
-    if (isRateLimitError(data.error) && attempt < 8 && !scrapeAbort) {
+    if (isRateLimitError(data.error) && attempt < 8 && !aborted()) {
       const waitMs = RATE_LIMIT_RETRY_MS * attempt;
       setStatus(
-        "scrapeStatus",
+        scrapeRunning ? "scrapeStatus" : "playstyleStatus",
         `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/7)…`,
         true
       );
@@ -900,11 +903,11 @@ async function invokePesdbScrape(body, attempt = 1) {
     if (
       isTransientEdgeError(data.error) &&
       attempt < TRANSIENT_MAX_RETRIES &&
-      !scrapeAbort
+      !aborted()
     ) {
       const waitMs = TRANSIENT_RETRY_MS * attempt;
       setStatus(
-        "scrapeStatus",
+        scrapeRunning ? "scrapeStatus" : "playstyleStatus",
         `Edge timeout/gateway (504) — retrying in ${Math.round(waitMs / 1000)}s (${attempt}/${TRANSIENT_MAX_RETRIES - 1})…`,
         true
       );
@@ -914,6 +917,17 @@ async function invokePesdbScrape(body, attempt = 1) {
     throw new Error(String(data.error));
   }
   return data;
+}
+
+/** Hard cap so one slow PESDB/edge call cannot stall the playstyle refresh. */
+const PLAYSTYLE_ENRICH_TIMEOUT_MS = 45000;
+
+function withTimeout(promise, ms, label = "Timed out") {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(label)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 /** Per-player detail fetch — mirrors local script: list row then max_level page. */
@@ -1619,9 +1633,6 @@ async function restorePlayer(playerId) {
    Playstyle-only refresh (Att/Def dual styles → one GPSL value)
    ============================================================ */
 
-let playstyleAbort = false;
-let playstyleRunning = false;
-
 function stopPlaystyleRefresh() {
   playstyleAbort = true;
   setStatus("playstyleStatus", "Stopping after current player…", true);
@@ -1740,19 +1751,23 @@ async function runPlaystyleRefresh() {
             "playstyleStatus",
             (sec) => `Playstyle refresh ${prog}: ${name}… ${sec}s`,
             () =>
-              invokePesdbScrape({
-                action: "enrich_players",
-                players: [
-                  {
-                    konami_id: kid,
-                    player_name: name,
-                    position: "CF",
-                    nationality: "",
-                    age: 25,
-                    rating: 60,
-                  },
-                ],
-              })
+              withTimeout(
+                invokePesdbScrape({
+                  action: "enrich_players",
+                  players: [
+                    {
+                      konami_id: kid,
+                      player_name: name,
+                      position: "CF",
+                      nationality: "",
+                      age: 25,
+                      rating: 60,
+                    },
+                  ],
+                }),
+                PLAYSTYLE_ENRICH_TIMEOUT_MS,
+                `Timed out after ${Math.round(PLAYSTYLE_ENRICH_TIMEOUT_MS / 1000)}s`
+              )
           );
         } catch (err) {
           console.warn("playstyle enrich skip:", name, err);
@@ -1770,12 +1785,20 @@ async function runPlaystyleRefresh() {
         }
 
         const scraped = (detail.players || [])[0];
-        const style = scraped?.playing_style || "None";
+        // "" = both Att/Def Basic (intentional blank). "None" = scrape miss (skip write).
+        const style =
+          scraped && Object.prototype.hasOwnProperty.call(scraped, "playing_style")
+            ? String(scraped.playing_style ?? "")
+            : "None";
+        const attLabel = scraped?.playing_style_att || "—";
+        const defLabel = scraped?.playing_style_def || "—";
         document.getElementById("playstylePlayerLabel").textContent =
-          `✓ ${name} → ${style}` +
-          (scraped?.playing_style_att || scraped?.playing_style_def
-            ? ` (Att: ${scraped.playing_style_att || "—"} / Def: ${scraped.playing_style_def || "—"})`
-            : "");
+          style === ""
+            ? `✓ ${name} → (no playstyle — Att/Def Basic) (Att: ${attLabel} / Def: ${defLabel})`
+            : `✓ ${name} → ${style}` +
+              (scraped?.playing_style_att || scraped?.playing_style_def
+                ? ` (Att: ${attLabel} / Def: ${defLabel})`
+                : "");
 
         const applyResult = await applyPlaystyleRows([
           { konami_id: kid, playing_style: style },

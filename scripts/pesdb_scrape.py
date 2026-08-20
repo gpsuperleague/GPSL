@@ -347,11 +347,13 @@ def canonicalize_playing_style(raw: str | None) -> str | None:
 
 
 def pick_playing_style(att: str | None, defn: str | None, fallback: str | None = None) -> str:
-    """Prefer Attacking when real; else Defensive. Ignore Basic on either side."""
+    """Prefer Attacking when real; else Defensive. Both Basic → blank. Miss → None."""
     for candidate in (att, defn, fallback):
         resolved = canonicalize_playing_style(candidate)
         if resolved:
             return resolved
+    if att is not None or defn is not None or fallback is not None:
+        return ""
     return "None"
 
 
