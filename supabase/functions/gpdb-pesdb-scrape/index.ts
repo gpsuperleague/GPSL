@@ -85,31 +85,50 @@ function extractAttDefStyles(html: string): { att: string | null; def: string | 
   //     <tr><th>Playing Style</th></tr>
   //     <tr><td><span …>Att:</span> Goal Poacher</td></tr>
   //     <tr><td><span …>Def:</span> Basic</td></tr>
-  const styleTable =
+  const styleTableHtml =
     html.match(/<table[^>]*class=["'][^"']*playing_styles[^"']*["'][^>]*>([\s\S]*?)<\/table>/i)?.[1] ||
-    html;
+    html.match(/<table[^>]*playing_styles[^>]*>([\s\S]*?)<\/table>/i)?.[1] ||
+    "";
 
-  const attMatch =
-    styleTable.match(
+  const scopeHtml = styleTableHtml || html;
+
+  // Prefer tagged matches (span-wrapped Att:/Def:)
+  let att =
+    scopeHtml.match(
       /<td[^>]*>\s*(?:<span[^>]*>\s*)?Att:\s*(?:<\/span>)?\s*([^<]+)\s*<\/td>/i
-    ) || styleTable.match(/Att:<\/span>\s*([^<\n]+)/i);
-  const defMatch =
-    styleTable.match(
+    )?.[1] ||
+    scopeHtml.match(/Att:<\/span>\s*([^<\n]+)/i)?.[1] ||
+    null;
+  let def =
+    scopeHtml.match(
       /<td[^>]*>\s*(?:<span[^>]*>\s*)?Def:\s*(?:<\/span>)?\s*([^<]+)\s*<\/td>/i
-    ) || styleTable.match(/Def:<\/span>\s*([^<\n]+)/i);
+    )?.[1] ||
+    scopeHtml.match(/Def:<\/span>\s*([^<\n]+)/i)?.[1] ||
+    null;
 
-  const legacyBlock = styleTable.match(
+  // Plain-text fallback after stripping tags (most reliable for span layouts)
+  if (!att || !def) {
+    const plain = stripTags(scopeHtml).replace(/\s+/g, " ");
+    if (!att) {
+      att = plain.match(/\bAtt:\s*(.+?)(?=\s*Def:|$)/i)?.[1]?.trim() || null;
+    }
+    if (!def) {
+      def = plain.match(/\bDef:\s*(.+?)(?=\s*Att:|$)/i)?.[1]?.trim() || null;
+    }
+  }
+
+  const legacyBlock = scopeHtml.match(
     /<tr>\s*<th>\s*Playing Style\s*<\/th>\s*<\/tr>\s*<tr>\s*<td>([\s\S]*?)<\/td>/i
   );
   let legacy: string | null = null;
   if (legacyBlock) {
     const raw = stripTags(legacyBlock[1]);
-    // Skip if this row is actually an Att:/Def: line (new layout).
     if (!/^(att|def)\s*:/i.test(raw)) legacy = raw;
   }
+
   return {
-    att: attMatch ? decodeHtml(attMatch[1]) : null,
-    def: defMatch ? decodeHtml(defMatch[1]) : null,
+    att: att ? decodeHtml(att) : null,
+    def: def ? decodeHtml(def) : null,
     legacy,
   };
 }
