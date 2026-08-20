@@ -844,8 +844,15 @@ async function appendStagingRows(rows) {
   return { stagingCount, rowsNew, rowsUpdated };
 }
 
-async function invokePesdbScrape(body, attempt = 1) {
+async function invokePesdbScrape(body, attempt = 1, opts = {}) {
   const aborted = () => scrapeAbort || playstyleAbort;
+  const soft = !!opts.soft;
+  const maxTransient = soft ? 2 : TRANSIENT_MAX_RETRIES;
+  const maxRateLimit = soft ? 1 : 8;
+  const rateLimitBaseMs = soft ? 8000 : RATE_LIMIT_RETRY_MS;
+  const transientBaseMs = soft ? 2500 : TRANSIENT_RETRY_MS;
+  const statusId = scrapeRunning ? "scrapeStatus" : "playstyleStatus";
+
   const { data, error } = await supabase.functions.invoke(SCRAPE_FUNCTION, {
     body: { ...body, pace: SCRAPE_PACE },
   });
@@ -862,26 +869,26 @@ async function invokePesdbScrape(body, attempt = 1) {
     }
     if (data?.error) detail = String(data.error);
 
-    if (isRateLimitError(detail) && attempt < 8 && !aborted()) {
-      const waitMs = RATE_LIMIT_RETRY_MS * attempt;
+    if (isRateLimitError(detail) && attempt < maxRateLimit && !aborted()) {
+      const waitMs = rateLimitBaseMs * attempt;
       setStatus(
-        scrapeRunning ? "scrapeStatus" : "playstyleStatus",
-        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/7)…`,
+        statusId,
+        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/${Math.max(maxRateLimit - 1, 1)})…`,
         true
       );
       await sleep(waitMs);
-      return invokePesdbScrape(body, attempt + 1);
+      return invokePesdbScrape(body, attempt + 1, opts);
     }
 
-    if (isTransientEdgeError(detail, error) && attempt < TRANSIENT_MAX_RETRIES && !aborted()) {
-      const waitMs = TRANSIENT_RETRY_MS * attempt;
+    if (isTransientEdgeError(detail, error) && attempt < maxTransient && !aborted()) {
+      const waitMs = transientBaseMs * attempt;
       setStatus(
-        scrapeRunning ? "scrapeStatus" : "playstyleStatus",
-        `Edge timeout/gateway (504) — retrying in ${Math.round(waitMs / 1000)}s (${attempt}/${TRANSIENT_MAX_RETRIES - 1})…`,
+        statusId,
+        `Edge timeout/gateway (504) — retrying in ${Math.round(waitMs / 1000)}s (${attempt}/${maxTransient - 1})…`,
         true
       );
       await sleep(waitMs);
-      return invokePesdbScrape(body, attempt + 1);
+      return invokePesdbScrape(body, attempt + 1, opts);
     }
 
     const hint = detail.includes("Failed to send")
@@ -890,29 +897,29 @@ async function invokePesdbScrape(body, attempt = 1) {
     throw new Error(detail + hint);
   }
   if (data?.error) {
-    if (isRateLimitError(data.error) && attempt < 8 && !aborted()) {
-      const waitMs = RATE_LIMIT_RETRY_MS * attempt;
+    if (isRateLimitError(data.error) && attempt < maxRateLimit && !aborted()) {
+      const waitMs = rateLimitBaseMs * attempt;
       setStatus(
-        scrapeRunning ? "scrapeStatus" : "playstyleStatus",
-        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/7)…`,
+        statusId,
+        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/${Math.max(maxRateLimit - 1, 1)})…`,
         true
       );
       await sleep(waitMs);
-      return invokePesdbScrape(body, attempt + 1);
+      return invokePesdbScrape(body, attempt + 1, opts);
     }
     if (
       isTransientEdgeError(data.error) &&
-      attempt < TRANSIENT_MAX_RETRIES &&
+      attempt < maxTransient &&
       !aborted()
     ) {
-      const waitMs = TRANSIENT_RETRY_MS * attempt;
+      const waitMs = transientBaseMs * attempt;
       setStatus(
-        scrapeRunning ? "scrapeStatus" : "playstyleStatus",
-        `Edge timeout/gateway (504) — retrying in ${Math.round(waitMs / 1000)}s (${attempt}/${TRANSIENT_MAX_RETRIES - 1})…`,
+        statusId,
+        `Edge timeout/gateway (504) — retrying in ${Math.round(waitMs / 1000)}s (${attempt}/${maxTransient - 1})…`,
         true
       );
       await sleep(waitMs);
-      return invokePesdbScrape(body, attempt + 1);
+      return invokePesdbScrape(body, attempt + 1, opts);
     }
     throw new Error(String(data.error));
   }
@@ -920,7 +927,7 @@ async function invokePesdbScrape(body, attempt = 1) {
 }
 
 /** Hard cap so one slow PESDB/edge call cannot stall the playstyle refresh. */
-const PLAYSTYLE_ENRICH_TIMEOUT_MS = 45000;
+const PLAYSTYLE_ENRICH_TIMEOUT_MS = 22000;
 
 function withTimeout(promise, ms, label = "Timed out") {
   let timer;
@@ -1735,8 +1742,8 @@ async function runPlaystyleRefresh() {
   let forceAll = !!document.getElementById("playstyleForceAll")?.checked;
   const wantResume = !!document.getElementById("playstyleResume")?.checked;
   const delaySec = Math.max(
-    2,
-    Number(document.getElementById("playstylePlayerDelay")?.value) || 3.5
+    1,
+    Number(document.getElementById("playstylePlayerDelay")?.value) || 2
   );
   const delayMs = Math.round(delaySec * 1000);
 
@@ -1856,19 +1863,23 @@ async function runPlaystyleRefresh() {
             (sec) => `Playstyle refresh ${prog}: ${name}… ${sec}s`,
             () =>
               withTimeout(
-                invokePesdbScrape({
-                  action: "enrich_players",
-                  players: [
-                    {
-                      konami_id: kid,
-                      player_name: name,
-                      position: "CF",
-                      nationality: "",
-                      age: 25,
-                      rating: 60,
-                    },
-                  ],
-                }),
+                invokePesdbScrape(
+                  {
+                    action: "enrich_players",
+                    players: [
+                      {
+                        konami_id: kid,
+                        player_name: name,
+                        position: "CF",
+                        nationality: "",
+                        age: 25,
+                        rating: 60,
+                      },
+                    ],
+                  },
+                  1,
+                  { soft: true }
+                ),
                 PLAYSTYLE_ENRICH_TIMEOUT_MS,
                 `Timed out after ${Math.round(PLAYSTYLE_ENRICH_TIMEOUT_MS / 1000)}s`
               )

@@ -268,9 +268,18 @@ async function politePause(baseMs: number, jitterMs = 1500): Promise<void> {
 async function fetchPesdbHtml(
   url: string,
   pace: ScrapePace = "slow",
-  attempt = 1
+  attempt = 1,
+  opts?: { maxAttempts?: number; maxWaitMs?: number }
 ): Promise<string> {
   const { afterFetchMs, afterFetchJitterMs } = paceDelays(pace);
+  // Chunked / playstyle refresh must not sit in multi-minute backoff inside one invoke.
+  const maxAttempts =
+    opts?.maxAttempts ??
+    (pace === "chunked" ? 3 : 10);
+  const maxWaitMs =
+    opts?.maxWaitMs ??
+    (pace === "chunked" ? 12000 : 300000);
+
   const res = await fetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
@@ -279,11 +288,11 @@ async function fetchPesdbHtml(
     },
   });
 
-  if ((res.status === 429 || res.status === 503) && attempt < 10) {
-    const waitMs = Math.min(300000, 20000 * Math.pow(2, attempt - 1));
-    console.warn(`PESDB ${res.status} — retry ${attempt}/9 in ${waitMs}ms: ${url}`);
+  if ((res.status === 429 || res.status === 503) && attempt < maxAttempts) {
+    const waitMs = Math.min(maxWaitMs, (pace === "chunked" ? 4000 : 20000) * Math.pow(2, attempt - 1));
+    console.warn(`PESDB ${res.status} — retry ${attempt}/${maxAttempts - 1} in ${waitMs}ms: ${url}`);
     await sleep(waitMs);
-    return fetchPesdbHtml(url, pace, attempt + 1);
+    return fetchPesdbHtml(url, pace, attempt + 1, opts);
   }
 
   if (!res.ok) {
@@ -391,9 +400,14 @@ Deno.serve(async (req) => {
         };
         if (!base.konami_id) continue;
         try {
+          // Fast-fail for playstyle refresh: at most 2 quick retries (not multi-minute backoff).
           const detailHtml = await fetchPesdbHtml(
             pesdbPlayerMaxUrl(base.konami_id),
-            pace
+            pace,
+            1,
+            pace === "chunked"
+              ? { maxAttempts: 2, maxWaitMs: 8000 }
+              : undefined
           );
           const detail = parsePesdbMaxLevelPage(detailHtml);
           players.push({
