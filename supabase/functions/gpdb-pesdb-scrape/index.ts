@@ -428,20 +428,72 @@ Deno.serve(async (req) => {
               ? { maxAttempts: 2, maxWaitMs: 8000 }
               : undefined
           );
-          const detail = parsePesdbMaxLevelPage(detailHtml);
+          const hasStyleTable = /playing_styles/i.test(detailHtml);
+          // Fallback: base player page if max_level HTML has no playstyle table
+          let htmlForStyles = detailHtml;
+          if (!hasStyleTable) {
+            try {
+              htmlForStyles = await fetchPesdbHtml(
+                `${PESDB_BASE}?id=${encodeURIComponent(base.konami_id)}`,
+                pace,
+                1,
+                pace === "chunked"
+                  ? { maxAttempts: 2, maxWaitMs: 8000 }
+                  : undefined
+              );
+            } catch (_) {
+              htmlForStyles = detailHtml;
+            }
+          }
+          const detail = parsePesdbMaxLevelPage(htmlForStyles);
+          const blocked =
+            detail.playing_style === "None" &&
+            !/playing_styles/i.test(htmlForStyles);
           players.push({
             ...base,
             max_level_rating: detail.max_level_rating ?? base.rating,
             playing_style: detail.playing_style,
             playing_style_att: detail.playing_style_att ?? null,
             playing_style_def: detail.playing_style_def ?? null,
+            scrape_error: blocked
+              ? "PESDB HTML missing playstyle table (blocked/throttled or wrong page)"
+              : null,
+            rate_limited: false,
+            has_playstyle_table: /playing_styles/i.test(htmlForStyles),
           });
         } catch (err) {
-          console.error(`detail ${base.konami_id}:`, err);
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`detail ${base.konami_id}:`, msg);
+          const rateLimited = /429|rate limit/i.test(msg);
+          // Propagate rate-limit to the client so it can pause — do not disguise as "None".
+          if (rateLimited) {
+            return jsonResponse({
+              ok: false,
+              error: msg,
+              rate_limited: true,
+              retry_after_sec: 120,
+              players: [
+                {
+                  ...base,
+                  max_level_rating: base.rating,
+                  playing_style: "None",
+                  playing_style_att: null,
+                  playing_style_def: null,
+                  scrape_error: msg,
+                  rate_limited: true,
+                },
+              ],
+            });
+          }
           players.push({
             ...base,
             max_level_rating: base.rating,
             playing_style: "None",
+            playing_style_att: null,
+            playing_style_def: null,
+            scrape_error: msg,
+            rate_limited: false,
+            has_playstyle_table: false,
           });
         }
         const { afterEnrichMs } = paceDelays(pace);

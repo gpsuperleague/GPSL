@@ -1804,6 +1804,7 @@ async function runPlaystyleRefresh() {
   document.getElementById("playstyleStopBtn")?.removeAttribute("disabled");
 
   const batchSize = 40;
+  let consecutivePesdbFails = 0;
 
   try {
     await savePlaystyleJob({
@@ -1885,11 +1886,12 @@ async function runPlaystyleRefresh() {
               )
           );
         } catch (err) {
+          const msg = String(err.message || err);
           console.warn("playstyle enrich skip:", name, err);
           skippedTotal += 1;
           afterId = kid;
           document.getElementById("playstylePlayerLabel").textContent =
-            `✗ ${name} — skipped (${err.message || err})`;
+            `⚠ ${name} → request error · left GPDB unchanged · ${msg}`;
           await savePlaystyleJob({
             status: "running",
             force_all: forceAll,
@@ -1900,15 +1902,52 @@ async function runPlaystyleRefresh() {
             updated_count: updatedTotal,
             skipped_count: skippedTotal,
             total_count: totalExpected,
-            last_error: String(err.message || err).slice(0, 300),
+            last_error: msg.slice(0, 300),
           });
           renderPlaystyleCheckpoint(await fetchPlaystyleJob().catch(() => null));
-          if (!playstyleAbort) {
+
+          // Rate-limit / gateway: pause hard so we don't burn the rest of the catalog.
+          if (/429|rate limit|503|timeout|Timed out/i.test(msg)) {
+            consecutivePesdbFails += 1;
+            const coolSec = Math.min(180, 45 * consecutivePesdbFails);
+            setStatus(
+              "playstyleStatus",
+              `PESDB throttling/timeouts — cooling ${coolSec}s (fail streak ${consecutivePesdbFails})…`,
+              true
+            );
+            if (!playstyleAbort) {
+              await sleepWithCountdown("playstyleStatus", "PESDB cool-down:", coolSec * 1000);
+            }
+          } else if (!playstyleAbort) {
             await sleepWithCountdown(
               "playstyleStatus",
               "Pause before next playstyle fetch:",
               delayMs
             );
+          }
+          continue;
+        }
+
+        // Edge may return ok:false with rate_limited while still including a stub player.
+        if (detail?.rate_limited || detail?.ok === false) {
+          consecutivePesdbFails += 1;
+          const coolSec = Number(detail?.retry_after_sec) || Math.min(180, 60 * consecutivePesdbFails);
+          skippedTotal += 1;
+          afterId = kid;
+          document.getElementById("playstylePlayerLabel").textContent =
+            `⚠ ${name} → PESDB rate-limited · left GPDB unchanged · cooling ${coolSec}s`;
+          await savePlaystyleJob({
+            status: "running",
+            force_all: forceAll,
+            last_konami_id: kid,
+            last_player_name: name,
+            processed_count: processed,
+            updated_count: updatedTotal,
+            skipped_count: skippedTotal,
+            last_error: String(detail?.error || "rate_limited").slice(0, 300),
+          });
+          if (!playstyleAbort) {
+            await sleepWithCountdown("playstyleStatus", "PESDB cool-down:", coolSec * 1000);
           }
           continue;
         }
@@ -1927,12 +1966,20 @@ async function runPlaystyleRefresh() {
             : "";
         let resultLabel;
         if (style === "") {
+          consecutivePesdbFails = 0;
           resultLabel = "no specialised style on PESDB (Att/Def Basic) · cleared on GPDB";
         } else if (style === "None") {
+          consecutivePesdbFails += 1;
+          const why =
+            scraped?.scrape_error ||
+            (scraped?.has_playstyle_table === false
+              ? "PESDB HTML had no playstyle table (throttled/blocked)"
+              : "could not parse Att/Def from PESDB HTML");
           resultLabel = existingStyle
-            ? `PESDB page failed · left GPDB as “${existingStyle}”`
-            : "PESDB page failed · no GPDB playstyle to keep";
+            ? `${why} · left GPDB as “${existingStyle}”`
+            : `${why} · no GPDB playstyle to keep`;
         } else {
+          consecutivePesdbFails = 0;
           resultLabel = `set GPDB to “${style}”`;
         }
         document.getElementById("playstylePlayerLabel").textContent =
@@ -1955,10 +2002,19 @@ async function runPlaystyleRefresh() {
           updated_count: updatedTotal,
           skipped_count: skippedTotal,
           total_count: Number(batch[0]?.total_count) || totalExpected,
-          last_error: null,
+          last_error: style === "None" ? String(scraped?.scrape_error || "parse_miss").slice(0, 300) : null,
         });
 
-        if (!playstyleAbort) {
+        // After a streak of empty PESDB pages, cool down instead of racing the blocklist.
+        if (style === "None" && consecutivePesdbFails >= 5 && !playstyleAbort) {
+          const coolSec = Math.min(180, 30 * consecutivePesdbFails);
+          setStatus(
+            "playstyleStatus",
+            `PESDB returning empty playstyle pages (${consecutivePesdbFails} in a row) — cooling ${coolSec}s…`,
+            true
+          );
+          await sleepWithCountdown("playstyleStatus", "PESDB cool-down:", coolSec * 1000);
+        } else if (!playstyleAbort) {
           await sleepWithCountdown(
             "playstyleStatus",
             "Pause before next playstyle fetch:",
