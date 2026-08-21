@@ -40,6 +40,11 @@ export function expiryWageMinUpliftPct() {
   return 10;
 }
 
+/** Wage uplift when renewing One of our Own who would otherwise be contested (%). */
+export function oooRenewUpliftPct() {
+  return 2.5;
+}
+
 /** @deprecated Step removed — use expiryWageMinUpliftPct / minExpiryWageOffer. */
 export function expiryWageBidStep() {
   return 1;

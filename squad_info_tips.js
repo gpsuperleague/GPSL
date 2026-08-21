@@ -3,7 +3,11 @@
  */
 
 import { isContractFinalYear, isPesdbLegacyCard } from "./player_contracts.js";
-import { isExpiryAuctionExempt } from "./squad_rules.js";
+import {
+  isExpiryAuctionExempt,
+  isOooOWageUpliftRenew,
+} from "./squad_rules.js";
+import { oooRenewUpliftPct } from "./wages.js";
 
 export const SQUAD_TIPS = {
   card:
@@ -19,7 +23,7 @@ export const SQUAD_TIPS = {
     "Registered playing position from the card. Used for squad balance and match selection.",
 
   age:
-    "Current age. Uncontested final-year renewal: home-grown ≤23, or non-home-grown ≤21. Once they age out of that band they enter the contested expiry wage market.",
+    "Current age. Uncontested final-year renewal: home-grown ≤23, or non-home-grown ≤21. Older One of our Own skip the contested market and renew at +2.5% wage instead. Other players enter the contested expiry wage market.",
 
   rating:
     "Overall rating (and calculated potential in brackets when shown). Pot. is GPSL’s formula — not always the raw pesdb max level.\n\nRating also drives automatic star status (≥79 by default).",
@@ -102,10 +106,10 @@ export const SQUAD_TIPS = {
     "First-season owner tools — up to 3 shared slots (release or transfer-list) in your first season at the club.\n\nWindow: pre-season through GPSL August, plus January when the transfer window is open.\n\nRelease refunds the recorded purchase fee. Transfer list at market value (slot returns if unsold). New Owner list can bypass the same-season lock.",
 
   starOoo:
-    "Stars are automatic by rating (usually ≥79). Super League cap 3 / Championship 2. One of our own is a home-grown star you assign in Action — excused from the star cap. Fan Favourite is a 76–78 (any nation) with 50% wage paid by Central Bank. You may set only one of OooO or Fan Favourite; editable in GPSL preseason or January. Nations with no GPDB 79+ get Fan Favourite only. Over-cap from August triggers fines and forced releases.",
+    "Stars are automatic by rating (usually ≥79). Super League cap 3 / Championship 2. One of our own is a home-grown star you assign in Action — excused from the star cap. In their final year, if they would otherwise be contested (e.g. HG 24+), they stay off the expiry auction and you can renew at +2.5% wage (3 seasons); young OooO still renew at the same wage. Fan Favourite is a 76–78 (any nation) with 50% wage paid by Central Bank. You may set only one of OooO or Fan Favourite; editable in GPSL preseason or January. Nations with no GPDB 79+ get Fan Favourite only. Over-cap from August triggers fines and forced releases.",
 };
 
-export function squadContractTip(player, clubNation) {
+export function squadContractTip(player, clubNation, oooPlayerId = null) {
   const n = Number(player?.contract_seasons_remaining);
   const wageNote =
     "The lower line is this player’s seasonal contract wage (counts toward your wage bill).";
@@ -126,7 +130,19 @@ export function squadContractTip(player, clubNation) {
   }
 
   if (isContractFinalYear(player)) {
-    if (isExpiryAuctionExempt(player, clubNation)) {
+    if (isOooOWageUpliftRenew(player, clubNation, oooPlayerId)) {
+      const uplift = oooRenewUpliftPct();
+      return (
+        `Final contract year — One of our Own (would otherwise be contested).\n\n` +
+        `Protected from the expiry wage auction while they remain your One of our Own. ` +
+        `Use Action to renew for 3 seasons at +${uplift}% wage. ` +
+        `Each later final year works the same while they stay OooO. ` +
+        `If you clear OooO, normal age/HG rules apply (often contested). ` +
+        `Cannot Transfer List or sell in the final year.\n\n` +
+        wageNote
+      );
+    }
+    if (isExpiryAuctionExempt(player, clubNation, oooPlayerId)) {
       return (
         "Final contract year — uncontested renewal (home-grown ≤23, or non-home-grown ≤21).\n\n" +
         "Protected from the expiry wage auction. Use Action to renew at the same wage (fresh 3-season deal). " +

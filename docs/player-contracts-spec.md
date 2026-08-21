@@ -77,6 +77,8 @@ When **1 season remains**, these brackets skip the contested expiry market (age/
 
 Including **home-grown aged 24+** and **non-HG aged 22+**: auto-listed on Expiring Contracts; hidden wage bids; highest wins at season rollover. Unsigned (no winning bid) → FA + MV to holder at rollover.
 
+**Exception — One of our Own:** if the player is the club’s current OooO and would otherwise be contested, they **skip the auction**. Owner may renew for a new **3-season** deal at **+2.5%** wage. Young OooO who already qualify for uncontested (HG ≤23) still renew at the **same wage**. Clearing OooO mid final year returns them to normal rules.
+
 **Cannot sell** in the final contract year (all brackets) — sell only with **2+ seasons** left.
 
 **Implementation:**
@@ -85,17 +87,23 @@ Including **home-grown aged 24+** and **non-HG aged 22+**: auto-listed on Expiri
 is_homegrown(player, club) :=
   normalize(Players.Nation) = normalize(Clubs.Nation)
 
-expiry_auction_exempt(player, club) :=
+expiry_age_exempt(player, club) :=
   (is_homegrown AND age <= 23) OR (NOT is_homegrown AND age <= 21)
+
+expiry_auction_exempt(player, club) :=
+  expiry_age_exempt OR player is club one_of_our_own
 
 expiry_auction_applies(player) :=
   final_year AND contracted AND NOT expiry_auction_exempt(player)
+
+ooo_uplift_renew :=
+  is OooO AND NOT expiry_age_exempt → renew wage = current × 1.025
 ```
 
 - Club nation: `Clubs.Nation`
 - Player nation: `Players.Nation`
-- SQL: `is_player_expiry_auction_exempt`, `player_expiry_auction_applies`
-- JS: `squad_rules.js` → `isExpiryAuctionExempt()`
+- SQL: `is_player_expiry_age_exempt`, `is_player_expiry_auction_exempt`, `player_expiry_auction_applies`, `player_contract_renew`, `contract_ooo_renew_uplift_pct`
+- JS: `squad_rules.js` → `isExpiryAgeExempt()`, `isExpiryAuctionExempt()`, `isOooOWageUpliftRenew()`
 
 ---
 

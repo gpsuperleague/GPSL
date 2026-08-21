@@ -350,11 +350,11 @@ export function playerSquadQualificationBadges(player, clubNation) {
 }
 
 /**
- * Final-year players exempt from the contested expiry wage auction:
+ * Final-year players exempt from the contested expiry wage auction by age:
  * - Home-grown and age ≤ 23
  * - Not home-grown and age ≤ 21
  */
-export function isExpiryAuctionExempt(player, clubNation) {
+export function isExpiryAgeExempt(player, clubNation) {
   const age = Number(player?.Age);
   if (!Number.isFinite(age)) return false;
   const hg = isHomeGrownPlayer(player, clubNation);
@@ -363,9 +363,31 @@ export function isExpiryAuctionExempt(player, clubNation) {
   return false;
 }
 
+/**
+ * Skip contested expiry market: age brackets OR current One of our Own.
+ * @param {string|null|undefined} oooPlayerId — club's one_of_our_own_player_id
+ */
+export function isExpiryAuctionExempt(player, clubNation, oooPlayerId = null) {
+  if (isExpiryAgeExempt(player, clubNation)) return true;
+  const ooo = oooPlayerId != null && String(oooPlayerId).trim() !== ""
+    ? String(oooPlayerId).trim()
+    : null;
+  if (!ooo) return false;
+  const pid = String(player?.Konami_ID ?? player?.player_id ?? "").trim();
+  return !!pid && pid === ooo;
+}
+
+/**
+ * OooO who would otherwise be contested: renew at +2.5% (not same-wage).
+ */
+export function isOooOWageUpliftRenew(player, clubNation, oooPlayerId = null) {
+  if (isExpiryAgeExempt(player, clubNation)) return false;
+  return isExpiryAuctionExempt(player, clubNation, oooPlayerId);
+}
+
 /** @deprecated Use isExpiryAuctionExempt — kept as alias for older imports. */
-export function isHgContractProtected(player, clubNation) {
-  return isExpiryAuctionExempt(player, clubNation);
+export function isHgContractProtected(player, clubNation, oooPlayerId = null) {
+  return isExpiryAuctionExempt(player, clubNation, oooPlayerId);
 }
 
 /**

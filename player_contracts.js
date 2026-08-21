@@ -2,8 +2,12 @@
  * Player contract helpers (3-year deals, final-year renew/expire).
  */
 
-import { isExpiryAuctionExempt } from "./squad_rules.js";
-import { formatWage } from "./wages.js";
+import {
+  isExpiryAuctionExempt,
+  isExpiryAgeExempt,
+  isOooOWageUpliftRenew,
+} from "./squad_rules.js";
+import { formatWage, oooRenewUpliftPct } from "./wages.js";
 
 export const CONTRACT_YEARS_DEFAULT = 3;
 
@@ -53,21 +57,27 @@ export function formatSquadContractCell(player) {
   </div>`;
 }
 
-/** Final-year players on hidden wage bid market (not uncontested brackets). */
-export function isOnExpiryWageMarket(player, clubNation) {
+/** Final-year players on hidden wage bid market (not age-exempt / OooO). */
+export function isOnExpiryWageMarket(player, clubNation, oooPlayerId = null) {
   if (isPesdbLegacyCard(player)) return false;
-  return isContractFinalYear(player) && !isExpiryAuctionExempt(player, clubNation);
+  return (
+    isContractFinalYear(player) &&
+    !isExpiryAuctionExempt(player, clubNation, oooPlayerId)
+  );
 }
 
 export function squadContractActionOptionsHtml(
   player,
   clubNation,
-  voluntaryRelease = null
+  voluntaryRelease = null,
+  oooPlayerId = null
 ) {
   if (!isContractFinalYear(player)) return null;
 
-  const exempt = isExpiryAuctionExempt(player, clubNation);
+  const exempt = isExpiryAuctionExempt(player, clubNation, oooPlayerId);
   const legacy = isPesdbLegacyCard(player);
+  const oooUplift = isOooOWageUpliftRenew(player, clubNation, oooPlayerId);
+  const uplift = oooRenewUpliftPct();
   const releaseOpt = voluntaryRelease?.optionHtml ?? "";
   const hasWageBid = !!voluntaryRelease?.hasWageBid;
 
@@ -83,10 +93,14 @@ export function squadContractActionOptionsHtml(
             ${releaseOpt}`;
   }
 
-  // Uncontested (HG≤23 / non-HG≤21) or legacy: renew at same wage path.
-  const renewLabel = legacy
-    ? "Renew legacy card now (1 season, same wage)"
-    : "Renew now at same wage (3 seasons)";
+  let renewLabel;
+  if (legacy) {
+    renewLabel = "Renew legacy card now (1 season, same wage)";
+  } else if (oooUplift) {
+    renewLabel = `Renew One of our Own now (+${uplift}% wage, 3 seasons)`;
+  } else {
+    renewLabel = "Renew now at same wage (3 seasons)";
+  }
 
   return `
             <option value="renew">${renewLabel}</option>
@@ -96,13 +110,19 @@ export function squadContractActionOptionsHtml(
 /**
  * Contract outlook for Squad registration panel.
  * - Mid-deal (remaining=2): season 2 of a standard 3-season deal — Dec/Jan sell window notice.
- * - Final year (remaining=1): potential leavers + re-signable (HG≤23 / non-HG≤21) subtotal.
+ * - Final year (remaining=1): potential leavers + re-signable (age brackets / OooO / legacy).
  *
  * @param {object[]} players
  * @param {string|null|undefined} clubNation
  * @param {string|null|undefined} activeGpslMonth
+ * @param {string|null|undefined} oooPlayerId
  */
-export function analyseSquadContractOutlook(players, clubNation, activeGpslMonth) {
+export function analyseSquadContractOutlook(
+  players,
+  clubNation,
+  activeGpslMonth,
+  oooPlayerId = null
+) {
   const list = Array.isArray(players) ? players : [];
   const month = String(activeGpslMonth || "")
     .trim()
@@ -115,15 +135,22 @@ export function analyseSquadContractOutlook(players, clubNation, activeGpslMonth
   const reSignable = [];
   const contested = [];
   for (const p of finalYear) {
-    if (isPesdbLegacyCard(p) || isExpiryAuctionExempt(p, clubNation)) {
+    if (
+      isPesdbLegacyCard(p) ||
+      isExpiryAuctionExempt(p, clubNation, oooPlayerId)
+    ) {
       reSignable.push(p);
     } else {
       contested.push(p);
     }
   }
 
-  const reSignableHg = reSignable.filter(
-    (p) => !isPesdbLegacyCard(p) && isExpiryAuctionExempt(p, clubNation)
+  const reSignableAgeExempt = reSignable.filter(
+    (p) => !isPesdbLegacyCard(p) && isExpiryAgeExempt(p, clubNation)
+  );
+  const reSignableOoo = reSignable.filter(
+    (p) =>
+      !isPesdbLegacyCard(p) && isOooOWageUpliftRenew(p, clubNation, oooPlayerId)
   );
 
   return {
@@ -135,7 +162,8 @@ export function analyseSquadContractOutlook(players, clubNation, activeGpslMonth
     finalYearCount: finalYear.length,
     reSignable,
     reSignableCount: reSignable.length,
-    reSignableExemptCount: reSignableHg.length,
+    reSignableExemptCount: reSignableAgeExempt.length,
+    reSignableOooCount: reSignableOoo.length,
     contested,
     contestedCount: contested.length,
   };

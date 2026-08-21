@@ -24,6 +24,8 @@ import {
   shortComplianceRequirement,
   shortComplianceStatus,
   complianceRowTooltip,
+  isExpiryAuctionExempt,
+  isOooOWageUpliftRenew,
 } from "./squad_rules.js";
 import {
   loadSquadGhostAcquisitions,
@@ -66,10 +68,9 @@ import {
   isContractFinalYear,
   isPesdbLegacyCard,
   analyseSquadContractOutlook,
-} from "./player_contracts.js?v=20260811-ios-action";
-import { isExpiryAuctionExempt } from "./squad_rules.js";
+} from "./player_contracts.js?v=20260821-ooo-renew";
 import { loadCalendarStatus } from "./competition_calendar.js";
-import { formatWage } from "./wages.js";
+import { formatWage, oooRenewUpliftPct } from "./wages.js";
 import {
   loadClubWageBillSummary,
   wageBillSummaryHtml,
@@ -806,10 +807,15 @@ function squadActionOptionsHtml(player) {
   const pidKey = String(player?.Konami_ID ?? "").trim();
   const hasWageBid =
     !!transferStatusState?.myExpiryWageBidPlayerIds?.has(pidKey);
-  const contractOpts = squadContractActionOptionsHtml(player, clubNation, {
-    optionHtml: `${rewardOpts}${releaseGroup}`,
-    hasWageBid,
-  });
+  const contractOpts = squadContractActionOptionsHtml(
+    player,
+    clubNation,
+    {
+      optionHtml: `${rewardOpts}${releaseGroup}`,
+      hasWageBid,
+    },
+    squadDesignationsState?.one_of_our_own_player_id ?? null
+  );
   if (contractOpts) return contractOpts;
 
   if (!playerCanListOrSellLocal(player)) {
@@ -1583,7 +1589,8 @@ function renderContractOutlookHtml(players) {
   const outlook = analyseSquadContractOutlook(
     players,
     clubNation,
-    activeGpslMonth
+    activeGpslMonth,
+    squadDesignationsState?.one_of_our_own_player_id ?? null
   );
   if (!outlook.midDealCount && !outlook.finalYearCount) return "";
 
@@ -1619,7 +1626,7 @@ function renderContractOutlookHtml(players) {
         <p>
           <strong>${outlook.finalYearCount}</strong> potentially leaving at season end
           if not renewed / won.
-          · Re-signable on Squad (HG ≤23 or non-HG ≤21 / legacy):
+          · Re-signable on Squad (HG ≤23 / non-HG ≤21 / OooO +2.5% / legacy):
           <strong>${outlook.reSignableCount}</strong>
           · Contested wage market:
           <strong>${outlook.contestedCount}</strong>${
@@ -1909,7 +1916,8 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
                 String(p.Konami_ID ?? "").trim()
               ),
             },
-            clubNation
+            clubNation,
+            designationsState?.one_of_our_own_player_id ?? null
           )
         )}>${formatSquadContractCell(p)}</td>
         <td class="squad-col-status gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.status)}>
@@ -2388,8 +2396,14 @@ async function renewPlayerContract(playerId) {
     return;
   }
 
-  const exempt = isExpiryAuctionExempt(player, clubNation);
-  let wage = Number(player.contract_wage) || 0;
+  const oooId = squadDesignationsState?.one_of_our_own_player_id ?? null;
+  const exempt = isExpiryAuctionExempt(player, clubNation, oooId);
+  const oooUplift = isOooOWageUpliftRenew(player, clubNation, oooId);
+  const currentWage = Number(player.contract_wage) || 0;
+  const upliftPct = oooRenewUpliftPct();
+  const newWage = oooUplift
+    ? Math.round(currentWage * (1 + upliftPct / 100))
+    : currentWage;
 
   if (!exempt && !isPesdbLegacyCard(player)) {
     alert(
@@ -2399,17 +2413,18 @@ async function renewPlayerContract(playerId) {
     return;
   }
 
-  if (
-    !window.confirm(
-      `Renew ${player.Name} now for 3 seasons at the same wage (${formatWage(wage)})?`
-    )
-  ) {
+  const confirmMsg = oooUplift
+    ? `Renew ${player.Name} (One of our Own) for 3 seasons at +${upliftPct}% wage?\n\n` +
+      `${formatWage(currentWage)} → ${formatWage(newWage)}`
+    : `Renew ${player.Name} now for 3 seasons at the same wage (${formatWage(currentWage)})?`;
+
+  if (!window.confirm(confirmMsg)) {
     return;
   }
 
   const { data, error } = await supabase.rpc("player_contract_renew", {
     p_player_id: String(playerId),
-    p_wage: wage,
+    p_wage: newWage,
   });
 
   if (error) {
@@ -2418,7 +2433,7 @@ async function renewPlayerContract(playerId) {
   }
 
   alert(
-    `${player.Name} renewed — 3 seasons at ${formatWage(data?.contract_wage ?? wage)}.`
+    `${player.Name} renewed — 3 seasons at ${formatWage(data?.contract_wage ?? newWage)}.`
   );
   await loadSquad();
 }
