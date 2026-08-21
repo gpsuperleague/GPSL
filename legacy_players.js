@@ -31,17 +31,60 @@ function formatLegacySince(iso) {
   }
 }
 
+function clubKey(r) {
+  const raw = String(r?.club ?? "").trim();
+  return raw || "__free_agent__";
+}
+
+function clubLabel(r) {
+  const raw = String(r?.club ?? "").trim();
+  if (!raw) return "Free agent";
+  return displayClubName(raw) || raw;
+}
+
 function rowSearchHaystack(r) {
-  const club = displayClubName(r.club) || r.club || "Free agent";
-  return [r.player_name, club, r.konami_id, r.position, r.nation]
+  return [r.player_name, clubLabel(r), r.konami_id, r.position, r.nation]
     .filter((x) => x != null && String(x).trim() !== "")
     .join(" ");
 }
 
-function filteredLegacyRows(query) {
-  const q = String(query ?? "").trim();
-  if (!q) return legacyRows;
-  return legacyRows.filter((r) => textMatchesSearch(rowSearchHaystack(r), q));
+function filteredLegacyRows() {
+  const q = document.getElementById("legacyPlayerSearch")?.value ?? "";
+  const club = document.getElementById("legacyClubFilter")?.value ?? "";
+  return legacyRows.filter((r) => {
+    if (club && clubKey(r) !== club) return false;
+    return textMatchesSearch(rowSearchHaystack(r), q);
+  });
+}
+
+function populateClubFilter() {
+  const sel = document.getElementById("legacyClubFilter");
+  if (!sel) return;
+  const prev = sel.value;
+  const byKey = new Map();
+  for (const r of legacyRows) {
+    const key = clubKey(r);
+    if (!byKey.has(key)) byKey.set(key, clubLabel(r));
+  }
+  const options = [...byKey.entries()].sort((a, b) =>
+    a[1].localeCompare(b[1], undefined, { sensitivity: "base" })
+  );
+  sel.innerHTML =
+    `<option value="">All clubs</option>` +
+    options
+      .map(
+        ([key, label]) =>
+          `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`
+      )
+      .join("");
+  if (prev && [...byKey.keys()].includes(prev)) sel.value = prev;
+  else sel.value = "";
+}
+
+function filtersActive() {
+  const q = document.getElementById("legacyPlayerSearch")?.value?.trim();
+  const club = document.getElementById("legacyClubFilter")?.value;
+  return Boolean(q || club);
 }
 
 function updateStatus(visibleCount) {
@@ -53,8 +96,7 @@ function updateStatus(visibleCount) {
       "No legacy players at the moment — all GPDB cards match the latest PESDB scrape.";
     return;
   }
-  const q = document.getElementById("legacyPlayerSearch")?.value?.trim();
-  if (q) {
+  if (filtersActive()) {
     status.textContent = `Showing ${visibleCount} of ${total} legacy player${total === 1 ? "" : "s"}.`;
   } else {
     status.textContent = `${total} legacy player${total === 1 ? "" : "s"} across GPSL clubs.`;
@@ -67,7 +109,7 @@ function renderLegacyTable(rows) {
 
   if (!rows.length) {
     const emptyMsg = legacyRows.length
-      ? "No legacy players match this search."
+      ? "No legacy players match these filters."
       : "No legacy cards listed.";
     tbody.innerHTML = `<tr><td colspan="7" class="empty-note">${emptyMsg}</td></tr>`;
     updateStatus(0);
@@ -76,7 +118,7 @@ function renderLegacyTable(rows) {
 
   tbody.innerHTML = rows
     .map((r) => {
-      const club = displayClubName(r.club) || r.club || "Free agent";
+      const club = clubLabel(r);
       const contract = contractYearsLabel(r.contract_seasons_remaining);
       const contractNote =
         Number(r.contract_seasons_remaining) === 1
@@ -97,16 +139,21 @@ function renderLegacyTable(rows) {
   updateStatus(rows.length);
 }
 
-function applyLegacySearch() {
-  const q = document.getElementById("legacyPlayerSearch")?.value ?? "";
-  renderLegacyTable(filteredLegacyRows(q));
+function applyLegacyFilters() {
+  renderLegacyTable(filteredLegacyRows());
 }
 
-function wireLegacySearch() {
+function wireLegacyFilters() {
   const input = document.getElementById("legacyPlayerSearch");
-  if (!input || input.dataset.wired === "1") return;
-  input.dataset.wired = "1";
-  input.addEventListener("input", () => applyLegacySearch());
+  const clubSel = document.getElementById("legacyClubFilter");
+  if (input && input.dataset.wired !== "1") {
+    input.dataset.wired = "1";
+    input.addEventListener("input", () => applyLegacyFilters());
+  }
+  if (clubSel && clubSel.dataset.wired !== "1") {
+    clubSel.dataset.wired = "1";
+    clubSel.addEventListener("change", () => applyLegacyFilters());
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -122,7 +169,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  wireLegacySearch();
+  wireLegacyFilters();
   await loadLegacyList();
 });
 
@@ -141,5 +188,6 @@ async function loadLegacyList() {
   }
 
   legacyRows = data || [];
-  applyLegacySearch();
+  populateClubFilter();
+  applyLegacyFilters();
 }

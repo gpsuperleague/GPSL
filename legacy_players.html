@@ -38,9 +38,9 @@
       margin: 0;
     }
     #legacyPlayerSearch {
-      min-width: min(100%, 320px);
-      flex: 1 1 240px;
-      max-width: 420px;
+      min-width: min(100%, 280px);
+      flex: 1 1 220px;
+      max-width: 360px;
       padding: 8px 10px;
       background: #111;
       color: #eee;
@@ -50,6 +50,20 @@
     }
     #legacyPlayerSearch::placeholder { color: #666; }
     #legacyPlayerSearch:focus {
+      outline: none;
+      border-color: #ff9900;
+    }
+    #legacyClubFilter {
+      min-width: 180px;
+      max-width: 280px;
+      padding: 8px 10px;
+      background: #111;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    #legacyClubFilter:focus {
       outline: none;
       border-color: #ff9900;
     }
@@ -69,6 +83,10 @@
 
   <div class="panel">
     <div class="legacy-toolbar">
+      <label for="legacyClubFilter">Club</label>
+      <select id="legacyClubFilter" title="Filter by club">
+        <option value="">All clubs</option>
+      </select>
       <label for="legacyPlayerSearch">Search</label>
       <input
         type="text"
@@ -94,6 +112,6 @@
     </table>
   </div>
 
-  <script type="module" src="legacy_players.js?v=20260821-search"></script>
+  <script type="module" src="legacy_players.js?v=20260821-club-filter"></script>
 </body>
 </html>
