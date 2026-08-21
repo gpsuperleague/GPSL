@@ -689,7 +689,7 @@ async function restockManagerFaBoard(forceFresh) {
       "managerFaStatus",
       "❌ " +
         (err.message || "Failed") +
-        " — run supabase/sql/patches/manager_window_fa_board_fill_fix_20260815.sql",
+        " — run manager_window_fa_board_fill_fix_20260815.sql then manager_window_fa_cron_rewire_20260821.sql",
       false
     );
   }
@@ -718,7 +718,7 @@ async function diagnoseManagerFaBoard() {
       "managerFaStatus",
       "❌ " +
         (err.message || "Failed") +
-        " — run supabase/sql/patches/manager_window_fa_board_fill_fix_20260815.sql",
+        " — run manager_window_fa_board_fill_fix_20260815.sql then manager_window_fa_cron_rewire_20260821.sql",
       false
     );
   }

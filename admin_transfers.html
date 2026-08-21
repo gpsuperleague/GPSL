@@ -123,7 +123,9 @@
         <p class="note">
           June / July / August / January should keep <b>10 free-agent managers</b> listed
           (<code>window_fa</code>). Transfer engine tops up automatically; use these if the board is empty.
-          Requires <code>patches/manager_window_fa_board_fill_fix_20260815.sql</code>.
+          Requires <code>patches/manager_window_fa_board_fill_fix_20260815.sql</code>
+          then <code>patches/manager_window_fa_cron_rewire_20260821.sql</code>
+          (re-attaches FA tick to the transfer engine cron).
         </p>
         <button class="button" id="diagnoseManagerFaBtn" type="button">Diagnose FA board</button>
         <button class="button" id="restockManagerFaBtn" style="background:#2f5f2f;">Top up FA board to 10</button>

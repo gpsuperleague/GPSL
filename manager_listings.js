@@ -74,6 +74,18 @@ async function refreshClubManagerState() {
   updateHasManagerBanner();
 }
 
+/** Keep FA board topped up to 10 during June/July/August/January. */
+async function keepaliveFaBoard() {
+  try {
+    const { error } = await supabase.rpc("manager_window_fa_keepalive");
+    if (error) {
+      console.warn("Manager FA keepalive skipped:", error.message);
+    }
+  } catch (err) {
+    console.warn("Manager FA keepalive skipped:", err);
+  }
+}
+
 async function loadListings() {
   const nowIso = new Date().toISOString();
   const { data: listings, error } = await supabase
@@ -93,7 +105,10 @@ async function loadListings() {
   }
 
   if (!listings?.length) {
-    body.innerHTML = `<tr><td colspan="7">No active manager listings.</td></tr>`;
+    body.innerHTML =
+      `<tr><td colspan="7">No active manager listings. ` +
+      `During June / July / August / January the league FA board should show 10 free agents — ` +
+      `refresh in a moment, or ask admin to restock the Manager FA board.</td></tr>`;
     return;
   }
 
@@ -249,6 +264,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("bidSubmit")?.addEventListener("click", submitBid);
 
+  await keepaliveFaBoard();
   await loadListings();
   setInterval(loadListings, 30000);
 });
