@@ -21,7 +21,8 @@ import {
   renameScoutingBoard,
   getStoredScoutingBoardNo,
   setStoredScoutingBoardNo,
-} from "./scouting_targets.js?v=20260813-multi-board";
+  loadScoutingPlannerPlayerBoards,
+} from "./scouting_targets.js?v=20260821-board-filter";
 import { initMatchdaySquadPanel } from "./matchday_squad.js";
 import {
   loadScoutingDraftContext,
@@ -98,6 +99,10 @@ let plannerNationOptions = [];
 /** @type {{ board_no: number, name: string }[]} */
 let scoutingBoards = [];
 let activeBoardNo = getStoredScoutingBoardNo();
+/** Target-list filter: "all" or board number string "1"…"4". */
+let listBoardFilter = "all";
+/** @type {Map<string, Set<number>>} */
+let playerBoardMap = new Map();
 let multiBoardEnabled = true;
 /** @type {object[]|null} */
 let ownedSquadPlayers = null;
@@ -896,6 +901,23 @@ async function renderScoutingLists() {
     return;
   }
 
+  if (!scoutingBoards.length) {
+    try {
+      scoutingBoards = await ensureScoutingBoards(supabase);
+      multiBoardEnabled = true;
+    } catch {
+      scoutingBoards = [{ board_no: 1, name: "Board 1" }];
+    }
+  }
+  renderListBoardFilter();
+  wireListBoardFilter();
+
+  try {
+    playerBoardMap = await loadScoutingPlannerPlayerBoards(supabase);
+  } catch {
+    playerBoardMap = new Map();
+  }
+
   scoutingRows = await loadScoutingTargets(supabase, clubShort);
 
   if (!scoutingRows.length) {
@@ -931,10 +953,37 @@ async function renderScoutingLists() {
   const draftUiByPlayer = await buildDraftUiMap(playerMap);
   draftUiByPlayerCache = draftUiByPlayer;
 
+  if (clubShort) {
+    await loadOwnedSquadForReg();
+  } else {
+    ownedSquadPlayers = [];
+    squadDesignationsState = null;
+  }
+
+  paintScoutingLists(wrap, playerMap, draftUiByPlayer);
+  updateActiveTargetsHeader();
+  await refreshAdvisoryBudgetBadge();
+  wireScoutingListActions(wrap);
+}
+
+function paintScoutingLists(wrap, playerMap, draftUiByPlayer) {
+  const filteredRows = rowsForListFilter(scoutingRows);
+  if (!filteredRows.length) {
+    const label =
+      listBoardFilter === "all"
+        ? "targets"
+        : boardLabel(listBoardFilter);
+    wrap.innerHTML =
+      listBoardFilter === "all"
+        ? '<p class="scout-empty">No scouting targets yet.</p>'
+        : `<p class="scout-empty">No targets placed on <b>${escapeHtml(label)}</b>. Switch to Show all, or place players on that tactic board.</p>`;
+    return;
+  }
+
   wrap.innerHTML = [1, 2, 3, 4]
     .map((tier) => {
       const tierRows = sortScoutingRowsByPosition(
-        scoutingRows.filter((r) => Number(r.tier) === tier),
+        filteredRows.filter((r) => Number(r.tier) === tier),
         playerMap
       );
       const balance = tierRows.length
@@ -948,17 +997,16 @@ async function renderScoutingLists() {
         </div>`;
     })
     .join("");
+}
 
-  if (clubShort) {
-    await loadOwnedSquadForReg();
-  } else {
-    ownedSquadPlayers = [];
-    squadDesignationsState = null;
-  }
+function renderScoutingListsFromCache() {
+  const wrap = document.getElementById("scoutingListsWrap");
+  if (!wrap || !scoutingRows.length) return;
+  paintScoutingLists(wrap, playerMapCache, draftUiByPlayerCache);
+  wireScoutingListActions(wrap);
+}
 
-  updateActiveTargetsHeader();
-  await refreshAdvisoryBudgetBadge();
-
+function wireScoutingListActions(wrap) {
   wireDraftActions(wrap);
 
   wrap.querySelectorAll(".scout-active-check").forEach((cb) => {
@@ -1048,6 +1096,49 @@ function renderBoardPicker() {
   sel.value = String(activeBoardNo);
 }
 
+function renderListBoardFilter() {
+  const sel = document.getElementById("scoutListBoardFilter");
+  if (!sel) return;
+
+  const boards =
+    scoutingBoards.length > 0
+      ? scoutingBoards
+      : [1, 2, 3, 4].map((n) => ({ board_no: n, name: `Board ${n}` }));
+
+  const prev = listBoardFilter;
+  sel.innerHTML =
+    `<option value="all">Show all</option>` +
+    boards
+      .map(
+        (b) =>
+          `<option value="${b.board_no}">${escapeHtml(b.name || `Board ${b.board_no}`)}</option>`
+      )
+      .join("");
+
+  const valid =
+    prev === "all" || boards.some((b) => String(b.board_no) === String(prev));
+  listBoardFilter = valid ? String(prev) : "all";
+  sel.value = listBoardFilter;
+}
+
+function rowsForListFilter(rows) {
+  if (listBoardFilter === "all") return rows;
+  const boardNo = Number(listBoardFilter);
+  return rows.filter((r) =>
+    playerBoardMap.get(String(r.player_id))?.has(boardNo)
+  );
+}
+
+function wireListBoardFilter() {
+  const sel = document.getElementById("scoutListBoardFilter");
+  if (!sel || sel.dataset.wired === "1") return;
+  sel.dataset.wired = "1";
+  sel.addEventListener("change", () => {
+    listBoardFilter = String(sel.value || "all");
+    renderScoutingListsFromCache();
+  });
+}
+
 function escapeHtml(s) {
   return String(s || "")
     .replace(/&/g, "&amp;")
@@ -1075,6 +1166,7 @@ async function refreshBoardList() {
   }
   setStoredScoutingBoardNo(activeBoardNo);
   renderBoardPicker();
+  renderListBoardFilter();
 }
 
 async function initPlanner() {
@@ -1119,9 +1211,9 @@ async function initPlanner() {
     savedRows: rows,
     savedPitchLayout: pitchLayout,
     savedFormations: [],
-    maxBench: 16,
+    maxBench: 17,
     benchSubSlots: 12,
-    maxSquad: 27,
+    maxSquad: 28,
     onChange: (_slots, panelState) => {
       updatePlannerCompositionStrip(panelState);
     },
@@ -1136,6 +1228,14 @@ async function initPlanner() {
           }),
           activeBoardNo
         );
+        try {
+          playerBoardMap = await loadScoutingPlannerPlayerBoards(supabase);
+        } catch {
+          /* keep prior map */
+        }
+        if (listBoardFilter !== "all") {
+          renderScoutingListsFromCache();
+        }
         const label = boardLabel(activeBoardNo);
         setPlannerStatus(
           multiBoardEnabled
@@ -1172,10 +1272,10 @@ async function initPlanner() {
   const hint = root.querySelector(".squad-hint");
   if (hint) {
     hint.innerHTML = multiBoardEnabled
-      ? "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–16)</b>. " +
+      ? "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b>. " +
         "You have <b>4 named tactic boards</b> sharing one shortlist — switch boards above. " +
         "Planning only — not your matchday squad."
-      : "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–16)</b> to plan a potential lineup. " +
+      : "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b> to plan a potential lineup. " +
         "Click position labels to change roles. This is for planning only — not your matchday squad.";
   }
 }

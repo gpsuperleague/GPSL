@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
-  <link rel="stylesheet" href="matchday_squad.css?v=20260820-subs12-squad16">
+  <link rel="stylesheet" href="matchday_squad.css?v=20260821-subs12-squad17">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1200px; margin:20px auto 48px; }
@@ -85,6 +85,18 @@
       border-radius: 4px;
       padding: 6px 8px;
       font-size: 13px;
+    }
+    .scout-list-filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 10px;
+      margin: 0 0 14px;
+    }
+    .scout-list-filter-bar label {
+      color: #888;
+      font-size: 12px;
+      margin: 0;
     }
     .scout-tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
     .scout-tabs button {
@@ -358,7 +370,7 @@
 
     <div id="tab-lists" class="scout-tab-panel active panel panel-bg panel-transfer">
       <div class="scout-board-top">
-        <h2 class="gpsl-has-tip" data-gpsl-tip="Tiered shortlist from GPDB stars. Tick Active Targets to highlight spend and project registration (Sq / GK / HG / U21 / ★)." tabindex="0">Scouting targets</h2>
+        <h2 class="gpsl-has-tip" data-gpsl-tip="Tiered shortlist from GPDB stars. Tick Active Targets to highlight spend and project registration (Sq / GK / HG / U21 / ★). Filter by tactic board to see only players placed on that board." tabindex="0">Scouting targets</h2>
         <div class="scout-budget-line">
           <span class="scout-budget-item gpsl-has-tip" data-gpsl-tip="Sum of Active Targets: market value if no bids; your bid if leading; next increment above the high bid if outbid." tabindex="0">
             <span class="lbl">Active targets</span>
@@ -372,13 +384,19 @@
         </div>
         <div id="scoutRegStrip" class="scout-reg-strip" hidden></div>
       </div>
+      <div class="scout-list-filter-bar">
+        <label for="scoutListBoardFilter">Show targets on</label>
+        <select id="scoutListBoardFilter" class="scout-board-select" title="Filter target lists by tactic board">
+          <option value="all">Show all</option>
+        </select>
+      </div>
       <div id="scoutingListsWrap"><i>Loading…</i></div>
     </div>
 
     <div id="tab-planner" class="scout-tab-panel panel panel-bg panel-transfer">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="Drag scouting targets onto the pitch (11), subs (1–12), and squad fillers (13–16). Set Plan nation per board for HG / OooO when planning different clubs. Live GK / HG / U21 / ★ / MV update as you place players. Up to 4 named boards; saved separately from Match Day." tabindex="0">Tactic board</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Drag scouting targets onto the pitch (11), subs (1–12), and squad fillers (13–17). Set Plan nation per board for HG / OooO when planning different clubs. Live GK / HG / U21 / ★ / MV update as you place players. Up to 4 named boards; saved separately from Match Day." tabindex="0">Tactic board</h2>
       <p class="meta" style="margin-top:0;">
-        Drag scouting targets onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–16)</b>. Set <b>Plan nation</b> per board for HG / OooO (e.g. one board per club). Live counts and MV update as you place players.
+        Drag scouting targets onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b> — 28 players per board. Set <b>Plan nation</b> per board for HG / OooO (e.g. one board per club). Live counts and MV update as you place players.
       </p>
       <div id="scoutBoardBar" class="scout-board-bar">
         <label for="scoutBoardSelect">Board</label>
@@ -391,6 +409,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260820-subs12-squad16"></script>
+  <script type="module" src="scouting.js?v=20260821-board-filter"></script>
 </body>
 </html>

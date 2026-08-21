@@ -418,3 +418,47 @@ export async function saveScoutingPlanner(
   scoutingSchemaMissing = false;
   return data;
 }
+
+/**
+ * Map of player_id → Set of board_no for players placed on any tactic board.
+ * @returns {Promise<Map<string, Set<number>>>}
+ */
+export async function loadScoutingPlannerPlayerBoards(supabase) {
+  const ownerId = await currentOwnerId(supabase);
+  const map = new Map();
+  if (!ownerId) return map;
+
+  let { data, error } = await supabase
+    .from("owner_scouting_planner_player")
+    .select("player_id, board_no")
+    .eq("owner_id", ownerId);
+
+  if (
+    error &&
+    (String(error.message || "").includes("board_no") || error.code === "42703")
+  ) {
+    ({ data, error } = await supabase
+      .from("owner_scouting_planner_player")
+      .select("player_id")
+      .eq("owner_id", ownerId));
+    if (!error && data) {
+      data = data.map((r) => ({ ...r, board_no: 1 }));
+    }
+  }
+
+  if (error) {
+    if (isScoutingSchemaMissingError(error)) {
+      scoutingSchemaMissing = true;
+      return map;
+    }
+    throw error;
+  }
+
+  for (const row of data || []) {
+    const pid = String(row.player_id);
+    const board = clampBoardNo(row.board_no ?? 1);
+    if (!map.has(pid)) map.set(pid, new Set());
+    map.get(pid).add(board);
+  }
+  return map;
+}
