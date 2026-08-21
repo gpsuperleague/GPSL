@@ -647,6 +647,9 @@ export function initMatchdaySquadPanel({
   onSaveFormation,
   onLoadFormation,
   onDeleteFormation,
+  /** Optional: replace default Auto-fill XI. Receives { allPlayers, maxBench, maxSquad, formationId, labels }. Return state or null. */
+  customAutoFill = null,
+  autoFillButtonLabel = null,
 }) {
   const benchLimit = Math.max(1, Number(maxBench) || MAX_BENCH);
   const subSlotCount = Math.max(
@@ -1045,11 +1048,33 @@ export function initMatchdaySquadPanel({
   });
 
   root.querySelector("#squadAutoFillBtn").addEventListener("click", () => {
+    if (typeof customAutoFill === "function") {
+      const next = customAutoFill({
+        allPlayers,
+        maxBench: benchLimit,
+        maxSquad: effectiveSquadLimit,
+        formationId: currentFormationId,
+        labels: { ...slotLabels },
+        positions: { ...slotPositions },
+        getState: () => state,
+      });
+      if (next) {
+        state = next;
+        state.maxBench = benchLimit;
+        state.maxSquad = effectiveSquadLimit;
+        rerender();
+      }
+      return;
+    }
     state = autoFillBestXi(allPlayers, benchLimit);
     state.maxBench = benchLimit;
     state.maxSquad = effectiveSquadLimit;
     rerender();
   });
+  if (autoFillButtonLabel) {
+    const afBtn = root.querySelector("#squadAutoFillBtn");
+    if (afBtn) afBtn.textContent = autoFillButtonLabel;
+  }
 
   root.querySelector("#squadClearBtn").addEventListener("click", () => {
     if (!confirm("Clear your saved matchday squad layout?")) return;
@@ -1093,6 +1118,18 @@ export function initMatchdaySquadPanel({
   rerender();
   return {
     getState: () => state,
+    getFormationMeta: () => ({
+      formationId: currentFormationId,
+      labels: { ...slotLabels },
+      positions: { ...slotPositions },
+    }),
+    applyState: (next) => {
+      if (!next) return;
+      state = next;
+      state.maxBench = benchLimit;
+      state.maxSquad = effectiveSquadLimit;
+      rerender();
+    },
     setSavedRows: (rows, layout) => {
       state = buildStateFromSaved(allPlayers, rows);
       if (layout != null) {

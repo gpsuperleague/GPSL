@@ -23,7 +23,8 @@ import {
   setStoredScoutingBoardNo,
   loadScoutingPlannerPlayerBoards,
 } from "./scouting_targets.js?v=20260821-board-filter";
-import { initMatchdaySquadPanel } from "./matchday_squad.js";
+import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20260821-autofill";
+import { autoFillScoutingBoard } from "./scouting_autofill.js?v=20260821-autofill";
 import {
   loadScoutingDraftContext,
   buildPlayerDraftUiState,
@@ -1094,6 +1095,53 @@ function renderBoardPicker() {
     )
     .join("");
   sel.value = String(activeBoardNo);
+  renderCopyFromPicker(boards);
+}
+
+function renderCopyFromPicker(boards) {
+  const copySel = document.getElementById("scoutBoardCopyFrom");
+  const copyBtn = document.getElementById("scoutBoardCopyBtn");
+  if (!copySel) return;
+
+  const list =
+    boards ||
+    (scoutingBoards.length > 0
+      ? scoutingBoards
+      : [1, 2, 3, 4].map((n) => ({ board_no: n, name: `Board ${n}` })));
+
+  const others = list.filter((b) => Number(b.board_no) !== Number(activeBoardNo));
+  const prev = copySel.value;
+  copySel.innerHTML = others.length
+    ? others
+        .map(
+          (b) =>
+            `<option value="${b.board_no}">${escapeHtml(b.name || `Board ${b.board_no}`)}</option>`
+        )
+        .join("")
+    : `<option value="">No other boards</option>`;
+
+  if (others.some((b) => String(b.board_no) === String(prev))) {
+    copySel.value = String(prev);
+  }
+  if (copyBtn) copyBtn.disabled = others.length === 0;
+}
+
+/** Convert saved planner rows into club_save_scouting_planner slot payload. */
+function plannerRowsToSlots(rows) {
+  return (rows || [])
+    .filter((r) => {
+      const kind = String(r.slot_kind || "").toLowerCase();
+      return r.player_id && (kind === "pitch" || kind === "bench");
+    })
+    .map((r) => {
+      const kind = String(r.slot_kind).toLowerCase();
+      return {
+        player_id: String(r.player_id),
+        slot_kind: kind,
+        pitch_slot: kind === "pitch" ? r.pitch_slot || null : null,
+        sort_order: Number(r.sort_order) || 0,
+      };
+    });
 }
 
 function renderListBoardFilter() {
@@ -1214,6 +1262,31 @@ async function initPlanner() {
     maxBench: 17,
     benchSubSlots: 12,
     maxSquad: 28,
+    autoFillButtonLabel: "Autofill board",
+    customAutoFill: ({ allPlayers: pool, maxBench, maxSquad, labels }) => {
+      const budgetRaw = document.getElementById("scoutAutofillBudget")?.value;
+      const budgetNum = Number(budgetRaw);
+      const minStars = Number(
+        document.getElementById("scoutAutofillMinStars")?.value || 0
+      );
+      const { state, summary } = autoFillScoutingBoard({
+        allPlayers: pool,
+        slotLabels: labels,
+        maxBench,
+        maxSquad,
+        budget: Number.isFinite(budgetNum) && budgetNum > 0 ? budgetNum : null,
+        planNation: plannerPlanNation || clubNation,
+        minGk: MIN_GOALKEEPERS,
+        minHg: MIN_HOME_GROWN,
+        minU21: MIN_UNDER_21,
+        minStars,
+        minSquad: MIN_SQUAD_SIZE,
+        starCap: Number(squadDesignationsState?.star_cap ?? 3),
+        minStarRating: Number(squadDesignationsState?.star_min_rating ?? 79),
+      });
+      setPlannerStatus(summary);
+      return state;
+    },
     onChange: (_slots, panelState) => {
       updatePlannerCompositionStrip(panelState);
     },
@@ -1283,10 +1356,12 @@ async function initPlanner() {
 function wireBoardControls() {
   const sel = document.getElementById("scoutBoardSelect");
   const renameBtn = document.getElementById("scoutBoardRenameBtn");
+  const copyBtn = document.getElementById("scoutBoardCopyBtn");
 
   sel?.addEventListener("change", async () => {
     activeBoardNo = setStoredScoutingBoardNo(sel.value);
     setPlannerStatus("");
+    renderCopyFromPicker();
     try {
       await initPlanner();
     } catch (err) {
@@ -1317,6 +1392,60 @@ function wireBoardControls() {
       setPlannerStatus(`Renamed to “${boardLabel(activeBoardNo)}”.`);
     } catch (err) {
       alert(err?.message || "Could not rename board.");
+    }
+  });
+
+  copyBtn?.addEventListener("click", async () => {
+    if (!multiBoardEnabled) {
+      alert(
+        "Run supabase/sql/patches/owner_scouting_multi_boards_20260813.sql first."
+      );
+      return;
+    }
+    const copySel = document.getElementById("scoutBoardCopyFrom");
+    const fromNo = Number(copySel?.value || 0);
+    if (!fromNo || fromNo === Number(activeBoardNo)) {
+      alert("Pick a different board to copy from.");
+      return;
+    }
+
+    const fromLabel = boardLabel(fromNo);
+    const toLabel = boardLabel(activeBoardNo);
+    if (
+      !confirm(
+        `Copy “${fromLabel}” onto “${toLabel}”?\n\nThis replaces the lineup, formation, plan nation, and planned OooO on “${toLabel}”. The board name stays the same.`
+      )
+    ) {
+      return;
+    }
+
+    copyBtn.disabled = true;
+    setPlannerStatus(`Copying from “${fromLabel}”…`);
+    try {
+      const source = await loadScoutingPlannerState(supabase, clubShort, fromNo);
+      const slots = plannerRowsToSlots(source.rows);
+      await saveScoutingPlanner(
+        supabase,
+        slots,
+        source.pitchLayout || {},
+        activeBoardNo
+      );
+      try {
+        playerBoardMap = await loadScoutingPlannerPlayerBoards(supabase);
+      } catch {
+        /* keep prior map */
+      }
+      if (listBoardFilter !== "all") {
+        renderScoutingListsFromCache();
+      }
+      await initPlanner();
+      setPlannerStatus(`Copied “${fromLabel}” onto “${toLabel}”.`);
+    } catch (err) {
+      setPlannerStatus(err?.message || "Copy failed.", true);
+      alert(err?.message || "Could not copy board.");
+    } finally {
+      copyBtn.disabled = false;
+      renderCopyFromPicker();
     }
   });
 }

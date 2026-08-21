@@ -76,6 +76,39 @@
       font-size: 12px;
       margin: 0;
     }
+    .scout-board-bar-sep {
+      width: 1px;
+      align-self: stretch;
+      min-height: 28px;
+      background: #444;
+      margin: 0 4px;
+    }
+    .scout-autofill-bar {
+      margin-top: -4px;
+    }
+    .scout-autofill-budget {
+      width: 140px;
+      background: #111;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+    .scout-autofill-num {
+      width: 52px;
+      background: #111;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+    .scout-autofill-rules {
+      color: #888;
+      font-size: 11px;
+      margin-left: 4px;
+    }
     .scout-board-select {
       min-width: 160px;
       max-width: 280px;
@@ -394,7 +427,7 @@
     </div>
 
     <div id="tab-planner" class="scout-tab-panel panel panel-bg panel-transfer">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="Drag scouting targets onto the pitch (11), subs (1–12), and squad fillers (13–17). Set Plan nation per board for HG / OooO when planning different clubs. Live GK / HG / U21 / ★ / MV update as you place players. Up to 4 named boards; saved separately from Match Day." tabindex="0">Tactic board</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Drag scouting targets onto the pitch (11), subs (1–12), and squad fillers (13–17). Autofill board uses your formation quotas (2×role+1), budget, HG/U21/GK/squad mins, and position fallbacks. Copy from overwrites this board from another. Up to 4 named boards; saved separately from Match Day." tabindex="0">Tactic board</h2>
       <p class="meta" style="margin-top:0;">
         Drag scouting targets onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b> — 28 players per board. Set <b>Plan nation</b> per board for HG / OooO (e.g. one board per club). Live counts and MV update as you place players.
       </p>
@@ -402,6 +435,17 @@
         <label for="scoutBoardSelect">Board</label>
         <select id="scoutBoardSelect" class="scout-board-select" title="Switch tactic board"></select>
         <button type="button" class="button secondary" id="scoutBoardRenameBtn">Rename</button>
+        <span class="scout-board-bar-sep" aria-hidden="true"></span>
+        <label for="scoutBoardCopyFrom">Copy from</label>
+        <select id="scoutBoardCopyFrom" class="scout-board-select" title="Copy another board onto this one"></select>
+        <button type="button" class="button secondary" id="scoutBoardCopyBtn" title="Overwrite this board with the selected board’s lineup and formation">Copy onto this board</button>
+      </div>
+      <div id="scoutAutofillBar" class="scout-board-bar scout-autofill-bar">
+        <label for="scoutAutofillBudget">Budget ₿</label>
+        <input type="number" id="scoutAutofillBudget" class="scout-autofill-budget" min="0" step="1000000" placeholder="e.g. 150000000" title="Max total market value for autofill (leave blank for unlimited)">
+        <label for="scoutAutofillMinStars">Min ★</label>
+        <input type="number" id="scoutAutofillMinStars" class="scout-autofill-num" min="0" max="5" value="0" title="Minimum star players (rating threshold from your league)">
+        <span class="scout-autofill-rules gpsl-has-tip" tabindex="0" data-gpsl-tip="Autofill uses the selected formation: each pitch role gets 2×count+1 (GK gets 2). Aims for ≥1 GK, ≥8 HG, ≥5 U21, ≥24 squad, and respects the star cap. Prefers the stated position, then fallbacks (e.g. LB→CB, AMF→CMF/SS).">Rules: GK≥1 · HG≥8 · U21≥5 · Sq≥24 · ★cap</span>
       </div>
       <div id="scoutPlannerComp" class="scout-reg-strip scout-planner-comp" hidden></div>
       <div id="scoutingPlannerRoot"></div>
@@ -409,6 +453,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260821-board-filter"></script>
+  <script type="module" src="scouting.js?v=20260821-autofill"></script>
 </body>
 </html>
