@@ -132,9 +132,18 @@ function isInSquad(state, id) {
 }
 
 function placePlayer(state, target, player) {
-  if (!player) return null;
+  if (!player || !target) return null;
   const id = playerKey(player);
   const maxSquad = state.maxSquad ?? MAX_SQUAD;
+  const fromLoc = findPlayerLocation(state, id);
+  if (!fromLoc) return null;
+
+  const sameSlot =
+    target.area === fromLoc.area &&
+    ((target.area === "pitch" && target.slotId === fromLoc.slotId) ||
+      (target.area === "bench" && Number(target.index) === Number(fromLoc.index)) ||
+      target.area === "pool");
+  if (sameSlot) return null;
 
   if (
     !isInSquad(state, id) &&
@@ -144,21 +153,31 @@ function placePlayer(state, target, player) {
     return { error: `Squad is full (${maxSquad} players).` };
   }
 
-  removePlayerFromState(state, id);
-
   let displaced = null;
   if (target.area === "pitch") {
     displaced = state.pitch.get(target.slotId) || null;
-    state.pitch.set(target.slotId, clonePlayer(player));
   } else if (target.area === "bench") {
     displaced = state.bench[target.index] || null;
+  }
+
+  removePlayerFromState(state, id);
+
+  if (target.area === "pitch") {
+    state.pitch.set(target.slotId, clonePlayer(player));
+  } else if (target.area === "bench") {
     state.bench[target.index] = clonePlayer(player);
   } else if (target.area === "pool") {
     state.pool.push(clonePlayer(player));
   }
 
-  if (displaced) {
-    state.pool.push(displaced);
+  if (displaced && playerKey(displaced) !== id) {
+    if (fromLoc.area === "pitch") {
+      state.pitch.set(fromLoc.slotId, clonePlayer(displaced));
+    } else if (fromLoc.area === "bench") {
+      state.bench[fromLoc.index] = clonePlayer(displaced);
+    } else {
+      state.pool.push(clonePlayer(displaced));
+    }
   }
   return null;
 }
@@ -296,16 +315,23 @@ function autoFillBestXi(allPlayers, maxBench = MAX_BENCH) {
   return state;
 }
 
-function renderPlayerCard(player, { compact = false, pitch = false } = {}) {
+function renderPlayerCard(player, { compact = false, pitch = false, removable = false } = {}) {
   const id = playerKey(player);
   const name = player.Name || player.player_name || id;
   const pos = player.Position || player.player_position || "";
   const card = document.createElement("div");
   card.className =
-    "squad-player-card" + (pitch ? " squad-player-card--pitch" : "");
+    "squad-player-card" +
+    (pitch ? " squad-player-card--pitch" : "") +
+    (removable ? " squad-player-card--removable" : "");
   card.draggable = true;
   card.dataset.playerId = id;
   card.innerHTML = `
+    ${
+      removable
+        ? `<button type="button" class="spc-remove" title="Remove to pool" aria-label="Remove ${name}">✕</button>`
+        : ""
+    }
     <a href="${pesdbPlayerUrl(id)}" target="_blank" rel="noopener" class="squad-player-card-thumb-link" draggable="false">
       <img src="${playerCardUrl(id)}" alt="" draggable="false"
         onerror="this.src='${FALLBACK_IMG}'">
@@ -314,7 +340,16 @@ function renderPlayerCard(player, { compact = false, pitch = false } = {}) {
       <div class="spc-name">${playerNameLinkHtml(id, name)}</div>
       ${compact ? "" : `<div class="spc-pos">${pos}</div>`}
     </div>`;
+  const removeBtn = card.querySelector(".spc-remove");
+  if (removeBtn) {
+    removeBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    removeBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+  }
   card.addEventListener("dragstart", (e) => {
+    if (e.target.closest?.(".spc-remove")) {
+      e.preventDefault();
+      return;
+    }
     e.dataTransfer.setData("text/plain", id);
     e.dataTransfer.setData("text/player-id", id);
     e.dataTransfer.effectAllowed = "move";
@@ -386,7 +421,7 @@ function dropHighlightEl(el) {
   );
 }
 
-function wireDragDrop(root, state, rerender) {
+function wireDragDrop(root, getState, rerender) {
   root.addEventListener("dragover", (e) => {
     const target = dropTargetFromEvent(e);
     if (!target) return;
@@ -414,6 +449,8 @@ function wireDragDrop(root, state, rerender) {
       e.dataTransfer.getData("text/player-id") ||
       e.dataTransfer.getData("text/plain");
     if (!id) return;
+    const state = typeof getState === "function" ? getState() : getState;
+    if (!state) return;
     const loc = findPlayerLocation(state, id);
     if (!loc) return;
     let player = null;
@@ -686,6 +723,26 @@ export function initMatchdaySquadPanel({
       ? `Subs (${subSlotCount}) + Squad (${squadFillerCount})`
       : `Bench (${benchLimit} subs)`;
 
+  const benchHtml =
+    squadFillerCount > 0
+      ? `
+        <div class="squad-bench-wrap">
+          <div class="squad-bench squad-bench--subs">
+            <h4>Subs <span class="bench-count">(1–${subSlotCount})</span></h4>
+            <div class="bench-slots bench-slots-grid" id="benchSlotsSubs"></div>
+          </div>
+          <div class="squad-bench squad-bench--squad">
+            <h4>Squad fillers <span class="bench-count">(${subSlotCount + 1}–${benchLimit})</span></h4>
+            <p class="bench-squad-hint">Not matchday substitutes — planning depth only. Drag here or use ✕ to return to the pool.</p>
+            <div class="bench-slots bench-slots-grid" id="benchSlotsSquad"></div>
+          </div>
+        </div>`
+      : `
+        <div class="squad-bench">
+          <h4>${benchHeading}</h4>
+          <div class="bench-slots bench-slots-grid" id="benchSlotsSubs"></div>
+        </div>`;
+
   root.innerHTML = `
     <div class="squad-formations-bar">
       <div class="formation-section-row">
@@ -725,16 +782,14 @@ export function initMatchdaySquadPanel({
         <div class="football-pitch" id="footballPitch">
           <div class="pitch-center-circle" aria-hidden="true"></div>
         </div>
-        <div class="squad-bench">
-          <h4>${benchHeading}</h4>
-          <div class="bench-slots bench-slots-grid" id="benchSlots"></div>
-        </div>
+        ${benchHtml}
       </div>
     </div>`;
 
   const pitchEl = root.querySelector("#footballPitch");
   const poolList = root.querySelector("#squadPoolList");
-  const benchSlots = root.querySelector("#benchSlots");
+  const benchSlotsSubs = root.querySelector("#benchSlotsSubs");
+  const benchSlotsSquad = root.querySelector("#benchSlotsSquad");
   const statusText = root.querySelector("#squadStatusText");
   const editHint = root.querySelector("#squadEditHint");
   const movePosBtn = root.querySelector("#squadMovePosBtn");
@@ -743,6 +798,9 @@ export function initMatchdaySquadPanel({
   const savedFormationSelect = root.querySelector("#squadSavedFormationSelect");
   const formationNameInput = root.querySelector("#squadFormationName");
 
+  function forEachBenchDrop(fn) {
+    root.querySelectorAll(".bench-slot-drop").forEach(fn);
+  }
   formationSelect.innerHTML = "";
   for (const groupLabel of FORMATION_GROUP_ORDER) {
     const groupFormations = Object.values(MATCHDAY_FORMATIONS).filter(
@@ -871,7 +929,8 @@ export function initMatchdaySquadPanel({
     wrap.innerHTML = `
       <div class="bench-slot-label">${label}</div>
       <div class="bench-slot-drop" data-bench-idx="${i}"></div>`;
-    benchSlots.appendChild(wrap);
+    const parent = isSub ? benchSlotsSubs : benchSlotsSquad || benchSlotsSubs;
+    parent?.appendChild(wrap);
   }
 
   function setEditPositionsMode(on) {
@@ -912,7 +971,11 @@ export function initMatchdaySquadPanel({
       const p = state.pitch.get(slotId);
       drop.innerHTML = "";
       if (p) {
-        const card = renderPlayerCard(p, { compact: true, pitch: true });
+        const card = renderPlayerCard(p, {
+          compact: true,
+          pitch: true,
+          removable: true,
+        });
         card.draggable = !editPositionsMode;
         drop.appendChild(card);
       } else {
@@ -920,11 +983,13 @@ export function initMatchdaySquadPanel({
       }
     }
 
-    benchSlots.querySelectorAll(".bench-slot-drop").forEach((drop) => {
+    forEachBenchDrop((drop) => {
       const idx = Number(drop.dataset.benchIdx);
       drop.innerHTML = "";
       const p = state.bench[idx];
-      if (p) drop.appendChild(renderPlayerCard(p, { compact: true }));
+      if (p) {
+        drop.appendChild(renderPlayerCard(p, { compact: true, removable: true }));
+      }
     });
 
     updateStatus();
@@ -934,9 +999,23 @@ export function initMatchdaySquadPanel({
     rerenderPlayerCards();
   }
 
-  wireDragDrop(root, state, rerender);
+  wireDragDrop(root, () => state, rerender);
   wirePositionDragging(pitchEl, slotPositions, () => editPositionsMode);
   wirePitchLabelPicker(pitchEl, slotLabels);
+
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest?.(".spc-remove");
+    if (!btn || !root.contains(btn)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const card = btn.closest(".squad-player-card");
+    const id = card?.dataset.playerId;
+    if (!id) return;
+    const player = removePlayerFromState(state, id);
+    if (!player) return;
+    state.pool.push(clonePlayer(player));
+    rerender();
+  });
 
   movePosBtn.addEventListener("click", () => setEditPositionsMode(!editPositionsMode));
 

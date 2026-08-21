@@ -23,7 +23,7 @@ import {
   setStoredScoutingBoardNo,
   loadScoutingPlannerPlayerBoards,
 } from "./scouting_targets.js?v=20260821-board-filter";
-import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20260821-autofill";
+import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20260821-swap-remove";
 import { autoFillScoutingBoard } from "./scouting_autofill.js?v=20260821-autofill";
 import {
   loadScoutingDraftContext,
@@ -1346,9 +1346,11 @@ async function initPlanner() {
   if (hint) {
     hint.innerHTML = multiBoardEnabled
       ? "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b>. " +
+        "Drag a player onto another to <b>swap</b>. Use <b>✕</b> to send them back to the pool. " +
         "You have <b>4 named tactic boards</b> sharing one shortlist — switch boards above. " +
         "Planning only — not your matchday squad."
-      : "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b> to plan a potential lineup. " +
+      : "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b>. " +
+        "Drag onto another player to <b>swap</b>. Use <b>✕</b> to return to the pool. " +
         "Click position labels to change roles. This is for planning only — not your matchday squad.";
   }
 }

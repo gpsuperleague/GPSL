@@ -66,9 +66,42 @@
   cursor: grab;
   user-select: none;
   touch-action: none;
+  position: relative;
 }
 .squad-player-card:active { cursor: grabbing; }
 .squad-player-card.dragging { opacity: 0.45; }
+.squad-player-card--removable {
+  padding-top: 18px;
+}
+.spc-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 16px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #f88;
+  background: #2a1515;
+  border: 1px solid #633;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.spc-remove:hover {
+  color: #fff;
+  background: #a33;
+  border-color: #c55;
+}
+.pitch-slot-drop .spc-remove,
+.bench-slot-drop .spc-remove {
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  line-height: 14px;
+}
 .squad-player-card img {
   width: 44px;
   height: 58px;
@@ -332,13 +365,56 @@
   color: #888;
   margin-bottom: 4px;
 }
+.squad-bench-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+.squad-bench--subs {
+  background: #1c2228;
+  border: 1px solid #3a4550;
+  border-radius: 8px;
+  padding: 12px;
+}
+.squad-bench--squad {
+  background: #242018;
+  border: 1px solid #6a5a28;
+  border-left: 4px solid #c9a227;
+  border-radius: 8px;
+  padding: 12px;
+}
+.squad-bench--squad h4 {
+  color: #e6c35c;
+  margin: 0 0 4px;
+}
+.squad-bench .bench-count {
+  font-weight: normal;
+  color: #999;
+  font-size: 12px;
+}
+.squad-bench--squad .bench-count {
+  color: #bba66a;
+}
+.bench-squad-hint {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: #a89860;
+  line-height: 1.35;
+}
 .bench-slot--squad .bench-slot-label {
-  color: #9a9a6a;
+  color: #d4b84a;
+  font-weight: bold;
+  letter-spacing: 0.02em;
 }
 .bench-slot--squad .bench-slot-drop {
-  border-style: dotted;
-  border-color: #4a4a3a;
-  background: #181816;
+  border-style: dashed;
+  border-color: #8a7428;
+  background: #1c1810;
+}
+.bench-slot--squad .bench-slot-drop.drag-over {
+  border-color: #e6c35c;
+  background: #2e2814;
 }
 .bench-slot-drop {
   min-height: 88px;
