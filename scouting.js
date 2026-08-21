@@ -23,7 +23,7 @@ import {
   setStoredScoutingBoardNo,
   loadScoutingPlannerPlayerBoards,
 } from "./scouting_targets.js?v=20260821-board-filter";
-import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20260821-swap-remove";
+import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20260821-remove-fix";
 import { autoFillScoutingBoard } from "./scouting_autofill.js?v=20260821-autofill";
 import {
   loadScoutingDraftContext,

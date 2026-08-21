@@ -345,6 +345,10 @@ function renderPlayerCard(player, { compact = false, pitch = false, removable = 
   if (removeBtn) {
     removeBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
     removeBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+    removeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
   }
   card.addEventListener("dragstart", (e) => {
     if (e.target.closest?.(".spc-remove")) {
@@ -640,6 +644,8 @@ function wirePitchLabelPicker(pitchEl, slotLabels) {
   });
 
   pitchEl.addEventListener("click", (e) => {
+    if (e.target.closest(".spc-remove")) return;
+
     const labelEl = e.target.closest(".pitch-slot-label");
     if (labelEl) {
       e.stopPropagation();
@@ -1042,19 +1048,24 @@ export function initMatchdaySquadPanel({
   wirePositionDragging(pitchEl, slotPositions, () => editPositionsMode);
   wirePitchLabelPicker(pitchEl, slotLabels);
 
-  root.addEventListener("click", (e) => {
-    const btn = e.target.closest?.(".spc-remove");
-    if (!btn || !root.contains(btn)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const card = btn.closest(".squad-player-card");
-    const id = card?.dataset.playerId;
-    if (!id) return;
-    const player = removePlayerFromState(state, id);
-    if (!player) return;
-    state.pool.push(clonePlayer(player));
-    rerender();
-  });
+  // Capture phase so ✕ remove runs before pitch role-picker card clicks
+  root.addEventListener(
+    "click",
+    (e) => {
+      const btn = e.target.closest?.(".spc-remove");
+      if (!btn || !root.contains(btn)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const card = btn.closest(".squad-player-card");
+      const id = card?.dataset.playerId;
+      if (!id) return;
+      const player = removePlayerFromState(state, id);
+      if (!player) return;
+      state.pool.push(clonePlayer(player));
+      rerender();
+    },
+    true
+  );
 
   movePosBtn.addEventListener("click", () => setEditPositionsMode(!editPositionsMode));
 

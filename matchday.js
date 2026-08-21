@@ -36,7 +36,7 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20260821-md-comp";
+} from "./matchday_squad.js?v=20260821-remove-fix";
 import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260821-md-comp";
 import { playerNameLinkHtml } from "./player_links.js";
 import {
