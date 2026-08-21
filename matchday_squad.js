@@ -23,6 +23,7 @@ import {
   playerNameLinkHtml,
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
+import { analyseMatchdayComposition } from "./squad_rules.js";
 
 export { buildPitchLayoutPayload } from "./matchday_formations.js";
 
@@ -687,6 +688,9 @@ export function initMatchdaySquadPanel({
   /** Optional: replace default Auto-fill XI. Receives { allPlayers, maxBench, maxSquad, formationId, labels }. Return state or null. */
   customAutoFill = null,
   autoFillButtonLabel = null,
+  /** When true, enforce Match Day HG / U21 / GK mins (live strip + save block). */
+  matchdayComposition = false,
+  clubNation = null,
 }) {
   const benchLimit = Math.max(1, Number(maxBench) || MAX_BENCH);
   const subSlotCount = Math.max(
@@ -769,6 +773,11 @@ export function initMatchdaySquadPanel({
       <button type="button" class="button" id="squadSaveBtn">Save default squad</button>
       <span class="squad-status" id="squadStatusText"></span>
     </div>
+    ${
+      matchdayComposition
+        ? `<div class="matchday-comp-strip" id="matchdayCompStrip" aria-live="polite"></div>`
+        : ""
+    }
     <p class="squad-hint" id="squadEditHint" style="display:none;color:#9c9;">
       Drag any <b>position marker</b> (label or empty slot) on the pitch to arrange your layout.
     </p>
@@ -791,6 +800,7 @@ export function initMatchdaySquadPanel({
   const benchSlotsSubs = root.querySelector("#benchSlotsSubs");
   const benchSlotsSquad = root.querySelector("#benchSlotsSquad");
   const statusText = root.querySelector("#squadStatusText");
+  const matchdayCompStrip = root.querySelector("#matchdayCompStrip");
   const editHint = root.querySelector("#squadEditHint");
   const movePosBtn = root.querySelector("#squadMovePosBtn");
   const resetPosBtn = root.querySelector("#squadResetPosBtn");
@@ -956,7 +966,36 @@ export function initMatchdaySquadPanel({
         ? `Squad: ${total}/${effectiveSquadLimit} · Pitch ${pitchN}/${MAX_PITCH} · Subs ${subN}/${subSlotCount} · Squad ${fillerN}/${squadFillerCount}`
         : `Squad: ${total}/${effectiveSquadLimit} · Pitch ${pitchN}/${MAX_PITCH} · Bench ${subN}/${benchLimit}`;
     root.querySelector("#squadPoolCount").textContent = `${state.pool.length} players available`;
+    updateMatchdayCompositionStrip();
     onChange?.(buildSlotsPayload(state), state);
+  }
+
+  function updateMatchdayCompositionStrip() {
+    if (!matchdayComposition || !matchdayCompStrip) return;
+    const pitchPlayers = [...state.pitch.values()].filter(Boolean);
+    const benchPlayers = state.bench.filter(Boolean);
+    const c = analyseMatchdayComposition(pitchPlayers, benchPlayers, clubNation);
+    const chip = (label, value, min, ok) =>
+      `<span class="matchday-comp-chip ${ok ? "ok" : "short"}" title="${label}: ${value} / ${min}">${label} <b>${value}</b><i>/${min}</i></span>`;
+    matchdayCompStrip.innerHTML = `
+      <span class="matchday-comp-label">Matchday rules</span>
+      ${chip("GK", c.goalkeepers, c.minGk, c.gkOk)}
+      ${chip("XI HG", c.hgXi, c.minHgXi, c.hgXiOk)}
+      ${chip("Squad HG", c.hgTotal, c.minHgSquad, c.hgSquadOk)}
+      ${chip("U21", c.under21, c.minU21, c.u21Ok)}
+      ${
+        c.ok
+          ? `<span class="matchday-comp-ok">Ready to save</span>`
+          : `<span class="matchday-comp-warn">Fix before save</span>`
+      }`;
+  }
+
+  function matchdayCompositionErrors() {
+    if (!matchdayComposition) return [];
+    const pitchPlayers = [...state.pitch.values()].filter(Boolean);
+    const benchPlayers = state.bench.filter(Boolean);
+    return analyseMatchdayComposition(pitchPlayers, benchPlayers, clubNation)
+      .errors;
   }
 
   function rerenderPlayerCards() {
@@ -1181,6 +1220,14 @@ export function initMatchdaySquadPanel({
     }
     if (!guardMirroring()) return;
 
+    const compErrors = matchdayCompositionErrors();
+    if (compErrors.length) {
+      alert(`Cannot save matchday squad:\n\n${compErrors.join("\n")}`);
+      statusText.textContent = "Composition rules not met";
+      updateMatchdayCompositionStrip();
+      return;
+    }
+
     statusText.textContent = "Saving…";
     try {
       await onSave(
@@ -1191,6 +1238,7 @@ export function initMatchdaySquadPanel({
       setEditPositionsMode(false);
     } catch (err) {
       statusText.textContent = err?.message || "Save failed";
+      alert(err?.message || "Save failed");
     }
   });
 

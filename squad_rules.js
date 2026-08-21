@@ -265,6 +265,12 @@ export const MIN_UNDER_21 = 5;
 /** At least one goalkeeper in the registered squad. */
 export const MIN_GOALKEEPERS = 1;
 
+/** Match Day 23-man squad composition mins (pitch XI + bench). */
+export const MATCHDAY_MIN_GOALKEEPERS = 1;
+export const MATCHDAY_MIN_UNDER_21 = 2;
+export const MATCHDAY_MIN_HG_STARTING_XI = 2;
+export const MATCHDAY_MIN_HG_SQUAD = 5;
+
 /** Uncontested renew (no expiry wage auction): HG + this age or younger. */
 export const HG_CONTRACT_MAX_AGE = 23;
 
@@ -424,6 +430,81 @@ export function analyseSquadComposition(players, clubNation) {
     goalkeepersShort: Math.max(0, MIN_GOALKEEPERS - goalkeepers),
     squadOver: Math.max(0, total - SQUAD_SIZE),
     minSquadShort: Math.max(0, MIN_SQUAD_SIZE - total),
+  };
+}
+
+/**
+ * Match Day 23 composition: GK / U21 across squad; HG in XI and whole squad.
+ * @param {object[]} pitchPlayers
+ * @param {object[]} benchPlayers
+ * @param {string|null} clubNation
+ */
+export function analyseMatchdayComposition(
+  pitchPlayers,
+  benchPlayers,
+  clubNation
+) {
+  const pitch = (pitchPlayers || []).filter(Boolean);
+  const bench = (benchPlayers || []).filter(Boolean);
+
+  let goalkeepers = 0;
+  let under21 = 0;
+  let hgXi = 0;
+  let hgTotal = 0;
+
+  for (const p of pitch) {
+    if (isGoalkeeper(p)) goalkeepers += 1;
+    if (isUnder21(p)) under21 += 1;
+    if (isHomeGrownPlayer(p, clubNation)) {
+      hgXi += 1;
+      hgTotal += 1;
+    }
+  }
+  for (const p of bench) {
+    if (isGoalkeeper(p)) goalkeepers += 1;
+    if (isUnder21(p)) under21 += 1;
+    if (isHomeGrownPlayer(p, clubNation)) hgTotal += 1;
+  }
+
+  const errors = [];
+  if (goalkeepers < MATCHDAY_MIN_GOALKEEPERS) {
+    errors.push(
+      `Goalkeepers: ${goalkeepers} — need at least ${MATCHDAY_MIN_GOALKEEPERS} in the matchday squad.`
+    );
+  }
+  if (under21 < MATCHDAY_MIN_UNDER_21) {
+    errors.push(
+      `Under-21: ${under21} — need at least ${MATCHDAY_MIN_UNDER_21} in the matchday squad.`
+    );
+  }
+  if (hgXi < MATCHDAY_MIN_HG_STARTING_XI) {
+    errors.push(
+      `Home-grown in starting XI: ${hgXi} — need at least ${MATCHDAY_MIN_HG_STARTING_XI}.`
+    );
+  }
+  if (hgTotal < MATCHDAY_MIN_HG_SQUAD) {
+    errors.push(
+      `Home-grown in matchday squad: ${hgTotal} — need at least ${MATCHDAY_MIN_HG_SQUAD}.`
+    );
+  }
+
+  return {
+    total: pitch.length + bench.length,
+    pitchCount: pitch.length,
+    goalkeepers,
+    under21,
+    hgXi,
+    hgTotal,
+    minGk: MATCHDAY_MIN_GOALKEEPERS,
+    minU21: MATCHDAY_MIN_UNDER_21,
+    minHgXi: MATCHDAY_MIN_HG_STARTING_XI,
+    minHgSquad: MATCHDAY_MIN_HG_SQUAD,
+    gkOk: goalkeepers >= MATCHDAY_MIN_GOALKEEPERS,
+    u21Ok: under21 >= MATCHDAY_MIN_UNDER_21,
+    hgXiOk: hgXi >= MATCHDAY_MIN_HG_STARTING_XI,
+    hgSquadOk: hgTotal >= MATCHDAY_MIN_HG_SQUAD,
+    errors,
+    ok: errors.length === 0,
   };
 }
 

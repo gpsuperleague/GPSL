@@ -54,9 +54,39 @@
       border-radius:4px; padding:4px 6px; font-size:11px; cursor:pointer;
     }
     .scout-remove { color:#f88; }
-    a.button, .button-link {
-      display:inline-block; padding:8px 14px; background:#1a1a1a; color:#ff9900;
-      border:1px solid #666; border-radius:6px; text-decoration:none; font-weight:bold;
+    a.button, .button-link, button.button {
+      display: inline-block;
+      padding: 8px 14px;
+      background: #1a1a1a;
+      color: #ff9900;
+      border: 1px solid #666;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.15s background;
+    }
+    a.button:hover, .button-link:hover, button.button:hover {
+      background: #222;
+      color: #ffcc66;
+    }
+    button.button.secondary {
+      background: #222;
+      color: #ddd;
+      border-color: #555;
+    }
+    button.button.secondary:hover {
+      background: #2a2a2a;
+      color: #fff;
+    }
+    button.button.danger {
+      background: #2a1515;
+      color: #f88;
+      border-color: #633;
+    }
+    button.button.danger:hover {
+      background: #3a1a1a;
+      color: #fcc;
     }
     #plannerStatus { color:#8c8; font-size:13px; margin-top:8px; min-height:1.2em; }
     #plannerStatus.err { color:#f88; }
@@ -67,7 +97,7 @@
       gap: 8px 10px;
       margin: 0 0 12px;
       padding: 10px 12px;
-      background: #1a1a1a;
+      background: #161616;
       border: 1px solid #333;
       border-radius: 6px;
     }
@@ -80,14 +110,47 @@
       width: 1px;
       align-self: stretch;
       min-height: 28px;
-      background: #444;
+      background: #333;
       margin: 0 4px;
     }
-    .scout-autofill-bar {
-      margin-top: -4px;
+    .scout-autofill-panel {
+      margin: 0 0 14px;
+      padding: 12px 14px;
+      background: #161616;
+      border: 1px solid #3d3200;
+      border-left: 3px solid #ff9900;
+      border-radius: 6px;
     }
-    .scout-autofill-budget {
-      width: 140px;
+    .scout-autofill-head {
+      margin: 0 0 10px;
+    }
+    .scout-autofill-head strong {
+      display: block;
+      color: #ff9900;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .scout-autofill-sub {
+      display: block;
+      color: #999;
+      font-size: 12px;
+      line-height: 1.45;
+      max-width: 720px;
+    }
+    .scout-autofill-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+    }
+    .scout-autofill-controls label {
+      color: #aaa;
+      font-size: 12px;
+      margin: 0;
+    }
+    .scout-autofill-budget,
+    .scout-autofill-num,
+    .scout-board-select {
       background: #111;
       color: #eee;
       border: 1px solid #444;
@@ -95,29 +158,58 @@
       padding: 6px 8px;
       font-size: 13px;
     }
-    .scout-autofill-num {
-      width: 52px;
-      background: #111;
-      color: #eee;
-      border: 1px solid #444;
-      border-radius: 4px;
-      padding: 6px 8px;
-      font-size: 13px;
-    }
-    .scout-autofill-rules {
-      color: #888;
-      font-size: 11px;
-      margin-left: 4px;
-    }
+    .scout-autofill-budget { width: 140px; }
+    .scout-autofill-num { width: 52px; }
     .scout-board-select {
       min-width: 160px;
       max-width: 280px;
+    }
+    .scout-autofill-rules {
+      margin: 10px 0 0;
+      color: #777;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .scout-autofill-rules b { color: #aaa; font-weight: normal; }
+    /* Hide duplicate autofill in the pitch toolbar — use panel button above */
+    #scoutingPlannerRoot #squadAutoFillBtn { display: none !important; }
+    #scoutingPlannerRoot .button,
+    #scoutingPlannerRoot button.button {
+      background: #1a1a1a;
+      color: #ff9900;
+      border: 1px solid #666;
+    }
+    #scoutingPlannerRoot .button:hover,
+    #scoutingPlannerRoot button.button:hover {
+      background: #222;
+      color: #ffcc66;
+    }
+    #scoutingPlannerRoot .button.secondary,
+    #scoutingPlannerRoot button.button.secondary {
+      background: #222;
+      color: #ddd;
+      border-color: #555;
+    }
+    #scoutingPlannerRoot .button.secondary:hover,
+    #scoutingPlannerRoot button.button.secondary:hover {
+      background: #2a2a2a;
+      color: #fff;
+    }
+    #scoutingPlannerRoot .formation-select,
+    #scoutingPlannerRoot .formation-name-input {
       background: #111;
+      border-color: #444;
       color: #eee;
-      border: 1px solid #444;
-      border-radius: 4px;
-      padding: 6px 8px;
-      font-size: 13px;
+    }
+    #scoutingPlannerRoot .squad-formations-bar,
+    #scoutingPlannerRoot .squad-toolbar {
+      background: #161616;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    #scoutingPlannerRoot .squad-toolbar {
+      margin-top: 8px;
     }
     .scout-list-filter-bar {
       display: flex;
@@ -440,12 +532,25 @@
         <select id="scoutBoardCopyFrom" class="scout-board-select" title="Copy another board onto this one"></select>
         <button type="button" class="button secondary" id="scoutBoardCopyBtn" title="Overwrite this board with the selected board’s lineup and formation">Copy onto this board</button>
       </div>
-      <div id="scoutAutofillBar" class="scout-board-bar scout-autofill-bar">
-        <label for="scoutAutofillBudget">Budget ₿</label>
-        <input type="number" id="scoutAutofillBudget" class="scout-autofill-budget" min="0" step="1000000" placeholder="e.g. 150000000" title="Max total market value for autofill (leave blank for unlimited)">
-        <label for="scoutAutofillMinStars">Min ★</label>
-        <input type="number" id="scoutAutofillMinStars" class="scout-autofill-num" min="0" max="5" value="0" title="Minimum star players (rating threshold from your league)">
-        <span class="scout-autofill-rules gpsl-has-tip" tabindex="0" data-gpsl-tip="Autofill uses the selected formation: each pitch role gets 2×count+1 (GK gets 2). Aims for ≥1 GK, ≥8 HG, ≥5 U21, ≥24 squad, and respects the star cap. Prefers the stated position, then fallbacks (e.g. LB→CB, AMF→CMF/SS).">Rules: GK≥1 · HG≥8 · U21≥5 · Sq≥24 · ★cap</span>
+      <div id="scoutAutofillBar" class="scout-autofill-panel">
+        <div class="scout-autofill-head">
+          <strong>Auto-select squad</strong>
+          <span class="scout-autofill-sub">
+            Builds a full board (XI + subs + squad fillers) from your shortlist for the
+            <b>selected formation</b>. Optional spend limit and min stars steer the pick;
+            registration rules still apply.
+          </span>
+        </div>
+        <div class="scout-autofill-controls">
+          <label for="scoutAutofillBudget">Spend limit ₿</label>
+          <input type="number" id="scoutAutofillBudget" class="scout-autofill-budget" min="0" step="1000000" placeholder="Blank = no limit" title="Maximum total market value for the auto-selected squad. Leave blank for unlimited.">
+          <label for="scoutAutofillMinStars">Min stars ★</label>
+          <input type="number" id="scoutAutofillMinStars" class="scout-autofill-num" min="0" max="5" value="0" title="Try to include at least this many star-rated players (league rating threshold).">
+          <button type="button" class="button" id="scoutAutofillRunBtn" title="Replace the current board lineup with an auto-selected squad">Auto-select squad</button>
+        </div>
+        <p class="scout-autofill-rules gpsl-has-tip" tabindex="0" data-gpsl-tip="Uses formation role depth (2× pitch count + 1; GK gets 2). Aims for ≥1 GK, ≥8 HG (vs Plan nation), ≥5 U21, ≥24 players, and respects the star cap. Prefers the stated position, then fallbacks (e.g. LB→CB, AMF→CMF/SS).">
+          Built-in targets: <b>≥1 GK · ≥8 HG · ≥5 U21 · ≥24 squad · ★ cap</b> · formation depth (2×role+1)
+        </p>
       </div>
       <div id="scoutPlannerComp" class="scout-reg-strip scout-planner-comp" hidden></div>
       <div id="scoutingPlannerRoot"></div>
@@ -453,6 +558,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260821-swap-remove"></script>
+  <script type="module" src="scouting.js?v=20260821-autofill-ui"></script>
 </body>
 </html>

@@ -1217,6 +1217,60 @@ async function refreshBoardList() {
   renderListBoardFilter();
 }
 
+function runScoutingAutofill({ pool, maxBench, maxSquad, labels }) {
+  const budgetRaw = document.getElementById("scoutAutofillBudget")?.value;
+  const budgetNum = Number(budgetRaw);
+  const minStars = Number(
+    document.getElementById("scoutAutofillMinStars")?.value || 0
+  );
+  const { state, summary } = autoFillScoutingBoard({
+    allPlayers: pool,
+    slotLabels: labels,
+    maxBench,
+    maxSquad,
+    budget: Number.isFinite(budgetNum) && budgetNum > 0 ? budgetNum : null,
+    planNation: plannerPlanNation || clubNation,
+    minGk: MIN_GOALKEEPERS,
+    minHg: MIN_HOME_GROWN,
+    minU21: MIN_UNDER_21,
+    minStars,
+    minSquad: MIN_SQUAD_SIZE,
+    starCap: Number(squadDesignationsState?.star_cap ?? 3),
+    minStarRating: Number(squadDesignationsState?.star_min_rating ?? 79),
+  });
+  setPlannerStatus(summary);
+  return state;
+}
+
+function wireAutofillBar() {
+  const btn = document.getElementById("scoutAutofillRunBtn");
+  if (!btn || btn.dataset.wired === "1") return;
+  btn.dataset.wired = "1";
+  btn.addEventListener("click", () => {
+    const hidden = document.querySelector(
+      "#scoutingPlannerRoot #squadAutoFillBtn"
+    );
+    if (hidden) {
+      hidden.click();
+      return;
+    }
+    // Fallback if panel not ready
+    if (!plannerApi?.applyState) {
+      setPlannerStatus("Open the tactic board first.", true);
+      return;
+    }
+    const meta = plannerApi.getFormationMeta?.() || {};
+    const next = runScoutingAutofill({
+      pool: playersForPlanner(),
+      maxBench: 17,
+      maxSquad: 28,
+      labels: meta.labels || {},
+    });
+    plannerApi.applyState(next);
+    updatePlannerCompositionStrip(plannerApi.getState?.() || next);
+  });
+}
+
 async function initPlanner() {
   const root = document.getElementById("scoutingPlannerRoot");
   if (!root || !isScoutingAvailable()) return;
@@ -1252,6 +1306,7 @@ async function initPlanner() {
     null;
   await loadPlannerNationOptions();
   wirePlannerCompositionStrip();
+  wireAutofillBar();
 
   plannerApi = initMatchdaySquadPanel({
     root,
@@ -1264,28 +1319,7 @@ async function initPlanner() {
     maxSquad: 28,
     autoFillButtonLabel: "Autofill board",
     customAutoFill: ({ allPlayers: pool, maxBench, maxSquad, labels }) => {
-      const budgetRaw = document.getElementById("scoutAutofillBudget")?.value;
-      const budgetNum = Number(budgetRaw);
-      const minStars = Number(
-        document.getElementById("scoutAutofillMinStars")?.value || 0
-      );
-      const { state, summary } = autoFillScoutingBoard({
-        allPlayers: pool,
-        slotLabels: labels,
-        maxBench,
-        maxSquad,
-        budget: Number.isFinite(budgetNum) && budgetNum > 0 ? budgetNum : null,
-        planNation: plannerPlanNation || clubNation,
-        minGk: MIN_GOALKEEPERS,
-        minHg: MIN_HOME_GROWN,
-        minU21: MIN_UNDER_21,
-        minStars,
-        minSquad: MIN_SQUAD_SIZE,
-        starCap: Number(squadDesignationsState?.star_cap ?? 3),
-        minStarRating: Number(squadDesignationsState?.star_min_rating ?? 79),
-      });
-      setPlannerStatus(summary);
-      return state;
+      return runScoutingAutofill({ pool, maxBench, maxSquad, labels });
     },
     onChange: (_slots, panelState) => {
       updatePlannerCompositionStrip(panelState);

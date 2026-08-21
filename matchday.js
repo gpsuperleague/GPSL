@@ -36,8 +36,8 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20260821-swap-remove";
-import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260806-squad-rules2";
+} from "./matchday_squad.js?v=20260821-md-comp";
+import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260821-md-comp";
 import { playerNameLinkHtml } from "./player_links.js";
 import {
   loadActiveSuspensions,
@@ -49,7 +49,7 @@ import {
   unavailablePlayerIdsForClub,
 } from "./player_discipline.js";
 
-let myClub = { short: null, name: null };
+let myClub = { short: null, name: null, nation: null };
 let calendarStatus = null;
 let holidayContext = null;
 /** @type {{ enabled: boolean, isAdmin: boolean, error: string|null }} */
@@ -901,7 +901,7 @@ async function loadSquadPlayers() {
   }
   const { data, error } = await supabase
     .from("Players")
-    .select("Konami_ID, Name, Position, Rating")
+    .select("Konami_ID, Name, Position, Rating, Age, Nation")
     .eq("Contracted_Team", myClub.short);
 
   if (error) {
@@ -1038,6 +1038,8 @@ function initSquadPanel() {
     savedRows: matchdaySquadRows,
     savedPitchLayout: matchdayPitchLayout,
     savedFormations: matchdaySavedFormations,
+    matchdayComposition: true,
+    clubNation: myClub.nation,
     onSave: saveMatchdaySquad,
     onSaveFormation: saveMatchdayFormation,
     onLoadFormation: loadMatchdayFormation,
@@ -1721,7 +1723,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const { data: club, error: clubErr } = await supabase
     .from("Clubs")
-    .select("ShortName, Club")
+    .select("ShortName, Club, Nation")
     .eq("owner_id", user.id)
     .maybeSingle();
 
@@ -1737,7 +1739,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  myClub = { short: club.ShortName, name: club.Club };
+  myClub = { short: club.ShortName, name: club.Club, nation: club.Nation || null };
 
   const { data: regs } = await supabase
     .from("competition_club_season_public")

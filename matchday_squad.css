@@ -519,6 +519,49 @@
   color: #aaa;
   flex: 1 1 200px;
 }
+.matchday-comp-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: #161616;
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.matchday-comp-label {
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+  margin-right: 4px;
+}
+.matchday-comp-chip {
+  color: #aaa;
+}
+.matchday-comp-chip b {
+  color: #eee;
+  font-weight: bold;
+}
+.matchday-comp-chip i {
+  font-style: normal;
+  color: #666;
+  font-size: 11px;
+}
+.matchday-comp-chip.ok b { color: #8d8; }
+.matchday-comp-chip.short b { color: #e8c547; }
+.matchday-comp-ok {
+  color: #8d8;
+  font-size: 11px;
+  margin-left: 4px;
+}
+.matchday-comp-warn {
+  color: #e8c547;
+  font-size: 11px;
+  margin-left: 4px;
+}
 .squad-hint {
   font-size: 12px;
   color: #888;
