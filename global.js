@@ -67,6 +67,19 @@ function renderNavNatterLink(natterActive = false, unread = 0) {
   );
 }
 
+function renderNavFantasyLink(fantasyActive = false) {
+  return (
+    `<a href="fantasy.html" class="nav-shortcut nav-fantasy${
+      fantasyActive ? " active" : ""
+    }" title="GP Fantasy League (GPFL)" aria-label="GP Fantasy League">` +
+    `<span class="nav-fantasy-mark" aria-hidden="true">` +
+    `<img src="images/nav/gpfl_icon.svg?v=20260821" alt="" width="18" height="18" loading="lazy" />` +
+    `</span>` +
+    `<span class="nav-fantasy-label">GPFL</span>` +
+    `</a>`
+  );
+}
+
 async function countNatterUnread() {
   try {
     const { data, error } = await supabase.rpc("natter_unread_count");
@@ -1446,7 +1459,8 @@ function ensureNavStyles() {
 #nav .nav-group.open .nav-dropdown{display:flex!important;flex-direction:column!important;}
 @media (max-width:1400px){
   #nav .nav-natter-label,#nav .nav-season-calendar-label,
-  #nav .nav-dashboard-home-label,#nav .nav-gpsl-sport-label{display:none!important;}
+  #nav .nav-dashboard-home-label,#nav .nav-gpsl-sport-label,
+  #nav .nav-fantasy-label{display:none!important;}
 }
 @media (max-width:1280px){
   #nav .gpsl-nav-row-menus{flex-wrap:wrap!important;overflow:visible!important;}
@@ -2196,6 +2210,7 @@ export async function renderFallbackNav() {
         <div class="gpsl-nav-actions gpsl-nav-actions-primary">
           ${renderNavSeasonCalendarLink(false)}
           ${renderNavNatterLink(false, 0)}
+          ${renderNavFantasyLink(false)}
           ${renderNavGpslSportButton()}
           ${renderNavDashboardHomeLink(ownerClub, "dashboard.html", false)}
           ${renderNavInboxLink(false, 0)}
@@ -2371,6 +2386,7 @@ export async function buildNav() {
   const inboxActive = pathNorm === "inbox.html";
   const natterActive = pathNorm === "natter.html";
   const calendarActive = pathNorm === "season_calendar.html";
+  const fantasyActive = pathNorm === "fantasy.html";
 
   let navSections = Array.isArray(NAV_SECTIONS) ? [...NAV_SECTIONS] : [];
   if (!navSections.length) {
@@ -2573,6 +2589,7 @@ export async function buildNav() {
   if (!isPreClubOwner) {
     html += renderNavSeasonCalendarLink(calendarActive);
     html += renderNavNatterLink(natterActive, natterUnread);
+    html += renderNavFantasyLink(fantasyActive);
     html += renderNavGpslSportButton();
   } else {
     const bal = Number(registrySelf?.pending_starting_balance);

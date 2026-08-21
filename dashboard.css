@@ -765,6 +765,52 @@ table.gpsl-table td {
   letter-spacing: 0.02em;
 }
 
+.nav-fantasy {
+  text-decoration: none;
+  gap: 5px;
+}
+
+.nav-fantasy-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #111820;
+  box-shadow: inset 0 0 0 1px rgba(255, 153, 0, 0.35);
+}
+
+.nav-fantasy-mark img {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.nav-fantasy-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #ffcc66;
+}
+
+.nav-fantasy.active {
+  border-color: #ff9900;
+  background: #2a2200;
+}
+
+.gpsl-nav-actions-primary .nav-fantasy-mark {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.gpsl-nav-actions-primary .nav-fantasy-mark img {
+  width: 16px;
+  height: 16px;
+}
+
 .gpsl-nav-actions-primary .nav-natter-mark {
   width: 16px;
   height: 16px;
@@ -2245,7 +2291,8 @@ a.ssc-chip:hover {
   .nav-natter-label,
   .nav-season-calendar-label,
   .nav-dashboard-home-label,
-  .nav-gpsl-sport-label {
+  .nav-gpsl-sport-label,
+  .nav-fantasy-label {
     display: none !important;
   }
 }
@@ -2255,7 +2302,8 @@ a.ssc-chip:hover {
   .nav-natter-label,
   .nav-season-calendar-label,
   .nav-dashboard-home-label,
-  .nav-gpsl-sport-label {
+  .nav-gpsl-sport-label,
+  .nav-fantasy-label {
     display: none !important;
   }
 

@@ -68,7 +68,8 @@
   #nav .nav-natter-label,
   #nav .nav-season-calendar-label,
   #nav .nav-dashboard-home-label,
-  #nav .nav-gpsl-sport-label {
+  #nav .nav-gpsl-sport-label,
+  #nav .nav-fantasy-label {
     display: none !important;
   }
 }
