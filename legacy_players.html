@@ -25,6 +25,34 @@
     table.gpsl-table td.num { text-align:center; }
     .tag-legacy { color:#fc8; font-size:12px; }
     .empty-note { color:#888; padding:16px; text-align:center; }
+    .legacy-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+      margin-bottom: 14px;
+    }
+    .legacy-toolbar label {
+      color: #888;
+      font-size: 12px;
+      margin: 0;
+    }
+    #legacyPlayerSearch {
+      min-width: min(100%, 320px);
+      flex: 1 1 240px;
+      max-width: 420px;
+      padding: 8px 10px;
+      background: #111;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    #legacyPlayerSearch::placeholder { color: #666; }
+    #legacyPlayerSearch:focus {
+      outline: none;
+      border-color: #ff9900;
+    }
   </style>
 </head>
 <body>
@@ -40,6 +68,15 @@
   </div>
 
   <div class="panel">
+    <div class="legacy-toolbar">
+      <label for="legacyPlayerSearch">Search</label>
+      <input
+        type="text"
+        id="legacyPlayerSearch"
+        placeholder="Search name, club, or Konami ID (ignores accents)…"
+        autocomplete="off"
+      >
+    </div>
     <div id="listStatus" style="color:#aaa;margin-bottom:12px;">Loading…</div>
     <table class="gpsl-table">
       <thead>
@@ -57,6 +94,6 @@
     </table>
   </div>
 
-  <script type="module" src="legacy_players.js?v=20260805-rules"></script>
+  <script type="module" src="legacy_players.js?v=20260821-search"></script>
 </body>
 </html>
