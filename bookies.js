@@ -31,7 +31,7 @@ function formatFractionalOdds(decimalOdds, fractionalLabel) {
 }
 
 let currentClub = null;
-let currentClubName = null;
+let ownerTag = null;
 let isAdmin = false;
 let markets = [];
 let selectionsByMarket = new Map();
@@ -55,9 +55,9 @@ async function resolveAdmin() {
 }
 
 async function loadHeader() {
-  const clubEl = document.getElementById("bkClub");
+  const tagEl = document.getElementById("bkOwnerTag");
   const balEl = document.getElementById("bkBalance");
-  if (clubEl) clubEl.textContent = currentClubName || currentClub || "—";
+  if (tagEl) tagEl.textContent = ownerTag || "—";
 
   const { data, error } = await supabase.rpc("owner_wallet_get_self");
   if (error) {
@@ -378,11 +378,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const { data: club } = await supabase
     .from("Clubs")
-    .select("ShortName, Club")
+    .select("ShortName")
     .eq("owner_id", user.id)
     .maybeSingle();
   currentClub = club?.ShortName || null;
-  currentClubName = club?.Club || club?.ShortName || null;
+
+  try {
+    const { data: self } = await supabase.rpc("owner_registry_get_self");
+    ownerTag = String(self?.owner_tag || "").trim() || null;
+  } catch {
+    ownerTag = null;
+  }
 
   isAdmin = await resolveAdmin();
   const adminPanel = document.getElementById("bkAdminPanel");
