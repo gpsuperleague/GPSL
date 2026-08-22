@@ -1,0 +1,94 @@
+<script>window.CURRENT_PAGE = "owners_shop";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Owners Shop — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="owners_shop.css?v=20260822-live">
+</head>
+<body class="shop-page">
+  <div id="nav"></div>
+
+  <header class="shop-hero">
+    <div class="shop-hero-graphic" aria-hidden="true">
+      <svg class="shop-svg" viewBox="0 0 340 210" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="shopBrick" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#3a2a22"/>
+            <stop offset="100%" style="stop-color:#1a1410"/>
+          </linearGradient>
+          <linearGradient id="shopAwning" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#c45a2a"/>
+            <stop offset="50%" style="stop-color:#e8c060"/>
+            <stop offset="100%" style="stop-color:#c45a2a"/>
+          </linearGradient>
+        </defs>
+        <rect x="28" y="58" width="284" height="128" rx="6" fill="url(#shopBrick)" stroke="#8a6a48" stroke-width="2"/>
+        <path d="M20 58 H320 L300 42 H40 Z" fill="url(#shopAwning)" stroke="#a87838"/>
+        <rect x="48" y="78" width="88" height="72" rx="3" fill="#0e1814" stroke="#6aaa78"/>
+        <rect x="152" y="78" width="88" height="72" rx="3" fill="#0e1814" stroke="#6aaa78"/>
+        <rect x="256" y="78" width="40" height="72" rx="3" fill="#1a100c" stroke="#c45a2a"/>
+        <text x="92" y="108" text-anchor="middle" fill="#9fdf9f" font-family="Georgia,serif" font-size="9" font-weight="bold">KITS</text>
+        <text x="92" y="124" text-anchor="middle" fill="#c8b090" font-family="Georgia,serif" font-size="8">&amp; gear</text>
+        <text x="196" y="108" text-anchor="middle" fill="#9ed4f0" font-family="Georgia,serif" font-size="9" font-weight="bold">MED</text>
+        <text x="196" y="124" text-anchor="middle" fill="#c8b090" font-family="Georgia,serif" font-size="8">bay</text>
+        <text x="276" y="118" text-anchor="middle" fill="#e8c060" font-family="Georgia,serif" font-size="8" font-weight="bold">IN</text>
+        <rect x="70" y="162" width="200" height="18" rx="2" fill="#221810" stroke="#e8c060"/>
+        <text x="170" y="175" text-anchor="middle" fill="#e8c060" font-family="Georgia,serif" font-size="10" font-weight="bold">OWNERS SHOP</text>
+        <circle cx="170" cy="32" r="16" fill="#2a2018" stroke="#e8c060" stroke-width="2"/>
+        <text x="170" y="37" text-anchor="middle" fill="#e8c060" font-family="Georgia,serif" font-size="12" font-weight="bold">₿</text>
+      </svg>
+    </div>
+    <div class="shop-hero-text">
+      <p class="shop-welcome">Owners lounge</p>
+      <h1>Owners Shop</h1>
+      <p class="shop-tagline">
+        Spend from your <b>personal balance</b>. Purchases stock on your
+        <b>current club</b> and stay there until used — they do not travel with you.
+        Catalogue prices are set by admin.
+      </p>
+      <div class="shop-hero-stats">
+        <div class="shop-stat shop-stat--owner">
+          Owner balance <b id="shopOwnerBal">—</b>
+        </div>
+        <div class="shop-stat">
+          Delivering to <b id="shopClub">—</b>
+        </div>
+        <div class="shop-stat">
+          Club stock <b id="shopStockCount">—</b>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="shop-main">
+    <p id="shopStatus" class="shop-sketch-banner" hidden></p>
+    <nav class="shop-aisles" id="shopAisles" aria-label="Shop sections"></nav>
+    <div id="shopSections"></div>
+
+    <section class="shop-panel shop-panel--stock" id="shopStockPanel">
+      <h2>Stock at <span id="shopStockClub">club</span></h2>
+      <p class="shop-panel-intro">
+        Already on this club (challenges / shop). Use from Medical Room or discipline.
+      </p>
+      <ul class="shop-stock-list" id="shopStockList"></ul>
+    </section>
+
+    <section class="shop-panel shop-panel--notes">
+      <h2>How money moves</h2>
+      <ol class="shop-flow">
+        <li><b>Bookies</b> &amp; <b>GPFL prizes</b> → owner balance (coming)</li>
+        <li><b>Shop buy</b> → debit owner · credit club inventory</li>
+        <li><b>Use item</b> → consume club stock (Medical / Discipline)</li>
+        <li>Club transfer budget stays separate</li>
+      </ol>
+    </section>
+  </main>
+
+  <script type="module" src="global.js?v=20260706-v18"></script>
+  <script type="module" src="owners_shop.js?v=20260822-live"></script>
+</body>
+</html>

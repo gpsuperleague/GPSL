@@ -543,6 +543,15 @@ export const ADMIN_MAIN_NAV = [
           "Review owner red-card / prize appeals and apply outcomes."
         ),
       ]),
+      group("Owners Shop", [
+        L(
+          "Shop catalogue & wallets",
+          "admin_owners_shop.html",
+          null,
+          null,
+          "Configure Owners Shop sections/prices; credit personal owner wallets. Buys stock items on the owner’s club."
+        ),
+      ]),
       group("Media", [
         L(
           "Republish GPSL Sport",
