@@ -1,0 +1,252 @@
+<script>window.CURRENT_PAGE = "owners_shop_sketch";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Owners Shop (sketch) — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="owners_shop_sketch.css?v=20260822-sketch">
+</head>
+<body class="shop-page">
+  <div id="nav"></div>
+
+  <p class="shop-sketch-banner" role="note">
+    UI sketch only — mock prices &amp; stock. Not wired to an owner wallet yet.
+  </p>
+
+  <header class="shop-hero">
+    <div class="shop-hero-graphic" aria-hidden="true">
+      <svg class="shop-svg" viewBox="0 0 340 210" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="shopBrick" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#3a2a22"/>
+            <stop offset="100%" style="stop-color:#1a1410"/>
+          </linearGradient>
+          <linearGradient id="shopAwning" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#c45a2a"/>
+            <stop offset="50%" style="stop-color:#e8c060"/>
+            <stop offset="100%" style="stop-color:#c45a2a"/>
+          </linearGradient>
+        </defs>
+        <!-- Stadium retail front -->
+        <rect x="28" y="58" width="284" height="128" rx="6" fill="url(#shopBrick)" stroke="#8a6a48" stroke-width="2"/>
+        <path d="M20 58 H320 L300 42 H40 Z" fill="url(#shopAwning)" stroke="#a87838"/>
+        <rect x="48" y="78" width="88" height="72" rx="3" fill="#0e1814" stroke="#6aaa78"/>
+        <rect x="152" y="78" width="88" height="72" rx="3" fill="#0e1814" stroke="#6aaa78"/>
+        <rect x="256" y="78" width="40" height="72" rx="3" fill="#1a100c" stroke="#c45a2a"/>
+        <text x="92" y="108" text-anchor="middle" fill="#9fdf9f" font-family="Georgia,serif" font-size="9" font-weight="bold">KITS</text>
+        <text x="92" y="124" text-anchor="middle" fill="#c8b090" font-family="Georgia,serif" font-size="8">&amp; gear</text>
+        <text x="196" y="108" text-anchor="middle" fill="#9ed4f0" font-family="Georgia,serif" font-size="9" font-weight="bold">MED</text>
+        <text x="196" y="124" text-anchor="middle" fill="#c8b090" font-family="Georgia,serif" font-size="8">bay</text>
+        <text x="276" y="118" text-anchor="middle" fill="#e8c060" font-family="Georgia,serif" font-size="8" font-weight="bold">IN</text>
+        <rect x="70" y="162" width="200" height="18" rx="2" fill="#221810" stroke="#e8c060"/>
+        <text x="170" y="175" text-anchor="middle" fill="#e8c060" font-family="Georgia,serif" font-size="10" font-weight="bold">OWNERS SHOP</text>
+        <circle cx="170" cy="32" r="16" fill="#2a2018" stroke="#e8c060" stroke-width="2"/>
+        <text x="170" y="37" text-anchor="middle" fill="#e8c060" font-family="Georgia,serif" font-size="12" font-weight="bold">₿</text>
+      </svg>
+    </div>
+    <div class="shop-hero-text">
+      <p class="shop-welcome">Owners lounge</p>
+      <h1>Owners Shop</h1>
+      <p class="shop-tagline">
+        Spend from your <b>personal balance</b>. Purchases stock on your
+        <b>current club</b> and stay there until used — they do not travel with you.
+      </p>
+      <div class="shop-hero-stats">
+        <div class="shop-stat shop-stat--owner">
+          Owner balance <b>₿12,450</b>
+        </div>
+        <div class="shop-stat">
+          Delivering to <b>MON</b>
+        </div>
+        <div class="shop-stat">
+          Club stock <b>3 items</b>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="shop-main">
+    <!-- Section picker — mini themes -->
+    <nav class="shop-aisles" aria-label="Shop sections">
+      <a class="shop-aisle shop-aisle--med is-active" href="#aisle-medical">
+        <span class="shop-aisle-mark" aria-hidden="true">+</span>
+        <span class="shop-aisle-label">Medical bay</span>
+      </a>
+      <a class="shop-aisle shop-aisle--disc" href="#aisle-discipline">
+        <span class="shop-aisle-mark" aria-hidden="true">■</span>
+        <span class="shop-aisle-label">Discipline desk</span>
+      </a>
+      <a class="shop-aisle shop-aisle--soon" href="#aisle-more" aria-disabled="true">
+        <span class="shop-aisle-mark" aria-hidden="true">…</span>
+        <span class="shop-aisle-label">More soon</span>
+      </a>
+    </nav>
+
+    <!-- MEDICAL -->
+    <section class="shop-panel shop-panel--med" id="aisle-medical">
+      <div class="shop-panel-head">
+        <div>
+          <p class="shop-panel-kicker">Treatment centre stock</p>
+          <h2>Medical bay</h2>
+          <p class="shop-panel-intro">
+            Specialist consult tokens for the Medical Room. One consult per injury;
+            tier shortens recovery by that many matches.
+          </p>
+        </div>
+        <div class="shop-panel-badge" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="48" height="48">
+            <rect x="4" y="4" width="40" height="40" rx="6" fill="#122028" stroke="#5a9aba"/>
+            <rect x="20" y="12" width="8" height="24" fill="#9ed4f0"/>
+            <rect x="12" y="20" width="24" height="8" fill="#9ed4f0"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="shop-shelf">
+        <article class="shop-item">
+          <div class="shop-item-visual shop-item-visual--med">−2</div>
+          <h3>Consult −2</h3>
+          <p>Shorten assessed injury by 2 matches.</p>
+          <div class="shop-item-meta">
+            <span class="shop-price">₿250</span>
+            <button type="button" class="shop-buy" disabled>Buy for MON</button>
+          </div>
+        </article>
+        <article class="shop-item">
+          <div class="shop-item-visual shop-item-visual--med">−4</div>
+          <h3>Consult −4</h3>
+          <p>Shorten assessed injury by 4 matches.</p>
+          <div class="shop-item-meta">
+            <span class="shop-price">₿500</span>
+            <button type="button" class="shop-buy" disabled>Buy for MON</button>
+          </div>
+        </article>
+        <article class="shop-item">
+          <div class="shop-item-visual shop-item-visual--med">−6</div>
+          <h3>Consult −6</h3>
+          <p>Shorten assessed injury by 6 matches.</p>
+          <div class="shop-item-meta">
+            <span class="shop-price">₿900</span>
+            <button type="button" class="shop-buy" disabled>Buy for MON</button>
+          </div>
+        </article>
+        <article class="shop-item shop-item--featured">
+          <div class="shop-item-visual shop-item-visual--med">−8</div>
+          <h3>Consult −8</h3>
+          <p>Shorten assessed injury by 8 matches.</p>
+          <div class="shop-item-meta">
+            <span class="shop-price">₿1,400</span>
+            <button type="button" class="shop-buy" disabled>Buy for MON</button>
+          </div>
+        </article>
+        <article class="shop-item shop-item--featured">
+          <div class="shop-item-visual shop-item-visual--med shop-item-visual--top">−10</div>
+          <h3>Consult −10</h3>
+          <p>Maximum specialist recovery cut.</p>
+          <div class="shop-item-meta">
+            <span class="shop-price">₿2,000</span>
+            <button type="button" class="shop-buy" disabled>Buy for MON</button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- DISCIPLINE -->
+    <section class="shop-panel shop-panel--disc" id="aisle-discipline">
+      <div class="shop-panel-head">
+        <div>
+          <p class="shop-panel-kicker">Match officials corridor</p>
+          <h2>Discipline desk</h2>
+          <p class="shop-panel-intro">
+            Appeal cards for suspension reviews. Stock sits on the club until
+            you lodge an appeal from the discipline flow.
+          </p>
+        </div>
+        <div class="shop-panel-badge" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="48" height="48">
+            <rect x="14" y="8" width="20" height="32" rx="2" fill="#5a1820" stroke="#e07070"/>
+            <text x="24" y="30" text-anchor="middle" fill="#f0c0c0" font-family="Georgia,serif" font-size="14" font-weight="bold">R</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="shop-shelf shop-shelf--narrow">
+        <article class="shop-item">
+          <div class="shop-item-visual shop-item-visual--disc">1×</div>
+          <h3>Appeal card</h3>
+          <p>One suspension appeal attempt for this club.</p>
+          <div class="shop-item-meta">
+            <span class="shop-price">₿1,500</span>
+            <button type="button" class="shop-buy shop-buy--disc" disabled>Buy for MON</button>
+          </div>
+        </article>
+        <article class="shop-item">
+          <div class="shop-item-visual shop-item-visual--disc">3×</div>
+          <h3>Appeal pack</h3>
+          <p>Three appeal cards — slight pack discount.</p>
+          <div class="shop-item-meta">
+            <span class="shop-price">₿4,000</span>
+            <button type="button" class="shop-buy shop-buy--disc" disabled>Buy for MON</button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- MORE / COMING -->
+    <section class="shop-panel shop-panel--soon" id="aisle-more">
+      <div class="shop-panel-head">
+        <div>
+          <p class="shop-panel-kicker">Stadium concourse</p>
+          <h2>More aisles later</h2>
+          <p class="shop-panel-intro">
+            Fee-discount tokens, draft boosts, and other owner-funded club stock
+            can land here without touching club books as income.
+          </p>
+        </div>
+      </div>
+      <div class="shop-coming">
+        <span>Fee discounts</span>
+        <span>Draft boosts</span>
+        <span>Season challenges top-ups</span>
+      </div>
+    </section>
+
+    <!-- Club stock preview -->
+    <section class="shop-panel shop-panel--stock">
+      <h2>Stock at MON</h2>
+      <p class="shop-panel-intro">
+        Already on this club (from challenges / shop). Use from Medical Room or discipline.
+      </p>
+      <ul class="shop-stock-list">
+        <li>
+          <span class="shop-stock-type shop-stock-type--med">Medical</span>
+          Consult −4 <b>×1</b>
+        </li>
+        <li>
+          <span class="shop-stock-type shop-stock-type--med">Medical</span>
+          Consult −6 <b>×1</b>
+        </li>
+        <li>
+          <span class="shop-stock-type shop-stock-type--disc">Discipline</span>
+          Appeal card <b>×1</b>
+        </li>
+      </ul>
+    </section>
+
+    <section class="shop-panel shop-panel--notes">
+      <h2>How money moves</h2>
+      <ol class="shop-flow">
+        <li><b>Bookies</b> &amp; <b>GPFL prizes</b> → owner balance</li>
+        <li><b>Shop buy</b> → debit owner · credit club inventory</li>
+        <li><b>Use item</b> → consume club stock (Medical / Discipline)</li>
+        <li>Club transfer budget stays separate</li>
+      </ol>
+    </section>
+  </main>
+
+  <script type="module" src="global.js?v=20260706-v18"></script>
+</body>
+</html>
