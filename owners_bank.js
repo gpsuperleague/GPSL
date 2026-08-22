@@ -42,6 +42,19 @@ function typeLabel(t) {
   return TYPE_LABELS[t] || String(t || "Entry").replace(/_/g, " ");
 }
 
+/** Opening first, then oldest → newest (migrated bets can pre-date the opening row). */
+function sortStatementEntries(entries) {
+  return [...entries].sort((a, b) => {
+    const aOpen = a.entry_type === "opening_balance" ? 0 : 1;
+    const bOpen = b.entry_type === "opening_balance" ? 0 : 1;
+    if (aOpen !== bOpen) return aOpen - bOpen;
+    const ta = new Date(a.created_at).getTime() || 0;
+    const tb = new Date(b.created_at).getTime() || 0;
+    if (ta !== tb) return ta - tb;
+    return (Number(a.id) || 0) - (Number(b.id) || 0);
+  });
+}
+
 async function loadStatement() {
   const { data, error } = await supabase.rpc("owner_wallet_statement_self", {
     p_limit: 200,
@@ -62,13 +75,15 @@ async function loadStatement() {
   const balance = Number(data?.balance ?? 0);
   document.getElementById("obBalance").textContent = formatMoney(balance);
 
-  const entries = Array.isArray(data?.entries) ? data.entries : [];
-  // Entries arrive newest-first; compute running balance from current balance backwards
-  let run = balance;
+  const entries = sortStatementEntries(
+    Array.isArray(data?.entries) ? data.entries : []
+  );
+
+  // Forward running balance: after each line (opening 50k, then 49k, then 48k…)
+  let run = 0;
   const rows = entries.map((e) => {
     const amt = Number(e.amount) || 0;
-    const balAfter = run;
-    run = run - amt; // undo this entry to get prior balance
+    run = Math.round((run + amt) * 100) / 100;
     const out = amt < 0 ? formatMoney(Math.abs(amt)) : "—";
     const inn = amt > 0 ? formatMoney(amt) : "—";
     const desc = e.description || typeLabel(e.entry_type);
@@ -80,7 +95,7 @@ async function loadStatement() {
       </td>
       <td class="num ob-out">${out}</td>
       <td class="num ob-in">${inn}</td>
-      <td class="num ob-run">${formatMoney(balAfter)}</td>
+      <td class="num ob-run">${formatMoney(run)}</td>
     </tr>`;
   });
 
