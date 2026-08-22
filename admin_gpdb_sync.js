@@ -845,13 +845,18 @@ async function appendStagingRows(rows) {
 }
 
 async function invokePesdbScrape(body, attempt = 1, opts = {}) {
-  const aborted = () => scrapeAbort || playstyleAbort;
   const soft = !!opts.soft;
+  const aborted = () => {
+    if (opts.ignorePlaystyleAbort) return !!scrapeAbort;
+    return !!(scrapeAbort || playstyleAbort);
+  };
   const maxTransient = soft ? 2 : TRANSIENT_MAX_RETRIES;
   const maxRateLimit = soft ? 1 : 8;
   const rateLimitBaseMs = soft ? 8000 : RATE_LIMIT_RETRY_MS;
   const transientBaseMs = soft ? 2500 : TRANSIENT_RETRY_MS;
-  const statusId = scrapeRunning ? "scrapeStatus" : "playstyleStatus";
+  const statusId =
+    opts.statusId ||
+    (scrapeRunning ? "scrapeStatus" : "playstyleStatus");
 
   const { data, error } = await supabase.functions.invoke(SCRAPE_FUNCTION, {
     body: { ...body, pace: SCRAPE_PACE },
@@ -2131,6 +2136,315 @@ async function clearPlaystyleCheckpointUi() {
   }
 }
 
+/** ---- One-off player check (independent of bulk playstyle refresh) ---- */
+let oneOffMatches = [];
+let oneOffLastCompare = null;
+let oneOffBusy = false;
+
+function oneOffSelectedFields() {
+  return {
+    playstyle: !!document.getElementById("oneOffFieldPlaystyle")?.checked,
+    rating: !!document.getElementById("oneOffFieldRating")?.checked,
+    age: !!document.getElementById("oneOffFieldAge")?.checked,
+    position: !!document.getElementById("oneOffFieldPosition")?.checked,
+    nation: !!document.getElementById("oneOffFieldNation")?.checked,
+  };
+}
+
+function setOneOffFields(mode) {
+  const map = {
+    playstyle: document.getElementById("oneOffFieldPlaystyle"),
+    rating: document.getElementById("oneOffFieldRating"),
+    age: document.getElementById("oneOffFieldAge"),
+    position: document.getElementById("oneOffFieldPosition"),
+    nation: document.getElementById("oneOffFieldNation"),
+  };
+  if (mode === "all") {
+    Object.values(map).forEach((el) => {
+      if (el) el.checked = true;
+    });
+  } else {
+    Object.entries(map).forEach(([k, el]) => {
+      if (el) el.checked = k === "playstyle";
+    });
+  }
+}
+
+function getOneOffSelectedPlayer() {
+  const sel = document.getElementById("oneOffPlayerSelect");
+  const kid = sel?.value || "";
+  return oneOffMatches.find((p) => String(p.Konami_ID) === kid) || null;
+}
+
+async function searchOneOffPlayers() {
+  const q = String(document.getElementById("oneOffPlayerSearch")?.value || "").trim();
+  const sel = document.getElementById("oneOffPlayerSelect");
+  const applyBtn = document.getElementById("oneOffApplyBtn");
+  oneOffLastCompare = null;
+  document.getElementById("oneOffCompareWrap")?.setAttribute("hidden", "");
+  if (applyBtn) applyBtn.disabled = true;
+
+  if (q.length < 2) {
+    setStatus("oneOffStatus", "Type at least 2 characters of a name.", false);
+    return;
+  }
+
+  setStatus("oneOffStatus", `Searching GPDB for “${q}”…`, true);
+  const { data, error } = await supabase
+    .from("Players")
+    .select("Konami_ID, Name, Playstyle, Rating, Age, Position, Nation, Contracted_Team")
+    .ilike("Name", `%${q}%`)
+    .order("Name")
+    .limit(40);
+
+  if (error) {
+    setStatus("oneOffStatus", error.message || "Search failed.", false);
+    return;
+  }
+
+  oneOffMatches = Array.isArray(data) ? data : [];
+  if (!sel) return;
+
+  if (!oneOffMatches.length) {
+    sel.innerHTML = `<option value="">No matches</option>`;
+    sel.disabled = true;
+    setStatus("oneOffStatus", "No GPDB players matched that name.", false);
+    return;
+  }
+
+  sel.innerHTML = oneOffMatches
+    .map((p) => {
+      const club = p.Contracted_Team || "FA";
+      const ps = p.Playstyle || "—";
+      const label = `${p.Name} · ${p.Konami_ID} · ${club} · OVR ${p.Rating ?? "?"} · ${ps}`;
+      return `<option value="${escapeHtml(String(p.Konami_ID))}">${escapeHtml(label)}</option>`;
+    })
+    .join("");
+  sel.disabled = false;
+  setStatus(
+    "oneOffStatus",
+    `${oneOffMatches.length} match${oneOffMatches.length === 1 ? "" : "es"} — pick one and Check on PESDB.`,
+    true
+  );
+}
+
+function renderOneOffCompare(gpdb, pesdb, fields) {
+  const body = document.getElementById("oneOffCompareBody");
+  const wrap = document.getElementById("oneOffCompareWrap");
+  if (!body || !wrap) return;
+
+  const rows = [];
+  const push = (key, label, gpdbVal, pesdbVal, enabled) => {
+    if (!enabled) return;
+    const g = gpdbVal == null || gpdbVal === "" ? "—" : String(gpdbVal);
+    const p = pesdbVal == null || pesdbVal === "" ? "—" : String(pesdbVal);
+    const same = g === p || (g === "—" && p === "—");
+    const diffClass = same ? "tag-ok" : "tag-warn";
+    rows.push(
+      `<tr>
+        <td>${escapeHtml(label)}</td>
+        <td>${escapeHtml(g)}</td>
+        <td>${escapeHtml(p)}</td>
+        <td class="${diffClass}">${same ? "same" : "diff"}</td>
+      </tr>`
+    );
+  };
+
+  push("playstyle", "Playstyle", gpdb.Playstyle, pesdb.playing_style, fields.playstyle);
+  if (fields.playstyle) {
+    rows.push(
+      `<tr>
+        <td>PESDB Att / Def</td>
+        <td>—</td>
+        <td>${escapeHtml(pesdb.playing_style_att || "—")} / ${escapeHtml(pesdb.playing_style_def || "—")}</td>
+        <td></td>
+      </tr>`
+    );
+  }
+  push("rating", "Rating", gpdb.Rating, pesdb.max_level_rating, fields.rating);
+  push("age", "Age", gpdb.Age, pesdb.age, fields.age);
+  push("position", "Position", gpdb.Position, pesdb.position, fields.position);
+  push("nation", "Nation", gpdb.Nation, pesdb.nationality, fields.nation);
+
+  body.innerHTML =
+    rows.join("") ||
+    `<tr><td colspan="4">Tick at least one field above.</td></tr>`;
+  wrap.hidden = false;
+}
+
+async function checkOneOffPlayer() {
+  if (oneOffBusy) {
+    setStatus("oneOffStatus", "One-off check already running.", false);
+    return;
+  }
+  const player = getOneOffSelectedPlayer();
+  if (!player) {
+    setStatus("oneOffStatus", "Find and select a GPDB player first.", false);
+    return;
+  }
+  const fields = oneOffSelectedFields();
+  if (!Object.values(fields).some(Boolean)) {
+    setStatus("oneOffStatus", "Tick at least one field to compare.", false);
+    return;
+  }
+
+  oneOffBusy = true;
+  document.getElementById("oneOffCheckBtn")?.setAttribute("disabled", "disabled");
+  document.getElementById("oneOffApplyBtn").disabled = true;
+  setStatus(
+    "oneOffStatus",
+    `Fetching PESDB for ${player.Name} (${player.Konami_ID})…` +
+      (playstyleRunning ? " (bulk refresh still running — this won't stop it)" : ""),
+    true
+  );
+
+  try {
+    const detail = await withTimeout(
+      invokePesdbScrape(
+        {
+          action: "enrich_players",
+          players: [
+            {
+              konami_id: String(player.Konami_ID),
+              player_name: player.Name || "",
+              position: player.Position || "CF",
+              nationality: player.Nation || "",
+              age: Number(player.Age) || 25,
+              rating: Number(player.Rating) || 60,
+            },
+          ],
+        },
+        1,
+        {
+          soft: true,
+          statusId: "oneOffStatus",
+          ignorePlaystyleAbort: true,
+        }
+      ),
+      PLAYSTYLE_ENRICH_TIMEOUT_MS,
+      `Timed out after ${Math.round(PLAYSTYLE_ENRICH_TIMEOUT_MS / 1000)}s`
+    );
+
+    if (detail?.rate_limited || detail?.ok === false) {
+      throw new Error(detail?.error || "PESDB rate-limited");
+    }
+
+    const scraped = (detail.players || [])[0];
+    if (!scraped) throw new Error("No PESDB payload returned");
+
+    oneOffLastCompare = { gpdb: player, pesdb: scraped, fields };
+    renderOneOffCompare(player, scraped, fields);
+
+    const style = scraped.playing_style;
+    const hint =
+      style === "None"
+        ? scraped.scrape_error || "Could not parse playstyle from PESDB"
+        : style === ""
+          ? "PESDB Att/Def are Basic (no specialised style)"
+          : `PESDB playstyle “${style}”`;
+
+    setStatus("oneOffStatus", `Checked ${player.Name}. ${hint}`, true);
+    document.getElementById("oneOffApplyBtn").disabled = false;
+  } catch (err) {
+    oneOffLastCompare = null;
+    setStatus("oneOffStatus", err.message || "PESDB check failed.", false);
+  } finally {
+    oneOffBusy = false;
+    document.getElementById("oneOffCheckBtn")?.removeAttribute("disabled");
+  }
+}
+
+async function applyOneOffPlayer() {
+  if (!oneOffLastCompare) {
+    setStatus("oneOffStatus", "Run Check on PESDB first.", false);
+    return;
+  }
+  const fields = oneOffSelectedFields();
+  if (!Object.values(fields).some(Boolean)) {
+    setStatus("oneOffStatus", "Tick at least one field to apply.", false);
+    return;
+  }
+
+  const { gpdb, pesdb } = oneOffLastCompare;
+  const kid = String(gpdb.Konami_ID);
+  const row = { konami_id: kid };
+
+  if (fields.playstyle && Object.prototype.hasOwnProperty.call(pesdb, "playing_style")) {
+    row.playing_style = String(pesdb.playing_style ?? "");
+  }
+  if (fields.rating && pesdb.max_level_rating != null) {
+    row.rating = String(pesdb.max_level_rating);
+  }
+  if (fields.age && pesdb.age != null) {
+    row.age = String(pesdb.age);
+  }
+  if (fields.position && pesdb.position) {
+    row.position = String(pesdb.position);
+  }
+  if (fields.nation && pesdb.nationality) {
+    row.nation = String(pesdb.nationality);
+  }
+
+  const keys = Object.keys(row).filter((k) => k !== "konami_id");
+  if (!keys.length) {
+    setStatus("oneOffStatus", "Nothing applyable from the last PESDB result for the ticked fields.", false);
+    return;
+  }
+
+  if (
+    !window.confirm(
+      `Apply to ${gpdb.Name} (${kid})?\nFields: ${keys.join(", ")}\n\nBulk playstyle refresh is not affected.`
+    )
+  ) {
+    return;
+  }
+
+  setStatus("oneOffStatus", "Applying…", true);
+  try {
+    let data;
+    let error;
+    ({ data, error } = await supabase.rpc("gpdb_pesdb_apply_player_fields", {
+      p_rows: [row],
+    }));
+    if (error && /function|does not exist|404/i.test(error.message || "")) {
+      // Fallback: playstyle-only via existing RPC
+      if (!fields.playstyle || keys.some((k) => k !== "playing_style")) {
+        throw new Error(
+          "Run SQL patch gpdb_pesdb_one_off_player_20260822.sql for multi-field apply (playstyle-only fallback available if only Playstyle is ticked)."
+        );
+      }
+      ({ data, error } = await supabase.rpc("gpdb_pesdb_apply_playstyles", {
+        p_rows: [{ konami_id: kid, playing_style: row.playing_style }],
+      }));
+    }
+    if (error) throw error;
+
+    const updated = Number(data?.updated) || 0;
+    setStatus(
+      "oneOffStatus",
+      updated
+        ? `Applied to GPDB (${updated} row). Re-search to see live values.`
+        : `No row changed (already matched, or playstyle scrape miss skipped).`,
+      true
+    );
+
+    // Refresh GPDB snapshot in the match list
+    const { data: fresh } = await supabase
+      .from("Players")
+      .select("Konami_ID, Name, Playstyle, Rating, Age, Position, Nation, Contracted_Team")
+      .eq("Konami_ID", kid)
+      .maybeSingle();
+    if (fresh) {
+      const idx = oneOffMatches.findIndex((p) => String(p.Konami_ID) === kid);
+      if (idx >= 0) oneOffMatches[idx] = fresh;
+      if (oneOffLastCompare) oneOffLastCompare.gpdb = fresh;
+      renderOneOffCompare(fresh, pesdb, fields);
+    }
+  } catch (err) {
+    setStatus("oneOffStatus", err.message || "Apply failed.", false);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
   applyResumeFromStorage();
@@ -2160,6 +2474,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("playstyleQueueCountBtn")?.addEventListener("click", countPlaystyleQueueUi);
   document.getElementById("playstyleEmptyOnly")?.addEventListener("change", countPlaystyleQueueUi);
   document.getElementById("playstyleForceAll")?.addEventListener("change", countPlaystyleQueueUi);
+  document.getElementById("oneOffSearchBtn")?.addEventListener("click", searchOneOffPlayers);
+  document.getElementById("oneOffPlayerSearch")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      searchOneOffPlayers();
+    }
+  });
+  document.getElementById("oneOffCheckBtn")?.addEventListener("click", checkOneOffPlayer);
+  document.getElementById("oneOffApplyBtn")?.addEventListener("click", applyOneOffPlayer);
+  document.getElementById("oneOffFieldsAllBtn")?.addEventListener("click", () => setOneOffFields("all"));
+  document.getElementById("oneOffFieldsPlaystyleOnlyBtn")?.addEventListener("click", () =>
+    setOneOffFields("playstyle")
+  );
   document.getElementById("playstylePlayerDelay")?.addEventListener("input", (e) => {
     e.target.dataset.userEdited = "1";
   });

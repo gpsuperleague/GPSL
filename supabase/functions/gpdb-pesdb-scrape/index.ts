@@ -230,6 +230,17 @@ function parsePesdbListPage(html: string): PesdbListRow[] {
   return rows;
 }
 
+function extractLabeledTd(html: string, label: string): string | null {
+  const re = new RegExp(
+    `<th[^>]*>\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*</th>\\s*<td[^>]*>([\\s\\S]*?)</td>`,
+    "i"
+  );
+  const m = html.match(re);
+  if (!m) return null;
+  const v = stripTags(m[1]).trim();
+  return v || null;
+}
+
 function parsePesdbMaxLevelPage(html: string) {
   let max_level_rating: number | null = null;
   const overallBlock = html.match(
@@ -255,11 +266,23 @@ function parsePesdbMaxLevelPage(html: string) {
     }
   }
 
+  const ageRaw = extractLabeledTd(html, "Age");
+  const ageNum = ageRaw ? Number(String(ageRaw).replace(/[^\d]/g, "")) : NaN;
+  const position =
+    extractLabeledTd(html, "Position") ||
+    extractLabeledTd(html, "Registered Position");
+  const nationality =
+    extractLabeledTd(html, "Nationality") ||
+    extractLabeledTd(html, "Nation");
+
   return {
     max_level_rating: Number.isFinite(max_level_rating) ? max_level_rating : null,
     playing_style,
     playing_style_att: att,
     playing_style_def: def,
+    age: Number.isFinite(ageNum) ? ageNum : null,
+    position: position || null,
+    nationality: nationality || null,
   };
 }
 
@@ -455,6 +478,9 @@ Deno.serve(async (req) => {
             playing_style: detail.playing_style,
             playing_style_att: detail.playing_style_att ?? null,
             playing_style_def: detail.playing_style_def ?? null,
+            age: detail.age ?? base.age,
+            position: detail.position ?? base.position,
+            nationality: detail.nationality ?? base.nationality,
             scrape_error: blocked
               ? "PESDB HTML missing playstyle table (blocked/throttled or wrong page)"
               : null,

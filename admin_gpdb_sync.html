@@ -105,6 +105,7 @@
         <p class="note">
           Run SQL patch <code>gpdb_pesdb_playstyle_att_def_20260820.sql</code> first,
           then redeploy edge function <code>gpdb-pesdb-scrape</code>.
+          For one-off multi-field apply also run <code>gpdb_pesdb_one_off_player_20260822.sql</code>.
         </p>
         <div class="scrape-options">
           <fieldset style="border:1px solid #3a5a3a;border-radius:6px;padding:10px 12px;margin:0 0 8px;">
@@ -134,6 +135,63 @@
         <div id="playstyleProgressLabel" style="font-size:12px;color:#888;margin-top:8px;"></div>
         <div id="playstylePlayerLabel" style="font-size:13px;color:#ccc;margin-top:6px;min-height:1.3em;"></div>
         <div id="playstyleStatus" class="status-line"></div>
+
+        <hr style="border:none;border-top:1px solid #3a5a3a;margin:18px 0 14px;">
+        <h3 style="color:#8c8;margin:0 0 6px;font-size:15px;">One-off player check</h3>
+        <p class="note" style="margin-top:0;">
+          Lookup one GPDB player by name and compare with PESDB.
+          Runs separately — does <b>not</b> stop, resume, or clear the bulk refresh above.
+        </p>
+        <div class="scrape-range" style="margin-top:8px;">
+          <label style="flex:1;min-width:200px;">
+            Name
+            <input type="text" id="oneOffPlayerSearch" placeholder="e.g. Mbappé" autocomplete="off"
+              style="width:100%;max-width:280px;padding:6px 8px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;">
+          </label>
+          <button type="button" class="button" id="oneOffSearchBtn" style="background:#2a3a2a;">Find in GPDB</button>
+        </div>
+        <div class="scrape-range" style="margin-top:8px;">
+          <label style="flex:1;min-width:260px;">
+            Match
+            <select id="oneOffPlayerSelect" disabled
+              style="width:100%;max-width:420px;padding:6px 8px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;">
+              <option value="">Search first…</option>
+            </select>
+          </label>
+        </div>
+        <fieldset style="border:1px solid #3a5a3a;border-radius:6px;padding:10px 12px;margin:10px 0 8px;">
+          <legend style="color:#8c8;padding:0 6px;">Compare / apply fields</legend>
+          <label style="display:inline-block;margin:4px 12px 4px 0;">
+            <input type="checkbox" id="oneOffFieldPlaystyle" checked> Playstyle
+          </label>
+          <label style="display:inline-block;margin:4px 12px 4px 0;">
+            <input type="checkbox" id="oneOffFieldRating" checked> Rating
+          </label>
+          <label style="display:inline-block;margin:4px 12px 4px 0;">
+            <input type="checkbox" id="oneOffFieldAge"> Age
+          </label>
+          <label style="display:inline-block;margin:4px 12px 4px 0;">
+            <input type="checkbox" id="oneOffFieldPosition"> Position
+          </label>
+          <label style="display:inline-block;margin:4px 12px 4px 0;">
+            <input type="checkbox" id="oneOffFieldNation"> Nation
+          </label>
+          <button type="button" class="button" id="oneOffFieldsAllBtn" style="background:#333;font-size:11px;padding:3px 8px;">All</button>
+          <button type="button" class="button" id="oneOffFieldsPlaystyleOnlyBtn" style="background:#333;font-size:11px;padding:3px 8px;">Playstyle only</button>
+        </fieldset>
+        <div class="row" style="margin-top:8px;">
+          <button type="button" class="button" id="oneOffCheckBtn" style="background:#335533;">Check on PESDB</button>
+          <button type="button" class="button" id="oneOffApplyBtn" style="background:#664400;" disabled>Apply selected to GPDB</button>
+        </div>
+        <div id="oneOffCompareWrap" class="sync-table-wrap" hidden style="max-height:280px;">
+          <table class="sync-table">
+            <thead>
+              <tr><th>Field</th><th>GPDB now</th><th>PESDB</th><th></th></tr>
+            </thead>
+            <tbody id="oneOffCompareBody"></tbody>
+          </table>
+        </div>
+        <div id="oneOffStatus" class="status-line"></div>
       </div>
 
       <div class="card">
