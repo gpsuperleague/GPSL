@@ -47,7 +47,8 @@
   <main class="admin-main" style="max-width:960px;margin:20px auto;padding:0 16px 40px;">
     <h1 style="color:#7eb8e8;font-family:Georgia,serif;">GP Fantasy League settings</h1>
     <p style="color:#999;font-size:13px;max-width:42em;">
-      All GPFL knobs live here. Budget and prices are play-money only — they never post to club ledgers.
+      Squad budget and prices are fantasy play-money only (never club ledgers).
+      Optional <b>cash prizes</b> below credit the <b>owner wallet</b> (same pot as Bookies / Owners Shop).
       Owners opt in on <a href="fantasy.html" style="color:#9cf;">fantasy.html</a>.
     </p>
     <p id="status" style="min-height:1.2em;color:#9f9;"></p>
@@ -90,6 +91,41 @@
     </section>
 
     <section class="gpfl-section">
+      <h2>Cash prizes (owner wallet)</h2>
+      <div class="gpfl-grid">
+        <label class="gpfl-check"><input type="checkbox" id="cash_prizes_enabled"> Cash prizes enabled</label>
+        <label>Season 1st ₿ <input id="prize_season_1" type="number" step="1" min="0"></label>
+        <label>Season 2nd ₿ <input id="prize_season_2" type="number" step="1" min="0"></label>
+        <label>Season 3rd ₿ <input id="prize_season_3" type="number" step="1" min="0"></label>
+        <label>Month 1st ₿ <input id="prize_month_1" type="number" step="1" min="0"></label>
+        <label>Month 2nd ₿ <input id="prize_month_2" type="number" step="1" min="0"></label>
+        <label>Month 3rd ₿ <input id="prize_month_3" type="number" step="1" min="0"></label>
+      </div>
+      <p style="font-size:12px;color:#888;margin:8px 0 0;">
+        Set amounts to 0 to skip a place. Pay outs are idempotent (won’t double-pay the same place).
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:12px;">
+        <button type="button" id="paySeasonBtn" class="admin-btn" style="padding:8px 14px;">Pay season top 3</button>
+        <label style="font-size:12px;color:#bbb;">
+          Month
+          <select id="payMonthSelect" style="display:block;margin-top:4px;padding:8px;background:#111;border:1px solid #444;color:#eee;">
+            <option value="august">August</option>
+            <option value="september">September</option>
+            <option value="october">October</option>
+            <option value="november">November</option>
+            <option value="december">December</option>
+            <option value="january">January</option>
+            <option value="february">February</option>
+            <option value="march">March</option>
+            <option value="april">April</option>
+            <option value="may">May</option>
+          </select>
+        </label>
+        <button type="button" id="payMonthBtn" class="admin-btn" style="padding:8px 14px;">Pay month top 3</button>
+      </div>
+    </section>
+
+    <section class="gpfl-section">
       <h2>Chips (1 each / season)</h2>
       <div class="gpfl-grid">
         <label class="gpfl-check"><input type="checkbox" id="chips_enabled"> Chips enabled</label>
@@ -121,6 +157,6 @@
 
     <button type="button" id="saveBtn" class="admin-btn" style="padding:10px 18px;">Save settings</button>
   </main>
-  <script type="module" src="admin_gpfl_settings.js?v=20260818-gpfl-v2"></script>
+  <script type="module" src="admin_gpfl_settings.js?v=20260822-prizes"></script>
 </body>
 </html>

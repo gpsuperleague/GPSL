@@ -29,6 +29,12 @@ const NUM = [
   "pts_red",
   "pts_potm",
   "captain_multiplier",
+  "prize_season_1",
+  "prize_season_2",
+  "prize_season_3",
+  "prize_month_1",
+  "prize_month_2",
+  "prize_month_3",
 ];
 
 const BOOL = [
@@ -39,6 +45,7 @@ const BOOL = [
   "chip_wildcard_enabled",
   "chip_triple_captain_enabled",
   "chip_bench_boost_enabled",
+  "cash_prizes_enabled",
 ];
 
 function fillForm(s) {
@@ -117,6 +124,46 @@ async function save() {
 }
 
 document.getElementById("saveBtn")?.addEventListener("click", () => save());
+
+async function paySeason() {
+  if (!confirm("Pay GPFL season top-3 cash prizes to owner wallets?")) return;
+  setStatus("status", "Paying season prizes…", true);
+  const { data, error } = await supabase.rpc("admin_gpfl_pay_season_prizes", {
+    p_gpfl_season_id: null,
+  });
+  if (error) {
+    setStatus("status", error.message, false);
+    return;
+  }
+  setStatus(
+    "status",
+    `Season prizes: paid ${data?.paid ?? 0}, skipped ${data?.skipped ?? 0}, total ₿${data?.total_amount ?? 0}.`,
+    true
+  );
+}
+
+async function payMonth() {
+  const month = document.getElementById("payMonthSelect")?.value;
+  if (!month) return;
+  if (!confirm(`Pay GPFL ${month} month top-3 cash prizes to owner wallets?`)) return;
+  setStatus("status", `Paying ${month} prizes…`, true);
+  const { data, error } = await supabase.rpc("admin_gpfl_pay_month_prizes", {
+    p_gpsl_month: month,
+    p_gpfl_season_id: null,
+  });
+  if (error) {
+    setStatus("status", error.message, false);
+    return;
+  }
+  setStatus(
+    "status",
+    `${month}: paid ${data?.paid ?? 0}, skipped ${data?.skipped ?? 0}, total ₿${data?.total_amount ?? 0}.`,
+    true
+  );
+}
+
+document.getElementById("paySeasonBtn")?.addEventListener("click", () => paySeason());
+document.getElementById("payMonthBtn")?.addEventListener("click", () => payMonth());
 
 initAdminPage({ title: "GPFL settings" })
   .then(() => load())

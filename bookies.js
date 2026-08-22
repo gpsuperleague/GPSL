@@ -58,16 +58,11 @@ async function loadHeader() {
   const balEl = document.getElementById("bkBalance");
   if (clubEl) clubEl.textContent = currentClub || "—";
 
-  if (!currentClub) {
+  const { data, error } = await supabase.rpc("owner_wallet_get_self");
+  if (error) {
     if (balEl) balEl.textContent = "—";
     return;
   }
-
-  const { data } = await supabase
-    .from("Club_Finances")
-    .select("balance")
-    .eq("club_name", currentClub)
-    .maybeSingle();
   if (balEl) balEl.textContent = formatMoney(data?.balance ?? 0);
 }
 
@@ -271,7 +266,7 @@ async function placeBet(selectionId) {
   }
   if (
     !confirm(
-      `Place stake ${formatMoney(stake)} on this selection?\n\nPosted to finances as Bookies Expenditure.`
+      `Place stake ${formatMoney(stake)} on this selection?\n\nDebited from your owner balance (not club funds).`
     )
   ) {
     return;

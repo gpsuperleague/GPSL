@@ -92,21 +92,21 @@ export const FINANCE_UI_SECTIONS = [
   },
   {
     id: "bookies",
-    title: "Bookies",
+    title: "Bookies (legacy club)",
     intro:
-      "Play-money season & cup markets. Each stake and win is listed individually under Expenditure / Income.",
+      "Older Bookies stakes/wins that posted to the club ledger. New slips use the owner wallet (see Bookies / Owners Shop).",
     lines: [
       {
         id: "bookies_income",
-        label: "Bookies Income",
+        label: "Bookies Income (legacy)",
         types: ["bookies_income"],
-        note: "Winning returns — one ledger line per settled bet (market, selection, odds, stake).",
+        note: "Legacy club wins only.",
       },
       {
         id: "bookies_expenditure",
-        label: "Bookies Expenditure",
+        label: "Bookies Expenditure (legacy)",
         types: ["bookies_expenditure"],
-        note: "Stakes placed — one ledger line per bet (max ₿1,000, once per option).",
+        note: "Legacy club stakes only.",
       },
     ],
   },
