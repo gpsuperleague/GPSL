@@ -100,6 +100,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location = "login.html";
     return;
   }
+
+  const welcome = document.getElementById("obWelcome");
+  try {
+    const { data: self } = await supabase.rpc("owner_registry_get_self");
+    const tag = String(self?.owner_tag || "").trim();
+    if (welcome) {
+      welcome.textContent = tag
+        ? `${tag} Personal Account`
+        : "Personal Account";
+    }
+    if (tag) document.title = `${tag} · GPSL Building Society`;
+  } catch {
+    if (welcome) welcome.textContent = "Personal Account";
+  }
+
   document.getElementById("obRefresh")?.addEventListener("click", () => loadStatement());
   await loadStatement();
 });

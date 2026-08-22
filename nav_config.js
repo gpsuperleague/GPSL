@@ -47,7 +47,7 @@ export const NAV_SECTIONS = [
       { href: "finances.html", label: "Club Finances", page: "finances" },
       {
         href: "owners_bank.html",
-        label: "Owner Bank",
+        label: "GPSL Building Society",
         page: "owners_bank",
         indent: true,
       },

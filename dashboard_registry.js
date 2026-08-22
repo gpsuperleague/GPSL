@@ -144,7 +144,7 @@ export const DASHBOARD_PANELS = [
   p("stadium", "Stadium", "stadium.html", { defaultOn: true }),
   p("medical_room", "Medical Room", "medical_room.html", { defaultOn: true }),
   p("finances", "Club Finances", "finances.html", { defaultOn: true }),
-  p("owners_bank", "Owner Bank", "owners_bank.html", { defaultOn: true }),
+  p("owners_bank", "GPSL Building Society", "owners_bank.html", { defaultOn: true }),
   p("squad", "Squad", "squad.html", { defaultOn: true }),
   p("transfer_center", "Transfer Centre", "transfer_center.html", { defaultOn: true }),
   p("matchday", "Match Day", "matchday.html", { defaultOn: true }),
