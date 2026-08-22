@@ -166,6 +166,9 @@ function canTransfer(data = state.payload) {
 
 function patchMissingHint(err) {
   const m = String(err?.message || err || "");
+  if (/gpfl_prizes_board/i.test(m)) {
+    return m + " — run supabase/sql/patches/gpfl_prizes_board_20260822.sql in Supabase.";
+  }
   if (/gpfl_|column .* does not exist|Could not find the function/i.test(m)) {
     return (
       m +
@@ -1204,6 +1207,96 @@ async function loadBoard() {
   </table>`;
 }
 
+function placeLabel(n) {
+  const p = Number(n);
+  if (p === 1) return "1st";
+  if (p === 2) return "2nd";
+  if (p === 3) return "3rd";
+  return `${p}th`;
+}
+
+function prizeRowsHtml(rows) {
+  const list = (rows || []).filter((r) => Number(r.amount) > 0);
+  if (!list.length) {
+    return `<p class="gpfl-muted">No prizes set for this scope.</p>`;
+  }
+  return `<table class="gpfl-table">
+    <thead><tr><th>Place</th><th class="num">Prize</th></tr></thead>
+    <tbody>
+      ${list
+        .map(
+          (r) => `<tr>
+            <td>${esc(placeLabel(r.place))}</td>
+            <td class="num">${esc(formatMoney(r.amount))}</td>
+          </tr>`
+        )
+        .join("")}
+    </tbody>
+  </table>`;
+}
+
+async function loadPrizesBoard() {
+  const root = document.getElementById("gpflPrizes");
+  if (!root) return;
+
+  root.innerHTML = `<p class="gpfl-muted">Loading…</p>`;
+  const { data, error } = await supabase.rpc("gpfl_prizes_board");
+  if (error) {
+    root.innerHTML = `<p class="gpfl-muted">${esc(patchMissingHint(error))}</p>`;
+    return;
+  }
+
+  if (!data?.enabled) {
+    root.innerHTML = `<p class="gpfl-muted">Cash prizes are currently disabled.</p>`;
+    return;
+  }
+
+  const payouts = data?.payouts || [];
+  const seasonPaid = payouts.filter((p) => p.scope === "season");
+  const monthPaid = payouts.filter((p) => p.scope === "month");
+
+  const winnersBlock = (title, rows) => {
+    if (!rows.length) return "";
+    return `<h3 class="gpfl-subhead" style="margin-top:12px;">${title}</h3>
+      <table class="gpfl-table">
+        <thead><tr><th>Place</th><th>Winner</th><th class="num">Paid</th></tr></thead>
+        <tbody>
+          ${rows
+            .map(
+              (p) => `<tr ${p.is_me ? 'style="background:rgba(60,120,180,0.15)"' : ""}>
+                <td>${esc(placeLabel(p.place))}${
+                  p.gpsl_month ? ` · ${esc(monthLabel(p.gpsl_month))}` : ""
+                }</td>
+                <td>${esc(p.owner_name || p.owner_tag || "—")}${
+                  p.team_name ? ` <span class="gpfl-muted">(${esc(p.team_name)})</span>` : ""
+                }${p.is_me ? ' <span class="gpfl-badge">you</span>' : ""}</td>
+                <td class="num">${esc(formatMoney(p.amount))}</td>
+              </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>`;
+  };
+
+  root.innerHTML = `
+    <div class="gpfl-grid-2">
+      <div>
+        <h3 class="gpfl-subhead">Season top 3</h3>
+        ${prizeRowsHtml(data.season)}
+      </div>
+      <div>
+        <h3 class="gpfl-subhead">Each month top 3</h3>
+        ${prizeRowsHtml(data.month)}
+      </div>
+    </div>
+    ${
+      seasonPaid.length || monthPaid.length
+        ? winnersBlock("Paid winners", [...seasonPaid, ...monthPaid])
+        : `<p class="gpfl-muted" style="margin-top:12px;">No prizes paid yet this season.</p>`
+    }
+  `;
+}
+
 function fillMonthSelects() {
   const entries = Object.entries(GPSL_MONTH_LABELS || {}).filter(([k]) => k !== "playoffs");
   const html = entries
@@ -1343,6 +1436,7 @@ async function refresh() {
     }
     await loadBoard();
   }
+  await loadPrizesBoard();
   await loadContent();
 }
 

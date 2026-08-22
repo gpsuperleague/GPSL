@@ -797,16 +797,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
       if (error) {
         setStatus("setupStatus", `❌ ${error.message}${rpcMissingHint(error.message)}`, false);
-        return;
-      }
-      const inserted = data?.inserted ?? 0;
-      setStatus(
-        "setupStatus",
+      return;
+    }
+    const inserted = data?.inserted ?? 0;
+    setStatus(
+      "setupStatus",
         inserted > 0
           ? `✅ Step 1 batch — imported ${inserted}. Run again until it says no missing labels, then Refresh pool cache.`
           : `✅ Step 1 done — no missing labels left. Next: Refresh pool cache.`,
-        true
-      );
+      true
+    );
     } catch (err) {
       setStatus(
         "setupStatus",
