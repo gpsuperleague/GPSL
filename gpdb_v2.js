@@ -1053,6 +1053,43 @@ document.addEventListener("DOMContentLoaded", () => {
     return parts.length ? parts.join(",") : null;
   }
 
+  /** Sentinel for blank / null Playstyle in the multi-filter. */
+  const NO_PLAYSTYLE_FILTER = "NO_PLAYSTYLE";
+
+  function buildPlaystyleOrClause(values) {
+    const hasNone = values.includes(NO_PLAYSTYLE_FILTER);
+    const styles = values.filter((v) => v !== NO_PLAYSTYLE_FILTER);
+    const parts = [];
+
+    if (styles.length > 0) {
+      // Quote values that need it for PostgREST .or() lists
+      const inList = styles
+        .map((s) => {
+          const t = String(s);
+          if (/[",()]/.test(t) || t.includes(" ")) {
+            return `"${t.replace(/"/g, '""')}"`;
+          }
+          return t;
+        })
+        .join(",");
+      parts.push(`Playstyle.in.(${inList})`);
+    }
+
+    if (hasNone) {
+      parts.push(
+        "Playstyle.is.null",
+        "Playstyle.eq.''",
+        "Playstyle.eq.' '",
+        "Playstyle.eq.Basic",
+        "Playstyle.eq.basic",
+        "Playstyle.eq.None",
+        "Playstyle.eq.none"
+      );
+    }
+
+    return parts.length ? parts.join(",") : null;
+  }
+
   function applyTextColumnFilter(query, col, value) {
     if (!value || value.trim() === "") return query;
     if (col === "Name" && useNameSearchKey) {
@@ -1080,6 +1117,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (col === "Contracted_Team") {
           const orClause = buildContractedTeamOrClause(values);
+          if (orClause) {
+            query = query.or(orClause);
+          }
+        } else if (col === "Playstyle") {
+          const orClause = buildPlaystyleOrClause(values);
           if (orClause) {
             query = query.or(orClause);
           }
@@ -1715,6 +1757,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (col === "Contracted_Team") {
       if (!value || String(value).trim() === "") return "";
       return CLUB_NAME_MAP[value] || value;
+    }
+
+    if (col === "Playstyle") {
+      const s = value == null ? "" : String(value).trim();
+      if (!s || /^basic$/i.test(s) || /^none$/i.test(s)) return "No Playstyle";
+      return s;
     }
 
     if (col === "contract_status") {
@@ -3052,6 +3100,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const bIdx = bi === -1 ? 999 : bi;
             return aIdx - bIdx;
           });
+      } else if (col === "Playstyle") {
+        uniqueValues = [...new Set(values.map((v) => String(v).trim()))]
+          .filter((v) => v !== "" && !/^basic$/i.test(v) && !/^none$/i.test(v))
+          .sort((a, b) => a.localeCompare(b));
+        uniqueValues = [NO_PLAYSTYLE_FILTER, ...uniqueValues];
       } else {
         uniqueValues = [...new Set(values.map(v => String(v).trim()))]
           .filter(v => v !== "")
@@ -3073,6 +3126,9 @@ document.addEventListener("DOMContentLoaded", () => {
             value = v;
             label = CLUB_NAME_MAP[v] || v;
           }
+        } else if (col === "Playstyle" && v === NO_PLAYSTYLE_FILTER) {
+          value = NO_PLAYSTYLE_FILTER;
+          label = "No Playstyle";
         }
         return { value, label };
       });
