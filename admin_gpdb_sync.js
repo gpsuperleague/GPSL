@@ -1666,6 +1666,36 @@ async function clearPlaystyleJob() {
   return data;
 }
 
+function playstyleForceAllSelected() {
+  return !!document.getElementById("playstyleForceAll")?.checked;
+}
+
+function setPlaystyleScopeUi(forceAll) {
+  const empty = document.getElementById("playstyleEmptyOnly");
+  const all = document.getElementById("playstyleForceAll");
+  if (empty) empty.checked = !forceAll;
+  if (all) all.checked = !!forceAll;
+}
+
+async function countPlaystyleQueueUi() {
+  const label = document.getElementById("playstyleQueueCountLabel");
+  const forceAll = playstyleForceAllSelected();
+  if (label) label.textContent = "Counting…";
+  try {
+    const batch = await fetchPlaystyleQueueBatch(1, forceAll, null);
+    const n = Number(batch[0]?.total_count);
+    if (label) {
+      label.textContent = Number.isFinite(n)
+        ? `${forceAll ? "All players" : "Empty/placeholder only"}: ${n.toLocaleString()} in queue`
+        : "Queue empty (or RPC missing).";
+    }
+    return Number.isFinite(n) ? n : 0;
+  } catch (err) {
+    if (label) label.textContent = err.message || "Count failed";
+    return null;
+  }
+}
+
 function renderPlaystyleCheckpoint(job) {
   const el = document.getElementById("playstyleCheckpointLabel");
   if (!el) return;
@@ -1673,7 +1703,7 @@ function renderPlaystyleCheckpoint(job) {
     el.textContent = "Checkpoint: none (will start from the beginning).";
     return;
   }
-  const mode = job.force_all ? "force all" : "blank/None/Basic only";
+  const mode = job.force_all ? "ALL players" : "empty/placeholder only";
   el.textContent =
     `Checkpoint: ${job.status} · ${mode} · last ${job.last_player_name || "?"} (${job.last_konami_id})` +
     ` · processed ${(job.processed_count ?? 0).toLocaleString()}` +
@@ -1686,9 +1716,8 @@ async function refreshPlaystyleCheckpointLabel() {
   try {
     const job = await fetchPlaystyleJob();
     renderPlaystyleCheckpoint(job);
-    if (job?.force_all) {
-      const box = document.getElementById("playstyleForceAll");
-      if (box && job.status !== "idle" && job.status !== "done") box.checked = !!job.force_all;
+    if (job && job.status !== "idle" && job.status !== "done") {
+      setPlaystyleScopeUi(!!job.force_all);
     }
     if (job?.player_delay_sec) {
       const delay = document.getElementById("playstylePlayerDelay");
@@ -1739,7 +1768,7 @@ async function runPlaystyleRefresh() {
     return;
   }
 
-  let forceAll = !!document.getElementById("playstyleForceAll")?.checked;
+  let forceAll = playstyleForceAllSelected();
   const wantResume = !!document.getElementById("playstyleResume")?.checked;
   const delaySec = Math.max(
     1,
@@ -1773,18 +1802,36 @@ async function runPlaystyleRefresh() {
     skippedTotal = Number(existingJob.skipped_count) || 0;
     processed = Number(existingJob.processed_count) || 0;
     totalExpected = existingJob.total_count != null ? Number(existingJob.total_count) : null;
-    const forceBox = document.getElementById("playstyleForceAll");
-    if (forceBox) forceBox.checked = forceAll;
+    setPlaystyleScopeUi(forceAll);
   }
+
+  let queuePeek = totalExpected;
+  if (!canResume) {
+    try {
+      const peek = await fetchPlaystyleQueueBatch(1, forceAll, null);
+      queuePeek = Number(peek[0]?.total_count);
+      if (Number.isFinite(queuePeek)) totalExpected = queuePeek;
+    } catch (_) {
+      /* confirm without count */
+    }
+  }
+
+  const scopeLabel = forceAll
+    ? "ALL live Players (~20k+)"
+    : "empty / placeholder playstyles only";
+  const countBit = Number.isFinite(queuePeek)
+    ? `\nAbout ${Number(queuePeek).toLocaleString()} in the queue.`
+    : "";
 
   if (
     !window.confirm(
       canResume
-        ? `Resume playstyle refresh after ${existingJob.last_player_name || "?"} (${afterId})?\n` +
-            `Already processed ${processed.toLocaleString()} · updated ${updatedTotal.toLocaleString()}.`
+        ? `Resume playstyle refresh (${scopeLabel}) after ${existingJob.last_player_name || "?"} (${afterId})?\n` +
+            `Already processed ${processed.toLocaleString()} · updated ${updatedTotal.toLocaleString()}.` +
+            countBit
         : forceAll
-          ? "Refresh Playstyle for ALL live Players from PESDB (Att→Def preference)? This can take hours. Progress is checkpointed in the DB."
-          : "Refresh Playstyle for blank/None/Basic players from PESDB (Att→Def preference)? Progress is checkpointed in the DB."
+          ? `Refresh Playstyle for ${scopeLabel} from PESDB?${countBit}\n\nThis can take many hours. Prefer “Only empty / placeholder” unless you need a full re-scrape.`
+          : `Refresh Playstyle for ${scopeLabel} from PESDB?${countBit}\n\nPlayers who already have a real playstyle are skipped.`
     )
   ) {
     return;
@@ -1826,8 +1873,8 @@ async function runPlaystyleRefresh() {
       canResume
         ? `Resuming after ${afterId}…`
         : forceAll
-          ? "Loading all players for playstyle refresh…"
-          : "Loading players with blank/None/Basic playstyle…",
+          ? "Loading ALL players for playstyle refresh…"
+          : "Loading empty/placeholder playstyles only…",
       true
     );
 
@@ -2110,6 +2157,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("playstyleRefreshBtn")?.addEventListener("click", runPlaystyleRefresh);
   document.getElementById("playstyleStopBtn")?.addEventListener("click", stopPlaystyleRefresh);
   document.getElementById("playstyleClearCheckpointBtn")?.addEventListener("click", clearPlaystyleCheckpointUi);
+  document.getElementById("playstyleQueueCountBtn")?.addEventListener("click", countPlaystyleQueueUi);
+  document.getElementById("playstyleEmptyOnly")?.addEventListener("change", countPlaystyleQueueUi);
+  document.getElementById("playstyleForceAll")?.addEventListener("change", countPlaystyleQueueUi);
   document.getElementById("playstylePlayerDelay")?.addEventListener("input", (e) => {
     e.target.dataset.userEdited = "1";
   });

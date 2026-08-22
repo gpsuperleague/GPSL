@@ -107,9 +107,23 @@
           then redeploy edge function <code>gpdb-pesdb-scrape</code>.
         </p>
         <div class="scrape-options">
-          <label><input type="checkbox" id="playstyleForceAll"> Force refresh all players (not only blank/None/Basic)</label>
-          <label><input type="checkbox" id="playstyleResume" checked> Resume from DB checkpoint</label>
+          <fieldset style="border:1px solid #3a5a3a;border-radius:6px;padding:10px 12px;margin:0 0 8px;">
+            <legend style="color:#8c8;padding:0 6px;">Who to check</legend>
+            <label style="display:block;margin:4px 0;">
+              <input type="radio" name="playstyleScope" id="playstyleEmptyOnly" value="empty" checked>
+              <b>Only empty / placeholder</b> (blank, None, Basic, raw Att:/Def:) — skips players who already have a real playstyle
+            </label>
+            <label style="display:block;margin:4px 0;color:#caa;">
+              <input type="radio" name="playstyleScope" id="playstyleForceAll" value="all">
+              All live Players (~20k+) — slow; only if you want to re-scrape everyone
+            </label>
+          </fieldset>
+          <label><input type="checkbox" id="playstyleResume" checked> Resume from DB checkpoint <span style="color:#888;">(keeps the same scope as that checkpoint)</span></label>
           <label>Delay per player (sec) <input type="number" id="playstylePlayerDelay" min="1" value="2" step="0.5" style="width:52px;padding:4px 6px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;"></label>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button type="button" class="button" id="playstyleQueueCountBtn" style="background:#2a3a2a;">Count queue now</button>
+          <span id="playstyleQueueCountLabel" style="font-size:12px;color:#8a8;align-self:center;"></span>
         </div>
         <div class="row" style="margin-top:12px;">
           <button type="button" class="button" id="playstyleRefreshBtn" style="background:#335533;">Start playstyle refresh</button>
