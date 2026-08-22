@@ -108,6 +108,47 @@ body.bookies-page {
   overflow: hidden;
 }
 
+.bk-market--yours {
+  border-color: #c9a227;
+  box-shadow: inset 3px 0 0 #e8c060;
+  background: #14180e;
+}
+
+.bk-market--yours .bk-market-head {
+  background: linear-gradient(180deg, #2a2818 0%, #1a1c10 100%);
+}
+
+.bk-market--yours .bk-market-title {
+  color: #ffe9a8;
+}
+
+.bk-pill--yours {
+  background: #3d3420;
+  color: #ffcc66;
+  border: 1px solid #8a7040;
+}
+
+.bk-sel--yours td {
+  background: rgba(232, 192, 96, 0.1);
+}
+
+.bk-sel--yours:hover td {
+  background: rgba(232, 192, 96, 0.16);
+}
+
+.bk-yours-mark {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffcc66;
+  border: 1px solid #8a7040;
+  border-radius: 3px;
+  padding: 1px 6px;
+  background: #2a2410;
+}
+
 .bk-market-head {
   display: flex;
   flex-wrap: wrap;

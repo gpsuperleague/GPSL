@@ -149,7 +149,10 @@ function renderMarkets() {
   root.innerHTML = markets
     .map((m) => {
       const sels = selectionsByMarket.get(m.id) || [];
-      const marketTaken = alreadyBetOnMarket(m.id);
+      const myBet = myBets.find(
+        (b) => Number(b.market_id) === Number(m.id) && b.status !== "void"
+      );
+      const marketTaken = Boolean(myBet);
       const pill =
         m.status === "open"
           ? "open"
@@ -160,8 +163,8 @@ function renderMarkets() {
         .map((s) => {
           const taken = alreadyBetOn(s.id);
           const canBet = m.status === "open" && currentClub && !marketTaken;
-          return `<tr>
-            <td>${escapeHtml(s.label)}${taken ? ` <span class="bk-muted">(your slip)</span>` : ""}</td>
+          return `<tr class="${taken ? "bk-sel--yours" : ""}">
+            <td>${escapeHtml(s.label)}${taken ? ` <span class="bk-yours-mark">Your slip</span>` : ""}</td>
             <td class="bk-odds">${escapeHtml(formatFractionalOdds(s.odds_decimal, s.odds_fractional))}</td>
             <td>
               ${
@@ -180,9 +183,14 @@ function renderMarkets() {
         })
         .join("");
 
-      return `<article class="bk-market" data-market="${m.id}">
+      return `<article class="bk-market${marketTaken ? " bk-market--yours" : ""}" data-market="${m.id}">
         <div class="bk-market-head" data-toggle="${m.id}">
           <span class="bk-market-title">${escapeHtml(m.title)}</span>
+          ${
+            marketTaken
+              ? `<span class="bk-pill bk-pill--yours">Your bet · ${escapeHtml(myBet.status || "open")}</span>`
+              : ""
+          }
           <span class="bk-pill bk-pill--${pill}">${escapeHtml(m.status)}</span>
           <span class="bk-muted">${sels.length} options · ${escapeHtml(m.market_kind)}</span>
         </div>
