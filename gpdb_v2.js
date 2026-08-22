@@ -36,6 +36,7 @@ import {
   buildGpdbContractedBidCellHtml,
   formatForeignContractGpdbHtml,
 } from "./player_transfer_status.js";
+import { isPesdbLegacyCard } from "./player_contracts.js";
 import { installRangeSteppers } from "./range_filter_steppers.js?v=20260819-contract-steppers";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 import { GPDB_TIPS } from "./owner_page_tips.js";
@@ -188,6 +189,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "foreign_contract_sold_season_id",
     "foreign_contract_unlock_season_label",
     "foreign_contract_lock_kind",
+    "pesdb_unavailable",
     "Konami_ID",
   ];
 
@@ -221,6 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "foreign_contract_sold_season_id",
     "foreign_contract_unlock_season_label",
     "foreign_contract_lock_kind",
+    "pesdb_unavailable",
     "intl_caps",
     "intl_goals",
   ];
@@ -904,6 +907,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function auctionExcludedBidHtml() {
     return `<span class="locked-msg gpdb-auction-reserved-msg" title="Reserved for a special auction — not available in the draft">Reserved for special auction</span>`;
+  }
+
+  function legacyCardBidHtml() {
+    return `<span class="locked-msg gpdb-legacy-msg" title="Off pesdb.net — cannot be sold or signed until a PESDB sync restores the card">Legacy — not available</span>`;
   }
 
   async function loadUser() {
@@ -1994,6 +2001,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const hasClub = !!player.Contracted_Team;
         const seasonExcluded = isSeasonExcludedPlayer(player);
         const auctionExcluded = !seasonExcluded && isAuctionExcludedPlayer(player);
+        const legacyCard = !seasonExcluded && isPesdbLegacyCard(player);
 
         let bidCell = `<span class="locked-msg">Loading…</span>`;
         const callUpCell = buildGpdbCallUpCellHtml(player);
@@ -2007,6 +2015,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (seasonExcluded) {
           bidCell = seasonExcludedBidHtml();
+        } else if (legacyCard) {
+          bidCell = legacyCardBidHtml();
         } else if (auctionExcluded) {
           bidCell = auctionExcludedBidHtml();
         } else if (GLOBAL_SETTINGS) {
@@ -2063,12 +2073,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const suspRows = GPDB_SUSPENSIONS_BY_PLAYER.get(String(player.Konami_ID)) || [];
         const suspBadge = formatSuspensionBadgeHtml(suspRows);
-        const nameCell = seasonExcluded
-          ? `${formatCellValue("Name", player)} <span class="gpdb-excluded-badge" title="Admin season exclusion">Unavailable</span>`
-          : `${formatCellValue("Name", player)}${suspBadge}`;
+        let nameCell = formatCellValue("Name", player);
+        if (seasonExcluded) {
+          nameCell += ` <span class="gpdb-excluded-badge" title="Admin season exclusion">Unavailable</span>`;
+        } else if (legacyCard) {
+          nameCell += ` <span class="gpdb-legacy-badge" title="Off pesdb.net — not sellable or signable until PESDB sync restores the card">Legacy</span>`;
+        }
+        nameCell += suspBadge;
 
         const rowClasses = [
           seasonExcluded ? "gpdb-row-excluded" : "",
+          legacyCard ? "gpdb-row-legacy" : "",
           auctionExcluded ? "gpdb-row-auction-reserved" : "",
           suspRows.length ? "gpdb-row-suspended" : "",
         ]
@@ -2086,6 +2101,7 @@ document.addEventListener("DOMContentLoaded", () => {
               data-nation="${player.Nation ?? ""}"
               data-age="${player.Age ?? ""}"
               data-season-excluded="${seasonExcluded ? "1" : "0"}"
+              data-legacy="${legacyCard ? "1" : "0"}"
               data-auction-excluded="${auctionExcluded ? "1" : "0"}">
             <td>${playerThumbLinkHtml(player.Konami_ID, {
               className: "gpdb-thumb",

@@ -65,7 +65,7 @@ export const TRANSFER_STATUS_LABELS = {
   [TRANSFER_STATUS.OVERFLOW_PAID_UP]:
     "Unavailable — contract paid up (squad overflow) until next season",
   [TRANSFER_STATUS.PESDB_LEGACY]:
-    "Legacy card — off pesdb.net, not sellable (renew 1 season)",
+    "Legacy card — off pesdb.net; cannot sell or sign until PESDB sync",
 };
 
 const PILL_CLASS = {

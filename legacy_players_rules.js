@@ -19,7 +19,9 @@ export function getLegacyPlayersRules() {
           `In the <b>final contract year</b>, renew from <a href="squad.html">Squad</a>:
         <b>one season at a time</b> (not a new 3-year deal). Home-grown ≤23 may keep the same wage on renew.`,
           "Or choose <b>Expire — release for MV</b> from Squad to drop the player for market value.",
-          "If the card returns on a future PESDB sync, it becomes a normal GPDB card again (sellable, standard renewals).",
+          `<b>If released</b>, they stay in GPDB as a free agent but remain <b>unpurchaseable</b>
+        (no draft / FA bids) until a future PESDB sync restores the card.`,
+          "If the card returns on a future PESDB sync, it becomes a normal GPDB card again (sellable or draftable as a free agent).",
         ],
       },
     ],
