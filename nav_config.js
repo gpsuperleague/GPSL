@@ -263,6 +263,12 @@ export const NAV_SECTIONS = [
       { href: "natter.html", label: "Natter", page: "natter", indent: true },
       { href: "bookies.html", label: "Bookies", page: "bookies", indent: true },
       {
+        href: "owners_shop_sketch.html",
+        label: "Owners Shop (sketch)",
+        page: "owners_shop_sketch",
+        indent: true,
+      },
+      {
         href: "challenges.html",
         label: "Season Challenges",
         page: "challenges",

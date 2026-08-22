@@ -180,6 +180,7 @@ export const DASHBOARD_PANELS = [
   p("owner_rankings", "Owner Rankings", "owner_rankings.html"),
   p("owner_profile", "Owner Profile", "owner_profile.html"),
   p("bookies", "Bookies", "bookies.html"),
+  p("owners_shop_sketch", "Owners Shop (sketch)", "owners_shop_sketch.html"),
   p("fantasy", "GP Fantasy League", "fantasy.html"),
   p("learning_gpsl", "Learning GPSL", "learning_gpsl.html"),
   p("login", "Login", "login.html"),
