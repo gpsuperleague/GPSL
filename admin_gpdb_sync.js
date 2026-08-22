@@ -2401,6 +2401,7 @@ async function applyOneOffPlayer() {
 
   setStatus("oneOffStatus", "Applying…", true);
   try {
+    const beforePs = String(gpdb.Playstyle ?? "").trim();
     let data;
     let error;
     ({ data, error } = await supabase.rpc("gpdb_pesdb_apply_player_fields", {
@@ -2419,15 +2420,6 @@ async function applyOneOffPlayer() {
     }
     if (error) throw error;
 
-    const updated = Number(data?.updated) || 0;
-    setStatus(
-      "oneOffStatus",
-      updated
-        ? `Applied to GPDB (${updated} row). Re-search to see live values.`
-        : `No row changed (already matched, or playstyle scrape miss skipped).`,
-      true
-    );
-
     // Refresh GPDB snapshot in the match list
     const { data: fresh } = await supabase
       .from("Players")
@@ -2440,6 +2432,31 @@ async function applyOneOffPlayer() {
       if (oneOffLastCompare) oneOffLastCompare.gpdb = fresh;
       renderOneOffCompare(fresh, pesdb, fields);
     }
+
+    const rpcUpdated = Number(data?.updated) || 0;
+    const afterPs = String(fresh?.Playstyle ?? "").trim();
+    const playstyleChanged = beforePs !== afterPs;
+    const looksApplied =
+      rpcUpdated > 0 ||
+      playstyleChanged ||
+      (fields.playstyle &&
+        afterPs &&
+        afterPs.toLowerCase() === String(pesdb.playing_style || "").trim().toLowerCase());
+
+    setStatus(
+      "oneOffStatus",
+      looksApplied
+        ? `Applied to GPDB` +
+            (rpcUpdated > 0 ? ` (${rpcUpdated} row)` : "") +
+            (playstyleChanged
+              ? ` · Playstyle “${beforePs || "—"}” → “${afterPs || "—"}”`
+              : afterPs
+                ? ` · Playstyle is now “${afterPs}”`
+                : "") +
+            `.`
+        : `No change needed (already matched PESDB, or scrape miss skipped).`,
+      true
+    );
   } catch (err) {
     setStatus("oneOffStatus", err.message || "Apply failed.", false);
   }

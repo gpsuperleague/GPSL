@@ -22,6 +22,7 @@ DECLARE
   v_seen int := 0;
   v_set_parts text[];
   v_sql text;
+  v_rowcount int;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -109,7 +110,8 @@ BEGIN
       v_kid
     );
     EXECUTE v_sql;
-    IF FOUND THEN
+    GET DIAGNOSTICS v_rowcount = ROW_COUNT;
+    IF v_rowcount > 0 THEN
       v_updated := v_updated + 1;
     ELSE
       v_skipped := v_skipped + 1;
