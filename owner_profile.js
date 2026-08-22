@@ -84,7 +84,13 @@ function renderHeader(profile, totals) {
   }
 
   const t = totals || {};
+  const walletBit =
+    profile.is_self && profile.owner_balance != null
+      ? `<span>Owner bank <b>${formatMoney(profile.owner_balance)}</b>
+          <a class="gpsl-link" href="owners_bank.html" style="margin-left:6px;font-size:12px">Statement</a></span>`
+      : "";
   document.getElementById("totalsRow").innerHTML = `
+    ${walletBit}
     <span><b>${t.seasons ?? 0}</b> seasons</span>
     <span><b>${t.won ?? 0}</b>-${t.drawn ?? 0}-${t.lost ?? 0}</span>
     <span>Win % <b>${t.win_pct != null ? t.win_pct : "—"}</b></span>
@@ -283,6 +289,10 @@ async function loadProfile(ownerId) {
   }
 
   const profile = data.profile || {};
+  if (profile.is_self) {
+    const { data: wallet } = await supabase.rpc("owner_wallet_get_self");
+    profile.owner_balance = wallet?.balance ?? 0;
+  }
   renderHeader(profile, data.career_totals);
   renderTransfers(data.transfers, data.highest_fee_paid, data.highest_fee_received);
   renderSeasons(data.seasons || []);

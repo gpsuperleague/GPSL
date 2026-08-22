@@ -17,8 +17,6 @@ export const LEDGER_TYPE_TO_LINE = {
   new_owner_release: "transfer_sales",
   special_auction_fee: "transfer_purchases",
   special_auction_prize: "prize_other",
-  bookies_income: "bookies_income",
-  bookies_expenditure: "bookies_expenditure",
   transfer_purchase: "transfer_purchases",
   transfer_agent_fee: "transfer_purchases",
   gate_league_home: "infra_gates",
@@ -87,26 +85,6 @@ export const FINANCE_UI_SECTIONS = [
         types: ["transfer_purchase", "transfer_agent_fee", "special_auction_fee"],
         note:
           "All players bought: draft auction wins, transfer market, special auction fees. Agent fees included. Winning draft bids show as pending until outbid or settled.",
-      },
-    ],
-  },
-  {
-    id: "bookies",
-    title: "Bookies (legacy club)",
-    intro:
-      "Older Bookies stakes/wins that posted to the club ledger. New slips use the owner wallet (see Bookies / Owners Shop).",
-    lines: [
-      {
-        id: "bookies_income",
-        label: "Bookies Income (legacy)",
-        types: ["bookies_income"],
-        note: "Legacy club wins only.",
-      },
-      {
-        id: "bookies_expenditure",
-        label: "Bookies Expenditure (legacy)",
-        types: ["bookies_expenditure"],
-        note: "Legacy club stakes only.",
       },
     ],
   },

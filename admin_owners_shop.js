@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("itemSaveBtn").onclick = saveItem;
   document.getElementById("itemClearBtn").onclick = clearItemForm;
   document.getElementById("oshAdjBtn").onclick = adjustWallet;
+  document.getElementById("oshBackfillBtn").onclick = backfillOpenings;
   document.getElementById("itemPrize").onchange = onPrizeTypeChange;
 
   await reloadCatalogue();
@@ -257,4 +258,14 @@ async function adjustWallet() {
     return;
   }
   statusLocal(`Wallet updated — balance ${formatMoney(data?.balance ?? 0)}.`);
+}
+
+async function backfillOpenings() {
+  if (!confirm("Grant ₿50,000 opening balance to registry owners with empty wallets?")) return;
+  const { data, error } = await supabase.rpc("admin_owner_wallet_backfill_opening");
+  if (error) {
+    statusLocal(error.message || "Backfill failed", false);
+    return;
+  }
+  statusLocal(`Opening backfill done (approx ${data?.granted_approx ?? 0} new grants).`);
 }

@@ -48,6 +48,17 @@ body.gpfl-page {
   max-width: 44em;
 }
 
+.gpfl-hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.gpfl-hero-stats .gpfl-stat {
+  margin: 0;
+}
+
 .gpfl-disclaimer {
   max-width: 1100px;
   margin: 10px auto 0;

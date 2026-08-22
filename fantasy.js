@@ -1,5 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
-import { GPSL_MONTH_LABELS } from "./competition.js";
+import { GPSL_MONTH_LABELS, formatMoney } from "./competition.js";
 import {
   FORMATION_LIST,
   FORMATION_GROUP_ORDER,
@@ -1293,9 +1293,24 @@ async function loadContent() {
   }
 }
 
+async function loadOwnerBankStat() {
+  const el = document.getElementById("gpflHeroStats");
+  if (!el) return;
+  const { data, error } = await supabase.rpc("owner_wallet_get_self");
+  if (error) {
+    el.innerHTML = "";
+    return;
+  }
+  el.innerHTML = `
+    <div class="gpfl-stat">Owner bank <b>${formatMoney(data?.balance ?? 0)}</b></div>
+    <div class="gpfl-stat"><a href="owners_bank.html" style="color:#9cf;text-decoration:none">Statement →</a></div>
+  `;
+}
+
 async function refresh() {
   const data = await loadEntry();
   if (!data) return;
+  await loadOwnerBankStat();
   renderGate(data);
   renderDeadlineBanner(data);
   fillMonthSelects();

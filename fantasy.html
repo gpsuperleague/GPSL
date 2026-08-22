@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260818-gpfl-tips">
-  <link rel="stylesheet" href="fantasy.css?v=20260819-tabs">
+  <link rel="stylesheet" href="fantasy.css?v=20260822-wallet">
 </head>
 <body class="gpfl-page">
   <div id="nav"></div>
@@ -34,15 +34,16 @@
       <h1>GP Fantasy League</h1>
       <p class="gpfl-tagline">
         Optional side-game. Pick a 15-man squad, set your pitch XI from dropdowns on the formation,
-        and order the bench for auto-subs. GPFL budget only — never club money.
+        and order the bench for auto-subs. Fantasy budget is play-money; cash prizes go to your
+        <a href="owners_bank.html" style="color:#9cf">Owner Bank</a>.
       </p>
+      <div class="gpfl-hero-stats" id="gpflHeroStats"></div>
     </div>
   </header>
 
-  <p class="gpfl-disclaimer gpsl-has-tip" tabindex="0" data-gpsl-tip="GPFL is optional and financially separate from GPSL club money. You cannot pick players contracted to clubs you own. Auto-subs cover blank starters; extra transfers after free ones cost hit points.">
-    GPFL is financially separate from GPSL club finances, Bookies, and the Central Bank.
-    Auto-subs replace blank starters; extra transfers after free ones cost hit points.
-    You cannot pick players contracted to clubs you own in GPSL.
+  <p class="gpfl-disclaimer gpsl-has-tip" tabindex="0" data-gpsl-tip="GPFL is optional. Fantasy squad budget never touches club money. Cash prizes (if paid) credit your Owner Bank with Bookies and the Owners Shop.">
+    GPFL fantasy budget is separate from club finances. Cash prizes credit your Owner Bank
+    (same pot as Bookies and Owners Shop). You cannot pick players contracted to clubs you own.
   </p>
 
   <main class="gpfl-main">
@@ -196,6 +197,6 @@
     <div id="gpflCardBody" class="gpfl-dialog-body"></div>
   </dialog>
 
-  <script type="module" src="fantasy.js?v=20260819-tabs"></script>
+  <script type="module" src="fantasy.js?v=20260822-wallet"></script>
 </body>
 </html>
