@@ -224,7 +224,7 @@ $function$;
 CREATE OR REPLACE FUNCTION public.owner_wallet_get_self()
 RETURNS jsonb
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path = public
 AS $function$
@@ -247,7 +247,7 @@ $function$;
 CREATE OR REPLACE FUNCTION public.owner_wallet_statement_self(p_limit int DEFAULT 100)
 RETURNS jsonb
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path = public
 AS $function$
