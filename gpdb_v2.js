@@ -1032,7 +1032,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function buildContractedTeamOrClause(values) {
     const hasFA = values.includes("FREE AGENT");
-    const clubs = values.filter(v => v !== "FREE AGENT");
+    const hasLegacy = values.includes("LEGACY");
+    const clubs = values.filter((v) => v !== "FREE AGENT" && v !== "LEGACY");
 
     const parts = [];
 
@@ -1043,6 +1044,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (hasFA) {
       parts.push("Contracted_Team.is.null", "Contracted_Team.eq.''", "Contracted_Team.eq.' '");
+    }
+
+    if (hasLegacy) {
+      parts.push("pesdb_unavailable.eq.true");
     }
 
     return parts.length ? parts.join(",") : null;
@@ -1306,7 +1311,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function contractedTeamFilterHintHtml() {
-    return `<div class="multi-filter-draft-hint">Select <b>FREE AGENT</b> to open draft bids here</div>`;
+    return `<div class="multi-filter-draft-hint">Select <b>FREE AGENT</b> for draft bids · <b>LEGACY PLAYERS</b> for cards off pesdb.net</div>`;
   }
 
   function normalizeDistinctColumnValues(col, rows) {
@@ -3014,7 +3019,7 @@ document.addEventListener("DOMContentLoaded", () => {
           .sort((a, b) =>
             (CLUB_NAME_MAP[a] || a).localeCompare(CLUB_NAME_MAP[b] || b)
           );
-        uniqueValues = ["FREE AGENT", ...uniqueValues];
+        uniqueValues = ["LEGACY", "FREE AGENT", ...uniqueValues];
       } else {
       let { data, error } = await supabase
         .from("Players")
@@ -3058,7 +3063,10 @@ document.addEventListener("DOMContentLoaded", () => {
         let value = v;
         let label = v;
         if (col === "Contracted_Team") {
-          if (v === "FREE AGENT") {
+          if (v === "LEGACY") {
+            value = "LEGACY";
+            label = "LEGACY PLAYERS";
+          } else if (v === "FREE AGENT") {
             value = "FREE AGENT";
             label = "FREE AGENT";
           } else {
