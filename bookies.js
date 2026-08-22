@@ -101,6 +101,14 @@ async function loadMarkets() {
     if (!selectionsByMarket.has(s.market_id)) selectionsByMarket.set(s.market_id, []);
     selectionsByMarket.get(s.market_id).push(s);
   }
+  for (const list of selectionsByMarket.values()) {
+    list.sort((a, b) => {
+      const oa = Number(a.odds_decimal) || Infinity;
+      const ob = Number(b.odds_decimal) || Infinity;
+      if (oa !== ob) return oa - ob;
+      return (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
+    });
+  }
 }
 
 async function loadMyBets() {
