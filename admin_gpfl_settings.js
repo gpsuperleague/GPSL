@@ -137,7 +137,9 @@ async function paySeason() {
   }
   setStatus(
     "status",
-    `Season prizes: paid ${data?.paid ?? 0}, skipped ${data?.skipped ?? 0}, total ₿${data?.total_amount ?? 0}.`,
+    data?.skipped && data?.reason === "disabled"
+      ? "Cash prizes disabled in settings."
+      : `Season prizes: paid ${data?.paid ?? 0}, skipped ${data?.skipped ?? 0}, total ₿${data?.total_amount ?? 0}.`,
     true
   );
 }
@@ -157,7 +159,9 @@ async function payMonth() {
   }
   setStatus(
     "status",
-    `${month}: paid ${data?.paid ?? 0}, skipped ${data?.skipped ?? 0}, total ₿${data?.total_amount ?? 0}.`,
+    data?.skipped && data?.reason === "disabled"
+      ? "Cash prizes disabled in settings."
+      : `${month}: paid ${data?.paid ?? 0}, skipped ${data?.skipped ?? 0}, total ₿${data?.total_amount ?? 0}.`,
     true
   );
 }

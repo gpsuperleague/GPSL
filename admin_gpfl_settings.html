@@ -102,10 +102,12 @@
         <label>Month 3rd ₿ <input id="prize_month_3" type="number" step="1" min="0"></label>
       </div>
       <p style="font-size:12px;color:#888;margin:8px 0 0;">
-        Set amounts to 0 to skip a place. Pay outs are idempotent (won’t double-pay the same place).
+        Auto-pays on GPSL month lock: each regular month finalises GPFL scores then pays month top‑3;
+        <b>playoffs</b> lock pays season top‑3. Set an amount to 0 to skip that place.
+        Manual buttons below are for repair / catch-up (idempotent — won’t double-pay).
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:12px;">
-        <button type="button" id="paySeasonBtn" class="admin-btn" style="padding:8px 14px;">Pay season top 3</button>
+        <button type="button" id="paySeasonBtn" class="admin-btn" style="padding:8px 14px;">Pay season top 3 (manual)</button>
         <label style="font-size:12px;color:#bbb;">
           Month
           <select id="payMonthSelect" style="display:block;margin-top:4px;padding:8px;background:#111;border:1px solid #444;color:#eee;">
@@ -121,7 +123,7 @@
             <option value="may">May</option>
           </select>
         </label>
-        <button type="button" id="payMonthBtn" class="admin-btn" style="padding:8px 14px;">Pay month top 3</button>
+        <button type="button" id="payMonthBtn" class="admin-btn" style="padding:8px 14px;">Pay month top 3 (manual)</button>
       </div>
     </section>
 
@@ -157,6 +159,6 @@
 
     <button type="button" id="saveBtn" class="admin-btn" style="padding:10px 18px;">Save settings</button>
   </main>
-  <script type="module" src="admin_gpfl_settings.js?v=20260822-prizes"></script>
+  <script type="module" src="admin_gpfl_settings.js?v=20260822-autopay"></script>
 </body>
 </html>

@@ -64,7 +64,7 @@ export const GPFL_TIPS = {
     "Season standings among GPFL entries (total points).",
 
   prizes:
-    "Cash prizes (if enabled) pay into your Owner Bank — same pot as Bookies and the Owners Shop.\n\nSeason and month top-3 amounts are set by admin; winners appear here after payout.",
+    "Cash prizes (if enabled) auto-pay into your Owner Bank on GPSL month lock — month top-3 when each month locks, season top-3 when playoffs locks.\n\nAmounts are set by admin; winners appear here after payout.",
 
   dreamTeam:
     "Best XI for the selected GPSL month (fixed 4-4-2 dream-team shape) from scored performances.",
