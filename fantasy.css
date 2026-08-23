@@ -444,6 +444,36 @@ body.gpfl-page {
   z-index: 2;
 }
 
+.gpfl-bank-zone {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 20%;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 4px 8px;
+}
+.gpfl-bank-zone.drag-over {
+  background: rgba(180, 210, 120, 0.22);
+  border-color: rgba(220, 240, 160, 0.7);
+}
+.gpfl-bank-zone-label {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.72);
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.gpfl-xi-shape--bad {
+  color: #f0a070 !important;
+}
+
 .gpfl-pitch-slot {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -459,6 +489,41 @@ body.gpfl-page {
   border-radius: 8px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   text-align: center;
+  cursor: grab;
+}
+.gpfl-pitch-slot.dragging,
+.gpfl-squad-card.dragging {
+  opacity: 0.55;
+}
+.gpfl-pitch-name {
+  font-size: 10px;
+  line-height: 1.15;
+  color: #d8e8d8;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gpfl-pitch-off {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #844;
+  background: #311;
+  color: #fcc;
+  font-size: 14px;
+  line-height: 16px;
+  padding: 0;
+  cursor: pointer;
+}
+.gpfl-squad-card.on-pitch {
+  outline: 1px solid rgba(142, 202, 160, 0.55);
+}
+.gpfl-squad-card[draggable="true"] {
+  cursor: grab;
 }
 .gpfl-pitch-slot:focus-within {
   z-index: 40;

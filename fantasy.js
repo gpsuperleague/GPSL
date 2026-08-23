@@ -1,19 +1,13 @@
 import { supabase, initGlobal } from "./global.js";
 import { GPSL_MONTH_LABELS, formatMoney } from "./competition.js";
 import {
-  FORMATION_LIST,
-  FORMATION_GROUP_ORDER,
-  DEFAULT_FORMATION_ID,
-  getFormation,
-} from "./matchday_formations.js";
-import {
   pesdbPlayerCardUrl,
   pesdbPlayerUrl,
   gpslPlayerCareerUrl,
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
-import { GPFL_TIPS } from "./fantasy_info_tips.js?v=20260823-fantasy-prices";
+import { GPFL_TIPS } from "./fantasy_info_tips.js?v=20260823-banks";
 
 /** Pitch / squad display order (GKs are their own section, not defenders). */
 const POS_ORDER = [
@@ -35,18 +29,31 @@ const POS_ORDER = [
 const POOL_SECTIONS = [
   { id: "gk", label: "Goalkeepers", group: "gk", positions: ["GK"] },
   { id: "def", label: "Defenders", group: "def", positions: ["LB", "CB", "RB"] },
-  { id: "mid", label: "Midfielders", group: "mid", positions: ["DMF", "LMF", "CMF", "RMF", "AMF"] },
-  { id: "fwd", label: "Forwards", group: "fwd", positions: ["LWF", "SS", "RWF", "CF"] },
+  {
+    id: "mid",
+    label: "Midfielders",
+    group: "mid",
+    positions: ["DMF", "LMF", "CMF", "RMF", "AMF", "LWF", "RWF"],
+  },
+  { id: "fwd", label: "Forwards", group: "fwd", positions: ["SS", "CF"] },
 ];
+
+const XI_RULES = {
+  gk: { min: 1, max: 1, label: "GK", y: 90 },
+  def: { min: 3, max: 5, label: "DEF", y: 65 },
+  mid: { min: 2, max: 5, label: "MID", y: 34 },
+  fwd: { min: 1, max: 3, label: "FWD", y: 8 },
+};
+
+const BANK_ORDER = ["fwd", "mid", "def", "gk"]; // paint top → bottom
 
 let state = {
   isAdmin: false,
   payload: null,
   poolByGroup: {},
   poolOpen: {},
-  formationId: DEFAULT_FORMATION_ID,
-  formationTouched: false,
-  slotMap: {},
+  banks: { gk: [], def: [], mid: [], fwd: [] },
+  banksTouched: false,
   benchOrder: [],
   cardContext: null, // { playerId, canSign }
 };
@@ -114,41 +121,213 @@ function sortPlayersByPos(list) {
   });
 }
 
-/** GPFL position flex — which native positions can fill a pitch slot. */
-function posFitsSlot(playerPos, requiredPos) {
-  const p = normalizePos(playerPos);
-  const s = normalizePos(requiredPos);
-  if (!p || !s) return false;
-  if (p === s) return true;
+/** Squad bank from card position (DMF/LWF/RWF → mid). */
+function cardBankGroup(pos) {
+  const p = normalizePos(pos);
+  if (p === "GK") return "gk";
+  if (p === "LB" || p === "CB" || p === "RB" || p === "LWB" || p === "RWB") return "def";
+  if (p === "SS" || p === "CF") return "fwd";
+  if (
+    p === "DMF" ||
+    p === "CMF" ||
+    p === "AMF" ||
+    p === "LMF" ||
+    p === "RMF" ||
+    p === "LWF" ||
+    p === "RWF"
+  ) {
+    return "mid";
+  }
+  return "mid";
+}
 
-  // GK only as GK
-  if (p === "GK" || s === "GK") return false;
+function playerBankGroup(p) {
+  const g = String(p?.position_group || "").toLowerCase();
+  if (g === "gk" || g === "def" || g === "mid" || g === "fwd") return g;
+  return cardBankGroup(p?.position);
+}
 
-  // Attackers: RWF / LWF / CF / SS ↔ any of those
-  const attack = new Set(["RWF", "LWF", "CF", "SS"]);
-  if (attack.has(p) && attack.has(s)) return true;
+function emptyBanks() {
+  return { gk: [], def: [], mid: [], fwd: [] };
+}
 
-  // Advanced mids: LMF / RMF / CMF / AMF ↔ any of those
-  const mid = new Set(["LMF", "RMF", "CMF", "AMF"]);
-  if (mid.has(p) && mid.has(s)) return true;
+function starterIdsFromBanks(banks = state.banks) {
+  return new Set(
+    ["gk", "def", "mid", "fwd"].flatMap((g) => banks?.[g] || []).filter(Boolean)
+  );
+}
 
-  // Full-backs + CB: LB / RB / CB ↔ any of those
-  const back = new Set(["LB", "RB", "CB"]);
-  if (back.has(p) && back.has(s)) return true;
+function bankCounts(banks = state.banks) {
+  return {
+    gk: (banks.gk || []).length,
+    def: (banks.def || []).length,
+    mid: (banks.mid || []).length,
+    fwd: (banks.fwd || []).length,
+  };
+}
 
-  // DMF ↔ CB (and DMF exact already handled)
-  if (p === "DMF" && s === "CB") return true;
-  if (p === "CB" && s === "DMF") return true;
+function xiShapeLabel(banks = state.banks) {
+  const c = bankCounts(banks);
+  const total = c.gk + c.def + c.mid + c.fwd;
+  return `${c.gk}-${c.def}-${c.mid}-${c.fwd} (${total}/11)`;
+}
 
-  // Wide mid ↔ wing (side-specific), in addition to mid/attack groups above
-  if ((p === "LMF" && s === "LWF") || (p === "LWF" && s === "LMF")) return true;
-  if ((p === "RMF" && s === "RWF") || (p === "RWF" && s === "RMF")) return true;
+function xiBanksValid(banks = state.banks) {
+  const c = bankCounts(banks);
+  return (
+    c.gk === 1 &&
+    c.def >= 3 &&
+    c.def <= 5 &&
+    c.mid >= 2 &&
+    c.mid <= 5 &&
+    c.fwd >= 1 &&
+    c.fwd <= 3 &&
+    c.gk + c.def + c.mid + c.fwd === 11
+  );
+}
 
-  // Wide mid ↔ full-back (both directions)
-  if ((p === "LMF" || p === "RMF") && (s === "LB" || s === "RB")) return true;
-  if ((p === "LB" || p === "RB") && (s === "LMF" || s === "RMF")) return true;
+/** Left–right balance on a bank line (1–5). */
+function lineXPercents(n) {
+  const count = Math.max(0, Math.min(5, Number(n) || 0));
+  if (count <= 0) return [];
+  if (count === 1) return [50];
+  if (count === 2) return [34, 66];
+  if (count === 3) return [25, 50, 75];
+  if (count === 4) return [16, 38, 62, 84];
+  return [12, 31, 50, 69, 88];
+}
 
-  return false;
+function sortIdsByPos(squad, ids) {
+  const byId = new Map((squad || []).map((p) => [p.player_id, p]));
+  return [...(ids || [])]
+    .filter((id) => byId.has(id))
+    .sort((a, b) => {
+      const pa = byId.get(a);
+      const pb = byId.get(b);
+      const d = posRank(pa.position) - posRank(pb.position);
+      if (d) return d;
+      return String(pa.player_name || "").localeCompare(String(pb.player_name || ""));
+    });
+}
+
+function hydrateBanks(squad, serverBanks) {
+  const next = emptyBanks();
+  const active = (squad || []).filter((p) => p.slot_status === "active");
+  const byId = new Map(active.map((p) => [p.player_id, p]));
+
+  const fromServer = serverBanks && typeof serverBanks === "object";
+  if (fromServer) {
+    for (const g of ["gk", "def", "mid", "fwd"]) {
+      const ids = Array.isArray(serverBanks[g]) ? serverBanks[g] : [];
+      next[g] = sortIdsByPos(
+        active,
+        ids.filter((id) => byId.has(id) && playerBankGroup(byId.get(id)) === g)
+      );
+    }
+  }
+
+  // Fallback: saved starters with bank pitch_slot / group
+  const used = starterIdsFromBanks(next);
+  if ([...used].length === 0) {
+    for (const g of ["gk", "def", "mid", "fwd"]) {
+      const tagged = active
+        .filter(
+          (p) =>
+            p.is_starter &&
+            playerBankGroup(p) === g &&
+            String(p.pitch_slot || "").startsWith(`${g}_`)
+        )
+        .sort((a, b) => String(a.pitch_slot).localeCompare(String(b.pitch_slot)));
+      if (tagged.length) {
+        next[g] = tagged.map((p) => p.player_id);
+      } else {
+        next[g] = sortPlayersByPos(
+          active.filter((p) => p.is_starter && playerBankGroup(p) === g)
+        ).map((p) => p.player_id);
+      }
+    }
+  }
+
+  // Cap to max per bank
+  for (const g of ["gk", "def", "mid", "fwd"]) {
+    next[g] = next[g].slice(0, XI_RULES[g].max);
+  }
+  return next;
+}
+
+function mergeBanks(squad, serverBanks, localBanks, keepLocal) {
+  const fromServer = hydrateBanks(squad, serverBanks);
+  if (!keepLocal) return fromServer;
+  const active = new Set(
+    (squad || []).filter((p) => p.slot_status === "active").map((p) => p.player_id)
+  );
+  const merged = emptyBanks();
+  const used = new Set();
+  for (const g of ["gk", "def", "mid", "fwd"]) {
+    const preferred = (localBanks?.[g] || []).filter((id) => active.has(id) && !used.has(id));
+    const fallback = (fromServer[g] || []).filter((id) => active.has(id) && !used.has(id));
+    const ids = [];
+    for (const id of [...preferred, ...fallback]) {
+      if (ids.length >= XI_RULES[g].max) break;
+      if (used.has(id)) continue;
+      ids.push(id);
+      used.add(id);
+    }
+    merged[g] = sortIdsByPos(
+      (squad || []).filter((p) => p.slot_status === "active"),
+      ids
+    );
+  }
+  return merged;
+}
+
+function seedBenchFromSquad(squad, banks) {
+  const starters = starterIdsFromBanks(banks);
+  return (squad || [])
+    .filter((p) => p.slot_status === "active" && !starters.has(p.player_id))
+    .sort(
+      (a, b) =>
+        (a.bench_order ?? 99) - (b.bench_order ?? 99) ||
+        posRank(a.position) - posRank(b.position) ||
+        String(a.player_name || "").localeCompare(String(b.player_name || ""))
+    )
+    .map((p) => p.player_id);
+}
+
+function mergeBenchOrder(squad, banks, prevBench) {
+  const starters = starterIdsFromBanks(banks);
+  const activeIds = new Set(
+    (squad || []).filter((p) => p.slot_status === "active").map((p) => p.player_id)
+  );
+  const order = (prevBench || []).filter((id) => activeIds.has(id) && !starters.has(id));
+  for (const id of seedBenchFromSquad(squad, banks)) {
+    if (!order.includes(id)) order.push(id);
+  }
+  return order;
+}
+
+function removeFromBanks(playerId, banks = state.banks) {
+  const next = emptyBanks();
+  for (const g of ["gk", "def", "mid", "fwd"]) {
+    next[g] = (banks[g] || []).filter((id) => id !== playerId);
+  }
+  return next;
+}
+
+function addToBank(playerId, group, squad, banks = state.banks) {
+  const g = String(group || "").toLowerCase();
+  if (!XI_RULES[g]) return { ok: false, reason: "Unknown bank" };
+  const p = (squad || []).find((x) => x.player_id === playerId);
+  if (!p || p.slot_status !== "active") return { ok: false, reason: "Not in squad" };
+  if (playerBankGroup(p) !== g) {
+    return { ok: false, reason: `${normalizePos(p.position) || "Player"} belongs on the ${playerBankGroup(p).toUpperCase()} line` };
+  }
+  let next = removeFromBanks(playerId, banks);
+  if ((next[g] || []).length >= XI_RULES[g].max) {
+    return { ok: false, reason: `${XI_RULES[g].label} line is full (max ${XI_RULES[g].max})` };
+  }
+  next[g] = sortIdsByPos(squad, [...(next[g] || []), playerId]);
+  return { ok: true, banks: next };
 }
 
 function editingOpen(data = state.payload) {
@@ -166,6 +345,9 @@ function canTransfer(data = state.payload) {
 
 function patchMissingHint(err) {
   const m = String(err?.message || err || "");
+  if (/gpfl_set_xi|gpfl_assert_xi_banks|xi_banks/i.test(m)) {
+    return m + " — run supabase/sql/patches/gpfl_banks_positions_20260823.sql in Supabase.";
+  }
   if (/gpfl_prizes_board/i.test(m)) {
     return m + " — run supabase/sql/patches/gpfl_prizes_board_20260822.sql in Supabase.";
   }
@@ -275,7 +457,7 @@ function slotCounts(data) {
 function setEditLocked(locked) {
   document
     .querySelectorAll(
-      "#gpflConfirmBtn, #gpflSaveXiBtn, #gpflFormation, #gpflCaptain, .gpfl-rm, .gpfl-chip-btn, .gpfl-bench-move, .gpfl-pitch-pick, .gpfl-sign-btn, .gpfl-pool-sign"
+      "#gpflConfirmBtn, #gpflSaveXiBtn, #gpflCaptain, .gpfl-rm, .gpfl-chip-btn, .gpfl-bench-move, .gpfl-pitch-off, .gpfl-sign-btn, .gpfl-pool-sign"
     )
     .forEach((el) => {
       el.disabled = locked;
@@ -303,14 +485,14 @@ function renderEntryStats(data) {
     const xiReady =
       active.filter((p) => p.is_starter).length === Number(s.starters ?? 11) &&
       active.some((p) => p.is_captain) &&
-      Boolean(e.formation_id);
+      String(e.formation_id || "") === "banks";
     const ready = active.length >= size && needs === 0 && xiReady;
     confirmBtn.disabled = !ready || !canTransfer(data);
     confirmBtn.title = !canTransfer(data)
       ? "Editing locked until month ends"
       : ready
         ? "Lock your 15-man squad for scoring"
-        : `Need ${size} players, saved formation XI + captain (have ${active.length})`;
+        : `Need ${size} players, saved bank XI + captain (have ${active.length})`;
     confirmBtn.textContent = ready
       ? "Confirm squad"
       : `Confirm squad (${active.length}/${size})`;
@@ -394,281 +576,188 @@ function renderChips(data) {
   });
 }
 
-/** Matchday formation y% on half-pitch (halfway at top, goal at bottom). */
-function halfPitchTopPct(y) {
-  const n = Number(y);
-  if (!Number.isFinite(n)) return 50;
-  // Keep defenders on the penalty-box edge (~68%); clamp so markers aren't clipped
-  return Math.min(92, Math.max(7, n));
+/** Half-pitch y% — halfway at top, goal at bottom. */
+function bankTopPct(group) {
+  return XI_RULES[group]?.y ?? 50;
 }
 
-/**
- * Prefer saved pitch_slot; otherwise seat is_starter players into matching empty slots.
- */
-function hydrateSlotMap(squad, formationId) {
-  const formation = getFormation(formationId);
-  const next = {};
-  const active = (squad || []).filter((p) => p.slot_status === "active");
-
-  for (const p of active) {
-    if (p.pitch_slot && p.is_starter) next[p.pitch_slot] = p.player_id;
-  }
-
-  const used = new Set(Object.values(next));
-  const starters = active.filter((p) => p.is_starter && !used.has(p.player_id));
-
-  for (const slot of formation.slots) {
-    if (next[slot.id]) continue;
-    const idx = starters.findIndex((p) => posFitsSlot(p.position, slot.label));
-    if (idx < 0) continue;
-    next[slot.id] = starters[idx].player_id;
-    used.add(starters[idx].player_id);
-    starters.splice(idx, 1);
-  }
-  return next;
-}
-
-function seedBenchFromSquad(squad, slotMap) {
-  const starters = new Set(Object.values(slotMap || {}).filter(Boolean));
-  return (squad || [])
-    .filter((p) => p.slot_status === "active" && !starters.has(p.player_id))
-    .sort(
-      (a, b) =>
-        (a.bench_order ?? 99) - (b.bench_order ?? 99) ||
-        posRank(a.position) - posRank(b.position) ||
-        String(a.player_name || "").localeCompare(String(b.player_name || ""))
-    )
-    .map((p) => p.player_id);
-}
-
-/** Keep in-progress pitch picks; fill empty slots from saved XI / defaults. */
-function mergeSlotMap(squad, formationId, localMap) {
-  const active = (squad || []).filter((p) => p.slot_status === "active");
-  const fromServer = hydrateSlotMap(active, formationId);
-  const merged = { ...fromServer };
-  for (const [slotId, pid] of Object.entries(localMap || {})) {
-    if (!pid) continue;
-    if (!active.some((p) => p.player_id === pid)) continue;
-    for (const [k, v] of Object.entries(merged)) {
-      if (k !== slotId && v === pid) delete merged[k];
-    }
-    merged[slotId] = pid;
-  }
-  for (const [slotId, pid] of Object.entries(merged)) {
-    if (!active.some((p) => p.player_id === pid)) delete merged[slotId];
-  }
-  return merged;
-}
-
-/** Keep bench order across sign/remove; append newly signed players. */
-function mergeBenchOrder(squad, slotMap, prevBench) {
-  const starters = new Set(Object.values(slotMap || {}).filter(Boolean));
-  const activeIds = new Set(
-    (squad || []).filter((p) => p.slot_status === "active").map((p) => p.player_id)
-  );
-  const order = (prevBench || []).filter((id) => activeIds.has(id) && !starters.has(id));
-  for (const id of seedBenchFromSquad(squad, slotMap)) {
-    if (!order.includes(id)) order.push(id);
-  }
-  return order;
-}
-
-function fillFormationSelect(data) {
-  const sel = document.getElementById("gpflFormation");
-  if (!sel) return;
-  const current = state.formationId || data?.entry?.formation_id || DEFAULT_FORMATION_ID;
-  state.formationId = current;
-  sel.onchange = null;
-
-  const opts = [];
-  for (const group of FORMATION_GROUP_ORDER) {
-    const list = FORMATION_LIST.filter((f) => f.group === group);
-    if (!list.length) continue;
-    opts.push(`<optgroup label="${esc(group)}">`);
-    for (const f of list) {
-      opts.push(
-        `<option value="${esc(f.id)}" ${f.id === current ? "selected" : ""}>${esc(f.name)}</option>`
-      );
-    }
-    opts.push(`</optgroup>`);
-  }
-  sel.innerHTML = opts.join("");
-  sel.value = current;
-  sel.disabled = !canTransfer(data);
-
-  sel.onchange = () => {
-    const next = sel.value;
-    if (next === state.formationId) return;
-    state.formationTouched = true;
-    state.formationId = next;
-    state.slotMap = hydrateSlotMap(state.payload?.squad, next);
-    state.benchOrder = seedBenchFromSquad(state.payload?.squad, state.slotMap);
-    renderPitchBench(state.payload);
-  };
+function updateXiShapeHud(banks = state.banks) {
+  const el = document.getElementById("gpflXiShape");
+  if (!el) return;
+  const ok = xiBanksValid(banks);
+  el.textContent = `Shape ${xiShapeLabel(banks)}${ok ? "" : " · need GK1 · DEF3–5 · MID2–5 · FWD1–3"}`;
+  el.classList.toggle("gpfl-xi-shape--bad", !ok);
 }
 
 function renderPitchBench(data) {
   const pitchRoot = document.getElementById("gpflPitchSlots");
   const benchRoot = document.getElementById("gpflBench");
   const capSel = document.getElementById("gpflCaptain");
-  const hint = document.getElementById("gpflPitchHint");
   if (!pitchRoot || !benchRoot) return;
 
   const squad = (data?.squad || []).filter((p) => p.slot_status === "active");
-  const formation = getFormation(state.formationId);
-  const open = canTransfer(data);
+  const open = editingOpen(data);
+  const byId = new Map(squad.map((p) => [p.player_id, p]));
 
-  if (hint) {
-    if (!squad.length) {
-      hint.innerHTML =
-        `<b style="color:#f0b080;">No signed players yet.</b> Use step 1 — Sign from the pool. Pitch markers will then list eligible players.`;
-    } else {
-      hint.innerHTML = `Click a marker on the pitch to pick from your <b>${squad.length}</b> signed player${
-        squad.length === 1 ? "" : "s"
-      }. Only eligible positions appear in each dropdown.`;
-    }
+  for (const g of ["gk", "def", "mid", "fwd"]) {
+    state.banks[g] = sortIdsByPos(squad, state.banks[g] || []);
   }
+  state.benchOrder = mergeBenchOrder(squad, state.banks, state.benchOrder);
+  updateXiShapeHud(state.banks);
 
-  state.slotMap = mergeSlotMap(squad, state.formationId, state.slotMap);
-  state.benchOrder = mergeBenchOrder(squad, state.slotMap, state.benchOrder);
-
-  // Helpful default: free GK → GK slot
-  const gkSlot = formation.slots.find((s) => normalizePos(s.label) === "GK");
-  if (gkSlot && !state.slotMap[gkSlot.id]) {
-    const gks = squad.filter((p) => normalizePos(p.position) === "GK" || p.position_group === "gk");
-    const usedIds = new Set(Object.values(state.slotMap).filter(Boolean));
-    const free = gks.find((p) => !usedIds.has(p.player_id));
-    if (free) state.slotMap[gkSlot.id] = free.player_id;
-  }
-
-  const used = new Set(Object.values(state.slotMap).filter(Boolean));
+  const starters = starterIdsFromBanks(state.banks);
   const prevCap = capSel?.value || "";
+  const capId =
+    (prevCap && starters.has(prevCap) && prevCap) ||
+    squad.find((p) => p.is_captain && starters.has(p.player_id))?.player_id ||
+    [...starters][0] ||
+    "";
 
-  pitchRoot.hidden = false;
-  // Build slots with createElement (matchday-style) so markers always land on the board
-  pitchRoot.replaceChildren();
-  for (const slot of formation.slots) {
-    const selected = state.slotMap[slot.id] || "";
-    const eligible = sortPlayersByPos(
-      squad.filter((p) => posFitsSlot(p.position, slot.label) || p.player_id === selected)
-    );
-    const pl = playerById(squad, selected);
-    const isCap =
-      selected && (prevCap === selected || playerById(squad, selected)?.is_captain);
+  pitchRoot.innerHTML = "";
 
-    const wrap = document.createElement("div");
-    wrap.className = `gpfl-pitch-slot${selected ? " filled" : ""}${isCap ? " captain" : ""}${
-      eligible.length || selected ? "" : " empty-eligible"
-    }`;
-    wrap.dataset.slotId = slot.id;
-    // Same formation x/y as matchday: attack near halfway (top), GK by goal (bottom)
-    wrap.style.left = `${Number(slot.x)}%`;
-    wrap.style.top = `${halfPitchTopPct(slot.y)}%`;
-
-    const options = [
-      `<option value="">${esc(slot.label)}</option>`,
-      ...eligible.map((p) => {
-        const taken = used.has(p.player_id) && state.slotMap[slot.id] !== p.player_id;
-        return `<option value="${esc(p.player_id)}" ${
-          selected === p.player_id ? "selected" : ""
-        } ${taken ? "disabled" : ""}>${esc(p.player_name)}${taken ? " · used" : ""}</option>`;
-      }),
-    ];
-
-    wrap.innerHTML = `
-      <div class="gpfl-pitch-pos">${esc(slot.label)}</div>
-      ${
-        pl
-          ? `<img class="gpfl-pitch-thumb" src="${pesdbPlayerCardUrl(selected)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">`
-          : `<div class="gpfl-pitch-thumb gpfl-pitch-thumb--empty" aria-hidden="true"></div>`
-      }
-      <select class="gpfl-pitch-pick" data-slot="${esc(slot.id)}" title="${esc(slot.label)}" ${
-        open ? "" : "disabled"
-      }>${options.join("")}</select>`;
-    pitchRoot.appendChild(wrap);
+  for (const g of BANK_ORDER) {
+    const rule = XI_RULES[g];
+    const zone = document.createElement("div");
+    zone.className = `gpfl-bank-zone gpfl-bank-zone--${g}`;
+    zone.dataset.bank = g;
+    zone.style.top = `${Math.max(2, rule.y - 10)}%`;
+    zone.innerHTML = `<span class="gpfl-bank-zone-label">${esc(rule.label)} · ${
+      (state.banks[g] || []).length
+    }/${rule.max}</span>`;
+    if (open) {
+      zone.addEventListener("dragover", (ev) => {
+        ev.preventDefault();
+        zone.classList.add("drag-over");
+      });
+      zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+      zone.addEventListener("drop", (ev) => {
+        ev.preventDefault();
+        zone.classList.remove("drag-over");
+        const pid = ev.dataTransfer?.getData("text/gpfl-player") || "";
+        if (!pid) return;
+        const res = addToBank(pid, g, squad, state.banks);
+        if (!res.ok) return setStatus(res.reason, false);
+        state.banks = res.banks;
+        state.banksTouched = true;
+        state.benchOrder = mergeBenchOrder(squad, state.banks, state.benchOrder);
+        renderPitchBench(state.payload);
+        renderSquad(state.payload);
+        setStatus(`Placed on ${rule.label} line.`);
+      });
+    }
+    pitchRoot.appendChild(zone);
   }
 
-  pitchRoot.querySelectorAll(".gpfl-pitch-pick").forEach((sel) => {
-    const slotId = sel.dataset.slot;
-    if (state.slotMap[slotId]) sel.value = state.slotMap[slotId];
-    sel.onchange = () => {
-      const pid = sel.value || "";
-      if (pid) {
-        for (const [k, v] of Object.entries(state.slotMap)) {
-          if (v === pid && k !== slotId) delete state.slotMap[k];
+  for (const g of BANK_ORDER) {
+    const ids = state.banks[g] || [];
+    const xs = lineXPercents(ids.length);
+    ids.forEach((pid, i) => {
+      const p = byId.get(pid);
+      if (!p) return;
+      const isCap = pid === capId;
+      const wrap = document.createElement("div");
+      wrap.className = `gpfl-pitch-slot filled${isCap ? " captain" : ""}`;
+      wrap.style.left = `${xs[i] ?? 50}%`;
+      wrap.style.top = `${bankTopPct(g)}%`;
+      wrap.draggable = open;
+      wrap.dataset.playerId = pid;
+      wrap.dataset.bank = g;
+      const pos = normalizePos(p.position) || XI_RULES[g].label;
+      const dmfHint = pos === "DMF" ? " · CS as DEF" : "";
+      wrap.innerHTML = `
+        <div class="gpfl-pitch-pos">${esc(pos)}${isCap ? " · C" : ""}${esc(dmfHint)}</div>
+        <img class="gpfl-pitch-thumb" src="${pesdbPlayerCardUrl(pid)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
+        <div class="gpfl-pitch-name">${esc(p.player_name || pid)}</div>
+        ${
+          open
+            ? `<button type="button" class="gpfl-pitch-off" data-id="${esc(pid)}" title="Send to bench">×</button>`
+            : ""
         }
-        state.slotMap[slotId] = pid;
-      } else {
-        delete state.slotMap[slotId];
+      `;
+      if (open) {
+        wrap.addEventListener("dragstart", (ev) => {
+          ev.dataTransfer?.setData("text/gpfl-player", pid);
+          ev.dataTransfer.effectAllowed = "move";
+          wrap.classList.add("dragging");
+        });
+        wrap.addEventListener("dragend", () => wrap.classList.remove("dragging"));
       }
-      state.benchOrder = mergeBenchOrder(squad, state.slotMap, state.benchOrder);
+      pitchRoot.appendChild(wrap);
+    });
+  }
+
+  pitchRoot.querySelectorAll(".gpfl-pitch-off").forEach((btn) => {
+    btn.onclick = (ev) => {
+      ev.stopPropagation();
+      state.banks = removeFromBanks(btn.dataset.id, state.banks);
+      state.banksTouched = true;
+      state.benchOrder = mergeBenchOrder(squad, state.banks, state.benchOrder);
       renderPitchBench(state.payload);
+      renderSquad(state.payload);
     };
   });
 
-  // Captain options from current XI
-  const starterIds = formation.slots.map((s) => state.slotMap[s.id]).filter(Boolean);
-  const starters = squad.filter((p) => starterIds.includes(p.player_id));
-  const savedCap = squad.find((p) => p.is_captain)?.player_id || "";
   if (capSel) {
-    capSel.disabled = !open;
+    const starterPlayers = sortPlayersByPos(
+      [...starters].map((id) => byId.get(id)).filter(Boolean)
+    );
     capSel.innerHTML =
       `<option value="">— captain —</option>` +
-      starters
-        .map((p) => `<option value="${esc(p.player_id)}">${esc(p.player_name)}</option>`)
+      starterPlayers
+        .map(
+          (p) =>
+            `<option value="${esc(p.player_id)}" ${
+              p.player_id === capId ? "selected" : ""
+            }>${esc(p.player_name || p.player_id)} (${esc(
+              normalizePos(p.position) || ""
+            )})</option>`
+        )
         .join("");
-    const prefer =
-      (prevCap && starterIds.includes(prevCap) && prevCap) ||
-      (savedCap && starterIds.includes(savedCap) && savedCap) ||
-      (starters[0] && starters[0].player_id) ||
-      "";
-    if (prefer) capSel.value = prefer;
+    capSel.disabled = !open || !starterPlayers.length;
+    if (capId) capSel.value = capId;
     capSel.onchange = () => renderPitchBench(state.payload);
   }
 
-  // Bench = everyone not in XI
-  let order = state.benchOrder.filter((id) => !starterIds.includes(id));
-  const missing = squad
-    .filter((p) => !starterIds.includes(p.player_id) && !order.includes(p.player_id))
-    .map((p) => p.player_id);
-  order = [...order, ...missing];
-  state.benchOrder = order;
-
-  if (!order.length) {
+  const benchIds = state.benchOrder.filter((id) => byId.has(id) && !starters.has(id));
+  if (!benchIds.length) {
     benchRoot.innerHTML = `<p class="gpfl-muted">${
       squad.length
-        ? "All signed players are in the XI — sign more for a bench."
+        ? "Drag extras here / off the pitch for the bench."
         : "Sign players first."
     }</p>`;
-    return;
-  }
-
-  benchRoot.innerHTML = `<ol class="gpfl-bench-list">
-    ${order
+  } else {
+    benchRoot.innerHTML = `<ol class="gpfl-bench-list">
+    ${benchIds
       .map((id, i) => {
-        const p = playerById(squad, id);
+        const p = byId.get(id);
         if (!p) return "";
-        return `<li class="gpfl-bench-item">
+        const pos = normalizePos(p.position) || "";
+        return `<li class="gpfl-bench-item" draggable="${open ? "true" : "false"}" data-id="${esc(
+          id
+        )}" data-bank="${esc(playerBankGroup(p))}">
           <span class="gpfl-bench-rank">${i + 1}</span>
           <img class="gpfl-bench-thumb" src="${pesdbPlayerCardUrl(id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
           <div class="gpfl-bench-meta">
             <button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(id)}">${esc(
               p.player_name || id
             )}</button>
-            <span class="gpfl-muted">${esc(normalizePos(p.position) || p.position_group || "")}</span>
+            <span class="gpfl-muted">${esc(pos)}${
+              pos === "DMF" ? " · scores as DEF" : ""
+            } · ${esc(playerBankGroup(p).toUpperCase())}</span>
           </div>
           <span class="gpfl-bench-actions">
             <button type="button" class="gpfl-btn gpfl-bench-move" data-dir="-1" data-id="${esc(id)}" ${
               i === 0 || !open ? "disabled" : ""
             }>↑</button>
             <button type="button" class="gpfl-btn gpfl-bench-move" data-dir="1" data-id="${esc(id)}" ${
-              i === order.length - 1 || !open ? "disabled" : ""
+              i === benchIds.length - 1 || !open ? "disabled" : ""
             }>↓</button>
           </span>
         </li>`;
       })
       .join("")}
   </ol>`;
+  }
 
   benchRoot.querySelectorAll(".gpfl-bench-move").forEach((btn) => {
     btn.onclick = () => {
@@ -683,6 +772,13 @@ function renderPitchBench(data) {
       renderPitchBench(state.payload);
     };
   });
+  benchRoot.querySelectorAll(".gpfl-bench-item").forEach((row) => {
+    if (!open) return;
+    row.addEventListener("dragstart", (ev) => {
+      ev.dataTransfer?.setData("text/gpfl-player", row.dataset.id);
+      ev.dataTransfer.effectAllowed = "move";
+    });
+  });
   benchRoot.querySelectorAll(".gpfl-card-link").forEach((btn) => {
     btn.onclick = () => openPlayerCard(btn.dataset.id, { canSign: false });
   });
@@ -694,9 +790,7 @@ function renderSquad(data) {
 
   const titleEl = document.getElementById("gpflSquadTitle");
   if (titleEl) {
-    const team =
-      String(data?.entry?.team_name || "").trim() ||
-      "Your";
+    const team = String(data?.entry?.team_name || "").trim() || "Your";
     titleEl.textContent = `${team} Squad`;
   }
 
@@ -713,31 +807,38 @@ function renderSquad(data) {
     { id: "fwd", label: "Forwards", group: "fwd" },
   ];
 
-  const open = canTransfer(data);
+  const pitchOpen = editingOpen(data);
+  const starters = starterIdsFromBanks(state.banks);
+
   root.innerHTML = sections
     .map((sec) => {
-      const rows = sortPlayersByPos(
-        squad.filter((p) => String(p.position_group || "").toLowerCase() === sec.group)
-      );
+      const rows = sortPlayersByPos(squad.filter((p) => playerBankGroup(p) === sec.group));
       const body = !rows.length
         ? `<p class="gpfl-muted gpfl-squad-empty">None yet.</p>`
         : `<ul class="gpfl-squad-list">
             ${rows
               .map((p) => {
                 const fa = p.slot_status === "needs_replace";
-                const role = p.is_starter
-                  ? p.pitch_slot || "XI"
+                const onPitch = starters.has(p.player_id);
+                const role = onPitch
+                  ? `XI · ${sec.group.toUpperCase()}`
                   : p.bench_order
                     ? `B${p.bench_order}`
                     : "Bench";
-                return `<li class="gpfl-squad-card${fa ? " needs-replace" : ""}">
+                const pos = normalizePos(p.position) || "—";
+                const dmf = pos === "DMF" ? " · CS as DEF" : "";
+                return `<li class="gpfl-squad-card${fa ? " needs-replace" : ""}${
+                  onPitch ? " on-pitch" : ""
+                }" draggable="${pitchOpen && p.slot_status === "active" ? "true" : "false"}" data-id="${esc(
+                  p.player_id
+                )}" data-bank="${esc(sec.group)}">
                   <img class="gpfl-mini-thumb" src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
                   <div class="gpfl-squad-card-main">
                     <button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(
                       p.player_id
                     )}">${esc(p.player_name || p.player_id)}</button>
                     <div class="gpfl-squad-card-meta">
-                      <span>${esc(normalizePos(p.position) || "—")}</span>
+                      <span>${esc(pos)}${esc(dmf)}</span>
                       <span>${esc(p.club_short_name || p.club_name || "—")}</span>
                       <span>${moneyNum(p.purchase_price)}</span>
                     </div>
@@ -746,9 +847,16 @@ function renderSquad(data) {
                       ${p.is_captain ? `<span class="gpfl-badge gpfl-badge--c">C</span>` : ""}
                       <span class="gpfl-badge">${esc(role)}</span>
                     </div>
+                    ${
+                      pitchOpen && p.slot_status === "active"
+                        ? `<div class="gpfl-muted" style="font-size:11px;margin-top:4px;">Drag onto ${esc(
+                            sec.group.toUpperCase()
+                          )} line</div>`
+                        : ""
+                    }
                   </div>
                   <button type="button" class="gpfl-btn gpfl-rm" data-id="${esc(p.player_id)}" ${
-                    open ? "" : "disabled"
+                    canTransfer(data) ? "" : "disabled"
                   }>${fa ? "Clear" : "Sell"}</button>
                 </li>`;
               })
@@ -776,6 +884,14 @@ function renderSquad(data) {
   });
   root.querySelectorAll(".gpfl-card-link").forEach((btn) => {
     btn.onclick = () => openPlayerCard(btn.dataset.id, { canSign: false });
+  });
+  root.querySelectorAll(".gpfl-squad-card[draggable='true']").forEach((card) => {
+    card.addEventListener("dragstart", (ev) => {
+      ev.dataTransfer?.setData("text/gpfl-player", card.dataset.id);
+      ev.dataTransfer.effectAllowed = "move";
+      card.classList.add("dragging");
+    });
+    card.addEventListener("dragend", () => card.classList.remove("dragging"));
   });
 }
 
@@ -1408,24 +1524,24 @@ async function refresh() {
   renderDeadlineBanner(data);
   fillMonthSelects();
   if (data.joined) {
-    const prevSlots = { ...state.slotMap };
+    const prevBanks = {
+      gk: [...(state.banks.gk || [])],
+      def: [...(state.banks.def || [])],
+      mid: [...(state.banks.mid || [])],
+      fwd: [...(state.banks.fwd || [])],
+    };
     const prevBench = [...state.benchOrder];
-    const formFromUi = document.getElementById("gpflFormation")?.value;
 
-    if (state.formationTouched) {
-      state.formationId =
-        formFromUi || state.formationId || data.entry?.formation_id || DEFAULT_FORMATION_ID;
-    } else {
-      state.formationId =
-        data.entry?.formation_id || state.formationId || DEFAULT_FORMATION_ID;
-    }
-
-    state.slotMap = mergeSlotMap(data.squad, state.formationId, prevSlots);
-    state.benchOrder = mergeBenchOrder(data.squad, state.slotMap, prevBench);
+    state.banks = mergeBanks(
+      data.squad,
+      data.xi_banks,
+      prevBanks,
+      state.banksTouched
+    );
+    state.benchOrder = mergeBenchOrder(data.squad, state.banks, prevBench);
 
     renderEntryStats(data);
     renderChips(data);
-    fillFormationSelect(data);
     renderPitchBench(data);
     renderSquad(data);
     renderMonthScores(data);
@@ -1495,36 +1611,39 @@ function wire() {
   document.getElementById("gpflSaveXiBtn")?.addEventListener("click", saveXi);
 
   async function saveXi() {
-    const formationId =
-      document.getElementById("gpflFormation")?.value || state.formationId;
-    const formation = getFormation(formationId);
-    const slotMap = {};
-    for (const slot of formation.slots) {
-      const pid = state.slotMap[slot.id];
-      if (!pid) {
-        setStatus(`Fill ${slot.label} (${slot.id}) before saving.`, false);
-        return;
-      }
-      slotMap[slot.id] = pid;
+    if (!xiBanksValid(state.banks)) {
+      setStatus(
+        `XI must be GK1 · DEF3–5 · MID2–5 · FWD1–3 (11 total). Current: ${xiShapeLabel(state.banks)}.`,
+        false
+      );
+      return;
     }
     const cap = document.getElementById("gpflCaptain")?.value || null;
     if (!cap) {
       setStatus("Pick a captain from the XI.", false);
       return;
     }
-    const starters = new Set(Object.values(slotMap));
+    const lineup = {
+      gk: [...(state.banks.gk || [])],
+      def: [...(state.banks.def || [])],
+      mid: [...(state.banks.mid || [])],
+      fwd: [...(state.banks.fwd || [])],
+    };
+    const starters = starterIdsFromBanks(lineup);
+    if (!starters.has(cap)) {
+      setStatus("Captain must be one of the 11 on the pitch.", false);
+      return;
+    }
     const benchIds = state.benchOrder.filter((id) => id && !starters.has(id));
     setStatus("Saving pitch XI + bench…");
     const { data, error } = await supabase.rpc("gpfl_set_xi", {
-      p_formation_id: formationId,
-      p_slot_map: slotMap,
+      p_lineup: lineup,
       p_captain_id: cap,
       p_bench_ids: benchIds,
     });
     if (error) return setStatus(patchMissingHint(error), false);
-    state.formationTouched = false;
-    state.formationId = formationId;
-    state.slotMap = { ...slotMap };
+    state.banksTouched = false;
+    state.banks = { ...lineup };
     state.benchOrder = benchIds;
     if (data) state.payload = data;
     await refresh();

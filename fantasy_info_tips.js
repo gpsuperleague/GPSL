@@ -22,37 +22,37 @@ export const GPFL_TIPS = {
     "Points deducted for each transfer after your free ones are used (while Active).\n\nWildcard makes transfers free for that window.",
 
   squadSize:
-    "Active signed players vs the required 15-man squad.\n\nSign from the pool, place 11 on the pitch, set captain + bench order, then Confirm.",
+    "Active signed players vs the required 15-man squad.\n\nSign from the pool, place 11 on the pitch banks, set captain + bench order, then Confirm.",
 
   slots:
-    "Position-group caps for your 15: GK / DEF / MID / FWD.\n\nYou cannot sign into a full group — sell or remove someone first.",
+    "Position-group caps for your 15: GK / DEF / MID / FWD.\n\nDEF = LB/CB/RB. MID = DMF/CMF/AMF/LMF/RMF/LWF/RWF (DMF scores as DEF). FWD = SS/CF.",
 
   faReplace:
     "Players who left the GPSL contracted pool (e.g. free agent) and must be replaced before Confirm / scoring is clean.",
 
   confirm:
-    "Locks your 15-man squad for GPFL scoring.\n\nNeeds: full 15, a saved pitch XI (formation + 11 starters), and a captain. Editing rules still apply after confirm (transfers / hits).",
+    "Locks your 15-man squad for GPFL scoring.\n\nNeeds: full 15, a saved bank XI (GK1 · DEF3–5 · MID2–5 · FWD1–3), and a captain. Editing rules still apply after confirm (transfers / hits).",
 
   saveXi:
-    "Saves formation, pitch XI dropdowns, captain, and bench order (1 = first auto-sub).\n\nYou can re-save while editing is open for the month.",
+    "Saves pitch banks, captain, and bench order (1 = first auto-sub).\n\nYou can re-save while editing is open for the month.",
 
   pool:
-    "Sign players into your GPFL squad from the contracted GPSL pool.\n\nGPFL prices are fantasy-only (rating, form, past GPFL points, club strength) — not GPSL market values. Players at clubs you own are excluded.",
+    "Sign players into your GPFL squad from the contracted GPSL pool.\n\nBanks: GK · DEF (LB/CB/RB) · MID (DMF/CMF/AMF/LMF/RMF/LWF/RWF) · FWD (SS/CF). DMF scores as a defender for CS/goals. Fantasy prices only — not GPSL MV. Players at clubs you own are excluded.",
 
   yourSquad:
-    "Everyone you have signed for GPFL.\n\nNext step: put 11 of them into the pitch markers (step 3). Extras sit on the subs bench.",
+    "Everyone you have signed for GPFL.\n\nDrag onto the matching pitch bank line (step 3). Extras sit on the subs bench.",
 
   pitch:
-    "Half-pitch view (goal at the bottom). Each marker is a dropdown from your signed squad — only eligible positions appear.\n\nFormation flex lets nearby roles cover (e.g. LMF↔LWF, LB↔LMF). Save XI + bench when ready.",
+    "Half-pitch with 4 banks (lines). Drag signed players onto their line — GK on the goal line, DEF on the box edge, MID between box and halfway, FWD on the halfway line.\n\nPlayers auto-balance left–right. XI: GK1 · DEF 3–5 · MID 2–5 · FWD 1–3. DMF is a midfielder but scores defender clean-sheet / goal points.",
 
   formation:
-    "Choose a formation — markers rearrange like Matchday.\n\nChanging formation clears unsaved slot picks into a fresh layout from any saved starters.",
+    "No fixed formations — build any legal bank shape (e.g. 1-4-4-2, 1-3-5-2, 1-5-3-2).\n\nDrag from Your Squad / bench onto the matching coloured bank line.",
 
   captain:
     "Captain must be one of the XI. They score double (or ×3 with Triple Captain).",
 
   bench:
-    "Anyone not in the XI. Order 1 = first auto-sub if a starter blanks.\n\nUse the arrows to reorder.",
+    "Anyone not in the XI. Order 1 = first auto-sub if a starter blanks.\n\nUse the arrows to reorder. Auto-subs match the same bank (GK/DEF/MID/FWD).",
 
   chips:
     "Optional one-shot chips for a GPSL month.\n\nWildcard: free transfers that window. Triple Captain: captain ×3. Bench Boost: bench scores too. Each chip once per season when enabled.",
