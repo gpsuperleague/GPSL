@@ -75,8 +75,8 @@
         <label>MID slots <input id="slot_mid" type="number" min="3" max="6"></label>
         <label>FWD slots <input id="slot_fwd" type="number" min="1" max="4"></label>
         <label>Price round-to <input id="price_round_to" type="number" step="100000" title="Default ₿0.5m"></label>
-        <label>Price floor <input id="price_floor" type="number" step="100000" title="Default ₿4.5m"></label>
-        <label>Price ceiling <input id="price_ceiling" type="number" step="100000" title="Default ₿14m"></label>
+        <label>Price floor <input id="price_floor" type="number" step="100000" title="Default ₿4m"></label>
+        <label>Price ceiling <input id="price_ceiling" type="number" step="100000" title="Default ₿15m"></label>
         <label>Free transfers / month <input id="free_transfers_per_month" type="number" min="0" max="15"></label>
         <label>Transfer hit points <input id="transfer_hit_points" type="number" step="1" max="0" title="Stored as negative (e.g. -4)"></label>
         <label>Deadline mode
@@ -87,7 +87,8 @@
         </label>
       </div>
       <p style="font-size:12px;color:#888;margin:8px 0 0;">
-        Fantasy ladder defaults: budget ₿100m · prices ₿4.5m–₿14.0m in ₿0.5m steps.
+        Fantasy ladder defaults: budget ₿100m · prices ₿4.0m–₿15.0m in ₿0.5m steps
+        (spread by rank within each position group).
         After changing price knobs, use <b>Open / refresh GPFL season</b> on fantasy.html to rebuild the pool.
       </p>
       <p style="font-size:12px;color:#888;margin:10px 0 0;">Divisions (comma-separated): superleague, championship_a, championship_b</p>
