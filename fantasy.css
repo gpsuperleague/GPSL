@@ -355,9 +355,13 @@ body.gpfl-page {
   max-height: min(72vh, 620px);
   border-radius: 10px;
   border: 2px solid rgba(232, 232, 232, 0.65);
-  background:
-    linear-gradient(180deg, #2d6a2d 0%, #3d8b3d 42%, #2d6a2d 100%);
-  overflow: visible;
+  /* Even mown stripes — keep simple so bank lines stay readable */
+  background: repeating-linear-gradient(
+    180deg,
+    #2e742e 0 12%,
+    #348034 12% 24%
+  );
+  overflow: hidden;
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.28);
 }
 .gpfl-pitch-markings {
@@ -384,20 +388,21 @@ body.gpfl-page {
   background: rgba(255, 255, 255, 0.55);
 }
 .gpfl-pitch-halfway::after {
-  /* center-circle arc into our half */
+  /* Center-circle arc into OUR half (bulges down from halfway toward goal) */
   content: "";
   position: absolute;
   left: 50%;
   top: 0;
   width: 22%;
   aspect-ratio: 1;
-  transform: translate(-50%, 0);
+  transform: translate(-50%, -50%);
   border: 2px solid rgba(255, 255, 255, 0.45);
   border-radius: 50%;
-  clip-path: inset(0 0 50% 0);
+  clip-path: inset(50% 0 0 0); /* bottom semicircle → ∪ into our half */
+  box-sizing: border-box;
 }
 .gpfl-pitch-penalty {
-  /* ~16.5m box — top edge ≈ defender line */
+  /* ~16.5m box — top edge ≈ defender line (~65% from top) */
   position: absolute;
   left: 50%;
   bottom: 3%;
@@ -406,6 +411,7 @@ body.gpfl-page {
   transform: translateX(-50%);
   border: 2px solid rgba(255, 255, 255, 0.5);
   border-bottom: none;
+  box-sizing: border-box;
 }
 .gpfl-pitch-six {
   position: absolute;
@@ -416,11 +422,13 @@ body.gpfl-page {
   transform: translateX(-50%);
   border: 2px solid rgba(255, 255, 255, 0.5);
   border-bottom: none;
+  box-sizing: border-box;
 }
 .gpfl-pitch-spot {
+  /* Penalty spot inside the box (~11m), not on the 16.5m line */
   position: absolute;
   left: 50%;
-  bottom: calc(3% + 20%);
+  bottom: calc(3% + 14%);
   width: 7px;
   height: 7px;
   transform: translate(-50%, 50%);
@@ -437,6 +445,7 @@ body.gpfl-page {
   border: 2px solid rgba(255, 255, 255, 0.75);
   border-top: none;
   background: rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
 }
 .gpfl-pitch-slots {
   position: absolute;
@@ -444,31 +453,41 @@ body.gpfl-page {
   z-index: 2;
 }
 
+/* Quiet drop bands — only light up while dragging */
 .gpfl-bank-zone {
   position: absolute;
-  left: 6%;
-  right: 6%;
-  height: 20%;
-  border: 1px dashed rgba(255, 255, 255, 0.22);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.12);
+  left: 5%;
+  right: 5%;
+  height: 16%;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
   pointer-events: auto;
   z-index: 3;
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
-  padding: 4px 8px;
+  padding: 2px 6px;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.gpfl-pitch.is-dragging .gpfl-bank-zone {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(0, 0, 0, 0.14);
 }
 .gpfl-bank-zone.drag-over {
-  background: rgba(180, 210, 120, 0.22);
-  border-color: rgba(220, 240, 160, 0.7);
+  background: rgba(180, 210, 120, 0.28) !important;
+  border-color: rgba(220, 240, 160, 0.85) !important;
 }
 .gpfl-bank-zone-label {
   font-size: 10px;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.55);
   text-transform: uppercase;
   pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+.gpfl-pitch.is-dragging .gpfl-bank-zone-label {
+  color: rgba(255, 255, 255, 0.9);
 }
 .gpfl-xi-shape--bad {
   color: #f0a070 !important;
@@ -490,9 +509,11 @@ body.gpfl-page {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   text-align: center;
   cursor: grab;
+  pointer-events: auto;
 }
 .gpfl-pitch-slot.dragging,
-.gpfl-squad-card.dragging {
+.gpfl-squad-card.dragging,
+.gpfl-bench-item.dragging {
   opacity: 0.55;
 }
 .gpfl-pitch-name {
@@ -518,12 +539,19 @@ body.gpfl-page {
   line-height: 16px;
   padding: 0;
   cursor: pointer;
+  z-index: 6;
 }
 .gpfl-squad-card.on-pitch {
   outline: 1px solid rgba(142, 202, 160, 0.55);
 }
-.gpfl-squad-card[draggable="true"] {
+.gpfl-squad-card[draggable="true"],
+.gpfl-bench-item[draggable="true"] {
   cursor: grab;
+}
+.gpfl-squad-add-pitch {
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
 }
 .gpfl-pitch-slot:focus-within {
   z-index: 40;

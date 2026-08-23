@@ -7,7 +7,7 @@ import {
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
-import { GPFL_TIPS } from "./fantasy_info_tips.js?v=20260823-banks";
+import { GPFL_TIPS } from "./fantasy_info_tips.js?v=20260823-banks2";
 
 /** Pitch / squad display order (GKs are their own section, not defenders). */
 const POS_ORDER = [
@@ -39,10 +39,11 @@ const POOL_SECTIONS = [
 ];
 
 const XI_RULES = {
+  // y% matches pitch markings: halfway≈2%, penalty top≈65%, goal≈97%
   gk: { min: 1, max: 1, label: "GK", y: 90 },
   def: { min: 3, max: 5, label: "DEF", y: 65 },
-  mid: { min: 2, max: 5, label: "MID", y: 34 },
-  fwd: { min: 1, max: 3, label: "FWD", y: 8 },
+  mid: { min: 2, max: 5, label: "MID", y: 36 },
+  fwd: { min: 1, max: 3, label: "FWD", y: 10 },
 };
 
 const BANK_ORDER = ["fwd", "mid", "def", "gk"]; // paint top → bottom
@@ -334,6 +335,57 @@ function editingOpen(data = state.payload) {
   return data?.editing_open !== false;
 }
 
+/** Pitch XI editable whenever transfers/building are allowed (same as server assert). */
+function canEditPitch(data = state.payload) {
+  return canTransfer(data);
+}
+
+function setPitchDragging(on) {
+  document.getElementById("gpflPitchBoard")?.classList.toggle("is-dragging", Boolean(on));
+}
+
+function readDragPlayerId(ev) {
+  const dt = ev.dataTransfer;
+  if (!dt) return "";
+  return (
+    dt.getData("text/plain") ||
+    dt.getData("text") ||
+    dt.getData("text/gpfl-player") ||
+    ""
+  ).trim();
+}
+
+function writeDragPlayerId(ev, playerId) {
+  const dt = ev.dataTransfer;
+  if (!dt) return;
+  const id = String(playerId || "");
+  // text/plain is required for reliable HTML5 DnD across Chromium/Firefox
+  dt.setData("text/plain", id);
+  dt.setData("text", id);
+  try {
+    dt.setData("text/gpfl-player", id);
+  } catch (_) {
+    /* ignore */
+  }
+  dt.effectAllowed = "move";
+}
+
+function placePlayerOnBank(playerId, group, { silent = false } = {}) {
+  const squad = (state.payload?.squad || []).filter((p) => p.slot_status === "active");
+  const res = addToBank(playerId, group, squad, state.banks);
+  if (!res.ok) {
+    if (!silent) setStatus(res.reason, false);
+    return false;
+  }
+  state.banks = res.banks;
+  state.banksTouched = true;
+  state.benchOrder = mergeBenchOrder(squad, state.banks, state.benchOrder);
+  renderPitchBench(state.payload);
+  renderSquad(state.payload);
+  if (!silent) setStatus(`Placed on ${XI_RULES[group]?.label || group} line.`);
+  return true;
+}
+
 /** Initial squad build (and FA replaces) stay open even if the month deadline has locked. */
 function canTransfer(data = state.payload) {
   if (!data?.joined) return false;
@@ -593,10 +645,11 @@ function renderPitchBench(data) {
   const pitchRoot = document.getElementById("gpflPitchSlots");
   const benchRoot = document.getElementById("gpflBench");
   const capSel = document.getElementById("gpflCaptain");
+  const pitchBoard = document.getElementById("gpflPitchBoard");
   if (!pitchRoot || !benchRoot) return;
 
   const squad = (data?.squad || []).filter((p) => p.slot_status === "active");
-  const open = editingOpen(data);
+  const open = canEditPitch(data);
   const byId = new Map(squad.map((p) => [p.player_id, p]));
 
   for (const g of ["gk", "def", "mid", "fwd"]) {
@@ -620,29 +673,27 @@ function renderPitchBench(data) {
     const zone = document.createElement("div");
     zone.className = `gpfl-bank-zone gpfl-bank-zone--${g}`;
     zone.dataset.bank = g;
-    zone.style.top = `${Math.max(2, rule.y - 10)}%`;
+    // Center the drop band on the player line
+    zone.style.top = `${Math.max(1, rule.y - 8)}%`;
     zone.innerHTML = `<span class="gpfl-bank-zone-label">${esc(rule.label)} · ${
       (state.banks[g] || []).length
     }/${rule.max}</span>`;
     if (open) {
       zone.addEventListener("dragover", (ev) => {
         ev.preventDefault();
+        ev.dataTransfer.dropEffect = "move";
         zone.classList.add("drag-over");
       });
-      zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+      zone.addEventListener("dragleave", (ev) => {
+        if (ev.target === zone) zone.classList.remove("drag-over");
+      });
       zone.addEventListener("drop", (ev) => {
         ev.preventDefault();
+        ev.stopPropagation();
         zone.classList.remove("drag-over");
-        const pid = ev.dataTransfer?.getData("text/gpfl-player") || "";
-        if (!pid) return;
-        const res = addToBank(pid, g, squad, state.banks);
-        if (!res.ok) return setStatus(res.reason, false);
-        state.banks = res.banks;
-        state.banksTouched = true;
-        state.benchOrder = mergeBenchOrder(squad, state.banks, state.benchOrder);
-        renderPitchBench(state.payload);
-        renderSquad(state.payload);
-        setStatus(`Placed on ${rule.label} line.`);
+        setPitchDragging(false);
+        const pid = readDragPlayerId(ev);
+        if (pid) placePlayerOnBank(pid, g);
       });
     }
     pitchRoot.appendChild(zone);
@@ -666,7 +717,7 @@ function renderPitchBench(data) {
       const dmfHint = pos === "DMF" ? " · CS as DEF" : "";
       wrap.innerHTML = `
         <div class="gpfl-pitch-pos">${esc(pos)}${isCap ? " · C" : ""}${esc(dmfHint)}</div>
-        <img class="gpfl-pitch-thumb" src="${pesdbPlayerCardUrl(pid)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
+        <img class="gpfl-pitch-thumb" src="${pesdbPlayerCardUrl(pid)}" alt="" loading="lazy" draggable="false" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
         <div class="gpfl-pitch-name">${esc(p.player_name || pid)}</div>
         ${
           open
@@ -676,14 +727,35 @@ function renderPitchBench(data) {
       `;
       if (open) {
         wrap.addEventListener("dragstart", (ev) => {
-          ev.dataTransfer?.setData("text/gpfl-player", pid);
-          ev.dataTransfer.effectAllowed = "move";
+          writeDragPlayerId(ev, pid);
           wrap.classList.add("dragging");
+          setPitchDragging(true);
         });
-        wrap.addEventListener("dragend", () => wrap.classList.remove("dragging"));
+        wrap.addEventListener("dragend", () => {
+          wrap.classList.remove("dragging");
+          setPitchDragging(false);
+        });
       }
       pitchRoot.appendChild(wrap);
     });
+  }
+
+  // Whole-pitch fallback drop (hit-test by Y → nearest bank)
+  if (pitchBoard && open) {
+    pitchBoard.ondragover = (ev) => {
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = "move";
+    };
+    pitchBoard.ondrop = (ev) => {
+      if (ev.target?.closest?.(".gpfl-bank-zone")) return;
+      ev.preventDefault();
+      setPitchDragging(false);
+      const pid = readDragPlayerId(ev);
+      if (!pid) return;
+      const p = byId.get(pid) || (state.payload?.squad || []).find((x) => x.player_id === pid);
+      const g = p ? playerBankGroup(p) : null;
+      if (g) placePlayerOnBank(pid, g);
+    };
   }
 
   pitchRoot.querySelectorAll(".gpfl-pitch-off").forEach((btn) => {
@@ -722,7 +794,9 @@ function renderPitchBench(data) {
   if (!benchIds.length) {
     benchRoot.innerHTML = `<p class="gpfl-muted">${
       squad.length
-        ? "Drag extras here / off the pitch for the bench."
+        ? open
+          ? "Drag squad players onto their bank line (or use To pitch)."
+          : "Pitch editing locked while the month is live."
         : "Sign players first."
     }</p>`;
   } else {
@@ -732,18 +806,26 @@ function renderPitchBench(data) {
         const p = byId.get(id);
         if (!p) return "";
         const pos = normalizePos(p.position) || "";
+        const bank = playerBankGroup(p);
         return `<li class="gpfl-bench-item" draggable="${open ? "true" : "false"}" data-id="${esc(
           id
-        )}" data-bank="${esc(playerBankGroup(p))}">
+        )}" data-bank="${esc(bank)}">
           <span class="gpfl-bench-rank">${i + 1}</span>
-          <img class="gpfl-bench-thumb" src="${pesdbPlayerCardUrl(id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
+          <img class="gpfl-bench-thumb" src="${pesdbPlayerCardUrl(id)}" alt="" loading="lazy" draggable="false" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
           <div class="gpfl-bench-meta">
             <button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(id)}">${esc(
               p.player_name || id
             )}</button>
             <span class="gpfl-muted">${esc(pos)}${
               pos === "DMF" ? " · scores as DEF" : ""
-            } · ${esc(playerBankGroup(p).toUpperCase())}</span>
+            } · ${esc(bank.toUpperCase())}</span>
+            ${
+              open
+                ? `<button type="button" class="gpfl-btn gpfl-squad-add-pitch" data-id="${esc(
+                    id
+                  )}" data-bank="${esc(bank)}">To pitch</button>`
+                : ""
+            }
           </div>
           <span class="gpfl-bench-actions">
             <button type="button" class="gpfl-btn gpfl-bench-move" data-dir="-1" data-id="${esc(id)}" ${
@@ -775,9 +857,21 @@ function renderPitchBench(data) {
   benchRoot.querySelectorAll(".gpfl-bench-item").forEach((row) => {
     if (!open) return;
     row.addEventListener("dragstart", (ev) => {
-      ev.dataTransfer?.setData("text/gpfl-player", row.dataset.id);
-      ev.dataTransfer.effectAllowed = "move";
+      writeDragPlayerId(ev, row.dataset.id);
+      row.classList.add("dragging");
+      setPitchDragging(true);
     });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("dragging");
+      setPitchDragging(false);
+    });
+  });
+  benchRoot.querySelectorAll(".gpfl-squad-add-pitch").forEach((btn) => {
+    btn.onclick = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      placePlayerOnBank(btn.dataset.id, btn.dataset.bank);
+    };
   });
   benchRoot.querySelectorAll(".gpfl-card-link").forEach((btn) => {
     btn.onclick = () => openPlayerCard(btn.dataset.id, { canSign: false });
@@ -807,7 +901,7 @@ function renderSquad(data) {
     { id: "fwd", label: "Forwards", group: "fwd" },
   ];
 
-  const pitchOpen = editingOpen(data);
+  const pitchOpen = canEditPitch(data);
   const starters = starterIdsFromBanks(state.banks);
 
   root.innerHTML = sections
@@ -832,7 +926,7 @@ function renderSquad(data) {
                 }" draggable="${pitchOpen && p.slot_status === "active" ? "true" : "false"}" data-id="${esc(
                   p.player_id
                 )}" data-bank="${esc(sec.group)}">
-                  <img class="gpfl-mini-thumb" src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
+                  <img class="gpfl-mini-thumb" src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" draggable="false" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
                   <div class="gpfl-squad-card-main">
                     <button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(
                       p.player_id
@@ -848,11 +942,13 @@ function renderSquad(data) {
                       <span class="gpfl-badge">${esc(role)}</span>
                     </div>
                     ${
-                      pitchOpen && p.slot_status === "active"
-                        ? `<div class="gpfl-muted" style="font-size:11px;margin-top:4px;">Drag onto ${esc(
-                            sec.group.toUpperCase()
-                          )} line</div>`
-                        : ""
+                      pitchOpen && p.slot_status === "active" && !onPitch
+                        ? `<button type="button" class="gpfl-btn gpfl-squad-add-pitch" data-id="${esc(
+                            p.player_id
+                          )}" data-bank="${esc(sec.group)}">To pitch</button>`
+                        : pitchOpen && onPitch
+                          ? `<div class="gpfl-muted" style="font-size:11px;margin-top:4px;">On pitch — drag to move / × to bench</div>`
+                          : ""
                     }
                   </div>
                   <button type="button" class="gpfl-btn gpfl-rm" data-id="${esc(p.player_id)}" ${
@@ -885,13 +981,28 @@ function renderSquad(data) {
   root.querySelectorAll(".gpfl-card-link").forEach((btn) => {
     btn.onclick = () => openPlayerCard(btn.dataset.id, { canSign: false });
   });
+  root.querySelectorAll(".gpfl-squad-add-pitch").forEach((btn) => {
+    btn.onclick = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      placePlayerOnBank(btn.dataset.id, btn.dataset.bank);
+    };
+  });
   root.querySelectorAll(".gpfl-squad-card[draggable='true']").forEach((card) => {
     card.addEventListener("dragstart", (ev) => {
-      ev.dataTransfer?.setData("text/gpfl-player", card.dataset.id);
-      ev.dataTransfer.effectAllowed = "move";
+      // Don't start a drag from the Sell / name / To pitch controls
+      if (ev.target?.closest?.("button")) {
+        ev.preventDefault();
+        return;
+      }
+      writeDragPlayerId(ev, card.dataset.id);
       card.classList.add("dragging");
+      setPitchDragging(true);
     });
-    card.addEventListener("dragend", () => card.classList.remove("dragging"));
+    card.addEventListener("dragend", () => {
+      card.classList.remove("dragging");
+      setPitchDragging(false);
+    });
   });
 }
 
