@@ -13,6 +13,7 @@ const NUM = [
   "slot_fwd",
   "price_round_to",
   "price_floor",
+  "price_ceiling",
   "free_transfers_per_month",
   "transfer_hit_points",
   "pts_appear",
@@ -118,7 +119,7 @@ async function save() {
   fillForm(data);
   setStatus(
     "status",
-    "Saved. Open/refresh GPFL season on fantasy.html if the pool needs rebuilding.",
+    "Saved. Open/refresh GPFL season on fantasy.html to rebuild fantasy prices (not GPSL MV) if the pool needs updating.",
     true
   );
 }

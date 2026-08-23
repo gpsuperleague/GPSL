@@ -4,7 +4,7 @@
 
 export const GPFL_TIPS = {
   budget:
-    "Budget left to spend from your GPFL season pot.\n\nThis is fantasy money only — never your GPSL club bank, Bookies, or Central Bank.",
+    "Budget left to spend from your GPFL season pot (~₿100m play-money by default).\n\nFantasy prices only — never GPSL club market values, wages, club bank, Bookies, or Central Bank.",
 
   points:
     "Total GPFL points for the season (finalised month scores). Hit points from extra transfers are already applied.",
@@ -37,7 +37,7 @@ export const GPFL_TIPS = {
     "Saves formation, pitch XI dropdowns, captain, and bench order (1 = first auto-sub).\n\nYou can re-save while editing is open for the month.",
 
   pool:
-    "Sign players into your GPFL squad from the contracted GPSL pool.\n\nPlayers at clubs you own in GPSL are excluded. Gold Sign adds them if you have budget and a free slot in that position group.",
+    "Sign players into your GPFL squad from the contracted GPSL pool.\n\nGPFL prices are fantasy-only (rating, form, past GPFL points, club strength) — not GPSL market values. Players at clubs you own are excluded.",
 
   yourSquad:
     "Everyone you have signed for GPFL.\n\nNext step: put 11 of them into the pitch markers (step 3). Extras sit on the subs bench.",
@@ -76,5 +76,5 @@ export const GPFL_TIPS = {
     "Fixture Difficulty Rating 1–5 for the opponent.\n\nBased on owner rolling-4 rank (75%) blended with club prestige (25%). Club prestige only when the owner has no ranking history.",
 
   disclaimer:
-    "GPFL is optional and financially separate from GPSL club money.\n\nYou cannot pick players contracted to clubs you own. Auto-subs cover blank starters; extra transfers after free ones cost hit points.",
+    "GPFL is optional. Squad prices and bank are fantasy play-money only — not GPSL market values or club ledgers.\n\nYou cannot pick players contracted to clubs you own. Auto-subs cover blank starters; extra transfers after free ones cost hit points.",
 };

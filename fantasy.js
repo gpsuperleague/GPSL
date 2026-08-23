@@ -13,7 +13,7 @@ import {
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
-import { GPFL_TIPS } from "./fantasy_info_tips.js";
+import { GPFL_TIPS } from "./fantasy_info_tips.js?v=20260823-fantasy-prices";
 
 /** Pitch / squad display order (GKs are their own section, not defenders). */
 const POS_ORDER = [
@@ -1549,11 +1549,13 @@ function wire() {
     setStatus("Opening GPFL season…");
     const { data, error } = await supabase.rpc("admin_gpfl_open_season", {
       p_competition_season_id: null,
-      p_refresh_prices: false,
+      p_refresh_prices: true,
     });
     if (error) return setStatus(error.message, false);
     await refresh();
-    setStatus(`GPFL season ready (${data?.price_rows_touched ?? "?"} price rows).`);
+    setStatus(
+      `GPFL season ready (${data?.price_rows_touched ?? "?"} fantasy prices · budget ₿${Number(data?.budget ?? 0).toLocaleString("en-GB")}).`
+    );
   });
 
   document.getElementById("gpflResetSeasonBtn")?.addEventListener("click", async () => {

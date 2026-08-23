@@ -33,17 +33,18 @@
       <p class="gpfl-welcome">Owners lounge</p>
       <h1>GP Fantasy League</h1>
       <p class="gpfl-tagline">
-        Optional side-game. Pick a 15-man squad, set your pitch XI from dropdowns on the formation,
-        and order the bench for auto-subs. Fantasy budget is play-money; cash prizes go to your
+        Optional side-game. Pick a 15-man squad (~₿100m play-money), set your pitch XI from dropdowns,
+        and order the bench for auto-subs. Prices are GPFL-only (not GPSL market values); cash prizes go to your
         <a href="owners_bank.html" style="color:#9cf">Owner Bank</a>.
       </p>
       <div class="gpfl-hero-stats" id="gpflHeroStats"></div>
     </div>
   </header>
 
-  <p class="gpfl-disclaimer gpsl-has-tip" tabindex="0" data-gpsl-tip="GPFL is optional. Fantasy squad budget never touches club money. Cash prizes (if paid) credit your Owner Bank with Bookies and the Owners Shop.">
-    GPFL fantasy budget is separate from club finances. Cash prizes credit your Owner Bank
-    (same pot as Bookies and Owners Shop). You cannot pick players contracted to clubs you own.
+  <p class="gpfl-disclaimer gpsl-has-tip" tabindex="0" data-gpsl-tip="GPFL is optional. Fantasy prices and bank never use GPSL club market values or club money. Prices blend rating, season form, past GPFL points, and club strength. Cash prizes (if paid) credit your Owner Bank with Bookies and the Owners Shop.">
+    GPFL prices and budget are fantasy play-money only — not GPSL market values or club ledgers.
+    Cash prizes credit your Owner Bank (same pot as Bookies and Owners Shop).
+    You cannot pick players contracted to clubs you own.
   </p>
 
   <main class="gpfl-main">
@@ -52,7 +53,7 @@
 
     <section class="gpfl-panel" id="gpflGate" hidden>
       <h2>Join GPFL</h2>
-      <p class="gpfl-muted" id="gpflGateMsg">Optional — you can skip this entirely.</p>
+      <p class="gpfl-muted" id="gpflGateMsg">Optional — ~₿100m fantasy bank (not GPSL money). You can skip this entirely.</p>
       <label class="gpfl-muted" style="display:block;margin:10px 0 6px;">Team name (optional)</label>
       <input id="gpflTeamName" type="text" maxlength="40" placeholder="e.g. Rotav XI" style="max-width:280px;margin-right:8px;background:#111820;border:1px solid #445;color:#eee;border-radius:4px;padding:8px 10px;">
       <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflJoinBtn">Join this season</button>
@@ -60,7 +61,10 @@
 
     <section class="gpfl-panel" id="gpflAdminPanel" hidden>
       <h2>Admin</h2>
-      <p class="gpfl-muted" style="margin:0 0 10px;">Open / refresh the player pool, or score a GPSL month. Full knobs on Admin → GPFL settings.</p>
+      <p class="gpfl-muted" style="margin:0 0 10px;">
+        Open / refresh rebuilds the pool with fantasy prices (not GPSL MV) and rebases banks to the budget.
+        If squads were built on the old scale, prefer <b>Reset all entries</b> then re-join. Full knobs on Admin → GPFL settings.
+      </p>
       <button type="button" class="gpfl-btn gpfl-btn--gold" id="gpflOpenSeasonBtn">Open / refresh GPFL season</button>
       <button type="button" class="gpfl-btn" id="gpflSyncFaBtn" style="margin-left:8px;">Sync free agents</button>
       <button type="button" class="gpfl-btn" id="gpflRebaseBudgetBtn" style="margin-left:8px;">Rebase banks to budget</button>
@@ -81,7 +85,7 @@
 
       <div class="gpfl-tab-panel active" id="gpflTabSquad" data-gpfl-panel="squad" role="tabpanel">
       <section class="gpfl-panel">
-        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Sign players into your GPFL squad from the contracted GPSL pool. Players at clubs you own in GPSL are excluded. Gold Sign adds them if you have budget and a free slot in that position group.">Squad Building</h2>
+        <h2 class="gpsl-has-tip" tabindex="0" data-gpsl-tip="Sign players into your GPFL squad from the contracted GPSL pool. GPFL prices are fantasy-only (not GPSL market values). Players at clubs you own are excluded. Gold Sign adds them if you have budget and a free slot in that position group.">Squad Building</h2>
         <div class="gpfl-stats gpfl-sign-caps" id="gpflSignCaps"></div>
         <p class="gpfl-muted" style="margin:0 0 8px;">
           Expand a position → click gold <b>Sign</b>. Players at <b>your own GPSL clubs</b> are excluded.
@@ -205,6 +209,6 @@
     <div id="gpflCardBody" class="gpfl-dialog-body"></div>
   </dialog>
 
-  <script type="module" src="fantasy.js?v=20260822-prizes"></script>
+  <script type="module" src="fantasy.js?v=20260823-fantasy-prices"></script>
 </body>
 </html>

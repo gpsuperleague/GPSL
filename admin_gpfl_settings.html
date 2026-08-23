@@ -47,8 +47,9 @@
   <main class="admin-main" style="max-width:960px;margin:20px auto;padding:0 16px 40px;">
     <h1 style="color:#7eb8e8;font-family:Georgia,serif;">GP Fantasy League settings</h1>
     <p style="color:#999;font-size:13px;max-width:42em;">
-      Squad budget and prices are fantasy play-money only (never club ledgers).
-      Optional <b>cash prizes</b> below credit the <b>owner wallet</b> (same pot as Bookies / Owners Shop).
+      Squad budget and prices are <b>GPFL play-money only</b> — separate from GPSL club market values,
+      wages, and ledgers. Fantasy prices use rating, GPSL season form, past GPFL points, and club/owner strength.
+      Optional <b>cash prizes</b> below credit the <b>owner wallet</b> (Bookies / Owners Shop).
       Owners opt in on <a href="fantasy.html" style="color:#9cf;">fantasy.html</a>.
     </p>
     <p id="status" style="min-height:1.2em;color:#9f9;"></p>
@@ -63,9 +64,9 @@
     </section>
 
     <section class="gpfl-section">
-      <h2>Budget &amp; squad</h2>
+      <h2>Budget &amp; fantasy prices (not GPSL MV)</h2>
       <div class="gpfl-grid">
-        <label>Budget <input id="budget" type="number" step="1000000"></label>
+        <label>Budget <input id="budget" type="number" step="500000" title="Default ₿100m play-money"></label>
         <label>Squad size <input id="squad_size" type="number" min="11" max="20"></label>
         <label>Starters <input id="starters" type="number" min="11" max="11"></label>
         <label>Max per club <input id="max_per_club" type="number" min="1" max="5"></label>
@@ -73,8 +74,9 @@
         <label>DEF slots <input id="slot_def" type="number" min="3" max="6"></label>
         <label>MID slots <input id="slot_mid" type="number" min="3" max="6"></label>
         <label>FWD slots <input id="slot_fwd" type="number" min="1" max="4"></label>
-        <label>Price round-to <input id="price_round_to" type="number" step="100000"></label>
-        <label>Price floor <input id="price_floor" type="number" step="100000"></label>
+        <label>Price round-to <input id="price_round_to" type="number" step="100000" title="Default ₿0.5m"></label>
+        <label>Price floor <input id="price_floor" type="number" step="100000" title="Default ₿4.5m"></label>
+        <label>Price ceiling <input id="price_ceiling" type="number" step="100000" title="Default ₿14m"></label>
         <label>Free transfers / month <input id="free_transfers_per_month" type="number" min="0" max="15"></label>
         <label>Transfer hit points <input id="transfer_hit_points" type="number" step="1" max="0" title="Stored as negative (e.g. -4)"></label>
         <label>Deadline mode
@@ -84,7 +86,11 @@
           </select>
         </label>
       </div>
-      <p style="font-size:12px;color:#888;margin:0;">Divisions (comma-separated): superleague, championship_a, championship_b</p>
+      <p style="font-size:12px;color:#888;margin:8px 0 0;">
+        Fantasy ladder defaults: budget ₿100m · prices ₿4.5m–₿14.0m in ₿0.5m steps.
+        After changing price knobs, use <b>Open / refresh GPFL season</b> on fantasy.html to rebuild the pool.
+      </p>
+      <p style="font-size:12px;color:#888;margin:10px 0 0;">Divisions (comma-separated): superleague, championship_a, championship_b</p>
       <input id="divisions" type="text" style="width:100%;max-width:520px;margin-top:6px;padding:8px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;">
       <p style="font-size:12px;color:#888;margin:10px 0 0;">Competition types (comma-separated): league</p>
       <input id="competition_types" type="text" style="width:100%;max-width:520px;margin-top:6px;padding:8px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;">
@@ -159,6 +165,6 @@
 
     <button type="button" id="saveBtn" class="admin-btn" style="padding:10px 18px;">Save settings</button>
   </main>
-  <script type="module" src="admin_gpfl_settings.js?v=20260822-autopay"></script>
+  <script type="module" src="admin_gpfl_settings.js?v=20260823-fantasy-prices"></script>
 </body>
 </html>
