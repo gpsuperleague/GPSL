@@ -1047,10 +1047,10 @@ function renderPoolRowsHtml(sec, payload) {
         .includes(q)
     );
   }
-  // Category only — sort by price (cheap first helps squad building), then name
+  // Category only — sort by price (dear first), then name
   players = [...players].sort(
     (a, b) =>
-      Number(a.price ?? 0) - Number(b.price ?? 0) ||
+      Number(b.price ?? 0) - Number(a.price ?? 0) ||
       String(a.player_name || "").localeCompare(String(b.player_name || ""))
   );
 
@@ -1097,7 +1097,7 @@ function renderPoolRowsHtml(sec, payload) {
 
   return `<p class="gpfl-muted" style="margin:0 0 8px;">${esc(
     payload.total ?? players.length
-  )} ${esc(sec.label.toLowerCase())} · sorted cheap → dear · click a player for profile &amp; sign</p>${list}`;
+  )} ${esc(sec.label.toLowerCase())} · sorted dear → cheap · click a player for profile &amp; sign</p>${list}`;
 }
 
 function wirePoolRows(root) {
