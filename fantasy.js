@@ -7,7 +7,7 @@ import {
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
-import { GPFL_TIPS } from "./fantasy_info_tips.js?v=20260823-banks2";
+import { GPFL_TIPS } from "./fantasy_info_tips.js?v=20260823-even-ladder";
 
 /** Pitch / squad display order (GKs are their own section, not defenders). */
 const POS_ORDER = [
@@ -713,10 +713,8 @@ function renderPitchBench(data) {
       wrap.draggable = open;
       wrap.dataset.playerId = pid;
       wrap.dataset.bank = g;
-      const pos = normalizePos(p.position) || XI_RULES[g].label;
-      const dmfHint = pos === "DMF" ? " · CS as DEF" : "";
       wrap.innerHTML = `
-        <div class="gpfl-pitch-pos">${esc(pos)}${isCap ? " · C" : ""}${esc(dmfHint)}</div>
+        <div class="gpfl-pitch-pos">${esc(XI_RULES[g].label)}${isCap ? " · C" : ""}</div>
         <img class="gpfl-pitch-thumb" src="${pesdbPlayerCardUrl(pid)}" alt="" loading="lazy" draggable="false" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
         <div class="gpfl-pitch-name">${esc(p.player_name || pid)}</div>
         ${
@@ -780,9 +778,7 @@ function renderPitchBench(data) {
           (p) =>
             `<option value="${esc(p.player_id)}" ${
               p.player_id === capId ? "selected" : ""
-            }>${esc(p.player_name || p.player_id)} (${esc(
-              normalizePos(p.position) || ""
-            )})</option>`
+            }>${esc(p.player_name || p.player_id)}</option>`
         )
         .join("");
     capSel.disabled = !open || !starterPlayers.length;
@@ -805,7 +801,6 @@ function renderPitchBench(data) {
       .map((id, i) => {
         const p = byId.get(id);
         if (!p) return "";
-        const pos = normalizePos(p.position) || "";
         const bank = playerBankGroup(p);
         return `<li class="gpfl-bench-item" draggable="${open ? "true" : "false"}" data-id="${esc(
           id
@@ -816,9 +811,7 @@ function renderPitchBench(data) {
             <button type="button" class="gpfl-link gpfl-card-link" data-id="${esc(id)}">${esc(
               p.player_name || id
             )}</button>
-            <span class="gpfl-muted">${esc(pos)}${
-              pos === "DMF" ? " · scores as DEF" : ""
-            } · ${esc(bank.toUpperCase())}</span>
+            <span class="gpfl-muted">${esc(bank.toUpperCase())}</span>
             ${
               open
                 ? `<button type="button" class="gpfl-btn gpfl-squad-add-pitch" data-id="${esc(
@@ -932,9 +925,9 @@ function renderSquad(data) {
                       p.player_id
                     )}">${esc(p.player_name || p.player_id)}</button>
                     <div class="gpfl-squad-card-meta">
-                      <span>${esc(pos)}${esc(dmf)}</span>
                       <span>${esc(p.club_short_name || p.club_name || "—")}</span>
                       <span>${moneyNum(p.purchase_price)}</span>
+                      ${pos === "DMF" ? `<span class="gpfl-muted">${esc(dmf.trim())}</span>` : ""}
                     </div>
                     <div class="gpfl-squad-card-badges">
                       ${fa ? `<span class="gpfl-badge gpfl-badge--fa">FA</span>` : ""}
@@ -1020,7 +1013,6 @@ function renderPoolShell() {
     return `<details class="gpfl-acc" data-sec="${esc(sec.id)}" ${open ? "open" : ""}>
       <summary>
         <span class="gpfl-acc-label">${esc(sec.label)}</span>
-        <span class="gpfl-acc-pos gpfl-muted">${esc(sec.positions.join(" · "))}</span>
       </summary>
       <div class="gpfl-acc-body" id="gpflPoolBody-${esc(sec.id)}">
         ${
@@ -1049,79 +1041,63 @@ function renderPoolRowsHtml(sec, payload) {
     .toLowerCase();
   if (q) {
     players = players.filter((p) =>
-      [p.player_name, p.club_name, p.club_short_name, p.owner_name, p.position]
+      [p.player_name, p.club_name, p.club_short_name, p.owner_name]
         .join(" ")
         .toLowerCase()
         .includes(q)
     );
   }
+  // Category only — sort by price (cheap first helps squad building), then name
   players = [...players].sort(
     (a, b) =>
-      Number(b.price ?? 0) - Number(a.price ?? 0) ||
-      posRank(a.position) - posRank(b.position) ||
+      Number(a.price ?? 0) - Number(b.price ?? 0) ||
       String(a.player_name || "").localeCompare(String(b.player_name || ""))
   );
 
-  // Sub-group by exact position within section (keep price order within each)
-  const byPos = {};
-  for (const pos of sec.positions) byPos[pos] = [];
-  const other = [];
-  for (const p of players) {
-    const pos = normalizePos(p.position);
-    if (byPos[pos]) byPos[pos].push(p);
-    else other.push(p);
-  }
-
-  const chunks = [...sec.positions, ...(other.length ? ["OTHER"] : [])]
-    .map((pos) => {
-      const list = pos === "OTHER" ? other : byPos[pos] || [];
-      if (!list.length) return "";
-      return `<div class="gpfl-pool-pos">
-        <div class="gpfl-pool-pos-label">${esc(pos === "OTHER" ? "Other" : pos)} · ${list.length}</div>
-        <ul class="gpfl-pool-list">
-          ${list
-            .map((p) => {
-              const inSquad = (state.payload?.squad || []).some(
-                (s) => s.player_id === p.player_id && s.slot_status === "active"
-              );
-              const allowSign = canTransfer() && !inSquad;
-              return `<li>
-                <div class="gpfl-pool-row-wrap">
-                  <button type="button" class="gpfl-pool-row" data-id="${esc(p.player_id)}" data-sign="1">
-                    <img src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
-                    <span class="gpfl-pool-row-main">
-                      <b>${esc(p.player_name)}</b>
-                      <span class="gpfl-muted">${esc(p.club_name || p.club_short_name || "")} · ${esc(
-                        p.owner_name || "—"
-                      )}</span>
-                    </span>
-                    <span class="gpfl-pool-row-meta">
-                      <span>${esc(p.ownership_pct ?? "—")}%</span>
-                      <span>${moneyNum(p.price)}</span>
-                    </span>
-                  </button>
-                  ${
-                    inSquad
-                      ? `<span class="gpfl-badge">In squad</span>`
-                      : `<button type="button" class="gpfl-btn gpfl-btn--gold gpfl-pool-sign" data-id="${esc(
-                          p.player_id
-                        )}" ${allowSign ? "" : "disabled"} title="${
-                          allowSign ? "Sign to GPFL squad" : "Transfers locked or unavailable"
-                        }">Sign</button>`
-                  }
-                </div>
-              </li>`;
-            })
-            .join("")}
-        </ul>
-      </div>`;
-    })
-    .join("");
-
-  if (!chunks) {
+  if (!players.length) {
     return `<p class="gpfl-muted">No players in this group${q ? " for this filter" : ""}.</p>`;
   }
-  return `<p class="gpfl-muted" style="margin:0 0 8px;">${esc(payload.total ?? players.length)} in group · click a player for profile &amp; sign</p>${chunks}`;
+
+  const list = `<ul class="gpfl-pool-list">
+    ${players
+      .map((p) => {
+        const inSquad = (state.payload?.squad || []).some(
+          (s) => s.player_id === p.player_id && s.slot_status === "active"
+        );
+        const allowSign = canTransfer() && !inSquad;
+        return `<li>
+          <div class="gpfl-pool-row-wrap">
+            <button type="button" class="gpfl-pool-row" data-id="${esc(p.player_id)}" data-sign="1">
+              <img src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
+              <span class="gpfl-pool-row-main">
+                <b>${esc(p.player_name)}</b>
+                <span class="gpfl-muted">${esc(p.club_name || p.club_short_name || "")} · ${esc(
+                  p.owner_name || "—"
+                )}</span>
+              </span>
+              <span class="gpfl-pool-row-meta">
+                <span>${esc(p.ownership_pct ?? "—")}%</span>
+                <span>${moneyNum(p.price)}</span>
+              </span>
+            </button>
+            ${
+              inSquad
+                ? `<span class="gpfl-badge">In squad</span>`
+                : `<button type="button" class="gpfl-btn gpfl-btn--gold gpfl-pool-sign" data-id="${esc(
+                    p.player_id
+                  )}" ${allowSign ? "" : "disabled"} title="${
+                    allowSign ? "Sign to GPFL squad" : "Transfers locked or unavailable"
+                  }">Sign</button>`
+            }
+          </div>
+        </li>`;
+      })
+      .join("")}
+  </ul>`;
+
+  return `<p class="gpfl-muted" style="margin:0 0 8px;">${esc(
+    payload.total ?? players.length
+  )} ${esc(sec.label.toLowerCase())} · sorted cheap → dear · click a player for profile &amp; sign</p>${list}`;
 }
 
 function wirePoolRows(root) {
