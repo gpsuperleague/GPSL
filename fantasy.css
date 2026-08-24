@@ -867,6 +867,14 @@ body.gpfl-page {
   font-variant-numeric: tabular-nums;
 }
 
+a.gpfl-owner-link {
+  color: #6cf;
+  text-decoration: none;
+}
+a.gpfl-owner-link:hover {
+  text-decoration: underline;
+}
+
 /* FDR */
 .gpfl-fdr {
   display: inline-block;

@@ -8,6 +8,7 @@ import {
 } from "./player_links.js";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 import { GPFL_TIPS } from "./fantasy_info_tips.js?v=20260823-even-ladder";
+import { ownerProfileHref } from "./owner_badge.js";
 
 /** Pitch / squad display order (GKs are their own section, not defenders). */
 const POS_ORDER = [
@@ -72,6 +73,15 @@ function esc(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/** Clickable owner name → owner_profile.html (falls back to plain text). */
+function ownerLinkHtml(ownerId, label, { stopPool = false } = {}) {
+  const name = esc(label || "—");
+  const href = ownerProfileHref(ownerId);
+  if (!href) return name;
+  const stop = stopPool ? ' data-owner-link="1"' : "";
+  return `<a class="gpsl-link gpfl-owner-link" href="${esc(href)}"${stop}>${name}</a>`;
 }
 
 function moneyNum(n) {
@@ -1071,8 +1081,10 @@ function renderPoolRowsHtml(sec, payload) {
               <img src="${pesdbPlayerCardUrl(p.player_id)}" alt="" loading="lazy" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
               <span class="gpfl-pool-row-main">
                 <b>${esc(p.player_name)}</b>
-                <span class="gpfl-muted">${esc(p.club_name || p.club_short_name || "")} · ${esc(
-                  p.owner_name || "—"
+                <span class="gpfl-muted">${esc(p.club_name || p.club_short_name || "")} · ${ownerLinkHtml(
+                  p.owner_id,
+                  p.owner_name || "—",
+                  { stopPool: true }
                 )}</span>
               </span>
               <span class="gpfl-pool-row-meta">
@@ -1101,10 +1113,13 @@ function renderPoolRowsHtml(sec, payload) {
 }
 
 function wirePoolRows(root) {
+  root.querySelectorAll("[data-owner-link]").forEach((a) => {
+    a.onclick = (ev) => ev.stopPropagation();
+  });
   root.querySelectorAll(".gpfl-pool-row").forEach((btn) => {
     btn.onclick = (ev) => {
-      // Don't open card when clicking the inline Sign control
-      if (ev.target.closest?.(".gpfl-pool-sign")) return;
+      // Don't open card when clicking Sign or an owner profile link
+      if (ev.target.closest?.(".gpfl-pool-sign, [data-owner-link]")) return;
       openPlayerCard(btn.dataset.id, { canSign: true });
     };
   });
@@ -1401,7 +1416,10 @@ async function loadBoard() {
           (r) => `<tr ${r.is_me ? 'style="background:rgba(60,120,180,0.15)"' : ""}>
             <td>${esc(r.rank)}</td>
             <td>${esc(r.team_name || "—")}${r.is_me ? ' <span class="gpfl-badge">you</span>' : ""}</td>
-            <td>${esc(r.owner_name || r.owner_tag || r.club_short_name || "—")}</td>
+            <td>${ownerLinkHtml(
+              r.owner_id,
+              r.owner_name || r.owner_tag || r.club_short_name || "—"
+            )}</td>
             <td class="num">${esc(r.total_points ?? 0)}</td>
           </tr>`
         )
@@ -1470,7 +1488,7 @@ async function loadPrizesBoard() {
                 <td>${esc(placeLabel(p.place))}${
                   p.gpsl_month ? ` · ${esc(monthLabel(p.gpsl_month))}` : ""
                 }</td>
-                <td>${esc(p.owner_name || p.owner_tag || "—")}${
+                <td>${ownerLinkHtml(p.owner_id, p.owner_name || p.owner_tag || "—")}${
                   p.team_name ? ` <span class="gpfl-muted">(${esc(p.team_name)})</span>` : ""
                 }${p.is_me ? ' <span class="gpfl-badge">you</span>' : ""}</td>
                 <td class="num">${esc(formatMoney(p.amount))}</td>
