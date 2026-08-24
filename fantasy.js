@@ -647,7 +647,7 @@ function updateXiShapeHud(banks = state.banks) {
   const el = document.getElementById("gpflXiShape");
   if (!el) return;
   const ok = xiBanksValid(banks);
-  el.textContent = `Shape ${xiShapeLabel(banks)}${ok ? "" : " · need GK1 · DEF3–5 · MID2–5 · FWD1–3"}`;
+  el.textContent = `Shape ${xiShapeLabel(banks)}${ok ? "" : " · need GK 1 · DEF 3–5 · MID 2–5 · FWD 1–3"}`;
   el.classList.toggle("gpfl-xi-shape--bad", !ok);
 }
 
@@ -1718,7 +1718,7 @@ function wire() {
   async function saveXi() {
     if (!xiBanksValid(state.banks)) {
       setStatus(
-        `XI must be GK1 · DEF3–5 · MID2–5 · FWD1–3 (11 total). Current: ${xiShapeLabel(state.banks)}.`,
+        `XI must be GK 1 · DEF 3–5 · MID 2–5 · FWD 1–3 (11 total). Current: ${xiShapeLabel(state.banks)}.`,
         false
       );
       return;

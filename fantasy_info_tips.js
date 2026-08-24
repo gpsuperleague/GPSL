@@ -31,7 +31,7 @@ export const GPFL_TIPS = {
     "Players who left the GPSL contracted pool (e.g. free agent) and must be replaced before Confirm / scoring is clean.",
 
   confirm:
-    "Locks your 15-man squad for GPFL scoring.\n\nNeeds: full 15, a saved bank XI (GK1 · DEF3–5 · MID2–5 · FWD1–3), and a captain. Editing rules still apply after confirm (transfers / hits).",
+    "Locks your 15-man squad for GPFL scoring.\n\nNeeds: full 15, a saved bank XI (GK 1 · DEF 3–5 · MID 2–5 · FWD 1–3), and a captain. Editing rules still apply after confirm (transfers / hits).",
 
   saveXi:
     "Saves pitch banks, captain, and bench order (1 = first auto-sub).\n\nYou can re-save while editing is open for the month.",
@@ -43,7 +43,7 @@ export const GPFL_TIPS = {
     "Everyone you have signed for GPFL.\n\nDrag onto the matching pitch bank line (step 3). Extras sit on the subs bench.",
 
   pitch:
-    "Half-pitch with 4 banks (lines). Drag signed players onto their line — GK on the goal line, DEF on the box edge, MID between box and halfway, FWD on the halfway line.\n\nPlayers auto-balance left–right. XI: GK1 · DEF 3–5 · MID 2–5 · FWD 1–3. DMF is a midfielder but scores defender clean-sheet / goal points.",
+    "Half-pitch with 4 banks (lines). Drag signed players onto their line — GK on the goal line, DEF on the box edge, MID between box and halfway, FWD on the halfway line.\n\nPlayers auto-balance left–right. XI: GK 1 · DEF 3–5 · MID 2–5 · FWD 1–3. DMF is a midfielder but scores defender clean-sheet / goal points.",
 
   formation:
     "No fixed formations — build any legal bank shape (e.g. 1-4-4-2, 1-3-5-2, 1-5-3-2).\n\nDrag from Your Squad / bench onto the matching coloured bank line.",
