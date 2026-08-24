@@ -1762,11 +1762,11 @@ function wire() {
     setStatus(
       `GPFL season ready (${data?.price_rows_touched ?? "?"} rows · ${
         data?.pricing || data?.reprice?.pricing || "prices"
-      } · floor ₿${Number(data?.price_floor ?? data?.reprice?.price_floor || 0).toLocaleString(
-        "en-GB"
-      )}–₿${Number(data?.price_ceiling ?? data?.reprice?.price_ceiling || 0).toLocaleString(
-        "en-GB"
-      )} · FWD ${
+      } · floor ₿${Number(
+        data?.price_floor ?? data?.reprice?.price_floor ?? 0
+      ).toLocaleString("en-GB")}–₿${Number(
+        data?.price_ceiling ?? data?.reprice?.price_ceiling ?? 0
+      ).toLocaleString("en-GB")} · FWD ${
         data?.reprice?.by_group?.fwd
           ? `₿${Number(data.reprice.by_group.fwd.min).toLocaleString("en-GB")}–₿${Number(
               data.reprice.by_group.fwd.max
