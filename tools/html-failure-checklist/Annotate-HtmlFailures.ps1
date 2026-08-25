@@ -286,7 +286,7 @@ $injectCss = @'
     align-items: flex-start;
     gap: 8px;
     margin-right: 6px;
-    vertical-align: top;
+    vertical-align: text-top;
   }
   .hfc-wrap input[type="checkbox"] {
     width: 16px;
@@ -295,7 +295,16 @@ $injectCss = @'
     cursor: pointer;
     flex-shrink: 0;
   }
-  .hfc-done, .hfc-issue-line.hfc-done, .hfc-done-row, .hfc-done-row td {
+  /* Keep checkbox on same line as the finding text inside Notes <li><p>…</p> */
+  p.hfc-inline-issue {
+    display: inline;
+    margin: 0;
+  }
+  li.hfc-has-tick {
+    line-height: 1.35;
+  }
+  .hfc-done, .hfc-issue-line.hfc-done, .hfc-done-row, .hfc-done-row td,
+  li.hfc-has-tick.hfc-done, p.hfc-inline-issue.hfc-done {
     opacity: 0.55;
     text-decoration: line-through;
   }
@@ -380,6 +389,9 @@ $injectJs = @'
     var line = wrap.parentElement;
     if (line && line.classList) line.classList.toggle("hfc-done", on);
     wrap.classList.toggle("hfc-done", on);
+    if (line && line.parentElement && line.parentElement.tagName === "LI") {
+      line.parentElement.classList.toggle("hfc-done", on);
+    }
     if (line && line.closest) {
       var tr = line.closest("tr");
       if (tr) tr.classList.toggle("hfc-done-row", on);
@@ -501,6 +513,28 @@ $injectJs = @'
 
   function addCheckboxBefore(node, textForId, index) {
     if (!node || !node.parentNode) return false;
+
+    // <li><p>text</p></li> → put tick inside the <p> so it stays on one line
+    if (node.nodeType === 1 && node.tagName === "LI") {
+      node.classList.add("hfc-has-tick");
+      var pChild = null;
+      for (var ci = 0; ci < node.children.length; ci++) {
+        if (node.children[ci].tagName === "P") {
+          pChild = node.children[ci];
+          break;
+        }
+      }
+      if (pChild) {
+        pChild.classList.add("hfc-inline-issue");
+        node = pChild;
+      }
+    } else if (node.nodeType === 1 && node.tagName === "P") {
+      node.classList.add("hfc-inline-issue");
+      if (node.parentElement && node.parentElement.tagName === "LI") {
+        node.parentElement.classList.add("hfc-has-tick");
+      }
+    }
+
     if (node.nodeType === 1) {
       if (node.querySelector && node.querySelector(".hfc-wrap")) {
         wireCheckbox(node.querySelector(".hfc-wrap"));
