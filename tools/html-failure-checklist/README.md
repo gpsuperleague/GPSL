@@ -60,6 +60,19 @@ Copy-Item config.example.json config.json
 Open the **checklist** HTML in a browser. Tick boxes; refresh — ticks should remain
 (same browser, same file name / storage key).
 
+### Re-running after an update
+
+If a file was already annotated, the script skips by default (`skipIfAlreadyAnnotated`).
+Re-run against the **original** HTML (not the `.checklist.html`), or set
+`"skipIfAlreadyAnnotated": false` in `config.json`, or delete the old checklist output first.
+
+### One checkbox for a whole red block?
+
+Some generators wrap **all** failures in one `<font color="red">…</font>` (or styled
+div) with `<br>` between `1.` / `2.` / `3.` lines (often under a Notes heading).
+The annotator splits those into **one checkbox per numbered line**. Copy the updated
+`.ps1` to the other PC if ticks still appear only once.
+
 ## Config (`config.json`)
 
 | Key | Meaning |
