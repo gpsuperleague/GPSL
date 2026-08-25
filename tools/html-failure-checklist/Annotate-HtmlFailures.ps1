@@ -38,7 +38,84 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# Script folder: prefer real script path (ISE cwd is often NOT the script folder)
 $toolRoot = $PSScriptRoot
+if (-not $toolRoot) {
+  if ($PSCommandPath) {
+    $toolRoot = Split-Path -Parent $PSCommandPath
+  }
+  elseif ($MyInvocation.MyCommand.Path) {
+    $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+  }
+}
+# PowerShell ISE: unsaved/F5 edge cases
+if (-not $toolRoot -and (Test-Path variable:psISE) -and $psISE -and $psISE.CurrentFile -and $psISE.CurrentFile.FullPath) {
+  $toolRoot = Split-Path -Parent $psISE.CurrentFile.FullPath
+}
+if (-not $toolRoot) { $toolRoot = (Get-Location).Path }
+
+function Resolve-ExistingFile {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$PathHint,
+    [string]$Label = "file"
+  )
+
+  $PathHint = $PathHint.Trim().Trim('"').Trim("'")
+
+  $candidates = New-Object System.Collections.Generic.List[string]
+  function Add-Candidate([string]$p) {
+    if ([string]::IsNullOrWhiteSpace($p)) { return }
+    try {
+      if (-not [IO.Path]::IsPathRooted($p)) {
+        $p = [IO.Path]::GetFullPath((Join-Path (Get-Location).Path $p))
+      } else {
+        $p = [IO.Path]::GetFullPath($p)
+      }
+    } catch { }
+    if ($p -and -not $candidates.Contains($p)) { [void]$candidates.Add($p) }
+  }
+
+  $fileName = [IO.Path]::GetFileName($PathHint)
+  $cwd = (Get-Location).Path
+
+  # Relative names: try SCRIPT FOLDER first (what ISE users expect), then cwd
+  if (-not [IO.Path]::IsPathRooted($PathHint)) {
+    Add-Candidate (Join-Path $toolRoot $PathHint)
+    Add-Candidate (Join-Path $toolRoot $fileName)
+    Add-Candidate (Join-Path $cwd $PathHint)
+    Add-Candidate (Join-Path $cwd $fileName)
+  } else {
+    Add-Candidate $PathHint
+    Add-Candidate (Join-Path $toolRoot $fileName)
+    Add-Candidate (Join-Path $cwd $fileName)
+  }
+
+  foreach ($c in $candidates) {
+    if ($c -and (Test-Path -LiteralPath $c)) {
+      return (Resolve-Path -LiteralPath $c).Path
+    }
+  }
+
+  Write-Host ""
+  Write-Host "Could not find $Label." -ForegroundColor Yellow
+  Write-Host ("  You typed:       {0}" -f $PathHint)
+  Write-Host ("  Script folder:   {0}" -f $toolRoot)
+  Write-Host ("  PowerShell cwd:  {0}" -f $cwd)
+  if ($cwd -ne $toolRoot) {
+    Write-Host "  Note: In ISE, cwd is often NOT the script folder. This script looks beside the .ps1 first." -ForegroundColor Cyan
+  }
+  Write-Host "  Tried:"
+  foreach ($c in $candidates) { Write-Host ("    - {0}" -f $c) }
+
+  Write-Host ""
+  Write-Host "HTML files beside the script:"
+  Get-ChildItem -LiteralPath $toolRoot -Filter *.html -ErrorAction SilentlyContinue |
+    ForEach-Object { Write-Host ("    {0}" -f $_.Name) }
+
+  throw "$Label not found: $PathHint"
+}
+
 if (-not $ConfigPath) {
   $cfg = Join-Path $toolRoot "config.json"
   if (-not (Test-Path -LiteralPath $cfg)) {
@@ -47,12 +124,14 @@ if (-not $ConfigPath) {
   $ConfigPath = $cfg
 }
 
-if (-not (Test-Path -LiteralPath $InputHtml)) {
-  throw "Input HTML not found: $InputHtml"
-}
+$InputHtml = Resolve-ExistingFile -PathHint $InputHtml -Label "Input HTML"
 if (-not (Test-Path -LiteralPath $ConfigPath)) {
-  throw "Config not found: $ConfigPath"
+  throw "Config not found: $ConfigPath (expected beside script in $toolRoot)"
 }
+
+Write-Host ("Using input HTML: {0}" -f $InputHtml)
+Write-Host ("Script folder:    {0}" -f $toolRoot)
+Write-Host ("PowerShell cwd:   {0}" -f (Get-Location).Path)
 
 $config = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $ns = [string]$config.storageNamespace
