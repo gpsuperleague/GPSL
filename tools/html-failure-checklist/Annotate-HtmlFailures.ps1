@@ -409,9 +409,11 @@ $injectJs = @'
   function isReddish(el) {
     try {
       if (!el || el.nodeType !== 1) return false;
+      var cls = (el.className && String(el.className)) || "";
+      if (/red|error|fail|alert|danger|warn/i.test(cls)) return true;
       if (el.tagName && el.tagName.toLowerCase() === "font") {
         var fc = (el.getAttribute("color") || "").toLowerCase();
-        if (fc.indexOf("red") >= 0 || fc === "#ff0000" || fc === "#f00" || fc === "#c00" || fc === "#c00000") {
+        if (fc.indexOf("red") >= 0 || fc === "#ff0000" || fc === "#f00" || fc === "#c00" || fc === "#c00000" || fc === "maroon") {
           return true;
         }
       }
@@ -421,7 +423,8 @@ $injectJs = @'
         st.indexOf("color:#ff0000") >= 0 ||
         st.indexOf("color:#f00") >= 0 ||
         st.indexOf("color:#c00") >= 0 ||
-        st.indexOf("color:#c00000") >= 0
+        st.indexOf("color:#c00000") >= 0 ||
+        st.indexOf("color:maroon") >= 0
       ) {
         return true;
       }
@@ -429,18 +432,35 @@ $injectJs = @'
       var m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
       if (!m) return false;
       var r = +m[1], g = +m[2], b = +m[3];
-      var minR = CFG.redMinChannel != null ? CFG.redMinChannel : 120;
-      var maxGB = CFG.redHueMax != null ? CFG.redHueMax : 80;
-      return r >= minR && g <= maxGB && b <= maxGB && r > g + 20 && r > b + 20;
+      // Loose: any clearly red-dominant colour
+      return r >= 100 && r > g + 15 && r > b + 15;
     } catch (e) {
       return false;
     }
   }
 
   function hasRedAncestor(el) {
-    for (var p = el, i = 0; p && i < 10; p = p.parentElement, i++) {
+    for (var p = el, i = 0; p && i < 12; p = p.parentElement, i++) {
       if (isReddish(p)) return true;
     }
+    return false;
+  }
+
+  function nearNotes(el) {
+    try {
+      var cur = el;
+      for (var d = 0; d < 15 && cur; d++) {
+        var t = ((cur.innerText || cur.textContent || "") + "").slice(0, 80);
+        if (/notes\s*:/i.test(t)) return true;
+        var prev = cur.previousElementSibling;
+        for (var k = 0; k < 5 && prev; k++) {
+          var pt = ((prev.innerText || prev.textContent || "") + "").slice(0, 40);
+          if (/notes\s*:/i.test(pt)) return true;
+          prev = prev.previousElementSibling;
+        }
+        cur = cur.parentElement;
+      }
+    } catch (e) {}
     return false;
   }
 
@@ -469,11 +489,9 @@ $injectJs = @'
 
   function addCheckboxBefore(node, textForId, index) {
     if (!node || !node.parentNode) return false;
-    // Already has a checkbox just before / inside
     if (node.nodeType === 1) {
       if (node.querySelector && node.querySelector(".hfc-wrap")) {
-        var existing = node.querySelector(".hfc-wrap");
-        if (existing) wireCheckbox(existing);
+        wireCheckbox(node.querySelector(".hfc-wrap"));
         return false;
       }
     }
@@ -511,79 +529,97 @@ $injectJs = @'
     return true;
   }
 
-  function splitTextNodeIntoLines(textNode) {
-    var raw = textNode.nodeValue || "";
-    if (!/\d{1,3}\.\s+/.test(raw)) return;
-    // Split before "N. " occurrences (no lookbehind — IE-safe)
-    var re = /(\d{1,3}\.\s+)/g;
-    var parts = [];
-    var last = 0;
-    var m;
+  /** Split one text node that holds many "N. …" lines into spans (once). */
+  function explodeNumberedTextNode(tn) {
+    var raw = tn.nodeValue || "";
+    var re = /\d{1,3}\.\s+/g;
     var matches = [];
-    while ((m = re.exec(raw)) !== null) {
-      matches.push({ index: m.index, token: m[1] });
-    }
-    if (matches.length < 2 && !(matches.length === 1 && /[\r\n]/.test(raw))) {
-      // single numbered line in this text node — leave as-is (handled elsewhere)
-      if (matches.length === 1 && matches[0].index <= 2) return;
-    }
-    if (!matches.length) return;
-
+    var m;
+    while ((m = re.exec(raw)) !== null) matches.push(m.index);
+    if (matches.length < 2) return false;
     var frag = document.createDocumentFragment();
+    if (matches[0] > 0) frag.appendChild(document.createTextNode(raw.slice(0, matches[0])));
     for (var i = 0; i < matches.length; i++) {
-      var start = matches[i].index;
-      if (i === 0 && start > 0) {
-        frag.appendChild(document.createTextNode(raw.slice(0, start)));
-      }
-      var end = i + 1 < matches.length ? matches[i + 1].index : raw.length;
-      var chunk = raw.slice(start, end);
-      // Prefer BR separation for readability
+      var start = matches[i];
+      var end = i + 1 < matches.length ? matches[i + 1] : raw.length;
+      var chunk = raw.slice(start, end).replace(/^[\r\n]+/, "");
       if (i > 0) frag.appendChild(document.createElement("br"));
       var span = document.createElement("span");
       span.className = "hfc-issue-line";
-      span.appendChild(document.createTextNode(chunk.replace(/^[\r\n]+/, "")));
+      span.appendChild(document.createTextNode(chunk));
       frag.appendChild(span);
     }
-    textNode.parentNode.replaceChild(frag, textNode);
+    tn.parentNode.replaceChild(frag, tn);
+    return true;
   }
 
   function collectTargets() {
     var targets = [];
     var seen = [];
+    var stats = { textHits: 0, numberedEls: 0, accepted: 0 };
 
     function pushUnique(el) {
       if (!el || el.nodeType !== 1) return;
-      if (el.closest && el.closest("#hfc-toolbar, script, style, .hfc-wrap")) return;
+      if (el.id === "hfc-toolbar") return;
       for (var i = 0; i < seen.length; i++) if (seen[i] === el) return;
-      // Prefer deepest nodes: skip if we already have a child
       for (var j = 0; j < seen.length; j++) {
         if (el.contains && el.contains(seen[j])) return;
       }
-      // Remove any ancestors already queued
       seen = seen.filter(function (s) { return !(s.contains && s.contains(el)); });
       targets = targets.filter(function (s) { return !(s.contains && s.contains(el)); });
       seen.push(el);
       targets.push(el);
+      stats.accepted++;
     }
 
-    // Multi-line text splitting disabled (caused hangs on large reports)
+    // Pass A: explode multi-issue text nodes (Notes blocks) — limited count
+    try {
+      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+      var tnodes = [];
+      var tn;
+      var walked = 0;
+      while ((tn = walker.nextNode()) && walked < 8000) {
+        walked++;
+        if (!tn.parentElement) continue;
+        var ptag = tn.parentElement.tagName;
+        if (ptag === "SCRIPT" || ptag === "STYLE") continue;
+        var raw = tn.nodeValue || "";
+        if (!/\d{1,3}\.\s+/.test(raw)) continue;
+        stats.textHits++;
+        if ((raw.match(/\d{1,3}\.\s+/g) || []).length >= 2) {
+          if (hasRedAncestor(tn.parentElement) || nearNotes(tn.parentElement) || isReddish(tn.parentElement)) {
+            explodeNumberedTextNode(tn);
+          }
+        }
+      }
+    } catch (e) {}
 
-    // Element scan: reddish + numbered
+    // Pass B: elements that look like a single numbered issue
     var all = document.body.getElementsByTagName("*");
     var maxScan = Math.min(all.length, 15000);
     for (var i = 0; i < maxScan; i++) {
       var el = all[i];
       if (/^(SCRIPT|STYLE|INPUT|BUTTON|TEXTAREA|SELECT|SVG|PATH)$/i.test(el.tagName)) continue;
-      if (el.classList && (el.classList.contains("hfc-wrap") || el.id === "hfc-toolbar")) continue;
-      var text = fullText(el);
-      if (!isNumberedText(text.slice(0, 400))) continue;
-      if (!(isReddish(el) || hasRedAncestor(el))) continue;
+      if (el.id === "hfc-toolbar") continue;
+      if (el.classList && el.classList.contains("hfc-wrap")) continue;
 
-      // If a child is a better (also numbered) target, skip parent
+      var text = fullText(el);
+      var head = text.slice(0, 400);
+      if (!isNumberedText(head)) continue;
+      stats.numberedEls++;
+
+      var okColour = isReddish(el) || hasRedAncestor(el) || nearNotes(el);
+      // Fallback: numbered line that looks like a finding sentence
+      if (!okColour && /^(?:\d{1,3}\.\s+)(The |There |DNS |IIS |MP |Windows |Dynatrace |C:\\|drive )/i.test(head)) {
+        okColour = true;
+      }
+      if (!okColour) continue;
+
       var childBetter = false;
       for (var c = 0; c < el.children.length; c++) {
         var ch = el.children[c];
-        if (isNumberedText(fullText(ch).slice(0, 200)) && (isReddish(ch) || hasRedAncestor(ch))) {
+        if (ch.classList && ch.classList.contains("hfc-wrap")) continue;
+        if (isNumberedText(fullText(ch).slice(0, 200))) {
           childBetter = true;
           break;
         }
@@ -593,6 +629,7 @@ $injectJs = @'
       if (targets.length >= 400) break;
     }
 
+    collectTargets.lastStats = stats;
     return targets;
   }
 
@@ -601,22 +638,34 @@ $injectJs = @'
     if (scanBusy) return 0;
     scanBusy = true;
     try {
-    ensureToolbar();
-    // Wire any static checkboxes first
-    var existing = document.querySelectorAll(".hfc-wrap");
-    for (var e = 0; e < existing.length; e++) wireCheckbox(existing[e]);
+      ensureToolbar();
+      var existing = document.querySelectorAll(".hfc-wrap");
+      for (var e = 0; e < existing.length; e++) wireCheckbox(existing[e]);
 
-    var targets = collectTargets();
-    for (var i = 0; i < targets.length; i++) {
-      addCheckboxBefore(targets[i], fullText(targets[i]), i);
-    }
-    updateCount();
-    var countEl = document.getElementById("hfc-count");
-    var boxes = document.querySelectorAll(".hfc-wrap input[type=checkbox]");
-    if (!boxes.length && countEl) {
-      countEl.textContent = "no red numbered Notes found yet — click Rescan after page finishes loading";
-    }
-    return boxes.length;
+      var targets = collectTargets();
+      for (var i = 0; i < targets.length; i++) {
+        addCheckboxBefore(targets[i], fullText(targets[i]), i);
+      }
+      updateCount();
+      var boxes = document.querySelectorAll(".hfc-wrap input[type=checkbox]");
+      var countEl = document.getElementById("hfc-count");
+      var st = collectTargets.lastStats || {};
+      if (!boxes.length && countEl) {
+        countEl.textContent =
+          "0 ticks (textHits=" + (st.textHits || 0) +
+          ", numberedEls=" + (st.numberedEls || 0) +
+          ") — Notes may use a different format";
+      }
+      if (force && !boxes.length) {
+        alert(
+          "Rescan found no tick targets.\n\n" +
+          "text nodes with N.: " + (st.textHits || 0) + "\n" +
+          "numbered elements: " + (st.numberedEls || 0) + "\n\n" +
+          "If both are 0, the live page is not exposing '1. …' as normal text.\n" +
+          "Right-click a red line → Inspect, and note the HTML tag around it."
+        );
+      }
+      return boxes.length;
     } finally {
       scanBusy = false;
     }
@@ -640,8 +689,6 @@ $injectJs = @'
   } else {
     setTimeout(boot, 400);
   }
-
-  // MutationObserver removed — it re-entered on every DOM change and hung large reports.
 
   window.addEventListener("load", function () {
     setTimeout(function () { scanAndAnnotate(false); }, 800);
