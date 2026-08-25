@@ -79,7 +79,7 @@ OK something
 </style>
 <script data-html-failure-checklist="1">
 (function () {
-  var CFG = {"selectors":["font[color=\u0027red\u0027]","font[color=\u0027Red\u0027]","font[color=\u0027#FF0000\u0027]","font[color=\u0027#ff0000\u0027]","font[color=\u0027#f00\u0027]","[style*=\u0027color:red\u0027]","[style*=\u0027color: red\u0027]","[style*=\u0027color:#ff0000\u0027]","[style*=\u0027color: #ff0000\u0027]","[style*=\u0027color:#FF0000\u0027]","[style*=\u0027color: #FF0000\u0027]","[style*=\u0027color:#f00\u0027]","[style*=\u0027color: #f00\u0027]",".fail",".failed",".error",".red",".text-danger",".alert-danger"],"storageNamespace":"html-failure-checklist","checkboxLabel":"Done","numberPattern":"^\\s*(\\d+)\\.\\s+","reportKey":"sample-redacted.html","findRedNumberedIssues":true,"redHueMax":40,"redMinChannel":140};
+  var CFG = {"selectors":["font[color=\u0027red\u0027]","font[color=\u0027Red\u0027]","font[color=\u0027#FF0000\u0027]","font[color=\u0027#ff0000\u0027]","font[color=\u0027#f00\u0027]","[style*=\u0027color:red\u0027]","[style*=\u0027color: red\u0027]","[style*=\u0027color:#ff0000\u0027]","[style*=\u0027color: #ff0000\u0027]","[style*=\u0027color:#FF0000\u0027]","[style*=\u0027color: #FF0000\u0027]","[style*=\u0027color:#f00\u0027]","[style*=\u0027color: #f00\u0027]",".fail",".failed",".error",".red",".text-danger",".alert-danger"],"storageNamespace":"html-failure-checklist","checkboxLabel":"Done","numberPattern":"^\\s*(\\d+)\\.\\s+","reportKey":"sample-redacted.html","findRedNumberedIssues":true,"redHueMax":80,"redMinChannel":120};
   var SEL = (CFG.selectors || []).filter(Boolean).join(",");
 
   function hash(s) {
@@ -114,11 +114,16 @@ OK something
 
   function textLooksNumbered(t) {
     if (!t) return false;
-    t = String(t).replace(/\s+/g, " ").trim();
-    if (!t || t.length > 2000) return false;
-    // Skip labels like "Notes:" that sit in the same red block
+    t = String(t).replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+    if (!t || t.length > 4000) return false;
     if (/^notes\s*:/i.test(t) && !numberRe().test(t)) return false;
     return numberRe().test(t);
+  }
+
+  function countNumberedHits(t) {
+    if (!t) return 0;
+    var m = String(t).match(/(?:^|[\s>])\d+\.\s+/g);
+    return m ? m.length : 0;
   }
 
   function isNumberedIssue(el) {
@@ -127,10 +132,19 @@ OK something
 
   function isReddish(el) {
     try {
-      // Explicit HTML attributes / inline styles (common in generated reports)
       if (el.tagName && el.tagName.toLowerCase() === "font") {
         var fc = (el.getAttribute("color") || "").trim().toLowerCase();
-        if (fc === "red" || fc === "#ff0000" || fc === "#f00" || fc === "ff0000") return true;
+        if (
+          fc === "red" ||
+          fc === "#ff0000" ||
+          fc === "#f00" ||
+          fc === "ff0000" ||
+          fc === "#c00" ||
+          fc === "#cc0000" ||
+          fc === "#c00000"
+        ) {
+          return true;
+        }
       }
       var st = (el.getAttribute("style") || "").toLowerCase().replace(/\s+/g, "");
       if (
@@ -138,7 +152,9 @@ OK something
         st.indexOf("color:#ff0000") >= 0 ||
         st.indexOf("color:#f00") >= 0 ||
         st.indexOf("color:#c00") >= 0 ||
-        st.indexOf("color:#cc0000") >= 0
+        st.indexOf("color:#cc0000") >= 0 ||
+        st.indexOf("color:#c00000") >= 0 ||
+        st.indexOf("color:rgb(255,0,0)") >= 0
       ) {
         return true;
       }
@@ -147,12 +163,20 @@ OK something
       var m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
       if (!m) return false;
       var r = +m[1], g = +m[2], b = +m[3];
-      var minR = CFG.redMinChannel != null ? CFG.redMinChannel : 140;
-      var maxGB = CFG.redHueMax != null ? CFG.redHueMax : 55;
-      return r >= minR && g <= maxGB && b <= maxGB && r > g + 30 && r > b + 30;
+      var minR = CFG.redMinChannel != null ? CFG.redMinChannel : 120;
+      var maxGB = CFG.redHueMax != null ? CFG.redHueMax : 80;
+      return r >= minR && g <= maxGB && b <= maxGB && r > g + 20 && r > b + 20;
     } catch (e) {
       return false;
     }
+  }
+
+  function hasRedAncestor(el, maxDepth) {
+    var d = maxDepth == null ? 8 : maxDepth;
+    for (var p = el, i = 0; p && i < d; p = p.parentElement, i++) {
+      if (isReddish(p)) return true;
+    }
+    return false;
   }
 
   function nodesText(nodes) {
@@ -162,36 +186,80 @@ OK something
       if (n.nodeType === 3) t += n.nodeValue || "";
       else if (n.nodeType === 1) t += n.innerText || n.textContent || "";
     }
-    return t.replace(/\s+/g, " ").trim();
+    return t.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function wrapNodes(parent, nodes) {
+    if (
+      nodes.length === 1 &&
+      nodes[0].nodeType === 1 &&
+      nodes[0].classList &&
+      nodes[0].classList.contains("hfc-issue-line")
+    ) {
+      return nodes[0];
+    }
+    var span = document.createElement("span");
+    span.className = "hfc-issue-line";
+    parent.insertBefore(span, nodes[0]);
+    for (var i = 0; i < nodes.length; i++) span.appendChild(nodes[i]);
+    return span;
+  }
+
+  function explodeNumberStartsInTextNodes(root) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var list = [];
+    while (walker.nextNode()) list.push(walker.currentNode);
+    for (var i = 0; i < list.length; i++) {
+      var tn = list[i];
+      if (!tn.parentNode) continue;
+      var raw = tn.nodeValue || "";
+      var parts = null;
+      try {
+        // Prefer lookbehind split when supported
+        parts = raw.split(/(?=(?:\r?\n)\s*\d+\.\s+)|(?<=\S)\s+(?=\d+\.\s+)/);
+      } catch (e) {
+        parts = null;
+      }
+      if (!parts || parts.length < 2) {
+        if (/\r?\n/.test(raw) && countNumberedHits(raw) >= 2) {
+          parts = raw.split(/\r?\n/);
+        } else {
+          // Fallback without lookbehind: split on " N. " boundaries
+          parts = raw.split(/\s+(?=\d+\.\s+)/);
+        }
+      }
+      if (!parts || parts.length < 2) continue;
+      var numbered = 0;
+      for (var p = 0; p < parts.length; p++) {
+        if (textLooksNumbered(parts[p])) numbered++;
+      }
+      if (numbered < 2) continue;
+      var frag = document.createDocumentFragment();
+      for (var j = 0; j < parts.length; j++) {
+        if (j > 0) frag.appendChild(document.createElement("br"));
+        frag.appendChild(document.createTextNode(String(parts[j]).replace(/^\r?\n/, "")));
+      }
+      tn.parentNode.replaceChild(frag, tn);
+    }
   }
 
   /**
-   * Many reports wrap ALL failures in one red <font>/<div> with <br> between
-   * lines (and often a "Notes:" line first). Split into one target per "N. 窶ｦ" line.
+   * Many reports wrap ALL failures in one red <font>/<div> with <br> (or block
+   * children) between lines. Split into one target per "N. 窶ｦ" line.
    */
   function splitMultiLineRedBlock(el) {
     if (!el || !el.childNodes || !el.childNodes.length) return null;
 
-    // Split text nodes that contain multiple numbered lines (newline-separated)
-    var kids = Array.prototype.slice.call(el.childNodes);
-    for (var ki = 0; ki < kids.length; ki++) {
-      var node = kids[ki];
-      if (node.nodeType !== 3) continue;
-      var raw = node.nodeValue || "";
-      if (!/\n/.test(raw)) continue;
-      var lines = raw.split(/\r?\n/);
-      var numberedLines = 0;
-      for (var lj = 0; lj < lines.length; lj++) {
-        if (textLooksNumbered(lines[lj])) numberedLines++;
-      }
-      if (numberedLines < 2) continue;
-      var frag = document.createDocumentFragment();
-      for (var li = 0; li < lines.length; li++) {
-        if (li > 0) frag.appendChild(document.createElement("br"));
-        frag.appendChild(document.createTextNode(lines[li]));
-      }
-      el.replaceChild(frag, node);
+    explodeNumberStartsInTextNodes(el);
+
+    // Prefer direct children that are each a numbered issue
+    var childHits = [];
+    for (var ci = 0; ci < el.children.length; ci++) {
+      var ch = el.children[ci];
+      if (/^(BR|SCRIPT|STYLE)$/i.test(ch.tagName)) continue;
+      if (textLooksNumbered(fullText(ch).slice(0, 300))) childHits.push(ch);
     }
+    if (childHits.length >= 2) return childHits;
 
     // Group child nodes by <br>
     var groups = [];
@@ -219,47 +287,79 @@ OK something
 
     var targets = [];
     for (var g = 0; g < numberedGroups.length; g++) {
-      var nodes = numberedGroups[g];
-      if (!nodes.length) continue;
-      // Already wrapped?
-      if (
-        nodes.length === 1 &&
-        nodes[0].nodeType === 1 &&
-        nodes[0].classList &&
-        nodes[0].classList.contains("hfc-issue-line")
-      ) {
-        targets.push(nodes[0]);
-        continue;
-      }
-      var span = document.createElement("span");
-      span.className = "hfc-issue-line";
-      el.insertBefore(span, nodes[0]);
-      for (var ni = 0; ni < nodes.length; ni++) {
-        span.appendChild(nodes[ni]);
-      }
-      targets.push(span);
+      targets.push(wrapNodes(el, numberedGroups[g]));
     }
     return targets.length ? targets : null;
   }
 
   function expandTargets(el) {
+    if (!el) return [];
+    if (el.classList && el.classList.contains("hfc-issue-line")) return [el];
+
     var split = splitMultiLineRedBlock(el);
     if (split && split.length) return split;
-    // Single red node: only keep if it looks like a numbered issue
-    if (isNumberedIssue(el) || textLooksNumbered(fullText(el).slice(0, 200))) {
-      // If fullText has many numbered lines but we couldn't split (odd markup),
-      // still avoid treating "Notes:" alone as an issue
-      var ft = fullText(el);
-      var hits = ft.match(/(?:^|\s)(\d+)\.\s+/g);
-      if (hits && hits.length >= 2) {
-        // Last resort: don't annotate the giant parent (one tick for all)
-        return [];
-      }
-      if (textLooksNumbered(ownText(el) || ft)) return [el];
+
+    var ft = fullText(el);
+    var hits = countNumberedHits(ft);
+
+    // Single numbered issue element
+    if (hits <= 1 && textLooksNumbered(ownText(el) || ft.slice(0, 300))) {
+      return [el];
+    }
+
+    // Still multiple issues but markup wouldn't split 窶・keep ONE tick on the
+    // block rather than removing all ticks (previous bug).
+    if (hits >= 1 && (isReddish(el) || textLooksNumbered(ft.slice(0, 80)))) {
+      return [el];
     }
     return [];
   }
 
+  /** Last-resort: wrap every reddish text node that begins with "N. " */
+  function collectFromRedTextNodes() {
+    var out = [];
+    if (!document.body) return out;
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+    var tn;
+    while ((tn = walker.nextNode())) {
+      if (!tn.parentElement) continue;
+      if (tn.parentElement.closest && tn.parentElement.closest(".hfc-toolbar, script, style, .hfc-wrap")) {
+        continue;
+      }
+      var raw = tn.nodeValue || "";
+      var trimmed = raw.replace(/\u00a0/g, " ").replace(/^\s+/, "");
+      if (!/^\d+\.\s+/.test(trimmed)) continue;
+      if (!hasRedAncestor(tn.parentElement, 8)) continue;
+
+      var parent = tn.parentElement;
+      if (parent.classList && parent.classList.contains("hfc-issue-line")) {
+        out.push(parent);
+        continue;
+      }
+      // If parent is a pure inline wrapper around this line, use/ wrap it
+      var only = true;
+      for (var i = 0; i < parent.childNodes.length; i++) {
+        var c = parent.childNodes[i];
+        if (c === tn) continue;
+        if (c.nodeType === 1 && /^br$/i.test(c.tagName)) continue;
+        if (c.nodeType === 3 && !String(c.nodeValue || "").trim()) continue;
+        // allow trailing expand links on same line
+        if (c.nodeType === 1 && /^(A|IMG|SPAN|B|I|U|STRONG|EM)$/i.test(c.tagName)) continue;
+        only = false;
+        break;
+      }
+      if (only && textLooksNumbered(fullText(parent).slice(0, 200))) {
+        out.push(parent);
+      } else {
+        var span = document.createElement("span");
+        span.className = "hfc-issue-line";
+        parent.insertBefore(span, tn);
+        span.appendChild(tn);
+        out.push(span);
+      }
+    }
+    return out;
+  }
   function serverHintFor(el) {
     var cur = el;
     for (var depth = 0; depth < 12 && cur; depth++) {
@@ -329,7 +429,6 @@ OK something
 
     if (CFG.findRedNumberedIssues !== false) {
       var all = document.body ? document.body.getElementsByTagName("*") : [];
-      // Snapshot first 窶・splitting mutates the DOM
       var snapshot = [];
       for (var i = 0; i < all.length; i++) snapshot.push(all[i]);
       for (var si = 0; si < snapshot.length; si++) {
@@ -341,7 +440,6 @@ OK something
           continue;
         }
         if (!isReddish(el)) continue;
-        // Prefer splitting multi-line red parents; skip if a child is also a red multi-line block
         var childHit = false;
         for (var c = 0; c < el.children.length; c++) {
           var ch = el.children[c];
@@ -357,6 +455,12 @@ OK something
         if (childHit) continue;
         addExpanded(el);
       }
+    }
+
+    // Fallback for odd markup: each red "N. 窶ｦ" text node
+    if (set.length < 2) {
+      var fromText = collectFromRedTextNodes();
+      for (var ti = 0; ti < fromText.length; ti++) add(fromText[ti]);
     }
 
     return set.filter(function (el, i, arr) {
@@ -465,10 +569,20 @@ OK something
     updateCount();
   }
 
+  function runAnnotate() {
+    try {
+      annotate();
+    } catch (e) {
+      console.error("html-failure-checklist", e);
+    }
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", annotate);
+    document.addEventListener("DOMContentLoaded", function () {
+      setTimeout(runAnnotate, 50);
+    });
   } else {
-    annotate();
+    setTimeout(runAnnotate, 50);
   }
 })();
 </script>

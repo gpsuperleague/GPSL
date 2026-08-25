@@ -22,9 +22,9 @@
   ],
   "numberPattern": "^\\s*(\\d+)\\.\\s+",
   "findRedNumberedIssues": true,
-  "redHueMax": 40,
-  "redMinChannel": 140,
+  "redHueMax": 80,
+  "redMinChannel": 120,
   "checkboxLabel": "Done",
   "storageNamespace": "html-failure-checklist",
-  "skipIfAlreadyAnnotated": true
+  "skipIfAlreadyAnnotated": false
 }
