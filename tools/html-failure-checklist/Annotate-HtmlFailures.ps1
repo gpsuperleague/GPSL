@@ -406,6 +406,16 @@ $injectJs = @'
     return /^\d{1,3}\.\s+\S/.test(t);
   }
 
+  function looksLikeFinding(t) {
+    if (!t) return false;
+    t = String(t).replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+    if (t.length < 12 || t.length > 2000) return false;
+    if (/^notes\s*:/i.test(t)) return false;
+    // Numbered text OR plain finding sentence (list markers supply the number)
+    if (/^\d{1,3}\.\s+\S/.test(t)) return true;
+    return /^(The |There |DNS |IIS |MP |Windows |Dynatrace |C:\\|drive |Following )/i.test(t);
+  }
+
   function isReddish(el) {
     try {
       if (!el || el.nodeType !== 1) return false;
@@ -432,7 +442,6 @@ $injectJs = @'
       var m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
       if (!m) return false;
       var r = +m[1], g = +m[2], b = +m[3];
-      // Loose: any clearly red-dominant colour
       return r >= 100 && r > g + 15 && r > b + 15;
     } catch (e) {
       return false;
@@ -449,13 +458,16 @@ $injectJs = @'
   function nearNotes(el) {
     try {
       var cur = el;
-      for (var d = 0; d < 15 && cur; d++) {
-        var t = ((cur.innerText || cur.textContent || "") + "").slice(0, 80);
-        if (/notes\s*:/i.test(t)) return true;
+      for (var d = 0; d < 20 && cur; d++) {
+        var t = ((cur.innerText || cur.textContent || "") + "").slice(0, 100);
+        if (/notes\s*:/i.test(t) && t.length < 5000) {
+          // Prefer lists that sit under / near a Notes label
+          if (/notes\s*:/i.test(((cur.innerText || "") + "").slice(0, 40)) || d <= 6) return true;
+        }
         var prev = cur.previousElementSibling;
-        for (var k = 0; k < 5 && prev; k++) {
-          var pt = ((prev.innerText || prev.textContent || "") + "").slice(0, 40);
-          if (/notes\s*:/i.test(pt)) return true;
+        for (var k = 0; k < 8 && prev; k++) {
+          var pt = ((prev.innerText || prev.textContent || "") + "").replace(/\s+/g, " ").trim().slice(0, 60);
+          if (/^notes\s*:/i.test(pt) || /^▶?\s*notes\s*:/i.test(pt)) return true;
           prev = prev.previousElementSibling;
         }
         cur = cur.parentElement;
@@ -529,7 +541,6 @@ $injectJs = @'
     return true;
   }
 
-  /** Split one text node that holds many "N. …" lines into spans (once). */
   function explodeNumberedTextNode(tn) {
     var raw = tn.nodeValue || "";
     var re = /\d{1,3}\.\s+/g;
@@ -556,7 +567,7 @@ $injectJs = @'
   function collectTargets() {
     var targets = [];
     var seen = [];
-    var stats = { textHits: 0, numberedEls: 0, accepted: 0 };
+    var stats = { textHits: 0, numberedEls: 0, listItems: 0, accepted: 0 };
 
     function pushUnique(el) {
       if (!el || el.nodeType !== 1) return;
@@ -572,10 +583,32 @@ $injectJs = @'
       stats.accepted++;
     }
 
-    // Pass A: explode multi-issue text nodes (Notes blocks) — limited count
+    // Pass 0 (your report format): <li><p>finding text…</p></li> with ::marker numbers
+    try {
+      var lis = document.body.getElementsByTagName("li");
+      var liMax = Math.min(lis.length, 2000);
+      for (var li = 0; li < liMax; li++) {
+        var item = lis[li];
+        var t = fullText(item);
+        if (!looksLikeFinding(t)) continue;
+        var ok = isReddish(item) || hasRedAncestor(item) || nearNotes(item);
+        if (!ok) {
+          // Still accept if parent list is near Notes / red
+          var list = item.parentElement;
+          if (list && (list.tagName === "OL" || list.tagName === "UL")) {
+            ok = isReddish(list) || hasRedAncestor(list) || nearNotes(list);
+          }
+        }
+        if (!ok) continue;
+        stats.listItems++;
+        pushUnique(item);
+        if (targets.length >= 400) break;
+      }
+    } catch (e) {}
+
+    // Pass A: explode multi-issue text nodes if any exist
     try {
       var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-      var tnodes = [];
       var tn;
       var walked = 0;
       while ((tn = walker.nextNode()) && walked < 8000) {
@@ -594,12 +627,12 @@ $injectJs = @'
       }
     } catch (e) {}
 
-    // Pass B: elements that look like a single numbered issue
+    // Pass B: classic "1. …" text in elements
     var all = document.body.getElementsByTagName("*");
     var maxScan = Math.min(all.length, 15000);
     for (var i = 0; i < maxScan; i++) {
       var el = all[i];
-      if (/^(SCRIPT|STYLE|INPUT|BUTTON|TEXTAREA|SELECT|SVG|PATH)$/i.test(el.tagName)) continue;
+      if (/^(SCRIPT|STYLE|INPUT|BUTTON|TEXTAREA|SELECT|SVG|PATH|LI)$/i.test(el.tagName)) continue;
       if (el.id === "hfc-toolbar") continue;
       if (el.classList && el.classList.contains("hfc-wrap")) continue;
 
@@ -609,7 +642,6 @@ $injectJs = @'
       stats.numberedEls++;
 
       var okColour = isReddish(el) || hasRedAncestor(el) || nearNotes(el);
-      // Fallback: numbered line that looks like a finding sentence
       if (!okColour && /^(?:\d{1,3}\.\s+)(The |There |DNS |IIS |MP |Windows |Dynatrace |C:\\|drive )/i.test(head)) {
         okColour = true;
       }
@@ -619,7 +651,7 @@ $injectJs = @'
       for (var c = 0; c < el.children.length; c++) {
         var ch = el.children[c];
         if (ch.classList && ch.classList.contains("hfc-wrap")) continue;
-        if (isNumberedText(fullText(ch).slice(0, 200))) {
+        if (isNumberedText(fullText(ch).slice(0, 200)) || (ch.tagName === "LI" && looksLikeFinding(fullText(ch)))) {
           childBetter = true;
           break;
         }
@@ -652,17 +684,16 @@ $injectJs = @'
       var st = collectTargets.lastStats || {};
       if (!boxes.length && countEl) {
         countEl.textContent =
-          "0 ticks (textHits=" + (st.textHits || 0) +
-          ", numberedEls=" + (st.numberedEls || 0) +
-          ") — Notes may use a different format";
+          "0 ticks (li=" + (st.listItems || 0) +
+          ", textHits=" + (st.textHits || 0) +
+          ", numberedEls=" + (st.numberedEls || 0) + ")";
       }
       if (force && !boxes.length) {
         alert(
           "Rescan found no tick targets.\n\n" +
+          "list items (li): " + (st.listItems || 0) + "\n" +
           "text nodes with N.: " + (st.textHits || 0) + "\n" +
-          "numbered elements: " + (st.numberedEls || 0) + "\n\n" +
-          "If both are 0, the live page is not exposing '1. …' as normal text.\n" +
-          "Right-click a red line → Inspect, and note the HTML tag around it."
+          "numbered elements: " + (st.numberedEls || 0)
         );
       }
       return boxes.length;
