@@ -229,8 +229,13 @@ $html = [regex]::Replace(
 $html = [regex]::Replace($html, '\s*data-html-failure-checklist="1"', '')
 $html = [regex]::Replace($html, '\s*data-hfc-ready="1"', '')
 
-# Optional: static "N. " already in the file (some reports are plain HTML)
+# Do NOT rewrite script-heavy reports in PowerShell (breaks generator JS / can hang browser)
+$scriptTags = ([regex]::Matches($html, '(?i)<script\b')).Count
 $script:HfcCount = 0
+Write-Host ("Detected {0} <script> tag(s) in source." -f $scriptTags)
+if ($scriptTags -gt 1) {
+  Write-Host "Skipping static file rewrite — browser script will add ticks after Notes render." -ForegroundColor Cyan
+} else {
 function New-HfcCheckboxHtml {
   param([string]$NumberText)
   $script:HfcCount++
@@ -259,13 +264,9 @@ $htmlWork = [regex]::Replace($htmlWork, '&nbsp;|&#160;|&#xA0;', ' ', 'IgnoreCase
 $numToken = '(?<num>(?<![\d.])\d{1,3}\.\s+)'
 $htmlWork = Inject-BeforeNumber -Text $htmlWork -Pattern ('(?<prefix><br\s*/?\s*>\s*)' + $numToken)
 $htmlWork = Inject-BeforeNumber -Text $htmlWork -Pattern ('(?<prefix><(?:font|div|span|p|td|li|pre)(?:\s[^>]*)?>\s*)' + $numToken)
-$htmlWork = Inject-BeforeNumber -Text $htmlWork -Pattern ('(?<prefix>(?<=[\r\n])\s*)' + $numToken)
 $html = $htmlWork
 
 Write-Host ("Static file scan injected {0} checkbox(es)." -f $script:HfcCount)
-if ($script:HfcCount -eq 0) {
-  Write-Host "No static 'N. ' lines in the file (normal if Notes are built by JavaScript)." -ForegroundColor Cyan
-  Write-Host "Browser script will wait for the page to generate Notes, then add ticks." -ForegroundColor Cyan
 }
 
 $configForJs = [ordered]@{
@@ -565,21 +566,12 @@ $injectJs = @'
       targets.push(el);
     }
 
-    // 1) Explode multi-issue text nodes under red-ish ancestors
-    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-    var textNodes = [];
-    var tn;
-    while ((tn = walker.nextNode())) textNodes.push(tn);
-    for (var t = 0; t < textNodes.length; t++) {
-      var node = textNodes[t];
-      if (!node.parentElement) continue;
-      if (!hasRedAncestor(node.parentElement) && !isReddish(node.parentElement)) continue;
-      try { splitTextNodeIntoLines(node); } catch (e) {}
-    }
+    // Multi-line text splitting disabled (caused hangs on large reports)
 
-    // 2) Element scan: reddish + numbered
+    // Element scan: reddish + numbered
     var all = document.body.getElementsByTagName("*");
-    for (var i = 0; i < all.length; i++) {
+    var maxScan = Math.min(all.length, 15000);
+    for (var i = 0; i < maxScan; i++) {
       var el = all[i];
       if (/^(SCRIPT|STYLE|INPUT|BUTTON|TEXTAREA|SELECT|SVG|PATH)$/i.test(el.tagName)) continue;
       if (el.classList && (el.classList.contains("hfc-wrap") || el.id === "hfc-toolbar")) continue;
@@ -598,41 +590,25 @@ $injectJs = @'
       }
       if (childBetter) continue;
       pushUnique(el);
-    }
-
-    // 3) Fallback: any text node starting with N. under red ancestor
-    if (targets.length < 2) {
-      walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-      while ((tn = walker.nextNode())) {
-        var v = (tn.nodeValue || "").replace(/\u00a0/g, " ").replace(/^\s+/, "");
-        if (!/^\d{1,3}\.\s+\S/.test(v)) continue;
-        if (!tn.parentElement || !hasRedAncestor(tn.parentElement)) continue;
-        var parent = tn.parentElement;
-        if (parent.classList && parent.classList.contains("hfc-issue-line")) {
-          pushUnique(parent);
-        } else {
-          var span = document.createElement("span");
-          span.className = "hfc-issue-line";
-          parent.insertBefore(span, tn);
-          span.appendChild(tn);
-          pushUnique(span);
-        }
-      }
+      if (targets.length >= 400) break;
     }
 
     return targets;
   }
 
+  var scanBusy = false;
   function scanAndAnnotate(force) {
+    if (scanBusy) return 0;
+    scanBusy = true;
+    try {
     ensureToolbar();
     // Wire any static checkboxes first
     var existing = document.querySelectorAll(".hfc-wrap");
     for (var e = 0; e < existing.length; e++) wireCheckbox(existing[e]);
 
     var targets = collectTargets();
-    var added = 0;
     for (var i = 0; i < targets.length; i++) {
-      if (addCheckboxBefore(targets[i], fullText(targets[i]), i)) added++;
+      addCheckboxBefore(targets[i], fullText(targets[i]), i);
     }
     updateCount();
     var countEl = document.getElementById("hfc-count");
@@ -641,41 +617,34 @@ $injectJs = @'
       countEl.textContent = "no red numbered Notes found yet — click Rescan after page finishes loading";
     }
     return boxes.length;
+    } finally {
+      scanBusy = false;
+    }
   }
 
   var tries = 0;
-  var maxTries = 40; // ~20s of retries
+  var maxTries = 12;
   function boot() {
     ensureToolbar();
     var n = scanAndAnnotate(false);
     tries++;
     if (n < 1 && tries < maxTries) {
-      setTimeout(boot, 500);
+      setTimeout(boot, 1500);
     }
   }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
-      setTimeout(boot, 100);
+      setTimeout(boot, 400);
     });
   } else {
-    setTimeout(boot, 100);
+    setTimeout(boot, 400);
   }
 
-  // Also watch for late JS that fills Notes
-  try {
-    var obs = new MutationObserver(function () {
-      if (document.querySelectorAll(".hfc-wrap").length > 0) return;
-      scanAndAnnotate(false);
-    });
-    if (document.body) {
-      obs.observe(document.body, { childList: true, subtree: true, characterData: true });
-      setTimeout(function () { try { obs.disconnect(); } catch (e) {} }, 30000);
-    }
-  } catch (e) {}
+  // MutationObserver removed — it re-entered on every DOM change and hung large reports.
 
   window.addEventListener("load", function () {
-    setTimeout(function () { scanAndAnnotate(false); }, 300);
+    setTimeout(function () { scanAndAnnotate(false); }, 800);
   });
 })();
 </script>
