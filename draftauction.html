@@ -597,7 +597,7 @@
       <span id="draftCountdown"></span>
       <div id="draftLocalStart"></div>
       <p style="margin:6px 0 0;">
-        <button type="button" id="draftAuctionCalBtn" class="button secondary" style="font-size:12px;padding:6px 10px;">Add auction open to calendar</button>
+        <button type="button" id="draftAuctionCalBtn" class="button secondary" style="font-size:12px;padding:6px 10px;">Add auction times to calendar</button>
       </p>
     </div>
   </div>
@@ -757,7 +757,8 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
     import { initGpslInfoTips } from "./gpsl_info_tips.js";
     import { DRAFT_TIPS } from "./owner_page_tips.js";
     import { mountClubBankBalance } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
-    import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
+    import { downloadIcs, draftAuctionTimelineEvents } from "./calendar_ics.js";
+    import { getDraftTimelineFromStart } from "./draft_timeline.js";
     import { renderDraftAuctionRules } from "./draftauction_rules.js?v=20260812-draft-detail";
     import {
       supabase,
@@ -1124,13 +1125,24 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
         draftCalBtn.hidden = !draftAuctionStartTimeUK;
         draftCalBtn.onclick = () => {
           if (!draftAuctionStartTimeUK) return;
-          const events = auctionWindowEvents({
-            id: "player-draft",
-            title: "GPSL player draft auction opens",
-            startAt: draftAuctionStartTimeUK,
+          const timeline = getDraftTimelineFromStart(
+            draftAuctionStartTimeUK instanceof Date
+              ? draftAuctionStartTimeUK
+              : new Date(draftAuctionStartTimeUK)
+          );
+          if (!timeline) return;
+          const events = draftAuctionTimelineEvents({
+            id: "player",
+            label: "GPSL player draft",
+            startAt: timeline.start,
+            cutoffAt: timeline.cutoff,
+            randomStartAt: timeline.randomStart,
             url: new URL("draftauction.html", window.location.href).href,
+            includeCutoff: true,
+            cutoffDescription:
+              "Day-2 cutoff (6pm UK) — no new bids or free-agent openings after this time.",
           });
-          downloadIcs("gpsl-player-draft-open.ics", events);
+          downloadIcs("gpsl-player-draft-times.ics", events);
         };
       }
 

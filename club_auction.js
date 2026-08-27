@@ -16,10 +16,11 @@ import {
 import {
   getClubAuctionEffectivePhase,
   clubAuctionPhaseLabel,
+  getDraftTimelineFromStart,
 } from "./draft_timeline.js";
 import { stadiumImageUrl } from "./stadium_images.js";
 import { mountClubBankBalance, setClubBankBalance } from "./club_bank_balance_ui.js";
-import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
+import { downloadIcs, draftAuctionTimelineEvents } from "./calendar_ics.js";
 import {
   clubAuctionGetMyMaxBid,
   clubAuctionSetMaxBid,
@@ -332,13 +333,20 @@ function renderStatus() {
     calBtn.hidden = !show;
     if (show) {
       calBtn.onclick = () => {
-        const events = auctionWindowEvents({
+        const startAt =
+          startIso instanceof Date ? startIso : new Date(startIso);
+        const timeline = getDraftTimelineFromStart(startAt);
+        if (!timeline) return;
+        const events = draftAuctionTimelineEvents({
           id: "club",
-          title: "GPSL club auction opens",
-          startAt: startIso,
+          label: "GPSL club auction",
+          startAt: timeline.start,
+          cutoffAt: timeline.cutoff,
+          randomStartAt: timeline.randomStart,
           url: new URL("club_auction.html", window.location.href).href,
+          includeCutoff: true,
         });
-        downloadIcs("gpsl-club-auction-open.ics", events);
+        downloadIcs("gpsl-club-auction-times.ics", events);
       };
     }
   }

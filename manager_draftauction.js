@@ -26,7 +26,8 @@ import {
 import { formatMoney } from "./competition.js";
 import { managerListCellHtml, loadManagerPortraitManifest } from "./manager_images.js";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js";
-import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
+import { downloadIcs, draftAuctionTimelineEvents } from "./calendar_ics.js";
+import { getDraftTimelineFromStart } from "./draft_timeline.js";
 import { renderManagerDraftAuctionRules } from "./manager_draftauction_rules.js";
 
 let buyerShortName = null;
@@ -335,13 +336,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     mgrCalBtn.hidden = !draftAuctionStartTime;
     mgrCalBtn.onclick = () => {
       if (!draftAuctionStartTime) return;
-      const events = auctionWindowEvents({
-        id: "manager-draft",
-        title: "GPSL manager draft auction opens",
-        startAt: draftAuctionStartTime,
+      const timeline = getDraftTimelineFromStart(
+        draftAuctionStartTime instanceof Date
+          ? draftAuctionStartTime
+          : new Date(draftAuctionStartTime)
+      );
+      if (!timeline) return;
+      const events = draftAuctionTimelineEvents({
+        id: "manager",
+        label: "GPSL manager draft",
+        startAt: timeline.start,
+        cutoffAt: timeline.cutoff,
+        randomStartAt: timeline.randomStart,
         url: new URL("manager_draftauction.html", window.location.href).href,
+        includeCutoff: true,
+        cutoffDescription:
+          "Day-2 6pm UK marker (manager draft has no new-bid cutoff). Random timer starts at 6:50pm UK.",
       });
-      downloadIcs("gpsl-manager-draft-open.ics", events);
+      downloadIcs("gpsl-manager-draft-times.ics", events);
     };
   }
 

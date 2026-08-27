@@ -257,6 +257,74 @@ export function transferListingEndEvent(p) {
 }
 
 /**
+ * Draft auction milestones: open, Day-2 cutoff, random-timer start.
+ * Times are UTC in the .ics; calendar apps show the owner's local region.
+ * @param {{
+ *   id: string,
+ *   label: string,
+ *   startAt?: string|Date|null,
+ *   cutoffAt?: string|Date|null,
+ *   randomStartAt?: string|Date|null,
+ *   url?: string|null,
+ *   includeCutoff?: boolean,
+ *   cutoffDescription?: string,
+ * }} p
+ * @returns {string[]}
+ */
+export function draftAuctionTimelineEvents(p) {
+  const id = String(p.id || "draft").trim() || "draft";
+  const label = String(p.label || "GPSL draft auction").trim();
+  const url = p.url || absolutePageUrl("dashboard.html");
+  const includeCutoff = p.includeCutoff !== false;
+  const markerMs = 15 * 60 * 1000;
+  const out = [];
+
+  if (p.startAt) {
+    const ev = buildVEvent({
+      uid: `gpsl-draft-${id}-start@gpsl`,
+      title: `${label} opens`,
+      description: `Draft auction bidding opens.\nOpen: ${url}`,
+      startAt: p.startAt,
+      durationMs: 60 * 60 * 1000,
+      url,
+      location: "GPSL Draft Auction",
+    });
+    if (ev) out.push(ev);
+  }
+
+  if (includeCutoff && p.cutoffAt) {
+    const cutoffBlurb =
+      p.cutoffDescription ||
+      `Day-2 cutoff (6pm UK). Player draft: no new bids or free-agent openings after this time. Random window begins at 6:50pm UK.`;
+    const ev = buildVEvent({
+      uid: `gpsl-draft-${id}-cutoff@gpsl`,
+      title: `${label} cutoff`,
+      description: `${cutoffBlurb}\nOpen: ${url}`,
+      startAt: p.cutoffAt,
+      durationMs: markerMs,
+      url,
+      location: "GPSL Draft Auction",
+    });
+    if (ev) out.push(ev);
+  }
+
+  if (p.randomStartAt) {
+    const ev = buildVEvent({
+      uid: `gpsl-draft-${id}-random@gpsl`,
+      title: `${label} random timer starts`,
+      description: `Random finish window begins (from 6:50pm UK). Exact finish stays secret until revealed.\nOpen: ${url}`,
+      startAt: p.randomStartAt,
+      durationMs: markerMs,
+      url,
+      location: "GPSL Draft Auction",
+    });
+    if (ev) out.push(ev);
+  }
+
+  return out;
+}
+
+/**
  * Auction open (and optional public end).
  * @param {{ id: string, title: string, startAt: string|Date, endAt?: string|Date|null, url?: string }} p
  * @returns {string[]}
