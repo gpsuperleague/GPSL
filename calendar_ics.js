@@ -236,6 +236,27 @@ function monthLabel(month) {
 }
 
 /**
+ * Transfer Market listing end (reminder to bid before close).
+ * Times are stored as UTC in the .ics; the owner's calendar app shows local region time.
+ * @param {{ id: string|number, playerName: string, endAt: string|Date, url?: string }} p
+ */
+export function transferListingEndEvent(p) {
+  const id = String(p.id ?? "").trim();
+  const name = String(p.playerName || "Player").trim() || "Player";
+  if (!id || !p.endAt) return null;
+  const url = p.url || absolutePageUrl("all_listings.html");
+  return buildVEvent({
+    uid: `gpsl-transfer-listing-${id}@gpsl`,
+    title: `Transfer : ${name}`,
+    description: `Transfer market listing ends — bid before this time.\nOpen: ${url}`,
+    startAt: p.endAt,
+    durationMs: 15 * 60 * 1000,
+    url,
+    location: "GPSL Transfer Market",
+  });
+}
+
+/**
  * Auction open (and optional public end).
  * @param {{ id: string, title: string, startAt: string|Date, endAt?: string|Date|null, url?: string }} p
  * @returns {string[]}

@@ -38,6 +38,7 @@ import {
   renderNationFlag,
 } from "./international.js";
 import { renderTransferMarketRules } from "./all_listings_rules.js";
+import { downloadIcs, transferListingEndEvent } from "./calendar_ics.js";
 
 // Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
@@ -1415,6 +1416,10 @@ async function renderListings() {
         isPendingWindow
           ? `<span class="locked-msg" title="Starts when the transfer window opens">—</span>`
           : formatTimeRemainingHtml(listing.end_time)
+      }${
+        isOpen && listing.end_time
+          ? `<button type="button" class="listing-cal-btn" data-cal-listing="${listing.id}" title="Add listing end to your calendar (local time)">Calendar</button>`
+          : ""
       }</td>
       <td class="money-cell">${formatMoney(listing.current_highest_bid)}</td>
       <td>${highestClubText}</td>
@@ -1442,6 +1447,33 @@ async function renderListings() {
   }
 
   if (gen !== renderGeneration) return;
+
+  tbody.querySelectorAll(".listing-cal-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.calListing;
+      const listing = allLoadedListings().find(
+        (l) => String(l.id) === String(id)
+      );
+      if (!listing?.end_time) return;
+      const player = playerMap.get(String(listing.player_id));
+      const playerName = player?.Name || "Player";
+      const ev = transferListingEndEvent({
+        id: listing.id,
+        playerName,
+        endAt: listing.end_time,
+      });
+      if (!ev) return;
+      const safeName = String(playerName)
+        .replace(/[\\/:*?"<>|]+/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      downloadIcs(
+        `Transfer - ${safeName || "Player"}.ics`,
+        [ev]
+      );
+    });
+  });
 
   tbody.querySelectorAll(".make-offer-btn").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
