@@ -20,7 +20,7 @@ import {
 } from "./draft_timeline.js";
 import { stadiumImageUrl } from "./stadium_images.js";
 import { mountClubBankBalance, setClubBankBalance } from "./club_bank_balance_ui.js";
-import { downloadIcsEach, draftAuctionTimelineEvents } from "./calendar_ics.js";
+import { downloadIcs, draftAuctionTimelineEvents } from "./calendar_ics.js";
 import {
   clubAuctionGetMyMaxBid,
   clubAuctionSetMaxBid,
@@ -347,7 +347,10 @@ function renderStatus() {
           includeCutoff: true,
           filePrefix: "gpsl-club-auction",
         });
-        downloadIcsEach(events);
+        downloadIcs(
+          "gpsl-club-auction-times.ics",
+          events.map((e) => e.vevent)
+        );
       };
     }
   }

@@ -597,7 +597,8 @@
       <span id="draftCountdown"></span>
       <div id="draftLocalStart"></div>
       <p style="margin:6px 0 0;">
-        <button type="button" id="draftAuctionCalBtn" class="button secondary" style="font-size:12px;padding:6px 10px;" title="Downloads 3 calendar files: opens, cutoff, random timer">Add auction times to calendar</button>
+        <button type="button" id="draftAuctionCalBtn" class="button secondary" style="font-size:12px;padding:6px 10px;" title="Download one .ics with all 3 times (Import in Google Calendar), or use the Google links below">Add auction times to calendar</button>
+        <div id="draftAuctionCalLinks" style="margin-top:6px;font-size:11px;line-height:1.5;text-align:right;max-width:280px;" hidden></div>
       </p>
     </div>
   </div>
@@ -757,7 +758,7 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
     import { initGpslInfoTips } from "./gpsl_info_tips.js";
     import { DRAFT_TIPS } from "./owner_page_tips.js";
     import { mountClubBankBalance } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
-    import { downloadIcsEach, draftAuctionTimelineEvents } from "./calendar_ics.js";
+    import { downloadIcs, draftAuctionTimelineEvents } from "./calendar_ics.js";
     import { getDraftTimelineFromStart } from "./draft_timeline.js";
     import { renderDraftAuctionRules } from "./draftauction_rules.js?v=20260812-draft-detail";
     import {
@@ -1121,29 +1122,54 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
       draftAuctionStartTimeUK = settings.draftStart;
 
       const draftCalBtn = document.getElementById("draftAuctionCalBtn");
+      const draftCalLinks = document.getElementById("draftAuctionCalLinks");
       if (draftCalBtn) {
-        draftCalBtn.hidden = !draftAuctionStartTimeUK;
+        const startRaw = draftAuctionStartTimeUK;
+        const startAt =
+          startRaw instanceof Date ? startRaw : startRaw ? new Date(startRaw) : null;
+        const timeline = startAt ? getDraftTimelineFromStart(startAt) : null;
+        draftCalBtn.hidden = !timeline;
+
+        const entries = timeline
+          ? draftAuctionTimelineEvents({
+              id: "player",
+              label: "GPSL player draft",
+              startAt: timeline.start,
+              cutoffAt: timeline.cutoff,
+              randomStartAt: timeline.randomStart,
+              url: new URL("draftauction.html", window.location.href).href,
+              includeCutoff: true,
+              filePrefix: "gpsl-player-draft",
+              cutoffDescription:
+                "Day-2 cutoff (6pm UK) — no new bids or free-agent openings after this time.",
+            })
+          : [];
+
+        if (draftCalLinks && entries.length) {
+          const fmtLocal = (d) =>
+            d.toLocaleString(undefined, {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          draftCalLinks.hidden = false;
+          draftCalLinks.innerHTML = entries
+            .map((e) => {
+              if (!e.googleUrl) return "";
+              return `<div><a class="gpsl-link" href="${e.googleUrl}" target="_blank" rel="noopener noreferrer">${e.title}</a><br><span style="color:#aaa;">${fmtLocal(e.startAt)} (your local time)</span></div>`;
+            })
+            .join("");
+        }
+
         draftCalBtn.onclick = () => {
-          if (!draftAuctionStartTimeUK) return;
-          const timeline = getDraftTimelineFromStart(
-            draftAuctionStartTimeUK instanceof Date
-              ? draftAuctionStartTimeUK
-              : new Date(draftAuctionStartTimeUK)
+          if (!entries.length) return;
+          // One file, three events — use Google Calendar → Settings → Import
+          downloadIcs(
+            "gpsl-player-draft-times.ics",
+            entries.map((e) => e.vevent)
           );
-          if (!timeline) return;
-          const events = draftAuctionTimelineEvents({
-            id: "player",
-            label: "GPSL player draft",
-            startAt: timeline.start,
-            cutoffAt: timeline.cutoff,
-            randomStartAt: timeline.randomStart,
-            url: new URL("draftauction.html", window.location.href).href,
-            includeCutoff: true,
-            filePrefix: "gpsl-player-draft",
-            cutoffDescription:
-              "Day-2 cutoff (6pm UK) — no new bids or free-agent openings after this time.",
-          });
-          downloadIcsEach(events);
         };
       }
 

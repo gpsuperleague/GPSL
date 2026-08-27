@@ -163,6 +163,30 @@ export function downloadIcsEach(entries) {
   return true;
 }
 
+/**
+ * Google Calendar “Add event” template URL (opens in browser; one event per link).
+ * @param {{ title: string, startAt: Date|string|number, endAt?: Date|string|number|null, durationMs?: number, details?: string, location?: string }} p
+ */
+export function googleCalendarTemplateUrl(p) {
+  const start = toIcsUtc(p.startAt);
+  if (!start) return null;
+  let endAt = p.endAt;
+  if (endAt == null) {
+    const startDate = p.startAt instanceof Date ? p.startAt : new Date(p.startAt);
+    endAt = new Date(startDate.getTime() + (p.durationMs ?? DEFAULT_DURATION_MS));
+  }
+  const end = toIcsUtc(endAt);
+  if (!end) return null;
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: String(p.title || "GPSL"),
+    dates: `${start}/${end}`,
+  });
+  if (p.details) params.set("details", String(p.details));
+  if (p.location) params.set("location", String(p.location));
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 function absolutePageUrl(pathWithQuery) {
   try {
     return new URL(pathWithQuery, window.location.href).href;
@@ -275,9 +299,7 @@ export function transferListingEndEvent(p) {
 
 /**
  * Draft auction milestones: open, Day-2 cutoff, random-timer start.
- * Times are UTC in the .ics; calendar apps show the owner's local region.
- * Returns one file entry per milestone (separate downloads — more reliable than
- * a single multi-event .ics in Outlook / Windows).
+ * Times are UTC in the .ics / Google links; calendar apps show local region time.
  * @param {{
  *   id: string,
  *   label: string,
@@ -289,7 +311,7 @@ export function transferListingEndEvent(p) {
  *   cutoffDescription?: string,
  *   filePrefix?: string,
  * }} p
- * @returns {{ filename: string, vevent: string }[]}
+ * @returns {{ filename: string, vevent: string, title: string, startAt: Date, durationMs: number, details: string, googleUrl: string|null }[]}
  */
 export function draftAuctionTimelineEvents(p) {
   const id = String(p.id || "draft").trim() || "draft";
@@ -297,60 +319,76 @@ export function draftAuctionTimelineEvents(p) {
   const url = p.url || absolutePageUrl("dashboard.html");
   const includeCutoff = p.includeCutoff !== false;
   const markerMs = 15 * 60 * 1000;
+  const openMs = 60 * 60 * 1000;
   const prefix = String(p.filePrefix || `gpsl-${id}-draft`)
     .replace(/[\\/:*?"<>|]+/g, "")
     .trim();
   const out = [];
 
-  if (p.startAt) {
+  const push = (key, filename, title, startAt, durationMs, details) => {
+    const startDate = startAt instanceof Date ? startAt : new Date(startAt);
+    if (Number.isNaN(startDate.getTime())) return;
     const vevent = buildVEvent({
-      uid: `gpsl-draft-${id}-start@gpsl`,
-      title: `${label} opens`,
-      description: `Draft auction bidding opens.\nOpen: ${url}`,
-      startAt: p.startAt,
-      durationMs: 60 * 60 * 1000,
+      uid: `gpsl-draft-${id}-${key}@gpsl`,
+      title,
+      description: details,
+      startAt: startDate,
+      durationMs,
       url,
       location: "GPSL Draft Auction",
     });
-    if (vevent) {
-      out.push({ filename: `${prefix}-opens.ics`, vevent });
-    }
+    if (!vevent) return;
+    out.push({
+      filename,
+      vevent,
+      title,
+      startAt: startDate,
+      durationMs,
+      details,
+      googleUrl: googleCalendarTemplateUrl({
+        title,
+        startAt: startDate,
+        durationMs,
+        details,
+        location: "GPSL Draft Auction",
+      }),
+    });
+  };
+
+  if (p.startAt) {
+    push(
+      "start",
+      `${prefix}-opens.ics`,
+      `${label} opens`,
+      p.startAt,
+      openMs,
+      `Draft auction bidding opens.\nOpen: ${url}`
+    );
   }
 
   if (includeCutoff && p.cutoffAt) {
     const cutoffBlurb =
       p.cutoffDescription ||
       `Day-2 cutoff (6pm UK). Player draft: no new bids or free-agent openings after this time. Random window begins at 6:50pm UK.`;
-    const vevent = buildVEvent({
-      uid: `gpsl-draft-${id}-cutoff@gpsl`,
-      title: `${label} cutoff`,
-      description: `${cutoffBlurb}\nOpen: ${url}`,
-      startAt: p.cutoffAt,
-      durationMs: markerMs,
-      url,
-      location: "GPSL Draft Auction",
-    });
-    if (vevent) {
-      out.push({ filename: `${prefix}-cutoff.ics`, vevent });
-    }
+    push(
+      "cutoff",
+      `${prefix}-cutoff.ics`,
+      `${label} cutoff`,
+      p.cutoffAt,
+      markerMs,
+      `${cutoffBlurb}\nOpen: ${url}`
+    );
   }
 
   if (p.randomStartAt) {
-    const vevent = buildVEvent({
-      uid: `gpsl-draft-${id}-random@gpsl`,
-      title: `${label} random timer starts`,
-      description: `Random finish window begins (from 6:50pm UK). Exact finish stays secret until revealed.\nOpen: ${url}`,
-      startAt: p.randomStartAt,
-      durationMs: markerMs,
-      url,
-      location: "GPSL Draft Auction",
-    });
-    if (vevent) {
-      out.push({
-        filename: `${prefix}-random-timer.ics`,
-        vevent,
-      });
-    }
+    push(
+      "random",
+      `${prefix}-random-timer.ics`,
+      `${label} random timer starts`,
+      p.randomStartAt,
+      markerMs,
+      `Random finish window begins (from 6:50pm UK). Exact finish stays secret until revealed.\nOpen: ${url}`
+    );
   }
 
   return out;

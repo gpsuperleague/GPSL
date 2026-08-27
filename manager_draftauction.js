@@ -26,7 +26,7 @@ import {
 import { formatMoney } from "./competition.js";
 import { managerListCellHtml, loadManagerPortraitManifest } from "./manager_images.js";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js";
-import { downloadIcsEach, draftAuctionTimelineEvents } from "./calendar_ics.js";
+import { downloadIcs, draftAuctionTimelineEvents } from "./calendar_ics.js";
 import { getDraftTimelineFromStart } from "./draft_timeline.js";
 import { renderManagerDraftAuctionRules } from "./manager_draftauction_rules.js";
 
@@ -354,7 +354,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         cutoffDescription:
           "Day-2 6pm UK marker (manager draft has no new-bid cutoff). Random timer starts at 6:50pm UK.",
       });
-      downloadIcsEach(events);
+      downloadIcs(
+        "gpsl-manager-draft-times.ics",
+        events.map((e) => e.vevent)
+      );
     };
   }
 
