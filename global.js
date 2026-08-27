@@ -1656,23 +1656,18 @@ function isOnNavListingTargetPage(kind, currentFile) {
   return target?.toLowerCase() === file;
 }
 
-async function loadNavClubListingFlags(clubShort) {
-  if (!clubShort) {
-    return { player: false, manager: false };
-  }
-
+/** Any live Transfer / Manager Market listing (all owners see the same nav cue). */
+async function loadNavClubListingFlags(_clubShort) {
   const nowIso = new Date().toISOString();
   const [playerRes, managerRes] = await Promise.all([
     supabase
       .from("Player_Transfer_Listings")
       .select("id", { count: "exact", head: true })
-      .eq("seller_club_id", clubShort)
       .neq("listing_type", "draft")
       .in("status", ["Active", "Pending Window", "Review", "Seller Review"]),
     supabase
       .from("Manager_Transfer_Listings")
       .select("id", { count: "exact", head: true })
-      .eq("seller_club_id", clubShort)
       .eq("status", "Active")
       .neq("listing_type", "draft")
       .gt("end_time", nowIso),
@@ -1691,12 +1686,10 @@ async function loadNavClubListingFlags(clubShort) {
   };
 }
 
-/** Reload whether this club has live player/manager market listings (nav badges). */
+/** Reload whether Transfer / Manager Market has live listings (nav path for all owners). */
 export async function refreshNavClubListingState(clubShort) {
   try {
-    const short =
-      clubShort ?? (await getOwnerClubShort(await getAuthUserFast()));
-    const flags = await loadNavClubListingFlags(short);
+    const flags = await loadNavClubListingFlags(clubShort);
     navClubPlayerListed = flags.player;
     navClubManagerListed = flags.manager;
     return flags;
@@ -1754,7 +1747,7 @@ function refreshNavAuctionPathIndicators() {
   }
 }
 
-/** Green bar on Transfer / Manager Market link when your club has a live listing. */
+/** Green bar on Transfer / Manager Market when any live listing is on that market. */
 export function refreshNavListingIndicators() {
   const nav = document.getElementById("nav");
   if (!nav) return;
