@@ -4,11 +4,13 @@
 import { supabase } from "./global.js";
 
 function ensureMatchSimStyles() {
-  if (document.getElementById("matchSimStyles")) return;
-  const style = document.createElement("style");
-  style.id = "matchSimStyles";
+  let style = document.getElementById("matchSimStyles");
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "matchSimStyles";
+    document.head.appendChild(style);
+  }
   style.textContent = MATCH_SIM_BANNER_STYLE;
-  document.head.appendChild(style);
 }
 
 /**
@@ -191,45 +193,143 @@ export async function runMatchSimulation(fixtureId, btn, mode = "instant", meta 
 
 function ensureOverlay() {
   let el = document.getElementById("matchSimOverlay");
-  if (el) return el;
-  el = document.createElement("div");
-  el.id = "matchSimOverlay";
-  el.className = "msim-overlay";
-  el.hidden = true;
-  el.innerHTML = `
-    <div class="msim-modal" role="dialog" aria-modal="true" aria-label="Match simulation">
-      <div class="msim-head">
-        <div class="msim-teams">
-          <span class="msim-home-name" id="msimHomeName">Home</span>
-          <span class="msim-score" id="msimScore">0 – 0</span>
-          <span class="msim-away-name" id="msimAwayName">Away</span>
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "matchSimOverlay";
+    el.className = "msim-overlay";
+    el.hidden = true;
+    el.innerHTML = `
+      <div class="msim-modal" role="dialog" aria-modal="true" aria-label="Match simulation">
+        <div class="msim-head">
+          <div class="msim-teams">
+            <span class="msim-home-name" id="msimHomeName">Home</span>
+            <span class="msim-score" id="msimScore">0 – 0</span>
+            <span class="msim-away-name" id="msimAwayName">Away</span>
+          </div>
+          <div class="msim-clock" id="msimClock">0'</div>
+          <div class="msim-phase" id="msimPhase">1st half</div>
         </div>
-        <div class="msim-clock" id="msimClock">0'</div>
-        <div class="msim-phase" id="msimPhase">1st half</div>
-      </div>
-      <div class="msim-ht" id="msimHt" hidden>
-        <div class="msim-ht-label">HALF TIME</div>
-        <div class="msim-ht-score" id="msimHtScore">0 – 0</div>
-      </div>
-      <div class="msim-pitch">
-        <div class="msim-bar" id="msimBar">
-          <div class="msim-home-zone" id="msimHomeZone"></div>
-          <div class="msim-away-zone" id="msimAwayZone"></div>
-          <div class="msim-arrow" id="msimArrow" aria-hidden="true">▶</div>
+        <div class="msim-ht" id="msimHt" hidden>
+          <div class="msim-ht-label">HALF TIME</div>
+          <div class="msim-ht-score" id="msimHtScore">0 – 0</div>
+        </div>
+        <div class="msim-pitch">
+          <div class="msim-bar" id="msimBar">
+            <div class="msim-goal-mouth msim-goal-mouth--home" aria-hidden="true"></div>
+            <div class="msim-home-zone" id="msimHomeZone"></div>
+            <div class="msim-away-zone" id="msimAwayZone"></div>
+            <div class="msim-goal-mouth msim-goal-mouth--away" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="msim-burst" id="msimBurst" hidden>
+          <div class="msim-burst-card" id="msimBurstCard">
+            <div class="msim-burst-art" id="msimBurstArt" aria-hidden="true"></div>
+            <div class="msim-burst-title" id="msimBurstTitle"></div>
+            <div class="msim-burst-player" id="msimBurstPlayer"></div>
+            <div class="msim-burst-meta" id="msimBurstMeta"></div>
+          </div>
+        </div>
+        <div class="msim-feed" id="msimFeed">
+          <div class="msim-feed-col msim-feed-home" id="msimFeedHome"></div>
+          <div class="msim-feed-col msim-feed-away" id="msimFeedAway"></div>
+          <div class="msim-feed-center" id="msimFeedCenter"></div>
+        </div>
+        <div class="msim-foot">
+          <button type="button" class="btn-link msim-skip" id="msimSkip">Skip to result</button>
         </div>
       </div>
-      <div class="msim-feed" id="msimFeed">
-        <div class="msim-feed-col msim-feed-home" id="msimFeedHome"></div>
-        <div class="msim-feed-col msim-feed-away" id="msimFeedAway"></div>
-        <div class="msim-feed-center" id="msimFeedCenter"></div>
-      </div>
-      <div class="msim-foot">
-        <button type="button" class="btn-link msim-skip" id="msimSkip">Skip to result</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(el);
+    `;
+    document.body.appendChild(el);
+  }
+
+  // Upgrade older overlay markup (arrow → colour pressure + burst layer)
+  const bar = el.querySelector("#msimBar");
+  el.querySelector("#msimArrow")?.remove();
+  if (bar && !bar.querySelector(".msim-goal-mouth--home")) {
+    bar.insertAdjacentHTML(
+      "afterbegin",
+      `<div class="msim-goal-mouth msim-goal-mouth--home" aria-hidden="true"></div>`
+    );
+    bar.insertAdjacentHTML(
+      "beforeend",
+      `<div class="msim-goal-mouth msim-goal-mouth--away" aria-hidden="true"></div>`
+    );
+  }
+  if (!el.querySelector("#msimBurst")) {
+    const pitch = el.querySelector(".msim-pitch");
+    pitch?.insertAdjacentHTML(
+      "afterend",
+      `<div class="msim-burst" id="msimBurst" hidden>
+        <div class="msim-burst-card" id="msimBurstCard">
+          <div class="msim-burst-art" id="msimBurstArt" aria-hidden="true"></div>
+          <div class="msim-burst-title" id="msimBurstTitle"></div>
+          <div class="msim-burst-player" id="msimBurstPlayer"></div>
+          <div class="msim-burst-meta" id="msimBurstMeta"></div>
+        </div>
+      </div>`
+    );
+  }
   return el;
+}
+
+const BURST_ART = {
+  goal: `<svg class="msim-art-goal" viewBox="0 0 120 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="8" y="10" width="72" height="52" fill="none" stroke="#c8d0d8" stroke-width="3"/>
+    <path d="M8 10 H80 M8 62 H80 M8 10 V62" fill="none" stroke="#c8d0d8" stroke-width="3"/>
+    <path d="M20 18 V54 M32 18 V54 M44 18 V54 M56 18 V54 M68 18 V54" stroke="#6a7888" stroke-width="1.2" opacity=".7"/>
+    <path d="M12 22 H76 M12 34 H76 M12 46 H76" stroke="#6a7888" stroke-width="1.2" opacity=".7"/>
+    <circle class="msim-art-ball" cx="28" cy="36" r="9" fill="#f4f4f4" stroke="#222" stroke-width="1.5"/>
+    <path d="M28 27 L31 33 L38 33 L32 38 L34 45 L28 41 L22 45 L24 38 L18 33 L25 33 Z" fill="none" stroke="#222" stroke-width="1"/>
+  </svg>`,
+  yellow: `<div class="msim-art-card msim-art-card--yellow" aria-hidden="true"></div>`,
+  red: `<div class="msim-art-card msim-art-card--red" aria-hidden="true"></div>`,
+  injury: `<svg class="msim-art-injury" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="36" cy="36" r="30" fill="#3a1f28" stroke="#e8a0a8" stroke-width="2"/>
+    <rect x="32" y="16" width="8" height="40" rx="2" fill="#f2f2f2"/>
+    <rect x="16" y="32" width="40" height="8" rx="2" fill="#f2f2f2"/>
+  </svg>`,
+};
+
+function burstPlayerLabel(ev) {
+  const raw = String(ev?.player || "").trim();
+  if (!raw) return "Unknown";
+  if (ev?.type === "injury") {
+    const cut = raw.indexOf(" - ");
+    return cut > 0 ? raw.slice(0, cut) : raw;
+  }
+  return raw;
+}
+
+function burstInjuryDetail(ev) {
+  const raw = String(ev?.player || "");
+  const cut = raw.indexOf(" - ");
+  return cut > 0 ? raw.slice(cut + 3).trim() : "";
+}
+
+async function loadSeasonGoalTotals(playbackEvents) {
+  const ids = [
+    ...new Set(
+      (playbackEvents || [])
+        .filter((e) => e?.type === "goal" && e.player_id)
+        .map((e) => String(e.player_id))
+    ),
+  ];
+  if (!ids.length) return {};
+  try {
+    const { data, error } = await supabase
+      .from("competition_player_season_stats_public")
+      .select("player_id, goals")
+      .in("player_id", ids);
+    if (error || !data) return {};
+    const map = {};
+    for (const row of data) {
+      const id = String(row.player_id);
+      map[id] = (map[id] || 0) + Number(row.goals || 0);
+    }
+    return map;
+  } catch {
+    return {};
+  }
 }
 
 /**
@@ -238,17 +338,24 @@ function ensureOverlay() {
  */
 export function playMatchMomentum(data, labels = {}) {
   return new Promise((resolve) => {
+    void (async () => {
+    ensureMatchSimStyles();
     const overlay = ensureOverlay();
     const feed = overlay.querySelector("#msimFeed");
     const scoreEl = overlay.querySelector("#msimScore");
     const clockEl = overlay.querySelector("#msimClock");
     const phaseEl = overlay.querySelector("#msimPhase");
     const htEl = overlay.querySelector("#msimHt");
-    const htScoreEl = overlay.querySelector("#msimHtScore");
-    const arrow = overlay.querySelector("#msimArrow");
+    const bar = overlay.querySelector("#msimBar");
     const homeZone = overlay.querySelector("#msimHomeZone");
     const awayZone = overlay.querySelector("#msimAwayZone");
     const skipBtn = overlay.querySelector("#msimSkip");
+    const burstEl = overlay.querySelector("#msimBurst");
+    const burstCard = overlay.querySelector("#msimBurstCard");
+    const burstArt = overlay.querySelector("#msimBurstArt");
+    const burstTitle = overlay.querySelector("#msimBurstTitle");
+    const burstPlayer = overlay.querySelector("#msimBurstPlayer");
+    const burstMeta = overlay.querySelector("#msimBurstMeta");
 
     // Ensure HT / phase nodes exist on older overlay markup
     if (!phaseEl) {
@@ -273,8 +380,10 @@ export function playMatchMomentum(data, labels = {}) {
 
     const homeColor = data?.colours?.home?.primary || "#3b82f6";
     const awayColor = data?.colours?.away?.primary || "#ef4444";
-    homeZone.style.background = `linear-gradient(90deg, ${homeColor}, ${homeColor}99)`;
-    awayZone.style.background = `linear-gradient(90deg, ${awayColor}99, ${awayColor})`;
+    homeZone.style.background = `linear-gradient(90deg, ${homeColor}, ${homeColor}cc)`;
+    awayZone.style.background = `linear-gradient(90deg, ${awayColor}cc, ${awayColor})`;
+    homeZone.style.boxShadow = `inset -10px 0 14px -8px ${homeColor}`;
+    awayZone.style.boxShadow = `inset 10px 0 14px -8px ${awayColor}`;
 
     overlay.querySelector("#msimHomeName").textContent =
       labels.homeName || data?.home_name || data?.home_club || "Home";
@@ -299,6 +408,16 @@ export function playMatchMomentum(data, labels = {}) {
     const ftSec = htEndSec + shPlaySec;
 
     const rawEvents = Array.isArray(playback.events) ? [...playback.events] : [];
+    const seasonGoalTotals = await loadSeasonGoalTotals(rawEvents);
+    const matchGoalsByPlayer = {};
+    for (const e of rawEvents) {
+      if (e?.type === "goal" && e.player_id) {
+        const id = String(e.player_id);
+        matchGoalsByPlayer[id] = (matchGoalsByPlayer[id] || 0) + 1;
+      }
+    }
+    const shownGoalsByPlayer = {};
+
     // Remap events onto half-aware timeline by match minute
     const events = rawEvents
       .filter((e) => e && e.type !== "kickoff")
@@ -365,6 +484,10 @@ export function playMatchMomentum(data, labels = {}) {
     feedHome.innerHTML = "";
     feedAway.innerHTML = "";
     feedCenter.innerHTML = "";
+    if (burstEl) {
+      burstEl.hidden = true;
+      burstEl.className = "msim-burst";
+    }
 
     /** @type {{ home: HTMLElement|null, away: HTMLElement|null }} */
     const lastGoalBlock = { home: null, away: null };
@@ -373,6 +496,7 @@ export function playMatchMomentum(data, labels = {}) {
     let target = 0.55;
     let surgeUntil = 0;
     let lastSide = "home";
+    let burstHideTimer = 0;
 
     overlay.hidden = false;
     const started = performance.now();
@@ -388,18 +512,84 @@ export function playMatchMomentum(data, labels = {}) {
       return 0.5;
     }
 
-    function paintArrow(m) {
-      const pct = 8 + m * 84;
+    /** Colour bar push: home (left) expands toward away goal (right) when pressing. */
+    function paintPressure(m) {
+      const homeShare = Math.max(0.06, Math.min(0.94, m));
+      const awayShare = 1 - homeShare;
+      homeZone.style.flexGrow = String(homeShare);
+      awayZone.style.flexGrow = String(awayShare);
+      homeZone.style.flexBasis = "0";
+      awayZone.style.flexBasis = "0";
       const homeAttack = m >= 0.5;
-      arrow.style.left = `${pct}%`;
+      bar?.classList.toggle("msim-bar--home-push", homeAttack);
+      bar?.classList.toggle("msim-bar--away-push", !homeAttack);
       if (homeAttack !== (lastSide === "home")) {
-        arrow.classList.remove("msim-arrow--pulse");
-        void arrow.offsetWidth;
-        arrow.classList.add("msim-arrow--pulse");
+        bar?.classList.remove("msim-bar--pulse");
+        void bar?.offsetWidth;
+        bar?.classList.add("msim-bar--pulse");
       }
       lastSide = homeAttack ? "home" : "away";
-      arrow.textContent = homeAttack ? "▶" : "◀";
-      arrow.style.color = homeAttack ? homeColor : awayColor;
+    }
+
+    function hideBurst() {
+      if (!burstEl) return;
+      burstEl.classList.remove("msim-burst--show");
+      burstEl.hidden = true;
+    }
+
+    function showBurst(ev) {
+      if (!burstEl || !burstArt || !burstTitle || !burstPlayer || !burstMeta) return;
+      const type = ev.type;
+      if (type !== "goal" && type !== "yellow" && type !== "red" && type !== "injury") return;
+
+      clearTimeout(burstHideTimer);
+      burstEl.className = `msim-burst msim-burst--${type} msim-burst--${ev.side === "away" ? "away" : "home"}`;
+      burstArt.innerHTML = BURST_ART[type] || "";
+      if (burstCard) {
+        const accent =
+          type === "goal"
+            ? ev.side === "away"
+              ? awayColor
+              : homeColor
+            : type === "yellow"
+              ? "#e6c35c"
+              : type === "red"
+                ? "#ef4444"
+                : "#e8a0a8";
+        burstCard.style.setProperty("--msim-burst-accent", accent);
+      }
+      if (type === "goal") {
+        burstTitle.textContent = "GOAL!";
+        burstPlayer.textContent = burstPlayerLabel(ev);
+        const pid = ev.player_id != null ? String(ev.player_id) : "";
+        let meta = "";
+        if (pid && seasonGoalTotals[pid] != null) {
+          shownGoalsByPlayer[pid] = (shownGoalsByPlayer[pid] || 0) + 1;
+          const seasonAt =
+            Number(seasonGoalTotals[pid]) -
+            Number(matchGoalsByPlayer[pid] || 0) +
+            Number(shownGoalsByPlayer[pid]);
+          meta = `${seasonAt} goal${seasonAt === 1 ? "" : "s"} this season`;
+        }
+        burstMeta.textContent = meta;
+      } else if (type === "yellow") {
+        burstTitle.textContent = "YELLOW CARD";
+        burstPlayer.textContent = burstPlayerLabel(ev);
+        burstMeta.textContent = "";
+      } else if (type === "red") {
+        burstTitle.textContent = "RED CARD";
+        burstPlayer.textContent = burstPlayerLabel(ev);
+        burstMeta.textContent = "";
+      } else {
+        burstTitle.textContent = "INJURY";
+        burstPlayer.textContent = burstPlayerLabel(ev);
+        burstMeta.textContent = burstInjuryDetail(ev);
+      }
+      burstEl.hidden = false;
+      void burstEl.offsetWidth;
+      burstEl.classList.add("msim-burst--show");
+      const holdMs = type === "goal" ? 2100 : 1600;
+      burstHideTimer = setTimeout(hideBurst, holdMs);
     }
 
     function formatClock(matchMin, phase) {
@@ -569,6 +759,8 @@ export function playMatchMomentum(data, labels = {}) {
       if (done) return;
       done = true;
       cancelAnimationFrame(raf);
+      clearTimeout(burstHideTimer);
+      hideBurst();
       hg = data?.home_goals ?? hg;
       ag = data?.away_goals ?? ag;
       scoreEl.textContent = `${hg} – ${ag}`;
@@ -622,7 +814,10 @@ export function playMatchMomentum(data, labels = {}) {
           scoreEl.classList.add("msim-score--flash");
           setTimeout(() => scoreEl.classList.remove("msim-score--flash"), 400);
         }
-        if (ev.type !== "momentum") pushFeed(ev);
+        if (ev.type !== "momentum") {
+          pushFeed(ev);
+          showBurst(ev);
+        }
         if (ev.type === "fulltime") {
           finish();
           return;
@@ -644,7 +839,7 @@ export function playMatchMomentum(data, labels = {}) {
         const chase = tSec < surgeUntil ? 7.5 : 4.2;
         momentum += (liveTarget - momentum) * (1 - Math.exp(-chase * dt));
         momentum = Math.max(0.04, Math.min(0.96, momentum));
-        paintArrow(momentum);
+        paintPressure(momentum);
         clockEl.textContent = formatClock(state.matchMin, state.phase);
       } else if (state.phase === "ht") {
         clockEl.textContent = "HT";
@@ -657,9 +852,10 @@ export function playMatchMomentum(data, labels = {}) {
       raf = requestAnimationFrame(tick);
     }
 
-    paintArrow(momentum);
+    paintPressure(momentum);
     skipBtn.onclick = () => finish();
     raf = requestAnimationFrame(tick);
+    })();
   });
 }
 
@@ -699,7 +895,7 @@ button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled 
 }
 .msim-overlay[hidden] { display:none !important; }
 .msim-modal {
-  width:min(520px, 100%); background:#121212; border:1px solid #333; border-radius:10px;
+  position:relative; width:min(520px, 100%); background:#121212; border:1px solid #333; border-radius:10px;
   padding:16px 18px 14px; box-shadow:0 12px 40px rgba(0,0,0,.55); color:#eee;
 }
 .msim-head { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
@@ -721,23 +917,89 @@ button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled 
 .msim-ht-label { font-size:12px; font-weight:800; letter-spacing:.08em; color:#9ab; }
 .msim-ht-score { font-size:26px; font-weight:800; color:#ff9900; margin-top:4px; font-variant-numeric:tabular-nums; }
 .msim-ev--halftime { color:#9ab; font-weight:700; }
-.msim-pitch { margin:8px 0 12px; }
+.msim-pitch { margin:8px 0 12px; position:relative; }
 .msim-bar {
-  position:relative; height:36px; border-radius:6px; overflow:hidden;
-  border:1px solid #333; display:flex;
+  position:relative; height:40px; border-radius:6px; overflow:hidden;
+  border:1px solid #333; display:flex; align-items:stretch;
 }
-.msim-home-zone, .msim-away-zone { flex:1; opacity:.9; }
-.msim-arrow {
-  position:absolute; top:50%; transform:translate(-50%,-50%);
-  font-size:24px; font-weight:900; text-shadow:0 1px 4px #000;
-  transition:color .15s ease; pointer-events:none; will-change:left;
+.msim-home-zone, .msim-away-zone {
+  flex:1 1 0; min-width:0; opacity:.95;
+  transition: flex-grow .1s linear;
 }
-.msim-arrow--pulse { animation:msimPulse .4s ease; }
-@keyframes msimPulse {
-  0%{transform:translate(-50%,-50%) scale(1)}
-  35%{transform:translate(-50%,-50%) scale(1.35)}
-  100%{transform:translate(-50%,-50%) scale(1)}
+.msim-goal-mouth {
+  position:absolute; top:0; bottom:0; width:6px; z-index:2; pointer-events:none;
+  background:repeating-linear-gradient(
+    180deg, #c8d0d8 0 3px, transparent 3px 6px
+  );
+  opacity:.55;
 }
+.msim-goal-mouth--home { left:0; border-right:2px solid #c8d0d8; }
+.msim-goal-mouth--away { right:0; border-left:2px solid #c8d0d8; }
+.msim-bar--home-push .msim-goal-mouth--away { opacity:.95; box-shadow:0 0 10px rgba(255,255,255,.25); }
+.msim-bar--away-push .msim-goal-mouth--home { opacity:.95; box-shadow:0 0 10px rgba(255,255,255,.25); }
+.msim-bar--pulse { animation:msimBarPulse .35s ease; }
+@keyframes msimBarPulse {
+  0%{ filter:brightness(1) }
+  40%{ filter:brightness(1.25) }
+  100%{ filter:brightness(1) }
+}
+
+.msim-burst {
+  position:absolute; inset:0; z-index:5;
+  display:flex; align-items:center; justify-content:center;
+  pointer-events:none; background:rgba(0,0,0,.45);
+  opacity:0; transition:opacity .2s ease;
+}
+.msim-burst[hidden] { display:none !important; }
+.msim-burst--show { opacity:1; }
+.msim-burst-card {
+  min-width:min(280px, 86%);
+  padding:18px 20px 16px; border-radius:12px; text-align:center;
+  background:linear-gradient(180deg, #1a1f28 0%, #10141a 100%);
+  border:2px solid var(--msim-burst-accent, #ff9900);
+  box-shadow:0 12px 36px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06) inset;
+  transform:scale(.86); transition:transform .22s cubic-bezier(.2,1.2,.3,1);
+}
+.msim-burst--show .msim-burst-card { transform:scale(1); }
+.msim-burst-art { display:flex; justify-content:center; align-items:center; min-height:64px; margin-bottom:8px; }
+.msim-burst-title {
+  font-size:28px; font-weight:900; letter-spacing:.06em; line-height:1.1;
+  color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.5);
+}
+.msim-burst--goal .msim-burst-title { color:#9fd4b0; font-size:34px; }
+.msim-burst--yellow .msim-burst-title { color:#e6c35c; font-size:20px; }
+.msim-burst--red .msim-burst-title { color:#f66; font-size:22px; }
+.msim-burst--injury .msim-burst-title { color:#e8a0a8; font-size:20px; }
+.msim-burst-player { margin-top:6px; font-size:16px; font-weight:700; color:#eee; }
+.msim-burst-meta { margin-top:4px; font-size:12px; color:#9ab; min-height:1em; }
+
+.msim-art-goal { width:140px; height:84px; overflow:visible; }
+.msim-art-ball {
+  transform-box:fill-box; transform-origin:center;
+  animation:msimBallIn .85s cubic-bezier(.2,.7,.2,1) both;
+}
+@keyframes msimBallIn {
+  0% { transform:translate(-46px, 8px) scale(.7); opacity:.3; }
+  70% { transform:translate(8px, -2px) scale(1.05); opacity:1; }
+  100% { transform:translate(22px, 0) scale(1); opacity:1; }
+}
+.msim-art-card {
+  width:42px; height:58px; border-radius:5px;
+  box-shadow:0 4px 12px rgba(0,0,0,.4);
+  animation:msimCardFlip .55s ease both;
+}
+.msim-art-card--yellow { background:linear-gradient(145deg, #ffe566, #d4a017); border:1px solid #a67c00; }
+.msim-art-card--red { background:linear-gradient(145deg, #ff6b6b, #b91c1c); border:1px solid #7f1d1d; }
+@keyframes msimCardFlip {
+  0% { transform:rotateY(-90deg) scale(.6); opacity:0; }
+  100% { transform:rotateY(0) scale(1); opacity:1; }
+}
+.msim-art-injury { width:64px; height:64px; animation:msimInjPop .5s ease both; }
+@keyframes msimInjPop {
+  0% { transform:scale(.5); opacity:0; }
+  100% { transform:scale(1); opacity:1; }
+}
+
 .msim-feed {
   display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; align-items:start;
   max-height:200px; overflow:auto; font-size:13px; line-height:1.35;
