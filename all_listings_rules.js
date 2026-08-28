@@ -28,7 +28,7 @@ export function getTransferMarketRules() {
       {
         heading: "Extra time &amp; clocks",
         items: [
-          "Bid in final <b>2 hours</b> → +<b>1 hour</b> once.",
+          "Bid in final <b>2 hours</b> → auction end moves <b>+1 hour from the scheduled end</b> (once) — not “1 hour from the bid”.",
           "Then bid in final <b>5 minutes</b> → +<b>5 minutes</b> (can repeat).",
           "Countdown shows time left, <b>UK end</b>, and <b>your local</b> time. Settlement follows shortly after zero.",
         ],

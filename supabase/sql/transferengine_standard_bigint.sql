@@ -234,15 +234,18 @@ END;
 $function$;
 
 
-CREATE OR REPLACE FUNCTION public.transferengine_handle_expiry_or_extension(p_listing_id bigint)
-RETURNS void
+CREATE OR REPLACE FUNCTION public.transferengine_apply_listing_bid_extension(
+  p_listing_id bigint,
+  p_bid_time timestamptz DEFAULT now()
+)
+RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $function$
 DECLARE
-  v_listing            "Player_Transfer_Listings"%rowtype;
-  v_latest_bid         "Player_Transfer_Bids"%rowtype;
-  v_now                timestamptz := now();
+  v_listing            public."Player_Transfer_Listings"%rowtype;
+  v_bid_at             timestamptz := coalesce(p_bid_time, now());
   v_late_window        interval := interval '2 hours';
   v_main_extension     interval := interval '1 hour';
   v_micro_window       interval := interval '5 minutes';
@@ -250,9 +253,93 @@ DECLARE
   v_late_window_start  timestamptz;
   v_micro_window_start timestamptz;
 BEGIN
+  IF p_listing_id IS NULL THEN
+    RETURN false;
+  END IF;
+
   SELECT *
   INTO v_listing
-  FROM "Player_Transfer_Listings"
+  FROM public."Player_Transfer_Listings"
+  WHERE id = p_listing_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+
+  IF lower(coalesce(v_listing.status::text, '')) IS DISTINCT FROM 'active' THEN
+    RETURN false;
+  END IF;
+
+  IF lower(coalesce(v_listing.listing_type::text, '')) = 'draft' THEN
+    RETURN false;
+  END IF;
+
+  IF v_listing.end_time IS NULL THEN
+    RETURN false;
+  END IF;
+
+  IF v_bid_at > v_listing.end_time + interval '2 minutes' THEN
+    RETURN false;
+  END IF;
+
+  IF NOT coalesce(v_listing.was_extended, false) THEN
+    v_late_window_start := v_listing.end_time - v_late_window;
+
+    IF v_bid_at >= v_late_window_start
+       AND v_bid_at <= v_listing.end_time + interval '2 minutes' THEN
+      -- Additive on scheduled end — never now() + 1 hour
+      UPDATE public."Player_Transfer_Listings"
+      SET end_time = v_listing.end_time + v_main_extension,
+          was_extended = true,
+          hour_extended = true,
+          extension_type = '1h',
+          extension_count = coalesce(extension_count, 0) + 1,
+          last_extension_time = now(),
+          extension_state = '1h'
+      WHERE id = v_listing.id;
+
+      RETURN true;
+    END IF;
+
+    RETURN false;
+  END IF;
+
+  v_micro_window_start := v_listing.end_time - v_micro_window;
+
+  IF v_bid_at >= v_micro_window_start
+     AND v_bid_at <= v_listing.end_time + interval '2 minutes' THEN
+    UPDATE public."Player_Transfer_Listings"
+    SET end_time = v_listing.end_time + v_micro_ext,
+        was_extended = true,
+        extension_type = '5m',
+        extension_count = coalesce(extension_count, 0) + 1,
+        last_extension_time = now(),
+        extension_state = '5m'
+    WHERE id = v_listing.id;
+
+    RETURN true;
+  END IF;
+
+  RETURN false;
+END;
+$function$;
+
+
+CREATE OR REPLACE FUNCTION public.transferengine_handle_expiry_or_extension(p_listing_id bigint)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_listing    public."Player_Transfer_Listings"%rowtype;
+  v_latest_bid public."Player_Transfer_Bids"%rowtype;
+  v_extended   boolean := false;
+BEGIN
+  SELECT *
+  INTO v_listing
+  FROM public."Player_Transfer_Listings"
   WHERE id = p_listing_id
   FOR UPDATE;
 
@@ -265,12 +352,12 @@ BEGIN
 
   SELECT *
   INTO v_listing
-  FROM "Player_Transfer_Listings"
+  FROM public."Player_Transfer_Listings"
   WHERE id = p_listing_id;
 
   SELECT *
   INTO v_latest_bid
-  FROM "Player_Transfer_Bids"
+  FROM public."Player_Transfer_Bids"
   WHERE listing_id = v_listing.id
   ORDER BY bid_time DESC
   LIMIT 1;
@@ -280,45 +367,18 @@ BEGIN
     RETURN;
   END IF;
 
-  IF NOT v_listing.was_extended THEN
-    v_late_window_start := v_listing.end_time - v_late_window;
+  v_extended := public.transferengine_apply_listing_bid_extension(
+    v_listing.id,
+    v_latest_bid.bid_time
+  );
 
-    IF v_latest_bid.bid_time >= v_late_window_start
-       AND v_latest_bid.bid_time <= v_listing.end_time THEN
-
-      UPDATE "Player_Transfer_Listings"
-      SET end_time = v_listing.end_time + v_main_extension,
-          was_extended = true,
-          extension_type = '1h',
-          extension_count = coalesce(extension_count, 0) + 1
-      WHERE id = v_listing.id;
-
-      RETURN;
-    END IF;
-
-    PERFORM transferengine_evaluate_expired_listing(v_listing.id);
-    RETURN;
-  END IF;
-
-  v_micro_window_start := v_listing.end_time - v_micro_window;
-
-  IF v_latest_bid.bid_time >= v_micro_window_start
-     AND v_latest_bid.bid_time <= v_listing.end_time THEN
-
-    UPDATE "Player_Transfer_Listings"
-    SET end_time = v_listing.end_time + v_micro_ext,
-        was_extended = true,
-        extension_type = '5m',
-        extension_count = coalesce(extension_count, 0) + 1
-    WHERE id = v_listing.id;
-
+  IF v_extended THEN
     RETURN;
   END IF;
 
   PERFORM transferengine_evaluate_expired_listing(v_listing.id);
 END;
 $function$;
-
 
 CREATE OR REPLACE FUNCTION public.transferengine_reject_sale(p_listing_id bigint)
 RETURNS void
