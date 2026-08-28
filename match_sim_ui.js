@@ -200,6 +200,14 @@ function ensureOverlay() {
     el.hidden = true;
     el.innerHTML = `
       <div class="msim-modal" role="dialog" aria-modal="true" aria-label="Match simulation">
+        <div class="msim-burst" id="msimBurst" hidden>
+          <div class="msim-burst-card" id="msimBurstCard">
+            <div class="msim-burst-art" id="msimBurstArt" aria-hidden="true"></div>
+            <div class="msim-burst-title" id="msimBurstTitle"></div>
+            <div class="msim-burst-player" id="msimBurstPlayer"></div>
+            <div class="msim-burst-meta" id="msimBurstMeta"></div>
+          </div>
+        </div>
         <div class="msim-head">
           <div class="msim-teams">
             <span class="msim-home-name" id="msimHomeName">Home</span>
@@ -221,14 +229,6 @@ function ensureOverlay() {
             <div class="msim-goal-mouth msim-goal-mouth--away" aria-hidden="true"></div>
           </div>
         </div>
-        <div class="msim-burst" id="msimBurst" hidden>
-          <div class="msim-burst-card" id="msimBurstCard">
-            <div class="msim-burst-art" id="msimBurstArt" aria-hidden="true"></div>
-            <div class="msim-burst-title" id="msimBurstTitle"></div>
-            <div class="msim-burst-player" id="msimBurstPlayer"></div>
-            <div class="msim-burst-meta" id="msimBurstMeta"></div>
-          </div>
-        </div>
         <div class="msim-feed" id="msimFeed">
           <div class="msim-feed-col msim-feed-home" id="msimFeedHome"></div>
           <div class="msim-feed-col msim-feed-away" id="msimFeedAway"></div>
@@ -242,7 +242,7 @@ function ensureOverlay() {
     document.body.appendChild(el);
   }
 
-  // Upgrade older overlay markup (arrow → colour pressure + burst layer)
+  // Upgrade older overlay markup (arrow → colour pressure + burst above scoreboard)
   const bar = el.querySelector("#msimBar");
   el.querySelector("#msimArrow")?.remove();
   if (bar && !bar.querySelector(".msim-goal-mouth--home")) {
@@ -255,10 +255,12 @@ function ensureOverlay() {
       `<div class="msim-goal-mouth msim-goal-mouth--away" aria-hidden="true"></div>`
     );
   }
-  if (!el.querySelector("#msimBurst")) {
-    const pitch = el.querySelector(".msim-pitch");
-    pitch?.insertAdjacentHTML(
-      "afterend",
+  const modal = el.querySelector(".msim-modal");
+  const head = el.querySelector(".msim-head");
+  let burst = el.querySelector("#msimBurst");
+  if (!burst) {
+    head?.insertAdjacentHTML(
+      "beforebegin",
       `<div class="msim-burst" id="msimBurst" hidden>
         <div class="msim-burst-card" id="msimBurstCard">
           <div class="msim-burst-art" id="msimBurstArt" aria-hidden="true"></div>
@@ -268,6 +270,10 @@ function ensureOverlay() {
         </div>
       </div>`
     );
+    burst = el.querySelector("#msimBurst");
+  } else if (head && burst.nextElementSibling !== head) {
+    // Move burst above the scoreboard if it was inlined elsewhere
+    modal?.insertBefore(burst, head);
   }
   return el;
 }
@@ -512,12 +518,17 @@ export function playMatchMomentum(data, labels = {}) {
       return 0.5;
     }
 
+    /** Full bar push toward the opponent goal (1 = home attacking, 0 = away). */
+    function goalAttackTarget(side) {
+      return side === "away" ? 0 : 1;
+    }
+
     /** Colour bar push: home (left) expands toward away goal (right) when pressing. */
     function paintPressure(m) {
-      const homeShare = Math.max(0.06, Math.min(0.94, m));
+      const homeShare = Math.max(0, Math.min(1, m));
       const awayShare = 1 - homeShare;
-      homeZone.style.flexGrow = String(homeShare);
-      awayZone.style.flexGrow = String(awayShare);
+      homeZone.style.flexGrow = String(Math.max(0.001, homeShare));
+      awayZone.style.flexGrow = String(Math.max(0.001, awayShare));
       homeZone.style.flexBasis = "0";
       awayZone.style.flexBasis = "0";
       const homeAttack = m >= 0.5;
@@ -529,6 +540,19 @@ export function playMatchMomentum(data, labels = {}) {
         bar?.classList.add("msim-bar--pulse");
       }
       lastSide = homeAttack ? "home" : "away";
+    }
+
+    /** Upcoming goal within the wind-up window → drive bar to 100%. */
+    function upcomingGoal(tSec) {
+      for (let i = idx; i < events.length; i++) {
+        const ev = events[i];
+        const at = Number(ev.at);
+        if (at > tSec + 1.15) break;
+        if (ev.type === "goal" && (ev.side === "home" || ev.side === "away") && at > tSec) {
+          return ev;
+        }
+      }
+      return null;
     }
 
     function hideBurst() {
@@ -803,9 +827,15 @@ export function playMatchMomentum(data, labels = {}) {
           (ev.type === "goal" || ev.type === "red") &&
           (ev.side === "home" || ev.side === "away")
         ) {
-          target = eventTarget(ev);
-          surgeUntil = tSec + (ev.type === "goal" ? 1.4 : 0.85);
-          momentum += (target - momentum) * (ev.type === "goal" ? 0.55 : 0.35);
+          if (ev.type === "goal") {
+            target = goalAttackTarget(ev.side);
+            surgeUntil = tSec + 1.2;
+            momentum = target;
+          } else {
+            target = eventTarget(ev);
+            surgeUntil = tSec + 0.85;
+            momentum += (target - momentum) * 0.35;
+          }
         }
         if (ev.type === "goal") {
           hg = ev.score_home ?? hg;
@@ -825,20 +855,32 @@ export function playMatchMomentum(data, labels = {}) {
       }
 
       if (state.playing) {
+        const nextGoal = upcomingGoal(tSec);
         const wave =
           Math.sin(tSec * 2.4) * 0.14 +
           Math.sin(tSec * 5.1 + 1.3) * 0.08 +
           Math.sin(tSec * 0.9 + 0.4) * 0.1;
         const bias = 0.5 + Math.sin(tSec * 0.55) * 0.12;
         let liveTarget = bias + wave;
-        if (tSec < surgeUntil) {
+        let chase = 4.2;
+
+        if (nextGoal) {
+          // Wind-up: slam to 100% attack toward the goal about to be scored
+          const eta = Math.max(0.05, Number(nextGoal.at) - tSec);
+          const wind = Math.min(1, (1.15 - eta) / 1.15);
+          target = goalAttackTarget(nextGoal.side);
+          liveTarget = target;
+          chase = 6 + wind * 14;
+          surgeUntil = Math.max(surgeUntil, Number(nextGoal.at) + 0.35);
+        } else if (tSec < surgeUntil) {
           const blend = Math.min(1, (surgeUntil - tSec) / 0.9);
           liveTarget = target * (0.55 + 0.35 * blend) + liveTarget * (0.45 - 0.25 * blend);
+          chase = 7.5;
         }
-        liveTarget = Math.max(0.06, Math.min(0.94, liveTarget));
-        const chase = tSec < surgeUntil ? 7.5 : 4.2;
+
+        liveTarget = Math.max(0, Math.min(1, liveTarget));
         momentum += (liveTarget - momentum) * (1 - Math.exp(-chase * dt));
-        momentum = Math.max(0.04, Math.min(0.96, momentum));
+        momentum = Math.max(0, Math.min(1, momentum));
         paintPressure(momentum);
         clockEl.textContent = formatClock(state.matchMin, state.phase);
       } else if (state.phase === "ht") {
@@ -945,35 +987,37 @@ button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled 
 }
 
 .msim-burst {
-  position:absolute; inset:0; z-index:5;
   display:flex; align-items:center; justify-content:center;
-  pointer-events:none; background:rgba(0,0,0,.45);
-  opacity:0; transition:opacity .2s ease;
+  margin:0 0 10px; min-height:0;
+  pointer-events:none; opacity:0;
+  transition:opacity .2s ease, margin .2s ease;
 }
 .msim-burst[hidden] { display:none !important; }
-.msim-burst--show { opacity:1; }
+.msim-burst--show {
+  opacity:1; margin-bottom:12px;
+}
 .msim-burst-card {
   min-width:min(280px, 86%);
-  padding:18px 20px 16px; border-radius:12px; text-align:center;
+  padding:12px 16px 10px; border-radius:10px; text-align:center;
   background:linear-gradient(180deg, #1a1f28 0%, #10141a 100%);
   border:2px solid var(--msim-burst-accent, #ff9900);
-  box-shadow:0 12px 36px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06) inset;
-  transform:scale(.86); transition:transform .22s cubic-bezier(.2,1.2,.3,1);
+  box-shadow:0 8px 24px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.06) inset;
+  transform:scale(.92); transition:transform .22s cubic-bezier(.2,1.2,.3,1);
 }
 .msim-burst--show .msim-burst-card { transform:scale(1); }
-.msim-burst-art { display:flex; justify-content:center; align-items:center; min-height:64px; margin-bottom:8px; }
+.msim-burst-art { display:flex; justify-content:center; align-items:center; min-height:52px; margin-bottom:4px; }
 .msim-burst-title {
-  font-size:28px; font-weight:900; letter-spacing:.06em; line-height:1.1;
+  font-size:22px; font-weight:900; letter-spacing:.06em; line-height:1.1;
   color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.5);
 }
-.msim-burst--goal .msim-burst-title { color:#9fd4b0; font-size:34px; }
-.msim-burst--yellow .msim-burst-title { color:#e6c35c; font-size:20px; }
-.msim-burst--red .msim-burst-title { color:#f66; font-size:22px; }
-.msim-burst--injury .msim-burst-title { color:#e8a0a8; font-size:20px; }
-.msim-burst-player { margin-top:6px; font-size:16px; font-weight:700; color:#eee; }
-.msim-burst-meta { margin-top:4px; font-size:12px; color:#9ab; min-height:1em; }
+.msim-burst--goal .msim-burst-title { color:#9fd4b0; font-size:28px; }
+.msim-burst--yellow .msim-burst-title { color:#e6c35c; font-size:18px; }
+.msim-burst--red .msim-burst-title { color:#f66; font-size:18px; }
+.msim-burst--injury .msim-burst-title { color:#e8a0a8; font-size:18px; }
+.msim-burst-player { margin-top:4px; font-size:15px; font-weight:700; color:#eee; }
+.msim-burst-meta { margin-top:2px; font-size:12px; color:#9ab; min-height:1em; }
 
-.msim-art-goal { width:140px; height:84px; overflow:visible; }
+.msim-art-goal { width:120px; height:72px; overflow:visible; }
 .msim-art-ball {
   transform-box:fill-box; transform-origin:center;
   animation:msimBallIn .85s cubic-bezier(.2,.7,.2,1) both;
