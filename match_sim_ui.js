@@ -229,6 +229,48 @@ function ensureOverlay() {
             <div class="msim-goal-mouth msim-goal-mouth--away" aria-hidden="true"></div>
           </div>
         </div>
+        <div class="msim-stats" id="msimStats" aria-label="Match statistics">
+          <div class="msim-stat-row">
+            <span class="msim-stat-h" data-stat="poss">50%</span>
+            <span class="msim-stat-label">Possession</span>
+            <span class="msim-stat-a" data-stat="poss">50%</span>
+          </div>
+          <div class="msim-stat-row">
+            <span class="msim-stat-h" data-stat="shots">0</span>
+            <span class="msim-stat-label">Shots</span>
+            <span class="msim-stat-a" data-stat="shots">0</span>
+          </div>
+          <div class="msim-stat-row">
+            <span class="msim-stat-h" data-stat="sot">0</span>
+            <span class="msim-stat-label">On target</span>
+            <span class="msim-stat-a" data-stat="sot">0</span>
+          </div>
+          <div class="msim-stat-row">
+            <span class="msim-stat-h" data-stat="xg">0.00</span>
+            <span class="msim-stat-label">xG</span>
+            <span class="msim-stat-a" data-stat="xg">0.00</span>
+          </div>
+          <div class="msim-stat-row">
+            <span class="msim-stat-h" data-stat="tackles">0</span>
+            <span class="msim-stat-label">Tackles</span>
+            <span class="msim-stat-a" data-stat="tackles">0</span>
+          </div>
+          <div class="msim-stat-row">
+            <span class="msim-stat-h" data-stat="saves">0</span>
+            <span class="msim-stat-label">Saves</span>
+            <span class="msim-stat-a" data-stat="saves">0</span>
+          </div>
+          <div class="msim-stat-row">
+            <span class="msim-stat-h" data-stat="cards">0</span>
+            <span class="msim-stat-label">Cards</span>
+            <span class="msim-stat-a" data-stat="cards">0</span>
+          </div>
+          <div class="msim-stat-row">
+            <span class="msim-stat-h" data-stat="fouls">0</span>
+            <span class="msim-stat-label">Fouls</span>
+            <span class="msim-stat-a" data-stat="fouls">0</span>
+          </div>
+        </div>
         <div class="msim-feed" id="msimFeed">
           <div class="msim-feed-col msim-feed-home" id="msimFeedHome"></div>
           <div class="msim-feed-col msim-feed-away" id="msimFeedAway"></div>
@@ -274,6 +316,22 @@ function ensureOverlay() {
   } else if (head && burst.nextElementSibling !== head) {
     // Move burst above the scoreboard if it was inlined elsewhere
     modal?.insertBefore(burst, head);
+  }
+  if (!el.querySelector("#msimStats")) {
+    const pitch = el.querySelector(".msim-pitch");
+    pitch?.insertAdjacentHTML(
+      "afterend",
+      `<div class="msim-stats" id="msimStats" aria-label="Match statistics">
+        <div class="msim-stat-row"><span class="msim-stat-h" data-stat="poss">50%</span><span class="msim-stat-label">Possession</span><span class="msim-stat-a" data-stat="poss">50%</span></div>
+        <div class="msim-stat-row"><span class="msim-stat-h" data-stat="shots">0</span><span class="msim-stat-label">Shots</span><span class="msim-stat-a" data-stat="shots">0</span></div>
+        <div class="msim-stat-row"><span class="msim-stat-h" data-stat="sot">0</span><span class="msim-stat-label">On target</span><span class="msim-stat-a" data-stat="sot">0</span></div>
+        <div class="msim-stat-row"><span class="msim-stat-h" data-stat="xg">0.00</span><span class="msim-stat-label">xG</span><span class="msim-stat-a" data-stat="xg">0.00</span></div>
+        <div class="msim-stat-row"><span class="msim-stat-h" data-stat="tackles">0</span><span class="msim-stat-label">Tackles</span><span class="msim-stat-a" data-stat="tackles">0</span></div>
+        <div class="msim-stat-row"><span class="msim-stat-h" data-stat="saves">0</span><span class="msim-stat-label">Saves</span><span class="msim-stat-a" data-stat="saves">0</span></div>
+        <div class="msim-stat-row"><span class="msim-stat-h" data-stat="cards">0</span><span class="msim-stat-label">Cards</span><span class="msim-stat-a" data-stat="cards">0</span></div>
+        <div class="msim-stat-row"><span class="msim-stat-h" data-stat="fouls">0</span><span class="msim-stat-label">Fouls</span><span class="msim-stat-a" data-stat="fouls">0</span></div>
+      </div>`
+    );
   }
   return el;
 }
@@ -362,6 +420,7 @@ export function playMatchMomentum(data, labels = {}) {
     const burstTitle = overlay.querySelector("#msimBurstTitle");
     const burstPlayer = overlay.querySelector("#msimBurstPlayer");
     const burstMeta = overlay.querySelector("#msimBurstMeta");
+    const statsEl = overlay.querySelector("#msimStats");
 
     // Ensure HT / phase nodes exist on older overlay markup
     if (!phaseEl) {
@@ -503,6 +562,109 @@ export function playMatchMomentum(data, labels = {}) {
     let surgeUntil = 0;
     let lastSide = "home";
     let burstHideTimer = 0;
+
+    const blankSide = () => ({
+      poss: 0,
+      shots: 0,
+      sot: 0,
+      xg: 0,
+      tackles: 0,
+      saves: 0,
+      cards: 0,
+      fouls: 0,
+      shotAcc: 0,
+      foulAcc: 0,
+      tackleAcc: 0,
+    });
+    const live = { home: blankSide(), away: blankSide() };
+    let statsPaintAt = 0;
+
+    function paintStats() {
+      if (!statsEl) return;
+      const ht = live.home.poss;
+      const at = live.away.poss;
+      const total = ht + at;
+      const hp = total > 0 ? Math.round((ht / total) * 100) : 50;
+      const ap = 100 - hp;
+      const set = (side, key, text) => {
+        const el = statsEl.querySelector(
+          `.msim-stat-${side === "home" ? "h" : "a"}[data-stat="${key}"]`
+        );
+        if (el) el.textContent = text;
+      };
+      set("home", "poss", `${hp}%`);
+      set("away", "poss", `${ap}%`);
+      for (const key of ["shots", "sot", "tackles", "saves", "cards", "fouls"]) {
+        set("home", key, String(live.home[key]));
+        set("away", key, String(live.away[key]));
+      }
+      set("home", "xg", live.home.xg.toFixed(2));
+      set("away", "xg", live.away.xg.toFixed(2));
+    }
+
+    function addShot(side, { onTarget = false, xg = 0.08, isGoal = false } = {}) {
+      const s = live[side];
+      const opp = live[side === "home" ? "away" : "home"];
+      s.shots += 1;
+      if (onTarget || isGoal) {
+        s.sot += 1;
+        if (!isGoal) opp.saves += 1;
+      }
+      s.xg = Math.round((s.xg + Math.max(0.02, xg)) * 100) / 100;
+    }
+
+    function syncGoalStats(side) {
+      // A goal is always a shot on target with meaningful xG
+      addShot(side, { onTarget: true, xg: 0.55 + Math.random() * 0.35, isGoal: true });
+    }
+
+    function tickMatchStats(dt, m) {
+      live.home.poss += m * dt;
+      live.away.poss += (1 - m) * dt;
+
+      // Attacking side builds shot pressure; defending side builds tackles
+      const homeAtk = Math.max(0, m - 0.48);
+      const awayAtk = Math.max(0, 0.52 - m);
+      live.home.shotAcc += homeAtk * dt * 1.15;
+      live.away.shotAcc += awayAtk * dt * 1.15;
+      live.home.tackleAcc += awayAtk * dt * 1.6;
+      live.away.tackleAcc += homeAtk * dt * 1.6;
+      live.home.foulAcc += (0.35 + awayAtk * 1.2) * dt * 0.55;
+      live.away.foulAcc += (0.35 + homeAtk * 1.2) * dt * 0.55;
+
+      while (live.home.shotAcc >= 1) {
+        live.home.shotAcc -= 1;
+        const sot = Math.random() < 0.38 + homeAtk * 0.35;
+        addShot("home", {
+          onTarget: sot,
+          xg: sot ? 0.08 + Math.random() * 0.22 : 0.03 + Math.random() * 0.08,
+        });
+      }
+      while (live.away.shotAcc >= 1) {
+        live.away.shotAcc -= 1;
+        const sot = Math.random() < 0.38 + awayAtk * 0.35;
+        addShot("away", {
+          onTarget: sot,
+          xg: sot ? 0.08 + Math.random() * 0.22 : 0.03 + Math.random() * 0.08,
+        });
+      }
+      while (live.home.tackleAcc >= 1) {
+        live.home.tackleAcc -= 1;
+        live.home.tackles += 1;
+      }
+      while (live.away.tackleAcc >= 1) {
+        live.away.tackleAcc -= 1;
+        live.away.tackles += 1;
+      }
+      while (live.home.foulAcc >= 1) {
+        live.home.foulAcc -= 1;
+        live.home.fouls += 1;
+      }
+      while (live.away.foulAcc >= 1) {
+        live.away.foulAcc -= 1;
+        live.away.fouls += 1;
+      }
+    }
 
     overlay.hidden = false;
     const started = performance.now();
@@ -754,8 +916,8 @@ export function playMatchMomentum(data, labels = {}) {
         return;
       }
       if (state.phase === "fh") {
-        // Announce added time from 40' (5 mins before end of regulation)
-        if (state.matchMin >= 40) {
+        // Board goes up in the last minute of regulation (not mid-half)
+        if (state.matchMin >= 44) {
           phaseNode.textContent = `1st half · +${add1} mins`;
           if (!add1Announced) {
             add1Announced = true;
@@ -767,7 +929,7 @@ export function playMatchMomentum(data, labels = {}) {
         return;
       }
       if (state.phase === "sh") {
-        if (state.matchMin >= 85) {
+        if (state.matchMin >= 89) {
           phaseNode.textContent = `2nd half · +${add2} mins`;
           if (!add2Announced) {
             add2Announced = true;
@@ -791,6 +953,14 @@ export function playMatchMomentum(data, labels = {}) {
       clockEl.textContent = "FT";
       if (phaseNode) phaseNode.textContent = "Full time";
       if (htNode) htNode.hidden = true;
+      // Ensure goals are reflected in shot / xG floors
+      live.home.shots = Math.max(live.home.shots, hg);
+      live.home.sot = Math.max(live.home.sot, hg);
+      live.home.xg = Math.max(live.home.xg, hg * 0.75);
+      live.away.shots = Math.max(live.away.shots, ag);
+      live.away.sot = Math.max(live.away.sot, ag);
+      live.away.xg = Math.max(live.away.xg, ag * 0.75);
+      paintStats();
       setTimeout(() => {
         overlay.hidden = true;
         resolve(data);
@@ -843,10 +1013,19 @@ export function playMatchMomentum(data, labels = {}) {
           scoreEl.textContent = `${hg} – ${ag}`;
           scoreEl.classList.add("msim-score--flash");
           setTimeout(() => scoreEl.classList.remove("msim-score--flash"), 400);
+          if (ev.side === "home" || ev.side === "away") syncGoalStats(ev.side);
+        }
+        if (ev.type === "yellow" || ev.type === "red") {
+          const side = ev.side === "away" ? "away" : ev.side === "home" ? "home" : null;
+          if (side) {
+            live[side].cards += 1;
+            live[side].fouls += 1;
+          }
         }
         if (ev.type !== "momentum") {
           pushFeed(ev);
           showBurst(ev);
+          paintStats();
         }
         if (ev.type === "fulltime") {
           finish();
@@ -882,6 +1061,11 @@ export function playMatchMomentum(data, labels = {}) {
         momentum += (liveTarget - momentum) * (1 - Math.exp(-chase * dt));
         momentum = Math.max(0, Math.min(1, momentum));
         paintPressure(momentum);
+        tickMatchStats(dt, momentum);
+        if (tSec - statsPaintAt >= 0.2) {
+          statsPaintAt = tSec;
+          paintStats();
+        }
         clockEl.textContent = formatClock(state.matchMin, state.phase);
       } else if (state.phase === "ht") {
         clockEl.textContent = "HT";
@@ -895,6 +1079,7 @@ export function playMatchMomentum(data, labels = {}) {
     }
 
     paintPressure(momentum);
+    paintStats();
     skipBtn.onclick = () => finish();
     raf = requestAnimationFrame(tick);
     })();
@@ -959,7 +1144,7 @@ button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled 
 .msim-ht-label { font-size:12px; font-weight:800; letter-spacing:.08em; color:#9ab; }
 .msim-ht-score { font-size:26px; font-weight:800; color:#ff9900; margin-top:4px; font-variant-numeric:tabular-nums; }
 .msim-ev--halftime { color:#9ab; font-weight:700; }
-.msim-pitch { margin:8px 0 12px; position:relative; }
+.msim-pitch { margin:8px 0 10px; position:relative; }
 .msim-bar {
   position:relative; height:40px; border-radius:6px; overflow:hidden;
   border:1px solid #333; display:flex; align-items:stretch;
@@ -985,6 +1170,20 @@ button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled 
   40%{ filter:brightness(1.25) }
   100%{ filter:brightness(1) }
 }
+
+.msim-stats {
+  display:flex; flex-direction:column; gap:3px;
+  margin:0 0 10px; padding:8px 10px;
+  border:1px solid #2a2a2a; border-radius:6px; background:#0d0d0d;
+  font-variant-numeric:tabular-nums;
+}
+.msim-stat-row {
+  display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:center;
+  font-size:12px; line-height:1.25;
+}
+.msim-stat-h { text-align:left; color:#cde; font-weight:700; }
+.msim-stat-a { text-align:right; color:#cde; font-weight:700; }
+.msim-stat-label { text-align:center; color:#778; font-size:10px; letter-spacing:.04em; text-transform:uppercase; }
 
 .msim-burst {
   display:flex; align-items:center; justify-content:center;
