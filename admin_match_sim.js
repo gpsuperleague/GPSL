@@ -374,7 +374,7 @@ async function saveSettings() {
   const n = Array.isArray(s.outcome_bands) ? s.outcome_bands.length : 0;
   setStatus(
     "settingsStatus",
-    `Saved ${n} win bands · ${s.yellow_per_match}Y/match · ${s.red_chance_pct}% red` +
+    `Saved ${n} win bands · max ${s.yellow_per_match}Y/match · ${s.red_chance_pct}% red` +
       `${s.cards_enabled ? "" : " · cards off"}` +
       `${s.injuries_enabled ? "" : " · injuries off"}.`,
     true

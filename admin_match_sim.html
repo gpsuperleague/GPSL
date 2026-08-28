@@ -134,7 +134,7 @@
       <div class="card" style="margin-top:14px;">
         <h2>Simulation rules</h2>
         <p class="hint" style="margin:0 0 8px;">
-          Cards are rolled <b>per match</b>: a fixed number of yellows, plus a % chance of one red.
+          Cards are rolled <b>per match</b>: up to a max number of yellows (0…max), plus a % chance of one red.
         </p>
         <div class="form-grid">
           <label class="check-row">
@@ -142,7 +142,7 @@
             Assign yellow / red cards on simulate
           </label>
           <label>
-            Yellow cards per match
+            Max yellow cards per match
             <input type="number" id="yellowPerMatch" min="0" max="22" value="3">
           </label>
           <label>
@@ -211,7 +211,7 @@
           <li>XI Rating sum picks a win band; star power can nudge those %.</li>
           <li>Stars (default 79+): goal = LWF/RWF/SS/CF · assist = LB/RB/CMF/AMF/LMF/RMF · concede = GK/CB/DMF — only if profile Position matches pitch slot.</li>
           <li><b>Instant result</b> finalises immediately; <b>Simulate match</b> plays a ~20s momentum graphic first.</li>
-          <li>Cards = yellows per match + % chance of one red.</li>
+          <li>Cards = up to max yellows per match (0…max) + % chance of one red.</li>
         </ul>
       </div>
     </div>
