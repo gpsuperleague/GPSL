@@ -316,15 +316,27 @@ function autoFillBestXi(allPlayers, maxBench = MAX_BENCH) {
   return state;
 }
 
-function renderPlayerCard(player, { compact = false, pitch = false, removable = false } = {}) {
+function renderPlayerCard(
+  player,
+  { compact = false, pitch = false, removable = false, status = null } = {}
+) {
   const id = playerKey(player);
   const name = player.Name || player.player_name || id;
   const pos = player.Position || player.player_position || "";
   const card = document.createElement("div");
+  let statusClass = "";
+  if (status === "suspended") statusClass = " squad-player-card--suspended";
+  else if (status === "injured" || status === "recovery") {
+    statusClass = " squad-player-card--injured";
+  }
   card.className =
     "squad-player-card" +
     (pitch ? " squad-player-card--pitch" : "") +
-    (removable ? " squad-player-card--removable" : "");
+    (removable ? " squad-player-card--removable" : "") +
+    statusClass;
+  if (status === "suspended") card.title = "Suspended";
+  else if (status === "injured") card.title = "Injured";
+  else if (status === "recovery") card.title = "Gaining match fitness";
   card.draggable = true;
   card.dataset.playerId = id;
   card.innerHTML = `
@@ -697,7 +709,13 @@ export function initMatchdaySquadPanel({
   /** When true, enforce Match Day HG / U21 / GK mins (live strip + save block). */
   matchdayComposition = false,
   clubNation = null,
+  /** @type {Map<string, 'suspended'|'injured'|'recovery'>|null} */
+  playerStatusById = null,
 }) {
+  /** @type {Map<string, 'suspended'|'injured'|'recovery'>} */
+  let statusById = playerStatusById instanceof Map ? playerStatusById : new Map();
+
+  const statusFor = (player) => statusById.get(playerKey(player)) || null;
   const benchLimit = Math.max(1, Number(maxBench) || MAX_BENCH);
   const subSlotCount = Math.max(
     0,
@@ -1007,7 +1025,7 @@ export function initMatchdaySquadPanel({
   function rerenderPlayerCards() {
     poolList.innerHTML = "";
     for (const p of state.pool) {
-      poolList.appendChild(renderPlayerCard(p));
+      poolList.appendChild(renderPlayerCard(p, { status: statusFor(p) }));
     }
 
     for (const slotId of SLOT_IDS) {
@@ -1020,6 +1038,7 @@ export function initMatchdaySquadPanel({
           compact: true,
           pitch: true,
           removable: true,
+          status: statusFor(p),
         });
         card.draggable = !editPositionsMode;
         drop.appendChild(card);
@@ -1033,7 +1052,13 @@ export function initMatchdaySquadPanel({
       drop.innerHTML = "";
       const p = state.bench[idx];
       if (p) {
-        drop.appendChild(renderPlayerCard(p, { compact: true, removable: true }));
+        drop.appendChild(
+          renderPlayerCard(p, {
+            compact: true,
+            removable: true,
+            status: statusFor(p),
+          })
+        );
       }
     });
 
@@ -1275,6 +1300,10 @@ export function initMatchdaySquadPanel({
       } else {
         rerender();
       }
+    },
+    setPlayerStatuses: (nextMap) => {
+      statusById = nextMap instanceof Map ? nextMap : new Map();
+      rerenderPlayerCards();
     },
     refreshSavedFormations: (rows) => {
       savedFormationRows = [...(rows || [])];

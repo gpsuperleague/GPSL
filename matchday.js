@@ -36,7 +36,7 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20260821-remove-fix";
+} from "./matchday_squad.js?v=20260828-status-cards";
 import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260821-md-comp";
 import { playerNameLinkHtml } from "./player_links.js";
 import {
@@ -47,6 +47,9 @@ import {
   loadFixtureUnavailable,
   formatFixtureUnavailableHtml,
   unavailablePlayerIdsForClub,
+  unavailableStatusByPlayerId,
+  loadClubSquadDiscipline,
+  injuriesByPlayerId,
 } from "./player_discipline.js";
 
 let myClub = { short: null, name: null, nation: null };
@@ -60,6 +63,8 @@ let upcomingFixtures = [];
 let allLeagueFixtures = [];
 /** @type {Map<string, import("./player_discipline.js").ActiveSuspension[]>} */
 let suspensionsByPlayer = new Map();
+/** @type {Map<string, any[]>} */
+let injuriesByPlayer = new Map();
 /** @type {import("./player_discipline.js").FixtureUnavailablePayload|null} */
 let fixtureUnavailable = null;
 /** @type {Set<string>} */
@@ -1064,9 +1069,35 @@ function setMatchdayTab(tab) {
 
 async function loadClubSuspensions() {
   suspensionsByPlayer = new Map();
+  injuriesByPlayer = new Map();
   if (!myClub.short) return;
-  const list = await loadActiveSuspensions(supabase, { club: myClub.short });
+  const [list, discipline] = await Promise.all([
+    loadActiveSuspensions(supabase, { club: myClub.short }),
+    loadClubSquadDiscipline(supabase, myClub.short),
+  ]);
   suspensionsByPlayer = suspensionsByPlayerId(list);
+  injuriesByPlayer = injuriesByPlayerId(discipline?.injuries);
+  refreshSquadCardStatuses();
+}
+
+/** Red = suspended, purple = injured / recovery (matchday pitch cards). */
+function refreshSquadCardStatuses() {
+  const map = unavailableStatusByPlayerId(fixtureUnavailable, myClub.short);
+  for (const [id, rows] of suspensionsByPlayer) {
+    if (rows?.length) map.set(id, "suspended");
+  }
+  for (const [id, rows] of injuriesByPlayer) {
+    if (map.get(id) === "suspended") continue;
+    const injuredOut = (rows || []).some(
+      (i) => (Number(i.matches_out_remaining) || 0) > 0 || i.phase === "out"
+    );
+    const recovery = (rows || []).some(
+      (i) => i.phase === "recovery" || (Number(i.recovery_remaining) || 0) > 0
+    );
+    if (injuredOut) map.set(id, "injured");
+    else if (recovery) map.set(id, "recovery");
+  }
+  squadPanelApi?.setPlayerStatuses(map);
 }
 
 function renderPlayerStatsTable() {
@@ -1372,6 +1403,7 @@ async function updateFixturePreview() {
     preview.textContent = "Select a fixture from the list above.";
     fixtureUnavailable = null;
     myUnavailableIds = new Set();
+    refreshSquadCardStatuses();
     leg1CompanionFixture = null;
     setScoreInputsEnabled(false);
     confirmMode = null;
@@ -1409,6 +1441,7 @@ async function updateFixturePreview() {
 
   fixtureUnavailable = await loadFixtureUnavailable(supabase, f.id);
   myUnavailableIds = unavailablePlayerIdsForClub(fixtureUnavailable, myClub.short);
+  refreshSquadCardStatuses();
   const unavailableHtml = formatFixtureUnavailableHtml(fixtureUnavailable, {
     homeName: f.home_club_name,
     awayName: f.away_club_name,
@@ -1827,6 +1860,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadClubSuspensions();
   applyMatchdaySquadFilter();
   initSquadPanel();
+  refreshSquadCardStatuses();
   renderPlayerStatsTable();
 
   document.querySelectorAll(".matchday-tabs button").forEach((btn) => {

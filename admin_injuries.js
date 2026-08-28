@@ -34,7 +34,16 @@ function renderSettings() {
     <div><label>Max moderate / season</label><input id="max_moderate" type="number" min="0" value="${s.max_moderate ?? 2}"></div>
     <div><label>Max minor / season</label><input id="max_minor" type="number" min="0" value="${s.max_minor ?? 4}"></div>
     <div><label>Max total / season</label><input id="max_total" type="number" min="0" value="${s.max_total ?? 4}"></div>
-    <div><label>Base chance / club match</label><input id="base_match_chance" type="number" step="0.01" min="0" max="1" value="${s.base_match_chance ?? 0.15}"></div>
+    <div><label>Base chance / club match (pace off)</label><input id="base_match_chance" type="number" step="0.01" min="0" max="1" value="${s.base_match_chance ?? 0.09}"></div>
+    <div><label>Cooldown matches after injury</label><input id="cooldown_matches" type="number" min="0" value="${s.cooldown_matches ?? 5}"></div>
+    <div><label>Pace over season</label>
+      <select id="pace_enabled">
+        <option value="true" ${(s.pace_enabled !== false) ? "selected" : ""}>On (spread quota)</option>
+        <option value="false" ${(s.pace_enabled === false) ? "selected" : ""}>Off (flat chance)</option>
+      </select>
+    </div>
+    <div><label>Pace chance floor</label><input id="pace_chance_floor" type="number" step="0.01" min="0" max="1" value="${s.pace_chance_floor ?? 0.03}"></div>
+    <div><label>Pace chance cap</label><input id="pace_chance_cap" type="number" step="0.01" min="0" max="1" value="${s.pace_chance_cap ?? 0.12}"></div>
     <div><label>Weight Minor</label><input id="weight_minor" type="number" step="0.1" value="${s.weight_minor ?? 70}"></div>
     <div><label>Weight Moderate</label><input id="weight_moderate" type="number" step="0.1" value="${s.weight_moderate ?? 25}"></div>
     <div><label>Weight Major</label><input id="weight_major" type="number" step="0.1" value="${s.weight_major ?? 5}"></div>
@@ -57,6 +66,10 @@ function readSettingsFromForm() {
     max_minor: Number(document.getElementById("max_minor").value),
     max_total: Number(document.getElementById("max_total").value),
     base_match_chance: Number(document.getElementById("base_match_chance").value),
+    cooldown_matches: Number(document.getElementById("cooldown_matches").value),
+    pace_enabled: document.getElementById("pace_enabled").value === "true",
+    pace_chance_floor: Number(document.getElementById("pace_chance_floor").value),
+    pace_chance_cap: Number(document.getElementById("pace_chance_cap").value),
     weight_minor: Number(document.getElementById("weight_minor").value),
     weight_moderate: Number(document.getElementById("weight_moderate").value),
     weight_major: Number(document.getElementById("weight_major").value),

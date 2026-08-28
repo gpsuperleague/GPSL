@@ -273,6 +273,38 @@ export function unavailablePlayerIdsForClub(payload, clubShort) {
   return new Set((side || []).map((p) => String(p.player_id)));
 }
 
+/**
+ * Map player_id → 'suspended' | 'injured' | 'recovery' for one club on a fixture.
+ * Suspension wins if both apply.
+ * @param {FixtureUnavailablePayload|null} payload
+ * @param {string|null} clubShort
+ * @returns {Map<string, 'suspended'|'injured'|'recovery'>}
+ */
+export function unavailableStatusByPlayerId(payload, clubShort) {
+  /** @type {Map<string, 'suspended'|'injured'|'recovery'>} */
+  const map = new Map();
+  if (!payload || !clubShort) return map;
+  const side =
+    (payload.home_club_short_name || "").toUpperCase() ===
+    String(clubShort).toUpperCase()
+      ? payload.home
+      : (payload.away_club_short_name || "").toUpperCase() ===
+          String(clubShort).toUpperCase()
+        ? payload.away
+        : [];
+  for (const p of side || []) {
+    const id = String(p.player_id);
+    const reason = String(p.reason || "").toLowerCase();
+    let status = "suspended";
+    if (reason === "injured") status = "injured";
+    else if (reason === "recovery") status = "recovery";
+    const prev = map.get(id);
+    if (prev === "suspended") continue;
+    if (status === "suspended" || !prev) map.set(id, status);
+  }
+  return map;
+}
+
 /** @param {import("@supabase/supabase-js").SupabaseClient} supabase */
 export async function loadClubSquadDiscipline(supabase, club = null) {
   const { data, error } = await supabase.rpc("competition_club_squad_discipline", {

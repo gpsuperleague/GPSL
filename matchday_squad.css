@@ -70,6 +70,24 @@
 }
 .squad-player-card:active { cursor: grabbing; }
 .squad-player-card.dragging { opacity: 0.45; }
+.squad-player-card--suspended {
+  background: #5a1818;
+  border-color: #c44;
+  box-shadow: inset 0 0 0 1px rgba(220, 80, 60, 0.45);
+}
+.squad-player-card--injured {
+  background: #3a1a4a;
+  border-color: #a46ad4;
+  box-shadow: inset 0 0 0 1px rgba(180, 100, 220, 0.4);
+}
+.pitch-slot-drop .squad-player-card--suspended,
+.bench-slot-drop .squad-player-card--suspended {
+  background: #5a1818;
+}
+.pitch-slot-drop .squad-player-card--injured,
+.bench-slot-drop .squad-player-card--injured {
+  background: #3a1a4a;
+}
 .squad-player-card--removable {
   padding-top: 18px;
 }
