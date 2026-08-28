@@ -959,10 +959,15 @@ export function playMatchMomentum(data, labels = {}) {
       live.away.sot = Math.max(live.away.sot, ag);
       live.away.xg = Math.max(live.away.xg, ag * 0.75);
       paintStats();
-      setTimeout(() => {
-        overlay.hidden = true;
-        resolve(data);
-      }, 900);
+      paintPressure(momentum);
+      if (skipBtn) {
+        skipBtn.textContent = "OK — close match";
+        skipBtn.classList.add("msim-ok");
+        skipBtn.onclick = () => {
+          overlay.hidden = true;
+          resolve(data);
+        };
+      }
     }
 
     function tick(now) {
@@ -1078,7 +1083,11 @@ export function playMatchMomentum(data, labels = {}) {
 
     paintPressure(momentum);
     paintStats();
-    skipBtn.onclick = () => finish();
+    if (skipBtn) {
+      skipBtn.textContent = "Skip to result";
+      skipBtn.classList.remove("msim-ok");
+      skipBtn.onclick = () => finish();
+    }
     raf = requestAnimationFrame(tick);
     })();
   });
@@ -1271,4 +1280,7 @@ button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled 
 .msim-ev--center { width:100%; }
 .msim-foot { margin-top:10px; text-align:right; }
 .msim-skip { background:#333; color:#ddd; border:0; padding:6px 12px; border-radius:4px; cursor:pointer; }
+.msim-skip.msim-ok {
+  background:#2a5535; color:#cfc; border:1px solid #3a6; font-weight:700; padding:8px 16px;
+}
 `;
