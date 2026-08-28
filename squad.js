@@ -121,6 +121,16 @@ import {
   terminateSeasonLoan,
 } from "./season_loan.js?v=20260811-ios-action";
 import {
+  emergencyLoanBadgeHtml,
+  emergencyLoanBannerHtml,
+  ensureEmergencyLoanStyles,
+  loadActiveEmergencyLoanPlayerIds,
+  loadEmergencyLoanCandidates,
+  loadEmergencyLoanStatus,
+  openEmergencyLoanPicker,
+  takeEmergencyLoan,
+} from "./emergency_loan.js?v=20260828-emg";
+import {
   playerThumbLinkHtml,
   playerNameLinkHtml,
   pesdbPlayerUrl,
@@ -324,6 +334,8 @@ let squadDesignationsState = null;
 let squadMinimumStatus = null;
 /** @type {Set<string>} */
 let seasonLoanPlayerIds = new Set();
+let emergencyLoanPlayerIds = new Set();
+let emergencyLoanStatus = null;
 /** @type {object[]} */
 let squadGhostPlayers = [];
 
@@ -1384,10 +1396,13 @@ async function loadSquad() {
     supabase,
     currentUserShort
   );
-  [squadMinimumStatus, seasonLoanPlayerIds] = await Promise.all([
-    loadClubSquadMinimumStatus(supabase, currentUserShort),
-    loadActiveSeasonLoanPlayerIds(supabase, currentUserShort),
-  ]);
+  [squadMinimumStatus, seasonLoanPlayerIds, emergencyLoanPlayerIds, emergencyLoanStatus] =
+    await Promise.all([
+      loadClubSquadMinimumStatus(supabase, currentUserShort),
+      loadActiveSeasonLoanPlayerIds(supabase, currentUserShort),
+      loadActiveEmergencyLoanPlayerIds(supabase, currentUserShort),
+      loadEmergencyLoanStatus(supabase, currentUserShort),
+    ]);
   await loadSquadPurchaseFees(playerIds);
 
   renderSquadCompliance(list, squadDesignationsState, squadGhostPlayers);
@@ -1748,12 +1763,16 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
 
   const contractOutlook = renderContractOutlookHtml(players);
 
+  ensureEmergencyLoanStyles();
+  const emgBanner = emergencyLoanBannerHtml(emergencyLoanStatus);
+
   el.innerHTML = `
+    ${emgBanner}
     <section class="${panelClass}" aria-label="Squad registration requirements">
       <header class="squad-rules-header squad-rules-header--compact">
         <h2 class="squad-rules-title gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.registration)}>Registration</h2>
         <p class="squad-rules-intro squad-rules-intro--compact gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.registration)}>
-          Contracted squad · min 24 from Aug · max 28
+          Contracted squad · min 24 from Aug · max 28${emergencyLoanStatus?.overflow_slot_used ? " (+1 emergency)" : ""}
         </p>
       </header>
       <table class="squad-rules-table squad-rules-table--compact">
@@ -1772,6 +1791,10 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
       ${contractOutlook}
     </section>
   `;
+
+  document.getElementById("emergencyLoanOpenBtn")?.addEventListener("click", () => {
+    void handleEmergencyLoanFlow();
+  });
 }
 
 function ghostPlayerRowHtml(p, playerCell) {
@@ -1883,7 +1906,9 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
       const roleBadge = roleBadgeForPlayer(p, designationsState);
       const loanBadge = seasonLoanPlayerIds.has(pid)
         ? seasonLoanBadgeHtml()
-        : "";
+        : emergencyLoanPlayerIds.has(pid)
+          ? emergencyLoanBadgeHtml()
+          : "";
       const ycBadge =
         yCount > 0
           ? `<span class="squad-yc-badge${yCount >= 6 ? " warn" : ""}${yCount >= 8 ? " ban" : ""}" title="Season yellow cards">YC ${yCount}/8</span>`
@@ -2212,9 +2237,12 @@ async function refreshAfterDesignationChange() {
     const player = byId.get(String(row.dataset.konamiId));
     const nameCell = row.querySelector("td.squad-col-player");
     if (!nameCell || !player) return;
-    const loanBadge = seasonLoanPlayerIds.has(String(player.Konami_ID))
+    const pidLoan = String(player.Konami_ID);
+    const loanBadge = seasonLoanPlayerIds.has(pidLoan)
       ? seasonLoanBadgeHtml()
-      : "";
+      : emergencyLoanPlayerIds.has(pidLoan)
+        ? emergencyLoanBadgeHtml()
+        : "";
     const roleBadge = roleBadgeForPlayer(player, squadDesignationsState);
     const qualBadges = playerSquadQualificationBadges(player, clubNation);
     nameCell.innerHTML = `${playerNameLinkHtml(player.Konami_ID, player.Name)}${loanBadge}${roleBadge}${qualBadges}`;
@@ -2840,6 +2868,65 @@ async function terminateSeasonLoanPlayer(playerId) {
   alert(
     `${data?.player_name || player?.Name || "Player"} loan ended.\n\n` +
       `Refund: ₿${Number(data?.refund || 0).toLocaleString("en-GB")}`
+  );
+  await loadSquad();
+}
+
+async function handleEmergencyLoanFlow() {
+  ensureEmergencyLoanStyles();
+  const status =
+    (await loadEmergencyLoanStatus(supabase, currentUserShort)) ||
+    emergencyLoanStatus;
+  if (!status?.eligible) {
+    alert(
+      status?.window_open === false
+        ? "Emergency loans are only available from August to May."
+        : "Emergency loan not available — you need fit players below the 24 minimum (injuries/suspensions)."
+    );
+    return;
+  }
+  if (status.can_afford === false) {
+    alert(
+      `Insufficient balance for the emergency loan fee (₿${Number(status.loan_fee || 2500000).toLocaleString("en-GB")}).`
+    );
+    return;
+  }
+
+  let candidates = [];
+  try {
+    candidates = await loadEmergencyLoanCandidates(supabase, 50);
+  } catch (err) {
+    alert(err?.message || "Could not load free-agent candidates.");
+    return;
+  }
+
+  const pick = await openEmergencyLoanPicker(candidates, status);
+  if (!pick) return;
+
+  const chosen = candidates.find((c) => String(c.player_id) === String(pick));
+  const ends = status.ends_gpsl_month
+    ? String(status.ends_gpsl_month).charAt(0).toUpperCase() +
+      String(status.ends_gpsl_month).slice(1)
+    : "the half-season";
+  if (
+    !window.confirm(
+      `Take ${chosen?.name || "this player"} on emergency loan?\n\n` +
+        `Fee: ₿${Number(status.loan_fee || 2500000).toLocaleString("en-GB")} to Central Bank.\n` +
+        `Returns to free agency at end of ${ends}.` +
+        (status.registered >= 28 ? "\nUses your one-time 28+1 overflow slot." : "")
+    )
+  ) {
+    return;
+  }
+
+  const { data, error } = await takeEmergencyLoan(supabase, pick);
+  if (error) {
+    alert(error.message || "Could not complete emergency loan.");
+    return;
+  }
+
+  alert(
+    `${data?.player_name || chosen?.name || "Player"} joined on emergency loan until end of ${ends}.`
   );
   await loadSquad();
 }

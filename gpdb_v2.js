@@ -14,7 +14,14 @@ import {
 import { formatMoney } from "./competition.js";
 import { loadWagePercentages, wageFromMarketValue } from "./wages.js";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
-
+import {
+  emergencyLoanBannerHtml,
+  ensureEmergencyLoanStyles,
+  loadEmergencyLoanCandidates,
+  loadEmergencyLoanStatus,
+  openEmergencyLoanPicker,
+  takeEmergencyLoan,
+} from "./emergency_loan.js?v=20260828-emg";
 import {
   loadGlobalSettings as loadGlobalSettingsEngine,
   getDraftTimelineFromStart,
@@ -3331,6 +3338,57 @@ document.addEventListener("DOMContentLoaded", () => {
      MODULE J: Initialisation
      ============================================================ */
 
+  async function mountEmergencyLoanBanner() {
+    const slot = document.getElementById("emergencyLoanGpdbSlot");
+    if (!slot) return;
+    ensureEmergencyLoanStyles();
+    const status = await loadEmergencyLoanStatus(supabase);
+    if (!status?.eligible) {
+      slot.innerHTML = "";
+      return;
+    }
+    slot.innerHTML = emergencyLoanBannerHtml(status);
+    slot.querySelector("#emergencyLoanOpenBtn")?.addEventListener("click", async () => {
+      if (status.can_afford === false) {
+        alert("Insufficient balance for the emergency loan fee.");
+        return;
+      }
+      let candidates = [];
+      try {
+        candidates = await loadEmergencyLoanCandidates(supabase, 50);
+      } catch (err) {
+        alert(err?.message || "Could not load free-agent candidates.");
+        return;
+      }
+      const pick = await openEmergencyLoanPicker(candidates, status);
+      if (!pick) return;
+      const chosen = candidates.find((c) => String(c.player_id) === String(pick));
+      const ends = status.ends_gpsl_month
+        ? String(status.ends_gpsl_month).charAt(0).toUpperCase() +
+          String(status.ends_gpsl_month).slice(1)
+        : "the half-season";
+      if (
+        !window.confirm(
+          `Take ${chosen?.name || "this player"} on emergency loan?\n\n` +
+            `Fee: ₿${Number(status.loan_fee || 2500000).toLocaleString("en-GB")} to Central Bank.\n` +
+            `Returns to free agency at end of ${ends}.`
+        )
+      ) {
+        return;
+      }
+      const { data, error } = await takeEmergencyLoan(supabase, pick);
+      if (error) {
+        alert(error.message || "Could not complete emergency loan.");
+        return;
+      }
+      alert(
+        `${data?.player_name || chosen?.name || "Player"} joined on emergency loan until end of ${ends}.`
+      );
+      await mountEmergencyLoanBanner();
+      mountClubBankBalance("clubBankBalance", { advisory: true }).catch(() => {});
+    });
+  }
+
   async function init() {
     // Initialize global settings and build navigation
     await initGlobal();
@@ -3339,6 +3397,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     await loadUser();
+    await mountEmergencyLoanBanner();
 
     // Load global settings from draft_engine.js
     GLOBAL_SETTINGS = await loadGlobalSettingsEngine();
