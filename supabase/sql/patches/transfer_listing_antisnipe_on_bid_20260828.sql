@@ -200,29 +200,51 @@ GRANT EXECUTE ON FUNCTION public.transferengine_apply_listing_bid_extension(bigi
   TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
--- Repair Active standard/direct listings that got a short "now()+1h" style
--- first extension (end still before initial_end + 1 hour).
+-- Repair Active listings with a short first extension.
+-- Matches:
+--   A) was_extended / hour_extended and end still short of initial+1h
+--   B) end between initial and initial+1h even if flags were never set
+-- Does not touch draft. Does not shorten a correct initial+1h (or longer) end.
 -- ---------------------------------------------------------------------------
 UPDATE public."Player_Transfer_Listings" l
 SET end_time = l.initial_end_time + interval '1 hour',
     was_extended = true,
     hour_extended = true,
     extension_type = coalesce(nullif(l.extension_type, 'none'), '1h'),
+    extension_count = greatest(coalesce(l.extension_count, 0), 1),
     last_extension_time = coalesce(l.last_extension_time, now()),
     extension_state = coalesce(nullif(l.extension_state, 'none'), '1h')
 WHERE l.status = 'Active'
   AND lower(coalesce(l.listing_type::text, '')) IS DISTINCT FROM 'draft'
   AND l.initial_end_time IS NOT NULL
-  AND coalesce(l.was_extended, false) = true
-  AND l.end_time < l.initial_end_time + interval '1 hour'
-  AND l.end_time > l.initial_end_time;
+  AND l.end_time IS NOT NULL
+  AND l.end_time < (l.initial_end_time + interval '1 hour')
+  AND (
+    coalesce(l.was_extended, false) = true
+    OR coalesce(l.hour_extended, false) = true
+    OR l.end_time > l.initial_end_time
+  );
 
--- Sanity read (optional): recent extended actives
--- SELECT id, seller_club_id, player_id,
---        initial_end_time AT TIME ZONE 'Europe/London' AS initial_uk,
---        end_time AT TIME ZONE 'Europe/London' AS end_uk,
---        was_extended, hour_extended, extension_type, extension_count
--- FROM public."Player_Transfer_Listings"
--- WHERE status = 'Active' AND coalesce(was_extended, false)
--- ORDER BY end_time DESC
--- LIMIT 20;
+-- Inspect actives that still look short / recently touched
+SELECT
+  l.id,
+  l.seller_club_id,
+  l.player_id,
+  l.current_highest_bidder,
+  l.initial_end_time AT TIME ZONE 'Europe/London' AS initial_uk,
+  l.end_time AT TIME ZONE 'Europe/London' AS end_uk,
+  (l.end_time - l.initial_end_time) AS end_minus_initial,
+  l.was_extended,
+  l.hour_extended,
+  l.extension_type,
+  l.extension_count
+FROM public."Player_Transfer_Listings" l
+WHERE l.status = 'Active'
+  AND lower(coalesce(l.listing_type::text, '')) IS DISTINCT FROM 'draft'
+  AND (
+    coalesce(l.was_extended, false)
+    OR coalesce(l.hour_extended, false)
+    OR (l.initial_end_time IS NOT NULL AND l.end_time > l.initial_end_time)
+  )
+ORDER BY l.end_time DESC
+LIMIT 30;
