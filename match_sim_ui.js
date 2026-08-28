@@ -1,5 +1,5 @@
 /**
- * Match result simulation — Instant result + Simulate match (20s momentum).
+ * Match result simulation — Instant result + Simulate match (45s: 20+5+20).
  */
 import { supabase } from "./global.js";
 
@@ -456,21 +456,19 @@ export function playMatchMomentum(data, labels = {}) {
       labels.awayName || data?.away_name || data?.away_club || "Away";
 
     const playback = data?.playback || {};
-    // Total graphic length: play both halves + HT pause
-    const htPauseSec = 3;
-    const playBudgetSec = Math.max(10, Number(playback.duration_sec) || 20);
-    const totalSec = playBudgetSec + htPauseSec;
+    // Fixed graphic length: 20s 1st half · 5s HT · 20s 2nd half
+    const fhPlaySec = 20;
+    const htPauseSec = 5;
+    const shPlaySec = 20;
+    const fhEndSec = fhPlaySec;
+    const htEndSec = fhEndSec + htPauseSec;
+    const ftSec = htEndSec + shPlaySec; // 45
 
     const add1 = 1 + Math.floor(Math.random() * 5); // 1–5
     const add2 = 1 + Math.floor(Math.random() * 5);
     const fhMins = 45 + add1;
     const shMins = 45 + add2;
-    const matchMins = fhMins + shMins;
-    const fhPlaySec = playBudgetSec * (fhMins / matchMins);
-    const shPlaySec = playBudgetSec - fhPlaySec;
-    const fhEndSec = fhPlaySec;
-    const htEndSec = fhEndSec + htPauseSec;
-    const ftSec = htEndSec + shPlaySec;
+    const playBudgetSec = Number(playback.duration_sec) || 40;
 
     const rawEvents = Array.isArray(playback.events) ? [...playback.events] : [];
     const seasonGoalTotals = await loadSeasonGoalTotals(rawEvents);
@@ -490,7 +488,7 @@ export function playMatchMomentum(data, labels = {}) {
         let minute = Number(e.minute);
         if (!Number.isFinite(minute)) {
           const t0 = Number(e.t) || 0;
-          const dur0 = Math.max(1, Number(playback.duration_sec) || 20);
+          const dur0 = Math.max(1, playBudgetSec);
           minute = Math.max(1, Math.min(90 + add2, Math.round((t0 / dur0) * (90 + add2))));
         }
         // Clamp into match span (0..fhMins for 1H, 45..90+add2 for 2H)
@@ -516,7 +514,7 @@ export function playMatchMomentum(data, labels = {}) {
           at = htEndSec + ((45 + stop) / shMins) * shPlaySec;
         }
         // First-half stoppage events (minute 45 with late t): place into FH added time
-        if (e.type !== "fulltime" && minute === 45 && Number(e.t) > (Number(playback.duration_sec) || 20) * 0.45) {
+        if (e.type !== "fulltime" && minute === 45 && Number(e.t) > playBudgetSec * 0.45) {
           at = fhPlaySec * (45 / fhMins) + (fhPlaySec * (add1 / fhMins)) * 0.5;
         }
         return { ...e, minute, at };

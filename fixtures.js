@@ -447,7 +447,7 @@ function wireFixtureSimButtons(root) {
     if (
       !confirm(
         play
-          ? `Simulate match for ${label}?\n\nPlays a ~20s momentum graphic, then finalises.`
+          ? `Simulate match for ${label}?\n\nPlays a ~45s graphic (20s each half + 5s HT), then finalises.`
           : `Instant result for ${label}?\n\nFinalises immediately.`
       )
     ) {

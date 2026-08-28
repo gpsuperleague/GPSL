@@ -1813,7 +1813,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (
       !confirm(
         play
-          ? `Simulate match for ${f.home_club_name} vs ${f.away_club_name}?\n\nPlays a ~20s momentum graphic, then finalises.`
+          ? `Simulate match for ${f.home_club_name} vs ${f.away_club_name}?\n\nPlays a ~45s graphic (20s each half + 5s HT), then finalises.`
           : `Instant result for ${f.home_club_name} vs ${f.away_club_name}?\n\nFinalises immediately.`
       )
     ) {

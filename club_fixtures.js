@@ -627,7 +627,7 @@ async function simulateFixture(fixtureId, btn, mode = "instant") {
   if (
     !confirm(
       play
-        ? `Simulate match for ${label}?\n\nPlays a ~20s momentum graphic, then finalises (opponent cannot overwrite).`
+        ? `Simulate match for ${label}?\n\nPlays a ~45s graphic (20s each half + 5s HT), then finalises (opponent cannot overwrite).`
         : `Instant result for ${label}?\n\nFinalises immediately (opponent cannot overwrite).`
     )
   ) {
@@ -670,7 +670,7 @@ async function simulateIntlFixture(fixtureId, btn, mode = "instant") {
   if (
     !confirm(
       play
-        ? `Simulate international for ${label}?\n\nPlays a ~20s graphic, then finalises.`
+        ? `Simulate international for ${label}?\n\nPlays a ~45s graphic (20s each half + 5s HT), then finalises.`
         : `Instant result for ${label}?\n\nFinalises immediately.`
     )
   ) {

@@ -938,7 +938,7 @@ function renderIntlSimActions(f) {
     if (
       !confirm(
         play
-          ? `Simulate this international?\n\nPlays a ~20s graphic, then finalises (no opponent confirm).`
+          ? `Simulate this international?\n\nPlays a ~45s graphic (20s each half + 5s HT), then finalises (no opponent confirm).`
           : `Instant result for this international?\n\nFinalises immediately (no opponent confirm).`
       )
     ) {
