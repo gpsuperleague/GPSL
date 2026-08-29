@@ -1125,7 +1125,7 @@ async function loadWaitingListAdmin() {
     `<th class="num" title="Total GPSL site logins (all time)">Total</th>` +
     `<th class="num" title="${escapeWl(prevLabel)}">${escapeWl(prevLabel)}</th>` +
     `<th class="num" title="${escapeWl(curLabel)}">${escapeWl(curLabel)}</th>` +
-    `<th title="When they joined the GPSL Discord server">Discord join</th>` +
+    `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord join</th>` +
     `<th class="wl-col-actions"></th>` +
     `</tr></thead><tbody id="wlPriorityTbody">`;
 
@@ -1196,6 +1196,15 @@ function renderWaitingListAdminRow(row, { invited }) {
   const curN = Number(act.logins_current_month) || 0;
   const totalN = Number(act.logins_total) || 0;
   const discordJoined = act.discord_joined_at || null;
+  const discordSource = act.discord_join_source || (discordJoined ? "discord" : "account");
+  const discordDisplayAt =
+    discordJoined || (discordSource === "account" ? act.account_created_at : null);
+  const discordCell =
+    discordSource === "discord" && discordJoined
+      ? escapeWl(formatWlUkDate(discordJoined))
+      : discordDisplayAt
+        ? `<span class="muted" title="No Discord join on file — showing GPSL account created date">${escapeWl(formatWlUkDate(discordDisplayAt))} · acct</span>`
+        : `<span class="muted" title="No Discord join recorded (admin-added or joined before Discord gate)">—</span>`;
   const filterText = [
     row.owner_tag,
     email,
@@ -1250,7 +1259,7 @@ function renderWaitingListAdminRow(row, { invited }) {
     <td class="num">${totalN}</td>
     <td class="num">${prevN}</td>
     <td class="num">${curN}</td>
-    <td>${escapeWl(formatWlUkDate(discordJoined))}</td>
+    <td>${discordCell}</td>
     <td class="wl-col-actions" style="white-space:nowrap">${removeBtn}</td>
   </tr>`;
 }

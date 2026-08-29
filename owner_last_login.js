@@ -147,7 +147,14 @@ function renderTable(filterText = "") {
       const prevN = Number(r.logins_previous_month) || 0;
       const curN = Number(r.logins_current_month) || 0;
       const totalN = Number(r.logins_total) || 0;
-      const discordJoined = formatUkDate(r.discord_joined_at);
+      const discordJoined = r.discord_joined_at;
+      const discordSource = r.discord_join_source || (discordJoined ? "discord" : "account");
+      const discordCell =
+        discordSource === "discord" && discordJoined
+          ? escapeHtml(formatUkDate(discordJoined))
+          : r.account_created_at
+            ? `<span class="muted" title="No Discord join on file — showing GPSL account created">${escapeHtml(formatUkDate(r.account_created_at))} · acct</span>`
+            : '<span class="muted">—</span>';
 
       return `<tr>
         <td class="num">${i + 1}</td>
@@ -159,7 +166,7 @@ function renderTable(filterText = "") {
         <td class="num">${totalN}</td>
         <td class="num">${prevN}</td>
         <td class="num">${curN}</td>
-        <td>${escapeHtml(discordJoined)}</td>
+        <td>${discordCell}</td>
       </tr>`;
     })
     .join("");
