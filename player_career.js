@@ -86,6 +86,8 @@ const MOVE_LABELS = {
   foreign_sale: "Foreign sale",
   overflow_release: "Squad release",
   contract_expiry: "Contract ended",
+  emergency_loan: "Emergency loan",
+  emergency_loan_return: "Emergency loan ended",
 };
 
 function divisionLabel(div) {
@@ -278,12 +280,22 @@ function renderStints(stints, transfers = []) {
 }
 
 function formatTransferParties(row) {
-  const seller = displayClubName(row.seller_club_short_name) || row.seller_club_short_name || "—";
-  const buyer =
-    row.foreign_buyer_name ||
-    displayClubName(row.buyer_club_short_name) ||
-    row.buyer_club_short_name ||
-    "—";
+  const note = String(row.transfer_sale_note || "").trim();
+  const sellerRaw = row.seller_club_short_name;
+  const seller =
+    displayClubName(sellerRaw) ||
+    sellerRaw ||
+    (note === "emergency_loan" || !sellerRaw ? "Free agent" : "—");
+  let buyer;
+  if (note === "emergency_loan_return") {
+    buyer = "Free agent";
+  } else {
+    buyer =
+      displayClubName(row.buyer_club_short_name) ||
+      row.buyer_club_short_name ||
+      row.foreign_buyer_name ||
+      "—";
+  }
   return `${seller} → ${buyer}`;
 }
 

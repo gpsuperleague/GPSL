@@ -172,6 +172,7 @@ AS $function$
 DECLARE
   v_loan public.club_emergency_loans%rowtype;
   v_player public."Players"%rowtype;
+  v_history_id bigint;
 BEGIN
   SELECT * INTO v_loan
   FROM public.club_emergency_loans
@@ -200,6 +201,30 @@ BEGIN
       contract_wage = 0,
       "Season_Signed" = NULL
     WHERE "Konami_ID"::text = v_loan.player_id;
+
+    INSERT INTO public."Transfer_History" (
+      player_id,
+      seller_club_id,
+      buyer_club_id,
+      fee,
+      agent_fee,
+      transfer_time,
+      listing_id,
+      foreign_buyer_name,
+      transfer_sale_note
+    )
+    VALUES (
+      v_player."Konami_ID",
+      v_loan.club_short_name,
+      'FOREIGN',
+      0,
+      0,
+      now(),
+      NULL,
+      'Emergency loan ended (free agent)',
+      'emergency_loan_return'
+    )
+    RETURNING id INTO v_history_id;
   END IF;
 
   UPDATE public.club_emergency_loans
@@ -211,7 +236,8 @@ BEGIN
     'ok', true,
     'loan_id', p_loan_id,
     'player_id', v_loan.player_id,
-    'club_short_name', v_loan.club_short_name
+    'club_short_name', v_loan.club_short_name,
+    'transfer_history_id', v_history_id
   );
 END;
 $function$;
@@ -430,6 +456,7 @@ DECLARE
   v_wage numeric;
   v_ledger_id bigint;
   v_loan_id bigint;
+  v_history_id bigint;
   v_registered int;
   v_overflow boolean := false;
   v_season_label text;
@@ -549,15 +576,35 @@ BEGIN
   )
   RETURNING id INTO v_loan_id;
 
-  -- Do NOT run standard overflow release for the allowed 28+1 emergency slot.
-  IF NOT v_overflow THEN
-    -- Still under/at 28 after this signing; no release needed.
-    NULL;
-  END IF;
+  -- Career / season history (fee already via emergency_loan_fee — no post_transfer_ledger)
+  INSERT INTO public."Transfer_History" (
+    player_id,
+    seller_club_id,
+    buyer_club_id,
+    fee,
+    agent_fee,
+    transfer_time,
+    listing_id,
+    foreign_buyer_name,
+    transfer_sale_note
+  )
+  VALUES (
+    v_player."Konami_ID",
+    NULL,
+    v_club,
+    v_fee,
+    0,
+    now(),
+    NULL,
+    NULL,
+    'emergency_loan'
+  )
+  RETURNING id INTO v_history_id;
 
   RETURN jsonb_build_object(
     'ok', true,
     'loan_id', v_loan_id,
+    'transfer_history_id', v_history_id,
     'player_id', v_pid,
     'player_name', v_player."Name",
     'club_short_name', v_club,

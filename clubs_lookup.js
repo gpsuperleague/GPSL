@@ -212,6 +212,14 @@ export function formatSeasonSaleDestination(row) {
     return foreignName || "Contract Run Down - Central Bank Compensation";
   }
 
+  if (note === "emergency_loan") {
+    return displayTransferBuyer(row);
+  }
+
+  if (note === "emergency_loan_return") {
+    return foreignName || "Free agent (emergency loan ended)";
+  }
+
   if (!row.buyer_club_id && foreignName) {
     return foreignName;
   }
@@ -223,6 +231,8 @@ export function formatSeasonSaleType(row) {
   const note = String(row?.transfer_sale_note || "").trim();
   if (note === "squad_overflow") return "Squad over 28";
   if (note === "contract_expiry") return "Contract Run Down";
+  if (note === "emergency_loan") return "Emergency loan";
+  if (note === "emergency_loan_return") return "Emergency loan ended";
   if (isForeignBuyerClub(row?.buyer_club_id)) return "Foreign sale";
   if (!row?.buyer_club_id) return "Released";
   return "Transfer";

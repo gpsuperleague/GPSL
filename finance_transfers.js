@@ -79,7 +79,12 @@ export function aggregateClubTransfersFromHistory(rows, clubShortName) {
     if (buyer === me && !isForeignBuyerClub(r.buyer_club_id)) {
       // Winning bid already in ledger as special_auction_fee — skip history
       // so finance totals are not double-counted.
+      // Winning bid / emergency loan fee already in ledger — skip history
+      // so finance totals are not double-counted.
       if (note === "special_auction" || note.startsWith("special_auction:")) {
+        continue;
+      }
+      if (note === "emergency_loan" || note === "emergency_loan_return") {
         continue;
       }
       if (fee > 0) {
