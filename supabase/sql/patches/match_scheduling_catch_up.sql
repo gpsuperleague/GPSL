@@ -3,7 +3,7 @@
 -- Run after: match_scheduling_arrangement_fines.sql, match_scheduling_past_slots.sql,
 --            match_scheduling_context_competition_fields.sql, club_owner_holidays.sql
 -- =============================================================================
--- Unplayed league fixtures after their play GPSL month closes become catch-up:
+-- Unplayed league and cup fixtures after their play GPSL month closes become catch-up:
 --   • Highlighted in UI (is_catch_up on fixtures view + schedule context)
 --   • Result entry allowed during any later active GPSL month
 --   • New proposals use the active GPSL month window (not original play month)
@@ -44,7 +44,7 @@ AS $$
     SELECT 1
     FROM public.competition_fixtures f
     WHERE f.id = p_fixture_id
-      AND f.competition_type = 'league'
+      AND f.competition_type IN ('league', 'cup')
       AND f.status = 'scheduled'
       AND public.match_schedule_fixture_play_month_closed(p_fixture_id)
   );

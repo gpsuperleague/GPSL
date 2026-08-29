@@ -164,7 +164,7 @@ BEGIN
       ON cal_play.season_id = f.season_id
      AND cal_play.gpsl_month = f.gpsl_month
     WHERE f.season_id = p_season_id
-      AND f.competition_type = 'league'
+      AND f.competition_type IN ('league', 'cup')
       AND f.status = 'scheduled'
       AND public.competition_gpsl_month_sort(f.gpsl_month) <= v_closed_sort + 1
       AND EXISTS (

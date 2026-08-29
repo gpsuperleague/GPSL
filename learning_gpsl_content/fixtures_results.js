@@ -26,7 +26,7 @@ export const SECTION_MATCH_SCHEDULING = {
       items: [
         `One real-world week = one <b>GPSL month</b> (August–May league/cup, then <b>Playoffs</b>). The nav badge shows the active month.`,
         `<b>Arrange</b> — you can agree a time from when fixtures exist (including pre-season). For an <b>September</b> fixture, the primary deadline is to have it arranged before <b>August</b> closes.`,
-        `<b>Play</b> — the match should be played in its fixture GPSL month. If it passes still unplayed, it becomes a <b>catch-up</b> fixture (highlighted on Fixtures) and can be played in a later month.`,
+        `<b>Play</b> — league and cup matches should be played in their fixture GPSL month. If a month ends still unplayed, the fixture becomes <b>catch-up</b> (highlighted on Fixtures) and can be played in a later month. Month-end arrangement / reply / no-show fines apply to <b>league and all cups</b>.`,
       ],
     },
     { type: "h3", html: "1 — Availability" },
@@ -71,7 +71,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `Propose new times in the <b>current</b> GPSL month window; stale agreed kick-offs can be reset without using the monthly reschedule allowance.`,
       ],
     },
-    { type: "h3", html: "Scheduling fines (league — assessed at month lock)" },
+    { type: "h3", html: "Scheduling fines (league &amp; cups — assessed at month lock)" },
     {
       type: "ul",
       items: [
@@ -79,6 +79,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `<b>Late arrangement (₿5m)</b> — first home proposal in the last 24h before the play month opens (either/or with Match Management at that lock).`,
         `<b>Missed response (₿2.5m)</b> — still negotiating with an overdue response when the play month locks.`,
         `<b>No-show at agreed kick-off (₿5m + 3–0)</b> — one club checked in, the other did not, and the match never received a normal result before month lock.`,
+        `These fines and catch-up apply to <b>league and all cup</b> fixtures the same way.`,
       ],
     },
     {

@@ -246,7 +246,7 @@ BEGIN
     FROM public.competition_fixture_schedule s
     JOIN public.competition_fixtures f ON f.id = s.fixture_id
     WHERE f.season_id = p_season_id
-      AND f.competition_type = 'league'
+      AND f.competition_type IN ('league', 'cup')
       AND f.status = 'scheduled'
       AND s.status = 'negotiating'
       AND s.pending_proposal_id IS NOT NULL
@@ -928,7 +928,7 @@ BEGIN
     WHERE s.status = 'negotiating'
       AND s.pending_proposal_id IS NOT NULL
       AND f.status = 'scheduled'
-      AND f.competition_type = 'league'
+      AND f.competition_type IN ('league', 'cup')
   LOOP
     PERFORM public.match_schedule_set_response_deadline(
       v_row.fixture_id,

@@ -57,7 +57,7 @@ BEGIN
     FROM public.competition_fixture_schedule s
     JOIN public.competition_fixtures f ON f.id = s.fixture_id
     WHERE f.season_id = p_season_id
-      AND f.competition_type = 'league'
+      AND f.competition_type IN ('league', 'cup')
       AND f.status = 'scheduled'
       AND s.status = 'negotiating'
       AND s.pending_proposal_id IS NOT NULL
@@ -140,7 +140,7 @@ BEGIN
     FROM public.competition_fixture_schedule s
     JOIN public.competition_fixtures f ON f.id = s.fixture_id
     WHERE f.season_id = p_season_id
-      AND f.competition_type = 'league'
+      AND f.competition_type IN ('league', 'cup')
       AND f.status = 'scheduled'
       AND f.gpsl_month = p_closed_gpsl_month
       AND s.status = 'negotiating'

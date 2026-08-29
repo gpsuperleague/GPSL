@@ -96,7 +96,7 @@ BEGIN
       AND s.pending_proposal_id IS NOT NULL
       AND p.status = 'pending'
       AND f.status = 'scheduled'
-      AND f.competition_type = 'league'
+      AND f.competition_type IN ('league', 'cup')
   LOOP
     v_new_due := public.match_schedule_compute_response_due_at(
       v_row.fixture_id,

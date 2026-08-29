@@ -284,7 +284,7 @@ BEGIN
     FROM public.competition_fixtures f
     JOIN public.competition_fixture_schedule s ON s.fixture_id = f.id
     WHERE f.season_id = p_season_id
-      AND f.competition_type = 'league'
+      AND f.competition_type IN ('league', 'cup')
       AND f.status = 'scheduled'
       AND f.gpsl_month = p_closed_gpsl_month
       AND s.no_show_club_short_name IS NOT NULL
