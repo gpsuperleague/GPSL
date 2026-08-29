@@ -912,53 +912,64 @@ async function loadWaitingListAdmin() {
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
   const { data, error } = await supabase.rpc("waiting_list_admin");
   if (error) {
-    tableWrap.innerHTML = `<p class="note" style="color:#f88">❌ ${error.message} — run gpsl_waiting_list.sql</p>`;
+    tableWrap.innerHTML = `<p class="note" style="color:#f88">❌ ${error.message} — run waiting_list_priority_board_20260829.sql</p>`;
     return;
   }
 
-  const waiting = data?.waiting || [];
+  const priority = (data?.priority || data?.waiting || []).map((r) => ({
+    ...r,
+    has_club: !!r.has_club || r.list_kind === "club_owner",
+    invited_auction: false,
+  }));
   const invited = (data?.invited_to_auction || []).map((r) => ({
     ...r,
     position: null,
     tier: "—",
     invited_auction: true,
+    has_club: false,
   }));
-  const rows = [
-    ...waiting.map((r) => ({ ...r, invited_auction: false })),
-    ...invited,
-  ];
+  const rows = [...priority, ...invited];
 
   if (!rows.length) {
-    tableWrap.innerHTML = "<p class='note'>No one on the waiting list or invited to club auction.</p>";
+    tableWrap.innerHTML =
+      "<p class='note'>No one on the priority board or invited to club auction.</p>";
     return;
   }
 
-  const listCount = waiting.length;
+  const boardCount = priority.length;
+  const waitingCount = priority.filter((r) => !r.has_club).length;
+  const ownerCount = priority.filter((r) => r.has_club).length;
   const auctionTotal = invited.length;
   const testTotal = rows.filter((r) => !!r.confirmed_test_season).length;
   const liveTotal = rows.filter((r) => !!r.confirmed_live_season).length;
+  const sortNote = data?.priority_uses_admin_sort
+    ? "Manual priority order"
+    : "Join-date order (drag to customise)";
+
   let html =
     "<table class='admin-table' style='width:100%;font-size:13px;border-collapse:collapse'>" +
     "<thead><tr>" +
-    "<th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>" +
+    "<th style='width:2em'></th><th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>" +
     `<th title='Invite to / remove from club draft auction' style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
     `<th title='Confirmed for test season' style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title='Confirmed for live season' style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
-    "<th></th></tr></thead><tbody>";
+    "<th></th></tr></thead><tbody id='wlPriorityTbody'>";
 
-  if (listCount && auctionTotal) {
+  if (boardCount) {
     html +=
-      `<tr><td colspan="9" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333">` +
-      `Waiting list (${listCount})</td></tr>`;
+      `<tr class="wl-section"><td colspan="10" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333">` +
+      `Priority board (${boardCount}: ${waitingCount} waiting` +
+      (ownerCount ? `, ${ownerCount} current owners` : "") +
+      `) — ${escapeWl(sortNote)}. Drag to reorder.</td></tr>`;
   }
 
-  for (const row of waiting) {
+  for (const row of priority) {
     html += renderWaitingListAdminRow(row, { invited: false });
   }
 
   if (auctionTotal) {
     html +=
-      `<tr><td colspan="9" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333;border-top:1px solid #333">` +
+      `<tr class="wl-section"><td colspan="10" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333;border-top:1px solid #333">` +
       `Invited to club auction (${auctionTotal}) — untick Auction to return to waiting list</td></tr>`;
     for (const row of invited) {
       html += renderWaitingListAdminRow(row, { invited: true });
@@ -968,12 +979,7 @@ async function loadWaitingListAdmin() {
   html += "</tbody></table>";
   tableWrap.innerHTML = html;
 
-  tableWrap.querySelectorAll(".wl-up").forEach((btn) => {
-    btn.addEventListener("click", () => moveWaitingList(btn.dataset.id, -1));
-  });
-  tableWrap.querySelectorAll(".wl-down").forEach((btn) => {
-    btn.addEventListener("click", () => moveWaitingList(btn.dataset.id, 1));
-  });
+  bindWaitingListPriorityDrag(tableWrap);
   tableWrap.querySelectorAll(".wl-remove").forEach((btn) => {
     btn.addEventListener("click", () =>
       removeFromWaitingList({
@@ -999,23 +1005,41 @@ function renderWaitingListAdminRow(row, { invited }) {
   const email = row.email || "";
   const testOn = !!row.confirmed_test_season;
   const liveOn = !!row.confirmed_live_season;
+  const hasClub = !!row.has_club && !invited;
   const pos = invited ? "—" : row.position;
-  const status = invited ? "awaiting_club_auction" : row.status;
-  const moveBtns = invited
-    ? ""
-    : `<button type="button" class="button secondary wl-up" data-id="${row.owner_id}">↑</button>
-       <button type="button" class="button secondary wl-down" data-id="${row.owner_id}">↓</button>`;
-  return `<tr${invited ? ' style="background:#1a1814"' : ""}>
-    <td>${pos ?? "—"}</td>
-    <td>${escapeWl(row.owner_tag)}</td>
-    <td>${escapeWl(email)}</td>
-    <td>${escapeWl(row.tier || "—")}</td>
-    <td>${escapeWl(status)}</td>
-    <td style="text-align:center">
+  let status = invited ? "awaiting_club_auction" : row.status || "";
+  if (hasClub && row.club_short_name) {
+    status = `owner · ${row.club_short_name}`;
+  }
+  const rowClass = [
+    invited ? "" : "wl-priority-row",
+    hasClub ? "wl-club-owner" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const rowStyle = invited ? ' style="background:#1a1814"' : "";
+  const dragCell = invited
+    ? "<td></td>"
+    : `<td class="wl-drag-cell" title="Drag to reorder"><span class="wl-drag-handle" aria-hidden="true">⠿</span></td>`;
+  const auctionCell = hasClub
+    ? `<td style="text-align:center;color:#555" title="Already owns a club">—</td>`
+    : `<td style="text-align:center">
       <input type="checkbox" class="wl-auction-invite" data-id="${row.owner_id}"
         title="${invited ? "Remove from club auction (back to waiting list)" : "Invite to club auction"}"
         ${invited ? "checked" : ""}>
-    </td>
+    </td>`;
+  const removeBtn = hasClub
+    ? ""
+    : `<button type="button" class="button secondary wl-remove" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}">Remove</button>`;
+
+  return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" draggable="${invited ? "false" : "true"}">
+    ${dragCell}
+    <td class="wl-pos">${pos ?? "—"}</td>
+    <td>${escapeWl(row.owner_tag)}</td>
+    <td>${escapeWl(email)}</td>
+    <td>${escapeWl(hasClub ? "—" : row.tier || "—")}</td>
+    <td>${escapeWl(status)}</td>
+    ${auctionCell}
     <td style="text-align:center">
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="test"
         title="Confirmed test season" ${testOn ? "checked" : ""}>
@@ -1024,11 +1048,95 @@ function renderWaitingListAdminRow(row, { invited }) {
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"
         title="Confirmed live season" ${liveOn ? "checked" : ""}>
     </td>
-    <td style="white-space:nowrap">
-      ${moveBtns}
-      <button type="button" class="button secondary wl-remove" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}">Remove</button>
-    </td>
+    <td style="white-space:nowrap">${removeBtn}</td>
   </tr>`;
+}
+
+function bindWaitingListPriorityDrag(tableWrap) {
+  const tbody = tableWrap.querySelector("#wlPriorityTbody");
+  if (!tbody) return;
+
+  let dragRow = null;
+  let orderDirty = false;
+
+  const clearDragOver = () => {
+    tbody.querySelectorAll(".wl-drag-over").forEach((el) => el.classList.remove("wl-drag-over"));
+  };
+
+  const priorityIds = () =>
+    [...tbody.querySelectorAll("tr.wl-priority-row")]
+      .map((tr) => tr.dataset.ownerId)
+      .filter(Boolean);
+
+  const renumberPositions = () => {
+    let n = 0;
+    tbody.querySelectorAll("tr.wl-priority-row").forEach((tr) => {
+      n += 1;
+      const pos = tr.querySelector(".wl-pos");
+      if (pos) pos.textContent = String(n);
+    });
+  };
+
+  tbody.addEventListener("dragstart", (e) => {
+    const tr = e.target?.closest?.("tr.wl-priority-row");
+    if (!tr || e.target.closest("input,button,a,label")) {
+      e.preventDefault();
+      return;
+    }
+    dragRow = tr;
+    orderDirty = false;
+    tr.classList.add("wl-dragging");
+    try {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", tr.dataset.ownerId || "");
+    } catch {
+      /* ignore */
+    }
+  });
+
+  tbody.addEventListener("dragend", async () => {
+    if (dragRow) dragRow.classList.remove("wl-dragging");
+    clearDragOver();
+    const shouldSave = orderDirty;
+    dragRow = null;
+    orderDirty = false;
+    if (!shouldSave) return;
+    const ids = priorityIds();
+    if (ids.length) await saveWaitingListPriorityOrder(ids);
+  });
+
+  tbody.addEventListener("dragover", (e) => {
+    const tr = e.target?.closest?.("tr.wl-priority-row");
+    if (!dragRow || !tr || tr === dragRow) return;
+    e.preventDefault();
+    clearDragOver();
+    tr.classList.add("wl-drag-over");
+    const rect = tr.getBoundingClientRect();
+    const before = e.clientY < rect.top + rect.height / 2;
+    const anchor = before ? tr : tr.nextSibling;
+    if (dragRow.nextSibling === anchor || (anchor === dragRow)) return;
+    tbody.insertBefore(dragRow, anchor);
+    orderDirty = true;
+    renumberPositions();
+  });
+
+  tbody.addEventListener("drop", (e) => {
+    e.preventDefault();
+    clearDragOver();
+  });
+}
+
+async function saveWaitingListPriorityOrder(ownerIds) {
+  setWlActionStatus("Saving order…");
+  const { error } = await supabase.rpc("admin_waiting_list_reorder", {
+    p_owner_ids: ownerIds,
+  });
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    await loadWaitingListAdmin();
+    return;
+  }
+  setWlActionStatus("✅ Priority order saved.", true);
 }
 
 function escapeWl(s) {
@@ -1092,19 +1200,6 @@ async function setWaitingListSeasonConfirmed(ownerId, which, confirmed, checkbox
       : `✅ Cleared ${label} season confirmation.`,
     true
   );
-}
-
-async function moveWaitingList(ownerId, direction) {
-  const { error } = await supabase.rpc("admin_waiting_list_move", {
-    p_owner_id: ownerId,
-    p_direction: direction,
-  });
-  if (error) {
-    setWlActionStatus("❌ " + error.message, false);
-    return;
-  }
-  await loadWaitingListAdmin();
-  setWlActionStatus("✅ Order updated.", true);
 }
 
 async function restoreWaitingListOrder() {
