@@ -56,6 +56,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clubOwnerFilter")?.addEventListener("input", () =>
     renderClubOwnersRemoveList(window.__clubOwnersRemoveCache || [])
   );
+  document.getElementById("archiveOwnerFilter")?.addEventListener("input", (e) => {
+    filterArchiveOwnerSelect(e.target.value);
+  });
 
   document.getElementById("wlRefreshBtn")?.addEventListener("click", loadWaitingListAdmin);
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
@@ -99,6 +102,8 @@ async function loadOwnerList() {
     archiveDropdown.innerHTML = `<option value="">Select owner…</option>`;
   }
 
+  const archiveOptions = [];
+
   const statusLabel = (row) => {
     if (row.clubShortName) return row.clubShortName;
     if (row.registryStatus === "archived") {
@@ -136,15 +141,64 @@ async function loadOwnerList() {
     }
 
     if (archiveDropdown) {
-      const archiveOption = document.createElement("option");
-      archiveOption.value = row.email;
-      archiveOption.dataset.ownerId = row.id;
-      archiveOption.textContent = formatTagOptionLabel(shortName, row.email, currentTag);
-      archiveDropdown.appendChild(archiveOption);
+      archiveOptions.push({
+        email: row.email,
+        ownerId: row.id,
+        label: formatTagOptionLabel(shortName, row.email, currentTag),
+        tag: currentTag,
+        shortName,
+      });
     }
   });
 
+  if (archiveDropdown) {
+    window.__archiveOwnerOptionsCache = archiveOptions;
+    filterArchiveOwnerSelect(document.getElementById("archiveOwnerFilter")?.value || "");
+  }
+
   await syncOwnerTagInputFromSelect();
+}
+
+function filterArchiveOwnerSelect(filterText) {
+  const archiveDropdown = document.getElementById("archiveOwnerSelect");
+  if (!archiveDropdown) return;
+
+  const cache = window.__archiveOwnerOptionsCache || [];
+  const q = String(filterText || "")
+    .trim()
+    .toLowerCase();
+  const prev = archiveDropdown.value;
+
+  const matches = !q
+    ? cache
+    : cache.filter((row) => {
+        const hay = [row.label, row.tag, row.email, row.shortName]
+          .map((x) => String(x || "").toLowerCase())
+          .join(" ");
+        return hay.includes(q);
+      });
+
+  archiveDropdown.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = matches.length
+    ? q
+      ? `Select owner… (${matches.length} match${matches.length === 1 ? "" : "es"})`
+      : "Select owner…"
+    : "No matching owners";
+  archiveDropdown.appendChild(placeholder);
+
+  for (const row of matches) {
+    const opt = document.createElement("option");
+    opt.value = row.email;
+    opt.dataset.ownerId = row.ownerId;
+    opt.textContent = row.label;
+    archiveDropdown.appendChild(opt);
+  }
+
+  if (prev && matches.some((r) => r.email === prev)) {
+    archiveDropdown.value = prev;
+  }
 }
 
 async function fetchAdminOwnerRows() {
