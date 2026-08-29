@@ -53,7 +53,7 @@ const INBOX_CATEGORY_TYPES = {
   fines: new Set(["fine_applied", "admin_emergency_tax"]),
   bank: new Set(["loan_drawdown", "loan_repayment", "loan_interest", "admin_cash_injection"]),
   auctions: new Set(["draft_scheduled", "special_auction_scheduled"]),
-  transfers_in: new Set(["transfer_signed"]),
+  transfers_in: new Set(["transfer_signed", "emergency_loan_available"]),
   transfers_out: new Set(["transfer_sold", "underperformance_transfer"]),
 };
 
@@ -67,6 +67,8 @@ const DISCIPLINE_SOFT_MATCH =
 
 function inboxLooksLikeBank(msg) {
   const t = String(msg?.message_type || "");
+  // Emergency loan eligibility is a squad transfer option, not Central Bank loan.
+  if (t === "emergency_loan_available") return false;
   if (INBOX_CATEGORY_TYPES.bank.has(t)) return true;
   const href = String(msg?.action_href || "");
   if (/central_bank/i.test(href)) return true;
@@ -76,6 +78,7 @@ function inboxLooksLikeBank(msg) {
 
 function inboxLooksLikeDiscipline(msg) {
   const t = String(msg?.message_type || "");
+  if (t === "emergency_loan_available") return false;
   if (INBOX_CATEGORY_TYPES.discipline.has(t)) return true;
   // Don't steal fine_applied — those stay under Fines
   if (INBOX_CATEGORY_TYPES.fines.has(t)) return false;
@@ -87,9 +90,12 @@ function inboxLooksLikeDiscipline(msg) {
 }
 
 export function inboxMessageCategory(messageType, msg = null) {
+  const typed = String(messageType || msg?.message_type || "");
+  if (INBOX_CATEGORY_TYPES.transfers_in.has(typed)) return "transfers_in";
+  if (INBOX_CATEGORY_TYPES.transfers_out.has(typed)) return "transfers_out";
   if (msg && inboxLooksLikeBank(msg)) return "bank";
   if (msg && inboxLooksLikeDiscipline(msg)) return "discipline";
-  const t = String(messageType || msg?.message_type || "");
+  const t = typed;
   if (INBOX_CATEGORY_TYPES.fixture_management.has(t)) return "fixture_management";
   if (INBOX_CATEGORY_TYPES.discipline.has(t)) return "discipline";
   if (INBOX_CATEGORY_TYPES.fines.has(t)) return "fines";
