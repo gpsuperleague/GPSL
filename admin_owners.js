@@ -1032,7 +1032,7 @@ function renderWaitingListAdminRow(row, { invited }) {
     ? ""
     : `<button type="button" class="button secondary wl-remove" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}">Remove</button>`;
 
-  return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" draggable="${invited ? "false" : "true"}">
+  return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}">
     ${dragCell}
     <td class="wl-pos">${pos ?? "—"}</td>
     <td>${escapeWl(row.owner_tag)}</td>
@@ -1057,72 +1057,95 @@ function bindWaitingListPriorityDrag(tableWrap) {
   if (!tbody) return;
 
   let dragRow = null;
-  let orderDirty = false;
+  let startIds = null;
+  let pointerId = null;
 
-  const clearDragOver = () => {
-    tbody.querySelectorAll(".wl-drag-over").forEach((el) => el.classList.remove("wl-drag-over"));
-  };
+  const priorityRows = () => [...tbody.querySelectorAll("tr.wl-priority-row")];
 
   const priorityIds = () =>
-    [...tbody.querySelectorAll("tr.wl-priority-row")]
+    priorityRows()
       .map((tr) => tr.dataset.ownerId)
       .filter(Boolean);
 
   const renumberPositions = () => {
     let n = 0;
-    tbody.querySelectorAll("tr.wl-priority-row").forEach((tr) => {
+    priorityRows().forEach((tr) => {
       n += 1;
       const pos = tr.querySelector(".wl-pos");
       if (pos) pos.textContent = String(n);
     });
   };
 
-  tbody.addEventListener("dragstart", (e) => {
-    const tr = e.target?.closest?.("tr.wl-priority-row");
-    if (!tr || e.target.closest("input,button,a,label")) {
-      e.preventDefault();
-      return;
+  const rowFromY = (clientY) => {
+    const rows = priorityRows();
+    for (const tr of rows) {
+      if (tr === dragRow) continue;
+      const rect = tr.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) return { tr, before: true };
+      if (clientY <= rect.bottom) return { tr, before: false };
     }
+    const last = rows.filter((r) => r !== dragRow).pop();
+    return last ? { tr: last, before: false } : null;
+  };
+
+  const endDrag = async () => {
+    if (!dragRow) return;
+    const row = dragRow;
+    row.classList.remove("wl-dragging");
+    row.querySelectorAll("td").forEach((td) => {
+      td.style.boxShadow = "";
+    });
+    dragRow = null;
+    pointerId = null;
+
+    const ids = priorityIds();
+    if (!ids.length || !startIds) return;
+    const changed = ids.length !== startIds.length || ids.some((id, i) => id !== startIds[i]);
+    startIds = null;
+    if (!changed) return;
+    await saveWaitingListPriorityOrder(ids);
+  };
+
+  tbody.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    if (e.target.closest("input,button,a,label")) return;
+    const tr = e.target.closest("tr.wl-priority-row");
+    if (!tr) return;
+
     dragRow = tr;
-    orderDirty = false;
+    startIds = priorityIds();
+    pointerId = e.pointerId;
     tr.classList.add("wl-dragging");
     try {
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", tr.dataset.ownerId || "");
+      tr.setPointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
-  });
-
-  tbody.addEventListener("dragend", async () => {
-    if (dragRow) dragRow.classList.remove("wl-dragging");
-    clearDragOver();
-    const shouldSave = orderDirty;
-    dragRow = null;
-    orderDirty = false;
-    if (!shouldSave) return;
-    const ids = priorityIds();
-    if (ids.length) await saveWaitingListPriorityOrder(ids);
-  });
-
-  tbody.addEventListener("dragover", (e) => {
-    const tr = e.target?.closest?.("tr.wl-priority-row");
-    if (!dragRow || !tr || tr === dragRow) return;
     e.preventDefault();
-    clearDragOver();
-    tr.classList.add("wl-drag-over");
-    const rect = tr.getBoundingClientRect();
-    const before = e.clientY < rect.top + rect.height / 2;
+  });
+
+  tbody.addEventListener("pointermove", (e) => {
+    if (!dragRow || (pointerId != null && e.pointerId !== pointerId)) return;
+    e.preventDefault();
+    const hit = rowFromY(e.clientY);
+    if (!hit) return;
+    const { tr, before } = hit;
     const anchor = before ? tr : tr.nextSibling;
-    if (dragRow.nextSibling === anchor || (anchor === dragRow)) return;
+    if (dragRow === tr) return;
+    if (before && dragRow.nextSibling === tr) return;
+    if (!before && tr.nextSibling === dragRow) return;
     tbody.insertBefore(dragRow, anchor);
-    orderDirty = true;
     renumberPositions();
   });
 
-  tbody.addEventListener("drop", (e) => {
-    e.preventDefault();
-    clearDragOver();
+  tbody.addEventListener("pointerup", (e) => {
+    if (pointerId != null && e.pointerId !== pointerId) return;
+    endDrag();
+  });
+
+  tbody.addEventListener("pointercancel", (e) => {
+    if (pointerId != null && e.pointerId !== pointerId) return;
+    endDrag();
   });
 }
 
@@ -1136,6 +1159,7 @@ async function saveWaitingListPriorityOrder(ownerIds) {
     await loadWaitingListAdmin();
     return;
   }
+  await loadWaitingListAdmin();
   setWlActionStatus("✅ Priority order saved.", true);
 }
 

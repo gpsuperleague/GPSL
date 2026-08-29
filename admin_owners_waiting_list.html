@@ -12,9 +12,9 @@
     .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
     button.button.secondary { background:#444; color:#ddd; }
     button.button.secondary:hover { background:#555; }
-    tr.wl-priority-row { cursor: grab; }
-    tr.wl-priority-row.wl-dragging { opacity: 0.35; cursor: grabbing; }
-    tr.wl-priority-row.wl-drag-over > td { box-shadow: inset 0 2px 0 #ff9900; }
+    tr.wl-priority-row { cursor: grab; touch-action: none; user-select: none; }
+    tr.wl-priority-row.wl-dragging { opacity: 0.45; cursor: grabbing; }
+    tr.wl-priority-row.wl-dragging td { background: #1c1c1c; }
     tr.wl-club-owner { opacity: 0.5; color: #888; }
     tr.wl-club-owner td { border-color: #2a2a2a !important; }
     .wl-drag-handle {
@@ -64,6 +64,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js?v=20260829-wl-priority-dnd"></script>
+  <script type="module" src="admin_owners.js?v=20260829-wl-priority-pointer"></script>
 </body>
 </html>
