@@ -46,7 +46,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `Away owner gets an <a href="inbox.html">Inbox</a> message — <b>Accept</b> or counter-propose from their own availability when ready.`,
         `<b>No double-booking</b> — a 30-minute kick-off already agreed (or pending) for either club is blocked for other fixtures.`,
         `After two proposals each, the site suggests agreeing on <b>Discord</b>, then picking a slot on the schedule page.`,
-        `<b>Response deadlines</b> apply while negotiating — the site tracks overdue turns during the month. <b>Missed response fines (default ₿2.5m)</b> are assessed when that fixture’s <b>play GPSL month locks</b>, not instantly mid-week.`,
+        `<b>Response deadlines</b> apply while negotiating — the site tracks overdue turns during the month. <b>Missed response fines (default ₿2.5m)</b> hit the club that did not reply when that GPSL month locks (play month or later catch-up months). Incomplete negotiations then reset so home proposes again next month — the fixture is not forfeited for a missed reply.`,
         `<b>Weekly availability</b> is tied to your owner account and survives vanilla reset / new seasons — set it once on Owner Details (or in the waiting room).`,
       ],
     },
@@ -77,7 +77,7 @@ export const SECTION_MATCH_SCHEDULING = {
       items: [
         `<b>Match Management (₿10m)</b> — home never proposed by the arrangement deadline; can repeat each month until a proposal is made.`,
         `<b>Late arrangement (₿5m)</b> — first home proposal in the last 24h before the play month opens (either/or with Match Management at that lock).`,
-        `<b>Missed response (₿2.5m)</b> — still negotiating with an overdue response when the play month locks.`,
+        `<b>Missed response (₿2.5m)</b> — still negotiating with an overdue response when the GPSL month locks (can apply again in catch-up months). Fixture rolls over; arrangement restarts (home proposes again).`,
         `<b>No-show at agreed kick-off (₿5m + 3–0)</b> — one club checked in, the other did not, and the match never received a normal result before month lock.`,
         `These fines and catch-up apply to <b>league and all cup</b> fixtures the same way.`,
       ],

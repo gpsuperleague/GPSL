@@ -64,7 +64,10 @@ BEGIN
       AND s.response_due_at IS NOT NULL
       AND s.response_required_club_short_name IS NOT NULL
       AND s.response_due_at < now()
-      AND public.match_schedule_fixture_play_month_open(f.id)
+      AND (
+        public.match_schedule_fixture_play_month_open(f.id)
+        OR public.match_schedule_fixture_is_catch_up(f.id)
+      )
       AND EXISTS (
         SELECT 1
         FROM public.competition_fixture_schedule_proposal p
