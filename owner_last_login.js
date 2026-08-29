@@ -63,6 +63,18 @@ function formatUkDateTime(iso) {
   });
 }
 
+function formatUkDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", {
+    timeZone: "Europe/London",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function ownerLabel(row) {
   const tag = row.owner_tag ? String(row.owner_tag).trim() : "";
   const club = row.club_short_name ? String(row.club_short_name) : "";
@@ -109,7 +121,7 @@ function renderTable(filterText = "") {
       });
 
   if (!filtered.length) {
-    body.innerHTML = `<tr><td colspan="8">${
+    body.innerHTML = `<tr><td colspan="10">${
       rows.length ? "No matches." : "No owners found."
     }</td></tr>`;
     return;
@@ -134,6 +146,8 @@ function renderTable(filterText = "") {
 
       const prevN = Number(r.logins_previous_month) || 0;
       const curN = Number(r.logins_current_month) || 0;
+      const totalN = Number(r.logins_total) || 0;
+      const discordJoined = formatUkDate(r.discord_joined_at);
 
       return `<tr>
         <td class="num">${i + 1}</td>
@@ -142,8 +156,10 @@ function renderTable(filterText = "") {
         <td>${escapeHtml(r.registry_status || "—")}</td>
         <td>${escapeHtml(formatUkDateTime(r.last_sign_in_at))}</td>
         <td class="num ${sinceClass}">${escapeHtml(since.text)}</td>
+        <td class="num">${totalN}</td>
         <td class="num">${prevN}</td>
         <td class="num">${curN}</td>
+        <td>${escapeHtml(discordJoined)}</td>
       </tr>`;
     })
     .join("");

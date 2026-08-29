@@ -948,6 +948,18 @@ function formatWlUkDateTime(iso) {
   });
 }
 
+function formatWlUkDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", {
+    timeZone: "Europe/London",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 async function fetchOwnerActivityById() {
   const { data, error } = await supabase.rpc("admin_owner_last_logins");
   const byId = new Map();
@@ -1036,14 +1048,14 @@ async function loadWaitingListAdmin() {
     ? `Activity unavailable: ${activityRes.error.message}`
     : `${prevLabel} / ${curLabel} login counts`;
 
-  const colSpan = 14;
+  const colSpan = 16;
   let html =
     `<table class="admin-table wl-board-table">` +
     `<thead>` +
     `<tr class="wl-group-row">` +
     `<th colspan="6" class="wl-group-owner">Owner</th>` +
     `<th colspan="3" class="wl-group-season">Season</th>` +
-    `<th colspan="4" class="wl-group-activity">Activity</th>` +
+    `<th colspan="6" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions"></th>` +
     `</tr>` +
     `<tr>` +
@@ -1054,8 +1066,10 @@ async function loadWaitingListAdmin() {
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th class="wl-col-activity">Last login (UK)</th>` +
     `<th class="num">Since</th>` +
+    `<th class="num" title="Total GPSL site logins (all time)">Total</th>` +
     `<th class="num" title="${escapeWl(prevLabel)}">${escapeWl(prevLabel)}</th>` +
     `<th class="num" title="${escapeWl(curLabel)}">${escapeWl(curLabel)}</th>` +
+    `<th title="When they joined the GPSL Discord server">Discord join</th>` +
     `<th class="wl-col-actions"></th>` +
     `</tr></thead><tbody id="wlPriorityTbody">`;
 
@@ -1124,6 +1138,8 @@ function renderWaitingListAdminRow(row, { invited }) {
   const sinceClass = !lastAt ? "never" : since.minutes >= 7 * 24 * 60 ? "stale" : "";
   const prevN = Number(act.logins_previous_month) || 0;
   const curN = Number(act.logins_current_month) || 0;
+  const totalN = Number(act.logins_total) || 0;
+  const discordJoined = act.discord_joined_at || null;
   const filterText = [
     row.owner_tag,
     email,
@@ -1175,8 +1191,10 @@ function renderWaitingListAdminRow(row, { invited }) {
     </td>
     <td class="wl-col-activity">${escapeWl(formatWlUkDateTime(lastAt))}</td>
     <td class="num ${sinceClass}">${escapeWl(since.text)}</td>
+    <td class="num">${totalN}</td>
     <td class="num">${prevN}</td>
     <td class="num">${curN}</td>
+    <td>${escapeWl(formatWlUkDate(discordJoined))}</td>
     <td class="wl-col-actions" style="white-space:nowrap">${removeBtn}</td>
   </tr>`;
 }
