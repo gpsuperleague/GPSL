@@ -96,10 +96,16 @@
         return;
       }
 
-      // supabase.rpc does not throw — must check error
+      // Also recorded on every authenticated site open via initGlobal (remembered sessions).
       const { error: loginLogErr } = await supabase.rpc("record_owner_site_login");
       if (loginLogErr) {
         console.warn("record_owner_site_login:", loginLogErr.message);
+      } else {
+        try {
+          localStorage.setItem("gpsl_site_login_at", String(Date.now()));
+        } catch {
+          /* ignore */
+        }
       }
 
       let dest = "dashboard.html";

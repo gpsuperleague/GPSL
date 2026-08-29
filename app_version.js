@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260822-owner-bank";
+export const APP_VERSION = "20260829-site-login-activity";

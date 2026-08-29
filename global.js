@@ -1965,6 +1965,11 @@ function wireNavLogout() {
   if (!btn || btn.dataset.wired === "1") return;
   btn.dataset.wired = "1";
   btn.onclick = async () => {
+    try {
+      localStorage.removeItem(SITE_LOGIN_LS_KEY);
+    } catch {
+      /* ignore */
+    }
     await supabase.auth.signOut();
     window.location = "login.html";
   };
@@ -2636,11 +2641,65 @@ export async function buildNav() {
 }
 
 // ------------------------------------------------------------
+// SITE ACTIVITY → login events (remembered sessions count too)
+// ------------------------------------------------------------
+const SITE_LOGIN_LS_KEY = "gpsl_site_login_at";
+/** Match server debounce in record_owner_site_login (1 hour). */
+const SITE_LOGIN_COOLDOWN_MS = 60 * 60 * 1000;
+let siteLoginInFlight = false;
+
+/**
+ * Treat an authenticated site open / return-to-tab as a login when the session
+ * was restored from storage (Windows/browser "remember me"), not only password
+ * submit on login.html. Cooldown avoids counting every in-site page click.
+ */
+export async function recordOwnerSiteActivity() {
+  if (siteLoginInFlight) return;
+  try {
+    const last = Number(localStorage.getItem(SITE_LOGIN_LS_KEY) || 0);
+    if (Number.isFinite(last) && Date.now() - last < SITE_LOGIN_COOLDOWN_MS) {
+      return;
+    }
+
+    const user = await getAuthUser();
+    if (!user) return;
+
+    siteLoginInFlight = true;
+    const { error } = await supabase.rpc("record_owner_site_login");
+    if (error) {
+      console.warn("record_owner_site_login:", error.message);
+      return;
+    }
+    try {
+      localStorage.setItem(SITE_LOGIN_LS_KEY, String(Date.now()));
+    } catch {
+      /* private mode */
+    }
+  } catch (err) {
+    console.warn("record_owner_site_login:", err);
+  } finally {
+    siteLoginInFlight = false;
+  }
+}
+
+function wireOwnerSiteActivityTracking() {
+  if (typeof window === "undefined" || window.__gpslSiteLoginWired) return;
+  window.__gpslSiteLoginWired = true;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void recordOwnerSiteActivity();
+    }
+  });
+}
+
+// ------------------------------------------------------------
 // INITIALISATION
 // ------------------------------------------------------------
 export async function initGlobal() {
   window.supabase = supabase;
   ensureNavStyles();
+  wireOwnerSiteActivityTracking();
+  void recordOwnerSiteActivity();
   await loadGlobalSettings();
   try {
     const { enforceOwnerClubGate } = await import(
