@@ -260,6 +260,7 @@ DECLARE
   v_results jsonb := '[]'::jsonb;
   v_count int := 0;
   v_skipped int := 0;
+  v_is_catch_up boolean;
 BEGIN
   SELECT c.lock_at
   INTO v_lock
@@ -280,14 +281,19 @@ BEGIN
       f.id AS fixture_id,
       s.no_show_club_short_name AS loser,
       f.matchday,
-      f.gpsl_month
+      f.gpsl_month,
+      s.no_show_kickoff_at
     FROM public.competition_fixtures f
     JOIN public.competition_fixture_schedule s ON s.fixture_id = f.id
     WHERE f.season_id = p_season_id
       AND f.competition_type IN ('league', 'cup')
       AND f.status = 'scheduled'
-      AND f.gpsl_month = p_closed_gpsl_month
       AND s.no_show_club_short_name IS NOT NULL
+      AND (
+        f.gpsl_month = p_closed_gpsl_month
+        OR public.match_schedule_fixture_is_catch_up(f.id)
+      )
+      AND (s.no_show_kickoff_at IS NULL OR s.no_show_kickoff_at < v_lock)
       AND EXISTS (
         SELECT 1
         FROM public."Clubs" c
@@ -295,32 +301,31 @@ BEGIN
           AND c.owner_id IS NOT NULL
       )
   LOOP
-    -- Prefix must match the note written on forfeit: sched_checkin_lock:{month}:{fixture_id}|…
+    -- One no-show forfeit per fixture
     IF EXISTS (
       SELECT 1
       FROM public.competition_fine_applied fa
       WHERE fa.fixture_id = v_row.fixture_id
         AND fa.tariff_code = 'match_agreed_no_show'
-        AND fa.note LIKE format(
-          'sched_checkin_lock:%s:%s%%',
-          p_closed_gpsl_month,
-          v_row.fixture_id
-        )
     ) THEN
       v_skipped := v_skipped + 1;
       CONTINUE;
     END IF;
+
+    v_is_catch_up := public.match_schedule_fixture_is_catch_up(v_row.fixture_id)
+      AND v_row.gpsl_month IS DISTINCT FROM p_closed_gpsl_month;
 
     PERFORM public.fixture_apply_forfeit(
       v_row.fixture_id,
       v_row.loser,
       'match_agreed_no_show',
       format(
-        'sched_checkin_lock:%s:%s|No check-in at agreed kick-off · %s MD%s · assessed at month lock',
+        'sched_checkin_lock:%s:%s|No check-in at agreed kick-off · %s MD%s · assessed at month lock%s',
         p_closed_gpsl_month,
         v_row.fixture_id,
         public.competition_gpsl_month_label(v_row.gpsl_month),
-        v_row.matchday
+        v_row.matchday,
+        CASE WHEN v_is_catch_up THEN ' (catch-up)' ELSE '' END
       )
     );
 
@@ -328,7 +333,8 @@ BEGIN
     v_results := v_results || jsonb_build_array(
       jsonb_build_object(
         'fixture_id', v_row.fixture_id,
-        'loser', v_row.loser
+        'loser', v_row.loser,
+        'catch_up', v_is_catch_up
       )
     );
   END LOOP;
