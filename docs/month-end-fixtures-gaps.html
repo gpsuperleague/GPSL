@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Month-end fixtures — gap analysis (GPSL)</title>
+  <style>
+    :root {
+      --bg: #111; --panel: #1a1a1a; --text: #ddd; --muted: #999;
+      --line: #333; --accent: #ff9900; --crit: #f88; --high: #e6a020; --ok: #9fd4b0;
+    }
+    body { margin: 0; font: 15px/1.5 Arial, sans-serif; background: var(--bg); color: var(--text); padding: 24px 16px 48px; }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    h1 { color: var(--accent); font-size: 22px; margin: 0 0 8px; }
+    h2 { color: var(--accent); font-size: 17px; margin: 28px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+    a { color: var(--accent); }
+    .sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+    .callout { border-left: 4px solid var(--accent); background: #1a1810; border: 1px solid #664; border-left-width: 4px; padding: 12px 14px; border-radius: 6px; margin: 14px 0; font-size: 14px; }
+    .finding { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+    .finding h3 { margin: 0 0 8px; font-size: 15px; color: #fff; }
+    .sev { display: inline-block; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 4px; margin-right: 8px; vertical-align: middle; }
+    .sev.crit { background: #3a1515; color: var(--crit); }
+    .sev.high { background: #3a2a10; color: var(--high); }
+    .sev.med { background: #1a2a3a; color: #9ec5ff; }
+    .sev.low { background: #222; color: var(--muted); }
+    .ev { color: var(--muted); font-size: 12px; margin: 6px 0; }
+    ul { margin: 6px 0 0; padding-left: 1.2em; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+    th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 8px 6px; vertical-align: top; }
+    th { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="sub"><a href="gpsl-month-end-unplayed.html">← Owner guide</a></p>
+    <h1>Month-end fixtures — gap analysis</h1>
+    <p class="sub">Internal review of arrange / reply / check-in / catch-up (league + cups). Not a live DB audit.</p>
+
+    <div class="callout">
+      <strong>Bottom line:</strong> Design is mostly sound (no mass 3–0 → catch-up; fines at lock; cups included).
+      Biggest holes: fragile no-show idempotency SQL; catch-up stops enforcing reply/no-show later;
+      cup brackets can stall; admin early-end may defer lock jobs.
+    </div>
+
+    <h2>Fix order</h2>
+    <table>
+      <tr><th>#</th><th>Action</th><th>Why</th></tr>
+      <tr><td>1</td><td>Fix check-in skip LIKE / format + repair scan</td><td>Reliable no-show forfeits at lock</td></tr>
+      <tr><td>2</td><td>Catch-up: no-show (and optionally replies) at later locks</td><td>Rules keep biting after play month</td></tr>
+      <tr><td>3</td><td>Admin early-end → chain Run month lock jobs</td><td>Fines/forfeits actually apply</td></tr>
+      <tr><td>4</td><td>Cup catch-up escalation policy</td><td>Bracket progression</td></tr>
+      <tr><td>5</td><td>Docs + optional ₿10m cap / vacant exempt</td><td>Fairness & clarity</td></tr>
+    </table>
+
+    <h2>Findings</h2>
+
+    <div class="finding">
+      <h3><span class="sev crit">CRITICAL</span> No-show skip check — broken format string</h3>
+      <p>Idempotency LIKE uses <code>format('sched_checkin_lock:%s:%', month, fixture_id)</code> — one <code>%s</code>, fixture_id unused, trailing <code>%</code> invalid/ambiguous. Note write correctly uses two <code>%s</code>. Risk: job errors or unreliable skip on re-run.</p>
+      <p class="ev">competition_enforce_scheduling_checkin_fines · match_scheduling_checkin_no_show_deferred.sql</p>
+      <ul>
+        <li>Fix to <code>format('…%s:%s%%', month, fixture_id)</code> (or equivalent).</li>
+        <li>Admin repair scan for leftover no-shows still scheduled.</li>
+      </ul>
+    </div>
+
+    <div class="finding">
+      <h3><span class="sev high">HIGH</span> Catch-up replies — 24h with no month-lock bite</h3>
+      <p>Docs say 24h replies in catch-up. Tracking/fines only apply while play month is open / for that month’s fixtures. After catch-up, overdue replies aren’t fined at later locks.</p>
+      <ul>
+        <li>Track + fine catch-up overdue at each active month lock, or document as honour-only.</li>
+      </ul>
+    </div>
+
+    <div class="finding">
+      <h3><span class="sev high">HIGH</span> Catch-up one-sided no-show never auto-forfeits</h3>
+      <p>Forfeit at lock only selects fixtures whose <code>gpsl_month</code> is the closed month. Miss on a catch-up kick-off can sit forever.</p>
+      <ul>
+        <li>At each lock, forfeit catch-up fixtures with <code>no_show_club</code> still set.</li>
+      </ul>
+    </div>
+
+    <div class="finding">
+      <h3><span class="sev high">HIGH</span> Cup brackets can stall in catch-up</h3>
+      <p>Same “no mass 3–0” as league — later rounds wait on winners. Ops risk for fixed-month cup rounds.</p>
+      <ul>
+        <li>Auto-forfeit cups after N catch-up weeks, or admin resolve tool + playbook.</li>
+      </ul>
+    </div>
+
+    <div class="finding">
+      <h3><span class="sev high">HIGH</span> Admin early end defers lock jobs</h3>
+      <p>Timeout fix returns <code>lock_jobs_deferred: true</code>. Fines wait for cron or “Run month lock jobs”.</p>
+      <ul>
+        <li>UI: auto-chain / require run after early end; alert if job keys missing.</li>
+      </ul>
+    </div>
+
+    <div class="finding">
+      <h3><span class="sev med">MEDIUM</span> Recurring ₿10m Match Management</h3>
+      <p>Documented; can stack every month while home never proposes (including catch-up). Away has no parallel duty until a proposal exists.</p>
+      <ul><li>Cap repeats, stop once catch-up, or Inbox “will repeat” warning.</li></ul>
+    </div>
+
+    <div class="finding">
+      <h3><span class="sev med">MEDIUM</span> Mutual override across month lock</h3>
+      <p>May not expire in lock jobs; kick-off may not re-validate catch-up window; can block catch-up reset.</p>
+      <ul><li>Expire in lock jobs; re-validate on apply; allow reset to cancel pending.</li></ul>
+    </div>
+
+    <div class="finding">
+      <h3><span class="sev med">MEDIUM</span> Owned vs vacant linger</h3>
+      <p>Vacants not fined (correct). Owned home still pressured to propose; match may wait for staff sim.</p>
+      <ul><li>Exempt arrangement fine vs vacant; auto-sim / queue at lock.</li></ul>
+    </div>
+
+    <div class="finding">
+      <h3><span class="sev med">MEDIUM</span> Early-end vs arrangement windows · job race</h3>
+      <p>Early lock shortens arrange time; concurrent tick+admin can double-run (notes usually save money).</p>
+      <ul><li>Align late-fee boundary; insert job key first / advisory lock.</li></ul>
+    </div>
+
+    <div class="finding">
+      <h3><span class="sev low">LOW</span> Docs slip · cup gpsl_month null</h3>
+      <p>Learning still says “league” for catch-up in one bullet. Cups without <code>gpsl_month</code> skip enforcement silently.</p>
+      <ul><li>Align copy; admin health check for null month cups.</li></ul>
+    </div>
+
+    <h2>Intentional (not bugs)</h2>
+    <table>
+      <tr><th>Design</th><th>Notes</th></tr>
+      <tr><td>No mass 3–0</td><td>Unplayed → catch-up</td></tr>
+      <tr><td>Reply fines at play-month lock</td><td>Deferred on purpose</td></tr>
+      <tr><td>Both miss check-in</td><td>No fine; new time</td></tr>
+      <tr><td>Internationals</td><td>Separate stack</td></tr>
+      <tr><td>Away no availability</td><td>Home can still propose</td></tr>
+      <tr><td>Cup forfeit → bracket</td><td>Works when forfeit runs</td></tr>
+    </table>
+  </div>
+</body>
+</html>
