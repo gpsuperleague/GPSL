@@ -141,6 +141,8 @@ async function loadOwnerList() {
     }
 
     if (archiveDropdown) {
+      // Already archived — use Unarchive page; keep this list actionable.
+      if (row.registryStatus === "archived") return;
       archiveOptions.push({
         email: row.email,
         ownerId: row.id,
