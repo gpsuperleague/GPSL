@@ -295,12 +295,17 @@ BEGIN
           AND c.owner_id IS NOT NULL
       )
   LOOP
+    -- Prefix must match the note written on forfeit: sched_checkin_lock:{month}:{fixture_id}|…
     IF EXISTS (
       SELECT 1
       FROM public.competition_fine_applied fa
       WHERE fa.fixture_id = v_row.fixture_id
         AND fa.tariff_code = 'match_agreed_no_show'
-        AND fa.note LIKE format('sched_checkin_lock:%s:%', p_closed_gpsl_month, v_row.fixture_id) || '%'
+        AND fa.note LIKE format(
+          'sched_checkin_lock:%s:%s%%',
+          p_closed_gpsl_month,
+          v_row.fixture_id
+        )
     ) THEN
       v_skipped := v_skipped + 1;
       CONTINUE;
