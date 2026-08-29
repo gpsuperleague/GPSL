@@ -914,21 +914,98 @@ function setWlActionStatus(msg, ok) {
   setStatus("wlActionStatus", msg, ok);
 }
 
+function formatWlTimeSince(iso, nowMs = Date.now()) {
+  if (!iso) return { text: "Never", minutes: Number.POSITIVE_INFINITY };
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return { text: "—", minutes: Number.POSITIVE_INFINITY };
+  let mins = Math.floor((nowMs - then) / 60000);
+  if (mins < 0) mins = 0;
+  const weeks = Math.floor(mins / (7 * 24 * 60));
+  const days = Math.floor((mins % (7 * 24 * 60)) / (24 * 60));
+  const hours = Math.floor((mins % (24 * 60)) / 60);
+  const minutes = mins % 60;
+  const parts = [];
+  if (weeks) parts.push(`${weeks}w`);
+  if (days) parts.push(`${days}d`);
+  if (hours) parts.push(`${hours}h`);
+  if (minutes || parts.length === 0) parts.push(`${minutes}m`);
+  return { text: parts.join(" "), minutes: mins };
+}
+
+function formatWlUkDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-GB", {
+    timeZone: "Europe/London",
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+async function fetchOwnerActivityById() {
+  const { data, error } = await supabase.rpc("admin_owner_last_logins");
+  const byId = new Map();
+  let previousLabel = "Prev month";
+  let currentLabel = "Current month";
+  if (error) {
+    return { byId, previousLabel, currentLabel, error };
+  }
+  const owners = Array.isArray(data?.owners) ? data.owners : Array.isArray(data) ? data : [];
+  previousLabel = data?.previous_gpsl_month_label || previousLabel;
+  currentLabel = data?.current_gpsl_month_label || currentLabel;
+  for (const row of owners) {
+    if (row?.owner_id) byId.set(row.owner_id, row);
+  }
+  return { byId, previousLabel, currentLabel, error: null };
+}
+
+function filterSeasonOwnerBoard(filterText) {
+  const wrap = document.getElementById("wlAdminTableWrap");
+  if (!wrap) return;
+  const q = String(filterText || "")
+    .trim()
+    .toLowerCase();
+  wrap.querySelectorAll("tr[data-owner-id]").forEach((tr) => {
+    if (!q) {
+      tr.classList.remove("wl-filter-hide");
+      return;
+    }
+    const hay = (tr.dataset.filterText || "").toLowerCase();
+    tr.classList.toggle("wl-filter-hide", !hay.includes(q));
+  });
+}
+
 async function loadWaitingListAdmin() {
   const tableWrap = document.getElementById("wlAdminTableWrap");
   if (!tableWrap) return;
 
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
-  const { data, error } = await supabase.rpc("waiting_list_admin");
-  if (error) {
-    tableWrap.innerHTML = `<p class="note" style="color:#f88">❌ ${error.message} — run waiting_list_priority_board_20260829.sql</p>`;
+  const [boardRes, activityRes] = await Promise.all([
+    supabase.rpc("waiting_list_admin"),
+    fetchOwnerActivityById(),
+  ]);
+
+  if (boardRes.error) {
+    tableWrap.innerHTML = `<p class="note" style="color:#f88">❌ ${boardRes.error.message} — run waiting_list_priority_board_20260829.sql</p>`;
     return;
   }
+
+  const data = boardRes.data;
+  const activityById = activityRes.byId;
+  const prevLabel = activityRes.previousLabel || "Prev month";
+  const curLabel = activityRes.currentLabel || "Current month";
 
   const priority = (data?.priority || data?.waiting || []).map((r) => ({
     ...r,
     has_club: !!r.has_club || r.list_kind === "club_owner",
     invited_auction: false,
+    activity: activityById.get(r.owner_id) || null,
   }));
   const invited = (data?.invited_to_auction || []).map((r) => ({
     ...r,
@@ -936,12 +1013,13 @@ async function loadWaitingListAdmin() {
     tier: "—",
     invited_auction: true,
     has_club: false,
+    activity: activityById.get(r.owner_id) || null,
   }));
   const rows = [...priority, ...invited];
 
   if (!rows.length) {
     tableWrap.innerHTML =
-      "<p class='note'>No one on the priority board or invited to club auction.</p>";
+      "<p class='note'>No one on the season owner board or invited to club auction.</p>";
     return;
   }
 
@@ -954,22 +1032,39 @@ async function loadWaitingListAdmin() {
   const sortNote = data?.priority_uses_admin_sort
     ? "Manual priority order"
     : "Join-date order (drag to customise)";
+  const activityNote = activityRes.error
+    ? `Activity unavailable: ${activityRes.error.message}`
+    : `${prevLabel} / ${curLabel} login counts`;
 
+  const colSpan = 14;
   let html =
-    "<table class='admin-table' style='width:100%;font-size:13px;border-collapse:collapse'>" +
-    "<thead><tr>" +
-    "<th style='width:2em'></th><th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>" +
-    `<th title='Invite to / remove from club draft auction' style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
-    `<th title='Confirmed for test season' style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
-    `<th title='Confirmed for live season' style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
-    "<th></th></tr></thead><tbody id='wlPriorityTbody'>";
+    `<table class="admin-table wl-board-table">` +
+    `<thead>` +
+    `<tr class="wl-group-row">` +
+    `<th colspan="6" class="wl-group-owner">Owner</th>` +
+    `<th colspan="3" class="wl-group-season">Season</th>` +
+    `<th colspan="4" class="wl-group-activity">Activity</th>` +
+    `<th colspan="1" class="wl-group-actions"></th>` +
+    `</tr>` +
+    `<tr>` +
+    `<th class="wl-col-owner" style="width:2em"></th>` +
+    `<th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>` +
+    `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
+    `<th title="Confirmed for test season" style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
+    `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
+    `<th class="wl-col-activity">Last login (UK)</th>` +
+    `<th class="num">Since</th>` +
+    `<th class="num" title="${escapeWl(prevLabel)}">${escapeWl(prevLabel)}</th>` +
+    `<th class="num" title="${escapeWl(curLabel)}">${escapeWl(curLabel)}</th>` +
+    `<th class="wl-col-actions"></th>` +
+    `</tr></thead><tbody id="wlPriorityTbody">`;
 
   if (boardCount) {
     html +=
-      `<tr class="wl-section"><td colspan="10" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333">` +
-      `Priority board (${boardCount}: ${waitingCount} waiting` +
+      `<tr class="wl-section"><td colspan="${colSpan}" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333">` +
+      `Priority (${boardCount}: ${waitingCount} waiting` +
       (ownerCount ? `, ${ownerCount} current owners` : "") +
-      `) — ${escapeWl(sortNote)}. Drag to reorder.</td></tr>`;
+      `) — ${escapeWl(sortNote)}. ${escapeWl(activityNote)}. Drag to reorder.</td></tr>`;
   }
 
   for (const row of priority) {
@@ -978,7 +1073,7 @@ async function loadWaitingListAdmin() {
 
   if (auctionTotal) {
     html +=
-      `<tr class="wl-section"><td colspan="10" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333;border-top:1px solid #333">` +
+      `<tr class="wl-section"><td colspan="${colSpan}" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333;border-top:1px solid #333">` +
       `Invited to club auction (${auctionTotal}) — untick Auction to return to waiting list</td></tr>`;
     for (const row of invited) {
       html += renderWaitingListAdminRow(row, { invited: true });
@@ -987,6 +1082,9 @@ async function loadWaitingListAdmin() {
 
   html += "</tbody></table>";
   tableWrap.innerHTML = html;
+
+  const filterEl = document.getElementById("wlBoardFilter");
+  if (filterEl?.value) filterSeasonOwnerBoard(filterEl.value);
 
   bindWaitingListPriorityDrag(tableWrap);
   tableWrap.querySelectorAll(".wl-remove").forEach((btn) => {
@@ -1020,6 +1118,24 @@ function renderWaitingListAdminRow(row, { invited }) {
   if (hasClub && row.club_short_name) {
     status = `owner · ${row.club_short_name}`;
   }
+  const act = row.activity || {};
+  const lastAt = act.last_sign_in_at || null;
+  const since = formatWlTimeSince(lastAt);
+  const sinceClass = !lastAt ? "never" : since.minutes >= 7 * 24 * 60 ? "stale" : "";
+  const prevN = Number(act.logins_previous_month) || 0;
+  const curN = Number(act.logins_current_month) || 0;
+  const filterText = [
+    row.owner_tag,
+    email,
+    status,
+    row.tier,
+    row.club_short_name,
+    act.club_short_name,
+    act.club_name,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   const rowClass = [
     invited ? "" : "wl-priority-row",
     hasClub ? "wl-club-owner" : "",
@@ -1028,11 +1144,11 @@ function renderWaitingListAdminRow(row, { invited }) {
     .join(" ");
   const rowStyle = invited ? ' style="background:#1a1814"' : "";
   const dragCell = invited
-    ? "<td></td>"
-    : `<td class="wl-drag-cell" title="Drag to reorder"><span class="wl-drag-handle" aria-hidden="true">⠿</span></td>`;
+    ? `<td class="wl-col-owner"></td>`
+    : `<td class="wl-col-owner wl-drag-cell" title="Drag to reorder"><span class="wl-drag-handle" aria-hidden="true">⠿</span></td>`;
   const auctionCell = hasClub
-    ? `<td style="text-align:center;color:#555" title="Already owns a club">—</td>`
-    : `<td style="text-align:center">
+    ? `<td class="wl-col-season" style="text-align:center;color:#555" title="Already owns a club">—</td>`
+    : `<td class="wl-col-season" style="text-align:center">
       <input type="checkbox" class="wl-auction-invite" data-id="${row.owner_id}"
         title="${invited ? "Remove from club auction (back to waiting list)" : "Invite to club auction"}"
         ${invited ? "checked" : ""}>
@@ -1041,7 +1157,7 @@ function renderWaitingListAdminRow(row, { invited }) {
     ? ""
     : `<button type="button" class="button secondary wl-remove" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}">Remove</button>`;
 
-  return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}">
+  return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" data-filter-text="${escapeWl(filterText)}">
     ${dragCell}
     <td class="wl-pos">${pos ?? "—"}</td>
     <td>${escapeWl(row.owner_tag)}</td>
@@ -1057,7 +1173,11 @@ function renderWaitingListAdminRow(row, { invited }) {
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"
         title="Confirmed live season" ${liveOn ? "checked" : ""}>
     </td>
-    <td style="white-space:nowrap">${removeBtn}</td>
+    <td class="wl-col-activity">${escapeWl(formatWlUkDateTime(lastAt))}</td>
+    <td class="num ${sinceClass}">${escapeWl(since.text)}</td>
+    <td class="num">${prevN}</td>
+    <td class="num">${curN}</td>
+    <td class="wl-col-actions" style="white-space:nowrap">${removeBtn}</td>
   </tr>`;
 }
 

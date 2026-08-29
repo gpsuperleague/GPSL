@@ -48,8 +48,7 @@ export const ADMIN_MAIN_NAV = [
     entries: [
       group("Waiting list", [
         L("Staff alerts", "admin_staff_alerts.html"),
-        L("Manage waiting list", "admin_owners_waiting_list.html"),
-        L("Owner Last Login", "admin_owners_waiting_list.html", "owner-last-login"),
+        L("Season owner board", "admin_owners_waiting_list.html"),
         L("Discord join order", "admin_owners_discord.html"),
       ]),
       group("Mods", [L("Manage mods", "admin_mods.html")]),
