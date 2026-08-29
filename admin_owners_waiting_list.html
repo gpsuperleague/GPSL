@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>html,body{background:#111;color:#ddd;margin:0}</style>
-  <title>Owner waiting list — GPSL Admin</title>
+  <title>Season owner board — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="admin.css">
@@ -15,7 +15,7 @@
     tr.wl-priority-row { cursor: grab; touch-action: none; user-select: none; }
     tr.wl-priority-row.wl-dragging { opacity: 0.45; cursor: grabbing; }
     tr.wl-priority-row.wl-dragging td { background: #1c1c1c; }
-    tr.wl-club-owner { opacity: 0.5; color: #888; }
+    tr.wl-club-owner { opacity: 0.55; color: #888; }
     tr.wl-club-owner td { border-color: #2a2a2a !important; }
     .wl-drag-handle {
       display: inline-block;
@@ -27,41 +27,63 @@
       letter-spacing: -1px;
     }
     tr.wl-club-owner .wl-drag-handle { color: #555; }
-    .login-toolbar {
+    .wl-board-toolbar {
       display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
       margin-bottom: 12px;
     }
-    .login-toolbar input[type="search"] {
+    .wl-board-toolbar input[type="search"] {
       padding: 8px 10px; min-width: 220px;
       background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
     }
-    .login-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .login-table th,
-    .login-table td {
-      border-bottom: 1px solid #333; padding: 8px 6px; text-align: left; vertical-align: top;
+    .wl-board-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .wl-board-table th,
+    .wl-board-table td {
+      border-bottom: 1px solid #333; padding: 7px 6px; text-align: left; vertical-align: middle;
     }
-    .login-table th { color: #ff9900; font-weight: 600; white-space: nowrap; }
-    .login-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    .login-table .muted { color: #888; font-size: 12px; }
-    .login-table .never { color: #f88; }
-    .login-table .stale { color: #fc6; }
-    #loginStatus.status-line.error { color: #f88; }
+    .wl-board-table th { color: #ff9900; font-weight: 600; white-space: nowrap; }
+    .wl-board-table .wl-group-row th {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #bbb;
+      background: #181818;
+      border-bottom: 1px solid #444;
+      padding: 6px 8px;
+    }
+    .wl-board-table .wl-group-owner { border-left: 2px solid #555; }
+    .wl-board-table .wl-group-season { border-left: 2px solid #886622; color: #e0b84a; }
+    .wl-board-table .wl-group-activity { border-left: 2px solid #3a6a8a; color: #7eb8d8; }
+    .wl-board-table .wl-group-actions { border-left: 2px solid #444; }
+    .wl-board-table th.wl-col-owner,
+    .wl-board-table td.wl-col-owner { border-left: 2px solid #555; }
+    .wl-board-table th.wl-col-season,
+    .wl-board-table td.wl-col-season { border-left: 2px solid #886622; }
+    .wl-board-table th.wl-col-activity,
+    .wl-board-table td.wl-col-activity { border-left: 2px solid #3a6a8a; }
+    .wl-board-table th.wl-col-actions,
+    .wl-board-table td.wl-col-actions { border-left: 2px solid #444; }
+    .wl-board-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .wl-board-table .muted { color: #888; font-size: 12px; }
+    .wl-board-table .never { color: #f88; }
+    .wl-board-table .stale { color: #fc6; }
+    .wl-board-table tr.wl-filter-hide { display: none; }
   </style>
 </head>
 <body class="admin-page">
   <div id="nav"></div>
-  <h1 class="admin-title">Owner waiting list</h1>
+  <h1 class="admin-title">Season owner board</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <div class="card" id="ow-waiting-list">
-        <h2>Season priority board</h2>
+      <div class="card" id="season-owner-board">
+        <h2>Season owner board</h2>
         <p class="note">
-          Drag rows to set priority for season 1. Waiting-list members and <b>current club owners</b> (greyed)
-          share one board so you can place everyone involved. Default order is join date until you drag;
-          <b>Restore join-date order</b> clears manual ranking. Tick <b>Auction</b> only on waiters to invite
-          to the club draft. <b>Test</b> / <b>Live</b> ticks stay on the owner until cleared.
+          One place to rank people for season 1, confirm Test/Live, invite to auction, and see how active they are.
+          Drag to set priority (current club owners are greyed). Default order is join date until you drag;
+          <b>Restore join-date order</b> clears manual ranking. Activity uses site visits (including remembered sessions), at most one count per hour.
         </p>
-        <div class="row" style="margin-bottom:12px;">
+        <div class="wl-board-toolbar">
+          <input type="search" id="wlBoardFilter" placeholder="Filter tag / email / club / status…">
           <button type="button" id="wlRefreshBtn" class="button secondary">Refresh</button>
           <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
         </div>
@@ -81,41 +103,8 @@
         </div>
         <div id="wlActionStatus" class="status-line"></div>
       </div>
-
-      <div class="card" id="owner-last-login" style="margin-top:20px;">
-        <h2>Owner last login</h2>
-        <p class="note">
-          When other owners last signed in, and how often during the <b>previous</b> and <b>current</b>
-          GPSL months. Useful when arranging fixtures or checking who is active. Most recent at the top.
-          No emails are shown.
-        </p>
-        <div class="login-toolbar">
-          <input type="search" id="loginSearch" placeholder="Filter tag / club / status…">
-          <button type="button" id="loginRefreshBtn" class="button secondary">Refresh</button>
-        </div>
-        <div id="loginStatus" class="status-line"></div>
-        <div style="overflow-x:auto;">
-          <table class="login-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Owner</th>
-                <th>Club</th>
-                <th>Status</th>
-                <th>Last login (UK)</th>
-                <th class="num">Time since</th>
-                <th class="num" id="prevMonthCol">Prev month logins</th>
-                <th class="num" id="curMonthCol">Current month logins</th>
-              </tr>
-            </thead>
-            <tbody id="loginTableBody">
-              <tr><td colspan="8">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js?v=20260829-wl-last-login"></script>
+  <script type="module" src="admin_owners.js?v=20260829-season-owner-board"></script>
 </body>
 </html>
