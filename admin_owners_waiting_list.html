@@ -27,6 +27,25 @@
       letter-spacing: -1px;
     }
     tr.wl-club-owner .wl-drag-handle { color: #555; }
+    .login-toolbar {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+      margin-bottom: 12px;
+    }
+    .login-toolbar input[type="search"] {
+      padding: 8px 10px; min-width: 220px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .login-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .login-table th,
+    .login-table td {
+      border-bottom: 1px solid #333; padding: 8px 6px; text-align: left; vertical-align: top;
+    }
+    .login-table th { color: #ff9900; font-weight: 600; white-space: nowrap; }
+    .login-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .login-table .muted { color: #888; font-size: 12px; }
+    .login-table .never { color: #f88; }
+    .login-table .stale { color: #fc6; }
+    #loginStatus.status-line.error { color: #f88; }
   </style>
 </head>
 <body class="admin-page">
@@ -62,8 +81,41 @@
         </div>
         <div id="wlActionStatus" class="status-line"></div>
       </div>
+
+      <div class="card" id="owner-last-login" style="margin-top:20px;">
+        <h2>Owner last login</h2>
+        <p class="note">
+          When other owners last signed in, and how often during the <b>previous</b> and <b>current</b>
+          GPSL months. Useful when arranging fixtures or checking who is active. Most recent at the top.
+          No emails are shown.
+        </p>
+        <div class="login-toolbar">
+          <input type="search" id="loginSearch" placeholder="Filter tag / club / status…">
+          <button type="button" id="loginRefreshBtn" class="button secondary">Refresh</button>
+        </div>
+        <div id="loginStatus" class="status-line"></div>
+        <div style="overflow-x:auto;">
+          <table class="login-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Owner</th>
+                <th>Club</th>
+                <th>Status</th>
+                <th>Last login (UK)</th>
+                <th class="num">Time since</th>
+                <th class="num" id="prevMonthCol">Prev month logins</th>
+                <th class="num" id="curMonthCol">Current month logins</th>
+              </tr>
+            </thead>
+            <tbody id="loginTableBody">
+              <tr><td colspan="8">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js?v=20260829-wl-priority-pointer"></script>
+  <script type="module" src="admin_owners.js?v=20260829-wl-last-login"></script>
 </body>
 </html>

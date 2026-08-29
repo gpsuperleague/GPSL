@@ -31,6 +31,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (needsAuctionConfig) await loadClubAuctionConfig();
   if (needsOwnerList) await loadOwnerList();
 
+  if (document.getElementById("loginTableBody")) {
+    const { initOwnerLastLoginPanel } = await import(
+      `./owner_last_login.js?v=20260829-wl-last-login`
+    );
+    await initOwnerLastLoginPanel();
+    if (location.hash === "#owner-last-login") {
+      document.getElementById("owner-last-login")?.scrollIntoView({ behavior: "smooth" });
+    }
+  }
+
   const bind = (id, fn) => {
     const el = document.getElementById(id);
     if (el) el.onclick = fn;

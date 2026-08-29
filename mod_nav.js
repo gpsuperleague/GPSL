@@ -29,9 +29,9 @@ export const MOD_NAV_SECTION = {
     H("Owners"),
     L("Staff alerts", "admin_staff_alerts.html"),
     L("Waiting list", "admin_owners_waiting_list.html"),
+    L("Owner Last Login", "admin_owners_waiting_list.html", "owner-last-login"),
     L("Discord join order", "admin_owners_discord.html"),
     L("Set Owner Tag", "admin_owners_tag.html"),
-    L("Owner Last Login", "owner_last_login.html"),
     L("Owner holidays", "admin_owner_holidays.html"),
     L("Remove Natter", "admin_natter.html"),
 

@@ -13,6 +13,7 @@ let monthMeta = {
   previousLabel: "Previous month",
   currentLabel: "Current month",
 };
+let bound = false;
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -209,6 +210,22 @@ async function refresh() {
   renderTable(document.getElementById("loginSearch")?.value);
 }
 
+/** Bind toolbar + load table. Safe to call once from admin waiting-list or standalone page. */
+export async function initOwnerLastLoginPanel() {
+  if (!document.getElementById("loginTableBody")) return false;
+  if (!bound) {
+    bound = true;
+    document.getElementById("loginRefreshBtn")?.addEventListener("click", () => {
+      void refresh();
+    });
+    document.getElementById("loginSearch")?.addEventListener("input", (e) => {
+      renderTable(e.target.value);
+    });
+  }
+  await refresh();
+  return true;
+}
+
 async function main() {
   const user = await getAuthUser();
   if (!user) {
@@ -217,18 +234,13 @@ async function main() {
   }
 
   await initGlobal();
-
-  document.getElementById("loginRefreshBtn")?.addEventListener("click", () => {
-    void refresh();
-  });
-  document.getElementById("loginSearch")?.addEventListener("input", (e) => {
-    renderTable(e.target.value);
-  });
-
-  await refresh();
+  await initOwnerLastLoginPanel();
 }
 
-main().catch((err) => {
-  console.error(err);
-  setStatus("loginStatus", err?.message || String(err), false);
-});
+const isStandalonePage = /\bowner_last_login\.html\b/i.test(location.pathname);
+if (isStandalonePage) {
+  main().catch((err) => {
+    console.error(err);
+    setStatus("loginStatus", err?.message || String(err), false);
+  });
+}

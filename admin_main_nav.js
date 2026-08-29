@@ -49,6 +49,7 @@ export const ADMIN_MAIN_NAV = [
       group("Waiting list", [
         L("Staff alerts", "admin_staff_alerts.html"),
         L("Manage waiting list", "admin_owners_waiting_list.html"),
+        L("Owner Last Login", "admin_owners_waiting_list.html", "owner-last-login"),
         L("Discord join order", "admin_owners_discord.html"),
       ]),
       group("Mods", [L("Manage mods", "admin_mods.html")]),
@@ -71,7 +72,6 @@ export const ADMIN_MAIN_NAV = [
         L("Unarchive Owner (return to GPSL)", "admin_owners_unarchive.html"),
       ]),
       group("Login & email", [
-        L("Owner Last Login", "owner_last_login.html"),
         L("Set Owner Tag", "admin_owners_tag.html"),
         L("Update Email", "admin_owners_email.html"),
         L("Set Password", "admin_owners_password.html"),
