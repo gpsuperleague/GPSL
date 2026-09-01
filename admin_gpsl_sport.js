@@ -11,6 +11,8 @@ const {
 primeAdminPageChrome();
 
 const GPSL_MONTHS = [
+  "june",
+  "july",
   "august",
   "september",
   "october",
