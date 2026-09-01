@@ -1260,11 +1260,13 @@ function renderWaitingListAdminRow(row, { invited }) {
   const liveOn = !!row.confirmed_live_season;
   const hasClub = !!row.has_club && !invited;
   const pos = invited ? "—" : row.position;
-  let status = invited ? "awaiting_club_auction" : row.status || "";
-  if (hasClub && row.club_short_name) {
-    status = `owner · ${row.club_short_name}`;
-  }
   const act = row.activity || {};
+  const clubFullName =
+    row.club_name || act.club_name || row.club_short_name || act.club_short_name || "";
+  let status = invited ? "awaiting_club_auction" : row.status || "";
+  if (hasClub && clubFullName) {
+    status = `owner · ${clubFullName}`;
+  }
   const lastAt = act.last_sign_in_at || null;
   const since = formatWlTimeSince(lastAt);
   const sinceClass = !lastAt ? "never" : since.minutes >= 7 * 24 * 60 ? "stale" : "";
@@ -1287,6 +1289,7 @@ function renderWaitingListAdminRow(row, { invited }) {
     status,
     row.tier,
     row.club_short_name,
+    clubFullName,
     act.club_short_name,
     act.club_name,
   ]
