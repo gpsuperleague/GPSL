@@ -6,6 +6,7 @@ import {
   saveOnboardingWeeklyAvailability,
   setOnboardingTimezone,
 } from "./match_scheduling.js";
+import { renderOwnerSeasonStatus } from "./owner_season_status.js";
 
 let clubAssignmentPollTimer = null;
 let registrySelf = null;
@@ -52,11 +53,16 @@ function updateAuctionRoomGate() {
   }
 }
 
+function paintSeasonStatus(self) {
+  renderOwnerSeasonStatus(document.getElementById("ownerSeasonStatus"), self);
+}
+
 async function refreshRegistrySelf() {
   const { data, error } = await supabase.rpc("owner_registry_get_self");
   if (!error && data) {
     registrySelf = data;
     updateAuctionRoomGate();
+    paintSeasonStatus(data);
   }
   return { data, error };
 }
@@ -151,6 +157,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   registrySelf = self;
+  paintSeasonStatus(self);
 
   if (self?.has_club) {
     window.location = "dashboard.html";
