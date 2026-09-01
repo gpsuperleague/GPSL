@@ -21,15 +21,27 @@
     <div class="admin-main" id="adminMain">
       <div class="card" id="ow-unarchive">
         <h2>Unarchive owner</h2>
-        <p class="note">Moves an archived owner onto the waiting list as a returning member (unarchive).</p>
+        <p class="note">
+          Moves an archived owner onto the waiting list as a returning member.
+          Search by Discord tag, email, or last club.
+        </p>
         <div class="row">
-          <div><input id="unarchiveOwnerEmail" placeholder="Owner email"></div>
+          <div>
+            <label for="unarchiveOwnerFilter">Search tag / email</label>
+            <input id="unarchiveOwnerFilter" type="search" placeholder="Filter by Discord tag, email, club…" autocomplete="off">
+          </div>
+          <div>
+            <label for="unarchiveOwnerSelect">Archived owner</label>
+            <select id="unarchiveOwnerSelect">
+              <option value="">Loading archived owners…</option>
+            </select>
+          </div>
         </div>
         <button id="unarchiveOwnerBtn" class="button">Unarchive</button>
         <div id="unarchiveOwnerStatus" class="status-line"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js"></script>
+  <script type="module" src="admin_owners.js?v=20260901-unarchive-select"></script>
 </body>
 </html>

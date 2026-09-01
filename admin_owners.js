@@ -24,7 +24,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const needsOwnerList =
     !!document.getElementById("updateOwnerSelect") ||
     !!document.getElementById("tagOwnerSelect") ||
-    !!document.getElementById("archiveOwnerSelect");
+    !!document.getElementById("archiveOwnerSelect") ||
+    !!document.getElementById("unarchiveOwnerSelect");
   const needsWaitingList = !!document.getElementById("wlAdminTableWrap");
   const needsClubOwnerRemove = !!document.getElementById("clubOwnersTableWrap");
 
@@ -59,6 +60,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("archiveOwnerFilter")?.addEventListener("input", (e) => {
     filterArchiveOwnerSelect(e.target.value);
   });
+  document.getElementById("unarchiveOwnerFilter")?.addEventListener("input", (e) => {
+    filterUnarchiveOwnerSelect(e.target.value);
+  });
 
   document.getElementById("wlRefreshBtn")?.addEventListener("click", loadWaitingListAdmin);
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
@@ -86,6 +90,7 @@ async function loadOwnerList() {
   const dropdown = document.getElementById("updateOwnerSelect");
   const tagDropdown = document.getElementById("tagOwnerSelect");
   const archiveDropdown = document.getElementById("archiveOwnerSelect");
+  const unarchiveDropdown = document.getElementById("unarchiveOwnerSelect");
 
   const owners = await fetchAdminOwnerRows();
   if (!owners.length) {
@@ -93,6 +98,7 @@ async function loadOwnerList() {
     if (dropdown) dropdown.innerHTML = errHtml;
     if (tagDropdown) tagDropdown.innerHTML = errHtml;
     if (archiveDropdown) archiveDropdown.innerHTML = errHtml;
+    if (unarchiveDropdown) unarchiveDropdown.innerHTML = errHtml;
     return;
   }
 
@@ -101,8 +107,12 @@ async function loadOwnerList() {
   if (archiveDropdown) {
     archiveDropdown.innerHTML = `<option value="">Select owner…</option>`;
   }
+  if (unarchiveDropdown) {
+    unarchiveDropdown.innerHTML = `<option value="">Select archived owner…</option>`;
+  }
 
   const archiveOptions = [];
+  const unarchiveOptions = [];
 
   const statusLabel = (row) => {
     if (row.clubShortName) return row.clubShortName;
@@ -140,16 +150,19 @@ async function loadOwnerList() {
       tagDropdown.appendChild(tagOption);
     }
 
-    if (archiveDropdown) {
-      // Already archived — use Unarchive page; keep this list actionable.
-      if (row.registryStatus === "archived") return;
-      archiveOptions.push({
-        email: row.email,
-        ownerId: row.id,
-        label: formatTagOptionLabel(shortName, row.email, currentTag),
-        tag: currentTag,
-        shortName,
-      });
+    const entry = {
+      email: row.email,
+      ownerId: row.id,
+      label: formatTagOptionLabel(shortName, row.email, currentTag),
+      tag: currentTag,
+      shortName,
+    };
+
+    if (archiveDropdown && row.registryStatus !== "archived") {
+      archiveOptions.push(entry);
+    }
+    if (unarchiveDropdown && row.registryStatus === "archived") {
+      unarchiveOptions.push(entry);
     }
   });
 
@@ -157,19 +170,23 @@ async function loadOwnerList() {
     window.__archiveOwnerOptionsCache = archiveOptions;
     filterArchiveOwnerSelect(document.getElementById("archiveOwnerFilter")?.value || "");
   }
+  if (unarchiveDropdown) {
+    window.__unarchiveOwnerOptionsCache = unarchiveOptions;
+    filterUnarchiveOwnerSelect(document.getElementById("unarchiveOwnerFilter")?.value || "");
+  }
 
   await syncOwnerTagInputFromSelect();
 }
 
-function filterArchiveOwnerSelect(filterText) {
-  const archiveDropdown = document.getElementById("archiveOwnerSelect");
-  if (!archiveDropdown) return;
+function filterOwnerSelectDropdown(dropdownId, cacheKey, filterText, emptyLabel) {
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return;
 
-  const cache = window.__archiveOwnerOptionsCache || [];
+  const cache = window[cacheKey] || [];
   const q = String(filterText || "")
     .trim()
     .toLowerCase();
-  const prev = archiveDropdown.value;
+  const prev = dropdown.value;
 
   const matches = !q
     ? cache
@@ -180,27 +197,45 @@ function filterArchiveOwnerSelect(filterText) {
         return hay.includes(q);
       });
 
-  archiveDropdown.innerHTML = "";
+  dropdown.innerHTML = "";
   const placeholder = document.createElement("option");
   placeholder.value = "";
   placeholder.textContent = matches.length
     ? q
-      ? `Select owner… (${matches.length} match${matches.length === 1 ? "" : "es"})`
-      : "Select owner…"
+      ? `${emptyLabel} (${matches.length} match${matches.length === 1 ? "" : "es"})`
+      : emptyLabel
     : "No matching owners";
-  archiveDropdown.appendChild(placeholder);
+  dropdown.appendChild(placeholder);
 
   for (const row of matches) {
     const opt = document.createElement("option");
     opt.value = row.email;
     opt.dataset.ownerId = row.ownerId;
     opt.textContent = row.label;
-    archiveDropdown.appendChild(opt);
+    dropdown.appendChild(opt);
   }
 
   if (prev && matches.some((r) => r.email === prev)) {
-    archiveDropdown.value = prev;
+    dropdown.value = prev;
   }
+}
+
+function filterArchiveOwnerSelect(filterText) {
+  filterOwnerSelectDropdown(
+    "archiveOwnerSelect",
+    "__archiveOwnerOptionsCache",
+    filterText,
+    "Select owner…"
+  );
+}
+
+function filterUnarchiveOwnerSelect(filterText) {
+  filterOwnerSelectDropdown(
+    "unarchiveOwnerSelect",
+    "__unarchiveOwnerOptionsCache",
+    filterText,
+    "Select archived owner…"
+  );
 }
 
 async function fetchAdminOwnerRows() {
@@ -669,9 +704,17 @@ async function archiveOwner() {
 }
 
 async function unarchiveOwner() {
-  const email = document.getElementById("unarchiveOwnerEmail")?.value?.trim();
-  if (!email) {
-    setStatus("unarchiveOwnerStatus", "Enter owner email.", false);
+  const select = document.getElementById("unarchiveOwnerSelect");
+  const email =
+    select?.value?.trim() ||
+    document.getElementById("unarchiveOwnerEmail")?.value?.trim() ||
+    "";
+  const label = select?.selectedOptions?.[0]?.textContent?.trim() || email;
+  if (!email || email.includes("Error")) {
+    setStatus("unarchiveOwnerStatus", "Select an archived owner.", false);
+    return;
+  }
+  if (!confirm(`Unarchive ${label}?\n\nThey will return to the waiting list as a returning member.`)) {
     return;
   }
   setStatus("unarchiveOwnerStatus", "Unarchiving…");
@@ -684,9 +727,12 @@ async function unarchiveOwner() {
   }
   setStatus(
     "unarchiveOwnerStatus",
-    `✅ ${data?.email || email} unarchived — link a club when ready`,
+    `✅ ${data?.owner_tag || data?.email || email} unarchived — on waiting list`,
     true
   );
+  if (document.getElementById("unarchiveOwnerFilter")) {
+    document.getElementById("unarchiveOwnerFilter").value = "";
+  }
   await loadOwnerList();
 }
 
