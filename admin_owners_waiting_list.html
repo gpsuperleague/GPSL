@@ -21,8 +21,19 @@
     tr.wl-club-owner { opacity: 0.55; color: #888; }
     tr.wl-club-owner td { border-color: #2a2a2a !important; }
     tr.wl-club-owner .wl-col-actions { opacity: 1; }
-    tr.wl-club-owner .wl-col-actions .button { opacity: 0.95; color: #ddd; }
-    .wl-col-actions .button { font-size: 12px; padding: 4px 8px; margin: 0 2px 2px 0; }
+    .wl-col-actions .wl-row-action {
+      max-width: 11.5em;
+      padding: 5px 6px;
+      font-size: 12px;
+      background: #111;
+      border: 1px solid #555;
+      color: #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    tr.wl-club-owner .wl-col-actions .wl-row-action { color: #ddd; border-color: #666; }
+    .wl-row-action option[value=""] { color: #888; }
+    .wl-archived-table .wl-row-action { max-width: 12em; }
     .wl-drag-handle {
       display: inline-block;
       width: 1.25em;
@@ -80,11 +91,8 @@
       border-bottom: 1px solid #333; padding: 7px 6px; text-align: left; vertical-align: middle;
     }
     .wl-archived-table th { color: #c88; font-weight: 600; }
-    .wl-archived-table .button.danger {
-      background: #622; color: #fcc; border: 1px solid #933;
-      font-size: 12px; padding: 4px 8px;
-    }
-    .wl-archived-table .button.danger:hover { background: #833; }
+    .wl-archived-table th.wl-col-actions,
+    .wl-archived-table td.wl-col-actions { border-left: 2px solid #444; }
   </style>
 </head>
 <body class="admin-page">
@@ -96,8 +104,8 @@
         <h2>Season owner board</h2>
         <p class="note">
           One place to rank people for season 1, confirm Test/Live, invite to auction, and see how active they are.
-          Drag to set priority (current club owners are greyed). On owner rows use
-          <b>Remove club</b> (clear only) or <b>→ Waiting</b> (clear + waiting list).
+          Drag to set priority (current club owners are greyed). Use the
+          <b>Actions</b> dropdown on each row (Remove club / → Waiting / Remove / Delete from GPSL).
           Default order is join date until you drag;
           <b>Restore join-date order</b> clears manual ranking. Activity uses site visits (including remembered sessions), at most one count per hour.
           <b>Discord join</b> only exists for self-serve Discord joins; others show account-created marked <b>· acct</b>, or —.
@@ -111,8 +119,8 @@
         <div id="wlArchivedSection" style="margin-top:28px;" hidden>
           <h3 style="margin:0 0 6px;font-size:15px;color:#c88;">Archived owners</h3>
           <p class="note" style="margin-bottom:10px;">
-            Soft-removed from GPSL. <b>Delete from GPSL</b> permanently removes their login
-            (Auth user + registry). Season history rows may remain. Admin only.
+            Soft-removed from GPSL. Use <b>Actions → Delete from GPSL</b> to permanently
+            remove their login (Auth user + registry). Season history rows may remain. Admin only.
           </p>
           <div class="wl-board-toolbar" style="margin-bottom:8px;">
             <input type="search" id="wlArchivedFilter" placeholder="Filter archived tag / email…">
@@ -136,6 +144,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js?v=20260901-wl-archived-delete"></script>
+  <script type="module" src="admin_owners.js?v=20260901-wl-actions-dd"></script>
 </body>
 </html>
