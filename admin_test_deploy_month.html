@@ -79,7 +79,8 @@
             <h3>What it does</h3>
             <ul>
               <li>Plays all <b>scheduled</b> league + cup fixtures for one GPSL month</li>
-              <li>Random scores, auto squad stats (goals match score), POTM per club</li>
+              <li>Also auto-plays <b>internationals</b> tagged with that month (June/July WC etc.)</li>
+              <li>Random / hash scores; club path auto squad stats + POTM</li>
               <li>Skips inbox submit / confirm</li>
             </ul>
           </div>
@@ -88,7 +89,7 @@
             <ul>
               <li>League first, then cups by round</li>
               <li>Cup draws → ET or penalties</li>
-              <li>Includes <b>Playoffs</b> (after May is locked and ties exist)</li>
+              <li>Includes <b>June &amp; July</b> (internationals) and <b>Playoffs</b></li>
             </ul>
           </div>
           <div class="deploy-intro-block">
@@ -137,7 +138,8 @@
         <h2>2. Deploy results</h2>
         <p class="note">
           Random scores 0–4 per team (league). Cups: random 90-min score; draws resolved by ET or pens.
-          Clears any pending result submissions for those fixtures.
+          Internationals: deterministic scores for that GPSL month (knockouts forced to a winner).
+          Clears any pending result submissions for club fixtures.
         </p>
         <p class="note">Type exactly: <code id="phraseHint">DEPLOY TEST MONTH</code></p>
         <input type="text" id="confirmInput" placeholder="Type confirmation phrase" autocomplete="off">
@@ -149,6 +151,7 @@
       <div class="card">
         <h2>SQL patches</h2>
         <ul class="note" style="margin:0;padding-left:1.2em;line-height:1.5;">
+          <li>Internationals by month: <code>admin_testing_deploy_month_internationals_20260901.sql</code></li>
           <li>Base tools: <code>admin_testing_tools.sql</code></li>
           <li>Deploy 500 / timeout: <code>fix_list_expiring_and_deploy_month_500.sql</code> then <code>SELECT public.admin_diagnose_month_deploy_rpcs('december');</code></li>
           <li>Discipline cards: <code>admin_testing_deploy_month_discipline.sql</code></li>
@@ -157,6 +160,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_deploy_month.js?v=20260806-deploy-500-fix2"></script>
+  <script type="module" src="admin_test_deploy_month.js?v=20260901-intl-june-july"></script>
 </body>
 </html>

@@ -3,6 +3,8 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 primeAdminPageChrome();
 
 const GPSL_MONTHS = [
+  { value: "june", label: "June" },
+  { value: "july", label: "July" },
   { value: "august", label: "August" },
   { value: "september", label: "September" },
   { value: "october", label: "October" },
@@ -81,14 +83,19 @@ function renderPreview(data) {
   }
 
   const fixtures = data?.fixtures || [];
+  const intlFixtures = data?.international_fixtures || [];
   const under11 = data?.clubs_under_11 || [];
+  const intlReady = data?.international_ready ?? 0;
+  const intlBlocked = data?.international_blocked ?? 0;
   summary.hidden = false;
   summary.innerHTML = `
     <span>Month: <b>${data?.gpsl_month_label || data?.gpsl_month || "—"}</b></span>
     <span>Ready league: <b>${data?.scheduled_league_ready ?? 0}</b></span>
     <span>Ready cup: <b>${data?.scheduled_cup_ready ?? 0}</b></span>
-    <span>Ready total: <b>${data?.scheduled_total_ready ?? data?.scheduled_league_ready ?? 0}</b></span>
-    <span>Blocked / other: <b>${data?.blocked_or_other ?? 0}</b></span>
+    <span>Ready club total: <b>${data?.scheduled_total_ready ?? data?.scheduled_league_ready ?? 0}</b></span>
+    <span>Ready internationals: <b>${intlReady}</b></span>
+    <span>Blocked intl: <b>${intlBlocked}</b></span>
+    <span>Blocked / other club: <b>${data?.blocked_or_other ?? 0}</b></span>
     <span>Owned clubs &lt;11: <b>${under11.length}</b></span>
   `;
 
@@ -108,30 +115,45 @@ function renderPreview(data) {
     }
   }
 
-  if (!fixtures.length) {
+  const clubRows = fixtures.map((f) => {
+    const ready = !!f.ready;
+    const typeLabel = fixtureTypeLabel(f);
+    const squads = `${f.home_squad_size ?? "?"} / ${f.away_squad_size ?? "?"}`;
+    return `<tr class="${ready ? "" : "not-ready"}">
+      <td>${escapeHtml(typeLabel)}</td>
+      <td>${f.matchday ?? "—"}</td>
+      <td>${f.division ?? "—"}</td>
+      <td>${escapeHtml(`${f.home_club || "—"} vs ${f.away_club || "—"}`)}</td>
+      <td>${escapeHtml(`${f.status || "scheduled"} · ${f.competition_type || "league"}`)}</td>
+      <td>${squads}</td>
+      <td class="${ready ? "ready-yes" : "ready-no"}">${ready ? "Yes" : "No"}</td>
+      <td>${escapeHtml(f.block_reason || "")}</td>
+    </tr>`;
+  });
+
+  const intlRows = intlFixtures.map((f) => {
+    const ready = !!f.ready;
+    return `<tr class="${ready ? "" : "not-ready"}">
+      <td>International · ${escapeHtml(f.phase || "—")}</td>
+      <td>${f.match_no ?? "—"}</td>
+      <td>—</td>
+      <td>${escapeHtml(`${f.home_nation || "TBD"} vs ${f.away_nation || "TBD"}`)}</td>
+      <td>international</td>
+      <td>—</td>
+      <td class="${ready ? "ready-yes" : "ready-no"}">${ready ? "Yes" : "No"}</td>
+      <td>${escapeHtml(f.block_reason || "")}</td>
+    </tr>`;
+  });
+
+  const allRows = [...clubRows, ...intlRows];
+  if (!allRows.length) {
     table.hidden = true;
     body.innerHTML = "";
     return;
   }
 
-  body.innerHTML = fixtures
-    .map((f) => {
-      const ready = !!f.ready;
-      const typeLabel = fixtureTypeLabel(f);
-      const squads = `${f.home_squad_size ?? "?"} / ${f.away_squad_size ?? "?"}`;
-      return `<tr class="${ready ? "" : "not-ready"}">
-        <td>${escapeHtml(typeLabel)}</td>
-        <td>${f.matchday ?? "—"}</td>
-        <td>${f.division ?? "—"}</td>
-        <td>${f.home_club} vs ${f.away_club}</td>
-        <td>${f.status} · ${f.competition_type || "league"}</td>
-        <td>${squads}</td>
-        <td class="${ready ? "ready-yes" : "ready-no"}">${ready ? "Yes" : "No"}</td>
-        <td>${escapeHtml(f.block_reason || "")}</td>
-      </tr>`;
-    })
-    .join("");
   table.hidden = false;
+  body.innerHTML = allRows.join("");
 }
 
 function escapeHtml(s) {
@@ -150,22 +172,41 @@ async function runPreview() {
   }
 
   setStatus("previewStatus", "Loading preview…");
-  const { data, error } = await supabase.rpc("admin_testing_deploy_month_preview", {
-    p_gpsl_month: month,
-  });
+  const [clubRes, intlRes] = await Promise.all([
+    supabase.rpc("admin_testing_deploy_month_preview", { p_gpsl_month: month }),
+    supabase.rpc("admin_testing_deploy_month_international_preview", {
+      p_gpsl_month: month,
+    }),
+  ]);
 
-  if (error) {
-    setStatus("previewStatus", error.message, false);
+  if (clubRes.error) {
+    setStatus("previewStatus", clubRes.error.message, false);
     return;
   }
 
+  const data = { ...(clubRes.data || {}) };
+  if (intlRes.error) {
+    data.international_ready = 0;
+    data.international_blocked = 0;
+    data.international_fixtures = [];
+    data.international_preview_error = intlRes.error.message;
+  } else {
+    data.international_ready = intlRes.data?.international_ready ?? 0;
+    data.international_blocked = intlRes.data?.international_blocked ?? 0;
+    data.international_fixtures = intlRes.data?.fixtures || [];
+  }
+
   renderPreview(data);
-  setStatus(
-    "previewStatus",
-    `${data?.scheduled_total_ready ?? data?.scheduled_league_ready ?? 0} fixture(s) ready to deploy ` +
-      `(${data?.scheduled_league_ready ?? 0} league, ${data?.scheduled_cup_ready ?? 0} cup).`,
-    true
-  );
+  const clubReady = data?.scheduled_total_ready ?? data?.scheduled_league_ready ?? 0;
+  const intlReady = data?.international_ready ?? 0;
+  let msg =
+    `${clubReady} club fixture(s) ready` +
+    ` (${data?.scheduled_league_ready ?? 0} league, ${data?.scheduled_cup_ready ?? 0} cup)` +
+    ` · ${intlReady} international(s) ready.`;
+  if (data.international_preview_error) {
+    msg += ` (Intl preview needs patch: ${data.international_preview_error})`;
+  }
+  setStatus("previewStatus", msg, true);
 }
 
 async function sleep(ms) {
@@ -190,7 +231,7 @@ async function runDeploy() {
     GPSL_MONTHS.find((m) => m.value === month)?.label || month;
   if (
     !confirm(
-      `Deploy random results for all ready league and cup fixtures in ${label}? This cannot be undone easily.`
+      `Deploy results for ${label}?\n\n• Club league/cup (random scores)\n• Internationals tagged ${label} (auto scores)\n\nThis cannot be undone easily.`
     )
   ) {
     return;
@@ -338,7 +379,73 @@ async function runDeploy() {
     }
   }
 
-  let msg = `Deployed ${totalDeployed} fixture(s) for ${label} (${totalLeague} league, ${totalCup} cup).`;
+  // Internationals for this GPSL month (June/July WC etc.)
+  let totalIntl = 0;
+  let intlAfterId = null;
+  let intlCalls = 0;
+  let intlIdle = 0;
+  while (intlCalls < MAX_CALLS) {
+    intlCalls += 1;
+    setStatus(
+      "deployStatus",
+      `Deploying ${label} internationals… ${totalIntl} done` +
+        (totalDeployed ? ` (clubs ${totalDeployed})` : "")
+    );
+
+    const { data: intlData, error: intlErr } = await supabase.rpc(
+      "admin_testing_deploy_month_internationals",
+      {
+        p_gpsl_month: month,
+        p_confirm_phrase: intlAfterId ? null : phrase,
+        p_limit: 10,
+        p_after_fixture_id: intlAfterId,
+      }
+    );
+
+    if (intlErr) {
+      const errText = [intlErr.code, intlErr.message, intlErr.details, intlErr.hint]
+        .filter(Boolean)
+        .join(" — ");
+      if (/Could not find the function|PGRST202|42883/i.test(errText)) {
+        setStatus(
+          "deployStatus",
+          `Clubs done (${totalDeployed}). Internationals skipped — run admin_testing_deploy_month_internationals_20260901.sql.\n${errText}`,
+          totalDeployed > 0
+        );
+        await runPreview();
+        return;
+      }
+      totalErrors += 1;
+      errorSummary[errText || "intl deploy error"] =
+        (errorSummary[errText || "intl deploy error"] || 0) + 1;
+      break;
+    }
+
+    if (intlData && intlData.ok === false) {
+      totalErrors += 1;
+      errorSummary[intlData.error || "intl deploy failed"] =
+        (errorSummary[intlData.error || "intl deploy failed"] || 0) + 1;
+      break;
+    }
+
+    const intlDeployed = intlData?.deployed_count ?? 0;
+    totalIntl += intlDeployed;
+    totalErrors += intlData?.error_count ?? 0;
+    if (intlData?.next_after_fixture_id) {
+      intlAfterId = intlData.next_after_fixture_id;
+    }
+    if (intlDeployed === 0 && !intlData?.has_more) {
+      intlIdle += 1;
+      if (intlIdle >= 2) break;
+      intlAfterId = null;
+      continue;
+    }
+    if (!intlData?.has_more) break;
+  }
+
+  let msg =
+    `Deployed ${totalDeployed} club fixture(s) for ${label} (${totalLeague} league, ${totalCup} cup)` +
+    ` · ${totalIntl} international(s).`;
   if (lastDiscipline?.ok) {
     if (lastDiscipline.skipped) {
       msg += ` Cards already seeded (${lastDiscipline.yellows_existing_before ?? "?"}Y / ${lastDiscipline.reds_existing_before ?? "?"}R).`;
