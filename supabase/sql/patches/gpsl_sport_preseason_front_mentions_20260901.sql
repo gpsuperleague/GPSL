@@ -127,8 +127,7 @@ BEGIN
       v_score := coalesce(v_row->>'score', '?-?');
       v_stories := v_stories || jsonb_build_array(jsonb_build_object(
         'headline', format(
-          'WORLD STAGE: %s %s %s %s',
-          coalesce(v_row->>'home_flag', ''),
+          'WORLD STAGE: %s %s %s',
           v_home,
           v_score,
           v_away

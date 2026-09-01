@@ -1336,8 +1336,9 @@ body.gpsl-sport-open {
 
 .gpsl-sport-intl-scoreline {
   margin: 0 0 4px;
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #111;
 }
 
 .gpsl-sport-intl-score {
@@ -1383,5 +1384,62 @@ body.gpsl-sport-open {
 
 .gpsl-sport-intl-tag {
   font-size: 11px;
-  color: #777;
+  color: #555;
+}
+
+.gpsl-sport-intl-scoreline {
+  margin: 0 0 4px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #111;
+}
+
+.gpsl-sport-intl-nation,
+.gpsl-sport-intl-nation-cell {
+  color: #111 !important;
+  font-weight: 700;
+}
+
+.gpsl-sport-intl-flag {
+  margin: 0 4px;
+}
+
+.gpsl-sport-intl-table,
+.gpsl-sport-intl-results {
+  color: #111;
+  min-width: 420px;
+}
+
+.gpsl-sport-intl-table th,
+.gpsl-sport-intl-table td,
+.gpsl-sport-intl-results th,
+.gpsl-sport-intl-results td {
+  color: #111;
+  font-size: 12px;
+}
+
+.gpsl-sport-intl-table thead th,
+.gpsl-sport-intl-results thead th {
+  color: #222;
+  background: rgba(196, 30, 58, 0.12);
+}
+
+.gpsl-sport-page-internationals .gpsl-sport-table-wrap,
+.gpsl-sport-page-friendlies .gpsl-sport-table-wrap {
+  background: #fff;
+  border: 1px solid #bbb;
+}
+
+.gpsl-sport-intl-feat {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.gpsl-sport-intl-feat-media {
+  flex: 0 0 auto;
+}
+
+.gpsl-sport-intl-feat-name {
+  color: #111;
 }

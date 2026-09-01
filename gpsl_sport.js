@@ -5,6 +5,7 @@
 import { stadiumImageUrl } from "./stadium_images.js";
 import {
   pesdbPlayerCardUrl,
+  PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
 import { renderFormationPitchHtml } from "./pitch_display.js";
 import { DEFAULT_FORMATION_ID } from "./matchday_formations.js";
@@ -44,10 +45,44 @@ function clubBadgeUrl(short) {
 
 function imgTag(src, className, alt = "") {
   if (!src) return "";
+  const fallback = escapeAttr(PESDB_FALLBACK_CARD_IMG);
   return (
     `<img class="${className}" src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" loading="lazy" ` +
-    `onerror="this.classList.add('is-broken')">`
+    `referrerpolicy="no-referrer" ` +
+    `onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='${fallback}';}else{this.classList.add('is-broken')}">`
   );
+}
+
+/** Prefer full nation name; never treat ISO codes as the display name. */
+function nationDisplayName(row, side = "home") {
+  const name = String(
+    row?.[`${side}_name`] ||
+      row?.[`${side}_nation_name`] ||
+      row?.nation_name ||
+      ""
+  ).trim();
+  const code = String(
+    row?.[`${side}_nation`] || row?.[`${side}_code`] || row?.nation_code || ""
+  ).trim();
+  if (name && !/^[A-Za-z]{2,3}$/.test(name)) return name;
+  if (code && name && name.toUpperCase() === code.toUpperCase()) return name;
+  if (name) return name;
+  return code || "Unknown";
+}
+
+/** Only render real flag emoji — skip 2–3 letter codes stored in flag fields. */
+function nationFlagHtml(flag) {
+  const t = String(flag ?? "").trim();
+  if (!t) return "";
+  if (/^[A-Za-z0-9]{2,3}$/.test(t)) return "";
+  return `<span class="gpsl-sport-intl-flag" aria-hidden="true">${escapeHtml(t)}</span>`;
+}
+
+function storyPlayerId(story) {
+  const raw = story?.player_id ?? story?.playerId ?? null;
+  if (raw == null || raw === "") return null;
+  const id = String(raw).trim();
+  return id && id !== "null" && id !== "undefined" ? id : null;
 }
 
 function formatParagraphs(text, dropcap = false) {
@@ -77,12 +112,13 @@ function resolveHero(front, back, edition) {
 
   if (storyType.includes("preseason") || storyType.includes("transfer")) {
     const lead = back?.lead || {};
-    if (lead.player_id) {
+    const pid = storyPlayerId(lead) || storyPlayerId(front?.hero);
+    if (pid) {
       return {
         kind: "transfer",
-        club_short: lead.buyer_club_short,
-        player_id: String(lead.player_id),
-        caption: lead.headline || "Transfer special",
+        club_short: lead.buyer_club_short || front?.hero?.club_short,
+        player_id: pid,
+        caption: lead.headline || front?.hero?.caption || "Transfer special",
       };
     }
   }
@@ -853,8 +889,8 @@ function renderMatchPage(editionLabel, matchPage) {
 }
 
 function renderStoryCard(story, { compact = false } = {}) {
-  const clubShort = story.club_short || story.club_short_name;
-  const playerId = story.player_id ? String(story.player_id) : null;
+  const clubShort = story.club_short || story.club_short_name || story.buyer_club_short;
+  const playerId = storyPlayerId(story);
   const isManager = story.story_kind === "manager_signing" || story.manager_id;
   const isClubNews = story.story_kind === "club_news";
   const badge = clubBadgeUrl(clubShort);
@@ -1169,15 +1205,21 @@ function renderInternationalsPage(editionLabel, page) {
   const feats = Array.isArray(page.brilliant_performances) ? page.brilliant_performances : [];
   const sourceLabel = page.source_month_label || page.source_month || "Internationals";
 
+  const scorelineHtml = (r) => {
+    const home = nationDisplayName(r, "home");
+    const away = nationDisplayName(r, "away");
+    const score = escapeHtml(r.score || `${r.home_goals}-${r.away_goals}`);
+    return `${nationFlagHtml(r.home_flag)}<strong class="gpsl-sport-intl-nation">${escapeHtml(home)}</strong>
+      <span class="gpsl-sport-intl-score">${score}</span>
+      <strong class="gpsl-sport-intl-nation">${escapeHtml(away)}</strong>${nationFlagHtml(r.away_flag)}`;
+  };
+
   const shockCards = shocks
     .map((r) => {
-      const score = escapeHtml(r.score || `${r.home_goals}-${r.away_goals}`);
       const groupBit = r.group_code ? ` · Group ${escapeHtml(r.group_code)}` : "";
       const koBit = r.knockout_stage ? ` · ${escapeHtml(r.knockout_stage)}` : "";
       return `<article class="gpsl-sport-intl-result">
-        <p class="gpsl-sport-intl-scoreline">${escapeHtml(r.home_flag || "")} <strong>${escapeHtml(r.home_name)}</strong>
-          <span class="gpsl-sport-intl-score">${score}</span>
-          <strong>${escapeHtml(r.away_name)}</strong> ${escapeHtml(r.away_flag || "")}</p>
+        <p class="gpsl-sport-intl-scoreline">${scorelineHtml(r)}</p>
         <p class="gpsl-sport-intl-meta">${escapeHtml(r.phase || "")}${groupBit}${koBit}</p>
       </article>`;
     })
@@ -1185,6 +1227,8 @@ function renderInternationalsPage(editionLabel, page) {
 
   const resultRows = results
     .map((r) => {
+      const home = nationDisplayName(r, "home");
+      const away = nationDisplayName(r, "away");
       const score = escapeHtml(r.score || `${r.home_goals}-${r.away_goals}`);
       const tag = r.group_code
         ? `Grp ${escapeHtml(r.group_code)}`
@@ -1192,9 +1236,9 @@ function renderInternationalsPage(editionLabel, page) {
           ? escapeHtml(r.knockout_stage)
           : escapeHtml(r.phase || "");
       return `<tr>
-        <td>${escapeHtml(r.home_flag || "")} ${escapeHtml(r.home_name)}</td>
+        <td class="gpsl-sport-intl-nation-cell">${nationFlagHtml(r.home_flag)} ${escapeHtml(home)}</td>
         <td class="gpsl-sport-intl-score-cell">${score}</td>
-        <td>${escapeHtml(r.away_name)} ${escapeHtml(r.away_flag || "")}</td>
+        <td class="gpsl-sport-intl-nation-cell">${nationFlagHtml(r.away_flag)} ${escapeHtml(away)}</td>
         <td class="gpsl-sport-intl-tag">${tag}</td>
       </tr>`;
     })
@@ -1204,22 +1248,31 @@ function renderInternationalsPage(editionLabel, page) {
     .map((g) => {
       const rows = Array.isArray(g.table) ? g.table : [];
       const body = rows
-        .map(
-          (n, i) => `<tr>
-          <td>${i + 1}</td>
-          <td>${escapeHtml(n.flag || "")} ${escapeHtml(n.nation_name)}</td>
+        .map((n, i) => {
+          const name =
+            n.nation_name && !/^[A-Za-z]{2,3}$/.test(String(n.nation_name).trim())
+              ? n.nation_name
+              : n.nation_name || n.nation_code || "Unknown";
+          return `<tr>
+          <td class="gpsl-sport-league-pos">${i + 1}</td>
+          <td class="gpsl-sport-league-club gpsl-sport-intl-nation-cell">${nationFlagHtml(n.flag)} ${escapeHtml(name)}</td>
           <td>${escapeHtml(String(n.played ?? 0))}</td>
+          <td>${escapeHtml(String(n.won ?? 0))}</td>
+          <td>${escapeHtml(String(n.drawn ?? 0))}</td>
+          <td>${escapeHtml(String(n.lost ?? 0))}</td>
+          <td>${escapeHtml(String(n.gf ?? 0))}</td>
+          <td>${escapeHtml(String(n.ga ?? 0))}</td>
           <td>${escapeHtml(String(n.gd ?? 0))}</td>
-          <td><strong>${escapeHtml(String(n.pts ?? 0))}</strong></td>
-        </tr>`
-        )
+          <td class="gpsl-sport-league-pts">${escapeHtml(String(n.pts ?? 0))}</td>
+        </tr>`;
+        })
         .join("");
       return `<div class="gpsl-sport-intl-group">
         <h3>Group ${escapeHtml(g.group_code || "?")} <span class="gpsl-sport-intl-phase">${escapeHtml(g.phase || "")}</span></h3>
         <div class="gpsl-sport-table-wrap">
           <table class="gpsl-sport-league-table gpsl-sport-intl-table">
-            <thead><tr><th>#</th><th>Nation</th><th>P</th><th>GD</th><th>Pts</th></tr></thead>
-            <tbody>${body || `<tr><td colspan="5">No standings yet</td></tr>`}</tbody>
+            <thead><tr><th>#</th><th>Nation</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th></tr></thead>
+            <tbody>${body || `<tr><td colspan="10">No standings yet</td></tr>`}</tbody>
           </table>
         </div>
       </div>`;
@@ -1233,19 +1286,34 @@ function renderInternationalsPage(editionLabel, page) {
       if (Number(f.assists) > 0) bits.push(`${f.assists} assist${Number(f.assists) === 1 ? "" : "s"}`);
       if (f.potm) bits.push("POTM");
       if (f.best_rating) bits.push(`best rating ${f.best_rating}`);
+      const pid = storyPlayerId(f);
+      const thumb = pid
+        ? `<div class="gpsl-sport-intl-feat-media">${imgTag(pesdbPlayerCardUrl(pid), "gpsl-sport-story-player", "")}</div>`
+        : "";
       return `<article class="gpsl-sport-intl-feat">
-        <p class="gpsl-sport-intl-feat-name">${escapeHtml(f.player_name || "Unknown")}</p>
-        <p class="gpsl-sport-intl-feat-bits">${escapeHtml(bits.join(" · ") || "Standout shift")}</p>
+        ${thumb}
+        <div>
+          <p class="gpsl-sport-intl-feat-name">${escapeHtml(f.player_name || "Unknown")}</p>
+          <p class="gpsl-sport-intl-feat-bits">${escapeHtml(bits.join(" · ") || "Standout shift")}</p>
+        </div>
       </article>`;
     })
     .join("");
+
+  // Clean lead headlines that baked in ISO codes as "flags"
+  const leadHeadline = String(lead.headline || "Internationals")
+    .replace(/\bWORLD STAGE:\s*[A-Za-z]{2,3}\s+/g, "WORLD STAGE: ")
+    .replace(/\s+[A-Za-z]{2,3}\s*$/g, (m, _o, s) => {
+      // only strip trailing code if it looks like a leftover flag token
+      return /\bWORLD STAGE:/.test(s) ? "" : m;
+    });
 
   return `
     <div class="gpsl-sport-page gpsl-sport-page-internationals">
       ${renderMasthead(editionLabel, editionLabel, escapeHtml(page.page_title || "Internationals"))}
       <p class="gpsl-sport-intl-banner">World stage pullout · ${escapeHtml(sourceLabel)} window · ${escapeHtml(String(page.played_count ?? results.length))} played</p>
       <article class="gpsl-sport-lead-block">
-        <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline || "Internationals")}</h1>
+        <h1 class="gpsl-sport-headline">${escapeHtml(leadHeadline)}</h1>
         ${lead.subhead ? `<p class="gpsl-sport-subhead">${escapeHtml(lead.subhead)}</p>` : ""}
         ${lead.byline ? renderByline(lead.byline) : ""}
         ${formatParagraphs(lead.body || "", true)}
@@ -1374,10 +1442,11 @@ function renderSportPaper() {
 
   if (sportActivePage === "back" && back.enabled) {
     const lead = back.lead || {};
+    const leadPlayerId = storyPlayerId(lead);
     const leadHero = {
       kind: "transfer",
-      club_short: lead.buyer_club_short,
-      player_id: lead.player_id ? String(lead.player_id) : null,
+      club_short: lead.buyer_club_short || lead.club_short,
+      player_id: leadPlayerId,
       caption: "Back page — transfer special",
     };
 
@@ -1386,7 +1455,7 @@ function renderSportPaper() {
         ${renderMasthead(editionLabel, editionLabel, escapeHtml(back.page_title || "Transfer special"))}
         <div class="gpsl-sport-front-grid gpsl-sport-front-grid-back">
           <article class="gpsl-sport-lead-block">
-            ${renderHeroBlock(lead.player_id ? leadHero : hero)}
+            ${renderHeroBlock(leadPlayerId ? leadHero : hero)}
             <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline)}</h1>
             ${lead.byline ? renderByline(lead.byline) : ""}
             ${formatParagraphs(lead.body, true)}
@@ -1394,7 +1463,7 @@ function renderSportPaper() {
           </article>
         </div>
         ${renderStorySection("New owners at the wheel", backOwners, { compact: true })}
-        ${renderStorySection("Done deals", backStories, { compact: true })}
+        ${renderStorySection("Done deals", backStories, { compact: false })}
         <footer class="gpsl-sport-footer">GPSL Sport · Transfer desk · Player images via pesdb.net</footer>
       </div>`;
     return;
