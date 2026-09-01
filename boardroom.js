@@ -19,11 +19,14 @@ import {
 } from "./finance_page_common.js";
 import {
   computeBoardFinanceRating,
+  computeClubPerformanceRating,
+  computeManagerBoardRating,
   renderBoardroomIntro,
 } from "./boardroom_rules.js";
 import { loadSeasonPositionChart } from "./club_season_position_chart.js";
 
 let pageClubShort = null;
+let lastFinanceRating = null;
 
 function setBtnVisible(btn, visible) {
   if (!btn) return;
@@ -381,8 +384,7 @@ function renderBoardFinanceSection({
   advisory,
 }) {
   const grid = document.getElementById("boardFinanceGrid");
-  const ratingEl = document.getElementById("boardFinanceRating");
-  if (!grid) return;
+  if (!grid) return null;
 
   const wageHint =
     wages?.players != null
@@ -426,26 +428,86 @@ function renderBoardFinanceSection({
     </a>
   `;
 
-  const rating = computeBoardFinanceRating({
+  return computeBoardFinanceRating({
     balance,
     projected,
     wages: wages?.total ?? 0,
     loansOutstanding,
     transferBudget,
   });
+}
 
-  if (ratingEl) {
-    ratingEl.hidden = false;
-    ratingEl.innerHTML = `
-      <div${tipAttrs(`Board finance rating ${rating.grade} — score ${rating.score}/100. Based on balance, projected end-of-season, wages, and loans.`, `board-rating-grade ${rating.className}`)}>${rating.grade}</div>
+function ratingCardHtml(title, rating, tip) {
+  const gradeClass = rating.pending || rating.vacant ? "sound" : rating.className;
+  const scoreBit =
+    rating.pending || rating.vacant || rating.grade === "—"
+      ? ""
+      : ` ${rating.grade} — score ${rating.score}/100`;
+  return `
+    <div class="board-rating">
+      <div${tipAttrs(`${tip}${scoreBit}`, `board-rating-grade ${gradeClass}`)}>${rating.grade}</div>
       <div class="board-rating-copy">
-        <p class="title">Board finance rating — ${rating.label}</p>
+        <p class="title">${title} — ${rating.label}</p>
+        <p class="summary">${rating.summary}</p>
         <p class="detail">${rating.detail}</p>
       </div>
-    `;
-  }
+    </div>
+  `;
+}
 
-  return rating;
+function renderBoardRatings({ financeRating, fill, manager }) {
+  const el = document.getElementById("boardRatings");
+  if (!el) return;
+
+  if (financeRating) lastFinanceRating = financeRating;
+  const finance = lastFinanceRating || computeBoardFinanceRating({});
+
+  const statusReady =
+    fill &&
+    fill.performance_status_ready !== false &&
+    fill.performance_band != null;
+
+  const club = computeClubPerformanceRating({
+    ready: Boolean(statusReady),
+    band: fill?.performance_band ?? null,
+    gap: fill?.performance_gap,
+    actualPos: fill?.actual_position,
+    expectedPos: fill?.expected_position,
+    tier: fill?.club_tier || "",
+  });
+
+  const mgr = computeManagerBoardRating({
+    hasManager: Boolean(manager?.manager_id),
+    targetMet: manager?.target_met ?? null,
+    pendingRenewal: Boolean(manager?.pending_owner_renewal),
+    dealHits: manager?.deal_target_hits,
+    dealMisses: manager?.deal_target_misses,
+    seasonsRemaining: manager?.contract_seasons_remaining,
+    seasonPosition: manager?.season_position,
+    targetKind: manager?.target_kind,
+    targetValue: manager?.target_value,
+    managerRating: manager?.manager_rating,
+    archived: Boolean(manager?.manager_archived),
+  });
+
+  el.hidden = false;
+  el.innerHTML = [
+    ratingCardHtml(
+      "Board finance rating",
+      finance,
+      "Based on balance, projected end-of-season, wages, and loans."
+    ),
+    ratingCardHtml(
+      "Club performance rating",
+      club,
+      "Based on season delivery band vs expected points/finish, prestige tier, and underperformance risk."
+    ),
+    ratingCardHtml(
+      "Manager rating",
+      mgr,
+      "Based on live deal target, deal hit/miss record, contract remaining, and manager ability rating."
+    ),
+  ].join("");
 }
 
 async function loadBoardFinanceSection(clubShortName) {
@@ -675,6 +737,7 @@ function wireManagerActions() {
           loadExpectationSection(pageClubShort),
           loadManagerSection(pageClubShort),
         ]);
+        renderBoardRatings({ fill, manager: mgr });
         renderHeroStats({
           clubLabel: fullClubName(pageClubShort) || pageClubShort,
           tier: formatClubTierLabel(fill?.club_tier),
@@ -731,6 +794,7 @@ function wireManagerActions() {
           loadExpectationSection(short),
           loadManagerSection(short),
         ]);
+        renderBoardRatings({ fill, manager: mgr });
         renderHeroStats({
           clubLabel: fullClubName(short) || short,
           tier: formatClubTierLabel(fill?.club_tier),
@@ -780,18 +844,24 @@ async function initBoardroom() {
   if (title) title.textContent = `${clubLabel} Boardroom`;
   const tagline = document.getElementById("boardTagline");
   if (tagline) {
-    tagline.textContent = `Finances · expectations · manager deal · subsidies · analysis`;
+    tagline.textContent = `Finances · performance · manager · subsidies · analysis`;
   }
 
   wireManagerActions();
 
-  const [fill, mgr] = await Promise.all([
+  const [fill, mgr, , financeRating] = await Promise.all([
     loadExpectationSection(club.ShortName),
     loadManagerSection(club.ShortName),
     loadSubsidyStatus(club.ShortName),
     loadBoardFinanceSection(club.ShortName),
     loadSeasonPositionChart(supabase, club.ShortName, { maxSeasons: 2 }),
   ]);
+
+  renderBoardRatings({
+    financeRating,
+    fill,
+    manager: mgr,
+  });
 
   renderHeroStats({
     clubLabel,
