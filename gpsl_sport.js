@@ -927,6 +927,7 @@ function editionSportPages(edition, front = null) {
   const matchPage = edition?.match_page || edition?.detail?.match_page || {};
   const internationalsPage =
     edition?.internationals_page || edition?.detail?.internationals_page || {};
+  const friendliesPage = edition?.friendlies_page || edition?.detail?.friendlies_page || {};
   const statsEnabled =
     statsPage.enabled === true ||
     (edition?.detail?.inseason_rich && Object.keys(statsPage).length > 1) ||
@@ -938,14 +939,20 @@ function editionSportPages(edition, front = null) {
     internationalsPage.enabled === true ||
     Boolean(internationalsPage.lead?.headline) ||
     (Array.isArray(internationalsPage.results) && internationalsPage.results.length > 0);
+  const friendliesEnabled =
+    friendliesPage.enabled === true ||
+    Boolean(friendliesPage.lead?.headline) ||
+    (Array.isArray(friendliesPage.results) && friendliesPage.results.length > 0);
 
   return {
     statsPage,
     matchPage,
     internationalsPage,
+    friendliesPage,
     statsEnabled,
     matchEnabled,
     internationalsEnabled,
+    friendliesEnabled,
   };
 }
 
@@ -954,7 +961,7 @@ function buildFrontRailTeasers(edition, front) {
   const leadKind = String(front.lead_kind || front.hero?.kind || "");
   const managersPage = edition.managers_page || edition.detail?.managers_page || {};
   const ownersPage = edition.owners_page || edition.detail?.owners_page || {};
-  const { statsPage, matchPage, statsEnabled, matchEnabled, internationalsEnabled, internationalsPage } =
+  const { statsPage, matchPage, statsEnabled, matchEnabled, internationalsEnabled, internationalsPage, friendliesEnabled, friendliesPage } =
     editionSportPages(edition, front);
   const back = edition.back_page || {};
   const managerStories = Array.isArray(front.manager_stories) ? front.manager_stories : [];
@@ -993,6 +1000,14 @@ function buildFrontRailTeasers(edition, front) {
       page: "internationals",
       label: "Internationals",
       story: internationalsPage.lead,
+    });
+  }
+
+  if (friendliesEnabled && friendliesPage.lead?.headline) {
+    teasers.push({
+      page: "friendlies",
+      label: "Friendlies",
+      story: friendliesPage.lead,
     });
   }
 
@@ -1081,6 +1096,68 @@ function renderMasthead(label, editionLabel, pageTitle) {
       <span>${escapeHtml(label || editionLabel || "GPSL")}</span>
       <span class="gpsl-sport-dateline-sep">|</span>
       <span>Free inside the GPSL</span>
+    </div>`;
+}
+
+function renderFriendliesPage(editionLabel, page) {
+  const lead = page.lead || {};
+  const highlights = Array.isArray(page.highlights) ? page.highlights : [];
+  const results = Array.isArray(page.results) ? page.results : [];
+  const sourceLabel = page.source_month_label || page.source_month || "Friendlies";
+
+  const highlightCards = highlights
+    .map((r) => {
+      const score = escapeHtml(r.score || `${r.home_goals}-${r.away_goals}`);
+      return `<article class="gpsl-sport-intl-result">
+        <p class="gpsl-sport-intl-scoreline"><strong>${escapeHtml(r.home_name)}</strong>
+          <span class="gpsl-sport-intl-score">${score}</span>
+          <strong>${escapeHtml(r.away_name)}</strong></p>
+        <p class="gpsl-sport-intl-meta">${escapeHtml(String(r.total_goals ?? 0))} goals · margin ${escapeHtml(String(r.margin ?? 0))}</p>
+      </article>`;
+    })
+    .join("");
+
+  const resultRows = results
+    .map((r) => {
+      const score = escapeHtml(r.score || `${r.home_goals}-${r.away_goals}`);
+      const when = r.confirmed_at
+        ? new Date(r.confirmed_at).toLocaleString("en-GB", {
+            timeZone: "Europe/London",
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "";
+      return `<tr>
+        <td>${escapeHtml(r.home_name)} <span class="gpsl-sport-intl-tag">${escapeHtml(r.home_club || "")}</span></td>
+        <td class="gpsl-sport-intl-score-cell">${score}</td>
+        <td>${escapeHtml(r.away_name)} <span class="gpsl-sport-intl-tag">${escapeHtml(r.away_club || "")}</span></td>
+        <td class="gpsl-sport-intl-tag">${escapeHtml(when)}</td>
+      </tr>`;
+    })
+    .join("");
+
+  return `
+    <div class="gpsl-sport-page gpsl-sport-page-friendlies">
+      ${renderMasthead(editionLabel, editionLabel, escapeHtml(page.page_title || "Friendlies"))}
+      <p class="gpsl-sport-intl-banner">Pre-season friendlies · ${escapeHtml(sourceLabel)} · ${escapeHtml(String(page.played_count ?? results.length))} confirmed</p>
+      <article class="gpsl-sport-lead-block">
+        <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline || "Friendlies")}</h1>
+        ${lead.subhead ? `<p class="gpsl-sport-subhead">${escapeHtml(lead.subhead)}</p>` : ""}
+        ${lead.byline ? renderByline(lead.byline) : ""}
+        ${formatParagraphs(lead.body || "", true)}
+      </article>
+      ${highlightCards ? `<section class="gpsl-sport-intl-section"><h2>High-scoring friendlies</h2><div class="gpsl-sport-intl-shock-grid">${highlightCards}</div></section>` : ""}
+      ${resultRows ? `<section class="gpsl-sport-intl-section"><h2>All confirmed friendlies</h2>
+        <div class="gpsl-sport-table-wrap">
+          <table class="gpsl-sport-league-table gpsl-sport-intl-results">
+            <thead><tr><th>Home</th><th>Score</th><th>Away</th><th>Confirmed</th></tr></thead>
+            <tbody>${resultRows}</tbody>
+          </table>
+        </div>
+      </section>` : ""}
+      <footer class="gpsl-sport-footer">GPSL Sport · Friendlies desk · Discord dual-confirm · ${escapeHtml(sourceLabel)}</footer>
     </div>`;
 }
 
@@ -1254,9 +1331,11 @@ function renderSportPaper() {
     statsPage,
     matchPage,
     internationalsPage,
+    friendliesPage,
     statsEnabled,
     matchEnabled,
     internationalsEnabled,
+    friendliesEnabled,
   } = editionSportPages(edition, front);
 
   if (sportActivePage === "stats" && statsEnabled) {
@@ -1271,6 +1350,11 @@ function renderSportPaper() {
 
   if (sportActivePage === "internationals" && internationalsEnabled) {
     paper.innerHTML = renderInternationalsPage(editionLabel, internationalsPage);
+    return;
+  }
+
+  if (sportActivePage === "friendlies" && friendliesEnabled) {
+    paper.innerHTML = renderFriendliesPage(editionLabel, friendliesPage);
     return;
   }
 
@@ -1433,6 +1517,7 @@ export function ensureSportModal() {
         <button type="button" class="gpsl-sport-tab" data-page="stats" id="gpslSportStatsTab" hidden>Stats</button>
         <button type="button" class="gpsl-sport-tab" data-page="match" id="gpslSportMatchTab" hidden>Match of the Month</button>
         <button type="button" class="gpsl-sport-tab" data-page="internationals" id="gpslSportIntlTab" hidden>Internationals</button>
+        <button type="button" class="gpsl-sport-tab" data-page="friendlies" id="gpslSportFriendliesTab" hidden>Friendlies</button>
         <button type="button" class="gpsl-sport-tab" data-page="managers" id="gpslSportManagersTab" hidden>Managers</button>
         <button type="button" class="gpsl-sport-tab" data-page="owners" id="gpslSportOwnersTab" hidden>Owners</button>
         <button type="button" class="gpsl-sport-tab" data-page="back" id="gpslSportBackTab" hidden>Transfers</button>
@@ -1555,17 +1640,20 @@ function syncSportTabs(edition) {
   const statsTab = document.getElementById("gpslSportStatsTab");
   const matchTab = document.getElementById("gpslSportMatchTab");
   const intlTab = document.getElementById("gpslSportIntlTab");
+  const friendliesTab = document.getElementById("gpslSportFriendliesTab");
   const managersTab = document.getElementById("gpslSportManagersTab");
   const ownersTab = document.getElementById("gpslSportOwnersTab");
   const backTab = document.getElementById("gpslSportBackTab");
   const managersPage = edition?.managers_page || edition?.detail?.managers_page || {};
   const ownersPage = edition?.owners_page || edition?.detail?.owners_page || {};
-  const { statsEnabled, matchEnabled, internationalsEnabled } = editionSportPages(edition);
+  const { statsEnabled, matchEnabled, internationalsEnabled, friendliesEnabled } =
+    editionSportPages(edition);
   const backEnabled = !!edition?.back_page?.enabled;
 
   if (statsTab) statsTab.hidden = !statsEnabled;
   if (matchTab) matchTab.hidden = !matchEnabled;
   if (intlTab) intlTab.hidden = !internationalsEnabled;
+  if (friendliesTab) friendliesTab.hidden = !friendliesEnabled;
   if (managersTab) managersTab.hidden = !managersPage.enabled;
   if (ownersTab) ownersTab.hidden = !ownersPage.enabled;
   if (backTab) backTab.hidden = !backEnabled;
@@ -1574,6 +1662,7 @@ function syncSportTabs(edition) {
   if (statsEnabled) pages.push("stats");
   if (matchEnabled) pages.push("match");
   if (internationalsEnabled) pages.push("internationals");
+  if (friendliesEnabled) pages.push("friendlies");
   if (managersPage.enabled) pages.push("managers");
   if (ownersPage.enabled) pages.push("owners");
   if (backEnabled) pages.push("back");
