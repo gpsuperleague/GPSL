@@ -1467,8 +1467,9 @@ function renderSportArchiveSelect() {
   const select = document.getElementById("gpslSportArchiveSelect");
   if (!wrap || !select) return;
 
-  if (!sportArchive.length || sportArchive.length < 2) {
+  if (!sportArchive.length) {
     wrap.hidden = true;
+    select.innerHTML = "";
     return;
   }
 
@@ -1478,11 +1479,24 @@ function renderSportArchiveSelect() {
       (ed) =>
         `<option value="${escapeHtml(String(ed.id))}"${
           Number(ed.id) === Number(sportEditionId) ? " selected" : ""
-        }>${escapeHtml(ed.edition_label || ed.gpsl_month)}${
+        }>${escapeHtml(ed.edition_label || ed.gpsl_month || "Edition")}${
           ed.unread ? " (new)" : ""
         }</option>`
     )
     .join("");
+}
+
+function pickLatestArchiveEditionId() {
+  if (!sportArchive.length) return null;
+  // list is newest-first from SQL
+  const id = Number(sportArchive[0]?.id);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function archiveHasEditionId(editionId) {
+  const id = Number(editionId);
+  if (!Number.isFinite(id) || id <= 0) return false;
+  return sportArchive.some((ed) => Number(ed.id) === id);
 }
 
 export function ensureSportPitchStyles() {
@@ -1598,26 +1612,30 @@ export async function refreshGpslSportNav(supabase, { preserveViewingEdition = f
   const client = supabase || sportSupabase || window.supabase;
   if (!btn || !client) return;
 
-  const modalOpen = document.getElementById("gpslSportModal")?.classList.contains("is-open");
-  const keepViewingEdition = preserveViewingEdition || modalOpen;
-
   try {
     const { data, error } = await client.rpc("gpsl_sport_nav_state");
     if (error) throw error;
+
+    await loadSportArchive(client);
 
     if (!data?.has_edition) {
       btn.hidden = true;
       btn.removeAttribute("data-edition-id");
       btn.classList.remove("has-unread");
-      if (!keepViewingEdition) sportEditionId = null;
+      if (!preserveViewingEdition) sportEditionId = null;
       return;
     }
 
     btn.hidden = false;
-    if (!keepViewingEdition) {
+    // Always keep the nav button on a live edition id.
+    // Only preserve sportEditionId when browsing archive inside an open paper.
+    btn.dataset.editionId = String(data.edition_id);
+    if (!preserveViewingEdition) {
       sportEditionId = data.edition_id;
-      btn.dataset.editionId = String(data.edition_id);
+    } else if (!archiveHasEditionId(sportEditionId)) {
+      sportEditionId = data.edition_id;
     }
+
     btn.title = data.headline
       ? `GPSL Sport — ${data.headline}`
       : `GPSL Sport — ${data.edition_label || "Latest"}`;
@@ -1634,13 +1652,11 @@ export async function refreshGpslSportNav(supabase, { preserveViewingEdition = f
     } else if (badge) {
       badge.remove();
     }
-
-    await loadSportArchive(client);
   } catch (err) {
     console.warn("GPSL Sport nav:", err);
     btn.hidden = true;
     btn.removeAttribute("data-edition-id");
-    sportEditionId = null;
+    if (!preserveViewingEdition) sportEditionId = null;
   }
 }
 
@@ -1739,30 +1755,39 @@ export async function openGpslSport(supabase) {
       '<div class="gpsl-sport-loading"><span class="gpsl-sport-loading-spinner"></span> Printing edition…</div>';
   }
   showSportModal();
+  renderSportArchiveSelect();
 
-  // Always refresh nav first — republish/regenerate changes edition ids
-  await refreshGpslSportNav(client);
-  sportEditionId = readEditionIdFromNavButton();
+  // Resolve a live edition before load (never trust a stale button id like a deleted #58)
+  sportEditionId = null;
+  await refreshGpslSportNav(client, { preserveViewingEdition: false });
+  sportEditionId = readEditionIdFromNavButton() || pickLatestArchiveEditionId();
+
   if (!sportEditionId) {
     hideSportModal();
-    alert("No GPSL Sport edition is available yet.");
+    alert("No GPSL Sport edition is available yet. Republish June/July from Admin → GPSL Sport.");
     return;
   }
 
+  renderSportArchiveSelect();
+
   let result = await loadSportEdition(sportEditionId, { markRead: true });
-  if (!result?.ok && result?.notFound) {
-    await refreshGpslSportNav(client);
-    sportEditionId = readEditionIdFromNavButton();
-    if (sportEditionId) {
+  if (!result?.ok) {
+    await loadSportArchive(client);
+    const fallbackId = pickLatestArchiveEditionId();
+    if (fallbackId && fallbackId !== Number(sportEditionId)) {
+      sportEditionId = fallbackId;
+      renderSportArchiveSelect();
       result = await loadSportEdition(sportEditionId, { markRead: true });
     }
   }
 
   if (!result?.ok) {
-    hideSportModal();
-    alert(
-      `Could not load this edition${result?.reason ? ` (${result.reason})` : ""}. Hard-refresh (Ctrl+F5) and try again.`
-    );
+    if (paper) {
+      paper.innerHTML = `<div class="gpsl-sport-loading">Could not load edition${
+        result?.reason ? ` (${escapeHtml(result.reason)})` : ""
+      }. Use the edition archive menu above if available, or republish from Admin.</div>`;
+    }
+    renderSportArchiveSelect();
   }
 }
 
