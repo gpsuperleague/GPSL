@@ -1203,7 +1203,7 @@ async function loadWaitingListAdmin() {
   html += sectionRow(
     `Waiting list (${waitingCount}` +
       (auctionTotal ? `; ${auctionTotal} invited to auction` : "") +
-      `) — ${escapeWl(sortNote)}. Actions: Add club or Remove (→ archived).`
+      `) — ${escapeWl(sortNote)}. Actions: Add club, absence, or Remove (→ archived).`
   );
   if (!waitingRows.length && !auctionTotal) {
     html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No one on the waiting list.</td></tr>`;
@@ -1271,6 +1271,14 @@ async function runWlRowAction(action, { ownerId, email, tag, club, select }) {
   }
   if (action === "add_club") {
     await assignClubFromWaitingRow({ email, tag });
+    return;
+  }
+  if (action === "absence_on") {
+    await setWaitingListAbsence(true, { email, tag });
+    return;
+  }
+  if (action === "absence_off") {
+    await setWaitingListAbsence(false, { email, tag });
     return;
   }
   if (action === "remove_club") {
@@ -1643,6 +1651,8 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
       : `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" aria-label="Actions">
         <option value="">Actions…</option>
         <option value="add_club">Add club</option>
+        <option value="absence_on">Mark on absence</option>
+        <option value="absence_off">Clear absence</option>
         <option value="remove_waiting">Remove → archived</option>
       </select>`;
 
@@ -1907,15 +1917,17 @@ async function directAssignFromWaitingList() {
   setWlActionStatus(`✅ ${email} assigned to ${club.toUpperCase()}.`, true);
 }
 
-async function setWaitingListAbsence(on) {
-  const email = wlActionEmail();
-  if (!email) {
-    setWlActionStatus("Enter member email.", false);
+async function setWaitingListAbsence(on, { email = "", tag = "" } = {}) {
+  const targetEmail = (email || wlActionEmail()).trim();
+  if (!targetEmail) {
+    setWlActionStatus("Enter member email, or use Actions on a waiting-list row.", false);
     return;
   }
+  const who = tag || targetEmail;
   const note = on ? "Marked on absence by admin" : null;
+  setWlActionStatus(on ? `Marking ${who} on absence…` : `Clearing absence for ${who}…`);
   const { error } = await supabase.rpc("admin_waiting_list_set_absence", {
-    p_owner_email: email,
+    p_owner_email: targetEmail,
     p_on_absence: on,
     p_note: note,
   });
@@ -1924,7 +1936,10 @@ async function setWaitingListAbsence(on) {
     return;
   }
   await loadWaitingListAdmin();
-  setWlActionStatus(on ? `✅ ${email} marked on absence.` : `✅ Absence cleared for ${email}.`, true);
+  setWlActionStatus(
+    on ? `✅ ${who} marked on absence.` : `✅ Absence cleared for ${who}.`,
+    true
+  );
 }
 
 async function removeFromWaitingList({ ownerId = null, email = "", tag = "" } = {}) {
