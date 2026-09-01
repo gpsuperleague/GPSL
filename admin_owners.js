@@ -1142,17 +1142,10 @@ async function loadWaitingListAdmin() {
     activity: activityById.get(r.owner_id) || null,
   }));
   const rows = [...priority, ...invited];
-
-  if (!rows.length) {
-    tableWrap.innerHTML =
-      "<p class='note'>No one on the season owner board or invited to club auction.</p>";
-    await loadArchivedOwnersSection();
-    return;
-  }
-
-  const boardCount = priority.length;
-  const waitingCount = priority.filter((r) => !r.has_club).length;
-  const ownerCount = priority.filter((r) => r.has_club).length;
+  const ownerRows = priority.filter((r) => r.has_club);
+  const waitingRows = priority.filter((r) => !r.has_club);
+  const waitingCount = waitingRows.length + invited.length;
+  const ownerCount = ownerRows.length;
   const auctionTotal = invited.length;
   const testTotal = rows.filter((r) => !!r.confirmed_test_season).length;
   const liveTotal = rows.filter((r) => !!r.confirmed_live_season).length;
@@ -1164,6 +1157,9 @@ async function loadWaitingListAdmin() {
     : `${prevLabel} / ${curLabel} login counts`;
 
   const colSpan = 16;
+  const sectionRow = (label) =>
+    `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
+
   let html =
     `<table class="admin-table wl-board-table">` +
     `<thead>` +
@@ -1188,24 +1184,30 @@ async function loadWaitingListAdmin() {
     `<th class="wl-col-actions">Actions</th>` +
     `</tr></thead><tbody id="wlPriorityTbody">`;
 
-  if (boardCount) {
-    html +=
-      `<tr class="wl-section"><td colspan="${colSpan}" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333">` +
-      `Priority (${boardCount}: ${waitingCount} waiting` +
-      (ownerCount ? `, ${ownerCount} current owners` : "") +
-      `) — ${escapeWl(sortNote)}. ${escapeWl(activityNote)}. Drag to reorder.</td></tr>`;
+  html += sectionRow(
+    `Owners (${ownerCount}) — current club owners. Drag handle sets season priority with the waiting list. ${escapeWl(activityNote)}.`
+  );
+  if (!ownerCount) {
+    html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No club owners on the board.</td></tr>`;
+  } else {
+    for (const row of ownerRows) {
+      html += renderWaitingListAdminRow(row, { invited: false, section: "owners" });
+    }
   }
 
-  for (const row of priority) {
-    html += renderWaitingListAdminRow(row, { invited: false });
-  }
-
-  if (auctionTotal) {
-    html +=
-      `<tr class="wl-section"><td colspan="${colSpan}" style="padding:8px 10px;color:#888;font-size:12px;border-bottom:1px solid #333;border-top:1px solid #333">` +
-      `Invited to club auction (${auctionTotal}) — untick Auction to return to waiting list</td></tr>`;
+  html += sectionRow(
+    `Waiting list (${waitingCount}` +
+      (auctionTotal ? `; ${auctionTotal} invited to auction` : "") +
+      `) — ${escapeWl(sortNote)}. Actions: Add club or Remove (→ archived).`
+  );
+  if (!waitingRows.length && !auctionTotal) {
+    html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No one on the waiting list.</td></tr>`;
+  } else {
+    for (const row of waitingRows) {
+      html += renderWaitingListAdminRow(row, { invited: false, section: "waiting" });
+    }
     for (const row of invited) {
-      html += renderWaitingListAdminRow(row, { invited: true });
+      html += renderWaitingListAdminRow(row, { invited: true, section: "waiting" });
     }
   }
 
@@ -1262,6 +1264,10 @@ async function runWlRowAction(action, { ownerId, email, tag, club, select }) {
     await removeFromWaitingList({ ownerId, email, tag });
     return;
   }
+  if (action === "add_club") {
+    await assignClubFromWaitingRow({ email, tag });
+    return;
+  }
   if (action === "remove_club") {
     await removeFromClub({
       addToWaitingList: false,
@@ -1282,6 +1288,10 @@ async function runWlRowAction(action, { ownerId, email, tag, club, select }) {
     });
     return;
   }
+  if (action === "unarchive") {
+    await unarchiveOwnerFromBoard({ email, tag });
+    return;
+  }
   if (action === "delete_gpsl") {
     await deleteArchivedOwner({
       ownerId,
@@ -1290,6 +1300,80 @@ async function runWlRowAction(action, { ownerId, email, tag, club, select }) {
       button: select,
     });
   }
+}
+
+async function assignClubFromWaitingRow({ email, tag }) {
+  const who = tag || email || "this member";
+  if (!email) {
+    setWlActionStatus("Missing email for club assign.", false);
+    return;
+  }
+  const club = window
+    .prompt(`Assign club to ${who}.\n\nEnter club ShortName:`, "")
+    ?.trim();
+  if (!club) return;
+
+  let discordTag =
+    window
+      .prompt(
+        "Discord tag / display name for NEW OWNER news (leave blank if already set):",
+        ""
+      )
+      ?.trim() || "";
+
+  if (discordTag) {
+    setWlActionStatus("Saving Discord tag…");
+    const { error: tagErr } = await supabase.rpc("admin_owner_set_tag", {
+      p_owner_email: email,
+      p_tag: discordTag,
+    });
+    if (tagErr) {
+      setWlActionStatus("❌ " + tagErr.message, false);
+      return;
+    }
+  }
+
+  setWlActionStatus("Assigning…");
+  const { error } = await supabase.rpc("admin_waiting_list_assign_club", {
+    p_owner_email: email,
+    p_club_short_name: club,
+  });
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  await loadWaitingListAdmin();
+  await loadOwnerList();
+  setWlActionStatus(`✅ ${who} assigned to ${club.toUpperCase()}.`, true);
+}
+
+async function unarchiveOwnerFromBoard({ email, tag }) {
+  const who = tag || email || "this owner";
+  if (!email) {
+    setWlActionStatus("Missing email to unarchive.", false);
+    return;
+  }
+  if (
+    !confirm(
+      `Unarchive ${who}?\n\nThey will return to the waiting list as a returning member.`
+    )
+  ) {
+    return;
+  }
+  setWlActionStatus("Unarchiving…");
+  const { data, error } = await supabase.rpc("admin_owner_unarchive", {
+    p_owner_email: email,
+  });
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  await loadWaitingListAdmin();
+  await loadOwnerList();
+  setWlActionStatus(
+    `✅ ${data?.owner_tag || data?.email || who} unarchived — on waiting list`,
+    true
+  );
 }
 
 function filterArchivedOwnersBoard(filterText) {
@@ -1356,6 +1440,7 @@ async function loadArchivedOwnersSection() {
           data-tag="${escapeWl(tag)}"
           aria-label="Actions for ${escapeWl(tag)}">
           <option value="">Actions…</option>
+          <option value="unarchive">Unarchive → waiting</option>
           <option value="delete_gpsl">Delete from GPSL</option>
         </select>
       </td>
@@ -1410,7 +1495,7 @@ async function deleteArchivedOwner({ ownerId, email, tag, button }) {
   }
 }
 
-function renderWaitingListAdminRow(row, { invited }) {
+function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
   const email = row.email || "";
   const testOn = !!row.confirmed_test_season;
   const liveOn = !!row.confirmed_live_season;
@@ -1469,15 +1554,17 @@ function renderWaitingListAdminRow(row, { invited }) {
         title="${invited ? "Remove from club auction (back to waiting list)" : "Invite to club auction"}"
         ${invited ? "checked" : ""}>
     </td>`;
-  const actionSelect = hasClub
-    ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" aria-label="Actions">
+  const actionSelect =
+    section === "owners" || hasClub
+      ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" aria-label="Actions">
         <option value="">Actions…</option>
         <option value="remove_club">Remove club</option>
         <option value="to_waiting">→ Waiting</option>
       </select>`
-    : `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" aria-label="Actions">
+      : `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" aria-label="Actions">
         <option value="">Actions…</option>
-        <option value="remove_waiting">Remove</option>
+        <option value="add_club">Add club</option>
+        <option value="remove_waiting">Remove → archived</option>
       </select>`;
 
   return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" data-filter-text="${escapeWl(filterText)}">

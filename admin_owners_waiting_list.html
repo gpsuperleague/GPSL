@@ -103,11 +103,14 @@
       <div class="card" id="season-owner-board">
         <h2>Season owner board</h2>
         <p class="note">
-          One place to rank people for season 1, confirm Test/Live, invite to auction, and see how active they are.
-          Drag to set priority (current club owners are greyed). Use the
-          <b>Actions</b> dropdown on each row (Remove club / → Waiting / Remove / Delete from GPSL).
-          Default order is join date until you drag;
-          <b>Restore join-date order</b> clears manual ranking. Activity uses site visits (including remembered sessions), at most one count per hour.
+          Three sections: <b>Owners</b> → <b>Waiting list</b> → <b>Archived</b>.
+          Drag handles set season priority across owners and the waiting list.
+          <b>Actions</b> per row:
+          owners (Remove club / → Waiting),
+          waiting (Add club / Remove → archived),
+          archived (Unarchive → waiting / Delete from GPSL).
+          <b>Restore join-date order</b> clears manual ranking. Activity uses site visits
+          (including remembered sessions), at most one count per hour.
           <b>Discord join</b> only exists for self-serve Discord joins; others show account-created marked <b>· acct</b>, or —.
         </p>
         <div class="wl-board-toolbar">
@@ -119,8 +122,8 @@
         <div id="wlArchivedSection" style="margin-top:28px;" hidden>
           <h3 style="margin:0 0 6px;font-size:15px;color:#c88;">Archived owners</h3>
           <p class="note" style="margin-bottom:10px;">
-            Soft-removed from GPSL. Use <b>Actions → Delete from GPSL</b> to permanently
-            remove their login (Auth user + registry). Season history rows may remain. Admin only.
+            Soft-removed from GPSL. <b>Unarchive → waiting</b> puts them back on the waiting list.
+            <b>Delete from GPSL</b> permanently removes their login (Auth + registry). Admin only.
           </p>
           <div class="wl-board-toolbar" style="margin-bottom:8px;">
             <input type="search" id="wlArchivedFilter" placeholder="Filter archived tag / email…">
@@ -144,6 +147,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js?v=20260901-wl-actions-dd"></script>
+  <script type="module" src="admin_owners.js?v=20260901-wl-three-sections"></script>
 </body>
 </html>
