@@ -20,6 +20,9 @@
     .wl-board-table input[type="checkbox"] { cursor: pointer; position: relative; z-index: 2; }
     tr.wl-club-owner { opacity: 0.55; color: #888; }
     tr.wl-club-owner td { border-color: #2a2a2a !important; }
+    tr.wl-club-owner .wl-col-actions { opacity: 1; }
+    tr.wl-club-owner .wl-col-actions .button { opacity: 0.95; color: #ddd; }
+    .wl-col-actions .button { font-size: 12px; padding: 4px 8px; margin: 0 2px 2px 0; }
     .wl-drag-handle {
       display: inline-block;
       width: 1.25em;
@@ -82,7 +85,9 @@
         <h2>Season owner board</h2>
         <p class="note">
           One place to rank people for season 1, confirm Test/Live, invite to auction, and see how active they are.
-          Drag to set priority (current club owners are greyed). Default order is join date until you drag;
+          Drag to set priority (current club owners are greyed). On owner rows use
+          <b>Remove club</b> (clear only) or <b>→ Waiting</b> (clear + waiting list).
+          Default order is join date until you drag;
           <b>Restore join-date order</b> clears manual ranking. Activity uses site visits (including remembered sessions), at most one count per hour.
           <b>Discord join</b> only exists for self-serve Discord joins; others show account-created marked <b>· acct</b>, or —.
         </p>
@@ -109,6 +114,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js?v=20260901-season-tick-click"></script>
+  <script type="module" src="admin_owners.js?v=20260901-wl-remove-club"></script>
 </body>
 </html>

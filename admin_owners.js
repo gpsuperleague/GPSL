@@ -439,11 +439,14 @@ async function removeFromClub({
   ownerId = null,
   label = null,
   skipConfirm = false,
+  statusId = "breakOwnerStatus",
 } = {}) {
   const email =
     emailArg || document.getElementById("breakOwnerEmail")?.value?.trim() || null;
+  const statusEl =
+    document.getElementById(statusId) ? statusId : "breakOwnerStatus";
   if (!email && !ownerId) {
-    setStatus("breakOwnerStatus", "Enter owner email or pick someone from the list.", false);
+    setStatus(statusEl, "Enter owner email or pick someone from the list.", false);
     return false;
   }
 
@@ -461,7 +464,7 @@ async function removeFromClub({
     return false;
   }
 
-  setStatus("breakOwnerStatus", "Removing…");
+  setStatus(statusEl, "Removing…");
   const payload = {
     p_add_to_waiting_list: !!addToWaitingList,
   };
@@ -471,7 +474,7 @@ async function removeFromClub({
   const { data, error } = await supabase.rpc("admin_owner_remove_from_club", payload);
   if (error) {
     setStatus(
-      "breakOwnerStatus",
+      statusEl,
       `❌ ${error.message}${
         /admin_owner_remove_from_club|schema cache|Could not find/i.test(error.message || "")
           ? " — run supabase/sql/patches/admin_owners_remove_list.sql"
@@ -487,7 +490,7 @@ async function removeFromClub({
       ? " · added to waiting list"
       : " · not on waiting list";
   setStatus(
-    "breakOwnerStatus",
+    statusEl,
     `✅ ${data?.owner_tag || email || who} removed from ${
       data?.club_name || data?.club_short_name || "club"
     }${data?.nation_code ? ` · nation ${data.nation_code} released` : ""}${waiting}`,
@@ -499,9 +502,14 @@ async function removeFromClub({
   }
   if (
     document.getElementById("updateOwnerSelect") ||
-    document.getElementById("tagOwnerSelect")
+    document.getElementById("tagOwnerSelect") ||
+    document.getElementById("archiveOwnerSelect") ||
+    document.getElementById("unarchiveOwnerSelect")
   ) {
     await loadOwnerList();
+  }
+  if (document.getElementById("wlAdminTableWrap")) {
+    await loadWaitingListAdmin();
   }
   return true;
 }
@@ -1212,6 +1220,24 @@ async function loadWaitingListAdmin() {
       })
     );
   });
+  tableWrap.querySelectorAll(".wl-remove-club").forEach((btn) => {
+    btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const tag = btn.dataset.tag || "";
+      const club = btn.dataset.club || "";
+      const label = [tag, club ? `(${club})` : "", btn.dataset.email]
+        .filter(Boolean)
+        .join(" ");
+      await removeFromClub({
+        addToWaitingList: btn.dataset.waiting === "1",
+        ownerId: btn.dataset.id || null,
+        email: btn.dataset.email || null,
+        label,
+        statusId: "wlActionStatus",
+      });
+    });
+  });
   tableWrap.querySelectorAll(".wl-confirm-season").forEach((cb) => {
     cb.addEventListener("pointerdown", (e) => e.stopPropagation());
     cb.addEventListener("click", (e) => e.stopPropagation());
@@ -1285,7 +1311,8 @@ function renderWaitingListAdminRow(row, { invited }) {
         ${invited ? "checked" : ""}>
     </td>`;
   const removeBtn = hasClub
-    ? ""
+    ? `<button type="button" class="button secondary wl-remove-club" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" data-waiting="0" title="Clear club only (not waiting list)">Remove club</button>
+       <button type="button" class="button secondary wl-remove-club" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" data-waiting="1" title="Clear club and add to waiting list as returning">→ Waiting</button>`
     : `<button type="button" class="button secondary wl-remove" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}">Remove</button>`;
 
   return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" data-filter-text="${escapeWl(filterText)}">
