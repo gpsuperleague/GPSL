@@ -1293,3 +1293,95 @@ body.gpsl-sport-open {
     order: -1;
   }
 }
+
+/* Internationals pullout */
+.gpsl-sport-intl-banner {
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  background: #111;
+  color: #f5e6a8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-left: 4px solid #c41230;
+}
+
+.gpsl-sport-intl-section {
+  margin: 18px 0;
+}
+
+.gpsl-sport-intl-section h2 {
+  margin: 0 0 10px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  color: #1a1a1a;
+  border-bottom: 2px solid #111;
+  padding-bottom: 4px;
+}
+
+.gpsl-sport-intl-shock-grid,
+.gpsl-sport-intl-feat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.gpsl-sport-intl-result,
+.gpsl-sport-intl-feat {
+  background: #f7f3e8;
+  border: 1px solid #ccc;
+  padding: 10px 12px;
+}
+
+.gpsl-sport-intl-scoreline {
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.gpsl-sport-intl-score {
+  display: inline-block;
+  margin: 0 6px;
+  font-weight: 800;
+  font-size: 16px;
+  color: #c41230;
+}
+
+.gpsl-sport-intl-meta,
+.gpsl-sport-intl-feat-bits,
+.gpsl-sport-intl-phase {
+  margin: 0;
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.gpsl-sport-intl-feat-name {
+  margin: 0 0 4px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.gpsl-sport-intl-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.gpsl-sport-intl-group h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.gpsl-sport-intl-score-cell {
+  font-weight: 800;
+  text-align: center;
+  color: #c41230;
+}
+
+.gpsl-sport-intl-tag {
+  font-size: 11px;
+  color: #777;
+}

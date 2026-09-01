@@ -925,6 +925,8 @@ function editionSportPages(edition, front = null) {
   const fp = front || edition?.front_page || {};
   const statsPage = edition?.stats_page || edition?.detail?.stats_page || {};
   const matchPage = edition?.match_page || edition?.detail?.match_page || {};
+  const internationalsPage =
+    edition?.internationals_page || edition?.detail?.internationals_page || {};
   const statsEnabled =
     statsPage.enabled === true ||
     (edition?.detail?.inseason_rich && Object.keys(statsPage).length > 1) ||
@@ -932,8 +934,19 @@ function editionSportPages(edition, front = null) {
   const matchEnabled =
     matchPage.enabled === true ||
     Boolean(matchPage.lead?.headline || matchPage.fixture?.home_name);
+  const internationalsEnabled =
+    internationalsPage.enabled === true ||
+    Boolean(internationalsPage.lead?.headline) ||
+    (Array.isArray(internationalsPage.results) && internationalsPage.results.length > 0);
 
-  return { statsPage, matchPage, statsEnabled, matchEnabled };
+  return {
+    statsPage,
+    matchPage,
+    internationalsPage,
+    statsEnabled,
+    matchEnabled,
+    internationalsEnabled,
+  };
 }
 
 function buildFrontRailTeasers(edition, front) {
@@ -941,7 +954,8 @@ function buildFrontRailTeasers(edition, front) {
   const leadKind = String(front.lead_kind || front.hero?.kind || "");
   const managersPage = edition.managers_page || edition.detail?.managers_page || {};
   const ownersPage = edition.owners_page || edition.detail?.owners_page || {};
-  const { statsPage, matchPage, statsEnabled, matchEnabled } = editionSportPages(edition, front);
+  const { statsPage, matchPage, statsEnabled, matchEnabled, internationalsEnabled, internationalsPage } =
+    editionSportPages(edition, front);
   const back = edition.back_page || {};
   const managerStories = Array.isArray(front.manager_stories) ? front.manager_stories : [];
   const ownerStories = Array.isArray(front.owner_stories) ? front.owner_stories : [];
@@ -971,6 +985,14 @@ function buildFrontRailTeasers(edition, front) {
         ...matchPage.lead,
         club_short: matchPage.lead.club_short || matchPage.fixture?.home_club,
       },
+    });
+  }
+
+  if (internationalsEnabled && internationalsPage.lead?.headline) {
+    teasers.push({
+      page: "internationals",
+      label: "Internationals",
+      story: internationalsPage.lead,
     });
   }
 
@@ -1062,6 +1084,110 @@ function renderMasthead(label, editionLabel, pageTitle) {
     </div>`;
 }
 
+function renderInternationalsPage(editionLabel, page) {
+  const lead = page.lead || {};
+  const shocks = Array.isArray(page.shocks) ? page.shocks : [];
+  const results = Array.isArray(page.results) ? page.results : [];
+  const groups = Array.isArray(page.groups) ? page.groups : [];
+  const feats = Array.isArray(page.brilliant_performances) ? page.brilliant_performances : [];
+  const sourceLabel = page.source_month_label || page.source_month || "Internationals";
+
+  const shockCards = shocks
+    .map((r) => {
+      const score = escapeHtml(r.score || `${r.home_goals}-${r.away_goals}`);
+      const groupBit = r.group_code ? ` · Group ${escapeHtml(r.group_code)}` : "";
+      const koBit = r.knockout_stage ? ` · ${escapeHtml(r.knockout_stage)}` : "";
+      return `<article class="gpsl-sport-intl-result">
+        <p class="gpsl-sport-intl-scoreline">${escapeHtml(r.home_flag || "")} <strong>${escapeHtml(r.home_name)}</strong>
+          <span class="gpsl-sport-intl-score">${score}</span>
+          <strong>${escapeHtml(r.away_name)}</strong> ${escapeHtml(r.away_flag || "")}</p>
+        <p class="gpsl-sport-intl-meta">${escapeHtml(r.phase || "")}${groupBit}${koBit}</p>
+      </article>`;
+    })
+    .join("");
+
+  const resultRows = results
+    .map((r) => {
+      const score = escapeHtml(r.score || `${r.home_goals}-${r.away_goals}`);
+      const tag = r.group_code
+        ? `Grp ${escapeHtml(r.group_code)}`
+        : r.knockout_stage
+          ? escapeHtml(r.knockout_stage)
+          : escapeHtml(r.phase || "");
+      return `<tr>
+        <td>${escapeHtml(r.home_flag || "")} ${escapeHtml(r.home_name)}</td>
+        <td class="gpsl-sport-intl-score-cell">${score}</td>
+        <td>${escapeHtml(r.away_name)} ${escapeHtml(r.away_flag || "")}</td>
+        <td class="gpsl-sport-intl-tag">${tag}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const groupBlocks = groups
+    .map((g) => {
+      const rows = Array.isArray(g.table) ? g.table : [];
+      const body = rows
+        .map(
+          (n, i) => `<tr>
+          <td>${i + 1}</td>
+          <td>${escapeHtml(n.flag || "")} ${escapeHtml(n.nation_name)}</td>
+          <td>${escapeHtml(String(n.played ?? 0))}</td>
+          <td>${escapeHtml(String(n.gd ?? 0))}</td>
+          <td><strong>${escapeHtml(String(n.pts ?? 0))}</strong></td>
+        </tr>`
+        )
+        .join("");
+      return `<div class="gpsl-sport-intl-group">
+        <h3>Group ${escapeHtml(g.group_code || "?")} <span class="gpsl-sport-intl-phase">${escapeHtml(g.phase || "")}</span></h3>
+        <div class="gpsl-sport-table-wrap">
+          <table class="gpsl-sport-league-table gpsl-sport-intl-table">
+            <thead><tr><th>#</th><th>Nation</th><th>P</th><th>GD</th><th>Pts</th></tr></thead>
+            <tbody>${body || `<tr><td colspan="5">No standings yet</td></tr>`}</tbody>
+          </table>
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  const featCards = feats
+    .map((f) => {
+      const bits = [];
+      if (Number(f.goals) > 0) bits.push(`${f.goals} goal${Number(f.goals) === 1 ? "" : "s"}`);
+      if (Number(f.assists) > 0) bits.push(`${f.assists} assist${Number(f.assists) === 1 ? "" : "s"}`);
+      if (f.potm) bits.push("POTM");
+      if (f.best_rating) bits.push(`best rating ${f.best_rating}`);
+      return `<article class="gpsl-sport-intl-feat">
+        <p class="gpsl-sport-intl-feat-name">${escapeHtml(f.player_name || "Unknown")}</p>
+        <p class="gpsl-sport-intl-feat-bits">${escapeHtml(bits.join(" · ") || "Standout shift")}</p>
+      </article>`;
+    })
+    .join("");
+
+  return `
+    <div class="gpsl-sport-page gpsl-sport-page-internationals">
+      ${renderMasthead(editionLabel, editionLabel, escapeHtml(page.page_title || "Internationals"))}
+      <p class="gpsl-sport-intl-banner">World stage pullout · ${escapeHtml(sourceLabel)} window · ${escapeHtml(String(page.played_count ?? results.length))} played</p>
+      <article class="gpsl-sport-lead-block">
+        <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline || "Internationals")}</h1>
+        ${lead.subhead ? `<p class="gpsl-sport-subhead">${escapeHtml(lead.subhead)}</p>` : ""}
+        ${lead.byline ? renderByline(lead.byline) : ""}
+        ${formatParagraphs(lead.body || "", true)}
+      </article>
+      ${shockCards ? `<section class="gpsl-sport-intl-section"><h2>Shocks &amp; scorelines</h2><div class="gpsl-sport-intl-shock-grid">${shockCards}</div></section>` : ""}
+      ${featCards ? `<section class="gpsl-sport-intl-section"><h2>Brilliant performances</h2><div class="gpsl-sport-intl-feat-grid">${featCards}</div></section>` : ""}
+      ${groupBlocks ? `<section class="gpsl-sport-intl-section"><h2>How the nations stand</h2><div class="gpsl-sport-intl-groups">${groupBlocks}</div></section>` : ""}
+      ${resultRows ? `<section class="gpsl-sport-intl-section"><h2>Full results</h2>
+        <div class="gpsl-sport-table-wrap">
+          <table class="gpsl-sport-league-table gpsl-sport-intl-results">
+            <thead><tr><th>Home</th><th>Score</th><th>Away</th><th></th></tr></thead>
+            <tbody>${resultRows}</tbody>
+          </table>
+        </div>
+      </section>` : ""}
+      <footer class="gpsl-sport-footer">GPSL Sport · Internationals desk · ${escapeHtml(sourceLabel)}</footer>
+    </div>`;
+}
+
 function renderInteriorPage(editionLabel, page, { defaultTitle = "GPSL Sport" } = {}) {
   const lead = page.lead || {};
   const stories = Array.isArray(page.stories) ? page.stories : [];
@@ -1124,7 +1250,14 @@ function renderSportPaper() {
 
   const managersPage = edition.managers_page || edition.detail?.managers_page || {};
   const ownersPage = edition.owners_page || edition.detail?.owners_page || {};
-  const { statsPage, matchPage, statsEnabled, matchEnabled } = editionSportPages(edition, front);
+  const {
+    statsPage,
+    matchPage,
+    internationalsPage,
+    statsEnabled,
+    matchEnabled,
+    internationalsEnabled,
+  } = editionSportPages(edition, front);
 
   if (sportActivePage === "stats" && statsEnabled) {
     paper.innerHTML = renderStatsPage(editionLabel, statsPage);
@@ -1133,6 +1266,11 @@ function renderSportPaper() {
 
   if (sportActivePage === "match" && matchEnabled) {
     paper.innerHTML = renderMatchPage(editionLabel, matchPage);
+    return;
+  }
+
+  if (sportActivePage === "internationals" && internationalsEnabled) {
+    paper.innerHTML = renderInternationalsPage(editionLabel, internationalsPage);
     return;
   }
 
@@ -1294,6 +1432,7 @@ export function ensureSportModal() {
         <button type="button" class="gpsl-sport-tab active" data-page="front">Front</button>
         <button type="button" class="gpsl-sport-tab" data-page="stats" id="gpslSportStatsTab" hidden>Stats</button>
         <button type="button" class="gpsl-sport-tab" data-page="match" id="gpslSportMatchTab" hidden>Match of the Month</button>
+        <button type="button" class="gpsl-sport-tab" data-page="internationals" id="gpslSportIntlTab" hidden>Internationals</button>
         <button type="button" class="gpsl-sport-tab" data-page="managers" id="gpslSportManagersTab" hidden>Managers</button>
         <button type="button" class="gpsl-sport-tab" data-page="owners" id="gpslSportOwnersTab" hidden>Owners</button>
         <button type="button" class="gpsl-sport-tab" data-page="back" id="gpslSportBackTab" hidden>Transfers</button>
@@ -1415,16 +1554,18 @@ export async function refreshGpslSportNav(supabase, { preserveViewingEdition = f
 function syncSportTabs(edition) {
   const statsTab = document.getElementById("gpslSportStatsTab");
   const matchTab = document.getElementById("gpslSportMatchTab");
+  const intlTab = document.getElementById("gpslSportIntlTab");
   const managersTab = document.getElementById("gpslSportManagersTab");
   const ownersTab = document.getElementById("gpslSportOwnersTab");
   const backTab = document.getElementById("gpslSportBackTab");
   const managersPage = edition?.managers_page || edition?.detail?.managers_page || {};
   const ownersPage = edition?.owners_page || edition?.detail?.owners_page || {};
-  const { statsEnabled, matchEnabled } = editionSportPages(edition);
+  const { statsEnabled, matchEnabled, internationalsEnabled } = editionSportPages(edition);
   const backEnabled = !!edition?.back_page?.enabled;
 
   if (statsTab) statsTab.hidden = !statsEnabled;
   if (matchTab) matchTab.hidden = !matchEnabled;
+  if (intlTab) intlTab.hidden = !internationalsEnabled;
   if (managersTab) managersTab.hidden = !managersPage.enabled;
   if (ownersTab) ownersTab.hidden = !ownersPage.enabled;
   if (backTab) backTab.hidden = !backEnabled;
@@ -1432,6 +1573,7 @@ function syncSportTabs(edition) {
   const pages = ["front"];
   if (statsEnabled) pages.push("stats");
   if (matchEnabled) pages.push("match");
+  if (internationalsEnabled) pages.push("internationals");
   if (managersPage.enabled) pages.push("managers");
   if (ownersPage.enabled) pages.push("owners");
   if (backEnabled) pages.push("back");
