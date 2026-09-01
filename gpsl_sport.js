@@ -1404,6 +1404,13 @@ function renderSportPaper() {
   const frontStories = Array.isArray(front.stories) ? front.stories : [];
   const standingsTeasers = renderStandingsSnapshotTeasers(front.standings_snapshot, editionLabel);
   const clubNewsSection = renderClubNewsSection(front.club_news);
+  const storiesTitle =
+    front.result_mentions_title ||
+    (frontStories.some((s) =>
+      ["friendly_highlight", "intl_highlight"].includes(String(s.story_kind || ""))
+    )
+      ? "Pre-season scorelines worth mentioning"
+      : "Shock results");
 
   paper.innerHTML = `
     <div class="gpsl-sport-page gpsl-sport-page-front">
@@ -1428,11 +1435,11 @@ function renderSportPaper() {
               </aside>`
             : `<aside class="gpsl-sport-rail gpsl-sport-rail-empty">
                 <h2 class="gpsl-sport-rail-title">Inside this edition</h2>
-                <p class="gpsl-sport-rail-blurb">Use the tabs above for stats, Match of the Month, managers, owners and transfers.</p>
+                <p class="gpsl-sport-rail-blurb">Use the tabs above for stats, Match of the Month, managers, owners, friendlies and internationals.</p>
               </aside>`
         }
       </div>
-      ${renderStorySection("Shock results", frontStories, { compact: true, columns: 1 })}
+      ${renderStorySection(storiesTitle, frontStories, { compact: true, columns: 1 })}
       ${clubNewsSection}
       ${standingsTeasers}
       <footer class="gpsl-sport-footer">GPSL Sport · Stadium photos &amp; club badges official GPSL assets · Player cards pesdb.net</footer>

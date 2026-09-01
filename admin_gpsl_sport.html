@@ -35,11 +35,10 @@
         · Create or rebuild a GPSL Sport edition for a locked month
         (e.g. after <a href="admin_test_end_month.html" style="color:#ff9900;">End Month Early</a>).
         Run <code>gpsl_sport_early_month_publish_fix.sql</code> in Supabase once if publish fails.
-        For June/July papers (owners + managers + transfers + <b>friendlies</b> + <b>internationals</b>):
-        run <code>gpsl_sport_internationals_july_august_20260901.sql</code> then
-        <code>gpsl_sport_preseason_friendlies_intl_20260901.sql</code>, then
+        For June/July: run intl + friendlies patches, then
+        <code>gpsl_sport_preseason_front_mentions_20260901.sql</code>, then
         <code>SELECT gpsl_sport_attach_preseason_results('july', NULL);</code>
-        (and the same for <code>'june'</code> if needed).
+        (and <code>'june'</code>). Standout friendlies/intl appear on the <b>front</b> as well as their tabs.
       </p>
 
       <div class="card">
