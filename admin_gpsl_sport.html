@@ -35,8 +35,12 @@
         · Create or rebuild a GPSL Sport edition for a locked month
         (e.g. after <a href="admin_test_end_month.html" style="color:#ff9900;">End Month Early</a>).
         Run <code>gpsl_sport_early_month_publish_fix.sql</code> in Supabase once if publish fails.
-        For August + July internationals: run
-        <code>gpsl_sport_internationals_july_august_20260901.sql</code>, then republish <b>August</b>.
+        For July internationals on the July paper: run
+        <code>gpsl_sport_internationals_july_august_20260901.sql</code> then
+        <code>gpsl_sport_preseason_internationals_20260901.sql</code>, then either
+        republish <b>July</b> or
+        <code>SELECT gpsl_sport_attach_internationals_to_month('july', NULL);</code>.
+        August still picks up July intl when August has no intl window of its own.
       </p>
 
       <div class="card">
