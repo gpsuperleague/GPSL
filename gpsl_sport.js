@@ -1693,8 +1693,13 @@ async function loadSportEdition(editionId, { markRead = false, preserveViewingEd
   });
 
   if (error || !data?.ok) {
-    console.error("GPSL Sport load:", error || data);
-    return false;
+    const reason =
+      error?.message ||
+      error?.details ||
+      data?.reason ||
+      (data ? JSON.stringify(data) : "unknown");
+    console.error("GPSL Sport load:", { editionId, reason, error, data });
+    return { ok: false, reason: String(reason), notFound: data?.reason === "not_found" };
   }
 
   if (data.refresh_error) {
@@ -1714,7 +1719,7 @@ async function loadSportEdition(editionId, { markRead = false, preserveViewingEd
     await refreshGpslSportNav(client, { preserveViewingEdition });
   }
 
-  return true;
+  return { ok: true };
 }
 
 export async function openGpslSport(supabase) {
@@ -1734,19 +1739,29 @@ export async function openGpslSport(supabase) {
   }
   showSportModal();
 
-  if (!sportEditionId) sportEditionId = readEditionIdFromNavButton();
-  if (!sportEditionId) await refreshGpslSportNav(client);
-  if (!sportEditionId) sportEditionId = readEditionIdFromNavButton();
+  // Always refresh nav first — republish/regenerate changes edition ids
+  await refreshGpslSportNav(client);
+  sportEditionId = readEditionIdFromNavButton();
   if (!sportEditionId) {
     hideSportModal();
     alert("No GPSL Sport edition is available yet.");
     return;
   }
 
-  const ok = await loadSportEdition(sportEditionId, { markRead: true });
-  if (!ok) {
+  let result = await loadSportEdition(sportEditionId, { markRead: true });
+  if (!result?.ok && result?.notFound) {
+    await refreshGpslSportNav(client);
+    sportEditionId = readEditionIdFromNavButton();
+    if (sportEditionId) {
+      result = await loadSportEdition(sportEditionId, { markRead: true });
+    }
+  }
+
+  if (!result?.ok) {
     hideSportModal();
-    alert("Could not load this edition.");
+    alert(
+      `Could not load this edition${result?.reason ? ` (${result.reason})` : ""}. Hard-refresh (Ctrl+F5) and try again.`
+    );
   }
 }
 
