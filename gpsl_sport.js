@@ -4,8 +4,8 @@
 
 import { stadiumImageUrl } from "./stadium_images.js";
 import {
-  pesdbPlayerCardUrl,
   PESDB_FALLBACK_CARD_IMG,
+  playerThumbLinkHtml,
 } from "./player_links.js";
 import { renderFormationPitchHtml } from "./pitch_display.js";
 import { DEFAULT_FORMATION_ID } from "./matchday_formations.js";
@@ -45,12 +45,20 @@ function clubBadgeUrl(short) {
 
 function imgTag(src, className, alt = "") {
   if (!src) return "";
-  const fallback = escapeAttr(PESDB_FALLBACK_CARD_IMG);
-  return (
-    `<img class="${className}" src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" loading="lazy" ` +
-    `referrerpolicy="no-referrer" ` +
-    `onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='${fallback}';}else{this.classList.add('is-broken')}">`
-  );
+  // Club badges / stadiums / trophies only — player cards use playerThumbHtml()
+  return `<img class="${className}" src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" loading="lazy" onerror="this.classList.add('is-broken')">`;
+}
+
+/** Same card methodology as squad / GPDB / fantasy (player_links.js). */
+function playerThumbHtml(konamiId, className = "gpsl-sport-story-player") {
+  const id = storyPlayerId({ player_id: konamiId }) || String(konamiId ?? "").trim();
+  if (!id) return "";
+  return playerThumbLinkHtml(id, {
+    className,
+    alt: "",
+    wrapLink: false,
+    fallback: PESDB_FALLBACK_CARD_IMG,
+  });
 }
 
 /** Prefer full nation name; never treat ISO codes as the display name. */
@@ -169,13 +177,12 @@ function renderHeroBlock(hero) {
   }
 
   if (kind === "transfer" && hero.player_id) {
-    const card = pesdbPlayerCardUrl(hero.player_id);
     return `
       <figure class="gpsl-sport-hero gpsl-sport-hero-transfer">
         <div class="gpsl-sport-hero-bg" style="${stadium ? `--hero-bg:url('${escapeAttr(stadium)}')` : ""}"></div>
         <div class="gpsl-sport-hero-layer">
           ${badge ? imgTag(badge, "gpsl-sport-hero-badge", "") : ""}
-          ${imgTag(card, "gpsl-sport-hero-player", "Player")}
+          ${playerThumbHtml(hero.player_id, "gpsl-sport-hero-player")}
         </div>
         ${caption ? `<figcaption class="gpsl-sport-hero-cap">${caption}</figcaption>` : ""}
       </figure>`;
@@ -197,7 +204,7 @@ function renderHeroBlock(hero) {
   if (kind === "player" && hero.player_id) {
     return `
       <figure class="gpsl-sport-hero gpsl-sport-hero-player-only">
-        ${imgTag(pesdbPlayerCardUrl(hero.player_id), "gpsl-sport-hero-player gpsl-sport-hero-player-solo", "Player")}
+        ${playerThumbHtml(hero.player_id, "gpsl-sport-hero-player gpsl-sport-hero-player-solo")}
         ${caption ? `<figcaption class="gpsl-sport-hero-cap">${caption}</figcaption>` : ""}
       </figure>`;
   }
@@ -538,7 +545,9 @@ function renderTotmSection(title, rows) {
 }
 
 function renderScorerRow(scorer) {
-  const card = scorer.player_id ? pesdbPlayerCardUrl(String(scorer.player_id)) : null;
+  const cardHtml = scorer.player_id
+    ? playerThumbHtml(scorer.player_id, "gpsl-sport-scorer-player")
+    : "";
   const badge = clubBadgeUrl(scorer.club_short);
   const goals = Number(scorer.goals ?? 0);
   const rank = Number(scorer.rank ?? 0) || "—";
@@ -554,7 +563,7 @@ function renderScorerRow(scorer) {
   return `
     <li class="gpsl-sport-scorer-row">
       <span class="gpsl-sport-scorer-rank">${escapeHtml(String(rank))}</span>
-      ${card ? `<div class="gpsl-sport-scorer-card">${imgTag(card, "gpsl-sport-scorer-player", "")}</div>` : ""}
+      ${cardHtml ? `<div class="gpsl-sport-scorer-card">${cardHtml}</div>` : ""}
       <div class="gpsl-sport-scorer-info">
         <span class="gpsl-sport-scorer-name">${escapeHtml(scorer.player_name || "—")}</span>
         <span class="gpsl-sport-scorer-club">
@@ -894,13 +903,12 @@ function renderStoryCard(story, { compact = false } = {}) {
   const isManager = story.story_kind === "manager_signing" || story.manager_id;
   const isClubNews = story.story_kind === "club_news";
   const badge = clubBadgeUrl(clubShort);
-  const card = playerId ? pesdbPlayerCardUrl(playerId) : null;
   const stadium = !playerId && clubShort && !isManager ? stadiumImageUrl(clubShort) : null;
   const natterImage = story.image_url || null;
 
   let media = "";
-  if (card) {
-    media = `<div class="gpsl-sport-story-media">${imgTag(card, "gpsl-sport-story-player", "")}</div>`;
+  if (playerId) {
+    media = `<div class="gpsl-sport-story-media">${playerThumbHtml(playerId, "gpsl-sport-story-player")}</div>`;
   } else if (stadium && !compact) {
     media = `<div class="gpsl-sport-story-media gpsl-sport-story-media-stadium" style="--story-bg:url('${escapeAttr(stadium)}')"></div>`;
   } else if (badge) {
@@ -1086,11 +1094,10 @@ function buildFrontRailTeasers(edition, front) {
 
 function renderRailTeaser({ page, label, story }) {
   const clubShort = story.club_short || story.club_short_name;
-  const playerId = story.player_id ? String(story.player_id) : null;
+  const playerId = storyPlayerId(story);
   const badge = clubBadgeUrl(clubShort);
-  const card = playerId ? pesdbPlayerCardUrl(playerId) : null;
-  const thumb = card
-    ? imgTag(card, "gpsl-sport-rail-thumb-player", "")
+  const thumb = playerId
+    ? playerThumbHtml(playerId, "gpsl-sport-rail-thumb-player")
     : badge
       ? imgTag(badge, "gpsl-sport-rail-thumb-badge", "")
       : "";
@@ -1288,7 +1295,7 @@ function renderInternationalsPage(editionLabel, page) {
       if (f.best_rating) bits.push(`best rating ${f.best_rating}`);
       const pid = storyPlayerId(f);
       const thumb = pid
-        ? `<div class="gpsl-sport-intl-feat-media">${imgTag(pesdbPlayerCardUrl(pid), "gpsl-sport-story-player", "")}</div>`
+        ? `<div class="gpsl-sport-intl-feat-media">${playerThumbHtml(pid, "gpsl-sport-story-player")}</div>`
         : "";
       return `<article class="gpsl-sport-intl-feat">
         ${thumb}
