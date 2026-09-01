@@ -74,6 +74,17 @@
     .wl-board-table .never { color: #f88; }
     .wl-board-table .stale { color: #fc6; }
     .wl-board-table tr.wl-filter-hide { display: none; }
+    .wl-archived-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .wl-archived-table th,
+    .wl-archived-table td {
+      border-bottom: 1px solid #333; padding: 7px 6px; text-align: left; vertical-align: middle;
+    }
+    .wl-archived-table th { color: #c88; font-weight: 600; }
+    .wl-archived-table .button.danger {
+      background: #622; color: #fcc; border: 1px solid #933;
+      font-size: 12px; padding: 4px 8px;
+    }
+    .wl-archived-table .button.danger:hover { background: #833; }
   </style>
 </head>
 <body class="admin-page">
@@ -97,6 +108,17 @@
           <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
         </div>
         <div id="wlAdminTableWrap" style="overflow-x:auto;"></div>
+        <div id="wlArchivedSection" style="margin-top:28px;" hidden>
+          <h3 style="margin:0 0 6px;font-size:15px;color:#c88;">Archived owners</h3>
+          <p class="note" style="margin-bottom:10px;">
+            Soft-removed from GPSL. <b>Delete from GPSL</b> permanently removes their login
+            (Auth user + registry). Season history rows may remain. Admin only.
+          </p>
+          <div class="wl-board-toolbar" style="margin-bottom:8px;">
+            <input type="search" id="wlArchivedFilter" placeholder="Filter archived tag / email…">
+          </div>
+          <div id="wlArchivedTableWrap" style="overflow-x:auto;"></div>
+        </div>
         <hr style="border-color:#333;margin:20px 0;">
         <h3 style="margin:0 0 8px;font-size:15px;color:#ccc;">Quick actions</h3>
         <div class="row">
@@ -114,6 +136,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js?v=20260901-wl-club-full-name"></script>
+  <script type="module" src="admin_owners.js?v=20260901-wl-archived-delete"></script>
 </body>
 </html>

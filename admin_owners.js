@@ -75,6 +75,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wlBoardFilter")?.addEventListener("input", (e) => {
     filterSeasonOwnerBoard(e.target.value);
   });
+  document.getElementById("wlArchivedFilter")?.addEventListener("input", (e) => {
+    filterArchivedOwnersBoard(e.target.value);
+  });
 
   if (needsWaitingList) await loadWaitingListAdmin();
   if (
@@ -1115,6 +1118,7 @@ async function loadWaitingListAdmin() {
 
   if (boardRes.error) {
     tableWrap.innerHTML = `<p class="note" style="color:#f88">❌ ${boardRes.error.message} — run waiting_list_priority_board_20260829.sql</p>`;
+    await loadArchivedOwnersSection();
     return;
   }
 
@@ -1142,6 +1146,7 @@ async function loadWaitingListAdmin() {
   if (!rows.length) {
     tableWrap.innerHTML =
       "<p class='note'>No one on the season owner board or invited to club auction.</p>";
+    await loadArchivedOwnersSection();
     return;
   }
 
@@ -1252,6 +1257,130 @@ async function loadWaitingListAdmin() {
       setWaitingListAuctionInvite(cb.dataset.id, cb.checked, cb)
     );
   });
+
+  await loadArchivedOwnersSection();
+}
+
+function filterArchivedOwnersBoard(filterText) {
+  const wrap = document.getElementById("wlArchivedTableWrap");
+  if (!wrap) return;
+  const q = String(filterText || "")
+    .trim()
+    .toLowerCase();
+  wrap.querySelectorAll("tr[data-owner-id]").forEach((tr) => {
+    if (!q) {
+      tr.classList.remove("wl-filter-hide");
+      return;
+    }
+    const hay = (tr.dataset.filterText || "").toLowerCase();
+    tr.classList.toggle("wl-filter-hide", !hay.includes(q));
+  });
+}
+
+async function loadArchivedOwnersSection() {
+  const section = document.getElementById("wlArchivedSection");
+  const wrap = document.getElementById("wlArchivedTableWrap");
+  if (!section || !wrap) return;
+
+  const { data, error } = await supabase.rpc("admin_list_archived_owners");
+  if (error) {
+    section.hidden = false;
+    wrap.innerHTML = `<p class="note" style="color:#f88">❌ ${escapeWl(
+      error.message
+    )} — run admin_archived_owners_delete_20260901.sql</p>`;
+    return;
+  }
+
+  const rows = Array.isArray(data?.archived) ? data.archived : [];
+  if (!rows.length) {
+    section.hidden = false;
+    wrap.innerHTML = `<p class="note">No archived owners.</p>`;
+    return;
+  }
+
+  section.hidden = false;
+  let html =
+    `<table class="admin-table wl-archived-table">` +
+    `<thead><tr>` +
+    `<th>Tag</th><th>Email</th><th>Last club</th><th>Archived (UK)</th><th>Note</th><th></th>` +
+    `</tr></thead><tbody>`;
+
+  for (const row of rows) {
+    const email = row.email || "";
+    const tag = row.owner_tag || "—";
+    const filterText = [tag, email, row.last_club_short_name, row.status_note]
+      .filter(Boolean)
+      .join(" ");
+    html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
+      <td>${escapeWl(tag)}</td>
+      <td>${escapeWl(email)}</td>
+      <td>${escapeWl(row.last_club_short_name || "—")}</td>
+      <td>${escapeWl(formatWlUkDateTime(row.status_changed_at))}</td>
+      <td>${escapeWl(row.status_note || "—")}</td>
+      <td>
+        <button type="button" class="button danger wl-delete-archived"
+          data-id="${escapeWl(row.owner_id)}"
+          data-email="${escapeWl(email)}"
+          data-tag="${escapeWl(tag)}">Delete from GPSL</button>
+      </td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+
+  const filterEl = document.getElementById("wlArchivedFilter");
+  if (filterEl?.value) filterArchivedOwnersBoard(filterEl.value);
+
+  wrap.querySelectorAll(".wl-delete-archived").forEach((btn) => {
+    btn.addEventListener("click", () =>
+      deleteArchivedOwner({
+        ownerId: btn.dataset.id,
+        email: btn.dataset.email,
+        tag: btn.dataset.tag,
+        button: btn,
+      })
+    );
+  });
+}
+
+async function deleteArchivedOwner({ ownerId, email, tag, button }) {
+  const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
+  if (
+    !confirm(
+      `Permanently delete ${label} from GPSL?\n\n` +
+        `This removes their login and registry row. Only archived owners can be deleted.\n` +
+        `This cannot be undone.`
+    )
+  ) {
+    return;
+  }
+
+  if (button) button.disabled = true;
+  setWlActionStatus(`Deleting ${label}…`);
+
+  const { data, error } = await invokeEdgeFunction("delete-archived-owner", {
+    ownerId,
+  });
+
+  if (error) {
+    if (button) button.disabled = false;
+    const hint = /Failed to send|FunctionsFetchError|not found|404/i.test(
+      error.message || ""
+    )
+      ? " — deploy supabase/functions/delete-archived-owner and apply admin_archived_owners_delete_20260901.sql"
+      : "";
+    setWlActionStatus("❌ " + error.message + hint, false);
+    return;
+  }
+
+  setWlActionStatus(
+    `✅ Deleted ${data?.owner_tag || data?.email || label} from GPSL`,
+    true
+  );
+  await loadArchivedOwnersSection();
+  if (document.getElementById("archiveOwnerSelect") || document.getElementById("unarchiveOwnerSelect")) {
+    await loadOwnerList();
+  }
 }
 
 function renderWaitingListAdminRow(row, { invited }) {
