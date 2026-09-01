@@ -1,21 +1,36 @@
 /**
  * Owner season board status (mirrors admin Season owner board ticks).
- * Testing / Live Season 1 / Club auction invite — In or Out.
+ * Testing / Live Season 1 — In or Out.
+ * Club auction — In, Out, or Completed (already has a club).
  */
 
 export function seasonStatusFromRegistry(self) {
+  let auction = "out";
+  if (self?.has_club) auction = "completed";
+  else if (self?.needs_club_auction) auction = "in";
+
   return {
     testIn: !!self?.confirmed_test_season,
     liveIn: !!self?.confirmed_live_season,
-    auctionIn: !!self?.needs_club_auction,
+    auction,
   };
 }
 
-function pill(inOut) {
+function pillInOut(inOut) {
   const on = !!inOut;
   const cls = on ? "owner-season-pill is-in" : "owner-season-pill is-out";
   const label = on ? "In" : "Out";
   return `<span class="${cls}" aria-label="${label}">${label}</span>`;
+}
+
+function auctionPill(state) {
+  if (state === "completed") {
+    return `<span class="owner-season-pill is-done" aria-label="Completed" title="Already own a club">Completed</span>`;
+  }
+  if (state === "in") {
+    return `<span class="owner-season-pill is-in" aria-label="In">In</span>`;
+  }
+  return `<span class="owner-season-pill is-out" aria-label="Out">Out</span>`;
 }
 
 /**
@@ -31,7 +46,7 @@ export function renderOwnerSeasonStatus(root, self, opts = {}) {
     return;
   }
 
-  const { testIn, liveIn, auctionIn } = seasonStatusFromRegistry(self);
+  const { testIn, liveIn, auction } = seasonStatusFromRegistry(self);
   const compact = !!opts.compact;
   root.hidden = false;
   root.innerHTML = `
@@ -40,15 +55,15 @@ export function renderOwnerSeasonStatus(root, self, opts = {}) {
     <ul class="owner-season-status-list${compact ? " is-compact" : ""}">
       <li>
         <span class="owner-season-label">Testing season</span>
-        ${pill(testIn)}
+        ${pillInOut(testIn)}
       </li>
       <li>
         <span class="owner-season-label">Live participation · Season 1</span>
-        ${pill(liveIn)}
+        ${pillInOut(liveIn)}
       </li>
       <li>
         <span class="owner-season-label">Club auction invitation</span>
-        ${pill(auctionIn)}
+        ${auctionPill(auction)}
       </li>
     </ul>
   `;
@@ -108,5 +123,10 @@ export const OWNER_SEASON_STATUS_CSS = `
   color: #bbb;
   background: #2a2a2a;
   border-color: #444;
+}
+.owner-season-pill.is-done {
+  color: #1a1a1a;
+  background: #8ab;
+  border-color: #689;
 }
 `;
