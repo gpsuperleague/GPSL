@@ -1557,12 +1557,13 @@ export function ensureSportModal() {
         '<div class="gpsl-sport-loading"><span class="gpsl-sport-loading-spinner"></span> Loading edition…</div>';
     }
 
-    const ok = await loadSportEdition(nextId, { markRead: true, preserveViewingEdition: true });
-    if (!ok) {
+    const result = await loadSportEdition(nextId, { markRead: true, preserveViewingEdition: true });
+    if (!result?.ok) {
       renderSportArchiveSelect();
       if (paper) {
-        paper.innerHTML =
-          '<div class="gpsl-sport-loading">Could not load that edition. Try another month.</div>';
+        paper.innerHTML = `<div class="gpsl-sport-loading">Could not load that edition${
+          result?.reason ? ` (${escapeHtml(result.reason)})` : ""
+        }. Try another month.</div>`;
       }
     }
   });
