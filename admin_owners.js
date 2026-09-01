@@ -66,12 +66,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("wlRefreshBtn")?.addEventListener("click", loadWaitingListAdmin);
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
-  document.getElementById("wlDirectAssignBtn")?.addEventListener("click", directAssignFromWaitingList);
-  document.getElementById("wlRemoveBtn")?.addEventListener("click", () =>
-    removeFromWaitingList({ email: wlActionEmail() })
-  );
-  document.getElementById("wlAbsenceOnBtn")?.addEventListener("click", () => setWaitingListAbsence(true));
-  document.getElementById("wlAbsenceOffBtn")?.addEventListener("click", () => setWaitingListAbsence(false));
   document.getElementById("wlBoardFilter")?.addEventListener("input", (e) => {
     filterSeasonOwnerBoard(e.target.value);
   });

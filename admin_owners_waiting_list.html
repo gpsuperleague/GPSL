@@ -157,20 +157,7 @@
           </div>
           <div id="wlArchivedTableWrap" style="overflow-x:auto;"></div>
         </div>
-        <hr style="border-color:#333;margin:20px 0;">
-        <h3 style="margin:0 0 8px;font-size:15px;color:#ccc;">Quick actions</h3>
-        <div class="row">
-          <div><input id="wlActionEmail" type="email" placeholder="Member email"></div>
-          <div><input id="wlAssignClub" placeholder="Club ShortName (direct assign)"></div>
-          <div><input id="wlAssignDiscordTag" placeholder="Discord tag (if not set yet)" autocomplete="off"></div>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-          <button type="button" id="wlDirectAssignBtn" class="button">Assign club directly</button>
-          <button type="button" id="wlRemoveBtn" class="button secondary">Remove from waiting list</button>
-          <button type="button" id="wlAbsenceOnBtn" class="button secondary">Mark on absence</button>
-          <button type="button" id="wlAbsenceOffBtn" class="button secondary">Clear absence</button>
-        </div>
-        <div id="wlActionStatus" class="status-line"></div>
+        <div id="wlActionStatus" class="status-line" style="margin-top:14px;"></div>
       </div>
     </div>
   </div>
@@ -192,6 +179,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260901-wl-absence-actions"></script>
+  <script type="module" src="admin_owners.js?v=20260901-wl-no-quick-actions"></script>
 </body>
 </html>
