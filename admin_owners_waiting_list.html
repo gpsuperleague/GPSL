@@ -12,9 +12,12 @@
     .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
     button.button.secondary { background:#444; color:#ddd; }
     button.button.secondary:hover { background:#555; }
-    tr.wl-priority-row { cursor: grab; touch-action: none; user-select: none; }
-    tr.wl-priority-row.wl-dragging { opacity: 0.45; cursor: grabbing; }
+    tr.wl-priority-row { touch-action: pan-y; }
+    tr.wl-priority-row .wl-drag-cell { cursor: grab; touch-action: none; user-select: none; }
+    tr.wl-priority-row.wl-dragging { opacity: 0.45; }
+    tr.wl-priority-row.wl-dragging .wl-drag-cell { cursor: grabbing; }
     tr.wl-priority-row.wl-dragging td { background: #1c1c1c; }
+    .wl-board-table input[type="checkbox"] { cursor: pointer; position: relative; z-index: 2; }
     tr.wl-club-owner { opacity: 0.55; color: #888; }
     tr.wl-club-owner td { border-color: #2a2a2a !important; }
     .wl-drag-handle {
@@ -106,6 +109,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js?v=20260829-discord-join-fallback"></script>
+  <script type="module" src="admin_owners.js?v=20260901-season-tick-click"></script>
 </body>
 </html>

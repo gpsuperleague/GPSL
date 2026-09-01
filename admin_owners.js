@@ -1167,11 +1167,15 @@ async function loadWaitingListAdmin() {
     );
   });
   tableWrap.querySelectorAll(".wl-confirm-season").forEach((cb) => {
+    cb.addEventListener("pointerdown", (e) => e.stopPropagation());
+    cb.addEventListener("click", (e) => e.stopPropagation());
     cb.addEventListener("change", () =>
       setWaitingListSeasonConfirmed(cb.dataset.id, cb.dataset.which, cb.checked, cb)
     );
   });
   tableWrap.querySelectorAll(".wl-auction-invite").forEach((cb) => {
+    cb.addEventListener("pointerdown", (e) => e.stopPropagation());
+    cb.addEventListener("click", (e) => e.stopPropagation());
     cb.addEventListener("change", () =>
       setWaitingListAuctionInvite(cb.dataset.id, cb.checked, cb)
     );
@@ -1320,8 +1324,14 @@ function bindWaitingListPriorityDrag(tableWrap) {
 
   tbody.addEventListener("pointerdown", (e) => {
     if (e.button != null && e.button !== 0) return;
-    if (e.target.closest("input,button,a,label")) return;
-    const tr = e.target.closest("tr.wl-priority-row");
+    // Never start a row-drag from controls — whole-row grab was eating checkbox clicks.
+    if (e.target.closest("input,button,a,label,select,textarea")) {
+      e.stopPropagation();
+      return;
+    }
+    const handle = e.target.closest(".wl-drag-cell, .wl-drag-handle");
+    if (!handle) return;
+    const tr = handle.closest("tr.wl-priority-row");
     if (!tr) return;
 
     dragRow = tr;
