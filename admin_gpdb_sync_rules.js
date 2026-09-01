@@ -23,7 +23,7 @@ export function getAdminGpdbSyncRules() {
       },
       {
         heading: "Apply",
-        body: "Off-PESDB cards → <b>legacy</b> (stay at club, not sellable, 1-season renewals).",
+        body: "Off-PESDB cards → <b>legacy</b> (stay at club, not sellable/signable; still playable and callable for internationals; 1-season renewals).",
       },
     ],
     cards: [

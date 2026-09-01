@@ -917,7 +917,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function legacyCardBidHtml() {
-    return `<span class="locked-msg gpdb-legacy-msg" title="Off pesdb.net — cannot be sold or signed until a PESDB sync restores the card">Legacy — not available</span>`;
+    return `<span class="locked-msg gpdb-legacy-msg" title="Off pesdb.net — cannot be sold or signed until a PESDB sync restores the card. National team call-up is still allowed.">Legacy — not transferable</span>`;
   }
 
   async function loadUser() {
@@ -2137,7 +2137,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (seasonExcluded) {
           nameCell += ` <span class="gpdb-excluded-badge" title="Admin season exclusion">Unavailable</span>`;
         } else if (legacyCard) {
-          nameCell += ` <span class="gpdb-legacy-badge" title="Off pesdb.net — not sellable or signable until PESDB sync restores the card">Legacy</span>`;
+          nameCell += ` <span class="gpdb-legacy-badge" title="Off pesdb.net — not sellable or signable until PESDB sync restores the card. Can still be called up for internationals.">Legacy</span>`;
         }
         nameCell += suspBadge;
 

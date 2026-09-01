@@ -9,7 +9,16 @@ export function getLegacyPlayersRules() {
       {
         heading: "What is a legacy card?",
         lead: `After each PESDB sync, players who are in GPSL but no longer appear on pesdb.net are marked as
-      <b>legacy</b>. They remain at their current club and can still be picked in your squad and play fixtures.`,
+      <b>legacy</b>. They remain at their current club and can still be picked in your squad and play fixtures.
+      They can also be <b>called up</b> to their national team. They <b>cannot</b> be signed, sold, or listed.`,
+      },
+      {
+        heading: "Transfers vs internationals",
+        items: [
+          "<b>Signing / selling / draft / FA bids</b> — blocked while the card is legacy.",
+          "<b>National team call-up</b> — allowed (same nationality rules and squad cap as any other player).",
+          "Season exclusions (admin) are separate — those can still block call-ups.",
+        ],
       },
       {
         heading: "When their contract runs out",
