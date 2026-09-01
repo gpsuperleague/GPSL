@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.set-owner-password]
 verify_jwt = false
 
+[functions.delete-archived-owner]
+verify_jwt = false
+
 [functions.discord-join-config]
 verify_jwt = false
 
