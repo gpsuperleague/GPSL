@@ -21,6 +21,7 @@
       border: 1px solid #444;
       background: #222;
       color: #eee;
+      box-sizing: border-box;
     }
 
     button {
@@ -39,10 +40,31 @@
       transform: scale(1.05);
     }
 
+    button.secondary {
+      background: #333;
+      color: #ddd;
+      border: 1px solid #555;
+    }
+
+    button.secondary:hover {
+      background: #444;
+    }
+
     a {
       color: #ff9900;
       cursor: pointer;
     }
+
+    #authStatus {
+      margin: 14px auto 0;
+      max-width: 360px;
+      min-height: 1.2em;
+      font-size: 14px;
+      color: #ccc;
+      line-height: 1.4;
+    }
+    #authStatus.is-error { color: #f88; }
+    #authStatus.is-ok { color: #9d9; }
   </style>
 </head>
 
@@ -50,53 +72,62 @@
 
   <h1>Login</h1>
 
-  <input id="email" type="email" placeholder="Email"><br><br>
-  <input id="password" type="password" placeholder="Password"><br><br>
-
-  <button id="loginBtn">Login</button>
-  <br><br>
-
-  <a id="resetBtn">Forgot your password?</a>
+  <form id="loginForm" autocomplete="on">
+    <input id="email" name="email" type="email" placeholder="Email" autocomplete="username" required><br><br>
+    <input id="password" name="password" type="password" placeholder="Password" autocomplete="current-password"><br><br>
+    <button type="submit" id="loginBtn">Login</button>
+  </form>
+  <br>
+  <button type="button" id="resetBtn" class="secondary">Forgot your password?</button>
+  <div id="authStatus" role="status" aria-live="polite"></div>
   <p style="margin-top:28px;font-size:14px;color:#999;">
     New to GPSL? Join via the invite link in Discord<br>
     (<a href="join_gpsl.html">Discord join page</a> — server members only).
   </p>
 
-  <!-- SUPABASE CLIENT -->
   <script type="module">
     import { supabase, waitForAuthSession } from "./supabase_client.js";
 
-    window.supabase = supabase;
+    const statusEl = document.getElementById("authStatus");
 
-    /* LOGIN */
-    document.getElementById("loginBtn").onclick = async () => {
+    function setAuthStatus(msg, ok = null) {
+      if (!statusEl) return;
+      statusEl.textContent = msg || "";
+      statusEl.classList.remove("is-error", "is-ok");
+      if (ok === true) statusEl.classList.add("is-ok");
+      if (ok === false) statusEl.classList.add("is-error");
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
       const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
+      const password = document.getElementById("password").value;
 
       if (!email || !password) {
-        alert("Enter email and password.");
+        setAuthStatus("Enter email and password to log in.", false);
         return;
       }
 
+      setAuthStatus("Signing in…");
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        alert(error.message);
+        setAuthStatus(error.message || "Invalid login credentials", false);
         return;
       }
 
       const session = await waitForAuthSession();
       if (!session?.user) {
-        alert(
-          "Login succeeded but the session could not be saved. On iPhone: Settings → Safari → turn off “Prevent Cross-Site Tracking” for this site, or allow cookies, then try again."
+        setAuthStatus(
+          "Login succeeded but the session could not be saved. On iPhone: Settings → Safari → turn off “Prevent Cross-Site Tracking” for this site, or allow cookies, then try again.",
+          false
         );
         return;
       }
 
-      // Also recorded on every authenticated site open via initGlobal (remembered sessions).
       const { error: loginLogErr } = await supabase.rpc("record_owner_site_login");
       if (loginLogErr) {
         console.warn("record_owner_site_login:", loginLogErr.message);
@@ -130,30 +161,36 @@
       }
 
       window.location.assign(dest);
-    };
+    });
 
-    /* PASSWORD RESET */
-    document.getElementById("resetBtn").onclick = async () => {
+    document.getElementById("resetBtn").addEventListener("click", async () => {
       const email = document.getElementById("email").value.trim();
 
       if (!email) {
-        alert("Enter your email first.");
+        setAuthStatus("Enter your email above, then click Forgot your password.", false);
+        document.getElementById("email")?.focus();
         return;
       }
 
+      setAuthStatus("Sending password reset email…");
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
-
-    });
-
+        redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html",
+      });
 
       if (error) {
-        alert(error.message);
+        setAuthStatus(
+          (error.message || "Could not send reset email") +
+            " — ask admin to send a reset from Owners → Reset password, or check the email address.",
+          false
+        );
         return;
       }
 
-      alert("Password reset email sent.");
-    };
+      setAuthStatus(
+        "If that email has a GPSL login, a reset link is on its way. Check inbox/spam, then open the link to set a new password.",
+        true
+      );
+    });
   </script>
 
 </body>
