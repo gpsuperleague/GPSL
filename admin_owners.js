@@ -78,6 +78,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wlArchivedFilter")?.addEventListener("input", (e) => {
     filterArchivedOwnersBoard(e.target.value);
   });
+  document.getElementById("wlAssignClubCancel")?.addEventListener("click", closeAssignClubModal);
+  document.getElementById("wlAssignClubConfirm")?.addEventListener("click", confirmAssignClubModal);
+  document.getElementById("wlAssignClubModal")?.addEventListener("click", (e) => {
+    if (e.target?.id === "wlAssignClubModal") closeAssignClubModal();
+  });
 
   if (needsWaitingList) await loadWaitingListAdmin();
   if (
@@ -1302,25 +1307,96 @@ async function runWlRowAction(action, { ownerId, email, tag, club, select }) {
   }
 }
 
+let wlAssignClubPending = null;
+
 async function assignClubFromWaitingRow({ email, tag }) {
   const who = tag || email || "this member";
   if (!email) {
     setWlActionStatus("Missing email for club assign.", false);
     return;
   }
-  const club = window
-    .prompt(`Assign club to ${who}.\n\nEnter club ShortName:`, "")
-    ?.trim();
-  if (!club) return;
 
-  let discordTag =
-    window
-      .prompt(
-        "Discord tag / display name for NEW OWNER news (leave blank if already set):",
-        ""
-      )
-      ?.trim() || "";
+  const modal = document.getElementById("wlAssignClubModal");
+  const select = document.getElementById("wlAssignClubSelect");
+  const whoEl = document.getElementById("wlAssignClubWho");
+  const tagInput = document.getElementById("wlAssignClubTag");
 
+  if (!modal || !select) {
+    // Fallback if modal markup missing (other admin pages).
+    const club = window.prompt(`Assign club to ${who}.\n\nEnter club ShortName:`, "")?.trim();
+    if (!club) return;
+    await finishAssignClubToWaitingMember({ email, tag: who, club, discordTag: "" });
+    return;
+  }
+
+  wlAssignClubPending = { email, tag: who };
+  if (whoEl) whoEl.textContent = `Assign a vacant club to ${who} (${email}).`;
+  if (tagInput) tagInput.value = "";
+  select.innerHTML = `<option value="">Loading vacant clubs…</option>`;
+  modal.hidden = false;
+
+  const { data, error } = await supabase
+    .from("Clubs")
+    .select("ShortName, Club")
+    .is("owner_id", null)
+    .order("Club");
+
+  if (error) {
+    select.innerHTML = `<option value="">Could not load clubs</option>`;
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+
+  const clubs = data || [];
+  if (!clubs.length) {
+    select.innerHTML = `<option value="">No vacant clubs available</option>`;
+    return;
+  }
+
+  select.innerHTML =
+    `<option value="">Select club…</option>` +
+    clubs
+      .map((c) => {
+        const full = c.Club || c.ShortName;
+        const short = c.ShortName || "";
+        return `<option value="${escapeWl(short)}">${escapeWl(full)} (${escapeWl(short)})</option>`;
+      })
+      .join("");
+}
+
+function closeAssignClubModal() {
+  const modal = document.getElementById("wlAssignClubModal");
+  if (modal) modal.hidden = true;
+  wlAssignClubPending = null;
+}
+
+async function confirmAssignClubModal() {
+  const pending = wlAssignClubPending;
+  const select = document.getElementById("wlAssignClubSelect");
+  const club = select?.value?.trim();
+  const clubLabel =
+    select?.selectedOptions?.[0]?.textContent?.trim() || club?.toUpperCase() || club;
+  const discordTag = document.getElementById("wlAssignClubTag")?.value?.trim() || "";
+  if (!pending?.email) {
+    closeAssignClubModal();
+    return;
+  }
+  if (!club) {
+    setWlActionStatus("Select a vacant club.", false);
+    return;
+  }
+  closeAssignClubModal();
+  await finishAssignClubToWaitingMember({
+    email: pending.email,
+    tag: pending.tag,
+    club,
+    clubLabel,
+    discordTag,
+  });
+}
+
+async function finishAssignClubToWaitingMember({ email, tag, club, clubLabel, discordTag }) {
+  const who = tag || email;
   if (discordTag) {
     setWlActionStatus("Saving Discord tag…");
     const { error: tagErr } = await supabase.rpc("admin_owner_set_tag", {
@@ -1344,7 +1420,10 @@ async function assignClubFromWaitingRow({ email, tag }) {
   }
   await loadWaitingListAdmin();
   await loadOwnerList();
-  setWlActionStatus(`✅ ${who} assigned to ${club.toUpperCase()}.`, true);
+  setWlActionStatus(
+    `✅ ${who} assigned to ${clubLabel || club.toUpperCase()}.`,
+    true
+  );
 }
 
 async function unarchiveOwnerFromBoard({ email, tag }) {
