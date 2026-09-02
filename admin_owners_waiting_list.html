@@ -169,7 +169,7 @@
           <b>Discord join</b> only exists for self-serve Discord joins; others show account-created marked <b>· acct</b>, or —.
         </p>
         <div class="wl-board-toolbar">
-          <input type="search" id="wlBoardFilter" placeholder="Filter tag / email / club / status…">
+          <input type="search" id="wlBoardFilter" placeholder="Filter tag / email / club / status (all sections)…">
           <button type="button" id="wlRefreshBtn" class="button secondary">Refresh</button>
           <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
         </div>
@@ -188,10 +188,8 @@
             Soft-removed from GPSL. <b>Test / Live</b> ticks still apply (same as the board above).
             <b>Unarchive → waiting</b> puts them back on the waiting list.
             <b>Delete from GPSL</b> permanently removes their login (Auth + registry). Admin only.
+            Use the filter at the top of this page to search archived rows too.
           </p>
-          <div class="wl-board-toolbar" style="margin-bottom:8px;">
-            <input type="search" id="wlArchivedFilter" placeholder="Filter archived tag / email…">
-          </div>
           <div id="wlArchivedTableWrap" style="overflow-x:auto;"></div>
         </div>
         <div id="wlActionStatus" class="status-line" style="margin-top:14px;"></div>
@@ -216,6 +214,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260902-wl-archived-ticks"></script>
+  <script type="module" src="admin_owners.js?v=20260902-wl-filter-all"></script>
 </body>
 </html>

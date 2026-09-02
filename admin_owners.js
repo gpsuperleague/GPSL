@@ -69,9 +69,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wlBoardFilter")?.addEventListener("input", (e) => {
     filterSeasonOwnerBoard(e.target.value);
   });
-  document.getElementById("wlArchivedFilter")?.addEventListener("input", (e) => {
-    filterArchivedOwnersBoard(e.target.value);
-  });
   document.getElementById("wlAssignClubCancel")?.addEventListener("click", closeAssignClubModal);
   document.getElementById("wlAssignClubConfirm")?.addEventListener("click", confirmAssignClubModal);
   document.getElementById("wlAssignClubModal")?.addEventListener("click", (e) => {
@@ -1090,19 +1087,25 @@ async function fetchOwnerActivityById() {
 }
 
 function filterSeasonOwnerBoard(filterText) {
-  const wrap = document.getElementById("wlAdminTableWrap");
-  if (!wrap) return;
-  const q = String(filterText || "")
+  const q = String(filterText ?? document.getElementById("wlBoardFilter")?.value ?? "")
     .trim()
     .toLowerCase();
-  wrap.querySelectorAll("tr[data-owner-id]").forEach((tr) => {
-    if (!q) {
-      tr.classList.remove("wl-filter-hide");
-      return;
-    }
-    const hay = (tr.dataset.filterText || "").toLowerCase();
-    tr.classList.toggle("wl-filter-hide", !hay.includes(q));
-  });
+  const roots = [
+    document.getElementById("wlAdminTableWrap"),
+    document.getElementById("wlOnBreakTableWrap"),
+    document.getElementById("wlArchivedTableWrap"),
+  ].filter(Boolean);
+
+  for (const wrap of roots) {
+    wrap.querySelectorAll("tr[data-owner-id]").forEach((tr) => {
+      if (!q) {
+        tr.classList.remove("wl-filter-hide");
+        return;
+      }
+      const hay = (tr.dataset.filterText || "").toLowerCase();
+      tr.classList.toggle("wl-filter-hide", !hay.includes(q));
+    });
+  }
 }
 
 async function loadWaitingListAdmin() {
@@ -1467,22 +1470,6 @@ async function unarchiveOwnerFromBoard({ email, tag }) {
   );
 }
 
-function filterArchivedOwnersBoard(filterText) {
-  const wrap = document.getElementById("wlArchivedTableWrap");
-  if (!wrap) return;
-  const q = String(filterText || "")
-    .trim()
-    .toLowerCase();
-  wrap.querySelectorAll("tr[data-owner-id]").forEach((tr) => {
-    if (!q) {
-      tr.classList.remove("wl-filter-hide");
-      return;
-    }
-    const hay = (tr.dataset.filterText || "").toLowerCase();
-    tr.classList.toggle("wl-filter-hide", !hay.includes(q));
-  });
-}
-
 async function loadArchivedOwnersSection() {
   const section = document.getElementById("wlArchivedSection");
   const wrap = document.getElementById("wlArchivedTableWrap");
@@ -1553,9 +1540,6 @@ async function loadArchivedOwnersSection() {
   html += `</tbody></table>`;
   wrap.innerHTML = html;
 
-  const filterEl = document.getElementById("wlArchivedFilter");
-  if (filterEl?.value) filterArchivedOwnersBoard(filterEl.value);
-
   bindWlRowActionSelects(wrap);
   wrap.querySelectorAll(".wl-confirm-season").forEach((cb) => {
     cb.addEventListener("pointerdown", (e) => e.stopPropagation());
@@ -1564,6 +1548,8 @@ async function loadArchivedOwnersSection() {
       setWaitingListSeasonConfirmed(cb.dataset.id, cb.dataset.which, cb.checked, cb)
     );
   });
+
+  filterSeasonOwnerBoard();
 }
 
 function renderOnBreakSection(rows) {
@@ -1613,9 +1599,8 @@ function renderOnBreakSection(rows) {
   html += `</tbody></table>`;
   wrap.innerHTML = html;
   bindWlRowActionSelects(wrap);
+  filterSeasonOwnerBoard();
 }
-
-async function returnOnBreakToWaitingList({ ownerId, email, tag }) {
   const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
   if (
     !confirm(
