@@ -9,6 +9,7 @@ import {
 } from "./player_links.js";
 import { renderFormationPitchHtml } from "./pitch_display.js";
 import { DEFAULT_FORMATION_ID } from "./matchday_formations.js";
+import { renderNationFlag } from "./international_flags.js";
 import { APP_VERSION } from "./app_version.js";
 
 let sportEditionId = null;
@@ -78,11 +79,42 @@ function nationDisplayName(row, side = "home") {
   return code || "Unknown";
 }
 
-/** Only render real flag emoji — skip 2–3 letter codes stored in flag fields. */
-function nationFlagHtml(flag) {
-  const t = String(flag ?? "").trim();
+/** Prefer PNG national flags (images/flags + flagcdn); never show raw ISO codes. */
+function nationFlagHtml(rowOrFlag, side = "home") {
+  if (rowOrFlag && typeof rowOrFlag === "object") {
+    const code = String(
+      rowOrFlag[`${side}_nation`] ||
+        rowOrFlag[`${side}_code`] ||
+        rowOrFlag.nation_code ||
+        rowOrFlag.code ||
+        ""
+    )
+      .trim()
+      .toUpperCase();
+    const name =
+      side === "away"
+        ? nationDisplayName(rowOrFlag, "away")
+        : nationDisplayName(rowOrFlag, "home");
+    const emoji = String(
+      rowOrFlag[`${side}_flag`] || rowOrFlag.flag || rowOrFlag.flag_emoji || ""
+    ).trim();
+    if (code) {
+      return `<span class="gpsl-sport-intl-flag">${renderNationFlag(
+        { code, name, flag_emoji: /^[A-Za-z0-9]{2,3}$/.test(emoji) ? "🏳️" : emoji || "🏳️" },
+        "sm"
+      )}</span>`;
+    }
+    if (emoji && !/^[A-Za-z0-9]{2,3}$/.test(emoji)) {
+      return `<span class="gpsl-sport-intl-flag" aria-hidden="true">${escapeHtml(emoji)}</span>`;
+    }
+    return "";
+  }
+
+  const t = String(rowOrFlag ?? "").trim();
   if (!t) return "";
-  if (/^[A-Za-z0-9]{2,3}$/.test(t)) return "";
+  if (/^[A-Za-z0-9]{2,3}$/.test(t)) {
+    return `<span class="gpsl-sport-intl-flag">${renderNationFlag({ code: t.toUpperCase() }, "sm")}</span>`;
+  }
   return `<span class="gpsl-sport-intl-flag" aria-hidden="true">${escapeHtml(t)}</span>`;
 }
 
@@ -905,6 +937,7 @@ function renderStoryCard(story, { compact = false } = {}) {
   const badge = clubBadgeUrl(clubShort);
   const stadium = !playerId && clubShort && !isManager ? stadiumImageUrl(clubShort) : null;
   const natterImage = story.image_url || null;
+  const pageLink = String(story.page_link || "").trim();
 
   let media = "";
   if (playerId) {
@@ -920,8 +953,15 @@ function renderStoryCard(story, { compact = false } = {}) {
       ? `<img class="gpsl-sport-club-news-image" src="${escapeAttr(natterImage)}" alt="" loading="lazy">`
       : "";
 
+  const linkAttrs = pageLink
+    ? ` href="#" data-sport-page="${escapeAttr(pageLink)}" role="button"`
+    : "";
+  const Tag = pageLink ? "a" : "article";
+
   return `
-    <article class="gpsl-sport-story${compact ? " gpsl-sport-story-compact" : ""}">
+    <${Tag} class="gpsl-sport-story${compact ? " gpsl-sport-story-compact" : ""}${
+      pageLink ? " gpsl-sport-story-link" : ""
+    }"${linkAttrs}>
       <div class="gpsl-sport-story-inner">
         ${media}
         <div class="gpsl-sport-story-text">
@@ -933,7 +973,7 @@ function renderStoryCard(story, { compact = false } = {}) {
           ${story.pull_quote ? renderPullQuote(story.pull_quote) : ""}
         </div>
       </div>
-    </article>`;
+    </${Tag}>`;
 }
 
 function pickPageTopStory(page, fallbackStories, leadOnFront) {
@@ -1216,9 +1256,9 @@ function renderInternationalsPage(editionLabel, page) {
     const home = nationDisplayName(r, "home");
     const away = nationDisplayName(r, "away");
     const score = escapeHtml(r.score || `${r.home_goals}-${r.away_goals}`);
-    return `${nationFlagHtml(r.home_flag)}<strong class="gpsl-sport-intl-nation">${escapeHtml(home)}</strong>
+    return `${nationFlagHtml(r, "home")}<strong class="gpsl-sport-intl-nation">${escapeHtml(home)}</strong>
       <span class="gpsl-sport-intl-score">${score}</span>
-      <strong class="gpsl-sport-intl-nation">${escapeHtml(away)}</strong>${nationFlagHtml(r.away_flag)}`;
+      <strong class="gpsl-sport-intl-nation">${escapeHtml(away)}</strong>${nationFlagHtml(r, "away")}`;
   };
 
   const shockCards = shocks
@@ -1243,9 +1283,9 @@ function renderInternationalsPage(editionLabel, page) {
           ? escapeHtml(r.knockout_stage)
           : escapeHtml(r.phase || "");
       return `<tr>
-        <td class="gpsl-sport-intl-nation-cell">${nationFlagHtml(r.home_flag)} ${escapeHtml(home)}</td>
+        <td class="gpsl-sport-intl-nation-cell">${nationFlagHtml(r, "home")} ${escapeHtml(home)}</td>
         <td class="gpsl-sport-intl-score-cell">${score}</td>
-        <td class="gpsl-sport-intl-nation-cell">${nationFlagHtml(r.away_flag)} ${escapeHtml(away)}</td>
+        <td class="gpsl-sport-intl-nation-cell">${nationFlagHtml(r, "away")} ${escapeHtml(away)}</td>
         <td class="gpsl-sport-intl-tag">${tag}</td>
       </tr>`;
     })
@@ -1262,7 +1302,7 @@ function renderInternationalsPage(editionLabel, page) {
               : n.nation_name || n.nation_code || "Unknown";
           return `<tr>
           <td class="gpsl-sport-league-pos">${i + 1}</td>
-          <td class="gpsl-sport-league-club gpsl-sport-intl-nation-cell">${nationFlagHtml(n.flag)} ${escapeHtml(name)}</td>
+          <td class="gpsl-sport-league-club gpsl-sport-intl-nation-cell">${nationFlagHtml(n)} ${escapeHtml(name)}</td>
           <td>${escapeHtml(String(n.played ?? 0))}</td>
           <td>${escapeHtml(String(n.won ?? 0))}</td>
           <td>${escapeHtml(String(n.drawn ?? 0))}</td>
@@ -1310,10 +1350,21 @@ function renderInternationalsPage(editionLabel, page) {
   // Clean lead headlines that baked in ISO codes as "flags"
   const leadHeadline = String(lead.headline || "Internationals")
     .replace(/\bWORLD STAGE:\s*[A-Za-z]{2,3}\s+/g, "WORLD STAGE: ")
+    .replace(/^[A-Za-z]{2,3}\s+(?=[A-Z])/, "")
+    .replace(/\s+[A-Za-z]{2,3}\s*(?=—|–|-)/g, " ")
     .replace(/\s+[A-Za-z]{2,3}\s*$/g, (m, _o, s) => {
-      // only strip trailing code if it looks like a leftover flag token
-      return /\bWORLD STAGE:/.test(s) ? "" : m;
+      return /\bWORLD STAGE/.test(s) ? "" : m;
     });
+
+  const leadScoreline =
+    lead.home_nation || lead.home_name
+      ? `<p class="gpsl-sport-intl-scoreline gpsl-sport-intl-lead-scoreline">${scorelineHtml({
+          ...lead,
+          home_goals: lead.home_goals,
+          away_goals: lead.away_goals,
+          score: lead.score,
+        })}</p>`
+      : "";
 
   return `
     <div class="gpsl-sport-page gpsl-sport-page-internationals">
@@ -1323,6 +1374,7 @@ function renderInternationalsPage(editionLabel, page) {
         <h1 class="gpsl-sport-headline">${escapeHtml(leadHeadline)}</h1>
         ${lead.subhead ? `<p class="gpsl-sport-subhead">${escapeHtml(lead.subhead)}</p>` : ""}
         ${lead.byline ? renderByline(lead.byline) : ""}
+        ${leadScoreline}
         ${formatParagraphs(lead.body || "", true)}
       </article>
       ${shockCards ? `<section class="gpsl-sport-intl-section"><h2>Shocks &amp; scorelines</h2><div class="gpsl-sport-intl-shock-grid">${shockCards}</div></section>` : ""}

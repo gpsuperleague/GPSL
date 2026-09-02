@@ -1402,6 +1402,46 @@ body.gpsl-sport-open {
 
 .gpsl-sport-intl-flag {
   margin: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.gpsl-sport-intl-flag .nat-flag-img,
+.gpsl-sport-intl-flag .nat-flag {
+  width: 22px;
+  height: 15px;
+  object-fit: cover;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.gpsl-sport-intl-flag .nat-flag {
+  font-size: 16px;
+  line-height: 1;
+  width: auto;
+  height: auto;
+  box-shadow: none;
+}
+
+.gpsl-sport-intl-lead-scoreline {
+  margin: 0.35rem 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.gpsl-sport-story-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gpsl-sport-story-link:hover,
+.gpsl-sport-story-link:focus-visible {
+  background: rgba(196, 30, 58, 0.06);
+  box-shadow: inset 3px 0 0 #c41e3a;
+  outline: none;
 }
 
 .gpsl-sport-intl-table,
