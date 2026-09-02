@@ -52,12 +52,19 @@
       padding: 8px 10px; min-width: 220px;
       background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
     }
-    .wl-board-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .wl-board-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
     .wl-board-table th,
     .wl-board-table td {
       border-bottom: 1px solid #333; padding: 7px 6px; text-align: left; vertical-align: middle;
     }
-    .wl-board-table th { color: #ff9900; font-weight: 600; white-space: nowrap; }
+    .wl-board-table thead tr:not(.wl-group-row) th {
+      color: #ff9900;
+      font-weight: 600;
+      font-size: 11px;
+      line-height: 1.25;
+      white-space: normal;
+      vertical-align: bottom;
+    }
     .wl-board-table .wl-group-row th {
       text-align: center;
       font-size: 11px;
@@ -67,6 +74,7 @@
       background: #181818;
       border-bottom: 1px solid #444;
       padding: 6px 8px;
+      white-space: nowrap;
     }
     .wl-board-table .wl-group-owner { border-left: 2px solid #555; }
     .wl-board-table .wl-group-season { border-left: 2px solid #886622; color: #e0b84a; }
@@ -80,7 +88,22 @@
     .wl-board-table td.wl-col-activity { border-left: 2px solid #3a6a8a; }
     .wl-board-table th.wl-col-actions,
     .wl-board-table td.wl-col-actions { border-left: 2px solid #444; }
-    .wl-board-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .wl-board-table th.num,
+    .wl-board-table td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      padding-left: 8px;
+      padding-right: 8px;
+      min-width: 2.6em;
+    }
+    .wl-board-table th.wl-num-login,
+    .wl-board-table td.wl-num-login { min-width: 3em; }
+    .wl-board-table th.wl-num-unplayed,
+    .wl-board-table td.wl-num-unplayed { min-width: 3.2em; }
+    .wl-board-table th.wl-col-login {
+      white-space: nowrap;
+      min-width: 7.5em;
+    }
     .wl-board-table .muted { color: #888; font-size: 12px; }
     .wl-board-table .never { color: #f88; }
     .wl-board-table .stale { color: #fc6; }
@@ -183,6 +206,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260902-wl-unplayed"></script>
+  <script type="module" src="admin_owners.js?v=20260902-wl-align"></script>
 </body>
 </html>

@@ -1174,15 +1174,15 @@ async function loadWaitingListAdmin() {
     `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
     `<th title="Confirmed for test season" style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
-    `<th class="wl-col-activity">Last login (UK)</th>` +
-    `<th class="num">Since</th>` +
-    `<th class="num" title="Total GPSL site logins (all time)">Total</th>` +
-    `<th class="num" title="${escapeWl(prevLabel)} logins">${escapeWl(prevLabel)}</th>` +
-    `<th class="num" title="${escapeWl(curLabel)} logins">${escapeWl(curLabel)}</th>` +
-    `<th class="num" title="Unplayed fixtures in ${escapeWl(prevLabel)} (league + cups)">Unpl. ${escapeWl(prevLabel)}</th>` +
-    `<th class="num" title="Unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">Unpl. ${escapeWl(curLabel)}</th>` +
-    `<th class="num" title="Unplayed fixtures this season (all months, league + cups)">Unpl. season</th>` +
-    `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord join</th>` +
+    `<th class="wl-col-activity wl-col-login">Last login</th>` +
+    `<th class="num wl-num-login">Since</th>` +
+    `<th class="num wl-num-login" title="Total GPSL site logins (all time)">Logins</th>` +
+    `<th class="num wl-num-login" title="${escapeWl(prevLabel)} logins">${escapeWl(prevLabel)}</th>` +
+    `<th class="num wl-num-login" title="${escapeWl(curLabel)} logins">${escapeWl(curLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="Unplayed fixtures in ${escapeWl(prevLabel)} (league + cups)">U ${escapeWl(prevLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="Unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">U ${escapeWl(curLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="Unplayed fixtures this season (all months, league + cups)">U season</th>` +
+    `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord</th>` +
     `<th class="wl-col-actions">Actions</th>` +
     `</tr></thead><tbody id="wlPriorityTbody">`;
 
@@ -1682,13 +1682,13 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
         title="Confirmed live season" ${liveOn ? "checked" : ""}>
     </td>
     <td class="wl-col-activity">${escapeWl(formatWlUkDateTime(lastAt))}</td>
-    <td class="num ${sinceClass}">${escapeWl(since.text)}</td>
-    <td class="num">${totalN}</td>
-    <td class="num">${prevN}</td>
-    <td class="num">${curN}</td>
-    <td class="num" title="Unplayed previous GPSL month">${formatUnplayed(unplayedPrev)}</td>
-    <td class="num" title="Unplayed current GPSL month">${formatUnplayed(unplayedCur)}</td>
-    <td class="num" title="Unplayed this season">${formatUnplayed(unplayedSeason)}</td>
+    <td class="num wl-num-login ${sinceClass}">${escapeWl(since.text)}</td>
+    <td class="num wl-num-login">${totalN}</td>
+    <td class="num wl-num-login">${prevN}</td>
+    <td class="num wl-num-login">${curN}</td>
+    <td class="num wl-num-unplayed" title="Unplayed previous GPSL month">${formatUnplayed(unplayedPrev)}</td>
+    <td class="num wl-num-unplayed" title="Unplayed current GPSL month">${formatUnplayed(unplayedCur)}</td>
+    <td class="num wl-num-unplayed" title="Unplayed this season">${formatUnplayed(unplayedSeason)}</td>
     <td>${discordCell}</td>
     <td class="wl-col-actions">${actionSelect}</td>
   </tr>`;
