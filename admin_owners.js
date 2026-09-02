@@ -1601,6 +1601,8 @@ function renderOnBreakSection(rows) {
   bindWlRowActionSelects(wrap);
   filterSeasonOwnerBoard();
 }
+
+async function returnOnBreakToWaitingList({ ownerId, email, tag }) {
   const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
   if (
     !confirm(
