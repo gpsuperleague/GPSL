@@ -455,7 +455,7 @@ async function removeFromClub({
   const who = label || email || ownerId;
   const waitBit = addToWaitingList
     ? "They will be added to the waiting list as a returning member."
-    : "They will NOT be added to the waiting list (club/nation cleared only).";
+    : "They will NOT join the waiting list — status becomes on_break (shown under On break on this board). Use → Waiting if you want them on the list.";
 
   if (
     !skipConfirm &&
@@ -490,7 +490,7 @@ async function removeFromClub({
   const waiting =
     data?.added_to_waiting_list === true
       ? " · added to waiting list"
-      : " · not on waiting list";
+      : " · on break (not on waiting list)";
   setStatus(
     statusEl,
     `✅ ${data?.owner_tag || email || who} removed from ${
@@ -1236,6 +1236,7 @@ async function loadWaitingListAdmin() {
     );
   });
 
+  renderOnBreakSection(Array.isArray(data?.on_break) ? data.on_break : []);
   await loadArchivedOwnersSection();
 }
 
@@ -1289,13 +1290,19 @@ async function runWlRowAction(action, { ownerId, email, tag, club, select }) {
     return;
   }
   if (action === "to_waiting") {
-    await removeFromClub({
-      addToWaitingList: true,
-      ownerId,
-      email,
-      label,
-      statusId: "wlActionStatus",
-    });
+    // From owners section: remove club + enqueue waiting
+    if (club) {
+      await removeFromClub({
+        addToWaitingList: true,
+        ownerId,
+        email,
+        label,
+        statusId: "wlActionStatus",
+      });
+      return;
+    }
+    // From on-break (or waiting already): enqueue returning
+    await returnOnBreakToWaitingList({ ownerId, email, tag });
     return;
   }
   if (action === "unarchive") {
@@ -1501,13 +1508,18 @@ async function loadArchivedOwnersSection() {
   let html =
     `<table class="admin-table wl-archived-table">` +
     `<thead><tr>` +
-    `<th>Tag</th><th>Email</th><th>Last club</th><th>Archived (UK)</th><th>Note</th>` +
+    `<th>Tag</th><th>Email</th><th>Last club</th>` +
+    `<th title="Confirmed for test season" style="text-align:center">Test</th>` +
+    `<th title="Confirmed for live season" style="text-align:center">Live</th>` +
+    `<th>Archived (UK)</th><th>Note</th>` +
     `<th class="wl-col-actions">Actions</th>` +
     `</tr></thead><tbody>`;
 
   for (const row of rows) {
     const email = row.email || "";
     const tag = row.owner_tag || "—";
+    const testOn = !!row.confirmed_test_season;
+    const liveOn = !!row.confirmed_live_season;
     const filterText = [tag, email, row.last_club_short_name, row.status_note]
       .filter(Boolean)
       .join(" ");
@@ -1515,6 +1527,14 @@ async function loadArchivedOwnersSection() {
       <td>${escapeWl(tag)}</td>
       <td>${escapeWl(email)}</td>
       <td>${escapeWl(row.last_club_short_name || "—")}</td>
+      <td style="text-align:center">
+        <input type="checkbox" class="wl-confirm-season" data-id="${escapeWl(row.owner_id)}" data-which="test"
+          title="Confirmed test season" ${testOn ? "checked" : ""}>
+      </td>
+      <td style="text-align:center">
+        <input type="checkbox" class="wl-confirm-season" data-id="${escapeWl(row.owner_id)}" data-which="live"
+          title="Confirmed live season" ${liveOn ? "checked" : ""}>
+      </td>
       <td>${escapeWl(formatWlUkDateTime(row.status_changed_at))}</td>
       <td>${escapeWl(row.status_note || "—")}</td>
       <td class="wl-col-actions">
@@ -1537,6 +1557,106 @@ async function loadArchivedOwnersSection() {
   if (filterEl?.value) filterArchivedOwnersBoard(filterEl.value);
 
   bindWlRowActionSelects(wrap);
+  wrap.querySelectorAll(".wl-confirm-season").forEach((cb) => {
+    cb.addEventListener("pointerdown", (e) => e.stopPropagation());
+    cb.addEventListener("click", (e) => e.stopPropagation());
+    cb.addEventListener("change", () =>
+      setWaitingListSeasonConfirmed(cb.dataset.id, cb.dataset.which, cb.checked, cb)
+    );
+  });
+}
+
+function renderOnBreakSection(rows) {
+  const section = document.getElementById("wlOnBreakSection");
+  const wrap = document.getElementById("wlOnBreakTableWrap");
+  if (!section || !wrap) return;
+
+  section.hidden = false;
+  if (!Array.isArray(rows) || !rows.length) {
+    wrap.innerHTML = `<p class="note">No owners on break.</p>`;
+    return;
+  }
+
+  let html =
+    `<table class="admin-table wl-archived-table">` +
+    `<thead><tr>` +
+    `<th>Tag</th><th>Email</th><th>Last club</th><th>Since (UK)</th><th>Note</th>` +
+    `<th class="wl-col-actions">Actions</th>` +
+    `</tr></thead><tbody>`;
+
+  for (const row of rows) {
+    const email = row.email || "";
+    const tag = row.owner_tag || "—";
+    const filterText = [tag, email, row.last_club_short_name, row.status_note, "on_break"]
+      .filter(Boolean)
+      .join(" ");
+    html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
+      <td>${escapeWl(tag)}</td>
+      <td>${escapeWl(email)}</td>
+      <td>${escapeWl(row.last_club_short_name || "—")}</td>
+      <td>${escapeWl(formatWlUkDateTime(row.status_changed_at))}</td>
+      <td>${escapeWl(row.status_note || "—")}</td>
+      <td class="wl-col-actions">
+        <select class="wl-row-action"
+          data-id="${escapeWl(row.owner_id)}"
+          data-email="${escapeWl(email)}"
+          data-tag="${escapeWl(tag)}"
+          aria-label="Actions for ${escapeWl(tag)}">
+          <option value="">Actions…</option>
+          <option value="to_waiting">→ Waiting</option>
+          <option value="add_club">Add club</option>
+          <option value="remove_waiting">Archive</option>
+        </select>
+      </td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+  bindWlRowActionSelects(wrap);
+}
+
+async function returnOnBreakToWaitingList({ ownerId, email, tag }) {
+  const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
+  if (
+    !confirm(
+      `Put ${label} back on the waiting list as returning?\n\nThey keep their login; status becomes member.`
+    )
+  ) {
+    return;
+  }
+
+  setStatus("wlActionStatus", "Returning to waiting list…");
+  const payload = {};
+  if (ownerId) payload.p_owner_id = ownerId;
+  if (email) payload.p_owner_email = email;
+
+  const { data, error } = await supabase.rpc(
+    "admin_owner_return_to_waiting_list",
+    payload
+  );
+  if (error) {
+    setStatus(
+      "wlActionStatus",
+      `❌ ${error.message}${
+        /admin_owner_return_to_waiting_list|schema cache|Could not find/i.test(
+          error.message || ""
+        )
+          ? " — run waiting_list_on_break_section_20260902.sql"
+          : ""
+      }`,
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "wlActionStatus",
+    data?.already_on_waiting_list
+      ? `ℹ️ ${data?.owner_tag || label} was already on the waiting list`
+      : `✅ ${data?.owner_tag || label} → waiting list (returning)`,
+    true
+  );
+  await loadWaitingListAdmin();
 }
 
 async function deleteArchivedOwner({ ownerId, email, tag, button }) {
@@ -1654,7 +1774,7 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     section === "owners" || hasClub
       ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" aria-label="Actions">
         <option value="">Actions…</option>
-        <option value="remove_club">Remove club</option>
+        <option value="remove_club">Remove club → on break</option>
         <option value="to_waiting">→ Waiting</option>
       </select>`
       : `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" aria-label="Actions">

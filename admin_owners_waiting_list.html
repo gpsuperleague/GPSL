@@ -158,8 +158,9 @@
           Three sections: <b>Owners</b> → <b>Waiting list</b> → <b>Archived</b>.
           Drag handles set season priority across owners and the waiting list.
           <b>Actions</b> per row:
-          owners (Remove club / → Waiting),
+          owners (<b>Remove club → on break</b> / <b>→ Waiting</b>),
           waiting (Add club / Mark on absence / Clear absence / Remove → archived),
+          on break (→ Waiting / Add club / Archive),
           archived (Unarchive → waiting / Delete from GPSL).
           <b>Restore join-date order</b> clears manual ranking. Activity uses site visits
           (including remembered sessions), at most one count per hour.
@@ -173,10 +174,19 @@
           <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
         </div>
         <div id="wlAdminTableWrap" style="overflow-x:auto;"></div>
+        <div id="wlOnBreakSection" style="margin-top:28px;" hidden>
+          <h3 style="margin:0 0 6px;font-size:15px;color:#e0b84a;">On break</h3>
+          <p class="note" style="margin-bottom:10px;">
+            Club removed without joining the waiting list (<code>on_break</code>).
+            Login still exists. Use <b>→ Waiting</b> to put them back on the list, or <b>Add club</b> / <b>Archive</b>.
+          </p>
+          <div id="wlOnBreakTableWrap" style="overflow-x:auto;"></div>
+        </div>
         <div id="wlArchivedSection" style="margin-top:28px;" hidden>
           <h3 style="margin:0 0 6px;font-size:15px;color:#c88;">Archived owners</h3>
           <p class="note" style="margin-bottom:10px;">
-            Soft-removed from GPSL. <b>Unarchive → waiting</b> puts them back on the waiting list.
+            Soft-removed from GPSL. <b>Test / Live</b> ticks still apply (same as the board above).
+            <b>Unarchive → waiting</b> puts them back on the waiting list.
             <b>Delete from GPSL</b> permanently removes their login (Auth + registry). Admin only.
           </p>
           <div class="wl-board-toolbar" style="margin-bottom:8px;">
@@ -206,6 +216,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260902-wl-align"></script>
+  <script type="module" src="admin_owners.js?v=20260902-wl-archived-ticks"></script>
 </body>
 </html>
