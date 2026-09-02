@@ -1153,9 +1153,9 @@ async function loadWaitingListAdmin() {
     : "Join-date order (drag to customise)";
   const activityNote = activityRes.error
     ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} login counts`;
+    : `${prevLabel} / ${curLabel} logins · unplayed fixtures (prev / cur / season)`;
 
-  const colSpan = 16;
+  const colSpan = 19;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
 
@@ -1165,7 +1165,7 @@ async function loadWaitingListAdmin() {
     `<tr class="wl-group-row">` +
     `<th colspan="6" class="wl-group-owner">Owner</th>` +
     `<th colspan="3" class="wl-group-season">Season</th>` +
-    `<th colspan="6" class="wl-group-activity">Activity</th>` +
+    `<th colspan="9" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions">Actions</th>` +
     `</tr>` +
     `<tr>` +
@@ -1177,8 +1177,11 @@ async function loadWaitingListAdmin() {
     `<th class="wl-col-activity">Last login (UK)</th>` +
     `<th class="num">Since</th>` +
     `<th class="num" title="Total GPSL site logins (all time)">Total</th>` +
-    `<th class="num" title="${escapeWl(prevLabel)}">${escapeWl(prevLabel)}</th>` +
-    `<th class="num" title="${escapeWl(curLabel)}">${escapeWl(curLabel)}</th>` +
+    `<th class="num" title="${escapeWl(prevLabel)} logins">${escapeWl(prevLabel)}</th>` +
+    `<th class="num" title="${escapeWl(curLabel)} logins">${escapeWl(curLabel)}</th>` +
+    `<th class="num" title="Unplayed fixtures in ${escapeWl(prevLabel)} (league + cups)">Unpl. ${escapeWl(prevLabel)}</th>` +
+    `<th class="num" title="Unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">Unpl. ${escapeWl(curLabel)}</th>` +
+    `<th class="num" title="Unplayed fixtures this season (all months, league + cups)">Unpl. season</th>` +
     `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord join</th>` +
     `<th class="wl-col-actions">Actions</th>` +
     `</tr></thead><tbody id="wlPriorityTbody">`;
@@ -1595,6 +1598,18 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
   const prevN = Number(act.logins_previous_month) || 0;
   const curN = Number(act.logins_current_month) || 0;
   const totalN = Number(act.logins_total) || 0;
+  const unplayedPrev =
+    act.unplayed_previous_month == null ? null : Number(act.unplayed_previous_month) || 0;
+  const unplayedCur =
+    act.unplayed_current_month == null ? null : Number(act.unplayed_current_month) || 0;
+  const unplayedSeason =
+    act.unplayed_season == null ? null : Number(act.unplayed_season) || 0;
+  const formatUnplayed = (n) => {
+    if (n == null) return `<span class="muted">—</span>`;
+    const cls =
+      n >= 3 ? "unplayed-bad" : n > 0 ? "unplayed-warn" : "";
+    return `<span class="${cls}">${n}</span>`;
+  };
   const discordJoined = act.discord_joined_at || null;
   const discordSource = act.discord_join_source || (discordJoined ? "discord" : "account");
   const discordDisplayAt =
@@ -1671,6 +1686,9 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     <td class="num">${totalN}</td>
     <td class="num">${prevN}</td>
     <td class="num">${curN}</td>
+    <td class="num" title="Unplayed previous GPSL month">${formatUnplayed(unplayedPrev)}</td>
+    <td class="num" title="Unplayed current GPSL month">${formatUnplayed(unplayedCur)}</td>
+    <td class="num" title="Unplayed this season">${formatUnplayed(unplayedSeason)}</td>
     <td>${discordCell}</td>
     <td class="wl-col-actions">${actionSelect}</td>
   </tr>`;

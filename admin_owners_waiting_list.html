@@ -84,6 +84,8 @@
     .wl-board-table .muted { color: #888; font-size: 12px; }
     .wl-board-table .never { color: #f88; }
     .wl-board-table .stale { color: #fc6; }
+    .wl-board-table .unplayed-warn { color: #fc6; font-weight: 600; }
+    .wl-board-table .unplayed-bad { color: #f88; font-weight: 700; }
     .wl-board-table tr.wl-filter-hide { display: none; }
     .wl-archived-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .wl-archived-table th,
@@ -138,6 +140,8 @@
           archived (Unarchive → waiting / Delete from GPSL).
           <b>Restore join-date order</b> clears manual ranking. Activity uses site visits
           (including remembered sessions), at most one count per hour.
+          <b>Unplayed</b> columns count that club’s fixtures still not played
+          (league + cups) for the previous GPSL month, current month, and season total.
           <b>Discord join</b> only exists for self-serve Discord joins; others show account-created marked <b>· acct</b>, or —.
         </p>
         <div class="wl-board-toolbar">
@@ -179,6 +183,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260901-wl-no-quick-actions"></script>
+  <script type="module" src="admin_owners.js?v=20260902-wl-unplayed"></script>
 </body>
 </html>
