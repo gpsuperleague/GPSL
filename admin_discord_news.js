@@ -267,6 +267,8 @@ function renderRoutingStatus(data) {
   const natterOk = !!data?.natter_webhook_configured;
   const notifyOk = !!data?.notifications_webhook_configured;
   const tablesOk = !!data?.tables_webhook_configured;
+  const scheduledOk = !!data?.scheduled_webhook_configured;
+  const intlScheduledOk = !!data?.intl_scheduled_webhook_configured;
   const whosOk = !!data?.whos_who_webhook_configured;
   el.innerHTML = `
     <div class="${newsOk ? "ok" : "bad"}">#gpsl-news webhook: ${
@@ -290,6 +292,16 @@ function renderRoutingStatus(data) {
     <div class="${tablesOk ? "ok" : "bad"}">#gpsl-tables webhook: ${
       tablesOk
         ? "configured (DISCORD_TABLES_WEBHOOK_URL)"
+        : "MISSING — set secret + redeploy discord-sky-feed"
+    }</div>
+    <div class="${scheduledOk ? "ok" : "bad"}">#gpsl-scheduled webhook: ${
+      scheduledOk
+        ? "configured (DISCORD_SCHEDULED_WEBHOOK_URL)"
+        : "MISSING — set secret + redeploy discord-sky-feed"
+    }</div>
+    <div class="${intlScheduledOk ? "ok" : "bad"}">#gpsl-intl-scheduled webhook: ${
+      intlScheduledOk
+        ? "configured (DISCORD_INTL_SCHEDULED_WEBHOOK_URL)"
         : "MISSING — set secret + redeploy discord-sky-feed"
     }</div>
     <div class="${whosOk ? "ok" : "bad"}">#whos-who webhook: ${
@@ -316,6 +328,8 @@ async function checkRouting() {
       natter_webhook_configured: false,
       notifications_webhook_configured: false,
       tables_webhook_configured: false,
+      scheduled_webhook_configured: false,
+      intl_scheduled_webhook_configured: false,
       whos_who_webhook_configured: false,
       note: error.message,
     });
@@ -327,6 +341,8 @@ async function checkRouting() {
   if (!data?.natter_webhook_configured) missing.push("natter");
   if (!data?.notifications_webhook_configured) missing.push("notifications");
   if (!data?.tables_webhook_configured) missing.push("tables");
+  if (!data?.scheduled_webhook_configured) missing.push("scheduled");
+  if (!data?.intl_scheduled_webhook_configured) missing.push("intl-scheduled");
   if (missing.length) {
     setStatus(
       "newsStatus",
@@ -337,7 +353,7 @@ async function checkRouting() {
   }
   setStatus(
     "newsStatus",
-    "Routing OK — news, results, natter, notifications, and tables webhooks are configured."
+    "Routing OK — news, results, natter, notifications, tables, scheduled, and intl-scheduled webhooks are configured."
   );
 }
 
@@ -352,7 +368,9 @@ async function pushNews() {
     data?.results_webhook_configured === false ||
     data?.natter_webhook_configured === false ||
     data?.notifications_webhook_configured === false ||
-    data?.tables_webhook_configured === false
+    data?.tables_webhook_configured === false ||
+    data?.scheduled_webhook_configured === false ||
+    data?.intl_scheduled_webhook_configured === false
   ) {
     renderRoutingStatus({
       news_webhook_configured: true,
@@ -360,6 +378,8 @@ async function pushNews() {
       natter_webhook_configured: !!data?.natter_webhook_configured,
       notifications_webhook_configured: !!data?.notifications_webhook_configured,
       tables_webhook_configured: !!data?.tables_webhook_configured,
+      scheduled_webhook_configured: !!data?.scheduled_webhook_configured,
+      intl_scheduled_webhook_configured: !!data?.intl_scheduled_webhook_configured,
       note: "Missing channel secrets block those items (they do not fall back to #gpsl-news).",
     });
   }
@@ -375,8 +395,10 @@ async function pushNews() {
     data?.posted_news != null ||
     data?.posted_natter != null ||
     data?.posted_notifications != null ||
-    data?.posted_tables != null
-      ? ` (news ${data?.posted_news ?? 0}, results ${data?.posted_results ?? 0}, natter ${data?.posted_natter ?? 0}, notify ${data?.posted_notifications ?? 0}, tables ${data?.posted_tables ?? 0})`
+    data?.posted_tables != null ||
+    data?.posted_scheduled != null ||
+    data?.posted_intl_scheduled != null
+      ? ` (news ${data?.posted_news ?? 0}, results ${data?.posted_results ?? 0}, natter ${data?.posted_natter ?? 0}, notify ${data?.posted_notifications ?? 0}, tables ${data?.posted_tables ?? 0}, scheduled ${data?.posted_scheduled ?? 0}, intl ${data?.posted_intl_scheduled ?? 0})`
       : "";
   setStatus(
     "newsStatus",
@@ -395,7 +417,11 @@ async function sendTest(channel = "news") {
           ? "#gpsl-notifications"
           : channel === "tables"
             ? "#gpsl-tables"
-            : "#gpsl-news";
+            : channel === "scheduled"
+              ? "#gpsl-scheduled"
+              : channel === "intl_scheduled"
+                ? "#gpsl-intl-scheduled"
+                : "#gpsl-news";
   setStatus("newsStatus", `Sending test to ${label}…`);
   const { data, error } = await invokeFeed({
     test: true,
@@ -408,7 +434,11 @@ async function sendTest(channel = "news") {
             ? "notifications"
             : channel === "tables"
               ? "tables"
-              : "news",
+              : channel === "scheduled"
+                ? "scheduled"
+                : channel === "intl_scheduled"
+                  ? "intl_scheduled"
+                  : "news",
   });
   if (error) {
     setStatus("newsStatus", error.message, false);
@@ -416,7 +446,9 @@ async function sendTest(channel = "news") {
       channel === "results" ||
       channel === "natter" ||
       channel === "notifications" ||
-      channel === "tables"
+      channel === "tables" ||
+      channel === "scheduled" ||
+      channel === "intl_scheduled"
     ) {
       renderRoutingStatus({
         news_webhook_configured: true,
@@ -424,6 +456,8 @@ async function sendTest(channel = "news") {
         natter_webhook_configured: channel !== "natter",
         notifications_webhook_configured: channel !== "notifications",
         tables_webhook_configured: channel !== "tables",
+        scheduled_webhook_configured: channel !== "scheduled",
+        intl_scheduled_webhook_configured: channel !== "intl_scheduled",
         note: error.message,
       });
     }
@@ -499,6 +533,16 @@ document.getElementById("notificationsTestBtn")?.addEventListener("click", () =>
 });
 document.getElementById("tablesTestBtn")?.addEventListener("click", () => {
   sendTest("tables").catch((e) =>
+    setStatus("newsStatus", e.message || String(e), false)
+  );
+});
+document.getElementById("scheduledTestBtn")?.addEventListener("click", () => {
+  sendTest("scheduled").catch((e) =>
+    setStatus("newsStatus", e.message || String(e), false)
+  );
+});
+document.getElementById("intlScheduledTestBtn")?.addEventListener("click", () => {
+  sendTest("intl_scheduled").catch((e) =>
     setStatus("newsStatus", e.message || String(e), false)
   );
 });
