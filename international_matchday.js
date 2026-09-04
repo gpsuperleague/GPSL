@@ -351,13 +351,18 @@ function initOrRefreshSquadPanel() {
 }
 
 function setMatchdayTab(tab) {
+  // Squad editor lives on the main page (nation default), not inside a fixture.
+  if (tab === "squad") {
+    $("nationSquadPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    initOrRefreshSquadPanel();
+    return;
+  }
   document.querySelectorAll(".matchday-tabs button").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.tab === tab);
   });
   document.querySelectorAll(".tab-panel").forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.panel === tab);
   });
-  if (tab === "squad") initOrRefreshSquadPanel();
 }
 
 function isHomeFixture(f) {
@@ -399,6 +404,12 @@ async function loadFixtures() {
   if (!myNation?.code) {
     if (banner) banner.textContent = "You do not have a national team assigned.";
     $("fixtureList").innerHTML = `<p class="note">Claim a nation on Nation selection first.</p>`;
+    const squadRoot = $("matchdaySquadRoot");
+    if (squadRoot) {
+      squadRoot.innerHTML =
+        '<p class="note" style="padding:10px;">Claim a nation on <a href="nation_select.html">Nation selection</a> first.</p>';
+    }
+    squadPanelApi = null;
     return;
   }
 
@@ -1132,5 +1143,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.querySelectorAll(".matchday-tabs button").forEach((btn) => {
     btn.addEventListener("click", () => setMatchdayTab(btn.dataset.tab));
+  });
+
+  $("jumpToSquadBtn")?.addEventListener("click", () => {
+    setMatchdayTab("squad");
   });
 });

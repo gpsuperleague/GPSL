@@ -30,11 +30,23 @@
     <div id="actionNeededBanner" class="action-needed" hidden></div>
     <div class="toolbar">
       <a class="button secondary" href="national_team.html" id="nationLink">National team</a>
+      <button type="button" class="button" id="jumpToSquadBtn">Edit national XI</button>
       <a class="button secondary" href="world_cup.html">World Cup</a>
       <a class="button secondary" href="season_calendar.html">Season calendar</a>
     </div>
 
     <div id="nextIntlBanner" class="next-intl" hidden></div>
+
+    <div class="panel" id="nationSquadPanel">
+      <h2 id="nationSquadHeading">Default national matchday squad</h2>
+      <p class="note" style="margin-top:0;">
+        Call up 26–28 on <a href="national_team.html">National team</a>, then drag them onto the
+        pitch (<b>XI</b>) and bench here. Saved as your nation default for internationals
+        (used when you Simulate).
+      </p>
+      <div id="matchdaySquadRoot"></div>
+      <p id="squadPanelStatus" class="note" style="margin-top:10px;"></p>
+    </div>
 
     <div class="panel">
       <h2>Your fixtures</h2>
@@ -53,7 +65,6 @@
 
       <div class="matchday-tabs" role="tablist">
         <button type="button" class="active" data-tab="kickoff" role="tab">Kick-off</button>
-        <button type="button" data-tab="squad" role="tab">Squad &amp; pitch</button>
         <button type="button" data-tab="result" role="tab">Result</button>
       </div>
 
@@ -79,16 +90,6 @@
           </div>
           <p id="scheduleStatus" class="note"></p>
         </div>
-      </div>
-
-      <div class="tab-panel" id="tabSquad" data-panel="squad">
-        <h2>Default national matchday squad</h2>
-        <p class="note" style="margin-top:0;">
-          Drag call-up players onto the pitch (XI) and bench — same tools as club Match Day.
-          Saved as your nation default for internationals.
-        </p>
-        <div id="matchdaySquadRoot"></div>
-        <p id="squadPanelStatus" class="note" style="margin-top:10px;"></p>
       </div>
 
       <div class="tab-panel" id="tabResult" data-panel="result">
@@ -162,6 +163,6 @@
 
     <div id="pageStatus" class="status"></div>
   </div>
-  <script type="module" src="international_matchday.js?v=20260821-swap-remove"></script>
+  <script type="module" src="international_matchday.js?v=20260904-squad-top"></script>
 </body>
 </html>
