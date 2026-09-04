@@ -144,6 +144,35 @@ function isDealsEvent(row: FeedRow): boolean {
   return channel === "deals" || channel === "completed_deals";
 }
 
+function isContractsEvent(row: FeedRow): boolean {
+  if (
+    row.event_type === "contracts" ||
+    row.event_type === "contracts_digest" ||
+    row.event_type === "release"
+  ) {
+    const channel = String(row.metadata?.channel || "").toLowerCase();
+    if (channel === "news") return false;
+    if (channel === "contracts") return true;
+    return (
+      row.event_type === "contracts" || row.event_type === "contracts_digest"
+    );
+  }
+  const channel = String(row.metadata?.channel || "").toLowerCase();
+  return channel === "contracts";
+}
+
+function isJobCenterEvent(row: FeedRow): boolean {
+  if (row.event_type === "job_center") return true;
+  const channel = String(row.metadata?.channel || "").toLowerCase();
+  return channel === "job_center" || channel === "job-center";
+}
+
+function isNationPickEvent(row: FeedRow): boolean {
+  if (row.event_type === "nation_pick") return true;
+  const channel = String(row.metadata?.channel || "").toLowerCase();
+  return channel === "nation_pick" || channel === "nation-pick";
+}
+
 function wantsOwnerPing(row: FeedRow): boolean {
   if (row.event_type === "owner") return true;
   if (row.metadata?.ping === true || row.metadata?.ping === "true") return true;
@@ -293,6 +322,10 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
     intl_scheduled: 0x9b59b6,
     deals_digest: 0x00a651,
     deals: 0x00a651,
+    contracts: 0xbcbc80,
+    contracts_digest: 0xbcbc80,
+    job_center: 0x995533,
+    nation_pick: 0x5865f2,
     other: 0x111111,
   };
   const color =
@@ -309,6 +342,9 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
   const scheduled = isScheduledEvent(row);
   const intlScheduled = isIntlScheduledEvent(row);
   const deals = isDealsEvent(row);
+  const contracts = isContractsEvent(row);
+  const jobCenter = isJobCenterEvent(row);
+  const nationPick = isNationPickEvent(row);
   const imageUrl = natter
     ? publicNatterImageUrl(supabaseUrl, row.metadata)
     : null;
@@ -329,19 +365,25 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
             : "GPSL Intl Results"
           : deals
             ? "GPSL Completed Deals · Daily digest"
-            : natter
-              ? "GPSL Natter"
-              : intlTables
-                ? "GPSL Intl Tables"
-                : tables
-                  ? "GPSL Tables"
-                  : notifications
-                    ? "GPSL Notifications"
-                    : intlScheduled
-                      ? "GPSL Intl Scheduled"
-                      : scheduled
-                        ? "GPSL Scheduled"
-                        : "GPSL News",
+            : contracts
+              ? "GPSL Contracts"
+              : jobCenter
+                ? "GPSL Job Center"
+                : nationPick
+                  ? "GPSL Nation Pick"
+                  : natter
+                    ? "GPSL Natter"
+                    : intlTables
+                      ? "GPSL Intl Tables"
+                      : tables
+                        ? "GPSL Tables"
+                        : notifications
+                          ? "GPSL Calendar"
+                          : intlScheduled
+                            ? "GPSL Intl Scheduled"
+                            : scheduled
+                              ? "GPSL Scheduled"
+                              : "GPSL News",
     },
     timestamp: new Date().toISOString(),
   };
@@ -494,7 +536,10 @@ function webhookForRow(
   intlScheduledUrl: string | null = null,
   intlResultsUrl: string | null = null,
   intlTablesUrl: string | null = null,
-  dealsUrl: string | null = null
+  dealsUrl: string | null = null,
+  contractsUrl: string | null = null,
+  jobCenterUrl: string | null = null,
+  nationPickUrl: string | null = null
 ): { url: string; username: string } {
   if (isIntlResultsEvent(row)) {
     if (!intlResultsUrl) {
@@ -519,6 +564,30 @@ function webhookForRow(
       );
     }
     return { url: dealsUrl, username: "GPSL Completed Deals" };
+  }
+  if (isContractsEvent(row)) {
+    if (!contractsUrl) {
+      throw new Error(
+        "DISCORD_CONTRACTS_WEBHOOK_URL secret missing — contracts not posted. Add the #gpsl-contracts webhook secret and redeploy discord-sky-feed."
+      );
+    }
+    return { url: contractsUrl, username: "GPSL Contracts" };
+  }
+  if (isJobCenterEvent(row)) {
+    if (!jobCenterUrl) {
+      throw new Error(
+        "DISCORD_JOB_CENTER_WEBHOOK_URL secret missing — job center not posted. Add the #gpsl-job-center webhook secret and redeploy discord-sky-feed."
+      );
+    }
+    return { url: jobCenterUrl, username: "GPSL Job Center" };
+  }
+  if (isNationPickEvent(row)) {
+    if (!nationPickUrl) {
+      throw new Error(
+        "DISCORD_NATION_PICK_WEBHOOK_URL secret missing — nation pick not posted. Add the #gpsl-nation-pick webhook secret and redeploy discord-sky-feed."
+      );
+    }
+    return { url: nationPickUrl, username: "GPSL Nation Pick" };
   }
   if (isNatterEvent(row)) {
     if (!natterUrl) {
@@ -550,7 +619,7 @@ function webhookForRow(
         "DISCORD_NOTIFICATIONS_WEBHOOK_URL secret missing — notification not posted to #gpsl-news. Add the #gpsl-notifications webhook secret and redeploy discord-sky-feed."
       );
     }
-    return { url: notificationsUrl, username: "GPSL Notifications" };
+    return { url: notificationsUrl, username: "GPSL Calendar" };
   }
   if (isIntlScheduledEvent(row)) {
     if (!intlScheduledUrl) {
@@ -624,6 +693,19 @@ Deno.serve(async (req) => {
       Deno.env.get("DISCORD_DEALS_WEBHOOK_URL") ||
       Deno.env.get("DISCORD_WEBHOOK_DEALS_URL") ||
       Deno.env.get("DISCORD_COMPLETED_DEALS_WEBHOOK_URL") ||
+      "";
+    const contractsWebhookUrl =
+      Deno.env.get("DISCORD_CONTRACTS_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WEBHOOK_CONTRACTS_URL") ||
+      "";
+    const jobCenterWebhookUrl =
+      Deno.env.get("DISCORD_JOB_CENTER_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WEBHOOK_JOB_CENTER_URL") ||
+      Deno.env.get("DISCORD_JOBCENTRE_WEBHOOK_URL") ||
+      "";
+    const nationPickWebhookUrl =
+      Deno.env.get("DISCORD_NATION_PICK_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WEBHOOK_NATION_PICK_URL") ||
       "";
     const feedKey = Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
       Deno.env.get("CRON_API_KEY") ||
@@ -768,6 +850,11 @@ Deno.serve(async (req) => {
         scheduled: scheduledWebhookUrl,
         intl_scheduled: intlScheduledWebhookUrl,
         deals: dealsWebhookUrl,
+        contracts: contractsWebhookUrl,
+        job_center: jobCenterWebhookUrl,
+        jobcenter: jobCenterWebhookUrl,
+        nation_pick: nationPickWebhookUrl,
+        nationpick: nationPickWebhookUrl,
         whos_who: whosWhoWebhookUrl,
         whoswho: whosWhoWebhookUrl,
       };
@@ -798,7 +885,7 @@ Deno.serve(async (req) => {
           return jsonResponse(
             {
               ok: false,
-              error: `Unknown or unconfigured channel "${channelKey}". Choose news, results, intl_results, natter, notifications, tables, intl_tables, scheduled, intl_scheduled, deals, transfer_gossip, or whos_who.`,
+              error: `Unknown or unconfigured channel "${channelKey}". Choose news, results, intl_results, natter, notifications, tables, intl_tables, scheduled, intl_scheduled, deals, contracts, job_center, nation_pick, transfer_gossip, or whos_who.`,
               channels: Object.keys(CLEAR_CHANNEL_LABELS),
             },
             400
@@ -894,6 +981,9 @@ Deno.serve(async (req) => {
         intl_scheduled_webhook_configured: Boolean(intlScheduledWebhookUrl),
         intl_results_webhook_configured: Boolean(intlResultsWebhookUrl),
         deals_webhook_configured: Boolean(dealsWebhookUrl),
+        contracts_webhook_configured: Boolean(contractsWebhookUrl),
+        job_center_webhook_configured: Boolean(jobCenterWebhookUrl),
+        nation_pick_webhook_configured: Boolean(nationPickWebhookUrl),
         routing: {
           result_events: resultsWebhookUrl
             ? "DISCORD_RESULTS_WEBHOOK_URL → #gpsl-results"
@@ -922,10 +1012,21 @@ Deno.serve(async (req) => {
           deals_events: dealsWebhookUrl
             ? "DISCORD_DEALS_WEBHOOK_URL → #gpsl-deals"
             : "BLOCKED until DISCORD_DEALS_WEBHOOK_URL is set",
+          contracts_events: contractsWebhookUrl
+            ? "DISCORD_CONTRACTS_WEBHOOK_URL → #gpsl-contracts"
+            : "BLOCKED until DISCORD_CONTRACTS_WEBHOOK_URL is set",
+          job_center_events: jobCenterWebhookUrl
+            ? "DISCORD_JOB_CENTER_WEBHOOK_URL → #gpsl-job-center"
+            : "BLOCKED until DISCORD_JOB_CENTER_WEBHOOK_URL is set",
+          nation_pick_events: nationPickWebhookUrl
+            ? "DISCORD_NATION_PICK_WEBHOOK_URL → #gpsl-nation-pick"
+            : "BLOCKED until DISCORD_NATION_PICK_WEBHOOK_URL is set",
           whos_who: whosWhoWebhookUrl
             ? "DISCORD_WHOS_WHO_WEBHOOK_URL → #whos-who (silent daily edit)"
             : "BLOCKED until DISCORD_WHOS_WHO_WEBHOOK_URL is set",
           other_events: "DISCORD_WEBHOOK_URL → #gpsl-news",
+          calendar_note:
+            "DISCORD_NOTIFICATIONS_WEBHOOK_URL → #gpsl-notifications (GPSL calendar feed)",
         },
         note:
           "Create each webhook inside its Discord channel. Secrets live under Edge Functions → Secrets (project-wide), then redeploy discord-sky-feed.",
@@ -1042,6 +1143,15 @@ Deno.serve(async (req) => {
         channel === "deals" ||
         channel === "completed_deals" ||
         channel === "deals_digest";
+      const toContracts = channel === "contracts";
+      const toJobCenter =
+        channel === "job_center" ||
+        channel === "job-center" ||
+        channel === "jobcenter";
+      const toNationPick =
+        channel === "nation_pick" ||
+        channel === "nation-pick" ||
+        channel === "nationpick";
       if (toResults && !resultsWebhookUrl) {
         return jsonResponse(
           {
@@ -1159,6 +1269,45 @@ Deno.serve(async (req) => {
           400
         );
       }
+      if (toContracts && !contractsWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_CONTRACTS_WEBHOOK_URL secret missing — cannot test #gpsl-contracts. Add it under Edge Functions → Secrets and redeploy.",
+            channel: "contracts",
+            used_contracts_webhook: false,
+            contracts_webhook_configured: false,
+          },
+          400
+        );
+      }
+      if (toJobCenter && !jobCenterWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_JOB_CENTER_WEBHOOK_URL secret missing — cannot test #gpsl-job-center. Add it under Edge Functions → Secrets and redeploy.",
+            channel: "job_center",
+            used_job_center_webhook: false,
+            job_center_webhook_configured: false,
+          },
+          400
+        );
+      }
+      if (toNationPick && !nationPickWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_NATION_PICK_WEBHOOK_URL secret missing — cannot test #gpsl-nation-pick. Add it under Edge Functions → Secrets and redeploy.",
+            channel: "nation_pick",
+            used_nation_pick_webhook: false,
+            nation_pick_webhook_configured: false,
+          },
+          400
+        );
+      }
       const target = toResults
         ? resultsWebhookUrl
         : toNatter
@@ -1177,13 +1326,19 @@ Deno.serve(async (req) => {
                       ? scheduledWebhookUrl
                       : toDeals
                         ? dealsWebhookUrl
-                        : webhookUrl;
+                        : toContracts
+                          ? contractsWebhookUrl
+                          : toJobCenter
+                            ? jobCenterWebhookUrl
+                            : toNationPick
+                              ? nationPickWebhookUrl
+                              : webhookUrl;
       const label = toResults
         ? "RESULTS"
         : toNatter
           ? "NATTER"
           : toNotifications
-            ? "NOTIFICATIONS"
+            ? "CALENDAR"
             : toIntlTables
               ? "INTL TABLES"
               : toTables
@@ -1196,13 +1351,19 @@ Deno.serve(async (req) => {
                       ? "SCHEDULED"
                       : toDeals
                         ? "COMPLETED DEALS"
-                        : "NEWS";
+                        : toContracts
+                          ? "CONTRACTS"
+                          : toJobCenter
+                            ? "JOB CENTER"
+                            : toNationPick
+                              ? "NATION PICK"
+                              : "NEWS";
       const channelName = toResults
         ? "#gpsl-results"
         : toNatter
           ? "#gpsl-natter"
           : toNotifications
-            ? "#gpsl-notifications"
+            ? "#gpsl-notifications (calendar)"
             : toIntlTables
               ? "#gpsl-intl-tables"
               : toTables
@@ -1215,7 +1376,13 @@ Deno.serve(async (req) => {
                       ? "#gpsl-scheduled"
                       : toDeals
                         ? "#gpsl-deals"
-                        : "#gpsl-news";
+                        : toContracts
+                          ? "#gpsl-contracts"
+                          : toJobCenter
+                            ? "#gpsl-job-center"
+                            : toNationPick
+                              ? "#gpsl-nation-pick"
+                              : "#gpsl-news";
       await postWebhook(
         target,
         [
@@ -1346,7 +1513,10 @@ Deno.serve(async (req) => {
         intlScheduledWebhookUrl || null,
         intlResultsWebhookUrl || null,
         intlTablesWebhookUrl || null,
-        dealsWebhookUrl || null
+        dealsWebhookUrl || null,
+        contractsWebhookUrl || null,
+        jobCenterWebhookUrl || null,
+        nationPickWebhookUrl || null
       );
       await postWebhook(target.url, [embedFor(directRow, supabaseUrl)], {
         username: target.username,
@@ -1363,6 +1533,9 @@ Deno.serve(async (req) => {
     let postedScheduled = 0;
     let postedIntlScheduled = 0;
     let postedDeals = 0;
+    let postedContracts = 0;
+    let postedJobCenter = 0;
+    let postedNationPick = 0;
     let postedNews = 0;
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -1449,6 +1622,21 @@ Deno.serve(async (req) => {
     if (pending.some((r) => isDealsEvent(r)) && !dealsWebhookUrl) {
       warnings.push(
         "DISCORD_DEALS_WEBHOOK_URL not set — deals digest items will stay in error until the #gpsl-deals webhook secret is added"
+      );
+    }
+    if (pending.some((r) => isContractsEvent(r)) && !contractsWebhookUrl) {
+      warnings.push(
+        "DISCORD_CONTRACTS_WEBHOOK_URL not set — contracts items will stay in error until the #gpsl-contracts webhook secret is added"
+      );
+    }
+    if (pending.some((r) => isJobCenterEvent(r)) && !jobCenterWebhookUrl) {
+      warnings.push(
+        "DISCORD_JOB_CENTER_WEBHOOK_URL not set — job center items will stay in error until the #gpsl-job-center webhook secret is added"
+      );
+    }
+    if (pending.some((r) => isNationPickEvent(r)) && !nationPickWebhookUrl) {
+      warnings.push(
+        "DISCORD_NATION_PICK_WEBHOOK_URL not set — nation pick items will stay in error until the #gpsl-nation-pick webhook secret is added"
       );
     }
 
@@ -1659,7 +1847,10 @@ Deno.serve(async (req) => {
           intlScheduledWebhookUrl || null,
           intlResultsWebhookUrl || null,
           intlTablesWebhookUrl || null,
-          dealsWebhookUrl || null
+          dealsWebhookUrl || null,
+          contractsWebhookUrl || null,
+          jobCenterWebhookUrl || null,
+          nationPickWebhookUrl || null
         );
         const embed = embedFor(row, supabaseUrl);
         try {
@@ -1727,6 +1918,9 @@ Deno.serve(async (req) => {
         if (isResultsEvent(row)) postedResults += 1;
         else if (isIntlResultsEvent(row)) postedIntlResults += 1;
         else if (isDealsEvent(row)) postedDeals += 1;
+        else if (isContractsEvent(row)) postedContracts += 1;
+        else if (isJobCenterEvent(row)) postedJobCenter += 1;
+        else if (isNationPickEvent(row)) postedNationPick += 1;
         else if (isNatterEvent(row)) postedNatter += 1;
         else if (isTablesEvent(row)) postedTables += 1;
         else if (isIntlTablesEvent(row)) postedIntlTables += 1;
@@ -1796,6 +1990,9 @@ Deno.serve(async (req) => {
       posted_scheduled: postedScheduled,
       posted_intl_scheduled: postedIntlScheduled,
       posted_deals: postedDeals,
+      posted_contracts: postedContracts,
+      posted_job_center: postedJobCenter,
+      posted_nation_pick: postedNationPick,
       results_webhook_configured: Boolean(resultsWebhookUrl),
       intl_results_webhook_configured: Boolean(intlResultsWebhookUrl),
       natter_webhook_configured: Boolean(natterWebhookUrl),

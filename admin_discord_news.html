@@ -221,7 +221,10 @@
               <button type="button" id="newsTestBtn" class="button secondary">Test #gpsl-news</button>
               <button type="button" id="dealsTestBtn" class="button secondary">Test #gpsl-deals</button>
               <button type="button" id="natterTestBtn" class="button secondary">Test #gpsl-natter</button>
-              <button type="button" id="notificationsTestBtn" class="button secondary">Test #gpsl-notifications</button>
+              <button type="button" id="notificationsTestBtn" class="button secondary">Test calendar (#gpsl-notifications)</button>
+              <button type="button" id="contractsTestBtn" class="button secondary">Test #gpsl-contracts</button>
+              <button type="button" id="jobCenterTestBtn" class="button secondary">Test #gpsl-job-center</button>
+              <button type="button" id="nationPickTestBtn" class="button secondary">Test #gpsl-nation-pick</button>
             </div>
           </div>
         </div>
@@ -252,7 +255,10 @@
               <option value="intl_tables">#gpsl-intl-tables</option>
               <option value="deals">#gpsl-deals</option>
               <option value="natter">#gpsl-natter</option>
-              <option value="notifications">#gpsl-notifications</option>
+              <option value="notifications">#gpsl-notifications (calendar)</option>
+              <option value="contracts">#gpsl-contracts</option>
+              <option value="job_center">#gpsl-job-center</option>
+              <option value="nation_pick">#gpsl-nation-pick</option>
               <option value="transfer_gossip">#gpsl-transfer-gossip</option>
               <option value="whos_who">#whos-who</option>
             </select>
@@ -286,13 +292,28 @@
           <tbody>
             <tr>
               <td><code>#gpsl-news</code></td>
-              <td>Notable market deals (age≤21 @68+ / age≥22 @76+), owners, members, cups/titles, clinches</td>
+              <td>Notable market deals + listings (age≤21 @68+ / age≥22 @76+), owners, members, cups/titles, clinches</td>
               <td class="secret">DISCORD_WEBHOOK_URL</td>
             </tr>
             <tr>
               <td><code>#gpsl-deals</code></td>
               <td>All completed deals (draft + market) — daily digest ~21:00 UTC</td>
               <td class="secret">DISCORD_DEALS_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-contracts</code></td>
+              <td>Contract releases (daily batch) + out-of-contract notices</td>
+              <td class="secret">DISCORD_CONTRACTS_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-job-center</code></td>
+              <td>Vacant league clubs only (not spare clubs)</td>
+              <td class="secret">DISCORD_JOB_CENTER_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-nation-pick</code></td>
+              <td>Nation selection pick turns (@owner)</td>
+              <td class="secret">DISCORD_NATION_PICK_WEBHOOK_URL</td>
             </tr>
             <tr>
               <td><code>#gpsl-results</code></td>
@@ -331,7 +352,7 @@
             </tr>
             <tr>
               <td><code>#gpsl-notifications</code></td>
-              <td>Auctions, windows, month ticks, challenges, reminders, vacants</td>
+              <td><b>GPSL Calendar</b> — months, windows, auctions, challenges, match reminders</td>
               <td class="secret">DISCORD_NOTIFICATIONS_WEBHOOK_URL</td>
             </tr>
             <tr>
@@ -356,7 +377,8 @@
               <code>discord_intl_results_digest_20260904.sql</code> /
               <code>discord_intl_tables_20260904.sql</code> /
               <code>discord_member_joined_to_news_20260904.sql</code> /
-              <code>discord_deals_digest_and_news_filter_20260904.sql</code>.</li>
+              <code>discord_deals_digest_and_news_filter_20260904.sql</code> /
+              <code>discord_contracts_job_center_nation_pick_20260904.sql</code>.</li>
             <li>Redeploy after edge code changes:
               <code>supabase functions deploy discord-sky-feed</code></li>
             <li>Use <b>Check routing</b>, then <b>Publish Who's Who now</b> for the first roster post.</li>
@@ -396,6 +418,6 @@
 
     </div>
   </div>
-    <script type="module" src="admin_discord_news.js?v=20260904-gossip-clear"></script>
+    <script type="module" src="admin_discord_news.js?v=20260904-channels3"></script>
 </body>
 </html>

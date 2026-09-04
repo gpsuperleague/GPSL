@@ -666,6 +666,21 @@ document.getElementById("notificationsTestBtn")?.addEventListener("click", () =>
     setStatus("newsStatus", e.message || String(e), false)
   );
 });
+document.getElementById("contractsTestBtn")?.addEventListener("click", () => {
+  sendTest("contracts").catch((e) =>
+    setStatus("newsStatus", e.message || String(e), false)
+  );
+});
+document.getElementById("jobCenterTestBtn")?.addEventListener("click", () => {
+  sendTest("job_center").catch((e) =>
+    setStatus("newsStatus", e.message || String(e), false)
+  );
+});
+document.getElementById("nationPickTestBtn")?.addEventListener("click", () => {
+  sendTest("nation_pick").catch((e) =>
+    setStatus("newsStatus", e.message || String(e), false)
+  );
+});
 document.getElementById("tablesTestBtn")?.addEventListener("click", () => {
   sendTest("tables").catch((e) =>
     setStatus("newsStatus", e.message || String(e), false)

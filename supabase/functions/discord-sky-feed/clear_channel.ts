@@ -19,6 +19,9 @@ export type ClearChannelKey =
   | "scheduled"
   | "intl_scheduled"
   | "deals"
+  | "contracts"
+  | "job_center"
+  | "nation_pick"
   | "transfer_gossip"
   | "whos_who";
 
@@ -27,12 +30,15 @@ export const CLEAR_CHANNEL_LABELS: Record<ClearChannelKey, string> = {
   results: "#gpsl-results",
   intl_results: "#gpsl-intl-results",
   natter: "#gpsl-natter",
-  notifications: "#gpsl-notifications",
+  notifications: "#gpsl-notifications (calendar)",
   tables: "#gpsl-tables",
   intl_tables: "#gpsl-intl-tables",
   scheduled: "#gpsl-scheduled",
   intl_scheduled: "#gpsl-intl-scheduled",
   deals: "#gpsl-deals",
+  contracts: "#gpsl-contracts",
+  job_center: "#gpsl-job-center",
+  nation_pick: "#gpsl-nation-pick",
   transfer_gossip: "#gpsl-transfer-gossip",
   whos_who: "#whos-who",
 };
