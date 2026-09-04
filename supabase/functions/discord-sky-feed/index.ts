@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { publishLeagueTables, type StandingRow } from "./league_tables.ts";
+import { publishLeagueTables, publishIntlTables, type StandingRow } from "./league_tables.ts";
 import {
   publishWhosWho,
   rosterContentHash,
@@ -83,9 +83,26 @@ function isNotificationsEvent(row: FeedRow): boolean {
 }
 
 function isTablesEvent(row: FeedRow): boolean {
+  if (isIntlTablesEvent(row)) return false;
   if (row.event_type === "tables" || row.event_type === "table") return true;
   const channel = String(row.metadata?.channel || "").toLowerCase();
   return channel === "tables" || channel === "table";
+}
+
+function isIntlTablesEvent(row: FeedRow): boolean {
+  if (
+    row.event_type === "intl_tables" ||
+    row.event_type === "intl_table" ||
+    row.event_type === "international_tables"
+  ) {
+    return true;
+  }
+  const channel = String(row.metadata?.channel || "").toLowerCase();
+  return (
+    channel === "intl_tables" ||
+    channel === "international_tables" ||
+    channel === "intl-tables"
+  );
 }
 
 function isScheduledEvent(row: FeedRow): boolean {
@@ -164,6 +181,7 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
   const natter = isNatterEvent(row);
   const notifications = isNotificationsEvent(row);
   const tables = isTablesEvent(row);
+  const intlTables = isIntlTablesEvent(row);
   const scheduled = isScheduledEvent(row);
   const intlScheduled = isIntlScheduledEvent(row);
   const imageUrl = natter
@@ -186,15 +204,17 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
             : "GPSL Intl Results"
         : natter
           ? "GPSL Natter"
-          : tables
-            ? "GPSL Tables"
-            : notifications
-              ? "GPSL Notifications"
-              : intlScheduled
-                ? "GPSL Intl Scheduled"
-                : scheduled
-                  ? "GPSL Scheduled"
-                  : "GPSL News",
+          : intlTables
+            ? "GPSL Intl Tables"
+            : tables
+              ? "GPSL Tables"
+              : notifications
+                ? "GPSL Notifications"
+                : intlScheduled
+                  ? "GPSL Intl Scheduled"
+                  : scheduled
+                    ? "GPSL Scheduled"
+                    : "GPSL News",
     },
     timestamp: new Date().toISOString(),
   };
@@ -345,7 +365,8 @@ function webhookForRow(
   tablesUrl: string | null,
   scheduledUrl: string | null = null,
   intlScheduledUrl: string | null = null,
-  intlResultsUrl: string | null = null
+  intlResultsUrl: string | null = null,
+  intlTablesUrl: string | null = null
 ): { url: string; username: string } {
   if (isIntlResultsEvent(row)) {
     if (!intlResultsUrl) {
@@ -370,6 +391,14 @@ function webhookForRow(
       );
     }
     return { url: natterUrl, username: "GPSL Natter" };
+  }
+  if (isIntlTablesEvent(row)) {
+    if (!intlTablesUrl) {
+      throw new Error(
+        "DISCORD_INTL_TABLES_WEBHOOK_URL secret missing — intl tables not posted. Add the #gpsl-intl-tables webhook secret and redeploy discord-sky-feed."
+      );
+    }
+    return { url: intlTablesUrl, username: "GPSL Intl Tables" };
   }
   if (isTablesEvent(row)) {
     if (!tablesUrl) {
@@ -450,6 +479,11 @@ Deno.serve(async (req) => {
       Deno.env.get("DISCORD_WEBHOOK_INTL_RESULTS_URL") ||
       Deno.env.get("DISCORD_INTERNATIONAL_RESULTS_WEBHOOK_URL") ||
       "";
+    const intlTablesWebhookUrl =
+      Deno.env.get("DISCORD_INTL_TABLES_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WEBHOOK_INTL_TABLES_URL") ||
+      Deno.env.get("DISCORD_INTERNATIONAL_TABLES_WEBHOOK_URL") ||
+      "";
     const feedKey = Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
       Deno.env.get("CRON_API_KEY") ||
       "";
@@ -524,6 +558,7 @@ Deno.serve(async (req) => {
         natter_webhook_configured: Boolean(natterWebhookUrl),
         notifications_webhook_configured: Boolean(notificationsWebhookUrl),
         tables_webhook_configured: Boolean(tablesWebhookUrl),
+        intl_tables_webhook_configured: Boolean(intlTablesWebhookUrl),
         whos_who_webhook_configured: Boolean(whosWhoWebhookUrl),
         scheduled_webhook_configured: Boolean(scheduledWebhookUrl),
         intl_scheduled_webhook_configured: Boolean(intlScheduledWebhookUrl),
@@ -544,6 +579,9 @@ Deno.serve(async (req) => {
           table_events: tablesWebhookUrl
             ? "DISCORD_TABLES_WEBHOOK_URL → #gpsl-tables"
             : "BLOCKED until DISCORD_TABLES_WEBHOOK_URL is set",
+          intl_table_events: intlTablesWebhookUrl
+            ? "DISCORD_INTL_TABLES_WEBHOOK_URL → #gpsl-intl-tables"
+            : "BLOCKED until DISCORD_INTL_TABLES_WEBHOOK_URL is set",
           scheduled_events: scheduledWebhookUrl
             ? "DISCORD_SCHEDULED_WEBHOOK_URL → #gpsl-scheduled"
             : "BLOCKED until DISCORD_SCHEDULED_WEBHOOK_URL is set",
@@ -653,6 +691,10 @@ Deno.serve(async (req) => {
       const toNotifications =
         channel === "notifications" || channel === "notification";
       const toTables = channel === "tables" || channel === "table";
+      const toIntlTables =
+        channel === "intl_tables" ||
+        channel === "international_tables" ||
+        channel === "intl-tables";
       const toScheduled = channel === "scheduled" || channel === "schedule";
       const toIntlScheduled =
         channel === "intl_scheduled" ||
@@ -714,6 +756,19 @@ Deno.serve(async (req) => {
           400
         );
       }
+      if (toIntlTables && !intlTablesWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_INTL_TABLES_WEBHOOK_URL secret missing — cannot test #gpsl-intl-tables. Add it under Edge Functions → Secrets and redeploy.",
+            channel: "intl_tables",
+            used_intl_tables_webhook: false,
+            intl_tables_webhook_configured: false,
+          },
+          400
+        );
+      }
       if (toScheduled && !scheduledWebhookUrl) {
         return jsonResponse(
           {
@@ -759,45 +814,51 @@ Deno.serve(async (req) => {
           ? natterWebhookUrl
           : toNotifications
             ? notificationsWebhookUrl
-            : toTables
-              ? tablesWebhookUrl
-              : toIntlResults
-                ? intlResultsWebhookUrl
-                : toIntlScheduled
-                  ? intlScheduledWebhookUrl
-                  : toScheduled
-                    ? scheduledWebhookUrl
-                    : webhookUrl;
+            : toIntlTables
+              ? intlTablesWebhookUrl
+              : toTables
+                ? tablesWebhookUrl
+                : toIntlResults
+                  ? intlResultsWebhookUrl
+                  : toIntlScheduled
+                    ? intlScheduledWebhookUrl
+                    : toScheduled
+                      ? scheduledWebhookUrl
+                      : webhookUrl;
       const label = toResults
         ? "RESULTS"
         : toNatter
           ? "NATTER"
           : toNotifications
             ? "NOTIFICATIONS"
-            : toTables
-              ? "TABLES"
-              : toIntlResults
-                ? "INTL RESULTS"
-                : toIntlScheduled
-                  ? "INTL SCHEDULED"
-                  : toScheduled
-                    ? "SCHEDULED"
-                    : "NEWS";
+            : toIntlTables
+              ? "INTL TABLES"
+              : toTables
+                ? "TABLES"
+                : toIntlResults
+                  ? "INTL RESULTS"
+                  : toIntlScheduled
+                    ? "INTL SCHEDULED"
+                    : toScheduled
+                      ? "SCHEDULED"
+                      : "NEWS";
       const channelName = toResults
         ? "#gpsl-results"
         : toNatter
           ? "#gpsl-natter"
           : toNotifications
             ? "#gpsl-notifications"
-            : toTables
-              ? "#gpsl-tables"
-              : toIntlResults
-                ? "#gpsl-intl-results"
-                : toIntlScheduled
-                  ? "#gpsl-intl-scheduled"
-                  : toScheduled
-                    ? "#gpsl-scheduled"
-                    : "#gpsl-news";
+            : toIntlTables
+              ? "#gpsl-intl-tables"
+              : toTables
+                ? "#gpsl-tables"
+                : toIntlResults
+                  ? "#gpsl-intl-results"
+                  : toIntlScheduled
+                    ? "#gpsl-intl-scheduled"
+                    : toScheduled
+                      ? "#gpsl-scheduled"
+                      : "#gpsl-news";
       await postWebhook(
         target,
         [
@@ -806,7 +867,7 @@ Deno.serve(async (req) => {
             description: `${channelName} webhook is connected. This message must appear in ${channelName} only.`,
             color: toNatter
               ? 0x57f287
-              : toIntlScheduled
+              : toIntlScheduled || toIntlTables
                 ? 0x9b59b6
                 : toScheduled
                   ? 0x3498db
@@ -820,15 +881,17 @@ Deno.serve(async (req) => {
                   ? "GPSL Intl Results"
                   : toNatter
                     ? "GPSL Natter"
-                    : toTables
-                      ? "GPSL Tables"
-                      : toNotifications
-                        ? "GPSL Notifications"
-                        : toIntlScheduled
-                          ? "GPSL Intl Scheduled"
-                          : toScheduled
-                            ? "GPSL Scheduled"
-                            : "GPSL News",
+                    : toIntlTables
+                      ? "GPSL Intl Tables"
+                      : toTables
+                        ? "GPSL Tables"
+                        : toNotifications
+                          ? "GPSL Notifications"
+                          : toIntlScheduled
+                            ? "GPSL Intl Scheduled"
+                            : toScheduled
+                              ? "GPSL Scheduled"
+                              : "GPSL News",
             },
             timestamp: new Date().toISOString(),
           },
@@ -840,15 +903,17 @@ Deno.serve(async (req) => {
               ? "GPSL Intl Results"
               : toNatter
                 ? "GPSL Natter"
-                : toTables
-                  ? "GPSL Tables"
-                  : toNotifications
-                    ? "GPSL Notifications"
-                    : toIntlScheduled
-                      ? "GPSL Intl Scheduled"
-                      : toScheduled
-                        ? "GPSL Scheduled"
-                        : "GPSL News",
+                : toIntlTables
+                  ? "GPSL Intl Tables"
+                  : toTables
+                    ? "GPSL Tables"
+                    : toNotifications
+                      ? "GPSL Notifications"
+                      : toIntlScheduled
+                        ? "GPSL Intl Scheduled"
+                        : toScheduled
+                          ? "GPSL Scheduled"
+                          : "GPSL News",
         }
       );
       return jsonResponse({
@@ -858,17 +923,19 @@ Deno.serve(async (req) => {
           ? "results"
           : toNatter
             ? "natter"
-            : toTables
-              ? "tables"
-              : toNotifications
-                ? "notifications"
-                : toIntlResults
-                  ? "intl_results"
-                  : toIntlScheduled
-                    ? "intl_scheduled"
-                    : toScheduled
-                      ? "scheduled"
-                      : "news",
+            : toIntlTables
+              ? "intl_tables"
+              : toTables
+                ? "tables"
+                : toNotifications
+                  ? "notifications"
+                  : toIntlResults
+                    ? "intl_results"
+                    : toIntlScheduled
+                      ? "intl_scheduled"
+                      : toScheduled
+                        ? "scheduled"
+                        : "news",
         used_results_webhook: Boolean(toResults && resultsWebhookUrl),
         used_intl_results_webhook: Boolean(
           toIntlResults && intlResultsWebhookUrl
@@ -878,6 +945,7 @@ Deno.serve(async (req) => {
           toNotifications && notificationsWebhookUrl
         ),
         used_tables_webhook: Boolean(toTables && tablesWebhookUrl),
+        used_intl_tables_webhook: Boolean(toIntlTables && intlTablesWebhookUrl),
         used_scheduled_webhook: Boolean(toScheduled && scheduledWebhookUrl),
         used_intl_scheduled_webhook: Boolean(
           toIntlScheduled && intlScheduledWebhookUrl
@@ -887,6 +955,7 @@ Deno.serve(async (req) => {
         natter_webhook_configured: Boolean(natterWebhookUrl),
         notifications_webhook_configured: Boolean(notificationsWebhookUrl),
         tables_webhook_configured: Boolean(tablesWebhookUrl),
+        intl_tables_webhook_configured: Boolean(intlTablesWebhookUrl),
         scheduled_webhook_configured: Boolean(scheduledWebhookUrl),
         intl_scheduled_webhook_configured: Boolean(intlScheduledWebhookUrl),
       });
@@ -916,7 +985,8 @@ Deno.serve(async (req) => {
         tablesWebhookUrl || null,
         scheduledWebhookUrl || null,
         intlScheduledWebhookUrl || null,
-        intlResultsWebhookUrl || null
+        intlResultsWebhookUrl || null,
+        intlTablesWebhookUrl || null
       );
       await postWebhook(target.url, [embedFor(directRow, supabaseUrl)], {
         username: target.username,
@@ -929,6 +999,7 @@ Deno.serve(async (req) => {
     let postedNatter = 0;
     let postedNotifications = 0;
     let postedTables = 0;
+    let postedIntlTables = 0;
     let postedScheduled = 0;
     let postedIntlScheduled = 0;
     let postedNews = 0;
@@ -994,6 +1065,11 @@ Deno.serve(async (req) => {
     if (pending.some((r) => isTablesEvent(r)) && !tablesWebhookUrl) {
       warnings.push(
         "DISCORD_TABLES_WEBHOOK_URL not set — table items will stay in error until the #gpsl-tables webhook secret is added"
+      );
+    }
+    if (pending.some((r) => isIntlTablesEvent(r)) && !intlTablesWebhookUrl) {
+      warnings.push(
+        "DISCORD_INTL_TABLES_WEBHOOK_URL not set — intl table items will stay in error until the #gpsl-intl-tables webhook secret is added"
       );
     }
     if (pending.some((r) => isScheduledEvent(r)) && !scheduledWebhookUrl) {
@@ -1091,6 +1167,66 @@ Deno.serve(async (req) => {
           }
         }
 
+        if (isIntlTablesEvent(row) && row.metadata?.render) {
+          if (!intlTablesWebhookUrl) {
+            throw new Error(
+              "DISCORD_INTL_TABLES_WEBHOOK_URL secret missing — cannot publish intl tables"
+            );
+          }
+          let groups = (row.metadata?.groups || []) as Array<{
+            table_key?: string;
+            title?: string;
+            phase?: string;
+            group_code?: string;
+            standings?: StandingRow[];
+          }>;
+          if (!Array.isArray(groups) || !groups.length) {
+            const { data: snap } = await adminClient.rpc(
+              "international_tables_snapshot"
+            );
+            groups = (snap?.groups || []) as typeof groups;
+          }
+          const pub = await publishIntlTables({
+            adminClient,
+            tablesWebhookUrl: intlTablesWebhookUrl,
+            monthLabel: String(
+              row.metadata?.month_label ||
+                row.metadata?.gpsl_month ||
+                "Month"
+            ),
+            gpslMonth: String(row.metadata?.gpsl_month || "month"),
+            seasonId: Number(row.metadata?.season_id || 0),
+            cycleLabel: row.metadata?.cycle_label
+              ? String(row.metadata.cycle_label)
+              : null,
+            groups,
+            postWebhook,
+          });
+          if (!pub.ok) {
+            throw new Error(pub.error || "intl tables publish failed");
+          }
+          if (pub.fallback_text) {
+            warnings.push(
+              `#${row.id}: PNG render unavailable — posted text intl tables`
+            );
+          }
+          const { error: updErr } = await adminClient
+            .from("gpsl_discord_feed_queue")
+            .update({
+              status: "posted",
+              posted_at: new Date().toISOString(),
+              claimed_at: null,
+              last_error: null,
+            })
+            .eq("id", row.id);
+          if (updErr) throw new Error(updErr.message);
+          settledIds.add(row.id);
+          posted += 1;
+          postedIntlTables += 1;
+          await sleep(700);
+          continue;
+        }
+
         if (isTablesEvent(row) && row.metadata?.render) {
           if (!tablesWebhookUrl) {
             throw new Error(
@@ -1165,7 +1301,8 @@ Deno.serve(async (req) => {
           tablesWebhookUrl || null,
           scheduledWebhookUrl || null,
           intlScheduledWebhookUrl || null,
-          intlResultsWebhookUrl || null
+          intlResultsWebhookUrl || null,
+          intlTablesWebhookUrl || null
         );
         const embed = embedFor(row, supabaseUrl);
         try {
@@ -1213,6 +1350,7 @@ Deno.serve(async (req) => {
         else if (isIntlResultsEvent(row)) postedIntlResults += 1;
         else if (isNatterEvent(row)) postedNatter += 1;
         else if (isTablesEvent(row)) postedTables += 1;
+        else if (isIntlTablesEvent(row)) postedIntlTables += 1;
         else if (isNotificationsEvent(row)) postedNotifications += 1;
         else if (isIntlScheduledEvent(row)) postedIntlScheduled += 1;
         else if (isScheduledEvent(row)) postedScheduled += 1;
@@ -1275,6 +1413,7 @@ Deno.serve(async (req) => {
       posted_natter: postedNatter,
       posted_notifications: postedNotifications,
       posted_tables: postedTables,
+      posted_intl_tables: postedIntlTables,
       posted_scheduled: postedScheduled,
       posted_intl_scheduled: postedIntlScheduled,
       results_webhook_configured: Boolean(resultsWebhookUrl),
@@ -1282,6 +1421,7 @@ Deno.serve(async (req) => {
       natter_webhook_configured: Boolean(natterWebhookUrl),
       notifications_webhook_configured: Boolean(notificationsWebhookUrl),
       tables_webhook_configured: Boolean(tablesWebhookUrl),
+      intl_tables_webhook_configured: Boolean(intlTablesWebhookUrl),
       scheduled_webhook_configured: Boolean(scheduledWebhookUrl),
       intl_scheduled_webhook_configured: Boolean(intlScheduledWebhookUrl),
       warnings,

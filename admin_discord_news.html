@@ -74,6 +74,7 @@
           <b>#gpsl-notifications</b> — auctions, transfer window, month ticks, season start, challenges,
           nation pick turns (@owner), match reminders, OOC batch, vacant clubs.<br>
           <b>#gpsl-tables</b> — league table images when a GPSL month locks (SuperLeague + both Championships).<br>
+          <b>#gpsl-intl-tables</b> — World Cup qualifying / finals group tables on the same month-lock (separate channel).<br>
           <b>#gpsl-scheduled</b> — club league / cup kick-offs when both owners agree the time (LEAGUE / CUP labelled).<br>
           <b>#gpsl-intl-scheduled</b> — international kick-offs when both national managers agree (separate channel).<br>
           <b>#whos-who</b> — live owner · club roster by division (posted once, then <b>silently edited</b> daily — no notifications).<br>
@@ -81,7 +82,7 @@
           club inbox (+ broadcast for major outcomes) and <b>#gpsl-news only</b>. Use <b>Scan league clinches</b> to backfill.
         </p>
         <ol class="note" style="margin:0 0 12px;padding-left:1.2em;line-height:1.55;">
-          <li>In Discord: create <code>#gpsl-results</code>, <code>#gpsl-intl-results</code>, <code>#gpsl-natter</code>, <code>#gpsl-notifications</code>, <code>#gpsl-tables</code>, <code>#gpsl-scheduled</code>, <code>#gpsl-intl-scheduled</code>, <code>#whos-who</code> if needed.</li>
+          <li>In Discord: create <code>#gpsl-results</code>, <code>#gpsl-intl-results</code>, <code>#gpsl-natter</code>, <code>#gpsl-notifications</code>, <code>#gpsl-tables</code>, <code>#gpsl-intl-tables</code>, <code>#gpsl-scheduled</code>, <code>#gpsl-intl-scheduled</code>, <code>#whos-who</code> if needed.</li>
           <li>For each: Channel settings → Integrations → Webhooks → New Webhook → Copy URL
             (create the webhook <b>inside</b> that channel).</li>
           <li>Supabase → Edge Functions → <b>Secrets</b> (project-wide, not inside a function):
@@ -92,12 +93,13 @@
               <li><code>DISCORD_NATTER_WEBHOOK_URL</code> = #gpsl-natter</li>
               <li><code>DISCORD_NOTIFICATIONS_WEBHOOK_URL</code> = #gpsl-notifications</li>
               <li><code>DISCORD_TABLES_WEBHOOK_URL</code> = #gpsl-tables</li>
+              <li><code>DISCORD_INTL_TABLES_WEBHOOK_URL</code> = #gpsl-intl-tables</li>
               <li><code>DISCORD_SCHEDULED_WEBHOOK_URL</code> = #gpsl-scheduled</li>
               <li><code>DISCORD_INTL_SCHEDULED_WEBHOOK_URL</code> = #gpsl-intl-scheduled</li>
               <li><code>DISCORD_WHOS_WHO_WEBHOOK_URL</code> = #whos-who</li>
             </ul>
           </li>
-          <li>SQL: notifications patch + <code>gpsl_discord_league_tables.sql</code> + <code>gpsl_discord_whos_who.sql</code> + <code>discord_scheduled_matches_20260904.sql</code> + <code>discord_intl_results_digest_20260904.sql</code>.</li>
+          <li>SQL: notifications patch + <code>gpsl_discord_league_tables.sql</code> + <code>gpsl_discord_whos_who.sql</code> + <code>discord_scheduled_matches_20260904.sql</code> + <code>discord_intl_results_digest_20260904.sql</code> + <code>discord_intl_tables_20260904.sql</code>.</li>
           <li>Redeploy: <code>supabase functions deploy discord-sky-feed</code>.</li>
           <li>Use <b>Check routing</b>, then <b>Publish Who's Who now</b> for the first roster post.</li>
         </ol>
@@ -137,7 +139,7 @@
       <div class="card">
         <h2>Sky-style feeds</h2>
         <p class="note">
-          <b>News</b> · <b>Results</b> · <b>Intl results</b> · <b>Natter</b> · <b>Notifications</b> · <b>Tables</b> · <b>Scheduled</b> · <b>Intl scheduled</b>.
+          <b>News</b> · <b>Results</b> · <b>Intl results</b> · <b>Natter</b> · <b>Notifications</b> · <b>Tables</b> · <b>Intl tables</b> · <b>Scheduled</b> · <b>Intl scheduled</b>.
         </p>
         <div class="news-actions">
           <button type="button" id="newsPushBtn" class="button">Push queue to Discord</button>
@@ -149,9 +151,11 @@
           <button type="button" id="natterTestBtn" class="button secondary">Test #gpsl-natter</button>
           <button type="button" id="notificationsTestBtn" class="button secondary">Test #gpsl-notifications</button>
           <button type="button" id="tablesTestBtn" class="button secondary">Test #gpsl-tables</button>
+          <button type="button" id="intlTablesTestBtn" class="button secondary">Test #gpsl-intl-tables</button>
           <button type="button" id="scheduledTestBtn" class="button secondary">Test #gpsl-scheduled</button>
           <button type="button" id="intlScheduledTestBtn" class="button secondary">Test #gpsl-intl-scheduled</button>
           <button type="button" id="tablesPublishBtn" class="button secondary">Publish league tables now</button>
+          <button type="button" id="intlTablesPublishBtn" class="button secondary">Publish intl tables now</button>
           <button type="button" id="whosWhoPublishBtn" class="button secondary">Publish Who's Who now</button>
           <button type="button" id="clinchesBtn" class="button secondary">Scan league clinches</button>
           <button type="button" id="notificationsTickBtn" class="button secondary">Notifications tick</button>
@@ -173,6 +177,6 @@
       </div>
     </div>
   </div>
-    <script type="module" src="admin_discord_news.js?v=20260904-intl-results"></script>
+    <script type="module" src="admin_discord_news.js?v=20260904-intl-tables"></script>
 </body>
 </html>

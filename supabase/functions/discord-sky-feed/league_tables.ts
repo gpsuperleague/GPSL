@@ -44,9 +44,13 @@ export function buildStandingsSvg(
   divisionKey: string,
   monthLabel: string,
   rows: StandingRow[],
-  opts?: { subtitle?: string; highlightClub?: string | null }
+  opts?: {
+    subtitle?: string;
+    highlightClub?: string | null;
+    titleOverride?: string | null;
+  }
 ): string {
-  const title = divisionTitle(divisionKey);
+  const title = opts?.titleOverride || divisionTitle(divisionKey);
   const subtitle = opts?.subtitle || `End of ${monthLabel} · League table`;
   const highlight = String(opts?.highlightClub || "").toLowerCase();
   const sorted = [...rows].sort(
@@ -101,13 +105,14 @@ export function buildStandingsSvg(
 
 export function standingsToCodeBlock(
   divisionKey: string,
-  rows: StandingRow[]
+  rows: StandingRow[],
+  titleOverride?: string | null
 ): string {
   const sorted = [...rows].sort(
     (a, b) => (a.table_position || 99) - (b.table_position || 99)
   );
   const lines = [
-    `${divisionTitle(divisionKey)}`,
+    titleOverride || divisionTitle(divisionKey),
     "Pos Club                         P   W   D   L  GF  GA  GD Pts",
     "-".repeat(58),
     ...sorted.map((r) => {
@@ -294,6 +299,125 @@ export async function publishLeagueTables(opts: {
   await postWebhook(tablesWebhookUrl, embeds.slice(0, 10), {
     username: "GPSL Tables",
   });
+
+  return { ok: true, images, fallback_text: usedText };
+}
+
+export type IntlTableGroup = {
+  table_key?: string;
+  title?: string;
+  phase?: string;
+  group_code?: string;
+  standings?: StandingRow[];
+};
+
+export async function publishIntlTables(opts: {
+  adminClient: {
+    storage: {
+      from: (bucket: string) => {
+        upload: (
+          path: string,
+          body: Uint8Array,
+          opts: Record<string, unknown>
+        ) => Promise<{ error: { message: string } | null }>;
+        getPublicUrl: (path: string) => { data: { publicUrl: string } };
+      };
+    };
+  };
+  tablesWebhookUrl: string;
+  monthLabel: string;
+  gpslMonth: string;
+  seasonId: number | string;
+  cycleLabel?: string | null;
+  groups: IntlTableGroup[];
+  postWebhook: (
+    url: string,
+    embeds: Record<string, unknown>[],
+    opts?: { username?: string }
+  ) => Promise<void>;
+}): Promise<{ ok: boolean; images: number; fallback_text: boolean; error?: string }> {
+  const {
+    adminClient,
+    tablesWebhookUrl,
+    monthLabel,
+    gpslMonth,
+    seasonId,
+    cycleLabel,
+    groups,
+    postWebhook,
+  } = opts;
+
+  const embeds: Record<string, unknown>[] = [];
+  let images = 0;
+  let usedText = false;
+  const cycle = String(cycleLabel || "World Cup");
+
+  for (const g of groups || []) {
+    const rows = Array.isArray(g.standings) ? g.standings : [];
+    if (!rows.length) continue;
+
+    const tableKey = String(g.table_key || g.group_code || "group");
+    const title = String(
+      g.title || `WC Group ${g.group_code || tableKey}`
+    ).slice(0, 250);
+    const svg = buildStandingsSvg(tableKey, monthLabel, rows, {
+      titleOverride: title,
+      subtitle: `${cycle} · End of ${monthLabel}`,
+    });
+    const png = await svgToPng(svg);
+    const path = `intl/${seasonId}/${gpslMonth}/${tableKey.replace(/[^a-zA-Z0-9_-]/g, "_")}-${Date.now()}.png`;
+
+    if (png) {
+      const { error: upErr } = await adminClient.storage
+        .from("league-tables")
+        .upload(path, png, {
+          contentType: "image/png",
+          upsert: true,
+        });
+      if (!upErr) {
+        const { data } = adminClient.storage
+          .from("league-tables")
+          .getPublicUrl(path);
+        embeds.push({
+          title,
+          color: 0x9b59b6,
+          image: { url: data.publicUrl },
+          footer: { text: "GPSL Intl Tables" },
+          timestamp: new Date().toISOString(),
+        });
+        images += 1;
+        continue;
+      }
+    }
+
+    usedText = true;
+    embeds.push({
+      title,
+      description: standingsToCodeBlock(tableKey, rows, title),
+      color: 0x9b59b6,
+      footer: { text: "GPSL Intl Tables (text fallback)" },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  if (!embeds.length) {
+    return {
+      ok: false,
+      images: 0,
+      fallback_text: false,
+      error: "no_intl_standings_rows",
+    };
+  }
+
+  // Discord allows max 10 embeds per message — batch
+  for (let i = 0; i < embeds.length; i += 10) {
+    await postWebhook(tablesWebhookUrl, embeds.slice(i, i + 10), {
+      username: "GPSL Intl Tables",
+    });
+    if (i + 10 < embeds.length) {
+      await new Promise((r) => setTimeout(r, 700));
+    }
+  }
 
   return { ok: true, images, fallback_text: usedText };
 }
