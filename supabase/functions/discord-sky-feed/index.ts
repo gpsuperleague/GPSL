@@ -659,11 +659,15 @@ Deno.serve(async (req) => {
         botToken,
         channelId: resolved.channelId,
         maxDelete:
-          typeof body?.max_delete === "number" ? body.max_delete : 500,
+          typeof body?.max_delete === "number" ? body.max_delete : 100,
+        timeBudgetMs:
+          typeof body?.time_budget_ms === "number"
+            ? body.time_budget_ms
+            : 22000,
         keepPinned: body?.keep_pinned !== false,
       });
 
-      if (result.ok && channelKey === "whos_who") {
+      if (result.ok && channelKey === "whos_who" && !result.more_remain) {
         // Roster message was wiped — clear stored message id so next publish creates fresh
         try {
           await adminClient
@@ -680,26 +684,25 @@ Deno.serve(async (req) => {
         }
       }
 
-      return jsonResponse(
-        {
-          ok: result.ok,
-          clear_channel: true,
-          channel: channelKey,
-          channel_label: label,
-          channel_id_tail: resolved.channelId.slice(-6),
-          deleted: result.deleted,
-          scanned: result.scanned,
-          skipped_pinned: result.skipped_pinned,
-          more_remain: result.more_remain,
-          error: result.error || null,
-          hint: result.more_remain
-            ? "More messages remain — run Clear again to continue."
-            : result.ok
-              ? "Channel cleared (pinned messages kept by default)."
-              : null,
-        },
-        result.ok ? 200 : 500
-      );
+      // Always 200 so the browser can read progress (gateway 504s otherwise lose the body)
+      return jsonResponse({
+        ok: result.ok || result.deleted > 0,
+        clear_channel: true,
+        channel: channelKey,
+        channel_label: label,
+        channel_id_tail: resolved.channelId.slice(-6),
+        deleted: result.deleted,
+        scanned: result.scanned,
+        skipped_pinned: result.skipped_pinned,
+        more_remain: result.more_remain,
+        timed_out_budget: result.timed_out_budget,
+        error: result.error || null,
+        hint: result.more_remain
+          ? "More messages remain — click Clear again (or wait for auto-continue)."
+          : result.ok
+            ? "Channel cleared (pinned messages kept by default)."
+            : null,
+      });
     }
 
     // Optional: routing / secrets check (no Discord post)

@@ -1,4 +1,8 @@
-/** Clear Discord channel messages via bot (Manage Messages). */
+/** Clear Discord channel messages via bot (Manage Messages).
+ *
+ * Edge Functions time out (~60s gateway). Prefer short batches and let the
+ * admin UI re-invoke until the channel is empty.
+ */
 
 const DISCORD_API = "https://discord.com/api/v10";
 const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
@@ -105,11 +109,21 @@ async function fetchMessages(
     botToken,
     `/channels/${channelId}/messages?${qs.toString()}`
   );
+  if (res.status === 429) {
+    const text = await res.text();
+    let wait = 1;
+    try {
+      const j = JSON.parse(text) as { retry_after?: number };
+      if (typeof j.retry_after === "number") wait = j.retry_after;
+    } catch {
+      /* ignore */
+    }
+    await sleep(Math.ceil(wait * 1000) + 150);
+    return fetchMessages(botToken, channelId, before);
+  }
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(
-      `Fetch messages ${res.status}: ${text.slice(0, 250)}`
-    );
+    throw new Error(`Fetch messages ${res.status}: ${text.slice(0, 250)}`);
   }
   const rows = (await res.json()) as DiscordMessage[];
   return Array.isArray(rows) ? rows : [];
@@ -119,12 +133,11 @@ async function bulkDelete(
   botToken: string,
   channelId: string,
   ids: string[]
-): Promise<void> {
-  if (ids.length < 2) {
-    if (ids.length === 1) {
-      await deleteOne(botToken, channelId, ids[0]);
-    }
-    return;
+): Promise<number> {
+  if (ids.length === 0) return 0;
+  if (ids.length === 1) {
+    await deleteOne(botToken, channelId, ids[0]);
+    return 1;
   }
   const res = await discordFetch(
     botToken,
@@ -134,15 +147,29 @@ async function bulkDelete(
       body: JSON.stringify({ messages: ids.slice(0, 100) }),
     }
   );
-  if (res.status === 204 || res.ok) return;
-  const text = await res.text();
-  // Fallback: delete one-by-one if bulk fails (e.g. mixed ages)
-  if (res.status === 400) {
-    for (const id of ids) {
-      await deleteOne(botToken, channelId, id);
-      await sleep(350);
+  if (res.status === 204 || res.ok) return ids.length;
+  if (res.status === 429) {
+    const text = await res.text();
+    let wait = 1;
+    try {
+      const j = JSON.parse(text) as { retry_after?: number };
+      if (typeof j.retry_after === "number") wait = j.retry_after;
+    } catch {
+      /* ignore */
     }
-    return;
+    await sleep(Math.ceil(wait * 1000) + 150);
+    return bulkDelete(botToken, channelId, ids);
+  }
+  const text = await res.text();
+  // Mixed ages / invalid → fall back to a few singles (caller time-budgets)
+  if (res.status === 400) {
+    let n = 0;
+    for (const id of ids.slice(0, 20)) {
+      await deleteOne(botToken, channelId, id);
+      n += 1;
+      await sleep(280);
+    }
+    return n;
   }
   throw new Error(`Bulk delete ${res.status}: ${text.slice(0, 250)}`);
 }
@@ -167,7 +194,7 @@ async function deleteOne(
     } catch {
       /* ignore */
     }
-    await sleep(Math.ceil(wait * 1000) + 100);
+    await sleep(Math.ceil(wait * 1000) + 150);
     return deleteOne(botToken, channelId, messageId);
   }
   const text = await res.text();
@@ -177,8 +204,10 @@ async function deleteOne(
 export async function clearDiscordChannel(opts: {
   botToken: string;
   channelId: string;
-  /** Soft cap per request (edge timeout). Default 500. */
+  /** Soft cap per request. Default 100. */
   maxDelete?: number;
+  /** Wall-clock budget ms (stay under edge gateway). Default 22000. */
+  timeBudgetMs?: number;
   keepPinned?: boolean;
 }): Promise<{
   ok: boolean;
@@ -186,21 +215,26 @@ export async function clearDiscordChannel(opts: {
   scanned: number;
   skipped_pinned: number;
   more_remain: boolean;
+  timed_out_budget: boolean;
   error?: string;
 }> {
-  const maxDelete = Math.max(1, Math.min(opts.maxDelete ?? 500, 1500));
+  const maxDelete = Math.max(1, Math.min(opts.maxDelete ?? 100, 200));
+  const timeBudgetMs = Math.max(5000, Math.min(opts.timeBudgetMs ?? 22000, 45000));
   const keepPinned = opts.keepPinned !== false;
+  const started = Date.now();
+  const deadline = started + timeBudgetMs;
+
   let deleted = 0;
   let scanned = 0;
   let skippedPinned = 0;
-  let cursor: string | undefined;
   const cutoff = Date.now() - TWO_WEEKS_MS;
-  let pages = 0;
+
+  const timeLeft = () => deadline - Date.now();
 
   try {
-    while (deleted < maxDelete && pages < 40) {
-      pages += 1;
-      const batch = await fetchMessages(opts.botToken, opts.channelId, cursor);
+    while (deleted < maxDelete && timeLeft() > 2500) {
+      // Always fetch from the head — deletes shift the window
+      const batch = await fetchMessages(opts.botToken, opts.channelId);
       if (!batch.length) {
         return {
           ok: true,
@@ -208,10 +242,10 @@ export async function clearDiscordChannel(opts: {
           scanned,
           skipped_pinned: skippedPinned,
           more_remain: false,
+          timed_out_budget: false,
         };
       }
       scanned += batch.length;
-      cursor = batch[batch.length - 1]?.id;
 
       const candidates = batch.filter((m) => {
         if (keepPinned && m.pinned) {
@@ -222,78 +256,77 @@ export async function clearDiscordChannel(opts: {
       });
 
       if (!candidates.length) {
-        if (batch.length < 100) {
-          return {
-            ok: true,
-            deleted,
-            scanned,
-            skipped_pinned: skippedPinned,
-            more_remain: false,
-          };
-        }
-        await sleep(300);
-        continue;
-      }
-
-      const recent: string[] = [];
-      const older: string[] = [];
-      for (const m of candidates) {
-        if (snowflakeCreatedAtMs(m.id) >= cutoff) recent.push(m.id);
-        else older.push(m.id);
-      }
-
-      // Bulk recent in chunks of 100
-      while (recent.length && deleted < maxDelete) {
-        const take = Math.min(100, recent.length, maxDelete - deleted);
-        const chunk = recent.splice(0, take);
-        if (chunk.length >= 2) {
-          await bulkDelete(opts.botToken, opts.channelId, chunk);
-          deleted += chunk.length;
-          await sleep(600);
-        } else if (chunk.length === 1) {
-          await deleteOne(opts.botToken, opts.channelId, chunk[0]);
-          deleted += 1;
-          await sleep(350);
-        }
-      }
-
-      for (const id of older) {
-        if (deleted >= maxDelete) break;
-        await deleteOne(opts.botToken, opts.channelId, id);
-        deleted += 1;
-        await sleep(350);
-      }
-
-      if (batch.length < 100) {
-        const more = await fetchMessages(opts.botToken, opts.channelId);
-        const remaining = more.filter((m) => !(keepPinned && m.pinned));
+        // Only pinned left in the latest page
         return {
           ok: true,
           deleted,
           scanned,
           skipped_pinned: skippedPinned,
-          more_remain: remaining.length > 0,
+          more_remain: false,
+          timed_out_budget: false,
         };
       }
+
+      const recent = candidates
+        .filter((m) => snowflakeCreatedAtMs(m.id) >= cutoff)
+        .map((m) => m.id);
+      const older = candidates
+        .filter((m) => snowflakeCreatedAtMs(m.id) < cutoff)
+        .map((m) => m.id);
+
+      // Prefer bulk (fast) for <14d messages
+      if (recent.length >= 2 && timeLeft() > 3000 && deleted < maxDelete) {
+        const take = Math.min(100, recent.length, maxDelete - deleted);
+        const n = await bulkDelete(
+          opts.botToken,
+          opts.channelId,
+          recent.slice(0, take)
+        );
+        deleted += n;
+        await sleep(500);
+        continue;
+      }
+
+      if (recent.length === 1 && timeLeft() > 2000 && deleted < maxDelete) {
+        await deleteOne(opts.botToken, opts.channelId, recent[0]);
+        deleted += 1;
+        await sleep(280);
+        continue;
+      }
+
+      // Older than 14 days: Discord requires single deletes — do a few only
+      for (const id of older) {
+        if (deleted >= maxDelete || timeLeft() < 2000) break;
+        await deleteOne(opts.botToken, opts.channelId, id);
+        deleted += 1;
+        await sleep(280);
+      }
+
+      // If we made no progress this pass, stop to avoid spinning
+      if (recent.length === 0 && older.length === 0) break;
+      if (timeLeft() < 2000) break;
     }
 
-    // Hit maxDelete or page cap — check if more remain
     const peek = await fetchMessages(opts.botToken, opts.channelId);
     const remaining = peek.filter((m) => !(keepPinned && m.pinned));
+    const hitBudget = timeLeft() < 2000 || deleted >= maxDelete;
+
     return {
       ok: true,
       deleted,
       scanned,
       skipped_pinned: skippedPinned,
       more_remain: remaining.length > 0,
+      timed_out_budget: hitBudget && remaining.length > 0,
     };
   } catch (err) {
     return {
-      ok: false,
+      ok: deleted > 0, // partial progress still useful
       deleted,
       scanned,
       skipped_pinned: skippedPinned,
       more_remain: true,
+      timed_out_budget: timeLeft() < 2000,
       error: err instanceof Error ? err.message : String(err),
     };
   }

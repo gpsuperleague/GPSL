@@ -224,8 +224,8 @@
           Deletes messages in a GPSL Discord feed channel via the bot
           (<code>DISCORD_BOT_TOKEN</code> — needs <b>Manage Messages</b>).
           Resolves the channel from that feed’s webhook secret. Pinned messages are kept.
-          Large channels may need more than one run (max ~500 deletes per click).
-          <b>Admin only</b> — irreversible.
+          Large channels clear in short batches and <b>auto-continue</b> until empty
+          (avoids Edge Function 504 timeouts). <b>Admin only</b> — irreversible.
         </p>
         <div class="auto-form clear-form">
           <label>
@@ -375,6 +375,6 @@
 
     </div>
   </div>
-    <script type="module" src="admin_discord_news.js?v=20260904-clear"></script>
+    <script type="module" src="admin_discord_news.js?v=20260904-clear2"></script>
 </body>
 </html>

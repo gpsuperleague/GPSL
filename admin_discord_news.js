@@ -869,7 +869,7 @@ document.getElementById("clearChannelBtn")?.addEventListener("click", () => {
         ?.textContent || channel;
     if (
       !window.confirm(
-        `Delete messages in ${label}?\n\nThis cannot be undone. Pinned messages are kept.`
+        `Delete messages in ${label}?\n\nThis cannot be undone. Pinned messages are kept.\nLarge channels clear in short batches — this will auto-continue until done.`
       )
     ) {
       return;
@@ -877,40 +877,85 @@ document.getElementById("clearChannelBtn")?.addEventListener("click", () => {
 
     const btn = document.getElementById("clearChannelBtn");
     if (btn) btn.disabled = true;
-    setStatus("clearChannelStatus", `Clearing ${label}… (may take a minute)`);
 
-    const { data, error } = await invokeFeed({
-      action: "clear_channel",
-      channel,
-      confirm: true,
-      keep_pinned: true,
-      max_delete: 500,
-    });
+    let totalDeleted = 0;
+    let rounds = 0;
+    const maxRounds = 40;
 
-    if (btn) btn.disabled = false;
+    try {
+      while (rounds < maxRounds) {
+        rounds += 1;
+        setStatus(
+          "clearChannelStatus",
+          `Clearing ${label}… batch ${rounds} (deleted ${totalDeleted} so far)`
+        );
 
-    if (error) {
-      setStatus("clearChannelStatus", error.message, false);
-      return;
-    }
-    if (!data?.ok) {
+        const { data, error } = await invokeFeed({
+          action: "clear_channel",
+          channel,
+          confirm: true,
+          keep_pinned: true,
+          max_delete: 100,
+          time_budget_ms: 22000,
+        });
+
+        if (error) {
+          const msg = String(error.message || error);
+          if (/504|timeout|Timed out/i.test(msg) && totalDeleted > 0) {
+            setStatus(
+              "clearChannelStatus",
+              `Gateway timed out after deleting ~${totalDeleted}. Click Clear again to continue.`,
+              false
+            );
+            return;
+          }
+          setStatus("clearChannelStatus", msg, false);
+          return;
+        }
+
+        const deleted = Number(data?.deleted || 0);
+        totalDeleted += deleted;
+
+        if (data?.error && deleted === 0) {
+          setStatus(
+            "clearChannelStatus",
+            data.error || "Clear failed.",
+            false
+          );
+          return;
+        }
+
+        if (!data?.more_remain) {
+          setStatus(
+            "clearChannelStatus",
+            `Done — deleted ${totalDeleted} message(s) from ${data?.channel_label || label}.`
+          );
+          const confirmEl = document.getElementById("clearChannelConfirm");
+          if (confirmEl) confirmEl.checked = false;
+          return;
+        }
+
+        if (deleted === 0) {
+          setStatus(
+            "clearChannelStatus",
+            `Stopped after ${totalDeleted} delete(s) — no progress this batch. ${data?.error || data?.hint || "Try again."}`,
+            false
+          );
+          return;
+        }
+
+        // Brief pause between edge invocations
+        await new Promise((r) => setTimeout(r, 800));
+      }
+
       setStatus(
         "clearChannelStatus",
-        data?.error || "Clear failed.",
+        `Paused after ${totalDeleted} delete(s) across ${rounds} batches — click Clear again to continue.`,
         false
       );
-      return;
+    } finally {
+      if (btn) btn.disabled = false;
     }
-
-    const more = data.more_remain
-      ? " More remain — run Clear again."
-      : "";
-    setStatus(
-      "clearChannelStatus",
-      `Deleted ${data.deleted ?? 0} message(s) from ${data.channel_label || label}.${more}`
-    );
-    const confirmEl = document.getElementById("clearChannelConfirm");
-    if (confirmEl) confirmEl.checked = false;
   })().catch((e) => {
     const btn = document.getElementById("clearChannelBtn");
     if (btn) btn.disabled = false;
