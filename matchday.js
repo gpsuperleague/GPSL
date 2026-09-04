@@ -781,10 +781,12 @@ function resetPlayerStatsDom() {
     if (started) started.checked = false;
     if (subbed) subbed.checked = false;
     const goals = tr.querySelector(".stat-goals");
+    const ownGoals = tr.querySelector(".stat-own-goals");
     const assists = tr.querySelector(".stat-assists");
     const rating = tr.querySelector(".stat-rating");
     const potm = tr.querySelector(".stat-potm");
     if (goals) goals.value = "0";
+    if (ownGoals) ownGoals.value = "0";
     if (assists) assists.value = "0";
     if (rating) rating.value = "";
     if (potm) potm.checked = false;
@@ -858,8 +860,10 @@ function fillTestMatchStats() {
   for (const tr of rows) {
     const id = tr.dataset.statPlayer;
     const goals = tr.querySelector(".stat-goals");
+    const ownGoals = tr.querySelector(".stat-own-goals");
     const assists = tr.querySelector(".stat-assists");
     if (goals) goals.value = String(goalMap.get(id) || 0);
+    if (ownGoals) ownGoals.value = "0";
     if (assists) assists.value = String(assistMap.get(id) || 0);
   }
 
@@ -1147,6 +1151,7 @@ function renderPlayerStatsTable() {
       <td><input type="checkbox" class="stat-started" aria-label="Started" ${suspendedHere ? "disabled" : ""}></td>
       <td><input type="checkbox" class="stat-subbed" aria-label="Subbed on" ${suspendedHere ? "disabled" : ""}></td>
       <td>${statCountSelectHtml("stat-goals", "Goals", 0)}</td>
+      <td>${statCountSelectHtml("stat-own-goals", "Own goals", 0)}</td>
       <td>${statCountSelectHtml("stat-assists", "Assists", 0)}</td>
       <td><input type="text" class="stat-rating stat-combo stat-rating-combo" list="statRatingList" inputmode="decimal" autocomplete="off" value="" placeholder="6.0" aria-label="Rating" ${suspendedHere ? "disabled" : ""}></td>
       <td><input type="radio" name="potm" class="stat-potm" value="${id}" ${suspendedHere ? "disabled" : ""}></td>
@@ -1217,6 +1222,7 @@ function collectPlayerStats() {
     const subbed_on = tr.querySelector(".stat-subbed")?.checked ?? false;
     const appeared = started || subbed_on;
     const goals = normalizeStatCountInput(tr.querySelector(".stat-goals")?.value);
+    const own_goals = normalizeStatCountInput(tr.querySelector(".stat-own-goals")?.value);
     const assists = normalizeStatCountInput(tr.querySelector(".stat-assists")?.value);
     const ratingRaw = tr.querySelector(".stat-rating")?.value;
     const ratingNorm = normalizeRatingInput(ratingRaw);
@@ -1228,6 +1234,7 @@ function collectPlayerStats() {
     if (
       !appeared &&
       goals === 0 &&
+      own_goals === 0 &&
       assists === 0 &&
       rating == null &&
       !potm &&
@@ -1243,6 +1250,7 @@ function collectPlayerStats() {
       subbed_on,
       appeared,
       goals,
+      own_goals,
       assists,
       rating: rating != null && !Number.isNaN(rating) ? rating : null,
       potm,
@@ -1288,8 +1296,8 @@ function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats, cupExtr
     if (row.started && row.subbed_on) {
       return "A player cannot be both started and subbed on.";
     }
-    if (!row.appeared && (row.goals > 0 || row.assists > 0)) {
-      return "Players with goals or assists must be started or subbed on.";
+    if (!row.appeared && (row.goals > 0 || row.own_goals > 0 || row.assists > 0)) {
+      return "Players with goals, own goals, or assists must be started or subbed on.";
     }
     if (!row.appeared && row.potm) {
       return "Player of the Match must be started or subbed on.";
@@ -1308,8 +1316,8 @@ function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats, cupExtr
   }
 
   if (potmCount > 1) return "Only one Player of the Match allowed.";
-  if (teamGoals > 0 && teamGoals !== expected) {
-    return `Player goals (${teamGoals}) must match your team score (${expected}).`;
+  if (teamGoals > expected) {
+    return `Player goals (${teamGoals}) cannot exceed your team score (${expected}). If the score includes opponent own goals, only enter goals your players scored.`;
   }
   return null;
 }

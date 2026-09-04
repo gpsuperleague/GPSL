@@ -140,6 +140,7 @@ function aggregateCupRows(rows) {
         starts: row.starts || 0,
         subs: row.subs || 0,
         goals: row.goals || 0,
+        own_goals: row.own_goals || 0,
         assists: row.assists || 0,
         potm_awards: row.potm_awards || 0,
         clean_sheets: row.clean_sheets || 0,
@@ -152,6 +153,7 @@ function aggregateCupRows(rows) {
     existing.starts += row.starts || 0;
     existing.subs += row.subs || 0;
     existing.goals += row.goals || 0;
+    existing.own_goals = (existing.own_goals || 0) + (row.own_goals || 0);
     existing.assists += row.assists || 0;
     existing.potm_awards += row.potm_awards || 0;
     existing.clean_sheets += row.clean_sheets || 0;
@@ -297,7 +299,8 @@ function renderClubLeaderboards(prefix, rows, extraColumnKey, extraColumnValue) 
   renderLeaderboard(statTableId(prefix, "scorers"), byGoals, {
     ...common,
     valueKey: "Goals",
-    formatValue: (r) => r.goals,
+    formatValue: (r) =>
+      r.own_goals > 0 ? `${r.goals} (${r.own_goals} OG)` : r.goals,
   });
   renderLeaderboard(statTableId(prefix, "assists"), byAssists, {
     ...common,

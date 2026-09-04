@@ -10,26 +10,24 @@
   <title>GPSL Manager Transfer Market</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="transfer_market_theme.css?v=20260904-sky">
   <style>
-    body { background: #111; color: #ddd; font-family: Arial, sans-serif; }
-    h1 {
-      background: #222; color: #ff9900; padding: 10px 16px; border-radius: 6px;
-      width: fit-content; margin: 16px auto 10px; font-size: 26px;
-    }
+    body.tm-market { /* theme owns body chrome */ }
+    h1.tm-hero-title { /* theme */ }
     #nav { text-align: center; margin-bottom: 12px; }
     table {
       width: 95%; max-width: 1100px; margin: 0 auto 30px;
-      border-collapse: collapse; background: #1a1a1a;
+      border-collapse: collapse;
     }
-    th { background: #222; color: #ff9900; padding: 8px; font-size: 13px; }
+    th { padding: 8px; font-size: 13px; }
     td { padding: 8px; border-bottom: 1px solid #333; text-align: center; font-size: 13px; }
     .button {
-      display: inline-block; padding: 8px 16px; background: #1a1a1a; color: #ff9900;
-      border: 1px solid #666; border-radius: 6px; font-weight: bold; cursor: pointer;
+      display: inline-block; padding: 8px 16px;
+      border: 1px solid #666; font-weight: bold; cursor: pointer;
     }
     #bidModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 50; align-items: center; justify-content: center; }
     #bidModal.open { display: flex; }
-    .modal-box { background: #1a1a1a; border: 1px solid #444; padding: 20px; border-radius: 8px; width: 420px; }
+    .modal-box { padding: 20px; width: 420px; }
     #bidError { color: #f88; font-size: 12px; min-height: 16px; }
     .muted { color: #888; font-size: 12px; }
 
@@ -45,9 +43,6 @@
     .mgr-market-mod {
       flex: 1 1 160px;
       min-width: 140px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 6px;
       padding: 8px 10px;
       text-align: left;
       font-size: 12px;
@@ -56,13 +51,9 @@
     }
     .mgr-market-mod b {
       display: block;
-      color: #ff9900;
       font-size: 11px;
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
       margin-bottom: 3px;
     }
-    .mgr-market-mod a { color: #ff9900; }
     #hasManagerBanner {
       width: 95%;
       max-width: 1100px;
@@ -72,7 +63,6 @@
       font-size: 13px;
       background: rgba(120, 40, 40, 0.25);
       border: 1px solid rgba(200, 80, 80, 0.45);
-      border-radius: 6px;
       padding: 6px 12px;
     }
     #hasManagerBanner[hidden] { display: none !important; }
@@ -85,9 +75,29 @@
     }
   </style>
 </head>
-<body>
+<body class="tm-market tm-market--managers">
   <div id="nav"></div>
-  <h1>Manager Transfer Market</h1>
+
+  <header class="tm-hero">
+    <div class="tm-hero-top">
+      <div class="tm-brand" aria-hidden="true">
+        <span class="tm-brand-transfer">Transfer</span>
+        <span class="tm-brand-chevron">&gt;&gt;</span>
+        <span class="tm-brand-desk">Managers</span>
+      </div>
+      <span class="tm-live"><span class="tm-live-dot" aria-hidden="true"></span> Live desk</span>
+    </div>
+    <h1 class="tm-hero-title">Manager Transfer Market</h1>
+    <p class="tm-hero-sub">
+      Club-listed bosses and the free-agent board — broadcast desk styling, same rules as before.
+    </p>
+    <nav class="tm-desk-switch" aria-label="Transfer desks">
+      <a href="all_listings.html">Players</a>
+      <a href="manager_listings.html" class="is-active">Managers</a>
+      <a href="club_auction.html">Clubs</a>
+      <a href="MGDB.html">MGDB</a>
+    </nav>
+  </header>
   <div class="club-bank-wrap">
     <div id="clubBankBalance" class="club-bank-balance" hidden></div>
   </div>

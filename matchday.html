@@ -259,7 +259,7 @@
     </div>
 
     <div class="panel submit-panel-wrap hidden" id="submitPanel">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Optional stats: exactly 11 Started, 0–5 Subbed on, goals must match your open-play total, one POTM." tabindex="0">Submit result</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Optional stats: exactly 11 Started, 0–5 Subbed on, your G total ≤ team score (shortfall = opponent OGs), OG column for your own goals, one POTM." tabindex="0">Submit result</h2>
       <p class="meta" style="margin-top:0;">
         Pick a fixture and enter the score (and optional squad stats below). You can also use
         <a href="fixtures.html" style="color:#ff9900;">Fixtures</a>
@@ -338,7 +338,8 @@
         <p id="confirmStatsHint" class="stats-hint" style="display:none;color:#9c9;margin-bottom:8px;"></p>
         <p class="stats-hint" id="statsPanelHint">
           You must tick exactly <b>11 Started</b> (subs optional: 0–5 <b>Subbed on</b>). Ratings 0.1–10.
-          Player goals must match <b>your</b> total goals (90 min score, or after-ET total if extra time was played). Not penalties. One POTM max.
+          Your <b>G</b> total must not exceed your team score (leave it short if opponent own goals are on the scoreline).
+          Use <b>OG</b> for own goals by your players. Not penalties. One POTM max.
           Tick <b>Y</b> / <b>R</b> for cards (player must have played). Red = 2-match ban; 8 yellows in a season = 2-match ban.
           Suspended players are highlighted and cannot be selected.
           If you saved a default squad, <b>bench players are highlighted</b> (blue row + Sub tag) to help pick who subbed on.
@@ -349,7 +350,8 @@
               <tr>
                 <th class="name" rowspan="2">Player</th>
                 <th colspan="2" class="stat-group-hdr">Played</th>
-                <th rowspan="2">G</th>
+                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Goals scored for your team. Do not include opponent own goals here — leave your G total short of the score if the opponent scored an OG." tabindex="0">G</th>
+                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Own goals by your player (counts for the opponent on the scoreboard, not your G total)." tabindex="0">OG</th>
                 <th rowspan="2">A</th>
                 <th rowspan="2">Rating</th>
                 <th rowspan="2">POTM</th>
@@ -379,6 +381,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20260821-remove-fix"></script>
+  <script type="module" src="matchday.js?v=20260904-own-goals"></script>
 </body>
 </html>

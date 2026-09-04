@@ -11,23 +11,11 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260805-rules">
+  <link rel="stylesheet" href="transfer_market_theme.css?v=20260904-sky">
 
   <style>
-    body {
-      background: #111;
-      color: #ddd;
-      font-family: Arial, sans-serif;
-    }
-
-    h1 {
-      background:#222;
-      color:#ff9900;
-      padding:10px 16px;
-      border-radius:6px;
-      width: fit-content;
-      margin:20px auto;
-      font-size:26px;
-      font-weight:bold;
+    body.tm-market {
+      color: #f0f0f0;
     }
 
    /* Modern nav button style */
@@ -743,11 +731,30 @@ a.button:hover, button.button:hover {
   </style>
 </head>
 
-<body>
-
-  <h1>Global Transfer Market</h1>
+<body class="tm-market tm-market--players">
 
   <div id="nav"></div>
+
+  <header class="tm-hero">
+    <div class="tm-hero-top">
+      <div class="tm-brand" aria-hidden="true">
+        <span class="tm-brand-transfer">Transfer</span>
+        <span class="tm-brand-chevron">&gt;&gt;</span>
+        <span class="tm-brand-desk">Players</span>
+      </div>
+      <span class="tm-live"><span class="tm-live-dot" aria-hidden="true"></span> Live desk</span>
+    </div>
+    <h1 class="tm-hero-title">Global Transfer Market</h1>
+    <p class="tm-hero-sub">
+      Club listings and free agents — same gold desk as Transfer News. Bid, watch clocks, close deals.
+    </p>
+    <nav class="tm-desk-switch" aria-label="Transfer desks">
+      <a href="all_listings.html" class="is-active">Players</a>
+      <a href="manager_listings.html">Managers</a>
+      <a href="club_auction.html">Clubs</a>
+      <a href="transfer_center.html">Transfer Centre</a>
+    </nav>
+  </header>
 
   <div class="filters-bar">
     <div class="filters-right" style="width:100%; justify-content:space-between;">

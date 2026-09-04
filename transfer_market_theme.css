@@ -1,0 +1,407 @@
+/* =============================================================================
+   Transfer Market theme — Sky / Transfer News ticker gold-black desk
+   Shared by: all_listings, manager_listings, club_auction
+   ============================================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap");
+
+:root {
+  --tm-gold: #ffe566;
+  --tm-gold-mid: #e8c84a;
+  --tm-gold-deep: #b8921f;
+  --tm-gold-dim: #c9a227;
+  --tm-ink: #0a0a0a;
+  --tm-panel: #121212;
+  --tm-panel-2: #1a1a1a;
+  --tm-line: #2a2a2a;
+  --tm-text: #f0f0f0;
+  --tm-muted: #9a9588;
+  --tm-rumour: #f0d9a8;
+  --tm-live: #ff3b3b;
+}
+
+body.tm-market {
+  margin: 0;
+  color: var(--tm-text);
+  font-family: "Barlow", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -8%, rgba(232, 200, 74, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 20%, rgba(184, 146, 31, 0.08), transparent 50%),
+    linear-gradient(180deg, #070707 0%, #111 42%, #0c0c0c 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+body.tm-market::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.04;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 229, 102, 0.35) 2px,
+    rgba(255, 229, 102, 0.35) 3px
+  );
+}
+
+body.tm-market > *:not(#nav) {
+  position: relative;
+  z-index: 1;
+}
+
+body.tm-market #nav {
+  position: relative;
+  z-index: 5;
+}
+
+/* ---- Broadcast masthead (matches TRANSFER NEWS ticker language) ---- */
+.tm-hero {
+  width: min(1220px, 94%);
+  margin: 12px auto 18px;
+  padding: 0 0 16px;
+  border-bottom: 2px solid var(--tm-gold-deep);
+  box-shadow: 0 8px 0 -6px rgba(255, 229, 102, 0.25);
+}
+
+.tm-hero-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px 14px;
+  margin-bottom: 10px;
+}
+
+.tm-brand {
+  display: inline-flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  font-family: "Barlow Condensed", "Arial Black", Impact, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55);
+}
+
+.tm-brand-transfer {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px 8px 14px;
+  color: #111;
+  background: linear-gradient(180deg, #ffe566 0%, #e8c84a 42%, #b8921f 100%);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.tm-brand-chevron {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  color: var(--tm-gold);
+  background: #111;
+  letter-spacing: -0.08em;
+  font-size: 16px;
+}
+
+.tm-brand-desk {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px 8px 8px;
+  color: var(--tm-gold);
+  background: #111;
+  text-shadow: 0 0 8px rgba(255, 229, 102, 0.35);
+}
+
+.tm-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: center;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 59, 59, 0.55);
+  background: rgba(80, 10, 10, 0.45);
+  color: #ffb4b4;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tm-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tm-live);
+  box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.7);
+  animation: tm-pulse 1.4s ease-out infinite;
+}
+
+@keyframes tm-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.65); }
+  70% { box-shadow: 0 0 0 8px rgba(255, 59, 59, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 59, 59, 0); }
+}
+
+.tm-hero-title {
+  margin: 0;
+  font-family: "Bebas Neue", "Barlow Condensed", Impact, sans-serif;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 0.95;
+  color: var(--tm-gold);
+  text-shadow: 0 2px 0 #111, 0 0 24px rgba(255, 229, 102, 0.18);
+  background: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  width: auto !important;
+  text-align: left !important;
+}
+
+.tm-hero-sub {
+  margin: 8px 0 0;
+  max-width: 46rem;
+  color: var(--tm-muted);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.tm-desk-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.tm-desk-switch a {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  text-decoration: none;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tm-rumour);
+  background: #111;
+  border: 1px solid #3a3428;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.tm-desk-switch a:hover {
+  color: var(--tm-gold);
+  border-color: var(--tm-gold-deep);
+  background: #18160f;
+}
+
+.tm-desk-switch a.is-active {
+  color: #111;
+  background: linear-gradient(180deg, #ffe566 0%, #e8c84a 50%, #b8921f 100%);
+  border-color: var(--tm-gold-deep);
+}
+
+/* ---- Shared chrome: filters, panels, tables ---- */
+body.tm-market .filters-bar,
+body.tm-market .listing-filters,
+body.tm-market .mgr-market-toolbar,
+body.tm-market .info-box,
+body.tm-market #leadPanel,
+body.tm-market #draftCountdownContainer,
+body.tm-market .auction-scroll {
+  border-color: #3a3428 !important;
+  background: linear-gradient(180deg, #161410 0%, #12100c 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 229, 102, 0.06);
+}
+
+body.tm-market .listing-filters {
+  border-left: 3px solid var(--tm-gold-deep) !important;
+}
+
+body.tm-market h1:not(.tm-hero-title) {
+  font-family: "Bebas Neue", Impact, sans-serif;
+  color: var(--tm-gold) !important;
+  background: transparent !important;
+}
+
+body.tm-market a.button,
+body.tm-market button.button,
+body.tm-market .bid-btn,
+body.tm-market .history-btn {
+  font-family: "Barlow Condensed", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 2px !important;
+}
+
+body.tm-market a.button,
+body.tm-market button.button {
+  background: #14120e !important;
+  color: var(--tm-gold) !important;
+  border: 1px solid #5a4a20 !important;
+}
+
+body.tm-market a.button:hover,
+body.tm-market button.button:hover {
+  background: #1e1a12 !important;
+  border-color: var(--tm-gold-mid) !important;
+  transform: none;
+}
+
+body.tm-market .button-filter-on,
+body.tm-market .bid-btn {
+  background: linear-gradient(180deg, #ffe566 0%, #e8c84a 45%, #b8921f 100%) !important;
+  color: #111 !important;
+  border-color: var(--tm-gold-deep) !important;
+  font-weight: 800;
+}
+
+body.tm-market .history-btn {
+  background: #1a1814 !important;
+  color: var(--tm-rumour) !important;
+  border: 1px solid #4a4030 !important;
+}
+
+body.tm-market table.gpsl-table,
+body.tm-market table.auction-table,
+body.tm-market table:not(.club-bid-history) {
+  background: var(--tm-panel) !important;
+  border: 1px solid #3a3428;
+}
+
+body.tm-market table.gpsl-table th,
+body.tm-market table.auction-table th,
+body.tm-market table thead th {
+  background: linear-gradient(180deg, #1c1810 0%, #14120e 100%) !important;
+  color: var(--tm-gold) !important;
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--tm-gold-deep) !important;
+}
+
+body.tm-market table.gpsl-table td,
+body.tm-market table.auction-table td,
+body.tm-market table tbody td {
+  border-bottom-color: #2a261c !important;
+}
+
+body.tm-market table.gpsl-table tbody tr:hover,
+body.tm-market table.auction-table tbody tr:hover,
+body.tm-market table tbody tr:hover {
+  background: rgba(232, 200, 74, 0.06) !important;
+}
+
+body.tm-market .mgr-market-mod {
+  background: #14120e !important;
+  border: 1px solid #3a3428 !important;
+  border-radius: 2px !important;
+  border-top: 2px solid var(--tm-gold-deep) !important;
+}
+
+body.tm-market .mgr-market-mod b {
+  color: var(--tm-gold) !important;
+  font-family: "Barlow Condensed", sans-serif;
+  letter-spacing: 0.06em;
+}
+
+body.tm-market .mgr-market-mod a {
+  color: var(--tm-gold-mid) !important;
+}
+
+body.tm-market #hasManagerBanner,
+body.tm-market #windowClosedMessage {
+  border-radius: 2px !important;
+  font-family: "Barlow Condensed", sans-serif;
+  letter-spacing: 0.03em;
+}
+
+body.tm-market #draftCountdown {
+  color: var(--tm-gold) !important;
+  font-family: "Bebas Neue", Impact, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+body.tm-market .rank-pill {
+  background: #2a2200 !important;
+  color: var(--tm-gold) !important;
+  border-radius: 2px !important;
+}
+
+body.tm-market .high-bid-link,
+body.tm-market .nav-links a,
+body.tm-market a.gpsl-link {
+  color: var(--tm-gold-mid) !important;
+}
+
+body.tm-market .modal-box,
+body.tm-market .club-bid-modal-inner {
+  background: #14120e !important;
+  border: 1px solid #5a4a20 !important;
+  border-radius: 2px !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 229, 102, 0.08);
+}
+
+body.tm-market .modal-box h3,
+body.tm-market .club-bid-modal-inner h2 {
+  color: var(--tm-gold) !important;
+  font-family: "Bebas Neue", Impact, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+body.tm-market .club-bid-submit {
+  background: linear-gradient(180deg, #ffe566 0%, #e8c84a 45%, #b8921f 100%) !important;
+  color: #111 !important;
+  border-radius: 2px !important;
+  font-family: "Barlow Condensed", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 800;
+}
+
+body.tm-market .range-filter-track {
+  background:
+    linear-gradient(
+      to right,
+      #333 0%,
+      #333 var(--range-min, 0%),
+      var(--tm-gold-mid) var(--range-min, 0%),
+      var(--tm-gold-mid) var(--range-max, 100%),
+      #333 var(--range-max, 100%),
+      #333 100%
+    ) !important;
+}
+
+body.tm-market .multi-filter-label,
+body.tm-market .range-filter {
+  color: var(--tm-gold-mid) !important;
+}
+
+body.tm-market .listing-thumb {
+  border-color: #3a3428 !important;
+  background: #0a0a0a !important;
+}
+
+body.tm-market .wrap {
+  max-width: 1220px;
+}
+
+@media (max-width: 720px) {
+  .tm-brand {
+    font-size: 12px;
+  }
+  .tm-hero-title {
+    font-size: 2rem;
+  }
+  .tm-desk-switch a {
+    font-size: 11px;
+    padding: 5px 9px;
+  }
+}
