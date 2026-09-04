@@ -812,6 +812,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let CLUB_NATION_MAP = {};
   /** Full Clubs.Club name → ShortName (for direct-offer seller_club_id). */
   let CLUB_SHORT_BY_FULL_NAME = {};
+  /** ShortNames with an owner — for "ALL OWNED CLUBS" Contracted Team filter. */
+  let OWNED_CLUB_SHORTS = [];
+  const OWNED_CLUBS_FILTER = "OWNED CLUBS";
 
   let MY_NATION = null;
   let MY_CLUB_NATION = null;
@@ -960,28 +963,50 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadClubNames() {
     const { data, error } = await supabase
       .from("Clubs")
-      .select("ShortName, Club, Nation");
+      .select("ShortName, Club, Nation, owner_id, is_archived");
 
     if (error || !data) {
-      console.error("Failed to load club names:", error);
-      CLUB_NAME_MAP = {};
-      CLUB_NATION_MAP = {};
-      CLUB_SHORT_BY_FULL_NAME = {};
-      return;
+      // Fallback without archive column (older schemas)
+      const retry = await supabase
+        .from("Clubs")
+        .select("ShortName, Club, Nation, owner_id");
+      if (retry.error || !retry.data) {
+        console.error("Failed to load club names:", error || retry.error);
+        CLUB_NAME_MAP = {};
+        CLUB_NATION_MAP = {};
+        CLUB_SHORT_BY_FULL_NAME = {};
+        OWNED_CLUB_SHORTS = [];
+        return;
+      }
+      return applyClubNameRows(retry.data);
     }
 
+    applyClubNameRows(data);
+  }
+
+  function applyClubNameRows(data) {
     CLUB_NAME_MAP = {};
     CLUB_NATION_MAP = {};
     CLUB_SHORT_BY_FULL_NAME = {};
-    data.forEach(c => {
-      if (c.ShortName) {
-        CLUB_NAME_MAP[c.ShortName] = c.Club || c.ShortName;
-        CLUB_NATION_MAP[c.ShortName] = c.Nation || "";
-        if (c.Club) {
-          CLUB_SHORT_BY_FULL_NAME[c.Club] = c.ShortName;
-        }
+    OWNED_CLUB_SHORTS = [];
+    (data || []).forEach((c) => {
+      if (!c.ShortName) return;
+      CLUB_NAME_MAP[c.ShortName] = c.Club || c.ShortName;
+      CLUB_NATION_MAP[c.ShortName] = c.Nation || "";
+      if (c.Club) {
+        CLUB_SHORT_BY_FULL_NAME[c.Club] = c.ShortName;
+      }
+      if (
+        c.owner_id &&
+        c.ShortName !== "FOREIGN" &&
+        c.is_archived !== true
+      ) {
+        OWNED_CLUB_SHORTS.push(c.ShortName);
       }
     });
+    OWNED_CLUB_SHORTS = [...new Set(OWNED_CLUB_SHORTS)].sort((a, b) =>
+      (CLUB_NAME_MAP[a] || a).localeCompare(CLUB_NAME_MAP[b] || b)
+    );
   }
 
   /** Always store seller as Clubs.ShortName (GPDB table shows full club name). */
@@ -1040,13 +1065,23 @@ document.addEventListener("DOMContentLoaded", () => {
   function buildContractedTeamOrClause(values) {
     const hasFA = values.includes("FREE AGENT");
     const hasLegacy = values.includes("LEGACY");
-    const clubs = values.filter((v) => v !== "FREE AGENT" && v !== "LEGACY");
+    const hasOwned = values.includes(OWNED_CLUBS_FILTER);
+    let clubs = values.filter(
+      (v) => v !== "FREE AGENT" && v !== "LEGACY" && v !== OWNED_CLUBS_FILTER
+    );
+
+    if (hasOwned) {
+      clubs = [...new Set([...clubs, ...OWNED_CLUB_SHORTS])];
+    }
 
     const parts = [];
 
     if (clubs.length > 0) {
       const inList = clubs.join(",");
       parts.push(`Contracted_Team.in.(${inList})`);
+    } else if (hasOwned) {
+      // Sentinel selected but no owned clubs yet — match nothing
+      parts.push("Konami_ID.eq.__no_owned_clubs__");
     }
 
     if (hasFA) {
@@ -1360,7 +1395,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function contractedTeamFilterHintHtml() {
-    return `<div class="multi-filter-draft-hint">Select <b>FREE AGENT</b> for draft bids · <b>LEGACY PLAYERS</b> for cards off pesdb.net</div>`;
+    return `<div class="multi-filter-draft-hint"><b>ALL OWNED CLUBS</b> = every club with an owner · <b>FREE AGENT</b> for draft bids · <b>LEGACY PLAYERS</b> for cards off pesdb.net</div>`;
   }
 
   function normalizeDistinctColumnValues(col, rows) {
@@ -3074,7 +3109,12 @@ document.addEventListener("DOMContentLoaded", () => {
           .sort((a, b) =>
             (CLUB_NAME_MAP[a] || a).localeCompare(CLUB_NAME_MAP[b] || b)
           );
-        uniqueValues = ["LEGACY", "FREE AGENT", ...uniqueValues];
+        uniqueValues = [
+          OWNED_CLUBS_FILTER,
+          "LEGACY",
+          "FREE AGENT",
+          ...uniqueValues,
+        ];
       } else {
       let { data, error } = await supabase
         .from("Players")
@@ -3123,7 +3163,10 @@ document.addEventListener("DOMContentLoaded", () => {
         let value = v;
         let label = v;
         if (col === "Contracted_Team") {
-          if (v === "LEGACY") {
+          if (v === OWNED_CLUBS_FILTER) {
+            value = OWNED_CLUBS_FILTER;
+            label = `ALL OWNED CLUBS (${OWNED_CLUB_SHORTS.length})`;
+          } else if (v === "LEGACY") {
             value = "LEGACY";
             label = "LEGACY PLAYERS";
           } else if (v === "FREE AGENT") {
