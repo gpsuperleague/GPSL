@@ -20,7 +20,7 @@ export function getExpiringContractRules() {
         heading: "Who is on this market",
         items: [
           "Players in their <b>final contract year</b> on the <b>contested</b> path.",
-          "<b>Not listed here:</b> home-grown ≤23, and non-home-grown ≤21 — those renew uncontested on Squad.",
+          "<b>Not listed here:</b> home-grown ≤23, non-home-grown ≤21 (renew uncontested on Squad), and <b>emergency / season loans</b> drafted in as stop-gaps.",
           "The player <b>stays at the holding club</b> all season while bids are collected.",
         ],
       },
