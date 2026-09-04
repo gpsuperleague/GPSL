@@ -264,6 +264,7 @@ function renderRoutingStatus(data) {
   if (!el) return;
   const newsOk = data?.news_webhook_configured !== false;
   const resultsOk = !!data?.results_webhook_configured;
+  const intlResultsOk = !!data?.intl_results_webhook_configured;
   const natterOk = !!data?.natter_webhook_configured;
   const notifyOk = !!data?.notifications_webhook_configured;
   const tablesOk = !!data?.tables_webhook_configured;
@@ -277,6 +278,11 @@ function renderRoutingStatus(data) {
     <div class="${resultsOk ? "ok" : "bad"}">#gpsl-results webhook: ${
       resultsOk
         ? "configured (DISCORD_RESULTS_WEBHOOK_URL)"
+        : "MISSING — set secret + redeploy discord-sky-feed"
+    }</div>
+    <div class="${intlResultsOk ? "ok" : "bad"}">#gpsl-intl-results webhook: ${
+      intlResultsOk
+        ? "configured (DISCORD_INTL_RESULTS_WEBHOOK_URL)"
         : "MISSING — set secret + redeploy discord-sky-feed"
     }</div>
     <div class="${natterOk ? "ok" : "bad"}">#gpsl-natter webhook: ${
@@ -325,6 +331,7 @@ async function checkRouting() {
     renderRoutingStatus({
       news_webhook_configured: false,
       results_webhook_configured: false,
+      intl_results_webhook_configured: false,
       natter_webhook_configured: false,
       notifications_webhook_configured: false,
       tables_webhook_configured: false,
@@ -338,6 +345,7 @@ async function checkRouting() {
   renderRoutingStatus(data);
   const missing = [];
   if (!data?.results_webhook_configured) missing.push("results");
+  if (!data?.intl_results_webhook_configured) missing.push("intl-results");
   if (!data?.natter_webhook_configured) missing.push("natter");
   if (!data?.notifications_webhook_configured) missing.push("notifications");
   if (!data?.tables_webhook_configured) missing.push("tables");
@@ -353,7 +361,7 @@ async function checkRouting() {
   }
   setStatus(
     "newsStatus",
-    "Routing OK — news, results, natter, notifications, tables, scheduled, and intl-scheduled webhooks are configured."
+    "Routing OK — news, results, intl-results, natter, notifications, tables, scheduled, and intl-scheduled webhooks are configured."
   );
 }
 
@@ -366,6 +374,7 @@ async function pushNews() {
   }
   if (
     data?.results_webhook_configured === false ||
+    data?.intl_results_webhook_configured === false ||
     data?.natter_webhook_configured === false ||
     data?.notifications_webhook_configured === false ||
     data?.tables_webhook_configured === false ||
@@ -375,6 +384,7 @@ async function pushNews() {
     renderRoutingStatus({
       news_webhook_configured: true,
       results_webhook_configured: !!data?.results_webhook_configured,
+      intl_results_webhook_configured: !!data?.intl_results_webhook_configured,
       natter_webhook_configured: !!data?.natter_webhook_configured,
       notifications_webhook_configured: !!data?.notifications_webhook_configured,
       tables_webhook_configured: !!data?.tables_webhook_configured,
@@ -392,13 +402,14 @@ async function pushNews() {
       : "";
   const split =
     data?.posted_results != null ||
+    data?.posted_intl_results != null ||
     data?.posted_news != null ||
     data?.posted_natter != null ||
     data?.posted_notifications != null ||
     data?.posted_tables != null ||
     data?.posted_scheduled != null ||
     data?.posted_intl_scheduled != null
-      ? ` (news ${data?.posted_news ?? 0}, results ${data?.posted_results ?? 0}, natter ${data?.posted_natter ?? 0}, notify ${data?.posted_notifications ?? 0}, tables ${data?.posted_tables ?? 0}, scheduled ${data?.posted_scheduled ?? 0}, intl ${data?.posted_intl_scheduled ?? 0})`
+      ? ` (news ${data?.posted_news ?? 0}, results ${data?.posted_results ?? 0}, intl ${data?.posted_intl_results ?? 0}, natter ${data?.posted_natter ?? 0}, notify ${data?.posted_notifications ?? 0}, tables ${data?.posted_tables ?? 0}, scheduled ${data?.posted_scheduled ?? 0}, intl-sched ${data?.posted_intl_scheduled ?? 0})`
       : "";
   setStatus(
     "newsStatus",
@@ -411,39 +422,44 @@ async function sendTest(channel = "news") {
   const label =
     channel === "results"
       ? "#gpsl-results"
-      : channel === "natter"
-        ? "#gpsl-natter"
-        : channel === "notifications"
-          ? "#gpsl-notifications"
-          : channel === "tables"
-            ? "#gpsl-tables"
-            : channel === "scheduled"
-              ? "#gpsl-scheduled"
-              : channel === "intl_scheduled"
-                ? "#gpsl-intl-scheduled"
-                : "#gpsl-news";
+      : channel === "intl_results"
+        ? "#gpsl-intl-results"
+        : channel === "natter"
+          ? "#gpsl-natter"
+          : channel === "notifications"
+            ? "#gpsl-notifications"
+            : channel === "tables"
+              ? "#gpsl-tables"
+              : channel === "scheduled"
+                ? "#gpsl-scheduled"
+                : channel === "intl_scheduled"
+                  ? "#gpsl-intl-scheduled"
+                  : "#gpsl-news";
   setStatus("newsStatus", `Sending test to ${label}…`);
   const { data, error } = await invokeFeed({
     test: true,
     channel:
       channel === "results"
         ? "results"
-        : channel === "natter"
-          ? "natter"
-          : channel === "notifications"
-            ? "notifications"
-            : channel === "tables"
-              ? "tables"
-              : channel === "scheduled"
-                ? "scheduled"
-                : channel === "intl_scheduled"
-                  ? "intl_scheduled"
-                  : "news",
+        : channel === "intl_results"
+          ? "intl_results"
+          : channel === "natter"
+            ? "natter"
+            : channel === "notifications"
+              ? "notifications"
+              : channel === "tables"
+                ? "tables"
+                : channel === "scheduled"
+                  ? "scheduled"
+                  : channel === "intl_scheduled"
+                    ? "intl_scheduled"
+                    : "news",
   });
   if (error) {
     setStatus("newsStatus", error.message, false);
     if (
       channel === "results" ||
+      channel === "intl_results" ||
       channel === "natter" ||
       channel === "notifications" ||
       channel === "tables" ||
@@ -453,6 +469,7 @@ async function sendTest(channel = "news") {
       renderRoutingStatus({
         news_webhook_configured: true,
         results_webhook_configured: channel !== "results",
+        intl_results_webhook_configured: channel !== "intl_results",
         natter_webhook_configured: channel !== "natter",
         notifications_webhook_configured: channel !== "notifications",
         tables_webhook_configured: channel !== "tables",
@@ -488,18 +505,44 @@ document.getElementById("resultsTestBtn")?.addEventListener("click", () => {
 });
 document.getElementById("resultsDigestBtn")?.addEventListener("click", () => {
   (async () => {
-    setStatus("newsStatus", "Building daily results digests…");
-    const { data, error } = await supabase.rpc("admin_discord_results_digest_now", {
+    setStatus("newsStatus", "Building daily club + intl results digests…");
+    const { data, error } = await supabase.rpc("admin_discord_all_results_digest_now", {
       p_max_posts: 10,
     });
     if (error) {
-      setStatus(
-        "newsStatus",
-        error.message.includes("admin_discord_results_digest_now")
-          ? "❌ Run gpsl_discord_results_daily_digest.sql in Supabase first."
-          : "❌ " + error.message,
-        false
-      );
+      // Fallback: club-only digest if combined RPC not deployed yet
+      if (String(error.message || "").includes("admin_discord_all_results_digest_now")) {
+        const club = await supabase.rpc("admin_discord_results_digest_now", {
+          p_max_posts: 10,
+        });
+        if (club.error) {
+          setStatus(
+            "newsStatus",
+            club.error.message.includes("admin_discord_results_digest_now")
+              ? "❌ Run gpsl_discord_results_daily_digest.sql (+ discord_intl_results_digest_20260904.sql) in Supabase first."
+              : "❌ " + club.error.message,
+            false
+          );
+          return;
+        }
+        const n = club.data?.posts_queued ?? 0;
+        const fx = club.data?.fixtures_marked ?? 0;
+        if (n === 0) {
+          setStatus(
+            "newsStatus",
+            "No undigested club results waiting — nothing queued. (Run discord_intl_results_digest_20260904.sql for intl.)",
+            true
+          );
+          return;
+        }
+        setStatus(
+          "newsStatus",
+          `Queued ${n} club digest post(s) covering ${fx} fixture(s). Pushing…`
+        );
+        await pushNews();
+        return;
+      }
+      setStatus("newsStatus", "❌ " + error.message, false);
       return;
     }
     if (!data?.ok) {
@@ -508,6 +551,8 @@ document.getElementById("resultsDigestBtn")?.addEventListener("click", () => {
     }
     const n = data?.posts_queued ?? 0;
     const fx = data?.fixtures_marked ?? 0;
+    const clubN = data?.club?.posts_queued ?? 0;
+    const intlN = data?.intl?.posts_queued ?? 0;
     if (n === 0) {
       setStatus(
         "newsStatus",
@@ -518,13 +563,18 @@ document.getElementById("resultsDigestBtn")?.addEventListener("click", () => {
     }
     setStatus(
       "newsStatus",
-      `Queued ${n} digest post(s) covering ${fx} fixture(s). Pushing…`
+      `Queued ${n} digest post(s) (${clubN} club, ${intlN} intl) covering ${fx} fixture(s). Pushing…`
     );
     await pushNews();
   })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
 document.getElementById("natterTestBtn")?.addEventListener("click", () => {
   sendTest("natter").catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
+document.getElementById("intlResultsTestBtn")?.addEventListener("click", () => {
+  sendTest("intl_results").catch((e) =>
+    setStatus("newsStatus", e.message || String(e), false)
+  );
 });
 document.getElementById("notificationsTestBtn")?.addEventListener("click", () => {
   sendTest("notifications").catch((e) =>

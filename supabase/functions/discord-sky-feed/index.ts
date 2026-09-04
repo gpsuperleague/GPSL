@@ -45,11 +45,29 @@ type DiscordMember = {
 };
 
 function isResultsEvent(row: FeedRow): boolean {
+  if (isIntlResultsEvent(row)) return false;
   if (row.event_type === "result" || row.event_type === "results_digest") {
     return true;
   }
   const channel = String(row.metadata?.channel || "").toLowerCase();
   return channel === "results";
+}
+
+function isIntlResultsEvent(row: FeedRow): boolean {
+  if (
+    row.event_type === "intl_result" ||
+    row.event_type === "intl_results" ||
+    row.event_type === "intl_results_digest" ||
+    row.event_type === "international_result"
+  ) {
+    return true;
+  }
+  const channel = String(row.metadata?.channel || "").toLowerCase();
+  return (
+    channel === "intl_results" ||
+    channel === "international_results" ||
+    channel === "intl-results"
+  );
 }
 
 function isNatterEvent(row: FeedRow): boolean {
@@ -142,6 +160,7 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
     colors.other;
 
   const results = isResultsEvent(row);
+  const intlResults = isIntlResultsEvent(row);
   const natter = isNatterEvent(row);
   const notifications = isNotificationsEvent(row);
   const tables = isTablesEvent(row);
@@ -161,6 +180,10 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
         ? row.metadata?.digest
           ? "GPSL Results · Daily digest"
           : "GPSL Results"
+        : intlResults
+          ? row.metadata?.digest
+            ? "GPSL Intl Results · Daily digest"
+            : "GPSL Intl Results"
         : natter
           ? "GPSL Natter"
           : tables
@@ -321,8 +344,17 @@ function webhookForRow(
   notificationsUrl: string | null,
   tablesUrl: string | null,
   scheduledUrl: string | null = null,
-  intlScheduledUrl: string | null = null
+  intlScheduledUrl: string | null = null,
+  intlResultsUrl: string | null = null
 ): { url: string; username: string } {
+  if (isIntlResultsEvent(row)) {
+    if (!intlResultsUrl) {
+      throw new Error(
+        "DISCORD_INTL_RESULTS_WEBHOOK_URL secret missing — intl result not posted. Add the #gpsl-intl-results webhook secret and redeploy discord-sky-feed."
+      );
+    }
+    return { url: intlResultsUrl, username: "GPSL Intl Results" };
+  }
   if (isResultsEvent(row)) {
     if (!resultsUrl) {
       throw new Error(
@@ -413,6 +445,11 @@ Deno.serve(async (req) => {
       Deno.env.get("DISCORD_WEBHOOK_INTL_SCHEDULED_URL") ||
       Deno.env.get("DISCORD_INTERNATIONAL_SCHEDULED_WEBHOOK_URL") ||
       "";
+    const intlResultsWebhookUrl =
+      Deno.env.get("DISCORD_INTL_RESULTS_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WEBHOOK_INTL_RESULTS_URL") ||
+      Deno.env.get("DISCORD_INTERNATIONAL_RESULTS_WEBHOOK_URL") ||
+      "";
     const feedKey = Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
       Deno.env.get("CRON_API_KEY") ||
       "";
@@ -490,10 +527,14 @@ Deno.serve(async (req) => {
         whos_who_webhook_configured: Boolean(whosWhoWebhookUrl),
         scheduled_webhook_configured: Boolean(scheduledWebhookUrl),
         intl_scheduled_webhook_configured: Boolean(intlScheduledWebhookUrl),
+        intl_results_webhook_configured: Boolean(intlResultsWebhookUrl),
         routing: {
           result_events: resultsWebhookUrl
             ? "DISCORD_RESULTS_WEBHOOK_URL → #gpsl-results"
             : "BLOCKED until DISCORD_RESULTS_WEBHOOK_URL is set",
+          intl_result_events: intlResultsWebhookUrl
+            ? "DISCORD_INTL_RESULTS_WEBHOOK_URL → #gpsl-intl-results"
+            : "BLOCKED until DISCORD_INTL_RESULTS_WEBHOOK_URL is set",
           natter_events: natterWebhookUrl
             ? "DISCORD_NATTER_WEBHOOK_URL → #gpsl-natter"
             : "BLOCKED until DISCORD_NATTER_WEBHOOK_URL is set",
@@ -617,6 +658,10 @@ Deno.serve(async (req) => {
         channel === "intl_scheduled" ||
         channel === "international_scheduled" ||
         channel === "intl-scheduled";
+      const toIntlResults =
+        channel === "intl_results" ||
+        channel === "international_results" ||
+        channel === "intl-results";
       if (toResults && !resultsWebhookUrl) {
         return jsonResponse(
           {
@@ -695,6 +740,19 @@ Deno.serve(async (req) => {
           400
         );
       }
+      if (toIntlResults && !intlResultsWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_INTL_RESULTS_WEBHOOK_URL secret missing — cannot test #gpsl-intl-results. Add it under Edge Functions → Secrets and redeploy.",
+            channel: "intl_results",
+            used_intl_results_webhook: false,
+            intl_results_webhook_configured: false,
+          },
+          400
+        );
+      }
       const target = toResults
         ? resultsWebhookUrl
         : toNatter
@@ -703,11 +761,13 @@ Deno.serve(async (req) => {
             ? notificationsWebhookUrl
             : toTables
               ? tablesWebhookUrl
-              : toIntlScheduled
-                ? intlScheduledWebhookUrl
-                : toScheduled
-                  ? scheduledWebhookUrl
-                  : webhookUrl;
+              : toIntlResults
+                ? intlResultsWebhookUrl
+                : toIntlScheduled
+                  ? intlScheduledWebhookUrl
+                  : toScheduled
+                    ? scheduledWebhookUrl
+                    : webhookUrl;
       const label = toResults
         ? "RESULTS"
         : toNatter
@@ -716,11 +776,13 @@ Deno.serve(async (req) => {
             ? "NOTIFICATIONS"
             : toTables
               ? "TABLES"
-              : toIntlScheduled
-                ? "INTL SCHEDULED"
-                : toScheduled
-                  ? "SCHEDULED"
-                  : "NEWS";
+              : toIntlResults
+                ? "INTL RESULTS"
+                : toIntlScheduled
+                  ? "INTL SCHEDULED"
+                  : toScheduled
+                    ? "SCHEDULED"
+                    : "NEWS";
       const channelName = toResults
         ? "#gpsl-results"
         : toNatter
@@ -729,11 +791,13 @@ Deno.serve(async (req) => {
             ? "#gpsl-notifications"
             : toTables
               ? "#gpsl-tables"
-              : toIntlScheduled
-                ? "#gpsl-intl-scheduled"
-                : toScheduled
-                  ? "#gpsl-scheduled"
-                  : "#gpsl-news";
+              : toIntlResults
+                ? "#gpsl-intl-results"
+                : toIntlScheduled
+                  ? "#gpsl-intl-scheduled"
+                  : toScheduled
+                    ? "#gpsl-scheduled"
+                    : "#gpsl-news";
       await postWebhook(
         target,
         [
@@ -752,17 +816,19 @@ Deno.serve(async (req) => {
             footer: {
               text: toResults
                 ? "GPSL Results"
-                : toNatter
-                  ? "GPSL Natter"
-                  : toTables
-                    ? "GPSL Tables"
-                    : toNotifications
-                      ? "GPSL Notifications"
-                      : toIntlScheduled
-                        ? "GPSL Intl Scheduled"
-                        : toScheduled
-                          ? "GPSL Scheduled"
-                          : "GPSL News",
+                : toIntlResults
+                  ? "GPSL Intl Results"
+                  : toNatter
+                    ? "GPSL Natter"
+                    : toTables
+                      ? "GPSL Tables"
+                      : toNotifications
+                        ? "GPSL Notifications"
+                        : toIntlScheduled
+                          ? "GPSL Intl Scheduled"
+                          : toScheduled
+                            ? "GPSL Scheduled"
+                            : "GPSL News",
             },
             timestamp: new Date().toISOString(),
           },
@@ -770,17 +836,19 @@ Deno.serve(async (req) => {
         {
           username: toResults
             ? "GPSL Results"
-            : toNatter
-              ? "GPSL Natter"
-              : toTables
-                ? "GPSL Tables"
-                : toNotifications
-                  ? "GPSL Notifications"
-                  : toIntlScheduled
-                    ? "GPSL Intl Scheduled"
-                    : toScheduled
-                      ? "GPSL Scheduled"
-                      : "GPSL News",
+            : toIntlResults
+              ? "GPSL Intl Results"
+              : toNatter
+                ? "GPSL Natter"
+                : toTables
+                  ? "GPSL Tables"
+                  : toNotifications
+                    ? "GPSL Notifications"
+                    : toIntlScheduled
+                      ? "GPSL Intl Scheduled"
+                      : toScheduled
+                        ? "GPSL Scheduled"
+                        : "GPSL News",
         }
       );
       return jsonResponse({
@@ -794,12 +862,17 @@ Deno.serve(async (req) => {
               ? "tables"
               : toNotifications
                 ? "notifications"
-                : toIntlScheduled
-                  ? "intl_scheduled"
-                  : toScheduled
-                    ? "scheduled"
-                    : "news",
+                : toIntlResults
+                  ? "intl_results"
+                  : toIntlScheduled
+                    ? "intl_scheduled"
+                    : toScheduled
+                      ? "scheduled"
+                      : "news",
         used_results_webhook: Boolean(toResults && resultsWebhookUrl),
+        used_intl_results_webhook: Boolean(
+          toIntlResults && intlResultsWebhookUrl
+        ),
         used_natter_webhook: Boolean(toNatter && natterWebhookUrl),
         used_notifications_webhook: Boolean(
           toNotifications && notificationsWebhookUrl
@@ -810,6 +883,7 @@ Deno.serve(async (req) => {
           toIntlScheduled && intlScheduledWebhookUrl
         ),
         results_webhook_configured: Boolean(resultsWebhookUrl),
+        intl_results_webhook_configured: Boolean(intlResultsWebhookUrl),
         natter_webhook_configured: Boolean(natterWebhookUrl),
         notifications_webhook_configured: Boolean(notificationsWebhookUrl),
         tables_webhook_configured: Boolean(tablesWebhookUrl),
@@ -841,7 +915,8 @@ Deno.serve(async (req) => {
         notificationsWebhookUrl || null,
         tablesWebhookUrl || null,
         scheduledWebhookUrl || null,
-        intlScheduledWebhookUrl || null
+        intlScheduledWebhookUrl || null,
+        intlResultsWebhookUrl || null
       );
       await postWebhook(target.url, [embedFor(directRow, supabaseUrl)], {
         username: target.username,
@@ -850,6 +925,7 @@ Deno.serve(async (req) => {
 
     let posted = 0;
     let postedResults = 0;
+    let postedIntlResults = 0;
     let postedNatter = 0;
     let postedNotifications = 0;
     let postedTables = 0;
@@ -892,6 +968,14 @@ Deno.serve(async (req) => {
     ) {
       warnings.push(
         "DISCORD_RESULTS_WEBHOOK_URL not set — result items will stay in error until the #gpsl-results webhook secret is added"
+      );
+    }
+    if (
+      pending.some((r) => isIntlResultsEvent(r)) &&
+      !intlResultsWebhookUrl
+    ) {
+      warnings.push(
+        "DISCORD_INTL_RESULTS_WEBHOOK_URL not set — intl result items will stay in error until the #gpsl-intl-results webhook secret is added"
       );
     }
     if (pending.some((r) => isNatterEvent(r)) && !natterWebhookUrl) {
@@ -1080,7 +1164,8 @@ Deno.serve(async (req) => {
           notificationsWebhookUrl || null,
           tablesWebhookUrl || null,
           scheduledWebhookUrl || null,
-          intlScheduledWebhookUrl || null
+          intlScheduledWebhookUrl || null,
+          intlResultsWebhookUrl || null
         );
         const embed = embedFor(row, supabaseUrl);
         try {
@@ -1125,6 +1210,7 @@ Deno.serve(async (req) => {
         settledIds.add(row.id);
         posted += 1;
         if (isResultsEvent(row)) postedResults += 1;
+        else if (isIntlResultsEvent(row)) postedIntlResults += 1;
         else if (isNatterEvent(row)) postedNatter += 1;
         else if (isTablesEvent(row)) postedTables += 1;
         else if (isNotificationsEvent(row)) postedNotifications += 1;
@@ -1185,12 +1271,14 @@ Deno.serve(async (req) => {
       posted,
       posted_news: postedNews,
       posted_results: postedResults,
+      posted_intl_results: postedIntlResults,
       posted_natter: postedNatter,
       posted_notifications: postedNotifications,
       posted_tables: postedTables,
       posted_scheduled: postedScheduled,
       posted_intl_scheduled: postedIntlScheduled,
       results_webhook_configured: Boolean(resultsWebhookUrl),
+      intl_results_webhook_configured: Boolean(intlResultsWebhookUrl),
       natter_webhook_configured: Boolean(natterWebhookUrl),
       notifications_webhook_configured: Boolean(notificationsWebhookUrl),
       tables_webhook_configured: Boolean(tablesWebhookUrl),
