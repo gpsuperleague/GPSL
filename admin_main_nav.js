@@ -53,7 +53,7 @@ export const ADMIN_MAIN_NAV = [
       ]),
       group("Mods", [L("Manage mods", "admin_mods.html")]),
       group("Discord feeds", [
-        L("Discord News Feed", "admin_discord_news.html"),
+        L("Discord Feeds", "admin_discord_news.html"),
         L("Discord Friendlies", "admin_discord_friendlies.html"),
         L("Transfer Gossip", "admin_discord_transfer_gossip.html"),
       ]),

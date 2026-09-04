@@ -12,6 +12,13 @@
     .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
     button.button.secondary { background:#444; color:#ddd; }
     button.button.secondary:hover { background:#555; }
+    button.button.danger { background:#7a2020; color:#fff; }
+    button.button.danger:hover { background:#9a2828; }
+    button.button.danger:disabled { opacity:0.5; cursor:not-allowed; }
+    .auto-form select {
+      padding:8px 10px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
+    }
+    .clear-form { max-width:520px; }
     .news-actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
     .news-table { width:100%; border-collapse:collapse; font-size:13px; }
     .news-table th, .news-table td {
@@ -212,6 +219,43 @@
       </div>
 
       <div class="card">
+        <h2>Clear channel</h2>
+        <p class="note">
+          Deletes messages in a GPSL Discord feed channel via the bot
+          (<code>DISCORD_BOT_TOKEN</code> — needs <b>Manage Messages</b>).
+          Resolves the channel from that feed’s webhook secret. Pinned messages are kept.
+          Large channels may need more than one run (max ~500 deletes per click).
+          <b>Admin only</b> — irreversible.
+        </p>
+        <div class="auto-form clear-form">
+          <label>
+            Channel
+            <select id="clearChannelSelect">
+              <option value="">— choose —</option>
+              <option value="news">#gpsl-news</option>
+              <option value="results">#gpsl-results</option>
+              <option value="intl_results">#gpsl-intl-results</option>
+              <option value="scheduled">#gpsl-scheduled</option>
+              <option value="intl_scheduled">#gpsl-intl-scheduled</option>
+              <option value="tables">#gpsl-tables</option>
+              <option value="intl_tables">#gpsl-intl-tables</option>
+              <option value="natter">#gpsl-natter</option>
+              <option value="notifications">#gpsl-notifications</option>
+              <option value="whos_who">#whos-who</option>
+            </select>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="clearChannelConfirm">
+            I understand this permanently deletes messages in the selected channel
+          </label>
+          <div class="news-actions" style="margin:0">
+            <button type="button" id="clearChannelBtn" class="button danger">Clear selected channel</button>
+          </div>
+        </div>
+        <div id="clearChannelStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
         <h2>Channel map &amp; routing</h2>
         <p class="note">
           Club and international feeds are separate where it matters (results, tables, scheduled).
@@ -331,6 +375,6 @@
 
     </div>
   </div>
-  <script type="module" src="admin_discord_news.js?v=20260904-reorg"></script>
+    <script type="module" src="admin_discord_news.js?v=20260904-clear"></script>
 </body>
 </html>

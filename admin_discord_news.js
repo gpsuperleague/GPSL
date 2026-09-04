@@ -848,6 +848,76 @@ document.getElementById("autoTestBtn")?.addEventListener("click", () => {
   testAutoFlush().catch((e) => setStatus("autoStatus", e.message || String(e), false));
 });
 
+document.getElementById("clearChannelBtn")?.addEventListener("click", () => {
+  (async () => {
+    const channel = document.getElementById("clearChannelSelect")?.value || "";
+    const confirmed = !!document.getElementById("clearChannelConfirm")?.checked;
+    if (!channel) {
+      setStatus("clearChannelStatus", "Choose a channel first.", false);
+      return;
+    }
+    if (!confirmed) {
+      setStatus(
+        "clearChannelStatus",
+        "Tick the confirmation box before clearing.",
+        false
+      );
+      return;
+    }
+    const label =
+      document.getElementById("clearChannelSelect")?.selectedOptions?.[0]
+        ?.textContent || channel;
+    if (
+      !window.confirm(
+        `Delete messages in ${label}?\n\nThis cannot be undone. Pinned messages are kept.`
+      )
+    ) {
+      return;
+    }
+
+    const btn = document.getElementById("clearChannelBtn");
+    if (btn) btn.disabled = true;
+    setStatus("clearChannelStatus", `Clearing ${label}… (may take a minute)`);
+
+    const { data, error } = await invokeFeed({
+      action: "clear_channel",
+      channel,
+      confirm: true,
+      keep_pinned: true,
+      max_delete: 500,
+    });
+
+    if (btn) btn.disabled = false;
+
+    if (error) {
+      setStatus("clearChannelStatus", error.message, false);
+      return;
+    }
+    if (!data?.ok) {
+      setStatus(
+        "clearChannelStatus",
+        data?.error || "Clear failed.",
+        false
+      );
+      return;
+    }
+
+    const more = data.more_remain
+      ? " More remain — run Clear again."
+      : "";
+    setStatus(
+      "clearChannelStatus",
+      `Deleted ${data.deleted ?? 0} message(s) from ${data.channel_label || label}.${more}`
+    );
+    const confirmEl = document.getElementById("clearChannelConfirm");
+    if (confirmEl) confirmEl.checked = false;
+  })().catch((e) => {
+    const btn = document.getElementById("clearChannelBtn");
+    if (btn) btn.disabled = false;
+    setStatus("clearChannelStatus", e.message || String(e), false);
+  });
+});
+
 initAdminPage({ allowMod: true })
   .then(async (user) => {
     if (!user) return;

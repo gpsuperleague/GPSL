@@ -6,6 +6,12 @@ import {
   rosterContentHash,
   type WhosWhoRoster,
 } from "./whos_who.ts";
+import {
+  CLEAR_CHANNEL_LABELS,
+  clearDiscordChannel,
+  resolveChannelIdFromWebhook,
+  type ClearChannelKey,
+} from "./clear_channel.ts";
 
 const DISCORD_API = "https://discord.com/api/v10";
 
@@ -546,6 +552,154 @@ Deno.serve(async (req) => {
       body = await req.json();
     } catch {
       body = {};
+    }
+
+    // Destructive: clear Discord channel messages (admin JWT only — not cron key)
+    if (
+      body?.action === "clear_channel" ||
+      body?.clear_channel === true
+    ) {
+      if (!authBearer.startsWith("eyJ")) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "Clear channel requires a signed-in admin session (not the auto-flush invoke key).",
+          },
+          403
+        );
+      }
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: `Bearer ${authBearer}` } },
+      });
+      const {
+        data: { user },
+      } = await userClient.auth.getUser();
+      const { data: isAdmin } = await userClient.rpc("is_gpsl_admin");
+      const emailOk =
+        user && (user.email || "").toLowerCase() === adminEmail;
+      if (!user || (isAdmin !== true && !emailOk)) {
+        return jsonResponse(
+          { ok: false, error: "Admin only — channel clear is restricted." },
+          403
+        );
+      }
+      if (!botToken) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_BOT_TOKEN secret missing — bot must have Manage Messages on the target channel.",
+          },
+          400
+        );
+      }
+      if (body?.confirm !== true) {
+        return jsonResponse(
+          {
+            ok: false,
+            error: 'Pass confirm: true to clear a channel (safety check).',
+          },
+          400
+        );
+      }
+
+      const channelKey = String(body?.channel || "")
+        .toLowerCase()
+        .replace(/^#/, "")
+        .replace(/^gpsl-/, "")
+        .replace(/-/g, "_") as ClearChannelKey;
+
+      const webhookByKey: Record<string, string> = {
+        news: webhookUrl,
+        results: resultsWebhookUrl,
+        intl_results: intlResultsWebhookUrl,
+        natter: natterWebhookUrl,
+        notifications: notificationsWebhookUrl,
+        tables: tablesWebhookUrl,
+        intl_tables: intlTablesWebhookUrl,
+        scheduled: scheduledWebhookUrl,
+        intl_scheduled: intlScheduledWebhookUrl,
+        whos_who: whosWhoWebhookUrl,
+        whoswho: whosWhoWebhookUrl,
+      };
+
+      const label =
+        CLEAR_CHANNEL_LABELS[channelKey] ||
+        (channelKey ? `#${channelKey}` : "");
+      const targetWebhook = webhookByKey[channelKey] || "";
+      if (!targetWebhook) {
+        return jsonResponse(
+          {
+            ok: false,
+            error: `Unknown or unconfigured channel "${channelKey}". Choose news, results, intl_results, natter, notifications, tables, intl_tables, scheduled, intl_scheduled, or whos_who.`,
+            channels: Object.keys(CLEAR_CHANNEL_LABELS),
+          },
+          400
+        );
+      }
+
+      const resolved = await resolveChannelIdFromWebhook(targetWebhook);
+      if ("error" in resolved) {
+        return jsonResponse({ ok: false, error: resolved.error, channel: channelKey }, 400);
+      }
+      if (guildId && resolved.guildId && resolved.guildId !== guildId) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "Webhook channel is not in DISCORD_GUILD_ID — refusing to clear.",
+            channel: channelKey,
+          },
+          400
+        );
+      }
+
+      const result = await clearDiscordChannel({
+        botToken,
+        channelId: resolved.channelId,
+        maxDelete:
+          typeof body?.max_delete === "number" ? body.max_delete : 500,
+        keepPinned: body?.keep_pinned !== false,
+      });
+
+      if (result.ok && channelKey === "whos_who") {
+        // Roster message was wiped — clear stored message id so next publish creates fresh
+        try {
+          await adminClient
+            .from("gpsl_discord_whos_who_state")
+            .update({
+              webhook_message_id: null,
+              last_content_hash: null,
+              last_error: "cleared via admin clear_channel",
+              last_action: "cleared",
+            })
+            .eq("id", 1);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      return jsonResponse(
+        {
+          ok: result.ok,
+          clear_channel: true,
+          channel: channelKey,
+          channel_label: label,
+          channel_id_tail: resolved.channelId.slice(-6),
+          deleted: result.deleted,
+          scanned: result.scanned,
+          skipped_pinned: result.skipped_pinned,
+          more_remain: result.more_remain,
+          error: result.error || null,
+          hint: result.more_remain
+            ? "More messages remain — run Clear again to continue."
+            : result.ok
+              ? "Channel cleared (pinned messages kept by default)."
+              : null,
+        },
+        result.ok ? 200 : 500
+      );
     }
 
     // Optional: routing / secrets check (no Discord post)
