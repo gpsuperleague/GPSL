@@ -19,6 +19,7 @@ export type ClearChannelKey =
   | "scheduled"
   | "intl_scheduled"
   | "deals"
+  | "transfer_gossip"
   | "whos_who";
 
 export const CLEAR_CHANNEL_LABELS: Record<ClearChannelKey, string> = {
@@ -32,6 +33,7 @@ export const CLEAR_CHANNEL_LABELS: Record<ClearChannelKey, string> = {
   scheduled: "#gpsl-scheduled",
   intl_scheduled: "#gpsl-intl-scheduled",
   deals: "#gpsl-deals",
+  transfer_gossip: "#gpsl-transfer-gossip",
   whos_who: "#whos-who",
 };
 

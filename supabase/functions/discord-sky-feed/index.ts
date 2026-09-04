@@ -739,11 +739,23 @@ Deno.serve(async (req) => {
         );
       }
 
-      const channelKey = String(body?.channel || "")
+      const channelKeyRaw = String(body?.channel || "")
         .toLowerCase()
         .replace(/^#/, "")
         .replace(/^gpsl-/, "")
-        .replace(/-/g, "_") as ClearChannelKey;
+        .replace(/-/g, "_");
+      // Aliases for transfer gossip (uses channel id secret, not webhook)
+      const channelKey = (
+        channelKeyRaw === "gossip" ||
+        channelKeyRaw === "transfergossip" ||
+        channelKeyRaw === "transfer_gossip_channel"
+          ? "transfer_gossip"
+          : channelKeyRaw
+      ) as ClearChannelKey;
+
+      const transferGossipChannelId = String(
+        Deno.env.get("DISCORD_TRANSFER_GOSSIP_CHANNEL_ID") || ""
+      ).trim();
 
       const webhookByKey: Record<string, string> = {
         news: webhookUrl,
@@ -763,23 +775,48 @@ Deno.serve(async (req) => {
       const label =
         CLEAR_CHANNEL_LABELS[channelKey] ||
         (channelKey ? `#${channelKey}` : "");
-      const targetWebhook = webhookByKey[channelKey] || "";
-      if (!targetWebhook) {
-        return jsonResponse(
-          {
-            ok: false,
-            error: `Unknown or unconfigured channel "${channelKey}". Choose news, results, intl_results, natter, notifications, tables, intl_tables, scheduled, intl_scheduled, deals, or whos_who.`,
-            channels: Object.keys(CLEAR_CHANNEL_LABELS),
-          },
-          400
-        );
+
+      let channelId = "";
+      let resolvedGuildId: string | undefined;
+
+      if (channelKey === "transfer_gossip") {
+        if (!/^\d{15,22}$/.test(transferGossipChannelId)) {
+          return jsonResponse(
+            {
+              ok: false,
+              error:
+                "DISCORD_TRANSFER_GOSSIP_CHANNEL_ID secret missing or invalid — set the #gpsl-transfer-gossip channel snowflake (same secret as gossip ingest).",
+              channel: "transfer_gossip",
+            },
+            400
+          );
+        }
+        channelId = transferGossipChannelId;
+      } else {
+        const targetWebhook = webhookByKey[channelKey] || "";
+        if (!targetWebhook) {
+          return jsonResponse(
+            {
+              ok: false,
+              error: `Unknown or unconfigured channel "${channelKey}". Choose news, results, intl_results, natter, notifications, tables, intl_tables, scheduled, intl_scheduled, deals, transfer_gossip, or whos_who.`,
+              channels: Object.keys(CLEAR_CHANNEL_LABELS),
+            },
+            400
+          );
+        }
+
+        const resolved = await resolveChannelIdFromWebhook(targetWebhook);
+        if ("error" in resolved) {
+          return jsonResponse(
+            { ok: false, error: resolved.error, channel: channelKey },
+            400
+          );
+        }
+        channelId = resolved.channelId;
+        resolvedGuildId = resolved.guildId;
       }
 
-      const resolved = await resolveChannelIdFromWebhook(targetWebhook);
-      if ("error" in resolved) {
-        return jsonResponse({ ok: false, error: resolved.error, channel: channelKey }, 400);
-      }
-      if (guildId && resolved.guildId && resolved.guildId !== guildId) {
+      if (guildId && resolvedGuildId && resolvedGuildId !== guildId) {
         return jsonResponse(
           {
             ok: false,
@@ -793,7 +830,7 @@ Deno.serve(async (req) => {
 
       const result = await clearDiscordChannel({
         botToken,
-        channelId: resolved.channelId,
+        channelId,
         maxDelete:
           typeof body?.max_delete === "number" ? body.max_delete : 100,
         timeBudgetMs:
@@ -826,7 +863,7 @@ Deno.serve(async (req) => {
         clear_channel: true,
         channel: channelKey,
         channel_label: label,
-        channel_id_tail: resolved.channelId.slice(-6),
+        channel_id_tail: channelId.slice(-6),
         deleted: result.deleted,
         scanned: result.scanned,
         skipped_pinned: result.skipped_pinned,
