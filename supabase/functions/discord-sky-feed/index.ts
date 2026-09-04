@@ -135,7 +135,111 @@ function isIntlScheduledEvent(row: FeedRow): boolean {
 function wantsOwnerPing(row: FeedRow): boolean {
   if (row.event_type === "owner") return true;
   if (row.metadata?.ping === true || row.metadata?.ping === "true") return true;
-  return Boolean(row.metadata?.owner_tag || row.metadata?.mention);
+  if (row.metadata?.owner_tag || row.metadata?.mention) return true;
+  const tags = row.metadata?.owner_tags;
+  if (Array.isArray(tags) && tags.some((t) => String(t || "").trim())) return true;
+  const ids = row.metadata?.discord_user_ids;
+  if (Array.isArray(ids) && ids.some((id) => String(id || "").trim())) return true;
+  return false;
+}
+
+function resolveOwnerMentions(
+  row: FeedRow,
+  guildMembers: DiscordMember[] | null
+): {
+  content?: string;
+  allowedMentions?: { users?: string[]; parse?: string[] };
+  userIds: string[];
+} {
+  const tags: string[] = [];
+  const addTag = (raw: unknown) => {
+    const s = String(raw || "")
+      .replace(/^@+/, "")
+      .trim();
+    if (s && !tags.includes(s)) tags.push(s);
+  };
+
+  if (Array.isArray(row.metadata?.owner_tags)) {
+    for (const t of row.metadata.owner_tags) addTag(t);
+  }
+  addTag(row.metadata?.owner_tag);
+  addTag(row.metadata?.mention);
+
+  const knownIds = new Set<string>();
+  if (Array.isArray(row.metadata?.discord_user_ids)) {
+    for (const id of row.metadata.discord_user_ids) {
+      const s = String(id || "").trim();
+      if (/^\d{15,22}$/.test(s)) knownIds.add(s);
+    }
+  }
+
+  const parts: string[] = [];
+  const mentionIds: string[] = [];
+
+  for (const tag of tags) {
+    const uid = guildMembers ? matchMemberId(guildMembers, tag) : null;
+    if (uid) {
+      if (!mentionIds.includes(uid)) {
+        parts.push(`<@${uid}>`);
+        mentionIds.push(uid);
+      }
+      knownIds.add(uid);
+    } else {
+      parts.push(`@${tag}`);
+    }
+  }
+
+  for (const uid of knownIds) {
+    if (!mentionIds.includes(uid)) {
+      parts.push(`<@${uid}>`);
+      mentionIds.push(uid);
+    }
+  }
+
+  if (!parts.length) return { userIds: mentionIds };
+
+  return {
+    content: parts.join(" "),
+    allowedMentions: mentionIds.length
+      ? { users: mentionIds }
+      : { parse: [] },
+    userIds: mentionIds,
+  };
+}
+
+async function tryDmOwners(
+  botToken: string,
+  userIds: string[],
+  message: string
+): Promise<void> {
+  if (!botToken || !userIds.length) return;
+  const text = message.slice(0, 2000);
+  for (const uid of userIds) {
+    try {
+      const chRes = await fetch(`${DISCORD_API}/users/@me/channels`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ recipient_id: uid }),
+      });
+      if (!chRes.ok) continue;
+      const ch = (await chRes.json()) as { id?: string };
+      if (!ch?.id) continue;
+      await fetch(`${DISCORD_API}/channels/${ch.id}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: text }),
+      });
+      await sleep(400);
+    } catch {
+      /* best-effort — privacy settings often block DMs */
+    }
+  }
 }
 
 function publicNatterImageUrl(
@@ -1287,30 +1391,17 @@ Deno.serve(async (req) => {
           undefined;
 
         if (wantsOwnerPing(row)) {
-          const rawTag = String(
-            row.metadata?.owner_tag ||
-              row.metadata?.mention ||
-              ""
-          ).replace(/^@+/, "").trim();
-          const displayMention = rawTag ? `@${rawTag}` : "";
-          let ping: string | null = null;
-          let userId: string | null = null;
+          const resolved = resolveOwnerMentions(row, guildMembers);
+          content = resolved.content;
+          allowedMentions = resolved.allowedMentions;
 
-          if (rawTag && guildMembers) {
-            userId = matchMemberId(guildMembers, rawTag);
-            if (userId) ping = `<@${userId}>`;
-          }
-
-          // Discord only notifies from message content (not embed text)
-          content = ping || displayMention || undefined;
-          if (userId) {
-            allowedMentions = { users: [userId] };
-          } else if (displayMention) {
-            // Soft mention text — may not notify without snowflake id
-            allowedMentions = { parse: [] };
-          }
-
-          // Ensure embed body shows @tag even if older queued rows lack it
+          // Soft @tag for embed body (owner appointment wording)
+          const softTag = String(
+            row.metadata?.owner_tag || row.metadata?.mention || ""
+          )
+            .replace(/^@+/, "")
+            .trim();
+          const displayMention = softTag ? `@${softTag}` : "";
           if (displayMention && row.body && !row.body.includes(displayMention)) {
             row.body = row.body.replace(
               /(have appointed )([^.]+)\./i,
@@ -1322,6 +1413,9 @@ Deno.serve(async (req) => {
               `$1${displayMention}.`
             );
           }
+
+          (row as FeedRow & { _resolvedUserIds?: string[] })._resolvedUserIds =
+            resolved.userIds;
         }
 
         if (isIntlTablesEvent(row) && row.metadata?.render) {
@@ -1503,6 +1597,27 @@ Deno.serve(async (req) => {
         if (updErr) throw new Error(updErr.message);
         settledIds.add(row.id);
         posted += 1;
+
+        // Best-effort DM for check-in (and similar) when metadata asks for it
+        if (
+          (row.metadata?.try_dm === true || row.metadata?.try_dm === "true") &&
+          botToken
+        ) {
+          const ids =
+            (row as FeedRow & { _resolvedUserIds?: string[] })._resolvedUserIds ||
+            [];
+          if (ids.length) {
+            const dmText = [
+              row.headline || "GPSL",
+              row.body || "",
+            ]
+              .filter(Boolean)
+              .join("\n")
+              .slice(0, 1900);
+            await tryDmOwners(botToken, ids, dmText);
+          }
+        }
+
         if (isResultsEvent(row)) postedResults += 1;
         else if (isIntlResultsEvent(row)) postedIntlResults += 1;
         else if (isNatterEvent(row)) postedNatter += 1;
