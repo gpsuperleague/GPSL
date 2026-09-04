@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>html,body{background:#111;color:#ddd;margin:0}</style>
-  <title>Discord News Feed — GPSL Admin</title>
+  <title>Discord Feeds — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="admin.css">
@@ -55,67 +55,260 @@
     }
     #routingStatus .ok { color:#9d9; }
     #routingStatus .bad { color:#f88; }
+    .discord-grid {
+      display:grid;
+      gap:16px;
+      grid-template-columns:1fr;
+    }
+    @media (min-width: 960px) {
+      .discord-grid-2 { grid-template-columns:1fr 1fr; }
+    }
+    .action-group { margin:0 0 16px; }
+    .action-group:last-child { margin-bottom:0; }
+    .action-group h3 {
+      margin:0 0 6px;
+      font-size:13px;
+      font-weight:600;
+      color:#ff9900;
+      text-transform:uppercase;
+      letter-spacing:0.04em;
+    }
+    .channel-map {
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+      margin:0 0 12px;
+    }
+    .channel-map th, .channel-map td {
+      border-bottom:1px solid #2a2a2a;
+      padding:8px 10px;
+      text-align:left;
+      vertical-align:top;
+    }
+    .channel-map th {
+      color:#ff9900;
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:0.03em;
+    }
+    .channel-map td:first-child { white-space:nowrap; color:#eee; }
+    .channel-map .secret { color:#9ab; font-size:12px; word-break:break-all; }
+    details.setup-details {
+      margin-top:12px;
+      border:1px solid #333;
+      border-radius:6px;
+      background:#151515;
+      padding:10px 12px;
+    }
+    details.setup-details > summary {
+      cursor:pointer;
+      color:#ccc;
+      font-size:13px;
+      font-weight:600;
+    }
+    details.setup-details[open] > summary { margin-bottom:10px; color:#ff9900; }
+    details.setup-details ol {
+      margin:0;
+      padding-left:1.2em;
+      color:#999;
+      font-size:13px;
+      line-height:1.55;
+    }
   </style>
 </head>
 <body class="admin-page">
   <div id="nav"></div>
-  <h1 class="admin-title">Discord News Feed</h1>
+  <h1 class="admin-title">Discord Feeds</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
+
       <div class="card">
-        <h2>Channels</h2>
+        <h2>Queue</h2>
         <p class="note">
-          <b>#gpsl-news</b> — transfers (filtered), managers, <b>owner appointments</b>, <b>new members joining</b>, cups, titles, clinches.<br>
-          Transfer filter: age ≤20 need rating ≥70; age ≥21 need rating ≥76.<br>
-          <b>#gpsl-results</b> — club league / cup match results as a <b>daily digest</b> (by division + matchday / cup round),
-          not one Discord ping per fixture. Cron ~20:00 UTC; use <b>Publish results digest now</b> to flush early.<br>
-          <b>#gpsl-intl-results</b> — international / World Cup results as a separate daily digest (same evening cron).<br>
-          <b>#gpsl-natter</b> — owner Natter posts (text + image).<br>
-          <b>#gpsl-notifications</b> — auctions, transfer window, month ticks, season start, challenges,
-          nation pick turns (@owner), match reminders, OOC batch, vacant clubs.<br>
-          <b>#gpsl-tables</b> — league table images when a GPSL month locks (SuperLeague + both Championships).<br>
-          <b>#gpsl-intl-tables</b> — World Cup qualifying / finals group tables on the same month-lock (separate channel).<br>
-          <b>#gpsl-scheduled</b> — club league / cup kick-offs when both owners agree the time (LEAGUE / CUP labelled).<br>
-          <b>#gpsl-intl-scheduled</b> — international kick-offs when both national managers agree (separate channel).<br>
-          <b>#whos-who</b> — live owner · club roster by division (posted once, then <b>silently edited</b> daily — no notifications).<br>
-          <b>League clinches</b> — when a title / auto promotion / playoff place / relegation is mathematically certain:
-          club inbox (+ broadcast for major outcomes) and <b>#gpsl-news only</b>. Use <b>Scan league clinches</b> to backfill.
+          Events land in the database queue, then flush to Discord.
+          <b>Push</b> uses your admin login. Auto-post (below) flushes without a button.
         </p>
-        <ol class="note" style="margin:0 0 12px;padding-left:1.2em;line-height:1.55;">
-          <li>In Discord: create <code>#gpsl-results</code>, <code>#gpsl-intl-results</code>, <code>#gpsl-natter</code>, <code>#gpsl-notifications</code>, <code>#gpsl-tables</code>, <code>#gpsl-intl-tables</code>, <code>#gpsl-scheduled</code>, <code>#gpsl-intl-scheduled</code>, <code>#whos-who</code> if needed.</li>
-          <li>For each: Channel settings → Integrations → Webhooks → New Webhook → Copy URL
-            (create the webhook <b>inside</b> that channel).</li>
-          <li>Supabase → Edge Functions → <b>Secrets</b> (project-wide, not inside a function):
-            <ul style="margin:6px 0 0;padding-left:1.1em;">
-              <li><code>DISCORD_WEBHOOK_URL</code> = #gpsl-news</li>
-              <li><code>DISCORD_RESULTS_WEBHOOK_URL</code> = #gpsl-results</li>
-              <li><code>DISCORD_INTL_RESULTS_WEBHOOK_URL</code> = #gpsl-intl-results</li>
-              <li><code>DISCORD_NATTER_WEBHOOK_URL</code> = #gpsl-natter</li>
-              <li><code>DISCORD_NOTIFICATIONS_WEBHOOK_URL</code> = #gpsl-notifications</li>
-              <li><code>DISCORD_TABLES_WEBHOOK_URL</code> = #gpsl-tables</li>
-              <li><code>DISCORD_INTL_TABLES_WEBHOOK_URL</code> = #gpsl-intl-tables</li>
-              <li><code>DISCORD_SCHEDULED_WEBHOOK_URL</code> = #gpsl-scheduled</li>
-              <li><code>DISCORD_INTL_SCHEDULED_WEBHOOK_URL</code> = #gpsl-intl-scheduled</li>
-              <li><code>DISCORD_WHOS_WHO_WEBHOOK_URL</code> = #whos-who</li>
-            </ul>
-          </li>
-          <li>SQL: notifications patch + <code>gpsl_discord_league_tables.sql</code> + <code>gpsl_discord_whos_who.sql</code> + <code>discord_scheduled_matches_20260904.sql</code> + <code>discord_intl_results_digest_20260904.sql</code> + <code>discord_intl_tables_20260904.sql</code>.</li>
-          <li>Redeploy: <code>supabase functions deploy discord-sky-feed</code>.</li>
-          <li>Use <b>Check routing</b>, then <b>Publish Who's Who now</b> for the first roster post.</li>
-        </ol>
-        <div id="routingStatus"></div>
+        <div class="news-actions">
+          <button type="button" id="newsPushBtn" class="button">Push queue to Discord</button>
+          <button type="button" id="newsRefreshBtn" class="button secondary">Refresh queue</button>
+          <button type="button" id="rateLimitRetryBtn" class="button secondary">Unstick posting / 429</button>
+          <button type="button" id="routingCheckBtn" class="button secondary">Check routing</button>
+        </div>
+        <div id="newsStatus" class="status-line"></div>
+        <div id="queueSummary" class="queue-summary" aria-live="polite"></div>
+        <div id="queueFilters" class="queue-filters">
+          <button type="button" data-filter="open" class="active">Needs attention</button>
+          <button type="button" data-filter="pending">Pending</button>
+          <button type="button" data-filter="posting">Posting</button>
+          <button type="button" data-filter="error">Error</button>
+          <button type="button" data-filter="posted">Posted</button>
+          <button type="button" data-filter="all">All (recent)</button>
+        </div>
+        <div id="newsTableWrap" style="overflow-x:auto;"></div>
+      </div>
+
+      <div class="discord-grid discord-grid-2">
+        <div class="card">
+          <h2>Publish now</h2>
+          <p class="note">Force digests / snapshots instead of waiting for cron or month lock.</p>
+
+          <div class="action-group">
+            <h3>Results</h3>
+            <div class="news-actions">
+              <button type="button" id="resultsDigestBtn" class="button secondary">Publish results digest now</button>
+            </div>
+          </div>
+
+          <div class="action-group">
+            <h3>Tables</h3>
+            <div class="news-actions">
+              <button type="button" id="tablesPublishBtn" class="button secondary">Publish league tables now</button>
+              <button type="button" id="intlTablesPublishBtn" class="button secondary">Publish intl tables now</button>
+            </div>
+          </div>
+
+          <div class="action-group">
+            <h3>Other</h3>
+            <div class="news-actions">
+              <button type="button" id="whosWhoPublishBtn" class="button secondary">Publish Who's Who now</button>
+              <button type="button" id="clinchesBtn" class="button secondary">Scan league clinches</button>
+              <button type="button" id="notificationsTickBtn" class="button secondary">Notifications tick</button>
+              <button type="button" id="natterRequeueBtn" class="button secondary">Requeue Natters</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Test webhooks</h2>
+          <p class="note">Sends a one-off embed to confirm the secret is attached to the right Discord channel.</p>
+
+          <div class="action-group">
+            <h3>Club</h3>
+            <div class="news-actions">
+              <button type="button" id="newsTestBtn" class="button secondary">Test #gpsl-news</button>
+              <button type="button" id="resultsTestBtn" class="button secondary">Test #gpsl-results</button>
+              <button type="button" id="tablesTestBtn" class="button secondary">Test #gpsl-tables</button>
+              <button type="button" id="scheduledTestBtn" class="button secondary">Test #gpsl-scheduled</button>
+            </div>
+          </div>
+
+          <div class="action-group">
+            <h3>International</h3>
+            <div class="news-actions">
+              <button type="button" id="intlResultsTestBtn" class="button secondary">Test #gpsl-intl-results</button>
+              <button type="button" id="intlTablesTestBtn" class="button secondary">Test #gpsl-intl-tables</button>
+              <button type="button" id="intlScheduledTestBtn" class="button secondary">Test #gpsl-intl-scheduled</button>
+            </div>
+          </div>
+
+          <div class="action-group">
+            <h3>Other</h3>
+            <div class="news-actions">
+              <button type="button" id="natterTestBtn" class="button secondary">Test #gpsl-natter</button>
+              <button type="button" id="notificationsTestBtn" class="button secondary">Test #gpsl-notifications</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="card">
-        <h2>Auto-post (no button)</h2>
+        <h2>Channel map &amp; routing</h2>
         <p class="note">
-          Events are queued in the database. With auto-post enabled, Postgres calls the edge function
-          as soon as something is queued (plus a 2-minute retry cron).
+          Club and international feeds are separate where it matters (results, tables, scheduled).
+          News covers transfers, owner appointments, and new members joining.
         </p>
+        <table class="channel-map">
+          <thead>
+            <tr>
+              <th>Channel</th>
+              <th>What posts there</th>
+              <th>Secret</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>#gpsl-news</code></td>
+              <td>Transfers, owner appointments, new members, cups/titles, clinches</td>
+              <td class="secret">DISCORD_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-results</code></td>
+              <td>Club league/cup results — daily digest (~20:00 UTC)</td>
+              <td class="secret">DISCORD_RESULTS_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-intl-results</code></td>
+              <td>International / WC results — daily digest (same cron)</td>
+              <td class="secret">DISCORD_INTL_RESULTS_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-scheduled</code></td>
+              <td>Club league/cup kick-offs when both owners agree</td>
+              <td class="secret">DISCORD_SCHEDULED_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-intl-scheduled</code></td>
+              <td>International kick-offs when both managers agree</td>
+              <td class="secret">DISCORD_INTL_SCHEDULED_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-tables</code></td>
+              <td>League tables on GPSL month lock</td>
+              <td class="secret">DISCORD_TABLES_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-intl-tables</code></td>
+              <td>WC group tables on month lock</td>
+              <td class="secret">DISCORD_INTL_TABLES_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-natter</code></td>
+              <td>Owner Natter posts</td>
+              <td class="secret">DISCORD_NATTER_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-notifications</code></td>
+              <td>Auctions, windows, month ticks, challenges, reminders, vacants</td>
+              <td class="secret">DISCORD_NOTIFICATIONS_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#whos-who</code></td>
+              <td>Owner · club roster (posted once, silently edited daily)</td>
+              <td class="secret">DISCORD_WHOS_WHO_WEBHOOK_URL</td>
+            </tr>
+          </tbody>
+        </table>
+        <div id="routingStatus"></div>
+        <details class="setup-details">
+          <summary>First-time setup (webhooks, secrets, SQL, deploy)</summary>
+          <ol>
+            <li>In Discord, create each channel above if missing.</li>
+            <li>Channel settings → Integrations → Webhooks → New Webhook → copy URL
+              (create the webhook <b>inside</b> that channel).</li>
+            <li>Supabase → Edge Functions → <b>Secrets</b> (project-wide): paste each URL against the secret name in the table.</li>
+            <li>Run SQL patches as needed:
+              notifications / results digest / <code>gpsl_discord_league_tables.sql</code> /
+              <code>gpsl_discord_whos_who.sql</code> /
+              <code>discord_scheduled_matches_20260904.sql</code> /
+              <code>discord_intl_results_digest_20260904.sql</code> /
+              <code>discord_intl_tables_20260904.sql</code> /
+              <code>discord_member_joined_to_news_20260904.sql</code>.</li>
+            <li>Redeploy after edge code changes:
+              <code>supabase functions deploy discord-sky-feed</code></li>
+            <li>Use <b>Check routing</b>, then <b>Publish Who's Who now</b> for the first roster post.</li>
+          </ol>
+          <p class="note" style="margin:10px 0 0;">
+            Transfer filter on News: age ≤20 need rating ≥70; age ≥21 need rating ≥76.
+          </p>
+        </details>
+      </div>
+
+      <div class="card">
+        <h2>Auto-post</h2>
         <p class="note">
-          Manual <b>Push</b> uses your admin login (works even when auto doesn’t).<br>
-          Auto-post uses a server-side invoke key stored in the database
-          (set once in the SQL Editor — never pasted in this browser).<br>
+          With auto-post enabled, Postgres calls the edge function when something is queued
+          (plus a 2-minute retry cron). Manual <b>Push</b> still works via your admin login.
+          The invoke key is stored server-side once in SQL Editor — never paste it in this browser.
           Also run <code>security_hardening_safe.sql</code> and enable <code>pg_net</code>.
         </p>
         <div class="auto-form">
@@ -136,47 +329,8 @@
         <div id="autoStatus" class="status-line"></div>
       </div>
 
-      <div class="card">
-        <h2>Sky-style feeds</h2>
-        <p class="note">
-          <b>News</b> · <b>Results</b> · <b>Intl results</b> · <b>Natter</b> · <b>Notifications</b> · <b>Tables</b> · <b>Intl tables</b> · <b>Scheduled</b> · <b>Intl scheduled</b>.
-        </p>
-        <div class="news-actions">
-          <button type="button" id="newsPushBtn" class="button">Push queue to Discord</button>
-          <button type="button" id="routingCheckBtn" class="button secondary">Check routing</button>
-          <button type="button" id="newsTestBtn" class="button secondary">Test #gpsl-news</button>
-          <button type="button" id="resultsDigestBtn" class="button secondary">Publish results digest now</button>
-          <button type="button" id="resultsTestBtn" class="button secondary">Test #gpsl-results</button>
-          <button type="button" id="intlResultsTestBtn" class="button secondary">Test #gpsl-intl-results</button>
-          <button type="button" id="natterTestBtn" class="button secondary">Test #gpsl-natter</button>
-          <button type="button" id="notificationsTestBtn" class="button secondary">Test #gpsl-notifications</button>
-          <button type="button" id="tablesTestBtn" class="button secondary">Test #gpsl-tables</button>
-          <button type="button" id="intlTablesTestBtn" class="button secondary">Test #gpsl-intl-tables</button>
-          <button type="button" id="scheduledTestBtn" class="button secondary">Test #gpsl-scheduled</button>
-          <button type="button" id="intlScheduledTestBtn" class="button secondary">Test #gpsl-intl-scheduled</button>
-          <button type="button" id="tablesPublishBtn" class="button secondary">Publish league tables now</button>
-          <button type="button" id="intlTablesPublishBtn" class="button secondary">Publish intl tables now</button>
-          <button type="button" id="whosWhoPublishBtn" class="button secondary">Publish Who's Who now</button>
-          <button type="button" id="clinchesBtn" class="button secondary">Scan league clinches</button>
-          <button type="button" id="notificationsTickBtn" class="button secondary">Notifications tick</button>
-          <button type="button" id="natterRequeueBtn" class="button secondary">Requeue Natters</button>
-          <button type="button" id="rateLimitRetryBtn" class="button secondary">Unstick posting / 429</button>
-          <button type="button" id="newsRefreshBtn" class="button secondary">Refresh queue</button>
-        </div>
-        <div id="newsStatus" class="status-line"></div>
-        <div id="queueSummary" class="queue-summary" aria-live="polite"></div>
-        <div id="queueFilters" class="queue-filters">
-          <button type="button" data-filter="open" class="active">Needs attention</button>
-          <button type="button" data-filter="pending">Pending</button>
-          <button type="button" data-filter="posting">Posting</button>
-          <button type="button" data-filter="error">Error</button>
-          <button type="button" data-filter="posted">Posted</button>
-          <button type="button" data-filter="all">All (recent)</button>
-        </div>
-        <div id="newsTableWrap" style="overflow-x:auto;"></div>
-      </div>
     </div>
   </div>
-    <script type="module" src="admin_discord_news.js?v=20260904-intl-tables"></script>
+  <script type="module" src="admin_discord_news.js?v=20260904-reorg"></script>
 </body>
 </html>
