@@ -587,18 +587,43 @@ document.getElementById("resultsDigestBtn")?.addEventListener("click", () => {
 });
 document.getElementById("dealsDigestBtn")?.addEventListener("click", () => {
   (async () => {
-    setStatus("newsStatus", "Building completed deals digest…");
+    setStatus("newsStatus", "Building completed deals digest (last 48h)…");
     const { data, error } = await supabase.rpc("admin_discord_deals_digest_now", {
       p_max_posts: 5,
+      p_lookback_hours: 48,
     });
     if (error) {
+      // Older 1-arg RPC (no lookback) — explain empty behaviour
+      if (String(error.message || "").includes("admin_discord_deals_digest_now")) {
+        setStatus(
+          "newsStatus",
+          "❌ Run discord_deals_digest_lookback_20260904.sql in Supabase (or the deals digest patch) first.",
+          false
+        );
+        return;
+      }
+      // Maybe only 1-arg exists
+      const fallback = await supabase.rpc("admin_discord_deals_digest_now", {
+        p_max_posts: 5,
+      });
+      if (fallback.error) {
+        setStatus("newsStatus", "❌ " + fallback.error.message, false);
+        return;
+      }
+      const n0 = fallback.data?.posts_queued ?? 0;
+      if (n0 === 0) {
+        setStatus(
+          "newsStatus",
+          "Nothing queued — install marked all existing deals as already digested. Run discord_deals_digest_lookback_20260904.sql, then try again (publishes last 48h).",
+          true
+        );
+        return;
+      }
       setStatus(
         "newsStatus",
-        String(error.message || "").includes("admin_discord_deals_digest_now")
-          ? "❌ Run discord_deals_digest_and_news_filter_20260904.sql in Supabase first."
-          : "❌ " + error.message,
-        false
+        `Queued ${n0} deals digest post(s). Pushing…`
       );
+      await pushNews();
       return;
     }
     if (!data?.ok) {
@@ -607,17 +632,20 @@ document.getElementById("dealsDigestBtn")?.addEventListener("click", () => {
     }
     const n = data?.posts_queued ?? 0;
     const deals = data?.deals_marked ?? 0;
+    const reopened = data?.reopened ?? 0;
     if (n === 0) {
       setStatus(
         "newsStatus",
-        "No undigested deals waiting — nothing queued.",
+        reopened === 0
+          ? "No deals in the last 48 hours to publish."
+          : "Reopened recent deals but nothing queued (check Discord queue / webhook).",
         true
       );
       return;
     }
     setStatus(
       "newsStatus",
-      `Queued ${n} deals digest post(s) covering ${deals} deal(s). Pushing…`
+      `Queued ${n} deals digest post(s) covering ${deals} deal(s) (reopened ${reopened} from last 48h). Pushing…`
     );
     await pushNews();
   })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
