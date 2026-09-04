@@ -194,7 +194,7 @@ function renderAgreedPanel(root, f, sch) {
         <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
       </p>
       <p class="meta">${checkinStatus}</p>
-      <p class="meta">Check-in opens at kick-off for <b>10 minutes</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
+      <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
       ${
         ci.my_has_manager === false
           ? `<p class="meta" style="color:#f88;"><b>No manager signed</b> — you cannot check in or play until you hire one from the <a href="manager_listings.html" style="color:#ff9900;">Manager Transfer Market</a>.</p>`

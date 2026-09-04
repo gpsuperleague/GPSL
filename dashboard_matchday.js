@@ -62,14 +62,15 @@ function statusLine(fx) {
     return "Both checked in — enter the result";
   }
   if (fx.can_check_in) {
-    return "Check-in open now (10 min window)";
+    return "Check-in open now (from 10 min before KO until 10 min after)";
   }
-  if (fx.before_kickoff) {
-    const m = minutesUntil(fx.agreed_kickoff_at);
+  if (fx.before_checkin || fx.before_kickoff) {
+    const openAt = fx.checkin_opens_at || fx.agreed_kickoff_at;
+    const m = minutesUntil(openAt);
     if (m != null && m > 0) {
-      return `Kick-off in ${m} min — check-in opens at kick-off`;
+      return `Check-in opens in ${m} min (10 min before kick-off)`;
     }
-    return "Check-in opens at kick-off";
+    return "Check-in opens 10 min before kick-off";
   }
   if (fx.my_checked_in && !(fx.home_checked_in && fx.away_checked_in)) {
     return "You are checked in — waiting for opponent";
