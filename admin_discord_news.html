@@ -167,6 +167,13 @@
           </div>
 
           <div class="action-group">
+            <h3>Transfers</h3>
+            <div class="news-actions">
+              <button type="button" id="dealsDigestBtn" class="button secondary">Publish completed deals digest now</button>
+            </div>
+          </div>
+
+          <div class="action-group">
             <h3>Tables</h3>
             <div class="news-actions">
               <button type="button" id="tablesPublishBtn" class="button secondary">Publish league tables now</button>
@@ -211,6 +218,7 @@
             <h3>Other</h3>
             <div class="news-actions">
               <button type="button" id="newsTestBtn" class="button secondary">Test #gpsl-news</button>
+              <button type="button" id="dealsTestBtn" class="button secondary">Test #gpsl-deals</button>
               <button type="button" id="natterTestBtn" class="button secondary">Test #gpsl-natter</button>
               <button type="button" id="notificationsTestBtn" class="button secondary">Test #gpsl-notifications</button>
             </div>
@@ -239,6 +247,7 @@
               <option value="intl_scheduled">#gpsl-intl-scheduled</option>
               <option value="tables">#gpsl-tables</option>
               <option value="intl_tables">#gpsl-intl-tables</option>
+              <option value="deals">#gpsl-deals</option>
               <option value="natter">#gpsl-natter</option>
               <option value="notifications">#gpsl-notifications</option>
               <option value="whos_who">#whos-who</option>
@@ -259,7 +268,8 @@
         <h2>Channel map &amp; routing</h2>
         <p class="note">
           Club and international feeds are separate where it matters (results, tables, scheduled).
-          News covers transfers, owner appointments, and new members joining.
+          News covers notable market transfers, owner appointments, and new members joining.
+          All completed deals (including draft) batch once daily into #gpsl-deals.
         </p>
         <table class="channel-map">
           <thead>
@@ -272,8 +282,13 @@
           <tbody>
             <tr>
               <td><code>#gpsl-news</code></td>
-              <td>Transfers, owner appointments, new members, cups/titles, clinches</td>
+              <td>Notable market deals (age≤21 @68+ / age≥22 @76+), owners, members, cups/titles, clinches</td>
               <td class="secret">DISCORD_WEBHOOK_URL</td>
+            </tr>
+            <tr>
+              <td><code>#gpsl-deals</code></td>
+              <td>All completed deals (draft + market) — daily digest ~21:00 UTC</td>
+              <td class="secret">DISCORD_DEALS_WEBHOOK_URL</td>
             </tr>
             <tr>
               <td><code>#gpsl-results</code></td>
@@ -336,13 +351,15 @@
               <code>discord_scheduled_matches_20260904.sql</code> /
               <code>discord_intl_results_digest_20260904.sql</code> /
               <code>discord_intl_tables_20260904.sql</code> /
-              <code>discord_member_joined_to_news_20260904.sql</code>.</li>
+              <code>discord_member_joined_to_news_20260904.sql</code> /
+              <code>discord_deals_digest_and_news_filter_20260904.sql</code>.</li>
             <li>Redeploy after edge code changes:
               <code>supabase functions deploy discord-sky-feed</code></li>
             <li>Use <b>Check routing</b>, then <b>Publish Who's Who now</b> for the first roster post.</li>
           </ol>
           <p class="note" style="margin:10px 0 0;">
-            Transfer filter on News: age ≤20 need rating ≥70; age ≥21 need rating ≥76.
+            Transfer filter on News: age ≤21 need rating ≥68; age ≥22 need rating ≥76 (market / direct only — no draft).
+            All deals (including draft) go to #gpsl-deals once per day.
           </p>
         </details>
       </div>
@@ -375,6 +392,6 @@
 
     </div>
   </div>
-    <script type="module" src="admin_discord_news.js?v=20260904-clear2"></script>
+    <script type="module" src="admin_discord_news.js?v=20260904-deals1"></script>
 </body>
 </html>

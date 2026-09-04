@@ -132,6 +132,18 @@ function isIntlScheduledEvent(row: FeedRow): boolean {
   );
 }
 
+function isDealsEvent(row: FeedRow): boolean {
+  if (
+    row.event_type === "deals_digest" ||
+    row.event_type === "deals" ||
+    row.event_type === "completed_deals"
+  ) {
+    return true;
+  }
+  const channel = String(row.metadata?.channel || "").toLowerCase();
+  return channel === "deals" || channel === "completed_deals";
+}
+
 function wantsOwnerPing(row: FeedRow): boolean {
   if (row.event_type === "owner") return true;
   if (row.metadata?.ping === true || row.metadata?.ping === "true") return true;
@@ -279,6 +291,8 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
     tables: 0x5865f2,
     scheduled: 0x3498db,
     intl_scheduled: 0x9b59b6,
+    deals_digest: 0x00a651,
+    deals: 0x00a651,
     other: 0x111111,
   };
   const color =
@@ -294,6 +308,7 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
   const intlTables = isIntlTablesEvent(row);
   const scheduled = isScheduledEvent(row);
   const intlScheduled = isIntlScheduledEvent(row);
+  const deals = isDealsEvent(row);
   const imageUrl = natter
     ? publicNatterImageUrl(supabaseUrl, row.metadata)
     : null;
@@ -312,19 +327,21 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
           ? row.metadata?.digest
             ? "GPSL Intl Results · Daily digest"
             : "GPSL Intl Results"
-        : natter
-          ? "GPSL Natter"
-          : intlTables
-            ? "GPSL Intl Tables"
-            : tables
-              ? "GPSL Tables"
-              : notifications
-                ? "GPSL Notifications"
-                : intlScheduled
-                  ? "GPSL Intl Scheduled"
-                  : scheduled
-                    ? "GPSL Scheduled"
-                    : "GPSL News",
+          : deals
+            ? "GPSL Completed Deals · Daily digest"
+            : natter
+              ? "GPSL Natter"
+              : intlTables
+                ? "GPSL Intl Tables"
+                : tables
+                  ? "GPSL Tables"
+                  : notifications
+                    ? "GPSL Notifications"
+                    : intlScheduled
+                      ? "GPSL Intl Scheduled"
+                      : scheduled
+                        ? "GPSL Scheduled"
+                        : "GPSL News",
     },
     timestamp: new Date().toISOString(),
   };
@@ -476,7 +493,8 @@ function webhookForRow(
   scheduledUrl: string | null = null,
   intlScheduledUrl: string | null = null,
   intlResultsUrl: string | null = null,
-  intlTablesUrl: string | null = null
+  intlTablesUrl: string | null = null,
+  dealsUrl: string | null = null
 ): { url: string; username: string } {
   if (isIntlResultsEvent(row)) {
     if (!intlResultsUrl) {
@@ -493,6 +511,14 @@ function webhookForRow(
       );
     }
     return { url: resultsUrl, username: "GPSL Results" };
+  }
+  if (isDealsEvent(row)) {
+    if (!dealsUrl) {
+      throw new Error(
+        "DISCORD_DEALS_WEBHOOK_URL secret missing — deals digest not posted. Add the #gpsl-deals webhook secret and redeploy discord-sky-feed."
+      );
+    }
+    return { url: dealsUrl, username: "GPSL Completed Deals" };
   }
   if (isNatterEvent(row)) {
     if (!natterUrl) {
@@ -593,6 +619,11 @@ Deno.serve(async (req) => {
       Deno.env.get("DISCORD_INTL_TABLES_WEBHOOK_URL") ||
       Deno.env.get("DISCORD_WEBHOOK_INTL_TABLES_URL") ||
       Deno.env.get("DISCORD_INTERNATIONAL_TABLES_WEBHOOK_URL") ||
+      "";
+    const dealsWebhookUrl =
+      Deno.env.get("DISCORD_DEALS_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WEBHOOK_DEALS_URL") ||
+      Deno.env.get("DISCORD_COMPLETED_DEALS_WEBHOOK_URL") ||
       "";
     const feedKey = Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
       Deno.env.get("CRON_API_KEY") ||
@@ -724,6 +755,7 @@ Deno.serve(async (req) => {
         intl_tables: intlTablesWebhookUrl,
         scheduled: scheduledWebhookUrl,
         intl_scheduled: intlScheduledWebhookUrl,
+        deals: dealsWebhookUrl,
         whos_who: whosWhoWebhookUrl,
         whoswho: whosWhoWebhookUrl,
       };
@@ -736,7 +768,7 @@ Deno.serve(async (req) => {
         return jsonResponse(
           {
             ok: false,
-            error: `Unknown or unconfigured channel "${channelKey}". Choose news, results, intl_results, natter, notifications, tables, intl_tables, scheduled, intl_scheduled, or whos_who.`,
+            error: `Unknown or unconfigured channel "${channelKey}". Choose news, results, intl_results, natter, notifications, tables, intl_tables, scheduled, intl_scheduled, deals, or whos_who.`,
             channels: Object.keys(CLEAR_CHANNEL_LABELS),
           },
           400
@@ -824,6 +856,7 @@ Deno.serve(async (req) => {
         scheduled_webhook_configured: Boolean(scheduledWebhookUrl),
         intl_scheduled_webhook_configured: Boolean(intlScheduledWebhookUrl),
         intl_results_webhook_configured: Boolean(intlResultsWebhookUrl),
+        deals_webhook_configured: Boolean(dealsWebhookUrl),
         routing: {
           result_events: resultsWebhookUrl
             ? "DISCORD_RESULTS_WEBHOOK_URL → #gpsl-results"
@@ -849,6 +882,9 @@ Deno.serve(async (req) => {
           intl_scheduled_events: intlScheduledWebhookUrl
             ? "DISCORD_INTL_SCHEDULED_WEBHOOK_URL → #gpsl-intl-scheduled"
             : "BLOCKED until DISCORD_INTL_SCHEDULED_WEBHOOK_URL is set",
+          deals_events: dealsWebhookUrl
+            ? "DISCORD_DEALS_WEBHOOK_URL → #gpsl-deals"
+            : "BLOCKED until DISCORD_DEALS_WEBHOOK_URL is set",
           whos_who: whosWhoWebhookUrl
             ? "DISCORD_WHOS_WHO_WEBHOOK_URL → #whos-who (silent daily edit)"
             : "BLOCKED until DISCORD_WHOS_WHO_WEBHOOK_URL is set",
@@ -965,6 +1001,10 @@ Deno.serve(async (req) => {
         channel === "intl_results" ||
         channel === "international_results" ||
         channel === "intl-results";
+      const toDeals =
+        channel === "deals" ||
+        channel === "completed_deals" ||
+        channel === "deals_digest";
       if (toResults && !resultsWebhookUrl) {
         return jsonResponse(
           {
@@ -1069,6 +1109,19 @@ Deno.serve(async (req) => {
           400
         );
       }
+      if (toDeals && !dealsWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_DEALS_WEBHOOK_URL secret missing — cannot test #gpsl-deals. Add it under Edge Functions → Secrets and redeploy.",
+            channel: "deals",
+            used_deals_webhook: false,
+            deals_webhook_configured: false,
+          },
+          400
+        );
+      }
       const target = toResults
         ? resultsWebhookUrl
         : toNatter
@@ -1085,7 +1138,9 @@ Deno.serve(async (req) => {
                     ? intlScheduledWebhookUrl
                     : toScheduled
                       ? scheduledWebhookUrl
-                      : webhookUrl;
+                      : toDeals
+                        ? dealsWebhookUrl
+                        : webhookUrl;
       const label = toResults
         ? "RESULTS"
         : toNatter
@@ -1102,7 +1157,9 @@ Deno.serve(async (req) => {
                     ? "INTL SCHEDULED"
                     : toScheduled
                       ? "SCHEDULED"
-                      : "NEWS";
+                      : toDeals
+                        ? "COMPLETED DEALS"
+                        : "NEWS";
       const channelName = toResults
         ? "#gpsl-results"
         : toNatter
@@ -1119,7 +1176,9 @@ Deno.serve(async (req) => {
                     ? "#gpsl-intl-scheduled"
                     : toScheduled
                       ? "#gpsl-scheduled"
-                      : "#gpsl-news";
+                      : toDeals
+                        ? "#gpsl-deals"
+                        : "#gpsl-news";
       await postWebhook(
         target,
         [
@@ -1211,6 +1270,7 @@ Deno.serve(async (req) => {
         used_intl_scheduled_webhook: Boolean(
           toIntlScheduled && intlScheduledWebhookUrl
         ),
+        used_deals_webhook: Boolean(toDeals && dealsWebhookUrl),
         results_webhook_configured: Boolean(resultsWebhookUrl),
         intl_results_webhook_configured: Boolean(intlResultsWebhookUrl),
         natter_webhook_configured: Boolean(natterWebhookUrl),
@@ -1219,6 +1279,7 @@ Deno.serve(async (req) => {
         intl_tables_webhook_configured: Boolean(intlTablesWebhookUrl),
         scheduled_webhook_configured: Boolean(scheduledWebhookUrl),
         intl_scheduled_webhook_configured: Boolean(intlScheduledWebhookUrl),
+        deals_webhook_configured: Boolean(dealsWebhookUrl),
       });
     }
 
@@ -1247,7 +1308,8 @@ Deno.serve(async (req) => {
         scheduledWebhookUrl || null,
         intlScheduledWebhookUrl || null,
         intlResultsWebhookUrl || null,
-        intlTablesWebhookUrl || null
+        intlTablesWebhookUrl || null,
+        dealsWebhookUrl || null
       );
       await postWebhook(target.url, [embedFor(directRow, supabaseUrl)], {
         username: target.username,
@@ -1263,6 +1325,7 @@ Deno.serve(async (req) => {
     let postedIntlTables = 0;
     let postedScheduled = 0;
     let postedIntlScheduled = 0;
+    let postedDeals = 0;
     let postedNews = 0;
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -1344,6 +1407,11 @@ Deno.serve(async (req) => {
     ) {
       warnings.push(
         "DISCORD_INTL_SCHEDULED_WEBHOOK_URL not set — intl scheduled items will stay in error until the #gpsl-intl-scheduled webhook secret is added"
+      );
+    }
+    if (pending.some((r) => isDealsEvent(r)) && !dealsWebhookUrl) {
+      warnings.push(
+        "DISCORD_DEALS_WEBHOOK_URL not set — deals digest items will stay in error until the #gpsl-deals webhook secret is added"
       );
     }
 
@@ -1553,7 +1621,8 @@ Deno.serve(async (req) => {
           scheduledWebhookUrl || null,
           intlScheduledWebhookUrl || null,
           intlResultsWebhookUrl || null,
-          intlTablesWebhookUrl || null
+          intlTablesWebhookUrl || null,
+          dealsWebhookUrl || null
         );
         const embed = embedFor(row, supabaseUrl);
         try {
@@ -1620,6 +1689,7 @@ Deno.serve(async (req) => {
 
         if (isResultsEvent(row)) postedResults += 1;
         else if (isIntlResultsEvent(row)) postedIntlResults += 1;
+        else if (isDealsEvent(row)) postedDeals += 1;
         else if (isNatterEvent(row)) postedNatter += 1;
         else if (isTablesEvent(row)) postedTables += 1;
         else if (isIntlTablesEvent(row)) postedIntlTables += 1;
@@ -1688,6 +1758,7 @@ Deno.serve(async (req) => {
       posted_intl_tables: postedIntlTables,
       posted_scheduled: postedScheduled,
       posted_intl_scheduled: postedIntlScheduled,
+      posted_deals: postedDeals,
       results_webhook_configured: Boolean(resultsWebhookUrl),
       intl_results_webhook_configured: Boolean(intlResultsWebhookUrl),
       natter_webhook_configured: Boolean(natterWebhookUrl),

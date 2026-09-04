@@ -585,8 +585,48 @@ document.getElementById("resultsDigestBtn")?.addEventListener("click", () => {
     await pushNews();
   })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
+document.getElementById("dealsDigestBtn")?.addEventListener("click", () => {
+  (async () => {
+    setStatus("newsStatus", "Building completed deals digest…");
+    const { data, error } = await supabase.rpc("admin_discord_deals_digest_now", {
+      p_max_posts: 5,
+    });
+    if (error) {
+      setStatus(
+        "newsStatus",
+        String(error.message || "").includes("admin_discord_deals_digest_now")
+          ? "❌ Run discord_deals_digest_and_news_filter_20260904.sql in Supabase first."
+          : "❌ " + error.message,
+        false
+      );
+      return;
+    }
+    if (!data?.ok) {
+      setStatus("newsStatus", data?.reason || "Deals digest failed.", false);
+      return;
+    }
+    const n = data?.posts_queued ?? 0;
+    const deals = data?.deals_marked ?? 0;
+    if (n === 0) {
+      setStatus(
+        "newsStatus",
+        "No undigested deals waiting — nothing queued.",
+        true
+      );
+      return;
+    }
+    setStatus(
+      "newsStatus",
+      `Queued ${n} deals digest post(s) covering ${deals} deal(s). Pushing…`
+    );
+    await pushNews();
+  })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
 document.getElementById("natterTestBtn")?.addEventListener("click", () => {
   sendTest("natter").catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
+document.getElementById("dealsTestBtn")?.addEventListener("click", () => {
+  sendTest("deals").catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
 document.getElementById("intlResultsTestBtn")?.addEventListener("click", () => {
   sendTest("intl_results").catch((e) =>
