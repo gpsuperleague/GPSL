@@ -631,6 +631,71 @@ GRANT EXECUTE ON FUNCTION public.owner_inbox_notify_nation_pick_turn(smallint)
   TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
+-- Notifications / calendar state (required for tick) — create if missing
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.gpsl_discord_notifications_state (
+  id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  last_gpsl_month text,
+  last_challenge_start_key text,
+  last_challenge_close_key text,
+  last_intl_week_key text,
+  last_match_reminder_key text,
+  last_ooc_key text,
+  last_vacant_key text,
+  last_draft_open_key text,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.gpsl_discord_notifications_state ENABLE ROW LEVEL SECURITY;
+
+-- No client policies: only SECURITY DEFINER / service_role touch this row
+DROP POLICY IF EXISTS gpsl_discord_notifications_state_admin_select
+  ON public.gpsl_discord_notifications_state;
+CREATE POLICY gpsl_discord_notifications_state_admin_select
+  ON public.gpsl_discord_notifications_state
+  FOR SELECT TO authenticated
+  USING (public.is_gpsl_admin());
+
+REVOKE ALL ON TABLE public.gpsl_discord_notifications_state FROM PUBLIC;
+REVOKE ALL ON TABLE public.gpsl_discord_notifications_state FROM anon;
+GRANT SELECT ON TABLE public.gpsl_discord_notifications_state TO authenticated;
+GRANT ALL ON TABLE public.gpsl_discord_notifications_state TO service_role;
+
+INSERT INTO public.gpsl_discord_notifications_state (id)
+VALUES (1)
+ON CONFLICT (id) DO NOTHING;
+
+-- Ensure calendar enqueue helper exists (no-op replace if already present)
+CREATE OR REPLACE FUNCTION public.gpsl_discord_feed_enqueue_notification(
+  p_event_type text,
+  p_headline text,
+  p_body text DEFAULT NULL,
+  p_color integer DEFAULT 5793266,
+  p_dedupe_key text DEFAULT NULL,
+  p_metadata jsonb DEFAULT '{}'::jsonb
+)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  RETURN public.gpsl_discord_feed_enqueue(
+    coalesce(nullif(btrim(p_event_type), ''), 'notification'),
+    p_headline,
+    p_body,
+    p_color,
+    p_dedupe_key,
+    coalesce(p_metadata, '{}'::jsonb) || jsonb_build_object('channel', 'notifications')
+  );
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.gpsl_discord_feed_enqueue_notification(text, text, text, integer, text, jsonb)
+  TO authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
 -- Notifications tick: vacant → job center (league only); OOC → contracts
 -- ---------------------------------------------------------------------------
 
