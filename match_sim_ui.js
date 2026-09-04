@@ -1011,8 +1011,16 @@ export function playMatchMomentum(data, labels = {}) {
           }
         }
         if (ev.type === "goal") {
-          hg = ev.score_home ?? hg;
-          ag = ev.score_away ?? ag;
+          // Club playback includes running score_home/score_away; intl playback
+          // only had side — increment from that when scores are absent.
+          if (ev.score_home != null || ev.score_away != null) {
+            if (ev.score_home != null) hg = Number(ev.score_home) || 0;
+            if (ev.score_away != null) ag = Number(ev.score_away) || 0;
+          } else if (ev.side === "home") {
+            hg += 1;
+          } else if (ev.side === "away") {
+            ag += 1;
+          }
           scoreEl.textContent = `${hg} – ${ag}`;
           scoreEl.classList.add("msim-score--flash");
           setTimeout(() => scoreEl.classList.remove("msim-score--flash"), 400);
