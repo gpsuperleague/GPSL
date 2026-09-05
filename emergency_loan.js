@@ -75,8 +75,7 @@ export function emergencyLoanBannerHtml(status) {
           Only ${status.available}/${status.min_squad} fit players
           (injured/suspended). You can take up to ${slots} loan${slots === 1 ? "" : "s"}
           from free agents rated ≤${status.max_rating ?? EMERGENCY_LOAN_MAX_RATING}
-          until end of ${ends}. Fee ${fee} to Central Bank
-          ${status.overflow_slot_used ? "" : status.registered >= 28 ? " · uses 28+1 overflow slot" : ""}.
+          until end of ${ends}. Fee ${fee} to Central Bank.
         </span>
         ${need > slots ? `<span class="emergency-loan-banner-note">Shortfall ${need}; ${slots} slot${slots === 1 ? "" : "s"} free this half-season.</span>` : ""}
       </div>

@@ -1772,7 +1772,7 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
       <header class="squad-rules-header squad-rules-header--compact">
         <h2 class="squad-rules-title gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.registration)}>Registration</h2>
         <p class="squad-rules-intro squad-rules-intro--compact gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.registration)}>
-          Contracted squad · min 24 from Aug · max 28${emergencyLoanStatus?.overflow_slot_used ? " (+1 emergency)" : ""}
+          Contracted squad · min 24 from Aug · max 28 permanent players
         </p>
       </header>
       <table class="squad-rules-table squad-rules-table--compact">
@@ -1867,19 +1867,30 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
       const suspHtml = formatSuspensionStatusHtml(suspRows);
       const injuryHtml = formatInjuryStatusHtml(injuryRows);
       const cardsHtml = formatCardsStatusHtml(cardRow);
-      const statusRow = transferState
-        ? resolvePlayerTransferStatus({
-            konamiId: p.Konami_ID,
-            contractedTeam: p.Contracted_Team || currentUserShort,
-            viewerClubShort: currentUserShort,
-            state: transferState,
-            seasonSigned: p.Season_Signed,
-            contractSeasonsRemaining: p.contract_seasons_remaining,
-          })
-        : {
-            label: "—",
-            pillClass: "status-not-listed",
-          };
+      const statusRow = emergencyLoanPlayerIds.has(pid)
+        ? {
+            label: "Emergency loan",
+            subLabel: `Leaves end of ${
+              emergencyLoanStatus?.ends_gpsl_month
+                ? String(emergencyLoanStatus.ends_gpsl_month).charAt(0).toUpperCase() +
+                  String(emergencyLoanStatus.ends_gpsl_month).slice(1)
+                : "the half-season"
+            }`,
+            pillClass: "status-signed-season",
+          }
+        : transferState
+          ? resolvePlayerTransferStatus({
+              konamiId: p.Konami_ID,
+              contractedTeam: p.Contracted_Team || currentUserShort,
+              viewerClubShort: currentUserShort,
+              state: transferState,
+              seasonSigned: p.Season_Signed,
+              contractSeasonsRemaining: p.contract_seasons_remaining,
+            })
+          : {
+              label: "—",
+              pillClass: "status-not-listed",
+            };
       const status = `${injuryHtml}${suspHtml}${cardsHtml}${formatSquadStatusHtml(statusRow)}`;
 
       const tr = document.createElement("tr");
@@ -2125,18 +2136,29 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
       const suspHtml = formatSuspensionStatusHtml(suspRows);
       const injuryHtml = formatInjuryStatusHtml(injuryRows);
       const cardsHtml = formatCardsStatusHtml(cardRow);
-      const statusRow = resolvePlayerTransferStatus({
-        konamiId: id,
-        contractedTeam:
-          row.dataset.contractedTeam || currentUserShort,
-        viewerClubShort: currentUserShort,
-        state: transferState,
-        seasonSigned: row.dataset.seasonSigned ?? null,
-        contractSeasonsRemaining:
-          seasonsRaw !== undefined && seasonsRaw !== ""
-            ? Number(seasonsRaw)
-            : null,
-      });
+      const statusRow = emergencyLoanPlayerIds.has(id)
+        ? {
+            label: "Emergency loan",
+            subLabel: `Leaves end of ${
+              emergencyLoanStatus?.ends_gpsl_month
+                ? String(emergencyLoanStatus.ends_gpsl_month).charAt(0).toUpperCase() +
+                  String(emergencyLoanStatus.ends_gpsl_month).slice(1)
+                : "the half-season"
+            }`,
+            pillClass: "status-signed-season",
+          }
+        : resolvePlayerTransferStatus({
+            konamiId: id,
+            contractedTeam:
+              row.dataset.contractedTeam || currentUserShort,
+            viewerClubShort: currentUserShort,
+            state: transferState,
+            seasonSigned: row.dataset.seasonSigned ?? null,
+            contractSeasonsRemaining:
+              seasonsRaw !== undefined && seasonsRaw !== ""
+                ? Number(seasonsRaw)
+                : null,
+          });
       status.innerHTML = `${injuryHtml}${suspHtml}${cardsHtml}${formatSquadStatusHtml(statusRow)}`;
       row.classList.toggle("squad-row-suspended", suspRows.length > 0);
       const injuredOut = injuryRows.some(
@@ -2912,8 +2934,7 @@ async function handleEmergencyLoanFlow() {
     !window.confirm(
       `Take ${chosen?.name || "this player"} on emergency loan?\n\n` +
         `Fee: ₿${Number(status.loan_fee || 2500000).toLocaleString("en-GB")} to Central Bank.\n` +
-        `Returns to free agency at end of ${ends}.` +
-        (status.registered >= 28 ? "\nUses your one-time 28+1 overflow slot." : "")
+        `Returns to free agency at end of ${ends}.`
     )
   ) {
     return;
