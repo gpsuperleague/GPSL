@@ -145,7 +145,7 @@ $function$;
 CREATE OR REPLACE FUNCTION public.owner_inbox_notify_emergency_loan_available(
   p_club_short_name text DEFAULT NULL
 )
-RETURNS jsonb
+RETURNS bigint
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
