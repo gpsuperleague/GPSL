@@ -384,8 +384,8 @@ async function addOwner() {
     p_tag: discordTag,
   });
   if (tagErr) {
-    setStatus(
-      "ownerStatus",
+  setStatus(
+    "ownerStatus",
       `⚠️ Login created, but Discord tag failed: ${tagErr.message}. Set tag, then link club.`,
       false
     );
@@ -413,8 +413,8 @@ async function addOwner() {
         false
       );
       await loadOwnerList();
-      return;
-    }
+    return;
+  }
     setStatus(
       "ownerStatus",
       `✅ ${discordTag} created and linked to ${data2?.club_name || club}.`,
@@ -1492,7 +1492,7 @@ async function loadArchivedOwnersSection() {
   }
 
   section.hidden = false;
-  let html =
+    let html =
     `<table class="admin-table wl-archived-table">` +
     `<thead><tr>` +
     `<th>Tag</th><th>Email</th><th>Last club</th>` +
@@ -1502,8 +1502,8 @@ async function loadArchivedOwnersSection() {
     `<th class="wl-col-actions">Actions</th>` +
     `</tr></thead><tbody>`;
 
-  for (const row of rows) {
-    const email = row.email || "";
+    for (const row of rows) {
+      const email = row.email || "";
     const tag = row.owner_tag || "—";
     const testOn = !!row.confirmed_test_season;
     const liveOn = !!row.confirmed_live_season;
@@ -1775,15 +1775,15 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
   return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" data-filter-text="${escapeWl(filterText)}">
     ${dragCell}
     <td class="wl-pos">${pos ?? "—"}</td>
-    <td>${escapeWl(row.owner_tag)}</td>
-    <td>${escapeWl(email)}</td>
+        <td>${escapeWl(row.owner_tag)}</td>
+        <td>${escapeWl(email)}</td>
     <td>${escapeWl(hasClub ? "—" : row.tier || "—")}</td>
     <td>${escapeWl(status)}</td>
     ${auctionCell}
     <td style="text-align:center">
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="test"
         title="Confirmed test season" ${testOn ? "checked" : ""}>
-    </td>
+        </td>
     <td style="text-align:center">
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"
         title="Confirmed live season" ${liveOn ? "checked" : ""}>
@@ -1798,8 +1798,8 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     <td class="num wl-num-unplayed" title="Unplayed this season">${formatUnplayed(unplayedSeason)}</td>
     <td>${discordCell}</td>
     <td class="wl-col-actions">${actionSelect}</td>
-  </tr>`;
-}
+      </tr>`;
+    }
 
 function bindWaitingListPriorityDrag(tableWrap) {
   const tbody = tableWrap.querySelector("#wlPriorityTbody");
@@ -2014,13 +2014,13 @@ async function directAssignFromWaitingList() {
   if (discordTag) {
     setWlActionStatus("Saving Discord tag…");
     const { error: tagErr } = await supabase.rpc("admin_owner_set_tag", {
-      p_owner_email: email,
+    p_owner_email: email,
       p_tag: discordTag,
-    });
+  });
     if (tagErr) {
       setWlActionStatus("❌ " + tagErr.message, false);
-      return;
-    }
+    return;
+  }
   }
   setWlActionStatus("Assigning…");
   const { error } = await supabase.rpc("admin_waiting_list_assign_club", {

@@ -1262,6 +1262,7 @@ async function loadSeasonSignings(shortName) {
     <table class="gpsl-table">
       <tr>
         <th>Player</th>
+        <th>Type</th>
         <th>From</th>
         <th>Price</th>
         <th>Date</th>
@@ -1269,10 +1270,16 @@ async function loadSeasonSignings(shortName) {
       ${transfers
         .map((row) => {
           const player = playerFromMap(players, row.player_id);
+          const note = String(row.transfer_sale_note || "").trim();
+          const fromLabel =
+            note === "emergency_loan"
+              ? "Free agent"
+              : displayClubName(row.seller_club_id);
           return `
         <tr>
           <td>${playerLinkCell(row.player_id, player)}</td>
-          <td>${displayClubName(row.seller_club_id)}</td>
+          <td>${note === "emergency_loan" ? "Emergency loan" : "Signing"}</td>
+          <td>${fromLabel}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>

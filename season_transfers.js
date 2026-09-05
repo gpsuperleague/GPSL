@@ -38,6 +38,8 @@ function classifyDeal(row) {
     ? listingTypeById.get(String(row.listing_id))
     : null;
 
+  if (note === "emergency_loan") return "hidden";
+  if (note === "emergency_loan_return") return "hidden";
   if (note === "special_auction" || note.startsWith("special_auction:")) {
     return "special";
   }
@@ -102,7 +104,7 @@ function escapeHtml(text) {
 }
 
 function filteredRows() {
-  if (activeFilter === "all") return allRows;
+  if (activeFilter === "all") return allRows.filter((r) => classifyDeal(r) !== "hidden");
   if (activeFilter === "foreign") {
     return allRows.filter((r) => {
       const k = classifyDeal(r);
