@@ -1103,6 +1103,62 @@ function formatCountryName(code) {
   }
 }
 
+function timezoneOffsetMinutes(timeZone) {
+  const tz = String(timeZone || "").trim();
+  if (!tz) return null;
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      timeZoneName: "shortOffset",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).formatToParts(new Date());
+    const label = parts.find((p) => p.type === "timeZoneName")?.value || "GMT";
+    const m = label.match(/GMT(?:(\+|-)(\d{1,2})(?::?(\d{2}))?)?$/i);
+    if (!m) return 0;
+    if (!m[1]) return 0;
+    const sign = m[1] === "-" ? -1 : 1;
+    const hours = Number(m[2] || 0);
+    const minutes = Number(m[3] || 0);
+    return sign * (hours * 60 + minutes);
+  } catch {
+    return null;
+  }
+}
+
+function formatUkOffsetDelta(timeZone) {
+  const target = timezoneOffsetMinutes(timeZone);
+  const uk = timezoneOffsetMinutes("Europe/London");
+  if (target == null || uk == null) return { text: "—", title: "" };
+  const delta = target - uk;
+  if (delta === 0) return { text: "Same", title: `${timeZone} · same as UK` };
+  const hours = Math.abs(delta) / 60;
+  const label = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(/\.0$/, "");
+  return {
+    text: `${delta > 0 ? "+" : "-"}${label}h`,
+    title: `${timeZone} · ${delta > 0 ? "+" : "-"}${label} hour${Number(hours) === 1 ? "" : "s"} vs UK`,
+  };
+}
+
+async function fetchOwnerTimezoneMap() {
+  const [regRes, clubRes] = await Promise.all([
+    supabase.from("gpsl_owner_registry").select("owner_id, owner_timezone"),
+    supabase.from("Clubs").select("owner_id, owner_timezone"),
+  ]);
+  const map = new Map();
+  for (const row of regRes.data || []) {
+    const ownerId = String(row.owner_id || "").trim();
+    const tz = String(row.owner_timezone || "").trim();
+    if (ownerId && tz) map.set(ownerId, tz);
+  }
+  for (const row of clubRes.data || []) {
+    const ownerId = String(row.owner_id || "").trim();
+    const tz = String(row.owner_timezone || "").trim();
+    if (ownerId && tz) map.set(ownerId, tz);
+  }
+  return map;
+}
+
 async function fetchOwnerActivityById() {
   const [{ data, error }, { data: secData, error: secError }] = await Promise.all([
     supabase.rpc("admin_owner_last_logins"),
@@ -1155,9 +1211,10 @@ async function loadWaitingListAdmin() {
   if (!tableWrap) return;
 
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
-  const [boardRes, activityRes] = await Promise.all([
+  const [boardRes, activityRes, timezoneMap] = await Promise.all([
     supabase.rpc("waiting_list_admin"),
     fetchOwnerActivityById(),
+    fetchOwnerTimezoneMap(),
   ]);
 
   if (boardRes.error) {
@@ -1177,6 +1234,7 @@ async function loadWaitingListAdmin() {
     invited_auction: false,
     activity: activityById.get(r.owner_id) || null,
     security: activityRes.securityById.get(r.owner_id) || null,
+    owner_timezone: timezoneMap.get(r.owner_id) || "",
   }));
   const invited = (data?.invited_to_auction || []).map((r) => ({
     ...r,
@@ -1186,6 +1244,7 @@ async function loadWaitingListAdmin() {
     has_club: false,
     activity: activityById.get(r.owner_id) || null,
     security: activityRes.securityById.get(r.owner_id) || null,
+    owner_timezone: timezoneMap.get(r.owner_id) || "",
   }));
   const rows = [...priority, ...invited];
   const ownerRows = priority.filter((r) => r.has_club);
@@ -1202,7 +1261,7 @@ async function loadWaitingListAdmin() {
     ? `Activity unavailable: ${activityRes.error.message}`
     : `${prevLabel} / ${curLabel} logins · unplayed fixtures (prev / cur / season) · admin IP/country review`;
 
-  const colSpan = 22;
+  const colSpan = 23;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
 
@@ -1212,7 +1271,7 @@ async function loadWaitingListAdmin() {
     `<tr class="wl-group-row">` +
     `<th colspan="6" class="wl-group-owner">Owner</th>` +
     `<th colspan="3" class="wl-group-season">Season</th>` +
-    `<th colspan="12" class="wl-group-activity">Activity</th>` +
+    `<th colspan="13" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions">Actions</th>` +
     `</tr>` +
     `<tr>` +
@@ -1230,6 +1289,7 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-unplayed" title="Unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">U ${escapeWl(curLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Unplayed fixtures this season (all months, league + cups)">U season</th>` +
     `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord</th>` +
+    `<th title="Current offset versus British time, using the owner's saved timezone.">UK +/-</th>` +
     `<th title="Latest login country (admin only).">Country</th>` +
     `<th title="Latest captured login IP address (admin only).">IP</th>` +
     `<th title="Recent shared-IP review signal (admin only).">Shared IP</th>` +
@@ -1526,10 +1586,12 @@ async function loadArchivedOwnersSection() {
     { data, error },
     { data: secData },
     { data: clubsData },
+    timezoneMap,
   ] = await Promise.all([
     supabase.rpc("admin_list_archived_owners"),
     supabase.rpc("admin_owner_login_security_map", { p_recent_days: 30 }),
     supabase.from("Clubs").select("ShortName, Club"),
+    fetchOwnerTimezoneMap(),
   ]);
   if (error) {
     section.hidden = false;
@@ -1563,6 +1625,7 @@ async function loadArchivedOwnersSection() {
     `<th title="Confirmed for test season" style="text-align:center">Test</th>` +
     `<th title="Confirmed for live season" style="text-align:center">Live</th>` +
     `<th>Archived (UK)</th><th>Note</th>` +
+    `<th title="Current offset versus British time, using the owner's saved timezone.">UK +/-</th>` +
     `<th title="Latest login country (admin only).">Country</th>` +
     `<th title="Latest captured login IP address (admin only).">IP</th>` +
     `<th title="Recent shared-IP review signal (admin only).">Shared IP</th>` +
@@ -1575,6 +1638,8 @@ async function loadArchivedOwnersSection() {
     const testOn = !!row.confirmed_test_season;
     const liveOn = !!row.confirmed_live_season;
     const sec = securityById.get(row.owner_id) || {};
+    const ownerTimezone = timezoneMap.get(row.owner_id) || "";
+    const tzDelta = formatUkOffsetDelta(ownerTimezone);
     const lastCountry = sec.last_country_code ? String(sec.last_country_code) : "";
     const lastCountryName = formatCountryName(lastCountry);
     const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
@@ -1594,7 +1659,7 @@ async function loadArchivedOwnersSection() {
         ? `${escapeWl(lastClubName)} <span class="muted">(${escapeWl(lastClubShort)})</span>`
         : escapeWl(lastClubShort)
       : "—";
-    const filterText = [tag, email, row.last_club_short_name, lastClubName, row.status_note, lastCountry, lastCountryName, lastIp]
+    const filterText = [tag, email, row.last_club_short_name, lastClubName, row.status_note, ownerTimezone, tzDelta.text, lastCountry, lastCountryName, lastIp]
       .filter(Boolean)
       .join(" ");
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
@@ -1611,6 +1676,7 @@ async function loadArchivedOwnersSection() {
       </td>
       <td>${escapeWl(formatWlUkDateTime(row.status_changed_at))}</td>
       <td>${escapeWl(row.status_note || "—")}</td>
+      <td title="${tzDelta.title ? escapeWl(tzDelta.title) : ""}">${escapeWl(tzDelta.text)}</td>
       <td title="${lastCountry ? escapeWl(lastCountry) : ""}">${lastCountry ? escapeWl(lastCountryName) : `<span class="muted">—</span>`}</td>
       <td title="${lastIp ? escapeWl(lastIp) : ""}">${lastIp ? `<code>${escapeWl(lastIp)}</code>` : `<span class="muted">—</span>`}</td>
       <td>${sharedCell}</td>
@@ -1821,6 +1887,7 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
   const lastCountry = sec.last_country_code ? String(sec.last_country_code) : "";
   const lastCountryName = formatCountryName(lastCountry);
   const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
+  const tzDelta = formatUkOffsetDelta(row.owner_timezone || "");
   const sharedCount = Number(sec.shared_recent_ip_owner_count) || 0;
   const sharedWith = Array.isArray(sec.shared_recent_with) ? sec.shared_recent_with : [];
   const otherShared = sharedWith.filter(
@@ -1839,6 +1906,8 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     clubFullName,
     act.club_short_name,
     act.club_name,
+    row.owner_timezone,
+    tzDelta.text,
     lastCountry,
     lastCountryName,
     lastIp,
@@ -1903,6 +1972,7 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     <td class="num wl-num-unplayed" title="Unplayed current GPSL month">${formatUnplayed(unplayedCur)}</td>
     <td class="num wl-num-unplayed" title="Unplayed this season">${formatUnplayed(unplayedSeason)}</td>
     <td>${discordCell}</td>
+    <td title="${tzDelta.title ? escapeWl(tzDelta.title) : ""}">${escapeWl(tzDelta.text)}</td>
     <td title="${lastCountry ? escapeWl(lastCountry) : ""}">${lastCountry ? escapeWl(lastCountryName) : `<span class="muted">—</span>`}</td>
     <td title="${lastIp ? escapeWl(lastIp) : ""}">${lastIp ? `<code>${escapeWl(lastIp)}</code>` : `<span class="muted">—</span>`}</td>
     <td>${sharedCell}</td>
