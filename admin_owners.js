@@ -1092,6 +1092,17 @@ function formatWlUkDate(iso) {
   });
 }
 
+function formatCountryName(code) {
+  const cc = String(code || "").trim().toUpperCase();
+  if (!cc) return "";
+  try {
+    const names = new Intl.DisplayNames(["en"], { type: "region" });
+    return names.of(cc) || cc;
+  } catch {
+    return cc;
+  }
+}
+
 async function fetchOwnerActivityById() {
   const [{ data, error }, { data: secData, error: secError }] = await Promise.all([
     supabase.rpc("admin_owner_last_logins"),
@@ -1565,6 +1576,7 @@ async function loadArchivedOwnersSection() {
     const liveOn = !!row.confirmed_live_season;
     const sec = securityById.get(row.owner_id) || {};
     const lastCountry = sec.last_country_code ? String(sec.last_country_code) : "";
+    const lastCountryName = formatCountryName(lastCountry);
     const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
     const sharedCount = Number(sec.shared_recent_ip_owner_count) || 0;
     const sharedWith = Array.isArray(sec.shared_recent_with) ? sec.shared_recent_with : [];
@@ -1582,7 +1594,7 @@ async function loadArchivedOwnersSection() {
         ? `${escapeWl(lastClubName)} <span class="muted">(${escapeWl(lastClubShort)})</span>`
         : escapeWl(lastClubShort)
       : "—";
-    const filterText = [tag, email, row.last_club_short_name, lastClubName, row.status_note, lastCountry, lastIp]
+    const filterText = [tag, email, row.last_club_short_name, lastClubName, row.status_note, lastCountry, lastCountryName, lastIp]
       .filter(Boolean)
       .join(" ");
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
@@ -1599,7 +1611,7 @@ async function loadArchivedOwnersSection() {
       </td>
       <td>${escapeWl(formatWlUkDateTime(row.status_changed_at))}</td>
       <td>${escapeWl(row.status_note || "—")}</td>
-      <td>${lastCountry ? escapeWl(lastCountry) : `<span class="muted">—</span>`}</td>
+      <td title="${lastCountry ? escapeWl(lastCountry) : ""}">${lastCountry ? escapeWl(lastCountryName) : `<span class="muted">—</span>`}</td>
       <td title="${lastIp ? escapeWl(lastIp) : ""}">${lastIp ? `<code>${escapeWl(lastIp)}</code>` : `<span class="muted">—</span>`}</td>
       <td>${sharedCell}</td>
       <td class="wl-col-actions">
@@ -1807,6 +1819,7 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
         ? `<span class="muted" title="No Discord join on file — showing GPSL account created date">${escapeWl(formatWlUkDate(discordDisplayAt))} · acct</span>`
         : `<span class="muted" title="No Discord join recorded (admin-added or joined before Discord gate)">—</span>`;
   const lastCountry = sec.last_country_code ? String(sec.last_country_code) : "";
+  const lastCountryName = formatCountryName(lastCountry);
   const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
   const sharedCount = Number(sec.shared_recent_ip_owner_count) || 0;
   const sharedWith = Array.isArray(sec.shared_recent_with) ? sec.shared_recent_with : [];
@@ -1827,6 +1840,7 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     act.club_short_name,
     act.club_name,
     lastCountry,
+    lastCountryName,
     lastIp,
   ]
     .filter(Boolean)
@@ -1889,7 +1903,7 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     <td class="num wl-num-unplayed" title="Unplayed current GPSL month">${formatUnplayed(unplayedCur)}</td>
     <td class="num wl-num-unplayed" title="Unplayed this season">${formatUnplayed(unplayedSeason)}</td>
     <td>${discordCell}</td>
-    <td>${lastCountry ? escapeWl(lastCountry) : `<span class="muted">—</span>`}</td>
+    <td title="${lastCountry ? escapeWl(lastCountry) : ""}">${lastCountry ? escapeWl(lastCountryName) : `<span class="muted">—</span>`}</td>
     <td title="${lastIp ? escapeWl(lastIp) : ""}">${lastIp ? `<code>${escapeWl(lastIp)}</code>` : `<span class="muted">—</span>`}</td>
     <td>${sharedCell}</td>
     <td class="wl-col-actions">${actionSelect}</td>
