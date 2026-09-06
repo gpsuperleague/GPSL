@@ -24,9 +24,12 @@ function firstHeaderIp(value: string | null): string | null {
 }
 
 function normalizeIp(raw: string | null): string | null {
-  const ip = String(raw || "").trim();
+  let ip = String(raw || "").trim().toLowerCase();
   if (!ip) return null;
-  return ip.toLowerCase();
+  if (ip.includes("/")) ip = ip.split("/")[0].trim();
+  if (ip.startsWith("::ffff:")) ip = ip.slice(7);
+  if (/^\d+\.\d+\.\d+\.\d+:\d+$/.test(ip)) ip = ip.replace(/:\d+$/, "");
+  return ip || null;
 }
 
 function isProbablyPublicIp(ip: string | null): boolean {

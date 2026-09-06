@@ -19,7 +19,11 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 }
 
 function normalizeIp(raw: string | null | undefined): string | null {
-  const ip = String(raw || "").trim().toLowerCase();
+  let ip = String(raw || "").trim().toLowerCase();
+  if (!ip) return null;
+  if (ip.includes("/")) ip = ip.split("/")[0].trim();
+  if (ip.startsWith("::ffff:")) ip = ip.slice(7);
+  if (/^\d+\.\d+\.\d+\.\d+:\d+$/.test(ip)) ip = ip.replace(/:\d+$/, "");
   return ip || null;
 }
 
@@ -42,6 +46,17 @@ async function lookupCountryFromIp(ip: string | null): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+function isProbablyPublicIp(ip: string | null): boolean {
+  const value = String(ip || "").trim().toLowerCase();
+  if (!value) return false;
+  if (value === "::1" || value === "127.0.0.1") return false;
+  if (value.startsWith("10.")) return false;
+  if (value.startsWith("192.168.")) return false;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(value)) return false;
+  if (value.startsWith("fc") || value.startsWith("fd")) return false;
+  return true;
 }
 
 Deno.serve(async (req) => {
@@ -119,6 +134,10 @@ Deno.serve(async (req) => {
       const ipNorm = normalizeIp(ipAddress);
       const existingCountry = String(row?.last_country_code || "").trim().toUpperCase();
       if (!ownerId || !ipNorm) {
+        skipped += 1;
+        continue;
+      }
+      if (!isProbablyPublicIp(ipNorm)) {
         skipped += 1;
         continue;
       }
