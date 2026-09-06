@@ -3,7 +3,7 @@
 --
 -- Why:
 --   Fresh country/IP audit rows only appear after users log in again post-deploy.
---   To avoid blank admin board columns, use auth.sessions.ip_address as a fallback.
+--   To avoid blank admin board columns, use auth.sessions.ip as a fallback.
 --
 -- Country still depends on owner_login_origin_events (captured by edge function).
 -- Duplicate recent IP review uses both audit rows and recent auth.sessions rows.
@@ -52,8 +52,8 @@ BEGIN
           SELECT DISTINCT ON (s.user_id)
             s.user_id AS owner_id,
             s.created_at,
-            nullif(btrim(coalesce(s.ip_address, '')), '') AS ip_address,
-            lower(nullif(btrim(coalesce(s.ip_address, '')), '')) AS ip_address_norm
+            nullif(btrim(coalesce(s.ip::text, '')), '') AS ip_address,
+            lower(nullif(btrim(coalesce(s.ip::text, '')), '')) AS ip_address_norm
           FROM auth.sessions s
           ORDER BY s.user_id, s.created_at DESC, s.id DESC
         ),
@@ -70,7 +70,7 @@ BEGIN
           SELECT
             s.user_id AS owner_id,
             s.created_at AS seen_at,
-            lower(nullif(btrim(coalesce(s.ip_address, '')), '')) AS ip_address_norm
+            lower(nullif(btrim(coalesce(s.ip::text, '')), '')) AS ip_address_norm
           FROM auth.sessions s
           WHERE s.created_at >= now() - make_interval(days => v_recent_days)
         ),
