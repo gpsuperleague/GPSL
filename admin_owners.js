@@ -1070,12 +1070,16 @@ function formatWlUkDate(iso) {
 }
 
 async function fetchOwnerActivityById() {
-  const { data, error } = await supabase.rpc("admin_owner_last_logins");
+  const [{ data, error }, { data: secData, error: secError }] = await Promise.all([
+    supabase.rpc("admin_owner_last_logins"),
+    supabase.rpc("admin_owner_login_security_map", { p_recent_days: 30 }),
+  ]);
   const byId = new Map();
+  const securityById = new Map();
   let previousLabel = "Prev month";
   let currentLabel = "Current month";
   if (error) {
-    return { byId, previousLabel, currentLabel, error };
+    return { byId, securityById, previousLabel, currentLabel, error, securityError: secError };
   }
   const owners = Array.isArray(data?.owners) ? data.owners : Array.isArray(data) ? data : [];
   previousLabel = data?.previous_gpsl_month_label || previousLabel;
@@ -1083,7 +1087,11 @@ async function fetchOwnerActivityById() {
   for (const row of owners) {
     if (row?.owner_id) byId.set(row.owner_id, row);
   }
-  return { byId, previousLabel, currentLabel, error: null };
+  const secOwners = Array.isArray(secData?.owners) ? secData.owners : [];
+  for (const row of secOwners) {
+    if (row?.owner_id) securityById.set(row.owner_id, row);
+  }
+  return { byId, securityById, previousLabel, currentLabel, error: null, securityError: secError };
 }
 
 function filterSeasonOwnerBoard(filterText) {
@@ -1134,6 +1142,7 @@ async function loadWaitingListAdmin() {
     has_club: !!r.has_club || r.list_kind === "club_owner",
     invited_auction: false,
     activity: activityById.get(r.owner_id) || null,
+    security: activityRes.securityById.get(r.owner_id) || null,
   }));
   const invited = (data?.invited_to_auction || []).map((r) => ({
     ...r,
@@ -1142,6 +1151,7 @@ async function loadWaitingListAdmin() {
     invited_auction: true,
     has_club: false,
     activity: activityById.get(r.owner_id) || null,
+    security: activityRes.securityById.get(r.owner_id) || null,
   }));
   const rows = [...priority, ...invited];
   const ownerRows = priority.filter((r) => r.has_club);
@@ -1156,9 +1166,9 @@ async function loadWaitingListAdmin() {
     : "Join-date order (drag to customise)";
   const activityNote = activityRes.error
     ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} logins · unplayed fixtures (prev / cur / season)`;
+    : `${prevLabel} / ${curLabel} logins · unplayed fixtures (prev / cur / season) · admin IP/country review`;
 
-  const colSpan = 19;
+  const colSpan = 22;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
 
@@ -1168,7 +1178,7 @@ async function loadWaitingListAdmin() {
     `<tr class="wl-group-row">` +
     `<th colspan="6" class="wl-group-owner">Owner</th>` +
     `<th colspan="3" class="wl-group-season">Season</th>` +
-    `<th colspan="9" class="wl-group-activity">Activity</th>` +
+    `<th colspan="12" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions">Actions</th>` +
     `</tr>` +
     `<tr>` +
@@ -1186,6 +1196,9 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-unplayed" title="Unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">U ${escapeWl(curLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Unplayed fixtures this season (all months, league + cups)">U season</th>` +
     `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord</th>` +
+    `<th title="Latest login country (admin only).">Country</th>` +
+    `<th title="Latest captured login IP address (admin only).">IP</th>` +
+    `<th title="Recent shared-IP review signal (admin only).">Shared IP</th>` +
     `<th class="wl-col-actions">Actions</th>` +
     `</tr></thead><tbody id="wlPriorityTbody">`;
 
@@ -1711,6 +1724,7 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     act.unplayed_current_month == null ? null : Number(act.unplayed_current_month) || 0;
   const unplayedSeason =
     act.unplayed_season == null ? null : Number(act.unplayed_season) || 0;
+  const sec = row.security || {};
   const formatUnplayed = (n) => {
     if (n == null) return `<span class="muted">—</span>`;
     const cls =
@@ -1727,6 +1741,17 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
       : discordDisplayAt
         ? `<span class="muted" title="No Discord join on file — showing GPSL account created date">${escapeWl(formatWlUkDate(discordDisplayAt))} · acct</span>`
         : `<span class="muted" title="No Discord join recorded (admin-added or joined before Discord gate)">—</span>`;
+  const lastCountry = sec.last_country_code ? String(sec.last_country_code) : "";
+  const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
+  const sharedCount = Number(sec.shared_recent_ip_owner_count) || 0;
+  const sharedWith = Array.isArray(sec.shared_recent_with) ? sec.shared_recent_with : [];
+  const otherShared = sharedWith.filter(
+    (tag) => String(tag || "") && String(tag || "") !== String(row.owner_tag || "")
+  );
+  const sharedCell =
+    sharedCount > 1
+      ? `<span class="unplayed-warn" title="Shared recent IP with: ${escapeWl(otherShared.join(", ") || sharedWith.join(", "))}">Yes (${sharedCount})</span>`
+      : `<span class="muted">No</span>`;
   const filterText = [
     row.owner_tag,
     email,
@@ -1736,6 +1761,8 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     clubFullName,
     act.club_short_name,
     act.club_name,
+    lastCountry,
+    lastIp,
   ]
     .filter(Boolean)
     .join(" ");
@@ -1797,6 +1824,9 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     <td class="num wl-num-unplayed" title="Unplayed current GPSL month">${formatUnplayed(unplayedCur)}</td>
     <td class="num wl-num-unplayed" title="Unplayed this season">${formatUnplayed(unplayedSeason)}</td>
     <td>${discordCell}</td>
+    <td>${lastCountry ? escapeWl(lastCountry) : `<span class="muted">—</span>`}</td>
+    <td title="${lastIp ? escapeWl(lastIp) : ""}">${lastIp ? `<code>${escapeWl(lastIp)}</code>` : `<span class="muted">—</span>`}</td>
+    <td>${sharedCell}</td>
     <td class="wl-col-actions">${actionSelect}</td>
       </tr>`;
     }

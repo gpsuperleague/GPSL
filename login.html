@@ -139,6 +139,13 @@
         }
       }
 
+      const { error: originErr } = await supabase.functions.invoke("record-login-origin", {
+        body: {},
+      });
+      if (originErr) {
+        console.warn("record-login-origin:", originErr.message);
+      }
+
       let dest = "dashboard.html";
       try {
         const { data: self } = await supabase.rpc("owner_registry_get_self");
