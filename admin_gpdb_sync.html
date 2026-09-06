@@ -87,6 +87,18 @@
         <div id="scrapeStatus" class="status-line"></div>
 
         <hr style="border:none;border-top:1px solid #333;margin:20px 0;">
+        <h3 style="margin:0 0 6px;font-size:15px;">Player card cache</h3>
+        <p class="note" style="margin-top:0;">
+          Pre-warm the local <code>player-cards</code> cache so the site stops leaning on live
+          <code>pesdb.net</code> card images. Runs in small admin-only batches.
+        </p>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" class="button" id="cardCacheWarmBtn" style="background:#2a3a5a;">Pre-warm all player cards</button>
+          <button type="button" class="button" id="cardCacheStopBtn" disabled style="background:#444;">Stop after this batch</button>
+        </div>
+        <div id="cardCacheStatus" class="status-line"></div>
+
+        <hr style="border:none;border-top:1px solid #333;margin:20px 0;">
         <p class="note"><b>Or</b> upload an existing scrape CSV (e.g. from <code>scripts/pesdb_scrape.py</code>).</p>
         <input type="file" id="csvFile" accept=".csv,text/csv">
         <div class="row" style="margin-top:12px;">
@@ -261,6 +273,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20260820-playstyle-throttle"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20260906-card-cache-warm"></script>
 </body>
 </html>

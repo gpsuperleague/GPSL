@@ -12,11 +12,14 @@ renderAdminGpdbSyncRules();
 
 const CONFIRM_TEXT = "SYNC GPDB";
 const SCRAPE_FUNCTION = "gpdb-pesdb-scrape";
+const CARD_CACHE_FUNCTION = "pesdb-card-cache";
 const SCRAPE_PACE = "chunked";
 const PROGRESS_KEY = "gpdb_pesdb_scrape_progress";
 const LAST_APPLY_KEY = "gpdb_pesdb_last_apply";
 let scrapeAbort = false;
 let scrapeRunning = false;
+let cardCacheAbort = false;
+let cardCacheRunning = false;
 let playstyleAbort = false;
 let playstyleRunning = false;
 let liveTimerId = null;
@@ -43,6 +46,12 @@ function sleep(ms) {
 function setPlayerLabel(text) {
   const el = document.getElementById("scrapePlayerLabel");
   if (el) el.textContent = text || "";
+}
+
+function setCardCacheButtons(running) {
+  document.getElementById("cardCacheWarmBtn")?.toggleAttribute("disabled", running);
+  const stopBtn = document.getElementById("cardCacheStopBtn");
+  if (stopBtn) stopBtn.disabled = !running;
 }
 
 function stopLiveTimer() {
@@ -150,6 +159,156 @@ function midPageState(job) {
 
 function clearProgress() {
   localStorage.removeItem(PROGRESS_KEY);
+}
+
+async function fetchAllPlayerKonamiIds() {
+  const out = [];
+  const seen = new Set();
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase
+      .from("Players")
+      .select("Konami_ID")
+      .not("Konami_ID", "is", null)
+      .order("Konami_ID", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    const rows = Array.isArray(data) ? data : [];
+    for (const row of rows) {
+      const id = String(row.Konami_ID || "").trim();
+      if (/^\d{4,12}$/.test(id) && !seen.has(id)) {
+        seen.add(id);
+        out.push(id);
+      }
+    }
+    if (rows.length < pageSize) break;
+  }
+  return out;
+}
+
+async function invokeCardCache(ids) {
+  const { data, error } = await supabase.functions.invoke(CARD_CACHE_FUNCTION, {
+    body: { ids },
+  });
+  if (error) {
+    let detail = error.message || "Card cache request failed";
+    try {
+      const payload = await error?.context?.json?.();
+      if (payload?.error) detail = String(payload.error);
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  if (data?.error) throw new Error(String(data.error));
+  return data || {};
+}
+
+async function warmPlayerCardCache() {
+  if (cardCacheRunning) {
+    setStatus("cardCacheStatus", "Card cache warm is already running.", false);
+    return;
+  }
+  if (
+    !window.confirm(
+      "Pre-warm cached player cards for all GPDB players?\n\nThis can take a long time and may still hit PESDB rate limits, but it runs in small batches."
+    )
+  ) {
+    return;
+  }
+
+  cardCacheAbort = false;
+  cardCacheRunning = true;
+  setCardCacheButtons(true);
+
+  try {
+    setStatus("cardCacheStatus", "Loading GPDB player IDs…", true);
+    const ids = await fetchAllPlayerKonamiIds();
+    if (!ids.length) {
+      setStatus("cardCacheStatus", "No GPDB player IDs found.", false);
+      return;
+    }
+
+    const batchSize = 25;
+    let done = 0;
+    let cachedNow = 0;
+    let alreadyCached = 0;
+    let failed = 0;
+    let failStreak = 0;
+
+    for (let i = 0; i < ids.length; i += batchSize) {
+      if (cardCacheAbort) break;
+      const batch = ids.slice(i, i + batchSize);
+      setStatus(
+        "cardCacheStatus",
+        `Caching player cards ${i + 1}-${i + batch.length} of ${ids.length}…`,
+        true
+      );
+
+      const result = await invokeCardCache(batch);
+      done += batch.length;
+      cachedNow += Number(result.cached_now) || 0;
+      alreadyCached += Number(result.already_cached) || 0;
+      const batchFailed = Number(result.failed) || 0;
+      failed += batchFailed;
+      failStreak = batchFailed > 0 ? failStreak + 1 : 0;
+
+      setStatus(
+        "cardCacheStatus",
+        `Player card cache: ${done}/${ids.length} · new ${cachedNow} · already cached ${alreadyCached} · failed ${failed}`,
+        true
+      );
+
+      if (cardCacheAbort) break;
+      if (failStreak >= 3) {
+        setStatus(
+          "cardCacheStatus",
+          `PESDB looks unhappy — cooling 60s before continuing (${done}/${ids.length})…`,
+          true
+        );
+        const coolEnd = Date.now() + 60000;
+        while (Date.now() < coolEnd && !cardCacheAbort) {
+          const left = Math.ceil((coolEnd - Date.now()) / 1000);
+          setStatus(
+            "cardCacheStatus",
+            `PESDB cool-down: ${left}s (${done}/${ids.length})…`,
+            true
+          );
+          await sleep(500);
+        }
+        failStreak = 0;
+      } else {
+        await sleep(800);
+      }
+    }
+
+    if (cardCacheAbort) {
+      setStatus(
+        "cardCacheStatus",
+        `Stopped after ${done}/${ids.length} players. New ${cachedNow}, already cached ${alreadyCached}, failed ${failed}.`,
+        false
+      );
+    } else {
+      setStatus(
+        "cardCacheStatus",
+        `Card cache warm complete. ${done}/${ids.length} players checked · new ${cachedNow} · already cached ${alreadyCached} · failed ${failed}.`,
+        true
+      );
+    }
+  } catch (err) {
+    setStatus("cardCacheStatus", err.message || "Card cache warm failed.", false);
+  } finally {
+    cardCacheAbort = false;
+    cardCacheRunning = false;
+    setCardCacheButtons(false);
+  }
+}
+
+function stopPlayerCardCache() {
+  if (!cardCacheRunning) return;
+  cardCacheAbort = true;
+  setStatus("cardCacheStatus", "Stopping after this batch…", true);
 }
 
 function formatWhen(iso) {
@@ -2485,6 +2644,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("detectPagesBtn")?.addEventListener("click", detectPesdbPages);
   document.getElementById("scrapeBtn")?.addEventListener("click", runPesdbScrape);
   document.getElementById("scrapeStopBtn")?.addEventListener("click", stopPesdbScrape);
+  document.getElementById("cardCacheWarmBtn")?.addEventListener("click", warmPlayerCardCache);
+  document.getElementById("cardCacheStopBtn")?.addEventListener("click", stopPlayerCardCache);
   document.getElementById("playstyleRefreshBtn")?.addEventListener("click", runPlaystyleRefresh);
   document.getElementById("playstyleStopBtn")?.addEventListener("click", stopPlaystyleRefresh);
   document.getElementById("playstyleClearCheckpointBtn")?.addEventListener("click", clearPlaystyleCheckpointUi);

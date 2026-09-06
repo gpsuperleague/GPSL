@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 
 const BUCKET = "player-cards";
 const PESDB_CARD_BASE = "https://pesdb.net/assets/img/card";
@@ -126,6 +127,28 @@ Deno.serve(async (req) => {
     }
 
     if (req.method === "POST") {
+      if (!SUPABASE_ANON_KEY) {
+        return jsonResponse({ error: "Server misconfigured" }, 500);
+      }
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+      const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const {
+        data: { user },
+        error: userErr,
+      } = await userClient.auth.getUser();
+      if (userErr || !user) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+      const { data: isAdmin } = await userClient.rpc("is_gpsl_admin");
+      if (isAdmin !== true) {
+        return jsonResponse({ error: "Admin only" }, 403);
+      }
+
       const body = (await req.json().catch(() => ({}))) as { ids?: unknown[] };
       const ids = Array.isArray(body.ids)
         ? [...new Set(body.ids.map(normalizeId).filter(Boolean) as string[])].slice(0, 200)

@@ -105,6 +105,16 @@ How it works:
 This is intentionally Storage-based, not SQL-blob based, to avoid bloating the
 database with image binaries.
 
+### Optional admin pre-warm
+
+After deploying the cache function and frontend change, Admin → GPDB PESDB sync
+includes **Pre-warm all player cards**.
+
+- reads GPDB player IDs in batches
+- asks the `pesdb-card-cache` function to fill missing cards
+- cools down automatically after repeated failures
+- can be stopped after the current batch
+
 If PESDB rate-limits mid-batch, wait 30–60 minutes and click **Start scrape** again (with **Resume** checked).
 
 ### Split phases (optional)
