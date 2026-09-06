@@ -5,6 +5,7 @@
  */
 
 import { clubPageHref, clubHistoryHref, fullClubName } from "./clubs_lookup.js";
+import { SUPABASE_URL } from "./supabase_client.js";
 
 export const PESDB_FALLBACK_CARD_IMG = "https://i.imgur.com/3s8XQ7Y.png";
 
@@ -18,6 +19,12 @@ export function pesdbPlayerCardUrl(konamiId) {
   const id = String(konamiId ?? "").trim();
   if (!id) return PESDB_FALLBACK_CARD_IMG;
   return `https://pesdb.net/assets/img/card/b${encodeURIComponent(id)}.png`;
+}
+
+export function cachedPesdbPlayerCardUrl(konamiId) {
+  const id = String(konamiId ?? "").trim();
+  if (!id) return PESDB_FALLBACK_CARD_IMG;
+  return `${SUPABASE_URL}/functions/v1/pesdb-card-cache?id=${encodeURIComponent(id)}`;
 }
 
 export function gpslPlayerCareerUrl(konamiId) {
@@ -47,8 +54,9 @@ export function playerThumbLinkHtml(konamiId, options = {}) {
     fallback = PESDB_FALLBACK_CARD_IMG,
     wrapLink = true,
   } = options;
-
-  const img = `<img src="${pesdbPlayerCardUrl(id)}" class="${className}" alt="${escapePlayerHtml(alt)}" onerror="this.src='${fallback}'">`;
+  const cacheUrl = cachedPesdbPlayerCardUrl(id);
+  const pesdbUrl = pesdbPlayerCardUrl(id);
+  const img = `<img src="${cacheUrl}" class="${className}" alt="${escapePlayerHtml(alt)}" data-pesdb-fallback="${pesdbUrl}" onerror="if(!this.dataset.pesdbTried){this.dataset.pesdbTried='1';this.src=this.dataset.pesdbFallback;}else{this.src='${fallback}';}">`;
 
   if (!wrapLink) return img;
 

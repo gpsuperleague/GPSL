@@ -78,6 +78,33 @@ Redeploy edge function after updates:
 supabase functions deploy gpdb-pesdb-scrape --no-verify-jwt
 ```
 
+### Optional: cache PESDB player card images locally
+
+If `pesdb.net` starts rate-limiting card PNGs in normal site usage, GPSL can
+cache them in Supabase Storage and serve the local copy after the first hit.
+
+1. Run `supabase/sql/patches/pesdb_player_cards_storage_20260906.sql`
+2. Deploy edge function `supabase/functions/pesdb-card-cache/index.ts`
+3. Deploy the frontend change to `player_links.js`
+
+Function deploy example:
+
+```powershell
+supabase functions deploy pesdb-card-cache --no-verify-jwt
+```
+
+How it works:
+
+- site pages request the GPSL cache endpoint first
+- if the card is already in bucket `player-cards`, GPSL serves that
+- if not, the edge function fetches `pesdb.net/assets/img/card/b{id}.png`,
+  uploads it to Storage, then serves the cached copy
+- if PESDB still blocks the fetch, the UI falls back to the direct PESDB card,
+  then finally to the existing placeholder image
+
+This is intentionally Storage-based, not SQL-blob based, to avoid bloating the
+database with image binaries.
+
 If PESDB rate-limits mid-batch, wait 30–60 minutes and click **Start scrape** again (with **Resume** checked).
 
 ### Split phases (optional)
