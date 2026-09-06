@@ -1887,7 +1887,8 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
   const lastCountry = sec.last_country_code ? String(sec.last_country_code) : "";
   const lastCountryName = formatCountryName(lastCountry);
   const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
-  const tzDelta = formatUkOffsetDelta(row.owner_timezone || "");
+  const originTimezone = sec.last_timezone_name ? String(sec.last_timezone_name) : "";
+  const tzDelta = formatUkOffsetDelta(originTimezone || row.owner_timezone || "");
   const sharedCount = Number(sec.shared_recent_ip_owner_count) || 0;
   const sharedWith = Array.isArray(sec.shared_recent_with) ? sec.shared_recent_with : [];
   const otherShared = sharedWith.filter(
@@ -1907,6 +1908,7 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
     act.club_short_name,
     act.club_name,
     row.owner_timezone,
+    originTimezone,
     tzDelta.text,
     lastCountry,
     lastCountryName,

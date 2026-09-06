@@ -78,7 +78,7 @@ function renderTagRows(tbody, rows, highlightPosition) {
         : "";
     const countryCode = String(row.country_code || "").trim().toUpperCase();
     const countryName = formatCountryName(countryCode);
-    const tzDelta = formatUkOffsetDelta(row.owner_timezone || "");
+    const tzDelta = formatUkOffsetDelta(row.origin_timezone || "");
     tr.innerHTML =
       `<td>${row.position}</td>` +
       `<td>${escapeHtml(row.owner_tag || "—")}${statusExtra}</td>` +

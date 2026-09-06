@@ -43,8 +43,12 @@ function isProbablyPublicIp(ip: string | null): boolean {
   return true;
 }
 
-async function lookupCountryFromIp(ip: string | null): Promise<string | null> {
-  if (!isProbablyPublicIp(ip)) return null;
+async function lookupOriginFromIp(
+  ip: string | null,
+): Promise<{ countryCode: string | null; timezoneName: string | null }> {
+  if (!isProbablyPublicIp(ip)) {
+    return { countryCode: null, timezoneName: null };
+  }
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
@@ -53,13 +57,18 @@ async function lookupCountryFromIp(ip: string | null): Promise<string | null> {
       headers: { Accept: "application/json" },
     });
     clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = (await res.json()) as { success?: boolean; country_code?: string };
-    if (data?.success === false) return null;
-    const code = String(data?.country_code || "").trim().toUpperCase();
-    return code || null;
+    if (!res.ok) return { countryCode: null, timezoneName: null };
+    const data = (await res.json()) as {
+      success?: boolean;
+      country_code?: string;
+      timezone?: { id?: string };
+    };
+    if (data?.success === false) return { countryCode: null, timezoneName: null };
+    const countryCode = String(data?.country_code || "").trim().toUpperCase() || null;
+    const timezoneName = String(data?.timezone?.id || "").trim() || null;
+    return { countryCode, timezoneName };
   } catch {
-    return null;
+    return { countryCode: null, timezoneName: null };
   }
 }
 
@@ -106,7 +115,9 @@ Deno.serve(async (req) => {
       )
         .trim()
         .toUpperCase() || null;
-    const country = headerCountry || (await lookupCountryFromIp(ip));
+    const origin = await lookupOriginFromIp(ip);
+    const country = headerCountry || origin.countryCode;
+    const timezoneName = origin.timezoneName;
     const userAgent =
       String(
         req.headers.get("x-forwarded-user-agent") ||
@@ -121,6 +132,7 @@ Deno.serve(async (req) => {
         ip_captured: !!ip,
         header_country: headerCountry,
         final_country: country,
+        timezone_name: timezoneName,
       })
     );
 
@@ -132,6 +144,7 @@ Deno.serve(async (req) => {
         ip_address: ip,
         ip_address_norm: normalizeIp(ip),
         country_code: country,
+        timezone_name: timezoneName,
         user_agent: userAgent,
         source: "edge_login",
       });
@@ -144,6 +157,7 @@ Deno.serve(async (req) => {
       ok: true,
       owner_id: user.id,
       country_code: country,
+      timezone_name: timezoneName,
       ip_captured: !!ip,
     });
   } catch (err) {

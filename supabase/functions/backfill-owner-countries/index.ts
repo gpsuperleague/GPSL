@@ -27,9 +27,11 @@ function normalizeIp(raw: string | null | undefined): string | null {
   return ip || null;
 }
 
-async function lookupCountryFromIp(ip: string | null): Promise<string | null> {
+async function lookupOriginFromIp(
+  ip: string | null,
+): Promise<{ countryCode: string | null; timezoneName: string | null }> {
   const value = String(ip || "").trim();
-  if (!value) return null;
+  if (!value) return { countryCode: null, timezoneName: null };
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
@@ -38,13 +40,18 @@ async function lookupCountryFromIp(ip: string | null): Promise<string | null> {
       headers: { Accept: "application/json" },
     });
     clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = (await res.json()) as { success?: boolean; country_code?: string };
-    if (data?.success === false) return null;
-    const code = String(data?.country_code || "").trim().toUpperCase();
-    return code || null;
+    if (!res.ok) return { countryCode: null, timezoneName: null };
+    const data = (await res.json()) as {
+      success?: boolean;
+      country_code?: string;
+      timezone?: { id?: string };
+    };
+    if (data?.success === false) return { countryCode: null, timezoneName: null };
+    const countryCode = String(data?.country_code || "").trim().toUpperCase() || null;
+    const timezoneName = String(data?.timezone?.id || "").trim() || null;
+    return { countryCode, timezoneName };
   } catch {
-    return null;
+    return { countryCode: null, timezoneName: null };
   }
 }
 
@@ -123,7 +130,7 @@ Deno.serve(async (req) => {
 
     const owners = Array.isArray(security?.owners) ? security.owners : [];
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const cache = new Map<string, string | null>();
+    const cache = new Map<string, { countryCode: string | null; timezoneName: string | null }>();
     let lookedUp = 0;
     let updated = 0;
     let skipped = 0;
@@ -146,13 +153,13 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      let country = cache.get(ipNorm);
-      if (country === undefined) {
-        country = await lookupCountryFromIp(ipNorm);
-        cache.set(ipNorm, country);
+      let origin = cache.get(ipNorm);
+      if (origin === undefined) {
+        origin = await lookupOriginFromIp(ipNorm);
+        cache.set(ipNorm, origin);
         lookedUp += 1;
       }
-      if (!country) {
+      if (!origin?.countryCode && !origin?.timezoneName) {
         skipped += 1;
         continue;
       }
@@ -164,7 +171,8 @@ Deno.serve(async (req) => {
           logged_in_at: new Date().toISOString(),
           ip_address: ipAddress,
           ip_address_norm: ipNorm,
-          country_code: country,
+          country_code: origin.countryCode,
+          timezone_name: origin.timezoneName,
           user_agent: null,
           source: "admin_backfill_country",
         });

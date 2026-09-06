@@ -25,12 +25,16 @@ DECLARE
 BEGIN
   v_on_board_mode := 'test';
 
-  WITH latest_country AS (
+  WITH latest_origin AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
-      upper(nullif(btrim(coalesce(e.country_code, '')), '')) AS country_code
+      upper(nullif(btrim(coalesce(e.country_code, '')), '')) AS country_code,
+      nullif(btrim(coalesce(e.timezone_name, '')), '') AS timezone_name
     FROM public.owner_login_origin_events e
-    WHERE nullif(btrim(coalesce(e.country_code, '')), '') IS NOT NULL
+    WHERE nullif(
+      btrim(coalesce(e.country_code, e.timezone_name, '')),
+      ''
+    ) IS NOT NULL
     ORDER BY e.owner_id, e.logged_in_at DESC, e.id DESC
   ),
   onboard AS (
@@ -38,13 +42,11 @@ BEGIN
       r.owner_id,
       public.owner_registry_resolve_tag(r.owner_id) AS owner_tag,
       r.confirmed_test_season_at AS joined_at,
-      coalesce(nullif(btrim(c.owner_timezone), ''), nullif(btrim(r.owner_timezone), '')) AS owner_timezone,
-      lc.country_code
+      lo.country_code,
+      lo.timezone_name AS origin_timezone
     FROM public.gpsl_owner_registry r
-    LEFT JOIN public."Clubs" c
-      ON c.owner_id = r.owner_id
-    LEFT JOIN latest_country lc
-      ON lc.owner_id = r.owner_id
+    LEFT JOIN latest_origin lo
+      ON lo.owner_id = r.owner_id
     WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
       AND r.confirmed_test_season = true
   ),
@@ -62,7 +64,7 @@ BEGIN
         'position', ranked.position,
         'owner_tag', ranked.owner_tag,
         'country_code', ranked.country_code,
-        'owner_timezone', ranked.owner_timezone
+        'origin_timezone', ranked.origin_timezone
       )
       ORDER BY ranked.position
     ), '[]'::jsonb),
@@ -71,12 +73,16 @@ BEGIN
   INTO v_on_board, v_on_board_total, v_self_on_board_pos
   FROM ranked;
 
-  WITH latest_country AS (
+  WITH latest_origin AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
-      upper(nullif(btrim(coalesce(e.country_code, '')), '')) AS country_code
+      upper(nullif(btrim(coalesce(e.country_code, '')), '')) AS country_code,
+      nullif(btrim(coalesce(e.timezone_name, '')), '') AS timezone_name
     FROM public.owner_login_origin_events e
-    WHERE nullif(btrim(coalesce(e.country_code, '')), '') IS NOT NULL
+    WHERE nullif(
+      btrim(coalesce(e.country_code, e.timezone_name, '')),
+      ''
+    ) IS NOT NULL
     ORDER BY e.owner_id, e.logged_in_at DESC, e.id DESC
   ),
   waiting AS (
@@ -85,15 +91,11 @@ BEGIN
       w.owner_tag,
       w.registry_status,
       w.list_position AS queue_position,
-      coalesce(nullif(btrim(c.owner_timezone), ''), nullif(btrim(r.owner_timezone), '')) AS owner_timezone,
-      lc.country_code
+      lo.country_code,
+      lo.timezone_name AS origin_timezone
     FROM public.waiting_list_ordered_rows(false) w
-    JOIN public.gpsl_owner_registry r
-      ON r.owner_id = w.owner_id
-    LEFT JOIN public."Clubs" c
-      ON c.owner_id = w.owner_id
-    LEFT JOIN latest_country lc
-      ON lc.owner_id = w.owner_id
+    LEFT JOIN latest_origin lo
+      ON lo.owner_id = w.owner_id
     WHERE NOT EXISTS (
       SELECT 1
       FROM public.gpsl_owner_registry r2
@@ -114,7 +116,7 @@ BEGIN
         'owner_tag', waiting_ranked.owner_tag,
         'status', waiting_ranked.registry_status,
         'country_code', waiting_ranked.country_code,
-        'owner_timezone', waiting_ranked.owner_timezone
+        'origin_timezone', waiting_ranked.origin_timezone
       )
       ORDER BY waiting_ranked.position
     ), '[]'::jsonb),
