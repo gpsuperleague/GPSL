@@ -1488,7 +1488,15 @@ async function loadArchivedOwnersSection() {
   const wrap = document.getElementById("wlArchivedTableWrap");
   if (!section || !wrap) return;
 
-  const { data, error } = await supabase.rpc("admin_list_archived_owners");
+  const [
+    { data, error },
+    { data: secData },
+    { data: clubsData },
+  ] = await Promise.all([
+    supabase.rpc("admin_list_archived_owners"),
+    supabase.rpc("admin_owner_login_security_map", { p_recent_days: 30 }),
+    supabase.from("Clubs").select("ShortName, Club"),
+  ]);
   if (error) {
     section.hidden = false;
     wrap.innerHTML = `<p class="note" style="color:#f88">❌ ${escapeWl(
@@ -1505,13 +1513,25 @@ async function loadArchivedOwnersSection() {
   }
 
   section.hidden = false;
-    let html =
+  const securityById = new Map();
+  const secOwners = Array.isArray(secData?.owners) ? secData.owners : [];
+  for (const row of secOwners) {
+    if (row?.owner_id) securityById.set(row.owner_id, row);
+  }
+  const clubNameByShort = new Map(
+    (clubsData || []).map((c) => [String(c.ShortName || ""), String(c.Club || c.ShortName || "")])
+  );
+
+  let html =
     `<table class="admin-table wl-archived-table">` +
     `<thead><tr>` +
     `<th>Tag</th><th>Email</th><th>Last club</th>` +
     `<th title="Confirmed for test season" style="text-align:center">Test</th>` +
     `<th title="Confirmed for live season" style="text-align:center">Live</th>` +
     `<th>Archived (UK)</th><th>Note</th>` +
+    `<th title="Latest login country (admin only).">Country</th>` +
+    `<th title="Latest captured login IP address (admin only).">IP</th>` +
+    `<th title="Recent shared-IP review signal (admin only).">Shared IP</th>` +
     `<th class="wl-col-actions">Actions</th>` +
     `</tr></thead><tbody>`;
 
@@ -1520,13 +1540,32 @@ async function loadArchivedOwnersSection() {
     const tag = row.owner_tag || "—";
     const testOn = !!row.confirmed_test_season;
     const liveOn = !!row.confirmed_live_season;
-    const filterText = [tag, email, row.last_club_short_name, row.status_note]
+    const sec = securityById.get(row.owner_id) || {};
+    const lastCountry = sec.last_country_code ? String(sec.last_country_code) : "";
+    const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
+    const sharedCount = Number(sec.shared_recent_ip_owner_count) || 0;
+    const sharedWith = Array.isArray(sec.shared_recent_with) ? sec.shared_recent_with : [];
+    const otherShared = sharedWith.filter(
+      (name) => String(name || "") && String(name || "") !== String(tag || "")
+    );
+    const sharedCell =
+      sharedCount > 1
+        ? `<span class="unplayed-warn" title="Shared recent IP with: ${escapeWl(otherShared.join(", ") || sharedWith.join(", "))}">Yes (${sharedCount})</span>`
+        : `<span class="muted">No</span>`;
+    const lastClubShort = String(row.last_club_short_name || "");
+    const lastClubName = clubNameByShort.get(lastClubShort) || lastClubShort;
+    const lastClubDisplay = lastClubShort
+      ? lastClubName && lastClubName !== lastClubShort
+        ? `${escapeWl(lastClubName)} <span class="muted">(${escapeWl(lastClubShort)})</span>`
+        : escapeWl(lastClubShort)
+      : "—";
+    const filterText = [tag, email, row.last_club_short_name, lastClubName, row.status_note, lastCountry, lastIp]
       .filter(Boolean)
       .join(" ");
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
       <td>${escapeWl(tag)}</td>
       <td>${escapeWl(email)}</td>
-      <td>${escapeWl(row.last_club_short_name || "—")}</td>
+      <td>${lastClubDisplay}</td>
       <td style="text-align:center">
         <input type="checkbox" class="wl-confirm-season" data-id="${escapeWl(row.owner_id)}" data-which="test"
           title="Confirmed test season" ${testOn ? "checked" : ""}>
@@ -1537,6 +1576,9 @@ async function loadArchivedOwnersSection() {
       </td>
       <td>${escapeWl(formatWlUkDateTime(row.status_changed_at))}</td>
       <td>${escapeWl(row.status_note || "—")}</td>
+      <td>${lastCountry ? escapeWl(lastCountry) : `<span class="muted">—</span>`}</td>
+      <td title="${lastIp ? escapeWl(lastIp) : ""}">${lastIp ? `<code>${escapeWl(lastIp)}</code>` : `<span class="muted">—</span>`}</td>
+      <td>${sharedCell}</td>
       <td class="wl-col-actions">
         <select class="wl-row-action"
           data-id="${escapeWl(row.owner_id)}"

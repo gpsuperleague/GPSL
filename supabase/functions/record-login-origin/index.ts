@@ -29,6 +29,37 @@ function normalizeIp(raw: string | null): string | null {
   return ip.toLowerCase();
 }
 
+function isProbablyPublicIp(ip: string | null): boolean {
+  const value = String(ip || "").trim().toLowerCase();
+  if (!value) return false;
+  if (value === "::1" || value === "127.0.0.1") return false;
+  if (value.startsWith("10.")) return false;
+  if (value.startsWith("192.168.")) return false;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(value)) return false;
+  if (value.startsWith("fc") || value.startsWith("fd")) return false;
+  return true;
+}
+
+async function lookupCountryFromIp(ip: string | null): Promise<string | null> {
+  if (!isProbablyPublicIp(ip)) return null;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(`https://ipwho.is/${encodeURIComponent(String(ip))}`, {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { success?: boolean; country_code?: string };
+    if (data?.success === false) return null;
+    const code = String(data?.country_code || "").trim().toUpperCase();
+    return code || null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { status: 200, headers: corsHeaders });
@@ -64,7 +95,7 @@ Deno.serve(async (req) => {
       firstHeaderIp(req.headers.get("cf-connecting-ip")) ||
       firstHeaderIp(req.headers.get("x-real-ip")) ||
       firstHeaderIp(req.headers.get("x-forwarded-for"));
-    const country =
+    const headerCountry =
       String(
         req.headers.get("cf-ipcountry") ||
           req.headers.get("x-vercel-ip-country") ||
@@ -72,12 +103,23 @@ Deno.serve(async (req) => {
       )
         .trim()
         .toUpperCase() || null;
+    const country = headerCountry || (await lookupCountryFromIp(ip));
     const userAgent =
       String(
         req.headers.get("x-forwarded-user-agent") ||
           req.headers.get("user-agent") ||
           ""
       ).trim() || null;
+
+    console.log(
+      JSON.stringify({
+        event: "record-login-origin",
+        owner_id: user.id,
+        ip_captured: !!ip,
+        header_country: headerCountry,
+        final_country: country,
+      })
+    );
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { error: insertErr } = await adminClient
