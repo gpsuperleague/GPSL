@@ -65,6 +65,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("wlRefreshBtn")?.addEventListener("click", loadWaitingListAdmin);
+  document.getElementById("wlRefreshCountryBtn")?.addEventListener("click", refreshOwnerCountries);
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
   document.getElementById("wlBoardFilter")?.addEventListener("input", (e) => {
     filterSeasonOwnerBoard(e.target.value);
@@ -793,6 +794,28 @@ async function invokeEdgeFunction(name, body) {
     return { data, error: new Error(String(data.error)) };
   }
   return { data, error: null };
+}
+
+async function refreshOwnerCountries() {
+  const btn = document.getElementById("wlRefreshCountryBtn");
+  if (btn) btn.disabled = true;
+  setWlActionStatus("Refreshing country lookups…");
+  const { data, error } = await invokeEdgeFunction("backfill-owner-countries", {
+    force: false,
+  });
+  if (btn) btn.disabled = false;
+  if (error) {
+    const hint = /not found|404|FunctionsFetchError/i.test(error.message || "")
+      ? " — deploy supabase/functions/backfill-owner-countries"
+      : "";
+    setWlActionStatus(`❌ ${error.message}${hint}`, false);
+    return;
+  }
+  await loadWaitingListAdmin();
+  setWlActionStatus(
+    `✅ Country refresh complete — looked up ${Number(data?.looked_up) || 0}, updated ${Number(data?.updated) || 0}, skipped ${Number(data?.skipped) || 0}.`,
+    true
+  );
 }
 
 async function registerForClubAuction() {
