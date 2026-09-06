@@ -22,6 +22,49 @@ function syncAuctionCountdownCard() {
   card.hidden = !container || container.style.display === "none";
 }
 
+function formatCountryName(code) {
+  const cc = String(code || "").trim().toUpperCase();
+  if (!cc) return "";
+  try {
+    const names = new Intl.DisplayNames(["en"], { type: "region" });
+    return names.of(cc) || cc;
+  } catch {
+    return cc;
+  }
+}
+
+function timezoneOffsetMinutes(timeZone) {
+  const tz = String(timeZone || "").trim();
+  if (!tz) return null;
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      timeZoneName: "shortOffset",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).formatToParts(new Date());
+    const label = parts.find((p) => p.type === "timeZoneName")?.value || "GMT";
+    const m = label.match(/GMT(?:(\+|-)(\d{1,2})(?::?(\d{2}))?)?$/i);
+    if (!m) return 0;
+    if (!m[1]) return 0;
+    const sign = m[1] === "-" ? -1 : 1;
+    return sign * (Number(m[2] || 0) * 60 + Number(m[3] || 0));
+  } catch {
+    return null;
+  }
+}
+
+function formatUkOffsetDelta(timeZone) {
+  const target = timezoneOffsetMinutes(timeZone);
+  const uk = timezoneOffsetMinutes("Europe/London");
+  if (target == null || uk == null) return "—";
+  const delta = target - uk;
+  if (delta === 0) return "Same";
+  const hours = Math.abs(delta) / 60;
+  const label = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(/\.0$/, "");
+  return `${delta > 0 ? "+" : "-"}${label}h`;
+}
+
 function renderTagRows(tbody, rows, highlightPosition) {
   tbody.innerHTML = "";
   for (const row of rows) {
@@ -33,9 +76,14 @@ function renderTagRows(tbody, rows, highlightPosition) {
       row.status === "on_absence"
         ? ' <span class="wl-status-absence">(absence)</span>'
         : "";
+    const countryCode = String(row.country_code || "").trim().toUpperCase();
+    const countryName = formatCountryName(countryCode);
+    const tzDelta = formatUkOffsetDelta(row.owner_timezone || "");
     tr.innerHTML =
       `<td>${row.position}</td>` +
-      `<td>${escapeHtml(row.owner_tag || "—")}${statusExtra}</td>`;
+      `<td>${escapeHtml(row.owner_tag || "—")}${statusExtra}</td>` +
+      `<td title="${countryCode ? escapeHtml(countryCode) : ""}">${countryName ? escapeHtml(countryName) : `<span style="color:#666">—</span>`}</td>` +
+      `<td>${escapeHtml(tzDelta)}</td>`;
     tbody.appendChild(tr);
   }
 }
@@ -81,7 +129,7 @@ export async function initWaitingListPage() {
     if (onBoardBody) {
       if (!onBoard.length) {
         onBoardBody.innerHTML =
-          '<tr><td colspan="2" style="color:#666">No one confirmed yet — admin ticks Test on the waiting list.</td></tr>';
+          '<tr><td colspan="4" style="color:#666">No one confirmed yet — admin ticks Test on the waiting list.</td></tr>';
       } else {
         renderTagRows(onBoardBody, onBoard, highlightOnBoard);
       }
@@ -89,7 +137,7 @@ export async function initWaitingListPage() {
 
     if (!rows.length) {
       body.innerHTML =
-        '<tr><td colspan="2" style="color:#666">No one on the waiting list.</td></tr>';
+        '<tr><td colspan="4" style="color:#666">No one on the waiting list.</td></tr>';
     } else {
       renderTagRows(body, rows, highlightWaiting);
     }
@@ -116,9 +164,9 @@ export async function initWaitingListPage() {
       err?.message && /on_board|confirmed_.*_at/i.test(String(err.message))
         ? "Could not load waiting list — run gpsl_waiting_list_on_board_public.sql in Supabase."
         : "Could not load waiting list.";
-    body.innerHTML = `<tr><td colspan="2" style="color:#c66">${msg}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="4" style="color:#c66">${msg}</td></tr>`;
     if (onBoardBody) {
-      onBoardBody.innerHTML = `<tr><td colspan="2" style="color:#c66">${msg}</td></tr>`;
+      onBoardBody.innerHTML = `<tr><td colspan="4" style="color:#c66">${msg}</td></tr>`;
     }
   }
 }
