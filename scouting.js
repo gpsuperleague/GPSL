@@ -1280,6 +1280,30 @@ function plannerRowsToSlots(rows) {
     });
 }
 
+function normalizePlannerSlots(slots) {
+  return (slots || [])
+    .map((s) => ({
+      player_id: String(s.player_id || "").trim(),
+      slot_kind: String(s.slot_kind || "").trim().toLowerCase(),
+      pitch_slot: s.pitch_slot ? String(s.pitch_slot).trim() : null,
+      sort_order: Number(s.sort_order) || 0,
+    }))
+    .filter((s) => s.player_id && (s.slot_kind === "pitch" || s.slot_kind === "bench"))
+    .sort((a, b) => {
+      const kind = String(a.slot_kind).localeCompare(String(b.slot_kind));
+      if (kind !== 0) return kind;
+      const slot = String(a.pitch_slot || "").localeCompare(String(b.pitch_slot || ""));
+      if (slot !== 0) return slot;
+      const order = a.sort_order - b.sort_order;
+      if (order !== 0) return order;
+      return a.player_id.localeCompare(b.player_id);
+    });
+}
+
+function plannerSlotsEqual(a, b) {
+  return JSON.stringify(normalizePlannerSlots(a)) === JSON.stringify(normalizePlannerSlots(b));
+}
+
 async function loadBoardViewState(boardNo) {
   const key = String(boardNo);
   const cached = boardViewStateCache.get(key);
@@ -1636,15 +1660,24 @@ async function initPlanner() {
     },
     onSave: async (slots, pitchLayoutFromPanel) => {
       try {
+        const nextLayout = pitchLayoutWithPlannerMeta(pitchLayoutFromPanel, {
+          oooId: plannerOooPlayerId,
+          planNation: plannerPlanNation,
+        });
         await saveScoutingPlanner(
           supabase,
           slots,
-          pitchLayoutWithPlannerMeta(pitchLayoutFromPanel, {
-            oooId: plannerOooPlayerId,
-            planNation: plannerPlanNation,
-          }),
+          nextLayout,
           activeBoardNo
         );
+        const persisted = await loadScoutingPlannerState(
+          supabase,
+          clubShort,
+          activeBoardNo
+        );
+        if (!plannerSlotsEqual(slots, plannerRowsToSlots(persisted.rows))) {
+          await saveScoutingPlanner(supabase, slots, nextLayout, activeBoardNo);
+        }
         try {
           playerBoardMap = await loadScoutingPlannerPlayerBoards(supabase);
         } catch {
