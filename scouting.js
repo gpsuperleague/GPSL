@@ -1303,7 +1303,6 @@ async function loadBoardViewState(boardNo) {
 
 async function saveBoardViewState(boardNo, patch = {}) {
   const state = await loadScoutingPlannerState(supabase, clubShort, Number(boardNo));
-  const slots = plannerRowsToSlots(state.rows);
   const boardPlayerSet = new Set(
     (state.rows || []).map((r) => String(r.player_id || "").trim()).filter(Boolean)
   );
@@ -1322,15 +1321,24 @@ async function saveBoardViewState(boardNo, patch = {}) {
     hydrated: true,
   };
 
-  await saveScoutingPlanner(
-    supabase,
-    slots,
-    plannerLayoutWithListMeta(state.pitchLayout, {
+  const { error } = await supabase.rpc("scouting_set_board_meta", {
+    p_board_no: Number(boardNo),
+    p_pitch_layout: plannerLayoutWithListMeta(state.pitchLayout, {
       activeIds: next.activeIds,
       planNation: next.planNation,
     }),
-    Number(boardNo)
-  );
+  });
+  if (error) {
+    if (
+      error.code === "PGRST202" ||
+      String(error.message || "").includes("scouting_set_board_meta")
+    ) {
+      throw new Error(
+        "Run supabase/sql/patches/owner_scouting_board_meta_20260907.sql in the Supabase SQL Editor, then reload."
+      );
+    }
+    throw error;
+  }
 
   boardViewStateCache.set(String(boardNo), next);
   return next;
