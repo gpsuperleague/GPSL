@@ -21,7 +21,7 @@ import {
   wireMatchSimButtons,
   runMatchSimulation,
 } from "./match_sim_ui.js?v=20260904-intl-score";
-import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20260821-remove-fix";
+import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20260907-full-swap-fix";
 
 /** Result entry: from agreed kickoff until +48h (soft guidance). */
 const RESULT_WINDOW_HOURS_AFTER = 48;

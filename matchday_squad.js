@@ -146,19 +146,20 @@ function placePlayer(state, target, player) {
       target.area === "pool");
   if (sameSlot) return null;
 
-  if (
-    !isInSquad(state, id) &&
-    target.area !== "pool" &&
-    squadCount(state) >= maxSquad
-  ) {
-    return { error: `Squad is full (${maxSquad} players).` };
-  }
-
   let displaced = null;
   if (target.area === "pitch") {
     displaced = state.pitch.get(target.slotId) || null;
   } else if (target.area === "bench") {
     displaced = state.bench[target.index] || null;
+  }
+
+  if (
+    !isInSquad(state, id) &&
+    target.area !== "pool" &&
+    !displaced &&
+    squadCount(state) >= maxSquad
+  ) {
+    return { error: `Squad is full (${maxSquad} players).` };
   }
 
   removePlayerFromState(state, id);
