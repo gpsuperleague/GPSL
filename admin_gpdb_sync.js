@@ -16,6 +16,7 @@ const CARD_CACHE_FUNCTION = "pesdb-card-cache";
 const SCRAPE_PACE = "chunked";
 const PROGRESS_KEY = "gpdb_pesdb_scrape_progress";
 const LAST_APPLY_KEY = "gpdb_pesdb_last_apply";
+const CARD_CACHE_PROGRESS_KEY = "gpdb_pesdb_card_cache_progress";
 let scrapeAbort = false;
 let scrapeRunning = false;
 let cardCacheAbort = false;
@@ -161,6 +162,49 @@ function clearProgress() {
   localStorage.removeItem(PROGRESS_KEY);
 }
 
+function readCardCacheProgress() {
+  try {
+    return JSON.parse(localStorage.getItem(CARD_CACHE_PROGRESS_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function saveCardCacheProgress(progress) {
+  localStorage.setItem(
+    CARD_CACHE_PROGRESS_KEY,
+    JSON.stringify({
+      nextIndex: 0,
+      total: 0,
+      cachedNow: 0,
+      alreadyCached: 0,
+      failed: 0,
+      savedAt: new Date().toISOString(),
+      ...progress,
+    })
+  );
+}
+
+function clearCardCacheProgress() {
+  localStorage.removeItem(CARD_CACHE_PROGRESS_KEY);
+}
+
+function refreshCardCacheResumeLabel(total = null) {
+  const el = document.getElementById("cardCacheResumeLabel");
+  if (!el) return;
+  const prog = readCardCacheProgress();
+  if (!prog || Number(prog.nextIndex || 0) <= 0) {
+    el.textContent = "No saved card-cache progress.";
+    return;
+  }
+  const done = Number(prog.nextIndex || 0);
+  const savedTotal = Number(total || prog.total || 0);
+  const totalText = savedTotal > 0 ? `${Math.min(done, savedTotal)}/${savedTotal}` : `${done}`;
+  const savedAt = prog.savedAt ? formatWhen(prog.savedAt) : "unknown time";
+  el.textContent =
+    `Saved progress: ${totalText} players checked · new ${Number(prog.cachedNow) || 0} · already cached ${Number(prog.alreadyCached) || 0} · failed ${Number(prog.failed) || 0} · saved ${savedAt}.`;
+}
+
 async function fetchAllPlayerKonamiIds() {
   const out = [];
   const seen = new Set();
@@ -231,13 +275,29 @@ async function warmPlayerCardCache() {
     }
 
     const batchSize = 25;
-    let done = 0;
+    const prog = readCardCacheProgress();
+    let startIndex = 0;
     let cachedNow = 0;
     let alreadyCached = 0;
     let failed = 0;
+    if (prog && Number(prog.nextIndex || 0) > 0 && Number(prog.nextIndex || 0) < ids.length) {
+      startIndex = Number(prog.nextIndex || 0);
+      cachedNow = Number(prog.cachedNow) || 0;
+      alreadyCached = Number(prog.alreadyCached) || 0;
+      failed = Number(prog.failed) || 0;
+      setStatus(
+        "cardCacheStatus",
+        `Resuming card cache warm from ${startIndex + 1} of ${ids.length}…`,
+        true
+      );
+    } else if (prog && Number(prog.nextIndex || 0) >= ids.length) {
+      clearCardCacheProgress();
+    }
+
+    let done = startIndex;
     let failStreak = 0;
 
-    for (let i = 0; i < ids.length; i += batchSize) {
+    for (let i = startIndex; i < ids.length; i += batchSize) {
       if (cardCacheAbort) break;
       const batch = ids.slice(i, i + batchSize);
       setStatus(
@@ -252,6 +312,14 @@ async function warmPlayerCardCache() {
       alreadyCached += Number(result.already_cached) || 0;
       const batchFailed = Number(result.failed) || 0;
       failed += batchFailed;
+      saveCardCacheProgress({
+        nextIndex: Math.min(i + batch.length, ids.length),
+        total: ids.length,
+        cachedNow,
+        alreadyCached,
+        failed,
+      });
+      refreshCardCacheResumeLabel(ids.length);
       failStreak = batchFailed > 0 ? failStreak + 1 : 0;
 
       setStatus(
@@ -290,6 +358,8 @@ async function warmPlayerCardCache() {
         false
       );
     } else {
+      clearCardCacheProgress();
+      refreshCardCacheResumeLabel(ids.length);
       setStatus(
         "cardCacheStatus",
         `Card cache warm complete. ${done}/${ids.length} players checked · new ${cachedNow} · already cached ${alreadyCached} · failed ${failed}.`,
@@ -309,6 +379,15 @@ function stopPlayerCardCache() {
   if (!cardCacheRunning) return;
   cardCacheAbort = true;
   setStatus("cardCacheStatus", "Stopping after this batch…", true);
+}
+
+function resetPlayerCardCacheProgress() {
+  if (!window.confirm("Clear saved player-card warm progress and restart from the beginning next time?")) {
+    return;
+  }
+  clearCardCacheProgress();
+  refreshCardCacheResumeLabel();
+  setStatus("cardCacheStatus", "Card-cache warm progress cleared.", true);
 }
 
 function formatWhen(iso) {
@@ -2627,6 +2706,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await refreshProgressPanel(null);
   await refreshPlaystyleCheckpointLabel();
   await maybeAutoResumeScrape();
+  refreshCardCacheResumeLabel();
 
   document.getElementById("scrapeEndPage")?.addEventListener("input", (e) => {
     e.target.dataset.userEdited = "1";
@@ -2646,6 +2726,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("scrapeStopBtn")?.addEventListener("click", stopPesdbScrape);
   document.getElementById("cardCacheWarmBtn")?.addEventListener("click", warmPlayerCardCache);
   document.getElementById("cardCacheStopBtn")?.addEventListener("click", stopPlayerCardCache);
+  document.getElementById("cardCacheResetBtn")?.addEventListener("click", resetPlayerCardCacheProgress);
   document.getElementById("playstyleRefreshBtn")?.addEventListener("click", runPlaystyleRefresh);
   document.getElementById("playstyleStopBtn")?.addEventListener("click", stopPlaystyleRefresh);
   document.getElementById("playstyleClearCheckpointBtn")?.addEventListener("click", clearPlaystyleCheckpointUi);

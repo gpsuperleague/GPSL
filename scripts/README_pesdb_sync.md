@@ -114,6 +114,8 @@ includes **Pre-warm all player cards**.
 - asks the `pesdb-card-cache` function to fill missing cards
 - cools down automatically after repeated failures
 - can be stopped after the current batch
+- resumes from the last completed batch on the next run
+- includes a reset button if you want to restart from zero
 
 If PESDB rate-limits mid-batch, wait 30–60 minutes and click **Start scrape** again (with **Resume** checked).
 
