@@ -407,10 +407,18 @@ function scoutingPositionGroupName(position) {
   return "Other";
 }
 
+function scoutingGroupSortIndex(groupName) {
+  const names = [...Object.keys(SCOUTING_POSITION_GROUPS), "Other"];
+  const idx = names.indexOf(groupName);
+  return idx >= 0 ? idx : 999;
+}
+
 function sortScoutingRowsByPosition(rows, playerMap) {
   return [...rows].sort((a, b) => {
     const pa = playerMap.get(String(a.player_id));
     const pb = playerMap.get(String(b.player_id));
+    const orderDiff = (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
+    if (orderDiff !== 0) return orderDiff;
     const pos =
       scoutingPositionSortIndex(pa?.Position) -
       scoutingPositionSortIndex(pb?.Position);
@@ -492,7 +500,7 @@ function renderTierByPositionGroups(tier, tierRows, playerMap, draftUiByPlayer) 
           <h4 class="scout-pos-heading">${groupName} (${rows.length})</h4>
           ${
             rows.length
-              ? renderTierTable(tier, rows, playerMap, draftUiByPlayer)
+              ? renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer)
               : `<p class="scout-empty scout-pos-empty">None in this tier</p>`
           }
         </div>`;
@@ -780,7 +788,7 @@ function canUseDraftBidding() {
   return Boolean(clubShort);
 }
 
-function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
+function renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer) {
   if (!rows.length) {
     return `<p class="scout-empty">No players — star targets in GPDB (☆).</p>`;
   }
@@ -803,12 +811,13 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
           ${showDraft ? "<th>Draft</th><th>Leading</th><th>Your bid</th><th>Manage bid</th>" : ""}
           <th title="Count toward Active Targets budget total">Active Targets</th>
           <th>Tier</th>
+          <th>Move</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         ${rows
-          .map((row) => {
+          .map((row, idx) => {
             const p = playerMap.get(String(row.player_id));
             const pid = String(row.player_id);
             const name = p?.Name || `Player ${pid}`;
@@ -878,6 +887,10 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
                   )
                   .join("")}
               </select>
+            </td>
+            <td>
+              <button type="button" class="scout-move-btn" data-player-id="${pid}" data-tier="${tier}" data-group="${escapeHtml(groupName)}" data-dir="up" ${idx === 0 ? "disabled" : ""} title="Move up">▲</button>
+              <button type="button" class="scout-move-btn" data-player-id="${pid}" data-tier="${tier}" data-group="${escapeHtml(groupName)}" data-dir="down" ${idx === rows.length - 1 ? "disabled" : ""} title="Move down">▼</button>
             </td>
             <td>
               <button type="button" class="scout-remove" data-player-id="${pid}" title="Remove from scouting">✕</button>
@@ -1066,6 +1079,29 @@ function renderScoutingListsFromCache() {
   wireScoutingListActions(wrap);
 }
 
+async function saveTierGroupOrder(tier, groupName, orderedIds) {
+  const updates = orderedIds.map((pid, idx) =>
+    supabase
+      .from("owner_scouting_targets")
+      .update({ sort_order: (scoutingGroupSortIndex(groupName) + 1) * 1000 + idx })
+      .eq("player_id", String(pid))
+      .eq("tier", Number(tier))
+  );
+  const results = await Promise.all(updates);
+  const err = results.find((r) => r.error)?.error;
+  if (err) throw err;
+
+  const rank = new Map(orderedIds.map((pid, idx) => [String(pid), idx]));
+  scoutingRows.forEach((row) => {
+    if (Number(row.tier) !== Number(tier)) return;
+    const pid = String(row.player_id);
+    const player = playerMapCache.get(pid);
+    if (scoutingPositionGroupName(player?.Position) !== groupName) return;
+    if (!rank.has(pid)) return;
+    row.sort_order = (scoutingGroupSortIndex(groupName) + 1) * 1000 + rank.get(pid);
+  });
+}
+
 function wireScoutingListActions(wrap) {
   wireDraftActions(wrap);
 
@@ -1112,6 +1148,40 @@ function wireScoutingListActions(wrap) {
         }
       } catch (err) {
         alert(err?.message || "Could not change tier.");
+      }
+    });
+  });
+
+  wrap.querySelectorAll(".scout-move-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const pid = String(btn.dataset.playerId || "");
+      const tier = Number(btn.dataset.tier || 0);
+      const groupName = String(btn.dataset.group || "");
+      const dir = String(btn.dataset.dir || "");
+      if (!pid || !tier || !groupName || !dir) return;
+
+      const groupRows = sortScoutingRowsByPosition(
+        rowsForListFilter(scoutingRows).filter((row) => {
+          if (Number(row.tier) !== tier) return false;
+          const player = playerMapCache.get(String(row.player_id));
+          return scoutingPositionGroupName(player?.Position) === groupName;
+        }),
+        playerMapCache
+      );
+      const ids = groupRows.map((row) => String(row.player_id));
+      const index = ids.indexOf(pid);
+      const swap = dir === "up" ? index - 1 : index + 1;
+      if (index < 0 || swap < 0 || swap >= ids.length) return;
+
+      [ids[index], ids[swap]] = [ids[swap], ids[index]];
+      btn.disabled = true;
+      try {
+        await saveTierGroupOrder(tier, groupName, ids);
+        renderScoutingListsFromCache();
+      } catch (err) {
+        alert(err?.message || "Could not move target.");
+      } finally {
+        btn.disabled = false;
       }
     });
   });
