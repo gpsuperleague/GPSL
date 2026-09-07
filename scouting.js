@@ -1646,6 +1646,7 @@ async function initPlanner() {
         if (listBoardFilter !== "all") {
           renderScoutingListsFromCache();
         }
+        await initPlanner();
         const label = boardLabel(activeBoardNo);
         setPlannerStatus(
           multiBoardEnabled

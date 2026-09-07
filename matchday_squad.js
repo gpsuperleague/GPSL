@@ -1087,7 +1087,7 @@ export function initMatchdaySquadPanel({
       if (!id) return;
       const player = removePlayerFromState(state, id);
       if (!player) return;
-      state.pool.push(clonePlayer(player));
+      state.pool.unshift(clonePlayer(player));
       rerender();
     },
     true
@@ -1271,6 +1271,9 @@ export function initMatchdaySquadPanel({
         payload,
         buildPitchLayoutPayload(slotPositions, slotLabels, currentFormationId)
       );
+      state = buildStateFromSaved(allPlayers, payload, benchLimit);
+      state.maxBench = benchLimit;
+      state.maxSquad = effectiveSquadLimit;
       statusText.textContent = `Saved ${payload.length} players.`;
       setEditPositionsMode(false);
     } catch (err) {
