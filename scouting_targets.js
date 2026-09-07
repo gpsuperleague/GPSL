@@ -9,6 +9,9 @@ const ACTIVE_TARGET_SQL_HINT =
 const MULTI_BOARD_SQL_HINT =
   "Run supabase/sql/patches/owner_scouting_multi_boards_20260813.sql in the Supabase SQL Editor, then reload.";
 
+const BULK_ACTIVE_TARGET_SQL_HINT =
+  "Run supabase/sql/patches/owner_scouting_active_targets_bulk_20260907.sql in the Supabase SQL Editor, then reload.";
+
 export const SCOUTING_BOARD_COUNT = 4;
 const BOARD_STORAGE_KEY = "gpsl_scouting_board_no";
 
@@ -178,6 +181,34 @@ export async function setScoutingActiveTarget(supabase, playerId, active) {
     throw error;
   }
 
+  return data;
+}
+
+export async function setScoutingActiveTargetsBulk(supabase, playerIds) {
+  if (scoutingSchemaMissing) {
+    throw new Error(SQL_SETUP_HINT);
+  }
+
+  const ids = [...new Set((playerIds || []).map((x) => String(x || "").trim()).filter(Boolean))];
+  const { data, error } = await supabase.rpc("scouting_set_active_targets_bulk", {
+    p_player_ids: ids,
+  });
+
+  if (error) {
+    if (
+      String(error.message || "").includes("scouting_set_active_targets_bulk") ||
+      error.code === "PGRST202"
+    ) {
+      throw new Error(BULK_ACTIVE_TARGET_SQL_HINT);
+    }
+    if (isScoutingSchemaMissingError(error)) {
+      scoutingSchemaMissing = true;
+      throw new Error(SQL_SETUP_HINT);
+    }
+    throw error;
+  }
+
+  scoutingSchemaMissing = false;
   return data;
 }
 

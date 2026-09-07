@@ -14,6 +14,7 @@ import {
   loadScoutingTargets,
   setScoutingTargetTier,
   setScoutingActiveTarget,
+  setScoutingActiveTargetsBulk,
   toggleScoutingTarget,
   loadScoutingPlannerState,
   saveScoutingPlanner,
@@ -54,8 +55,9 @@ import {
 function scoutingPlayerBadgesHtml(player) {
   if (!player) return "";
   const minStar = Number(squadDesignationsState?.star_min_rating ?? 79);
+  const badgeNation = effectiveListNation();
   const bits = [];
-  if (isHomeGrownPlayer(player, clubNation)) {
+  if (isHomeGrownPlayer(player, badgeNation)) {
     bits.push(
       `<span class="scout-badge scout-badge-hg" title="Home-grown (Nation matches your club)">HG</span>`
     );
@@ -109,6 +111,9 @@ let multiBoardEnabled = true;
 let ownedSquadPlayers = null;
 /** @type {object|null} */
 let squadDesignationsState = null;
+const SCOUTING_ALL_VIEW_ACTIVE_KEY = "gpsl_scouting_active_targets_all";
+/** @type {Map<string, { activeIds: string[], planNation: string|null, hydrated: boolean }>} */
+let boardViewStateCache = new Map();
 
 function activeTargetBudgetForPlayer(pid) {
   const p = playerMapCache.get(String(pid));
@@ -153,6 +158,51 @@ function updateActiveTargetsHeader() {
     metaEl.textContent = count > 0 ? `(${count})` : "";
   }
   updateRegistrationStrip();
+}
+
+function currentActiveTargetIds() {
+  return scoutingRows
+    .filter((row) => row.is_active_target)
+    .map((row) => String(row.player_id));
+}
+
+function effectiveListNation() {
+  if (listBoardFilter !== "all") {
+    const state = boardViewStateCache.get(String(listBoardFilter));
+    if (state?.planNation) return state.planNation;
+  }
+  return clubNation || squadDesignationsState?.club_nation || null;
+}
+
+function readAllViewActiveIds() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SCOUTING_ALL_VIEW_ACTIVE_KEY) || "[]");
+    return Array.isArray(raw) ? raw.map((x) => String(x || "").trim()).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAllViewActiveIds(ids) {
+  try {
+    localStorage.setItem(
+      SCOUTING_ALL_VIEW_ACTIVE_KEY,
+      JSON.stringify([...new Set((ids || []).map((x) => String(x || "").trim()).filter(Boolean))])
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+function plannerLayoutWithListMeta(layout, { activeIds = null, planNation } = {}) {
+  const next = layout && typeof layout === "object" && !Array.isArray(layout)
+    ? { ...layout }
+    : {};
+  if (activeIds) next.scouting_active_target_ids = [...new Set(activeIds.map((x) => String(x).trim()).filter(Boolean))];
+  else delete next.scouting_active_target_ids;
+  if (planNation) next.scouting_plan_nation = String(planNation).trim();
+  else delete next.scouting_plan_nation;
+  return next;
 }
 
 function countStarEligible(players, minRating, oooId) {
@@ -232,7 +282,7 @@ function updateRegistrationStrip() {
     return;
   }
 
-  const nation = clubNation;
+  const nation = effectiveListNation();
   const owned = analyseSquadComposition(ownedSquadPlayers, nation);
   const adds = activeTargetPlayersNotOwned();
   const addT = tallyAdds(adds, nation);
@@ -796,10 +846,15 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
             <td>${renderDraftManageCell(draftUi)}</td>`
               : "";
             const isActive = row.is_active_target === true;
+            const hasYourBid = !!draftUi.yourBidText && draftUi.yourBidText !== "—";
             const activeTitle = activeTargetBudgetTitle(pid);
+            const rowClass = [
+              isActive ? "scout-active-row" : "",
+              hasYourBid ? "scout-bid-owned-row" : "",
+            ].filter(Boolean).join(" ");
 
             return `
-          <tr data-player-id="${pid}" class="${isActive ? "scout-active-row" : ""}">
+          <tr data-player-id="${pid}" class="${rowClass}">
             <td>${playerThumbLinkHtml(pid, { className: "scout-thumb", alt: name })}</td>
             <td class="name">${playerNameLinkHtml(pid, name)}${scoutingPlayerBadgesHtml(p)}</td>
             <td>${p?.Nation || "—"}</td>
@@ -931,6 +986,8 @@ async function renderScoutingLists() {
       ownedSquadPlayers = [];
       squadDesignationsState = null;
     }
+    await loadPlannerNationOptions();
+    renderListNationPicker();
     updateActiveTargetsHeader();
     await refreshAdvisoryBudgetBadge();
     return;
@@ -960,8 +1017,10 @@ async function renderScoutingLists() {
     ownedSquadPlayers = [];
     squadDesignationsState = null;
   }
+  await loadPlannerNationOptions();
 
   paintScoutingLists(wrap, playerMap, draftUiByPlayer);
+  renderListNationPicker();
   updateActiveTargetsHeader();
   await refreshAdvisoryBudgetBadge();
   wireScoutingListActions(wrap);
@@ -1004,6 +1063,7 @@ function renderScoutingListsFromCache() {
   const wrap = document.getElementById("scoutingListsWrap");
   if (!wrap || !scoutingRows.length) return;
   paintScoutingLists(wrap, playerMapCache, draftUiByPlayerCache);
+  renderListNationPicker();
   wireScoutingListActions(wrap);
 }
 
@@ -1022,6 +1082,13 @@ function wireScoutingListActions(wrap) {
       updateActiveTargetsHeader();
       try {
         await setScoutingActiveTarget(supabase, pid, active);
+        if (listBoardFilter === "all") {
+          writeAllViewActiveIds(currentActiveTargetIds());
+        } else {
+          await saveBoardViewState(Number(listBoardFilter), {
+            activeIds: currentActiveTargetIds(),
+          });
+        }
       } catch (err) {
         if (row) row.is_active_target = !active;
         cb.checked = !active;
@@ -1144,6 +1211,112 @@ function plannerRowsToSlots(rows) {
     });
 }
 
+async function loadBoardViewState(boardNo) {
+  const key = String(boardNo);
+  const cached = boardViewStateCache.get(key);
+  if (cached?.hydrated) return cached;
+
+  const state = await loadScoutingPlannerState(supabase, clubShort, Number(boardNo));
+  const boardPlayerIds = [...new Set((state.rows || []).map((r) => String(r.player_id || "").trim()).filter(Boolean))];
+  const savedActiveIds = Array.isArray(state.pitchLayout?.scouting_active_target_ids)
+    ? state.pitchLayout.scouting_active_target_ids.map((x) => String(x || "").trim()).filter(Boolean)
+    : null;
+  const next = {
+    activeIds: savedActiveIds && savedActiveIds.length ? savedActiveIds : boardPlayerIds,
+    planNation: extractPlannerNationFromLayout(state.pitchLayout) || clubNation || null,
+    hydrated: true,
+  };
+  boardViewStateCache.set(key, next);
+  return next;
+}
+
+async function saveBoardViewState(boardNo, patch = {}) {
+  const state = await loadScoutingPlannerState(supabase, clubShort, Number(boardNo));
+  const slots = plannerRowsToSlots(state.rows);
+  const prev = boardViewStateCache.get(String(boardNo)) || {
+    activeIds: [],
+    planNation: extractPlannerNationFromLayout(state.pitchLayout) || null,
+    hydrated: true,
+  };
+  const next = {
+    activeIds: Array.isArray(patch.activeIds) ? patch.activeIds : prev.activeIds,
+    planNation: Object.prototype.hasOwnProperty.call(patch, "planNation")
+      ? (patch.planNation || null)
+      : prev.planNation,
+    hydrated: true,
+  };
+
+  await saveScoutingPlanner(
+    supabase,
+    slots,
+    plannerLayoutWithListMeta(state.pitchLayout, {
+      activeIds: next.activeIds,
+      planNation: next.planNation,
+    }),
+    Number(boardNo)
+  );
+
+  boardViewStateCache.set(String(boardNo), next);
+  return next;
+}
+
+async function applyActiveTargetSet(activeIds) {
+  const wanted = new Set((activeIds || []).map((x) => String(x || "").trim()).filter(Boolean));
+  scoutingRows.forEach((row) => {
+    row.is_active_target = wanted.has(String(row.player_id));
+  });
+  renderScoutingListsFromCache();
+  updateActiveTargetsHeader();
+  await setScoutingActiveTargetsBulk(supabase, [...wanted]);
+}
+
+function renderListNationPicker() {
+  const label = document.getElementById("scoutListNationLabel");
+  const sel = document.getElementById("scoutListNationSelect");
+  if (!label || !sel) return;
+
+  if (listBoardFilter === "all") {
+    label.hidden = true;
+    sel.hidden = true;
+    return;
+  }
+
+  const state = boardViewStateCache.get(String(listBoardFilter)) || null;
+  const nation = state?.planNation || "";
+  const nationOptions = [...plannerNationOptions];
+  if (nation && !nationOptions.includes(nation)) nationOptions.unshift(nation);
+  sel.innerHTML =
+    `<option value="">— Select nation —</option>` +
+    nationOptions
+      .map((n) => `<option value="${escapeHtml(n)}"${n === nation ? " selected" : ""}>${escapeHtml(n)}</option>`)
+      .join("");
+  label.hidden = false;
+  sel.hidden = false;
+}
+
+async function syncListFilterState(force = false) {
+  if (!scoutingRows.length) {
+    renderListNationPicker();
+    return;
+  }
+
+  if (listBoardFilter === "all") {
+    if (force) {
+      const saved = readAllViewActiveIds();
+      const ids = saved.length ? saved : currentActiveTargetIds();
+      await applyActiveTargetSet(ids);
+    }
+    renderListNationPicker();
+    return;
+  }
+
+  const state = await loadBoardViewState(Number(listBoardFilter));
+  renderListNationPicker();
+  if (force) {
+    await applyActiveTargetSet(state.activeIds);
+  }
+}
+
 function renderListBoardFilter() {
   const sel = document.getElementById("scoutListBoardFilter");
   if (!sel) return;
@@ -1181,9 +1354,45 @@ function wireListBoardFilter() {
   const sel = document.getElementById("scoutListBoardFilter");
   if (!sel || sel.dataset.wired === "1") return;
   sel.dataset.wired = "1";
-  sel.addEventListener("change", () => {
-    listBoardFilter = String(sel.value || "all");
-    renderScoutingListsFromCache();
+  sel.addEventListener("change", async () => {
+    const prev = listBoardFilter;
+    const next = String(sel.value || "all");
+    try {
+      if (prev === "all") {
+        writeAllViewActiveIds(currentActiveTargetIds());
+      } else {
+        await saveBoardViewState(Number(prev), {
+          activeIds: currentActiveTargetIds(),
+        });
+      }
+      listBoardFilter = next;
+      await syncListFilterState(true);
+    } catch (err) {
+      listBoardFilter = prev;
+      sel.value = prev;
+      alert(err?.message || "Could not switch target view.");
+    }
+  });
+
+  const nationSel = document.getElementById("scoutListNationSelect");
+  nationSel?.addEventListener("change", async () => {
+    if (listBoardFilter === "all") return;
+    const planNation = nationSel.value ? String(nationSel.value) : null;
+    try {
+      await saveBoardViewState(Number(listBoardFilter), {
+        activeIds: currentActiveTargetIds(),
+        planNation,
+      });
+      if (Number(listBoardFilter) === Number(activeBoardNo)) {
+        plannerPlanNation = planNation;
+        updatePlannerCompositionStrip(plannerApi?.getState?.() || null);
+      }
+      renderScoutingListsFromCache();
+      updateActiveTargetsHeader();
+    } catch (err) {
+      alert(err?.message || "Could not save board nation.");
+      renderListNationPicker();
+    }
   });
 }
 
@@ -1304,6 +1513,18 @@ async function initPlanner() {
     clubNation ||
     squadDesignationsState?.club_nation ||
     null;
+  const existingBoardState = boardViewStateCache.get(String(activeBoardNo));
+  boardViewStateCache.set(String(activeBoardNo), {
+    activeIds: existingBoardState?.activeIds?.length
+      ? existingBoardState.activeIds
+      : (
+          Array.isArray(pitchLayout?.scouting_active_target_ids)
+            ? pitchLayout.scouting_active_target_ids
+            : rows.map((r) => String(r.player_id || "").trim()).filter(Boolean)
+        ),
+    planNation: plannerPlanNation,
+    hydrated: true,
+  });
   await loadPlannerNationOptions();
   wirePlannerCompositionStrip();
   wireAutofillBar();
@@ -1340,6 +1561,12 @@ async function initPlanner() {
         } catch {
           /* keep prior map */
         }
+        const prevBoardState = boardViewStateCache.get(String(activeBoardNo));
+        boardViewStateCache.set(String(activeBoardNo), {
+          activeIds: prevBoardState?.activeIds || currentActiveTargetIds(),
+          planNation: plannerPlanNation,
+          hydrated: true,
+        });
         if (listBoardFilter !== "all") {
           renderScoutingListsFromCache();
         }
@@ -1460,6 +1687,7 @@ function wireBoardControls() {
     try {
       const source = await loadScoutingPlannerState(supabase, clubShort, fromNo);
       const slots = plannerRowsToSlots(source.rows);
+      boardViewStateCache.delete(String(activeBoardNo));
       await saveScoutingPlanner(
         supabase,
         slots,

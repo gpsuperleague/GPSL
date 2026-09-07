@@ -429,6 +429,22 @@
     table.scout-table tr.scout-active-row:hover td {
       background: rgba(255, 153, 0, 0.22);
     }
+    table.scout-table tr.scout-bid-owned-row td {
+      background: rgba(126, 134, 146, 0.14);
+    }
+    table.scout-table tr.scout-bid-owned-row:hover td {
+      background: rgba(126, 134, 146, 0.24);
+    }
+    table.scout-table tr.scout-active-row.scout-bid-owned-row td {
+      background:
+        linear-gradient(0deg, rgba(255, 153, 0, 0.14), rgba(255, 153, 0, 0.14)),
+        linear-gradient(0deg, rgba(126, 134, 146, 0.10), rgba(126, 134, 146, 0.10));
+    }
+    table.scout-table tr.scout-active-row.scout-bid-owned-row:hover td {
+      background:
+        linear-gradient(0deg, rgba(255, 153, 0, 0.22), rgba(255, 153, 0, 0.22)),
+        linear-gradient(0deg, rgba(126, 134, 146, 0.16), rgba(126, 134, 146, 0.16));
+    }
     .scout-active-check {
       width: 16px;
       height: 16px;
@@ -514,6 +530,10 @@
         <select id="scoutListBoardFilter" class="scout-board-select" title="Filter target lists by tactic board">
           <option value="all">Show all</option>
         </select>
+        <label for="scoutListNationSelect" id="scoutListNationLabel" hidden>Nation</label>
+        <select id="scoutListNationSelect" class="scout-board-select" title="Saved nation for this target view" hidden>
+          <option value="">— Select nation —</option>
+        </select>
       </div>
       <div id="scoutingListsWrap"><i>Loading…</i></div>
     </div>
@@ -558,6 +578,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260821-remove-fix"></script>
+  <script type="module" src="scouting.js?v=20260907-board-active-memory"></script>
 </body>
 </html>
