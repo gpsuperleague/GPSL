@@ -1557,8 +1557,13 @@ function wireAutofillBar() {
 }
 
 async function initPlanner() {
-  const root = document.getElementById("scoutingPlannerRoot");
+  let root = document.getElementById("scoutingPlannerRoot");
   if (!root || !isScoutingAvailable()) return;
+
+  // Drop any prior matchday_squad root listeners before re-mounting this board.
+  const freshRoot = root.cloneNode(false);
+  root.replaceWith(freshRoot);
+  root = freshRoot;
 
   await refreshBoardList();
 
