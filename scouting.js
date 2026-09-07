@@ -172,6 +172,15 @@ function currentActiveTargetIds() {
     .map((row) => String(row.player_id));
 }
 
+function currentVisiblePlayerIds() {
+  return new Set(rowsForListFilter(scoutingRows).map((row) => String(row.player_id)));
+}
+
+function currentViewActiveTargetIds() {
+  const visible = currentVisiblePlayerIds();
+  return currentActiveTargetIds().filter((id) => visible.has(String(id)));
+}
+
 function effectiveListNation() {
   if (listBoardFilter !== "all") {
     const state = boardViewStateCache.get(String(listBoardFilter));
@@ -1074,7 +1083,7 @@ function wireScoutingListActions(wrap) {
           writeAllViewActiveIds(currentActiveTargetIds());
         } else {
           await saveBoardViewState(Number(listBoardFilter), {
-            activeIds: currentActiveTargetIds(),
+            activeIds: currentViewActiveTargetIds(),
           });
         }
       } catch (err) {
@@ -1206,11 +1215,13 @@ async function loadBoardViewState(boardNo) {
 
   const state = await loadScoutingPlannerState(supabase, clubShort, Number(boardNo));
   const boardPlayerIds = [...new Set((state.rows || []).map((r) => String(r.player_id || "").trim()).filter(Boolean))];
+  const boardPlayerSet = new Set(boardPlayerIds);
   const savedActiveIds = Array.isArray(state.pitchLayout?.scouting_active_target_ids)
     ? state.pitchLayout.scouting_active_target_ids.map((x) => String(x || "").trim()).filter(Boolean)
     : null;
   const next = {
-    activeIds: savedActiveIds && savedActiveIds.length ? savedActiveIds : boardPlayerIds,
+    activeIds: (savedActiveIds && savedActiveIds.length ? savedActiveIds : boardPlayerIds)
+      .filter((id) => boardPlayerSet.has(id)),
     planNation: extractPlannerNationFromLayout(state.pitchLayout) || clubNation || null,
     hydrated: true,
   };
@@ -1221,13 +1232,18 @@ async function loadBoardViewState(boardNo) {
 async function saveBoardViewState(boardNo, patch = {}) {
   const state = await loadScoutingPlannerState(supabase, clubShort, Number(boardNo));
   const slots = plannerRowsToSlots(state.rows);
+  const boardPlayerSet = new Set(
+    (state.rows || []).map((r) => String(r.player_id || "").trim()).filter(Boolean)
+  );
   const prev = boardViewStateCache.get(String(boardNo)) || {
     activeIds: [],
     planNation: extractPlannerNationFromLayout(state.pitchLayout) || null,
     hydrated: true,
   };
   const next = {
-    activeIds: Array.isArray(patch.activeIds) ? patch.activeIds : prev.activeIds,
+    activeIds: (Array.isArray(patch.activeIds) ? patch.activeIds : prev.activeIds)
+      .map((x) => String(x || "").trim())
+      .filter((id) => boardPlayerSet.has(id)),
     planNation: Object.prototype.hasOwnProperty.call(patch, "planNation")
       ? (patch.planNation || null)
       : prev.planNation,
@@ -1350,7 +1366,7 @@ function wireListBoardFilter() {
         writeAllViewActiveIds(currentActiveTargetIds());
       } else {
         await saveBoardViewState(Number(prev), {
-          activeIds: currentActiveTargetIds(),
+          activeIds: currentViewActiveTargetIds(),
         });
       }
       listBoardFilter = next;
@@ -1368,7 +1384,7 @@ function wireListBoardFilter() {
     const planNation = nationSel.value ? String(nationSel.value) : null;
     try {
       await saveBoardViewState(Number(listBoardFilter), {
-        activeIds: currentActiveTargetIds(),
+        activeIds: currentViewActiveTargetIds(),
         planNation,
       });
       if (Number(listBoardFilter) === Number(activeBoardNo)) {
