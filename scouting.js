@@ -34,7 +34,6 @@ import {
 } from "./scouting_draft_actions.js?v=20260811-draft-list-fix";
 import {
   confirmSquadRulesBeforeBid,
-  analyseSquadComposition,
   isHomeGrownPlayer,
   isUnder21,
   isGoalkeeper,
@@ -48,7 +47,6 @@ import {
   loadSquadDesignationsState,
   playerEligibleStar,
   playerEligibleOoo,
-  DESIGNATION_OOO,
 } from "./squad_designations.js";
 
 /** Compact HG / ★ / U21 markers for scouting name cells. */
@@ -136,6 +134,14 @@ function activeTargetBudgetTitle(pid) {
   return `Active target: market value ${amt}`;
 }
 
+function isOwnedByMyClub(player) {
+  return !!(
+    clubShort &&
+    player?.Contracted_Team &&
+    String(player.Contracted_Team) === String(clubShort)
+  );
+}
+
 function sumActiveTargetsBudget() {
   let total = 0;
   let count = 0;
@@ -215,16 +221,11 @@ function countStarEligible(players, minRating, oooId) {
   return n;
 }
 
-function activeTargetPlayersNotOwned() {
-  const owned = new Set(
-    (ownedSquadPlayers || []).map((p) => String(p.Konami_ID))
-  );
+function activeTargetPlayers() {
   const out = [];
   for (const row of scoutingRows) {
     if (!row.is_active_target) continue;
-    const pid = String(row.player_id);
-    if (owned.has(pid)) continue;
-    const p = playerMapCache.get(pid);
+    const p = playerMapCache.get(String(row.player_id));
     if (p) out.push(p);
   }
   return out;
@@ -276,43 +277,27 @@ function updateRegistrationStrip() {
     return;
   }
 
-  if (!ownedSquadPlayers) {
-    el.hidden = false;
-    el.innerHTML = `<span class="scout-reg-muted">Squad registration…</span>`;
-    return;
-  }
-
   const nation = effectiveListNation();
-  const owned = analyseSquadComposition(ownedSquadPlayers, nation);
-  const adds = activeTargetPlayersNotOwned();
-  const addT = tallyAdds(adds, nation);
+  const activePlayers = activeTargetPlayers();
+  const totals = tallyAdds(activePlayers, nation);
   const minStar = Number(squadDesignationsState?.star_min_rating ?? 79);
   const starCap = Number(squadDesignationsState?.star_cap ?? 2);
-  const oooId =
-    squadDesignationsState?.one_of_our_own_player_id ??
-    Object.entries(squadDesignationsState?.designations || {}).find(
-      ([, d]) => d === DESIGNATION_OOO
-    )?.[0] ??
-    null;
-
-  // Prefer live designation count when available; else count eligible on squad
-  const ownedStars =
-    squadDesignationsState?.star_count != null
-      ? Number(squadDesignationsState.star_count)
-      : countStarEligible(ownedSquadPlayers, minStar, oooId);
-  const addStars = countStarEligible(adds, minStar, null);
-
+  const activeStars = countStarEligible(activePlayers, minStar, null);
+  const activeLabel =
+    listBoardFilter === "all"
+      ? "Active targets (all views)"
+      : `Active targets on ${boardLabel(listBoardFilter)}`;
   const tip =
-    "Squad now → if you signed all Active Targets (not already owned). Green = registration OK. Sq 24–28 · ≥1 GK · ≥8 HG · ≥5 U21 · star cap (SL 3 / Champ 2).";
+    "Counts only the players currently ticked as Active Targets for this view. Targets already bought stay in the set. Sq 24–28 · ≥1 GK · ≥8 HG · ≥5 U21 · star cap.";
 
   el.hidden = false;
   el.innerHTML = `
-    <span${tipAttrs(tip, "scout-reg-label")}>Reg:</span>
-    ${regChip("Sq", owned.total, addT.n, [MIN_SQUAD_SIZE, SQUAD_SIZE], "range", `Squad size: owned ${owned.total}, active +${addT.n} → ${owned.total + addT.n} (need ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`)}
-    ${regChip("GK", owned.goalkeepers, addT.gk, MIN_GOALKEEPERS, "min", `Goalkeepers: owned ${owned.goalkeepers}, active +${addT.gk}`)}
-    ${regChip("HG", owned.homeGrown, addT.hg, MIN_HOME_GROWN, "min", `Home-grown (Nation match): owned ${owned.homeGrown}, active +${addT.hg}`)}
-    ${regChip("U21", owned.under21, addT.u21, MIN_UNDER_21, "min", `Under-21: owned ${owned.under21}, active +${addT.u21}`)}
-    ${regChip("★", ownedStars, addStars, starCap, "max", `Stars (rating ${minStar}+, OooO excluded): owned ${ownedStars}, active +${addStars}, cap ${starCap}`)}
+    <span${tipAttrs(tip, "scout-reg-label")}>${escapeHtml(activeLabel)}:</span>
+    ${boardChip("Sq", totals.n, [MIN_SQUAD_SIZE, SQUAD_SIZE], "range", `Active targets selected: ${totals.n} (need ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`)}
+    ${boardChip("GK", totals.gk, MIN_GOALKEEPERS, "min", `Goalkeepers in active targets: ${totals.gk}`)}
+    ${boardChip("HG", totals.hg, MIN_HOME_GROWN, "min", `Home-grown in active targets vs ${nation || "—"}: ${totals.hg}`)}
+    ${boardChip("U21", totals.u21, MIN_UNDER_21, "min", `Under-21 in active targets: ${totals.u21}`)}
+    ${boardChip("★", activeStars, starCap, "max", `Stars in active targets (rating ${minStar}+): ${activeStars} / cap ${starCap}`)}
   `;
 }
 
@@ -846,11 +831,14 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
             <td>${renderDraftManageCell(draftUi)}</td>`
               : "";
             const isActive = row.is_active_target === true;
+            const isOwned = isOwnedByMyClub(p);
+            const isLockedActive = isActive && isOwned;
             const hasYourBid = !!draftUi.yourBidText && draftUi.yourBidText !== "—";
             const activeTitle = activeTargetBudgetTitle(pid);
             const rowClass = [
               isActive ? "scout-active-row" : "",
               hasYourBid ? "scout-bid-owned-row" : "",
+              isLockedActive ? "scout-active-owned-row" : "",
             ].filter(Boolean).join(" ");
 
             return `
@@ -867,7 +855,7 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
             ${draftCells}
             <td>
               <input type="checkbox" class="scout-active-check" data-player-id="${pid}"
-                ${isActive ? "checked" : ""} title="${activeTitle}"
+                ${isActive ? "checked" : ""} ${isLockedActive ? "disabled" : ""} title="${isLockedActive ? "Already bought by your club - fixed active target" : activeTitle}"
                 aria-label="Active target for ${name}">
             </td>
             <td>
