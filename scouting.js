@@ -142,11 +142,14 @@ function isOwnedByMyClub(player) {
   );
 }
 
+function activeRowsForCurrentView() {
+  return rowsForListFilter(scoutingRows).filter((row) => row.is_active_target);
+}
+
 function sumActiveTargetsBudget() {
   let total = 0;
   let count = 0;
-  for (const row of scoutingRows) {
-    if (!row.is_active_target) continue;
+  for (const row of activeRowsForCurrentView()) {
     total += activeTargetBudgetForPlayer(row.player_id);
     count += 1;
   }
@@ -232,8 +235,7 @@ function countStarEligible(players, minRating, oooId) {
 
 function activeTargetPlayers() {
   const out = [];
-  for (const row of scoutingRows) {
-    if (!row.is_active_target) continue;
+  for (const row of activeRowsForCurrentView()) {
     const p = playerMapCache.get(String(row.player_id));
     if (p) out.push(p);
   }
