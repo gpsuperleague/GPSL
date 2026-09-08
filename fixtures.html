@@ -35,7 +35,7 @@
     table.gpsl-table col.col-stadium { width: 18%; }
     table.gpsl-table col.col-continent { width: 10%; }
     table.gpsl-table col.col-conditions { width: 16%; }
-    table.gpsl-table col.col-actions { width: 13%; }
+    table.gpsl-table col.col-actions { width: 16%; }
     table.gpsl-table th, table.gpsl-table td {
       border-top:1px solid #333; padding:8px 10px; font-size:13px;
     }
@@ -79,7 +79,21 @@
       vertical-align:middle;
     }
     .catch-up-cell { display:block; margin-top:4px; }
-    .my-actions { text-align:center; white-space:nowrap; }
+    .my-actions { text-align:center; white-space:normal; }
+    .my-actions .btn-link,
+    .my-actions button.sim-result-btn {
+      display:block;
+      width:100%;
+      box-sizing:border-box;
+      text-align:center;
+      margin:2px 0;
+    }
+    .my-actions .sim-actions {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      align-items:stretch;
+    }
     .match-sim-banner { font-size:13px; color:#bbb; margin:0 0 12px; padding:8px 12px; background:#1a221a; border:1px solid #345; border-radius:6px; }
     .match-sim-banner--err { background:#2a1515; border-color:#633; color:#f88; }
     .match-sim-on { color:#9fd4b0; font-weight:bold; }

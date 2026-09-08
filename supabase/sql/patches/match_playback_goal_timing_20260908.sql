@@ -69,7 +69,7 @@ BEGIN
     goals int DEFAULT 0,
     assists int DEFAULT 0
   ) ON COMMIT DROP;
-  DELETE FROM _ms_ev;
+  DELETE FROM _ms_ev WHERE true;
 
   FOR v_row IN
     SELECT
@@ -295,7 +295,7 @@ BEGIN
     goals int DEFAULT 0,
     assists int DEFAULT 0
   ) ON COMMIT DROP;
-  DELETE FROM _intl_pb_ev;
+  DELETE FROM _intl_pb_ev WHERE true;
 
   FOR r IN
     SELECT
