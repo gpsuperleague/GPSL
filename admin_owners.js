@@ -1296,7 +1296,11 @@ async function loadWaitingListAdmin() {
   const ownerRows = priority.filter((r) => r.has_club).sort(compareRowsByActivitySort);
   const waitingRows = priority.filter((r) => !r.has_club).sort(compareRowsByActivitySort);
   invited.sort(compareRowsByActivitySort);
-  const waitingCount = waitingRows.length + invited.length;
+  const waitingCombined = [...invited, ...waitingRows].map((row, index) => ({
+    ...row,
+    displayPosition: index + 1,
+  }));
+  const waitingCount = waitingCombined.length;
   const ownerCount = ownerRows.length;
   const auctionTotal = invited.length;
   const testTotal = rows.filter((r) => !!r.confirmed_test_season).length;
@@ -1357,16 +1361,16 @@ async function loadWaitingListAdmin() {
   html += sectionRow(
     `Waiting list (${waitingCount}` +
       (auctionTotal ? `; ${auctionTotal} invited to auction` : "") +
-      `) — ${escapeWl(sortNote)}. Actions: Add club, absence, or Remove (→ archived).`
+      `) — reset owners stay grouped at the top. ${escapeWl(sortNote)}. Actions: Add club, absence, or Remove (→ archived).`
   );
-  if (!waitingRows.length && !auctionTotal) {
+  if (!waitingCombined.length) {
     html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No one on the waiting list.</td></tr>`;
   } else {
-    for (const row of waitingRows) {
-      html += renderWaitingListAdminRow(row, { invited: false, section: "waiting" });
-    }
-    for (const row of invited) {
-      html += renderWaitingListAdminRow(row, { invited: true, section: "waiting" });
+    for (const row of waitingCombined) {
+      html += renderWaitingListAdminRow(row, {
+        invited: !!row.invited_auction,
+        section: "waiting",
+      });
     }
   }
 
@@ -1904,7 +1908,7 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
   const testOn = !!row.confirmed_test_season;
   const liveOn = !!row.confirmed_live_season;
   const hasClub = !!row.has_club && !invited;
-  const pos = invited ? "—" : row.position;
+  const pos = row.displayPosition ?? (invited ? "—" : row.position);
   const act = row.activity || {};
   const clubFullName =
     row.club_name || act.club_name || row.club_short_name || act.club_short_name || "";
