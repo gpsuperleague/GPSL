@@ -1312,22 +1312,25 @@ async function loadWaitingListAdmin() {
     ? `Activity unavailable: ${activityRes.error.message}`
     : `${prevLabel} / ${curLabel} logins · unplayed fixtures (prev / cur / season) · admin IP/country review · sort: last login first unless current month logins are under 4`;
 
-  const colSpan = 23;
+  const colSpan = 24;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
+  let overallIndex = 0;
 
   let html =
     `<table class="admin-table wl-board-table">` +
     `<thead>` +
     `<tr class="wl-group-row">` +
-    `<th colspan="6" class="wl-group-owner">Owner</th>` +
+    `<th colspan="7" class="wl-group-owner">Owner</th>` +
     `<th colspan="3" class="wl-group-season">Season</th>` +
     `<th colspan="13" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions">Actions</th>` +
     `</tr>` +
     `<tr>` +
-    `<th class="wl-col-owner" style="width:2em"></th>` +
-    `<th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>` +
+    `<th class="wl-col-owner num">Overall</th>` +
+    `<th class="num">#</th>` +
+    `<th style="width:2em"></th>` +
+    `<th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>` +
     `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
     `<th title="Confirmed for test season" style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
@@ -1353,8 +1356,15 @@ async function loadWaitingListAdmin() {
   if (!ownerCount) {
     html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No club owners on the board.</td></tr>`;
   } else {
-    for (const row of ownerRows) {
-      html += renderWaitingListAdminRow(row, { invited: false, section: "owners" });
+    for (let i = 0; i < ownerRows.length; i += 1) {
+      overallIndex += 1;
+      const row = ownerRows[i];
+      html += renderWaitingListAdminRow(row, {
+        invited: false,
+        section: "owners",
+        sectionIndex: i + 1,
+        overallIndex,
+      });
     }
   }
 
@@ -1366,10 +1376,14 @@ async function loadWaitingListAdmin() {
   if (!waitingCombined.length) {
     html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No one on the waiting list.</td></tr>`;
   } else {
-    for (const row of waitingCombined) {
+    for (let i = 0; i < waitingCombined.length; i += 1) {
+      overallIndex += 1;
+      const row = waitingCombined[i];
       html += renderWaitingListAdminRow(row, {
         invited: !!row.invited_auction,
         section: "waiting",
+        sectionIndex: i + 1,
+        overallIndex,
       });
     }
   }
@@ -1681,7 +1695,7 @@ async function loadArchivedOwnersSection() {
   let html =
     `<table class="admin-table wl-archived-table">` +
     `<thead><tr>` +
-    `<th>Tag</th><th>Email</th><th>Last club</th>` +
+    `<th class="num">Overall</th><th class="num">#</th><th>Tag</th><th>Email</th><th>Last club</th>` +
     `<th title="Confirmed for test season" style="text-align:center">Test</th>` +
     `<th title="Confirmed for live season" style="text-align:center">Live</th>` +
     `<th>Archived (UK)</th><th>Note</th>` +
@@ -1692,7 +1706,12 @@ async function loadArchivedOwnersSection() {
     `<th class="wl-col-actions">Actions</th>` +
     `</tr></thead><tbody>`;
 
-    for (const row of rows) {
+    let overallCounter =
+      document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id]").length +
+      document.querySelectorAll("#wlOnBreakTableWrap tr[data-owner-id]").length;
+    for (let i = 0; i < rows.length; i += 1) {
+      overallCounter += 1;
+      const row = rows[i];
       const email = row.email || "";
     const tag = row.owner_tag || "—";
     const testOn = !!row.confirmed_test_season;
@@ -1724,6 +1743,8 @@ async function loadArchivedOwnersSection() {
       .filter(Boolean)
       .join(" ");
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
+      <td class="num">${overallCounter}</td>
+      <td class="num">${i + 1}</td>
       <td>${escapeWl(tag)}</td>
       <td>${escapeWl(email)}</td>
       <td>${lastClubDisplay}</td>
@@ -1783,17 +1804,21 @@ function renderOnBreakSection(rows) {
   let html =
     `<table class="admin-table wl-archived-table">` +
     `<thead><tr>` +
-    `<th>Tag</th><th>Email</th><th>Last club</th><th>Since (UK)</th><th>Note</th>` +
+    `<th class="num">Overall</th><th class="num">#</th><th>Tag</th><th>Email</th><th>Last club</th><th>Since (UK)</th><th>Note</th>` +
     `<th class="wl-col-actions">Actions</th>` +
     `</tr></thead><tbody>`;
 
-  for (const row of rows) {
+  const overallStart = document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id]").length;
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
     const email = row.email || "";
     const tag = row.owner_tag || "—";
     const filterText = [tag, email, row.last_club_short_name, row.status_note, "on_break"]
       .filter(Boolean)
       .join(" ");
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
+      <td class="num">${overallStart + i + 1}</td>
+      <td class="num">${i + 1}</td>
       <td>${escapeWl(tag)}</td>
       <td>${escapeWl(email)}</td>
       <td>${escapeWl(row.last_club_short_name || "—")}</td>
@@ -1903,12 +1928,15 @@ async function deleteArchivedOwner({ ownerId, email, tag, button }) {
   }
 }
 
-function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
+function renderWaitingListAdminRow(
+  row,
+  { invited, section = "waiting", sectionIndex = null, overallIndex = null }
+) {
   const email = row.email || "";
   const testOn = !!row.confirmed_test_season;
   const liveOn = !!row.confirmed_live_season;
   const hasClub = !!row.has_club && !invited;
-  const pos = row.displayPosition ?? (invited ? "—" : row.position);
+  const pos = sectionIndex ?? row.displayPosition ?? (invited ? "—" : row.position);
   const act = row.activity || {};
   const clubFullName =
     row.club_name || act.club_name || row.club_short_name || act.club_short_name || "";
@@ -2011,8 +2039,9 @@ function renderWaitingListAdminRow(row, { invited, section = "waiting" }) {
       </select>`;
 
   return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" data-filter-text="${escapeWl(filterText)}">
+    <td class="wl-col-owner num">${overallIndex ?? "—"}</td>
+    <td class="num wl-pos">${pos ?? "—"}</td>
     ${dragCell}
-    <td class="wl-pos">${pos ?? "—"}</td>
         <td>${escapeWl(row.owner_tag)}</td>
         <td>${escapeWl(email)}</td>
     <td>${escapeWl(hasClub ? "—" : row.tier || "—")}</td>
