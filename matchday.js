@@ -1752,6 +1752,18 @@ async function preselectFixtureFromUrl() {
   }
 }
 
+function maybeShowCheckinFixNotice() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("fix_checkin_squad") !== "1") return;
+  setMatchdayTab("squad");
+  const squadStatus = document.getElementById("squadPanelStatus");
+  if (squadStatus) {
+    squadStatus.innerHTML =
+      `<b>Check-in blocked.</b> Fix your saved matchday squad first. ` +
+      `Unavailable players are highlighted on the pitch cards and in the stats list.`;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   initGpslInfoTips();
   await initGlobal();
@@ -1897,4 +1909,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadUpcomingFixtures();
   populateFixtureSelect();
   await preselectFixtureFromUrl();
+  maybeShowCheckinFixNotice();
 });

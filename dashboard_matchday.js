@@ -12,6 +12,20 @@ const REFRESH_MS = 20_000;
 let refreshTimer = null;
 let clubShort = null;
 
+function isSquadCheckinBlockMessage(msg) {
+  const text = String(msg || "").toLowerCase();
+  return (
+    text.includes("matchday squad") ||
+    text.includes("saved starting xi") ||
+    text.includes("saved matchday xi") ||
+    text.includes("injured or suspended players")
+  );
+}
+
+function matchdayFixHref(fixtureId) {
+  return `matchday.html?fixture=${encodeURIComponent(fixtureId)}&fix_checkin_squad=1`;
+}
+
 function escapeHtml(text) {
   return String(text ?? "")
     .replace(/&/g, "&amp;")
@@ -169,7 +183,7 @@ async function applyCheckinReadinessToCards(fixtures) {
     }
     if (gate) {
       gate.hidden = false;
-      gate.textContent = issues[0];
+      gate.innerHTML = `${escapeHtml(issues[0])} <a href="${matchdayFixHref(fid)}" style="color:#ff9900;">Fix on Match Day</a>`;
       gate.style.color = "#f88";
       gate.style.fontSize = "12px";
       gate.style.marginTop = "6px";
@@ -188,6 +202,10 @@ async function onCheckIn(fixtureId, btn) {
     p_fixture_id: fixtureId,
   });
   if (error) {
+    if (isSquadCheckinBlockMessage(error.message || "")) {
+      window.location = matchdayFixHref(fixtureId);
+      return;
+    }
     alert(error.message || "Could not check in.");
     if (btn) {
       btn.disabled = false;

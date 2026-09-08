@@ -41,6 +41,20 @@ let myClub = { short: null };
 /** @type {import("./player_discipline.js").FixtureUnavailablePayload|null} */
 let fixtureUnavailable = null;
 
+function isSquadCheckinBlockMessage(msg) {
+  const text = String(msg || "").toLowerCase();
+  return (
+    text.includes("matchday squad") ||
+    text.includes("saved starting xi") ||
+    text.includes("saved matchday xi") ||
+    text.includes("injured or suspended players")
+  );
+}
+
+function matchdayFixHref(fid) {
+  return `matchday.html?fixture=${encodeURIComponent(fid)}&fix_checkin_squad=1`;
+}
+
 function unavailablePanelHtml(f) {
   return formatFixtureUnavailableHtml(fixtureUnavailable, {
     homeName: fullClubName(f.home_club_short_name) || f.home_club_short_name,
@@ -248,6 +262,10 @@ function renderAgreedPanel(root, f, sch) {
       const res = await checkInToFixture(fixtureId);
       if (!res.ok) {
         setStatus(res.msg, true);
+        if (isSquadCheckinBlockMessage(res.msg)) {
+          window.location = matchdayFixHref(fixtureId);
+          return;
+        }
         checkInBtn.disabled = false;
         return;
       }
@@ -435,7 +453,7 @@ async function applyCheckinSquadGate(fixtureId) {
   }
 
   gate.style.display = "block";
-  gate.innerHTML = `<b>Matchday squad not ready for check-in.</b> ${issues[0]}`;
+  gate.innerHTML = `<b>Matchday squad not ready for check-in.</b> ${issues[0]} <a href="${matchdayFixHref(fixtureId)}" style="color:#ff9900;">Open Match Day and fix squad</a>.`;
   if (checkInBtn) {
     checkInBtn.disabled = true;
     checkInBtn.title = issues[0];
