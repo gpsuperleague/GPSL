@@ -27,11 +27,20 @@
       background:#222; padding:10px 14px; color:#ff9900; font-weight:bold;
       display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
     }
-    table.gpsl-table { width:100%; border-collapse:collapse; }
+    table.gpsl-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+    table.gpsl-table col.col-match { width: 7%; }
+    table.gpsl-table col.col-home,
+    table.gpsl-table col.col-away { width: 18%; }
+    table.gpsl-table col.col-score { width: 7%; }
+    table.gpsl-table col.col-stadium { width: 18%; }
+    table.gpsl-table col.col-continent { width: 10%; }
+    table.gpsl-table col.col-conditions { width: 16%; }
+    table.gpsl-table col.col-actions { width: 13%; }
     table.gpsl-table th, table.gpsl-table td {
       border-top:1px solid #333; padding:8px 10px; font-size:13px;
     }
     table.gpsl-table th { color:#ff9900; text-align:left; background:#1a1a1a; }
+    table.gpsl-table td { overflow-wrap:anywhere; word-break:break-word; }
     tr.my-fixture td { background:#3d3200 !important; }
     tr.my-fixture { box-shadow: inset 3px 0 0 #ff9900; }
     /* Soft highlight: owner vs vacant (simulation) */
@@ -104,6 +113,6 @@
     <div id="fixturesRoot"></div>
   </div>
 
-  <script type="module" src="fixtures.js?v=20260814-month-lock-all"></script>
+  <script type="module" src="fixtures.js?v=20260908-fixture-col-align"></script>
 </body>
 </html>

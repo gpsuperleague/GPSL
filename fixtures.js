@@ -53,6 +53,31 @@ let currentCup = "league_cup";
 let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: null };
 let allFixtures = [];
 
+const LEAGUE_COLGROUP = `
+  <colgroup>
+    <col class="col-home">
+    <col class="col-score">
+    <col class="col-away">
+    <col class="col-stadium">
+    <col class="col-continent">
+    <col class="col-conditions">
+    <col class="col-actions">
+  </colgroup>
+`;
+
+const CUP_COLGROUP = `
+  <colgroup>
+    <col class="col-match">
+    <col class="col-home">
+    <col class="col-score">
+    <col class="col-away">
+    <col class="col-stadium">
+    <col class="col-continent">
+    <col class="col-conditions">
+    <col class="col-actions">
+  </colgroup>
+`;
+
 const FIXTURE_TABLE_HEAD = `
   <th>Home</th>
   <th></th>
@@ -309,6 +334,7 @@ function renderCupFixtures() {
     block.innerHTML = `
       <div class="matchday-head"><span>${CUP_LABELS[currentCup] || currentCup} · Round ${round}</span></div>
       <table class="gpsl-table">
+        ${CUP_COLGROUP}
         <thead><tr><th>Match</th>${FIXTURE_TABLE_HEAD}</tr></thead>
         <tbody></tbody>
       </table>
@@ -406,6 +432,7 @@ function renderFixtures() {
         <span>${monthLabel} · Week ${matchday}${monthStatus}</span>
       </div>
       <table class="gpsl-table">
+        ${LEAGUE_COLGROUP}
         <thead><tr>${FIXTURE_TABLE_HEAD}</tr></thead>
         <tbody></tbody>
       </table>
