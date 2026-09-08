@@ -134,9 +134,9 @@ BEGIN
 
   IF v_n = 0 THEN
     v_events := v_events || jsonb_build_array(
-      jsonb_build_object('t', round(v_dur * 0.25, 2), 'type', 'momentum', 'side', 'home', 'pressure', 0.62, 'text', 'Home pressing'),
-      jsonb_build_object('t', round(v_dur * 0.55, 2), 'type', 'momentum', 'side', 'away', 'pressure', 0.58, 'text', 'Away on the break'),
-      jsonb_build_object('t', round(v_dur * 0.78, 2), 'type', 'momentum', 'side', 'home', 'pressure', 0.55, 'text', 'End-to-end')
+      jsonb_build_object('t', round((v_dur * 0.25)::numeric, 2), 'type', 'momentum', 'side', 'home', 'pressure', 0.62, 'text', 'Home pressing'),
+      jsonb_build_object('t', round((v_dur * 0.55)::numeric, 2), 'type', 'momentum', 'side', 'away', 'pressure', 0.58, 'text', 'Away on the break'),
+      jsonb_build_object('t', round((v_dur * 0.78)::numeric, 2), 'type', 'momentum', 'side', 'home', 'pressure', 0.55, 'text', 'End-to-end')
     );
   ELSE
     FOR v_row IN
@@ -149,11 +149,11 @@ BEGIN
       IF v_row.kind = 'goal' THEN
         v_goal_i := v_goal_i + 1;
         v_prog := power(v_goal_i::numeric / (v_goal_n + 1)::numeric, 0.92);
-        v_t := round((0.06 + (0.88 * v_prog) + ((random() - 0.5) * 0.05)) * v_dur, 2);
+        v_t := round((((0.06 + (0.88 * v_prog))::numeric + ((random()::numeric - 0.5) * 0.05)) * v_dur)::numeric, 2);
       ELSE
         v_other_i := v_other_i + 1;
         v_prog := v_other_i::numeric / greatest(v_other_n + 1, 1)::numeric;
-        v_t := round((0.10 + (0.80 * v_prog) + ((random() - 0.5) * 0.16)) * v_dur, 2);
+        v_t := round((((0.10 + (0.80 * v_prog))::numeric + ((random()::numeric - 0.5) * 0.16)) * v_dur)::numeric, 2);
       END IF;
 
       v_t := least(v_dur - 0.4, greatest(0.5, v_t));
@@ -225,9 +225,9 @@ BEGIN
     END LOOP;
 
     v_events := v_events || jsonb_build_array(
-      jsonb_build_object('t', round(v_dur * 0.18, 2), 'type', 'momentum', 'side', 'home', 'pressure', 0.55 + random()*0.2, 'text', 'Home attack'),
-      jsonb_build_object('t', round(v_dur * 0.42, 2), 'type', 'momentum', 'side', 'away', 'pressure', 0.55 + random()*0.2, 'text', 'Away attack'),
-      jsonb_build_object('t', round(v_dur * 0.68, 2), 'type', 'momentum', 'side', CASE WHEN random() < 0.5 THEN 'home' ELSE 'away' END, 'pressure', 0.5 + random()*0.25, 'text', 'Pressure')
+      jsonb_build_object('t', round((v_dur * 0.18)::numeric, 2), 'type', 'momentum', 'side', 'home', 'pressure', 0.55 + random()*0.2, 'text', 'Home attack'),
+      jsonb_build_object('t', round((v_dur * 0.42)::numeric, 2), 'type', 'momentum', 'side', 'away', 'pressure', 0.55 + random()*0.2, 'text', 'Away attack'),
+      jsonb_build_object('t', round((v_dur * 0.68)::numeric, 2), 'type', 'momentum', 'side', CASE WHEN random() < 0.5 THEN 'home' ELSE 'away' END, 'pressure', 0.5 + random()*0.25, 'text', 'Pressure')
     );
   END IF;
 
@@ -385,11 +385,11 @@ BEGIN
     IF r.kind = 'goal' THEN
       v_goal_i := v_goal_i + 1;
       v_prog := power(v_goal_i::numeric / (v_goal_n + 1)::numeric, 0.92);
-      v_t := round((0.06 + (0.88 * v_prog) + ((random() - 0.5) * 0.05)) * v_dur, 2);
+      v_t := round((((0.06 + (0.88 * v_prog))::numeric + ((random()::numeric - 0.5) * 0.05)) * v_dur)::numeric, 2);
     ELSE
       v_other_i := v_other_i + 1;
       v_prog := v_other_i::numeric / greatest(v_other_n + 1, 1)::numeric;
-      v_t := round((0.10 + (0.80 * v_prog) + ((random() - 0.5) * 0.16)) * v_dur, 2);
+      v_t := round((((0.10 + (0.80 * v_prog))::numeric + ((random()::numeric - 0.5) * 0.16)) * v_dur)::numeric, 2);
     END IF;
 
     v_t := least(v_dur - 0.4, greatest(0.5, v_t));
