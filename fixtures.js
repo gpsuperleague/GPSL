@@ -40,7 +40,7 @@ import {
   wireMatchSimBannerToggle,
   wireMatchSimButtons,
   runMatchSimulation,
-} from "./match_sim_ui.js?v=20260908-assist-pairing";
+} from "./match_sim_ui.js?v=20260908-assist-goal-attach";
 
 let calendarStatus = null;
 let holidayContext = null;

@@ -30,7 +30,7 @@ import {
 import {
   loadMatchSimStatus,
   runMatchSimulation,
-} from "./match_sim_ui.js?v=20260908-assist-pairing";
+} from "./match_sim_ui.js?v=20260908-assist-goal-attach";
 import {
   initMatchdaySquadPanel,
   getDefaultStarters,

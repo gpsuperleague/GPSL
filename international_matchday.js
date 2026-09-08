@@ -20,7 +20,7 @@ import {
   wireMatchSimBannerToggle,
   wireMatchSimButtons,
   runMatchSimulation,
-} from "./match_sim_ui.js?v=20260908-assist-pairing";
+} from "./match_sim_ui.js?v=20260908-assist-goal-attach";
 import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20260907-full-swap-fix";
 
 /** Result entry: from agreed kickoff until +48h (soft guidance). */

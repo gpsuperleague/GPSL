@@ -521,20 +521,33 @@ export function playMatchMomentum(data, labels = {}) {
       })
       .sort((a, b) => a.at - b.at);
 
-    const assistQueue = { home: [], away: [] };
-    const events = [];
-    for (const ev of timedEvents) {
+    const goalPool = { home: [], away: [] };
+    const seededEvents = timedEvents.map((ev) => {
       const side = ev.side === "home" || ev.side === "away" ? ev.side : null;
       if (ev.type === "goal" && side) {
         const goalEv = { ...ev, assist_event: null };
-        assistQueue[side].push(goalEv);
-        events.push(goalEv);
-        continue;
+        goalPool[side].push(goalEv);
+        return goalEv;
       }
+      return ev;
+    });
+
+    const events = [];
+    for (const ev of seededEvents) {
+      const side = ev.side === "home" || ev.side === "away" ? ev.side : null;
       if (ev.type === "assist" && side) {
-        const goalEv = assistQueue[side].find((g) => !g.assist_event);
-        if (goalEv) {
-          goalEv.assist_event = ev;
+        const candidates = goalPool[side].filter((g) => !g.assist_event);
+        if (candidates.length) {
+          let bestGoal = candidates[0];
+          let bestDelta = Math.abs((Number(bestGoal.minute) || 0) - (Number(ev.minute) || 0));
+          for (let i = 1; i < candidates.length; i += 1) {
+            const delta = Math.abs((Number(candidates[i].minute) || 0) - (Number(ev.minute) || 0));
+            if (delta < bestDelta) {
+              bestGoal = candidates[i];
+              bestDelta = delta;
+            }
+          }
+          bestGoal.assist_event = ev;
           continue;
         }
       }
