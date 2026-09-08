@@ -111,6 +111,7 @@ export const NAV_SECTIONS = [
         showForAdmin: true,
       },
       { href: "league_stats.html", label: "Stats", page: "league_stats" },
+      { href: "league_injuries.html", label: "Injuries", page: "league_injuries" },
       { href: "challenges.html", label: "Season Challenges", page: "challenges" },
     ],
   },

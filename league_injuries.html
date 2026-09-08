@@ -1,0 +1,65 @@
+<script>window.CURRENT_PAGE = "league_injuries";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>League Injuries — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <style>
+    body { background:#111; color:#ddd; margin:0; font-family:Arial,sans-serif; }
+    .page-wrap { width:min(1200px, 95%); margin:20px auto 40px; }
+    h1 { color:#ff9900; margin:0 0 8px; }
+    .note { color:#aaa; margin:0 0 18px; line-height:1.45; }
+    .summary {
+      display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:12px;
+      margin:0 0 18px;
+    }
+    .card {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:14px 16px;
+    }
+    .metric-label { color:#999; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    .metric-value { color:#ff9900; font-size:28px; font-weight:700; margin-top:4px; }
+    .table-wrap {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px; overflow:auto;
+    }
+    table { width:100%; border-collapse:collapse; min-width:860px; }
+    th, td { padding:9px 10px; border-bottom:1px solid #333; text-align:left; }
+    th { background:#222; color:#ff9900; font-size:12px; }
+    td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+    tr.highlight td { background:#171717; }
+    .muted { color:#888; }
+    .empty, .error {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:16px;
+    }
+    .error { color:#f88; }
+    @media (max-width: 900px) {
+      .summary { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-wrap">
+    <h1>League Injuries</h1>
+    <p class="note">
+      Club-by-club injury view for the current season. <b>Season total</b> counts all injuries recorded this season.
+      <b>Current injuries</b> counts active injuries still keeping players out. Low / medium / long term map to minor / moderate / major.
+    </p>
+
+    <div class="summary" id="injurySummary">
+      <div class="card"><div class="metric-label">Season</div><div class="metric-value">—</div></div>
+      <div class="card"><div class="metric-label">Season Total</div><div class="metric-value">—</div></div>
+      <div class="card"><div class="metric-label">Current Injuries</div><div class="metric-value">—</div></div>
+      <div class="card"><div class="metric-label">Long Term</div><div class="metric-value">—</div></div>
+      <div class="card"><div class="metric-label">Worst Hit Club</div><div class="metric-value" style="font-size:18px">—</div></div>
+    </div>
+
+    <div id="leagueInjuriesStatus" class="note">Loading injuries…</div>
+    <div class="table-wrap" id="leagueInjuriesTableWrap"></div>
+  </div>
+
+  <script type="module" src="league_injuries.js?v=20260908-league-injuries"></script>
+</body>
+</html>
