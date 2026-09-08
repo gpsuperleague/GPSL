@@ -1212,11 +1212,13 @@ function activitySortMetrics(row) {
   const previousMonthLogins = Number(act.logins_previous_month) || 0;
   const totalLogins = Number(act.logins_total) || 0;
   const lastLoginMs = act.last_sign_in_at ? Date.parse(act.last_sign_in_at) || 0 : 0;
+  const discordJoinMs = act.discord_joined_at ? Date.parse(act.discord_joined_at) || 0 : 0;
   return {
     currentMonthLogins,
     previousMonthLogins,
     totalLogins,
     lastLoginMs,
+    discordJoinMs,
     demoteLastLogin: currentMonthLogins < 4,
   };
 }
@@ -1234,6 +1236,11 @@ function compareRowsByActivitySort(a, b) {
   }
   if (aa.currentMonthLogins !== bb.currentMonthLogins) {
     return bb.currentMonthLogins - aa.currentMonthLogins;
+  }
+  if (aa.discordJoinMs !== bb.discordJoinMs) {
+    if (!aa.discordJoinMs) return 1;
+    if (!bb.discordJoinMs) return -1;
+    return aa.discordJoinMs - bb.discordJoinMs;
   }
   if (aa.previousMonthLogins !== bb.previousMonthLogins) {
     return bb.previousMonthLogins - aa.previousMonthLogins;
