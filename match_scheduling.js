@@ -266,6 +266,14 @@ export async function checkInToFixture(fixtureId) {
   return { ok: true, data };
 }
 
+export async function loadMatchdayCheckinReadiness(fixtureId) {
+  const { data, error } = await supabase.rpc("club_matchday_checkin_ready", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message, data: null };
+  return { ok: true, data };
+}
+
 export async function voluntaryRescheduleDrop(fixtureId) {
   const { error } = await supabase.rpc("fixture_voluntary_reschedule_drop", {
     p_fixture_id: fixtureId,

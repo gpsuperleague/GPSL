@@ -6,6 +6,7 @@ import {
   proposeKickoff,
   acceptProposal,
   checkInToFixture,
+  loadMatchdayCheckinReadiness,
   voluntaryRescheduleDrop,
   emergencyDrop,
   catchUpResetSchedule,
@@ -208,6 +209,7 @@ function renderAgreedPanel(root, f, sch) {
               } must have a signed manager before Match Day unlocks.</p>`
             : ""
       }
+      <p class="meta" id="checkInSquadGate" style="display:none;color:#f88;"></p>
       <p class="meta">Emergency drops remaining this season: <b>${al.emergency_drops_remaining ?? "—"}</b>/2 · Reschedule this GPSL month: <b>${al.reschedule_used_this_month ? "used" : "available"}</b></p>
       ${unavailablePanelHtml(f)}
       <div class="actions">
@@ -253,6 +255,8 @@ function renderAgreedPanel(root, f, sch) {
       await reload();
     };
   }
+
+  applyCheckinSquadGate(f.id);
 
   const volBtn = document.getElementById("voluntaryDropBtn");
   if (volBtn) {
@@ -413,6 +417,28 @@ function renderAgreedPanel(root, f, sch) {
       setStatus("Request cancelled.");
       await reload();
     };
+  }
+}
+
+async function applyCheckinSquadGate(fixtureId) {
+  const gate = document.getElementById("checkInSquadGate");
+  const checkInBtn = document.getElementById("checkInBtn");
+  if (!gate) return;
+
+  const res = await loadMatchdayCheckinReadiness(fixtureId);
+  if (!res.ok || !res.data) return;
+
+  const issues = Array.isArray(res.data.issues) ? res.data.issues.filter(Boolean) : [];
+  if (res.data.ok || !issues.length) {
+    gate.style.display = "none";
+    return;
+  }
+
+  gate.style.display = "block";
+  gate.innerHTML = `<b>Matchday squad not ready for check-in.</b> ${issues[0]}`;
+  if (checkInBtn) {
+    checkInBtn.disabled = true;
+    checkInBtn.title = issues[0];
   }
 }
 

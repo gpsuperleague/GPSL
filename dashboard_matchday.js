@@ -5,6 +5,7 @@
 
 import { supabase } from "./global.js";
 import { fullClubName } from "./clubs_lookup.js";
+import { loadMatchdayCheckinReadiness } from "./match_scheduling.js";
 
 const REFRESH_MS = 20_000;
 
@@ -118,6 +119,7 @@ function renderFixtureCard(fx) {
       <div class="dash-md-vs">${vs}</div>
       <div class="dash-md-time" title="UK: ${escapeHtml(kickUk)}">${escapeHtml(kickLocal)}</div>
       <div class="dash-md-status">${escapeHtml(statusLine(fx))}</div>
+      <div class="dash-md-gate" data-fixture-gate="${fid}" hidden></div>
       <div class="dash-md-actions">${actions}</div>
     </div>
   `;
@@ -147,6 +149,33 @@ function renderSynopsis(data) {
   body.querySelectorAll(".dash-md-checkin").forEach((btn) => {
     btn.addEventListener("click", () => onCheckIn(Number(btn.dataset.fixtureId), btn));
   });
+  applyCheckinReadinessToCards(fixtures);
+}
+
+async function applyCheckinReadinessToCards(fixtures) {
+  for (const fx of fixtures || []) {
+    if (!fx?.can_check_in) continue;
+    const fid = Number(fx.fixture_id);
+    if (!fid) continue;
+    const res = await loadMatchdayCheckinReadiness(fid);
+    if (!res.ok || !res.data || res.data.ok) continue;
+    const issues = Array.isArray(res.data.issues) ? res.data.issues.filter(Boolean) : [];
+    if (!issues.length) continue;
+    const btn = document.querySelector(`.dash-md-checkin[data-fixture-id="${fid}"]`);
+    const gate = document.querySelector(`[data-fixture-gate="${fid}"]`);
+    if (btn) {
+      btn.disabled = true;
+      btn.title = issues[0];
+    }
+    if (gate) {
+      gate.hidden = false;
+      gate.textContent = issues[0];
+      gate.style.color = "#f88";
+      gate.style.fontSize = "12px";
+      gate.style.marginTop = "6px";
+      gate.style.lineHeight = "1.35";
+    }
+  }
 }
 
 async function onCheckIn(fixtureId, btn) {
