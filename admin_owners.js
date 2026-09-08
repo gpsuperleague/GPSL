@@ -1206,6 +1206,52 @@ function filterSeasonOwnerBoard(filterText) {
   }
 }
 
+function activitySortMetrics(row) {
+  const act = row?.activity || {};
+  const currentMonthLogins = Number(act.logins_current_month) || 0;
+  const previousMonthLogins = Number(act.logins_previous_month) || 0;
+  const totalLogins = Number(act.logins_total) || 0;
+  const lastLoginMs = act.last_sign_in_at ? Date.parse(act.last_sign_in_at) || 0 : 0;
+  return {
+    currentMonthLogins,
+    previousMonthLogins,
+    totalLogins,
+    lastLoginMs,
+    demoteLastLogin: currentMonthLogins < 4,
+  };
+}
+
+function compareRowsByActivitySort(a, b) {
+  const aa = activitySortMetrics(a);
+  const bb = activitySortMetrics(b);
+
+  if (aa.demoteLastLogin !== bb.demoteLastLogin) {
+    return aa.demoteLastLogin ? 1 : -1;
+  }
+
+  if (!aa.demoteLastLogin && aa.lastLoginMs !== bb.lastLoginMs) {
+    return bb.lastLoginMs - aa.lastLoginMs;
+  }
+  if (aa.currentMonthLogins !== bb.currentMonthLogins) {
+    return bb.currentMonthLogins - aa.currentMonthLogins;
+  }
+  if (aa.previousMonthLogins !== bb.previousMonthLogins) {
+    return bb.previousMonthLogins - aa.previousMonthLogins;
+  }
+  if (aa.totalLogins !== bb.totalLogins) {
+    return bb.totalLogins - aa.totalLogins;
+  }
+  if (aa.demoteLastLogin && aa.lastLoginMs !== bb.lastLoginMs) {
+    return bb.lastLoginMs - aa.lastLoginMs;
+  }
+
+  const aTag = String(a?.owner_tag || "").toLowerCase();
+  const bTag = String(b?.owner_tag || "").toLowerCase();
+  if (aTag !== bTag) return aTag.localeCompare(bTag);
+
+  return String(a?.email || "").localeCompare(String(b?.email || ""));
+}
+
 async function loadWaitingListAdmin() {
   const tableWrap = document.getElementById("wlAdminTableWrap");
   if (!tableWrap) return;
@@ -1247,19 +1293,20 @@ async function loadWaitingListAdmin() {
     owner_timezone: timezoneMap.get(r.owner_id) || "",
   }));
   const rows = [...priority, ...invited];
-  const ownerRows = priority.filter((r) => r.has_club);
-  const waitingRows = priority.filter((r) => !r.has_club);
+  const ownerRows = priority.filter((r) => r.has_club).sort(compareRowsByActivitySort);
+  const waitingRows = priority.filter((r) => !r.has_club).sort(compareRowsByActivitySort);
+  invited.sort(compareRowsByActivitySort);
   const waitingCount = waitingRows.length + invited.length;
   const ownerCount = ownerRows.length;
   const auctionTotal = invited.length;
   const testTotal = rows.filter((r) => !!r.confirmed_test_season).length;
   const liveTotal = rows.filter((r) => !!r.confirmed_live_season).length;
   const sortNote = data?.priority_uses_admin_sort
-    ? "Manual priority order"
-    : "Join-date order (drag to customise)";
+    ? "Section sort uses login activity; drag still sets saved season priority underneath"
+    : "Section sort uses login activity";
   const activityNote = activityRes.error
     ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} logins · unplayed fixtures (prev / cur / season) · admin IP/country review`;
+    : `${prevLabel} / ${curLabel} logins · unplayed fixtures (prev / cur / season) · admin IP/country review · sort: last login first unless current month logins are under 4`;
 
   const colSpan = 23;
   const sectionRow = (label) =>
@@ -1584,11 +1631,13 @@ async function loadArchivedOwnersSection() {
 
   const [
     { data, error },
+    activityRes,
     { data: secData },
     { data: clubsData },
     timezoneMap,
   ] = await Promise.all([
     supabase.rpc("admin_list_archived_owners"),
+    fetchOwnerActivityById(),
     supabase.rpc("admin_owner_login_security_map", { p_recent_days: 30 }),
     supabase.from("Clubs").select("ShortName, Club"),
     fetchOwnerTimezoneMap(),
@@ -1610,12 +1659,19 @@ async function loadArchivedOwnersSection() {
 
   section.hidden = false;
   const securityById = new Map();
+  const activityById = activityRes.byId;
   const secOwners = Array.isArray(secData?.owners) ? secData.owners : [];
   for (const row of secOwners) {
     if (row?.owner_id) securityById.set(row.owner_id, row);
   }
   const clubNameByShort = new Map(
     (clubsData || []).map((c) => [String(c.ShortName || ""), String(c.Club || c.ShortName || "")])
+  );
+  rows.sort((a, b) =>
+    compareRowsByActivitySort(
+      { ...a, activity: activityById.get(a.owner_id) || null },
+      { ...b, activity: activityById.get(b.owner_id) || null }
+    )
   );
 
   let html =
@@ -1638,6 +1694,7 @@ async function loadArchivedOwnersSection() {
     const testOn = !!row.confirmed_test_season;
     const liveOn = !!row.confirmed_live_season;
     const sec = securityById.get(row.owner_id) || {};
+    const act = activityById.get(row.owner_id) || {};
     const ownerTimezone = timezoneMap.get(row.owner_id) || "";
     const tzDelta = formatUkOffsetDelta(ownerTimezone);
     const lastCountry = sec.last_country_code ? String(sec.last_country_code) : "";
@@ -1659,7 +1716,7 @@ async function loadArchivedOwnersSection() {
         ? `${escapeWl(lastClubName)} <span class="muted">(${escapeWl(lastClubShort)})</span>`
         : escapeWl(lastClubShort)
       : "—";
-    const filterText = [tag, email, row.last_club_short_name, lastClubName, row.status_note, ownerTimezone, tzDelta.text, lastCountry, lastCountryName, lastIp]
+    const filterText = [tag, email, row.last_club_short_name, lastClubName, row.status_note, ownerTimezone, tzDelta.text, lastCountry, lastCountryName, lastIp, act.club_short_name, act.club_name]
       .filter(Boolean)
       .join(" ");
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
