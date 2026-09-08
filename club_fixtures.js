@@ -35,7 +35,7 @@ import {
   wireMatchSimBannerToggle,
   wireMatchSimButtons,
   runMatchSimulation,
-} from "./match_sim_ui.js";
+} from "./match_sim_ui.js?v=20260908-assist-pairing";
 import { loadMyNation, loadInternationalFixtures } from "./international.js";
 
 let myClub = { short: null, name: null };

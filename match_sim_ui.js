@@ -482,7 +482,7 @@ export function playMatchMomentum(data, labels = {}) {
     const shownGoalsByPlayer = {};
 
     // Remap events onto half-aware timeline by match minute
-    const events = rawEvents
+    const timedEvents = rawEvents
       .filter((e) => e && e.type !== "kickoff")
       .map((e) => {
         let minute = Number(e.minute);
@@ -520,6 +520,26 @@ export function playMatchMomentum(data, labels = {}) {
         return { ...e, minute, at };
       })
       .sort((a, b) => a.at - b.at);
+
+    const assistQueue = { home: [], away: [] };
+    const events = [];
+    for (const ev of timedEvents) {
+      const side = ev.side === "home" || ev.side === "away" ? ev.side : null;
+      if (ev.type === "goal" && side) {
+        const goalEv = { ...ev, assist_event: null };
+        assistQueue[side].push(goalEv);
+        events.push(goalEv);
+        continue;
+      }
+      if (ev.type === "assist" && side) {
+        const goalEv = assistQueue[side].find((g) => !g.assist_event);
+        if (goalEv) {
+          goalEv.assist_event = ev;
+          continue;
+        }
+      }
+      events.push(ev);
+    }
 
     // Inject synthetic stoppage / HT markers (display only)
     // (clock handles added-time labels; HT banner from phase)
@@ -844,6 +864,8 @@ export function playMatchMomentum(data, labels = {}) {
             assistEl = document.createElement("div");
             assistEl.className = "msim-ev-assist";
             block.appendChild(assistEl);
+          } else if (assistEl.textContent) {
+            return;
           }
           assistEl.textContent = shortEventLabel(ev);
           return;
@@ -867,13 +889,10 @@ export function playMatchMomentum(data, labels = {}) {
         block.appendChild(goalEl);
         colFor(side).prepend(block);
         lastGoalBlock[side] = block;
-
-        const next = events[idx];
-        if (next && next.type === "assist" && next.side === side) {
-          idx += 1;
+        if (ev.assist_event) {
           const assistEl = document.createElement("div");
           assistEl.className = "msim-ev-assist";
-          assistEl.textContent = shortEventLabel(next);
+          assistEl.textContent = shortEventLabel(ev.assist_event);
           block.appendChild(assistEl);
         }
         return;
