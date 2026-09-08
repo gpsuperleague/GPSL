@@ -20,6 +20,7 @@ import {
 import {
   pesdbPlayerCardUrl,
   pesdbPlayerUrl,
+  gpdbPlayerUrl,
   playerNameLinkHtml,
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
@@ -319,7 +320,13 @@ function autoFillBestXi(allPlayers, maxBench = MAX_BENCH) {
 
 function renderPlayerCard(
   player,
-  { compact = false, pitch = false, removable = false, status = null } = {}
+  {
+    compact = false,
+    pitch = false,
+    removable = false,
+    status = null,
+    showGpdbLink = false,
+  } = {}
 ) {
   const id = playerKey(player);
   const name = player.Name || player.player_name || id;
@@ -352,7 +359,7 @@ function renderPlayerCard(
     </a>
     <div class="spc-meta">
       <div class="spc-name">${playerNameLinkHtml(id, name)}</div>
-      ${compact ? "" : `<div class="spc-pos">${pos}</div>`}
+      ${compact ? "" : `<div class="spc-pos">${pos}${showGpdbLink ? ` · <a href="${gpdbPlayerUrl(id)}" class="gpsl-player-link" draggable="false">GPDB</a>` : ""}</div>`}
     </div>`;
   const removeBtn = card.querySelector(".spc-remove");
   if (removeBtn) {
@@ -712,6 +719,7 @@ export function initMatchdaySquadPanel({
   clubNation = null,
   /** @type {Map<string, 'suspended'|'injured'|'recovery'>|null} */
   playerStatusById = null,
+  showGpdbLink = false,
 }) {
   /** @type {Map<string, 'suspended'|'injured'|'recovery'>} */
   let statusById = playerStatusById instanceof Map ? playerStatusById : new Map();
@@ -1026,7 +1034,7 @@ export function initMatchdaySquadPanel({
   function rerenderPlayerCards() {
     poolList.innerHTML = "";
     for (const p of state.pool) {
-      poolList.appendChild(renderPlayerCard(p, { status: statusFor(p) }));
+      poolList.appendChild(renderPlayerCard(p, { status: statusFor(p), showGpdbLink }));
     }
 
     for (const slotId of SLOT_IDS) {
@@ -1040,6 +1048,7 @@ export function initMatchdaySquadPanel({
           pitch: true,
           removable: true,
           status: statusFor(p),
+          showGpdbLink,
         });
         card.draggable = !editPositionsMode;
         drop.appendChild(card);
@@ -1058,6 +1067,7 @@ export function initMatchdaySquadPanel({
             compact: true,
             removable: true,
             status: statusFor(p),
+            showGpdbLink,
           })
         );
       }

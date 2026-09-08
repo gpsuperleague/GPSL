@@ -33,6 +33,12 @@ export function gpslPlayerCareerUrl(konamiId) {
   return `player_career.html?id=${encodeURIComponent(id)}`;
 }
 
+export function gpdbPlayerUrl(konamiId) {
+  const id = String(konamiId ?? "").trim();
+  if (!id) return "GPDB.html";
+  return `GPDB.html?player=${encodeURIComponent(id)}`;
+}
+
 export function escapePlayerHtml(text) {
   return String(text ?? "")
     .replace(/&/g, "&amp;")

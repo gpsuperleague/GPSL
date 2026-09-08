@@ -1986,6 +1986,14 @@ document.addEventListener("DOMContentLoaded", () => {
     saveGpdbFilters();
   }
 
+  function applyGpdbPlayerFromUrl() {
+    const id = new URLSearchParams(window.location.search).get("player")?.trim();
+    if (!id) return;
+    CURRENT_FILTERS.Konami_ID = id;
+    const input = document.getElementById("filter-Konami_ID");
+    if (input) input.value = id;
+  }
+
   function applyMyNationFilter() {
     if (!MY_NATION?.code) return;
     const values = gpdbNationFilterValues(
@@ -3482,6 +3490,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupTextFilters();
     await populateDropdowns();
     restoreGpdbFilterUi();
+    applyGpdbPlayerFromUrl();
     applyGpdbNationFromUrl();
     await loadTotalCount();
     await loadActiveDraftListings();

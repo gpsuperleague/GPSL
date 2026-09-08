@@ -6,7 +6,7 @@ import {
   loadPlayerValueTables,
   formatRatingWithPotential,
 } from "./player_economics.js";
-import { playerThumbLinkHtml, playerNameLinkHtml } from "./player_links.js";
+import { playerThumbLinkHtml, playerNameLinkHtml, gpdbPlayerUrl } from "./player_links.js";
 import {
   SCOUTING_TIER_LABELS,
   isScoutingAvailable,
@@ -864,7 +864,7 @@ function renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer) {
             return `
           <tr data-player-id="${pid}" class="${rowClass}">
             <td>${playerThumbLinkHtml(pid, { className: "scout-thumb", alt: name })}</td>
-            <td class="name">${playerNameLinkHtml(pid, name)}${scoutingPlayerBadgesHtml(p)}</td>
+            <td class="name">${playerNameLinkHtml(pid, name)} <a href="${gpdbPlayerUrl(pid)}" class="gpsl-link" style="color:#ff9900;">GPDB</a>${scoutingPlayerBadgesHtml(p)}</td>
             <td>${p?.Nation || "—"}</td>
             <td>${p?.Position || "—"}</td>
             <td>${p?.Age ?? "—"}</td>
@@ -1651,6 +1651,7 @@ async function initPlanner() {
     maxBench: 17,
     benchSubSlots: 12,
     maxSquad: 28,
+    showGpdbLink: true,
     autoFillButtonLabel: "Autofill board",
     customAutoFill: ({ allPlayers: pool, maxBench, maxSquad, labels }) => {
       return runScoutingAutofill({ pool, maxBench, maxSquad, labels });
