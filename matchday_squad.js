@@ -754,10 +754,14 @@ export function initMatchdaySquadPanel({
         };
   state.maxBench = benchLimit;
   state.maxSquad = effectiveSquadLimit;
+  const subsRangeStart = MAX_PITCH + 1;
+  const subsRangeEnd = MAX_PITCH + subSlotCount;
+  const squadRangeStart = subsRangeEnd + 1;
+  const squadRangeEnd = MAX_PITCH + benchLimit;
 
   const benchHeading =
     squadFillerCount > 0
-      ? `Subs (${subSlotCount}) + Squad (${squadFillerCount})`
+      ? `Subs (${subsRangeStart}-${subsRangeEnd}) + Squad (${squadRangeStart}-${squadRangeEnd})`
       : `Bench (${benchLimit} subs)`;
 
   const benchHtml =
@@ -765,11 +769,11 @@ export function initMatchdaySquadPanel({
       ? `
         <div class="squad-bench-wrap">
           <div class="squad-bench squad-bench--subs">
-            <h4>Subs <span class="bench-count">(1–${subSlotCount})</span></h4>
+            <h4>Subs <span class="bench-count">(${subsRangeStart}-${subsRangeEnd})</span></h4>
             <div class="bench-slots bench-slots-grid" id="benchSlotsSubs"></div>
           </div>
           <div class="squad-bench squad-bench--squad">
-            <h4>Squad fillers <span class="bench-count">(${subSlotCount + 1}–${benchLimit})</span></h4>
+            <h4>Squad fillers <span class="bench-count">(${squadRangeStart}-${squadRangeEnd})</span></h4>
             <p class="bench-squad-hint">Not matchday substitutes — planning depth only. Drag here or use ✕ to return to the pool.</p>
             <div class="bench-slots bench-slots-grid" id="benchSlotsSquad"></div>
           </div>

@@ -1730,11 +1730,11 @@ async function initPlanner() {
   const hint = root.querySelector(".squad-hint");
   if (hint) {
     hint.innerHTML = multiBoardEnabled
-      ? "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b>. " +
+      ? "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (12-23)</b>, and <b>squad fillers (24-28)</b>. " +
         "Drag a player onto another to <b>swap</b>. Use <b>✕</b> to send them back to the pool. " +
         "You have <b>4 named tactic boards</b> sharing one shortlist — switch boards above. " +
         "Planning only — not your matchday squad."
-      : "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b>. " +
+      : "Drag <b>scouting targets</b> onto the pitch (11), <b>subs (12-23)</b>, and <b>squad fillers (24-28)</b>. " +
         "Drag onto another player to <b>swap</b>. Use <b>✕</b> to return to the pool. " +
         "Click position labels to change roles. This is for planning only — not your matchday squad.";
   }
