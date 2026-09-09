@@ -30,6 +30,23 @@
     .scout-tier-balance {
       color:#999; font-size:12px; margin:0 0 12px; letter-spacing:0.02em;
     }
+    .scout-tier-hint {
+      color:#888; font-size:12px; margin:0 0 12px; line-height:1.45; max-width:52rem;
+    }
+    .scout-nested-row td.name { padding-left: 22px; }
+    .scout-nest-label {
+      display:inline-block; min-width:4.5rem; margin-right:8px;
+      color:#ffcc66; font-size:11px; font-weight:bold;
+    }
+    .scout-add-nest, .scout-unlink-nest {
+      background:#333; color:#ff9900; border:1px solid #555;
+      border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer;
+      font-weight:bold;
+    }
+    .scout-add-nest[disabled] { opacity:0.4; cursor:default; }
+    .scout-unlink-nest { color:#ddd; font-weight:normal; font-size:11px; }
+    .scout-nest-count { color:#777; font-size:11px; margin-left:6px; }
+    .scout-nest-actions { white-space:nowrap; }
     .scout-pos-group { margin:0 0 14px; }
     .scout-pos-heading {
       color:#ddd; font-size:13px; margin:0 0 6px; font-weight:bold;
@@ -598,6 +615,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260908-gpdb-links"></script>
+  <script type="module" src="scouting.js?v=20260909-nested-backups"></script>
 </body>
 </html>

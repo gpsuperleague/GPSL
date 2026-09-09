@@ -9,10 +9,12 @@ import {
 import { playerThumbLinkHtml, playerNameLinkHtml, gpdbPlayerUrl } from "./player_links.js";
 import {
   SCOUTING_TIER_LABELS,
+  SCOUTING_NEST_TIER_LABELS,
   isScoutingAvailable,
   scoutingSetupHint,
   loadScoutingTargets,
-  setScoutingTargetTier,
+  setScoutingTargetAnchor,
+  promoteScoutingToFirstTarget,
   setScoutingActiveTarget,
   setScoutingActiveTargetsBulk,
   toggleScoutingTarget,
@@ -23,8 +25,8 @@ import {
   getStoredScoutingBoardNo,
   setStoredScoutingBoardNo,
   loadScoutingPlannerPlayerBoards,
-} from "./scouting_targets.js?v=20260821-board-filter";
-import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20260907-full-swap-fix";
+} from "./scouting_targets.js?v=20260909-nested-backups";
+import { initMatchdaySquadPanel, buildSlotsPayload, buildPitchLayoutPayload } from "./matchday_squad.js?v=20260909-nested-backups";
 import { autoFillScoutingBoard } from "./scouting_autofill.js?v=20260821-autofill";
 import {
   loadScoutingDraftContext,
@@ -112,6 +114,19 @@ let squadDesignationsState = null;
 const SCOUTING_ALL_VIEW_ACTIVE_KEY = "gpsl_scouting_active_targets_all";
 /** @type {Map<string, { activeIds: string[], planNation: string|null, hydrated: boolean }>} */
 let boardViewStateCache = new Map();
+/** Debounced auto-save after tactic-board placements. */
+let plannerAutoSaveTimer = null;
+let plannerPromoteBusy = false;
+let plannerAutoSaveEnabled = false;
+let plannerBaselineSlotsKey = "";
+
+function plannerSlotsKey(slots) {
+  try {
+    return JSON.stringify(slots || []);
+  } catch {
+    return "";
+  }
+}
 
 function activeTargetBudgetForPlayer(pid) {
   const p = playerMapCache.get(String(pid));
@@ -483,7 +498,7 @@ function groupTierRowsByPosition(tierRows, playerMap) {
   return grouped;
 }
 
-function renderTierByPositionGroups(tier, tierRows, playerMap, draftUiByPlayer) {
+function renderTierByPositionGroups(tier, tierRows, playerMap, draftUiByPlayer, allFilteredRows) {
   if (!tierRows.length) {
     return `<p class="scout-empty">No players — star targets in GPDB (☆).</p>`;
   }
@@ -500,8 +515,15 @@ function renderTierByPositionGroups(tier, tierRows, playerMap, draftUiByPlayer) 
           <h4 class="scout-pos-heading">${groupName} (${rows.length})</h4>
           ${
             rows.length
-              ? renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer)
-              : `<p class="scout-empty scout-pos-empty">None in this tier</p>`
+              ? renderTierTable(
+                  tier,
+                  groupName,
+                  rows,
+                  playerMap,
+                  draftUiByPlayer,
+                  allFilteredRows
+                )
+              : `<p class="scout-empty scout-pos-empty">None in this group</p>`
           }
         </div>`;
     })
@@ -788,12 +810,141 @@ function canUseDraftBidding() {
   return Boolean(clubShort);
 }
 
-function renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer) {
+function renderScoutPlayerRow({
+  row,
+  playerMap,
+  draftUiByPlayer,
+  showDraft,
+  tier,
+  groupName,
+  idx,
+  rowsLength,
+  nested = false,
+  nestChildrenHtml = "",
+}) {
+  const p = playerMap.get(String(row.player_id));
+  const pid = String(row.player_id);
+  const name = p?.Name || `Player ${pid}`;
+  const rating = p
+    ? formatRatingWithPotential(p.Rating, p.Potential, p.Calc_Potential)
+    : "—";
+  const mv =
+    p?.market_value != null && p.market_value !== ""
+      ? formatMoney(Number(p.market_value))
+      : "—";
+  const club = p?.Contracted_Team
+    ? displayClubName(p.Contracted_Team)
+    : "Free agent";
+  const draftUi = draftUiByPlayer.get(pid) || {
+    status: "—",
+    leadingText: "—",
+    yourBidText: "—",
+    playerId: pid,
+    canBidInline: false,
+    minBid: null,
+    playerPageUrl: null,
+    isLeading: false,
+    budgetAmount: Number(p?.market_value) || 0,
+    budgetKind: "mv",
+  };
+  const yourBidClass = draftUi.isLeading ? "scout-leading-bid" : "";
+  const draftCells = showDraft
+    ? `<td class="scout-draft-status">${draftUi.status}</td>
+            <td>${draftUi.leadingText}</td>
+            <td class="${yourBidClass}">${draftUi.yourBidText}</td>
+            <td>${renderDraftManageCell(draftUi)}</td>`
+    : "";
+  const isActive = row.is_active_target === true;
+  const isOwned = isOwnedByMyClub(p);
+  const isLockedActive = isActive && isOwned;
+  const hasYourBid = !!draftUi.yourBidText && draftUi.yourBidText !== "—";
+  const activeTitle = activeTargetBudgetTitle(pid);
+  const rowClass = [
+    nested ? "scout-nested-row" : "",
+    isActive ? "scout-active-row" : "",
+    hasYourBid ? "scout-bid-owned-row" : "",
+    isLockedActive ? "scout-active-owned-row" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const nestLabel = nested
+    ? `<span class="scout-nest-label">${escapeHtml(
+        SCOUTING_NEST_TIER_LABELS[Number(row.tier)] || `Tier ${row.tier}`
+      )}</span>`
+    : "";
+
+  const nestCount = nestedRowsForAnchor(pid).length;
+  const canAddNest = !nested && Number(tier) === 1 && nestCount < 3;
+  const tierCell = nested
+    ? `<td class="scout-nest-actions">
+              <button type="button" class="scout-unlink-nest" data-player-id="${pid}" title="Unlink — become a top target again">Unlink</button>
+            </td>`
+    : `<td class="scout-nest-actions">
+              <button type="button" class="scout-add-nest" data-anchor-id="${pid}" ${
+                canAddNest ? "" : "disabled"
+              } title="Add Backup / 3rd / 4th under this target">+</button>
+              <span class="scout-nest-count">${nestCount}/3</span>
+            </td>`;
+
+  const moveCell = nested
+    ? `<td></td>`
+    : `<td>
+              <button type="button" class="scout-move-btn" data-player-id="${pid}" data-tier="${tier}" data-group="${escapeHtml(
+                groupName
+              )}" data-dir="up" ${idx === 0 ? "disabled" : ""} title="Move up">▲</button>
+              <button type="button" class="scout-move-btn" data-player-id="${pid}" data-tier="${tier}" data-group="${escapeHtml(
+                groupName
+              )}" data-dir="down" ${
+                idx === rowsLength - 1 ? "disabled" : ""
+              } title="Move down">▼</button>
+            </td>`;
+
+  return `
+          <tr data-player-id="${pid}" class="${rowClass}">
+            <td>${playerThumbLinkHtml(pid, { className: "scout-thumb", alt: name })}</td>
+            <td class="name">${nestLabel}${playerNameLinkHtml(
+              pid,
+              name
+            )} <a href="${gpdbPlayerUrl(
+              pid
+            )}" class="gpsl-link" style="color:#ff9900;">GPDB</a>${scoutingPlayerBadgesHtml(
+              p
+            )}</td>
+            <td>${p?.Nation || "—"}</td>
+            <td>${p?.Position || "—"}</td>
+            <td>${p?.Age ?? "—"}</td>
+            <td>${rating}</td>
+            <td>${mv}</td>
+            <td>${p?.Playstyle || "—"}</td>
+            <td>${club}</td>
+            ${draftCells}
+            <td>
+              <input type="checkbox" class="scout-active-check" data-player-id="${pid}"
+                ${isActive ? "checked" : ""} ${
+                  isLockedActive ? "disabled" : ""
+                } title="${
+                  isLockedActive
+                    ? "Already bought by your club - fixed active target"
+                    : activeTitle
+                }"
+                aria-label="Active target for ${name}">
+            </td>
+            ${tierCell}
+            ${moveCell}
+            <td>
+              <button type="button" class="scout-remove" data-player-id="${pid}" title="Remove from scouting">✕</button>
+            </td>
+          </tr>${nestChildrenHtml}`;
+}
+
+function renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer, allFilteredRows) {
   if (!rows.length) {
     return `<p class="scout-empty">No players — star targets in GPDB (☆).</p>`;
   }
 
   const showDraft = canUseDraftBidding();
+  const nestSource = allFilteredRows || rowsForListFilter(scoutingRows);
 
   return `
     <table class="scout-table">
@@ -810,7 +961,7 @@ function renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer) {
           <th>Club</th>
           ${showDraft ? "<th>Draft</th><th>Leading</th><th>Your bid</th><th>Manage bid</th>" : ""}
           <th title="Count toward Active Targets budget total">Active Targets</th>
-          <th>Tier</th>
+          <th>Nest</th>
           <th>Move</th>
           <th></th>
         </tr>
@@ -818,84 +969,38 @@ function renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer) {
       <tbody>
         ${rows
           .map((row, idx) => {
-            const p = playerMap.get(String(row.player_id));
             const pid = String(row.player_id);
-            const name = p?.Name || `Player ${pid}`;
-            const rating = p
-              ? formatRatingWithPotential(p.Rating, p.Potential, p.Calc_Potential)
-              : "—";
-            const mv =
-              p?.market_value != null && p.market_value !== ""
-                ? formatMoney(Number(p.market_value))
-                : "—";
-            const club = p?.Contracted_Team
-              ? displayClubName(p.Contracted_Team)
-              : "Free agent";
-            const draftUi = draftUiByPlayer.get(pid) || {
-              status: "—",
-              leadingText: "—",
-              yourBidText: "—",
-              playerId: pid,
-              canBidInline: false,
-              minBid: null,
-              playerPageUrl: null,
-              isLeading: false,
-              budgetAmount: Number(p?.market_value) || 0,
-              budgetKind: "mv",
-            };
-            const yourBidClass = draftUi.isLeading ? "scout-leading-bid" : "";
-            const draftCells = showDraft
-              ? `<td class="scout-draft-status">${draftUi.status}</td>
-            <td>${draftUi.leadingText}</td>
-            <td class="${yourBidClass}">${draftUi.yourBidText}</td>
-            <td>${renderDraftManageCell(draftUi)}</td>`
-              : "";
-            const isActive = row.is_active_target === true;
-            const isOwned = isOwnedByMyClub(p);
-            const isLockedActive = isActive && isOwned;
-            const hasYourBid = !!draftUi.yourBidText && draftUi.yourBidText !== "—";
-            const activeTitle = activeTargetBudgetTitle(pid);
-            const rowClass = [
-              isActive ? "scout-active-row" : "",
-              hasYourBid ? "scout-bid-owned-row" : "",
-              isLockedActive ? "scout-active-owned-row" : "",
-            ].filter(Boolean).join(" ");
-
-            return `
-          <tr data-player-id="${pid}" class="${rowClass}">
-            <td>${playerThumbLinkHtml(pid, { className: "scout-thumb", alt: name })}</td>
-            <td class="name">${playerNameLinkHtml(pid, name)} <a href="${gpdbPlayerUrl(pid)}" class="gpsl-link" style="color:#ff9900;">GPDB</a>${scoutingPlayerBadgesHtml(p)}</td>
-            <td>${p?.Nation || "—"}</td>
-            <td>${p?.Position || "—"}</td>
-            <td>${p?.Age ?? "—"}</td>
-            <td>${rating}</td>
-            <td>${mv}</td>
-            <td>${p?.Playstyle || "—"}</td>
-            <td>${club}</td>
-            ${draftCells}
-            <td>
-              <input type="checkbox" class="scout-active-check" data-player-id="${pid}"
-                ${isActive ? "checked" : ""} ${isLockedActive ? "disabled" : ""} title="${isLockedActive ? "Already bought by your club - fixed active target" : activeTitle}"
-                aria-label="Active target for ${name}">
-            </td>
-            <td>
-              <select class="scout-tier-select" data-player-id="${pid}" aria-label="Tier for ${name}">
-                ${[1, 2, 3, 4]
-                  .map(
-                    (t) =>
-                      `<option value="${t}"${Number(row.tier) === t ? " selected" : ""}>${SCOUTING_TIER_LABELS[t]}</option>`
-                  )
-                  .join("")}
-              </select>
-            </td>
-            <td>
-              <button type="button" class="scout-move-btn" data-player-id="${pid}" data-tier="${tier}" data-group="${escapeHtml(groupName)}" data-dir="up" ${idx === 0 ? "disabled" : ""} title="Move up">▲</button>
-              <button type="button" class="scout-move-btn" data-player-id="${pid}" data-tier="${tier}" data-group="${escapeHtml(groupName)}" data-dir="down" ${idx === rows.length - 1 ? "disabled" : ""} title="Move down">▼</button>
-            </td>
-            <td>
-              <button type="button" class="scout-remove" data-player-id="${pid}" title="Remove from scouting">✕</button>
-            </td>
-          </tr>`;
+            const children =
+              Number(tier) === 1
+                ? nestedRowsForAnchor(pid, nestSource)
+                : [];
+            const nestChildrenHtml = children
+              .map((child) =>
+                renderScoutPlayerRow({
+                  row: child,
+                  playerMap,
+                  draftUiByPlayer,
+                  showDraft,
+                  tier: Number(child.tier),
+                  groupName,
+                  idx: 0,
+                  rowsLength: 1,
+                  nested: true,
+                })
+              )
+              .join("");
+            return renderScoutPlayerRow({
+              row,
+              playerMap,
+              draftUiByPlayer,
+              showDraft,
+              tier,
+              groupName,
+              idx,
+              rowsLength: rows.length,
+              nested: false,
+              nestChildrenHtml,
+            });
           })
           .join("")}
       </tbody>
@@ -1038,6 +1143,24 @@ async function renderScoutingLists() {
   wireScoutingListActions(wrap);
 }
 
+function isTopTargetRow(row) {
+  return Number(row?.tier) === 1 && !row?.anchor_player_id;
+}
+
+function nestedRowsForAnchor(anchorId, rows = scoutingRows) {
+  const aid = String(anchorId);
+  return rows
+    .filter((r) => String(r.anchor_player_id || "") === aid)
+    .sort((a, b) => Number(a.tier) - Number(b.tier));
+}
+
+function firstTargetPlayersForAutofill() {
+  const firstIds = new Set(
+    scoutingRows.filter(isTopTargetRow).map((r) => String(r.player_id))
+  );
+  return playersForPlanner().filter((p) => firstIds.has(String(p.Konami_ID)));
+}
+
 function paintScoutingLists(wrap, playerMap, draftUiByPlayer) {
   const filteredRows = rowsForListFilter(scoutingRows);
   if (!filteredRows.length) {
@@ -1052,23 +1175,52 @@ function paintScoutingLists(wrap, playerMap, draftUiByPlayer) {
     return;
   }
 
-  wrap.innerHTML = [1, 2, 3, 4]
-    .map((tier) => {
-      const tierRows = sortScoutingRowsByPosition(
-        filteredRows.filter((r) => Number(r.tier) === tier),
-        playerMap
-      );
-      const balance = tierRows.length
-        ? `<div class="scout-tier-balance">${tierBalanceSummary(tierRows, playerMap)}</div>`
-        : "";
-      return `
-        <div class="tier-block" data-tier="${tier}">
-          <h3>${SCOUTING_TIER_LABELS[tier]} (${tierRows.length})</h3>
-          ${balance}
-          ${renderTierByPositionGroups(tier, tierRows, playerMap, draftUiByPlayer)}
-        </div>`;
-    })
-    .join("");
+  const topRows = sortScoutingRowsByPosition(
+    filteredRows.filter(isTopTargetRow),
+    playerMap
+  );
+  const topIds = new Set(topRows.map((r) => String(r.player_id)));
+  const orphanRows = sortScoutingRowsByPosition(
+    filteredRows.filter((r) => {
+      if (!r.anchor_player_id && Number(r.tier) > 1) return true;
+      // Nested under a missing / non-top anchor after list edits
+      if (r.anchor_player_id && !topIds.has(String(r.anchor_player_id))) {
+        // Still show under parent if parent is in filtered set as nested itself — skip
+        const parentOnList = filteredRows.some(
+          (p) => String(p.player_id) === String(r.anchor_player_id)
+        );
+        return !parentOnList;
+      }
+      return false;
+    }),
+    playerMap
+  );
+  const balance = topRows.length
+    ? `<div class="scout-tier-balance">${tierBalanceSummary(topRows, playerMap)}</div>`
+    : "";
+
+  let html = `
+    <div class="tier-block" data-tier="1">
+      <h3>${SCOUTING_TIER_LABELS[1]} (${topRows.length})</h3>
+      <p class="scout-tier-hint">Use <b>+</b> under a top target to add Backup / 3rd / 4th. Nested players stay in the squad pool until you place them on the board — then they become top targets (the previous first target returns to the pool).</p>
+      ${balance}
+      ${
+        topRows.length
+          ? renderTierByPositionGroups(1, topRows, playerMap, draftUiByPlayer, filteredRows)
+          : '<p class="scout-empty">No top targets — star players in GPDB (☆), or promote a nested backup onto the tactic board.</p>'
+      }
+    </div>`;
+
+  if (orphanRows.length) {
+    html += `
+      <div class="tier-block" data-tier="orphan">
+        <h3>Unlinked backups (${orphanRows.length})</h3>
+        <p class="scout-tier-hint">Older Backup / 3rd / 4th rows without a top-target link. Use a top target’s <b>+</b> to nest them, or leave them as independent pool options.</p>
+        ${renderTierByPositionGroups("orphan", orphanRows, playerMap, draftUiByPlayer, filteredRows)}
+      </div>`;
+  }
+
+  wrap.innerHTML = html;
 }
 
 function renderScoutingListsFromCache() {
@@ -1085,7 +1237,6 @@ async function saveTierGroupOrder(tier, groupName, orderedIds) {
       .from("owner_scouting_targets")
       .update({ sort_order: (scoutingGroupSortIndex(groupName) + 1) * 1000 + idx })
       .eq("player_id", String(pid))
-      .eq("tier", Number(tier))
   );
   const results = await Promise.all(updates);
   const err = results.find((r) => r.error)?.error;
@@ -1093,11 +1244,10 @@ async function saveTierGroupOrder(tier, groupName, orderedIds) {
 
   const rank = new Map(orderedIds.map((pid, idx) => [String(pid), idx]));
   scoutingRows.forEach((row) => {
-    if (Number(row.tier) !== Number(tier)) return;
     const pid = String(row.player_id);
+    if (!rank.has(pid)) return;
     const player = playerMapCache.get(pid);
     if (scoutingPositionGroupName(player?.Position) !== groupName) return;
-    if (!rank.has(pid)) return;
     row.sort_order = (scoutingGroupSortIndex(groupName) + 1) * 1000 + rank.get(pid);
   });
 }
@@ -1136,18 +1286,76 @@ function wireScoutingListActions(wrap) {
     });
   });
 
-  wrap.querySelectorAll(".scout-tier-select").forEach((sel) => {
-    sel.addEventListener("change", async () => {
-      const pid = sel.dataset.playerId;
-      const tier = Number(sel.value);
+  wrap.querySelectorAll(".scout-add-nest").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const anchorId = String(btn.dataset.anchorId || "");
+      if (!anchorId) return;
+      const taken = new Set(
+        nestedRowsForAnchor(anchorId).map((r) => String(r.player_id))
+      );
+      const options = scoutingRows
+        .filter((r) => {
+          const pid = String(r.player_id);
+          if (pid === anchorId) return false;
+          if (taken.has(pid)) return false;
+          // Prefer players not already nested under someone else
+          return true;
+        })
+        .map((r) => {
+          const p = playerMapCache.get(String(r.player_id));
+          const label = p?.Name || `Player ${r.player_id}`;
+          const nestNote = r.anchor_player_id
+            ? " (currently nested elsewhere)"
+            : Number(r.tier) > 1
+              ? ` (${SCOUTING_NEST_TIER_LABELS[Number(r.tier)] || "backup"})`
+              : "";
+          return { id: String(r.player_id), label: `${label}${nestNote}` };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+      if (!options.length) {
+        alert("No other scouting targets available to nest. Star more players in GPDB first.");
+        return;
+      }
+
+      const choice = window.prompt(
+        `Add Backup / 3rd / 4th under this top target.\nEnter the player number from the list:\n\n${options
+          .map((o, i) => `${i + 1}. ${o.label}`)
+          .join("\n")}`
+      );
+      if (choice == null || String(choice).trim() === "") return;
+      const n = Number(String(choice).trim());
+      if (!Number.isFinite(n) || n < 1 || n > options.length) {
+        alert("Invalid choice.");
+        return;
+      }
+      const pick = options[n - 1];
+      btn.disabled = true;
       try {
-        await setScoutingTargetTier(supabase, pid, tier);
+        await setScoutingTargetAnchor(supabase, pick.id, anchorId);
         await renderScoutingLists();
         if (document.getElementById("tab-planner")?.classList.contains("active")) {
           await initPlanner();
         }
       } catch (err) {
-        alert(err?.message || "Could not change tier.");
+        alert(err?.message || "Could not add nested target.");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  wrap.querySelectorAll(".scout-unlink-nest").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const pid = btn.dataset.playerId;
+      try {
+        await promoteScoutingToFirstTarget(supabase, pid);
+        await renderScoutingLists();
+        if (document.getElementById("tab-planner")?.classList.contains("active")) {
+          await initPlanner();
+        }
+      } catch (err) {
+        alert(err?.message || "Could not unlink nested target.");
       }
     });
   });
@@ -1155,14 +1363,19 @@ function wireScoutingListActions(wrap) {
   wrap.querySelectorAll(".scout-move-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const pid = String(btn.dataset.playerId || "");
-      const tier = Number(btn.dataset.tier || 0);
+      const tier = btn.dataset.tier;
       const groupName = String(btn.dataset.group || "");
       const dir = String(btn.dataset.dir || "");
-      if (!pid || !tier || !groupName || !dir) return;
+      if (!pid || !groupName || !dir) return;
 
       const groupRows = sortScoutingRowsByPosition(
         rowsForListFilter(scoutingRows).filter((row) => {
-          if (Number(row.tier) !== tier) return false;
+          if (!isTopTargetRow(row) && String(tier) !== "orphan") return false;
+          if (String(tier) === "orphan") {
+            if (row.anchor_player_id || Number(row.tier) <= 1) return false;
+          } else if (!isTopTargetRow(row)) {
+            return false;
+          }
           const player = playerMapCache.get(String(row.player_id));
           return scoutingPositionGroupName(player?.Position) === groupName;
         }),
@@ -1176,7 +1389,7 @@ function wireScoutingListActions(wrap) {
       [ids[index], ids[swap]] = [ids[swap], ids[index]];
       btn.disabled = true;
       try {
-        await saveTierGroupOrder(tier, groupName, ids);
+        await saveTierGroupOrder(tier === "orphan" ? 2 : 1, groupName, ids);
         renderScoutingListsFromCache();
       } catch (err) {
         alert(err?.message || "Could not move target.");
@@ -1453,9 +1666,20 @@ function renderListBoardFilter() {
 function rowsForListFilter(rows) {
   if (listBoardFilter === "all") return rows;
   const boardNo = Number(listBoardFilter);
-  return rows.filter((r) =>
-    playerBoardMap.get(String(r.player_id))?.has(boardNo)
-  );
+  const onBoard = new Set();
+  for (const r of rows) {
+    if (playerBoardMap.get(String(r.player_id))?.has(boardNo)) {
+      onBoard.add(String(r.player_id));
+    }
+  }
+  // Keep nested backups/3rd/4th visible under top targets on this board,
+  // even when those nested players are not placed on the board themselves.
+  return rows.filter((r) => {
+    const pid = String(r.player_id);
+    if (onBoard.has(pid)) return true;
+    const anchor = r.anchor_player_id ? String(r.anchor_player_id) : "";
+    return Boolean(anchor && onBoard.has(anchor));
+  });
 }
 
 function wireListBoardFilter() {
@@ -1512,6 +1736,122 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * When a nested backup is placed on XI / subs / fillers, promote them to a top
+ * target. The displaced previous first target is already returned to the pool by
+ * placePlayer — owner decides what to do with them from there.
+ */
+async function promoteOnBoardPlayers(panelState) {
+  const onBoard = playersOnPlannerBoard(panelState);
+  const toPromote = [];
+  for (const p of onBoard) {
+    const pid = String(p?.Konami_ID || "");
+    if (!pid) continue;
+    const row = scoutingRows.find((r) => String(r.player_id) === pid);
+    if (!row) continue;
+    if (Number(row.tier) !== 1 || row.anchor_player_id) {
+      toPromote.push(pid);
+    }
+  }
+  if (!toPromote.length) return false;
+
+  for (const pid of toPromote) {
+    await promoteScoutingToFirstTarget(supabase, pid);
+    const row = scoutingRows.find((r) => String(r.player_id) === pid);
+    if (row) {
+      row.tier = 1;
+      row.anchor_player_id = null;
+    }
+  }
+  renderScoutingListsFromCache();
+  return true;
+}
+
+async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = false, quiet = false } = {}) {
+  let baseLayout = pitchLayoutFromPanel;
+  if (baseLayout == null) {
+    const meta = plannerApi?.getFormationMeta?.() || {};
+    baseLayout = buildPitchLayoutPayload(
+      meta.positions || {},
+      meta.labels || {},
+      meta.formationId
+    );
+  }
+  const layoutPayload = pitchLayoutWithPlannerMeta(baseLayout, {
+    oooId: plannerOooPlayerId,
+    planNation: plannerPlanNation,
+  });
+
+  await saveScoutingPlanner(supabase, slots, layoutPayload, activeBoardNo);
+  const persisted = await loadScoutingPlannerState(
+    supabase,
+    clubShort,
+    activeBoardNo
+  );
+  if (!plannerSlotsEqual(slots, plannerRowsToSlots(persisted.rows))) {
+    await saveScoutingPlanner(supabase, slots, layoutPayload, activeBoardNo);
+  }
+  try {
+    playerBoardMap = await loadScoutingPlannerPlayerBoards(supabase);
+  } catch {
+    /* keep prior map */
+  }
+  const prevBoardState = boardViewStateCache.get(String(activeBoardNo));
+  boardViewStateCache.set(String(activeBoardNo), {
+    activeIds: prevBoardState?.activeIds || currentActiveTargetIds(),
+    planNation: plannerPlanNation,
+    hydrated: true,
+  });
+  if (listBoardFilter !== "all") {
+    renderScoutingListsFromCache();
+  }
+  const label = boardLabel(activeBoardNo);
+  setPlannerStatus(
+    quiet
+      ? multiBoardEnabled
+        ? `Auto-saved “${label}”.`
+        : "Tactic board auto-saved."
+      : multiBoardEnabled
+        ? `Saved “${label}”.`
+        : "Tactic board saved."
+  );
+  if (remount) {
+    await initPlanner();
+  }
+}
+
+function schedulePlannerPromoteAndAutoSave(panelState, slots) {
+  if (!plannerAutoSaveEnabled) return;
+  const key = plannerSlotsKey(slots);
+  if (key && key === plannerBaselineSlotsKey) return;
+
+  if (plannerAutoSaveTimer) {
+    clearTimeout(plannerAutoSaveTimer);
+    plannerAutoSaveTimer = null;
+  }
+  plannerAutoSaveTimer = setTimeout(async () => {
+    plannerAutoSaveTimer = null;
+    try {
+      if (!plannerPromoteBusy) {
+        plannerPromoteBusy = true;
+        try {
+          await promoteOnBoardPlayers(panelState);
+        } finally {
+          plannerPromoteBusy = false;
+        }
+      }
+      const payload =
+        slots ||
+        (panelState ? buildSlotsPayload(panelState) : null);
+      if (!payload) return;
+      await persistPlannerBoard(payload, null, { remount: false, quiet: true });
+      plannerBaselineSlotsKey = plannerSlotsKey(payload);
+    } catch (err) {
+      setPlannerStatus(err?.message || "Auto-save failed.", true);
+    }
+  }, 450);
+}
+
 async function refreshBoardList() {
   try {
     scoutingBoards = await ensureScoutingBoards(supabase);
@@ -1540,8 +1880,10 @@ function runScoutingAutofill({ pool, maxBench, maxSquad, labels }) {
   const minStars = Number(
     document.getElementById("scoutAutofillMinStars")?.value || 0
   );
+  // Autofill only uses top targets — nested backups stay in the pool until placed manually.
+  const firstPool = firstTargetPlayersForAutofill();
   const { state, summary } = autoFillScoutingBoard({
-    allPlayers: pool,
+    allPlayers: firstPool.length ? firstPool : pool,
     slotLabels: labels,
     maxBench,
     maxSquad,
@@ -1555,6 +1897,19 @@ function runScoutingAutofill({ pool, maxBench, maxSquad, labels }) {
     starCap: Number(squadDesignationsState?.star_cap ?? 3),
     minStarRating: Number(squadDesignationsState?.star_min_rating ?? 79),
   });
+  // Keep nested / non-selected targets available in the pool on the full shortlist.
+  if (firstPool.length && Array.isArray(pool) && state?.pool) {
+    const used = new Set();
+    for (const p of state.pitch?.values?.() || []) {
+      if (p) used.add(String(p.Konami_ID));
+    }
+    for (const p of state.bench || []) {
+      if (p) used.add(String(p.Konami_ID));
+    }
+    state.pool = pool
+      .filter((p) => !used.has(String(p.Konami_ID)))
+      .map((p) => ({ ...p }));
+  }
   setPlannerStatus(summary);
   return state;
 }
@@ -1591,6 +1946,12 @@ function wireAutofillBar() {
 async function initPlanner() {
   let root = document.getElementById("scoutingPlannerRoot");
   if (!root || !isScoutingAvailable()) return;
+
+  if (plannerAutoSaveTimer) {
+    clearTimeout(plannerAutoSaveTimer);
+    plannerAutoSaveTimer = null;
+  }
+  plannerAutoSaveEnabled = false;
 
   // Drop any prior matchday_squad root listeners before re-mounting this board.
   const freshRoot = root.cloneNode(false);
@@ -1658,48 +2019,11 @@ async function initPlanner() {
     },
     onChange: (_slots, panelState) => {
       updatePlannerCompositionStrip(panelState);
+      schedulePlannerPromoteAndAutoSave(panelState, _slots);
     },
     onSave: async (slots, pitchLayoutFromPanel) => {
       try {
-        const nextLayout = pitchLayoutWithPlannerMeta(pitchLayoutFromPanel, {
-          oooId: plannerOooPlayerId,
-          planNation: plannerPlanNation,
-        });
-        await saveScoutingPlanner(
-          supabase,
-          slots,
-          nextLayout,
-          activeBoardNo
-        );
-        const persisted = await loadScoutingPlannerState(
-          supabase,
-          clubShort,
-          activeBoardNo
-        );
-        if (!plannerSlotsEqual(slots, plannerRowsToSlots(persisted.rows))) {
-          await saveScoutingPlanner(supabase, slots, nextLayout, activeBoardNo);
-        }
-        try {
-          playerBoardMap = await loadScoutingPlannerPlayerBoards(supabase);
-        } catch {
-          /* keep prior map */
-        }
-        const prevBoardState = boardViewStateCache.get(String(activeBoardNo));
-        boardViewStateCache.set(String(activeBoardNo), {
-          activeIds: prevBoardState?.activeIds || currentActiveTargetIds(),
-          planNation: plannerPlanNation,
-          hydrated: true,
-        });
-        if (listBoardFilter !== "all") {
-          renderScoutingListsFromCache();
-        }
-        await initPlanner();
-        const label = boardLabel(activeBoardNo);
-        setPlannerStatus(
-          multiBoardEnabled
-            ? `Saved “${label}”.`
-            : "Tactic board saved."
-        );
+        await persistPlannerBoard(slots, pitchLayoutFromPanel, { remount: true });
       } catch (err) {
         setPlannerStatus(err?.message || "Save failed.", true);
         throw err;
@@ -1713,6 +2037,13 @@ async function initPlanner() {
   });
 
   updatePlannerCompositionStrip(plannerApi?.getState?.() || null);
+  plannerBaselineSlotsKey = plannerSlotsKey(
+    buildSlotsPayload(plannerApi?.getState?.() || { pitch: new Map(), bench: [], pool: [] })
+  );
+  // Allow auto-save after the initial mount onChange has settled.
+  queueMicrotask(() => {
+    plannerAutoSaveEnabled = true;
+  });
 
   const saveBtn = root.querySelector("#squadSaveBtn");
   if (saveBtn) {

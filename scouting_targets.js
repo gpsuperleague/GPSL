@@ -12,14 +12,23 @@ const MULTI_BOARD_SQL_HINT =
 const BULK_ACTIVE_TARGET_SQL_HINT =
   "Run supabase/sql/patches/owner_scouting_active_targets_bulk_20260907.sql in the Supabase SQL Editor, then reload.";
 
+const NESTED_BACKUP_SQL_HINT =
+  "Run supabase/sql/patches/scouting_nested_backups_20260909.sql in the Supabase SQL Editor, then reload.";
+
 export const SCOUTING_BOARD_COUNT = 4;
 const BOARD_STORAGE_KEY = "gpsl_scouting_board_no";
 
 export const SCOUTING_TIER_LABELS = {
   1: "Top targets",
-  2: "Backup targets",
-  3: "Third choice",
-  4: "Fourth choice",
+  2: "Backup",
+  3: "3rd choice",
+  4: "4th choice",
+};
+
+export const SCOUTING_NEST_TIER_LABELS = {
+  2: "Backup",
+  3: "3rd choice",
+  4: "4th choice",
 };
 
 let scoutingSchemaMissing = false;
@@ -65,27 +74,46 @@ export async function loadScoutingTargets(supabase, _clubShortName) {
 
   let { data, error } = await supabase
     .from("owner_scouting_targets")
-    .select("player_id, tier, sort_order, created_at, is_active_target")
+    .select("player_id, tier, sort_order, created_at, is_active_target, anchor_player_id")
     .eq("owner_id", ownerId)
     .order("tier")
     .order("sort_order")
     .order("created_at");
 
-  // Column may be missing until owner_scouting_active_targets.sql is deployed
-  if (
-    error &&
-    (String(error.message || "").includes("is_active_target") ||
-      error.code === "42703")
-  ) {
-    ({ data, error } = await supabase
-      .from("owner_scouting_targets")
-      .select("player_id, tier, sort_order, created_at")
-      .eq("owner_id", ownerId)
-      .order("tier")
-      .order("sort_order")
-      .order("created_at"));
-    if (!error && data) {
-      data = data.map((r) => ({ ...r, is_active_target: false }));
+  // Columns may be missing until later patches are deployed
+  if (error && error.code === "42703") {
+    const msg = String(error.message || "");
+    if (msg.includes("anchor_player_id")) {
+      ({ data, error } = await supabase
+        .from("owner_scouting_targets")
+        .select("player_id, tier, sort_order, created_at, is_active_target")
+        .eq("owner_id", ownerId)
+        .order("tier")
+        .order("sort_order")
+        .order("created_at"));
+      if (!error && data) {
+        data = data.map((r) => ({ ...r, anchor_player_id: null }));
+      }
+    }
+    if (
+      error &&
+      (String(error.message || "").includes("is_active_target") ||
+        error.code === "42703")
+    ) {
+      ({ data, error } = await supabase
+        .from("owner_scouting_targets")
+        .select("player_id, tier, sort_order, created_at")
+        .eq("owner_id", ownerId)
+        .order("tier")
+        .order("sort_order")
+        .order("created_at"));
+      if (!error && data) {
+        data = data.map((r) => ({
+          ...r,
+          is_active_target: false,
+          anchor_player_id: null,
+        }));
+      }
     }
   }
 
@@ -101,6 +129,10 @@ export async function loadScoutingTargets(supabase, _clubShortName) {
   return (data || []).map((r) => ({
     ...r,
     is_active_target: r.is_active_target === true,
+    anchor_player_id:
+      r.anchor_player_id != null && String(r.anchor_player_id).trim() !== ""
+        ? String(r.anchor_player_id)
+        : null,
   }));
 }
 
@@ -155,6 +187,77 @@ export async function setScoutingTargetTier(supabase, playerId, tier) {
 
   scoutingSchemaMissing = false;
   return data;
+}
+
+export async function setScoutingTargetAnchor(
+  supabase,
+  playerId,
+  anchorPlayerId,
+  tier = null
+) {
+  if (scoutingSchemaMissing) {
+    throw new Error(SQL_SETUP_HINT);
+  }
+
+  const payload = {
+    p_player_id: String(playerId),
+    p_anchor_player_id: String(anchorPlayerId),
+  };
+  if (tier != null) payload.p_tier = Number(tier);
+
+  const { data, error } = await supabase.rpc("scouting_set_target_anchor", payload);
+
+  if (error) {
+    if (
+      String(error.message || "").includes("scouting_set_target_anchor") ||
+      error.code === "PGRST202" ||
+      error.code === "42883"
+    ) {
+      throw new Error(NESTED_BACKUP_SQL_HINT);
+    }
+    if (isScoutingSchemaMissingError(error)) {
+      scoutingSchemaMissing = true;
+      throw new Error(SQL_SETUP_HINT);
+    }
+    throw error;
+  }
+
+  scoutingSchemaMissing = false;
+  return data;
+}
+
+/** Promote to top target (tier 1) and clear any nest link — e.g. after board placement. */
+export async function promoteScoutingToFirstTarget(supabase, playerId) {
+  if (scoutingSchemaMissing) {
+    throw new Error(SQL_SETUP_HINT);
+  }
+
+  const { data, error } = await supabase.rpc("scouting_promote_to_first_target", {
+    p_player_id: String(playerId),
+  });
+
+  if (error) {
+    if (
+      String(error.message || "").includes("scouting_promote_to_first_target") ||
+      error.code === "PGRST202" ||
+      error.code === "42883"
+    ) {
+      // Fallback if patch not deployed yet: set tier 1 (clears nest once column+RPC exist)
+      return setScoutingTargetTier(supabase, playerId, 1);
+    }
+    if (isScoutingSchemaMissingError(error)) {
+      scoutingSchemaMissing = true;
+      throw new Error(SQL_SETUP_HINT);
+    }
+    throw error;
+  }
+
+  scoutingSchemaMissing = false;
+  return data;
+}
+
+export function scoutingNestedBackupHint() {
+  return NESTED_BACKUP_SQL_HINT;
 }
 
 export async function setScoutingActiveTarget(supabase, playerId, active) {
