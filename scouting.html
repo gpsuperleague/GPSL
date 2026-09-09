@@ -47,6 +47,104 @@
     .scout-unlink-nest { color:#ddd; font-weight:normal; font-size:11px; }
     .scout-nest-count { color:#777; font-size:11px; margin-left:6px; }
     .scout-nest-actions { white-space:nowrap; }
+    .scout-nest-picker-overlay {
+      position: fixed; inset: 0; z-index: 1200;
+      background: rgba(0,0,0,0.65);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .scout-nest-picker {
+      width: min(720px, 100%);
+      max-height: min(80vh, 640px);
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .scout-nest-picker-head {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #333;
+      flex: 0 0 auto;
+    }
+    .scout-nest-picker-head h3 {
+      margin: 0 0 4px; color: #ff9900; font-size: 16px;
+    }
+    .scout-nest-picker-head p {
+      margin: 0; color: #999; font-size: 12px; line-height: 1.4;
+    }
+    .scout-nest-picker-list {
+      overflow: auto; flex: 1 1 auto; padding: 6px 0;
+    }
+    .scout-nest-picker-group {
+      padding: 8px 14px 4px;
+      color: #ffcc66; font-size: 11px; font-weight: bold;
+      letter-spacing: 0.03em; text-transform: uppercase;
+      position: sticky; top: 0; background: #1a1a1a;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .scout-nest-picker-item {
+      display: grid;
+      grid-template-columns: minmax(9rem, 1.4fr) 3.2rem 3.2rem 4.5rem 2.5rem minmax(5rem, 1fr);
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+      text-align: left;
+      padding: 8px 14px;
+      border: 0;
+      border-bottom: 1px solid #2a2a2a;
+      background: transparent;
+      color: #ddd;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .scout-nest-picker-item:hover,
+    .scout-nest-picker-item:focus {
+      background: #2a2418;
+      outline: none;
+    }
+    .scout-nest-picker-item .np-name {
+      font-weight: bold; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .scout-nest-picker-item .np-note {
+      display: block; color: #888; font-size: 10px; font-weight: normal;
+      margin-top: 2px;
+    }
+    .scout-nest-picker-item .np-pos { color: #ff9900; font-weight: bold; }
+    .scout-nest-picker-item .np-rating { color: #ffcc66; }
+    .scout-nest-picker-item .np-muted { color: #aaa; }
+    .scout-nest-picker-cols {
+      cursor: default !important;
+      color: #888 !important;
+      font-size: 11px !important;
+      pointer-events: none;
+      position: sticky;
+      top: 0;
+      background: #1a1a1a;
+      z-index: 1;
+      border-bottom: 1px solid #444;
+    }
+    .scout-nest-picker-foot {
+      padding: 10px 14px;
+      border-top: 1px solid #333;
+      display: flex; justify-content: flex-end; gap: 8px;
+      flex: 0 0 auto;
+    }
+    .scout-nest-picker-cancel {
+      background: #2a2a2a; color: #ddd; border: 1px solid #555;
+      border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 12px;
+    }
+    .scout-nest-picker-cancel:hover { background: #333; }
+    @media (max-width: 640px) {
+      .scout-nest-picker-item {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+      }
+      .scout-nest-picker-item .np-name { grid-column: 1 / -1; }
+    }
     .scout-pos-group { margin:0 0 14px; }
     .scout-pos-heading {
       color:#ddd; font-size:13px; margin:0 0 6px; font-weight:bold;
@@ -615,6 +713,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260909-nested-backups"></script>
+  <script type="module" src="scouting.js?v=20260909-nest-picker"></script>
 </body>
 </html>

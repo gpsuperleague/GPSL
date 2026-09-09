@@ -1154,6 +1154,137 @@ function nestedRowsForAnchor(anchorId, rows = scoutingRows) {
     .sort((a, b) => Number(a.tier) - Number(b.tier));
 }
 
+/** Scrollable nest picker — returns player_id or null if cancelled. */
+function openNestPlayerPicker({ anchorName, rows }) {
+  return new Promise((resolve) => {
+    const byPos = [...rows].sort((a, b) => {
+      const pa = playerMapCache.get(String(a.player_id));
+      const pb = playerMapCache.get(String(b.player_id));
+      const pos =
+        scoutingPositionSortIndex(pa?.Position) -
+        scoutingPositionSortIndex(pb?.Position);
+      if (pos !== 0) return pos;
+      const rating = (Number(pb?.Rating) || 0) - (Number(pa?.Rating) || 0);
+      if (rating !== 0) return rating;
+      return String(pa?.Name || "").localeCompare(String(pb?.Name || ""), "en", {
+        sensitivity: "base",
+      });
+    });
+
+    const overlay = document.createElement("div");
+    overlay.className = "scout-nest-picker-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Select nested target");
+
+    const groups = groupTierRowsByPosition(byPos, playerMapCache);
+    const groupNames = [...Object.keys(SCOUTING_POSITION_GROUPS), "Other"].filter(
+      (name) => (groups[name] || []).length
+    );
+
+    const sortPickerGroup = (groupRows) =>
+      [...groupRows].sort((a, b) => {
+        const pa = playerMapCache.get(String(a.player_id));
+        const pb = playerMapCache.get(String(b.player_id));
+        const pos =
+          scoutingPositionSortIndex(pa?.Position) -
+          scoutingPositionSortIndex(pb?.Position);
+        if (pos !== 0) return pos;
+        const rating = (Number(pb?.Rating) || 0) - (Number(pa?.Rating) || 0);
+        if (rating !== 0) return rating;
+        return String(pa?.Name || "").localeCompare(String(pb?.Name || ""), "en", {
+          sensitivity: "base",
+        });
+      });
+
+    const listHtml = groupNames
+      .map((groupName) => {
+        const groupRows = sortPickerGroup(groups[groupName] || []);
+        const items = groupRows
+          .map((row) => {
+            const pid = String(row.player_id);
+            const p = playerMapCache.get(pid);
+            const name = p?.Name || `Player ${pid}`;
+            const rating = p
+              ? formatRatingWithPotential(p.Rating, p.Potential, p.Calc_Potential)
+              : "—";
+            const note = row.anchor_player_id
+              ? "Currently nested elsewhere"
+              : Number(row.tier) > 1
+                ? SCOUTING_NEST_TIER_LABELS[Number(row.tier)] || "Backup"
+                : "";
+            return `
+              <button type="button" class="scout-nest-picker-item" data-player-id="${escapeHtml(
+                pid
+              )}">
+                <span class="np-name">${escapeHtml(name)}${
+                  note ? `<span class="np-note">${escapeHtml(note)}</span>` : ""
+                }</span>
+                <span class="np-pos">${escapeHtml(p?.Position || "—")}</span>
+                <span class="np-rating">${escapeHtml(String(rating))}</span>
+                <span class="np-muted">${escapeHtml(p?.Nation || "—")}</span>
+                <span class="np-muted">${escapeHtml(
+                  p?.Age != null ? String(p.Age) : "—"
+                )}</span>
+                <span class="np-muted">${escapeHtml(p?.Playstyle || "—")}</span>
+              </button>`;
+          })
+          .join("");
+        return `<div class="scout-nest-picker-group">${escapeHtml(
+          groupName
+        )}</div>${items}`;
+      })
+      .join("");
+
+    overlay.innerHTML = `
+      <div class="scout-nest-picker">
+        <div class="scout-nest-picker-head">
+          <h3>Add nested target</h3>
+          <p>Under <b>${escapeHtml(
+            anchorName || "top target"
+          )}</b> — click a player (sorted GK → defence → midfield → attack).</p>
+        </div>
+        <div class="scout-nest-picker-list" tabindex="-1">
+          <div class="scout-nest-picker-item scout-nest-picker-cols" aria-hidden="true">
+            <span>Name</span><span>Pos</span><span>Rat</span><span>Nation</span><span>Age</span><span>Playstyle</span>
+          </div>
+          ${listHtml}
+        </div>
+        <div class="scout-nest-picker-foot">
+          <button type="button" class="scout-nest-picker-cancel">Cancel</button>
+        </div>
+      </div>`;
+
+    const finish = (value) => {
+      document.removeEventListener("keydown", onKey);
+      overlay.remove();
+      resolve(value);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        finish(null);
+      }
+    };
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) finish(null);
+    });
+    overlay
+      .querySelector(".scout-nest-picker-cancel")
+      ?.addEventListener("click", () => finish(null));
+    overlay.querySelectorAll(".scout-nest-picker-item[data-player-id]").forEach((el) => {
+      el.addEventListener("click", () => {
+        finish(String(el.dataset.playerId || "") || null);
+      });
+    });
+
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(overlay);
+    overlay.querySelector(".scout-nest-picker-list")?.focus?.();
+  });
+}
+
 function firstTargetPlayersForAutofill() {
   const firstIds = new Set(
     scoutingRows.filter(isTopTargetRow).map((r) => String(r.player_id))
@@ -1293,46 +1424,28 @@ function wireScoutingListActions(wrap) {
       const taken = new Set(
         nestedRowsForAnchor(anchorId).map((r) => String(r.player_id))
       );
-      const options = scoutingRows
-        .filter((r) => {
-          const pid = String(r.player_id);
-          if (pid === anchorId) return false;
-          if (taken.has(pid)) return false;
-          // Prefer players not already nested under someone else
-          return true;
-        })
-        .map((r) => {
-          const p = playerMapCache.get(String(r.player_id));
-          const label = p?.Name || `Player ${r.player_id}`;
-          const nestNote = r.anchor_player_id
-            ? " (currently nested elsewhere)"
-            : Number(r.tier) > 1
-              ? ` (${SCOUTING_NEST_TIER_LABELS[Number(r.tier)] || "backup"})`
-              : "";
-          return { id: String(r.player_id), label: `${label}${nestNote}` };
-        })
-        .sort((a, b) => a.label.localeCompare(b.label));
+      const candidateRows = scoutingRows.filter((r) => {
+        const pid = String(r.player_id);
+        if (pid === anchorId) return false;
+        if (taken.has(pid)) return false;
+        return true;
+      });
 
-      if (!options.length) {
+      if (!candidateRows.length) {
         alert("No other scouting targets available to nest. Star more players in GPDB first.");
         return;
       }
 
-      const choice = window.prompt(
-        `Add Backup / 3rd / 4th under this top target.\nEnter the player number from the list:\n\n${options
-          .map((o, i) => `${i + 1}. ${o.label}`)
-          .join("\n")}`
-      );
-      if (choice == null || String(choice).trim() === "") return;
-      const n = Number(String(choice).trim());
-      if (!Number.isFinite(n) || n < 1 || n > options.length) {
-        alert("Invalid choice.");
-        return;
-      }
-      const pick = options[n - 1];
+      const anchorPlayer = playerMapCache.get(anchorId);
+      const pickId = await openNestPlayerPicker({
+        anchorName: anchorPlayer?.Name || `Player ${anchorId}`,
+        rows: candidateRows,
+      });
+      if (!pickId) return;
+
       btn.disabled = true;
       try {
-        await setScoutingTargetAnchor(supabase, pick.id, anchorId);
+        await setScoutingTargetAnchor(supabase, pickId, anchorId);
         await renderScoutingLists();
         if (document.getElementById("tab-planner")?.classList.contains("active")) {
           await initPlanner();
