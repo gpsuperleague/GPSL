@@ -821,6 +821,8 @@ function renderScoutPlayerRow({
   rowsLength,
   nested = false,
   nestChildrenHtml = "",
+  nestChildIndex = 0,
+  nestChildCount = 0,
 }) {
   const p = playerMap.get(String(row.player_id));
   const pid = String(row.player_id);
@@ -859,8 +861,12 @@ function renderScoutPlayerRow({
   const isLockedActive = isActive && isOwned;
   const hasYourBid = !!draftUi.yourBidText && draftUi.yourBidText !== "—";
   const activeTitle = activeTargetBudgetTitle(pid);
+  const hasNests = !nested && nestChildCount > 0;
+  const isLastNest = nested && nestChildIndex === nestChildCount - 1;
   const rowClass = [
-    nested ? "scout-nested-row" : "",
+    nested ? "scout-nested-row" : "scout-top-row",
+    hasNests ? "scout-has-nests" : "",
+    isLastNest ? "scout-nest-last" : "",
     isActive ? "scout-active-row" : "",
     hasYourBid ? "scout-bid-owned-row" : "",
     isLockedActive ? "scout-active-owned-row" : "",
@@ -874,7 +880,9 @@ function renderScoutPlayerRow({
       )}</span>`
     : "";
 
-  const nestCount = nestedRowsForAnchor(pid).length;
+  const nestCount = nested
+    ? 0
+    : nestChildCount || nestedRowsForAnchor(pid).length;
   const canAddNest = !nested && Number(tier) === 1 && nestCount < 3;
   const tierCell = nested
     ? `<td class="scout-nest-actions">
@@ -900,9 +908,17 @@ function renderScoutPlayerRow({
               } title="Move down">▼</button>
             </td>`;
 
+  const photoCell = nested
+    ? `<td class="scout-photo"></td>`
+    : `<td class="scout-photo">${playerThumbLinkHtml(pid, {
+        className: "scout-thumb",
+        alt: name,
+      })}</td>`;
+
   return `
           <tr data-player-id="${pid}" class="${rowClass}">
-            <td>${playerThumbLinkHtml(pid, { className: "scout-thumb", alt: name })}</td>
+            <td class="scout-nest-tree" aria-hidden="true"></td>
+            ${photoCell}
             <td class="name">${nestLabel}${playerNameLinkHtml(
               pid,
               name
@@ -950,6 +966,7 @@ function renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer, allF
     <table class="scout-table">
       <thead>
         <tr>
+          <th class="scout-nest-tree-col" aria-hidden="true"></th>
           <th></th>
           <th class="name">Name</th>
           <th>Nation</th>
@@ -975,7 +992,7 @@ function renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer, allF
                 ? nestedRowsForAnchor(pid, nestSource)
                 : [];
             const nestChildrenHtml = children
-              .map((child) =>
+              .map((child, childIdx) =>
                 renderScoutPlayerRow({
                   row: child,
                   playerMap,
@@ -986,6 +1003,8 @@ function renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer, allF
                   idx: 0,
                   rowsLength: 1,
                   nested: true,
+                  nestChildIndex: childIdx,
+                  nestChildCount: children.length,
                 })
               )
               .join("");
@@ -1000,6 +1019,7 @@ function renderTierTable(tier, groupName, rows, playerMap, draftUiByPlayer, allF
               rowsLength: rows.length,
               nested: false,
               nestChildrenHtml,
+              nestChildCount: children.length,
             });
           })
           .join("")}

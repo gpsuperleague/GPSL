@@ -33,15 +33,91 @@
     .scout-tier-hint {
       color:#888; font-size:12px; margin:0 0 12px; line-height:1.45; max-width:52rem;
     }
-    .scout-nested-row td.name { padding-left: 22px; }
+    .scout-nested-row td {
+      padding-top: 2px !important;
+      padding-bottom: 2px !important;
+      font-size: 10px;
+      line-height: 1.25;
+      color: #bbb;
+    }
+    .scout-nested-row td.name {
+      padding-left: 4px;
+      font-size: 10px;
+    }
+    .scout-nested-row td.name a {
+      font-size: 10px;
+      font-weight: normal;
+    }
+    .scout-nested-row .scout-badges { transform: scale(0.85); transform-origin: left center; }
+    .scout-nested-row .scout-photo {
+      width: 10px;
+      padding: 0 !important;
+    }
     .scout-nest-label {
-      display:inline-block; min-width:4.5rem; margin-right:8px;
-      color:#ffcc66; font-size:11px; font-weight:bold;
+      display: inline-block;
+      min-width: 3.6rem;
+      margin-right: 6px;
+      color: #c9a24a;
+      font-size: 9px;
+      font-weight: bold;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .scout-nest-tree-col,
+    td.scout-nest-tree {
+      width: 18px;
+      min-width: 18px;
+      max-width: 18px;
+      padding: 0 !important;
+      position: relative;
+      vertical-align: middle;
+    }
+    /* Top target with backups: stem starts mid-row and continues down */
+    tr.scout-has-nests > td.scout-nest-tree::before {
+      content: "";
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      bottom: -1px;
+      border-left: 2px solid #c9842a;
+    }
+    /* Nested backups: continuous vertical + elbow to the name */
+    tr.scout-nested-row > td.scout-nest-tree::before {
+      content: "";
+      position: absolute;
+      left: 9px;
+      top: -1px;
+      bottom: -1px;
+      border-left: 2px solid #c9842a;
+    }
+    tr.scout-nested-row.scout-nest-last > td.scout-nest-tree::before {
+      bottom: 50%;
+    }
+    tr.scout-nested-row > td.scout-nest-tree::after {
+      content: "";
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      width: 11px;
+      border-top: 2px solid #c9842a;
     }
     .scout-add-nest, .scout-unlink-nest {
       background:#333; color:#ff9900; border:1px solid #555;
       border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer;
       font-weight:bold;
+    }
+    .scout-nested-row .scout-unlink-nest {
+      padding: 1px 5px;
+      font-size: 9px;
+      font-weight: normal;
+      color: #bbb;
+    }
+    .scout-nested-row .scout-remove {
+      padding: 1px 4px;
+      font-size: 9px;
+    }
+    .scout-nested-row .scout-active-check {
+      transform: scale(0.85);
     }
     .scout-add-nest[disabled] { opacity:0.4; cursor:default; }
     .scout-unlink-nest { color:#ddd; font-weight:normal; font-size:11px; }
@@ -713,6 +789,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260909-nest-picker"></script>
+  <script type="module" src="scouting.js?v=20260909-nest-compact"></script>
 </body>
 </html>

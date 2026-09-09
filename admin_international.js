@@ -795,7 +795,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const { data, error } = await supabase.rpc("international_sync_gpdb_nation_labels", {
         p_limit: 25,
       });
-      if (error) {
+    if (error) {
         setStatus("setupStatus", `❌ ${error.message}${rpcMissingHint(error.message)}`, false);
       return;
     }
