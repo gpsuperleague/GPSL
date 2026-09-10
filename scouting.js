@@ -103,7 +103,37 @@ let plannerNationOptions = [];
 let scoutingBoards = [];
 let activeBoardNo = getStoredScoutingBoardNo();
 /** Target-list filter: "all" or board number string "1"…"4". */
-let listBoardFilter = "all";
+const LIST_BOARD_FILTER_KEY = "gpsl_scouting_list_board_filter";
+
+function getStoredListBoardFilter() {
+  try {
+    const raw = String(localStorage.getItem(LIST_BOARD_FILTER_KEY) || "all").trim();
+    if (raw === "all") return "all";
+    const n = Number(raw);
+    if (Number.isFinite(n) && n >= 1 && n <= 4) return String(Math.trunc(n));
+  } catch {
+    /* ignore */
+  }
+  return "all";
+}
+
+function setStoredListBoardFilter(value) {
+  const next = String(value || "all");
+  const stored =
+    next === "all"
+      ? "all"
+      : Number.isFinite(Number(next)) && Number(next) >= 1 && Number(next) <= 4
+        ? String(Math.trunc(Number(next)))
+        : "all";
+  try {
+    localStorage.setItem(LIST_BOARD_FILTER_KEY, stored);
+  } catch {
+    /* ignore */
+  }
+  return stored;
+}
+
+let listBoardFilter = getStoredListBoardFilter();
 /** @type {Map<string, Set<number>>} */
 let playerBoardMap = new Map();
 let multiBoardEnabled = true;
@@ -1792,7 +1822,7 @@ function renderListBoardFilter() {
 
   const valid =
     prev === "all" || boards.some((b) => String(b.board_no) === String(prev));
-  listBoardFilter = valid ? String(prev) : "all";
+  listBoardFilter = setStoredListBoardFilter(valid ? String(prev) : "all");
   sel.value = listBoardFilter;
 }
 
@@ -1830,7 +1860,7 @@ function wireListBoardFilter() {
           activeIds: currentViewActiveTargetIds(),
         });
       }
-      listBoardFilter = next;
+      listBoardFilter = setStoredListBoardFilter(next);
       await syncListFilterState(true);
     } catch (err) {
       listBoardFilter = prev;
