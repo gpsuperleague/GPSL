@@ -85,16 +85,18 @@ export const SECTION_MATCH_SCHEDULING = {
     { type: "h3", html: "4 — What happens at month end?" },
     {
       type: "p",
-      html: `When a GPSL month closes (Friday 19:00 UK), the league checks unfinished <b>league and cup</b> fixtures. Remember: an unfinished arrangement does <b>not</b> mean the match is lost 3–0.`,
+      html: `When a GPSL month closes (Friday 19:00 UK), the league checks unfinished <b>league and cup</b> fixtures. An unfinished arrangement does <b>not</b> mean an instant 3–0 — but deadlines and play windows do matter.`,
     },
     {
       type: "ul",
       items: [
-        `<b>Still unplayed, no no-show</b> → becomes <b>catch-up</b>. Keep arranging and playing in later months.`,
-        `<b>Someone didn’t reply</b> while you were proposing/countering → that club is fined <b>₿2.5m</b>. The fixture <b>rolls over</b>; the propose/counter process <b>restarts</b> (home proposes again next month). This can happen again each month if replies keep stalling.`,
-        `<b>Recorded one-sided no-show</b> and still unfinished → <b>3–0 + ₿5m</b> for the no-show club. Fixture is finished.`,
-        `<b>Home never proposed</b> by the arrangement deadline → <b>₿10m</b> Match Management (can repeat later months until they propose). First proposal only in the last 24h before the play month opens → <b>₿5m</b> late fee instead (not both at that check).`,
-        `You can still arrange on Discord — just get a result on the site (or a proper scheduled kick-off) before lock if you want to avoid reply / no-show issues.`,
+        `<b>Home should propose in the month before</b> the fixture’s play month (e.g. September fixture → propose before August locks). You may propose as early as you like once fixtures exist.`,
+        `<b>Last 48h before the play month opens</b> and home only then proposes → <b>₿2.5m</b> Late Arrangement Fee.`,
+        `<b>No home proposal</b> by that prior lock → <b>₿5m</b> Match Management (repeats each later lock until they propose). Suppressed while home is on a booked holiday.`,
+        `<b>Reply overdue</b> when the month locks → that club is fined <b>₿2.5m</b>. Negotiation <b>continues</b> (not wiped). Still overdue next lock → another ₿2.5m, and so on.`,
+        `<b>League play window</b>: scheduled month <b>+ 2</b> (August → end of October). <b>Cups</b>: scheduled month <b>+ 1</b> (May cups: no extra month).`,
+        `<b>After the window</b>, still unplayed → awarded by activity (negotiation replies, logins, matches played, other scheduling misses, check-ins). True tie → <b>0–0</b>. Vacant club loses 3–0. Holiday covering the scheduled month without playing → that club forfeits.`,
+        `<b>Recorded one-sided no-show</b> and still unfinished → <b>3–0 + ₿5m</b> for the no-show club (unchanged).`,
       ],
     },
 
@@ -102,8 +104,8 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `Shown with a <b>catch-up</b> badge on <a href="fixtures.html">Fixtures</a> / <a href="club_fixtures.html">My club fixtures</a>.`,
-        `Propose times in the <b>current</b> GPSL month. Reply deadlines still apply; missed replies can fine at the next month lock, then arrangement restarts again.`,
+        `Shown with a <b>catch-up</b> badge on <a href="fixtures.html">Fixtures</a> / <a href="club_fixtures.html">My club fixtures</a> while still inside the play window.`,
+        `Propose times in the <b>current</b> GPSL month. Reply deadlines still apply; overdue replies fine at month lock, but negotiation keeps going.`,
         `If you agree a kick-off and one side no-shows, the same <b>3–0 + ₿5m</b> rule applies at the next month lock if you never finish the match.`,
         `Voluntary / emergency drops are <b>not</b> available on catch-up — use the schedule page reset for a stale agreed time if needed.`,
       ],
@@ -113,16 +115,16 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `<b>₿10m</b> — home never proposed (can repeat each month until they do).`,
-        `<b>₿5m</b> — home first proposed in the last 24h before the play month opened.`,
-        `<b>₿2.5m</b> — you owed a reply and were overdue when the month locked (fixture rolls over; arrange again).`,
+        `<b>₿5m</b> — home never proposed by the prior-month lock (can repeat each lock until they do).`,
+        `<b>₿2.5m</b> — home first proposed only in the last 48h before the play month opened.`,
+        `<b>₿2.5m</b> — you owed a reply and were overdue when the month locked (negotiation continues).`,
         `<b>₿5m + 3–0</b> — one-sided no-show, match never finished before month lock.`,
         `<b>₿3m + 3–0</b> — emergency drop with no season allowance left.`,
       ],
     },
     {
       type: "tip",
-      html: `Fines appear in <a href="inbox.html">Inbox</a> and on your balance. Longer walkthrough:
+      html: `Fines appear in <a href="inbox.html">Inbox</a> and on your balance. You’ll also get deadline warnings before reply / arrangement cut-offs. Longer walkthrough:
         <a href="docs/gpsl-month-end-unplayed.html">Month end &amp; unplayed fixtures</a>.
         Site error? Ask league admin on Discord about compensation.`,
     },
@@ -133,8 +135,9 @@ export const SECTION_MATCH_SCHEDULING = {
       items: [
         `<b>Match time proposed / countered</b> — Accept or open Schedule to counter.`,
         `<b>Match time agreed</b> — check in at kick-off.`,
-        `<b>Reschedule / catch-up reset</b> — scheduling reopened; home proposes again.`,
+        `<b>Reply / propose warnings</b> — deadlines approaching; act to avoid fines.`,
         `<b>Fine applied</b> — scheduling or matchday; the note explains which fixture.`,
+        `<b>Window award / 0–0</b> — play window expired without a result.`,
       ],
     },
   ],
