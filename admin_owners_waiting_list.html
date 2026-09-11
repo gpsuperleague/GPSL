@@ -200,7 +200,7 @@
           </div>
           <div class="wl-note-tile">
             <h3>Activity</h3>
-            <p>Site visits include remembered sessions, capped at one count per hour. Unplayed columns cover previous month, current month, and season total.</p>
+            <p>Site visits include remembered sessions, capped at one count per hour. <b>U prev / U cur</b> are live unplayed fixtures. <b>U missed</b> is the running total frozen each month (so it still counts after you sim leftovers). Use <b>Record unplayed</b> before simulating a month’s leftovers.</p>
           </div>
           <div class="wl-note-tile">
             <h3>Discord Join</h3>
@@ -210,6 +210,7 @@
         <div class="wl-board-toolbar">
           <input type="search" id="wlBoardFilter" placeholder="Filter tag / email / club / status (all sections)…">
           <button type="button" id="wlRefreshBtn" class="button secondary">Refresh</button>
+          <button type="button" id="wlRecordUnplayedBtn" class="button secondary" title="Freeze unplayed counts for locked months (+ current) before you sim leftovers">Record unplayed</button>
           <button type="button" id="wlRefreshCountryBtn" class="button secondary" data-admin-only>Refresh country</button>
           <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
         </div>
@@ -254,6 +255,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260908-owner-discord-sort"></script>
+  <script type="module" src="admin_owners.js?v=20260911-unplayed-missed"></script>
 </body>
 </html>

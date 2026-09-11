@@ -65,6 +65,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("wlRefreshBtn")?.addEventListener("click", loadWaitingListAdmin);
+  document.getElementById("wlRecordUnplayedBtn")?.addEventListener("click", recordUnplayedSnapshots);
   document.getElementById("wlRefreshCountryBtn")?.addEventListener("click", refreshOwnerCountries);
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
   document.getElementById("wlBoardFilter")?.addEventListener("input", (e) => {
@@ -1169,11 +1170,20 @@ async function fetchOwnerActivityById() {
   let previousLabel = "Prev month";
   let currentLabel = "Current month";
   if (error) {
-    return { byId, securityById, previousLabel, currentLabel, error, securityError: secError };
+    return {
+      byId,
+      securityById,
+      previousLabel,
+      currentLabel,
+      snapshotMonths: 0,
+      error,
+      securityError: secError,
+    };
   }
   const owners = Array.isArray(data?.owners) ? data.owners : Array.isArray(data) ? data : [];
   previousLabel = data?.previous_gpsl_month_label || previousLabel;
   currentLabel = data?.current_gpsl_month_label || currentLabel;
+  const snapshotMonths = Number(data?.unplayed_snapshot_months) || 0;
   for (const row of owners) {
     if (row?.owner_id) byId.set(row.owner_id, row);
   }
@@ -1181,7 +1191,15 @@ async function fetchOwnerActivityById() {
   for (const row of secOwners) {
     if (row?.owner_id) securityById.set(row.owner_id, row);
   }
-  return { byId, securityById, previousLabel, currentLabel, error: null, securityError: secError };
+  return {
+    byId,
+    securityById,
+    previousLabel,
+    currentLabel,
+    snapshotMonths,
+    error: null,
+    securityError: secError,
+  };
 }
 
 function filterSeasonOwnerBoard(filterText) {
@@ -1259,6 +1277,44 @@ function compareRowsByActivitySort(a, b) {
   return String(a?.email || "").localeCompare(String(b?.email || ""));
 }
 
+async function recordUnplayedSnapshots() {
+  const btn = document.getElementById("wlRecordUnplayedBtn");
+  if (btn) btn.disabled = true;
+  setStatus(
+    "wlActionStatus",
+    "Recording unplayed counts for locked months (+ current)… Do this before simulating leftovers."
+  );
+  try {
+    const { data, error } = await supabase.rpc("admin_record_unplayed_snapshots", {
+      p_include_current_month: true,
+      p_force: false,
+    });
+    if (error) throw error;
+    if (data?.ok === false) {
+      throw new Error(data?.error || "Record failed");
+    }
+    const months = Array.isArray(data?.months) ? data.months : [];
+    const results = Array.isArray(data?.results) ? data.results : [];
+    const inserted = results.reduce((n, r) => n + (Number(r?.inserted) || 0), 0);
+    setStatus(
+      "wlActionStatus",
+      `Recorded unplayed for ${months.length || 0} month(s)${
+        months.length ? ` (${months.join(", ")})` : ""
+      }. New club rows: ${inserted}. Existing snapshots kept.`,
+      true
+    );
+    await loadWaitingListAdmin();
+  } catch (err) {
+    const msg = String(err?.message || err);
+    const hint = /admin_record_unplayed_snapshots|PGRST202|42883/i.test(msg)
+      ? " Run supabase/sql/patches/club_unplayed_month_snapshots_20260911.sql first."
+      : "";
+    setStatus("wlActionStatus", `❌ ${msg}.${hint}`, false);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function loadWaitingListAdmin() {
   const tableWrap = document.getElementById("wlAdminTableWrap");
   if (!tableWrap) return;
@@ -1317,7 +1373,13 @@ async function loadWaitingListAdmin() {
     : "Section sort uses login activity";
   const activityNote = activityRes.error
     ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} logins · unplayed fixtures (prev / cur / season) · admin IP/country review · sort: last login first unless current month logins are under 4`;
+    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · missed running total · admin IP/country review · sort: last login first unless current month logins are under 4`;
+
+  const snapMonths = Number(activityRes.snapshotMonths || 0);
+  const snapNote =
+    snapMonths > 0
+      ? ` · ${snapMonths} month(s) snapshotted`
+      : " · no month snapshots yet — click Record unplayed before simming leftovers";
 
   const colSpan = 24;
   const sectionRow = (label) =>
@@ -1346,9 +1408,9 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-login" title="Total GPSL site logins (all time)">Logins</th>` +
     `<th class="num wl-num-login" title="${escapeWl(prevLabel)} logins">${escapeWl(prevLabel)}</th>` +
     `<th class="num wl-num-login" title="${escapeWl(curLabel)} logins">${escapeWl(curLabel)}</th>` +
-    `<th class="num wl-num-unplayed" title="Unplayed fixtures in ${escapeWl(prevLabel)} (league + cups)">U ${escapeWl(prevLabel)}</th>` +
-    `<th class="num wl-num-unplayed" title="Unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">U ${escapeWl(curLabel)}</th>` +
-    `<th class="num wl-num-unplayed" title="Unplayed fixtures this season (all months, league + cups)">U season</th>` +
+    `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(prevLabel)} (league + cups)">U ${escapeWl(prevLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">U ${escapeWl(curLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="Running total of unplayed fixtures frozen at month end / Record unplayed (survives catch-up sims). Includes live current month until that month is snapshotted.">U missed</th>` +
     `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord</th>` +
     `<th title="Current offset versus British time, using the owner's saved timezone.">UK +/-</th>` +
     `<th title="Latest login country (admin only).">Country</th>` +
@@ -1358,7 +1420,7 @@ async function loadWaitingListAdmin() {
     `</tr></thead><tbody id="wlPriorityTbody">`;
 
   html += sectionRow(
-    `Owners (${ownerCount}) — current club owners. Drag handle sets season priority with the waiting list. ${escapeWl(activityNote)}.`
+    `Owners (${ownerCount}) — current club owners. Drag handle sets season priority with the waiting list. ${escapeWl(activityNote)}${escapeWl(snapNote)}.`
   );
   if (!ownerCount) {
     html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No club owners on the board.</td></tr>`;
@@ -1961,8 +2023,12 @@ function renderWaitingListAdminRow(
     act.unplayed_previous_month == null ? null : Number(act.unplayed_previous_month) || 0;
   const unplayedCur =
     act.unplayed_current_month == null ? null : Number(act.unplayed_current_month) || 0;
-  const unplayedSeason =
-    act.unplayed_season == null ? null : Number(act.unplayed_season) || 0;
+  const unplayedMissed =
+    act.unplayed_missed_total != null
+      ? Number(act.unplayed_missed_total) || 0
+      : act.unplayed_season == null
+        ? null
+        : Number(act.unplayed_season) || 0;
   const sec = row.security || {};
   const formatUnplayed = (n) => {
     if (n == null) return `<span class="muted">—</span>`;
@@ -2069,7 +2135,7 @@ function renderWaitingListAdminRow(
     <td class="num wl-num-login">${curN}</td>
     <td class="num wl-num-unplayed" title="Unplayed previous GPSL month">${formatUnplayed(unplayedPrev)}</td>
     <td class="num wl-num-unplayed" title="Unplayed current GPSL month">${formatUnplayed(unplayedCur)}</td>
-    <td class="num wl-num-unplayed" title="Unplayed this season">${formatUnplayed(unplayedSeason)}</td>
+    <td class="num wl-num-unplayed" title="Missed running total (month snapshots + live until snapshotted)">${formatUnplayed(unplayedMissed)}</td>
     <td>${discordCell}</td>
     <td title="${tzDelta.title ? escapeWl(tzDelta.title) : ""}">${escapeWl(tzDelta.text)}</td>
     <td title="${lastCountry ? escapeWl(lastCountry) : ""}">${lastCountry ? escapeWl(lastCountryName) : `<span class="muted">—</span>`}</td>
