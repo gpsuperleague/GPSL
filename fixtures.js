@@ -41,6 +41,11 @@ import {
   wireMatchSimButtons,
   runMatchSimulation,
 } from "./match_sim_ui.js?v=20260908-assist-goal-attach";
+import {
+  loadFixtureMatchVideos,
+  matchVideoTicksHtml,
+  MATCH_VIDEO_TICK_CSS,
+} from "./match_videos_ui.js?v=20260912-match-videos";
 
 let calendarStatus = null;
 let holidayContext = null;
@@ -52,6 +57,16 @@ let currentCup = "league_cup";
 /** @type {{ enabled: boolean, isAdmin: boolean, error: string|null }} */
 let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: null };
 let allFixtures = [];
+/** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
+let matchVideoMap = new Map();
+
+function ensureMatchVideoStyles() {
+  if (document.getElementById("matchVideoTickStyles")) return;
+  const el = document.createElement("style");
+  el.id = "matchVideoTickStyles";
+  el.textContent = MATCH_VIDEO_TICK_CSS;
+  document.head.appendChild(el);
+}
 
 const LEAGUE_COLGROUP = `
   <colgroup>
@@ -217,7 +232,7 @@ function fixtureRowHtml(fixture) {
     : "";
   return `
     <td>${clubWithOwnerHtml(fixture.home_club_name, fixture.home_club_short_name, "block")}</td>
-    <td class="score">${tvFixtureBadgeHtml(fixture.id)}${formatFixtureScore(fixture, myClub)}${catchUpCell}</td>
+    <td class="score">${tvFixtureBadgeHtml(fixture.id)}${formatFixtureScore(fixture, myClub)}${matchVideoTicksHtml(matchVideoMap.get(String(fixture.id)))}${catchUpCell}</td>
     <td>${clubWithOwnerHtml(fixture.away_club_name, fixture.away_club_short_name, "block")}</td>
     <td class="fixture-stadium">${fixtureStadiumCell(fixture)}</td>
     <td class="fixture-continent">${fixtureContinentCell(fixture)}</td>
@@ -576,6 +591,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const cups = await loadCupFixtures(supabase);
   allFixtures = [...league, ...cups];
   await loadTvFixtureIds(supabase, season.id);
+  ensureMatchVideoStyles();
+  matchVideoMap = await loadFixtureMatchVideos(
+    supabase,
+    allFixtures.map((f) => f.id)
+  );
   if (!allFixtures.length && season) {
     root.innerHTML =
       '<p class="empty">No fixtures loaded. Check an active season and that admin generated fixtures (GPSL Admin → League Fixtures). If the browser console shows a database error, run <code>competition_phase3_matchday.sql</code> after phase 1.</p>';

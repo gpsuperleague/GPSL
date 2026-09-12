@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Match videos — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    .fmt {
+      display:inline-block; margin:4px 0 10px; padding:6px 10px;
+      background:#1a1a1a; border:1px solid #333; border-radius:4px;
+      font-family:ui-monospace, Consolas, monospace; color:#ffcc66;
+    }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+    .mv-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .mv-table th, .mv-table td {
+      border-bottom:1px solid #333; padding:8px 10px; text-align:left; vertical-align:top;
+    }
+    .mv-table th {
+      color:#ff9900; font-size:12px; text-transform:uppercase; letter-spacing:0.03em;
+    }
+    .mv-table tr:hover td { background:#1a1a1a; }
+    .ok-yes { color:#8d8; }
+    .ok-no { color:#f88; }
+    .manual-form { display:grid; gap:10px; max-width:640px; margin-bottom:12px; }
+    .manual-form label { display:grid; gap:4px; font-size:13px; color:#ccc; }
+    .manual-form input, .manual-form select {
+      padding:8px 10px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
+    }
+    .manual-form .check { display:flex; align-items:center; gap:8px; }
+    #linkStatus, #logStatus {
+      white-space: pre-wrap; margin:8px 0; font-size:13px; color:#ccc;
+    }
+    code { background:#1a1a1a; padding:1px 5px; border-radius:3px; }
+    h2.section { color:#ffcc66; font-size:16px; margin:22px 0 10px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Match videos</h1>
+
+  <div class="card">
+    <p class="note">
+      Owners upload match films to Discord <strong>Matchday videos</strong> month channels.
+      Filenames must include both club short names and a competition tag. Each matched side
+      earns <strong>₿200,000</strong> Matchday revenue once. Live bot: see
+      <code>discord-bots/match-videos/README.md</code>.
+    </p>
+    <div class="fmt">ARS 2-0 CHE [SL-MD5].mp4</div>
+    <div class="fmt">LIV 1-0 MCI [S8-QF].mkv</div>
+    <p class="note" style="margin-top:0">
+      Tags: <code>SL</code>/<code>CH</code> + <code>MD{n}</code> for league;
+      <code>S8</code>/<code>PL</code>/<code>SH</code>/<code>BW</code>/<code>LC</code> + <code>QF</code>/<code>SF</code>/<code>F</code>/<code>R{n}</code> for cups.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2 class="section">Manual link (mistyped Discord name)</h2>
+    <p class="note">Attach a video URL to a fixture side. Credits ₿200k unless already paid for that club/fixture.</p>
+    <form class="manual-form" id="manualLinkForm">
+      <label>Fixture ID
+        <input type="number" id="manualFixtureId" required min="1" placeholder="e.g. 12345">
+      </label>
+      <label>Side
+        <select id="manualSide">
+          <option value="home">Home</option>
+          <option value="away">Away</option>
+        </select>
+      </label>
+      <label>Video URL
+        <input type="url" id="manualUrl" required placeholder="https://cdn.discordapp.com/...">
+      </label>
+      <label class="check">
+        <input type="checkbox" id="manualCredit" checked>
+        Credit ₿200,000 if not already credited
+      </label>
+      <div class="actions">
+        <button type="submit" class="button">Link video</button>
+      </div>
+    </form>
+    <div id="linkStatus"></div>
+  </div>
+
+  <div class="card">
+    <h2 class="section">Recent ingest log</h2>
+    <div class="actions">
+      <button type="button" class="button secondary" id="refreshLogBtn">Refresh</button>
+    </div>
+    <div id="logStatus"></div>
+    <div id="logWrap"><p class="note">Loading…</p></div>
+  </div>
+
+  <script type="module" src="admin_match_videos.js?v=20260912-match-videos"></script>
+</body>
+</html>

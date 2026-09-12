@@ -129,6 +129,17 @@ export const SECTION_MATCH_SCHEDULING = {
         Site error? Ask league admin on Discord about compensation.`,
     },
 
+    { type: "h3", html: "Match videos (Discord)" },
+    {
+      type: "ul",
+      items: [
+        `After you play, upload the film to the Discord <b>Matchday videos</b> channel for that GPSL month.`,
+        `Filename format: <code>HomeShort 2-0 AwayShort [SL-MD5].mp4</code> (league) or <code>… [S8-QF].mp4</code> (cups). Tags: SL/CH + MD{n}; S8/PL/SH/BW/LC + QF/SF/F/R{n}.`,
+        `GPSL ticks <b>H</b> / <b>A</b> on Fixtures when each side’s video is matched — click the tick to open the video.`,
+        `Each club earns <b>₿200,000</b> Matchday revenue <b>once</b> per fixture when <em>their</em> upload is matched.`,
+      ],
+    },
+
     { type: "h3", html: "Inbox — what you’ll see" },
     {
       type: "ul",

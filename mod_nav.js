@@ -37,6 +37,7 @@ export const MOD_NAV_SECTION = {
     H("Discord & media"),
     L("Discord News Feed", "admin_discord_news.html"),
     L("Discord Friendlies", "admin_discord_friendlies.html"),
+    L("Match videos", "admin_match_videos.html"),
     L("Transfer Gossip", "admin_discord_transfer_gossip.html"),
     L("Republish GPSL Sport", "admin_gpsl_sport.html"),
 

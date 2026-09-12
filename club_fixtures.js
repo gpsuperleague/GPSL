@@ -37,8 +37,23 @@ import {
   runMatchSimulation,
 } from "./match_sim_ui.js?v=20260908-assist-goal-attach";
 import { loadMyNation, loadInternationalFixtures } from "./international.js";
+import {
+  loadFixtureMatchVideos,
+  matchVideoTicksHtml,
+  MATCH_VIDEO_TICK_CSS,
+} from "./match_videos_ui.js?v=20260912-match-videos";
 
 let myClub = { short: null, name: null };
+/** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
+let matchVideoMap = new Map();
+
+function ensureMatchVideoStyles() {
+  if (document.getElementById("matchVideoTickStyles")) return;
+  const el = document.createElement("style");
+  el.id = "matchVideoTickStyles";
+  el.textContent = MATCH_VIDEO_TICK_CSS;
+  document.head.appendChild(el);
+}
 let myNationCode = null;
 /** @type {Map<string, string>} nation code → owner club ShortName */
 let nationOwnerClubMap = new Map();
@@ -313,7 +328,7 @@ function fixtureCardHtml(f) {
         ${tvFixtureBadgeHtml(f.id)}
         ${simBadge}
         <span class="fixture-match">${matchLineHtml(f)}</span>
-        <span class="fixture-score">${score}</span>
+        <span class="fixture-score">${score}${matchVideoTicksHtml(matchVideoMap.get(String(f.id)))}</span>
       </div>
       <div class="fixture-meta">
         <span><b>${mdLabel}</b></span>
@@ -787,6 +802,11 @@ async function refreshFixtures(seasonId = null) {
   );
   const intlFixtures = await loadMyInternationalFixtures(seasonId);
   const fixtures = [...clubFixtures, ...intlFixtures];
+  ensureMatchVideoStyles();
+  matchVideoMap = await loadFixtureMatchVideos(
+    supabase,
+    clubFixtures.map((f) => f.id)
+  );
   renderFixtures(fixtures);
   if (root && !fixtures.length) {
     root.innerHTML =

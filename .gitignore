@@ -20,3 +20,7 @@ venv/
 Thumbs.db
 *.swp
 .cursor/
+
+# Discord bot local runtime
+node_modules/
+discord-bots/**/.env
