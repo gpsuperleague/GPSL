@@ -1,5 +1,5 @@
 /**
- * Learning GPSL — handbook renderer (content in learning_gpsl_content/).
+ * Learning GPSL — bound handbook renderer (content in learning_gpsl_content/).
  */
 import { initGlobal } from "./global.js";
 import {
@@ -70,13 +70,38 @@ function renderToc(sections) {
     </nav>`;
 }
 
-function renderSection(section) {
+function chapterLabel(index) {
+  const n = String(index + 1).padStart(2, "0");
+  return `Chapter ${n}`;
+}
+
+function renderSection(section, index) {
   return `
     <section class="learning-section" id="${escapeAttr(section.id)}">
+      <span class="learning-chapter-label">${chapterLabel(index)}</span>
       <h2>${section.title}</h2>
       ${(section.blocks || []).map(renderBlock).join("")}
-      <a class="learning-back-top" href="#learning-toc">↑ Contents</a>
+      <a class="learning-back-top" href="#learning-toc">Contents</a>
     </section>`;
+}
+
+function wireTocSticky(root) {
+  const toc = root.querySelector(".learning-toc");
+  if (!toc || typeof IntersectionObserver !== "function") return;
+
+  const sentinel = document.createElement("div");
+  sentinel.className = "learning-toc-sentinel";
+  sentinel.setAttribute("aria-hidden", "true");
+  sentinel.style.cssText = "height:1px;margin:0;padding:0;pointer-events:none;";
+  toc.parentNode.insertBefore(sentinel, toc);
+
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      toc.classList.toggle("is-stuck", Boolean(entry && !entry.isIntersecting));
+    },
+    { threshold: [0], rootMargin: "-8px 0px 0px 0px" }
+  );
+  observer.observe(sentinel);
 }
 
 export function renderLearningGpslGuide(rootEl) {
@@ -84,11 +109,19 @@ export function renderLearningGpslGuide(rootEl) {
   if (!root) return;
 
   root.innerHTML = `
-    <h1>Learning GPSL</h1>
-    <p class="learning-meta">${LEARNING_GPSL_META_HTML}</p>
-    <div id="learning-toc">${renderToc(LEARNING_GPSL_SECTIONS)}</div>
-    ${LEARNING_GPSL_SECTIONS.map(renderSection).join("")}
+    <div class="learning-book">
+      <header class="learning-cover">
+        <p class="learning-cover-brand">GPSL</p>
+        <h1 class="learning-cover-title">Owner&rsquo;s Handbook</h1>
+        <span class="learning-cover-rule" aria-hidden="true"></span>
+        <p class="learning-cover-dek">${LEARNING_GPSL_META_HTML}</p>
+      </header>
+      <div id="learning-toc">${renderToc(LEARNING_GPSL_SECTIONS)}</div>
+      ${LEARNING_GPSL_SECTIONS.map((s, i) => renderSection(s, i)).join("")}
+    </div>
   `;
+
+  wireTocSticky(root);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
