@@ -2,6 +2,9 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 
 primeAdminPageChrome();
 
+const DEFAULT_URL =
+  "https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/discord-match-videos-ingest";
+
 function escapeHtml(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -87,8 +90,124 @@ async function refreshLog() {
   renderLog(data.rows || []);
 }
 
+async function invokePoll(body = {}) {
+  const { data, error } = await supabase.functions.invoke(
+    "discord-match-videos-ingest",
+    { body }
+  );
+  if (error) {
+    let detail = error.message || "Request failed";
+    try {
+      const ctx = error.context;
+      if (ctx && typeof ctx.json === "function") {
+        const payload = await ctx.json();
+        if (payload?.error) detail = String(payload.error);
+      }
+    } catch {
+      /* ignore */
+    }
+    if (data?.error) detail = String(data.error);
+    return { data, error: new Error(detail) };
+  }
+  if (data?.error) {
+    return { data, error: new Error(String(data.error)) };
+  }
+  return { data, error: null };
+}
+
+async function loadAutoSettings() {
+  const urlEl = document.getElementById("autoUrl");
+  const enEl = document.getElementById("autoEnabled");
+  const keyStatus = document.getElementById("autoKeyStatus");
+  if (!urlEl) return;
+
+  const { data, error } = await supabase.rpc("admin_discord_match_videos_get_auto");
+
+  if (error) {
+    setStatus(
+      "autoStatus",
+      `Auto-poll unavailable — run match_video_uploads_cron_20260912.sql (${error.message})`,
+      false
+    );
+    if (!urlEl.value) urlEl.value = DEFAULT_URL;
+    if (keyStatus) keyStatus.textContent = "Invoke key: unavailable";
+    return;
+  }
+
+  urlEl.value = data?.edge_function_url || DEFAULT_URL;
+  enEl.checked = data?.auto_poll_enabled === true;
+  if (keyStatus) {
+    keyStatus.textContent = data?.has_key
+      ? "Invoke key: saved on server (copied from Friendlies/News when possible)."
+      : "Invoke key: missing — Friendlies/News key not found; paste service_role via SQL or re-save Friendlies auto-poll first.";
+    keyStatus.style.color = data?.has_key ? "#9d9" : "#f88";
+  }
+
+  if (data?.edge_function_url && data?.has_key && data?.auto_poll_enabled) {
+    setStatus("autoStatus", "Auto-poll ON — Discord is checked every 2 minutes.");
+  } else {
+    setStatus(
+      "autoStatus",
+      "Auto-poll OFF until URL + invoke key are saved and enabled.",
+      false
+    );
+  }
+}
+
+async function saveAutoSettings() {
+  const url = document.getElementById("autoUrl")?.value?.trim() || "";
+  const enabled = !!document.getElementById("autoEnabled")?.checked;
+
+  const { data, error } = await supabase.rpc("admin_discord_match_videos_set_auto", {
+    p_edge_function_url: url || DEFAULT_URL,
+    p_invoke_key: null,
+    p_enabled: enabled,
+  });
+
+  if (error) {
+    setStatus(
+      "autoStatus",
+      error.message?.includes("admin_discord_match_videos")
+        ? "Run match_video_uploads_cron_20260912.sql, then save again."
+        : error.message,
+      false
+    );
+    return;
+  }
+
+  await loadAutoSettings();
+  setStatus(
+    "autoStatus",
+    data?.has_key
+      ? enabled
+        ? "Saved — auto-poll enabled (every 2 minutes)."
+        : "Saved — auto-poll disabled."
+      : "Saved URL, but invoke key is still missing (copy from Friendlies settings / News).",
+    !!data?.has_key && enabled
+  );
+}
+
 document.getElementById("refreshLogBtn")?.addEventListener("click", () => {
   refreshLog();
+});
+
+document.getElementById("pollNowBtn")?.addEventListener("click", async () => {
+  setStatus("pollStatus", "Polling Discord…");
+  const { data, error } = await invokePoll({ limit: 40 });
+  if (error) {
+    setStatus("pollStatus", error.message, false);
+    return;
+  }
+  setStatus(
+    "pollStatus",
+    `OK — channels ${data?.channels_scanned ?? "?"} · videos seen ${data?.messages_with_videos ?? 0} · matched ${data?.matched ?? 0}` +
+      (data?.reason ? `\n${data.reason}` : "")
+  );
+  refreshLog();
+});
+
+document.getElementById("autoSaveBtn")?.addEventListener("click", () => {
+  saveAutoSettings();
 });
 
 document.getElementById("manualLinkForm")?.addEventListener("submit", async (e) => {
@@ -124,4 +243,5 @@ document.getElementById("manualLinkForm")?.addEventListener("submit", async (e) 
 });
 
 await initAdminPage({ title: "Match videos" });
+loadAutoSettings();
 refreshLog();

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Match videos — initial setup</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#111; color:#ddd; margin:0; line-height:1.5; }
+    .wrap { max-width:720px; margin:24px auto 48px; padding:0 16px; }
+    h1 { color:#ff9900; font-size:1.5rem; }
+    h2 { color:#ffcc66; font-size:1.15rem; margin-top:1.75rem; }
+    .note { color:#999; }
+    ol { padding-left:1.25em; }
+    li { margin:0.55em 0; }
+    code, .box {
+      font-family: ui-monospace, Consolas, monospace;
+      background:#1a1a1a; border:1px solid #333; border-radius:4px;
+    }
+    code { padding:1px 5px; }
+    .box { display:block; padding:10px 12px; margin:8px 0; color:#ffcc66; white-space:pre-wrap; }
+    .done { color:#8d8; }
+    a { color:#ff9900; }
+    .warn { border-left:3px solid #fc6; padding:8px 12px; background:#1a1810; margin:12px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Match videos — initial setup</h1>
+    <p class="note">
+      GPSL checks Discord every 2 minutes (same idea as Discord Friendlies).
+      You do <strong>not</strong> need a PC left on, and you do <strong>not</strong> run
+      <code>npm start</code> or create a <code>.env</code> for a bot host.
+    </p>
+
+    <div class="warn">
+      Do the steps in order. Tick each one as you finish. Ignore anything about
+      “always-on bot” / <code>discord-bots/match-videos</code> — that path is optional and not for you.
+    </div>
+
+    <h2>Step 1 — Discord category</h2>
+    <ol>
+      <li>In your GPSL Discord server, create a <strong>category</strong> named e.g. <strong>Matchday videos</strong>.</li>
+      <li>Under it, create text channels named after GPSL months, e.g.
+        <code>august</code>, <code>september</code>, <code>october</code>, … (or <code>August</code> — either works).</li>
+      <li>User Settings → Advanced → turn on <strong>Developer Mode</strong>.</li>
+      <li>Right‑click the <strong>category</strong> → <strong>Copy Category ID</strong>. Keep that number.</li>
+      <li>Ensure your GPSL bot can <strong>View Channel</strong>, <strong>Read Message History</strong>, and <strong>Add Reactions</strong> in that category.</li>
+    </ol>
+
+    <h2>Step 2 — Message Content Intent</h2>
+    <ol>
+      <li>Open <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discord Developer Portal</a> → your existing GPSL bot app.</li>
+      <li>Left: <strong>Bot</strong> → Privileged Gateway Intents → <strong>Message Content Intent</strong> ON → Save.</li>
+      <li class="done">If this is already on, skip.</li>
+    </ol>
+
+    <h2>Step 3 — Bot token in Supabase (you may have done this)</h2>
+    <ol>
+      <li>Supabase Dashboard → <strong>Project Settings</strong> → <strong>Edge Functions</strong> → <strong>Secrets</strong>.</li>
+      <li>Set / confirm:
+        <ul>
+          <li><code>DISCORD_BOT_TOKEN</code> — your bot token (if you Reset Token, paste the <em>new</em> one here).</li>
+          <li><code>DISCORD_GUILD_ID</code> — leave as-is if Discord features already worked. The secret preview can look “different”; that is normal.</li>
+          <li><code>DISCORD_MATCH_VIDEOS_CATEGORY_ID</code> — <strong>new</strong>: paste the category ID from Step 1.</li>
+        </ul>
+      </li>
+      <li>You do <strong>not</strong> need <code>DISCORD_MATCH_VIDEOS_INVOKE_KEY</code> for this setup.</li>
+    </ol>
+
+    <h2>Step 4 — SQL patches (run both in SQL Editor)</h2>
+    <ol>
+      <li>Run file: <code>supabase/sql/patches/match_video_uploads_20260912.sql</code></li>
+      <li>Run file: <code>supabase/sql/patches/match_video_uploads_cron_20260912.sql</code>
+        <br><span class="note">This schedules a poll every 2 minutes and tries to reuse the Friendlies/News invoke key.</span></li>
+    </ol>
+
+    <h2>Step 5 — Deploy the Edge Function</h2>
+    <ol>
+      <li>On a machine with Supabase CLI logged in, run:
+        <span class="box">supabase functions deploy discord-match-videos-ingest</span>
+      </li>
+      <li>If you do not use the CLI, deploy that function from your usual GPSL deploy method — same as you did for <code>discord-friendlies-ingest</code>.</li>
+    </ol>
+
+    <h2>Step 6 — Turn on auto-poll in Admin</h2>
+    <ol>
+      <li>Open <a href="../admin_match_videos.html">Admin → Match videos</a>.</li>
+      <li>Under <strong>Auto-poll</strong>, leave the URL as the match-videos function URL (prefilled / bootstrapped).</li>
+      <li>Tick <strong>Enable auto-poll</strong> → <strong>Save auto-poll</strong>.</li>
+      <li>Status should say invoke key is saved. If it says missing:
+        open <strong>Admin → Discord Friendlies</strong>, save auto-poll there once (so the key exists), then re-run the cron SQL patch or Save again on Match videos.</li>
+      <li>Optional: click <strong>Poll now</strong> to test immediately.</li>
+    </ol>
+
+    <h2>Step 7 — Test with a real upload</h2>
+    <ol>
+      <li>As a club owner (Discord nick/tag must match their GPSL owner tag), upload a video in the correct month channel.</li>
+      <li>Filename example:
+        <span class="box">ARS 2-0 CHE [SL-MD5].mp4</span>
+        League: <code>SL</code> or <code>CH</code> + <code>MD</code> + number.
+        Cups: <code>S8</code>/<code>PL</code>/<code>SH</code>/<code>BW</code>/<code>LC</code> + <code>QF</code>/<code>SF</code>/<code>F</code> etc.
+      </li>
+      <li>Within ~2 minutes (or after Poll now): Discord ✅, Fixtures shows H/A tick, Finances shows ₿200,000 Matchday revenue (video) once.</li>
+      <li>If it fails: Admin → Match videos → Recent ingest log shows the reason; or use Manual link.</li>
+    </ol>
+
+    <h2>What you can ignore</h2>
+    <ul class="note">
+      <li><code>cd discord-bots/match-videos</code>, <code>.env</code>, <code>npm install</code>, <code>npm start</code></li>
+      <li>Any “host that stays online” / Railway / VPS for this feature</li>
+      <li>Creating <code>DISCORD_MATCH_VIDEOS_INVOKE_KEY</code> unless you later want a separate key</li>
+    </ul>
+
+    <p><a href="../admin_match_videos.html">← Back to Match videos admin</a></p>
+  </div>
+</body>
+</html>

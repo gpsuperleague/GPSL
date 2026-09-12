@@ -1,6 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+/**
+ * Match videos ingest
+ *
+ * Modes:
+ *   A) Poll (default when no attachments) — cron / Admin "Poll now"
+ *      Scans month channels under DISCORD_MATCH_VIDEOS_CATEGORY_ID
+ *   B) Push — body has message/attachments (optional live bot)
+ */
+
 const DISCORD_API = "https://discord.com/api/v10";
 const GPSL_ADMIN_EMAIL = "rotavator66@outlook.com";
 
@@ -38,18 +47,21 @@ type DiscordAttachment = {
   content_type?: string | null;
 };
 
-type IngestBody = {
-  discord_message_id?: string;
-  discord_channel_id?: string;
-  discord_attachment_id?: string;
-  discord_user_id?: string;
-  filename?: string;
-  video_url?: string;
-  channel_month?: string | null;
-  uploader_club?: string | null;
+type DiscordMessage = {
+  id: string;
+  channel_id?: string;
+  content?: string;
+  timestamp?: string;
   author?: DiscordUser;
-  member?: DiscordMember | null;
-  react?: boolean;
+  member?: DiscordMember;
+  attachments?: DiscordAttachment[];
+};
+
+type DiscordChannel = {
+  id: string;
+  name?: string;
+  type?: number;
+  parent_id?: string | null;
 };
 
 function usernameTag(u: DiscordUser | undefined): string {
@@ -111,6 +123,69 @@ async function addReaction(
   } catch {
     /* ignore */
   }
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function maxSnowflake(
+  a: string | null | undefined,
+  b: string | null | undefined
+): string | null {
+  if (!a) return b || null;
+  if (!b) return a;
+  try {
+    return BigInt(a) >= BigInt(b) ? a : b;
+  } catch {
+    return a > b ? a : b;
+  }
+}
+
+async function fetchChannelMessages(
+  botToken: string,
+  channelId: string,
+  limit = 40,
+  afterMessageId?: string | null
+): Promise<DiscordMessage[]> {
+  const url = new URL(`${DISCORD_API}/channels/${channelId}/messages`);
+  url.searchParams.set("limit", String(Math.max(1, Math.min(limit, 100))));
+  if (afterMessageId) url.searchParams.set("after", afterMessageId);
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `Discord channel messages ${res.status}: ${text.slice(0, 300)}`
+    );
+  }
+  const batch = (await res.json()) as DiscordMessage[];
+  return Array.isArray(batch) ? batch : [];
+}
+
+async function fetchGuildChannels(
+  botToken: string,
+  guildId: string
+): Promise<DiscordChannel[]> {
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `Discord guild channels ${res.status}: ${text.slice(0, 300)}`
+    );
+  }
+  const batch = (await res.json()) as DiscordChannel[];
+  return Array.isArray(batch) ? batch : [];
 }
 
 async function buildOwnerTagMap(
@@ -205,6 +280,109 @@ function normalizeMonth(raw: string | null | undefined): string | null {
   return m ? m[1].toLowerCase() : null;
 }
 
+function monthFromChannelName(name: string | undefined): string | null {
+  return normalizeMonth(name || "");
+}
+
+function channelIdList(raw: string | undefined): string[] {
+  return String(raw || "")
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+async function ingestOneMessage(
+  adminClient: ReturnType<typeof createClient>,
+  byTag: Map<string, string>,
+  botToken: string,
+  guildId: string,
+  msg: DiscordMessage,
+  channelId: string,
+  channelMonth: string | null,
+  memberCache: Map<string, DiscordMember | null>
+): Promise<Record<string, unknown>[]> {
+  if (!msg?.id || !msg.author || msg.author.bot) return [];
+
+  const atts = (msg.attachments || []).filter(
+    (a) => a && (a.url || a.proxy_url) && looksLikeVideo(a)
+  );
+  if (!atts.length) return [];
+
+  if (!memberCache.has(msg.author.id)) {
+    memberCache.set(
+      msg.author.id,
+      msg.member ||
+        (await fetchGuildMember(botToken, guildId, msg.author.id))
+    );
+  }
+  const member = memberCache.get(msg.author.id) || null;
+  const keys = [
+    member?.nick || "",
+    msg.author.global_name || "",
+    usernameTag(msg.author),
+    msg.author.username || "",
+  ];
+  const club = matchClubByTags(byTag, keys);
+
+  const out: Record<string, unknown>[] = [];
+  let anyOk = false;
+  let anyFail = false;
+
+  for (const att of atts) {
+    const { data, error } = await adminClient.rpc(
+      "match_video_ingest_attachment",
+      {
+        p_discord_message_id: msg.id,
+        p_discord_channel_id: channelId,
+        p_discord_attachment_id: att.id || null,
+        p_discord_user_id: msg.author.id,
+        p_uploader_club: club,
+        p_filename: att.filename || "",
+        p_video_url: att.url || att.proxy_url || "",
+        p_channel_month: channelMonth,
+        p_source: "discord",
+      }
+    );
+
+    if (error) {
+      anyFail = true;
+      out.push({
+        message_id: msg.id,
+        attachment_id: att.id,
+        ok: false,
+        reason: error.message,
+        filename: att.filename,
+        club,
+      });
+      continue;
+    }
+
+    const row = (data || {}) as Record<string, unknown>;
+    if (row.ok === true) anyOk = true;
+    else anyFail = true;
+    out.push({
+      message_id: msg.id,
+      attachment_id: att.id,
+      filename: att.filename,
+      club,
+      ...row,
+    });
+  }
+
+  // React only on first successful match (duplicates skip re-react via status)
+  const freshMatch = out.some(
+    (r) => r.ok === true && r.status === "matched" && Number(r.credited || 0) >= 0
+  );
+  const freshFail = out.every((r) => r.ok === false);
+  if (freshMatch && out.some((r) => r.status === "matched")) {
+    await addReaction(botToken, channelId, msg.id, "✅");
+  } else if (freshFail && anyFail && !anyOk) {
+    await addReaction(botToken, channelId, msg.id, "⚠️");
+  }
+
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -216,6 +394,10 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
     const guildId = Deno.env.get("DISCORD_GUILD_ID");
+    const categoryId = Deno.env.get("DISCORD_MATCH_VIDEOS_CATEGORY_ID") || "";
+    const extraChannels = channelIdList(
+      Deno.env.get("DISCORD_MATCH_VIDEOS_CHANNEL_IDS")
+    );
     const invokeKey =
       Deno.env.get("DISCORD_MATCH_VIDEOS_INVOKE_KEY") ||
       Deno.env.get("DISCORD_FEED_INVOKE_KEY");
@@ -250,139 +432,207 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
-    let body: IngestBody & {
-      attachments?: DiscordAttachment[];
-      message?: {
-        id?: string;
-        channel_id?: string;
-        author?: DiscordUser;
-        member?: DiscordMember | null;
-        attachments?: DiscordAttachment[];
-      };
-    } = {};
-
+    let body: Record<string, unknown> = {};
     if (req.method === "POST") {
       try {
-        body = (await req.json()) as typeof body;
+        body = (await req.json()) as Record<string, unknown>;
       } catch {
         body = {};
       }
     }
 
-    const msg = body.message;
-    const attachments: DiscordAttachment[] = [];
-    if (Array.isArray(body.attachments)) attachments.push(...body.attachments);
-    if (Array.isArray(msg?.attachments)) attachments.push(...msg.attachments);
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const singleAtt =
-      body.discord_attachment_id || body.filename || body.video_url
-        ? [
-            {
-              id: String(body.discord_attachment_id || ""),
-              filename: String(body.filename || ""),
-              url: String(body.video_url || ""),
-            } satisfies DiscordAttachment,
-          ]
-        : [];
+    // ----- Push mode (single message / attachments) -----
+    const msgPush = body.message as DiscordMessage | undefined;
+    const pushAtts: DiscordAttachment[] = [];
+    if (Array.isArray(body.attachments)) {
+      pushAtts.push(...(body.attachments as DiscordAttachment[]));
+    }
+    if (Array.isArray(msgPush?.attachments)) {
+      pushAtts.push(...(msgPush!.attachments || []));
+    }
+    const hasPush =
+      pushAtts.length > 0 ||
+      body.discord_attachment_id ||
+      body.filename ||
+      body.video_url;
 
-    const queue = (attachments.length ? attachments : singleAtt).filter(
-      (a) => a && (a.url || a.proxy_url) && looksLikeVideo(a)
-    );
-
-    if (!queue.length) {
+    if (hasPush) {
+      if (!botToken || !guildId) {
+        return jsonResponse(
+          { error: "Missing DISCORD_BOT_TOKEN / DISCORD_GUILD_ID" },
+          500
+        );
+      }
+      const byTag = await buildOwnerTagMap(adminClient);
+      const channelId = String(
+        body.discord_channel_id || msgPush?.channel_id || ""
+      ).trim();
+      const synthetic: DiscordMessage = {
+        id: String(body.discord_message_id || msgPush?.id || ""),
+        author: (body.author as DiscordUser) || msgPush?.author,
+        member: (body.member as DiscordMember) || msgPush?.member || null,
+        attachments:
+          pushAtts.length > 0
+            ? pushAtts
+            : [
+                {
+                  id: String(body.discord_attachment_id || ""),
+                  filename: String(body.filename || ""),
+                  url: String(body.video_url || ""),
+                },
+              ],
+      };
+      const results = await ingestOneMessage(
+        adminClient,
+        byTag,
+        botToken,
+        guildId,
+        synthetic,
+        channelId,
+        normalizeMonth(body.channel_month as string),
+        new Map()
+      );
       return jsonResponse({
-        ok: false,
-        reason: "No video attachments in payload",
+        ok: results.some((r) => r.ok === true),
+        mode: "push",
+        results,
       });
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const byTag = await buildOwnerTagMap(adminClient);
-
-    const channelId = String(
-      body.discord_channel_id || msg?.channel_id || ""
-    ).trim();
-    const messageId = String(body.discord_message_id || msg?.id || "").trim();
-    const author = body.author || msg?.author;
-    const userId = String(body.discord_user_id || author?.id || "").trim();
-    const channelMonth = normalizeMonth(body.channel_month);
-
-    let club = String(body.uploader_club || "")
-      .trim()
-      .toUpperCase() || null;
-
-    if (!club && userId && botToken && guildId) {
-      const member =
-        body.member ||
-        msg?.member ||
-        (await fetchGuildMember(botToken, guildId, userId));
-      const keys = [
-        member?.nick || "",
-        author?.global_name || "",
-        usernameTag(author),
-        author?.username || "",
-      ];
-      club = matchClubByTags(byTag, keys);
+    // ----- Poll mode (cron / admin) -----
+    if (!botToken || !guildId) {
+      return jsonResponse(
+        {
+          error:
+            "Missing Discord secrets — set DISCORD_BOT_TOKEN and DISCORD_GUILD_ID",
+        },
+        500
+      );
+    }
+    if (!categoryId && extraChannels.length === 0) {
+      return jsonResponse(
+        {
+          error:
+            "Set Edge secret DISCORD_MATCH_VIDEOS_CATEGORY_ID (Matchday videos category) or DISCORD_MATCH_VIDEOS_CHANNEL_IDS",
+        },
+        500
+      );
     }
 
+    const forceRescan = body.rescan === true || body.force === true;
+    const limit = Number(body.limit) > 0 ? Number(body.limit) : 40;
+
+    const { data: settingsRow } = await adminClient
+      .from("gpsl_discord_match_videos_settings")
+      .select("channel_cursors")
+      .eq("id", 1)
+      .maybeSingle();
+
+    const cursors: Record<string, string> = {
+      ...((settingsRow?.channel_cursors as Record<string, string>) || {}),
+    };
+
+    let channels: { id: string; month: string | null; name: string }[] = [];
+
+    if (categoryId) {
+      const all = await fetchGuildChannels(botToken, guildId);
+      // type 0 = GUILD_TEXT
+      channels = all
+        .filter(
+          (c) =>
+            c.parent_id === categoryId &&
+            (c.type === 0 || c.type === undefined) &&
+            monthFromChannelName(c.name)
+        )
+        .map((c) => ({
+          id: c.id,
+          name: c.name || c.id,
+          month: monthFromChannelName(c.name),
+        }));
+    }
+
+    for (const id of extraChannels) {
+      if (!channels.some((c) => c.id === id)) {
+        channels.push({ id, name: id, month: null });
+      }
+    }
+
+    if (!channels.length) {
+      return jsonResponse({
+        ok: false,
+        mode: "poll",
+        reason:
+          "No month channels found under the category — name them january, february, …",
+        category_id: categoryId || null,
+      });
+    }
+
+    const byTag = await buildOwnerTagMap(adminClient);
+    const memberCache = new Map<string, DiscordMember | null>();
     const results: Record<string, unknown>[] = [];
     let matched = 0;
-    let creditedTotal = 0;
+    let scanned = 0;
+    let duplicates = 0;
+    const cursorUpdates: Record<string, string> = { ...cursors };
 
-    for (const att of queue) {
-      const { data, error } = await adminClient.rpc(
-        "match_video_ingest_attachment",
-        {
-          p_discord_message_id: messageId || null,
-          p_discord_channel_id: channelId || null,
-          p_discord_attachment_id: att.id || null,
-          p_discord_user_id: userId || null,
-          p_uploader_club: club,
-          p_filename: att.filename || "",
-          p_video_url: att.url || att.proxy_url || "",
-          p_channel_month: channelMonth,
-          p_source: "discord",
-        }
-      );
-
-      if (error) {
+    for (const ch of channels) {
+      const after = forceRescan ? null : cursors[ch.id] || null;
+      let messages: DiscordMessage[] = [];
+      try {
+        messages = await fetchChannelMessages(botToken, ch.id, limit, after);
+      } catch (err) {
         results.push({
-          attachment_id: att.id,
+          channel_id: ch.id,
+          channel: ch.name,
           ok: false,
-          reason: error.message,
-          filename: att.filename,
+          reason: err instanceof Error ? err.message : String(err),
         });
         continue;
       }
 
-      const row = (data || {}) as Record<string, unknown>;
-      if (row.ok === true && row.status === "matched") {
-        matched += 1;
-        creditedTotal += Number(row.credited || 0) || 0;
+      let newest = after;
+      // Oldest first
+      const ordered = [...messages].reverse();
+      for (const msg of ordered) {
+        if (!msg?.id) continue;
+        newest = maxSnowflake(newest, msg.id);
+        const rows = await ingestOneMessage(
+          adminClient,
+          byTag,
+          botToken,
+          guildId,
+          { ...msg, channel_id: ch.id },
+          ch.id,
+          ch.month,
+          memberCache
+        );
+        for (const r of rows) {
+          scanned += 1;
+          if (r.status === "matched") matched += 1;
+          if (r.status === "duplicate") duplicates += 1;
+          results.push({ channel: ch.name, month: ch.month, ...r });
+        }
+        await sleep(150);
       }
-      results.push({
-        attachment_id: att.id,
-        filename: att.filename,
-        club,
-        ...row,
-      });
+      if (newest) cursorUpdates[ch.id] = newest;
     }
 
-    const doReact = body.react !== false;
-    if (doReact && botToken && channelId && messageId) {
-      const anyOk = results.some((r) => r.ok === true);
-      const anyFail = results.some((r) => r.ok === false);
-      if (anyOk) await addReaction(botToken, channelId, messageId, "✅");
-      else if (anyFail) await addReaction(botToken, channelId, messageId, "⚠️");
-    }
+    await adminClient.from("gpsl_discord_match_videos_settings").upsert({
+      id: 1,
+      channel_cursors: cursorUpdates,
+      updated_at: new Date().toISOString(),
+    });
 
     return jsonResponse({
-      ok: results.some((r) => r.ok === true),
+      ok: true,
+      mode: "poll",
+      channels_scanned: channels.length,
+      messages_with_videos: scanned,
       matched,
-      credited_total: creditedTotal,
-      club,
-      channel_month: channelMonth,
-      results,
+      duplicates,
+      results: results.slice(-40),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

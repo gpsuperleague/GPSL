@@ -28,17 +28,18 @@
     .mv-table tr:hover td { background:#1a1a1a; }
     .ok-yes { color:#8d8; }
     .ok-no { color:#f88; }
-    .manual-form { display:grid; gap:10px; max-width:640px; margin-bottom:12px; }
-    .manual-form label { display:grid; gap:4px; font-size:13px; color:#ccc; }
-    .manual-form input, .manual-form select {
+    .manual-form, .auto-form { display:grid; gap:10px; max-width:640px; margin-bottom:12px; }
+    .manual-form label, .auto-form label { display:grid; gap:4px; font-size:13px; color:#ccc; }
+    .manual-form input, .manual-form select, .auto-form input[type="text"] {
       padding:8px 10px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
     }
-    .manual-form .check { display:flex; align-items:center; gap:8px; }
-    #linkStatus, #logStatus {
+    .manual-form .check, .auto-form .check { display:flex; align-items:center; gap:8px; }
+    #linkStatus, #logStatus, #pollStatus, #autoStatus {
       white-space: pre-wrap; margin:8px 0; font-size:13px; color:#ccc;
     }
     code { background:#1a1a1a; padding:1px 5px; border-radius:3px; }
     h2.section { color:#ffcc66; font-size:16px; margin:22px 0 10px; }
+    ol.setup { margin:0 0 12px; padding-left:1.3em; color:#ccc; font-size:13px; line-height:1.5; }
   </style>
 </head>
 <body class="admin-page">
@@ -48,16 +49,46 @@
   <div class="card">
     <p class="note">
       Owners upload match films to Discord <strong>Matchday videos</strong> month channels.
-      Filenames must include both club short names and a competition tag. Each matched side
-      earns <strong>₿200,000</strong> Matchday revenue once. Live bot: see
-      <code>discord-bots/match-videos/README.md</code>.
+      GPSL polls Discord every 2 minutes (same style as Friendlies) — <strong>no PC left on</strong>.
+      Each matched side earns <strong>₿200,000</strong> Matchday revenue once.
     </p>
     <div class="fmt">ARS 2-0 CHE [SL-MD5].mp4</div>
     <div class="fmt">LIV 1-0 MCI [S8-QF].mkv</div>
     <p class="note" style="margin-top:0">
-      Tags: <code>SL</code>/<code>CH</code> + <code>MD{n}</code> for league;
-      <code>S8</code>/<code>PL</code>/<code>SH</code>/<code>BW</code>/<code>LC</code> + <code>QF</code>/<code>SF</code>/<code>F</code>/<code>R{n}</code> for cups.
+      Full setup checklist:
+      <a href="docs/match-videos-setup.html" style="color:#ff9900;">docs/match-videos-setup.html</a>
     </p>
+  </div>
+
+  <div class="card">
+    <h2 class="section">Poll Discord now</h2>
+    <p class="note">Scans month channels under your Matchday videos category for new video uploads.</p>
+    <div class="actions">
+      <button type="button" class="button" id="pollNowBtn">Poll now</button>
+    </div>
+    <div id="pollStatus"></div>
+  </div>
+
+  <div class="card">
+    <h2 class="section">Auto-poll (every 2 minutes)</h2>
+    <p class="note">
+      Uses the same invoke key pattern as Discord Friendlies / News.
+      Run SQL <code>match_video_uploads_cron_20260912.sql</code> first.
+    </p>
+    <div class="auto-form">
+      <label>Edge function URL
+        <input type="text" id="autoUrl" placeholder="https://….supabase.co/functions/v1/discord-match-videos-ingest">
+      </label>
+      <label class="check">
+        <input type="checkbox" id="autoEnabled">
+        Enable auto-poll
+      </label>
+      <p class="note" id="autoKeyStatus">Invoke key: …</p>
+      <div class="actions">
+        <button type="button" class="button" id="autoSaveBtn">Save auto-poll</button>
+      </div>
+    </div>
+    <div id="autoStatus"></div>
   </div>
 
   <div class="card">
@@ -96,6 +127,6 @@
     <div id="logWrap"><p class="note">Loading…</p></div>
   </div>
 
-  <script type="module" src="admin_match_videos.js?v=20260912-match-videos"></script>
+  <script type="module" src="admin_match_videos.js?v=20260912-match-videos-poll"></script>
 </body>
 </html>
