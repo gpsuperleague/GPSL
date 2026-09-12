@@ -560,6 +560,13 @@ export const ADMIN_MAIN_NAV = [
           null,
           "Rebuild / republish the GPSL Sport public pages after results or awards change."
         ),
+        L(
+          "Match videos",
+          "admin_match_videos.html",
+          null,
+          null,
+          "Discord Matchday videos: auto-poll, payout & missing-video fine amounts, ingest log, manual link. Setup: docs/match-videos-setup.html."
+        ),
       ]),
       group("Transfers", [
         L(

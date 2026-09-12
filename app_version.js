@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260902-sport-voice-slim";
+export const APP_VERSION = "20260912-match-videos-checklist";

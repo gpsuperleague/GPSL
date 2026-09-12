@@ -35,6 +35,7 @@
     <div class="warn">
       Do the steps in order. Tick each one as you finish. Ignore anything about
       “always-on bot” / <code>discord-bots/match-videos</code> — that path is optional and not for you.
+      Admin checklist tick: <strong>Season Management → Media → Match videos</strong>.
     </div>
 
     <h2>Step 1 — Discord category</h2>
@@ -70,11 +71,14 @@
       <li>You do <strong>not</strong> need <code>DISCORD_MATCH_VIDEOS_INVOKE_KEY</code> for this setup.</li>
     </ol>
 
-    <h2>Step 4 — SQL patches (run both in SQL Editor)</h2>
+    <h2>Step 4 — SQL patches (run in order in SQL Editor)</h2>
     <ol>
-      <li>Run file: <code>supabase/sql/patches/match_video_uploads_20260912.sql</code></li>
-      <li>Run file: <code>supabase/sql/patches/match_video_uploads_cron_20260912.sql</code>
-        <br><span class="note">This schedules a poll every 2 minutes and tries to reuse the Friendlies/News invoke key.</span></li>
+      <li><code>match_video_uploads_20260912.sql</code> — tables + ingest core</li>
+      <li><code>match_video_uploads_cron_20260912.sql</code> — auto-poll every 2 minutes</li>
+      <li><code>match_video_comp_codes_20260912.sql</code> — SL / CA / CB / cups tags</li>
+      <li><code>match_video_score_verify_20260912.sql</code> — score + poster + URL checks in ingest</li>
+      <li><code>match_video_poster_url_guard_20260912.sql</code> — Discord ID owner resolve + URL allowlist + admin link guard</li>
+      <li><code>match_video_amounts_fines_board_20260912.sql</code> — editable payout / missing-video fine + owner-board V late / V fail</li>
     </ol>
 
     <h2>Step 5 — Deploy the Edge Function</h2>
@@ -82,40 +86,36 @@
       <li>On a machine with Supabase CLI logged in, run:
         <span class="box">supabase functions deploy discord-match-videos-ingest</span>
       </li>
-      <li>If you do not use the CLI, deploy that function from your usual GPSL deploy method — same as you did for <code>discord-friendlies-ingest</code>.</li>
+      <li>Redeploy whenever channel-name folding / URL rules change.</li>
+      <li>If you do not use the CLI, deploy that function from your usual GPSL deploy method — same as <code>discord-friendlies-ingest</code>.</li>
     </ol>
 
-    <h2>Step 6 — Turn on auto-poll in Admin</h2>
+    <h2>Step 6 — Turn on auto-poll + amounts in Admin</h2>
     <ol>
-      <li>Open <a href="../admin_match_videos.html">Admin → Match videos</a>.</li>
-      <li>Under <strong>Auto-poll</strong>, leave the URL as the match-videos function URL (prefilled / bootstrapped).</li>
+      <li>Open <a href="../admin_match_videos.html">Admin → Match videos</a>
+        (also under Admin checklist → Season Management → Media).</li>
+      <li>Set <strong>Upload payout</strong>, <strong>Missing video fine</strong>, and <strong>Grace hours</strong> → Save amounts.
+        Fine = 0 turns missing-video fines off. Default grace is 48h after month lock.</li>
+      <li>Under <strong>Auto-poll</strong>, leave the URL as the match-videos function URL.</li>
       <li>Tick <strong>Enable auto-poll</strong> → <strong>Save auto-poll</strong>.</li>
       <li>Status should say invoke key is saved. If it says missing:
-        open <strong>Admin → Discord Friendlies</strong>, save auto-poll there once (so the key exists), then re-run the cron SQL patch or Save again on Match videos.</li>
+        open <strong>Admin → Discord Friendlies</strong>, save auto-poll there once, then re-run the cron SQL or Save again on Match videos.</li>
       <li>Optional: click <strong>Poll now</strong> to test immediately.</li>
     </ol>
 
     <h2>Step 7 — Test with a real upload</h2>
     <ol>
       <li>As the <b>club owner</b> for a side in that fixture, post in the correct month channel using Discord’s link format.
-        GPSL checks the poster: Discord account linked on the owner registry first, otherwise Discord nick/tag must match the GPSL owner tag.
-        Random members cannot credit a club.</li>
-      <li>Message example:
+        GPSL checks the poster: Discord account linked on the owner registry first, otherwise Discord nick/tag must match the GPSL owner tag.</li>
+      <li>Message example (use backticks in Discord channel topics so it stays text-only):
         <span class="box">[ARS 2-0 CHE [SL-MD5]](https://youtu.be/xxxxx)</span>
-        The text inside the outer <code>[]</code> is the match name.
-        Score is required and must match the confirmed result. Spacing is flexible:
-        <code>2-0</code>, <code>2 - 0</code>, or <code>ARS 2 CHE 0</code> all work.
-        The URL in <code>()</code> must be <b>https YouTube</b> (<code>youtu.be</code> / <code>youtube.com</code>) — other sites are rejected.
-        Discord video file attachments (CDN) are also allowed.
-        League / division tags (verified against the fixture):
-        <code>SL</code> SuperLeague · <code>CA</code> Championship A · <code>CB</code> Championship B
-        + <code>MD</code> + number.
-        Cups: <code>S8</code> Super8 · <code>PL</code> Plate · <code>SH</code> Shield · <code>BO</code> Bowl · <code>LC</code> League Cup
-        (+ <code>QF</code>/<code>SF</code>/<code>F</code>/<code>R{n}</code>).
-        <code>WC</code> World Cup recognised later.
+        Score must match the confirmed result. URL must be <b>https YouTube</b>.
+        Tags: <code>SL</code> / <code>CA</code> / <code>CB</code> + <code>MD{n}</code>;
+        cups <code>S8</code>/<code>PL</code>/<code>SH</code>/<code>BO</code>/<code>LC</code>.
       </li>
-      <li>Within ~2 minutes (or after Poll now): Discord ✅, Fixtures shows H/A tick, Finances shows ₿200,000 Matchday revenue (video) once.</li>
-      <li>If it fails: Admin → Match videos → Recent ingest log shows the reason; or use Manual link.</li>
+      <li>Success: Discord ✅ · Fixtures H/A tick · Finances Matchday revenue (video) once at your payout amount.</li>
+      <li>Failure: Discord ⚠️ · Admin → Match videos → Recent ingest log shows the reason.</li>
+      <li>Season owner board columns <b>V late</b> / <b>V fail</b> track late uploads and missing-video failures.</li>
     </ol>
 
     <h2>What you can ignore</h2>
