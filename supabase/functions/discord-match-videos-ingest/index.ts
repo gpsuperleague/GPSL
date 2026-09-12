@@ -499,14 +499,24 @@ Deno.serve(async (req) => {
     if (Array.isArray(msgPush?.attachments)) {
       pushAtts.push(...(msgPush!.attachments || []));
     }
+    const wantPoll =
+      body.poll === true ||
+      body.mode === "poll" ||
+      (!body.message &&
+        !body.attachments &&
+        !body.discord_attachment_id &&
+        !body.filename &&
+        !body.video_url);
+
     const hasPush =
-      pushAtts.length > 0 ||
-      body.discord_attachment_id ||
-      body.filename ||
-      body.video_url ||
-      parseMarkdownVideoLinks(
-        String(body.content || msgPush?.content || "")
-      ).length > 0;
+      !wantPoll &&
+      (pushAtts.length > 0 ||
+        body.discord_attachment_id ||
+        body.filename ||
+        body.video_url ||
+        parseMarkdownVideoLinks(
+          String(body.content || msgPush?.content || "")
+        ).length > 0);
 
     if (hasPush) {
       if (!botToken || !guildId) {

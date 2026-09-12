@@ -193,15 +193,30 @@ document.getElementById("refreshLogBtn")?.addEventListener("click", () => {
 
 document.getElementById("pollNowBtn")?.addEventListener("click", async () => {
   setStatus("pollStatus", "Polling Discord…");
-  const { data, error } = await invokePoll({ limit: 40 });
+  const { data, error } = await invokePoll({ poll: true, limit: 50 });
   if (error) {
     setStatus("pollStatus", error.message, false);
     return;
   }
+  if (data?.error) {
+    setStatus("pollStatus", String(data.error), false);
+    return;
+  }
+  if (data?.mode !== "poll") {
+    setStatus(
+      "pollStatus",
+      "Wrong Edge Function version is deployed.\n" +
+        "Run: supabase functions deploy discord-match-videos-ingest\n" +
+        `(got mode=${data?.mode ?? "?"} reason=${data?.reason ?? data?.error ?? "—"})`,
+      false
+    );
+    return;
+  }
   setStatus(
     "pollStatus",
-    `OK — channels ${data?.channels_scanned ?? "?"} · videos seen ${data?.messages_with_videos ?? 0} · matched ${data?.matched ?? 0}` +
-      (data?.reason ? `\n${data.reason}` : "")
+    `OK — channels ${data?.channels_scanned ?? 0} · videos seen ${data?.messages_with_videos ?? 0} · matched ${data?.matched ?? 0}` +
+      (data?.reason ? `\n${data.reason}` : "") +
+      (data?.duplicates ? `\nDuplicates skipped: ${data.duplicates}` : "")
   );
   refreshLog();
 });

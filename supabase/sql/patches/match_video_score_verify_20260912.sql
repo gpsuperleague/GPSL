@@ -1,5 +1,5 @@
--- =============================================================================
--- Match videos — flexible score parsing + verify vs confirmed fixture result
+﻿-- =============================================================================
+-- Match videos 窶・flexible score parsing + verify vs confirmed fixture result
 --
 -- Accepts labels like:
 --   ARS 3-4 CHE [SL-MD5]
@@ -121,7 +121,7 @@ BEGIN
   IF p_parsed->>'score_a' IS NULL AND p_parsed->>'score_home' IS NULL THEN
     RETURN jsonb_build_object(
       'ok', false,
-      'reason', 'Score missing — include it in the name, e.g. ARS 2-0 CHE [SL-MD5]'
+      'reason', 'Score missing 窶・include it in the name, e.g. ARS 2-0 CHE [SL-MD5]'
     );
   END IF;
 
@@ -131,7 +131,7 @@ BEGIN
   IF v_sa IS NULL OR v_sb IS NULL THEN
     RETURN jsonb_build_object(
       'ok', false,
-      'reason', 'Score missing — include it in the name, e.g. ARS 2-0 CHE [SL-MD5]'
+      'reason', 'Score missing 窶・include it in the name, e.g. ARS 2-0 CHE [SL-MD5]'
     );
   END IF;
 
@@ -141,7 +141,7 @@ BEGIN
   THEN
     RETURN jsonb_build_object(
       'ok', false,
-      'reason', 'Fixture result not confirmed yet — post the video after the result is in'
+      'reason', 'Fixture result not confirmed yet 窶・post the video after the result is in'
     );
   END IF;
 
@@ -152,7 +152,7 @@ BEGIN
     RETURN jsonb_build_object(
       'ok', false,
       'reason', format(
-        'Score mismatch — label %s-%s but result is %s-%s',
+        'Score mismatch 窶・label %s-%s but result is %s-%s',
         v_sa, v_sb, v_hg, v_ag
       )
     );
@@ -166,7 +166,7 @@ BEGIN
     RETURN jsonb_build_object(
       'ok', false,
       'reason', format(
-        'Score mismatch — label %s-%s (away listed first) but result is %s-%s',
+        'Score mismatch 窶・label %s-%s (away listed first) but result is %s-%s',
         v_sa, v_sb, v_hg, v_ag
       )
     );
@@ -289,7 +289,7 @@ BEGIN
     v_out := jsonb_build_object(
       'ok', false,
       'reason',
-      'Bad name — use: [ARS 2-0 CHE [SL-MD5]](youtube-url) (spaces around - optional)'
+      'Bad name 窶・use: [ARS 2-0 CHE [SL-MD5]](youtube-url) (spaces around - optional)'
     );
     INSERT INTO public.fixture_match_video_ingest_log (
       season_id, discord_message_id, discord_channel_id, discord_attachment_id,
@@ -350,6 +350,26 @@ BEGIN
   SELECT * INTO v_fixture
   FROM public.competition_fixtures f
   WHERE f.id = v_fixture_id;
+
+  -- Division / cup COMP must match the fixture
+  IF to_regprocedure('public.match_video_comp_matches_fixture(public.competition_fixtures,jsonb)') IS NOT NULL THEN
+    v_score_check := public.match_video_comp_matches_fixture(v_fixture, v_parsed);
+    IF coalesce((v_score_check->>'ok')::boolean, false) IS NOT TRUE THEN
+      v_out := jsonb_build_object(
+        'ok', false,
+        'reason', coalesce(v_score_check->>'reason', 'COMP / division check failed'),
+        'fixture_id', v_fixture_id
+      );
+      INSERT INTO public.fixture_match_video_ingest_log (
+        season_id, discord_message_id, discord_channel_id, discord_attachment_id,
+        discord_user_id, filename, channel_month, ok, reason, fixture_id, result
+      ) VALUES (
+        v_season_id, v_msg, p_discord_channel_id, v_attach, p_discord_user_id,
+        p_filename, p_channel_month, false, v_out->>'reason', v_fixture_id, v_out
+      );
+      RETURN v_out;
+    END IF;
+  END IF;
 
   v_score_check := public.match_video_scores_match_fixture(v_fixture, v_parsed);
   IF coalesce((v_score_check->>'ok')::boolean, false) IS NOT TRUE THEN
@@ -446,7 +466,7 @@ BEGIN
       'gate_match_video',
       v_amount,
       format(
-        'Match video upload — vs %s [%s]',
+        'Match video upload 窶・vs %s [%s]',
         v_opp,
         coalesce(v_parsed->>'tag', '?')
       ),

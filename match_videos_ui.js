@@ -70,7 +70,7 @@ export function matchVideoFilenameHint(fixture) {
       super8: "S8",
       plate: "PL",
       shield: "SH",
-      bowl: "BW",
+      bowl: "BO",
       league_cup: "LC",
     };
     const comp = cupMap[fixture.cup_code] || "S8";
@@ -78,6 +78,10 @@ export function matchVideoFilenameHint(fixture) {
     tag = `${comp}-${round}`;
   } else if (fixture.division === "superleague") {
     tag = `SL-MD${fixture.matchday || "?"}`;
+  } else if (fixture.division === "championship_a") {
+    tag = `CA-MD${fixture.matchday || "?"}`;
+  } else if (fixture.division === "championship_b") {
+    tag = `CB-MD${fixture.matchday || "?"}`;
   } else {
     tag = `CH-MD${fixture.matchday || "?"}`;
   }

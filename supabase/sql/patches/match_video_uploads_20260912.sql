@@ -6,7 +6,7 @@
 --            LEE 1-1 NOR [CH-MD12].mkv
 --            LIV 3-1 MCI [S8-QF].mp4
 --
--- COMP: SL | CH | S8 | CA | CL | PL | SH | BW | LC  (+ cup_code aliases)
+-- COMP: SL | CA | CB (league) · S8 | PL | SH | BO | LC (cups) · WC (later)
 -- REF:  MD{n} (league) | R{n} | R16 | QF | SF | F / FINAL (cups)
 --
 -- Flow:
@@ -232,30 +232,34 @@ DECLARE
   v text := upper(btrim(coalesce(p_comp, '')));
 BEGIN
   IF v IN ('SL', 'SUPERLEAGUE', 'SUPER') THEN
-    RETURN jsonb_build_object('kind', 'league', 'division', 'superleague');
+    RETURN jsonb_build_object('kind', 'league', 'division', 'superleague', 'comp', 'SL');
   END IF;
-  IF v IN ('CH', 'CHA', 'CHB', 'CHAMPIONSHIP', 'CHAMP') THEN
-    -- Division resolved from clubs when matching
-    RETURN jsonb_build_object('kind', 'league', 'division', NULL);
+  IF v IN ('CA', 'CHA', 'CHAMPIONSHIP_A', 'CHAMPA') THEN
+    RETURN jsonb_build_object('kind', 'league', 'division', 'championship_a', 'comp', 'CA');
   END IF;
-  IF v IN ('S8', 'SUPER8', 'CA', 'CL', 'CHAMPIONS') THEN
-    RETURN jsonb_build_object('kind', 'cup', 'cup_code', 'super8');
+  IF v IN ('CB', 'CHB', 'CHAMPIONSHIP_B', 'CHAMPB') THEN
+    RETURN jsonb_build_object('kind', 'league', 'division', 'championship_b', 'comp', 'CB');
+  END IF;
+  IF v IN ('CH', 'CHAMPIONSHIP', 'CHAMP') THEN
+    RETURN jsonb_build_object('kind', 'league', 'division', NULL, 'comp', 'CH');
+  END IF;
+  IF v IN ('S8', 'SUPER8') THEN
+    RETURN jsonb_build_object('kind', 'cup', 'cup_code', 'super8', 'comp', 'S8');
   END IF;
   IF v IN ('PL', 'PLATE') THEN
-    RETURN jsonb_build_object('kind', 'cup', 'cup_code', 'plate');
+    RETURN jsonb_build_object('kind', 'cup', 'cup_code', 'plate', 'comp', 'PL');
   END IF;
   IF v IN ('SH', 'SHIELD') THEN
-    RETURN jsonb_build_object('kind', 'cup', 'cup_code', 'shield');
+    RETURN jsonb_build_object('kind', 'cup', 'cup_code', 'shield', 'comp', 'SH');
   END IF;
-  IF v IN ('BW', 'BOWL') THEN
-    RETURN jsonb_build_object('kind', 'cup', 'cup_code', 'bowl');
+  IF v IN ('BO', 'BW', 'BOWL') THEN
+    RETURN jsonb_build_object('kind', 'cup', 'cup_code', 'bowl', 'comp', 'BO');
   END IF;
   IF v IN ('LC', 'LEAGUECUP', 'LEAGUE_CUP', 'EFL') THEN
-    RETURN jsonb_build_object('kind', 'cup', 'cup_code', 'league_cup');
+    RETURN jsonb_build_object('kind', 'cup', 'cup_code', 'league_cup', 'comp', 'LC');
   END IF;
-  -- Direct cup_code passthrough
-  IF v IN ('SUPER8', 'PLATE', 'SHIELD', 'BOWL', 'LEAGUE_CUP') THEN
-    RETURN jsonb_build_object('kind', 'cup', 'cup_code', lower(v));
+  IF v IN ('WC', 'WORLDCUP', 'WORLD_CUP') THEN
+    RETURN jsonb_build_object('kind', 'intl', 'comp', 'WC');
   END IF;
   RETURN NULL;
 END;
