@@ -82,7 +82,7 @@ export function matchVideoFilenameHint(fixture) {
     tag = `CH-MD${fixture.matchday || "?"}`;
   }
 
-  return `${home} ${hg}-${ag} ${away} [${tag}].mp4`;
+  return `${home} ${hg}-${ag} ${away} [${tag}]`;
 }
 
 export const MATCH_VIDEO_TICK_CSS = `

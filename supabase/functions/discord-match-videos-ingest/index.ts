@@ -254,6 +254,35 @@ function looksLikeVideo(att: DiscordAttachment): boolean {
   return /\.(mp4|mkv|mov|webm|avi|m4v|mpeg|mpg)$/i.test(name);
 }
 
+/** Discord markdown: [label](https://...) — greedy label so nested [SL-MD5] works */
+function parseMarkdownVideoLinks(
+  content: string
+): { label: string; url: string; id: string }[] {
+  const raw = String(content || "");
+  const out: { label: string; url: string; id: string }[] = [];
+  // Greedy .+ so "ARS 2-0 CHE [SL-MD5]" inside outer [] still works
+  const re = /\[(.+)\]\((https?:\/\/[^)\s]+)\)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw)) !== null) {
+    const label = String(m[1] || "").trim();
+    const url = String(m[2] || "").trim();
+    if (!label || !url) continue;
+    // Prefer youtube / common video hosts; still accept any https link
+    out.push({
+      label,
+      url,
+      id: `link:${url}`,
+    });
+  }
+  return out;
+}
+
+type VideoCandidate = {
+  id: string;
+  filename: string;
+  url: string;
+};
+
 function normalizeMonth(raw: string | null | undefined): string | null {
   const s = String(raw || "")
     .trim()
@@ -303,10 +332,28 @@ async function ingestOneMessage(
 ): Promise<Record<string, unknown>[]> {
   if (!msg?.id || !msg.author || msg.author.bot) return [];
 
-  const atts = (msg.attachments || []).filter(
-    (a) => a && (a.url || a.proxy_url) && looksLikeVideo(a)
-  );
-  if (!atts.length) return [];
+  const candidates: VideoCandidate[] = [];
+
+  // Primary: Discord markdown [ARS 2-0 CHE [SL-MD5]](https://youtu.be/...)
+  for (const link of parseMarkdownVideoLinks(String(msg.content || ""))) {
+    candidates.push({
+      id: `${msg.id}:${link.id}`,
+      filename: link.label,
+      url: link.url,
+    });
+  }
+
+  // Fallback: file attachments (optional)
+  for (const a of msg.attachments || []) {
+    if (!a || !(a.url || a.proxy_url) || !looksLikeVideo(a)) continue;
+    candidates.push({
+      id: a.id || `${msg.id}:file`,
+      filename: a.filename || "",
+      url: a.url || a.proxy_url || "",
+    });
+  }
+
+  if (!candidates.length) return [];
 
   if (!memberCache.has(msg.author.id)) {
     memberCache.set(
@@ -328,7 +375,7 @@ async function ingestOneMessage(
   let anyOk = false;
   let anyFail = false;
 
-  for (const att of atts) {
+  for (const att of candidates) {
     const { data, error } = await adminClient.rpc(
       "match_video_ingest_attachment",
       {
@@ -338,7 +385,7 @@ async function ingestOneMessage(
         p_discord_user_id: msg.author.id,
         p_uploader_club: club,
         p_filename: att.filename || "",
-        p_video_url: att.url || att.proxy_url || "",
+        p_video_url: att.url || "",
         p_channel_month: channelMonth,
         p_source: "discord",
       }
@@ -456,7 +503,10 @@ Deno.serve(async (req) => {
       pushAtts.length > 0 ||
       body.discord_attachment_id ||
       body.filename ||
-      body.video_url;
+      body.video_url ||
+      parseMarkdownVideoLinks(
+        String(body.content || msgPush?.content || "")
+      ).length > 0;
 
     if (hasPush) {
       if (!botToken || !guildId) {
@@ -471,18 +521,21 @@ Deno.serve(async (req) => {
       ).trim();
       const synthetic: DiscordMessage = {
         id: String(body.discord_message_id || msgPush?.id || ""),
+        content: String(body.content || msgPush?.content || ""),
         author: (body.author as DiscordUser) || msgPush?.author,
         member: (body.member as DiscordMember) || msgPush?.member || null,
         attachments:
           pushAtts.length > 0
             ? pushAtts
-            : [
-                {
-                  id: String(body.discord_attachment_id || ""),
-                  filename: String(body.filename || ""),
-                  url: String(body.video_url || ""),
-                },
-              ],
+            : body.filename || body.video_url
+              ? [
+                  {
+                    id: String(body.discord_attachment_id || ""),
+                    filename: String(body.filename || ""),
+                    url: String(body.video_url || ""),
+                  },
+                ]
+              : [],
       };
       const results = await ingestOneMessage(
         adminClient,
