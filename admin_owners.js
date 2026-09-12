@@ -1161,18 +1161,22 @@ async function fetchOwnerTimezoneMap() {
 }
 
 async function fetchOwnerActivityById() {
-  const [{ data, error }, { data: secData, error: secError }] = await Promise.all([
-    supabase.rpc("admin_owner_last_logins"),
-    supabase.rpc("admin_owner_login_security_map", { p_recent_days: 30 }),
-  ]);
+  const [{ data, error }, { data: secData, error: secError }, { data: vidData }] =
+    await Promise.all([
+      supabase.rpc("admin_owner_last_logins"),
+      supabase.rpc("admin_owner_login_security_map", { p_recent_days: 30 }),
+      supabase.rpc("admin_match_video_owner_metrics"),
+    ]);
   const byId = new Map();
   const securityById = new Map();
+  const videoByClub = new Map();
   let previousLabel = "Prev month";
   let currentLabel = "Current month";
   if (error) {
     return {
       byId,
       securityById,
+      videoByClub,
       previousLabel,
       currentLabel,
       snapshotMonths: 0,
@@ -1191,9 +1195,17 @@ async function fetchOwnerActivityById() {
   for (const row of secOwners) {
     if (row?.owner_id) securityById.set(row.owner_id, row);
   }
+  const byClub = vidData?.by_club && typeof vidData.by_club === "object" ? vidData.by_club : {};
+  for (const [club, stats] of Object.entries(byClub)) {
+    videoByClub.set(String(club).toUpperCase(), {
+      video_late_count: Number(stats?.video_late_count) || 0,
+      video_failed_count: Number(stats?.video_failed_count) || 0,
+    });
+  }
   return {
     byId,
     securityById,
+    videoByClub,
     previousLabel,
     currentLabel,
     snapshotMonths,
@@ -1334,27 +1346,47 @@ async function loadWaitingListAdmin() {
 
   const data = boardRes.data;
   const activityById = activityRes.byId;
+  const videoByClub = activityRes.videoByClub || new Map();
   const prevLabel = activityRes.previousLabel || "Prev month";
   const curLabel = activityRes.currentLabel || "Current month";
 
-  const priority = (data?.priority || data?.waiting || []).map((r) => ({
-    ...r,
-    has_club: !!r.has_club || r.list_kind === "club_owner",
-    invited_auction: false,
-    activity: activityById.get(r.owner_id) || null,
-    security: activityRes.securityById.get(r.owner_id) || null,
-    owner_timezone: timezoneMap.get(r.owner_id) || "",
-  }));
-  const invited = (data?.invited_to_auction || []).map((r) => ({
-    ...r,
-    position: null,
-    tier: "—",
-    invited_auction: true,
-    has_club: false,
-    activity: activityById.get(r.owner_id) || null,
-    security: activityRes.securityById.get(r.owner_id) || null,
-    owner_timezone: timezoneMap.get(r.owner_id) || "",
-  }));
+  const withActivity = (r) => {
+    const act = activityById.get(r.owner_id) || null;
+    const clubKey = String(r.club_short_name || act?.club_short_name || "")
+      .trim()
+      .toUpperCase();
+    const vid = clubKey ? videoByClub.get(clubKey) : null;
+    return {
+      ...r,
+      activity: act
+        ? {
+            ...act,
+            video_late_count: vid?.video_late_count ?? 0,
+            video_failed_count: vid?.video_failed_count ?? 0,
+          }
+        : act,
+      security: activityRes.securityById.get(r.owner_id) || null,
+      owner_timezone: timezoneMap.get(r.owner_id) || "",
+      video: vid || { video_late_count: 0, video_failed_count: 0 },
+    };
+  };
+
+  const priority = (data?.priority || data?.waiting || []).map((r) =>
+    withActivity({
+      ...r,
+      has_club: !!r.has_club || r.list_kind === "club_owner",
+      invited_auction: false,
+    })
+  );
+  const invited = (data?.invited_to_auction || []).map((r) =>
+    withActivity({
+      ...r,
+      position: null,
+      tier: "—",
+      invited_auction: true,
+      has_club: false,
+    })
+  );
   const rows = [...priority, ...invited];
   const ownerRows = priority.filter((r) => r.has_club).sort(compareRowsByActivitySort);
   const waitingRows = priority.filter((r) => !r.has_club).sort(compareRowsByActivitySort);
@@ -1373,7 +1405,7 @@ async function loadWaitingListAdmin() {
     : "Section sort uses login activity";
   const activityNote = activityRes.error
     ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · missed running total · admin IP/country review · sort: last login first unless current month logins are under 4`;
+    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · missed running total · V late / V fail (match videos) · admin IP/country review · sort: last login first unless current month logins are under 4`;
 
   const snapMonths = Number(activityRes.snapshotMonths || 0);
   const snapNote =
@@ -1381,7 +1413,7 @@ async function loadWaitingListAdmin() {
       ? ` · ${snapMonths} month(s) snapshotted`
       : " · no month snapshots yet — click Record unplayed before simming leftovers";
 
-  const colSpan = 24;
+  const colSpan = 26;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
   let overallIndex = 0;
@@ -1411,6 +1443,8 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(prevLabel)} (league + cups)">U ${escapeWl(prevLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">U ${escapeWl(curLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Running total of unplayed fixtures frozen at month end / Record unplayed (survives catch-up sims). Includes live current month until that month is snapshotted.">U missed</th>` +
+    `<th class="num wl-num-unplayed" title="Match videos uploaded after that fixture’s GPSL month lock_at">V late</th>` +
+    `<th class="num wl-num-unplayed" title="Match videos still missing when lock_at + grace hours passed (fined / failed)">V fail</th>` +
     `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord</th>` +
     `<th title="Current offset versus British time, using the owner's saved timezone.">UK +/-</th>` +
     `<th title="Latest login country (admin only).">Country</th>` +
@@ -2029,6 +2063,14 @@ function renderWaitingListAdminRow(
       : act.unplayed_season == null
         ? null
         : Number(act.unplayed_season) || 0;
+  const videoLate =
+    act.video_late_count != null
+      ? Number(act.video_late_count) || 0
+      : Number(row.video?.video_late_count) || 0;
+  const videoFail =
+    act.video_failed_count != null
+      ? Number(act.video_failed_count) || 0
+      : Number(row.video?.video_failed_count) || 0;
   const sec = row.security || {};
   const formatUnplayed = (n) => {
     if (n == null) return `<span class="muted">—</span>`;
@@ -2136,6 +2178,8 @@ function renderWaitingListAdminRow(
     <td class="num wl-num-unplayed" title="Unplayed previous GPSL month">${formatUnplayed(unplayedPrev)}</td>
     <td class="num wl-num-unplayed" title="Unplayed current GPSL month">${formatUnplayed(unplayedCur)}</td>
     <td class="num wl-num-unplayed" title="Missed running total (month snapshots + live until snapshotted)">${formatUnplayed(unplayedMissed)}</td>
+    <td class="num wl-num-unplayed" title="Match videos uploaded after month lock">${formatUnplayed(hasClub ? videoLate : null)}</td>
+    <td class="num wl-num-unplayed" title="Missing match video past grace (failed / fined)">${formatUnplayed(hasClub ? videoFail : null)}</td>
     <td>${discordCell}</td>
     <td title="${tzDelta.title ? escapeWl(tzDelta.title) : ""}">${escapeWl(tzDelta.text)}</td>
     <td title="${lastCountry ? escapeWl(lastCountry) : ""}">${lastCountry ? escapeWl(lastCountryName) : `<span class="muted">—</span>`}</td>

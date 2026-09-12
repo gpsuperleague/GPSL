@@ -50,7 +50,8 @@
     <p class="note">
       Owners post a YouTube link in Discord <strong>Matchday videos</strong> month channels
       using markdown <code>[name](url)</code>. GPSL polls every 2 minutes — no PC left on.
-      Each matched side earns <strong>₿200,000</strong> Matchday revenue once.
+      Matched sides earn Matchday revenue once (amount editable below).
+      Missing videos after month lock + grace hours become a fine (also editable).
     </p>
     <div class="fmt">[MON 2-1 WOL [CA-MD10]](https://youtu.be/xxxxx)</div>
     <div class="fmt">[ARS 2-0 CHE [SL-MD5]](https://youtu.be/xxxxx)</div>
@@ -59,6 +60,31 @@
       cups <b>S8</b>/<b>PL</b>/<b>SH</b>/<b>BO</b>/<b>LC</b>. Division is verified against the fixture.
       Setup: <a href="docs/match-videos-setup.html" style="color:#ff9900;">docs/match-videos-setup.html</a>
     </p>
+  </div>
+
+  <div class="card">
+    <h2 class="section">Payout &amp; missing-video fine</h2>
+    <p class="note">
+      Upload reward is Matchday revenue. Missing-video charge is a <b>Fine</b>
+      (Finances → Fines) when an owned side has no video by
+      <b>month lock + grace hours</b> (default 48h). Set fine to <b>0</b> to turn fines off.
+    </p>
+    <form class="auto-form" id="amountsForm">
+      <label>Upload payout (₿)
+        <input type="number" id="payoutAmount" min="1" step="1000" required>
+      </label>
+      <label>Missing video fine (₿)
+        <input type="number" id="missingFineAmount" min="0" step="1000" required>
+      </label>
+      <label>Grace hours after month lock
+        <input type="number" id="missingFineGraceHours" min="1" max="720" step="1" required>
+      </label>
+      <div class="actions" style="margin:0">
+        <button type="submit" class="button">Save amounts</button>
+        <button type="button" class="button secondary" id="assessFinesBtn">Assess missing-video fines now</button>
+      </div>
+    </form>
+    <div id="amountsStatus"></div>
   </div>
 
   <div class="card">
@@ -128,6 +154,6 @@
     <div id="logWrap"><p class="note">Loading…</p></div>
   </div>
 
-  <script type="module" src="admin_match_videos.js?v=20260912-match-videos-poll"></script>
+  <script type="module" src="admin_match_videos.js?v=20260912-amounts-fines"></script>
 </body>
 </html>

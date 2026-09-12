@@ -187,6 +187,87 @@ async function saveAutoSettings() {
   );
 }
 
+async function loadAmounts() {
+  const { data, error } = await supabase.rpc("admin_match_video_get_amounts");
+  if (error) {
+    setStatus(
+      "amountsStatus",
+      `Amounts unavailable — run match_video_amounts_fines_board_20260912.sql (${error.message})`,
+      false
+    );
+    return;
+  }
+  if (!data?.ok) {
+    setStatus("amountsStatus", data?.reason || "Failed to load amounts", false);
+    return;
+  }
+  const payoutEl = document.getElementById("payoutAmount");
+  const fineEl = document.getElementById("missingFineAmount");
+  const graceEl = document.getElementById("missingFineGraceHours");
+  if (payoutEl) payoutEl.value = String(Number(data.payout_amount) || 200000);
+  if (fineEl) fineEl.value = String(Number(data.missing_fine_amount) || 0);
+  if (graceEl) graceEl.value = String(Number(data.missing_fine_grace_hours) || 48);
+  setStatus(
+    "amountsStatus",
+    `Payout ₿${Number(data.payout_amount).toLocaleString("en-GB")} · fine ₿${Number(
+      data.missing_fine_amount
+    ).toLocaleString("en-GB")} · grace ${data.missing_fine_grace_hours}h after month lock`
+  );
+}
+
+async function saveAmounts(e) {
+  e?.preventDefault?.();
+  const payout = Number(document.getElementById("payoutAmount")?.value);
+  const fine = Number(document.getElementById("missingFineAmount")?.value);
+  const grace = Number(document.getElementById("missingFineGraceHours")?.value);
+  setStatus("amountsStatus", "Saving…");
+  const { data, error } = await supabase.rpc("admin_match_video_set_amounts", {
+    p_payout_amount: payout,
+    p_missing_fine_amount: fine,
+    p_missing_fine_grace_hours: grace,
+  });
+  if (error) {
+    setStatus("amountsStatus", error.message, false);
+    return;
+  }
+  if (!data?.ok) {
+    setStatus("amountsStatus", data?.reason || "Save failed", false);
+    return;
+  }
+  await loadAmounts();
+  setStatus("amountsStatus", "Amounts saved.", true);
+}
+
+async function assessMissingFines() {
+  setStatus("amountsStatus", "Assessing missing-video fines…");
+  const { data, error } = await supabase.rpc("match_video_process_missing_fines", {
+    p_season_id: null,
+  });
+  if (error) {
+    setStatus("amountsStatus", error.message, false);
+    return;
+  }
+  if (!data?.ok) {
+    setStatus("amountsStatus", data?.reason || "Failed", false);
+    return;
+  }
+  setStatus(
+    "amountsStatus",
+    data.skipped
+      ? String(data.reason || "Fines skipped")
+      : `Fined ${data.fined ?? 0} side(s) · ₿${Number(data.fine_amount || 0).toLocaleString(
+          "en-GB"
+        )} · grace ${data.grace_hours}h` +
+          (data.skipped_errors ? ` · ${data.skipped_errors} errors` : ""),
+    true
+  );
+}
+
+document.getElementById("amountsForm")?.addEventListener("submit", saveAmounts);
+document.getElementById("assessFinesBtn")?.addEventListener("click", () => {
+  assessMissingFines();
+});
+
 document.getElementById("refreshLogBtn")?.addEventListener("click", () => {
   refreshLog();
 });
@@ -258,5 +339,6 @@ document.getElementById("manualLinkForm")?.addEventListener("submit", async (e) 
 });
 
 await initAdminPage({ title: "Match videos" });
+loadAmounts();
 loadAutoSettings();
 refreshLog();

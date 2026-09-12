@@ -148,9 +148,27 @@ GRANT USAGE, SELECT ON SEQUENCE public.fixture_match_video_ingest_log_id_seq TO 
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.match_video_payout_amount()
 RETURNS numeric
-LANGUAGE sql
-IMMUTABLE
-AS $$ SELECT 200000::numeric; $$;
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v numeric;
+BEGIN
+  BEGIN
+    SELECT s.payout_amount INTO v
+    FROM public.gpsl_discord_match_videos_settings s
+    WHERE s.id = 1;
+  EXCEPTION WHEN undefined_table THEN
+    RETURN 200000::numeric;
+  END;
+  IF v IS NULL OR v <= 0 THEN
+    RETURN 200000::numeric;
+  END IF;
+  RETURN v;
+END;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.match_video_parse_filename(p_filename text)
 RETURNS jsonb

@@ -136,7 +136,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `After you play, post a YouTube link in the Discord <b>Matchday videos</b> channel for that GPSL month, using Discord’s link format:`,
         `<code>[HomeShort 2-0 AwayShort [SL-MD5]](https://youtu.be/xxxxx)</code> — https YouTube only. Division tag required: <b>SL</b> SuperLeague, <b>CA</b> Championship A, <b>CB</b> Championship B. Cups: <b>S8</b>/<b>PL</b>/<b>SH</b>/<b>BO</b>/<b>LC</b>. Score spacing flexible. GPSL verifies the poster is that club’s owner, plus division, matchday/round, clubs, and score.`,
         `GPSL ticks <b>H</b> / <b>A</b> on Fixtures when each side’s video is matched — click the tick to open the video.`,
-        `Each club earns <b>₿200,000</b> Matchday revenue <b>once</b> per fixture when <em>their</em> post is matched.`,
+        `Each club earns Matchday revenue <b>once</b> per fixture when <em>their</em> post is matched (amount set in Admin → Match videos). Missing videos after month lock + grace hours can be fined.`,
       ],
     },
 

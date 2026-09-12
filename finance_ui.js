@@ -143,7 +143,7 @@ export const FINANCE_UI_SECTIONS = [
           "gate_match_video",
         ],
         note:
-          "League home 100% / away 0%; cup 50/50; Discord friendlies ₿5,000 each; match video upload ₿200,000 once per club per fixture.",
+          "League home 100% / away 0%; cup 50/50; Discord friendlies ₿5,000 each; match video upload (admin-editable amount) once per club per fixture.",
       },
       {
         id: "infra_maintenance",
@@ -168,7 +168,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "infra_fines",
         label: "Fines & compensation",
         types: ["gov_fine_compensation"],
-        note: "Instant admin fines (debit) and compensation (credit) from tariff catalogue.",
+        note: "Instant admin fines (debit) and compensation (credit) from tariff catalogue. Includes missing match video after month lock + grace hours.",
       },
     ],
   },
