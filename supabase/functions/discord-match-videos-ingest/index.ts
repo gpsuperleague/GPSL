@@ -315,30 +315,182 @@ type VideoCandidate = {
   url: string;
 };
 
-function normalizeMonth(raw: string | null | undefined): string | null {
-  const s = String(raw || "")
-    .trim()
-    .toLowerCase();
-  if (!s) return null;
-  const months = [
-    "june",
-    "july",
-    "august",
-    "september",
-    "october",
-    "november",
-    "december",
-    "january",
-    "february",
-    "march",
-    "april",
-    "may",
+/** Fold fancy Discord channel fonts (bold/double-struck/fullwidth/etc.) → a-z */
+function foldChannelLetters(raw: string): string {
+  let out = "";
+  for (const ch of String(raw || "")) {
+    const cp = ch.codePointAt(0);
+    if (cp == null) continue;
+
+    // ASCII letters
+    if (cp >= 65 && cp <= 90) {
+      out += String.fromCharCode(cp + 32);
+      continue;
+    }
+    if (cp >= 97 && cp <= 122) {
+      out += ch;
+      continue;
+    }
+
+    // Fullwidth Latin
+    if (cp >= 0xff21 && cp <= 0xff3a) {
+      out += String.fromCharCode(cp - 0xff21 + 97);
+      continue;
+    }
+    if (cp >= 0xff41 && cp <= 0xff5a) {
+      out += String.fromCharCode(cp - 0xff41 + 97);
+      continue;
+    }
+
+    // Mathematical Alphanumeric Symbols (Discord "aesthetic" fonts)
+    // Contiguous A–Z / a–z blocks (skip known holes by range tables)
+    const math = mathAlphaToAscii(cp);
+    if (math) {
+      out += math;
+      continue;
+    }
+
+    // Circled Latin letters Ⓐ-Ⓩ / ⓐ-ⓩ
+    if (cp >= 0x24b6 && cp <= 0x24cf) {
+      out += String.fromCharCode(cp - 0x24b6 + 97);
+      continue;
+    }
+    if (cp >= 0x24d0 && cp <= 0x24e9) {
+      out += String.fromCharCode(cp - 0x24d0 + 97);
+      continue;
+    }
+
+    // Drop decorations / separators / emoji — keep letters only
+  }
+  return out;
+}
+
+function mathAlphaToAscii(cp: number): string | null {
+  // [start, endInclusive, asciiBase ('a' or 'A' then lowercased)]
+  const ranges: [number, number, number][] = [
+    [0x1d400, 0x1d419, 97], // bold A-Z
+    [0x1d41a, 0x1d433, 97], // bold a-z
+    [0x1d434, 0x1d44d, 97], // italic A-Z
+    [0x1d44e, 0x1d467, 97], // italic a-z
+    [0x1d468, 0x1d481, 97], // bold italic A-Z
+    [0x1d482, 0x1d49b, 97], // bold italic a-z
+    [0x1d4d0, 0x1d4e9, 97], // bold script A-Z
+    [0x1d4ea, 0x1d503, 97], // bold script a-z
+    [0x1d504, 0x1d51c, 97], // fraktur A-Z (holes handled below)
+    [0x1d51e, 0x1d537, 97], // fraktur a-z
+    [0x1d56c, 0x1d585, 97], // bold fraktur A-Z
+    [0x1d586, 0x1d59f, 97], // bold fraktur a-z
+    [0x1d5a0, 0x1d5b9, 97], // sans A-Z
+    [0x1d5ba, 0x1d5d3, 97], // sans a-z
+    [0x1d5d4, 0x1d5ed, 97], // sans bold A-Z
+    [0x1d5ee, 0x1d607, 97], // sans bold a-z
+    [0x1d608, 0x1d621, 97], // sans italic A-Z
+    [0x1d622, 0x1d63b, 97], // sans italic a-z
+    [0x1d63c, 0x1d655, 97], // sans bold italic A-Z
+    [0x1d656, 0x1d66f, 97], // sans bold italic a-z
+    [0x1d670, 0x1d689, 97], // monospace A-Z
+    [0x1d68a, 0x1d6a3, 97], // monospace a-z
   ];
-  if (months.includes(s)) return s;
-  const m = s.match(
+
+  for (const [start, end, base] of ranges) {
+    if (cp >= start && cp <= end) {
+      return String.fromCharCode(base + (cp - start));
+    }
+  }
+
+  // Double-struck / script holes mapped individually (common Discord fonts)
+  const singles: Record<number, string> = {
+    0x1d538: "a",
+    0x1d539: "b",
+    0x2102: "c", // ℂ
+    0x1d53b: "d",
+    0x1d53c: "e",
+    0x1d53d: "f",
+    0x1d53e: "g",
+    0x210d: "h", // ℍ
+    0x1d540: "i",
+    0x1d541: "j",
+    0x1d542: "k",
+    0x1d543: "l",
+    0x1d544: "m",
+    0x2115: "n", // ℕ
+    0x1d546: "o",
+    0x2119: "p", // ℙ
+    0x211a: "q", // ℚ
+    0x211d: "r", // ℝ
+    0x1d54a: "s",
+    0x1d54b: "t",
+    0x1d54c: "u",
+    0x1d54d: "v",
+    0x1d54e: "w",
+    0x1d54f: "x",
+    0x1d550: "y",
+    0x2124: "z", // ℤ
+    // double-struck lowercase
+    0x1d552: "a",
+    0x1d553: "b",
+    0x1d554: "c",
+    0x1d555: "d",
+    0x1d556: "e",
+    0x1d557: "f",
+    0x1d558: "g",
+    0x1d559: "h",
+    0x1d55a: "i",
+    0x1d55b: "j",
+    0x1d55c: "k",
+    0x1d55d: "l",
+    0x1d55e: "m",
+    0x1d55f: "n",
+    0x1d560: "o",
+    0x1d561: "p",
+    0x1d562: "q",
+    0x1d563: "r",
+    0x1d564: "s",
+    0x1d565: "t",
+    0x1d566: "u",
+    0x1d567: "v",
+    0x1d568: "w",
+    0x1d569: "x",
+    0x1d56a: "y",
+    0x1d56b: "z",
+  };
+  return singles[cp] || null;
+}
+
+const GPSL_MONTHS = [
+  "september",
+  "november",
+  "december",
+  "february",
+  "october",
+  "january",
+  "august",
+  "april",
+  "march",
+  "june",
+  "july",
+  "may",
+] as const;
+
+function normalizeMonth(raw: string | null | undefined): string | null {
+  const original = String(raw || "").trim();
+  if (!original) return null;
+
+  const lower = original.toLowerCase();
+  if ((GPSL_MONTHS as readonly string[]).includes(lower)) return lower;
+
+  // Plain ASCII word in name: "videos-october", "October Matchday"
+  const word = lower.match(
     /\b(june|july|august|september|october|november|december|january|february|march|april|may)\b/i
   );
-  return m ? m[1].toLowerCase() : null;
+  if (word) return word[1].toLowerCase();
+
+  // Fancy fonts / separators: "𝕆𝕔𝕥𝕠𝕓𝕖𝕣", "O·C·T·O·B·E·R", "𝕆 ℂ 𝕋 …"
+  const folded = foldChannelLetters(original);
+  for (const month of GPSL_MONTHS) {
+    if (folded.includes(month)) return month;
+  }
+  return null;
 }
 
 function monthFromChannelName(name: string | undefined): string | null {
@@ -665,7 +817,7 @@ Deno.serve(async (req) => {
         ok: false,
         mode: "poll",
         reason:
-          "No month channels found under the category — name them january, february, …",
+          "No month channels found under the category — channel name must contain a GPSL month (january…may). Fancy Unicode fonts / separators are OK if the month letters are still there.",
         category_id: categoryId || null,
       });
     }
