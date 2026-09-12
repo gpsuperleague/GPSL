@@ -134,7 +134,7 @@ export const SECTION_MATCH_SCHEDULING = {
       type: "ul",
       items: [
         `After you play, post a YouTube link in the Discord <b>Matchday videos</b> channel for that GPSL month, using Discord’s link format:`,
-        `<code>[HomeShort 2-0 AwayShort [SL-MD5]](https://youtu.be/xxxxx)</code> — GPSL reads the name inside the first <code>[]</code> and the URL in the <code>()</code>. Cups use tags like <code>[S8-QF]</code>.`,
+        `<code>[HomeShort 2-0 AwayShort [SL-MD5]](https://youtu.be/xxxxx)</code> — spaces around the score optional (<code>2-0</code> or <code>2 - 0</code>, or <code>Home 2 Away 0</code>). GPSL checks clubs, matchday/cup tag, <b>and</b> that the score matches the confirmed result.`,
         `GPSL ticks <b>H</b> / <b>A</b> on Fixtures when each side’s video is matched — click the tick to open the video.`,
         `Each club earns <b>₿200,000</b> Matchday revenue <b>once</b> per fixture when <em>their</em> post is matched.`,
       ],
