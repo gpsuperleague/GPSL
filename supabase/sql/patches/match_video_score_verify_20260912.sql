@@ -179,7 +179,107 @@ BEGIN
 END;
 $function$;
 
--- Patch ingest: after loading fixture, verify score before writing video row
+-- Allowlist video hosts (YouTube + Discord CDN attachments only)
+CREATE OR REPLACE FUNCTION public.match_video_url_allowed(p_url text)
+RETURNS boolean
+LANGUAGE plpgsql
+IMMUTABLE
+AS $function$
+DECLARE
+  v text := btrim(coalesce(p_url, ''));
+  v_host text;
+BEGIN
+  IF v = '' OR length(v) > 2000 THEN
+    RETURN false;
+  END IF;
+  IF v !~* '^https://' THEN
+    RETURN false;
+  END IF;
+  IF v ~ '[[:space:]]' OR position('@' in v) > 0 THEN
+    RETURN false;
+  END IF;
+
+  v_host := lower(substring(v from '^https://([^/?:#]+)'));
+  IF v_host IS NULL OR v_host = '' THEN
+    RETURN false;
+  END IF;
+  IF left(v_host, 4) = 'www.' THEN
+    v_host := substring(v_host from 5);
+  END IF;
+
+  IF v_host IN (
+    'youtube.com',
+    'm.youtube.com',
+    'youtu.be',
+    'youtube-nocookie.com'
+  ) THEN
+    RETURN true;
+  END IF;
+
+  IF v_host IN (
+    'cdn.discordapp.com',
+    'media.discordapp.net'
+  ) THEN
+    RETURN true;
+  END IF;
+
+  RETURN false;
+END;
+$function$;
+
+-- Resolve uploader club: Discord snowflake (registry) wins; tag claim is fallback
+CREATE OR REPLACE FUNCTION public.match_video_resolve_uploader_club(
+  p_discord_user_id text,
+  p_claimed_club text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_discord text := nullif(btrim(coalesce(p_discord_user_id, '')), '');
+  v_claimed text := upper(nullif(btrim(coalesce(p_claimed_club, '')), ''));
+  v_club text;
+BEGIN
+  IF v_discord IS NOT NULL
+     AND to_regclass('public.gpsl_owner_registry') IS NOT NULL THEN
+    SELECT upper(btrim(c."ShortName")) INTO v_club
+    FROM public.gpsl_owner_registry r
+    JOIN public."Clubs" c ON c.owner_id = r.owner_id
+    WHERE r.discord_user_id = v_discord
+      AND c.owner_id IS NOT NULL
+      AND nullif(btrim(c."ShortName"), '') IS NOT NULL
+    LIMIT 1;
+
+    IF v_club IS NOT NULL THEN
+      IF v_claimed IS NOT NULL AND v_claimed IS DISTINCT FROM v_club THEN
+        RETURN jsonb_build_object(
+          'ok', false,
+          'reason', format(
+            'Discord account is the GPSL owner of %s, not %s',
+            v_club, v_claimed
+          )
+        );
+      END IF;
+      RETURN jsonb_build_object('ok', true, 'club', v_club, 'via', 'discord_id');
+    END IF;
+  END IF;
+
+  IF v_claimed IS NOT NULL THEN
+    RETURN jsonb_build_object('ok', true, 'club', v_claimed, 'via', 'owner_tag');
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', false,
+    'reason',
+    'Could not map Discord user to a GPSL club owner (link Discord ID or match owner tag)'
+  );
+END;
+$function$;
+
+-- Patch ingest: score + poster + URL allowlist before writing video row
 CREATE OR REPLACE FUNCTION public.match_video_ingest_attachment(
   p_discord_message_id text,
   p_discord_channel_id text,
@@ -201,7 +301,7 @@ DECLARE
   v_parsed jsonb;
   v_fixture public.competition_fixtures%ROWTYPE;
   v_fixture_id bigint;
-  v_club text := upper(nullif(btrim(coalesce(p_uploader_club, '')), ''));
+  v_club text;
   v_side text;
   v_opp text;
   v_amount numeric := public.match_video_payout_amount();
@@ -216,6 +316,7 @@ DECLARE
   v_out jsonb;
   v_source text := coalesce(nullif(btrim(p_source), ''), 'discord');
   v_score_check jsonb;
+  v_owner jsonb;
 BEGIN
   IF coalesce(auth.role(), '') <> 'service_role' AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Not allowed';
@@ -223,6 +324,22 @@ BEGIN
 
   IF v_url IS NULL THEN
     v_out := jsonb_build_object('ok', false, 'reason', 'Missing video URL');
+    INSERT INTO public.fixture_match_video_ingest_log (
+      discord_message_id, discord_channel_id, discord_attachment_id,
+      discord_user_id, filename, channel_month, ok, reason, result
+    ) VALUES (
+      v_msg, p_discord_channel_id, v_attach, p_discord_user_id,
+      p_filename, p_channel_month, false, v_out->>'reason', v_out
+    );
+    RETURN v_out;
+  END IF;
+
+  IF NOT public.match_video_url_allowed(v_url) THEN
+    v_out := jsonb_build_object(
+      'ok', false,
+      'reason',
+      'URL not allowed — use an https YouTube link (youtu.be / youtube.com) or Discord video attachment'
+    );
     INSERT INTO public.fixture_match_video_ingest_log (
       discord_message_id, discord_channel_id, discord_attachment_id,
       discord_user_id, filename, channel_month, ok, reason, result
@@ -269,10 +386,14 @@ BEGIN
     RETURN v_out;
   END IF;
 
-  IF v_club IS NULL THEN
+  v_owner := public.match_video_resolve_uploader_club(
+    p_discord_user_id,
+    p_uploader_club
+  );
+  IF coalesce((v_owner->>'ok')::boolean, false) IS NOT TRUE THEN
     v_out := jsonb_build_object(
       'ok', false,
-      'reason', 'Could not map Discord user to a GPSL club'
+      'reason', coalesce(v_owner->>'reason', 'Could not map Discord user to a GPSL club')
     );
     INSERT INTO public.fixture_match_video_ingest_log (
       season_id, discord_message_id, discord_channel_id, discord_attachment_id,
@@ -283,6 +404,7 @@ BEGIN
     );
     RETURN v_out;
   END IF;
+  v_club := upper(v_owner->>'club');
 
   v_parsed := public.match_video_parse_filename(p_filename);
   IF v_parsed IS NULL THEN

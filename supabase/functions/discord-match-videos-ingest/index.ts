@@ -188,10 +188,38 @@ async function fetchGuildChannels(
   return Array.isArray(batch) ? batch : [];
 }
 
-async function buildOwnerTagMap(
+type OwnerMaps = {
+  byTag: Map<string, string>;
+  byDiscordId: Map<string, string>;
+};
+
+function isAllowedVideoUrl(raw: string): boolean {
+  const v = String(raw || "").trim();
+  if (!v || v.length > 2000) return false;
+  if (!/^https:\/\//i.test(v)) return false;
+  if (/\s/.test(v) || v.includes("@")) return false;
+  let host = "";
+  try {
+    host = new URL(v).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  if (host.startsWith("www.")) host = host.slice(4);
+  return (
+    host === "youtube.com" ||
+    host === "m.youtube.com" ||
+    host === "youtu.be" ||
+    host === "youtube-nocookie.com" ||
+    host === "cdn.discordapp.com" ||
+    host === "media.discordapp.net"
+  );
+}
+
+async function buildOwnerMaps(
   adminClient: ReturnType<typeof createClient>
-): Promise<Map<string, string>> {
+): Promise<OwnerMaps> {
   const byTag = new Map<string, string>();
+  const byDiscordId = new Map<string, string>();
 
   const { data: clubRows } = await adminClient
     .from("Clubs")
@@ -199,7 +227,7 @@ async function buildOwnerTagMap(
 
   const { data: registryRows } = await adminClient
     .from("gpsl_owner_registry")
-    .select("owner_id, owner_tag");
+    .select("owner_id, owner_tag, discord_user_id");
 
   const clubByOwner = new Map<string, string>();
   for (const row of clubRows || []) {
@@ -216,15 +244,20 @@ async function buildOwnerTagMap(
   }
 
   for (const row of registryRows || []) {
+    if (!row.owner_id) continue;
+    const club = clubByOwner.get(String(row.owner_id));
+    if (!club) continue;
+
     const tag = String(row.owner_tag || "")
       .trim()
       .toLowerCase();
-    if (!tag || !row.owner_id) continue;
-    const club = clubByOwner.get(String(row.owner_id));
-    if (club) byTag.set(tag, club);
+    if (tag) byTag.set(tag, club);
+
+    const discordId = String(row.discord_user_id || "").trim();
+    if (discordId) byDiscordId.set(discordId, club);
   }
 
-  return byTag;
+  return { byTag, byDiscordId };
 }
 
 function authorized(
@@ -267,7 +300,6 @@ function parseMarkdownVideoLinks(
     const label = String(m[1] || "").trim();
     const url = String(m[2] || "").trim();
     if (!label || !url) continue;
-    // Prefer youtube / common video hosts; still accept any https link
     out.push({
       label,
       url,
@@ -322,7 +354,7 @@ function channelIdList(raw: string | undefined): string[] {
 
 async function ingestOneMessage(
   adminClient: ReturnType<typeof createClient>,
-  byTag: Map<string, string>,
+  owners: OwnerMaps,
   botToken: string,
   guildId: string,
   msg: DiscordMessage,
@@ -336,6 +368,7 @@ async function ingestOneMessage(
 
   // Primary: Discord markdown [ARS 2-0 CHE [SL-MD5]](https://youtu.be/...)
   for (const link of parseMarkdownVideoLinks(String(msg.content || ""))) {
+    if (!isAllowedVideoUrl(link.url)) continue;
     candidates.push({
       id: `${msg.id}:${link.id}`,
       filename: link.label,
@@ -346,10 +379,12 @@ async function ingestOneMessage(
   // Fallback: file attachments (optional)
   for (const a of msg.attachments || []) {
     if (!a || !(a.url || a.proxy_url) || !looksLikeVideo(a)) continue;
+    const url = a.url || a.proxy_url || "";
+    if (!isAllowedVideoUrl(url)) continue;
     candidates.push({
       id: a.id || `${msg.id}:file`,
       filename: a.filename || "",
-      url: a.url || a.proxy_url || "",
+      url,
     });
   }
 
@@ -369,7 +404,10 @@ async function ingestOneMessage(
     usernameTag(msg.author),
     msg.author.username || "",
   ];
-  const club = matchClubByTags(byTag, keys);
+  // Prefer Discord snowflake → gpsl_owner_registry; fall back to owner tag / nick
+  const club =
+    owners.byDiscordId.get(String(msg.author.id)) ||
+    matchClubByTags(owners.byTag, keys);
 
   const out: Record<string, unknown>[] = [];
   let anyOk = false;
@@ -525,7 +563,7 @@ Deno.serve(async (req) => {
           500
         );
       }
-      const byTag = await buildOwnerTagMap(adminClient);
+      const owners = await buildOwnerMaps(adminClient);
       const channelId = String(
         body.discord_channel_id || msgPush?.channel_id || ""
       ).trim();
@@ -549,7 +587,7 @@ Deno.serve(async (req) => {
       };
       const results = await ingestOneMessage(
         adminClient,
-        byTag,
+        owners,
         botToken,
         guildId,
         synthetic,
@@ -632,7 +670,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const byTag = await buildOwnerTagMap(adminClient);
+    const owners = await buildOwnerMaps(adminClient);
     const memberCache = new Map<string, DiscordMember | null>();
     const results: Record<string, unknown>[] = [];
     let matched = 0;
@@ -663,7 +701,7 @@ Deno.serve(async (req) => {
         newest = maxSnowflake(newest, msg.id);
         const rows = await ingestOneMessage(
           adminClient,
-          byTag,
+          owners,
           botToken,
           guildId,
           { ...msg, channel_id: ch.id },
