@@ -207,12 +207,14 @@ function resolveOwnerMentions(
   addTag(row.metadata?.mention);
 
   const knownIds = new Set<string>();
+  const addId = (raw: unknown) => {
+    const s = String(raw || "").trim();
+    if (/^\d{15,22}$/.test(s)) knownIds.add(s);
+  };
   if (Array.isArray(row.metadata?.discord_user_ids)) {
-    for (const id of row.metadata.discord_user_ids) {
-      const s = String(id || "").trim();
-      if (/^\d{15,22}$/.test(s)) knownIds.add(s);
-    }
+    for (const id of row.metadata.discord_user_ids) addId(id);
   }
+  addId(row.metadata?.discord_user_id);
 
   const parts: string[] = [];
   const mentionIds: string[] = [];
@@ -1688,23 +1690,50 @@ Deno.serve(async (req) => {
           content = resolved.content;
           allowedMentions = resolved.allowedMentions;
 
-          // Soft @tag for embed body (owner appointment wording)
+          // Soft display name in embed body (no @) — real ping stays in content above
           const softTag = String(
             row.metadata?.owner_tag || row.metadata?.mention || ""
           )
             .replace(/^@+/, "")
             .trim();
-          const displayMention = softTag ? `@${softTag}` : "";
-          if (displayMention && row.body && !row.body.includes(displayMention)) {
+          const displayName = softTag || "";
+          if (displayName && row.body && !row.body.includes(displayName)) {
             row.body = row.body.replace(
               /(have appointed )([^.]+)\./i,
-              `$1${displayMention}.`
+              `$1${displayName}.`
             );
-          } else if (displayMention && row.body && !/@\S/.test(row.body)) {
+          } else if (displayName && row.body && /@\S/.test(row.body)) {
+            // Strip leading @ from names already in body (legacy queued rows)
             row.body = row.body.replace(
-              /(have appointed )([^.]+)\./i,
-              `$1${displayMention}.`
+              /(have appointed )@+([^.]+)\./i,
+              `$1$2.`
             );
+            row.body = row.body.replace(
+              /^@+(\S+)( has joined GPSL)/im,
+              `$1$2`
+            );
+          }
+
+          // Headline: NEW MEMBER — @Tag → plain name
+          if (row.headline && /NEW MEMBER/i.test(row.headline)) {
+            row.headline = row.headline.replace(
+              /(NEW MEMBER\s*[—\-–]\s*)@+/i,
+              "$1"
+            );
+          }
+
+          // Drop Discord reference lines from member_joined bodies (legacy queue)
+          if (
+            row.body &&
+            (row.metadata?.kind === "member_joined" ||
+              /NEW MEMBER/i.test(String(row.headline || "")))
+          ) {
+            row.body = row.body
+              .replace(/^Discord:.*$/gim, "")
+              .replace(/^Discord server joined:.*$/gim, "")
+              .replace(/^Server joined:.*$/gim, "")
+              .replace(/\n{3,}/g, "\n\n")
+              .trim();
           }
 
           (row as FeedRow & { _resolvedUserIds?: string[] })._resolvedUserIds =
