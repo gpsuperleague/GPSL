@@ -81,6 +81,7 @@
       <li><code>match_video_amounts_fines_board_20260912.sql</code> — editable payout / missing-video fine + owner-board V late / V fail</li>
       <li><code>fine_note_summaries_20260914.sql</code> — compact missing-video (+ response) ledger notes</li>
       <li><code>match_video_reports_points_20260914.sql</code> — missing-video suspended/full points + 3-strike escalate/carry + peer R reports</li>
+      <li><code>match_video_grace_72h_20260914.sql</code> — missing-video grace default 72h</li>
     </ol>
 
     <h2>Step 5 — Deploy the Edge Function</h2>
@@ -97,7 +98,7 @@
       <li>Open <a href="../admin_match_videos.html">Admin → Match videos</a>
         (also under Admin checklist → Season Management → Media).</li>
       <li>Set <strong>Upload payout</strong>, <strong>Missing video fine</strong>, and <strong>Grace hours</strong> → Save amounts.
-        Fine = 0 turns missing-video fines off. Default grace is 48h after month lock.</li>
+        Fine = 0 turns missing-video fines off. Default grace is 72h after month lock.</li>
       <li>Under <strong>Auto-poll</strong>, leave the URL as the match-videos function URL.</li>
       <li>Tick <strong>Enable auto-poll</strong> → <strong>Save auto-poll</strong>.</li>
       <li>Status should say invoke key is saved. If it says missing:
@@ -122,7 +123,7 @@
 
     <h2>Missing-video points + peer reports</h2>
     <ul class="note">
-      <li>After grace (default 48h): money fine stays, plus a <b>1 pt suspended</b> for 24h. Upload in that window clears the point; otherwise it becomes a full −1.</li>
+      <li>After grace (default 72h): money fine stays, plus a <b>1 pt suspended</b> for 24h. Upload in that window clears the point; otherwise it becomes a full −1.</li>
       <li>Third full −1 in a season → extra <b>−9</b> now and <b>−3</b> carried into the next season (any division).</li>
       <li>Circled <b>R</b> on fixtures (when a video exists) opens a breach report from matchday/squad/manager fine tariffs.</li>
       <li>Staff queue: <a href="../admin_match_video_reports.html">Match video reports</a>. Uphold → fine + ₿2,000 Building Society to the reporter.</li>

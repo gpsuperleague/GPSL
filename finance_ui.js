@@ -466,7 +466,7 @@ function compactFineBreakdownLabel(row) {
   const code = String(md.tariff_code || "").toLowerCase();
   const desc = String(row.description || "").trim();
   const hoursMatch = desc.match(/within\s+(\d+)\s*h/i);
-  const hours = hoursMatch?.[1] || "48";
+    const hours = hoursMatch?.[1] || "72";
 
   const isArrange =
     code === "match_mgmt_no_proposal" ||

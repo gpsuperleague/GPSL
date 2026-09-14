@@ -2,7 +2,7 @@
 -- Match video: missing-upload points ladder + peer breach reports (2026-09-14)
 --
 -- Missing upload (automatic, separate from R reports):
---   At lock_at + grace (default 48h): money fine (unchanged) + 1 pt SUSPENDED (24h)
+--   At lock_at + grace (default 72h): money fine (unchanged) + 1 pt SUSPENDED (24h)
 --   If still no video after 24h: convert to full −1 pt (strike)
 --   On 3rd full −1 in a season: extra −9 pts now + −3 pts carry into next season
 --

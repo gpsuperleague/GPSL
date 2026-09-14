@@ -206,7 +206,7 @@ async function loadAmounts() {
   const graceEl = document.getElementById("missingFineGraceHours");
   if (payoutEl) payoutEl.value = String(Number(data.payout_amount) || 200000);
   if (fineEl) fineEl.value = String(Number(data.missing_fine_amount) || 0);
-  if (graceEl) graceEl.value = String(Number(data.missing_fine_grace_hours) || 48);
+  if (graceEl) graceEl.value = String(Number(data.missing_fine_grace_hours) || 72);
   setStatus(
     "amountsStatus",
     `Payout ₿${Number(data.payout_amount).toLocaleString("en-GB")} · fine ₿${Number(
