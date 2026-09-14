@@ -269,6 +269,33 @@ document.getElementById("assessFinesBtn")?.addEventListener("click", () => {
   assessMissingFines();
 });
 
+document.getElementById("rescindGraceBtn")?.addEventListener("click", async () => {
+  if (
+    !confirm(
+      "Rescind missing-video fines for sides still inside the 72h post-lock grace window? Money (and any ladder points) will be reversed."
+    )
+  ) {
+    return;
+  }
+  setStatus("amountsStatus", "Rescinding fines still inside grace…");
+  const { data, error } = await supabase.rpc("match_video_rescind_fines_inside_grace", {
+    p_grace_hours: 72,
+  });
+  if (error) {
+    setStatus("amountsStatus", error.message, false);
+    return;
+  }
+  if (!data?.ok) {
+    setStatus("amountsStatus", data?.reason || "Rescind failed", false);
+    return;
+  }
+  setStatus(
+    "amountsStatus",
+    `Rescinded ${data.rescinded ?? 0} · money ${data.money_refunded ?? 0} · pts reversed ${data.points_reversed ?? 0} · escalations ${data.escalations_reversed ?? 0}`,
+    true
+  );
+});
+
 document.getElementById("refreshLogBtn")?.addEventListener("click", () => {
   refreshLog();
 });
