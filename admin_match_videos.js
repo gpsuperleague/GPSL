@@ -32,6 +32,37 @@ function formatMoney(n) {
   return `₿${v.toLocaleString("en-GB")}`;
 }
 
+/** Display amount with thousands separators (no ₿ prefix — label already has it). */
+function formatMoneyInput(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "";
+  return v.toLocaleString("en-GB", { maximumFractionDigits: 0 });
+}
+
+/** Parse "100,000" / "100000" / "₿ 100,000" → number (NaN if empty/invalid). */
+function parseMoneyInput(raw) {
+  const cleaned = String(raw ?? "")
+    .replace(/[₿£$€,\s]/g, "")
+    .trim();
+  if (!cleaned) return NaN;
+  return Number(cleaned);
+}
+
+function wireMoneyInputs() {
+  for (const id of ["payoutAmount", "missingFineAmount"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.addEventListener("blur", () => {
+      const n = parseMoneyInput(el.value);
+      if (Number.isFinite(n)) el.value = formatMoneyInput(n);
+    });
+    el.addEventListener("focus", () => {
+      const n = parseMoneyInput(el.value);
+      if (Number.isFinite(n)) el.value = String(Math.round(n));
+    });
+  }
+}
+
 function renderLog(rows) {
   const wrap = document.getElementById("logWrap");
   if (!wrap) return;
@@ -204,8 +235,8 @@ async function loadAmounts() {
   const payoutEl = document.getElementById("payoutAmount");
   const fineEl = document.getElementById("missingFineAmount");
   const graceEl = document.getElementById("missingFineGraceHours");
-  if (payoutEl) payoutEl.value = String(Number(data.payout_amount) || 200000);
-  if (fineEl) fineEl.value = String(Number(data.missing_fine_amount) || 0);
+  if (payoutEl) payoutEl.value = formatMoneyInput(Number(data.payout_amount) || 200000);
+  if (fineEl) fineEl.value = formatMoneyInput(Number(data.missing_fine_amount) || 0);
   if (graceEl) graceEl.value = String(Number(data.missing_fine_grace_hours) || 72);
   setStatus(
     "amountsStatus",
@@ -217,9 +248,21 @@ async function loadAmounts() {
 
 async function saveAmounts(e) {
   e?.preventDefault?.();
-  const payout = Number(document.getElementById("payoutAmount")?.value);
-  const fine = Number(document.getElementById("missingFineAmount")?.value);
+  const payout = parseMoneyInput(document.getElementById("payoutAmount")?.value);
+  const fine = parseMoneyInput(document.getElementById("missingFineAmount")?.value);
   const grace = Number(document.getElementById("missingFineGraceHours")?.value);
+  if (!Number.isFinite(payout) || payout <= 0) {
+    setStatus("amountsStatus", "Upload payout must be a positive amount.", false);
+    return;
+  }
+  if (!Number.isFinite(fine) || fine < 0) {
+    setStatus("amountsStatus", "Missing video fine must be 0 or more.", false);
+    return;
+  }
+  if (!Number.isFinite(grace) || grace < 1) {
+    setStatus("amountsStatus", "Grace hours must be at least 1.", false);
+    return;
+  }
   setStatus("amountsStatus", "Saving…");
   const { data, error } = await supabase.rpc("admin_match_video_set_amounts", {
     p_payout_amount: payout,
@@ -367,6 +410,7 @@ document.getElementById("manualLinkForm")?.addEventListener("submit", async (e) 
 });
 
 await initAdminPage({ title: "Match videos" });
+wireMoneyInputs();
 loadAmounts();
 loadAutoSettings();
 refreshLog();

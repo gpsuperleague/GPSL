@@ -76,10 +76,12 @@
     </p>
     <form class="auto-form" id="amountsForm">
       <label>Upload payout (₿)
-        <input type="number" id="payoutAmount" min="1" step="1000" required>
+        <input type="text" id="payoutAmount" inputmode="numeric" autocomplete="off"
+          placeholder="e.g. 100,000" required>
       </label>
       <label>Missing video fine (₿)
-        <input type="number" id="missingFineAmount" min="0" step="1000" required>
+        <input type="text" id="missingFineAmount" inputmode="numeric" autocomplete="off"
+          placeholder="e.g. 500,000" required>
       </label>
       <label>Grace hours after month lock
         <input type="number" id="missingFineGraceHours" min="1" max="720" step="1" required>
@@ -160,6 +162,6 @@
     <div id="logWrap"><p class="note">Loading…</p></div>
   </div>
 
-  <script type="module" src="admin_match_videos.js?v=20260914-amounts-fix"></script>
+  <script type="module" src="admin_match_videos.js?v=20260914-money-fmt"></script>
 </body>
 </html>
