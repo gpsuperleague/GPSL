@@ -16,7 +16,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20260914-fine-trim";
+} from "./finance_page_common.js?v=20260914-video-72h";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20260806-help-blocks";
 
 function parseGpAmount(raw) {

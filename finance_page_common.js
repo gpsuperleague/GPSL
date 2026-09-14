@@ -17,7 +17,7 @@ import {
   enrichLedgerFineFixtures,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20260914-fine-trim";
+} from "./finance_ui.js?v=20260914-video-72h";
 import { buildFinanceProjections } from "./finance_projections.js?v=20260813-34plus-age";
 import {
   appendAssignmentInfraPurchaseLedger,
