@@ -4,6 +4,7 @@
  */
 
 import { formatMoney, financeEntryLabel, isFinanceIncomeEntry } from "./competition.js";
+import { fullClubName } from "./clubs_lookup.js";
 
 /** @typedef {{ id: string, label: string, types: string[], planned?: boolean, note?: string }} FinanceLineDef */
 /** @typedef {{ id: string, title: string, intro?: string, lines: FinanceLineDef[] }} FinanceSectionDef */
@@ -370,6 +371,187 @@ const MONTH_SHORT = {
   december: "Dec",
 };
 
+function titleCaseMonthName(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+  const lower = s.toLowerCase();
+  if (MONTH_SHORT[lower]) {
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function fineClosedMonthFromDesc(desc) {
+  const key =
+    desc.match(/sched_(?:arrangement|response_lock):([a-z]+):/i) ||
+    desc.match(/GPSL\s+([A-Za-z]+)\s+closed/i) ||
+    desc.match(/of\s+([A-Za-z]+)\s+month\s+lock/i);
+  return titleCaseMonthName(key?.[1]);
+}
+
+function fineMdVsFromDesc(desc) {
+  const m = desc.match(/MD\s*(\d+)\s*vs\s+([^·\|]+?)(?:\s*·|\s*$)/i);
+  if (m) return `MD${m[1]} vs ${m[2].trim()}`;
+  return null;
+}
+
+function fineMdVsFromFixture(row) {
+  const fx = row._fixture;
+  if (!fx || fx.matchday == null) return null;
+  const club = String(row.club_short_name || "").toUpperCase();
+  const home = String(fx.home_club_short_name || "").toUpperCase();
+  const away = String(fx.away_club_short_name || "").toUpperCase();
+  let opp = null;
+  if (club && club === home) {
+    opp = fx.away_display_name || fx.away_club_short_name;
+  } else if (club && club === away) {
+    opp = fx.home_display_name || fx.home_club_short_name;
+  } else {
+    opp = fx.away_display_name || fx.away_club_short_name || fx.home_club_short_name;
+  }
+  if (!opp) return `MD${fx.matchday}`;
+  return `MD${fx.matchday} vs ${opp}`;
+}
+
+function fineReplyReason(row, desc) {
+  const fx = row._fixture;
+  const club = String(row.club_short_name || "").toUpperCase();
+  if (fx && club) {
+    const home = String(fx.home_club_short_name || "").toUpperCase();
+    const away = String(fx.away_club_short_name || "").toUpperCase();
+    if (club === home) return "home reply fail";
+    if (club === away) return "Away reply fail";
+  }
+  if (/\bhome\s+reply\b/i.test(desc)) return "home reply fail";
+  if (/\baway\s+reply\b/i.test(desc)) return "Away reply fail";
+  return "Away reply fail";
+}
+
+function fineVideoSideVs(row, desc) {
+  const tagged = desc.match(
+    /MD\s*(\d+)\s+(home|away)\s+vs\s+([^·\|]+?)(?:\s*·|\s*$)/i
+  );
+  if (tagged) {
+    return `MD${tagged[1]} ${tagged[2].toLowerCase()} vs ${tagged[3].trim()}`;
+  }
+  const fx = row._fixture;
+  const club = String(row.club_short_name || "").toUpperCase();
+  let side =
+    (desc.match(/(?:fixture\s+\d+\s*·\s*)(home|away)\b/i) ||
+      desc.match(/\b(home|away)\b/i) ||
+      [])[1] || null;
+  if (fx && club) {
+    const home = String(fx.home_club_short_name || "").toUpperCase();
+    const away = String(fx.away_club_short_name || "").toUpperCase();
+    if (club === home) side = "home";
+    else if (club === away) side = "away";
+    const opp =
+      side === "home"
+        ? fx.away_display_name || fx.away_club_short_name
+        : fx.home_display_name || fx.home_club_short_name;
+    if (fx.matchday != null && side && opp) {
+      return `MD${fx.matchday} ${side} vs ${opp}`;
+    }
+  }
+  const md = (desc.match(/MD\s*(\d+)/i) || [])[1];
+  if (md && side) return `MD${md} ${side.toLowerCase()}`;
+  if (side) return side.toLowerCase();
+  if (md) return `MD${md}`;
+  return null;
+}
+
+/** Compact fine breakdown labels for Season accounts. */
+function compactFineBreakdownLabel(row) {
+  const md = parseMetadata(row.metadata);
+  const code = String(md.tariff_code || "").toLowerCase();
+  const desc = String(row.description || "").trim();
+  const hoursMatch = desc.match(/within\s+(\d+)\s*h/i);
+  const hours = hoursMatch?.[1] || "48";
+
+  const isArrange =
+    code === "match_mgmt_no_proposal" ||
+    code === "match_late_arrangement" ||
+    /match management fine|late arrangement fee|no home proposal|late arrangement/i.test(
+      desc
+    );
+  const isReply =
+    code === "match_response_deadline" ||
+    /missed scheduling response|response deadline missed|reply fail/i.test(desc);
+  const isVideo =
+    code === "match_video_missing" ||
+    /missing match video|no match video within/i.test(desc);
+
+  if (isVideo) {
+    const sideVs = fineVideoSideVs(row, desc);
+    const base = `Missing Match Video - No match video within ${hours}h of month lock`;
+    return sideVs ? `${base}, ${sideVs}` : base;
+  }
+
+  if (isArrange || isReply) {
+    const month = fineClosedMonthFromDesc(desc);
+    const reason = isArrange
+      ? "Home Propose Fail"
+      : fineReplyReason(row, desc);
+    const mdVs = fineMdVsFromDesc(desc) || fineMdVsFromFixture(row);
+    return ["Match Management Fine", month, reason, mdVs]
+      .filter(Boolean)
+      .join(" - ");
+  }
+
+  if (desc) {
+    return desc
+      .replace(/^Fine\s*[—\-–]\s*/i, "")
+      .replace(/^Compensation\s*[—\-–]\s*/i, "")
+      .replace(/sched_(?:arrangement|response_lock):[^|]+\|/i, "")
+      .trim();
+  }
+  if (md.tariff_code) return String(md.tariff_code).replace(/_/g, " ");
+  return financeEntryLabel("gov_fine_compensation");
+}
+
+/** Attach fixture fields used by compact fine breakdown labels. */
+export async function enrichLedgerFineFixtures(supabase, ledger) {
+  const rows = Array.isArray(ledger) ? ledger : [];
+  const ids = [
+    ...new Set(
+      rows
+        .filter(
+          (r) =>
+            r?.entry_type === "gov_fine_compensation" &&
+            r?.fixture_id != null &&
+            !r._fixture
+        )
+        .map((r) => r.fixture_id)
+    ),
+  ];
+  if (!ids.length || !supabase) return rows;
+
+  const { data, error } = await supabase
+    .from("competition_fixtures")
+    .select("id, matchday, gpsl_month, home_club_short_name, away_club_short_name")
+    .in("id", ids);
+
+  if (error || !data?.length) {
+    if (error) console.error("enrichLedgerFineFixtures:", error);
+    return rows;
+  }
+
+  const byId = new Map(
+    data.map((f) => [
+      f.id,
+      {
+        ...f,
+        home_display_name: fullClubName(f.home_club_short_name) || f.home_club_short_name,
+        away_display_name: fullClubName(f.away_club_short_name) || f.away_club_short_name,
+      },
+    ])
+  );
+  return rows.map((r) => {
+    const fx = r?.fixture_id != null ? byId.get(r.fixture_id) : null;
+    return fx ? { ...r, _fixture: fx } : r;
+  });
+}
+
 /** Compact loan breakdown: "Aug · #12 · 3/20" instead of long scheduled descriptions. */
 function compactLoanBreakdownLabel(row) {
   const type = row.entry_type || "other";
@@ -454,17 +636,9 @@ function ledgerBreakdownLabel(row) {
     if (fromDesc?.[1]) return fromDesc[1].trim();
     if (row.club_name) return String(row.club_name);
   }
-  // Fines & compensation: show each tariff/note, not one collapsed "Fines & compensation"
+  // Fines & compensation: compact per-entry labels (not one collapsed line)
   if (type === "gov_fine_compensation") {
-    const md = parseMetadata(row.metadata);
-    const desc = String(row.description || "").trim();
-    if (desc) {
-      return desc
-        .replace(/^Fine\s*[—\-–]\s*/i, "")
-        .replace(/^Compensation\s*[—\-–]\s*/i, "")
-        .trim();
-    }
-    if (md.tariff_code) return String(md.tariff_code).replace(/_/g, " ");
+    return compactFineBreakdownLabel(row);
   }
   return financeEntryLabel(type);
 }

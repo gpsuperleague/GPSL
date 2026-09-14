@@ -14,9 +14,10 @@ import {
 } from "./competition.js";
 import {
   aggregateLedgerByLine,
+  enrichLedgerFineFixtures,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20260914-fine-breakdown";
+} from "./finance_ui.js?v=20260914-fine-trim";
 import { buildFinanceProjections } from "./finance_projections.js?v=20260813-34plus-age";
 import {
   appendAssignmentInfraPurchaseLedger,
@@ -686,9 +687,10 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
       };
     }
 
-    const ledger = Array.isArray(archiveRow.ledger_lines)
+    let ledger = Array.isArray(archiveRow.ledger_lines)
       ? archiveRow.ledger_lines
       : [];
+    ledger = await enrichLedgerFineFixtures(supabase, ledger);
     const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
     const byLine = aggregateLedgerByLine(ledger);
     const balanceNow = Number(archiveRow.closing_balance ?? 0);
@@ -733,6 +735,7 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
     continuingClub,
     currentSeasonId: currentSeason?.id ?? null,
   });
+  ledger = await enrichLedgerFineFixtures(supabase, ledger);
   const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
   const byLine = aggregateLedgerByLine(ledger);
 
