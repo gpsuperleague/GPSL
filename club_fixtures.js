@@ -42,7 +42,7 @@ import {
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20260914-r-visible";
+} from "./match_videos_ui.js?v=20260914-r-syntax";
 
 let myClub = { short: null, name: null };
 /** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */

@@ -65,10 +65,11 @@ function reportBtnHtml(fixtureId, side, { enabled, muted }) {
   const title = muted
     ? `${side} has no video yet — upload required before reporting a breach`
     : `Report a breach in this ${side} video`;
+  const hasVideoAttr = muted ? "0" : "1";
   return (
     `<button type="button" class="${cls}" data-mv-report="1" ` +
     `data-fixture-id="${escapeAttr(fixtureId)}" data-side="${escapeAttr(side)}" ` +
-    `data-has-video="${muted ? "0" : "1}" ` +
+    `data-has-video="${hasVideoAttr}" ` +
     `title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}">R</button>`
   );
 }
