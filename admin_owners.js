@@ -1795,7 +1795,7 @@ async function loadArchivedOwnersSection() {
     )
   );
 
-  let html =
+    let html =
     `<table class="admin-table wl-archived-table">` +
     `<thead><tr>` +
     `<th class="num">Overall</th><th class="num">#</th><th>Tag</th><th>Email</th><th>Last club</th>` +

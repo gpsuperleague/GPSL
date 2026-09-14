@@ -454,6 +454,18 @@ function ledgerBreakdownLabel(row) {
     if (fromDesc?.[1]) return fromDesc[1].trim();
     if (row.club_name) return String(row.club_name);
   }
+  // Fines & compensation: show each tariff/note, not one collapsed "Fines & compensation"
+  if (type === "gov_fine_compensation") {
+    const md = parseMetadata(row.metadata);
+    const desc = String(row.description || "").trim();
+    if (desc) {
+      return desc
+        .replace(/^Fine\s*[—\-–]\s*/i, "")
+        .replace(/^Compensation\s*[—\-–]\s*/i, "")
+        .trim();
+    }
+    if (md.tariff_code) return String(md.tariff_code).replace(/_/g, " ");
+  }
   return financeEntryLabel(type);
 }
 

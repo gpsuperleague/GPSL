@@ -16,7 +16,7 @@ import {
   aggregateLedgerByLine,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20260813-34plus-age";
+} from "./finance_ui.js?v=20260914-fine-breakdown";
 import { buildFinanceProjections } from "./finance_projections.js?v=20260813-34plus-age";
 import {
   appendAssignmentInfraPurchaseLedger,
