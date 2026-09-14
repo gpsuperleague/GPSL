@@ -18,20 +18,25 @@
     }
     .mvr-card h3 { margin:0 0 6px; font-size:15px; color:#ffcc66; }
     .mvr-meta { font-size:12px; color:#999; margin-bottom:8px; line-height:1.4; }
-    .mvr-note { font-size:13px; color:#ccc; margin:0 0 10px; white-space:pre-wrap; }
-    .mvr-card label { display:grid; gap:4px; font-size:12px; color:#bbb; margin-bottom:8px; }
-    .mvr-card select, .mvr-card input, .mvr-card textarea {
-      padding:7px 9px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
+    .mvr-breaches { display:grid; gap:8px; margin:0 0 12px; }
+    .mvr-breach {
+      border:1px solid #2a2a2a; border-radius:4px; padding:8px 10px; background:#1a1a1a;
+      font-size:13px; color:#ddd;
     }
-    .mvr-card textarea { min-height:52px; resize:vertical; }
+    .mvr-note { font-size:13px; color:#bbb; margin:4px 0 0; white-space:pre-wrap; }
+    .mvr-card label { display:grid; gap:4px; font-size:12px; color:#bbb; margin-bottom:8px; }
+    .mvr-card textarea {
+      padding:7px 9px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
+      min-height:52px; resize:vertical;
+    }
     .mvr-actions { display:flex; flex-wrap:wrap; gap:8px; }
     .status-pill {
       display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600;
       text-transform:uppercase; letter-spacing:0.04em;
     }
     .status-open { background:#332200; color:#fc6; }
-    .status-upheld { background:#1a331a; color:#8d8; }
-    .status-dismissed { background:#333; color:#aaa; }
+    .status-approved, .status-upheld { background:#1a331a; color:#8d8; }
+    .status-rejected, .status-dismissed { background:#333; color:#aaa; }
     #reportsStatus { margin-top:10px; font-size:13px; white-space:pre-wrap; }
   </style>
 </head>
@@ -40,12 +45,15 @@
   <h1 class="admin-title">Match video reports</h1>
   <div class="card">
     <p class="note">
-      Owners flag breaches visible in uploaded match videos (circled <b>R</b> on fixtures).
-      Uphold applies a fine from the tariff dropdown and credits the reporter
-      <b>₿2,000</b> to GPSL Building Society. Missing-upload points are automatic and separate.
+      Owners submit <b>one report per match side</b> with one or more breaches (each with a required note).
+      <b>OK / Approve</b> applies fines for those breaches and credits the reporter
+      <b>₿2,000</b> to GPSL Building Society.
+      <b>Reject</b> closes that side forever — it cannot be re-reported.
     </p>
     <div class="actions">
       <button type="button" class="button" id="filterOpenBtn">Open</button>
+      <button type="button" class="button secondary" id="filterApprovedBtn">Approved</button>
+      <button type="button" class="button secondary" id="filterRejectedBtn">Rejected</button>
       <button type="button" class="button secondary" id="filterAllBtn">All</button>
       <a class="button secondary" href="admin_match_videos.html">Match videos</a>
       <a class="button secondary" href="admin_fines.html">Apply fines</a>
@@ -53,6 +61,6 @@
     <div id="reportsList" class="mvr-list"></div>
     <div id="reportsStatus"></div>
   </div>
-  <script type="module" src="admin_match_video_reports.js?v=20260914-reports-pts"></script>
+  <script type="module" src="admin_match_video_reports.js?v=20260914-multi-breach"></script>
 </body>
 </html>

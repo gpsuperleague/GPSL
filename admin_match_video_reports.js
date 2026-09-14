@@ -1,16 +1,22 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
-import { formatMoney, DIVISION_LABELS, CUP_LABELS } from "./competition.js";
+import { DIVISION_LABELS, CUP_LABELS } from "./competition.js";
 
 primeAdminPageChrome();
 
 let filterStatus = "open";
-let tariffs = [];
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage({ allowMod: true }))) return;
-  await loadTariffs();
   document.getElementById("filterOpenBtn").onclick = () => {
     filterStatus = "open";
+    loadReports();
+  };
+  document.getElementById("filterApprovedBtn").onclick = () => {
+    filterStatus = "approved";
+    loadReports();
+  };
+  document.getElementById("filterRejectedBtn").onclick = () => {
+    filterStatus = "rejected";
     loadReports();
   };
   document.getElementById("filterAllBtn").onclick = () => {
@@ -28,22 +34,6 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
-async function loadTariffs() {
-  const { data, error } = await supabase
-    .from("competition_fine_tariffs_public")
-    .select("code, label, category, amount")
-    .eq("direction", "fine")
-    .order("sort_order", { ascending: true });
-  if (error) {
-    console.warn("loadTariffs", error);
-    tariffs = [];
-    return;
-  }
-  tariffs = (data || []).filter((t) =>
-    ["matchday", "squad", "manager", "other"].includes(t.category)
-  );
-}
-
 function fixtureLabel(r) {
   const ha = `${r.home_club_short_name} vs ${r.away_club_short_name}`;
   if (r.competition_type === "cup") {
@@ -54,18 +44,24 @@ function fixtureLabel(r) {
   return r.matchday != null ? `${div} MD${r.matchday} · ${ha}` : `${div} · ${ha}`;
 }
 
-function tariffOptions(selected) {
-  return (
-    `<option value="">Keep reported tariff</option>` +
-    tariffs
-      .map(
-        (t) =>
-          `<option value="${escapeHtml(t.code)}" ${
-            t.code === selected ? "selected" : ""
-          }>${escapeHtml(t.label)} (${escapeHtml(t.category)})</option>`
-      )
-      .join("")
-  );
+function breachesHtml(r) {
+  const list = Array.isArray(r.breaches) ? r.breaches : [];
+  if (!list.length) {
+    return r.note
+      ? `<div class="mvr-breach"><b>${escapeHtml(r.breach_tariff_code || "Breach")}</b><br>${escapeHtml(
+          r.note
+        )}</div>`
+      : `<p class="note">No breach details.</p>`;
+  }
+  return list
+    .map(
+      (b) => `
+      <div class="mvr-breach">
+        <b>${escapeHtml(b.label || b.code)}</b>
+        <div class="mvr-note">${escapeHtml(b.note || "—")}</div>
+      </div>`
+    )
+    .join("");
 }
 
 async function loadReports() {
@@ -82,74 +78,93 @@ async function loadReports() {
   }
   const rows = Array.isArray(data) ? data : [];
   if (!rows.length) {
-    list.innerHTML = `<p class="note">No ${filterStatus === "all" ? "" : filterStatus + " "}reports.</p>`;
+    list.innerHTML = `<p class="note">No ${
+      filterStatus === "all" ? "" : filterStatus + " "
+    }reports.</p>`;
     setStatus("reportsStatus", "", true);
     return;
   }
 
   list.innerHTML = rows
     .map((r) => {
-      const pill = `<span class="status-pill status-${escapeHtml(r.status)}">${escapeHtml(
-        r.status
+      const status = r.status || "open";
+      const pill = `<span class="status-pill status-${escapeHtml(status)}">${escapeHtml(
+        status
       )}</span>`;
       const video = r.video_url
         ? `<a href="${escapeHtml(r.video_url)}" target="_blank" rel="noopener noreferrer">Open video</a>`
         : "No URL";
+      const count = r.breach_count ?? (Array.isArray(r.breaches) ? r.breaches.length : 0);
       const openActions =
-        r.status === "open"
+        status === "open"
           ? `
-        <label>Uphold with tariff
-          <select data-tariff="${r.id}">${tariffOptions(r.breach_tariff_code)}</select>
-        </label>
-        <label>Staff note
-          <textarea data-note="${r.id}" maxlength="500" placeholder="Optional"></textarea>
+        <label>Staff note (optional)
+          <textarea data-note="${r.id}" maxlength="500" placeholder="Optional review note"></textarea>
         </label>
         <div class="mvr-actions">
-          <button type="button" class="button" data-uphold="${r.id}">Uphold + fine</button>
-          <button type="button" class="button secondary" data-dismiss="${r.id}">Dismiss</button>
-        </div>`
+          <button type="button" class="button" data-approve="${r.id}">OK / Approve</button>
+          <button type="button" class="button secondary" data-reject="${r.id}">Reject</button>
+        </div>
+        <p class="note" style="margin:8px 0 0">
+          Approve applies a fine for each listed breach and credits the reporter ₿2,000 Building Society.
+          Reject closes this match side forever (no re-report).
+        </p>`
           : `<p class="note" style="margin:0">Resolved ${
               r.reviewed_at ? new Date(r.reviewed_at).toLocaleString("en-GB") : ""
-            }${r.upheld_tariff_code ? ` · fine ${escapeHtml(r.upheld_tariff_code)}` : ""}${
-              r.reward_ledger_id ? " · reporter rewarded ₿2,000" : ""
+            }${r.reward_ledger_id ? " · reporter rewarded ₿2,000" : ""}${
+              r.review_note ? ` · ${escapeHtml(r.review_note)}` : ""
             }</p>`;
 
       return `
         <article class="mvr-card" data-id="${r.id}">
-          <h3>${escapeHtml(r.breach_label || r.breach_tariff_code)} ${pill}</h3>
+          <h3>${count} breach${count === 1 ? "" : "es"} ${pill}</h3>
           <div class="mvr-meta">
             #${r.id} · ${escapeHtml(fixtureLabel(r))} · ${escapeHtml(r.side)} ·
             accused <b>${escapeHtml(r.accused_club_short_name)}</b> ·
             reporter ${escapeHtml(r.reporter_club_short_name || "—")} ·
             ${new Date(r.created_at).toLocaleString("en-GB")}<br>
-            Suggested fine: ${
-              r.breach_amount != null ? formatMoney(r.breach_amount) : "—"
-            } · ${video}
+            ${video}
           </div>
-          ${r.note ? `<p class="mvr-note">${escapeHtml(r.note)}</p>` : ""}
+          <div class="mvr-breaches">${breachesHtml(r)}</div>
           ${openActions}
         </article>`;
     })
     .join("");
 
-  list.querySelectorAll("[data-uphold]").forEach((btn) => {
-    btn.onclick = () => resolveReport(Number(btn.getAttribute("data-uphold")), "uphold");
+  list.querySelectorAll("[data-approve]").forEach((btn) => {
+    btn.onclick = () => resolveReport(Number(btn.getAttribute("data-approve")), "approve");
   });
-  list.querySelectorAll("[data-dismiss]").forEach((btn) => {
-    btn.onclick = () => resolveReport(Number(btn.getAttribute("data-dismiss")), "dismiss");
+  list.querySelectorAll("[data-reject]").forEach((btn) => {
+    btn.onclick = () => resolveReport(Number(btn.getAttribute("data-reject")), "reject");
   });
   setStatus("reportsStatus", `${rows.length} report(s)`, true);
 }
 
 async function resolveReport(id, action) {
   const card = document.querySelector(`.mvr-card[data-id="${id}"]`);
-  const tariff = card?.querySelector(`[data-tariff="${id}"]`)?.value || null;
   const note = card?.querySelector(`[data-note="${id}"]`)?.value || null;
-  setStatus("reportsStatus", `${action === "uphold" ? "Upholding" : "Dismissing"} #${id}…`);
+  if (
+    action === "reject" &&
+    !confirm("Reject this report? This match side can never be reported again.")
+  ) {
+    return;
+  }
+  if (
+    action === "approve" &&
+    !confirm(
+      "Approve this report? Fines will be applied for each breach and the reporter gets ₿2,000 Building Society."
+    )
+  ) {
+    return;
+  }
+  setStatus(
+    "reportsStatus",
+    `${action === "approve" ? "Approving" : "Rejecting"} #${id}…`
+  );
   const { data, error } = await supabase.rpc("admin_match_video_resolve_breach_report", {
     p_report_id: id,
     p_action: action,
-    p_tariff_code: action === "uphold" ? tariff || null : null,
+    p_tariff_code: null,
     p_review_note: note,
     p_amount_override: null,
   });
@@ -163,9 +178,9 @@ async function resolveReport(id, action) {
   }
   setStatus(
     "reportsStatus",
-    action === "uphold"
-      ? `Upheld #${id}${data.reward_ledger_id ? " · reporter +₿2,000 BS" : ""}`
-      : `Dismissed #${id}`,
+    action === "approve"
+      ? `Approved #${id}${data.reward_ledger_id ? " · reporter +₿2,000 BS" : ""}`
+      : `Rejected #${id}`,
     true
   );
   await loadReports();

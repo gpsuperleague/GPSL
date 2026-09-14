@@ -43,10 +43,11 @@ import {
 } from "./match_sim_ui.js?v=20260908-assist-goal-attach";
 import {
   loadFixtureMatchVideos,
+  loadMatchVideoReportedSides,
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20260914-r-paired";
+} from "./match_videos_ui.js?v=20260914-multi-breach";
 
 let calendarStatus = null;
 let holidayContext = null;
@@ -61,6 +62,8 @@ let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: nu
 let allFixtures = [];
 /** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
 let matchVideoMap = new Map();
+/** @type {Set<string>} */
+let matchVideoReportedSides = new Set();
 
 function ensureMatchVideoStyles() {
   let el = document.getElementById("matchVideoTickStyles");
@@ -241,6 +244,7 @@ function fixtureRowHtml(fixture) {
       fixture,
       myClubShort: myClub.short,
       allowReport: canReportMatchVideos,
+      reportedSides: matchVideoReportedSides,
     })}${catchUpCell}</td>
     <td>${clubWithOwnerHtml(fixture.away_club_name, fixture.away_club_short_name, "block")}</td>
     <td class="fixture-stadium">${fixtureStadiumCell(fixture)}</td>
@@ -607,8 +611,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     supabase,
     allFixtures.map((f) => f.id)
   );
+  matchVideoReportedSides = await loadMatchVideoReportedSides(
+    supabase,
+    allFixtures.map((f) => f.id)
+  );
   wireMatchVideoReportButtons(supabase, document.getElementById("fixturesRoot") || document, {
     resolveFixture: (id) => allFixtures.find((f) => Number(f.id) === Number(id)),
+    onSubmitted: ({ fixtureId, side }) => {
+      matchVideoReportedSides.add(`${fixtureId}:${side}`);
+      renderFixtures();
+    },
   });
   if (!allFixtures.length && season) {
     root.innerHTML =

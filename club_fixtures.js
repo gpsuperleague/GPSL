@@ -39,14 +39,17 @@ import {
 import { loadMyNation, loadInternationalFixtures } from "./international.js";
 import {
   loadFixtureMatchVideos,
+  loadMatchVideoReportedSides,
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20260914-r-paired";
+} from "./match_videos_ui.js?v=20260914-multi-breach";
 
 let myClub = { short: null, name: null };
 /** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
 let matchVideoMap = new Map();
+/** @type {Set<string>} */
+let matchVideoReportedSides = new Set();
 
 function ensureMatchVideoStyles() {
   let el = document.getElementById("matchVideoTickStyles");
@@ -336,6 +339,7 @@ function fixtureCardHtml(f) {
           fixture: f,
           myClubShort: myClub.short,
           allowReport: Boolean(myClub.short),
+          reportedSides: matchVideoReportedSides,
         })}</span>
       </div>
       <div class="fixture-meta">
@@ -815,10 +819,18 @@ async function refreshFixtures(seasonId = null) {
     supabase,
     clubFixtures.map((f) => f.id)
   );
+  matchVideoReportedSides = await loadMatchVideoReportedSides(
+    supabase,
+    clubFixtures.map((f) => f.id)
+  );
   if (!window.__mvReportWiredClub) {
     window.__mvReportWiredClub = true;
     wireMatchVideoReportButtons(supabase, document.getElementById("clubFixturesRoot") || document, {
       resolveFixture: (id) => lastFixtures.find((f) => Number(f.id) === Number(id)),
+      onSubmitted: ({ fixtureId, side }) => {
+        matchVideoReportedSides.add(`${fixtureId}:${side}`);
+        renderFixtures(lastFixtures);
+      },
     });
   }
   renderFixtures(fixtures);

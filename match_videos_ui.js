@@ -60,45 +60,70 @@ function tickHtml(sideLabel, url) {
 }
 
 function reportBtnHtml(fixtureId, side, mode) {
-  // mode: 'active' | 'no-video' | 'own'
+  // mode: 'active' | 'no-video' | 'own' | 'locked'
   if (!mode) return "";
   let cls = "mv-report";
-  let title = `Report a breach in this ${side} video`;
+  let title = `Report breaches in this ${side} video`;
   let hasVideoAttr = "1";
   let ownAttr = "0";
+  let lockedAttr = "0";
   if (mode === "no-video") {
     cls = "mv-report mv-report-muted";
-    title = `${side} has no video yet — upload required before reporting a breach`;
+    title = `${side} has no video yet — upload required before reporting`;
     hasVideoAttr = "0";
   } else if (mode === "own") {
     cls = "mv-report mv-report-own";
     title = "Your club — you cannot report your own video";
     hasVideoAttr = "0";
     ownAttr = "1";
+  } else if (mode === "locked") {
+    cls = "mv-report mv-report-locked";
+    title = "This match side has already been reported (one report only)";
+    hasVideoAttr = "0";
+    lockedAttr = "1";
   }
   return (
     `<button type="button" class="${cls}" data-mv-report="1" ` +
     `data-fixture-id="${escapeAttr(fixtureId)}" data-side="${escapeAttr(side)}" ` +
-    `data-has-video="${hasVideoAttr}" data-own="${ownAttr}" ` +
+    `data-has-video="${hasVideoAttr}" data-own="${ownAttr}" data-locked="${lockedAttr}" ` +
     `title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}">R</button>`
   );
 }
 
-function sideReportMode(url, isOwn) {
+function sideReportMode(url, isOwn, alreadyReported) {
+  if (alreadyReported) return "locked";
   if (isOwn) return "own";
   return url ? "active" : "no-video";
 }
 
 /**
+ * @param {import("@supabase/supabase-js").SupabaseClient} supabase
+ * @param {Array<number|string>} fixtureIds
+ * @returns {Promise<Set<string>>} keys `${fixtureId}:${side}`
+ */
+export async function loadMatchVideoReportedSides(supabase, fixtureIds) {
+  const set = new Set();
+  const ids = [...new Set((fixtureIds || []).map((id) => Number(id)).filter(Boolean))];
+  if (!ids.length) return set;
+
+  const { data, error } = await supabase.rpc("match_video_reported_sides", {
+    p_fixture_ids: ids,
+  });
+  if (error) {
+    console.warn("loadMatchVideoReportedSides:", error.message);
+    return set;
+  }
+  for (const row of data || []) {
+    if (row?.fixture_id != null && row?.side) {
+      set.add(`${row.fixture_id}:${row.side}`);
+    }
+  }
+  return set;
+}
+
+/**
  * Compact home/away ticks for fixtures score cell.
- * Always H+R / A+R on played fixtures (own side R is locked, not hidden).
- * @param {{ home_url?: string|null, away_url?: string|null }|null|undefined} videos
- * @param {{
- *   fixtureId?: number|string,
- *   fixture?: { id?: number, status?: string, home_club_short_name?: string, away_club_short_name?: string, home_goals?: number|null, away_goals?: number|null },
- *   myClubShort?: string|null,
- *   allowReport?: boolean
- * }} [opts]
+ * Always H+R / A+R on played fixtures (own / locked R stays visible).
  */
 export function matchVideoTicksHtml(videos, opts = {}) {
   const v = videos || {};
@@ -111,16 +136,34 @@ export function matchVideoTicksHtml(videos, opts = {}) {
     String(opts.fixture?.status || "").toLowerCase() === "played" ||
     opts.fixture?.home_goals != null ||
     opts.fixture?.away_goals != null;
+  /** @type {Set<string>|Map<string, unknown>|null|undefined} */
+  const reported = opts.reportedSides;
+
+  const isReported = (side) => {
+    if (!reported) return false;
+    const key = `${fixtureId}:${side}`;
+    if (reported instanceof Set) return reported.has(key);
+    if (typeof reported.has === "function") return reported.has(key);
+    return Boolean(reported[key]);
+  };
 
   const showReports = allowReport && (played || v.home_url || v.away_url);
   const homeOwn = Boolean(my && homeClub && my === homeClub);
   const awayOwn = Boolean(my && awayClub && my === awayClub);
 
   const homeReport = showReports
-    ? reportBtnHtml(fixtureId, "home", sideReportMode(v.home_url, homeOwn))
+    ? reportBtnHtml(
+        fixtureId,
+        "home",
+        sideReportMode(v.home_url, homeOwn, isReported("home"))
+      )
     : "";
   const awayReport = showReports
-    ? reportBtnHtml(fixtureId, "away", sideReportMode(v.away_url, awayOwn))
+    ? reportBtnHtml(
+        fixtureId,
+        "away",
+        sideReportMode(v.away_url, awayOwn, isReported("away"))
+      )
     : "";
 
   return (
@@ -191,22 +234,34 @@ export const MATCH_VIDEO_TICK_CSS = `
   border-color:#555; background:#1a1a1a; color:#555; cursor:default; opacity:0.55;
 }
 .mv-report-own:hover { border-color:#555; background:#1a1a1a; color:#555; }
+.mv-report-locked {
+  border-color:#446; background:#1a1a28; color:#889; cursor:default; opacity:0.7;
+}
+.mv-report-locked:hover { border-color:#446; background:#1a1a28; color:#889; }
+.mv-report-modal {
+  width:min(520px, 100%); max-height:min(90vh, 720px); overflow:auto;
+  background:#161616; border:1px solid #444; border-radius:8px;
+  padding:16px 18px; color:#ddd; box-shadow:0 12px 40px rgba(0,0,0,0.45);
+}
+.mv-breach-list { display:grid; gap:8px; margin:0 0 12px; max-height:340px; overflow:auto; }
+.mv-breach-row {
+  border:1px solid #333; border-radius:6px; padding:8px 10px; background:#1a1a1a;
+}
+.mv-breach-row label.check {
+  display:flex; gap:8px; align-items:flex-start; font-size:13px; color:#ddd; margin:0;
+}
+.mv-breach-row .mv-breach-note {
+  margin-top:8px; display:none; width:100%; box-sizing:border-box;
+  padding:8px 10px; background:#111; border:1px solid #333; color:#eee; border-radius:4px;
+  font:inherit; min-height:56px; resize:vertical;
+}
+.mv-breach-row.is-on .mv-breach-note { display:block; }
 .mv-report-modal-backdrop {
   position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:12000;
   display:flex; align-items:center; justify-content:center; padding:16px;
 }
-.mv-report-modal {
-  width:min(440px, 100%); background:#161616; border:1px solid #444; border-radius:8px;
-  padding:16px 18px; color:#ddd; box-shadow:0 12px 40px rgba(0,0,0,0.45);
-}
 .mv-report-modal h3 { margin:0 0 8px; color:#ffcc66; font-size:16px; }
 .mv-report-modal p { margin:0 0 12px; font-size:13px; color:#aaa; line-height:1.4; }
-.mv-report-modal label { display:grid; gap:4px; font-size:13px; margin-bottom:10px; }
-.mv-report-modal select, .mv-report-modal textarea {
-  width:100%; box-sizing:border-box; padding:8px 10px;
-  background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px; font:inherit;
-}
-.mv-report-modal textarea { min-height:72px; resize:vertical; }
 .mv-report-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
 .mv-report-actions button {
   padding:8px 12px; border-radius:4px; border:1px solid #555; background:#333; color:#eee; cursor:pointer;
@@ -252,6 +307,7 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
     const side = String(btn.getAttribute("data-side") || "");
     const hasVideo = btn.getAttribute("data-has-video") !== "0";
     const isOwn = btn.getAttribute("data-own") === "1";
+    const isLocked = btn.getAttribute("data-locked") === "1";
     const fixture = opts.resolveFixture?.(fixtureId);
     if (!fixtureId || !side) return;
 
@@ -259,7 +315,12 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
       alert("You cannot report your own club’s match video.");
       return;
     }
-
+    if (isLocked) {
+      alert(
+        "This match side has already been reported.\n\nOnly one report is allowed — if it was rejected, it cannot be re-reported."
+      );
+      return;
+    }
     if (!hasVideo) {
       alert(
         "That side has not uploaded a match video yet.\n\nYou can only report matchday breaches once their video is online (green tick)."
@@ -287,27 +348,29 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
     backdrop.className = "mv-report-modal-backdrop";
     backdrop.innerHTML = `
       <div class="mv-report-modal" role="dialog" aria-modal="true" aria-labelledby="mvReportTitle">
-        <h3 id="mvReportTitle">Report match video breach</h3>
+        <h3 id="mvReportTitle">Report match video breaches</h3>
         <p>
           ${escapeHtml(String(accused || side).toUpperCase())} · ${escapeHtml(side)} video
           ${fixture?.matchday != null ? ` · MD${escapeHtml(fixture.matchday)}` : ""}
+          <br>Select every breach you can see — each one needs a note (e.g. timestamp). One report only per match side.
         </p>
-        <label>Breach
-          <select id="mvReportBreach">
-            <option value="">Select breach…</option>
-            ${codes
-              .map(
-                (c) =>
-                  `<option value="${escapeAttr(c.code)}">${escapeHtml(c.label)} (${escapeHtml(
-                    c.category
-                  )})</option>`
-              )
-              .join("")}
-          </select>
-        </label>
-        <label>Note (optional — timestamp / detail)
-          <textarea id="mvReportNote" maxlength="800" placeholder="e.g. 63' illegal PA"></textarea>
-        </label>
+        <div class="mv-breach-list" id="mvBreachList">
+          ${codes
+            .map(
+              (c) => `
+            <div class="mv-breach-row" data-code="${escapeAttr(c.code)}">
+              <label class="check">
+                <input type="checkbox" data-breach-check="${escapeAttr(c.code)}">
+                <span>${escapeHtml(c.label)} <span style="color:#777">(${escapeHtml(
+                  c.category
+                )})</span></span>
+              </label>
+              <textarea class="mv-breach-note" data-breach-note="${escapeAttr(c.code)}"
+                maxlength="800" placeholder="Required note — e.g. 63' / what you saw"></textarea>
+            </div>`
+            )
+            .join("")}
+        </div>
         <div class="mv-report-actions">
           <button type="button" class="primary" id="mvReportSubmit">Submit report</button>
           <button type="button" id="mvReportCancel">Cancel</button>
@@ -317,6 +380,17 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
     `;
     document.body.appendChild(backdrop);
 
+    backdrop.querySelectorAll("[data-breach-check]").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const row = cb.closest(".mv-breach-row");
+        if (!row) return;
+        row.classList.toggle("is-on", cb.checked);
+        if (cb.checked) {
+          row.querySelector("[data-breach-note]")?.focus();
+        }
+      });
+    });
+
     backdrop.addEventListener("click", (e) => {
       if (e.target === backdrop) closeReportModal();
     });
@@ -324,12 +398,26 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
 
     backdrop.querySelector("#mvReportSubmit")?.addEventListener("click", async () => {
       const statusEl = backdrop.querySelector("#mvReportStatus");
-      const code = backdrop.querySelector("#mvReportBreach")?.value;
-      const note = backdrop.querySelector("#mvReportNote")?.value || "";
-      if (!code) {
+      const breaches = [];
+      for (const row of backdrop.querySelectorAll(".mv-breach-row")) {
+        const code = row.getAttribute("data-code");
+        const checked = row.querySelector("[data-breach-check]")?.checked;
+        if (!checked) continue;
+        const note = String(row.querySelector("[data-breach-note]")?.value || "").trim();
+        if (!note) {
+          if (statusEl) {
+            statusEl.className = "mv-report-status err";
+            statusEl.textContent = "Add a note for every selected breach.";
+          }
+          row.querySelector("[data-breach-note]")?.focus();
+          return;
+        }
+        breaches.push({ code, note });
+      }
+      if (!breaches.length) {
         if (statusEl) {
           statusEl.className = "mv-report-status err";
-          statusEl.textContent = "Choose a breach.";
+          statusEl.textContent = "Select at least one breach.";
         }
         return;
       }
@@ -340,8 +428,7 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
       const { data, error } = await supabase.rpc("match_video_submit_breach_report", {
         p_fixture_id: fixtureId,
         p_side: side,
-        p_breach_tariff_code: code,
-        p_note: note || null,
+        p_breaches: breaches,
       });
       if (error) {
         if (statusEl) {
@@ -354,17 +441,27 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
         if (statusEl) {
           statusEl.className = "mv-report-status err";
           statusEl.textContent =
-            data?.reason === "duplicate_open_report"
-              ? "You already have an open report for this breach on this video."
-              : data?.reason || "Submit failed";
+            data?.message ||
+            (data?.reason === "already_reported"
+              ? "This match side was already reported."
+              : data?.reason || "Submit failed");
         }
         return;
       }
+      if (typeof opts.onSubmitted === "function") {
+        try {
+          opts.onSubmitted({ fixtureId, side, reportId: data.report_id });
+        } catch {
+          /* ignore */
+        }
+      }
       if (statusEl) {
         statusEl.className = "mv-report-status ok";
-        statusEl.textContent = "Report submitted — staff will review.";
+        statusEl.textContent = `Report submitted (${breaches.length} breach${
+          breaches.length === 1 ? "" : "es"
+        }). Staff will review.`;
       }
-      setTimeout(closeReportModal, 900);
+      setTimeout(closeReportModal, 1000);
     });
   });
 }
