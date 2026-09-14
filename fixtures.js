@@ -46,7 +46,7 @@ import {
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20260914-r-syntax";
+} from "./match_videos_ui.js?v=20260914-r-paired";
 
 let calendarStatus = null;
 let holidayContext = null;
