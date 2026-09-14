@@ -45,7 +45,8 @@ import {
   loadFixtureMatchVideos,
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
-} from "./match_videos_ui.js?v=20260912-match-videos";
+  wireMatchVideoReportButtons,
+} from "./match_videos_ui.js?v=20260914-reports-pts";
 
 let calendarStatus = null;
 let holidayContext = null;
@@ -232,7 +233,12 @@ function fixtureRowHtml(fixture) {
     : "";
   return `
     <td>${clubWithOwnerHtml(fixture.home_club_name, fixture.home_club_short_name, "block")}</td>
-    <td class="score">${tvFixtureBadgeHtml(fixture.id)}${formatFixtureScore(fixture, myClub)}${matchVideoTicksHtml(matchVideoMap.get(String(fixture.id)))}${catchUpCell}</td>
+    <td class="score">${tvFixtureBadgeHtml(fixture.id)}${formatFixtureScore(fixture, myClub)}${matchVideoTicksHtml(matchVideoMap.get(String(fixture.id)), {
+      fixtureId: fixture.id,
+      fixture,
+      myClubShort: myClub.short,
+      allowReport: Boolean(myClub.short),
+    })}${catchUpCell}</td>
     <td>${clubWithOwnerHtml(fixture.away_club_name, fixture.away_club_short_name, "block")}</td>
     <td class="fixture-stadium">${fixtureStadiumCell(fixture)}</td>
     <td class="fixture-continent">${fixtureContinentCell(fixture)}</td>
@@ -596,6 +602,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     supabase,
     allFixtures.map((f) => f.id)
   );
+  wireMatchVideoReportButtons(supabase, document.getElementById("fixturesRoot") || document, {
+    resolveFixture: (id) => allFixtures.find((f) => Number(f.id) === Number(id)),
+  });
   if (!allFixtures.length && season) {
     root.innerHTML =
       '<p class="empty">No fixtures loaded. Check an active season and that admin generated fixtures (GPSL Admin → League Fixtures). If the browser console shows a database error, run <code>competition_phase3_matchday.sql</code> after phase 1.</p>';

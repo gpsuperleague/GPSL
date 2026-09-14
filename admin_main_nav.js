@@ -565,7 +565,14 @@ export const ADMIN_MAIN_NAV = [
           "admin_match_videos.html",
           null,
           null,
-          "Discord Matchday videos: auto-poll, payout & missing-video fine amounts, ingest log, manual link. Setup: docs/match-videos-setup.html."
+          "Discord Matchday videos: auto-poll, payout & missing-video fine/points, ingest log, manual link. Setup: docs/match-videos-setup.html."
+        ),
+        L(
+          "Match video reports",
+          "admin_match_video_reports.html",
+          null,
+          null,
+          "Review owner R-button breach reports on uploaded match videos; uphold fine + Building Society reward."
         ),
       ]),
       group("Transfers", [

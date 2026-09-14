@@ -41,7 +41,8 @@ import {
   loadFixtureMatchVideos,
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
-} from "./match_videos_ui.js?v=20260912-match-videos";
+  wireMatchVideoReportButtons,
+} from "./match_videos_ui.js?v=20260914-reports-pts";
 
 let myClub = { short: null, name: null };
 /** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
@@ -328,7 +329,12 @@ function fixtureCardHtml(f) {
         ${tvFixtureBadgeHtml(f.id)}
         ${simBadge}
         <span class="fixture-match">${matchLineHtml(f)}</span>
-        <span class="fixture-score">${score}${matchVideoTicksHtml(matchVideoMap.get(String(f.id)))}</span>
+        <span class="fixture-score">${score}${matchVideoTicksHtml(matchVideoMap.get(String(f.id)), {
+          fixtureId: f.id,
+          fixture: f,
+          myClubShort: myClub.short,
+          allowReport: Boolean(myClub.short),
+        })}</span>
       </div>
       <div class="fixture-meta">
         <span><b>${mdLabel}</b></span>
@@ -807,6 +813,12 @@ async function refreshFixtures(seasonId = null) {
     supabase,
     clubFixtures.map((f) => f.id)
   );
+  if (!window.__mvReportWiredClub) {
+    window.__mvReportWiredClub = true;
+    wireMatchVideoReportButtons(supabase, document.getElementById("clubFixturesRoot") || document, {
+      resolveFixture: (id) => lastFixtures.find((f) => Number(f.id) === Number(id)),
+    });
+  }
   renderFixtures(fixtures);
   if (root && !fixtures.length) {
     root.innerHTML =

@@ -239,8 +239,8 @@ async function saveAmounts(e) {
 }
 
 async function assessMissingFines() {
-  setStatus("amountsStatus", "Assessing missing-video fines…");
-  const { data, error } = await supabase.rpc("match_video_process_missing_fines", {
+  setStatus("amountsStatus", "Assessing missing-video fines + points…");
+  const { data, error } = await supabase.rpc("match_video_process_all_penalties", {
     p_season_id: null,
   });
   if (error) {
@@ -251,14 +251,15 @@ async function assessMissingFines() {
     setStatus("amountsStatus", data?.reason || "Failed", false);
     return;
   }
+  const fines = data.fines || {};
+  const pts = data.suspended_points || {};
+  const carry = data.carry || {};
   setStatus(
     "amountsStatus",
-    data.skipped
-      ? String(data.reason || "Fines skipped")
-      : `Fined ${data.fined ?? 0} side(s) · ₿${Number(data.fine_amount || 0).toLocaleString(
-          "en-GB"
-        )} · grace ${data.grace_hours}h` +
-          (data.skipped_errors ? ` · ${data.skipped_errors} errors` : ""),
+    fines.skipped
+      ? String(fines.reason || "Money fines skipped") +
+          ` · cleared ${pts.cleared ?? 0} · converted ${pts.converted ?? 0} · escalate ${pts.escalated ?? 0} · carry ${carry.applied ?? 0}`
+      : `Assessed ${fines.assessed ?? fines.fined ?? 0} · cleared ${pts.cleared ?? 0} · converted ${pts.converted ?? 0} · escalate ${pts.escalated ?? 0} · carry ${carry.applied ?? 0}`,
     true
   );
 }
