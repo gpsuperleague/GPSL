@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal, isGpslAdminUser, fetchIsGpslModUser } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import {
   loadCurrentSeason,
@@ -46,12 +46,13 @@ import {
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20260914-reports-pts";
+} from "./match_videos_ui.js?v=20260914-r-visible";
 
 let calendarStatus = null;
 let holidayContext = null;
 
 let myClub = { short: null, name: null };
+let canReportMatchVideos = false;
 let currentDivision = "superleague";
 let fixtureView = "league";
 let currentCup = "league_cup";
@@ -62,11 +63,13 @@ let allFixtures = [];
 let matchVideoMap = new Map();
 
 function ensureMatchVideoStyles() {
-  if (document.getElementById("matchVideoTickStyles")) return;
-  const el = document.createElement("style");
-  el.id = "matchVideoTickStyles";
+  let el = document.getElementById("matchVideoTickStyles");
+  if (!el) {
+    el = document.createElement("style");
+    el.id = "matchVideoTickStyles";
+    document.head.appendChild(el);
+  }
   el.textContent = MATCH_VIDEO_TICK_CSS;
-  document.head.appendChild(el);
 }
 
 const LEAGUE_COLGROUP = `
@@ -237,7 +240,7 @@ function fixtureRowHtml(fixture) {
       fixtureId: fixture.id,
       fixture,
       myClubShort: myClub.short,
-      allowReport: Boolean(myClub.short),
+      allowReport: canReportMatchVideos,
     })}${catchUpCell}</td>
     <td>${clubWithOwnerHtml(fixture.away_club_name, fixture.away_club_short_name, "block")}</td>
     <td class="fixture-stadium">${fixtureStadiumCell(fixture)}</td>
@@ -537,6 +540,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     .eq("owner_id", user.id)
     .maybeSingle();
   myClub = { short: club?.ShortName || null, name: club?.Club || null };
+  const isStaff = isGpslAdminUser(user) || (await fetchIsGpslModUser());
+  canReportMatchVideos = Boolean(myClub.short) || isStaff;
 
   const season = await loadCurrentSeason(supabase);
   const meta = document.getElementById("seasonMeta");

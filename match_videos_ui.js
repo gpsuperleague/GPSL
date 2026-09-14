@@ -59,21 +59,27 @@ function tickHtml(sideLabel, url) {
   return `<span class="mv-tick mv-tick-off" title="${sideLabel} video not uploaded yet">${sideLabel}○</span>`;
 }
 
-function reportBtnHtml(fixtureId, side, enabled) {
-  if (!enabled) return "";
+function reportBtnHtml(fixtureId, side, { enabled, muted }) {
+  if (!enabled && !muted) return "";
+  const cls = muted ? "mv-report mv-report-muted" : "mv-report";
+  const title = muted
+    ? `${side} has no video yet — upload required before reporting a breach`
+    : `Report a breach in this ${side} video`;
   return (
-    `<button type="button" class="mv-report" data-mv-report="1" ` +
+    `<button type="button" class="${cls}" data-mv-report="1" ` +
     `data-fixture-id="${escapeAttr(fixtureId)}" data-side="${escapeAttr(side)}" ` +
-    `title="Report a breach in this ${side} video" aria-label="Report ${side} video">R</button>`
+    `data-has-video="${muted ? "0" : "1}" ` +
+    `title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}">R</button>`
   );
 }
 
 /**
  * Compact home/away ticks for fixtures score cell.
+ * Circled R appears beside each side you can report (not your own club) on played fixtures.
  * @param {{ home_url?: string|null, away_url?: string|null }|null|undefined} videos
  * @param {{
  *   fixtureId?: number|string,
- *   fixture?: { home_club_short_name?: string, away_club_short_name?: string },
+ *   fixture?: { id?: number, status?: string, home_club_short_name?: string, away_club_short_name?: string },
  *   myClubShort?: string|null,
  *   allowReport?: boolean
  * }} [opts]
@@ -81,18 +87,42 @@ function reportBtnHtml(fixtureId, side, enabled) {
 export function matchVideoTicksHtml(videos, opts = {}) {
   const v = videos || {};
   const fixtureId = opts.fixtureId ?? opts.fixture?.id;
-  const allowReport = Boolean(opts.allowReport && fixtureId && opts.myClubShort);
+  const allowReport = Boolean(opts.allowReport && fixtureId);
   const my = upper(opts.myClubShort);
   const homeClub = upper(opts.fixture?.home_club_short_name);
   const awayClub = upper(opts.fixture?.away_club_short_name);
+  const played =
+    String(opts.fixture?.status || "").toLowerCase() === "played" ||
+    opts.fixture?.home_goals != null ||
+    opts.fixture?.away_goals != null;
 
-  const canHome = allowReport && Boolean(v.home_url) && my && my !== homeClub;
-  const canAway = allowReport && Boolean(v.away_url) && my && my !== awayClub;
+  const canHomeSide = allowReport && (!my || my !== homeClub);
+  const canAwaySide = allowReport && (!my || my !== awayClub);
+
+  const homeReport =
+    canHomeSide && played
+      ? reportBtnHtml(fixtureId, "home", {
+          enabled: Boolean(v.home_url),
+          muted: !v.home_url,
+        })
+      : canHomeSide && v.home_url
+        ? reportBtnHtml(fixtureId, "home", { enabled: true, muted: false })
+        : "";
+
+  const awayReport =
+    canAwaySide && played
+      ? reportBtnHtml(fixtureId, "away", {
+          enabled: Boolean(v.away_url),
+          muted: !v.away_url,
+        })
+      : canAwaySide && v.away_url
+        ? reportBtnHtml(fixtureId, "away", { enabled: true, muted: false })
+        : "";
 
   return (
     `<span class="mv-ticks">` +
-    `${tickHtml("H", v.home_url)}${reportBtnHtml(fixtureId, "home", canHome)}` +
-    `${tickHtml("A", v.away_url)}${reportBtnHtml(fixtureId, "away", canAway)}` +
+    `${tickHtml("H", v.home_url)}${homeReport}` +
+    `${tickHtml("A", v.away_url)}${awayReport}` +
     `</span>`
   );
 }
@@ -137,11 +167,17 @@ export const MATCH_VIDEO_TICK_CSS = `
 .mv-tick-on:hover { filter:brightness(1.08); }
 .mv-tick-off { color:#777; background:#222; border:1px solid #444; }
 .mv-report {
-  width:18px; height:18px; padding:0; margin:0;
-  border-radius:50%; border:1px solid #c90; background:#2a2200; color:#fc6;
-  font-size:10px; font-weight:700; line-height:1; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  width:20px; height:20px; min-width:20px; padding:0; margin:0 1px;
+  border-radius:50%; border:2px solid #e6a000; background:#3a2a00; color:#ffcc33;
+  font-size:11px; font-weight:800; line-height:1; cursor:pointer;
+  font-family:inherit; box-shadow:0 0 0 1px rgba(0,0,0,0.35);
 }
-.mv-report:hover { background:#3a3000; border-color:#fc6; }
+.mv-report:hover { background:#5a4200; border-color:#ffcc33; color:#fff3a0; }
+.mv-report-muted {
+  border-color:#666; background:#222; color:#888; cursor:pointer; opacity:0.85;
+}
+.mv-report-muted:hover { border-color:#999; color:#bbb; background:#2a2a2a; }
 .mv-report-modal-backdrop {
   position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:12000;
   display:flex; align-items:center; justify-content:center; padding:16px;
@@ -201,8 +237,16 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
 
     const fixtureId = Number(btn.getAttribute("data-fixture-id"));
     const side = String(btn.getAttribute("data-side") || "");
+    const hasVideo = btn.getAttribute("data-has-video") !== "0";
     const fixture = opts.resolveFixture?.(fixtureId);
     if (!fixtureId || !side) return;
+
+    if (!hasVideo) {
+      alert(
+        "That side has not uploaded a match video yet.\n\nYou can only report matchday breaches once their video is online (green tick)."
+      );
+      return;
+    }
 
     closeReportModal();
 

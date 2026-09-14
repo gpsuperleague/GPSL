@@ -42,18 +42,20 @@ import {
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20260914-reports-pts";
+} from "./match_videos_ui.js?v=20260914-r-visible";
 
 let myClub = { short: null, name: null };
 /** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
 let matchVideoMap = new Map();
 
 function ensureMatchVideoStyles() {
-  if (document.getElementById("matchVideoTickStyles")) return;
-  const el = document.createElement("style");
-  el.id = "matchVideoTickStyles";
+  let el = document.getElementById("matchVideoTickStyles");
+  if (!el) {
+    el = document.createElement("style");
+    el.id = "matchVideoTickStyles";
+    document.head.appendChild(el);
+  }
   el.textContent = MATCH_VIDEO_TICK_CSS;
-  document.head.appendChild(el);
 }
 let myNationCode = null;
 /** @type {Map<string, string>} nation code → owner club ShortName */
