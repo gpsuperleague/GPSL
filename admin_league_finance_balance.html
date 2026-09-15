@@ -33,7 +33,7 @@
     }
     .fin-kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 12px;
       margin: 14px 0;
     }
@@ -43,11 +43,74 @@
       border-radius: 6px;
       padding: 10px 12px;
     }
-    .fin-kpi .lbl { display: block; color: #888; font-size: 11px; margin-bottom: 4px; }
-    .fin-kpi .lbl.gpsl-has-tip { border-bottom: none; display: inline-block; }
+    .fin-kpi .lbl { display: block; color: #888; font-size: 11px; margin-bottom: 4px; line-height: 1.35; }
+    .fin-kpi .lbl.gpsl-has-tip { border-bottom: none; display: inline; }
     .fin-kpi .val { color: #ff9900; font-size: 16px; font-weight: bold; }
     .fin-kpi .val.pos { color: #8d8; }
     .fin-kpi .val.neg { color: #f88; }
+    .fin-kpi .sub { display: block; color: #777; font-size: 11px; margin-top: 4px; line-height: 1.35; }
+    .fin-verdict {
+      margin: 0 0 14px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #161616;
+    }
+    .fin-verdict.is-under { border-color: #844; background: #1a1212; }
+    .fin-verdict.is-over { border-color: #485; background: #121a14; }
+    .fin-verdict.is-near { border-color: #664; background: #1a1810; }
+    .fin-verdict.is-incomplete { border-color: #665522; background: #1a1810; }
+    .fin-verdict-status {
+      margin: 0 0 8px;
+      color: #ffcc66;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .fin-verdict-status .tag {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+    .fin-verdict.is-under .tag { background: #633; color: #fcc; }
+    .fin-verdict.is-over .tag { background: #264; color: #cfc; }
+    .fin-verdict.is-near .tag { background: #443; color: #edc; }
+    .fin-verdict.is-incomplete .tag { background: #543; color: #fc9; }
+    .fin-verdict-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 18px;
+      margin-top: 10px;
+    }
+    @media (max-width: 720px) {
+      .fin-verdict-grid { grid-template-columns: 1fr; }
+    }
+    .fin-verdict-grid h4 {
+      margin: 0 0 6px;
+      color: #aaa;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .fin-verdict-grid p {
+      margin: 0;
+      color: #ddd;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .fin-verdict-grid ul {
+      margin: 0;
+      padding-left: 18px;
+      color: #ddd;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .fin-verdict-grid li { margin-bottom: 4px; }
     .fin-hint-box {
       margin: 12px 0 16px;
       padding: 10px 12px;
@@ -122,7 +185,7 @@
             <select id="finBalSeason"></select>
           </div>
           <div>
-            <label class="gpsl-has-tip" data-gpsl-tip="Desired average operating profit per club for this season (default ₿10m). Gap / club = target minus actual avg ops net." tabindex="0">Target avg ops profit (₿)</label>
+            <label class="gpsl-has-tip" data-gpsl-tip="What you want a typical club to make from day-to-day ops this season (gates, prizes, TV, wages, stadium, tax…) — not transfer spending. Default ₿10m." tabindex="0">Healthy profit goal per club (₿)</label>
             <input type="text" id="finBalTarget" value="10,000,000" inputmode="numeric">
           </div>
           <div style="display:flex;align-items:flex-end;gap:8px;">
@@ -132,15 +195,53 @@
         <div id="finBalStatus" class="status-line"></div>
 
         <div id="finBalSummary" hidden>
-          <div class="fin-kpi-grid">
-            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="How many clubs were included in this season’s finance set." tabindex="0">Clubs</span><span class="val" id="kpiClubs">—</span></div>
-            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="Mean ops net across clubs. Ops ignore transfers and Central Bank loans." tabindex="0">Avg ops net</span><span class="val" id="kpiAvg">—</span></div>
-            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="Middle club’s ops net (less skewed by a few extreme clubs than the average)." tabindex="0">Median ops net</span><span class="val" id="kpiMed">—</span></div>
-            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="The target average ops profit you set above." tabindex="0">Target avg</span><span class="val" id="kpiTarget">—</span></div>
-            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="Target minus avg ops net. Positive gap = clubs are under target (need more income or lower costs). Negative = over target." tabindex="0">Gap / club</span><span class="val" id="kpiGapClub">—</span></div>
-            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="Gap / club × number of clubs — approximate league-wide tuning size." tabindex="0">Gap league-wide</span><span class="val" id="kpiGapTotal">—</span></div>
+          <div class="fin-verdict" id="finBalVerdict">
+            <p class="fin-verdict-status" id="finBalVerdictStatus">—</p>
+            <div class="fin-verdict-grid">
+              <div>
+                <h4>What this means</h4>
+                <p id="finBalVerdictMeans">—</p>
+              </div>
+              <div>
+                <h4>What to do</h4>
+                <ul id="finBalVerdictActions"></ul>
+              </div>
+            </div>
           </div>
-          <div class="fin-hint-box gpsl-has-tip" id="finBalHint" data-gpsl-tip="Auto-written tuning suggestion from the gap vs target." tabindex="0"></div>
+
+          <div class="fin-kpi-grid">
+            <div class="fin-kpi">
+              <span class="lbl gpsl-has-tip" data-gpsl-tip="How many clubs were included in this season’s finance set." tabindex="0">Clubs analysed</span>
+              <span class="val" id="kpiClubs">—</span>
+              <span class="sub">Owned + vacant in this season</span>
+            </div>
+            <div class="fin-kpi">
+              <span class="lbl gpsl-has-tip" data-gpsl-tip="Average day-to-day profit or loss per club (gates, prizes, TV, wages, stadium, tax…). Transfers and loans are ignored." tabindex="0">Average club result</span>
+              <span class="val" id="kpiAvg">—</span>
+              <span class="sub">Day-to-day ops (not transfers)</span>
+            </div>
+            <div class="fin-kpi">
+              <span class="lbl gpsl-has-tip" data-gpsl-tip="The middle club’s result. Less skewed by a few very rich or very broke clubs than the average." tabindex="0">Middle club result</span>
+              <span class="val" id="kpiMed">—</span>
+              <span class="sub">Median — ignores extremes</span>
+            </div>
+            <div class="fin-kpi">
+              <span class="lbl gpsl-has-tip" data-gpsl-tip="The healthy profit goal you set above — what you want a typical club to make from day-to-day ops." tabindex="0">Your goal per club</span>
+              <span class="val" id="kpiTarget">—</span>
+              <span class="sub">Target day-to-day profit</span>
+            </div>
+            <div class="fin-kpi">
+              <span class="lbl gpsl-has-tip" data-gpsl-tip="How far the average club is from your goal. Shortfall = need more income or lower costs. Surplus = clubs are too rich on ops." tabindex="0">Shortfall / surplus per club</span>
+              <span class="val" id="kpiGapClub">—</span>
+              <span class="sub" id="kpiGapClubSub">vs your goal</span>
+            </div>
+            <div class="fin-kpi">
+              <span class="lbl gpsl-has-tip" data-gpsl-tip="Shortfall/surplus × number of clubs — rough size of the league-wide fix (prizes, TV, subsidies, wages, tax)." tabindex="0">Total fix needed</span>
+              <span class="val" id="kpiGapTotal">—</span>
+              <span class="sub" id="kpiGapTotalSub">Across all clubs</span>
+            </div>
+          </div>
+          <div class="fin-hint-box gpsl-has-tip" id="finBalHint" data-gpsl-tip="Shorter auto note from the same calculation." tabindex="0" hidden></div>
 
           <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:0 0 6px;" data-gpsl-tip="League-wide sums by ledger category. Transfers and loans are shown but excluded from ops net." tabindex="0">League category totals (ops)</h3>
           <div class="fin-cat-grid" id="finBalCats"></div>
@@ -178,6 +279,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_league_finance_balance.js?v=20260915-fin-balance-tips"></script>
+  <script type="module" src="admin_league_finance_balance.js?v=20260915-fin-verdict"></script>
 </body>
 </html>

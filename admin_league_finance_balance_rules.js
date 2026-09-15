@@ -67,12 +67,12 @@ export function getLeagueFinanceBalanceRules() {
       },
       {
         heading: "How to decide",
-        tip: "Set target avg ops profit → Run → read Gap / club and the amber hint. Under target: raise income or ease costs. Over target: cool income or raise costs.",
+        tip: "Set healthy profit goal → Run → read the verdict box (What this means / What to do). Shortfall = add prizes/TV/subsidies or cut costs.",
         items: [
-          "Set <b>Target avg ops profit</b> (default ₿10m per club).",
-          "Run analysis → read <b>Gap / club</b> and the amber hint box.",
-          "<b>Under target</b> → raise prizes / TV / subsidies, or ease wage / tax pressure by about that gap.",
-          "<b>Over target</b> → cool prizes / TV / subsidies, or raise wage / tax pressure.",
+          "Set <b>Healthy profit goal per club</b> (default ₿10m).",
+          "Run analysis → read the <b>verdict box</b> first (plain English + actions).",
+          "<b>Shortfall</b> → raise prizes / TV / subsidies, or ease wage / tax pressure.",
+          "<b>Too rich</b> → cool prizes / TV / subsidies, or raise wage / tax pressure.",
         ],
       },
       {
