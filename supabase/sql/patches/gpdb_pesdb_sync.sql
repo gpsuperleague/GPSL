@@ -88,7 +88,8 @@ BEGIN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  DELETE FROM public.gpdb_pesdb_staging;
+  -- WHERE true: Supabase/Postgres rejects unqualified DELETE (requires WHERE clause)
+  DELETE FROM public.gpdb_pesdb_staging WHERE true;
   GET DIAGNOSTICS v_deleted = ROW_COUNT;
 
   RETURN jsonb_build_object('ok', true, 'cleared', v_deleted);
@@ -121,7 +122,7 @@ BEGIN
   END IF;
 
   IF coalesce(p_replace, true) THEN
-    DELETE FROM public.gpdb_pesdb_staging;
+    DELETE FROM public.gpdb_pesdb_staging WHERE true;
   END IF;
 
   FOR v_row IN SELECT value FROM jsonb_array_elements(p_rows)
