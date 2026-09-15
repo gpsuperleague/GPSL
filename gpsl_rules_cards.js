@@ -68,15 +68,22 @@ function cardsHtml(cards) {
   return `
     <div class="rules-grid">
       ${cards
-        .map(
-          (card) => `
+        .map((card) => {
+          const tip = String(card.tip || "").trim();
+          const tipAttrs = tip
+            ? ` class="gpsl-has-tip" data-gpsl-tip="${tip
+                .replace(/&/g, "&amp;")
+                .replace(/"/g, "&quot;")
+                .replace(/</g, "&lt;")}" tabindex="0"`
+            : "";
+          return `
         <section class="rules-card">
-          <h3>${card.heading}</h3>
+          <h3${tipAttrs}>${card.heading}</h3>
           <ul>
             ${(card.items || []).map((item) => `<li>${item}</li>`).join("")}
           </ul>
-        </section>`
-        )
+        </section>`;
+        })
         .join("")}
     </div>`;
 }

@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, clubWithOwnerHtml, fixtureOwnerOccupancy } from "./clubs_lookup.js";
 import {
   loadCurrentSeason,
@@ -846,6 +847,7 @@ async function loadMatchSimEnabled() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   const root = document.getElementById("clubFixturesRoot");
   try {
     await initGlobal();

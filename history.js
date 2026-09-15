@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import {
   loadClubsMap,
   fullClubName,
@@ -615,6 +616,7 @@ async function resolveHistoryClub(user) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
   await loadClubsMap();
 

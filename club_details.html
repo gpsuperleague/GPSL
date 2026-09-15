@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="club_dashboard_theme.css">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260915-myclub-tips">
 
   <style>
     body {
@@ -762,14 +763,14 @@
 
   <div class="page-container">
 
-    <h1>Club Details</h1>
+    <h1 class="gpsl-has-tip" data-gpsl-tip="Club identity, kits, and dashboard colours. Login, Discord tag, availability, and holidays live on Owner Details." tabindex="0">Club Details</h1>
 
     <p id="clubDetailsError" hidden role="alert"></p>
 
     <div class="panel club-info-panel" id="clubDetailsPanel">
       <div class="club-details-grid">
         <div class="club-detail-cell">
-          <span class="club-detail-label">Club name</span>
+          <span class="club-detail-label gpsl-has-tip" data-gpsl-tip="Registered club name, short code, division, stadium, capacity, and home nation (home-grown uses this nation)." tabindex="0">Club name</span>
           <span class="club-detail-value" id="clubName">—</span>
         </div>
 
@@ -784,7 +785,7 @@
         </div>
 
         <div class="club-detail-cell">
-          <span class="club-detail-label">Stadium</span>
+          <span class="club-detail-label gpsl-has-tip" data-gpsl-tip="Home venue name and capacity. Expand capacity and gate estimates on the Stadium page." tabindex="0">Stadium</span>
           <span class="club-detail-value" id="stadiumName">—</span>
         </div>
 
@@ -794,12 +795,12 @@
         </div>
 
         <div class="club-detail-cell">
-          <span class="club-detail-label">Club nation</span>
+          <span class="club-detail-label gpsl-has-tip" data-gpsl-tip="Club home nation — home-grown (HG) players must match this nationality (≥8 required on Squad)." tabindex="0">Club nation</span>
           <span class="club-detail-value" id="clubNation">—</span>
         </div>
 
         <div class="club-detail-cell club-detail-cell--compact" id="ownerDetailsCell">
-          <span class="club-detail-label">Owner details</span>
+          <span class="club-detail-label gpsl-has-tip" data-gpsl-tip="Login email, password, Discord tag, profile badge, weekly match availability, and holiday booking." tabindex="0">Owner details</span>
           <p class="club-detail-summary">
             Login email, password, Discord tag, profile badge, match availability, and holidays.
           </p>
@@ -807,7 +808,7 @@
         </div>
 
         <div class="club-detail-cell club-detail-cell--compact" id="natterCell">
-          <span class="club-detail-label">Natter</span>
+          <span class="club-detail-label gpsl-has-tip" data-gpsl-tip="One GPSL-month club news post. It appears in next month’s GPSL Sport broadcast." tabindex="0">Natter</span>
           <p class="club-detail-summary">
             One GPSL-month post (club news). Appears in next month&apos;s GPSL Sport.
           </p>
@@ -815,7 +816,7 @@
         </div>
 
         <div class="club-detail-cell club-detail-cell--compact" id="challengeCell">
-          <span class="club-detail-label">Season challenges</span>
+          <span class="club-detail-label gpsl-has-tip" data-gpsl-tip="Your club’s progress on season challenge targets. Full league board and big prizes are on Season Challenges." tabindex="0">Season challenges</span>
           <p id="challengeSummary" class="club-detail-summary">Loading…</p>
           <div class="club-detail-quick-links">
             <button
@@ -845,13 +846,13 @@
     </div>
 
     <div class="panel panel-bg club-kits-panel" id="clubKitsPanel">
-      <h2 class="club-kits-title">Club kits</h2>
+      <h2 class="club-kits-title gpsl-has-tip" data-gpsl-tip="Home, away, and third kits from the club kits folder on GitHub. Used for display and colour suggestions." tabindex="0">Club kits</h2>
       <p class="club-kits-intro">Home, away, and third-choice kits from <code>images/clubs_kits/</code> on GitHub.</p>
       <div id="clubKitsContent">Loading kits…</div>
     </div>
 
     <div class="panel panel-bg club-theme-panel" id="clubThemePanel">
-      <h2 class="club-kits-title">Dashboard colours</h2>
+      <h2 class="club-kits-title gpsl-has-tip" data-gpsl-tip="Optional club accent colours for your dashboard (and optionally other club pages). Top GPSL menu stays orange. Suggest from a kit, then Save." tabindex="0">Dashboard colours</h2>
       <p class="club-kits-intro">
         Pick club accent colours for your GPSL dashboard. The dark layout and top menu stay the same.
         Suggest from a kit, tweak if needed, then save.
@@ -923,7 +924,7 @@
     </div>
 
     <div class="panel panel-bg" id="boardroomLinkPanel" style="margin-top:20px;">
-      <h2 class="subsidy-title">Boardroom</h2>
+      <h2 class="subsidy-title gpsl-has-tip" data-gpsl-tip="Prestige expectations, manager deal, and government subsidies live in the Boardroom." tabindex="0">Boardroom</h2>
       <p class="subsidy-intro">
         Club expectations, the manager deal, and government subsidies now live in the
         <a href="boardroom.html" class="gpsl-content-link">Boardroom</a>
@@ -933,7 +934,7 @@
 
   </div>
 
-  <script type="module" src="club_details.js?v=20260806-league-badges"></script>
+  <script type="module" src="club_details.js?v=20260915-myclub-tips"></script>
 
 </body>
 </html>

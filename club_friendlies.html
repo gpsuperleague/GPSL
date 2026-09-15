@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260806-friendlies">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260915-myclub-tips">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
@@ -74,25 +75,25 @@
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1 id="friendliesTitle">Friendlies</h1>
+    <h1 id="friendliesTitle" class="gpsl-has-tip" data-gpsl-tip="Discord-confirmed friendlies for your club, grouped by GPSL month. Standalone only — no league/cup records from these games." tabindex="0">Friendlies</h1>
     <div class="info-box" id="clubFriendliesRules" aria-label="Friendlies help">
       <div class="rules-grid">
         <section class="rules-card">
-          <h3>What you see</h3>
+          <h3 class="gpsl-has-tip" data-gpsl-tip="Discord-confirmed friendlies for your club. Grouped by GPSL month." tabindex="0">What you see</h3>
           <ul>
             <li><b>Discord-confirmed</b> friendlies for your club.</li>
             <li>Grouped by <b>GPSL month</b>.</li>
           </ul>
         </section>
         <section class="rules-card">
-          <h3>Gate receipts</h3>
+          <h3 class="gpsl-has-tip" data-gpsl-tip="First 10 paid friendlies each month earn ₿5,000 gate each. Season cap: ₿500,000 total from friendlies." tabindex="0">Gate receipts</h3>
           <ul>
             <li>First <b>10 paid</b> friendlies each month earn <b>₿5,000</b> each.</li>
             <li>Season cap: <b>₿500,000</b> total from friendlies.</li>
           </ul>
         </section>
         <section class="rules-card">
-          <h3>Standalone only</h3>
+          <h3 class="gpsl-has-tip" data-gpsl-tip="Standalone only — no league or cup fixtures, and no player match records from these games." tabindex="0">Standalone only</h3>
           <ul>
             <li>No league or cup fixtures.</li>
             <li>No player match records from these games.</li>
@@ -101,9 +102,9 @@
       </div>
     </div>
     <div id="friendliesError"></div>
-    <div id="friendliesSummary" class="summary"></div>
+    <div id="friendliesSummary" class="summary gpsl-has-tip" data-gpsl-tip="Quick counts for this season: paid friendlies, gate earned, and remaining room under the season cap." tabindex="0"></div>
     <div id="friendliesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_friendlies.js?v=20260806-friendlies-rules"></script>
+  <script type="module" src="club_friendlies.js?v=20260915-myclub-tips"></script>
 </body>
 </html>

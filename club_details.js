@@ -4,6 +4,7 @@ import {
   supabase,
   initGlobal,
 } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
 import {
   formatMoney,
@@ -550,6 +551,7 @@ async function loadDashboardThemeSection(clubShort) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  initGpslInfoTips();
   initClubDetailsPage().catch((err) => {
     console.error("Club Details init failed:", err);
     showLoadError(

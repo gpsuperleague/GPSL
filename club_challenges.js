@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, loadCurrentSeason } from "./competition.js";
 
@@ -53,6 +54,7 @@ function splitByPhase(items) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
   await loadClubsMap();
 

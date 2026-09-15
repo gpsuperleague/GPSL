@@ -242,3 +242,81 @@ export const TC_EXTRA_TIPS = {
   transfersOut:
     "Selling side: your live listings, closed listings, seller decisions, and this season’s sales.",
 };
+
+export const CLUB_DETAILS_TIPS = {
+  page:
+    "Club identity, kits, and dashboard colours. Login, Discord tag, availability, and holidays live on Owner Details.",
+  identity:
+    "Registered club name, short code, division, stadium, capacity, and home nation (home-grown uses this nation).",
+  stadium:
+    "Home venue name and capacity. Expand capacity and gate estimates on the Stadium page.",
+  nation:
+    "Club home nation — home-grown (HG) players must match this nationality (≥8 required on Squad).",
+  ownerDetails:
+    "Login email, password, Discord tag, profile badge, weekly match availability, and holiday booking.",
+  natter:
+    "One GPSL-month club news post. It appears in next month’s GPSL Sport broadcast.",
+  challenges:
+    "Your club’s progress on season challenge targets. Full league board and big prizes are on Season Challenges.",
+  kits:
+    "Home, away, and third kits from the club kits folder on GitHub. Used for display and colour suggestions.",
+  theme:
+    "Optional club accent colours for your dashboard (and optionally other club pages). Top GPSL menu stays orange. Suggest from a kit, then Save.",
+  boardroom:
+    "Prestige expectations, manager deal, and government subsidies live in the Boardroom.",
+};
+
+export const OWNERS_BANK_TIPS = {
+  page:
+    "Your private GPSL Building Society balance — separate from club transfer funds. Bookies, Owners Shop, and GPFL cash prizes move here.",
+  balance:
+    "Spendable personal balance. Club Finances cash is separate and never mixes with this account.",
+  statement:
+    "Recent personal movements: Bookies stakes/wins, Owners Shop purchases, GPFL prizes, and admin adjustments.",
+  links:
+    "Jump to Bookies, Owners Shop, GPFL, or Club Finances. Only Club Finances uses club transfer money.",
+};
+
+export const HISTORY_TIPS = {
+  page:
+    "Club archives: past owners, trophy cabinet, league positions, club records, and Ballon d’Or winners. Updates when seasons are archived.",
+  owners:
+    "Managers who ran this club — seasons in charge, league record, and trophies while they were owner. Click a name for their owner profile.",
+  trophies:
+    "Each competition bay shows every archived win (with season label). Click a trophy for that season’s final table or cup bracket.",
+  monthlyPosition:
+    "Table position at the end of each GPSL month this season (1st at the top), with average home attendance on the right axis.",
+  seasons:
+    "Final league finishing positions by archived season.",
+  records:
+    "Club highs and lows (including notable signings and sales) from archived seasons.",
+  ballon:
+    "Ballon d’Or winners who were at this club when they won.",
+};
+
+export const CLUB_FIXTURES_TIPS = {
+  page:
+    "Your club’s matches this season, grouped by GPSL month — including national-team World Cup fixtures when scheduled. Propose times need availability on Owner Details; Enter result opens Match Day.",
+  meta:
+    "Owner tags sit under each club. Matches vs a vacant club are simulations. Agreed kick-offs can be added to your calendar. Played games show attendance, contributors, weather, and pitch.",
+  monthEnd:
+    "Month-end and unplayed rules: deadlines, catch-up windows, and scheduling fines.",
+};
+
+export const CLUB_FRIENDLIES_TIPS = {
+  page:
+    "Discord-confirmed friendlies for your club, grouped by GPSL month. Standalone only — no league/cup records from these games.",
+  gate:
+    "First 10 paid friendlies each month earn ₿5,000 gate each. Season cap: ₿500,000 total from friendlies.",
+  summary:
+    "Quick counts for this season: paid friendlies, gate earned, and remaining room under the season cap.",
+};
+
+export const CLUB_CHALLENGES_TIPS = {
+  page:
+    "Your club’s progress on Start and Mid season challenge targets, plus prizes already awarded. League-wide board and big prize packs are on Season Challenges.",
+  progress:
+    "Each card is a seasonal target (stat ≥ value in the GPSL month range) with cash when the result is confirmed.",
+  awards:
+    "Challenge prizes already posted to your club this season.",
+};

@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { formatMoney } from "./competition.js";
 
 const TYPE_LABELS = {
@@ -107,6 +108,7 @@ async function loadStatement() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
   const {
     data: { user },

@@ -1,7 +1,8 @@
 import { supabase, initGlobal } from "./global.js";
+import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
-import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20260806-friendlies";
+import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20260915-myclub-tips";
 
 let myClub = { short: null };
 
@@ -177,6 +178,7 @@ async function loadPage() {
 }
 
 async function main() {
+  initGpslInfoTips();
   await initGlobal();
   renderClubFriendliesRules();
   await loadClubsMap(supabase);

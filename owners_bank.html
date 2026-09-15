@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="owners_bank.css?v=20260822-bs">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260915-myclub-tips">
 </head>
 <body class="ob-page">
   <div id="nav"></div>
@@ -36,13 +37,13 @@
     </div>
     <div class="ob-hero-text">
       <p class="ob-welcome" id="obWelcome">Personal Account</p>
-      <h1 id="obTitle">GPSL Building Society</h1>
-      <p class="ob-tagline">
+      <h1 id="obTitle" class="gpsl-has-tip" data-gpsl-tip="Your private GPSL Building Society balance — separate from club transfer funds. Bookies, Owners Shop, and GPFL cash prizes move here." tabindex="0">GPSL Building Society</h1>
+      <p class="ob-tagline gpsl-has-tip" data-gpsl-tip="Jump to Bookies, Owners Shop, GPFL, or Club Finances. Only Club Finances uses club transfer money." tabindex="0">
         Your private GPSL balance — separate from club transfer funds.
         Bookies, Owners Shop, and GPFL cash prizes move through this account.
       </p>
       <div class="ob-balance-card">
-        <span class="ob-balance-label">Available balance</span>
+        <span class="ob-balance-label gpsl-has-tip" data-gpsl-tip="Spendable personal balance. Club Finances cash is separate and never mixes with this account." tabindex="0">Available balance</span>
         <span class="ob-balance-value" id="obBalance">—</span>
       </div>
       <p class="ob-links">
@@ -61,7 +62,7 @@
       <div class="ob-panel-head">
         <div>
           <p class="ob-kicker">Account statement</p>
-          <h2>Recent activity</h2>
+          <h2 class="gpsl-has-tip" data-gpsl-tip="Recent personal movements: Bookies stakes/wins, Owners Shop purchases, GPFL prizes, and admin adjustments." tabindex="0">Recent activity</h2>
         </div>
         <button type="button" class="ob-refresh" id="obRefresh">Refresh</button>
       </div>
@@ -85,6 +86,6 @@
   </main>
 
   <script type="module" src="global.js?v=20260706-v18"></script>
-  <script type="module" src="owners_bank.js?v=20260822-bal"></script>
+  <script type="module" src="owners_bank.js?v=20260915-myclub-tips"></script>
 </body>
 </html>

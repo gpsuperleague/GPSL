@@ -7,6 +7,7 @@
   <title>My Club Fixtures — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260915-myclub-tips">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1200px; margin:20px auto 40px; }
@@ -133,16 +134,16 @@
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1 id="clubFixturesTitle">My Club Fixtures</h1>
-    <p class="meta" style="margin-top:-4px;margin-bottom:10px;">
+    <h1 id="clubFixturesTitle" class="gpsl-has-tip" data-gpsl-tip="Your club’s matches this season, grouped by GPSL month — including national-team World Cup fixtures when scheduled. Propose times need availability on Owner Details; Enter result opens Match Day." tabindex="0">My Club Fixtures</h1>
+    <p class="meta gpsl-has-tip" style="margin-top:-4px;margin-bottom:10px;" data-gpsl-tip="Month-end and unplayed rules: deadlines, catch-up windows, and scheduling fines." tabindex="0">
       <a href="docs/gpsl-month-end-unplayed.html" style="color:#ff9900;">Month end &amp; unplayed fixtures</a>
       — deadlines, catch-up, and scheduling fines
     </p>
-    <p class="meta" id="clubFixturesMeta">Your season matches — grouped by month. Owner tags show under each club. Matches vs a vacant club are highlighted as simulations. Agreed kick-offs can be added to your calendar.</p>
+    <p class="meta gpsl-has-tip" id="clubFixturesMeta" data-gpsl-tip="Owner tags sit under each club. Matches vs a vacant club are simulations. Agreed kick-offs can be added to your calendar. Played games show attendance, contributors, weather, and pitch." tabindex="0">Your season matches — grouped by month. Owner tags show under each club. Matches vs a vacant club are highlighted as simulations. Agreed kick-offs can be added to your calendar.</p>
     <div id="matchSimBannerHost"></div>
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20260914-multi-breach"></script>
+  <script type="module" src="club_fixtures.js?v=20260915-myclub-tips"></script>
 </body>
 </html>

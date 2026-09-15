@@ -7,6 +7,7 @@
   <title>Challenges — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260915-myclub-tips">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
@@ -54,7 +55,7 @@
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1>Challenges</h1>
+    <h1 class="gpsl-has-tip" data-gpsl-tip="Your club’s progress on Start and Mid season challenge targets, plus prizes already awarded. League-wide board and big prize packs are on Season Challenges." tabindex="0">Challenges</h1>
     <p class="meta">
       Track your club’s progress against season targets and see prizes you’ve already earned.
       League-wide targets and big prizes are on
@@ -62,7 +63,7 @@
     </p>
 
     <div class="panel">
-      <h2>Your progress</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Each card is a seasonal target (stat ≥ value in the GPSL month range) with cash when the result is confirmed." tabindex="0">Your progress</h2>
       <h3>Start of season</h3>
       <div id="progressStart" class="challenge-grid">
         <p class="phase-empty">Loading…</p>
@@ -74,10 +75,10 @@
     </div>
 
     <div class="panel">
-      <h2>Awards this season</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Challenge prizes already posted to your club this season." tabindex="0">Awards this season</h2>
       <ul id="challengeAwardsList" class="awards-list"></ul>
     </div>
   </div>
-  <script type="module" src="club_challenges.js?v=20260811-chal-labels"></script>
+  <script type="module" src="club_challenges.js?v=20260915-myclub-tips"></script>
 </body>
 </html>
