@@ -691,6 +691,30 @@
         <div class="multi-filter-options"></div>
       </div>
     </div>
+    <div class="multi-filter" data-col="Stronger_Foot">
+      <div class="multi-filter-label">Stronger foot</div>
+      <div class="multi-filter-control" tabindex="0">All</div>
+      <div class="multi-filter-panel">
+        <input type="search" class="multi-filter-search" placeholder="Search…" autocomplete="off">
+        <div class="multi-filter-options"></div>
+      </div>
+    </div>
+    <div class="multi-filter" data-col="Weak_Foot_Usage">
+      <div class="multi-filter-label">Weak foot use</div>
+      <div class="multi-filter-control" tabindex="0">All</div>
+      <div class="multi-filter-panel">
+        <input type="search" class="multi-filter-search" placeholder="Search…" autocomplete="off">
+        <div class="multi-filter-options"></div>
+      </div>
+    </div>
+    <div class="multi-filter" data-col="Weak_Foot_Accuracy">
+      <div class="multi-filter-label">Weak foot acc</div>
+      <div class="multi-filter-control" tabindex="0">All</div>
+      <div class="multi-filter-panel">
+        <input type="search" class="multi-filter-search" placeholder="Search…" autocomplete="off">
+        <div class="multi-filter-options"></div>
+      </div>
+    </div>
     <div class="range-filter" data-col="Age">
       <div class="range-filter-label gpsl-has-tip" data-gpsl-tip="Filter by player age. Use − / + steppers for ±1 when shown." tabindex="0">Age <span class="range-filter-range" id="draftRange-Age">(—)</span></div>
       <div class="range-filter-sliders" id="draftSliders-Age">
@@ -705,6 +729,14 @@
         <div class="range-filter-track"></div>
         <input type="range" class="range-filter-min" id="draftRange-Rating-min" min="0" max="1" value="0" step="1" aria-label="Rating minimum" disabled>
         <input type="range" class="range-filter-max" id="draftRange-Rating-max" min="0" max="1" value="1" step="1" aria-label="Rating maximum" disabled>
+      </div>
+    </div>
+    <div class="range-filter" data-col="Height">
+      <div class="range-filter-label gpsl-has-tip" data-gpsl-tip="Filter by height in cm." tabindex="0">Height <span class="range-filter-range" id="draftRange-Height">(—)</span></div>
+      <div class="range-filter-sliders" id="draftSliders-Height">
+        <div class="range-filter-track"></div>
+        <input type="range" class="range-filter-min" id="draftRange-Height-min" min="0" max="1" value="0" step="1" aria-label="Height minimum" disabled>
+        <input type="range" class="range-filter-max" id="draftRange-Height-max" min="0" max="1" value="1" step="1" aria-label="Height maximum" disabled>
       </div>
     </div>
     <div class="range-filter" data-col="current_bid">
@@ -1704,7 +1736,7 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
       ] = await Promise.all([
         supabase
           .from("Players")
-          .select("Konami_ID, Name, Position, Rating, market_value, Nation, Age, Playstyle, contract_wage")
+          .select("Konami_ID, Name, Position, Rating, market_value, Nation, Age, Playstyle, contract_wage, Height, Stronger_Foot, Weak_Foot_Usage, Weak_Foot_Accuracy")
           .in("Konami_ID", playerIds),
         fetchDraftBidsGroupedForPlayers(playerIdKeys, draftAuctionStartTimeUK),
         loadClubsMap(),

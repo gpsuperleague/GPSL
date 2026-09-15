@@ -12,8 +12,21 @@ const POSITION_ORDER = [
   "AMF", "LWF", "SS", "RWF", "CF",
 ];
 
-export const DRAFT_MULTI_COLS = ["Nation", "Position", "Playstyle"];
-export const DRAFT_RANGE_COLS = ["Age", "Rating", "current_bid", "contract_wage"];
+export const DRAFT_MULTI_COLS = [
+  "Nation",
+  "Position",
+  "Playstyle",
+  "Stronger_Foot",
+  "Weak_Foot_Usage",
+  "Weak_Foot_Accuracy",
+];
+export const DRAFT_RANGE_COLS = [
+  "Age",
+  "Rating",
+  "Height",
+  "current_bid",
+  "contract_wage",
+];
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -58,6 +71,9 @@ export function createDraftAdvancedFilterController(opts = {}) {
     Nation: [],
     Position: [],
     Playstyle: [],
+    Stronger_Foot: [],
+    Weak_Foot_Usage: [],
+    Weak_Foot_Accuracy: [],
   };
 
   /** @type {Record<string, { value: string, label: string }[]>} */
@@ -65,12 +81,16 @@ export function createDraftAdvancedFilterController(opts = {}) {
     Nation: [],
     Position: [],
     Playstyle: [],
+    Stronger_Foot: [],
+    Weak_Foot_Usage: [],
+    Weak_Foot_Accuracy: [],
   };
 
   /** @type {Record<string, { min: number, max: number } | null>} */
   const rangeBounds = {
     Age: null,
     Rating: null,
+    Height: null,
     current_bid: null,
     contract_wage: null,
   };
@@ -79,6 +99,7 @@ export function createDraftAdvancedFilterController(opts = {}) {
   const rangeActive = {
     Age: { min: 0, max: 0 },
     Rating: { min: 0, max: 0 },
+    Height: { min: 0, max: 0 },
     current_bid: { min: 0, max: 0 },
     contract_wage: { min: 0, max: 0 },
   };
@@ -329,7 +350,7 @@ export function createDraftAdvancedFilterController(opts = {}) {
 
     installRangeSteppers({
       root: root() || document,
-      cols: ["Age", "Rating", "current_bid"],
+      cols: ["Age", "Rating", "Height", "current_bid"],
     });
   }
 
@@ -341,8 +362,12 @@ export function createDraftAdvancedFilterController(opts = {}) {
     const nations = [];
     const positions = [];
     const playstyles = [];
+    const strongerFeet = [];
+    const weakUsage = [];
+    const weakAcc = [];
     const ages = [];
     const ratings = [];
+    const heights = [];
     const bids = [];
     const wages = [];
 
@@ -351,10 +376,17 @@ export function createDraftAdvancedFilterController(opts = {}) {
       if (player.Nation) nations.push(String(player.Nation));
       if (player.Position) positions.push(String(player.Position));
       if (player.Playstyle) playstyles.push(String(player.Playstyle));
+      if (player.Stronger_Foot) strongerFeet.push(String(player.Stronger_Foot));
+      if (player.Weak_Foot_Usage) weakUsage.push(String(player.Weak_Foot_Usage));
+      if (player.Weak_Foot_Accuracy) {
+        weakAcc.push(String(player.Weak_Foot_Accuracy));
+      }
       const age = Number(player.Age);
       if (Number.isFinite(age)) ages.push(age);
       const rating = Number(player.Rating);
       if (Number.isFinite(rating)) ratings.push(rating);
+      const height = Number(player.Height);
+      if (Number.isFinite(height)) heights.push(height);
       const bid = Number(row.highestAmount);
       bids.push(Number.isFinite(bid) && bid > 0 ? bid : 0);
       const wage = effectiveDraftWage(player, wageSettings);
@@ -373,6 +405,18 @@ export function createDraftAdvancedFilterController(opts = {}) {
       value: v,
       label: v,
     }));
+    multiOptions.Stronger_Foot = sortMultiOptions(
+      "Stronger_Foot",
+      strongerFeet
+    ).map((v) => ({ value: v, label: v }));
+    multiOptions.Weak_Foot_Usage = sortMultiOptions(
+      "Weak_Foot_Usage",
+      weakUsage
+    ).map((v) => ({ value: v, label: v }));
+    multiOptions.Weak_Foot_Accuracy = sortMultiOptions(
+      "Weak_Foot_Accuracy",
+      weakAcc
+    ).map((v) => ({ value: v, label: v }));
 
     for (const col of DRAFT_MULTI_COLS) {
       const allowed = new Set(multiOptions[col].map((o) => o.value));
@@ -381,6 +425,7 @@ export function createDraftAdvancedFilterController(opts = {}) {
 
     setBound("Age", ages, 15, 45);
     setBound("Rating", ratings, 40, 99);
+    setBound("Height", heights, 150, 210);
     setBound("current_bid", bids, 0, 1_000_000);
     setBound("contract_wage", wages, 0, 1_000_000);
 
@@ -407,6 +452,14 @@ export function createDraftAdvancedFilterController(opts = {}) {
       const rating = Number(player.Rating);
       if (!Number.isFinite(rating)) return false;
       if (rating < rangeActive.Rating.min || rating > rangeActive.Rating.max) {
+        return false;
+      }
+    }
+
+    if (isRangeNarrowed("Height")) {
+      const height = Number(player.Height);
+      if (!Number.isFinite(height)) return false;
+      if (height < rangeActive.Height.min || height > rangeActive.Height.max) {
         return false;
       }
     }
@@ -449,10 +502,14 @@ export function createDraftAdvancedFilterController(opts = {}) {
         Nation: [...multiSelected.Nation],
         Position: [...multiSelected.Position],
         Playstyle: [...multiSelected.Playstyle],
+        Stronger_Foot: [...multiSelected.Stronger_Foot],
+        Weak_Foot_Usage: [...multiSelected.Weak_Foot_Usage],
+        Weak_Foot_Accuracy: [...multiSelected.Weak_Foot_Accuracy],
       },
       ranges: {
         Age: { ...rangeActive.Age },
         Rating: { ...rangeActive.Rating },
+        Height: { ...rangeActive.Height },
         current_bid: { ...rangeActive.current_bid },
         contract_wage: { ...rangeActive.contract_wage },
       },

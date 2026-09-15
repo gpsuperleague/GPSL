@@ -43,46 +43,23 @@ Install CLI first if needed: https://supabase.com/docs/guides/cli
 
 **Admin → Season Break → Data tools → GPDB PESDB sync**
 
-1. **Detect pages** — should report ~19k **Authentic Standard** players / ~780 pages
-2. Set range (test **1–2** first)
-3. **Start scrape → staging**
-4. **Preview** → **Apply**
+1. **Detect pages** — expect ~30k Authentic / ~1,255 pages  
+2. Mini-test: **Start 1** / **End 2** → uncheck Resume → **Start scrape → staging** → **Preview**  
+3. Full run when happy → scrape all pages → **Preview** → **Apply**
 
-Full scrape can take 30–60+ minutes.
+Full scrape can take hours (rate limits / cooldowns).
 
-PESDB (Sep 2026 redesign) notes:
+PESDB notes:
 
-- List URL is now Authentic + `availability=standard` (not Dream Team, not unavailable).
-- Playstyle picking is unchanged: one style — Attacking if real, else Defensive.
-- Player card images (`player_links.js` / `b{id}.png`) are untouched.
-- Detect used to fall back to **100** when the old “(N players found)” string disappeared; redeploy `gpdb-pesdb-scrape` after pulling this update.
-- Mini-test: Detect → pages **1–2** → Start scrape → check staging.
+- List: `https://pesdb.net/efootball/authentic/players/` (not Dream Team)
+- One playstyle per player (Att if real, else Def) — unchanged
+- Card images untouched
+- Physical attrs (height / stronger foot / weak foot) need SQL  
+  `supabase/sql/patches/gpdb_pesdb_physical_attrs_20260915.sql` + redeployed scrape
 
----
-
-## Fallback: CSV without edge function
-
-If you skip the edge function:
-
-```bash
-pip install selenium webdriver-manager beautifulsoup4 lxml
-python scripts/pesdb_scrape.py --output pesdb_full.csv
-```
-
-> Local `scripts/pesdb_scrape.py` still targets the pre-redesign HTML until updated — prefer the edge function after redeploy.
 ### Admin chunked scrape (2 pages at a time)
 
-**Admin → Season Break → Data tools → GPDB PESDB sync**
-
-1. **Detect pages** → sets end page (~783 Authentic Standard)
-2. Test **pages 1–2** → **Start scrape → staging**
-3. Scraper grabs Authentic Standard list + max overall + one playstyle per player
-4. After **2 pages**, **20s cooldown**, then next batch automatically
-5. **Resume from last batch** continues where you left off (progress in browser localStorage)
-6. When complete → **Preview** → **Apply**
-
-Redeploy edge function after updates:
-
+Same page as above. After each 2-page batch, cooldown then continue; **Resume** uses localStorage.
 ```powershell
 supabase functions deploy gpdb-pesdb-scrape --no-verify-jwt
 ```

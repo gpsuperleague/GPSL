@@ -69,14 +69,24 @@ const POSITION_ORDER = [
   "AMF", "LWF", "SS", "RWF", "CF",
 ];
 
-const MULTI_FILTER_COLS = ["Nation", "Position", "Playstyle"];
-const RANGE_FILTER_COLS = ["Age", "Rating", "listed_price", "contract_wage"];
+const MULTI_FILTER_COLS = [
+  "Nation",
+  "Position",
+  "Playstyle",
+  "Stronger_Foot",
+  "Weak_Foot_Usage",
+  "Weak_Foot_Accuracy",
+];
+const RANGE_FILTER_COLS = ["Age", "Rating", "Height", "listed_price", "contract_wage"];
 
 /** @type {Record<string, string[]>} */
 const MULTI_SELECTED = {
   Nation: [],
   Position: [],
   Playstyle: [],
+  Stronger_Foot: [],
+  Weak_Foot_Usage: [],
+  Weak_Foot_Accuracy: [],
 };
 
 /** @type {Record<string, { value: string, label: string }[]>} */
@@ -84,12 +94,16 @@ const MULTI_OPTIONS = {
   Nation: [],
   Position: [],
   Playstyle: [],
+  Stronger_Foot: [],
+  Weak_Foot_Usage: [],
+  Weak_Foot_Accuracy: [],
 };
 
 /** @type {Record<string, { min: number, max: number } | null>} */
 const RANGE_BOUNDS = {
   Age: null,
   Rating: null,
+  Height: null,
   listed_price: null,
   contract_wage: null,
 };
@@ -98,6 +112,7 @@ const RANGE_BOUNDS = {
 const RANGE_ACTIVE = {
   Age: { min: 0, max: 0 },
   Rating: { min: 0, max: 0 },
+  Height: { min: 0, max: 0 },
   listed_price: { min: 0, max: 0 },
   contract_wage: { min: 0, max: 0 },
 };
@@ -537,10 +552,14 @@ function getListingFilterState() {
       Nation: [...MULTI_SELECTED.Nation],
       Position: [...MULTI_SELECTED.Position],
       Playstyle: [...MULTI_SELECTED.Playstyle],
+      Stronger_Foot: [...MULTI_SELECTED.Stronger_Foot],
+      Weak_Foot_Usage: [...MULTI_SELECTED.Weak_Foot_Usage],
+      Weak_Foot_Accuracy: [...MULTI_SELECTED.Weak_Foot_Accuracy],
     },
     ranges: {
       Age: { ...RANGE_ACTIVE.Age },
       Rating: { ...RANGE_ACTIVE.Rating },
+      Height: { ...RANGE_ACTIVE.Height },
       listed_price: { ...RANGE_ACTIVE.listed_price },
       contract_wage: { ...RANGE_ACTIVE.contract_wage },
     },
@@ -912,7 +931,7 @@ function wireAdvancedListingFilters() {
 
   installRangeSteppers({
     root: document.getElementById("listingsAdvancedFilters") || document,
-    cols: ["Age", "Rating", "listed_price"],
+    cols: ["Age", "Rating", "Height", "listed_price"],
   });
 }
 
@@ -1098,8 +1117,12 @@ function rebuildAdvancedFiltersFromData(listings, playerMap) {
   const nations = [];
   const positions = [];
   const playstyles = [];
+  const strongerFeet = [];
+  const weakUsage = [];
+  const weakAcc = [];
   const ages = [];
   const ratings = [];
+  const heights = [];
   const prices = [];
   const wages = [];
 
@@ -1108,10 +1131,17 @@ function rebuildAdvancedFiltersFromData(listings, playerMap) {
     if (player?.Nation) nations.push(String(player.Nation));
     if (player?.Position) positions.push(String(player.Position));
     if (player?.Playstyle) playstyles.push(String(player.Playstyle));
+    if (player?.Stronger_Foot) strongerFeet.push(String(player.Stronger_Foot));
+    if (player?.Weak_Foot_Usage) weakUsage.push(String(player.Weak_Foot_Usage));
+    if (player?.Weak_Foot_Accuracy) {
+      weakAcc.push(String(player.Weak_Foot_Accuracy));
+    }
     const age = Number(player?.Age);
     if (Number.isFinite(age)) ages.push(age);
     const rating = Number(player?.Rating);
     if (Number.isFinite(rating)) ratings.push(rating);
+    const height = Number(player?.Height);
+    if (Number.isFinite(height)) heights.push(height);
     const price = Number(listing.market_value);
     if (Number.isFinite(price) && price >= 0) prices.push(price);
     const wage = Number(player?.contract_wage);
@@ -1130,6 +1160,18 @@ function rebuildAdvancedFiltersFromData(listings, playerMap) {
     value: v,
     label: v,
   }));
+  MULTI_OPTIONS.Stronger_Foot = sortMultiOptions(
+    "Stronger_Foot",
+    strongerFeet
+  ).map((v) => ({ value: v, label: v }));
+  MULTI_OPTIONS.Weak_Foot_Usage = sortMultiOptions(
+    "Weak_Foot_Usage",
+    weakUsage
+  ).map((v) => ({ value: v, label: v }));
+  MULTI_OPTIONS.Weak_Foot_Accuracy = sortMultiOptions(
+    "Weak_Foot_Accuracy",
+    weakAcc
+  ).map((v) => ({ value: v, label: v }));
 
   for (const col of MULTI_FILTER_COLS) {
     const allowed = new Set(MULTI_OPTIONS[col].map((o) => o.value));
@@ -1165,6 +1207,7 @@ function rebuildAdvancedFiltersFromData(listings, playerMap) {
 
   setBound("Age", ages, 15, 45);
   setBound("Rating", ratings, 40, 99);
+  setBound("Height", heights, 150, 210);
   setBound("listed_price", prices, 0, 1_000_000);
   setBound("contract_wage", wages, 0, 1_000_000);
 
@@ -1193,6 +1236,14 @@ function listingPassesAdvancedFilters(listing, player) {
     const rating = Number(player?.Rating);
     if (!Number.isFinite(rating)) return false;
     if (rating < RANGE_ACTIVE.Rating.min || rating > RANGE_ACTIVE.Rating.max) {
+      return false;
+    }
+  }
+
+  if (isRangeNarrowed("Height")) {
+    const height = Number(player?.Height);
+    if (!Number.isFinite(height)) return false;
+    if (height < RANGE_ACTIVE.Height.min || height > RANGE_ACTIVE.Height.max) {
       return false;
     }
   }

@@ -416,6 +416,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     player.position,
     player.nation,
     player.rating != null ? `Rating ${player.rating}` : null,
+    player.height_cm != null ? `${player.height_cm} cm` : null,
+    player.stronger_foot ? `${player.stronger_foot} foot` : null,
+    player.weak_foot_usage
+      ? `WF use ${player.weak_foot_usage}`
+      : null,
+    player.weak_foot_accuracy
+      ? `WF acc ${player.weak_foot_accuracy}`
+      : null,
     player.current_club
       ? `Current club: ${fullClubName(player.current_club) || player.current_club}`
       : "Free agent",

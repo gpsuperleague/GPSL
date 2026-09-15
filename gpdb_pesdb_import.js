@@ -49,6 +49,11 @@ const HEADER_ALIASES = {
   potential: "max_level_rating",
   playing_style: "playing_style",
   playstyle: "playing_style",
+  height: "height_cm",
+  height_cm: "height_cm",
+  stronger_foot: "stronger_foot",
+  weak_foot_usage: "weak_foot_usage",
+  weak_foot_accuracy: "weak_foot_accuracy",
 };
 
 export async function parsePesdbCsvToStagingRows(csvText) {
@@ -99,6 +104,20 @@ export async function parsePesdbCsvToStagingRows(csvText) {
         Number(cols[colIndex.rating]) ||
         60,
       playing_style: cols[colIndex.playing_style] || "None",
+      height_cm:
+        colIndex.height_cm != null && cols[colIndex.height_cm]
+          ? Number(cols[colIndex.height_cm])
+          : null,
+      stronger_foot:
+        colIndex.stronger_foot != null ? cols[colIndex.stronger_foot] || null : null,
+      weak_foot_usage:
+        colIndex.weak_foot_usage != null
+          ? cols[colIndex.weak_foot_usage] || null
+          : null,
+      weak_foot_accuracy:
+        colIndex.weak_foot_accuracy != null
+          ? cols[colIndex.weak_foot_accuracy] || null
+          : null,
     };
 
     const econ = computePlayerEconomicsFromScrape(scrape);
@@ -114,6 +133,10 @@ export async function parsePesdbCsvToStagingRows(csvText) {
       calc_potential: econ.Calc_Potential,
       market_value: econ.market_value,
       maximum_reserve_price: econ.Maximum_Reserve_Price,
+      height_cm: Number.isFinite(scrape.height_cm) ? scrape.height_cm : null,
+      stronger_foot: scrape.stronger_foot,
+      weak_foot_usage: scrape.weak_foot_usage,
+      weak_foot_accuracy: scrape.weak_foot_accuracy,
     });
   }
 
@@ -168,6 +191,16 @@ export async function enrichRowsWithEconomics(rawRows) {
       calc_potential: econ.Calc_Potential,
       market_value: econ.market_value,
       maximum_reserve_price: econ.Maximum_Reserve_Price,
+      height_cm:
+        raw.height_cm != null && Number.isFinite(Number(raw.height_cm))
+          ? Number(raw.height_cm)
+          : raw.Height != null && Number.isFinite(Number(raw.Height))
+            ? Number(raw.Height)
+            : null,
+      stronger_foot: raw.stronger_foot ?? raw.Stronger_Foot ?? null,
+      weak_foot_usage: raw.weak_foot_usage ?? raw.Weak_Foot_Usage ?? null,
+      weak_foot_accuracy:
+        raw.weak_foot_accuracy ?? raw.Weak_Foot_Accuracy ?? null,
     };
   });
 }

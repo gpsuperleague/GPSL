@@ -168,7 +168,7 @@ const PESDB_AUTH_LIST = "https://pesdb.net/efootball/authentic/players/";
 /** Force HTML table layout (card view has no structured columns). */
 const PESDB_TABLE_COOKIE =
   'pesdb_efootball_search=%7B%22view%22%3A%22table%22%7D';
-/** Current PESDB Authentic Standard list page size (~18,775 ÷ 783 ≈ 24). */
+/** Authentic list page size (~30,100 ÷ 1,255 ≈ 24). */
 const PESDB_PLAYERS_PER_PAGE = 24;
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -179,10 +179,9 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 }
 
 function pesdbListUrl(page: number): string {
-  // Standard Authentic only (excludes unavailable / retired).
-  const qs = new URLSearchParams({ availability: "standard" });
-  if (page > 1) qs.set("page", String(page));
-  return `${PESDB_AUTH_LIST}?${qs.toString()}`;
+  // Exact Authentic catalog: https://pesdb.net/efootball/authentic/players/
+  if (page <= 1) return PESDB_AUTH_LIST;
+  return `${PESDB_AUTH_LIST}?page=${page}`;
 }
 
 /** Prefer slug path from list row; never use bare ?id= (Dream Team redirect). */
@@ -430,6 +429,38 @@ function parsePesdbMaxLevelPage(html: string) {
     extractLabeledTd(html, "Nationality") ||
     extractLabeledTd(html, "Nation");
 
+  const heightRaw =
+    extractLabeledDd(html, "Height") || extractLabeledTd(html, "Height");
+  const heightCm = (() => {
+    if (!heightRaw) return null;
+    const n = Number(String(heightRaw).replace(/[^\d]/g, ""));
+    return Number.isFinite(n) && n >= 140 && n <= 220 ? n : null;
+  })();
+
+  const strongerRaw =
+    extractLabeledDd(html, "Stronger Foot") ||
+    extractLabeledTd(html, "Stronger Foot");
+  let stronger_foot: string | null = null;
+  if (strongerRaw) {
+    const s = strongerRaw.toLowerCase();
+    if (/\bleft\b/.test(s)) stronger_foot = "Left";
+    else if (/\bright\b/.test(s)) stronger_foot = "Right";
+  }
+
+  const weakUsageRaw =
+    extractLabeledDd(html, "Weak Foot Usage") ||
+    extractLabeledTd(html, "Weak Foot Usage");
+  const weak_foot_usage = weakUsageRaw
+    ? decodeHtml(weakUsageRaw).replace(/\s+/g, " ").trim()
+    : null;
+
+  const weakAccRaw =
+    extractLabeledDd(html, "Weak Foot Accuracy") ||
+    extractLabeledTd(html, "Weak Foot Accuracy");
+  const weak_foot_accuracy = weakAccRaw
+    ? decodeHtml(weakAccRaw).replace(/\s+/g, " ").trim()
+    : null;
+
   return {
     max_level_rating: Number.isFinite(max_level_rating) ? max_level_rating : null,
     playing_style,
@@ -438,6 +469,10 @@ function parsePesdbMaxLevelPage(html: string) {
     age: Number.isFinite(ageNum) ? ageNum : null,
     position: position || null,
     nationality: nationality || null,
+    height_cm: heightCm,
+    stronger_foot,
+    weak_foot_usage: weak_foot_usage || null,
+    weak_foot_accuracy: weak_foot_accuracy || null,
   };
 }
 
@@ -568,19 +603,27 @@ Deno.serve(async (req) => {
     const pace: ScrapePace = body?.pace === "chunked" ? "chunked" : "slow";
 
     if (action === "detect") {
-      const html = await fetchPesdbHtml(pesdbListUrl(1), pace);
+      const listUrl = pesdbListUrl(1);
+      const html = await fetchPesdbHtml(listUrl, pace);
       const { totalPlayers, maxPage } = detectPesdbTotals(html);
-      const estimatedPages = totalPlayers
+      // Prefer PESDB's own "Page 1 of 1,255" over ceil(players/24).
+      const fromCount = totalPlayers
         ? Math.max(1, Math.ceil(totalPlayers / PESDB_PLAYERS_PER_PAGE))
-        : maxPage ?? 100;
+        : null;
+      const estimatedPages = maxPage ?? fromCount ?? 100;
+      const usedFallback = maxPage == null && fromCount == null;
       return jsonResponse({
         ok: true,
         total_players: totalPlayers,
         max_page_link: maxPage,
         estimated_pages: estimatedPages,
         source: "authentic",
-        list_url: pesdbListUrl(1),
+        list_url: listUrl,
         players_per_page: PESDB_PLAYERS_PER_PAGE,
+        html_bytes: html.length,
+        warning: usedFallback
+          ? "Could not read Authentic page count from HTML — still on fallback 100. Redeploy gpdb-pesdb-scrape if this persists."
+          : null,
       });
     }
 
@@ -631,6 +674,10 @@ Deno.serve(async (req) => {
             age: detail.age ?? base.age,
             position: detail.position ?? base.position,
             nationality: detail.nationality ?? base.nationality,
+            height_cm: detail.height_cm ?? null,
+            stronger_foot: detail.stronger_foot ?? null,
+            weak_foot_usage: detail.weak_foot_usage ?? null,
+            weak_foot_accuracy: detail.weak_foot_accuracy ?? null,
             scrape_error: blocked
               ? "PESDB HTML missing playstyle block (blocked/throttled or wrong page)"
               : null,

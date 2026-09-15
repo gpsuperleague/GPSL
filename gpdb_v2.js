@@ -186,6 +186,10 @@ document.addEventListener("DOMContentLoaded", () => {
     "Potential",
     "Calc_Potential",
     "Playstyle",
+    "Height",
+    "Stronger_Foot",
+    "Weak_Foot_Usage",
+    "Weak_Foot_Accuracy",
     "Maximum_Reserve_Price",
     "market_value",
     "Contracted_Team",
@@ -252,12 +256,16 @@ document.addEventListener("DOMContentLoaded", () => {
     "Nation",
     "Position",
     "Playstyle",
+    "Stronger_Foot",
+    "Weak_Foot_Usage",
+    "Weak_Foot_Accuracy",
     "Contracted_Team",
   ];
 
   const RANGE_FILTER_COLUMNS = [
     "Rating",
     "Age",
+    "Height",
     "Season_Signed",
     "market_value",
     "contract_seasons_remaining",
@@ -526,8 +534,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const FILTER_LAYOUT_ROWS = [
     ["Position", "Nation", "Playstyle", "Name", "Contracted_Team"],
-    ["Age", "Rating", "market_value"],
-    ["Season_Signed", "contract_seasons_remaining", "contract_wage"],
+    ["Age", "Rating", "Height", "market_value"],
+    [
+      "Stronger_Foot",
+      "Weak_Foot_Usage",
+      "Weak_Foot_Accuracy",
+      "Season_Signed",
+      "contract_seasons_remaining",
+      "contract_wage",
+    ],
   ];
 
   const POSITION_ORDER = [
@@ -1367,6 +1382,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
     if (col === "Potential") return "Pot.";
     if (col === "Contracted_Team") return "Contracted Team";
+    if (col === "Height") return "Height (cm)";
+    if (col === "Stronger_Foot") return "Stronger foot";
+    if (col === "Weak_Foot_Usage") return "Weak foot use";
+    if (col === "Weak_Foot_Accuracy") return "Weak foot acc";
     if (col === "intl_caps") return "Intl Apps";
     if (col === "intl_goals") return "Intl G";
     return col.replace(/_/g, " ");
@@ -1424,6 +1443,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (
       col === "Age" ||
       col === "Rating" ||
+      col === "Height" ||
       col === "contract_seasons_remaining" ||
       col === "contract_wage"
     ) {
@@ -1448,6 +1468,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (
       col === "Age" ||
       col === "Rating" ||
+      col === "Height" ||
       col === "market_value" ||
       col === "contract_seasons_remaining" ||
       col === "contract_wage"
@@ -3481,6 +3502,7 @@ document.addEventListener("DOMContentLoaded", () => {
       cols: [
         "Age",
         "Rating",
+        "Height",
         "market_value",
         "Season_Signed",
         "contract_seasons_remaining",
