@@ -87,10 +87,11 @@ export function getLeagueFinanceBalanceRules() {
       },
       {
         heading: "Stadium & zeros",
-        tip: "Stadium ₿0 usually means no infra posted yet. Wages / Subsidies / EOS ₿0 almost always means season-end posts have not run.",
+        tip: "Stadium ₿0 usually means no infra posted yet. Use Backfill vacant clubs for unowned league clubs. Wages / Subsidies / EOS ₿0 almost always means season-end posts have not run.",
         items: [
           "<b>Stadium ₿0</b> = no infra ledger yet (no expansion/purchase, and maintenance not posted until Close Finances).",
           "Large stadium figures are usually expansions / purchase charges for clubs that built.",
+          "<b>Vacant clubs:</b> use <b>Backfill vacant clubs</b> to post stadium purchase + doctor hire.",
           "<b>Wages / Subsidies / EOS ₿0</b> almost always means those season-end posts have not run yet.",
         ],
       },

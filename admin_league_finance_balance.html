@@ -188,10 +188,17 @@
             <label class="gpsl-has-tip" data-gpsl-tip="What you want a typical club to make from day-to-day ops this season (gates, prizes, TV, wages, stadium, tax…) — not transfer spending. Default ₿10m." tabindex="0">Healthy profit goal per club (₿)</label>
             <input type="text" id="finBalTarget" value="10,000,000" inputmode="numeric">
           </div>
-          <div style="display:flex;align-items:flex-end;gap:8px;">
+          <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
             <button type="button" id="finBalRunBtn" class="button gpsl-has-tip" data-gpsl-tip="Aggregates season ledger categories for every club in the season (owned or vacant)." tabindex="0">Run analysis</button>
+            <button type="button" id="finBalVacantBtn" class="button gpsl-has-tip" style="background:#446633;" data-gpsl-tip="For unowned SL/ChA/ChB clubs: post stadium purchase + starting-budget trail (keeps existing cash), and hire a club doctor if missing. Safe to re-run." tabindex="0">Backfill vacant clubs</button>
           </div>
         </div>
+        <p class="note" style="margin-top:8px;">
+          Vacant backfill SQL:
+          <code>supabase/sql/patches/vacant_league_club_costs_backfill_20260915.sql</code>
+          — then use the green button (or
+          <code>SELECT public.admin_backfill_vacant_league_club_costs();</code>).
+        </p>
         <div id="finBalStatus" class="status-line"></div>
 
         <div id="finBalSummary" hidden>
@@ -279,6 +286,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_league_finance_balance.js?v=20260915-fin-verdict"></script>
+  <script type="module" src="admin_league_finance_balance.js?v=20260915-vacant-backfill"></script>
 </body>
 </html>

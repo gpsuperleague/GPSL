@@ -3,7 +3,7 @@ import { initGpslInfoTips, tipDataAttrs } from "./gpsl_info_tips.js";
 import {
   FIN_BALANCE_TIPS,
   renderLeagueFinanceBalanceRules,
-} from "./admin_league_finance_balance_rules.js?v=20260915-fin-verdict";
+} from "./admin_league_finance_balance_rules.js?v=20260915-vacant-backfill";
 
 primeAdminPageChrome();
 
@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderLeagueFinanceBalanceRules();
   await loadSeasons();
   document.getElementById("finBalRunBtn").onclick = runAnalysis;
+  document.getElementById("finBalVacantBtn").onclick = backfillVacantClubs;
   document.getElementById("finBalTarget").addEventListener("blur", () => {
     const el = document.getElementById("finBalTarget");
     const n = parseMoney(el.value);
@@ -112,6 +113,53 @@ async function runAnalysis() {
   setStatus(
     "finBalStatus",
     `✅ ${data.season_label || "Season"} — ${data.club_count || 0} clubs analysed.`,
+    true
+  );
+}
+
+async function backfillVacantClubs() {
+  const seasonId = Number(document.getElementById("finBalSeason").value);
+  if (!seasonId) {
+    setStatus("finBalStatus", "Pick a season.", false);
+    return;
+  }
+
+  const ok = confirm(
+    "Backfill all unowned Super League / Championship clubs in this season?\n\n" +
+      "• Posts stadium purchase (if missing) with ₿650m starting-budget trail\n" +
+      "• Debits stadium from live cash (does not wipe gates already earned)\n" +
+      "• Hires a club doctor if missing (₿5m)\n\n" +
+      "Safe to re-run. Manager salary still posts at Close Finances."
+  );
+  if (!ok) return;
+
+  const btn = document.getElementById("finBalVacantBtn");
+  if (btn) btn.disabled = true;
+  setStatus("finBalStatus", "Backfilling vacant league clubs…");
+
+  const { data, error } = await supabase.rpc("admin_backfill_vacant_league_club_costs", {
+    p_season_id: seasonId,
+    p_hire_doctor: true,
+  });
+
+  if (btn) btn.disabled = false;
+
+  if (error) {
+    setStatus(
+      "finBalStatus",
+      "❌ " +
+        error.message +
+        " — deploy supabase/sql/patches/vacant_league_club_costs_backfill_20260915.sql",
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "finBalStatus",
+    `✅ Vacant backfill: ${data?.clubs_processed ?? 0} clubs · ` +
+      `${data?.stadium_posts ?? 0} stadium posts · ` +
+      `${data?.doctors_hired ?? 0} doctors hired. Re-run analysis to refresh.`,
     true
   );
 }
