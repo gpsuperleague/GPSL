@@ -80,40 +80,61 @@ function pickPlayingStyle(
 }
 
 function extractAttDefStyles(html: string): { att: string | null; def: string | null; legacy: string | null } {
-  // PESDB 2027:
-  //   <table class="playing_styles">
-  //     <tr><th>Playing Style</th></tr>
-  //     <tr><td><span …>Att:</span> Goal Poacher</td></tr>
-  //     <tr><td><span …>Def:</span> Basic</td></tr>
+  // Legacy: <table class="playing_styles"> Att:/Def:
+  // 2026 redesign: <div class="playing-style-row"> Attacking/Defensive Playing Style
   const styleTableHtml =
     html.match(/<table[^>]*class=["'][^"']*playing_styles[^"']*["'][^>]*>([\s\S]*?)<\/table>/i)?.[1] ||
     html.match(/<table[^>]*playing_styles[^>]*>([\s\S]*?)<\/table>/i)?.[1] ||
+    html.match(
+      /<div[^>]*class=["'][^"']*playing-style-row[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
+    )?.[1] ||
     "";
 
   const scopeHtml = styleTableHtml || html;
 
-  // Prefer tagged matches (span-wrapped Att:/Def:)
   let att =
     scopeHtml.match(
-      /<td[^>]*>\s*(?:<span[^>]*>\s*)?Att:\s*(?:<\/span>)?\s*([^<]+)\s*<\/td>/i
+      /Attacking Playing Style[\s\S]*?<strong[^>]*>\s*(?:<a[^>]*>)?\s*([^<]+)/i
     )?.[1] ||
-    scopeHtml.match(/Att:<\/span>\s*([^<\n]+)/i)?.[1] ||
+    scopeHtml.match(/"attackingPlayingStyle"\s*:\s*"([^"]+)"/i)?.[1] ||
     null;
   let def =
     scopeHtml.match(
-      /<td[^>]*>\s*(?:<span[^>]*>\s*)?Def:\s*(?:<\/span>)?\s*([^<]+)\s*<\/td>/i
+      /Defensive Playing Style[\s\S]*?<strong[^>]*>\s*(?:<a[^>]*>)?\s*([^<]+)/i
     )?.[1] ||
-    scopeHtml.match(/Def:<\/span>\s*([^<\n]+)/i)?.[1] ||
+    scopeHtml.match(/"defensivePlayingStyle"\s*:\s*"([^"]+)"/i)?.[1] ||
     null;
 
-  // Plain-text fallback after stripping tags (most reliable for span layouts)
+  if (!att) {
+    att =
+      scopeHtml.match(
+        /<td[^>]*>\s*(?:<span[^>]*>\s*)?Att:\s*(?:<\/span>)?\s*([^<]+)\s*<\/td>/i
+      )?.[1] ||
+      scopeHtml.match(/Att:<\/span>\s*([^<\n]+)/i)?.[1] ||
+      null;
+  }
+  if (!def) {
+    def =
+      scopeHtml.match(
+        /<td[^>]*>\s*(?:<span[^>]*>\s*)?Def:\s*(?:<\/span>)?\s*([^<]+)\s*<\/td>/i
+      )?.[1] ||
+      scopeHtml.match(/Def:<\/span>\s*([^<\n]+)/i)?.[1] ||
+      null;
+  }
+
   if (!att || !def) {
     const plain = stripTags(scopeHtml).replace(/\s+/g, " ");
     if (!att) {
-      att = plain.match(/\bAtt:\s*(.+?)(?=\s*Def:|$)/i)?.[1]?.trim() || null;
+      att =
+        plain.match(/Attacking Playing Style\s+(.+?)(?=\s*Defensive Playing Style|$)/i)?.[1]?.trim() ||
+        plain.match(/\bAtt:\s*(.+?)(?=\s*Def:|$)/i)?.[1]?.trim() ||
+        null;
     }
     if (!def) {
-      def = plain.match(/\bDef:\s*(.+?)(?=\s*Att:|$)/i)?.[1]?.trim() || null;
+      def =
+        plain.match(/Defensive Playing Style\s+(.+?)(?=\s*Attacking Playing Style|$)/i)?.[1]?.trim() ||
+        plain.match(/\bDef:\s*(.+?)(?=\s*Att:|$)/i)?.[1]?.trim() ||
+        null;
     }
   }
 
@@ -133,10 +154,22 @@ function extractAttDefStyles(html: string): { att: string | null; def: string | 
   };
 }
 
+function hasPlaystyleBlock(html: string): boolean {
+  return /playing_styles|playing-style-row|Attacking Playing Style|attackingPlayingStyle/i.test(
+    html
+  );
+}
+
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-const PESDB_BASE = "https://pesdb.net/efootball/";
+/** Authentic offline ratings — what GPSL GPDB sync should scrape. */
+const PESDB_AUTH_LIST = "https://pesdb.net/efootball/authentic/players/";
+/** Force HTML table layout (card view has no structured columns). */
+const PESDB_TABLE_COOKIE =
+  'pesdb_efootball_search=%7B%22view%22%3A%22table%22%7D';
+/** Current PESDB Authentic Standard list page size (~18,775 ÷ 783 ≈ 24). */
+const PESDB_PLAYERS_PER_PAGE = 24;
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -146,12 +179,35 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 }
 
 function pesdbListUrl(page: number): string {
-  if (page <= 1) return PESDB_BASE;
-  return `${PESDB_BASE}?page=${page}`;
+  // Standard Authentic only (excludes unavailable / retired).
+  const qs = new URLSearchParams({ availability: "standard" });
+  if (page > 1) qs.set("page", String(page));
+  return `${PESDB_AUTH_LIST}?${qs.toString()}`;
 }
 
-function pesdbPlayerMaxUrl(playerId: string): string {
-  return `${PESDB_BASE}?id=${encodeURIComponent(playerId)}&mode=max_level`;
+/** Prefer slug path from list row; never use bare ?id= (Dream Team redirect). */
+function pesdbPlayerDetailUrl(row: {
+  konami_id: string;
+  detail_path?: string | null;
+  player_name?: string;
+}): string {
+  const path = String(row.detail_path || "").trim();
+  if (path.startsWith("/efootball/")) {
+    return `https://pesdb.net${path}`;
+  }
+  if (/^https?:\/\//i.test(path)) return path;
+
+  const kid = String(row.konami_id || "").trim();
+  const name = String(row.player_name || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (kid && name) return `${PESDB_AUTH_LIST}${name}-${kid}`;
+  if (kid) return `${PESDB_AUTH_LIST}${kid}`;
+  return PESDB_AUTH_LIST;
 }
 
 function decodeHtml(text: string): string {
@@ -169,15 +225,32 @@ function stripTags(html: string): string {
   return decodeHtml(html.replace(/<[^>]+>/g, " "));
 }
 
+function parseCommaInt(raw: string | null | undefined): number | null {
+  if (raw == null) return null;
+  const n = Number(String(raw).replace(/,/g, "").trim());
+  return Number.isFinite(n) ? n : null;
+}
+
 function detectPesdbTotals(html: string) {
+  // New UI: "30,100 results" / "Page 1 of 1,255"
+  const results = html.match(/([\d,]+)\s+results/i);
+  const pageOf = html.match(/Page\s+\d+\s+of\s+([\d,]+)/i);
+  // Legacy: "(12345 players found)"
   const found = html.match(/\((\d+)\s+players found\)/i);
-  const totalPlayers = found ? Number(found[1]) : null;
+
+  const totalPlayers =
+    parseCommaInt(results?.[1]) ??
+    (found ? Number(found[1]) : null);
+
+  const maxPageFromStatus = parseCommaInt(pageOf?.[1]);
+
   const pageNums: number[] = [];
   for (const m of html.matchAll(/[?&]page=(\d+)/gi)) {
     const n = Number(m[1]);
     if (Number.isFinite(n)) pageNums.push(n);
   }
-  const maxPage = pageNums.length ? Math.max(...pageNums) : null;
+  const maxPageLink = pageNums.length ? Math.max(...pageNums) : null;
+  const maxPage = maxPageFromStatus ?? maxPageLink;
   return { totalPlayers, maxPage };
 }
 
@@ -188,34 +261,85 @@ type PesdbListRow = {
   nationality: string;
   age: number;
   rating: number;
+  /** Canonical Authentic detail path, e.g. /efootball/authentic/players/fabinho-63607 */
+  detail_path?: string;
 };
 
+function copyValue(tdHtml: string): string {
+  const attr = tdHtml.match(/data-copy-value="([^"]*)"/i)?.[1];
+  if (attr != null) return decodeHtml(attr);
+  return stripTags(tdHtml);
+}
+
 function parsePesdbListPage(html: string): PesdbListRow[] {
-  const tableMatch = html.match(/<table class="players">([\s\S]*?)<\/table>/i);
+  // 2026 redesign: <table data-player-results-table> with data-copy-value cells
+  const tableMatch =
+    html.match(
+      /<table[^>]*data-player-results-table[^>]*>([\s\S]*?)<\/table>/i
+    ) ||
+    html.match(/<table[^>]*class="[^"]*players[^"]*"[^>]*>([\s\S]*?)<\/table>/i);
   if (!tableMatch) return [];
 
+  const bodyHtml =
+    tableMatch[1].match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i)?.[1] || tableMatch[1];
+
   const rows: PesdbListRow[] = [];
-  const trRe = /<tr>([\s\S]*?)<\/tr>/gi;
+  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
   let trMatch: RegExpExecArray | null;
 
-  while ((trMatch = trRe.exec(tableMatch[1])) !== null) {
+  while ((trMatch = trRe.exec(bodyHtml)) !== null) {
     const rowHtml = trMatch[1];
-    const tds = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) => m[1]);
+    if (/<th\b/i.test(rowHtml)) continue;
+
+    const tds = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) => m[0]);
     if (tds.length < 8) continue;
 
-    const posMatch =
-      tds[0].match(/<div[^>]*title="([^"]+)"[^>]*>([^<]*)<\/div>/i) ||
-      tds[0].match(/>([A-Z]{2,3})</);
-    const position = decodeHtml(posMatch?.[2] || posMatch?.[1] || tds[0]).slice(0, 8);
+    // Name link: /efootball/authentic/players/fabinho-63607 (or Dream Team slug-id)
+    const nameHref =
+      rowHtml.match(
+        /href="((?:https?:\/\/pesdb\.net)?\/efootball\/(?:authentic\/)?players\/[a-z0-9-]+-\d+)"/i
+      )?.[1] ||
+      rowHtml.match(/href="[^"]*\?id=([^"&]+)[^"]*"/i)?.[0] ||
+      "";
 
-    const nameMatch = tds[1].match(/href="[^"]*\?id=([^"&]+)[^"]*"[^>]*>([^<]+)</i);
-    if (!nameMatch) continue;
+    let konami_id = "";
+    let detail_path = "";
+    let player_name = "";
 
-    const konami_id = decodeHtml(nameMatch[1]);
-    const player_name = decodeHtml(nameMatch[2]);
-    const nationality = stripTags(tds[3]);
-    const age = Number(stripTags(tds[6]));
-    const rating = Number(stripTags(tds[7]));
+    const slugMatch = nameHref.match(
+      /\/efootball\/(?:authentic\/)?players\/([a-z0-9-]+)-(\d+)/i
+    );
+    if (slugMatch) {
+      konami_id = slugMatch[2];
+      detail_path = nameHref.startsWith("http")
+        ? new URL(nameHref).pathname
+        : nameHref;
+      player_name =
+        copyValue(tds[1]) ||
+        decodeHtml(
+          rowHtml.match(
+            /\/players\/[a-z0-9-]+-\d+"[^>]*>([^<]+)</i
+          )?.[1] || ""
+        );
+    } else {
+      const legacy = rowHtml.match(/href="[^"]*\?id=([^"&]+)[^"]*"[^>]*>([^<]+)</i);
+      if (!legacy) continue;
+      konami_id = decodeHtml(legacy[1]);
+      player_name = decodeHtml(legacy[2]);
+    }
+
+    const position = copyValue(tds[0]).replace(/[^A-Za-z]/g, "").slice(0, 8);
+    const nationality = copyValue(tds[3]);
+    // Columns: pos, name, club, nationality, height, weight, age, [optional sort col], overall
+    const age = Number(copyValue(tds[6]).replace(/[^\d]/g, ""));
+    let rating = NaN;
+    for (let i = tds.length - 1; i >= 7; i--) {
+      const n = Number(copyValue(tds[i]).replace(/[^\d]/g, ""));
+      if (Number.isFinite(n) && n >= 40 && n <= 99) {
+        rating = n;
+        break;
+      }
+    }
     if (!konami_id || !player_name) continue;
 
     rows.push({
@@ -225,6 +349,7 @@ function parsePesdbListPage(html: string): PesdbListRow[] {
       nationality,
       age: Number.isFinite(age) ? age : 25,
       rating: Number.isFinite(rating) ? rating : 60,
+      ...(detail_path ? { detail_path } : {}),
     });
   }
   return rows;
@@ -241,22 +366,48 @@ function extractLabeledTd(html: string, label: string): string | null {
   return v || null;
 }
 
+/** New player pages use <dt>Label</dt><dd>value</dd>. */
+function extractLabeledDd(html: string, label: string): string | null {
+  const re = new RegExp(
+    `<dt[^>]*>\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*</dt>\\s*<dd[^>]*>([\\s\\S]*?)</dd>`,
+    "i"
+  );
+  const m = html.match(re);
+  if (!m) return null;
+  const v = stripTags(m[1]).trim();
+  return v || null;
+}
+
 function parsePesdbMaxLevelPage(html: string) {
   let max_level_rating: number | null = null;
-  const overallBlock = html.match(
-    /Overall Rating:[\s\S]{0,400}?<span[^>]*>(\d+)<\/span>/i
-  );
-  if (overallBlock) {
-    max_level_rating = Number(overallBlock[1]);
-  } else {
-    const alt = html.match(/Overall Rating:[\s\S]{0,200}?\(\+\d+\)[^0-9]*(\d{2})/i);
-    if (alt) max_level_rating = Number(alt[1]);
+
+  const maxDd = extractLabeledDd(html, "Max Overall");
+  if (maxDd) {
+    const n = Number(String(maxDd).replace(/[^\d]/g, ""));
+    if (Number.isFinite(n)) max_level_rating = n;
+  }
+  if (max_level_rating == null) {
+    const overallBlock = html.match(
+      /Overall Rating:[\s\S]{0,400}?<span[^>]*>(\d+)<\/span>/i
+    );
+    if (overallBlock) {
+      max_level_rating = Number(overallBlock[1]);
+    } else {
+      const alt = html.match(/Overall Rating:[\s\S]{0,200}?\(\+\d+\)[^0-9]*(\d{2})/i);
+      if (alt) max_level_rating = Number(alt[1]);
+    }
+  }
+  if (max_level_rating == null) {
+    const ovrDd = extractLabeledDd(html, "Overall Rating");
+    if (ovrDd) {
+      const n = Number(String(ovrDd).replace(/[^\d]/g, ""));
+      if (Number.isFinite(n)) max_level_rating = n;
+    }
   }
 
   const { att, def, legacy } = extractAttDefStyles(html);
   let playing_style = pickPlayingStyle(att, def, legacy);
 
-  // Last resort: any known style sitting in a lone <td>…</td>
   if (playing_style === "None") {
     for (const style of PLAYING_STYLES) {
       if (new RegExp(`<td[^>]*>\\s*(?:Att:\\s*|Def:\\s*)?${style.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*</td>`, "i").test(html)) {
@@ -266,12 +417,16 @@ function parsePesdbMaxLevelPage(html: string) {
     }
   }
 
-  const ageRaw = extractLabeledTd(html, "Age");
+  const ageRaw = extractLabeledDd(html, "Age") || extractLabeledTd(html, "Age");
   const ageNum = ageRaw ? Number(String(ageRaw).replace(/[^\d]/g, "")) : NaN;
   const position =
+    extractLabeledDd(html, "Primary Position") ||
+    extractLabeledDd(html, "Position") ||
     extractLabeledTd(html, "Position") ||
     extractLabeledTd(html, "Registered Position");
   const nationality =
+    extractLabeledDd(html, "Nationality") ||
+    extractLabeledDd(html, "Nation") ||
     extractLabeledTd(html, "Nationality") ||
     extractLabeledTd(html, "Nation");
 
@@ -322,11 +477,16 @@ async function fetchPesdbHtml(
     opts?.maxWaitMs ??
     (pace === "chunked" ? 12000 : 300000);
 
+  const isListUrl = /\/efootball\/authentic\/players\/?/i.test(url) &&
+    !/\/efootball\/authentic\/players\/[^/?]+/i.test(
+      url.replace(/^https?:\/\/[^/]+/i, "")
+    );
   const res = await fetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "text/html,application/xhtml+xml",
       "Accept-Language": "en-GB,en;q=0.9",
+      ...(isListUrl ? { Cookie: PESDB_TABLE_COOKIE } : {}),
     },
   });
 
@@ -411,13 +571,16 @@ Deno.serve(async (req) => {
       const html = await fetchPesdbHtml(pesdbListUrl(1), pace);
       const { totalPlayers, maxPage } = detectPesdbTotals(html);
       const estimatedPages = totalPlayers
-        ? Math.max(1, Math.ceil(totalPlayers / 30))
+        ? Math.max(1, Math.ceil(totalPlayers / PESDB_PLAYERS_PER_PAGE))
         : maxPage ?? 100;
       return jsonResponse({
         ok: true,
         total_players: totalPlayers,
         max_page_link: maxPage,
         estimated_pages: estimatedPages,
+        source: "authentic",
+        list_url: pesdbListUrl(1),
+        players_per_page: PESDB_PLAYERS_PER_PAGE,
       });
     }
 
@@ -439,39 +602,26 @@ Deno.serve(async (req) => {
           nationality: String(row.nationality ?? ""),
           age: Number(row.age) || 25,
           rating: Number(row.rating) || 60,
+          detail_path: row.detail_path != null ? String(row.detail_path) : undefined,
         };
         if (!base.konami_id) continue;
         try {
+          const detailUrl = pesdbPlayerDetailUrl(base);
           // Fast-fail for playstyle refresh: at most 2 quick retries (not multi-minute backoff).
           const detailHtml = await fetchPesdbHtml(
-            pesdbPlayerMaxUrl(base.konami_id),
+            detailUrl,
             pace,
             1,
             pace === "chunked"
               ? { maxAttempts: 2, maxWaitMs: 8000 }
               : undefined
           );
-          const hasStyleTable = /playing_styles/i.test(detailHtml);
-          // Fallback: base player page if max_level HTML has no playstyle table
-          let htmlForStyles = detailHtml;
-          if (!hasStyleTable) {
-            try {
-              htmlForStyles = await fetchPesdbHtml(
-                `${PESDB_BASE}?id=${encodeURIComponent(base.konami_id)}`,
-                pace,
-                1,
-                pace === "chunked"
-                  ? { maxAttempts: 2, maxWaitMs: 8000 }
-                  : undefined
-              );
-            } catch (_) {
-              htmlForStyles = detailHtml;
-            }
-          }
+          // Authentic detail already includes max overall + styles — do not use Dream Team ?id=
+          const htmlForStyles = detailHtml;
           const detail = parsePesdbMaxLevelPage(htmlForStyles);
           const blocked =
             detail.playing_style === "None" &&
-            !/playing_styles/i.test(htmlForStyles);
+            !hasPlaystyleBlock(htmlForStyles);
           players.push({
             ...base,
             max_level_rating: detail.max_level_rating ?? base.rating,
@@ -482,10 +632,11 @@ Deno.serve(async (req) => {
             position: detail.position ?? base.position,
             nationality: detail.nationality ?? base.nationality,
             scrape_error: blocked
-              ? "PESDB HTML missing playstyle table (blocked/throttled or wrong page)"
+              ? "PESDB HTML missing playstyle block (blocked/throttled or wrong page)"
               : null,
             rate_limited: false,
-            has_playstyle_table: /playing_styles/i.test(htmlForStyles),
+            has_playstyle_table: hasPlaystyleBlock(htmlForStyles),
+            detail_url: detailUrl,
           });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -549,7 +700,7 @@ Deno.serve(async (req) => {
         players: [],
         players_on_page: 0,
         warning:
-          "No players on this page — PESDB rate limit, or you are past the last page with players (detect often overestimates; e.g. ~594 real pages vs ~633 estimated).",
+          "No players on this page — PESDB rate limit, wrong list URL, or past the last Authentic page (detect ≈1,255; stops on first empty page).",
       });
     }
 

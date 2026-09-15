@@ -1330,9 +1330,11 @@ async function detectPesdbPages() {
     }
     setStatus(
       "scrapeStatus",
-      `~${data.total_players ?? "?"} players · detect estimates ~${data.estimated_pages ?? "?"} pages` +
-        (data.max_page_link ? ` (pagination shows ${data.max_page_link})` : "") +
-        `. PESDB often has trailing empty pages — scrape stops at the first empty page after the last one with players.`,
+      `~${data.total_players ?? "?"} Authentic players · ~${data.estimated_pages ?? "?"} pages` +
+        (data.players_per_page ? ` (${data.players_per_page}/page)` : "") +
+        (data.max_page_link ? ` · pagination ${data.max_page_link}` : "") +
+        (data.list_url ? ` · ${data.list_url}` : "") +
+        `. Scrape stops at the first empty page after the last one with players.`,
       true
     );
   } catch (err) {

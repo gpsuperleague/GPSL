@@ -66,6 +66,11 @@
           <label>End page <input type="number" id="scrapeEndPage" min="1" value="2"></label>
           <button type="button" class="button" id="detectPagesBtn">Detect pages</button>
         </div>
+        <p class="note" style="margin-top:6px;">
+          Uses PESDB <strong>Authentic → Standard</strong> only (~19k / ~780 pages).
+          One playstyle per player (Att preferred, else Def) — unchanged. Card images untouched.
+          After redeploying the edge function, Detect should no longer stick at 100.
+        </p>
         <div class="scrape-options">
           <label>Pages per batch <input type="number" id="scrapePagesPerBatch" min="1" max="2" value="2" style="width:52px;padding:4px 6px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;"></label>
           <label>Batch cooldown (sec) <input type="number" id="scrapeBatchCooldown" min="5" value="20" style="width:52px;padding:4px 6px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;"></label>

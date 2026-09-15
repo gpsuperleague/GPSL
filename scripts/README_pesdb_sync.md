@@ -43,12 +43,20 @@ Install CLI first if needed: https://supabase.com/docs/guides/cli
 
 **Admin → Season Break → Data tools → GPDB PESDB sync**
 
-1. **Detect pages**
-2. Set range (test **1–3** first)
+1. **Detect pages** — should report ~19k **Authentic Standard** players / ~780 pages
+2. Set range (test **1–2** first)
 3. **Start scrape → staging**
 4. **Preview** → **Apply**
 
 Full scrape can take 30–60+ minutes.
+
+PESDB (Sep 2026 redesign) notes:
+
+- List URL is now Authentic + `availability=standard` (not Dream Team, not unavailable).
+- Playstyle picking is unchanged: one style — Attacking if real, else Defensive.
+- Player card images (`player_links.js` / `b{id}.png`) are untouched.
+- Detect used to fall back to **100** when the old “(N players found)” string disappeared; redeploy `gpdb-pesdb-scrape` after pulling this update.
+- Mini-test: Detect → pages **1–2** → Start scrape → check staging.
 
 ---
 
@@ -61,13 +69,14 @@ pip install selenium webdriver-manager beautifulsoup4 lxml
 python scripts/pesdb_scrape.py --output pesdb_full.csv
 ```
 
+> Local `scripts/pesdb_scrape.py` still targets the pre-redesign HTML until updated — prefer the edge function after redeploy.
 ### Admin chunked scrape (2 pages at a time)
 
 **Admin → Season Break → Data tools → GPDB PESDB sync**
 
-1. **Detect pages** → sets end page (~633)
+1. **Detect pages** → sets end page (~783 Authentic Standard)
 2. Test **pages 1–2** → **Start scrape → staging**
-3. Scraper grabs list + max rating + playing style per player (~3.5s/player, ~2 min/page)
+3. Scraper grabs Authentic Standard list + max overall + one playstyle per player
 4. After **2 pages**, **20s cooldown**, then next batch automatically
 5. **Resume from last batch** continues where you left off (progress in browser localStorage)
 6. When complete → **Preview** → **Apply**
