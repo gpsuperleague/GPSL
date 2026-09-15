@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="admin.css?v=20260811-link-nounder">
   <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260915-fin-balance">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260915-fin-balance-tips">
   <style>
     .admin-layout.fin-balance-layout { max-width: 1200px; }
     #finBalRules {
@@ -43,6 +44,7 @@
       padding: 10px 12px;
     }
     .fin-kpi .lbl { display: block; color: #888; font-size: 11px; margin-bottom: 4px; }
+    .fin-kpi .lbl.gpsl-has-tip { border-bottom: none; display: inline-block; }
     .fin-kpi .val { color: #ff9900; font-size: 16px; font-weight: bold; }
     .fin-kpi .val.pos { color: #8d8; }
     .fin-kpi .val.neg { color: #f88; }
@@ -63,6 +65,7 @@
       font-size: 12px;
     }
     .fin-cat-grid span { color: #888; display: block; font-size: 11px; }
+    .fin-cat-grid span.gpsl-has-tip { border-bottom: 1px dotted rgba(255, 153, 0, 0.45); display: inline-block; }
     .fin-table-wrap { overflow-x: auto; margin-top: 8px; }
     table.fin-balance-table {
       width: 100%;
@@ -102,12 +105,12 @@
 </head>
 <body class="admin-page">
   <div id="nav"></div>
-  <h1 class="admin-title">League finance balance</h1>
+  <h1 class="admin-title gpsl-has-tip" data-gpsl-tip="Season ecosystem check: every club’s ops P&L (transfers &amp; loans excluded). Best after Close Finances. Use Gap / club vs your target to tune prizes, TV, subsidies, wages, or tax." tabindex="0">League finance balance</h1>
   <div id="adminLayout" class="admin-layout fin-balance-layout">
     <div class="admin-main" id="adminMain">
       <div id="finBalRules" class="info-box info-box--wide" aria-label="How to use League finance balance"></div>
       <div class="card">
-        <h2>Season ecosystem check</h2>
+        <h2 class="gpsl-has-tip" data-gpsl-tip="Aggregates season ledger categories for every club in the season (owned or vacant)." tabindex="0">Season ecosystem check</h2>
         <p class="note">
           Deploy SQL once if Run analysis fails:
           <code>supabase/sql/patches/admin_league_finance_balance.sql</code>
@@ -115,34 +118,34 @@
 
         <div class="row">
           <div>
-            <label>Season</label>
+            <label class="gpsl-has-tip" data-gpsl-tip="Which competition season’s ledgers to aggregate." tabindex="0">Season</label>
             <select id="finBalSeason"></select>
           </div>
           <div>
-            <label>Target avg ops profit (₿)</label>
+            <label class="gpsl-has-tip" data-gpsl-tip="Desired average operating profit per club for this season (default ₿10m). Gap / club = target minus actual avg ops net." tabindex="0">Target avg ops profit (₿)</label>
             <input type="text" id="finBalTarget" value="10,000,000" inputmode="numeric">
           </div>
           <div style="display:flex;align-items:flex-end;gap:8px;">
-            <button type="button" id="finBalRunBtn" class="button">Run analysis</button>
+            <button type="button" id="finBalRunBtn" class="button gpsl-has-tip" data-gpsl-tip="Aggregates season ledger categories for every club in the season (owned or vacant)." tabindex="0">Run analysis</button>
           </div>
         </div>
         <div id="finBalStatus" class="status-line"></div>
 
         <div id="finBalSummary" hidden>
           <div class="fin-kpi-grid">
-            <div class="fin-kpi"><span class="lbl">Clubs</span><span class="val" id="kpiClubs">—</span></div>
-            <div class="fin-kpi"><span class="lbl">Avg ops net</span><span class="val" id="kpiAvg">—</span></div>
-            <div class="fin-kpi"><span class="lbl">Median ops net</span><span class="val" id="kpiMed">—</span></div>
-            <div class="fin-kpi"><span class="lbl">Target avg</span><span class="val" id="kpiTarget">—</span></div>
-            <div class="fin-kpi"><span class="lbl">Gap / club</span><span class="val" id="kpiGapClub">—</span></div>
-            <div class="fin-kpi"><span class="lbl">Gap league-wide</span><span class="val" id="kpiGapTotal">—</span></div>
+            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="How many clubs were included in this season’s finance set." tabindex="0">Clubs</span><span class="val" id="kpiClubs">—</span></div>
+            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="Mean ops net across clubs. Ops ignore transfers and Central Bank loans." tabindex="0">Avg ops net</span><span class="val" id="kpiAvg">—</span></div>
+            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="Middle club’s ops net (less skewed by a few extreme clubs than the average)." tabindex="0">Median ops net</span><span class="val" id="kpiMed">—</span></div>
+            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="The target average ops profit you set above." tabindex="0">Target avg</span><span class="val" id="kpiTarget">—</span></div>
+            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="Target minus avg ops net. Positive gap = clubs are under target (need more income or lower costs). Negative = over target." tabindex="0">Gap / club</span><span class="val" id="kpiGapClub">—</span></div>
+            <div class="fin-kpi"><span class="lbl gpsl-has-tip" data-gpsl-tip="Gap / club × number of clubs — approximate league-wide tuning size." tabindex="0">Gap league-wide</span><span class="val" id="kpiGapTotal">—</span></div>
           </div>
-          <div class="fin-hint-box" id="finBalHint"></div>
+          <div class="fin-hint-box gpsl-has-tip" id="finBalHint" data-gpsl-tip="Auto-written tuning suggestion from the gap vs target." tabindex="0"></div>
 
-          <h3 style="color:#ff9900;font-size:15px;margin:0 0 6px;">League category totals (ops)</h3>
+          <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:0 0 6px;" data-gpsl-tip="League-wide sums by ledger category. Transfers and loans are shown but excluded from ops net." tabindex="0">League category totals (ops)</h3>
           <div class="fin-cat-grid" id="finBalCats"></div>
 
-          <h3 style="color:#ff9900;font-size:15px;margin:12px 0 6px;">Per club</h3>
+          <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:12px 0 6px;" data-gpsl-tip="One row per club. Sort is by ops net (best first). Hover column headers for definitions." tabindex="0">Per club</h3>
           <p class="note" style="margin-bottom:6px;">
             Ops net = gates + prizes + TV + subsidies + wages + stadium + tax/fines + staff + EOS + admin ± other
             (transfers &amp; loans shown separately, not in ops net).
@@ -153,18 +156,18 @@
                 <tr>
                   <th>Club</th>
                   <th>Div</th>
-                  <th>Opening</th>
-                  <th>Gates</th>
-                  <th>Prizes</th>
-                  <th>TV</th>
-                  <th>Subsidies</th>
-                  <th>Wages</th>
-                  <th>Stadium</th>
-                  <th>Tax/fines</th>
-                  <th>Staff</th>
-                  <th>Ops net</th>
-                  <th>Transfers</th>
-                  <th>Balance</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Archived prior close, season opening, or starting-budget trail. — means none found (live Balance can still show cash)." tabindex="0">Opening</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Match gate receipts posted this season." tabindex="0">Gates</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="League, cup, challenge, and related prize income." tabindex="0">Prizes</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="TV revenue lines posted this season." tabindex="0">TV</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Government HG / Youth / Weak squad subsidies (usually ₿0 until EOS payout)." tabindex="0">Subsidies</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Player/manager wage bills (usually ₿0 until Close Finances)." tabindex="0">Wages</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Infra: expansion, purchase, maintenance, refunds. ₿0 = nothing posted yet (maintenance often waits for Close Finances)." tabindex="0">Stadium</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Income tax, emergency tax, and fine/compensation lines." tabindex="0">Tax/fines</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Manager salary, medical hires, contract fees/releases, and related staff lines." tabindex="0">Staff</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Operating P&amp;L for the club this season (excludes transfers and loans)." tabindex="0">Ops net</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Net transfer market cash (excluded from ops). Large negatives usually mean net buying." tabindex="0">Transfers</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Live Club_Finances cash now — often starting money ± transfers, not ops health." tabindex="0">Balance</th>
                 </tr>
               </thead>
               <tbody id="finBalBody"></tbody>
@@ -175,6 +178,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_league_finance_balance.js?v=20260915-fin-balance-help"></script>
+  <script type="module" src="admin_league_finance_balance.js?v=20260915-fin-balance-tips"></script>
 </body>
 </html>

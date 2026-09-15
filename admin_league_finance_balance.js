@@ -1,11 +1,16 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
-import { renderLeagueFinanceBalanceRules } from "./admin_league_finance_balance_rules.js?v=20260915-fin-balance-help";
+import { initGpslInfoTips, tipDataAttrs } from "./gpsl_info_tips.js";
+import {
+  FIN_BALANCE_TIPS,
+  renderLeagueFinanceBalanceRules,
+} from "./admin_league_finance_balance_rules.js?v=20260915-fin-balance-tips";
 
 primeAdminPageChrome();
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
+  initGpslInfoTips();
   renderLeagueFinanceBalanceRules();
   await loadSeasons();
   document.getElementById("finBalRunBtn").onclick = runAnalysis;
@@ -132,25 +137,25 @@ function renderReport(data) {
 
   const cats = data.category_totals || {};
   const catOrder = [
-    ["gates", "Gates"],
-    ["prizes", "Prizes"],
-    ["tv", "TV"],
-    ["subsidies", "Subsidies"],
-    ["wages", "Wages"],
-    ["stadium", "Stadium"],
-    ["tax_fines", "Tax / fines"],
-    ["staff", "Staff"],
-    ["eos", "EOS"],
-    ["admin_adj", "Admin adj."],
-    ["other_ops", "Other ops"],
-    ["transfers", "Transfers (excl.)"],
-    ["loans", "Loans (excl.)"],
+    ["gates", "Gates", FIN_BALANCE_TIPS.catGates],
+    ["prizes", "Prizes", FIN_BALANCE_TIPS.catPrizes],
+    ["tv", "TV", FIN_BALANCE_TIPS.catTv],
+    ["subsidies", "Subsidies", FIN_BALANCE_TIPS.catSubsidies],
+    ["wages", "Wages", FIN_BALANCE_TIPS.catWages],
+    ["stadium", "Stadium", FIN_BALANCE_TIPS.catStadium],
+    ["tax_fines", "Tax / fines", FIN_BALANCE_TIPS.catTax],
+    ["staff", "Staff", FIN_BALANCE_TIPS.catStaff],
+    ["eos", "EOS", FIN_BALANCE_TIPS.catEos],
+    ["admin_adj", "Admin adj.", FIN_BALANCE_TIPS.catAdmin],
+    ["other_ops", "Other ops", FIN_BALANCE_TIPS.catOther],
+    ["transfers", "Transfers (excl.)", FIN_BALANCE_TIPS.catTransfers],
+    ["loans", "Loans (excl.)", FIN_BALANCE_TIPS.catLoans],
   ];
   const catEl = document.getElementById("finBalCats");
   catEl.innerHTML = catOrder
     .map(
-      ([k, label]) =>
-        `<div><span>${label}</span><b class="${moneyClass(cats[k])}">${formatB(cats[k])}</b></div>`
+      ([k, label, tip]) =>
+        `<div><span class="gpsl-has-tip"${tipDataAttrs(tip)}>${label}</span><b class="${moneyClass(cats[k])}">${formatB(cats[k])}</b></div>`
     )
     .join("");
 
