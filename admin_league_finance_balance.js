@@ -1,10 +1,12 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import { renderLeagueFinanceBalanceRules } from "./admin_league_finance_balance_rules.js?v=20260915-fin-balance-help";
 
 primeAdminPageChrome();
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
+  renderLeagueFinanceBalanceRules();
   await loadSeasons();
   document.getElementById("finBalRunBtn").onclick = runAnalysis;
   document.getElementById("finBalTarget").addEventListener("blur", () => {

@@ -8,8 +8,28 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="admin.css?v=20260811-link-nounder">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260915-fin-balance">
   <style>
     .admin-layout.fin-balance-layout { max-width: 1200px; }
+    #finBalRules {
+      margin: 0 0 16px;
+      max-width: none;
+      padding: 12px 14px;
+    }
+    #finBalRules .rules-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (max-width: 1100px) {
+      #finBalRules .rules-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 640px) {
+      #finBalRules .rules-grid {
+        grid-template-columns: 1fr;
+      }
+    }
     .fin-kpi-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -85,16 +105,12 @@
   <h1 class="admin-title">League finance balance</h1>
   <div id="adminLayout" class="admin-layout fin-balance-layout">
     <div class="admin-main" id="adminMain">
+      <div id="finBalRules" class="info-box info-box--wide" aria-label="How to use League finance balance"></div>
       <div class="card">
         <h2>Season ecosystem check</h2>
         <p class="note">
-          Aggregates every club’s season ledger into operating income and costs
-          (<b>transfers and Central Bank loans excluded</b>). Use this at season end
-          (or mid-season) to see whether the average club is near your target ops profit
-          — then tune prizes, TV, subsidies, wages or tax.
-        </p>
-        <p class="note">
-          Deploy SQL once: <code>supabase/sql/patches/admin_league_finance_balance.sql</code>
+          Deploy SQL once if Run analysis fails:
+          <code>supabase/sql/patches/admin_league_finance_balance.sql</code>
         </p>
 
         <div class="row">
@@ -159,6 +175,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_league_finance_balance.js?v=20260811-fin-balance"></script>
+  <script type="module" src="admin_league_finance_balance.js?v=20260915-fin-balance-help"></script>
 </body>
 </html>
