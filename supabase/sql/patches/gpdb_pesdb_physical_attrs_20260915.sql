@@ -15,6 +15,26 @@ COMMENT ON COLUMN public."Players"."Stronger_Foot" IS 'Left or Right (PESDB Auth
 COMMENT ON COLUMN public."Players"."Weak_Foot_Usage" IS 'PESDB Weak Foot Usage (e.g. Rarely).';
 COMMENT ON COLUMN public."Players"."Weak_Foot_Accuracy" IS 'PESDB Weak Foot Accuracy (e.g. Medium).';
 
+-- Soft probe for GPDB (avoids REST 400 when selecting a missing column).
+CREATE OR REPLACE FUNCTION public.gpdb_has_physical_attrs()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Players'
+      AND column_name = 'Height'
+  );
+$$;
+
+GRANT EXECUTE ON FUNCTION public.gpdb_has_physical_attrs() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gpdb_has_physical_attrs() TO anon;
+
 ALTER TABLE public.gpdb_pesdb_staging
   ADD COLUMN IF NOT EXISTS height_cm smallint,
   ADD COLUMN IF NOT EXISTS stronger_foot text,

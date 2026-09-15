@@ -352,27 +352,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Physical attrs: only select/filter once the column exists (SQL patch applied).
-    const physFrom = gpdbUseEffectiveWageView ? GPDB_PLAYERS_VIEW : "Players";
-    const probePhys = await supabase
-      .from(physFrom)
-      .select("Height", { head: true })
-      .limit(1);
-    if (!probePhys.error) {
-      usePhysicalDbColumns = true;
-      for (const col of PHYSICAL_DB_COLS) {
-        const i = FILTER_EXCLUDE.indexOf(col);
-        if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
-      }
-    } else {
-      usePhysicalDbColumns = false;
-      for (const col of PHYSICAL_DB_COLS) {
-        if (!FILTER_EXCLUDE.includes(col)) FILTER_EXCLUDE.push(col);
-      }
-      console.warn(
-        "GPDB physical attrs missing — run supabase/sql/patches/gpdb_pesdb_physical_attrs_20260915.sql",
-        probePhys.error
-      );
+    // Physical attrs stay off until SQL patch is applied, then flip this to true
+    // (or re-run after patch — columns exist and filters can be turned on in code).
+    // Do not REST-select Height here: missing columns log a 400 in the browser.
+    usePhysicalDbColumns = false;
+    for (const col of PHYSICAL_DB_COLS) {
+      if (!FILTER_EXCLUDE.includes(col)) FILTER_EXCLUDE.push(col);
     }
   }
 
