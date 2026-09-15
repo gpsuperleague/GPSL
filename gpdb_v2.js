@@ -240,16 +240,52 @@ document.addEventListener("DOMContentLoaded", () => {
   ];
 
   const ECONOMICS_DB_COLS = ["Potential", "Calc_Potential"];
+  const PHYSICAL_DB_COLS = [
+    "Height",
+    "Stronger_Foot",
+    "Weak_Foot_Usage",
+    "Weak_Foot_Accuracy",
+  ];
   let useEconomicsDbColumns = true;
+  let usePhysicalDbColumns = true;
 
   function playerSelectList() {
-    if (useEconomicsDbColumns) return COLUMNS.join(",");
-    return COLUMNS.filter((c) => !ECONOMICS_DB_COLS.includes(c)).join(",");
+    let cols = COLUMNS;
+    if (!useEconomicsDbColumns) {
+      cols = cols.filter((c) => !ECONOMICS_DB_COLS.includes(c));
+    }
+    if (!usePhysicalDbColumns) {
+      cols = cols.filter((c) => !PHYSICAL_DB_COLS.includes(c));
+    }
+    return cols.join(",");
   }
 
   function isMissingEconomicsColumnError(error) {
     const msg = String(error?.message || "").toLowerCase();
     return msg.includes("potential") || msg.includes("calc_potential");
+  }
+
+  function isMissingPhysicalColumnError(error) {
+    const msg = String(
+      error?.message || error?.details || error?.hint || ""
+    ).toLowerCase();
+    if (!msg) return false;
+    return PHYSICAL_DB_COLS.some((c) => msg.includes(c.toLowerCase()));
+  }
+
+  function disablePhysicalDbColumns(reason) {
+    if (!usePhysicalDbColumns) return;
+    usePhysicalDbColumns = false;
+    for (const col of PHYSICAL_DB_COLS) {
+      if (!FILTER_EXCLUDE.includes(col)) FILTER_EXCLUDE.push(col);
+      delete CURRENT_FILTERS[col];
+      delete RANGE_ACTIVE[col];
+      delete RANGE_BOUNDS[col];
+    }
+    console.warn(
+      "GPDB physical attrs unavailable — run supabase/sql/patches/gpdb_pesdb_physical_attrs_20260915.sql then refresh.",
+      reason || ""
+    );
   }
 
   const DROPDOWN_COLUMNS = [
@@ -1306,6 +1342,27 @@ document.addEventListener("DOMContentLoaded", () => {
       return loadPage(page);
     }
 
+    if (error && isMissingPhysicalColumnError(error) && usePhysicalDbColumns) {
+      disablePhysicalDbColumns(error);
+      setupFilters();
+      return loadPage(page);
+    }
+
+    if (
+      error &&
+      usePhysicalDbColumns &&
+      /400|column|does not exist|schema cache/i.test(
+        String(error?.message || error?.code || error || "")
+      ) &&
+      /height|stronger_foot|weak_foot/i.test(
+        String(error?.message || error?.details || error || "")
+      )
+    ) {
+      disablePhysicalDbColumns(error);
+      setupFilters();
+      return loadPage(page);
+    }
+
     if (
       error &&
       useNameSearchKey &&
@@ -1318,6 +1375,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (error) {
+      // Unknown 400 after adding physical select — try once without those columns.
+      if (
+        usePhysicalDbColumns &&
+        (error.code === "PGRST204" ||
+          error.code === "42703" ||
+          String(error.message || "").includes("400") ||
+          /could not find|does not exist|schema cache/i.test(
+            String(error.message || "")
+          ))
+      ) {
+        disablePhysicalDbColumns(error);
+        setupFilters();
+        return loadPage(page);
+      }
       console.error(error);
       return;
     }
