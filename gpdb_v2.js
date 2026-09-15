@@ -247,7 +247,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "Weak_Foot_Accuracy",
   ];
   let useEconomicsDbColumns = true;
-  let usePhysicalDbColumns = true;
+  /** Off until probe confirms Players/view has Height etc. (avoids blank GPDB on 400). */
+  let usePhysicalDbColumns = false;
 
   function playerSelectList() {
     let cols = COLUMNS;
@@ -335,18 +336,42 @@ document.addEventListener("DOMContentLoaded", () => {
         "GPDB effective_wage view unavailable — run supabase/sql/patches/gpdb_effective_wage_view.sql",
         error
       );
-      return;
     }
 
-    const probeN = await supabase
-      .from(GPDB_PLAYERS_VIEW)
-      .select("market_value_n", { head: true })
+    if (gpdbUseEffectiveWageView) {
+      const probeN = await supabase
+        .from(GPDB_PLAYERS_VIEW)
+        .select("market_value_n", { head: true })
+        .limit(1);
+      gpdbHasMarketValueN = !probeN.error;
+      if (probeN.error) {
+        console.warn(
+          "GPDB market_value_n missing — run supabase/sql/patches/gpdb_market_value_numeric_filter.sql",
+          probeN.error
+        );
+      }
+    }
+
+    // Physical attrs: only select/filter once the column exists (SQL patch applied).
+    const physFrom = gpdbUseEffectiveWageView ? GPDB_PLAYERS_VIEW : "Players";
+    const probePhys = await supabase
+      .from(physFrom)
+      .select("Height", { head: true })
       .limit(1);
-    gpdbHasMarketValueN = !probeN.error;
-    if (probeN.error) {
+    if (!probePhys.error) {
+      usePhysicalDbColumns = true;
+      for (const col of PHYSICAL_DB_COLS) {
+        const i = FILTER_EXCLUDE.indexOf(col);
+        if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
+      }
+    } else {
+      usePhysicalDbColumns = false;
+      for (const col of PHYSICAL_DB_COLS) {
+        if (!FILTER_EXCLUDE.includes(col)) FILTER_EXCLUDE.push(col);
+      }
       console.warn(
-        "GPDB market_value_n missing — run supabase/sql/patches/gpdb_market_value_numeric_filter.sql",
-        probeN.error
+        "GPDB physical attrs missing — run supabase/sql/patches/gpdb_pesdb_physical_attrs_20260915.sql",
+        probePhys.error
       );
     }
   }
