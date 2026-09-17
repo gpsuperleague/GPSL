@@ -92,8 +92,9 @@ import {
 import {
   playerThumbLinkHtml,
   playerNameLinkHtml,
-  pesdbPlayerUrl,
+  escapePlayerHtml,
 } from "./player_links.js";
+import { clubPageHref } from "./clubs_lookup.js";
 import {
   loadScoutingTargetMap,
   toggleScoutingTarget,
@@ -1900,7 +1901,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (col === "Contracted_Team") {
       if (!value || String(value).trim() === "") return "";
-      return CLUB_NAME_MAP[value] || value;
+      const short = resolveContractedClubShort(value);
+      const label = CLUB_NAME_MAP[short] || CLUB_NAME_MAP[value] || value;
+      const href = clubPageHref(short);
+      if (!href) return escapePlayerHtml(label);
+      return `<a href="${href}" class="gpsl-club-link">${escapePlayerHtml(label)}</a>`;
     }
 
     if (col === "Playstyle") {
@@ -2338,16 +2343,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     });
 
-    Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
-      row.style.cursor = "pointer";
-      row.addEventListener("click", e => {
-        if (e.target.closest(".make-offer-btn, .draft-offer-btn, .call-up-btn, .release-callup-btn, .scout-btn, a")) return;
-        const konamiId = row.getAttribute("data-konami-id");
-        if (konamiId) {
-          window.open(pesdbPlayerUrl(konamiId), "_blank", "noopener");
-        }
-      });
-    });
+    // Links only: card → PESDB, name → GPSL career, club → club.html (no whole-row PESDB jump).
 
     document.querySelectorAll(".make-offer-btn, .draft-offer-btn").forEach(btn => {
       btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
