@@ -43,7 +43,7 @@ Install CLI first if needed: https://supabase.com/docs/guides/cli
 
 **Admin → Season Break → Data tools → GPDB PESDB sync**
 
-1. **Detect pages** — expect ~19k Authentic Standard / ~779 pages
+1. **Detect pages** — expect ~19k Dream Team Standard / ~779 pages
 2. Mini-test: **Start 1** / **End 2** → uncheck Resume → **Start scrape → staging** → **Preview**  
 3. Full run when happy → scrape all pages → **Preview** → **Apply**
 
@@ -51,8 +51,8 @@ Full scrape can take hours (rate limits / cooldowns).
 
 PESDB notes:
 
-- List: `https://pesdb.net/efootball/authentic/players/?availability=standard`
-  (Authentic Standard only — not full Authentic ~30k / unavailable, not Dream Team)
+- List: `https://pesdb.net/efootball/players/?availability=standard`
+  (Dream Team · Standard players only — not Authentic, not Featured/Epic/specials)
 - One playstyle per player (Att if real, else Def) — unchanged
 - Card images untouched
 - Physical attrs (height / stronger foot / weak foot) need SQL  

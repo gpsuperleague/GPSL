@@ -163,18 +163,17 @@ function hasPlaystyleBlock(html: string): boolean {
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-/** Authentic offline ratings — what GPSL GPDB sync should scrape. */
-const PESDB_AUTH_LIST = "https://pesdb.net/efootball/authentic/players/";
+/** Dream Team player list (GP base cards live here — not Authentic). */
+const PESDB_DT_LIST = "https://pesdb.net/efootball/players/";
 /**
- * Standard availability only (excludes Unavailable Authentic entries).
- * Full Authentic ≈30k / 1,255 pages; Standard ≈18.7k / ~779 pages.
- * Still Authentic cards — not Dream Team / special boost versions.
+ * Dream Team · Standard players only (excludes Featured / Epic / etc. boosts
+ * and Unavailable). ≈18.7k / ~779 pages.
  */
-const PESDB_AUTH_LIST_STANDARD = `${PESDB_AUTH_LIST}?availability=standard`;
+const PESDB_DT_LIST_STANDARD = `${PESDB_DT_LIST}?availability=standard`;
 /** Force HTML table layout (card view has no structured columns). */
 const PESDB_TABLE_COOKIE =
   'pesdb_efootball_search=%7B%22view%22%3A%22table%22%7D';
-/** Authentic list page size (~18.7k ÷ ~779 ≈ 24). */
+/** Dream Team Standard list page size (~18,673 ÷ 779 ≈ 24). */
 const PESDB_PLAYERS_PER_PAGE = 24;
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -185,12 +184,12 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 }
 
 function pesdbListUrl(page: number): string {
-  // Authentic + Standard availability (not full Authentic / not Dream Team)
-  if (page <= 1) return PESDB_AUTH_LIST_STANDARD;
-  return `${PESDB_AUTH_LIST}?availability=standard&page=${page}`;
+  // Dream Team + Standard players only
+  if (page <= 1) return PESDB_DT_LIST_STANDARD;
+  return `${PESDB_DT_LIST}?availability=standard&page=${page}`;
 }
 
-/** Prefer slug path from list row; never use bare ?id= (Dream Team redirect). */
+/** Prefer Dream Team slug path from list row; fall back to ?id= max-level. */
 function pesdbPlayerDetailUrl(row: {
   konami_id: string;
   detail_path?: string | null;
@@ -198,6 +197,11 @@ function pesdbPlayerDetailUrl(row: {
 }): string {
   const path = String(row.detail_path || "").trim();
   if (path.startsWith("/efootball/")) {
+    // Prefer DT path; never keep Authentic slug for GP sync
+    if (/\/efootball\/authentic\//i.test(path)) {
+      const kid = String(row.konami_id || "").trim();
+      if (kid) return `https://pesdb.net/efootball/?id=${encodeURIComponent(kid)}&mode=max_level`;
+    }
     return `https://pesdb.net${path}`;
   }
   if (/^https?:\/\//i.test(path)) return path;
@@ -210,9 +214,11 @@ function pesdbPlayerDetailUrl(row: {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  if (kid && name) return `${PESDB_AUTH_LIST}${name}-${kid}`;
-  if (kid) return `${PESDB_AUTH_LIST}${kid}`;
-  return PESDB_AUTH_LIST;
+  if (kid && name) return `${PESDB_DT_LIST}${name}-${kid}`;
+  if (kid) {
+    return `https://pesdb.net/efootball/?id=${encodeURIComponent(kid)}&mode=max_level`;
+  }
+  return PESDB_DT_LIST;
 }
 
 function decodeHtml(text: string): string {
@@ -266,7 +272,7 @@ type PesdbListRow = {
   nationality: string;
   age: number;
   rating: number;
-  /** Canonical Authentic detail path, e.g. /efootball/authentic/players/fabinho-63607 */
+  /** Canonical Dream Team detail path, e.g. /efootball/players/moussa-diaby-121992 */
   detail_path?: string;
 };
 
@@ -299,10 +305,13 @@ function parsePesdbListPage(html: string): PesdbListRow[] {
     const tds = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) => m[0]);
     if (tds.length < 8) continue;
 
-    // Name link: /efootball/authentic/players/fabinho-63607 (or Dream Team slug-id)
+    // Name link: /efootball/players/moussa-diaby-121992 (prefer DT; Authentic accepted as fallback)
     const nameHref =
       rowHtml.match(
-        /href="((?:https?:\/\/pesdb\.net)?\/efootball\/(?:authentic\/)?players\/[a-z0-9-]+-\d+)"/i
+        /href="((?:https?:\/\/pesdb\.net)?\/efootball\/players\/[a-z0-9-]+-\d+)"/i
+      )?.[1] ||
+      rowHtml.match(
+        /href="((?:https?:\/\/pesdb\.net)?\/efootball\/authentic\/players\/[a-z0-9-]+-\d+)"/i
       )?.[1] ||
       rowHtml.match(/href="[^"]*\?id=([^"&]+)[^"]*"/i)?.[0] ||
       "";
@@ -518,10 +527,10 @@ async function fetchPesdbHtml(
     opts?.maxWaitMs ??
     (pace === "chunked" ? 12000 : 300000);
 
-  const isListUrl = /\/efootball\/authentic\/players\/?/i.test(url) &&
-    !/\/efootball\/authentic\/players\/[^/?]+/i.test(
-      url.replace(/^https?:\/\/[^/]+/i, "")
-    );
+  const pathOnly = url.replace(/^https?:\/\/[^/?#]+/i, "").split("?")[0];
+  const isListUrl =
+    /^\/efootball\/players\/?$/i.test(pathOnly) ||
+    /^\/efootball\/authentic\/players\/?$/i.test(pathOnly);
   const res = await fetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
@@ -623,12 +632,12 @@ Deno.serve(async (req) => {
         total_players: totalPlayers,
         max_page_link: maxPage,
         estimated_pages: estimatedPages,
-        source: "authentic_standard",
+        source: "dream_team_standard",
         list_url: listUrl,
         players_per_page: PESDB_PLAYERS_PER_PAGE,
         html_bytes: html.length,
         warning: usedFallback
-          ? "Could not read Authentic (Standard) page count from HTML — still on fallback 100. Redeploy gpdb-pesdb-scrape if this persists."
+          ? "Could not read Dream Team Standard page count from HTML — still on fallback 100. Redeploy gpdb-pesdb-scrape if this persists."
           : null,
       });
     }
@@ -665,7 +674,7 @@ Deno.serve(async (req) => {
               ? { maxAttempts: 2, maxWaitMs: 8000 }
               : undefined
           );
-          // Authentic detail already includes max overall + styles — do not use Dream Team ?id=
+          // Dream Team Standard detail includes Max Overall + Att/Def styles
           const htmlForStyles = detailHtml;
           const detail = parsePesdbMaxLevelPage(htmlForStyles);
           const blocked =
@@ -753,7 +762,7 @@ Deno.serve(async (req) => {
         players: [],
         players_on_page: 0,
         warning:
-          "No players on this page — PESDB rate limit, wrong list URL, or past the last Authentic Standard page (detect ≈779; stops on first empty page).",
+          "No players on this page — PESDB rate limit, wrong list URL, or past the last Dream Team Standard page (detect ≈779; stops on first empty page).",
       });
     }
 

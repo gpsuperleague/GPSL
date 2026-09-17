@@ -67,14 +67,14 @@
           <button type="button" class="button" id="detectPagesBtn">Detect pages</button>
         </div>
         <p class="note" style="margin-top:6px;">
-          Uses <a href="https://pesdb.net/efootball/authentic/players/?availability=standard" target="_blank" rel="noopener">Authentic · Standard availability</a>
-          (~19k / <strong>~779 pages</strong>) — not full Authentic (~30k / unavailable included) and not Dream Team specials.
+          Uses <a href="https://pesdb.net/efootball/players/?availability=standard" target="_blank" rel="noopener">Dream Team · Standard players only</a>
+          (~19k / <strong>~779 pages</strong>) — not Authentic, not Featured/Epic/specials.
           One playstyle (Att → else Def). Card images untouched.
           Also scrapes height / stronger foot / weak foot for profile + filters (after SQL patch).
           <br><strong>Mini test:</strong> Start=1 End=2 → uncheck Resume → <strong>Start scrape → staging</strong> → Preview (don’t Apply yet).
           Redeploy <code>gpdb-pesdb-scrape</code> after edge code changes; run
           <code>gpdb_pesdb_physical_attrs_20260915.sql</code> for the new columns.
-          If a current scrape was started against full Authentic, stop it, clear staging, redeploy, then Detect + restart.
+          If a scrape was started against Authentic / wrong filter, stop it, clear staging, redeploy, then Detect + restart.
         </p>
         <div class="scrape-options">
           <label>Pages per batch <input type="number" id="scrapePagesPerBatch" min="1" max="2" value="2" style="width:52px;padding:4px 6px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;"></label>

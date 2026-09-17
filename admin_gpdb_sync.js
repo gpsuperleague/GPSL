@@ -1330,7 +1330,7 @@ async function detectPesdbPages() {
     }
     setStatus(
       "scrapeStatus",
-      `~${data.total_players ?? "?"} Authentic Standard players · ~${data.estimated_pages ?? "?"} pages` +
+      `~${data.total_players ?? "?"} Dream Team Standard players · ~${data.estimated_pages ?? "?"} pages` +
         (data.players_per_page ? ` (${data.players_per_page}/page)` : "") +
         (data.max_page_link ? ` · pagination ${data.max_page_link}` : "") +
         (data.list_url ? ` · ${data.list_url}` : "") +
