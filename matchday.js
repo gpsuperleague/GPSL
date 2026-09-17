@@ -615,7 +615,7 @@ function myTeamGoalsForFixture(fixture, homeGoals, awayGoals) {
   return home ? homeGoals : awayGoals;
 }
 
-const DEFAULT_MATCH_RATING = "6.0";
+const DEFAULT_MATCH_RATING = "3.0";
 const STAT_COUNT_MAX = 20;
 
 let statDatalistsReady = false;
@@ -690,12 +690,15 @@ function wireSelectAllOnFocus(input) {
 
 function wireRatingInput(input) {
   if (!input) return;
-  input.addEventListener("focus", () => {
-    if (!String(input.value).trim()) input.value = DEFAULT_MATCH_RATING;
-  });
+  // Rating is optional — leave blank; submit applies DEFAULT_MATCH_RATING for appeared players.
   wireSelectAllOnFocus(input);
   input.addEventListener("blur", () => {
-    const norm = normalizeRatingInput(input.value);
+    const raw = String(input.value ?? "").trim();
+    if (!raw) {
+      input.value = "";
+      return;
+    }
+    const norm = normalizeRatingInput(raw);
     input.value = norm || "";
   });
   input.addEventListener("paste", () => {
@@ -876,7 +879,7 @@ function fillTestMatchStats() {
   updateLineupCounter();
   setStatus(
     "submitStatus",
-    `Test stats filled — 11 starters, ${subIds.size} subs, ${expectedGoals} goal(s), ratings 6.0. Review then submit/confirm.`
+    `Test stats filled — 11 starters, ${subIds.size} subs, ${expectedGoals} goal(s), ratings ${DEFAULT_MATCH_RATING}. Review then submit/confirm.`
   );
 }
 
@@ -1153,7 +1156,7 @@ function renderPlayerStatsTable() {
       <td>${statCountSelectHtml("stat-goals", "Goals", 0)}</td>
       <td>${statCountSelectHtml("stat-own-goals", "Own goals", 0)}</td>
       <td>${statCountSelectHtml("stat-assists", "Assists", 0)}</td>
-      <td><input type="text" class="stat-rating stat-combo stat-rating-combo" list="statRatingList" inputmode="decimal" autocomplete="off" value="" placeholder="6.0" aria-label="Rating" ${suspendedHere ? "disabled" : ""}></td>
+      <td><input type="text" class="stat-rating stat-combo stat-rating-combo" list="statRatingList" inputmode="decimal" autocomplete="off" value="" placeholder="opt." aria-label="Rating (optional)" ${suspendedHere ? "disabled" : ""}></td>
       <td><input type="radio" name="potm" class="stat-potm" value="${id}" ${suspendedHere ? "disabled" : ""}></td>
       <td><input type="checkbox" class="stat-yellow" aria-label="Yellow card" ${suspendedHere ? "disabled" : ""}></td>
       <td><input type="checkbox" class="stat-red" aria-label="Red card" ${suspendedHere ? "disabled" : ""}></td>
@@ -1226,7 +1229,11 @@ function collectPlayerStats() {
     const assists = normalizeStatCountInput(tr.querySelector(".stat-assists")?.value);
     const ratingRaw = tr.querySelector(".stat-rating")?.value;
     const ratingNorm = normalizeRatingInput(ratingRaw);
-    const rating = ratingNorm ? Number(ratingNorm) : null;
+    let rating = ratingNorm ? Number(ratingNorm) : null;
+    // Starters / introduced subs without a rating get an automatic 3.0
+    if (appeared && (rating == null || Number.isNaN(rating))) {
+      rating = Number(DEFAULT_MATCH_RATING);
+    }
     const potm = tr.querySelector(".stat-potm")?.checked ?? false;
     const yellow_card = tr.querySelector(".stat-yellow")?.checked ?? false;
     const red_card = tr.querySelector(".stat-red")?.checked ?? false;

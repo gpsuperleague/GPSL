@@ -165,10 +165,16 @@ const USER_AGENT =
 
 /** Authentic offline ratings — what GPSL GPDB sync should scrape. */
 const PESDB_AUTH_LIST = "https://pesdb.net/efootball/authentic/players/";
+/**
+ * Standard availability only (excludes Unavailable Authentic entries).
+ * Full Authentic ≈30k / 1,255 pages; Standard ≈18.7k / ~779 pages.
+ * Still Authentic cards — not Dream Team / special boost versions.
+ */
+const PESDB_AUTH_LIST_STANDARD = `${PESDB_AUTH_LIST}?availability=standard`;
 /** Force HTML table layout (card view has no structured columns). */
 const PESDB_TABLE_COOKIE =
   'pesdb_efootball_search=%7B%22view%22%3A%22table%22%7D';
-/** Authentic list page size (~30,100 ÷ 1,255 ≈ 24). */
+/** Authentic list page size (~18.7k ÷ ~779 ≈ 24). */
 const PESDB_PLAYERS_PER_PAGE = 24;
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -179,9 +185,9 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 }
 
 function pesdbListUrl(page: number): string {
-  // Exact Authentic catalog: https://pesdb.net/efootball/authentic/players/
-  if (page <= 1) return PESDB_AUTH_LIST;
-  return `${PESDB_AUTH_LIST}?page=${page}`;
+  // Authentic + Standard availability (not full Authentic / not Dream Team)
+  if (page <= 1) return PESDB_AUTH_LIST_STANDARD;
+  return `${PESDB_AUTH_LIST}?availability=standard&page=${page}`;
 }
 
 /** Prefer slug path from list row; never use bare ?id= (Dream Team redirect). */
@@ -617,12 +623,12 @@ Deno.serve(async (req) => {
         total_players: totalPlayers,
         max_page_link: maxPage,
         estimated_pages: estimatedPages,
-        source: "authentic",
+        source: "authentic_standard",
         list_url: listUrl,
         players_per_page: PESDB_PLAYERS_PER_PAGE,
         html_bytes: html.length,
         warning: usedFallback
-          ? "Could not read Authentic page count from HTML — still on fallback 100. Redeploy gpdb-pesdb-scrape if this persists."
+          ? "Could not read Authentic (Standard) page count from HTML — still on fallback 100. Redeploy gpdb-pesdb-scrape if this persists."
           : null,
       });
     }
@@ -747,7 +753,7 @@ Deno.serve(async (req) => {
         players: [],
         players_on_page: 0,
         warning:
-          "No players on this page — PESDB rate limit, wrong list URL, or past the last Authentic page (detect ≈1,255; stops on first empty page).",
+          "No players on this page — PESDB rate limit, wrong list URL, or past the last Authentic Standard page (detect ≈779; stops on first empty page).",
       });
     }
 

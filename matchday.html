@@ -259,9 +259,10 @@
     </div>
 
     <div class="panel submit-panel-wrap hidden" id="submitPanel">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Optional stats: exactly 11 Started, 0–5 Subbed on, your G total ≤ team score (shortfall = opponent OGs), OG column for your own goals, one POTM." tabindex="0">Submit result</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Required: exactly 11 Started, 0–5 Subbed on, goals and assists for those who played (G total ≤ team score; shortfall = opponent OGs). Rating and POTM optional — blank ratings on starters/subs become 3.0." tabindex="0">Submit result</h2>
       <p class="meta" style="margin-top:0;">
-        Pick a fixture and enter the score (and optional squad stats below). You can also use
+        Pick a fixture and enter the score plus squad stats below (started / subs / goals / assists are required).
+        Rating and Player of the Match are optional. You can also use
         <a href="fixtures.html" style="color:#ff9900;">Fixtures</a>
         for score-only entry,
         <a href="inbox.html" style="color:#ff9900;">Inbox</a> to confirm opponent scores, or
@@ -337,7 +338,8 @@
         </div>
         <p id="confirmStatsHint" class="stats-hint" style="display:none;color:#9c9;margin-bottom:8px;"></p>
         <p class="stats-hint" id="statsPanelHint">
-          You must tick exactly <b>11 Started</b> (subs optional: 0–5 <b>Subbed on</b>). Ratings 0.1–10.
+          You must tick exactly <b>11 Started</b> (subs optional: 0–5 <b>Subbed on</b>) and enter <b>G</b> / <b>A</b> for those who played.
+          Rating and POTM are optional — blank ratings on starters / introduced subs become <b>3.0</b> automatically.
           Your <b>G</b> total must not exceed your team score (leave it short if opponent own goals are on the scoreline).
           Use <b>OG</b> for own goals by your players. Not penalties. One POTM max.
           Tick <b>Y</b> / <b>R</b> for cards (player must have played). Red = 2-match ban; 8 yellows in a season = 2-match ban.
@@ -352,9 +354,9 @@
                 <th colspan="2" class="stat-group-hdr">Played</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Goals scored for your team. Do not include opponent own goals here — leave your G total short of the score if the opponent scored an OG." tabindex="0">G</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Own goals by your player (counts for the opponent on the scoreboard, not your G total)." tabindex="0">OG</th>
-                <th rowspan="2">A</th>
-                <th rowspan="2">Rating</th>
-                <th rowspan="2">POTM</th>
+                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Assists by your player. Required with goals for players who appeared." tabindex="0">A</th>
+                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Optional. Leave blank for an automatic 3.0 on starters and introduced subs. Range 0.1–10 if entered." tabindex="0">Rating</th>
+                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Optional. At most one Player of the Match; must have started or been subbed on." tabindex="0">POTM</th>
                 <th colspan="2" class="stat-group-hdr">Cards</th>
               </tr>
               <tr>

@@ -353,12 +353,25 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Physical attrs stay off until SQL patch is applied, then flip this to true
-    // (or re-run after patch — columns exist and filters can be turned on in code).
-    // Do not REST-select Height here: missing columns log a 400 in the browser.
+    // Soft enable: RPC from physical_attrs SQL (no REST select of Height → no 400 noise).
+    // Filters appear once columns exist; options fill after scrape → Apply.
     usePhysicalDbColumns = false;
     for (const col of PHYSICAL_DB_COLS) {
       if (!FILTER_EXCLUDE.includes(col)) FILTER_EXCLUDE.push(col);
+    }
+    try {
+      const { data: hasPhys, error: physErr } = await supabase.rpc(
+        "gpdb_has_physical_attrs"
+      );
+      if (!physErr && hasPhys === true) {
+        usePhysicalDbColumns = true;
+        for (const col of PHYSICAL_DB_COLS) {
+          const i = FILTER_EXCLUDE.indexOf(col);
+          if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
+        }
+      }
+    } catch (_) {
+      /* RPC missing until physical_attrs patch is applied */
     }
   }
 
