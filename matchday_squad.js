@@ -12,7 +12,7 @@ import {
   normalizePitchLayout,
   pitchLayoutHasSlots,
   spaceGkFromDefenders,
-} from "./matchday_formations.js";
+} from "./matchday_formations.js?v=20260918-cards-pool";
 import {
   loadGpslFormations,
   listSelectableFormations,
@@ -33,7 +33,7 @@ import {
 } from "./player_links.js";
 import { analyseMatchdayComposition } from "./squad_rules.js";
 
-export { buildPitchLayoutPayload } from "./matchday_formations.js";
+export { buildPitchLayoutPayload } from "./matchday_formations.js?v=20260918-cards-pool";
 
 export const MAX_SQUAD = 23;
 export const MAX_PITCH = 11;

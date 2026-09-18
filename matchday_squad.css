@@ -165,8 +165,8 @@
 .football-pitch::before {
   content: "";
   position: absolute;
-  /* Extra room at the bottom for the GK card inside the painted pitch */
-  inset: 6% 8% 3% 8%;
+  /* Extra room at the bottom for the full-size GK card inside the painted pitch */
+  inset: 5% 8% 2% 8%;
   border: 2px solid rgba(255, 255, 255, 0.55);
   pointer-events: none;
 }
