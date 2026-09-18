@@ -507,72 +507,6 @@ function wireDragDrop(root, getState, rerender) {
  * @param {function} opts.onChange
  * @param {function} opts.onSave
  */
-function wirePositionDragging(pitchEl, slotPositions, getEditMode) {
-  let activeSlotId = null;
-  let pointerId = null;
-  let activeWrap = null;
-
-  const onPointerMove = (e) => {
-    if (!activeSlotId || e.pointerId !== pointerId || !activeWrap) return;
-    const rect = pitchEl.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    slotPositions[activeSlotId] = {
-      x: clampPct(x),
-      y: clampPct(y),
-    };
-    activeWrap.style.left = `${slotPositions[activeSlotId].x}%`;
-    activeWrap.style.top = `${slotPositions[activeSlotId].y}%`;
-  };
-
-  const endDrag = (e) => {
-    if (!activeSlotId) return;
-    if (e.pointerId != null && pointerId != null && e.pointerId !== pointerId) return;
-
-    activeWrap?.classList.remove("dragging-position");
-    if (activeWrap?.hasPointerCapture?.(pointerId)) {
-      try {
-        activeWrap.releasePointerCapture(pointerId);
-      } catch {
-        /* ignore */
-      }
-    }
-
-    activeSlotId = null;
-    pointerId = null;
-    activeWrap = null;
-    document.removeEventListener("pointermove", onPointerMove);
-    document.removeEventListener("pointerup", endDrag);
-    document.removeEventListener("pointercancel", endDrag);
-  };
-
-  pitchEl.addEventListener("pointerdown", (e) => {
-    if (!getEditMode()) return;
-    if (e.target.closest(".squad-player-card")) return;
-    if (e.target.closest(".pitch-slot-label")) return;
-
-    const wrap = e.target.closest(".pitch-slot[data-slot-id]");
-    if (!wrap) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    activeSlotId = wrap.dataset.slotId;
-    pointerId = e.pointerId;
-    activeWrap = wrap;
-    wrap.classList.add("dragging-position");
-
-    try {
-      wrap.setPointerCapture(pointerId);
-    } catch {
-      /* touch / older browsers */
-    }
-
-    document.addEventListener("pointermove", onPointerMove);
-    document.addEventListener("pointerup", endDrag);
-    document.addEventListener("pointercancel", endDrag);
-  });
-}
 
 function wirePitchLabelPicker(pitchEl, slotLabels, getOptionsForSlot) {
   const pitchStage = pitchEl.closest(".pitch-stage") || pitchEl.parentElement;
@@ -753,7 +687,6 @@ export function initMatchdaySquadPanel({
       ? Math.max(MAX_PITCH, Number(maxSquad) || MAX_PITCH + benchLimit)
       : MAX_PITCH + benchLimit;
 
-  let editPositionsMode = false;
   const resolved = resolvePitchLayout(savedPitchLayout);
   let currentFormationId = resolved.formationId;
   let slotPositions = { ...resolved.positions };
@@ -808,8 +741,6 @@ export function initMatchdaySquadPanel({
     </div>
     <div class="squad-toolbar">
       <button type="button" class="button secondary" id="squadAutoFillBtn">Auto-fill XI</button>
-      <button type="button" class="button secondary" id="squadMovePosBtn">Move positions</button>
-      <button type="button" class="button secondary" id="squadResetPosBtn" hidden>Reset layout</button>
       <button type="button" class="button secondary" id="squadClearBtn">Clear squad</button>
       <button type="button" class="button" id="squadSaveBtn">Save default squad</button>
       <span class="squad-status" id="squadStatusText"></span>
@@ -819,9 +750,6 @@ export function initMatchdaySquadPanel({
         ? `<div class="matchday-comp-strip" id="matchdayCompStrip" aria-live="polite"></div>`
         : ""
     }
-    <p class="squad-hint" id="squadEditHint" style="display:none;color:#9c9;">
-      Drag any <b>position marker</b> (label or empty slot) on the pitch to arrange your layout.
-    </p>
     <div class="squad-layout">
       <div class="squad-pool">
         <h4>Squad pool</h4>
@@ -842,9 +770,6 @@ export function initMatchdaySquadPanel({
   const benchSlotsSquad = root.querySelector("#benchSlotsSquad");
   const statusText = root.querySelector("#squadStatusText");
   const matchdayCompStrip = root.querySelector("#matchdayCompStrip");
-  const editHint = root.querySelector("#squadEditHint");
-  const movePosBtn = root.querySelector("#squadMovePosBtn");
-  const resetPosBtn = root.querySelector("#squadResetPosBtn");
   const formationSelect = root.querySelector("#squadFormationSelect");
 
   function forEachBenchDrop(fn) {
@@ -1032,15 +957,6 @@ export function initMatchdaySquadPanel({
     parent?.appendChild(wrap);
   }
 
-  function setEditPositionsMode(on) {
-    editPositionsMode = on;
-    pitchEl.classList.toggle("positions-edit-mode", on);
-    movePosBtn.classList.toggle("active", on);
-    movePosBtn.textContent = on ? "Done moving" : "Move positions";
-    resetPosBtn.hidden = !on;
-    editHint.style.display = on ? "block" : "none";
-    rerenderPlayerCards();
-  }
 
   function updateStatus() {
     const pitchN = [...state.pitch.values()].filter(Boolean).length;
@@ -1106,7 +1022,7 @@ export function initMatchdaySquadPanel({
           status: statusFor(p),
           showGpdbLink,
         });
-        card.draggable = !editPositionsMode;
+        card.draggable = true;
         drop.appendChild(card);
       } else {
         drop.innerHTML = '<span class="pitch-slot-placeholder"></span>';
@@ -1137,7 +1053,6 @@ export function initMatchdaySquadPanel({
   }
 
   wireDragDrop(root, () => state, rerender);
-  wirePositionDragging(pitchEl, slotPositions, () => editPositionsMode);
   wirePitchLabelPicker(pitchEl, slotLabels, roleOptionsForSlot);
 
   // Capture phase so ✕ remove runs before pitch role-picker card clicks
@@ -1159,7 +1074,6 @@ export function initMatchdaySquadPanel({
     true
   );
 
-  movePosBtn.addEventListener("click", () => setEditPositionsMode(!editPositionsMode));
 
   root.querySelector("#squadApplyTemplateBtn").addEventListener("click", () => {
     const templateId = formationSelect.value;
@@ -1175,12 +1089,6 @@ export function initMatchdaySquadPanel({
   });
 
 
-  resetPosBtn.addEventListener("click", () => {
-    const templateId = isTemplateFormationId(currentFormationId)
-      ? currentFormationId
-      : formationSelect.value;
-    applyFormation(templateId);
-  });
 
   root.querySelector("#squadAutoFillBtn").addEventListener("click", () => {
     if (typeof customAutoFill === "function") {
@@ -1264,7 +1172,6 @@ export function initMatchdaySquadPanel({
       state.maxBench = benchLimit;
       state.maxSquad = effectiveSquadLimit;
       statusText.textContent = `Saved ${payload.length} players.`;
-      setEditPositionsMode(false);
     } catch (err) {
       statusText.textContent = err?.message || "Save failed";
       alert(err?.message || "Save failed");

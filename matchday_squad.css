@@ -201,27 +201,6 @@
   gap: 2px;
   z-index: 2;
 }
-.football-pitch.positions-edit-mode .pitch-slot {
-  z-index: 4;
-  cursor: move;
-  touch-action: none;
-}
-.football-pitch.positions-edit-mode .pitch-slot.dragging-position {
-  z-index: 6;
-  filter: drop-shadow(0 0 6px rgba(255, 153, 0, 0.8));
-}
-.football-pitch.positions-edit-mode .pitch-slot-label {
-  color: #ffcc66;
-  background: rgba(255, 153, 0, 0.35);
-  cursor: move;
-}
-.football-pitch.positions-edit-mode .pitch-slot-drop {
-  pointer-events: none;
-}
-.football-pitch.positions-edit-mode .squad-player-card {
-  pointer-events: none;
-  opacity: 0.65;
-}
 .pitch-slot-placeholder {
   display: block;
   width: 52px;
