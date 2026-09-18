@@ -7,7 +7,8 @@
 --       global rule/config templates (tax tariffs, prize templates, etc.),
 --       waiting-list / registry admin state (tiers, confirm ticks, prizes inventory),
 --       admin workflow checklist.
--- WIPE: owners on clubs, squads/contracts, finances/ledger, transfers, seasons,
+-- WIPE: owners on clubs, squads/contracts, finances/ledger, owner personal wallets
+--       (reset to opening ₿50k), transfers, seasons,
 --       league+cup fixtures/results/player stats, archives/awards/owner points,
 --       GPSL Sport, Natter, inbox, manager career history, internationals
 --       (fixtures/results/cycles/assignments/caps), medical room state,
@@ -142,6 +143,15 @@ BEGIN
       WHERE m.contracted_club IS NOT NULL AND btrim(m.contracted_club) <> ''
     ),
     'club_finances_nonzero', v_finance_nonzero,
+    'owner_wallets_nonzero', (
+      SELECT CASE
+        WHEN to_regclass('public.owner_wallets') IS NULL THEN 0
+        ELSE (
+          SELECT count(*)::int FROM public.owner_wallets w WHERE coalesce(w.balance, 0) <> 0
+        )
+      END
+    ),
+    'owner_finance_ledger_rows', public.admin_test_reset_table_count('public.owner_finance_ledger'),
     'finance_ledger_rows', (SELECT count(*)::int FROM public.competition_finance_ledger),
     'bank_ledger_rows', (SELECT count(*)::int FROM public.bank_ledger),
     'player_transfer_bids', (SELECT count(*)::int FROM public."Player_Transfer_Bids"),
@@ -492,6 +502,13 @@ BEGIN
   UPDATE public."Club_Finances"
   SET balance = 0
   WHERE true;
+
+  -- Phase E2: owner personal wallets → opening ₿50k
+  -- (full helper lives in admin_prelaunch_test_reset_owner_wallets_20260918.sql;
+  --  inline fallback if that patch is already applied)
+  IF to_regprocedure('public.admin_test_reset_reset_owner_wallets()') IS NOT NULL THEN
+    v_result := v_result || public.admin_test_reset_reset_owner_wallets();
+  END IF;
 
   UPDATE public.gpsl_bank_account
   SET reserves = 0,

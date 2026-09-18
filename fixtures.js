@@ -33,6 +33,7 @@ import {
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import { scheduleActionLabel, formatKickoff, UK_TZ, catchUpBadgeHtml, isCatchUpFixture } from "./match_scheduling.js";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
+import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadMatchSimStatus,
   matchSimBannerHtml,
@@ -238,7 +239,7 @@ function fixtureRowHtml(fixture) {
     ? `<span class="catch-up-cell">${catchUpBadgeHtml()}</span>`
     : "";
   return `
-    <td>${clubWithOwnerHtml(fixture.home_club_name, fixture.home_club_short_name, "block")}</td>
+    <td>${clubWithOwnerHtml(fixture.home_club_name, fixture.home_club_short_name, "block")}${matchCentreButtonHtml(fixture)}</td>
     <td class="score">${tvFixtureBadgeHtml(fixture.id)}${formatFixtureScore(fixture, myClub)}${matchVideoTicksHtml(matchVideoMap.get(String(fixture.id)), {
       fixtureId: fixture.id,
       fixture,

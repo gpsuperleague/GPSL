@@ -38,6 +38,7 @@ import {
   runMatchSimulation,
 } from "./match_sim_ui.js?v=20260908-assist-goal-attach";
 import { loadMyNation, loadInternationalFixtures } from "./international.js";
+import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
   loadMatchVideoReportedSides,
@@ -170,6 +171,7 @@ function matchLineHtml(f) {
     <span class="${homeCls}">${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</span>
     <span style="color:#666;margin:0 4px;">vs</span>
     <span class="${awayCls}">${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</span>
+    ${matchCentreButtonHtml(f)}
   `;
 }
 
