@@ -1,9 +1,10 @@
 /**
  * GPSL formations catalogue (eFootball-style).
- * Loads admin-owned formations from Supabase when catalogue_live is on;
+ * Prefers admin-owned formations from Supabase whenever enabled rows exist;
  * otherwise falls back to hardcoded Match Day presets.
  *
  * Global rule: CF + SS combined ≤ 2 (no CF/CF/SS).
+ * Owner pitch layouts always enforce GPSL mirroring.
  */
 
 import { supabase } from "./global.js";
@@ -38,7 +39,7 @@ export const GPSL_POSITIONS = [
 let cache = {
   settings: {
     catalogue_live: false,
-    enforce_mirroring: false,
+    enforce_mirroring: true,
     max_cf_ss: 2,
   },
   formations: [],
@@ -82,7 +83,8 @@ export function isCatalogueLive() {
 }
 
 export function enforceMirroring() {
-  return !!cache.settings?.enforce_mirroring;
+  // Match Day always mirrors; setting kept for admin UI / future toggles
+  return cache.settings?.enforce_mirroring !== false;
 }
 
 export function maxCfSs() {
@@ -90,31 +92,29 @@ export function maxCfSs() {
   return Number.isFinite(n) ? n : 2;
 }
 
-/** Enabled formations for Match Day / International pickers. */
-export function listSelectableFormations() {
-  if (isCatalogueLive() && cache.formations.length) {
-    return cache.formations
-      .filter((f) => f.is_enabled)
-      .map((f) => ({
-        id: f.code,
-        code: f.code,
-        name: f.name,
-        description: f.description || "",
-        group: f.group_label || "General",
-        formationId: f.id,
-        slots: (f.slots || []).map((s) => ({
-          id: s.slot_key,
-          label: s.default_position,
-          x: Number(s.x),
-          y: Number(s.y),
-          allowRelabel: !!s.allow_relabel,
-          allowedPositions: Array.isArray(s.allowed_positions)
-            ? s.allowed_positions
-            : [s.default_position],
-        })),
-      }));
-  }
-  return Object.values(MATCHDAY_FORMATIONS).map((f) => ({
+function mapCatalogueFormation(f) {
+  return {
+    id: f.code,
+    code: f.code,
+    name: f.name,
+    description: f.description || "",
+    group: f.group_label || "General",
+    formationId: f.id,
+    slots: (f.slots || []).map((s) => ({
+      id: s.slot_key,
+      label: s.default_position,
+      x: Number(s.x),
+      y: Number(s.y),
+      allowRelabel: !!s.allow_relabel,
+      allowedPositions: Array.isArray(s.allowed_positions)
+        ? s.allowed_positions
+        : [s.default_position],
+    })),
+  };
+}
+
+function mapHardcodedFormation(f) {
+  return {
     id: f.id,
     code: f.id,
     name: f.name,
@@ -127,9 +127,21 @@ export function listSelectableFormations() {
       x: s.x,
       y: s.y,
       allowRelabel: true,
-      allowedPositions: GPSL_POSITIONS.filter((p) => p !== "GK" || s.label === "GK"),
+      allowedPositions: GPSL_POSITIONS.filter(
+        (p) => p !== "GK" || s.label === "GK"
+      ),
     })),
-  }));
+  };
+}
+
+/**
+ * Prefer admin catalogue whenever any enabled formation exists
+ * (so role locks / allowed positions apply on Match Day without a separate "live" flip).
+ */
+export function listSelectableFormations() {
+  const enabled = (cache.formations || []).filter((f) => f.is_enabled);
+  if (enabled.length) return enabled.map(mapCatalogueFormation);
+  return Object.values(MATCHDAY_FORMATIONS).map(mapHardcodedFormation);
 }
 
 export function getSelectableFormation(codeOrId) {
@@ -146,7 +158,8 @@ export function formationPickerGroups() {
   const list = listSelectableFormations();
   const groups = [];
   const seen = new Set();
-  const prefer = isCatalogueLive()
+  const fromCatalogue = (cache.formations || []).some((f) => f.is_enabled);
+  const prefer = fromCatalogue
     ? [...new Set(list.map((f) => f.group))]
     : FORMATION_GROUP_ORDER;
   for (const g of prefer) {
@@ -170,7 +183,6 @@ export function formationLabel(f) {
   return f.description ? `${f.name} — ${f.description}` : f.name;
 }
 
-/** Count CF+SS in a map of slotId -> position label. */
 export function countCfSs(slotLabels) {
   let n = 0;
   for (const v of Object.values(slotLabels || {})) {
@@ -184,7 +196,7 @@ export function countCfSs(slotLabels) {
 
 /**
  * Validate owner pitch labels against formation slot rules + CF/SS cap.
- * When catalogue is not live, optionally still applies legacy mirroring.
+ * Always applies GPSL mirroring (LB↔RB, LMF↔RMF, LWF↔RWF).
  */
 export function validateOwnerPitchLabels(formation, slotLabels) {
   const errors = [];
@@ -222,10 +234,8 @@ export function validateOwnerPitchLabels(formation, slotLabels) {
     }
   }
 
-  if (enforceMirroring()) {
-    const mirror = validateFormationMirroring(labels);
-    if (!mirror.ok) errors.push(...(mirror.errors || [mirror.message]));
-  }
+  const mirror = validateFormationMirroring(labels);
+  if (!mirror.ok) errors.push(...(mirror.errors || [mirror.message]));
 
   return {
     ok: errors.length === 0,
@@ -245,7 +255,6 @@ export function slotRoleOptions(formation, slotId) {
   return allowed;
 }
 
-/** Build pitch_layout payload from a catalogue/hardcoded formation. */
 export function buildLayoutFromFormation(formation) {
   if (!formation) {
     const f = getHardcodedFormation(DEFAULT_FORMATION_ID);

@@ -212,10 +212,9 @@
   <main class="fm-wrap">
     <h1>Formations catalogue</h1>
     <p class="fm-lead">
-      Build eFootball-style named formations for Match Day and International.
-      For each slot, choose whether owners may change the role and which roles are allowed
-      (e.g. CB → RB, CF → SS). Global rule: <b>CF + SS ≤ 2</b> (no CF/CF/SS).
-      Leave <b>Catalogue live</b> off until Match Day / International are switched over.
+      Build eFootball-style named formations. Slot role locks and allowed positions apply on Match Day
+      whenever enabled formations exist in this catalogue. Global rule: <b>CF + SS ≤ 2</b> (no CF/CF/SS).
+      Mirroring (LB↔RB, LMF↔RMF, LWF↔RWF) is always enforced on Match Day saves.
     </p>
     <p id="status" class="fm-status"></p>
 
@@ -229,7 +228,7 @@
       <div class="fm-actions">
         <button type="button" id="saveSettingsBtn" class="primary">Save settings</button>
       </div>
-      <p class="fm-note">Mirroring should stay off for eFootball formations. Turn catalogue live only after Match Day wiring is ready.</p>
+      <p class="fm-note">Mirroring stays on for Match Day (LB↔RB, LMF↔RMF, LWF↔RWF). Catalogue formations are used on Match Day whenever enabled rows exist — slot role locks and allowed positions apply there. Turn Catalogue live when you want International / other surfaces to treat this list as published.</p>
     </section>
 
     <div class="fm-layout">

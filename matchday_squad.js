@@ -4,19 +4,23 @@
 
 import {
   DEFAULT_FORMATION_ID,
-  MATCHDAY_FORMATIONS,
   FORMATION_LIST,
-  FORMATION_GROUP_ORDER,
-  formationDisplayName,
   getFormation,
   formationLayout,
   resolvePitchLayout,
   buildPitchLayoutPayload,
   normalizePitchLayout,
   pitchLayoutHasSlots,
-  validateFormationMirroring,
-  PITCH_LABEL_PRESETS,
 } from "./matchday_formations.js";
+import {
+  loadGpslFormations,
+  listSelectableFormations,
+  getSelectableFormation,
+  formationPickerGroups,
+  formationLabel,
+  slotRoleOptions,
+  validateOwnerPitchLabels,
+} from "./gpsl_formations.js";
 import {
   pesdbPlayerCardUrl,
   pesdbPlayerUrl,
@@ -568,7 +572,7 @@ function wirePositionDragging(pitchEl, slotPositions, getEditMode) {
   });
 }
 
-function wirePitchLabelPicker(pitchEl, slotLabels) {
+function wirePitchLabelPicker(pitchEl, slotLabels, getOptionsForSlot) {
   const pitchStage = pitchEl.closest(".pitch-stage") || pitchEl.parentElement;
   let menu = pitchStage?.querySelector("#pitchLabelMenu");
   if (!menu && pitchStage) {
@@ -593,14 +597,30 @@ function wirePitchLabelPicker(pitchEl, slotLabels) {
   function openMenu(slotId, anchorEl) {
     menu.innerHTML = "";
 
+    const options =
+      typeof getOptionsForSlot === "function"
+        ? getOptionsForSlot(slotId)
+        : [slotLabels[slotId] || slotId];
+    const locked = options.length <= 1;
+
     const title = document.createElement("div");
     title.className = "pitch-label-menu-title";
-    title.textContent = `Change role — ${slotLabels[slotId] || slotId}`;
+    title.textContent = locked
+      ? `Role locked — ${slotLabels[slotId] || slotId}`
+      : `Change role — ${slotLabels[slotId] || slotId}`;
     menu.appendChild(title);
+
+    if (locked) {
+      const note = document.createElement("div");
+      note.className = "pitch-label-menu-note";
+      note.style.cssText = "font-size:11px;color:#999;margin:0 0 8px;";
+      note.textContent = "This slot is locked for the selected formation.";
+      menu.appendChild(note);
+    }
 
     const grid = document.createElement("div");
     grid.className = "pitch-label-menu-grid";
-    for (const label of PITCH_LABEL_PRESETS) {
+    for (const label of options) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className =
@@ -608,6 +628,10 @@ function wirePitchLabelPicker(pitchEl, slotLabels) {
       btn.textContent = label;
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
+        if (locked) {
+          closeMenu();
+          return;
+        }
         slotLabels[slotId] = label;
         updateSlotLabelDom(slotId);
         closeMenu();
@@ -615,21 +639,6 @@ function wirePitchLabelPicker(pitchEl, slotLabels) {
       grid.appendChild(btn);
     }
     menu.appendChild(grid);
-
-    const customBtn = document.createElement("button");
-    customBtn.type = "button";
-    customBtn.className = "pitch-label-custom";
-    customBtn.textContent = "Custom label…";
-    customBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const v = prompt("Position label", slotLabels[slotId] || "");
-      if (v != null && v.trim()) {
-        slotLabels[slotId] = v.trim();
-        updateSlotLabelDom(slotId);
-      }
-      closeMenu();
-    });
-    menu.appendChild(customBtn);
 
     menu.hidden = false;
     positionMenuNearAnchor(anchorEl);
@@ -693,7 +702,10 @@ function wirePitchLabelPicker(pitchEl, slotLabels) {
 }
 
 function isTemplateFormationId(id) {
-  return FORMATION_LIST.some((f) => f.id === id);
+  return (
+    listSelectableFormations().some((f) => f.id === id) ||
+    FORMATION_LIST.some((f) => f.id === id)
+  );
 }
 
 export function initMatchdaySquadPanel({
@@ -787,19 +799,9 @@ export function initMatchdaySquadPanel({
   root.innerHTML = `
     <div class="squad-formations-bar">
       <div class="formation-section-row">
-        <span class="formation-section-label">Default formations</span>
-        <select id="squadFormationSelect" class="formation-select" title="Starting layout only — use Apply to reset markers"></select>
-        <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply Default Formation</button>
-      </div>
-      <div class="formation-section-row">
-        <span class="formation-section-label">My Formations</span>
-        <select id="squadSavedFormationSelect" class="formation-select" title="Pick Custom 1–5 to load or save"></select>
-        <div class="formation-action-group">
-          <button type="button" class="button secondary" id="squadLoadFormationBtn">Load Custom Formation</button>
-          <button type="button" class="button secondary" id="squadSaveFormationBtn">Save Custom Formation</button>
-          <button type="button" class="button danger" id="squadDeleteFormationBtn">Delete Custom Formation</button>
-        </div>
-        <input type="text" id="squadFormationName" class="formation-name-input" maxlength="40" placeholder="Formation name" />
+        <span class="formation-section-label">Formations</span>
+        <select id="squadFormationSelect" class="formation-select" title="Out-of-the-box formations — Apply resets roles and marker positions"></select>
+        <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply Formation</button>
       </div>
     </div>
     <div class="squad-toolbar">
@@ -842,59 +844,30 @@ export function initMatchdaySquadPanel({
   const movePosBtn = root.querySelector("#squadMovePosBtn");
   const resetPosBtn = root.querySelector("#squadResetPosBtn");
   const formationSelect = root.querySelector("#squadFormationSelect");
-  const savedFormationSelect = root.querySelector("#squadSavedFormationSelect");
-  const formationNameInput = root.querySelector("#squadFormationName");
 
   function forEachBenchDrop(fn) {
     root.querySelectorAll(".bench-slot-drop").forEach(fn);
   }
-  formationSelect.innerHTML = "";
-  for (const groupLabel of FORMATION_GROUP_ORDER) {
-    const groupFormations = Object.values(MATCHDAY_FORMATIONS).filter(
-      (f) => f.group === groupLabel
-    );
-    if (!groupFormations.length) continue;
-    const og = document.createElement("optgroup");
-    og.label = groupLabel;
-    for (const f of groupFormations) {
-      const opt = document.createElement("option");
-      opt.value = f.id;
-      opt.textContent = formationDisplayName(f);
-      og.appendChild(opt);
+  function fillFormationSelect() {
+    formationSelect.innerHTML = "";
+    for (const { group, formations } of formationPickerGroups()) {
+      const og = document.createElement("optgroup");
+      og.label = group;
+      for (const f of formations) {
+        const opt = document.createElement("option");
+        opt.value = f.id;
+        opt.textContent = formationLabel(f);
+        og.appendChild(opt);
+      }
+      formationSelect.appendChild(og);
     }
-    formationSelect.appendChild(og);
-  }
-  formationSelect.value = isTemplateFormationId(currentFormationId)
-    ? currentFormationId
-    : DEFAULT_FORMATION_ID;
-
-  let savedFormationRows = [...savedFormations];
-
-  function savedFormationBySlot(slotNo) {
-    return savedFormationRows.find((r) => Number(r.slot_no) === slotNo) || null;
+    const ids = listSelectableFormations().map((f) => f.id);
+    formationSelect.value = ids.includes(currentFormationId)
+      ? currentFormationId
+      : ids[0] || DEFAULT_FORMATION_ID;
   }
 
-  function renderSavedFormationOptions() {
-    savedFormationSelect.innerHTML = "";
-    for (let slot = 1; slot <= 5; slot += 1) {
-      const row = savedFormationBySlot(slot);
-      const opt = document.createElement("option");
-      opt.value = String(slot);
-      opt.textContent = row?.name
-        ? `Custom ${slot} — ${row.name}`
-        : `Custom ${slot} — (empty)`;
-      savedFormationSelect.appendChild(opt);
-    }
-    syncFormationNameFromSlot();
-  }
-
-  function syncFormationNameFromSlot() {
-    const slot = Number(savedFormationSelect.value) || 1;
-    const row = savedFormationBySlot(slot);
-    formationNameInput.value = row?.name || "";
-  }
-
-  renderSavedFormationOptions();
+  fillFormationSelect();
 
   function applySlotPositionsToDom() {
     for (const slotId of SLOT_IDS) {
@@ -928,11 +901,20 @@ export function initMatchdaySquadPanel({
     }
   }
 
-  function guardMirroring() {
-    const result = validateFormationMirroring(slotLabels);
+  function currentSelectableFormation() {
+    return getSelectableFormation(currentFormationId || formationSelect.value);
+  }
+
+  function roleOptionsForSlot(slotId) {
+    return slotRoleOptions(currentSelectableFormation(), slotId);
+  }
+
+  function guardFormationRules() {
+    const formation = currentSelectableFormation();
+    const result = validateOwnerPitchLabels(formation, slotLabels);
     if (!result.ok) {
       alert(
-        `Cannot save — this formation breaks GPSL mirroring rules:\n\n${result.errors.join("\n")}`
+        `Cannot save — formation rules failed:\n\n${result.errors.join("\n")}`
       );
       statusText.textContent = result.message;
       return false;
@@ -957,10 +939,23 @@ export function initMatchdaySquadPanel({
   }
 
   function applyFormation(formationId) {
-    const base = formationLayout(formationId);
-    currentFormationId = base.formationId;
-    replaceSlotMap(slotPositions, base.positions);
-    replaceSlotMap(slotLabels, base.labels);
+    const sel = getSelectableFormation(formationId);
+    if (sel?.slots?.length) {
+      currentFormationId = sel.id;
+      const positions = {};
+      const labels = {};
+      for (const s of sel.slots) {
+        positions[s.id] = { x: s.x, y: s.y };
+        labels[s.id] = s.label;
+      }
+      replaceSlotMap(slotPositions, positions);
+      replaceSlotMap(slotLabels, labels);
+    } else {
+      const base = formationLayout(formationId);
+      currentFormationId = base.formationId;
+      replaceSlotMap(slotPositions, base.positions);
+      replaceSlotMap(slotLabels, base.labels);
+    }
     formationSelect.value = currentFormationId;
     buildPitchSlotElements();
     rerenderPlayerCards();
@@ -1086,7 +1081,7 @@ export function initMatchdaySquadPanel({
 
   wireDragDrop(root, () => state, rerender);
   wirePositionDragging(pitchEl, slotPositions, () => editPositionsMode);
-  wirePitchLabelPicker(pitchEl, slotLabels);
+  wirePitchLabelPicker(pitchEl, slotLabels, roleOptionsForSlot);
 
   // Capture phase so ✕ remove runs before pitch role-picker card clicks
   root.addEventListener(
@@ -1111,10 +1106,10 @@ export function initMatchdaySquadPanel({
 
   root.querySelector("#squadApplyTemplateBtn").addEventListener("click", () => {
     const templateId = formationSelect.value;
-    const name = formationDisplayName(getFormation(templateId));
+    const name = formationLabel(getSelectableFormation(templateId)) || templateId;
     if (
       !confirm(
-        `Apply default formation “${name}”? This resets all pitch marker positions and role labels (players stay put).`
+        `Apply formation “${name}”? This resets all pitch marker positions and role labels (players stay put).`
       )
     ) {
       return;
@@ -1122,92 +1117,6 @@ export function initMatchdaySquadPanel({
     applyFormation(templateId);
   });
 
-  savedFormationSelect.addEventListener("change", syncFormationNameFromSlot);
-
-  root.querySelector("#squadLoadFormationBtn").addEventListener("click", async () => {
-    const slot = Number(savedFormationSelect.value) || 1;
-    statusText.textContent = "Loading formation…";
-    try {
-      let row = savedFormationBySlot(slot);
-      if (onLoadFormation) {
-        row = await onLoadFormation(slot);
-      }
-      if (!row || !pitchLayoutHasSlots(row.pitch_layout)) {
-        alert(`Slot ${slot} is empty. Save a custom formation first.`);
-        statusText.textContent = "";
-        return;
-      }
-      const layout = normalizePitchLayout(row.pitch_layout);
-      applyLayoutFromResolved(resolvePitchLayout(layout));
-      formationNameInput.value = row.name || "";
-      statusText.textContent = `Loaded “${row.name}”.`;
-
-      const idx = savedFormationRows.findIndex((r) => Number(r.slot_no) === slot);
-      const merged = { slot_no: slot, name: row.name, pitch_layout: layout };
-      if (idx >= 0) savedFormationRows[idx] = { ...savedFormationRows[idx], ...merged };
-      else savedFormationRows.push(merged);
-      renderSavedFormationOptions();
-      savedFormationSelect.value = String(slot);
-    } catch (err) {
-      statusText.textContent = err?.message || "Failed to load formation";
-      alert(err?.message || "Failed to load custom formation.");
-    }
-  });
-
-  root.querySelector("#squadSaveFormationBtn").addEventListener("click", async () => {
-    if (!onSaveFormation) return;
-    const slot = Number(savedFormationSelect.value) || 1;
-    const name = formationNameInput.value.trim();
-    if (!name) {
-      alert("Enter a name for this formation.");
-      formationNameInput.focus();
-      return;
-    }
-    if (!guardMirroring()) return;
-
-    const layout = buildPitchLayoutPayload(slotPositions, slotLabels, "custom");
-    statusText.textContent = "Saving formation…";
-    try {
-      await onSaveFormation(slot, name, layout);
-      const idx = savedFormationRows.findIndex((r) => Number(r.slot_no) === slot);
-      const row = { slot_no: slot, name, pitch_layout: layout };
-      if (idx >= 0) savedFormationRows[idx] = row;
-      else savedFormationRows.push(row);
-      renderSavedFormationOptions();
-      savedFormationSelect.value = String(slot);
-      statusText.textContent = `Saved “${name}” to slot ${slot}.`;
-      syncFormationNameFromSlot();
-    } catch (err) {
-      statusText.textContent = err?.message || "Formation save failed";
-    }
-  });
-
-  root.querySelector("#squadDeleteFormationBtn").addEventListener("click", async () => {
-    if (!onDeleteFormation) return;
-    const slot = Number(savedFormationSelect.value) || 1;
-    const row = savedFormationBySlot(slot);
-    if (!row) {
-      alert(`Custom ${slot} is already empty.`);
-      return;
-    }
-    const label = row.name ? `Custom ${slot} — “${row.name}”` : `Custom ${slot}`;
-    if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
-
-    statusText.textContent = "Deleting formation…";
-    try {
-      await onDeleteFormation(slot);
-      savedFormationRows = savedFormationRows.filter(
-        (r) => Number(r.slot_no) !== slot
-      );
-      renderSavedFormationOptions();
-      savedFormationSelect.value = String(slot);
-      formationNameInput.value = "";
-      statusText.textContent = `Deleted ${label}.`;
-    } catch (err) {
-      statusText.textContent = err?.message || "Formation delete failed";
-      alert(err?.message || "Failed to delete custom formation.");
-    }
-  });
 
   resetPosBtn.addEventListener("click", () => {
     const templateId = isTemplateFormationId(currentFormationId)
@@ -1269,7 +1178,7 @@ export function initMatchdaySquadPanel({
         return;
       }
     }
-    if (!guardMirroring()) return;
+    if (!guardFormationRules()) return;
 
     const compErrors = matchdayCompositionErrors();
     if (compErrors.length) {
@@ -1323,9 +1232,10 @@ export function initMatchdaySquadPanel({
       statusById = nextMap instanceof Map ? nextMap : new Map();
       rerenderPlayerCards();
     },
-    refreshSavedFormations: (rows) => {
-      savedFormationRows = [...(rows || [])];
-      renderSavedFormationOptions();
+    reloadFormations: async () => {
+      await loadGpslFormations({ force: true });
+      fillFormationSelect();
     },
+    refreshSavedFormations: () => {},
   };
 }

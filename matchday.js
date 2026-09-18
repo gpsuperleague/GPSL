@@ -36,7 +36,8 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20260907-full-swap-fix";
+} from "./matchday_squad.js?v=20260918-formation-rules";
+import { loadGpslFormations } from "./gpsl_formations.js?v=20260918-formation-rules";
 import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260821-md-comp";
 import { playerNameLinkHtml } from "./player_links.js";
 import {
@@ -1107,13 +1108,9 @@ function initSquadPanel() {
     allPlayers: allSquadPlayers,
     savedRows: matchdaySquadRows,
     savedPitchLayout: matchdayPitchLayout,
-    savedFormations: matchdaySavedFormations,
     matchdayComposition: true,
     clubNation: myClub.nation,
     onSave: saveMatchdaySquad,
-    onSaveFormation: saveMatchdayFormation,
-    onLoadFormation: loadMatchdayFormation,
-    onDeleteFormation: deleteMatchdayFormation,
     onChange: () => {},
   });
 }
@@ -1949,6 +1946,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadSquadPlayers();
   await loadMatchdaySquad();
+  await loadGpslFormations();
   await loadClubSuspensions();
   applyMatchdaySquadFilter();
   initSquadPanel();
