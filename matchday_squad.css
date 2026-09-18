@@ -153,9 +153,9 @@
 .football-pitch {
   position: relative;
   width: 100%;
-  /* Taller than a real pitch so XI cards (esp. GK) fit on the green */
-  aspect-ratio: 68 / 125;
-  max-height: 720px;
+  /* Taller than a real pitch so full-size XI cards (esp. GK) fit on the green */
+  aspect-ratio: 68 / 135;
+  max-height: 820px;
   background: linear-gradient(180deg, #2d6a2d 0%, #3d8b3d 45%, #2d6a2d 100%);
   border: 2px solid #e8e8e8;
   border-radius: 4px;
@@ -195,8 +195,8 @@
 .pitch-slot {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 72px;
-  min-height: 86px;
+  width: 110px;
+  min-height: 118px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -205,10 +205,10 @@
 }
 .pitch-slot-placeholder {
   display: block;
-  width: 48px;
-  height: 62px;
+  width: 44px;
+  height: 58px;
   border: 2px dashed rgba(255, 255, 255, 0.45);
-  border-radius: 5px;
+  border-radius: 4px;
   background: rgba(0, 0, 0, 0.15);
 }
 .squad-toolbar button.active {
@@ -291,8 +291,8 @@
   border-color: #888;
 }
 .pitch-slot-drop {
-  width: 68px;
-  min-height: 72px;
+  width: 104px;
+  min-height: 100px;
   border: 2px dashed rgba(255, 255, 255, 0.55);
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.2);
@@ -305,21 +305,23 @@
   border-color: #ff9900;
   background: rgba(255, 153, 0, 0.2);
 }
+/* Match squad-pool card scale (same img + name size); column layout for pitch */
 .pitch-slot-drop .squad-player-card {
   width: 100%;
   margin: 0;
-  padding: 3px;
+  padding: 6px 8px;
+  gap: 6px;
   flex-direction: column;
   text-align: center;
   cursor: grab;
 }
 .pitch-slot-drop .squad-player-card img {
-  width: 48px;
-  height: 62px;
+  width: 44px;
+  height: 58px;
 }
 .pitch-slot-drop .squad-player-card .spc-name {
-  font-size: 9px;
-  max-width: 64px;
+  font-size: 13px;
+  max-width: 96px;
   white-space: normal;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -327,14 +329,15 @@
   line-clamp: 2;
   overflow: hidden;
   word-break: break-word;
-  line-height: 1.15;
-  min-height: 2.1em;
+  line-height: 1.2;
+  min-height: 2.4em;
+  text-overflow: unset;
 }
 .pitch-slot-drop .squad-player-card .spc-pos { display: none; }
 .pitch-slot-drop .squad-player-card .spc-remove {
-  width: 16px;
-  height: 16px;
-  font-size: 10px;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
   line-height: 16px;
 }
 

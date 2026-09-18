@@ -422,16 +422,16 @@ function clampPct(n) {
 
 /**
  * Mild separation so GK stays on the pitch and clears the back line.
- * Pitch cards are compact now — only a modest gap is needed.
+ * Pitch cards match squad-pool size — need a larger centre-to-centre gap.
  */
-export function spaceGkFromDefenders(positions, minGap = 14) {
+export function spaceGkFromDefenders(positions, minGap = 20) {
   if (!positions || typeof positions !== "object") return positions;
   const gk = positions.GK;
   if (!gk || gk.y == null) return positions;
 
   const out = { ...positions };
-  // 80% leaves room below the card centre for ~half a compact card
-  let gkY = Math.min(Number(gk.y), 80);
+  // 82% leaves room below the card centre for ~half a pool-sized card
+  let gkY = Math.min(Number(gk.y), 82);
   out.GK = { ...gk, y: clampPct(gkY) };
 
   const gkX = Number(gk.x) || 50;
