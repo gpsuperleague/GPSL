@@ -53,15 +53,19 @@ export function getFormationsCache() {
 }
 
 export async function loadGpslFormations({ force = false } = {}) {
-  if (cache.loaded && !force) return cache;
+  // Retry when a prior attempt failed or returned no rows (e.g. called before auth).
+  if (cache.loaded && !force && !cache.error && cache.formations.length) {
+    return cache;
+  }
   try {
     const { data, error } = await supabase.rpc("gpsl_formations_list", {
       p_enabled_only: false,
     });
     if (error) throw error;
+    const formations = Array.isArray(data?.formations) ? data.formations : [];
     cache = {
       settings: data?.settings || cache.settings,
-      formations: Array.isArray(data?.formations) ? data.formations : [],
+      formations,
       positions: Array.isArray(data?.positions) ? data.positions : GPSL_POSITIONS,
       loaded: true,
       error: null,
@@ -72,10 +76,16 @@ export async function loadGpslFormations({ force = false } = {}) {
       ...cache,
       loaded: true,
       error: err?.message || String(err),
-      formations: [],
+      // Keep any previously successful rows; only clear on hard empty miss
+      formations: cache.formations?.length ? cache.formations : [],
     };
   }
   return cache;
+}
+
+/** True when Match Day is using admin catalogue rows (not hardcoded presets). */
+export function isUsingCatalogueFormations() {
+  return (cache.formations || []).some((f) => f.is_enabled);
 }
 
 export function isCatalogueLive() {
@@ -114,6 +124,8 @@ function mapCatalogueFormation(f) {
 }
 
 function mapHardcodedFormation(f) {
+  // Without catalogue rows, lock each slot to its default label.
+  // Free "any role" picking is admin-catalogue only.
   return {
     id: f.id,
     code: f.id,
@@ -126,10 +138,8 @@ function mapHardcodedFormation(f) {
       label: s.label,
       x: s.x,
       y: s.y,
-      allowRelabel: true,
-      allowedPositions: GPSL_POSITIONS.filter(
-        (p) => p !== "GK" || s.label === "GK"
-      ),
+      allowRelabel: false,
+      allowedPositions: [s.label],
     })),
   };
 }
@@ -244,15 +254,30 @@ export function validateOwnerPitchLabels(formation, slotLabels) {
   };
 }
 
-/** Allowed role options for a slot (for click-to-change UI). */
-export function slotRoleOptions(formation, slotId) {
-  const slot = formation?.slots?.find((s) => s.id === slotId);
-  if (!slot) return GPSL_POSITIONS.filter((p) => p !== "GK");
-  if (slot.label === "GK") return ["GK"];
+/**
+ * Allowed role options for a slot (click-to-change UI).
+ * Never expands to the full position list — unknown slots stay locked.
+ */
+export function slotRoleOptions(formation, slotId, currentLabel = null) {
+  const slot = formation?.slots?.find(
+    (s) => String(s.id).toUpperCase() === String(slotId || "").toUpperCase()
+  );
+  const fallback = String(currentLabel || slotId || "")
+    .trim()
+    .toUpperCase();
+  if (!slot) return fallback ? [fallback] : [];
+  if (String(slot.label).toUpperCase() === "GK") return ["GK"];
   if (!slot.allowRelabel) return [slot.label];
-  const allowed = (slot.allowedPositions || []).filter(Boolean);
-  if (!allowed.length) return [slot.label];
-  return allowed;
+  const allowed = (slot.allowedPositions || [])
+    .map((p) => String(p || "").trim())
+    .filter(Boolean);
+  // Default role is always permitted when relabel is on
+  const def = String(slot.label || "").trim();
+  if (def && !allowed.some((p) => p.toUpperCase() === def.toUpperCase())) {
+    allowed.unshift(def);
+  }
+  if (!allowed.length) return def ? [def] : fallback ? [fallback] : [];
+  return [...new Set(allowed)];
 }
 
 export function buildLayoutFromFormation(formation) {

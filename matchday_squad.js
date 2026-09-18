@@ -20,6 +20,8 @@ import {
   formationLabel,
   slotRoleOptions,
   validateOwnerPitchLabels,
+  isUsingCatalogueFormations,
+  getFormationsCache,
 } from "./gpsl_formations.js";
 import {
   pesdbPlayerCardUrl,
@@ -862,12 +864,48 @@ export function initMatchdaySquadPanel({
       formationSelect.appendChild(og);
     }
     const ids = listSelectableFormations().map((f) => f.id);
-    formationSelect.value = ids.includes(currentFormationId)
-      ? currentFormationId
-      : ids[0] || DEFAULT_FORMATION_ID;
+    const preferred =
+      currentFormationId && currentFormationId !== "custom"
+        ? currentFormationId
+        : formationSelect.value;
+    formationSelect.value = ids.includes(preferred)
+      ? preferred
+      : ids.includes(currentFormationId)
+        ? currentFormationId
+        : ids[0] || DEFAULT_FORMATION_ID;
+  }
+
+  function updateFormationRulesStatus() {
+    const cache = getFormationsCache();
+    const using = isUsingCatalogueFormations();
+    const selected = formationSelect.value;
+    const f = getSelectableFormation(selected);
+    const cf = f?.slots?.find((s) => s.id === "CF");
+    const cfHint = cf
+      ? `CF slot → ${cf.allowRelabel ? (cf.allowedPositions || []).join("/") : cf.label + " (locked)"}`
+      : "";
+    if (!using) {
+      statusText.textContent = cache.error
+        ? `Formation catalogue unavailable (${cache.error}). Roles locked to defaults.`
+        : "Formation catalogue not loaded — roles locked to defaults. Re-open page or check admin SQL.";
+      return;
+    }
+    statusText.textContent = `Catalogue active · rules from ${selected}${cfHint ? ` · ${cfHint}` : ""}`;
   }
 
   fillFormationSelect();
+  updateFormationRulesStatus();
+
+  // Ensure catalogue is loaded (retry if an earlier call cached an empty miss).
+  void loadGpslFormations({ force: true }).then(() => {
+    fillFormationSelect();
+    updateFormationRulesStatus();
+  });
+
+  formationSelect.addEventListener("change", () => {
+    // Role rules follow the dropdown immediately (Apply still resets pitch coords/labels).
+    updateFormationRulesStatus();
+  });
 
   function applySlotPositionsToDom() {
     for (const slotId of SLOT_IDS) {
@@ -901,16 +939,35 @@ export function initMatchdaySquadPanel({
     }
   }
 
-  function currentSelectableFormation() {
-    return getSelectableFormation(currentFormationId || formationSelect.value);
+  /**
+   * Role rules must follow the formation chosen in the dropdown when possible.
+   * Saved layouts often store formation_id "custom", which must NOT fall through
+   * to an unrestricted hardcoded preset.
+   */
+  function formationForRoleRules() {
+    const selected = String(formationSelect?.value || "").trim();
+    if (selected && selected !== "custom") {
+      const fromSelect = getSelectableFormation(selected);
+      if (fromSelect) return fromSelect;
+    }
+    const current = String(currentFormationId || "").trim();
+    if (current && current !== "custom") {
+      const fromCurrent = getSelectableFormation(current);
+      if (fromCurrent) return fromCurrent;
+    }
+    return getSelectableFormation(DEFAULT_FORMATION_ID);
   }
 
   function roleOptionsForSlot(slotId) {
-    return slotRoleOptions(currentSelectableFormation(), slotId);
+    return slotRoleOptions(
+      formationForRoleRules(),
+      slotId,
+      slotLabels[slotId] || slotId
+    );
   }
 
   function guardFormationRules() {
-    const formation = currentSelectableFormation();
+    const formation = formationForRoleRules();
     const result = validateOwnerPitchLabels(formation, slotLabels);
     if (!result.ok) {
       alert(
@@ -1192,7 +1249,16 @@ export function initMatchdaySquadPanel({
     try {
       await onSave(
         payload,
-        buildPitchLayoutPayload(slotPositions, slotLabels, currentFormationId)
+        buildPitchLayoutPayload(
+          slotPositions,
+          slotLabels,
+          // Prefer the selected catalogue formation so role rules stay attached
+          formationSelect.value && formationSelect.value !== "custom"
+            ? formationSelect.value
+            : currentFormationId && currentFormationId !== "custom"
+              ? currentFormationId
+              : formationSelect.value || DEFAULT_FORMATION_ID
+        )
       );
       state = buildStateFromSaved(allPlayers, payload, benchLimit);
       state.maxBench = benchLimit;
