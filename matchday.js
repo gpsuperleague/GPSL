@@ -262,6 +262,7 @@ function applyConfirmModeUI() {
     const hintEl = document.getElementById("confirmStatsHint");
     if (hintEl) hintEl.style.display = "none";
   }
+  updateOgBalanceHint();
   if (confirmActions) confirmActions.style.display = on ? "block" : "none";
   if (submitBtn) {
     submitBtn.textContent = on ? "Confirm result" : "Submit for confirmation";
@@ -652,6 +653,59 @@ function normalizeStatCountInput(raw, max = STAT_COUNT_MAX) {
   return Math.min(max, n);
 }
 
+function ensureOpponentOwnGoalsSelect() {
+  const sel = document.getElementById("opponentOwnGoals");
+  if (!sel || sel.options.length) return;
+  for (let i = 0; i <= STAT_COUNT_MAX; i++) {
+    sel.appendChild(new Option(String(i), String(i)));
+  }
+  sel.value = "0";
+  sel.addEventListener("change", updateOgBalanceHint);
+}
+
+function readOpponentOwnGoals() {
+  ensureOpponentOwnGoalsSelect();
+  return normalizeStatCountInput(
+    document.getElementById("opponentOwnGoals")?.value
+  );
+}
+
+function setOpponentOwnGoals(n) {
+  ensureOpponentOwnGoalsSelect();
+  const sel = document.getElementById("opponentOwnGoals");
+  if (!sel) return;
+  sel.value = String(
+    Math.min(STAT_COUNT_MAX, Math.max(0, Number(n) || 0))
+  );
+}
+
+function updateOgBalanceHint() {
+  const el = document.getElementById("ogBalanceHint");
+  if (!el) return;
+  const expected = expectedTeamGoalsForStats();
+  if (expected === null) {
+    el.textContent = "";
+    return;
+  }
+  let playerGoals = 0;
+  for (const tr of document.querySelectorAll(
+    "#playerStatsBody tr[data-stat-player]"
+  )) {
+    playerGoals += normalizeStatCountInput(
+      tr.querySelector(".stat-goals")?.value
+    );
+  }
+  const ogFor = readOpponentOwnGoals();
+  const total = playerGoals + ogFor;
+  if (total === expected) {
+    el.textContent = `G ${playerGoals} + OG+ ${ogFor} = ${expected} ✓`;
+    el.style.color = "#8c8";
+  } else {
+    el.textContent = `G ${playerGoals} + OG+ ${ogFor} = ${total} (need ${expected})`;
+    el.style.color = "#c9a227";
+  }
+}
+
 function normalizeRatingInput(raw) {
   const s = String(raw ?? "").trim();
   if (!s) return null;
@@ -778,6 +832,7 @@ function distributeCountAcross(total, keys) {
 }
 
 function resetPlayerStatsDom() {
+  setOpponentOwnGoals(0);
   document.querySelectorAll("#playerStatsBody tr[data-stat-player]").forEach((tr) => {
     const started = tr.querySelector(".stat-started");
     const subbed = tr.querySelector(".stat-subbed");
@@ -798,6 +853,7 @@ function resetPlayerStatsDom() {
     if (yellow) yellow.checked = false;
     if (red) red.checked = false;
   });
+  updateOgBalanceHint();
 }
 
 function fillTestMatchStats() {
@@ -876,7 +932,9 @@ function fillTestMatchStats() {
     if (potm) potm.checked = tr.dataset.statPlayer === potmId;
   }
 
+  setOpponentOwnGoals(0);
   updateLineupCounter();
+  updateOgBalanceHint();
   setStatus(
     "submitStatus",
     `Test stats filled — 11 starters, ${subIds.size} subs, ${expectedGoals} goal(s), ratings ${DEFAULT_MATCH_RATING}. Review then submit/confirm.`
@@ -1112,6 +1170,7 @@ function renderPlayerStatsTable() {
   if (!tbody) return;
 
   ensureStatDatalists();
+  ensureOpponentOwnGoalsSelect();
   tbody.innerHTML = "";
   if (!squadPlayers.length) {
     tbody.innerHTML =
@@ -1166,10 +1225,12 @@ function renderPlayerStatsTable() {
       wireCardCheckboxes(tr);
     }
     wireRatingInput(tr.querySelector(".stat-rating"));
+    tr.querySelector(".stat-goals")?.addEventListener("change", updateOgBalanceHint);
     tbody.appendChild(tr);
   }
   applyDefaultLineupFromSquad();
   updateLineupCounter();
+  updateOgBalanceHint();
 }
 
 function wireCardCheckboxes(tr) {
@@ -1323,8 +1384,9 @@ function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats, cupExtr
   }
 
   if (potmCount > 1) return "Only one Player of the Match allowed.";
-  if (teamGoals > expected) {
-    return `Player goals (${teamGoals}) cannot exceed your team score (${expected}). If the score includes opponent own goals, only enter goals your players scored.`;
+  const ogFor = readOpponentOwnGoals();
+  if (teamGoals + ogFor !== expected) {
+    return `Goals by your players (${teamGoals}) + opponent OGs for you (${ogFor}) must equal your team score (${expected}).`;
   }
   return null;
 }
@@ -1876,7 +1938,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   wireAllMatchdaySelectOnFocus();
 
   for (const id of ["homeGoals", "awayGoals", "etHomeGoals", "etAwayGoals"]) {
-    document.getElementById(id)?.addEventListener("input", updateCupScoreSections);
+    document.getElementById(id)?.addEventListener("input", () => {
+      updateCupScoreSections();
+      updateOgBalanceHint();
+    });
   }
   document.querySelectorAll('input[name="penWinner"]').forEach((el) => {
     el.addEventListener("change", updateCupScoreSections);

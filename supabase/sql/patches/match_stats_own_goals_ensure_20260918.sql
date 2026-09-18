@@ -1,9 +1,7 @@
 -- =============================================================================
--- Match Centre / match report — full box score for a fixture
--- Used by match_report.html (line-ups, scorers, cards, injuries, attendance).
---
--- Also ensures competition_match_player_stats.own_goals exists (required by this
--- RPC). Safe re-run.
+-- Ensure own_goals column + competition_match_report RPC (OG for/against).
+-- Same body as competition_match_report_20260918.sql — either file is enough.
+-- Safe re-run.
 -- =============================================================================
 
 SET lock_timeout = '15s';

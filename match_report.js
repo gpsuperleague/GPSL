@@ -52,7 +52,7 @@ function playerTags(p) {
   }
   if ((p.own_goals || 0) > 0) {
     tags.push(
-      `<span class="mr-tag">OG${p.own_goals > 1 ? `×${p.own_goals}` : ""}</span>`
+      `<span class="mr-tag og">OG−${p.own_goals > 1 ? `×${p.own_goals}` : ""}</span>`
     );
   }
   if (p.yellow_card) tags.push(`<span class="mr-tag yellow">YC</span>`);
@@ -159,7 +159,14 @@ function setStadiumBg(homeShort) {
   }
 }
 
-function clubPanel(title, players, injuries, clubShort) {
+function clubPanel(title, players, injuries, clubShort, ogFor = 0) {
+  const ogForN = Math.max(0, Number(ogFor) || 0);
+  const ogForHtml =
+    ogForN > 0
+      ? `<ul class="mr-list"><li><span class="mr-name">Opponent own goal${
+          ogForN > 1 ? `s (${ogForN})` : ""
+        }</span><span class="mr-tag og-for">OG+</span></li></ul>`
+      : `<p class="mr-empty">—</p>`;
   return `
     <section class="mr-panel">
       <h2>${esc(title)}</h2>
@@ -169,6 +176,10 @@ function clubPanel(title, players, injuries, clubShort) {
       ${playerListHtml(players, "subs")}
       <h3>Goals</h3>
       ${eventLines(players, "goals", "G")}
+      <h3>Opponent OGs for (OG+)</h3>
+      ${ogForHtml}
+      <h3>Own goals against (OG−)</h3>
+      ${eventLines(players, "own_goals", "OG−")}
       <h3>Assists</h3>
       ${eventLines(players, "assists", "A")}
       <h3>Cards</h3>
@@ -263,13 +274,15 @@ function renderPlayed(data) {
               fx.home_club_name || "Home",
               data.home_players,
               data.injuries,
-              fx.home_club_short_name
+              fx.home_club_short_name,
+              data.home_og_for
             )}
             ${clubPanel(
               fx.away_club_name || "Away",
               data.away_players,
               data.injuries,
-              fx.away_club_short_name
+              fx.away_club_short_name,
+              data.away_og_for
             )}
           </div>`
         : `<div class="mr-panel mr-wide"><p class="mr-empty">Result is recorded, but squad stats (line-ups / scorers) were not entered for this match.</p>
@@ -313,7 +326,7 @@ async function main() {
 
   if (error) {
     console.error(error);
-    root.innerHTML = `<div class="mr-error">Could not load match report. Run <code>competition_match_report_20260918.sql</code> if this RPC is missing.<br>${esc(
+    root.innerHTML = `<div class="mr-error">Could not load match report. Run <code>competition_match_report_20260918.sql</code> in the SQL editor (adds <code>own_goals</code> if missing and refreshes this RPC).<br>${esc(
       error.message
     )}</div>`;
     return;

@@ -245,6 +245,18 @@ body.match-report-page {
   color: #ddd;
 }
 
+.mr-tag.og {
+  background: rgba(180, 80, 80, 0.18);
+  border-color: rgba(220, 120, 120, 0.4);
+  color: #e8a0a0;
+}
+
+.mr-tag.og-for {
+  background: rgba(80, 160, 120, 0.18);
+  border-color: rgba(100, 200, 150, 0.4);
+  color: #9de6b4;
+}
+
 .mr-empty {
   color: #888;
   font-size: 13px;

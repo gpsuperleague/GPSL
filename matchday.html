@@ -340,20 +340,30 @@
         <p class="stats-hint" id="statsPanelHint">
           You must tick exactly <b>11 Started</b> (subs optional: 0–5 <b>Subbed on</b>) and enter <b>G</b> / <b>A</b> for those who played.
           Rating and POTM are optional — blank ratings on starters / introduced subs become <b>3.0</b> automatically.
-          Your <b>G</b> total must not exceed your team score (leave it short if opponent own goals are on the scoreline).
-          Use <b>OG</b> for own goals by your players. Not penalties. One POTM max.
+          <b>G</b> = goals by your players. <b>OG−</b> = own goals by your players (against you).
+          <b>OG+</b> (below) = opponent own goals that count for your scoreline.
+          Your <b>G + OG+</b> must equal your team score. Not penalties. One POTM max.
           Tick <b>Y</b> / <b>R</b> for cards (player must have played). Red = 2-match ban; 8 yellows in a season = 2-match ban.
           Suspended players are highlighted and cannot be selected.
           If you saved a default squad, <b>bench players are highlighted</b> (blue row + Sub tag) to help pick who subbed on.
         </p>
+        <div class="og-for-row" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 12px;">
+          <label for="opponentOwnGoals" class="gpsl-has-tip" tabindex="0"
+            data-gpsl-tip="Opponent own goals credited to your team score. G (your players) + OG+ must equal your team score.">
+            Opponent OGs for us (OG+)
+          </label>
+          <select id="opponentOwnGoals" class="stat-count-select" aria-label="Opponent own goals for us" style="width:64px;padding:4px 6px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;">
+          </select>
+          <span id="ogBalanceHint" class="stats-hint" style="margin:0;color:#aaa;"></span>
+        </div>
         <div class="stats-wrap">
           <table class="stats-table">
             <thead>
               <tr>
                 <th class="name" rowspan="2">Player</th>
                 <th colspan="2" class="stat-group-hdr">Played</th>
-                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Goals scored for your team. Do not include opponent own goals here — leave your G total short of the score if the opponent scored an OG." tabindex="0">G</th>
-                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Own goals by your player (counts for the opponent on the scoreboard, not your G total)." tabindex="0">OG</th>
+                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Goals scored by your player for your team. Do not include opponent own goals here — put those in OG+ above." tabindex="0">G</th>
+                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Own goals against — by your player (counts for the opponent on the scoreboard, not your G total)." tabindex="0">OG−</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Assists by your player. Required with goals for players who appeared." tabindex="0">A</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Optional. Leave blank for an automatic 3.0 on starters and introduced subs. Range 0.1–10 if entered." tabindex="0">Rating</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Optional. At most one Player of the Match; must have started or been subbed on." tabindex="0">POTM</th>
@@ -383,6 +393,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20260904-own-goals"></script>
+  <script type="module" src="matchday.js?v=20260918-own-goals"></script>
 </body>
 </html>
