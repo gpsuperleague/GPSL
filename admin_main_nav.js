@@ -265,6 +265,15 @@ export const ADMIN_MAIN_NAV = [
           "Configure weather and pitch condition tables used on matchday."
         ),
       ]),
+      group("Match Day", [
+        L(
+          "Formations catalogue",
+          "admin_formations.html",
+          null,
+          null,
+          "eFootball-style named formations for Match Day / International. Per-slot role swap rules; CF+SS ≤ 2. Keep Catalogue live off until Match Day is switched over."
+        ),
+      ]),
     ],
   },
   {

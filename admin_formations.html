@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Formations — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .fm-wrap { max-width: 1180px; margin: 20px auto; padding: 0 16px 48px; }
+    .fm-wrap h1 { color: #7eb8e8; font-family: Georgia, serif; margin: 0 0 8px; }
+    .fm-lead { color: #999; font-size: 13px; max-width: 52em; margin: 0 0 16px; }
+    .fm-status { min-height: 1.3em; color: #9f9; margin-bottom: 10px; }
+    .fm-status.err { color: #f88; }
+    .fm-settings, .fm-editor, .fm-list-panel {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+      padding: 14px; margin-bottom: 14px;
+    }
+    .fm-settings h2, .fm-editor h2, .fm-list-panel h2 {
+      margin: 0 0 10px; font-size: 15px; color: #7eb8e8;
+    }
+    .fm-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px 14px;
+    }
+    .fm-grid label {
+      display: flex; flex-direction: column; gap: 4px;
+      font-size: 12px; color: #bbb;
+    }
+    .fm-grid input, .fm-grid select, .fm-grid textarea {
+      padding: 8px 10px; background: #111; border: 1px solid #444;
+      border-radius: 4px; color: #eee; font-size: 13px;
+    }
+    .fm-check { flex-direction: row !important; align-items: center; gap: 8px !important; }
+    .fm-check input { width: auto; }
+    .fm-layout { display: grid; grid-template-columns: 240px 1fr; gap: 14px; }
+    @media (max-width: 900px) { .fm-layout { grid-template-columns: 1fr; } }
+    .fm-list { list-style: none; margin: 0; padding: 0; max-height: 520px; overflow: auto; }
+    .fm-list button {
+      width: 100%; text-align: left; padding: 8px 10px; margin: 0 0 4px;
+      background: #151515; border: 1px solid #333; border-radius: 4px;
+      color: #ddd; cursor: pointer; font-size: 13px;
+    }
+    .fm-list button.active { border-color: #7eb8e8; background: #1c2830; }
+    .fm-list .off { color: #888; }
+    .fm-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .fm-actions button {
+      padding: 8px 12px; border-radius: 4px; border: 1px solid #555;
+      background: #222; color: #eee; cursor: pointer; font-size: 13px;
+    }
+    .fm-actions button.primary { background: #1a3a55; border-color: #3a6a90; }
+    .fm-actions button.danger { background: #3a1a1a; border-color: #844; }
+    .fm-slots { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .fm-slots th, .fm-slots td {
+      border: 1px solid #333; padding: 6px; vertical-align: top;
+    }
+    .fm-slots th { background: #151515; color: #aaa; text-align: left; }
+    .fm-slots input[type="number"] { width: 64px; }
+    .fm-pos-grid {
+      display: flex; flex-wrap: wrap; gap: 4px 8px; max-width: 280px;
+    }
+    .fm-pos-grid label {
+      display: inline-flex; flex-direction: row; align-items: center;
+      gap: 3px; font-size: 11px; color: #ccc;
+    }
+    .fm-note { font-size: 12px; color: #888; margin: 8px 0 0; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <main class="fm-wrap">
+    <h1>Formations catalogue</h1>
+    <p class="fm-lead">
+      Build eFootball-style named formations for Match Day and International.
+      For each slot, choose whether owners may change the role and which roles are allowed
+      (e.g. CB → RB, CF → SS). Global rule: <b>CF + SS ≤ 2</b> (no CF/CF/SS).
+      Leave <b>Catalogue live</b> off until Match Day / International are switched over.
+    </p>
+    <p id="status" class="fm-status"></p>
+
+    <section class="fm-settings">
+      <h2>League settings</h2>
+      <div class="fm-grid">
+        <label class="fm-check"><input type="checkbox" id="catalogue_live"> Catalogue live (Match Day / International use this list)</label>
+        <label class="fm-check"><input type="checkbox" id="enforce_mirroring"> Enforce legacy mirroring (LB↔RB, LMF↔RMF, LWF↔RWF)</label>
+        <label>Max CF + SS combined <input id="max_cf_ss" type="number" min="0" max="3" value="2"></label>
+      </div>
+      <div class="fm-actions">
+        <button type="button" id="saveSettingsBtn" class="primary">Save settings</button>
+      </div>
+      <p class="fm-note">Mirroring should stay off for eFootball formations. Turn catalogue live only after Match Day wiring is ready.</p>
+    </section>
+
+    <div class="fm-layout">
+      <section class="fm-list-panel">
+        <h2>Formations</h2>
+        <div class="fm-actions">
+          <button type="button" id="newBtn">New</button>
+          <button type="button" id="reloadBtn">Reload</button>
+        </div>
+        <ul class="fm-list" id="formationList"></ul>
+      </section>
+
+      <section class="fm-editor">
+        <h2>Edit formation</h2>
+        <div class="fm-grid">
+          <label>Code (e.g. 4-3-3)<input id="code" maxlength="32"></label>
+          <label>Display name<input id="name" maxlength="80"></label>
+          <label>Group<input id="group_label" maxlength="40" placeholder="Back-4"></label>
+          <label>Sort order<input id="sort_order" type="number" step="1"></label>
+          <label class="fm-check"><input type="checkbox" id="is_enabled" checked> Enabled</label>
+        </div>
+        <label style="display:block;margin:10px 0;font-size:12px;color:#bbb;">
+          Description
+          <textarea id="description" rows="2" style="width:100%;margin-top:4px;padding:8px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;"></textarea>
+        </label>
+
+        <div class="fm-actions">
+          <button type="button" id="saveBtn" class="primary">Save formation</button>
+          <button type="button" id="dupBtn">Duplicate</button>
+          <button type="button" id="deleteBtn" class="danger">Delete</button>
+        </div>
+
+        <h2 style="margin-top:18px;">Slots (11) — roles &amp; owner swaps</h2>
+        <p class="fm-note">Tick <b>Allow change</b> to let owners re-role that slot. Tick which positions are permitted. Default role is always kept.</p>
+        <div style="overflow:auto;">
+          <table class="fm-slots" id="slotsTable">
+            <thead>
+              <tr>
+                <th>Slot</th>
+                <th>Default</th>
+                <th>X</th>
+                <th>Y</th>
+                <th>Allow change</th>
+                <th>Allowed positions</th>
+              </tr>
+            </thead>
+            <tbody id="slotsBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="admin_formations.js?v=20260918-formations"></script>
+</body>
+</html>

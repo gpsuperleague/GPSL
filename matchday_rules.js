@@ -47,6 +47,7 @@ export function getMatchdaySquadRules() {
           "Save up to <b>5 custom formations</b> (Custom 1–5).",
           "Formation presets only apply when you click <b>Apply Default Formation</b>.",
           "Custom layouts must follow <b>GPSL mirroring</b>: LB↔RB, LMF↔RMF, LWF↔RWF; max <b>2</b> CF/SS combined.",
+          "<b>Coming soon:</b> league formations move to admin-owned eFootball shapes (no mirroring). Owners will pick a named tactic; some slots may allow role swaps (e.g. CB→RB, CF→SS) where the admin enables them. CF+SS still max 2.",
         ],
       },
     ],
