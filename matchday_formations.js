@@ -42,7 +42,7 @@ export const MATCHDAY_FORMATIONS = {
       L("CB2", "CB", 64, 72),
       L("RB", "RB", 88, 68),
       L("LMF", "CMF", 16, 48),
-      L("CMF", "CMF", 50, 52),
+      L("CMF", "DMF", 50, 52),
       L("RMF", "CMF", 84, 48),
       L("LWF", "LWF", 22, 22),
       L("CF", "CF", 50, 12),
