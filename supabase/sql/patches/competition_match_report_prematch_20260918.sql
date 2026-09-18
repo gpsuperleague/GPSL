@@ -1,12 +1,10 @@
 -- =============================================================================
--- Match Centre / match report — full box score for a fixture
--- Used by match_report.html (line-ups, scorers, cards, injuries, attendance).
+-- Match Centre pre-match preview (squads / formation / manager / playstyle)
 --
--- Also ensures competition_match_player_stats.own_goals exists (required by this
--- RPC). Safe re-run.
+-- Adds home_preview + away_preview to competition_match_report.
+-- Safe re-run (includes own_goals ensure + full RPC refresh).
 -- =============================================================================
 
--- For pre-match Match Day squad / manager / formation preview, also run\n-- competition_match_report_prematch_20260918.sql (or run that file alone — it includes this RPC).\n
 SET lock_timeout = '15s';
 
 ALTER TABLE public.competition_match_player_stats
@@ -32,6 +30,209 @@ $chk$;
 
 COMMENT ON COLUMN public.competition_match_player_stats.own_goals IS
   'Own goals by this player (against their club / for the opponent). Not counted in this club''s goals total.';
+
+CREATE OR REPLACE FUNCTION public.manager_strongest_playstyle(p_manager public."Managers")
+RETURNS jsonb
+LANGUAGE plpgsql
+IMMUTABLE
+AS $function$
+DECLARE
+  v_best record;
+BEGIN
+  IF p_manager IS NULL OR p_manager.id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT key, label, val
+  INTO v_best
+  FROM (
+    VALUES
+      ('possession', 'Possession', coalesce(p_manager.possession, 0)::int),
+      ('quick_counter', 'Quick Counter', coalesce(p_manager.quick_counter, 0)::int),
+      ('long_ball_counter', 'Long Ball Counter', coalesce(p_manager.long_ball_counter, 0)::int),
+      ('out_wide', 'Out Wide', coalesce(p_manager.out_wide, 0)::int),
+      ('long_ball', 'Long Ball', coalesce(p_manager.long_ball, 0)::int),
+      ('overload', 'Overload', coalesce(p_manager.overload, 0)::int)
+  ) AS t(key, label, val)
+  ORDER BY val DESC, label ASC
+  LIMIT 1;
+
+  IF v_best IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'key', v_best.key,
+    'label', v_best.label,
+    'value', v_best.val
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.competition_match_club_preview(p_club text)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := nullif(btrim(coalesce(p_club, '')), '');
+  v_layout jsonb;
+  v_updated timestamptz;
+  v_formation_id text;
+  v_formation_name text;
+  v_mgr public."Managers"%rowtype;
+  v_xi jsonb := '[]'::jsonb;
+  v_bench jsonb := '[]'::jsonb;
+  v_has_squad boolean := false;
+BEGIN
+  IF v_club IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT s.pitch_layout, s.updated_at
+  INTO v_layout, v_updated
+  FROM public.club_matchday_squad s
+  WHERE s.club_short_name = v_club;
+
+  v_formation_id := nullif(btrim(coalesce(v_layout->>'formation_id', '')), '');
+
+  IF v_layout IS NOT NULL THEN
+    SELECT f.name
+    INTO v_formation_name
+    FROM public.club_matchday_saved_formation f
+    WHERE f.club_short_name = v_club
+      AND f.pitch_layout = v_layout
+      AND nullif(btrim(coalesce(f.name, '')), '') IS NOT NULL
+    ORDER BY f.slot_no
+    LIMIT 1;
+  END IF;
+
+  IF v_formation_name IS NULL THEN
+    v_formation_name := v_formation_id;
+  END IF;
+
+  SELECT m.*
+  INTO v_mgr
+  FROM public."Managers" m
+  WHERE m.contracted_club = v_club
+  LIMIT 1;
+
+  IF NOT FOUND OR v_mgr.id IS NULL THEN
+    SELECT m.*
+    INTO v_mgr
+    FROM public."Clubs" c
+    JOIN public."Managers" m ON m.id = c.manager_id
+    WHERE c."ShortName" = v_club
+    LIMIT 1;
+  END IF;
+
+  SELECT coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'player_id', x.player_id,
+        'player_name', x.player_name,
+        'player_position', x.player_position,
+        'pitch_slot', x.pitch_slot,
+        'role_label', x.role_label
+      )
+      ORDER BY x.sort_key, x.sort_order, x.player_name
+    ),
+    '[]'::jsonb
+  )
+  INTO v_xi
+  FROM (
+    SELECT
+      sp.player_id,
+      coalesce(p."Name", sp.player_id) AS player_name,
+      coalesce(p."Position", '') AS player_position,
+      sp.pitch_slot,
+      coalesce(
+        nullif(btrim(v_layout -> sp.pitch_slot ->> 'label'), ''),
+        sp.pitch_slot,
+        p."Position",
+        ''
+      ) AS role_label,
+      CASE sp.pitch_slot
+        WHEN 'GK' THEN 0
+        WHEN 'LB' THEN 1
+        WHEN 'CB1' THEN 2
+        WHEN 'CB2' THEN 3
+        WHEN 'RB' THEN 4
+        WHEN 'LMF' THEN 5
+        WHEN 'CMF' THEN 6
+        WHEN 'RMF' THEN 7
+        WHEN 'LWF' THEN 8
+        WHEN 'CF' THEN 9
+        WHEN 'RWF' THEN 10
+        ELSE 50
+      END AS sort_key,
+      sp.sort_order
+    FROM public.club_matchday_squad_player sp
+    LEFT JOIN public."Players" p ON p."Konami_ID"::text = sp.player_id::text
+    WHERE sp.club_short_name = v_club
+      AND sp.slot_kind = 'pitch'
+  ) x;
+
+  SELECT coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'player_id', x.player_id,
+        'player_name', x.player_name,
+        'player_position', x.player_position,
+        'sort_order', x.sort_order,
+        'role_label', x.role_label
+      )
+      ORDER BY x.sort_order, x.player_name
+    ),
+    '[]'::jsonb
+  )
+  INTO v_bench
+  FROM (
+    SELECT
+      sp.player_id,
+      coalesce(p."Name", sp.player_id) AS player_name,
+      coalesce(p."Position", '') AS player_position,
+      sp.sort_order,
+      CASE
+        WHEN sp.sort_order < 5 THEN 'Sub'
+        ELSE 'Squad'
+      END AS role_label
+    FROM public.club_matchday_squad_player sp
+    LEFT JOIN public."Players" p ON p."Konami_ID"::text = sp.player_id::text
+    WHERE sp.club_short_name = v_club
+      AND sp.slot_kind IN ('bench', 'reserve')
+  ) x;
+
+  v_has_squad :=
+    jsonb_array_length(coalesce(v_xi, '[]'::jsonb)) > 0
+    OR jsonb_array_length(coalesce(v_bench, '[]'::jsonb)) > 0;
+
+  RETURN jsonb_build_object(
+    'club_short_name', v_club,
+    'has_squad', v_has_squad,
+    'squad_updated_at', v_updated,
+    'formation_id', v_formation_id,
+    'formation_name', v_formation_name,
+    'manager_id', v_mgr.id,
+    'manager_name', v_mgr.name,
+    'manager_rating', v_mgr.rating,
+    'strongest_playstyle', public.manager_strongest_playstyle(v_mgr),
+    'xi', coalesce(v_xi, '[]'::jsonb),
+    'bench', coalesce(v_bench, '[]'::jsonb)
+  );
+END;
+$function$;
+
+COMMENT ON FUNCTION public.competition_match_club_preview(text) IS
+  'Match Centre pre-match: Match Day XI/bench, formation, manager + strongest playstyle.';
+
+GRANT EXECUTE ON FUNCTION public.manager_strongest_playstyle(public."Managers") TO authenticated;
+GRANT EXECUTE ON FUNCTION public.manager_strongest_playstyle(public."Managers") TO anon;
+GRANT EXECUTE ON FUNCTION public.competition_match_club_preview(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_match_club_preview(text) TO anon;
+
 
 CREATE OR REPLACE FUNCTION public.competition_match_report(p_fixture_id bigint)
 RETURNS jsonb
@@ -245,13 +446,15 @@ BEGIN
     'has_stats', (
       jsonb_array_length(coalesce(v_home_players, '[]'::jsonb))
       + jsonb_array_length(coalesce(v_away_players, '[]'::jsonb))
-    ) > 0
+    ) > 0,
+    'home_preview', public.competition_match_club_preview(v_fx.home_club_short_name),
+    'away_preview', public.competition_match_club_preview(v_fx.away_club_short_name)
   );
 END;
 $function$;
 
 COMMENT ON FUNCTION public.competition_match_report(bigint) IS
-  'Full match centre payload: line-ups/stats, OG for/against, injuries, attendance.';
+  'Full match centre payload: line-ups/stats, OG for/against, pre-match squad preview, injuries, attendance.';
 
 GRANT EXECUTE ON FUNCTION public.competition_match_report(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_match_report(bigint) TO anon;

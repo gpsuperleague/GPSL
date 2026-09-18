@@ -337,3 +337,47 @@ body.match-report-page {
 td .match-centre-btn {
   margin-top: 2px;
 }
+
+.mr-preview-note {
+  color: #bbb;
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.mr-preview-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mr-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 13px;
+}
+
+.mr-preview-k {
+  color: #888;
+  min-width: 9.5rem;
+}
+
+.mr-preview-v {
+  color: #e8e8e8;
+}
+
+.mr-muted {
+  color: #777;
+}
+
+.mr-role {
+  color: #888;
+  font-size: 12px;
+}
+
+.mr-preview-panel h3 {
+  margin-top: 12px;
+}

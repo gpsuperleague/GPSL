@@ -7,6 +7,11 @@ import {
   formatFixtureScore,
 } from "./competition.js";
 import { formatKickoff, UK_TZ } from "./match_scheduling.js";
+import {
+  getFormation,
+  formationDisplayName,
+  DEFAULT_FORMATION_ID,
+} from "./matchday_formations.js";
 
 function qsFixtureId() {
   const raw = new URLSearchParams(window.location.search).get("fixture");
@@ -190,7 +195,88 @@ function clubPanel(title, players, injuries, clubShort, ogFor = 0) {
   `;
 }
 
-function renderNotPlayed(fx, myShort) {
+
+function formationLabel(preview) {
+  if (!preview) return null;
+  const id = preview.formation_id || null;
+  const named = preview.formation_name || null;
+  if (named && id && named !== id) return named;
+  if (named && !id) return named;
+  if (!id) return null;
+  try {
+    const f = getFormation(id);
+    if (f && f.id === id) return formationDisplayName(f);
+  } catch {
+    /* ignore */
+  }
+  return named || id;
+}
+
+function playerPreviewLines(players) {
+  const rows = players || [];
+  if (!rows.length) return `<p class="mr-empty">—</p>`;
+  return `<ul class="mr-list">${rows
+    .map((p) => {
+      const role = p.role_label || p.player_position || "";
+      return `<li><span class="mr-name">${esc(p.player_name || p.player_id)}${
+        role ? ` <span class="mr-role">${esc(role)}</span>` : ""
+      }</span></li>`;
+    })
+    .join("")}</ul>`;
+}
+
+function clubPreviewPanel(title, preview) {
+  const p = preview || {};
+  const style = p.strongest_playstyle;
+  const styleText = style
+    ? `${style.label || style.key}${
+        style.value != null ? ` (${style.value})` : ""
+      }`
+    : null;
+  const form = formationLabel(p);
+  const manager = p.manager_name
+    ? `${p.manager_name}${
+        p.manager_rating != null ? ` · ${p.manager_rating}` : ""
+      }`
+    : null;
+
+  const metaBits = [
+    manager
+      ? `<div class="mr-preview-meta"><span class="mr-preview-k">Manager</span><span class="mr-preview-v">${esc(
+          manager
+        )}</span></div>`
+      : `<div class="mr-preview-meta"><span class="mr-preview-k">Manager</span><span class="mr-preview-v mr-muted">Not signed</span></div>`,
+    styleText
+      ? `<div class="mr-preview-meta"><span class="mr-preview-k">Strongest playstyle</span><span class="mr-preview-v">${esc(
+          styleText
+        )}</span></div>`
+      : "",
+    form
+      ? `<div class="mr-preview-meta"><span class="mr-preview-k">Tactic / formation</span><span class="mr-preview-v">${esc(
+          form
+        )}</span></div>`
+      : `<div class="mr-preview-meta"><span class="mr-preview-k">Tactic / formation</span><span class="mr-preview-v mr-muted">Not set</span></div>`,
+  ]
+    .filter(Boolean)
+    .join("");
+
+  const body = p.has_squad
+    ? `<h3>Starting XI</h3>
+      ${playerPreviewLines(p.xi)}
+      <h3>Bench</h3>
+      ${playerPreviewLines(p.bench)}`
+    : `<p class="mr-empty">No Match Day squad saved yet.</p>`;
+
+  return `
+    <section class="mr-panel mr-preview-panel">
+      <h2>${esc(title)}</h2>
+      <div class="mr-preview-head">${metaBits}</div>
+      ${body}
+    </section>
+  `;
+}
+
+function renderNotPlayed(fx, myShort, data = {}) {
   const involves =
     !!myShort &&
     [fx.home_club_short_name, fx.away_club_short_name]
@@ -208,6 +294,14 @@ function renderNotPlayed(fx, myShort) {
       )}">Schedule / check-in</a>`
     );
   }
+
+  const homePrev = data.home_preview || null;
+  const awayPrev = data.away_preview || null;
+  const anyPreview =
+    (homePrev &&
+      (homePrev.has_squad || homePrev.manager_name || homePrev.formation_id)) ||
+    (awayPrev &&
+      (awayPrev.has_squad || awayPrev.manager_name || awayPrev.formation_id));
 
   return `
     <div class="mr-scoreboard">
@@ -231,7 +325,21 @@ function renderNotPlayed(fx, myShort) {
         }
       </div>
     </div>
-    <p class="mr-empty">Line-ups, scorers, cards and injuries appear here once the match is played and squad stats are recorded.</p>
+    ${
+      anyPreview
+        ? `<p class="mr-preview-note">Saved Match Day squads, tactics and managers (scouting preview).</p>
+          <div class="mr-grid">
+            ${clubPreviewPanel(
+              fx.home_club_name || fx.home_club_short_name || "Home",
+              homePrev
+            )}
+            ${clubPreviewPanel(
+              fx.away_club_name || fx.away_club_short_name || "Away",
+              awayPrev
+            )}
+          </div>`
+        : `<p class="mr-empty">Line-ups, scorers, cards and injuries appear here once the match is played and squad stats are recorded. Clubs can save a Match Day squad beforehand to show it here.</p>`
+    }
     ${ctas.length ? `<div class="mr-cta">${ctas.join("")}</div>` : ""}
   `;
 }
@@ -326,7 +434,7 @@ async function main() {
 
   if (error) {
     console.error(error);
-    root.innerHTML = `<div class="mr-error">Could not load match report. Run <code>competition_match_report_20260918.sql</code> in the SQL editor (adds <code>own_goals</code> if missing and refreshes this RPC).<br>${esc(
+    root.innerHTML = `<div class="mr-error">Could not load match report. Run <code>competition_match_report_prematch_20260918.sql</code> in the SQL editor (adds <code>own_goals</code> if missing and refreshes this RPC).<br>${esc(
       error.message
     )}</div>`;
     return;
@@ -346,7 +454,7 @@ async function main() {
     root.innerHTML = renderPlayed(data);
   } else {
     const myShort = await loadMyClubShort();
-    root.innerHTML = renderNotPlayed(fx, myShort);
+    root.innerHTML = renderNotPlayed(fx, myShort, data);
   }
 }
 
