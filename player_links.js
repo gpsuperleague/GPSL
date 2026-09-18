@@ -118,6 +118,30 @@ export function playerNameWrappedLinkHtml(konamiId, name, options = {}) {
   return `<a href="${gpslPlayerCareerUrl(id)}" class="${className}">${inner}</a>`;
 }
 
+/** First name(s) + surname on separate rows (for narrow pitch cards). */
+export function playerNameStackedLinkHtml(konamiId, name, options = {}) {
+  const id = String(konamiId ?? "").trim();
+  const { className = "gpsl-player-link" } = options;
+  const parts = String(name || id || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  let given = parts[0] || id || "—";
+  let surname = "";
+  if (parts.length > 1) {
+    surname = parts[parts.length - 1];
+    given = parts.slice(0, -1).join(" ");
+  }
+
+  const inner = surname
+    ? `<span class="spc-given">${escapePlayerHtml(given)}</span><span class="spc-surname">${escapePlayerHtml(surname)}</span>`
+    : `<span class="spc-given">${escapePlayerHtml(given)}</span>`;
+
+  if (!id) return inner;
+  return `<a href="${gpslPlayerCareerUrl(id)}" class="${className}">${inner}</a>`;
+}
+
 export function clubNameWrappedLinkHtml(shortName, name, options = {}) {
   const { className = "gpsl-club-link" } = options;
   const short = String(shortName ?? "").trim();

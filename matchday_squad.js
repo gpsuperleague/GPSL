@@ -12,7 +12,7 @@ import {
   normalizePitchLayout,
   pitchLayoutHasSlots,
   spaceGkFromDefenders,
-} from "./matchday_formations.js?v=20260918-cards-pool";
+} from "./matchday_formations.js?v=20260918-cards-narrow";
 import {
   loadGpslFormations,
   listSelectableFormations,
@@ -29,11 +29,12 @@ import {
   pesdbPlayerUrl,
   gpdbPlayerUrl,
   playerNameLinkHtml,
+  playerNameStackedLinkHtml,
   PESDB_FALLBACK_CARD_IMG,
-} from "./player_links.js";
+} from "./player_links.js?v=20260918-cards-narrow";
 import { analyseMatchdayComposition } from "./squad_rules.js";
 
-export { buildPitchLayoutPayload } from "./matchday_formations.js?v=20260918-cards-pool";
+export { buildPitchLayoutPayload } from "./matchday_formations.js?v=20260918-cards-narrow";
 
 export const MAX_SQUAD = 23;
 export const MAX_PITCH = 11;
@@ -365,7 +366,11 @@ function renderPlayerCard(
         onerror="this.src='${FALLBACK_IMG}'">
     </a>
     <div class="spc-meta">
-      <div class="spc-name">${playerNameLinkHtml(id, name)}</div>
+      <div class="spc-name">${
+        pitch
+          ? playerNameStackedLinkHtml(id, name)
+          : playerNameLinkHtml(id, name)
+      }</div>
       ${compact ? "" : `<div class="spc-pos">${pos}${showGpdbLink ? ` · <a href="${gpdbPlayerUrl(id)}" class="gpsl-player-link" draggable="false">GPDB</a>` : ""}</div>`}
     </div>`;
   const removeBtn = card.querySelector(".spc-remove");
