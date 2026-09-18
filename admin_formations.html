@@ -67,6 +67,99 @@
       gap: 3px; font-size: 11px; color: #ccc;
     }
     .fm-note { font-size: 12px; color: #888; margin: 8px 0 0; }
+    .fm-pitch-wrap {
+      margin: 14px 0 18px;
+      display: grid;
+      grid-template-columns: minmax(280px, 420px) 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .fm-pitch-wrap { grid-template-columns: 1fr; }
+    }
+    .fm-pitch {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 68 / 105;
+      max-height: 620px;
+      background: linear-gradient(180deg, #2d6a2d 0%, #3d8b3d 45%, #2d6a2d 100%);
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: inset 0 0 40px rgba(0,0,0,0.25);
+      touch-action: none;
+      user-select: none;
+    }
+    .fm-pitch::before {
+      content: "";
+      position: absolute;
+      inset: 8%;
+      border: 2px solid rgba(255,255,255,0.55);
+      pointer-events: none;
+    }
+    .fm-pitch::after {
+      content: "";
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 50%;
+      height: 2px;
+      background: rgba(255,255,255,0.55);
+      pointer-events: none;
+    }
+    .fm-pitch-circle {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 18%;
+      aspect-ratio: 1;
+      transform: translate(-50%, -50%);
+      border: 2px solid rgba(255,255,255,0.45);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .fm-marker {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      min-width: 44px;
+      text-align: center;
+      cursor: grab;
+      touch-action: none;
+    }
+    .fm-marker:active, .fm-marker.dragging { cursor: grabbing; z-index: 5; }
+    .fm-marker.dragging .fm-marker-label {
+      background: rgba(255,153,0,0.55);
+      color: #fff;
+      box-shadow: 0 0 8px rgba(255,153,0,0.7);
+    }
+    .fm-marker-dot {
+      width: 14px;
+      height: 14px;
+      margin: 0 auto 3px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid #111;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.45);
+    }
+    .fm-marker-label {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 3px;
+      padding: 2px 5px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+    .fm-marker-key {
+      display: block;
+      font-size: 9px;
+      color: rgba(255,255,255,0.75);
+      margin-top: 2px;
+    }
+    .fm-pitch-help { font-size: 12px; color: #999; margin: 0 0 8px; }
   </style>
 </head>
 <body class="admin-page">
@@ -124,6 +217,23 @@
           <button type="button" id="deleteBtn" class="danger">Delete</button>
         </div>
 
+        <h2 style="margin-top:18px;">Pitch layout</h2>
+        <p class="fm-pitch-help">
+          Drag markers on the pitch to place roles. X/Y in the table update live; click <b>Save formation</b> to persist.
+          Attack is toward the top of the pitch (low Y).
+        </p>
+        <div class="fm-pitch-wrap">
+          <div class="fm-pitch" id="fmPitch" aria-label="Formation pitch preview">
+            <div class="fm-pitch-circle" aria-hidden="true"></div>
+          </div>
+          <div>
+            <p class="fm-note" style="margin-top:0;">
+              Markers show <b>default role</b> and slot key. Drag anywhere on a marker.
+              Table X/Y fields stay in sync if you prefer typing exact values.
+            </p>
+          </div>
+        </div>
+
         <h2 style="margin-top:18px;">Slots (11) — roles &amp; owner swaps</h2>
         <p class="fm-note">Tick <b>Allow change</b> to let owners re-role that slot. Tick which positions are permitted. Default role is always kept.</p>
         <div style="overflow:auto;">
@@ -144,6 +254,6 @@
       </section>
     </div>
   </main>
-  <script type="module" src="admin_formations.js?v=20260918-formations"></script>
+  <script type="module" src="admin_formations.js?v=20260918-formations-pitch2"></script>
 </body>
 </html>

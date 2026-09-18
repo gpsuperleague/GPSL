@@ -122,7 +122,13 @@ function renderSlots(slots) {
       const tr = sel.closest("tr");
       const box = tr?.querySelector(".slot-allowed");
       if (box) box.innerHTML = posChecksHtml(sel.value, [sel.value]);
+      syncPitchFromTable();
     });
+  });
+
+  body.querySelectorAll(".slot-x, .slot-y, .slot-key").forEach((el) => {
+    el.addEventListener("input", syncPitchFromTable);
+    el.addEventListener("change", syncPitchFromTable);
   });
 }
 
@@ -135,6 +141,128 @@ function fillEditor(f) {
   document.getElementById("is_enabled").checked = f?.is_enabled !== false;
   document.getElementById("description").value = f?.description || "";
   renderSlots(f?.slots || emptySlots());
+  renderPitch();
+}
+
+function clampPct(n) {
+  return Math.min(96, Math.max(4, Number(n) || 50));
+}
+
+function syncPitchFromTable() {
+  const pitch = document.getElementById("fmPitch");
+  if (!pitch) return;
+  document.querySelectorAll("#slotsBody tr").forEach((tr, i) => {
+    const marker = pitch.querySelector(`.fm-marker[data-idx="${i}"]`);
+    if (!marker) return;
+    const x = clampPct(tr.querySelector(".slot-x")?.value);
+    const y = clampPct(tr.querySelector(".slot-y")?.value);
+    const def = tr.querySelector(".slot-default")?.value || "";
+    const key = tr.querySelector(".slot-key")?.value || "";
+    marker.style.left = `${x}%`;
+    marker.style.top = `${y}%`;
+    const label = marker.querySelector(".fm-marker-label");
+    const keyEl = marker.querySelector(".fm-marker-key");
+    if (label) label.textContent = def;
+    if (keyEl) keyEl.textContent = key;
+  });
+}
+
+function syncTableFromMarker(idx, x, y) {
+  const tr = document.querySelectorAll("#slotsBody tr")[idx];
+  if (!tr) return;
+  const xEl = tr.querySelector(".slot-x");
+  const yEl = tr.querySelector(".slot-y");
+  if (xEl) xEl.value = String(Math.round(x * 10) / 10);
+  if (yEl) yEl.value = String(Math.round(y * 10) / 10);
+}
+
+function renderPitch() {
+  const pitch = document.getElementById("fmPitch");
+  if (!pitch) return;
+
+  // Keep centre circle; rebuild markers
+  pitch.querySelectorAll(".fm-marker").forEach((el) => el.remove());
+
+  const rows = [...document.querySelectorAll("#slotsBody tr")];
+  rows.forEach((tr, i) => {
+    const key = tr.querySelector(".slot-key")?.value || `S${i}`;
+    const def = tr.querySelector(".slot-default")?.value || "CMF";
+    const x = clampPct(tr.querySelector(".slot-x")?.value);
+    const y = clampPct(tr.querySelector(".slot-y")?.value);
+    const marker = document.createElement("div");
+    marker.className = "fm-marker";
+    marker.dataset.idx = String(i);
+    marker.style.left = `${x}%`;
+    marker.style.top = `${y}%`;
+    marker.innerHTML = `
+      <div class="fm-marker-dot" aria-hidden="true"></div>
+      <span class="fm-marker-label">${escapeAttr(def)}</span>
+      <span class="fm-marker-key">${escapeAttr(key)}</span>
+    `;
+    marker.title = `${key} · ${def} — drag to move`;
+    pitch.appendChild(marker);
+  });
+}
+
+let pitchDragWired = false;
+function wirePitchDragging() {
+  if (pitchDragWired) return;
+  const pitch = document.getElementById("fmPitch");
+  if (!pitch) return;
+  pitchDragWired = true;
+
+  let activeIdx = null;
+  let pointerId = null;
+  let activeEl = null;
+
+  const onMove = (e) => {
+    if (activeIdx == null || e.pointerId !== pointerId || !activeEl) return;
+    const rect = pitch.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = clampPct(((e.clientX - rect.left) / rect.width) * 100);
+    const y = clampPct(((e.clientY - rect.top) / rect.height) * 100);
+    activeEl.style.left = `${x}%`;
+    activeEl.style.top = `${y}%`;
+    syncTableFromMarker(activeIdx, x, y);
+  };
+
+  const onEnd = (e) => {
+    if (activeIdx == null) return;
+    if (e.pointerId != null && pointerId != null && e.pointerId !== pointerId) return;
+    activeEl?.classList.remove("dragging");
+    try {
+      if (activeEl?.hasPointerCapture?.(pointerId)) {
+        activeEl.releasePointerCapture(pointerId);
+      }
+    } catch {
+      /* ignore */
+    }
+    activeIdx = null;
+    pointerId = null;
+    activeEl = null;
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onEnd);
+    document.removeEventListener("pointercancel", onEnd);
+  };
+
+  pitch.addEventListener("pointerdown", (e) => {
+    const marker = e.target.closest(".fm-marker[data-idx]");
+    if (!marker) return;
+    e.preventDefault();
+    e.stopPropagation();
+    activeIdx = Number(marker.dataset.idx);
+    pointerId = e.pointerId;
+    activeEl = marker;
+    marker.classList.add("dragging");
+    try {
+      marker.setPointerCapture(pointerId);
+    } catch {
+      /* ignore */
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onEnd);
+    document.addEventListener("pointercancel", onEnd);
+  });
 }
 
 function readSlotsFromDom() {
@@ -302,6 +430,7 @@ function duplicateFormation() {
 }
 
 await initAdminPage();
+wirePitchDragging();
 document.getElementById("reloadBtn")?.addEventListener("click", () => loadAll());
 document.getElementById("newBtn")?.addEventListener("click", newFormation);
 document.getElementById("saveBtn")?.addEventListener("click", () => saveFormation());
