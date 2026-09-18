@@ -33,6 +33,36 @@
     .rank-pill { display:inline-block; min-width:22px; text-align:center; padding:2px 6px; font-weight:bold; font-size:11px; }
     .exp-pos { color:#ccc; font-weight:bold; }
     .bid-col { min-width:88px; white-space:nowrap; }
+    .interest-col { min-width:140px; max-width:220px; font-size:11px; color:#bbb; line-height:1.35; }
+    .interest-tags { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
+    .interest-tag {
+      display:inline-block; padding:2px 6px; background:#1e1c18; border:1px solid #3a352c;
+      color:#e8c84a; font-size:11px; font-weight:bold;
+    }
+    .interest-tag.is-me { color:#9f9; border-color:#3a5a3a; }
+    .interest-note-hint { display:block; font-size:10px; color:#777; margin-top:2px; max-width:200px; }
+    .interest-btn { padding:4px 10px; border:none; cursor:pointer; font-size:11px; font-weight:bold; margin-top:2px; }
+    .interest-btn:disabled { background:#555 !important; color:#888 !important; cursor:not-allowed; }
+    .interest-btn.is-marked { background:#2f5f2f; color:#dfd; }
+    #clubInterestBanner {
+      margin:0 0 14px; padding:12px 14px; background:#16140f; border:1px solid #333;
+      font-size:13px; color:#ccc; line-height:1.45;
+    }
+    #clubInterestBanner a { color:#e8c84a; font-weight:bold; }
+    #clubInterestBanner .frozen { color:#faa; }
+    #clubInterestModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:1001; overflow-y:auto; padding:24px 12px; }
+    #clubInterestModal.open { display:flex; align-items:flex-start; justify-content:center; }
+    .club-interest-modal-inner { width:100%; max-width:440px; padding:18px 20px 20px; position:relative; background:#14120e; border:1px solid #333; }
+    .club-interest-modal-close { position:absolute; top:10px; right:14px; font-size:24px; color:#aaa; cursor:pointer; line-height:1; }
+    .club-interest-modal-close:hover { color:#fff; }
+    .club-interest-modal-inner h2 { margin:0 0 8px; font-size:20px; color:#e8c84a; }
+    .club-interest-modal-inner textarea {
+      width:100%; min-height:72px; margin-top:8px; padding:8px; background:#111; border:1px solid #444;
+      color:#ddd; font-size:13px; resize:vertical; box-sizing:border-box;
+    }
+    .club-interest-modal-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    .club-interest-modal-actions .button { padding:8px 14px; border:none; cursor:pointer; font-weight:bold; font-size:12px; }
+    #clubInterestModalError { color:#f88; font-size:12px; min-height:16px; margin-top:8px; }
     .bid-btn, .history-btn { padding:5px 12px; border:none; cursor:pointer; font-size:12px; font-weight:bold; }
     .bid-btn:disabled, .history-btn:disabled { background:#555 !important; color:#888 !important; cursor:not-allowed; }
     .high-bid-link { cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
@@ -102,8 +132,9 @@
       </div>
       <h1 class="tm-hero-title">Club auction</h1>
       <p class="tm-hero-sub" id="clubAuctionIntro">
-        Bid for a GPSL club from your starting budget. You may only lead one club at a time.
-        When the auction closes, the highest bidder wins the club and your balance is set to budget minus your winning bid.
+        Before bidding opens, mark up to 3 clubs you want so others can see interest and negotiate.
+        Then bid from your starting budget — you may only lead one club at a time.
+        When the auction closes, the highest bidder wins and your balance becomes budget minus your winning bid.
       </p>
       <nav class="tm-desk-switch" aria-label="Transfer desks">
         <a href="all_listings.html">Players</a>
@@ -126,6 +157,7 @@
       </div>
     </div>
     <div id="leadPanel"></div>
+    <div id="clubInterestBanner" hidden></div>
     <div class="auction-scroll">
       <table class="auction-table">
         <thead>
@@ -137,13 +169,14 @@
             <th>Maintenance / season</th>
             <th>Season 1 exp.</th>
             <th>Stadium cost</th>
+            <th>Interest</th>
             <th>High bid</th>
             <th>Owner</th>
             <th class="bid-col">Bid</th>
           </tr>
         </thead>
         <tbody id="auctionTableBody">
-          <tr><td colspan="10" class="empty-row">Loading…</td></tr>
+          <tr><td colspan="11" class="empty-row">Loading…</td></tr>
         </tbody>
       </table>
     </div>
@@ -201,6 +234,23 @@
     </div>
   </div>
 
-  <script type="module" src="club_auction.js?v=20260809-ceil-500k"></script>
+  <div id="clubInterestModal" aria-hidden="true">
+    <div class="club-interest-modal-inner">
+      <span class="club-interest-modal-close" id="clubInterestModalClose">&times;</span>
+      <h2 id="clubInterestModalTitle">Mark interest</h2>
+      <p class="note" id="clubInterestModalHelp" style="margin:0 0 8px;">
+        Optional note for other interested owners (e.g. happy to talk / already agreed). Max 3 clubs.
+      </p>
+      <label for="clubInterestNote" style="font-size:12px;color:#aaa;">Note (optional)</label>
+      <textarea id="clubInterestNote" maxlength="280" placeholder="e.g. Open to swapping — DM me on Discord"></textarea>
+      <div class="club-interest-modal-actions">
+        <button type="button" class="button" id="clubInterestSaveBtn" style="background:#ff9900;color:#111;">Save interest</button>
+        <button type="button" class="button" id="clubInterestClearBtn" style="background:#442222;color:#fcc;">Remove</button>
+      </div>
+      <p id="clubInterestModalError"></p>
+    </div>
+  </div>
+
+  <script type="module" src="club_auction.js?v=20260918-interest"></script>
 </body>
 </html>

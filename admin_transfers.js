@@ -18,6 +18,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("settlePlayerDraftsBtn").onclick = forceSettlePlayerDrafts;
   document.getElementById("settleManagerDraftsBtn").onclick = settleManagerDraftsNow;
   document.getElementById("seedClubAuctionBtn").onclick = seedClubAuctionListings;
+  document.getElementById("saveClubAuctionDiscordBtn")?.addEventListener("click", saveClubAuctionDiscordUrl);
+  document.getElementById("clearClubAuctionInterestsBtn")?.addEventListener("click", clearClubAuctionInterests);
   document.getElementById("settleClubAuctionsBtn").onclick = settleClubAuctionsNow;
   document.getElementById("cancelPreviewBtn").onclick = previewCancelOpenTransfers;
   document.getElementById("cancelExecuteBtn").onclick = executeCancelOpenTransfers;
@@ -196,6 +198,10 @@ async function loadSettings() {
   if (clubAuctionSel) {
     clubAuctionSel.value = data.club_auction_enabled ? "true" : "false";
   }
+  const discordUrl = document.getElementById("clubAuctionDiscordUrl");
+  if (discordUrl) {
+    discordUrl.value = data.club_auction_discord_chat_url || "";
+  }
 
   const el = document.getElementById("draftStartTime");
   if (!el) return;
@@ -372,6 +378,49 @@ async function saveSettings() {
 
   await loadGlobalSettings();
   await loadSettings();
+}
+
+
+async function saveClubAuctionDiscordUrl() {
+  const input = document.getElementById("clubAuctionDiscordUrl");
+  const url = (input?.value || "").trim() || null;
+  setStatus("clubAuctionStatus", "Saving Discord link…");
+  try {
+    const { error } = await supabase.rpc("admin_set_club_auction_discord_chat_url", {
+      p_url: url,
+    });
+    if (error) throw error;
+    setStatus("clubAuctionStatus", "✅ Discord auction chat URL saved.", true);
+  } catch (err) {
+    setStatus(
+      "clubAuctionStatus",
+      "❌ " + (err.message || "Failed") + " — run patches/club_auction_interest_20260918.sql.",
+      false
+    );
+  }
+}
+
+async function clearClubAuctionInterests() {
+  if (!confirm("Clear all club auction interest marks?")) {
+    setStatus("clubAuctionStatus", "Cancelled.", true);
+    return;
+  }
+  setStatus("clubAuctionStatus", "Clearing interests…");
+  try {
+    const { data, error } = await supabase.rpc("admin_club_auction_clear_interests");
+    if (error) throw error;
+    setStatus(
+      "clubAuctionStatus",
+      `✅ Cleared ${data?.deleted ?? 0} interest mark(s).`,
+      true
+    );
+  } catch (err) {
+    setStatus(
+      "clubAuctionStatus",
+      "❌ " + (err.message || "Failed") + " — run patches/club_auction_interest_20260918.sql.",
+      false
+    );
+  }
 }
 
 async function seedClubAuctionListings() {
