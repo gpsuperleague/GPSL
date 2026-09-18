@@ -362,7 +362,11 @@ function renderPlayerCard(
         : ""
     }
     <a href="${pesdbPlayerUrl(id)}" target="_blank" rel="noopener" class="squad-player-card-thumb-link" draggable="false">
-      <img src="${playerCardUrl(id)}" alt="" draggable="false"
+      <img src="${playerCardUrl(id)}" alt="" draggable="false"${
+        pitch
+          ? ' width="80" height="105" style="width:80px!important;height:105px!important;max-width:none!important;max-height:none!important"'
+          : ""
+      }
         onerror="this.src='${FALLBACK_IMG}'">
     </a>
     <div class="spc-meta">

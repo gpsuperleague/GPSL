@@ -331,12 +331,24 @@
 .pitch-slot-drop .squad-player-card--removable {
   padding-top: 0;
 }
-.pitch-slot-drop .squad-player-card img {
-  width: 80px;
-  height: 105px;
-  max-width: none;
+.pitch-slot-drop .squad-player-card img,
+.football-pitch .squad-player-card--pitch img,
+.football-pitch .squad-player-card-thumb-link img {
+  width: 80px !important;
+  height: 105px !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 80px;
+  min-height: 105px;
   display: block;
   object-fit: contain;
+  flex-shrink: 0;
+}
+.football-pitch .squad-player-card-thumb-link {
+  display: block;
+  width: 80px;
+  height: 105px;
+  line-height: 0;
   flex-shrink: 0;
 }
 .pitch-slot-drop .squad-player-card .spc-meta {
