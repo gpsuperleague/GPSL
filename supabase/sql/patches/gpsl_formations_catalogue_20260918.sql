@@ -508,7 +508,7 @@ BEGIN
     INSERT INTO public.gpsl_formation_slots (formation_id, slot_key, default_position, x, y, sort_order, allow_relabel, allowed_positions) VALUES (v_id, 'CB2', 'CB', 64.0, 72.0, 3, true, ARRAY['CB']::text[]);
     INSERT INTO public.gpsl_formation_slots (formation_id, slot_key, default_position, x, y, sort_order, allow_relabel, allowed_positions) VALUES (v_id, 'RB', 'RB', 88.0, 68.0, 4, true, ARRAY['RB']::text[]);
     INSERT INTO public.gpsl_formation_slots (formation_id, slot_key, default_position, x, y, sort_order, allow_relabel, allowed_positions) VALUES (v_id, 'LMF', 'CMF', 16.0, 48.0, 5, true, ARRAY['CMF']::text[]);
-    INSERT INTO public.gpsl_formation_slots (formation_id, slot_key, default_position, x, y, sort_order, allow_relabel, allowed_positions) VALUES (v_id, 'CMF', 'DMF', 50.0, 52.0, 6, true, ARRAY['DMF']::text[]);
+    INSERT INTO public.gpsl_formation_slots (formation_id, slot_key, default_position, x, y, sort_order, allow_relabel, allowed_positions) VALUES (v_id, 'CMF', 'DMF', 50.0, 52.0, 6, false, ARRAY['DMF']::text[]);
     INSERT INTO public.gpsl_formation_slots (formation_id, slot_key, default_position, x, y, sort_order, allow_relabel, allowed_positions) VALUES (v_id, 'RMF', 'CMF', 84.0, 48.0, 7, true, ARRAY['CMF']::text[]);
     INSERT INTO public.gpsl_formation_slots (formation_id, slot_key, default_position, x, y, sort_order, allow_relabel, allowed_positions) VALUES (v_id, 'LWF', 'LWF', 22.0, 22.0, 8, true, ARRAY['LWF']::text[]);
     INSERT INTO public.gpsl_formation_slots (formation_id, slot_key, default_position, x, y, sort_order, allow_relabel, allowed_positions) VALUES (v_id, 'CF', 'CF', 50.0, 12.0, 9, true, ARRAY['CF']::text[]);

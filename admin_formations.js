@@ -196,12 +196,82 @@ function renderPitch() {
     marker.style.top = `${y}%`;
     marker.innerHTML = `
       <div class="fm-marker-dot" aria-hidden="true"></div>
-      <span class="fm-marker-label">${escapeAttr(def)}</span>
+      <span class="fm-marker-label" title="Click to change starting role">${escapeAttr(def)}</span>
       <span class="fm-marker-key">${escapeAttr(key)}</span>
     `;
-    marker.title = `${key} · ${def} — drag to move`;
+    marker.title = `${key} · ${def} — click role to change, drag to move`;
     pitch.appendChild(marker);
   });
+}
+
+function setSlotStartingRole(idx, role) {
+  const tr = document.querySelectorAll("#slotsBody tr")[idx];
+  if (!tr) return;
+  const sel = tr.querySelector(".slot-default");
+  if (!sel) return;
+  const next = String(role || "").toUpperCase();
+  if (![...sel.options].some((o) => o.value === next)) return;
+  sel.value = next;
+  const box = tr.querySelector(".slot-allowed");
+  if (box) box.innerHTML = posChecksHtml(next, [next]);
+  syncPitchFromTable();
+}
+
+function closeRoleMenu() {
+  const menu = document.getElementById("fmRoleMenu");
+  if (menu) {
+    menu.hidden = true;
+    menu.innerHTML = "";
+  }
+}
+
+function openRoleMenu(idx, anchorEl) {
+  const menu = document.getElementById("fmRoleMenu");
+  const tr = document.querySelectorAll("#slotsBody tr")[idx];
+  if (!menu || !tr) return;
+  const sel = tr.querySelector(".slot-default");
+  const key = tr.querySelector(".slot-key")?.value || `S${idx}`;
+  const current = sel?.value || "CMF";
+  const opts = positions.filter((p) =>
+    current === "GK" ? p === "GK" : p !== "GK"
+  );
+
+  menu.innerHTML = "";
+  const title = document.createElement("div");
+  title.className = "fm-role-menu-title";
+  title.textContent = `Starting role — slot ${key}`;
+  menu.appendChild(title);
+
+  const grid = document.createElement("div");
+  grid.className = "fm-role-menu-grid";
+  for (const p of opts) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = p;
+    if (p === current) btn.classList.add("selected");
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setSlotStartingRole(idx, p);
+      closeRoleMenu();
+      setStatus(
+        `Slot ${key}: starting role → ${p}. Untick Allow change to lock it, then Save formation.`
+      );
+    });
+    grid.appendChild(btn);
+  }
+  menu.appendChild(grid);
+  menu.hidden = false;
+
+  const rect = (anchorEl || tr).getBoundingClientRect();
+  const menuW = 200;
+  const pad = 8;
+  let left = rect.left + rect.width / 2 - menuW / 2;
+  let top = rect.bottom + 6;
+  left = Math.max(pad, Math.min(left, window.innerWidth - menuW - pad));
+  if (top + 280 > window.innerHeight) top = Math.max(pad, rect.top - 286);
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  menu.style.width = `${menuW}px`;
 }
 
 let pitchDragWired = false;
@@ -214,9 +284,17 @@ function wirePitchDragging() {
   let activeIdx = null;
   let pointerId = null;
   let activeEl = null;
+  let startX = 0;
+  let startY = 0;
+  let moved = false;
+  let roleClickTarget = false;
 
   const onMove = (e) => {
     if (activeIdx == null || e.pointerId !== pointerId || !activeEl) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (!moved && dx * dx + dy * dy < 25) return;
+    moved = true;
     const rect = pitch.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const x = clampPct(((e.clientX - rect.left) / rect.width) * 100);
@@ -229,6 +307,9 @@ function wirePitchDragging() {
   const onEnd = (e) => {
     if (activeIdx == null) return;
     if (e.pointerId != null && pointerId != null && e.pointerId !== pointerId) return;
+    const idx = activeIdx;
+    const wasRoleClick = roleClickTarget && !moved;
+    const anchor = activeEl?.querySelector(".fm-marker-label") || activeEl;
     activeEl?.classList.remove("dragging");
     try {
       if (activeEl?.hasPointerCapture?.(pointerId)) {
@@ -240,9 +321,11 @@ function wirePitchDragging() {
     activeIdx = null;
     pointerId = null;
     activeEl = null;
+    roleClickTarget = false;
     document.removeEventListener("pointermove", onMove);
     document.removeEventListener("pointerup", onEnd);
     document.removeEventListener("pointercancel", onEnd);
+    if (wasRoleClick) openRoleMenu(idx, anchor);
   };
 
   pitch.addEventListener("pointerdown", (e) => {
@@ -250,9 +333,14 @@ function wirePitchDragging() {
     if (!marker) return;
     e.preventDefault();
     e.stopPropagation();
+    closeRoleMenu();
     activeIdx = Number(marker.dataset.idx);
     pointerId = e.pointerId;
     activeEl = marker;
+    startX = e.clientX;
+    startY = e.clientY;
+    moved = false;
+    roleClickTarget = !!e.target.closest(".fm-marker-label");
     marker.classList.add("dragging");
     try {
       marker.setPointerCapture(pointerId);
@@ -262,6 +350,17 @@ function wirePitchDragging() {
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onEnd);
     document.addEventListener("pointercancel", onEnd);
+  });
+
+  document.addEventListener("click", (e) => {
+    const menu = document.getElementById("fmRoleMenu");
+    if (!menu || menu.hidden) return;
+    if (menu.contains(e.target)) return;
+    if (e.target.closest(".fm-marker-label")) return;
+    closeRoleMenu();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeRoleMenu();
   });
 }
 
