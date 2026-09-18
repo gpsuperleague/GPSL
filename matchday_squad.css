@@ -202,10 +202,9 @@
   gap: 2px;
   z-index: 2;
 }
-/* Anchor near the top of the GK card so most of it hangs toward the goal line,
-   clearing the centre-back cards on typical catalogue / preset layouts. */
+/* Anchor near the top of the GK card so it sits deeper toward the goal line. */
 .pitch-slot[data-slot-id="GK"] {
-  transform: translate(-50%, -18%);
+  transform: translate(-50%, -8%);
   z-index: 1;
 }
 .pitch-slot-placeholder {

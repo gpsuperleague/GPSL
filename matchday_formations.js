@@ -421,41 +421,44 @@ function clampPct(n) {
 }
 
 /**
- * Keep GK clear of the defensive line. Cards are ~96px tall on a ~500px pitch,
- * so centres need ~20%+ vertical separation or they visually overlap.
+ * Keep GK clear of overlapping centre-backs.
+ * Prefer pushing central CBs further up the pitch; nudge GK deeper only a little.
  */
-export function spaceGkFromDefenders(positions, minGap = 22) {
+export function spaceGkFromDefenders(positions, minGap = 28) {
   if (!positions || typeof positions !== "object") return positions;
   const gk = positions.GK;
   if (!gk || gk.y == null) return positions;
 
   const out = { ...positions };
-  let deepestY = null;
+  const gkX = Number(gk.x) || 50;
+  const gkY = Number(gk.y);
+
+  // Candidates in the defensive third that sit over / near the GK vertically
+  const backLine = [];
   for (const [id, p] of Object.entries(out)) {
     if (id === "GK" || !p || p.y == null) continue;
-    // Defensive third only (ignore midfield / attack)
-    if (Number(p.y) < 55) continue;
     const y = Number(p.y);
-    if (deepestY == null || y > deepestY) deepestY = y;
+    const x = Number(p.x) || 50;
+    if (y < 52) continue;
+    backLine.push({ id, x, y, central: Math.abs(x - gkX) <= 22 });
   }
-  if (deepestY == null) return out;
+  if (!backLine.length) return out;
 
-  const gap = Number(gk.y) - deepestY;
-  if (gap >= minGap) return out;
+  // Push any back who is too close to the GK — central CBs first / hardest
+  for (const d of backLine) {
+    const gap = gkY - d.y;
+    const needed = d.central ? minGap : Math.max(18, minGap - 6);
+    if (gap >= needed) continue;
+    const lift = needed - gap;
+    out[d.id] = {
+      ...out[d.id],
+      y: clampPct(d.y - lift),
+    };
+  }
 
-  const need = minGap - gap;
-  // Prefer pushing GK deeper; also ease the back line forward a little
-  const pushGk = Math.min(need * 0.6, 94 - Number(gk.y));
-  const pushDef = Math.max(0, need - Math.max(0, pushGk));
-
-  out.GK = { ...gk, y: clampPct(Number(gk.y) + Math.max(0, pushGk)) };
-  for (const [id, p] of Object.entries(out)) {
-    if (id === "GK" || !p || p.y == null) continue;
-    if (Number(p.y) < 55) continue;
-    // Same defensive band as the deepest player(s)
-    if (Math.abs(Number(p.y) - deepestY) <= 8) {
-      out[id] = { ...p, y: clampPct(Number(p.y) - pushDef) };
-    }
+  // Keep GK a touch deeper toward the goal line
+  if (gkY < 93) {
+    out.GK = { ...gk, y: clampPct(Math.max(gkY, 93)) };
   }
   return out;
 }
