@@ -195,8 +195,8 @@
 .pitch-slot {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 62px;
-  min-height: 120px;
+  width: 68px;
+  min-height: 128px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -205,8 +205,8 @@
 }
 .pitch-slot-placeholder {
   display: block;
-  width: 48px;
-  height: 64px;
+  width: 53px;
+  height: 70px;
   border: 2px dashed rgba(255, 255, 255, 0.45);
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.12);
@@ -291,7 +291,8 @@
   border-color: #888;
 }
 .pitch-slot-drop {
-  width: 54px;
+  width: fit-content;
+  min-width: 0;
   min-height: 0;
   padding: 2px;
   border: 2px dashed rgba(255, 255, 255, 0.55);
@@ -302,6 +303,7 @@
   justify-content: center;
   transition: border-color 0.15s, background 0.15s;
   overflow: visible;
+  box-sizing: content-box;
 }
 .pitch-slot-drop.drag-over {
   border-color: #ff9900;
@@ -330,17 +332,20 @@
   padding-top: 0;
 }
 .pitch-slot-drop .squad-player-card img {
-  width: 48px;
-  height: 64px;
+  width: 53px;
+  height: 70px;
+  max-width: none;
   display: block;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .pitch-slot-drop .squad-player-card .spc-meta {
-  width: 60px;
-  margin: 0 -3px;
+  width: 64px;
+  margin: 0 -4px;
 }
 .pitch-slot-drop .squad-player-card .spc-name {
   font-size: 10px;
-  max-width: 60px;
+  max-width: 64px;
   margin: 0 auto;
   white-space: normal;
   overflow: hidden;
@@ -360,7 +365,7 @@
 .pitch-slot-drop .spc-given,
 .pitch-slot-drop .spc-surname {
   display: block;
-  max-width: 60px;
+  max-width: 64px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
