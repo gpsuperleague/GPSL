@@ -834,6 +834,7 @@ export function initMatchdaySquadPanel({
   });
 
   function applySlotPositionsToDom() {
+    replaceSlotMap(slotPositions, spaceGkFromDefenders(slotPositions));
     for (const slotId of SLOT_IDS) {
       const wrap = pitchEl.querySelector(`.pitch-slot[data-slot-id="${slotId}"]`);
       if (!wrap) continue;
@@ -847,6 +848,7 @@ export function initMatchdaySquadPanel({
   }
 
   function buildPitchSlotElements() {
+    replaceSlotMap(slotPositions, spaceGkFromDefenders(slotPositions));
     pitchEl.querySelectorAll(".pitch-slot").forEach((el) => el.remove());
     for (const slotId of SLOT_IDS) {
       const pos = slotPositions[slotId] || { x: 50, y: 50 };
