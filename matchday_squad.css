@@ -158,8 +158,7 @@
   background: linear-gradient(180deg, #2d6a2d 0%, #3d8b3d 45%, #2d6a2d 100%);
   border: 2px solid #e8e8e8;
   border-radius: 4px;
-  /* Visible so GK card can sit deeper in the goal without clipping into CBs */
-  overflow: visible;
+  overflow: hidden;
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.25);
 }
 .football-pitch::before {
@@ -194,25 +193,20 @@
 .pitch-slot {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 84px;
-  min-height: 96px;
+  width: 62px;
+  min-height: 72px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   z-index: 2;
-}
-/* Anchor near the top of the GK card so it sits deeper toward the goal line. */
-.pitch-slot[data-slot-id="GK"] {
-  transform: translate(-50%, -8%);
-  z-index: 1;
 }
 .pitch-slot-placeholder {
   display: block;
-  width: 52px;
-  height: 68px;
+  width: 40px;
+  height: 52px;
   border: 2px dashed rgba(255, 255, 255, 0.45);
-  border-radius: 6px;
+  border-radius: 5px;
   background: rgba(0, 0, 0, 0.15);
 }
 .squad-toolbar button.active {
@@ -220,16 +214,17 @@
   color: #ff9900;
 }
 .pitch-slot-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: bold;
   color: #fff;
   background: rgba(0, 0, 0, 0.45);
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: 3px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.25);
   cursor: pointer;
   font-family: inherit;
+  line-height: 1.2;
 }
 .pitch-slot-label:hover {
   background: rgba(255, 153, 0, 0.35);
@@ -294,10 +289,10 @@
   border-color: #888;
 }
 .pitch-slot-drop {
-  width: 76px;
-  min-height: 80px;
+  width: 56px;
+  min-height: 60px;
   border: 2px dashed rgba(255, 255, 255, 0.55);
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
@@ -311,18 +306,18 @@
 .pitch-slot-drop .squad-player-card {
   width: 100%;
   margin: 0;
-  padding: 4px;
+  padding: 2px;
   flex-direction: column;
   text-align: center;
   cursor: grab;
 }
 .pitch-slot-drop .squad-player-card img {
-  width: 56px;
-  height: 74px;
+  width: 40px;
+  height: 52px;
 }
 .pitch-slot-drop .squad-player-card .spc-name {
-  font-size: 10px;
-  max-width: 72px;
+  font-size: 8px;
+  max-width: 54px;
   white-space: normal;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -330,10 +325,16 @@
   line-clamp: 2;
   overflow: hidden;
   word-break: break-word;
-  line-height: 1.15;
-  min-height: 2.3em;
+  line-height: 1.1;
+  min-height: 1.8em;
 }
 .pitch-slot-drop .squad-player-card .spc-pos { display: none; }
+.pitch-slot-drop .squad-player-card .spc-remove {
+  width: 14px;
+  height: 14px;
+  font-size: 9px;
+  line-height: 14px;
+}
 
 .squad-bench {
   background: #222;
