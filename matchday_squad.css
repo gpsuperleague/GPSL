@@ -195,8 +195,8 @@
 .pitch-slot {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 78px;
-  min-height: 118px;
+  width: 56px;
+  min-height: 110px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -209,7 +209,7 @@
   height: 58px;
   border: 2px dashed rgba(255, 255, 255, 0.45);
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.12);
 }
 .squad-toolbar button.active {
   border-color: #ff9900;
@@ -291,45 +291,61 @@
   border-color: #888;
 }
 .pitch-slot-drop {
-  width: 74px;
-  min-height: 100px;
+  width: 50px;
+  min-height: 0;
+  padding: 2px;
   border: 2px dashed rgba(255, 255, 255, 0.55);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.12);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   transition: border-color 0.15s, background 0.15s;
+  overflow: visible;
 }
 .pitch-slot-drop.drag-over {
   border-color: #ff9900;
   background: rgba(255, 153, 0, 0.2);
 }
-/* Pool-sized portraits; narrower slot with stacked first/surname */
+/* Portrait hugs the dashed frame; name stacks beneath with little side gutter */
 .pitch-slot-drop .squad-player-card {
-  width: 100%;
+  width: auto;
   margin: 0;
-  padding: 4px 2px;
-  gap: 4px;
+  padding: 0;
+  gap: 3px;
   flex-direction: column;
+  align-items: center;
   text-align: center;
   cursor: grab;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.pitch-slot-drop .squad-player-card--suspended,
+.pitch-slot-drop .squad-player-card--injured {
+  background: transparent;
+  box-shadow: none;
+}
+.pitch-slot-drop .squad-player-card--removable {
+  padding-top: 0;
 }
 .pitch-slot-drop .squad-player-card img {
   width: 44px;
   height: 58px;
+  display: block;
 }
 .pitch-slot-drop .squad-player-card .spc-meta {
-  width: 100%;
+  width: 54px;
+  margin: 0 -2px;
 }
 .pitch-slot-drop .squad-player-card .spc-name {
-  font-size: 11px;
-  max-width: 70px;
+  font-size: 10px;
+  max-width: 54px;
   margin: 0 auto;
   white-space: normal;
   overflow: hidden;
-  line-height: 1.15;
-  min-height: 2.3em;
+  line-height: 1.1;
+  min-height: 2.2em;
   text-overflow: unset;
 }
 .pitch-slot-drop .squad-player-card .spc-name a {
@@ -339,22 +355,24 @@
   gap: 0;
   color: inherit;
   text-decoration: none;
-  line-height: 1.15;
+  line-height: 1.1;
 }
 .pitch-slot-drop .spc-given,
 .pitch-slot-drop .spc-surname {
   display: block;
-  max-width: 70px;
+  max-width: 54px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .pitch-slot-drop .squad-player-card .spc-pos { display: none; }
 .pitch-slot-drop .squad-player-card .spc-remove {
-  width: 18px;
-  height: 18px;
-  font-size: 11px;
-  line-height: 16px;
+  top: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  line-height: 14px;
 }
 
 .squad-bench {
