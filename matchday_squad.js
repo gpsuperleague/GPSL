@@ -11,6 +11,7 @@ import {
   buildPitchLayoutPayload,
   normalizePitchLayout,
   pitchLayoutHasSlots,
+  spaceGkFromDefenders,
 } from "./matchday_formations.js";
 import {
   loadGpslFormations,
@@ -930,7 +931,7 @@ export function initMatchdaySquadPanel({
         positions[s.id] = { x: s.x, y: s.y };
         labels[s.id] = s.label;
       }
-      replaceSlotMap(slotPositions, positions);
+      replaceSlotMap(slotPositions, spaceGkFromDefenders(positions));
       replaceSlotMap(slotLabels, labels);
     } else {
       const base = formationLayout(formationId);

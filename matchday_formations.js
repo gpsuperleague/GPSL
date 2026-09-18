@@ -17,11 +17,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "4-4-2",
     description: "Balanced, classic shape",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("LB", "LB", 12, 68),
-      L("CB1", "CB", 36, 72),
-      L("CB2", "CB", 64, 72),
-      L("RB", "RB", 88, 68),
+      L("GK", "GK", 50, 92),
+      L("LB", "LB", 12, 62),
+      L("CB1", "CB", 36, 65),
+      L("CB2", "CB", 64, 65),
+      L("RB", "RB", 88, 62),
       L("LMF", "LMF", 14, 46),
       L("CMF", "CMF", 38, 50),
       L("RMF", "RMF", 62, 50),
@@ -36,11 +36,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "4-3-3",
     description: "High pressing, possession, wide play",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("LB", "LB", 12, 68),
-      L("CB1", "CB", 36, 72),
-      L("CB2", "CB", 64, 72),
-      L("RB", "RB", 88, 68),
+      L("GK", "GK", 50, 92),
+      L("LB", "LB", 12, 62),
+      L("CB1", "CB", 36, 65),
+      L("CB2", "CB", 64, 65),
+      L("RB", "RB", 88, 62),
       L("LMF", "CMF", 16, 48),
       L("CMF", "DMF", 50, 52),
       L("RMF", "CMF", 84, 48),
@@ -55,11 +55,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "4-3-2-1",
     description: 'Narrow "Christmas Tree", strong central buildup',
     slots: [
-      L("GK", "GK", 50, 86),
-      L("LB", "LB", 12, 68),
-      L("CB1", "CB", 36, 72),
-      L("CB2", "CB", 64, 72),
-      L("RB", "RB", 88, 68),
+      L("GK", "GK", 50, 92),
+      L("LB", "LB", 12, 62),
+      L("CB1", "CB", 36, 65),
+      L("CB2", "CB", 64, 65),
+      L("RB", "RB", 88, 62),
       L("LMF", "CMF", 22, 52),
       L("CMF", "CMF", 50, 54),
       L("RMF", "CMF", 78, 52),
@@ -74,11 +74,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "4-3-1-2",
     description: "Central overload with AMF link play",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("LB", "LB", 12, 68),
-      L("CB1", "CB", 36, 72),
-      L("CB2", "CB", 64, 72),
-      L("RB", "RB", 88, 68),
+      L("GK", "GK", 50, 92),
+      L("LB", "LB", 12, 62),
+      L("CB1", "CB", 36, 65),
+      L("CB2", "CB", 64, 65),
+      L("RB", "RB", 88, 62),
       L("LMF", "CMF", 22, 52),
       L("CMF", "CMF", 50, 54),
       L("RMF", "CMF", 78, 52),
@@ -93,11 +93,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "4-2-3-1",
     description: "Flexible, wide or central transitions",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("LB", "LB", 12, 68),
-      L("CB1", "CB", 36, 72),
-      L("CB2", "CB", 64, 72),
-      L("RB", "RB", 88, 68),
+      L("GK", "GK", 50, 92),
+      L("LB", "LB", 12, 62),
+      L("CB1", "CB", 36, 65),
+      L("CB2", "CB", 64, 65),
+      L("RB", "RB", 88, 62),
       L("LMF", "DMF", 38, 54),
       L("RMF", "DMF", 62, 54),
       L("LWF", "LWF", 18, 32),
@@ -112,11 +112,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "4-2-1-3",
     description: "Defensive midfield cover + structured buildup",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("LB", "LB", 12, 68),
-      L("CB1", "CB", 36, 72),
-      L("CB2", "CB", 64, 72),
-      L("RB", "RB", 88, 68),
+      L("GK", "GK", 50, 92),
+      L("LB", "LB", 12, 62),
+      L("CB1", "CB", 36, 65),
+      L("CB2", "CB", 64, 65),
+      L("RB", "RB", 88, 62),
       L("LMF", "DMF", 38, 56),
       L("RMF", "DMF", 62, 56),
       L("CMF", "AMF", 50, 40),
@@ -131,11 +131,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "4-1-4-1",
     description: "Strong defensive block with a single pivot",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("LB", "LB", 12, 68),
-      L("CB1", "CB", 36, 72),
-      L("CB2", "CB", 64, 72),
-      L("RB", "RB", 88, 68),
+      L("GK", "GK", 50, 92),
+      L("LB", "LB", 12, 62),
+      L("CB1", "CB", 36, 65),
+      L("CB2", "CB", 64, 65),
+      L("RB", "RB", 88, 62),
       L("CMF", "DMF", 50, 56),
       L("LMF", "LMF", 14, 42),
       L("LWF", "CMF", 38, 44),
@@ -150,11 +150,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "4-1-2-3",
     description: "Aggressive, high-pressing, forward-loaded variant",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("LB", "LB", 12, 68),
-      L("CB1", "CB", 36, 72),
-      L("CB2", "CB", 64, 72),
-      L("RB", "RB", 88, 68),
+      L("GK", "GK", 50, 92),
+      L("LB", "LB", 12, 62),
+      L("CB1", "CB", 36, 65),
+      L("CB2", "CB", 64, 65),
+      L("RB", "RB", 88, 62),
       L("CMF", "DMF", 50, 56),
       L("LMF", "CMF", 36, 44),
       L("RMF", "CMF", 64, 44),
@@ -169,10 +169,10 @@ export const MATCHDAY_FORMATIONS = {
     name: "3-4-3",
     description: "Wide, attacking, wing-driven",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("CB1", "CB", 28, 72),
-      L("CB2", "CB", 50, 74),
-      L("RB", "CB", 72, 72),
+      L("GK", "GK", 50, 92),
+      L("CB1", "CB", 28, 65),
+      L("CB2", "CB", 50, 65),
+      L("RB", "CB", 72, 65),
       L("LB", "LMF", 14, 48),
       L("LMF", "CMF", 38, 50),
       L("RMF", "CMF", 62, 50),
@@ -188,10 +188,10 @@ export const MATCHDAY_FORMATIONS = {
     name: "3-2-4-1",
     description: "Midfield dominance, possession-heavy",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("CB1", "CB", 28, 72),
-      L("CB2", "CB", 50, 74),
-      L("RB", "CB", 72, 72),
+      L("GK", "GK", 50, 92),
+      L("CB1", "CB", 28, 65),
+      L("CB2", "CB", 50, 65),
+      L("RB", "CB", 72, 65),
       L("LMF", "DMF", 38, 54),
       L("RMF", "DMF", 62, 54),
       L("LB", "LMF", 14, 42),
@@ -207,10 +207,10 @@ export const MATCHDAY_FORMATIONS = {
     name: "3-2-3-2",
     description: "Balanced, with wide attacking options",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("CB1", "CB", 28, 72),
-      L("CB2", "CB", 50, 74),
-      L("RB", "CB", 72, 72),
+      L("GK", "GK", 50, 92),
+      L("CB1", "CB", 28, 65),
+      L("CB2", "CB", 50, 65),
+      L("RB", "CB", 72, 65),
       L("LMF", "CMF", 38, 50),
       L("RMF", "CMF", 62, 50),
       L("LB", "LWF", 18, 30),
@@ -226,10 +226,10 @@ export const MATCHDAY_FORMATIONS = {
     name: "3-1-4-2",
     description: "Central play, requires high-stamina wide mids",
     slots: [
-      L("GK", "GK", 50, 86),
-      L("CB1", "CB", 28, 72),
-      L("CB2", "CB", 50, 74),
-      L("RB", "CB", 72, 72),
+      L("GK", "GK", 50, 92),
+      L("CB1", "CB", 28, 65),
+      L("CB2", "CB", 50, 65),
+      L("RB", "CB", 72, 65),
       L("CMF", "DMF", 50, 54),
       L("LB", "LMF", 12, 42),
       L("LMF", "CMF", 36, 44),
@@ -245,11 +245,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "5-3-2",
     description: "Very solid defensively, counter-attack friendly",
     slots: [
-      L("GK", "GK", 50, 86),
+      L("GK", "GK", 50, 92),
       L("LB", "LWB", 8, 58),
-      L("CB1", "CB", 30, 72),
-      L("CB2", "CB", 50, 74),
-      L("RB", "CB", 70, 72),
+      L("CB1", "CB", 30, 65),
+      L("CB2", "CB", 50, 65),
+      L("RB", "CB", 70, 65),
       L("RWF", "RWB", 92, 58),
       L("LMF", "CMF", 30, 46),
       L("CMF", "CMF", 50, 48),
@@ -264,11 +264,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "5-2-2-1",
     description: "Defensive with wide counter-attacking threat",
     slots: [
-      L("GK", "GK", 50, 86),
+      L("GK", "GK", 50, 92),
       L("LB", "LWB", 8, 58),
-      L("CB1", "CB", 30, 72),
-      L("CB2", "CB", 50, 74),
-      L("RB", "CB", 70, 72),
+      L("CB1", "CB", 30, 65),
+      L("CB2", "CB", 50, 65),
+      L("RB", "CB", 70, 65),
       L("RWF", "RWB", 92, 58),
       L("LMF", "CMF", 38, 48),
       L("RMF", "CMF", 62, 48),
@@ -283,11 +283,11 @@ export const MATCHDAY_FORMATIONS = {
     name: "5-2-1-2",
     description: "Compact, central counter-attacking shape",
     slots: [
-      L("GK", "GK", 50, 86),
+      L("GK", "GK", 50, 92),
       L("LB", "LWB", 8, 58),
-      L("CB1", "CB", 30, 72),
-      L("CB2", "CB", 50, 74),
-      L("RB", "CB", 70, 72),
+      L("CB1", "CB", 30, 65),
+      L("CB2", "CB", 50, 65),
+      L("RB", "CB", 70, 65),
       L("RWF", "RWB", 92, 58),
       L("LMF", "CMF", 38, 48),
       L("RMF", "CMF", 62, 48),
@@ -409,11 +409,55 @@ export function formationLayout(formationId) {
     out[slot.id] = { x: slot.x, y: slot.y };
     labels[slot.id] = slot.label;
   }
-  return { positions: out, labels, formationId: f.id };
+  return {
+    positions: spaceGkFromDefenders(out),
+    labels,
+    formationId: f.id,
+  };
 }
 
 function clampPct(n) {
   return Math.min(96, Math.max(4, Number(n) || 0));
+}
+
+/**
+ * Keep GK clear of the defensive line. Cards are ~96px tall on a ~500px pitch,
+ * so centres need ~20%+ vertical separation or they visually overlap.
+ */
+export function spaceGkFromDefenders(positions, minGap = 22) {
+  if (!positions || typeof positions !== "object") return positions;
+  const gk = positions.GK;
+  if (!gk || gk.y == null) return positions;
+
+  const out = { ...positions };
+  let deepestY = null;
+  for (const [id, p] of Object.entries(out)) {
+    if (id === "GK" || !p || p.y == null) continue;
+    // Defensive third only (ignore midfield / attack)
+    if (Number(p.y) < 55) continue;
+    const y = Number(p.y);
+    if (deepestY == null || y > deepestY) deepestY = y;
+  }
+  if (deepestY == null) return out;
+
+  const gap = Number(gk.y) - deepestY;
+  if (gap >= minGap) return out;
+
+  const need = minGap - gap;
+  // Prefer pushing GK deeper; also ease the back line forward a little
+  const pushGk = Math.min(need * 0.6, 94 - Number(gk.y));
+  const pushDef = Math.max(0, need - Math.max(0, pushGk));
+
+  out.GK = { ...gk, y: clampPct(Number(gk.y) + Math.max(0, pushGk)) };
+  for (const [id, p] of Object.entries(out)) {
+    if (id === "GK" || !p || p.y == null) continue;
+    if (Number(p.y) < 55) continue;
+    // Same defensive band as the deepest player(s)
+    if (Math.abs(Number(p.y) - deepestY) <= 8) {
+      out[id] = { ...p, y: clampPct(Number(p.y) - pushDef) };
+    }
+  }
+  return out;
 }
 
 /** Parse pitch_layout from DB (jsonb object or JSON string). */
@@ -465,7 +509,11 @@ export function resolvePitchLayout(saved, fallbackFormationId = DEFAULT_FORMATIO
     }
   }
 
-  return { formationId, positions, labels };
+  return {
+    formationId,
+    positions: spaceGkFromDefenders(positions),
+    labels,
+  };
 }
 
 export function buildPitchLayoutPayload(slotPositions, labels, formationId) {

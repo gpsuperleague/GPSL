@@ -158,7 +158,8 @@
   background: linear-gradient(180deg, #2d6a2d 0%, #3d8b3d 45%, #2d6a2d 100%);
   border: 2px solid #e8e8e8;
   border-radius: 4px;
-  overflow: hidden;
+  /* Visible so GK card can sit deeper in the goal without clipping into CBs */
+  overflow: visible;
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.25);
 }
 .football-pitch::before {
@@ -200,6 +201,12 @@
   align-items: center;
   gap: 2px;
   z-index: 2;
+}
+/* Anchor near the top of the GK card so most of it hangs toward the goal line,
+   clearing the centre-back cards on typical catalogue / preset layouts. */
+.pitch-slot[data-slot-id="GK"] {
+  transform: translate(-50%, -18%);
+  z-index: 1;
 }
 .pitch-slot-placeholder {
   display: block;

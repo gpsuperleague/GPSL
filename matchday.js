@@ -36,7 +36,7 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20260918-no-movepos";
+} from "./matchday_squad.js?v=20260918-gk-gap";
 import { loadGpslFormations } from "./gpsl_formations.js?v=20260918-formation-rules2";
 import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260821-md-comp";
 import { playerNameLinkHtml } from "./player_links.js";
