@@ -353,25 +353,38 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Soft enable: RPC from physical_attrs SQL (no REST select of Height → no 400 noise).
-    // Filters appear once columns exist; options fill after scrape → Apply.
+    // Soft enable physical attrs (Height / foot). Prefer RPC (no REST 400 if missing);
+    // fall back to a tiny select in case the RPC patch was not applied but columns exist.
     usePhysicalDbColumns = false;
     for (const col of PHYSICAL_DB_COLS) {
       if (!FILTER_EXCLUDE.includes(col)) FILTER_EXCLUDE.push(col);
     }
+    let physicalOk = false;
     try {
       const { data: hasPhys, error: physErr } = await supabase.rpc(
         "gpdb_has_physical_attrs"
       );
-      if (!physErr && hasPhys === true) {
-        usePhysicalDbColumns = true;
-        for (const col of PHYSICAL_DB_COLS) {
-          const i = FILTER_EXCLUDE.indexOf(col);
-          if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
-        }
-      }
+      if (!physErr && hasPhys === true) physicalOk = true;
     } catch (_) {
       /* RPC missing until physical_attrs patch is applied */
+    }
+    if (!physicalOk) {
+      const { error: heightProbeErr } = await supabase
+        .from("Players")
+        .select("Height", { head: true })
+        .limit(1);
+      if (!heightProbeErr) physicalOk = true;
+    }
+    if (physicalOk) {
+      usePhysicalDbColumns = true;
+      for (const col of PHYSICAL_DB_COLS) {
+        const i = FILTER_EXCLUDE.indexOf(col);
+        if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
+      }
+    } else {
+      console.warn(
+        "GPDB physical filters hidden — run supabase/sql/patches/gpdb_pesdb_physical_attrs_20260915.sql then refresh."
+      );
     }
   }
 
@@ -1368,7 +1381,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (error && isMissingPhysicalColumnError(error) && usePhysicalDbColumns) {
       disablePhysicalDbColumns(error);
-      rebuildFilterUi();
+      await rebuildFilterUi();
       return loadPage(page);
     }
 
@@ -1383,7 +1396,7 @@ document.addEventListener("DOMContentLoaded", () => {
       )
     ) {
       disablePhysicalDbColumns(error);
-      rebuildFilterUi();
+      await rebuildFilterUi();
       return loadPage(page);
     }
 
@@ -1412,7 +1425,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ))
       ) {
         disablePhysicalDbColumns(error);
-        rebuildFilterUi();
+        await rebuildFilterUi();
         return loadPage(page);
       }
       console.error(error);
@@ -3369,7 +3382,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function rebuildFilterUi() {
+  async function rebuildFilterUi() {
     setupFilters();
     setupRangeFilters();
     installRangeSteppers({
@@ -3385,6 +3398,8 @@ document.addEventListener("DOMContentLoaded", () => {
       ],
     });
     setupTextFilters();
+    setupMultiFilterDelegation();
+    await populateDropdowns();
     restoreGpdbFilterUi();
   }
 
@@ -3442,6 +3457,38 @@ document.addEventListener("DOMContentLoaded", () => {
         applyFor(input);
       });
     }
+  }
+
+  /** Dropdown search / panel clicks — delegated so rebuilds don't kill handlers. */
+  function setupMultiFilterDelegation() {
+    const root = document.getElementById("filters");
+    if (!root || root.dataset.multiFiltersWired) return;
+    root.dataset.multiFiltersWired = "1";
+
+    let searchDebounce = null;
+    root.addEventListener("input", (e) => {
+      const input = e.target;
+      if (!(input instanceof HTMLInputElement)) return;
+      if (!input.classList.contains("multi-filter-search")) return;
+      const col = input.closest(".multi-filter")?.dataset?.col;
+      if (!col) return;
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        renderMultiFilterOptions(col, input.value);
+      }, 120);
+    });
+
+    root.addEventListener("click", (e) => {
+      if (e.target.closest(".multi-filter-panel")) {
+        e.stopPropagation();
+      }
+    });
+
+    root.addEventListener("keydown", (e) => {
+      if (e.target?.classList?.contains("multi-filter-search")) {
+        e.stopPropagation();
+      }
+    });
   }
 
   function setupControls() {
@@ -3622,8 +3669,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupControls();
     await loadRangeBounds();
     applySavedGpdbFilterState(loadSavedGpdbFilters());
-    rebuildFilterUi();
-    await populateDropdowns();
+    await rebuildFilterUi();
     applyGpdbPlayerFromUrl();
     applyGpdbNationFromUrl();
     await loadTotalCount();
