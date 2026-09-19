@@ -465,6 +465,19 @@ function compactFineBreakdownLabel(row) {
   const md = parseMetadata(row.metadata);
   const code = String(md.tariff_code || "").toLowerCase();
   const desc = String(row.description || "").trim();
+  const isArrange =
+    code === "match_mgmt_no_proposal" ||
+    code === "match_late_arrangement" ||
+    /match management fine|late arrangement fee|no home proposal|late arrangement/i.test(
+      desc
+    );
+  const isReply =
+    code === "match_response_deadline" ||
+    /missed scheduling response|response deadline missed|reply fail/i.test(desc);
+  const isVideo =
+    code === "match_video_missing" ||
+    /missing match video|no match video within/i.test(desc);
+
   if (isVideo) {
     const sideVs = fineVideoSideVs(row, desc);
     // Display current grace rule (72h), not legacy 48h baked into old ledger notes

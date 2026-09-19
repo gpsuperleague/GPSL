@@ -10,7 +10,7 @@ import {
   advisoryBudgetTitle,
   computeAdvisoryTransferBudget,
   renderAdvisoryBudgetBadgeHtml,
-} from "./finance_advisory_budget.js";
+} from "./finance_advisory_budget.js?v=20260919-isvideo-fix";
 
 const STYLE_ID = "club-bank-balance-style";
 

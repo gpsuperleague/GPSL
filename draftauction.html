@@ -881,6 +881,47 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
     const DRAFT_REFRESH_MAX_SEC = 300;
     const DRAFT_FILTER_STORAGE_PREFIX = "gpsl_draftauction_filters:";
 
+    const DRAFT_PLAYER_COLUMNS =
+      "Konami_ID, Name, Position, Rating, market_value, Nation, Age, Playstyle, contract_wage, Height, Stronger_Foot, Weak_Foot_Usage, Weak_Foot_Accuracy";
+    const DRAFT_PLAYER_COLUMNS_LEGACY =
+      "Konami_ID, Name, Position, Rating, market_value, Nation, Age, Playstyle, contract_wage";
+
+    function isMissingPhysicalColumnError(error) {
+      const msg = String(
+        error?.message || error?.details || error?.hint || error?.code || ""
+      ).toLowerCase();
+      if (!msg) return false;
+      return /height|stronger_foot|weak_foot|schema cache|pgrst204|42703|could not find|does not exist/.test(
+        msg
+      );
+    }
+
+    async function fetchDraftPlayersByIds(playerIds) {
+      if (!playerIds.length) return [];
+
+      let { data, error } = await supabase
+        .from("Players")
+        .select(DRAFT_PLAYER_COLUMNS)
+        .in("Konami_ID", playerIds);
+
+      if (error && isMissingPhysicalColumnError(error)) {
+        console.warn(
+          "Draft auction: Height/foot columns not selectable yet — listing still loads; physical filters stay empty until schema is ready.",
+          error
+        );
+        ({ data, error } = await supabase
+          .from("Players")
+          .select(DRAFT_PLAYER_COLUMNS_LEGACY)
+          .in("Konami_ID", playerIds));
+      }
+
+      if (error) {
+        console.error("Draft players load failed", error);
+        return [];
+      }
+      return data || [];
+    }
+
     function draftFilterStorageKey() {
       return `${DRAFT_FILTER_STORAGE_PREFIX}${buyerShortName || "anonymous"}`;
     }
@@ -1729,15 +1770,12 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
       const playerIdKeys = playerIds.map((id) => normalizeKonamiId(id));
 
       const [
-        { data: players },
+        players,
         bidsByPlayer,
         ,
         draftCreditsResult,
       ] = await Promise.all([
-        supabase
-          .from("Players")
-          .select("Konami_ID, Name, Position, Rating, market_value, Nation, Age, Playstyle, contract_wage, Height, Stronger_Foot, Weak_Foot_Usage, Weak_Foot_Accuracy")
-          .in("Konami_ID", playerIds),
+        fetchDraftPlayersByIds(playerIds),
         fetchDraftBidsGroupedForPlayers(playerIdKeys, draftAuctionStartTimeUK),
         loadClubsMap(),
         buyerShortName

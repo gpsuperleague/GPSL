@@ -7,7 +7,7 @@
  */
 
 import { formatMoney, loadClubBalance, loadFinanceLedger } from "./competition.js";
-import { aggregateLedgerByLine } from "./finance_ui.js";
+import { aggregateLedgerByLine } from "./finance_ui.js?v=20260919-isvideo-fix";
 import {
   buildFinanceProjections,
   loadClubWinningBidExposure,

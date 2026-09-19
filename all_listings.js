@@ -43,6 +43,22 @@ import { downloadIcs, transferListingEndEvent } from "./calendar_ics.js";
 // Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
 
+/** Prefer physical attrs; fall back if PostgREST schema cache is stale. */
+const LISTINGS_PLAYER_COLUMNS =
+  "Konami_ID, Name, Position, Rating, market_value, Nation, Age, Playstyle, contract_wage, Height, Stronger_Foot, Weak_Foot_Usage, Weak_Foot_Accuracy";
+const LISTINGS_PLAYER_COLUMNS_LEGACY =
+  "Konami_ID, Name, Position, Rating, market_value, Nation, Age, Playstyle, contract_wage";
+
+function isMissingPhysicalColumnError(error) {
+  const msg = String(
+    error?.message || error?.details || error?.hint || error?.code || ""
+  ).toLowerCase();
+  if (!msg) return false;
+  return /height|stronger_foot|weak_foot|schema cache|pgrst204|42703|could not find|does not exist/.test(
+    msg
+  );
+}
+
 let currentUserShort = null;
 let currentUserNation = null;
 let myNationalTeam = null;
@@ -1576,10 +1592,21 @@ async function fetchPlayersMap(playerIds) {
     .map((id) => Number(id))
     .filter((n) => Number.isFinite(n));
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("Players")
-    .select("*")
+    .select(LISTINGS_PLAYER_COLUMNS)
     .in("Konami_ID", numericIds);
+
+  if (error && isMissingPhysicalColumnError(error)) {
+    console.warn(
+      "Player market: Height/foot columns not selectable yet — listings still load; physical filters stay empty until schema is ready.",
+      error
+    );
+    ({ data, error } = await supabase
+      .from("Players")
+      .select(LISTINGS_PLAYER_COLUMNS_LEGACY)
+      .in("Konami_ID", numericIds));
+  }
 
   if (error) {
     console.error("Player batch lookup failed", error);
@@ -1593,11 +1620,19 @@ async function fetchPlayersMap(playerIds) {
 }
 
 async function fetchPlayerByID(kid) {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("Players")
-    .select("*")
+    .select(LISTINGS_PLAYER_COLUMNS)
     .eq("Konami_ID", kid)
     .single();
+
+  if (error && isMissingPhysicalColumnError(error)) {
+    ({ data, error } = await supabase
+      .from("Players")
+      .select(LISTINGS_PLAYER_COLUMNS_LEGACY)
+      .eq("Konami_ID", kid)
+      .single());
+  }
 
   if (error) {
     console.error("Player lookup failed", error);

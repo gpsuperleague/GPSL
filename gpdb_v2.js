@@ -13,7 +13,7 @@ import {
 
 import { formatMoney } from "./competition.js";
 import { loadWagePercentages, wageFromMarketValue } from "./wages.js";
-import { mountClubBankBalance } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
+import { mountClubBankBalance } from "./club_bank_balance_ui.js?v=20260919-isvideo-fix";
 import {
   emergencyLoanBannerHtml,
   ensureEmergencyLoanStyles,
@@ -249,10 +249,12 @@ document.addEventListener("DOMContentLoaded", () => {
   ];
   let useEconomicsDbColumns = true;
   /**
-   * Optimistic: show Height / foot filters by default.
-   * disablePhysicalDbColumns() only after a real query 400 (columns truly missing).
+   * Only SELECT / filter Height+foot when the active relation has those columns.
+   * Filter UI stays visible regardless (see FILTER_EXCLUDE handling).
    */
   let usePhysicalDbColumns = true;
+  /** Guard against concurrent loadPage retries looping on missing Height. */
+  let physicalFallbackRetries = 0;
 
   function playerSelectList() {
     let cols = COLUMNS;
@@ -281,15 +283,19 @@ document.addEventListener("DOMContentLoaded", () => {
   function disablePhysicalDbColumns(reason) {
     if (!usePhysicalDbColumns) return;
     usePhysicalDbColumns = false;
-    // Keep Height / foot filter controls visible — only stop SELECTing those columns
-    // so the page still loads if PostgREST schema cache is stale.
+    // Keep Height / foot filter controls visible — only stop SELECTing / filtering
+    // those columns so the page still loads if the view is stale.
     for (const col of PHYSICAL_DB_COLS) {
       delete CURRENT_FILTERS[col];
     }
     console.warn(
-      "GPDB physical attrs not selectable yet (filters stay visible). Re-run gpdb_pesdb_physical_attrs_20260915.sql and/or wait for schema cache, then refresh.",
+      "GPDB physical attrs not on gpdb_players_view yet (filters stay visible). Re-run gpdb_pesdb_physical_attrs_20260915.sql (recreates the view) then refresh.",
       reason || ""
     );
+  }
+
+  function isPhysicalDbCol(col) {
+    return PHYSICAL_DB_COLS.includes(col);
   }
 
   const DROPDOWN_COLUMNS = [
@@ -355,43 +361,55 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Physical attrs: keep filters visible. Soft-check only logs; never hide the UI
-    // here (that was leaving Height / foot filters blank even after the SQL patch).
-    // Real missing-column 400s still call disablePhysicalDbColumns() from loadPage.
+    // Physical attrs: keep Height/foot filter UI visible always.
+    // Only SELECT those columns when the active source (view or Players) has them.
+    // (Players.Height can exist while gpdb_players_view still lacks it — p.* is frozen.)
     try {
       const { data: hasPhys, error: physErr } = await supabase.rpc(
         "gpdb_has_physical_attrs"
       );
-      if (!physErr && hasPhys === true) {
-        usePhysicalDbColumns = true;
-        for (const col of PHYSICAL_DB_COLS) {
-          const i = FILTER_EXCLUDE.indexOf(col);
-          if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
-        }
-      } else if (physErr) {
+      if (physErr) {
         console.warn(
           "gpdb_has_physical_attrs RPC:",
           physErr.message || physErr,
-          "— filters stay on; run gpdb_pesdb_physical_attrs_20260915.sql if load fails."
-        );
-      } else if (hasPhys !== true) {
-        // Columns not reported yet — still show filters; data fills after scrape/apply.
-        usePhysicalDbColumns = true;
-        for (const col of PHYSICAL_DB_COLS) {
-          const i = FILTER_EXCLUDE.indexOf(col);
-          if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
-        }
-        console.info(
-          "GPDB physical columns not flagged by RPC yet — showing Height/foot filters anyway."
+          "— probing selectable columns on",
+          gpdbUseEffectiveWageView ? GPDB_PLAYERS_VIEW : "Players"
         );
       }
-    } catch (err) {
-      usePhysicalDbColumns = true;
+
       for (const col of PHYSICAL_DB_COLS) {
         const i = FILTER_EXCLUDE.indexOf(col);
         if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
       }
-      console.warn("gpdb_has_physical_attrs probe failed — showing filters anyway.", err);
+
+      if (hasPhys === true && !physErr) {
+        usePhysicalDbColumns = true;
+      } else {
+        // Soft head-probe on the same relation GPDB queries
+        const probe = await gpdbPlayersFrom()
+          .select("Height", { head: true })
+          .limit(1);
+        if (probe.error && isMissingPhysicalColumnError(probe.error)) {
+          usePhysicalDbColumns = false;
+          console.info(
+            "GPDB Height not on",
+            gpdbUseEffectiveWageView ? GPDB_PLAYERS_VIEW : "Players",
+            "— filters visible, select deferred until view is recreated (re-run gpdb_pesdb_physical_attrs_20260915.sql)."
+          );
+        } else if (!probe.error) {
+          usePhysicalDbColumns = true;
+        } else {
+          usePhysicalDbColumns = false;
+          console.warn("GPDB physical probe failed:", probe.error);
+        }
+      }
+    } catch (err) {
+      usePhysicalDbColumns = false;
+      for (const col of PHYSICAL_DB_COLS) {
+        const i = FILTER_EXCLUDE.indexOf(col);
+        if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
+      }
+      console.warn("gpdb physical probe failed — filters visible, select off.", err);
     }
   }
 
@@ -1248,6 +1266,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .select(playerSelectList(), { count: "exact" });
 
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
+      if (!usePhysicalDbColumns && isPhysicalDbCol(col)) return;
       if (DROPDOWN_COLUMNS.includes(col)) {
         const values = Array.isArray(value) ? value : (value ? [value] : []);
         if (!values.length) return;
@@ -1271,6 +1290,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     for (const col of RANGE_FILTER_COLUMNS) {
+      if (!usePhysicalDbColumns && isPhysicalDbCol(col)) continue;
       if (col === "market_value") {
         const bounds = RANGE_BOUNDS[col];
         const active = normalizedRangeActive(col);
@@ -1386,15 +1406,19 @@ document.addEventListener("DOMContentLoaded", () => {
       return loadPage(page);
     }
 
-    if (error && isMissingPhysicalColumnError(error) && usePhysicalDbColumns) {
+    if (error && isMissingPhysicalColumnError(error)) {
       disablePhysicalDbColumns(error);
-      await rebuildFilterUi();
-      return loadPage(page);
+      if (physicalFallbackRetries < 2) {
+        physicalFallbackRetries += 1;
+        await rebuildFilterUi();
+        return loadPage(page);
+      }
+      console.error(error);
+      return;
     }
 
     if (
       error &&
-      usePhysicalDbColumns &&
       /400|column|does not exist|schema cache/i.test(
         String(error?.message || error?.code || error || "")
       ) &&
@@ -1403,8 +1427,13 @@ document.addEventListener("DOMContentLoaded", () => {
       )
     ) {
       disablePhysicalDbColumns(error);
-      await rebuildFilterUi();
-      return loadPage(page);
+      if (physicalFallbackRetries < 2) {
+        physicalFallbackRetries += 1;
+        await rebuildFilterUi();
+        return loadPage(page);
+      }
+      console.error(error);
+      return;
     }
 
     if (
@@ -1432,12 +1461,17 @@ document.addEventListener("DOMContentLoaded", () => {
           ))
       ) {
         disablePhysicalDbColumns(error);
-        await rebuildFilterUi();
-        return loadPage(page);
+        if (physicalFallbackRetries < 2) {
+          physicalFallbackRetries += 1;
+          await rebuildFilterUi();
+          return loadPage(page);
+        }
       }
       console.error(error);
       return;
     }
+
+    physicalFallbackRetries = 0;
 
     let filtered = data || [];
 

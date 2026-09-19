@@ -15,7 +15,8 @@ COMMENT ON COLUMN public."Players"."Stronger_Foot" IS 'Left or Right (PESDB Auth
 COMMENT ON COLUMN public."Players"."Weak_Foot_Usage" IS 'PESDB Weak Foot Usage (e.g. Rarely).';
 COMMENT ON COLUMN public."Players"."Weak_Foot_Accuracy" IS 'PESDB Weak Foot Accuracy (e.g. Medium).';
 
--- Soft probe for GPDB (avoids REST 400 when selecting a missing column).
+-- Soft probe for GPDB: Height must exist on gpdb_players_view (what GPDB selects),
+-- not only on Players — views freeze p.* at CREATE time.
 CREATE OR REPLACE FUNCTION public.gpdb_has_physical_attrs()
 RETURNS boolean
 LANGUAGE sql
@@ -27,8 +28,24 @@ AS $$
     SELECT 1
     FROM information_schema.columns
     WHERE table_schema = 'public'
-      AND table_name = 'Players'
+      AND table_name = 'gpdb_players_view'
       AND column_name = 'Height'
+  )
+  OR (
+    -- Fallback if view missing: Players table only (draft / market query Players).
+    NOT EXISTS (
+      SELECT 1
+      FROM information_schema.views
+      WHERE table_schema = 'public'
+        AND table_name = 'gpdb_players_view'
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'Players'
+        AND column_name = 'Height'
+    )
   );
 $$;
 
@@ -548,5 +565,33 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.competition_player_career_bundle(text) TO authenticated;
+
+-- =============================================================================
+-- GPDB view: p.* is expanded at CREATE time. Adding Players.Height later does
+-- NOT update gpdb_players_view — recreate so Height / foot columns appear.
+-- (Same definition as gpdb_market_value_numeric_filter.sql / gpdb_effective_wage_view.sql)
+-- =============================================================================
+DROP VIEW IF EXISTS public.gpdb_players_view;
+
+CREATE VIEW public.gpdb_players_view
+WITH (security_invoker = true) AS
+SELECT
+  p.*,
+  COALESCE(
+    NULLIF(p.contract_wage, 0),
+    round(
+      greatest(
+        coalesce(nullif(btrim(p.market_value::text), ''), '0')::numeric,
+        0
+      ) * coalesce(gs.wage_pct_championship, 4::numeric) / 100.0,
+      0
+    )
+  ) AS effective_wage,
+  nullif(btrim(p.market_value::text), '')::numeric AS market_value_n
+FROM public."Players" p
+LEFT JOIN public.global_settings gs ON gs.id = 1;
+
+GRANT SELECT ON public.gpdb_players_view TO authenticated;
+GRANT SELECT ON public.gpdb_players_view TO anon;
 
 NOTIFY pgrst, 'reload schema';
