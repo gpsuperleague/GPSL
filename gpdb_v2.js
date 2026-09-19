@@ -1368,7 +1368,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (error && isMissingPhysicalColumnError(error) && usePhysicalDbColumns) {
       disablePhysicalDbColumns(error);
-      setupFilters();
+      rebuildFilterUi();
       return loadPage(page);
     }
 
@@ -1383,14 +1383,16 @@ document.addEventListener("DOMContentLoaded", () => {
       )
     ) {
       disablePhysicalDbColumns(error);
-      setupFilters();
+      rebuildFilterUi();
       return loadPage(page);
     }
 
     if (
       error &&
       useNameSearchKey &&
-      String(error.message || "").includes("name_search_key") &&
+      /name_search_key/i.test(
+        String(error.message || error.details || error.hint || error.code || "")
+      ) &&
       Object.prototype.hasOwnProperty.call(CURRENT_FILTERS, "Name")
     ) {
       console.warn("GPDB name search: run supabase/sql/patches/gpdb_name_search.sql");
@@ -1410,7 +1412,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ))
       ) {
         disablePhysicalDbColumns(error);
-        setupFilters();
+        rebuildFilterUi();
         return loadPage(page);
       }
       console.error(error);
@@ -3367,21 +3369,54 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function rebuildFilterUi() {
+    setupFilters();
+    setupRangeFilters();
+    installRangeSteppers({
+      root: document.getElementById("filters") || document,
+      cols: [
+        "Age",
+        "Rating",
+        "Height",
+        "market_value",
+        "Season_Signed",
+        "contract_seasons_remaining",
+        "contract_wage",
+      ],
+    });
+    setupTextFilters();
+    restoreGpdbFilterUi();
+  }
+
   function setupTextFilters() {
-    const textCols = COLUMNS.filter(
-      (col) =>
-        !FILTER_EXCLUDE.includes(col) &&
-        !DROPDOWN_COLUMNS.includes(col) &&
-        !RANGE_FILTER_COLUMNS.includes(col)
-    );
+    const root = document.getElementById("filters");
+    if (!root) return;
 
-    let debounceTimer = null;
+    // Event delegation survives setupFilters() rebuilding the DOM (e.g. after
+    // physical-attr column probe failures). Without this, Name typing goes dead.
+    if (!root.dataset.textFiltersWired) {
+      root.dataset.textFiltersWired = "1";
+      let debounceTimer = null;
 
-    textCols.forEach((col) => {
-      const input = document.getElementById(`filter-${col}`);
-      if (!input) return;
+      const colFromInput = (input) => {
+        if (!(input instanceof HTMLInputElement)) return null;
+        if (input.type === "range") return null;
+        if (input.classList.contains("multi-filter-search")) return null;
+        const id = input.id || "";
+        if (!id.startsWith("filter-")) return null;
+        // Range thumbs are filter-{col}-min / -max
+        if (id.endsWith("-min") || id.endsWith("-max")) return null;
+        const col = id.slice("filter-".length);
+        if (!col || FILTER_EXCLUDE.includes(col)) return null;
+        if (DROPDOWN_COLUMNS.includes(col) || RANGE_FILTER_COLUMNS.includes(col)) {
+          return null;
+        }
+        return col;
+      };
 
-      const apply = () => {
+      const applyFor = (input) => {
+        const col = colFromInput(input);
+        if (!col) return;
         const val = input.value.trim();
         if (val === "") {
           delete CURRENT_FILTERS[col];
@@ -3392,18 +3427,21 @@ document.addEventListener("DOMContentLoaded", () => {
         loadPage(1);
       };
 
-      input.addEventListener("input", () => {
+      root.addEventListener("input", (e) => {
+        const input = e.target;
+        if (!colFromInput(input)) return;
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(apply, 300);
+        debounceTimer = setTimeout(() => applyFor(input), 300);
       });
 
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          clearTimeout(debounceTimer);
-          apply();
-        }
+      root.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        const input = e.target;
+        if (!colFromInput(input)) return;
+        clearTimeout(debounceTimer);
+        applyFor(input);
       });
-    });
+    }
   }
 
   function setupControls() {
@@ -3584,24 +3622,8 @@ document.addEventListener("DOMContentLoaded", () => {
     setupControls();
     await loadRangeBounds();
     applySavedGpdbFilterState(loadSavedGpdbFilters());
-    setupFilters();
-    setupRangeFilters();
-    // Same −/+ stepper UX as Age / Rating / Market Value (wage uses input step).
-    installRangeSteppers({
-      root: document.getElementById("filters") || document,
-      cols: [
-        "Age",
-        "Rating",
-        "Height",
-        "market_value",
-        "Season_Signed",
-        "contract_seasons_remaining",
-        "contract_wage",
-      ],
-    });
-    setupTextFilters();
+    rebuildFilterUi();
     await populateDropdowns();
-    restoreGpdbFilterUi();
     applyGpdbPlayerFromUrl();
     applyGpdbNationFromUrl();
     await loadTotalCount();
