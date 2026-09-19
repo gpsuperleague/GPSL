@@ -248,8 +248,11 @@ document.addEventListener("DOMContentLoaded", () => {
     "Weak_Foot_Accuracy",
   ];
   let useEconomicsDbColumns = true;
-  /** Off until probe confirms Players/view has Height etc. (avoids blank GPDB on 400). */
-  let usePhysicalDbColumns = false;
+  /**
+   * Optimistic: show Height / foot filters by default.
+   * disablePhysicalDbColumns() only after a real query 400 (columns truly missing).
+   */
+  let usePhysicalDbColumns = true;
 
   function playerSelectList() {
     let cols = COLUMNS;
@@ -278,14 +281,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function disablePhysicalDbColumns(reason) {
     if (!usePhysicalDbColumns) return;
     usePhysicalDbColumns = false;
+    // Keep Height / foot filter controls visible — only stop SELECTing those columns
+    // so the page still loads if PostgREST schema cache is stale.
     for (const col of PHYSICAL_DB_COLS) {
-      if (!FILTER_EXCLUDE.includes(col)) FILTER_EXCLUDE.push(col);
       delete CURRENT_FILTERS[col];
-      delete RANGE_ACTIVE[col];
-      delete RANGE_BOUNDS[col];
     }
     console.warn(
-      "GPDB physical attrs unavailable — run supabase/sql/patches/gpdb_pesdb_physical_attrs_20260915.sql then refresh.",
+      "GPDB physical attrs not selectable yet (filters stay visible). Re-run gpdb_pesdb_physical_attrs_20260915.sql and/or wait for schema cache, then refresh.",
       reason || ""
     );
   }
@@ -353,38 +355,43 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Soft enable physical attrs (Height / foot). Prefer RPC (no REST 400 if missing);
-    // fall back to a tiny select in case the RPC patch was not applied but columns exist.
-    usePhysicalDbColumns = false;
-    for (const col of PHYSICAL_DB_COLS) {
-      if (!FILTER_EXCLUDE.includes(col)) FILTER_EXCLUDE.push(col);
-    }
-    let physicalOk = false;
+    // Physical attrs: keep filters visible. Soft-check only logs; never hide the UI
+    // here (that was leaving Height / foot filters blank even after the SQL patch).
+    // Real missing-column 400s still call disablePhysicalDbColumns() from loadPage.
     try {
       const { data: hasPhys, error: physErr } = await supabase.rpc(
         "gpdb_has_physical_attrs"
       );
-      if (!physErr && hasPhys === true) physicalOk = true;
-    } catch (_) {
-      /* RPC missing until physical_attrs patch is applied */
-    }
-    if (!physicalOk) {
-      const { error: heightProbeErr } = await supabase
-        .from("Players")
-        .select("Height", { head: true })
-        .limit(1);
-      if (!heightProbeErr) physicalOk = true;
-    }
-    if (physicalOk) {
+      if (!physErr && hasPhys === true) {
+        usePhysicalDbColumns = true;
+        for (const col of PHYSICAL_DB_COLS) {
+          const i = FILTER_EXCLUDE.indexOf(col);
+          if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
+        }
+      } else if (physErr) {
+        console.warn(
+          "gpdb_has_physical_attrs RPC:",
+          physErr.message || physErr,
+          "— filters stay on; run gpdb_pesdb_physical_attrs_20260915.sql if load fails."
+        );
+      } else if (hasPhys !== true) {
+        // Columns not reported yet — still show filters; data fills after scrape/apply.
+        usePhysicalDbColumns = true;
+        for (const col of PHYSICAL_DB_COLS) {
+          const i = FILTER_EXCLUDE.indexOf(col);
+          if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
+        }
+        console.info(
+          "GPDB physical columns not flagged by RPC yet — showing Height/foot filters anyway."
+        );
+      }
+    } catch (err) {
       usePhysicalDbColumns = true;
       for (const col of PHYSICAL_DB_COLS) {
         const i = FILTER_EXCLUDE.indexOf(col);
         if (i >= 0) FILTER_EXCLUDE.splice(i, 1);
       }
-    } else {
-      console.warn(
-        "GPDB physical filters hidden — run supabase/sql/patches/gpdb_pesdb_physical_attrs_20260915.sql then refresh."
-      );
+      console.warn("gpdb_has_physical_attrs probe failed — showing filters anyway.", err);
     }
   }
 
@@ -1570,6 +1577,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function setRangeBoundsFromValues(col, uniqueValues) {
     if (!uniqueValues.length) {
+      // Sensible Height defaults so the filter still renders before scrape fills data.
+      if (col === "Height") {
+        RANGE_BOUNDS[col] = { type: "numeric", min: 150, max: 210 };
+        RANGE_ACTIVE[col] = { min: 150, max: 210 };
+        return;
+      }
       RANGE_BOUNDS[col] = { type: "numeric", min: 0, max: 0 };
       RANGE_ACTIVE[col] = { min: 0, max: 0 };
       return;
