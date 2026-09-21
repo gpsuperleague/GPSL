@@ -29,6 +29,10 @@ import {
   parseMaxBidInput,
 } from "./auction_max_bid.js";
 import { escapeHtml } from "./escape_html.js";
+import {
+  discordChatLinkHtml,
+  wireDiscordChatLinks,
+} from "./discord_open.js?v=20260921-app-first";
 
 const GATE_PRICE_PER_SEAT = 20;
 const STADIUM_VALUE_PER_SEAT = 1500;
@@ -495,7 +499,7 @@ function renderInterestBanner() {
   );
   if (url) {
     parts.push(
-      ` <a class="discord-chat-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Discord chat</a> to discuss with others.`
+      ` ${discordChatLinkHtml(url)} to discuss with others.`
     );
   } else {
     parts.push(
@@ -1166,6 +1170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   wireClubBidModal();
   wireInterestModal();
+  wireDiscordChatLinks();
   await refreshAll();
   pollTimer = setInterval(refreshAll, 15000);
 });

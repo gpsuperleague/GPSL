@@ -1,5 +1,9 @@
 import { supabase, initGlobal } from "./global.js";
 import { formatMoney } from "./competition.js";
+import {
+  discordChatLinkHtml,
+  wireDiscordChatLinks,
+} from "./discord_open.js?v=20260921-app-first";
 
 const COLUMNS = [
   { key: "club_name", label: "Club", sort: "club_name" },
@@ -95,7 +99,7 @@ function renderInterestBanner() {
   );
   if (url) {
     parts.push(
-      ` <a class="discord-chat-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Discord chat</a> to discuss with others.`
+      ` ${discordChatLinkHtml(url)} to discuss with others.`
     );
   } else {
     parts.push(
@@ -496,6 +500,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   wireInterestModal();
+  wireDiscordChatLinks();
 
   document.getElementById("filterSearch")?.addEventListener("input", () => {
     page = 1;
