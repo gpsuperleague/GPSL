@@ -117,7 +117,7 @@ export async function initWaitingListPage() {
 
     if (onBoardIntro) {
       onBoardIntro.textContent =
-        "Owners confirmed for the test season, in the order they joined.";
+        "Owners invited to join the club auction, in invite order.";
     }
     if (onBoardCount) {
       onBoardCount.textContent = `(${list?.on_board_total ?? onBoard.length})`;
@@ -129,7 +129,7 @@ export async function initWaitingListPage() {
     if (onBoardBody) {
       if (!onBoard.length) {
         onBoardBody.innerHTML =
-          '<tr><td colspan="4" style="color:#666">No one confirmed yet — admin ticks Test on the waiting list.</td></tr>';
+          '<tr><td colspan="4" style="color:#666">No one invited yet — admin ticks Auction on the waiting list.</td></tr>';
       } else {
         renderTagRows(onBoardBody, onBoard, highlightOnBoard);
       }
@@ -145,9 +145,9 @@ export async function initWaitingListPage() {
     if (self?.is_member && (list?.my_on_board_position || list?.my_position)) {
       myCard.hidden = false;
       if (list.my_on_board_position) {
-        myPos.textContent = `#${list.my_on_board_position} of ${list.on_board_total || onBoard.length} on board`;
+        myPos.textContent = `#${list.my_on_board_position} of ${list.on_board_total || onBoard.length} invited`;
         mySummary.textContent =
-          "You are confirmed for the test season (I'm on board).";
+          "You are invited to the club auction (I'm on board).";
       } else {
         myPos.textContent = `#${list.my_position} of ${list.total || rows.length} on the waiting list`;
         mySummary.textContent =
