@@ -282,6 +282,11 @@ export async function initWaitingListPage() {
           : list.my_position === 1
             ? "You are next in line when a club slot opens."
             : `${list.my_position - 1} member(s) ahead of you.`;
+        // Soft reminder: interest + backup required before auction
+        if (!isOwner) {
+          mySummary.innerHTML +=
+            ' Also mark <a href="club_database.html" style="color:#e8c84a;">1 interest + 1 backup</a> on Club Database before you are invited.';
+        }
       }
     }
 

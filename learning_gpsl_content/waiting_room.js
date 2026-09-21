@@ -45,7 +45,9 @@ export const SECTION_WAITING_ROOM = {
     },
     {
       type: "tip",
-      html: `You can fill in Owner details while still on the waiting list. Bidding unlocks only after admin invites you.
+      html: `You can fill in Owner details and mark <b>1 club interest + 1 backup</b> on
+        <a href="club_database.html">Club Database</a> while still on the waiting list.
+        Both marks are <b>required</b> before you can bid once invited.
         Once you have a club, your badge appears in the nav and the full owner menus unlock.`,
     },
   ],

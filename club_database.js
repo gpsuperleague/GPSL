@@ -111,7 +111,13 @@ function renderInterestBanner() {
   } else if (canMark) {
     const iLabel = mineI ? escapeHtml(mineI.club_name || mineI.club_short_name) : "none";
     const bLabel = mineB ? escapeHtml(mineB.club_name || mineB.club_short_name) : "none";
+    const incomplete = !mineI || !mineB;
     parts.push(` Your interest: <b>${iLabel}</b> · backup: <b>${bLabel}</b>.`);
+    if (incomplete) {
+      parts.push(
+        ' <span class="frozen">Required before club auction:</span> mark <b>1 interest</b> and <b>1 backup</b> (click a club’s ★ button).'
+      );
+    }
   } else if (canView) {
     parts.push(" You can view marks; set your owner tag on Owner details to mark clubs.");
   } else {

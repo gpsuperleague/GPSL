@@ -33,7 +33,7 @@ function updateAuctionRoomGate() {
     } else {
       blocked.hidden = ready;
       blocked.textContent =
-        "Complete your owner tag, timezone, and match availability above before entering the club auction room.";
+        "Complete your owner tag, timezone, match availability, and club interest + backup (Club Database) before entering the club auction room.";
     }
   }
 
@@ -41,11 +41,14 @@ function updateAuctionRoomGate() {
     if (invited && ready) {
       readyLine.hidden = false;
       readyLine.textContent =
-        "Owner tag, timezone, and availability are set — you can enter the club auction room.";
+        "Owner tag, timezone, availability, and club interest + backup are set — you can enter the club auction room.";
     } else if (!invited && registrySelf?.owner_tag && registrySelf?.owner_timezone) {
+      const needInterest =
+        registrySelf?.needs_club_interest || registrySelf?.needs_club_backup;
       readyLine.hidden = false;
-      readyLine.textContent =
-        "Details saved. You will use these when invited to the club draft auction.";
+      readyLine.textContent = needInterest
+        ? "Details saved. Still needed: mark 1 interest and 1 backup on Club Database before auction invite."
+        : "Details saved. You will use these when invited to the club draft auction.";
     } else {
       readyLine.hidden = true;
       readyLine.textContent = "";

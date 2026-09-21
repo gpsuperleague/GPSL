@@ -177,6 +177,8 @@ let ownerTag = null;
 let auctionOnboardingReady = false;
 let needsOnboardingTimezone = false;
 let needsOnboardingAvailability = false;
+let needsClubInterest = false;
+let needsClubBackup = false;
 let budget = 0;
 let auctionState = null;
 let pollTimer = null;
@@ -245,6 +247,8 @@ async function loadOwnerContext() {
   auctionOnboardingReady = Boolean(self?.auction_onboarding_ready);
   needsOnboardingTimezone = Boolean(self?.needs_onboarding_timezone);
   needsOnboardingAvailability = Boolean(self?.needs_onboarding_availability);
+  needsClubInterest = Boolean(self?.needs_club_interest);
+  needsClubBackup = Boolean(self?.needs_club_backup);
   budget = Number(self?.pending_starting_balance) || 0;
   setClubBankBalance("clubBankBalance", budget > 0 ? budget : null, {
     href: "awaiting_club.html",
@@ -255,7 +259,7 @@ async function loadOwnerContext() {
     if (self?.is_member && !self?.needs_club_auction) {
       intro.innerHTML =
         "You are on the <b>owner waiting list</b>. Bidding unlocks when admin invites you to the club draft auction. " +
-        'Set your tag, timezone, and availability on <a href="awaiting_club.html" style="color:#ff9900;">Owner details</a> meanwhile.';
+        'Meanwhile set tag / timezone / availability on <a href="awaiting_club.html" style="color:#ff9900;">Owner details</a> and mark <b>1 interest + 1 backup</b> on <a href="club_database.html" style="color:#ff9900;">Club Database</a>.';
     } else if (budget > 0) {
       intro.innerHTML =
         `Bid for a GPSL club from your <b>${formatMoney(budget)}</b> starting budget. You may only lead one club at a time. ` +
@@ -396,9 +400,11 @@ function renderStatus() {
     const parts = [];
     if (needsOnboardingTimezone) parts.push("timezone");
     if (needsOnboardingAvailability) parts.push("match availability");
-    const detail = parts.length ? ` (${parts.join(" and ")})` : "";
+    if (needsClubInterest) parts.push("primary club interest");
+    if (needsClubBackup) parts.push("backup club");
+    const detail = parts.length ? ` (${parts.join(", ")})` : "";
     el.innerHTML =
-      `Complete onboarding on <a href="awaiting_club.html" style="color:#ff9900;">awaiting club</a>${detail} before bidding.`;
+      `Complete onboarding on <a href="awaiting_club.html" style="color:#ff9900;">Owner details</a> and mark interest + backup on <a href="club_database.html" style="color:#ff9900;">Club Database</a>${detail} before bidding.`;
     el.style.color = "#faa";
     return;
   }
