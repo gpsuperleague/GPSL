@@ -57,8 +57,25 @@ function interestsByClubMap() {
   return map;
 }
 
-function myInterestFor(clubShortName) {
-  return (interestState?.mine || []).find((m) => m.club_short_name === clubShortName) || null;
+function myMarkFor(clubShortName) {
+  const interest = interestState?.mine_interest;
+  const backup = interestState?.mine_backup;
+  if (interest?.club_short_name === clubShortName) return interest;
+  if (backup?.club_short_name === clubShortName) return backup;
+  return null;
+}
+
+function ownersTooltip(owners, label) {
+  if (!owners?.length) return `${label}: none`;
+  return (
+    `${label}:\n` +
+    owners
+      .map((o) => {
+        const tag = o.owner_tag || "—";
+        return o.note ? `• ${tag} — ${o.note}` : `• ${tag}`;
+      })
+      .join("\n")
+  );
 }
 
 function renderInterestBanner() {
@@ -68,25 +85,30 @@ function renderInterestBanner() {
   const url = interestState?.discord_chat_url || null;
   const frozen = Boolean(interestState?.frozen);
   const canMark = Boolean(interestState?.can_mark);
-  const myCount = Number(interestState?.my_interest_count || 0);
-  const max = Number(interestState?.max_interests || 3);
+  const canView = Boolean(interestState?.can_view);
+  const mineI = interestState?.mine_interest;
+  const mineB = interestState?.mine_backup;
 
   const parts = [];
   parts.push(
-    `<b>Pre-auction interest</b> — waiting-list / invited owners can mark up to ${max} vacant clubs here (or on <a href="club_auction.html">Club auction</a>) before bidding opens.`
+    `<b>Club interest</b> — waiting-list / invited owners mark <b>1 interest</b> and <b>1 backup</b> on any club. Hover the counts to see who.`
   );
   if (url) {
     parts.push(
-      ` Discord chat: <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open chat</a>.`
+      ` Discord: <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open chat</a>.`
     );
   }
   if (frozen) {
-    parts.push(' <span class="frozen">Interest marks are frozen while bidding is open.</span>');
+    parts.push(' <span class="frozen">Marks are frozen while bidding is open.</span>');
   } else if (canMark) {
-    parts.push(` You have marked <b>${myCount}/${max}</b>. Use <b>Vacant only</b> to find open clubs.`);
+    const iLabel = mineI ? escapeHtml(mineI.club_name || mineI.club_short_name) : "none";
+    const bLabel = mineB ? escapeHtml(mineB.club_name || mineB.club_short_name) : "none";
+    parts.push(` Your interest: <b>${iLabel}</b> · backup: <b>${bLabel}</b>.`);
+  } else if (canView) {
+    parts.push(" You can view marks; set your owner tag on Owner details to mark clubs.");
   } else {
     parts.push(
-      ' Set your owner tag on <a href="awaiting_club.html">Owner details</a> if you are on the waiting list and want to mark interest.'
+      ' Set your owner tag on <a href="awaiting_club.html">Owner details</a> if you are on the waiting list.'
     );
   }
 
@@ -102,11 +124,16 @@ async function loadInterestState() {
       ok: false,
       frozen: false,
       can_mark: false,
-      max_interests: 3,
+      can_view: false,
+      max_interests: 1,
+      max_backups: 1,
       my_interest_count: 0,
+      my_backup_count: 0,
       discord_chat_url: null,
       interests: [],
       mine: [],
+      mine_interest: null,
+      mine_backup: null,
     };
   } else {
     interestState = data;
@@ -115,46 +142,53 @@ async function loadInterestState() {
 }
 
 function interestCellHtml(row) {
-  if (!isVacant(row)) {
+  const clubShort = row.club_short_name || "";
+  if (String(clubShort).toUpperCase() === "FOREIGN") {
     return `<td class="interest-cell"><span style="color:#555;">—</span></td>`;
   }
 
-  const clubShort = row.club_short_name || "";
   const group = interestsByClubMap().get(clubShort);
-  const owners = group?.owners || [];
-  const mine = myInterestFor(clubShort);
-  const frozen = Boolean(interestState?.frozen);
+  const canView = Boolean(interestState?.can_view);
   const canMark = Boolean(interestState?.can_mark);
+  const frozen = Boolean(interestState?.frozen);
+  const mine = myMarkFor(clubShort);
 
-  let tagsHtml = "";
-  if (owners.length) {
-    tagsHtml =
-      `<div class="interest-tags">` +
-      owners
-        .map((o) => {
-          const cls = "interest-tag" + (o.is_me ? " is-me" : "");
-          const title = o.note ? ` title="${escapeHtml(o.note)}"` : "";
-          return `<span class="${cls}"${title}>${escapeHtml(o.owner_tag || "—")}</span>`;
-        })
-        .join("") +
-      `</div>`;
-    const noted = owners.filter((o) => o.note);
-    if (noted.length === 1) {
-      tagsHtml += `<span class="interest-note-hint">Note: ${escapeHtml(noted[0].note)}</span>`;
-    } else if (noted.length > 1) {
-      tagsHtml += `<span class="interest-note-hint">${noted.length} notes — hover tags</span>`;
-    }
+  const iCount = Number(group?.interest_count || 0);
+  const bCount = Number(group?.backup_count || 0);
+  const iOwners = group?.interest_owners || [];
+  const bOwners = group?.backup_owners || [];
+
+  let countsHtml = "";
+  if (canView) {
+    const iTitle = escapeHtml(ownersTooltip(iOwners, "Interest"));
+    const bTitle = escapeHtml(ownersTooltip(bOwners, "Backup"));
+    countsHtml = `<div class="interest-counts">
+      <span class="interest-count" title="${iTitle}">★ ${iCount}</span>
+      <span class="backup-count" title="${bTitle}">☆ ${bCount}</span>
+    </div>`;
   } else {
-    tagsHtml = `<div style="color:#666;">—</div>`;
+    countsHtml = `<div class="interest-counts" style="color:#666;">—</div>`;
   }
 
-  const btnLabel = mine ? (frozen ? "Your interest" : "Edit interest") : "Interest";
-  const btnCls = "interest-btn" + (mine ? " is-marked" : "");
-  const disabled = !canMark && !mine ? " disabled" : "";
+  let btnHtml = "";
+  if (canMark || mine) {
+    const label = mine
+      ? frozen
+        ? mine.mark_kind === "backup"
+          ? "Your backup"
+          : "Your interest"
+        : "Edit mark"
+      : "Mark";
+    const cls = "interest-btn" + (mine ? " is-marked" : "");
+    const disabled = !canMark && !mine ? " disabled" : "";
+    btnHtml = `<button type="button" class="${cls}" data-interest-club="${escapeHtml(
+      clubShort
+    )}"${disabled}>${label}</button>`;
+  }
 
   return `<td class="interest-cell" data-club="${escapeHtml(clubShort)}">
-    ${tagsHtml}
-    <button type="button" class="${btnCls}" data-interest-club="${escapeHtml(clubShort)}"${disabled}>${btnLabel}</button>
+    ${countsHtml}
+    ${btnHtml}
   </td>`;
 }
 
@@ -291,6 +325,11 @@ function render() {
   }
 }
 
+function selectedMarkKind() {
+  const el = document.querySelector('input[name="cdbMarkKind"]:checked');
+  return el?.value === "backup" ? "backup" : "interest";
+}
+
 function openInterestModal(row) {
   interestModalClub = row;
   const modal = document.getElementById("cdbInterestModal");
@@ -299,14 +338,27 @@ function openInterestModal(row) {
   const err = document.getElementById("cdbInterestModalError");
   const saveBtn = document.getElementById("cdbInterestSaveBtn");
   const clearBtn = document.getElementById("cdbInterestClearBtn");
+  const help = document.getElementById("cdbInterestModalHelp");
   if (!modal || !row) return;
 
-  const mine = myInterestFor(row.club_short_name);
+  const mine = myMarkFor(row.club_short_name);
   const frozen = Boolean(interestState?.frozen);
   const canMark = Boolean(interestState?.can_mark);
+  const kind = mine?.mark_kind === "backup" ? "backup" : "interest";
+
+  const interestRadio = document.getElementById("cdbMarkInterest");
+  const backupRadio = document.getElementById("cdbMarkBackup");
+  if (interestRadio) interestRadio.checked = kind === "interest";
+  if (backupRadio) backupRadio.checked = kind === "backup";
+  if (interestRadio) interestRadio.disabled = frozen || !canMark;
+  if (backupRadio) backupRadio.disabled = frozen || !canMark;
 
   if (title) {
-    title.textContent = `${mine ? "Interest" : "Mark interest"} — ${row.club_name || row.club_short_name}`;
+    title.textContent = `${mine ? "Your mark" : "Mark club"} — ${row.club_name || row.club_short_name}`;
+  }
+  if (help) {
+    help.textContent =
+      "Choose Interest (primary) or Backup (1 of each). Marking a new club as Interest/Backup replaces your previous pick of that type.";
   }
   if (note) {
     note.value = mine?.note || "";
@@ -315,7 +367,7 @@ function openInterestModal(row) {
   if (err) err.textContent = "";
   if (saveBtn) {
     saveBtn.disabled = frozen || !canMark;
-    saveBtn.textContent = mine ? "Update interest" : "Save interest";
+    saveBtn.textContent = mine ? "Update mark" : "Save mark";
   }
   if (clearBtn) clearBtn.disabled = frozen || !mine;
 
@@ -348,6 +400,7 @@ function wireInterestModal() {
     const { data, error } = await supabase.rpc("club_auction_interest_set", {
       p_club_short_name: interestModalClub.club_short_name,
       p_note: noteVal.trim() || null,
+      p_mark_kind: selectedMarkKind(),
     });
     if (btn) btn.disabled = false;
     if (error) {

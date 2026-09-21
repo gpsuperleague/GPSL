@@ -33,17 +33,21 @@
     .rank-pill { display:inline-block; min-width:22px; text-align:center; padding:2px 6px; font-weight:bold; font-size:11px; }
     .exp-pos { color:#ccc; font-weight:bold; }
     .bid-col { min-width:88px; white-space:nowrap; }
-    .interest-col { min-width:140px; max-width:220px; font-size:11px; color:#bbb; line-height:1.35; }
-    .interest-tags { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
-    .interest-tag {
-      display:inline-block; padding:2px 6px; background:#1e1c18; border:1px solid #3a352c;
-      color:#e8c84a; font-size:11px; font-weight:bold;
+        .interest-col { min-width:140px; max-width:220px; font-size:11px; color:#bbb; line-height:1.35; }
+    .interest-counts { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; align-items:center; }
+    .interest-count, .backup-count {
+      display:inline-block; padding:2px 8px; border-radius:4px; cursor:help;
+      border:1px solid #555; background:#1a1a1a; font-weight:bold; font-size:11px;
     }
-    .interest-tag.is-me { color:#9f9; border-color:#3a5a3a; }
-    .interest-note-hint { display:block; font-size:10px; color:#777; margin-top:2px; max-width:200px; }
+    .interest-count { color:#ffcc66; border-color:#665522; }
+    .backup-count { color:#9cf; border-color:#456; }
     .interest-btn { padding:4px 10px; border:none; cursor:pointer; font-size:11px; font-weight:bold; margin-top:2px; }
     .interest-btn:disabled { background:#555 !important; color:#888 !important; cursor:not-allowed; }
     .interest-btn.is-marked { background:#2f5f2f; color:#dfd; }
+    .club-mark-kind { display:flex; gap:14px; flex-wrap:wrap; margin:10px 0 8px; font-size:13px; color:#ddd; }
+    .club-mark-kind label { display:flex; align-items:center; gap:6px; cursor:pointer; }
+    .club-mark-kind { display:flex; gap:14px; flex-wrap:wrap; margin:10px 0 8px; font-size:13px; color:#ddd; }
+    .club-mark-kind label { display:flex; align-items:center; gap:6px; cursor:pointer; }
     #clubInterestBanner {
       margin:0 0 14px; padding:12px 14px; background:#16140f; border:1px solid #333;
       font-size:13px; color:#ccc; line-height:1.45;
@@ -132,7 +136,7 @@
       </div>
       <h1 class="tm-hero-title">Club auction</h1>
       <p class="tm-hero-sub" id="clubAuctionIntro">
-        Before bidding opens, mark up to 3 clubs you want so others can see interest and negotiate.
+        Before bidding opens, mark 1 interest and 1 backup club so others can see demand and negotiate.
         Then bid from your starting budget — you may only lead one club at a time.
         When the auction closes, the highest bidder wins and your balance becomes budget minus your winning bid.
       </p>
@@ -237,20 +241,24 @@
   <div id="clubInterestModal" aria-hidden="true">
     <div class="club-interest-modal-inner">
       <span class="club-interest-modal-close" id="clubInterestModalClose">&times;</span>
-      <h2 id="clubInterestModalTitle">Mark interest</h2>
+      <h2 id="clubInterestModalTitle">Mark club</h2>
       <p class="note" id="clubInterestModalHelp" style="margin:0 0 8px;">
-        Optional note for other interested owners (e.g. happy to talk / already agreed). Max 3 clubs.
+        Choose Interest (primary) or Backup (1 of each on any club). Hover ★ / ☆ in the table to see who marked what.
       </p>
+      <div class="club-mark-kind">
+        <label><input type="radio" name="clubMarkKind" id="clubMarkInterest" value="interest" checked> Interest (primary)</label>
+        <label><input type="radio" name="clubMarkKind" id="clubMarkBackup" value="backup"> Backup</label>
+      </div>
       <label for="clubInterestNote" style="font-size:12px;color:#aaa;">Note (optional)</label>
       <textarea id="clubInterestNote" maxlength="280" placeholder="e.g. Open to swapping — DM me on Discord"></textarea>
       <div class="club-interest-modal-actions">
-        <button type="button" class="button" id="clubInterestSaveBtn" style="background:#ff9900;color:#111;">Save interest</button>
+        <button type="button" class="button" id="clubInterestSaveBtn" style="background:#ff9900;color:#111;">Save mark</button>
         <button type="button" class="button" id="clubInterestClearBtn" style="background:#442222;color:#fcc;">Remove</button>
       </div>
       <p id="clubInterestModalError"></p>
     </div>
   </div>
 
-  <script type="module" src="club_auction.js?v=20260921-cdb-interest"></script>
+  <script type="module" src="club_auction.js?v=20260921-interest-backup"></script>
 </body>
 </html>
