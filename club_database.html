@@ -108,6 +108,58 @@
       font-weight: bold;
       cursor: pointer;
     }
+    button.button:disabled { opacity: 0.45; cursor: not-allowed; }
+    #interestBanner {
+      display: none;
+      background: #1a1810;
+      border: 1px solid #4a3a10;
+      color: #ddd;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    #interestBanner a { color: #e8c84a; }
+    #interestBanner .frozen { color: #f0a; }
+    .interest-cell { min-width: 140px; max-width: 220px; font-size: 11px; color: #bbb; line-height: 1.35; text-align: left; }
+    .interest-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+    .interest-tag {
+      display: inline-block; padding: 1px 6px; border: 1px solid #555; border-radius: 3px;
+      background: #1a1a1a; color: #ccc; font-size: 10px;
+    }
+    .interest-tag.is-me { color: #9f9; border-color: #3a5a3a; }
+    .interest-note-hint { display: block; font-size: 10px; color: #777; margin-top: 2px; max-width: 200px; }
+    .interest-btn {
+      padding: 4px 10px; border: none; cursor: pointer; font-size: 11px; font-weight: bold;
+      margin-top: 2px; background: #ff9900; color: #111; border-radius: 4px;
+    }
+    .interest-btn:disabled { background: #555 !important; color: #888 !important; cursor: not-allowed; }
+    .interest-btn.is-marked { background: #2f5f2f; color: #dfd; }
+    .vacant-badge {
+      display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: 10px;
+      border: 1px solid #556; border-radius: 3px; color: #9cf; vertical-align: middle;
+    }
+    #cdbInterestModal {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 1000; align-items: center; justify-content: center; padding: 16px;
+    }
+    #cdbInterestModal.open { display: flex; }
+    .cdb-interest-modal-inner {
+      width: 100%; max-width: 440px; padding: 18px 20px 20px; position: relative;
+      background: #14120e; border: 1px solid #333; border-radius: 8px;
+    }
+    .cdb-interest-modal-close {
+      position: absolute; top: 10px; right: 14px; font-size: 24px; color: #aaa; cursor: pointer; line-height: 1;
+    }
+    .cdb-interest-modal-close:hover { color: #fff; }
+    .cdb-interest-modal-inner h2 { margin: 0 0 8px; font-size: 18px; color: #e8c84a; }
+    .cdb-interest-modal-inner textarea {
+      width: 100%; min-height: 72px; box-sizing: border-box; background: #1a1a1a; color: #ddd;
+      border: 1px solid #444; border-radius: 4px; padding: 8px; margin-top: 6px; resize: vertical;
+    }
+    .cdb-interest-modal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    #cdbInterestModalError { color: #f88; font-size: 12px; margin-top: 8px; min-height: 1em; }
   </style>
 </head>
 <body>
@@ -116,6 +168,7 @@
 
   <p id="statusNote">Loading clubs…</p>
   <div id="cdbError"></div>
+  <div id="interestBanner"></div>
 
   <div class="filter-group">
     <label>Search
@@ -123,6 +176,13 @@
     </label>
     <label>Nation
       <select id="filterNation"><option value="">All</option></select>
+    </label>
+    <label>Owner
+      <select id="filterOwner">
+        <option value="">All</option>
+        <option value="vacant">Vacant only</option>
+        <option value="owned">Owned only</option>
+      </select>
     </label>
     <label>Page size
       <select id="pageSize">
@@ -142,6 +202,24 @@
   </div>
   <div class="pager" id="pager"></div>
 
-  <script type="module" src="club_database.js?v=20260807-cdb3"></script>
+  <div id="cdbInterestModal" aria-hidden="true">
+    <div class="cdb-interest-modal-inner">
+      <span class="cdb-interest-modal-close" id="cdbInterestModalClose">&times;</span>
+      <h2 id="cdbInterestModalTitle">Mark interest</h2>
+      <p style="margin:0 0 8px;font-size:12px;color:#999;line-height:1.4;">
+        Waiting-list / invited owners can mark up to 3 vacant clubs before bidding opens so others can see interest and negotiate.
+        Optional note for other owners (e.g. happy to talk).
+      </p>
+      <label for="cdbInterestNote" style="font-size:12px;color:#aaa;">Note (optional)</label>
+      <textarea id="cdbInterestNote" maxlength="280" placeholder="e.g. Open to swapping — DM me on Discord"></textarea>
+      <div class="cdb-interest-modal-actions">
+        <button type="button" class="button" id="cdbInterestSaveBtn" style="background:#ff9900;color:#111;">Save interest</button>
+        <button type="button" class="button" id="cdbInterestClearBtn" style="background:#442222;color:#fcc;">Remove</button>
+      </div>
+      <p id="cdbInterestModalError"></p>
+    </div>
+  </div>
+
+  <script type="module" src="club_database.js?v=20260921-interest"></script>
 </body>
 </html>

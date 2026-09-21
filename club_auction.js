@@ -473,7 +473,7 @@ function renderInterestBanner() {
 
   const parts = [];
   parts.push(
-    `<b>Pre-auction interest</b> — mark up to ${max} vacant clubs so others can see who wants what and negotiate before bidding.`
+    `<b>Pre-auction interest</b> — mark up to ${max} vacant clubs so others can see who wants what and negotiate before bidding. You can also mark interest on <a href="club_database.html" style="color:#e8c84a;">Club Database</a> (works before auction listings are seeded).`
   );
   if (url) {
     parts.push(

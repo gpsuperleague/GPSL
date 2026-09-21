@@ -15,6 +15,7 @@ const COLUMNS = [
   { key: "gate_money_full", label: "Gate 100%", sort: "gate_money_full" },
   { key: "gate_money_80", label: "Gate 80%", sort: "gate_money_80" },
   { key: "owner_tag", label: "Owner", sort: "owner_tag" },
+  { key: "interest", label: "Interest", sort: null },
   { key: "prestige_rank", label: "Prestige", sort: "prestige_rank" },
 ];
 
@@ -23,6 +24,10 @@ let sortKey = "prestige_rank";
 let sortDir = "asc";
 let page = 1;
 let pageSize = 100;
+/** @type {any} */
+let interestState = null;
+/** @type {any} */
+let interestModalClub = null;
 
 function setStatus(msg) {
   const el = document.getElementById("statusNote");
@@ -40,12 +45,126 @@ function moneyCell(n) {
   return `<span class="money">${formatMoney(v)}</span>`;
 }
 
+function isVacant(row) {
+  return row?.owner_id == null && String(row?.club_short_name || "").toUpperCase() !== "FOREIGN";
+}
+
+function interestsByClubMap() {
+  const map = new Map();
+  for (const row of interestState?.interests || []) {
+    map.set(row.club_short_name, row);
+  }
+  return map;
+}
+
+function myInterestFor(clubShortName) {
+  return (interestState?.mine || []).find((m) => m.club_short_name === clubShortName) || null;
+}
+
+function renderInterestBanner() {
+  const el = document.getElementById("interestBanner");
+  if (!el) return;
+
+  const url = interestState?.discord_chat_url || null;
+  const frozen = Boolean(interestState?.frozen);
+  const canMark = Boolean(interestState?.can_mark);
+  const myCount = Number(interestState?.my_interest_count || 0);
+  const max = Number(interestState?.max_interests || 3);
+
+  const parts = [];
+  parts.push(
+    `<b>Pre-auction interest</b> — waiting-list / invited owners can mark up to ${max} vacant clubs here (or on <a href="club_auction.html">Club auction</a>) before bidding opens.`
+  );
+  if (url) {
+    parts.push(
+      ` Discord chat: <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open chat</a>.`
+    );
+  }
+  if (frozen) {
+    parts.push(' <span class="frozen">Interest marks are frozen while bidding is open.</span>');
+  } else if (canMark) {
+    parts.push(` You have marked <b>${myCount}/${max}</b>. Use <b>Vacant only</b> to find open clubs.`);
+  } else {
+    parts.push(
+      ' Set your owner tag on <a href="awaiting_club.html">Owner details</a> if you are on the waiting list and want to mark interest.'
+    );
+  }
+
+  el.innerHTML = parts.join("");
+  el.style.display = "block";
+}
+
+async function loadInterestState() {
+  const { data, error } = await supabase.rpc("club_auction_interest_list");
+  if (error) {
+    console.warn("club_database: interest list failed", error);
+    interestState = {
+      ok: false,
+      frozen: false,
+      can_mark: false,
+      max_interests: 3,
+      my_interest_count: 0,
+      discord_chat_url: null,
+      interests: [],
+      mine: [],
+    };
+  } else {
+    interestState = data;
+  }
+  renderInterestBanner();
+}
+
+function interestCellHtml(row) {
+  if (!isVacant(row)) {
+    return `<td class="interest-cell"><span style="color:#555;">—</span></td>`;
+  }
+
+  const clubShort = row.club_short_name || "";
+  const group = interestsByClubMap().get(clubShort);
+  const owners = group?.owners || [];
+  const mine = myInterestFor(clubShort);
+  const frozen = Boolean(interestState?.frozen);
+  const canMark = Boolean(interestState?.can_mark);
+
+  let tagsHtml = "";
+  if (owners.length) {
+    tagsHtml =
+      `<div class="interest-tags">` +
+      owners
+        .map((o) => {
+          const cls = "interest-tag" + (o.is_me ? " is-me" : "");
+          const title = o.note ? ` title="${escapeHtml(o.note)}"` : "";
+          return `<span class="${cls}"${title}>${escapeHtml(o.owner_tag || "—")}</span>`;
+        })
+        .join("") +
+      `</div>`;
+    const noted = owners.filter((o) => o.note);
+    if (noted.length === 1) {
+      tagsHtml += `<span class="interest-note-hint">Note: ${escapeHtml(noted[0].note)}</span>`;
+    } else if (noted.length > 1) {
+      tagsHtml += `<span class="interest-note-hint">${noted.length} notes — hover tags</span>`;
+    }
+  } else {
+    tagsHtml = `<div style="color:#666;">—</div>`;
+  }
+
+  const btnLabel = mine ? (frozen ? "Your interest" : "Edit interest") : "Interest";
+  const btnCls = "interest-btn" + (mine ? " is-marked" : "");
+  const disabled = !canMark && !mine ? " disabled" : "";
+
+  return `<td class="interest-cell" data-club="${escapeHtml(clubShort)}">
+    ${tagsHtml}
+    <button type="button" class="${btnCls}" data-interest-club="${escapeHtml(clubShort)}"${disabled}>${btnLabel}</button>
+  </td>`;
+}
+
 function buildHead() {
   const head = document.getElementById("tableHead");
   if (!head) return;
   head.innerHTML =
     "<tr>" +
     COLUMNS.map((c) => {
+      if (!c.sort) return `<th>${c.label}</th>`;
       const cls =
         sortKey === c.sort ? (sortDir === "asc" ? "sort-asc" : "sort-desc") : "";
       return `<th class="${cls}" data-sort="${c.sort}">${c.label}</th>`;
@@ -57,9 +176,7 @@ function buildHead() {
       if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
       else {
         sortKey = key;
-        sortDir = key === "club_name" || key === "stadium_name" || key === "nation" || key === "owner_tag"
-          ? "asc"
-          : "asc";
+        sortDir = "asc";
       }
       page = 1;
       render();
@@ -72,8 +189,11 @@ function filteredRows() {
     .trim()
     .toLowerCase();
   const nation = document.getElementById("filterNation")?.value || "";
+  const ownerFilter = document.getElementById("filterOwner")?.value || "";
   return allRows.filter((r) => {
     if (nation && String(r.nation || "") !== nation) return false;
+    if (ownerFilter === "vacant" && !isVacant(r)) return false;
+    if (ownerFilter === "owned" && isVacant(r)) return false;
     if (!q) return true;
     const hay = [
       r.club_name,
@@ -119,8 +239,11 @@ function render() {
   body.innerHTML = slice
     .map((r) => {
       const clubHref = `club.html?club=${encodeURIComponent(r.club_short_name || "")}`;
+      const vacantBadge = isVacant(r) ? `<span class="vacant-badge">Vacant</span>` : "";
       return `<tr>
-        <td class="left"><a class="club-link" href="${clubHref}">${escapeHtml(r.club_name || r.club_short_name)}</a></td>
+        <td class="left"><a class="club-link" href="${clubHref}">${escapeHtml(
+          r.club_name || r.club_short_name
+        )}</a>${vacantBadge}</td>
         <td class="left">${escapeHtml(r.stadium_name || "—")}</td>
         <td class="left">${escapeHtml(r.nation || "—")}</td>
         <td>${fmtInt(r.stadium_capacity)}</td>
@@ -134,11 +257,20 @@ function render() {
         <td>${moneyCell(r.stadium_maintenance_cost)}</td>
         <td>${moneyCell(r.gate_money_full)}</td>
         <td>${moneyCell(r.gate_money_80)}</td>
-        <td>${escapeHtml(r.owner_tag || "—")}</td>
+        <td>${escapeHtml(r.owner_tag || (isVacant(r) ? "Vacant" : "—"))}</td>
+        ${interestCellHtml(r)}
         <td>${r.prestige_rank != null ? escapeHtml(String(r.prestige_rank)) : "—"}</td>
       </tr>`;
     })
     .join("");
+
+  body.querySelectorAll("[data-interest-club]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const short = btn.getAttribute("data-interest-club");
+      const row = allRows.find((r) => r.club_short_name === short);
+      if (row) openInterestModal(row);
+    });
+  });
 
   setStatus(`${total} clubs · page ${page}/${pages}`);
 
@@ -157,6 +289,96 @@ function render() {
       render();
     });
   }
+}
+
+function openInterestModal(row) {
+  interestModalClub = row;
+  const modal = document.getElementById("cdbInterestModal");
+  const title = document.getElementById("cdbInterestModalTitle");
+  const note = document.getElementById("cdbInterestNote");
+  const err = document.getElementById("cdbInterestModalError");
+  const saveBtn = document.getElementById("cdbInterestSaveBtn");
+  const clearBtn = document.getElementById("cdbInterestClearBtn");
+  if (!modal || !row) return;
+
+  const mine = myInterestFor(row.club_short_name);
+  const frozen = Boolean(interestState?.frozen);
+  const canMark = Boolean(interestState?.can_mark);
+
+  if (title) {
+    title.textContent = `${mine ? "Interest" : "Mark interest"} — ${row.club_name || row.club_short_name}`;
+  }
+  if (note) {
+    note.value = mine?.note || "";
+    note.disabled = frozen || (!canMark && !mine);
+  }
+  if (err) err.textContent = "";
+  if (saveBtn) {
+    saveBtn.disabled = frozen || !canMark;
+    saveBtn.textContent = mine ? "Update interest" : "Save interest";
+  }
+  if (clearBtn) clearBtn.disabled = frozen || !mine;
+
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeInterestModal() {
+  const modal = document.getElementById("cdbInterestModal");
+  if (modal) {
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+  interestModalClub = null;
+}
+
+function wireInterestModal() {
+  document.getElementById("cdbInterestModalClose")?.addEventListener("click", closeInterestModal);
+  document.getElementById("cdbInterestModal")?.addEventListener("click", (e) => {
+    if (e.target?.id === "cdbInterestModal") closeInterestModal();
+  });
+
+  document.getElementById("cdbInterestSaveBtn")?.addEventListener("click", async () => {
+    if (!interestModalClub) return;
+    const err = document.getElementById("cdbInterestModalError");
+    const noteVal = document.getElementById("cdbInterestNote")?.value || "";
+    const btn = document.getElementById("cdbInterestSaveBtn");
+    if (btn) btn.disabled = true;
+    if (err) err.textContent = "";
+    const { data, error } = await supabase.rpc("club_auction_interest_set", {
+      p_club_short_name: interestModalClub.club_short_name,
+      p_note: noteVal.trim() || null,
+    });
+    if (btn) btn.disabled = false;
+    if (error) {
+      if (err) err.textContent = error.message;
+      return;
+    }
+    interestState = data;
+    renderInterestBanner();
+    closeInterestModal();
+    render();
+  });
+
+  document.getElementById("cdbInterestClearBtn")?.addEventListener("click", async () => {
+    if (!interestModalClub) return;
+    const err = document.getElementById("cdbInterestModalError");
+    const btn = document.getElementById("cdbInterestClearBtn");
+    if (btn) btn.disabled = true;
+    if (err) err.textContent = "";
+    const { data, error } = await supabase.rpc("club_auction_interest_clear", {
+      p_club_short_name: interestModalClub.club_short_name,
+    });
+    if (btn) btn.disabled = false;
+    if (error) {
+      if (err) err.textContent = error.message;
+      return;
+    }
+    interestState = data;
+    renderInterestBanner();
+    closeInterestModal();
+    render();
+  });
 }
 
 function fmtInt(n) {
@@ -216,11 +438,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  wireInterestModal();
+
   document.getElementById("filterSearch")?.addEventListener("input", () => {
     page = 1;
     render();
   });
   document.getElementById("filterNation")?.addEventListener("change", () => {
+    page = 1;
+    render();
+  });
+  document.getElementById("filterOwner")?.addEventListener("change", () => {
     page = 1;
     render();
   });
@@ -232,11 +460,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
     const s = document.getElementById("filterSearch");
     const n = document.getElementById("filterNation");
+    const o = document.getElementById("filterOwner");
     if (s) s.value = "";
     if (n) n.value = "";
+    if (o) o.value = "";
     page = 1;
     render();
   });
 
-  await loadClubs();
+  await Promise.all([loadClubs(), loadInterestState()]);
+  render();
 });
