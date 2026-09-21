@@ -378,6 +378,175 @@ td .match-centre-btn {
   font-size: 12px;
 }
 
+/* Unavailable (suspended / injured) — same pattern as Match Day */
+.fixture-unavailable {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  background: rgba(18, 18, 22, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+}
+.fixture-unavailable-title {
+  color: #ffcc66;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.fixture-unavailable-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 700px) {
+  .fixture-unavailable-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.fixture-unavailable-club {
+  color: #aaa;
+  font-size: 12px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.unavailable-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+.unavailable-list li {
+  margin: 4px 0;
+  color: #ddd;
+}
+.unavailable-none,
+.unavailable-empty {
+  color: #777;
+  font-style: italic;
+  margin: 0;
+  font-size: 13px;
+}
+.unavailable-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.unavailable-suspended .unavailable-tag {
+  background: #5a2018;
+  color: #ffd0a8;
+  border: 1px solid #a04830;
+}
+.unavailable-injured .unavailable-tag {
+  background: #1a3a4a;
+  color: #9ed4f0;
+  border: 1px solid #3a6a8a;
+}
+.unavailable-recovery .unavailable-tag {
+  background: #2a3a1a;
+  color: #c8e89a;
+  border: 1px solid #5a7a3a;
+}
+.unavailable-pos {
+  color: #777;
+}
+.unavailable-detail {
+  color: #999;
+}
+
 .mr-preview-panel h3 {
   margin-top: 12px;
+}
+
+/* Prematch squad vs unavailable */
+.mr-prematch-check {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #333;
+  background: rgba(20, 20, 24, 0.85);
+}
+.mr-prematch-check.is-warn {
+  border-color: #a04830;
+  background: rgba(60, 24, 18, 0.55);
+}
+.mr-prematch-check.is-ok {
+  border-color: #3a6a3a;
+  background: rgba(18, 40, 22, 0.45);
+}
+.mr-prematch-check-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffcc66;
+  margin-bottom: 4px;
+}
+.mr-prematch-check.is-ok .mr-prematch-check-title {
+  color: #9d9;
+}
+.mr-prematch-check-note {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #bbb;
+  line-height: 1.4;
+}
+.mr-squad-conflict {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.mr-squad-conflict-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffb080;
+  margin-bottom: 4px;
+}
+.mr-squad-conflict-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+.mr-squad-conflict-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin: 3px 0;
+  color: #eee;
+}
+.mr-slot {
+  color: #888;
+  font-size: 11px;
+}
+.mr-unavail-row {
+  background: rgba(120, 40, 20, 0.18);
+  border-radius: 4px;
+}
+.mr-unavail {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.mr-unavail.suspended {
+  background: #5a2018;
+  color: #ffd0a8;
+  border: 1px solid #a04830;
+}
+.mr-unavail.injured {
+  background: #1a3a4a;
+  color: #9ed4f0;
+  border: 1px solid #3a6a8a;
+}
+.mr-unavail.recovery {
+  background: #2a3a1a;
+  color: #c8e89a;
+  border: 1px solid #5a7a3a;
 }

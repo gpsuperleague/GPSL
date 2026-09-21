@@ -12,6 +12,71 @@ import {
   formationDisplayName,
   DEFAULT_FORMATION_ID,
 } from "./matchday_formations.js";
+import {
+  loadFixtureUnavailable,
+  formatFixtureUnavailableHtml,
+  unavailableStatusByPlayerId,
+} from "./player_discipline.js";
+
+function unavailableLabel(status) {
+  if (status === "injured") return "Injured";
+  if (status === "recovery") return "Gaining match fitness";
+  if (status === "suspended") return "Suspended";
+  return "Unavailable";
+}
+
+function unavailableBadge(status) {
+  if (!status) return "";
+  const cls =
+    status === "injured"
+      ? "mr-unavail injured"
+      : status === "recovery"
+        ? "mr-unavail recovery"
+        : "mr-unavail suspended";
+  return `<span class="${cls}" title="${esc(unavailableLabel(status))}">${esc(
+    unavailableLabel(status)
+  )}</span>`;
+}
+
+/** Players in XI/bench who are suspended / injured / recovery for this fixture. */
+function squadUnavailableConflicts(preview, statusById) {
+  if (!preview?.has_squad || !statusById?.size) return [];
+  const out = [];
+  const seen = new Set();
+  for (const group of [
+    ...(preview.xi || []).map((p) => ({ ...p, slot: "XI" })),
+    ...(preview.bench || []).map((p) => ({ ...p, slot: "Bench" })),
+  ]) {
+    const id = String(group.player_id || "");
+    if (!id || seen.has(id)) continue;
+    const status = statusById.get(id);
+    if (!status) continue;
+    seen.add(id);
+    out.push({
+      player_id: id,
+      player_name: group.player_name || id,
+      slot: group.slot,
+      status,
+    });
+  }
+  return out;
+}
+
+function squadConflictHtml(clubName, conflicts) {
+  if (!conflicts?.length) return "";
+  return `<div class="mr-squad-conflict">
+    <div class="mr-squad-conflict-title">${esc(clubName)} — unavailable in selected squad</div>
+    <ul class="mr-squad-conflict-list">${conflicts
+      .map(
+        (c) =>
+          `<li><span class="mr-name">${esc(c.player_name)}</span>` +
+          `<span class="mr-slot">${esc(c.slot)}</span>` +
+          unavailableBadge(c.status) +
+          `</li>`
+      )
+      .join("")}</ul>
+  </div>`;
+}
 
 function qsFixtureId() {
   const raw = new URLSearchParams(window.location.search).get("fixture");
@@ -212,20 +277,22 @@ function formationLabel(preview) {
   return named || id;
 }
 
-function playerPreviewLines(players) {
+function playerPreviewLines(players, statusById = null) {
   const rows = players || [];
   if (!rows.length) return `<p class="mr-empty">—</p>`;
   return `<ul class="mr-list">${rows
     .map((p) => {
       const role = p.role_label || p.player_position || "";
-      return `<li><span class="mr-name">${esc(p.player_name || p.player_id)}${
+      const status = statusById?.get(String(p.player_id || "")) || null;
+      const rowCls = status ? ` class="mr-unavail-row"` : "";
+      return `<li${rowCls}><span class="mr-name">${esc(p.player_name || p.player_id)}${
         role ? ` <span class="mr-role">${esc(role)}</span>` : ""
-      }</span></li>`;
+      }</span>${unavailableBadge(status)}</li>`;
     })
     .join("")}</ul>`;
 }
 
-function clubPreviewPanel(title, preview) {
+function clubPreviewPanel(title, preview, statusById = null) {
   const p = preview || {};
   const style = p.strongest_playstyle;
   const styleText = style
@@ -260,11 +327,13 @@ function clubPreviewPanel(title, preview) {
     .filter(Boolean)
     .join("");
 
+  const conflicts = squadUnavailableConflicts(p, statusById);
   const body = p.has_squad
-    ? `<h3>Starting XI</h3>
-      ${playerPreviewLines(p.xi)}
+    ? `${squadConflictHtml(title, conflicts)}
+      <h3>Starting XI</h3>
+      ${playerPreviewLines(p.xi, statusById)}
       <h3>Bench</h3>
-      ${playerPreviewLines(p.bench)}`
+      ${playerPreviewLines(p.bench, statusById)}`
     : `<p class="mr-empty">No Match Day squad saved yet.</p>`;
 
   return `
@@ -297,11 +366,43 @@ function renderNotPlayed(fx, myShort, data = {}) {
 
   const homePrev = data.home_preview || null;
   const awayPrev = data.away_preview || null;
+  const unavailable = data.unavailable || null;
+  const homeUnavail = unavailableStatusByPlayerId(
+    unavailable,
+    fx.home_club_short_name
+  );
+  const awayUnavail = unavailableStatusByPlayerId(
+    unavailable,
+    fx.away_club_short_name
+  );
   const anyPreview =
     (homePrev &&
       (homePrev.has_squad || homePrev.manager_name || homePrev.formation_id)) ||
     (awayPrev &&
       (awayPrev.has_squad || awayPrev.manager_name || awayPrev.formation_id));
+
+  const homeConflicts = squadUnavailableConflicts(homePrev, homeUnavail);
+  const awayConflicts = squadUnavailableConflicts(awayPrev, awayUnavail);
+  const prematchCheck =
+    homeConflicts.length || awayConflicts.length
+      ? `<div class="mr-prematch-check is-warn">
+          <div class="mr-prematch-check-title">Prematch squad check — unavailable players selected</div>
+          <p class="mr-prematch-check-note">One or both clubs still have suspended / injured players in their saved Match Day squad. Replace them before kick-off.</p>
+          ${squadConflictHtml(
+            fx.home_club_name || fx.home_club_short_name || "Home",
+            homeConflicts
+          )}
+          ${squadConflictHtml(
+            fx.away_club_name || fx.away_club_short_name || "Away",
+            awayConflicts
+          )}
+        </div>`
+      : anyPreview && unavailable
+        ? `<div class="mr-prematch-check is-ok">
+            <div class="mr-prematch-check-title">Prematch squad check</div>
+            <p class="mr-prematch-check-note">No suspended or injured players in the saved Match Day squads.</p>
+          </div>`
+        : "";
 
   return `
     <div class="mr-scoreboard">
@@ -325,17 +426,21 @@ function renderNotPlayed(fx, myShort, data = {}) {
         }
       </div>
     </div>
+    ${data.unavailableHtml || ""}
+    ${prematchCheck}
     ${
       anyPreview
         ? `<p class="mr-preview-note">Saved Match Day squads, tactics and managers (scouting preview).</p>
           <div class="mr-grid">
             ${clubPreviewPanel(
               fx.home_club_name || fx.home_club_short_name || "Home",
-              homePrev
+              homePrev,
+              homeUnavail
             )}
             ${clubPreviewPanel(
               fx.away_club_name || fx.away_club_short_name || "Away",
-              awayPrev
+              awayPrev,
+              awayUnavail
             )}
           </div>`
         : `<p class="mr-empty">Line-ups, scorers, cards and injuries appear here once the match is played and squad stats are recorded. Clubs can save a Match Day squad beforehand to show it here.</p>`
@@ -375,6 +480,7 @@ function renderPlayed(data) {
         ${fx.pitch_condition ? `<span>${esc(fx.pitch_condition)}</span>` : ""}
       </div>
     </div>
+    ${data.unavailableHtml || ""}
     ${
       data.has_stats
         ? `<div class="mr-grid">
@@ -449,12 +555,22 @@ async function main() {
   const meta = document.getElementById("mrMeta");
   if (meta) meta.textContent = competitionLabel(fx);
 
+  const unavailable = await loadFixtureUnavailable(supabase, fixtureId);
+  const unavailableHtml = formatFixtureUnavailableHtml(unavailable, {
+    homeName: fx.home_club_name || fx.home_club_short_name,
+    awayName: fx.away_club_name || fx.away_club_short_name,
+  });
+
   const status = String(fx.status || "").toLowerCase();
   if (status === "played") {
-    root.innerHTML = renderPlayed(data);
+    root.innerHTML = renderPlayed({ ...data, unavailableHtml });
   } else {
     const myShort = await loadMyClubShort();
-    root.innerHTML = renderNotPlayed(fx, myShort, data);
+    root.innerHTML = renderNotPlayed(
+      { ...fx, unavailableHtml },
+      myShort,
+      { ...data, unavailableHtml, unavailable }
+    );
   }
 }
 
