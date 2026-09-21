@@ -1,233 +1,316 @@
 -- =============================================================================
--- Pre-launch / vanilla GPSL test environment reset
--- Preview → arm flag → typed confirm → full sandbox wipe back to day-zero GPSL.
--- Run once in Supabase SQL Editor. Safe to re-run (CREATE OR REPLACE).
+-- Test-season reset: ex-owner waiting-list priority
 --
--- KEEP: Players GPDB, auth users, Clubs rows, Managers catalog, nation catalog,
---       global rule/config templates (tax tariffs, prize templates, etc.),
---       waiting-list / registry admin state (tiers, confirm ticks, prizes inventory),
---       admin workflow checklist.
--- WIPE: owners on clubs, squads/contracts, finances/ledger, owner personal wallets
---       (reset to opening ₿50k), transfers, seasons,
---       league+cup fixtures/results/player stats, archives/awards/owner points,
---       GPSL Sport, Natter, inbox, manager career history, internationals
---       (fixtures/results/cycles/assignments/caps), medical room state,
---       friendlies / transfer rumours (also unblocks season delete),
---       club auction (optional re-seed), Club Management soft-archive flags
---       (is_archived / archived_at / archived_note → cleared; club rows kept).
+-- After clubs are vacated, active test owners move onto the waiting list:
+--   KEEP PRIORITY (top of board, ready for invite) when they pass BOTH:
+--     • fewer than 4 unplayed fixtures in the current competition season
+--     • at least 2 site logins in each of the previous 2 GPSL months
+--       (if only one prior month exists, that month alone is checked)
+--   DEMOTE into the general waiting pool when they fail either rule.
+--
+-- Existing waiting-list members keep relative order beneath retained owners.
+-- Confirm ticks are left unchanged.
+--
+-- Safe re-run. Wired into admin_test_reset_execute Phase H.
 -- =============================================================================
 
-ALTER TABLE public.global_settings
-  ADD COLUMN IF NOT EXISTS allow_test_environment_reset boolean NOT NULL DEFAULT false;
-
-ALTER TABLE public.global_settings
-  ADD COLUMN IF NOT EXISTS club_auction_starting_balance numeric(14, 2) NOT NULL DEFAULT 650000000;
-
--- Club Management soft-archive (cleared by vanilla reset Phase G)
-ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS is_archived boolean NOT NULL DEFAULT false;
-ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS archived_at timestamptz;
-ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS archived_note text;
-ALTER TABLE public."Clubs" ADD COLUMN IF NOT EXISTS gp_saved bigint;
-
-COMMENT ON COLUMN public.global_settings.allow_test_environment_reset IS
-  'When true, admin_test_reset_execute() may run. Off by default — pre-launch only.';
-
-COMMENT ON COLUMN public.global_settings.club_auction_starting_balance IS
-  'Default pending budget for owners in club auction (awaiting_club / register). Updated by test reset.';
-
-CREATE TABLE IF NOT EXISTS public.test_reset_audit_log (
-  id bigserial PRIMARY KEY,
-  started_at timestamptz NOT NULL DEFAULT now(),
-  completed_at timestamptz,
-  admin_email text,
-  confirm_phrase_used boolean NOT NULL DEFAULT false,
-  options jsonb NOT NULL DEFAULT '{}'::jsonb,
-  preview_before jsonb,
-  result jsonb,
-  ok boolean NOT NULL DEFAULT false
-);
-
-ALTER TABLE public.test_reset_audit_log ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS test_reset_audit_log_admin ON public.test_reset_audit_log;
-CREATE POLICY test_reset_audit_log_admin ON public.test_reset_audit_log
-  FOR ALL TO authenticated
-  USING (public.is_gpsl_admin())
-  WITH CHECK (public.is_gpsl_admin());
-
-GRANT SELECT ON public.test_reset_audit_log TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.club_auction_default_starting_balance()
-RETURNS numeric
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT coalesce(
-    (SELECT g.club_auction_starting_balance FROM public.global_settings g WHERE g.id = 1),
-    650000000::numeric
-  );
-$$;
-
-CREATE OR REPLACE FUNCTION public.club_auction_get_config()
-RETURNS jsonb
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT jsonb_build_object(
-    'starting_balance', public.club_auction_default_starting_balance()
-  );
-$$;
-
--- ---------------------------------------------------------------------------
--- Count helpers (preview + audit)
--- ---------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION public.admin_test_reset_table_count(p_rel text)
-RETURNS int
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_n int := 0;
-BEGIN
-  IF to_regclass(p_rel) IS NULL THEN
-    RETURN 0;
-  END IF;
-  EXECUTE format('SELECT count(*)::int FROM %s', p_rel) INTO v_n;
-  RETURN coalesce(v_n, 0);
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.admin_test_reset_counts()
-RETURNS jsonb
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_finance_nonzero int;
-BEGIN
-  SELECT count(*)::int
-  INTO v_finance_nonzero
-  FROM public."Club_Finances" f
-  WHERE coalesce(f.balance, 0) <> 0;
-
-  RETURN jsonb_build_object(
-    'clubs_with_owner', (
-      SELECT count(*)::int FROM public."Clubs" c WHERE c.owner_id IS NOT NULL
-    ),
-    'clubs_soft_archived', (
-      SELECT CASE
-        WHEN NOT EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_schema = 'public' AND table_name = 'Clubs' AND column_name = 'is_archived'
-        ) THEN 0
-        ELSE (
-          SELECT count(*)::int FROM public."Clubs" c WHERE coalesce(c.is_archived, false)
-        )
-      END
-    ),
-    'contracted_players', (
-      SELECT count(*)::int FROM public."Players" p
-      WHERE p."Contracted_Team" IS NOT NULL AND btrim(p."Contracted_Team") <> ''
-    ),
-    'contracted_managers', (
-      SELECT count(*)::int FROM public."Managers" m
-      WHERE m.contracted_club IS NOT NULL AND btrim(m.contracted_club) <> ''
-    ),
-    'club_finances_nonzero', v_finance_nonzero,
-    'owner_wallets_nonzero', (
-      SELECT CASE
-        WHEN to_regclass('public.owner_wallets') IS NULL THEN 0
-        ELSE (
-          SELECT count(*)::int FROM public.owner_wallets w WHERE coalesce(w.balance, 0) <> 0
-        )
-      END
-    ),
-    'owner_finance_ledger_rows', public.admin_test_reset_table_count('public.owner_finance_ledger'),
-    'finance_ledger_rows', (SELECT count(*)::int FROM public.competition_finance_ledger),
-    'bank_ledger_rows', (SELECT count(*)::int FROM public.bank_ledger),
-    'player_transfer_bids', (SELECT count(*)::int FROM public."Player_Transfer_Bids"),
-    'player_transfer_listings', (SELECT count(*)::int FROM public."Player_Transfer_Listings"),
-    'manager_transfer_bids', (SELECT count(*)::int FROM public."Manager_Transfer_Bids"),
-    'manager_transfer_listings', (SELECT count(*)::int FROM public."Manager_Transfer_Listings"),
-    'transfer_history_rows', (SELECT count(*)::int FROM public."Transfer_History"),
-    'club_auction_active', (
-      SELECT count(*)::int FROM public."Club_Auction_Listings" WHERE status = 'Active'
-    ),
-    'club_auction_bids', (SELECT count(*)::int FROM public."Club_Auction_Bids"),
-    'special_auctions', (SELECT count(*)::int FROM public.special_auctions),
-    'club_loans', (SELECT count(*)::int FROM public.club_loans),
-    'competition_seasons', (SELECT count(*)::int FROM public.competition_seasons),
-    'competition_fixtures', (SELECT count(*)::int FROM public.competition_fixtures),
-    'competition_match_player_stats', public.admin_test_reset_table_count('public.competition_match_player_stats'),
-    'competition_inbox', (SELECT count(*)::int FROM public.competition_inbox),
-    'owner_season_ranking_rows', public.admin_test_reset_table_count('public.competition_owner_season_ranking'),
-    'player_season_archive_rows', public.admin_test_reset_table_count('public.competition_player_season_archive'),
-    'club_season_archive_rows', public.admin_test_reset_table_count('public.competition_club_season_archive'),
-    'manager_club_stints', public.admin_test_reset_table_count('public.manager_club_stints'),
-    'gpsl_sport_editions', public.admin_test_reset_table_count('public.gpsl_sport_editions'),
-    'natter_posts', public.admin_test_reset_table_count('public.natter_posts'),
-    'international_fixtures', public.admin_test_reset_table_count('public.international_fixtures'),
-    'international_wc_cycles', public.admin_test_reset_table_count('public.international_wc_cycles'),
-    'international_player_career', public.admin_test_reset_table_count('public.international_player_career'),
-    'international_nations_active', (
-      SELECT CASE
-        WHEN to_regclass('public.international_owner_nations') IS NULL THEN 0
-        ELSE (
-          SELECT count(*)::int FROM public.international_owner_nations WHERE is_active = true
-        )
-      END
-    ),
-    'owners_registry_active', (
-      SELECT count(*)::int FROM public.gpsl_owner_registry WHERE status = 'active'
-    ),
-    'owners_registry_awaiting_auction', (
-      SELECT count(*)::int FROM public.gpsl_owner_registry WHERE status = 'awaiting_club_auction'
-    ),
-    'players_foreign_contract', (
-      SELECT count(*)::int FROM public."Players" p
-      WHERE p.foreign_contract_club IS NOT NULL AND btrim(p.foreign_contract_club) <> ''
-    )
-  );
-END;
-$function$;
-
--- ---------------------------------------------------------------------------
--- Arm / disarm + config
--- ---------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION public.admin_test_reset_set_enabled(p_enabled boolean)
+CREATE OR REPLACE FUNCTION public.admin_test_reset_apply_ex_owner_waiting_priority(
+  p_starting_balance numeric DEFAULT NULL
+)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $function$
+DECLARE
+  v_starting numeric := greatest(coalesce(p_starting_balance, 0), 0);
+  v_season_id bigint;
+  v_cur text;
+  v_prev text;
+  v_prev2 text;
+  v_prev_unlock timestamptz;
+  v_prev_lock timestamptz;
+  v_prev2_unlock timestamptz;
+  v_prev2_lock timestamptz;
+  v_retained int := 0;
+  v_demoted int := 0;
+  v_waiters int := 0;
+  v_sort int := 0;
+  r record;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  UPDATE public.global_settings
-  SET allow_test_environment_reset = coalesce(p_enabled, false),
-      updated_at = now()
-  WHERE id = 1;
+  IF v_starting <= 0 THEN
+    BEGIN
+      v_starting := greatest(coalesce(public.club_auction_default_starting_balance(), 0), 0);
+    EXCEPTION WHEN OTHERS THEN
+      v_starting := 0;
+    END;
+  END IF;
+
+  SELECT s.id INTO v_season_id
+  FROM public.competition_seasons s
+  WHERE s.is_current = true
+    AND s.status IN ('active', 'preseason')
+  ORDER BY CASE s.status WHEN 'active' THEN 0 ELSE 1 END, s.id DESC
+  LIMIT 1;
+
+  IF v_season_id IS NOT NULL THEN
+    BEGIN
+      v_cur := public.competition_active_gpsl_month(v_season_id, now());
+    EXCEPTION WHEN OTHERS THEN
+      v_cur := NULL;
+    END;
+
+    IF v_cur IS NOT NULL THEN
+      SELECT m.gpsl_month, m.unlock_at, m.lock_at
+      INTO v_prev, v_prev_unlock, v_prev_lock
+      FROM public.competition_season_calendar m
+      WHERE m.season_id = v_season_id
+        AND public.competition_gpsl_month_sort(m.gpsl_month)
+          < public.competition_gpsl_month_sort(v_cur)
+      ORDER BY public.competition_gpsl_month_sort(m.gpsl_month) DESC
+      LIMIT 1;
+
+      IF v_prev IS NOT NULL THEN
+        SELECT m.gpsl_month, m.unlock_at, m.lock_at
+        INTO v_prev2, v_prev2_unlock, v_prev2_lock
+        FROM public.competition_season_calendar m
+        WHERE m.season_id = v_season_id
+          AND public.competition_gpsl_month_sort(m.gpsl_month)
+            < public.competition_gpsl_month_sort(v_prev)
+        ORDER BY public.competition_gpsl_month_sort(m.gpsl_month) DESC
+        LIMIT 1;
+      END IF;
+    END IF;
+  END IF;
+
+  CREATE TEMP TABLE IF NOT EXISTS _test_reset_ex_owners (
+    owner_id uuid PRIMARY KEY,
+    owner_tag text,
+    club_short text,
+    prior_admin_sort int,
+    account_created_at timestamptz,
+    unplayed_season int NOT NULL DEFAULT 0,
+    logins_prev int,
+    logins_prev2 int,
+    fail_unplayed boolean NOT NULL DEFAULT false,
+    fail_logins boolean NOT NULL DEFAULT false,
+    retain boolean NOT NULL DEFAULT false
+  ) ON COMMIT DROP;
+
+  TRUNCATE _test_reset_ex_owners;
+
+  INSERT INTO _test_reset_ex_owners (
+    owner_id, owner_tag, club_short, prior_admin_sort, account_created_at,
+    unplayed_season, logins_prev, logins_prev2, fail_unplayed, fail_logins, retain
+  )
+  SELECT
+    r.owner_id,
+    coalesce(nullif(btrim(public.owner_registry_resolve_tag(r.owner_id)), ''), '—'),
+    nullif(btrim(coalesce(r.last_club_short_name, '')), ''),
+    r.waiting_list_admin_sort,
+    u.created_at,
+    coalesce(up.unplayed_season, 0),
+    CASE WHEN v_prev_unlock IS NULL THEN NULL ELSE coalesce(lp.logins_prev, 0) END,
+    CASE WHEN v_prev2_unlock IS NULL THEN NULL ELSE coalesce(lp.logins_prev2, 0) END,
+    coalesce(up.unplayed_season, 0) >= 4,
+    (
+      (v_prev_unlock IS NOT NULL AND coalesce(lp.logins_prev, 0) < 2)
+      OR (v_prev2_unlock IS NOT NULL AND coalesce(lp.logins_prev2, 0) < 2)
+    ),
+    NOT (
+      coalesce(up.unplayed_season, 0) >= 4
+      OR (v_prev_unlock IS NOT NULL AND coalesce(lp.logins_prev, 0) < 2)
+      OR (v_prev2_unlock IS NOT NULL AND coalesce(lp.logins_prev2, 0) < 2)
+    )
+  FROM public.gpsl_owner_registry r
+  JOIN auth.users u ON u.id = r.owner_id
+  LEFT JOIN LATERAL (
+    SELECT count(*)::int AS unplayed_season
+    FROM public.competition_fixtures f
+    WHERE v_season_id IS NOT NULL
+      AND f.season_id = v_season_id
+      AND coalesce(f.status, '') NOT IN ('played', 'cancelled')
+      AND nullif(btrim(coalesce(r.last_club_short_name, '')), '') IS NOT NULL
+      AND (
+        f.home_club_short_name = r.last_club_short_name
+        OR f.away_club_short_name = r.last_club_short_name
+      )
+  ) up ON true
+  LEFT JOIN LATERAL (
+    SELECT
+      count(*) FILTER (
+        WHERE v_prev_unlock IS NOT NULL
+          AND e.logged_in_at >= v_prev_unlock
+          AND e.logged_in_at < coalesce(v_prev_lock, now())
+      )::int AS logins_prev,
+      count(*) FILTER (
+        WHERE v_prev2_unlock IS NOT NULL
+          AND e.logged_in_at >= v_prev2_unlock
+          AND e.logged_in_at < coalesce(v_prev2_lock, v_prev_unlock, now())
+      )::int AS logins_prev2
+    FROM public.owner_site_login_events e
+    WHERE e.owner_id = r.owner_id
+  ) lp ON true
+  WHERE r.status = 'active';
+
+  SELECT
+    count(*) FILTER (WHERE retain)::int,
+    count(*) FILTER (WHERE NOT retain)::int
+  INTO v_retained, v_demoted
+  FROM _test_reset_ex_owners;
+
+  CREATE TEMP TABLE IF NOT EXISTS _test_reset_waiters (
+    owner_id uuid PRIMARY KEY,
+    prior_admin_sort int,
+    account_created_at timestamptz,
+    tier text
+  ) ON COMMIT DROP;
+
+  TRUNCATE _test_reset_waiters;
+
+  INSERT INTO _test_reset_waiters (owner_id, prior_admin_sort, account_created_at, tier)
+  SELECT
+    r.owner_id,
+    r.waiting_list_admin_sort,
+    u.created_at,
+    r.waiting_list_tier
+  FROM public.gpsl_owner_registry r
+  JOIN auth.users u ON u.id = r.owner_id
+  WHERE public.waiting_list_on_list_status(r.status)
+    AND NOT EXISTS (
+      SELECT 1 FROM _test_reset_ex_owners x WHERE x.owner_id = r.owner_id
+    );
+
+  GET DIAGNOSTICS v_waiters = ROW_COUNT;
+
+  -- Retained owners: top of board, member, ready for invite
+  v_sort := 0;
+  FOR r IN
+    SELECT *
+    FROM _test_reset_ex_owners
+    WHERE retain
+    ORDER BY prior_admin_sort NULLS LAST, account_created_at, owner_id
+  LOOP
+    v_sort := v_sort + 1000;
+    UPDATE public.gpsl_owner_registry
+    SET status = 'member',
+        waiting_list_tier = 'returning',
+        waiting_list_admin_sort = v_sort,
+        waiting_list_use_admin_sort = true,
+        pending_starting_balance = CASE
+          WHEN v_starting > 0 THEN v_starting
+          ELSE pending_starting_balance
+        END,
+        returned_to_list_at = coalesce(returned_to_list_at, now()),
+        absence_note = NULL,
+        status_changed_at = now()
+    WHERE owner_id = r.owner_id;
+  END LOOP;
+
+  -- General pool: existing waiters, then demoted owners
+  FOR r IN
+    SELECT *
+    FROM (
+      SELECT
+        w.owner_id,
+        0 AS pool_kind,
+        w.prior_admin_sort,
+        public.waiting_list_tier_rank(w.tier) AS tier_rank,
+        w.account_created_at
+      FROM _test_reset_waiters w
+      UNION ALL
+      SELECT
+        x.owner_id,
+        1 AS pool_kind,
+        x.prior_admin_sort,
+        public.waiting_list_tier_rank('returning') AS tier_rank,
+        x.account_created_at
+      FROM _test_reset_ex_owners x
+      WHERE NOT x.retain
+    ) pool
+    ORDER BY pool_kind, prior_admin_sort NULLS LAST, tier_rank, account_created_at, owner_id
+  LOOP
+    v_sort := v_sort + 1000;
+    IF r.pool_kind = 0 THEN
+      UPDATE public.gpsl_owner_registry
+      SET waiting_list_admin_sort = v_sort,
+          waiting_list_use_admin_sort = true
+      WHERE owner_id = r.owner_id;
+    ELSE
+      UPDATE public.gpsl_owner_registry
+      SET status = 'member',
+          waiting_list_tier = 'returning',
+          waiting_list_admin_sort = v_sort,
+          waiting_list_use_admin_sort = true,
+          pending_starting_balance = CASE
+            WHEN v_starting > 0 THEN v_starting
+            ELSE pending_starting_balance
+          END,
+          returned_to_list_at = now(),
+          absence_note = NULL,
+          status_changed_at = now()
+      WHERE owner_id = r.owner_id;
+    END IF;
+  END LOOP;
 
   RETURN jsonb_build_object(
     'ok', true,
-    'allow_test_environment_reset', coalesce(p_enabled, false)
+    'retained_priority', v_retained,
+    'demoted_to_waiting', v_demoted,
+    'existing_waiters_reordered', v_waiters,
+    'season_id', v_season_id,
+    'current_gpsl_month', v_cur,
+    'previous_gpsl_month', v_prev,
+    'previous2_gpsl_month', v_prev2,
+    'rules', jsonb_build_object(
+      'max_unplayed_to_retain', 3,
+      'min_logins_per_previous_gpsl_month', 2,
+      'previous_months_checked', CASE
+        WHEN v_prev2_unlock IS NOT NULL THEN 2
+        WHEN v_prev_unlock IS NOT NULL THEN 1
+        ELSE 0
+      END
+    ),
+    'retained', coalesce((
+      SELECT jsonb_agg(jsonb_build_object(
+        'owner_id', owner_id,
+        'owner_tag', owner_tag,
+        'club_short', club_short,
+        'unplayed_season', unplayed_season,
+        'logins_prev', logins_prev,
+        'logins_prev2', logins_prev2
+      ) ORDER BY prior_admin_sort NULLS LAST, account_created_at)
+      FROM _test_reset_ex_owners WHERE retain
+    ), '[]'::jsonb),
+    'demoted', coalesce((
+      SELECT jsonb_agg(jsonb_build_object(
+        'owner_id', owner_id,
+        'owner_tag', owner_tag,
+        'club_short', club_short,
+        'unplayed_season', unplayed_season,
+        'logins_prev', logins_prev,
+        'logins_prev2', logins_prev2,
+        'fail_unplayed', fail_unplayed,
+        'fail_logins', fail_logins
+      ) ORDER BY account_created_at)
+      FROM _test_reset_ex_owners WHERE NOT retain
+    ), '[]'::jsonb)
   );
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.admin_test_reset_get_config()
+COMMENT ON FUNCTION public.admin_test_reset_apply_ex_owner_waiting_priority(numeric) IS
+  'After test reset vacate: keep engaged ex-owners at top of waiting list; demote inactive into the general queue.';
+
+GRANT EXECUTE ON FUNCTION public.admin_test_reset_apply_ex_owner_waiting_priority(numeric)
+  TO authenticated;
+
+-- Dry-run preview for current club owners (no writes)
+CREATE OR REPLACE FUNCTION public.admin_test_reset_preview_ex_owner_waiting_priority()
 RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
@@ -235,51 +318,138 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_enabled boolean;
+  v_season_id bigint;
+  v_cur text;
+  v_prev text;
+  v_prev2 text;
+  v_prev_unlock timestamptz;
+  v_prev_lock timestamptz;
+  v_prev2_unlock timestamptz;
+  v_prev2_lock timestamptz;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  SELECT coalesce(g.allow_test_environment_reset, false)
-  INTO v_enabled
-  FROM public.global_settings g
-  WHERE g.id = 1;
+  SELECT s.id INTO v_season_id
+  FROM public.competition_seasons s
+  WHERE s.is_current = true
+    AND s.status IN ('active', 'preseason')
+  ORDER BY CASE s.status WHEN 'active' THEN 0 ELSE 1 END, s.id DESC
+  LIMIT 1;
 
-  RETURN jsonb_build_object(
-    'allow_test_environment_reset', v_enabled,
-    'confirm_phrase', 'RESET TEST ENVIRONMENT',
-    'default_starting_balance', public.club_auction_default_starting_balance()
-  );
-END;
-$function$;
+  IF v_season_id IS NOT NULL THEN
+    BEGIN
+      v_cur := public.competition_active_gpsl_month(v_season_id, now());
+    EXCEPTION WHEN OTHERS THEN
+      v_cur := NULL;
+    END;
 
-CREATE OR REPLACE FUNCTION public.admin_test_reset_preview()
-RETURNS jsonb
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-BEGIN
-  IF NOT public.is_gpsl_admin() THEN
-    RAISE EXCEPTION 'Admin only';
+    IF v_cur IS NOT NULL THEN
+      SELECT m.gpsl_month, m.unlock_at, m.lock_at
+      INTO v_prev, v_prev_unlock, v_prev_lock
+      FROM public.competition_season_calendar m
+      WHERE m.season_id = v_season_id
+        AND public.competition_gpsl_month_sort(m.gpsl_month)
+          < public.competition_gpsl_month_sort(v_cur)
+      ORDER BY public.competition_gpsl_month_sort(m.gpsl_month) DESC
+      LIMIT 1;
+
+      IF v_prev IS NOT NULL THEN
+        SELECT m.gpsl_month, m.unlock_at, m.lock_at
+        INTO v_prev2, v_prev2_unlock, v_prev2_lock
+        FROM public.competition_season_calendar m
+        WHERE m.season_id = v_season_id
+          AND public.competition_gpsl_month_sort(m.gpsl_month)
+            < public.competition_gpsl_month_sort(v_prev)
+        ORDER BY public.competition_gpsl_month_sort(m.gpsl_month) DESC
+        LIMIT 1;
+      END IF;
+    END IF;
   END IF;
 
   RETURN jsonb_build_object(
-    'ok', true,
-    'preview_at', now(),
-    'counts', public.admin_test_reset_counts(),
-    'allow_test_environment_reset', (
-      SELECT coalesce(g.allow_test_environment_reset, false)
-      FROM public.global_settings g WHERE g.id = 1
-    )
+    'season_id', v_season_id,
+    'current_gpsl_month', v_cur,
+    'previous_gpsl_month', v_prev,
+    'previous2_gpsl_month', v_prev2,
+    'owners', coalesce((
+      SELECT jsonb_agg(row_to_json(x)::jsonb ORDER BY x.retain DESC, x.prior_admin_sort NULLS LAST, x.account_created_at)
+      FROM (
+        SELECT
+          r.owner_id,
+          coalesce(nullif(btrim(public.owner_registry_resolve_tag(r.owner_id)), ''), '—') AS owner_tag,
+          nullif(btrim(coalesce(
+            (SELECT c."ShortName" FROM public."Clubs" c WHERE c.owner_id = r.owner_id LIMIT 1),
+            r.last_club_short_name,
+            ''
+          )), '') AS club_short,
+          r.waiting_list_admin_sort AS prior_admin_sort,
+          u.created_at AS account_created_at,
+          coalesce(up.unplayed_season, 0) AS unplayed_season,
+          CASE WHEN v_prev_unlock IS NULL THEN NULL ELSE coalesce(lp.logins_prev, 0) END AS logins_prev,
+          CASE WHEN v_prev2_unlock IS NULL THEN NULL ELSE coalesce(lp.logins_prev2, 0) END AS logins_prev2,
+          coalesce(up.unplayed_season, 0) >= 4 AS fail_unplayed,
+          (
+            (v_prev_unlock IS NOT NULL AND coalesce(lp.logins_prev, 0) < 2)
+            OR (v_prev2_unlock IS NOT NULL AND coalesce(lp.logins_prev2, 0) < 2)
+          ) AS fail_logins,
+          NOT (
+            coalesce(up.unplayed_season, 0) >= 4
+            OR (v_prev_unlock IS NOT NULL AND coalesce(lp.logins_prev, 0) < 2)
+            OR (v_prev2_unlock IS NOT NULL AND coalesce(lp.logins_prev2, 0) < 2)
+          ) AS retain
+        FROM public.gpsl_owner_registry r
+        JOIN auth.users u ON u.id = r.owner_id
+        LEFT JOIN LATERAL (
+          SELECT count(*)::int AS unplayed_season
+          FROM public.competition_fixtures f
+          CROSS JOIN LATERAL (
+            SELECT nullif(btrim(coalesce(
+              (SELECT c."ShortName" FROM public."Clubs" c WHERE c.owner_id = r.owner_id LIMIT 1),
+              r.last_club_short_name,
+              ''
+            )), '') AS club_short
+          ) club
+          WHERE v_season_id IS NOT NULL
+            AND f.season_id = v_season_id
+            AND coalesce(f.status, '') NOT IN ('played', 'cancelled')
+            AND club.club_short IS NOT NULL
+            AND (
+              f.home_club_short_name = club.club_short
+              OR f.away_club_short_name = club.club_short
+            )
+        ) up ON true
+        LEFT JOIN LATERAL (
+          SELECT
+            count(*) FILTER (
+              WHERE v_prev_unlock IS NOT NULL
+                AND e.logged_in_at >= v_prev_unlock
+                AND e.logged_in_at < coalesce(v_prev_lock, now())
+            )::int AS logins_prev,
+            count(*) FILTER (
+              WHERE v_prev2_unlock IS NOT NULL
+                AND e.logged_in_at >= v_prev2_unlock
+                AND e.logged_in_at < coalesce(v_prev2_lock, v_prev_unlock, now())
+            )::int AS logins_prev2
+          FROM public.owner_site_login_events e
+          WHERE e.owner_id = r.owner_id
+        ) lp ON true
+        WHERE r.status = 'active'
+           OR EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
+      ) x
+    ), '[]'::jsonb)
   );
 END;
 $function$;
+
+GRANT EXECUTE ON FUNCTION public.admin_test_reset_preview_ex_owner_waiting_priority()
+  TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- Execute (destructive)
+
+-- ---------------------------------------------------------------------------
+-- Wire Phase H into admin_test_reset_execute
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.admin_test_reset_execute(
@@ -827,13 +997,6 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.admin_test_reset_set_enabled(boolean) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_test_reset_get_config() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_test_reset_preview() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_test_reset_execute(text, jsonb) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_test_reset_counts() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_test_reset_table_count(text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.club_auction_default_starting_balance() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.club_auction_get_config() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

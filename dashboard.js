@@ -27,7 +27,6 @@ import {
   loadActiveSeasonRegistrations,
   divisionSlugForClub,
 } from "./competition.js";
-import { renderOwnerSeasonStatus } from "./owner_season_status.js";
 
 let ownerId = null;
 let isAdmin = false;
@@ -211,17 +210,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   wireDashboardToolbar();
   bindDragAutoScroll();
 
-  try {
-    const { data: self } = await supabase.rpc("owner_registry_get_self");
-    const seasonRoot = document.getElementById("ownerSeasonStatus");
-    const seasonSection = document.getElementById("ownerSeasonStatusSection");
-    if (seasonSection && seasonRoot && self?.authenticated) {
-      seasonSection.hidden = false;
-      renderOwnerSeasonStatus(seasonRoot, self);
-    }
-  } catch (err) {
-    console.warn("Season status:", err);
-  }
+  // Season board status is admin-facing; keep it off the owner dashboard.
+  const seasonSection = document.getElementById("ownerSeasonStatusSection");
+  if (seasonSection) seasonSection.hidden = true;
 
   if (!club) {
     document.getElementById("dashboardTitle").textContent = "GPSL Dashboard";
