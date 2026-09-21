@@ -181,7 +181,7 @@ export const SECTION_MATCHDAY = {
     {
       type: "ul",
       items: [
-        `<b>Display:</b> 10-minute match · Show Manager · Show Subtactic · Show Squad.`,
+        `<b>Display:</b> 10-minute match · Show Manager · Show Subtactic · Show Squad · Fluid Formation Off.`,
         `<b>Pause before KO:</b> PA3 or PA4 · Advanced skill only.`,
         `<b>On the pitch:</b> NO DOGSO · NO TIMEWASTING · NO MATCH MANIPULATION.`,
         `<b>Formations:</b> dropdown presets only — no free marker drag; mirror LB↔RB, LWF↔RWF, LMF↔RMF; no CF/CF/SS, CF/SS/SS, or SS/SS/SS.`,

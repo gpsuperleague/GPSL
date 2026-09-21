@@ -11,6 +11,7 @@ export const CONSOLE_DISPLAY_CHIPS = [
   "Show Manager",
   "Show Subtactic",
   "Show Squad",
+  "Fluid Formation Off",
 ];
 
 export const CONSOLE_PAUSE_CHIPS = ["PA3 or PA4", "Advanced skill only"];
@@ -153,7 +154,10 @@ export function wirePitchAck(root, opts = {}) {
 export function prematchConsoleChecklistHtml() {
   const rows = [
     ["Match length", "10 minutes (all other settings default)"],
-    ["Display", "Show Manager · Show Subtactic · Show Squad"],
+    [
+      "Display",
+      "Show Manager · Show Subtactic · Show Squad · Fluid Formation Off",
+    ],
     ["Pause before KO", "PA3 or PA4 · Advanced skill only"],
     [
       "On the pitch",
@@ -184,6 +188,7 @@ export function getMatchdayConsoleRulesCards() {
         items: [
           "<b>10-minute</b> match (all other settings default).",
           "<b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b> on.",
+          "<b>Fluid Formation</b> set to <b>Off</b> (Konami fluid formations are not allowed).",
           "<b>Cup knockout (1-leg):</b> Extra Time and Penalties if level after 90.",
           "<b>2-legged cups:</b> default 90 min only (no ET/pens). If level on aggregate after the 2nd leg — play a <b>5-minute</b> match with ET + pens; scores combine with both legs to decide the winner.",
         ],
