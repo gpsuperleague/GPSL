@@ -3,8 +3,10 @@
 --
 -- Left ("I'm on board"): owners invited to club auction
 --   (gpsl_owner_registry.status = 'awaiting_club_auction')
--- Right (Owner waiting list): full public queue from waiting_list_ordered_rows
---   including test-season confirmed members (no longer filtered out)
+-- Right (Owner waiting list): same people/sections as admin season board
+--   1) current club owners (test-season board) in admin priority order
+--   2) waiting-list members (no club) below them in admin priority order
+--   Invited-to-auction stay on the left only (not duplicated on the right).
 --
 -- Safe re-run.
 -- =============================================================================
@@ -24,9 +26,22 @@ DECLARE
   v_on_board jsonb;
   v_on_board_total int;
   v_self_on_board_pos int;
+  v_use_admin boolean;
 BEGIN
   -- Label kept for older clients; left panel is now auction invitees.
   v_on_board_mode := 'invited';
+
+  SELECT coalesce(bool_and(
+    r.waiting_list_use_admin_sort AND r.waiting_list_admin_sort IS NOT NULL
+  ), false)
+  INTO v_use_admin
+  FROM public.gpsl_owner_registry r
+  JOIN auth.users u ON u.id = r.owner_id
+  WHERE (
+      public.waiting_list_on_list_status(r.status)
+      AND NOT EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
+    )
+    OR EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id);
 
   -- Left panel: invited to club auction (no club yet)
   WITH latest_origin AS (
@@ -79,7 +94,7 @@ BEGIN
   INTO v_on_board, v_on_board_total, v_self_on_board_pos
   FROM invited_ranked;
 
-  -- Right panel: full waiting-list queue (includes test-confirmed; excludes invited)
+  -- Right panel: club owners first, then waiting-list members (admin board order)
   WITH latest_origin AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -92,39 +107,75 @@ BEGIN
     ) IS NOT NULL
     ORDER BY e.owner_id, e.logged_in_at DESC, e.id DESC
   ),
-  waiting AS (
+  board AS (
+    -- Current club owners (admin "Owners" section / test-season board)
     SELECT
-      w.owner_id,
-      w.owner_tag,
-      w.registry_status,
-      w.list_position AS queue_position,
+      r.owner_id,
+      coalesce(nullif(btrim(public.owner_registry_resolve_tag(r.owner_id)), ''), '—') AS owner_tag,
+      r.status AS registry_status,
+      u.created_at AS account_created_at,
+      r.waiting_list_admin_sort AS admin_sort,
+      coalesce(r.confirmed_test_season, false) AS confirmed_test_season,
+      true AS has_club,
+      'club_owner'::text AS list_kind,
       lo.country_code,
       lo.timezone_name AS origin_timezone
-    FROM public.waiting_list_ordered_rows(false) w
-    LEFT JOIN latest_origin lo
-      ON lo.owner_id = w.owner_id
-  ),
-  waiting_ranked AS (
+    FROM public.gpsl_owner_registry r
+    JOIN auth.users u ON u.id = r.owner_id
+    LEFT JOIN latest_origin lo ON lo.owner_id = r.owner_id
+    WHERE EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
+
+    UNION ALL
+
+    -- Waiting-list members without a club (admin "Waiting list" section, excl. invited)
     SELECT
-      waiting.*,
-      row_number() OVER (ORDER BY waiting.queue_position)::int AS position
-    FROM waiting
+      r.owner_id,
+      coalesce(nullif(btrim(public.owner_registry_resolve_tag(r.owner_id)), ''), '—') AS owner_tag,
+      r.status AS registry_status,
+      u.created_at AS account_created_at,
+      r.waiting_list_admin_sort AS admin_sort,
+      coalesce(r.confirmed_test_season, false) AS confirmed_test_season,
+      false AS has_club,
+      'waiting'::text AS list_kind,
+      lo.country_code,
+      lo.timezone_name AS origin_timezone
+    FROM public.gpsl_owner_registry r
+    JOIN auth.users u ON u.id = r.owner_id
+    LEFT JOIN latest_origin lo ON lo.owner_id = r.owner_id
+    WHERE public.waiting_list_on_list_status(r.status)
+      AND NOT EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
+  ),
+  ranked AS (
+    SELECT
+      b.*,
+      row_number() OVER (
+        ORDER BY
+          -- Owners block first, then waiting — same section layout as admin board
+          CASE WHEN b.has_club THEN 0 ELSE 1 END,
+          CASE WHEN v_use_admin THEN b.admin_sort END NULLS LAST,
+          b.account_created_at,
+          b.owner_id
+      )::int AS position
+    FROM board b
   )
   SELECT
     coalesce(jsonb_agg(
       jsonb_build_object(
-        'position', waiting_ranked.position,
-        'owner_tag', waiting_ranked.owner_tag,
-        'status', waiting_ranked.registry_status,
-        'country_code', waiting_ranked.country_code,
-        'origin_timezone', waiting_ranked.origin_timezone
+        'position', ranked.position,
+        'owner_tag', ranked.owner_tag,
+        'status', ranked.registry_status,
+        'list_kind', ranked.list_kind,
+        'has_club', ranked.has_club,
+        'confirmed_test_season', ranked.confirmed_test_season,
+        'country_code', ranked.country_code,
+        'origin_timezone', ranked.origin_timezone
       )
-      ORDER BY waiting_ranked.position
+      ORDER BY ranked.position
     ), '[]'::jsonb),
     count(*)::int,
-    max(CASE WHEN waiting_ranked.owner_id = auth.uid() THEN waiting_ranked.position END)
+    max(CASE WHEN ranked.owner_id = auth.uid() THEN ranked.position END)
   INTO v_rows, v_total, v_self_pos
-  FROM waiting_ranked;
+  FROM ranked;
 
   RETURN jsonb_build_object(
     'total', coalesce(v_total, 0),

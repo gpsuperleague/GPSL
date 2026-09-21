@@ -33,6 +33,17 @@
     .wl-table th { color: #888; font-weight: 600; font-size: 12px; text-transform: uppercase; }
     .wl-you { background: #1a2218; }
     .wl-status-absence { color: #c96; font-size: 12px; }
+    .wl-status-owner { color: #8a8; font-size: 12px; }
+    .wl-section td {
+      padding: 10px 10px 6px;
+      color: #aaa;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid #333;
+      background: #161616;
+    }
     .wl-count { color: #888; font-weight: normal; font-size: 14px; }
     .wl-links a { color: #ff9900; margin-right: 14px; }
     #draftCountdownContainer {
@@ -78,7 +89,7 @@
       </div>
       <div class="wl-card wl-panel">
         <h2>Owner waiting list <span class="wl-count" id="wlWaitingCount"></span></h2>
-        <p>Everyone waiting for a club (including test-season confirmed). Queue order for the next club slot.</p>
+        <p>Current club owners first (same season board order as admin), then members still waiting for a club.</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
@@ -98,7 +109,7 @@
     </p>
   </div>
   <script type="module">
-    import { initWaitingListPage } from "./waiting_list.js?v=20260921-invited-vs-queue";
+    import { initWaitingListPage } from "./waiting_list.js?v=20260921-owners-then-waiting";
     initWaitingListPage();
   </script>
 </body>

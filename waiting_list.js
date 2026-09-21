@@ -65,9 +65,22 @@ function formatUkOffsetDelta(timeZone) {
   return `${delta > 0 ? "+" : "-"}${label}h`;
 }
 
-function renderTagRows(tbody, rows, highlightPosition) {
+function renderTagRows(tbody, rows, highlightPosition, { sectioned = false } = {}) {
   tbody.innerHTML = "";
+  let lastKind = null;
   for (const row of rows) {
+    const kind = row.list_kind || (row.has_club ? "club_owner" : "waiting");
+    if (sectioned && kind !== lastKind) {
+      lastKind = kind;
+      const section = document.createElement("tr");
+      section.className = "wl-section";
+      const label =
+        kind === "club_owner"
+          ? "Current owners"
+          : "Waiting list";
+      section.innerHTML = `<td colspan="4">${escapeHtml(label)}</td>`;
+      tbody.appendChild(section);
+    }
     const tr = document.createElement("tr");
     if (highlightPosition && row.position === highlightPosition) {
       tr.className = "wl-you";
@@ -75,7 +88,9 @@ function renderTagRows(tbody, rows, highlightPosition) {
     const statusExtra =
       row.status === "on_absence"
         ? ' <span class="wl-status-absence">(absence)</span>'
-        : "";
+        : kind === "club_owner"
+          ? ' <span class="wl-status-owner">(owner)</span>'
+          : "";
     const countryCode = String(row.country_code || "").trim().toUpperCase();
     const countryName = formatCountryName(countryCode);
     const tzDelta = formatUkOffsetDelta(row.origin_timezone || "");
@@ -139,7 +154,7 @@ export async function initWaitingListPage() {
       body.innerHTML =
         '<tr><td colspan="4" style="color:#666">No one on the waiting list.</td></tr>';
     } else {
-      renderTagRows(body, rows, highlightWaiting);
+      renderTagRows(body, rows, highlightWaiting, { sectioned: true });
     }
 
     if (self?.is_member && (list?.my_on_board_position || list?.my_position)) {
@@ -149,9 +164,12 @@ export async function initWaitingListPage() {
         mySummary.textContent =
           "You are invited to the club auction (I'm on board).";
       } else {
-        myPos.textContent = `#${list.my_position} of ${list.total || rows.length} on the waiting list`;
-        mySummary.textContent =
-          list.my_position === 1
+        const me = rows.find((r) => r.position === list.my_position);
+        const isOwner = me?.list_kind === "club_owner" || !!me?.has_club;
+        myPos.textContent = `#${list.my_position} of ${list.total || rows.length} on the board`;
+        mySummary.textContent = isOwner
+          ? "You are a current club owner on the season board."
+          : list.my_position === 1
             ? "You are next in line when a club slot opens."
             : `${list.my_position - 1} member(s) ahead of you.`;
       }
