@@ -996,7 +996,7 @@ export function initMatchdaySquadPanel({
       `<span class="matchday-comp-chip ${ok ? "ok" : "short"}" title="${label}: ${value} / ${min}">${label} <b>${value}</b><i>/${min}</i></span>`;
     matchdayCompStrip.innerHTML = `
       <span class="matchday-comp-label">Matchday rules</span>
-      ${chip("GK", c.goalkeepers, c.minGk, c.gkOk)}
+      ${chip("XI GK", c.gkXi ?? c.goalkeepers, c.minGk, c.gkOk)}
       ${chip("XI HG", c.hgXi, c.minHgXi, c.hgXiOk)}
       ${chip("Squad HG", c.hgTotal, c.minHgSquad, c.hgSquadOk)}
       ${chip("U21", c.under21, c.minU21, c.u21Ok)}
@@ -1005,6 +1005,28 @@ export function initMatchdaySquadPanel({
           ? `<span class="matchday-comp-ok">Ready to save</span>`
           : `<span class="matchday-comp-warn">Fix before save</span>`
       }`;
+  }
+
+  function unavailableSelectedErrors() {
+    const errors = [];
+    const check = (p, where) => {
+      if (!p) return;
+      const st = statusFor(p);
+      if (st === "suspended") {
+        errors.push(`${p.name || "Player"} (${where}) is suspended.`);
+      } else if (st === "injured" || st === "recovery") {
+        errors.push(
+          `${p.name || "Player"} (${where}) is ${st === "recovery" ? "in recovery" : "injured"}.`
+        );
+      }
+    };
+    for (const [slotId, p] of state.pitch) {
+      if (p) check(p, slotId);
+    }
+    state.bench.forEach((p, i) => {
+      if (p) check(p, `bench ${i + 1}`);
+    });
+    return errors;
   }
 
   function matchdayCompositionErrors() {
@@ -1156,6 +1178,15 @@ export function initMatchdaySquadPanel({
       }
     }
     if (!guardFormationRules()) return;
+
+    const unavailErrors = unavailableSelectedErrors();
+    if (unavailErrors.length) {
+      alert(
+        `Cannot save — remove unavailable players:\n\n${unavailErrors.join("\n")}`
+      );
+      statusText.textContent = "Injured / suspended players selected";
+      return;
+    }
 
     const compErrors = matchdayCompositionErrors();
     if (compErrors.length) {

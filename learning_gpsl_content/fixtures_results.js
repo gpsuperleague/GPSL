@@ -162,7 +162,31 @@ export const SECTION_MATCHDAY = {
       type: "links",
       items: [
         { href: "matchday.html", label: "Match Day" },
+        { href: "fixture_schedule.html", label: "Fixture schedule / check-in" },
         { href: "fixtures.html", label: "Fixtures" },
+        { href: "match_report.html", label: "Match Centre" },
+      ],
+    },
+    {
+      type: "h3",
+      html: "Match Day console (learn by navigating)",
+    },
+    {
+      type: "p",
+      html: `Rules sit on the screens you already use. Open
+        <a href="matchday.html">Match Day</a> for squad/formation rules,
+        <a href="fixture_schedule.html">Schedule</a> for the console strip before kick-off,
+        and <a href="match_report.html">Match Centre</a> for the prematch checklist.`,
+    },
+    {
+      type: "ul",
+      items: [
+        `<b>Display:</b> 10-minute match · Show Manager · Show Subtactic · Show Squad.`,
+        `<b>Pause before KO:</b> PA3 or PA4 · Advanced skill only.`,
+        `<b>On the pitch:</b> NO DOGSO · NO TIMEWASTING · NO MATCH MANIPULATION.`,
+        `<b>Formations:</b> dropdown presets only — no free marker drag; mirror LB↔RB, LWF↔RWF, LMF↔RMF; no CF/CF/SS, CF/SS/SS, or SS/SS/SS.`,
+        `<b>Squad:</b> club players only; no injured/suspended; ≥1 GK in the starting XI.`,
+        `<b>Cups:</b> 1-leg KO uses ET + pens if level. 2-leg ties are FT only unless level on aggregate after the 2nd leg — then a <b>5-minute</b> match with ET + pens; scores combine with both legs.`,
       ],
     },
     {
@@ -172,7 +196,7 @@ export const SECTION_MATCHDAY = {
         `If you missed check-in, use <b>Pick new time</b> on the schedule page first.`,
         `<b>Catch-up</b> games can be played in a later GPSL month once re-scheduled.`,
         `Submit score and squad stats on <a href="matchday.html">Match Day</a>. Opponent confirms or rejects via Inbox.`,
-        `<b>League:</b> win 3 pts, draw 1, loss 0. <b>Cups:</b> no draws — extra time / pens if needed.`,
+        `<b>League:</b> win 3 pts, draw 1, loss 0. <b>Cups:</b> no draws — extra time / pens if needed (see console rules above).`,
         `Confirmed results update tables, stats, and finances where applicable.`,
         `Holiday early-play: result can be saved early; league table/stats wait until that GPSL month is active. See <a href="owner_details.html">Owner Details</a>.`,
       ],

@@ -38,7 +38,14 @@ import {
   getSquadPlayerIds,
 } from "./matchday_squad.js?v=20260918-cards-80x105-force";
 import { loadGpslFormations } from "./gpsl_formations.js?v=20260918-formation-rules2";
-import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260821-md-comp";
+import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260921-console";
+import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
+import {
+  matchConsoleStripHtml,
+  pitchBehaviourPanelHtml,
+  wirePitchAck,
+  getMatchdayConsoleRulesCards,
+} from "./matchday_console_rules.js?v=20260921-console";
 import { playerNameLinkHtml } from "./player_links.js";
 import {
   loadActiveSuspensions,
@@ -407,11 +414,11 @@ function updateCupScoreSections() {
     } else if (isTwoLegSecondLeg(f)) {
       hint.style.display = "block";
       hint.innerHTML =
-        "2nd leg — enter the score after <b>90 minutes</b>. If the <b>tie is level on aggregate</b>, enter extra time (then pens if still level).";
+        "2nd leg — enter the score after <b>90 minutes</b>. If the <b>tie is level on aggregate</b>, play a <b>5-minute</b> match with ET + pens; enter those scores here (combined with both legs).";
     } else {
       hint.style.display = "block";
       hint.innerHTML =
-        "Cup match — enter the score after <b>90 minutes</b> first.";
+        "Cup knockout — enter the score after <b>90 minutes</b> first. Level → Extra Time, then pens if still level.";
     }
   }
 
@@ -437,8 +444,8 @@ function updateCupScoreSections() {
   if (etHint && isTwoLegSecondLeg(f)) {
     const agg = twoLegAggregate(leg1CompanionFixture, home90, away90);
     etHint.innerHTML =
-      `Level on aggregate${agg ? ` (${agg.tieHome}–${agg.tieAway})` : ""} after 90 min — enter the <b>total score after extra time</b> ` +
-      `(90 min goals carry over; e.g. 2–2 then <b>4–4</b> here, not 2–2 again).`;
+      `Level on aggregate${agg ? ` (${agg.tieHome}–${agg.tieAway})` : ""} after 90 min — play a <b>5-minute</b> match with ET (+ pens if needed). ` +
+      `Enter the <b>total score after extra time</b> (90 min goals carry over; e.g. 2–2 then <b>4–4</b> here). Scores combine with the 1st leg.`;
   } else if (etHint) {
     etHint.innerHTML =
       "Level after 90 min — enter the <b>total score after extra time</b> " +
@@ -502,6 +509,7 @@ function updateCupScoreSections() {
       el.checked = false;
     });
   }
+  refreshMatchdayConsoleMount();
 }
 
 function readPenWinnerClub(fixture) {
@@ -1100,6 +1108,11 @@ async function saveMatchdaySquad(slots, pitchLayout = null) {
 
 function initSquadPanel() {
   renderMatchdaySquadRules();
+  renderRulesPanel(
+    document.getElementById("matchdayConsoleRules"),
+    getMatchdayConsoleRulesCards()
+  );
+  refreshMatchdayConsoleMount();
   const root = document.getElementById("matchdaySquadRoot");
   if (!root) return;
 
@@ -1113,6 +1126,30 @@ function initSquadPanel() {
     onSave: saveMatchdaySquad,
     onChange: () => {},
   });
+}
+
+/** Console strip + pitch ack for the selected fixture (submit tab). */
+function refreshMatchdayConsoleMount() {
+  const mount = document.getElementById("matchdayConsoleMount");
+  if (!mount) return;
+  const f = selectedFixture();
+  const home90 = readScoreInput("homeGoals");
+  const away90 = readScoreInput("awayGoals");
+  const levelAgg =
+    isTwoLegSecondLeg(f) &&
+    cupNeedsEtPens(f, home90, away90, leg1CompanionFixture);
+  mount.innerHTML =
+    matchConsoleStripHtml({
+      isCup: isCupFixture(f),
+      isTwoLegFirst: isTwoLegFirstLeg(f, upcomingFixtures),
+      isTwoLegSecond: isTwoLegSecondLeg(f),
+      levelOnAggregate: levelAgg,
+    }) +
+    pitchBehaviourPanelHtml({
+      fixtureId: f?.id || null,
+      requireAck: !!f?.id,
+    });
+  wirePitchAck(mount);
 }
 
 function setMatchdayTab(tab) {

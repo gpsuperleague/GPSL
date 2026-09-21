@@ -386,7 +386,8 @@ export function validateFormationMirroring(slotLabels) {
   const cfSsCount = (counts.CF || 0) + (counts.SS || 0);
   if (cfSsCount > 2) {
     errors.push(
-      `Mirroring: only 2 CF/SS roles allowed combined (you have ${cfSsCount}).`
+      `CF + SS combined must be ≤ 2 (you have ${cfSsCount}). ` +
+        `CF/CF/SS, CF/SS/SS, and SS/SS/SS are not allowed.`
     );
   }
 

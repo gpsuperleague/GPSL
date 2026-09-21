@@ -25,6 +25,11 @@ import {
   loadFixtureUnavailable,
   formatFixtureUnavailableHtml,
 } from "./player_discipline.js";
+import {
+  matchConsoleStripHtml,
+  pitchBehaviourPanelHtml,
+  wirePitchAck,
+} from "./matchday_console_rules.js?v=20260921-console";
 import { downloadIcs, fixtureKickoffEvent } from "./calendar_ics.js";
 
 function replayResetConfirmMessage(allowances) {
@@ -226,6 +231,10 @@ function renderAgreedPanel(root, f, sch) {
       <p class="meta" id="checkInSquadGate" style="display:none;color:#f88;"></p>
       <p class="meta">Emergency drops remaining this season: <b>${al.emergency_drops_remaining ?? "—"}</b>/2 · Reschedule this GPSL month: <b>${al.reschedule_used_this_month ? "used" : "available"}</b></p>
       ${unavailablePanelHtml(f)}
+      <div id="scheduleConsoleMount">
+        ${matchConsoleStripHtml({ isCup: String(f.competition_type || "").toLowerCase() === "cup" })}
+        ${pitchBehaviourPanelHtml({ fixtureId: f.id, requireAck: true })}
+      </div>
       <div class="actions">
         ${ci.can_check_in ? '<button type="button" id="checkInBtn" class="button">Check in now</button>' : ""}
         ${ci.can_play ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Enter result on Match Day</a>` : ""}
@@ -239,6 +248,8 @@ function renderAgreedPanel(root, f, sch) {
   `;
 
   const checkInBtn = document.getElementById("checkInBtn");
+  const scheduleConsoleMount = document.getElementById("scheduleConsoleMount");
+  if (scheduleConsoleMount) wirePitchAck(scheduleConsoleMount);
   const calBtn = document.getElementById("addKickoffCalendarBtn");
   if (calBtn && sch.agreed_kickoff_at) {
     calBtn.onclick = () => {

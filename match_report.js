@@ -17,6 +17,7 @@ import {
   formatFixtureUnavailableHtml,
   unavailableStatusByPlayerId,
 } from "./player_discipline.js";
+import { prematchConsoleChecklistHtml } from "./matchday_console_rules.js?v=20260921-console";
 
 function unavailableLabel(status) {
   if (status === "injured") return "Injured";
@@ -403,6 +404,7 @@ function renderNotPlayed(fx, myShort, data = {}) {
             <p class="mr-prematch-check-note">No suspended or injured players in the saved Match Day squads.</p>
           </div>`
         : "";
+  const consoleCheck = prematchConsoleChecklistHtml();
 
   return `
     <div class="mr-scoreboard">
@@ -428,6 +430,7 @@ function renderNotPlayed(fx, myShort, data = {}) {
     </div>
     ${data.unavailableHtml || ""}
     ${prematchCheck}
+    ${consoleCheck}
     ${
       anyPreview
         ? `<p class="mr-preview-note">Saved Match Day squads, tactics and managers (scouting preview).</p>

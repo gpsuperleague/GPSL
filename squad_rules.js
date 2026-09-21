@@ -470,12 +470,16 @@ export function analyseMatchdayComposition(
   const bench = (benchPlayers || []).filter(Boolean);
 
   let goalkeepers = 0;
+  let gkXi = 0;
   let under21 = 0;
   let hgXi = 0;
   let hgTotal = 0;
 
   for (const p of pitch) {
-    if (isGoalkeeper(p)) goalkeepers += 1;
+    if (isGoalkeeper(p)) {
+      goalkeepers += 1;
+      gkXi += 1;
+    }
     if (isUnder21(p)) under21 += 1;
     if (isHomeGrownPlayer(p, clubNation)) {
       hgXi += 1;
@@ -489,9 +493,9 @@ export function analyseMatchdayComposition(
   }
 
   const errors = [];
-  if (goalkeepers < MATCHDAY_MIN_GOALKEEPERS) {
+  if (gkXi < MATCHDAY_MIN_GOALKEEPERS) {
     errors.push(
-      `Goalkeepers: ${goalkeepers} — need at least ${MATCHDAY_MIN_GOALKEEPERS} in the matchday squad.`
+      `Goalkeepers in starting XI: ${gkXi} — need at least ${MATCHDAY_MIN_GOALKEEPERS}.`
     );
   }
   if (under21 < MATCHDAY_MIN_UNDER_21) {
@@ -514,6 +518,7 @@ export function analyseMatchdayComposition(
     total: pitch.length + bench.length,
     pitchCount: pitch.length,
     goalkeepers,
+    gkXi,
     under21,
     hgXi,
     hgTotal,
@@ -521,7 +526,7 @@ export function analyseMatchdayComposition(
     minU21: MATCHDAY_MIN_UNDER_21,
     minHgXi: MATCHDAY_MIN_HG_STARTING_XI,
     minHgSquad: MATCHDAY_MIN_HG_SQUAD,
-    gkOk: goalkeepers >= MATCHDAY_MIN_GOALKEEPERS,
+    gkOk: gkXi >= MATCHDAY_MIN_GOALKEEPERS,
     u21Ok: under21 >= MATCHDAY_MIN_UNDER_21,
     hgXiOk: hgXi >= MATCHDAY_MIN_HG_STARTING_XI,
     hgSquadOk: hgTotal >= MATCHDAY_MIN_HG_SQUAD,
