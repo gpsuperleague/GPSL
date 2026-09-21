@@ -1127,17 +1127,135 @@ function timezoneOffsetMinutes(timeZone) {
   }
 }
 
-function formatUkOffsetDelta(timeZone) {
+/** Representative IANA zone when we only know the country (multi-zone countries use a primary). */
+function timezoneForCountry(countryCode) {
+  const cc = String(countryCode || "").trim().toUpperCase();
+  if (!cc) return "";
+  const map = {
+    GB: "Europe/London",
+    UK: "Europe/London",
+    IE: "Europe/Dublin",
+    PT: "Europe/Lisbon",
+    ES: "Europe/Madrid",
+    FR: "Europe/Paris",
+    BE: "Europe/Brussels",
+    NL: "Europe/Amsterdam",
+    LU: "Europe/Luxembourg",
+    DE: "Europe/Berlin",
+    AT: "Europe/Vienna",
+    CH: "Europe/Zurich",
+    IT: "Europe/Rome",
+    MT: "Europe/Malta",
+    PL: "Europe/Warsaw",
+    CZ: "Europe/Prague",
+    SK: "Europe/Bratislava",
+    HU: "Europe/Budapest",
+    RO: "Europe/Bucharest",
+    BG: "Europe/Sofia",
+    GR: "Europe/Athens",
+    CY: "Asia/Nicosia",
+    HR: "Europe/Zagreb",
+    SI: "Europe/Ljubljana",
+    RS: "Europe/Belgrade",
+    BA: "Europe/Sarajevo",
+    MK: "Europe/Skopje",
+    AL: "Europe/Tirane",
+    XK: "Europe/Belgrade",
+    ME: "Europe/Podgorica",
+    TR: "Europe/Istanbul",
+    UA: "Europe/Kyiv",
+    BY: "Europe/Minsk",
+    RU: "Europe/Moscow",
+    NO: "Europe/Oslo",
+    SE: "Europe/Stockholm",
+    FI: "Europe/Helsinki",
+    DK: "Europe/Copenhagen",
+    IS: "Atlantic/Reykjavik",
+    EE: "Europe/Tallinn",
+    LV: "Europe/Riga",
+    LT: "Europe/Vilnius",
+    US: "America/New_York",
+    CA: "America/Toronto",
+    MX: "America/Mexico_City",
+    BR: "America/Sao_Paulo",
+    AR: "America/Argentina/Buenos_Aires",
+    CL: "America/Santiago",
+    CO: "America/Bogota",
+    PE: "America/Lima",
+    VE: "America/Caracas",
+    UY: "America/Montevideo",
+    AU: "Australia/Sydney",
+    NZ: "Pacific/Auckland",
+    JP: "Asia/Tokyo",
+    KR: "Asia/Seoul",
+    CN: "Asia/Shanghai",
+    HK: "Asia/Hong_Kong",
+    TW: "Asia/Taipei",
+    SG: "Asia/Singapore",
+    MY: "Asia/Kuala_Lumpur",
+    TH: "Asia/Bangkok",
+    VN: "Asia/Ho_Chi_Minh",
+    ID: "Asia/Jakarta",
+    PH: "Asia/Manila",
+    IN: "Asia/Kolkata",
+    PK: "Asia/Karachi",
+    BD: "Asia/Dhaka",
+    AE: "Asia/Dubai",
+    SA: "Asia/Riyadh",
+    QA: "Asia/Qatar",
+    KW: "Asia/Kuwait",
+    IL: "Asia/Jerusalem",
+    EG: "Africa/Cairo",
+    ZA: "Africa/Johannesburg",
+    NG: "Africa/Lagos",
+    KE: "Africa/Nairobi",
+    MA: "Africa/Casablanca",
+    GH: "Africa/Accra",
+  };
+  return map[cc] || "";
+}
+
+/**
+ * Prefer saved owner timezone, then login-origin timezone, then country estimate.
+ * @param {{ ownerTimezone?: string, originTimezone?: string, countryCode?: string }} opts
+ */
+function resolveDisplayTimezone({
+  ownerTimezone = "",
+  originTimezone = "",
+  countryCode = "",
+} = {}) {
+  const saved = String(ownerTimezone || "").trim();
+  if (saved) return { timeZone: saved, approx: false };
+  const origin = String(originTimezone || "").trim();
+  if (origin) return { timeZone: origin, approx: false };
+  const fromCountry = timezoneForCountry(countryCode);
+  if (fromCountry) return { timeZone: fromCountry, approx: true };
+  return { timeZone: "", approx: false };
+}
+
+function formatUkOffsetDelta(timeZone, { approx = false } = {}) {
   const target = timezoneOffsetMinutes(timeZone);
   const uk = timezoneOffsetMinutes("Europe/London");
   if (target == null || uk == null) return { text: "—", title: "" };
   const delta = target - uk;
-  if (delta === 0) return { text: "Same", title: `${timeZone} · same as UK` };
+  if (delta === 0) {
+    return {
+      text: approx ? "~Same" : "Same",
+      title: approx
+        ? `${timeZone} (from country) · same as UK`
+        : `${timeZone} · same as UK`,
+    };
+  }
   const hours = Math.abs(delta) / 60;
-  const label = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(/\.0$/, "");
+  const label = Number.isInteger(hours)
+    ? String(hours)
+    : hours.toFixed(1).replace(/\.0$/, "");
+  const signed = `${delta > 0 ? "+" : "-"}${label}h`;
   return {
-    text: `${delta > 0 ? "+" : "-"}${label}h`,
-    title: `${timeZone} · ${delta > 0 ? "+" : "-"}${label} hour${Number(hours) === 1 ? "" : "s"} vs UK`,
+    text: approx ? `~${signed}` : signed,
+    title: approx
+      ? `${timeZone} (approx from country) · ${signed} vs UK`
+      : `${timeZone} · ${signed} vs UK`,
   };
 }
 
@@ -1446,7 +1564,7 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-unplayed" title="Match videos uploaded after that fixture’s GPSL month lock_at">V late</th>` +
     `<th class="num wl-num-unplayed" title="Match videos still missing when lock_at + grace hours passed (fined / failed)">V fail</th>` +
     `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord</th>` +
-    `<th title="Current offset versus British time, using the owner's saved timezone.">UK +/-</th>` +
+    `<th title="Offset vs British time: saved timezone, else login timezone, else estimated from country (~).">UK +/-</th>` +
     `<th title="Latest login country (admin only).">Country</th>` +
     `<th title="Latest captured login IP address (admin only).">IP</th>` +
     `<th title="Recent shared-IP review signal (admin only).">Shared IP</th>` +
@@ -1802,7 +1920,7 @@ async function loadArchivedOwnersSection() {
     `<th title="Confirmed for test season" style="text-align:center">Test</th>` +
     `<th title="Confirmed for live season" style="text-align:center">Live</th>` +
     `<th>Archived (UK)</th><th>Note</th>` +
-    `<th title="Current offset versus British time, using the owner's saved timezone.">UK +/-</th>` +
+    `<th title="Offset vs British time: saved timezone, else login timezone, else estimated from country (~).">UK +/-</th>` +
     `<th title="Latest login country (admin only).">Country</th>` +
     `<th title="Latest captured login IP address (admin only).">IP</th>` +
     `<th title="Recent shared-IP review signal (admin only).">Shared IP</th>` +
@@ -1822,10 +1940,20 @@ async function loadArchivedOwnersSection() {
     const sec = securityById.get(row.owner_id) || {};
     const act = activityById.get(row.owner_id) || {};
     const ownerTimezone = timezoneMap.get(row.owner_id) || "";
-    const tzDelta = formatUkOffsetDelta(ownerTimezone);
+    const originTimezone = sec.last_timezone_name
+      ? String(sec.last_timezone_name)
+      : "";
     const lastCountry = sec.last_country_code ? String(sec.last_country_code) : "";
     const lastCountryName = formatCountryName(lastCountry);
     const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
+    const resolvedTz = resolveDisplayTimezone({
+      ownerTimezone,
+      originTimezone,
+      countryCode: lastCountry,
+    });
+    const tzDelta = formatUkOffsetDelta(resolvedTz.timeZone, {
+      approx: resolvedTz.approx,
+    });
     const sharedCount = Number(sec.shared_recent_ip_owner_count) || 0;
     const sharedWith = Array.isArray(sec.shared_recent_with) ? sec.shared_recent_with : [];
     const otherShared = sharedWith.filter(
@@ -1842,7 +1970,22 @@ async function loadArchivedOwnersSection() {
         ? `${escapeWl(lastClubName)} <span class="muted">(${escapeWl(lastClubShort)})</span>`
         : escapeWl(lastClubShort)
       : "—";
-    const filterText = [tag, email, row.last_club_short_name, lastClubName, row.status_note, ownerTimezone, tzDelta.text, lastCountry, lastCountryName, lastIp, act.club_short_name, act.club_name]
+    const filterText = [
+      tag,
+      email,
+      row.last_club_short_name,
+      lastClubName,
+      row.status_note,
+      ownerTimezone,
+      originTimezone,
+      resolvedTz.timeZone,
+      tzDelta.text,
+      lastCountry,
+      lastCountryName,
+      lastIp,
+      act.club_short_name,
+      act.club_name,
+    ]
       .filter(Boolean)
       .join(" ");
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
@@ -2092,8 +2235,14 @@ function renderWaitingListAdminRow(
   const lastCountryName = formatCountryName(lastCountry);
   const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
   const originTimezone = sec.last_timezone_name ? String(sec.last_timezone_name) : "";
-  const tzSource = String(row.owner_timezone || "").trim() || originTimezone;
-  const tzDelta = formatUkOffsetDelta(tzSource);
+  const resolvedTz = resolveDisplayTimezone({
+    ownerTimezone: row.owner_timezone,
+    originTimezone,
+    countryCode: lastCountry,
+  });
+  const tzDelta = formatUkOffsetDelta(resolvedTz.timeZone, {
+    approx: resolvedTz.approx,
+  });
   const sharedCount = Number(sec.shared_recent_ip_owner_count) || 0;
   const sharedWith = Array.isArray(sec.shared_recent_with) ? sec.shared_recent_with : [];
   const otherShared = sharedWith.filter(
@@ -2114,6 +2263,7 @@ function renderWaitingListAdminRow(
     act.club_name,
     row.owner_timezone,
     originTimezone,
+    resolvedTz.timeZone,
     tzDelta.text,
     lastCountry,
     lastCountryName,
