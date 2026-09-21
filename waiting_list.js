@@ -54,15 +54,124 @@ function timezoneOffsetMinutes(timeZone) {
   }
 }
 
-function formatUkOffsetDelta(timeZone) {
+/** Representative IANA zone when we only know the country (multi-zone countries use a primary). */
+function timezoneForCountry(countryCode) {
+  const cc = String(countryCode || "").trim().toUpperCase();
+  if (!cc) return "";
+  const map = {
+    GB: "Europe/London",
+    UK: "Europe/London",
+    IE: "Europe/Dublin",
+    PT: "Europe/Lisbon",
+    ES: "Europe/Madrid",
+    FR: "Europe/Paris",
+    BE: "Europe/Brussels",
+    NL: "Europe/Amsterdam",
+    LU: "Europe/Luxembourg",
+    DE: "Europe/Berlin",
+    AT: "Europe/Vienna",
+    CH: "Europe/Zurich",
+    IT: "Europe/Rome",
+    MT: "Europe/Malta",
+    PL: "Europe/Warsaw",
+    CZ: "Europe/Prague",
+    SK: "Europe/Bratislava",
+    HU: "Europe/Budapest",
+    RO: "Europe/Bucharest",
+    BG: "Europe/Sofia",
+    GR: "Europe/Athens",
+    CY: "Asia/Nicosia",
+    HR: "Europe/Zagreb",
+    SI: "Europe/Ljubljana",
+    RS: "Europe/Belgrade",
+    BA: "Europe/Sarajevo",
+    MK: "Europe/Skopje",
+    AL: "Europe/Tirane",
+    XK: "Europe/Belgrade",
+    ME: "Europe/Podgorica",
+    TR: "Europe/Istanbul",
+    UA: "Europe/Kyiv",
+    BY: "Europe/Minsk",
+    RU: "Europe/Moscow",
+    NO: "Europe/Oslo",
+    SE: "Europe/Stockholm",
+    FI: "Europe/Helsinki",
+    DK: "Europe/Copenhagen",
+    IS: "Atlantic/Reykjavik",
+    EE: "Europe/Tallinn",
+    LV: "Europe/Riga",
+    LT: "Europe/Vilnius",
+    US: "America/New_York",
+    CA: "America/Toronto",
+    MX: "America/Mexico_City",
+    BR: "America/Sao_Paulo",
+    AR: "America/Argentina/Buenos_Aires",
+    CL: "America/Santiago",
+    CO: "America/Bogota",
+    PE: "America/Lima",
+    VE: "America/Caracas",
+    UY: "America/Montevideo",
+    AU: "Australia/Sydney",
+    NZ: "Pacific/Auckland",
+    JP: "Asia/Tokyo",
+    KR: "Asia/Seoul",
+    CN: "Asia/Shanghai",
+    HK: "Asia/Hong_Kong",
+    TW: "Asia/Taipei",
+    SG: "Asia/Singapore",
+    MY: "Asia/Kuala_Lumpur",
+    TH: "Asia/Bangkok",
+    VN: "Asia/Ho_Chi_Minh",
+    ID: "Asia/Jakarta",
+    PH: "Asia/Manila",
+    IN: "Asia/Kolkata",
+    PK: "Asia/Karachi",
+    BD: "Asia/Dhaka",
+    AE: "Asia/Dubai",
+    SA: "Asia/Riyadh",
+    QA: "Asia/Qatar",
+    KW: "Asia/Kuwait",
+    IL: "Asia/Jerusalem",
+    EG: "Africa/Cairo",
+    ZA: "Africa/Johannesburg",
+    NG: "Africa/Lagos",
+    KE: "Africa/Nairobi",
+    MA: "Africa/Casablanca",
+    GH: "Africa/Accra",
+  };
+  return map[cc] || "";
+}
+
+function resolveDisplayTimezone(row) {
+  const saved = String(row?.origin_timezone || "").trim();
+  if (saved) return { timeZone: saved, approx: false };
+  const fromCountry = timezoneForCountry(row?.country_code);
+  if (fromCountry) return { timeZone: fromCountry, approx: true };
+  return { timeZone: "", approx: false };
+}
+
+function formatUkOffsetDelta(timeZone, { approx = false } = {}) {
   const target = timezoneOffsetMinutes(timeZone);
   const uk = timezoneOffsetMinutes("Europe/London");
-  if (target == null || uk == null) return "—";
+  if (target == null || uk == null) return { text: "—", title: "" };
   const delta = target - uk;
-  if (delta === 0) return "Same";
+  if (delta === 0) {
+    return {
+      text: approx ? "~Same" : "Same",
+      title: approx
+        ? `${timeZone} (from country) · same as UK`
+        : `${timeZone} · same as UK`,
+    };
+  }
   const hours = Math.abs(delta) / 60;
   const label = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(/\.0$/, "");
-  return `${delta > 0 ? "+" : "-"}${label}h`;
+  const signed = `${delta > 0 ? "+" : "-"}${label}h`;
+  return {
+    text: approx ? `~${signed}` : signed,
+    title: approx
+      ? `${timeZone} (approx from country) · ${signed} vs UK`
+      : `${timeZone} · ${signed} vs UK`,
+  };
 }
 
 function renderTagRows(tbody, rows, highlightPosition, { sectioned = false } = {}) {
@@ -93,12 +202,13 @@ function renderTagRows(tbody, rows, highlightPosition, { sectioned = false } = {
           : "";
     const countryCode = String(row.country_code || "").trim().toUpperCase();
     const countryName = formatCountryName(countryCode);
-    const tzDelta = formatUkOffsetDelta(row.origin_timezone || "");
+    const resolved = resolveDisplayTimezone(row);
+    const tzDelta = formatUkOffsetDelta(resolved.timeZone, { approx: resolved.approx });
     tr.innerHTML =
       `<td>${row.position}</td>` +
       `<td>${escapeHtml(row.owner_tag || "—")}${statusExtra}</td>` +
       `<td title="${countryCode ? escapeHtml(countryCode) : ""}">${countryName ? escapeHtml(countryName) : `<span style="color:#666">—</span>`}</td>` +
-      `<td>${escapeHtml(tzDelta)}</td>`;
+      `<td title="${tzDelta.title ? escapeHtml(tzDelta.title) : ""}">${escapeHtml(tzDelta.text)}</td>`;
     tbody.appendChild(tr);
   }
 }

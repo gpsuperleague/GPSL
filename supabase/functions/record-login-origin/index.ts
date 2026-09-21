@@ -115,9 +115,25 @@ Deno.serve(async (req) => {
       )
         .trim()
         .toUpperCase() || null;
+    let clientTimezone: string | null = null;
+    try {
+      const body = (await req.json().catch(() => null)) as {
+        timezone_name?: unknown;
+      } | null;
+      const raw = String(body?.timezone_name || "").trim();
+      // IANA-ish: Continent/City or Etc/UTC
+      if (raw && /^[A-Za-z0-9_+\-]+(?:\/[A-Za-z0-9_+\-]+)+$/.test(raw)) {
+        clientTimezone = raw;
+      }
+    } catch {
+      clientTimezone = null;
+    }
+
     const origin = await lookupOriginFromIp(ip);
     const country = headerCountry || origin.countryCode;
-    const timezoneName = origin.timezoneName;
+    // Country often arrives from CDN headers even when IP geo fails — timezone
+    // used to stay null in that case. Prefer IP geo, then browser-reported TZ.
+    const timezoneName = origin.timezoneName || clientTimezone;
     const userAgent =
       String(
         req.headers.get("x-forwarded-user-agent") ||

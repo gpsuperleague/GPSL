@@ -2092,7 +2092,8 @@ function renderWaitingListAdminRow(
   const lastCountryName = formatCountryName(lastCountry);
   const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
   const originTimezone = sec.last_timezone_name ? String(sec.last_timezone_name) : "";
-  const tzDelta = formatUkOffsetDelta(originTimezone);
+  const tzSource = String(row.owner_timezone || "").trim() || originTimezone;
+  const tzDelta = formatUkOffsetDelta(tzSource);
   const sharedCount = Number(sec.shared_recent_ip_owner_count) || 0;
   const sharedWith = Array.isArray(sec.shared_recent_with) ? sec.shared_recent_with : [];
   const otherShared = sharedWith.filter(

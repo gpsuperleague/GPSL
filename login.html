@@ -139,8 +139,14 @@
         }
       }
 
+      let browserTimezone = "";
+      try {
+        browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      } catch {
+        browserTimezone = "";
+      }
       const { error: originErr } = await supabase.functions.invoke("record-login-origin", {
-        body: {},
+        body: { timezone_name: browserTimezone || null },
       });
       if (originErr) {
         console.warn("record-login-origin:", originErr.message);
