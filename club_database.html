@@ -122,6 +122,18 @@
     }
     #interestBanner a { color: #e8c84a; }
     #interestBanner .frozen { color: #f0a; }
+    #interestBanner .discord-chat-link {
+      display: inline-block;
+      margin: 0 4px;
+      padding: 3px 10px;
+      background: #5865f2;
+      color: #fff !important;
+      border-radius: 4px;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    #interestBanner .discord-chat-link:hover { filter: brightness(1.1); }
+    #interestBanner .discord-missing { color: #888; font-style: italic; }
     .interest-cell { min-width: 140px; max-width: 240px; font-size: 11px; color: #bbb; line-height: 1.35; text-align: left; }
     .interest-counts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; align-items: center; }
     .interest-count, .backup-count {
@@ -227,6 +239,6 @@
     </div>
   </div>
 
-  <script type="module" src="club_database.js?v=20260921-interest-backup"></script>
+  <script type="module" src="club_database.js?v=20260921-discord-banner"></script>
 </body>
 </html>

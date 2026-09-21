@@ -495,10 +495,12 @@ function renderInterestBanner() {
   );
   if (url) {
     parts.push(
-      ` Discord auction chat: <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open chat</a>.`
+      ` <a class="discord-chat-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Discord chat</a> to discuss with others.`
     );
   } else {
-    parts.push(" Discord auction chat link appears here once admin sets it.");
+    parts.push(
+      ' <span class="discord-missing">Discord chat link not set yet</span> (admin: Transfer management → Club auction → Discord auction chat URL).'
+    );
   }
   if (frozen) {
     parts.push(' <span class="frozen">Marks are frozen while bidding is open.</span>');

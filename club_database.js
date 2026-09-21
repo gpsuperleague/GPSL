@@ -91,11 +91,15 @@ function renderInterestBanner() {
 
   const parts = [];
   parts.push(
-    `<b>Club interest</b> — waiting-list / invited owners mark <b>1 interest</b> and <b>1 backup</b> on any club. Hover the counts to see who.`
+    `<b>Club interest</b> — waiting-list / invited owners mark <b>1 interest</b> and <b>1 backup</b> on any club. Hover ★ / ☆ to see who.`
   );
   if (url) {
     parts.push(
-      ` Discord: <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open chat</a>.`
+      ` <a class="discord-chat-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Discord chat</a> to discuss with others.`
+    );
+  } else {
+    parts.push(
+      ` <span class="discord-missing">Discord chat link not set yet</span> (admin: Transfer management → Club auction → Discord auction chat URL).`
     );
   }
   if (frozen) {
