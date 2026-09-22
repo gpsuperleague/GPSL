@@ -552,8 +552,26 @@ async function wireClubSwapPanel(fromClub) {
   const { data, error } = await supabase.rpc("owner_club_swap_vacant_list");
   if (error || !data?.ok) {
     if (status) status.textContent = error?.message || data?.reason || "Club swap unavailable.";
+    select.disabled = true;
+    btn.disabled = true;
     return;
   }
+
+  const windowOpen = data.window_open === true;
+  if (!windowOpen) {
+    select.innerHTML = '<option value="">GPSL June only…</option>';
+    select.disabled = true;
+    btn.disabled = true;
+    if (feeEl) {
+      feeEl.textContent =
+        "Club swap opens for one week in GPSL June each season. Outside that window it stays closed.";
+    }
+    if (status) status.textContent = "";
+    return;
+  }
+
+  select.disabled = false;
+  btn.disabled = false;
   const vacant = Array.isArray(data.vacant) ? data.vacant : [];
   select.innerHTML =
     '<option value="">Select empty club…</option>' +
@@ -571,8 +589,8 @@ async function wireClubSwapPanel(fromClub) {
       .join("");
   if (feeEl) {
     feeEl.textContent = data.can_free_swap
-      ? "Supporter free swap available this season (empty clubs only)."
-      : `Swap fee 150m from club bank${data.free_swap_used ? " (free supporter swap already used this season)" : ""}.`;
+      ? "GPSL June window open — Supporter free swap available this season (empty clubs only)."
+      : `GPSL June window open — swap fee 150m from club bank${data.free_swap_used ? " (free supporter swap already used this season)" : ""}.`;
   }
   btn.onclick = async () => {
     const to = select.value;

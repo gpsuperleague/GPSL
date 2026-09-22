@@ -574,6 +574,64 @@ GRANT SELECT ON public.gpsl_owner_profile_public TO authenticated;
 GRANT SELECT ON public.gpsl_owner_profile_public TO anon;
 
 -- ---------------------------------------------------------------------------
+-- Club swap window: GPSL June only (~one UK week each season)
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.owner_club_swap_window_open(
+  p_at timestamptz DEFAULT now()
+)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_season_id bigint;
+  v_month text;
+BEGIN
+  IF to_regprocedure('public.competition_finances_current_season_id()') IS NOT NULL THEN
+    BEGIN
+      v_season_id := public.competition_finances_current_season_id();
+    EXCEPTION WHEN OTHERS THEN
+      v_season_id := NULL;
+    END;
+  ELSIF to_regprocedure('public.current_gpsl_season_id()') IS NOT NULL THEN
+    BEGIN
+      v_season_id := public.current_gpsl_season_id();
+    EXCEPTION WHEN OTHERS THEN
+      v_season_id := NULL;
+    END;
+  ELSE
+    SELECT s.id INTO v_season_id
+    FROM public.competition_seasons s
+    WHERE s.is_current = true
+    ORDER BY s.id DESC
+    LIMIT 1;
+  END IF;
+
+  IF v_season_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  IF to_regprocedure('public.competition_active_gpsl_month(bigint, timestamptz)') IS NULL THEN
+    RETURN false;
+  END IF;
+
+  v_month := lower(btrim(coalesce(
+    public.competition_active_gpsl_month(v_season_id, coalesce(p_at, now())),
+    ''
+  )));
+
+  RETURN v_month = 'june';
+END;
+$function$;
+
+COMMENT ON FUNCTION public.owner_club_swap_window_open(timestamptz) IS
+  'Club swap allowed only during the active GPSL June calendar window (~one week per season).';
+
+GRANT EXECUTE ON FUNCTION public.owner_club_swap_window_open(timestamptz) TO authenticated;
+
+-- ---------------------------------------------------------------------------
 -- owner_registry_get_self — keep onboarding fields + supporter perks
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.owner_registry_get_self()
@@ -699,7 +757,8 @@ BEGIN
     'can_set_colour_scheme', v_supporter_active AND v_has_club,
     'can_free_club_swap', v_supporter_active AND v_has_club AND NOT v_free_swap_used,
     'free_club_swap_used', v_free_swap_used,
-    'club_swap_fee', 150000000
+    'club_swap_fee', 150000000,
+    'club_swap_window_open', public.owner_club_swap_window_open()
   );
 END;
 $function$;
@@ -724,6 +783,8 @@ DECLARE
   v_free_used boolean := false;
   v_season_id bigint;
   v_rows jsonb;
+  v_window_open boolean := false;
+  v_month text;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'Not signed in';
@@ -740,12 +801,21 @@ BEGIN
 
   v_from_value := coalesce(public.club_stadium_value(v_from), 0);
   v_supporter := public.owner_is_supporter_active(v_uid);
+  v_window_open := public.owner_club_swap_window_open();
 
   BEGIN
     v_season_id := public.competition_finances_current_season_id();
   EXCEPTION WHEN OTHERS THEN
     v_season_id := NULL;
   END;
+
+  IF v_season_id IS NOT NULL
+     AND to_regprocedure('public.competition_active_gpsl_month(bigint, timestamptz)') IS NOT NULL THEN
+    v_month := lower(btrim(coalesce(
+      public.competition_active_gpsl_month(v_season_id, now()),
+      ''
+    )));
+  END IF;
 
   SELECT
     r.supporter_free_swap_season_id IS NOT NULL
@@ -756,6 +826,22 @@ BEGIN
   WHERE r.owner_id = v_uid;
 
   v_free_used := coalesce(v_free_used, false);
+
+  IF NOT v_window_open THEN
+    RETURN jsonb_build_object(
+      'ok', true,
+      'from_club', v_from,
+      'from_stadium_value', v_from_value,
+      'supporter_active', v_supporter,
+      'can_free_swap', v_supporter AND NOT v_free_used,
+      'free_swap_used', v_free_used,
+      'paid_fee', 150000000,
+      'window_open', false,
+      'active_gpsl_month', nullif(v_month, ''),
+      'vacant', '[]'::jsonb,
+      'reason', 'window_closed'
+    );
+  END IF;
 
   SELECT coalesce(jsonb_agg(row_data ORDER BY club_name), '[]'::jsonb)
   INTO v_rows
@@ -784,6 +870,8 @@ BEGIN
     'can_free_swap', v_supporter AND NOT v_free_used,
     'free_swap_used', v_free_used,
     'paid_fee', 150000000,
+    'window_open', true,
+    'active_gpsl_month', 'june',
     'vacant', coalesce(v_rows, '[]'::jsonb)
   );
 END;
@@ -842,6 +930,10 @@ BEGIN
 
   IF v_from = v_to THEN
     RAISE EXCEPTION 'Already at %', v_to;
+  END IF;
+
+  IF NOT public.owner_club_swap_window_open() THEN
+    RAISE EXCEPTION 'Club swap is only open during GPSL June (one week each season)';
   END IF;
 
   PERFORM 1 FROM public."Clubs" c WHERE c."ShortName" = v_from FOR UPDATE;
