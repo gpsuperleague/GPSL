@@ -583,6 +583,13 @@ export const ADMIN_MAIN_NAV = [
           null,
           "Review owner R-button breach reports on uploaded match videos; uphold fine + Building Society reward."
         ),
+        L(
+          "Network incidents",
+          "admin_network_incidents.html",
+          null,
+          null,
+          "Mid-match network / visibility reports. Resolve records decision only — apply forfeit/replay with existing tools."
+        ),
       ]),
       group("Transfers", [
         L(

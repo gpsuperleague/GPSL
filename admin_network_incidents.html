@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Network incidents — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    .ni-list { display:grid; gap:12px; }
+    .ni-card {
+      border:1px solid #333; border-radius:6px; padding:12px 14px; background:#161616;
+    }
+    .ni-card h3 { margin:0 0 6px; font-size:15px; color:#ffcc66; }
+    .ni-meta { font-size:12px; color:#999; margin-bottom:8px; line-height:1.4; }
+    .ni-note { font-size:13px; color:#bbb; margin:4px 0 10px; white-space:pre-wrap; }
+    .ni-card label { display:grid; gap:4px; font-size:12px; color:#bbb; margin-bottom:8px; }
+    .ni-card select, .ni-card textarea {
+      padding:7px 9px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
+    }
+    .ni-card textarea { min-height:52px; resize:vertical; }
+    .ni-actions { display:flex; flex-wrap:wrap; gap:8px; }
+    .status-pill {
+      display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600;
+      text-transform:uppercase; letter-spacing:0.04em;
+    }
+    .status-logged, .status-peer_retry, .status-peer_reschedule { background:#332200; color:#fc6; }
+    .status-escalated { background:#331111; color:#f99; }
+    .status-resolved { background:#1a331a; color:#8d8; }
+    #listStatus { margin-top:10px; font-size:13px; white-space:pre-wrap; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Network incidents</h1>
+  <div class="card">
+    <p class="note">
+      Owners log mid-match network / visibility issues from Match Day.
+      <b>Resolve here records the decision only</b> — fixture status, forfeits, and replays
+      are <b>not</b> applied automatically. Use existing deploy / forfeit / scheduling tools after.
+      Escalated rows request a hold flag for a future month-lock skip (not wired yet).
+    </p>
+    <div class="actions">
+      <button type="button" class="button" id="filterOpenBtn">Open + escalated</button>
+      <button type="button" class="button secondary" id="filterAllBtn">Include resolved</button>
+      <a class="button secondary" href="admin_match_video_reports.html">Match video reports</a>
+      <a class="button secondary" href="admin_test_deploy_fixture.html">Deploy fixture</a>
+    </div>
+    <div id="incidentsList" class="ni-list"></div>
+    <div id="listStatus"></div>
+  </div>
+  <script type="module" src="admin_network_incidents.js?v=20260922"></script>
+</body>
+</html>

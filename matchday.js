@@ -31,6 +31,7 @@ import {
   loadMatchSimStatus,
   runMatchSimulation,
 } from "./match_sim_ui.js?v=20260908-assist-goal-attach";
+import { wireNetworkIncidentsPanel } from "./network_incidents_ui.js?v=20260922";
 import {
   initMatchdaySquadPanel,
   getDefaultStarters,
@@ -1519,6 +1520,8 @@ async function updateFixturePreview() {
     setScoreInputsEnabled(false);
     confirmMode = null;
     applyConfirmModeUI();
+    const niMount = document.getElementById("networkIncidentsMount");
+    if (niMount) niMount.innerHTML = "";
     return;
   }
 
@@ -1564,6 +1567,12 @@ async function updateFixturePreview() {
     <span style="color:#aaa;font-size:13px;">${formatMatchConditions(f)}</span>${extra}${aggregateHtml}
     ${unavailableHtml}
   `;
+
+  try {
+    await wireNetworkIncidentsPanel(f, myClub.short);
+  } catch (niErr) {
+    console.warn("Network incidents panel:", niErr);
+  }
 
   document.getElementById("homeLabel").textContent = f.home_club_name;
   document.getElementById("awayLabel").textContent = f.away_club_name;
