@@ -1,6 +1,7 @@
 import { supabase, initGlobal } from "./global.js";
 import { renderNationFlag } from "./international_flags.js";
 import { nationLink } from "./international.js";
+import { loadOwnerSupporterMap, ownerTagHtml } from "./owner_badge.js";
 
 let myClub = null;
 let activeTab = "rolling";
@@ -37,9 +38,13 @@ function fmtPts(n) {
 }
 
 function ownerLink(r) {
-  const label = escapeHtml(r.owner_tag || r.owner_name || "—");
-  if (!r.owner_id) return label;
-  return `<a class="gpsl-link" href="owner_profile.html?owner=${encodeURIComponent(r.owner_id)}">${label}</a>`;
+  return ownerTagHtml({
+    ownerId: r.owner_id,
+    ownerTag: r.owner_tag || r.owner_name || "—",
+    isSupporter: r.is_supporter,
+    link: !!r.owner_id,
+    compact: true,
+  });
 }
 
 function renderBreakdown(rows) {
@@ -236,6 +241,7 @@ function setTab(tab) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
+  await loadOwnerSupporterMap().catch(() => {});
   const {
     data: { user },
   } = await supabase.auth.getUser();

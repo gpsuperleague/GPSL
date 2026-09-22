@@ -672,6 +672,7 @@
       playerNameLinkHtml,
       pesdbPlayerCardUrl,
     } from "./player_links.js";
+    import { loadOwnerSupporterMap, ownerTagHtml } from "./owner_badge.js";
 
     let transferWindowOpen = false;
     let buyerShortName = null;
@@ -695,6 +696,7 @@
       }
 
       await initGlobal();
+      await loadOwnerSupporterMap().catch(() => {});
 
       await loadTransferWindowStatus();
       await loadBuyerClubShortName(user.id);
@@ -796,9 +798,12 @@
 
       const ownerLabel = (club.owner || "").trim();
       const ownerHtml = club.owner_id
-        ? `<a class="gpsl-link" href="owner_profile.html?owner=${encodeURIComponent(club.owner_id)}">${
-            ownerLabel || "View owner"
-          }</a>`
+        ? ownerTagHtml({
+            ownerId: club.owner_id,
+            ownerTag: ownerLabel || "View owner",
+            link: true,
+            compact: true,
+          })
         : ownerLabel
           ? ownerLabel
           : "<em>Unowned</em>";

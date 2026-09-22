@@ -1,5 +1,7 @@
 // clubs_lookup.js
 
+import { loadOwnerSupporterMap, ownerTagHtml } from "./owner_badge.js";
+
 let clubsMap = new Map();
 let stadiumMap = new Map();
 let ownerTagsMap = new Map();
@@ -46,6 +48,12 @@ export async function loadClubsMap() {
     if (oid) ownerIdsMap.set(row.ShortName, oid);
   });
 
+  // Supporter marks for owner tags on fixtures / tables / etc.
+  try {
+    await loadOwnerSupporterMap();
+  } catch (err) {
+    console.warn("loadClubsMap: supporter map", err);
+  }
 }
 
 /* ============================================================
@@ -111,14 +119,23 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
-/** Discord owner tag → owner profile when owner_id is known. */
+/** Discord owner tag → owner profile when owner_id is known (+ Supporter mark). */
 export function ownerTagLinkHtml(tag, ownerId) {
   const label = String(tag || "").trim();
   if (!label) return "";
-  const escaped = escapeHtml(label);
-  const href = ownerProfileHref(ownerId);
-  if (!href) return `<span class="club-owner-tag">${escaped}</span>`;
-  return `<a class="club-owner-tag" href="${escapeHtml(href)}" title="Owner history">${escaped}</a>`;
+  const html = ownerTagHtml({
+    ownerId,
+    ownerTag: label,
+    link: !!ownerId,
+    showBadgeImage: true,
+    compact: true,
+  });
+  return html
+    .replace(
+      'class="gpsl-link owner-tag-chip"',
+      'class="gpsl-link club-owner-tag owner-tag-chip"'
+    )
+    .replace('class="owner-tag-chip"', 'class="club-owner-tag owner-tag-chip"');
 }
 
 /** Club name plus optional Discord owner tag (layout: block = fixtures, inline = tables).

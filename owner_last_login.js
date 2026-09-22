@@ -1,4 +1,5 @@
 import { supabase, initGlobal, getAuthUser } from "./global.js";
+import { loadOwnerSupporterMap, ownerTagHtml } from "./owner_badge.js";
 
 function setStatus(elementId, msg, ok = true) {
   const el = document.getElementById(elementId);
@@ -83,6 +84,16 @@ function ownerLabel(row) {
   return "Owner";
 }
 
+function ownerCellHtml(row) {
+  return ownerTagHtml({
+    ownerId: row.owner_id,
+    ownerTag: ownerLabel(row),
+    isSupporter: row.is_supporter ?? row.supporter_active,
+    link: !!row.owner_id,
+    compact: true,
+  });
+}
+
 function updateMonthHeaders() {
   const prev = document.getElementById("prevMonthCol");
   const cur = document.getElementById("curMonthCol");
@@ -158,7 +169,7 @@ function renderTable(filterText = "") {
 
       return `<tr>
         <td class="num">${i + 1}</td>
-        <td>${escapeHtml(ownerLabel(r))}</td>
+        <td>${ownerCellHtml(r)}</td>
         <td>${club}</td>
         <td>${escapeHtml(r.registry_status || "—")}</td>
         <td>${escapeHtml(formatUkDateTime(r.last_sign_in_at))}</td>
@@ -245,6 +256,7 @@ export async function initOwnerLastLoginPanel() {
       renderTable(e.target.value);
     });
   }
+  await loadOwnerSupporterMap().catch(() => {});
   await refresh();
   return true;
 }
@@ -257,6 +269,7 @@ async function main() {
   }
 
   await initGlobal();
+  await loadOwnerSupporterMap().catch(() => {});
   await initOwnerLastLoginPanel();
 }
 

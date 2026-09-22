@@ -1,5 +1,9 @@
 import { supabase } from "./supabase_client.js";
 import { initGlobal } from "./global.js";
+import {
+  loadOwnerSupporterMap,
+  ownerTagHtml,
+} from "./owner_badge.js";
 
 export async function loadWaitingListPublic() {
   const { data, error } = await supabase.rpc("waiting_list_public");
@@ -204,9 +208,16 @@ function renderTagRows(tbody, rows, highlightPosition, { sectioned = false } = {
     const countryName = formatCountryName(countryCode);
     const resolved = resolveDisplayTimezone(row);
     const tzDelta = formatUkOffsetDelta(resolved.timeZone, { approx: resolved.approx });
+    const tagHtml = ownerTagHtml({
+      ownerId: row.owner_id,
+      ownerTag: row.owner_tag || "—",
+      link: !!row.owner_id,
+      compact: true,
+      showBadgeImage: false,
+    });
     tr.innerHTML =
       `<td>${row.position}</td>` +
-      `<td>${escapeHtml(row.owner_tag || "—")}${statusExtra}</td>` +
+      `<td>${tagHtml}${statusExtra}</td>` +
       `<td title="${countryCode ? escapeHtml(countryCode) : ""}">${countryName ? escapeHtml(countryName) : `<span style="color:#666">—</span>`}</td>` +
       `<td title="${tzDelta.title ? escapeHtml(tzDelta.title) : ""}">${escapeHtml(tzDelta.text)}</td>`;
     tbody.appendChild(tr);
@@ -216,6 +227,7 @@ function renderTagRows(tbody, rows, highlightPosition, { sectioned = false } = {
 export async function initWaitingListPage() {
   window.CURRENT_PAGE = "waiting_list";
   await initGlobal();
+  await loadOwnerSupporterMap().catch(() => {});
 
   const body = document.getElementById("wlBody");
   const onBoardBody = document.getElementById("wlOnBoardBody");

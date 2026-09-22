@@ -8,7 +8,7 @@ import {
 } from "./player_links.js";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 import { GPFL_TIPS } from "./fantasy_info_tips.js?v=20260823-even-ladder";
-import { ownerProfileHref } from "./owner_badge.js";
+import { ownerProfileHref, loadOwnerSupporterMap, ownerTagHtml } from "./owner_badge.js";
 
 /** Pitch / squad display order (GKs are their own section, not defenders). */
 const POS_ORDER = [
@@ -77,11 +77,15 @@ function esc(s) {
 
 /** Clickable owner name → owner_profile.html (falls back to plain text). */
 function ownerLinkHtml(ownerId, label, { stopPool = false } = {}) {
-  const name = esc(label || "—");
-  const href = ownerProfileHref(ownerId);
-  if (!href) return name;
-  const stop = stopPool ? ' data-owner-link="1"' : "";
-  return `<a class="gpsl-link gpfl-owner-link" href="${esc(href)}"${stop}>${name}</a>`;
+  const html = ownerTagHtml({
+    ownerId,
+    ownerTag: label || "—",
+    link: !!ownerId,
+    compact: true,
+    showBadgeImage: false,
+  });
+  if (!stopPool) return html;
+  return html.replace("<a ", '<a data-owner-link="1" ');
 }
 
 function moneyNum(n) {
@@ -1871,6 +1875,7 @@ function wire() {
 
 async function main() {
   await initGlobal();
+  await loadOwnerSupporterMap().catch(() => {});
   initGpslInfoTips();
   state.isAdmin = await resolveAdmin();
   const adminPanel = document.getElementById("gpflAdminPanel");

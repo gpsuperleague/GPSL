@@ -1,4 +1,5 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import { supporterMarkHtml } from "./owner_badge.js";
 
 primeAdminPageChrome();
 
@@ -2008,7 +2009,7 @@ async function loadArchivedOwnersSection() {
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
       <td class="num">${overallCounter}</td>
       <td class="num">${i + 1}</td>
-      <td>${escapeWl(tag)}</td>
+      <td>${escapeWl(tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}</td>
       <td>${escapeWl(email)}</td>
       <td>${lastClubDisplay}</td>
       <td style="text-align:center">
@@ -2082,7 +2083,7 @@ function renderOnBreakSection(rows) {
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
       <td class="num">${overallStart + i + 1}</td>
       <td class="num">${i + 1}</td>
-      <td>${escapeWl(tag)}</td>
+      <td>${escapeWl(tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}</td>
       <td>${escapeWl(email)}</td>
       <td>${escapeWl(row.last_club_short_name || "—")}</td>
       <td>${escapeWl(formatWlUkDateTime(row.status_changed_at))}</td>
@@ -2325,7 +2326,7 @@ function renderWaitingListAdminRow(
     <td class="wl-col-owner num">${overallIndex ?? "—"}</td>
     <td class="num wl-pos">${pos ?? "—"}</td>
     ${dragCell}
-        <td>${escapeWl(row.owner_tag)}</td>
+        <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}</td>
         <td>${escapeWl(email)}</td>
     <td>${escapeWl(hasClub ? "—" : row.tier || "—")}</td>
     <td>${escapeWl(status)}</td>

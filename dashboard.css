@@ -3176,4 +3176,26 @@ img.header-league-badge {
   margin-right: 4px;
 }
 
-.owner-supporter-pill{margin-left:8px;font-size:12px;font-weight:600;color:#1a1a1a;background:#ffcc66;border-radius:4px;padding:2px 8px;vertical-align:middle;}
+.owner-supporter-pill{
+  margin-left:8px;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:0.02em;
+  color:#1a1200;
+  background:linear-gradient(180deg,#ffd978 0%,#f0b429 100%);
+  border:1px solid #c99212;
+  border-radius:4px;
+  padding:2px 8px;
+  vertical-align:middle;
+  white-space:nowrap;
+}
+.owner-supporter-pill--inline{
+  margin-left:6px;
+  font-size:10px;
+  padding:1px 6px;
+  line-height:1.35;
+}
+.owner-tag-chip .owner-tag-label,
+.club-owner-tag .owner-tag-label{
+  vertical-align:middle;
+}
