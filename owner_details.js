@@ -187,18 +187,32 @@ async function loadOwnerBadgeState(userId, tag) {
 }
 
 
-let ownerCanSetBadge = true;
+let ownerCanSetBadge = false;
 
 async function refreshOwnerSupporterBadgeGate() {
-  const { data } = await supabase.rpc("owner_registry_get_self");
-  ownerCanSetBadge = !!(data?.can_set_profile_image ?? data?.supporter_active);
+  ownerCanSetBadge = false;
+  const { data, error } = await supabase.rpc("owner_registry_get_self");
+  if (error) {
+    console.warn("owner_registry_get_self (badge gate):", error);
+  } else {
+    ownerCanSetBadge =
+      data?.can_set_profile_image === true || data?.supporter_active === true;
+  }
+
   const uploadBtn = document.getElementById("ownerBadgeUploadBtn");
+  const clearBtn = document.getElementById("ownerBadgeClearBtn");
   const fileInput = document.getElementById("ownerBadgeFile");
+  const controls = document.querySelector(".owner-badge-controls");
   if (fileInput) fileInput.disabled = !ownerCanSetBadge;
   if (uploadBtn) uploadBtn.disabled = !ownerCanSetBadge;
+  // Allow remove even when lapsed so owners can clear a stored badge.
+  if (clearBtn) clearBtn.disabled = false;
+  if (controls) controls.classList.toggle("owner-badge-controls--locked", !ownerCanSetBadge);
+  if (fileInput) fileInput.hidden = !ownerCanSetBadge;
+  if (uploadBtn) uploadBtn.hidden = !ownerCanSetBadge;
   if (!ownerCanSetBadge) {
     setOwnerBadgeHint(
-      "Profile image is a Ko-fi Supporter perk. Your saved image is kept but hidden while lapsed."
+      "Profile badge is a Ko-fi Supporter perk. Non-supporters cannot upload a new image."
     );
   }
   return ownerCanSetBadge;

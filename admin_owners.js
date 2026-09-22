@@ -2558,9 +2558,7 @@ async function setOwnerSupporterFlag(ownerId, isSupporter, checkboxEl) {
   setWlActionStatus(
     isSupporter
       ? "✅ Marked as Ko-fi Supporter."
-      : grace
-        ? `✅ Supporter unset — perks remain until ${grace}.`
-        : "✅ Supporter unset.",
+      : "✅ Supporter unset — perks revoked immediately.",
     true
   );
 }

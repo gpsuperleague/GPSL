@@ -116,7 +116,18 @@ function renderHeader(profile, totals) {
   `;
 
   const edit = document.getElementById("badgeEdit");
-  if (edit) edit.hidden = !profile.is_self;
+  if (edit) {
+    // Upload is a Supporter perk — only show controls for active supporters on their own profile.
+    const canEditBadge = !!(profile.is_self && profile.is_supporter);
+    edit.hidden = !canEditBadge;
+    if (profile.is_self && !profile.is_supporter) {
+      const status = document.getElementById("badgeStatus");
+      if (status) {
+        status.textContent =
+          "Profile badge upload is a Ko-fi Supporter perk.";
+      }
+    }
+  }
 }
 
 function renderTransfers(transfers, highPaid, highRecv) {
@@ -249,6 +260,12 @@ async function uploadBadge(ownerId) {
   }
   if (file.size > 1024 * 1024) {
     status.textContent = "Max 1 MB.";
+    return;
+  }
+
+  const { data: self } = await supabase.rpc("owner_registry_get_self");
+  if (!(self?.can_set_profile_image ?? self?.supporter_active)) {
+    status.textContent = "Profile badge is a Ko-fi Supporter perk.";
     return;
   }
 

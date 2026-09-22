@@ -472,8 +472,12 @@ function wireDashboardThemePanel(clubShort) {
   });
 
   document.getElementById("themeSaveBtn")?.addEventListener("click", async () => {
+    ownerSupporterSelf = null; // re-check — never trust a stale cache for perk saves
     const selfGate = await loadOwnerSupporterSelf();
-    if (!applySupporterThemeGate(selfGate)) return;
+    if (!applySupporterThemeGate(selfGate)) {
+      setThemeStatus("Colour scheme is a Ko-fi Supporter perk.", "err");
+      return;
+    }
     const btn = document.getElementById("themeSaveBtn");
     themeDraft = readThemeDraftFromForm();
     themeDraft.enabled = true;
@@ -529,13 +533,41 @@ async function loadOwnerSupporterSelf() {
 }
 
 function applySupporterThemeGate(self) {
-  const can = !!(self?.can_set_colour_scheme ?? self?.supporter_active);
+  // Fail closed: only unlock when the server explicitly says the perk is available.
+  const can =
+    self?.can_set_colour_scheme === true || self?.supporter_active === true;
   const panel = document.getElementById("clubThemePanel");
   if (!panel) return can;
-  panel.querySelectorAll("input, button, select").forEach((el) => {
+
+  let lock = document.getElementById("clubThemeSupporterLock");
+  if (!lock) {
+    lock = document.createElement("p");
+    lock.id = "clubThemeSupporterLock";
+    lock.className = "theme-status theme-status--err";
+    lock.setAttribute("role", "status");
+    panel.insertBefore(lock, panel.children[1] || null);
+  }
+
+  panel.querySelectorAll("input, button, select, textarea").forEach((el) => {
     el.disabled = !can;
   });
-  if (!can) setThemeStatus("Colour scheme is a Ko-fi Supporter perk.", "err");
+  panel.classList.toggle("club-theme-panel--locked", !can);
+
+  // Hide every control block under the title for non-supporters.
+  Array.from(panel.children).forEach((el) => {
+    if (el === lock) return;
+    if (el.tagName === "H2") return;
+    el.hidden = !can;
+  });
+  if (!can) {
+    lock.hidden = false;
+    lock.textContent =
+      "Dashboard colours are a Ko-fi Supporter perk. Upgrade on Ko-fi to unlock club colour schemes.";
+    setThemeStatus("Colour scheme is a Ko-fi Supporter perk.", "err");
+  } else {
+    lock.hidden = true;
+    lock.textContent = "";
+  }
   return can;
 }
 

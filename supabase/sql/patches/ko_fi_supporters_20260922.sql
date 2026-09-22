@@ -200,10 +200,12 @@ BEGIN
         )
     WHERE owner_id = v_uid;
   ELSE
+    -- Admin unset = immediate revoke (no grace). Month-end grace is for
+    -- automated Ko-fi lapse later; manual admin toggle must cut perks now.
     UPDATE public.gpsl_owner_registry
     SET is_supporter = false,
         supporter_unset_at = now(),
-        supporter_grace_until = public.supporter_month_end(v_today),
+        supporter_grace_until = NULL,
         supporter_note = coalesce(
           nullif(btrim(p_note), ''),
           supporter_note
