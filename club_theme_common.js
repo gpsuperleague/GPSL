@@ -336,6 +336,15 @@ export function normalizeThemeRow(row) {
 export async function loadClubDashboardTheme(supabase, clubShort) {
   if (!clubShort) return { ...GPSL_THEME_DEFAULTS };
 
+  // Prefer RPC: GPSL defaults unless the club owner is an active Supporter.
+  const { data: rpcData, error: rpcErr } = await supabase.rpc(
+    "club_dashboard_theme_get",
+    { p_club_short: clubShort }
+  );
+  if (!rpcErr && rpcData && typeof rpcData === "object") {
+    return normalizeThemeRow(rpcData);
+  }
+
   const { data, error } = await supabase
     .from("club_dashboard_theme")
     .select(
