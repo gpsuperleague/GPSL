@@ -67,10 +67,26 @@
   color: var(--club-accent);
 }
 
+.dashboard-user-email-row,
+#userEmailRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  min-width: 0;
+}
+
 #userEmail {
   color: #ccc;
   font-size: 14px;
-  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#dashboardSupporterPill {
+  flex-shrink: 0;
+  margin-left: 0;
 }
 
 

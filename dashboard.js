@@ -30,6 +30,26 @@ import {
 
 let ownerId = null;
 let isAdmin = false;
+
+async function refreshDashboardSupporterPill() {
+  const pill = document.getElementById("dashboardSupporterPill");
+  if (!pill) return;
+  try {
+    const { data, error } = await supabase.rpc("owner_registry_get_self");
+    if (error) {
+      pill.hidden = true;
+      return;
+    }
+    const active =
+      data?.supporter_active === true ||
+      data?.can_set_profile_image === true ||
+      data?.is_supporter === true;
+    pill.hidden = !active;
+  } catch (err) {
+    console.warn("dashboard supporter pill:", err);
+    pill.hidden = true;
+  }
+}
 let layoutSections = [];
 let panelLabels = {};
 let editMode = false;
@@ -186,7 +206,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   ownerId = user.id;
   isAdmin = isGpslAdminUser(user);
-  document.getElementById("userEmail").textContent = user.email;
+  const emailEl = document.getElementById("userEmail");
+  if (emailEl) emailEl.textContent = user.email;
+  void refreshDashboardSupporterPill();
 
   const { data: club, error } = await supabase
     .from("Clubs")
