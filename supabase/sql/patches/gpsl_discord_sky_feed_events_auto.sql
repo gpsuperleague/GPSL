@@ -642,18 +642,19 @@ BEGIN
 
   v_club := public.gpsl_discord_feed_club_name(NEW.winner_club_short_name);
   v_cup := CASE lower(NEW.cup_code)
-    WHEN 'super8' THEN 'Super 8'
-    WHEN 'plate' THEN 'Plate'
-    WHEN 'shield' THEN 'Shield'
-    WHEN 'bowl' THEN 'Bowl'
+    WHEN 'super8' THEN 'Super 8 Cup'
+    WHEN 'plate' THEN 'Plate Cup'
+    WHEN 'shield' THEN 'Shield Cup'
+    WHEN 'bowl' THEN 'Bowl Cup'
+    WHEN 'spoon' THEN 'Bowl Cup'
     WHEN 'league_cup' THEN 'League Cup'
-    ELSE upper(NEW.cup_code)
+    ELSE coalesce(nullif(btrim(NEW.cup_code), ''), 'Cup')
   END;
 
   PERFORM public.gpsl_discord_feed_enqueue(
     'cup',
     format('🏆 %s WINNERS — %s', upper(v_cup), v_club),
-    format('%s lift the %s (%s).', v_club, v_cup, coalesce(NEW.season_label, 'this season')),
+    format('%s win the %s (%s).', v_club, v_cup, coalesce(NEW.season_label, 'this season')),
     16766720,
     'cup_winner:' || coalesce(NEW.season_id::text, 'x') || ':' || NEW.cup_code,
     jsonb_build_object(
@@ -724,18 +725,19 @@ BEGIN
 
   v_club := public.gpsl_discord_feed_club_name(v_winner);
   v_cup := CASE lower(coalesce(NEW.cup_code, ''))
-    WHEN 'super8' THEN 'Super 8'
-    WHEN 'plate' THEN 'Plate'
-    WHEN 'shield' THEN 'Shield'
-    WHEN 'bowl' THEN 'Bowl'
+    WHEN 'super8' THEN 'Super 8 Cup'
+    WHEN 'plate' THEN 'Plate Cup'
+    WHEN 'shield' THEN 'Shield Cup'
+    WHEN 'bowl' THEN 'Bowl Cup'
+    WHEN 'spoon' THEN 'Bowl Cup'
     WHEN 'league_cup' THEN 'League Cup'
-    ELSE coalesce(upper(NEW.cup_code), 'Cup')
+    ELSE coalesce(nullif(btrim(NEW.cup_code), ''), 'Cup')
   END;
 
   PERFORM public.gpsl_discord_feed_enqueue(
     'cup',
     format('🏆 %s WINNERS — %s', upper(v_cup), v_club),
-    format('%s win the %s final.', v_club, v_cup),
+    format('%s win the %s.', v_club, v_cup),
     16766720,
     'cup_winner:' || coalesce(NEW.season_id::text, 'x') || ':' || coalesce(NEW.cup_code, 'cup'),
     jsonb_build_object('fixture_id', NEW.id, 'cup_code', NEW.cup_code, 'winner', v_winner)
