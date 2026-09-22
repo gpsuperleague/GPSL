@@ -472,6 +472,8 @@ function wireDashboardThemePanel(clubShort) {
   });
 
   document.getElementById("themeSaveBtn")?.addEventListener("click", async () => {
+    const selfGate = await loadOwnerSupporterSelf();
+    if (!applySupporterThemeGate(selfGate)) return;
     const btn = document.getElementById("themeSaveBtn");
     themeDraft = readThemeDraftFromForm();
     themeDraft.enabled = true;
@@ -511,6 +513,96 @@ function wireDashboardThemePanel(clubShort) {
   });
 }
 
+
+let ownerSupporterSelf = null;
+
+async function loadOwnerSupporterSelf() {
+  if (ownerSupporterSelf) return ownerSupporterSelf;
+  const { data, error } = await supabase.rpc("owner_registry_get_self");
+  if (error) {
+    console.warn("owner_registry_get_self:", error);
+    ownerSupporterSelf = {};
+  } else {
+    ownerSupporterSelf = data || {};
+  }
+  return ownerSupporterSelf;
+}
+
+function applySupporterThemeGate(self) {
+  const can = !!(self?.can_set_colour_scheme ?? self?.supporter_active);
+  const panel = document.getElementById("clubThemePanel");
+  if (!panel) return can;
+  panel.querySelectorAll("input, button, select").forEach((el) => {
+    el.disabled = !can;
+  });
+  if (!can) setThemeStatus("Colour scheme is a Ko-fi Supporter perk.", "err");
+  return can;
+}
+
+async function wireClubSwapPanel(fromClub) {
+  const panel = document.getElementById("clubSwapPanel");
+  if (!panel || !fromClub) return;
+  panel.hidden = false;
+  const select = document.getElementById("clubSwapSelect");
+  const status = document.getElementById("clubSwapStatus");
+  const btn = document.getElementById("clubSwapBtn");
+  const feeEl = document.getElementById("clubSwapFeeNote");
+  if (!select || !btn) return;
+
+  const { data, error } = await supabase.rpc("owner_club_swap_vacant_list");
+  if (error || !data?.ok) {
+    if (status) status.textContent = error?.message || data?.reason || "Club swap unavailable.";
+    return;
+  }
+  const vacant = Array.isArray(data.vacant) ? data.vacant : [];
+  select.innerHTML =
+    '<option value="">Select empty club…</option>' +
+    vacant
+      .map((c) => {
+        const delta = Number(c.value_delta) || 0;
+        const deltaLabel =
+          delta === 0
+            ? "same value"
+            : delta > 0
+              ? `+${Math.round(delta / 1e6)}m stadium`
+              : `${Math.round(delta / 1e6)}m stadium`;
+        return `<option value="${c.short_name}">${c.club_name} (${c.short_name}) · ${deltaLabel}</option>`;
+      })
+      .join("");
+  if (feeEl) {
+    feeEl.textContent = data.can_free_swap
+      ? "Supporter free swap available this season (empty clubs only)."
+      : `Swap fee 150m from club bank${data.free_swap_used ? " (free supporter swap already used this season)" : ""}.`;
+  }
+  btn.onclick = async () => {
+    const to = select.value;
+    if (!to) {
+      if (status) status.textContent = "Choose an empty club.";
+      return;
+    }
+    const feeNote = data.can_free_swap ? "free (Supporter)" : "150m club bank fee";
+    if (
+      !confirm(
+        `Swap from ${data.from_club} to ${to}?\n\nSquad, manager and cash move with you. History stays on each club. Fee: ${feeNote}.`
+      )
+    ) {
+      return;
+    }
+    btn.disabled = true;
+    if (status) status.textContent = "Swapping…";
+    const { data: res, error: swapErr } = await supabase.rpc("owner_club_swap_execute", {
+      p_to_club_short: to,
+    });
+    btn.disabled = false;
+    if (swapErr || !res?.ok) {
+      if (status) status.textContent = swapErr?.message || "Swap failed.";
+      return;
+    }
+    if (status) status.textContent = `Moved to ${res.to_club_name || to}. Reloading…`;
+    window.location.href = `club_details.html?club=${encodeURIComponent(res.to_club || to)}`;
+  };
+}
+
 async function loadDashboardThemeSection(clubShort) {
   const panel = document.getElementById("clubThemePanel");
   if (!panel) return;
@@ -527,6 +619,11 @@ async function loadDashboardThemeSection(clubShort) {
     const saved = await loadClubDashboardTheme(supabase, clubShort);
     writeThemeDraftToForm(saved);
     wireDashboardThemePanel(clubShort);
+    {
+      const self = await loadOwnerSupporterSelf();
+      applySupporterThemeGate(self);
+      await wireClubSwapPanel(clubShort);
+    }
     if (saved.enabled !== true) {
       const hasCustom =
         saved.color_primary !== GPSL_THEME_DEFAULTS.color_primary ||
@@ -543,6 +640,11 @@ async function loadDashboardThemeSection(clubShort) {
     console.warn("Club Details dashboard theme:", err);
     writeThemeDraftToForm(GPSL_THEME_DEFAULTS);
     wireDashboardThemePanel(clubShort);
+    {
+      const self = await loadOwnerSupporterSelf();
+      applySupporterThemeGate(self);
+      await wireClubSwapPanel(clubShort);
+    }
     setThemeStatus(
       "Theme settings unavailable — run supabase/sql/patches/club_dashboard_theme.sql in Supabase.",
       "err"

@@ -3175,3 +3175,5 @@ img.header-league-badge {
 .fixture-badge .league-badge {
   margin-right: 4px;
 }
+
+.owner-supporter-pill{margin-left:8px;font-size:12px;font-weight:600;color:#1a1a1a;background:#ffcc66;border-radius:4px;padding:2px 8px;vertical-align:middle;}

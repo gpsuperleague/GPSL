@@ -1450,11 +1450,16 @@ async function loadWaitingListAdmin() {
   if (!tableWrap) return;
 
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
-  const [boardRes, activityRes, timezoneMap] = await Promise.all([
+  const [boardRes, activityRes, timezoneMap, supporterRes] = await Promise.all([
     supabase.rpc("waiting_list_admin"),
     fetchOwnerActivityById(),
     fetchOwnerTimezoneMap(),
+    supabase.rpc("admin_owner_supporter_map"),
   ]);
+  const supporterMap =
+    supporterRes.error || !supporterRes.data || typeof supporterRes.data !== "object"
+      ? {}
+      : supporterRes.data;
 
   if (boardRes.error) {
     tableWrap.innerHTML = `<p class="note" style="color:#f88">❌ ${boardRes.error.message} — run waiting_list_priority_board_20260829.sql</p>`;
@@ -1474,6 +1479,7 @@ async function loadWaitingListAdmin() {
       .trim()
       .toUpperCase();
     const vid = clubKey ? videoByClub.get(clubKey) : null;
+    const supp = supporterMap[r.owner_id] || supporterMap[String(r.owner_id)] || {};
     return {
       ...r,
       activity: act
@@ -1486,6 +1492,9 @@ async function loadWaitingListAdmin() {
       security: activityRes.securityById.get(r.owner_id) || null,
       owner_timezone: timezoneMap.get(r.owner_id) || "",
       video: vid || { video_late_count: 0, video_failed_count: 0 },
+      is_supporter: !!supp.is_supporter,
+      supporter_active: !!supp.supporter_active,
+      supporter_grace_until: supp.supporter_grace_until || null,
     };
   };
 
@@ -1531,7 +1540,7 @@ async function loadWaitingListAdmin() {
       ? ` · ${snapMonths} month(s) snapshotted`
       : " · no month snapshots yet — click Record unplayed before simming leftovers";
 
-  const colSpan = 26;
+  const colSpan = 27;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
   let overallIndex = 0;
@@ -1541,7 +1550,7 @@ async function loadWaitingListAdmin() {
     `<thead>` +
     `<tr class="wl-group-row">` +
     `<th colspan="7" class="wl-group-owner">Owner</th>` +
-    `<th colspan="3" class="wl-group-season">Season</th>` +
+    `<th colspan="4" class="wl-group-season">Season</th>` +
     `<th colspan="13" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions">Actions</th>` +
     `</tr>` +
@@ -1553,6 +1562,7 @@ async function loadWaitingListAdmin() {
     `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
     `<th title="Confirmed for test season" style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
+    `<th title="Ko-fi Supporter (manual). Unset keeps perks until month end." style="text-align:center;line-height:1.25">Supporter</th>` +
     `<th class="wl-col-activity wl-col-login">Last login</th>` +
     `<th class="num wl-num-login">Since</th>` +
     `<th class="num wl-num-login" title="Total GPSL site logins (all time)">Logins</th>` +
@@ -1629,6 +1639,13 @@ async function loadWaitingListAdmin() {
     cb.addEventListener("click", (e) => e.stopPropagation());
     cb.addEventListener("change", () =>
       setWaitingListAuctionInvite(cb.dataset.id, cb.checked, cb)
+    );
+  });
+  tableWrap.querySelectorAll(".wl-supporter").forEach((cb) => {
+    cb.addEventListener("pointerdown", (e) => e.stopPropagation());
+    cb.addEventListener("click", (e) => e.stopPropagation());
+    cb.addEventListener("change", () =>
+      setOwnerSupporterFlag(cb.dataset.id, cb.checked, cb)
     );
   });
 
@@ -2321,6 +2338,11 @@ function renderWaitingListAdminRow(
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"
         title="Confirmed live season" ${liveOn ? "checked" : ""}>
     </td>
+    <td style="text-align:center">
+      <input type="checkbox" class="wl-supporter" data-id="${row.owner_id}"
+        title="${row.supporter_grace_until && !row.is_supporter ? `Grace until ${escapeWl(row.supporter_grace_until)}` : "Ko-fi Supporter"}"
+        ${row.is_supporter ? "checked" : ""}>
+    </td>
     <td class="wl-col-activity">${escapeWl(formatWlUkDateTime(lastAt))}</td>
     <td class="num wl-num-login ${sinceClass}">${escapeWl(since.text)}</td>
     <td class="num wl-num-login">${totalN}</td>
@@ -2516,6 +2538,28 @@ async function setWaitingListSeasonConfirmed(ownerId, which, confirmed, checkbox
     confirmed
       ? `✅ Marked confirmed for ${label} season.`
       : `✅ Cleared ${label} season confirmation.`,
+    true
+  );
+}
+
+async function setOwnerSupporterFlag(ownerId, isSupporter, checkboxEl) {
+  const { data, error } = await supabase.rpc("admin_owner_set_supporter", {
+    p_owner_id: ownerId,
+    p_is_supporter: !!isSupporter,
+    p_note: null,
+  });
+  if (error) {
+    if (checkboxEl) checkboxEl.checked = !isSupporter;
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  const grace = data?.supporter_grace_until;
+  setWlActionStatus(
+    isSupporter
+      ? "✅ Marked as Ko-fi Supporter."
+      : grace
+        ? `✅ Supporter unset — perks remain until ${grace}.`
+        : "✅ Supporter unset.",
     true
   );
 }

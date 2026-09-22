@@ -923,6 +923,23 @@
       <div class="theme-preview-wrap" id="themePreview"></div>
     </div>
 
+    
+    <div class="panel panel-bg" id="clubSwapPanel" hidden style="margin-top:20px;">
+      <h2 class="club-kits-title">Club swap</h2>
+      <p class="subsidy-intro">
+        Move your squad, manager and club bank into an <b>empty</b> club. Stadium, kits and finance history stay with each ShortName.
+        Supporters get one free swap per season; otherwise the fee is 150m from the club bank. Stadium value difference is adjusted on the moving balance.
+      </p>
+      <p id="clubSwapFeeNote" class="theme-status" style="margin:8px 0;"></p>
+      <div class="theme-actions" style="gap:8px;align-items:center;">
+        <select id="clubSwapSelect" class="theme-kit-select" aria-label="Empty club to swap into">
+          <option value="">Select empty club…</option>
+        </select>
+        <button type="button" id="clubSwapBtn" class="small-btn">Swap club</button>
+        <span id="clubSwapStatus" class="theme-status" role="status"></span>
+      </div>
+    </div>
+
     <div class="panel panel-bg" id="boardroomLinkPanel" style="margin-top:20px;">
       <h2 class="subsidy-title gpsl-has-tip" data-gpsl-tip="Prestige expectations, manager deal, and government subsidies live in the Boardroom." tabindex="0">Boardroom</h2>
       <p class="subsidy-intro">

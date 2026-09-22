@@ -49,7 +49,18 @@ function badgePublicUrl(path) {
 function renderHeader(profile, totals) {
   const tag = profile.owner_tag || profile.owner_name || "Owner";
   document.title = `${tag} — GPSL`;
-  document.getElementById("ownerTitle").textContent = tag;
+  const titleEl = document.getElementById("ownerTitle");
+  if (titleEl) {
+    titleEl.textContent = "";
+    titleEl.append(document.createTextNode(tag));
+    if (profile.is_supporter) {
+      const pill = document.createElement("span");
+      pill.className = "owner-supporter-pill";
+      pill.title = "Ko-fi Supporter";
+      pill.textContent = " Supporter";
+      titleEl.append(pill);
+    }
+  }
 
   const meta = [
     profile.current_club_name
@@ -295,6 +306,16 @@ async function loadProfile(ownerId) {
   }
 
   const profile = data.profile || {};
+  if (profile.is_supporter == null) {
+    const { data: pub } = await supabase
+      .from("gpsl_owner_profile_public")
+      .select("is_supporter")
+      .eq("owner_id", ownerId)
+      .maybeSingle();
+    if (pub && typeof pub.is_supporter === "boolean") {
+      profile.is_supporter = pub.is_supporter;
+    }
+  }
   if (profile.is_self) {
     const { data: wallet } = await supabase.rpc("owner_wallet_get_self");
     profile.owner_balance = wallet?.balance ?? 0;

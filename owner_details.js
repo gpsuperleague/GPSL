@@ -186,6 +186,24 @@ async function loadOwnerBadgeState(userId, tag) {
   renderOwnerBadgePreview(data?.badge_path, data?.owner_tag || tag);
 }
 
+
+let ownerCanSetBadge = true;
+
+async function refreshOwnerSupporterBadgeGate() {
+  const { data } = await supabase.rpc("owner_registry_get_self");
+  ownerCanSetBadge = !!(data?.can_set_profile_image ?? data?.supporter_active);
+  const uploadBtn = document.getElementById("ownerBadgeUploadBtn");
+  const fileInput = document.getElementById("ownerBadgeFile");
+  if (fileInput) fileInput.disabled = !ownerCanSetBadge;
+  if (uploadBtn) uploadBtn.disabled = !ownerCanSetBadge;
+  if (!ownerCanSetBadge) {
+    setOwnerBadgeHint(
+      "Profile image is a Ko-fi Supporter perk. Your saved image is kept but hidden while lapsed."
+    );
+  }
+  return ownerCanSetBadge;
+}
+
 function wireOwnerBadgeField(userId, getTag) {
   const uploadBtn = document.getElementById("ownerBadgeUploadBtn");
   const clearBtn = document.getElementById("ownerBadgeClearBtn");
@@ -210,6 +228,10 @@ function wireOwnerBadgeField(userId, getTag) {
   });
 
   uploadBtn.addEventListener("click", async () => {
+    if (!ownerCanSetBadge) {
+      setOwnerBadgeHint("Profile image is a Ko-fi Supporter perk.", true);
+      return;
+    }
     const file = fileInput.files?.[0];
     if (!file) {
       setOwnerBadgeHint("Choose a file first, then click Save badge.", true);
@@ -725,6 +747,7 @@ async function initOwnerDetailsPage() {
     }
   });
   wireOwnerBadgeField(user.id, () => storedTag || ownerEls.input.value);
+  await refreshOwnerSupporterBadgeGate();
 
   const { data: club, error } = await loadOwnerClub(user.id);
 
