@@ -2742,6 +2742,10 @@ export async function initGlobal() {
       import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`)
         .then((m) => m.initTransferNewsStrip())
         .catch((err) => console.warn("Transfer news strip skipped:", err));
+      // Supporter club colours on owner pages when theme_scope = club_pages
+      import(`./club_theme_common.js?v=${GLOBAL_JS_VERSION}`)
+        .then((m) => m.initOwnerClubThemeAuto(supabase))
+        .catch((err) => console.warn("Club theme auto-apply skipped:", err));
     }
   }
 }

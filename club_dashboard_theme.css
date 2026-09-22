@@ -43,3 +43,30 @@
   background: var(--club-accent);
   color: #111;
 }
+
+/* Extra owner-page surfaces when theme_scope = club_pages */
+.club-themed-scope .page-title,
+.club-themed-scope .section-title,
+.club-themed-scope .panel-title {
+  color: var(--club-accent);
+}
+
+.club-themed-scope .card {
+  background: var(--club-panel);
+  border-color: var(--club-border);
+}
+
+.club-themed-scope .button:not(.secondary):not(.danger):not(.sim-instant-btn),
+.club-themed-scope button.button:not(.secondary):not(.danger):not(.sim-instant-btn),
+.club-themed-scope .btn-result:not(.secondary),
+.club-themed-scope #themeSaveBtn.small-btn {
+  background: var(--club-accent);
+  color: #111;
+  border-color: var(--club-accent);
+}
+
+.club-themed-scope .button.secondary,
+.club-themed-scope button.button.secondary,
+.club-themed-scope .btn-result.secondary {
+  border-color: var(--club-border);
+}

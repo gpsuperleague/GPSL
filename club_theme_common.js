@@ -23,7 +23,68 @@ export const THEME_SCOPES = {
   clubPages: "club_pages",
 };
 
-/** @typedef {'dashboard'|'club_details'|'owner_details'} ThemePageKey */
+/**
+ * Owner pages that pick up club colours when theme_scope = club_pages.
+ * Keys match HTML filenames (without .html). Dashboard always applies when enabled.
+ * Top nav / admin / public pages are never included.
+ */
+export const CLUB_PAGES_THEME_KEYS = new Set([
+  "club_details",
+  "owner_details",
+  "owner_profile",
+  "squad",
+  "finances",
+  "finances_incoming",
+  "finances_outgoing",
+  "finances_ledger",
+  "finances_accounts",
+  "fixtures",
+  "club_fixtures",
+  "fixture_schedule",
+  "matchday",
+  "inbox",
+  "stadium",
+  "transfer_center",
+  "scouting",
+  "history",
+  "progress",
+  "league_stats",
+  "league_injuries",
+  "cups",
+  "playoffs",
+  "world_cup",
+  "challenges",
+  "club_challenges",
+  "club_prizes",
+  "owner_rankings",
+  "nextgen_youth",
+  "medical_room",
+  "boardroom",
+  "central_bank",
+  "central_bank_loans",
+  "central_bank_counter",
+  "bookies",
+  "fantasy",
+  "season_calendar",
+  "national_team",
+  "nation_select",
+  "nation_player_pool",
+  "international_matchday",
+  "player_career",
+  "expiring_contracts",
+  "legacy_players",
+  "special_auction",
+  "gpdb",
+  "mgdb",
+  "draftauction",
+  "draftauction_player",
+  "season_transfers",
+  "season_manager_transfers",
+  "owners_bank",
+  "owners_shop",
+]);
+
+/** @typedef {string} ThemePageKey */
 
 export function normalizeThemeScope(value) {
   const v = String(value ?? "")
@@ -33,14 +94,81 @@ export function normalizeThemeScope(value) {
   return THEME_SCOPES.dashboard;
 }
 
+/** Page key from CURRENT_PAGE or the HTML filename (e.g. squad.html -> squad). */
+export function themePageKeyFromLocation() {
+  if (typeof window === "undefined") return "";
+  const fromWindow = String(window.CURRENT_PAGE || "")
+    .trim()
+    .toLowerCase();
+  if (fromWindow) return fromWindow.replace(/\.html$/, "");
+  const path = String(window.location?.pathname || "");
+  const file = path.split("/").pop() || "";
+  return file.replace(/\.html$/i, "").toLowerCase();
+}
+
 export function themeAppliesOnPage(theme, pageKey) {
   if (!theme?.enabled) return false;
+  const key = String(pageKey || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\.html$/, "");
+  if (!key) return false;
+  if (key === "dashboard") return true;
   const scope = normalizeThemeScope(theme.theme_scope);
-  if (pageKey === "dashboard") return true;
-  if (pageKey === "club_details" || pageKey === "owner_details") {
-    return scope === THEME_SCOPES.clubPages;
+  if (scope !== THEME_SCOPES.clubPages) return false;
+  return CLUB_PAGES_THEME_KEYS.has(key);
+}
+
+export function ensureClubThemeStylesheet() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("clubDashboardThemeCss")) return;
+  if (document.querySelector('link[href*="club_dashboard_theme.css"]')) return;
+  const link = document.createElement("link");
+  link.id = "clubDashboardThemeCss";
+  link.rel = "stylesheet";
+  link.href = "club_dashboard_theme.css?v=20260922-club-pages";
+  document.head.appendChild(link);
+}
+
+/**
+ * Apply the signed-in owner's club theme on allowlisted owner pages.
+ * No-op on admin/login/public pages and when theme is off / dashboard-only.
+ */
+export async function initOwnerClubThemeAuto(supabaseClient) {
+  if (!supabaseClient || typeof window === "undefined") return null;
+  if (window.GPSL_PRE_CLUB) return null;
+
+  const pageKey = themePageKeyFromLocation();
+  if (!pageKey) return null;
+  if (
+    pageKey.startsWith("admin") ||
+    pageKey === "login" ||
+    pageKey === "signup" ||
+    pageKey === "index"
+  ) {
+    return null;
   }
-  return false;
+
+  if (pageKey !== "dashboard" && !CLUB_PAGES_THEME_KEYS.has(pageKey)) {
+    return null;
+  }
+
+  const {
+    data: { user },
+  } = await supabaseClient.auth.getUser();
+  if (!user) return null;
+
+  const { data: club, error: clubErr } = await supabaseClient
+    .from("Clubs")
+    .select("ShortName")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  if (clubErr || !club?.ShortName) return null;
+
+  ensureClubThemeStylesheet();
+  const theme = await loadClubDashboardTheme(supabaseClient, club.ShortName);
+  applyClubDashboardTheme(theme, { pageKey });
+  return theme;
 }
 
 /** Suggested tile label colour when sampling from a kit. */
