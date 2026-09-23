@@ -2211,6 +2211,7 @@ async function loadArchivedOwnersSection() {
           data-tag="${escapeWl(tag)}"
           aria-label="Actions for ${escapeWl(tag)}">
           <option value="">Actions…</option>
+          <option value="invite_season1">Invite to season 1</option>
           <option value="unarchive">Unarchive → waiting</option>
           <option value="delete_gpsl">Delete from GPSL</option>
         </select>
@@ -2273,6 +2274,7 @@ function renderOnBreakSection(rows) {
           data-tag="${escapeWl(tag)}"
           aria-label="Actions for ${escapeWl(tag)}">
           <option value="">Actions…</option>
+          <option value="invite_season1">Invite to season 1</option>
           <option value="to_waiting">→ Waiting</option>
           <option value="add_club">Add club</option>
           <option value="remove_waiting">Archive</option>
@@ -2489,16 +2491,17 @@ function renderWaitingListAdminRow(
     section === "owners" || hasClub
       ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" aria-label="Actions">
         <option value="">Actions…</option>
+        <option value="invite_season1">Invite to season 1</option>
         <option value="remove_club">Remove club → on break</option>
         <option value="to_waiting">→ Waiting</option>
       </select>`
       : `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" aria-label="Actions">
         <option value="">Actions…</option>
+        <option value="invite_season1">Invite to season 1</option>
         <option value="add_club">Add club</option>
         <option value="absence_on">Mark on absence</option>
         <option value="absence_off">Clear absence</option>
         <option value="remove_waiting">Remove → archived</option>
-        <option value="invite_season1">Invite to season 1</option>
       </select>`;
 
   return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" data-filter-text="${escapeWl(filterText)}">
