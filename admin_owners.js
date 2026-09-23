@@ -1422,34 +1422,104 @@ function compareRowsBySeason1ThenActivity(a, b) {
   return compareRowsByActivitySort(a, b);
 }
 
-function formatSeason1StatusCell(row) {
+/** Season 1 invite lifecycle for admin markers. */
+function season1InviteMarker(row) {
   const num = season1QueueNum(row);
   const response = String(row?.season1_invite_response || "").toLowerCase();
   const status = String(row?.season1_invite_status || "").toLowerCase();
-  let badge = "";
+  const respondedAt = row?.season1_invite_responded_at
+    ? formatWlUkDateTime(row.season1_invite_responded_at)
+    : "";
+  const deadline =
+    row?.season1_invite_deadline_label ||
+    (row?.season1_invite_deadline_at
+      ? formatWlUkDateTime(row.season1_invite_deadline_at)
+      : "");
+  const offeredAt = row?.season1_invite_offered_at
+    ? formatWlUkDateTime(row.season1_invite_offered_at)
+    : "";
+
   if (response === "accepted") {
-    badge = `<div class="wl-s1-badge ok">Accepted</div>`;
-  } else if (response === "declined") {
-    badge = `<div class="wl-s1-badge bad">Declined</div>`;
-  } else if (status === "offered") {
-    const dl =
-      row.season1_invite_deadline_label ||
-      (row.season1_invite_deadline_at
-        ? formatWlUkDateTime(row.season1_invite_deadline_at)
-        : "");
-    badge = `<div class="wl-s1-badge offer" title="${escapeWl(dl || "Pending")}">Offered</div>`;
-  } else if (status === "expired") {
-    badge = `<div class="wl-s1-badge muted">Expired</div>`;
-  } else if (num != null) {
-    badge = `<div class="wl-s1-badge queued">Queued</div>`;
+    return {
+      kind: "accepted",
+      cellLabel: "Accepted",
+      tagLabel: "S1 Accepted",
+      title: respondedAt ? `Accepted ${respondedAt}` : "Accepted Season 1 invite",
+    };
   }
+  if (response === "declined") {
+    return {
+      kind: "rejected",
+      cellLabel: "Rejected",
+      tagLabel: "S1 Rejected",
+      title: respondedAt ? `Rejected ${respondedAt}` : "Rejected Season 1 invite",
+    };
+  }
+  if (status === "offered") {
+    return {
+      kind: "invited",
+      cellLabel: "Invited",
+      tagLabel: "S1 Invited",
+      title: [
+        "Season 1 invite sent — awaiting reply",
+        offeredAt ? `Offered ${offeredAt}` : "",
+        deadline ? `Deadline ${deadline}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    };
+  }
+  if (status === "expired") {
+    return {
+      kind: "expired",
+      cellLabel: "Expired",
+      tagLabel: "S1 Expired",
+      title: "Season 1 invite expired without a reply",
+    };
+  }
+  if (num != null || status === "queued") {
+    return {
+      kind: "queued",
+      cellLabel: "Queued",
+      tagLabel: "S1 Queued",
+      title: num != null ? `Queued as S1#${num} — not invited yet` : "Queued for Season 1",
+    };
+  }
+  return null;
+}
+
+function season1TagMarkHtml(row) {
+  const m = season1InviteMarker(row);
+  if (!m) return "";
+  return `<span class="wl-s1-tag-mark ${escapeWl(m.kind)}" title="${escapeWl(m.title)}">${escapeWl(m.tagLabel)}</span>`;
+}
+
+function formatSeason1StatusCell(row) {
+  const num = season1QueueNum(row);
+  const m = season1InviteMarker(row);
+  const badge = m
+    ? `<div class="wl-s1-badge ${
+        m.kind === "accepted"
+          ? "ok"
+          : m.kind === "rejected"
+            ? "bad"
+            : m.kind === "invited"
+              ? "offer"
+              : m.kind === "expired"
+                ? "muted"
+                : "queued"
+      }" title="${escapeWl(m.title)}">${escapeWl(m.cellLabel)}</div>`
+    : "";
   const numHtml =
     num != null
       ? `<span class="wl-s1-num">${num}</span>`
       : `<span class="wl-s1-num empty">+</span>`;
+  const tip = m?.title
+    ? `${m.title}. Click to assign/clear Season 1 #.`
+    : "Click to assign next Season 1 # (click again to clear and bump others)";
   return `<td class="wl-col-season" style="text-align:center;padding:4px 2px">
     <button type="button" class="wl-s1-cell" data-owner-id="${escapeWl(row.owner_id)}"
-      title="Click to assign next Season 1 # (click again to clear and bump others)">
+      title="${escapeWl(tip)}">
       ${numHtml}${badge}
     </button>
   </td>`;
@@ -2450,6 +2520,7 @@ function renderWaitingListAdminRow(
     sharedCount > 1
       ? `<span class="unplayed-warn" title="Shared recent IP with: ${escapeWl(otherShared.join(", ") || sharedWith.join(", "))}">Yes (${sharedCount})</span>`
       : `<span class="muted">No</span>`;
+  const s1Mark = season1InviteMarker(row);
   const filterText = [
     row.owner_tag,
     email,
@@ -2466,6 +2537,9 @@ function renderWaitingListAdminRow(
     lastCountry,
     lastCountryName,
     lastIp,
+    s1Mark?.tagLabel,
+    s1Mark?.cellLabel,
+    s1Mark?.kind,
   ]
     .filter(Boolean)
     .join(" ");
@@ -2508,7 +2582,7 @@ function renderWaitingListAdminRow(
     <td class="wl-col-owner num">${overallIndex ?? "—"}</td>
     <td class="num wl-pos">${pos ?? "—"}</td>
     ${dragCell}
-        <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}</td>
+        <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${season1TagMarkHtml(row)}</td>
         <td>${escapeWl(email)}</td>
     <td>${escapeWl(hasClub ? "—" : row.tier || "—")}</td>
     <td>${escapeWl(status)}</td>

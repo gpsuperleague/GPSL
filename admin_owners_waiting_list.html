@@ -6,19 +6,32 @@
   <style>html,body{background:#111;color:#ddd;margin:0}
     .wl-s1-cell {
       display: flex; flex-direction: column; align-items: center; gap: 2px;
-      width: 100%; min-width: 3.2em; padding: 4px 2px; margin: 0;
+      width: 100%; min-width: 3.6em; padding: 4px 2px; margin: 0;
       background: #141414; border: 1px solid #444; border-radius: 4px;
       color: #ff9900; cursor: pointer; font: inherit;
     }
     .wl-s1-cell:hover { border-color: #ff9900; background: #1c1810; }
     .wl-s1-num { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14px; line-height: 1.1; }
     .wl-s1-num.empty { color: #666; font-weight: 600; }
-    .wl-s1-badge { font-size: 10px; line-height: 1.1; color: #aaa; }
-    .wl-s1-badge.ok { color: #8d8; }
-    .wl-s1-badge.bad { color: #f88; }
-    .wl-s1-badge.offer { color: #fc6; }
-    .wl-s1-badge.queued { color: #9ab; }
-    .wl-s1-badge.muted { color: #777; }
+    .wl-s1-badge {
+      font-size: 9px; line-height: 1.2; font-weight: 700; letter-spacing: 0.02em;
+      text-transform: uppercase; padding: 1px 4px; border-radius: 3px;
+    }
+    .wl-s1-badge.ok { color: #0a0; background: #1a2a1a; }
+    .wl-s1-badge.bad { color: #f88; background: #2a1515; }
+    .wl-s1-badge.offer { color: #fc6; background: #2a2210; }
+    .wl-s1-badge.queued { color: #9ab; background: #151820; }
+    .wl-s1-badge.muted { color: #888; background: #1a1a1a; }
+    .wl-s1-tag-mark {
+      display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 3px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.02em; vertical-align: middle;
+      white-space: nowrap;
+    }
+    .wl-s1-tag-mark.invited { color: #fc6; background: #2a2210; border: 1px solid #664; }
+    .wl-s1-tag-mark.accepted { color: #8d8; background: #1a2a1a; border: 1px solid #363; }
+    .wl-s1-tag-mark.rejected { color: #f88; background: #2a1515; border: 1px solid #633; }
+    .wl-s1-tag-mark.queued { color: #9ab; background: #151820; border: 1px solid #345; }
+    .wl-s1-tag-mark.expired { color: #888; background: #1a1a1a; border: 1px solid #444; }
 
   </style>
   <title>Season owner board — GPSL Admin</title>
@@ -272,6 +285,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260923-s1-invite-all-sections"></script>
+  <script type="module" src="admin_owners.js?v=20260923-s1-invite-markers"></script>
 </body>
 </html>
