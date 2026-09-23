@@ -4,7 +4,7 @@
 -- Layout for waiting_list.html (exclusive — each owner in at most one panel):
 --   Left:  Confirmed for Season 1  (accepted) — highest priority
 --   Middle: Invited               (offer pending) — next
---   Right: Owner waiting list     (everyone else who is NOT archived)
+--   Right: Owner waiting list     (ALL other non-archived owners)
 --
 -- Depends on: season1_league_invite_queue_20260923.sql
 -- Safe re-run.
@@ -32,7 +32,6 @@ DECLARE
 BEGIN
   v_on_board_mode := 'invited';
 
-  -- Admin sort only when every non-archived, non-S1-panel owner has a sort key
   SELECT coalesce(bool_and(
     r.waiting_list_use_admin_sort AND r.waiting_list_admin_sort IS NOT NULL
   ), false)
@@ -49,7 +48,7 @@ BEGIN
       )
     );
 
-  -- Middle panel: Season 1 invites awaiting a reply
+  -- Middle: Season 1 invites awaiting reply
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -127,7 +126,7 @@ BEGIN
   INTO v_on_board, v_on_board_total, v_self_on_board_pos
   FROM invited_ranked;
 
-  -- Left panel: accepted Season 1
+  -- Left: accepted Season 1
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -198,7 +197,7 @@ BEGIN
   INTO v_s1_confirmed, v_s1_confirmed_total, v_self_s1_confirmed_pos
   FROM confirmed_ranked;
 
-  -- Right panel: ALL non-archived owners who are not Confirmed and not Invited
+  -- Right: ALL non-archived owners who are not Confirmed and not Invited
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -247,7 +246,6 @@ BEGIN
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
     WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
-      -- Exclusive panels: Confirmed > Invited > this board
       AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
       AND NOT (
         r.season1_invite_status = 'offered'

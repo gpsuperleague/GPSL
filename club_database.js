@@ -95,7 +95,7 @@ function renderInterestBanner() {
 
   const parts = [];
   parts.push(
-    `<b>Club interest</b> — waiting-list / invited owners mark <b>1 interest</b> and <b>1 backup</b> on any club. Hover ★ / ☆ to see who.`
+    `<b>Club preference</b> — mark <b>1 interest</b> and <b>1 backup</b> on any club (waiting-list owners and current club owners). Hover ★ / ☆ to see who and spot clashes.`
   );
   if (url) {
     parts.push(
@@ -122,7 +122,7 @@ function renderInterestBanner() {
     parts.push(" You can view marks; set your owner tag on Owner details to mark clubs.");
   } else {
     parts.push(
-      ' Set your owner tag on <a href="awaiting_club.html">Owner details</a> if you are on the waiting list.'
+      ' Sign in with an owner account (and set your owner tag) to mark preferred clubs.'
     );
   }
 
