@@ -4,7 +4,8 @@
 -- Layout for waiting_list.html (exclusive — each owner in at most one panel):
 --   Left:  Confirmed for Season 1  (accepted) — highest priority
 --   Middle: Invited               (offer pending) — next
---   Right: Owner waiting list     (everyone else; rejectors sink to bottom)
+--   Right: Owner waiting list     (everyone else eligible: club owners,
+--          waiting-list members, auction-invitees; rejectors sink to bottom)
 --
 -- Depends on: season1_league_invite_queue_20260923.sql
 --              waiting_list_public_invited_vs_queue_20260921.sql
@@ -39,11 +40,22 @@ BEGIN
   INTO v_use_admin
   FROM public.gpsl_owner_registry r
   JOIN auth.users u ON u.id = r.owner_id
-  WHERE (
-      public.waiting_list_on_list_status(r.status)
-      AND NOT EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
+  WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
+    AND coalesce(r.status, '') IS DISTINCT FROM 'on_break'
+    AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
+    AND NOT (
+      r.season1_invite_status = 'offered'
+      AND r.season1_invite_response IS NULL
+      AND (
+        r.season1_invite_deadline_at IS NULL
+        OR r.season1_invite_deadline_at > now()
+      )
     )
-    OR EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id);
+    AND (
+      public.waiting_list_on_list_status(r.status)
+      OR r.status = 'awaiting_club_auction'
+      OR EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
+    );
 
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
@@ -190,7 +202,8 @@ BEGIN
   INTO v_s1_confirmed, v_s1_confirmed_total, v_self_s1_confirmed_pos
   FROM confirmed_ranked;
 
-  -- Right panel: waiting board (rejectors last)
+  -- Right panel: everyone else (not Confirmed, not Invited)
+  -- Includes club owners, waiting-list members, and auction-invitees.
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -215,8 +228,12 @@ BEGIN
       u.created_at AS account_created_at,
       r.waiting_list_admin_sort AS admin_sort,
       coalesce(r.confirmed_test_season, false) AS confirmed_test_season,
-      true AS has_club,
-      'club_owner'::text AS list_kind,
+      EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id) AS has_club,
+      CASE
+        WHEN EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
+          THEN 'club_owner'::text
+        ELSE 'waiting'::text
+      END AS list_kind,
       lc.country_code,
       coalesce(
         nullif(btrim(coalesce(r.owner_timezone, '')), ''),
@@ -234,48 +251,14 @@ BEGIN
     JOIN auth.users u ON u.id = r.owner_id
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
-    WHERE EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
-      -- Exclusive panels: Confirmed > Invited > this board
-      AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
-      AND NOT (
-        r.season1_invite_status = 'offered'
-        AND r.season1_invite_response IS NULL
-        AND (
-          r.season1_invite_deadline_at IS NULL
-          OR r.season1_invite_deadline_at > now()
-        )
+    WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
+      AND coalesce(r.status, '') IS DISTINCT FROM 'on_break'
+      -- Eligible for this page: club, waiting-list status, or auction invite
+      AND (
+        EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
+        OR public.waiting_list_on_list_status(r.status)
+        OR r.status = 'awaiting_club_auction'
       )
-
-    UNION ALL
-
-    SELECT
-      r.owner_id,
-      coalesce(nullif(btrim(public.owner_registry_resolve_tag(r.owner_id)), ''), '—') AS owner_tag,
-      r.status AS registry_status,
-      u.created_at AS account_created_at,
-      r.waiting_list_admin_sort AS admin_sort,
-      coalesce(r.confirmed_test_season, false) AS confirmed_test_season,
-      false AS has_club,
-      'waiting'::text AS list_kind,
-      lc.country_code,
-      coalesce(
-        nullif(btrim(coalesce(r.owner_timezone, '')), ''),
-        (
-          SELECT nullif(btrim(coalesce(c.owner_timezone, '')), '')
-          FROM public."Clubs" c
-          WHERE c.owner_id = r.owner_id
-          ORDER BY c."ShortName"
-          LIMIT 1
-        ),
-        lt.timezone_name
-      ) AS origin_timezone,
-      (r.season1_invite_response = 'declined') AS season1_rejected
-    FROM public.gpsl_owner_registry r
-    JOIN auth.users u ON u.id = r.owner_id
-    LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
-    LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
-    WHERE public.waiting_list_on_list_status(r.status)
-      AND NOT EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
       -- Exclusive panels: Confirmed > Invited > this board
       AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
       AND NOT (
