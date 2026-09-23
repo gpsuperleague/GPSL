@@ -1,14 +1,12 @@
 -- =============================================================================
--- Waiting list public: Season 1 confirmed / Invited / rejectors at bottom
+-- Waiting list public: Season 1 confirmed / Invited / Owner waiting list
 --
 -- Layout for waiting_list.html (exclusive — each owner in at most one panel):
 --   Left:  Confirmed for Season 1  (accepted) — highest priority
 --   Middle: Invited               (offer pending) — next
---   Right: Owner waiting list     (everyone else eligible: club owners,
---          waiting-list members, auction-invitees; rejectors sink to bottom)
+--   Right: Owner waiting list     (everyone else who is NOT archived)
 --
 -- Depends on: season1_league_invite_queue_20260923.sql
---              waiting_list_public_invited_vs_queue_20260921.sql
 -- Safe re-run.
 -- =============================================================================
 
@@ -34,14 +32,13 @@ DECLARE
 BEGIN
   v_on_board_mode := 'invited';
 
+  -- Admin sort only when every non-archived, non-S1-panel owner has a sort key
   SELECT coalesce(bool_and(
     r.waiting_list_use_admin_sort AND r.waiting_list_admin_sort IS NOT NULL
   ), false)
   INTO v_use_admin
   FROM public.gpsl_owner_registry r
-  JOIN auth.users u ON u.id = r.owner_id
   WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
-    AND coalesce(r.status, '') IS DISTINCT FROM 'on_break'
     AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
     AND NOT (
       r.season1_invite_status = 'offered'
@@ -50,13 +47,9 @@ BEGIN
         r.season1_invite_deadline_at IS NULL
         OR r.season1_invite_deadline_at > now()
       )
-    )
-    AND (
-      public.waiting_list_on_list_status(r.status)
-      OR r.status = 'awaiting_club_auction'
-      OR EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
     );
 
+  -- Middle panel: Season 1 invites awaiting a reply
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -73,7 +66,6 @@ BEGIN
     WHERE nullif(btrim(coalesce(e.timezone_name, '')), '') IS NOT NULL
     ORDER BY e.owner_id, e.logged_in_at DESC, e.id DESC
   ),
-    -- Middle panel: Season 1 invites awaiting a reply
   invited AS (
     SELECT
       r.owner_id,
@@ -82,7 +74,6 @@ BEGIN
       r.season1_invite_offered_at AS invited_at,
       r.season1_invite_deadline_at AS deadline_at,
       lc.country_code,
-      -- Login-origin tz for UK+/- (do NOT prefer saved profile — that caused India+"Same")
       lt.timezone_name AS origin_timezone,
       coalesce(
         nullif(btrim(coalesce(r.owner_timezone, '')), ''),
@@ -97,7 +88,8 @@ BEGIN
     FROM public.gpsl_owner_registry r
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
-    WHERE r.season1_invite_status = 'offered'
+    WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
+      AND r.season1_invite_status = 'offered'
       AND r.season1_invite_response IS NULL
       AND (
         r.season1_invite_deadline_at IS NULL
@@ -173,7 +165,8 @@ BEGIN
     FROM public.gpsl_owner_registry r
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
-    WHERE r.season1_invite_response = 'accepted'
+    WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
+      AND r.season1_invite_response = 'accepted'
   ),
   confirmed_ranked AS (
     SELECT
@@ -205,8 +198,7 @@ BEGIN
   INTO v_s1_confirmed, v_s1_confirmed_total, v_self_s1_confirmed_pos
   FROM confirmed_ranked;
 
-  -- Right panel: everyone else (not Confirmed, not Invited)
-  -- Includes club owners, waiting-list members, and auction-invitees.
+  -- Right panel: ALL non-archived owners who are not Confirmed and not Invited
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -255,13 +247,6 @@ BEGIN
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
     WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
-      AND coalesce(r.status, '') IS DISTINCT FROM 'on_break'
-      -- Eligible for this page: club, waiting-list status, or auction invite
-      AND (
-        EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
-        OR public.waiting_list_on_list_status(r.status)
-        OR r.status = 'awaiting_club_auction'
-      )
       -- Exclusive panels: Confirmed > Invited > this board
       AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
       AND NOT (
@@ -279,7 +264,6 @@ BEGIN
       row_number() OVER (
         ORDER BY
           CASE WHEN b.has_club THEN 0 ELSE 1 END,
-          -- Rejected Season 1 sink to bottom within their section
           CASE WHEN b.season1_rejected THEN 1 ELSE 0 END,
           CASE WHEN v_use_admin THEN b.admin_sort END NULLS LAST,
           b.account_created_at,
