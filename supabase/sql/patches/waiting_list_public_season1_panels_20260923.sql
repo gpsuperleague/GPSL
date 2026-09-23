@@ -1,12 +1,13 @@
 -- =============================================================================
 -- Waiting list public: Season 1 confirmed / Invited / Owner waiting list
 --
--- FIX: Owner waiting list was empty because the board CTE INNER JOINed
--- auth.users. Confirmed/Invited panels do not — so they could show people
--- while the waiting column stayed at 0 when auth.users isn't visible to the
--- function role. Board now uses waiting_list_account_created_at() instead.
+-- board_total was 0 while invited=14 confirmed=6 because the board only scanned
+-- gpsl_owner_registry rows that survived S1 filters. Admin board also surfaces
+-- club owners; some may be missing/odd in registry. Board owner set is now:
+--   • every non-archived registry row, PLUS
+--   • every Clubs.owner_id
+-- then exclude Confirmed + live Invited only.
 --
--- Right panel = ALL non-archived owners who are not Confirmed and not Invited.
 -- Safe re-run.
 -- =============================================================================
 
@@ -29,8 +30,35 @@ DECLARE
   v_s1_confirmed_total int;
   v_self_s1_confirmed_pos int;
   v_use_admin boolean;
+  v_debug jsonb;
 BEGIN
   v_on_board_mode := 'invited';
+
+  -- Debug snapshot (also returned) so empty boards are explainable
+  SELECT jsonb_build_object(
+    'registry_non_archived', count(*) FILTER (WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'),
+    'registry_accepted', count(*) FILTER (WHERE r.season1_invite_response = 'accepted'),
+    'registry_offered_live', count(*) FILTER (
+      WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
+        AND r.season1_invite_status = 'offered'
+        AND r.season1_invite_response IS NULL
+        AND (r.season1_invite_deadline_at IS NULL OR r.season1_invite_deadline_at > now())
+    ),
+    'registry_should_board', count(*) FILTER (
+      WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
+        AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
+        AND NOT (
+          r.season1_invite_status = 'offered'
+          AND r.season1_invite_response IS NULL
+          AND (r.season1_invite_deadline_at IS NULL OR r.season1_invite_deadline_at > now())
+        )
+    ),
+    'club_owners', (
+      SELECT count(DISTINCT c.owner_id) FROM public."Clubs" c WHERE c.owner_id IS NOT NULL
+    )
+  )
+  INTO v_debug
+  FROM public.gpsl_owner_registry r;
 
   SELECT coalesce(bool_and(
     r.waiting_list_use_admin_sort AND r.waiting_list_admin_sort IS NOT NULL
@@ -197,8 +225,7 @@ BEGIN
   INTO v_s1_confirmed, v_s1_confirmed_total, v_self_s1_confirmed_pos
   FROM confirmed_ranked;
 
-  -- Right: ALL non-archived owners who are not Confirmed and not Invited
-  -- (no auth.users join — that was wiping this panel to 0)
+  -- Right: union of registry + club owners, minus Confirmed/Invited/archived
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -215,21 +242,31 @@ BEGIN
     WHERE nullif(btrim(coalesce(e.timezone_name, '')), '') IS NOT NULL
     ORDER BY e.owner_id, e.logged_in_at DESC, e.id DESC
   ),
+  candidate_ids AS (
+    SELECT r.owner_id
+    FROM public.gpsl_owner_registry r
+    WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
+    UNION
+    SELECT c.owner_id
+    FROM public."Clubs" c
+    WHERE c.owner_id IS NOT NULL
+  ),
   board AS (
     SELECT
-      r.owner_id,
-      coalesce(nullif(btrim(public.owner_registry_resolve_tag(r.owner_id)), ''), '—') AS owner_tag,
-      r.status AS registry_status,
+      ids.owner_id,
+      coalesce(nullif(btrim(public.owner_registry_resolve_tag(ids.owner_id)), ''), '—') AS owner_tag,
+      coalesce(r.status, 'active') AS registry_status,
       coalesce(
-        public.waiting_list_account_created_at(r.owner_id),
+        public.waiting_list_account_created_at(ids.owner_id),
         r.status_changed_at,
         r.returned_to_list_at
       ) AS account_created_at,
       r.waiting_list_admin_sort AS admin_sort,
       coalesce(r.confirmed_test_season, false) AS confirmed_test_season,
-      EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id) AS has_club,
+      true AS has_club_flag,
+      EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = ids.owner_id) AS has_club,
       CASE
-        WHEN EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
+        WHEN EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = ids.owner_id)
           THEN 'club_owner'::text
         ELSE 'waiting'::text
       END AS list_kind,
@@ -240,19 +277,24 @@ BEGIN
         (
           SELECT nullif(btrim(coalesce(c.owner_timezone, '')), '')
           FROM public."Clubs" c
-          WHERE c.owner_id = r.owner_id
+          WHERE c.owner_id = ids.owner_id
           ORDER BY c."ShortName"
           LIMIT 1
         )
       ) AS owner_timezone,
       (r.season1_invite_response = 'declined') AS season1_rejected
-    FROM public.gpsl_owner_registry r
-    LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
-    LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
+    FROM candidate_ids ids
+    LEFT JOIN public.gpsl_owner_registry r ON r.owner_id = ids.owner_id
+    LEFT JOIN latest_country lc ON lc.owner_id = ids.owner_id
+    LEFT JOIN latest_timezone lt ON lt.owner_id = ids.owner_id
     WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
+      -- Confirmed → left panel only
       AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
+      -- Live Invited → middle panel only
+      -- Use coalesce so club owners with no registry row are not dropped
+      -- (NULL = 'offered' makes NOT (...) UNKNOWN and WHERE excludes the row).
       AND NOT (
-        r.season1_invite_status = 'offered'
+        coalesce(r.season1_invite_status, '') = 'offered'
         AND r.season1_invite_response IS NULL
         AND (
           r.season1_invite_deadline_at IS NULL
@@ -305,7 +347,8 @@ BEGIN
     'my_on_board_position', v_self_on_board_pos,
     'season1_confirmed', coalesce(v_s1_confirmed, '[]'::jsonb),
     'season1_confirmed_total', coalesce(v_s1_confirmed_total, 0),
-    'my_season1_confirmed_position', v_self_s1_confirmed_pos
+    'my_season1_confirmed_position', v_self_s1_confirmed_pos,
+    'debug', v_debug
   );
 END;
 $function$;
@@ -314,9 +357,9 @@ GRANT EXECUTE ON FUNCTION public.waiting_list_public() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 
--- Quick check after apply (optional): should show board_total > 0 if any
--- non-archived owners exist outside Confirmed/Invited.
+-- After applying, run:
 -- SELECT
 --   (waiting_list_public()->>'total')::int AS board_total,
 --   (waiting_list_public()->>'on_board_total')::int AS invited_total,
---   (waiting_list_public()->>'season1_confirmed_total')::int AS confirmed_total;
+--   (waiting_list_public()->>'season1_confirmed_total')::int AS confirmed_total,
+--   waiting_list_public()->'debug' AS debug;
