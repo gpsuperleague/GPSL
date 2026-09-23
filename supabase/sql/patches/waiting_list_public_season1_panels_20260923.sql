@@ -2,8 +2,8 @@
 -- Waiting list public: Season 1 confirmed / Invited / rejectors at bottom
 --
 -- Layout for waiting_list.html:
---   Left:  Confirmed for Season 1  (accepted invites)
---   Middle: Invited               (was "I'm on board" — awaiting club auction)
+--   Left:  Confirmed for Season 1  (accepted Season 1 invites)
+--   Middle: Invited               (Season 1 invite sent, awaiting accept/decline)
 --   Right: Owner waiting list     (rejectors sink to bottom with a note)
 --
 -- Depends on: season1_league_invite_queue_20260923.sql
@@ -61,12 +61,14 @@ BEGIN
     WHERE nullif(btrim(coalesce(e.timezone_name, '')), '') IS NOT NULL
     ORDER BY e.owner_id, e.logged_in_at DESC, e.id DESC
   ),
-  -- Middle panel: club-auction invitees
+    -- Middle panel: Season 1 invites awaiting a reply
   invited AS (
     SELECT
       r.owner_id,
       public.owner_registry_resolve_tag(r.owner_id) AS owner_tag,
-      r.status_changed_at AS invited_at,
+      r.season1_invite_queue_num AS queue_num,
+      r.season1_invite_offered_at AS invited_at,
+      r.season1_invite_deadline_at AS deadline_at,
       lc.country_code,
       coalesce(
         nullif(btrim(coalesce(r.owner_timezone, '')), ''),
@@ -82,16 +84,22 @@ BEGIN
     FROM public.gpsl_owner_registry r
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
-    WHERE r.status = 'awaiting_club_auction'
-      AND NOT EXISTS (
-        SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id
+    WHERE r.season1_invite_status = 'offered'
+      AND r.season1_invite_response IS NULL
+      AND (
+        r.season1_invite_deadline_at IS NULL
+        OR r.season1_invite_deadline_at > now()
       )
   ),
   invited_ranked AS (
     SELECT
       i.*,
       row_number() OVER (
-        ORDER BY i.invited_at NULLS LAST, i.owner_tag, i.owner_id
+        ORDER BY
+          i.queue_num NULLS LAST,
+          i.invited_at NULLS LAST,
+          i.owner_tag,
+          i.owner_id
       )::int AS position
     FROM invited i
   )
@@ -101,8 +109,10 @@ BEGIN
         'position', invited_ranked.position,
         'owner_id', invited_ranked.owner_id,
         'owner_tag', invited_ranked.owner_tag,
+        'queue_num', invited_ranked.queue_num,
         'country_code', invited_ranked.country_code,
-        'origin_timezone', invited_ranked.origin_timezone
+        'origin_timezone', invited_ranked.origin_timezone,
+        'deadline_at', invited_ranked.deadline_at
       )
       ORDER BY invited_ranked.position
     ), '[]'::jsonb),
@@ -258,8 +268,16 @@ BEGIN
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
     WHERE public.waiting_list_on_list_status(r.status)
       AND NOT EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
-      -- Accepted members move to Confirmed for Season 1 panel
+      -- Accepted → Confirmed panel; pending offers → Invited panel
       AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
+      AND NOT (
+        r.season1_invite_status = 'offered'
+        AND r.season1_invite_response IS NULL
+        AND (
+          r.season1_invite_deadline_at IS NULL
+          OR r.season1_invite_deadline_at > now()
+        )
+      )
   ),
   ranked AS (
     SELECT

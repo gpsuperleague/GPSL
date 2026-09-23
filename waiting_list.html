@@ -46,6 +46,18 @@
       background: #161616;
     }
     .wl-count { color: #888; font-weight: normal; font-size: 14px; }
+    .wl-wrap a,
+    .wl-wrap a:link,
+    .wl-wrap a:visited {
+      color: #ff9900;
+      text-decoration: none;
+    }
+    .wl-wrap a:hover { color: #ffbb33; text-decoration: underline; }
+    .wl-table a.owner-tag-chip,
+    .wl-table a.gpsl-link,
+    .wl-table .owner-tag-label {
+      color: #ff9900;
+    }
     .wl-links a { color: #ff9900; margin-right: 14px; }
     #draftCountdownContainer {
       margin-top: 4px;
@@ -90,7 +102,7 @@
       </div>
       <div class="wl-card wl-panel">
         <h2>Invited <span class="wl-count" id="wlOnBoardCount"></span></h2>
-        <p id="wlOnBoardIntro">Owners invited to join the club auction, in invite order.</p>
+        <p id="wlOnBoardIntro">Owners invited to Season 1 and waiting to accept or decline, in queue order.</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
@@ -120,7 +132,7 @@
     </p>
   </div>
   <script type="module">
-    import { initWaitingListPage } from "./waiting_list.js?v=20260923-season1-panels";
+    import { initWaitingListPage } from "./waiting_list.js?v=20260923-s1-invited-panel";
     initWaitingListPage();
   </script>
 </body>

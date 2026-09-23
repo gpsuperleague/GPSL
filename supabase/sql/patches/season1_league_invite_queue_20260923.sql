@@ -370,6 +370,87 @@ $fn$;
 -- ---------------------------------------------------------------------------
 -- Send invite (48h)
 -- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.season1_invite_enqueue_discord_news(
+  p_owner_id uuid,
+  p_owner_tag text,
+  p_deadline timestamptz,
+  p_deadline_label text,
+  p_queue_num integer,
+  p_token text,
+  p_discord_user_id text DEFAULT NULL
+)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $fn$
+DECLARE
+  v_id bigint;
+  v_tag text := coalesce(nullif(btrim(p_owner_tag), ''), 'owner');
+  v_mention text := '@' || ltrim(v_tag, '@');
+  v_offered_label text;
+  v_deadline_label text := coalesce(nullif(btrim(p_deadline_label), ''), '48 hours');
+  v_headline text;
+  v_body text;
+BEGIN
+  IF to_regprocedure(
+    'public.gpsl_discord_feed_enqueue(text,text,text,integer,text,jsonb)'
+  ) IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  v_offered_label := to_char(
+    timezone('Europe/London', coalesce(
+      (SELECT season1_invite_offered_at FROM public.gpsl_owner_registry WHERE owner_id = p_owner_id),
+      now()
+    )),
+    'Dy DD Mon YYYY HH24:MI'
+  ) || ' UK';
+
+  v_headline := 'Season 1 invite — ' || v_mention;
+  v_body :=
+    v_mention || ' has been invited to GPSL Season 1.'
+    || E'\nInvited: ' || v_offered_label
+    || E'\nDeadline: ' || v_deadline_label
+    || CASE
+         WHEN p_queue_num IS NOT NULL THEN E'\nQueue: #' || p_queue_num::text
+         ELSE ''
+       END;
+
+  BEGIN
+    v_id := public.gpsl_discord_feed_enqueue(
+      'news',
+      v_headline,
+      v_body,
+      16750848,
+      'season1_invite:' || p_owner_id::text || ':' || coalesce(nullif(btrim(p_token), ''), 'na'),
+      jsonb_build_object(
+        'channel', 'news',
+        'kind', 'season1_invite',
+        'ping', true,
+        'owner_tag', v_tag,
+        'owner_tags', jsonb_build_array(v_tag),
+        'discord_user_id', nullif(btrim(coalesce(p_discord_user_id, '')), ''),
+        'deadline_at', p_deadline,
+        'deadline_label', v_deadline_label,
+        'queue_num', p_queue_num,
+        'offered_label_uk', v_offered_label
+      )
+    );
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'season1 Discord enqueue failed: %', SQLERRM;
+    RETURN NULL;
+  END;
+
+  RETURN v_id;
+END;
+$fn$;
+
+GRANT EXECUTE ON FUNCTION public.season1_invite_enqueue_discord_news(
+  uuid, text, timestamptz, text, integer, text, text
+) TO authenticated;
+
+
 CREATE OR REPLACE FUNCTION public.admin_season1_invite_send(p_owner_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -474,26 +555,15 @@ BEGIN
   WHERE owner_id = p_owner_id
   RETURNING * INTO v_row;
 
-  IF to_regprocedure(
-    'public.gpsl_discord_feed_enqueue(text,text,text,integer,text,jsonb)'
-  ) IS NOT NULL THEN
-    PERFORM public.gpsl_discord_feed_enqueue(
-      'news',
-      'Season 1 invite',
-      v_tag || ' has been invited to Season 1. Deadline: ' || v_deadline_label || '.',
-      16750848,
-      'season1_invite:' || p_owner_id::text || ':' || v_token,
-      jsonb_build_object(
-        'channel', 'news',
-        'ping', true,
-        'owner_tag', v_tag,
-        'owner_tags', jsonb_build_array(v_tag),
-        'discord_user_id', v_discord_id,
-        'deadline_at', v_deadline,
-        'queue_num', v_row.season1_invite_queue_num
-      )
-    );
-  END IF;
+  PERFORM public.season1_invite_enqueue_discord_news(
+    p_owner_id,
+    v_tag,
+    v_deadline,
+    v_deadline_label,
+    v_row.season1_invite_queue_num,
+    v_token,
+    v_discord_id
+  );
 
   INSERT INTO public.gpsl_email_outbox (
     kind, to_email, to_owner_id, subject, html_body, text_body, metadata

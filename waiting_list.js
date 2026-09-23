@@ -266,7 +266,7 @@ export async function initWaitingListPage() {
 
     if (onBoardIntro) {
       onBoardIntro.textContent =
-        "Owners invited to join the club auction, in invite order.";
+        "Owners invited to Season 1 and waiting to accept or decline, in queue order.";
     }
     if (season1ConfirmedCount) {
       season1ConfirmedCount.textContent = `(${
@@ -292,7 +292,7 @@ export async function initWaitingListPage() {
     if (onBoardBody) {
       if (!onBoard.length) {
         onBoardBody.innerHTML =
-          '<tr><td colspan="4" style="color:#666">No one invited yet — admin ticks Auction on the waiting list.</td></tr>';
+          '<tr><td colspan="4" style="color:#666">No Season 1 invites pending — use Invite to season 1 on the admin waiting list.</td></tr>';
       } else {
         renderTagRows(onBoardBody, onBoard, highlightOnBoard);
       }
@@ -319,7 +319,7 @@ export async function initWaitingListPage() {
         mySummary.textContent = "You are confirmed for Season 1.";
       } else if (list.my_on_board_position) {
         myPos.textContent = `#${list.my_on_board_position} of ${list.on_board_total || onBoard.length} invited`;
-        mySummary.textContent = "You are invited to the club auction.";
+        mySummary.textContent = "You are invited to Season 1 — accept or decline from this page or your inbox.";
       } else {
         const me = rows.find((r) => r.position === list.my_position);
         const isOwner = me?.list_kind === "club_owner" || !!me?.has_club;

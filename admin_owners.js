@@ -1627,8 +1627,30 @@ async function inviteOwnerToSeason1({ ownerId, email, tag }) {
       mailNote = ` · email pending (${e.message || "edge error"})`;
     }
   }
+  let discordNote = "";
+  try {
+    const { data: feedData, error: feedErr } = await supabase.functions.invoke(
+      "discord-sky-feed",
+      { body: {} }
+    );
+    if (feedErr) {
+      discordNote = ` · Discord pending (${feedErr.message})`;
+    } else {
+      const posted =
+        Number(feedData?.posted) ||
+        Number(feedData?.posted_news) ||
+        Number(feedData?.news) ||
+        0;
+      discordNote =
+        posted > 0
+          ? ` · Discord news posted (${posted})`
+          : " · Discord queue flushed";
+    }
+  } catch (e) {
+    discordNote = ` · Discord pending (${e.message || "edge error"})`;
+  }
   setWlActionStatus(
-    `✅ Season 1 invite → ${data?.owner_tag || label} (deadline ${data?.deadline_label || "48h"})${mailNote}`,
+    `✅ Season 1 invite → ${data?.owner_tag || label} (deadline ${data?.deadline_label || "48h"})${mailNote}${discordNote}`,
     true
   );
   await loadWaitingListAdmin();
