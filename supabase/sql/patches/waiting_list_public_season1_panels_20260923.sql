@@ -1,10 +1,10 @@
 -- =============================================================================
 -- Waiting list public: Season 1 confirmed / Invited / rejectors at bottom
 --
--- Layout for waiting_list.html:
---   Left:  Confirmed for Season 1  (accepted Season 1 invites)
---   Middle: Invited               (Season 1 invite sent, awaiting accept/decline)
---   Right: Owner waiting list     (rejectors sink to bottom with a note)
+-- Layout for waiting_list.html (exclusive — each owner in at most one panel):
+--   Left:  Confirmed for Season 1  (accepted) — highest priority
+--   Middle: Invited               (offer pending) — next
+--   Right: Owner waiting list     (everyone else; rejectors sink to bottom)
 --
 -- Depends on: season1_league_invite_queue_20260923.sql
 --              waiting_list_public_invited_vs_queue_20260921.sql
@@ -235,8 +235,16 @@ BEGIN
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
     WHERE EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
-      -- Accepted owners still appear here as current club owners
-      AND true
+      -- Exclusive panels: Confirmed > Invited > this board
+      AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
+      AND NOT (
+        r.season1_invite_status = 'offered'
+        AND r.season1_invite_response IS NULL
+        AND (
+          r.season1_invite_deadline_at IS NULL
+          OR r.season1_invite_deadline_at > now()
+        )
+      )
 
     UNION ALL
 
@@ -268,7 +276,7 @@ BEGIN
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
     WHERE public.waiting_list_on_list_status(r.status)
       AND NOT EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
-      -- Accepted → Confirmed panel; pending offers → Invited panel
+      -- Exclusive panels: Confirmed > Invited > this board
       AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
       AND NOT (
         r.season1_invite_status = 'offered'
