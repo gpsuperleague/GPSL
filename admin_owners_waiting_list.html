@@ -3,7 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <style>html,body{background:#111;color:#ddd;margin:0}
+    .wl-s1-cell {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      width: 100%; min-width: 3.2em; padding: 4px 2px; margin: 0;
+      background: #141414; border: 1px solid #444; border-radius: 4px;
+      color: #ff9900; cursor: pointer; font: inherit;
+    }
+    .wl-s1-cell:hover { border-color: #ff9900; background: #1c1810; }
+    .wl-s1-num { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14px; line-height: 1.1; }
+    .wl-s1-num.empty { color: #666; font-weight: 600; }
+    .wl-s1-badge { font-size: 10px; line-height: 1.1; color: #aaa; }
+    .wl-s1-badge.ok { color: #8d8; }
+    .wl-s1-badge.bad { color: #f88; }
+    .wl-s1-badge.offer { color: #fc6; }
+    .wl-s1-badge.queued { color: #9ab; }
+    .wl-s1-badge.muted { color: #777; }
+
+  </style>
   <title>Season owner board — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
@@ -255,6 +272,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260921-uk-offset"></script>
+  <script type="module" src="admin_owners.js?v=20260923-season1-invite"></script>
 </body>
 </html>

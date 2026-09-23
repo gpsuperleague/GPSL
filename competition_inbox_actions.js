@@ -45,6 +45,7 @@ export const INBOX_ACTION_DEFAULTS = {
   intl_result_submitted: { label: "International Matchday", href: "international_matchday.html" },
   intl_result_confirmed: { label: "World Cup", href: "world_cup.html" },
   intl_result_rejected: { label: "Re-submit result", href: "international_matchday.html" },
+  season1_invite: { label: "Respond on waiting list", href: "waiting_list.html#season1" },
 };
 
 export function inboxActionForMessage(msg) {

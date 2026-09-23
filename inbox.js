@@ -483,6 +483,46 @@ async function renderInbox() {
     if (
       !viewArchived &&
       !isArchived &&
+      msg.message_type === "season1_invite" &&
+      !msg.read_at
+    ) {
+      const acceptBtn = document.createElement("button");
+      const declineBtn = document.createElement("button");
+      acceptBtn.className = "button";
+      acceptBtn.textContent = "Accept Season 1";
+      declineBtn.className = "button danger";
+      declineBtn.textContent = "Decline";
+      const respondSeason1 = async (decision) => {
+        if (decision === "decline" && !confirm("Decline your Season 1 invite?")) {
+          return;
+        }
+        acceptBtn.disabled = true;
+        declineBtn.disabled = true;
+        try {
+          const { error } = await supabase.rpc("owner_season1_invite_respond", {
+            p_decision: decision,
+          });
+          if (error) throw error;
+          setStatus(
+            decision === "accept"
+              ? "Season 1 invite accepted."
+              : "Season 1 invite declined."
+          );
+          await renderInbox();
+          await refreshInboxNavBadge();
+        } catch (err) {
+          setStatus("❌ " + err.message, true);
+          acceptBtn.disabled = false;
+          declineBtn.disabled = false;
+        }
+      };
+      acceptBtn.onclick = () => respondSeason1("accept");
+      declineBtn.onclick = () => respondSeason1("decline");
+      actions.appendChild(acceptBtn);
+      actions.appendChild(declineBtn);
+    } else if (
+      !viewArchived &&
+      !isArchived &&
       msg.message_type === "result_to_confirm" &&
       !msg.read_at &&
       myClub.short &&

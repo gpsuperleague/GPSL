@@ -1408,6 +1408,163 @@ function compareRowsByActivitySort(a, b) {
   return String(a?.email || "").localeCompare(String(b?.email || ""));
 }
 
+function season1QueueNum(row) {
+  const n = Number(row?.season1_invite_queue_num);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function compareRowsBySeason1ThenActivity(a, b) {
+  const aN = season1QueueNum(a);
+  const bN = season1QueueNum(b);
+  if (aN != null && bN != null && aN !== bN) return aN - bN;
+  if (aN != null && bN == null) return -1;
+  if (aN == null && bN != null) return 1;
+  return compareRowsByActivitySort(a, b);
+}
+
+function formatSeason1StatusCell(row) {
+  const num = season1QueueNum(row);
+  const response = String(row?.season1_invite_response || "").toLowerCase();
+  const status = String(row?.season1_invite_status || "").toLowerCase();
+  let badge = "";
+  if (response === "accepted") {
+    badge = `<div class="wl-s1-badge ok">Accepted</div>`;
+  } else if (response === "declined") {
+    badge = `<div class="wl-s1-badge bad">Declined</div>`;
+  } else if (status === "offered") {
+    const dl =
+      row.season1_invite_deadline_label ||
+      (row.season1_invite_deadline_at
+        ? formatWlUkDateTime(row.season1_invite_deadline_at)
+        : "");
+    badge = `<div class="wl-s1-badge offer" title="${escapeWl(dl || "Pending")}">Offered</div>`;
+  } else if (status === "expired") {
+    badge = `<div class="wl-s1-badge muted">Expired</div>`;
+  } else if (num != null) {
+    badge = `<div class="wl-s1-badge queued">Queued</div>`;
+  }
+  const numHtml =
+    num != null
+      ? `<span class="wl-s1-num">${num}</span>`
+      : `<span class="wl-s1-num empty">+</span>`;
+  return `<td class="wl-col-season" style="text-align:center;padding:4px 2px">
+    <button type="button" class="wl-s1-cell" data-owner-id="${escapeWl(row.owner_id)}"
+      title="Click to assign next Season 1 # (click again to clear and bump others)">
+      ${numHtml}${badge}
+    </button>
+  </td>`;
+}
+
+async function mergeSeason1InviteStatus(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const { data, error } = await supabase.rpc("admin_season1_invite_status_map");
+  if (error) {
+    console.warn("admin_season1_invite_status_map", error);
+    return list;
+  }
+  const map = data && typeof data === "object" ? data : {};
+  return list.map((row) => {
+    const s1 = map[row.owner_id] || map[String(row.owner_id)] || null;
+    if (!s1) return row;
+    return {
+      ...row,
+      season1_invite_queue_num: s1.queue_num ?? null,
+      season1_invite_status: s1.status ?? null,
+      season1_invite_response: s1.response ?? null,
+      season1_invite_offered_at: s1.offered_at ?? null,
+      season1_invite_deadline_at: s1.deadline_at ?? null,
+      season1_invite_deadline_label: s1.deadline_label ?? null,
+      season1_invite_responded_at: s1.responded_at ?? null,
+    };
+  });
+}
+
+async function toggleSeason1QueueNumber(ownerId) {
+  if (!ownerId) return;
+  const btn = document.querySelector(`button.wl-s1-cell[data-owner-id="${ownerId}"]`);
+  const hasNum = !!btn?.querySelector(".wl-s1-num:not(.empty)");
+  if (hasNum) {
+    if (!confirm("Clear this Season 1 queue number? Everyone below will move up one.")) {
+      return;
+    }
+    setWlActionStatus("Clearing Season 1 #…");
+    const { data, error } = await supabase.rpc("admin_season1_invite_clear_number", {
+      p_owner_id: ownerId,
+    });
+    if (error) {
+      setWlActionStatus("❌ " + error.message, false);
+      return;
+    }
+    setWlActionStatus(
+      data?.cleared
+        ? `✅ Cleared S1#${data.cleared_num} (bumped ${data.bumped || 0})`
+        : "ℹ️ No Season 1 number on this row",
+      true
+    );
+  } else {
+    setWlActionStatus("Assigning Season 1 #…");
+    const { data, error } = await supabase.rpc("admin_season1_invite_assign_next", {
+      p_owner_id: ownerId,
+    });
+    if (error) {
+      setWlActionStatus("❌ " + error.message, false);
+      return;
+    }
+    setWlActionStatus(
+      data?.already
+        ? `ℹ️ Already S1#${data.queue_num}`
+        : `✅ Assigned Season 1 #${data.queue_num}`,
+      true
+    );
+  }
+  await loadWaitingListAdmin();
+}
+
+async function inviteOwnerToSeason1({ ownerId, email, tag }) {
+  const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
+  if (
+    !confirm(
+      `Invite ${label} to Season 1?\n\nThey get 48 hours to accept (email + Discord news + inbox).`
+    )
+  ) {
+    return;
+  }
+  setWlActionStatus(`Sending Season 1 invite to ${label}…`);
+  const { data, error } = await supabase.rpc("admin_season1_invite_send", {
+    p_owner_id: ownerId,
+  });
+  if (error) {
+    setWlActionStatus(
+      `❌ ${error.message}` +
+        (/queue number|Assign a Season/i.test(error.message || "")
+          ? " — click the S1# cell first."
+          : ""),
+      false
+    );
+    return;
+  }
+  let mailNote = "";
+  if (data?.email_outbox_id) {
+    try {
+      const { data: mailData, error: mailErr } = await supabase.functions.invoke(
+        "season1-invite-mail",
+        { body: { outbox_id: data.email_outbox_id } }
+      );
+      if (mailErr) mailNote = ` · email pending (${mailErr.message})`;
+      else if (mailData?.skipped) mailNote = " · email queued (set RESEND_API_KEY to send)";
+      else if (mailData?.ok) mailNote = " · email sent";
+    } catch (e) {
+      mailNote = ` · email pending (${e.message || "edge error"})`;
+    }
+  }
+  setWlActionStatus(
+    `✅ Season 1 invite → ${data?.owner_tag || label} (deadline ${data?.deadline_label || "48h"})${mailNote}`,
+    true
+  );
+  await loadWaitingListAdmin();
+}
+
+
 async function recordUnplayedSnapshots() {
   const btn = document.getElementById("wlRecordUnplayedBtn");
   if (btn) btn.disabled = true;
@@ -1515,10 +1672,18 @@ async function loadWaitingListAdmin() {
       has_club: false,
     })
   );
+  {
+    const [p2, i2] = await Promise.all([
+      mergeSeason1InviteStatus(priority),
+      mergeSeason1InviteStatus(invited),
+    ]);
+    priority.splice(0, priority.length, ...p2);
+    invited.splice(0, invited.length, ...i2);
+  }
   const rows = [...priority, ...invited];
-  const ownerRows = priority.filter((r) => r.has_club).sort(compareRowsByActivitySort);
-  const waitingRows = priority.filter((r) => !r.has_club).sort(compareRowsByActivitySort);
-  invited.sort(compareRowsByActivitySort);
+  const ownerRows = priority.filter((r) => r.has_club).sort(compareRowsBySeason1ThenActivity);
+  const waitingRows = priority.filter((r) => !r.has_club).sort(compareRowsBySeason1ThenActivity);
+  invited.sort(compareRowsBySeason1ThenActivity);
   const waitingCombined = [...invited, ...waitingRows].map((row, index) => ({
     ...row,
     displayPosition: index + 1,
@@ -1541,7 +1706,7 @@ async function loadWaitingListAdmin() {
       ? ` · ${snapMonths} month(s) snapshotted`
       : " · no month snapshots yet — click Record unplayed before simming leftovers";
 
-  const colSpan = 27;
+  const colSpan = 28;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
   let overallIndex = 0;
@@ -1551,7 +1716,7 @@ async function loadWaitingListAdmin() {
     `<thead>` +
     `<tr class="wl-group-row">` +
     `<th colspan="7" class="wl-group-owner">Owner</th>` +
-    `<th colspan="4" class="wl-group-season">Season</th>` +
+    `<th colspan="5" class="wl-group-season">Season</th>` +
     `<th colspan="13" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions">Actions</th>` +
     `</tr>` +
@@ -1560,6 +1725,7 @@ async function loadWaitingListAdmin() {
     `<th class="num">#</th>` +
     `<th style="width:2em"></th>` +
     `<th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>` +
+    `<th class="wl-col-season" title="Season 1 invite queue — click cell to assign next #" style="text-align:center;line-height:1.25">S1#</th>` +
     `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
     `<th title="Confirmed for test season" style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
@@ -1650,6 +1816,14 @@ async function loadWaitingListAdmin() {
     );
   });
 
+  tableWrap.querySelectorAll("button.wl-s1-cell").forEach((btn) => {
+    btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleSeason1QueueNumber(btn.dataset.ownerId);
+    });
+  });
+
   renderOnBreakSection(Array.isArray(data?.on_break) ? data.on_break : []);
   await loadArchivedOwnersSection();
 }
@@ -1677,6 +1851,10 @@ function bindWlRowActionSelects(root) {
 
 async function runWlRowAction(action, { ownerId, email, tag, club, select }) {
   const label = [tag, club ? `(${club})` : "", email].filter(Boolean).join(" ");
+  if (action === "invite_season1") {
+    await inviteOwnerToSeason1({ ownerId, email, tag });
+    return;
+  }
   if (action === "remove_waiting") {
     await removeFromWaitingList({ ownerId, email, tag });
     return;
@@ -2320,6 +2498,7 @@ function renderWaitingListAdminRow(
         <option value="absence_on">Mark on absence</option>
         <option value="absence_off">Clear absence</option>
         <option value="remove_waiting">Remove → archived</option>
+        <option value="invite_season1">Invite to season 1</option>
       </select>`;
 
   return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" data-filter-text="${escapeWl(filterText)}">
@@ -2330,6 +2509,7 @@ function renderWaitingListAdminRow(
         <td>${escapeWl(email)}</td>
     <td>${escapeWl(hasClub ? "—" : row.tier || "—")}</td>
     <td>${escapeWl(status)}</td>
+    ${formatSeason1StatusCell(row)}
     ${auctionCell}
     <td style="text-align:center">
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="test"

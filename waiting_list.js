@@ -302,6 +302,70 @@ export async function initWaitingListPage() {
       }
     }
 
+    // Season 1 invite respond card (waiting-list room)
+    try {
+      const { data: s1 } = await supabase.rpc("owner_season1_invite_get_mine");
+      let s1Card = document.getElementById("wlSeason1Card");
+      if (s1?.has_invite) {
+        if (!s1Card) {
+          s1Card = document.createElement("div");
+          s1Card.id = "wlSeason1Card";
+          s1Card.className = "wl-card";
+          s1Card.innerHTML = `
+            <h1 id="season1">Season 1 invite</h1>
+            <p id="wlSeason1Summary"></p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+              <button type="button" class="button" id="wlSeason1Accept">Accept</button>
+              <button type="button" class="button" id="wlSeason1Decline" style="background:#844">Decline</button>
+            </div>
+            <p id="wlSeason1Status" style="color:#fc6;margin-top:10px"></p>`;
+          const wrap = document.querySelector(".wl-wrap");
+          const my = document.getElementById("wlMyCard");
+          if (wrap) wrap.insertBefore(s1Card, my?.nextSibling || wrap.firstChild);
+        }
+        s1Card.hidden = false;
+        const sum = document.getElementById("wlSeason1Summary");
+        const st = document.getElementById("wlSeason1Status");
+        const s1info = s1.season1 || {};
+        if (sum) {
+          sum.textContent = `You are invited to Season 1 (queue #${
+            s1info.queue_num ?? "—"
+          }). Deadline: ${s1info.deadline_label || "48 hours from offer"}.`;
+        }
+        const accept = document.getElementById("wlSeason1Accept");
+        const decline = document.getElementById("wlSeason1Decline");
+        const respond = async (decision) => {
+          if (decision === "decline" && !confirm("Decline your Season 1 invite?")) {
+            return;
+          }
+          if (accept) accept.disabled = true;
+          if (decline) decline.disabled = true;
+          if (st) st.textContent = decision === "accept" ? "Accepting…" : "Declining…";
+          const { error } = await supabase.rpc("owner_season1_invite_respond", {
+            p_decision: decision,
+          });
+          if (error) {
+            if (st) st.textContent = "❌ " + error.message;
+            if (accept) accept.disabled = false;
+            if (decline) decline.disabled = false;
+            return;
+          }
+          if (st) {
+            st.textContent =
+              decision === "accept" ? "✅ Accepted for Season 1." : "Declined.";
+          }
+          if (accept) accept.hidden = true;
+          if (decline) decline.hidden = true;
+        };
+        if (accept) accept.onclick = () => respond("accept");
+        if (decline) decline.onclick = () => respond("decline");
+      } else if (s1Card) {
+        s1Card.hidden = true;
+      }
+    } catch (e) {
+      console.warn("season1 invite card", e);
+    }
+
     syncAuctionCountdownCard();
   } catch (err) {
     console.error(err);

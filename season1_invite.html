@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Season 1 invite — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css" />
+  <style>
+    body { background:#111; color:#ddd; margin:0; font:15px/1.5 Arial, Helvetica, sans-serif; }
+    .wrap { max-width:560px; margin:48px auto; padding:0 16px; }
+    .card { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:20px 18px; }
+    h1 { margin:0 0 10px; color:#ff9900; font-size:22px; }
+    .muted { color:#999; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+    button.button { background:#ff9900; color:#111; border:0; border-radius:4px; padding:10px 14px; font-weight:700; cursor:pointer; }
+    button.button.danger { background:#844; color:#fff; }
+    button.button:disabled { opacity:.55; cursor:default; }
+    #status { margin-top:14px; color:#fc6; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>GPSL Season 1 invite</h1>
+      <p id="summary" class="muted">Checking your invite…</p>
+      <div class="actions" id="actions" hidden>
+        <button type="button" class="button" id="acceptBtn">Accept</button>
+        <button type="button" class="button danger" id="declineBtn">Decline</button>
+      </div>
+      <p id="status"></p>
+      <p class="muted" style="margin-top:18px;font-size:13px">
+        You can also respond from <a href="inbox.html" style="color:#ff9900">Inbox</a>
+        or the <a href="waiting_list.html" style="color:#ff9900">Waiting list</a> page when signed in.
+      </p>
+    </div>
+  </div>
+  <script type="module" src="season1_invite.js?v=20260923-s1"></script>
+</body>
+</html>

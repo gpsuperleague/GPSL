@@ -22,6 +22,10 @@ verify_jwt = false
 [functions.list-owners]
 verify_jwt = false
 
+# Auth checked inside (admin/mod JWT). Gateway JWT on OPTIONS breaks CORS preflight.
+[functions.season1-invite-mail]
+verify_jwt = false
+
 # Auth checked inside (admin JWT / feed invoke key / service_role).
 [functions.discord-sky-feed]
 verify_jwt = false
