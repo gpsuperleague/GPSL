@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <style>
     body { background: #111; color: #ddd; }
-    .wl-wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    .wl-wrap { max-width: 1400px; margin: 24px auto; padding: 0 16px; }
     .wl-card {
       background: #1a1a1a;
       border: 1px solid #333;
@@ -22,7 +22,7 @@
     .wl-pos { font-size: 28px; font-weight: bold; color: #9d9; }
     .wl-panels {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 16px;
       align-items: start;
       margin-bottom: 16px;
@@ -34,6 +34,7 @@
     .wl-you { background: #1a2218; }
     .wl-status-absence { color: #c96; font-size: 12px; }
     .wl-status-owner { color: #8a8; font-size: 12px; }
+    .wl-status-rejected { color: #c66; font-size: 12px; }
     .wl-section td {
       padding: 10px 10px 6px;
       color: #aaa;
@@ -55,7 +56,7 @@
     }
     #draftCountdown { font-size: 15px; color: #ff9900; font-weight: bold; }
     #draftLocalStart { font-size: 11px; color: #aaa; margin-top: 4px; white-space: pre-line; line-height: 1.4; }
-    @media (max-width: 800px) {
+    @media (max-width: 1100px) {
       .wl-panels { grid-template-columns: 1fr; }
     }
   </style>
@@ -78,7 +79,17 @@
     </div>
     <div class="wl-panels">
       <div class="wl-card wl-panel">
-        <h2>I'm on board <span class="wl-count" id="wlOnBoardCount"></span></h2>
+        <h2>Confirmed for Season 1 <span class="wl-count" id="wlSeason1ConfirmedCount"></span></h2>
+        <p id="wlSeason1ConfirmedIntro">Owners who accepted their Season 1 invite, in queue order.</p>
+        <table class="wl-table">
+          <thead>
+            <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
+          </thead>
+          <tbody id="wlSeason1ConfirmedBody"></tbody>
+        </table>
+      </div>
+      <div class="wl-card wl-panel">
+        <h2>Invited <span class="wl-count" id="wlOnBoardCount"></span></h2>
         <p id="wlOnBoardIntro">Owners invited to join the club auction, in invite order.</p>
         <table class="wl-table">
           <thead>
@@ -89,7 +100,7 @@
       </div>
       <div class="wl-card wl-panel">
         <h2>Owner waiting list <span class="wl-count" id="wlWaitingCount"></span></h2>
-        <p>Current club owners first (same season board order as admin), then members still waiting for a club.</p>
+        <p>Current club owners first (same season board order as admin), then members still waiting for a club. Season 1 declines sink to the bottom.</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
@@ -109,7 +120,7 @@
     </p>
   </div>
   <script type="module">
-    import { initWaitingListPage } from "./waiting_list.js?v=20260921-uk-offset-fix";
+    import { initWaitingListPage } from "./waiting_list.js?v=20260923-season1-panels";
     initWaitingListPage();
   </script>
 </body>
