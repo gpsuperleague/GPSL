@@ -40,7 +40,7 @@ BEGIN
     'registry_accepted', count(*) FILTER (WHERE r.season1_invite_response = 'accepted'),
     'registry_offered_live', count(*) FILTER (
       WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
-        AND r.season1_invite_status = 'offered'
+        AND coalesce(r.season1_invite_status, '') = 'offered'
         AND r.season1_invite_response IS NULL
         AND (r.season1_invite_deadline_at IS NULL OR r.season1_invite_deadline_at > now())
     ),
@@ -48,7 +48,7 @@ BEGIN
       WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
         AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
         AND NOT (
-          r.season1_invite_status = 'offered'
+          coalesce(r.season1_invite_status, '') = 'offered'
           AND r.season1_invite_response IS NULL
           AND (r.season1_invite_deadline_at IS NULL OR r.season1_invite_deadline_at > now())
         )
