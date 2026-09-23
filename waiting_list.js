@@ -41,6 +41,17 @@ function timezoneOffsetMinutes(timeZone) {
   const tz = String(timeZone || "").trim();
   if (!tz) return null;
   try {
+    // Locale-string delta is more reliable than parsing GMT/UTC labels.
+    const now = new Date();
+    const utcMs = new Date(now.toLocaleString("en-US", { timeZone: "UTC" })).getTime();
+    const tzMs = new Date(now.toLocaleString("en-US", { timeZone: tz })).getTime();
+    if (Number.isFinite(utcMs) && Number.isFinite(tzMs)) {
+      return Math.round((tzMs - utcMs) / 60000);
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
     const parts = new Intl.DateTimeFormat("en-GB", {
       timeZone: tz,
       timeZoneName: "shortOffset",
@@ -48,8 +59,8 @@ function timezoneOffsetMinutes(timeZone) {
       minute: "2-digit",
     }).formatToParts(new Date());
     const label = parts.find((p) => p.type === "timeZoneName")?.value || "GMT";
-    const m = label.match(/GMT(?:(\+|-)(\d{1,2})(?::?(\d{2}))?)?$/i);
-    if (!m) return 0;
+    const m = label.match(/(?:GMT|UTC)(?:(\+|-)(\d{1,2})(?::?(\d{2}))?)?$/i);
+    if (!m) return null;
     if (!m[1]) return 0;
     const sign = m[1] === "-" ? -1 : 1;
     return sign * (Number(m[2] || 0) * 60 + Number(m[3] || 0));
@@ -146,11 +157,33 @@ function timezoneForCountry(countryCode) {
   return map[cc] || "";
 }
 
+/**
+ * UK +/- must match the Country column.
+ * Prefer login-origin timezone, then country estimate, then saved profile.
+ * Never let a London profile timezone override an India/Thailand country.
+ */
 function resolveDisplayTimezone(row) {
-  const saved = String(row?.origin_timezone || "").trim();
-  if (saved) return { timeZone: saved, approx: false };
-  const fromCountry = timezoneForCountry(row?.country_code);
+  const origin = String(row?.origin_timezone || "").trim();
+  const countryCode = String(row?.country_code || "").trim().toUpperCase();
+  const fromCountry = timezoneForCountry(countryCode);
+  const saved = String(row?.owner_timezone || "").trim();
+
+  if (origin) {
+    if (fromCountry) {
+      const originOff = timezoneOffsetMinutes(origin);
+      const countryOff = timezoneOffsetMinutes(fromCountry);
+      if (
+        originOff != null &&
+        countryOff != null &&
+        Math.abs(originOff - countryOff) > 90
+      ) {
+        return { timeZone: fromCountry, approx: true };
+      }
+    }
+    return { timeZone: origin, approx: false };
+  }
   if (fromCountry) return { timeZone: fromCountry, approx: true };
+  if (saved) return { timeZone: saved, approx: false };
   return { timeZone: "", approx: false };
 }
 

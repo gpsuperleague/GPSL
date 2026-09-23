@@ -82,6 +82,8 @@ BEGIN
       r.season1_invite_offered_at AS invited_at,
       r.season1_invite_deadline_at AS deadline_at,
       lc.country_code,
+      -- Login-origin tz for UK+/- (do NOT prefer saved profile — that caused India+"Same")
+      lt.timezone_name AS origin_timezone,
       coalesce(
         nullif(btrim(coalesce(r.owner_timezone, '')), ''),
         (
@@ -90,9 +92,8 @@ BEGIN
           WHERE c.owner_id = r.owner_id
           ORDER BY c."ShortName"
           LIMIT 1
-        ),
-        lt.timezone_name
-      ) AS origin_timezone
+        )
+      ) AS owner_timezone
     FROM public.gpsl_owner_registry r
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
@@ -124,6 +125,7 @@ BEGIN
         'queue_num', invited_ranked.queue_num,
         'country_code', invited_ranked.country_code,
         'origin_timezone', invited_ranked.origin_timezone,
+        'owner_timezone', invited_ranked.owner_timezone,
         'deadline_at', invited_ranked.deadline_at
       )
       ORDER BY invited_ranked.position
@@ -157,6 +159,7 @@ BEGIN
       r.season1_invite_queue_num AS queue_num,
       r.season1_invite_responded_at AS responded_at,
       lc.country_code,
+      lt.timezone_name AS origin_timezone,
       coalesce(
         nullif(btrim(coalesce(r.owner_timezone, '')), ''),
         (
@@ -165,9 +168,8 @@ BEGIN
           WHERE c.owner_id = r.owner_id
           ORDER BY c."ShortName"
           LIMIT 1
-        ),
-        lt.timezone_name
-      ) AS origin_timezone
+        )
+      ) AS owner_timezone
     FROM public.gpsl_owner_registry r
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
@@ -193,7 +195,8 @@ BEGIN
         'owner_tag', confirmed_ranked.owner_tag,
         'queue_num', confirmed_ranked.queue_num,
         'country_code', confirmed_ranked.country_code,
-        'origin_timezone', confirmed_ranked.origin_timezone
+        'origin_timezone', confirmed_ranked.origin_timezone,
+        'owner_timezone', confirmed_ranked.owner_timezone
       )
       ORDER BY confirmed_ranked.position
     ), '[]'::jsonb),
@@ -235,6 +238,7 @@ BEGIN
         ELSE 'waiting'::text
       END AS list_kind,
       lc.country_code,
+      lt.timezone_name AS origin_timezone,
       coalesce(
         nullif(btrim(coalesce(r.owner_timezone, '')), ''),
         (
@@ -243,9 +247,8 @@ BEGIN
           WHERE c.owner_id = r.owner_id
           ORDER BY c."ShortName"
           LIMIT 1
-        ),
-        lt.timezone_name
-      ) AS origin_timezone,
+        )
+      ) AS owner_timezone,
       (r.season1_invite_response = 'declined') AS season1_rejected
     FROM public.gpsl_owner_registry r
     JOIN auth.users u ON u.id = r.owner_id
@@ -296,6 +299,7 @@ BEGIN
         'confirmed_test_season', ranked.confirmed_test_season,
         'country_code', ranked.country_code,
         'origin_timezone', ranked.origin_timezone,
+        'owner_timezone', ranked.owner_timezone,
         'season1_rejected', ranked.season1_rejected
       )
       ORDER BY ranked.position
