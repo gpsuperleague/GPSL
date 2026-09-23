@@ -198,12 +198,16 @@ function renderTagRows(tbody, rows, highlightPosition, { sectioned = false } = {
     if (highlightPosition && row.position === highlightPosition) {
       tr.className = "wl-you";
     }
-    const statusExtra =
-      row.status === "on_absence"
-        ? ' <span class="wl-status-absence">(absence)</span>'
-        : kind === "club_owner"
-          ? ' <span class="wl-status-owner">(owner)</span>'
-          : "";
+    const statusParts = [];
+    if (row.status === "on_absence") {
+      statusParts.push('<span class="wl-status-absence">(absence)</span>');
+    } else if (kind === "club_owner") {
+      statusParts.push('<span class="wl-status-owner">(owner)</span>');
+    }
+    if (row.season1_rejected) {
+      statusParts.push('<span class="wl-status-rejected">(rejected Season 1)</span>');
+    }
+    const statusExtra = statusParts.length ? ` ${statusParts.join(" ")}` : "";
     const countryCode = String(row.country_code || "").trim().toUpperCase();
     const countryName = formatCountryName(countryCode);
     const resolved = resolveDisplayTimezone(row);
@@ -215,8 +219,12 @@ function renderTagRows(tbody, rows, highlightPosition, { sectioned = false } = {
       compact: true,
       showBadgeImage: false,
     });
+    const posLabel =
+      row.queue_num != null && row.queue_num !== ""
+        ? `S1#${row.queue_num}`
+        : row.position;
     tr.innerHTML =
-      `<td>${row.position}</td>` +
+      `<td>${posLabel}</td>` +
       `<td>${tagHtml}${statusExtra}</td>` +
       `<td title="${countryCode ? escapeHtml(countryCode) : ""}">${countryName ? escapeHtml(countryName) : `<span style="color:#666">—</span>`}</td>` +
       `<td title="${tzDelta.title ? escapeHtml(tzDelta.title) : ""}">${escapeHtml(tzDelta.text)}</td>`;
@@ -231,12 +239,14 @@ export async function initWaitingListPage() {
 
   const body = document.getElementById("wlBody");
   const onBoardBody = document.getElementById("wlOnBoardBody");
+  const season1ConfirmedBody = document.getElementById("wlSeason1ConfirmedBody");
   const myCard = document.getElementById("wlMyCard");
   const myPos = document.getElementById("wlMyPos");
   const mySummary = document.getElementById("wlMySummary");
   const onBoardIntro = document.getElementById("wlOnBoardIntro");
   const onBoardCount = document.getElementById("wlOnBoardCount");
   const waitingCount = document.getElementById("wlWaitingCount");
+  const season1ConfirmedCount = document.getElementById("wlSeason1ConfirmedCount");
 
   // After initGlobal's wireDraftCountdownUI has painted the first tick.
   syncAuctionCountdownCard();
@@ -248,19 +258,35 @@ export async function initWaitingListPage() {
     const list = await loadWaitingListPublic();
     const rows = list?.rows || [];
     const onBoard = list?.on_board || [];
+    const season1Confirmed = list?.season1_confirmed || [];
     const highlightWaiting =
       self?.is_member && list?.my_position ? list.my_position : null;
     const highlightOnBoard = list?.my_on_board_position || null;
+    const highlightSeason1 = list?.my_season1_confirmed_position || null;
 
     if (onBoardIntro) {
       onBoardIntro.textContent =
         "Owners invited to join the club auction, in invite order.";
+    }
+    if (season1ConfirmedCount) {
+      season1ConfirmedCount.textContent = `(${
+        list?.season1_confirmed_total ?? season1Confirmed.length
+      })`;
     }
     if (onBoardCount) {
       onBoardCount.textContent = `(${list?.on_board_total ?? onBoard.length})`;
     }
     if (waitingCount) {
       waitingCount.textContent = `(${list?.total ?? rows.length})`;
+    }
+
+    if (season1ConfirmedBody) {
+      if (!season1Confirmed.length) {
+        season1ConfirmedBody.innerHTML =
+          '<tr><td colspan="4" style="color:#666">No one confirmed for Season 1 yet.</td></tr>';
+      } else {
+        renderTagRows(season1ConfirmedBody, season1Confirmed, highlightSeason1);
+      }
     }
 
     if (onBoardBody) {
@@ -279,23 +305,37 @@ export async function initWaitingListPage() {
       renderTagRows(body, rows, highlightWaiting, { sectioned: true });
     }
 
-    if (self?.is_member && (list?.my_on_board_position || list?.my_position)) {
+    if (
+      self?.is_member &&
+      (list?.my_season1_confirmed_position ||
+        list?.my_on_board_position ||
+        list?.my_position)
+    ) {
       myCard.hidden = false;
-      if (list.my_on_board_position) {
+      if (list.my_season1_confirmed_position) {
+        myPos.textContent = `#${list.my_season1_confirmed_position} of ${
+          list.season1_confirmed_total || season1Confirmed.length
+        } confirmed`;
+        mySummary.textContent = "You are confirmed for Season 1.";
+      } else if (list.my_on_board_position) {
         myPos.textContent = `#${list.my_on_board_position} of ${list.on_board_total || onBoard.length} invited`;
-        mySummary.textContent =
-          "You are invited to the club auction (I'm on board).";
+        mySummary.textContent = "You are invited to the club auction.";
       } else {
         const me = rows.find((r) => r.position === list.my_position);
         const isOwner = me?.list_kind === "club_owner" || !!me?.has_club;
         myPos.textContent = `#${list.my_position} of ${list.total || rows.length} on the board`;
-        mySummary.textContent = isOwner
-          ? "You are a current club owner on the season board."
-          : list.my_position === 1
-            ? "You are next in line when a club slot opens."
-            : `${list.my_position - 1} member(s) ahead of you.`;
+        if (me?.season1_rejected) {
+          mySummary.textContent =
+            "You declined Season 1 and are listed at the bottom of the waiting list.";
+        } else {
+          mySummary.textContent = isOwner
+            ? "You are a current club owner on the season board."
+            : list.my_position === 1
+              ? "You are next in line when a club slot opens."
+              : `${list.my_position - 1} member(s) ahead of you.`;
+        }
         // Soft reminder: interest + backup required before auction
-        if (!isOwner) {
+        if (!isOwner && !me?.season1_rejected) {
           mySummary.innerHTML +=
             ' Also mark <a href="club_database.html" style="color:#e8c84a;">1 interest + 1 backup</a> on Club Database before you are invited.';
         }
