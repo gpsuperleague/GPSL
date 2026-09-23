@@ -396,6 +396,8 @@ export async function initWaitingListPage() {
           }
           if (accept) accept.hidden = true;
           if (decline) decline.hidden = true;
+          // Refresh panels so Confirmed / Waiting list update immediately
+          setTimeout(() => window.location.reload(), 800);
         };
         if (accept) accept.onclick = () => respond("accept");
         if (decline) decline.onclick = () => respond("decline");
@@ -410,12 +412,15 @@ export async function initWaitingListPage() {
   } catch (err) {
     console.error(err);
     const msg =
-      err?.message && /on_board|confirmed_.*_at/i.test(String(err.message))
-        ? "Could not load waiting list — run gpsl_waiting_list_on_board_public.sql in Supabase."
+      err?.message && /on_board|season1_confirmed|confirmed_.*_at/i.test(String(err.message))
+        ? "Could not load waiting list — run waiting_list_public_season1_panels_20260923.sql in Supabase."
         : "Could not load waiting list.";
     body.innerHTML = `<tr><td colspan="4" style="color:#c66">${msg}</td></tr>`;
     if (onBoardBody) {
       onBoardBody.innerHTML = `<tr><td colspan="4" style="color:#c66">${msg}</td></tr>`;
+    }
+    if (season1ConfirmedBody) {
+      season1ConfirmedBody.innerHTML = `<tr><td colspan="4" style="color:#c66">${msg}</td></tr>`;
     }
   }
 }
