@@ -1604,11 +1604,17 @@ async function inviteOwnerToSeason1({ ownerId, email, tag }) {
     p_owner_id: ownerId,
   });
   if (error) {
+    const is404 =
+      /404|not found|PGRST202|Could not find the function/i.test(
+        String(error.message || "") + String(error.code || "")
+      );
     setWlActionStatus(
       `❌ ${error.message}` +
-        (/queue number|Assign a Season/i.test(error.message || "")
-          ? " — click the S1# cell first."
-          : ""),
+        (is404
+          ? " — run supabase/sql/patches/season1_invite_send_rpc_fix_404_20260923.sql in Supabase, then retry."
+          : /queue number|Assign a Season/i.test(error.message || "")
+            ? " — click the S1# cell first."
+            : ""),
       false
     );
     return;
