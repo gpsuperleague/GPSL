@@ -1684,7 +1684,7 @@ async function inviteOwnerToSeason1({ ownerId, email, tag, alreadyInvited = fals
     discordNote = ` · Discord pending (${e.message || "edge error"})`;
   }
   setWlActionStatus(
-    `✅ Season 1 invite → ${data?.owner_tag || label} (deadline ${data?.deadline_label || "48h"})${mailNote}${discordNote}`,
+    `✅ Season 1 invite${data?.resent ? " re-sent" : ""} → ${data?.owner_tag || label} (deadline ${data?.deadline_label || "48h"})${mailNote}${discordNote}`,
     true
   );
   await loadWaitingListAdmin();
@@ -1967,6 +1967,7 @@ function bindWlRowActionSelects(root) {
         email: sel.dataset.email || null,
         tag: sel.dataset.tag || "",
         club: sel.dataset.club || "",
+        s1Status: sel.dataset.s1Status || "",
         select: sel,
       };
       sel.value = "";
@@ -1975,10 +1976,13 @@ function bindWlRowActionSelects(root) {
   });
 }
 
-async function runWlRowAction(action, { ownerId, email, tag, club, select }) {
+async function runWlRowAction(action, { ownerId, email, tag, club, s1Status, select }) {
   const label = [tag, club ? `(${club})` : "", email].filter(Boolean).join(" ");
   if (action === "invite_season1") {
-    await inviteOwnerToSeason1({ ownerId, email, tag });
+    const alreadyInvited =
+      String(s1Status || "").toLowerCase() === "offered" ||
+      String(s1Status || "").toLowerCase() === "invited";
+    await inviteOwnerToSeason1({ ownerId, email, tag, alreadyInvited });
     return;
   }
   if (action === "remove_waiting") {
@@ -2617,17 +2621,20 @@ function renderWaitingListAdminRow(
         title="${invited ? "Remove from club auction (back to waiting list)" : "Invite to club auction"}"
         ${invited ? "checked" : ""}>
     </td>`;
+  const s1Status = String(row.season1_invite_status || "").toLowerCase();
+  const s1InviteLabel =
+    s1Status === "offered" ? "Re-send Season 1 invite" : "Invite to season 1";
   const actionSelect =
     section === "owners" || hasClub
-      ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" aria-label="Actions">
+      ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" data-s1-status="${escapeWl(s1Status)}" aria-label="Actions">
         <option value="">Actions…</option>
-        <option value="invite_season1">Invite to season 1</option>
+        <option value="invite_season1">${s1InviteLabel}</option>
         <option value="remove_club">Remove club → on break</option>
         <option value="to_waiting">→ Waiting</option>
       </select>`
-      : `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" aria-label="Actions">
+      : `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-s1-status="${escapeWl(s1Status)}" aria-label="Actions">
         <option value="">Actions…</option>
-        <option value="invite_season1">Invite to season 1</option>
+        <option value="invite_season1">${s1InviteLabel}</option>
         <option value="add_club">Add club</option>
         <option value="absence_on">Mark on absence</option>
         <option value="absence_off">Clear absence</option>
