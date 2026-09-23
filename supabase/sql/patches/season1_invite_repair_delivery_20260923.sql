@@ -314,7 +314,13 @@ BEGIN
   v_discord_user := nullif(btrim(coalesce(v_row.discord_user_id, '')), '');
 
   v_deadline := now() + interval '48 hours';
-  v_token := encode(gen_random_bytes(24), 'hex');
+  v_token := coalesce(
+    (
+      SELECT encode(extensions.gen_random_bytes(24), 'hex')
+      WHERE to_regprocedure('extensions.gen_random_bytes(integer)') IS NOT NULL
+    ),
+    replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')
+  );
   v_deadline_label := public.season1_invite_format_deadline_uk(v_deadline);
   v_accept_url := v_site || '/season1_invite.html?token=' || v_token || '&decision=accept';
   v_decline_url := v_site || '/season1_invite.html?token=' || v_token || '&decision=decline';
@@ -760,7 +766,11 @@ BEGIN
 
     v_token := coalesce(
       nullif(btrim(r.season1_invite_token), ''),
-      encode(gen_random_bytes(12), 'hex')
+      (
+        SELECT encode(extensions.gen_random_bytes(12), 'hex')
+        WHERE to_regprocedure('extensions.gen_random_bytes(integer)') IS NOT NULL
+      ),
+      replace(gen_random_uuid()::text, '-', '')
     );
     IF r.season1_invite_token IS NULL THEN
       UPDATE public.gpsl_owner_registry

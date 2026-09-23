@@ -9,7 +9,33 @@
 -- Final SELECT must show 2 rows. Then hard-refresh admin waiting list.
 -- =============================================================================
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
+-- Token helper that works on Supabase (pgcrypto lives in extensions)
+CREATE OR REPLACE FUNCTION public.season1_invite_new_token()
+RETURNS text
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+  v_bytes bytea;
+BEGIN
+  BEGIN
+    v_bytes := extensions.gen_random_bytes(24);
+    RETURN encode(v_bytes, 'hex');
+  EXCEPTION WHEN undefined_function OR invalid_schema_name THEN
+    NULL;
+  END;
+  BEGIN
+    v_bytes := gen_random_bytes(24);
+    RETURN encode(v_bytes, 'hex');
+  EXCEPTION WHEN undefined_function THEN
+    NULL;
+  END;
+  -- Always-available fallback
+  RETURN replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
+END;
+$fn$;
+
 
 ALTER TABLE public.gpsl_owner_registry
   ADD COLUMN IF NOT EXISTS season1_invite_queue_num integer,
@@ -97,7 +123,7 @@ BEGIN
   v_tag := coalesce(v_tag, nullif(btrim(v_row.owner_tag), ''), 'owner');
 
   v_deadline := now() + interval '48 hours';
-  v_token := encode(gen_random_bytes(24), 'hex');
+  v_token := public.season1_invite_new_token();
   v_deadline_label :=
     to_char(v_deadline AT TIME ZONE 'Europe/London', 'Dy DD Mon YYYY HH24:MI') || ' UK';
 
