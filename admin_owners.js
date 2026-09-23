@@ -1590,29 +1590,57 @@ async function toggleSeason1QueueNumber(ownerId) {
   await loadWaitingListAdmin();
 }
 
-async function inviteOwnerToSeason1({ ownerId, email, tag }) {
+async function inviteOwnerToSeason1({ ownerId, email, tag, alreadyInvited = false }) {
   const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
-  if (
-    !confirm(
-      `Invite ${label} to Season 1?\n\nThey get 48 hours to accept (email + Discord news + inbox).`
-    )
-  ) {
+  const confirmMsg = alreadyInvited
+    ? `Re-send Season 1 invite to ${label}?\n\nThis refreshes their 48h deadline and sends inbox + Discord again (delivery repair).`
+    : `Invite ${label} to Season 1?\n\nThey get 48 hours to accept (email + Discord news + inbox).`;
+  if (!confirm(confirmMsg)) {
     return;
   }
-  setWlActionStatus(`Sending Season 1 invite to ${label}…`);
-  const { data, error } = await supabase.rpc("admin_season1_invite_send", {
+  setWlActionStatus(
+    alreadyInvited
+      ? `Re-sending Season 1 invite to ${label}…`
+      : `Sending Season 1 invite to ${label}…`
+  );
+  // Prefer new RPC name; fall back to original if schema has only that one.
+  let data = null;
+  let error = null;
+  ({ data, error } = await supabase.rpc("admin_s1_invite_send", {
     p_owner_id: ownerId,
-  });
+  }));
+  if (
+    error &&
+    /404|not found|PGRST202|Could not find the function/i.test(
+      String(error.message || "") + String(error.code || "")
+    )
+  ) {
+    ({ data, error } = await supabase.rpc("admin_season1_invite_send", {
+      p_owner_id: ownerId,
+    }));
+  }
   if (error) {
+    const msg = String(error.message || "");
+    const details = String(error.details || "");
+    const hint = String(error.hint || "");
+    const code = String(error.code || "");
     const is404 =
       /404|not found|PGRST202|Could not find the function/i.test(
-        String(error.message || "") + String(error.code || "")
+        msg + details + hint + code
       );
+    console.error("Season 1 invite RPC failed", {
+      message: msg,
+      details,
+      hint,
+      code,
+      error,
+    });
     setWlActionStatus(
-      `❌ ${error.message}` +
+      `❌ ${msg}` +
+        (hint ? ` (${hint})` : "") +
         (is404
-          ? " — run supabase/sql/patches/season1_invite_send_rpc_fix_404_20260923.sql in Supabase, then retry."
-          : /queue number|Assign a Season/i.test(error.message || "")
+          ? " — run season1_invite_send_rpc_fix_404_20260923.sql in Supabase (final SELECT must show 2 rows), then hard-refresh."
+          : /queue number|Assign a Season/i.test(msg)
             ? " — click the S1# cell first."
             : ""),
       false
