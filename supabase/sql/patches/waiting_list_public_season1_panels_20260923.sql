@@ -1,12 +1,12 @@
 -- =============================================================================
 -- Waiting list public: Season 1 confirmed / Invited / Owner waiting list
 --
--- Layout for waiting_list.html (exclusive — each owner in at most one panel):
---   Left:  Confirmed for Season 1  (accepted) — highest priority
---   Middle: Invited               (offer pending) — next
---   Right: Owner waiting list     (ALL other non-archived owners)
+-- FIX: Owner waiting list was empty because the board CTE INNER JOINed
+-- auth.users. Confirmed/Invited panels do not — so they could show people
+-- while the waiting column stayed at 0 when auth.users isn't visible to the
+-- function role. Board now uses waiting_list_account_created_at() instead.
 --
--- Depends on: season1_league_invite_queue_20260923.sql
+-- Right panel = ALL non-archived owners who are not Confirmed and not Invited.
 -- Safe re-run.
 -- =============================================================================
 
@@ -198,6 +198,7 @@ BEGIN
   FROM confirmed_ranked;
 
   -- Right: ALL non-archived owners who are not Confirmed and not Invited
+  -- (no auth.users join — that was wiping this panel to 0)
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -219,7 +220,11 @@ BEGIN
       r.owner_id,
       coalesce(nullif(btrim(public.owner_registry_resolve_tag(r.owner_id)), ''), '—') AS owner_tag,
       r.status AS registry_status,
-      u.created_at AS account_created_at,
+      coalesce(
+        public.waiting_list_account_created_at(r.owner_id),
+        r.status_changed_at,
+        r.returned_to_list_at
+      ) AS account_created_at,
       r.waiting_list_admin_sort AS admin_sort,
       coalesce(r.confirmed_test_season, false) AS confirmed_test_season,
       EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id) AS has_club,
@@ -242,7 +247,6 @@ BEGIN
       ) AS owner_timezone,
       (r.season1_invite_response = 'declined') AS season1_rejected
     FROM public.gpsl_owner_registry r
-    JOIN auth.users u ON u.id = r.owner_id
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
     WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
@@ -264,7 +268,7 @@ BEGIN
           CASE WHEN b.has_club THEN 0 ELSE 1 END,
           CASE WHEN b.season1_rejected THEN 1 ELSE 0 END,
           CASE WHEN v_use_admin THEN b.admin_sort END NULLS LAST,
-          b.account_created_at,
+          b.account_created_at NULLS LAST,
           b.owner_id
       )::int AS position
     FROM board b
@@ -309,3 +313,10 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.waiting_list_public() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Quick check after apply (optional): should show board_total > 0 if any
+-- non-archived owners exist outside Confirmed/Invited.
+-- SELECT
+--   (waiting_list_public()->>'total')::int AS board_total,
+--   (waiting_list_public()->>'on_board_total')::int AS invited_total,
+--   (waiting_list_public()->>'season1_confirmed_total')::int AS confirmed_total;
