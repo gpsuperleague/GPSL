@@ -189,6 +189,21 @@ export const SECTION_MATCHDAY = {
         `<b>Cups:</b> 1-leg KO uses ET + pens if level. 2-leg ties are FT only unless level on aggregate after the 2nd leg — then a <b>5-minute</b> match with ET + pens; scores combine with both legs.`,
       ],
     },
+    { type: "h3", html: "eFootball stadium (home venue)" },
+    {
+      type: "ul",
+      items: [
+        `<b>Licensed clubs only</b> may use their real eFootball stadium.`,
+        `<b>Non-licensed clubs</b> must use the <b>Konami stadium</b>.`,
+        `<b>Konami stadium — colours:</b> decorate it in your <b>home kit</b> colours.`,
+        `<b>Konami stadium — accessories:</b> standard borders only — <b>no</b> statues, seasonal props, Halloween, or other extras.`,
+        `<b>Konami stadium — name:</b> set the stadium name to the club’s <b>correct real-life stadium</b> (same name as on <a href="stadium.html">Stadium</a> / Club Details).`,
+      ],
+    },
+    {
+      type: "tip",
+      html: `Also summarised on <a href="stadium.html">Stadium</a> and the Match Day console rules panel.`,
+    },
     {
       type: "ul",
       items: [

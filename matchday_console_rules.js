@@ -163,6 +163,10 @@ export function prematchConsoleChecklistHtml() {
       "On the pitch",
       PITCH_BEHAVIOUR_ITEMS.map((s) => s.replace(/^NO /, "No ")).join(" · "),
     ],
+    [
+      "Stadium",
+      "Licensed = real stadium · else Konami (home-kit colours, borders only, real-life name)",
+    ],
   ]
     .map(
       ([k, v]) =>
@@ -203,6 +207,15 @@ export function getMatchdayConsoleRulesCards() {
       {
         heading: "On the pitch",
         items: PITCH_BEHAVIOUR_ITEMS.map((t) => `<b>${t}</b>`),
+      },
+      {
+        heading: "Stadium",
+        items: [
+          "<b>Licensed clubs only</b> may use their real eFootball stadium.",
+          "<b>Non-licensed clubs</b> must use the <b>Konami stadium</b>.",
+          "<b>Konami stadium:</b> decorate in <b>home kit</b> colours; <b>standard borders only</b> (no statues, Halloween, or other accessories); name it as the club’s <b>correct real-life stadium</b>.",
+          `See <a href="stadium.html">Stadium</a> and <a href="learning_gpsl.html#matchday">Learning GPSL</a>.`,
+        ],
       },
     ],
   };
