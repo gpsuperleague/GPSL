@@ -1256,14 +1256,6 @@ function resolveDisplayTimezone({
   if (fromCountry) return { timeZone: fromCountry, approx: true };
   if (saved) return { timeZone: saved, approx: false };
   return { timeZone: "", approx: false };
-} = {}) {
-  const saved = String(ownerTimezone || "").trim();
-  if (saved) return { timeZone: saved, approx: false };
-  const origin = String(originTimezone || "").trim();
-  if (origin) return { timeZone: origin, approx: false };
-  const fromCountry = timezoneForCountry(countryCode);
-  if (fromCountry) return { timeZone: fromCountry, approx: true };
-  return { timeZone: "", approx: false };
 }
 
 function formatUkOffsetDelta(timeZone, { approx = false } = {}) {
