@@ -1586,7 +1586,17 @@ async function toggleSeason1QueueNumber(ownerId) {
       p_owner_id: ownerId,
     });
     if (error) {
-      setWlActionStatus("❌ " + error.message, false);
+      const conflict =
+        Number(error.code) === 409 ||
+        /409|unique|duplicate|23505/i.test(
+          String(error.message || "") + String(error.code || "")
+        );
+      setWlActionStatus(
+        conflict
+          ? "❌ Queue renumber conflict — run season1_invite_renumber_unique_409_20260924.sql in Supabase, then retry."
+          : "❌ " + error.message,
+        false
+      );
       return;
     }
     setWlActionStatus(

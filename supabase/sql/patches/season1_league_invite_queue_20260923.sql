@@ -203,11 +203,16 @@ BEGIN
   IF p_cleared_num IS NULL OR p_cleared_num < 1 THEN
     RETURN 0;
   END IF;
+  -- Two-pass: avoid UNIQUE collision when many rows decrement in one UPDATE
   UPDATE public.gpsl_owner_registry r
-  SET season1_invite_queue_num = r.season1_invite_queue_num - 1
+  SET season1_invite_queue_num = -r.season1_invite_queue_num
   WHERE r.season1_invite_queue_num IS NOT NULL
     AND r.season1_invite_queue_num > p_cleared_num;
   GET DIAGNOSTICS v_count = ROW_COUNT;
+  UPDATE public.gpsl_owner_registry r
+  SET season1_invite_queue_num = (-r.season1_invite_queue_num) - 1
+  WHERE r.season1_invite_queue_num IS NOT NULL
+    AND r.season1_invite_queue_num < 0;
   RETURN coalesce(v_count, 0);
 END;
 $fn$;
