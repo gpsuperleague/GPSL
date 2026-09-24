@@ -357,4 +357,22 @@ GRANT EXECUTE ON FUNCTION public.club_auction_interest_set(text, text, text) TO 
 GRANT EXECUTE ON FUNCTION public.club_auction_interest_clear(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_auction_interest_list() TO authenticated;
 
+-- ---------------------------------------------------------------------------
+-- Cleanup: drop marks from owners who are not Season 1 confirmed
+-- Safe to re-run. Preview first with the SELECT below if desired.
+-- ---------------------------------------------------------------------------
+-- Preview (optional):
+-- SELECT i.owner_id,
+--        public.owner_registry_resolve_tag(i.owner_id) AS owner_tag,
+--        i.club_short_name,
+--        i.mark_kind,
+--        r.season1_invite_response
+-- FROM public.club_auction_interests i
+-- LEFT JOIN public.gpsl_owner_registry r ON r.owner_id = i.owner_id
+-- WHERE NOT public.club_auction_interest_is_season1_confirmed(i.owner_id)
+-- ORDER BY owner_tag, i.club_short_name;
+
+DELETE FROM public.club_auction_interests i
+WHERE NOT public.club_auction_interest_is_season1_confirmed(i.owner_id);
+
 NOTIFY pgrst, 'reload schema';
