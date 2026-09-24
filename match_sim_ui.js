@@ -154,8 +154,9 @@ export async function runMatchSimulation(fixtureId, btn, mode = "instant", meta 
   });
 
   const rpcName = meta.rpc || "competition_simulate_fixture_result";
+  const id = Number(fixtureId);
   const { data, error } = await supabase.rpc(rpcName, {
-    p_fixture_id: Number(fixtureId),
+    p_fixture_id: id,
   });
 
   if (error) {
@@ -166,9 +167,16 @@ export async function runMatchSimulation(fixtureId, btn, mode = "instant", meta 
       else if (b.classList.contains("sim-instant-btn")) b.textContent = "Instant result";
       else b.textContent = "Simulate";
     });
-    const detail = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
-    const err = new Error(detail || "Simulation failed");
+    console.error("match sim RPC failed", { rpcName, fixtureId: id, error });
+    const detail = [error.message, error.details, error.hint, error.code]
+      .filter(Boolean)
+      .join(" — ");
+    const err = new Error(
+      detail ||
+        "Simulation failed (HTTP 400). Open DevTools → Network → competition_simulate_fixture_result → Response for the Postgres message."
+    );
     err.code = error.code;
+    err.cause = error;
     throw err;
   }
 

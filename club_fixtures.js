@@ -36,7 +36,7 @@ import {
   wireMatchSimBannerToggle,
   wireMatchSimButtons,
   runMatchSimulation,
-} from "./match_sim_ui.js?v=20260908-assist-goal-attach";
+} from "./match_sim_ui.js?v=20260924-sim-alert";
 import { loadMyNation, loadInternationalFixtures } from "./international.js";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
@@ -672,7 +672,11 @@ async function simulateFixture(fixtureId, btn, mode = "instant") {
     });
     await refreshFixtures(currentSeasonId);
   } catch (err) {
-    showError(err?.message || "Simulation failed");
+    console.error("simulateFixture:", err, err?.cause);
+    const msg = err?.message || "Simulation failed";
+    showError(msg);
+    // Unmissable — Network 400 body is the same text
+    alert(`Simulation failed:\n\n${msg}`);
   }
 }
 
@@ -716,7 +720,10 @@ async function simulateIntlFixture(fixtureId, btn, mode = "instant") {
     });
     await refreshFixtures(currentSeasonId);
   } catch (err) {
-    showError(err?.message || "Simulation failed");
+    console.error("simulateIntlFixture:", err, err?.cause);
+    const msg = err?.message || "Simulation failed";
+    showError(msg);
+    alert(`Simulation failed:\n\n${msg}`);
   }
 }
 
