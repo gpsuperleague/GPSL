@@ -1624,6 +1624,67 @@ async function toggleSeason1QueueNumber(ownerId) {
   await loadWaitingListAdmin();
 }
 
+/** Record Season 1 accept/decline when the owner replied by DM (not the link). */
+async function markSeason1ResponseOnBehalf({
+  ownerId,
+  email,
+  tag,
+  decision,
+  existingResponse = "",
+}) {
+  const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
+  const verb = decision === "accepted" ? "accepted" : "declined";
+  if (
+    !confirm(
+      `Mark ${label} as Season 1 ${verb}?\n\nUse this when they confirmed by DM (not the invite link).`
+    )
+  ) {
+    return;
+  }
+  let force = false;
+  const prev = String(existingResponse || "").toLowerCase();
+  if (prev && prev !== verb) {
+    if (
+      !confirm(
+        `They already show as "${prev}". Overwrite with ${verb}?`
+      )
+    ) {
+      return;
+    }
+    force = true;
+  } else if (prev === verb) {
+    setWlActionStatus(`ℹ️ Already marked ${verb}`, true);
+    return;
+  }
+
+  setWlActionStatus(`Recording Season 1 ${verb} for ${label}…`);
+  const { data, error } = await supabase.rpc(
+    "admin_season1_invite_respond_on_behalf",
+    {
+      p_owner_id: ownerId,
+      p_decision: decision,
+      p_force: force,
+      p_note: "Recorded from Discord DM",
+    }
+  );
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  if (data?.already) {
+    setWlActionStatus(
+      `ℹ️ Already ${data.response} — choose again and confirm overwrite if needed`,
+      true
+    );
+    return;
+  }
+  setWlActionStatus(
+    `✅ Marked Season 1 ${data?.response || verb} (on behalf)`,
+    true
+  );
+  await loadWaitingListAdmin();
+}
+
 async function inviteOwnerToSeason1({ ownerId, email, tag, alreadyInvited = false }) {
   const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
   const confirmMsg = alreadyInvited
@@ -2002,6 +2063,7 @@ function bindWlRowActionSelects(root) {
         tag: sel.dataset.tag || "",
         club: sel.dataset.club || "",
         s1Status: sel.dataset.s1Status || "",
+        s1Response: sel.dataset.s1Response || "",
         select: sel,
       };
       sel.value = "";
@@ -2010,13 +2072,33 @@ function bindWlRowActionSelects(root) {
   });
 }
 
-async function runWlRowAction(action, { ownerId, email, tag, club, s1Status, select }) {
+async function runWlRowAction(action, { ownerId, email, tag, club, s1Status, s1Response, select }) {
   const label = [tag, club ? `(${club})` : "", email].filter(Boolean).join(" ");
   if (action === "invite_season1") {
     const alreadyInvited =
       String(s1Status || "").toLowerCase() === "offered" ||
       String(s1Status || "").toLowerCase() === "invited";
     await inviteOwnerToSeason1({ ownerId, email, tag, alreadyInvited });
+    return;
+  }
+  if (action === "s1_accept_dm") {
+    await markSeason1ResponseOnBehalf({
+      ownerId,
+      email,
+      tag,
+      decision: "accepted",
+      existingResponse: s1Response,
+    });
+    return;
+  }
+  if (action === "s1_decline_dm") {
+    await markSeason1ResponseOnBehalf({
+      ownerId,
+      email,
+      tag,
+      decision: "declined",
+      existingResponse: s1Response,
+    });
     return;
   }
   if (action === "remove_waiting") {
@@ -2373,9 +2455,13 @@ async function loadArchivedOwnersSection() {
           data-id="${escapeWl(row.owner_id)}"
           data-email="${escapeWl(email)}"
           data-tag="${escapeWl(tag)}"
+          data-s1-status="${escapeWl(String(row.season1_invite_status || "").toLowerCase())}"
+          data-s1-response="${escapeWl(String(row.season1_invite_response || "").toLowerCase())}"
           aria-label="Actions for ${escapeWl(tag)}">
           <option value="">Actions…</option>
           <option value="invite_season1">Invite to season 1</option>
+          <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
+          <option value="s1_decline_dm">Mark S1 declined (DM)</option>
           <option value="unarchive">Unarchive → waiting</option>
           <option value="delete_gpsl">Delete from GPSL</option>
         </select>
@@ -2436,9 +2522,13 @@ function renderOnBreakSection(rows) {
           data-id="${escapeWl(row.owner_id)}"
           data-email="${escapeWl(email)}"
           data-tag="${escapeWl(tag)}"
+          data-s1-status="${escapeWl(String(row.season1_invite_status || "").toLowerCase())}"
+          data-s1-response="${escapeWl(String(row.season1_invite_response || "").toLowerCase())}"
           aria-label="Actions for ${escapeWl(tag)}">
           <option value="">Actions…</option>
           <option value="invite_season1">Invite to season 1</option>
+          <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
+          <option value="s1_decline_dm">Mark S1 declined (DM)</option>
           <option value="to_waiting">→ Waiting</option>
           <option value="add_club">Add club</option>
           <option value="remove_waiting">Archive</option>
@@ -2656,19 +2746,25 @@ function renderWaitingListAdminRow(
         ${invited ? "checked" : ""}>
     </td>`;
   const s1Status = String(row.season1_invite_status || "").toLowerCase();
+  const s1Response = String(row.season1_invite_response || "").toLowerCase();
   const s1InviteLabel =
     s1Status === "offered" ? "Re-send Season 1 invite" : "Invite to season 1";
+  const s1DmOptions = `
+        <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
+        <option value="s1_decline_dm">Mark S1 declined (DM)</option>`;
   const actionSelect =
     section === "owners" || hasClub
-      ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" data-s1-status="${escapeWl(s1Status)}" aria-label="Actions">
+      ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" data-s1-status="${escapeWl(s1Status)}" data-s1-response="${escapeWl(s1Response)}" aria-label="Actions">
         <option value="">Actions…</option>
         <option value="invite_season1">${s1InviteLabel}</option>
+        ${s1DmOptions}
         <option value="remove_club">Remove club → on break</option>
         <option value="to_waiting">→ Waiting</option>
       </select>`
-      : `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-s1-status="${escapeWl(s1Status)}" aria-label="Actions">
+      : `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-s1-status="${escapeWl(s1Status)}" data-s1-response="${escapeWl(s1Response)}" aria-label="Actions">
         <option value="">Actions…</option>
         <option value="invite_season1">${s1InviteLabel}</option>
+        ${s1DmOptions}
         <option value="add_club">Add club</option>
         <option value="absence_on">Mark on absence</option>
         <option value="absence_off">Clear absence</option>
