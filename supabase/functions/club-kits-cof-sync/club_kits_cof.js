@@ -181,8 +181,10 @@ export function normalizeClubName(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    // English spelling vs COF Swedish (IFK Gothenburg ↔ IFK Goteborg)
+    // English spelling vs COF local names
     .replace(/\bgothenburg\b/g, "goteborg")
+    // COF: "Legia Warszawa" (GPSL often "Legia Warsaw")
+    .replace(/\bwarsaw\b/g, "warszawa")
     .replace(
       /\b(fc|afc|cf|sc|ac|sv|sk|united|city|town|rovers|wanderers|hotspur|athletic|club|deportivo|real|balompie|sporting)\b/g,
       " "
