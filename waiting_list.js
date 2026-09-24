@@ -1,5 +1,5 @@
 import { supabase } from "./supabase_client.js";
-import { initGlobal } from "./global.js";
+import { initGlobal } from "./global.js?v=20260923-club-countdown-fix";
 import {
   loadOwnerSupporterMap,
   ownerTagHtml,
@@ -12,17 +12,16 @@ export async function loadWaitingListPublic() {
 }
 
 /**
- * Show/hide the club-auction card from the same DOM state wireDraftCountdownUI set.
- * Do not call isPageDraftCountdownActive() from a second global.js instance
- * (HTML ?v= query vs bare import) — that hid the card while the timer still ticked.
+ * Show the club-auction card only when the shared draft countdown is live
+ * for club auction (not the player draft window).
  */
 function syncAuctionCountdownCard() {
   const card = document.getElementById("wlAuctionCountdownCard");
   const container = document.getElementById("draftCountdownContainer");
   if (!card) return;
 
-  // wireDraftCountdownUI sets container display "" when active, "none" when not.
-  // First tick is async — do not require #draftCountdown text yet.
+  // wireDraftCountdownUI sets container display "" when this page's auction is
+  // active, "none" when not. Club pages no longer borrow the player-draft clock.
   card.hidden = !container || container.style.display === "none";
 }
 

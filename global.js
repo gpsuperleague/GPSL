@@ -352,10 +352,10 @@ function syncActiveDraftClockFromKind(kind = null) {
 function isDraftCountdownActive() {
   const kind = syncActiveDraftClockFromKind();
   if (!isValidDate(draftStart)) return false;
+  // Club pages must not borrow the player-draft clock when club auction is off
+  // (waiting_list.html was showing "Club auction" for the player random window).
   if (kind === "club") {
-    if (clubAuctionEnabled) return true;
-    if (draftRandomFinishRevealed) return true;
-    return getDraftPhaseFromStart(getUKNow(), draftStart) !== "ended";
+    return clubAuctionEnabled;
   }
   return isDraftKindEnabled(kind);
 }
@@ -1183,8 +1183,10 @@ export async function loadGlobalSettings() {
   managerDraftStart = parseStart(
     data?.manager_draft_auction_start_time ?? data?.draft_auction_start_time
   );
+  // Only inherit the player draft start when club auction is actually enabled.
   clubDraftStart = parseStart(
-    data?.club_auction_start_time ?? data?.draft_auction_start_time
+    data?.club_auction_start_time ??
+      (clubAuctionEnabled ? data?.draft_auction_start_time : null)
   );
 
   applyDraftRandomFinishRevealed(data);
