@@ -398,6 +398,7 @@ export async function loadLeagueFixtures(supabase, division = null) {
     let query = supabase
       .from("competition_fixtures_public")
       .select("*")
+      .eq("competition_type", "league")
       .order("matchday", { ascending: true })
       .order("id", { ascending: true })
       .range(from, from + pageSize - 1);
