@@ -19,6 +19,11 @@ BEGIN
     'ÜüÖöÔôÄäÉéÈèÊêËëÍíÓóÚúÇçÀàÂâÃãÑñ',
     'UuOoOoAaEeEeEeIiOoUuCcAaAaAaNn'
   );
+  v := replace(v, chr(8203), '');
+  v := replace(v, chr(8204), '');
+  v := replace(v, chr(8205), '');
+  v := replace(v, chr(65279), '');
+  v := replace(v, chr(160), ' ');
   -- Strip apostrophe-like chars so d'Ivoire ≡ dIvoire
   v := regexp_replace(
     v,

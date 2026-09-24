@@ -26,7 +26,7 @@ import {
   complianceRowTooltip,
   isExpiryAuctionExempt,
   isOooOWageUpliftRenew,
-} from "./squad_rules.js?v=20260924-hg-nation";
+} from "./squad_rules.js?v=20260924-hg-nation2";
 import {
   loadSquadGhostAcquisitions,
   formatGhostPlayerNameCell,

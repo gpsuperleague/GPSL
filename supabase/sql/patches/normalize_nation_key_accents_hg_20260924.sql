@@ -1,15 +1,12 @@
 -- =============================================================================
 -- Harden normalize_nation_key for home-grown matching
 -- =============================================================================
--- Symptom: SOA (Côte d'Ivoire) Registration HG showed 1 instead of ~16.
--- Cause: Clubs.Nation / Players.Nation Unicode mismatch (ô, curly apostrophe,
---        or "Ivory Coast" vs "Côte d'Ivoire"). Old normalize only uppercased.
+-- Does NOT change when August fines/loans run. Those still require
+-- squad_minimum_punishments_active() = GPSL month ≥ August. This patch only
+-- makes nation string compares accent/apostrophe-safe so a Unicode mismatch
+-- cannot under-count HG at August.
 --
--- August HG fines / forced loans call club_hg_count → this function. Mid-season
--- squad.html was client-side only, so a display mismatch alone does not trigger
--- August enforcement — but SQL must stay aligned so August never false-fires.
---
--- Run once in Supabase SQL Editor.
+-- Run once in Supabase SQL Editor (function + diagnostics below).
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.normalize_nation_key(p_value text)
@@ -20,13 +17,18 @@ AS $fn$
 DECLARE
   v text;
 BEGIN
-  -- Same accent map as competition_normalize_nation_key (Ôô → Oo for Côte)
   v := translate(
     btrim(coalesce(p_value, '')),
     'ÜüÖöÔôÄäÉéÈèÊêËëÍíÓóÚúÇçÀàÂâÃãÑñ',
     'UuOoOoAaEeEeEeIiOoUuCcAaAaAaNn'
   );
-  -- Strip apostrophe-like chars so d'Ivoire ≡ dIvoire
+  -- Zero-width / BOM / NBSP
+  v := replace(v, chr(8203), ''); -- ZWSP
+  v := replace(v, chr(8204), ''); -- ZWNJ
+  v := replace(v, chr(8205), ''); -- ZWJ
+  v := replace(v, chr(65279), ''); -- BOM
+  v := replace(v, chr(160), ' '); -- NBSP
+  -- Apostrophe-like chars so d'Ivoire ≡ dIvoire
   v := regexp_replace(
     v,
     '[' || chr(39) || chr(96) || chr(180) || chr(8216) || chr(8217) || chr(8218) || chr(8242) || chr(700) || ']',
@@ -54,11 +56,31 @@ $fn$;
 COMMENT ON FUNCTION public.normalize_nation_key(text) IS
   'Nation compare key for HG: strips accents/apostrophes; aliases Ivory Coast ↔ Côte d''Ivoire.';
 
--- Quick check (expect all = COTE DIVOIRE):
--- SELECT
---   public.normalize_nation_key('Côte d''Ivoire') AS club,
---   public.normalize_nation_key('Cote d''Ivoire') AS ascii,
---   public.normalize_nation_key('Ivory Coast') AS english,
---   public.normalize_nation_key(U&'Côte d\2019Ivoire') AS curly_apos;
---
--- SELECT public.club_hg_count('SOA') AS soa_hg;
+-- ---------------------------------------------------------------------------
+-- Diagnostics (SOA): if most players are United States, accent fix cannot
+-- restore HG — NMU→SOA kept the squad and only changed Clubs.Nation to CIV.
+-- ---------------------------------------------------------------------------
+
+SELECT
+  c."ShortName",
+  c."Nation" AS club_nation,
+  public.normalize_nation_key(c."Nation") AS club_key,
+  public.club_hg_count('SOA') AS hg_count,
+  (
+    SELECT count(*) FROM public."Players" p
+    WHERE p."Contracted_Team" = 'SOA'
+  ) AS squad_total
+FROM public."Clubs" c
+WHERE c."ShortName" = 'SOA';
+
+SELECT
+  p."Nation" AS player_nation,
+  public.normalize_nation_key(p."Nation") AS player_key,
+  count(*)::int AS players,
+  (public.normalize_nation_key(p."Nation") = public.normalize_nation_key(c."Nation")) AS counts_as_hg
+FROM public."Players" p
+CROSS JOIN public."Clubs" c
+WHERE p."Contracted_Team" = 'SOA'
+  AND c."ShortName" = 'SOA'
+GROUP BY p."Nation", c."Nation"
+ORDER BY players DESC, p."Nation";

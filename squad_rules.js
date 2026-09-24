@@ -297,6 +297,9 @@ export function normalizeNation(value) {
   const key = String(value)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    // Zero-width / BOM / NBSP — can sneak in from copy-paste in Club Details
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\u00A0/g, " ")
     // Straight / curly / modifier apostrophes — strip so d'Ivoire ≡ dIvoire
     .replace(/['\u2018\u2019\u201A\u2032\u02BC`´]/g, "")
     .trim()
