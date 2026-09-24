@@ -1,11 +1,10 @@
 -- =============================================================================
 -- Admin: mark Season 1 accept/decline on behalf (DM responses)
 -- =============================================================================
--- For owners who reply by Discord DM instead of the invite link.
--- Admin-only. Allows offered or expired invites; can force-overwrite an
--- existing response if they change their mind via DM.
+-- Fixes 400 on decline/accept: prior version rejected rows whose status was
+-- not offered/expired/queued (common for current club owners / DM replies).
 --
--- Run once in Supabase SQL Editor.
+-- Re-run this whole file in Supabase SQL Editor, then retry the dropdown.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.admin_season1_invite_respond_on_behalf(
@@ -47,13 +46,28 @@ BEGIN
   FOR UPDATE;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'No registry row for owner';
+    RAISE EXCEPTION 'No registry row for owner %', p_owner_id;
   END IF;
 
   v_prev_response := v_row.season1_invite_response;
   v_prev_status := v_row.season1_invite_status;
 
-  IF v_prev_response IS NOT NULL AND NOT coalesce(p_force, false) THEN
+  IF v_prev_response IS NOT NULL
+     AND v_prev_response = v_decision
+     AND NOT coalesce(p_force, false) THEN
+    RETURN jsonb_build_object(
+      'ok', true,
+      'already', true,
+      'response', v_prev_response,
+      'owner_id', v_row.owner_id,
+      'queue_num', v_row.season1_invite_queue_num,
+      'season1', public.season1_invite_row_json(v_row)
+    );
+  END IF;
+
+  IF v_prev_response IS NOT NULL
+     AND v_prev_response IS DISTINCT FROM v_decision
+     AND NOT coalesce(p_force, false) THEN
     RETURN jsonb_build_object(
       'ok', true,
       'already', true,
@@ -61,17 +75,11 @@ BEGIN
       'owner_id', v_row.owner_id,
       'queue_num', v_row.season1_invite_queue_num,
       'season1', public.season1_invite_row_json(v_row),
-      'hint', 'Already recorded — pass p_force := true to overwrite'
+      'hint', format('Already %s — confirm overwrite to set %s', v_prev_response, v_decision)
     );
   END IF;
 
-  IF v_prev_response IS NULL
-     AND coalesce(v_prev_status, '') NOT IN ('offered', 'expired', 'queued') THEN
-    RAISE EXCEPTION
-      'No Season 1 invite to record (status=%). Assign S1# and send invite first.',
-      coalesce(v_prev_status, 'null');
-  END IF;
-
+  -- No status gate: admin may record DM replies for any registry row.
   UPDATE public.gpsl_owner_registry
   SET season1_invite_status = v_decision,
       season1_invite_response = v_decision,
@@ -80,9 +88,14 @@ BEGIN
   RETURNING * INTO v_row;
 
   IF v_row.season1_invite_inbox_id IS NOT NULL THEN
-    UPDATE public.competition_inbox
-    SET read_at = coalesce(read_at, now())
-    WHERE id = v_row.season1_invite_inbox_id;
+    BEGIN
+      UPDATE public.competition_inbox
+      SET read_at = coalesce(read_at, now())
+      WHERE id = v_row.season1_invite_inbox_id;
+    EXCEPTION
+      WHEN OTHERS THEN
+        NULL;
+    END;
   END IF;
 
   PERFORM public.season1_invite_log_event(

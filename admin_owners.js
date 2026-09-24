@@ -1668,7 +1668,11 @@ async function markSeason1ResponseOnBehalf({
     }
   );
   if (error) {
-    setWlActionStatus("❌ " + error.message, false);
+    const detail = [error.message, error.details, error.hint]
+      .filter(Boolean)
+      .join(" — ");
+    setWlActionStatus("❌ " + detail, false);
+    console.warn("admin_season1_invite_respond_on_behalf", error);
     return;
   }
   if (data?.already) {
