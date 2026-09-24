@@ -110,7 +110,13 @@ export function expansionBlockedReason(status, opts = {}) {
   const base = Number(status.base_capacity || 0);
   const current = Number(status.current_capacity || 0);
   const buildCap = Number(opts.newBuildMaxCapacity || 55000);
+  const fillPct = Number(
+    opts.fillPct ?? status.fill_pct ?? status.display_fill_pct ?? status.gate_fill_pct
+  );
 
+  if (Number.isFinite(fillPct) && fillPct < 100) {
+    return `Stadium expansion requires current fill of 100% or higher (currently ${fillPct.toFixed(1)}%).`;
+  }
   if (current > buildCap) {
     return `Stadium expansion is only available for clubs at or below ${buildCap.toLocaleString("en-GB")} seats (current ${current.toLocaleString("en-GB")}).`;
   }

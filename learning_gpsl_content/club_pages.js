@@ -84,10 +84,13 @@ export const SECTION_EXPECTATIONS = {
     {
       type: "ul",
       items: [
-        `<b>Big clubs</b> — one random player from your <b>top four rated</b> squad members requests a transfer.
-          Any age. Listed at <b>market value</b> on the <a href="all_listings.html">Transfer Market</a>.`,
-        `<b>Medium clubs</b> — same rule, but only players rated <b>74–78</b> who are <b>over 21</b> (22 or older) can be chosen.`,
-        `<b>Low clubs</b> — no underperformance transfer requests.`,
+        `<b>Big clubs</b> — slight miss: a <b>lower-rated</b> player (not your top four) requests a transfer.
+          Bad/abysmal: one random player from your <b>top four rated</b>. Listed at <b>market value</b>.`,
+        `<b>Medium clubs</b> — slight miss: rated <b>68–73</b> (over 21). Bad/abysmal: rated <b>74–78</b> (over 21).`,
+        `<b>Low clubs</b> — a player rated <b>72 or below</b> may hand in a transfer request.`,
+        `<b>Board fine</b> — on a miss, 25% of your personal GPSL Building Society balance can be taken.`,
+        `<b>Manager deals</b> — miss your manager’s personal target both seasons and they leave (refuse), with market value credited to the club.
+          Hit the manager target but miss <b>club</b> expectation both seasons and the club sacks them (MV credited).`,
       ],
     },
     { type: "h3", html: "Forced listing rules" },
@@ -104,7 +107,7 @@ export const SECTION_EXPECTATIONS = {
     },
     {
       type: "warn",
-      html: `This is separate from <b>manager retention</b> (manager released if league target missed) — you can face both in the same season.
+      html: `This is separate from <b>manager retention</b> over a 2-season deal — you can face listing, board fine, and manager exit in the same window.
         See <a href="boardroom.html">Boardroom</a> and <a href="#managers">Managers</a> below.`,
     },
     {

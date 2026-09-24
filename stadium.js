@@ -24,6 +24,7 @@ import {
 } from "./stadium_expansion.js";
 let clubShortName = null;
 let expansionBuildCap = 55000;
+let lastStadiumFillPct = null;
 
 function renderStadiumPhoto(shortName, stadiumName) {
   const slot = document.getElementById("stadiumPhotoSlot");
@@ -65,6 +66,9 @@ function renderGateBreakdown(data) {
   ).toFixed(1);
   const displayPct = Number(data.display_fill_pct);
   const displayLabel = Number.isFinite(displayPct) ? `${displayPct.toFixed(1)}%` : gatePct + "%";
+  lastStadiumFillPct = Number.isFinite(displayPct)
+    ? displayPct
+    : Number(data.gate_fill_pct) || null;
   const cushion = Number(data.cushion_pct) || 0;
   const legacy = data.legacy_fallback;
 
@@ -271,7 +275,10 @@ async function refreshExpansionPanel() {
 
   if (buildEl) buildEl.innerHTML = renderBuildStatusHtml(status);
 
-  const blocked = expansionBlockedReason(status, { newBuildMaxCapacity: expansionBuildCap });
+  const blocked = expansionBlockedReason(status, {
+    newBuildMaxCapacity: expansionBuildCap,
+    fillPct: lastStadiumFillPct,
+  });
   const hasActive = Boolean(status.active_order_id);
 
   if (blocked && !hasActive) {

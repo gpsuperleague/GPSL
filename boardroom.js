@@ -132,14 +132,27 @@ function performanceBandClass(band) {
 
 function failurePunishmentNote(tier) {
   const stadium =
-    "Gate fill drifts down when below expectation (slight −10%, bad −20%, abysmal −25%).";
+    "Gate fill drifts down when below expectation (slight −7%, bad −15%, abysmal −20%).";
+  const fine =
+    "The board may also fine you 25% of your personal GPSL Building Society balance.";
   if (tier === "big") {
-    return `At season end, one random player from your top four rated may be forced onto the transfer market at market value (perpetual relisting, cannot remove). ${stadium}`;
+    return (
+      `At season end, a transfer request is forced at market value (perpetual relisting, cannot remove): ` +
+      `slight miss → a lower-rated squad player (not your top four); bad/abysmal → one of your top four rated. ` +
+      `${stadium} ${fine}`
+    );
   }
   if (tier === "medium") {
-    return `At season end, one player rated 74–78 who is over 21 may be forced onto the transfer market at market value (perpetual relisting, cannot remove). ${stadium}`;
+    return (
+      `At season end, a transfer request is forced at market value (perpetual relisting, cannot remove): ` +
+      `slight miss → a player rated 68–73 (over 21); bad/abysmal → rated 74–78 (over 21). ` +
+      `${stadium} ${fine}`
+    );
   }
-  return `Low clubs are not subject to underperformance transfer requests. ${stadium}`;
+  return (
+    `At season end, a low-rated player (72 or below) may hand in a transfer request at market value ` +
+    `(perpetual relisting, cannot remove). ${stadium} ${fine}`
+  );
 }
 
 function managerLiftNote(data) {
@@ -652,8 +665,8 @@ async function loadManagerSection(clubShortName) {
         archived
           ? `<p class="expectation-note expectation-note--archived">Removed from the live manager catalog. Keep them until the deal ends (full market value refund) or sack them. They cannot be listed or renewed. History is retained.</p>`
           : pendingRenewal
-            ? `<p class="expectation-note">They hit their target in at least one season of the deal. Renew in June or July for another 2 seasons — if not renewed before August starts, they are released for market value.</p>`
-            : `<p class="expectation-note">On target uses the live league table vs their deal target for this season. Final hit/miss is locked when you run Process manager contracts.</p>`
+            ? `<p class="expectation-note">They hit their personal target in at least one season, and the club did not miss expectation both seasons. Renew in June or July for another 2 seasons — if not renewed before August starts, they are released for market value. (If the club misses expectation both seasons of the deal, they are sacked instead, with market value credited.)</p>`
+            : `<p class="expectation-note">On target uses the live league table vs their personal deal target. Club prestige expectation is separate. At deal end: miss personal target both seasons → they leave (refuse, MV credited); hit personal but club misses both seasons → sacked (MV credited). Final results lock when you run Process manager contracts.</p>`
       }
     `;
   }
