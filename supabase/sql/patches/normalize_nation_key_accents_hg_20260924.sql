@@ -1,12 +1,12 @@
 -- =============================================================================
--- Harden normalize_nation_key for home-grown matching
+-- Harden normalize_nation_key + fix literal HTML &apos; in Nation
 -- =============================================================================
--- Does NOT change when August fines/loans run. Those still require
--- squad_minimum_punishments_active() = GPSL month ≥ August. This patch only
--- makes nation string compares accent/apostrophe-safe so a Unicode mismatch
--- cannot under-count HG at August.
+-- Root cause (SOA): 15 players stored as Côte d&apos;Ivoire (HTML entity),
+-- club as Côte d'Ivoire (real apostrophe) → HG count 1 instead of 16.
 --
--- Run once in Supabase SQL Editor (function + diagnostics below).
+-- Does NOT change when August fines/loans run (still GPSL month ≥ August).
+--
+-- Run once in Supabase SQL Editor.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.normalize_nation_key(p_value text)
@@ -17,18 +17,23 @@ AS $fn$
 DECLARE
   v text;
 BEGIN
+  v := btrim(coalesce(p_value, ''));
+  -- Literal HTML entities leaked into Players.Nation
+  v := regexp_replace(v, '&apos;', '''', 'gi');
+  v := regexp_replace(v, '&#0*39;', '''', 'g');
+  v := regexp_replace(v, '&#x0*27;', '''', 'gi');
+  v := regexp_replace(v, '&(rsquo|lsquo|prime);', '''', 'gi');
+
   v := translate(
-    btrim(coalesce(p_value, '')),
+    v,
     'ÜüÖöÔôÄäÉéÈèÊêËëÍíÓóÚúÇçÀàÂâÃãÑñ',
     'UuOoOoAaEeEeEeIiOoUuCcAaAaAaNn'
   );
-  -- Zero-width / BOM / NBSP
-  v := replace(v, chr(8203), ''); -- ZWSP
-  v := replace(v, chr(8204), ''); -- ZWNJ
-  v := replace(v, chr(8205), ''); -- ZWJ
-  v := replace(v, chr(65279), ''); -- BOM
-  v := replace(v, chr(160), ' '); -- NBSP
-  -- Apostrophe-like chars so d'Ivoire ≡ dIvoire
+  v := replace(v, chr(8203), '');
+  v := replace(v, chr(8204), '');
+  v := replace(v, chr(8205), '');
+  v := replace(v, chr(65279), '');
+  v := replace(v, chr(160), ' ');
   v := regexp_replace(
     v,
     '[' || chr(39) || chr(96) || chr(180) || chr(8216) || chr(8217) || chr(8218) || chr(8242) || chr(700) || ']',
@@ -40,10 +45,13 @@ BEGIN
   v := regexp_replace(v, '\s+', ' ', 'g');
   v := upper(btrim(v));
 
+  -- d'Ivoire → dIvoire → camelCase → "COTE D IVOIRE"
   IF v IN (
     'IVORY COAST',
     'COTE DIVOIRE',
+    'COTE D IVOIRE',
     'REPUBLIC OF COTE DIVOIRE',
+    'REPUBLIC OF COTE D IVOIRE',
     'CIV'
   ) THEN
     RETURN 'COTE DIVOIRE';
@@ -54,22 +62,34 @@ END;
 $fn$;
 
 COMMENT ON FUNCTION public.normalize_nation_key(text) IS
-  'Nation compare key for HG: strips accents/apostrophes; aliases Ivory Coast ↔ Côte d''Ivoire.';
+  'Nation compare key for HG: strips accents/apostrophes/HTML entities; aliases Ivory Coast ↔ Côte d''Ivoire.';
 
--- ---------------------------------------------------------------------------
--- Diagnostics (SOA): if most players are United States, accent fix cannot
--- restore HG — NMU→SOA kept the squad and only changed Clubs.Nation to CIV.
--- ---------------------------------------------------------------------------
+-- Fix stored HTML entities (display + future imports)
+UPDATE public."Players"
+SET "Nation" = regexp_replace(
+  regexp_replace(
+    regexp_replace("Nation", '&apos;', '''', 'gi'),
+    '&#0*39;', '''', 'g'
+  ),
+  '&#x0*27;', '''', 'gi'
+)
+WHERE "Nation" ~* '&(apos|#0*39|#x0*27);';
 
+UPDATE public."Clubs"
+SET "Nation" = regexp_replace(
+  regexp_replace(
+    regexp_replace("Nation", '&apos;', '''', 'gi'),
+    '&#0*39;', '''', 'g'
+  ),
+  '&#x0*27;', '''', 'gi'
+)
+WHERE "Nation" ~* '&(apos|#0*39|#x0*27);';
+
+-- Expect hg_count ≈ 16 for SOA
 SELECT
-  c."ShortName",
   c."Nation" AS club_nation,
   public.normalize_nation_key(c."Nation") AS club_key,
-  public.club_hg_count('SOA') AS hg_count,
-  (
-    SELECT count(*) FROM public."Players" p
-    WHERE p."Contracted_Team" = 'SOA'
-  ) AS squad_total
+  public.club_hg_count('SOA') AS hg_count
 FROM public."Clubs" c
 WHERE c."ShortName" = 'SOA';
 
@@ -83,4 +103,4 @@ CROSS JOIN public."Clubs" c
 WHERE p."Contracted_Team" = 'SOA'
   AND c."ShortName" = 'SOA'
 GROUP BY p."Nation", c."Nation"
-ORDER BY players DESC, p."Nation";
+ORDER BY players DESC;

@@ -3,8 +3,8 @@
 -- Run once in Supabase SQL Editor.
 -- =============================================================================
 
--- Accent/apostrophe-safe nation key (HG, August enforcement, checklists).
--- "Côte d'Ivoire" / "Cote d'Ivoire" / "Ivory Coast" → COTE DIVOIRE.
+-- Accent/apostrophe/HTML-entity-safe nation key (HG, August enforcement, checklists).
+-- "Côte d'Ivoire" / "Cote d&apos;Ivoire" / "Ivory Coast" → COTE DIVOIRE.
 CREATE OR REPLACE FUNCTION public.normalize_nation_key(p_value text)
 RETURNS text
 LANGUAGE plpgsql
@@ -13,9 +13,15 @@ AS $fn$
 DECLARE
   v text;
 BEGIN
+  v := btrim(coalesce(p_value, ''));
+  v := regexp_replace(v, '&apos;', '''', 'gi');
+  v := regexp_replace(v, '&#0*39;', '''', 'g');
+  v := regexp_replace(v, '&#x0*27;', '''', 'gi');
+  v := regexp_replace(v, '&(rsquo|lsquo|prime);', '''', 'gi');
+
   -- Same accent map as competition_normalize_nation_key (Ôô → Oo for Côte)
   v := translate(
-    btrim(coalesce(p_value, '')),
+    v,
     'ÜüÖöÔôÄäÉéÈèÊêËëÍíÓóÚúÇçÀàÂâÃãÑñ',
     'UuOoOoAaEeEeEeIiOoUuCcAaAaAaNn'
   );
@@ -24,7 +30,6 @@ BEGIN
   v := replace(v, chr(8205), '');
   v := replace(v, chr(65279), '');
   v := replace(v, chr(160), ' ');
-  -- Strip apostrophe-like chars so d'Ivoire ≡ dIvoire
   v := regexp_replace(
     v,
     '[' || chr(39) || chr(96) || chr(180) || chr(8216) || chr(8217) || chr(8218) || chr(8242) || chr(700) || ']',
@@ -39,7 +44,9 @@ BEGIN
   IF v IN (
     'IVORY COAST',
     'COTE DIVOIRE',
+    'COTE D IVOIRE',
     'REPUBLIC OF COTE DIVOIRE',
+    'REPUBLIC OF COTE D IVOIRE',
     'CIV'
   ) THEN
     RETURN 'COTE DIVOIRE';
