@@ -90,12 +90,13 @@ function renderInterestBanner() {
   const frozen = Boolean(interestState?.frozen);
   const canMark = Boolean(interestState?.can_mark);
   const canView = Boolean(interestState?.can_view);
+  const s1Confirmed = Boolean(interestState?.season1_confirmed);
   const mineI = interestState?.mine_interest;
   const mineB = interestState?.mine_backup;
 
   const parts = [];
   parts.push(
-    `<b>Club preference</b> — mark <b>1 interest</b> and <b>1 backup</b> on any club (waiting-list owners and current club owners). Hover ★ / ☆ to see who and spot clashes.`
+    `<b>Club preference</b> — Season 1 confirmed owners mark <b>1 interest</b> and <b>1 backup</b> on any club. Hover ★ / ☆ to see who and spot clashes.`
   );
   if (url) {
     parts.push(
@@ -118,11 +119,15 @@ function renderInterestBanner() {
         ' <span class="frozen">Required before club auction:</span> mark <b>1 interest</b> and <b>1 backup</b> (click a club’s ★ button).'
       );
     }
+  } else if (!s1Confirmed && canView) {
+    parts.push(
+      ' <span class="frozen">Only Season 1 confirmed owners can mark clubs.</span> You can view other people’s marks.'
+    );
   } else if (canView) {
     parts.push(" You can view marks; set your owner tag on Owner details to mark clubs.");
   } else {
     parts.push(
-      ' Sign in with an owner account (and set your owner tag) to mark preferred clubs.'
+      ' Sign in with a Season 1 confirmed owner account (and set your owner tag) to mark preferred clubs.'
     );
   }
 
@@ -139,6 +144,7 @@ async function loadInterestState() {
       frozen: false,
       can_mark: false,
       can_view: false,
+      season1_confirmed: false,
       max_interests: 1,
       max_backups: 1,
       my_interest_count: 0,
