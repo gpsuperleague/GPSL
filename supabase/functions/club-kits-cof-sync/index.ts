@@ -94,6 +94,7 @@ const COF_CLUB_SLUG_OVERRIDES = {
   PAL: "palmeiras",
   CVI: "celta",
   LAZ: "lazio",
+  ROM: "roma",
   LIL: "lille",
   LYO: "lyon",
   COP: "fck",
@@ -192,7 +193,7 @@ function normalizeClubName(value) {
     // COF: "Legia Warszawa" (GPSL often "Legia Warsaw")
     .replace(/\bwarsaw\b/g, "warszawa")
     .replace(
-      /\b(fc|afc|cf|sc|ac|sv|sk|united|city|town|rovers|wanderers|hotspur|athletic|club|deportivo|real|balompie|sporting)\b/g,
+      /\b(fc|afc|cf|sc|ac|as|ss|us|sv|sk|united|city|town|rovers|wanderers|hotspur|athletic|club|deportivo|real|balompie|sporting)\b/g,
       " "
     )
     .replace(/[^a-z0-9]/g, " ")
@@ -269,14 +270,25 @@ function matchCofClubLink(links, clubName) {
     if (name === target) return link;
 
     let score = 0;
-    if (name.includes(target) || target.includes(name)) {
+    const targetTokens = target.split(" ").filter(Boolean);
+    const nameTokens = name.split(" ").filter(Boolean);
+    const nameTokenSet = new Set(nameTokens);
+
+    // GPSL short name is a full token of the COF name (e.g. "Roma" vs "AS Roma")
+    if (
+      targetTokens.length === 1 &&
+      targetTokens[0].length >= 3 &&
+      nameTokenSet.has(targetTokens[0])
+    ) {
+      score = 50;
+    } else if (name.includes(target) || target.includes(name)) {
       score = Math.min(name.length, target.length);
     } else {
-      const targetTokens = target.split(" ").filter((t) => t.length > 2);
-      const nameTokens = new Set(name.split(" ").filter((t) => t.length > 2));
-      const overlap = targetTokens.filter((t) => nameTokens.has(t)).length;
+      const longTarget = targetTokens.filter((t) => t.length > 2);
+      const longName = new Set(nameTokens.filter((t) => t.length > 2));
+      const overlap = longTarget.filter((t) => longName.has(t)).length;
       if (overlap >= 2) score = overlap * 10;
-      else if (overlap === 1 && targetTokens.length === 1) score = 8;
+      else if (overlap === 1 && longTarget.length === 1) score = 8;
     }
 
     if (score > bestScore) {
