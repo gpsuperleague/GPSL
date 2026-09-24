@@ -134,7 +134,7 @@ function failurePunishmentNote(tier) {
   const stadium =
     "Gate fill drifts down when below expectation (slight −7%, bad −15%, abysmal −20%).";
   const fine =
-    "The board may also fine you 25% of your personal GPSL Building Society balance.";
+    "If the club misses expectation, the board may fine you 25% of your personal GPSL Building Society balance (manager target misses do not trigger this fine).";
   if (tier === "big") {
     return (
       `At season end, a transfer request is forced at market value (perpetual relisting, cannot remove): ` +

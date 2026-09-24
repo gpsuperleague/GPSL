@@ -3,7 +3,8 @@
 -- =============================================================================
 -- • Slight miss → lower-rated forced listing (big/medium)
 -- • Low clubs → ≤72 rated transfer request on any miss
--- • Board fine: 25% of owner GPSL Building Society balance on club miss
+-- • Board fine: 25% of owner GPSL Building Society balance on club miss only
+--   (manager personal-target misses do not trigger this fine)
 -- • Manager deal end:
 --     - 0 personal hits → leaves (refuse), MV credited to club, 2-season rehire block
 --     - ≥1 personal hit BUT club missed both deal seasons → sack, MV credited
@@ -410,7 +411,6 @@ DECLARE
   v_results jsonb := '[]'::jsonb;
   v_row jsonb;
   v_block_err text;
-  v_fine numeric;
   v_club_missed boolean;
 BEGIN
   SELECT * INTO v_season
@@ -474,25 +474,7 @@ BEGIN
       target_met = excluded.target_met,
       recorded_at = now();
 
-    IF NOT coalesce(v_met, false) THEN
-      BEGIN
-        v_fine := public.board_fine_owner_personal_pct(
-          v_mgr.contracted_club,
-          25,
-          format(
-            'Board fine — manager target missed (%s)',
-            coalesce(v_mgr.name, v_mgr.id::text)
-          ),
-          v_season.id,
-          jsonb_build_object(
-            'manager_id', v_mgr.id,
-            'reason', 'manager_target_miss'
-          )
-        );
-      EXCEPTION WHEN OTHERS THEN
-        v_fine := 0;
-      END;
-    END IF;
+    -- Board fine is club-expectation only (applied in club_underperformance_process_club)
 
     IF coalesce(v_mgr.contract_seasons_remaining, 0) > 1 THEN
       UPDATE public."Managers"
@@ -763,5 +745,200 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.stadium_current_fill_pct(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.stadium_expansion_create_quote(integer) TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Inbox + Discord: clearer "handed in a transfer request" wording
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.owner_inbox_notify_underperformance_transfer(
+  p_club_short_name text,
+  p_player_id text,
+  p_listing_id bigint,
+  p_tier text,
+  p_metrics jsonb
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_player public."Players"%rowtype;
+  v_body text;
+  v_exp text;
+  v_act text;
+  v_band text;
+  v_tier_label text;
+BEGIN
+  SELECT * INTO v_player
+  FROM public."Players" p
+  WHERE p."Konami_ID"::text = btrim(p_player_id);
+
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
+
+  v_exp := coalesce(p_metrics ->> 'expected_position', '?');
+  v_act := coalesce(p_metrics ->> 'actual_position', '?');
+  v_band := coalesce(p_metrics ->> 'performance_band', 'under');
+  v_tier_label := CASE lower(coalesce(p_tier, ''))
+    WHEN 'big' THEN 'big'
+    WHEN 'medium' THEN 'medium'
+    WHEN 'low' THEN 'low'
+    ELSE coalesce(nullif(btrim(p_tier), ''), 'club')
+  END;
+
+  v_body := concat_ws(
+    E'\n',
+    format(
+      '%s has handed in a transfer request after the club failed to meet expectations last season.',
+      coalesce(v_player."Name", 'A player')
+    ),
+    format(
+      'Your %s-club season expectation was missed (expected league position: %s · finished: %s · band: %s).',
+      v_tier_label,
+      v_exp,
+      v_act,
+      v_band
+    ),
+    format(
+      'They are listed at market value (₿ %s) with automatic relisting until sold. You cannot remove this listing.',
+      to_char(greatest(coalesce(v_player.market_value::numeric, 0), 0), 'FM999,999,999,999')
+    ),
+    'See Transfer Centre → Active listings and the Transfer Market.'
+  );
+
+  PERFORM public.owner_inbox_send(
+    'underperformance_transfer',
+    'Transfer request — failed season expectations',
+    v_body,
+    p_club_short_name,
+    NULL,
+    NULL, NULL, NULL,
+    p_listing_id,
+    'transfer_center.html',
+    'underperformance:' || p_club_short_name || ':' || coalesce((p_metrics ->> 'season_id'), '0') || ':' || btrim(p_player_id),
+    NULL,
+    (p_metrics ->> 'season_id')::bigint
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.gpsl_discord_feed_on_listing()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_name text;
+  v_club text;
+  v_club_full text;
+  v_price text;
+  v_headline text;
+  v_body text;
+  v_ask numeric;
+  v_source text;
+  v_tier text;
+  v_age text;
+  v_rating text;
+BEGIN
+  IF lower(coalesce(NEW.status::text, '')) IS DISTINCT FROM 'active' THEN
+    RETURN NEW;
+  END IF;
+
+  IF lower(coalesce(NEW.listing_type::text, '')) = 'draft' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT
+    p."Name",
+    nullif(btrim(p."Age"::text), ''),
+    nullif(btrim(p."Rating"::text), '')
+  INTO v_name, v_age, v_rating
+  FROM public."Players" p
+  WHERE p."Konami_ID"::text = NEW.player_id::text
+  LIMIT 1;
+
+  v_name := coalesce(nullif(btrim(v_name), ''), 'Player ' || NEW.player_id::text);
+  v_club := coalesce(nullif(btrim(NEW.seller_club_id), ''), 'Unknown');
+
+  BEGIN
+    v_club_full := public.gpsl_discord_feed_club_name(v_club);
+  EXCEPTION WHEN OTHERS THEN
+    v_club_full := v_club;
+  END;
+
+  v_ask := coalesce(NEW.reserve_price, NEW.market_value, 0);
+
+  BEGIN
+    v_price := public.transfer_format_money(v_ask);
+  EXCEPTION WHEN OTHERS THEN
+    v_price := v_ask::text;
+  END;
+
+  v_source := lower(coalesce(NEW.special_rules ->> 'source', ''));
+  v_tier := lower(coalesce(NEW.special_rules ->> 'tier', ''));
+
+  IF v_source = 'underperformance' THEN
+    v_headline := format('🚪 TRANSFER REQUEST — %s', v_name);
+    v_body := format(
+      E'%s has handed in a transfer request at %s after the club failed to meet expectations last season.\nListed at market value: %s\n%s · Age %s · Rating %s\nPerpetual listing until sold.',
+      v_name,
+      v_club_full,
+      v_price,
+      CASE v_tier
+        WHEN 'big' THEN 'Big club underperformance'
+        WHEN 'medium' THEN 'Medium club underperformance'
+        WHEN 'low' THEN 'Low club underperformance'
+        ELSE 'Club underperformance'
+      END,
+      coalesce(v_age, '?'),
+      coalesce(v_rating, '?')
+    );
+
+    PERFORM public.gpsl_discord_feed_enqueue(
+      'transfer_request',
+      v_headline,
+      v_body,
+      15105570,
+      'transfer_request:' || NEW.id::text,
+      jsonb_build_object(
+        'listing_id', NEW.id,
+        'player_id', NEW.player_id,
+        'club', v_club,
+        'source', 'underperformance',
+        'tier', v_tier,
+        'channel', 'news'
+      )
+    );
+
+    RETURN NEW;
+  END IF;
+
+  v_headline := format('📋 LISTED — %s', v_name);
+  v_body := format('Club: %s\nAsking: %s', v_club_full, v_price);
+
+  PERFORM public.gpsl_discord_feed_enqueue(
+    'listing',
+    v_headline,
+    v_body,
+    16763904,
+    'listing:' || NEW.id::text,
+    jsonb_build_object(
+      'listing_id', NEW.id,
+      'player_id', NEW.player_id,
+      'channel', 'news'
+    )
+  );
+
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_gpsl_discord_feed_listing ON public."Player_Transfer_Listings";
+CREATE TRIGGER trg_gpsl_discord_feed_listing
+  AFTER INSERT ON public."Player_Transfer_Listings"
+  FOR EACH ROW
+  EXECUTE FUNCTION public.gpsl_discord_feed_on_listing();
 
 NOTIFY pgrst, 'reload schema';
