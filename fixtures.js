@@ -48,7 +48,7 @@ import {
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20260914-multi-breach";
+} from "./match_videos_ui.js?v=20260924-rpc-miss";
 
 let calendarStatus = null;
 let holidayContext = null;
@@ -608,14 +608,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   allFixtures = [...league, ...cups];
   await loadTvFixtureIds(supabase, season.id);
   ensureMatchVideoStyles();
-  matchVideoMap = await loadFixtureMatchVideos(
-    supabase,
-    allFixtures.map((f) => f.id)
-  );
-  matchVideoReportedSides = await loadMatchVideoReportedSides(
-    supabase,
-    allFixtures.map((f) => f.id)
-  );
+  const allIds = allFixtures.map((f) => f.id);
+  const [videos, reportedSides] = await Promise.all([
+    loadFixtureMatchVideos(supabase, allIds),
+    loadMatchVideoReportedSides(supabase, allIds),
+  ]);
+  matchVideoMap = videos;
+  matchVideoReportedSides = reportedSides;
   wireMatchVideoReportButtons(supabase, document.getElementById("fixturesRoot") || document, {
     resolveFixture: (id) => allFixtures.find((f) => Number(f.id) === Number(id)),
     onSubmitted: ({ fixtureId, side }) => {

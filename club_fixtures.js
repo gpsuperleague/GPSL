@@ -45,7 +45,7 @@ import {
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20260914-multi-breach";
+} from "./match_videos_ui.js?v=20260924-rpc-miss";
 
 let myClub = { short: null, name: null };
 /** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
@@ -818,14 +818,13 @@ async function refreshFixtures(seasonId = null) {
   const intlFixtures = await loadMyInternationalFixtures(seasonId);
   const fixtures = [...clubFixtures, ...intlFixtures];
   ensureMatchVideoStyles();
-  matchVideoMap = await loadFixtureMatchVideos(
-    supabase,
-    clubFixtures.map((f) => f.id)
-  );
-  matchVideoReportedSides = await loadMatchVideoReportedSides(
-    supabase,
-    clubFixtures.map((f) => f.id)
-  );
+  const clubFixtureIds = clubFixtures.map((f) => f.id);
+  const [videos, reportedSides] = await Promise.all([
+    loadFixtureMatchVideos(supabase, clubFixtureIds),
+    loadMatchVideoReportedSides(supabase, clubFixtureIds),
+  ]);
+  matchVideoMap = videos;
+  matchVideoReportedSides = reportedSides;
   if (!window.__mvReportWiredClub) {
     window.__mvReportWiredClub = true;
     wireMatchVideoReportButtons(supabase, document.getElementById("clubFixturesRoot") || document, {

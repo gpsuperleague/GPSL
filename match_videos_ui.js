@@ -96,6 +96,9 @@ function sideReportMode(url, isOwn, alreadyReported) {
   return url ? "active" : "no-video";
 }
 
+/** Skip repeat RPCs after schema-cache miss (undeployed patch) so fixtures stay snappy. */
+let matchVideoReportedSidesUnavailable = false;
+
 /**
  * @param {import("@supabase/supabase-js").SupabaseClient} supabase
  * @param {Array<number|string>} fixtureIds
@@ -103,6 +106,8 @@ function sideReportMode(url, isOwn, alreadyReported) {
  */
 export async function loadMatchVideoReportedSides(supabase, fixtureIds) {
   const set = new Set();
+  if (matchVideoReportedSidesUnavailable) return set;
+
   const ids = [...new Set((fixtureIds || []).map((id) => Number(id)).filter(Boolean))];
   if (!ids.length) return set;
 
@@ -110,10 +115,23 @@ export async function loadMatchVideoReportedSides(supabase, fixtureIds) {
     p_fixture_ids: ids,
   });
   if (error) {
-    console.warn("loadMatchVideoReportedSides:", error.message);
+    const msg = String(error.message || error.code || "");
+    const missing =
+      error.code === "PGRST202" ||
+      error.code === "42883" ||
+      /could not find the function|schema cache|404/i.test(msg);
+    if (missing) {
+      matchVideoReportedSidesUnavailable = true;
+      console.warn(
+        "loadMatchVideoReportedSides: RPC missing — apply supabase/sql/patches/match_video_reported_sides_20260924.sql (further calls skipped this session)"
+      );
+    } else {
+      console.warn("loadMatchVideoReportedSides:", msg);
+    }
     return set;
   }
-  for (const row of data || []) {
+  const rows = Array.isArray(data) ? data : data ? [data].flat() : [];
+  for (const row of rows) {
     if (row?.fixture_id != null && row?.side) {
       set.add(`${row.fixture_id}:${row.side}`);
     }
