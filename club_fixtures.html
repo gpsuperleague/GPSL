@@ -15,9 +15,11 @@
     h1 { color:#ff9900; margin-bottom:8px; }
     .meta { color:#aaa; margin-bottom:16px; font-size:14px; line-height:1.45; }
     #clubFixturesError {
+      margin-bottom:14px; display:none;
+    }
+    #clubFixturesError.is-plain {
       color:#f88; background:#2a1515; border:1px solid #633;
-      border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:13px;
-      display:none;
+      border-radius:6px; padding:10px 14px; font-size:13px;
     }
     .month-block {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
@@ -145,6 +147,6 @@
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20260924-sim-alert"></script>
+  <script type="module" src="club_fixtures.js?v=20260924-sim-notice"></script>
 </body>
 </html>

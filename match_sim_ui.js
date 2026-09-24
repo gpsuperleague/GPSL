@@ -167,16 +167,15 @@ export async function runMatchSimulation(fixtureId, btn, mode = "instant", meta 
       else if (b.classList.contains("sim-instant-btn")) b.textContent = "Instant result";
       else b.textContent = "Simulate";
     });
-    console.error("match sim RPC failed", { rpcName, fixtureId: id, error });
-    const detail = [error.message, error.details, error.hint, error.code]
+    console.warn("match sim blocked/failed", { rpcName, fixtureId: id, error });
+    const detail = [error.message, error.details, error.hint]
       .filter(Boolean)
       .join(" — ");
-    const err = new Error(
-      detail ||
-        "Simulation failed (HTTP 400). Open DevTools → Network → competition_simulate_fixture_result → Response for the Postgres message."
-    );
+    const info = await formatMatchSimFailure(detail || error.message || "");
+    const err = new Error(info.summary);
     err.code = error.code;
     err.cause = error;
+    err.simFailure = info;
     throw err;
   }
 
@@ -1149,12 +1148,160 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Soften Postgres sim failures into owner-facing copy.
+ * Unavailable / month-lock / disabled are notices (not scary errors).
+ * @returns {Promise<{ kind: 'notice'|'error', title: string, body: string, summary: string, href?: string|null }>}
+ */
+export async function formatMatchSimFailure(rawMessage) {
+  const raw = String(rawMessage || "").trim();
+  const unavail = raw.match(
+    /Player\s+(.+?)\s+is unavailable for this match\s*\(([^)]+)\)/i
+  );
+  if (unavail || /unavailable for this match/i.test(raw)) {
+    const whoRaw = String(unavail?.[1] || "").trim();
+    const reason = String(unavail?.[2] || "injured / suspended").trim();
+    const looksLikeId = /^[0-9]+$/.test(whoRaw);
+    let name = looksLikeId || !whoRaw ? null : whoRaw;
+    const playerId = looksLikeId ? whoRaw : null;
+    if (playerId) {
+      try {
+        const { data } = await supabase
+          .from("Players")
+          .select("Name")
+          .eq("Konami_ID", playerId)
+          .maybeSingle();
+        name = data?.Name ? String(data.Name).trim() : null;
+        if (!name) {
+          const alt = await supabase
+            .from("Players")
+            .select("Name")
+            .eq("Konami_ID", Number(playerId) || playerId)
+            .maybeSingle();
+          name = alt.data?.Name ? String(alt.data.Name).trim() : null;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    const who = name || "A player in your Match Day squad";
+    const title = name ? `${name} unavailable` : "Squad player unavailable";
+    const body = `${who} can’t play this match (${reason}). Open Match Day, replace them in the XI/bench, save, then simulate again.`;
+    return {
+      kind: "notice",
+      title,
+      body,
+      summary: `${title} — ${reason}. Update Match Day XI, then try again.`,
+      href: "matchday.html",
+      playerId,
+      reason,
+      playerName: name,
+    };
+  }
+
+  if (/match result simulation is disabled/i.test(raw)) {
+    return {
+      kind: "notice",
+      title: "Simulation is off",
+      body: "Match simulation is currently disabled by admin.",
+      summary: "Match simulation is currently disabled by admin.",
+    };
+  }
+  if (/unlock|locked since|not open for simulation|month/i.test(raw) && /lock|unlock|month/i.test(raw)) {
+    return {
+      kind: "notice",
+      title: "Not unlocked yet",
+      body: raw.replace(/^ERROR:\s*/i, "").replace(/\s+/g, " "),
+      summary: raw.replace(/^ERROR:\s*/i, "").replace(/\s+/g, " "),
+    };
+  }
+  if (/needs at least 11 contracted players/i.test(raw)) {
+    return {
+      kind: "notice",
+      title: "Squad too thin",
+      body: raw.replace(/^ERROR:\s*/i, ""),
+      summary: raw.replace(/^ERROR:\s*/i, ""),
+    };
+  }
+
+  const cleaned = raw
+    .replace(/^ERROR:\s*/i, "")
+    .replace(/\s*—\s*P0001.*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return {
+    kind: "error",
+    title: "Couldn’t simulate",
+    body: cleaned || "Simulation didn’t complete.",
+    summary: cleaned || "Simulation didn’t complete.",
+  };
+}
+
+/**
+ * Render a calm banner (notice) or error into a host element. No alert().
+ * @param {HTMLElement|null} host
+ * @param {{ kind?: string, title?: string, body?: string, href?: string|null }|Error|string|null} info
+ */
+export function showMatchSimFailure(host, info) {
+  if (!host) return;
+  ensureMatchSimStyles();
+  let payload = info;
+  if (info == null || info === "") {
+    host.innerHTML = "";
+    host.hidden = true;
+    host.style.display = "none";
+    return;
+  }
+  if (typeof info === "string") {
+    payload = { kind: "error", title: "Couldn’t simulate", body: info };
+  } else if (info?.simFailure) {
+    payload = info.simFailure;
+  } else if (info instanceof Error) {
+    payload = {
+      kind: "error",
+      title: "Couldn’t simulate",
+      body: info.message || "Simulation didn’t complete.",
+    };
+  }
+  const kind = payload.kind === "notice" ? "notice" : "error";
+  const title = escapeHtml(payload.title || (kind === "notice" ? "Notice" : "Couldn’t simulate"));
+  const body = escapeHtml(payload.body || payload.summary || "");
+  const link =
+    payload.href
+      ? `<a class="match-sim-fail-link" href="${escapeHtml(payload.href)}">Open Match Day</a>`
+      : "";
+  host.hidden = false;
+  host.style.display = "block";
+  host.innerHTML = `<div class="match-sim-fail match-sim-fail--${kind}" role="status">
+    <div class="match-sim-fail-title">${title}</div>
+    <div class="match-sim-fail-body">${body}</div>
+    ${link}
+  </div>`;
+  host.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+}
+
 /** Shared CSS for banners + momentum modal. */
 export const MATCH_SIM_BANNER_STYLE = `
 .match-sim-banner { font-size:13px; color:#bbb; margin:0 0 12px; padding:8px 12px; background:#1a221a; border:1px solid #345; border-radius:6px; }
 .match-sim-banner--err { background:#2a1515; border-color:#633; color:#f88; }
 .match-sim-on { color:#9fd4b0; font-weight:bold; }
 .match-sim-off { color:#f88; font-weight:bold; }
+.match-sim-fail {
+  margin:0 0 14px; padding:12px 14px; border-radius:8px; font-size:13px; line-height:1.45;
+}
+.match-sim-fail--notice {
+  background:#1c1a12; border:1px solid #6a5a28; color:#e6d9a8;
+}
+.match-sim-fail--error {
+  background:#2a1515; border:1px solid #633; color:#f0b0b0;
+}
+.match-sim-fail-title { font-weight:700; font-size:14px; margin:0 0 4px; color:#ffcc66; }
+.match-sim-fail--error .match-sim-fail-title { color:#f99; }
+.match-sim-fail-body { color:inherit; opacity:.95; }
+.match-sim-fail-link {
+  display:inline-block; margin-top:8px; color:#ff9900; font-weight:700; text-decoration:none;
+}
+.match-sim-fail-link:hover { text-decoration:underline; }
 .sim-actions { display:inline-flex; flex-wrap:wrap; gap:6px; align-items:center; }
 .btn-link.sim-result-btn, button.sim-result-btn {
   display:inline-block; padding:4px 10px; font-size:12px; font-weight:bold;

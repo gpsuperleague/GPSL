@@ -30,7 +30,8 @@ import {
 import {
   loadMatchSimStatus,
   runMatchSimulation,
-} from "./match_sim_ui.js?v=20260908-assist-goal-attach";
+  formatMatchSimFailure,
+} from "./match_sim_ui.js?v=20260924-sim-notice";
 import { wireNetworkIncidentsPanel } from "./network_incidents_ui.js?v=20260922";
 import {
   initMatchdaySquadPanel,
@@ -1970,7 +1971,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       f.away_goals = data?.away_goals;
       await selectFixture(f);
     } catch (err) {
-      setStatus("submitStatus", err?.message || "Simulation failed", true);
+      const info =
+        err?.simFailure ||
+        (await formatMatchSimFailure(err?.message || "Simulation failed"));
+      // Calm status — no ❌ / alert for expected squad blocks
+      setStatus(
+        "submitStatus",
+        info.kind === "notice"
+          ? `${info.title}: ${info.body}`
+          : info.summary || info.body || err?.message || "Simulation failed",
+        info.kind !== "notice"
+      );
     }
   }
   document.getElementById("simulateResultBtn")?.addEventListener("click", () => runMatchdaySim("play"));

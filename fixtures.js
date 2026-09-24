@@ -41,7 +41,8 @@ import {
   wireMatchSimBannerToggle,
   wireMatchSimButtons,
   runMatchSimulation,
-} from "./match_sim_ui.js?v=20260924-sim-error";
+  showMatchSimFailure,
+} from "./match_sim_ui.js?v=20260924-sim-notice";
 import {
   loadFixtureMatchVideos,
   loadMatchVideoReportedSides,
@@ -521,7 +522,14 @@ function wireFixtureSimButtons(root) {
       }
       renderFixtures();
     } catch (err) {
-      alert(err?.message || "Simulation failed");
+      console.warn("fixtures sim:", err);
+      let host = document.getElementById("fixturesSimNotice");
+      if (!host) {
+        host = document.createElement("div");
+        host.id = "fixturesSimNotice";
+        root?.prepend(host);
+      }
+      showMatchSimFailure(host, err?.simFailure || err);
     }
   });
 }

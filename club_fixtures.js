@@ -36,7 +36,8 @@ import {
   wireMatchSimBannerToggle,
   wireMatchSimButtons,
   runMatchSimulation,
-} from "./match_sim_ui.js?v=20260924-sim-alert";
+  showMatchSimFailure,
+} from "./match_sim_ui.js?v=20260924-sim-notice";
 import { loadMyNation, loadInternationalFixtures } from "./international.js";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
@@ -76,8 +77,25 @@ let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: nu
 function showError(msg) {
   const el = document.getElementById("clubFixturesError");
   if (!el) return;
+  if (!msg) {
+    showMatchSimFailure(el, null);
+    el.textContent = "";
+    el.classList.remove("is-plain");
+    return;
+  }
+  // Plain text fallback (non-sim errors)
+  el.classList.add("is-plain");
+  el.innerHTML = "";
   el.textContent = msg;
-  el.style.display = msg ? "block" : "none";
+  el.hidden = false;
+  el.style.display = "block";
+}
+
+function showSimFailure(err) {
+  const el = document.getElementById("clubFixturesError");
+  if (!el) return;
+  el.classList.remove("is-plain");
+  showMatchSimFailure(el, err?.simFailure || err);
 }
 
 function ordinal(n) {
@@ -673,10 +691,7 @@ async function simulateFixture(fixtureId, btn, mode = "instant") {
     await refreshFixtures(currentSeasonId);
   } catch (err) {
     console.error("simulateFixture:", err, err?.cause);
-    const msg = err?.message || "Simulation failed";
-    showError(msg);
-    // Unmissable — Network 400 body is the same text
-    alert(`Simulation failed:\n\n${msg}`);
+    showSimFailure(err);
   }
 }
 
@@ -721,9 +736,7 @@ async function simulateIntlFixture(fixtureId, btn, mode = "instant") {
     await refreshFixtures(currentSeasonId);
   } catch (err) {
     console.error("simulateIntlFixture:", err, err?.cause);
-    const msg = err?.message || "Simulation failed";
-    showError(msg);
-    alert(`Simulation failed:\n\n${msg}`);
+    showSimFailure(err);
   }
 }
 
