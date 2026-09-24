@@ -75,9 +75,12 @@ export const SLUG_OVERRIDES = {
   JUV: "ita/juventus_stadium",
   INT: "ita/stadio_giuseppe_meazza",
   MIL: "ita/giuseppe_meazza",
-  LAZ: "ita/stadio_olimpico",
-  ROM: "ita/stadio_olimpico",
+  // Shared ground — StadiumDB slug is stadio_olimpico_roma (not stadio_olimpico)
+  LAZ: "ita/stadio_olimpico_roma",
+  ROM: "ita/stadio_olimpico_roma",
   NAP: "ita/diego_armando_maradona",
+  // Stadion Wojska Polskiego (Legia) — stadium name ≠ club name
+  LEG: "pol/stadion_wojska_polskiego",
   DOR: "ger/westfalenstadion",
   LEV: "ger/bayarena",
   BMU: "ger/allianz_arena",
@@ -164,8 +167,27 @@ export function slugify(text) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    // English city spellings vs StadiumDB local names
+    .replace(/\bwarsaw\b/g, "warszawa")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_|_$/g, "");
+}
+
+/** Expand query tokens with common aliases (GPSL English ↔ StadiumDB local). */
+function expandTokens(tokens) {
+  const aliases = {
+    warsaw: ["warszawa"],
+    warszawa: ["warsaw"],
+    roma: ["as_roma", "olimpico"],
+    legia: ["wojska", "polskiego"],
+  };
+  const out = new Set(tokens);
+  for (const t of tokens) {
+    for (const a of aliases[t] || []) {
+      out.add(a);
+    }
+  }
+  return [...out];
 }
 
 export function nationCode(nation) {
@@ -216,7 +238,10 @@ function slugCandidates(name) {
     .replace(/^afc_/, "")
     .replace(/_sc$/, "")
     .replace(/^ac_/, "")
-    .replace(/_ac$/, "");
+    .replace(/_ac$/, "")
+    .replace(/^as_/, "")
+    .replace(/^ss_/, "")
+    .replace(/^us_/, "");
   if (stripped && stripped !== base) out.push(stripped);
   return [...new Set(out)];
 }
@@ -264,9 +289,14 @@ async function searchCountryIndex(queryNames, country, fetchImpl) {
   if (!html) return null;
 
   const tokenSets = names.map((name) =>
-    slugify(name)
-      .split("_")
-      .filter((t) => t.length > 2 && !["fc", "cf", "afc", "sc", "ac"].includes(t))
+    expandTokens(
+      slugify(name)
+        .split("_")
+        .filter(
+          (t) =>
+            t.length > 2 && !["fc", "cf", "afc", "sc", "ac", "as", "ss", "us"].includes(t)
+        )
+    )
   );
   const nameSlugs = names.flatMap((n) => slugCandidates(n));
 
@@ -279,11 +309,19 @@ async function searchCountryIndex(queryNames, country, fetchImpl) {
     const href = m[1];
     const label = slugify(m[2]);
     const hrefSlug = slugify(href.split("/").pop() || "");
+    // Country index tables list club names next to stadium links — include nearby text
+    const nearby = slugify(
+      String(html.slice(m.index, Math.min(html.length, m.index + 280))).replace(
+        /<[^>]+>/g,
+        " "
+      )
+    );
+    const hay = `${label} ${hrefSlug} ${nearby}`;
     let score = 0;
 
     for (const slug of nameSlugs) {
       if (label === slug || hrefSlug === slug) score = Math.max(score, 40 + slug.length);
-      else if (label.includes(slug) || hrefSlug.includes(slug)) {
+      else if (hay.includes(slug)) {
         score = Math.max(score, 12 + slug.length);
       }
     }
@@ -291,7 +329,7 @@ async function searchCountryIndex(queryNames, country, fetchImpl) {
     for (const tokens of tokenSets) {
       let setScore = 0;
       for (const t of tokens) {
-        if (label.includes(t) || hrefSlug.includes(t)) setScore += t.length;
+        if (hay.includes(t)) setScore += t.length;
       }
       score = Math.max(score, setScore);
     }
