@@ -278,11 +278,27 @@ export const HG_CONTRACT_MAX_AGE = 23;
 export const NON_HG_UNCONTESTED_MAX_AGE = 21;
 
 /**
- * Compare key for home-grown (Nation match). Handles "United States" vs "UnitedStates".
+ * Canonical aliases so display variants still match for HG
+ * (e.g. Ivory Coast ↔ Côte d'Ivoire).
+ */
+const NATION_KEY_ALIASES = {
+  "IVORY COAST": "COTE DIVOIRE",
+  "COTE DIVOIRE": "COTE DIVOIRE",
+  "REPUBLIC OF COTE DIVOIRE": "COTE DIVOIRE",
+  CIV: "COTE DIVOIRE",
+};
+
+/**
+ * Compare key for home-grown (Nation match).
+ * Handles camelCase, accents (Côte → Cote), apostrophe variants, and CIV aliases.
  */
 export function normalizeNation(value) {
   if (value == null) return "";
-  return String(value)
+  const key = String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    // Straight / curly / modifier apostrophes — strip so d'Ivoire ≡ dIvoire
+    .replace(/['\u2018\u2019\u201A\u2032\u02BC`´]/g, "")
     .trim()
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
@@ -290,6 +306,7 @@ export function normalizeNation(value) {
     .replace(/\s+/g, " ")
     .trim()
     .toUpperCase();
+  return NATION_KEY_ALIASES[key] || key;
 }
 
 /** Human-readable nation label for UI (e.g. UnitedStates → United States). */
