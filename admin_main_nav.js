@@ -341,7 +341,7 @@ export const ADMIN_MAIN_NAV = [
           "admin_league_finance_balance.html",
           null,
           null,
-          "Season P&L ecosystem check (ops profit vs target; transfers excluded)."
+          "Season P&L ecosystem check (ops profit vs target; transfers, loans, fines & stadium buys excluded)."
         ),
         L(
           "Set TV Revenue",

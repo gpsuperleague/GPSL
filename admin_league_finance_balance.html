@@ -168,7 +168,7 @@
 </head>
 <body class="admin-page">
   <div id="nav"></div>
-  <h1 class="admin-title gpsl-has-tip" data-gpsl-tip="Season ecosystem check: every club’s ops P&L (transfers &amp; loans excluded). Best after Close Finances. Use Gap / club vs your target to tune prizes, TV, subsidies, wages, or tax." tabindex="0">League finance balance</h1>
+  <h1 class="admin-title gpsl-has-tip" data-gpsl-tip="Season ecosystem check: every club’s ops P&L (transfers, loans, fines &amp; stadium purchases excluded). Best after Close Finances. Use Gap / club vs your target to tune prizes, TV, subsidies, wages, or tax." tabindex="0">League finance balance</h1>
   <div id="adminLayout" class="admin-layout fin-balance-layout">
     <div class="admin-main" id="adminMain">
       <div id="finBalRules" class="info-box info-box--wide" aria-label="How to use League finance balance"></div>
@@ -250,13 +250,13 @@
           </div>
           <div class="fin-hint-box gpsl-has-tip" id="finBalHint" data-gpsl-tip="Shorter auto note from the same calculation." tabindex="0" hidden></div>
 
-          <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:0 0 6px;" data-gpsl-tip="League-wide sums by ledger category. Transfers and loans are shown but excluded from ops net." tabindex="0">League category totals (ops)</h3>
+          <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:0 0 6px;" data-gpsl-tip="League-wide sums by ledger category. Transfers, loans, fines, and stadium purchases are shown but excluded from ops net." tabindex="0">League category totals (ops)</h3>
           <div class="fin-cat-grid" id="finBalCats"></div>
 
           <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:12px 0 6px;" data-gpsl-tip="One row per club. Sort is by ops net (best first). Hover column headers for definitions." tabindex="0">Per club</h3>
           <p class="note" style="margin-bottom:6px;">
-            Ops net = gates + prizes + TV + subsidies + wages + stadium + tax/fines + staff + EOS + admin ± other
-            (transfers &amp; loans shown separately, not in ops net).
+            Ops net = gates + prizes + TV + subsidies + wages + stadium ops + tax + staff + EOS + admin ± other
+            (transfers, loans, fines &amp; stadium purchases shown separately — not in ops net).
           </p>
           <div class="fin-table-wrap">
             <table class="fin-balance-table">
@@ -270,10 +270,10 @@
                   <th class="gpsl-has-tip" data-gpsl-tip="TV revenue lines posted this season." tabindex="0">TV</th>
                   <th class="gpsl-has-tip" data-gpsl-tip="Government HG / Youth / Weak squad subsidies (usually ₿0 until EOS payout)." tabindex="0">Subsidies</th>
                   <th class="gpsl-has-tip" data-gpsl-tip="Player/manager wage bills (usually ₿0 until Close Finances)." tabindex="0">Wages</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Infra: expansion, purchase, maintenance, refunds. ₿0 = nothing posted yet (maintenance often waits for Close Finances)." tabindex="0">Stadium</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Income tax, emergency tax, and fine/compensation lines." tabindex="0">Tax/fines</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Stadium ops in the ecosystem: maintenance, expansions, refunds/penalties. Starting stadium purchases are excluded from ops." tabindex="0">Stadium</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Income tax and emergency tax (fines are excluded from ops and shown in category totals)." tabindex="0">Tax</th>
                   <th class="gpsl-has-tip" data-gpsl-tip="Manager salary, medical hires, contract fees/releases, and related staff lines." tabindex="0">Staff</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Operating P&amp;L for the club this season (excludes transfers and loans)." tabindex="0">Ops net</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Operating P&amp;L for the club this season (excludes transfers, loans, fines, and stadium purchases)." tabindex="0">Ops net</th>
                   <th class="gpsl-has-tip" data-gpsl-tip="Net transfer market cash (excluded from ops). Large negatives usually mean net buying." tabindex="0">Transfers</th>
                   <th class="gpsl-has-tip" data-gpsl-tip="Live Club_Finances cash now — often starting money ± transfers, not ops health." tabindex="0">Balance</th>
                 </tr>

@@ -5,13 +5,13 @@ import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260915-fin-balance-t
 
 export const FIN_BALANCE_TIPS = {
   page:
-    "Season ecosystem check: every club’s ops P&L (transfers & loans excluded). Best after Close Finances. Use Gap / club vs your target to tune prizes, TV, subsidies, wages, or tax.",
+    "Season ecosystem check: every club’s ops P&L (transfers, loans, fines & stadium purchases excluded). Best after Close Finances. Use Gap / club vs your target to tune prizes, TV, subsidies, wages, or tax.",
   target:
     "Desired average operating profit per club for this season (default ₿10m). Gap / club = target minus actual avg ops net.",
   run: "Aggregates season ledger categories for every club in the season (owned or vacant).",
   clubs: "How many clubs were included in this season’s finance set.",
   avgOps:
-    "Mean ops net across clubs. Ops ignore transfers and Central Bank loans.",
+    "Mean ops net across clubs. Ops ignore transfers, loans, fines, and stadium purchases.",
   medianOps:
     "Middle club’s ops net (less skewed by a few extreme clubs than the average).",
   targetKpi: "The target average ops profit you set above.",
@@ -19,7 +19,7 @@ export const FIN_BALANCE_TIPS = {
     "Target minus avg ops net. Positive gap = clubs are under target (need more income or lower costs). Negative = over target.",
   gapTotal: "Gap / club × number of clubs — approximate league-wide tuning size.",
   hint: "Auto-written tuning suggestion from the gap vs target.",
-  cats: "League-wide sums by ledger category. Transfers and loans are shown but excluded from ops net.",
+  cats: "League-wide sums by ledger category. Transfers, loans, fines, and stadium purchases are shown but excluded from ops net.",
   opening:
     "Archived prior close, season opening, or starting-budget trail. — means none found (live Balance can still show cash).",
   gates: "Match gate receipts posted this season.",
@@ -28,11 +28,11 @@ export const FIN_BALANCE_TIPS = {
   subsidies: "Government HG / Youth / Weak squad subsidies (usually ₿0 until EOS payout).",
   wages: "Player/manager wage bills (usually ₿0 until Close Finances).",
   stadium:
-    "Infra: expansion, purchase, maintenance, refunds. ₿0 = nothing posted yet (maintenance often waits for Close Finances).",
-  taxFines: "Income tax, emergency tax, and fine/compensation lines.",
+    "Stadium ops in the ecosystem: maintenance, expansions, refunds/penalties. Starting stadium purchases are excluded from ops.",
+  taxFines: "Income tax and emergency tax (fines are excluded from ops and shown separately).",
   staff: "Manager salary, medical hires, contract fees/releases, and related staff lines.",
   opsNet:
-    "Operating P&L for the club this season (excludes transfers and loans).",
+    "Operating P&L for the club this season (excludes transfers, loans, fines, and stadium purchases).",
   transfers:
     "Net transfer market cash (excluded from ops). Large negatives usually mean net buying.",
   balance: "Live Club_Finances cash now — often starting money ± transfers, not ops health.",
@@ -41,8 +41,10 @@ export const FIN_BALANCE_TIPS = {
   catTv: "Sum of TV revenue across all clubs.",
   catSubsidies: "Sum of government subsidies (often ₿0 before EOS pay).",
   catWages: "Sum of wage bills (often ₿0 before Close Finances).",
-  catStadium: "Sum of stadium/infra ledger lines (expansions can dominate mid-season).",
-  catTax: "Sum of tax and fine lines across all clubs.",
+  catStadium: "Sum of stadium ops (maintenance / expansion) — included in ops net.",
+  catStadiumPurchase: "Starting stadium purchases — excluded from ops net.",
+  catTax: "Sum of income / emergency tax — included in ops net.",
+  catFines: "Match / discipline fines (gov_fine_compensation) — excluded from ops net.",
   catStaff: "Sum of staff / medical / contract-fee style lines.",
   catEos: "End-of-season interest, FFP, and related close lines (₿0 until Close Finances).",
   catAdmin: "Admin adjustments and one-off injections.",
@@ -54,7 +56,7 @@ export const FIN_BALANCE_TIPS = {
 export function getLeagueFinanceBalanceRules() {
   return {
     title: "How to use this page",
-    lead: `Every club in the season (owned or vacant). <b>Ops net</b> ignores transfers and Central Bank loans — those are shown separately so prize/wage tuning is not skewed by market spend.`,
+    lead: `Every club in the season (owned or vacant). <b>Ops net</b> ignores transfers, loans, fines, and stadium purchases — those are shown separately so prize/wage tuning is not skewed by one-offs or market spend.`,
     cards: [
       {
         heading: "When to trust it",
@@ -77,22 +79,21 @@ export function getLeagueFinanceBalanceRules() {
       },
       {
         heading: "Read the columns",
-        tip: "Ops net is the ecosystem signal. Transfers and live Balance are cash noise — don’t use them to set prize tables.",
+        tip: "Ops net is the ecosystem signal. Transfers, fines, stadium buys, and live Balance are cash noise — don’t use them to set prize tables.",
         items: [
-          "<b>Ops net</b> = gates + prizes + TV + subsidies + wages + stadium + tax/fines + staff + EOS ± admin/other.",
-          "<b>Transfers</b> and <b>Loans</b> are excluded from ops (cash noise, not ecosystem income).",
+          "<b>Ops net</b> = gates + prizes + TV + subsidies + wages + stadium ops + tax + staff + EOS ± admin/other.",
+          "<b>Excluded from ops</b>: transfers, loans, fines (gov_fine_compensation), stadium purchases (infra_purchase).",
           "<b>Balance</b> is live club cash — often starting money ± transfers, not “healthy ops”.",
           "<b>Opening —</b> = no archived opening / starting-budget trail found (cash can still show in Balance).",
         ],
       },
       {
         heading: "Stadium & zeros",
-        tip: "Stadium ₿0 usually means no infra posted yet. Use Backfill vacant clubs for unowned league clubs. Wages / Subsidies / EOS ₿0 almost always means season-end posts have not run.",
+        tip: "Stadium ops ₿0 usually means no maintenance/expansion posted. Stadium buy is excluded from ops. Wages / Subsidies / EOS ₿0 almost always means season-end posts have not run.",
         items: [
-          "<b>Stadium ₿0</b> = no infra ledger yet (no expansion/purchase, and maintenance not posted until Close Finances).",
-          "Large stadium figures are usually expansions / purchase charges for clubs that built.",
-          "<b>Vacant clubs:</b> use <b>Backfill vacant clubs</b> to post stadium purchase + doctor hire.",
-          "<b>Wages / Subsidies / EOS ₿0</b> almost always means those season-end posts have not run yet.",
+          "<b>Stadium ops</b> = maintenance / expansion (in ops). <b>Stadium buy</b> = starting purchase (excluded).",
+          "Use Backfill vacant clubs for unowned league clubs missing stadium posts.",
+          "<b>Wages / Subsidies / EOS ₿0</b> almost always means season-end posts have not run yet.",
         ],
       },
     ],
