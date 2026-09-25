@@ -12,7 +12,7 @@ import {
   nationPoolStatus,
   nationHealthyClubCapacity,
   nationPoolIsFaint,
-} from "./international.js?v=20260925-pool-cache-batch";
+} from "./international.js?v=20260925-pool-cache-batch2";
 
 const POOL_MIN_PLAYERS = NATION_POOL_MIN_PLAYERS;
 

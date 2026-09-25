@@ -335,15 +335,17 @@ export async function loadNationPlayerPoolCacheMeta(client = supabase) {
 export async function refreshNationPlayerPoolCache(client = supabase, onProgress = null) {
   let start = true;
   let last = null;
+  let prevCached = -1;
+  // One stable stamp for the whole refresh — must not change between batches
+  const runAt = new Date().toISOString();
 
   for (let i = 0; i < 80; i++) {
     const { data, error } = await client.rpc(
       "international_refresh_nation_player_pool_cache_batch",
-      { p_limit: 20, p_start: start }
+      { p_limit: 20, p_start: start, p_run_at: runAt }
     );
     if (error) {
       console.error("refreshNationPlayerPoolCache:", error);
-      // Fallback for DBs that only have the old single-shot RPC
       if (start && /could not find|PGRST202|does not exist/i.test(error.message || "")) {
         const legacy = await client.rpc("international_refresh_nation_player_pool_cache");
         if (legacy.error) throw legacy.error;
@@ -361,6 +363,17 @@ export async function refreshNationPlayerPoolCache(client = supabase, onProgress
       }
     }
     if (data?.done) break;
+
+    const cached = Number(data?.nations_cached ?? 0);
+    // Same count twice => run_at is resetting (stuck on the first page of nations)
+    if (i > 0 && cached <= prevCached) {
+      throw new Error(
+        "Pool cache refresh stalled at " +
+          cached +
+          ". Re-run supabase/sql/patches/international_pool_cache_batch_run_at_fix_20260925.sql, hard-refresh, retry."
+      );
+    }
+    prevCached = cached;
   }
 
   if (!last?.done) {
