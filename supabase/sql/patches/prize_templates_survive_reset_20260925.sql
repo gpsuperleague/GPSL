@@ -99,7 +99,7 @@ BEGIN
     RAISE EXCEPTION 'Season % has no cup prize config to save', v_season_id;
   END IF;
 
-  DELETE FROM public.competition_cup_prize_template;
+  DELETE FROM public.competition_cup_prize_template WHERE true;
 
   INSERT INTO public.competition_cup_prize_template (cup_code, stage, amount, updated_at)
   SELECT c.cup_code, c.stage, c.amount, now()
@@ -155,7 +155,7 @@ BEGIN
     RAISE EXCEPTION 'Season % has no league prize config to save', v_season_id;
   END IF;
 
-  DELETE FROM public.competition_league_prize_template;
+  DELETE FROM public.competition_league_prize_template WHERE true;
 
   INSERT INTO public.competition_league_prize_template (division, position, amount, updated_at)
   SELECT c.division, c.position, c.amount, now()
