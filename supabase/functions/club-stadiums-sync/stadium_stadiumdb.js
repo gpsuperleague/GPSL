@@ -83,8 +83,6 @@ export const SLUG_OVERRIDES = {
   NAP: "ita/diego_armando_maradona",
   // Stadion Wojska Polskiego (Legia) — stadium name ≠ club name
   LEG: "pol/stadion_wojska_polskiego",
-  // Stadion Rajko Mitić (Marakana) — GPSL may say Red Star Belgrade / Crvena Zvezda
-  RSB: "ser/marakana",
   DOR: "ger/westfalenstadion",
   LEV: "ger/bayarena",
   BMU: "ger/allianz_arena",
@@ -162,8 +160,6 @@ export const IMAGE_URL_OVERRIDES = {
   // Morocco (Raja / Hassania) — force a clean gallery shot
   RCA: "https://stadiumdb.com/pictures/stadiums/mar/stade_mohammed_v/stade_mohammed_v34.jpg",
   HSA: "https://stadiumdb.com/pictures/stadiums/mar/grand_stade_agadir/grand_stade_agadir09.jpg",
-  // Crvena Zvezda — Marakana gallery
-  RSB: "https://stadiumdb.com/pictures/stadiums/ser/marakana/marakana01.jpg",
 };
 
 const UA = "GPSL-StadiumSync/1.0 (personal league project)";
@@ -175,8 +171,6 @@ export function slugify(text) {
     .replace(/[\u0300-\u036f]/g, "")
     // English city spellings vs StadiumDB local names
     .replace(/\bwarsaw\b/g, "warszawa")
-    // StadiumDB: Crvena Zvezda / Marakana (GPSL often "Red Star Belgrade")
-    .replace(/\bred star( belgrade| beograd)?\b/g, "crvena zvezda")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_|_$/g, "");
 }
@@ -188,13 +182,6 @@ function expandTokens(tokens) {
     warszawa: ["warsaw"],
     roma: ["as_roma", "olimpico"],
     legia: ["wojska", "polskiego"],
-    crvena: ["zvezda", "marakana", "mitic"],
-    zvezda: ["crvena", "marakana", "mitic"],
-    mitic: ["marakana", "rajko", "zvezda"],
-    rajko: ["mitic", "marakana"],
-    marakana: ["mitic", "zvezda", "crvena"],
-    belgrade: ["beograd"],
-    beograd: ["belgrade"],
   };
   const out = new Set(tokens);
   for (const t of tokens) {
