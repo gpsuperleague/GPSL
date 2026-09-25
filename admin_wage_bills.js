@@ -58,13 +58,10 @@ async function closeFinances() {
   });
 
   if (error) {
-    setStatus(
-      "wageBillsStatus",
-      "❌ " +
-        error.message +
-        " — run supabase/sql/patches/ffp_50m_mv_release_embargo.sql (and stadium/maintenance patches) in Supabase.",
-      false
-    );
+    const hint = /charge_type_check|competition_season_charge_paid/i.test(error.message)
+      ? " — run supabase/sql/patches/season_charge_paid_types_hotfix_20260925.sql in Supabase."
+      : " — if this persists, re-run ffp_50m_mv_release_embargo.sql / stadium maintenance patches.";
+    setStatus("wageBillsStatus", "❌ " + error.message + hint, false);
     return;
   }
 
