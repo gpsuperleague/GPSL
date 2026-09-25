@@ -41,6 +41,7 @@ BEGIN
       'gate_league_home',
       'gate_cup_share',
       'gate_friendlies',
+      'gate_match_video',
       'prize',
       'prize_league',
       'prize_cup',
