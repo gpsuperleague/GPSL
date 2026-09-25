@@ -198,57 +198,14 @@ AS $$
     AND public.competition_player_conceded_in_fixture(f.id, m.club_short_name) = 0;
 $$;
 
--- Ballon d'Or points (league + cups; role-weighted)
-CREATE OR REPLACE FUNCTION public.competition_player_ballon_points(
-  p_appearances int,
-  p_goals int,
-  p_assists int,
-  p_avg_rating numeric,
-  p_potm int,
-  p_clean_sheets int,
-  p_stat_role text
-)
-RETURNS numeric
-LANGUAGE plpgsql
-IMMUTABLE
-AS $function$
-DECLARE
-  v_apps numeric := greatest(coalesce(p_appearances, 0), 0);
-  v_goals numeric := greatest(coalesce(p_goals, 0), 0);
-  v_assists numeric := greatest(coalesce(p_assists, 0), 0);
-  v_rating numeric := coalesce(p_avg_rating, 0);
-  v_potm numeric := greatest(coalesce(p_potm, 0), 0);
-  v_cs numeric := greatest(coalesce(p_clean_sheets, 0), 0);
-  v_role text := coalesce(p_stat_role, 'outfield');
-BEGIN
-  IF v_role = 'goalkeeper' THEN
-    RETURN round(
-      v_cs * 18 + v_potm * 15 + v_rating * 12 + v_apps * 1 + v_assists * 2,
-      2
-    );
-  ELSIF v_role = 'defender' THEN
-    RETURN round(
-      v_cs * 12 + v_goals * 6 + v_assists * 4 + v_potm * 14 + v_rating * 10 + v_apps * 0.5,
-      2
-    );
-  ELSIF v_role = 'midfielder' THEN
-    RETURN round(
-      v_goals * 8 + v_assists * 6 + v_potm * 16 + v_rating * 10 + v_apps * 0.4 + v_cs * 2,
-      2
-    );
-  ELSIF v_role = 'forward' THEN
-    RETURN round(
-      v_goals * 10 + v_assists * 5 + v_potm * 18 + v_rating * 9 + v_apps * 0.3,
-      2
-    );
-  END IF;
-
-  RETURN round(
-    v_goals * 8 + v_assists * 5 + v_potm * 14 + v_rating * 9 + v_apps * 0.3,
-    2
-  );
-END;
-$function$;
+-- Ballon d'Or points: DO NOT recreate the old 7-arg overload here.
+-- Canonical scoring is the 9-arg settings-based function in
+-- patches/ballon_dor_settings_race_20260817.sql
+-- (p_position DEFAULT NULL, p_trophy_bonus DEFAULT 0).
+-- Keeping a 7-arg CREATE OR REPLACE makes archive calls ambiguous.
+DROP FUNCTION IF EXISTS public.competition_player_ballon_points(
+  integer, integer, integer, numeric, integer, integer, text
+);
 
 -- Aggregate live stats for one player/club/season from match rows
 CREATE OR REPLACE FUNCTION public.competition_aggregate_player_season_row(
@@ -323,7 +280,8 @@ BEGIN
     v_role,
     public.competition_player_ballon_points(
       coalesce(v_apps, 0), coalesce(v_goals, 0), coalesce(v_assists, 0),
-      v_avg, coalesce(v_potm, 0), coalesce(v_cs, 0), v_role
+      v_avg, coalesce(v_potm, 0), coalesce(v_cs, 0), v_role,
+      v_pos, 0::numeric
     );
 END;
 $function$;
@@ -733,7 +691,9 @@ SELECT
     round(avg(m.rating) FILTER (WHERE m.rating IS NOT NULL), 2),
     count(*) FILTER (WHERE m.is_player_of_match)::int,
     public.competition_player_clean_sheets(m.season_id, m.player_id, m.club_short_name, true),
-    public.competition_player_stat_role(p."Position")
+    public.competition_player_stat_role(p."Position"),
+    p."Position",
+    0::numeric
   ),
   true,
   now()

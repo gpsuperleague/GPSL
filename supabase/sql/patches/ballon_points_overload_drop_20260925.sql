@@ -1,18 +1,32 @@
 -- =============================================================================
--- Player career: show ALL seasons (not only current active)
+-- Hotfix: archive season — competition_player_ballon_points is not unique
 --
--- Bug: competition_player_career_public live half required
---   is_current = true AND status = 'active'.
--- After End season → Summer Break (or any completed season that was never
--- archived into competition_player_season_archive), those match stats vanished
--- from the player profile — so only archived seasons (e.g. Season 1) remained.
+-- Error:
+--   function ...competition_player_ballon_points(integer,...,text) is not unique
 --
--- Fix: include non-archived match stats for every season with played fixtures.
--- Archived rows still come from competition_player_season_archive.
+-- Then on DROP alone:
+--   cannot drop function ... because other objects depend on it
+--   DETAIL: view competition_player_career_public depends on function ...
 --
--- Run in Supabase SQL Editor. Safe re-run.
+-- Fix:
+--   1) Recreate the career view bound to the 9-arg settings function
+--   2) DROP the obsolete 7-arg overload
+--
+-- Safe re-run. After apply, retry Archive season stats & awards.
 -- =============================================================================
 
+DO $check$
+BEGIN
+  IF to_regprocedure(
+    'public.competition_player_ballon_points(integer, integer, integer, numeric, integer, integer, text, text, numeric)'
+  ) IS NULL THEN
+    RAISE EXCEPTION
+      'Canonical competition_player_ballon_points(9-arg) missing. Re-run patches/ballon_dor_settings_race_20260817.sql first.';
+  END IF;
+END;
+$check$;
+
+-- 1) Rebind career view to the 9-arg function (explicit position + 0 trophy)
 CREATE OR REPLACE VIEW public.competition_player_career_public
 WITH (security_invoker = false)
 AS
@@ -96,5 +110,10 @@ GROUP BY
 
 GRANT SELECT ON public.competition_player_career_public TO authenticated;
 GRANT SELECT ON public.competition_player_career_public TO anon;
+
+-- 2) Drop obsolete 7-arg overload (view no longer depends on it)
+DROP FUNCTION IF EXISTS public.competition_player_ballon_points(
+  integer, integer, integer, numeric, integer, integer, text
+);
 
 NOTIFY pgrst, 'reload schema';
