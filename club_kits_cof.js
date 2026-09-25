@@ -44,7 +44,10 @@ export const COF_NATION_MAP = {
   ireland: { folder: "irl", index: "irl.html" },
   "republic of ireland": { folder: "irl", index: "irl.html" },
   wales: { folder: "wales", index: "wales.html" },
-  serbia: { folder: "serbia", index: "serbia.html" },
+  // COF still uses the old SCG folder; index is srb.html (not serbia/serbia.html)
+  serbia: { folder: "scg", index: "srb.html" },
+  srb: { folder: "scg", index: "srb.html" },
+  "serbia and montenegro": { folder: "scg", index: "srb.html" },
   chile: { folder: "chile", index: "chile.html" },
   colombia: { folder: "col", index: "colombia.html" },
   uruguay: { folder: "uru", index: "uruguay.html" },
@@ -101,6 +104,8 @@ export const COF_CLUB_SLUG_OVERRIDES = {
   DAN: "danubio",
   // COF: mex/tigres/tigres_*.html (index is mexico.html)
   TIG: "tigres",
+  // COF: scg/cz/cz_*.html — listed as "FK Crvena Zvezda" (GPSL often "Red Star Belgrade")
+  RSB: "cz",
 };
 
 /** When slug alone is not enough (page stem differs from folder name) */
@@ -186,8 +191,11 @@ export function normalizeClubName(value) {
     .replace(/\bgothenburg\b/g, "goteborg")
     // COF: "Legia Warszawa" (GPSL often "Legia Warsaw")
     .replace(/\bwarsaw\b/g, "warszawa")
+    // COF: "FK Crvena Zvezda" — GPSL / English often "Red Star Belgrade"
+    .replace(/\bred star( belgrade| beograd)?\b/g, "crvena zvezda")
+    .replace(/\bcrvena zvezda\b/g, "crvena zvezda")
     .replace(
-      /\b(fc|afc|cf|sc|ac|as|ss|us|sv|sk|united|city|town|rovers|wanderers|hotspur|athletic|club|deportivo|real|balompie|sporting)\b/g,
+      /\b(fc|fk|afc|cf|sc|ac|as|ss|us|sv|sk|united|city|town|rovers|wanderers|hotspur|athletic|club|deportivo|real|balompie|sporting)\b/g,
       " "
     )
     .replace(/[^a-z0-9]/g, " ")
