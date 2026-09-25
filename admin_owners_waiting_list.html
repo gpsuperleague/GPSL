@@ -22,6 +22,7 @@
     .wl-s1-badge.offer { color: #fc6; background: #2a2210; }
     .wl-s1-badge.queued { color: #9ab; background: #151820; }
     .wl-s1-badge.muted { color: #888; background: #1a1a1a; }
+    .wl-s1-badge.expired-pending { color: #f4b183; background: #3a2010; }
     .wl-s1-tag-mark {
       display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 3px;
       font-size: 10px; font-weight: 700; letter-spacing: 0.02em; vertical-align: middle;
@@ -32,6 +33,18 @@
     .wl-s1-tag-mark.rejected { color: #f88; background: #2a1515; border: 1px solid #633; }
     .wl-s1-tag-mark.queued { color: #9ab; background: #151820; border: 1px solid #345; }
     .wl-s1-tag-mark.expired { color: #888; background: #1a1a1a; border: 1px solid #444; }
+    .wl-s1-tag-mark.expired-pending { color: #f4b183; background: #3a2010; border: 1px solid #864; }
+    tr.wl-s1-expired-pending td {
+      background: #2c1c12 !important;
+      border-color: #4a3020 !important;
+    }
+    tr.wl-s1-expired-pending {
+      box-shadow: inset 3px 0 0 #c8742a;
+    }
+    tr.wl-s1-expired-pending.wl-club-owner {
+      opacity: 0.85;
+      color: #ccc;
+    }
 
   </style>
   <title>Season owner board — GPSL Admin</title>
@@ -285,6 +298,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260924-s1-dm-respond2"></script>
+  <script type="module" src="admin_owners.js?v=20260925-s1-expired"></script>
 </body>
 </html>

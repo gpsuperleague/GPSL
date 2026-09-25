@@ -1446,6 +1446,25 @@ function compareRowsBySeason1ThenActivity(a, b) {
   return compareRowsByActivitySort(a, b);
 }
 
+function season1InviteDeadlinePassed(row) {
+  if (row?.season1_invite_deadline_passed === true) return true;
+  if (row?.season1_invite_deadline_passed === false) return false;
+  const deadline = row?.season1_invite_deadline_at;
+  if (!deadline) return false;
+  const t = Date.parse(deadline);
+  return Number.isFinite(t) && t < Date.now();
+}
+
+/** Offered + past deadline + no member response — needs admin confirm. */
+function season1InviteNeedsExpiryConfirm(row) {
+  const response = String(row?.season1_invite_response || "").toLowerCase();
+  if (response) return false;
+  const status = String(row?.season1_invite_status || "").toLowerCase();
+  if (status === "expired") return false;
+  if (status !== "offered") return false;
+  return season1InviteDeadlinePassed(row);
+}
+
 /** Season 1 invite lifecycle for admin markers. */
 function season1InviteMarker(row) {
   const num = season1QueueNum(row);
@@ -1479,6 +1498,22 @@ function season1InviteMarker(row) {
       title: respondedAt ? `Rejected ${respondedAt}` : "Rejected Season 1 invite",
     };
   }
+  // Past deadline while still offered — surface until admin confirms a status.
+  if (season1InviteNeedsExpiryConfirm(row)) {
+    return {
+      kind: "expired-pending",
+      cellLabel: "Expired Invite",
+      tagLabel: "Expired Invite",
+      needsConfirm: true,
+      title: [
+        "Season 1 invite deadline passed — confirm expired, or record accept/decline from DM",
+        offeredAt ? `Offered ${offeredAt}` : "",
+        deadline ? `Deadline ${deadline}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    };
+  }
   if (status === "offered") {
     return {
       kind: "invited",
@@ -1498,7 +1533,9 @@ function season1InviteMarker(row) {
       kind: "expired",
       cellLabel: "Expired",
       tagLabel: "S1 Expired",
-      title: "Season 1 invite expired without a reply",
+      title: deadline
+        ? `Season 1 invite expired (deadline ${deadline})`
+        : "Season 1 invite expired without a reply",
     };
   }
   if (num != null || status === "queued") {
@@ -1529,9 +1566,11 @@ function formatSeason1StatusCell(row) {
             ? "bad"
             : m.kind === "invited"
               ? "offer"
-              : m.kind === "expired"
-                ? "muted"
-                : "queued"
+              : m.kind === "expired-pending"
+                ? "expired-pending"
+                : m.kind === "expired"
+                  ? "muted"
+                  : "queued"
       }" title="${escapeWl(m.title)}">${escapeWl(m.cellLabel)}</div>`
     : "";
   const numHtml =
@@ -1568,6 +1607,7 @@ async function mergeSeason1InviteStatus(rows) {
       season1_invite_offered_at: s1.offered_at ?? null,
       season1_invite_deadline_at: s1.deadline_at ?? null,
       season1_invite_deadline_label: s1.deadline_label ?? null,
+      season1_invite_deadline_passed: s1.deadline_passed ?? null,
       season1_invite_responded_at: s1.responded_at ?? null,
     };
   });
@@ -1686,6 +1726,45 @@ async function markSeason1ResponseOnBehalf({
     `✅ Marked Season 1 ${data?.response || verb} (on behalf)`,
     true
   );
+  await loadWaitingListAdmin();
+}
+
+/** Confirm an offered invite whose deadline has passed (no member response). */
+async function markSeason1InviteExpired({ ownerId, email, tag }) {
+  const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
+  if (
+    !confirm(
+      `Confirm Season 1 invite expired for ${label}?\n\nUse this when the 48h deadline passed and they did not reply. Or use Mark S1 accepted/declined if they replied by DM.`
+    )
+  ) {
+    return;
+  }
+  setWlActionStatus(`Confirming Season 1 expired for ${label}…`);
+  const { data, error } = await supabase.rpc("admin_season1_invite_mark_expired", {
+    p_owner_id: ownerId,
+  });
+  if (error) {
+    const detail = [error.message, error.details, error.hint]
+      .filter(Boolean)
+      .join(" — ");
+    setWlActionStatus("❌ " + detail, false);
+    console.warn("admin_season1_invite_mark_expired", error);
+    return;
+  }
+  if (data?.already && data?.response) {
+    setWlActionStatus(
+      `ℹ️ Already ${data.response} — highlight clears on reload`,
+      true
+    );
+    await loadWaitingListAdmin();
+    return;
+  }
+  if (data?.already) {
+    setWlActionStatus(`ℹ️ Already marked expired`, true);
+    await loadWaitingListAdmin();
+    return;
+  }
+  setWlActionStatus(`✅ Confirmed Season 1 expired`, true);
   await loadWaitingListAdmin();
 }
 
@@ -2103,6 +2182,10 @@ async function runWlRowAction(action, { ownerId, email, tag, club, s1Status, s1R
       decision: "declined",
       existingResponse: s1Response,
     });
+    return;
+  }
+  if (action === "s1_mark_expired") {
+    await markSeason1InviteExpired({ ownerId, email, tag });
     return;
   }
   if (action === "remove_waiting") {
@@ -2735,10 +2818,15 @@ function renderWaitingListAdminRow(
   const rowClass = [
     invited ? "" : "wl-priority-row",
     hasClub ? "wl-club-owner" : "",
+    s1Mark?.kind === "expired-pending" ? "wl-s1-expired-pending" : "",
   ]
     .filter(Boolean)
     .join(" ");
-  const rowStyle = invited ? ' style="background:#1a1814"' : "";
+  const rowStyle = invited
+    ? s1Mark?.kind === "expired-pending"
+      ? ' style="background:#3a2414"'
+      : ' style="background:#1a1814"'
+    : "";
   const dragCell = invited
     ? `<td class="wl-col-owner"></td>`
     : `<td class="wl-col-owner wl-drag-cell" title="Drag to reorder"><span class="wl-drag-handle" aria-hidden="true">⠿</span></td>`;
@@ -2753,9 +2841,14 @@ function renderWaitingListAdminRow(
   const s1Response = String(row.season1_invite_response || "").toLowerCase();
   const s1InviteLabel =
     s1Status === "offered" ? "Re-send Season 1 invite" : "Invite to season 1";
+  const s1ExpireOption =
+    s1Mark?.kind === "expired-pending"
+      ? `<option value="s1_mark_expired">Confirm S1 expired</option>`
+      : "";
   const s1DmOptions = `
         <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
-        <option value="s1_decline_dm">Mark S1 declined (DM)</option>`;
+        <option value="s1_decline_dm">Mark S1 declined (DM)</option>
+        ${s1ExpireOption}`;
   const actionSelect =
     section === "owners" || hasClub
       ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" data-s1-status="${escapeWl(s1Status)}" data-s1-response="${escapeWl(s1Response)}" aria-label="Actions">
