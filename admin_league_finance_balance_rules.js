@@ -21,7 +21,7 @@ export const FIN_BALANCE_TIPS = {
   hint: "Auto-written tuning suggestion from the gap vs target.",
   cats: "League-wide sums by ledger category. Transfers, loans, fines, and stadium purchases are shown but excluded from ops net.",
   opening:
-    "Archived prior close, season opening, or starting-budget trail. — means none found (live Balance can still show cash).",
+    "Season-start cash (usually ₿650m assignment budget or this season’s archive opening). Not prior-season closing cash after transfers.",
   gates: "Match gate receipts posted this season.",
   prizes: "League, cup, challenge, and related prize income.",
   tv: "TV revenue lines posted this season.",
@@ -82,9 +82,10 @@ export function getLeagueFinanceBalanceRules() {
         tip: "Ops net is the ecosystem signal. Transfers, fines, stadium buys, and live Balance are cash noise — don’t use them to set prize tables.",
         items: [
           "<b>Ops net</b> = gates + prizes + TV + subsidies + wages + stadium ops + tax + staff + EOS ± admin/other.",
+          "<b>Opening</b> = season-start cash (usually ₿650m), not last season’s closing balance.",
           "<b>Excluded from ops</b>: transfers, loans, fines (gov_fine_compensation), stadium purchases (infra_purchase).",
           "<b>Balance</b> is live club cash — often starting money ± transfers, not “healthy ops”.",
-          "<b>Opening —</b> = no archived opening / starting-budget trail found (cash can still show in Balance).",
+          "<b>By division</b> shows Super League / ChA / ChB average ops under the league-wide KPIs.",
         ],
       },
       {

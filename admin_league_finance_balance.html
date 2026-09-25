@@ -49,6 +49,23 @@
     .fin-kpi .val.pos { color: #8d8; }
     .fin-kpi .val.neg { color: #f88; }
     .fin-kpi .sub { display: block; color: #777; font-size: 11px; margin-top: 4px; line-height: 1.35; }
+    .fin-div-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin: 10px 0 16px;
+    }
+    .fin-div-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .fin-div-card .div-name { color: #ff9900; font-weight: bold; font-size: 13px; margin-bottom: 6px; }
+    .fin-div-card .div-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin: 3px 0; color: #bbb; }
+    .fin-div-card .div-row b { color: #eee; }
+    .fin-div-card .div-row b.pos { color: #8d8; }
+    .fin-div-card .div-row b.neg { color: #f88; }
     .fin-verdict {
       margin: 0 0 14px;
       padding: 14px 16px;
@@ -176,7 +193,7 @@
         <h2 class="gpsl-has-tip" data-gpsl-tip="Aggregates season ledger categories for every club in the season (owned or vacant)." tabindex="0">Season ecosystem check</h2>
         <p class="note">
           Deploy SQL once if Run analysis fails:
-          <code>supabase/sql/patches/admin_league_finance_balance.sql</code>
+          <code>supabase/sql/patches/league_finance_balance_div_avg_opening_fix_20260925.sql</code>
         </p>
 
         <div class="row">
@@ -248,6 +265,8 @@
               <span class="sub" id="kpiGapTotalSub">Across all clubs</span>
             </div>
           </div>
+          <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:14px 0 6px;" data-gpsl-tip="Average day-to-day ops result per division (same ops rules as the league average). Super League / Championship A / B shown when present." tabindex="0">By division</h3>
+          <div class="fin-div-grid" id="finBalByDivision"></div>
           <div class="fin-hint-box gpsl-has-tip" id="finBalHint" data-gpsl-tip="Shorter auto note from the same calculation." tabindex="0" hidden></div>
 
           <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:0 0 6px;" data-gpsl-tip="League-wide sums by ledger category. Transfers, loans, fines, and stadium purchases are shown but excluded from ops net." tabindex="0">League category totals (ops)</h3>
@@ -264,7 +283,7 @@
                 <tr>
                   <th>Club</th>
                   <th>Div</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Archived prior close, season opening, or starting-budget trail. — means none found (live Balance can still show cash)." tabindex="0">Opening</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Season-start cash for this season (archive opening, or assignment starting budget — usually ₿650m). Not prior-season closing cash after transfers." tabindex="0">Opening</th>
                   <th class="gpsl-has-tip" data-gpsl-tip="Match gate receipts posted this season." tabindex="0">Gates</th>
                   <th class="gpsl-has-tip" data-gpsl-tip="League, cup, challenge, and related prize income." tabindex="0">Prizes</th>
                   <th class="gpsl-has-tip" data-gpsl-tip="TV revenue lines posted this season." tabindex="0">TV</th>

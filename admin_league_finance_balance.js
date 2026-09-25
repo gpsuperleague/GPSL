@@ -103,7 +103,7 @@ async function runAnalysis() {
       "finBalStatus",
       "❌ " +
         error.message +
-        " — deploy supabase/sql/patches/admin_league_finance_balance.sql",
+        " — deploy supabase/sql/patches/league_finance_balance_div_avg_opening_fix_20260925.sql",
       false
     );
     return;
@@ -237,6 +237,40 @@ function renderReport(data) {
     const text = String(data.tuning_hint || "").trim();
     hint.textContent = text;
     hint.hidden = !text;
+  }
+
+  const divLabel = (d) => {
+    if (d === "superleague") return "Super League";
+    if (d === "championship_a") return "Championship A";
+    if (d === "championship_b") return "Championship B";
+    return d || "Unassigned";
+  };
+  const byDiv = Array.isArray(data.by_division) ? data.by_division : [];
+  const divEl = document.getElementById("finBalByDivision");
+  if (divEl) {
+    if (!byDiv.length) {
+      divEl.innerHTML = `<div class="note">No division splits returned — re-run SQL patch league_finance_balance_div_avg_opening_fix_20260925.sql</div>`;
+    } else {
+      divEl.innerHTML = byDiv
+        .map((d) => {
+          const dAvg = Number(d.ops_net_avg || 0);
+          const dMed = Number(d.ops_net_median || 0);
+          const dGap = Number(d.gap_vs_target_avg || 0);
+          const gapTxt =
+            dGap > 1000000
+              ? `Shortfall ${formatB(dGap)}`
+              : dGap < -1000000
+                ? `Surplus ${formatB(Math.abs(dGap))}`
+                : formatB(dGap);
+          return `<div class="fin-div-card">
+            <div class="div-name">${escapeHtml(divLabel(d.division))} · ${Number(d.club_count || 0)} clubs</div>
+            <div class="div-row"><span>Average</span><b class="${moneyClass(dAvg)}">${formatB(dAvg)}</b></div>
+            <div class="div-row"><span>Middle</span><b class="${moneyClass(dMed)}">${formatB(dMed)}</b></div>
+            <div class="div-row"><span>vs goal</span><b class="${dGap > 1000000 ? "neg" : dGap < -1000000 ? "pos" : ""}">${gapTxt}</b></div>
+          </div>`;
+        })
+        .join("");
+    }
   }
 
   const catOrder = [
