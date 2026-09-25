@@ -2493,7 +2493,7 @@ async function loadArchivedOwnersSection() {
     return `<span class="${cls}">${n}</span>`;
   };
 
-  let html =
+    let html =
     `<table class="admin-table wl-board-table wl-archived-table">` +
     `<thead>` +
     `<tr class="wl-group-row">` +
@@ -2539,7 +2539,7 @@ async function loadArchivedOwnersSection() {
   for (let i = 0; i < rows.length; i += 1) {
     overallCounter += 1;
     const row = rows[i];
-    const email = row.email || "";
+      const email = row.email || "";
     const tag = row.owner_tag || "—";
     const testOn = !!row.confirmed_test_season;
     const liveOn = !!row.confirmed_live_season;
@@ -2643,7 +2643,7 @@ async function loadArchivedOwnersSection() {
       <td class="num">${i + 1}</td>
       <td class="wl-col-owner"></td>
       <td>${escapeWl(tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${season1TagMarkHtml(row)}</td>
-      <td>${escapeWl(email)}</td>
+        <td>${escapeWl(email)}</td>
       <td>${lastClubDisplay}</td>
       <td title="${escapeWl(archivedTitle)}">${escapeWl(archivedAt || "—")}${
         row.status_note
@@ -2696,9 +2696,9 @@ async function loadArchivedOwnersSection() {
           <option value="unarchive">Unarchive → waiting</option>
           <option value="delete_gpsl">Delete from GPSL</option>
         </select>
-      </td>
-    </tr>`;
-  }
+        </td>
+      </tr>`;
+    }
   html += `</tbody></table>`;
   wrap.innerHTML = html;
 

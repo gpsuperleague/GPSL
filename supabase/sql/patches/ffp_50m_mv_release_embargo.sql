@@ -503,9 +503,13 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'zero_mv', 'player_id', v_pid);
   END IF;
 
+  -- Allow underperformance perpetual listings to close on system FFP release
+  PERFORM set_config('gpsl.allow_perpetual_listing_close', '1', true);
+
   UPDATE public."Player_Transfer_Listings" l
   SET status = 'Closed',
-      transfer_completed = false,
+      transfer_completed = true,
+      perpetual_renew = false,
       winning_bid = null,
       winning_club = null
   WHERE l.player_id::text = v_pid

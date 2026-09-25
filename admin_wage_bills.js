@@ -58,9 +58,12 @@ async function closeFinances() {
   });
 
   if (error) {
-    const hint = /charge_type_check|competition_season_charge_paid/i.test(error.message)
-      ? " — run supabase/sql/patches/season_charge_paid_types_hotfix_20260925.sql in Supabase."
-      : " — if this persists, re-run ffp_50m_mv_release_embargo.sql / stadium maintenance patches.";
+    let hint = "";
+    if (/charge_type_check|competition_season_charge_paid/i.test(error.message)) {
+      hint = " — run supabase/sql/patches/season_charge_paid_types_hotfix_20260925.sql in Supabase.";
+    } else if (/underperformance|cannot be removed manually/i.test(error.message)) {
+      hint = " — run supabase/sql/patches/ffp_release_perpetual_listing_hotfix_20260925.sql in Supabase.";
+    }
     setStatus("wageBillsStatus", "❌ " + error.message + hint, false);
     return;
   }
