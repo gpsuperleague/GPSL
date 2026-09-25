@@ -19,6 +19,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("saveLeaguePrizesBtn").onclick = saveLeaguePrizes;
   document.getElementById("seedLeaguePrizesBtn").onclick = seedLeaguePrizes;
   document.getElementById("payLeaguePrizesBtn").onclick = payLeaguePrizes;
+  document.getElementById("saveLeaguePrizeTemplateBtn")?.addEventListener(
+    "click",
+    saveLeaguePrizeTemplate
+  );
+  document.getElementById("applyLeaguePrizeTemplateBtn")?.addEventListener(
+    "click",
+    applyLeaguePrizeTemplate
+  );
   document.getElementById("copyLeaguePrizesBtn").onclick = () => copyLeaguePrizes(false);
   document.getElementById("copySaveLeaguePrizesBtn").onclick = () => copyLeaguePrizes(true);
   document.getElementById("copyLeaguePrizesSeasonBtn").onclick = copyLeaguePrizesFromSeason;
@@ -377,6 +385,79 @@ async function copyLeaguePrizes(alsoSave) {
   setStatus(
     "leaguePrizeStatus",
     `✅ Copied & saved ${saved ?? data.length} position(s) from ${srcLabel} → ${tgtLabel}.`,
+    true
+  );
+}
+
+async function saveLeaguePrizeTemplate() {
+  const sid = currentSeasonId;
+  if (!sid) {
+    setStatus("leaguePrizeStatus", "No season selected.", false);
+    return;
+  }
+  if (
+    !confirm(
+      "Save this season’s league prize table as the reset template?\n\nIt will survive a full league reset and be restored when you create the next season."
+    )
+  ) {
+    return;
+  }
+  setStatus("leaguePrizeStatus", "Saving reset template…");
+  const { data, error } = await supabase.rpc("competition_admin_save_league_prize_template", {
+    p_season_id: sid,
+  });
+  if (error) {
+    setStatus(
+      "leaguePrizeStatus",
+      error.message.includes("competition_admin_save_league_prize_template")
+        ? "Run patches/prize_templates_survive_reset_20260925.sql first."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+  setStatus(
+    "leaguePrizeStatus",
+    `✅ Reset template saved (${data?.rows_saved ?? 0} row(s) from season ${sid}).`,
+    true
+  );
+}
+
+async function applyLeaguePrizeTemplate() {
+  const sid = currentSeasonId;
+  if (!sid) {
+    setStatus("leaguePrizeStatus", "No season selected.", false);
+    return;
+  }
+  if (
+    !confirm(
+      `Apply the reset template into season ${sid}?\n\nExisting league prize amounts on this season will be overwritten.`
+    )
+  ) {
+    return;
+  }
+  setStatus("leaguePrizeStatus", "Applying reset template…");
+  const { data, error } = await supabase.rpc("competition_admin_apply_league_prize_template", {
+    p_season_id: sid,
+  });
+  if (error) {
+    setStatus(
+      "leaguePrizeStatus",
+      error.message.includes("competition_admin_apply_league_prize_template")
+        ? "Run patches/prize_templates_survive_reset_20260925.sql first."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+  if (data?.ok === false && data?.reason === "no_template") {
+    setStatus("leaguePrizeStatus", "No league prize reset template saved yet.", false);
+    return;
+  }
+  await loadLeaguePrizeSettings();
+  setStatus(
+    "leaguePrizeStatus",
+    `✅ Applied reset template (${data?.rows_applied ?? 0} row(s)) to season ${sid}.`,
     true
   );
 }

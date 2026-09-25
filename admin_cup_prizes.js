@@ -105,6 +105,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadCupPrizeConfig();
   });
   document.getElementById("copyCupPrizesBtn")?.addEventListener("click", copyCupPrizesFromSeason);
+  document.getElementById("saveCupPrizeTemplateBtn")?.addEventListener("click", saveCupPrizeTemplate);
+  document.getElementById("applyCupPrizeTemplateBtn")?.addEventListener("click", applyCupPrizeTemplate);
 
   fillStageSelects(document.getElementById("compCupSelect")?.value || "super8");
   await loadSeasons();
@@ -309,6 +311,79 @@ async function awardCupRoundPrize() {
   setStatus(
     "compOverrideStatus",
     `✅ Awarded ${formatMoney(data?.amount ?? 0)} to ${club}${data?.stage ? ` (${data.stage})` : ""}.`,
+    true
+  );
+}
+
+async function saveCupPrizeTemplate() {
+  const sid = seasonId();
+  if (!sid) {
+    setStatus("compPrizeStatus", "No season selected.", false);
+    return;
+  }
+  if (
+    !confirm(
+      "Save this season’s cup prize table as the reset template?\n\nIt will survive a full league reset and be restored when you create the next season."
+    )
+  ) {
+    return;
+  }
+  setStatus("compPrizeStatus", "Saving reset template…");
+  const { data, error } = await supabase.rpc("competition_admin_save_cup_prize_template", {
+    p_season_id: sid,
+  });
+  if (error) {
+    setStatus(
+      "compPrizeStatus",
+      error.message.includes("competition_admin_save_cup_prize_template")
+        ? "Run patches/prize_templates_survive_reset_20260925.sql first."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+  setStatus(
+    "compPrizeStatus",
+    `✅ Reset template saved (${data?.rows_saved ?? 0} row(s) from season ${sid}).`,
+    true
+  );
+}
+
+async function applyCupPrizeTemplate() {
+  const sid = seasonId();
+  if (!sid) {
+    setStatus("compPrizeStatus", "No season selected.", false);
+    return;
+  }
+  if (
+    !confirm(
+      `Apply the cup prize reset template into season ${sid}?\n\nExisting cup prize amounts on this season will be overwritten.`
+    )
+  ) {
+    return;
+  }
+  setStatus("compPrizeStatus", "Applying reset template…");
+  const { data, error } = await supabase.rpc("competition_admin_apply_cup_prize_template", {
+    p_season_id: sid,
+  });
+  if (error) {
+    setStatus(
+      "compPrizeStatus",
+      error.message.includes("competition_admin_apply_cup_prize_template")
+        ? "Run patches/prize_templates_survive_reset_20260925.sql first."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+  if (data?.ok === false && data?.reason === "no_template") {
+    setStatus("compPrizeStatus", "No cup prize reset template saved yet.", false);
+    return;
+  }
+  await loadCupPrizeConfig();
+  setStatus(
+    "compPrizeStatus",
+    `✅ Applied reset template (${data?.rows_applied ?? 0} row(s)) to season ${sid}.`,
     true
   );
 }

@@ -105,6 +105,10 @@ BEGIN
        )
     THEN
       PERFORM public.competition_admin_copy_cup_prizes(v_prev, v_season_id);
+    ELSIF to_regclass('public.competition_cup_prize_template') IS NOT NULL
+       AND EXISTS (SELECT 1 FROM public.competition_cup_prize_template)
+    THEN
+      PERFORM public.competition_admin_apply_cup_prize_template(v_season_id);
     END IF;
 
     IF to_regprocedure('public.competition_admin_copy_league_prizes(bigint, bigint)') IS NOT NULL
@@ -114,12 +118,29 @@ BEGIN
        )
     THEN
       PERFORM public.competition_admin_copy_league_prizes(v_prev, v_season_id);
+    ELSIF to_regclass('public.competition_league_prize_template') IS NOT NULL
+       AND EXISTS (SELECT 1 FROM public.competition_league_prize_template)
+    THEN
+      PERFORM public.competition_admin_apply_league_prize_template(v_season_id);
     END IF;
 
     -- Season N → N+1: decrement contracts even when prior year is already complete
     -- (Summer Break / no is_current). Inaugural season (no v_prev) skips this.
     IF to_regprocedure('public.contract_tick_season_rollover()') IS NOT NULL THEN
       PERFORM public.contract_tick_season_rollover();
+    END IF;
+  ELSE
+    IF to_regclass('public.competition_cup_prize_template') IS NOT NULL
+       AND EXISTS (SELECT 1 FROM public.competition_cup_prize_template)
+       AND to_regprocedure('public.competition_admin_apply_cup_prize_template(bigint)') IS NOT NULL
+    THEN
+      PERFORM public.competition_admin_apply_cup_prize_template(v_season_id);
+    END IF;
+    IF to_regclass('public.competition_league_prize_template') IS NOT NULL
+       AND EXISTS (SELECT 1 FROM public.competition_league_prize_template)
+       AND to_regprocedure('public.competition_admin_apply_league_prize_template(bigint)') IS NOT NULL
+    THEN
+      PERFORM public.competition_admin_apply_league_prize_template(v_season_id);
     END IF;
   END IF;
 

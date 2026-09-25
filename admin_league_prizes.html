@@ -21,6 +21,9 @@
           (or use <b>Pay league prizes</b> manually). Run <code>competition_league_prizes.sql</code> once.
           New seasons auto-copy the previous season’s table
           (<code>patches/prize_config_persist_across_seasons.sql</code>).
+          Use <b>Save as reset template</b> so amounts survive a full league reset
+          (<code>patches/prize_templates_survive_reset_20260925.sql</code>).
+          After reset, creating a new season restores from that template automatically.
         </p>
         <div class="row">
           <div>
@@ -69,11 +72,13 @@
           <button type="button" id="saveLeaguePrizesBtn" class="button">Save prizes</button>
           <button type="button" id="seedLeaguePrizesBtn" class="button">Load default amounts</button>
           <button type="button" id="payLeaguePrizesBtn" class="button">Pay league prizes</button>
+          <button type="button" id="saveLeaguePrizeTemplateBtn" class="button secondary">Save as reset template</button>
+          <button type="button" id="applyLeaguePrizeTemplateBtn" class="button secondary">Apply reset template</button>
         </div>
         <div id="leaguePrizeStatus" class="status-line"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_league_prizes.js?v=20260718-persist"></script>
+  <script type="module" src="admin_league_prizes.js?v=20260925-prize-template"></script>
 </body>
 </html>

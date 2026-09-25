@@ -22,6 +22,8 @@
           After changing League Cup stages, run
           <code>patches/league_cup_prize_stages_r32_r16_20260925.sql</code>
           then set amounts (and backfill played ties if needed).
+          Use <b>Save as reset template</b> so cup amounts survive a full league reset
+          (<code>patches/prize_templates_survive_reset_20260925.sql</code>).
         </p>
         <div class="row">
           <div>
@@ -56,6 +58,10 @@
           <input type="number" id="compPrizeAmount" placeholder="Amount" style="max-width:140px;">
           <button id="compSavePrizeBtn" class="button">Save prize</button>
         </div>
+        <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap;">
+          <button type="button" id="saveCupPrizeTemplateBtn" class="button secondary">Save as reset template</button>
+          <button type="button" id="applyCupPrizeTemplateBtn" class="button secondary">Apply reset template</button>
+        </div>
         <div id="compCupPrizeList" class="note" style="margin-top:10px;"></div>
         <div id="compPrizeStatus" class="status-line"></div>
       </div>
@@ -84,6 +90,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_cup_prizes.js?v=20260925-league-cup-r32-r16"></script>
+  <script type="module" src="admin_cup_prizes.js?v=20260925-prize-template"></script>
 </body>
 </html>
