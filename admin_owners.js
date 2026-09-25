@@ -2420,15 +2420,15 @@ async function loadArchivedOwnersSection() {
   const [
     { data, error },
     activityRes,
-    { data: secData },
     { data: clubsData },
     timezoneMap,
+    { data: supporterData },
   ] = await Promise.all([
     supabase.rpc("admin_list_archived_owners"),
     fetchOwnerActivityById(),
-    supabase.rpc("admin_owner_login_security_map", { p_recent_days: 30 }),
     supabase.from("Clubs").select("ShortName, Club"),
     fetchOwnerTimezoneMap(),
+    supabase.rpc("admin_owner_supporter_map"),
   ]);
   if (error) {
     section.hidden = false;
@@ -2438,7 +2438,7 @@ async function loadArchivedOwnersSection() {
     return;
   }
 
-  const rows = Array.isArray(data?.archived) ? data.archived : [];
+  let rows = Array.isArray(data?.archived) ? data.archived : [];
   if (!rows.length) {
     section.hidden = false;
     wrap.innerHTML = `<p class="note">No archived owners.</p>`;
@@ -2446,57 +2446,130 @@ async function loadArchivedOwnersSection() {
   }
 
   section.hidden = false;
-  const securityById = new Map();
   const activityById = activityRes.byId;
-  const secOwners = Array.isArray(secData?.owners) ? secData.owners : [];
-  for (const row of secOwners) {
-    if (row?.owner_id) securityById.set(row.owner_id, row);
-  }
+  const securityById = activityRes.securityById || new Map();
+  const prevLabel = activityRes.previousLabel || "Prev month";
+  const curLabel = activityRes.currentLabel || "Current month";
+  const supporterMap =
+    supporterData && typeof supporterData === "object" ? supporterData : {};
   const clubNameByShort = new Map(
-    (clubsData || []).map((c) => [String(c.ShortName || ""), String(c.Club || c.ShortName || "")])
-  );
-  rows.sort((a, b) =>
-    compareRowsByActivitySort(
-      { ...a, activity: activityById.get(a.owner_id) || null },
-      { ...b, activity: activityById.get(b.owner_id) || null }
-    )
+    (clubsData || []).map((c) => [
+      String(c.ShortName || ""),
+      String(c.Club || c.ShortName || ""),
+    ])
   );
 
-    let html =
-    `<table class="admin-table wl-archived-table">` +
-    `<thead><tr>` +
-    `<th class="num">Overall</th><th class="num">#</th><th>Tag</th><th>Email</th><th>Last club</th>` +
+  rows = rows.map((r) => {
+    const act = activityById.get(r.owner_id) || null;
+    const supp = supporterMap[r.owner_id] || supporterMap[String(r.owner_id)] || {};
+    return {
+      ...r,
+      activity: act,
+      security: securityById.get(r.owner_id) || null,
+      owner_timezone: timezoneMap.get(r.owner_id) || "",
+      is_supporter: !!supp.is_supporter,
+      supporter_active: !!supp.supporter_active,
+      supporter_grace_until: supp.supporter_grace_until || null,
+    };
+  });
+  rows = await mergeSeason1InviteStatus(rows);
+  rows.sort((a, b) => compareRowsByActivitySort(a, b));
+
+  const formatUnplayed = (n) => {
+    if (n == null) return `<span class="muted">—</span>`;
+    const cls = n >= 3 ? "unplayed-bad" : n > 0 ? "unplayed-warn" : "";
+    return `<span class="${cls}">${n}</span>`;
+  };
+
+  let html =
+    `<table class="admin-table wl-board-table wl-archived-table">` +
+    `<thead>` +
+    `<tr class="wl-group-row">` +
+    `<th colspan="7" class="wl-group-owner">Owner</th>` +
+    `<th colspan="5" class="wl-group-season">Season</th>` +
+    `<th colspan="15" class="wl-group-activity">Activity</th>` +
+    `<th colspan="1" class="wl-group-actions">Actions</th>` +
+    `</tr>` +
+    `<tr>` +
+    `<th class="wl-col-owner num">Overall</th>` +
+    `<th class="num">#</th>` +
+    `<th style="width:2em"></th>` +
+    `<th>Tag</th><th>Email</th>` +
+    `<th title="Last club before archive">Last club</th>` +
+    `<th title="When they were archived (UK)">Archived (UK)</th>` +
+    `<th class="wl-col-season" title="Season 1 invite queue" style="text-align:center;line-height:1.25">S1#</th>` +
+    `<th class="wl-col-season" style="text-align:center;line-height:1.25">Auction</th>` +
     `<th title="Confirmed for test season" style="text-align:center">Test</th>` +
     `<th title="Confirmed for live season" style="text-align:center">Live</th>` +
-    `<th>Archived (UK)</th><th>Note</th>` +
-    `<th title="Offset vs British time: saved timezone, else login timezone, else estimated from country (~).">UK +/-</th>` +
-    `<th title="Latest login country (admin only).">Country</th>` +
-    `<th title="Latest captured login IP address (admin only).">IP</th>` +
-    `<th title="Recent shared-IP review signal (admin only).">Shared IP</th>` +
+    `<th title="Ko-fi Supporter" style="text-align:center">Supporter</th>` +
+    `<th class="wl-col-activity wl-col-login">Last login</th>` +
+    `<th class="num wl-num-login">Since</th>` +
+    `<th class="num wl-num-login" title="Total GPSL site logins (all time)">Logins</th>` +
+    `<th class="num wl-num-login" title="${escapeWl(prevLabel)} logins">${escapeWl(prevLabel)}</th>` +
+    `<th class="num wl-num-login" title="${escapeWl(curLabel)} logins">${escapeWl(curLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(prevLabel)}">U ${escapeWl(prevLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(curLabel)}">U ${escapeWl(curLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="Missed running total">U missed</th>` +
+    `<th class="num wl-num-unplayed" title="Match videos uploaded after month lock">V late</th>` +
+    `<th class="num wl-num-unplayed" title="Missing match video past grace">V fail</th>` +
+    `<th title="Discord server join date when known">Discord</th>` +
+    `<th title="Offset vs British time">UK +/-</th>` +
+    `<th title="Latest login country (admin only)">Country</th>` +
+    `<th title="Latest captured login IP (admin only)">IP</th>` +
+    `<th title="Recent shared-IP review signal (admin only)">Shared IP</th>` +
     `<th class="wl-col-actions">Actions</th>` +
     `</tr></thead><tbody>`;
 
-    let overallCounter =
-      document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id]").length +
-      document.querySelectorAll("#wlOnBreakTableWrap tr[data-owner-id]").length;
-    for (let i = 0; i < rows.length; i += 1) {
-      overallCounter += 1;
-      const row = rows[i];
-      const email = row.email || "";
+  let overallCounter =
+    document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id]").length +
+    document.querySelectorAll("#wlOnBreakTableWrap tr[data-owner-id]").length;
+
+  for (let i = 0; i < rows.length; i += 1) {
+    overallCounter += 1;
+    const row = rows[i];
+    const email = row.email || "";
     const tag = row.owner_tag || "—";
     const testOn = !!row.confirmed_test_season;
     const liveOn = !!row.confirmed_live_season;
-    const sec = securityById.get(row.owner_id) || {};
-    const act = activityById.get(row.owner_id) || {};
-    const ownerTimezone = timezoneMap.get(row.owner_id) || "";
-    const originTimezone = sec.last_timezone_name
-      ? String(sec.last_timezone_name)
-      : "";
+    const act = row.activity || {};
+    const sec = row.security || {};
+    const lastAt = act.last_sign_in_at || null;
+    const since = formatWlTimeSince(lastAt);
+    const sinceClass = !lastAt ? "never" : since.minutes >= 7 * 24 * 60 ? "stale" : "";
+    const prevN = Number(act.logins_previous_month) || 0;
+    const curN = Number(act.logins_current_month) || 0;
+    const totalN = Number(act.logins_total) || 0;
+    const unplayedPrev =
+      act.unplayed_previous_month == null ? null : Number(act.unplayed_previous_month) || 0;
+    const unplayedCur =
+      act.unplayed_current_month == null ? null : Number(act.unplayed_current_month) || 0;
+    const unplayedMissed =
+      act.unplayed_missed_total != null
+        ? Number(act.unplayed_missed_total) || 0
+        : act.unplayed_season == null
+          ? null
+          : Number(act.unplayed_season) || 0;
+    const videoLate = act.video_late_count != null ? Number(act.video_late_count) || 0 : null;
+    const videoFail =
+      act.video_failed_count != null ? Number(act.video_failed_count) || 0 : null;
+
+    const discordJoined = act.discord_joined_at || null;
+    const discordSource = act.discord_join_source || (discordJoined ? "discord" : "account");
+    const discordDisplayAt =
+      discordJoined || (discordSource === "account" ? act.account_created_at : null);
+    const discordCell =
+      discordSource === "discord" && discordJoined
+        ? escapeWl(formatWlUkDate(discordJoined))
+        : discordDisplayAt
+          ? `<span class="muted" title="No Discord join on file — showing GPSL account created date">${escapeWl(formatWlUkDate(discordDisplayAt))} · acct</span>`
+          : `<span class="muted">—</span>`;
+
     const lastCountry = sec.last_country_code ? String(sec.last_country_code) : "";
     const lastCountryName = formatCountryName(lastCountry);
     const lastIp = sec.last_ip_address ? String(sec.last_ip_address) : "";
+    const originTimezone = sec.last_timezone_name ? String(sec.last_timezone_name) : "";
     const resolvedTz = resolveDisplayTimezone({
-      ownerTimezone,
+      ownerTimezone: row.owner_timezone,
       originTimezone,
       countryCode: lastCountry,
     });
@@ -2512,6 +2585,7 @@ async function loadArchivedOwnersSection() {
       sharedCount > 1
         ? `<span class="unplayed-warn" title="Shared recent IP with: ${escapeWl(otherShared.join(", ") || sharedWith.join(", "))}">Yes (${sharedCount})</span>`
         : `<span class="muted">No</span>`;
+
     const lastClubShort = String(row.last_club_short_name || "");
     const lastClubName = clubNameByShort.get(lastClubShort) || lastClubShort;
     const lastClubDisplay = lastClubShort
@@ -2519,30 +2593,53 @@ async function loadArchivedOwnersSection() {
         ? `${escapeWl(lastClubName)} <span class="muted">(${escapeWl(lastClubShort)})</span>`
         : escapeWl(lastClubShort)
       : "—";
+    const archivedAt = formatWlUkDateTime(row.status_changed_at);
+    const archivedTitle = row.status_note
+      ? `Archived note: ${row.status_note}`
+      : "Archived date (UK)";
+    const s1Status = String(row.season1_invite_status || "").toLowerCase();
+    const s1Response = String(row.season1_invite_response || "").toLowerCase();
+    const s1Mark = season1InviteMarker(row);
+    const s1ExpireOption =
+      s1Mark?.kind === "expired-pending"
+        ? `<option value="s1_mark_expired">Confirm S1 expired</option>`
+        : "";
+
     const filterText = [
       tag,
       email,
+      "archived",
       row.last_club_short_name,
       lastClubName,
       row.status_note,
-      ownerTimezone,
+      archivedAt,
+      row.owner_timezone,
       originTimezone,
       resolvedTz.timeZone,
       tzDelta.text,
       lastCountry,
       lastCountryName,
       lastIp,
-      act.club_short_name,
-      act.club_name,
+      s1Mark?.tagLabel,
+      s1Mark?.cellLabel,
     ]
       .filter(Boolean)
       .join(" ");
+
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
-      <td class="num">${overallCounter}</td>
+      <td class="wl-col-owner num">${overallCounter}</td>
       <td class="num">${i + 1}</td>
-      <td>${escapeWl(tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}</td>
+      <td class="wl-col-owner"></td>
+      <td>${escapeWl(tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${season1TagMarkHtml(row)}</td>
       <td>${escapeWl(email)}</td>
       <td>${lastClubDisplay}</td>
+      <td title="${escapeWl(archivedTitle)}">${escapeWl(archivedAt || "—")}${
+        row.status_note
+          ? `<div class="muted" style="font-size:11px;margin-top:2px">${escapeWl(row.status_note)}</div>`
+          : ""
+      }</td>
+      ${formatSeason1StatusCell(row)}
+      <td class="wl-col-season" style="text-align:center;color:#555">—</td>
       <td style="text-align:center">
         <input type="checkbox" class="wl-confirm-season" data-id="${escapeWl(row.owner_id)}" data-which="test"
           title="Confirmed test season" ${testOn ? "checked" : ""}>
@@ -2551,8 +2648,22 @@ async function loadArchivedOwnersSection() {
         <input type="checkbox" class="wl-confirm-season" data-id="${escapeWl(row.owner_id)}" data-which="live"
           title="Confirmed live season" ${liveOn ? "checked" : ""}>
       </td>
-      <td>${escapeWl(formatWlUkDateTime(row.status_changed_at))}</td>
-      <td>${escapeWl(row.status_note || "—")}</td>
+      <td style="text-align:center">
+        <input type="checkbox" class="wl-supporter" data-id="${escapeWl(row.owner_id)}"
+          title="${row.supporter_grace_until && !row.is_supporter ? `Grace until ${escapeWl(row.supporter_grace_until)}` : "Ko-fi Supporter"}"
+          ${row.is_supporter ? "checked" : ""}>
+      </td>
+      <td class="wl-col-activity">${escapeWl(formatWlUkDateTime(lastAt))}</td>
+      <td class="num wl-num-login ${sinceClass}">${escapeWl(since.text)}</td>
+      <td class="num wl-num-login">${totalN}</td>
+      <td class="num wl-num-login">${prevN}</td>
+      <td class="num wl-num-login">${curN}</td>
+      <td class="num wl-num-unplayed">${formatUnplayed(unplayedPrev)}</td>
+      <td class="num wl-num-unplayed">${formatUnplayed(unplayedCur)}</td>
+      <td class="num wl-num-unplayed">${formatUnplayed(unplayedMissed)}</td>
+      <td class="num wl-num-unplayed">${formatUnplayed(videoLate)}</td>
+      <td class="num wl-num-unplayed">${formatUnplayed(videoFail)}</td>
+      <td>${discordCell}</td>
       <td title="${tzDelta.title ? escapeWl(tzDelta.title) : ""}">${escapeWl(tzDelta.text)}</td>
       <td title="${lastCountry ? escapeWl(lastCountry) : ""}">${lastCountry ? escapeWl(lastCountryName) : `<span class="muted">—</span>`}</td>
       <td title="${lastIp ? escapeWl(lastIp) : ""}">${lastIp ? `<code>${escapeWl(lastIp)}</code>` : `<span class="muted">—</span>`}</td>
@@ -2562,13 +2673,14 @@ async function loadArchivedOwnersSection() {
           data-id="${escapeWl(row.owner_id)}"
           data-email="${escapeWl(email)}"
           data-tag="${escapeWl(tag)}"
-          data-s1-status="${escapeWl(String(row.season1_invite_status || "").toLowerCase())}"
-          data-s1-response="${escapeWl(String(row.season1_invite_response || "").toLowerCase())}"
+          data-s1-status="${escapeWl(s1Status)}"
+          data-s1-response="${escapeWl(s1Response)}"
           aria-label="Actions for ${escapeWl(tag)}">
           <option value="">Actions…</option>
-          <option value="invite_season1">Invite to season 1</option>
+          <option value="invite_season1">${s1Status === "offered" ? "Re-send Season 1 invite" : "Invite to season 1"}</option>
           <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
           <option value="s1_decline_dm">Mark S1 declined (DM)</option>
+          ${s1ExpireOption}
           <option value="unarchive">Unarchive → waiting</option>
           <option value="delete_gpsl">Delete from GPSL</option>
         </select>
@@ -2585,6 +2697,20 @@ async function loadArchivedOwnersSection() {
     cb.addEventListener("change", () =>
       setWaitingListSeasonConfirmed(cb.dataset.id, cb.dataset.which, cb.checked, cb)
     );
+  });
+  wrap.querySelectorAll(".wl-supporter").forEach((cb) => {
+    cb.addEventListener("pointerdown", (e) => e.stopPropagation());
+    cb.addEventListener("click", (e) => e.stopPropagation());
+    cb.addEventListener("change", () =>
+      setOwnerSupporterFlag(cb.dataset.id, cb.checked, cb)
+    );
+  });
+  wrap.querySelectorAll("button.wl-s1-cell").forEach((btn) => {
+    btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleSeason1QueueNumber(btn.dataset.ownerId);
+    });
   });
 
   filterSeasonOwnerBoard();

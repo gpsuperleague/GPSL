@@ -378,7 +378,9 @@ export async function initWaitingListPage() {
     try {
       const { data: s1 } = await supabase.rpc("owner_season1_invite_get_mine");
       let s1Card = document.getElementById("wlSeason1Card");
-      if (s1?.has_invite) {
+      const s1info = s1?.season1 || {};
+      const s1Expired = Boolean(s1?.expired || s1info.deadline_passed);
+      if (s1?.has_invite || s1Expired) {
         if (!s1Card) {
           s1Card = document.createElement("div");
           s1Card.id = "wlSeason1Card";
@@ -386,7 +388,7 @@ export async function initWaitingListPage() {
           s1Card.innerHTML = `
             <h1 id="season1">Season 1 invite</h1>
             <p id="wlSeason1Summary"></p>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+            <div id="wlSeason1Actions" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
               <button type="button" class="button" id="wlSeason1Accept">Accept</button>
               <button type="button" class="button" id="wlSeason1Decline" style="background:#844">Decline</button>
             </div>
@@ -398,41 +400,52 @@ export async function initWaitingListPage() {
         s1Card.hidden = false;
         const sum = document.getElementById("wlSeason1Summary");
         const st = document.getElementById("wlSeason1Status");
-        const s1info = s1.season1 || {};
-        if (sum) {
-          sum.textContent = `You are invited to Season 1 (queue #${
-            s1info.queue_num ?? "—"
-          }). Deadline: ${s1info.deadline_label || "48 hours from offer"}.`;
-        }
+        const actions = document.getElementById("wlSeason1Actions");
         const accept = document.getElementById("wlSeason1Accept");
         const decline = document.getElementById("wlSeason1Decline");
-        const respond = async (decision) => {
-          if (decision === "decline" && !confirm("Decline your Season 1 invite?")) {
-            return;
+        if (s1Expired && !s1?.has_invite) {
+          if (sum) {
+            sum.textContent = `Your Season 1 invite expired${
+              s1info.deadline_label ? ` (deadline ${s1info.deadline_label})` : ""
+            }. Contact an admin if you still want a place.`;
           }
-          if (accept) accept.disabled = true;
-          if (decline) decline.disabled = true;
-          if (st) st.textContent = decision === "accept" ? "Accepting…" : "Declining…";
-          const { error } = await supabase.rpc("owner_season1_invite_respond", {
-            p_decision: decision,
-          });
-          if (error) {
-            if (st) st.textContent = "❌ " + error.message;
-            if (accept) accept.disabled = false;
-            if (decline) decline.disabled = false;
-            return;
+          if (actions) actions.hidden = true;
+          if (st) st.textContent = "";
+        } else {
+          if (actions) actions.hidden = false;
+          if (sum) {
+            sum.textContent = `You are invited to Season 1 (queue #${
+              s1info.queue_num ?? "—"
+            }). Deadline: ${s1info.deadline_label || "48 hours from offer"}.`;
           }
-          if (st) {
-            st.textContent =
-              decision === "accept" ? "✅ Accepted for Season 1." : "Declined.";
-          }
-          if (accept) accept.hidden = true;
-          if (decline) decline.hidden = true;
-          // Refresh panels so Confirmed / Waiting list update immediately
-          setTimeout(() => window.location.reload(), 800);
-        };
-        if (accept) accept.onclick = () => respond("accept");
-        if (decline) decline.onclick = () => respond("decline");
+          const respond = async (decision) => {
+            if (decision === "decline" && !confirm("Decline your Season 1 invite?")) {
+              return;
+            }
+            if (accept) accept.disabled = true;
+            if (decline) decline.disabled = true;
+            if (st) st.textContent = decision === "accept" ? "Accepting…" : "Declining…";
+            const { error } = await supabase.rpc("owner_season1_invite_respond", {
+              p_decision: decision,
+            });
+            if (error) {
+              if (st) st.textContent = "❌ " + error.message;
+              if (accept) accept.disabled = false;
+              if (decline) decline.disabled = false;
+              return;
+            }
+            if (st) {
+              st.textContent =
+                decision === "accept" ? "✅ Accepted for Season 1." : "Declined.";
+            }
+            if (accept) accept.hidden = true;
+            if (decline) decline.hidden = true;
+            // Refresh panels so Confirmed / Waiting list update immediately
+            setTimeout(() => window.location.reload(), 800);
+          };
+          if (accept) accept.onclick = () => respond("accept");
+          if (decline) decline.onclick = () => respond("decline");
+        }
       } else if (s1Card) {
         s1Card.hidden = true;
       }

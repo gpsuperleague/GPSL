@@ -184,14 +184,9 @@
     .wl-board-table .unplayed-warn { color: #fc6; font-weight: 600; }
     .wl-board-table .unplayed-bad { color: #f88; font-weight: 700; }
     .wl-board-table tr.wl-filter-hide { display: none; }
-    .wl-archived-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .wl-archived-table th,
-    .wl-archived-table td {
-      border-bottom: 1px solid #333; padding: 7px 6px; text-align: left; vertical-align: middle;
-    }
-    .wl-archived-table th { color: #c88; font-weight: 600; }
-    .wl-archived-table th.wl-col-actions,
-    .wl-archived-table td.wl-col-actions { border-left: 2px solid #444; }
+    /* Archived uses the same wl-board-table layout; keep soft red accents only. */
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) th { color: #e0a0a0; }
+    .wl-board-table.wl-archived-table .wl-group-owner { color: #e0a0a0; }
     .wl-modal-backdrop {
       position: fixed; inset: 0; z-index: 2000;
       background: rgba(0,0,0,0.65);
@@ -304,6 +299,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260925-s1-deadline"></script>
+  <script type="module" src="admin_owners.js?v=20260925-archived-cols"></script>
 </body>
 </html>

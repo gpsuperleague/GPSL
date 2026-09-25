@@ -486,40 +486,61 @@ async function renderInbox() {
       msg.message_type === "season1_invite" &&
       !msg.read_at
     ) {
-      const acceptBtn = document.createElement("button");
-      const declineBtn = document.createElement("button");
-      acceptBtn.className = "button";
-      acceptBtn.textContent = "Accept Season 1";
-      declineBtn.className = "button danger";
-      declineBtn.textContent = "Decline";
-      const respondSeason1 = async (decision) => {
-        if (decision === "decline" && !confirm("Decline your Season 1 invite?")) {
-          return;
-        }
-        acceptBtn.disabled = true;
-        declineBtn.disabled = true;
-        try {
-          const { error } = await supabase.rpc("owner_season1_invite_respond", {
-            p_decision: decision,
-          });
-          if (error) throw error;
-          setStatus(
-            decision === "accept"
-              ? "Season 1 invite accepted."
-              : "Season 1 invite declined."
-          );
-          await renderInbox();
-          await refreshInboxNavBadge();
-        } catch (err) {
-          setStatus("❌ " + err.message, true);
-          acceptBtn.disabled = false;
-          declineBtn.disabled = false;
-        }
-      };
-      acceptBtn.onclick = () => respondSeason1("accept");
-      declineBtn.onclick = () => respondSeason1("decline");
-      actions.appendChild(acceptBtn);
-      actions.appendChild(declineBtn);
+      // Resolve live invite state so expired offers cannot be accepted from inbox.
+      let s1Live = null;
+      try {
+        const { data } = await supabase.rpc("owner_season1_invite_get_mine");
+        s1Live = data;
+      } catch {
+        s1Live = null;
+      }
+      const s1info = s1Live?.season1 || {};
+      const s1Expired = Boolean(s1Live?.expired || s1info.deadline_passed);
+      const s1Pending = Boolean(s1Live?.has_invite) && !s1Expired;
+
+      if (s1Expired && !s1Pending) {
+        const expiredNote = document.createElement("p");
+        expiredNote.style.cssText = "color:#f4b183;margin:8px 0 0;font-size:13px";
+        expiredNote.textContent = s1info.deadline_label
+          ? `This Season 1 invite expired (${s1info.deadline_label}).`
+          : "This Season 1 invite has expired.";
+        actions.appendChild(expiredNote);
+      } else if (s1Pending || s1Live == null) {
+        const acceptBtn = document.createElement("button");
+        const declineBtn = document.createElement("button");
+        acceptBtn.className = "button";
+        acceptBtn.textContent = "Accept Season 1";
+        declineBtn.className = "button danger";
+        declineBtn.textContent = "Decline";
+        const respondSeason1 = async (decision) => {
+          if (decision === "decline" && !confirm("Decline your Season 1 invite?")) {
+            return;
+          }
+          acceptBtn.disabled = true;
+          declineBtn.disabled = true;
+          try {
+            const { error } = await supabase.rpc("owner_season1_invite_respond", {
+              p_decision: decision,
+            });
+            if (error) throw error;
+            setStatus(
+              decision === "accept"
+                ? "Season 1 invite accepted."
+                : "Season 1 invite declined."
+            );
+            await renderInbox();
+            await refreshInboxNavBadge();
+          } catch (err) {
+            setStatus("❌ " + err.message, true);
+            acceptBtn.disabled = false;
+            declineBtn.disabled = false;
+          }
+        };
+        acceptBtn.onclick = () => respondSeason1("accept");
+        declineBtn.onclick = () => respondSeason1("decline");
+        actions.appendChild(acceptBtn);
+        actions.appendChild(declineBtn);
+      }
     } else if (
       !viewArchived &&
       !isArchived &&
