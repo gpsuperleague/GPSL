@@ -1446,6 +1446,16 @@ function compareRowsBySeason1ThenActivity(a, b) {
   return compareRowsByActivitySort(a, b);
 }
 
+function season1InviteDeadlineLabel(row) {
+  if (row?.season1_invite_deadline_label) {
+    return String(row.season1_invite_deadline_label);
+  }
+  if (row?.season1_invite_deadline_at) {
+    return formatWlUkDateTime(row.season1_invite_deadline_at);
+  }
+  return "";
+}
+
 function season1InviteDeadlinePassed(row) {
   if (row?.season1_invite_deadline_passed === true) return true;
   if (row?.season1_invite_deadline_passed === false) return false;
@@ -1473,11 +1483,7 @@ function season1InviteMarker(row) {
   const respondedAt = row?.season1_invite_responded_at
     ? formatWlUkDateTime(row.season1_invite_responded_at)
     : "";
-  const deadline =
-    row?.season1_invite_deadline_label ||
-    (row?.season1_invite_deadline_at
-      ? formatWlUkDateTime(row.season1_invite_deadline_at)
-      : "");
+  const deadline = season1InviteDeadlineLabel(row);
   const offeredAt = row?.season1_invite_offered_at
     ? formatWlUkDateTime(row.season1_invite_offered_at)
     : "";
@@ -1487,6 +1493,7 @@ function season1InviteMarker(row) {
       kind: "accepted",
       cellLabel: "Accepted",
       tagLabel: "S1 Accepted",
+      deadline: "",
       title: respondedAt ? `Accepted ${respondedAt}` : "Accepted Season 1 invite",
     };
   }
@@ -1495,6 +1502,7 @@ function season1InviteMarker(row) {
       kind: "rejected",
       cellLabel: "Rejected",
       tagLabel: "S1 Rejected",
+      deadline: "",
       title: respondedAt ? `Rejected ${respondedAt}` : "Rejected Season 1 invite",
     };
   }
@@ -1504,6 +1512,7 @@ function season1InviteMarker(row) {
       kind: "expired-pending",
       cellLabel: "Expired Invite",
       tagLabel: "Expired Invite",
+      deadline,
       needsConfirm: true,
       title: [
         "Season 1 invite deadline passed — confirm expired, or record accept/decline from DM",
@@ -1519,6 +1528,7 @@ function season1InviteMarker(row) {
       kind: "invited",
       cellLabel: "Invited",
       tagLabel: "S1 Invited",
+      deadline,
       title: [
         "Season 1 invite sent — awaiting reply",
         offeredAt ? `Offered ${offeredAt}` : "",
@@ -1533,6 +1543,7 @@ function season1InviteMarker(row) {
       kind: "expired",
       cellLabel: "Expired",
       tagLabel: "S1 Expired",
+      deadline,
       title: deadline
         ? `Season 1 invite expired (deadline ${deadline})`
         : "Season 1 invite expired without a reply",
@@ -1543,6 +1554,7 @@ function season1InviteMarker(row) {
       kind: "queued",
       cellLabel: "Queued",
       tagLabel: "S1 Queued",
+      deadline: "",
       title: num != null ? `Queued as S1#${num} — not invited yet` : "Queued for Season 1",
     };
   }
@@ -1573,6 +1585,14 @@ function formatSeason1StatusCell(row) {
                   : "queued"
       }" title="${escapeWl(m.title)}">${escapeWl(m.cellLabel)}</div>`
     : "";
+  const deadlineHtml =
+    m?.deadline
+      ? `<div class="wl-s1-deadline${
+          m.kind === "expired-pending" || m.kind === "expired" ? " is-past" : ""
+        }" title="${escapeWl(`Invite expires / expired: ${m.deadline}`)}">${escapeWl(
+          m.deadline
+        )}</div>`
+      : "";
   const numHtml =
     num != null
       ? `<span class="wl-s1-num">${num}</span>`
@@ -1583,7 +1603,7 @@ function formatSeason1StatusCell(row) {
   return `<td class="wl-col-season" style="text-align:center;padding:4px 2px">
     <button type="button" class="wl-s1-cell" data-owner-id="${escapeWl(row.owner_id)}"
       title="${escapeWl(tip)}">
-      ${numHtml}${badge}
+      ${numHtml}${badge}${deadlineHtml}
     </button>
   </td>`;
 }
