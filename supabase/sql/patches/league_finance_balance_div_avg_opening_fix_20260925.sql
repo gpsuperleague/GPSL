@@ -2,11 +2,14 @@
 -- League finance balance: season-start Opening + per-division averages
 --
 -- Opening was preferring prior-season closing_balance (cash after transfers),
--- so many clubs showed ≫ ₿650m. Ecosystem Opening should be season-start cash:
---   1) this season archive opening_balance
---   2) infra_purchase metadata.starting_budget
---   3) club_auction_default_starting_balance() (₿650m)
--- prior closing is still returned as prior_close for reference.
+-- so many clubs showed ≫ ₿650m. Then we preferred archive opening_balance, but
+-- that is reconstructed as closing − season ledger net (also ≫ ₿650m when
+-- pre-season cash / transfers are outside the season ledger picture).
+--
+-- Ecosystem Opening = assignment starting budget only:
+--   1) infra_purchase metadata.starting_budget
+--   2) club_auction_default_starting_balance() (₿650m)
+-- Archive opening + prior close still returned as archive_opening / prior_close.
 --
 -- Also returns by_division: avg / median / gap vs target per division
 -- (on top of league-wide ops_net_avg).
@@ -42,6 +45,7 @@ DECLARE
   v_gap_total numeric(14, 2);
   v_verdict text;
   v_opening numeric(14, 2);
+  v_archive_opening numeric(14, 2);
   v_prior_close numeric(14, 2);
   v_balance numeric(14, 2);
   v_division text;
@@ -134,7 +138,7 @@ BEGIN
     WHERE cf.club_name = v_club
     LIMIT 1;
 
-    -- Prior close kept for reference only (includes transfers — not ecosystem Opening)
+    -- Prior close / archive opening kept for reference (accounting reconstructions)
     v_prior_close := NULL;
     IF v_prior_id IS NOT NULL THEN
       SELECT a.closing_balance INTO v_prior_close
@@ -144,27 +148,26 @@ BEGIN
       LIMIT 1;
     END IF;
 
-    -- Season-start Opening (assignment / archive open — typically ₿650m)
-    v_opening := NULL;
-    SELECT a.opening_balance INTO v_opening
+    v_archive_opening := NULL;
+    SELECT a.opening_balance INTO v_archive_opening
     FROM public.competition_club_finance_season_archive a
     WHERE a.season_id = v_season_id
       AND a.club_short_name = v_club
     LIMIT 1;
 
-    IF v_opening IS NULL THEN
-      SELECT (l.metadata->>'starting_budget')::numeric INTO v_opening
-      FROM public.competition_finance_ledger l
-      WHERE l.season_id = v_season_id
-        AND l.club_short_name = v_club
-        AND l.entry_type = 'infra_purchase'
-        AND l.metadata ? 'starting_budget'
-        AND nullif(l.metadata->>'starting_budget', '') IS NOT NULL
-      ORDER BY l.created_at ASC, l.id ASC
-      LIMIT 1;
-    END IF;
+    -- Ecosystem Opening = assignment starting budget (usually ₿650m), not archive math
+    v_opening := NULL;
+    SELECT (l.metadata->>'starting_budget')::numeric INTO v_opening
+    FROM public.competition_finance_ledger l
+    WHERE l.season_id = v_season_id
+      AND l.club_short_name = v_club
+      AND l.entry_type = 'infra_purchase'
+      AND l.metadata ? 'starting_budget'
+      AND nullif(l.metadata->>'starting_budget', '') IS NOT NULL
+    ORDER BY l.created_at ASC, l.id ASC
+    LIMIT 1;
 
-    IF v_opening IS NULL THEN
+    IF v_opening IS NULL OR v_opening <= 0 THEN
       v_opening := v_default_start;
     END IF;
 
@@ -258,6 +261,7 @@ BEGIN
         'club', v_club,
         'division', v_division,
         'opening_balance', v_opening,
+        'archive_opening', v_archive_opening,
         'prior_close', v_prior_close,
         'balance_now', v_balance,
         'gates', v_gates,
@@ -433,6 +437,6 @@ GRANT EXECUTE ON FUNCTION public.competition_admin_league_finance_balance(bigint
   TO authenticated;
 
 COMMENT ON FUNCTION public.competition_admin_league_finance_balance(bigint, numeric) IS
-  'Admin league P&L: ops excludes transfers/loans/fines/stadium buys; Opening = season-start cash; includes by_division averages.';
+  'Admin league P&L: ops excludes transfers/loans/fines/stadium buys; Opening = assignment starting budget (usually ₿650m); includes by_division averages.';
 
 NOTIFY pgrst, 'reload schema';
