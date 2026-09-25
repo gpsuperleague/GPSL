@@ -244,10 +244,19 @@ function filteredRows() {
     .toLowerCase();
   const nation = document.getElementById("filterNation")?.value || "";
   const ownerFilter = document.getElementById("filterOwner")?.value || "";
+  const interestFilter = document.getElementById("filterInterest")?.value || "";
+  const byClub =
+    interestFilter === "multi" ? interestsByClubMap() : null;
   return allRows.filter((r) => {
     if (nation && String(r.nation || "") !== nation) return false;
     if (ownerFilter === "vacant" && !isVacant(r)) return false;
     if (ownerFilter === "owned" && isVacant(r)) return false;
+    if (byClub) {
+      const iCount = Number(
+        byClub.get(r.club_short_name)?.interest_count || 0
+      );
+      if (iCount < 2) return false;
+    }
     if (!q) return true;
     const hay = [
       r.club_name,
@@ -526,6 +535,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     page = 1;
     render();
   });
+  document.getElementById("filterInterest")?.addEventListener("change", () => {
+    page = 1;
+    render();
+  });
   document.getElementById("pageSize")?.addEventListener("change", (e) => {
     pageSize = Number(e.target.value) || 100;
     page = 1;
@@ -535,9 +548,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const s = document.getElementById("filterSearch");
     const n = document.getElementById("filterNation");
     const o = document.getElementById("filterOwner");
+    const i = document.getElementById("filterInterest");
     if (s) s.value = "";
     if (n) n.value = "";
     if (o) o.value = "";
+    if (i) i.value = "";
     page = 1;
     render();
   });
