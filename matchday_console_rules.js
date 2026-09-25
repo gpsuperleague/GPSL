@@ -10,6 +10,7 @@ export const CONSOLE_DISPLAY_CHIPS = [
   "10-min match",
   "Show Manager",
   "Show Subtactic",
+  "Show Player Instructions",
   "Show Squad",
   "Fluid Formation Off",
 ];
@@ -156,7 +157,7 @@ export function prematchConsoleChecklistHtml() {
     ["Match length", "10 minutes (all other settings default)"],
     [
       "Display",
-      "Show Manager · Show Subtactic · Show Squad · Fluid Formation Off",
+      "Show Manager · Show Subtactic · Show Player Instructions · Show Squad · Fluid Formation Off — visible throughout the match video",
     ],
     ["Pause before KO", "PA3 or PA4 · Advanced skill only"],
     [
@@ -191,7 +192,7 @@ export function getMatchdayConsoleRulesCards() {
         heading: "Display checks",
         items: [
           "<b>10-minute</b> match (all other settings default).",
-          "<b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b> on.",
+          "<b>Show Manager</b>, <b>Show Subtactic</b>, <b>Show Player Instructions</b> (individual player instructions), and <b>Show Squad</b> on — they must stay visible on the match recording or you can be reported and fined (₿10m for missing player instructions).",
           "<b>Fluid Formation</b> set to <b>Off</b> (Konami fluid formations are not allowed).",
           "<b>Cup knockout (1-leg):</b> Extra Time and Penalties if level after 90.",
           "<b>2-legged cups:</b> default 90 min only (no ET/pens). If level on aggregate after the 2nd leg — play a <b>5-minute</b> match with ET + pens; scores combine with both legs to decide the winner.",

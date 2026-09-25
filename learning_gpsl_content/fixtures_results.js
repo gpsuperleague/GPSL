@@ -137,6 +137,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `<code>[HomeShort 2-0 AwayShort [SL-MD5]](https://youtu.be/xxxxx)</code> — https YouTube only. Division tag required: <b>SL</b> SuperLeague, <b>CA</b> Championship A, <b>CB</b> Championship B. Cups: <b>S8</b>/<b>PL</b>/<b>SH</b>/<b>BO</b>/<b>LC</b>. Score spacing flexible. GPSL verifies the poster is that club’s owner, plus division, matchday/round, clubs, and score.`,
         `GPSL ticks <b>H</b> / <b>A</b> on Fixtures when each side’s video is matched — click the tick to open the video.`,
         `Each club earns Matchday revenue <b>once</b> per fixture when <em>their</em> post is matched (amount set in Admin → Match videos). Missing videos after month lock + grace hours can be fined.`,
+        `HUD must show <b>Show Player Instructions</b> (individual player instructions) throughout your recording — plus Show Manager, Show Subtactic, and Show Squad. Missing player instructions can be reported from the Fixtures <b>R</b> button and fined (₿10m).`,
       ],
     },
 
@@ -181,7 +182,7 @@ export const SECTION_MATCHDAY = {
     {
       type: "ul",
       items: [
-        `<b>Display:</b> 10-minute match · Show Manager · Show Subtactic · Show Squad · Fluid Formation Off.`,
+        `<b>Display:</b> 10-minute match · Show Manager · Show Subtactic · Show Player Instructions · Show Squad · Fluid Formation Off — must be visible on the match video or you can be reported/fined.`,
         `<b>Pause before KO:</b> PA3 or PA4 · Advanced skill only.`,
         `<b>On the pitch:</b> NO DOGSO · NO TIMEWASTING · NO MATCH MANIPULATION.`,
         `<b>Formations:</b> dropdown presets only — no free marker drag; mirror LB↔RB, LWF↔RWF, LMF↔RMF; no CF/CF/SS, CF/SS/SS, or SS/SS/SS.`,
