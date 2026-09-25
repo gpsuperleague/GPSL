@@ -775,9 +775,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function rpcMissingHint(msg) {
     return /could not find|does not exist|PGRST202/i.test(msg || "")
-      ? " — re-run supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql in Supabase."
+      ? " — re-run supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql (or international_pool_cache_batch_timeout_20260925.sql for pool cache) in Supabase."
       : /timeout|cancel|57014|statement timeout|upstream timeout/i.test(msg || "")
-        ? " — timed out. Run the matching SELECT alone in the SQL Editor."
+        ? " — timed out. For pool cache, run international_pool_cache_batch_timeout_20260925.sql then retry the button."
         : "";
   }
 
@@ -819,15 +819,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("refreshPoolCacheBtn")?.addEventListener("click", async () => {
     if (
       !confirm(
-        "Step 2 — Rebuild nation player pool cache from GPDB?\n\nSlowest step (~30–90s). Required after importing labels or a big GPDB update."
+        "Step 2 — Rebuild nation player pool cache from GPDB?
+
+Runs in small batches (avoids API timeouts). Required after importing labels or a big GPDB update."
       )
     ) {
       return;
     }
-    setStatus("setupStatus", "Refreshing nation pool cache… (may take up to 2 min)");
+    setStatus("setupStatus", "Refreshing nation pool cache…");
     hideTopSeeds();
     try {
-      const data = await refreshNationPlayerPoolCache(supabase);
+      const data = await refreshNationPlayerPoolCache(supabase, (progress) => {
+        if (progress?.done) return;
+        const done = Number(progress?.nations_cached ?? 0);
+        const total = Number(progress?.nations_total ?? 0);
+        setStatus(
+          "setupStatus",
+          total > 0
+            ? `Refreshing nation pool cache… ${done}/${total}`
+            : "Refreshing nation pool cache…"
+        );
+      });
       const n = data?.nations_cached ?? "?";
       const at = data?.refreshed_at
         ? new Date(data.refreshed_at).toLocaleString()
@@ -840,7 +852,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       setStatus(
         "setupStatus",
-        `❌ ${err.message}${rpcMissingHint(err.message)}. SQL Editor: SELECT public.international_refresh_nation_player_pool_cache();`,
+        `❌ ${err.message}${rpcMissingHint(err.message)}. If missing batch RPC: run supabase/sql/patches/international_pool_cache_batch_timeout_20260925.sql`,
         false
       );
     }

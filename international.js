@@ -327,14 +327,46 @@ export async function loadNationPlayerPoolCacheMeta(client = supabase) {
   return data;
 }
 
-/** Admin: rescan GPDB Players into nation pool cache (~30–90s). Run after GPDB import or nation sync. */
-export async function refreshNationPlayerPoolCache(client = supabase) {
-  const { data, error } = await client.rpc("international_refresh_nation_player_pool_cache");
-  if (error) {
-    console.error("refreshNationPlayerPoolCache:", error);
-    throw error;
+/**
+ * Admin: rescan GPDB Players into nation pool cache.
+ * Uses small nation batches so each PostgREST call stays under statement_timeout.
+ * Optional onProgress({ done, nations_cached, nations_total, pending }).
+ */
+export async function refreshNationPlayerPoolCache(client = supabase, onProgress = null) {
+  let start = true;
+  let last = null;
+
+  for (let i = 0; i < 80; i++) {
+    const { data, error } = await client.rpc(
+      "international_refresh_nation_player_pool_cache_batch",
+      { p_limit: 20, p_start: start }
+    );
+    if (error) {
+      console.error("refreshNationPlayerPoolCache:", error);
+      // Fallback for DBs that only have the old single-shot RPC
+      if (start && /could not find|PGRST202|does not exist/i.test(error.message || "")) {
+        const legacy = await client.rpc("international_refresh_nation_player_pool_cache");
+        if (legacy.error) throw legacy.error;
+        return legacy.data;
+      }
+      throw error;
+    }
+    last = data;
+    start = false;
+    if (typeof onProgress === "function") {
+      try {
+        onProgress(data);
+      } catch {
+        /* ignore UI progress errors */
+      }
+    }
+    if (data?.done) break;
   }
-  return data;
+
+  if (!last?.done) {
+    throw new Error("Pool cache refresh did not finish — retry.");
+  }
+  return last;
 }
 
 export async function loadNationalSquad(nationCode, client = supabase) {

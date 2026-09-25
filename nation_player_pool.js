@@ -12,7 +12,7 @@ import {
   nationPoolStatus,
   nationHealthyClubCapacity,
   nationPoolIsFaint,
-} from "./international.js?v=20260814-squad-26-28";
+} from "./international.js?v=20260925-pool-cache-batch";
 
 const POOL_MIN_PLAYERS = NATION_POOL_MIN_PLAYERS;
 
@@ -403,7 +403,15 @@ async function runCacheRefresh() {
   if (errEl) errEl.hidden = true;
 
   try {
-    const result = await refreshNationPlayerPoolCache(supabase);
+    const result = await refreshNationPlayerPoolCache(supabase, (progress) => {
+      if (!btn || progress?.done) return;
+      const done = Number(progress?.nations_cached ?? 0);
+      const total = Number(progress?.nations_total ?? 0);
+      btn.textContent =
+        total > 0
+          ? `Refreshing cache… ${done}/${total}`
+          : "Refreshing cache…";
+    });
     cacheMeta = {
       cache_ready: true,
       refreshed_at: result?.refreshed_at ?? new Date().toISOString(),
@@ -416,9 +424,13 @@ async function runCacheRefresh() {
     console.error("pool cache refresh:", err);
     if (errEl) {
       errEl.hidden = false;
-      errEl.textContent =
-        err.message ||
-        "Pool cache refresh failed (admin only, may take up to 2 minutes).";
+      const timedOut = /57014|statement timeout|canceling statement/i.test(
+        err.message || ""
+      );
+      errEl.textContent = timedOut
+        ? "Pool cache refresh timed out. Run supabase/sql/patches/international_pool_cache_batch_timeout_20260925.sql in Supabase, hard-refresh this page, then retry."
+        : err.message ||
+          "Pool cache refresh failed (admin only).";
     }
   } finally {
     if (btn) {
