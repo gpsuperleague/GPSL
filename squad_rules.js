@@ -267,9 +267,12 @@ export const MIN_GOALKEEPERS = 1;
 
 /** Match Day 23-man squad composition mins (pitch XI + bench). */
 export const MATCHDAY_MIN_GOALKEEPERS = 1;
-export const MATCHDAY_MIN_UNDER_21 = 2;
-export const MATCHDAY_MIN_HG_STARTING_XI = 2;
-export const MATCHDAY_MIN_HG_SQUAD = 5;
+/** @deprecated Matchday no longer enforces U21/HG mins (club squad still does). */
+export const MATCHDAY_MIN_UNDER_21 = 0;
+/** @deprecated Matchday no longer enforces U21/HG mins (club squad still does). */
+export const MATCHDAY_MIN_HG_STARTING_XI = 0;
+/** @deprecated Matchday no longer enforces U21/HG mins (club squad still does). */
+export const MATCHDAY_MIN_HG_SQUAD = 0;
 
 /** Uncontested renew (no expiry wage auction): HG + this age or younger. */
 export const HG_CONTRACT_MAX_AGE = 23;
@@ -482,7 +485,9 @@ export function analyseSquadComposition(players, clubNation) {
 }
 
 /**
- * Match Day 23 composition: GK / U21 across squad; HG in XI and whole squad.
+ * Match Day 23 composition.
+ * Enforced: ≥1 GK in starting XI.
+ * Not enforced on matchday (club squad rules still apply separately): U21 / home-grown mins.
  * @param {object[]} pitchPlayers
  * @param {object[]} benchPlayers
  * @param {string|null} clubNation
@@ -524,21 +529,6 @@ export function analyseMatchdayComposition(
       `Goalkeepers in starting XI: ${gkXi} — need at least ${MATCHDAY_MIN_GOALKEEPERS}.`
     );
   }
-  if (under21 < MATCHDAY_MIN_UNDER_21) {
-    errors.push(
-      `Under-21: ${under21} — need at least ${MATCHDAY_MIN_UNDER_21} in the matchday squad.`
-    );
-  }
-  if (hgXi < MATCHDAY_MIN_HG_STARTING_XI) {
-    errors.push(
-      `Home-grown in starting XI: ${hgXi} — need at least ${MATCHDAY_MIN_HG_STARTING_XI}.`
-    );
-  }
-  if (hgTotal < MATCHDAY_MIN_HG_SQUAD) {
-    errors.push(
-      `Home-grown in matchday squad: ${hgTotal} — need at least ${MATCHDAY_MIN_HG_SQUAD}.`
-    );
-  }
 
   return {
     total: pitch.length + bench.length,
@@ -553,9 +543,9 @@ export function analyseMatchdayComposition(
     minHgXi: MATCHDAY_MIN_HG_STARTING_XI,
     minHgSquad: MATCHDAY_MIN_HG_SQUAD,
     gkOk: gkXi >= MATCHDAY_MIN_GOALKEEPERS,
-    u21Ok: under21 >= MATCHDAY_MIN_UNDER_21,
-    hgXiOk: hgXi >= MATCHDAY_MIN_HG_STARTING_XI,
-    hgSquadOk: hgTotal >= MATCHDAY_MIN_HG_SQUAD,
+    u21Ok: true,
+    hgXiOk: true,
+    hgSquadOk: true,
     errors,
     ok: errors.length === 0,
   };

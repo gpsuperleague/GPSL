@@ -32,7 +32,7 @@ import {
   playerNameStackedLinkHtml,
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js?v=20260918-cards-narrow";
-import { analyseMatchdayComposition } from "./squad_rules.js";
+import { analyseMatchdayComposition } from "./squad_rules.js?v=20260925-no-u21-hg-mins";
 
 export { buildPitchLayoutPayload } from "./matchday_formations.js?v=20260918-cards-narrow";
 
@@ -672,7 +672,7 @@ export function initMatchdaySquadPanel({
   /** Optional: replace default Auto-fill XI. Receives { allPlayers, maxBench, maxSquad, formationId, labels }. Return state or null. */
   customAutoFill = null,
   autoFillButtonLabel = null,
-  /** When true, enforce Match Day HG / U21 / GK mins (live strip + save block). */
+  /** When true, enforce Match Day composition mins (live strip + save block). GK in XI only — no U21/HG matchday mins. */
   matchdayComposition = false,
   clubNation = null,
   /** @type {Map<string, 'suspended'|'injured'|'recovery'>|null} */
@@ -997,9 +997,7 @@ export function initMatchdaySquadPanel({
     matchdayCompStrip.innerHTML = `
       <span class="matchday-comp-label">Matchday rules</span>
       ${chip("XI GK", c.gkXi ?? c.goalkeepers, c.minGk, c.gkOk)}
-      ${chip("XI HG", c.hgXi, c.minHgXi, c.hgXiOk)}
-      ${chip("Squad HG", c.hgTotal, c.minHgSquad, c.hgSquadOk)}
-      ${chip("U21", c.under21, c.minU21, c.u21Ok)}
+      <span class="matchday-comp-chip muted" title="U21 / home-grown minimums apply to your overall club squad only">No U21/HG min on matchday</span>
       ${
         c.ok
           ? `<span class="matchday-comp-ok">Ready to save</span>`

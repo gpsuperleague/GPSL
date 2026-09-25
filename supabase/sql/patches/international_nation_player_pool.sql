@@ -30,6 +30,9 @@ DECLARE
 BEGIN
   TRUNCATE public.international_gpdb_label_map;
 
+  -- Include inactive nations too. If the map only covers active rows, a nation that
+  -- was deactivated can never re-count its GPDB players → stays inactive forever
+  -- (chicken-and-egg with international_apply_selectable_from_pool_cache).
   INSERT INTO public.international_gpdb_label_map (norm_label, nation_code)
   SELECT DISTINCT ON (src.norm_label)
     src.norm_label,
@@ -40,11 +43,9 @@ BEGIN
       n.code,
       1 AS pri
     FROM public.international_nations n
-    WHERE n.active = true
     UNION ALL
     SELECT upper(n.code), n.code, 2
     FROM public.international_nations n
-    WHERE n.active = true
     UNION ALL
     SELECT
       public.international_normalize_nation_label(a),
@@ -52,7 +53,7 @@ BEGIN
       3
     FROM public.international_nation_catalog c
     CROSS JOIN unnest(c.aliases) AS a
-    INNER JOIN public.international_nations n ON n.code = c.code AND n.active = true
+    INNER JOIN public.international_nations n ON n.code = c.code
   ) src
   WHERE src.norm_label IS NOT NULL AND src.norm_label <> ''
   ORDER BY src.norm_label, src.pri;
@@ -333,8 +334,9 @@ BEGIN
     ),
     v_at
   FROM public.international_nations n
-  LEFT JOIN agg a ON a.nation_code = n.code
-  WHERE n.active = true;
+  LEFT JOIN agg a ON a.nation_code = n.code;
+  -- Cache every nation (active or not) so Apply selectable can re-activate
+  -- nations that later grow a viable GPDB pool.
 
   GET DIAGNOSTICS v_count = ROW_COUNT;
 

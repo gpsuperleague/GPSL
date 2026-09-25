@@ -38,9 +38,9 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20260918-cards-80x105-force";
+} from "./matchday_squad.js?v=20260925-no-u21-hg-mins";
 import { loadGpslFormations } from "./gpsl_formations.js?v=20260918-formation-rules2";
-import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260921-console";
+import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260925-no-u21-hg-mins";
 import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
 import {
   matchConsoleStripHtml,

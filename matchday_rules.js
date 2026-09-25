@@ -2,12 +2,7 @@
  * Match Day — owner-facing squad help (modular cards).
  */
 import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
-import {
-  MATCHDAY_MIN_GOALKEEPERS,
-  MATCHDAY_MIN_UNDER_21,
-  MATCHDAY_MIN_HG_STARTING_XI,
-  MATCHDAY_MIN_HG_SQUAD,
-} from "./squad_rules.js";
+import { MATCHDAY_MIN_GOALKEEPERS } from "./squad_rules.js?v=20260925-no-u21-hg-mins";
 
 /**
  * @returns {{ cards: { heading: string, items: string[] }[] }}
@@ -29,10 +24,8 @@ export function getMatchdaySquadRules() {
           "Only players currently at your club.",
           "<b>No injured</b> or <b>suspended</b> players in the matchday 23 (save is blocked).",
           `At least <b>${MATCHDAY_MIN_GOALKEEPERS} goalkeeper in the starting XI</b>.`,
-          `At least <b>${MATCHDAY_MIN_UNDER_21} under-21</b> in the whole matchday squad (age ≤21).`,
-          `At least <b>${MATCHDAY_MIN_HG_STARTING_XI} home-grown</b> in the <b>starting XI</b> (Nation matches your club).`,
-          `At least <b>${MATCHDAY_MIN_HG_SQUAD} home-grown</b> in the <b>whole matchday squad</b> (XI + bench).`,
-          "Live counts appear above the pitch — save is blocked until these are met.",
+          "Matchday 23 has <b>no under-21 or home-grown minimum</b> — those rules apply to your <b>overall club squad</b> only (see Squad page).",
+          "Live counts appear above the pitch — save is blocked until the matchday rules above are met.",
         ],
       },
       {

@@ -34,12 +34,12 @@ RETURNS boolean
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  -- National-team selectable = enough GPDB players for a 23-man squad.
+  -- National-team selectable = enough GPDB players for a 26–28 call-up.
   -- Club-depth bands (79+, U21 quotas, etc.) are informational on the pool
   -- page only — they must NOT gate World Cup nation selection.
   SELECT
     p_pool IS NOT NULL
-    AND coalesce((p_pool->'all'->>'total')::integer, 0) >= 24
+    AND coalesce((p_pool->'all'->>'total')::integer, 0) >= 26
     AND coalesce((p_pool->'all'->>'gk')::integer, 0) >= 2;
 $$;
 
