@@ -1437,7 +1437,19 @@ function season1QueueNum(row) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function season1InviteIsRejected(row) {
+  const response = String(row?.season1_invite_response || "").toLowerCase();
+  if (response === "declined" || response === "rejected") return true;
+  const status = String(row?.season1_invite_status || "").toLowerCase();
+  return status === "declined" || status === "rejected";
+}
+
 function compareRowsBySeason1ThenActivity(a, b) {
+  // Season 1 rejects sink to the bottom of their section.
+  const aRejected = season1InviteIsRejected(a);
+  const bRejected = season1InviteIsRejected(b);
+  if (aRejected !== bRejected) return aRejected ? 1 : -1;
+
   const aN = season1QueueNum(a);
   const bN = season1QueueNum(b);
   if (aN != null && bN != null && aN !== bN) return aN - bN;
@@ -2018,11 +2030,11 @@ async function loadWaitingListAdmin() {
   const testTotal = rows.filter((r) => !!r.confirmed_test_season).length;
   const liveTotal = rows.filter((r) => !!r.confirmed_live_season).length;
   const sortNote = data?.priority_uses_admin_sort
-    ? "Section sort uses login activity; drag still sets saved season priority underneath"
-    : "Section sort uses login activity";
+    ? "Section sort: Season 1 rejects at bottom, then login activity; drag still sets saved season priority underneath"
+    : "Section sort: Season 1 rejects at bottom, then login activity";
   const activityNote = activityRes.error
     ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · missed running total · V late / V fail (match videos) · admin IP/country review · sort: last login first unless current month logins are under 4`;
+    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · missed running total · V late / V fail (match videos) · admin IP/country review · S1 rejected at section bottom · sort: last login first unless current month logins are under 4`;
 
   const snapMonths = Number(activityRes.snapshotMonths || 0);
   const snapNote =
