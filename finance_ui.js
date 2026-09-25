@@ -106,7 +106,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "prize_cup",
         label: "Cup prize money",
         types: ["prize_cup"],
-        note: "Paid to both clubs after each confirmed cup tie (same round fee). Admin override for walkovers.",
+        note: "Paid to both clubs after each confirmed cup tie (same round fee). Admin override for walkovers. Set amounts in Admin → Cup Prize Money before ties are played (or run season-close backfill).",
       },
       {
         id: "prize_challenge",

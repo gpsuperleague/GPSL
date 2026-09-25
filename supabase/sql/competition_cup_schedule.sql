@@ -668,6 +668,10 @@ $function$;
 -- Prizes: use scheduled stage
 -- ---------------------------------------------------------------------------
 
+-- Prizes: modern path posts entry_type prize_cup via competition_cup_credit_round_prize.
+-- Keep this body in sync with cup_prize_winner_runner_up.sql /
+-- cup_prize_season_close_backfill_20260925.sql (both clubs per round; winner/runner_up finals).
+-- Do NOT restore the legacy winner-only / entry_type='prize' implementation.
 CREATE OR REPLACE FUNCTION public.competition_pay_cup_fixture_prizes(p_fixture_id bigint)
 RETURNS void
 LANGUAGE plpgsql
@@ -676,11 +680,17 @@ SET search_path = public
 AS $function$
 DECLARE
   v_fixture public.competition_fixtures;
+  v_max_round int;
   v_stage text;
-  v_winner text;
-  v_round_winner text;
   v_amount numeric;
+  v_winner_amt numeric;
+  v_runner_amt numeric;
   v_club text;
+  v_winner text;
+  v_loser text;
+  v_cup_label text;
+  v_stage_label text;
+  v_has_result_prize boolean := false;
 BEGIN
   SELECT * INTO v_fixture
   FROM public.competition_fixtures
@@ -690,19 +700,32 @@ BEGIN
     RETURN;
   END IF;
 
+  IF v_fixture.home_goals IS NOT DISTINCT FROM v_fixture.away_goals
+     AND coalesce(btrim(v_fixture.cup_pen_winner_club_short_name), '') = '' THEN
+    RETURN;
+  END IF;
+
+  SELECT max(round_no) INTO v_max_round
+  FROM public.competition_cup_bracket_nodes
+  WHERE season_id = v_fixture.season_id AND cup_code = v_fixture.cup_code;
+
   v_stage := public.competition_cup_round_stage(
     v_fixture.cup_code,
     v_fixture.cup_round,
-    NULL
+    coalesce(v_max_round, v_fixture.cup_round)
   );
 
-  IF v_fixture.home_goals > v_fixture.away_goals THEN
-    v_winner := v_fixture.home_club_short_name;
-  ELSIF v_fixture.away_goals > v_fixture.home_goals THEN
-    v_winner := v_fixture.away_club_short_name;
-  ELSE
-    RETURN;
-  END IF;
+  v_cup_label := upper(replace(coalesce(v_fixture.cup_code, 'cup'), '_', ' '));
+  v_stage_label := CASE v_stage
+    WHEN 'r1' THEN 'Round 1'
+    WHEN 'r2' THEN 'Round 2'
+    WHEN 'r32' THEN 'Last 32'
+    WHEN 'r16' THEN 'Last 16'
+    WHEN 'qf' THEN 'Quarter-final'
+    WHEN 'sf' THEN 'Semi-final'
+    WHEN 'final' THEN 'Final'
+    ELSE coalesce(v_stage, '')
+  END;
 
   FOREACH v_club IN ARRAY ARRAY[v_fixture.home_club_short_name, v_fixture.away_club_short_name]
   LOOP
@@ -712,38 +735,94 @@ BEGIN
       AND cup_code = v_fixture.cup_code
       AND stage = 'appearance';
 
-    IF v_amount IS NOT NULL AND v_amount > 0
-       AND NOT EXISTS (
-         SELECT 1 FROM public.competition_cup_prize_paid
-         WHERE fixture_id = p_fixture_id
-           AND club_short_name = v_club
-           AND stage = 'appearance'
-       ) THEN
-      PERFORM public.competition_credit_club_balance(v_club, v_amount);
-      INSERT INTO public.competition_finance_ledger (
-        season_id, fixture_id, club_short_name, entry_type, amount, description, metadata
-      )
-      VALUES (
-        v_fixture.season_id,
+    IF v_amount IS NOT NULL AND v_amount > 0 THEN
+      PERFORM public.competition_cup_credit_round_prize(
         p_fixture_id,
         v_club,
-        'prize',
+        'appearance',
         v_amount,
-        format('%s appearance — %s', upper(v_fixture.cup_code), public.competition_cup_fixture_label(v_fixture)),
+        format('%s appearance — %s', v_cup_label, public.competition_cup_fixture_label(v_fixture)),
         jsonb_build_object('cup_code', v_fixture.cup_code, 'stage', 'appearance')
       );
-      INSERT INTO public.competition_cup_prize_paid (fixture_id, club_short_name, stage, amount)
-      VALUES (p_fixture_id, v_club, 'appearance', v_amount);
     END IF;
   END LOOP;
 
-  SELECT n.winner_club_short_name
-  INTO v_round_winner
-  FROM public.competition_cup_bracket_nodes n
-  WHERE n.fixture_id = p_fixture_id;
+  IF v_stage = 'final' THEN
+    IF coalesce(btrim(v_fixture.cup_pen_winner_club_short_name), '') <> '' THEN
+      v_winner := btrim(v_fixture.cup_pen_winner_club_short_name);
+    ELSIF v_fixture.home_goals > v_fixture.away_goals THEN
+      v_winner := v_fixture.home_club_short_name;
+    ELSIF v_fixture.away_goals > v_fixture.home_goals THEN
+      v_winner := v_fixture.away_club_short_name;
+    ELSE
+      RETURN;
+    END IF;
 
-  IF v_round_winner IS NOT NULL THEN
-    v_winner := v_round_winner;
+    IF v_winner = v_fixture.home_club_short_name THEN
+      v_loser := v_fixture.away_club_short_name;
+    ELSE
+      v_loser := v_fixture.home_club_short_name;
+    END IF;
+
+    SELECT amount INTO v_winner_amt
+    FROM public.competition_cup_prize_config
+    WHERE season_id = v_fixture.season_id
+      AND cup_code = v_fixture.cup_code
+      AND stage = 'winner';
+
+    SELECT amount INTO v_runner_amt
+    FROM public.competition_cup_prize_config
+    WHERE season_id = v_fixture.season_id
+      AND cup_code = v_fixture.cup_code
+      AND stage = 'runner_up';
+
+    IF v_winner_amt IS NOT NULL AND v_winner_amt > 0 THEN
+      v_has_result_prize := true;
+      PERFORM public.competition_cup_credit_round_prize(
+        p_fixture_id,
+        v_winner,
+        'winner',
+        v_winner_amt,
+        format('%s Winner — %s', v_cup_label, public.competition_cup_fixture_label(v_fixture)),
+        jsonb_build_object('cup_code', v_fixture.cup_code, 'stage', 'winner')
+      );
+    END IF;
+
+    IF v_runner_amt IS NOT NULL AND v_runner_amt > 0 THEN
+      v_has_result_prize := true;
+      PERFORM public.competition_cup_credit_round_prize(
+        p_fixture_id,
+        v_loser,
+        'runner_up',
+        v_runner_amt,
+        format('%s Runner-up — %s', v_cup_label, public.competition_cup_fixture_label(v_fixture)),
+        jsonb_build_object('cup_code', v_fixture.cup_code, 'stage', 'runner_up')
+      );
+    END IF;
+
+    IF NOT v_has_result_prize THEN
+      SELECT amount INTO v_amount
+      FROM public.competition_cup_prize_config
+      WHERE season_id = v_fixture.season_id
+        AND cup_code = v_fixture.cup_code
+        AND stage = 'final';
+
+      IF v_amount IS NOT NULL AND v_amount > 0 THEN
+        FOREACH v_club IN ARRAY ARRAY[v_fixture.home_club_short_name, v_fixture.away_club_short_name]
+        LOOP
+          PERFORM public.competition_cup_credit_round_prize(
+            p_fixture_id,
+            v_club,
+            'final',
+            v_amount,
+            format('%s Final — %s', v_cup_label, public.competition_cup_fixture_label(v_fixture)),
+            jsonb_build_object('cup_code', v_fixture.cup_code, 'stage', 'final')
+          );
+        END LOOP;
+      END IF;
+    END IF;
+
+    RETURN;
   END IF;
 
   SELECT amount INTO v_amount
@@ -752,64 +831,18 @@ BEGIN
     AND cup_code = v_fixture.cup_code
     AND stage = v_stage;
 
-  IF v_amount IS NOT NULL AND v_amount > 0
-     AND v_winner IS NOT NULL
-     AND public.competition_cup_fixture_counts_as_round_win(v_fixture)
-     AND NOT EXISTS (
-       SELECT 1 FROM public.competition_cup_prize_paid
-       WHERE fixture_id = p_fixture_id
-         AND club_short_name = v_winner
-         AND stage = v_stage
-     ) THEN
-    PERFORM public.competition_credit_club_balance(v_winner, v_amount);
-    INSERT INTO public.competition_finance_ledger (
-      season_id, fixture_id, club_short_name, entry_type, amount, description, metadata
-    )
-    VALUES (
-      v_fixture.season_id,
-      p_fixture_id,
-      v_winner,
-      'prize',
-      v_amount,
-      format('%s %s winner — %s', upper(v_fixture.cup_code), v_stage, public.competition_cup_fixture_label(v_fixture)),
-      jsonb_build_object('cup_code', v_fixture.cup_code, 'stage', v_stage)
-    );
-    INSERT INTO public.competition_cup_prize_paid (fixture_id, club_short_name, stage, amount)
-    VALUES (p_fixture_id, v_winner, v_stage);
-  END IF;
-
-  IF v_stage = 'final'
-     AND v_winner IS NOT NULL
-     AND public.competition_cup_fixture_counts_as_round_win(v_fixture) THEN
-    SELECT amount INTO v_amount
-    FROM public.competition_cup_prize_config
-    WHERE season_id = v_fixture.season_id
-      AND cup_code = v_fixture.cup_code
-      AND stage = 'winner';
-
-    IF v_amount IS NOT NULL AND v_amount > 0
-       AND NOT EXISTS (
-         SELECT 1 FROM public.competition_cup_prize_paid
-         WHERE fixture_id = p_fixture_id
-           AND club_short_name = v_winner
-           AND stage = 'winner'
-       ) THEN
-      PERFORM public.competition_credit_club_balance(v_winner, v_amount);
-      INSERT INTO public.competition_finance_ledger (
-        season_id, fixture_id, club_short_name, entry_type, amount, description, metadata
-      )
-      VALUES (
-        v_fixture.season_id,
+  IF v_amount IS NOT NULL AND v_amount > 0 THEN
+    FOREACH v_club IN ARRAY ARRAY[v_fixture.home_club_short_name, v_fixture.away_club_short_name]
+    LOOP
+      PERFORM public.competition_cup_credit_round_prize(
         p_fixture_id,
-        v_winner,
-        'prize',
+        v_club,
+        v_stage,
         v_amount,
-        format('%s champion — %s', upper(v_fixture.cup_code), public.competition_cup_fixture_label(v_fixture)),
-        jsonb_build_object('cup_code', v_fixture.cup_code, 'stage', 'winner')
+        format('%s %s — %s', v_cup_label, v_stage_label, public.competition_cup_fixture_label(v_fixture)),
+        jsonb_build_object('cup_code', v_fixture.cup_code, 'stage', v_stage)
       );
-      INSERT INTO public.competition_cup_prize_paid (fixture_id, club_short_name, stage, amount)
-      VALUES (p_fixture_id, v_winner, 'winner', v_amount);
-    END IF;
+    END LOOP;
   END IF;
 END;
 $function$;
