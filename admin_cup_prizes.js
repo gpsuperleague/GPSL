@@ -3,16 +3,89 @@ import { CUP_LABELS, formatMoney } from "./competition.js";
 
 primeAdminPageChrome();
 
-const CUP_PRIZE_STAGE_LABELS = {
-  appearance: "Appearance",
-  r1: "Round 1",
-  r2: "Round 2",
-  qf: "Quarter-final",
-  sf: "Semi-final",
-  winner: "Winner",
-  runner_up: "Runner-up",
-  final: "Final (legacy — both clubs)",
-};
+const STAGE_ORDER = [
+  "appearance",
+  "r1",
+  "r32",
+  "r2",
+  "r16",
+  "qf",
+  "sf",
+  "winner",
+  "runner_up",
+  "final",
+];
+
+/**
+ * Stage options per cup. League Cup has separate Last 64 / 32 / 16.
+ * @param {string} cup
+ * @returns {{ value: string, label: string }[]}
+ */
+function stagesForCup(cup) {
+  const appearance = { value: "appearance", label: "Appearance (optional extra)" };
+  const finals = [
+    { value: "winner", label: "Winner" },
+    { value: "runner_up", label: "Runner-up" },
+    { value: "sf", label: "Semi-final" },
+    { value: "qf", label: "Quarter-final" },
+  ];
+
+  if (cup === "league_cup") {
+    return [
+      ...finals,
+      { value: "r16", label: "Last 16" },
+      { value: "r32", label: "Last 32" },
+      { value: "r1", label: "Last 64" },
+      appearance,
+    ];
+  }
+  if (cup === "shield") {
+    return [
+      ...finals,
+      { value: "r2", label: "Last 16" },
+      { value: "r1", label: "Last 32" },
+      appearance,
+    ];
+  }
+  if (cup === "plate") {
+    return [...finals, { value: "r2", label: "Last 16" }, appearance];
+  }
+  if (cup === "super8" || cup === "bowl") {
+    return [...finals, appearance];
+  }
+  return [
+    ...finals,
+    { value: "r2", label: "Round 2" },
+    { value: "r1", label: "Round 1" },
+    appearance,
+  ];
+}
+
+function stageLabel(cup, stage) {
+  return stagesForCup(cup).find((s) => s.value === stage)?.label || stage;
+}
+
+function fillStageSelects(cup) {
+  const stages = stagesForCup(cup);
+  const saveSel = document.getElementById("compPrizeStage");
+  const overrideSel = document.getElementById("compOverrideStage");
+
+  if (saveSel) {
+    const prev = saveSel.value;
+    saveSel.innerHTML = stages
+      .map((s) => `<option value="${s.value}">${escapeHtml(s.label)}</option>`)
+      .join("");
+    if (stages.some((s) => s.value === prev)) saveSel.value = prev;
+  }
+
+  if (overrideSel) {
+    const prev = overrideSel.value;
+    overrideSel.innerHTML =
+      `<option value="">Auto (from fixture round)</option>` +
+      stages.map((s) => `<option value="${s.value}">${escapeHtml(s.label)}</option>`).join("");
+    if (prev === "" || stages.some((s) => s.value === prev)) overrideSel.value = prev;
+  }
+}
 
 /** @type {{ id: number, label?: string, status?: string, is_current?: boolean }[]} */
 let seasons = [];
@@ -21,7 +94,10 @@ let selectedSeasonId = null;
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
-  document.getElementById("compCupSelect").onchange = loadCupPrizeConfig;
+  document.getElementById("compCupSelect").onchange = () => {
+    fillStageSelects(document.getElementById("compCupSelect").value);
+    loadCupPrizeConfig();
+  };
   document.getElementById("compSavePrizeBtn").onclick = saveCompetitionCupPrize;
   document.getElementById("compAwardCupPrizeBtn").onclick = awardCupRoundPrize;
   document.getElementById("cupPrizeSeasonSelect")?.addEventListener("change", () => {
@@ -30,6 +106,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("copyCupPrizesBtn")?.addEventListener("click", copyCupPrizesFromSeason);
 
+  fillStageSelects(document.getElementById("compCupSelect")?.value || "super8");
   await loadSeasons();
   await loadCupPrizeConfig();
 });
@@ -87,6 +164,7 @@ async function loadCupPrizeConfig() {
   const cup = document.getElementById("compCupSelect").value;
 
   if (!listEl) return;
+  fillStageSelects(cup);
 
   if (!sid) {
     listEl.textContent = "No competition season found.";
@@ -112,15 +190,14 @@ async function loadCupPrizeConfig() {
     return;
   }
 
-  const order = ["appearance", "r1", "r2", "qf", "sf", "winner", "runner_up", "final"];
   const sorted = [...data].sort(
-    (a, b) => order.indexOf(a.stage) - order.indexOf(b.stage)
+    (a, b) => STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage)
   );
 
   listEl.innerHTML = sorted
     .map(
       (row) =>
-        `<div><b>${CUP_PRIZE_STAGE_LABELS[row.stage] || row.stage}</b>: ${formatMoney(row.amount)}</div>`
+        `<div><b>${escapeHtml(stageLabel(cup, row.stage))}</b>: ${formatMoney(row.amount)}</div>`
     )
     .join("");
 }
@@ -194,7 +271,7 @@ async function saveCompetitionCupPrize() {
   await loadCupPrizeConfig();
   setStatus(
     "compPrizeStatus",
-    `✅ ${CUP_PRIZE_STAGE_LABELS[stage] || stage} prize saved for ${cup}.`,
+    `✅ ${stageLabel(cup, stage)} prize saved for ${CUP_LABELS[cup] || cup}.`,
     true
   );
 }

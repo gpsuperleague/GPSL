@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS public.competition_cup_round_schedule (
     )
   ),
   stage text NOT NULL CHECK (
-    stage IN ('appearance', 'r1', 'r2', 'qf', 'sf', 'final', 'winner')
+    stage IN ('appearance', 'r1', 'r2', 'r32', 'r16', 'qf', 'sf', 'final', 'winner')
   ),
   round_label text NOT NULL,
   matches_in_round smallint NOT NULL CHECK (matches_in_round >= 1),
@@ -81,10 +81,10 @@ INSERT INTO public.competition_cup_round_schedule (
   ('shield', 3, 1, 'october', 'qf', 'Quarter-final', 4),
   ('shield', 4, 1, 'november', 'sf', 'Semi-final', 2),
   ('shield', 5, 1, 'december', 'final', 'Final', 1),
-  -- League Cup: R64 Dec → Final May
+  -- League Cup: R64 Dec → Final May (r32/r16 are distinct prize stages)
   ('league_cup', 1, 1, 'december', 'r1', 'Last 64', 32),
-  ('league_cup', 2, 1, 'january', 'r2', 'Last 32', 16),
-  ('league_cup', 3, 1, 'february', 'r2', 'Last 16', 8),
+  ('league_cup', 2, 1, 'january', 'r32', 'Last 32', 16),
+  ('league_cup', 3, 1, 'february', 'r16', 'Last 16', 8),
   ('league_cup', 4, 1, 'march', 'qf', 'Quarter-final', 4),
   ('league_cup', 5, 1, 'april', 'sf', 'Semi-final', 2),
   ('league_cup', 6, 1, 'may', 'final', 'Final', 1);

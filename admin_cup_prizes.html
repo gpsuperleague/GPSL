@@ -16,12 +16,12 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <p class="note">
-          Round fees (R1–SF) are paid to <b>both</b> clubs when a tie is confirmed.
+          Round fees are paid to <b>both</b> clubs when a tie is confirmed.
+          League Cup stages: <b>Last 64</b>, <b>Last 32</b>, <b>Last 16</b>, QF, SF, Runner-up, Winner.
           The final pays separate <b>Winner</b> and <b>Runner-up</b> amounts.
-          Run <code>competition_cup_prizes_fix.sql</code> and
-          <code>patches/cup_prize_winner_runner_up.sql</code>. Creating a new season auto-copies
-          prize tables — or copy manually below
-          (<code>patches/prize_config_persist_across_seasons.sql</code>).
+          After changing League Cup stages, run
+          <code>patches/league_cup_prize_stages_r32_r16_20260925.sql</code>
+          then set amounts (and backfill played ties if needed).
         </p>
         <div class="row">
           <div>
@@ -52,15 +52,7 @@
         </div>
         <h2 class="admin-subheading" style="margin-top:14px;">Prize amounts</h2>
         <div class="row">
-          <select id="compPrizeStage">
-            <option value="winner">Winner</option>
-            <option value="runner_up">Runner-up</option>
-            <option value="sf">Semi-final</option>
-            <option value="qf">Quarter-final</option>
-            <option value="r2">Round 2</option>
-            <option value="r1">Round 1</option>
-            <option value="appearance">Appearance (optional extra)</option>
-          </select>
+          <select id="compPrizeStage"></select>
           <input type="number" id="compPrizeAmount" placeholder="Amount" style="max-width:140px;">
           <button id="compSavePrizeBtn" class="button">Save prize</button>
         </div>
@@ -81,16 +73,7 @@
           </div>
           <div>
             <label>Stage (optional)</label>
-            <select id="compOverrideStage">
-              <option value="">Auto (from fixture round)</option>
-              <option value="winner">Winner</option>
-              <option value="runner_up">Runner-up</option>
-              <option value="sf">Semi-final</option>
-              <option value="qf">Quarter-final</option>
-              <option value="r2">Round 2</option>
-              <option value="r1">Round 1</option>
-              <option value="appearance">Appearance</option>
-            </select>
+            <select id="compOverrideStage"></select>
           </div>
         </div>
         <div class="row" style="margin-top:8px;">
@@ -101,6 +84,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_cup_prizes.js?v=20260718-winner-runner"></script>
+  <script type="module" src="admin_cup_prizes.js?v=20260925-league-cup-r32-r16"></script>
 </body>
 </html>
