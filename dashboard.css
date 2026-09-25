@@ -11,6 +11,7 @@
 
 :root {
   --gpsl-accent: #ff9900;
+  --gpsl-accent-hover: #ffcc66;
   --gpsl-accent-rgb: 255, 153, 0;
   --gpsl-panel: #1a1a1a;
   --gpsl-border: #333;
@@ -19,6 +20,62 @@
   --club-border: var(--gpsl-border);
   --club-glow: rgba(255, 153, 0, 0.12);
   --club-accent-rgb: var(--gpsl-accent-rgb);
+}
+
+/* Hyperlinks — GPSL gold, not browser-default blue */
+a.gpsl-link,
+.gpsl-link,
+a.club-link,
+a.gpfl-owner-link,
+a.account-quick-link,
+button.account-quick-link,
+a.club-detail-link,
+button.club-detail-link,
+a.owner-detail-link,
+button.owner-detail-link,
+a.high-bid-link {
+  color: var(--gpsl-accent, #ff9900);
+  text-decoration: none;
+}
+a.gpsl-link:hover,
+.gpsl-link:hover,
+a.club-link:hover,
+a.gpfl-owner-link:hover,
+a.account-quick-link:hover,
+button.account-quick-link:hover,
+a.club-detail-link:hover,
+button.club-detail-link:hover,
+a.owner-detail-link:hover,
+button.owner-detail-link:hover,
+a.high-bid-link:hover {
+  color: var(--gpsl-accent-hover, #ffcc66);
+  text-decoration: underline;
+}
+/* Plain text links in copy (skip buttons / nav chrome that set their own color) */
+p a:link,
+p a:visited,
+li a:link,
+li a:visited,
+td a:link,
+td a:visited,
+th a:link,
+th a:visited,
+.meta a:link,
+.meta a:visited,
+.info-box a:link,
+.info-box a:visited,
+.rules-notice-body a:link,
+.rules-notice-body a:visited {
+  color: var(--gpsl-accent, #ff9900);
+}
+p a:hover,
+li a:hover,
+td a:hover,
+th a:hover,
+.meta a:hover,
+.info-box a:hover,
+.rules-notice-body a:hover {
+  color: var(--gpsl-accent-hover, #ffcc66);
 }
 
 /* Top nav + dashboard chrome stay GPSL orange even when page content is club-themed */
