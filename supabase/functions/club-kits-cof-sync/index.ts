@@ -47,6 +47,9 @@ const COF_NATION_MAP = {
   "czech republic": { folder: "cze", index: "cze.html" },
   czechia: { folder: "cze", index: "cze.html" },
   hungary: { folder: "hungary", index: "hungary.html" },
+  // COF: colours03/slovakia/slovakia.html → slovan_bratislava/
+  slovakia: { folder: "slovakia", index: "slovakia.html" },
+  svk: { folder: "slovakia", index: "slovakia.html" },
   ireland: { folder: "irl", index: "irl.html" },
   "republic of ireland": { folder: "irl", index: "irl.html" },
   wales: { folder: "wales", index: "wales.html" },
@@ -112,6 +115,10 @@ const COF_CLUB_SLUG_OVERRIDES = {
   TIG: "tigres",
   // COF: scg/cz/cz_*.html — listed as "FK Crvena Zvezda" (GPSL often "Red Star Belgrade")
   RSB: "cz",
+  // COF: slovakia/slovan_bratislava/ (index slovakia/slovakia.html)
+  SLO: "slovan_bratislava",
+  SLB: "slovan_bratislava",
+  SBA: "slovan_bratislava",
 };
 
 /** When slug alone is not enough (page stem differs from folder name) */

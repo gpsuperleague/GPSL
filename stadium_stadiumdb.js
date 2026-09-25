@@ -27,6 +27,8 @@ export const NATION_TO_CODE = {
   poland: "pol",
   czechia: "cze",
   "czech republic": "cze",
+  slovakia: "svk",
+  svk: "svk",
   croatia: "cro",
   // StadiumDB uses ser/ (not srb/) — e.g. ser/marakana for Crvena Zvezda
   serbia: "ser",
@@ -132,6 +134,10 @@ export const SLUG_OVERRIDES = {
   // Morocco — nation code was missing; pin StadiumDB slugs
   RCA: "mar/stade_mohammed_v",
   HSA: "mar/grand_stade_agadir",
+  // Slovan Bratislava — prefer current Tehelné pole (not historical /tehelne_pole)
+  SLO: "svk/stadion_tehelne_pole",
+  SLB: "svk/stadion_tehelne_pole",
+  SBA: "svk/stadion_tehelne_pole",
 };
 
 /** Direct image URL when page HTML has no parseable picture (ShortName → jpg URL) */
@@ -258,6 +264,11 @@ function slugCandidates(name) {
     .replace(/^ss_/, "")
     .replace(/^us_/, "");
   if (stripped && stripped !== base) out.push(stripped);
+  // Old Tehelné pole still lives at /svk/tehelne_pole (historical gallery).
+  // Current Slovan / national ground is stadion_tehelne_pole.
+  if (base === "tehelne_pole" || stripped === "tehelne_pole") {
+    out.unshift("stadion_tehelne_pole");
+  }
   return [...new Set(out)];
 }
 
