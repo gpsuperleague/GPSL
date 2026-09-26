@@ -216,6 +216,34 @@
           </table>
         </div>
         <div id="oneOffStatus" class="status-line"></div>
+
+        <hr style="border:none;border-top:1px solid #3a5a3a;margin:18px 0 14px;">
+        <h3 style="color:#8cf;margin:0 0 6px;font-size:15px;">Add missing from PESDB (Konami ID)</h3>
+        <p class="note" style="margin-top:0;">
+          One-off lookup when someone is on PESDB but <b>not</b> in GPDB.
+          Enter Konami ID → scrape PESDB → review → Add as free agent.
+          Does <b>not</b> run full sync (won’t mark other cards unavailable).
+          Needs SQL <code>gpdb_pesdb_insert_one_free_agent_20260926.sql</code>
+          + redeployed <code>gpdb-pesdb-scrape</code>.
+        </p>
+        <div class="scrape-range" style="margin-top:8px;">
+          <label style="flex:1;min-width:200px;">
+            Konami ID
+            <input type="text" id="addMissingKonamiId" placeholder="e.g. 123456" autocomplete="off"
+              style="width:100%;max-width:200px;padding:6px 8px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;">
+          </label>
+          <button type="button" class="button" id="addMissingLookupBtn" style="background:#335566;">Lookup on PESDB</button>
+          <button type="button" class="button" id="addMissingInsertBtn" style="background:#446633;" disabled>Add to GPDB as free agent</button>
+        </div>
+        <div id="addMissingPreviewWrap" class="sync-table-wrap" hidden style="max-height:320px;margin-top:10px;">
+          <table class="sync-table">
+            <thead>
+              <tr><th>Field</th><th>PESDB / computed</th></tr>
+            </thead>
+            <tbody id="addMissingPreviewBody"></tbody>
+          </table>
+        </div>
+        <div id="addMissingStatus" class="status-line"></div>
       </div>
 
       <div class="card">

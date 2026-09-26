@@ -476,6 +476,34 @@ function parsePesdbMaxLevelPage(html: string) {
     ? decodeHtml(weakAccRaw).replace(/\s+/g, " ").trim()
     : null;
 
+  // Name for one-off Konami-ID lookups (list row may have empty player_name)
+  let player_name: string | null =
+    extractLabeledDd(html, "Player Name") ||
+    extractLabeledDd(html, "Name") ||
+    extractLabeledTd(html, "Player Name") ||
+    extractLabeledTd(html, "Name") ||
+    null;
+  if (player_name) {
+    player_name = decodeHtml(player_name).replace(/\s+/g, " ").trim();
+    if (!player_name || /^overall$/i.test(player_name)) player_name = null;
+  }
+  if (!player_name) {
+    const titleMatch = html.match(/<title>\s*([^|<]+)/i);
+    if (titleMatch) {
+      player_name = decodeHtml(titleMatch[1])
+        .replace(/\s*[-|].*$/, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!player_name || /efootball|pesdb/i.test(player_name)) player_name = null;
+    }
+  }
+  if (!player_name) {
+    const h1 = html.match(/<h1[^>]*>\s*([^<]+)/i);
+    if (h1) {
+      player_name = decodeHtml(h1[1]).replace(/\s+/g, " ").trim() || null;
+    }
+  }
+
   return {
     max_level_rating: Number.isFinite(max_level_rating) ? max_level_rating : null,
     playing_style,
@@ -488,6 +516,7 @@ function parsePesdbMaxLevelPage(html: string) {
     stronger_foot,
     weak_foot_usage: weak_foot_usage || null,
     weak_foot_accuracy: weak_foot_accuracy || null,
+    player_name,
   };
 }
 
@@ -682,7 +711,9 @@ Deno.serve(async (req) => {
             !hasPlaystyleBlock(htmlForStyles);
           players.push({
             ...base,
+            player_name: detail.player_name || base.player_name,
             max_level_rating: detail.max_level_rating ?? base.rating,
+            rating: detail.max_level_rating ?? base.rating,
             playing_style: detail.playing_style,
             playing_style_att: detail.playing_style_att ?? null,
             playing_style_def: detail.playing_style_def ?? null,

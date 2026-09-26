@@ -2702,6 +2702,200 @@ async function applyOneOffPlayer() {
   }
 }
 
+let addMissingBusy = false;
+let addMissingStagingRow = null;
+
+function formatMoneyPlain(n) {
+  if (n == null || !Number.isFinite(Number(n))) return "—";
+  return "₿" + Math.round(Number(n)).toLocaleString("en-GB");
+}
+
+function renderAddMissingPreview(row, meta = {}) {
+  const body = document.getElementById("addMissingPreviewBody");
+  const wrap = document.getElementById("addMissingPreviewWrap");
+  if (!body || !wrap) return;
+  const lines = [
+    ["Konami ID", row.konami_id],
+    ["Name", row.player_name],
+    ["Position", row.position],
+    ["Nation", row.nationality],
+    ["Age", row.age],
+    ["Rating / Potential", `${row.rating} / ${row.max_level_rating}`],
+    ["Playstyle", row.playing_style],
+    ["Height", row.height_cm ?? "—"],
+    ["Foot", row.stronger_foot ?? "—"],
+    ["Market value", formatMoneyPlain(row.market_value)],
+    ["Max reserve", formatMoneyPlain(row.maximum_reserve_price)],
+    ["PESDB URL", meta.detail_url || "—"],
+    ["In GPDB already?", meta.inGpdb ? "YES — will not insert" : "No — can add"],
+  ];
+  body.innerHTML = lines
+    .map(
+      ([k, v]) =>
+        `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(v == null ? "—" : String(v))}</td></tr>`
+    )
+    .join("");
+  wrap.hidden = false;
+}
+
+async function lookupMissingPesdbPlayer() {
+  if (addMissingBusy) {
+    setStatus("addMissingStatus", "Lookup already running.", false);
+    return;
+  }
+  const kid = String(document.getElementById("addMissingKonamiId")?.value || "").trim();
+  const insertBtn = document.getElementById("addMissingInsertBtn");
+  addMissingStagingRow = null;
+  if (insertBtn) insertBtn.disabled = true;
+  document.getElementById("addMissingPreviewWrap")?.setAttribute("hidden", "");
+
+  if (!/^\d+$/.test(kid)) {
+    setStatus("addMissingStatus", "Enter a numeric Konami ID.", false);
+    return;
+  }
+
+  addMissingBusy = true;
+  try {
+    setStatus("addMissingStatus", `Checking GPDB for ${kid}…`, true);
+    const { data: existing, error: exErr } = await supabase
+      .from("Players")
+      .select("Konami_ID, Name, Contracted_Team, Rating")
+      .eq("Konami_ID", kid)
+      .maybeSingle();
+    if (exErr) throw new Error(exErr.message);
+
+    if (existing) {
+      setStatus(
+        "addMissingStatus",
+        `Already in GPDB: ${existing.Name} · ${existing.Contracted_Team || "FA"} · OVR ${existing.Rating ?? "?"}. Use One-off player check to refresh fields.`,
+        false
+      );
+      renderAddMissingPreview(
+        {
+          konami_id: kid,
+          player_name: existing.Name,
+          position: "—",
+          nationality: "—",
+          age: "—",
+          rating: existing.Rating,
+          max_level_rating: existing.Rating,
+          playing_style: "—",
+          market_value: null,
+          maximum_reserve_price: null,
+        },
+        { inGpdb: true }
+      );
+      return;
+    }
+
+    setStatus("addMissingStatus", `Scraping PESDB for ${kid}…`, true);
+    const { data, error } = await withLiveProgress(
+      "addMissingStatus",
+      (sec) => `Scraping PESDB for ${kid}… ${sec}s`,
+      () =>
+        supabase.functions.invoke(SCRAPE_FUNCTION, {
+          body: {
+            action: "enrich_players",
+            pace: SCRAPE_PACE,
+            players: [{ konami_id: kid, player_name: "", position: "CF", nationality: "", age: 25, rating: 60 }],
+          },
+        })
+    );
+
+    if (error) throw new Error(error.message || "PESDB scrape failed");
+    if (data?.ok === false && data?.error) throw new Error(data.error);
+
+    const scraped = Array.isArray(data?.players) ? data.players[0] : null;
+    if (!scraped) throw new Error("No PESDB row returned — check Konami ID / redeploy scrape function.");
+    if (scraped.scrape_error) {
+      throw new Error(`PESDB scrape issue: ${scraped.scrape_error}`);
+    }
+    if (!scraped.player_name) {
+      throw new Error("PESDB returned no player name — redeploy gpdb-pesdb-scrape (name parse) or try again.");
+    }
+
+    const [staging] = await enrichRowsWithEconomics([
+      {
+        konami_id: kid,
+        player_name: scraped.player_name,
+        position: scraped.position || "CF",
+        nationality: scraped.nationality || "",
+        age: scraped.age ?? 25,
+        rating: scraped.max_level_rating ?? scraped.rating ?? 60,
+        max_level_rating: scraped.max_level_rating ?? scraped.rating ?? 60,
+        playing_style: scraped.playing_style || "None",
+        height_cm: scraped.height_cm,
+        stronger_foot: scraped.stronger_foot,
+        weak_foot_usage: scraped.weak_foot_usage,
+        weak_foot_accuracy: scraped.weak_foot_accuracy,
+      },
+    ]);
+
+    addMissingStagingRow = staging;
+    renderAddMissingPreview(staging, {
+      inGpdb: false,
+      detail_url: scraped.detail_url || `https://pesdb.net/efootball/?id=${kid}&mode=max_level`,
+    });
+    if (insertBtn) insertBtn.disabled = false;
+    setStatus(
+      "addMissingStatus",
+      `PESDB match: ${staging.player_name} · ${staging.position} · OVR ${staging.rating} · ${formatMoneyPlain(staging.market_value)}. Review then Add.`,
+      true
+    );
+  } catch (err) {
+    setStatus("addMissingStatus", err.message || "Lookup failed.", false);
+  } finally {
+    addMissingBusy = false;
+  }
+}
+
+async function insertMissingPesdbPlayer() {
+  if (addMissingBusy) return;
+  if (!addMissingStagingRow) {
+    setStatus("addMissingStatus", "Lookup on PESDB first.", false);
+    return;
+  }
+
+  const row = addMissingStagingRow;
+  if (
+    !confirm(
+      `Add ${row.player_name} (${row.konami_id}) to GPDB as a free agent?\n\n` +
+        `${row.position} · OVR ${row.rating} · ${row.playing_style}\n` +
+        `MV ${formatMoneyPlain(row.market_value)}`
+    )
+  ) {
+    return;
+  }
+
+  addMissingBusy = true;
+  const insertBtn = document.getElementById("addMissingInsertBtn");
+  if (insertBtn) insertBtn.disabled = true;
+  try {
+    setStatus("addMissingStatus", `Inserting ${row.player_name}…`, true);
+    const { data, error } = await supabase.rpc("gpdb_pesdb_insert_one_free_agent", {
+      p_row: row,
+    });
+    if (error) {
+      const msg = error.message || "Insert failed";
+      if (/gpdb_pesdb_insert_one_free_agent/i.test(msg) || /Could not find/i.test(msg)) {
+        throw new Error("Run SQL patch gpdb_pesdb_insert_one_free_agent_20260926.sql first.");
+      }
+      throw new Error(msg);
+    }
+    addMissingStagingRow = null;
+    setStatus(
+      "addMissingStatus",
+      `✅ Added ${data?.name || row.player_name} (${data?.konami_id || row.konami_id}) as free agent · MV ${formatMoneyPlain(data?.market_value ?? row.market_value)}.`,
+      true
+    );
+  } catch (err) {
+    if (insertBtn) insertBtn.disabled = false;
+    setStatus("addMissingStatus", err.message || "Insert failed.", false);
+  } finally {
+    addMissingBusy = false;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
   applyResumeFromStorage();
@@ -2748,6 +2942,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("oneOffFieldsPlaystyleOnlyBtn")?.addEventListener("click", () =>
     setOneOffFields("playstyle")
   );
+  document.getElementById("addMissingLookupBtn")?.addEventListener("click", lookupMissingPesdbPlayer);
+  document.getElementById("addMissingInsertBtn")?.addEventListener("click", insertMissingPesdbPlayer);
+  document.getElementById("addMissingKonamiId")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      lookupMissingPesdbPlayer();
+    }
+  });
   document.getElementById("playstylePlayerDelay")?.addEventListener("input", (e) => {
     e.target.dataset.userEdited = "1";
   });
