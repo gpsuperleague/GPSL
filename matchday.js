@@ -38,16 +38,16 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20260925-no-u21-hg-mins";
-import { loadGpslFormations } from "./gpsl_formations.js?v=20260918-formation-rules2";
-import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260925-no-u21-hg-mins";
+} from "./matchday_squad.js?v=20260926-dmf-amf-caps";
+import { loadGpslFormations } from "./gpsl_formations.js?v=20260926-dmf-amf-caps";
+import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260926-dmf-amf-caps";
 import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
 import {
   matchConsoleStripHtml,
   pitchBehaviourPanelHtml,
   wirePitchAck,
   getMatchdayConsoleRulesCards,
-} from "./matchday_console_rules.js?v=20260924-stadium";
+} from "./matchday_console_rules.js?v=20260926-dmf-amf-caps";
 import { playerNameLinkHtml } from "./player_links.js";
 import {
   loadActiveSuspensions,

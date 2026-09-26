@@ -391,6 +391,15 @@ export function validateFormationMirroring(slotLabels) {
     );
   }
 
+  const dmfCount = counts.DMF || 0;
+  if (dmfCount > 2) {
+    errors.push(`No more than 2 DMFs on the pitch (you have ${dmfCount}).`);
+  }
+  const amfCount = counts.AMF || 0;
+  if (amfCount > 2) {
+    errors.push(`No more than 2 AMFs on the pitch (you have ${amfCount}).`);
+  }
+
   return {
     ok: errors.length === 0,
     errors,

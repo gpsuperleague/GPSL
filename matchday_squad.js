@@ -21,9 +21,10 @@ import {
   formationLabel,
   slotRoleOptions,
   validateOwnerPitchLabels,
+  pitchRoleChangeBlockedReason,
   isUsingCatalogueFormations,
   getFormationsCache,
-} from "./gpsl_formations.js";
+} from "./gpsl_formations.js?v=20260926-dmf-amf-caps";
 import {
   pesdbPlayerCardUrl,
   pesdbPlayerUrl,
@@ -518,7 +519,7 @@ function wireDragDrop(root, getState, rerender) {
  * @param {function} opts.onSave
  */
 
-function wirePitchLabelPicker(pitchEl, slotLabels, getOptionsForSlot) {
+function wirePitchLabelPicker(pitchEl, slotLabels, getOptionsForSlot, onBeforeChange) {
   const pitchStage = pitchEl.closest(".pitch-stage") || pitchEl.parentElement;
   let menu = pitchStage?.querySelector("#pitchLabelMenu");
   if (!menu && pitchStage) {
@@ -577,6 +578,13 @@ function wirePitchLabelPicker(pitchEl, slotLabels, getOptionsForSlot) {
         if (locked) {
           closeMenu();
           return;
+        }
+        if (typeof onBeforeChange === "function") {
+          const blocked = onBeforeChange(slotId, label);
+          if (blocked) {
+            alert(blocked);
+            return;
+          }
         }
         slotLabels[slotId] = label;
         updateSlotLabelDom(slotId);
@@ -1085,7 +1093,9 @@ export function initMatchdaySquadPanel({
   }
 
   wireDragDrop(root, () => state, rerender);
-  wirePitchLabelPicker(pitchEl, slotLabels, roleOptionsForSlot);
+  wirePitchLabelPicker(pitchEl, slotLabels, roleOptionsForSlot, (slotId, label) =>
+    pitchRoleChangeBlockedReason(slotLabels, slotId, label)
+  );
 
   // Capture phase so ✕ remove runs before pitch role-picker card clicks
   root.addEventListener(

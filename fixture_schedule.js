@@ -29,7 +29,7 @@ import {
   matchConsoleStripHtml,
   pitchBehaviourPanelHtml,
   wirePitchAck,
-} from "./matchday_console_rules.js?v=20260924-stadium";
+} from "./matchday_console_rules.js?v=20260926-dmf-amf-caps";
 import { downloadIcs, fixtureKickoffEvent } from "./calendar_ics.js";
 
 function replayResetConfirmMessage(allowances) {

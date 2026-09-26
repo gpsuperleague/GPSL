@@ -36,6 +36,7 @@ export function getMatchdaySquadRules() {
           "Role changes only where the Match Day / Admin catalogue allows (click a position label).",
           "<b>Mirroring:</b> LB must have RB, LWF must have RWF, LMF must have RMF.",
           "<b>No</b> CF/CF/SS, CF/SS/SS, or SS/SS/SS (CF + SS combined ≤ 2).",
+          "<b>No more than 2 DMFs</b> and <b>no more than 2 AMFs</b> on the pitch (hard rule — converting a third is blocked).",
         ],
       },
     ],

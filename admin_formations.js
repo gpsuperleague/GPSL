@@ -392,6 +392,13 @@ function countCfSs(slots) {
   ).length;
 }
 
+function countRole(slots, role) {
+  const want = String(role || "").toUpperCase();
+  return slots.filter(
+    (s) => String(s.default_position || "").toUpperCase() === want
+  ).length;
+}
+
 async function loadAll() {
   setStatus("Loading formations…");
   const { data, error } = await supabase.rpc("gpsl_formations_list", {
@@ -448,6 +455,14 @@ async function saveFormation({ asNew = false } = {}) {
   const maxCf = Number(document.getElementById("max_cf_ss").value || 2);
   if (countCfSs(slots) > maxCf) {
     setStatus("CF + SS combined exceeds the league max (no CF/CF/SS).", false);
+    return;
+  }
+  if (countRole(slots, "DMF") > 2) {
+    setStatus("No more than 2 DMFs in a formation.", false);
+    return;
+  }
+  if (countRole(slots, "AMF") > 2) {
+    setStatus("No more than 2 AMFs in a formation.", false);
     return;
   }
   const code = document.getElementById("code").value.trim();

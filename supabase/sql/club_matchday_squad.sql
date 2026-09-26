@@ -52,6 +52,8 @@ DECLARE
   v_has_lwf boolean := false;
   v_has_rwf boolean := false;
   v_cf_ss_count int := 0;
+  v_dmf_count int := 0;
+  v_amf_count int := 0;
   v_key text;
   v_label text;
   v_val jsonb;
@@ -81,6 +83,8 @@ BEGIN
     ELSIF v_label = 'LWF' THEN v_has_lwf := true;
     ELSIF v_label = 'RWF' THEN v_has_rwf := true;
     ELSIF v_label IN ('CF', 'SS') THEN v_cf_ss_count := v_cf_ss_count + 1;
+    ELSIF v_label = 'DMF' THEN v_dmf_count := v_dmf_count + 1;
+    ELSIF v_label = 'AMF' THEN v_amf_count := v_amf_count + 1;
     END IF;
   END LOOP;
 
@@ -106,6 +110,18 @@ BEGIN
     RETURN format(
       'Mirroring: only 2 CF/SS roles allowed combined (found %s)',
       v_cf_ss_count
+    );
+  END IF;
+  IF v_dmf_count > 2 THEN
+    RETURN format(
+      'No more than 2 DMFs on the pitch (found %s)',
+      v_dmf_count
+    );
+  END IF;
+  IF v_amf_count > 2 THEN
+    RETURN format(
+      'No more than 2 AMFs on the pitch (found %s)',
+      v_amf_count
     );
   END IF;
 

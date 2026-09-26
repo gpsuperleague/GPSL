@@ -3,7 +3,10 @@
  * Prefers admin-owned formations from Supabase whenever enabled rows exist;
  * otherwise falls back to hardcoded Match Day presets.
  *
- * Global rule: CF + SS combined ≤ 2 (no CF/CF/SS).
+ * Global rules (hard-coded):
+ *   · CF + SS combined ≤ 2 (no CF/CF/SS)
+ *   · DMF ≤ 2
+ *   · AMF ≤ 2
  * Owner pitch layouts always enforce GPSL mirroring.
  */
 
@@ -34,6 +37,10 @@ export const GPSL_POSITIONS = [
   "SS",
   "CF",
 ];
+
+/** Hard league caps for pitch role labels (not configurable). */
+export const MAX_DMF_ON_PITCH = 2;
+export const MAX_AMF_ON_PITCH = 2;
 
 /** @type {{ settings: object, formations: object[], positions: string[], loaded: boolean, error: string|null }} */
 let cache = {
@@ -204,8 +211,57 @@ export function countCfSs(slotLabels) {
   return n;
 }
 
+export function countPitchRole(slotLabels, role) {
+  const want = String(role || "")
+    .trim()
+    .toUpperCase();
+  if (!want) return 0;
+  let n = 0;
+  for (const v of Object.values(slotLabels || {})) {
+    if (
+      String(v || "")
+        .trim()
+        .toUpperCase() === want
+    ) {
+      n += 1;
+    }
+  }
+  return n;
+}
+
 /**
- * Validate owner pitch labels against formation slot rules + CF/SS cap.
+ * If applying `newLabel` on `slotId` would breach DMF/AMF (or CF+SS) caps, return an error message.
+ * Otherwise return null.
+ */
+export function pitchRoleChangeBlockedReason(slotLabels, slotId, newLabel) {
+  const next = { ...(slotLabels || {}) };
+  const key = String(slotId || "").trim();
+  if (!key) return "Invalid pitch slot.";
+  next[key] = String(newLabel || "")
+    .trim()
+    .toUpperCase();
+
+  const maxCf = maxCfSs();
+  const cfSs = countCfSs(next);
+  if (cfSs > maxCf) {
+    return `Cannot set ${next[key]} — CF + SS combined must be ≤ ${maxCf} (would be ${cfSs}).`;
+  }
+
+  const dmf = countPitchRole(next, "DMF");
+  if (dmf > MAX_DMF_ON_PITCH) {
+    return `Cannot set DMF — no more than ${MAX_DMF_ON_PITCH} DMFs on the pitch (you would have ${dmf}). This breaches Match Day rules.`;
+  }
+
+  const amf = countPitchRole(next, "AMF");
+  if (amf > MAX_AMF_ON_PITCH) {
+    return `Cannot set AMF — no more than ${MAX_AMF_ON_PITCH} AMFs on the pitch (you would have ${amf}). This breaches Match Day rules.`;
+  }
+
+  return null;
+}
+
+/**
+ * Validate owner pitch labels against formation slot rules + CF/SS + DMF/AMF caps.
  * Always applies GPSL mirroring (LB↔RB, LMF↔RMF, LWF↔RWF).
  */
 export function validateOwnerPitchLabels(formation, slotLabels) {
@@ -216,6 +272,19 @@ export function validateOwnerPitchLabels(formation, slotLabels) {
   if (cfSs > max) {
     errors.push(
       `CF + SS combined must be ≤ ${max} (you have ${cfSs}). CF/CF/SS is not allowed.`
+    );
+  }
+
+  const dmf = countPitchRole(labels, "DMF");
+  if (dmf > MAX_DMF_ON_PITCH) {
+    errors.push(
+      `No more than ${MAX_DMF_ON_PITCH} DMFs on the pitch (you have ${dmf}).`
+    );
+  }
+  const amf = countPitchRole(labels, "AMF");
+  if (amf > MAX_AMF_ON_PITCH) {
+    errors.push(
+      `No more than ${MAX_AMF_ON_PITCH} AMFs on the pitch (you have ${amf}).`
     );
   }
 
