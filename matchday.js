@@ -38,8 +38,8 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20260926-dmf-amf-caps";
-import { loadGpslFormations } from "./gpsl_formations.js?v=20260926-dmf-amf-caps";
+} from "./matchday_squad.js?v=20260926-catalogue-xy";
+import { loadGpslFormations } from "./gpsl_formations.js?v=20260926-catalogue-xy";
 import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260926-dmf-amf-caps";
 import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
 import {

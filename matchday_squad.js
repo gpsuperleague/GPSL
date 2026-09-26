@@ -7,12 +7,8 @@ import {
   FORMATION_LIST,
   getFormation,
   formationLayout,
-  resolvePitchLayout,
   buildPitchLayoutPayload,
-  normalizePitchLayout,
-  pitchLayoutHasSlots,
-  spaceGkFromDefenders,
-} from "./matchday_formations.js?v=20260918-cards-narrow";
+} from "./matchday_formations.js?v=20260926-catalogue-xy";
 import {
   loadGpslFormations,
   listSelectableFormations,
@@ -24,7 +20,10 @@ import {
   pitchRoleChangeBlockedReason,
   isUsingCatalogueFormations,
   getFormationsCache,
-} from "./gpsl_formations.js?v=20260926-dmf-amf-caps";
+  resolveMatchdayPitchLayout,
+  getFormationTemplateLayout,
+  finalizeTemplatePositions,
+} from "./gpsl_formations.js?v=20260926-catalogue-xy";
 import {
   pesdbPlayerCardUrl,
   pesdbPlayerUrl,
@@ -705,7 +704,7 @@ export function initMatchdaySquadPanel({
       ? Math.max(MAX_PITCH, Number(maxSquad) || MAX_PITCH + benchLimit)
       : MAX_PITCH + benchLimit;
 
-  const resolved = resolvePitchLayout(savedPitchLayout);
+  const resolved = resolveMatchdayPitchLayout(savedPitchLayout);
   let currentFormationId = resolved.formationId;
   let slotPositions = { ...resolved.positions };
   let slotLabels = { ...resolved.labels };
@@ -753,8 +752,8 @@ export function initMatchdaySquadPanel({
     <div class="squad-formations-bar">
       <div class="formation-section-row">
         <span class="formation-section-label">Formations</span>
-        <select id="squadFormationSelect" class="formation-select" title="Out-of-the-box formations — Apply resets roles and marker positions"></select>
-        <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply Formation</button>
+        <select id="squadFormationSelect" class="formation-select" title="Formation template — marker spacing comes from Admin → Formations catalogue"></select>
+        <button type="button" class="button secondary" id="squadApplyTemplateBtn" title="Reset markers and default roles from the selected formation template">Apply Formation</button>
       </div>
     </div>
     <div class="squad-toolbar">
@@ -818,6 +817,38 @@ export function initMatchdaySquadPanel({
         : ids[0] || DEFAULT_FORMATION_ID;
   }
 
+  function applyCataloguePositions({ resetLabels = false, formationId = null } = {}) {
+    const fid =
+      (formationId && formationId !== "custom" ? formationId : null) ||
+      (formationSelect?.value && formationSelect.value !== "custom"
+        ? formationSelect.value
+        : null) ||
+      (currentFormationId && currentFormationId !== "custom"
+        ? currentFormationId
+        : DEFAULT_FORMATION_ID);
+    const template = getFormationTemplateLayout(fid);
+    if (!template?.positions) return false;
+
+    const nextPositions = finalizeTemplatePositions(template.positions);
+    replaceSlotMap(slotPositions, nextPositions);
+
+    if (resetLabels) {
+      replaceSlotMap(slotLabels, { ...template.labels });
+    } else {
+      for (const [id, label] of Object.entries(template.labels || {})) {
+        if (!slotLabels[id]) slotLabels[id] = label;
+      }
+    }
+
+    currentFormationId = template.formationId || fid;
+    if (formationSelect && isTemplateFormationId(currentFormationId)) {
+      formationSelect.value = currentFormationId;
+    }
+    buildPitchSlotElements();
+    rerenderPlayerCards();
+    return true;
+  }
+
   function updateFormationRulesStatus() {
     const cache = getFormationsCache();
     const using = isUsingCatalogueFormations();
@@ -829,29 +860,31 @@ export function initMatchdaySquadPanel({
       : "";
     if (!using) {
       statusText.textContent = cache.error
-        ? `Formation catalogue unavailable (${cache.error}). Roles locked to defaults.`
-        : "Formation catalogue not loaded — roles locked to defaults. Re-open page or check admin SQL.";
+        ? `Formation catalogue unavailable (${cache.error}). Using built-in presets.`
+        : "Formation catalogue empty — using built-in presets. Enable formations in Admin → Formations.";
       return;
     }
-    statusText.textContent = `Catalogue active · rules from ${selected}${cfHint ? ` · ${cfHint}` : ""}`;
+    statusText.textContent = `Catalogue active · ${selected} marker positions from Admin Formations${cfHint ? ` · ${cfHint}` : ""}`;
   }
 
   fillFormationSelect();
   updateFormationRulesStatus();
 
-  // Ensure catalogue is loaded (retry if an earlier call cached an empty miss).
+  // Catalogue often loads after first paint — refresh marker x/y from Admin when ready.
   void loadGpslFormations({ force: true }).then(() => {
     fillFormationSelect();
+    applyCataloguePositions({ resetLabels: false });
     updateFormationRulesStatus();
   });
 
   formationSelect.addEventListener("change", () => {
-    // Role rules follow the dropdown immediately (Apply still resets pitch coords/labels).
+    // Switching tactic in the dropdown immediately uses that template's spacing.
+    applyCataloguePositions({ resetLabels: true });
     updateFormationRulesStatus();
   });
 
   function applySlotPositionsToDom() {
-    replaceSlotMap(slotPositions, spaceGkFromDefenders(slotPositions));
+    replaceSlotMap(slotPositions, finalizeTemplatePositions(slotPositions));
     for (const slotId of SLOT_IDS) {
       const wrap = pitchEl.querySelector(`.pitch-slot[data-slot-id="${slotId}"]`);
       if (!wrap) continue;
@@ -865,7 +898,7 @@ export function initMatchdaySquadPanel({
   }
 
   function buildPitchSlotElements() {
-    replaceSlotMap(slotPositions, spaceGkFromDefenders(slotPositions));
+    replaceSlotMap(slotPositions, finalizeTemplatePositions(slotPositions));
     pitchEl.querySelectorAll(".pitch-slot").forEach((el) => el.remove());
     for (const slotId of SLOT_IDS) {
       const pos = slotPositions[slotId] || { x: 50, y: 50 };
@@ -941,26 +974,22 @@ export function initMatchdaySquadPanel({
   }
 
   function applyFormation(formationId) {
-    const sel = getSelectableFormation(formationId);
-    if (sel?.slots?.length) {
-      currentFormationId = sel.id;
-      const positions = {};
-      const labels = {};
-      for (const s of sel.slots) {
-        positions[s.id] = { x: s.x, y: s.y };
-        labels[s.id] = s.label;
-      }
-      replaceSlotMap(slotPositions, spaceGkFromDefenders(positions));
-      replaceSlotMap(slotLabels, labels);
-    } else {
-      const base = formationLayout(formationId);
-      currentFormationId = base.formationId;
-      replaceSlotMap(slotPositions, base.positions);
-      replaceSlotMap(slotLabels, base.labels);
+    const applied = applyCataloguePositions({
+      resetLabels: true,
+      formationId,
+    });
+    if (applied) {
+      updateFormationRulesStatus();
+      return;
     }
+    const base = formationLayout(formationId);
+    currentFormationId = base.formationId;
+    replaceSlotMap(slotPositions, finalizeTemplatePositions(base.positions));
+    replaceSlotMap(slotLabels, base.labels);
     formationSelect.value = currentFormationId;
     buildPitchSlotElements();
     rerenderPlayerCards();
+    updateFormationRulesStatus();
   }
 
   buildPitchSlotElements();
@@ -1247,7 +1276,7 @@ export function initMatchdaySquadPanel({
     setSavedRows: (rows, layout) => {
       state = buildStateFromSaved(allPlayers, rows);
       if (layout != null) {
-        applyLayoutFromResolved(resolvePitchLayout(layout));
+        applyLayoutFromResolved(resolveMatchdayPitchLayout(layout));
       } else {
         rerender();
       }
@@ -1259,6 +1288,8 @@ export function initMatchdaySquadPanel({
     reloadFormations: async () => {
       await loadGpslFormations({ force: true });
       fillFormationSelect();
+      applyCataloguePositions({ resetLabels: false });
+      updateFormationRulesStatus();
     },
     refreshSavedFormations: () => {},
   };

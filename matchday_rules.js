@@ -32,8 +32,9 @@ export function getMatchdaySquadRules() {
         heading: "Formations",
         items: [
           "Use the <b>formation dropdown</b> only — pick a named preset and click <b>Apply Formation</b>.",
-          "<b>No free positioning</b> — marker layout comes from the formation; you cannot drag markers around.",
+          "<b>No free positioning</b> — marker layout comes from the formation template (Admin → Formations catalogue).",
           "Role changes only where the Match Day / Admin catalogue allows (click a position label).",
+          "Marker spacing is controlled by admins — pick a formation (or click <b>Apply Formation</b>) to load the latest template.",
           "<b>Mirroring:</b> LB must have RB, LWF must have RWF, LMF must have RMF.",
           "<b>No</b> CF/CF/SS, CF/SS/SS, or SS/SS/SS (CF + SS combined ≤ 2).",
           "<b>No more than 2 DMFs</b> and <b>no more than 2 AMFs</b> on the pitch (hard rule — converting a third is blocked).",

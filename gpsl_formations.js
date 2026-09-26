@@ -15,8 +15,12 @@ import {
   MATCHDAY_FORMATIONS,
   DEFAULT_FORMATION_ID,
   FORMATION_GROUP_ORDER,
+  PITCH_SLOT_IDS,
   getFormation as getHardcodedFormation,
   formationDisplayName as hardcodedDisplayName,
+  formationLayout,
+  normalizePitchLayout,
+  spaceGkFromDefenders,
   validateFormationMirroring,
 } from "./matchday_formations.js";
 
@@ -347,6 +351,97 @@ export function slotRoleOptions(formation, slotId, currentLabel = null) {
   }
   if (!allowed.length) return def ? [def] : fallback ? [fallback] : [];
   return [...new Set(allowed)];
+}
+
+/**
+ * Template marker positions + default labels for a formation code.
+ * Prefers admin catalogue when enabled rows exist.
+ */
+export function getFormationTemplateLayout(formationId) {
+  const sel = getSelectableFormation(formationId);
+  if (!sel?.slots?.length) return null;
+  const positions = {};
+  const labels = {};
+  for (const s of sel.slots) {
+    const id = String(s.id || "").trim();
+    if (!id) continue;
+    positions[id] = {
+      x: Number(s.x),
+      y: Number(s.y),
+    };
+    labels[id] = s.label || id;
+  }
+  return {
+    formationId: sel.id,
+    positions,
+    labels,
+    fromCatalogue: isUsingCatalogueFormations(),
+  };
+}
+
+/**
+ * Clamp marker % coords. When catalogue is active, do NOT run spaceGkFromDefenders —
+ * admin spacing is the source of truth.
+ */
+export function finalizeTemplatePositions(positions) {
+  if (!positions || typeof positions !== "object") return positions;
+  const out = {};
+  for (const [id, p] of Object.entries(positions)) {
+    if (!p || typeof p !== "object") continue;
+    out[id] = {
+      x: Math.min(96, Math.max(4, Number(p.x) || 0)),
+      y: Math.min(96, Math.max(4, Number(p.y) || 0)),
+    };
+  }
+  if (isUsingCatalogueFormations()) return out;
+  return spaceGkFromDefenders(out);
+}
+
+/**
+ * Resolve saved pitch for Match Day:
+ * · Roles (labels) keep owner overrides from saved layout
+ * · Marker x/y always refresh from the current formation template
+ *   (owners cannot free-drag; Admin Formations catalogue owns spacing)
+ */
+export function resolveMatchdayPitchLayout(
+  saved,
+  fallbackFormationId = DEFAULT_FORMATION_ID
+) {
+  const layout = normalizePitchLayout(saved);
+  const hasSaved = layout && PITCH_SLOT_IDS.some((id) => layout[id] != null);
+
+  let formationId =
+    layout?.formation_id ||
+    (hasSaved ? "custom" : fallbackFormationId);
+
+  if (formationId === "custom" || !formationId) {
+    formationId = fallbackFormationId;
+  }
+
+  const template = getFormationTemplateLayout(formationId);
+  const hardcoded = formationLayout(formationId);
+
+  const positions = {
+    ...(template?.positions || hardcoded.positions),
+  };
+  const labels = {
+    ...(template?.labels || hardcoded.labels),
+  };
+
+  // Owner role overrides from last save (not coordinates)
+  if (hasSaved) {
+    for (const slotId of PITCH_SLOT_IDS) {
+      const s = layout[slotId];
+      if (!s || typeof s !== "object") continue;
+      if (s.label) labels[slotId] = String(s.label);
+    }
+  }
+
+  return {
+    formationId: template?.formationId || hardcoded.formationId || formationId,
+    positions: finalizeTemplatePositions(positions),
+    labels,
+  };
 }
 
 export function buildLayoutFromFormation(formation) {
