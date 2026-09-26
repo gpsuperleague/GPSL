@@ -291,14 +291,24 @@ function writeAllViewActiveIds(ids) {
   }
 }
 
-function plannerLayoutWithListMeta(layout, { activeIds = null, planNation } = {}) {
-  const next = layout && typeof layout === "object" && !Array.isArray(layout)
-    ? { ...layout }
-    : {};
-  if (activeIds) next.scouting_active_target_ids = [...new Set(activeIds.map((x) => String(x).trim()).filter(Boolean))];
-  else delete next.scouting_active_target_ids;
-  if (planNation) next.scouting_plan_nation = String(planNation).trim();
-  else delete next.scouting_plan_nation;
+function plannerLayoutWithListMeta(layout, { activeIds, planNation } = {}) {
+  const next =
+    layout && typeof layout === "object" && !Array.isArray(layout)
+      ? { ...layout }
+      : {};
+  if (activeIds !== undefined) {
+    if (Array.isArray(activeIds) && activeIds.length) {
+      next.scouting_active_target_ids = [
+        ...new Set(activeIds.map((x) => String(x).trim()).filter(Boolean)),
+      ];
+    } else {
+      delete next.scouting_active_target_ids;
+    }
+  }
+  if (planNation !== undefined) {
+    if (planNation) next.scouting_plan_nation = String(planNation).trim();
+    else delete next.scouting_plan_nation;
+  }
   return next;
 }
 
@@ -1233,6 +1243,7 @@ async function renderScoutingLists() {
     }
     await loadPlannerNationOptions();
     renderListNationPicker();
+    await syncListFilterState(false);
     updateActiveTargetsHeader();
     await refreshAdvisoryBudgetBadge();
     return;
@@ -1265,7 +1276,7 @@ async function renderScoutingLists() {
   await loadPlannerNationOptions();
 
   paintScoutingLists(wrap, playerMap, draftUiByPlayer);
-  renderListNationPicker();
+  await syncListFilterState(false);
   updateActiveTargetsHeader();
   await refreshAdvisoryBudgetBadge();
   wireScoutingListActions(wrap);
@@ -1423,14 +1434,8 @@ function firstTargetPlayersForAutofill() {
 function paintScoutingLists(wrap, playerMap, draftUiByPlayer) {
   const filteredRows = rowsForListFilter(scoutingRows);
   if (!filteredRows.length) {
-    const label =
-      listBoardFilter === "all"
-        ? "targets"
-        : boardLabel(listBoardFilter);
     wrap.innerHTML =
-      listBoardFilter === "all"
-        ? '<p class="scout-empty">No scouting targets yet.</p>'
-        : `<p class="scout-empty">No targets placed on <b>${escapeHtml(label)}</b>. Switch to Show all, or place players on that tactic board.</p>`;
+      '<p class="scout-empty">No scouting targets yet.</p>';
     return;
   }
 
@@ -1764,15 +1769,27 @@ async function loadBoardViewState(boardNo) {
   if (cached?.hydrated) return cached;
 
   const state = await loadScoutingPlannerState(supabase, clubShort, Number(boardNo));
-  const boardPlayerIds = [...new Set((state.rows || []).map((r) => String(r.player_id || "").trim()).filter(Boolean))];
-  const boardPlayerSet = new Set(boardPlayerIds);
-  const savedActiveIds = Array.isArray(state.pitchLayout?.scouting_active_target_ids)
-    ? state.pitchLayout.scouting_active_target_ids.map((x) => String(x || "").trim()).filter(Boolean)
+  const shortlistIds = new Set(
+    (scoutingRows || []).map((r) => String(r.player_id || "").trim()).filter(Boolean)
+  );
+  const savedActiveRaw = state.pitchLayout?.scouting_active_target_ids;
+  const hasSavedActiveKey = Array.isArray(savedActiveRaw);
+  const savedActiveIds = hasSavedActiveKey
+    ? savedActiveRaw
+        .map((x) => String(x || "").trim())
+        .filter((id) => id && (!shortlistIds.size || shortlistIds.has(id)))
     : null;
   const next = {
-    activeIds: (savedActiveIds && savedActiveIds.length ? savedActiveIds : boardPlayerIds)
-      .filter((id) => boardPlayerSet.has(id)),
-    planNation: extractPlannerNationFromLayout(state.pitchLayout) || clubNation || null,
+    // Full shortlist can be active per board (not limited to players on the pitch).
+    // First visit (no saved key): seed from current DB actives so switching views
+    // does not wipe ticks until the owner customizes this board's set.
+    activeIds:
+      savedActiveIds !== null
+        ? savedActiveIds
+        : (scoutingRows || [])
+            .filter((r) => r.is_active_target)
+            .map((r) => String(r.player_id)),
+    planNation: extractPlannerNationFromLayout(state.pitchLayout) || null,
     hydrated: true,
   };
   boardViewStateCache.set(key, next);
@@ -1781,8 +1798,8 @@ async function loadBoardViewState(boardNo) {
 
 async function saveBoardViewState(boardNo, patch = {}) {
   const state = await loadScoutingPlannerState(supabase, clubShort, Number(boardNo));
-  const boardPlayerSet = new Set(
-    (state.rows || []).map((r) => String(r.player_id || "").trim()).filter(Boolean)
+  const shortlistIds = new Set(
+    (scoutingRows || []).map((r) => String(r.player_id || "").trim()).filter(Boolean)
   );
   const prev = boardViewStateCache.get(String(boardNo)) || {
     activeIds: [],
@@ -1792,9 +1809,9 @@ async function saveBoardViewState(boardNo, patch = {}) {
   const next = {
     activeIds: (Array.isArray(patch.activeIds) ? patch.activeIds : prev.activeIds)
       .map((x) => String(x || "").trim())
-      .filter((id) => boardPlayerSet.has(id)),
+      .filter((id) => id && (!shortlistIds.size || shortlistIds.has(id))),
     planNation: Object.prototype.hasOwnProperty.call(patch, "planNation")
-      ? (patch.planNation || null)
+      ? patch.planNation || null
       : prev.planNation,
     hydrated: true,
   };
@@ -1876,7 +1893,24 @@ async function syncListFilterState(force = false) {
   renderListNationPicker();
   if (force) {
     await applyActiveTargetSet(state.activeIds);
+    return;
   }
+
+  // Soft-hydrate checkboxes from this board's saved actives (no bulk write / re-paint).
+  const wanted = new Set((state.activeIds || []).map((x) => String(x)));
+  scoutingRows.forEach((row) => {
+    row.is_active_target = wanted.has(String(row.player_id));
+  });
+  const wrap = document.getElementById("scoutingListsWrap");
+  wrap?.querySelectorAll(".scout-active-check").forEach((cb) => {
+    const pid = String(cb.dataset.playerId || "");
+    const active = wanted.has(pid);
+    cb.checked = active;
+    wrap.querySelectorAll(`tr[data-player-id="${pid}"]`).forEach((tr) => {
+      tr.classList.toggle("scout-active-row", active);
+    });
+  });
+  updateActiveTargetsHeader();
 }
 
 function renderListBoardFilter() {
@@ -1905,22 +1939,9 @@ function renderListBoardFilter() {
 }
 
 function rowsForListFilter(rows) {
-  if (listBoardFilter === "all") return rows;
-  const boardNo = Number(listBoardFilter);
-  const onBoard = new Set();
-  for (const r of rows) {
-    if (playerBoardMap.get(String(r.player_id))?.has(boardNo)) {
-      onBoard.add(String(r.player_id));
-    }
-  }
-  // Keep nested backups/3rd/4th visible under top targets on this board,
-  // even when those nested players are not placed on the board themselves.
-  return rows.filter((r) => {
-    const pid = String(r.player_id);
-    if (onBoard.has(pid)) return true;
-    const anchor = r.anchor_player_id ? String(r.anchor_player_id) : "";
-    return Boolean(anchor && onBoard.has(anchor));
-  });
+  // Board filter selects that board's Active Targets + Plan nation context.
+  // The same shortlist players appear under every board (like multi-board placement).
+  return rows;
 }
 
 function wireListBoardFilter() {
@@ -2018,10 +2039,42 @@ async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = fals
       meta.formationId
     );
   }
-  const layoutPayload = pitchLayoutWithPlannerMeta(baseLayout, {
-    oooId: plannerOooPlayerId,
-    planNation: plannerPlanNation,
-  });
+
+  // Preserve list-view meta (nation + active targets) so tactic-board saves
+  // do not wipe the sticky nation / per-board active set.
+  let existingLayout = null;
+  try {
+    const existing = await loadScoutingPlannerState(
+      supabase,
+      clubShort,
+      activeBoardNo
+    );
+    existingLayout = existing.pitchLayout || null;
+  } catch {
+    /* ignore */
+  }
+  const prevBoardState = boardViewStateCache.get(String(activeBoardNo));
+  const nation =
+    plannerPlanNation ||
+    prevBoardState?.planNation ||
+    extractPlannerNationFromLayout(existingLayout) ||
+    null;
+  const activeIds = prevBoardState?.hydrated
+    ? prevBoardState.activeIds || []
+    : Array.isArray(existingLayout?.scouting_active_target_ids)
+      ? existingLayout.scouting_active_target_ids
+      : null;
+
+  const layoutPayload = plannerLayoutWithListMeta(
+    pitchLayoutWithPlannerMeta(baseLayout, {
+      oooId: plannerOooPlayerId,
+      planNation: nation,
+    }),
+    {
+      activeIds: activeIds !== null ? activeIds : undefined,
+      planNation: nation,
+    }
+  );
 
   await saveScoutingPlanner(supabase, slots, layoutPayload, activeBoardNo);
   const persisted = await loadScoutingPlannerState(
@@ -2037,14 +2090,14 @@ async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = fals
   } catch {
     /* keep prior map */
   }
-  const prevBoardState = boardViewStateCache.get(String(activeBoardNo));
   boardViewStateCache.set(String(activeBoardNo), {
-    activeIds: prevBoardState?.activeIds || currentActiveTargetIds(),
-    planNation: plannerPlanNation,
+    activeIds: activeIds !== null ? activeIds : currentActiveTargetIds(),
+    planNation: nation,
     hydrated: true,
   });
   if (listBoardFilter !== "all") {
     renderScoutingListsFromCache();
+    renderListNationPicker();
   }
   const label = boardLabel(activeBoardNo);
   setPlannerStatus(
@@ -2229,14 +2282,17 @@ async function initPlanner() {
     squadDesignationsState?.club_nation ||
     null;
   const existingBoardState = boardViewStateCache.get(String(activeBoardNo));
+  const layoutActiveIds = Array.isArray(pitchLayout?.scouting_active_target_ids)
+    ? pitchLayout.scouting_active_target_ids
+        .map((x) => String(x || "").trim())
+        .filter(Boolean)
+    : null;
   boardViewStateCache.set(String(activeBoardNo), {
-    activeIds: existingBoardState?.activeIds?.length
-      ? existingBoardState.activeIds
-      : (
-          Array.isArray(pitchLayout?.scouting_active_target_ids)
-            ? pitchLayout.scouting_active_target_ids
-            : rows.map((r) => String(r.player_id || "").trim()).filter(Boolean)
-        ),
+    activeIds: existingBoardState?.hydrated
+      ? existingBoardState.activeIds || []
+      : layoutActiveIds !== null
+        ? layoutActiveIds
+        : currentActiveTargetIds(),
     planNation: plannerPlanNation,
     hydrated: true,
   });
