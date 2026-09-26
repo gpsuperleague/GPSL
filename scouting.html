@@ -623,6 +623,16 @@
       color: #ffcc66;
       font-weight: bold;
     }
+    .scout-planner-wage b {
+      color: #8ec8ff;
+      font-weight: bold;
+    }
+    .scout-planner-wage-total b {
+      color: #9fd4ff;
+    }
+    .scout-wage-val {
+      color: #8ec8ff !important;
+    }
     table.scout-table tr.scout-active-row td {
       background: rgba(255, 153, 0, 0.14);
     }
@@ -729,6 +739,12 @@
             <span class="val" id="scoutActiveTotal">₿0</span>
             <span class="meta" id="scoutActiveMeta"></span>
           </span>
+          <span class="sep">·</span>
+          <span class="scout-budget-item gpsl-has-tip" data-gpsl-tip="Sum of season wages for Active Targets. Uses contract wage when set; otherwise championship % of market value (same forecast as GPDB)." tabindex="0">
+            <span class="lbl">Wages</span>
+            <span class="val scout-wage-val" id="scoutActiveWages">₿0</span>
+            <span class="meta" id="scoutActiveWagesMeta"></span>
+          </span>
           <span class="sep">—</span>
           <span class="scout-budget-item" id="scoutAdvisoryCard" hidden>
             <span id="scoutAdvisoryBudget"></span>
@@ -752,7 +768,7 @@
     <div id="tab-planner" class="scout-tab-panel panel panel-bg panel-transfer">
       <h2 class="gpsl-has-tip" data-gpsl-tip="Drag scouting targets onto the pitch (11), subs (1–12), and squad fillers (13–17). Autofill board uses your formation quotas (2×role+1), budget, HG/U21/GK/squad mins, and position fallbacks. Copy from overwrites this board from another. Up to 4 named boards; saved separately from Match Day." tabindex="0">Tactic board</h2>
       <p class="meta" style="margin-top:0;">
-        Drag scouting targets onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b> — 28 players per board. Set <b>Plan nation</b> per board for HG / OooO (e.g. one board per club). Live counts and MV update as you place players.
+        Drag scouting targets onto the pitch (11), <b>subs (1–12)</b>, and <b>squad fillers (13–17)</b> — 28 players per board. Set <b>Plan nation</b> per board for HG / OooO (e.g. one board per club). Live counts, MV, and wages (XI / bench / fillers) update as you place players.
       </p>
       <div id="scoutBoardBar" class="scout-board-bar">
         <label for="scoutBoardSelect">Board</label>
@@ -789,6 +805,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20260910-list-filter-retain"></script>
+  <script type="module" src="scouting.js?v=20260926-wages"></script>
 </body>
 </html>

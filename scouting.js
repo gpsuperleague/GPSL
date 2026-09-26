@@ -1,6 +1,11 @@
 import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 import { formatMoney } from "./competition.js";
+import {
+  loadWagePercentages,
+  wageFromMarketValue,
+  formatWage,
+} from "./wages.js";
 import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
 import {
   loadPlayerValueTables,
@@ -78,10 +83,10 @@ function scoutingPlayerBadgesHtml(player) {
 import { mountAdvisoryTransferBudget } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
 
 const PLAYER_COLUMNS =
-  "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Contracted_Team";
+  "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, contract_wage, Playstyle, Contracted_Team";
 
 const PLAYER_COLUMNS_LEGACY =
-  "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Contracted_Team";
+  "Konami_ID, Name, Nation, Position, Rating, Age, market_value, contract_wage, Playstyle, Contracted_Team";
 
 const SQUAD_REG_COLUMNS = "Konami_ID, Nation, Position, Rating, Age";
 
@@ -149,6 +154,10 @@ let plannerAutoSaveTimer = null;
 let plannerPromoteBusy = false;
 let plannerAutoSaveEnabled = false;
 let plannerBaselineSlotsKey = "";
+/** @type {{ superleague: number, championship: number }|null} */
+let wagePctSettings = null;
+/** Forecast unsigned players at championship % of MV (same as GPDB default). */
+const WAGE_FORECAST_TIER = "championship";
 
 function plannerSlotsKey(slots) {
   try {
@@ -165,6 +174,21 @@ function activeTargetBudgetForPlayer(pid) {
     return Number(ui.budgetAmount);
   }
   return Number(p?.market_value) || 0;
+}
+
+/** Season wage: stored contract_wage if set, else % of market value forecast. */
+function playerSeasonWage(player) {
+  if (!player) return 0;
+  const stored = Number(player.contract_wage);
+  if (Number.isFinite(stored) && stored > 0) return stored;
+  const mv = Number(player.market_value) || 0;
+  if (!mv) return 0;
+  const settings = wagePctSettings || { superleague: 5, championship: 4 };
+  return wageFromMarketValue(mv, WAGE_FORECAST_TIER, settings);
+}
+
+function activeTargetWageForPlayer(pid) {
+  return playerSeasonWage(playerMapCache.get(String(pid)));
 }
 
 function activeTargetBudgetTitle(pid) {
@@ -193,23 +217,33 @@ function activeRowsForCurrentView() {
 
 function sumActiveTargetsBudget() {
   let total = 0;
+  let wages = 0;
   let count = 0;
   for (const row of activeRowsForCurrentView()) {
     total += activeTargetBudgetForPlayer(row.player_id);
+    wages += activeTargetWageForPlayer(row.player_id);
     count += 1;
   }
-  return { total, count };
+  return { total, wages, count };
 }
 
 function updateActiveTargetsHeader() {
   const totalEl = document.getElementById("scoutActiveTotal");
   const metaEl = document.getElementById("scoutActiveMeta");
+  const wageEl = document.getElementById("scoutActiveWages");
+  const wageMetaEl = document.getElementById("scoutActiveWagesMeta");
   if (!totalEl) return;
-  const { total, count } = sumActiveTargetsBudget();
+  const { total, wages, count } = sumActiveTargetsBudget();
   totalEl.textContent = formatMoney(total);
   totalEl.classList.toggle("is-over", false);
   if (metaEl) {
     metaEl.textContent = count > 0 ? `(${count})` : "";
+  }
+  if (wageEl) {
+    wageEl.textContent = formatWage(wages);
+  }
+  if (wageMetaEl) {
+    wageMetaEl.textContent = count > 0 ? `(${count})` : "";
   }
   updateRegistrationStrip();
 }
@@ -594,6 +628,21 @@ async function fetchPlayersByIds(ids) {
       .in("Konami_ID", numericIds));
   }
 
+  if (error?.message?.toLowerCase().includes("contract_wage")) {
+    const colsNoWage = PLAYER_COLUMNS.replace(", contract_wage", "");
+    const legacyNoWage = PLAYER_COLUMNS_LEGACY.replace(", contract_wage", "");
+    ({ data, error } = await supabase
+      .from("Players")
+      .select(colsNoWage)
+      .in("Konami_ID", numericIds));
+    if (error?.message?.toLowerCase().includes("potential")) {
+      ({ data, error } = await supabase
+        .from("Players")
+        .select(legacyNoWage)
+        .in("Konami_ID", numericIds));
+    }
+  }
+
   if (error) throw error;
 
   const map = new Map();
@@ -612,6 +661,7 @@ function playersForPlanner() {
     Rating: p.Rating,
     Age: p.Age,
     market_value: p.market_value,
+    contract_wage: p.contract_wage,
     Playstyle: p.Playstyle,
   }));
 }
@@ -735,11 +785,27 @@ function updatePlannerCompositionStrip(state) {
   const nation = effectivePlannerNation();
   const totals = tallyAdds(players, nation);
   const stars = countStarEligible(players, minStar, plannerOooPlayerId);
-  let mvTotal = 0;
-  for (const p of players) {
-    const mv = Number(p.market_value);
-    if (Number.isFinite(mv) && mv > 0) mvTotal += mv;
-  }
+
+  const xi = state?.pitch
+    ? [...state.pitch.values()].filter(Boolean)
+    : [];
+  const benchAll = Array.isArray(state?.bench) ? state.bench : [];
+  const subs = benchAll.slice(0, 12).filter(Boolean);
+  const fillers = benchAll.slice(12).filter(Boolean);
+
+  const sumMv = (list) =>
+    list.reduce((acc, p) => {
+      const mv = Number(p.market_value);
+      return acc + (Number.isFinite(mv) && mv > 0 ? mv : 0);
+    }, 0);
+  const sumWages = (list) =>
+    list.reduce((acc, p) => acc + playerSeasonWage(p), 0);
+
+  const xiWages = sumWages(xi);
+  const benchWages = sumWages(subs);
+  const fillerWages = sumWages(fillers);
+  const totalWages = xiWages + benchWages + fillerWages;
+  const mvTotal = sumMv(players);
 
   const oooOptions = players
     .filter((p) => playerEligibleOoo(p, nation, minStar))
@@ -755,7 +821,7 @@ function updatePlannerCompositionStrip(state) {
   }
 
   const tip =
-    "Counts players currently on this tactic board (pitch + bench). Pick the club nation you are planning for — HG and OooO use that nation. ★ excludes your planned One of our Own. MV = sum of market values on the board.";
+    "Counts players currently on this tactic board (pitch + bench). Pick the club nation you are planning for — HG and OooO use that nation. ★ excludes your planned One of our Own. MV = market values. Wages = contract wage when set, otherwise championship % of MV forecast.";
 
   el.hidden = false;
   el.innerHTML = `
@@ -765,8 +831,20 @@ function updatePlannerCompositionStrip(state) {
     ${boardChip("HG", totals.hg, MIN_HOME_GROWN, "min", `Home-grown vs ${nation || "—"}: ${totals.hg}`)}
     ${boardChip("U21", totals.u21, MIN_UNDER_21, "min", `Under-21 on board: ${totals.u21}`)}
     ${boardChip("★", stars, starCap, "max", `Stars on board (rating ${minStar}+, planned OooO excluded): ${stars} / cap ${starCap}`)}
-    <span class="scout-reg-chip scout-planner-mv" title="Sum of market values for players on this board (pitch + bench). Approximate minimum cost if all were signed at MV.">MV <b>${formatMoney(
+    <span class="scout-reg-chip scout-planner-mv" title="Sum of market values for players on this board (pitch + bench).">MV <b>${formatMoney(
       mvTotal
+    )}</b></span>
+    <span class="scout-reg-chip scout-planner-wage" title="Starting XI wages (${xi.length} players). Contract wage if set, else championship % of MV.">XI wages <b>${formatWage(
+      xiWages
+    )}</b> <i>${xi.length}</i></span>
+    <span class="scout-reg-chip scout-planner-wage" title="Bench / subs (slots 1–12) wages.">Bench wages <b>${formatWage(
+      benchWages
+    )}</b> <i>${subs.length}</i></span>
+    <span class="scout-reg-chip scout-planner-wage" title="Squad fillers (slots 13–17) wages.">Fillers wages <b>${formatWage(
+      fillerWages
+    )}</b> <i>${fillers.length}</i></span>
+    <span class="scout-reg-chip scout-planner-wage scout-planner-wage-total" title="Total wages for everyone on this board (XI + bench + fillers).">Wages <b>${formatWage(
+      totalWages
     )}</b></span>
     <div class="scout-planner-ooo">
       <label for="scoutPlannerNationSelect">Plan nation</label>
@@ -2378,6 +2456,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   clubShort = club?.ShortName || null;
   clubNation = club?.Nation || null;
   await loadClubsMap();
+  wagePctSettings = await loadWagePercentages(supabase);
 
   const badgeEl = document.getElementById("clubBadgeHeader");
   const titleEl = document.getElementById("pageTitle");
