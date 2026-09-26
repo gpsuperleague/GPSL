@@ -35,6 +35,7 @@
     .wl-status-absence { color: #c96; font-size: 12px; }
     .wl-status-owner { color: #8a8; font-size: 12px; }
     .wl-status-rejected { color: #c66; font-size: 12px; }
+    .wl-status-mass { color: #c9a227; font-size: 12px; }
     .wl-section td {
       padding: 10px 10px 6px;
       color: #aaa;
@@ -92,7 +93,7 @@
     <div class="wl-panels">
       <div class="wl-card wl-panel">
         <h2>Confirmed for Season 1 <span class="wl-count" id="wlSeason1ConfirmedCount"></span></h2>
-        <p id="wlSeason1ConfirmedIntro">Owners who accepted their Season 1 invite, in queue order.</p>
+        <p id="wlSeason1ConfirmedIntro">Owners who accepted their Season 1 invite. Priority (S1#) first; mass invites follow in accept order.</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
@@ -102,7 +103,7 @@
       </div>
       <div class="wl-card wl-panel">
         <h2>Invited <span class="wl-count" id="wlOnBoardCount"></span></h2>
-        <p id="wlOnBoardIntro">Owners invited to Season 1 and waiting to accept or decline, in queue order.</p>
+        <p id="wlOnBoardIntro">Owners invited to Season 1 and waiting to accept or decline. Priority (S1#) first; mass invites after.</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
@@ -132,7 +133,7 @@
     </p>
   </div>
   <script type="module">
-    import { initWaitingListPage } from "./waiting_list.js?v=20260923-club-countdown-fix";
+    import { initWaitingListPage } from "./waiting_list.js?v=20260926-mass-invite";
     initWaitingListPage();
   </script>
 </body>

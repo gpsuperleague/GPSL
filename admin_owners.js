@@ -1488,8 +1488,15 @@ function season1InviteNeedsExpiryConfirm(row) {
 }
 
 /** Season 1 invite lifecycle for admin markers. */
+function season1InviteLane(row) {
+  const lane = String(row?.season1_invite_lane || "").toLowerCase();
+  return lane === "mass" ? "mass" : "priority";
+}
+
 function season1InviteMarker(row) {
   const num = season1QueueNum(row);
+  const lane = season1InviteLane(row);
+  const isMass = lane === "mass";
   const response = String(row?.season1_invite_response || "").toLowerCase();
   const status = String(row?.season1_invite_status || "").toLowerCase();
   const respondedAt = row?.season1_invite_responded_at
@@ -1503,10 +1510,14 @@ function season1InviteMarker(row) {
   if (response === "accepted") {
     return {
       kind: "accepted",
-      cellLabel: "Accepted",
-      tagLabel: "S1 Accepted",
+      cellLabel: isMass ? "Accepted (Mass)" : "Accepted",
+      tagLabel: isMass ? "S1 Mass Accepted" : "S1 Accepted",
       deadline: "",
-      title: respondedAt ? `Accepted ${respondedAt}` : "Accepted Season 1 invite",
+      title: respondedAt
+        ? `Accepted ${respondedAt}${isMass ? " (mass — behind priority by accept time)" : ""}`
+        : isMass
+          ? "Accepted Season 1 mass invite"
+          : "Accepted Season 1 invite",
     };
   }
   if (response === "declined") {
@@ -1522,12 +1533,13 @@ function season1InviteMarker(row) {
   if (season1InviteNeedsExpiryConfirm(row)) {
     return {
       kind: "expired-pending",
-      cellLabel: "Expired Invite",
-      tagLabel: "Expired Invite",
+      cellLabel: isMass ? "Expired Mass" : "Expired Invite",
+      tagLabel: isMass ? "Expired Mass Invite" : "Expired Invite",
       deadline,
       needsConfirm: true,
       title: [
         "Season 1 invite deadline passed — confirm expired, or record accept/decline from DM",
+        isMass ? "Mass invite" : "",
         offeredAt ? `Offered ${offeredAt}` : "",
         deadline ? `Deadline ${deadline}` : "",
       ]
@@ -1538,11 +1550,13 @@ function season1InviteMarker(row) {
   if (status === "offered") {
     return {
       kind: "invited",
-      cellLabel: "Invited",
-      tagLabel: "S1 Invited",
+      cellLabel: isMass ? "Mass Invite" : "Invited",
+      tagLabel: isMass ? "S1 Mass Invited" : "S1 Invited",
       deadline,
       title: [
-        "Season 1 invite sent — awaiting reply",
+        isMass
+          ? "Season 1 mass invite — joins behind priority by accept order"
+          : "Season 1 invite sent — awaiting reply",
         offeredAt ? `Offered ${offeredAt}` : "",
         deadline ? `Deadline ${deadline}` : "",
       ]
@@ -1641,6 +1655,7 @@ async function mergeSeason1InviteStatus(rows) {
       season1_invite_deadline_label: s1.deadline_label ?? null,
       season1_invite_deadline_passed: s1.deadline_passed ?? null,
       season1_invite_responded_at: s1.responded_at ?? null,
+      season1_invite_lane: s1.lane ?? null,
     };
   });
 }
@@ -1800,34 +1815,45 @@ async function markSeason1InviteExpired({ ownerId, email, tag }) {
   await loadWaitingListAdmin();
 }
 
-async function inviteOwnerToSeason1({ ownerId, email, tag, alreadyInvited = false }) {
+async function inviteOwnerToSeason1({
+  ownerId,
+  email,
+  tag,
+  alreadyInvited = false,
+  lane = "priority",
+}) {
   const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
-  const confirmMsg = alreadyInvited
-    ? `Re-send Season 1 invite to ${label}?\n\nThis refreshes their 48h deadline and sends inbox + Discord again (delivery repair).`
-    : `Invite ${label} to Season 1?\n\nThey get 48 hours to accept (email + Discord news + inbox).`;
+  const isMass = String(lane || "").toLowerCase() === "mass";
+  const confirmMsg = isMass
+    ? alreadyInvited
+      ? `Re-send Season 1 mass invite to ${label}?\n\nRefreshes 48h deadline. They still join behind priority invites, ordered by who accepts first.`
+      : `Mass-invite ${label} to Season 1?\n\nNo S1# needed. They join behind reserved (priority) places, ordered by who accepts first. 48h to reply.`
+    : alreadyInvited
+      ? `Re-send Season 1 invite to ${label}?\n\nThis refreshes their 48h deadline and sends inbox + Discord again (delivery repair).`
+      : `Invite ${label} to Season 1?\n\nThey get 48 hours to accept (email + Discord news + inbox). Requires an S1# first.`;
   if (!confirm(confirmMsg)) {
     return;
   }
   setWlActionStatus(
     alreadyInvited
-      ? `Re-sending Season 1 invite to ${label}…`
-      : `Sending Season 1 invite to ${label}…`
+      ? `Re-sending Season 1 ${isMass ? "mass " : ""}invite to ${label}…`
+      : `Sending Season 1 ${isMass ? "mass " : ""}invite to ${label}…`
   );
-  // Prefer new RPC name; fall back to original if schema has only that one.
+  // Prefer short RPC names; fall back to longer aliases.
   let data = null;
   let error = null;
-  ({ data, error } = await supabase.rpc("admin_s1_invite_send", {
-    p_owner_id: ownerId,
-  }));
+  const primaryRpc = isMass ? "admin_s1_invite_send_mass" : "admin_s1_invite_send";
+  const fallbackRpc = isMass
+    ? "admin_season1_invite_send_mass"
+    : "admin_season1_invite_send";
+  ({ data, error } = await supabase.rpc(primaryRpc, { p_owner_id: ownerId }));
   if (
     error &&
     /404|not found|PGRST202|Could not find the function/i.test(
       String(error.message || "") + String(error.code || "")
     )
   ) {
-    ({ data, error } = await supabase.rpc("admin_season1_invite_send", {
-      p_owner_id: ownerId,
-    }));
+    ({ data, error } = await supabase.rpc(fallbackRpc, { p_owner_id: ownerId }));
   }
   if (error) {
     const msg = String(error.message || "");
@@ -1843,16 +1869,21 @@ async function inviteOwnerToSeason1({ ownerId, email, tag, alreadyInvited = fals
       details,
       hint,
       code,
+      lane: isMass ? "mass" : "priority",
       error,
     });
     setWlActionStatus(
       `❌ ${msg}` +
         (hint ? ` (${hint})` : "") +
         (is404
-          ? " — run season1_invite_send_rpc_fix_404_20260923.sql in Supabase (final SELECT must show 2 rows), then hard-refresh."
+          ? isMass
+            ? " — run season1_invite_mass_lane_20260926.sql in Supabase, then hard-refresh."
+            : " — run season1_invite_send_rpc_fix_404_20260923.sql in Supabase (final SELECT must show 2 rows), then hard-refresh."
           : /queue number|Assign a Season/i.test(msg)
             ? " — click the S1# cell first."
-            : ""),
+            : /clear the number|S1#/i.test(msg)
+              ? " — clear their S1# first, or use Invite to season 1."
+              : ""),
       false
     );
     return;
@@ -1894,7 +1925,7 @@ async function inviteOwnerToSeason1({ ownerId, email, tag, alreadyInvited = fals
     discordNote = ` · Discord pending (${e.message || "edge error"})`;
   }
   setWlActionStatus(
-    `✅ Season 1 invite${data?.resent ? " re-sent" : ""} → ${data?.owner_tag || label} (deadline ${data?.deadline_label || "48h"})${mailNote}${discordNote}`,
+    `✅ Season 1 ${isMass ? "mass " : ""}invite${data?.resent ? " re-sent" : ""} → ${data?.owner_tag || label} (deadline ${data?.deadline_label || "48h"})${mailNote}${discordNote}`,
     true
   );
   await loadWaitingListAdmin();
@@ -2193,7 +2224,26 @@ async function runWlRowAction(action, { ownerId, email, tag, club, s1Status, s1R
     const alreadyInvited =
       String(s1Status || "").toLowerCase() === "offered" ||
       String(s1Status || "").toLowerCase() === "invited";
-    await inviteOwnerToSeason1({ ownerId, email, tag, alreadyInvited });
+    await inviteOwnerToSeason1({
+      ownerId,
+      email,
+      tag,
+      alreadyInvited,
+      lane: "priority",
+    });
+    return;
+  }
+  if (action === "invite_season1_mass") {
+    const alreadyInvited =
+      String(s1Status || "").toLowerCase() === "offered" ||
+      String(s1Status || "").toLowerCase() === "invited";
+    await inviteOwnerToSeason1({
+      ownerId,
+      email,
+      tag,
+      alreadyInvited,
+      lane: "mass",
+    });
     return;
   }
   if (action === "s1_accept_dm") {
@@ -2690,6 +2740,7 @@ async function loadArchivedOwnersSection() {
           aria-label="Actions for ${escapeWl(tag)}">
           <option value="">Actions…</option>
           <option value="invite_season1">${s1Status === "offered" ? "Re-send Season 1 invite" : "Invite to season 1"}</option>
+          <option value="invite_season1_mass">${s1Status === "offered" ? "Re-send Season 1 mass invite" : "Invite Mass"}</option>
           <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
           <option value="s1_decline_dm">Mark S1 declined (DM)</option>
           ${s1ExpireOption}
@@ -2772,6 +2823,7 @@ function renderOnBreakSection(rows) {
           aria-label="Actions for ${escapeWl(tag)}">
           <option value="">Actions…</option>
           <option value="invite_season1">Invite to season 1</option>
+          <option value="invite_season1_mass">Invite Mass</option>
           <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
           <option value="s1_decline_dm">Mark S1 declined (DM)</option>
           <option value="to_waiting">→ Waiting</option>
@@ -2999,6 +3051,8 @@ function renderWaitingListAdminRow(
   const s1Response = String(row.season1_invite_response || "").toLowerCase();
   const s1InviteLabel =
     s1Status === "offered" ? "Re-send Season 1 invite" : "Invite to season 1";
+  const s1MassLabel =
+    s1Status === "offered" ? "Re-send Season 1 mass invite" : "Invite Mass";
   const s1ExpireOption =
     s1Mark?.kind === "expired-pending"
       ? `<option value="s1_mark_expired">Confirm S1 expired</option>`
@@ -3012,6 +3066,7 @@ function renderWaitingListAdminRow(
       ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" data-s1-status="${escapeWl(s1Status)}" data-s1-response="${escapeWl(s1Response)}" aria-label="Actions">
         <option value="">Actions…</option>
         <option value="invite_season1">${s1InviteLabel}</option>
+        <option value="invite_season1_mass">${s1MassLabel}</option>
         ${s1DmOptions}
         <option value="remove_club">Remove club → on break</option>
         <option value="to_waiting">→ Waiting</option>
@@ -3019,6 +3074,7 @@ function renderWaitingListAdminRow(
       : `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-s1-status="${escapeWl(s1Status)}" data-s1-response="${escapeWl(s1Response)}" aria-label="Actions">
         <option value="">Actions…</option>
         <option value="invite_season1">${s1InviteLabel}</option>
+        <option value="invite_season1_mass">${s1MassLabel}</option>
         ${s1DmOptions}
         <option value="add_club">Add club</option>
         <option value="absence_on">Mark on absence</option>

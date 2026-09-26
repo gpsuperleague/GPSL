@@ -35,17 +35,24 @@ async function peek() {
   }
   const s1 = data.season1 || {};
   const tag = data.owner_tag || "Owner";
+  const isMass = String(s1.lane || "").toLowerCase() === "mass";
   if (s1.response) {
-    summaryEl.textContent = `${tag} — already ${s1.response}. Queue #${s1.queue_num ?? "—"}.`;
+    summaryEl.textContent = isMass
+      ? `${tag} — already ${s1.response} (mass invite).`
+      : `${tag} — already ${s1.response}. Queue #${s1.queue_num ?? "—"}.`;
     return data;
   }
   if (data.expired || s1.status === "expired") {
     summaryEl.textContent = `${tag} — this invite expired (${s1.deadline_label || "deadline passed"}).`;
     return data;
   }
-  summaryEl.textContent = `${tag} — Season 1 invite #${s1.queue_num ?? "—"}. Deadline: ${
-    s1.deadline_label || "48 hours from offer"
-  }.`;
+  summaryEl.textContent = isMass
+    ? `${tag} — Season 1 mass invite (joins behind reserved places by accept order). Deadline: ${
+        s1.deadline_label || "48 hours from offer"
+      }.`
+    : `${tag} — Season 1 invite #${s1.queue_num ?? "—"}. Deadline: ${
+        s1.deadline_label || "48 hours from offer"
+      }.`;
   if (s1.status === "offered" && !s1.response) {
     actionsEl.hidden = false;
   }

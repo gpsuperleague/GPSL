@@ -239,6 +239,9 @@ function renderTagRows(tbody, rows, highlightPosition, { sectioned = false } = {
     if (row.season1_rejected) {
       statusParts.push('<span class="wl-status-rejected">(rejected Season 1)</span>');
     }
+    if (String(row.lane || "").toLowerCase() === "mass") {
+      statusParts.push('<span class="wl-status-mass">(mass)</span>');
+    }
     const statusExtra = statusParts.length ? ` ${statusParts.join(" ")}` : "";
     const countryCode = String(row.country_code || "").trim().toUpperCase();
     const countryName = formatCountryName(countryCode);
@@ -251,10 +254,15 @@ function renderTagRows(tbody, rows, highlightPosition, { sectioned = false } = {
       compact: true,
       showBadgeImage: false,
     });
+    const isMass = String(row.lane || "").toLowerCase() === "mass";
     const posLabel =
       row.queue_num != null && row.queue_num !== ""
-        ? `S1#${row.queue_num}`
-        : row.position;
+        ? isMass
+          ? `Mass · S1#${row.queue_num}`
+          : `S1#${row.queue_num}`
+        : isMass
+          ? "Mass"
+          : row.position;
     tr.innerHTML =
       `<td>${posLabel}</td>` +
       `<td>${tagHtml}${statusExtra}</td>` +
@@ -298,7 +306,7 @@ export async function initWaitingListPage() {
 
     if (onBoardIntro) {
       onBoardIntro.textContent =
-        "Owners invited to Season 1 and waiting to accept or decline, in queue order.";
+        "Owners invited to Season 1 and waiting to accept or decline. Priority (S1#) first; mass invites after.";
     }
     if (season1ConfirmedCount) {
       season1ConfirmedCount.textContent = `(${
@@ -414,9 +422,14 @@ export async function initWaitingListPage() {
         } else {
           if (actions) actions.hidden = false;
           if (sum) {
-            sum.textContent = `You are invited to Season 1 (queue #${
-              s1info.queue_num ?? "—"
-            }). Deadline: ${s1info.deadline_label || "48 hours from offer"}.`;
+            const isMass = String(s1info.lane || "").toLowerCase() === "mass";
+            sum.textContent = isMass
+              ? `You have a Season 1 mass invite (joins behind reserved places by accept order). Deadline: ${
+                  s1info.deadline_label || "48 hours from offer"
+                }.`
+              : `You are invited to Season 1 (queue #${
+                  s1info.queue_num ?? "—"
+                }). Deadline: ${s1info.deadline_label || "48 hours from offer"}.`;
           }
           const respond = async (decision) => {
             if (decision === "decline" && !confirm("Decline your Season 1 invite?")) {
