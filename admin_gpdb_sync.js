@@ -2896,6 +2896,219 @@ async function insertMissingPesdbPlayer() {
   }
 }
 
+function formatMemberReqWhen(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("en-GB", {
+      timeZone: "Europe/London",
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return String(iso);
+  }
+}
+
+async function refreshMemberAddRequests() {
+  const body = document.getElementById("memberAddReqBody");
+  const filter = document.getElementById("memberAddReqFilter")?.value || "pending";
+  if (!body) return;
+  body.innerHTML = `<tr><td colspan="5" style="color:#888;">Loading…</td></tr>`;
+  try {
+    const { data, error } = await supabase.rpc("admin_gpdb_player_add_list", {
+      p_status: filter,
+    });
+    if (error) {
+      const msg = error.message || "Load failed";
+      if (/admin_gpdb_player_add_list|Could not find/i.test(msg)) {
+        throw new Error("Run SQL patch gpdb_player_add_request_20260926.sql first.");
+      }
+      throw new Error(msg);
+    }
+    const rows = Array.isArray(data?.rows) ? data.rows : [];
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="5" style="color:#888;">No ${escapeHtml(filter)} requests.</td></tr>`;
+      setStatus("memberAddReqStatus", `0 ${filter} requests.`, true);
+      return;
+    }
+    body.innerHTML = rows
+      .map((r) => {
+        const prev = r.preview || {};
+        const detail = [
+          prev.position || "",
+          prev.nationality || "",
+          prev.rating != null ? `OVR ${prev.rating}` : "",
+          prev.playing_style || "",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        const actions =
+          r.status === "pending"
+            ? `<button type="button" class="button member-add-approve" data-id="${escapeHtml(
+                String(r.id)
+              )}" style="background:#446633;font-size:11px;padding:4px 8px;">Approve</button>
+               <button type="button" class="button member-add-reject" data-id="${escapeHtml(
+                 String(r.id)
+               )}" style="background:#663333;font-size:11px;padding:4px 8px;">Reject</button>`
+            : escapeHtml(r.admin_note || "—");
+        return `<tr>
+          <td>${escapeHtml(formatMemberReqWhen(r.created_at))}</td>
+          <td>
+            <b>${escapeHtml(r.player_name || "—")}</b>
+            <div style="font-size:11px;color:#888;">
+              <a href="${escapeHtml(r.pesdb_url || "#")}" target="_blank" rel="noopener">${escapeHtml(
+                r.konami_id
+              )}</a>
+              ${detail ? ` · ${escapeHtml(detail)}` : ""}
+            </div>
+          </td>
+          <td>${escapeHtml(r.requester_tag || "—")}<div style="font-size:11px;color:#888;">${escapeHtml(
+            r.requester_email || ""
+          )}</div></td>
+          <td>${escapeHtml(r.status)}</td>
+          <td style="white-space:nowrap;">${actions}</td>
+        </tr>`;
+      })
+      .join("");
+    setStatus("memberAddReqStatus", `${rows.length} ${filter} request(s).`, true);
+
+    body.querySelectorAll(".member-add-approve").forEach((btn) => {
+      btn.addEventListener("click", () =>
+        approveMemberAddRequest(Number(btn.dataset.id)).catch((err) =>
+          setStatus("memberAddReqStatus", err.message, false)
+        )
+      );
+    });
+    body.querySelectorAll(".member-add-reject").forEach((btn) => {
+      btn.addEventListener("click", () =>
+        rejectMemberAddRequest(Number(btn.dataset.id)).catch((err) =>
+          setStatus("memberAddReqStatus", err.message, false)
+        )
+      );
+    });
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="5" style="color:#f88;">${escapeHtml(
+      err.message || "Failed"
+    )}</td></tr>`;
+    setStatus("memberAddReqStatus", err.message || "Failed.", false);
+  }
+}
+
+async function approveMemberAddRequest(id) {
+  if (!id) return;
+  if (!confirm(`Approve request #${id} and insert player into GPDB as free agent?`)) {
+    return;
+  }
+  setStatus("memberAddReqStatus", `Approving #${id}…`, true);
+
+  // Load list row preview from last refresh via RPC again for safety
+  const { data: listData, error: listErr } = await supabase.rpc("admin_gpdb_player_add_list", {
+    p_status: "pending",
+  });
+  if (listErr) throw new Error(listErr.message);
+  const req = (Array.isArray(listData?.rows) ? listData.rows : []).find(
+    (r) => Number(r.id) === Number(id)
+  );
+  if (!req) throw new Error("Pending request not found (may already be reviewed).");
+
+  const kid = String(req.konami_id || "").trim();
+  let staging = req.preview || {};
+
+  // Fresh PESDB scrape + economics when possible
+  try {
+    setStatus("memberAddReqStatus", `Re-checking PESDB for ${kid}…`, true);
+    const { data: scrape, error: scrapeErr } = await supabase.functions.invoke(SCRAPE_FUNCTION, {
+      body: {
+        action: "enrich_players",
+        pace: SCRAPE_PACE,
+        players: [
+          {
+            konami_id: kid,
+            player_name: staging.player_name || "",
+            position: staging.position || "CF",
+            nationality: staging.nationality || "",
+            age: staging.age ?? 25,
+            rating: staging.rating ?? 60,
+          },
+        ],
+      },
+    });
+    if (!scrapeErr && scrape?.ok !== false) {
+      const scraped = Array.isArray(scrape?.players) ? scrape.players[0] : null;
+      if (scraped?.player_name && !scraped.scrape_error) {
+        const [enriched] = await enrichRowsWithEconomics([
+          {
+            konami_id: kid,
+            player_name: scraped.player_name,
+            position: scraped.position || "CF",
+            nationality: scraped.nationality || "",
+            age: scraped.age ?? 25,
+            rating: scraped.max_level_rating ?? scraped.rating ?? 60,
+            max_level_rating: scraped.max_level_rating ?? scraped.rating ?? 60,
+            playing_style: scraped.playing_style || "None",
+            height_cm: scraped.height_cm,
+            stronger_foot: scraped.stronger_foot,
+            weak_foot_usage: scraped.weak_foot_usage,
+            weak_foot_accuracy: scraped.weak_foot_accuracy,
+          },
+        ]);
+        staging = enriched;
+      }
+    }
+  } catch {
+    // Fall back to member snapshot + economics
+    const [enriched] = await enrichRowsWithEconomics([
+      {
+        konami_id: kid,
+        player_name: staging.player_name || req.player_name,
+        position: staging.position || "CF",
+        nationality: staging.nationality || "",
+        age: staging.age ?? 25,
+        rating: staging.rating ?? staging.max_level_rating ?? 60,
+        max_level_rating: staging.max_level_rating ?? staging.rating ?? 60,
+        playing_style: staging.playing_style || "None",
+        height_cm: staging.height_cm,
+        stronger_foot: staging.stronger_foot,
+        weak_foot_usage: staging.weak_foot_usage,
+        weak_foot_accuracy: staging.weak_foot_accuracy,
+      },
+    ]);
+    staging = enriched;
+  }
+
+  const { data, error } = await supabase.rpc("admin_gpdb_player_add_approve", {
+    p_id: id,
+    p_row: staging,
+    p_note: null,
+  });
+  if (error) throw new Error(error.message || "Approve failed");
+
+  setStatus(
+    "memberAddReqStatus",
+    data?.already_in_gpdb
+      ? `✅ #${id} closed — already in GPDB.`
+      : `✅ Approved #${id} — added ${data?.inserted?.name || req.player_name} as free agent.`,
+    true
+  );
+  await refreshMemberAddRequests();
+}
+
+async function rejectMemberAddRequest(id) {
+  if (!id) return;
+  const note = prompt("Reject reason (optional):", "");
+  if (note === null) return;
+  setStatus("memberAddReqStatus", `Rejecting #${id}…`, true);
+  const { error } = await supabase.rpc("admin_gpdb_player_add_reject", {
+    p_id: id,
+    p_note: note || null,
+  });
+  if (error) throw new Error(error.message || "Reject failed");
+  setStatus("memberAddReqStatus", `Rejected request #${id}.`, true);
+  await refreshMemberAddRequests();
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
   applyResumeFromStorage();
@@ -2950,6 +3163,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       lookupMissingPesdbPlayer();
     }
   });
+  document.getElementById("memberAddReqRefreshBtn")?.addEventListener("click", () =>
+    refreshMemberAddRequests().catch((err) =>
+      setStatus("memberAddReqStatus", err.message, false)
+    )
+  );
+  document.getElementById("memberAddReqFilter")?.addEventListener("change", () =>
+    refreshMemberAddRequests().catch((err) =>
+      setStatus("memberAddReqStatus", err.message, false)
+    )
+  );
+  refreshMemberAddRequests().catch(() => {});
   document.getElementById("playstylePlayerDelay")?.addEventListener("input", (e) => {
     e.target.dataset.userEdited = "1";
   });

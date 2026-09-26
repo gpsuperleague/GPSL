@@ -244,6 +244,44 @@
           </table>
         </div>
         <div id="addMissingStatus" class="status-line"></div>
+
+        <hr style="border:none;border-top:1px solid #3a5a3a;margin:18px 0 14px;">
+        <h3 style="color:#fc6;margin:0 0 6px;font-size:15px;">Member add requests</h3>
+        <p class="note" style="margin-top:0;">
+          Owners request missing players from GPDB (Konami ID → PESDB confirm).
+          Approve inserts as free agent; reject with an optional note.
+          Needs SQL <code>gpdb_player_add_request_20260926.sql</code>
+          + redeployed <code>gpdb-pesdb-scrape</code>.
+        </p>
+        <div class="row" style="margin-top:8px;gap:8px;align-items:center;">
+          <label>
+            Show
+            <select id="memberAddReqFilter" style="padding:6px 8px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;">
+              <option value="pending" selected>Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="all">All</option>
+            </select>
+          </label>
+          <button type="button" class="button" id="memberAddReqRefreshBtn" style="background:#335566;">Refresh</button>
+        </div>
+        <div id="memberAddReqWrap" class="sync-table-wrap" style="max-height:360px;margin-top:10px;">
+          <table class="sync-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Player</th>
+                <th>Requester</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="memberAddReqBody">
+              <tr><td colspan="5" style="color:#888;">Click Refresh.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="memberAddReqStatus" class="status-line"></div>
       </div>
 
       <div class="card">
@@ -313,6 +351,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20260907-card-cache-resume"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20260926-member-add-req"></script>
 </body>
 </html>

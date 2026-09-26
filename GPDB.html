@@ -539,6 +539,115 @@
     }
 
     .text-filter {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* Request missing player (Konami ID) */
+    .gpdb-add-player-panel {
+      margin: 0 0 16px;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #1a1e24 0%, #141820 100%);
+      border: 1px solid #2a3340;
+      border-radius: 6px;
+    }
+    .gpdb-add-player-panel h2 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      color: #c9a227;
+      font-weight: 600;
+    }
+    .gpdb-add-player-panel .gpdb-add-player-intro {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #9aa;
+      line-height: 1.4;
+    }
+    .gpdb-add-player-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .gpdb-add-player-row input {
+      width: 160px;
+      padding: 7px 10px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #111;
+      color: #eee;
+      font-size: 14px;
+    }
+    .gpdb-add-player-result {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #2a3340;
+    }
+    .gpdb-add-player-card {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin: 8px 0;
+    }
+    .gpdb-add-player-card img {
+      border-radius: 4px;
+      background: #111;
+    }
+    .gpdb-add-player-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fc6;
+    }
+    .gpdb-add-player-meta {
+      font-size: 13px;
+      color: #bbb;
+      margin-top: 2px;
+    }
+    .gpdb-add-player-links a,
+    .gpdb-add-player-actions a {
+      margin-right: 8px;
+      font-size: 13px;
+    }
+    .gpdb-add-player-banner {
+      margin: 0 0 6px;
+      font-size: 13px;
+      color: #fc6;
+    }
+    .gpdb-add-player-banner.ok { color: #8d8; }
+    .gpdb-add-player-hint {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: #888;
+    }
+    .gpdb-add-player-actions { margin: 10px 0 0; }
+    #gpdbAddPlayerStatus {
+      margin: 8px 0 0;
+      font-size: 13px;
+      min-height: 1.2em;
+    }
+    .gpdb-add-player-my-title {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .gpdb-add-player-my-row {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 4px;
+    }
+    .gpdb-add-player-my-row .st {
+      display: inline-block;
+      min-width: 70px;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.03em;
+    }
+    .gpdb-add-player-my-row .st.pending { color: #fc6; }
+    .gpdb-add-player-my-row .st.approved { color: #8d8; }
+    .gpdb-add-player-my-row .st.rejected { color: #f88; }
       display:flex;
       flex-direction:column;
       font-size:12px;
@@ -769,6 +878,26 @@
 
   <div id="emergencyLoanGpdbSlot"></div>
 
+  <div id="gpdbAddPlayerPanel" class="gpdb-add-player-panel">
+    <h2>Request a missing player</h2>
+    <p class="gpdb-add-player-intro">
+      Enter a Konami ID to search GPDB and PESDB.
+      If they are already here, you get a link to their card.
+      If not, confirm the PESDB match and an admin will approve or reject the add.
+    </p>
+    <div class="gpdb-add-player-row">
+      <input type="text" id="gpdbAddPlayerKonamiId" inputmode="numeric" autocomplete="off"
+        placeholder="Konami ID" aria-label="Konami ID">
+      <button type="button" class="button" id="gpdbAddPlayerSearchBtn">Search</button>
+      <button type="button" class="button" id="gpdbAddPlayerConfirmBtn" style="background:#446633;" hidden>
+        Yes — request admin add
+      </button>
+    </div>
+    <div id="gpdbAddPlayerStatus" aria-live="polite"></div>
+    <div id="gpdbAddPlayerResult" class="gpdb-add-player-result" hidden></div>
+    <div id="gpdbAddPlayerMyList"></div>
+  </div>
+
   <div id="controls">
     <div class="filter-group">
       <button id="clearFiltersBtn" class="button gpsl-has-tip" data-gpsl-tip="Reset all filters, quick toggles, and range sliders to defaults." tabindex="0">Clear Filters</button>
@@ -872,7 +1001,11 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js?v=20260722-bank-bal-row"></script>
-  <script type="module" src="gpdb_v2.js?v=20260919-view-height-fix"></script>
+  <script type="module" src="gpdb_v2.js?v=20260926-add-player-request"></script>
+  <script type="module">
+    import { initGpdbAddPlayerRequest } from "./gpdb_add_player_request.js?v=20260926";
+    initGpdbAddPlayerRequest();
+  </script>
 
 </body>
 </html>

@@ -639,12 +639,24 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) return jsonResponse({ error: "Unauthorized" }, 401);
 
-    const { data: isAdmin, error: adminError } = await userClient.rpc("is_gpsl_admin");
-    if (adminError || !isAdmin) return jsonResponse({ error: "Admin only" }, 403);
-
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action || "scrape_page");
-    const pace: ScrapePace = body?.pace === "chunked" ? "chunked" : "slow";
+    // Members may preview a single PESDB card (GPDB "request add" flow).
+    // All other scrape actions remain admin-only.
+    const memberPreviewAllowed = action === "preview_one_player";
+
+    const { data: isAdmin, error: adminError } = await userClient.rpc("is_gpsl_admin");
+    const adminOk = !adminError && !!isAdmin;
+    if (!adminOk && !memberPreviewAllowed) {
+      return jsonResponse({ error: "Admin only" }, 403);
+    }
+
+    const pace: ScrapePace =
+      memberPreviewAllowed
+        ? "slow"
+        : body?.pace === "chunked"
+          ? "chunked"
+          : "slow";
 
     if (action === "detect") {
       const listUrl = pesdbListUrl(1);
@@ -671,13 +683,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (action === "enrich_players") {
+    // Member single-card preview OR admin enrich (same scrape path)
+    if (action === "enrich_players" || action === "preview_one_player") {
+      if (action === "preview_one_player") {
+        const kid = String(
+          body?.konami_id ?? body?.players?.[0]?.konami_id ?? ""
+        ).trim();
+        if (!Array.isArray(body?.players) || !body.players.length) {
+          if (!/^\d+$/.test(kid)) {
+            return jsonResponse({ error: "konami_id (numeric) required" }, 400);
+          }
+          body.players = [
+            {
+              konami_id: kid,
+              player_name: "",
+              position: "CF",
+              nationality: "",
+              age: 25,
+              rating: 60,
+            },
+          ];
+        }
+      }
+
       const raw = body?.players;
       if (!Array.isArray(raw) || !raw.length) {
         return jsonResponse({ error: "players array required" }, 400);
       }
       if (raw.length > 1) {
         return jsonResponse({ error: "Max 1 player per enrich call (PESDB rate limit)" }, 400);
+      }
+      if (!adminOk && action === "preview_one_player") {
+        const kid = String(raw[0]?.konami_id ?? "").trim();
+        if (!/^\d+$/.test(kid)) {
+          return jsonResponse({ error: "konami_id (numeric) required" }, 400);
+        }
       }
 
       const players: ScrapePlayer[] = [];
