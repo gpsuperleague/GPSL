@@ -182,6 +182,15 @@
       border-top: 1px solid #555;
     }
     table.fin-forecast-table { min-width: 2200px; }
+    .fin-tweaks { margin-top: 18px; }
+    .fin-tweaks h3 { color: #ff9900; font-size: 15px; margin: 0 0 8px; }
+    .fin-tweaks input[type="number"] { width: 90px; }
+    table.fin-tweaks-table { min-width: 900px; }
+    table.fin-tweaks-table td:last-child,
+    table.fin-tweaks-table th:last-child { text-align: left; color: #999; white-space: normal; }
+    table.fin-tweaks-table input.tw-share { width: 60px; text-align: right; }
+    table.fin-tweaks-table tr.tw-capped td:nth-child(4) { color: #fc9; }
+    table.fin-tweaks-table tr.tw-off td { color: #666; }
     table.fin-forecast-table thead tr.fc-sections th {
       text-align: center;
       color: #ccc;
@@ -359,9 +368,49 @@
             <tfoot id="finFcFoot"></tfoot>
           </table>
         </div>
+
+        <div id="finTwWrap" class="fin-tweaks" hidden>
+          <h3 class="gpsl-has-tip" data-gpsl-tip="Uses the forecast net (posted + still to come) for the clubs shown above versus your Healthy profit goal. Works both ways: a shortfall raises income / cuts costs, a surplus trims income / raises costs." tabindex="0">Recommended tweaks</h3>
+          <div class="row">
+            <div>
+              <label class="gpsl-has-tip" data-gpsl-tip="How much of the gap to fix. 100% closes it fully; 50% moves halfway this season." tabindex="0" for="finTwClosePct">Close % of gap</label>
+              <input type="number" id="finTwClosePct" value="100" min="0" max="200" step="5">
+            </div>
+            <div>
+              <label class="gpsl-has-tip" data-gpsl-tip="No single lever moves more than this %. Anything over the cap is handed to the other levers; whatever is left shows as unallocated." tabindex="0" for="finTwCapPct">Max change per lever %</label>
+              <input type="number" id="finTwCapPct" value="50" min="1" max="500" step="5">
+            </div>
+            <div>
+              <label class="gpsl-has-tip" data-gpsl-tip="Gap smaller than this % of the goal counts as on target (no tweaks)." tabindex="0" for="finTwBandPct">Dead band % of goal</label>
+              <input type="number" id="finTwBandPct" value="10" min="0" max="100" step="1">
+            </div>
+            <div style="display:flex;align-items:flex-end;">
+              <button type="button" id="finTwResetBtn" class="button" style="background:#444;">Reset lever mix</button>
+            </div>
+          </div>
+          <div id="finTwSummary" class="fin-hint-box"></div>
+          <div class="fin-table-wrap">
+            <table class="fin-balance-table fin-tweaks-table">
+              <thead>
+                <tr>
+                  <th>Lever</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Share of the fix this lever should carry. Shares are normalised, so they do not have to add up to 100." tabindex="0">Share %</th>
+                  <th>Current (forecast)</th>
+                  <th>Change</th>
+                  <th>New level</th>
+                  <th>Profit effect</th>
+                  <th>Per club</th>
+                  <th>Where to change</th>
+                </tr>
+              </thead>
+              <tbody id="finTwBody"></tbody>
+              <tfoot id="finTwFoot"></tfoot>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_league_finance_balance.js?v=20260927-forecast"></script>
+  <script type="module" src="admin_league_finance_balance.js?v=20260927-tweaks"></script>
 </body>
 </html>

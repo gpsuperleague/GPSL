@@ -13,6 +13,55 @@ import {
 primeAdminPageChrome();
 
 let forecastRows = null;
+let forecastVisibleRows = [];
+
+const TWEAK_STORAGE_KEY = "gpsl_fin_balance_tweaks_v1";
+
+/** Levers the admin can actually move. `lines` are forecast line ids summed into the lever base. */
+const TWEAK_LEVERS = [
+  { id: "prize_league", label: "League prize money", lines: ["prize_league"], share: 25, href: "admin_league_prizes.html", where: "League Prize Money" },
+  { id: "prize_cup", label: "Cup prize money", lines: ["prize_cup"], share: 0, href: "admin_cup_prizes.html", where: "Cup Prize Money" },
+  { id: "prize_tv", label: "TV revenue", lines: ["prize_tv"], share: 15, href: "admin_tv_revenue.html", where: "TV Revenue" },
+  { id: "gates", label: "Gate receipts", lines: ["gate_league", "gate_cup"], share: 0, href: "admin_stadium_settings.html", where: "Stadium settings (ticket / gate)" },
+  { id: "gov_hg", label: "HG subsidy", lines: ["gov_hg"], share: 10, href: "admin_gov_subsidies.html", where: "Gov subsidies" },
+  { id: "gov_youth", label: "Youth subsidy", lines: ["gov_youth"], share: 5, href: "admin_gov_subsidies.html", where: "Gov subsidies" },
+  { id: "upkeep_wages", label: "Wages", lines: ["upkeep_wages"], share: 30, href: "admin_wage_pct.html", where: "Wage %" },
+  { id: "upkeep_34plus", label: "34+ age fee", lines: ["upkeep_34plus"], share: 0, href: "admin_tax_34.html", where: "34+ age fee" },
+  { id: "upkeep_star_tax", label: "Star tax", lines: ["upkeep_star_tax"], share: 5, href: "admin_star_tax.html", where: "Star tax" },
+  { id: "infra_maintenance", label: "Stadium maintenance", lines: ["infra_maintenance"], share: 10, href: "admin_stadium_costs.html", where: "Stadium costs (12.5% rate)" },
+  { id: "gov_income_tax", label: "Income tax", lines: ["gov_income_tax"], share: 0, href: "admin_tax_pct.html", where: "Tax %" },
+];
+
+function loadTweakSettings() {
+  const defaults = {
+    closePct: 100,
+    capPct: 50,
+    bandPct: 10,
+    shares: Object.fromEntries(TWEAK_LEVERS.map((l) => [l.id, l.share])),
+  };
+  try {
+    const raw = JSON.parse(localStorage.getItem(TWEAK_STORAGE_KEY) || "null");
+    if (!raw) return defaults;
+    return {
+      closePct: Number.isFinite(Number(raw.closePct)) ? Number(raw.closePct) : defaults.closePct,
+      capPct: Number(raw.capPct) > 0 ? Number(raw.capPct) : defaults.capPct,
+      bandPct: Number.isFinite(Number(raw.bandPct)) ? Number(raw.bandPct) : defaults.bandPct,
+      shares: { ...defaults.shares, ...(raw.shares || {}) },
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+let tweakSettings = loadTweakSettings();
+
+function saveTweakSettings() {
+  try {
+    localStorage.setItem(TWEAK_STORAGE_KEY, JSON.stringify(tweakSettings));
+  } catch {
+    /* ignore */
+  }
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
@@ -25,6 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("finFcRunBtn").onclick = runForecast;
   document.getElementById("finFcDivision").onchange = renderForecast;
   document.getElementById("finFcMode").onchange = renderForecast;
+  wireTweakControls();
   document.getElementById("finBalTarget").addEventListener("blur", () => {
     const el = document.getElementById("finBalTarget");
     const n = parseMoney(el.value);
@@ -553,6 +603,186 @@ function renderForecast() {
     footRow("AVERAGE", n) + footRow("TOTAL", 1);
 
   wrap.hidden = false;
+  forecastVisibleRows = forecastRows.filter(
+    (r) => division === "all" || r.division === division
+  );
+  renderTweaks();
+}
+
+function wireTweakControls() {
+  const closeEl = document.getElementById("finTwClosePct");
+  const capEl = document.getElementById("finTwCapPct");
+  const bandEl = document.getElementById("finTwBandPct");
+  closeEl.value = tweakSettings.closePct;
+  capEl.value = tweakSettings.capPct;
+  bandEl.value = tweakSettings.bandPct;
+
+  const onSettings = () => {
+    tweakSettings.closePct = Math.max(0, Number(closeEl.value) || 0);
+    tweakSettings.capPct = Math.max(1, Number(capEl.value) || 1);
+    tweakSettings.bandPct = Math.max(0, Number(bandEl.value) || 0);
+    saveTweakSettings();
+    renderTweaks();
+  };
+  [closeEl, capEl, bandEl].forEach((el) => el.addEventListener("input", onSettings));
+
+  document.getElementById("finTwBody").addEventListener("input", (e) => {
+    const input = e.target.closest("input.tw-share");
+    if (!input) return;
+    tweakSettings.shares[input.dataset.lever] = Math.max(0, Number(input.value) || 0);
+    saveTweakSettings();
+    renderTweaks({ keepFocus: input.dataset.lever });
+  });
+
+  document.getElementById("finTwResetBtn").onclick = () => {
+    tweakSettings.shares = Object.fromEntries(TWEAK_LEVERS.map((l) => [l.id, l.share]));
+    saveTweakSettings();
+    renderTweaks();
+  };
+
+  document.getElementById("finBalTarget").addEventListener("change", renderTweaks);
+}
+
+/**
+ * Split the profit fix across levers by share, capping each lever at capPct of
+ * its current level and handing any overflow to the uncapped levers.
+ */
+function allocateTweaks(needed, levers, capPct) {
+  const alloc = new Map(levers.map((l) => [l.id, 0]));
+  const capped = new Set();
+  let remainingNeed = needed;
+
+  for (let pass = 0; pass < levers.length && Math.abs(remainingNeed) > 0.5; pass++) {
+    const open = levers.filter((l) => !capped.has(l.id) && l.share > 0 && Math.abs(l.base) > 0.5);
+    const shareSum = open.reduce((s, l) => s + l.share, 0);
+    if (!open.length || shareSum <= 0) break;
+
+    let spent = 0;
+    for (const l of open) {
+      const want = alloc.get(l.id) + (remainingNeed * l.share) / shareSum;
+      const cap = (Math.abs(l.base) * capPct) / 100;
+      if (Math.abs(want) > cap) {
+        const clamped = Math.sign(want) * cap;
+        spent += clamped - alloc.get(l.id);
+        alloc.set(l.id, clamped);
+        capped.add(l.id);
+      } else {
+        spent += want - alloc.get(l.id);
+        alloc.set(l.id, want);
+      }
+    }
+    remainingNeed -= spent;
+  }
+  return { alloc, capped, unallocated: remainingNeed };
+}
+
+function renderTweaks({ keepFocus = null } = {}) {
+  const wrap = document.getElementById("finTwWrap");
+  const rows = forecastVisibleRows;
+  if (!rows.length) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+
+  const target = parseMoney(document.getElementById("finBalTarget").value);
+  const goal = Number.isFinite(target) ? target : 0;
+  const clubs = rows.length;
+  const avgNet = rows.reduce((s, r) => s + Number(r.net || 0), 0) / clubs;
+  const gapPerClub = goal - avgNet;
+  const band = (Math.abs(goal) * tweakSettings.bandPct) / 100;
+  const onTarget = Math.abs(gapPerClub) <= band;
+  const needed = onTarget ? 0 : gapPerClub * clubs * (tweakSettings.closePct / 100);
+
+  const levers = TWEAK_LEVERS.map((l) => ({
+    ...l,
+    share: Number(tweakSettings.shares[l.id] ?? 0),
+    base: rows.reduce(
+      (s, r) => s + l.lines.reduce((a, id) => a + Number(r.forecast[id] || 0), 0),
+      0
+    ),
+  }));
+  const { alloc, capped, unallocated } = allocateTweaks(
+    needed,
+    levers,
+    tweakSettings.capPct
+  );
+
+  const summary = document.getElementById("finTwSummary");
+  const direction = gapPerClub > 0 ? "shortfall" : "surplus";
+  if (onTarget) {
+    summary.innerHTML =
+      `Average forecast net ${formatB(avgNet)} vs goal ${formatB(goal)} — within the ` +
+      `±${tweakSettings.bandPct}% dead band (${formatB(band)}). <b>No tweaks needed.</b>`;
+  } else {
+    summary.innerHTML =
+      `Average forecast net <b>${formatB(avgNet)}</b> vs goal <b>${formatB(goal)}</b> — ` +
+      `${direction} of <b>${formatB(Math.abs(gapPerClub))}</b> per club across ${clubs} clubs. ` +
+      `Closing ${tweakSettings.closePct}% means moving league profit by ` +
+      `<b>${needed >= 0 ? "+" : "−"}${formatB(Math.abs(needed))}</b>` +
+      (gapPerClub > 0
+        ? " (raise income / cut costs)."
+        : " (trim income / raise costs).") +
+      (Math.abs(unallocated) > 0.5
+        ? ` <span class="neg">${formatB(Math.abs(unallocated))} could not be allocated within the ${tweakSettings.capPct}% cap — raise the cap or add shares.</span>`
+        : "") +
+      ` Debt interest and FFP are not levers; they move on their own once balances change.`;
+  }
+
+  const pct = (n) => `${n >= 0 ? "+" : "−"}${Math.abs(n).toFixed(1)}%`;
+  const body = document.getElementById("finTwBody");
+  body.innerHTML = levers
+    .map((l) => {
+      const effect = alloc.get(l.id) || 0;
+      const isIncome = l.base >= 0;
+      // Income: level moves with the effect. Cost (negative base): cutting cost adds profit.
+      const newLevel = l.base + effect;
+      const changePct = Math.abs(l.base) > 0.5 ? (effect / Math.abs(l.base)) * 100 : 0;
+      const levelPct = isIncome ? changePct : -changePct;
+      const off = l.share <= 0 || Math.abs(l.base) < 0.5;
+      const cls = [off ? "tw-off" : "", capped.has(l.id) ? "tw-capped" : ""]
+        .filter(Boolean)
+        .join(" ");
+      const changeTxt =
+        off || Math.abs(effect) < 0.5
+          ? "—"
+          : `${pct(levelPct)} ${isIncome ? (levelPct >= 0 ? "raise" : "cut") : levelPct >= 0 ? "cost up" : "cost down"}${capped.has(l.id) ? " (cap)" : ""}`;
+      return `<tr class="${cls}">
+        <td>${escapeHtml(l.label)}</td>
+        <td><input type="number" class="tw-share" data-lever="${l.id}" min="0" step="5" value="${l.share}"></td>
+        <td class="${moneyClass(l.base)}">${formatB(l.base)}</td>
+        <td>${changeTxt}</td>
+        <td class="${moneyClass(newLevel)}">${off ? "—" : formatB(newLevel)}</td>
+        <td class="${moneyClass(effect)}">${off ? "—" : formatB(effect)}</td>
+        <td class="${moneyClass(effect)}">${off ? "—" : formatB(effect / clubs)}</td>
+        <td><a href="${l.href}" style="color:#ff9900;">${escapeHtml(l.where)}</a></td>
+      </tr>`;
+    })
+    .join("");
+
+  const totalEffect = [...alloc.values()].reduce((s, v) => s + v, 0);
+  const newAvg = avgNet + totalEffect / clubs;
+  document.getElementById("finTwFoot").innerHTML = `<tr>
+    <td>TOTAL</td>
+    <td>${levers.reduce((s, l) => s + (l.share > 0 ? l.share : 0), 0)}</td>
+    <td></td><td></td><td></td>
+    <td class="${moneyClass(totalEffect)}">${formatB(totalEffect)}</td>
+    <td class="${moneyClass(totalEffect)}">${formatB(totalEffect / clubs)}</td>
+    <td>New average net ≈ <b class="${moneyClass(newAvg)}">${formatB(newAvg)}</b></td>
+  </tr>`;
+
+  if (keepFocus) {
+    const el = body.querySelector(`input.tw-share[data-lever="${keepFocus}"]`);
+    if (el) {
+      el.focus();
+      const len = String(el.value).length;
+      try {
+        el.setSelectionRange(len, len);
+      } catch {
+        /* number inputs may not support selection */
+      }
+    }
+  }
 }
 
 function escapeHtml(s) {
