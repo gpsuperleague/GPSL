@@ -4,8 +4,15 @@ import {
   FIN_BALANCE_TIPS,
   renderLeagueFinanceBalanceRules,
 } from "./admin_league_finance_balance_rules.js?v=20260915-vacant-backfill";
+import {
+  FORECAST_LINE_IDS,
+  FORECAST_SECTIONS,
+  buildLeagueFinanceForecast,
+} from "./admin_league_finance_forecast.js?v=20260927-forecast";
 
 primeAdminPageChrome();
+
+let forecastRows = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
@@ -15,6 +22,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadSeasons();
   document.getElementById("finBalRunBtn").onclick = runAnalysis;
   document.getElementById("finBalVacantBtn").onclick = backfillVacantClubs;
+  document.getElementById("finFcRunBtn").onclick = runForecast;
+  document.getElementById("finFcDivision").onchange = renderForecast;
+  document.getElementById("finFcMode").onchange = renderForecast;
   document.getElementById("finBalTarget").addEventListener("blur", () => {
     const el = document.getElementById("finBalTarget");
     const n = parseMoney(el.value);
@@ -437,6 +447,112 @@ function renderVerdict(data, { avg, med, target, gapClub, gapTotal, clubs, cats 
     <li>No big prize/wage redesign needed.</li>
     <li>Optional: nudge prizes/TV/tax slightly if outliers bother you.</li>
   `;
+}
+
+async function runForecast() {
+  const btn = document.getElementById("finFcRunBtn");
+  btn.disabled = true;
+  setStatus("finFcStatus", "Forecasting clubs…");
+  try {
+    const result = await buildLeagueFinanceForecast(supabase, {
+      onProgress: (done, total) =>
+        setStatus("finFcStatus", `Forecasting clubs… ${done} / ${total}`),
+    });
+    forecastRows = result.clubs;
+    renderForecast();
+    const ffpCount = forecastRows.filter((r) => r.ffpRisk).length;
+    setStatus(
+      "finFcStatus",
+      `✅ ${result.season.label || "Current season"} — ${forecastRows.length} clubs forecast · ` +
+        `debt interest ${result.bank.ratePct}% · FFP ${formatB(result.bank.ffpFine)} at ≤ ${formatB(
+          -result.bank.ffpThreshold
+        )} · ${ffpCount} club${ffpCount === 1 ? "" : "s"} on FFP course.`,
+      true
+    );
+  } catch (err) {
+    setStatus("finFcStatus", "❌ " + (err?.message || err), false);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderForecast() {
+  if (!forecastRows) return;
+  const wrap = document.getElementById("finFcWrap");
+  const division = document.getElementById("finFcDivision").value;
+  const mode = document.getElementById("finFcMode").value;
+
+  const rows = forecastRows
+    .filter((r) => division === "all" || r.division === division)
+    .map((r) => {
+      const vals = r[mode];
+      const net = FORECAST_LINE_IDS.reduce((s, id) => s + Number(vals[id] || 0), 0);
+      return { ...r, vals, modeNet: net };
+    })
+    .sort((a, b) => b.modeNet - a.modeNet);
+
+  const netLabel =
+    mode === "posted" ? "Net posted" : mode === "pending" ? "Net to come" : "Net forecast";
+
+  document.getElementById("finFcHead").innerHTML = `
+    <tr class="fc-sections">
+      <th colspan="2"></th>
+      ${FORECAST_SECTIONS.map(
+        (s) => `<th colspan="${s.lines.length}">${escapeHtml(s.title)}</th>`
+      ).join("")}
+      <th colspan="3"></th>
+    </tr>
+    <tr class="fc-lines">
+      <th>Club</th>
+      <th>Div</th>
+      ${FORECAST_SECTIONS.map((s) =>
+        s.lines
+          .map(
+            (l, i) =>
+              `<th class="${i === 0 ? "fc-sec-start" : ""}">${escapeHtml(l.label)}</th>`
+          )
+          .join("")
+      ).join("")}
+      <th class="fc-sec-start fc-key">${netLabel}</th>
+      <th>Balance now</th>
+      <th class="fc-key">Projected EOS balance</th>
+    </tr>`;
+
+  const sectionStarts = new Set(FORECAST_SECTIONS.map((s) => s.lines[0].id));
+  const cell = (v, cls = "") =>
+    `<td class="${[moneyClass(v), cls].filter(Boolean).join(" ")}">${formatB(v)}</td>`;
+
+  document.getElementById("finFcBody").innerHTML = rows
+    .map(
+      (r) => `<tr class="${r.ffpRisk ? "fc-ffp" : ""}" title="${escapeHtml(r.clubName)}">
+        <td>${escapeHtml(r.club)}</td>
+        <td>${escapeHtml(divShort(r.division))}</td>
+        ${FORECAST_LINE_IDS.map((id) =>
+          cell(r.vals[id], sectionStarts.has(id) ? "fc-sec-start" : "")
+        ).join("")}
+        ${cell(r.modeNet, "fc-sec-start fc-key")}
+        ${cell(r.balanceNow)}
+        ${cell(r.projectedBalance, "fc-key")}
+      </tr>`
+    )
+    .join("");
+
+  const n = rows.length || 1;
+  const sum = (fn) => rows.reduce((s, r) => s + Number(fn(r) || 0), 0);
+  const footRow = (label, div) => `<tr>
+    <td>${label}</td>
+    <td></td>
+    ${FORECAST_LINE_IDS.map((id) =>
+      cell(sum((r) => r.vals[id]) / div, sectionStarts.has(id) ? "fc-sec-start" : "")
+    ).join("")}
+    ${cell(sum((r) => r.modeNet) / div, "fc-sec-start fc-key")}
+    ${cell(sum((r) => r.balanceNow) / div)}
+    ${cell(sum((r) => r.projectedBalance) / div, "fc-key")}
+  </tr>`;
+  document.getElementById("finFcFoot").innerHTML =
+    footRow("AVERAGE", n) + footRow("TOTAL", 1);
+
+  wrap.hidden = false;
 }
 
 function escapeHtml(s) {

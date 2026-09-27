@@ -181,6 +181,24 @@
       font-weight: bold;
       border-top: 1px solid #555;
     }
+    table.fin-forecast-table { min-width: 2200px; }
+    table.fin-forecast-table thead tr.fc-sections th {
+      text-align: center;
+      color: #ccc;
+      border-bottom: 1px solid #555;
+      border-left: 1px solid #444;
+    }
+    table.fin-forecast-table th.fc-sec-start,
+    table.fin-forecast-table td.fc-sec-start { border-left: 1px solid #444; }
+    table.fin-forecast-table thead tr.fc-lines th { top: 29px; font-size: 11px; }
+    table.fin-forecast-table td.fc-key,
+    table.fin-forecast-table th.fc-key { font-weight: bold; background: #1c1810; }
+    table.fin-forecast-table tr.fc-ffp td:first-child::after {
+      content: " FFP";
+      color: #f88;
+      font-size: 10px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body class="admin-page">
@@ -303,8 +321,47 @@
           </div>
         </div>
       </div>
+
+      <div class="card">
+        <h2 class="gpsl-has-tip" data-gpsl-tip="Full-season forecast per club: what is already posted on the ledger plus what is still expected (remaining gates, TV, league prize at current table position, subsidies, wages, 34+, star tax, manager salary, stadium maintenance, then debt interest and FFP at Close Finances). Same lines as the owner Finances page." tabindex="0">Season forecast per club</h2>
+        <p class="note">
+          Current season only. Each cell = posted + still to come. Cup and challenge prizes, income tax,
+          contract releases and contract offers only count what is already posted.
+          Debt interest and FFP are estimated from the projected balance before Close Finances.
+        </p>
+        <div class="row">
+          <div>
+            <label for="finFcDivision">Division</label>
+            <select id="finFcDivision">
+              <option value="all">All divisions</option>
+              <option value="superleague">Super League</option>
+              <option value="championship_a">Championship A</option>
+              <option value="championship_b">Championship B</option>
+            </select>
+          </div>
+          <div>
+            <label for="finFcMode">Show</label>
+            <select id="finFcMode">
+              <option value="forecast">Forecast (posted + pending)</option>
+              <option value="posted">Posted so far</option>
+              <option value="pending">Still to come</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button type="button" id="finFcRunBtn" class="button">Forecast every club</button>
+          </div>
+        </div>
+        <div id="finFcStatus" class="status-line"></div>
+        <div id="finFcWrap" class="fin-table-wrap" hidden>
+          <table class="fin-balance-table fin-forecast-table">
+            <thead id="finFcHead"></thead>
+            <tbody id="finFcBody"></tbody>
+            <tfoot id="finFcFoot"></tfoot>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_league_finance_balance.js?v=20260915-vacant-backfill"></script>
+  <script type="module" src="admin_league_finance_balance.js?v=20260927-forecast"></script>
 </body>
 </html>
