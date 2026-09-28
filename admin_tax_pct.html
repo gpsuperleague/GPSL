@@ -18,7 +18,7 @@
         <h2>Income tax %</h2>
         <p class="note">
           League <b>income tax</b> on player spend — charged to the buying club when a purchase posts to the ledger.
-          Applies to transfer fee + agent fee and special auction fees. Collected to the GPSL Central Bank (<code>gov_income_tax</code>).
+          Applies to transfer fee + agent fee (transfer list deals) and special auction fees. Collected to the GPSL Central Bank (<code>gov_income_tax</code>).
           Set <b>0</b> to disable. Run <code>patches/gov_income_tax.sql</code> and
           <code>patches/gov_income_tax_transfer_restore.sql</code> (restores tax after prize-discount transfer ledger).
         </p>
@@ -31,8 +31,26 @@
         <button type="button" id="saveIncomeTaxBtn" class="button">Save income tax %</button>
         <div id="incomeTaxStatus" class="status-line"></div>
       </div>
+
+      <div class="card" id="sb-agent-fee-pct">
+        <h2>Agent fee %</h2>
+        <p class="note">
+          Charged to the <b>buying club</b> on <b>transfer list</b> deals only, as a % of the winning fee, on top of the fee
+          (<code>transfer_agent_fee</code>). The seller still receives the full fee. Income tax is then charged on fee + agent fee.
+          Not charged on draft auctions, special auctions, foreign sales or contract releases.
+          Set <b>0</b> to disable. Run <code>patches/transfer_agent_fee_pct_20260928.sql</code> once.
+        </p>
+        <div class="row gov-subsidy-row">
+          <div>
+            <label>Agent fee % on transfer list deals</label>
+            <input type="number" id="agentFeePct" min="0" max="100" step="0.1" style="width:100px;">
+          </div>
+        </div>
+        <button type="button" id="saveAgentFeeBtn" class="button">Save agent fee %</button>
+        <div id="agentFeeStatus" class="status-line"></div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_tax_pct.js"></script>
+  <script type="module" src="admin_tax_pct.js?v=20260928-agent-fee"></script>
 </body>
 </html>

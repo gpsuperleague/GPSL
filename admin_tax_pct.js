@@ -7,7 +7,60 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadIncomeTaxSettings();
   document.getElementById("saveIncomeTaxBtn").onclick = saveIncomeTaxSettings;
+  await loadAgentFeeSettings();
+  document.getElementById("saveAgentFeeBtn").onclick = saveAgentFeeSettings;
 });
+
+async function loadAgentFeeSettings() {
+  const { data, error } = await supabase
+    .from("global_settings")
+    .select("transfer_agent_fee_pct")
+    .eq("id", 1)
+    .single();
+
+  if (error) {
+    setStatus(
+      "agentFeeStatus",
+      "❌ " + error.message + " — run patches/transfer_agent_fee_pct_20260928.sql",
+      false
+    );
+    return;
+  }
+
+  const el = document.getElementById("agentFeePct");
+  if (el) el.value = data?.transfer_agent_fee_pct ?? 1;
+}
+
+async function saveAgentFeeSettings() {
+  const pct = Number(document.getElementById("agentFeePct")?.value);
+
+  if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+    setStatus("agentFeeStatus", "Agent fee % must be 0–100.", false);
+    return;
+  }
+
+  setStatus("agentFeeStatus", "Saving…");
+  const { error } = await supabase.rpc("admin_update_transfer_agent_fee_pct", {
+    p_pct: pct,
+  });
+
+  if (error) {
+    setStatus(
+      "agentFeeStatus",
+      error.message.includes("admin_update_transfer_agent_fee_pct")
+        ? "Run patches/transfer_agent_fee_pct_20260928.sql first."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "agentFeeStatus",
+    `✅ Agent fee saved — ${pct}% of the fee on transfer list deals (paid by the buyer).`,
+    true
+  );
+}
 
 async function loadIncomeTaxSettings() {
   const { data, error } = await supabase.from("global_settings").select("gov_income_tax_pct").eq("id", 1).single();

@@ -21,7 +21,10 @@
 -- their stored balance_snapshot + the club's net change. FFP is never changed
 -- automatically — clubs whose FFP result would flip are flagged.
 --
+-- Squad = current contracted players + players FFP-released from the club at
+-- close (their wages were charged before the release).
 -- Only clubs whose wage bill was already posted this season are touched.
+-- Every such club is listed; only clubs with a difference are posted.
 -- Preview: SELECT public.competition_admin_resettle_season_upkeep(NULL, NULL, true);
 -- Apply:   SELECT public.competition_admin_resettle_season_upkeep(NULL, NULL, false);
 -- Safe re-run: differences become ₿0 once applied.
@@ -167,6 +170,53 @@ END;
 $function$;
 
 -- ---------------------------------------------------------------------------
+-- Squad as it stood at Close Finances: current contracted players plus anyone
+-- FFP released from this club at close (Close Finances charged their wages
+-- before the release, so a recount must include them).
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.competition_resettle_close_squad(
+  p_season_id bigint,
+  p_club_short_name text
+)
+RETURNS TABLE (
+  player_id text,
+  contract_wage numeric,
+  rating_num int,
+  age_num int,
+  ffp_released boolean
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    p."Konami_ID"::text,
+    p.contract_wage::numeric,
+    nullif(regexp_replace(coalesce(btrim(p."Rating"::text), ''), '[^0-9]', '', 'g'), '')::int,
+    CASE WHEN nullif(btrim(p."Age"::text), '') ~ '^[0-9]+$'
+      THEN btrim(p."Age"::text)::int END,
+    false
+  FROM public."Players" p
+  WHERE p."Contracted_Team" = p_club_short_name
+  UNION ALL
+  SELECT
+    b.player_id,
+    -- Keep the old contract wage only while the player is unattached
+    CASE WHEN coalesce(btrim(p."Contracted_Team"), '') = '' THEN p.contract_wage::numeric END,
+    nullif(regexp_replace(coalesce(btrim(p."Rating"::text), ''), '[^0-9]', '', 'g'), '')::int,
+    CASE WHEN nullif(btrim(p."Age"::text), '') ~ '^[0-9]+$'
+      THEN btrim(p."Age"::text)::int END,
+    true
+  FROM public.player_club_rejoin_blocks b
+  JOIN public."Players" p ON p."Konami_ID"::text = b.player_id
+  WHERE b.club_short_name = p_club_short_name
+    AND b.released_season_id = p_season_id
+    AND b.reason ILIKE 'ffp%'
+    AND coalesce(p."Contracted_Team", '') <> p_club_short_name;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Admin: re-settle wages / manager salary / 34+ / star tax / FF subsidy
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.competition_admin_resettle_season_upkeep(
@@ -271,19 +321,19 @@ BEGIN
 
       v_count := NULL;
       IF v_line.charge_type = 'wage_squad' THEN
-        IF p_wage_basis = 'wage_pct' THEN
-          SELECT round(coalesce(sum(
-            public.calculate_player_wage_for_club(p."Konami_ID"::text, v_club.club_short_name)
-          ), 0), 0), count(*)::int
-          INTO v_new, v_count
-          FROM public."Players" p
-          WHERE p."Contracted_Team" = v_club.club_short_name;
-        ELSE
-          v_new := public.competition_club_wage_bill_total(v_club.club_short_name, v_season_id);
-          SELECT count(*)::int INTO v_count
-          FROM public."Players" p
-          WHERE p."Contracted_Team" = v_club.club_short_name;
-        END IF;
+        SELECT
+          round(coalesce(sum(
+            CASE WHEN p_wage_basis = 'wage_pct'
+              THEN public.calculate_player_wage_for_club(sq.player_id, v_club.club_short_name)
+              ELSE coalesce(
+                sq.contract_wage,
+                public.calculate_player_wage_for_club(sq.player_id, v_club.club_short_name)
+              )
+            END
+          ), 0), 0),
+          count(*)::int
+        INTO v_new, v_count
+        FROM public.competition_resettle_close_squad(v_season_id, v_club.club_short_name) sq;
       ELSIF v_line.charge_type = 'wage_fan_favourite_subsidy' THEN
         SELECT * INTO v_ff
         FROM public.club_squad_fan_favourite_wage_half(v_club.club_short_name)
@@ -301,30 +351,45 @@ BEGIN
       ELSIF v_line.charge_type = 'staff_manager_salary' THEN
         v_new := public.competition_club_manager_salary_total(v_club.club_short_name);
       ELSIF v_line.charge_type = 'wage_renewal_34plus' THEN
-        v_count := public.competition_club_34plus_count(v_club.club_short_name);
+        SELECT count(*)::int INTO v_count
+        FROM public.competition_resettle_close_squad(v_season_id, v_club.club_short_name) sq
+        WHERE sq.age_num >= coalesce(v_s.wage_34plus_min_rating, 34);
         v_new := round(v_count * coalesce(v_s.wage_34plus_per_player, 0), 0);
       ELSE
-        v_count := public.competition_club_star_tax_count(v_club.club_short_name);
+        SELECT count(*)::int INTO v_count
+        FROM public.competition_resettle_close_squad(v_season_id, v_club.club_short_name) sq
+        WHERE sq.rating_num >= public.club_squad_star_min_rating()
+          AND NOT EXISTS (
+            SELECT 1 FROM public.club_squad_player_designations d
+            WHERE d.club_short_name = v_club.club_short_name
+              AND d.designation = 'one_of_our_own'
+              AND d.player_id = sq.player_id
+          );
         v_new := round(v_count * coalesce(v_s.star_tax_per_player, 0), 0);
       END IF;
       v_new := coalesce(v_new, 0);
 
       v_diff := round(v_new - v_old, 0);
+
+      -- Always show the wage line so every club is visible; other lines only when they move.
+      IF abs(v_diff) >= 1 OR v_line.charge_type = 'wage_squad' THEN
+        v_lines := v_lines || jsonb_build_object(
+          'type', v_line.charge_type,
+          'label', v_label,
+          'old', v_old,
+          'new', v_new,
+          'club_effect', CASE WHEN abs(v_diff) < 1 THEN 0
+            WHEN v_is_credit THEN v_diff ELSE -v_diff END,
+          'count', v_count
+        );
+      END IF;
+
       IF abs(v_diff) < 1 THEN
         CONTINUE;
       END IF;
 
       -- Club cash effect: costs reduce balance, the FF subsidy adds to it.
       v_club_delta := v_club_delta + CASE WHEN v_is_credit THEN v_diff ELSE -v_diff END;
-
-      v_lines := v_lines || jsonb_build_object(
-        'type', v_line.charge_type,
-        'label', v_label,
-        'old', v_old,
-        'new', v_new,
-        'club_effect', CASE WHEN v_is_credit THEN v_diff ELSE -v_diff END,
-        'count', v_count
-      );
 
       IF NOT p_dry_run THEN
         PERFORM public.post_club_ledger(
@@ -377,11 +442,7 @@ BEGIN
       END IF;
     END LOOP;
 
-    IF jsonb_array_length(v_lines) = 0 THEN
-      CONTINUE;
-    END IF;
-
-    IF p_true_up_interest THEN
+    IF p_true_up_interest AND abs(v_club_delta) >= 1 THEN
       v_interest := public.competition_resettle_eos_interest_for_delta(
         v_season_id, v_club.club_short_name, v_club_delta, p_dry_run
       );
@@ -390,24 +451,25 @@ BEGIN
     END IF;
     v_flags := coalesce(v_interest -> 'flags', '[]'::jsonb);
 
-    IF EXISTS (
-      SELECT 1 FROM public.competition_season_charge_paid
-      WHERE season_id = v_season_id
-        AND club_short_name = v_club.club_short_name
-        AND charge_type = 'eos_ffp_charge'
-    ) THEN
+    SELECT count(*)::int INTO v_count
+    FROM public.competition_resettle_close_squad(v_season_id, v_club.club_short_name) sq
+    WHERE sq.ffp_released;
+    IF v_count > 0 THEN
       v_flags := v_flags || jsonb_build_array(
-        'FFP club — players released at close are no longer in the squad, so their wages would be refunded. Check before applying.'::text
+        format('Includes %s player(s) FFP-released at close (charged before release)', v_count)
       );
     END IF;
 
     v_total_delta := v_total_delta + v_club_delta;
     v_total_interest := v_total_interest + coalesce((v_interest ->> 'interest_delta')::numeric, 0);
-    v_changed := v_changed + 1;
+    IF abs(v_club_delta) >= 1 THEN
+      v_changed := v_changed + 1;
+    END IF;
 
     v_rows := v_rows || jsonb_build_object(
       'club', v_club.club_short_name,
       'division', v_club.division,
+      'changed', abs(v_club_delta) >= 1,
       'lines', v_lines,
       'upkeep_delta', v_club_delta,
       'interest_delta', coalesce((v_interest ->> 'interest_delta')::numeric, 0),
@@ -434,6 +496,8 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.competition_resettle_eos_interest_for_delta(bigint, text, numeric, boolean)
+  TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_resettle_close_squad(bigint, text)
   TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_resettle_season_upkeep(bigint, text, boolean, boolean, text)
   TO authenticated;

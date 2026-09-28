@@ -86,13 +86,18 @@ async function runUpkeepResettle(dryRun) {
 
   renderUpkeepResettle(data);
   const n = Number(data?.clubs_changed || 0);
+  const listed = Array.isArray(data?.rows) ? data.rows.length : 0;
   const totals = `upkeep ${signedB(data.total_upkeep_delta)}, interest ${signedB(data.total_interest_delta)}`;
+  const basisHint =
+    basis === "contract"
+      ? " Stored contract wages ignore Wage % changes — pick “Current wage %” to apply a new %."
+      : "";
   if (dryRun) {
     setStatus(
       "upkeepStatus",
-      n
-        ? `Preview: ${n} club(s) change — ${totals} (club cash effect). Check the table, then Apply.`
-        : "Nothing to re-settle — posted charges already match (or Close Finances has not run).",
+      (n
+        ? `Preview: ${n} of ${listed} club(s) change — ${totals} (club cash effect). Check the table, then Apply.`
+        : `Nothing to re-settle across ${listed} club(s) — posted charges already match.`) + basisHint,
       true
     );
     applyBtn.disabled = n === 0;
@@ -121,13 +126,14 @@ function renderUpkeepResettle(data) {
       <tbody>
         ${rows
           .map(
-            (r) => `<tr>
+            (r) => `<tr style="${r.changed === false ? "opacity:0.45;" : ""}">
           <td>${escapeHtml(r.club)}</td>
           <td>${escapeHtml(divShort[r.division] || r.division)}</td>
           <td style="white-space:normal;">${(r.lines || [])
             .map(
               (l) =>
-                `${escapeHtml(l.label)}: ${formatB(l.old)} → ${formatB(l.new)} ` +
+                `${escapeHtml(l.label)}${l.count != null ? ` (${l.count})` : ""}: ` +
+                `${formatB(l.old)} → ${formatB(l.new)} ` +
                 `<span style="color:${color(l.club_effect)}">(${signedB(l.club_effect)})</span>`
             )
             .join("<br>")}</td>
