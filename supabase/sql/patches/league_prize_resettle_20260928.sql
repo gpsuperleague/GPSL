@@ -287,6 +287,11 @@ BEGIN
     );
   END LOOP;
 
+  IF NOT p_dry_run AND v_changed > 0
+     AND to_regprocedure('public.competition_archive_club_finances_for_season(bigint)') IS NOT NULL THEN
+    PERFORM public.competition_archive_club_finances_for_season(v_season_id);
+  END IF;
+
   RETURN jsonb_build_object(
     'season_id', v_season_id,
     'dry_run', p_dry_run,

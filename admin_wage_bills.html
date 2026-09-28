@@ -45,8 +45,54 @@
         </button>
         <div id="wageBillsStatus" class="status-line"></div>
       </div>
+
+      <div class="card">
+        <h2>Re-settle wages after Close Finances</h2>
+        <p class="note">
+          Close Finances charges wages, manager salary, 34+ fee, star tax and the Fan Favourite subsidy once per club.
+          This works them out again from the current squad and settings and posts only the <b>difference</b>.
+          It only touches clubs whose wages were already posted. Run it <b>before End Season</b>.
+        </p>
+        <p class="note">
+          <b>Stored contract wages</b> = same maths as Close Finances (each player's contract wage; wage % only where none is stored).
+          Use this after squad changes.<br>
+          <b>Current wage %</b> = reprice every player at today's Wage % × market value, for this season's bill only.
+          Stored contract wages are not overwritten. Use this after changing Wage %.
+        </p>
+        <p class="note">
+          End-of-season debt interest and balance interest can be corrected too. FFP is never changed automatically;
+          clubs whose FFP result would change are flagged.
+          SQL (once): <code>supabase/sql/patches/season_upkeep_resettle_20260928.sql</code>
+        </p>
+        <div class="row" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+          <div>
+            <label for="upkeepDivision">Division</label>
+            <select id="upkeepDivision">
+              <option value="">All divisions</option>
+              <option value="superleague">SuperLeague</option>
+              <option value="championship_a">Championship A</option>
+              <option value="championship_b">Championship B</option>
+            </select>
+          </div>
+          <div>
+            <label for="upkeepBasis">Wage basis</label>
+            <select id="upkeepBasis">
+              <option value="contract">Stored contract wages</option>
+              <option value="wage_pct">Current wage %</option>
+            </select>
+          </div>
+          <label style="display:flex;gap:6px;align-items:center;">
+            <input type="checkbox" id="upkeepInterest" checked>
+            Also correct end-of-season interest
+          </label>
+          <button type="button" id="upkeepPreviewBtn" class="button">Preview</button>
+          <button type="button" id="upkeepApplyBtn" class="button" style="background:#446633;" disabled>Apply</button>
+        </div>
+        <div id="upkeepStatus" class="status-line"></div>
+        <div id="upkeepResult" style="overflow-x:auto;"></div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_wage_bills.js?v=20260721-ffp50"></script>
+  <script type="module" src="admin_wage_bills.js?v=20260928-resettle"></script>
 </body>
 </html>

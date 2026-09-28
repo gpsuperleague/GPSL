@@ -10,7 +10,137 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadCurrentSeasonId();
   document.getElementById("closeFinancesBtn").onclick = closeFinances;
   document.getElementById("postWageBillsBtn").onclick = postSeasonWageBills;
+
+  document.getElementById("upkeepPreviewBtn").onclick = () => runUpkeepResettle(true);
+  document.getElementById("upkeepApplyBtn").onclick = () => runUpkeepResettle(false);
+  for (const id of ["upkeepDivision", "upkeepBasis", "upkeepInterest"]) {
+    document.getElementById(id).onchange = () => {
+      document.getElementById("upkeepApplyBtn").disabled = true;
+    };
+  }
 });
+
+function formatB(n) {
+  const v = Number(n) || 0;
+  const abs = Math.abs(v).toLocaleString("en-GB", { maximumFractionDigits: 0 });
+  return (v < 0 ? "−₿" : "₿") + abs;
+}
+
+function signedB(n) {
+  const v = Number(n) || 0;
+  if (Math.abs(v) < 0.5) return "—";
+  return (v > 0 ? "+" : "") + formatB(v);
+}
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function runUpkeepResettle(dryRun) {
+  if (!currentSeasonId) {
+    setStatus("upkeepStatus", "No current season.", false);
+    return;
+  }
+  const division = document.getElementById("upkeepDivision").value || null;
+  const basis = document.getElementById("upkeepBasis").value;
+  const trueUp = document.getElementById("upkeepInterest").checked;
+  const applyBtn = document.getElementById("upkeepApplyBtn");
+
+  if (!dryRun) {
+    const ok = confirm(
+      "Post wage / upkeep differences to club balances now?\n\n" +
+        (basis === "wage_pct"
+          ? "Player wages will be repriced at the CURRENT wage % for this season's bill.\n"
+          : "Player wages use stored contract wages (same as Close Finances).\n") +
+        (trueUp ? "End-of-season interest will also be corrected.\n" : "") +
+        "FFP is not changed. Safe to re-run."
+    );
+    if (!ok) return;
+  }
+
+  setStatus("upkeepStatus", dryRun ? "Previewing…" : "Applying…");
+  applyBtn.disabled = true;
+
+  const { data, error } = await supabase.rpc("competition_admin_resettle_season_upkeep", {
+    p_season_id: currentSeasonId,
+    p_division: division,
+    p_dry_run: dryRun,
+    p_true_up_interest: trueUp,
+    p_wage_basis: basis,
+  });
+
+  if (error) {
+    setStatus(
+      "upkeepStatus",
+      error.message.includes("competition_admin_resettle_season_upkeep")
+        ? "Run supabase/sql/patches/season_upkeep_resettle_20260928.sql first."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+
+  renderUpkeepResettle(data);
+  const n = Number(data?.clubs_changed || 0);
+  const totals = `upkeep ${signedB(data.total_upkeep_delta)}, interest ${signedB(data.total_interest_delta)}`;
+  if (dryRun) {
+    setStatus(
+      "upkeepStatus",
+      n
+        ? `Preview: ${n} club(s) change — ${totals} (club cash effect). Check the table, then Apply.`
+        : "Nothing to re-settle — posted charges already match (or Close Finances has not run).",
+      true
+    );
+    applyBtn.disabled = n === 0;
+  } else {
+    setStatus("upkeepStatus", `✅ Applied to ${n} club(s) — ${totals}.`, true);
+  }
+}
+
+function renderUpkeepResettle(data) {
+  const el = document.getElementById("upkeepResult");
+  const rows = Array.isArray(data?.rows) ? data.rows : [];
+  if (!rows.length) {
+    el.innerHTML = "";
+    return;
+  }
+  const divShort = { superleague: "SL", championship_a: "ChA", championship_b: "ChB" };
+  const color = (n) => (Number(n) >= 0 ? "#8d8" : "#f88");
+  el.innerHTML = `
+    <table class="admin-table" style="width:100%;margin-top:10px;font-size:12px;">
+      <thead>
+        <tr>
+          <th>Club</th><th>Div</th><th>Changes (old → new)</th>
+          <th>Upkeep effect</th><th>Interest effect</th><th>Net effect</th><th>Review</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (r) => `<tr>
+          <td>${escapeHtml(r.club)}</td>
+          <td>${escapeHtml(divShort[r.division] || r.division)}</td>
+          <td style="white-space:normal;">${(r.lines || [])
+            .map(
+              (l) =>
+                `${escapeHtml(l.label)}: ${formatB(l.old)} → ${formatB(l.new)} ` +
+                `<span style="color:${color(l.club_effect)}">(${signedB(l.club_effect)})</span>`
+            )
+            .join("<br>")}</td>
+          <td style="color:${color(r.upkeep_delta)}">${signedB(r.upkeep_delta)}</td>
+          <td>${signedB(r.interest_delta)}</td>
+          <td style="color:${color(r.net_effect)}">${signedB(r.net_effect)}</td>
+          <td style="color:#fc9;white-space:normal;">${(r.flags || []).map(escapeHtml).join("<br>")}</td>
+        </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>`;
+}
 
 async function loadCurrentSeasonId() {
   const { data } = await supabase
