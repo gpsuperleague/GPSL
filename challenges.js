@@ -152,8 +152,10 @@ function fallbackPackHtml(p) {
   const disc = (pack.fee_discounts || []).map((n) => `${n}%`).join(", ") || "—";
   const appeals = pack.appeal_cards ?? 0;
   const drafts = pack.draft_tokens ?? 0;
-  return `Cash ${formatMoney(Number(p.cash_amount || 0))} · Medical: ${med} ·
-    Transfer discounts: ${disc} · Appeal cards: ${appeals} · Draft tokens: ${drafts}`;
+  const credits = Number(pack.owner_credits || 0);
+  return `Cash ${formatMoney(Number(p.cash_amount || 0))}` +
+    (credits > 0 ? ` · Owner credits ${formatMoney(credits)}` : "") +
+    ` · Medical: ${med} · Transfer discounts: ${disc} · Appeal cards: ${appeals} · Draft tokens: ${drafts}`;
 }
 
 function renderBigPrizeCard(pack, winner, windowOpen) {
@@ -179,7 +181,13 @@ function renderBigPrizeCard(pack, winner, windowOpen) {
     </div>`;
   } else {
     statusHtml = `<div class="prize-status-open">
-      Still available — first club to complete all ${phaseName} challenges wins.
+      Still available — first club to complete ${
+        pack.required_to_win && pack.active_challenges
+          ? `${pack.required_to_win} of the ${pack.active_challenges}`
+          : pack.required_to_win
+            ? pack.required_to_win
+            : "all"
+      } ${phaseName} challenges wins.
     </div>`;
   }
 

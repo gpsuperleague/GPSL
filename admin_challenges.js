@@ -8,6 +8,8 @@ const CHALLENGE_MONEY_IDS = [
   "challengePeriodBonus",
   "packStartCash",
   "packMidCash",
+  "packStartCredits",
+  "packMidCredits",
   "challengePrize",
 ];
 
@@ -173,6 +175,7 @@ function fillPackFields(phase, row) {
       (phase === "start" ? "Start of Season Challenge Prize" : "Mid-Season Challenge Prize");
   }
   setMoneyInput(`${prefix}Cash`, row?.cash_amount ?? 0);
+  setMoneyInput(`${prefix}Credits`, pack.owner_credits ?? 0);
   document.getElementById(`${prefix}Medical`).value = (pack.medical_tokens || []).join(",");
   document.getElementById(`${prefix}Discount`).value = (pack.fee_discounts || []).join(",");
   document.getElementById(`${prefix}Appeals`).value = pack.appeal_cards ?? 0;
@@ -206,6 +209,7 @@ function packPayload(phase) {
       fee_discounts: parseIntList(document.getElementById(`${prefix}Discount`).value).filter((n) => n <= 50),
       appeal_cards: Math.max(0, Number(document.getElementById(`${prefix}Appeals`).value) || 0),
       draft_tokens: Math.max(0, Number(document.getElementById(`${prefix}Draft`)?.value) || 0),
+      owner_credits: Math.max(0, readMoneyInput(`${prefix}Credits`)),
     },
   };
 }
@@ -221,7 +225,7 @@ async function saveChallengePacks() {
   }
   setStatus(
     "challengePacksStatus",
-    "✅ Big prize packs saved — first club to finish all challenges in a window gets this automatically.",
+    "✅ Big prize packs saved — first club to complete the number needed in a window gets this automatically.",
     true
   );
 }
@@ -315,6 +319,10 @@ async function loadChallengeDefaults() {
   }
   setMoneyInput("challengeDefaultPrize", data.challenge_default_prize ?? 1000000);
   setMoneyInput("challengePeriodBonus", data.challenge_period_bonus ?? 5000000);
+  const maxEl = document.getElementById("challengeMaxPerWindow");
+  if (maxEl) maxEl.value = data.challenge_max_per_window ?? 10;
+  const reqEl = document.getElementById("challengeBigPrizeRequired");
+  if (reqEl) reqEl.value = data.challenge_big_prize_required ?? 5;
   const prizeEl = document.getElementById("challengePrize");
   if (prizeEl && !String(prizeEl.value || "").trim()) {
     setMoneyInput("challengePrize", data.challenge_default_prize ?? 1000000);
@@ -327,6 +335,8 @@ async function saveChallengeDefaults() {
     p_settings: {
       challenge_default_prize: readMoneyInput("challengeDefaultPrize"),
       challenge_period_bonus: readMoneyInput("challengePeriodBonus"),
+      challenge_max_per_window: Number(document.getElementById("challengeMaxPerWindow")?.value) || null,
+      challenge_big_prize_required: Number(document.getElementById("challengeBigPrizeRequired")?.value) || null,
     },
   });
   if (error) {
@@ -510,7 +520,7 @@ async function loadChallengeProgressBoard() {
           }
           return `<div class="challenge-admin-item" style="display:block;">
             <b>${name}</b>
-            <div class="note" style="margin:6px 0 0;color:#fc6;">Still available — nobody has finished all ${b.window_phase} challenges yet.</div>
+            <div class="note" style="margin:6px 0 0;color:#fc6;">Still available — nobody has completed enough ${b.window_phase} challenges yet.</div>
             ${b.pack_summary ? `<div class="note" style="margin-top:4px;">${b.pack_summary}</div>` : ""}
           </div>`;
         })

@@ -68,7 +68,7 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <h2>Defaults</h2>
-        <p class="note">Each club earns the per-challenge prize when a target is met. The <b>first club to complete all challenges</b> in a window (e.g. all 5 Start targets) automatically wins the <b>big prize pack</b> below — cash, medical tokens, transfer fee discounts, and red-card appeal cards. That club is paid instantly, items go to Club prizes, and every owner gets an inbox announcement (plus Discord if the news feed is live).
+        <p class="note">Each club earns the per-challenge prize when a target is met. Set up to the <b>max per window</b> (default 10) Start and Mid challenges; the <b>first club to complete the number needed</b> (default 5) in a window automatically wins the <b>big prize pack</b> below — cash, owner credits, medical tokens, transfer fee discounts, appeal cards and draft tokens. If fewer challenges are set than the number needed, all of them must be completed. That club is paid instantly, items go to Club prizes, and every owner gets an inbox announcement (plus Discord if the news feed is live).
           <b>Start</b> = June–December. <b>Mid</b> = January–May.</p>
         <div class="row gov-subsidy-row">
           <div>
@@ -79,16 +79,25 @@
             <label>Legacy period bonus (fallback)</label>
             <input type="text" id="challengePeriodBonus" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;">
           </div>
+          <div>
+            <label>Max challenges per window</label>
+            <input type="number" id="challengeMaxPerWindow" min="1" max="50" step="1" value="10" style="width:80px;">
+          </div>
+          <div>
+            <label>Completions needed for big prize</label>
+            <input type="number" id="challengeBigPrizeRequired" min="1" max="50" step="1" value="5" style="width:80px;">
+          </div>
         </div>
         <button type="button" id="saveChallengeDefaultsBtn" class="button">Save defaults</button>
         <div id="challengeDefaultsStatus" class="status-line"></div>
 
-        <h3 style="margin-top:18px;">Big prize pack (first to finish all challenges)</h3>
+        <h3 style="margin-top:18px;">Big prize pack (first to complete the number needed)</h3>
         <p class="note">
           Set this before clubs finish the set. Separate Start / Mid pots.
           Medical tokens: 2,4,6,8,10 matches (Medical room). Fee discounts: % off what the <b>buyer</b> pays (seller still gets full fee; bank tops up). Appeal cards: red-card overturn requests (<a href="admin_prize_appeals.html">admin review</a>).
           <b>Draft tokens</b>: sign any uncontracted player at market value (Club prizes); if squad is full (28), release a player at MV first.
-          Save packs, then use <b>Recheck all clubs</b> if someone already completed all targets.
+          <b>Owner credits</b>: ₿ paid into the winning club owner's personal Building Society wallet (not the club balance).
+          Save packs, then use <b>Recheck all clubs</b> if someone has already completed enough targets.
         </p>
         <div class="row gov-subsidy-row" style="align-items:flex-start;">
           <div style="flex:1;min-width:240px;">
@@ -97,6 +106,8 @@
             <input type="text" id="packStartName" placeholder="Start of Season Challenge Prize" style="width:220px;"><br>
             <label>Cash ₿</label>
             <input type="text" id="packStartCash" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;"><br>
+            <label>Owner credits ₿ (Building Society)</label>
+            <input type="text" id="packStartCredits" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;"><br>
             <label>Medical tokens (comma, e.g. 4,6)</label>
             <input type="text" id="packStartMedical" placeholder="4,6" style="width:160px;"><br>
             <label>Fee discounts % (comma, e.g. 10,15)</label>
@@ -112,6 +123,8 @@
             <input type="text" id="packMidName" placeholder="Mid-Season Challenge Prize" style="width:220px;"><br>
             <label>Cash ₿</label>
             <input type="text" id="packMidCash" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;"><br>
+            <label>Owner credits ₿ (Building Society)</label>
+            <input type="text" id="packMidCredits" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;"><br>
             <label>Medical tokens (comma)</label>
             <input type="text" id="packMidMedical" placeholder="2,4" style="width:160px;"><br>
             <label>Fee discounts % (comma)</label>
@@ -300,6 +313,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_challenges.js?v=20260811-chal-tpl"></script>
+  <script type="module" src="admin_challenges.js?v=20260928-owner-credits"></script>
 </body>
 </html>

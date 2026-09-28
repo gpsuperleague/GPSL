@@ -177,7 +177,7 @@ export const STADIUM_TIPS = {
 
 export const REWARDS_TIPS = {
   page:
-    "Tokens and cards from challenge period bonuses (first club to finish all Start or Mid targets). Spend here, in Medical Room, Squad Action, or Special Auction.",
+    "Tokens and cards from challenge period bonuses (first club to complete the required Start or Mid targets). Spend here, in Medical Room, Squad Action, or Special Auction.",
   inventory:
     "Your prize items and status (available, locked, or pending appeal). Empty until you win a period bonus.",
   discount:
@@ -194,7 +194,7 @@ export const CHALLENGES_TIPS = {
   page:
     "Hit each target for cash when the result is confirmed. First club to finish every challenge in a window wins the big prize pack (auto to Rewards Centre + inbox).",
   bigPrize:
-    "First to complete all Start or Mid challenges wins that pack (cash, medical tokens, fee discounts, appeal cards, draft tokens). Stays claimable until the latest deadline in that phase.",
+    "First club to complete the required number of Start or Mid challenges (e.g. 5 of up to 10) wins that pack (cash, owner credits, medical tokens, fee discounts, appeal cards, draft tokens). Stays claimable until the latest deadline in that phase.",
   catalog:
     "Each card is a seasonal target (stat ≥ value in the GPSL month range) with a cash prize. Progress is tracked for your club.",
   standings:

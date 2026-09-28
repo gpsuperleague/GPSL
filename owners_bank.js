@@ -8,6 +8,7 @@ const TYPE_LABELS = {
   bookies_income: "Bookies win",
   shop_purchase: "Owners Shop",
   gpfl_prize: "GPFL prize",
+  challenge_prize: "Challenge big prize",
   admin_credit: "Admin credit",
   admin_debit: "Admin debit",
 };
