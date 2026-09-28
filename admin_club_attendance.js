@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("seedFromRankBtn").onclick = copyCurrentRankToSeed;
   document.getElementById("saveSeedBtn").onclick = saveSeedOrder;
   document.getElementById("applySeedFillBtn").onclick = applySeedToStartFill;
+  document.getElementById("applyFlatStartFillBtn").onclick = applyFlatStartFill;
   document.getElementById("filterTier").onchange = renderTable;
   document.getElementById("filterBand").onchange = renderTable;
 
@@ -454,6 +455,45 @@ async function applySeedToStartFill() {
   setStatus(
     "pageStatus",
     `✅ Updated start/display fill for ${data?.clubs_updated ?? 0} club(s).`,
+    true
+  );
+  await loadTable();
+}
+
+async function applyFlatStartFill() {
+  const pct = Number(document.getElementById("flatStartFillPct")?.value);
+  if (!Number.isFinite(pct)) {
+    setStatus("pageStatus", "Enter a start fill %.", false);
+    return;
+  }
+  if (
+    !confirm(
+      `Set every club's start and display fill to ${pct}%?\n\n` +
+        "Use in pre-season before Start season. Each GPSL month it then drifts toward the club's target (prestige ± performance) as normal.\n" +
+        "Don't press \"Apply seed to start fill\" afterwards — that replaces it."
+    )
+  ) {
+    return;
+  }
+
+  setStatus("pageStatus", `Setting all clubs to ${pct}% start fill…`);
+  const { data, error } = await supabase.rpc("admin_stadium_set_flat_start_fill", { p_pct: pct });
+
+  if (error) {
+    setStatus(
+      "pageStatus",
+      "❌ " + error.message +
+        (/admin_stadium_set_flat_start_fill/.test(error.message)
+          ? " — run patches/stadium_flat_start_fill_20260928.sql first."
+          : ""),
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "pageStatus",
+    `✅ ${data?.clubs_updated ?? 0} club(s) now start at ${data?.start_fill_pct ?? pct}%.`,
     true
   );
   await loadTable();

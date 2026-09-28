@@ -126,6 +126,14 @@
               </button>
               <span class="att-btn-hint">Refresh Start % / Base % from saved seed.</span>
             </div>
+            <div class="att-btn">
+              <input type="number" id="flatStartFillPct" value="90" min="0" max="115" step="1" style="width:64px;" aria-label="Flat start fill %">
+              <button type="button" id="applyFlatStartFillBtn" class="button"
+                title="Sets every club's Start % and Display % to the same value. Monthly drift toward each club's target then works as normal.">
+                Set all clubs' start fill
+              </button>
+              <span class="att-btn-hint">Pre-season only, before Start season. Then drifts monthly toward each club's target.</span>
+            </div>
           </div>
         </div>
         <div class="att-btn-group">
@@ -192,6 +200,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_attendance.js?v=20260804-stadium-overview-fast"></script>
+  <script type="module" src="admin_club_attendance.js?v=20260928-flat-start-fill"></script>
 </body>
 </html>
