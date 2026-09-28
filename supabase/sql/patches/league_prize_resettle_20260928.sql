@@ -112,7 +112,7 @@ BEGIN
         'delta', 0,
         'interest_delta', 0,
         'net_effect', 0,
-        'flags', to_jsonb(ARRAY['Skipped — new prize for this position is ₿0 (set at least ₿1)'])
+        'flags', jsonb_build_array('Skipped — new prize for this position is ₿0 (set at least ₿1)'::text)
       );
       CONTINUE;
     END IF;
@@ -174,7 +174,7 @@ BEGIN
         v_snap := nullif(v_charge.metadata ->> 'balance_snapshot', '')::numeric;
         v_rate := nullif(v_charge.metadata ->> 'rate_pct', '')::numeric;
         IF v_snap IS NULL OR v_rate IS NULL THEN
-          v_flags := v_flags || format('%s has no balance snapshot — not trued up', v_charge.charge_type);
+          v_flags := array_append(v_flags, format('%s has no balance snapshot — not trued up', v_charge.charge_type));
           CONTINUE;
         END IF;
 
@@ -186,13 +186,13 @@ BEGIN
           -- Debt interest is a cost: more interest = more negative for the club
           v_interest_delta := v_interest_delta - (v_new_interest - v_charge.amount);
           IF v_new_snap >= 0 THEN
-            v_flags := v_flags || 'Now in credit at close — balance interest not added automatically';
+            v_flags := array_append(v_flags, 'Now in credit at close — balance interest not added automatically'::text);
           END IF;
         ELSE
           v_new_interest := round(greatest(0, v_new_snap) * v_rate / 100.0, 0);
           v_interest_delta := v_interest_delta + (v_new_interest - v_charge.amount);
           IF v_new_snap < 0 THEN
-            v_flags := v_flags || 'Now overdrawn at close — debt interest not added automatically';
+            v_flags := array_append(v_flags, 'Now overdrawn at close — debt interest not added automatically'::text);
           END IF;
         END IF;
 
@@ -263,9 +263,9 @@ BEGIN
         v_new_snap := CASE WHEN p_dry_run THEN v_snap + v_delta ELSE v_snap END;
         v_new_snap := v_new_snap - coalesce(v_debt_interest_new, 0);
         IF v_has_ffp AND v_new_snap > -v_ffp_threshold THEN
-          v_flags := v_flags || 'FFP was charged but would no longer trigger — review manually';
+          v_flags := array_append(v_flags, 'FFP was charged but would no longer trigger — review manually'::text);
         ELSIF NOT v_has_ffp AND v_new_snap <= -v_ffp_threshold THEN
-          v_flags := v_flags || 'FFP was not charged but would now trigger — review manually';
+          v_flags := array_append(v_flags, 'FFP was not charged but would now trigger — review manually'::text);
         END IF;
       END IF;
     END IF;
