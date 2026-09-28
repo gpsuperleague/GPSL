@@ -24,7 +24,7 @@
       border-collapse: collapse;
       font-size: 13px;
     }
-    .targets-table { min-width: 980px; }
+    .targets-table { min-width: 1200px; }
     .expectancy-table { min-width: 720px; }
     .targets-table th, .targets-table td,
     .expectancy-table th, .expectancy-table td {
@@ -102,6 +102,17 @@
           What each manager rating must achieve in their club's division.
           Hit target → 2-year renewal. Miss → released for market value.
         </p>
+        <p class="section-note">
+          <b>Cup target (optional):</b> if the league target is missed by no more than the places below
+          (and the club isn't relegated), reaching this cup stage still counts as a hit.
+          Ignored if that cup isn't drawn this season or the club isn't in it. "Avoid relegation" misses are never rescued.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+          <label for="cupRescuePlaces" class="section-note" style="margin:0;">Slight miss allowance (places)</label>
+          <input type="number" id="cupRescuePlaces" min="0" max="10" step="1" style="width:4.5em;background:#222;color:#ddd;border:1px solid #444;padding:6px 8px;border-radius:4px;">
+          <button type="button" class="button" id="saveCupRescueBtn">Save</button>
+          <span id="cupRescueStatus" class="section-note" style="margin:0;"></span>
+        </div>
         <button type="button" class="button" id="addRowBtn">Add rule</button>
         <div class="table-scroll">
         <table class="targets-table">
@@ -113,6 +124,8 @@
               <th>Target kind</th>
               <th>Position</th>
               <th>Label</th>
+              <th>Cup</th>
+              <th>Cup stage</th>
               <th>Order</th>
               <th class="col-actions">Actions</th>
             </tr>
@@ -151,6 +164,6 @@
       </section>
     </div>
   </div>
-  <script type="module" src="admin_manager_targets.js?v=5"></script>
+  <script type="module" src="admin_manager_targets.js?v=20260928-cup-targets"></script>
 </body>
 </html>

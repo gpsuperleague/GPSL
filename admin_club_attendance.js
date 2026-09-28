@@ -19,9 +19,146 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("applyFlatStartFillBtn").onclick = applyFlatStartFill;
   document.getElementById("filterTier").onchange = renderTable;
   document.getElementById("filterBand").onchange = renderTable;
+  document.getElementById("addCupTargetBtn").onclick = addCupTargetRow;
 
-  await loadTable();
+  await Promise.all([loadTable(), loadCupTargets()]);
 });
+
+const CUP_OPTIONS = [
+  ["league_cup", "League Cup"],
+  ["super8", "Super8"],
+  ["plate", "Plate"],
+  ["shield", "Shield"],
+  ["bowl", "Bowl"],
+];
+const CUP_STAGE_OPTIONS = [
+  ["r16", "Last 16"],
+  ["qf", "Quarter-final"],
+  ["sf", "Semi-final"],
+  ["final", "Final"],
+  ["win", "Win"],
+];
+
+/** @type {Array<Record<string, unknown>>} */
+let cupTargetRows = [];
+
+function escAttr(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function cupOptionList(pairs, selected) {
+  return pairs
+    .map(([v, l]) => `<option value="${v}" ${selected === v ? "selected" : ""}>${l}</option>`)
+    .join("");
+}
+
+async function loadCupTargets() {
+  const { data, error } = await supabase
+    .from("club_prestige_cup_targets")
+    .select("*")
+    .order("sort_order")
+    .order("min_rank");
+  if (error) {
+    setStatus(
+      "cupTargetsStatus",
+      "❌ " + error.message + " — run supabase/sql/patches/cup_targets_manager_club_20260928.sql",
+      false
+    );
+    return;
+  }
+  cupTargetRows = data || [];
+  renderCupTargets();
+}
+
+function renderCupTargets() {
+  const body = document.getElementById("cupTargetsBody");
+  if (!body) return;
+  if (!cupTargetRows.length) {
+    body.innerHTML = `<tr><td colspan="7" class="note">No club cup targets yet.</td></tr>`;
+    return;
+  }
+  body.innerHTML = cupTargetRows
+    .map(
+      (r, idx) => `<tr data-idx="${idx}">
+        <td><input type="number" class="ct-min" min="1" max="99" value="${r.min_rank ?? 1}" style="width:60px;"></td>
+        <td><input type="number" class="ct-max" min="1" max="99" value="${r.max_rank ?? 1}" style="width:60px;"></td>
+        <td><select class="ct-cup">${cupOptionList(CUP_OPTIONS, r.cup_code)}</select></td>
+        <td><select class="ct-stage">${cupOptionList(CUP_STAGE_OPTIONS, r.cup_stage)}</select></td>
+        <td><input type="text" class="ct-label" value="${escAttr(r.label ?? "")}" placeholder="Auto" style="width:200px;"></td>
+        <td><input type="number" class="ct-order" value="${r.sort_order ?? 0}" style="width:50px;"></td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="button ct-save">Save</button>
+          <button type="button" class="button ct-del">Delete</button>
+        </td>
+      </tr>`
+    )
+    .join("");
+
+  body.querySelectorAll(".ct-save").forEach((btn) => {
+    btn.onclick = () => saveCupTargetRow(btn.closest("tr"));
+  });
+  body.querySelectorAll(".ct-del").forEach((btn) => {
+    btn.onclick = () => deleteCupTargetRow(btn.closest("tr"));
+  });
+}
+
+function addCupTargetRow() {
+  cupTargetRows.push({
+    min_rank: 1,
+    max_rank: 4,
+    cup_code: "league_cup",
+    cup_stage: "sf",
+    label: "",
+    sort_order: cupTargetRows.length + 1,
+  });
+  renderCupTargets();
+}
+
+async function saveCupTargetRow(tr) {
+  const idx = Number(tr.dataset.idx);
+  const payload = {
+    id: cupTargetRows[idx]?.id ?? null,
+    min_rank: Number(tr.querySelector(".ct-min").value),
+    max_rank: Number(tr.querySelector(".ct-max").value),
+    cup_code: tr.querySelector(".ct-cup").value,
+    cup_stage: tr.querySelector(".ct-stage").value,
+    label: tr.querySelector(".ct-label").value,
+    sort_order: Number(tr.querySelector(".ct-order").value) || 0,
+  };
+  if (!(payload.min_rank >= 1) || payload.max_rank < payload.min_rank) {
+    setStatus("cupTargetsStatus", "Rank range is invalid (from must be ≥ 1 and ≤ to).", false);
+    return;
+  }
+  const { error } = await supabase.rpc("admin_upsert_club_cup_target", { p_payload: payload });
+  if (error) {
+    setStatus("cupTargetsStatus", "❌ " + error.message, false);
+    return;
+  }
+  setStatus("cupTargetsStatus", "✅ Cup target saved.", true);
+  await loadCupTargets();
+}
+
+async function deleteCupTargetRow(tr) {
+  const idx = Number(tr.dataset.idx);
+  const row = cupTargetRows[idx];
+  if (!row?.id) {
+    cupTargetRows.splice(idx, 1);
+    renderCupTargets();
+    return;
+  }
+  if (!confirm("Delete this club cup target?")) return;
+  const { error } = await supabase.rpc("admin_delete_club_cup_target", { p_id: row.id });
+  if (error) {
+    setStatus("cupTargetsStatus", "❌ " + error.message, false);
+    return;
+  }
+  setStatus("cupTargetsStatus", "✅ Cup target deleted.", true);
+  await loadCupTargets();
+}
 
 function formatLastSeasons(json) {
   if (!json || !Array.isArray(json) || !json.length) return "—";

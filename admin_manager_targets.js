@@ -4,6 +4,28 @@ primeAdminPageChrome();
 
 const DIVISIONS = ["superleague", "championship_a", "championship_b"];
 const KINDS = ["max_position", "promotion", "avoid_relegation"];
+const CUPS = [
+  ["", "— none —"],
+  ["league_cup", "League Cup"],
+  ["super8", "Super8"],
+  ["plate", "Plate"],
+  ["shield", "Shield"],
+  ["bowl", "Bowl"],
+];
+const CUP_STAGES = [
+  ["", "—"],
+  ["r16", "Last 16"],
+  ["qf", "Quarter-final"],
+  ["sf", "Semi-final"],
+  ["final", "Final"],
+  ["win", "Win"],
+];
+
+function optionList(pairs, selected) {
+  return pairs
+    .map(([v, l]) => `<option value="${v}" ${(selected || "") === v ? "selected" : ""}>${l}</option>`)
+    .join("");
+}
 
 let targetRows = [];
 let chartRows = [];
@@ -29,6 +51,8 @@ function renderTargets() {
       <td><select class="target_kind">${KINDS.map((k) => `<option value="${k}" ${r.target_kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></td>
       <td><input type="number" class="target_value inp-num" value="${r.target_value ?? ""}" placeholder="—"></td>
       <td class="col-label"><input type="text" class="label" value="${escapeHtml(r.label ?? "")}"></td>
+      <td><select class="cup_code">${optionList(CUPS, r.cup_code)}</select></td>
+      <td><select class="cup_stage">${optionList(CUP_STAGES, r.cup_stage)}</select></td>
       <td><input type="number" class="sort_order inp-order" value="${r.sort_order ?? 0}"></td>
       <td class="col-actions">
         <div class="row-actions">
@@ -46,11 +70,31 @@ function renderTargets() {
       const idx = Number(tr.dataset.idx);
       const payload = readTargetRow(tr);
       payload.id = targetRows[idx].id;
-      const { error } = await supabase.rpc("admin_upsert_manager_rating_target", {
+      const cupCode = tr.querySelector(".cup_code").value || null;
+      const cupStage = tr.querySelector(".cup_stage").value || null;
+      if (!cupCode !== !cupStage) {
+        setError("Choose both a cup and a cup stage, or neither.");
+        return;
+      }
+      const { data, error } = await supabase.rpc("admin_upsert_manager_rating_target", {
         p_payload: payload,
       });
-      setError(error?.message);
-      if (!error) await loadTargetRows();
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      const id = data?.id ?? payload.id;
+      const { error: cupErr } = await supabase.rpc("admin_set_manager_target_cup", {
+        p_id: id,
+        p_cup_code: cupCode,
+        p_cup_stage: cupStage,
+      });
+      setError(
+        cupErr
+          ? cupErr.message + " — run supabase/sql/patches/cup_targets_manager_club_20260928.sql"
+          : ""
+      );
+      await loadTargetRows();
     });
   });
 
@@ -205,5 +249,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderTargets();
   });
 
-  await Promise.all([loadTargetRows(), loadChartRows()]);
+  document.getElementById("saveCupRescueBtn")?.addEventListener("click", saveCupRescuePlaces);
+
+  await Promise.all([loadTargetRows(), loadChartRows(), loadCupRescuePlaces()]);
 });
+
+async function loadCupRescuePlaces() {
+  const { data } = await supabase
+    .from("global_settings")
+    .select("manager_cup_rescue_places")
+    .eq("id", 1)
+    .maybeSingle();
+  const el = document.getElementById("cupRescuePlaces");
+  if (el) el.value = data?.manager_cup_rescue_places ?? 2;
+}
+
+async function saveCupRescuePlaces() {
+  const places = Number(document.getElementById("cupRescuePlaces")?.value);
+  const status = document.getElementById("cupRescueStatus");
+  const { error } = await supabase.rpc("admin_set_manager_cup_rescue_places", { p_places: places });
+  if (status) status.textContent = error ? "❌ " + error.message : "✅ Saved";
+}

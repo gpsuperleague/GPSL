@@ -198,8 +198,30 @@
         </div>
         <div id="tableWrap" class="att-table-wrap"></div>
       </div>
+
+      <div class="card">
+        <h2>Club cup targets (by prestige rank)</h2>
+        <p class="att-group-hint">
+          Alternative route for club season expectations. If a club finishes <b>slightly under</b> its league expectation
+          but reaches any cup target for its prestige rank, the season counts as <b>on target</b>
+          (no board fine or forced listing, and it counts as met for manager deal rules).
+          Bad / abysmal league seasons are never rescued. Stadium fill is not affected.
+          A target is ignored if that cup isn't drawn this season or the club isn't in it.
+          A club can match several rows — reaching any one is enough.
+        </p>
+        <button type="button" class="button" id="addCupTargetBtn">Add cup target</button>
+        <div class="att-table-wrap" style="max-height:none;margin-top:10px;">
+          <table class="att-table">
+            <thead>
+              <tr><th>Rank from</th><th>Rank to</th><th>Cup</th><th>Stage</th><th>Label (optional)</th><th>Order</th><th></th></tr>
+            </thead>
+            <tbody id="cupTargetsBody"></tbody>
+          </table>
+        </div>
+        <div id="cupTargetsStatus" class="status-line"></div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_club_attendance.js?v=20260928-flat-start-fill"></script>
+  <script type="module" src="admin_club_attendance.js?v=20260928-cup-targets"></script>
 </body>
 </html>
