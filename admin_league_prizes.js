@@ -41,7 +41,127 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadLeaguePrizeSettings();
   };
   syncCopyFromOptions();
+
+  document.getElementById("resettlePreviewBtn").onclick = () => runResettle(true);
+  document.getElementById("resettleApplyBtn").onclick = () => runResettle(false);
+  const invalidatePreview = () => {
+    document.getElementById("resettleApplyBtn").disabled = true;
+  };
+  document.getElementById("resettleDivision").onchange = invalidatePreview;
+  document.getElementById("resettleInterest").onchange = invalidatePreview;
+  document.getElementById("saveLeaguePrizesBtn").addEventListener("click", invalidatePreview);
 });
+
+function formatB(n) {
+  const v = Number(n) || 0;
+  const abs = Math.abs(v).toLocaleString("en-GB", { maximumFractionDigits: 0 });
+  return (v < 0 ? "−₿" : "₿") + abs;
+}
+
+function signedB(n) {
+  const v = Number(n) || 0;
+  if (Math.abs(v) < 0.5) return "—";
+  return (v > 0 ? "+" : "") + formatB(v);
+}
+
+async function runResettle(dryRun) {
+  if (!currentSeasonId) {
+    setStatus("resettleStatus", "No season selected.", false);
+    return;
+  }
+  const division = document.getElementById("resettleDivision").value || null;
+  const trueUp = document.getElementById("resettleInterest").checked;
+  const applyBtn = document.getElementById("resettleApplyBtn");
+
+  if (!dryRun) {
+    const ok = confirm(
+      "Post league prize differences to club balances now?\n\n" +
+        (trueUp ? "End-of-season interest will also be corrected.\n" : "") +
+        "FFP is not changed. Safe to re-run (differences become ₿0 once applied)."
+    );
+    if (!ok) return;
+  }
+
+  setStatus("resettleStatus", dryRun ? "Previewing…" : "Applying…");
+  applyBtn.disabled = true;
+
+  const { data, error } = await supabase.rpc("competition_admin_resettle_league_prizes", {
+    p_season_id: currentSeasonId,
+    p_division: division,
+    p_dry_run: dryRun,
+    p_true_up_interest: trueUp,
+  });
+
+  if (error) {
+    setStatus(
+      "resettleStatus",
+      error.message.includes("competition_admin_resettle_league_prizes")
+        ? "Run supabase/sql/patches/league_prize_resettle_20260928.sql first."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+
+  renderResettle(data);
+  const n = Number(data?.clubs_changed || 0);
+  if (dryRun) {
+    setStatus(
+      "resettleStatus",
+      n
+        ? `Preview: ${n} club(s) change — prizes ${signedB(data.total_prize_delta)}, interest ${signedB(
+            data.total_interest_delta
+          )}. Check the table, then Apply.`
+        : "Nothing to re-settle — paid amounts already match the prize table (or no division has been paid yet).",
+      true
+    );
+    applyBtn.disabled = n === 0;
+  } else {
+    setStatus(
+      "resettleStatus",
+      `✅ Applied to ${n} club(s) — prizes ${signedB(data.total_prize_delta)}, interest ${signedB(
+        data.total_interest_delta
+      )}.`,
+      true
+    );
+  }
+}
+
+function renderResettle(data) {
+  const el = document.getElementById("resettleResult");
+  const rows = Array.isArray(data?.rows) ? data.rows : [];
+  if (!rows.length) {
+    el.innerHTML = "";
+    return;
+  }
+  const divShort = { superleague: "SL", championship_a: "ChA", championship_b: "ChB" };
+  el.innerHTML = `
+    <table class="admin-table" style="width:100%;margin-top:10px;font-size:12px;">
+      <thead>
+        <tr>
+          <th>Club</th><th>Div</th><th>Pos</th>
+          <th>Paid</th><th>New</th><th>Prize diff</th><th>Interest diff</th><th>Net effect</th><th>Review</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (r) => `<tr>
+          <td>${escapeHtml(r.club)}</td>
+          <td>${escapeHtml(divShort[r.division] || r.division)}</td>
+          <td>${r.position}</td>
+          <td>${formatB(r.paid_amount)}</td>
+          <td>${formatB(r.new_amount)}</td>
+          <td style="color:${r.delta >= 0 ? "#8d8" : "#f88"}">${signedB(r.delta)}</td>
+          <td>${signedB(r.interest_delta)}</td>
+          <td style="color:${r.net_effect >= 0 ? "#8d8" : "#f88"}">${signedB(r.net_effect)}</td>
+          <td style="color:#fc9;white-space:normal;">${(r.flags || []).map(escapeHtml).join("<br>")}</td>
+        </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>`;
+}
 
 function escapeHtml(text) {
   return String(text ?? "")

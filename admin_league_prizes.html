@@ -77,8 +77,48 @@
         </div>
         <div id="leaguePrizeStatus" class="status-line"></div>
       </div>
+
+      <div class="card">
+        <h2>Re-settle paid prizes</h2>
+        <p class="note">
+          Prizes auto-pay when a division reaches 38/38, so changing the table afterwards does nothing on its own.
+          Save your new amounts above first, then <b>Preview</b> to see each club's difference
+          (new amount for the position they were paid for, minus what they got). <b>Apply</b> posts the
+          difference to each club's ledger and balance through the central bank.
+          Run this <b>before End Season</b>.
+        </p>
+        <p class="note">
+          If Close Finances has already run, tick the box to also correct the end-of-season debt interest or balance
+          interest, which were worked out on the old balance. FFP is never changed automatically
+          (it also triggers player releases). Clubs whose FFP result would change are flagged for you to review.
+          SQL (once): <code>supabase/sql/patches/league_prize_resettle_20260928.sql</code>
+        </p>
+        <div class="row">
+          <div>
+            <label for="resettleDivision">Division</label>
+            <select id="resettleDivision">
+              <option value="">All divisions</option>
+              <option value="superleague">SuperLeague</option>
+              <option value="championship_a">Championship A</option>
+              <option value="championship_b">Championship B</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <label style="display:flex;gap:6px;align-items:center;">
+              <input type="checkbox" id="resettleInterest" checked>
+              Also correct end-of-season interest
+            </label>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:8px;">
+            <button type="button" id="resettlePreviewBtn" class="button">Preview</button>
+            <button type="button" id="resettleApplyBtn" class="button" style="background:#446633;" disabled>Apply</button>
+          </div>
+        </div>
+        <div id="resettleStatus" class="status-line"></div>
+        <div id="resettleResult" style="overflow-x:auto;"></div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_league_prizes.js?v=20260925-prize-template"></script>
+  <script type="module" src="admin_league_prizes.js?v=20260928-resettle"></script>
 </body>
 </html>
