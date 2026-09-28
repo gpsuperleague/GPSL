@@ -147,6 +147,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("saveChallengeBtn").onclick = saveChallenge;
   document.getElementById("clearChallengeFormBtn").onclick = clearChallengeForm;
   document.getElementById("saveChallengeTemplateBtn").onclick = saveChallengeTemplate;
+  document.getElementById("tplEditAddStart").onclick = () => addTemplateEditorRow("start");
+  document.getElementById("tplEditAddMid").onclick = () => addTemplateEditorRow("mid");
+  document.getElementById("tplEditSave").onclick = saveTemplateEditor;
+  document.getElementById("tplEditCancel").onclick = closeTemplateEditor;
 
   syncWindowMonths();
   syncStatParamVisibility();
@@ -735,6 +739,7 @@ async function loadChallengeTemplates() {
         <div class="challenge-admin-actions">
           <button type="button" class="button tpl-apply-btn" data-id="${t.id}" data-phase="start" data-name="${encodeURIComponent(t.name || "")}" ${anyN ? "" : "disabled"}>Apply to Start</button>
           <button type="button" class="button tpl-apply-btn" data-id="${t.id}" data-phase="mid" data-name="${encodeURIComponent(t.name || "")}" ${anyN ? "" : "disabled"}>Apply to Mid</button>
+          <button type="button" class="button secondary tpl-edit-btn" data-id="${t.id}">Edit</button>
           <button type="button" class="button tpl-delete-btn" data-id="${t.id}">Delete</button>
         </div>
       </div>`;
@@ -752,6 +757,173 @@ async function loadChallengeTemplates() {
   list.querySelectorAll(".tpl-delete-btn").forEach((btn) => {
     btn.onclick = () => deleteChallengeTemplate(Number(btn.dataset.id));
   });
+  list.querySelectorAll(".tpl-edit-btn").forEach((btn) => {
+    btn.onclick = () => openTemplateEditor(Number(btn.dataset.id));
+  });
+}
+
+let tplEditId = null;
+let tplEditRows = [];
+
+function escHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function defaultMonths(phase) {
+  return phase === "mid"
+    ? { gpsl_month_from: "january", gpsl_month_to: "may" }
+    : { gpsl_month_from: "august", gpsl_month_to: "december" };
+}
+
+function statParamToText(param) {
+  if (param == null) return "";
+  return typeof param === "object" ? JSON.stringify(param) : String(param);
+}
+
+async function openTemplateEditor(templateId) {
+  const { data, error } = await supabase
+    .from("competition_challenge_templates")
+    .select("id, name, targets")
+    .eq("id", templateId)
+    .maybeSingle();
+  if (error || !data) {
+    setStatus("challengeTemplateStatus", "❌ " + (error?.message || "Template not found"), false);
+    return;
+  }
+  tplEditId = data.id;
+  tplEditRows = (Array.isArray(data.targets) ? data.targets : []).map((t) => ({ ...t }));
+  document.getElementById("tplEditName").value = data.name || "";
+  setStatus("tplEditStatus", "");
+  renderTemplateEditorRows();
+  const editor = document.getElementById("challengeTemplateEditor");
+  editor.hidden = false;
+  editor.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function closeTemplateEditor() {
+  tplEditId = null;
+  tplEditRows = [];
+  document.getElementById("challengeTemplateEditor").hidden = true;
+}
+
+function renderTemplateEditorRows() {
+  const body = document.getElementById("tplEditRows");
+  if (!body) return;
+  const statOptions = (selected) =>
+    Object.entries(STAT_LABELS)
+      .map(
+        ([k, label]) =>
+          `<option value="${k}" ${k === selected ? "selected" : ""}>${escHtml(label)}</option>`
+      )
+      .join("") +
+    (selected && !STAT_LABELS[selected]
+      ? `<option value="${escHtml(selected)}" selected>${escHtml(selected)}</option>`
+      : "");
+
+  body.innerHTML = tplEditRows.length
+    ? tplEditRows
+        .map((r, i) => {
+          const phase = r.window_phase === "mid" ? "mid" : "start";
+          const prize = Number(r.prize_amount);
+          return `<tr data-idx="${i}">
+            <td><select class="tpl-f" data-f="window_phase">
+              <option value="start" ${phase === "start" ? "selected" : ""}>Start</option>
+              <option value="mid" ${phase === "mid" ? "selected" : ""}>Mid</option>
+            </select></td>
+            <td><input type="text" class="tpl-f" data-f="title" value="${escHtml(r.title)}" style="width:180px;"></td>
+            <td><select class="tpl-f" data-f="stat_type">${statOptions(r.stat_type)}</select></td>
+            <td><input type="text" class="tpl-f" data-f="stat_param" value="${escHtml(statParamToText(r.stat_param))}" style="width:160px;"></td>
+            <td><input type="number" class="tpl-f" data-f="target_value" min="1" step="1" value="${escHtml(r.target_value ?? 1)}" style="width:70px;"></td>
+            <td><input type="text" class="tpl-f" data-f="prize_amount" inputmode="numeric" value="${Number.isFinite(prize) && prize > 0 ? formatMoneyInput(prize) : ""}" style="width:110px;"></td>
+            <td style="text-align:center;"><input type="checkbox" class="tpl-f" data-f="is_active" ${r.is_active === false ? "" : "checked"}></td>
+            <td><button type="button" class="button secondary tpl-row-del">Remove</button></td>
+          </tr>`;
+        })
+        .join("")
+    : `<tr><td colspan="8" class="note">No targets — add one below.</td></tr>`;
+
+  body.querySelectorAll(".tpl-f").forEach((el) => {
+    const evt = el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(evt, () => {
+      const idx = Number(el.closest("tr").dataset.idx);
+      const row = tplEditRows[idx];
+      if (!row) return;
+      const f = el.dataset.f;
+      if (f === "is_active") row.is_active = el.checked;
+      else if (f === "target_value") row.target_value = Number(el.value) || 0;
+      else if (f === "prize_amount") row.prize_amount = parseMoneyInput(el.value) || null;
+      else if (f === "window_phase") {
+        row.window_phase = el.value;
+        Object.assign(row, defaultMonths(el.value));
+      } else row[f] = el.value;
+    });
+  });
+  body.querySelectorAll(".tpl-row-del").forEach((btn) => {
+    btn.onclick = () => {
+      tplEditRows.splice(Number(btn.closest("tr").dataset.idx), 1);
+      renderTemplateEditorRows();
+    };
+  });
+}
+
+function addTemplateEditorRow(phase) {
+  tplEditRows.push({
+    title: "",
+    window_phase: phase,
+    ...defaultMonths(phase),
+    stat_type: "club_wins",
+    stat_param: null,
+    target_value: 1,
+    prize_amount: null,
+    include_league: true,
+    include_cup: false,
+    is_active: true,
+    sort_order: tplEditRows.length + 1,
+  });
+  renderTemplateEditorRows();
+}
+
+async function saveTemplateEditor() {
+  if (!tplEditId) return;
+  const name = (document.getElementById("tplEditName")?.value || "").trim();
+  if (!name) {
+    setStatus("tplEditStatus", "Enter a template name.", false);
+    return;
+  }
+  const targets = tplEditRows.map((r, i) => ({
+    ...r,
+    title: String(r.title || "").trim(),
+    stat_param: String(statParamToText(r.stat_param)).trim() || null,
+    sort_order: i + 1,
+  }));
+  setStatus("tplEditStatus", "Saving…");
+  const { data, error } = await supabase.rpc("competition_admin_update_challenge_template", {
+    p_template_id: tplEditId,
+    p_name: name,
+    p_targets: targets,
+  });
+  if (error) {
+    setStatus(
+      "tplEditStatus",
+      "❌ " + error.message +
+        (/competition_admin_update_challenge_template/.test(error.message)
+          ? " — run challenge_template_edit_20260928.sql"
+          : ""),
+      false
+    );
+    return;
+  }
+  closeTemplateEditor();
+  await loadChallengeTemplates();
+  setStatus(
+    "challengeTemplateStatus",
+    `✅ Template “${data?.name || name}” saved (${data?.start_count ?? 0} start · ${data?.mid_count ?? 0} mid active).`,
+    true
+  );
 }
 
 async function saveChallengeTemplate() {

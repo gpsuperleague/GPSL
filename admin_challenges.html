@@ -286,9 +286,32 @@
             <button type="button" id="saveChallengeTemplateBtn" class="button">Save as template</button>
           </div>
         </div>
-        <p class="note" style="margin-top:0;">Saved templates (apply or delete):</p>
+        <p class="note" style="margin-top:0;">Saved templates (edit, apply or delete):</p>
         <div id="challengeTemplateList" class="challenge-admin-list"></div>
         <div id="challengeTemplateStatus" class="status-line"></div>
+        <div id="challengeTemplateEditor" hidden style="margin-top:12px;padding:12px;background:#1a1a1a;border:1px solid #444;border-radius:6px;">
+          <h4 style="margin-top:0;">Edit template</h4>
+          <p class="note">Edits the saved template only — the live season is not touched. Months are reset when the template is applied.
+            Stat option: nation name (Sign by nationality), matchday number (Hat-trick), or
+            <code>{"max_rating":65,"require_age":false,"max_age":21,"require_hg":false}</code> (Sign low-rated). Blank prize = default prize.</p>
+          <label for="tplEditName">Template name</label>
+          <input type="text" id="tplEditName" style="width:260px;">
+          <div style="overflow-x:auto;margin-top:10px;">
+            <table class="admin-table" id="tplEditTable" style="width:100%;font-size:13px;">
+              <thead>
+                <tr><th>Window</th><th>Title</th><th>Stat</th><th>Stat option</th><th>Target</th><th>Prize ₿</th><th>Active</th><th></th></tr>
+              </thead>
+              <tbody id="tplEditRows"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="button secondary" id="tplEditAddStart">+ Start target</button>
+            <button type="button" class="button secondary" id="tplEditAddMid">+ Mid target</button>
+            <button type="button" class="button" id="tplEditSave" style="background:#2f5f2f;">Save template</button>
+            <button type="button" class="button secondary" id="tplEditCancel">Cancel</button>
+          </div>
+          <div id="tplEditStatus" class="status-line"></div>
+        </div>
       </div>
 
       <div class="card">
@@ -313,6 +336,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_challenges.js?v=20260928-owner-credits"></script>
+  <script type="module" src="admin_challenges.js?v=20260928-tpl-edit"></script>
 </body>
 </html>
