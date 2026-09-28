@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("filterTier").onchange = renderTable;
   document.getElementById("filterBand").onchange = renderTable;
   document.getElementById("addCupTargetBtn").onclick = addCupTargetRow;
+  document.getElementById("copyChampAtoBBtn").onclick = copyChampAtoB;
 
   await Promise.all([loadTable(), loadCupTargets()]);
 });
@@ -148,6 +149,60 @@ async function saveCupTargetRow(tr) {
     return;
   }
   setStatus("cupTargetsStatus", "✅ Cup target saved.", true);
+  await loadCupTargets();
+}
+
+async function copyChampAtoB() {
+  const source = cupTargetRows.filter((r) => r.id && r.division === "championship_a");
+  if (!source.length) {
+    setStatus("cupTargetsStatus", "No saved Championship A cup targets to copy.", false);
+    return;
+  }
+  const existingB = cupTargetRows.filter((r) => r.id && r.division === "championship_b");
+  if (
+    !confirm(
+      `Copy ${source.length} Championship A cup target(s) to Championship B?` +
+        (existingB.length
+          ? `\n\nThis replaces the ${existingB.length} existing Championship B row(s).`
+          : "")
+    )
+  ) {
+    return;
+  }
+
+  setStatus("cupTargetsStatus", "Copying Championship A → B…");
+  for (const row of existingB) {
+    const { error } = await supabase.rpc("admin_delete_club_cup_target", { p_id: row.id });
+    if (error) {
+      setStatus("cupTargetsStatus", "❌ " + error.message, false);
+      await loadCupTargets();
+      return;
+    }
+  }
+  for (const row of source) {
+    const { error } = await supabase.rpc("admin_upsert_club_cup_target", {
+      p_payload: {
+        id: null,
+        division: "championship_b",
+        tier: row.tier ?? null,
+        cup_code: row.cup_code,
+        cup_stage: row.cup_stage,
+        label: row.label ?? "",
+        sort_order: row.sort_order ?? 0,
+      },
+    });
+    if (error) {
+      setStatus("cupTargetsStatus", "❌ " + error.message, false);
+      await loadCupTargets();
+      return;
+    }
+  }
+  setStatus(
+    "cupTargetsStatus",
+    `✅ Copied ${source.length} row(s) to Championship B` +
+      (existingB.length ? ` (replaced ${existingB.length}).` : "."),
+    true
+  );
   await loadCupTargets();
 }
 
