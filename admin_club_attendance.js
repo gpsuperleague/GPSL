@@ -31,6 +31,19 @@ const CUP_OPTIONS = [
   ["shield", "Shield"],
   ["bowl", "Bowl"],
 ];
+const CUP_DIVISION_OPTIONS = [
+  ["", "Any division"],
+  ["superleague", "Super League"],
+  ["championship_a", "Championship A"],
+  ["championship_b", "Championship B"],
+  ["standby", "Standby (no league)"],
+];
+const CUP_TIER_OPTIONS = [
+  ["", "Any tier"],
+  ["big", "Big"],
+  ["medium", "Medium"],
+  ["low", "Low"],
+];
 const CUP_STAGE_OPTIONS = [
   ["r16", "Last 16"],
   ["qf", "Quarter-final"],
@@ -61,7 +74,7 @@ async function loadCupTargets() {
     .from("club_prestige_cup_targets")
     .select("*")
     .order("sort_order")
-    .order("min_rank");
+    .order("id");
   if (error) {
     setStatus(
       "cupTargetsStatus",
@@ -84,8 +97,8 @@ function renderCupTargets() {
   body.innerHTML = cupTargetRows
     .map(
       (r, idx) => `<tr data-idx="${idx}">
-        <td><input type="number" class="ct-min" min="1" max="99" value="${r.min_rank ?? 1}" style="width:60px;"></td>
-        <td><input type="number" class="ct-max" min="1" max="99" value="${r.max_rank ?? 1}" style="width:60px;"></td>
+        <td><select class="ct-division">${cupOptionList(CUP_DIVISION_OPTIONS, r.division ?? "")}</select></td>
+        <td><select class="ct-tier">${cupOptionList(CUP_TIER_OPTIONS, r.tier ?? "")}</select></td>
         <td><select class="ct-cup">${cupOptionList(CUP_OPTIONS, r.cup_code)}</select></td>
         <td><select class="ct-stage">${cupOptionList(CUP_STAGE_OPTIONS, r.cup_stage)}</select></td>
         <td><input type="text" class="ct-label" value="${escAttr(r.label ?? "")}" placeholder="Auto" style="width:200px;"></td>
@@ -108,8 +121,8 @@ function renderCupTargets() {
 
 function addCupTargetRow() {
   cupTargetRows.push({
-    min_rank: 1,
-    max_rank: 4,
+    division: "superleague",
+    tier: "big",
     cup_code: "league_cup",
     cup_stage: "sf",
     label: "",
@@ -122,17 +135,13 @@ async function saveCupTargetRow(tr) {
   const idx = Number(tr.dataset.idx);
   const payload = {
     id: cupTargetRows[idx]?.id ?? null,
-    min_rank: Number(tr.querySelector(".ct-min").value),
-    max_rank: Number(tr.querySelector(".ct-max").value),
+    division: tr.querySelector(".ct-division").value || null,
+    tier: tr.querySelector(".ct-tier").value || null,
     cup_code: tr.querySelector(".ct-cup").value,
     cup_stage: tr.querySelector(".ct-stage").value,
     label: tr.querySelector(".ct-label").value,
     sort_order: Number(tr.querySelector(".ct-order").value) || 0,
   };
-  if (!(payload.min_rank >= 1) || payload.max_rank < payload.min_rank) {
-    setStatus("cupTargetsStatus", "Rank range is invalid (from must be ≥ 1 and ≤ to).", false);
-    return;
-  }
   const { error } = await supabase.rpc("admin_upsert_club_cup_target", { p_payload: payload });
   if (error) {
     setStatus("cupTargetsStatus", "❌ " + error.message, false);
