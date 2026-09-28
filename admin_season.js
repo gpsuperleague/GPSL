@@ -3,7 +3,7 @@ import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
 } from "./admin_main_nav.js?v=20260810-staff-fin-preview";
-import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-expiry-fa";
+import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260928-owner-divs";
 
 primeAdminPageChrome();
 import {
@@ -13,6 +13,7 @@ import {
   countSetupDivisions,
   canDrawChampionshipAb,
   canActivateSeason,
+  championshipSizeOk,
   loadCurrentSeason,
   DIVISION_LABELS,
 } from "./competition.js";
@@ -109,6 +110,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renewDeadlineBtn.onclick = processManagerRenewalDeadline;
   }
   document.getElementById("compSetupSeasonSelect").onchange = onCompSeasonSelected;
+  document.getElementById("compAssignOwnersBtn").onclick = assignDivisionsFromOwners;
   document.getElementById("compAssignPrestigeBtn").onclick = assignDivisionsFromPrestige;
   document.getElementById("compSeedMovementsBtn").onclick = seedDivisionsFromMovements;
   document.getElementById("compSaveAssignBtn").onclick = saveCompetitionAssignments;
@@ -800,9 +802,14 @@ function formatDivisionCount(label, current, target) {
   return `<span style="color:${color};">${label} ${current}/${target}</span>`;
 }
 
-function formatUnassignedCount(count) {
-  const color = count === 0 ? "#66cc66" : "#ff6666";
-  return `<span style="color:${color};">Unassigned ${count}</span>`;
+function formatChampionshipCount(label, current) {
+  const color = current === 20 ? "#66cc66" : championshipSizeOk(current) ? "#aaaaaa" : "#ff6666";
+  const note = current === 0 ? " (off)" : "";
+  return `<span style="color:${color};">${label} ${current}${note}</span>`;
+}
+
+function formatPlainCount(label, count) {
+  return `<span style="color:#aaaaaa;">${label} ${count}</span>`;
 }
 
 function updateCompSetupCounts() {
@@ -811,10 +818,13 @@ function updateCompSetupCounts() {
   const hasPending = document.querySelectorAll(".comp-div-select").length > 0;
   el.innerHTML =
     `${formatDivisionCount("SL", counts.superleague, 20)} · ` +
-    `${formatDivisionCount("Pool", counts.championship_pool, 40)} · ` +
-    `${formatDivisionCount("CH A", counts.championship_a, 20)} · ` +
-    `${formatDivisionCount("CH B", counts.championship_b, 20)} · ` +
-    formatUnassignedCount(counts.unassigned);
+    `${formatChampionshipCount("CH A", counts.championship_a)} · ` +
+    `${formatChampionshipCount("CH B", counts.championship_b)} · ` +
+    (counts.championship_pool
+      ? `<span style="color:#ff6666;">Pool ${counts.championship_pool}</span> · `
+      : "") +
+    `${formatPlainCount("Standby", counts.standby)} · ` +
+    formatPlainCount("Unassigned (not playing)", counts.unassigned);
   el.title = hasPending
     ? "Live counts — includes unsaved dropdown picks (save to apply)"
     : "";
@@ -831,19 +841,139 @@ function updateCompSetupCounts() {
     if (!ready && startStatus && !/Starting season|✅|❌/.test(startStatus.textContent || "")) {
       setStatus(
         "compStartStatus",
-        `Not ready yet — need SL 20, CH A 20, CH B 20 (now SL ${counts.superleague}, A ${counts.championship_a}, B ${counts.championship_b}). Draw A/B after seeding the pool, set the calendar, then Start.`,
+        `Not ready yet — need SL 20 and each Championship 0 or 10–20, nothing left in the pool (now SL ${counts.superleague}, A ${counts.championship_a}, B ${counts.championship_b}, pool ${counts.championship_pool}). Assign from owners after the club auction, set the calendar, then Start.`,
         false
       );
     } else if (ready && startStatus && /Not ready yet/.test(startStatus.textContent || "")) {
       setStatus(
         "compStartStatus",
-        "Divisions look ready (20+20+20). Set the GPSL calendar if needed, then Start season (go live).",
+        `Divisions look ready (SL ${counts.superleague}, CH A ${counts.championship_a}, CH B ${counts.championship_b}, standby ${counts.standby}). Set the GPSL calendar if needed, then Start season (go live).`,
         true
       );
     }
   }
   document.getElementById("compResetDrawBtn").disabled =
     counts.championship_a === 0 && counts.championship_b === 0;
+}
+
+function escapeHtmlSeason(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderOwnerAssignPreview(data) {
+  const el = document.getElementById("compOwnerAssignPreview");
+  if (!el) return;
+  const rows = Array.isArray(data?.owned_clubs) ? data.owned_clubs : [];
+  const warnings = Array.isArray(data?.warnings) ? data.warnings : [];
+  if (!rows.length && !warnings.length) {
+    el.innerHTML = "";
+    return;
+  }
+  const warnHtml = warnings.length
+    ? `<ul style="color:#ffcc00;margin:8px 0;">${warnings
+        .map((w) => `<li>${escapeHtmlSeason(w)}</li>`)
+        .join("")}</ul>`
+    : "";
+  const body = rows
+    .map(
+      (r) => `<tr>
+        <td style="padding:6px;border:1px solid #333;">${r.seq ?? ""}</td>
+        <td style="padding:6px;border:1px solid #333;">${escapeHtmlSeason(r.owner_tag)}</td>
+        <td style="padding:6px;border:1px solid #333;">${escapeHtmlSeason(r.club_name || r.club)}</td>
+        <td style="padding:6px;border:1px solid #333;">${escapeHtmlSeason(
+          DIVISION_LABELS[r.division] || r.division
+        )}</td>
+        <td style="padding:6px;border:1px solid #333;color:#888;">${
+          r.owner_source === "season1_confirmed" ? "S1 confirmed" : "Waiting list"
+        }</td>
+      </tr>`
+    )
+    .join("");
+  el.innerHTML = `${warnHtml}
+    <div style="max-height:360px;overflow:auto;border:1px solid #333;border-radius:6px;margin-top:8px;">
+      <table class="gpsl-table" style="width:100%;border-collapse:collapse;">
+        <thead><tr>
+          <th style="padding:6px;background:#222;color:#ff9900;text-align:left;">#</th>
+          <th style="padding:6px;background:#222;color:#ff9900;text-align:left;">Owner</th>
+          <th style="padding:6px;background:#222;color:#ff9900;text-align:left;">Club</th>
+          <th style="padding:6px;background:#222;color:#ff9900;text-align:left;">Division</th>
+          <th style="padding:6px;background:#222;color:#ff9900;text-align:left;">Order from</th>
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+
+async function assignDivisionsFromOwners() {
+  if (!compSelectedSeasonId) {
+    setCompStatus("Select a pre-season year.", false);
+    return;
+  }
+
+  setCompStatus("Previewing owner-led divisions…");
+  const { data: preview, error: previewError } = await supabase.rpc(
+    "competition_admin_assign_divisions_from_owners",
+    { p_season_id: compSelectedSeasonId, p_dry_run: true }
+  );
+
+  if (previewError) {
+    const detail = [previewError.message, previewError.details, previewError.hint]
+      .filter(Boolean)
+      .join(" — ");
+    setCompStatus(
+      `❌ ${detail}${
+        /assign_divisions_from_owners|standby/i.test(detail)
+          ? " — run patches/owner_led_divisions_phase1_20260928.sql then retry."
+          : ""
+      }`,
+      false
+    );
+    return;
+  }
+
+  renderOwnerAssignPreview(preview);
+  const c = preview?.counts || {};
+  const summary =
+    `SL ${c.superleague ?? 0} · CH A ${c.championship_a ?? 0} · CH B ${c.championship_b ?? 0} · ` +
+    `standby ${c.standby ?? 0} · unassigned (not playing) ${c.unassigned ?? 0}`;
+
+  if (!preview?.ok) {
+    setCompStatus(`Preview only — ${summary}. ${(preview?.warnings || []).join(" ")}`, false);
+    return;
+  }
+
+  if (
+    !confirm(
+      `Apply owner-led divisions?\n\n${summary}\n\n` +
+        "Positions 1–20 → Super League, 21–40 → Championship (if 10+), other owners → Standby, unowned → Unassigned.\n" +
+        "Overwrites current divisions on this pre-season. The preview table below shows who goes where."
+    )
+  ) {
+    setCompStatus(`Preview — ${summary}. Not applied.`);
+    return;
+  }
+
+  setCompStatus("Assigning from owners…");
+  const { data, error } = await supabase.rpc("competition_admin_assign_divisions_from_owners", {
+    p_season_id: compSelectedSeasonId,
+    p_dry_run: false,
+  });
+
+  if (error) {
+    setCompStatus("❌ " + [error.message, error.details].filter(Boolean).join(" — "), false);
+    return;
+  }
+
+  renderOwnerAssignPreview(data);
+  const d = data?.counts || {};
+  setCompStatus(
+    `✅ Owner-led divisions applied — SL ${d.superleague ?? 0}, CH A ${d.championship_a ?? 0}, CH B ${d.championship_b ?? 0}, standby ${d.standby ?? 0}.`
+  );
+  await loadCompSeasonData(compSelectedSeasonId);
 }
 
 async function assignDivisionsFromPrestige() {
@@ -1010,7 +1140,7 @@ async function startCompetitionSeason() {
   }
   if (
     !confirm(
-      "Start this season?\n\nRequires divisions (20+20+20) and the GPSL season calendar. It becomes the current live season for all owners."
+      "Start this season?\n\nRequires Super League 20 (Championships 0 or 10–20) and the GPSL season calendar. It becomes the current live season for all owners."
     )
   ) {
     return;

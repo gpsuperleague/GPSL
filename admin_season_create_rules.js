@@ -6,7 +6,7 @@ import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260807-create-split-
 export function getAdminSeasonCreateRules() {
   return {
     title: "Create Pre-Season",
-    lead: "Creates the next year as <b>preseason</b> (60 clubs) and runs the player contract tick in the same step (plus manager catch-up if End Season skipped it).",
+    lead: "Creates the next year as <b>preseason</b> (every active club registered as Unassigned — divisions are set later from owners) and runs the player contract tick in the same step (plus manager catch-up if End Season skipped it).",
     cards: [
       {
         heading: "What the button does",

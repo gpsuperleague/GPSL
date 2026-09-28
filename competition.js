@@ -2,6 +2,7 @@
 
 export const DIVISION_LABELS = {
   unassigned: "Unassigned",
+  standby: "Standby (no league)",
   superleague: "SuperLeague",
   championship_pool: "Championship (pool)",
   championship_a: "Championship A",
@@ -76,6 +77,7 @@ export function divisionLabelWithBadgeHtml(division, opts = {}) {
 
 export const SETUP_DIVISION_OPTIONS = [
   { value: "unassigned", label: "Unassigned" },
+  { value: "standby", label: "Standby (no league)" },
   { value: "superleague", label: "SuperLeague" },
   { value: "championship_pool", label: "Championship pool" },
 ];
@@ -317,6 +319,7 @@ export function groupByDivision(registrations) {
     championship_a: [],
     championship_b: [],
     championship_pool: [],
+    standby: [],
     unassigned: [],
   };
 
@@ -339,6 +342,7 @@ export function groupByDivision(registrations) {
 export function countSetupDivisions(registrations) {
   const counts = {
     unassigned: 0,
+    standby: 0,
     superleague: 0,
     championship_pool: 0,
     championship_a: 0,
@@ -356,12 +360,17 @@ export function canDrawChampionshipAb(counts) {
   return counts.superleague === 20 && counts.championship_pool === 40;
 }
 
+/** Championship divisions run with 0 or 10–20 clubs; B only once A is full. */
+export function championshipSizeOk(count) {
+  return count === 0 || (count >= 10 && count <= 20);
+}
+
 export function canActivateSeason(counts) {
   return (
     counts.superleague === 20 &&
-    counts.championship_a === 20 &&
-    counts.championship_b === 20 &&
-    counts.unassigned === 0 &&
+    championshipSizeOk(counts.championship_a) &&
+    championshipSizeOk(counts.championship_b) &&
+    (counts.championship_b === 0 || counts.championship_a === 20) &&
     counts.championship_pool === 0
   );
 }

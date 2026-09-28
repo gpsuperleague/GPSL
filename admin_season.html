@@ -92,12 +92,16 @@
           <div class="card">
             <h2>Divisions (pre-season)</h2>
             <p class="note">
-              For <b>Season 1</b> (or any fresh setup): assign from the current
-              <a href="admin_club_attendance.html" style="color:#ff9900;">prestige order</a>
-              (top 20 → Super League; ranks 21+ alternate Championship A / B).
-              For later seasons: copy who is Super League vs Championship from the
-              <b>last finished season</b> (after playoffs / Apply movements), then draw
-              Championship A/B, then start the season.
+              <b>Owner-led seasons:</b> create the season (every active club is registered as Unassigned),
+              run the club auction, then <b>Assign from owners</b>. Waiting-list positions 1–20
+              (Season 1 confirmed order) → Super League; 21–40 → Championship once at least 10 are present;
+              other owners → <b>Standby</b> (cups, transfers and auctions, no league, no season costs);
+              unowned clubs stay Unassigned (no fixtures, costs or income).
+              Start season needs SL 20 and each Championship 0 or 10–20.
+            </p>
+            <p class="note">
+              Full 60-club setups can still use <b>Assign from prestige</b> or copy divisions from the
+              <b>last finished season</b> (after playoffs / Apply movements), then draw Championship A/B.
             </p>
             <div class="row">
               <div>
@@ -125,6 +129,7 @@
               </table>
             </div>
             <div class="row">
+              <button id="compAssignOwnersBtn" class="button" style="background:#2a6a2a;" type="button">Assign from owners (1–20 SL, 21–40 Championship, rest standby)</button>
               <button id="compAssignPrestigeBtn" class="button" style="background:#225544;" type="button">Assign from prestige (top 20 SL, then alt A/B)</button>
               <button id="compSeedMovementsBtn" class="button" style="background:#664422;">Copy divisions from selected season</button>
               <button id="compSaveAssignBtn" class="button">Save assignments</button>
@@ -132,6 +137,7 @@
               <button id="compResetDrawBtn" class="button" style="background:#555;">Reset A/B draw</button>
             </div>
             <div id="compSeasonStatus" class="status-line"></div>
+            <div id="compOwnerAssignPreview"></div>
           </div>
         </section>
 
@@ -197,6 +203,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260809-prestige-div"></script>
+  <script type="module" src="admin_season.js?v=20260928-owner-divs"></script>
 </body>
 </html>
