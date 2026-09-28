@@ -10,7 +10,7 @@ import {
   SECTION_FINANCES,
   SECTION_EXPECTATIONS,
 } from "./club_pages.js";
-import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js";
+import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20260928-squad-charges";
 import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js";
 import {
   SECTION_MATCH_SCHEDULING,

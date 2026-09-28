@@ -40,6 +40,20 @@ export const SECTION_SQUAD = {
         `Winning an expiry bid gives a new 3-season contract at the bid wage from season rollover.`,
       ],
     },
+    { type: "h3", html: "Season squad charges (34+ fee &amp; star tax)" },
+    {
+      type: "p",
+      html: `Charged once a season with your wage bill when admin runs <b>Close Finances</b> at season end, counted from the squad you hold at that moment. They are on top of player wages.`,
+    },
+    {
+      type: "ul",
+      items: [
+        `<b>34+ fee</b> — <b><span data-gs="wage_34plus_per_player" data-gs-fmt="money">₿500,000</span></b> for every squad player aged <b><span data-gs="wage_34plus_min_rating" data-gs-fmt="int">34</span> or over</b>. It goes by <b>age</b>, not rating.`,
+        `<b>Star tax</b> — <b><span data-gs="star_tax_per_player" data-gs-fmt="money">₿1,000,000</span></b> for every star player (rated <b><span data-gs="star_tax_min_rating" data-gs-fmt="int">79</span>+</b>). Your <b>One of our own</b> player is excused.`,
+        `Check ages and ratings before renewing, winning expiry bids or signing older stars — selling or releasing before season end avoids the charge.`,
+        `See each season's figures under <a href="finances.html">Finances</a> → Player upkeep.`,
+      ],
+    },
     { type: "h3", html: "Legacy cards (off PESDB)" },
     {
       type: "p",

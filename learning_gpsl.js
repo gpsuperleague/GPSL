@@ -1,11 +1,11 @@
 /**
  * Learning GPSL — bound handbook renderer (content in learning_gpsl_content/).
  */
-import { initGlobal } from "./global.js";
+import { initGlobal, supabase } from "./global.js";
 import {
   LEARNING_GPSL_META_HTML,
   LEARNING_GPSL_SECTIONS,
-} from "./learning_gpsl_content.js";
+} from "./learning_gpsl_content.js?v=20260928-squad-charges";
 
 function escapeAttr(text) {
   return String(text ?? "")
@@ -124,8 +124,33 @@ export function renderLearningGpslGuide(rootEl) {
   wireTocSticky(root);
 }
 
+function formatSettingValue(value, fmt) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  if (fmt === "money") return `₿${Math.round(n).toLocaleString("en-GB")}`;
+  return String(Math.round(n));
+}
+
+/** Fill <span data-gs="column"> placeholders from live league settings (defaults stay on failure). */
+async function fillLiveSettings(root) {
+  const spans = [...(root || document).querySelectorAll("[data-gs]")];
+  if (!spans.length) return;
+  const columns = [...new Set(spans.map((el) => el.dataset.gs))];
+  const { data, error } = await supabase
+    .from("global_settings_public")
+    .select(columns.join(","))
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return;
+  for (const el of spans) {
+    const text = formatSettingValue(data[el.dataset.gs], el.dataset.gsFmt);
+    if (text != null) el.textContent = text;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   document.body.classList.add("learning-gpsl-page");
   renderLearningGpslGuide();
   initGlobal();
+  fillLiveSettings(document.getElementById("learningGuide")).catch(() => {});
 });
