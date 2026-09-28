@@ -112,8 +112,19 @@ function formatPreview(data) {
     `Would insert: ${data.would_insert ?? data.inserted ?? 0}`,
     `Would update: ${data.would_update ?? data.updated ?? 0}`,
     `Renames (name/slug): ${data.would_rename ?? data.renamed ?? 0}`,
-    `Unchanged: ${data.unchanged ?? 0}`,
+    `Unchanged (In Game YES / no stat change): ${data.unchanged ?? 0}`,
   ];
+  if (data.would_unarchive != null) {
+    lines.push(`Would un-archive (YES, was archived): ${data.would_unarchive}`);
+  }
+  if (data.would_archive_in_game_no != null || data.archived_in_game_no != null) {
+    lines.push(
+      `Archive (In Game NO): ${data.would_archive_in_game_no ?? data.archived_in_game_no ?? 0}`
+    );
+  }
+  if (data.in_game_no_not_in_db) {
+    lines.push(`In Game NO but not in database (ignored): ${data.in_game_no_not_in_db}`);
+  }
   if (data.would_archive != null || data.archived_missing != null) {
     lines.push(
       `Would archive (missing from sheet): ${data.would_archive ?? data.archived_missing ?? 0}` +
@@ -146,6 +157,19 @@ function formatPreview(data) {
       if (s.action === "insert") {
         lines.push(
           `  + ${s.name} [${s.slug}] rating ${s.rating} MV ${formatMoney(s.market_value)}`
+        );
+      } else if (s.action === "archive") {
+        lines.push(
+          `  − ${s.name} [${s.slug}] archive` +
+            (s.contracted_club ? ` (stays @ ${s.contracted_club} until deal ends)` : " (FA)")
+        );
+      } else if (s.action === "rename" || s.action === "unarchive") {
+        lines.push(
+          `  = ${s.name}` +
+            (s.name_before && s.name_before !== s.name ? ` (was ${s.name_before})` : "") +
+            ` [${s.slug}]` +
+            (s.action === "unarchive" ? " un-archive" : " rename only") +
+            (s.contracted_club ? ` @ ${s.contracted_club}` : " (FA)")
         );
       } else {
         lines.push(
@@ -203,7 +227,9 @@ async function runImport(apply) {
     if (error) throw error;
     if (out) out.textContent = formatPreview(data);
     const errCount = Array.isArray(data?.errors) ? data.errors.length : 0;
-    const archivedN = data?.archived_missing ?? data?.would_archive ?? 0;
+    const archivedN =
+      (data?.archived_missing ?? data?.would_archive ?? 0) +
+      (data?.archived_in_game_no ?? data?.would_archive_in_game_no ?? 0);
     if (apply) {
       setStatus(
         "importStatus",
@@ -229,7 +255,7 @@ async function runImport(apply) {
       "importStatus",
       "❌ " +
         (err.message || "Failed") +
-        " — run supabase/sql/patches/admin_managers_overload_previous_name_20260815.sql",
+        " — run supabase/sql/patches/admin_managers_in_game_column_20260928.sql",
       false
     );
   }

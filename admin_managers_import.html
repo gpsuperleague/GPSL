@@ -61,7 +61,14 @@
           <b>Out Wide</b>, <b>Long Ball</b>, <b>Overload</b>.
           Optional: <b>Former Name</b> / <b>Previous Name</b> (old DB name for renames —
           keeps the same manager id/contract/history; <b>Manager Name</b> becomes the new display name),
-          <b>slug</b>.
+          <b>slug</b>, <b>In Game</b>.
+        </p>
+        <p class="note">
+          <b>In Game</b>: <b>YES</b> = keep manager untouched (only a rename via Former Name is applied);
+          <b>NEW</b> = add manager, rating / market value / wage calculated;
+          <b>NO</b> = archive (hidden from MGDB and market; a club that has them keeps them until the deal ends).
+          Blank = full update from the sheet. Needs
+          <code>supabase/sql/patches/admin_managers_in_game_column_20260928.sql</code>.
         </p>
         <p class="note">
           Run <code>supabase/sql/patches/admin_managers_overload_previous_name_20260815.sql</code>,
@@ -88,6 +95,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_managers_import.js?v=20260815-archive"></script>
+  <script type="module" src="admin_managers_import.js?v=20260928-in-game"></script>
 </body>
 </html>
