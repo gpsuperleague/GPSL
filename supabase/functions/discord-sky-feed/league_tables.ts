@@ -40,6 +40,117 @@ function divisionTitle(key: string): string {
   return DIVISIONS.find((d) => d.key === key)?.title || key;
 }
 
+// Zone rules mirror competition.js (prestigeCupForPosition / leagueTintKey / leagueBoundaryKey).
+const CUP_BAR_COLORS: Record<string, string> = {
+  super8: "#5a7db5",
+  plate: "#c98652",
+  shield: "#6d9f7a",
+  bowl: "#c9a84c",
+};
+
+const ZONE_COLORS: Record<string, string> = {
+  champion: "#c9a84c",
+  runner_up: "#9ca3b8",
+  promotion: "#6d9f7a",
+  playoffs: "#9b87b8",
+  playoff: "#c98652",
+  relegation: "#b86a6a",
+  bowl: "#b86a6a",
+};
+
+function isLeagueDivision(key: string): boolean {
+  return DIVISIONS.some((d) => d.key === key);
+}
+
+function prestigeCupKey(division: string, pos: number): string | null {
+  if (division === "superleague") {
+    if (pos <= 8) return "super8";
+    if (pos <= 16) return "plate";
+    if (pos <= 20) return "shield";
+    return null;
+  }
+  if (pos <= 4) return "plate";
+  if (pos <= 15) return "shield";
+  if (pos >= 18) return "bowl";
+  return null;
+}
+
+function zoneTintKey(division: string, pos: number): string | null {
+  if (division === "superleague") {
+    if (pos === 1) return "champion";
+    if (pos === 2) return "runner_up";
+    if (pos >= 18) return "relegation";
+    if (pos >= 16) return "playoff";
+    return null;
+  }
+  if (pos <= 2) return "promotion";
+  if (pos <= 6) return "playoffs";
+  if (pos >= 18) return "bowl";
+  if (pos >= 16) return "playoff";
+  return null;
+}
+
+function zoneBoundaryKey(division: string, pos: number): string {
+  if (division === "superleague") {
+    if (pos >= 18) return "relegation";
+    if (pos >= 16) return "playoff";
+    return "safe";
+  }
+  if (pos <= 2) return "promotion";
+  if (pos <= 6) return "playoffs";
+  if (pos >= 18) return "bowl";
+  if (pos >= 16) return "playoff";
+  return "safe";
+}
+
+function zoneLegend(division: string): { zones: [string, string][]; cups: [string, string][] } {
+  if (division === "superleague") {
+    return {
+      zones: [
+        ["champion", "Champion"],
+        ["runner_up", "Runner-up"],
+        ["playoff", "Relegation playoff (16–17)"],
+        ["relegation", "Relegation (18+)"],
+      ],
+      cups: [
+        ["super8", "Super8 (1–8)"],
+        ["plate", "Plate (9–16)"],
+        ["shield", "Shield (17–20)"],
+      ],
+    };
+  }
+  return {
+    zones: [
+      ["promotion", "Promotion (1–2)"],
+      ["playoffs", "Promotion playoffs (3–6)"],
+      ["playoff", "Shield/Bowl playoff (16–17)"],
+      ["bowl", "Bowl (18+)"],
+    ],
+    cups: [
+      ["plate", "Plate (1–4)"],
+      ["shield", "Shield (5–15)"],
+      ["bowl", "Bowl (18+)"],
+    ],
+  };
+}
+
+function legendRowSvg(
+  y: number,
+  heading: string,
+  items: [string, string][],
+  colors: Record<string, string>
+): string {
+  let x = 36;
+  let out = `<text x="${x}" y="${y}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" font-weight="700">${esc(heading)}</text>`;
+  x += heading.length * 7 + 12;
+  for (const [key, label] of items) {
+    out += `<rect x="${x}" y="${y - 10}" width="12" height="12" rx="2" fill="${colors[key] || "#666"}"/>`;
+    out += `<text x="${x + 17}" y="${y}" fill="#bbbbbb" font-size="11" font-family="${FONT_FAMILY}">${esc(label)}</text>`;
+    x += 17 + label.length * 6.4 + 16;
+  }
+  return out;
+}
+
 export function buildStandingsSvg(
   divisionKey: string,
   monthLabel: string,
@@ -59,11 +170,16 @@ export function buildStandingsSvg(
   const rowH = 28;
   const headerH = 86;
   const width = 720;
-  const height = headerH + 32 + sorted.length * rowH + 24;
+  const zones = isLeagueDivision(divisionKey);
+  const legendH = zones ? 58 : 0;
+  const tableBottom = headerH + 32 + sorted.length * rowH;
+  const height = tableBottom + 24 + legendH;
+  const posOf = (r: StandingRow, i: number) => Number(r.table_position ?? i + 1);
 
   const bodyRows = sorted
     .map((r, i) => {
       const y = headerH + 28 + i * rowH;
+      const pos = posOf(r, i);
       const isHi =
         highlight &&
         String(r.club_short_name || "").toLowerCase() === highlight;
@@ -71,8 +187,29 @@ export function buildStandingsSvg(
       const name = esc(
         String(r.club_name || r.club_short_name || "Club").slice(0, 28)
       );
+      let zoneSvg = "";
+      if (zones) {
+        const tint = zoneTintKey(divisionKey, pos);
+        if (tint) {
+          zoneSvg += `<rect x="24" y="${y - 20}" width="${width - 48}" height="${rowH}" fill="${ZONE_COLORS[tint]}" fill-opacity="0.16"/>`;
+        }
+        const cup = prestigeCupKey(divisionKey, pos);
+        if (cup) {
+          zoneSvg += `<rect x="24" y="${y - 20}" width="6" height="${rowH}" fill="${CUP_BAR_COLORS[cup]}"/>`;
+        }
+        if (i > 0) {
+          const prevKey = zoneBoundaryKey(divisionKey, posOf(sorted[i - 1], i - 1));
+          const key = zoneBoundaryKey(divisionKey, pos);
+          if (prevKey !== key) {
+            const lineKey = key !== "safe" ? key : prevKey;
+            const dashed = lineKey === "playoff" || lineKey === "playoffs";
+            zoneSvg += `<line x1="24" y1="${y - 20}" x2="${width - 24}" y2="${y - 20}" stroke="${ZONE_COLORS[lineKey]}" stroke-width="2"${dashed ? ' stroke-dasharray="7 5"' : ""}/>`;
+          }
+        }
+      }
       return `
       <rect x="24" y="${y - 20}" width="${width - 48}" height="${rowH}" fill="${bg}"/>
+      ${zoneSvg}
       <text x="40" y="${y}" fill="#ff9900" font-size="14" font-family="${FONT_FAMILY}" font-weight="700">${r.table_position ?? i + 1}</text>
       <text x="78" y="${y}" fill="${isHi ? "#ffcc66" : "#eeeeee"}" font-size="14" font-family="${FONT_FAMILY}"${isHi ? ' font-weight="700"' : ""}>${name}</text>
       <text x="360" y="${y}" fill="#cccccc" font-size="13" font-family="${FONT_FAMILY}" text-anchor="end">${r.mp ?? 0}</text>
@@ -85,6 +222,15 @@ export function buildStandingsSvg(
       <text x="680" y="${y}" fill="#ffffff" font-size="14" font-family="${FONT_FAMILY}" font-weight="700" text-anchor="end">${r.pts ?? 0}</text>`;
     })
     .join("\n");
+
+  let legendSvg = "";
+  if (zones) {
+    const legend = zoneLegend(divisionKey);
+    const ly = tableBottom + 26;
+    legendSvg =
+      legendRowSvg(ly, "League", legend.zones, ZONE_COLORS) +
+      legendRowSvg(ly + 22, "Cup bar", legend.cups, CUP_BAR_COLORS);
+  }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -100,6 +246,7 @@ export function buildStandingsSvg(
   <text x="630" y="${headerH}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" text-anchor="end">GD</text>
   <text x="680" y="${headerH}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" text-anchor="end">PTS</text>
   ${bodyRows}
+  ${legendSvg}
 </svg>`;
 }
 
@@ -111,18 +258,47 @@ export function standingsToCodeBlock(
   const sorted = [...rows].sort(
     (a, b) => (a.table_position || 99) - (b.table_position || 99)
   );
+  const zones = isLeagueDivision(divisionKey);
+  const marks: Record<string, string> = {
+    champion: "★",
+    runner_up: "▲",
+    promotion: "▲",
+    playoffs: "◆",
+    playoff: "◇",
+    relegation: "▼",
+    bowl: "▼",
+  };
   const lines = [
     titleOverride || divisionTitle(divisionKey),
-    "Pos Club                         P   W   D   L  GF  GA  GD Pts",
-    "-".repeat(58),
-    ...sorted.map((r) => {
-      const name = String(r.club_name || r.club_short_name || "Club").padEnd(
-        26
-      ).slice(0, 26);
-      const n = (v: unknown, w: number) => String(v ?? 0).padStart(w);
-      return `${n(r.table_position, 2)}  ${name} ${n(r.mp, 3)} ${n(r.w, 3)} ${n(r.d, 3)} ${n(r.l, 3)} ${n(r.gf, 3)} ${n(r.ga, 3)} ${n(r.gd, 3)} ${n(r.pts, 3)}`;
-    }),
+    "  Pos Club                         P   W   D   L  GF  GA  GD Pts",
+    "-".repeat(60),
   ];
+  sorted.forEach((r, i) => {
+    const pos = Number(r.table_position ?? i + 1);
+    if (zones && i > 0) {
+      const prev = zoneBoundaryKey(divisionKey, Number(sorted[i - 1].table_position ?? i));
+      const cur = zoneBoundaryKey(divisionKey, pos);
+      if (prev !== cur) {
+        const key = cur !== "safe" ? cur : prev;
+        lines.push(key === "playoff" || key === "playoffs" ? "- ".repeat(30) : "=".repeat(60));
+      }
+    }
+    const tint = zones ? zoneTintKey(divisionKey, pos) : null;
+    const mark = tint ? marks[tint] : " ";
+    const name = String(r.club_name || r.club_short_name || "Club").padEnd(26).slice(0, 26);
+    const n = (v: unknown, w: number) => String(v ?? 0).padStart(w);
+    lines.push(
+      `${mark} ${n(r.table_position, 2)}  ${name} ${n(r.mp, 3)} ${n(r.w, 3)} ${n(r.d, 3)} ${n(r.l, 3)} ${n(r.gf, 3)} ${n(r.ga, 3)} ${n(r.gd, 3)} ${n(r.pts, 3)}`
+    );
+  });
+  if (zones) {
+    lines.push(
+      "",
+      divisionKey === "superleague"
+        ? "★ Champion  ▲ Runner-up  ◇ Relegation playoff  ▼ Relegated"
+        : "▲ Promotion  ◆ Promotion playoffs  ◇ Shield/Bowl playoff  ▼ Bowl"
+    );
+  }
   return "```\n" + lines.join("\n").slice(0, 3900) + "\n```";
 }
 
