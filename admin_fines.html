@@ -54,6 +54,30 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card">
+        <h2>Automatic fines</h2>
+        <p class="note">
+          Turn automatic fines off for an ease-in period. Warnings and deadlines still fire, but instead of being charged,
+          owners get a <b>"you would have been fined"</b> inbox message. Covers scheduling, check-in, missing match video
+          (fine and points), video breaches, squad rules and the end-of-season board fine.
+          Manual fines below still apply. Nothing is charged retrospectively when you switch back on.
+        </p>
+        <div id="autoFinesState" class="note" style="font-size:14px;color:#ddd;">Loading…</div>
+        <div class="fine-apply-fields" style="align-items:flex-end;">
+          <div class="fine-field">
+            <label for="autoFinesLiveFrom">Auto switch-on (optional, while off)</label>
+            <input type="datetime-local" id="autoFinesLiveFrom">
+          </div>
+          <div class="fine-field">
+            <button type="button" id="autoFinesOffBtn" class="button secondary">Turn automatic fines OFF (ease-in)</button>
+          </div>
+          <div class="fine-field">
+            <button type="button" id="autoFinesOnBtn" class="button">Turn automatic fines ON</button>
+          </div>
+        </div>
+        <div id="autoFinesStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
         <h2>Apply fine / compensation</h2>
         <p class="note">Posts instantly to <code>gov_fine_compensation</code> ledger and club balance. Run <code>competition_fines.sql</code> and <code>patches/owner_inbox_fine_fix.sql</code>, then <b>Seed Excel tariffs</b>. Owners are notified in inbox when a fine is applied.</p>
         <div class="fine-apply-fields">
@@ -180,6 +204,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fines.js"></script>
+  <script type="module" src="admin_fines.js?v=20260929-auto-fines"></script>
 </body>
 </html>

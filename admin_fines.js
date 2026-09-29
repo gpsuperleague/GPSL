@@ -19,6 +19,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const season = await loadCurrentSeason(supabase);
   currentSeasonId = season?.id ?? null;
 
+  document.getElementById("autoFinesOffBtn").onclick = () => setAutoFines(false);
+  document.getElementById("autoFinesOnBtn").onclick = () => setAutoFines(true);
+  await loadAutoFines();
+
   fillMonthSelect();
   await loadClubs();
   await loadTariffs();
@@ -35,6 +39,60 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("saveFineTariffBtn").onclick = saveTariff;
   document.getElementById("clearFineFormBtn").onclick = clearFineForm;
 });
+
+function renderAutoFines(s) {
+  const el = document.getElementById("autoFinesState");
+  if (!el) return;
+  if (!s) {
+    el.innerHTML = "❌ Run <code>auto_fines_ease_in_switch_20260929.sql</code> in Supabase.";
+    return;
+  }
+  const liveFrom = s.live_from ? new Date(s.live_from) : null;
+  const state = s.active
+    ? `<b style="color:#8d8;">ON</b> — automatic fines are being charged.`
+    : `<b style="color:#fc6;">OFF (ease-in)</b> — fines are waived and owners get "would have been fined" messages.`;
+  const schedule =
+    !s.enabled && liveFrom
+      ? `<br>Auto switch-on: <b>${liveFrom.toLocaleString("en-GB")}</b>`
+      : "";
+  const waived = Number(s.waived_count || 0)
+    ? `<br>Waived so far: <b>${s.waived_count}</b> fines, ${formatMoney(s.waived_total || 0)} not charged.`
+    : "";
+  el.innerHTML = `${state}${schedule}${waived}`;
+  const input = document.getElementById("autoFinesLiveFrom");
+  if (input && liveFrom && !s.enabled) {
+    const local = new Date(liveFrom.getTime() - liveFrom.getTimezoneOffset() * 60000);
+    input.value = local.toISOString().slice(0, 16);
+  }
+}
+
+async function loadAutoFines() {
+  const { data, error } = await supabase.rpc("gpsl_auto_fines_status");
+  if (error) console.warn("gpsl_auto_fines_status", error);
+  renderAutoFines(error ? null : data);
+}
+
+async function setAutoFines(enabled) {
+  const raw = document.getElementById("autoFinesLiveFrom")?.value || "";
+  const liveFrom = !enabled && raw ? new Date(raw).toISOString() : null;
+  const msg = enabled
+    ? "Turn automatic fines ON? New offences will be charged from now (nothing retrospective)."
+    : `Turn automatic fines OFF for an ease-in period?${
+        liveFrom ? `\n\nThey will switch back on automatically at ${new Date(liveFrom).toLocaleString("en-GB")}.` : ""
+      }`;
+  if (!confirm(msg)) return;
+  setStatus("autoFinesStatus", "Saving…");
+  const { data, error } = await supabase.rpc("admin_set_auto_fines", {
+    p_enabled: enabled,
+    p_live_from: liveFrom,
+  });
+  if (error) {
+    setStatus("autoFinesStatus", "❌ " + error.message, false);
+    return;
+  }
+  renderAutoFines(data);
+  setStatus("autoFinesStatus", enabled ? "✅ Automatic fines ON." : "✅ Automatic fines OFF (ease-in).");
+}
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -427,8 +485,11 @@ async function loadRecent() {
     .map((r) => {
       const sign = r.direction === "compensation" ? "+" : "−";
       const label = r.tariff?.label || r.tariff_code;
+      const waived = r.waived
+        ? ` <span style="color:#fc6;font-size:12px;">WAIVED (ease-in)</span>`
+        : "";
       return `<div class="challenge-admin-item">
-        <span><b>${r.club_short_name}</b> ${sign}${formatMoney(r.amount)} — ${label}
+        <span><b>${r.club_short_name}</b> ${sign}${formatMoney(r.amount)} — ${label}${waived}
         <span class="challenge-admin-meta">${new Date(r.applied_at).toLocaleString("en-GB")}</span></span>
       </div>`;
     })
