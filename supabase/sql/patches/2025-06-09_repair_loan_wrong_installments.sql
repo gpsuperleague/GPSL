@@ -20,7 +20,7 @@ DECLARE
 BEGIN
   IF NOT (
     public.is_gpsl_admin()
-    OR current_user IN ('postgres', 'supabase_admin', 'service_role')
+    OR session_user IN ('postgres', 'supabase_admin', 'service_role')
   ) THEN
     RAISE EXCEPTION 'Admin only';
   END IF;

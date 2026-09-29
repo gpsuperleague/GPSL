@@ -74,7 +74,7 @@ BEGIN
   IF NOT (
     coalesce(auth.role(), '') = 'service_role'
     OR coalesce(public.is_gpsl_admin_or_mod(), false)
-    OR current_user IN ('postgres', 'supabase_admin')
+    OR session_user IN ('postgres', 'supabase_admin')
   ) THEN
     RAISE EXCEPTION 'Not allowed';
   END IF;

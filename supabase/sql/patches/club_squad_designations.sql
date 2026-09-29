@@ -33,7 +33,7 @@ STABLE
 SET search_path = public
 AS $$
   SELECT public.is_gpsl_admin()
-    OR current_user IN ('postgres', 'supabase_admin', 'service_role');
+    OR session_user IN ('postgres', 'supabase_admin', 'service_role');
 $$;
 
 CREATE OR REPLACE FUNCTION public.club_squad_star_cap(p_club_short_name text)

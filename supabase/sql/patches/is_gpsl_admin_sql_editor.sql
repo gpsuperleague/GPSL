@@ -16,7 +16,6 @@ SET search_path = public
 AS $$
   SELECT
     lower(coalesce(auth.jwt() ->> 'email', '')) = 'rotavator66@outlook.com'
-    OR current_user IN ('postgres', 'supabase_admin')
     OR session_user IN ('postgres', 'supabase_admin')
     OR coalesce(auth.jwt() ->> 'role', '') = 'service_role';
 $$;

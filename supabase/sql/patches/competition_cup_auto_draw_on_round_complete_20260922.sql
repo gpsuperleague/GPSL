@@ -173,7 +173,7 @@ BEGIN
       IF to_regprocedure('public.competition_cup_repair_force_fill(bigint, text)') IS NOT NULL
          AND (
            (to_regprocedure('public.is_gpsl_admin()') IS NOT NULL AND public.is_gpsl_admin())
-           OR current_user IN ('postgres', 'supabase_admin', 'service_role')
+           OR session_user IN ('postgres', 'supabase_admin', 'service_role')
          )
       THEN
         v_res := public.competition_cup_repair_force_fill(v_season, v_cup);
