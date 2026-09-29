@@ -6,7 +6,11 @@ import {
   rosterContentHash,
   type WhosWhoRoster,
 } from "./whos_who.ts";
-import { directoryContentHash, publishClubDirectory } from "./club_directory.ts";
+import {
+  directoryContentHash,
+  publishClubDirectory,
+  type ClubDirectory,
+} from "./club_directory.ts";
 import {
   CLEAR_CHANNEL_LABELS,
   clearDiscordChannel,
@@ -1162,26 +1166,24 @@ Deno.serve(async (req) => {
         );
       }
 
-      const { data: rosterRaw, error: rosterErr } = await adminClient.rpc(
-        "competition_whos_who_roster",
-        { p_season_id: body?.season_id ?? null }
+      const { data: dirRaw, error: dirErr } = await adminClient.rpc(
+        "competition_club_directory"
       );
-      if (rosterErr) {
+      if (dirErr) {
         return jsonResponse(
           {
             ok: false,
-            error: rosterErr.message,
-            hint: "Run gpsl_discord_whos_who.sql in Supabase SQL Editor.",
+            error: dirErr.message,
+            hint: "Run gpsl_discord_club_directory_20260929.sql in Supabase SQL Editor.",
           },
           500
         );
       }
-      const roster = (rosterRaw || {}) as WhosWhoRoster;
+      const roster = (dirRaw || {}) as ClubDirectory;
       if (!roster.ok) {
         return jsonResponse({
           ok: false,
-          error: roster.reason || "roster_failed",
-          roster,
+          error: roster.reason || "directory_failed",
         });
       }
 
@@ -1206,7 +1208,6 @@ Deno.serve(async (req) => {
 
       await adminClient.from("gpsl_discord_club_directory_state").upsert({
         id: 1,
-        season_id: roster.season_id ?? null,
         last_synced_at: new Date().toISOString(),
         last_content_hash: pub.ok ? contentHash : stateRow?.last_content_hash ?? null,
         webhook_message_ids: pub.message_ids,
@@ -1221,7 +1222,6 @@ Deno.serve(async (req) => {
           action: pub.action,
           message_ids: pub.message_ids,
           club_count: pub.club_count ?? null,
-          season_id: roster.season_id ?? null,
           season_label: roster.season_label ?? null,
           error: pub.error || null,
         },

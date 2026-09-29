@@ -7,7 +7,7 @@
 --    → Integrations → Webhooks → New Webhook → Copy URL
 -- 2) Supabase → Edge Functions → Secrets:
 --      DISCORD_CLUB_DIRECTORY_WEBHOOK_URL = that webhook URL
--- 3) Run THIS patch in SQL Editor (needs gpsl_discord_whos_who.sql applied)
+-- 3) Run THIS patch in SQL Editor
 -- 4) Redeploy: supabase functions deploy discord-sky-feed
 -- 5) Admin → Discord News → "Publish Club Directory now"
 --    (or: SELECT public.admin_discord_publish_club_directory(true);)
@@ -36,6 +36,63 @@ CREATE POLICY gpsl_discord_club_directory_state_service
   ON public.gpsl_discord_club_directory_state
   FOR ALL TO service_role
   USING (true) WITH CHECK (true);
+
+-- All non-archived clubs, no season required. League comes from the club's
+-- current season row, else its most recent season row, else NULL.
+CREATE OR REPLACE FUNCTION public.competition_club_directory()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+  WITH latest_div AS (
+    SELECT DISTINCT ON (ccs.club_short_name)
+      ccs.club_short_name,
+      ccs.division,
+      coalesce(nullif(btrim(s.label), ''), 'Season ' || s.id::text) AS season_label
+    FROM public.competition_club_seasons ccs
+    JOIN public.competition_seasons s ON s.id = ccs.season_id
+    ORDER BY ccs.club_short_name, s.is_current DESC NULLS LAST, s.id DESC
+  ),
+  rows AS (
+    SELECT
+      c."ShortName" AS short_name,
+      coalesce(nullif(btrim(c."Club"), ''), c."ShortName") AS club_name,
+      coalesce(
+        nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), ''),
+        nullif(btrim(c.owner), '')
+      ) AS raw_tag,
+      c.owner_id,
+      ld.division
+    FROM public."Clubs" c
+    LEFT JOIN latest_div ld ON ld.club_short_name = c."ShortName"
+    WHERE c."ShortName" <> 'FOREIGN'
+      AND coalesce(c.is_archived, false) = false
+  )
+  SELECT jsonb_build_object(
+    'ok', true,
+    'season_label', coalesce(
+      (SELECT coalesce(nullif(btrim(label), ''), 'Season ' || id::text)
+       FROM public.competition_seasons WHERE is_current = true ORDER BY id DESC LIMIT 1),
+      'Pre-season'
+    ),
+    'clubs', coalesce(jsonb_agg(
+      jsonb_build_object(
+        'short_name', r.short_name,
+        'club_name', r.club_name,
+        'owner_tag', CASE
+          WHEN r.raw_tag IS NULL OR upper(r.raw_tag) = upper(r.short_name) THEN NULL
+          ELSE r.raw_tag
+        END,
+        'division', r.division
+      ) ORDER BY r.short_name
+    ), '[]'::jsonb)
+  )
+  FROM rows r;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.competition_club_directory() TO authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.gpsl_discord_club_directory_request_sync(
   p_force boolean DEFAULT false

@@ -1,6 +1,6 @@
 /** Discord club directory: short code · club · owner tag · league (SL/CA/CB). Post once, then silent edits. */
 
-import { discordFetch, parseWebhookUrl, type WhosWhoRoster } from "./whos_who.ts";
+import { discordFetch, parseWebhookUrl } from "./whos_who.ts";
 
 const LEAGUE_CODES: Record<string, string> = {
   superleague: "SL",
@@ -8,7 +8,17 @@ const LEAGUE_CODES: Record<string, string> = {
   championship_b: "CB",
 };
 
-const LEAGUE_ORDER: Record<string, number> = { SL: 0, CA: 1, CB: 2 };
+export type ClubDirectory = {
+  ok: boolean;
+  reason?: string;
+  season_label?: string;
+  clubs?: {
+    short_name: string;
+    club_name?: string | null;
+    owner_tag?: string | null;
+    division?: string | null;
+  }[];
+};
 
 type DirectoryRow = { code: string; club: string; owner: string; league: string };
 
@@ -21,50 +31,37 @@ function pad(s: string, width: number): string {
   return t + " ".repeat(Math.max(0, width - t.length));
 }
 
-export function directoryRows(roster: WhosWhoRoster): DirectoryRow[] {
+export function directoryRows(dir: ClubDirectory): DirectoryRow[] {
   const rows: DirectoryRow[] = [];
-  for (const div of roster.divisions || []) {
-    const league = LEAGUE_CODES[div.slug];
-    if (!league) continue;
-    for (const c of div.clubs || []) {
-      const code = String(c.short_name || "").trim().toUpperCase();
-      if (!code) continue;
-      const rawTag = String(c.owner_tag || "").trim();
-      const vacant =
-        (c as { vacant?: boolean }).vacant === true ||
-        !rawTag ||
-        rawTag === "—" ||
-        rawTag.toUpperCase() === code;
-      rows.push({
-        code,
-        club: String(c.club_name || code).trim(),
-        owner: vacant ? "—" : rawTag,
-        league,
-      });
-    }
+  for (const c of dir.clubs || []) {
+    const code = String(c.short_name || "").trim().toUpperCase();
+    if (!code) continue;
+    const rawTag = String(c.owner_tag || "").trim();
+    rows.push({
+      code,
+      club: String(c.club_name || code).trim(),
+      owner: !rawTag || rawTag.toUpperCase() === code ? "—" : rawTag,
+      league: LEAGUE_CODES[String(c.division || "")] || "—",
+    });
   }
-  rows.sort(
-    (a, b) =>
-      a.code.localeCompare(b.code) ||
-      (LEAGUE_ORDER[a.league] ?? 9) - (LEAGUE_ORDER[b.league] ?? 9)
-  );
+  rows.sort((a, b) => a.code.localeCompare(b.code));
   return rows;
 }
 
-export function directoryContentHash(roster: WhosWhoRoster): string {
+export function directoryContentHash(roster: ClubDirectory): string {
   return directoryRows(roster)
     .map((r) => `${r.code}|${r.club}|${r.owner}|${r.league}`)
     .join("\n");
 }
 
-function buildEmbeds(roster: WhosWhoRoster): Record<string, unknown>[] {
+function buildEmbeds(roster: ClubDirectory): Record<string, unknown>[] {
   const rows = directoryRows(roster);
   const updated = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
   if (!rows.length) {
     return [
       {
         title: "GPSL Club Directory",
-        description: "No clubs registered in SL, CA or CB this season.",
+        description: "No clubs found.",
         color: 0x99aab5,
       },
     ];
@@ -142,7 +139,7 @@ export type PublishClubDirectoryResult = {
 
 export async function publishClubDirectory(opts: {
   webhookUrl: string;
-  roster: WhosWhoRoster;
+  roster: ClubDirectory;
   existingMessageIds: string[];
   force?: boolean;
   contentHash: string;
