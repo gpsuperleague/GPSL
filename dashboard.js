@@ -206,8 +206,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   ownerId = user.id;
   isAdmin = isGpslAdminUser(user);
+  const ownerTag = await loadOwnerTag();
   const emailEl = document.getElementById("userEmail");
-  if (emailEl) emailEl.textContent = user.email;
+  if (emailEl) emailEl.textContent = ownerTag || (isAdmin ? user.email : "");
   void refreshDashboardSupporterPill();
 
   const { data: club, error } = await supabase
@@ -238,7 +239,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (!club) {
     document.getElementById("dashboardTitle").textContent = "GPSL Dashboard";
-    showNoClubBanner(user.email);
+    showNoClubBanner(user.email, ownerTag);
     return;
   }
 
@@ -895,7 +896,24 @@ function wireDashboardToolbar() {
 }
 
 
-function showNoClubBanner(email) {
+async function loadOwnerTag() {
+  try {
+    const { data, error } = await supabase.rpc("owner_registry_get_self");
+    if (error) return "";
+    return String(data?.owner_tag || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function escapeBannerText(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function showNoClubBanner(email, ownerTag = "") {
   let banner = document.getElementById("noClubBanner");
   if (!banner) {
     banner = document.createElement("div");
@@ -912,16 +930,17 @@ function showNoClubBanner(email) {
       document.querySelector(".page-container")?.prepend(banner);
     }
   }
+  const who = ownerTag
+    ? `<span style="color:#aaa;font-size:12px;">Signed in as <b>${escapeBannerText(ownerTag)}</b></span>`
+    : `<span style="color:#aaa;font-size:12px;">Set your owner tag (Discord name) on the <a href="awaiting_club.html" style="color:#ff9900;">club auction page</a>.</span>`;
   const adminNote = isAdmin
-    ? `<br><span style="color:#9f9;">League admin — you can open any page from the nav while you wait (Finances has a club preview dropdown).</span>`
+    ? `<br><span style="color:#9f9;">League admin — you can open any page from the nav while you wait (Finances has a club preview dropdown).</span>
+       <br><span style="color:#aaa;font-size:12px;">${escapeBannerText(email || "")} — register with <code>admin_owner_register_for_club_auction(email)</code>.</span>`
     : "";
   banner.innerHTML = `
-    <b>No club linked to this login.</b><br>
-    New owners join via the <a href="awaiting_club.html" style="color:#ff9900;">club auction</a>
-    (starting budget set by admin). Set your owner tag there while you wait.${adminNote}<br>
-    <span style="color:#aaa;font-size:12px;">${email || "signed-in user"}</span> —
-    admin can register you with <code>admin_owner_register_for_club_auction(email)</code>
-    after <code>owner_onboarding_club_auction.sql</code> is applied.
+    <b>No club linked yet.</b><br>
+    Clubs are assigned through the <a href="awaiting_club.html" style="color:#ff9900;">club auction</a>.<br>
+    ${who}${adminNote}
   `;
   const badge = document.getElementById("clubBadgeHeader");
   if (badge) badge.style.visibility = "hidden";
