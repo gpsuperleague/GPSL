@@ -79,6 +79,8 @@ DECLARE
   v_seed jsonb;
   v_result jsonb;
   v_label text;
+  v_active int := 0;
+  v_wait text;
 BEGIN
   SELECT * INTO v_ev FROM public.gpsl_planned_events WHERE id = p_id FOR UPDATE;
   IF NOT FOUND THEN
@@ -110,16 +112,37 @@ BEGIN
     v_cur_finish := v_gs.club_auction_random_finish_time;
   END IF;
 
-  -- Don't clobber a different auction of the same type that is live right now
+  IF v_ev.kind = 'player_draft' THEN
+    SELECT count(*)::int INTO v_active FROM public."Player_Transfer_Listings"
+    WHERE listing_type = 'draft' AND status = 'Active';
+  ELSIF v_ev.kind = 'manager_draft' THEN
+    SELECT count(*)::int INTO v_active FROM public."Manager_Transfer_Listings"
+    WHERE listing_type = 'draft' AND status = 'Active';
+  ELSE
+    SELECT count(*)::int INTO v_active FROM public."Club_Auction_Listings"
+    WHERE status = 'Active';
+  END IF;
+
+  -- Back-to-back days (Day 1 → Day 2): stay pending until the previous
+  -- auction of this type is over AND settled. Re-arming earlier would move
+  -- the finish clock and roll unsettled Day 1 listings into Day 2.
   IF v_cur_on
      AND v_cur_start IS NOT NULL AND v_cur_finish IS NOT NULL
-     AND now() >= v_cur_start AND now() < v_cur_finish
+     AND now() < v_cur_finish
      AND v_cur_start IS DISTINCT FROM v_ev.starts_at THEN
-    v_result := jsonb_build_object('ok', false, 'reason',
-      format('%s already live (started %s UK) — not overwritten', v_label,
-        to_char(v_cur_start AT TIME ZONE 'Europe/London', 'Dy DD Mon HH24:MI')));
+    v_wait := format('Waiting — previous %s (starts %s UK) not finished yet', lower(v_label),
+      to_char(v_cur_start AT TIME ZONE 'Europe/London', 'Dy DD Mon HH24:MI'));
+  ELSIF v_cur_finish IS NOT NULL
+     AND now() >= v_cur_finish
+     AND v_cur_start IS DISTINCT FROM v_ev.starts_at
+     AND v_active > 0 THEN
+    v_wait := format('Waiting — previous %s finished, settling %s listing(s)', lower(v_label), v_active);
+  END IF;
+
+  IF v_wait IS NOT NULL THEN
+    v_result := jsonb_build_object('ok', false, 'waiting', true, 'reason', v_wait);
     UPDATE public.gpsl_planned_events
-    SET auto_status = 'failed', auto_ran_at = now(), auto_result = v_result, updated_at = now()
+    SET auto_result = v_result, updated_at = now()
     WHERE id = p_id;
     RETURN v_result;
   END IF;

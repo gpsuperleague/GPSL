@@ -112,6 +112,9 @@ function statusCell(ev) {
   if (!ev.auto_start) return `<span class="ep-status">Calendar only</span>`;
   const res = ev.auto_result || {};
   if (ev.auto_status === "pending") {
+    if (res.waiting) {
+      return `<span class="ep-status ep-status-pending">⏳ ${escapeHtml(res.reason || "Waiting for previous auction")} — will switch on once it settles</span>`;
+    }
     const armAt = new Date(new Date(ev.starts_at).getTime() - (ev.arm_hours_before || 0) * 3600_000);
     return `<span class="ep-status ep-status-pending">Auto-start pending — switches on ${escapeHtml(formatUk(armAt.toISOString()))}</span>`;
   }
