@@ -126,7 +126,7 @@ function parseRetryAfterSec(res: Response, text: string): number {
   return 2;
 }
 
-async function discordFetch(
+export async function discordFetch(
   url: string,
   init: RequestInit
 ): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; text: string }> {

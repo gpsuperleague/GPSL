@@ -272,6 +272,7 @@ function renderRoutingStatus(data) {
   const scheduledOk = !!data?.scheduled_webhook_configured;
   const intlScheduledOk = !!data?.intl_scheduled_webhook_configured;
   const whosOk = !!data?.whos_who_webhook_configured;
+  const clubDirOk = !!data?.club_directory_webhook_configured;
   el.innerHTML = `
     <div class="${newsOk ? "ok" : "bad"}">#gpsl-news webhook: ${
       newsOk ? "configured" : "missing DISCORD_WEBHOOK_URL"
@@ -319,6 +320,11 @@ function renderRoutingStatus(data) {
     <div class="${whosOk ? "ok" : "bad"}">#whos-who webhook: ${
       whosOk
         ? "configured (DISCORD_WHOS_WHO_WEBHOOK_URL) — silent daily edit"
+        : "MISSING — set secret + redeploy discord-sky-feed"
+    }</div>
+    <div class="${clubDirOk ? "ok" : "bad"}">Club directory webhook: ${
+      clubDirOk
+        ? "configured (DISCORD_CLUB_DIRECTORY_WEBHOOK_URL) — silent daily edit"
         : "MISSING — set secret + redeploy discord-sky-feed"
     }</div>
     ${
@@ -799,6 +805,33 @@ document.getElementById("whosWhoPublishBtn")?.addEventListener("click", () => {
       "newsStatus",
       data?.hint ||
         `Who's Who sync requested (pg_net #${data?.request_id ?? "—"}). Check #whos-who in ~30s.`
+    );
+  })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
+document.getElementById("clubDirectoryPublishBtn")?.addEventListener("click", () => {
+  (async () => {
+    setStatus("newsStatus", "Publishing Club Directory to Discord…");
+    const { data, error } = await supabase.rpc("admin_discord_publish_club_directory", {
+      p_force: true,
+    });
+    if (error) {
+      setStatus(
+        "newsStatus",
+        error.message.includes("admin_discord_publish_club_directory")
+          ? "❌ Run gpsl_discord_club_directory_20260929.sql in Supabase first."
+          : "❌ " + error.message,
+        false
+      );
+      return;
+    }
+    if (!data?.ok) {
+      setStatus("newsStatus", data?.hint || data?.error || "Club Directory publish failed.", false);
+      return;
+    }
+    setStatus(
+      "newsStatus",
+      data?.hint ||
+        `Club Directory sync requested (pg_net #${data?.request_id ?? "—"}). Check the channel in ~30s.`
     );
   })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });

@@ -6,6 +6,7 @@ import {
   rosterContentHash,
   type WhosWhoRoster,
 } from "./whos_who.ts";
+import { directoryContentHash, publishClubDirectory } from "./club_directory.ts";
 import {
   CLEAR_CHANNEL_LABELS,
   clearDiscordChannel,
@@ -672,6 +673,10 @@ Deno.serve(async (req) => {
       Deno.env.get("DISCORD_WHOS_WHO_WEBHOOK_URL") ||
       Deno.env.get("DISCORD_WHOSWHO_WEBHOOK_URL") ||
       "";
+    const clubDirectoryWebhookUrl =
+      Deno.env.get("DISCORD_CLUB_DIRECTORY_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WEBHOOK_CLUB_DIRECTORY_URL") ||
+      "";
     const scheduledWebhookUrl =
       Deno.env.get("DISCORD_SCHEDULED_WEBHOOK_URL") ||
       Deno.env.get("DISCORD_WEBHOOK_SCHEDULED_URL") ||
@@ -859,6 +864,7 @@ Deno.serve(async (req) => {
         nationpick: nationPickWebhookUrl,
         whos_who: whosWhoWebhookUrl,
         whoswho: whosWhoWebhookUrl,
+        club_directory: clubDirectoryWebhookUrl,
       };
 
       const label =
@@ -887,7 +893,7 @@ Deno.serve(async (req) => {
           return jsonResponse(
             {
               ok: false,
-              error: `Unknown or unconfigured channel "${channelKey}". Choose news, results, intl_results, natter, notifications, tables, intl_tables, scheduled, intl_scheduled, deals, contracts, job_center, nation_pick, transfer_gossip, or whos_who.`,
+              error: `Unknown or unconfigured channel "${channelKey}". Choose news, results, intl_results, natter, notifications, tables, intl_tables, scheduled, intl_scheduled, deals, contracts, job_center, nation_pick, transfer_gossip, whos_who, or club_directory.`,
               channels: Object.keys(CLEAR_CHANNEL_LABELS),
             },
             400
@@ -945,6 +951,21 @@ Deno.serve(async (req) => {
           /* ignore */
         }
       }
+      if (result.ok && channelKey === "club_directory" && !result.more_remain) {
+        try {
+          await adminClient
+            .from("gpsl_discord_club_directory_state")
+            .update({
+              webhook_message_ids: [],
+              last_content_hash: null,
+              last_error: "cleared via admin clear_channel",
+              last_action: "cleared",
+            })
+            .eq("id", 1);
+        } catch {
+          /* ignore */
+        }
+      }
 
       // Always 200 so the browser can read progress (gateway 504s otherwise lose the body)
       return jsonResponse({
@@ -979,6 +1000,7 @@ Deno.serve(async (req) => {
         tables_webhook_configured: Boolean(tablesWebhookUrl),
         intl_tables_webhook_configured: Boolean(intlTablesWebhookUrl),
         whos_who_webhook_configured: Boolean(whosWhoWebhookUrl),
+        club_directory_webhook_configured: Boolean(clubDirectoryWebhookUrl),
         scheduled_webhook_configured: Boolean(scheduledWebhookUrl),
         intl_scheduled_webhook_configured: Boolean(intlScheduledWebhookUrl),
         intl_results_webhook_configured: Boolean(intlResultsWebhookUrl),
@@ -1026,6 +1048,9 @@ Deno.serve(async (req) => {
           whos_who: whosWhoWebhookUrl
             ? "DISCORD_WHOS_WHO_WEBHOOK_URL → #whos-who (silent daily edit)"
             : "BLOCKED until DISCORD_WHOS_WHO_WEBHOOK_URL is set",
+          club_directory: clubDirectoryWebhookUrl
+            ? "DISCORD_CLUB_DIRECTORY_WEBHOOK_URL → club directory (silent daily edit)"
+            : "BLOCKED until DISCORD_CLUB_DIRECTORY_WEBHOOK_URL is set",
           other_events: "DISCORD_WEBHOOK_URL → #gpsl-news",
           calendar_note:
             "DISCORD_NOTIFICATIONS_WEBHOOK_URL → #gpsl-notifications (GPSL calendar feed)",
@@ -1111,6 +1136,90 @@ Deno.serve(async (req) => {
           whos_who: true,
           action: pub.action,
           message_id: pub.message_id || null,
+          club_count: pub.club_count ?? null,
+          season_id: roster.season_id ?? null,
+          season_label: roster.season_label ?? null,
+          error: pub.error || null,
+        },
+        pub.ok ? 200 : 500
+      );
+    }
+
+    // Club directory — short code · club · owner · league; post once, then edit (no @pings)
+    if (
+      body?.action === "club_directory" ||
+      body?.club_directory === true ||
+      body?.publish_club_directory === true
+    ) {
+      if (!clubDirectoryWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_CLUB_DIRECTORY_WEBHOOK_URL secret missing — create a webhook in the club directory channel, add the secret, redeploy discord-sky-feed.",
+          },
+          500
+        );
+      }
+
+      const { data: rosterRaw, error: rosterErr } = await adminClient.rpc(
+        "competition_whos_who_roster",
+        { p_season_id: body?.season_id ?? null }
+      );
+      if (rosterErr) {
+        return jsonResponse(
+          {
+            ok: false,
+            error: rosterErr.message,
+            hint: "Run gpsl_discord_whos_who.sql in Supabase SQL Editor.",
+          },
+          500
+        );
+      }
+      const roster = (rosterRaw || {}) as WhosWhoRoster;
+      if (!roster.ok) {
+        return jsonResponse({
+          ok: false,
+          error: roster.reason || "roster_failed",
+          roster,
+        });
+      }
+
+      const { data: stateRow } = await adminClient
+        .from("gpsl_discord_club_directory_state")
+        .select("webhook_message_ids, last_content_hash")
+        .eq("id", 1)
+        .maybeSingle();
+
+      const existingIds = Array.isArray(stateRow?.webhook_message_ids)
+        ? (stateRow.webhook_message_ids as unknown[]).map(String).filter(Boolean)
+        : [];
+      const contentHash = directoryContentHash(roster);
+      const pub = await publishClubDirectory({
+        webhookUrl: clubDirectoryWebhookUrl,
+        roster,
+        existingMessageIds: existingIds,
+        previousHash: stateRow?.last_content_hash || null,
+        contentHash,
+        force: body?.force === true,
+      });
+
+      await adminClient.from("gpsl_discord_club_directory_state").upsert({
+        id: 1,
+        season_id: roster.season_id ?? null,
+        last_synced_at: new Date().toISOString(),
+        last_content_hash: pub.ok ? contentHash : stateRow?.last_content_hash ?? null,
+        webhook_message_ids: pub.message_ids,
+        last_error: pub.ok ? null : pub.error || "publish_failed",
+        last_action: pub.action,
+      });
+
+      return jsonResponse(
+        {
+          ok: pub.ok,
+          club_directory: true,
+          action: pub.action,
+          message_ids: pub.message_ids,
           club_count: pub.club_count ?? null,
           season_id: roster.season_id ?? null,
           season_label: roster.season_label ?? null,

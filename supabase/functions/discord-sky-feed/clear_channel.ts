@@ -23,7 +23,8 @@ export type ClearChannelKey =
   | "job_center"
   | "nation_pick"
   | "transfer_gossip"
-  | "whos_who";
+  | "whos_who"
+  | "club_directory";
 
 export const CLEAR_CHANNEL_LABELS: Record<ClearChannelKey, string> = {
   news: "#gpsl-news",
@@ -41,6 +42,7 @@ export const CLEAR_CHANNEL_LABELS: Record<ClearChannelKey, string> = {
   nation_pick: "#gpsl-nation-pick",
   transfer_gossip: "#gpsl-transfer-gossip",
   whos_who: "#whos-who",
+  club_directory: "#club-directory",
 };
 
 function sleep(ms: number) {
