@@ -208,7 +208,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   isAdmin = isGpslAdminUser(user);
   const ownerTag = await loadOwnerTag();
   const emailEl = document.getElementById("userEmail");
-  if (emailEl) emailEl.textContent = ownerTag || (isAdmin ? user.email : "");
+  if (emailEl) emailEl.textContent = user.email;
   void refreshDashboardSupporterPill();
 
   const { data: club, error } = await supabase
@@ -930,17 +930,16 @@ function showNoClubBanner(email, ownerTag = "") {
       document.querySelector(".page-container")?.prepend(banner);
     }
   }
-  const who = ownerTag
-    ? `<span style="color:#aaa;font-size:12px;">Signed in as <b>${escapeBannerText(ownerTag)}</b></span>`
-    : `<span style="color:#aaa;font-size:12px;">Set your owner tag (Discord name) on the <a href="awaiting_club.html" style="color:#ff9900;">club auction page</a>.</span>`;
+  const tagPrompt = ownerTag
+    ? ""
+    : `<div style="color:#aaa;font-size:12px;margin-top:6px;">Set your Discord name on the <a href="awaiting_club.html" style="color:#ff9900;">club auction page</a>.</div>`;
   const adminNote = isAdmin
-    ? `<br><span style="color:#9f9;">League admin — you can open any page from the nav while you wait (Finances has a club preview dropdown).</span>
-       <br><span style="color:#aaa;font-size:12px;">${escapeBannerText(email || "")} — register with <code>admin_owner_register_for_club_auction(email)</code>.</span>`
+    ? `<div style="color:#9f9;font-size:12px;margin-top:6px;">Admin: use the nav to preview any page while you wait.</div>`
     : "";
   banner.innerHTML = `
-    <b>No club linked yet.</b><br>
-    Clubs are assigned through the <a href="awaiting_club.html" style="color:#ff9900;">club auction</a>.<br>
-    ${who}${adminNote}
+    <b>No club linked yet</b> — clubs are assigned through the
+    <a href="awaiting_club.html" style="color:#ff9900;">club auction</a>.
+    ${tagPrompt}${adminNote}
   `;
   const badge = document.getElementById("clubBadgeHeader");
   if (badge) badge.style.visibility = "hidden";
