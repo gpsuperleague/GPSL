@@ -387,8 +387,10 @@ export async function initWaitingListPage() {
       const { data: s1 } = await supabase.rpc("owner_season1_invite_get_mine");
       let s1Card = document.getElementById("wlSeason1Card");
       const s1info = s1?.season1 || {};
-      const s1Expired = Boolean(s1?.expired || s1info.deadline_passed);
-      if (s1?.has_invite || s1Expired) {
+      const s1Responded = Boolean(s1info.response);
+      const s1Expired =
+        !s1Responded && Boolean(s1?.expired || s1info.deadline_passed);
+      if (!s1Responded && (s1?.has_invite || s1Expired)) {
         if (!s1Card) {
           s1Card = document.createElement("div");
           s1Card.id = "wlSeason1Card";
@@ -417,10 +419,10 @@ export async function initWaitingListPage() {
               s1info.deadline_label ? ` (deadline ${s1info.deadline_label})` : ""
             }. Contact an admin if you still want a place.`;
           }
-          if (actions) actions.hidden = true;
+          if (actions) actions.style.display = "none";
           if (st) st.textContent = "";
         } else {
-          if (actions) actions.hidden = false;
+          if (actions) actions.style.display = "flex";
           if (sum) {
             const isMass = String(s1info.lane || "").toLowerCase() === "mass";
             sum.textContent = isMass

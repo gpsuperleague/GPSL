@@ -495,7 +495,8 @@ async function renderInbox() {
         s1Live = null;
       }
       const s1info = s1Live?.season1 || {};
-      const s1Expired = Boolean(s1Live?.expired || s1info.deadline_passed);
+      const s1Expired =
+        !s1info.response && Boolean(s1Live?.expired || s1info.deadline_passed);
       const s1Pending = Boolean(s1Live?.has_invite) && !s1Expired;
 
       if (s1Expired && !s1Pending) {
