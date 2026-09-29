@@ -340,14 +340,206 @@ function monthKeyFromIso(iso) {
   return month || null;
 }
 
-/** Pin live overlays to Pre-Season while no GPSL month is unlocked yet. */
+/** GPSL week windows for the newest season that has a calendar (works pre-season too). */
+let gpslWindows = [];
+let gpslWindowsSeasonId = null;
+
+async function loadGpslWindows() {
+  const { data, error } = await supabase
+    .from("competition_season_calendar")
+    .select("season_id, gpsl_month, sort_order, unlock_at, lock_at")
+    .order("season_id", { ascending: false })
+    .order("sort_order", { ascending: true })
+    .limit(40);
+  if (error || !data?.length) {
+    gpslWindows = [];
+    gpslWindowsSeasonId = null;
+    return;
+  }
+  gpslWindowsSeasonId = data[0].season_id;
+  gpslWindows = data.filter((r) => r.season_id === gpslWindowsSeasonId);
+}
+
+/** GPSL month card for an instant, from the real week windows (null if unknown). */
+function gpslMonthKeyForInstant(iso) {
+  if (!iso || !gpslWindows.length) return null;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return null;
+  const row = gpslWindows.find(
+    (r) => t >= new Date(r.unlock_at).getTime() && t < new Date(r.lock_at).getTime()
+  );
+  if (row) return String(row.gpsl_month).toLowerCase();
+  if (t < new Date(gpslWindows[0].unlock_at).getTime()) return "pre_season";
+  return null;
+}
+
+function gpslLockAt(monthKey) {
+  const row = gpslWindows.find((r) => String(r.gpsl_month).toLowerCase() === monthKey);
+  return row?.lock_at || null;
+}
+
+function gpslUnlockAt(monthKey) {
+  const row = gpslWindows.find((r) => String(r.gpsl_month).toLowerCase() === monthKey);
+  return row?.unlock_at || null;
+}
+
+/** Place overlays by GPSL week; Pre-Season before June; fallback to real month name. */
 function overlayMonthKey(iso, status) {
+  const gpsl = gpslMonthKeyForInstant(iso);
+  if (gpsl) return gpsl;
   if (isTruePreSeason(status)) return "pre_season";
   return monthKeyFromIso(iso);
 }
 
+const PLANNED_KIND_CLASS = {
+  player_draft: "draft",
+  manager_draft: "manager-auction",
+  club_auction: "club-auction",
+  challenge: "challenge",
+  announcement: "planned",
+  deadline: "planned-deadline",
+  other: "planned",
+};
+
+const PLANNED_DEFAULT_LINK = {
+  player_draft: { href: "draftauction.html", label: "Draft auction" },
+  manager_draft: { href: "manager_draftauction.html", label: "Manager draft" },
+  club_auction: { href: "club_auction.html", label: "Club auction" },
+  challenge: { href: "challenges.html", label: "Season Challenges" },
+};
+
+async function loadPlannedEvents() {
+  const { data, error } = await supabase
+    .from("gpsl_planned_events")
+    .select("id, title, detail, kind, starts_at, ends_at, link_href, auto_start, auto_status")
+    .eq("visible", true)
+    .order("starts_at", { ascending: true })
+    .limit(200);
+  if (error) return [];
+  return data || [];
+}
+
+function plannedEventOverlay(ev, nowMs) {
+  const start = new Date(ev.starts_at).getTime();
+  const isAuction = ["player_draft", "manager_draft", "club_auction"].includes(ev.kind);
+  const end = ev.ends_at
+    ? new Date(ev.ends_at).getTime()
+    : isAuction
+      ? start + 24 * 3600_000
+      : start;
+  const live = nowMs >= start && nowMs < end;
+  const bits = [`${formatUkDateTime(ev.starts_at)} UK`];
+  if (ev.ends_at) bits[0] += ` → ${formatUkDateTime(ev.ends_at)} UK`;
+  else if (isAuction) bits[0] += " — closes at a secret time the next evening";
+  if (ev.detail) bits.push(ev.detail);
+  if (isAuction && ev.auto_start) bits.push("Opens automatically — no need to wait for an announcement.");
+  const link = ev.link_href
+    ? { href: ev.link_href, label: "Open" }
+    : PLANNED_DEFAULT_LINK[ev.kind] || null;
+  return {
+    kind: PLANNED_KIND_CLASS[ev.kind] || "planned",
+    short: live ? `${ev.title} — live` : ev.title,
+    detail: bits.join(" · "),
+    links: link ? [link] : [],
+    live,
+    at: ev.starts_at,
+    planned: true,
+  };
+}
+
+async function loadChallengeOverlays() {
+  let seasonId = gpslWindowsSeasonId;
+  if (!seasonId) {
+    const { data: s } = await supabase
+      .from("competition_seasons")
+      .select("id")
+      .eq("is_current", true)
+      .maybeSingle();
+    seasonId = s?.id ?? null;
+  }
+  if (!seasonId) return [];
+  const { data, error } = await supabase
+    .from("competition_challenge_config")
+    .select("window_phase, gpsl_month_from, gpsl_month_to, is_active")
+    .eq("season_id", seasonId);
+  if (error || !data?.length) return [];
+
+  const order = SEASON_MONTH_ORDER;
+  const byPhase = {};
+  for (const c of data) {
+    if (c.is_active === false) continue;
+    const p = c.window_phase || "start";
+    if (!byPhase[p]) byPhase[p] = { count: 0, from: null, to: null };
+    const g = byPhase[p];
+    g.count += 1;
+    const f = String(c.gpsl_month_from || "").toLowerCase();
+    const t = String(c.gpsl_month_to || "").toLowerCase();
+    if (!g.from || order.indexOf(f) < order.indexOf(g.from)) g.from = f;
+    if (!g.to || order.indexOf(t) > order.indexOf(g.to)) g.to = t;
+  }
+
+  const out = [];
+  for (const [phase, g] of Object.entries(byPhase)) {
+    if (!g.from || !g.to) continue;
+    let required = null;
+    try {
+      const { data: req } = await supabase.rpc("competition_challenge_required_to_win", {
+        p_season_id: seasonId,
+        p_window_phase: phase,
+      });
+      if (Number.isFinite(Number(req))) required = Number(req);
+    } catch {
+      required = null;
+    }
+    const phaseLabel = phase === "mid" ? "Mid-season" : "Start of season";
+    const fromLabel = MONTH_LABELS[g.from] || g.from;
+    const toLabel = MONTH_LABELS[g.to] || g.to;
+    const lockAt = gpslLockAt(g.to);
+    const unlockAt = gpslUnlockAt(g.from);
+    const bigPrize = required
+      ? `The big prize pack goes to the first club to complete ${required} of them.`
+      : "The big prize pack goes to the first club to complete the required number.";
+    const links = [
+      { href: "club_challenges.html", label: "My challenges" },
+      { href: "challenges.html", label: "Season Challenges", secondary: true },
+    ];
+    out.push({
+      month: g.from,
+      ev: {
+        kind: "challenge",
+        short: `Challenges open — ${phaseLabel}`,
+        detail:
+          `${g.count} challenge${g.count === 1 ? "" : "s"} run ${fromLabel}–${toLabel}` +
+          (unlockAt ? ` (from ${formatUkDateTime(unlockAt)} UK)` : "") +
+          `. Each prize is paid the moment your club hits the target. ${bigPrize}`,
+        links,
+        at: unlockAt,
+      },
+    });
+    out.push({
+      month: g.to,
+      ev: {
+        kind: "challenge",
+        short: `Challenge deadline — ${phaseLabel}`,
+        detail:
+          `Last chance for ${phaseLabel.toLowerCase()} challenge prizes: the window closes when GPSL ${toLabel} locks` +
+          (lockAt ? ` (${formatUkDateTime(lockAt)} UK)` : "") +
+          `. Targets hit after that don't pay.`,
+        links,
+        at: lockAt,
+      },
+    });
+  }
+  return out;
+}
+
 async function loadLiveOverlays(status) {
   const nowIso = new Date().toISOString();
+  await loadGpslWindows();
+  const [plannedRows, challengeRows] = await Promise.all([
+    loadPlannedEvents().catch(() => []),
+    loadChallengeOverlays().catch(() => []),
+  ]);
   const [
     settingsRes,
     inboxRes,
@@ -438,6 +630,7 @@ async function loadLiveOverlays(status) {
           : `Player draft auction scheduled for ${formatUkDateTime(draftStart)} UK.`,
         links: [{ href: "draftauction.html", label: "Open draft auction" }],
         live,
+        at: draftStart,
       });
     }
   }
@@ -457,6 +650,7 @@ async function loadLiveOverlays(status) {
           { href: "manager_draftauction.html", label: "Open manager draft" },
         ],
         live,
+        at: managerStart,
       });
     }
   }
@@ -474,6 +668,7 @@ async function loadLiveOverlays(status) {
           : `Club auction scheduled for ${formatUkDateTime(clubStart)} UK.`,
         links: [{ href: "club_auction.html", label: "Open club auction" }],
         live,
+        at: clubStart,
       });
     }
   }
@@ -520,7 +715,27 @@ async function loadLiveOverlays(status) {
           }.`,
       links: [{ href: "special_auction.html", label: "Special auction" }],
       live,
+      at: row.start_time,
     });
+  }
+
+  // Admin events planner (skip auctions already shown from live settings)
+  const liveStarts = {
+    player_draft: settings.draft_auction_enabled ? draftStart : null,
+    manager_draft: settings.manager_draft_auction_enabled ? managerStart : null,
+    club_auction: settings.club_auction_enabled ? clubStart : null,
+  };
+  const nowMs = Date.now();
+  for (const ev of plannedRows || []) {
+    const shown = liveStarts[ev.kind];
+    if (shown && new Date(shown).getTime() === new Date(ev.starts_at).getTime()) continue;
+    const mk = overlayMonthKey(ev.starts_at, status);
+    if (!mk || !byMonth[mk]) continue;
+    byMonth[mk].push(plannedEventOverlay(ev, nowMs));
+  }
+
+  for (const { month, ev } of challengeRows || []) {
+    if (byMonth[month]) byMonth[month].push(ev);
   }
 
   const wc = wcRes.data;
@@ -922,6 +1137,37 @@ function wireBulletToggles(root) {
   });
 }
 
+/** Next few dated events (auctions, planner, challenge deadlines) above the grid. */
+function renderUpcomingStrip(live) {
+  const nowMs = Date.now();
+  const seen = new Set();
+  const items = [];
+  for (const evs of Object.values(live?.byMonth || {})) {
+    for (const ev of evs) {
+      if (!ev.at) continue;
+      const t = new Date(ev.at).getTime();
+      if (Number.isNaN(t)) continue;
+      if (t < nowMs && !ev.live) continue;
+      const key = `${ev.short}|${t}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({ ev, t });
+    }
+  }
+  if (!items.length) return "";
+  items.sort((a, b) => a.t - b.t);
+  const rows = items.slice(0, 6).map(({ ev }) => {
+    const href = ev.links?.[0]?.href;
+    const label = escapeHtml(ev.short);
+    const when = ev.live ? "Live now" : `${formatUkDateTime(ev.at)} UK`;
+    const inner = `<span class="sc-up-when">${escapeHtml(when)}</span><span class="sc-up-title">${label}</span>`;
+    return `<li class="sc-up-item sc-up--${escapeHtml(ev.kind)}${ev.live ? " is-live" : ""}">${
+      href ? `<a href="${escapeHtml(href)}">${inner}</a>` : inner
+    }</li>`;
+  });
+  return `<section class="sc-upcoming" aria-label="Coming up"><h2>Coming up</h2><ul>${rows.join("")}</ul></section>`;
+}
+
 function showError(msg) {
   const el = document.getElementById("seasonCalendarError");
   if (!el) return;
@@ -990,6 +1236,7 @@ async function renderPage(user) {
   }
 
   root.innerHTML =
+    renderUpcomingStrip(live) +
     `<div class="sc-grid">` +
     SEASON_MONTH_ORDER.map((mk) => renderMonthCard(mk, ctx)).join("") +
     `</div>` +

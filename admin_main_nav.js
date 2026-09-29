@@ -164,6 +164,12 @@ export const ADMIN_MAIN_NAV = [
         "Build the GPSL month calendar for the new season (needed before going live)."
       ),
       link(
+        "Events planner",
+        "admin_events_planner.html",
+        null,
+        "Plan auctions and other events onto the owners' Season Calendar. Auctions can auto-start (switched on + announced ahead, bidding opens at the start time)."
+      ),
+      link(
         "Start season (go live)",
         "admin_season.html",
         "wf-kickoff",

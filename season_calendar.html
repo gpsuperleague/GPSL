@@ -296,6 +296,56 @@
       font-size:13px;
       cursor:pointer;
     }
+    .sc-bullet--challenge .sc-bullet-btn { color:#1a5c32; }
+    .sc-bullet--planned .sc-bullet-btn,
+    .sc-bullet--planned-deadline .sc-bullet-btn { color:#5a2d82; font-weight:bold; }
+    .sc-bullet--club-auction .sc-bullet-btn,
+    .sc-bullet--draft .sc-bullet-btn,
+    .sc-bullet--manager-auction .sc-bullet-btn { color:#8a4b00; }
+
+    .sc-upcoming {
+      background:#1a1a1a;
+      border:1px solid #333;
+      border-left:4px solid #ff9900;
+      border-radius:8px;
+      padding:10px 14px;
+      margin:0 0 16px;
+    }
+    .sc-upcoming h2 {
+      margin:0 0 8px;
+      font-size:13px;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      color:#ff9900;
+    }
+    .sc-upcoming ul {
+      list-style:none;
+      margin:0;
+      padding:0;
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+      gap:8px;
+    }
+    .sc-up-item a,
+    .sc-up-item > span {
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      padding:7px 10px;
+      background:#141414;
+      border:1px solid #2a2a2a;
+      border-radius:6px;
+      text-decoration:none;
+      color:#ddd;
+    }
+    .sc-up-item a:hover { border-color:#ff9900; }
+    .sc-up-when { font-size:11px; color:#aaa; }
+    .sc-up-title { font-size:13px; font-weight:bold; color:#eee; }
+    .sc-up-item.is-live .sc-up-when { color:#8d8; font-weight:bold; }
+    .sc-up--challenge .sc-up-title { color:#8d8; }
+    .sc-up--planned .sc-up-title,
+    .sc-up--planned-deadline .sc-up-title { color:#c9a0ff; }
+
     .sc-build {
       color:#555;
       font-size:11px;
@@ -321,6 +371,6 @@
     <p class="sc-hint">Tip: your club fixtures appear as highlighted bullets when you own a club.</p>
     <div id="seasonCalendarRoot"></div>
   </div>
-  <script type="module" src="season_calendar.js?v=20260817-popup-wc"></script>
+  <script type="module" src="season_calendar.js?v=20260929-planner"></script>
 </body>
 </html>

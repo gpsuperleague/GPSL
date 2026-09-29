@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Events planner — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .ep-fields {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px 20px;
+      margin-bottom: 12px;
+    }
+    .ep-fields label {
+      display: block;
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
+    .ep-fields input,
+    .ep-fields select,
+    .ep-fields textarea {
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    .ep-fields textarea { width: min(640px, 90vw); min-height: 60px; }
+    .ep-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #ccc;
+      margin: 6px 0;
+      cursor: pointer;
+    }
+    .ep-auto-box {
+      border: 1px solid #3a3a1a;
+      background: #1b1a10;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin: 8px 0 12px;
+    }
+    .ep-auto-box[hidden] { display: none; }
+    .ep-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ep-table th,
+    .ep-table td { padding: 7px 8px; border-bottom: 1px solid #2a2a2a; text-align: left; vertical-align: top; }
+    .ep-table th { color: #999; font-weight: normal; font-size: 12px; }
+    .ep-kind {
+      font-size: 11px;
+      font-weight: bold;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: #2a2a2a;
+      color: #ccc;
+      white-space: nowrap;
+    }
+    .ep-kind-auction { background: #332a00; color: #ffcc66; }
+    .ep-kind-challenge { background: #102a18; color: #8d8; }
+    .ep-status { font-size: 11px; white-space: nowrap; }
+    .ep-status-pending { color: #ffcc66; }
+    .ep-status-armed { color: #8d8; }
+    .ep-status-failed { color: #f88; }
+    .ep-past td { opacity: 0.55; }
+    .ep-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ep-actions button { padding: 4px 8px; font-size: 11px; }
+    .ep-hidden-tag { color: #888; font-size: 11px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Events planner</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2 id="epFormTitle">Add event</h2>
+        <p class="note">
+          Events appear on the owners' <a href="season_calendar.html">Season Calendar</a> in the GPSL month they fall in.
+          Auctions can <b>start by themselves</b>: tick Auto-start and the auction is switched on with its clock set
+          ahead of time (owners get the usual inbox + Discord "scheduled" notice), then bidding opens at the start time
+          and closes at a secret time the next evening (18:50–18:59:58 for a 19:00 start).
+          Challenge windows and deadlines come from <a href="admin_challenges.html">Challenge Admin</a> automatically;
+          special auctions from the Special Auction page.
+        </p>
+        <input type="hidden" id="epId">
+        <div class="ep-fields">
+          <div>
+            <label for="epKind">Type</label>
+            <select id="epKind">
+              <option value="player_draft">Player draft auction</option>
+              <option value="manager_draft">Manager draft auction</option>
+              <option value="club_auction">Club auction</option>
+              <option value="challenge">Challenge / prize</option>
+              <option value="announcement">Announcement</option>
+              <option value="deadline">Deadline</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="epTitle">Title</label>
+            <input type="text" id="epTitle" maxlength="120" style="width:280px;">
+          </div>
+          <div>
+            <label for="epStart">Starts (UK time)</label>
+            <input type="datetime-local" id="epStart" step="60">
+          </div>
+          <div>
+            <label for="epEnd">Ends (optional)</label>
+            <input type="datetime-local" id="epEnd" step="60">
+          </div>
+        </div>
+        <div class="ep-fields">
+          <div>
+            <label for="epDetail">Details for owners (optional)</label>
+            <textarea id="epDetail" maxlength="1000"></textarea>
+          </div>
+          <div>
+            <label for="epLink">Link (optional, e.g. draftauction.html)</label>
+            <input type="text" id="epLink" style="width:240px;">
+          </div>
+        </div>
+        <label class="ep-check"><input type="checkbox" id="epVisible" checked> Show on owners' Season Calendar</label>
+
+        <div class="ep-auto-box" id="epAutoBox" hidden>
+          <label class="ep-check"><input type="checkbox" id="epAuto"> <b>Auto-start this auction</b></label>
+          <div class="ep-fields" style="margin:6px 0 0;">
+            <div>
+              <label for="epArmHours">Switch on &amp; announce this many hours before</label>
+              <input type="number" id="epArmHours" min="0" max="336" value="24" style="width:90px;">
+            </div>
+            <label class="ep-check" id="epSeedWrap"><input type="checkbox" id="epSeed" checked> Seed club auction listings when switched on</label>
+          </div>
+          <p class="note" style="margin:6px 0 0;">
+            Use a 19:00 UK start for the normal Day-1 / Day-2 rhythm. If another auction of the same type is live at
+            switch-on time it is left alone and this event is marked failed.
+          </p>
+        </div>
+
+        <div class="row">
+          <button type="button" id="epSaveBtn" class="button">Save event</button>
+          <button type="button" id="epClearBtn" class="button" style="background:#555;">Clear</button>
+          <button type="button" id="epSuggestBtn" class="button" style="background:#555;">Next Thursday 19:00</button>
+        </div>
+        <div id="epStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Planned events</h2>
+        <label class="ep-check"><input type="checkbox" id="epShowPast"> Show past events</label>
+        <div id="epList"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_events_planner.js?v=20260929-planner"></script>
+</body>
+</html>

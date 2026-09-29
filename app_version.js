@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260929-thursday-weeks";
+export const APP_VERSION = "20260929-events-planner";
