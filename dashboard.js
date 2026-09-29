@@ -21,6 +21,7 @@ import {
   loadClubDashboardTheme,
 } from "./club_theme_common.js";
 import { startDashboardMatchday } from "./dashboard_matchday.js";
+import { startMatchdayChecklist } from "./matchday_checklist.js?v=20260929-mc";
 import {
   leagueBadgeSrc,
   leagueTierForDivision,
@@ -265,6 +266,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   startDashboardMatchday(shortName);
+  startMatchdayChecklist(shortName);
 });
 
 async function refreshDashboardCtx() {

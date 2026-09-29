@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260925-link-gold";
+export const APP_VERSION = "20260929-matchday-checklist";

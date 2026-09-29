@@ -1404,6 +1404,35 @@ export async function refreshInboxNavBadge() {
   }
 }
 
+/** Matchday checklist "your move" count on the Match Day nav link + its group. */
+export async function refreshMatchdayNavBadge() {
+  const nav = document.getElementById("nav");
+  if (!nav) return;
+  let count = 0;
+  try {
+    const { data, error } = await supabase.rpc("matchday_checklist_count");
+    if (!error) count = Number(data) || 0;
+  } catch {
+    count = 0;
+  }
+  const label = count > 99 ? "99+" : String(count);
+  const title = `${count} matchday item${count === 1 ? "" : "s"} need you`;
+  nav.querySelectorAll(".nav-mc-badge").forEach((el) => el.remove());
+  if (count <= 0) return;
+  nav.querySelectorAll('a[href^="matchday.html"]').forEach((link) => {
+    const badge = document.createElement("span");
+    badge.className = "nav-group-staff-badge nav-mc-badge";
+    badge.title = title;
+    badge.textContent = label;
+    link.appendChild(badge);
+    const summary = link.closest("[data-nav-group]")?.querySelector(".nav-group-summary");
+    if (summary && !summary.querySelector(".nav-mc-badge")) {
+      const groupBadge = badge.cloneNode(true);
+      summary.appendChild(groupBadge);
+    }
+  });
+}
+
 async function refreshSpecialAuctionNavLive() {
   try {
     const { fetchSpecialAuctionNavState, isSpecialAuctionLive } = await import(
@@ -2633,6 +2662,9 @@ export async function buildNav() {
   refreshNavListingIndicators();
   startNavAuctionBadgeRefresh();
   refreshGpslSportNavUi();
+  if (!isPreClubOwner && ownerClub) {
+    void refreshMatchdayNavBadge();
+  }
   if (!isPreClubOwner) {
     try {
       const sched = await import(

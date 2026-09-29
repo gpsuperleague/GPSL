@@ -49,6 +49,7 @@ import {
   getMatchdayConsoleRulesCards,
 } from "./matchday_console_rules.js?v=20260926-dmf-amf-caps";
 import { playerNameLinkHtml } from "./player_links.js";
+import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20260929-mc";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -1687,6 +1688,7 @@ function populateFixtureSelect() {
         ? `${comp} R${f.cup_round}M${f.cup_match}`
         : `${comp} · MD${f.matchday}`;
     opt.textContent = `${label}: ${f.home_club_name} vs ${f.away_club_name}${pending}`;
+    opt.dataset.baseLabel = opt.textContent;
     sel.appendChild(opt);
   }
 
@@ -1694,6 +1696,25 @@ function populateFixtureSelect() {
     void updateFixturePreview();
   };
   void updateFixturePreview();
+  void decorateFixtureOptionsWithChecklist(sel);
+}
+
+async function decorateFixtureOptionsWithChecklist(sel) {
+  const data = await fetchMatchdayChecklist();
+  if (!data?.ok || !Array.isArray(data.fixtures)) return;
+  const byId = new Map(data.fixtures.map((fx) => [String(fx.fixture_id), fx]));
+  for (const opt of sel.options) {
+    const fx = byId.get(opt.value);
+    if (!fx) continue;
+    const base = opt.dataset.baseLabel || opt.textContent;
+    const needs = Number(fx.needs_you) || 0;
+    let badge = "";
+    if (needs > 0) badge = `● ${needs} to do · `;
+    else if (fx.all_done) badge = "✓ ";
+    else badge = "⏳ ";
+    opt.textContent = `${badge}${base}`;
+    if (fx.next_action?.label) opt.title = fx.next_action.label;
+  }
 }
 
 async function loadUpcomingFixtures() {

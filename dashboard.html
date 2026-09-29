@@ -213,6 +213,143 @@
       color: #8d8;
     }
 
+    /* Matchday checklist */
+    .mc-panel {
+      background: var(--club-panel, #1a1a1a);
+      border: 1px solid var(--club-border, #333);
+      border-left: 4px solid #555;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 0 0 18px;
+    }
+    .mc-panel[hidden] { display: none !important; }
+    .mc-panel.mc-needs { border-left-color: var(--club-accent, #ff9900); }
+    .mc-panel.mc-all-done { border-left-color: #3a6; padding: 8px 14px; }
+    .mc-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 14px;
+    }
+    .mc-head h2 {
+      margin: 0;
+      font-size: 15px;
+      color: var(--club-accent, #ff9900);
+    }
+    .mc-all-done .mc-head h2 { color: #8d8; }
+    .mc-count { font-size: 13px; color: #aaa; }
+    .mc-count-todo { color: #ffcc66; font-weight: bold; }
+    .mc-count-done { color: #8d8; }
+    .mc-lock { font-size: 12px; color: #888; }
+    .mc-toggle {
+      margin-left: auto;
+      background: none;
+      border: 1px solid #444;
+      color: #aaa;
+      border-radius: 4px;
+      font-size: 11px;
+      padding: 3px 8px;
+      cursor: pointer;
+    }
+    .mc-collapsed .mc-body { display: none; }
+    .mc-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .mc-fixture {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    .mc-fixture.mc-has-todo { border-color: #5a4a20; }
+    .mc-fx-head {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .mc-fx-comp {
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--club-accent, #ff9900);
+    }
+    .mc-fx-vs {
+      font-size: 14px;
+      font-weight: bold;
+      color: #eee;
+      text-decoration: none;
+    }
+    .mc-fx-vs:hover { text-decoration: underline; }
+    .mc-fx-ko { font-size: 11px; color: #999; margin-left: auto; }
+    .mc-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .mc-step {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      color: #777;
+      background: #1c1c1c;
+      cursor: default;
+    }
+    .mc-step-icon { font-weight: bold; }
+    .mc-step.mc-done { color: #8d8; border-color: #2f5a2f; background: #142014; }
+    .mc-step.mc-todo { color: #ffcc66; border-color: #7a5a10; background: #2a2000; }
+    .mc-step.mc-overdue,
+    .mc-step.mc-missed { color: #f88; border-color: #7a2a2a; background: #2a1414; }
+    .mc-step.mc-warn { color: #fb5; border-color: #7a5a10; background: #2a1e08; }
+    .mc-step.mc-waiting { color: #9cf; border-color: #2a4a6a; background: #101c28; }
+    .mc-step.mc-na { color: #555; }
+    .mc-next { font-size: 12px; color: #ddd; margin-top: 6px; line-height: 1.35; }
+    .mc-next-overdue b { color: #f88; }
+    .mc-next-todo b,
+    .mc-next-warn b { color: #ffcc66; }
+    .mc-next-quiet { color: #888; }
+    .mc-next-detail { color: #999; }
+    .mc-filename { font-size: 11px; color: #999; margin-top: 4px; word-break: break-all; }
+    .mc-filename code { color: #ddd; background: #222; padding: 1px 4px; border-radius: 3px; }
+    .mc-flags { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; }
+    .mc-club-flags { margin-top: 8px; }
+    .mc-flag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #1c1c1c;
+      border: 1px solid #333;
+      color: #aaa;
+    }
+    .mc-flag a { color: inherit; }
+    .mc-flag-warn { color: #fb5; border-color: #7a5a10; }
+    .mc-flag-info { color: #9cf; border-color: #2a4a6a; }
+    .mc-actions { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .mc-btn {
+      display: inline-block;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 4px;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid #666;
+      background: #222;
+      color: #ff9900;
+    }
+    .mc-btn-primary { background: #332a00; border-color: #ff9900; color: #ffcc66; }
+    .mc-btn:hover { border-color: #ffcc66; }
+    .mc-btn:disabled { opacity: 0.6; cursor: wait; }
+    .mc-done-line { font-size: 12px; color: #8d8; margin-top: 8px; }
+    .mc-legend { font-size: 11px; color: #666; margin-top: 8px; }
+
     #ownerSeasonStatusSection {
       background: var(--club-panel, #1a1a1a);
       border: 1px solid var(--club-border, #333);
@@ -430,6 +567,8 @@
 
     </div>
 
+    <section id="matchdayChecklist" class="mc-panel" aria-label="Matchday checklist" aria-live="polite" hidden></section>
+
     <section id="ownerSeasonStatusSection" aria-label="Season status" hidden>
       <div id="ownerSeasonStatus"></div>
     </section>
@@ -461,7 +600,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20260929-banner-tidy"></script>
+  <script type="module" src="dashboard.js?v=20260929-matchday-checklist"></script>
 
 </body>
 </html>

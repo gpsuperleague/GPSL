@@ -19,6 +19,7 @@ const INBOX_CATEGORY_TYPES = {
   fixture_management: new Set([
     "result_submitted",
     "result_to_confirm",
+    "matchday_checklist",
     "result_rejected",
     "result_confirmed",
     "monthly_fixtures",

@@ -6,6 +6,7 @@ export const INBOX_ACTION_DEFAULTS = {
   result_to_confirm: { label: "Confirm result", href: "matchday.html" },
   result_confirmed: { label: "Fixtures", href: "fixtures.html" },
   result_rejected: { label: "Re-submit result", href: "matchday.html" },
+  matchday_checklist: { label: "Matchday checklist", href: "dashboard.html#matchdayChecklist" },
   transfer_signed: { label: "Squad", href: "squad.html" },
   transfer_sold: { label: "Finances", href: "finances.html" },
   transfer_upcoming: { label: "Transfer Centre", href: "transfer_center.html" },
