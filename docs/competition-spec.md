@@ -153,7 +153,7 @@ Qualification from **final league positions** that season:
 - **One GPSL month = one real-world week.**
 - **May** finishes the league programme (MD 36–38) and the League Cup final.
 - **Playoffs (Week 11)** after May locks. End-of-season archive / rollover waits until Playoffs locks.
-- Season length with calendar set: **11 UK weeks** (anchor Friday 19:00 → Playoffs lock = anchor + 77 days).
+- Season length with calendar set: **11 UK weeks** (anchor Thursday 19:00 → Playoffs lock = anchor + 77 days).
 - **Weather** for each fixture derived from **GPSL month** (gameplay TBD).
 
 ### Playoffs week (Week 11) — ties to schedule

@@ -28,10 +28,10 @@
           <div class="card">
             <h2>GPSL season calendar</h2>
             <p class="note">
-              <b>One real UK week (Fri 19:00 → Fri 19:00) = one GPSL month</b> for every month,
+              <b>One real UK week (Thu 19:00 → Thu 19:00) = one GPSL month</b> for every month,
               including pre-season. Set <b>season start</b> = when <b>June</b> begins.
               Then: June (week 1) → July (week 2) → August league start (week 3) → … → Playoffs.
-              Run <code>patches/calendar_allow_any_weekday_testing.sql</code> in Supabase first.
+              Run <code>patches/calendar_thursday_weeks_20260929.sql</code> in Supabase first.
               For a mid-week test start: <b>Tonight 19:00</b> + tick <b>Allow any weekday</b>.
             </p>
             <div id="compCalendarActiveNote" class="note"></div>
@@ -41,18 +41,18 @@
                 <select id="compCalendarSeason"></select>
               </div>
               <div>
-                <label>Season start = June (Fri 19:00 UK)</label>
+                <label>Season start = June (Thu 19:00 UK)</label>
                 <input type="datetime-local" id="compCalendarAnchor" step="60">
               </div>
               <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
                 <button type="button" id="compCalendarSuggestTonightBtn" class="button" style="background:#664422;">Tonight 19:00</button>
-                <button type="button" id="compCalendarSuggestFriBtn" class="button" style="background:#555;">Next Friday 19:00</button>
-                <button type="button" id="compCalendarSuggest2wBtn" class="button" style="background:#555;">Friday in 2 weeks 19:00</button>
+                <button type="button" id="compCalendarSuggestFriBtn" class="button" style="background:#555;">Next Thursday 19:00</button>
+                <button type="button" id="compCalendarSuggest2wBtn" class="button" style="background:#555;">Thursday in 2 weeks 19:00</button>
               </div>
             </div>
             <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;">
               <input type="checkbox" id="compCalendarAllowAnyWeekday">
-              <span>Allow any weekday (testing) — still 19:00 UK; skips Friday-only rule</span>
+              <span>Allow any weekday (testing) — still 19:00 UK; skips Thursday-only rule</span>
             </label>
             <p class="note" id="compCalendarPreview" style="margin-top:8px;"></p>
             <div class="row">
@@ -203,6 +203,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260928-owner-divs"></script>
+  <script type="module" src="admin_season.js?v=20260929-thursday"></script>
 </body>
 </html>

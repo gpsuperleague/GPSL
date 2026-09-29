@@ -1,5 +1,5 @@
 /**
- * Real-world calendar: Fri 19:00 UK → Fri 19:00 UK = one GPSL month
+ * Real-world calendar: Thu 19:00 UK → Thu 19:00 UK = one GPSL month
  * (Aug–May league/cup programme, then Playoffs week).
  */
 
@@ -153,7 +153,7 @@ export function calendarStatusBanner(status) {
 
   if (isPreSeasonPhase(status)) {
     if (!status.calendar_configured) {
-      return "Pre-Season — competition season is active. Admin: set the first Friday 7pm UK anchor to open GPSL August.";
+      return "Pre-Season — competition season is active. Admin: set the season start (Thursday 7pm UK) in Admin → Season.";
     }
     return `Pre-Season — GPSL August unlocks ${formatUkDateTime(status.anchor_unlock_at)} UK.`;
   }

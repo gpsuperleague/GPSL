@@ -39,7 +39,7 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `One real week = one <b>GPSL month</b>: <b>Friday 19:00 UK → next Friday 19:00 UK</b> (August–May, then Playoffs). The nav badge shows the live month.`,
+        `One real week = one <b>GPSL month</b>: <b>Thursday 19:00 UK → next Thursday 19:00 UK</b> (August–May, then Playoffs). The nav badge shows the live month.`,
         `<b>Arrange early.</b> Example: a <b>September</b> fixture should be arranged before <b>August</b> ends.`,
         `<b>Play in that month</b> when you can. If you don’t finish in time, the fixture rolls into <b>catch-up</b> (highlighted on Fixtures).`,
       ],
@@ -85,7 +85,7 @@ export const SECTION_MATCH_SCHEDULING = {
     { type: "h3", html: "4 — What happens at month end?" },
     {
       type: "p",
-      html: `When a GPSL month closes (Friday 19:00 UK), the league checks unfinished <b>league and cup</b> fixtures. An unfinished arrangement does <b>not</b> mean an instant 3–0 — but deadlines and play windows do matter.`,
+      html: `When a GPSL month closes (Thursday 19:00 UK), the league checks unfinished <b>league and cup</b> fixtures. An unfinished arrangement does <b>not</b> mean an instant 3–0 — but deadlines and play windows do matter.`,
     },
     {
       type: "ul",

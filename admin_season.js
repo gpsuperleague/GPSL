@@ -130,9 +130,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compCalendarSuggestTonightBtn").onclick = () =>
     fillCalendarAnchor(tonight1900Uk());
   document.getElementById("compCalendarSuggestFriBtn").onclick = () =>
-    fillCalendarAnchor(nextFriday1900Uk(0));
+    fillCalendarAnchor(nextThursday1900Uk(0));
   document.getElementById("compCalendarSuggest2wBtn").onclick = () =>
-    fillCalendarAnchor(nextFriday1900Uk(14));
+    fillCalendarAnchor(nextThursday1900Uk(14));
   updateCalendarPreview();
   // Sport rebuild lives on admin_gpsl_sport.html
   const sportRebuildBtn = document.getElementById("compSportRebuildBtn");
@@ -1217,13 +1217,13 @@ function tonight1900Uk() {
   return `${uk.getFullYear()}-${pad(uk.getMonth() + 1)}-${pad(uk.getDate())}T19:00`;
 }
 
-/** Next Friday 19:00 UK wall clock, at least `minDaysFromNow` days ahead. */
-function nextFriday1900Uk(minDaysFromNow = 0) {
+/** Next Thursday 19:00 UK wall clock, at least `minDaysFromNow` days ahead. */
+function nextThursday1900Uk(minDaysFromNow = 0) {
   const now = new Date();
-  // Approximate "today" in UK for suggesting Fridays
+  // Approximate "today" in UK for suggesting Thursdays
   const uk = new Date(now.toLocaleString("en-US", { timeZone: "Europe/London" }));
-  const day = uk.getDay(); // 0 Sun … 5 Fri
-  let add = (5 - day + 7) % 7;
+  const day = uk.getDay(); // 0 Sun … 4 Thu
+  let add = (4 - day + 7) % 7;
   if (add === 0 && (uk.getHours() > 19 || (uk.getHours() === 19 && uk.getMinutes() > 0))) {
     add = 7;
   }
@@ -1254,7 +1254,7 @@ function updateCalendarPreview() {
   const june = resolveSeasonStartParts();
   if (!june) {
     el.textContent =
-      "Pick season start Friday 19:00 UK = June week 1. July = +1 week. August (league) = +2 weeks. Each GPSL month is one real week.";
+      "Pick season start Thursday 19:00 UK = June week 1. July = +1 week. August (league) = +2 weeks. Each GPSL month is one real week.";
     return;
   }
   const july = addDaysYmd(june, 7);
@@ -1313,7 +1313,7 @@ async function refreshCompCalendarAdmin() {
 
   if (compSelectedSeasonId) {
     note.textContent =
-      "Pre-season setup — set season start (June Friday 19:00 UK) before Start season.";
+      "Pre-season setup — set season start (June Thursday 19:00 UK) before Start season.";
     await refreshCompCalendarForSeason(compSelectedSeasonId);
     updateCalendarPreview();
     return;
@@ -1370,11 +1370,11 @@ async function setCompCalendar() {
 
   if (!allowAny) {
     const dt = new Date(Date.UTC(june.y, june.mo - 1, june.d, 12, 0, 0));
-    const weekday = dt.getUTCDay(); // 5 = Friday
-    if (weekday !== 5) {
+    const weekday = dt.getUTCDay(); // 4 = Thursday
+    if (weekday !== 4) {
       setStatus(
         "compCalendarStatus",
-        "Not a Friday — tick “Allow any weekday (testing)” or use Next Friday 19:00.",
+        "Not a Thursday — tick “Allow any weekday (testing)” or use Next Thursday 19:00.",
         false
       );
       return;
@@ -1411,8 +1411,10 @@ async function setCompCalendar() {
     setStatus(
       "compCalendarStatus",
       `❌ ${detail}${
-        /Friday|weekday/i.test(detail)
-          ? " — tick “Allow any weekday (testing)” or run patches/calendar_allow_any_weekday_testing.sql."
+        /Friday/i.test(detail)
+          ? " — run patches/calendar_thursday_weeks_20260929.sql, then retry."
+          : /Thursday|weekday/i.test(detail)
+          ? " — tick “Allow any weekday (testing)” to override."
           : /check constraint|gpsl_month|sort_order|Could not find/i.test(detail)
             ? " — run patches/calendar_allow_any_weekday_testing.sql then retry."
             : ""
