@@ -53,9 +53,9 @@ function localStorageKey() {
   return `${LOCAL_PREFIX}${seasonId ?? "none"}`;
 }
 
-function readLocalDone() {
+function readLocalDone(key = localStorageKey()) {
   try {
-    const raw = localStorage.getItem(localStorageKey());
+    const raw = localStorage.getItem(key);
     if (!raw) return new Map();
     const obj = JSON.parse(raw);
     return new Map(Object.entries(obj).map(([k, v]) => [k, Boolean(v)]));
@@ -174,6 +174,7 @@ async function migrateLocalTicksToDb(localDone) {
   if (migrated > 0) {
     try {
       localStorage.removeItem(localStorageKey());
+      localStorage.removeItem(`${LOCAL_PREFIX}none`);
     } catch {
       /* ignore */
     }
@@ -194,7 +195,8 @@ async function loadDoneState() {
     return;
   }
 
-  const localDone = readLocalDone();
+  // Ticks made while no season was found were stored under ":none" — carry them over.
+  const localDone = new Map([...readLocalDone(`${LOCAL_PREFIX}none`), ...readLocalDone()]);
 
   const { data, error } = await supabase
     .from("admin_workflow_checklist")
