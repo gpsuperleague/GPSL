@@ -50,6 +50,17 @@ function renderNavSeasonCalendarLink(calendarActive = false) {
   );
 }
 
+function renderNavHandbookLink(handbookActive = false) {
+  return (
+    `<a href="learning_gpsl.html" class="nav-shortcut nav-season-calendar nav-handbook${
+      handbookActive ? " active" : ""
+    }" title="GPSL Handbook — rules &amp; guides" aria-label="GPSL Handbook">` +
+    `<span class="nav-season-calendar-mark" aria-hidden="true">📖</span>` +
+    `<span class="nav-season-calendar-label">Handbook</span>` +
+    `</a>`
+  );
+}
+
 function renderNavNatterLink(natterActive = false, unread = 0) {
   const n = Number(unread) || 0;
   return (
@@ -2209,6 +2220,7 @@ export async function renderFallbackNav() {
         </div>
         <div class="gpsl-nav-actions gpsl-nav-actions-primary">
           ${renderNavSeasonCalendarLink(false)}
+          ${renderNavHandbookLink(false)}
           ${renderNavNatterLink(false, 0)}
           ${renderNavFantasyLink(false)}
           ${renderNavGpslSportButton()}
@@ -2387,6 +2399,7 @@ export async function buildNav() {
   const natterActive = pathNorm === "natter.html";
   const calendarActive = pathNorm === "season_calendar.html";
   const fantasyActive = pathNorm === "fantasy.html";
+  const handbookActive = pathNorm === "learning_gpsl.html";
 
   let navSections = Array.isArray(NAV_SECTIONS) ? [...NAV_SECTIONS] : [];
   if (!navSections.length) {
@@ -2588,10 +2601,12 @@ export async function buildNav() {
   html += `<div class="gpsl-nav-actions gpsl-nav-actions-primary">`;
   if (!isPreClubOwner) {
     html += renderNavSeasonCalendarLink(calendarActive);
+    html += renderNavHandbookLink(handbookActive);
     html += renderNavNatterLink(natterActive, natterUnread);
     html += renderNavFantasyLink(fantasyActive);
     html += renderNavGpslSportButton();
   } else {
+    html += renderNavHandbookLink(handbookActive);
     const bal = Number(registrySelf?.pending_starting_balance);
     if (Number.isFinite(bal) && bal > 0) {
       html +=

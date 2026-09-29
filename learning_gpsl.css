@@ -237,6 +237,133 @@ body.learning-gpsl-page {
   opacity: 0.7;
 }
 
+.learning-toc ul.learning-toc-chapters > li[hidden] {
+  display: none;
+}
+
+/* —— Search —— */
+.learning-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.learning-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 9px 12px;
+  font-family: var(--lg-body);
+  font-size: 0.95rem;
+  color: var(--lg-ink);
+  background: #0f0c09;
+  border: 1px solid var(--lg-page-edge);
+  border-radius: 6px;
+}
+
+.learning-search input:focus {
+  outline: none;
+  border-color: var(--lg-gold);
+  box-shadow: 0 0 0 2px rgba(255, 153, 0, 0.18);
+}
+
+.learning-search-count {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--lg-ink-muted);
+  white-space: nowrap;
+}
+
+.learning-search-results {
+  max-height: 45vh;
+  overflow-y: auto;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--lg-rule);
+  border-radius: 6px;
+}
+
+.learning-toc ul.learning-search-list {
+  columns: 1;
+  margin: 0;
+}
+
+.learning-search-list li {
+  margin-bottom: 10px;
+}
+
+.learning-search-list li a::before {
+  content: none;
+}
+
+.learning-search-snippet {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--lg-ink-muted);
+}
+
+.learning-search-snippet mark,
+mark.learning-hit {
+  background: rgba(255, 153, 0, 0.35);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.learning-search-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--lg-ink-muted);
+}
+
+.learning-search-pages a {
+  padding: 3px 9px;
+  border: 1px solid var(--lg-rule);
+  border-radius: 999px;
+  border-bottom: 1px solid var(--lg-rule);
+}
+
+.learning-search-empty,
+.learning-search-more {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--lg-ink-muted);
+}
+
+.learning-toc-topics {
+  margin: 4px 0 0 1em;
+}
+
+.learning-toc-topics summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--lg-ink-muted);
+}
+
+.learning-toc-topics[open] summary {
+  color: var(--lg-gold-soft);
+}
+
+.learning-toc .learning-toc-topics ul {
+  columns: 1;
+  margin-top: 6px;
+}
+
+.learning-toc .learning-toc-topics li {
+  font-size: 0.82rem;
+  margin-bottom: 4px;
+}
+
+.learning-topic {
+  scroll-margin-top: 72px;
+}
+
 /* —— Chapters —— */
 .learning-section {
   position: relative;
