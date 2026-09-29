@@ -810,30 +810,32 @@ document.getElementById("whosWhoPublishBtn")?.addEventListener("click", () => {
 });
 document.getElementById("clubDirectoryPublishBtn")?.addEventListener("click", () => {
   (async () => {
-    setStatus("newsStatus", "Publishing Club Directory to Discord…");
-    const { data, error } = await supabase.rpc("admin_discord_publish_club_directory", {
-      p_force: true,
-    });
-    if (error) {
+    const btn = document.getElementById("clubDirectoryPublishBtn");
+    if (btn) btn.disabled = true;
+    setStatus("otherPublishStatus", "Publishing Club Directory to Discord…");
+    try {
+      const { data, error } = await invokeFeed({ action: "club_directory", force: true });
+      if (error || !data?.ok) {
+        const msg = error?.message || data?.error || "Club Directory publish failed.";
+        setStatus(
+          "otherPublishStatus",
+          /gpsl_discord_club_directory_state/i.test(msg)
+            ? "❌ Run gpsl_discord_club_directory_20260929.sql in Supabase first."
+            : "❌ " + msg,
+          false
+        );
+        return;
+      }
       setStatus(
-        "newsStatus",
-        error.message.includes("admin_discord_publish_club_directory")
-          ? "❌ Run gpsl_discord_club_directory_20260929.sql in Supabase first."
-          : "❌ " + error.message,
-        false
+        "otherPublishStatus",
+        `✅ Club Directory ${data.action} — ${data.club_count ?? "?"} clubs (${
+          data.season_label || "current season"
+        }).`
       );
-      return;
+    } finally {
+      if (btn) btn.disabled = false;
     }
-    if (!data?.ok) {
-      setStatus("newsStatus", data?.hint || data?.error || "Club Directory publish failed.", false);
-      return;
-    }
-    setStatus(
-      "newsStatus",
-      data?.hint ||
-        `Club Directory sync requested (pg_net #${data?.request_id ?? "—"}). Check the channel in ~30s.`
-    );
-  })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+  })().catch((e) => setStatus("otherPublishStatus", e.message || String(e), false));
 });
 document.getElementById("clinchesBtn")?.addEventListener("click", () => {
   (async () => {
