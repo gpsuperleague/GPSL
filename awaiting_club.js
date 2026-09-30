@@ -1,6 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { getAuthUser } from "./supabase_client.js";
-import { mountAvailabilityPanel } from "./owner_availability.js";
+import { mountAvailabilityPanel } from "./owner_availability.js?v=20260930-world-tz";
 import {
   loadOnboardingAvailabilityContext,
   saveOnboardingWeeklyAvailability,
@@ -10,6 +10,193 @@ import { renderOwnerSeasonStatus } from "./owner_season_status.js?v=20260930-no-
 
 let clubAssignmentPollTimer = null;
 let registrySelf = null;
+let interestMine = null;
+let preclubHolidays = [];
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function loadInterestMine() {
+  const { data, error } = await supabase.rpc("club_auction_interest_list");
+  interestMine = error ? null : data;
+}
+
+function entryItem({ done, optional = false, title, detail }) {
+  const state = optional ? (done ? "done" : "optional") : done ? "done" : "todo";
+  const pill = state === "done" ? "Done" : state === "optional" ? "Optional" : "To do";
+  return `<li class="${state === "todo" ? "is-todo" : state === "done" ? "is-done" : ""}">
+    <div class="entry-main">${title}${detail ? `<small>${detail}</small>` : ""}</div>
+    <span class="entry-pill ${state}">${pill}</span>
+  </li>`;
+}
+
+function renderEntryChecklist() {
+  const list = document.getElementById("entryChecklist");
+  const summary = document.getElementById("entrySummary");
+  if (!list) return;
+  const self = registrySelf || {};
+
+  const tagDone = Boolean((self.owner_tag || "").trim());
+  const tzDone = Boolean(self.owner_timezone);
+  const availDone = Number(self.availability_slot_count || 0) > 0;
+  const primary = interestMine?.mine_interest || null;
+  const backup = interestMine?.mine_backup || null;
+  const primaryDone = Boolean(self.has_club_interest || primary);
+  const backupDone = Boolean(self.has_club_backup || backup);
+
+  let interestNote = "";
+  if (interestMine && !interestMine.can_mark && !primaryDone) {
+    interestNote = interestMine.frozen
+      ? "Marking is closed right now (auction running)."
+      : interestMine.season1_confirmed
+        ? "Marking isn't open for your account yet."
+        : "Marking opens once you've accepted your Season 1 invite.";
+  }
+
+  const clubLink = `<a href="club_database.html">Club Database</a>`;
+  const items = [
+    entryItem({
+      done: tagDone,
+      title: "Owner tag",
+      detail: tagDone ? `“${escapeHtml(self.owner_tag)}”` : "Set it in the Owner tag box below.",
+    }),
+    entryItem({
+      done: tzDone,
+      title: "Timezone",
+      detail: tzDone
+        ? escapeHtml(String(self.owner_timezone).replace(/_/g, " "))
+        : "Pick your timezone below (or save your availability to confirm the one shown).",
+    }),
+    entryItem({
+      done: availDone,
+      title: "Match availability",
+      detail: availDone
+        ? `${Number(self.availability_slot_count)} time block(s) saved`
+        : "Mark when you can usually play, then Save availability.",
+    }),
+    entryItem({
+      done: primaryDone,
+      title: `Primary club interest — ${clubLink}`,
+      detail: primary
+        ? escapeHtml(primary.club_name || primary.club_short_name)
+        : `Mark 1 club as your interest. ${interestNote}`.trim(),
+    }),
+    entryItem({
+      done: backupDone,
+      title: `Backup club — ${clubLink}`,
+      detail: backup
+        ? escapeHtml(backup.club_name || backup.club_short_name)
+        : `Mark 1 different club as your backup. ${interestNote}`.trim(),
+    }),
+    entryItem({
+      done: preclubHolidays.length > 0,
+      optional: true,
+      title: "Upcoming holidays",
+      detail: preclubHolidays.length
+        ? `${preclubHolidays.length} holiday(s) noted`
+        : "Optional — add any planned time away below. Not required for the auction.",
+    }),
+  ];
+  list.innerHTML = items.join("");
+
+  const required = [tagDone, tzDone, availDone, primaryDone, backupDone];
+  const left = required.filter((d) => !d).length;
+  if (summary) {
+    summary.textContent = left
+      ? `${left} required item${left === 1 ? "" : "s"} left before you can enter the club auction.`
+      : "All required items done — you're ready for the club auction.";
+    summary.style.color = left ? "#ffcf99" : "#9f9";
+  }
+}
+
+function formatHolidayRange(h) {
+  const opts = { timeZone: "Europe/London", day: "numeric", month: "short", year: "numeric" };
+  const start = new Date(h.starts_at).toLocaleDateString("en-GB", opts);
+  const endDay = new Date(new Date(h.ends_at).getTime() - 1);
+  const end = endDay.toLocaleDateString("en-GB", opts);
+  return start === end ? start : `${start} – ${end}`;
+}
+
+function renderPreclubHolidays() {
+  const list = document.getElementById("holList");
+  if (!list) return;
+  list.innerHTML = preclubHolidays.length
+    ? preclubHolidays
+        .map(
+          (h) => `<li><span>${escapeHtml(formatHolidayRange(h))} · ${h.day_count} day${
+            h.day_count === 1 ? "" : "s"
+          }</span><button type="button" data-hol-id="${h.id}">Remove</button></li>`
+        )
+        .join("")
+    : `<li style="color:#777;">No holidays noted.</li>`;
+}
+
+async function loadPreclubHolidays() {
+  const { data, error } = await supabase.rpc("owner_preclub_holiday_list");
+  const statusEl = document.getElementById("holStatus");
+  if (error) {
+    preclubHolidays = [];
+    const card = document.getElementById("holidayCard");
+    if (card) card.hidden = true;
+    return;
+  }
+  preclubHolidays = Array.isArray(data?.holidays) ? data.holidays : [];
+  if (statusEl && data?.max_days && !statusEl.textContent) {
+    statusEl.textContent = `Up to ${data.max_days} days per season.`;
+    statusEl.style.color = "#888";
+  }
+  renderPreclubHolidays();
+  renderEntryChecklist();
+}
+
+function wirePreclubHolidays() {
+  const statusEl = document.getElementById("holStatus");
+  const setStatus = (msg, ok) => {
+    if (!statusEl) return;
+    statusEl.textContent = msg;
+    statusEl.style.color = ok ? "#9f9" : "#f88";
+  };
+
+  document.getElementById("holBookBtn")?.addEventListener("click", async () => {
+    const start = document.getElementById("holStart")?.value;
+    const end = document.getElementById("holEnd")?.value || start;
+    if (!start) {
+      setStatus("Pick a start date.", false);
+      return;
+    }
+    const { error } = await supabase.rpc("owner_preclub_holiday_book", {
+      p_start_date: start,
+      p_end_date: end,
+    });
+    if (error) {
+      setStatus(error.message, false);
+      return;
+    }
+    setStatus("Holiday added.", true);
+    await loadPreclubHolidays();
+  });
+
+  document.getElementById("holList")?.addEventListener("click", async (e) => {
+    const btn = e.target.closest?.("button[data-hol-id]");
+    if (!btn) return;
+    btn.disabled = true;
+    const { error } = await supabase.rpc("owner_preclub_holiday_cancel", {
+      p_id: Number(btn.dataset.holId),
+    });
+    if (error) {
+      btn.disabled = false;
+      setStatus(error.message, false);
+      return;
+    }
+    setStatus("Holiday removed.", true);
+    await loadPreclubHolidays();
+  });
+}
 
 function formatMoney(n) {
   const v = Number(n);
@@ -66,6 +253,7 @@ async function refreshRegistrySelf() {
     registrySelf = data;
     updateAuctionRoomGate();
     paintSeasonStatus(data);
+    renderEntryChecklist();
   }
   return { data, error };
 }
@@ -161,6 +349,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   registrySelf = self;
   paintSeasonStatus(self);
+  renderEntryChecklist();
 
   if (self?.has_club) {
     window.location = "dashboard.html";
@@ -184,7 +373,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (introEl) {
     if (isWaitingList) {
       introEl.innerHTML =
-        "You are on the <b>owner waiting list</b>. Set your owner tag, timezone, and match availability here. " +
+        "You are on the <b>owner waiting list</b>. Set your owner tag, timezone and match availability here, " +
+        "and mark a <b>primary</b> and <b>backup</b> club on the Club Database — all are needed to enter the club auction. " +
         "Your starting bank balance is shown below. When admin invites you, you can bid in the <b>club draft auction</b>.";
     } else {
       introEl.innerHTML =
@@ -260,6 +450,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   await mountOnboardingAvailability();
+
+  wirePreclubHolidays();
+  await Promise.all([loadInterestMine(), loadPreclubHolidays()]);
+  renderEntryChecklist();
 
   document.getElementById("saveTagBtn")?.addEventListener("click", async () => {
     if (tagInput?.disabled) return;

@@ -4,7 +4,7 @@ import {
   saveWeeklyAvailabilityForClub,
   setClubTimezoneForClub,
 } from "./match_scheduling.js";
-import { mountAvailabilityPanel } from "./owner_availability.js";
+import { mountAvailabilityPanel } from "./owner_availability.js?v=20260930-world-tz";
 
 primeAdminPageChrome();
 

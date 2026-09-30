@@ -68,6 +68,39 @@
       background: #8ab;
       border-color: #689;
     }
+    .entry-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .entry-list li {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 9px 12px; background: #141414; border: 1px solid #2a2a2a; border-radius: 6px;
+    }
+    .entry-list li.is-done { border-color: #2f4a2f; }
+    .entry-list li.is-todo { border-color: #5a3a1a; }
+    .entry-main { font-size: 13px; color: #ddd; line-height: 1.4; }
+    .entry-main small { display: block; color: #999; font-size: 12px; }
+    .entry-main a { color: #ff9900; }
+    .entry-pill {
+      flex: 0 0 auto; font-size: 11px; font-weight: bold; letter-spacing: .04em; text-transform: uppercase;
+      padding: 4px 9px; border-radius: 4px; border: 1px solid #444; white-space: nowrap;
+    }
+    .entry-pill.done { color: #1a1a1a; background: #8d8; border-color: #6a6; }
+    .entry-pill.todo { color: #ffcf99; background: #3a2410; border-color: #7a4a1a; }
+    .entry-pill.optional { color: #aac; background: #1a1d26; border-color: #3a4260; }
+    .entry-summary { margin-top: 12px; font-size: 13px; font-weight: bold; }
+    .explore-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+    .explore-grid a {
+      display: block; padding: 10px 12px; background: #141414; border: 1px solid #333; border-radius: 6px;
+      color: #ddd; text-decoration: none; font-size: 13px; line-height: 1.4;
+    }
+    .explore-grid a b { color: #ff9900; display: block; margin-bottom: 2px; }
+    .explore-grid a:hover { border-color: #ff9900; }
+    .hol-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .hol-row label { margin-top: 0; }
+    .hol-row input { width: auto; }
+    .hol-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .hol-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      padding: 7px 10px; background: #141414; border: 1px solid #2a2a2a; border-radius: 6px; font-size: 13px; }
+    .hol-list button { background: none; border: 1px solid #555; color: #ccc; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+    @media (max-width: 560px) { .explore-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -78,10 +111,20 @@
       Set your owner tag, timezone, and match availability. Your starting bank balance is shown below.
       When you are invited to the club draft auction, you bid from this balance.
     </p>
+    <div class="card" id="entryChecklistCard">
+      <h2>Club auction entry checklist</h2>
+      <p class="note">
+        To enter the <b>club draft auction</b> you must complete <b>every required item</b> below —
+        including marking a <b>primary</b> club and a <b>backup</b> club on the Club Database.
+        Holidays are optional and do not block entry.
+      </p>
+      <ul class="entry-list" id="entryChecklist"></ul>
+      <p class="entry-summary" id="entrySummary"></p>
+    </div>
     <div class="card" id="ownerSeasonStatusCard">
       <div id="ownerSeasonStatus"></div>
     </div>
-    <div class="card">
+    <div class="card" id="ownerTagCard">
       <p class="note">Set your <b>owner tag</b> (shown on the waiting list and as the auction leader). Once you are invited to the club auction, the tag <b>cannot be changed</b>.</p>
       <label for="ownerTag">Owner tag</label>
       <input id="ownerTag" type="text" maxlength="64" placeholder="e.g. Rotavator" autocomplete="nickname">
@@ -91,9 +134,37 @@
       <p class="budget" id="budgetLine" hidden></p>
     </div>
     <div class="card" id="availabilityCard">
-      <p class="note">Set your <b>match availability</b> and <b>timezone</b> before bidding (used for fixture scheduling once you have a club).</p>
+      <p class="note">
+        Set your <b>timezone</b> and <b>match availability</b> — both are required for the club auction.
+        Your timezone matters: it is how other owners see when you can play, so pick the city nearest you
+        (or use <b>Use my device timezone</b>). Availability blocks are entered in UK time.
+      </p>
       <div id="onboardingAvailabilityRoot"></div>
       <p class="note" id="availabilityReadyLine" hidden style="color:#9f9;margin-top:12px;"></p>
+    </div>
+    <div class="card" id="holidayCard">
+      <h2>Upcoming holidays <span style="color:#99a;font-size:13px;font-weight:normal;">(optional)</span></h2>
+      <p class="note">
+        Going away soon? Note it here so fixtures can be planned around you. Not required for the auction.
+        When you are given a club, these move across to your club's holiday bookings automatically.
+      </p>
+      <div class="hol-row">
+        <label>From <input type="date" id="holStart"></label>
+        <label>To <input type="date" id="holEnd"></label>
+        <button type="button" class="button" id="holBookBtn" style="margin-top:0;">Add holiday</button>
+      </div>
+      <ul class="hol-list" id="holList"></ul>
+      <p class="note" id="holStatus" style="min-height:18px;margin-top:8px;"></p>
+    </div>
+    <div class="card" id="exploreCard">
+      <h2>Explore while you wait</h2>
+      <p class="note">Everything here is open to waiting-list members — plan ahead before you get a club.</p>
+      <div class="explore-grid">
+        <a href="club_database.html"><b>Club Database</b>Browse every club, mark your primary + backup interest, and see how many others are interested in each.</a>
+        <a href="GPDB.html"><b>Player Database (GPDB)</b>Search players and star (☆) the ones you like to add them to your scouting board.</a>
+        <a href="scouting.html"><b>Scouting board</b>Your starred targets and up to 4 tactic boards — saved to you, and kept when you get a club.</a>
+        <a href="MGDB.html"><b>Manager Database (MGDB)</b>Browse every manager ahead of the manager draft.</a>
+      </div>
     </div>
     <div class="card">
       <p class="note" id="scheduleLine" style="min-height:18px;"></p>
@@ -103,13 +174,13 @@
       </div>
     </div>
     <p class="note" style="margin-top:16px;" id="auctionRoomLinkWrap">
-      <a href="club_auction.html" id="auctionRoomLink" style="color:#ff9900;font-weight:bold;">Open club auction room →</a> (mark up to 3 clubs of interest before bidding)
+      <a href="club_auction.html" id="auctionRoomLink" style="color:#ff9900;font-weight:bold;">Open club auction room →</a>
     </p>
     <p class="note" id="auctionRoomBlocked" hidden style="margin-top:16px;color:#faa;">
-      Complete your owner tag, timezone, and match availability above before entering the club auction room.
+      Complete every required item in the checklist at the top before entering the club auction room.
     </p>
     <p class="note" style="margin-top:12px;" id="learningNote" hidden></p>
   </div>
-  <script type="module" src="awaiting_club.js?v=20260930-no-test-season"></script>
+  <script type="module" src="awaiting_club.js?v=20260930-entry-checklist"></script>
 </body>
 </html>

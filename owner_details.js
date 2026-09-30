@@ -14,7 +14,7 @@ import {
   holidayStatusLabel,
   inclusiveDayCountFromDates,
 } from "./owner_holidays.js";
-import { wireAvailabilityPanel } from "./owner_availability.js";
+import { wireAvailabilityPanel } from "./owner_availability.js?v=20260930-world-tz";
 import { ownerBadgePublicUrl, ownerProfileHref } from "./owner_badge.js";
 import {
   applyClubDashboardTheme,
