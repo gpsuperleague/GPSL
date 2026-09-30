@@ -450,6 +450,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  void mountNextClubAuctionCountdown({
+    card: document.getElementById("nextAuctionCard"),
+    countdownEl: document.getElementById("nextAuctionCountdown"),
+    whenEl: document.getElementById("nextAuctionWhen"),
+    titleEl: document.getElementById("nextAuctionTitle"),
+    suppressWhenVisible: () => {
+      if (isWaitingList && !isAuctionInvitee) return false;
+      const shared = document.getElementById("draftCountdownContainer");
+      const text = document.getElementById("draftCountdown")?.textContent?.trim();
+      return Boolean(shared && shared.style.display !== "none" && text);
+    },
+  });
+
   await mountOnboardingAvailability();
 
   wirePreclubHolidays();
