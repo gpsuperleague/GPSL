@@ -24,6 +24,7 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   "mgdb",
   "scouting",
   "learning_gpsl",
+  "video_tutorials",
 ]);
 
 /** Same surface for auction invitees (kept for callers / clarity). */
@@ -113,5 +114,10 @@ export const PRE_CLUB_NAV_ITEMS = [
     href: "learning_gpsl.html",
     label: "Learning GPSL",
     page: "learning_gpsl",
+  },
+  {
+    href: "video_tutorials.html",
+    label: "Video tutorials",
+    page: "video_tutorials",
   },
 ];

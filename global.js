@@ -2472,6 +2472,11 @@ export async function buildNav() {
               label: "Learning GPSL",
               page: "learning_gpsl",
             },
+            {
+              href: "video_tutorials.html",
+              label: "Video tutorials",
+              page: "video_tutorials",
+            },
           ],
         },
       ];

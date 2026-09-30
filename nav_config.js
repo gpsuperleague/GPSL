@@ -259,6 +259,12 @@ export const NAV_SECTIONS = [
         page: "learning_gpsl",
         indent: true,
       },
+      {
+        href: "video_tutorials.html",
+        label: "Video tutorials",
+        page: "video_tutorials",
+        indent: true,
+      },
       { heading: true, label: "Scheduling" },
       {
         href: "season_calendar.html",
