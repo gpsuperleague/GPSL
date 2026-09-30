@@ -72,6 +72,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wlBoardFilter")?.addEventListener("input", (e) => {
     filterSeasonOwnerBoard(e.target.value);
   });
+  document.getElementById("wlPaidYear")?.addEventListener("change", (e) => {
+    supporterPayYear = Number(e.target.value) || null;
+    loadWaitingListAdmin();
+  });
+  document.getElementById("wlPaidClose")?.addEventListener("click", closeSupporterPaidModal);
+  document.getElementById("wlPaidClearAllBtn")?.addEventListener("click", clearSupporterPaidYearForAll);
+  document.getElementById("wlPaidClearYear")?.addEventListener("click", clearSupporterPaidYearForOwner);
+  document.getElementById("wlPaidModal")?.addEventListener("click", (e) => {
+    if (e.target?.id === "wlPaidModal") closeSupporterPaidModal();
+  });
+  document.getElementById("wlPaidGrid")?.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("button[data-month]");
+    if (btn) toggleSupporterPaidMonth(Number(btn.dataset.month), btn);
+  });
   document.getElementById("wlAssignClubCancel")?.addEventListener("click", closeAssignClubModal);
   document.getElementById("wlAssignClubConfirm")?.addEventListener("click", confirmAssignClubModal);
   document.getElementById("wlAssignClubModal")?.addEventListener("click", (e) => {
@@ -1975,16 +1989,18 @@ async function loadWaitingListAdmin() {
   if (!tableWrap) return;
 
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
-  const [boardRes, activityRes, timezoneMap, supporterRes] = await Promise.all([
+  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes] = await Promise.all([
     supabase.rpc("waiting_list_admin"),
     fetchOwnerActivityById(),
     fetchOwnerTimezoneMap(),
     supabase.rpc("admin_owner_supporter_map"),
+    supabase.rpc("admin_supporter_payments_map", { p_year: supporterPayYear }),
   ]);
   const supporterMap =
     supporterRes.error || !supporterRes.data || typeof supporterRes.data !== "object"
       ? {}
       : supporterRes.data;
+  applySupporterPaidData(paidRes);
 
   if (boardRes.error) {
     tableWrap.innerHTML = `<p class="note" style="color:#f88">❌ ${boardRes.error.message} — run waiting_list_priority_board_20260829.sql</p>`;
@@ -2020,6 +2036,7 @@ async function loadWaitingListAdmin() {
       is_supporter: !!supp.is_supporter,
       supporter_active: !!supp.supporter_active,
       supporter_grace_until: supp.supporter_grace_until || null,
+      paid_months: supporterPaidMonths(r.owner_id),
     };
   };
 
@@ -2073,7 +2090,7 @@ async function loadWaitingListAdmin() {
       ? ` · ${snapMonths} month(s) snapshotted`
       : " · no month snapshots yet — click Record unplayed before simming leftovers";
 
-  const colSpan = 28;
+  const colSpan = 29;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
   let overallIndex = 0;
@@ -2083,7 +2100,7 @@ async function loadWaitingListAdmin() {
     `<thead>` +
     `<tr class="wl-group-row">` +
     `<th colspan="7" class="wl-group-owner">Owner</th>` +
-    `<th colspan="5" class="wl-group-season">Season</th>` +
+    `<th colspan="6" class="wl-group-season">Season</th>` +
     `<th colspan="13" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions">Actions</th>` +
     `</tr>` +
@@ -2097,6 +2114,7 @@ async function loadWaitingListAdmin() {
     `<th title="Confirmed for test season" style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Ko-fi Supporter (manual). Unset keeps perks until month end." style="text-align:center;line-height:1.25">Supporter</th>` +
+    `<th title="Supporter months paid in ${supporterPayData.year} — click a cell to tick months" style="text-align:center;line-height:1.25">Paid<br><span style="color:#888;font-weight:normal">${supporterPayData.year}</span></th>` +
     `<th class="wl-col-activity wl-col-login">Last login</th>` +
     `<th class="num wl-num-login">Since</th>` +
     `<th class="num wl-num-login" title="Total GPSL site logins (all time)">Logins</th>` +
@@ -2181,6 +2199,14 @@ async function loadWaitingListAdmin() {
     cb.addEventListener("change", () =>
       setOwnerSupporterFlag(cb.dataset.id, cb.checked, cb)
     );
+  });
+
+  tableWrap.querySelectorAll("button.wl-paid-cell").forEach((btn) => {
+    btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openSupporterPaidModal(btn.dataset.ownerId, btn.dataset.tag);
+    });
   });
 
   tableWrap.querySelectorAll("button.wl-s1-cell").forEach((btn) => {
@@ -3105,6 +3131,7 @@ function renderWaitingListAdminRow(
         title="${row.supporter_grace_until && !row.is_supporter ? `Grace until ${escapeWl(row.supporter_grace_until)}` : "Ko-fi Supporter"}"
         ${row.is_supporter ? "checked" : ""}>
     </td>
+    <td style="text-align:center">${supporterPaidCellHtml(row)}</td>
     <td class="wl-col-activity">${escapeWl(formatWlUkDateTime(lastAt))}</td>
     <td class="num wl-num-login ${sinceClass}">${escapeWl(since.text)}</td>
     <td class="num wl-num-login">${totalN}</td>
@@ -3302,6 +3329,200 @@ async function setWaitingListSeasonConfirmed(ownerId, which, confirmed, checkbox
       : `✅ Cleared ${label} season confirmation.`,
     true
   );
+}
+
+const PAID_MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** null = current UK year (board rolls into a fresh year on 1 Jan). */
+let supporterPayYear = null;
+let supporterPayData = {
+  year: new Date().getFullYear(),
+  current_year: new Date().getFullYear(),
+  current_month: new Date().getMonth() + 1,
+  years_with_data: [],
+  paid: {},
+  error: null,
+};
+let supporterPaidModalOwner = null;
+
+function applySupporterPaidData(res) {
+  const d = res?.data && typeof res.data === "object" ? res.data : null;
+  const nowYear = new Date().getFullYear();
+  supporterPayData = {
+    year: Number(d?.year) || supporterPayYear || nowYear,
+    current_year: Number(d?.current_year) || nowYear,
+    current_month: Number(d?.current_month) || new Date().getMonth() + 1,
+    years_with_data: Array.isArray(d?.years_with_data) ? d.years_with_data.map(Number) : [],
+    paid: d?.paid && typeof d.paid === "object" ? d.paid : {},
+    error: res?.error?.message || null,
+  };
+  renderSupporterPaidYearSelect();
+}
+
+function renderSupporterPaidYearSelect() {
+  const sel = document.getElementById("wlPaidYear");
+  if (!sel) return;
+  const years = new Set([
+    supporterPayData.current_year,
+    supporterPayData.current_year - 1,
+    supporterPayData.year,
+    ...supporterPayData.years_with_data,
+  ]);
+  const sorted = [...years].filter(Boolean).sort((a, b) => b - a);
+  sel.innerHTML = sorted
+    .map(
+      (y) =>
+        `<option value="${y}"${y === supporterPayData.year ? " selected" : ""}>${y}${
+          y === supporterPayData.current_year ? " (this year)" : ""
+        }</option>`
+    )
+    .join("");
+}
+
+function supporterPaidMonths(ownerId) {
+  const list = supporterPayData.paid[ownerId] || supporterPayData.paid[String(ownerId)] || [];
+  return Array.isArray(list) ? list.map(Number) : [];
+}
+
+function supporterPaidCellHtml(row) {
+  if (supporterPayData.error) {
+    return `<span class="muted" title="${escapeWl(supporterPayData.error)} — run supporter_monthly_payments_20260930.sql">—</span>`;
+  }
+  const months = row.paid_months || [];
+  const isThisYear = supporterPayData.year === supporterPayData.current_year;
+  const curMonth = supporterPayData.current_month;
+  const owesNow = isThisYear && row.is_supporter && !months.includes(curMonth);
+  const dots = PAID_MONTH_LABELS.map((label, i) => {
+    const m = i + 1;
+    const cls = [
+      "wl-paid-dot",
+      months.includes(m) ? "is-paid" : "",
+      isThisYear && m === curMonth ? "is-now" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    return `<span class="${cls}" title="${label}"></span>`;
+  }).join("");
+  const title = months.length
+    ? `Paid ${supporterPayData.year}: ${months.map((m) => PAID_MONTH_LABELS[m - 1]).join(", ")}`
+    : `Nothing marked paid for ${supporterPayData.year}`;
+  return `<button type="button" class="wl-paid-cell${owesNow ? " owes-now" : ""}" data-owner-id="${escapeWl(
+    row.owner_id
+  )}" data-tag="${escapeWl(row.owner_tag || row.email || "")}" title="${escapeWl(
+    title + (owesNow ? ` · ${PAID_MONTH_LABELS[curMonth - 1]} not marked yet` : "")
+  )}"><span class="wl-paid-count">${months.length}/12</span><span class="wl-paid-dots">${dots}</span></button>`;
+}
+
+function renderSupporterPaidGrid() {
+  const grid = document.getElementById("wlPaidGrid");
+  if (!grid || !supporterPaidModalOwner) return;
+  const months = supporterPaidMonths(supporterPaidModalOwner.ownerId);
+  const isThisYear = supporterPayData.year === supporterPayData.current_year;
+  grid.innerHTML = PAID_MONTH_LABELS.map((label, i) => {
+    const m = i + 1;
+    const paid = months.includes(m);
+    const now = isThisYear && m === supporterPayData.current_month;
+    return `<button type="button" data-month="${m}" class="wl-paid-month${paid ? " is-paid" : ""}${
+      now ? " is-now" : ""
+    }" aria-pressed="${paid}">${label}<span>${paid ? "Paid" : "—"}</span></button>`;
+  }).join("");
+  const sum = document.getElementById("wlPaidSummary");
+  if (sum) sum.textContent = `${months.length} of 12 months paid in ${supporterPayData.year}.`;
+}
+
+function openSupporterPaidModal(ownerId, tag) {
+  if (!ownerId) return;
+  supporterPaidModalOwner = { ownerId, tag: tag || "owner" };
+  const title = document.getElementById("wlPaidTitle");
+  if (title) title.textContent = `Supporter payments — ${supporterPaidModalOwner.tag}`;
+  const yearEl = document.getElementById("wlPaidYearLabel");
+  if (yearEl) yearEl.textContent = String(supporterPayData.year);
+  renderSupporterPaidGrid();
+  const modal = document.getElementById("wlPaidModal");
+  if (modal) modal.hidden = false;
+}
+
+function closeSupporterPaidModal() {
+  const modal = document.getElementById("wlPaidModal");
+  if (modal) modal.hidden = true;
+  supporterPaidModalOwner = null;
+}
+
+function refreshSupporterPaidCell(ownerId) {
+  const btn = document.querySelector(
+    `#wlAdminTableWrap button.wl-paid-cell[data-owner-id="${CSS.escape(String(ownerId))}"]`
+  );
+  const td = btn?.parentElement;
+  if (!td) return;
+  const tr = btn.closest("tr");
+  const supporterCb = tr?.querySelector(".wl-supporter");
+  td.innerHTML = supporterPaidCellHtml({
+    owner_id: ownerId,
+    owner_tag: btn.dataset.tag,
+    is_supporter: !!supporterCb?.checked,
+    paid_months: supporterPaidMonths(ownerId),
+  });
+  const fresh = td.querySelector("button.wl-paid-cell");
+  fresh?.addEventListener("pointerdown", (e) => e.stopPropagation());
+  fresh?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openSupporterPaidModal(fresh.dataset.ownerId, fresh.dataset.tag);
+  });
+}
+
+async function toggleSupporterPaidMonth(month, btn) {
+  const who = supporterPaidModalOwner;
+  if (!who || !month) return;
+  const paidNow = supporterPaidMonths(who.ownerId).includes(month);
+  if (btn) btn.disabled = true;
+  const { data, error } = await supabase.rpc("admin_supporter_payment_set", {
+    p_owner_id: who.ownerId,
+    p_year: supporterPayData.year,
+    p_month: month,
+    p_paid: !paidNow,
+  });
+  if (btn) btn.disabled = false;
+  if (error) {
+    setWlActionStatus(`❌ ${error.message}`, false);
+    return;
+  }
+  supporterPayData.paid[who.ownerId] = Array.isArray(data?.months) ? data.months.map(Number) : [];
+  renderSupporterPaidGrid();
+  refreshSupporterPaidCell(who.ownerId);
+  setWlActionStatus(
+    `✅ ${who.tag}: ${PAID_MONTH_LABELS[month - 1]} ${supporterPayData.year} ${paidNow ? "unmarked" : "marked paid"}.`,
+    true
+  );
+}
+
+async function clearSupporterPaidYearForOwner() {
+  const who = supporterPaidModalOwner;
+  if (!who) return;
+  if (!confirm(`Clear all ${supporterPayData.year} paid months for ${who.tag}?`)) return;
+  const { error } = await supabase.rpc("admin_supporter_payments_clear_year", {
+    p_year: supporterPayData.year,
+    p_owner_id: who.ownerId,
+  });
+  if (error) {
+    setWlActionStatus(`❌ ${error.message}`, false);
+    return;
+  }
+  supporterPayData.paid[who.ownerId] = [];
+  renderSupporterPaidGrid();
+  refreshSupporterPaidCell(who.ownerId);
+  setWlActionStatus(`✅ ${who.tag}: ${supporterPayData.year} payments cleared.`, true);
+}
+
+async function clearSupporterPaidYearForAll() {
+  const y = supporterPayData.year;
+  if (!confirm(`Clear ${y} paid months for EVERY owner?\n\nThis cannot be undone.`)) return;
+  const { data, error } = await supabase.rpc("admin_supporter_payments_clear_year", { p_year: y });
+  if (error) {
+    setWlActionStatus(`❌ ${error.message}`, false);
+    return;
+  }
+  setWlActionStatus(`✅ Cleared ${data?.cleared ?? 0} paid month(s) for ${y}.`, true);
+  await loadWaitingListAdmin();
 }
 
 async function setOwnerSupporterFlag(ownerId, isSupporter, checkboxEl) {

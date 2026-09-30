@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="admin-root">
 <head>
   <meta charset="UTF-8">
@@ -56,7 +56,7 @@
   <title>Season owner board — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css?v=20260930-hop-links">
   <style>
     .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
     .wl-note-grid {
@@ -214,6 +214,36 @@
     .wl-modal-actions {
       display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; justify-content: flex-end;
     }
+    .wl-paid-cell {
+      display: inline-flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 4px 6px; margin: 0; min-width: 5.5em;
+      background: #141414; border: 1px solid #444; border-radius: 4px;
+      color: #ddd; cursor: pointer; font: inherit;
+    }
+    .wl-paid-cell:hover { border-color: #ff9900; }
+    .wl-paid-cell.owes-now { border-color: #a66a1a; background: #1f170c; }
+    .wl-paid-count { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .wl-paid-dots { display: grid; grid-template-columns: repeat(6, 6px); gap: 2px; }
+    .wl-paid-dot { width: 6px; height: 6px; border-radius: 1px; background: #333; }
+    .wl-paid-dot.is-paid { background: #3c3; }
+    .wl-paid-dot.is-now { outline: 1px solid #ff9900; }
+    .wl-paid-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px;
+    }
+    .wl-paid-month {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 8px 4px; background: #111; border: 1px solid #444; border-radius: 6px;
+      color: #ccc; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    .wl-paid-month span { font-size: 11px; font-weight: 400; color: #777; }
+    .wl-paid-month.is-paid { background: #17301a; border-color: #3a7a3a; color: #bfe8bf; }
+    .wl-paid-month.is-paid span { color: #8d8; }
+    .wl-paid-month.is-now { box-shadow: 0 0 0 1px #ff9900 inset; }
+    .wl-paid-month:disabled { opacity: .5; cursor: wait; }
+    .wl-board-toolbar .wl-paid-year-wrap { display: inline-flex; gap: 6px; align-items: center; color: #bbb; font-size: 13px; }
+    .wl-board-toolbar select {
+      padding: 7px 8px; background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
     @media (max-width: 1100px) {
       .wl-note-grid { grid-template-columns:repeat(2, minmax(220px, 1fr)); }
     }
@@ -227,6 +257,11 @@
   <h1 class="admin-title">Season owner board</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
+      <nav class="admin-hop-links" aria-label="Related pages">
+        <a href="admin_owners_waiting_list.html" aria-current="page">Season owner board</a>
+        <a href="admin_workflow_checklist.html">Admin checklist</a>
+        <a href="admin_club_checklist.html">Club season checklist</a>
+      </nav>
       <div class="card" id="season-owner-board">
         <h2>Season owner board</h2>
         <div class="wl-note-grid">
@@ -257,6 +292,10 @@
           <button type="button" id="wlRecordUnplayedBtn" class="button secondary" title="Freeze unplayed counts for locked months (+ current) before you sim leftovers">Record unplayed</button>
           <button type="button" id="wlRefreshCountryBtn" class="button secondary" data-admin-only>Refresh country</button>
           <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
+          <span class="wl-paid-year-wrap" title="Supporter payments year shown in the Paid column. Rolls to the new year automatically on 1 January.">
+            Paid year <select id="wlPaidYear" aria-label="Supporter payments year"></select>
+          </span>
+          <button type="button" id="wlPaidClearAllBtn" class="button secondary" data-admin-only title="Clear the selected year's paid months for every owner">Reset paid year</button>
         </div>
         <div id="wlAdminTableWrap" style="overflow-x:auto;"></div>
         <div id="wlOnBreakSection" style="margin-top:28px;" hidden>
@@ -299,6 +338,18 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260926-s1-mass-invite"></script>
+  <div id="wlPaidModal" class="wl-modal-backdrop" hidden>
+    <div class="wl-modal" role="dialog" aria-modal="true" aria-labelledby="wlPaidTitle">
+      <h3 id="wlPaidTitle">Supporter payments</h3>
+      <p class="note">Year <b id="wlPaidYearLabel">—</b> · click a month to mark it paid / unpaid. <span id="wlPaidSummary"></span></p>
+      <div id="wlPaidGrid" class="wl-paid-grid"></div>
+      <div class="wl-modal-actions">
+        <button type="button" id="wlPaidClearYear" class="button secondary">Clear this year</button>
+        <button type="button" id="wlPaidClose" class="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="admin_owners.js?v=20260930-supporter-paid"></script>
 </body>
 </html>
