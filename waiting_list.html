@@ -85,6 +85,14 @@
         <div id="draftLocalStart"></div>
       </div>
     </div>
+    <div class="wl-card" id="wlNextAuctionCard" hidden>
+      <h1>Next club auction</h1>
+      <p id="wlNextAuctionTitle" style="margin-bottom:6px;"></p>
+      <div style="margin-top:4px;padding:10px 12px;background:#111;border:1px solid #333;border-radius:6px;">
+        <div id="wlNextAuctionCountdown" style="font-size:15px;color:#ff9900;font-weight:bold;"></div>
+        <div id="wlNextAuctionWhen" style="font-size:11px;color:#aaa;margin-top:4px;"></div>
+      </div>
+    </div>
     <div class="wl-card" id="wlMyCard" hidden>
       <h1>Your place</h1>
       <p id="wlMySummary"></p>
@@ -133,7 +141,7 @@
     </p>
   </div>
   <script type="module">
-    import { initWaitingListPage } from "./waiting_list.js?v=20260929-s1-responded";
+    import { initWaitingListPage } from "./waiting_list.js?v=20260930-next-auction";
     initWaitingListPage();
   </script>
 </body>

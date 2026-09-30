@@ -4,6 +4,7 @@ import {
   loadOwnerSupporterMap,
   ownerTagHtml,
 } from "./owner_badge.js";
+import { mountNextClubAuctionCountdown } from "./next_club_auction_countdown.js?v=20260930-next-auction";
 
 export async function loadWaitingListPublic() {
   const { data, error } = await supabase.rpc("waiting_list_public");
@@ -292,6 +293,17 @@ export async function initWaitingListPage() {
   syncAuctionCountdownCard();
   // One more frame in case the first countdown tick is still settling.
   requestAnimationFrame(() => syncAuctionCountdownCard());
+
+  void mountNextClubAuctionCountdown({
+    card: document.getElementById("wlNextAuctionCard"),
+    countdownEl: document.getElementById("wlNextAuctionCountdown"),
+    whenEl: document.getElementById("wlNextAuctionWhen"),
+    titleEl: document.getElementById("wlNextAuctionTitle"),
+    suppressWhenVisible: () => {
+      const shared = document.getElementById("wlAuctionCountdownCard");
+      return Boolean(shared && !shared.hidden);
+    },
+  });
 
   try {
     const { data: self } = await supabase.rpc("owner_registry_get_self");
