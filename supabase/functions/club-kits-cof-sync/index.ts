@@ -84,6 +84,7 @@ const COF_CLUB_SLUG_OVERRIDES = {
   ATM: "atletico",
   RMA: "real_madrid",
   JUV: "juventus",
+  CAP: "platense",
   INT: "inter",
   MIL: "milan",
   DOR: "dortmund",
