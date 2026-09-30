@@ -113,6 +113,48 @@ function renderEntryChecklist() {
       : "All required items done — you're ready for the club auction.";
     summary.style.color = left ? "#ffcf99" : "#9f9";
   }
+
+  const missing = [
+    [tagDone, "owner tag"],
+    [tzDone, "timezone"],
+    [availDone, "match availability"],
+    [primaryDone, "primary club interest"],
+    [backupDone, "backup club"],
+  ]
+    .filter(([done]) => !done)
+    .map(([, label]) => label);
+  renderEntryBanner(missing, self);
+}
+
+function renderEntryBanner(missing, self) {
+  const banner = document.getElementById("entryBanner");
+  const icon = document.getElementById("entryBannerIcon");
+  const title = document.getElementById("entryBannerTitle");
+  const detail = document.getElementById("entryBannerDetail");
+  if (!banner || !title || !detail) return;
+
+  const ready = missing.length === 0;
+  banner.hidden = false;
+  banner.classList.toggle("is-ready", ready);
+  banner.classList.toggle("is-todo", !ready);
+  if (icon) icon.textContent = ready ? "✅" : "⚠️";
+
+  if (ready) {
+    title.textContent = "You are ready for the club auction";
+    detail.textContent = self.needs_club_auction
+      ? "All required items are done. You can bid when the auction opens."
+      : "All required items are done. You'll be able to bid once admin invites you to the club auction.";
+    return;
+  }
+
+  title.textContent = "You still have things to do before you are allowed to bid on a club";
+  const list =
+    missing.length === 1
+      ? missing[0]
+      : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
+  detail.innerHTML =
+    `Still needed: <b>${escapeHtml(list)}</b>. ` +
+    `<a href="#entryChecklistCard">See the entry checklist</a> below.`;
 }
 
 function formatHolidayRange(h) {
@@ -426,7 +468,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (scheduleEl) {
     if (isWaitingList && !isAuctionInvitee) {
       scheduleEl.textContent =
-        "You are on the waiting list. The next auction countdown is shown at the top of this page; you can bid once invited.";
+        "You are on the waiting list. The next auction countdown is shown on this page; you can bid once invited.";
       scheduleEl.style.color = "#aaa";
     } else if (auctionState) {
       if (!auctionState.enabled) {
@@ -456,7 +498,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     whenEl: document.getElementById("nextAuctionWhen"),
     titleEl: document.getElementById("nextAuctionTitle"),
     suppressWhenVisible: () => {
-      if (isWaitingList && !isAuctionInvitee) return false;
       const shared = document.getElementById("draftCountdownContainer");
       const text = document.getElementById("draftCountdown")?.textContent?.trim();
       return Boolean(shared && shared.style.display !== "none" && text);
