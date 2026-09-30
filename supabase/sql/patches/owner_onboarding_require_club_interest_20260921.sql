@@ -150,7 +150,9 @@ BEGIN
     'is_archived', coalesce(v_row.status, '') = 'archived',
     'is_caretaker', v_caretaker,
     'waiting_list_position', v_pos,
-    'waiting_list_total', coalesce(v_total, 0)
+    'waiting_list_total', coalesce(v_total, 0),
+    'confirmed_test_season', coalesce(v_row.confirmed_test_season, false),
+    'confirmed_live_season', coalesce(v_row.confirmed_live_season, false)
   );
 END;
 $function$;

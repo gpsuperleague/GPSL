@@ -757,6 +757,8 @@ BEGIN
     'badge_path_stored', v_row.badge_path,
     'can_set_profile_image', v_supporter_active,
     'can_set_colour_scheme', v_supporter_active AND v_has_club,
+    'confirmed_test_season', coalesce(v_row.confirmed_test_season, false),
+    'confirmed_live_season', coalesce(v_row.confirmed_live_season, false),
     'can_free_club_swap', v_supporter_active AND v_has_club AND NOT v_free_swap_used,
     'free_club_swap_used', v_free_swap_used,
     'club_swap_fee', 150000000,
