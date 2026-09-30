@@ -1878,7 +1878,7 @@ async function inviteOwnerToSeason1({
       /404|not found|PGRST202|Could not find the function/i.test(
         msg + details + hint + code
       );
-    console.error("Season 1 invite RPC failed", {
+    console.error(`Season 1 invite RPC failed: ${msg}${details ? ` | ${details}` : ""}${hint ? ` | ${hint}` : ""}`, {
       message: msg,
       details,
       hint,

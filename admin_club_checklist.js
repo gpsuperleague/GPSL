@@ -1,4 +1,5 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import { isGpslAdminUser } from "./global.js";
 import { formatMoney } from "./competition.js";
 import { loadFinanceSeasonContext } from "./finance_page_common.js";
 import {
@@ -102,7 +103,11 @@ const ISSUE_META = {
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage({ allowMod: true }))) return;
+  const user = await initAdminPage({ allowMod: true });
+  if (!user) return;
+  if (!isGpslAdminUser(user)) {
+    document.querySelectorAll(".admin-hop-links [data-admin-only]").forEach((a) => a.remove());
+  }
 
   document.getElementById("reloadBtn")?.addEventListener("click", () => loadTable());
   document.getElementById("notifyIssuesBtn")?.addEventListener("click", () => notifyOwnersOfIssues());

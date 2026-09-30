@@ -44,7 +44,7 @@ DECLARE
   v_map jsonb;
   v_years jsonb;
 BEGIN
-  IF NOT public.is_gpsl_admin_or_mod() THEN
+  IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 

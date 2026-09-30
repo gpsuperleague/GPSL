@@ -16,18 +16,9 @@
 DO $$
 DECLARE
   v_names text[] := ARRAY[
-    -- Owners: season owner board / tag / Discord join order
+    -- Owners: tag / Discord join order (season owner board is admin-only)
     'admin_owner_list', 'admin_owner_set_tag', 'owner_registry_resolve_tag',
-    'waiting_list_admin',
-    'admin_waiting_list_assign_club', 'admin_waiting_list_remove',
-    'admin_waiting_list_reorder', 'admin_waiting_list_restore_join_order',
-    'admin_waiting_list_set_absence', 'admin_waiting_list_set_auction_invite',
-    'admin_waiting_list_set_season_confirmed',
-    'admin_season1_invite_assign_next', 'admin_season1_invite_clear_number',
-    'admin_season1_invite_mark_expired', 'admin_season1_invite_respond_on_behalf',
-    'admin_season1_invite_status_map',
-    'admin_owner_last_logins', 'admin_owner_supporter_map',
-    'admin_match_video_owner_metrics',
+    'admin_owner_last_logins',
     -- Owners: holidays / natter
     'admin_list_club_holidays', 'admin_club_holiday_book',
     'admin_club_holiday_amend', 'admin_club_holiday_cancel',
