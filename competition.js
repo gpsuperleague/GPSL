@@ -862,7 +862,20 @@ export function groupFixturesByMatchday(fixtures) {
     .map(([matchday, rows]) => ({ matchday, fixtures: rows }));
 }
 
+/** Vacant v vacant league match: played, no score (fixture views may not expose is_void). */
+export function isVoidFixture(f) {
+  if (!f || f.status !== "played") return false;
+  if (f.is_void) return true;
+  return (
+    (f.competition_type || "league") === "league" &&
+    !f.cup_code &&
+    f.home_goals == null &&
+    f.away_goals == null
+  );
+}
+
 export function formatFixtureScore(f, clubIdentity = null) {
+  if (isVoidFixture(f)) return "Void";
   if (f.status === "played" && f.home_goals != null && f.away_goals != null) {
     return `${f.home_goals} – ${f.away_goals}`;
   }
@@ -1434,7 +1447,11 @@ export function leagueBoundaryKey(division, position) {
 export function formatFormHtml(formStr) {
   if (!formStr) return "—";
   return [...formStr]
-    .map((ch) => `<span class="form-${ch.toLowerCase()}">${ch}</span>`)
+    .map((ch) =>
+      ch === "-"
+        ? `<span class="form-v" title="Void (no owner either side)">–</span>`
+        : `<span class="form-${ch.toLowerCase()}">${ch}</span>`
+    )
     .join("");
 }
 
@@ -1478,12 +1495,19 @@ export function buildVenueStandings(baseRows, fixtures, venue) {
   const homeVenue = venue === "home";
   for (const f of fixtures || []) {
     if (f.competition_type !== "league" || f.status !== "played") continue;
-    if (f.home_goals == null || f.away_goals == null) continue;
+    const isVoid = isVoidFixture(f);
+    if (!isVoid && (f.home_goals == null || f.away_goals == null)) continue;
 
     const club = homeVenue ? f.home_club_short_name : f.away_club_short_name;
     const key = `${f.division}:${club}`;
     const entry = byKey.get(key);
     if (!entry) continue;
+
+    if (isVoid) {
+      entry.mp += 1;
+      entry.formEntries.push({ matchday: f.matchday, r: "-" });
+      continue;
+    }
 
     const gf = Number(homeVenue ? f.home_goals : f.away_goals);
     const ga = Number(homeVenue ? f.away_goals : f.home_goals);
