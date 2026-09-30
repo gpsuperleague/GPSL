@@ -7,6 +7,7 @@ import {
   setOnboardingTimezone,
 } from "./match_scheduling.js";
 import { renderOwnerSeasonStatus } from "./owner_season_status.js?v=20260930-no-test-season";
+import { mountNextClubAuctionCountdown } from "./next_club_auction_countdown.js?v=20260930-next-auction";
 
 let clubAssignmentPollTimer = null;
 let registrySelf = null;
@@ -425,7 +426,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (scheduleEl) {
     if (isWaitingList && !isAuctionInvitee) {
       scheduleEl.textContent =
-        "You are on the waiting list. Auction schedule appears here when you are invited to bid.";
+        "You are on the waiting list. The next auction countdown is shown at the top of this page; you can bid once invited.";
       scheduleEl.style.color = "#aaa";
     } else if (auctionState) {
       if (!auctionState.enabled) {
