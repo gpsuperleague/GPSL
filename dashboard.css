@@ -2359,6 +2359,14 @@ a.ssc-chip:hover {
   border-radius: 6px;
 }
 
+/* Nav shortcuts are icon-only at every width (title / aria-label keep the name). */
+.nav-natter-label,
+.nav-season-calendar-label,
+.nav-gpsl-sport-label,
+.nav-fantasy-label {
+  display: none !important;
+}
+
 /* Mid widths: icon-only shortcuts before the full wrap */
 @media (max-width: 1400px) {
   .nav-natter-label,

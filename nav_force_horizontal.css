@@ -63,6 +63,13 @@
   flex-direction: column !important;
 }
 
+#nav .nav-natter-label,
+#nav .nav-season-calendar-label,
+#nav .nav-gpsl-sport-label,
+#nav .nav-fantasy-label {
+  display: none !important;
+}
+
 /* Mid widths: icon-only shortcuts free space before the full wrap */
 @media (max-width: 1400px) {
   #nav .nav-natter-label,
