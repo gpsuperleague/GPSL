@@ -1,6 +1,6 @@
 /**
  * Owner season board status (mirrors admin Season owner board ticks).
- * Testing / Live Season 1 — In or Out.
+ * Live Season 1 — In or Out.
  * Club auction — In, Out, or Completed (already has a club).
  */
 
@@ -46,17 +46,13 @@ export function renderOwnerSeasonStatus(root, self, opts = {}) {
     return;
   }
 
-  const { testIn, liveIn, auction } = seasonStatusFromRegistry(self);
+  const { liveIn, auction } = seasonStatusFromRegistry(self);
   const compact = !!opts.compact;
   root.hidden = false;
   root.innerHTML = `
     ${compact ? "" : "<h2>Season</h2>"}
     ${compact ? "" : '<p class="note">Your place on the season board (set by admin).</p>'}
     <ul class="owner-season-status-list${compact ? " is-compact" : ""}">
-      <li>
-        <span class="owner-season-label">Testing season</span>
-        ${pillInOut(testIn)}
-      </li>
       <li>
         <span class="owner-season-label">Live participation · Season 1</span>
         ${pillInOut(liveIn)}

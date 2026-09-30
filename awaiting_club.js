@@ -6,7 +6,7 @@ import {
   saveOnboardingWeeklyAvailability,
   setOnboardingTimezone,
 } from "./match_scheduling.js";
-import { renderOwnerSeasonStatus } from "./owner_season_status.js";
+import { renderOwnerSeasonStatus } from "./owner_season_status.js?v=20260930-no-test-season";
 
 let clubAssignmentPollTimer = null;
 let registrySelf = null;
