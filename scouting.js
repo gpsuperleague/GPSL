@@ -1435,7 +1435,9 @@ function paintScoutingLists(wrap, playerMap, draftUiByPlayer) {
   const filteredRows = rowsForListFilter(scoutingRows);
   if (!filteredRows.length) {
     wrap.innerHTML =
-      '<p class="scout-empty">No scouting targets yet.</p>';
+      listBoardFilter !== "all" && scoutingRows.length
+        ? '<p class="scout-empty">No players placed on this tactic board yet.</p>'
+        : '<p class="scout-empty">No scouting targets yet.</p>';
     return;
   }
 
@@ -1939,9 +1941,22 @@ function renderListBoardFilter() {
 }
 
 function rowsForListFilter(rows) {
-  // Board filter selects that board's Active Targets + Plan nation context.
-  // The same shortlist players appear under every board (like multi-board placement).
-  return rows;
+  if (listBoardFilter === "all") return rows;
+  const boardNo = Number(listBoardFilter);
+  const onBoard = new Set();
+  for (const r of rows) {
+    if (playerBoardMap.get(String(r.player_id))?.has(boardNo)) {
+      onBoard.add(String(r.player_id));
+    }
+  }
+  // Keep nested backups/3rd/4th visible under top targets on this board,
+  // even when those nested players are not placed on the board themselves.
+  return rows.filter((r) => {
+    const pid = String(r.player_id);
+    if (onBoard.has(pid)) return true;
+    const anchor = r.anchor_player_id ? String(r.anchor_player_id) : "";
+    return Boolean(anchor && onBoard.has(anchor));
+  });
 }
 
 function wireListBoardFilter() {
