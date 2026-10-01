@@ -12,7 +12,8 @@ const COLUMNS = [
   { key: "stadium_capacity", label: "Capacity", sort: "stadium_capacity" },
   { key: "stadium_max_capacity", label: "Max capacity", sort: "stadium_max_capacity" },
   { key: "stadium_expansion_potential", label: "Expansion headroom", sort: "stadium_expansion_potential" },
-  { key: "club_expectation_label", label: "Expectation", sort: "club_expectation" },
+  { key: "club_expectation_label", label: "League expectation", sort: "club_expectation" },
+  { key: "club_cup_expectation", label: "Cup backup", sort: "club_cup_expectation" },
   { key: "club_market_value", label: "Squad MV", sort: "club_market_value" },
   { key: "stadium_value", label: "Stadium value", sort: "stadium_value" },
   { key: "stadium_maintenance_cost", label: "Stadium maintenance", sort: "stadium_maintenance_cost" },
@@ -315,6 +316,9 @@ function render() {
         <td class="left" title="${
           r.club_expectation != null ? `Baseline P${escapeHtml(String(r.club_expectation))}` : ""
         }">${escapeHtml(r.club_expectation_label || "—")}</td>
+        <td class="left cup-backup" title="Backup only: rescues a slight league miss, never a bad one">${escapeHtml(
+          r.club_cup_expectation || "—"
+        )}</td>
         <td title="Sum of contracted players’ market values">${moneyCell(r.club_market_value)}</td>
         <td title="Capacity × ₿1,500">${moneyCell(r.stadium_value)}</td>
         <td>${moneyCell(r.stadium_maintenance_cost)}</td>
