@@ -140,6 +140,15 @@ async function lookup() {
       return;
     }
 
+    const isLegacy = !!lookup?.legacy;
+    const legacyName = lookup?.name || "This player";
+    const stillLegacy = (reason) =>
+      new Error(
+        isLegacy
+          ? `${legacyName} is a legacy card and still isn't on pesdb.net (${reason}), so it stays locked.`
+          : reason
+      );
+
     setStatus(`Looking up ${kid} on PESDB…`);
     const { data: scrape, error: scrapeErr } = await supabase.functions.invoke(
       SCRAPE_FN,
@@ -148,17 +157,17 @@ async function lookup() {
       }
     );
     if (scrapeErr) throw new Error(scrapeErr.message || "PESDB scrape failed");
-    if (scrape?.ok === false && scrape?.error) throw new Error(scrape.error);
+    if (scrape?.ok === false && scrape?.error) throw stillLegacy(scrape.error);
 
     const scraped = Array.isArray(scrape?.players) ? scrape.players[0] : null;
     if (!scraped) {
-      throw new Error("No PESDB row returned — check the Konami ID.");
+      throw stillLegacy("No PESDB row returned — check the Konami ID.");
     }
     if (scraped.scrape_error) {
-      throw new Error(`PESDB: ${scraped.scrape_error}`);
+      throw stillLegacy(`PESDB: ${scraped.scrape_error}`);
     }
     if (!scraped.player_name) {
-      throw new Error("PESDB returned no player name for that ID.");
+      throw stillLegacy("PESDB returned no player name for that ID.");
     }
 
     stagingPreview = {
@@ -177,13 +186,23 @@ async function lookup() {
       detail_url:
         scraped.detail_url ||
         `https://pesdb.net/efootball/?id=${kid}&mode=max_level`,
+      legacy_restore: isLegacy,
     };
 
-    showResult(`
+    showResult(
+      isLegacy
+        ? `
+      <p class="gpdb-add-player-banner">Legacy card — back on PESDB</p>
+      ${previewCardHtml(stagingPreview)}
+      <p class="gpdb-add-player-hint">${escapePlayerHtml(legacyName)}${
+        lookup?.contracted_team ? ` (${escapePlayerHtml(lookup.contracted_team)})` : ""
+      } is locked as a legacy card in GPDB. If this is the same player, request admin to unlock it so it can be sold, listed and signed again.</p>`
+        : `
       <p class="gpdb-add-player-banner">Not in GPDB — confirm this is the right player</p>
       ${previewCardHtml(stagingPreview)}
       <p class="gpdb-add-player-hint">If correct, request admin to add them as a free agent.</p>
-    `);
+    `
+    );
     const confirmBtn = $("gpdbAddPlayerConfirmBtn");
     if (confirmBtn) confirmBtn.hidden = false;
     setStatus(
@@ -202,7 +221,9 @@ async function confirmRequest() {
   const row = stagingPreview;
   if (
     !confirm(
-      `Request admin to add ${row.player_name} (${row.konami_id}) to GPDB?\n\n` +
+      (row.legacy_restore
+        ? `Request admin to unlock legacy card ${row.player_name} (${row.konami_id})?\n\n`
+        : `Request admin to add ${row.player_name} (${row.konami_id}) to GPDB?\n\n`) +
         `${row.position} · OVR ${row.rating} · ${row.playing_style}`
     )
   ) {
@@ -222,7 +243,7 @@ async function confirmRequest() {
     if (confirmBtn) confirmBtn.hidden = true;
     showResult(`
       <p class="gpdb-add-player-banner ok">Request sent</p>
-      <p>Admin will approve or reject <b>${escapePlayerHtml(
+      <p>Admin will approve or reject ${data?.legacy_restore ? "unlocking " : ""}<b>${escapePlayerHtml(
         data?.player_name || row.player_name
       )}</b> (Konami ${escapePlayerHtml(String(data?.konami_id || row.konami_id))}).</p>
     `);

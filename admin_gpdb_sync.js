@@ -2956,7 +2956,11 @@ async function refreshMemberAddRequests() {
         return `<tr>
           <td>${escapeHtml(formatMemberReqWhen(r.created_at))}</td>
           <td>
-            <b>${escapeHtml(r.player_name || "—")}</b>
+            <b>${escapeHtml(r.player_name || "—")}</b>${
+              prev.legacy_restore
+                ? ' <span style="font-size:10px;padding:1px 6px;border:1px solid #a80;border-radius:3px;color:#fc6;">Legacy unlock</span>'
+                : ""
+            }
             <div style="font-size:11px;color:#888;">
               <a href="${escapeHtml(r.pesdb_url || "#")}" target="_blank" rel="noopener">${escapeHtml(
                 r.konami_id
@@ -2998,7 +3002,11 @@ async function refreshMemberAddRequests() {
 
 async function approveMemberAddRequest(id) {
   if (!id) return;
-  if (!confirm(`Approve request #${id} and insert player into GPDB as free agent?`)) {
+  if (
+    !confirm(
+      `Approve request #${id}? New players are added as free agents; legacy cards back on PESDB are unlocked.`
+    )
+  ) {
     return;
   }
   setStatus("memberAddReqStatus", `Approving #${id}…`, true);
@@ -3087,7 +3095,9 @@ async function approveMemberAddRequest(id) {
 
   setStatus(
     "memberAddReqStatus",
-    data?.already_in_gpdb
+    data?.legacy_restored
+      ? `✅ #${id} approved — legacy card ${req.player_name} unlocked.`
+      : data?.already_in_gpdb
       ? `✅ #${id} closed — already in GPDB.`
       : `✅ Approved #${id} — added ${data?.inserted?.name || req.player_name} as free agent.`,
     true
