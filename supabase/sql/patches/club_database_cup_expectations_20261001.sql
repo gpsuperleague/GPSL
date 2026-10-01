@@ -1,18 +1,24 @@
 -- =============================================================================
--- Club Database: show each club's cup target(s) next to the league expectation.
+-- Club Database: show each club's cup target(s) next to the league expectation,
+-- split by division (Superleague / Championship) so owners can compare.
 --
 -- Cup targets are a backup to the league expectation, not a second target:
 -- they only rescue a SLIGHT league miss (see cup_targets_manager_club_20260928.sql).
 --
--- Targets come from club_prestige_cup_targets (division + tier), using the club's
--- division in the active season (else the current / latest season). If the club
--- has no division row yet, only "any division" targets are shown.
+-- Targets come from club_prestige_cup_targets (division + tier). The expected
+-- league position itself is prestige-based and the same in either division.
 --
 -- Run after cup_targets_manager_club_20260928.sql and
 -- gpdb_season_exclusions_managers_clubs_20260815.sql. Safe re-run.
 -- =============================================================================
 
-CREATE OR REPLACE FUNCTION public.club_cup_expectation_text(p_club_short_name text)
+DROP VIEW IF EXISTS public.clubs_database_public;
+DROP FUNCTION IF EXISTS public.club_cup_expectation_text(text);
+
+CREATE OR REPLACE FUNCTION public.club_cup_expectation_text(
+  p_club_short_name text,
+  p_divisions text[]
+)
 RETURNS text
 LANGUAGE plpgsql
 STABLE
@@ -20,51 +26,39 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_season_id bigint;
-  v_division text;
   v_tier text;
   v_text text;
 BEGIN
-  v_season_id := public.competition_active_season_id();
-  IF v_season_id IS NULL THEN
-    SELECT s.id INTO v_season_id
-    FROM public.competition_seasons s
-    ORDER BY s.is_current DESC NULLS LAST, s.id DESC
-    LIMIT 1;
-  END IF;
-
-  IF v_season_id IS NOT NULL THEN
-    SELECT ccs.division INTO v_division
-    FROM public.competition_club_seasons ccs
-    WHERE ccs.season_id = v_season_id AND ccs.club_short_name = p_club_short_name;
-  END IF;
-
   BEGIN
     v_tier := public.competition_club_tier(p_club_short_name);
   EXCEPTION WHEN OTHERS THEN
     v_tier := NULL;
   END;
 
-  SELECT string_agg(
-           coalesce(nullif(btrim(t.label), ''),
-                    public.competition_cup_target_label(t.cup_code, t.cup_stage)),
-           ' or ' ORDER BY t.sort_order, t.id)
+  SELECT string_agg(x.label, ' or ' ORDER BY x.sort_order, x.id)
   INTO v_text
-  FROM public.club_prestige_cup_targets t
-  WHERE (t.division IS NULL OR t.division = v_division)
-    AND (t.tier IS NULL OR t.tier = v_tier);
+  FROM (
+    SELECT DISTINCT ON (lbl)
+      lbl AS label, t.sort_order, t.id
+    FROM public.club_prestige_cup_targets t
+    CROSS JOIN LATERAL (
+      SELECT coalesce(nullif(btrim(t.label), ''),
+                      public.competition_cup_target_label(t.cup_code, t.cup_stage)) AS lbl
+    ) l
+    WHERE (t.division IS NULL OR t.division = ANY (p_divisions))
+      AND (t.tier IS NULL OR t.tier = v_tier)
+    ORDER BY lbl, t.sort_order, t.id
+  ) x;
 
   RETURN v_text;
 END;
 $function$;
 
-COMMENT ON FUNCTION public.club_cup_expectation_text(text) IS
-  'Club cup target label(s) for Club Database — backup that only rescues a slight league miss.';
+COMMENT ON FUNCTION public.club_cup_expectation_text(text, text[]) IS
+  'Club cup target label(s) for the given divisions — backup that only rescues a slight league miss.';
 
-GRANT EXECUTE ON FUNCTION public.club_cup_expectation_text(text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.club_cup_expectation_text(text) TO anon;
-
-DROP VIEW IF EXISTS public.clubs_database_public;
+GRANT EXECUTE ON FUNCTION public.club_cup_expectation_text(text, text[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.club_cup_expectation_text(text, text[]) TO anon;
 
 CREATE VIEW public.clubs_database_public
 WITH (security_invoker = false)
@@ -140,11 +134,12 @@ base AS (
 SELECT
   b.*,
   public.competition_club_expectation_label(b.club_expectation::smallint) AS club_expectation_label,
-  public.club_cup_expectation_text(b.club_short_name) AS club_cup_expectation
+  public.club_cup_expectation_text(b.club_short_name, ARRAY['superleague']) AS club_cup_expectation_sl,
+  public.club_cup_expectation_text(b.club_short_name, ARRAY['championship_a', 'championship_b']) AS club_cup_expectation_ch
 FROM base b;
 
 COMMENT ON VIEW public.clubs_database_public IS
-  'Browse catalog for Club Database: stadium, league expectation + backup cup target, MV, maintenance, gate (100%/80%).';
+  'Browse catalog for Club Database: stadium, league expectation + backup cup target (Superleague / Championship), MV, maintenance, gate (100%/80%).';
 
 GRANT SELECT ON public.clubs_database_public TO authenticated;
 GRANT SELECT ON public.clubs_database_public TO anon;
