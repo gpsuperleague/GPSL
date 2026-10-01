@@ -40,7 +40,7 @@ export const SECTION_MATCHDAY_CHECKLIST = {
         {
           html: `Both clubs ensure the <a href="matchday.html">Matchday</a> squad has:`,
           children: [
-            `<b>23</b> fit and available players`,
+            `<b>23</b> fit and available players (your club squad itself must be at least <b>24</b>)`,
             `At least <b>1 GK</b> in the starting XI`,
             `Injured and suspended players removed`,
             `Emergency loans added if required and prompted`,
@@ -53,7 +53,7 @@ export const SECTION_MATCHDAY_CHECKLIST = {
     {
       type: "ul",
       items: [
-        `Both owners must <b>check in at KO</b> on the <a href="fixture_schedule.html">schedule page</a>`,
+        `Both owners must <b>check in at KO</b> on the <a href="fixture_schedule.html">schedule page</a> — <b>10 minutes after kick-off</b> is the latest`,
         `Match should be played within the agreed <b>30-minute window</b>`,
       ],
     },
@@ -128,7 +128,10 @@ export const SECTION_MATCHDAY_CHECKLIST = {
         },
         {
           html: `Show <b>PAUSE BEFORE KICKOFF</b>`,
-          children: [`PA level (minimum 3)`, `Advanced skill`],
+          children: [
+            `PA level: <b>PA3 or PA4</b> (PA1 and PA2 not allowed)`,
+            `Advanced skill`,
+          ],
         },
         {
           html: `During the <b>MATCH</b>`,
@@ -343,7 +346,7 @@ export const SECTION_MATCHDAY = {
       items: [
         `<b>Display:</b> 10-minute match · Show Manager · Show Subtactic · Show Squad · <b>no individual player instructions</b> · Fluid Formation allowed (On preferred).`,
         `<b>Boosts:</b> Single Red/Blue from the <b>80th</b> minute · Double Red/Blue from the <b>90th</b> only.`,
-        `<b>Pause before KO:</b> PA3 or PA4 · Advanced skill only.`,
+        `<b>Pause before KO:</b> PA3 or PA4 (PA1 and PA2 not allowed) · Advanced skill only.`,
         `<b>On the pitch:</b> NO DOGSO · NO TIMEWASTING · NO MATCH MANIPULATION.`,
         `<b>Formations:</b> dropdown presets only — no free marker drag; mirror LB↔RB, LWF↔RWF, LMF↔RMF; CF+SS ≤ 2; <b>DMF ≤ 2</b>; <b>AMF ≤ 2</b>.`,
         `<b>Squad:</b> club players only; no injured/suspended; ≥1 GK in the starting XI.`,

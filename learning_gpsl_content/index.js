@@ -1,5 +1,5 @@
 /**
- * Learning GPSL — composed handbook sections.
+ * Learning GPSL  Ecomposed handbook sections.
  * Edit individual modules; this file only assembles order + intro meta.
  */
 
@@ -16,7 +16,7 @@ import {
   SECTION_MATCHDAY_CHECKLIST,
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
-} from "./fixtures_results.js?v=20261001-matchday-checklist";
+} from "./fixtures_results.js?v=20261001-matchday-checklist2";
 import { SECTION_LEAGUE, SECTION_INTERNATIONAL } from "./league_world.js";
 import {
   SECTION_OWNERS,
@@ -26,7 +26,7 @@ import {
   SECTION_HELP,
 } from "./reference.js";
 
-export const LEARNING_GPSL_META_HTML = `A guide for new and returning owners — how the site works, where to go, and the main league rules
+export const LEARNING_GPSL_META_HTML = `A guide for new and returning owners  Ehow the site works, where to go, and the main league rules
   you need day to day. <b>No club yet?</b> Start with
   <a href="#waiting-room">The Waiting Room</a>, your
   <a href="waiting_list.html">waiting list</a> place, and
