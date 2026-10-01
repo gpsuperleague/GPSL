@@ -4,25 +4,46 @@ import {
   discordChatLinkHtml,
   wireDiscordChatLinks,
 } from "./discord_open.js?v=20260921-app-first";
+import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 
 const COLUMNS = [
-  { key: "club_name", label: "Club", sort: "club_name" },
-  { key: "stadium_name", label: "Stadium", sort: "stadium_name" },
-  { key: "nation", label: "Nation", sort: "nation" },
-  { key: "stadium_capacity", label: "Capacity", sort: "stadium_capacity" },
-  { key: "stadium_max_capacity", label: "Max capacity", sort: "stadium_max_capacity" },
-  { key: "stadium_expansion_potential", label: "Expansion headroom", sort: "stadium_expansion_potential" },
-  { key: "club_expectation_label", label: "League expectation", sort: "club_expectation" },
-  { key: "club_cup_expectation_sl", label: "Cup backup (Superleague)", sort: "club_cup_expectation_sl" },
-  { key: "club_cup_expectation_ch", label: "Cup backup (Championship)", sort: "club_cup_expectation_ch" },
-  { key: "club_market_value", label: "Squad MV", sort: "club_market_value" },
-  { key: "stadium_value", label: "Stadium value", sort: "stadium_value" },
-  { key: "stadium_maintenance_cost", label: "Stadium maintenance", sort: "stadium_maintenance_cost" },
-  { key: "gate_money_full", label: "Gate 100%", sort: "gate_money_full" },
-  { key: "gate_money_80", label: "Gate 80%", sort: "gate_money_80" },
-  { key: "owner_tag", label: "Owner", sort: "owner_tag" },
-  { key: "interest", label: "Interest", sort: null },
-  { key: "prestige_rank", label: "Prestige", sort: "prestige_rank" },
+  { key: "club_name", label: "Club", sort: "club_name", tip: "Click a club to open its page. “Vacant” means no owner yet." },
+  { key: "stadium_name", label: "Stadium", sort: "stadium_name", tip: "The club's home ground." },
+  { key: "nation", label: "Nation", sort: "nation", tip: "The club's country." },
+  { key: "stadium_capacity", label: "Capacity", sort: "stadium_capacity", tip: "Current stadium seats." },
+  { key: "stadium_max_capacity", label: "Max capacity", sort: "stadium_max_capacity", tip: "The most seats this stadium can be expanded to." },
+  {
+    key: "stadium_expansion_potential",
+    label: "Expansion headroom",
+    sort: "stadium_expansion_potential",
+    tip: "Seats you can still add (max capacity minus current). Expanding needs the stadium filling to 100% first.",
+  },
+  {
+    key: "club_expectation_label",
+    label: "League expectation",
+    sort: "club_expectation",
+    tip: "The board's main target: the expected league finish, based on prestige rank. Same finish in either division. Hover a cell for the exact position.",
+  },
+  {
+    key: "club_cup_expectation_sl",
+    label: "Cup backup (Superleague)",
+    sort: "club_cup_expectation_sl",
+    tip: "Cup target if you're in the Superleague. Backup only: hitting it rescues a slight league miss (no board fine or forced listing), never a bad or abysmal season.",
+  },
+  {
+    key: "club_cup_expectation_ch",
+    label: "Cup backup (Championship)",
+    sort: "club_cup_expectation_ch",
+    tip: "Cup target if you're in the Championship. Backup only: hitting it rescues a slight league miss, never a bad or abysmal season.",
+  },
+  { key: "club_market_value", label: "Squad MV", sort: "club_market_value", tip: "Total market value of the club's contracted players." },
+  { key: "stadium_value", label: "Stadium value", sort: "stadium_value", tip: "Capacity × ₿1,500." },
+  { key: "stadium_maintenance_cost", label: "Stadium maintenance", sort: "stadium_maintenance_cost", tip: "Stadium upkeep: 12.5% of stadium value. Bigger stadiums cost more to run." },
+  { key: "gate_money_full", label: "Gate 100%", sort: "gate_money_full", tip: "Gate money from a sold-out home match (capacity × ₿20)." },
+  { key: "gate_money_80", label: "Gate 80%", sort: "gate_money_80", tip: "Gate money from a home match at 80% full." },
+  { key: "owner_tag", label: "Owner", sort: "owner_tag", tip: "Current owner, or Vacant." },
+  { key: "interest", label: "Interest", sort: null, tip: "Mark clubs you're interested in (or as a backup) ahead of the club auction, and see how many owners want each club." },
+  { key: "prestige_rank", label: "Prestige", sort: "prestige_rank", tip: "Prestige rank (1 = biggest club). Drives the league expectation, club tier and attendance." },
 ];
 
 let allRows = [];
@@ -220,10 +241,10 @@ function buildHead() {
   head.innerHTML =
     "<tr>" +
     COLUMNS.map((c) => {
-      if (!c.sort) return `<th>${c.label}</th>`;
+      if (!c.sort) return `<th${tipAttrs(c.tip)}>${c.label}</th>`;
       const cls =
         sortKey === c.sort ? (sortDir === "asc" ? "sort-asc" : "sort-desc") : "";
-      return `<th class="${cls}" data-sort="${c.sort}">${c.label}</th>`;
+      return `<th${tipAttrs(c.tip, cls)} data-sort="${c.sort}">${c.label}</th>`;
     }).join("") +
     "</tr>";
   head.querySelectorAll("th[data-sort]").forEach((th) => {
@@ -519,6 +540,7 @@ async function loadClubs() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
   const {
     data: { user },

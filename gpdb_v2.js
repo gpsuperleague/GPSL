@@ -124,7 +124,7 @@ async function loadDraftCreditsForOwner() {
       .from("Clubs")
       .select("ShortName")
       .eq("owner_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!club) return;
 
@@ -2759,7 +2759,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .from("Clubs")
       .select("ShortName, Nation")
       .eq("owner_id", CURRENT_USER.id)
-      .single();
+      .maybeSingle();
 
     console.log("CONFIRM: club lookup result =", { clubErr, clubRow });
 
