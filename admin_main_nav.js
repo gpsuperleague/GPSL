@@ -51,6 +51,7 @@ export const ADMIN_MAIN_NAV = [
         L("Season owner board", "admin_owners_waiting_list.html"),
         L("Discord join order", "admin_owners_discord.html"),
       ]),
+      group("Supporters", [L("Supporters' lottery", "admin_supporter_lottery.html")]),
       group("Mods", [L("Manage mods", "admin_mods.html")]),
       group("Discord feeds", [
         L("Discord Feeds", "admin_discord_news.html"),

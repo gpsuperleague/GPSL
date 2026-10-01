@@ -39,7 +39,8 @@
   <div class="page-container">
     <h1 class="gpsl-has-tip" data-gpsl-tip="Tokens and cards from challenge period bonuses (first club to complete the required Start or Mid targets). Spend here, in Medical Room, Squad Action, or Special Auction." tabindex="0">Rewards Centre</h1>
     <p class="meta">
-      Tokens and cards won from challenge period bonuses (first to complete all Start / Mid targets).
+      Tokens and cards won from challenge period bonuses (first to complete all Start / Mid targets)
+      and the monthly Supporters' lottery.
       <a href="challenges.html">Season challenges</a> ·
       <a href="medical_room.html">Medical room</a> ·
       <a href="special_auction.html">Special auction</a>
@@ -79,8 +80,8 @@
       <h2 class="gpsl-has-tip" data-gpsl-tip="Doctor must be hired. One consult per injury (−2 / −4 / −6 / −8 / −10 matches). Same flow on Medical Room and Squad Action." tabindex="0">Specialist consultant (injury reduction)</h2>
       <p class="meta">
         Your club doctor assesses the injury, then refers the player to a specialist consultant.
-        That spends one consult (−2 / −4 / −6 / −8 / −10 matches). Requires a hired doctor.
-        One consult per injury. Same action is available in
+        That spends one consult (−2 / −4 / −6 / −8 / −10 matches). Requires a hired doctor,
+        except injury treatments won in the Supporters' lottery. One consult per injury. Same action is available in
         <a href="medical_room.html">Medical Room</a> and the squad Action menu.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
@@ -117,6 +118,22 @@
     </div>
 
     <div class="panel">
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Cuts any active ban by 1 match straight away (a 2-match ban becomes 1). No admin review. Won in the Supporters' lottery." tabindex="0">Ban reduction (−1 match)</h2>
+      <p class="meta">Cut an active ban by one match straight away — a 2-match ban becomes 1, a 1-match ban is wiped. No admin review needed. The player still misses the nearest fixture(s).</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
+        <div>
+          <label>Ban reduction</label><br>
+          <select id="banReductionSelect"></select>
+        </div>
+        <div>
+          <label>Ban</label><br>
+          <select id="banReductionSuspensionSelect"></select>
+        </div>
+        <button type="button" class="button" id="useBanReductionBtn">Reduce ban</button>
+      </div>
+    </div>
+
+    <div class="panel">
       <h2 class="gpsl-has-tip" data-gpsl-tip="Sign any uncontracted player at market value (paid to Central Bank). If squad is full (28), release someone first for MV credit." tabindex="0">Use draft token</h2>
       <p class="meta">
         Sign any <b>uncontracted</b> player at market value (paid to the central bank). If your squad is full (28),
@@ -144,6 +161,6 @@
 
     <div id="prizeStatus" class="status"></div>
   </div>
-  <script type="module" src="club_prizes.js?v=20260811-tips"></script>
+  <script type="module" src="club_prizes.js?v=20261001-lottery"></script>
 </body>
 </html>

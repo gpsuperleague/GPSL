@@ -9,6 +9,7 @@ const TYPE_LABELS = {
   shop_purchase: "Owners Shop",
   gpfl_prize: "GPFL prize",
   challenge_prize: "Challenge big prize",
+  supporter_lottery_credit: "Supporters' lottery",
   admin_credit: "Admin credit",
   admin_debit: "Admin debit",
 };

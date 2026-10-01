@@ -23,6 +23,7 @@ function labelItem(it) {
   if (it.prize_type === "fee_discount") return `Fee discount ${it.param_int}%`;
   if (it.prize_type === "appeal_card") return "Red card appeal card";
   if (it.prize_type === "draft_token") return "Draft token (sign free agent at MV)";
+  if (it.prize_type === "ban_reduction") return "Ban reduction (−1 match)";
   return it.prize_type;
 }
 
@@ -30,7 +31,7 @@ function renderInventory() {
   const el = document.getElementById("prizeInventory");
   if (!inventory.length) {
     el.innerHTML =
-      '<p class="meta">No prize items yet. Win a period bonus by completing all challenges in a window.</p>';
+      '<p class="meta">No prize items yet. Win a period bonus by completing all challenges in a window, or the monthly Supporters\' lottery.</p>';
     return;
   }
   el.innerHTML = inventory
@@ -57,6 +58,13 @@ function renderInventory() {
   const locked = inventory.filter((i) => i.prize_type === "fee_discount" && i.status === "locked");
   const appeals = inventory.filter((i) => i.prize_type === "appeal_card" && i.status === "available");
   const drafts = inventory.filter((i) => i.prize_type === "draft_token" && i.status === "available");
+  const banCuts = inventory.filter((i) => i.prize_type === "ban_reduction" && i.status === "available");
+  const banSel = document.getElementById("banReductionSelect");
+  if (banSel) {
+    banSel.innerHTML = banCuts.length
+      ? banCuts.map((i) => `<option value="${i.id}">Ban reduction #${i.id}</option>`).join("")
+      : '<option value="">No ban reductions</option>';
+  }
 
   discSel.innerHTML =
     (locked.length
@@ -78,6 +86,7 @@ function renderInventory() {
 }
 
 let medicalConsultOptions = [];
+let clubHasDoctor = true;
 
 async function refreshMedicalConsultOptions() {
   const medicalTokSel = document.getElementById("medicalTokenSelect");
@@ -102,6 +111,7 @@ async function refreshMedicalConsultOptions() {
         i.metadata?.label ||
         i.metadata?.consultancy_label ||
         `Specialist consult −${i.param_int} matches`,
+      noDoctorOk: i.source === "supporters_lottery",
     }));
   } else {
     medicalConsultOptions = (Array.isArray(data) ? data : []).map((t) => ({
@@ -110,7 +120,11 @@ async function refreshMedicalConsultOptions() {
       inventoryId: t.inventory_id != null ? Number(t.inventory_id) : null,
       tier: Number(t.param_int ?? t.matches_removed) || 2,
       label: t.label || t.consultancy_label || `Specialist consult (−${t.param_int})`,
+      noDoctorOk: !!t.no_doctor_ok,
     }));
+  }
+  if (!clubHasDoctor) {
+    medicalConsultOptions = medicalConsultOptions.filter((c) => c.noDoctorOk);
   }
 
   medicalTokSel.innerHTML = medicalConsultOptions.length
@@ -160,9 +174,10 @@ async function loadMedicalInjuries() {
     await refreshMedicalConsultOptions();
     return;
   }
+  clubHasDoctor = !!data?.has_doctor;
   await refreshMedicalConsultOptions();
 
-  if (!data?.has_doctor) {
+  if (!clubHasDoctor && !medicalConsultOptions.length) {
     sel.innerHTML =
       '<option value="">Hire a club doctor in Medical Room first</option>';
     return;
@@ -220,6 +235,56 @@ async function applyMedicalToken() {
   );
   await loadInventory();
   await loadMedicalInjuries();
+}
+
+async function loadReducibleSuspensions() {
+  const sel = document.getElementById("banReductionSuspensionSelect");
+  if (!sel) return;
+  const { data, error } = await supabase.rpc("club_reducible_suspensions");
+  if (error) {
+    sel.innerHTML = `<option value="">${error.message}</option>`;
+    return;
+  }
+  const rows = Array.isArray(data) ? data : [];
+  sel.innerHTML = rows.length
+    ? rows
+        .map(
+          (s) =>
+            `<option value="${s.suspension_id}">${s.player_name || s.player_id} (${s.pending_matches} left${
+              s.reason === "yellow_accumulation" ? ", yellows" : ""
+            })</option>`
+        )
+        .join("")
+    : '<option value="">No active bans</option>';
+}
+
+async function useBanReduction() {
+  const inv = Number(document.getElementById("banReductionSelect")?.value);
+  const sus = Number(document.getElementById("banReductionSuspensionSelect")?.value);
+  if (!inv || !sus) {
+    setStatus("Select a ban reduction and a ban.", "err");
+    return;
+  }
+  if (!confirm("Use ban reduction? The ban is cut by 1 match straight away.")) return;
+  setStatus("Reducing ban…");
+  const { data, error } = await supabase.rpc("prize_use_ban_reduction", {
+    p_inventory_id: inv,
+    p_suspension_id: sus,
+  });
+  if (error) {
+    setStatus("❌ " + error.message, "err");
+    return;
+  }
+  const left = Number(data?.matches_left) || 0;
+  setStatus(
+    left > 0
+      ? `✅ Ban reduced — ${left} match${left === 1 ? "" : "es"} left to serve.`
+      : "✅ Ban reduced — no matches left to serve.",
+    "ok"
+  );
+  await loadInventory();
+  await loadReducibleSuspensions();
+  await loadSuspensions();
 }
 
 async function loadDraftReleaseOptions() {
@@ -392,11 +457,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("lockDiscountBtn").onclick = lockDiscount;
   document.getElementById("unlockDiscountBtn").onclick = unlockDiscount;
   document.getElementById("submitAppealBtn").onclick = submitAppeal;
+  document.getElementById("useBanReductionBtn")?.addEventListener("click", useBanReduction);
   document.getElementById("applyMedicalTokenBtn")?.addEventListener("click", applyMedicalToken);
   document.getElementById("draftPreviewBtn")?.addEventListener("click", previewDraftToken);
   document.getElementById("draftUseBtn")?.addEventListener("click", useDraftToken);
   await loadInventory();
   await loadSuspensions();
+  await loadReducibleSuspensions();
   await loadMedicalInjuries();
   await loadDraftReleaseOptions();
 });

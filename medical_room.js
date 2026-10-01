@@ -54,6 +54,7 @@ function availableConsults() {
       inventoryId: t.inventory_id != null ? Number(t.inventory_id) : null,
       tier,
       label,
+      noDoctorOk: !!t.no_doctor_ok,
     });
   }
 
@@ -74,6 +75,12 @@ function availableConsults() {
 
   list.sort((a, b) => b.tier - a.tier || (a.consultId || 0) - (b.consultId || 0));
   return list;
+}
+
+/** Without a doctor, only Supporters' lottery treatments can be used. */
+function usableConsults() {
+  const all = availableConsults();
+  return state?.has_doctor ? all : all.filter((c) => c.noDoctorOk);
 }
 
 function totalConsultCount() {
@@ -132,9 +139,9 @@ function renderTokens() {
           ? `Injured — returning to light training in ${out} match${out === 1 ? "" : "es"}`
           : `Building fitness — match availability in ${rec} match${rec === 1 ? "" : "es"}`;
       const used = !!inj.token_used;
-      const canUse =
-        state.has_doctor && consults.length > 0 && !used && (out > 0 || rec > 0);
-      const tokenOpts = consults.map(
+      const usable = usableConsults();
+      const canUse = usable.length > 0 && !used && (out > 0 || rec > 0);
+      const tokenOpts = usable.map(
         (c) => `<option value="${c.key}">${c.label}</option>`
       );
       const selectHtml = canUse
@@ -142,7 +149,7 @@ function renderTokens() {
             ""
           )}</select>`
         : "";
-      const disabledReason = !state.has_doctor
+      const disabledReason = !state.has_doctor && !usable.length
         ? "Hire a club doctor first"
         : used
           ? "Consult already used"
@@ -361,7 +368,7 @@ async function hirePhysio(slot) {
 }
 
 async function applyToken(injuryId, pickValue = null) {
-  const consults = availableConsults();
+  const consults = usableConsults();
   const picked =
     (pickValue && consults.find((c) => c.key === pickValue)) || consults[0] || null;
   const tier = picked?.tier || state?.specialist_matches_removed || 2;
