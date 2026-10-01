@@ -1,5 +1,164 @@
 /** Match scheduling & match day — owner-friendly handbook */
 
+export const SECTION_MATCHDAY_CHECKLIST = {
+  id: "matchday-checklist",
+  title: "Matchday checklist",
+  blocks: [
+    {
+      type: "p",
+      html: `The whole match, start to finish. Details for each step are in
+        <a href="#match-scheduling">Match scheduling</a> and <a href="#matchday">Match day &amp; results</a>.`,
+    },
+
+    { type: "h3", html: "Pre-matchday — fixture management" },
+    {
+      type: "tip",
+      html: `Fixtures can be arranged in Discord, but must be <b>finalised using the GPSL fixture management system</b>.`,
+    },
+    {
+      type: "ul",
+      items: [
+        {
+          html: `<b>Home club</b>`,
+          children: [
+            `Proposes in GPSL at least <b>1 GPSL month before</b> the fixture`,
+            `Responds to counters from the opponent`,
+          ],
+        },
+        {
+          html: `<b>Away club</b>`,
+          children: [`Replies via <a href="inbox.html">Inbox</a> (Accept / Counter)`],
+        },
+        `<b>Cups:</b> arrange as soon as the draw appears`,
+      ],
+    },
+
+    { type: "h3", html: "Pre-matchday — squad selection" },
+    {
+      type: "ul",
+      items: [
+        {
+          html: `Both clubs ensure the <a href="matchday.html">Matchday</a> squad has:`,
+          children: [
+            `<b>23</b> fit and available players`,
+            `At least <b>1 GK</b> in the starting XI`,
+            `Injured and suspended players removed`,
+            `Emergency loans added if required and prompted`,
+          ],
+        },
+      ],
+    },
+
+    { type: "h3", html: "Matchday — check-in" },
+    {
+      type: "ul",
+      items: [
+        `Both owners must <b>check in at KO</b> on the <a href="fixture_schedule.html">schedule page</a>`,
+        `Match should be played within the agreed <b>30-minute window</b>`,
+      ],
+    },
+
+    { type: "h3", html: "Matchday — setup" },
+    {
+      type: "ul",
+      items: [
+        {
+          html: `<b>Home club</b>`,
+          children: [
+            {
+              html: `<b>Stadium</b>`,
+              children: [
+                `Licensed: OK`,
+                `Otherwise Konami stadium, real stadium name, home colours, no extras`,
+              ],
+            },
+            {
+              html: `<b>Weather · Season · Pitch</b>`,
+              children: [`Set as per the fixture in GPSL`],
+            },
+          ],
+        },
+        {
+          html: `<b>Both clubs</b>`,
+          children: [
+            {
+              html: `<b>Kits</b>`,
+              children: [
+                `Home / Away as listed`,
+                `Plain substitute kits only if needed`,
+              ],
+            },
+            {
+              html: `<b>Club</b>`,
+              children: [`Correct base team, or rename a small club with matching colours`],
+            },
+          ],
+        },
+      ],
+    },
+
+    { type: "h3", html: "Matchday — recording &amp; settings" },
+    {
+      type: "ul",
+      items: [
+        `<b>Start recording</b> — <a href="https://discord.com/channels/1483974134361886802/1549828547814891550" target="_blank" rel="noopener">recording guide on Discord</a>`,
+        {
+          html: `Show <b>MATCH ROOM SETTINGS</b> — <em>default except Injuries</em>`,
+          children: [
+            `10-minute match`,
+            `Injuries: <b>Off</b>`,
+            `Substitutes: 5`,
+            `Sub intervals: 3`,
+            `Form: Random`,
+          ],
+        },
+        {
+          html: `Show <b>PRE-MATCH CONFIG</b>`,
+          children: [`Stadium`, `Kits`, `Weather / Pitch`],
+        },
+        {
+          html: `Show <b>SQUAD &amp; TACTICS</b>`,
+          children: [
+            `Manager (GP only)`,
+            `Sub tactic (default formation only)`,
+            `Player instructions (blank)`,
+            `Squad (including substitutes)`,
+            `Fluid setup (default formation only)`,
+          ],
+        },
+        {
+          html: `Show <b>PAUSE BEFORE KICKOFF</b>`,
+          children: [`PA level (minimum 3)`, `Advanced skill`],
+        },
+        {
+          html: `During the <b>MATCH</b>`,
+          children: [
+            `Scoreboard on`,
+            `HUD on for the whole match`,
+            `End scoreboard`,
+            `No DOGSO / time-wasting`,
+          ],
+        },
+        {
+          html: `After the <b>MATCH</b>`,
+          children: [`Show player ratings`, `Show player of the match`],
+        },
+        `<b>Stop recording</b>`,
+      ],
+    },
+
+    { type: "h3", html: "Post-match" },
+    {
+      type: "ul",
+      items: [
+        `Submit score + stats on <a href="matchday.html">Match Day</a>`,
+        `Opponent confirms via <a href="inbox.html">Inbox</a>`,
+        `Both clubs upload their videos (see <a href="#match-scheduling">Match videos</a>)`,
+      ],
+    },
+  ],
+};
+
 export const SECTION_MATCH_SCHEDULING = {
   id: "match-scheduling",
   title: "Match scheduling",

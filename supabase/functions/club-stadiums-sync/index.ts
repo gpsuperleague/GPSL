@@ -173,6 +173,8 @@ const IMAGE_URL_OVERRIDES = {
   DAN: "https://upload.wikimedia.org/wikipedia/commons/0/01/Jardines_del_hipodromo.jpg",
   // Platense — StadiumDB only has a /designs/ page for Ciudad de Vicente López
   CAP: "https://commons.wikimedia.org/wiki/Special:FilePath/Estadio_de_platense_tribuna_y_campo.jpg",
+  // Chiangrai United — no StadiumDB page for Singha Chiangrai Stadium
+  CRI: "https://commons.wikimedia.org/wiki/Special:FilePath/Singha_Stadium.jpg",
   // Morocco (Raja / Hassania) — force a clean gallery shot
   RCA: "https://stadiumdb.com/pictures/stadiums/mar/stade_mohammed_v/stade_mohammed_v34.jpg",
   HSA: "https://stadiumdb.com/pictures/stadiums/mar/grand_stade_agadir/grand_stade_agadir09.jpg",

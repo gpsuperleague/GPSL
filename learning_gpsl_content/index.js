@@ -13,9 +13,10 @@ import {
 import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20260928-squad-charges";
 import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js";
 import {
+  SECTION_MATCHDAY_CHECKLIST,
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
-} from "./fixtures_results.js";
+} from "./fixtures_results.js?v=20261001-matchday-checklist";
 import { SECTION_LEAGUE, SECTION_INTERNATIONAL } from "./league_world.js";
 import {
   SECTION_OWNERS,
@@ -44,6 +45,7 @@ export const LEARNING_GPSL_SECTIONS = [
   SECTION_MANAGERS,
   SECTION_TRANSFERS,
   SECTION_AUCTIONS,
+  SECTION_MATCHDAY_CHECKLIST,
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
   SECTION_LEAGUE,

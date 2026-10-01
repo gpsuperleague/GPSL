@@ -5,4 +5,4 @@
 export {
   LEARNING_GPSL_META_HTML,
   LEARNING_GPSL_SECTIONS,
-} from "./learning_gpsl_content/index.js?v=20260928-squad-charges";
+} from "./learning_gpsl_content/index.js?v=20261001-matchday-checklist";
