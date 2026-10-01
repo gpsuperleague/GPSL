@@ -862,7 +862,8 @@ function parseWikipediaKitStacks(html) {
  */
 function parseAbsoluteLayers(block) {
   const layers = [];
-  const re = /<div style="([^"]+)">([\s\S]*?)<\/div>/g;
+  // content must not contain "<div", or the container div swallows the first (left-arm colour) layer
+  const re = /<div style="([^"]+)">((?:(?!<div)[\s\S])*?)<\/div>/g;
   let m;
   while ((m = re.exec(block))) {
     const style = m[1];
