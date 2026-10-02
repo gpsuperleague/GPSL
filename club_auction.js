@@ -459,6 +459,21 @@ async function updateLeadPanel() {
   el.innerHTML = `<b>Your leading bid:</b> ${r.club_name || r.club_short_name} — ${formatMoney(r.current_highest_bid)}`;
 }
 
+/** Live check (not cached) — matches the server's one-lead-at-a-time rule. */
+async function fetchMyLeadingClubElsewhere(clubShortName) {
+  if (!ownerId) return null;
+  const { data: rows, error } = await supabase
+    .from("club_auction_listings_public")
+    .select("club_short_name, club_name, current_highest_bid")
+    .eq("current_highest_bidder", ownerId);
+  if (error) {
+    console.warn("Leading-club check:", error.message);
+    return null;
+  }
+  const short = String(clubShortName || "").toUpperCase();
+  return (rows || []).find((r) => String(r.club_short_name || "").toUpperCase() !== short) || null;
+}
+
 function interestsByClubMap() {
   const map = new Map();
   for (const row of interestState?.interests || []) {
@@ -792,6 +807,9 @@ async function loadListings() {
   listingsCache = listings;
   const canBid =
     !viewOnly && auctionState?.bidding_open && ownerTag && auctionOnboardingReady;
+  const leadingShort = String(
+    listings.find((l) => ownerId && l.current_highest_bidder === ownerId)?.club_short_name || ""
+  ).toUpperCase();
   tbody.innerHTML = "";
 
   for (const row of listings) {
@@ -831,8 +849,10 @@ async function loadListings() {
     const bidCell = tr.querySelector(".bid-col");
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = canBid ? "bid-btn" : "history-btn";
-    btn.textContent = canBid ? "Bid" : "History";
+    const lockedByLead = canBid && leadingShort && leadingShort !== String(row.club_short_name || "").toUpperCase();
+    btn.className = canBid && !lockedByLead ? "bid-btn" : "history-btn";
+    btn.textContent = !canBid ? "History" : lockedByLead ? "View" : "Bid";
+    if (lockedByLead) btn.title = "You're leading another club — you can bid here again once you're outbid there";
     btn.onclick = () => openClubBidModal(row, canBid);
     bidCell.appendChild(btn);
 
@@ -1022,6 +1042,26 @@ async function openClubBidModal(row, allowBid = true) {
     : leader;
   document.getElementById("clubBidModalBudget").textContent = formatMoney(budget);
   document.getElementById("clubBidWarning").textContent = minimumBidHelpText(row);
+
+  const lockNote = document.getElementById("clubBidLockNote");
+  if (lockNote) {
+    lockNote.hidden = true;
+    lockNote.textContent = "";
+  }
+  if (allowBid) {
+    const leadingElsewhere = await fetchMyLeadingClubElsewhere(row.club_short_name);
+    if (leadingElsewhere) {
+      allowBid = false;
+      if (lockNote) {
+        lockNote.innerHTML =
+          `You're currently the highest bidder on <b>${escapeHtml(
+            leadingElsewhere.club_name || leadingElsewhere.club_short_name
+          )}</b> (${formatMoney(leadingElsewhere.current_highest_bid)}). ` +
+          "You can only lead one club at a time — you can view this auction, and bidding here unlocks again as soon as you're outbid on that club.";
+        lockNote.hidden = false;
+      }
+    }
+  }
 
   if (form) form.style.display = allowBid ? "" : "none";
 
