@@ -34,7 +34,16 @@ AS $$
           OR public.waiting_list_on_list_status(r.status)
         )
     )
-    AND NOT public.owner_onboarding_has_club_interest_marks(p_owner_id);
+    AND NOT (
+      EXISTS (
+        SELECT 1 FROM public.club_auction_interests i
+        WHERE i.owner_id = p_owner_id AND i.mark_kind = 'interest'
+      )
+      AND EXISTS (
+        SELECT 1 FROM public.club_auction_interests i
+        WHERE i.owner_id = p_owner_id AND i.mark_kind = 'backup'
+      )
+    );
 $$;
 
 COMMENT ON FUNCTION public.club_auction_interest_late_mark_allowed(uuid) IS
