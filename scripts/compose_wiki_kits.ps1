@@ -6,7 +6,7 @@ param(
   [int]$Scale = 4
 )
 Add-Type -AssemblyName System.Drawing
-$ua = @{ "User-Agent" = "GPSL-admin/1.0 (kit composite)" }
+$ua = @{ "User-Agent" = "GPSL-KitSync/1.0 (https://github.com/gpsuperleague/GPSL)" }
 $api = "https://en.wikipedia.org/w/api.php?action=parse&prop=text&format=json&redirects=1&page=" + [uri]::EscapeDataString($Page)
 $h = (Invoke-RestMethod $api -Headers $ua).parse.text.'*'
 if (-not $h) { throw "No HTML for Wikipedia page: $Page" }

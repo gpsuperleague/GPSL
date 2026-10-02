@@ -3,6 +3,9 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+// npm:imagescript probes for a native binary and throws "unsupported arch/platform"
+// on Supabase Edge; the deno.land build is pure TS + WASM.
+import { Image as ImageScriptImage } from "https://deno.land/x/imagescript@1.2.17/mod.ts";
 
 /** Colours-of-Football.com kit lookup — shared by edge function + local sync script */
 
@@ -784,7 +787,8 @@ const WIKI_KIT_WIDTH = 100;
 const WIKI_KIT_HEIGHT = 135;
 const WIKI_KIT_SCALE = 4; // 400×540 output
 
-const WIKI_UA = "GPSL-KitSync/1.0 (GPSL league; wiki kit composite)";
+// Wikimedia rate-limits (429) user agents without contact info.
+const WIKI_UA = "GPSL-KitSync/1.0 (https://github.com/gpsuperleague/GPSL)";
 
 /** @typedef {{ bg: string|null, left: number, top: number, w: number, h: number, img: string|null }} WikiKitLayer */
 /** @typedef {{ kind: 'home'|'away'|'third', label: string, layers: WikiKitLayer[] }} WikiKitStack */
@@ -1025,6 +1029,10 @@ async function fetchWikipediaKitPngs(pageTitleOrUrl, opts) {
     kits,
     error: null,
   };
+}
+
+function loadImageScript() {
+  return Promise.resolve({ Image: ImageScriptImage });
 }
 
 async function searchWikipediaTitles(query, limit, fetchImpl = fetch) {
@@ -1455,7 +1463,7 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
 
       let ImageMod: { Image: unknown };
       try {
-        ImageMod = await import("npm:imagescript@1.3.0");
+        ImageMod = await loadImageScript();
       } catch (err) {
         return jsonResponse(
           {
@@ -1955,7 +1963,7 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
 
           entry.cof_error = cofError;
           try {
-            if (!imageScriptMod) imageScriptMod = await import("npm:imagescript@1.3.0");
+            if (!imageScriptMod) imageScriptMod = await loadImageScript();
             const wiki = await findWikipediaClubKits({
               clubName: club.Club,
               nation: club.Nation,
