@@ -371,12 +371,6 @@ function updateRegistrationStrip() {
   const el = document.getElementById("scoutRegStrip");
   if (!el) return;
 
-  if (!clubShort) {
-    el.hidden = true;
-    el.innerHTML = "";
-    return;
-  }
-
   const nation = effectiveListNation();
   const activePlayers = activeTargetPlayers();
   const totals = tallyAdds(activePlayers, nation);
