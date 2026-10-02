@@ -729,6 +729,29 @@ BEGIN
 END;
 $function$;
 
+-- GPSL June (week 1 of the season calendar) has unlocked. No calendar set → season must be preseason/active.
+CREATE OR REPLACE FUNCTION public.club_commercial_june_reached(p_season bigint)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1 FROM public.competition_season_calendar m
+      WHERE m.season_id = p_season AND m.gpsl_month = 'june'
+    ) THEN EXISTS (
+      SELECT 1 FROM public.competition_season_calendar m
+      WHERE m.season_id = p_season AND m.gpsl_month = 'june' AND m.unlock_at <= now()
+    )
+    ELSE EXISTS (
+      SELECT 1 FROM public.competition_seasons cs
+      WHERE cs.id = p_season AND cs.status IN ('preseason', 'active')
+    )
+  END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.club_commercial_season_open(p_season bigint)
 RETURNS boolean
 LANGUAGE sql
@@ -739,7 +762,8 @@ AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.competition_seasons cs
     WHERE cs.id = p_season AND cs.status IN ('setup', 'preseason', 'active')
-  );
+  )
+  AND public.club_commercial_june_reached(p_season);
 $$;
 
 CREATE OR REPLACE FUNCTION public.club_commercial_current_season()
@@ -853,10 +877,11 @@ BEGIN
 
   IF v_contract IS NOT NULL THEN
     PERFORM public.club_commercial_pay_sponsor_season(v_contract, p_season);
-  ELSIF NOT EXISTS (
+  ELSIF v_owner IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM public.club_commercial_sponsor_offers
     WHERE season_id = p_season AND club_short_name = p_club
   ) THEN
+    -- Vacant clubs get no offers; the first owner to take the club (June onwards) does.
     v_long := public.club_commercial_round(v_value * s.long_deal_pct);
     v_short := v_value;
     v_base := public.club_commercial_round(v_value * s.perf_deal_base_pct);
@@ -901,16 +926,7 @@ BEGIN
     END LOOP;
     v_offers_made := v_slot > 0;
 
-    IF v_offers_made AND v_owner IS NULL THEN
-      SELECT id INTO v_expired_long
-      FROM public.club_commercial_sponsor_offers
-      WHERE season_id = p_season AND club_short_name = p_club AND status = 'offered'
-      ORDER BY CASE deal_kind WHEN 'long' THEN 0 WHEN 'short' THEN 1 ELSE 2 END
-      LIMIT 1;
-      IF v_expired_long IS NOT NULL THEN
-        PERFORM public.club_commercial_accept_internal(v_expired_long, true);
-      END IF;
-    ELSIF v_offers_made THEN
+    IF v_offers_made THEN
       DECLARE
         v_title text := '🤝 Sponsorship offers are in';
         v_body text := format(
@@ -1255,7 +1271,7 @@ BEGIN
     RAISE EXCEPTION 'Admin only';
   END IF;
   IF NOT public.club_commercial_season_open(v_season) THEN
-    RAISE EXCEPTION 'Season % is not in setup / preseason / active', v_season;
+    RAISE EXCEPTION 'Season % has not reached GPSL June yet (or is finished) — commercial deals start in June', v_season;
   END IF;
 
   FOR r IN
@@ -1346,6 +1362,100 @@ BEGIN
   );
 END;
 $function$;
+
+-- ---------------------------------------------------------------------------
+-- 10b. Automatic tick (cron, every 10 min). From GPSL June onwards:
+--      boards for every club, offers + inbox for owned clubs without a deal
+--      (incl. vacant clubs that have just been taken), auto-sign after deadline.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.club_commercial_tick()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_season bigint;
+  r record;
+  v_n int := 0;
+BEGIN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+  IF NOT coalesce((SELECT enabled FROM public.club_commercial_settings WHERE id = 1), false) THEN
+    RETURN jsonb_build_object('ok', true, 'skipped', 'disabled');
+  END IF;
+
+  FOR v_season IN
+    SELECT cs.id FROM public.competition_seasons cs
+    WHERE cs.status IN ('setup', 'preseason', 'active')
+      AND public.club_commercial_june_reached(cs.id)
+  LOOP
+    FOR r IN
+      SELECT DISTINCT ccs.club_short_name AS club
+      FROM public.competition_club_seasons ccs
+      LEFT JOIN public."Clubs" c ON c."ShortName" = ccs.club_short_name
+      WHERE ccs.season_id = v_season
+        AND ccs.division IN ('superleague', 'championship_a', 'championship_b')
+        AND ccs.club_short_name <> 'FOREIGN'
+        AND (
+          NOT EXISTS (
+            SELECT 1 FROM public.club_commercial_boards bd
+            WHERE bd.season_id = v_season AND bd.club_short_name = ccs.club_short_name
+          )
+          OR (
+            c.owner_id IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM public.club_commercial_sponsor_offers o
+              WHERE o.season_id = v_season AND o.club_short_name = ccs.club_short_name
+            )
+            AND public.club_commercial_active_sponsorship(ccs.club_short_name, v_season) IS NULL
+          )
+          OR EXISTS (
+            SELECT 1 FROM public.club_commercial_sponsor_offers o
+            WHERE o.season_id = v_season AND o.club_short_name = ccs.club_short_name
+              AND o.status = 'offered' AND o.expires_at < now()
+          )
+          OR (
+            public.club_commercial_active_sponsorship(ccs.club_short_name, v_season) IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM public.club_commercial_sponsorship_payments p
+              WHERE p.sponsorship_id = public.club_commercial_active_sponsorship(ccs.club_short_name, v_season)
+                AND p.season_id = v_season AND p.kind = 'season'
+            )
+          )
+        )
+    LOOP
+      BEGIN
+        PERFORM public.club_commercial_ensure_season(r.club, v_season);
+        v_n := v_n + 1;
+      EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'club_commercial_tick % season %: %', r.club, v_season, SQLERRM;
+      END;
+    END LOOP;
+  END LOOP;
+
+  RETURN jsonb_build_object('ok', true, 'clubs_processed', v_n);
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.club_commercial_tick() TO authenticated;
+
+DO $cron$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'gpsl-club-commercial') THEN
+      PERFORM cron.unschedule('gpsl-club-commercial');
+    END IF;
+    PERFORM cron.schedule(
+      'gpsl-club-commercial',
+      '*/10 * * * *',
+      $job$SELECT public.club_commercial_tick();$job$
+    );
+  ELSE
+    RAISE WARNING 'pg_cron not installed — use Admin → Commercial income → Run season start after June unlocks and when vacant clubs are taken.';
+  END IF;
+END $cron$;
 
 -- ---------------------------------------------------------------------------
 -- 11. Close Finances: run commercial EOS after maintenance, before debt interest

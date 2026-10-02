@@ -68,7 +68,7 @@ function renderSponsor(d) {
 
   const offers = Array.isArray(d.offers) ? d.offers : [];
   if (!offers.length) {
-    return `<p class="empty">No sponsorship offers yet this season. They arrive at the start of each season.</p>`;
+    return `<p class="empty">No sponsorship offers yet. Three offers arrive in your inbox when GPSL June starts — or soon after you take over a club, if it's past June.</p>`;
   }
 
   const deadline = offers[0]?.expires_at
@@ -108,7 +108,7 @@ function renderSponsor(d) {
 function renderBoards(d) {
   const boards = Array.isArray(d.boards) ? d.boards : [];
   if (!boards.length) {
-    return `<p class="empty">Pitchside boards are sold at the start of each season.</p>`;
+    return `<p class="empty">Pitchside boards are sold when GPSL June starts.</p>`;
   }
   const total = boards.reduce((s, b) => s + (Number(b.amount) || 0), 0);
   const chips = boards
