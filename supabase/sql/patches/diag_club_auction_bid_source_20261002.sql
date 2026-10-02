@@ -72,6 +72,22 @@ LEFT JOIN LATERAL (
 ORDER BY b.bid_time;
 
 
+-- 1b) Leftover max bids: was Vardy_np's PSG max set BEFORE the current listing
+--     opened (i.e. carried over from a test auction)?
+SELECT
+  m.club_short_name,
+  m.max_amount,
+  m.updated_at AT TIME ZONE 'Europe/London' AS max_set_uk,
+  l.created_at AT TIME ZONE 'Europe/London' AS listing_opened_uk,
+  (m.updated_at < l.created_at)             AS left_over_from_earlier_auction
+FROM public.club_auction_max_bids m
+JOIN public.gpsl_owner_registry r ON r.owner_id = m.owner_id
+LEFT JOIN public."Club_Auction_Listings" l
+  ON upper(l.club_short_name) = upper(m.club_short_name) AND l.status = 'Active'
+WHERE lower(btrim(r.owner_tag)) = lower('vardy_np')
+ORDER BY m.updated_at;
+
+
 -- 2) Vardy_np's login IP history (last 30 days) — spot unfamiliar IPs/countries/browsers
 SELECT
   e.logged_in_at AT TIME ZONE 'Europe/London' AS logged_in_uk,
