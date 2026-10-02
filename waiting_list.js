@@ -1,5 +1,5 @@
 import { supabase } from "./supabase_client.js";
-import { initGlobal } from "./global.js?v=20260923-club-countdown-fix";
+import { initGlobal } from "./global.js?v=20261002-light-mode";
 import {
   loadOwnerSupporterMap,
   ownerTagHtml,

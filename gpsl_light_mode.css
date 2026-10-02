@@ -1,0 +1,52 @@
+/*
+ * Optional light mode — personal, per-browser (see gpsl_light_mode.js).
+ * Every rule is gated on html[data-gpsl-theme="light"]; dark mode and supporter
+ * club themes are untouched when the attribute is absent.
+ *
+ * The whole page is colour-inverted with hues kept (invert + hue-rotate 180°),
+ * so dark surfaces become light and bright accents (GPSL orange, club colours)
+ * become deeper shades of the same hue. Media is inverted back so photos,
+ * kits, badges and flags look normal.
+ */
+
+html[data-gpsl-theme="light"] {
+  filter: invert(1) hue-rotate(180deg);
+  background: #111;
+}
+
+html[data-gpsl-theme="light"] :is(img, video, picture, canvas, iframe, object, embed),
+html[data-gpsl-theme="light"] [style*="url("],
+html[data-gpsl-theme="light"] .gpsl-no-invert {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Media inside an already re-inverted block must not flip a second time. */
+html[data-gpsl-theme="light"] :is(picture, [style*="url("], .gpsl-no-invert)
+  :is(img, video, picture, canvas, iframe, object, embed, [style*="url("], .gpsl-no-invert) {
+  filter: none;
+}
+
+/* Nav switch — shared look in both modes. */
+.gpsl-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #1a1a1a;
+  color: #ddd;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gpsl-theme-toggle:hover,
+.gpsl-theme-toggle:focus-visible {
+  border-color: #ff9900;
+  color: #ff9900;
+  outline: none;
+}

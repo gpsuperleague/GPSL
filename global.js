@@ -23,7 +23,14 @@ import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
 import { nationFlagSrc } from "./international_flags.js";
 import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
+import {
+  applyStoredSiteTheme,
+  renderNavThemeToggle,
+  wireNavThemeToggle,
+} from "./gpsl_light_mode.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
+
+applyStoredSiteTheme();
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
 import { APP_VERSION } from "./app_version.js";
@@ -2255,12 +2262,14 @@ export async function renderFallbackNav() {
           ${renderNavGpslSportButton()}
           ${renderNavDashboardHomeLink(ownerClub, "dashboard.html", false)}
           ${renderNavInboxLink(false, 0)}
+          ${renderNavThemeToggle()}
           <button type="button" id="logoutBtn" class="nav-logout">Logout</button>
         </div>
       </div>
     </div>
   `;
   wireNavLogout();
+  wireNavThemeToggle(nav);
   refreshGpslSportNavUi();
   refreshNatterNavBadge().catch((err) => {
     console.warn("Natter nav badge skipped:", err);
@@ -2657,11 +2666,13 @@ export async function buildNav() {
     const staffActive = pathNorm === "admin_staff_alerts.html";
     html += renderNavStaffAlertsLink(staffActive, staffAlertsUnread);
   }
+  html += renderNavThemeToggle();
   html += `<button type="button" id="logoutBtn" class="nav-logout">Logout</button>`;
   html += `</div></div></div>`;
 
   nav.innerHTML = html;
   wireNavLogout();
+  wireNavThemeToggle(nav);
   wireNavGroups(nav);
   refreshNavAuctionIndicators();
   refreshNavListingIndicators();

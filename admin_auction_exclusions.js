@@ -378,14 +378,25 @@ function buildSearchParams(query, limit = 40) {
 }
 
 async function loadFilterOptions() {
+  // PostgREST caps responses at 1000 rows — page through the whole table.
   const distinct = async (col) => {
-    const { data, error } = await supabase.from("Players").select(col, { distinct: true });
-    if (error) {
-      console.warn(`Could not load ${col} options`, error);
-      return [];
+    const PAGE = 1000;
+    const data = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error } = await supabase
+        .from("Players")
+        .select(col)
+        .order("Konami_ID", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) {
+        console.warn(`Could not load ${col} options`, error);
+        return [];
+      }
+      data.push(...(page || []));
+      if (!page || page.length < PAGE) break;
     }
     const set = new Set();
-    for (const row of data || []) {
+    for (const row of data) {
       const v = row?.[col];
       if (v == null) continue;
       const s = String(v).trim();
