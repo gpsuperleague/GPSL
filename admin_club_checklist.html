@@ -226,8 +226,27 @@
           <p class="note">Loading…</p>
         </div>
       </div>
+      <div class="card" id="auctionReadinessCard" style="margin-top:16px;">
+        <h2 style="margin-top:0;color:#ff9900;">Club auction readiness — owners without a club</h2>
+        <p class="chk-note">
+          Owners invited to the club auction or on the waiting list, checked against the five required
+          entry items on their <b>Awaiting club</b> page: <b>Owner tag</b>, <b>Timezone</b>,
+          <b>Match availability</b>, <b>Primary club</b> interest and <b>Backup club</b>.
+          Invited owners are listed first.
+        </p>
+        <div class="chk-toolbar">
+          <button type="button" id="readyReloadBtn" class="button">Reload</button>
+          <label class="chk-filter"><input type="checkbox" id="readyFilterNotReady"> Not ready only</label>
+          <label class="chk-filter"><input type="checkbox" id="readyFilterInvited"> Invited only</label>
+        </div>
+        <div id="readySummary" class="chk-summary"></div>
+        <div id="readyStatus" class="status-line"></div>
+        <div id="readyTableWrap" class="chk-table-wrap">
+          <p class="note">Loading…</p>
+        </div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20260930-admin-only-hops"></script>
+  <script type="module" src="admin_club_checklist.js?v=20261002-auction-ready"></script>
 </body>
 </html>

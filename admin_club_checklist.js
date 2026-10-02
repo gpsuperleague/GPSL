@@ -9,6 +9,10 @@ import {
   MIN_UNDER_21,
   SQUAD_SIZE,
 } from "./squad_rules.js";
+import {
+  loadAuctionReadiness,
+  wireAuctionReadiness,
+} from "./admin_club_auction_readiness.js?v=20261002-auction-ready";
 
 primeAdminPageChrome();
 
@@ -115,7 +119,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("filterOwnerName")?.addEventListener("input", renderTable);
   document.getElementById("filterDivision")?.addEventListener("change", renderTable);
   document.getElementById("filterIssuesOnly")?.addEventListener("change", renderTable);
+  wireAuctionReadiness();
 
+  void loadAuctionReadiness();
   await loadTable();
 });
 
