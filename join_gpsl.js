@@ -1,4 +1,8 @@
 import { supabase } from "./supabase_client.js";
+import {
+  VISITOR_OAUTH_STATE,
+  completeVisitorDiscordLogin,
+} from "./visitor_login.js?v=20261002-visitor";
 
 function setStatus(elId, msg, ok) {
   const el = document.getElementById(elId);
@@ -95,6 +99,17 @@ async function handleOAuthReturn() {
       } catch {
         /* ignore */
       }
+    }
+    return false;
+  }
+
+  if (url.searchParams.get("state") === VISITOR_OAUTH_STATE) {
+    setStatus("discordStatus", "Signing you in as a visitor…");
+    history.replaceState({}, "", url.pathname);
+    try {
+      await completeVisitorDiscordLogin(code);
+    } catch (e) {
+      setStatus("discordStatus", e.message || String(e), false);
     }
     return false;
   }

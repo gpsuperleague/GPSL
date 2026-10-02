@@ -12,7 +12,10 @@ import {
   auctionOnboardingHome,
   archivedHome,
   normalizePageId,
-} from "./member_access.js";
+  isVisitorUser,
+  isVisitorAllowedPage,
+  visitorHome,
+} from "./member_access.js?v=20261002-visitor";
 
 function isAdminPath() {
   const p = (window.location.pathname || "").toLowerCase();
@@ -38,10 +41,27 @@ export async function enforceOwnerClubGate() {
     window.CURRENT_PAGE ? String(window.CURRENT_PAGE) : undefined
   );
 
-  if (isAuthPage(page) || isAdminPath()) return;
+  if (isAuthPage(page)) return;
 
   const user = await getAuthUser();
   if (!user) return;
+
+  if (isVisitorUser(user) && !isGpslAdminUser(user)) {
+    window.GPSL_VISITOR = true;
+    if (!isVisitorAllowedPage(page)) {
+      redirectTo(visitorHome());
+      return;
+    }
+    try {
+      const { applyVisitorChrome } = await import("./visitor_chrome.js?v=20261002-visitor");
+      applyVisitorChrome();
+    } catch (chromeErr) {
+      console.warn("Visitor chrome skipped:", chromeErr);
+    }
+    return;
+  }
+
+  if (isAdminPath()) return;
 
   if (isGpslAdminUser(user)) return;
 
@@ -88,4 +108,4 @@ export {
   isMemberAllowedPage,
   isClubOwnerPage,
   normalizePageId,
-} from "./member_access.js";
+} from "./member_access.js?v=20261002-visitor";

@@ -2418,15 +2418,20 @@ export async function buildNav() {
     console.warn("Nav registry self skipped:", regErr);
   }
 
+  const isVisitorNav = !isGpslAdminNav && user?.app_metadata?.gpsl_visitor === true;
+
   // Admins always get full menus (even without a club). Pre-club lock is for owners only.
   const isPreClubOwner =
     !isGpslAdminNav &&
+    !isVisitorNav &&
     registrySelf?.has_club !== true &&
     (registrySelf?.is_member === true ||
       registrySelf?.needs_club_auction === true ||
       registrySelf?.status === "awaiting_club_auction");
   const memberHomeHref = "waiting_list.html";
-  const homeHref = isPreClubOwner
+  const homeHref = isVisitorNav
+    ? "progress.html"
+    : isPreClubOwner
     ? registrySelf?.needs_club_auction
       ? "awaiting_club.html"
       : memberHomeHref
@@ -2446,7 +2451,22 @@ export async function buildNav() {
     return;
   }
 
-  if (isPreClubOwner) {
+  if (isVisitorNav) {
+    window.GPSL_VISITOR = true;
+    let visitorItems = [];
+    try {
+      const accessMod = await import(`./member_access.js?v=${GLOBAL_JS_VERSION}`);
+      visitorItems = [...(accessMod.VISITOR_NAV_ITEMS || [])];
+    } catch (visErr) {
+      console.warn("Visitor nav items skipped:", visErr);
+      visitorItems = [
+        { href: "progress.html", label: "Tables", page: "progress" },
+        { href: "cups.html", label: "Cups", page: "cups" },
+        { href: "all_listings.html", label: "Transfer market", page: "all_listings" },
+      ];
+    }
+    navSections = [{ id: "visitor", label: "Visitor — read only", items: visitorItems }];
+  } else if (isPreClubOwner) {
     window.GPSL_PRE_CLUB = true;
     window.GPSL_MEMBER_HOME = homeHref;
     try {
@@ -2642,7 +2662,12 @@ export async function buildNav() {
   html += `</div>`;
 
   html += `<div class="gpsl-nav-actions gpsl-nav-actions-primary">`;
-  if (!isPreClubOwner) {
+  if (isVisitorNav) {
+    html += renderNavHandbookLink(handbookActive);
+    html +=
+      `<span class="nav-shortcut" title="You are browsing as a Discord visitor — read only" ` +
+      `style="color:#9cf;font-weight:bold;white-space:nowrap;">👁 Visitor</span>`;
+  } else if (!isPreClubOwner) {
     html += renderNavSeasonCalendarLink(calendarActive);
     html += renderNavHandbookLink(handbookActive);
     html += renderNavNatterLink(natterActive, natterUnread);
@@ -2658,8 +2683,10 @@ export async function buildNav() {
         `₿${Math.round(bal).toLocaleString("en-GB")}</a>`;
     }
   }
-  html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
-  if (!isPreClubOwner) {
+  if (!isVisitorNav) {
+    html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
+  }
+  if (!isPreClubOwner && !isVisitorNav) {
     html += renderNavInboxLink(inboxActive, unread);
   }
   if (isGpslAdminNav || isGpslModOnlyNav) {
@@ -2727,7 +2754,7 @@ export async function recordOwnerSiteActivity() {
     }
 
     const user = await getAuthUser();
-    if (!user) return;
+    if (!user || user.app_metadata?.gpsl_visitor === true) return;
 
     siteLoginInFlight = true;
     const { error } = await supabase.rpc("record_owner_site_login");
@@ -2792,7 +2819,11 @@ export async function initGlobal() {
     console.warn("member view-only chrome:", err);
   }
 
-  if (document.getElementById("nav")) {
+  if (document.getElementById("nav") && window.GPSL_VISITOR) {
+    import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`)
+      .then((m) => m.initTransferNewsStrip())
+      .catch((err) => console.warn("Transfer news strip skipped:", err));
+  } else if (document.getElementById("nav")) {
     initDashboardPinUi(supabase).catch((err) => {
       console.warn("Dashboard pin UI skipped:", err);
     });

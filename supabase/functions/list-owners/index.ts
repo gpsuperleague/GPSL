@@ -67,6 +67,7 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: error.message }, 500);
       }
       for (const u of data.users || []) {
+        if (u?.app_metadata?.gpsl_visitor === true) continue;
         if (u?.id && u?.email) {
           users.push({ id: u.id, email: u.email });
         }

@@ -27,6 +27,46 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   "video_tutorials",
 ]);
 
+/** Discord visitors (read-only spectators, no GPSL owner account). */
+export const VISITOR_ALLOWED_PAGES = new Set([
+  "progress",
+  "cups",
+  "draftauction",
+  "draftauction_player",
+  "club_auction",
+  "manager_draftauction",
+  "manager_draftauction_manager",
+  "all_listings",
+  "owner_rankings",
+  "learning_gpsl",
+  "video_tutorials",
+]);
+
+export const VISITOR_NAV_ITEMS = [
+  { href: "progress.html", label: "Tables", page: "progress" },
+  { href: "cups.html", label: "Cups", page: "cups" },
+  { href: "draftauction.html", label: "Player draft auction", page: "draftauction" },
+  { href: "manager_draftauction.html", label: "Manager auction", page: "manager_draftauction" },
+  { href: "club_auction.html", label: "Club draft auction", page: "club_auction" },
+  { href: "all_listings.html", label: "Transfer market", page: "all_listings" },
+  { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
+  { href: "learning_gpsl.html", label: "Handbook", page: "learning_gpsl" },
+  { href: "video_tutorials.html", label: "Video tutorials", page: "video_tutorials" },
+];
+
+export function visitorHome() {
+  return "progress.html";
+}
+
+export function isVisitorAllowedPage(page = normalizePageId()) {
+  return VISITOR_ALLOWED_PAGES.has(page);
+}
+
+/** Visitor sessions carry app_metadata.gpsl_visitor (set server-side, not user-editable). */
+export function isVisitorUser(user) {
+  return user?.app_metadata?.gpsl_visitor === true;
+}
+
 /** Same surface for auction invitees (kept for callers / clarity). */
 export const AUCTION_ONBOARDING_PAGES = new Set([...MEMBER_ALLOWED_PAGES]);
 

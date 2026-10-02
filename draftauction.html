@@ -1695,7 +1695,7 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
               <button
                 class="bid-btn ${row.btnClass}"
                 data-konami-id="${row.player.Konami_ID}"
-                ${row.auctionEnded || row.canBid ? "" : "disabled"}
+                ${row.auctionEnded || row.canBid || window.GPSL_VISITOR === true ? "" : "disabled"}
               >
                 ${row.btnLabel}
               </button>
@@ -1843,12 +1843,13 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
             nowUK,
           });
 
-        const btnClass = auctionEnded
+        const viewOnly = auctionEnded || window.GPSL_VISITOR === true;
+        const btnClass = viewOnly
           ? "enabled view-only"
           : canBid
             ? "enabled"
             : "disabled";
-        const btnLabel = auctionEnded ? "View" : canBid ? "Bid" : "Locked";
+        const btnLabel = viewOnly ? "View" : canBid ? "Bid" : "Locked";
         const isFav = favouriteIds.has(String(player.Konami_ID));
         const isHidden = hiddenIds.has(String(player.Konami_ID));
 

@@ -84,9 +84,17 @@
     New to GPSL? Join via the invite link in Discord<br>
     (<a href="join_gpsl.html">Discord join page</a> — server members only).
   </p>
+  <div style="margin:22px auto 0;max-width:360px;padding:14px 16px;border:1px solid #333;border-radius:8px;background:#181818;">
+    <div style="font-size:14px;color:#ddd;font-weight:bold;">Just want to watch?</div>
+    <p style="font-size:13px;color:#999;margin:6px 0 4px;line-height:1.4;">
+      GPSL Discord members can browse tables, cups, auctions, the transfer market and owner rankings — read only, no GPSL account needed.
+    </p>
+    <button type="button" id="visitorBtn" class="secondary">Visitor — sign in with Discord</button>
+  </div>
 
   <script type="module">
     import { supabase, waitForAuthSession } from "./supabase_client.js";
+    import { startVisitorDiscordLogin } from "./visitor_login.js?v=20261002-visitor";
 
     const statusEl = document.getElementById("authStatus");
 
@@ -174,6 +182,15 @@
       }
 
       window.location.assign(dest);
+    });
+
+    document.getElementById("visitorBtn").addEventListener("click", async () => {
+      setAuthStatus("Opening Discord…");
+      try {
+        await startVisitorDiscordLogin();
+      } catch (err) {
+        setAuthStatus(err?.message || "Could not start Discord sign-in.", false);
+      }
     });
 
     document.getElementById("resetBtn").addEventListener("click", async () => {
