@@ -610,31 +610,44 @@ function renderInterestCell(row, canMark) {
 }
 
 /**
- * Show an overlay over the visible screen. Light mode's root filter can make
- * position:fixed resolve against the page instead of the viewport, so pin it
- * to the current scroll position when that happens, and lock page scroll.
+ * Overlays live inside a native <dialog> opened with showModal(), so they sit in
+ * the browser top layer and always cover the visible screen (page filters and
+ * containing-block quirks cannot push them into the page flow).
  */
-function showOverlay(modal) {
-  modal.style.position = "";
-  modal.style.top = "";
-  modal.style.height = "";
+function overlayDialogFor(modal, onCancel) {
+  const parent = modal.parentElement;
+  if (parent?.tagName === "DIALOG") return parent;
+  const dlg = document.createElement("dialog");
+  dlg.className = "gpsl-overlay-dialog";
+  dlg.style.cssText =
+    "padding:0;border:0;margin:0;background:transparent;width:100vw;height:100vh;" +
+    "max-width:none;max-height:none;overflow:hidden;";
+  modal.parentNode.insertBefore(dlg, modal);
+  dlg.appendChild(modal);
+  dlg.addEventListener("cancel", (e) => {
+    e.preventDefault();
+    onCancel?.();
+  });
+  return dlg;
+}
+
+function showOverlay(modal, onCancel) {
+  const dlg = overlayDialogFor(modal, onCancel);
+  modal.style.position = "absolute";
+  modal.style.inset = "0";
   modal.classList.add("open");
   document.documentElement.style.overflow = "hidden";
-  const rect = modal.getBoundingClientRect();
-  if (Math.abs(rect.top) > 1 || Math.abs(rect.height - window.innerHeight) > 1) {
-    modal.style.position = "absolute";
-    modal.style.top = `${-rect.top}px`;
-    modal.style.bottom = "auto";
-    modal.style.height = `${window.innerHeight}px`;
+  if (typeof dlg.showModal === "function") {
+    if (!dlg.open) dlg.showModal();
+  } else {
+    dlg.setAttribute("open", "");
   }
 }
 
 function hideOverlay(modal) {
   modal.classList.remove("open");
-  modal.style.position = "";
-  modal.style.top = "";
-  modal.style.bottom = "";
-  modal.style.height = "";
+  const dlg = modal.parentElement;
+  if (dlg?.tagName === "DIALOG" && dlg.open) dlg.close();
   if (!document.querySelector("#clubBidModal.open, #clubInterestModal.open")) {
     document.documentElement.style.overflow = "";
   }
@@ -685,7 +698,7 @@ function openInterestModal(row) {
   }
   if (clearBtn) clearBtn.disabled = frozen || !mine;
 
-  showOverlay(modal);
+  showOverlay(modal, closeInterestModal);
   modal.setAttribute("aria-hidden", "false");
 }
 
@@ -1027,7 +1040,7 @@ async function openClubBidModal(row, allowBid = true) {
   await loadBidHistory(row.id);
   await refreshClubMaxBidUi(row.club_short_name);
 
-  showOverlay(modal);
+  showOverlay(modal, closeClubBidModal);
   modal.setAttribute("aria-hidden", "false");
   validateClubBidInput();
 }
