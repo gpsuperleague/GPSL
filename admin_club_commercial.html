@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Commercial income — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .comm-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+    .comm-table th, .comm-table td { padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left; }
+    .comm-table th { color:#ff9900; font-weight:normal; }
+    .comm-table td.num, .comm-table th.num { text-align:right; }
+    .comm-table tfoot td { font-weight:bold; border-top:2px solid #444; }
+    .comm-pending { color:#ffcc66; }
+    .comm-auto { color:#888; font-size:11px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Commercial income</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Bands &amp; rules</h2>
+        <p class="note">
+          Three Central Bank–funded streams per club per season: <b>main sponsor</b>, <b>pitchside advertising</b> (5 boards)
+          and <b>merchandising</b> (club shop + global kit sales). Club tier comes from prestige
+          (<a href="admin_stadium_settings.html">Stadium settings</a> cut-offs). Results vs league &amp; cup targets place a club inside its band.
+        </p>
+        <div class="row">
+          <div><label>Big — min</label><input type="number" id="ccBigMin" step="100000" style="width:120px;"></div>
+          <div><label>Big — max</label><input type="number" id="ccBigMax" step="100000" style="width:120px;"></div>
+          <div><label>Medium — min</label><input type="number" id="ccMediumMin" step="100000" style="width:120px;"></div>
+          <div><label>Medium — max</label><input type="number" id="ccMediumMax" step="100000" style="width:120px;"></div>
+          <div><label>Small — min</label><input type="number" id="ccLowMin" step="100000" style="width:120px;"></div>
+          <div><label>Small — max</label><input type="number" id="ccLowMax" step="100000" style="width:120px;"></div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <div><label>Long deal % of value</label><input type="number" id="ccLongPct" step="1" min="1" max="100" style="width:100px;"></div>
+          <div><label>Performance base %</label><input type="number" id="ccPerfBasePct" step="1" min="0" max="100" style="width:100px;"></div>
+          <div><label>Floor % of band max</label><input type="number" id="ccMinValuePct" step="1" min="0" max="100" style="width:100px;"></div>
+          <div><label>Offer deadline (days)</label><input type="number" id="ccOfferDays" step="1" min="1" style="width:100px;"></div>
+          <div><label>Merch: stadium fill weight %</label><input type="number" id="ccFillWeight" step="1" min="0" max="100" style="width:100px;"></div>
+          <div><label>Merch: club shop share %</label><input type="number" id="ccShopShare" step="1" min="0" max="100" style="width:100px;"></div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <div><label><input type="checkbox" id="ccEnabled"> Enabled</label></div>
+        </div>
+        <button type="button" id="ccSaveBtn" class="button">Save settings</button>
+        <div id="ccSettingsStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Run</h2>
+        <p class="note">
+          <b>Season start</b> sells pitchside boards (priced on last season), pays existing sponsor deals and sends 3 sponsor offers to each owner.
+          Owners also trigger this themselves when they open the Stadium page. Vacant clubs, and owners who miss the deadline, get the long-term deal.
+        </p>
+        <p class="note">
+          <b>End of season</b> (merchandising + performance-deal bonuses) runs automatically inside Close Finances. Use the button only if you need it earlier. Both are safe to re-run — nothing is paid twice.
+        </p>
+        <button type="button" id="ccRunStartBtn" class="button">Run season start (all clubs)</button>
+        <button type="button" id="ccRunEosBtn" class="button">Post end-of-season commercial</button>
+        <div id="ccRunStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Overview — <span id="ccSeasonLabel">current season</span></h2>
+        <button type="button" id="ccRefreshBtn" class="button">Refresh</button>
+        <div id="ccOverviewStatus" class="status-line"></div>
+        <div id="ccOverview"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_club_commercial.js?v=20261002-commercial"></script>
+</body>
+</html>

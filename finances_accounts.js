@@ -1,4 +1,4 @@
-import { initFinanceAccountsPage } from "./finance_page_common.js?v=20260914-video-72h";
+import { initFinanceAccountsPage } from "./finance_page_common.js?v=20261002-commercial";
 import { renderFinancesAccountsGuide } from "./finances_rules.js";
 
 document.addEventListener("DOMContentLoaded", () => {

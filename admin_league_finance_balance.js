@@ -8,7 +8,7 @@ import {
   FORECAST_LINE_IDS,
   FORECAST_SECTIONS,
   buildLeagueFinanceForecast,
-} from "./admin_league_finance_forecast.js?v=20260927-forecast";
+} from "./admin_league_finance_forecast.js?v=20261002-commercial";
 
 primeAdminPageChrome();
 

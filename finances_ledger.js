@@ -1,4 +1,4 @@
-import { initFinanceSubPage } from "./finance_page_common.js?v=20260810-staff-fin-preview";
+import { initFinanceSubPage } from "./finance_page_common.js?v=20261002-commercial";
 
 document.addEventListener("DOMContentLoaded", () => {
   initFinanceSubPage({

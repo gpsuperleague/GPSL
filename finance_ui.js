@@ -29,6 +29,9 @@ export const LEDGER_TYPE_TO_LINE = {
   prize_cup: "prize_cup",
   prize_challenge: "prize_challenge",
   tv_revenue: "prize_tv",
+  commercial_sponsorship: "commercial_sponsorship",
+  commercial_advertising: "commercial_advertising",
+  commercial_merchandise: "commercial_merchandise",
   infra_maintenance: "infra_maintenance",
   infra_purchase: "infra_purchase",
   infra_expansion: "infra_expansion",
@@ -125,6 +128,32 @@ export const FINANCE_UI_SECTIONS = [
         label: "Prize money (posted)",
         types: ["prize", "special_auction_prize"],
         note: "Generic prize lines, special auction cash prizes, etc.",
+      },
+    ],
+  },
+  {
+    id: "commercial",
+    title: "Commercial",
+    intro:
+      "Paid by the Central Bank. Big clubs earn ₿3m–₿6m per stream, medium ₿1m–₿3m, small up to ₿1m — scaled by league and cup results against targets. See Stadium → Commercial.",
+    lines: [
+      {
+        id: "commercial_sponsorship",
+        label: "Main sponsor",
+        types: ["commercial_sponsorship"],
+        note: "Your chosen sponsorship deal. Paid at season start; performance deals add a bonus at Close Finances.",
+      },
+      {
+        id: "commercial_advertising",
+        label: "Pitchside advertising",
+        types: ["commercial_advertising"],
+        note: "Five pitchside boards sold each season, priced on last season's results. Paid at season start.",
+      },
+      {
+        id: "commercial_merchandise",
+        label: "Merchandising",
+        types: ["commercial_merchandise"],
+        note: "Club shop (kits & novelties) and global kit sales. Paid at Close Finances on this season's results and stadium fill.",
       },
     ],
   },

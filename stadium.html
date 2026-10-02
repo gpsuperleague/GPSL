@@ -74,6 +74,32 @@
       border:none; border-radius:4px; font-weight:bold; cursor:pointer;
     }
     .btn-result:disabled { opacity:0.5; cursor:not-allowed; }
+    .comm-h3 { color:#ffb84d; font-size:15px; margin:18px 0 8px; }
+    .comm-kicker { font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#999; }
+    .comm-sector { color:#aaa; font-size:13px; margin-top:2px; }
+    .comm-terms { color:#ddd; font-size:13px; line-height:1.5; margin:8px 0 10px; }
+    .comm-sponsor {
+      border:1px solid #5a4313; background:linear-gradient(135deg, #2a2110, #1a1a1a);
+      border-radius:8px; padding:14px 16px;
+    }
+    .comm-sponsor-name { font-size:24px; font-weight:bold; color:#ff9900; margin-top:2px; }
+    .comm-dilemma { color:#ccc; font-size:13px; line-height:1.5; margin:0 0 10px; }
+    .comm-offers { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+    .comm-offer {
+      border:1px solid #3a3a3a; background:#202020; border-radius:8px; padding:12px 14px;
+      display:flex; flex-direction:column;
+    }
+    .comm-offer .comm-terms { flex:1; }
+    .comm-offer-brand { font-size:18px; font-weight:bold; color:#eee; margin-top:2px; }
+    .comm-boards { display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; }
+    .comm-board {
+      background:#0f2a14; border:1px solid #1f5a2a; border-radius:4px; padding:8px 6px;
+      display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px;
+    }
+    .comm-board-name { font-weight:bold; color:#fff; font-size:13px; }
+    .comm-board-sector { color:#9c9; font-size:11px; }
+    .comm-board-amt { color:#ffcc66; font-size:12px; margin-top:2px; }
+    @media (max-width: 640px) { .comm-boards { grid-template-columns:repeat(2, 1fr); } }
   </style>
 </head>
 <body>
@@ -93,6 +119,12 @@
         <p id="historyNote" class="note"></p>
         <p class="note">Photo via <a href="https://stadiumdb.com/" target="_blank" rel="noopener">StadiumDB</a>. Also on <a href="club_details.html">Club Details</a>.</p>
       </div>
+    </div>
+
+    <div class="panel" id="commercialPanel">
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Main sponsor, pitchside advertising and merchandising — all paid by the Central Bank. Big clubs earn more than medium clubs, who earn more than small clubs; results against league &amp; cup targets move you within your band." tabindex="0">Commercial</h2>
+      <div id="commercialContent"></div>
+      <p class="note">Every payment appears on <a href="finances.html">Club Finances</a> under Commercial.</p>
     </div>
 
     <div class="panel" id="efootballStadiumRules">
@@ -146,6 +178,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="stadium.js?v=20260924-fill-expansion"></script>
+  <script type="module" src="stadium.js?v=20261002-commercial"></script>
 </body>
 </html>

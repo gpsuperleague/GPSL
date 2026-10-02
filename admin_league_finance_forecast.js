@@ -4,7 +4,7 @@
  * Current season only (competition_finance_ledger_public is current-season scoped).
  */
 
-import { aggregateLedgerByLine } from "./finance_ui.js?v=20260919-isvideo-fix";
+import { aggregateLedgerByLine } from "./finance_ui.js?v=20261002-commercial";
 import {
   loadCupFixtures,
   loadCurrentSeason,
@@ -27,6 +27,15 @@ export const FORECAST_SECTIONS = [
       { id: "prize_cup", label: "Cup prize" },
       { id: "prize_challenge", label: "Challenge prize" },
       { id: "prize_tv", label: "TV revenue" },
+    ],
+  },
+  {
+    id: "commercial",
+    title: "Commercial",
+    lines: [
+      { id: "commercial_sponsorship", label: "Main sponsor" },
+      { id: "commercial_advertising", label: "Pitchside ads" },
+      { id: "commercial_merchandise", label: "Merchandising" },
     ],
   },
   {

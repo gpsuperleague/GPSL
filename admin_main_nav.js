@@ -358,6 +358,13 @@ export const ADMIN_MAIN_NAV = [
           "Set TV / broadcast income figures for the season."
         ),
         L(
+          "Commercial income",
+          "admin_club_commercial.html",
+          null,
+          null,
+          "Sponsorship, pitchside advertising and merchandising bands; run season start; overview."
+        ),
+        L(
           "Set Government Subsidies",
           "admin_gov_subsidies.html",
           null,

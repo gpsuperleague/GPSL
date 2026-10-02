@@ -251,6 +251,7 @@ export const DASHBOARD_PANELS = [
   }),
   p("admin_wage_bills", "Season wage bills", "admin_wage_bills.html", { adminOnly: true }),
   p("admin_tv_revenue", "TV revenue", "admin_tv_revenue.html", { adminOnly: true }),
+  p("admin_club_commercial", "Commercial income", "admin_club_commercial.html", { adminOnly: true }),
   p("admin_gov_subsidies", "Government subsidies", "admin_gov_subsidies.html", { adminOnly: true }),
   p("admin_tax_34", "34+ fee", "admin_tax_34.html", { adminOnly: true }),
   p("admin_club_management", "Club Management", "admin_club_management.html", {
