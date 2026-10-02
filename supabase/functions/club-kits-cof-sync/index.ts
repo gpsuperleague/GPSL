@@ -1027,6 +1027,102 @@ async function fetchWikipediaKitPngs(pageTitleOrUrl, opts) {
   };
 }
 
+async function searchWikipediaTitles(query, limit, fetchImpl = fetch) {
+  const url =
+    "https://en.wikipedia.org/w/api.php?" +
+    new URLSearchParams({
+      action: "query",
+      list: "search",
+      srsearch: query,
+      srlimit: String(limit),
+      srnamespace: "0",
+      format: "json",
+      formatversion: "2",
+    }).toString();
+  const res = await fetchImpl(url, { headers: { "User-Agent": WIKI_UA } });
+  if (!res.ok) throw new Error(`Wikipedia search failed (${res.status})`);
+  const data = await res.json();
+  return (data?.query?.search || [])
+    .map((r) => String(r?.title || "").trim())
+    .filter(Boolean);
+}
+
+/**
+ * Fallback when Colours of Football has no kits: find the club's Wikipedia
+ * page and composite its kit templates. Only pages that actually carry kit
+ * stacks qualify; one that also mentions the club's nation is preferred so an
+ * ambiguous club name is less likely to land on a namesake elsewhere.
+ * @param {{ clubName: string, nation?: string|null, Image: any, fetchImpl?: typeof fetch, maxCandidates?: number }} opts
+ */
+async function findWikipediaClubKits(opts) {
+  const fetchImpl = opts.fetchImpl || fetch;
+  const clubName = String(opts.clubName || "").trim();
+  if (!clubName) {
+    return { title: null, pageUrl: null, kits: {}, error: "Club name required for Wikipedia lookup" };
+  }
+  const nation = String(opts.nation || "").trim().toLowerCase();
+
+  const titles = [];
+  const seen = new Set();
+  const add = (t) => {
+    const key = String(t || "").toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    titles.push(t);
+  };
+  try {
+    for (const t of await searchWikipediaTitles(`${clubName} football club`, 5, fetchImpl)) {
+      add(t);
+    }
+  } catch {
+    /* fall through to the direct title */
+  }
+  add(clubName);
+
+  let firstWithKits = null;
+  const maxCandidates = opts.maxCandidates || 4;
+  for (const title of titles.slice(0, maxCandidates)) {
+    let parsed;
+    try {
+      parsed = await fetchWikipediaParseHtml(title, fetchImpl);
+    } catch {
+      continue;
+    }
+    const stacks = parseWikipediaKitStacks(parsed.html);
+    if (!stacks.length) continue;
+    const candidate = { parsed, stacks };
+    if (nation && parsed.html.toLowerCase().includes(nation)) {
+      firstWithKits = candidate;
+      break;
+    }
+    if (!firstWithKits) firstWithKits = candidate;
+  }
+
+  if (!firstWithKits) {
+    return {
+      title: null,
+      pageUrl: null,
+      kits: {},
+      error: `No Wikipedia page with kit colours found for "${clubName}"`,
+    };
+  }
+
+  const kits = {};
+  for (const stack of firstWithKits.stacks) {
+    kits[stack.kind] = {
+      png: await compositeWikiKitPng(stack, { ...opts, fetchImpl }),
+      label: stack.label,
+      layers: stack.layers.length,
+    };
+  }
+  return {
+    title: firstWithKits.parsed.title,
+    pageUrl: firstWithKits.parsed.pageUrl,
+    kits,
+    error: null,
+  };
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -1272,6 +1368,8 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
         : null;
     const strictSeason = body?.strict_season !== false;
     const skipIfNewerSaved = body?.skip_if_newer_saved === true;
+    const wikipediaFallback = body?.wikipedia_fallback !== false;
+    let imageScriptMod: { Image: unknown } | null = null;
     const cofOptions = {
       targetStartYear: Number.isFinite(seasonStartYear) ? seasonStartYear : null,
       strictSeason,
@@ -1833,8 +1931,82 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
           cofOptions
         );
 
-        if (cof.error) {
-          entry.error = cof.error;
+        const cofHasKits = Boolean(
+          !cof.error && (cof.kits?.home || cof.kits?.away || cof.kits?.third)
+        );
+
+        if (!cofHasKits) {
+          const cofError = cof.error || "Colours of Football returned no kit images";
+          // Wikipedia kits are composited PNGs, so they can only be stored by committing them.
+          const canFallback =
+            wikipediaFallback && downloadImages && commitToGithub && Boolean(ghToken);
+          if (!canFallback) {
+            entry.error = wikipediaFallback && !(downloadImages && commitToGithub)
+              ? `${cofError} (Wikipedia fallback needs download + GitHub commit on)`
+              : cofError;
+            results.push(entry);
+            continue;
+          }
+          if (timedOut(deadline)) {
+            entry.error = `${cofError} · Wikipedia fallback skipped (edge time limit — retry this club)`;
+            results.push(entry);
+            continue;
+          }
+
+          entry.cof_error = cofError;
+          try {
+            if (!imageScriptMod) imageScriptMod = await import("npm:imagescript@1.3.0");
+            const wiki = await findWikipediaClubKits({
+              clubName: club.Club,
+              nation: club.Nation,
+              Image: imageScriptMod.Image,
+              fetchImpl: fetch,
+            });
+            if (wiki.error) {
+              entry.error = `${cofError} · Wikipedia fallback: ${wiki.error}`;
+              results.push(entry);
+              continue;
+            }
+
+            const files = (["home", "away", "third"] as const)
+              .filter((kind) => wiki.kits?.[kind]?.png)
+              .map((kind) => ({ kind, bytes: wiki.kits[kind].png, ext: "png" }));
+            if (!files.length) {
+              entry.error = `${cofError} · Wikipedia fallback: no kit images built`;
+              results.push(entry);
+              continue;
+            }
+
+            const { paths, commitSha } = await githubCommitClubKitImages(
+              ghToken!,
+              club.ShortName,
+              files
+            );
+            const { error: wikiSaveErr } = await adminClient.from("club_kits").upsert(
+              {
+                club_short_name: club.ShortName,
+                home_image_url: paths.home || null,
+                away_image_url: paths.away || null,
+                third_image_url: paths.third || null,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "club_short_name" }
+            );
+            if (wikiSaveErr) throw wikiSaveErr;
+
+            entry.ok = true;
+            entry.source = "wikipedia";
+            entry.wikipedia = { title: wiki.title, page_url: wiki.pageUrl };
+            entry.github = { committed: Object.values(paths), commit_sha: commitSha };
+            entry.kits = {
+              home: paths.home || null,
+              away: paths.away || null,
+              third: paths.third || null,
+            };
+          } catch (wikiErr) {
+            const msg = wikiErr instanceof Error ? wikiErr.message : String(wikiErr);
+            entry.error = `${cofError} · Wikipedia fallback failed: ${msg}`;
+          }
           results.push(entry);
           continue;
         }

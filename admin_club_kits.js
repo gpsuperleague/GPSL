@@ -219,7 +219,11 @@ async function replaceSelectedClubFromCof() {
       const gh = row.github?.committed?.length
         ? ` → GitHub (${row.github.committed.length} file(s))`
         : "";
-      appendReplaceLog(`OK ${short}${gh}`);
+      const via =
+        row.source === "wikipedia"
+          ? ` from Wikipedia (${row.wikipedia?.title || "?"}) — not on COF`
+          : "";
+      appendReplaceLog(`OK ${short}${via}${gh}`);
       if (row.download_warning) appendReplaceLog(`Warning: ${row.download_warning}`);
       setStatus("statusLine", `Replaced kits for ${short} on GitHub.`, true);
     } else if (row?.skipped) {
@@ -505,6 +509,7 @@ async function runSyncPass({
   clubShortNames = null,
   skipIfNewerSaved = false,
   passLabel = "",
+  wikipediaFallback = false,
 }) {
   let offset = 0;
   const failed = new Set();
@@ -527,6 +532,7 @@ async function runSyncPass({
       download: !!downloadToGithub,
       github: !!downloadToGithub,
       strict_season: true,
+      wikipedia_fallback: !!wikipediaFallback,
     };
     if (seasonStartYear != null) body.season_start_year = seasonStartYear;
     if (clubShortNames?.length) body.club_short_names = clubShortNames;
@@ -540,12 +546,18 @@ async function runSyncPass({
         appendCofLog(`SKIP ${short}: ${row.reason || "newer kits already saved"}`);
       } else if (row.ok) {
         ok += 1;
-        const season = row.cof?.season_label || "?";
         const gh =
           row.github?.committed?.length > 0
             ? ` → GitHub (${row.github.committed.length} file(s))`
             : "";
-        appendCofLog(`OK ${short} (${season})${gh}`);
+        if (row.source === "wikipedia") {
+          appendCofLog(
+            `OK ${short} (from Wikipedia: ${row.wikipedia?.title || "?"} — not on COF)${gh}`
+          );
+        } else {
+          const season = row.cof?.season_label || "?";
+          appendCofLog(`OK ${short} (${season})${gh}`);
+        }
       } else {
         fail += 1;
         if (short) failed.add(short);
@@ -607,6 +619,19 @@ async function downloadLatestKits({ download, github } = { download: true, githu
 
       totalOk += ok;
       totalFail = fail;
+      pending = failed;
+    }
+
+    if (downloadToGithub && pending?.size) {
+      const label = "Final pass: Wikipedia kits for clubs not on COF";
+      appendCofLog(`\n=== ${label} ===`);
+      const { failed, ok } = await runSyncPass({
+        downloadToGithub,
+        clubShortNames: [...pending],
+        passLabel: label,
+        wikipediaFallback: true,
+      });
+      totalOk += ok;
       pending = failed;
     }
 
