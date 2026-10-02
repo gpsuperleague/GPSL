@@ -1568,6 +1568,49 @@ document.addEventListener("DOMContentLoaded", () => {
     return `<div class="multi-filter-draft-hint"><b>ALL OWNED CLUBS</b> = every club with an owner · <b>FREE AGENT</b> for draft bids · <b>LEGACY PLAYERS</b> for cards off pesdb.net</div>`;
   }
 
+  // PostgREST ignores { distinct: true } and caps responses at 1000 rows,
+  // so filter option lists must page through the whole Players table.
+  const PLAYERS_FILTER_PAGE = 1000;
+  let playersFilterRowsPromise = null;
+  const playersColumnRowsCache = new Map();
+
+  async function fetchAllPlayersRows(selectCols) {
+    const out = [];
+    for (let from = 0; ; from += PLAYERS_FILTER_PAGE) {
+      const { data, error } = await supabase
+        .from("Players")
+        .select(selectCols)
+        .order("Konami_ID", { ascending: true })
+        .range(from, from + PLAYERS_FILTER_PAGE - 1);
+      if (error) return { data: null, error };
+      out.push(...(data || []));
+      if (!data || data.length < PLAYERS_FILTER_PAGE) break;
+    }
+    return { data: out, error: null };
+  }
+
+  async function loadPlayersColumnRows(col) {
+    if (!playersFilterRowsPromise) {
+      const cols = [
+        ...new Set([
+          ...DROPDOWN_COLUMNS.filter((c) => c !== "Contracted_Team"),
+          ...RANGE_FILTER_COLUMNS.filter(
+            (c) => c !== "market_value" && c !== "contract_wage"
+          ),
+        ]),
+      ];
+      playersFilterRowsPromise = fetchAllPlayersRows(cols.join(","));
+    }
+    const combined = await playersFilterRowsPromise;
+    if (!combined.error && combined.data && combined.data.length && col in combined.data[0]) {
+      return combined;
+    }
+    if (!playersColumnRowsCache.has(col)) {
+      playersColumnRowsCache.set(col, fetchAllPlayersRows(col));
+    }
+    return playersColumnRowsCache.get(col);
+  }
+
   function normalizeDistinctColumnValues(col, rows) {
     const values = (rows || [])
       .map((row) => row[col])
@@ -1666,9 +1709,7 @@ document.addEventListener("DOMContentLoaded", () => {
         continue;
       }
 
-      const { data, error } = await supabase
-        .from("Players")
-        .select(col, { distinct: true });
+      const { data, error } = await loadPlayersColumnRows(col);
 
       if (error || !data) {
         console.error(`Error loading range bounds for ${col}:`, error);
@@ -3297,9 +3338,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ...uniqueValues,
         ];
       } else {
-      let { data, error } = await supabase
-        .from("Players")
-        .select(col, { distinct: true });
+      let { data, error } = await loadPlayersColumnRows(col);
 
       if (error || !data) {
         console.error(`Error loading distinct values for ${col}:`, error);
