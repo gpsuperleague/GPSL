@@ -609,6 +609,37 @@ function renderInterestCell(row, canMark) {
   return wrap;
 }
 
+/**
+ * Show an overlay over the visible screen. Light mode's root filter can make
+ * position:fixed resolve against the page instead of the viewport, so pin it
+ * to the current scroll position when that happens, and lock page scroll.
+ */
+function showOverlay(modal) {
+  modal.style.position = "";
+  modal.style.top = "";
+  modal.style.height = "";
+  modal.classList.add("open");
+  document.documentElement.style.overflow = "hidden";
+  const rect = modal.getBoundingClientRect();
+  if (Math.abs(rect.top) > 1 || Math.abs(rect.height - window.innerHeight) > 1) {
+    modal.style.position = "absolute";
+    modal.style.top = `${-rect.top}px`;
+    modal.style.bottom = "auto";
+    modal.style.height = `${window.innerHeight}px`;
+  }
+}
+
+function hideOverlay(modal) {
+  modal.classList.remove("open");
+  modal.style.position = "";
+  modal.style.top = "";
+  modal.style.bottom = "";
+  modal.style.height = "";
+  if (!document.querySelector("#clubBidModal.open, #clubInterestModal.open")) {
+    document.documentElement.style.overflow = "";
+  }
+}
+
 function openInterestModal(row) {
   interestModalClub = row;
   const modal = document.getElementById("clubInterestModal");
@@ -654,14 +685,14 @@ function openInterestModal(row) {
   }
   if (clearBtn) clearBtn.disabled = frozen || !mine;
 
-  modal.classList.add("open");
+  showOverlay(modal);
   modal.setAttribute("aria-hidden", "false");
 }
 
 function closeInterestModal() {
   const modal = document.getElementById("clubInterestModal");
   if (modal) {
-    modal.classList.remove("open");
+    hideOverlay(modal);
     modal.setAttribute("aria-hidden", "true");
   }
   interestModalClub = null;
@@ -996,7 +1027,7 @@ async function openClubBidModal(row, allowBid = true) {
   await loadBidHistory(row.id);
   await refreshClubMaxBidUi(row.club_short_name);
 
-  modal.classList.add("open");
+  showOverlay(modal);
   modal.setAttribute("aria-hidden", "false");
   validateClubBidInput();
 }
@@ -1023,7 +1054,7 @@ async function refreshClubMaxBidUi(clubShortName) {
 function closeClubBidModal() {
   const modal = document.getElementById("clubBidModal");
   if (!modal) return;
-  modal.classList.remove("open");
+  hideOverlay(modal);
   modal.setAttribute("aria-hidden", "true");
   selectedListing = null;
 }
