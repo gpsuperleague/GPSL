@@ -79,5 +79,4 @@ FROM public."Club_Auction_Listings" l
 LEFT JOIN public."Clubs" c ON c."ShortName" = l.club_short_name
 LEFT JOIN public.gpsl_owner_registry r ON r.owner_id = l.current_highest_bidder
 WHERE l.status = 'Active'
-  AND (upper(l.club_short_name) = 'MONACO' OR lower(c."Club") = 'monaco'
-       OR upper(l.club_short_name) = 'MON');
+  AND (upper(l.club_short_name) = 'MONACO' OR c."Club" ILIKE '%monaco%');
