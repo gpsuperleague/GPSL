@@ -27,7 +27,7 @@ import {
   applyStoredSiteTheme,
   renderNavThemeToggle,
   wireNavThemeToggle,
-} from "./gpsl_light_mode.js";
+} from "./gpsl_light_mode.js?v=20261002-light-mode2";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 applyStoredSiteTheme();

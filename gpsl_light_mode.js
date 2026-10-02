@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = "gpsl_site_theme";
 const STYLESHEET_ID = "gpslLightModeCss";
-const STYLESHEET_HREF = "gpsl_light_mode.css?v=20261002-light-mode";
+const STYLESHEET_HREF = "gpsl_light_mode.css?v=20261002-light-mode2";
 
 function readStoredTheme() {
   try {

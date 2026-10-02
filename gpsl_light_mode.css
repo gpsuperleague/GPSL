@@ -7,6 +7,10 @@
  * so dark surfaces become light and bright accents (GPSL orange, club colours)
  * become deeper shades of the same hue. Media is inverted back so photos,
  * kits, badges and flags look normal.
+ *
+ * Inline backgrounds are matched on "background" + "url(" together: CSS custom
+ * properties such as the dashboard's --tile-art also contain url(...) and must
+ * not flip the whole element back to dark.
  */
 
 html[data-gpsl-theme="light"] {
@@ -15,14 +19,15 @@ html[data-gpsl-theme="light"] {
 }
 
 html[data-gpsl-theme="light"] :is(img, video, picture, canvas, iframe, object, embed),
-html[data-gpsl-theme="light"] [style*="url("],
+html[data-gpsl-theme="light"] [style*="background"][style*="url("]:not([style*="--"]),
 html[data-gpsl-theme="light"] .gpsl-no-invert {
   filter: invert(1) hue-rotate(180deg);
 }
 
 /* Media inside an already re-inverted block must not flip a second time. */
-html[data-gpsl-theme="light"] :is(picture, [style*="url("], .gpsl-no-invert)
-  :is(img, video, picture, canvas, iframe, object, embed, [style*="url("], .gpsl-no-invert) {
+html[data-gpsl-theme="light"]
+  :is(picture, [style*="background"][style*="url("]:not([style*="--"]), .gpsl-no-invert)
+  :is(img, video, picture, canvas, iframe, object, embed, [style*="background"][style*="url("], .gpsl-no-invert) {
   filter: none;
 }
 
