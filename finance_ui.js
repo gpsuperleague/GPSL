@@ -179,7 +179,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "infra_maintenance",
         label: "Stadium maintenance",
         types: ["infra_maintenance"],
-        note: "Posted at Close Finances — 12.5% of stadium value (capacity × ₿1,500).",
+        note: "Posted at Close Finances — a set % of stadium value (capacity × ₿1,500), currently 12.5% unless changed by admin.",
       },
       {
         id: "infra_purchase",

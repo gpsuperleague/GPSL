@@ -36,7 +36,8 @@ import {
 
 const GATE_PRICE_PER_SEAT = 20;
 const STADIUM_VALUE_PER_SEAT = 1500;
-const MAINTENANCE_RATE = 0.125;
+let maintenanceRate = 0.125;
+let maintenanceRateLoaded = false;
 const BID_INCREMENT = 500000;
 const TABLE_COLS = 11;
 
@@ -111,7 +112,7 @@ function seasonMaintenance(row) {
   const fromView = Number(row.season_maintenance_cost);
   if (Number.isFinite(fromView) && fromView > 0) return fromView;
   const cap = Number(row.capacity) || 0;
-  return Math.round(cap * STADIUM_VALUE_PER_SEAT * MAINTENANCE_RATE);
+  return Math.round(cap * STADIUM_VALUE_PER_SEAT * maintenanceRate);
 }
 
 function stadiumCost(row) {
@@ -804,6 +805,13 @@ async function loadListings() {
     return;
   }
 
+  if (!maintenanceRateLoaded) {
+    maintenanceRateLoaded = true;
+    const { data: pct, error: pctErr } = await supabase.rpc("stadium_maintenance_rate_pct");
+    if (!pctErr && Number.isFinite(Number(pct)) && Number(pct) >= 0) maintenanceRate = Number(pct) / 100;
+  }
+  const maintPctLabel = `${Number((maintenanceRate * 100).toFixed(3))}%`;
+
   listingsCache = listings;
   const canBid =
     !viewOnly && auctionState?.bidding_open && ownerTag && auctionOnboardingReady;
@@ -829,7 +837,7 @@ async function loadListings() {
       <td>${row.prestige_rank != null ? `<span class="rank-pill">${row.prestige_rank}</span>` : "—"}</td>
       <td class="stat-num">${formatNum(row.capacity)}<span class="stat-sub">seats</span></td>
       <td class="stat-num">${formatMoney(gate)}<span class="stat-sub">100% fill · ₿${GATE_PRICE_PER_SEAT}/seat</span></td>
-      <td class="stat-num">${formatMoney(maint)}<span class="stat-sub">12.5% × cap × ₿${STADIUM_VALUE_PER_SEAT.toLocaleString("en-GB")}</span></td>
+      <td class="stat-num">${formatMoney(maint)}<span class="stat-sub">${maintPctLabel} × cap × ₿${STADIUM_VALUE_PER_SEAT.toLocaleString("en-GB")}</span></td>
       <td class="exp-pos">${ordinal(expPos)}<span class="stat-sub">league table</span></td>
       <td class="stat-num">${formatMoney(cost)}<span class="stat-sub">capacity × ₿1,500</span></td>
       <td class="interest-slot"></td>

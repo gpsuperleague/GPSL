@@ -10,10 +10,11 @@ import {
   loadLeagueFixtures,
   loadStandingsWithPrizes,
   normalizeClubKey,
+  loadStadiumMaintenanceRate,
+  formatMaintenancePct,
 } from "./competition.js";
 
 const STADIUM_VALUE_PER_SEAT = 1500;
-const MAINTENANCE_RATE = 0.125;
 
 const BUYER_COMMITTED_STATUSES = ["Active", "Review", "Seller Review"];
 
@@ -167,12 +168,13 @@ export async function buildFinanceProjections(
   const postedMaint = Math.abs(byLine.get("infra_maintenance")?.amount || 0);
   if (postedMaint < 0.5 && capacity > 0) {
     const stadiumValue = capacity * STADIUM_VALUE_PER_SEAT;
-    const cost = -Math.round(stadiumValue * MAINTENANCE_RATE);
+    const rate = await loadStadiumMaintenanceRate(supabase);
+    const cost = -Math.round(stadiumValue * rate);
     setPendingForecast(
       pendingByLine,
       "infra_maintenance",
       cost,
-      "Stadium maintenance — posted at end of season (Close Finances). 12.5% × capacity × ₿1,500.",
+      `Stadium maintenance — posted at end of season (Close Finances). ${formatMaintenancePct(rate)} × capacity × ₿1,500.`,
       byLine
     );
   }

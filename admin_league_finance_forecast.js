@@ -11,10 +11,10 @@ import {
   loadLeagueFixtures,
   loadStandingsWithPrizes,
   normalizeClubKey,
+  loadStadiumMaintenanceRate,
 } from "./competition.js";
 
 const STADIUM_VALUE_PER_SEAT = 1500;
-const MAINTENANCE_RATE = 0.125;
 const RPC_CONCURRENCY = 6;
 
 /** Column layout — mirrors the owner Finances sections. */
@@ -274,6 +274,8 @@ export async function buildLeagueFinanceForecast(supabase, opts = {}) {
     )
   );
 
+  const maintenanceRate = await loadStadiumMaintenanceRate(supabase);
+
   let done = 0;
   const rows = await mapLimit(clubs, RPC_CONCURRENCY, async (reg) => {
     const short = reg.club_short_name;
@@ -312,7 +314,7 @@ export async function buildLeagueFinanceForecast(supabase, opts = {}) {
 
     if (Math.abs(posted.infra_maintenance) < 0.5 && capacity > 0) {
       pending.infra_maintenance = -Math.round(
-        capacity * STADIUM_VALUE_PER_SEAT * MAINTENANCE_RATE
+        capacity * STADIUM_VALUE_PER_SEAT * maintenanceRate
       );
     }
 

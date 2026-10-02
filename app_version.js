@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261002-commercial";
+export const APP_VERSION = "20261002-maint-pct";

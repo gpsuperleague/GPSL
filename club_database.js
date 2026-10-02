@@ -38,7 +38,7 @@ const COLUMNS = [
   },
   { key: "club_market_value", label: "Squad MV", sort: "club_market_value", tip: "Total market value of the club's contracted players." },
   { key: "stadium_value", label: "Stadium value", sort: "stadium_value", tip: "Capacity × ₿1,500." },
-  { key: "stadium_maintenance_cost", label: "Stadium maintenance", sort: "stadium_maintenance_cost", tip: "Stadium upkeep: 12.5% of stadium value. Bigger stadiums cost more to run." },
+  { key: "stadium_maintenance_cost", label: "Stadium maintenance", sort: "stadium_maintenance_cost", tip: "Stadium upkeep: a set % of stadium value (admin-adjustable). Bigger stadiums cost more to run." },
   { key: "gate_money_full", label: "Gate 100%", sort: "gate_money_full", tip: "Gate money from a sold-out home match (capacity × ₿20)." },
   { key: "gate_money_80", label: "Gate 80%", sort: "gate_money_80", tip: "Gate money from a home match at 80% full." },
   { key: "owner_tag", label: "Owner", sort: "owner_tag", tip: "Current owner, or Vacant." },

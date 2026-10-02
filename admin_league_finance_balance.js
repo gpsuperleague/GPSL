@@ -28,7 +28,7 @@ const TWEAK_LEVERS = [
   { id: "upkeep_wages", label: "Wages", lines: ["upkeep_wages"], share: 30, href: "admin_wage_pct.html", where: "Wage %" },
   { id: "upkeep_34plus", label: "34+ age fee", lines: ["upkeep_34plus"], share: 0, href: "admin_tax_34.html", where: "34+ age fee" },
   { id: "upkeep_star_tax", label: "Star tax", lines: ["upkeep_star_tax"], share: 5, href: "admin_star_tax.html", where: "Star tax" },
-  { id: "infra_maintenance", label: "Stadium maintenance", lines: ["infra_maintenance"], share: 10, href: "admin_stadium_costs.html", where: "Stadium costs (12.5% rate)" },
+  { id: "infra_maintenance", label: "Stadium maintenance", lines: ["infra_maintenance"], share: 10, href: "admin_stadium_costs.html", where: "Stadium costs (maintenance %)" },
   { id: "gov_income_tax", label: "Income tax", lines: ["gov_income_tax"], share: 0, href: "admin_tax_pct.html", where: "Tax %" },
 ];
 

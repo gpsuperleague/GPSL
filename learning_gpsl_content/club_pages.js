@@ -43,7 +43,7 @@ export const SECTION_FINANCES = {
       items: [
         `<b>Balance</b> — your spendable club cash. Transfers, wages, fines, and prizes all post here via the ledger.`,
         `<b>Gate receipts</b> — league home matches: 100% to the home club. Formula: capacity × fill rate × <b>₿20/seat</b>. Fill depends on table position and recent history. Cup ties split 50/50.`,
-        `<b>Stadium maintenance</b> — seasonal cost based on capacity (12.5% × capacity × ₿1,500). Shown on <a href="stadium.html">Stadium</a> and in season accounts.`,
+        `<b>Stadium maintenance</b> — seasonal cost based on capacity (a set % × capacity × ₿1,500 — 12.5% by default, adjustable by admin). Shown on <a href="stadium.html">Stadium</a> and in season accounts.`,
         `<b>Government subsidies</b> — HG, Youth, and B&amp;B targets on <a href="boardroom.html">Boardroom</a>; payments appear in season accounts when earned.`,
         `<b>Season accounts</b> — workbook-style view: <b>Posted</b> (ledger total this season), <b>Breakdown</b> by type, <b>Running total</b>, and <b>Pending</b> (forecast not yet on the ledger). Projected balance = current + pending.`,
       ],

@@ -7,7 +7,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadStadiumCostSettings();
   document.getElementById("saveStadiumCostBtn").onclick = saveStadiumCosts;
+  document.getElementById("saveStadiumMaintBtn").onclick = saveMaintenancePct;
+  document.getElementById("stadiumMaintPct").addEventListener("input", renderMaintExample);
 });
+
+function renderMaintExample() {
+  const pct = Number(document.getElementById("stadiumMaintPct").value);
+  const el = document.getElementById("stadiumMaintExample");
+  if (!el) return;
+  el.textContent = Number.isFinite(pct) && pct >= 0
+    ? `₿${Math.round(50000 * 1500 * (pct / 100)).toLocaleString("en-GB")} a season`
+    : "—";
+}
+
+async function saveMaintenancePct() {
+  const pct = Number(document.getElementById("stadiumMaintPct").value);
+  if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+    setStatus("stadiumMaintStatus", "Enter a % between 0 and 100.", false);
+    return;
+  }
+  setStatus("stadiumMaintStatus", "Saving…");
+  const { data, error } = await supabase.rpc("admin_set_stadium_maintenance_pct", { p_pct: pct });
+  if (error) {
+    setStatus(
+      "stadiumMaintStatus",
+      "❌ " + error.message + " — run stadium_maintenance_pct_setting_20261002.sql in Supabase.",
+      false
+    );
+    return;
+  }
+  setStatus("stadiumMaintStatus", `✅ Stadium maintenance set to ${Number(data)}%.`, true);
+}
 
 async function loadStadiumCostSettings() {
   const { data } = await supabase.from("global_settings").select("*").eq("id", 1).single();
@@ -22,6 +52,8 @@ async function loadStadiumCostSettings() {
   set("stadiumTierMid", data.stadium_capacity_tier_mid ?? 30000);
   set("stadiumTierHigh", data.stadium_capacity_tier_high ?? 50000);
   set("stadiumCancelPenalty", data.stadium_expansion_cancel_penalty ?? 1000000);
+  set("stadiumMaintPct", data.stadium_maintenance_pct ?? 12.5);
+  renderMaintExample();
 }
 
 async function saveStadiumCosts() {

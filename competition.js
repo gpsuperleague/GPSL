@@ -1663,6 +1663,26 @@ const INCOME_TYPES = new Set([
   "bookies_income",
 ]);
 
+let stadiumMaintenanceRatePromise = null;
+
+/** Season stadium maintenance as a fraction of stadium value (admin setting, default 12.5%). */
+export function loadStadiumMaintenanceRate(supabase) {
+  if (!stadiumMaintenanceRatePromise) {
+    stadiumMaintenanceRatePromise = supabase
+      .rpc("stadium_maintenance_rate_pct")
+      .then(({ data, error }) => {
+        const pct = Number(data);
+        return !error && Number.isFinite(pct) && pct >= 0 ? pct / 100 : 0.125;
+      })
+      .catch(() => 0.125);
+  }
+  return stadiumMaintenanceRatePromise;
+}
+
+export function formatMaintenancePct(rate) {
+  return `${Number((rate * 100).toFixed(3))}%`;
+}
+
 export function financeEntryLabel(type) {
   return FINANCE_ENTRY_LABELS[type] || type;
 }

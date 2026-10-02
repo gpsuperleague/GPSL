@@ -51,8 +51,27 @@
         <button type="button" id="saveStadiumCostBtn" class="button">Save stadium costs</button>
         <div id="stadiumCostStatus" class="status-line"></div>
       </div>
+      <div class="card" id="sb-stadium-maintenance">
+        <h2>Stadium maintenance</h2>
+        <p class="note">
+          Season upkeep charged to every club at <b>Close Finances</b>: this % × stadium value (capacity × ₿1,500).
+          Example: 50,000 seats at 12.5% = ₿9,375,000. Changes apply to the next Close Finances and update club database / auction / forecast figures straight away.
+        </p>
+        <div class="row">
+          <div>
+            <label>Maintenance % of stadium value</label>
+            <input type="number" id="stadiumMaintPct" min="0" max="100" step="0.5" style="width:120px;">
+          </div>
+          <div>
+            <label>50,000 seats would cost</label>
+            <div id="stadiumMaintExample" style="padding:8px 0;color:#ffcc66;">—</div>
+          </div>
+        </div>
+        <button type="button" id="saveStadiumMaintBtn" class="button">Save maintenance %</button>
+        <div id="stadiumMaintStatus" class="status-line"></div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_stadium_costs.js"></script>
+  <script type="module" src="admin_stadium_costs.js?v=20261002-maint-pct"></script>
 </body>
 </html>
