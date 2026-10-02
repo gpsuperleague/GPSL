@@ -91,6 +91,11 @@ function renderReadinessTable() {
       const readyCell = row.ready
         ? `<td class="chk-cell-ok"><span class="chk-tag-ok">Ready</span></td>`
         : `<td class="chk-cell-bad">${ITEMS.filter(([k]) => !row[k]).length} to do</td>`;
+      const inviteCell = row.invited_to_auction
+        ? `<td class="chk-sub">Invited</td>`
+        : `<td><button type="button" class="ready-invite-btn" data-owner-id="${escapeHtml(row.owner_id)}" data-owner-label="${escapeHtml(row.owner_tag || row.email || "owner")}"${
+            row.ready ? "" : ' title="Not ready yet — they can be invited, but cannot bid until all items are done"'
+          }>Invite to auction</button></td>`;
       return `<tr class="${row.ready ? "" : "chk-row-flagged"}">
         <td class="club-cell">${who}${email}</td>
         <td>${escapeHtml(statusLabel(row))}${pos}${season}</td>
@@ -100,6 +105,7 @@ function renderReadinessTable() {
         ${checkCell(row.has_availability, `${slots} block${slots === 1 ? "" : "s"}`, "Owner saves weekly match availability")}
         ${checkCell(row.has_interest, interest, "Owner marks 1 club as interest in the Club Database")}
         ${checkCell(row.has_backup, backup, "Owner marks 1 different club as backup in the Club Database")}
+        ${inviteCell}
       </tr>`;
     })
     .join("");
@@ -112,6 +118,7 @@ function renderReadinessTable() {
           <th>Status</th>
           <th>Ready</th>
           ${ITEMS.map(([, label]) => `<th>${label}</th>`).join("")}
+          <th>Auction</th>
         </tr>
       </thead>
       <tbody>${body}</tbody>
@@ -138,7 +145,34 @@ export async function loadAuctionReadiness() {
   renderReadinessTable();
 }
 
+async function inviteOwnerToAuction(btn) {
+  const ownerId = btn.dataset.ownerId;
+  const label = btn.dataset.ownerLabel || "this owner";
+  if (!ownerId) return;
+  if (!window.confirm(`Invite ${label} to the club auction now? They get the default starting budget and can bid once all items are ready.`)) {
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Inviting…";
+  const { error } = await supabase.rpc("admin_waiting_list_set_auction_invite", {
+    p_owner_id: ownerId,
+    p_invited: true,
+  });
+  if (error) {
+    setStatus("readyStatus", `❌ Invite failed for ${label}: ${error.message}`, false);
+    btn.disabled = false;
+    btn.textContent = "Invite to auction";
+    return;
+  }
+  setStatus("readyStatus", `✅ ${label} invited to the club auction.`, true);
+  await loadAuctionReadiness();
+}
+
 export function wireAuctionReadiness() {
+  document.getElementById("readyTableWrap")?.addEventListener("click", (e) => {
+    const btn = e.target.closest?.(".ready-invite-btn");
+    if (btn) void inviteOwnerToAuction(btn);
+  });
   document.getElementById("readyFilterNotReady")?.addEventListener("change", renderReadinessTable);
   document.getElementById("readyFilterInvited")?.addEventListener("change", renderReadinessTable);
   document.getElementById("readyReloadBtn")?.addEventListener("click", () => loadAuctionReadiness());
