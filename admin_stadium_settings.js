@@ -70,7 +70,7 @@ async function loadPrestigeCarryover() {
     .select("prestige_carryover_pct")
     .eq("id", 1)
     .maybeSingle();
-  document.getElementById("prestigeCarryoverPct").value = data?.prestige_carryover_pct ?? 70;
+  document.getElementById("prestigeCarryoverPct").value = data?.prestige_carryover_pct ?? 85;
   renderCarryoverExample();
 }
 

@@ -7,9 +7,9 @@
 --   carry-over %  × last season's prestige rank
 --   (100 − carry-over %) × results rank (rolling league + cup points, as before)
 --
--- Default carry-over 70%. Example: Barca rank 1 finish 18th (results rank ~18)
---   → 0.7 × 1 + 0.3 × 18 = 6.1 → about 6th next season, not mid-table.
---   Santos rank 20 win the league (results rank ~1) → ~14th next season.
+-- Default carry-over 85%. Example: Barca rank 1 finish 18th (results rank ~18)
+--   → 0.85 × 1 + 0.15 × 18 = 3.55 → about 4th next season, not mid-table.
+--   Santos rank 20 win the league (results rank ~1) → ~17th next season.
 -- Repeated bad (or good) seasons keep moving the club, so change is gradual.
 --
 -- "Last season's prestige" = the locked snapshot of the most recent completed
@@ -18,7 +18,15 @@
 -- =============================================================================
 
 ALTER TABLE public.global_settings
-  ADD COLUMN IF NOT EXISTS prestige_carryover_pct numeric(5, 2) NOT NULL DEFAULT 70;
+  ADD COLUMN IF NOT EXISTS prestige_carryover_pct numeric(5, 2) NOT NULL DEFAULT 85;
+
+ALTER TABLE public.global_settings
+  ALTER COLUMN prestige_carryover_pct SET DEFAULT 85;
+
+-- Move the earlier 70% default to 85% (leaves any other admin-chosen value alone).
+UPDATE public.global_settings
+SET prestige_carryover_pct = 85
+WHERE id = 1 AND prestige_carryover_pct = 70;
 
 DO $$
 BEGIN
@@ -120,9 +128,9 @@ AS $$
       CASE
         WHEN rr.seasons_count = 0 THEN rr.results_rank::numeric
         ELSE
-          (coalesce(cfg.prestige_carryover_pct, 70) / 100.0)
+          (coalesce(cfg.prestige_carryover_pct, 85) / 100.0)
             * coalesce(snap.prestige_rank, rr.prestige_seed_rank, rr.results_rank)
-          + (1 - coalesce(cfg.prestige_carryover_pct, 70) / 100.0) * rr.results_rank
+          + (1 - coalesce(cfg.prestige_carryover_pct, 85) / 100.0) * rr.results_rank
       END AS blend_rank
     FROM results_ranked rr
     CROSS JOIN cfg
