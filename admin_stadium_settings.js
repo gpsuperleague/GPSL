@@ -44,7 +44,54 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("recomputeClubRankingsBtn").onclick = recomputeClubRankings;
   document.getElementById("syncStadiumFillBtn").onclick = syncStadiumFill;
   document.getElementById("compBackfillGatesBtn").onclick = backfillGates;
+  document.getElementById("savePrestigeCarryoverBtn").onclick = savePrestigeCarryover;
+  document.getElementById("prestigeCarryoverPct").addEventListener("input", renderCarryoverExample);
+  await loadPrestigeCarryover();
 });
+
+function renderCarryoverExample() {
+  const pct = Number(document.getElementById("prestigeCarryoverPct").value);
+  const el = document.getElementById("prestigeCarryoverExample");
+  if (!el) return;
+  if (!Number.isFinite(pct) || pct < 0 || pct > 95) {
+    el.textContent = "—";
+    return;
+  }
+  const w = pct / 100;
+  const rank = Math.max(1, Math.round(w * 1 + (1 - w) * 18));
+  const suffix =
+    rank % 100 >= 11 && rank % 100 <= 13 ? "th" : { 1: "st", 2: "nd", 3: "rd" }[rank % 10] || "th";
+  el.textContent = `about ${rank}${suffix} next season`;
+}
+
+async function loadPrestigeCarryover() {
+  const { data } = await supabase
+    .from("global_settings")
+    .select("prestige_carryover_pct")
+    .eq("id", 1)
+    .maybeSingle();
+  document.getElementById("prestigeCarryoverPct").value = data?.prestige_carryover_pct ?? 70;
+  renderCarryoverExample();
+}
+
+async function savePrestigeCarryover() {
+  const pct = Number(document.getElementById("prestigeCarryoverPct").value);
+  if (!Number.isFinite(pct) || pct < 0 || pct > 95) {
+    setStatus("prestigeCarryoverStatus", "Enter a % between 0 and 95.", false);
+    return;
+  }
+  setStatus("prestigeCarryoverStatus", "Saving…");
+  const { data, error } = await supabase.rpc("admin_set_prestige_carryover_pct", { p_pct: pct });
+  if (error) {
+    setStatus(
+      "prestigeCarryoverStatus",
+      "❌ " + error.message + " — run prestige_carryover_20261003.sql in Supabase.",
+      false
+    );
+    return;
+  }
+  setStatus("prestigeCarryoverStatus", `✅ Carry-over set to ${Number(data)}%.`);
+}
 
 async function backfillGates() {
   setStatus("compGateStatus", "Backfilling…");

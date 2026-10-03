@@ -194,6 +194,27 @@
           Stadium expansion costs: <a href="admin_stadium_costs.html"><b>Stadium costs</b></a>.
         </p>
       </div>
+      <div class="card" id="sb-prestige-carryover">
+        <h2>Prestige carry-over</h2>
+        <p class="note">
+          How much of last season's prestige a club keeps. Next season's rank =
+          <b>carry-over %</b> × last season's rank + the rest × this season's results rank.
+          At 70%, a rank-1 club that finishes 18th drops to about 6th — not straight to mid-table.
+          0% = results only (old behaviour). Applied when the next season starts; the season in progress stays locked.
+        </p>
+        <div class="row">
+          <div>
+            <label>Carry-over %</label>
+            <input type="number" id="prestigeCarryoverPct" min="0" max="95" step="5" style="width:100px;">
+          </div>
+          <div>
+            <label>Rank 1 club finishing 18th would be</label>
+            <div id="prestigeCarryoverExample" style="padding:8px 0;color:#ffcc66;">—</div>
+          </div>
+        </div>
+        <button type="button" id="savePrestigeCarryoverBtn" class="button">Save carry-over</button>
+        <div id="prestigeCarryoverStatus" class="status-line"></div>
+      </div>
       <div class="card" id="sb-backfill-gates">
         <h2>Backfill gate receipts</h2>
         <p class="note">Run <code>competition_phase5_finances.sql</code>. Settles gates for played fixtures missing ledger rows.</p>
@@ -202,6 +223,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_stadium_settings.js"></script>
+  <script type="module" src="admin_stadium_settings.js?v=20261003-carryover"></script>
 </body>
 </html>
