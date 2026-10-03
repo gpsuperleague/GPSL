@@ -12,7 +12,7 @@ import {
 import {
   loadAuctionReadiness,
   wireAuctionReadiness,
-} from "./admin_club_auction_readiness.js?v=20261002-late-join";
+} from "./admin_club_auction_readiness.js?v=20261003-bidding";
 
 primeAdminPageChrome();
 

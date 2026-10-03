@@ -232,12 +232,14 @@
           Owners invited to the club auction or on the waiting list, checked against the five required
           entry items on their <b>Awaiting club</b> page: <b>Owner tag</b>, <b>Timezone</b>,
           <b>Match availability</b>, <b>Primary club</b> interest and <b>Backup club</b>.
-          Invited owners are listed first.
+          Invited owners are listed first. <b>Bidding</b> shows the club each owner is currently
+          the highest bidder on, whether they've been outbid, or that they haven't bid yet.
         </p>
         <div class="chk-toolbar">
           <button type="button" id="readyReloadBtn" class="button">Reload</button>
           <label class="chk-filter"><input type="checkbox" id="readyFilterNotReady"> Not ready only</label>
           <label class="chk-filter"><input type="checkbox" id="readyFilterInvited"> Invited only</label>
+          <label class="chk-filter"><input type="checkbox" id="readyFilterNotBid"> Not bid yet only</label>
         </div>
         <div id="readySummary" class="chk-summary"></div>
         <div id="readyStatus" class="status-line"></div>
@@ -247,6 +249,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20261002-late-join"></script>
+  <script type="module" src="admin_club_checklist.js?v=20261003-bidding"></script>
 </body>
 </html>
