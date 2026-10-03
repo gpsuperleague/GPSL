@@ -70,6 +70,10 @@
       border-bottom: 1px solid #333;
       text-align: center;
     }
+
+    .star-demotion-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+    .star-demotion-table th, .star-demotion-table td { padding:6px 8px; border-bottom:1px solid #3a2e14; text-align:left; }
+    .star-demotion-table th { color:#ffb84d; font-weight:normal; }
   </style>
 </head>
 
@@ -122,6 +126,9 @@
         <div id="squadWageBillBody" class="wage-bill-body"><p class="note" style="margin:0;color:#888;">Loading…</p></div>
       </div>
     </div>
+
+    <div id="starDemotionPanel" class="panel" hidden
+         style="border:1px solid #6a4a10;background:#221a0c;"></div>
 
     <div id="squadCompliancePanel" class="squad-compliance-wrap"></div>
 
@@ -188,7 +195,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20260924-apos-entity"></script>
+  <script type="module" src="squad.js?v=20261003-big-star"></script>
 
 </body>
 </html>

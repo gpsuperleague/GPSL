@@ -111,7 +111,8 @@ import {
   DESIGNATION_STAR,
   DESIGNATION_OOO,
   DESIGNATION_FF,
-} from "./squad_designations.js?v=20260813-star-mv";
+} from "./squad_designations.js?v=20261003-big-star";
+import { mountStarDemotionPanel } from "./squad_star_demotion.js?v=20261003-big-star";
 import {
   loadActiveSeasonLoanPlayerIds,
   loadClubSquadMinimumStatus,
@@ -1396,6 +1397,7 @@ async function loadSquad() {
     supabase,
     currentUserShort
   );
+  mountStarDemotionPanel(supabase, currentUserShort, loadSquad);
   [squadMinimumStatus, seasonLoanPlayerIds, emergencyLoanPlayerIds, emergencyLoanStatus] =
     await Promise.all([
       loadClubSquadMinimumStatus(supabase, currentUserShort),

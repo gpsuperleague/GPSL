@@ -139,7 +139,7 @@ export function starComplianceRow(state) {
   const minRating = Number(state?.star_min_rating ?? 79);
   return {
     rule: "Star players",
-    whoCounts: `All players rated ${minRating}+ (automatic; ${tier})`,
+    whoCounts: `All players rated ${minRating}+ (automatic; ${tier}; big clubs +1)`,
     requirement: `Up to ${cap}`,
     note: "OooO excused. August over-cap: lowest stars released @ MV + ₿2.5m fine each",
     count: `${count} / ${cap}`,
