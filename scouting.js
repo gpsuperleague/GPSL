@@ -102,6 +102,10 @@ let plannerApi = null;
 let plannerOooPlayerId = null;
 /** Nation used for HG / OooO on this tactic board (planning for a club). */
 let plannerPlanNation = null;
+/** League planned for on this board: "superleague" | "championship" | null. */
+let plannerPlanDivision = null;
+/** Club size planned for on this board: "big" | "standard" | null. */
+let plannerPlanSize = null;
 /** Distinct club nations for the board nation picker. */
 let plannerNationOptions = [];
 /** @type {{ board_no: number, name: string }[]} */
@@ -147,7 +151,7 @@ let ownedSquadPlayers = null;
 /** @type {object|null} */
 let squadDesignationsState = null;
 const SCOUTING_ALL_VIEW_ACTIVE_KEY = "gpsl_scouting_active_targets_all";
-/** @type {Map<string, { activeIds: string[], planNation: string|null, hydrated: boolean }>} */
+/** @type {Map<string, { activeIds: string[], planNation: string|null, planDivision: string|null, planSize: string|null, hydrated: boolean }>} */
 let boardViewStateCache = new Map();
 /** Debounced auto-save after tactic-board placements. */
 let plannerAutoSaveTimer = null;
@@ -291,7 +295,46 @@ function writeAllViewActiveIds(ids) {
   }
 }
 
-function plannerLayoutWithListMeta(layout, { activeIds, planNation } = {}) {
+const BIG_CLUB_EXTRA_STARS = 1;
+const PLAN_DIVISION_OPTIONS = [
+  ["", "— League —"],
+  ["superleague", "SuperLeague (3★)"],
+  ["championship", "Championship (2★)"],
+];
+const PLAN_SIZE_OPTIONS = [
+  ["", "— Club size —"],
+  ["big", `Big club (+${BIG_CLUB_EXTRA_STARS}★)`],
+  ["standard", "Not a big club"],
+];
+
+function planOptionsHtml(options, selected) {
+  return options
+    .map(
+      ([v, label]) =>
+        `<option value="${v}"${String(selected || "") === v ? " selected" : ""}>${escapeHtml(label)}</option>`
+    )
+    .join("");
+}
+
+function extractPlanDivisionFromLayout(layout) {
+  const v = layout && typeof layout === "object" ? layout.scouting_plan_division : null;
+  return v === "superleague" || v === "championship" ? v : null;
+}
+
+function extractPlanSizeFromLayout(layout) {
+  const v = layout && typeof layout === "object" ? layout.scouting_plan_club_size : null;
+  return v === "big" || v === "standard" ? v : null;
+}
+
+/** Star cap for a planned league / club size; falls back to the owner's real cap when neither is set. */
+function planStarCap(division, size) {
+  const fallback = Number(squadDesignationsState?.star_cap ?? 2);
+  if (!division && !size) return fallback;
+  const base = division === "superleague" ? 3 : division === "championship" ? 2 : fallback;
+  return base + (size === "big" ? BIG_CLUB_EXTRA_STARS : 0);
+}
+
+function plannerLayoutWithListMeta(layout, { activeIds, planNation, planDivision, planSize } = {}) {
   const next =
     layout && typeof layout === "object" && !Array.isArray(layout)
       ? { ...layout }
@@ -308,6 +351,14 @@ function plannerLayoutWithListMeta(layout, { activeIds, planNation } = {}) {
   if (planNation !== undefined) {
     if (planNation) next.scouting_plan_nation = String(planNation).trim();
     else delete next.scouting_plan_nation;
+  }
+  if (planDivision !== undefined) {
+    if (planDivision) next.scouting_plan_division = planDivision;
+    else delete next.scouting_plan_division;
+  }
+  if (planSize !== undefined) {
+    if (planSize) next.scouting_plan_club_size = planSize;
+    else delete next.scouting_plan_club_size;
   }
   return next;
 }
@@ -375,7 +426,9 @@ function updateRegistrationStrip() {
   const activePlayers = activeTargetPlayers();
   const totals = tallyAdds(activePlayers, nation);
   const minStar = Number(squadDesignationsState?.star_min_rating ?? 79);
-  const starCap = Number(squadDesignationsState?.star_cap ?? 2);
+  const listState =
+    listBoardFilter !== "all" ? boardViewStateCache.get(String(listBoardFilter)) : null;
+  const starCap = planStarCap(listState?.planDivision || null, listState?.planSize || null);
   const activeStars = countStarEligible(activePlayers, minStar, null);
   const activeLabel =
     listBoardFilter === "all"
@@ -785,7 +838,7 @@ function updatePlannerCompositionStrip(state) {
   }
 
   const minStar = Number(squadDesignationsState?.star_min_rating ?? 79);
-  const starCap = Number(squadDesignationsState?.star_cap ?? 2);
+  const starCap = planStarCap(plannerPlanDivision, plannerPlanSize);
   const nation = effectivePlannerNation();
   const totals = tallyAdds(players, nation);
   const stars = countStarEligible(players, minStar, plannerOooPlayerId);
@@ -864,6 +917,14 @@ function updatePlannerCompositionStrip(state) {
           })
           .join("")}
       </select>
+      <label for="scoutPlannerDivisionSelect">League</label>
+      <select id="scoutPlannerDivisionSelect" title="League you are planning this board for (sets the ★ cap). Saved with the board.">
+        ${planOptionsHtml(PLAN_DIVISION_OPTIONS, plannerPlanDivision)}
+      </select>
+      <label for="scoutPlannerSizeSelect">Club size</label>
+      <select id="scoutPlannerSizeSelect" title="Big clubs (top 10 prestige) get +${BIG_CLUB_EXTRA_STARS} star. Saved with the board.">
+        ${planOptionsHtml(PLAN_SIZE_OPTIONS, plannerPlanSize)}
+      </select>
       <label for="scoutPlannerOooSelect">One of our Own</label>
       <select id="scoutPlannerOooSelect" title="Planning only — excludes this player from the ★ count on this board">
         <option value="">— None —</option>
@@ -877,7 +938,7 @@ function updatePlannerCompositionStrip(state) {
           })
           .join("")}
       </select>
-      <span class="scout-ooo-hint">Per board · HG uses plan nation · OooO reduces ★</span>
+      <span class="scout-ooo-hint">Per board · HG uses plan nation · League + club size set ★ cap · OooO reduces ★</span>
     </div>
   `;
 }
@@ -887,6 +948,14 @@ function wirePlannerCompositionStrip() {
   if (!el || el.dataset.oooWired === "1") return;
   el.dataset.oooWired = "1";
   el.addEventListener("change", (e) => {
+    const divSel = e.target?.closest?.("#scoutPlannerDivisionSelect");
+    const sizeSel = e.target?.closest?.("#scoutPlannerSizeSelect");
+    if (divSel || sizeSel) {
+      if (divSel) plannerPlanDivision = divSel.value || null;
+      if (sizeSel) plannerPlanSize = sizeSel.value || null;
+      updatePlannerCompositionStrip(plannerApi?.getState?.() || null);
+      return;
+    }
     const nationSel = e.target?.closest?.("#scoutPlannerNationSelect");
     if (nationSel) {
       plannerPlanNation = nationSel.value ? String(nationSel.value) : null;
@@ -1786,6 +1855,8 @@ async function loadBoardViewState(boardNo) {
             .filter((r) => r.is_active_target)
             .map((r) => String(r.player_id)),
     planNation: extractPlannerNationFromLayout(state.pitchLayout) || null,
+    planDivision: extractPlanDivisionFromLayout(state.pitchLayout),
+    planSize: extractPlanSizeFromLayout(state.pitchLayout),
     hydrated: true,
   };
   boardViewStateCache.set(key, next);
@@ -1800,15 +1871,18 @@ async function saveBoardViewState(boardNo, patch = {}) {
   const prev = boardViewStateCache.get(String(boardNo)) || {
     activeIds: [],
     planNation: extractPlannerNationFromLayout(state.pitchLayout) || null,
+    planDivision: extractPlanDivisionFromLayout(state.pitchLayout),
+    planSize: extractPlanSizeFromLayout(state.pitchLayout),
     hydrated: true,
   };
+  const has = (k) => Object.prototype.hasOwnProperty.call(patch, k);
   const next = {
     activeIds: (Array.isArray(patch.activeIds) ? patch.activeIds : prev.activeIds)
       .map((x) => String(x || "").trim())
       .filter((id) => id && (!shortlistIds.size || shortlistIds.has(id))),
-    planNation: Object.prototype.hasOwnProperty.call(patch, "planNation")
-      ? patch.planNation || null
-      : prev.planNation,
+    planNation: has("planNation") ? patch.planNation || null : prev.planNation,
+    planDivision: has("planDivision") ? patch.planDivision || null : prev.planDivision ?? null,
+    planSize: has("planSize") ? patch.planSize || null : prev.planSize ?? null,
     hydrated: true,
   };
 
@@ -1817,6 +1891,8 @@ async function saveBoardViewState(boardNo, patch = {}) {
     p_pitch_layout: plannerLayoutWithListMeta(state.pitchLayout, {
       activeIds: next.activeIds,
       planNation: next.planNation,
+      planDivision: next.planDivision,
+      planSize: next.planSize,
     }),
   });
   if (error) {
@@ -1850,13 +1926,26 @@ function renderListNationPicker() {
   const sel = document.getElementById("scoutListNationSelect");
   if (!label || !sel) return;
 
+  const divSel = document.getElementById("scoutListDivisionSelect");
+  const sizeSel = document.getElementById("scoutListSizeSelect");
+
   if (listBoardFilter === "all") {
     label.hidden = true;
     sel.hidden = true;
+    if (divSel) divSel.hidden = true;
+    if (sizeSel) sizeSel.hidden = true;
     return;
   }
 
   const state = boardViewStateCache.get(String(listBoardFilter)) || null;
+  if (divSel) {
+    divSel.innerHTML = planOptionsHtml(PLAN_DIVISION_OPTIONS, state?.planDivision);
+    divSel.hidden = false;
+  }
+  if (sizeSel) {
+    sizeSel.innerHTML = planOptionsHtml(PLAN_SIZE_OPTIONS, state?.planSize);
+    sizeSel.hidden = false;
+  }
   const nation = state?.planNation || "";
   const nationOptions = [...plannerNationOptions];
   if (nation && !nationOptions.includes(nation)) nationOptions.unshift(nation);
@@ -1997,6 +2086,29 @@ function wireListBoardFilter() {
       renderListNationPicker();
     }
   });
+
+  const savePlanPick = async (patch) => {
+    if (listBoardFilter === "all") return;
+    try {
+      await saveBoardViewState(Number(listBoardFilter), {
+        activeIds: currentViewActiveTargetIds(),
+        ...patch,
+      });
+      if (Number(listBoardFilter) === Number(activeBoardNo)) {
+        if ("planDivision" in patch) plannerPlanDivision = patch.planDivision;
+        if ("planSize" in patch) plannerPlanSize = patch.planSize;
+        updatePlannerCompositionStrip(plannerApi?.getState?.() || null);
+      }
+      updateActiveTargetsHeader();
+    } catch (err) {
+      alert(err?.message || "Could not save board plan.");
+      renderListNationPicker();
+    }
+  };
+  const divSel = document.getElementById("scoutListDivisionSelect");
+  divSel?.addEventListener("change", () => savePlanPick({ planDivision: divSel.value || null }));
+  const sizeSel = document.getElementById("scoutListSizeSelect");
+  sizeSel?.addEventListener("change", () => savePlanPick({ planSize: sizeSel.value || null }));
 }
 
 function escapeHtml(s) {
@@ -2082,6 +2194,8 @@ async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = fals
     {
       activeIds: activeIds !== null ? activeIds : undefined,
       planNation: nation,
+      planDivision: plannerPlanDivision,
+      planSize: plannerPlanSize,
     }
   );
 
@@ -2102,6 +2216,8 @@ async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = fals
   boardViewStateCache.set(String(activeBoardNo), {
     activeIds: activeIds !== null ? activeIds : currentActiveTargetIds(),
     planNation: nation,
+    planDivision: plannerPlanDivision,
+    planSize: plannerPlanSize,
     hydrated: true,
   });
   if (listBoardFilter !== "all") {
@@ -2197,7 +2313,7 @@ function runScoutingAutofill({ pool, maxBench, maxSquad, labels }) {
     minU21: MIN_UNDER_21,
     minStars,
     minSquad: MIN_SQUAD_SIZE,
-    starCap: Number(squadDesignationsState?.star_cap ?? 3),
+    starCap: planStarCap(plannerPlanDivision, plannerPlanSize),
     minStarRating: Number(squadDesignationsState?.star_min_rating ?? 79),
   });
   // Keep nested / non-selected targets available in the pool on the full shortlist.
@@ -2290,6 +2406,8 @@ async function initPlanner() {
     clubNation ||
     squadDesignationsState?.club_nation ||
     null;
+  plannerPlanDivision = extractPlanDivisionFromLayout(pitchLayout);
+  plannerPlanSize = extractPlanSizeFromLayout(pitchLayout);
   const existingBoardState = boardViewStateCache.get(String(activeBoardNo));
   const layoutActiveIds = Array.isArray(pitchLayout?.scouting_active_target_ids)
     ? pitchLayout.scouting_active_target_ids
@@ -2303,6 +2421,8 @@ async function initPlanner() {
         ? layoutActiveIds
         : currentActiveTargetIds(),
     planNation: plannerPlanNation,
+    planDivision: plannerPlanDivision,
+    planSize: plannerPlanSize,
     hydrated: true,
   });
   await loadPlannerNationOptions();
