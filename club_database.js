@@ -43,7 +43,7 @@ const COLUMNS = [
   { key: "gate_money_80", label: "Gate 80%", sort: "gate_money_80", tip: "Gate money from a home match at 80% full." },
   { key: "owner_tag", label: "Owner", sort: "owner_tag", tip: "Current owner, or Vacant." },
   { key: "interest", label: "Interest", sort: null, tip: "Mark clubs you're interested in (or as a backup) ahead of the club auction, and see how many owners want each club." },
-  { key: "prestige_rank", label: "Prestige", sort: "prestige_rank", tip: "Prestige rank (1 = biggest club). Drives the league expectation, club tier and attendance." },
+  { key: "prestige_rank", label: "Prestige", sort: "prestige_rank", tip: "Prestige rank (1 = biggest club) and club status (Big / Medium / Small). Drives the league expectation, club tier and attendance. Big clubs may register 1 extra star player." },
 ];
 
 let allRows = [];
@@ -351,7 +351,7 @@ function render() {
         <td>${moneyCell(r.gate_money_80)}</td>
         <td>${escapeHtml(r.owner_tag || (isVacant(r) ? "Vacant" : "—"))}</td>
         ${interestCellHtml(r)}
-        <td>${r.prestige_rank != null ? escapeHtml(String(r.prestige_rank)) : "—"}</td>
+        <td>${r.prestige_rank != null ? escapeHtml(String(r.prestige_rank)) : "—"}${clubTierBadgeHtml(r)}</td>
       </tr>`;
     })
     .join("");
@@ -537,6 +537,46 @@ async function loadClubs() {
   allRows = data || [];
   fillNationFilter();
   render();
+  void loadClubTiers();
+}
+
+/** club_short_name (upper) → "big" | "medium" | "low" */
+const clubTierCache = new Map();
+
+async function loadClubTiers() {
+  const shorts = [
+    ...new Set(allRows.map((r) => String(r.club_short_name || "").toUpperCase()).filter(Boolean)),
+  ].filter((s) => !clubTierCache.has(s));
+  if (!shorts.length) return;
+  await Promise.all(
+    shorts.map(async (short) => {
+      const { data, error } = await supabase.rpc("competition_club_tier", {
+        p_club_short_name: short,
+      });
+      if (!error && data) clubTierCache.set(short, String(data));
+    })
+  );
+  render();
+}
+
+function clubTierFor(row) {
+  const cached = clubTierCache.get(String(row.club_short_name || "").toUpperCase());
+  if (cached) return cached;
+  const rank = Number(row.prestige_rank);
+  if (row.prestige_rank == null || !Number.isFinite(rank)) return "low";
+  return rank <= 10 ? "big" : rank <= 35 ? "medium" : "low";
+}
+
+function clubTierBadgeHtml(row) {
+  const tier = clubTierFor(row);
+  const label = tier === "big" ? "Big" : tier === "medium" ? "Medium" : "Small";
+  const tip =
+    tier === "big"
+      ? "Big club — top 10 prestige (+1 star player allowed)"
+      : tier === "medium"
+        ? "Medium club"
+        : "Small club";
+  return `<span class="club-tier club-tier-${tier}" title="${tip}">${label}</span>`;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
