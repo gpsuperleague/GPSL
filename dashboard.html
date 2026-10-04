@@ -457,6 +457,18 @@
         min-width: 0;
       }
 
+      .hide-email-toggle {
+        font-size: 10px;
+        padding: 1px 6px;
+        background: transparent;
+        color: #888;
+        border: 1px solid #444;
+        border-radius: 3px;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .hide-email-toggle:hover { color: #ff9900; border-color: #ff9900; }
+
       #userEmail {
         font-size: 10px;
         color: #999;
@@ -600,7 +612,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20260929-matchday-checklist"></script>
+  <script type="module" src="dashboard.js?v=20261004-hide-email"></script>
 
 </body>
 </html>

@@ -37,6 +37,46 @@ import { APP_VERSION } from "./app_version.js";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
 
+const HIDE_EMAIL_KEY = "gpsl_hide_email";
+
+export function isEmailHidden() {
+  try {
+    return localStorage.getItem(HIDE_EMAIL_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setEmailHidden(hidden) {
+  try {
+    if (hidden) localStorage.setItem(HIDE_EMAIL_KEY, "1");
+    else localStorage.removeItem(HIDE_EMAIL_KEY);
+  } catch {
+    /* ignore */
+  }
+  document.documentElement.classList.toggle("gpsl-hide-email", Boolean(hidden));
+}
+
+/** Recording / privacy mode: blanks the signed-in email on every page (?hide_email=1 / 0 also toggles). */
+function applyEmailPrivacyMode() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("hide_email");
+    if (param === "1" || param === "0") setEmailHidden(param === "1");
+  } catch {
+    /* ignore */
+  }
+  if (!document.getElementById("gpslHideEmailStyle")) {
+    const style = document.createElement("style");
+    style.id = "gpslHideEmailStyle";
+    style.textContent =
+      "html.gpsl-hide-email #userEmail, html.gpsl-hide-email #accountEmail, html.gpsl-hide-email [data-gpsl-email] { visibility:hidden !important; }";
+    document.head.appendChild(style);
+  }
+  document.documentElement.classList.toggle("gpsl-hide-email", isEmailHidden());
+}
+
+applyEmailPrivacyMode();
+
 let gpslSportModulePromise = null;
 
 function getGpslSportModule() {

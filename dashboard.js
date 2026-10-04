@@ -2,7 +2,14 @@
 // DASHBOARD.JS — Customizable owner tiles (grouped sections)
 // ===============================
 
-import { supabase, initGlobal, isGpslAdminUser, wireDraftCountdownUI } from "./global.js?v=20261002-light-mode";
+import {
+  supabase,
+  initGlobal,
+  isGpslAdminUser,
+  wireDraftCountdownUI,
+  isEmailHidden,
+  setEmailHidden,
+} from "./global.js?v=20261004-hide-email";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
 import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js";
@@ -210,6 +217,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const ownerTag = await loadOwnerTag();
   const emailEl = document.getElementById("userEmail");
   if (emailEl) emailEl.textContent = user.email;
+  wireHideEmailToggle();
   void refreshDashboardSupporterPill();
 
   const { data: club, error } = await supabase
@@ -913,6 +921,28 @@ function escapeBannerText(s) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function wireHideEmailToggle() {
+  const row = document.getElementById("userEmailRow");
+  if (!row || document.getElementById("hideEmailToggle")) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.id = "hideEmailToggle";
+  btn.className = "hide-email-toggle";
+  const sync = () => {
+    const hidden = isEmailHidden();
+    btn.textContent = hidden ? "Show email" : "Hide email";
+    btn.title = hidden
+      ? "Email is hidden on every page (for recording videos). Click to show it again."
+      : "Hide your email on every page (e.g. while recording videos)";
+  };
+  btn.addEventListener("click", () => {
+    setEmailHidden(!isEmailHidden());
+    sync();
+  });
+  sync();
+  row.insertBefore(btn, document.getElementById("userEmail")?.nextSibling || null);
 }
 
 function showNoClubBanner(email, ownerTag = "") {
