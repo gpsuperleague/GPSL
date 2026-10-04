@@ -203,9 +203,9 @@ export const CHALLENGES_TIPS = {
 
 export const MATCHDAY_TIPS = {
   page:
-    "Set your default matchday 23 (11 + 12) and submit results with optional squad stats. Opponent confirms via Inbox.",
+    "Save your matchday squad (exactly 11 starters + 0–12 bench) before kick-off — it is checked when you check in. Then submit results with optional squad stats; opponent confirms via Inbox.",
   squad:
-    "Default season matchday squad: 11 starters + 12 bench. Starters auto-tick Started on match stats. Formation presets only apply when you click Apply Default Formation.",
+    "Your matchday squad: exactly 11 starters (incl. a GK) + 0–12 bench, no injured or suspended players. Used for every match until you change it, and checked at check-in. Starters auto-tick Started on match stats. Formation presets only apply when you click Apply Default Formation.",
   submit:
     "Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Optional stats: exactly 11 Started, 0–5 Subbed on, goals must match your open-play total, one POTM.",
   yellow:
@@ -217,11 +217,11 @@ export const MATCHDAY_TIPS = {
 
 export const FIXTURES_TIPS = {
   page:
-    "Your games are highlighted. Stadium/Continent = home venue (Wembley for cup finals). Propose time needs availability on Owner Details. Enter result opens Match Day for score + squad stats.",
+    "Your games are highlighted. Stadium/Continent = home venue (Wembley for cup finals). Propose kick-off needs availability on Owner Details. Enter result opens Match Day for score + squad stats.",
   calendar:
     "Current GPSL play-month / calendar gate for arranging fixtures and submitting results.",
   propose:
-    "Opens match scheduling. Home usually proposes first; respond before the deadline (misses can fine ₿2.5m each).",
+    "Opens match scheduling. Home proposes first, before the GPSL month opens. Late or missed replies are fined when the GPSL month locks (₿2.5m late, ₿5m if nothing proposed).",
 };
 
 export const MEDICAL_EXTRA_TIPS = {

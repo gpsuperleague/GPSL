@@ -1031,15 +1031,24 @@ export function initMatchdaySquadPanel({
     const c = analyseMatchdayComposition(pitchPlayers, benchPlayers, clubNation);
     const chip = (label, value, min, ok) =>
       `<span class="matchday-comp-chip ${ok ? "ok" : "short"}" title="${label}: ${value} / ${min}">${label} <b>${value}</b><i>/${min}</i></span>`;
+    const startersOk = pitchPlayers.length === MAX_PITCH;
+    const unavailableN = unavailableSelectedErrors().length;
+    let verdict;
+    if (!c.ok) {
+      verdict = `<span class="matchday-comp-warn">Fix before save</span>`;
+    } else if (!startersOk) {
+      verdict = `<span class="matchday-comp-warn" title="Check-in is refused until exactly ${MAX_PITCH} starters are saved">Not ready for check-in (${pitchPlayers.length}/${MAX_PITCH} starters)</span>`;
+    } else if (unavailableN) {
+      verdict = `<span class="matchday-comp-warn">Remove ${unavailableN} unavailable player${unavailableN === 1 ? "" : "s"}</span>`;
+    } else {
+      verdict = `<span class="matchday-comp-ok" title="Remember to press Save default squad">Ready for check-in once saved</span>`;
+    }
     matchdayCompStrip.innerHTML = `
       <span class="matchday-comp-label">Matchday rules</span>
+      ${chip("Starters", pitchPlayers.length, MAX_PITCH, startersOk)}
       ${chip("XI GK", c.gkXi ?? c.goalkeepers, c.minGk, c.gkOk)}
       <span class="matchday-comp-chip muted" title="U21 / home-grown minimums apply to your overall club squad only">No U21/HG min on matchday</span>
-      ${
-        c.ok
-          ? `<span class="matchday-comp-ok">Ready to save</span>`
-          : `<span class="matchday-comp-warn">Fix before save</span>`
-      }`;
+      ${verdict}`;
   }
 
   function unavailableSelectedErrors() {
@@ -1191,7 +1200,7 @@ export function initMatchdaySquadPanel({
   }
 
   root.querySelector("#squadClearBtn").addEventListener("click", () => {
-    if (!confirm("Clear your saved matchday squad layout?")) return;
+    if (!confirm("Clear the pitch and bench? Your saved squad only changes if you then press Save.")) return;
     state = {
       pitch: emptyPitchMap(),
       bench: Array(benchLimit).fill(null),
@@ -1208,7 +1217,9 @@ export function initMatchdaySquadPanel({
     if (pitchN < MAX_PITCH) {
       if (
         !confirm(
-          `Only ${pitchN}/${MAX_PITCH} players on the pitch. Save anyway?`
+          matchdayComposition
+            ? `Only ${pitchN}/${MAX_PITCH} players on the pitch.\n\nYou can save this as a draft, but check-in will be refused until exactly ${MAX_PITCH} starters are saved. Save anyway?`
+            : `Only ${pitchN}/${MAX_PITCH} players on the pitch. Save anyway?`
         )
       ) {
         return;
@@ -1251,7 +1262,10 @@ export function initMatchdaySquadPanel({
       state = buildStateFromSaved(allPlayers, payload, benchLimit);
       state.maxBench = benchLimit;
       state.maxSquad = effectiveSquadLimit;
-      statusText.textContent = `Saved ${payload.length} players.`;
+      statusText.textContent =
+        matchdayComposition && pitchN < MAX_PITCH
+          ? `Saved ${payload.length} players — not ready for check-in (${pitchN}/${MAX_PITCH} starters).`
+          : `Saved ${payload.length} players.`;
     } catch (err) {
       statusText.textContent = err?.message || "Save failed";
       alert(err?.message || "Save failed");

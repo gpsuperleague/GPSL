@@ -38,9 +38,9 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20260926-catalogue-xy";
+} from "./matchday_squad.js?v=20261004-guidance";
 import { loadGpslFormations } from "./gpsl_formations.js?v=20260926-catalogue-xy";
-import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260926-dmf-amf-caps";
+import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20261004-guidance";
 import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
 import {
   matchConsoleStripHtml,
@@ -49,7 +49,8 @@ import {
   getMatchdayConsoleRulesCards,
 } from "./matchday_console_rules.js?v=20260926-dmf-amf-caps";
 import { playerNameLinkHtml } from "./player_links.js";
-import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20260929-mc";
+import { fullClubName } from "./clubs_lookup.js";
+import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261004-guidance";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -1106,7 +1107,52 @@ async function saveMatchdaySquad(slots, pitchLayout = null) {
     squadStatus.textContent =
       `${matchdaySquadRows.length} players saved — stats table filtered to your 23; pitch XI auto-tick Started.`;
   }
+  void renderNextFixtureSquadCheck();
   return data;
+}
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** "Valid for your next match vs X?" banner above the squad pitch. */
+async function renderNextFixtureSquadCheck() {
+  const el = document.getElementById("nextFixtureSquadCheck");
+  if (!el) return;
+  const { data, error } = await supabase.rpc("my_next_fixture_squad_check");
+  if (error || !data?.ok || !data.has_fixture) {
+    el.hidden = true;
+    return;
+  }
+  const opp = fullClubName(data.opponent_short_name) || data.opponent_short_name;
+  const vs = `${data.side === "home" ? "vs" : "at"} ${escapeHtml(opp)}`;
+  const when = data.kickoff_at
+    ? `kick-off ${escapeHtml(
+        new Date(data.kickoff_at).toLocaleString("en-GB", {
+          timeZone: "Europe/London",
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      )} UK`
+    : "kick-off not agreed yet";
+  const issues = Array.isArray(data.issues) ? data.issues.filter(Boolean) : [];
+  el.hidden = false;
+  if (data.squad_ready) {
+    el.className = "next-fx-check ok";
+    el.innerHTML = `<b>✓ Your saved squad is ready for your next match</b> — ${vs} (${when}).`;
+  } else {
+    el.className = "next-fx-check bad";
+    el.innerHTML = `<b>Your saved squad would not pass check-in for your next match</b> — ${vs} (${when}).
+      <ul>${issues.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>
+      Fix it below and press <b>Save default squad</b>.`;
+  }
 }
 
 function initSquadPanel() {
@@ -2030,6 +2076,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initSquadPanel();
   refreshSquadCardStatuses();
   renderPlayerStatsTable();
+  void renderNextFixtureSquadCheck();
 
   document.querySelectorAll(".matchday-tabs button").forEach((btn) => {
     btn.addEventListener("click", () => setMatchdayTab(btn.dataset.tab));

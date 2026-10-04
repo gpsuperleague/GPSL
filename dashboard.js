@@ -28,7 +28,7 @@ import {
   loadClubDashboardTheme,
 } from "./club_theme_common.js";
 import { startDashboardMatchday } from "./dashboard_matchday.js";
-import { startMatchdayChecklist } from "./matchday_checklist.js?v=20260929-mc";
+import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261004-guidance";
 import {
   leagueBadgeSrc,
   leagueTierForDivision,

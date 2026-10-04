@@ -40,6 +40,8 @@ function replayResetConfirmMessage(allowances) {
 }
 
 let ctx = null;
+/** match_schedule_fixture_deadlines(): propose-by / last play lock */
+let deadlines = null;
 let fixtureId = null;
 let selectedKickoff = null;
 let myClub = { short: null };
@@ -113,6 +115,78 @@ function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, o
   }
 
   return count;
+}
+
+function formatUkWhen(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.toLocaleString("en-GB", {
+    timeZone: UK_TZ,
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  })} UK`;
+}
+
+function relWhen(iso) {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "";
+  const diff = t - Date.now();
+  const mins = Math.round(Math.abs(diff) / 60000);
+  const txt =
+    mins < 60 ? `${mins}m` : mins < 2880 ? `${Math.floor(mins / 60)}h` : `${Math.floor(mins / 1440)}d ${Math.floor((mins % 1440) / 60)}h`;
+  return diff >= 0 ? `in ${txt}` : `${txt} ago`;
+}
+
+/** Propose-by deadline + last play date for an unagreed fixture. */
+function deadlineBoxHtml(f) {
+  const d = deadlines;
+  if (!d?.ok || ctx?.is_catch_up) return finalPlayLineHtml();
+  const now = Date.now();
+  const proposeBy = d.propose_by ? new Date(d.propose_by).getTime() : NaN;
+  const lateFrom = d.late_fee_from ? new Date(d.late_fee_from).getTime() : NaN;
+  const homeName = fullClubName(f.home_club_short_name) || f.home_club_short_name;
+  let html = "";
+
+  if (Number.isFinite(proposeBy) && proposeBy > now && !d.home_has_proposed) {
+    const late = Number.isFinite(lateFrom) && now >= lateFrom;
+    if (ctx.my_role === "home") {
+      html = `<div class="deadline-box${late ? " deadline-late" : ""}">
+        <b>Propose a kick-off by ${formatUkWhen(d.propose_by)}</b> (${relWhen(d.propose_by)}).
+        ${
+          late
+            ? "The ₿2.5m late fee now applies — propose now to avoid the ₿5m no-proposal fine."
+            : `Proposing after ${formatUkWhen(d.late_fee_from)} costs a ₿2.5m late fee; no proposal by the deadline is a ₿5m fine.`
+        }
+      </div>`;
+    } else {
+      html = `<div class="deadline-box deadline-info">
+        <b>${homeName}</b> (home) must propose a kick-off by ${formatUkWhen(d.propose_by)}.
+        You don't need to do anything yet — you'll get an <a href="inbox.html">Inbox</a> message to accept or counter.
+      </div>`;
+    }
+  }
+  return html + finalPlayLineHtml();
+}
+
+async function fillDiscordOpponentTag(f) {
+  const el = document.getElementById("discordOpponentTag");
+  if (!el || el.dataset.loaded === "1") return;
+  el.dataset.loaded = "1";
+  const opp = ctx?.my_role === "home" ? f.away_club_short_name : f.home_club_short_name;
+  const { data } = await supabase.from("Clubs").select("owner").eq("ShortName", opp).maybeSingle();
+  const tag = String(data?.owner || "").trim();
+  if (tag) el.innerHTML = ` (<b>${tag.replace(/[<>&"]/g, "")}</b>)`;
+}
+
+function finalPlayLineHtml() {
+  const d = deadlines;
+  if (!d?.ok || !d.final_play_lock) return "";
+  return `<p class="meta">Last chance to play: before <b>${formatUkWhen(d.final_play_lock)}</b>.
+    If it's still unplayed then, the result is awarded on scheduling activity (a true tie is recorded 0–0).</p>`;
 }
 
 function catchUpBannerHtml() {
@@ -215,6 +289,8 @@ function renderAgreedPanel(root, f, sch) {
       </p>
       <p class="meta">${checkinStatus}</p>
       <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
+      <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:#ff9900;">Check your squad</a> before kick-off.</p>
+      <p class="meta">If only one club checks in, the other is marked as a no-show. If the match is still unplayed when the GPSL month locks, the no-show becomes a <b>3–0 forfeit plus a ₿5m fine</b>.</p>
       ${
         ci.my_has_manager === false
           ? `<p class="meta" style="color:#f88;"><b>No manager signed</b> — you cannot check in or play until you hire one from the <a href="manager_listings.html" style="color:#ff9900;">Manager Transfer Market</a>.</p>`
@@ -241,8 +317,14 @@ function renderAgreedPanel(root, f, sch) {
         ${al.can_replay_reset ? '<button type="button" id="catchUpResetBtn" class="button secondary">Pick new time to play this month</button>' : ""}
         ${al.can_catch_up_reset && !al.can_replay_reset ? '<button type="button" id="catchUpResetBtn" class="button secondary">Reset for catch-up (pick new time)</button>' : ""}
         ${al.can_voluntary_drop ? '<button type="button" id="voluntaryDropBtn" class="button secondary">Drop & reschedule (24h+ notice)</button>' : ""}
-        ${al.can_emergency_drop ? '<button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (&lt;24h)</button>' : ""}
+        ${al.can_emergency_drop && Number(al.emergency_drops_remaining ?? 1) > 0 ? '<button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (&lt;24h)</button>' : ""}
       </div>
+      ${
+        al.can_emergency_drop && Number(al.emergency_drops_remaining ?? 1) <= 0
+          ? '<p class="meta" style="color:#e8a87c;">No emergency drops left this season — under 24h the kick-off can only change if both clubs agree (below).</p>'
+          : ""
+      }
+      ${finalPlayLineHtml()}
     </div>
     ${mutualHtml}
   `;
@@ -485,6 +567,7 @@ function render() {
 
   if (discord) {
     discord.hidden = !sch.discord_hint_shown;
+    if (sch.discord_hint_shown) void fillDiscordOpponentTag(f);
   }
 
   if (f.status === "played" || f.is_forfeit) {
@@ -522,7 +605,8 @@ function render() {
 
   if (meta) {
     const comp = formatFixtureCompetition(f);
-    meta.textContent = `${comp} · ${monthLabel} · Your role: ${ctx.my_role} · ${formatOwnerNowLine(ownerTz)}`;
+    const roleText = ctx.my_role === "home" ? "You are the home club" : ctx.my_role === "away" ? "You are the away club" : "";
+    meta.textContent = [comp, monthLabel, roleText, formatOwnerNowLine(ownerTz)].filter(Boolean).join(" · ");
   }
 
   let pendingHtml = "";
@@ -599,9 +683,14 @@ function render() {
       ? `${selectableSlots.length} slot${selectableSlots.length === 1 ? "" : "s"} in ${propMonth}`
       : `${selectableSlots.length} future slot${selectableSlots.length === 1 ? "" : "s"} (${pastHidden} past slot${pastHidden === 1 ? "" : "s"} hidden for your timezone)`;
 
-  const slotIntro = usingOwnSlots
-    ? `Home proposes first from <b>your</b> weekly availability (opponent does not need slots set yet). They can accept or counter from theirs when ready (${slotCountLine}).`
-    : `Home proposes first. Pick a 30-minute block from available times (${slotCountLine}).`;
+  const isAwayWaiting = ctx.my_role === "away" && !canPick;
+  const slotIntro = isAwayWaiting
+    ? `The home club proposes first. Your availability is shown below for reference — once they propose you can accept, or counter with one of these times (${slotCountLine}).`
+    : ctx.can_respond
+      ? `Accept the proposed time above, or pick one of your own times below and press Counter-propose (${slotCountLine}).`
+      : usingOwnSlots
+        ? `Pick a time from <b>your</b> weekly availability and press Propose kick-off — your opponent doesn't need to have set theirs yet. They can then accept or counter (${slotCountLine}).`
+        : `Pick a 30-minute block from available times (${slotCountLine}).`;
 
   const emptySlotsMsg = !selectableSlots.length
     ? slots.length
@@ -616,6 +705,7 @@ function render() {
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       ${responseHtml}
+      ${deadlineBoxHtml(f)}
       ${unavailablePanelHtml(f)}
       <p class="meta">${slotIntro}</p>
       ${emptySlotsMsg}
@@ -637,7 +727,7 @@ function render() {
       ctx.my_has_manager === false
         ? ""
         : `<div class="panel">
-      <h2>${usingOwnSlots ? "Your availability slots" : "Available slots"}</h2>
+      <h2>${isAwayWaiting ? "Your availability (for reference)" : usingOwnSlots ? "Your availability slots" : "Available slots"}</h2>
       <div class="slot-list" id="slotList"></div>
       ${
         canPick && selectableSlots.length
@@ -722,6 +812,10 @@ function render() {
 async function reload() {
   ctx = await loadScheduleContext(fixtureId);
   fixtureUnavailable = await loadFixtureUnavailable(supabase, fixtureId);
+  const { data: dl, error: dlErr } = await supabase.rpc("match_schedule_fixture_deadlines", {
+    p_fixture_id: fixtureId,
+  });
+  deadlines = dlErr ? null : dl;
   selectedKickoff = null;
   render();
 }
@@ -729,7 +823,16 @@ async function reload() {
 document.addEventListener("DOMContentLoaded", async () => {
   fixtureId = parseFixtureId();
   if (!fixtureId) {
-    setStatus("Missing fixture id.", true);
+    const root = document.getElementById("scheduleRoot");
+    if (root) {
+      root.innerHTML = `<div class="panel">
+        <p>Pick a fixture to arrange its kick-off.</p>
+        <div class="actions">
+          <a href="club_fixtures.html" class="button" style="text-decoration:none;display:inline-block;">My club fixtures</a>
+          <a href="dashboard.html#matchdayChecklist" class="button secondary" style="text-decoration:none;display:inline-block;">Matchday checklist</a>
+        </div>
+      </div>`;
+    }
     return;
   }
 
@@ -761,13 +864,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (err) {
     const msg = err.message || String(err);
     setStatus(
-      msg.includes("match_schedule_fixture_context")
-        ? "Scheduling not deployed — run supabase/sql/patches/match_scheduling_phase1.sql"
-        : msg.includes("fixture_check_in")
-          ? "Phase 2 not deployed — run supabase/sql/patches/match_scheduling_phase2.sql"
-          : msg.includes("fixture_mutual_override")
-            ? "Phase 3 not deployed — run supabase/sql/patches/match_scheduling_phase3_mutual_override.sql"
-            : msg,
+      /match_schedule_fixture_context|fixture_check_in|fixture_mutual_override/.test(msg)
+        ? "Match scheduling is unavailable right now — please tell the league admin."
+        : msg,
       true
     );
   }

@@ -11,6 +11,8 @@ const TICK_MS = 30_000;
 const COLLAPSE_KEY = "gpsl_mc_collapsed";
 
 let lastData = null;
+/** owner_upcoming_arrangements(): next-month fixtures still to arrange */
+let lastArrange = null;
 let refreshTimer = null;
 let tickTimer = null;
 
@@ -175,6 +177,64 @@ function renderFixture(fx) {
     </div>`;
 }
 
+function monthName(key) {
+  const k = String(key || "");
+  return k ? k[0].toUpperCase() + k.slice(1) : "";
+}
+
+function arrangeNeedsYou(a) {
+  return a.state === "propose" || a.state === "reply";
+}
+
+function renderArrangeRow(a) {
+  const fid = Number(a.fixture_id);
+  const vs = `${a.side === "home" ? "vs" : "@"} ${escapeHtml(clubLabel(a.opponent_short_name))}`;
+  const by = a.propose_by ? `${formatUk(a.propose_by)} UK (${relTime(a.propose_by)})` : "";
+  const lateNow = a.late_fee_from && new Date(a.late_fee_from).getTime() <= Date.now();
+  let label;
+  let detail = "";
+  let cls = "mc-next-quiet";
+  let action = "";
+  if (a.state === "propose") {
+    label = lateNow ? "Propose a kick-off now — ₿2.5m late fee applies" : "Propose a kick-off";
+    detail = by ? `by ${by}` : "";
+    cls = lateNow ? "mc-next-overdue" : "mc-next-todo";
+    action = "Propose";
+  } else if (a.state === "reply") {
+    label = "Reply to kick-off proposal";
+    detail = a.response_due_at ? `due ${formatUk(a.response_due_at)} UK (${relTime(a.response_due_at)})` : "";
+    cls = "mc-next-todo";
+    action = "Reply";
+  } else if (a.state === "waiting") {
+    label = "Kick-off proposed — waiting on opponent";
+  } else {
+    label = "Waiting for the home club to propose";
+    detail = by ? `they must propose by ${by}` : "";
+  }
+  return `
+    <div class="mc-fixture mc-arrange-row${arrangeNeedsYou(a) ? " mc-has-todo" : ""}">
+      <div class="mc-fx-head">
+        <span class="mc-fx-comp">${escapeHtml(competitionShortLabel(a))}</span>
+        <a class="mc-fx-vs" href="fixture_schedule.html?fixture=${fid}">${vs}</a>
+        <span class="mc-fx-ko">GPSL ${escapeHtml(monthName(a.gpsl_month))}</span>
+      </div>
+      <div class="mc-next ${cls}"><b>${escapeHtml(label)}</b>${detail ? ` <span class="mc-next-detail">${escapeHtml(detail)}</span>` : ""}</div>
+      ${action ? `<div class="mc-actions"><a class="mc-btn mc-btn-primary" href="fixture_schedule.html?fixture=${fid}">${action}</a></div>` : ""}
+    </div>`;
+}
+
+function renderArrangeBlock(list) {
+  if (!list.length) return "";
+  return `
+    <div class="mc-arrange">
+      <div class="mc-arrange-head">
+        <b>Arrange now — upcoming GPSL months</b>
+        <span>Home proposes a kick-off <b>before</b> that GPSL month starts. Last 48h = ₿2.5m late fee; no proposal by then = ₿5m.</span>
+      </div>
+      <div class="mc-list">${list.map(renderArrangeRow).join("")}</div>
+    </div>`;
+}
+
 function isCollapsed() {
   try {
     return localStorage.getItem(COLLAPSE_KEY) === "1";
@@ -197,23 +257,25 @@ function render() {
   const data = lastData;
   const fixtures = Array.isArray(data?.fixtures) ? data.fixtures : [];
   const clubFlags = Array.isArray(data?.flags) ? data.flags : [];
+  const arrange = Array.isArray(lastArrange?.fixtures) ? lastArrange.fixtures : [];
 
-  if (!data?.ok || (!fixtures.length && !clubFlags.length)) {
+  if ((!data?.ok || (!fixtures.length && !clubFlags.length)) && !arrange.length) {
     section.hidden = true;
     section.innerHTML = "";
     return;
   }
   section.hidden = false;
 
-  const needs = Number(data.needs_you) || 0;
+  const arrangeNeeds = arrange.filter(arrangeNeedsYou).length;
+  const needs = (Number(data?.needs_you) || 0) + arrangeNeeds;
   const open = fixtures.filter((f) => !f.all_done);
   const done = fixtures.filter((f) => f.all_done);
-  const month = data.gpsl_month ? data.gpsl_month[0].toUpperCase() + data.gpsl_month.slice(1) : "";
-  const lock = data.month_lock_at
+  const month = data?.gpsl_month ? data.gpsl_month[0].toUpperCase() + data.gpsl_month.slice(1) : "";
+  const lock = data?.month_lock_at
     ? `<span class="mc-lock" title="${escapeHtml(formatUk(data.month_lock_at))} UK">Month locks ${escapeHtml(relTime(data.month_lock_at))}</span>`
     : "";
 
-  if (!open.length && !clubFlags.length) {
+  if (!open.length && !clubFlags.length && !arrange.length) {
     section.className = "mc-panel mc-all-done";
     section.innerHTML = `<div class="mc-head"><h2>✓ Matchday checklist</h2><span class="mc-count mc-count-done">All done${month ? ` for ${escapeHtml(month)}` : ""}</span>${lock}</div>`;
     return;
@@ -222,7 +284,7 @@ function render() {
   const collapsed = isCollapsed();
   section.className = `mc-panel${needs > 0 ? " mc-needs" : ""}${collapsed ? " mc-collapsed" : ""}`;
   const countText = needs > 0
-    ? `${needs} thing${needs === 1 ? "" : "s"} need${needs === 1 ? "s" : ""} you${month ? ` this month` : ""}`
+    ? `${needs} thing${needs === 1 ? "" : "s"} need${needs === 1 ? "s" : ""} you`
     : "Nothing needs you right now";
 
   const doneLine = done.length
@@ -240,8 +302,9 @@ function render() {
     </div>
     <div class="mc-body">
       ${clubFlags.length ? `<div class="mc-flags mc-club-flags">${renderFlags(clubFlags)}</div>` : ""}
-      <div class="mc-list">${open.map(renderFixture).join("")}</div>
+      ${open.length ? `<div class="mc-list">${open.map(renderFixture).join("")}</div>` : ""}
       ${doneLine}
+      ${renderArrangeBlock(arrange)}
       <div class="mc-legend">✓ done · ● your move · ⏳ waiting on opponent · ○ later · ! overdue</div>
     </div>`;
 
@@ -298,8 +361,17 @@ export async function fetchMatchdayChecklist() {
   return data;
 }
 
+export async function fetchUpcomingArrangements() {
+  const { data, error } = await supabase.rpc("owner_upcoming_arrangements");
+  if (error) {
+    console.warn("owner_upcoming_arrangements:", error.message);
+    return null;
+  }
+  return data;
+}
+
 export async function refreshMatchdayChecklist() {
-  lastData = await fetchMatchdayChecklist();
+  [lastData, lastArrange] = await Promise.all([fetchMatchdayChecklist(), fetchUpcomingArrangements()]);
   render();
 }
 

@@ -21,7 +21,7 @@ export const SECTION_MATCHDAY_CHECKLIST = {
         {
           html: `<b>Home club</b>`,
           children: [
-            `Proposes in GPSL at least <b>1 GPSL month before</b> the fixture`,
+            `Proposes in GPSL at least <b>1 GPSL month before</b> the fixture (the propose-by date is on the schedule page and dashboard checklist; the last 48 hours before it carry a ₿2.5m late fee)`,
             `Responds to counters from the opponent`,
           ],
         },
@@ -38,9 +38,9 @@ export const SECTION_MATCHDAY_CHECKLIST = {
       type: "ul",
       items: [
         {
-          html: `Both clubs ensure the <a href="matchday.html">Matchday</a> squad has:`,
+          html: `Both clubs save a <a href="matchday.html">Match Day</a> squad <b>before kick-off</b> — it is checked when you check in. It needs:`,
           children: [
-            `<b>23</b> fit and available players (your club squad itself must be at least <b>24</b>)`,
+            `Exactly <b>11 starters</b> plus <b>0–12</b> on the bench (your club squad itself must be at least <b>24</b>)`,
             `At least <b>1 GK</b> in the starting XI`,
             `Injured and suspended players removed`,
             `Emergency loans added if required and prompted`,
@@ -53,7 +53,7 @@ export const SECTION_MATCHDAY_CHECKLIST = {
     {
       type: "ul",
       items: [
-        `Both owners must <b>check in at KO</b> on the <a href="fixture_schedule.html">schedule page</a> — <b>10 minutes after kick-off</b> is the latest`,
+        `Both owners must <b>check in</b> on the <a href="fixture_schedule.html">schedule page</a> — opens <b>10 minutes before</b> kick-off, closes <b>10 minutes after</b>`,
         `Match should be played within the agreed <b>30-minute window</b>`,
       ],
     },
@@ -192,7 +192,7 @@ export const SECTION_MATCH_SCHEDULING = {
       items: [
         `<b>1.</b> Set your weekly availability on <a href="owner_details.html">Owner Details</a>.`,
         `<b>2.</b> <b>Home proposes first</b> on Fixtures → Schedule (or via Inbox). Away accepts or counters.`,
-        `<b>3.</b> At kick-off, both <b>check in within 10 minutes</b>, then enter the result on Match Day.`,
+        `<b>3.</b> Save your Match Day squad, then both <b>check in</b> (10 minutes before to 10 minutes after kick-off) and enter the result on Match Day.`,
         `<b>4.</b> If the month ends and the game still isn’t played, it becomes <b>catch-up</b> — you can still play it later. It is <b>not</b> an automatic 3–0 (unless there was a recorded no-show).`,
       ],
     },
@@ -234,7 +234,8 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `At the agreed kick-off, both owners open the <b>schedule page</b> and <b>Check in within 10 minutes</b>.`,
+        `Before kick-off, save a valid squad on <a href="matchday.html">Match Day</a> (exactly 11 starters incl. a GK, no injured or suspended players) — check-in is refused otherwise.`,
+        `Both owners open the <b>schedule page</b> and <b>Check in</b> — from 10 minutes before kick-off until 10 minutes after.`,
         `When both have checked in, Match Day unlocks for a <b>30-minute</b> play window.`,
         `<b>Both miss check-in</b> — no fine. Pick a new time on the schedule page and try again.`,
         `<b>Only one checks in</b> — recorded as a no-show, but <b>not</b> an instant 3–0. If you still play and confirm a normal result, you are fine. If the next month lock arrives and the match is still unfinished, the no-show club gets <b>3–0 + ₿5m</b> (same rule for catch-up games arranged later).`,
@@ -308,8 +309,10 @@ export const SECTION_MATCH_SCHEDULING = {
       type: "ul",
       items: [
         `<b>Match time proposed / countered</b> — Accept or open Schedule to counter.`,
-        `<b>Match time agreed</b> — check in at kick-off.`,
+        `<b>Match time agreed</b> — save your squad, then check in (10 minutes either side of kick-off).`,
         `<b>Reply / propose warnings</b> — deadlines approaching; act to avoid fines.`,
+        `<b>Arrange-now reminders</b> — sent in the days before the propose-by date for fixtures you still need to arrange.`,
+        `<b>Squad warning</b> — your saved squad would fail check-in for an upcoming kick-off (e.g. injured or suspended player picked).`,
         `<b>Fine applied</b> — scheduling or matchday; the note explains which fixture.`,
         `<b>Window award / 0–0</b> — play window expired without a result.`,
       ],

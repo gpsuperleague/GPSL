@@ -1,7 +1,7 @@
-﻿<script>window.CURRENT_PAGE = "fixtures";</script>
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>window.CURRENT_PAGE = "fixtures";</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Schedule match — GPSL</title>
@@ -75,6 +75,13 @@
     }
     .unavailable-pos { color:#777; }
     .unavailable-detail { color:#999; }
+    .deadline-box {
+      background:#2a2200; border:1px solid #996600; border-radius:6px;
+      padding:10px 12px; color:#ffdf99; font-size:13px; line-height:1.45; margin:10px 0;
+    }
+    .deadline-box.deadline-late { background:#2a1212; border-color:#a04040; color:#ffb8b8; }
+    .deadline-box.deadline-info { background:#101c28; border-color:#2a4a6a; color:#cfe3ff; }
+    .deadline-box a { color:#ff9900; }
   </style>
 </head>
 <body>
@@ -84,11 +91,11 @@
     <h1>Schedule match</h1>
     <p id="scheduleMeta" class="meta">Loading…</p>
     <div id="discordHint" class="discord-hint" hidden>
-      You have each proposed two times. Contact your opponent on <b>Discord</b> to agree a time, then pick a slot below or continue countering.
+      You have each proposed two times. Contact your opponent on <b>Discord</b><span id="discordOpponentTag"></span> to agree a time, then pick a slot below or continue countering.
     </div>
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20260924-stadium-rules"></script>
+  <script type="module" src="fixture_schedule.js?v=20261004-guidance"></script>
 </body>
 </html>

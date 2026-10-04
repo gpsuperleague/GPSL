@@ -98,12 +98,9 @@ export function formatResponseDeadlineLine(deadline, myClubShort) {
   const mine = deadline.my_turn === true;
   const overdue = deadline.overdue === true;
   const uk = deadline.due_at_uk || formatKickoff(deadline.due_at, UK_TZ) + " UK";
-  const misses =
-    Number(deadline.miss_count) > 0
-      ? ` · ${deadline.miss_count} missed deadline${Number(deadline.miss_count) === 1 ? "" : "s"} (₿2.5m each)`
-      : "";
+  const misses = "";
   if (mine && overdue) {
-    return `Response overdue since ${uk}${misses} — respond now to stop further fines.`;
+    return `Response overdue since ${uk} — reply now. A ₿2.5m missed-response fine is charged when this GPSL month locks if it is still overdue (once per lock).`;
   }
   if (mine) {
     return `Your response due by ${uk}${misses}.`;
@@ -392,7 +389,7 @@ export function scheduleActionLabel(fixture, myClubShort) {
       return { label: "Catch-up · re-schedule", href: scheduleUrl(fixture.id) };
     }
     return {
-      label: catchUp ? "Catch-up · match day" : "Match day",
+      label: catchUp ? "Catch-up · kick-off agreed" : "Kick-off agreed",
       href: scheduleUrl(fixture.id),
       muted: true,
     };
@@ -403,13 +400,13 @@ export function scheduleActionLabel(fixture, myClubShort) {
 
   if (fixture.schedule_status === "unscheduled" && isHome) {
     return {
-      label: catchUp ? "Catch-up · propose" : "Propose time",
+      label: catchUp ? "Catch-up · propose kick-off" : "Propose kick-off",
       href: scheduleUrl(fixture.id),
     };
   }
   if (fixture.schedule_status === "unscheduled" && isAway) {
     return {
-      label: catchUp ? "Catch-up · awaiting home" : "Awaiting home",
+      label: catchUp ? "Catch-up · waiting for home" : "Waiting for home",
       href: scheduleUrl(fixture.id),
       muted: true,
     };
@@ -423,15 +420,15 @@ export function scheduleActionLabel(fixture, myClubShort) {
     if (myTurn) {
       return {
         label: catchUp
-          ? "Catch-up · confirm / propose"
-          : "Confirm / Propose new time",
+          ? "Catch-up · reply to proposal"
+          : "Reply to proposal",
         href: scheduleUrl(fixture.id),
       };
     }
     return {
       label: catchUp
-        ? "Catch-up · awaiting confirmation"
-        : "Awaiting confirmation",
+        ? "Catch-up · waiting on opponent"
+        : "Waiting on opponent",
       href: scheduleUrl(fixture.id),
       muted: true,
     };

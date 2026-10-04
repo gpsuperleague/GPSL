@@ -212,12 +212,16 @@
       border-radius: 3px;
       vertical-align: middle;
     }
+    .next-fx-check { margin:0 0 12px; padding:10px 12px; border-radius:6px; font-size:13px; line-height:1.45; }
+    .next-fx-check.ok { background:#142014; border:1px solid #2f5a2f; color:#bfe8bf; }
+    .next-fx-check.bad { background:#2a1414; border:1px solid #7a2a2a; color:#ffc0c0; }
+    .next-fx-check ul { margin:6px 0 0 18px; padding:0; }
   </style>
 </head>
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1 class="gpsl-has-tip" data-gpsl-tip="Set your default matchday 23 (11 + 12) and submit results with optional squad stats. Opponent confirms via Inbox." tabindex="0">Match Day</h1>
+    <h1 class="gpsl-has-tip" data-gpsl-tip="Save your matchday squad (11 starters + up to 12 subs) — it is checked when you check in. After the match, submit the result with player stats (11 starters, goals and assists required). Opponent confirms via Inbox." tabindex="0">Match Day</h1>
     <p id="pageMeta" class="meta">Loading…</p>
     <p id="calendarBanner" class="meta" style="display:none;border:1px solid #444;background:#1a1a22;padding:10px 12px;border-radius:6px;"></p>
 
@@ -227,7 +231,8 @@
     </div>
 
     <div class="panel squad-panel-wrap active" id="squadPanel">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="Default season matchday squad: 11 starters + 12 bench. Starters auto-tick Started on match stats. Formation presets only apply when you click Apply Default Formation." tabindex="0">Default matchday squad</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="One saved squad used for every fixture: 11 starters + up to 12 subs. Checked at check-in. Starters auto-tick Started on match stats." tabindex="0">Your matchday squad</h2>
+      <div id="nextFixtureSquadCheck" class="next-fx-check" hidden></div>
       <div class="info-box" id="matchdaySquadRules" style="margin:0 0 14px;max-width:none;padding:12px 14px;" aria-label="Matchday squad help">
         <div class="rules-grid">
           <section class="rules-card">
@@ -396,6 +401,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20260929-mc-badges"></script>
+  <script type="module" src="matchday.js?v=20261004-guidance"></script>
 </body>
 </html>

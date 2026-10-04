@@ -406,7 +406,14 @@ function intlFixtureCardHtml(f) {
   const groupBit = f.group_code ? `Group ${f.group_code}` : null;
   const weekBit = f.week_in_month != null ? `Week ${f.week_in_month}` : null;
   const kickoff = f.agreed_kickoff_at
-    ? new Date(f.agreed_kickoff_at).toLocaleString()
+    ? `${new Date(f.agreed_kickoff_at).toLocaleString("en-GB", {
+        timeZone: "Europe/London",
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })} UK`
     : f.schedule_status === "agreed"
       ? "Kick-off agreed"
       : "Arrange on matchday";
