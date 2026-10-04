@@ -38,6 +38,42 @@ const GATE_PRICE_PER_SEAT = 20;
 const STADIUM_VALUE_PER_SEAT = 1500;
 let maintenanceRate = 0.125;
 let maintenanceRateLoaded = false;
+/** club_short_name (upper) → "big" | "medium" | "low" */
+const clubTierCache = new Map();
+
+async function loadClubTiers(listings) {
+  const missing = listings
+    .map((l) => String(l.club_short_name || "").toUpperCase())
+    .filter((s) => s && !clubTierCache.has(s));
+  await Promise.all(
+    missing.map(async (short) => {
+      const { data, error } = await supabase.rpc("competition_club_tier", {
+        p_club_short_name: short,
+      });
+      if (!error && data) clubTierCache.set(short, String(data));
+    })
+  );
+}
+
+function clubTierFor(row) {
+  const cached = clubTierCache.get(String(row.club_short_name || "").toUpperCase());
+  if (cached) return cached;
+  const rank = Number(row.prestige_rank);
+  if (!Number.isFinite(rank)) return "low";
+  return rank <= 10 ? "big" : rank <= 35 ? "medium" : "low";
+}
+
+function clubTierBadgeHtml(row) {
+  const tier = clubTierFor(row);
+  const label = tier === "big" ? "Big" : tier === "medium" ? "Medium" : "Small";
+  const tip =
+    tier === "big"
+      ? "Big club — top 10 prestige (+1 star player allowed)"
+      : tier === "medium"
+        ? "Medium club"
+        : "Small club";
+  return `<span class="club-tier club-tier-${tier}" title="${tip}">${label}</span>`;
+}
 const BID_INCREMENT = 500000;
 const TABLE_COLS = 11;
 
@@ -811,6 +847,7 @@ async function loadListings() {
     if (!pctErr && Number.isFinite(Number(pct)) && Number(pct) >= 0) maintenanceRate = Number(pct) / 100;
   }
   const maintPctLabel = `${Number((maintenanceRate * 100).toFixed(3))}%`;
+  await loadClubTiers(listings);
 
   listingsCache = listings;
   const canBid =
@@ -834,7 +871,7 @@ async function loadListings() {
 
     tr.innerHTML = `
       <td></td>
-      <td>${row.prestige_rank != null ? `<span class="rank-pill">${row.prestige_rank}</span>` : "—"}</td>
+      <td>${row.prestige_rank != null ? `<span class="rank-pill">${row.prestige_rank}</span>` : "—"}${clubTierBadgeHtml(row)}</td>
       <td class="stat-num">${formatNum(row.capacity)}<span class="stat-sub">seats</span></td>
       <td class="stat-num">${formatMoney(gate)}<span class="stat-sub">100% fill · ₿${GATE_PRICE_PER_SEAT}/seat</span></td>
       <td class="stat-num">${formatMoney(maint)}<span class="stat-sub">${maintPctLabel} × cap × ₿${STADIUM_VALUE_PER_SEAT.toLocaleString("en-GB")}</span></td>
