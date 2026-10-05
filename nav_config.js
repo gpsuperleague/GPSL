@@ -265,13 +265,6 @@ export const NAV_SECTIONS = [
         page: "video_tutorials",
         indent: true,
       },
-      {
-        href: "video_tutorials.html#transfers",
-        label: "Transfers",
-        page: "video_tutorials",
-        hash: "transfers",
-        indent: 2,
-      },
       { heading: true, label: "Scheduling" },
       {
         href: "season_calendar.html",

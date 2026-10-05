@@ -2551,17 +2551,36 @@ export async function buildNav() {
               label: "Video tutorials",
               page: "video_tutorials",
             },
-            {
-              href: "video_tutorials.html#transfers",
-              label: "Transfers",
-              page: "video_tutorials",
-              hash: "transfers",
-              indent: true,
-            },
           ],
         },
       ];
     }
+  }
+
+  try {
+    const vtMod = await import(`./video_tutorials_data.js?v=${GLOBAL_JS_VERSION}`);
+    const vtFolders = await Promise.race([
+      vtMod.loadVideoTutorialMenuFolders(supabase),
+      new Promise((resolve) => setTimeout(() => resolve([]), 3000)),
+    ]);
+    if (vtFolders.length) {
+      navSections = navSections.map((section) => {
+        const items = section.items || [];
+        const at = items.findIndex((it) => it.page === "video_tutorials" && !it.hash);
+        if (at < 0) return section;
+        const parent = items[at];
+        const subs = vtFolders.map((f) => ({
+          href: `video_tutorials.html#${f.slug}`,
+          label: f.title,
+          page: "video_tutorials",
+          hash: f.slug,
+          indent: parent.indent ? 2 : true,
+        }));
+        return { ...section, items: [...items.slice(0, at + 1), ...subs, ...items.slice(at + 1)] };
+      });
+    }
+  } catch (vtErr) {
+    console.warn("Nav video tutorial folders skipped:", vtErr);
   }
 
   if (isGpslAdminNav && ADMIN_NAV_SECTION?.items?.length) {

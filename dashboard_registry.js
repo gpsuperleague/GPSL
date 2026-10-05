@@ -276,6 +276,7 @@ export const DASHBOARD_PANELS = [
   p("admin_managers_import", "Import Managers", "admin_managers_import.html", { adminOnly: true }),
   p("admin_club_attendance", "Club Attendance", "admin_club_attendance.html", { adminOnly: true }),
   p("admin_natter", "Natter Admin", "admin_natter.html", { adminOnly: true }),
+  p("admin_video_tutorials", "Video Tutorials Admin", "admin_video_tutorials.html", { adminOnly: true }),
   p("tc_scouting", "Scouting Targets", "transfer_center.html#scouting-targets", {
     page: "transfer_center.html",
     section: true,

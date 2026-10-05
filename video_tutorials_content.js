@@ -1,5 +1,6 @@
 /**
- * Video tutorials shown on video_tutorials.html (Owners → Knowledge → Video tutorials).
+ * Fallback only: video tutorials are managed in admin_video_tutorials.html (database).
+ * This list is used just if the video_tutorial_* tables can't be read.
  *
  * Add a video: copy a line like the example below into the right section's `videos` list.
  *   { title: "How to list a player", url: "https://www.youtube.com/watch?v=XXXXXXXXXXX", description: "" },

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Video tutorials — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .vta-note { font-size:13px; color:#aaa; line-height:1.5; margin-bottom:14px; max-width:960px; }
+    .vta-layout { display:grid; grid-template-columns: minmax(260px, 340px) 1fr; gap:16px; align-items:start; }
+    @media (max-width: 900px) { .vta-layout { grid-template-columns: 1fr; } }
+    .vta-card { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:14px; }
+    .vta-card h2 { color:#ffaa22; font-size:15px; margin:0 0 10px; }
+    .vta-card h3 { color:#ddd; font-size:14px; margin:16px 0 8px; }
+    .vta-tree { list-style:none; margin:0; padding:0; }
+    .vta-tree ul { list-style:none; margin:0; padding-left:16px; border-left:1px solid #2a2a2a; }
+    .vta-node { display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:5px; cursor:pointer; font-size:13px; }
+    .vta-node:hover { background:#222; }
+    .vta-node.sel { background:#2a2010; color:#ffaa22; }
+    .vta-node .cnt { margin-left:auto; color:#777; font-size:11px; }
+    .vta-node .menu { font-size:10px; color:#7ddf7d; border:1px solid #2d5a2d; border-radius:8px; padding:0 5px; }
+    .vta-form { display:grid; gap:8px; }
+    .vta-form label { font-size:12px; color:#aaa; display:grid; gap:4px; }
+    .vta-form input[type=text], .vta-form input[type=url], .vta-form input[type=number], .vta-form select, .vta-form textarea {
+      background:#111; color:#eee; border:1px solid #333; border-radius:5px; padding:7px 9px; font-size:13px; width:100%; box-sizing:border-box;
+    }
+    .vta-form textarea { min-height:52px; resize:vertical; }
+    .vta-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .vta-check { display:inline-flex !important; grid-template-columns:none !important; align-items:center; gap:6px; color:#ccc !important; }
+    .vta-video { border:1px solid #2a2a2a; border-radius:6px; padding:10px; margin-bottom:8px; background:#151515; }
+    .vta-video .vta-row input[type=text], .vta-video .vta-row input[type=url] { flex:1 1 220px; }
+    .vta-video .order { display:flex; gap:4px; }
+    .vta-btn-sm { padding:4px 9px !important; font-size:12px !important; }
+    .vta-danger { background:#7a2020 !important; }
+    .vta-ok { background:#228822 !important; }
+    .vta-muted { color:#777; font-size:12px; }
+    .vta-link { color:#ff9900; font-size:12px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Video tutorials</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="vta-note">
+        Create <b>folders</b> (and sub-folders inside them) and add <b>videos</b> with a title and link.
+        Owners see them on <a class="vta-link" href="video_tutorials.html" target="_blank">Video tutorials</a>;
+        the title becomes the clickable link, and YouTube links also play on the page.
+        Top-level folders ticked <b>Show in menu</b> appear under <b>Owners → Knowledge → Video tutorials</b>
+        (owners' menus refresh within about 10 minutes).
+      </p>
+      <div id="pageStatus" class="status-line"></div>
+      <div class="vta-layout">
+        <div class="vta-card">
+          <h2>Folders</h2>
+          <ul id="folderTree" class="vta-tree"><li class="vta-muted">Loading…</li></ul>
+          <h3>New folder</h3>
+          <div class="vta-form">
+            <label>Name <input type="text" id="newFolderTitle" placeholder="e.g. Transfers"></label>
+            <label>Inside
+              <select id="newFolderParent"></select>
+            </label>
+            <label class="vta-check"><input type="checkbox" id="newFolderMenu" checked> Show in menu (top-level only)</label>
+            <div class="vta-row"><button type="button" class="button vta-ok" id="addFolderBtn">Add folder</button></div>
+          </div>
+        </div>
+        <div class="vta-card" id="folderPanel">
+          <p class="vta-muted">Select a folder on the left.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_video_tutorials.js?v=20261005-vt-admin"></script>
+</body>
+</html>
