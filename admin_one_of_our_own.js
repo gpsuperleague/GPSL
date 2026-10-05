@@ -4,9 +4,21 @@ import { formatMoney } from "./competition.js";
 primeAdminPageChrome();
 
 let overview = [];
+/** @type {Map<string, string>} club ShortName → owner tag (owned clubs only) */
+let ownerByClub = new Map();
+
+const OWNED_ONLY_KEY = "gpsl_ooo_owned_only";
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
+
+  const ownedOnlyCb = document.getElementById("ownedOnlyCb");
+  ownedOnlyCb.checked = localStorage.getItem(OWNED_ONLY_KEY) !== "0";
+  ownedOnlyCb.onchange = () => {
+    localStorage.setItem(OWNED_ONLY_KEY, ownedOnlyCb.checked ? "1" : "0");
+    renderRows();
+    updateSummary();
+  };
 
   document.getElementById("reloadBtn").onclick = loadOverview;
   document.getElementById("selectAllBtn").onclick = () => toggleAll(true);
@@ -26,7 +38,10 @@ function escapeHtml(text) {
 
 async function loadOverview() {
   setStatus("pageStatus", "Loading…");
-  const { data, error } = await supabase.rpc("competition_admin_one_of_our_own_overview");
+  const [{ data, error }, ownersRes] = await Promise.all([
+    supabase.rpc("competition_admin_one_of_our_own_overview"),
+    supabase.from("Clubs").select("ShortName, owner, owner_id"),
+  ]);
   if (error) {
     setStatus(
       "pageStatus",
@@ -35,21 +50,50 @@ async function loadOverview() {
     );
     return;
   }
+  ownerByClub = new Map();
+  if (ownersRes.error) {
+    console.warn("One of our Own: could not load club owners", ownersRes.error);
+  } else {
+    for (const row of ownersRes.data || []) {
+      if (!row.owner_id) continue;
+      ownerByClub.set(row.ShortName, String(row.owner || "").trim() || "Owned");
+    }
+  }
   overview = Array.isArray(data) ? data : [];
   renderRows();
-  const pending = overview.filter((c) => !c.already_drawn).length;
-  setStatus("pageStatus", `${overview.length} club(s) — ${pending} without a draw yet.`, true);
+  updateSummary();
+}
+
+function ownedOnly() {
+  return !!document.getElementById("ownedOnlyCb")?.checked;
+}
+
+function visibleClubs() {
+  return ownedOnly() ? overview.filter((c) => ownerByClub.has(c.short_name)) : overview;
+}
+
+function updateSummary() {
+  const rows = visibleClubs();
+  const pending = rows.filter((c) => !c.already_drawn).length;
+  const scope = ownedOnly() ? "owned club(s)" : "club(s)";
+  setStatus("pageStatus", `${rows.length} ${scope} — ${pending} without a draw yet.`, true);
 }
 
 function renderRows() {
   const tbody = document.getElementById("clubRows");
-  if (!overview.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="note">No clubs found.</td></tr>`;
+  const rows = visibleClubs();
+  if (!rows.length) {
+    const msg = ownedOnly() && overview.length ? "No owned clubs found." : "No clubs found.";
+    tbody.innerHTML = `<tr><td colspan="6" class="note">${msg}</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = overview
+  tbody.innerHTML = rows
     .map((c) => {
+      const owner = ownerByClub.get(c.short_name);
+      const ownerCell = owner
+        ? escapeHtml(owner)
+        : `<span class="ooo-unowned">Unowned</span>`;
       const eligible = Number(c.eligible_count || 0);
       const band = String(c.eligible_band || "79+");
       const eligibleLabel = `${eligible} · ${escapeHtml(band)}`;
@@ -59,6 +103,7 @@ function renderRows() {
         return `<tr class="drawn">
           <td></td>
           <td>${escapeHtml(c.club || c.short_name)}</td>
+          <td>${ownerCell}</td>
           <td>${escapeHtml(c.nation || "—")}</td>
           <td>${eligibleLabel}</td>
           <td><span class="ooo-badge">${player} · ${fee}</span></td>
@@ -69,6 +114,7 @@ function renderRows() {
       return `<tr>
         <td><input type="checkbox" class="ooo-cb" value="${escapeHtml(c.short_name)}" ${disabled}></td>
         <td>${escapeHtml(c.club || c.short_name)}</td>
+        <td>${ownerCell}</td>
         <td>${escapeHtml(c.nation || "—")}</td>
         <td class="${countClass}">${eligibleLabel}</td>
         <td><span class="ooo-badge none">Not drawn</span></td>
