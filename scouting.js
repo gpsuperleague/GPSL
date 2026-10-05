@@ -151,7 +151,7 @@ let ownedSquadPlayers = null;
 /** @type {object|null} */
 let squadDesignationsState = null;
 const SCOUTING_ALL_VIEW_ACTIVE_KEY = "gpsl_scouting_active_targets_all";
-/** @type {Map<string, { activeIds: string[], planNation: string|null, planDivision: string|null, planSize: string|null, boardOnly?: boolean, hydrated: boolean }>} */
+/** @type {Map<string, { activeIds: string[], planNation: string|null, planDivision: string|null, planSize: string|null, boardOnly?: boolean, oooId?: string|null, hydrated: boolean }>} */
 let boardViewStateCache = new Map();
 /** Debounced auto-save after tactic-board placements. */
 let plannerAutoSaveTimer = null;
@@ -340,7 +340,7 @@ function extractBoardOnlyFromLayout(layout) {
 
 function plannerLayoutWithListMeta(
   layout,
-  { activeIds, planNation, planDivision, planSize, boardOnly } = {}
+  { activeIds, planNation, planDivision, planSize, boardOnly, oooId } = {}
 ) {
   const next =
     layout && typeof layout === "object" && !Array.isArray(layout)
@@ -371,7 +371,37 @@ function plannerLayoutWithListMeta(
     if (boardOnly) next.scouting_board_only = true;
     else delete next.scouting_board_only;
   }
+  if (oooId !== undefined) {
+    if (oooId) next.scouting_ooo_player_id = String(oooId);
+    else delete next.scouting_ooo_player_id;
+  }
   return next;
+}
+
+const SCOUTING_ALL_VIEW_OOO_KEY = "gpsl_scouting_all_view_ooo";
+
+function readAllViewOooId() {
+  try {
+    const v = String(localStorage.getItem(SCOUTING_ALL_VIEW_OOO_KEY) || "").trim();
+    return v || null;
+  } catch {
+    return null;
+  }
+}
+
+function writeAllViewOooId(id) {
+  try {
+    if (id) localStorage.setItem(SCOUTING_ALL_VIEW_OOO_KEY, String(id));
+    else localStorage.removeItem(SCOUTING_ALL_VIEW_OOO_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Planned One of our Own for the current target-list view (per board, or "Show all"). */
+function currentListOooId() {
+  if (listBoardFilter === "all") return readAllViewOooId();
+  return boardViewStateCache.get(String(listBoardFilter))?.oooId || null;
 }
 
 function countStarEligible(players, minRating, oooId) {
@@ -440,7 +470,31 @@ function updateRegistrationStrip() {
   const listState =
     listBoardFilter !== "all" ? boardViewStateCache.get(String(listBoardFilter)) : null;
   const starCap = planStarCap(listState?.planDivision || null, listState?.planSize || null);
-  const activeStars = countStarEligible(activePlayers, minStar, null);
+  const oooCandidates = activePlayers
+    .filter((p) => playerEligibleOoo(p, nation, minStar))
+    .sort((a, b) =>
+      String(a.Name || "").localeCompare(String(b.Name || ""), undefined, { sensitivity: "base" })
+    );
+  const savedOoo = currentListOooId();
+  const oooId = oooCandidates.some((p) => String(p.Konami_ID) === String(savedOoo))
+    ? String(savedOoo)
+    : null;
+  const activeStars = countStarEligible(activePlayers, minStar, oooId);
+  const oooSelectHtml = `
+    <span class="scout-list-ooo">
+      <label for="scoutListOooSelect">One of our Own</label>
+      <select id="scoutListOooSelect" class="scout-board-select" title="Planning only — excludes this player from the ★ count for this view. Same pick as the tactic board for this board.">
+        <option value="">— None —</option>
+        ${oooCandidates
+          .map((p) => {
+            const id = String(p.Konami_ID);
+            return `<option value="${escapeHtml(id)}"${id === oooId ? " selected" : ""}>${escapeHtml(
+              p.Name || id
+            )} (${escapeHtml(String(p.Rating ?? ""))})</option>`;
+          })
+          .join("")}
+      </select>
+    </span>`;
   const activeLabel =
     listBoardFilter === "all"
       ? "Active targets (all views)"
@@ -455,8 +509,39 @@ function updateRegistrationStrip() {
     ${boardChip("GK", totals.gk, MIN_GOALKEEPERS, "min", `Goalkeepers in active targets: ${totals.gk}`)}
     ${boardChip("HG", totals.hg, MIN_HOME_GROWN, "min", `Home-grown in active targets vs ${nation || "—"}: ${totals.hg}`)}
     ${boardChip("U21", totals.u21, MIN_UNDER_21, "min", `Under-21 in active targets: ${totals.u21}`)}
-    ${boardChip("★", activeStars, starCap, "max", `Stars in active targets (rating ${minStar}+): ${activeStars} / cap ${starCap}`)}
+    ${boardChip("★", activeStars, starCap, "max", `Stars in active targets (rating ${minStar}+${oooId ? ", planned OooO excluded" : ""}): ${activeStars} / cap ${starCap}`)}
+    ${oooSelectHtml}
   `;
+}
+
+function wireListOooSelect() {
+  const el = document.getElementById("scoutRegStrip");
+  if (!el || el.dataset.oooWired === "1") return;
+  el.dataset.oooWired = "1";
+  el.addEventListener("change", async (e) => {
+    const sel = e.target?.closest?.("#scoutListOooSelect");
+    if (!sel) return;
+    const id = sel.value ? String(sel.value) : null;
+    if (listBoardFilter === "all") {
+      writeAllViewOooId(id);
+      updateRegistrationStrip();
+      return;
+    }
+    const boardNo = Number(listBoardFilter);
+    try {
+      await saveBoardViewState(boardNo, {
+        activeIds: currentViewActiveTargetIds(),
+        oooId: id,
+      });
+      if (boardNo === Number(activeBoardNo)) {
+        plannerOooPlayerId = id;
+        updatePlannerCompositionStrip(plannerApi?.getState?.() || null);
+      }
+    } catch (err) {
+      alert(err?.message || "Could not save One of our Own.");
+    }
+    updateRegistrationStrip();
+  });
 }
 
 async function loadOwnedSquadForReg() {
@@ -994,6 +1079,9 @@ function wirePlannerCompositionStrip() {
     if (!sel) return;
     plannerOooPlayerId = sel.value ? String(sel.value) : null;
     updatePlannerCompositionStrip(plannerApi?.getState?.() || null);
+    const cached = boardViewStateCache.get(String(activeBoardNo));
+    if (cached) cached.oooId = plannerOooPlayerId;
+    if (String(listBoardFilter) === String(activeBoardNo)) updateRegistrationStrip();
   });
 }
 
@@ -1296,6 +1384,7 @@ async function renderScoutingLists() {
   }
   renderListBoardFilter();
   wireListBoardFilter();
+  wireListOooSelect();
 
   try {
     playerBoardMap = await loadScoutingPlannerPlayerBoards(supabase);
@@ -1869,6 +1958,7 @@ async function loadBoardViewState(boardNo) {
     planDivision: extractPlanDivisionFromLayout(state.pitchLayout),
     planSize: extractPlanSizeFromLayout(state.pitchLayout),
     boardOnly: extractBoardOnlyFromLayout(state.pitchLayout),
+    oooId: extractPlannerOooFromLayout(state.pitchLayout),
     hydrated: true,
   };
   boardViewStateCache.set(key, next);
@@ -1886,6 +1976,7 @@ async function saveBoardViewState(boardNo, patch = {}) {
     planDivision: extractPlanDivisionFromLayout(state.pitchLayout),
     planSize: extractPlanSizeFromLayout(state.pitchLayout),
     boardOnly: extractBoardOnlyFromLayout(state.pitchLayout),
+    oooId: extractPlannerOooFromLayout(state.pitchLayout),
     hydrated: true,
   };
   const has = (k) => Object.prototype.hasOwnProperty.call(patch, k);
@@ -1897,6 +1988,11 @@ async function saveBoardViewState(boardNo, patch = {}) {
     planDivision: has("planDivision") ? patch.planDivision || null : prev.planDivision ?? null,
     planSize: has("planSize") ? patch.planSize || null : prev.planSize ?? null,
     boardOnly: has("boardOnly") ? Boolean(patch.boardOnly) : Boolean(prev.boardOnly),
+    oooId: has("oooId")
+      ? patch.oooId || null
+      : prev.oooId !== undefined
+        ? prev.oooId || null
+        : extractPlannerOooFromLayout(state.pitchLayout),
     hydrated: true,
   };
 
@@ -1908,6 +2004,7 @@ async function saveBoardViewState(boardNo, patch = {}) {
       planDivision: next.planDivision,
       planSize: next.planSize,
       boardOnly: next.boardOnly,
+      oooId: next.oooId,
     }),
   });
   if (error) {
@@ -2336,6 +2433,7 @@ async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = fals
     planDivision: plannerPlanDivision,
     planSize: plannerPlanSize,
     boardOnly,
+    oooId: plannerOooPlayerId,
     hydrated: true,
   });
   if (listBoardFilter !== "all") {
