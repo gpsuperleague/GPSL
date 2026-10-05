@@ -96,7 +96,8 @@ function renderRows() {
         : `<span class="ooo-unowned">Unowned</span>`;
       const eligible = Number(c.eligible_count || 0);
       const band = String(c.eligible_band || "79+");
-      const eligibleLabel = `${eligible} · ${escapeHtml(band)}`;
+      const best = c.best_rating != null && band === "best HG" ? ` (top ${Number(c.best_rating)})` : "";
+      const eligibleLabel = `${eligible} · ${escapeHtml(band)}${best}`;
       if (c.already_drawn) {
         const player = escapeHtml(c.drawn_player_name || c.drawn_player_id || "—");
         const fee = formatMoney(Number(c.drawn_fee || 0));
@@ -144,7 +145,7 @@ async function drawSelected() {
   if (
     !confirm(
       `Draw a One of our Own for ${clubs.length} club(s)?\n\n` +
-        "Each gets a random free agent matching nationality (79+ if that nation has a free-agent star, otherwise 78), signed as a transfer and charged the market value. This cannot be undone and each club can only ever be drawn once."
+        "Each gets a free agent matching nationality: random 79+ if that nation has a free-agent star, otherwise random 78, otherwise the best home-grown free agent (highest rating → youngest → most valuable). Signed as a transfer and charged the market value. This cannot be undone and each club can only ever be drawn once."
     )
   ) {
     return;
@@ -180,11 +181,11 @@ function renderResults(data) {
   const labelFor = (r) => {
     switch (r.status) {
       case "drawn":
-        return `✅ <b>${escapeHtml(r.club)}</b> drew ${escapeHtml(r.player_name || r.player_id)} (${escapeHtml(r.nation || "")}, ${escapeHtml(r.eligible_band || "?")}) for ${formatMoney(Number(r.fee || 0))}`;
+        return `✅ <b>${escapeHtml(r.club)}</b> drew ${escapeHtml(r.player_name || r.player_id)}${r.rating != null ? ` (${Number(r.rating)})` : ""} (${escapeHtml(r.nation || "")}, ${escapeHtml(r.eligible_band || "?")}) for ${formatMoney(Number(r.fee || 0))}`;
       case "skipped_already":
         return `↪︎ <b>${escapeHtml(r.club)}</b> already has its One of our Own (skipped)`;
       case "no_eligible_player":
-        return `⚠️ <b>${escapeHtml(r.club)}</b> — no eligible free agent (${escapeHtml(r.nation || "")}, ${escapeHtml(r.eligible_band || "79+/78")})`;
+        return `⚠️ <b>${escapeHtml(r.club)}</b> — no home-grown free agent at all (${escapeHtml(r.nation || "")})`;
       case "club_not_found":
         return `⚠️ <b>${escapeHtml(r.club)}</b> — club not found`;
       case "error":

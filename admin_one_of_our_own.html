@@ -37,6 +37,8 @@
           Draws each selected club a random <b>free-agent</b> player that is <b>home grown</b>
           (Nation matches the club). Nations with a free-agent <b>star (79+)</b> draw from that
           pool; nations <b>without a star</b> draw a random <b>78-rated</b> free agent instead.
+          If the nation has <b>neither</b>, the club gets its <b>best home-grown</b> free agent:
+          highest rating, then youngest at that rating, then most valuable ("best HG" band).
           The draw acts as a real transfer: the player is signed on a contract, appears in the
           Transfer Centre, and the club is charged the player's <b>market value</b> (balance may
           go negative) with the fee paid to the GPSL Central Bank. Each club can receive this
@@ -69,6 +71,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_one_of_our_own.js?v=20261005-owned-filter"></script>
+  <script type="module" src="admin_one_of_our_own.js?v=20261005-best-hg"></script>
 </body>
 </html>
