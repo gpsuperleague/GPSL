@@ -297,7 +297,8 @@ BEGIN
     WHEN seq <= 40 AND v_use_a THEN 'championship_a'
     WHEN seq BETWEEN 41 AND 60 AND v_use_b THEN 'championship_b'
     ELSE 'standby'
-  END;
+  END
+  WHERE true;
 
   IF v_owned < 20 THEN
     v_warnings := array_append(v_warnings,
