@@ -18,6 +18,8 @@
     .ooo-badge { font-size:11px; padding:2px 7px; border-radius:10px; background:#1d3a1d; color:#7ddf7d; }
     .ooo-badge.none { background:#3a1d1d; color:#e88; }
     .ooo-count-0 { color:#e88; }
+    .ooo-unowned { color:#777; font-style:italic; }
+    .ooo-filter { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#ccc; cursor:pointer; }
     .ooo-results { margin-top:16px; }
     .ooo-results .row { padding:5px 0; border-bottom:1px solid #222; font-size:13px; }
   </style>
@@ -45,6 +47,7 @@
           <button type="button" id="clearSelBtn" class="button">Clear selection</button>
           <button type="button" id="drawBtn" class="button" style="background:#228822;">Draw selected clubs</button>
           <button type="button" id="reloadBtn" class="button">Reload</button>
+          <label class="ooo-filter"><input type="checkbox" id="ownedOnlyCb" checked> Owned clubs only</label>
         </div>
         <div id="pageStatus" class="status-line"></div>
         <table class="ooo-table">
@@ -52,19 +55,20 @@
             <tr>
               <th style="width:34px;"></th>
               <th>Club</th>
+              <th>Owner</th>
               <th>Nation</th>
               <th>Eligible (band)</th>
               <th>One of our Own</th>
             </tr>
           </thead>
           <tbody id="clubRows">
-            <tr><td colspan="5" class="note">Loading…</td></tr>
+            <tr><td colspan="6" class="note">Loading…</td></tr>
           </tbody>
         </table>
         <div id="drawResults" class="ooo-results"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_one_of_our_own.js?v=20260809-ooo-78"></script>
+  <script type="module" src="admin_one_of_our_own.js?v=20261005-owned-filter"></script>
 </body>
 </html>
