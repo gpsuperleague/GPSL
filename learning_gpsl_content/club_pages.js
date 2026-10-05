@@ -63,7 +63,7 @@ export const SECTION_EXPECTATIONS = {
       type: "p",
       html: `Clubs are ranked by <b>prestige</b> (top 10 = <b>big</b>, 11–35 = <b>medium</b>, rest = <b>low</b>).
         Each season the league compares your <b>expected</b> performance (from prestige rank and, for medium/low clubs, manager rating)
-        to your <b>actual</b> league finish and cup results. See <a href="stadium.html">Stadium</a> for fill targets and performance bands
+        to your <b>actual</b> league finish. See <a href="stadium.html">Stadium</a> for fill targets and performance bands
         (on target / slight / bad / abysmal).`,
     },
     { type: "h3", html: "What “expectation” means" },
@@ -74,6 +74,17 @@ export const SECTION_EXPECTATIONS = {
         `<b>Medium &amp; low clubs</b> — a strong manager rating can <em>raise</em> the expectation (you are expected to finish closer to the top).`,
         `<b>Big clubs</b> — manager rating does not lower the bar; big clubs are always held to a high standard.`,
         `Missing expectation also affects <b>stadium gate fill</b> and can trigger attendance penalties — not only player unrest.`,
+      ],
+    },
+    { type: "h3", html: "How the season is judged" },
+    {
+      type: "ul",
+      items: [
+        `<b>Places below your expected finish</b> — level or better = <b>on target</b>; 1–2 places below = <b>slight miss</b>; 3–5 = <b>bad</b>; 6+ = <b>abysmal</b>.`,
+        `<b>Super League relegation</b> — if you were expected to finish 15th or higher, being relegated (by any route) is at least a <b>bad</b> season; dropping into 18th–20th when expected top 10 is <b>abysmal</b>.`,
+        `<b>Expected 16th–20th (“Avoid relegation”)</b> — staying up (15th or higher, or surviving the playoffs) is <b>on target</b>. Relegated via the playoffs, or in 18th–20th but no lower than expected = <b>slight</b>; 1–2 places lower = <b>bad</b>; 3+ = <b>abysmal</b>.`,
+        `<b>Championship</b> — promotion (top 2 or playoff winner) is always <b>on target</b>.`,
+        `<b>Cup backup</b> — meeting your club cup target rescues a <b>slight</b> miss only. If your target is in the Super8 but you are not in it this season, the same stage of the <b>Plate</b> counts instead.`,
       ],
     },
     { type: "h3", html: "Player transfer request (if you miss the target)" },

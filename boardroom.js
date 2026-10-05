@@ -273,16 +273,22 @@ async function loadExpectationSection(clubShortName) {
 
   const baselinePos = data.baseline_expected_position ?? "—";
   const seasonPos = data.expected_position ?? "—";
-  const expectedPts = Number(data.expected_points || 0);
   const actualPos = data.actual_position ?? "—";
-  const actualPts = Number(data.actual_points || 0);
   const statusReady = data.performance_status_ready !== false && data.performance_band != null;
   const band = statusReady ? data.performance_band : null;
   const tier = data.club_tier || "";
   const prestigeRank = data.prestige_rank ?? "—";
   const liftNote = managerLiftNote(data);
+  const placesBelow = Number(actualPos) - Number(seasonPos);
+  const placesNote = Number.isFinite(placesBelow)
+    ? placesBelow > 0
+      ? ` (${placesBelow} place${placesBelow === 1 ? "" : "s"} below)`
+      : placesBelow < 0
+        ? ` (${-placesBelow} place${placesBelow === -1 ? "" : "s"} above)`
+        : " (on target)"
+    : "";
   const deliveryLine = statusReady
-    ? `League ${actualPos} · ${actualPts.toFixed(2)} pts`
+    ? `League ${actualPos}${placesNote}`
     : "— (after first month’s fixtures)";
   const performanceLine = statusReady
     ? `<span class="${performanceBandClass(band)}">${formatPerformanceBand(band)}</span>`
@@ -301,11 +307,14 @@ async function loadExpectationSection(clubShortName) {
     <div class="expectation-block">
       <h3>Season expectation</h3>
       <dl class="expectation-dl">
-        <dt>Expected finish</dt><dd>League ${seasonPos} · ${expectedPts.toFixed(2)} pts</dd>
+        <dt>Expected finish</dt><dd>League ${seasonPos}</dd>
         <dt>Current delivery</dt><dd>${deliveryLine}</dd>
         <dt>Performance</dt><dd>${performanceLine}</dd>
       </dl>
       ${liftNote ? `<p class="expectation-note">${liftNote}</p>` : ""}
+      <p class="expectation-note">Judged on places below your expected finish: 1–2 = slight miss, 3–5 = bad, 6+ = abysmal.
+        Super League relegation counts as at least a bad season (clubs expected to fight relegation are judged on staying up).
+        Meeting a cup target rescues a slight miss.</p>
     </div>
 
     <div class="expectation-block">
@@ -513,7 +522,7 @@ function renderBoardRatings({ financeRating, fill, manager }) {
     ratingCardHtml(
       "Club performance rating",
       club,
-      "Based on season delivery band vs expected points/finish, prestige tier, and underperformance risk."
+      "Based on season delivery band vs expected finish, prestige tier, and underperformance risk."
     ),
     ratingCardHtml(
       "Manager rating",

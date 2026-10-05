@@ -87,12 +87,13 @@ function renderGateBreakdown(data) {
   }
 
   const tier = data.club_tier || "—";
-  const gap = Number(data.performance_gap);
   const band = data.performance_band || "—";
-  const gapLabel =
-    Number.isFinite(gap) && gap !== 0
-      ? `${gap > 0 ? "+" : ""}${gap.toFixed(2)} (${gap < 0 ? "below expectation" : "above expectation"})`
-      : "On expectation";
+  const placesBelow = Number(data.actual_position) - Number(data.expected_position);
+  const gapLabel = !Number.isFinite(placesBelow) || placesBelow === 0
+    ? "On expectation"
+    : placesBelow > 0
+      ? `${placesBelow} place${placesBelow === 1 ? "" : "s"} below expectation`
+      : `${-placesBelow} place${placesBelow === -1 ? "" : "s"} above expectation`;
   const seasonStart = data.season_start_fill_pct;
   const seasonTarget = data.season_target_fill_pct;
   const cushionNote =
@@ -105,8 +106,8 @@ function renderGateBreakdown(data) {
       <dt>Stadium capacity</dt><dd>${Number(data.capacity || 0).toLocaleString("en-GB")}</dd>
       <dt>Club tier</dt><dd>${tier} · prestige rank ${data.prestige_rank ?? "—"}</dd>
       <dt>Manager rating</dt><dd>${data.manager_rating ?? "—"}${tier !== "big" && data.manager_rating ? " (can lift expectation)" : ""}</dd>
-      <dt>Season expectation</dt><dd>League ${data.expected_position ?? "—"} · ${Number(data.expected_points || 0).toFixed(2)} pts</dd>
-      <dt>Current delivery</dt><dd>League ${data.actual_position ?? data.table_position ?? "—"} · ${Number(data.actual_points || 0).toFixed(2)} pts</dd>
+      <dt>Season expectation</dt><dd>League ${data.expected_position ?? "—"}</dd>
+      <dt>Current delivery</dt><dd>League ${data.actual_position ?? data.table_position ?? "—"}</dd>
       <dt>Performance</dt><dd>${gapLabel} · <b>${band}</b></dd>
       <dt>Season start fill</dt><dd>${seasonStart != null ? seasonStart + "%" : "—"}</dd>
       <dt>Display fill</dt><dd>${displayLabel} <span class="note">(drifts monthly toward target)</span></dd>
@@ -114,7 +115,7 @@ function renderGateBreakdown(data) {
       <dt>Season target</dt><dd>${seasonTarget != null ? seasonTarget + "%" : "—"}</dd>
       <dt>Est. gate per home match</dt><dd class="highlight">${formatMoney(data.total_gate)}</dd>
     </dl>
-    <p class="note">5-year club prestige sets your base. Two on-target seasons can take a small club from the 75% floor to full gate. Underperformance drifts down gradually (slight −10%, bad −20%, abysmal −25%).</p>
+    <p class="note">5-year club prestige sets your base. Two on-target seasons can take a small club from the 75% floor to full gate. Underperformance drifts down gradually (slight −7%, bad −15%, abysmal −20%). Bands: 1–2 places below expected finish = slight, 3–5 = bad, 6+ = abysmal.</p>
     ${cushionNote ? `<p class="note">${cushionNote}</p>` : ""}
     <p class="note">League home games: <b>100%</b> to home club. Cup games: <b>50% / 50%</b>.</p>
   `;
