@@ -478,6 +478,12 @@ function setComposeAvatar(clubShort, clubName) {
   }
 }
 
+function natterWindowLabel(ctx) {
+  const key = String(ctx?.gpsl_month || "");
+  if (key === "preseason" || key === "summer_break") return ctx.month_label || key;
+  return `${ctx?.month_label || "this"} GPSL month`;
+}
+
 function renderComposeUi(state) {
   composeState = state;
   const compose = document.getElementById("natterCompose");
@@ -488,7 +494,11 @@ function renderComposeUi(state) {
   if (ctxEl) {
     const parts = [
       ctx.season_label || "",
-      ctx.month_label ? `${ctx.month_label} GPSL` : "",
+      ctx.month_label
+        ? ctx.gpsl_month === "preseason" || ctx.gpsl_month === "summer_break"
+          ? ctx.month_label
+          : `${ctx.month_label} GPSL`
+        : "",
     ].filter(Boolean);
     ctxEl.textContent = parts.join(" · ") || "—";
   }
@@ -500,9 +510,9 @@ function renderComposeUi(state) {
   if (composeClub) composeClub.textContent = clubName;
   if (composeMeta) {
     composeMeta.textContent = state?.can_compose
-      ? `One post for ${ctx.month_label || "this"} GPSL month`
+      ? `One post for ${natterWindowLabel(ctx)}`
       : state?.already_posted
-        ? `Posted for ${ctx.month_label || "this"} GPSL month`
+        ? `Posted for ${natterWindowLabel(ctx)}`
         : "Compose window closed";
   }
 
@@ -882,7 +892,7 @@ async function submitPost() {
     }
     if (!data?.ok) {
       const reasons = {
-        already_posted: "You’ve already posted this GPSL month.",
+        already_posted: `You’ve already posted for ${natterWindowLabel(composeState?.context)}.`,
         window_closed: "Compose window is closed.",
         empty: "Write something before posting.",
         too_long: `Too long — max ${MAX_CHARS} characters.`,
