@@ -1,5 +1,5 @@
 import { initGlobal } from "./global.js";
-import { VIDEO_TUTORIAL_SECTIONS } from "./video_tutorials_content.js?v=20260930-video-tutorials";
+import { VIDEO_TUTORIAL_SECTIONS } from "./video_tutorials_content.js?v=20261005-vt-transfers";
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -18,16 +18,27 @@ function youtubeId(url) {
   return m ? m[1] : null;
 }
 
+function safeUrl(url) {
+  const s = String(url || "").trim();
+  return /^https?:\/\//i.test(s) ? s : null;
+}
+
 function videoCard(v) {
-  const id = youtubeId(v.url);
-  if (!id) return "";
-  return `<article class="vt-card">
-    <div class="vt-frame">
-      <iframe src="https://www.youtube-nocookie.com/embed/${id}" title="${escapeHtml(v.title)}"
+  const url = safeUrl(v.url);
+  if (!url) return "";
+  const id = youtubeId(url);
+  const title = escapeHtml(v.title || "Watch video");
+  const link = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${title}</a>`;
+  const frame = id
+    ? `<div class="vt-frame">
+      <iframe src="https://www.youtube-nocookie.com/embed/${id}" title="${title}"
         loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
-    </div>
-    <h3>${escapeHtml(v.title)}</h3>
+    </div>`
+    : "";
+  return `<article class="vt-card${id ? "" : " vt-card-link"}">
+    ${frame}
+    <h3>${link}${id ? "" : ` <span class="vt-ext">↗</span>`}</h3>
     ${v.description ? `<p>${escapeHtml(v.description)}</p>` : ""}
   </article>`;
 }
@@ -38,30 +49,47 @@ function render() {
   const sections = VIDEO_TUTORIAL_SECTIONS.map((sec) => ({
     ...sec,
     cards: (sec.videos || []).map(videoCard).filter(Boolean),
-  })).filter((sec) => sec.cards.length);
+  }));
+  const filled = sections.filter((sec) => sec.cards.length);
 
-  if (!sections.length) {
+  const hash = decodeURIComponent((window.location.hash || "").replace("#", ""));
+  const focused = sections.find((s) => s.id === hash);
+
+  const toc = filled
+    .map(
+      (s) =>
+        `<a href="#${escapeHtml(s.id)}"${focused?.id === s.id ? ' class="active"' : ""}>${escapeHtml(s.title)}</a>`
+    )
+    .join("");
+  const tocHtml = filled.length
+    ? `<nav class="vt-toc" aria-label="Sections"><a href="#"${focused ? "" : ' class="active"'}>All</a>${toc}</nav>`
+    : "";
+
+  const sectionHtml = (s) => `<section class="vt-section" id="${escapeHtml(s.id)}">
+      <h2>${escapeHtml(s.title)}</h2>
+      ${
+        s.cards.length
+          ? `<div class="vt-grid">${s.cards.join("")}</div>`
+          : `<p class="vt-empty">No ${escapeHtml(s.title)} videos yet — check back soon.</p>`
+      }
+    </section>`;
+
+  if (focused) {
+    root.innerHTML = tocHtml + sectionHtml(focused);
+    return;
+  }
+
+  if (!filled.length) {
     root.innerHTML = `<p class="vt-empty">Video tutorials are coming soon. In the meantime, see
       <a href="learning_gpsl.html">Learning GPSL</a>.</p>`;
     return;
   }
 
-  const toc = sections
-    .map((s) => `<a href="#${escapeHtml(s.id)}">${escapeHtml(s.title)}</a>`)
-    .join("");
-  root.innerHTML =
-    `<nav class="vt-toc" aria-label="Sections">${toc}</nav>` +
-    sections
-      .map(
-        (s) => `<section class="vt-section" id="${escapeHtml(s.id)}">
-          <h2>${escapeHtml(s.title)}</h2>
-          <div class="vt-grid">${s.cards.join("")}</div>
-        </section>`
-      )
-      .join("");
+  root.innerHTML = tocHtml + filled.map(sectionHtml).join("");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   initGlobal();
   render();
+  window.addEventListener("hashchange", render);
 });

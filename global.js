@@ -1945,7 +1945,9 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     for (const item of items) {
       if (!item.href) continue;
       const active = isNavItemActive(item, pathname, search);
-      const indent = item.indent ? " nav-link-sub" : "";
+      const indent = item.indent
+        ? ` nav-link-sub${item.indent === 2 ? " nav-link-sub2" : ""}`
+        : "";
       const auctionAttr = item.auctionNav
         ? ` data-auction-nav="${item.auctionNav}"`
         : "";
@@ -1975,7 +1977,9 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   const currentFile = currentNavPageFile();
 
   const renderLink = (item, active) => {
-    const indent = item.indent ? " nav-link-sub" : "";
+    const indent = item.indent
+      ? ` nav-link-sub${item.indent === 2 ? " nav-link-sub2" : ""}`
+      : "";
     const danger = item.navDanger ? " nav-link-danger" : "";
     const checklist = item.navChecklist ? " nav-link-checklist" : "";
     const auctionAttr = item.auctionNav
@@ -2546,6 +2550,13 @@ export async function buildNav() {
               href: "video_tutorials.html",
               label: "Video tutorials",
               page: "video_tutorials",
+            },
+            {
+              href: "video_tutorials.html#transfers",
+              label: "Transfers",
+              page: "video_tutorials",
+              hash: "transfers",
+              indent: true,
             },
           ],
         },

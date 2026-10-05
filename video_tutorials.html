@@ -18,7 +18,12 @@
       color: #ddd; text-decoration: none; font-size: 13px; padding: 6px 12px;
       border: 1px solid #333; border-radius: 16px; background: #1a1a1a;
     }
-    .vt-toc a:hover { border-color: #ff9900; color: #ff9900; }
+    .vt-toc a:hover, .vt-toc a.active { border-color: #ff9900; color: #ff9900; }
+    .vt-card h3 a { color: #eee; text-decoration: none; }
+    .vt-card h3 a:hover { color: #ff9900; text-decoration: underline; }
+    .vt-card-link { border-left: 3px solid #ff9900; }
+    .vt-card-link h3 { margin-top: 0; }
+    .vt-ext { color: #ff9900; font-size: 13px; }
     .vt-section { margin-top: 26px; scroll-margin-top: 80px; }
     .vt-section h2 { color: #ff9900; font-size: 18px; margin: 0 0 12px; }
     .vt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
@@ -37,6 +42,6 @@
     <p class="vt-intro">Short walkthroughs of GPSL. For the full written guide, see <a href="learning_gpsl.html">Learning GPSL</a>.</p>
     <div id="videoTutorials"></div>
   </main>
-  <script type="module" src="video_tutorials.js?v=20260930-video-tutorials"></script>
+  <script type="module" src="video_tutorials.js?v=20261005-vt-transfers"></script>
 </body>
 </html>

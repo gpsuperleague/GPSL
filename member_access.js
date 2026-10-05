@@ -160,4 +160,11 @@ export const PRE_CLUB_NAV_ITEMS = [
     label: "Video tutorials",
     page: "video_tutorials",
   },
+  {
+    href: "video_tutorials.html#transfers",
+    label: "Transfers",
+    page: "video_tutorials",
+    hash: "transfers",
+    indent: true,
+  },
 ];
