@@ -599,7 +599,8 @@ function pageDraftKindHint() {
     page === "awaiting_club" ||
     page === "waiting_list" ||
     page === "club_auction" ||
-    /awaiting_club|waiting_list|club_auction/.test(path)
+    page === "club_database" ||
+    /awaiting_club|waiting_list|club_auction|club_database/.test(path)
   ) {
     return "club";
   }
