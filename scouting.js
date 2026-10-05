@@ -151,7 +151,7 @@ let ownedSquadPlayers = null;
 /** @type {object|null} */
 let squadDesignationsState = null;
 const SCOUTING_ALL_VIEW_ACTIVE_KEY = "gpsl_scouting_active_targets_all";
-/** @type {Map<string, { activeIds: string[], planNation: string|null, planDivision: string|null, planSize: string|null, hydrated: boolean }>} */
+/** @type {Map<string, { activeIds: string[], planNation: string|null, planDivision: string|null, planSize: string|null, boardOnly?: boolean, hydrated: boolean }>} */
 let boardViewStateCache = new Map();
 /** Debounced auto-save after tactic-board placements. */
 let plannerAutoSaveTimer = null;
@@ -334,7 +334,14 @@ function planStarCap(division, size) {
   return base + (size === "big" ? BIG_CLUB_EXTRA_STARS : 0);
 }
 
-function plannerLayoutWithListMeta(layout, { activeIds, planNation, planDivision, planSize } = {}) {
+function extractBoardOnlyFromLayout(layout) {
+  return Boolean(layout && typeof layout === "object" && layout.scouting_board_only === true);
+}
+
+function plannerLayoutWithListMeta(
+  layout,
+  { activeIds, planNation, planDivision, planSize, boardOnly } = {}
+) {
   const next =
     layout && typeof layout === "object" && !Array.isArray(layout)
       ? { ...layout }
@@ -359,6 +366,10 @@ function plannerLayoutWithListMeta(layout, { activeIds, planNation, planDivision
   if (planSize !== undefined) {
     if (planSize) next.scouting_plan_club_size = planSize;
     else delete next.scouting_plan_club_size;
+  }
+  if (boardOnly !== undefined) {
+    if (boardOnly) next.scouting_board_only = true;
+    else delete next.scouting_board_only;
   }
   return next;
 }
@@ -1857,6 +1868,7 @@ async function loadBoardViewState(boardNo) {
     planNation: extractPlannerNationFromLayout(state.pitchLayout) || null,
     planDivision: extractPlanDivisionFromLayout(state.pitchLayout),
     planSize: extractPlanSizeFromLayout(state.pitchLayout),
+    boardOnly: extractBoardOnlyFromLayout(state.pitchLayout),
     hydrated: true,
   };
   boardViewStateCache.set(key, next);
@@ -1873,6 +1885,7 @@ async function saveBoardViewState(boardNo, patch = {}) {
     planNation: extractPlannerNationFromLayout(state.pitchLayout) || null,
     planDivision: extractPlanDivisionFromLayout(state.pitchLayout),
     planSize: extractPlanSizeFromLayout(state.pitchLayout),
+    boardOnly: extractBoardOnlyFromLayout(state.pitchLayout),
     hydrated: true,
   };
   const has = (k) => Object.prototype.hasOwnProperty.call(patch, k);
@@ -1883,6 +1896,7 @@ async function saveBoardViewState(boardNo, patch = {}) {
     planNation: has("planNation") ? patch.planNation || null : prev.planNation,
     planDivision: has("planDivision") ? patch.planDivision || null : prev.planDivision ?? null,
     planSize: has("planSize") ? patch.planSize || null : prev.planSize ?? null,
+    boardOnly: has("boardOnly") ? Boolean(patch.boardOnly) : Boolean(prev.boardOnly),
     hydrated: true,
   };
 
@@ -1893,6 +1907,7 @@ async function saveBoardViewState(boardNo, patch = {}) {
       planNation: next.planNation,
       planDivision: next.planDivision,
       planSize: next.planSize,
+      boardOnly: next.boardOnly,
     }),
   });
   if (error) {
@@ -1928,16 +1943,22 @@ function renderListNationPicker() {
 
   const divSel = document.getElementById("scoutListDivisionSelect");
   const sizeSel = document.getElementById("scoutListSizeSelect");
+  const refreshBtn = document.getElementById("scoutListRefreshFromBoardBtn");
+  const backupsBtn = document.getElementById("scoutListShowBackupsBtn");
 
   if (listBoardFilter === "all") {
     label.hidden = true;
     sel.hidden = true;
     if (divSel) divSel.hidden = true;
     if (sizeSel) sizeSel.hidden = true;
+    if (refreshBtn) refreshBtn.hidden = true;
+    if (backupsBtn) backupsBtn.hidden = true;
     return;
   }
 
   const state = boardViewStateCache.get(String(listBoardFilter)) || null;
+  if (refreshBtn) refreshBtn.hidden = false;
+  if (backupsBtn) backupsBtn.hidden = !state?.boardOnly;
   if (divSel) {
     divSel.innerHTML = planOptionsHtml(PLAN_DIVISION_OPTIONS, state?.planDivision);
     divSel.hidden = false;
@@ -2032,6 +2053,9 @@ function rowsForListFilter(rows) {
       onBoard.add(String(r.player_id));
     }
   }
+  if (boardViewStateCache.get(String(boardNo))?.boardOnly) {
+    return rows.filter((r) => onBoard.has(String(r.player_id)));
+  }
   // Keep nested backups/3rd/4th visible under top targets on this board,
   // even when those nested players are not placed on the board themselves.
   return rows.filter((r) => {
@@ -2109,6 +2133,95 @@ function wireListBoardFilter() {
   divSel?.addEventListener("change", () => savePlanPick({ planDivision: divSel.value || null }));
   const sizeSel = document.getElementById("scoutListSizeSelect");
   sizeSel?.addEventListener("change", () => savePlanPick({ planSize: sizeSel.value || null }));
+
+  document
+    .getElementById("scoutListRefreshFromBoardBtn")
+    ?.addEventListener("click", () => refreshListFromTacticBoard());
+  document
+    .getElementById("scoutListShowBackupsBtn")
+    ?.addEventListener("click", () => showBackupsInBoardView());
+}
+
+/**
+ * Re-match this board view to the tactic board: Active Targets = exactly the
+ * players placed on the board, nested backups hidden in this view only.
+ */
+async function refreshListFromTacticBoard() {
+  if (listBoardFilter === "all") return;
+  const boardNo = Number(listBoardFilter);
+  const btn = document.getElementById("scoutListRefreshFromBoardBtn");
+
+  try {
+    playerBoardMap = await loadScoutingPlannerPlayerBoards(supabase);
+  } catch (err) {
+    alert(err?.message || "Could not load tactic board.");
+    return;
+  }
+
+  const boardIds = [];
+  for (const [pid, boards] of playerBoardMap) {
+    if (boards?.has(boardNo)) boardIds.push(String(pid));
+  }
+  if (!boardIds.length) {
+    alert(`No players on “${boardLabel(boardNo)}” yet — place players on the Tactic board first.`);
+    return;
+  }
+
+  const shortlist = new Set(scoutingRows.map((r) => String(r.player_id)));
+  const missing = boardIds.filter((pid) => !shortlist.has(pid));
+
+  if (
+    !confirm(
+      `Refresh “${boardLabel(boardNo)}” view from the tactic board?\n\n` +
+        `• Active Targets become exactly the ${boardIds.length} player(s) on this board.\n` +
+        "• Backup / 3rd / 4th options are hidden in this board view (shortlist and other boards unchanged)." +
+        (missing.length
+          ? `\n• ${missing.length} board player(s) not on your shortlist will be added as top targets.`
+          : "")
+    )
+  ) {
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  try {
+    for (const pid of missing) {
+      await toggleScoutingTarget(supabase, pid, 1);
+    }
+    if (missing.length) {
+      scoutingRows = await loadScoutingTargets(supabase, clubShort);
+    }
+
+    await saveBoardViewState(boardNo, { activeIds: boardIds, boardOnly: true });
+
+    if (missing.length) {
+      await setScoutingActiveTargetsBulk(supabase, boardIds);
+      await renderScoutingLists();
+    } else {
+      await applyActiveTargetSet(boardIds);
+    }
+    renderListNationPicker();
+    updateActiveTargetsHeader();
+  } catch (err) {
+    alert(err?.message || "Could not refresh from tactic board.");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function showBackupsInBoardView() {
+  if (listBoardFilter === "all") return;
+  try {
+    await saveBoardViewState(Number(listBoardFilter), {
+      activeIds: currentViewActiveTargetIds(),
+      boardOnly: false,
+    });
+    renderScoutingListsFromCache();
+    renderListNationPicker();
+    updateActiveTargetsHeader();
+  } catch (err) {
+    alert(err?.message || "Could not show backups.");
+  }
 }
 
 function escapeHtml(s) {
@@ -2185,6 +2298,9 @@ async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = fals
     : Array.isArray(existingLayout?.scouting_active_target_ids)
       ? existingLayout.scouting_active_target_ids
       : null;
+  const boardOnly = prevBoardState?.hydrated
+    ? Boolean(prevBoardState.boardOnly)
+    : extractBoardOnlyFromLayout(existingLayout);
 
   const layoutPayload = plannerLayoutWithListMeta(
     pitchLayoutWithPlannerMeta(baseLayout, {
@@ -2196,6 +2312,7 @@ async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = fals
       planNation: nation,
       planDivision: plannerPlanDivision,
       planSize: plannerPlanSize,
+      boardOnly,
     }
   );
 
@@ -2218,6 +2335,7 @@ async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = fals
     planNation: nation,
     planDivision: plannerPlanDivision,
     planSize: plannerPlanSize,
+    boardOnly,
     hydrated: true,
   });
   if (listBoardFilter !== "all") {
