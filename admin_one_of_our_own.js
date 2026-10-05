@@ -45,7 +45,7 @@ async function loadOverview() {
   if (error) {
     setStatus(
       "pageStatus",
-      "❌ " + error.message + " — run patches/one_of_our_own_78_fallback.sql",
+      "❌ " + error.message + " — run patches/one_of_our_own_best_hg_fallback_20261005.sql",
       false
     );
     return;

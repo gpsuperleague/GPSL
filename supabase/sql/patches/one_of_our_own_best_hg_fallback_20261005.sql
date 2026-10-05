@@ -73,6 +73,29 @@ BEGIN
   END IF;
 
   RETURN coalesce((
+    WITH fa AS (
+      SELECT
+        public.normalize_nation_key(p."Nation") AS nkey,
+        public.ooo_player_rating_num(p."Rating"::text) AS r
+      FROM public."Players" p
+      WHERE p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = ''
+    ),
+    by_nation AS (
+      SELECT
+        nkey,
+        count(*) FILTER (WHERE r >= 79)::int AS n79,
+        count(*) FILTER (WHERE r = 78)::int AS n78,
+        count(*) FILTER (WHERE r IS NOT NULL)::int AS nall,
+        max(r) AS top
+      FROM fa
+      WHERE nkey IS NOT NULL AND nkey <> ''
+      GROUP BY nkey
+    ),
+    clubs AS (
+      SELECT c.*, public.normalize_nation_key(c."Nation") AS nkey
+      FROM public."Clubs" c
+      WHERE c."ShortName" <> 'FOREIGN'
+    )
     SELECT jsonb_agg(
       jsonb_build_object(
         'short_name', c."ShortName",
@@ -82,17 +105,24 @@ BEGIN
         'drawn_player_id', d.player_id,
         'drawn_player_name', dp."Name",
         'drawn_fee', d.fee,
-        'eligible_band', pool.band,
-        'eligible_count', pool.cnt,
-        'best_rating', pool.best_rating
+        'eligible_band', CASE
+          WHEN coalesce(b.n79, 0) > 0 THEN '79+'
+          WHEN coalesce(b.n78, 0) > 0 THEN '78'
+          ELSE 'best HG'
+        END,
+        'eligible_count', CASE
+          WHEN coalesce(b.n79, 0) > 0 THEN b.n79
+          WHEN coalesce(b.n78, 0) > 0 THEN b.n78
+          ELSE coalesce(b.nall, 0)
+        END,
+        'best_rating', b.top
       )
       ORDER BY c."Club"
     )
-    FROM public."Clubs" c
+    FROM clubs c
+    LEFT JOIN by_nation b ON b.nkey = c.nkey
     LEFT JOIN public.club_one_of_our_own_draws d ON d.club_short_name = c."ShortName"
     LEFT JOIN public."Players" dp ON dp."Konami_ID"::text = d.player_id
-    CROSS JOIN LATERAL public.ooo_nation_band(c."Nation") pool
-    WHERE c."ShortName" <> 'FOREIGN'
   ), '[]'::jsonb);
 END;
 $function$;
@@ -109,6 +139,7 @@ DECLARE
   v_season_id bigint;
   v_club text;
   v_nation text;
+  v_nkey text;
   v_player_id text;
   v_player_name text;
   v_player_rating numeric;
@@ -136,6 +167,19 @@ BEGIN
     RAISE EXCEPTION 'No active competition season — start a season before drawing';
   END IF;
 
+  DROP TABLE IF EXISTS _ooo_fa;
+  CREATE TEMP TABLE _ooo_fa ON COMMIT DROP AS
+  SELECT
+    p."Konami_ID"::text AS pid,
+    p."Name"::text AS pname,
+    public.normalize_nation_key(p."Nation") AS nkey,
+    public.ooo_player_rating_num(p."Rating"::text) AS r,
+    public.ooo_player_age_num(p."Age"::text) AS age,
+    coalesce(nullif(btrim(p.market_value::text), '')::numeric, 0) AS mv
+  FROM public."Players" p
+  WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
+    AND public.ooo_player_rating_num(p."Rating"::text) IS NOT NULL;
+
   FOREACH v_club IN ARRAY p_club_short_names
   LOOP
     v_club := btrim(v_club);
@@ -158,35 +202,40 @@ BEGIN
       CONTINUE;
     END IF;
 
-    SELECT b.band INTO v_band FROM public.ooo_nation_band(v_nation) b;
+    v_nkey := public.normalize_nation_key(v_nation);
     v_player_id := NULL;
 
-    SELECT
-      p."Konami_ID"::text,
-      p."Name",
-      public.ooo_player_rating_num(p."Rating"::text),
-      round(coalesce(nullif(btrim(p.market_value::text), '')::numeric, 0))
+    SELECT CASE
+      WHEN count(*) FILTER (WHERE f.r >= 79) > 0 THEN '79+'
+      WHEN count(*) FILTER (WHERE f.r = 78) > 0 THEN '78'
+      ELSE 'best HG'
+    END
+    INTO v_band
+    FROM _ooo_fa f
+    WHERE f.nkey = v_nkey;
+
+    SELECT f.pid, f.pname, f.r, round(f.mv)
     INTO v_player_id, v_player_name, v_player_rating, v_fee
-    FROM public."Players" p
-    WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
-      AND public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_nation)
-      AND public.normalize_nation_key(p."Nation") <> ''
-      AND public.ooo_player_rating_num(p."Rating"::text) IS NOT NULL
+    FROM _ooo_fa f
+    WHERE f.nkey = v_nkey
+      AND v_nkey <> ''
       AND (
         CASE v_band
-          WHEN '79+' THEN public.ooo_player_rating_num(p."Rating"::text) >= 79
-          WHEN '78' THEN public.ooo_player_rating_num(p."Rating"::text) = 78
+          WHEN '79+' THEN f.r >= 79
+          WHEN '78' THEN f.r = 78
           ELSE true
         END
       )
     ORDER BY
-      CASE WHEN v_band = 'best HG' THEN public.ooo_player_rating_num(p."Rating"::text) END DESC NULLS LAST,
-      CASE WHEN v_band = 'best HG' THEN public.ooo_player_age_num(p."Age"::text) END ASC NULLS LAST,
-      CASE WHEN v_band = 'best HG'
-        THEN coalesce(nullif(btrim(p.market_value::text), '')::numeric, 0)
-      END DESC NULLS LAST,
+      CASE WHEN v_band = 'best HG' THEN f.r END DESC NULLS LAST,
+      CASE WHEN v_band = 'best HG' THEN f.age END ASC NULLS LAST,
+      CASE WHEN v_band = 'best HG' THEN f.mv END DESC NULLS LAST,
       random()
     LIMIT 1;
+
+    IF v_player_id IS NOT NULL THEN
+      DELETE FROM _ooo_fa WHERE pid = v_player_id;
+    END IF;
 
     IF v_player_id IS NULL THEN
       v_results := v_results || jsonb_build_object(
