@@ -79,6 +79,7 @@ export const SETUP_DIVISION_OPTIONS = [
   { value: "unassigned", label: "Unassigned" },
   { value: "standby", label: "Standby (no league)" },
   { value: "superleague", label: "SuperLeague" },
+  { value: "championship_a", label: "Championship A" },
   { value: "championship_pool", label: "Championship pool" },
 ];
 

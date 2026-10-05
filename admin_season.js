@@ -138,12 +138,149 @@ document.addEventListener("DOMContentLoaded", async () => {
   const sportRebuildBtn = document.getElementById("compSportRebuildBtn");
   if (sportRebuildBtn) sportRebuildBtn.onclick = rebuildGpslSportEdition;
 
+  document.getElementById("champSwapSeasonSelect").onchange = loadChampSwap;
+  document.getElementById("champSwapRefreshBtn").onclick = refreshChampSwapSeasons;
+  document.getElementById("champSwapBtn").onclick = runChampSwap;
+
   await refreshCompetitionAdmin();
   await refreshCompCalendarAdmin();
+  await refreshChampSwapSeasons();
 });
 
 function setCompStatus(msg, ok = true) {
   setStatus("compSeasonStatus", msg, ok);
+}
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function refreshChampSwapSeasons() {
+  const select = document.getElementById("champSwapSeasonSelect");
+  const [active, setup] = await Promise.all([
+    loadCurrentSeason(supabase),
+    loadSetupSeasons(supabase),
+  ]);
+  const seasons = [...(active ? [active] : []), ...(setup || [])];
+  const prev = select.value;
+  select.innerHTML = seasons.length
+    ? seasons
+        .map((s) => `<option value="${s.id}">${escapeHtml(s.label)} (${escapeHtml(s.status)})</option>`)
+        .join("")
+    : `<option value="">No season</option>`;
+  if (prev && seasons.some((s) => String(s.id) === prev)) select.value = prev;
+  await loadChampSwap();
+}
+
+async function loadChampSwap() {
+  const seasonId = Number(document.getElementById("champSwapSeasonSelect").value) || null;
+  const outSel = document.getElementById("champSwapOut");
+  const inSel = document.getElementById("champSwapIn");
+  const summary = document.getElementById("champSwapSummary");
+  const membersEl = document.getElementById("champSwapMembers");
+  const btn = document.getElementById("champSwapBtn");
+  outSel.innerHTML = "";
+  inSel.innerHTML = "";
+  membersEl.innerHTML = "";
+  summary.textContent = "";
+  btn.disabled = true;
+  if (!seasonId) return;
+
+  const { data, error } = await supabase.rpc("competition_admin_championship_status", {
+    p_season_id: seasonId,
+    p_division: "championship_a",
+  });
+  if (error) {
+    setStatus(
+      "champSwapStatus",
+      `❌ ${error.message}${
+        /championship_status/i.test(error.message)
+          ? " — run patches/championship_a_late_fill_20261005.sql"
+          : ""
+      }`,
+      false
+    );
+    return;
+  }
+
+  const members = data?.members || [];
+  const unowned = members.filter((m) => !m.owned);
+  const candidates = data?.candidates || [];
+  const locked = Boolean(data?.fixtures_drawn);
+
+  summary.innerHTML =
+    `Championship A: <b>${data.club_count}</b> clubs · <b>${data.owned_count}</b> owned · ` +
+    `<b>${unowned.length}</b> unowned · ` +
+    (locked
+      ? `<span style="color:#f88;">fixtures drawn — swaps locked</span>`
+      : `<span style="color:#9f9;">fixtures not drawn — swaps open</span>`);
+
+  outSel.innerHTML = unowned.length
+    ? unowned
+        .map((m) => `<option value="${escapeHtml(m.club)}">${escapeHtml(m.club_name)}</option>`)
+        .join("")
+    : `<option value="">No unowned clubs in Championship A</option>`;
+  inSel.innerHTML = candidates.length
+    ? candidates
+        .map(
+          (c) =>
+            `<option value="${escapeHtml(c.club)}">${escapeHtml(c.club_name)}${
+              c.owner_tag ? ` — ${escapeHtml(c.owner_tag)}` : ""
+            } (${escapeHtml(c.division)})</option>`
+        )
+        .join("")
+    : `<option value="">No owned clubs on Standby / Unassigned</option>`;
+
+  btn.disabled = locked || !unowned.length || !candidates.length;
+
+  membersEl.innerHTML = members.length
+    ? `<table class="gpsl-table" style="width:100%;border-collapse:collapse;margin-top:8px;">
+        <thead><tr>
+          <th style="padding:6px;background:#222;color:#ff9900;text-align:left;">Club</th>
+          <th style="padding:6px;background:#222;color:#ff9900;text-align:left;">Owner</th>
+          <th style="padding:6px;background:#222;color:#ff9900;text-align:left;">Slot</th>
+        </tr></thead>
+        <tbody>${members
+          .map(
+            (m) => `<tr>
+              <td style="padding:6px;border:1px solid #333;">${escapeHtml(m.club_name)}</td>
+              <td style="padding:6px;border:1px solid #333;">${
+                m.owned ? escapeHtml(m.owner_tag || "owned") : `<span style="color:#888;">unowned</span>`
+              }</td>
+              <td style="padding:6px;border:1px solid #333;">${m.slot ?? "—"}</td>
+            </tr>`
+          )
+          .join("")}</tbody>
+      </table>`
+    : `<p class="note">No clubs in Championship A for this season.</p>`;
+}
+
+async function runChampSwap() {
+  const seasonId = Number(document.getElementById("champSwapSeasonSelect").value) || null;
+  const outClub = document.getElementById("champSwapOut").value;
+  const inClub = document.getElementById("champSwapIn").value;
+  if (!seasonId || !outClub || !inClub) return;
+  const outLabel = document.getElementById("champSwapOut").selectedOptions[0]?.textContent || outClub;
+  const inLabel = document.getElementById("champSwapIn").selectedOptions[0]?.textContent || inClub;
+  if (!confirm(`Swap into Championship A?\n\nOut: ${outLabel}\nIn: ${inLabel}`)) return;
+
+  setStatus("champSwapStatus", "Swapping…");
+  const { data, error } = await supabase.rpc("competition_admin_swap_championship_club", {
+    p_season_id: seasonId,
+    p_out_club: outClub,
+    p_in_club: inClub,
+  });
+  if (error) {
+    setStatus("champSwapStatus", "❌ " + error.message, false);
+    return;
+  }
+  setStatus("champSwapStatus", `✅ ${data.in} is in Championship A (slot ${data.slot ?? "—"}); ${data.out} removed.`);
+  await loadChampSwap();
+  if (compSelectedSeasonId === seasonId) await loadCompSeasonData(seasonId);
 }
 
 /** Staged tick: FA → contested → decrement (separate RPCs / timeouts). */
@@ -750,8 +887,7 @@ function renderCompAssignTable() {
 
   for (const row of compRegistrations) {
     const tr = document.createElement("tr");
-    const drawn =
-      row.division === "championship_a" || row.division === "championship_b";
+    const drawn = row.division === "championship_b";
 
     let divisionCell;
     if (drawn) {
@@ -949,8 +1085,8 @@ async function assignDivisionsFromOwners() {
   if (
     !confirm(
       `Apply owner-led divisions?\n\n${summary}\n\n` +
-        "Positions 1–20 → Super League, 21–40 → Championship (if 10+), other owners → Standby, unowned → Unassigned.\n" +
-        "Overwrites current divisions on this pre-season. The preview table below shows who goes where."
+        "Positions 1–20 → Super League, 21–40 → Championship A, other owners → Standby, unowned → Unassigned.\n" +
+        "Overwrites current divisions on this pre-season (including unowned clubs you added to Championship A). The preview table below shows who goes where."
     )
   ) {
     setCompStatus(`Preview — ${summary}. Not applied.`);

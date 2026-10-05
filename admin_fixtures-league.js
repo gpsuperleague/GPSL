@@ -216,9 +216,30 @@ async function generateCompFixtures() {
   if (!compFixtureSeasonId || compFixtureBusy) return;
   const division = getCompFixtureDivision();
   const shuffle = document.getElementById("compShuffleOnGenerate").checked;
+  let lockNote = "";
+  if (division === "championship_a" || division === "championship_b") {
+    const { data: champ } = await supabase.rpc("competition_admin_championship_status", {
+      p_season_id: compFixtureSeasonId,
+      p_division: division,
+    });
+    if (champ) {
+      const owned = Number(champ.owned_count || 0);
+      const unowned = Number(champ.club_count || 0) - owned;
+      if (
+        owned < 10 &&
+        !confirm(
+          `${DIVISION_LABELS[division]} has only ${owned} owned club(s) (fewer than 10).\n\nDraw fixtures anyway?`
+        )
+      ) {
+        return;
+      }
+      lockNote =
+        `\n\nDrawing locks swaps: the ${unowned} unowned club(s) stay in and lose 3–0 by walkover at each month lock.`;
+    }
+  }
   if (
     !confirm(
-      `Generate 380 fixtures for ${DIVISION_LABELS[division]}? Existing fixtures for this division will be replaced.`
+      `Generate 380 fixtures for ${DIVISION_LABELS[division]}? Existing fixtures for this division will be replaced.${lockNote}`
     )
   ) {
     return;

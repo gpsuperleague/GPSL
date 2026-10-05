@@ -94,9 +94,11 @@
             <p class="note">
               <b>Owner-led seasons:</b> create the season (every active club is registered as Unassigned),
               run the club auction, then <b>Assign from owners</b>. Waiting-list positions 1–20
-              (Season 1 confirmed order) → Super League; 21–40 → Championship once at least 10 are present;
+              (Season 1 confirmed order) → Super League; 21–40 → Championship A (any number);
               other owners → <b>Standby</b> (cups, transfers and auctions, no league, no season costs);
               unowned clubs stay Unassigned (no fixtures, costs or income).
+              Fill Championship A up to 20 with unowned clubs in the table below, then swap new owners in
+              (card below) until Championship A fixtures are drawn.
               Start season needs SL 20 and each Championship 0 or 10–20.
             </p>
             <p class="note">
@@ -129,7 +131,7 @@
               </table>
             </div>
             <div class="row">
-              <button id="compAssignOwnersBtn" class="button" style="background:#2a6a2a;" type="button">Assign from owners (1–20 SL, 21–40 Championship, rest standby)</button>
+              <button id="compAssignOwnersBtn" class="button" style="background:#2a6a2a;" type="button">Assign from owners (1–20 SL, 21–40 Championship A, rest standby)</button>
               <button id="compAssignPrestigeBtn" class="button" style="background:#225544;" type="button">Assign from prestige (top 20 SL, then alt A/B)</button>
               <button id="compSeedMovementsBtn" class="button" style="background:#664422;">Copy divisions from selected season</button>
               <button id="compSaveAssignBtn" class="button">Save assignments</button>
@@ -138,6 +140,37 @@
             </div>
             <div id="compSeasonStatus" class="status-line"></div>
             <div id="compOwnerAssignPreview"></div>
+          </div>
+
+          <div class="card">
+            <h2>Championship A — swap in new owners</h2>
+            <p class="note">
+              Works before and after <b>Start season</b>. Pick an <b>unowned</b> Championship A club to take out and an
+              owned club on Standby / Unassigned to bring in — the new club takes its table slot.
+              Swaps lock once Championship A league fixtures are drawn (Admin → League fixtures).
+              Unowned clubs left in lose 3–0 by walkover at each month lock (gate and TV money still paid).
+            </p>
+            <div class="row">
+              <div>
+                <label>Season</label>
+                <select id="champSwapSeasonSelect"></select>
+              </div>
+              <div>
+                <label>Take out (unowned)</label>
+                <select id="champSwapOut"></select>
+              </div>
+              <div>
+                <label>Bring in (owned)</label>
+                <select id="champSwapIn"></select>
+              </div>
+              <div style="display:flex;align-items:flex-end;gap:8px;">
+                <button id="champSwapBtn" class="button" style="background:#2a6a2a;" type="button">Swap</button>
+                <button id="champSwapRefreshBtn" class="button secondary" type="button">Refresh</button>
+              </div>
+            </div>
+            <div id="champSwapSummary" class="note"></div>
+            <div id="champSwapStatus" class="status-line"></div>
+            <div id="champSwapMembers"></div>
           </div>
         </section>
 
@@ -203,6 +236,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260929-thursday"></script>
+  <script type="module" src="admin_season.js?v=20261005-champ-a-swap"></script>
 </body>
 </html>

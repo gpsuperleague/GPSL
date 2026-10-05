@@ -242,6 +242,7 @@ BEGIN
       AND cal.unlock_at > now()
       AND cal.unlock_at <= now() + interval '15 days'
       AND coalesce(s.status, 'unscheduled') <> 'agreed'
+      AND NOT public.competition_fixture_involves_vacant_club(f.id)
     ORDER BY cal.unlock_at, f.competition_type DESC, f.matchday, f.cup_round, f.id
   LOOP
     v_side := CASE WHEN upper(btrim(r.home_club_short_name)) = v_club THEN 'home' ELSE 'away' END;
@@ -407,6 +408,7 @@ BEGIN
     AND coalesce(f.competition_type, 'league') IN ('league', 'cup')
     AND v_club IN (upper(btrim(f.home_club_short_name)), upper(btrim(f.away_club_short_name)))
     AND (s.agreed_kickoff_at IS NULL OR s.agreed_kickoff_at >= now() - interval '20 minutes')
+    AND NOT public.competition_fixture_involves_vacant_club(f.id)
   ORDER BY
     (s.agreed_kickoff_at IS NULL),
     s.agreed_kickoff_at,
@@ -501,10 +503,7 @@ BEGIN
         SELECT 1 FROM public.competition_fixture_schedule s
         WHERE s.fixture_id = f.id AND s.status = 'agreed'
       )
-      AND EXISTS (
-        SELECT 1 FROM public."Clubs" c
-        WHERE c."ShortName" = f.home_club_short_name AND c.owner_id IS NOT NULL
-      )
+      AND NOT public.competition_fixture_involves_vacant_club(f.id)
   LOOP
     SELECT c.gpsl_month INTO v_prior
     FROM public.competition_season_calendar c
