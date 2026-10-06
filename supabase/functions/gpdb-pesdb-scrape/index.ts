@@ -221,15 +221,27 @@ function pesdbPlayerDetailUrl(row: {
   return PESDB_DT_LIST;
 }
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+  rsquo: "\u2019", lsquo: "\u2018", rdquo: "\u201D", ldquo: "\u201C", ndash: "\u2013", mdash: "\u2014",
+};
+
 function decodeHtml(text: string): string {
-  return text
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .trim();
+  let out = text;
+  // Two passes so double-encoded text (&amp;apos;) is fully decoded.
+  for (let pass = 0; pass < 2; pass++) {
+    out = out
+      .replace(/&#(\d{1,7});/g, (m, d) => {
+        const n = Number(d);
+        return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : m;
+      })
+      .replace(/&#x([0-9a-f]{1,6});/gi, (m, h) => {
+        const n = parseInt(h, 16);
+        return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : m;
+      })
+      .replace(/&([a-z]+);/gi, (m, name) => NAMED_ENTITIES[name.toLowerCase()] ?? m);
+  }
+  return out.trim();
 }
 
 function stripTags(html: string): string {
