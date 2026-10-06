@@ -13,6 +13,10 @@ import {
   loadAuctionReadiness,
   wireAuctionReadiness,
 } from "./admin_club_auction_readiness.js?v=20261003-bidding";
+import {
+  loadManagerAuctionReadiness,
+  wireManagerAuctionReadiness,
+} from "./admin_manager_auction_readiness.js?v=20261006-mgr-ready";
 
 primeAdminPageChrome();
 
@@ -120,8 +124,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("filterDivision")?.addEventListener("change", renderTable);
   document.getElementById("filterIssuesOnly")?.addEventListener("change", renderTable);
   wireAuctionReadiness();
+  wireManagerAuctionReadiness();
 
   void loadAuctionReadiness();
+  void loadManagerAuctionReadiness();
   await loadTable();
 });
 
