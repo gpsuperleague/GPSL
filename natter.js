@@ -508,12 +508,24 @@ function renderComposeUi(state) {
   const composeClub = document.getElementById("composeClub");
   const composeMeta = document.getElementById("composeMeta");
   if (composeClub) composeClub.textContent = clubName;
+  const postLimit = Number(state?.post_limit) || 1;
+  const postsUsed = Number(state?.posts_used) || 0;
   if (composeMeta) {
     composeMeta.textContent = state?.can_compose
-      ? `One post for ${natterWindowLabel(ctx)}`
+      ? postLimit > 1
+        ? `Post ${postsUsed + 1} of ${postLimit} for ${natterWindowLabel(ctx)}`
+        : `One post for ${natterWindowLabel(ctx)}`
       : state?.already_posted
-        ? `Posted for ${natterWindowLabel(ctx)}`
+        ? postLimit > 1
+          ? `Both posts used for ${natterWindowLabel(ctx)}`
+          : `Posted for ${natterWindowLabel(ctx)}`
         : "Compose window closed";
+  }
+  if (banner) {
+    banner.textContent =
+      postLimit > 1
+        ? `You’ve used both of your Natters for ${natterWindowLabel(ctx)}. Browse the feed below.`
+        : "You’ve already Nattered for this window — one-and-done. Browse the feed below.";
   }
 
   setComposeAvatar(clubShort, clubName);
@@ -892,7 +904,10 @@ async function submitPost() {
     }
     if (!data?.ok) {
       const reasons = {
-        already_posted: `You’ve already posted for ${natterWindowLabel(composeState?.context)}.`,
+        already_posted:
+          (Number(data?.post_limit) || 1) > 1
+            ? `You’ve used both posts for ${natterWindowLabel(composeState?.context)}.`
+            : `You’ve already posted for ${natterWindowLabel(composeState?.context)}.`,
         window_closed: "Compose window is closed.",
         empty: "Write something before posting.",
         too_long: `Too long — max ${MAX_CHARS} characters.`,
