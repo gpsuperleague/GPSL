@@ -81,6 +81,24 @@ function scoutingPlayerBadgesHtml(player) {
   return ` <span class="scout-badges">${bits.join("")}</span>`;
 }
 import { mountAdvisoryTransferBudget } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
+import { wireAutoBidPlan } from "./scouting_autobid.js?v=20261006-autobid";
+
+function autoBidSeedRows() {
+  return activeRowsForCurrentView()
+    .map((row) => {
+      const p = playerMapCache.get(String(row.player_id));
+      if (!p) return null;
+      return {
+        player_id: String(row.player_id),
+        name: p.Name || String(row.player_id),
+        position: p.Position || "",
+        rating: p.Rating ?? null,
+        market_value: Number(p.market_value) || 0,
+        contracted_team: p.Contracted_Team || null,
+      };
+    })
+    .filter(Boolean);
+}
 
 const PLAYER_COLUMNS =
   "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, contract_wage, Playstyle, Contracted_Team";
@@ -1385,6 +1403,13 @@ async function renderScoutingLists() {
   renderListBoardFilter();
   wireListBoardFilter();
   wireListOooSelect();
+  wireAutoBidPlan({
+    supabase,
+    getClubShort: () => clubShort,
+    getSeedRows: autoBidSeedRows,
+    getBoardFilter: () => listBoardFilter,
+    getBoardLabel: boardLabel,
+  });
 
   try {
     playerBoardMap = await loadScoutingPlannerPlayerBoards(supabase);
