@@ -59,6 +59,13 @@ export const ADMIN_MAIN_NAV = [
           null,
           "Create folders / sub-folders and add video links shown on Owners → Knowledge → Video tutorials."
         ),
+        L(
+          "Owner feedback",
+          "admin_owner_feedback.html",
+          null,
+          null,
+          "Feedback survey results: ratings, recommendations and who hasn't responded. Opens automatically after August."
+        ),
       ]),
       group("Supporters", [L("Supporters' lottery", "admin_supporter_lottery.html")]),
       group("Mods", [L("Manage mods", "admin_mods.html")]),

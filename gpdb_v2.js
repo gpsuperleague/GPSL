@@ -1347,14 +1347,18 @@ document.addEventListener("DOMContentLoaded", () => {
       if (orClause) query = query.or(orClause);
     }
 
+    // Text market_value sorts lexicographically ("9000000" > "39975000").
+    const mvSortCol =
+      gpdbUseEffectiveWageView && gpdbHasMarketValueN ? "market_value_n" : "market_value";
+
     if (CURRENT_SORT_COLUMN) {
       if (CURRENT_SORT_COLUMN === "Rating") {
         query = query
           .order("Rating", { ascending: false })
-          .order("market_value", { ascending: false });
+          .order(mvSortCol, { ascending: false });
       } else if (CURRENT_SORT_COLUMN === "market_value") {
         query = query
-          .order("market_value", { ascending: CURRENT_SORT_DIR === "asc" })
+          .order(mvSortCol, { ascending: CURRENT_SORT_DIR === "asc", nullsFirst: false })
           .order("Rating", { ascending: false });
       } else if (
         CURRENT_SORT_COLUMN === "Position" ||
@@ -1374,7 +1378,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       query = query
         .order("Rating", { ascending: false })
-        .order("market_value", { ascending: false });
+        .order(mvSortCol, { ascending: false });
     }
 
     query = query.range(from, to);

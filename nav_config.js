@@ -274,6 +274,7 @@ export const NAV_SECTIONS = [
       },
       { heading: true, label: "Social" },
       { href: "natter.html", label: "Natter", page: "natter", indent: true },
+      { href: "feedback_survey.html", label: "Feedback survey", page: "feedback_survey", indent: true },
       { href: "bookies.html", label: "Bookies", page: "bookies", indent: true },
       {
         href: "owners_shop.html",

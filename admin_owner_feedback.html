@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Owner feedback — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .ofb-note { font-size:13px; color:#aaa; line-height:1.5; margin-bottom:14px; max-width:980px; }
+    .ofb-bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
+    .ofb-bar select { background:#111; color:#eee; border:1px solid #333; border-radius:5px; padding:6px 8px; min-width:320px; }
+    .ofb-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:12px; margin-bottom:16px; }
+    .ofb-card { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:12px 14px; }
+    .ofb-card h2 { color:#ffaa22; font-size:15px; margin:0 0 10px; }
+    .ofb-kpi .v { font-size:24px; color:#fff; font-weight:bold; }
+    .ofb-kpi .l { font-size:12px; color:#999; }
+    .ofb-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .ofb-table th, .ofb-table td { padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left; vertical-align:middle; }
+    .ofb-table th { color:#9a9a9a; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; }
+    .ofb-bars { display:flex; gap:2px; align-items:flex-end; height:28px; }
+    .ofb-bars span { width:14px; background:#ff9900; border-radius:2px 2px 0 0; min-height:2px; opacity:.85; }
+    .ofb-avg { font-weight:bold; }
+    .ofb-avg.good { color:#8fe0a0; } .ofb-avg.mid { color:#ffd27a; } .ofb-avg.low { color:#ff9a9a; }
+    .ofb-resp { border:1px solid #2a2a2a; border-radius:6px; padding:10px 12px; margin-bottom:10px; background:#151515; }
+    .ofb-resp .who { color:#ffaa22; font-weight:bold; font-size:13px; }
+    .ofb-resp .when { color:#777; font-size:12px; margin-left:8px; }
+    .ofb-resp .chips { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0; }
+    .ofb-resp .chip { font-size:11.5px; border:1px solid #333; border-radius:10px; padding:1px 7px; color:#bbb; }
+    .ofb-resp .q { color:#999; font-size:12px; margin-top:8px; }
+    .ofb-resp .a { color:#eee; font-size:13.5px; white-space:pre-wrap; line-height:1.45; }
+    .ofb-reco { border-left:3px solid #ff9900; padding-left:10px; }
+    .ofb-muted { color:#777; font-size:12px; }
+    .ofb-pending { columns: 3 220px; font-size:13px; color:#ccc; margin:0; padding-left:18px; }
+    .ofb-btn-sm { padding:4px 10px !important; font-size:12px !important; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Owner feedback</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="ofb-note">
+        The survey opens <b>automatically</b> once the GPSL calendar moves past <b>August</b> (once per season):
+        every club owner gets an inbox invite, it stays open for 14 days, and owners who haven't answered get one
+        reminder 48 hours before it closes. Owners can submit <b>anonymously</b> — those responses have no name or club.
+        Owners answer at <a href="feedback_survey.html" style="color:#ff9900" target="_blank">feedback_survey.html</a>.
+      </p>
+      <div id="pageStatus" class="status-line"></div>
+      <div class="ofb-bar">
+        <label for="ofbSurvey">Survey</label>
+        <select id="ofbSurvey"></select>
+        <button type="button" class="button secondary ofb-btn-sm" id="ofbExtendBtn" hidden>Extend 7 days</button>
+        <button type="button" class="button secondary ofb-btn-sm" id="ofbCloseBtn" hidden>Close now</button>
+        <button type="button" class="button secondary ofb-btn-sm" id="ofbCsvBtn" hidden>Download CSV</button>
+        <span style="flex:1"></span>
+        <button type="button" class="button secondary ofb-btn-sm" id="ofbOpenNowBtn">Open a survey now…</button>
+      </div>
+      <div id="ofbResults"><p class="ofb-muted">Loading…</p></div>
+    </div>
+  </div>
+  <script type="module" src="admin_owner_feedback.js?v=20261006-feedback"></script>
+</body>
+</html>

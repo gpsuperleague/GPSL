@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261005-vt-admin";
+export const APP_VERSION = "20261006-feedback";
