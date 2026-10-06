@@ -81,7 +81,8 @@ function scoutingPlayerBadgesHtml(player) {
   return ` <span class="scout-badges">${bits.join("")}</span>`;
 }
 import { mountAdvisoryTransferBudget } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
-import { wireAutoBidPlan } from "./scouting_autobid.js?v=20261006-autobid";
+import { wireAutoBidPlan } from "./scouting_autobid.js?v=20261006-tips";
+import { upgradeTitlesToTips } from "./scouting_tips.js?v=20261006-tips";
 
 function autoBidSeedRows() {
   return activeRowsForCurrentView()
@@ -2859,6 +2860,7 @@ function wireTabs() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   initGpslInfoTips();
+  upgradeTitlesToTips(document.body);
   await initGlobal();
   await loadPlayerValueTables();
   wireTabs();

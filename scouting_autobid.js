@@ -39,6 +39,26 @@ const STATE_TONE = {
   pending: "muted",
 };
 
+const STATE_HELP = {
+  pending: "Nothing done yet — the plan starts when the draft opens.",
+  waiting_credits:
+    "Another club opened this thread and you have no free credit to join. The plan rechecks every minute and joins as soon as opening other targets earns you a credit.",
+  waiting_open:
+    "Nobody has opened this thread and you told the plan not to open it. It will join if another club opens it (credits permitting).",
+  leading: "You are the highest bidder. Your max bid keeps defending if someone bids higher.",
+  in_play: "You are in this thread and were outbid, but your max bid is still above the next bid and will respond.",
+  beaten: "Bidding went past your max bid. Raise the max and save if you still want him.",
+  priced_out: "The next bid needed is already above your max, so the plan won't enter. Raise the max and save to try.",
+  skipped:
+    "Held back by a plan cap or squad rule (see the note). Rechecked every minute — if a target you were in gets beaten, capacity frees up.",
+  cutoff: "The cutoff passed before the plan could open or join this thread.",
+  ineligible: "The draft rejected this player (e.g. contracted, legacy card or excluded). See the note.",
+  owned: "Already in your squad — skipped.",
+  won: "You were leading when the draft closed.",
+  lost: "You were in this thread but another club finished higher.",
+  excluded: "Unticked — the plan ignores this player and his max bid is not set.",
+};
+
 const PLAN_STATUS_LABELS = {
   scheduled: "Scheduled — starts when the draft opens",
   live: "Live — working now",
@@ -145,29 +165,33 @@ function buildOverlay() {
       </p>
       <div id="scoutAbPaused" class="scout-ab-status warn" hidden></div>
       <div class="scout-ab-row">
-        <label for="scoutAbDraft">Player draft</label>
-        <select id="scoutAbDraft" class="scout-board-select"></select>
+        <label for="scoutAbDraft" title="The plan only runs in this draft and expires when it ends. Lists the current draft (if not finished) and player drafts scheduled in the events planner.">Player draft</label>
+        <select id="scoutAbDraft" class="scout-board-select" title="Choose which dated player draft this plan is for. Each draft has its own plan."></select>
         <span id="scoutAbAdminWrap" hidden>
-          <label><input type="checkbox" id="scoutAbAdminPause" /> Admin: pause all plans</label>
+          <label title="Stops every club's plan from opening, joining or setting max bids until unticked. Bids already placed and max bids already set are not removed.">
+            <input type="checkbox" id="scoutAbAdminPause" /> Admin: pause all plans
+          </label>
         </span>
       </div>
       <div id="scoutAbPlanStatus" class="scout-ab-status" hidden></div>
       <div class="scout-ab-row">
-        <label for="scoutAbSpendCap">Total spend cap (₿m)</label>
-        <input type="number" id="scoutAbSpendCap" min="0" step="0.5" placeholder="No cap" />
-        <label for="scoutAbMaxWins">Max players to win</label>
-        <input type="number" id="scoutAbMaxWins" min="1" max="28" step="1" placeholder="No limit" />
-        <label><input type="checkbox" id="scoutAbEnabled" checked /> Plan switched on</label>
+        <label for="scoutAbSpendCap" title="The most the plan may commit at once. Before opening or joining it adds up the max bids on threads it is still in (leading or still able to respond) plus the new target's max — if that would go over the cap, the target is skipped. Leave blank for no cap.">Total spend cap (₿m)</label>
+        <input type="number" id="scoutAbSpendCap" min="0" step="0.5" placeholder="No cap" title="In millions, e.g. 120 = ₿120,000,000. Blank = no cap." />
+        <label for="scoutAbMaxWins" title="The most threads the plan may be in at once (leading or still able to respond). When a thread is beaten above your max it frees a place for the next target. Leave blank for no limit.">Max players to win</label>
+        <input type="number" id="scoutAbMaxWins" min="1" max="28" step="1" placeholder="No limit" title="1–28. Blank = no limit." />
+        <label title="Untick to pause your plan. Bids already placed stay; the plan's max bids stop defending. Tick again and save to resume.">
+          <input type="checkbox" id="scoutAbEnabled" checked /> Plan switched on
+        </label>
       </div>
       <div class="scout-ab-row">
-        <button type="button" class="button secondary" id="scoutAbSeedBtn"></button>
-        <span class="meta" id="scoutAbCount"></span>
+        <button type="button" class="button secondary" id="scoutAbSeedBtn" title="Copies the Active Targets from the board view selected on the Target lists page into this plan. Players already in the plan keep their settings. The plan is a snapshot — later scouting changes don't alter it until you add them here and save."></button>
+        <span class="meta" id="scoutAbCount" title="Total of the max bids on included targets — the most you could spend if you won them all at your max (the spend cap may stop the plan earlier)."></span>
       </div>
       <div id="scoutAbTableWrap"></div>
       <div class="scout-ab-actions">
-        <button type="button" class="button" id="scoutAbSaveBtn">Save plan</button>
-        <button type="button" class="button secondary" id="scoutAbRefreshBtn">Refresh status</button>
-        <button type="button" class="button secondary" id="scoutAbDeleteBtn" hidden>Delete plan</button>
+        <button type="button" class="button" id="scoutAbSaveBtn" title="Saves the plan for the chosen draft. Changes made while the draft is live take effect within a minute.">Save plan</button>
+        <button type="button" class="button secondary" id="scoutAbRefreshBtn" title="Reload the live status of each target (also refreshes automatically every minute while the draft is live).">Refresh status</button>
+        <button type="button" class="button secondary" id="scoutAbDeleteBtn" title="Removes this plan. Bids already placed stay; the plan's max bids stop defending." hidden>Delete plan</button>
         <span id="scoutAbMsg" class="scout-ab-msg" aria-live="polite"></span>
       </div>
     </div>
@@ -318,9 +342,15 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
     wrap.innerHTML = `
       <table class="scout-ab-table">
         <thead><tr>
-          <th>#</th><th>Player</th><th>Pos</th><th>Rtg</th><th>Opening (MV)</th>
-          <th>Max bid (₿m)</th><th title="Allow the plan to open this thread if nobody has">May open</th>
-          <th>Include</th><th>Status</th><th></th>
+          <th title="Priority — the plan works top to bottom. Use ↑ ↓ to reorder.">#</th>
+          <th>Player</th><th>Pos</th>
+          <th title="Players rated 79+ count as stars for your star cap (your One of our Own is not counted).">Rtg</th>
+          <th title="The opening bid is the player's market value. Each later bid is the high bid + ₿500,000.">Opening (MV)</th>
+          <th title="The most you'll pay, in millions (e.g. 12.5 = ₿12,500,000). The plan bids the minimum needed and only goes higher when outbid, up to this amount. Rounded to the nearest ₿0.5m.">Max bid (₿m)</th>
+          <th title="Allow the plan to open this thread if nobody has yet. Opening earns you 2 credits, which lets the plan join other clubs' threads.">May open</th>
+          <th title="Untick to keep the player in the plan but have it ignore him.">Include</th>
+          <th title="Live status, refreshed every minute while the draft is live. Hover a status for what it means.">Status</th>
+          <th></th>
         </tr></thead>
         <tbody>
           ${st.rows
@@ -348,7 +378,7 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
                   <td><input type="checkbox" class="scout-ab-open" ${r.allow_open ? "checked" : ""} ${ro ? "disabled" : ""} /></td>
                   <td><input type="checkbox" class="scout-ab-inc" ${r.included ? "checked" : ""} ${ro ? "disabled" : ""} /></td>
                   <td>
-                    <span class="scout-ab-pill ${tone}">${esc(STATE_LABELS[r.state] || r.state || "—")}</span>
+                    <span class="scout-ab-pill ${tone}" title="${esc(STATE_HELP[r.state] || "")}">${esc(STATE_LABELS[r.state] || r.state || "—")}</span>
                     ${note ? `<span class="scout-ab-note">${esc(note)}</span>` : ""}
                   </td>
                   <td style="white-space:nowrap;">
