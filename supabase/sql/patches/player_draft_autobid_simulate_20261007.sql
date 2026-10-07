@@ -235,7 +235,8 @@ BEGIN
           'player', coalesce(p."Name", coalesce(bd.player_id, bd.direct_bid_id::text)),
           'amount', bd.bid_amount,
           'opened', bd.is_first_draft_bid,
-          'join', bd.is_draft_join
+          'join', bd.is_draft_join,
+          'credit_used', bd.draft_join_consumed
         ) ORDER BY bd.bid_amount), '[]'::jsonb)
         FROM public."Player_Transfer_Bids" bd
         LEFT JOIN public."Players" p ON p."Konami_ID"::text = coalesce(bd.player_id, bd.direct_bid_id::text)

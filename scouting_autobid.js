@@ -682,7 +682,7 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
       .map(
         (b) =>
           `<li>${esc(b.player)}: ${formatMoney(b.amount)}${b.opened ? " (opened — +2 credits)" : ""}${
-            b.join ? " (joined — 1 credit)" : ""
+            b.credit_used ? " (joined — 1 credit)" : !b.opened ? " (raise by your max bid)" : ""
           }</li>`
       )
       .join("");
