@@ -38,7 +38,7 @@ import {
   buildPlayerDraftUiState,
   renderDraftManageCell,
   submitScoutingDraftBid,
-} from "./scouting_draft_actions.js?v=20261007-fastload";
+} from "./scouting_draft_actions.js?v=20261007-player-clock";
 import {
   confirmSquadRulesBeforeBid,
   isHomeGrownPlayer,

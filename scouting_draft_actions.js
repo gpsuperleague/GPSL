@@ -214,7 +214,9 @@ export async function submitScoutingDraftBid(
 
 export async function loadScoutingDraftContext(supabase, clubShort, playerIds) {
   const settings = await loadGlobalSettings();
-  const draftStart = settings.draftStart;
+  // settings.draftStart follows the nav countdown kind (can be the manager or
+  // club auction clock); scouting bids are player-draft only.
+  const draftStart = settings.playerDraftStart ?? null;
   const draftEnabled = settings.draftEnabled;
   const nowUK = getUKNow();
   const phase = draftStart
