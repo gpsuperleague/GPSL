@@ -241,12 +241,15 @@ export async function loadScoutingDraftContext(supabase, clubShort, playerIds) {
     }
   }
 
-  const bidsGrouped = await fetchDraftBidsGroupedForPlayers(
-    normalized,
-    draftStart ? new Date(draftStart) : null
-  );
+  const [bidsGrouped, draftCredits] = await Promise.all([
+    fetchDraftBidsGroupedForPlayers(normalized, draftStart ? new Date(draftStart) : null),
+    !auctionEnded && clubShort
+      ? getDraftCreditsCount(clubShort, new Date(draftStart)).catch(() => 0)
+      : Promise.resolve(0),
+  ]);
 
   return {
+    draftCredits,
     settings,
     draftStart,
     draftEnabled,
@@ -326,6 +329,8 @@ export async function buildPlayerDraftUiState(ctx, player) {
       buyerShortName: ctx.clubShort,
       draftAuctionEnabled: ctx.draftEnabled,
       draftAuctionStartTime: draftStartDate,
+      windowBids: bids,
+      draftCredits: ctx.draftCredits ?? 0,
     }));
 
   const minBid = draftMinimumBidAmount(player.market_value, bids);
