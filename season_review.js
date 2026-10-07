@@ -83,6 +83,13 @@ function chip(text, tone) {
   return `<span class="sr-chip sr-chip--${tone}">${esc(text)}</span>`;
 }
 
+function cupStatus(met, alive, applicable = true) {
+  if (!applicable || (met == null && alive == null)) return `<span class="sr-cup sr-cup--na">not in this cup</span>`;
+  if (met === true) return `<span class="sr-cup sr-cup--ok">✔ reached</span>`;
+  if (alive === true) return `<span class="sr-cup sr-cup--live">still in</span>`;
+  return `<span class="sr-cup sr-cup--out">✘ out</span>`;
+}
+
 function hasConsequence(r) {
   const m = r.manager?.code;
   return (
@@ -97,11 +104,14 @@ function hasConsequence(r) {
 function expectationCell(r) {
   const band = r.band || "on_target";
   const tone = band === "on_target" ? "ok" : band === "slight" ? "warn" : "bad";
-  const cupMet = (r.cup_targets || []).filter((t) => t.applicable);
-  const cupLine = cupMet.length
-    ? `<div class="sr-sub">Cup: ${cupMet
-        .map((t) => `${esc(t.label)} ${t.met ? "✔" : "✘"}`)
-        .join(" · ")}</div>`
+  const cups = r.cup_targets || [];
+  const cupLine = cups.length
+    ? `<div class="sr-cups">${cups
+        .map((t) => `<div>🏆 ${esc(t.label)} — ${cupStatus(t.met, t.alive, t.applicable)}</div>`)
+        .join("")}</div>`
+    : `<div class="sr-sub">No club cup target</div>`;
+  const rescueNote = r.cup_rescue_possible
+    ? `<div class="sr-block sr-next">Slight miss — still in a target cup, so reaching it would cancel the fine and transfer request.</div>`
     : "";
   return `
     <div>${r.expected_position ? `Expected <b>${ordinal(r.expected_position)}</b>` : "Expected —"}
@@ -113,7 +123,8 @@ function expectationCell(r) {
     }</div>
     <div>${chip(BAND_LABELS[band] || band, tone)}${r.cup_rescued ? ` ${chip("Cup rescue", "ok")}` : ""}</div>
     ${r.band_provisional ? `<div class="sr-sub" title="The official status appears once the first month's league fixtures are all played">Early season — from the live table</div>` : ""}
-    ${cupLine}`;
+    ${cupLine}
+    ${rescueNote}`;
 }
 
 function clubOutcomeCell(r) {
@@ -134,8 +145,21 @@ function clubOutcomeCell(r) {
 function managerCell(r) {
   const m = r.manager || {};
   if (!m.name) return `<span class="sr-sub">No manager</span>`;
-  const met =
-    m.target_met === true ? chip("Target hit", "ok") : m.target_met === false ? chip("Target missed", "bad") : chip("Pending", "muted");
+  const met = m.met_via_cup
+    ? chip("Target hit via cup", "ok")
+    : m.target_met === true
+      ? chip("Target hit", "ok")
+      : m.target_met === false
+        ? chip("Target missed", "bad")
+        : chip("Pending", "muted");
+  const cupLine = m.cup_target_label
+    ? `<div class="sr-cups"><div>🏆 ${esc(m.cup_target_label)} — ${cupStatus(m.cup_target_met, m.cup_alive)}</div></div>`
+    : "";
+  const rescue = m.cup_rescue_possible
+    ? `<div class="sr-block sr-next">Within ${m.cup_rescue_places} places of his league target and still in the cup — reaching the cup stage would count as a hit.</div>`
+    : m.met_via_cup
+      ? `<div class="sr-sub">League target missed by ${m.cup_rescue_places} or fewer places, rescued by the cup.</div>`
+      : "";
   const yearTxt = m.pending_renewal
     ? "Deal finished"
     : m.seasons_remaining > 1
@@ -143,8 +167,10 @@ function managerCell(r) {
       : `Final year of deal (year ${m.deal_season})`;
   return `
     <div><a class="sr-link" href="manager_career.html?manager=${encodeURIComponent(m.id)}">${esc(m.name)}</a> <span class="sr-sub">(${m.rating ?? "—"})</span></div>
-    <div class="sr-sub">Target: ${esc(m.target_label || "—")}</div>
+    <div class="sr-sub">League target: ${esc(m.target_label || "—")}</div>
+    ${cupLine}
     <div>${met}</div>
+    ${rescue}
     <div class="sr-sub">${esc(yearTxt)} · ${m.deal_hits} hit${m.deal_hits === 1 ? "" : "s"} this deal</div>`;
 }
 

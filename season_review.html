@@ -61,6 +61,12 @@
     .sr-chip--warn { background:#3a3014; color:#ffcc66; border:1px solid #6a5420; }
     .sr-chip--bad { background:#3a1717; color:#ff8a8a; border:1px solid #6a2626; }
     .sr-chip--muted { background:#262626; color:#999; border:1px solid #3a3a3a; }
+    .sr-cups { margin-top:4px; font-size:11px; color:#ccc; line-height:1.5; }
+    .sr-cup { font-weight:bold; white-space:nowrap; }
+    .sr-cup--ok { color:#7bd88f; }
+    .sr-cup--live { color:#ffcc66; }
+    .sr-cup--out { color:#ff8a8a; }
+    .sr-cup--na { color:#777; font-weight:normal; }
     .sr-empty { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:16px; color:#bbb; }
   </style>
 </head>
@@ -74,7 +80,8 @@
     <details class="sr-how">
       <summary>How the projection works</summary>
       <ul>
-        <li><b>Club expectation</b> comes from prestige and tier (medium and low clubs get a lift for a strong manager). Finishing below it is a slight, bad or abysmal miss. A slight miss is forgiven if the club hits its cup target.</li>
+        <li><b>Club expectation</b> comes from prestige and tier (medium and low clubs get a lift for a strong manager). Finishing below it is a slight (1–2 places), bad (3–5) or abysmal (6+) miss.</li>
+        <li><b>Cups:</b> reaching a club cup target (set by division and tier) cancels a <b>slight</b> league miss — no board fine, no transfer request. Bad and abysmal misses can't be rescued by cups. A manager's rule can also carry a cup target: if he misses his league target by 2 places or fewer (and isn't relegated), reaching that cup stage counts as a target hit. "Still in" means the club can still reach the stage; "out" means it has been knocked out before it.</li>
         <li><b>Missing expectation</b> means the board fines the owner <b>25% of their personal wealth</b> (GPSL Building Society), and one player <b>asks to be listed</b>: big clubs lose a top-4 player (a lower-rated one for a slight miss), medium clubs a 74–78 player aged 22+ (68–73 for a slight miss), low clubs a player rated 72 or below. The player is picked at random from the names shown and listed at market value until sold.</li>
         <li><b>Managers sign 2-season deals.</b> After <b>season 1</b>, the board sacks the manager if the club has a <b>bad or abysmal miss</b> (3+ places below expected, or relegated when not expected to be). Owners can still sack in June/July or January for half market value. At the end of the deal: <b>no personal target hit</b> in either season → he refuses a new deal and leaves; <b>a target hit but the club missed expectation in both seasons</b> → he is sacked; otherwise he is <b>open to renew</b> for 2 more seasons (June/July). Leaving or sacked managers pay the club their market value and can't be re-signed for 2 seasons.</li>
         <li><b>Finances:</b> projected close = current balance + remaining gates, prize money, TV, subsidies, wages, manager salary, taxes and stadium maintenance. Below zero adds end-of-season debt interest. At or below <b>−₿100m</b> the club pays a <b>₿50m FFP fine</b>, its most valuable players are sold at market value until the balance is back above the line, and it can't buy in the next transfer window.</li>
@@ -95,6 +102,6 @@
 
     <div id="srBoard"><p class="sr-empty">Loading…</p></div>
   </div>
-  <script type="module" src="season_review.js?v=20261007-sr4"></script>
+  <script type="module" src="season_review.js?v=20261007-sr5"></script>
 </body>
 </html>

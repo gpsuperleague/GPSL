@@ -156,6 +156,44 @@ BEGIN
 END;
 $function$;
 
+-- Still in a cup: has a bracket tie, and their latest tie is unplayed or won
+-- (and not the final). NULL = not in that cup this season.
+CREATE OR REPLACE FUNCTION public.season_review_cup_alive(
+  p_season_id bigint,
+  p_club_short_name text,
+  p_cup_code text
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH mine AS (
+    SELECT n.round_no, n.winner_club_short_name
+    FROM public.competition_cup_bracket_nodes n
+    WHERE n.season_id = p_season_id
+      AND n.cup_code = p_cup_code
+      AND (n.home_club_short_name = p_club_short_name OR n.away_club_short_name = p_club_short_name)
+  ),
+  last_tie AS (
+    SELECT * FROM mine ORDER BY round_no DESC LIMIT 1
+  ),
+  final_round AS (
+    SELECT max(n.round_no) AS r
+    FROM public.competition_cup_bracket_nodes n
+    WHERE n.season_id = p_season_id AND n.cup_code = p_cup_code
+  )
+  SELECT CASE
+    WHEN NOT EXISTS (SELECT 1 FROM mine) THEN NULL
+    ELSE EXISTS (
+      SELECT 1 FROM last_tie lt, final_round fr
+      WHERE lt.winner_club_short_name IS NULL
+         OR (lt.winner_club_short_name = p_club_short_name AND lt.round_no < fr.r)
+    )
+  END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.season_review_board()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -173,6 +211,14 @@ DECLARE
   v_band text;
   v_provisional boolean := false;
   v_cup jsonb;
+  v_cup_targets jsonb;
+  v_club_rescue_possible boolean;
+  v_league_met boolean;
+  v_rescue_places int := 2;
+  v_mgr_cup_label text;
+  v_mgr_cup_met boolean;
+  v_mgr_cup_alive boolean;
+  v_mgr_rescue_possible boolean;
   v_rescued boolean;
   v_missed boolean;
   v_expected int;
@@ -231,6 +277,9 @@ BEGIN
   FROM public.gpsl_bank_account b
   WHERE b.id = 1;
   v_rate := coalesce(v_rate, 5);
+  SELECT coalesce(g.manager_cup_rescue_places, 2) INTO v_rescue_places
+  FROM public.global_settings g WHERE g.id = 1;
+  v_rescue_places := coalesce(v_rescue_places, 2);
   v_threshold := coalesce(v_threshold, 100000000);
   v_fine := coalesce(v_fine, 50000000);
   v_clear := coalesce(v_clear, 99999999);
@@ -305,6 +354,20 @@ BEGIN
     v_rescued := v_band = 'slight' AND coalesce((v_cup->>'met')::boolean, false);
     v_missed := v_band <> 'on_target' AND NOT v_rescued;
 
+    SELECT coalesce(jsonb_agg(
+             t || jsonb_build_object(
+               'alive', public.season_review_cup_alive(v_season_id, v_c.club_short_name, t->>'cup_code')
+             )
+           ), '[]'::jsonb)
+    INTO v_cup_targets
+    FROM jsonb_array_elements(coalesce(v_cup->'targets', '[]'::jsonb)) t;
+
+    v_club_rescue_possible := v_band = 'slight' AND NOT v_rescued AND EXISTS (
+      SELECT 1 FROM jsonb_array_elements(v_cup_targets) t
+      WHERE (t->>'met') IS DISTINCT FROM 'true'
+        AND (t->>'alive') = 'true'
+    );
+
     IF v_c.owner_id IS NULL THEN
       v_club_out := jsonb_build_object('code', 'vacant', 'text', 'No owner — no board fine or transfer request');
     ELSIF NOT v_missed THEN
@@ -318,6 +381,7 @@ BEGIN
       v_club_out := jsonb_build_object(
         'code', 'missed',
         'text', format('Missed expectation (%s)', replace(v_band, '_', ' ')),
+        'cup_rescue_possible', v_club_rescue_possible,
         'board_fine_pct', 25,
         'listing', public.season_review_listing_pool(v_c.club_short_name, v_tier, v_band)
       );
@@ -345,6 +409,29 @@ BEGIN
         EXCEPTION WHEN OTHERS THEN
           v_met := public.manager_target_met(v_target, v_pos, coalesce(v_div, v_c.division));
         END;
+      END IF;
+
+      v_league_met := CASE WHEN v_pos IS NULL THEN NULL
+                           ELSE public.manager_target_met(v_target, v_pos, coalesce(v_div, v_c.division)) END;
+      v_mgr_cup_label := NULL;
+      v_mgr_cup_met := NULL;
+      v_mgr_cup_alive := NULL;
+      v_mgr_rescue_possible := false;
+      IF v_target.cup_code IS NOT NULL AND v_target.cup_stage IS NOT NULL THEN
+        v_mgr_cup_label := public.competition_cup_target_label(v_target.cup_code, v_target.cup_stage);
+        v_mgr_cup_met := public.competition_cup_target_met(
+          v_season_id, v_c.club_short_name, v_target.cup_code, v_target.cup_stage
+        );
+        v_mgr_cup_alive := public.season_review_cup_alive(v_season_id, v_c.club_short_name, v_target.cup_code);
+        v_mgr_rescue_possible :=
+          v_league_met IS FALSE
+          AND v_met IS NOT TRUE
+          AND v_mgr_cup_alive IS TRUE
+          AND NOT (coalesce(v_div, v_c.division) = 'superleague' AND v_pos >= 18)
+          AND (
+            (v_target.target_kind = 'max_position' AND v_pos <= v_target.target_value + v_rescue_places)
+            OR (v_target.target_kind = 'promotion' AND v_pos <= 2 + v_rescue_places)
+          );
       END IF;
 
       v_deal := coalesce(v_mgr.deal_start_season_id, v_mgr.signed_season_id, v_season_id);
@@ -425,6 +512,13 @@ BEGIN
         'target_label', v_target.label,
         'position', v_pos,
         'target_met', v_met,
+        'league_target_met', v_league_met,
+        'met_via_cup', v_met IS TRUE AND v_league_met IS FALSE,
+        'cup_target_label', v_mgr_cup_label,
+        'cup_target_met', v_mgr_cup_met,
+        'cup_alive', v_mgr_cup_alive,
+        'cup_rescue_possible', v_mgr_rescue_possible,
+        'cup_rescue_places', v_rescue_places,
         'seasons_remaining', v_mgr.contract_seasons_remaining,
         'deal_season', v_deal_seasons,
         'deal_hits', v_hits,
@@ -511,7 +605,8 @@ BEGIN
       'expectation_label', public.competition_club_expectation_label(v_expected::smallint),
       'band', v_band,
       'band_provisional', v_provisional,
-      'cup_targets', coalesce(v_cup->'targets', '[]'::jsonb),
+      'cup_targets', v_cup_targets,
+      'cup_rescue_possible', v_club_rescue_possible,
       'cup_rescued', v_rescued,
       'club_missed', v_missed,
       'club', v_club_out,
