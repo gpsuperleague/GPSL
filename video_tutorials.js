@@ -6,6 +6,14 @@ import { loadVideoTutorials, sortVt, youtubeId } from "./video_tutorials_data.js
 let folders = [];
 let links = [];
 
+const VIEW_KEY = "gpsl_vt_view";
+let viewMode = "grid";
+try {
+  if (localStorage.getItem(VIEW_KEY) === "list") viewMode = "list";
+} catch {
+  /* storage blocked */
+}
+
 function escapeHtml(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -56,15 +64,70 @@ function videoCard(v) {
   </article>`;
 }
 
+function videoRow(v) {
+  const url = safeUrl(v.url);
+  if (!url) return "";
+  const id = youtubeId(url);
+  const title = escapeHtml(v.title || "Watch video");
+  const desc = v.description ? `<p>${escapeHtml(v.description)}</p>` : "";
+  const thumb = id
+    ? `<img class="vt-thumb" src="https://i.ytimg.com/vi/${id}/mqdefault.jpg" alt="" loading="lazy">`
+    : `<span class="vt-thumb vt-thumb--link">↗</span>`;
+  if (!id) {
+    return `<article class="vt-row">
+      <a class="vt-row-main" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
+        ${thumb}
+        <span class="vt-row-text"><h3>${title} <span class="vt-ext">↗</span></h3>${desc}</span>
+      </a>
+    </article>`;
+  }
+  return `<article class="vt-row" data-yt="${id}" data-title="${title}">
+    <button type="button" class="vt-row-main" aria-expanded="false">
+      ${thumb}
+      <span class="vt-row-text"><h3>${title}</h3>${desc}</span>
+      <span class="vt-play" aria-hidden="true">▶</span>
+    </button>
+    <a class="vt-row-yt" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="Open on YouTube">↗</a>
+    <div class="vt-row-player"></div>
+  </article>`;
+}
+
+function toggleRowPlayer(row) {
+  const btn = row.querySelector(".vt-row-main");
+  const player = row.querySelector(".vt-row-player");
+  if (!btn || !player) return;
+  const open = btn.getAttribute("aria-expanded") === "true";
+  if (open) {
+    player.innerHTML = "";
+    btn.setAttribute("aria-expanded", "false");
+    row.classList.remove("open");
+    return;
+  }
+  player.innerHTML = `<div class="vt-frame">
+    <iframe src="https://www.youtube-nocookie.com/embed/${row.dataset.yt}?autoplay=1" title="${row.dataset.title || ""}"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+      allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  </div>`;
+  btn.setAttribute("aria-expanded", "true");
+  row.classList.add("open");
+}
+
+function viewToggle() {
+  const btn = (mode, label) =>
+    `<button type="button" data-vt-view="${mode}" class="${viewMode === mode ? "active" : ""}" aria-pressed="${viewMode === mode}">${label}</button>`;
+  return `<div class="vt-view-toggle" role="group" aria-label="Layout">${btn("grid", "▦ Grid")}${btn("list", "☰ List")}</div>`;
+}
+
 function folderBlock(folder, depth, showEmpty) {
-  const cards = linksOf(folder.id).map(videoCard).filter(Boolean);
+  const list = viewMode === "list";
+  const cards = linksOf(folder.id).map(list ? videoRow : videoCard).filter(Boolean);
   const subs = childrenOf(folder.id).filter(hasContent);
   if (!cards.length && !subs.length && !showEmpty) return "";
   const tag = depth === 0 ? "h2" : "h3";
   return `<section class="vt-section${depth ? " vt-sub" : ""}" id="${escapeHtml(folder.slug)}">
     <${tag}><a class="vt-folder-link" href="#${escapeHtml(folder.slug)}">${escapeHtml(folder.title)}</a></${tag}>
     ${folder.description ? `<p class="vt-folder-desc">${escapeHtml(folder.description)}</p>` : ""}
-    ${cards.length ? `<div class="vt-grid">${cards.join("")}</div>` : ""}
+    ${cards.length ? `<div class="${list ? "vt-list" : "vt-grid"}">${cards.join("")}</div>` : ""}
     ${!cards.length && !subs.length ? `<p class="vt-empty">No videos here yet — check back soon.</p>` : ""}
     ${subs.map((s) => folderBlock(s, depth + 1, false)).join("")}
   </section>`;
@@ -86,7 +149,7 @@ function breadcrumb(folder) {
     .join("")}</nav>`;
 }
 
-function render() {
+function render({ keepScroll = false } = {}) {
   const root = document.getElementById("videoTutorials");
   if (!root) return;
 
@@ -95,12 +158,12 @@ function render() {
   const tops = childrenOf(null).filter(hasContent);
 
   const toc = tops.length
-    ? `<nav class="vt-toc" aria-label="Sections"><a href="#"${focused ? "" : ' class="active"'}>All</a>${tops
+    ? `<div class="vt-bar"><nav class="vt-toc" aria-label="Sections"><a href="#"${focused ? "" : ' class="active"'}>All</a>${tops
         .map(
           (s) =>
             `<a href="#${escapeHtml(s.slug)}"${focused?.id === s.id ? ' class="active"' : ""}>${escapeHtml(s.title)}</a>`
         )
-        .join("")}</nav>`
+        .join("")}</nav>${viewToggle()}</div>`
     : "";
 
   if (focused) {
@@ -114,7 +177,7 @@ function render() {
             .join("")}</div>`
         : "") +
       folderBlock(focused, 0, true);
-    window.scrollTo({ top: 0 });
+    if (!keepScroll) window.scrollTo({ top: 0 });
     return;
   }
 
@@ -140,5 +203,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     links = res.links;
   }
   render();
-  window.addEventListener("hashchange", render);
+  window.addEventListener("hashchange", () => render());
+
+  root?.addEventListener("click", (e) => {
+    const viewBtn = e.target.closest("[data-vt-view]");
+    if (viewBtn) {
+      const mode = viewBtn.dataset.vtView === "list" ? "list" : "grid";
+      if (mode === viewMode) return;
+      viewMode = mode;
+      try {
+        localStorage.setItem(VIEW_KEY, mode);
+      } catch {
+        /* storage blocked */
+      }
+      render({ keepScroll: true });
+      return;
+    }
+    const rowBtn = e.target.closest(".vt-row[data-yt] .vt-row-main");
+    if (rowBtn) toggleRowPlayer(rowBtn.closest(".vt-row"));
+  });
 });

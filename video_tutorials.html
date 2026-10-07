@@ -46,6 +46,37 @@
     .vt-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
     .vt-card h3 { font-size: 15px; color: #eee; margin: 10px 0 4px; }
     .vt-card p { font-size: 13px; color: #aaa; margin: 0; line-height: 1.45; }
+    .vt-bar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 18px; }
+    .vt-bar .vt-toc { margin-bottom: 0; flex: 1 1 auto; }
+    .vt-view-toggle { display: inline-flex; border: 1px solid #333; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+    .vt-view-toggle button {
+      background: #1a1a1a; color: #bbb; border: 0; padding: 6px 12px; font-size: 13px; cursor: pointer;
+    }
+    .vt-view-toggle button + button { border-left: 1px solid #333; }
+    .vt-view-toggle button:hover { color: #ff9900; }
+    .vt-view-toggle button.active { background: #2a1d08; color: #ff9900; font-weight: bold; }
+    .vt-list { display: flex; flex-direction: column; gap: 6px; }
+    .vt-row { position: relative; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; }
+    .vt-row:hover, .vt-row.open { border-color: #ff9900; }
+    .vt-row-main {
+      display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 44px 8px 8px;
+      background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: none;
+      box-sizing: border-box;
+    }
+    .vt-thumb { width: 120px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px; background: #000; flex-shrink: 0; }
+    .vt-thumb--link { display: flex; align-items: center; justify-content: center; color: #ff9900; font-size: 22px; }
+    .vt-row-text { flex: 1 1 auto; min-width: 0; }
+    .vt-row-text h3 { font-size: 14px; color: #eee; margin: 0 0 3px; }
+    .vt-row-text p { font-size: 12px; color: #aaa; margin: 0; line-height: 1.4; }
+    .vt-play { color: #ff9900; font-size: 16px; flex-shrink: 0; }
+    .vt-row.open .vt-play { transform: rotate(90deg); }
+    .vt-row-yt {
+      position: absolute; top: 8px; right: 10px; color: #888; text-decoration: none; font-size: 14px;
+    }
+    .vt-row-yt:hover { color: #ff9900; }
+    .vt-row-player:not(:empty) { padding: 0 8px 8px; }
+    .vt-row-player .vt-frame { max-width: 760px; }
+    @media (max-width: 520px) { .vt-thumb { width: 84px; } }
     .vt-empty { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 20px; color: #bbb; }
   </style>
 </head>
@@ -56,6 +87,6 @@
     <p class="vt-intro">Short walkthroughs of GPSL. For the full written guide, see <a href="learning_gpsl.html">Learning GPSL</a>.</p>
     <div id="videoTutorials"></div>
   </main>
-  <script type="module" src="video_tutorials.js?v=20261005-vt-admin"></script>
+  <script type="module" src="video_tutorials.js?v=20261007-vt-list"></script>
 </body>
 </html>
