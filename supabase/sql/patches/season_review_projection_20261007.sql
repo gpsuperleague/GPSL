@@ -506,6 +506,8 @@ BEGIN
                          ELSE public.competition_owner_display_name(v_c.owner_id) END,
       'tier', v_tier,
       'expected_position', v_expected,
+      'baseline_expected_position', CASE WHEN (v_metrics->>'baseline_expected_position') ~ '^\d+$'
+                                         THEN (v_metrics->>'baseline_expected_position')::int END,
       'expectation_label', public.competition_club_expectation_label(v_expected::smallint),
       'band', v_band,
       'band_provisional', v_provisional,
