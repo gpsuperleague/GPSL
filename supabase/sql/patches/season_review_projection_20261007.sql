@@ -76,91 +76,8 @@ BEGIN
 END;
 $function$;
 
--- Candidate pool for the underperformance transfer request (same rules as
--- club_underperformance_pick_player, which picks one of these at random).
-CREATE OR REPLACE FUNCTION public.season_review_listing_pool(
-  p_club_short_name text,
-  p_tier text,
-  p_band text
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-VOLATILE
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_slight boolean := lower(coalesce(p_band, '')) = 'slight';
-  v_rule text;
-  v_pool jsonb;
-BEGIN
-  CREATE TEMP TABLE IF NOT EXISTS _sr_squad (
-    player_id text, name text, rating numeric, age numeric, top4 boolean
-  ) ON COMMIT DROP;
-  TRUNCATE _sr_squad;
-
-  INSERT INTO _sr_squad
-  SELECT
-    q.player_id, q.name, q.rating, q.age,
-    q.rk <= 4
-  FROM (
-    SELECT
-      p."Konami_ID"::text AS player_id,
-      p."Name"::text AS name,
-      public.player_rating_numeric(p."Rating"::text) AS rating,
-      public.player_age_numeric(p."Age"::text) AS age,
-      row_number() OVER (
-        ORDER BY public.player_rating_numeric(p."Rating"::text) DESC NULLS LAST, p."Konami_ID"
-      ) AS rk
-    FROM public."Players" p
-    WHERE public.player_contracted_club_key(p."Contracted_Team") = p_club_short_name
-  ) q
-  WHERE NOT EXISTS (
-    SELECT 1 FROM public.club_squad_player_designations d
-    WHERE d.club_short_name = p_club_short_name
-      AND d.player_id = q.player_id
-      AND d.designation IN ('one_of_our_own', 'fan_favourite')
-  )
-  AND NOT EXISTS (
-    SELECT 1 FROM public."Player_Transfer_Listings" l
-    WHERE l.player_id = q.player_id
-      AND l.perpetual_renew = true
-      AND l.status IN ('Active', 'Review', 'Seller Review')
-  );
-
-  IF p_tier = 'big' THEN
-    IF v_slight AND EXISTS (SELECT 1 FROM _sr_squad WHERE rating <= 76 AND NOT top4) THEN
-      v_rule := 'One random player rated 76 or below (not one of the top 4)';
-      SELECT jsonb_agg(jsonb_build_object('name', name, 'rating', rating, 'age', age) ORDER BY rating DESC, name)
-      INTO v_pool FROM _sr_squad WHERE rating <= 76 AND NOT top4;
-    ELSE
-      v_rule := 'One random player from the top 4 rated';
-      SELECT jsonb_agg(jsonb_build_object('name', name, 'rating', rating, 'age', age) ORDER BY rating DESC, name)
-      INTO v_pool FROM _sr_squad WHERE top4;
-    END IF;
-  ELSIF p_tier = 'medium' THEN
-    IF v_slight AND EXISTS (SELECT 1 FROM _sr_squad WHERE rating BETWEEN 68 AND 73 AND age > 21) THEN
-      v_rule := 'One random player rated 68–73, aged 22+';
-      SELECT jsonb_agg(jsonb_build_object('name', name, 'rating', rating, 'age', age) ORDER BY rating DESC, name)
-      INTO v_pool FROM _sr_squad WHERE rating BETWEEN 68 AND 73 AND age > 21;
-    ELSE
-      v_rule := 'One random player rated 74–78, aged 22+';
-      SELECT jsonb_agg(jsonb_build_object('name', name, 'rating', rating, 'age', age) ORDER BY rating DESC, name)
-      INTO v_pool FROM _sr_squad WHERE rating BETWEEN 74 AND 78 AND age > 21;
-    END IF;
-  ELSE
-    v_rule := 'One random player rated 72 or below';
-    SELECT jsonb_agg(jsonb_build_object('name', name, 'rating', rating, 'age', age) ORDER BY rating DESC, name)
-    INTO v_pool FROM _sr_squad WHERE rating <= 72;
-  END IF;
-
-  RETURN jsonb_build_object(
-    'rule', v_rule,
-    'pool', coalesce(v_pool, '[]'::jsonb),
-    'pool_count', coalesce(jsonb_array_length(v_pool), 0)
-  );
-END;
-$function$;
+-- season_review_listing_pool (transfer-request candidates) lives in
+-- underperformance_protect_ooo_ff_20261007.sql — run that patch first.
 
 -- Still in a cup: has a bracket tie, and their latest tie is unplayed or won
 -- (and not the final). NULL = not in that cup this season.
@@ -635,7 +552,6 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.season_review_listing_pool(text, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.season_review_board() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_season_review_publish_finance(jsonb) TO authenticated;
 

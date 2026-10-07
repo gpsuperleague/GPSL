@@ -162,6 +162,7 @@ function clubOutcomeCell(r) {
   return `
     <div>${chip(`Owner fined ${c.board_fine_pct || 25}% of personal wealth`, "bad")}</div>
     <div class="sr-block"><b>Transfer request:</b> ${esc(listing.rule || "one player")} — listed at market value until sold.</div>
+    ${listing.dropped ? `<div class="sr-sub">Dropped down a group — no eligible player in the usual group (One of our Own / Fan Favourite are protected).</div>` : ""}
     <div class="sr-sub">${pool.length ? `Could be: ${shown.join(", ")}${more}` : "No eligible player — no listing."}</div>`;
 }
 
