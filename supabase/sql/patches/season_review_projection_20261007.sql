@@ -175,6 +175,7 @@ DECLARE
   v_release_total numeric;
   v_pl record;
   v_snap_at timestamptz;
+  v_salary numeric;
 BEGIN
   IF auth.uid() IS NULL
      AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
@@ -308,6 +309,21 @@ BEGIN
         'board_fine_pct', 25,
         'listing', public.season_review_listing_pool(v_c.club_short_name, v_tier, v_band)
       );
+    END IF;
+
+    IF v_c.owner_id IS NOT NULL THEN
+      v_salary := NULL;
+      BEGIN
+        v_salary := public.owner_season_salary_amount(v_c.club_short_name);
+      EXCEPTION WHEN OTHERS THEN
+        v_salary := NULL;
+      END;
+      IF v_salary IS NOT NULL THEN
+        v_club_out := v_club_out || jsonb_build_object(
+          'salary', v_salary,
+          'salary_paid', NOT v_missed
+        );
+      END IF;
     END IF;
 
     -- ---------------- Manager deal ----------------

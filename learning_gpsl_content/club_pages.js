@@ -101,6 +101,7 @@ export const SECTION_EXPECTATIONS = {
         `<b>Low clubs</b> — a player rated <b>72 or below</b> may hand in a transfer request.`,
         `<b>Protected</b> — your <b>One of our Own</b> and <b>Fan Favourite</b> never hand in a transfer request. A protected player is skipped; if nobody else is eligible in the usual group, the request drops down to the next group (top 4 → rated 76 or below → 74–78 → 68–73 → 72 or below → anyone), so another player is listed.`,
         `<b>Board fine</b> — on a <b>club</b> expectation miss only, 25% of your personal GPSL Building Society balance can be taken (manager target misses do not trigger this).`,
+        `<b>Owner salary</b> — at season end the club pays you ₿100 per 1,000 stadium seats into your Building Society wallet, only if the club met its expectation (on target, or a slight miss rescued by a cup). It's paid after any board fine.`,
         `<b>Manager deals</b> — after <b>season 1</b>, a bad or abysmal <b>club</b> miss (3+ places below expectation) means the board sacks the manager (MV credited, 2-season re-hire ban).
           At the end of the deal: miss your manager’s personal target both seasons and they leave (refuse), with market value credited to the club.
           Hit the manager target but miss <b>club</b> expectation both seasons and the club sacks them (MV credited).`,

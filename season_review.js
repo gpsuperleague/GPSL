@@ -150,10 +150,18 @@ function cupExpectationCell(r) {
   return `${list}<div class="sr-block">${effect}</div>`;
 }
 
+function salaryLine(c) {
+  if (c.salary == null) return "";
+  const amt = `₿${Math.round(Number(c.salary) || 0).toLocaleString("en-GB")}`;
+  return c.salary_paid
+    ? `<div class="sr-block">${chip(`Owner salary ${amt}`, "ok")}</div>`
+    : `<div class="sr-block">${chip(`Owner salary withheld (${amt})`, "bad")}</div>`;
+}
+
 function clubOutcomeCell(r) {
   const c = r.club || {};
   if (c.code !== "missed") {
-    return `<div class="sr-sub">${esc(c.text || "—")}</div>`;
+    return `<div class="sr-sub">${esc(c.text || "—")}</div>${salaryLine(c)}`;
   }
   const listing = c.listing || {};
   const pool = listing.pool || [];
@@ -161,6 +169,7 @@ function clubOutcomeCell(r) {
   const more = pool.length > 6 ? ` +${pool.length - 6} more` : "";
   return `
     <div>${chip(`Owner fined ${c.board_fine_pct || 25}% of personal wealth`, "bad")}</div>
+    ${salaryLine(c)}
     <div class="sr-block"><b>Transfer request:</b> ${esc(listing.rule || "one player")} — listed at market value until sold.</div>
     ${listing.dropped ? `<div class="sr-sub">Dropped down a group — no eligible player in the usual group (One of our Own / Fan Favourite are protected).</div>` : ""}
     <div class="sr-sub">${pool.length ? `Could be: ${shown.join(", ")}${more}` : "No eligible player — no listing."}</div>`;
@@ -240,6 +249,7 @@ function renderSummary(rows) {
   const n = (fn) => rows.filter(fn).length;
   const items = [
     ["Board fines", n((r) => r.club?.code === "missed"), "bad"],
+    ["Owner salaries paid", n((r) => r.club?.salary_paid === true), "ok"],
     ["Transfer requests", n((r) => r.club?.code === "missed" && (r.club.listing?.pool_count || 0) > 0), "bad"],
     ["Managers leaving", n((r) => r.manager?.code === "leaves"), "bad"],
     ["Managers sacked", n((r) => r.manager?.code === "sacked"), "bad"],
