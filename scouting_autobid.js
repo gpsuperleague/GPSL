@@ -192,8 +192,10 @@ function buildOverlay() {
         <button type="button" class="button" id="scoutAbSaveBtn" title="Saves the plan for the chosen draft. Changes made while the draft is live take effect within a minute.">Save plan</button>
         <button type="button" class="button secondary" id="scoutAbRefreshBtn" title="Reload the live status of each target (also refreshes automatically every minute while the draft is live).">Refresh status</button>
         <button type="button" class="button secondary" id="scoutAbDeleteBtn" title="Removes this plan. Bids already placed stay; the plan's max bids stop defending." hidden>Delete plan</button>
+        <button type="button" class="button secondary" id="scoutAbTestBtn" title="Admin: simulate a live draft and run this plan through the real bidding engine — rival clubs open threads, outbid you and beat one of your max bids, then the draft ends. Everything is rolled back afterwards: no bids, listings, credits, inbox messages or Discord posts are kept." hidden>🧪 Test run (nothing saved)</button>
         <span id="scoutAbMsg" class="scout-ab-msg" aria-live="polite"></span>
       </div>
+      <div id="scoutAbTestReport"></div>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -275,6 +277,8 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
     }
     const adminWrap = $("scoutAbAdminWrap");
     if (adminWrap) adminWrap.hidden = !d?.is_admin;
+    const testBtn = $("scoutAbTestBtn");
+    if (testBtn) testBtn.hidden = !d?.is_admin;
     const adminPause = $("scoutAbAdminPause");
     if (adminPause) adminPause.checked = !!d?.paused;
 
@@ -429,14 +433,8 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
 
   async function loadPlan({ keepEdits = false } = {}) {
     const opt = selectedOption();
-    if (!opt) {
-      st.data = null;
-      st.rows = [];
-      renderAll();
-      return;
-    }
     const { data, error } = await supabase.rpc("player_draft_autobid_get", {
-      p_draft_start: opt.start_at,
+      p_draft_start: opt ? opt.start_at : new Date().toISOString(),
     });
     if (error) {
       setMsg(error.message || "Could not load the plan.", "bad");
@@ -625,6 +623,123 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
       }
     }, 60000);
   }
+
+  function reportTable(rows, withBids = true) {
+    if (!Array.isArray(rows) || !rows.length) return '<p class="meta">No targets.</p>';
+    const club = getClubShort?.() || "";
+    return `
+      <table class="scout-ab-table">
+        <thead><tr><th>Player</th>${withBids ? "<th>Your max</th><th>High bid</th><th>Leader</th>" : ""}<th>Status</th><th>How entered</th></tr></thead>
+        <tbody>${rows
+          .map((r) => {
+            const tone = STATE_TONE[r.state] || "muted";
+            return `<tr>
+              <td>${esc(r.player)}</td>
+              ${
+                withBids
+                  ? `<td>${r.max != null ? formatMoney(r.max) : "—"}</td>
+                     <td>${r.high_bid != null ? formatMoney(r.high_bid) : "—"}</td>
+                     <td>${r.leader ? esc(r.leader === club ? "You" : r.leader) : "—"}</td>`
+                  : ""
+              }
+              <td><span class="scout-ab-pill ${tone}" title="${esc(STATE_HELP[r.state] || "")}">${esc(STATE_LABELS[r.state] || r.state || "—")}</span>
+                ${r.note ? `<span class="scout-ab-note">${esc(r.note)}</span>` : ""}</td>
+              <td>${esc(r.entered_via || "—")}</td>
+            </tr>`;
+          })
+          .join("")}</tbody>
+      </table>`;
+  }
+
+  function renderTestReport(rep) {
+    const el = $("scoutAbTestReport");
+    if (!el) return;
+    if (!rep) {
+      el.innerHTML = "";
+      return;
+    }
+    const r = rep.ok ? rep : { ...(rep.partial || {}), error: rep.error };
+    const actions = (r.rival_actions || [])
+      .map(
+        (a) =>
+          `<li><b>${esc(a.step)}</b> — ${esc(a.club)} ${esc(a.action)} on ${esc(a.player)}${
+            a.result && typeof a.result === "string" ? ` → ${esc(a.result)}` : ""
+          }</li>`
+      )
+      .join("");
+    const bids = (r.your_bids || [])
+      .map(
+        (b) =>
+          `<li>${esc(b.player)}: ${formatMoney(b.amount)}${b.opened ? " (opened — +2 credits)" : ""}${
+            b.join ? " (joined — 1 credit)" : ""
+          }</li>`
+      )
+      .join("");
+    const inbox = (r.inbox || [])
+      .map((m) => `<li><b>${esc(m.title)}</b><br><span class="scout-ab-note">${esc(m.body)}</span></li>`)
+      .join("");
+    el.innerHTML = `
+      <div class="scout-ab-status ${rep.ok ? "" : "bad"}" style="margin-top:14px;">
+        ${
+          rep.ok
+            ? "🧪 Test run complete — everything below has been rolled back. Nothing was saved and nobody else saw it."
+            : `🧪 Test run stopped: ${esc(rep.error || "unknown error")} (all changes rolled back)`
+        }
+      </div>
+      <p class="meta">Testing as <b>${esc(r.club || "")}</b> · credits at start ${r.credits_at_start ?? "—"}
+        → after pass 1 ${r.credits_after_pass1 ?? "—"} → after pass 2 ${r.credits_after_pass2 ?? "—"}</p>
+      ${actions ? `<h3 style="margin:12px 0 4px;font-size:14px;">Rival clubs (simulated)</h3><ul class="meta">${actions}</ul>` : ""}
+      <h3 style="margin:12px 0 4px;font-size:14px;">After engine pass 1 (${r.pass1_actions ?? 0} action(s))</h3>
+      ${reportTable(r.pass1)}
+      <h3 style="margin:12px 0 4px;font-size:14px;">After engine pass 2 (${r.pass2_actions ?? 0} action(s))</h3>
+      ${reportTable(r.pass2)}
+      ${bids ? `<h3 style="margin:12px 0 4px;font-size:14px;">Bids your plan placed</h3><ul class="meta">${bids}</ul>` : ""}
+      <h3 style="margin:12px 0 4px;font-size:14px;">When the draft ended</h3>
+      ${reportTable(r.final, false)}
+      <p class="meta">Plan max bids left after the draft ended: ${r.max_bids_left_after_finish ?? "—"} (should be 0)</p>
+      ${inbox ? `<h3 style="margin:12px 0 4px;font-size:14px;">Inbox messages you would get</h3><ul class="meta">${inbox}</ul>` : ""}`;
+  }
+
+  async function testRun() {
+    if (st.busy) return;
+    const payload = collectPayload();
+    const targets = payload.p_targets.filter((t) => t.included && Number(t.max_amount) > 0);
+    if (!targets.length) {
+      setMsg("Add at least one included target with a max bid to test.", "bad");
+      return;
+    }
+    if (
+      !window.confirm(
+        "Run a test? A live draft is simulated, your plan runs through the real bidding engine with rival clubs, then EVERYTHING is rolled back. Nothing is saved."
+      )
+    ) {
+      return;
+    }
+    st.busy = true;
+    setMsg("Running test…");
+    renderTestReport(null);
+    const { data, error } = await supabase.rpc("admin_player_draft_autobid_simulate", {
+      p_targets: payload.p_targets,
+      p_spend_cap: payload.p_spend_cap,
+      p_max_wins: payload.p_max_wins,
+      p_rivals: true,
+    });
+    st.busy = false;
+    if (error) {
+      setMsg(
+        /admin_player_draft_autobid_simulate/.test(error.message || "")
+          ? "Test run not installed — run player_draft_autobid_simulate_20261007.sql."
+          : error.message || "Test run failed.",
+        "bad"
+      );
+      return;
+    }
+    setMsg(data?.ok ? "Test finished — see the report below." : "Test stopped — see below.", data?.ok ? "ok" : "bad");
+    renderTestReport(data);
+    $("scoutAbTestReport")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  $("scoutAbTestBtn")?.addEventListener("click", testRun);
 
   btn.addEventListener("click", open);
   $("scoutAbClose")?.addEventListener("click", close);
