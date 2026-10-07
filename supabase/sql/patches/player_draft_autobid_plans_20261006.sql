@@ -739,8 +739,8 @@ BEGIN
         'The player draft has opened and your auto-bid plan is now working through %s target(s). '
         || 'It opens / joins threads in your priority order (credits permitting) and bids up to your max on each. '
         || 'New opens and joins stop at the cutoff. You can change or switch off the plan in Scouting → Target lists.',
-        (SELECT count(*) FROM public.player_draft_autobid_targets t
-         WHERE t.plan_id = pl.id AND t.included)
+        (SELECT count(*) FROM public.player_draft_autobid_targets tc
+         WHERE tc.plan_id = pl.id AND tc.included)
       ),
       v_club,
       'draft_autobid_live:' || pl.id
@@ -1095,11 +1095,11 @@ BEGIN
       FROM public.player_draft_autobid_targets
       WHERE plan_id = pl.id AND included;
 
-      SELECT string_agg(coalesce(p."Name", t.player_id), ', ' ORDER BY t.priority)
+      SELECT string_agg(coalesce(p."Name", tw.player_id), ', ' ORDER BY tw.priority)
       INTO v_won_names
-      FROM public.player_draft_autobid_targets t
-      LEFT JOIN public."Players" p ON p."Konami_ID"::text = t.player_id
-      WHERE t.plan_id = pl.id AND t.included AND t.state = 'won';
+      FROM public.player_draft_autobid_targets tw
+      LEFT JOIN public."Players" p ON p."Konami_ID"::text = tw.player_id
+      WHERE tw.plan_id = pl.id AND tw.included AND tw.state = 'won';
 
       v_body := format(
         'Your auto-bid plan has finished. Opened %s · Joined %s · Leading at the close %s · Outbid %s · Skipped %s · Never entered %s.',
