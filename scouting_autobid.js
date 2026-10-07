@@ -192,6 +192,10 @@ function buildOverlay() {
         <button type="button" class="button" id="scoutAbSaveBtn" title="Saves the plan for the chosen draft. Changes made while the draft is live take effect within a minute.">Save plan</button>
         <button type="button" class="button secondary" id="scoutAbRefreshBtn" title="Reload the live status of each target (also refreshes automatically every minute while the draft is live).">Refresh status</button>
         <button type="button" class="button secondary" id="scoutAbDeleteBtn" title="Removes this plan. Bids already placed stay; the plan's max bids stop defending." hidden>Delete plan</button>
+        <span id="scoutAbTestClubWrap" hidden>
+          <label for="scoutAbTestClub" title="Admin test: which club's credits, squad and star cap to use. Defaults to your own club.">Test as club</label>
+          <input type="text" id="scoutAbTestClub" size="8" placeholder="Short name" />
+        </span>
         <button type="button" class="button secondary" id="scoutAbTestBtn" title="Admin: simulate a live draft and run this plan through the real bidding engine — rival clubs open threads, outbid you and beat one of your max bids, then the draft ends. Everything is rolled back afterwards: no bids, listings, credits, inbox messages or Discord posts are kept." hidden>🧪 Test run (nothing saved)</button>
         <span id="scoutAbMsg" class="scout-ab-msg" aria-live="polite"></span>
       </div>
@@ -221,7 +225,7 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
   const $ = (id) => document.getElementById(id);
 
   /** @type {{ options: object[], data: object|null, rows: object[], dirty: boolean, busy: boolean, timer: number|null }} */
-  const st = { options: [], data: null, rows: [], dirty: false, busy: false, timer: null };
+  const st = { options: [], data: null, rows: [], dirty: false, busy: false, timer: null, isAdmin: false };
 
   function setMsg(text, tone = "") {
     const el = $("scoutAbMsg");
@@ -275,10 +279,13 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
         ? "Auto-bid plans are paused by the admins right now — nothing will be bid until they're switched back on."
         : "";
     }
+    const isAdmin = st.isAdmin || !!d?.is_admin;
     const adminWrap = $("scoutAbAdminWrap");
-    if (adminWrap) adminWrap.hidden = !d?.is_admin;
+    if (adminWrap) adminWrap.hidden = !isAdmin;
     const testBtn = $("scoutAbTestBtn");
-    if (testBtn) testBtn.hidden = !d?.is_admin;
+    if (testBtn) testBtn.hidden = !isAdmin;
+    const testClubWrap = $("scoutAbTestClubWrap");
+    if (testClubWrap) testClubWrap.hidden = !isAdmin;
     const adminPause = $("scoutAbAdminPause");
     if (adminPause) adminPause.checked = !!d?.paused;
 
@@ -433,14 +440,16 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
 
   async function loadPlan({ keepEdits = false } = {}) {
     const opt = selectedOption();
-    const { data, error } = await supabase.rpc("player_draft_autobid_get", {
-      p_draft_start: opt ? opt.start_at : new Date().toISOString(),
-    });
-    if (error) {
-      setMsg(error.message || "Could not load the plan.", "bad");
-      return;
+    let data = null;
+    if (getClubShort?.()) {
+      const res = await supabase.rpc("player_draft_autobid_get", {
+        p_draft_start: opt ? opt.start_at : new Date().toISOString(),
+      });
+      if (res.error) setMsg(res.error.message || "Could not load the plan.", "bad");
+      data = res.data || null;
     }
-    st.data = data || null;
+    if (!data) data = { is_admin: st.isAdmin, paused: false, plan: null, targets: [] };
+    st.data = data;
     if (!keepEdits || !st.dirty) {
       if (data?.plan) {
         st.rows = rowsFromData(data);
@@ -607,14 +616,16 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
   }
 
   async function open() {
-    if (!getClubShort?.()) {
+    const adminRes = await supabase.rpc("is_gpsl_admin");
+    st.isAdmin = adminRes.data === true;
+    if (!getClubShort?.() && !st.isAdmin) {
       window.alert("You need a club to use auto-bid plans.");
       return;
     }
     overlay.hidden = false;
-    setMsg("");
-    const ok = await loadOptions();
-    if (ok) await loadPlan();
+    setMsg(st.isAdmin && !getClubShort?.() ? "Admin test mode — you don't own a club, so enter one in 'Test as club'." : "");
+    await loadOptions();
+    await loadPlan();
     stopTimer();
     st.timer = window.setInterval(() => {
       if (overlay.hidden) return stopTimer();
@@ -718,11 +729,18 @@ export function wireAutoBidPlan({ supabase, getClubShort, getSeedRows, getBoardF
     st.busy = true;
     setMsg("Running test…");
     renderTestReport(null);
+    const testClub = $("scoutAbTestClub")?.value.trim() || null;
+    if (!testClub && !getClubShort?.()) {
+      st.busy = false;
+      setMsg("Enter a club short name in 'Test as club' (you don't own a club).", "bad");
+      return;
+    }
     const { data, error } = await supabase.rpc("admin_player_draft_autobid_simulate", {
       p_targets: payload.p_targets,
       p_spend_cap: payload.p_spend_cap,
       p_max_wins: payload.p_max_wins,
       p_rivals: true,
+      p_club: testClub,
     });
     st.busy = false;
     if (error) {

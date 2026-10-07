@@ -81,7 +81,7 @@ function scoutingPlayerBadgesHtml(player) {
   return ` <span class="scout-badges">${bits.join("")}</span>`;
 }
 import { mountAdvisoryTransferBudget } from "./club_bank_balance_ui.js?v=20260811-budget-refresh";
-import { wireAutoBidPlan } from "./scouting_autobid.js?v=20261007-testrun";
+import { wireAutoBidPlan } from "./scouting_autobid.js?v=20261007-testrun2";
 import { upgradeTitlesToTips } from "./scouting_tips.js?v=20261006-tips";
 
 function autoBidSeedRows() {
