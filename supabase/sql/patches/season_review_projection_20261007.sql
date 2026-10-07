@@ -116,6 +116,12 @@ BEGIN
     WHERE public.player_contracted_club_key(p."Contracted_Team") = p_club_short_name
   ) q
   WHERE NOT EXISTS (
+    SELECT 1 FROM public.club_squad_player_designations d
+    WHERE d.club_short_name = p_club_short_name
+      AND d.player_id = q.player_id
+      AND d.designation IN ('one_of_our_own', 'fan_favourite')
+  )
+  AND NOT EXISTS (
     SELECT 1 FROM public."Player_Transfer_Listings" l
     WHERE l.player_id = q.player_id
       AND l.perpetual_renew = true

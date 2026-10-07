@@ -104,15 +104,11 @@ function hasConsequence(r) {
 function expectationCell(r) {
   const band = r.band || "on_target";
   const tone = band === "on_target" ? "ok" : band === "slight" ? "warn" : "bad";
-  const cups = r.cup_targets || [];
-  const cupLine = cups.length
-    ? `<div class="sr-cups">${cups
-        .map((t) => `<div>🏆 ${esc(t.label)} — ${cupStatus(t.met, t.alive, t.applicable)}</div>`)
-        .join("")}</div>`
-    : `<div class="sr-sub">No club cup target</div>`;
-  const rescueNote = r.cup_rescue_possible
-    ? `<div class="sr-block sr-next">Slight miss — still in a target cup, so reaching it would cancel the fine and transfer request.</div>`
-    : "";
+  const pos = Number(r.position);
+  const exp = Number(r.expected_position);
+  const gap = Number.isFinite(pos) && Number.isFinite(exp) ? pos - exp : null;
+  const gapTxt =
+    band === "on_target" || gap == null || gap <= 0 ? "" : `${gap} place${gap === 1 ? "" : "s"} below`;
   return `
     <div>${r.expected_position ? `Expected <b>${ordinal(r.expected_position)}</b>` : "Expected —"}
       ${r.expectation_label ? `<span class="sr-sub">(${esc(r.expectation_label)})</span>` : ""}</div>
@@ -121,10 +117,37 @@ function expectationCell(r) {
         ? ` · baseline ${ordinal(r.baseline_expected_position)}, manager lift +${r.baseline_expected_position - r.expected_position}`
         : ""
     }</div>
-    <div>${chip(BAND_LABELS[band] || band, tone)}${r.cup_rescued ? ` ${chip("Cup rescue", "ok")}` : ""}</div>
-    ${r.band_provisional ? `<div class="sr-sub" title="The official status appears once the first month's league fixtures are all played">Early season — from the live table</div>` : ""}
-    ${cupLine}
-    ${rescueNote}`;
+    <div>${chip(BAND_LABELS[band] || band, tone)}${gapTxt ? ` <span class="sr-sub">${gapTxt}</span>` : ""}</div>
+    ${r.band_provisional ? `<div class="sr-sub" title="The official status appears once the first month's league fixtures are all played">Early season — from the live table</div>` : ""}`;
+}
+
+function cupExpectationCell(r) {
+  const band = r.band || "on_target";
+  const cups = r.cup_targets || [];
+  const list = cups.length
+    ? `<div class="sr-cups">${cups
+        .map((t) => `<div>🏆 ${esc(t.label)} — ${cupStatus(t.met, t.alive, t.applicable)}</div>`)
+        .join("")}</div>`
+    : `<div class="sr-sub">No cup target for this club</div>`;
+
+  let effect;
+  if (!cups.length) {
+    effect = chip("No cup rescue available", "muted");
+  } else if (band === "on_target") {
+    effect = `${chip("Not needed", "muted")}<div class="sr-sub">League expectation is on target.</div>`;
+  } else if (r.cup_rescued) {
+    effect = `${chip("Rescues the slight league miss", "ok")}<div class="sr-sub">No board fine, no transfer request.</div>`;
+  } else if (band === "slight" && r.cup_rescue_possible) {
+    effect = `${chip("Can still rescue", "warn")}<div class="sr-sub">Reach a target above and the slight league miss is cancelled — no board fine, no transfer request.</div>`;
+  } else if (band === "slight") {
+    effect = `${chip("Can't rescue", "bad")}<div class="sr-sub">Slight league miss, but no target cup still reachable.</div>`;
+  } else {
+    effect = `${chip("Can't rescue", "bad")}<div class="sr-sub">Cups only rescue a slight miss (1–2 places) — this is a ${esc(
+      (BAND_LABELS[band] || band).toLowerCase()
+    )}.</div>`;
+  }
+
+  return `${list}<div class="sr-block">${effect}</div>`;
 }
 
 function clubOutcomeCell(r) {
@@ -153,7 +176,7 @@ function managerCell(r) {
         ? chip("Target missed", "bad")
         : chip("Pending", "muted");
   const cupLine = m.cup_target_label
-    ? `<div class="sr-cups"><div>🏆 ${esc(m.cup_target_label)} — ${cupStatus(m.cup_target_met, m.cup_alive)}</div></div>`
+    ? `<div class="sr-cups"><div title="Rescues a league target missed by ${m.cup_rescue_places} places or fewer">🏆 Cup back-up: ${esc(m.cup_target_label)} — ${cupStatus(m.cup_target_met, m.cup_alive)}</div></div>`
     : "";
   const rescue = m.cup_rescue_possible
     ? `<div class="sr-block sr-next">Within ${m.cup_rescue_places} places of his league target and still in the cup — reaching the cup stage would count as a hit.</div>`
@@ -248,7 +271,9 @@ function render() {
       <h2>${d.label}</h2>
       <div class="sr-scroll"><table class="sr-table">
         <thead><tr>
-          <th>Pos</th><th>Club</th><th>Expectation</th><th>Club outcome</th>
+          <th>Pos</th><th>Club</th><th>League expectation</th>
+          <th title="Reaching a club cup target cancels a slight (1–2 place) league miss">Cup expectation<div class="sr-th-sub">rescues a slight league miss only</div></th>
+          <th>Club outcome</th>
           <th>Manager</th><th>Manager outcome</th><th>Finances</th>
         </tr></thead>
         <tbody>${list
@@ -257,6 +282,7 @@ function render() {
             <td class="sr-pos">${r.position ?? "—"}<div class="sr-sub">${r.points ?? 0} pts · ${r.played ?? 0} pl</div></td>
             <td><b>${esc(r.club_name)}</b><div class="sr-sub">${esc(r.owner_name || "No owner")}</div></td>
             <td>${expectationCell(r)}</td>
+            <td>${cupExpectationCell(r)}</td>
             <td>${clubOutcomeCell(r)}</td>
             <td>${managerCell(r)}</td>
             <td>${managerOutcomeCell(r)}</td>
