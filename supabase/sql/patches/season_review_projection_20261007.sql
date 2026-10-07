@@ -277,9 +277,23 @@ BEGIN
       nullif(btrim(coalesce(v_metrics->>'club_tier', '')), ''),
       public.competition_club_tier(v_c.club_short_name)
     );
-    v_band := coalesce(nullif(btrim(coalesce(v_metrics->>'performance_band', '')), ''), 'on_target');
     v_expected := CASE WHEN (v_metrics->>'expected_position') ~ '^\d+$'
                        THEN (v_metrics->>'expected_position')::int END;
+    v_band := nullif(btrim(coalesce(v_metrics->>'performance_band', '')), '');
+    v_provisional := false;
+    -- Stadium status is hidden until the first month's league fixtures are
+    -- played; the review still projects from the live table position.
+    IF v_band IS NULL AND v_c.table_position IS NOT NULL AND v_expected IS NOT NULL THEN
+      BEGIN
+        v_band := public.club_league_expectation_band(
+          v_c.club_short_name, v_season_id, v_expected, v_c.table_position, v_c.division
+        );
+        v_provisional := true;
+      EXCEPTION WHEN OTHERS THEN
+        v_band := NULL;
+      END;
+    END IF;
+    v_band := coalesce(v_band, 'on_target');
 
     v_cup := NULL;
     BEGIN
@@ -356,10 +370,18 @@ BEGIN
          AND coalesce(v_mgr.contract_seasons_remaining, 0) = 0 THEN
         v_code := 'awaiting_renewal';
         v_text := 'Deal finished — waiting for the owner to renew (June/July). Not renewed by August → leaves, club gets his market value.';
+      ELSIF coalesce(v_mgr.contract_seasons_remaining, 0) > 1
+            AND v_band IN ('bad', 'abysmal') THEN
+        v_code := 'sacked';
+        v_text := format(
+          'Sacked after season 1 — club is %s places below expectation (bad miss or worse). Club receives his market value (₿%s); 2-season re-hire ban.',
+          greatest(coalesce(v_c.table_position, 0) - coalesce(v_expected, 0), 0),
+          to_char(coalesce(v_mgr.market_value, 0), 'FM999,999,999')
+        );
       ELSIF coalesce(v_mgr.contract_seasons_remaining, 0) > 1 THEN
         v_code := 'continues';
         v_text := format(
-          'Contract continues — %s season%s left after this one. The board never sacks mid-deal.',
+          'Contract continues — %s season%s left after this one.',
           v_mgr.contract_seasons_remaining - 1,
           CASE WHEN v_mgr.contract_seasons_remaining - 1 = 1 THEN '' ELSE 's' END
         );
@@ -368,11 +390,11 @@ BEGIN
         ELSIF v_met AND NOT v_missed THEN
           v_next := 'Target hit banked and club on track — he will be open to renew when the deal ends, whatever happens next season.';
         ELSIF v_met AND v_missed THEN
-          v_next := 'Target hit banked, but the club is missing its expectation — if the club misses again next season, he is sacked at the end of the deal.';
+          v_next := 'Target hit banked, but the club is slightly missing its expectation — if the club misses again next season, he is sacked at the end of the deal.';
         ELSIF NOT v_met AND NOT v_missed THEN
           v_next := 'No target hit yet — he must hit his target next season or he refuses a new deal and leaves.';
         ELSE
-          v_next := 'No target hit and the club is missing its expectation — next season he needs a target hit AND the club on target, or he leaves / is sacked.';
+          v_next := 'No target hit and the club is slightly missing its expectation — next season he needs a target hit AND the club on target, or he leaves / is sacked.';
         END IF;
       ELSIF v_hits = 0 THEN
         v_code := 'leaves';

@@ -100,7 +100,8 @@ export const SECTION_EXPECTATIONS = {
         `<b>Medium clubs</b> — slight miss: rated <b>68–73</b> (over 21). Bad/abysmal: rated <b>74–78</b> (over 21).`,
         `<b>Low clubs</b> — a player rated <b>72 or below</b> may hand in a transfer request.`,
         `<b>Board fine</b> — on a <b>club</b> expectation miss only, 25% of your personal GPSL Building Society balance can be taken (manager target misses do not trigger this).`,
-        `<b>Manager deals</b> — miss your manager’s personal target both seasons and they leave (refuse), with market value credited to the club.
+        `<b>Manager deals</b> — after <b>season 1</b>, a bad or abysmal <b>club</b> miss (3+ places below expectation) means the board sacks the manager (MV credited, 2-season re-hire ban).
+          At the end of the deal: miss your manager’s personal target both seasons and they leave (refuse), with market value credited to the club.
           Hit the manager target but miss <b>club</b> expectation both seasons and the club sacks them (MV credited).`,
       ],
     },
