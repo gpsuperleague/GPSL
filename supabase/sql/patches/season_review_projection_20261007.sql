@@ -171,6 +171,7 @@ DECLARE
   v_metrics jsonb;
   v_tier text;
   v_band text;
+  v_provisional boolean := false;
   v_cup jsonb;
   v_rescued boolean;
   v_missed boolean;
@@ -507,6 +508,7 @@ BEGIN
       'expected_position', v_expected,
       'expectation_label', public.competition_club_expectation_label(v_expected::smallint),
       'band', v_band,
+      'band_provisional', v_provisional,
       'cup_targets', coalesce(v_cup->'targets', '[]'::jsonb),
       'cup_rescued', v_rescued,
       'club_missed', v_missed,
