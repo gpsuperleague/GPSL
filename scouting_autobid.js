@@ -50,7 +50,7 @@ const STATE_HELP = {
   beaten: "Bidding went past your max bid. Raise the max and save if you still want him.",
   priced_out: "The next bid needed is already above your max, so the plan won't enter. Raise the max and save to try.",
   skipped:
-    "Held back by a plan cap or squad rule (see the note). Rechecked every minute — if a target you were in gets beaten, capacity frees up.",
+    "Held back by a plan cap or squad rule, or below your top-N max players (see the note). Rechecked every minute.",
   cutoff: "The cutoff passed before the plan could open or join this thread.",
   ineligible: "The draft rejected this player (e.g. contracted, legacy card or excluded). See the note.",
   owned: "Already in your squad — skipped.",
@@ -157,10 +157,12 @@ function buildOverlay() {
       </div>
       <p class="scout-ab-intro">
         Away during a player draft? Pick the draft, set a <b>max bid</b> per target and the order you want them.
-        While the draft is live the system works down your list every minute: it <b>opens</b> threads nobody has opened yet
-        (earning 2 credits), <b>joins</b> other clubs' threads when you have a free credit (otherwise it waits and comes back
-        when credits are earned), then bids up to your max. It never opens or joins after the cutoff, and it skips targets
-        that would break your spend cap, max players to win, star cap (OooO not counted) or the 28-player squad limit.
+        While the draft is live the system works your list every minute in priority order: first it <b>opens</b> every thread
+        nobody has opened yet (earning 2 credits each), then it goes round again and <b>joins</b> other clubs' threads with
+        the credits earned (if none are free it waits and comes back), then bids up to your max. Set <b>Max players</b> to
+        e.g. 10 and it only ever works your top 10 (players already in your squad don't count) — never number 11 or below.
+        It never opens or joins after the cutoff, and it skips targets that would break your spend cap, star cap
+        (OooO not counted) or the 28-player squad limit.
         The plan only applies to the draft you choose and expires when it ends. Switching it off keeps bids already placed.
       </p>
       <div id="scoutAbPaused" class="scout-ab-status warn" hidden></div>
@@ -177,7 +179,7 @@ function buildOverlay() {
       <div class="scout-ab-row">
         <label for="scoutAbSpendCap" title="The most the plan may commit at once. Before opening or joining it adds up the max bids on threads it is still in (leading or still able to respond) plus the new target's max — if that would go over the cap, the target is skipped. Leave blank for no cap.">Total spend cap (₿m)</label>
         <input type="number" id="scoutAbSpendCap" min="0" step="0.5" placeholder="No cap" title="In millions, e.g. 120 = ₿120,000,000. Blank = no cap." />
-        <label for="scoutAbMaxWins" title="The most threads the plan may be in at once (leading or still able to respond). When a thread is beaten above your max it frees a place for the next target. Leave blank for no limit.">Max players to win</label>
+        <label for="scoutAbMaxWins" title="The plan only works your top N targets in priority order (players already in your squad are skipped and don't count). It opens what it can first, then uses the credits to join the rest of the top N. It never goes below number N, even if some are beaten or priced out. Leave blank to work the whole list.">Max players (top N)</label>
         <input type="number" id="scoutAbMaxWins" min="1" max="28" step="1" placeholder="No limit" title="1–28. Blank = no limit." />
         <label title="Untick to pause your plan. Bids already placed stay; the plan's max bids stop defending. Tick again and save to resume.">
           <input type="checkbox" id="scoutAbEnabled" checked /> Plan switched on

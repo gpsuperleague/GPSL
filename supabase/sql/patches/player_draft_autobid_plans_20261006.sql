@@ -703,6 +703,8 @@ DECLARE
   v_plan_commit numeric;
   v_rating int;
   v_via text;
+  v_window bigint[];
+  v_phase int;
 BEGIN
   SELECT p.club_short_name INTO v_club
   FROM public.player_draft_autobid_plans p WHERE p.id = p_plan_id;
@@ -737,7 +739,7 @@ BEGIN
       'Your auto-bid plan is live',
       format(
         'The player draft has opened and your auto-bid plan is now working through %s target(s). '
-        || 'It opens / joins threads in your priority order (credits permitting) and bids up to your max on each. '
+        || 'It works your top targets in priority order — opening fresh threads first, then joining other clubs'' threads with the credits earned — and bids up to your max on each. '
         || 'New opens and joins stop at the cutoff. You can change or switch off the plan in Scouting → Target lists.',
         (SELECT count(*) FROM public.player_draft_autobid_targets tc
          WHERE tc.plan_id = pl.id AND tc.included)
@@ -855,17 +857,44 @@ BEGIN
           OR entered_via IS NULL);
     END LOOP;
 
-    -- B) Threads not yet entered, in priority order
+    -- B) Threads not yet entered. With max players = N only the top N
+    -- targets not already at the club are worked: phase 1 opens fresh threads
+    -- (earning credits), phase 2 joins other clubs' threads with them.
+    v_window := NULL;
+    IF pl.max_wins IS NOT NULL THEN
+      SELECT coalesce(array_agg(w.id), '{}'::bigint[]) INTO v_window
+      FROM (
+        SELECT tw.id FROM public.player_draft_autobid_targets tw
+        WHERE tw.plan_id = pl.id AND tw.included
+          AND tw.state IS DISTINCT FROM 'owned'
+        ORDER BY tw.priority, tw.id
+        LIMIT pl.max_wins
+      ) w;
+
+      UPDATE public.player_draft_autobid_targets tx
+      SET state = 'skipped',
+          state_note = format('Outside your top %s', pl.max_wins),
+          updated_at = now()
+      WHERE tx.plan_id = pl.id AND tx.included
+        AND NOT (tx.id = ANY(v_window))
+        AND tx.state NOT IN ('owned', 'won', 'leading', 'in_play', 'beaten')
+        AND (tx.state IS DISTINCT FROM 'skipped'
+          OR tx.state_note IS DISTINCT FROM format('Outside your top %s', pl.max_wins));
+    END IF;
+
+    FOR v_phase IN 1..2 LOOP
     FOR t IN
       SELECT * FROM public.player_draft_autobid_targets
       WHERE plan_id = pl.id AND included
         AND state NOT IN ('ineligible', 'owned', 'won')
+        AND (v_window IS NULL OR id = ANY(v_window))
       ORDER BY priority, id
     LOOP
       v_pid := t.player_id;
       CONTINUE WHEN public.player_draft_club_has_bid(v_club, v_pid);
 
       v_leader := public.player_draft_autobid_leader(v_pid, b.draft_start, b.draft_window_end);
+      CONTINUE WHEN v_phase = 1 AND v_leader IS NOT NULL;
       v_min := public.player_draft_min_next_bid(v_pid);
       v_state := NULL;
       v_note := NULL;
@@ -910,9 +939,6 @@ BEGIN
           v_state := 'skipped';
           v_note := 'Spend cap: ' || public.player_draft_autobid_money(v_plan_commit)
             || ' already committed of ' || public.player_draft_autobid_money(pl.spend_cap);
-        ELSIF pl.max_wins IS NOT NULL AND v_plan_inplay + 1 > pl.max_wins THEN
-          v_state := 'skipped';
-          v_note := format('Max players to win reached (%s)', pl.max_wins);
         ELSIF v_squad + v_club_inplay + 1 > 28 THEN
           v_state := 'skipped';
           v_note := format('Squad would exceed 28 (%s signed + %s in play)', v_squad, v_club_inplay);
@@ -1002,6 +1028,7 @@ BEGIN
 
       v_actions := v_actions + 1;
       v_progress := true;
+    END LOOP;
     END LOOP;
 
     EXIT WHEN NOT v_progress;
