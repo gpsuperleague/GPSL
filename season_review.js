@@ -108,6 +108,7 @@ function expectationCell(r) {
       ${r.expectation_label ? `<span class="sr-sub">(${esc(r.expectation_label)})</span>` : ""}</div>
     <div class="sr-sub">${esc(r.tier || "—")} club</div>
     <div>${chip(BAND_LABELS[band] || band, tone)}${r.cup_rescued ? ` ${chip("Cup rescue", "ok")}` : ""}</div>
+    ${r.band_provisional ? `<div class="sr-sub" title="The official status appears once the first month's league fixtures are all played">Early season — from the live table</div>` : ""}
     ${cupLine}`;
 }
 
