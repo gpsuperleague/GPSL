@@ -57,6 +57,7 @@ export const CLUB_PAGES_THEME_KEYS = new Set([
   "club_challenges",
   "club_prizes",
   "owner_rankings",
+  "season_review",
   "nextgen_youth",
   "medical_room",
   "boardroom",

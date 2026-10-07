@@ -326,6 +326,12 @@ export const NAV_SECTIONS = [
         page: "owner_rankings",
         indent: true,
       },
+      {
+        href: "season_review.html",
+        label: "Season Review",
+        page: "season_review",
+        indent: true,
+      },
     ],
   },
 ];
