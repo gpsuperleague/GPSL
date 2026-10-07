@@ -126,6 +126,53 @@
       font-size: 11px;
     }
     .mgdb-exp-targets { color: #eee; }
+    .mgdb-impact-cell {
+      text-align: left;
+      white-space: nowrap;
+      font-size: 11px;
+      line-height: 1.45;
+      font-variant-numeric: tabular-nums;
+    }
+    .mgdb-boost {
+      display: inline-block;
+      min-width: 22px;
+      padding: 0 4px;
+      border-radius: 3px;
+      font-weight: bold;
+      text-align: center;
+      color: #111;
+    }
+    .mgdb-boost--1 { background: #8fbf6a; }
+    .mgdb-boost--2 { background: #ffcc33; }
+    .mgdb-boost--3 { background: #ff7a33; }
+
+    .mgdb-impact {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+    .mgdb-impact summary {
+      color: #ff9900;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .mgdb-impact-note {
+      color: #aaa;
+      font-size: 12px;
+      line-height: 1.45;
+      margin: 8px 0;
+      max-width: 820px;
+    }
+    .mgdb-impact table {
+      width: auto;
+      min-width: 360px;
+      margin-top: 6px;
+    }
+    .mgdb-impact th { cursor: default; position: static; }
+    .mgdb-impact td { font-variant-numeric: tabular-nums; }
+    .mgdb-impact-na { color: #666; }
     #statusNote { color: #aaa; font-size: 12px; margin-bottom: 12px; }
     #mgdbError { color: #f88; margin-bottom: 12px; }
 
@@ -364,6 +411,29 @@
   </div>
   <p id="mgdbError" hidden></p>
 
+  <details id="mgdbImpactPanel" class="mgdb-impact" hidden>
+    <summary>Manager impact chart — player boost by manager rating</summary>
+    <p class="mgdb-impact-note">
+      In eFootball, a manager boosts players' in-game ratings depending on the manager's rating
+      (proficiency) and each player's own rating. Find the manager's rating in the left column;
+      players whose rating falls in a band get that boost (<span class="mgdb-boost mgdb-boost--1">+1</span>
+      <span class="mgdb-boost mgdb-boost--2">+2</span> <span class="mgdb-boost mgdb-boost--3">+3</span>).
+      Managers rated below 73 use the 73 row; above 89 use the 89 row.
+      GPSL does not change the player ratings stored in the Player Database.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Manager rating</th>
+          <th><span class="mgdb-boost mgdb-boost--1">+1</span> players rated</th>
+          <th><span class="mgdb-boost mgdb-boost--2">+2</span> players rated</th>
+          <th><span class="mgdb-boost mgdb-boost--3">+3</span> players rated</th>
+        </tr>
+      </thead>
+      <tbody id="mgdbImpactBody"></tbody>
+    </table>
+  </details>
+
   <div id="controls">
     <div class="filter-group" id="filters"></div>
 
@@ -386,6 +456,6 @@
   </div>
 
   <script type="module" src="global.js?v=20261002-light-mode"></script>
-  <script type="module" src="mgdb.js?v=20260815-overload"></script>
+  <script type="module" src="mgdb.js?v=20261007-impact"></script>
 </body>
 </html>

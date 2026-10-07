@@ -57,7 +57,9 @@ function formatManagerTarget(row) {
 }
 
 function formatChartBands(row) {
-  const parts = [row.boost1_label, row.boost2_label, row.boost3_label].filter(Boolean);
+  const parts = [row.boost1_label, row.boost2_label, row.boost3_label].filter(
+    (label) => label && !/players 0–0\)/.test(label)
+  );
   if (!parts.length) return null;
   return parts.join(" · ");
 }

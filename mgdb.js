@@ -22,6 +22,7 @@ const TABLE_COLUMNS = [
   { key: "name", label: "Manager" },
   { key: "rating", label: "Rating" },
   { key: "expectancy", label: "Expectation" },
+  { key: "impact", label: "Player boost" },
   { key: "draft_action", label: "Draft" },
   { key: "contracted_display", label: "Contracted Club" },
   { key: "nation", label: "Nation" },
@@ -62,6 +63,10 @@ let viewerClubShort = null;
 let viewerClubHasManager = false;
 let viewerSackedManagerIds = new Set();
 let multiFilterClickWired = false;
+let impactChart = new Map();
+
+const IMPACT_MIN_PROFICIENCY = 73;
+const IMPACT_MAX_PROFICIENCY = 89;
 
 function rangeStep(col) {
   if (col === "market_value") return 500_000;
@@ -109,6 +114,78 @@ function formatExpectancy(row) {
   return `<span class="mgdb-exp-targets">${parts.join(" · ")}</span>`;
 }
 
+function impactBands(chartRow) {
+  if (!chartRow) return [];
+  return [1, 2, 3]
+    .map((boost) => ({
+      boost,
+      min: chartRow[`boost${boost}_min`],
+      max: chartRow[`boost${boost}_max`],
+    }))
+    .filter((b) => b.min != null && b.max != null && Number(b.max) > 0);
+}
+
+function impactRowForRating(rating) {
+  const n = Number(rating);
+  if (!Number.isFinite(n)) return null;
+  const clamped = Math.min(
+    IMPACT_MAX_PROFICIENCY,
+    Math.max(IMPACT_MIN_PROFICIENCY, Math.round(n))
+  );
+  return impactChart.get(clamped) || null;
+}
+
+function formatImpact(row) {
+  const bands = impactBands(impactRowForRating(row.rating));
+  if (!bands.length) return "—";
+  return bands
+    .map(
+      (b) =>
+        `<span class="mgdb-boost mgdb-boost--${b.boost}">+${b.boost}</span> ${b.min}–${b.max}`
+    )
+    .join("<br>");
+}
+
+function renderImpactPanel() {
+  const panel = document.getElementById("mgdbImpactPanel");
+  const body = document.getElementById("mgdbImpactBody");
+  if (!panel || !body) return;
+  if (!impactChart.size) {
+    panel.hidden = true;
+    return;
+  }
+  const cell = (chartRow, boost) => {
+    const band = impactBands(chartRow).find((b) => b.boost === boost);
+    return band ? `${band.min}–${band.max}` : `<span class="mgdb-impact-na">—</span>`;
+  };
+  body.innerHTML = [...impactChart.values()]
+    .sort((a, b) => a.proficiency - b.proficiency)
+    .map(
+      (r) => `<tr>
+        <td><b>${r.proficiency}</b></td>
+        <td>${cell(r, 1)}</td>
+        <td>${cell(r, 2)}</td>
+        <td>${cell(r, 3)}</td>
+      </tr>`
+    )
+    .join("");
+  panel.hidden = false;
+}
+
+async function loadImpactChart() {
+  const { data, error } = await supabase
+    .from("manager_proficiency_expectancy")
+    .select("proficiency, boost1_min, boost1_max, boost2_min, boost2_max, boost3_min, boost3_max")
+    .order("proficiency");
+  if (error) {
+    console.warn("MGDB impact chart:", error.message);
+    impactChart = new Map();
+  } else {
+    impactChart = new Map((data || []).map((r) => [Number(r.proficiency), r]));
+  }
+  renderImpactPanel();
+}
+
 function buildTableHead() {
   const head = document.getElementById("tableHead");
   if (!head) return;
@@ -125,7 +202,7 @@ function buildTableHead() {
   head.querySelectorAll("th").forEach((th) => {
     th.addEventListener("click", () => {
       const col = th.dataset.col;
-      if (col === "expectancy" || col === "draft_action") return;
+      if (col === "expectancy" || col === "impact" || col === "draft_action") return;
       if (CURRENT_SORT_COLUMN === col) {
         CURRENT_SORT_DIR = CURRENT_SORT_DIR === "asc" ? "desc" : "asc";
       } else {
@@ -250,6 +327,9 @@ function renderPage() {
         }
         if (col.key === "expectancy") {
           return `<td class="mgdb-expectancy">${formatExpectancy(row)}</td>`;
+        }
+        if (col.key === "impact") {
+          return `<td class="mgdb-impact-cell">${formatImpact(row)}</td>`;
         }
         if (col.key === "rating") {
           return `<td>${val ?? "—"}</td>`;
@@ -755,6 +835,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   buildTableHead();
   await loadViewerClub();
+  await loadImpactChart();
   await loadManagers();
 
   if (managerDraftOn && draftStartTime) {
