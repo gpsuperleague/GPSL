@@ -45,10 +45,32 @@ const LOGO_SLUGS = new Set([
   "driftwave",
   "fitfuel",
   "homely-homes",
+  "puddle-boots",
+  "daves-vans",
+  "the-pie-shed",
+  "corner-cuts",
+  "mabels-tearoom",
+  "kevs-kebabs",
+  "sparky-sid",
+  "bloom-grow",
+  "fixit-phones",
+  "sunny-side-cafe",
+  "plumb-perfect",
+  "tidy-paws",
+  "hilltop-dairy",
+  "rolling-pin-bakery",
+  "lucky-lane-laundrette",
+  "granny-smiths-chutney",
+  "turbo-exhausts",
+  "the-pint-pitch",
+  "clean-sweep-chimneys",
+  "byte-size-computers",
 ]);
 
 export function brandSlug(name) {
   return String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/['’]/g, "")
     .replace(/&/g, " ")
