@@ -14,6 +14,9 @@ import {
   clubTookLoanThisSeason,
 } from "./competition.js";
 
+/** Must match public.club_loan_max_active(). */
+const MAX_ACTIVE_LOANS = 2;
+
 function parseMoneyInput(raw) {
   const n = Number(String(raw ?? "").replace(/,/g, "").trim());
   return Number.isFinite(n) ? n : NaN;
@@ -221,23 +224,24 @@ function paintLimits(bank, loans, options = {}) {
   const outstanding = outstandingTotal(loans);
   const headroom = clubLoanHeadroom(bank, outstanding);
   const min = Number(bank?.loan_min_drawdown || 1000000);
-  const maxDraw = Number(bank?.loan_max_drawdown || 50000000);
+  const maxDraw = Number(bank?.loan_max_drawdown || 100000000);
+  const maxOwed = Number(bank?.loan_max_outstanding_per_club || 100000000);
   const seasonLoanUsed = options.seasonLoanUsed === true;
   const effectiveMax = seasonLoanUsed ? 0 : Math.min(maxDraw, headroom);
 
   const limitsEl = document.getElementById("loanLimits");
   if (limitsEl) {
     limitsEl.textContent = seasonLoanUsed
-      ? `Season loan already used (even if repaid) · Max ${formatMoney(maxDraw)} per loan`
-      : `Max 1 loan per season (even if repaid) · Min ${formatMoney(min)} · Max ${formatMoney(
-          maxDraw
-        )} per loan · Headroom ${formatMoney(headroom)} · Term 20 GPSL months`;
+      ? `${MAX_ACTIVE_LOANS} active loans already — pay one off to take another`
+      : `Up to ${MAX_ACTIVE_LOANS} active loans · ${formatMoney(maxOwed)} owed in total · Min ${formatMoney(
+          min
+        )} · Headroom ${formatMoney(headroom)} · Term 20 GPSL months`;
   }
 
   const headroomEl = document.getElementById("counterHeadroom");
   if (headroomEl) {
     headroomEl.textContent = seasonLoanUsed
-      ? "0 (season loan used)"
+      ? `0 (${MAX_ACTIVE_LOANS} active loans)`
       : formatMoney(headroom);
   }
 
@@ -402,7 +406,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
       paintLimits(bankNow, latest, { seasonLoanUsed: true });
       showCounterMsg(
         "loanTakeMsg",
-        "Maximum one loan per season. Your club has already taken a loan this season (repaying it does not allow another).",
+        `Maximum ${MAX_ACTIVE_LOANS} active loans. Pay off one of your loans before taking another.`,
         false
       );
       return;
@@ -411,7 +415,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
     const outstanding = outstandingTotal(latest);
     const headroom = clubLoanHeadroom(bankNow, outstanding);
     const min = Number(bankNow?.loan_min_drawdown || 1000000);
-    const maxDraw = Number(bankNow?.loan_max_drawdown || 50000000);
+    const maxDraw = Number(bankNow?.loan_max_drawdown || 100000000);
     const effectiveMax = Math.min(maxDraw, headroom);
     const amt = parseMoneyInput(amountInput?.value);
 

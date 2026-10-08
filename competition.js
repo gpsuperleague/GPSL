@@ -1962,7 +1962,7 @@ export async function checkClubLoanCredit(supabase) {
   };
 }
 
-/** True if this club already drew a loan in the current season. */
+/** True if this club is at the active-loan limit (2 unpaid loans). */
 export async function clubTookLoanThisSeason(supabase) {
   const { data, error } = await supabase.rpc("club_loan_taken_this_season", {
     p_club: null,
