@@ -1,5 +1,5 @@
 -- =============================================================================
--- Player market value: remove the Calc Potential cliff + recalc everyone
+-- Player market value: remove the Calc Potential cliff + recalc affected players
 -- =============================================================================
 -- Before: rating = PES max -> rating + tier bonus (+2 if <=19); otherwise the
 -- PES max itself. A 77 rated player with a 79 max scored 79 (-75%) while a
@@ -7,9 +7,10 @@
 -- After: greatest(PES max, rating + tier bonus + young bonus). Players with a
 -- high ceiling are unchanged; nobody is worth less for having headroom.
 --
--- Market value, Maximum Reserve Price (1.5 x MV) and the stored Calc Potential
--- are recalculated for every player (intl / Next Gen boosts kept).
--- Wages follow market value, so affected players' wages rise too.
+-- Only players whose Calc Potential changes are touched (~88): a no-op UPDATE
+-- fires trg_player_value (MV + intl / Next Gen boosts) and
+-- trg_set_maximum_reserve_price (1.5 x MV). A full-table recalc times out in
+-- the SQL editor. Wages follow market value, so affected wages rise too.
 --
 -- Preview first: player_value_potential_cliff_preview_20261008.sql
 -- Safe re-run.
@@ -29,7 +30,14 @@ RETURNS integer LANGUAGE sql IMMUTABLE AS $$
   END;
 $$;
 
-SELECT public.gpsl_player_value_recalc_apply() AS recalc;
+UPDATE public."Players" p
+SET "Rating" = p."Rating"
+WHERE public.gpsl_pv_int(p."Rating"::text) IS NOT NULL
+  AND public.gpsl_pv_int(p."Calc_Potential"::text) IS DISTINCT FROM public.gpsl_pv_calc_potential(
+    public.gpsl_pv_int(p."Rating"::text),
+    coalesce(public.gpsl_pv_int(p."Potential"::text), public.gpsl_pv_int(p."Rating"::text)),
+    public.gpsl_pv_int(p."Age"::text)
+  );
 
 -- Check: Gnabry and the old smoke test (79 CB age 24, maxed -> unchanged)
 SELECT
