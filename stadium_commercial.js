@@ -3,7 +3,7 @@
  * pitchside advertising boards, and merchandising.
  */
 import { formatMoney } from "./competition.js";
-import { brandLogoHtml, isKofiBrand, KOFI_URL } from "./brand_logos.js";
+import { brandLogoHtml, isKofiBrand, KOFI_URL } from "./brand_logos.js?v=20261008-standard";
 
 const TIER_LABELS = { big: "Big club", medium: "Medium club", low: "Small club" };
 
