@@ -14,8 +14,23 @@
 --
 -- Settings: long_deal_pct 0.75, short_upfront_pct 0.50, perf_deal_base_pct
 -- 0.10, perf_success_pct 2.00 (club_commercial_settings).
+--
+-- Pitchside boards: slot 1 is always the house board "GPSL on Ko-fi" (paid
+-- like any other slot); slots 2–5 are random brands. The house brand is
+-- inactive so it is never offered as a main sponsor.
 -- Must run before offers are made (GPSL June). Safe to re-run.
 -- =============================================================================
+
+INSERT INTO public.commercial_brands (name, sector, tagline, tier_pref, active)
+VALUES ('GPSL on Ko-fi', 'Supporters', 'Keep GPSL running — ko-fi.com/gpsluk', 'premium', false)
+ON CONFLICT (name) DO UPDATE
+SET sector = excluded.sector, tagline = excluded.tagline, active = false;
+
+-- Boards already sold this season: slot 1 becomes the Ko-fi board (amount unchanged)
+UPDATE public.club_commercial_boards bd
+SET brand_id = (SELECT id FROM public.commercial_brands WHERE name = 'GPSL on Ko-fi')
+WHERE bd.slot = 1
+  AND bd.season_id = public.club_commercial_current_season();
 
 ALTER TABLE public.club_commercial_settings
   ADD COLUMN IF NOT EXISTS short_upfront_pct numeric NOT NULL DEFAULT 0.50;
@@ -153,10 +168,21 @@ BEGIN
     v_total := v_value;
     v_left := v_total;
     FOR v_brand IN
-      SELECT b.id, b.name
-      FROM public.commercial_brands b
-      WHERE b.active
-      ORDER BY (CASE WHEN b.tier_pref = v_pref THEN 0 ELSE 0.7 END) + random()
+      SELECT x.id, x.name
+      FROM (
+        SELECT h.id, h.name, 0 AS grp, 0::float8 AS k
+        FROM public.commercial_brands h
+        WHERE h.name = 'GPSL on Ko-fi'
+        UNION ALL
+        (
+          SELECT b.id, b.name, 1, (CASE WHEN b.tier_pref = v_pref THEN 0 ELSE 0.7 END) + random()
+          FROM public.commercial_brands b
+          WHERE b.active
+          ORDER BY 4
+          LIMIT 5
+        )
+      ) x
+      ORDER BY x.grp, x.k
       LIMIT 5
     LOOP
       v_slot := v_slot + 1;
@@ -444,5 +470,8 @@ NOTIFY pgrst, 'reload schema';
 
 -- Check: new terms, and no offers made yet under the old ones
 SELECT long_deal_pct, short_upfront_pct, perf_deal_base_pct, perf_success_pct,
-  (SELECT count(*) FROM public.club_commercial_sponsor_offers) AS offers_existing
+  (SELECT count(*) FROM public.club_commercial_sponsor_offers) AS offers_existing,
+  (SELECT count(*) FROM public.commercial_brands WHERE name = 'GPSL on Ko-fi' AND NOT active) AS kofi_house_brand,
+  position('GPSL on Ko-fi' IN pg_get_functiondef('public.club_commercial_ensure_season(text, bigint)'::regprocedure)) > 0
+    AS kofi_board_slot1
 FROM public.club_commercial_settings WHERE id = 1;

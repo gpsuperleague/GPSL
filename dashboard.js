@@ -28,6 +28,7 @@ import {
   loadClubDashboardTheme,
 } from "./club_theme_common.js";
 import { startDashboardMatchday } from "./dashboard_matchday.js";
+import { renderSupportBanner } from "./support_banner.js";
 import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261004-guidance";
 import {
   leagueBadgeSrc,
@@ -41,22 +42,21 @@ let isAdmin = false;
 
 async function refreshDashboardSupporterPill() {
   const pill = document.getElementById("dashboardSupporterPill");
-  if (!pill) return;
+  const banner = document.getElementById("supportBanner");
+  let active = false;
   try {
     const { data, error } = await supabase.rpc("owner_registry_get_self");
-    if (error) {
-      pill.hidden = true;
-      return;
+    if (!error) {
+      active =
+        data?.supporter_active === true ||
+        data?.can_set_profile_image === true ||
+        data?.is_supporter === true;
     }
-    const active =
-      data?.supporter_active === true ||
-      data?.can_set_profile_image === true ||
-      data?.is_supporter === true;
-    pill.hidden = !active;
   } catch (err) {
     console.warn("dashboard supporter pill:", err);
-    pill.hidden = true;
   }
+  if (pill) pill.hidden = !active;
+  renderSupportBanner(banner, { supporter: active });
 }
 let layoutSections = [];
 let panelLabels = {};
