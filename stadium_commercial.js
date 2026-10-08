@@ -28,25 +28,35 @@ function offerTerms(o) {
   if (o.deal_kind === "long") {
     return `<b>${money(o.amount_per_season)}</b> a season for <b>${o.seasons} seasons</b> (${money(
       o.amount_per_season * o.seasons
-    )} total). Guaranteed next season even if results dip.`;
+    )} total). <b>Guaranteed</b>, whatever happens on the pitch.`;
   }
   if (o.deal_kind === "short") {
-    return `<b>${money(o.amount_per_season)}</b> for <b>this season only</b>. Biggest payday now — next season's offers depend on how you do.`;
+    if (o.base_amount == null) {
+      return `<b>${money(o.amount_per_season)}</b> for <b>this season only</b>.`;
+    }
+    return `<b>${money(o.base_amount)}</b> now, plus <b>${money(
+      o.max_amount - o.base_amount
+    )}</b> at Close Finances (${money(o.max_amount)} total) if you're on target, only slightly miss, or reach a cup target. Miss by 3+ places and you keep just the ${money(
+      o.base_amount
+    )}. This season only.`;
   }
-  return `<b>${money(o.base_amount)}</b> now, plus a bonus at Close Finances up to <b>${money(
-    o.max_amount
-  )}</b> in total if you beat your league &amp; cup targets. Miss them and you still get at least ${money(
-    Math.max(Number(o.band_min) || 0, Number(o.base_amount) || 0)
-  )}.`;
+  return `<b>${money(o.base_amount)}</b> now. Finish <b>above your expected league position</b> and get another <b>${money(
+    o.max_amount - o.base_amount
+  )}</b> at Close Finances (${money(o.max_amount)} total). Otherwise nothing more. This season only.`;
 }
 
 function sponsorTerms(sp) {
-  if (sp.deal_kind === "performance") {
+  if (sp.deal_kind === "performance" || (sp.deal_kind === "short" && sp.base_amount != null)) {
+    const title = sp.deal_kind === "performance" ? "Performance deal" : "One-season deal";
+    const rule =
+      sp.deal_kind === "performance"
+        ? "if you finish above your expected league position"
+        : "if you're on target, only slightly miss, or reach a cup target";
     return sp.bonus_paid
-      ? `Performance deal — ${money(sp.paid_this_season)} received this season (base + bonus).`
-      : `Performance deal — ${money(sp.base_amount)} paid; bonus up to ${money(
-          sp.max_amount
-        )} total at Close Finances, based on league &amp; cup results vs targets.`;
+      ? `${title} — ${money(sp.paid_this_season)} received this season in total.`
+      : `${title} — ${money(sp.base_amount)} paid; another ${money(
+          sp.max_amount - sp.base_amount
+        )} at Close Finances ${rule}.`;
   }
   const seasonNote =
     sp.seasons_total > 1 ? ` · season ${sp.season_number} of ${sp.seasons_total}` : " · this season only";
@@ -100,7 +110,7 @@ function renderSponsor(d) {
     .join("");
 
   return `
-    <p class="comm-dilemma"><b>Three companies want their name on your stadium.</b> Take the security, the bigger payday, or back yourself?
+    <p class="comm-dilemma"><b>Three companies want their name on your stadium.</b> Guaranteed money, a deal that depends on avoiding a big miss, or a big-bonus gamble on beating expectations?
       ${deadline ? `Decide by <b>${esc(deadline)}</b> — otherwise the long-term deal is signed for you.` : ""}</p>
     <div class="comm-offers">${cards}</div>`;
 }
