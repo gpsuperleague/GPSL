@@ -145,8 +145,9 @@
           <div class="card">
             <h2>Championship A — swap in new owners</h2>
             <p class="note">
-              Works before and after <b>Start season</b>. Pick an <b>unowned</b> Championship A club to take out and an
-              owned club on Standby / Unassigned to bring in — the new club takes its table slot.
+              Works before and after <b>Start season</b>. Pick an <b>unowned</b> Championship A club to take out and a
+              club on Standby / Unassigned to bring in (owned, or vacant to swap one empty club for another) — the new
+              club takes its table slot.
               Swaps lock once Championship A league fixtures are drawn (Admin → League fixtures).
               Unowned clubs left in lose 3–0 by walkover at each month lock (gate and TV money still paid).
             </p>
@@ -160,7 +161,7 @@
                 <select id="champSwapOut"></select>
               </div>
               <div>
-                <label>Bring in (owned)</label>
+                <label>Bring in (owned or vacant)</label>
                 <select id="champSwapIn"></select>
               </div>
               <div style="display:flex;align-items:flex-end;gap:8px;">
@@ -236,6 +237,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20261005-champ-a-swap"></script>
+  <script type="module" src="admin_season.js?v=20261008-champ-swap-vacant"></script>
 </body>
 </html>

@@ -216,15 +216,15 @@ BEGIN
   SELECT coalesce(jsonb_agg(jsonb_build_object(
     'club', c."ShortName",
     'club_name', coalesce(c."Club", c."ShortName"),
+    'owned', c.owner_id IS NOT NULL,
     'owner_tag', nullif(btrim(c.owner), ''),
     'division', coalesce(cs.division, 'not registered')
-  ) ORDER BY coalesce(c."Club", c."ShortName")), '[]'::jsonb)
+  ) ORDER BY (c.owner_id IS NULL), coalesce(c."Club", c."ShortName")), '[]'::jsonb)
   INTO v_candidates
   FROM public."Clubs" c
   LEFT JOIN public.competition_club_seasons cs
     ON cs.season_id = p_season_id AND cs.club_short_name = c."ShortName"
-  WHERE c.owner_id IS NOT NULL
-    AND c."ShortName" <> 'FOREIGN'
+  WHERE c."ShortName" <> 'FOREIGN'
     AND NOT coalesce(c.is_archived, false)
     AND coalesce(cs.division, 'unassigned') IN ('unassigned', 'standby');
 

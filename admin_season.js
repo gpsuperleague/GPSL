@@ -224,16 +224,20 @@ async function loadChampSwap() {
         .map((m) => `<option value="${escapeHtml(m.club)}">${escapeHtml(m.club_name)}</option>`)
         .join("")
     : `<option value="">No unowned clubs in Championship A</option>`;
+  const candOption = (c) =>
+    `<option value="${escapeHtml(c.club)}">${escapeHtml(c.club_name)}${
+      c.owner_tag ? ` — ${escapeHtml(c.owner_tag)}` : ""
+    } (${escapeHtml(c.division)})</option>`;
+  const ownedCands = candidates.filter((c) => c.owned !== false);
+  const vacantCands = candidates.filter((c) => c.owned === false);
   inSel.innerHTML = candidates.length
-    ? candidates
-        .map(
-          (c) =>
-            `<option value="${escapeHtml(c.club)}">${escapeHtml(c.club_name)}${
-              c.owner_tag ? ` — ${escapeHtml(c.owner_tag)}` : ""
-            } (${escapeHtml(c.division)})</option>`
-        )
-        .join("")
-    : `<option value="">No owned clubs on Standby / Unassigned</option>`;
+    ? (ownedCands.length
+        ? `<optgroup label="Owned">${ownedCands.map(candOption).join("")}</optgroup>`
+        : "") +
+      (vacantCands.length
+        ? `<optgroup label="Vacant (no owner)">${vacantCands.map(candOption).join("")}</optgroup>`
+        : "")
+    : `<option value="">No clubs on Standby / Unassigned</option>`;
 
   btn.disabled = locked || !unowned.length || !candidates.length;
 
