@@ -3,6 +3,7 @@
  * pitchside advertising boards, and merchandising.
  */
 import { formatMoney } from "./competition.js";
+import { brandLogoHtml, isKofiBrand, KOFI_URL } from "./brand_logos.js";
 
 const TIER_LABELS = { big: "Big club", medium: "Medium club", low: "Small club" };
 
@@ -68,11 +69,14 @@ function renderSponsor(d) {
     const sp = d.sponsor;
     return `
       <div class="comm-sponsor">
-        <div class="comm-kicker">Main sponsor</div>
-        <div class="comm-sponsor-name">${esc(sp.brand)}</div>
-        <div class="comm-sector">${esc(sp.sector)}${sp.tagline ? ` — “${esc(sp.tagline)}”` : ""}</div>
-        <p class="comm-terms">${sponsorTerms(sp)}</p>
-        ${sp.auto_selected ? `<p class="note">Signed automatically when the offer deadline passed.</p>` : ""}
+        ${brandLogoHtml(sp.brand, "brand-logo--lg")}
+        <div class="comm-sponsor-body">
+          <div class="comm-kicker">Main sponsor</div>
+          <div class="comm-sponsor-name">${esc(sp.brand)}</div>
+          <div class="comm-sector">${esc(sp.sector)}${sp.tagline ? ` — “${esc(sp.tagline)}”` : ""}</div>
+          <p class="comm-terms">${sponsorTerms(sp)}</p>
+          ${sp.auto_selected ? `<p class="note">Signed automatically when the offer deadline passed.</p>` : ""}
+        </div>
       </div>`;
   }
 
@@ -95,7 +99,10 @@ function renderSponsor(d) {
       (o) => `
       <div class="comm-offer">
         <div class="comm-kicker">${esc(DEAL_TITLES[o.deal_kind] || o.deal_kind)}</div>
-        <div class="comm-offer-brand">${esc(o.brand)}</div>
+        <div class="comm-offer-head">
+          ${brandLogoHtml(o.brand, "brand-logo--md")}
+          <div class="comm-offer-brand">${esc(o.brand)}</div>
+        </div>
         <div class="comm-sector">${esc(o.sector)}${o.tagline ? ` — “${esc(o.tagline)}”` : ""}</div>
         <p class="comm-terms">${offerTerms(o)}</p>
         ${
@@ -122,14 +129,16 @@ function renderBoards(d) {
   }
   const total = boards.reduce((s, b) => s + (Number(b.amount) || 0), 0);
   const chips = boards
-    .map(
-      (b) => `
-      <div class="comm-board" title="${esc(b.tagline || "")}">
+    .map((b) => {
+      const inner = `
+        ${brandLogoHtml(b.brand, "brand-logo--board")}
         <span class="comm-board-name">${esc(b.brand)}</span>
         <span class="comm-board-sector">${esc(b.sector)}</span>
-        <span class="comm-board-amt">${money(b.amount)}</span>
-      </div>`
-    )
+        <span class="comm-board-amt">${money(b.amount)}</span>`;
+      return isKofiBrand(b.brand)
+        ? `<a class="comm-board comm-board--kofi" href="${KOFI_URL}" target="_blank" rel="noopener noreferrer" title="Support GPSL on Ko-fi">${inner}</a>`
+        : `<div class="comm-board" title="${esc(b.tagline || "")}">${inner}</div>`;
+    })
     .join("");
   return `<div class="comm-boards">${chips}</div>
     <p class="note">Total pitchside advertising this season: <b>${money(total)}</b> (priced on last season's results).</p>`;
