@@ -25,6 +25,8 @@ import {
 
 let compRegistrations = [];
 let compSelectedSeasonId = null;
+/** Live season shown read-only in the Divisions table when no pre-season exists. */
+let compLiveViewSeasonId = null;
 
 /** Sidebar mirrors live Admin mega sections for season workflow. */
 const SEASON_SIDEBAR_SECTIONS = [
@@ -285,6 +287,7 @@ async function runChampSwap() {
   setStatus("champSwapStatus", `✅ ${data.in} is in Championship A (slot ${data.slot ?? "—"}); ${data.out} removed.`);
   await loadChampSwap();
   if (compSelectedSeasonId === seasonId) await loadCompSeasonData(seasonId);
+  else if (compLiveViewSeasonId === seasonId) await loadCompLiveView(seasonId);
 }
 
 /** Staged tick: FA → contested → decrement (separate RPCs / timeouts). */
@@ -835,14 +838,19 @@ async function refreshCompetitionAdmin() {
 
   const startBtn = document.getElementById("compStartSeasonBtn");
 
+  compLiveViewSeasonId = null;
   if (!setupSeasons.length) {
     select.innerHTML = active
-      ? `<option value="">None — ${active.label} is live</option>`
+      ? `<option value="">None — ${active.label} is live (current divisions shown, view only)</option>`
       : `<option value="">No pre-season years</option>`;
     compSelectedSeasonId = null;
-    compRegistrations = [];
-    renderCompAssignTable();
-    updateCompSetupCounts();
+    if (active) {
+      await loadCompLiveView(active.id);
+    } else {
+      compRegistrations = [];
+      renderCompAssignTable();
+      updateCompSetupCounts();
+    }
     startBtn.style.display = "none";
     const startStatus = document.getElementById("compStartStatus");
     if (active && startStatus && !startStatus.textContent?.trim()) {
@@ -880,14 +888,75 @@ async function onCompSeasonSelected() {
 }
 
 async function loadCompSeasonData(seasonId) {
+  compLiveViewSeasonId = null;
+  for (const id of ["compAssignOwnersBtn", "compAssignPrestigeBtn", "compSeedMovementsBtn", "compSaveAssignBtn"]) {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = false;
+  }
   compRegistrations = await loadSeasonRegistrations(supabase, seasonId);
   renderCompAssignTable();
   updateCompSetupCounts();
 }
 
+const LIVE_VIEW_DIVISION_ORDER = [
+  "championship_a",
+  "championship_b",
+  "superleague",
+  "standby",
+  "championship_pool",
+  "unassigned",
+];
+
+async function loadCompLiveView(seasonId) {
+  compLiveViewSeasonId = seasonId;
+  compRegistrations = await loadSeasonRegistrations(supabase, seasonId);
+  renderCompAssignTable();
+  updateCompSetupCounts();
+  for (const id of [
+    "compAssignOwnersBtn",
+    "compAssignPrestigeBtn",
+    "compSeedMovementsBtn",
+    "compSaveAssignBtn",
+    "compDrawBtn",
+    "compResetDrawBtn",
+  ]) {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = true;
+  }
+}
+
+function renderCompLiveViewTable(tbody) {
+  const rank = (d) => {
+    const i = LIVE_VIEW_DIVISION_ORDER.indexOf(d);
+    return i < 0 ? 99 : i;
+  };
+  const rows = [...compRegistrations].sort(
+    (a, b) =>
+      rank(a.division) - rank(b.division) ||
+      (a.league_position ?? 99) - (b.league_position ?? 99) ||
+      String(a.club_name).localeCompare(String(b.club_name))
+  );
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    const slot = row.league_position ? ` · slot ${row.league_position}` : "";
+    tr.innerHTML = `
+          <td style="padding:8px;border:1px solid #333;">${escapeHtml(row.club_name)}</td>
+          <td style="padding:8px;border:1px solid #333;">${escapeHtml(
+            DIVISION_LABELS[row.division] || row.division
+          )}${slot}</td>
+        `;
+    tbody.appendChild(tr);
+  }
+}
+
 function renderCompAssignTable() {
   const tbody = document.getElementById("compAssignBody");
   tbody.innerHTML = "";
+
+  if (compLiveViewSeasonId) {
+    renderCompLiveViewTable(tbody);
+    return;
+  }
 
   for (const row of compRegistrations) {
     const tr = document.createElement("tr");
