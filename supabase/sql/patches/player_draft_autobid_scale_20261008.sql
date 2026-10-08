@@ -73,7 +73,11 @@ BEGIN
     RETURN;
   END IF;
 
-  PERFORM public.player_draft_autobid_finish_due();
+  BEGIN
+    PERFORM public.player_draft_autobid_finish_due();
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'draft autobid finish failed: %', SQLERRM;
+  END;
   COMMIT;
 
   SELECT coalesce(gs.draft_autobid_paused, false) INTO v_paused
