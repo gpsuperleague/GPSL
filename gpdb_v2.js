@@ -3087,21 +3087,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isJoining) {
       console.log("submitDraftBid: JOINING existing auction");
 
-      const priorJoin = existing.filter(
-        (b) =>
-          b.bidder_club_id === buyerShortName &&
-          b.is_draft_join === true
-      );
+      const myPrior = existing.filter((b) => b.bidder_club_id === buyerShortName);
 
-      console.log("submitDraftBid priorJoin =", priorJoin);
+      console.log("submitDraftBid myPrior =", myPrior);
 
-      if (priorJoin.length > 0) {
+      if (myPrior.length > 0) {
+        // Already in this thread (opened it or paid to join) — rebids are free.
         bidResult = await insertDraftBid(
           player,
           offerAmount,
           buyerShortName,
           false,
-          true,
+          myPrior.some((b) => b.is_draft_join === true),
           false,
           listingId
         );

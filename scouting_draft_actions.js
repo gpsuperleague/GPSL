@@ -159,17 +159,20 @@ export async function submitScoutingDraftBid(
   let bidResult;
 
   if (isJoining) {
-    const priorJoin = existing.filter(
-      (b) => b.bidder_club_id === buyerShortName && b.is_draft_join === true
-    );
+    const myPrior = existing.filter((b) => b.bidder_club_id === buyerShortName);
 
-    if (priorJoin.length > 0) {
+    if (myPrior.length > 0) {
+      // Already in this thread (opened it or paid to join) — rebids are free.
       bidResult = await insertDraftBid(
         supabase,
         player,
         offerAmount,
         buyerShortName,
-        { isFirst: false, isJoin: true, consumeJoin: false },
+        {
+          isFirst: false,
+          isJoin: myPrior.some((b) => b.is_draft_join === true),
+          consumeJoin: false,
+        },
         listingId
       );
     } else {
