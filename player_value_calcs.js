@@ -80,7 +80,9 @@ export function ratingPotentialBonus(rating) {
 }
 
 /**
- * Calc Value (col G) — unchanged from Excel.
+ * Calc Value (col G): the higher of PES max and rating + tier bonus, so a player
+ * below a low max is never valued under a maxed player of the same rating.
+ * Must match public.gpsl_pv_calc_potential.
  */
 export function calculateCalcPotential(rating, pesMax, age) {
   const r = Math.round(Number(rating));
@@ -90,8 +92,7 @@ export function calculateCalcPotential(rating, pesMax, age) {
 
   const bonus = ratingPotentialBonus(r);
   const ageBonus = a <= 19 ? 2 : 0;
-  if (r === base) return base + bonus + ageBonus;
-  return base;
+  return Math.max(base, r + bonus + ageBonus);
 }
 
 function xlookupExact(map, key, defaultValue = 0) {
