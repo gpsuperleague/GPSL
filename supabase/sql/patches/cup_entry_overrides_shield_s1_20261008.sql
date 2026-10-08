@@ -22,6 +22,11 @@
 --     → vacant clubs give a 3–0 walkover at the August lock unless they gain an owner
 --   Last 32 Sep · Last 16 Oct · Quarter-final Nov · Semi-final Dec · Final Dec
 --
+-- Season 1 League Cup (normal format, all league clubs, Last 64 in December):
+--   40 clubs → 16 ties + 24 byes. competition_cup_vacant_pairing makes the
+--   byes owned-only and pairs each vacant club with an owned club. Starter
+--   byes are seeded so the admin panel is ready to draw.
+--
 -- Future seasons: no override rows → normal qualifying and the standard
 -- 5-round Shield schedule (restored automatically at their draw).
 --
@@ -65,9 +70,19 @@ CREATE TABLE IF NOT EXISTS public.competition_cup_standard_schedule (
   LIKE public.competition_cup_round_schedule INCLUDING DEFAULTS
 );
 
+-- Season + cup draws that keep vacant clubs off byes and away from each other
+-- (implied for any season + cup with its own schedule)
+CREATE TABLE IF NOT EXISTS public.competition_cup_vacant_pairing (
+  season_id bigint NOT NULL REFERENCES public.competition_seasons (id) ON DELETE CASCADE,
+  cup_code text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (season_id, cup_code)
+);
+
 ALTER TABLE public.competition_cup_entry_overrides ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.competition_cup_season_schedule ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.competition_cup_standard_schedule ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.competition_cup_vacant_pairing ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS competition_cup_entry_overrides_read ON public.competition_cup_entry_overrides;
 CREATE POLICY competition_cup_entry_overrides_read
@@ -285,6 +300,9 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.competition_cup_season_schedule
     WHERE season_id = p_season_id AND cup_code = v_cup
+  ) AND NOT EXISTS (
+    SELECT 1 FROM public.competition_cup_vacant_pairing
+    WHERE season_id = p_season_id AND cup_code = v_cup
   ) THEN
     RETURN public.competition_build_knockout_bracket_base(
       p_season_id, p_cup_code, p_clubs, p_bye_clubs, p_player_order, p_bye_match_nos
@@ -366,7 +384,7 @@ BEGIN
   RETURN public.competition_build_knockout_bracket_base(
     p_season_id, p_cup_code, v_clubs, v_byes, v_order, p_bye_match_nos
   ) || jsonb_build_object(
-    'season_schedule', true,
+    'owned_byes_only', true,
     'vacant_paired_with_owned', v_nv
   );
 END;
@@ -402,9 +420,56 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM public.competition_cup_entry_overrides o
     WHERE o.season_id <> v_season AND o.cup_code = 'shield'
+  ) OR EXISTS (
+    SELECT 1 FROM public.competition_cup_vacant_pairing p
+    WHERE p.season_id <> v_season
   ) THEN
-    RAISE NOTICE 'Shield overrides belong to an earlier season — season % uses normal qualifying', v_season;
+    RAISE NOTICE 'Season 1 cup setup belongs to an earlier season — season % uses normal rules', v_season;
     RETURN;
+  END IF;
+
+  -- League Cup: normal entry (all league clubs) and normal Last 64 schedule;
+  -- byes go to owned clubs only and every vacant club meets an owned club.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.competition_cup_bracket_nodes n
+    WHERE n.season_id = v_season AND n.cup_code = 'league_cup'
+  ) THEN
+    INSERT INTO public.competition_cup_vacant_pairing (season_id, cup_code)
+    VALUES (v_season, 'league_cup')
+    ON CONFLICT DO NOTHING;
+
+    SELECT count(*)::int INTO v_n
+    FROM public.competition_club_seasons ccs
+    WHERE ccs.season_id = v_season
+      AND ccs.division IN ('superleague', 'championship_a', 'championship_b');
+
+    SELECT max(matches_in_round) * 2 INTO v_req
+    FROM public.competition_cup_round_schedule
+    WHERE cup_code = 'league_cup'
+      AND round_no = (SELECT min(round_no) FROM public.competition_cup_round_schedule WHERE cup_code = 'league_cup');
+    v_req := coalesce(v_req, 64);
+    WHILE v_req < v_n LOOP
+      v_req := v_req * 2;
+    END LOOP;
+    v_req := v_req - v_n;
+
+    DELETE FROM public.competition_cup_first_round_byes
+    WHERE season_id = v_season AND cup_code = 'league_cup';
+
+    INSERT INTO public.competition_cup_first_round_byes (season_id, cup_code, club_short_name, sort_order)
+    SELECT v_season, 'league_cup', b.club_short_name, row_number() OVER ()::int
+    FROM (
+      SELECT ccs.club_short_name
+      FROM public.competition_club_seasons ccs
+      JOIN public."Clubs" c ON c."ShortName" = ccs.club_short_name
+      WHERE ccs.season_id = v_season
+        AND ccs.division IN ('superleague', 'championship_a', 'championship_b')
+        AND c.owner_id IS NOT NULL
+      ORDER BY random()
+      LIMIT v_req
+    ) b;
+  ELSE
+    RAISE NOTICE 'League Cup already drawn for season % — left as is', v_season;
   END IF;
 
   IF EXISTS (
@@ -476,4 +541,10 @@ SELECT
     WHERE x.season_id = s.id AND x.cup_code = 'shield') AS season1_schedule,
   (SELECT count(*) FROM public.competition_cup_standard_schedule WHERE cup_code = 'shield') AS standard_rounds_saved,
   (SELECT count(*) FROM public.competition_cup_bracket_nodes n, s
-    WHERE n.season_id = s.id AND n.cup_code = 'shield') AS shield_nodes_already;
+    WHERE n.season_id = s.id AND n.cup_code = 'shield') AS shield_nodes_already,
+  (SELECT count(*) FROM public.competition_cup_vacant_pairing p, s
+    WHERE p.season_id = s.id AND p.cup_code = 'league_cup') AS league_cup_vacant_pairing,
+  (SELECT count(*) FROM public.competition_cup_first_round_byes b, s
+    WHERE b.season_id = s.id AND b.cup_code = 'league_cup') AS league_cup_starter_byes,
+  (SELECT count(*) FROM public.competition_cup_bracket_nodes n, s
+    WHERE n.season_id = s.id AND n.cup_code = 'league_cup') AS league_cup_nodes_already;
