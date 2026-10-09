@@ -840,9 +840,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (managerDraftOn && draftStartTime) {
     const pollDraftState = async () => {
+      if (document.visibilityState !== "visible") return;
       await refreshDraftBiddingOpen();
       renderPage();
     };
-    setInterval(pollDraftState, 1500);
+    setInterval(pollDraftState, 30000);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") void pollDraftState();
+    });
   }
 });
