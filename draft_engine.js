@@ -137,28 +137,39 @@ export async function fetchDraftBidsGroupedForPlayers(
   for (const id of normalized) map.set(id, []);
   if (!bounds || !normalized.length) return map;
 
-  let query = supabase
-    .from("Player_Transfer_Bids")
-    .select(
-      "bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time, bid_amount, bid_id, direct_bid_id, player_id"
-    )
-    .eq("is_direct", true)
-    .is("seller_club_id", null)
-    .gte("bid_time", bounds.startIso)
-    .lt("bid_time", bounds.endIso);
+  // PostgREST caps each response (1000 rows) — page through so the newest bids are never dropped.
+  const PAGE = 1000;
+  const data = [];
+  for (let from = 0; ; from += PAGE) {
+    let query = supabase
+      .from("Player_Transfer_Bids")
+      .select(
+        "bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time, bid_amount, bid_id, direct_bid_id, player_id"
+      )
+      .eq("is_direct", true)
+      .is("seller_club_id", null)
+      .gte("bid_time", bounds.startIso)
+      .lt("bid_time", bounds.endIso);
 
-  if (normalized.length <= 120) {
-    query = query.in("player_id", normalized);
+    if (normalized.length <= 120) {
+      query = query.in("player_id", normalized);
+    }
+
+    const { data: page, error } = await query
+      .order("bid_time", { ascending: true })
+      .order("bid_amount", { ascending: true })
+      .order("bid_id", { ascending: true })
+      .range(from, from + PAGE - 1);
+
+    if (error) {
+      console.error("fetchDraftBidsGroupedForPlayers:", error);
+      return map;
+    }
+    data.push(...(page || []));
+    if (!page || page.length < PAGE) break;
   }
 
-  const { data, error } = await query.order("bid_time", { ascending: true });
-
-  if (error) {
-    console.error("fetchDraftBidsGroupedForPlayers:", error);
-    return map;
-  }
-
-  for (const row of data || []) {
+  for (const row of data) {
     const pid = bidRowKonamiId(row);
     if (!map.has(pid)) continue;
     map.get(pid).push(row);
