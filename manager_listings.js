@@ -7,6 +7,15 @@ import {
   wireMoneyBidInput,
 } from "./money_input.js";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js";
+import { openManagerCard } from "./manager_card.js?v=20261009-mgr-card";
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 function refreshAdvisoryBudget() {
   if (!currentClub) return;
@@ -128,8 +137,11 @@ async function loadListings() {
       } else if (clubHasManager && currentClub && !ownListing) {
         actionHtml = `<span class="muted" title="Sack or transfer your current manager first">Has manager</span>`;
       }
+      const nameCell = l.manager_id
+        ? `<a href="manager_career.html?manager=${encodeURIComponent(l.manager_id)}" class="mgr-card-link" data-listing="${l.id}" title="View manager card">${escapeHtml(mgr.name || "Manager")}</a>`
+        : escapeHtml(mgr.name || "—");
       return `<tr>
-        <td>${mgr.name || "—"}</td>
+        <td>${nameCell}</td>
         <td>${mgr.rating ?? "—"}</td>
         <td>${seller}</td>
         <td>${formatMoney(l.market_value ?? mgr.market_value)}</td>
@@ -144,6 +156,20 @@ async function loadListings() {
     btn.addEventListener("click", () =>
       openBidModal(listings.find((x) => x.id === Number(btn.dataset.id)))
     );
+  });
+
+  body.querySelectorAll(".mgr-card-link").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      const listing = listings.find((x) => x.id === Number(a.dataset.listing));
+      if (!listing) return;
+      const ownListing = currentClub && listing.seller_club_id === currentClub;
+      const canBid = currentClub && !ownListing && !clubHasManager;
+      openManagerCard(listing.manager_id, {
+        onBid: canBid ? () => openBidModal(listing) : null,
+      });
+    });
   });
 }
 
