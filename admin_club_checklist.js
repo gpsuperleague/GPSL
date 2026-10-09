@@ -585,10 +585,14 @@ async function enrichLiveBids(rows) {
       (data || []).forEach((p) => nameById.set(String(p.Konami_ID), p.Name));
     }
 
+    const countedLead = new Set();
     for (const l of listings) {
       const leader = norm(l.current_highest_bidder);
       const seller = norm(l.seller_club_id);
       if (!leader || leader === seller) continue;
+      const leadKey = `${leader}|${l.player_id}`;
+      if (countedLead.has(leadKey)) continue;
+      countedLead.add(leadKey);
       const s = stat(leader);
       s.leading += 1;
       s.total += Number(l.current_highest_bid || 0);
@@ -611,7 +615,8 @@ async function enrichLiveBids(rows) {
           .order("bid_id", { ascending: true })
       );
       bids.forEach((b) => {
-        if (b.bidder_club_id) stat(b.bidder_club_id).biddingOn.add(`l:${b.listing_id}`);
+        const l = listings.find((x) => x.id === b.listing_id);
+        if (b.bidder_club_id) stat(b.bidder_club_id).biddingOn.add(`p:${l?.player_id ?? b.listing_id}`);
       });
     }
 
