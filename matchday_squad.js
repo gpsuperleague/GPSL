@@ -654,6 +654,224 @@ function wirePitchLabelPicker(pitchEl, slotLabels, getOptionsForSlot, onBeforeCh
   });
 }
 
+let slotPickerStylesInjected = false;
+
+function injectSlotPickerStyles() {
+  if (slotPickerStylesInjected) return;
+  slotPickerStylesInjected = true;
+  const css = document.createElement("style");
+  css.textContent = `
+.slot-pick-btn { cursor: pointer; border: 1px solid #555; background: #222; color: #ffcc66;
+  font-size: 10px; line-height: 1; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+.slot-pick-btn:hover { background: #333; border-color: #ffcc66; }
+.slot-pick-btn--pitch { margin-top: 2px; opacity: .85; }
+.pitch-slot:hover .slot-pick-btn--pitch { opacity: 1; }
+.bench-slot-label .slot-pick-btn { padding: 1px 5px; margin-left: 2px; vertical-align: middle; }
+.slot-player-menu { position: fixed; z-index: 1001; width: 280px; max-height: 380px; display: flex; flex-direction: column;
+  background: #1e1e1e; border: 1px solid #555; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.55); color: #ddd; }
+.slot-player-menu[hidden] { display: none; }
+.slot-player-menu-title { padding: 8px 10px 4px; font-size: 12px; font-weight: bold; color: #ffcc66; }
+.slot-player-menu-search { margin: 4px 10px 6px; padding: 5px 8px; border-radius: 4px; border: 1px solid #444;
+  background: #111; color: #ddd; font-size: 12px; }
+.slot-player-menu-list { overflow-y: auto; padding: 0 4px 6px; }
+.slot-player-menu-group { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: #888; padding: 6px 6px 2px; }
+.slot-player-opt { display: flex; width: 100%; gap: 6px; align-items: center; text-align: left; background: none; border: 0;
+  color: #ddd; padding: 5px 6px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.slot-player-opt:hover, .slot-player-opt:focus { background: #2c2c2c; outline: none; }
+.slot-player-opt .spo-pos { flex: 0 0 34px; font-size: 10px; font-weight: bold; color: #aaa; }
+.slot-player-opt.is-match .spo-pos { color: #8fbf6a; }
+.slot-player-opt .spo-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-player-opt .spo-rt { flex: 0 0 auto; font-weight: bold; color: #ffcc66; }
+.slot-player-opt .spo-where { flex: 0 0 auto; font-size: 10px; color: #888; }
+.slot-player-opt--clear { color: #f99; }
+.slot-player-menu-empty { padding: 10px; font-size: 12px; color: #888; }`;
+  document.head.appendChild(css);
+}
+
+function normalizeSearch(text) {
+  return String(text ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function escapeText(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** ▾ buttons on slots → searchable list of pool players (and swaps with placed players). */
+function wireSlotPlayerPicker({ root, getState, rerender, slotName, slotRole }) {
+  injectSlotPickerStyles();
+  let menu = document.querySelector("body > .slot-player-menu");
+  if (!menu) {
+    menu = document.createElement("div");
+    menu.className = "slot-player-menu";
+    menu.hidden = true;
+    document.body.appendChild(menu);
+    document.addEventListener("click", (e) => {
+      if (menu.hidden) return;
+      if (menu.contains(e.target) || e.target.closest?.(".slot-pick-btn")) return;
+      menu.hidden = true;
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") menu.hidden = true;
+    });
+  }
+
+  let currentTarget = null;
+
+  const close = () => {
+    menu.hidden = true;
+    currentTarget = null;
+  };
+
+  const whereLabel = (state, id) => {
+    const loc = findPlayerLocation(state, id);
+    if (!loc) return "";
+    if (loc.area === "pitch") return slotName({ area: "pitch", slotId: loc.slotId });
+    if (loc.area === "bench") return slotName({ area: "bench", index: loc.index });
+    return "";
+  };
+
+  function pick(player) {
+    const state = getState();
+    if (!state || !currentTarget || !player) return;
+    const err = placePlayer(state, currentTarget, player);
+    if (err?.error) {
+      alert(err.error);
+      return;
+    }
+    close();
+    rerender();
+  }
+
+  function clearSlot() {
+    const state = getState();
+    if (!state || !currentTarget) return;
+    const current =
+      currentTarget.area === "pitch"
+        ? state.pitch.get(currentTarget.slotId)
+        : state.bench[currentTarget.index];
+    if (!current) return;
+    const removed = removePlayerFromState(state, playerKey(current));
+    if (removed) state.pool.unshift(clonePlayer(removed));
+    close();
+    rerender();
+  }
+
+  function renderList(listEl, query) {
+    const state = getState();
+    if (!state) return;
+    const q = normalizeSearch(query).trim();
+    const role = String(slotRole(currentTarget) || "").toUpperCase();
+    const current =
+      currentTarget.area === "pitch"
+        ? state.pitch.get(currentTarget.slotId)
+        : state.bench[currentTarget.index];
+    const currentId = current ? playerKey(current) : null;
+
+    const matchesQ = (p) =>
+      !q ||
+      normalizeSearch(p.Name || p.player_name).includes(q) ||
+      normalizeSearch(p.Position).includes(q);
+    const isRoleMatch = (p) => role && String(p.Position || "").toUpperCase() === role;
+    const byFit = (a, b) =>
+      Number(isRoleMatch(b)) - Number(isRoleMatch(a)) ||
+      Number(b.Rating || 0) - Number(a.Rating || 0);
+
+    const pool = state.pool.filter(matchesQ).sort(byFit);
+    const placed = [
+      ...[...state.pitch.values()].filter(Boolean),
+      ...state.bench.filter(Boolean),
+    ]
+      .filter((p) => playerKey(p) !== currentId && matchesQ(p))
+      .sort(byFit);
+
+    const optHtml = (p, where = "") => `
+      <button type="button" class="slot-player-opt${isRoleMatch(p) ? " is-match" : ""}" data-pid="${escapeText(playerKey(p))}">
+        <span class="spo-pos">${escapeText(p.Position || "—")}</span>
+        <span class="spo-name">${escapeText(p.Name || p.player_name || playerKey(p))}</span>
+        ${where ? `<span class="spo-where">${escapeText(where)}</span>` : ""}
+        <span class="spo-rt">${escapeText(p.Rating ?? "")}</span>
+      </button>`;
+
+    let html = "";
+    if (current) {
+      html += `<button type="button" class="slot-player-opt slot-player-opt--clear" data-clear="1">✕ Empty this slot (${escapeText(current.Name || current.player_name || "")} → pool)</button>`;
+    }
+    html += `<div class="slot-player-menu-group">Available (${pool.length})</div>`;
+    html += pool.length
+      ? pool.map((p) => optHtml(p)).join("")
+      : `<div class="slot-player-menu-empty">${q ? "No match." : "Everyone is already on the board."}</div>`;
+    if (placed.length) {
+      html += `<div class="slot-player-menu-group">On the board — swap</div>`;
+      html += placed.map((p) => optHtml(p, whereLabel(state, playerKey(p)))).join("");
+    }
+    listEl.innerHTML = html;
+  }
+
+  function open(target, anchorEl) {
+    currentTarget = target;
+    menu.innerHTML = `
+      <div class="slot-player-menu-title">Pick for ${escapeText(slotName(target))}</div>
+      <input type="search" class="slot-player-menu-search" placeholder="Search name or position…" autocomplete="off">
+      <div class="slot-player-menu-list"></div>`;
+    const search = menu.querySelector(".slot-player-menu-search");
+    const listEl = menu.querySelector(".slot-player-menu-list");
+    renderList(listEl, "");
+    search.addEventListener("input", () => renderList(listEl, search.value));
+    listEl.addEventListener("click", (e) => {
+      const btn = e.target.closest(".slot-player-opt");
+      if (!btn) return;
+      e.stopPropagation();
+      if (btn.dataset.clear) {
+        clearSlot();
+        return;
+      }
+      const state = getState();
+      const loc = state ? findPlayerLocation(state, btn.dataset.pid) : null;
+      if (!loc) return;
+      const player =
+        loc.area === "pitch"
+          ? state.pitch.get(loc.slotId)
+          : loc.area === "bench"
+            ? state.bench[loc.index]
+            : state.pool[loc.index];
+      pick(player);
+    });
+
+    menu.hidden = false;
+    const a = anchorEl.getBoundingClientRect();
+    const w = menu.offsetWidth || 280;
+    const h = menu.offsetHeight || 380;
+    const pad = 8;
+    let left = Math.max(pad, Math.min(a.left + a.width / 2 - w / 2, window.innerWidth - w - pad));
+    let top = a.bottom + 6;
+    if (top + h > window.innerHeight - pad) top = Math.max(pad, a.top - h - 6);
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    search.focus();
+  }
+
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest?.(".slot-pick-btn");
+    if (!btn || !root.contains(btn)) return;
+    e.preventDefault();
+    const target =
+      btn.dataset.pickArea === "pitch"
+        ? { area: "pitch", slotId: btn.dataset.pickSlot }
+        : { area: "bench", index: Number(btn.dataset.pickIdx) };
+    open(target, btn);
+  });
+  root.addEventListener("dragstart", (e) => {
+    if (e.target.closest?.(".slot-pick-btn")) e.preventDefault();
+  });
+}
+
 function isTemplateFormationId(id) {
   return (
     listSelectableFormations().some((f) => f.id === id) ||
@@ -685,6 +903,8 @@ export function initMatchdaySquadPanel({
   /** @type {Map<string, 'suspended'|'injured'|'recovery'>|null} */
   playerStatusById = null,
   showGpdbLink = false,
+  /** When true, every pitch / sub / squad slot gets a ▾ button to pick a player from a list (drag-drop unchanged). */
+  slotPicker = false,
 }) {
   /** @type {Map<string, 'suspended'|'injured'|'recovery'>} */
   let statusById = playerStatusById instanceof Map ? playerStatusById : new Map();
@@ -912,7 +1132,11 @@ export function initMatchdaySquadPanel({
         <button type="button" class="pitch-slot-label" title="Click to change role (or right-click slot)">${label}</button>
         <div class="pitch-slot-drop" data-slot-id="${slotId}">
           <span class="pitch-slot-placeholder" aria-hidden="true"></span>
-        </div>`;
+        </div>${
+          slotPicker
+            ? `<button type="button" class="slot-pick-btn slot-pick-btn--pitch" draggable="false" data-pick-area="pitch" data-pick-slot="${slotId}" title="Pick a player for this position">▾ Pick</button>`
+            : ""
+        }`;
       pitchEl.appendChild(wrap);
     }
   }
@@ -1000,7 +1224,11 @@ export function initMatchdaySquadPanel({
     wrap.className = isSub ? "bench-slot bench-slot--sub" : "bench-slot bench-slot--squad";
     const label = isSub ? `Sub ${i + 1}` : `Squad ${i + 1}`;
     wrap.innerHTML = `
-      <div class="bench-slot-label">${label}</div>
+      <div class="bench-slot-label">${label}${
+        slotPicker
+          ? ` <button type="button" class="slot-pick-btn" draggable="false" data-pick-area="bench" data-pick-idx="${i}" title="Pick a player for ${label}">▾</button>`
+          : ""
+      }</div>
       <div class="bench-slot-drop" data-bench-idx="${i}"></div>`;
     const parent = isSub ? benchSlotsSubs : benchSlotsSquad || benchSlotsSubs;
     parent?.appendChild(wrap);
@@ -1134,6 +1362,22 @@ export function initMatchdaySquadPanel({
   wirePitchLabelPicker(pitchEl, slotLabels, roleOptionsForSlot, (slotId, label) =>
     pitchRoleChangeBlockedReason(slotLabels, slotId, label)
   );
+
+  if (slotPicker) {
+    wireSlotPlayerPicker({
+      root,
+      getState: () => state,
+      rerender,
+      slotName: (target) =>
+        target.area === "pitch"
+          ? slotLabels[target.slotId] || target.slotId
+          : target.index < subSlotCount
+            ? `Sub ${target.index + 1}`
+            : `Squad ${target.index + 1}`,
+      slotRole: (target) =>
+        target.area === "pitch" ? slotLabels[target.slotId] || target.slotId : null,
+    });
+  }
 
   // Capture phase so ✕ remove runs before pitch role-picker card clicks
   root.addEventListener(

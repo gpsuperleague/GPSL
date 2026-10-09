@@ -31,7 +31,7 @@ import {
   setStoredScoutingBoardNo,
   loadScoutingPlannerPlayerBoards,
 } from "./scouting_targets.js?v=20260909-nested-backups";
-import { initMatchdaySquadPanel, buildSlotsPayload, buildPitchLayoutPayload } from "./matchday_squad.js?v=20260909-nested-backups";
+import { initMatchdaySquadPanel, buildSlotsPayload, buildPitchLayoutPayload } from "./matchday_squad.js?v=20261009-slot-picker";
 import { autoFillScoutingBoard } from "./scouting_autofill.js?v=20260821-autofill";
 import {
   loadScoutingDraftContext,
@@ -2681,6 +2681,7 @@ async function initPlanner() {
     benchSubSlots: 12,
     maxSquad: 28,
     showGpdbLink: true,
+    slotPicker: true,
     autoFillButtonLabel: "Autofill board",
     customAutoFill: ({ allPlayers: pool, maxBench, maxSquad, labels }) => {
       return runScoutingAutofill({ pool, maxBench, maxSquad, labels });
