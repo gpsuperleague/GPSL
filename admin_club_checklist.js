@@ -370,7 +370,10 @@ function compareValues(a, b, key) {
     key === "fines_count" ||
     key === "u21_count" ||
     key === "hg_count" ||
-    key === "manager_rating"
+    key === "manager_rating" ||
+    key === "leading_bids_count" ||
+    key === "bidding_on_count" ||
+    key === "projected_squad_size"
   ) {
     const na = Number(va);
     const nb = Number(vb);
@@ -507,6 +510,152 @@ function starsCell(row, level, title) {
   return `<td class="num ${cellClass(level)} chk-col-squad"${titleAttr}><strong>${stars}</strong>/${cap}</td>`;
 }
 
+function bidCells(row) {
+  if (row.leading_bids_count === undefined) {
+    return `<td class="num chk-cell-ok chk-col-squad proj-loading">…</td>`.repeat(3);
+  }
+  const leading = Number(row.leading_bids_count || 0);
+  const leadingTotal = Number(row.leading_bids_total || 0);
+  const leadingNames = Array.isArray(row.leading_bids_players) ? row.leading_bids_players : [];
+  const leadingTip = leading
+    ? `Top bidder on ${leading} live auction(s), ${formatMoney(leadingTotal)} total:\n${leadingNames.join("\n")}`
+    : "Not leading any live auction";
+  const leadingHtml = leading
+    ? `<strong>${leading}</strong><div class="chk-sub">${formatMoney(leadingTotal)}</div>`
+    : "0";
+
+  const biddingOn = Number(row.bidding_on_count || 0);
+  const biddingTip = `Has bid on ${biddingOn} live auction(s) (leading ${leading})`;
+
+  const outgoing = Number(row.outgoing_sales_count || 0);
+  const proj = Number(row.projected_squad_size ?? row.squad_size ?? 0);
+  let projLevel = "ok";
+  if (proj > SQUAD_SIZE || proj < MIN_SQUAD_SIZE) projLevel = "bad";
+  const projTip =
+    `Squad ${Number(row.squad_size ?? 0)} + leading ${leading}` +
+    (outgoing ? ` − ${outgoing} own player(s) with a winning bid from another club` : "") +
+    ` = ${proj} (range ${MIN_SQUAD_SIZE}–${SQUAD_SIZE}) if every auction ended now`;
+
+  return (
+    textCell(leadingHtml, "ok", leadingTip, "num chk-col-squad") +
+    numCell(biddingOn, "ok", biddingTip, "chk-col-squad") +
+    numCell(proj, projLevel, projTip, "chk-col-squad")
+  );
+}
+
+async function fetchAllPaged(buildQuery) {
+  const page = 1000;
+  const out = [];
+  for (let from = 0; ; from += page) {
+    const { data, error } = await buildQuery().range(from, from + page - 1);
+    if (error) throw error;
+    out.push(...(data || []));
+    if (!data || data.length < page) break;
+  }
+  return out;
+}
+
+async function enrichLiveBids(rows) {
+  const norm = (v) => String(v ?? "").trim().toUpperCase();
+  const byClub = new Map();
+  const stat = (club) => {
+    const key = norm(club);
+    if (!byClub.has(key)) {
+      byClub.set(key, { leading: 0, total: 0, players: [], biddingOn: new Set(), outgoing: 0 });
+    }
+    return byClub.get(key);
+  };
+
+  try {
+    const listings = await fetchAllPaged(() =>
+      supabase
+        .from("Player_Transfer_Listings")
+        .select("id, player_id, listing_type, seller_club_id, current_highest_bid, current_highest_bidder, start_time")
+        .eq("status", "Active")
+        .order("id", { ascending: true })
+    );
+
+    const playerIds = [...new Set(listings.map((l) => String(l.player_id)).filter(Boolean))];
+    const nameById = new Map();
+    for (let i = 0; i < playerIds.length; i += 200) {
+      const { data } = await supabase
+        .from("Players")
+        .select("Konami_ID, Name")
+        .in("Konami_ID", playerIds.slice(i, i + 200));
+      (data || []).forEach((p) => nameById.set(String(p.Konami_ID), p.Name));
+    }
+
+    for (const l of listings) {
+      const leader = norm(l.current_highest_bidder);
+      const seller = norm(l.seller_club_id);
+      if (!leader || leader === seller) continue;
+      const s = stat(leader);
+      s.leading += 1;
+      s.total += Number(l.current_highest_bid || 0);
+      s.players.push(
+        `${nameById.get(String(l.player_id)) || l.player_id} — ${formatMoney(Number(l.current_highest_bid || 0))}` +
+          (l.listing_type === "draft" ? " (draft)" : "")
+      );
+      if (seller) stat(seller).outgoing += 1;
+    }
+
+    const isDraft = (l) => String(l.listing_type || "").toLowerCase() === "draft";
+    const marketIds = listings.filter((l) => !isDraft(l)).map((l) => l.id);
+    for (let i = 0; i < marketIds.length; i += 200) {
+      const chunk = marketIds.slice(i, i + 200);
+      const bids = await fetchAllPaged(() =>
+        supabase
+          .from("Player_Transfer_Bids")
+          .select("listing_id, bidder_club_id")
+          .in("listing_id", chunk)
+          .order("bid_id", { ascending: true })
+      );
+      bids.forEach((b) => {
+        if (b.bidder_club_id) stat(b.bidder_club_id).biddingOn.add(`l:${b.listing_id}`);
+      });
+    }
+
+    // Draft bids are keyed by player (is_direct, no seller), not listing
+    const draftListings = listings.filter(isDraft);
+    const draftPids = [...new Set(draftListings.map((l) => String(l.player_id)))];
+    const draftStart = draftListings
+      .map((l) => l.start_time)
+      .filter(Boolean)
+      .sort()[0];
+    for (let i = 0; i < draftPids.length; i += 200) {
+      const chunk = draftPids.slice(i, i + 200);
+      const bids = await fetchAllPaged(() => {
+        let q = supabase
+          .from("Player_Transfer_Bids")
+          .select("player_id, bidder_club_id")
+          .eq("is_direct", true)
+          .is("seller_club_id", null)
+          .in("player_id", chunk);
+        if (draftStart) q = q.gte("bid_time", draftStart);
+        return q.order("bid_id", { ascending: true });
+      });
+      bids.forEach((b) => {
+        if (b.bidder_club_id) stat(b.bidder_club_id).biddingOn.add(`p:${b.player_id}`);
+      });
+    }
+  } catch (err) {
+    console.warn("live bids", err);
+    setStatus("pageStatus", `⚠ Could not load live bids: ${err.message || err}`, "warn");
+  }
+
+  rows.forEach((row) => {
+    const s = byClub.get(norm(row.club_short_name));
+    row.leading_bids_count = s?.leading || 0;
+    row.leading_bids_total = s?.total || 0;
+    row.leading_bids_players = s?.players || [];
+    row.bidding_on_count = s?.biddingOn.size || 0;
+    row.outgoing_sales_count = s?.outgoing || 0;
+    row.projected_squad_size =
+      Number(row.squad_size ?? 0) + row.leading_bids_count - row.outgoing_sales_count;
+  });
+  renderTable();
+}
+
 function textCell(content, level = "ok", title = "", extraClass = "") {
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
   return `<td class="${cellClass(level)}${extraClass ? ` ${extraClass}` : ""}"${titleAttr}>${content}</td>`;
@@ -547,6 +696,9 @@ function renderTable() {
     ["manager_name", "Manager", ""],
     ["nation_name", "Nation", ""],
     ["squad_size", "Squad", "chk-col-squad"],
+    ["leading_bids_count", "Leading", "chk-col-squad"],
+    ["bidding_on_count", "Bidding", "chk-col-squad"],
+    ["projected_squad_size", "Proj. squad", "chk-col-squad"],
     ["gk_count", "GK", "chk-col-squad"],
     ["hg_count", "HG", "chk-col-squad"],
     ["u21_count", "U21", "chk-col-squad"],
@@ -566,7 +718,7 @@ function renderTable() {
       <thead>
         <tr class="chk-group-row">
           <th colspan="7" class="chk-group-club">Club</th>
-          <th colspan="7" class="chk-group-squad">Squad registration</th>
+          <th colspan="10" class="chk-group-squad">Squad registration</th>
           <th colspan="6" class="chk-group-fin">Finances &amp; allowances</th>
         </tr>
         <tr>
@@ -750,6 +902,7 @@ function renderTable() {
               issues.has("nation") ? ISSUE_META.nation.tip : ""
             )}
             ${numCell(row.squad_size, squadLevel, squadTip, "chk-col-squad")}
+            ${bidCells(row)}
             ${numCell(gk, gkLevel, gkTip, "chk-col-squad")}
             ${numCell(row.hg_count, hgLevel, hgTip, "chk-col-squad")}
             ${numCell(row.u21_count, u21Level, u21Tip, "chk-col-squad")}
@@ -853,11 +1006,14 @@ async function loadTable() {
   allRows = (data || []).map((row) => ({
     ...row,
     projected_eos_balance: undefined,
+    leading_bids_count: undefined,
+    bidding_on_count: undefined,
+    projected_squad_size: undefined,
   }));
 
   renderTable();
-  setStatus("pageStatus", `Loaded ${allRows.length} clubs — projecting balances…`);
+  setStatus("pageStatus", `Loaded ${allRows.length} clubs — loading live bids & projecting balances…`);
 
-  await enrichProjectedBalances(allRows);
+  await Promise.all([enrichLiveBids(allRows), enrichProjectedBalances(allRows)]);
   setStatus("pageStatus", `✅ ${allRows.length} clubs loaded.`);
 }
