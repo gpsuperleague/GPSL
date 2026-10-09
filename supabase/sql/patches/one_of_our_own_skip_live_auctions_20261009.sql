@@ -7,6 +7,19 @@
 -- Same bands as one_of_our_own_best_hg_fallback_20261005.sql.
 -- =============================================================================
 
+-- Set of player ids with an open listing (small; hashed once per query)
+CREATE OR REPLACE FUNCTION public.ooo_live_auction_player_ids()
+RETURNS TABLE (pid text)
+LANGUAGE sql
+STABLE
+SET search_path = public
+AS $$
+  SELECT DISTINCT l.player_id::text
+  FROM public."Player_Transfer_Listings" l
+  WHERE l.status IN ('Active', 'Review', 'Seller Review')
+    AND l.player_id IS NOT NULL;
+$$;
+
 CREATE OR REPLACE FUNCTION public.ooo_player_in_live_auction(p_player_id text)
 RETURNS boolean
 LANGUAGE sql
@@ -14,10 +27,7 @@ STABLE
 SET search_path = public
 AS $$
   SELECT EXISTS (
-    SELECT 1
-    FROM public."Player_Transfer_Listings" l
-    WHERE l.player_id::text = p_player_id
-      AND l.status IN ('Active', 'Review', 'Seller Review')
+    SELECT 1 FROM public.ooo_live_auction_player_ids() x WHERE x.pid = p_player_id
   );
 $$;
 
@@ -33,7 +43,7 @@ AS $$
     WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
       AND public.normalize_nation_key(p."Nation") = public.normalize_nation_key(p_nation)
       AND public.normalize_nation_key(p."Nation") <> ''
-      AND NOT public.ooo_player_in_live_auction(p."Konami_ID"::text)
+      AND p."Konami_ID"::text NOT IN (SELECT x.pid FROM public.ooo_live_auction_player_ids() x)
   ),
   s AS (
     SELECT
@@ -70,12 +80,16 @@ BEGIN
   END IF;
 
   RETURN coalesce((
-    WITH fa AS (
+    WITH live AS MATERIALIZED (
+      SELECT x.pid FROM public.ooo_live_auction_player_ids() x
+    ),
+    fa AS (
       SELECT
         public.normalize_nation_key(p."Nation") AS nkey,
         public.ooo_player_rating_num(p."Rating"::text) AS r,
-        public.ooo_player_in_live_auction(p."Konami_ID"::text) AS in_auction
+        (live.pid IS NOT NULL) AS in_auction
       FROM public."Players" p
+      LEFT JOIN live ON live.pid = p."Konami_ID"::text
       WHERE p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = ''
     ),
     by_nation AS (
@@ -179,7 +193,7 @@ BEGIN
   FROM public."Players" p
   WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
     AND public.ooo_player_rating_num(p."Rating"::text) IS NOT NULL
-    AND NOT public.ooo_player_in_live_auction(p."Konami_ID"::text);
+    AND p."Konami_ID"::text NOT IN (SELECT x.pid FROM public.ooo_live_auction_player_ids() x);
 
   FOREACH v_club IN ARRAY p_club_short_names
   LOOP
@@ -310,6 +324,7 @@ BEGIN
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.ooo_live_auction_player_ids() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.ooo_player_in_live_auction(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.ooo_nation_band(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_one_of_our_own_overview() TO authenticated;
