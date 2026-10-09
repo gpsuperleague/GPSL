@@ -60,6 +60,54 @@ function ghostPlayerFromRow(player, meta) {
 }
 
 /**
+ * Listings this club currently leads, read from the listing itself — the bid-row
+ * scan is capped at 1000 rows and misses draft bids without a listing_id.
+ */
+async function loadLeadingListingsPending(supabase, clubShort, filterOpts, pendingByPlayer) {
+  const club = String(clubShort).trim();
+  const clubKey = club.toUpperCase();
+  const variants = [...new Set([club, clubKey])];
+  const { data, error } = await supabase
+    .from("Player_Transfer_Listings")
+    .select(
+      "id, player_id, listing_type, status, seller_club_id, current_highest_bid, current_highest_bidder, end_time, seller_review_deadline"
+    )
+    .in("current_highest_bidder", variants)
+    .in("status", ["Active", "Review", "Seller Review"]);
+  if (error) {
+    console.warn("loadSquadGhostAcquisitions leading listings:", error);
+    return;
+  }
+
+  const now = filterOpts.now instanceof Date ? filterOpts.now : new Date();
+  for (const l of data || []) {
+    const pid = String(l.player_id ?? "").trim();
+    if (!pid || pendingByPlayer.has(pid)) continue;
+    if (String(l.seller_club_id || "").trim().toUpperCase() === clubKey) continue;
+
+    const isDraft = String(l.listing_type || "").toLowerCase() === "draft";
+    let source = null;
+    if (l.status === "Active") {
+      if (isDraft) {
+        if (!filterOpts.draftAuctionEnded) source = GHOST_SOURCE.DRAFT_AUCTION;
+      } else {
+        const end = l.end_time ? new Date(l.end_time) : null;
+        if (end && end > now) source = GHOST_SOURCE.TRANSFER_LIVE;
+      }
+    } else {
+      const deadline = l.seller_review_deadline ? new Date(l.seller_review_deadline) : null;
+      if (!deadline || deadline > now) source = GHOST_SOURCE.AWAITING_SELLER;
+    }
+    if (!source) continue;
+
+    pendingByPlayer.set(pid, {
+      source,
+      bidAmount: l.current_highest_bid != null ? Number(l.current_highest_bid) : null,
+    });
+  }
+}
+
+/**
  * Merge any active expiring-contract wage bids for this club (winning or losing —
  * rivals' offers stay hidden until rollover).
  */
@@ -159,6 +207,7 @@ export async function loadSquadGhostAcquisitions(supabase, clubShort) {
     }
   }
 
+  await loadLeadingListingsPending(supabase, clubShort, filterOpts, pendingByPlayer);
   await loadExpiryWagePending(supabase, pendingByPlayer);
 
   if (!pendingByPlayer.size) return [];

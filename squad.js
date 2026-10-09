@@ -35,7 +35,7 @@ import {
   ghostContractTip,
   ghostActionLinkHtml,
   ghostActionTip,
-} from "./squad_ghost_acquisitions.js?v=20260811-ghost-lead";
+} from "./squad_ghost_acquisitions.js?v=20261009-leading-listings";
 import {
   loadPlayerValueTables,
   formatRatingWithPotential,
