@@ -5,7 +5,7 @@ import { loadClubWageBillSummary } from "./club_wage_bill.js";
 import {
   advisoryBudgetTitle,
   computeAdvisoryTransferBudget,
-} from "./finance_advisory_budget.js";
+} from "./finance_advisory_budget.js?v=20261009-fin-remaining";
 import {
   applyFinanceClubHeader,
   applyHistoricalFinanceBanner,
@@ -16,7 +16,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20261002-commercial";
+} from "./finance_page_common.js?v=20261009-fin-remaining";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20260806-help-blocks";
 
 function parseGpAmount(raw) {

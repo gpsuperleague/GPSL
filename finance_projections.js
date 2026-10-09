@@ -80,13 +80,20 @@ export async function loadClubWinningBidExposure(supabase, clubShortName) {
   };
 }
 
-function setPendingForecast(map, lineId, amount, note, byLine) {
+/**
+ * `remaining: true` = the amount is only what is still to come (unplayed
+ * fixtures, unpaid instalments, live bids), so it must not be hidden just
+ * because earlier matches/instalments/purchases on the same line add up to more.
+ */
+function setPendingForecast(map, lineId, amount, note, byLine, { remaining = false } = {}) {
   const n = Number(amount) || 0;
   if (Math.abs(n) < 0.5) return;
-  const posted = Number(byLine.get(lineId)?.amount || 0);
-  if (n > 0 && posted > 0.5 && posted >= n - 0.5) return;
-  if (n < 0 && posted < -0.5 && Math.abs(posted) >= Math.abs(n) - 0.5) return;
-  map.set(lineId, { amount: n, note });
+  if (!remaining) {
+    const posted = Number(byLine.get(lineId)?.amount || 0);
+    if (n > 0 && posted > 0.5 && posted >= n - 0.5) return;
+    if (n < 0 && posted < -0.5 && Math.abs(posted) >= Math.abs(n) - 0.5) return;
+  }
+  map.set(lineId, remaining ? { amount: n, note, remaining: true } : { amount: n, note });
 }
 
 function filterPendingAgainstLedger(map, byLine) {
@@ -96,9 +103,11 @@ function filterPendingAgainstLedger(map, byLine) {
     const posted = Number(byLine.get(lineId)?.amount || 0);
     const amt = Number(pending.amount) || 0;
     if (Math.abs(amt) < 0.5) continue;
-    if (amt > 0 && posted > 0.5 && posted >= amt - 0.5) continue;
-    if (amt < 0 && posted < -0.5 && Math.abs(posted) >= Math.abs(amt) - 0.5) {
-      continue;
+    if (!pending.remaining) {
+      if (amt > 0 && posted > 0.5 && posted >= amt - 0.5) continue;
+      if (amt < 0 && posted < -0.5 && Math.abs(posted) >= Math.abs(amt) - 0.5) {
+        continue;
+      }
     }
     filtered.set(lineId, pending);
     totalPending += amt;
@@ -160,7 +169,8 @@ export async function buildFinanceProjections(
         "infra_gates",
         gatePending,
         `${parts.join(", ")} @ ${formatMoney(perMatch)}/match est.`,
-        byLine
+        byLine,
+        { remaining: true }
       );
     }
   }
@@ -340,7 +350,8 @@ export async function buildFinanceProjections(
           "prize_tv",
           tvPending,
           `${tvUpcoming.length} selected TV match${tvUpcoming.length === 1 ? "" : "es"} remaining`,
-          byLine
+          byLine,
+          { remaining: true }
         );
       }
     } else if (postedTv < 0.5) {
@@ -467,7 +478,8 @@ export async function buildFinanceProjections(
         "loan_repayments",
         -principalPending,
         [dueNote, futureNote].filter(Boolean).join(" · "),
-        byLine
+        byLine,
+        { remaining: true }
       );
     }
     if (interestPending > 0.5) {
@@ -476,7 +488,8 @@ export async function buildFinanceProjections(
         "loan_interest",
         -interestPending,
         [dueNote, futureNote].filter(Boolean).join(" · "),
-        byLine
+        byLine,
+        { remaining: true }
       );
     }
   }
@@ -501,7 +514,8 @@ export async function buildFinanceProjections(
       "transfer_purchases",
       -bidExposure.total,
       `${count} winning bid${count === 1 ? "" : "s"} (${bits.join(", ") || "transfer"} — unsettled, drops if outbid)`,
-      byLine
+      byLine,
+      { remaining: true }
     );
   }
 

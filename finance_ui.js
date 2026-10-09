@@ -35,6 +35,8 @@ export const LEDGER_TYPE_TO_LINE = {
   infra_maintenance: "infra_maintenance",
   infra_purchase: "infra_purchase",
   infra_expansion: "infra_expansion",
+  infra_expansion_refund: "infra_expansion",
+  infra_expansion_penalty: "infra_expansion",
   gov_fine_compensation: "infra_fines",
   gov_hg_subsidy: "gov_hg",
   gov_youth_subsidy: "gov_youth",
@@ -807,6 +809,7 @@ function subsidyQualifyingNote(lineId, preview) {
 /** Pending only when not already fully reflected on the ledger for that line. */
 function resolvePendingForLine(lineId, pending, byLine) {
   if (!pending || Math.abs(pending.amount) < 0.001) return null;
+  if (pending.remaining) return pending;
   const posted = Number(byLine.get(lineId)?.amount || 0);
   const amt = Number(pending.amount);
   if (amt > 0 && posted > 0.5 && posted >= amt - 0.5) return null;

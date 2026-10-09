@@ -12,11 +12,11 @@ import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, loadClubLoans, leagueBadgeHtml } from "./competition.js";
 import { loadCalendarStatus } from "./competition_calendar.js";
 import { loadClubWageBillSummary } from "./club_wage_bill.js";
-import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js";
+import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js?v=20261009-fin-remaining";
 import {
   loadFinanceSeasonContext,
   resolveFinanceSeasonView,
-} from "./finance_page_common.js";
+} from "./finance_page_common.js?v=20261009-fin-remaining";
 import {
   computeBoardFinanceRating,
   computeClubPerformanceRating,
