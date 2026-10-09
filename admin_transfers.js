@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("restockManagerFaBtn")?.addEventListener("click", () => restockManagerFaBoard(false));
   document.getElementById("freshManagerFaBtn")?.addEventListener("click", () => restockManagerFaBoard(true));
   document.getElementById("diagnoseManagerFaBtn")?.addEventListener("click", diagnoseManagerFaBoard);
+  initUndoManagerSigning();
 
   const hash = (window.location.hash || "").replace("#", "");
   if (hash) {
@@ -742,6 +743,137 @@ async function restockManagerFaBoard(forceFresh) {
       false
     );
   }
+}
+
+function fmtBitcoins(n) {
+  const v = Number(n) || 0;
+  if (Math.abs(v) >= 1e6) return `₿${(v / 1e6).toFixed(1).replace(/\.0$/, "")}m`;
+  if (Math.abs(v) >= 1e3) return `₿${Math.round(v / 1e3)}k`;
+  return `₿${v}`;
+}
+
+async function loadUndoSigningManagers() {
+  const sel = document.getElementById("undoSigningManager");
+  if (!sel) return;
+  const { data, error } = await supabase
+    .from("Managers")
+    .select("id, name, contracted_club")
+    .not("contracted_club", "is", null)
+    .neq("contracted_club", "")
+    .order("name", { ascending: true });
+  if (error) {
+    sel.innerHTML = `<option value="">Could not load managers</option>`;
+    return;
+  }
+  sel.innerHTML =
+    `<option value="">— pick a manager —</option>` +
+    (data || [])
+      .map((m) => {
+        const opt = document.createElement("option");
+        opt.value = String(m.id);
+        opt.textContent = `${m.name} — ${m.contracted_club}`;
+        return opt.outerHTML;
+      })
+      .join("");
+}
+
+function initUndoManagerSigning() {
+  const sel = document.getElementById("undoSigningManager");
+  const previewBtn = document.getElementById("undoSigningPreviewBtn");
+  const applyBtn = document.getElementById("undoSigningApplyBtn");
+  const previewEl = document.getElementById("undoSigningPreview");
+  if (!sel || !previewBtn || !applyBtn || !previewEl) return;
+
+  let lastPlan = null;
+  const reset = () => {
+    lastPlan = null;
+    applyBtn.disabled = true;
+    previewEl.textContent = "";
+    setStatus("undoSigningStatus", "");
+  };
+
+  sel.addEventListener("change", reset);
+  loadUndoSigningManagers();
+
+  previewBtn.addEventListener("click", async () => {
+    reset();
+    const id = sel.value;
+    if (!id) {
+      setStatus("undoSigningStatus", "Pick a manager first.", false);
+      return;
+    }
+    setStatus("undoSigningStatus", "Checking…");
+    const { data, error } = await supabase.rpc("admin_manager_undo_signing", {
+      p_manager: id,
+      p_apply: false,
+    });
+    if (error) {
+      setStatus(
+        "undoSigningStatus",
+        "❌ " + (error.message || "Failed") + " — run patches/admin_manager_undo_signing_20261009.sql in Supabase.",
+        false
+      );
+      return;
+    }
+    if (!data?.ok) {
+      setStatus("undoSigningStatus", "❌ " + (data?.reason || "Cannot undo this one."), false);
+      return;
+    }
+    const p = data.plan || {};
+    const signed = p.signed_at ? new Date(p.signed_at).toLocaleString("en-GB") : "unknown date";
+    const lines = [
+      `${p.manager} is currently managing ${p.club} (signed ${signed}${p.signed_how ? `, via ${p.signed_how}` : ""}).`,
+      "",
+      "If you undo this signing:",
+      p.refund_to_club > 0
+        ? `• ${p.club} gets ${fmtBitcoins(p.refund_to_club)} back (taken from: ${p.refund_from}).`
+        : "• No signing fee was found, so there is nothing to refund.",
+      `• ${p.manager} becomes unattached again — no ban, no sack on his record.`,
+      `• ${p.club} has no manager and can sign someone else.`,
+      "• The club gets an inbox message explaining it.",
+    ];
+    if (p.other_ledger_lines_not_refunded > 0) {
+      lines.push(`• Note: ${p.other_ledger_lines_not_refunded} wage/other payment(s) already made are NOT refunded.`);
+    }
+    previewEl.textContent = lines.join("\n");
+    lastPlan = { id, ...p };
+    applyBtn.disabled = false;
+    setStatus("undoSigningStatus", "Looks right? Press “2. Undo signing & refund”.", true);
+  });
+
+  applyBtn.addEventListener("click", async () => {
+    if (!lastPlan || lastPlan.id !== sel.value) return;
+    if (
+      !confirm(
+        `Undo ${lastPlan.manager}'s signing at ${lastPlan.club}` +
+          (lastPlan.refund_to_club > 0 ? ` and refund ${fmtBitcoins(lastPlan.refund_to_club)}` : "") +
+          "?\n\nThis cannot be reversed with one click."
+      )
+    ) {
+      return;
+    }
+    applyBtn.disabled = true;
+    setStatus("undoSigningStatus", "Undoing…");
+    const { data, error } = await supabase.rpc("admin_manager_undo_signing", {
+      p_manager: lastPlan.id,
+      p_apply: true,
+    });
+    if (error || !data?.ok) {
+      setStatus("undoSigningStatus", "❌ " + (error?.message || data?.reason || "Failed"), false);
+      applyBtn.disabled = false;
+      return;
+    }
+    const bal = data.club_balance_now;
+    setStatus(
+      "undoSigningStatus",
+      `✅ Done. ${lastPlan.manager} is unattached and ${lastPlan.club} was refunded ${fmtBitcoins(lastPlan.refund_to_club)}` +
+        (bal != null ? ` (club balance now ${fmtBitcoins(bal)}).` : "."),
+      true
+    );
+    previewEl.textContent = "";
+    lastPlan = null;
+    await loadUndoSigningManagers();
+  });
 }
 
 async function diagnoseManagerFaBoard() {

@@ -141,6 +141,26 @@
         <button class="button" id="freshManagerFaBtn" style="background:#664400;margin-left:8px;">Fresh board of 10</button>
         <div id="managerFaStatus" class="status-line"></div>
       </div>
+      <div class="card" id="sb-manager-undo-signing" data-admin-only>
+        <h2>Undo a manager signing (full refund)</h2>
+        <p class="note">
+          Use when a manager was bought by mistake. The club gets its fee back, the manager goes back
+          to being unattached (no ban, no sack on his record) and the club can sign someone else.
+          Wages already paid are not refunded. Requires <code>patches/admin_manager_undo_signing_20261009.sql</code>.
+        </p>
+        <div class="row" style="margin-top:10px;align-items:flex-end;gap:10px;flex-wrap:wrap;">
+          <div style="min-width:280px;">
+            <label for="undoSigningManager">Signed manager</label>
+            <select id="undoSigningManager" style="width:100%;max-width:420px;">
+              <option value="">Loading…</option>
+            </select>
+          </div>
+          <button class="button" id="undoSigningPreviewBtn" type="button">1. Check what will happen</button>
+          <button class="button" id="undoSigningApplyBtn" type="button" style="background:#882222;" disabled>2. Undo signing &amp; refund</button>
+        </div>
+        <div id="undoSigningPreview" class="note" style="margin-top:10px;white-space:pre-line;"></div>
+        <div id="undoSigningStatus" class="status-line"></div>
+      </div>
       <div class="card" data-admin-only>
         <h2>Run transfer engine</h2>
         <p class="note">Processes stuck listings and draft threads. Run <code>admin_transferengine_run.sql</code> once if the RPC is missing.</p>
@@ -156,6 +176,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_transfers.js?v=20260815-manager-fa-diag"></script>
+  <script type="module" src="admin_transfers.js?v=20261009-mgr-undo"></script>
 </body>
 </html>
