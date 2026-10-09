@@ -47,8 +47,8 @@ function countDraftEvents(rows, kind, seasonStartIso) {
 }
 
 export async function loadSeasonTransferSchedule() {
-  const nowIso = new Date().toISOString();
-  const [{ data: season }, settingsRes, inboxRes, specialRes, liveSpecialRes] =
+  const nowMs = Date.now();
+  const [{ data: season }, settingsRes, inboxRes, specialRes] =
     await Promise.all([
       supabase
         .from("competition_seasons")
@@ -68,17 +68,16 @@ export async function loadSeasonTransferSchedule() {
         .like("dedupe_key", "draft_scheduled:%"),
       supabase
         .from("special_auctions")
-        .select("id, status, created_at")
+        .select("id, status, created_at, start_time, end_time")
         .in("status", ["scheduled", "active", "revealed", "settled"]),
-      supabase
-        .from("special_auctions")
-        .select("id, start_time")
-        .in("status", ["scheduled", "active"])
-        .lte("start_time", nowIso)
-        .gt("end_time", nowIso)
-        .limit(1)
-        .maybeSingle(),
     ]);
+
+  const liveSpecial = (specialRes.data || []).some((row) => {
+    if (row.status !== "scheduled" && row.status !== "active") return false;
+    const start = row.start_time ? new Date(row.start_time).getTime() : NaN;
+    const end = row.end_time ? new Date(row.end_time).getTime() : NaN;
+    return start <= nowMs && end > nowMs;
+  });
 
   const seasonStart = season?.started_at || null;
   const transferOpen = settingsRes.data?.transfer_window_open === true;
@@ -143,7 +142,7 @@ export async function loadSeasonTransferSchedule() {
       total: SEASON_SCHEDULE_TOTALS.special,
       used: specialUsed,
       remaining: Math.max(0, SEASON_SCHEDULE_TOTALS.special - specialUsed),
-      live: !!liveSpecialRes.data?.id,
+      live: liveSpecial,
       href: "special_auction.html",
     },
     transferWindow: {
@@ -278,10 +277,27 @@ export function renderSeasonScheduleStripHtml(schedule) {
   );
 }
 
-export async function refreshSeasonScheduleStrip() {
+const STRIP_MIN_REFRESH_MS = 60_000;
+let __lastStripLoadMs = 0;
+let __stripInFlight = null;
+
+export async function refreshSeasonScheduleStrip({ force = false } = {}) {
   const el = document.getElementById("seasonScheduleStrip");
   if (!el) return;
 
+  // Called from every nav badge refresh — at most one load per minute per tab
+  if (__stripInFlight) return __stripInFlight;
+  const fresh = Date.now() - __lastStripLoadMs < STRIP_MIN_REFRESH_MS;
+  if (!force && (fresh || document.visibilityState === "hidden")) return;
+
+  __stripInFlight = loadStripOnce(el).finally(() => {
+    __stripInFlight = null;
+  });
+  return __stripInFlight;
+}
+
+async function loadStripOnce(el) {
+  __lastStripLoadMs = Date.now();
   try {
     const schedule = await loadSeasonTransferSchedule();
     const html = renderSeasonScheduleStripHtml(schedule);
@@ -316,10 +332,13 @@ export function ensureSeasonScheduleStripMount() {
 
 export function initSeasonScheduleStrip() {
   ensureSeasonScheduleStripMount();
-  refreshSeasonScheduleStrip();
+  refreshSeasonScheduleStrip({ force: true });
 
   if (__refreshTimer) return;
   __refreshTimer = setInterval(() => {
     refreshSeasonScheduleStrip();
   }, 60_000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") refreshSeasonScheduleStrip();
+  });
 }
