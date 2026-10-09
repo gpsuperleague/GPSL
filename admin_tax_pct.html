@@ -32,6 +32,19 @@
         <div id="incomeTaxStatus" class="status-line"></div>
       </div>
 
+      <div class="card" id="sb-income-tax-true-up">
+        <h2>Season true-up (after changing the %)</h2>
+        <p class="note">
+          Tax is charged when each purchase settles, so purchases made before you changed the % were taxed at the old rate.
+          This re-taxes <b>every purchase this season</b> at the <b>current %</b> and charges or refunds each club only the difference.
+          <b>1.</b> Save the new % above. <b>2.</b> Preview. <b>3.</b> Apply. Safe to run again — clubs already level are skipped.
+        </p>
+        <button type="button" id="taxTrueUpPreviewBtn" class="button">1. Preview</button>
+        <button type="button" id="taxTrueUpApplyBtn" class="button" disabled>2. Apply to club balances</button>
+        <div id="taxTrueUpStatus" class="status-line"></div>
+        <div id="taxTrueUpResult"></div>
+      </div>
+
       <div class="card" id="sb-agent-fee-pct">
         <h2>Agent fee %</h2>
         <p class="note">
@@ -51,6 +64,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_tax_pct.js?v=20260928-agent-fee"></script>
+  <script type="module" src="admin_tax_pct.js?v=20261010-tax-true-up"></script>
 </body>
 </html>
