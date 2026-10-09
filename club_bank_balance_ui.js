@@ -10,7 +10,7 @@ import {
   advisoryBudgetTitle,
   computeAdvisoryTransferBudget,
   renderAdvisoryBudgetBadgeHtml,
-} from "./finance_advisory_budget.js?v=20261009-fin-remaining";
+} from "./finance_advisory_budget.js?v=20261010-cup-pending";
 
 const STYLE_ID = "club-bank-balance-style";
 

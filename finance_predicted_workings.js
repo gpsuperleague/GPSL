@@ -135,7 +135,7 @@ export function renderPredictedWorkingsHtml(data, extra = {}) {
     missing.push("<b>Pitchside advertising</b> — not paid yet this season. Not estimated.");
   }
   missing.push(
-    "<b>Future cup rounds and challenge prizes</b> — depend on results, so only money already won is counted."
+    "<b>Cup rounds not drawn yet, and challenge prizes</b> — depend on results. Cup ties you are already drawn in are counted (prize + gate share)."
   );
   if (projected >= 0) {
     missing.push(
@@ -168,7 +168,12 @@ export function renderPredictedWorkingsHtml(data, extra = {}) {
   }
   if (Math.abs(Number(data.pendingByLine?.get("infra_gates")?.amount) || 0) >= 0.5) {
     assumptions.push(
-      "<b>Gate receipts</b> use an estimate per home match; real crowds vary."
+      "<b>Gate receipts</b> use an estimate per league home match, and cup ties assume the home club's stadium is 80% full (cup finals sell out). Real crowds vary."
+    );
+  }
+  if (Math.abs(Number(data.pendingByLine?.get("prize_cup")?.amount) || 0) >= 0.5) {
+    assumptions.push(
+      "<b>Cup prize money</b> counts only what both clubs get for playing each drawn tie. In a final it counts the runner-up amount — winning adds the difference."
     );
   }
   if (Math.abs(Number(data.pendingByLine?.get("transfer_purchases")?.amount) || 0) >= 0.5) {

@@ -5,7 +5,7 @@ import { loadClubWageBillSummary } from "./club_wage_bill.js";
 import {
   advisoryBudgetTitle,
   computeAdvisoryTransferBudget,
-} from "./finance_advisory_budget.js?v=20261009-fin-remaining";
+} from "./finance_advisory_budget.js?v=20261010-cup-pending";
 import {
   applyFinanceClubHeader,
   applyHistoricalFinanceBanner,
@@ -16,12 +16,12 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20261009-fin-remaining";
+} from "./finance_page_common.js?v=20261010-cup-pending";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20260806-help-blocks";
 import {
   loadListedSaleBids,
   renderPredictedWorkingsHtml,
-} from "./finance_predicted_workings.js?v=20261009-workings";
+} from "./finance_predicted_workings.js?v=20261010-cup-pending";
 
 /** @type {{ data: object, shortName: string, rendered: boolean } | null} */
 let predictedState = null;

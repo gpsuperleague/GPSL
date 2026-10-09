@@ -142,37 +142,81 @@ export async function buildFinanceProjections(
 
   const division = reg?.division;
 
+  const { data: cupPreview, error: cupPreviewErr } = await supabase.rpc(
+    "competition_club_cup_pending_preview",
+    { p_club_short_name: clubShortName }
+  );
+  if (cupPreviewErr) {
+    console.warn("competition_club_cup_pending_preview:", cupPreviewErr.message);
+  }
+  const cupTies = Array.isArray(cupPreview?.fixtures) ? cupPreview.fixtures : null;
+
+  let leagueHome = 0;
   if (perMatch > 0 && division) {
     const leagueFixtures = await loadLeagueFixtures(supabase, division);
-    const leagueHome = leagueFixtures.filter(
+    leagueHome = leagueFixtures.filter(
       (f) =>
         f.status === "scheduled" &&
         normalizeClubKey(f.home_club_short_name) === clubKey
     ).length;
+  }
 
+  let cupGate = 0;
+  let cupGateNote = "";
+  if (cupTies) {
+    cupGate = Number(cupPreview.gate_total || 0);
+    const gateTies = cupTies.filter((t) => Number(t.gate_share) > 0.5);
+    if (gateTies.length) {
+      const home = gateTies.filter((t) => t.home).length;
+      const away = gateTies.length - home;
+      const finals = gateTies.filter((t) => t.is_final).length;
+      cupGateNote = `${gateTies.length} drawn cup tie${gateTies.length === 1 ? "" : "s"} (${home} home, ${away} away) — 50% share of the home club's gate at ${cupPreview.fill_pct ?? 80}% fill${finals ? ", final at sellout" : ""} = ${formatMoney(cupGate)}`;
+    }
+  } else if (perMatch > 0) {
     const cupFixtures = await loadCupFixtures(supabase);
     const cupHome = cupFixtures.filter(
       (f) =>
         f.status === "scheduled" &&
         normalizeClubKey(f.home_club_short_name) === clubKey
     ).length;
+    cupGate = cupHome * perMatch * 0.5;
+    if (cupHome) cupGateNote = `${cupHome} cup home (50%) @ ${formatMoney(perMatch)}/match est.`;
+  }
 
-    const gatePending =
-      leagueHome * perMatch + cupHome * perMatch * 0.5;
-
-    if (gatePending > 0.5) {
-      const parts = [];
-      if (leagueHome) parts.push(`${leagueHome} league home`);
-      if (cupHome) parts.push(`${cupHome} cup home (50%)`);
-      setPendingForecast(
-        pendingByLine,
-        "infra_gates",
-        gatePending,
-        `${parts.join(", ")} @ ${formatMoney(perMatch)}/match est.`,
-        byLine,
-        { remaining: true }
-      );
+  const gatePending = leagueHome * perMatch + cupGate;
+  if (gatePending > 0.5) {
+    const parts = [];
+    if (leagueHome) {
+      parts.push(`${leagueHome} league home @ ${formatMoney(perMatch)}/match est.`);
     }
+    if (cupGateNote) parts.push(cupGateNote);
+    setPendingForecast(
+      pendingByLine,
+      "infra_gates",
+      gatePending,
+      parts.join(" · "),
+      byLine,
+      { remaining: true }
+    );
+  }
+
+  const cupPrize = Number(cupPreview?.prize_total || 0);
+  if (cupTies && cupPrize > 0.5) {
+    const prizeTies = cupTies.filter((t) => Number(t.prize) > 0.5);
+    const byCup = new Map();
+    for (const t of prizeTies) {
+      const key = String(t.cup_code || "cup").replace(/_/g, " ").toUpperCase();
+      byCup.set(key, (byCup.get(key) || 0) + 1);
+    }
+    const cupBits = [...byCup.entries()].map(([k, n]) => `${k} ×${n}`).join(", ");
+    setPendingForecast(
+      pendingByLine,
+      "prize_cup",
+      cupPrize,
+      `Guaranteed for ${prizeTies.length} drawn cup tie${prizeTies.length === 1 ? "" : "s"} (${cupBits}) — paid to both clubs win or lose. Later rounds count once drawn.`,
+      byLine,
+      { remaining: true }
+    );
   }
 
   const postedMaint = Math.abs(byLine.get("infra_maintenance")?.amount || 0);

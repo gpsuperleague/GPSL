@@ -18,7 +18,7 @@ import {
   renderFinanceSections,
   summariseLedgerTotals,
 } from "./finance_ui.js?v=20261009-fin-remaining";
-import { buildFinanceProjections } from "./finance_projections.js?v=20261009-fin-remaining";
+import { buildFinanceProjections } from "./finance_projections.js?v=20261010-cup-pending";
 import {
   appendAssignmentInfraPurchaseLedger,
   ledgerStartingBudget,

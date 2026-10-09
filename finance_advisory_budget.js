@@ -11,7 +11,7 @@ import { aggregateLedgerByLine } from "./finance_ui.js?v=20261009-fin-remaining"
 import {
   buildFinanceProjections,
   loadClubWinningBidExposure,
-} from "./finance_projections.js?v=20261009-fin-remaining";
+} from "./finance_projections.js?v=20261010-cup-pending";
 
 export const TRANSFER_PENDING_LINE_IDS = new Set([
   "transfer_sales",
