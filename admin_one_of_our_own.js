@@ -97,7 +97,11 @@ function renderRows() {
       const eligible = Number(c.eligible_count || 0);
       const band = String(c.eligible_band || "79+");
       const best = c.best_rating != null && band === "best HG" ? ` (top ${Number(c.best_rating)})` : "";
-      const eligibleLabel = `${eligible} · ${escapeHtml(band)}${best}`;
+      const inAuction = Number(c.excluded_in_auction || 0);
+      const auctionNote = inAuction
+        ? ` <span class="note" title="Free agents of this nation currently in a live auction — never drawn">(${inAuction} in auction, skipped)</span>`
+        : "";
+      const eligibleLabel = `${eligible} · ${escapeHtml(band)}${best}${auctionNote}`;
       if (c.already_drawn) {
         const player = escapeHtml(c.drawn_player_name || c.drawn_player_id || "—");
         const fee = formatMoney(Number(c.drawn_fee || 0));
