@@ -1412,6 +1412,11 @@ async function getOwnerClubShort(userFromCaller = null) {
   return club?.short || null;
 }
 
+/** Single shared Club Wire module instance (nav badge + dashboard card share one poll). */
+export function loadClubWire() {
+  return import(`./club_wire.js?v=${GLOBAL_JS_VERSION}`);
+}
+
 /** Update nav inbox badge after mark-read (no full nav rebuild). */
 export async function refreshInboxNavBadge() {
   const link = document.querySelector("a.nav-inbox");
@@ -2778,6 +2783,16 @@ export async function buildNav() {
   refreshGpslSportNavUi();
   if (!isPreClubOwner && ownerClub) {
     void refreshMatchdayNavBadge();
+  }
+  if (!isVisitorNav) {
+    try {
+      const cw = await loadClubWire();
+      cw.mountClubWireNavBadge(nav, {
+        href: isPreClubOwner ? "club_auction.html" : "dashboard.html#clubWire",
+      });
+    } catch (cwErr) {
+      console.warn("Club Wire nav badge skipped:", cwErr);
+    }
   }
   if (!isPreClubOwner) {
     try {

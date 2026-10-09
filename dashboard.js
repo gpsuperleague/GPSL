@@ -9,7 +9,8 @@ import {
   wireDraftCountdownUI,
   isEmailHidden,
   setEmailHidden,
-} from "./global.js?v=20261004-hide-email";
+  loadClubWire,
+} from "./global.js?v=20261009-club-wire";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
 import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js";
@@ -219,6 +220,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (emailEl) emailEl.textContent = user.email;
   wireHideEmailToggle();
   void refreshDashboardSupporterPill();
+  loadClubWire()
+    .then((cw) => cw.mountClubWireCard(document.getElementById("clubWire")))
+    .catch((err) => console.warn("Club Wire card skipped:", err));
 
   const { data: club, error } = await supabase
     .from("Clubs")
