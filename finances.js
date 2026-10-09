@@ -18,6 +18,49 @@ import {
   wireFinanceStatLinks,
 } from "./finance_page_common.js?v=20261009-fin-remaining";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20260806-help-blocks";
+import {
+  loadListedSaleBids,
+  renderPredictedWorkingsHtml,
+} from "./finance_predicted_workings.js?v=20261009-workings";
+
+/** @type {{ data: object, shortName: string, rendered: boolean } | null} */
+let predictedState = null;
+
+function resetPredictedWorkings(state) {
+  predictedState = state;
+  const panel = document.getElementById("predictedWorkings");
+  const btn = document.getElementById("linkPredicted");
+  const hint = document.getElementById("predictedHint");
+  if (panel) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+  }
+  if (btn) {
+    btn.setAttribute("aria-expanded", "false");
+    btn.disabled = !state;
+  }
+  if (hint) hint.textContent = state ? "Show the workings ↓" : "Current season only";
+}
+
+async function togglePredictedWorkings() {
+  const panel = document.getElementById("predictedWorkings");
+  const btn = document.getElementById("linkPredicted");
+  const hint = document.getElementById("predictedHint");
+  if (!panel || !btn || !predictedState) return;
+
+  const open = panel.hidden;
+  panel.hidden = !open;
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+  if (hint) hint.textContent = open ? "Hide the workings ↑" : "Show the workings ↓";
+  if (!open || predictedState.rendered) return;
+
+  const state = predictedState;
+  panel.innerHTML = `<p class="pw-note">Working it out…</p>`;
+  const listedSales = await loadListedSaleBids(supabase, state.shortName);
+  if (predictedState !== state) return;
+  panel.innerHTML = renderPredictedWorkingsHtml(state.data, { listedSales });
+  state.rendered = true;
+}
 
 function parseGpAmount(raw) {
   const s = String(raw ?? "")
@@ -205,6 +248,7 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     document.getElementById("predictedBalance").textContent = "—";
     setAdvisoryBudgetDisplay(null, { historical: true });
     setWageBillDisplay(null);
+    resetPredictedWorkings(null);
     return;
   }
 
@@ -244,11 +288,13 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     predictedEl.textContent = "—";
     predictedEl.className = "value muted";
     setAdvisoryBudgetDisplay(null, { historical: true });
+    resetPredictedWorkings(null);
   } else {
     if (balanceLabel) balanceLabel.textContent = "Current balance";
     if (predictedLabel) predictedLabel.textContent = "Predicted end-of-season balance";
     predictedEl.textContent = formatMoney(data.projectedBalance);
     predictedEl.className = `value ${data.projectedBalance >= 0 ? "positive" : "negative"}`;
+    resetPredictedWorkings({ data, shortName, rendered: false });
 
     try {
       const advisory = await computeAdvisoryTransferBudget(supabase, shortName, {
@@ -280,6 +326,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("userEmail").textContent = user.email;
+
+  document.getElementById("linkPredicted")?.addEventListener("click", () => {
+    togglePredictedWorkings().catch((err) => {
+      console.warn("predicted workings:", err);
+    });
+  });
 
   document.getElementById("gpSavedSaveBtn")?.addEventListener("click", () => {
     saveGpSaved();

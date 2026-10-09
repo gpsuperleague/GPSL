@@ -214,6 +214,28 @@
       margin-top:0;
     }
     .stat-box.stat-link:hover .link-hint { color:#ff9900; }
+    button.stat-box.stat-link {
+      font:inherit; text-align:left; cursor:pointer; width:100%;
+    }
+    button.stat-box.stat-link[aria-expanded="true"] { border-color:#ff9900; }
+    .predicted-workings {
+      margin:14px 0 4px; padding:14px 16px; background:#1a1a1a;
+      border:1px solid #333; border-radius:6px; font-size:13px; color:#ccc;
+    }
+    .predicted-workings h3 { margin:0 0 10px; font-size:15px; color:#ff9900; }
+    .predicted-workings h4 { margin:16px 0 6px; font-size:13px; color:#ffcc66; }
+    .pw-table { width:100%; border-collapse:collapse; }
+    .pw-table td { padding:6px 8px; border-bottom:1px solid #2a2a2a; vertical-align:top; }
+    .pw-table .pw-amt { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .pw-table .pw-group td { color:#888; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; padding-top:12px; }
+    .pw-table .pw-sub td { color:#aaa; }
+    .pw-table .pw-total td { font-weight:bold; color:#fff; border-top:1px solid #444; }
+    .pw-section { margin-left:8px; font-size:11px; color:#777; }
+    .pw-note { font-size:11px; color:#888; margin-top:2px; }
+    .pw-pos { color:#6f6; }
+    .pw-neg { color:#f88; }
+    .pw-list { margin:0; padding-left:18px; }
+    .pw-list li { margin:4px 0; line-height:1.4; }
 
   </style>
 </head>
@@ -271,10 +293,11 @@
           <div class="value neutral" id="balanceAmount">—</div>
           <span class="link-hint">View activity ledger →</span>
         </a>
-        <div class="stat-box gpsl-has-tip" data-gpsl-tip="Current balance plus pending forecasts from Season accounts (upcoming gates, wages, maintenance, unsettled winning bids, etc.)." tabindex="0">
+        <button type="button" class="stat-box stat-link gpsl-has-tip" id="linkPredicted" aria-expanded="false" aria-controls="predictedWorkings" data-gpsl-tip="Current balance plus pending forecasts from Season accounts (upcoming gates, wages, maintenance, unsettled winning bids, etc.). Click to see the workings.">
           <div class="label">Predicted end-of-season balance</div>
           <div class="value muted" id="predictedBalance">—</div>
-        </div>
+          <span class="link-hint" id="predictedHint">Show the workings ↓</span>
+        </button>
         <a class="stat-box stat-link gpsl-has-tip" id="linkAdvisoryBudget" href="transfer_center.html" data-gpsl-tip="Soft spend guidance: current balance + predicted ops income − predicted ops costs (excluding transfer sales/purchases), minus live winning bids. Shown as ₿0 minimum; does not block bids." tabindex="0">
           <div class="label">Advisory transfer budget</div>
           <div class="value muted" id="advisoryTransferBudget">—</div>
@@ -296,6 +319,7 @@
           <span class="link-hint">View season accounts →</span>
         </a>
       </div>
+      <div class="predicted-workings" id="predictedWorkings" hidden></div>
       <div class="fin-help-blocks" aria-label="How to read balance figures">
         <div class="fin-help-block" id="finBalanceNote"><!-- Filled by finances_rules.js --></div>
         <div class="fin-help-block" id="finPredictedNote"><!-- Filled by finances_rules.js --></div>
@@ -309,6 +333,6 @@
       <div id="financeSeasonHistory"></div>
     </div>
   </div>
-  <script type="module" src="finances.js?v=20261009-fin-remaining"></script>
+  <script type="module" src="finances.js?v=20261009-workings"></script>
 </body>
 </html>
