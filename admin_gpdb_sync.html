@@ -349,8 +349,31 @@
           </table>
         </div>
       </div>
+
+      <div class="card">
+        <h2>Legacy cards at clubs — purchases &amp; refunds</h2>
+        <p class="note">Every legacy card a club owns, how and when it was signed, and what it cost. <b>Bought while legacy</b> = the club signed it after the card went legacy. Refund hands the player back (free agent) and the Central Bank repays fee + agent fee + income tax. Owners can do this themselves from their Squad page.</p>
+        <button type="button" class="button" id="refreshLegacyClubsBtn">Refresh</button>
+        <div id="legacyClubsStatus" class="status-line"></div>
+        <div id="legacyClubsWrap" class="sync-table-wrap" hidden>
+          <table class="sync-table">
+            <thead>
+              <tr>
+                <th>Club</th>
+                <th>Player</th>
+                <th>How signed</th>
+                <th>Signed</th>
+                <th>Went legacy</th>
+                <th>Paid (fee + agent + tax)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="legacyClubsBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20261001-legacy-unlock"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20261010-legacy-refund"></script>
 </body>
 </html>

@@ -20,6 +20,7 @@ export const LEDGER_TYPE_TO_LINE = {
   special_auction_prize: "prize_other",
   transfer_purchase: "transfer_purchases",
   transfer_agent_fee: "transfer_purchases",
+  legacy_card_refund: "transfer_purchases",
   gate_league_home: "infra_gates",
   gate_cup_share: "infra_gates",
   gate_friendlies: "infra_gates",
@@ -89,9 +90,9 @@ export const FINANCE_UI_SECTIONS = [
       {
         id: "transfer_purchases",
         label: "Purchases",
-        types: ["transfer_purchase", "transfer_agent_fee", "special_auction_fee"],
+        types: ["transfer_purchase", "transfer_agent_fee", "special_auction_fee", "legacy_card_refund"],
         note:
-          "All players bought: draft auction wins, transfer market, special auction fees. Agent fees included. Winning draft bids show as pending until outbid or settled.",
+          "All players bought: draft auction wins, transfer market, special auction fees. Agent fees included. Legacy card refunds are taken off. Winning draft bids show as pending until outbid or settled.",
       },
     ],
   },

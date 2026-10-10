@@ -113,6 +113,7 @@ import {
   DESIGNATION_FF,
 } from "./squad_designations.js?v=20261003-big-star";
 import { mountStarDemotionPanel } from "./squad_star_demotion.js?v=20261003-big-star";
+import { mountLegacyCardsPanel } from "./squad_legacy_cards.js?v=20261010-legacy-refund";
 import {
   loadActiveSeasonLoanPlayerIds,
   loadClubSquadMinimumStatus,
@@ -1398,6 +1399,7 @@ async function loadSquad() {
     currentUserShort
   );
   mountStarDemotionPanel(supabase, currentUserShort, loadSquad);
+  mountLegacyCardsPanel(supabase, currentUserShort, loadSquad, { staffPreview });
   [squadMinimumStatus, seasonLoanPlayerIds, emergencyLoanPlayerIds, emergencyLoanStatus] =
     await Promise.all([
       loadClubSquadMinimumStatus(supabase, currentUserShort),

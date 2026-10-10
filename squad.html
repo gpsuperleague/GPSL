@@ -74,6 +74,9 @@
     .star-demotion-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
     .star-demotion-table th, .star-demotion-table td { padding:6px 8px; border-bottom:1px solid #3a2e14; text-align:left; }
     .star-demotion-table th { color:#ffb84d; font-weight:normal; }
+    #legacyCardsPanel .star-demotion-table th { color:#d7a8ff; }
+    #legacyCardsPanel .star-demotion-table th, #legacyCardsPanel .star-demotion-table td { border-bottom-color:#3a2a48; }
+    .legacy-flag { display:inline-block; margin-left:4px; padding:1px 6px; border-radius:8px; font-size:11px; background:#5a1f2a; color:#ffb3c0; }
   </style>
 </head>
 
@@ -129,6 +132,9 @@
 
     <div id="starDemotionPanel" class="panel" hidden
          style="border:1px solid #6a4a10;background:#221a0c;"></div>
+
+    <div id="legacyCardsPanel" class="panel" hidden
+         style="border:1px solid #5a3a6a;background:#1c1424;"></div>
 
     <div id="squadCompliancePanel" class="squad-compliance-wrap"></div>
 
@@ -195,7 +201,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20261009-leading-listings"></script>
+  <script type="module" src="squad.js?v=20261010-legacy-refund"></script>
 
 </body>
 </html>

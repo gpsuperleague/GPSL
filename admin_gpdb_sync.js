@@ -1041,6 +1041,85 @@ function renderUnavailableTable(rows) {
     .join("");
 }
 
+function fmtLegacyMoney(n) {
+  return `₿${(Number(n) || 0).toLocaleString("en-GB", { maximumFractionDigits: 0 })}`;
+}
+
+function fmtLegacyDate(iso) {
+  return iso
+    ? new Date(iso).toLocaleString("en-GB", {
+        timeZone: "Europe/London",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
+}
+
+async function loadLegacyClubsReport() {
+  setStatus("legacyClubsStatus", "Loading…", true);
+  const { data, error } = await supabase.rpc("admin_legacy_cards_report");
+  if (error) {
+    setStatus("legacyClubsStatus", error.message || "Could not load report.", false);
+    return;
+  }
+  const cards = Array.isArray(data?.cards) ? data.cards : [];
+  const refunds = Array.isArray(data?.refunds) ? data.refunds : [];
+  const wrap = document.getElementById("legacyClubsWrap");
+  const tbody = document.getElementById("legacyClubsBody");
+  if (!wrap || !tbody) return;
+
+  const whileLegacy = cards.filter((c) => c.bought_while_legacy).length;
+  setStatus(
+    "legacyClubsStatus",
+    `${cards.length} legacy card(s) at clubs · ${whileLegacy} bought while legacy · ${refunds.length} refund(s) done so far.`,
+    true
+  );
+  wrap.hidden = !cards.length;
+  tbody.innerHTML = cards
+    .map((c) => {
+      const refund = Number(c.refund) || 0;
+      const paid = `${fmtLegacyMoney(c.fee_paid)} + ${fmtLegacyMoney(c.agent_fee)} + ${fmtLegacyMoney(c.income_tax)}`;
+      return `<tr${c.bought_while_legacy ? ' style="background:#3a1820;"' : ""}>
+        <td>${escapeHtml(c.club)}</td>
+        <td>${escapeHtml(c.name)}${c.bought_while_legacy ? " <b>(bought while legacy)</b>" : ""}</td>
+        <td>${escapeHtml(c.how || "—")}</td>
+        <td>${escapeHtml(fmtLegacyDate(c.bought_at))}</td>
+        <td>${escapeHtml(fmtLegacyDate(c.legacy_since))}</td>
+        <td>${c.already_refunded ? "Already refunded" : `${paid} = <b>${fmtLegacyMoney(refund)}</b>`}</td>
+        <td><button type="button" class="button legacy-admin-refund-btn" data-id="${escapeHtml(c.player_id)}" data-name="${escapeHtml(
+          c.name
+        )}" data-club="${escapeHtml(c.club)}" data-refund="${refund}" style="font-size:11px;padding:4px 8px;">${
+          refund > 0 ? `Refund ${fmtLegacyMoney(refund)}` : "Release"
+        }</button></td>
+      </tr>`;
+    })
+    .join("");
+}
+
+async function adminRefundLegacyCard(btn) {
+  const refund = Number(btn.dataset.refund) || 0;
+  const msg =
+    refund > 0
+      ? `Hand ${btn.dataset.name} back from ${btn.dataset.club} and refund ${fmtLegacyMoney(refund)}? He becomes a free agent.`
+      : `Release ${btn.dataset.name} from ${btn.dataset.club}? Nothing to refund. He becomes a free agent.`;
+  if (!confirm(msg)) return;
+  btn.disabled = true;
+  const { data, error } = await supabase.rpc("admin_legacy_card_refund", { p_player_id: btn.dataset.id });
+  if (error) {
+    setStatus("legacyClubsStatus", error.message || "Refund failed.", false);
+    btn.disabled = false;
+    return;
+  }
+  setStatus(
+    "legacyClubsStatus",
+    `${data?.player_name || btn.dataset.name} returned from ${data?.club || btn.dataset.club} — ${fmtLegacyMoney(data?.refund)} refunded.`,
+    true
+  );
+  await loadLegacyClubsReport();
+}
+
 async function uploadStagingRows(rows, statusId = "importStatus") {
   const unique = dedupeRowsByKonamiId(rows);
   if (!unique?.length) throw new Error("No rows to upload");
@@ -3206,5 +3285,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     restorePlayer(btn.dataset.id);
   });
 
+  document.getElementById("refreshLegacyClubsBtn")?.addEventListener("click", loadLegacyClubsReport);
+  document.getElementById("legacyClubsBody")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".legacy-admin-refund-btn");
+    if (btn) adminRefundLegacyCard(btn);
+  });
+
   loadUnavailableList().catch(() => {});
+  loadLegacyClubsReport().catch(() => {});
 });

@@ -5,7 +5,7 @@
  */
 
 import { formatMoney } from "./competition.js";
-import { FINANCE_UI_SECTIONS } from "./finance_ui.js?v=20261009-fin-remaining";
+import { FINANCE_UI_SECTIONS } from "./finance_ui.js?v=20261010-legacy-refund";
 
 const LINE_LABELS = new Map();
 for (const section of FINANCE_UI_SECTIONS) {

@@ -17,7 +17,7 @@ import {
   enrichLedgerFineFixtures,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20261009-fin-remaining";
+} from "./finance_ui.js?v=20261010-legacy-refund";
 import { buildFinanceProjections } from "./finance_projections.js?v=20261010-cup-pending";
 import {
   appendAssignmentInfraPurchaseLedger,
