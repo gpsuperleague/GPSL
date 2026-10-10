@@ -1120,6 +1120,70 @@ async function adminRefundLegacyCard(btn) {
   await loadLegacyClubsReport();
 }
 
+let markLegacyPreview = null;
+
+function setMarkLegacyButtons(enabled) {
+  const mark = document.getElementById("markLegacyBtn");
+  const refund = document.getElementById("markLegacyRefundBtn");
+  if (mark) mark.disabled = !enabled;
+  if (refund) refund.disabled = !enabled || !markLegacyPreview?.club;
+}
+
+async function lookupMarkLegacy() {
+  markLegacyPreview = null;
+  setMarkLegacyButtons(false);
+  const id = document.getElementById("markLegacyId")?.value.trim();
+  if (!id) {
+    setStatus("markLegacyInfo", "Enter a Konami ID.", false);
+    return;
+  }
+  const { data, error } = await supabase.rpc("admin_player_legacy_preview", { p_player_id: id });
+  if (error) {
+    setStatus("markLegacyInfo", error.message || "Lookup failed.", false);
+    return;
+  }
+  markLegacyPreview = data;
+  const where = data.club
+    ? `at ${data.club} · ${data.how || "no purchase found"}${data.bought_at ? ` ${fmtLegacyDate(data.bought_at)}` : ""} · refund ${
+        data.already_refunded ? "already done" : fmtLegacyMoney(data.refund)
+      } (fee ${fmtLegacyMoney(data.fee_paid)} + agent ${fmtLegacyMoney(data.agent_fee)} + tax ${fmtLegacyMoney(data.income_tax)})`
+    : "free agent — nothing to refund";
+  setStatus(
+    "markLegacyInfo",
+    `${data.name} (${data.position || "?"}, ${data.rating ?? "?"}) — ${where}${data.legacy ? " · already legacy" : ""}`,
+    true
+  );
+  setMarkLegacyButtons(true);
+}
+
+async function runMarkLegacy(withRefund) {
+  const p = markLegacyPreview;
+  if (!p) return;
+  const msg = withRefund
+    ? `Mark ${p.name} as legacy, hand him back from ${p.club} and refund ${fmtLegacyMoney(p.refund)}?`
+    : `Mark ${p.name} as legacy? He can't be bid on or signed until restored${p.club ? `; ${p.club} will be offered Return & refund` : ""}.`;
+  if (!confirm(msg)) return;
+  setMarkLegacyButtons(false);
+  const { data, error } = await supabase.rpc(
+    withRefund ? "admin_mark_legacy_and_refund" : "admin_mark_player_legacy",
+    { p_player_id: p.player_id }
+  );
+  if (error) {
+    setStatus("markLegacyInfo", error.message || "Failed.", false);
+    setMarkLegacyButtons(true);
+    return;
+  }
+  setStatus(
+    "markLegacyInfo",
+    withRefund
+      ? `${data?.player_name || p.name} marked legacy and returned from ${data?.club || p.club} — ${fmtLegacyMoney(data?.refund)} refunded.`
+      : `${data?.player_name || p.name} marked legacy.`,
+    true
+  );
+  markLegacyPreview = null;
+  await Promise.all([loadUnavailableList().catch(() => {}), loadLegacyClubsReport()]);
+}
+
 async function uploadStagingRows(rows, statusId = "importStatus") {
   const unique = dedupeRowsByKonamiId(rows);
   if (!unique?.length) throw new Error("No rows to upload");
@@ -3286,6 +3350,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("refreshLegacyClubsBtn")?.addEventListener("click", loadLegacyClubsReport);
+  document.getElementById("markLegacyLookupBtn")?.addEventListener("click", lookupMarkLegacy);
+  document.getElementById("markLegacyId")?.addEventListener("input", () => {
+    markLegacyPreview = null;
+    setMarkLegacyButtons(false);
+  });
+  document.getElementById("markLegacyBtn")?.addEventListener("click", () => runMarkLegacy(false));
+  document.getElementById("markLegacyRefundBtn")?.addEventListener("click", () => runMarkLegacy(true));
   document.getElementById("legacyClubsBody")?.addEventListener("click", (e) => {
     const btn = e.target.closest(".legacy-admin-refund-btn");
     if (btn) adminRefundLegacyCard(btn);

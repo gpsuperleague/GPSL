@@ -353,6 +353,15 @@
       <div class="card">
         <h2>Legacy cards at clubs — purchases &amp; refunds</h2>
         <p class="note">Every legacy card a club owns, how and when it was signed, and what it cost. <b>Bought while legacy</b> = the club signed it after the card went legacy. Refund hands the player back (free agent) and the Central Bank repays fee + agent fee + income tax. Owners can do this themselves from their Squad page.</p>
+        <div class="row" style="margin:10px 0;gap:8px;flex-wrap:wrap;align-items:center;">
+          <label for="markLegacyId">Player not in the game? Konami ID:</label>
+          <input id="markLegacyId" type="text" autocomplete="off" spellcheck="false" style="width:140px;">
+          <button type="button" class="button" id="markLegacyLookupBtn">Look up</button>
+          <button type="button" class="button" id="markLegacyBtn" disabled>Mark as legacy</button>
+          <button type="button" class="button" id="markLegacyRefundBtn" disabled style="background:#662222;">Mark legacy &amp; refund club</button>
+        </div>
+        <div id="markLegacyInfo" class="status-line"></div>
+        <p class="note">Mark as legacy: the card can't be bid on or signed, and if a club owns it the owner gets Return &amp; refund on their Squad page. Mark legacy &amp; refund: does it for them now. Undo a mark with Restore in the list above.</p>
         <button type="button" class="button" id="refreshLegacyClubsBtn">Refresh</button>
         <div id="legacyClubsStatus" class="status-line"></div>
         <div id="legacyClubsWrap" class="sync-table-wrap" hidden>
@@ -374,6 +383,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20261010-legacy-refund"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20261010-mark-legacy"></script>
 </body>
 </html>
