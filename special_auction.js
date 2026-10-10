@@ -828,9 +828,39 @@ export async function fetchPrizeActiveListing(supabase, playerId, clubShort) {
   return data;
 }
 
-/** Winner can keep only when squad ≤ 28 (prize already on the books). */
-export function winnerCanKeepPrize(squadSize) {
-  return Number(squadSize) <= SPECIAL_AUCTION_SQUAD_MAX;
+/** Winner can keep only when contracted squad (incl. prize) + leading auction bids ≤ 28. */
+export function winnerCanKeepPrize(squadTotal) {
+  return Number(squadTotal) <= SPECIAL_AUCTION_SQUAD_MAX;
+}
+
+/**
+ * Squad room for the prize winner: contracted (incl. prize) + leading auction bids.
+ * Falls back to contracted-only if the RPC is not deployed yet.
+ * @returns {Promise<{ squad: number, pending: number, total: number, max: number, cashValue: number }>}
+ */
+export async function fetchPrizeSquadSpace(supabase, auctionId, clubShort) {
+  const { data, error } = await supabase.rpc("special_auction_winner_prize_space", {
+    p_auction_id: auctionId,
+  });
+  if (!error && data) {
+    return {
+      squad: Number(data.squad) || 0,
+      pending: Number(data.pending) || 0,
+      total: Number(data.total) || 0,
+      max: Number(data.max) || SPECIAL_AUCTION_SQUAD_MAX,
+      cashValue: Number(data.cash_value) || 0,
+    };
+  }
+  if (error) console.warn("special_auction_winner_prize_space:", error);
+  const squad = await fetchClubSquadSize(supabase, clubShort);
+  return { squad, pending: 0, total: squad, max: SPECIAL_AUCTION_SQUAD_MAX, cashValue: 0 };
+}
+
+export function prizeSquadSpaceText(space) {
+  const pendingPart = space.pending
+    ? ` + ${space.pending} leading auction bid${space.pending === 1 ? "" : "s"}`
+    : "";
+  return `Squad: ${space.squad} contracted (incl. prize)${pendingPart} = ${space.total} / ${space.max}`;
 }
 
 export async function winnerKeepPrize(supabase, auctionId) {

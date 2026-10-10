@@ -311,19 +311,18 @@
     <div class="panel" id="prizeOptionsPanel" hidden>
       <h2>Your prize options</h2>
       <p class="meta" id="prizeOptionsIntro">
-        Choose what to do with your prize player. If your squad is full (28), you must list or release.
+        Choose what to do with your prize player. Keep needs room in your 28 (leading auction bids count).
       </p>
       <div id="prizeOptionsPlayer"></div>
       <p class="meta" id="prizeOptionsSquad"></p>
       <div class="prize-options-actions">
         <button type="button" class="button" id="prizeKeepBtn">Keep player</button>
-        <button type="button" class="button secondary" id="prizeListBtn">List on transfer market (MV)</button>
-        <button type="button" class="button secondary" id="prizeReleaseBtn">Release at 125% MV</button>
+        <button type="button" class="button secondary" id="prizeReleaseBtn">Take cash (MV)</button>
       </div>
       <div id="prizeKeepPrep" class="prize-keep-prep" hidden style="margin-top:12px;">
         <p class="meta" style="margin:0 0 8px;">
-          Need space for Keep? Release one current squad player at market value
-          (not a voluntary release). After that, only Keep remains.
+          No room? Release a current squad player at market value (not a voluntary
+          release) to make space. After that, cash is no longer available — only Keep.
         </p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
           <select id="prizeKeepPrepSelect" style="min-width:220px;max-width:100%;padding:6px 8px;"></select>
@@ -357,6 +356,6 @@
       <div id="phase1Table"></div>
     </div>
   </div>
-  <script type="module" src="special_auction_gauntlet.js?v=20260814-multi-prize"></script>
+  <script type="module" src="special_auction_gauntlet.js?v=20261010-prize-v3"></script>
 </body>
 </html>
