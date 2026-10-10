@@ -22,7 +22,7 @@ import {
   expansionBlockedReason,
   renderBuildStatusHtml,
 } from "./stadium_expansion.js";
-import { mountStadiumCommercial } from "./stadium_commercial.js?v=20261008-brand-logos-3";
+import { mountStadiumCommercial } from "./stadium_commercial.js?v=20261010-perf-88";
 let clubShortName = null;
 let expansionBuildCap = 55000;
 let lastStadiumFillPct = null;

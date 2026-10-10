@@ -7,6 +7,8 @@ import { brandLogoHtml, isKofiBrand, KOFI_URL } from "./brand_logos.js?v=2026100
 
 const TIER_LABELS = { big: "Big club", medium: "Medium club", low: "Small club" };
 
+const PERF_TITLE_MIN_POINTS = 88;
+
 const DEAL_TITLES = {
   long: "Long-term deal",
   short: "One-season deal",
@@ -41,7 +43,7 @@ function offerTerms(o) {
       o.base_amount
     )}. This season only.`;
   }
-  return `<b>${money(o.base_amount)}</b> now. Finish <b>above your expected league position</b> and get another <b>${money(
+  return `<b>${money(o.base_amount)}</b> now. Finish <b>above your expected league position</b> (expected to win the league? <b>win it with ${PERF_TITLE_MIN_POINTS}+ points</b>) and get another <b>${money(
     o.max_amount - o.base_amount
   )}</b> at Close Finances (${money(o.max_amount)} total). Otherwise nothing more. This season only.`;
 }
@@ -51,7 +53,7 @@ function sponsorTerms(sp) {
     const title = sp.deal_kind === "performance" ? "Performance deal" : "One-season deal";
     const rule =
       sp.deal_kind === "performance"
-        ? "if you finish above your expected league position"
+        ? `if you finish above your expected league position (or, if expected to win the league, win it with ${PERF_TITLE_MIN_POINTS}+ points)`
         : "if you're on target, only slightly miss, or reach a cup target";
     return sp.bonus_paid
       ? `${title} — ${money(sp.paid_this_season)} received this season in total.`
