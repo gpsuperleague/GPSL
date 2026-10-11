@@ -215,3 +215,86 @@ CROSS JOIN club
 WHERE l.club_short_name = club.sn
   AND l.created_at >= now() - interval '4 days'
 ORDER BY l.created_at;
+
+
+-- Q5: the Fri 9 Oct 19:00 → Sat 10 Oct 19:00 (UK) draft only ---------------
+WITH club AS (
+  SELECT c."ShortName" AS sn
+  FROM public."Clubs" c
+  WHERE c."Club" ILIKE '%zvezda%' OR c."Club" ILIKE '%red star%'
+  LIMIT 1
+),
+win AS (
+  SELECT (timestamp '2026-10-09 19:00' AT TIME ZONE 'Europe/London') AS s,
+         (timestamp '2026-10-10 19:00' AT TIME ZONE 'Europe/London') AS e
+),
+mine AS (
+  SELECT coalesce(b.player_id::text, b.direct_bid_id::text) AS pid,
+         count(*) AS my_bids,
+         max(b.bid_amount) AS my_top_bid,
+         max(b.bid_time) AS my_last_bid,
+         string_agg(DISTINCT coalesce(b.status, '?'), ', ') AS my_statuses
+  FROM public."Player_Transfer_Bids" b, club, win
+  WHERE upper(btrim(b.bidder_club_id)) = upper(club.sn)
+    AND b.bid_time >= win.s AND b.bid_time < win.e
+  GROUP BY 1
+)
+SELECT
+  p."Name" AS player,
+  m.pid AS player_id,
+  m.my_bids,
+  m.my_top_bid,
+  to_char(m.my_last_bid AT TIME ZONE 'Europe/London', 'Dy HH24:MI:SS') AS my_last_bid_uk,
+  m.my_statuses,
+  top.bidder_club_id AS highest_bidder,
+  top.bid_amount AS highest_bid,
+  to_char(top.bid_time AT TIME ZONE 'Europe/London', 'Dy HH24:MI:SS') AS highest_bid_uk,
+  l.id AS listing_id,
+  l.status AS listing_status,
+  l.current_highest_bidder AS listing_leader,
+  l.winning_club,
+  h.buyer_club_id AS signed_to,
+  to_char(h.transfer_time AT TIME ZONE 'Europe/London', 'Dy HH24:MI') AS signed_uk,
+  h.transfer_sale_note,
+  p."Contracted_Team" AS player_club_now,
+  coalesce(p.pesdb_unavailable, false) AS legacy_card,
+  CASE
+    WHEN upper(coalesce(h.buyer_club_id, '')) = upper(club.sn) THEN 'Signed to him'
+    WHEN h.buyer_club_id IS NOT NULL THEN 'Signed by ' || h.buyer_club_id
+    WHEN upper(coalesce(top.bidder_club_id, '')) = upper(club.sn)
+      THEN 'He was highest bidder — NOT signed (settlement problem)'
+    WHEN top.bidder_club_id IS NOT NULL THEN 'Outbid by ' || top.bidder_club_id
+    ELSE 'No outcome recorded'
+  END AS verdict
+FROM mine m
+CROSS JOIN club
+CROSS JOIN win
+LEFT JOIN public."Players" p ON p."Konami_ID"::text = m.pid
+LEFT JOIN LATERAL (
+  SELECT x.bidder_club_id, x.bid_amount, x.bid_time
+  FROM public."Player_Transfer_Bids" x
+  WHERE coalesce(x.player_id::text, x.direct_bid_id::text) = m.pid
+    AND x.bid_time >= win.s AND x.bid_time < win.e
+  ORDER BY x.bid_amount DESC, x.bid_time ASC
+  LIMIT 1
+) top ON true
+LEFT JOIN LATERAL (
+  SELECT l.*
+  FROM public."Player_Transfer_Listings" l
+  WHERE l.player_id::text = m.pid
+    AND lower(coalesce(l.listing_type, '')) = 'draft'
+    AND l.created_at < win.e
+  ORDER BY l.created_at DESC
+  LIMIT 1
+) l ON true
+LEFT JOIN LATERAL (
+  SELECT h.*
+  FROM public."Transfer_History" h
+  WHERE h.player_id::text = m.pid
+    AND h.transfer_time >= win.s
+    AND h.seller_club_id IS NULL
+  ORDER BY h.transfer_time
+  LIMIT 1
+) h ON true
+ORDER BY verdict, p."Name";
+
