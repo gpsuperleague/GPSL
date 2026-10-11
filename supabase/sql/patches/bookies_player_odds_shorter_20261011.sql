@@ -365,7 +365,9 @@ BEGIN
 
   IF to_regprocedure('public.bookies_market_state(bigint)') IS NOT NULL THEN
     EXECUTE 'SELECT public.bookies_market_state($1)->''cup_clubs''' INTO v_draw USING p_market_id;
-    IF jsonb_typeof(v_draw) IS DISTINCT FROM 'array' OR jsonb_array_length(v_draw) = 0 THEN
+    IF jsonb_typeof(v_draw) IS DISTINCT FROM 'array' THEN
+      v_draw := NULL;
+    ELSIF jsonb_array_length(v_draw) = 0 THEN
       v_draw := NULL;
     END IF;
   END IF;

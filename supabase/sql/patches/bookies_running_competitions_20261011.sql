@@ -208,7 +208,8 @@ NOTIFY pgrst, 'reload schema';
 SELECT m.id, m.title, m.status,
        (s.st->>'running')::boolean AS running,
        s.st->>'reason' AS reason,
-       jsonb_array_length(coalesce(s.st->'cup_clubs', '[]'::jsonb)) AS cup_clubs_in_draw
+       CASE WHEN jsonb_typeof(s.st->'cup_clubs') = 'array'
+            THEN jsonb_array_length(s.st->'cup_clubs') END AS cup_clubs_in_draw
 FROM public.bookies_markets m
 CROSS JOIN LATERAL (SELECT public.bookies_market_state(m.id) AS st) s
 WHERE m.season_id = (SELECT id FROM public.competition_seasons WHERE is_current = true ORDER BY id DESC LIMIT 1)
