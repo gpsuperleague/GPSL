@@ -9,9 +9,49 @@
 --   • League Cup top scorer    → League Cup drawn
 --   • Prestige cups top scorer → any of Super 8 / Plate / Shield / Bowl drawn
 --   • World Cup top scorer     → international fixtures exist this season
+-- The shop itself opens in July: before the season's July unlock every market
+-- is closed ("Betting opens in July") and new markets can't be created.
 -- Not running → greyed out on the Bookies page and bets are rejected.
 -- Enforced by a BEFORE INSERT trigger on bookies_bets. Safe re-run.
 -- =============================================================================
+
+-- True once the season's July has unlocked (or the season has no July row)
+CREATE OR REPLACE FUNCTION public.bookies_shop_open(p_season_id bigint)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+  SELECT coalesce(
+    (SELECT min(c.unlock_at) <= now()
+     FROM public.competition_season_calendar c
+     WHERE c.season_id = p_season_id AND lower(c.gpsl_month) = 'july'
+     HAVING count(*) > 0),
+    true
+  );
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.bookies_shop_open(bigint) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.trg_bookies_markets_block_before_july()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  IF NOT public.bookies_shop_open(NEW.season_id) THEN
+    RAISE EXCEPTION 'The bookies opens in July — markets can''t be opened before then';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS bookies_markets_00_block_before_july ON public.bookies_markets;
+CREATE TRIGGER bookies_markets_00_block_before_july
+  BEFORE INSERT ON public.bookies_markets
+  FOR EACH ROW EXECUTE FUNCTION public.trg_bookies_markets_block_before_july();
 
 CREATE OR REPLACE FUNCTION public.bookies_market_state(p_market_id bigint)
 RETURNS jsonb
@@ -37,7 +77,11 @@ BEGIN
   v_code := lower(coalesce(m.market_code, ''));
   v_div := nullif(btrim(coalesce(m.metadata->>'division', '')), '');
 
-  IF v_code LIKE 'league_%' AND v_div IS NOT NULL THEN
+  IF NOT public.bookies_shop_open(m.season_id) THEN
+    v_running := false;
+    v_reason := 'Betting opens in July';
+
+  ELSIF v_code LIKE 'league_%' AND v_div IS NOT NULL THEN
     v_running := EXISTS (
       SELECT 1 FROM public.competition_fixtures f
       WHERE f.season_id = m.season_id
@@ -137,7 +181,7 @@ DECLARE
 BEGIN
   v_state := public.bookies_market_state(NEW.market_id);
   IF NOT coalesce((v_state->>'running')::boolean, false) THEN
-    RAISE EXCEPTION 'This competition isn''t running yet (%) — betting opens once the draw is made',
+    RAISE EXCEPTION 'This market isn''t open for betting yet (%)',
       coalesce(v_state->>'reason', 'not drawn');
   END IF;
 
