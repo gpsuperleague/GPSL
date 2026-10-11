@@ -16,6 +16,11 @@ function selectionClub(sel) {
   return key && fullClubName(key) !== key ? key : "";
 }
 
+function isOwnSelection(sel) {
+  const club = selectionClub(sel);
+  return Boolean(club && currentClub && club.toUpperCase() === String(currentClub).toUpperCase());
+}
+
 function selectionOwnerTagHtml(sel) {
   const club = selectionClub(sel);
   if (!club) return "";
@@ -193,7 +198,8 @@ function renderMarkets() {
       const rows = sels
         .map((s) => {
           const taken = alreadyBetOn(s.id);
-          const canBet = m.status === "open" && currentClub && !marketTaken;
+          const own = isOwnSelection(s);
+          const canBet = m.status === "open" && currentClub && !marketTaken && !own;
           return `<tr class="${taken ? "bk-sel--yours" : ""}">
             <td>${escapeHtml(s.label)}${selectionOwnerTagHtml(s)}${taken ? ` <span class="bk-yours-mark">Your slip</span>` : ""}</td>
             <td class="bk-odds">${escapeHtml(formatFractionalOdds(s.odds_decimal, s.odds_fractional))}</td>
@@ -205,6 +211,8 @@ function renderMarkets() {
                         data-stake-for="${s.id}" aria-label="Stake" />
                       <button type="button" class="bk-btn bk-btn--gold" data-place="${s.id}">Bet</button>
                     </div>`
+                  : own && !taken
+                    ? `<span class="bk-muted" title="Owners can't bet on their own club or players">Your club</span>`
                   : marketTaken
                     ? `<span class="bk-muted">${taken ? "Your bet" : "Already bet this market"}</span>`
                     : `<span class="bk-muted">${m.status !== "open" ? m.status : "—"}</span>`
