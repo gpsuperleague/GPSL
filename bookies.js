@@ -1,5 +1,28 @@
 import { supabase, initGlobal } from "./global.js";
 import { formatMoney } from "./competition.js";
+import {
+  loadClubsMap,
+  fullClubName,
+  ownerTagForClub,
+  ownerIdForClub,
+  ownerTagLinkHtml,
+} from "./clubs_lookup.js";
+
+/** Club behind a selection: club markets key on ShortName; player markets carry metadata.club. */
+function selectionClub(sel) {
+  const metaClub = String(sel?.metadata?.club || "").trim();
+  if (metaClub) return metaClub;
+  const key = String(sel?.selection_key || "").trim();
+  return key && fullClubName(key) !== key ? key : "";
+}
+
+function selectionOwnerTagHtml(sel) {
+  const club = selectionClub(sel);
+  if (!club) return "";
+  const tag = ownerTagForClub(club);
+  if (!tag) return ` <span class="club-owner-tag club-owner-tag--vacant">Vacant</span>`;
+  return ` ${ownerTagLinkHtml(tag, ownerIdForClub(club))}`;
+}
 
 function formatFractionalOdds(decimalOdds, fractionalLabel) {
   if (fractionalLabel && String(fractionalLabel).trim() && fractionalLabel !== "—") {
@@ -172,7 +195,7 @@ function renderMarkets() {
           const taken = alreadyBetOn(s.id);
           const canBet = m.status === "open" && currentClub && !marketTaken;
           return `<tr class="${taken ? "bk-sel--yours" : ""}">
-            <td>${escapeHtml(s.label)}${taken ? ` <span class="bk-yours-mark">Your slip</span>` : ""}</td>
+            <td>${escapeHtml(s.label)}${selectionOwnerTagHtml(s)}${taken ? ` <span class="bk-yours-mark">Your slip</span>` : ""}</td>
             <td class="bk-odds">${escapeHtml(formatFractionalOdds(s.odds_decimal, s.odds_fractional))}</td>
             <td>
               ${
@@ -255,13 +278,18 @@ function renderMyBets() {
     root.innerHTML = `<p class="bk-muted">No bets yet this season.</p>`;
     return;
   }
+  const selById = new Map();
+  for (const list of selectionsByMarket.values()) {
+    for (const s of list) selById.set(Number(s.id), s);
+  }
   root.innerHTML = myBets
     .map((b) => {
       const st = String(b.status || "open");
+      const sel = selById.get(Number(b.selection_id));
       return `<div class="bk-bet-card">
         <div>
           <div><b>${escapeHtml(b.market_title)}</b></div>
-          <div class="bk-muted">${escapeHtml(b.selection_label)} @ ${escapeHtml(formatFractionalOdds(b.odds_decimal, b.odds_fractional))}</div>
+          <div class="bk-muted">${escapeHtml(b.selection_label)}${sel ? selectionOwnerTagHtml(sel) : ""} @ ${escapeHtml(formatFractionalOdds(b.odds_decimal, b.odds_fractional))}</div>
           <div>Stake ${formatMoney(b.stake)} · returns ${formatMoney(b.potential_return)}</div>
         </div>
         <div class="status-${st}">${escapeHtml(st)}</div>
@@ -375,6 +403,7 @@ async function refreshAll() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
+  await loadClubsMap();
 
   const {
     data: { user },
