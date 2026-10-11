@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Bookies: cancel rotavator66's open betting slips
 --
--- Each open bet is marked 'refunded' and its stake goes back to the owner
+-- Each open bet is marked 'void' (frees the one-bet-per-market slot) and its stake goes back to the owner
 -- balance as a reversing bookies_expenditure line (so his bookies spend nets
 -- to zero rather than showing as winnings). Affected markets are re-priced so
 -- the steam from those stakes comes off the board.
@@ -60,7 +60,7 @@ BEGIN
     );
 
     UPDATE public.bookies_bets
-    SET status = 'refunded',
+    SET status = 'void',
         settled_at = now(),
         metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
           'cancelled_by_admin', true,

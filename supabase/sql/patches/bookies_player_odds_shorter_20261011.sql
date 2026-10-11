@@ -340,7 +340,10 @@ BEGIN
         s.id,
         greatest(s.weight, 0.25) AS base_w,
         public.bookies_selection_open_stakes(s.id) AS steam,
-        row_number() OVER (ORDER BY s.weight DESC NULLS LAST, s.sort_order, s.id)::int AS rnk
+        row_number() OVER (
+          ORDER BY coalesce((s.metadata->>'withdrawn')::boolean, false),
+                   s.weight DESC NULLS LAST, s.sort_order, s.id
+        )::int AS rnk
       FROM public.bookies_selections s
       WHERE s.market_id = p_market_id
     LOOP

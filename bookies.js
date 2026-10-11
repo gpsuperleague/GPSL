@@ -214,7 +214,9 @@ function renderMarkets() {
     .map((m) => {
       const state = marketState(m.id);
       const sels = (selectionsByMarket.get(m.id) || []).filter(
-        (s) => !state.cupClubs || state.cupClubs.has(String(s.selection_key || "").toUpperCase())
+        (s) =>
+          !s.metadata?.withdrawn &&
+          (!state.cupClubs || state.cupClubs.has(String(s.selection_key || "").toUpperCase()))
       );
       const myBet = myBets.find(
         (b) => Number(b.market_id) === Number(m.id) && b.status !== "void"
