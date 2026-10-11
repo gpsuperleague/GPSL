@@ -4,7 +4,7 @@
  * Current season only (competition_finance_ledger_public is current-season scoped).
  */
 
-import { aggregateLedgerByLine } from "./finance_ui.js?v=20261010-legacy-refund";
+import { aggregateLedgerByLine } from "./finance_ui.js?v=20261011-ledger-gaps";
 import {
   loadCupFixtures,
   loadCurrentSeason,

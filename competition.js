@@ -1597,6 +1597,12 @@ export const GATE_ENTRY_LABELS = {
   contract_expiry_compensation: "Contract end (Central Bank)",
   special_auction_fee: "Special auction fee",
   special_auction_prize: "Special auction prize",
+  legacy_card_refund: "Legacy card refund",
+  prize_fee_discount_subsidy: "Fee discount top-up (prize token)",
+  contract_expiry_champ_signing_fee: "Championship signing-on fee",
+  season_loan_fee: "Season loan fee",
+  season_loan_refund: "Season loan refund",
+  emergency_loan_fee: "Emergency loan fee",
   bookies_income: "Bookies Income",
   bookies_expenditure: "Bookies Expenditure",
   infra_maintenance: "Stadium maintenance",
@@ -1662,6 +1668,9 @@ const INCOME_TYPES = new Set([
   "contract_release_comp_received",
   "special_auction_prize",
   "bookies_income",
+  "legacy_card_refund",
+  "prize_fee_discount_subsidy",
+  "season_loan_refund",
 ]);
 
 let stadiumMaintenanceRatePromise = null;
