@@ -181,6 +181,14 @@ body.bookies-page {
 
 .bk-pill--closed { background: #3d2a2a; color: #e8a0a0; }
 .bk-pill--settled { background: #2a353d; color: #9fd4ff; }
+.bk-pill--inactive { background: #2a2a2a; color: #9a9a9a; border: 1px solid #444; }
+
+.bk-market--inactive {
+  opacity: 0.5;
+  filter: grayscale(0.85);
+  border-color: #333;
+}
+.bk-market--inactive .bk-market-title { color: #9a9a9a; }
 
 .bk-market-body {
   display: none;

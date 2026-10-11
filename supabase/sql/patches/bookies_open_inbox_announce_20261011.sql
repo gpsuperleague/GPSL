@@ -50,10 +50,10 @@ $inbox_types$;
 SELECT public.owner_inbox_notify_all_clubs(
   'bookies_open',
   '🎰 The GPSL Bookies is open!',
-  E'Season markets are live — league winners, cup winners, top scorers and more.\n\n'
+  E'Season markets are live — league champions, cup winners and top scorers. Competitions not yet drawn are greyed out until their draw is made.\n\n'
   || E'• Stake up to ₿1,000 per bet from your owner wallet (not club funds)\n'
   || E'• One bet per market — pick wisely\n'
-  || E'• No betting on your own club or your own players (title, relegation, top scorer …)\n'
+  || E'• No betting on your own club or your own players (title, cups, top scorer …)\n'
   || E'• Odds move as bets come in, so early prices can be the best\n'
   || E'• Winnings are paid straight into your owner wallet when a market settles\n\n'
   || E'Each option shows the club and its owner tag. Good luck!',

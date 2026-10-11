@@ -64,6 +64,30 @@ let isAdmin = false;
 let markets = [];
 let selectionsByMarket = new Map();
 let myBets = [];
+/** @type {Map<number, { running: boolean, reason: string|null, cupClubs: Set<string>|null }>} */
+let marketStates = new Map();
+
+async function loadMarketStates() {
+  marketStates = new Map();
+  const { data, error } = await supabase.rpc("bookies_market_states");
+  if (error) {
+    console.warn("bookies_market_states:", error.message);
+    return;
+  }
+  for (const s of Array.isArray(data) ? data : []) {
+    marketStates.set(Number(s.market_id), {
+      running: s.running !== false,
+      reason: s.reason || null,
+      cupClubs: Array.isArray(s.cup_clubs)
+        ? new Set(s.cup_clubs.map((c) => String(c).toUpperCase()))
+        : null,
+    });
+  }
+}
+
+function marketState(marketId) {
+  return marketStates.get(Number(marketId)) || { running: true, reason: null, cupClubs: null };
+}
 
 function setStatus(msg, ok = true) {
   const el = document.getElementById("bkStatus");
@@ -182,9 +206,16 @@ function renderMarkets() {
     return;
   }
 
-  root.innerHTML = markets
+  const ordered = [...markets].sort(
+    (a, b) => Number(!marketState(a.id).running) - Number(!marketState(b.id).running)
+  );
+
+  root.innerHTML = ordered
     .map((m) => {
-      const sels = selectionsByMarket.get(m.id) || [];
+      const state = marketState(m.id);
+      const sels = (selectionsByMarket.get(m.id) || []).filter(
+        (s) => !state.cupClubs || state.cupClubs.has(String(s.selection_key || "").toUpperCase())
+      );
       const myBet = myBets.find(
         (b) => Number(b.market_id) === Number(m.id) && b.status !== "void"
       );
@@ -199,7 +230,8 @@ function renderMarkets() {
         .map((s) => {
           const taken = alreadyBetOn(s.id);
           const own = isOwnSelection(s);
-          const canBet = m.status === "open" && currentClub && !marketTaken && !own;
+          const canBet =
+            m.status === "open" && state.running && currentClub && !marketTaken && !own;
           return `<tr class="${taken ? "bk-sel--yours" : ""}">
             <td>${escapeHtml(s.label)}${selectionOwnerTagHtml(s)}${taken ? ` <span class="bk-yours-mark">Your slip</span>` : ""}</td>
             <td class="bk-odds">${escapeHtml(formatFractionalOdds(s.odds_decimal, s.odds_fractional))}</td>
@@ -211,6 +243,8 @@ function renderMarkets() {
                         data-stake-for="${s.id}" aria-label="Stake" />
                       <button type="button" class="bk-btn bk-btn--gold" data-place="${s.id}">Bet</button>
                     </div>`
+                  : !state.running && !taken
+                    ? `<span class="bk-muted">Not running</span>`
                   : own && !taken
                     ? `<span class="bk-muted" title="Owners can't bet on their own club or players">Your club</span>`
                   : marketTaken
@@ -222,9 +256,14 @@ function renderMarkets() {
         })
         .join("");
 
-      return `<article class="bk-market${marketTaken ? " bk-market--yours" : ""}" data-market="${m.id}">
+      return `<article class="bk-market${marketTaken ? " bk-market--yours" : ""}${state.running ? "" : " bk-market--inactive"}" data-market="${m.id}">
         <div class="bk-market-head" data-toggle="${m.id}">
           <span class="bk-market-title">${escapeHtml(m.title)}</span>
+          ${
+            state.running
+              ? ""
+              : `<span class="bk-pill bk-pill--inactive">${escapeHtml(state.reason || "Not running yet")}</span>`
+          }
           ${
             marketTaken
               ? `<span class="bk-pill bk-pill--yours">Your bet · ${escapeHtml(myBet.status || "open")}</span>`
@@ -404,7 +443,7 @@ function escapeHtml(s) {
 }
 
 async function refreshAll() {
-  await Promise.all([loadMarkets(), loadMyBets(), loadHeader()]);
+  await Promise.all([loadMarkets(), loadMyBets(), loadHeader(), loadMarketStates()]);
   renderMarkets();
   renderMyBets();
 }
