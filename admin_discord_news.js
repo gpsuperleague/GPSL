@@ -892,6 +892,32 @@ document.getElementById("notificationsTickBtn")?.addEventListener("click", () =>
     await loadQueue();
   })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
+document.getElementById("jobCenterPostBtn")?.addEventListener("click", () => {
+  (async () => {
+    setStatus("newsStatus", "Posting available clubs to Job Center…");
+    const { data, error } = await supabase.rpc("admin_discord_job_center_post_now");
+    if (error) {
+      setStatus(
+        "newsStatus",
+        error.message.includes("admin_discord_job_center_post_now")
+          ? "❌ Run discord_job_center_now_and_owner_departure_20261011.sql in Supabase first."
+          : "❌ " + error.message,
+        false
+      );
+      return;
+    }
+    if (data?.ok === false) {
+      setStatus("newsStatus", "❌ " + (data.error || "Could not post"), false);
+      return;
+    }
+    if (!data?.vacant) {
+      setStatus("newsStatus", "No vacant clubs in the active divisions — nothing posted.");
+      return;
+    }
+    setStatus("newsStatus", `Queued Job Center post: ${data.vacant} available club(s). Pushing…`);
+    await pushNews();
+  })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
 document.getElementById("natterRequeueBtn")?.addEventListener("click", () => {
   (async () => {
     setStatus("newsStatus", "Requeueing recent Natter posts…");
