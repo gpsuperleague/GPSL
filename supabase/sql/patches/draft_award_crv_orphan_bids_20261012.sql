@@ -41,7 +41,8 @@ BEGIN
 
   FOREACH v_pid IN ARRAY v_players LOOP
     v_lid := NULL;
-    SELECT "Konami_ID"::text AS id, "Name", market_value,
+    SELECT "Konami_ID"::text AS id, "Name",
+           coalesce(nullif(regexp_replace(coalesce(market_value::text, ''), '[^0-9.]', '', 'g'), '')::numeric, 0) AS mv,
            nullif(btrim(coalesce("Contracted_Team"::text, '')), '') AS team
     INTO v_p
     FROM public."Players" WHERE "Konami_ID"::text = v_pid;
@@ -83,7 +84,7 @@ BEGIN
           current_highest_bid, current_highest_bidder
         )
         VALUES (
-          v_pid, NULL, coalesce(v_p.market_value, 0), 'draft', coalesce(v_p.market_value, 0),
+          v_pid, NULL, v_p.mv, 'draft', v_p.mv,
           'Active', v_from, v_end, v_end, v_bid.bid_time,
           v_bid.bid_amount, v_club
         )

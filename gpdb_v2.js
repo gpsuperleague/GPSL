@@ -701,6 +701,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let GLOBAL_SETTINGS = null;
   let CURRENT_USER = null;
   let ACTIVE_DRAFT_PLAYERS = new Set();
+  let FREE_PICKS_AVAILABLE = 0;
   let PENDING_DIRECT_OFFER_PLAYERS = new Set();
   let PENDING_DIRECT_OFFERS_FOR_MY_CLUB = new Set();
   let TRANSFER_STATUS_STATE = null;
@@ -2397,6 +2398,9 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
               bidCell = `<span class="locked-msg">Draft Closed</span>`;
             }
+            if (CURRENT_USER_CLUB_SHORT && !inDraft && FREE_PICKS_AVAILABLE > 0) {
+              bidCell += ` <button class="button free-pick-btn" data-player-id="${player.Konami_ID}" data-player-name="${String(player.Name ?? "").replace(/"/g, "&quot;")}" data-market-value="${player.market_value ?? ""}" title="Sign now at market value using your free pick">Free pick (MV)</button>`;
+            }
             }
           }
         }
@@ -2467,6 +2471,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.querySelectorAll(".make-offer-btn, .draft-offer-btn").forEach(btn => {
       btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
+    });
+
+    document.querySelectorAll(".free-pick-btn").forEach((btn) => {
+      btn.addEventListener("click", () => claimFreePick(btn));
     });
 
     document.querySelectorAll(".call-up-btn").forEach((btn) => {
@@ -2918,6 +2926,45 @@ document.addEventListener("DOMContentLoaded", () => {
     closeMakeOfferModal();
     loadPage(CURRENT_PAGE);
   };
+
+  async function loadFreePickStatus() {
+    FREE_PICKS_AVAILABLE = 0;
+    document.getElementById("gpdbFreePickNote")?.remove();
+    const { data, error } = await supabase.rpc("draft_free_pick_my_status");
+    if (error) return;
+    FREE_PICKS_AVAILABLE = Number(data?.available) || 0;
+    const panel = document.getElementById("draftCreditsPanel");
+    if (panel && FREE_PICKS_AVAILABLE > 0) {
+      panel.insertAdjacentHTML(
+        "beforeend",
+        `<div id="gpdbFreePickNote" style="margin-top:4px;color:#9f9;"><b>Free pick:</b> ${FREE_PICKS_AVAILABLE} — sign any free agent now at market value</div>`
+      );
+    }
+  }
+
+  async function claimFreePick(btn) {
+    const name = btn.dataset.playerName || "this player";
+    const mv = Number(btn.dataset.marketValue) || 0;
+    if (
+      !confirm(
+        `Use your free pick on ${name}?\n\nHe signs for your club now at market value${mv > 0 ? ` (${formatMoney(mv)})` : ""}, like a draft auction signing. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    btn.disabled = true;
+    const { data, error } = await supabase.rpc("draft_free_pick_claim", {
+      p_player_id: String(btn.dataset.playerId),
+    });
+    if (error) {
+      btn.disabled = false;
+      alert(error.message || "Free pick failed.");
+      return;
+    }
+    alert(`${data?.player || name} signed for ${formatMoney(Number(data?.fee) || mv)}.`);
+    await loadFreePickStatus();
+    loadPage(CURRENT_PAGE);
+  }
 
   /* ============================================================
      DRAFT AUCTION HELPERS
@@ -3763,6 +3810,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadActiveDraftListings();
     await loadPendingDirectOfferPlayers();
     await loadDraftCreditsForOwner();
+    await loadFreePickStatus();
     await refreshNationalSquadState();
     loadPage(1);
   }
