@@ -17,7 +17,7 @@ import {
   enrichLedgerFineFixtures,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20261011-ledger-gaps";
+} from "./finance_ui.js?v=20261012-monthly-interest";
 import { buildFinanceProjections } from "./finance_projections.js?v=20261010-cup-pending";
 import {
   appendAssignmentInfraPurchaseLedger,

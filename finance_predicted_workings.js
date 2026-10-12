@@ -5,7 +5,7 @@
  */
 
 import { formatMoney } from "./competition.js";
-import { FINANCE_UI_SECTIONS } from "./finance_ui.js?v=20261011-ledger-gaps";
+import { FINANCE_UI_SECTIONS } from "./finance_ui.js?v=20261012-monthly-interest";
 
 const LINE_LABELS = new Map();
 for (const section of FINANCE_UI_SECTIONS) {

@@ -5,7 +5,7 @@ import { loadClubWageBillSummary } from "./club_wage_bill.js";
 import {
   advisoryBudgetTitle,
   computeAdvisoryTransferBudget,
-} from "./finance_advisory_budget.js?v=20261010-cup-pending";
+} from "./finance_advisory_budget.js?v=20261012-monthly-interest";
 import {
   applyFinanceClubHeader,
   applyHistoricalFinanceBanner,
@@ -16,7 +16,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20261010-cup-pending";
+} from "./finance_page_common.js?v=20261012-monthly-interest";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20260806-help-blocks";
 import {
   loadListedSaleBids,

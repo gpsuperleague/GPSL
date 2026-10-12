@@ -7,7 +7,7 @@
  */
 
 import { formatMoney, loadClubBalance, loadFinanceLedger } from "./competition.js";
-import { aggregateLedgerByLine } from "./finance_ui.js?v=20261011-ledger-gaps";
+import { aggregateLedgerByLine } from "./finance_ui.js?v=20261012-monthly-interest";
 import {
   buildFinanceProjections,
   loadClubWinningBidExposure,

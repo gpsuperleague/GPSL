@@ -325,26 +325,26 @@ export const FINANCE_UI_SECTIONS = [
   },
   {
     id: "eos",
-    title: "End of season",
-    intro: "Debt interest, FFP, balance interest, and central bank cash injections.",
+    title: "Interest, FFP & central bank",
+    intro: "Monthly overdraft and balance interest, end-of-season FFP, and central bank cash injections.",
     lines: [
       {
         id: "eos_debt_interest",
-        label: "Debt interest",
+        label: "Overdraft interest",
         types: ["eos_debt_interest", "loan_interest_payment"],
-        note: "Charged on negative balances at season end via Close Finances (bank rate).",
+        note: "0.5% of the overdraft charged at each month-end check-in while the balance is negative (paid to central bank).",
       },
       {
         id: "eos_ffp",
         label: "FFP charges",
         types: ["eos_ffp_charge"],
-        note: "Flat fine if balance ≤ −₿100M at Close Finances (after debt interest).",
+        note: "Flat ₿50M fine if the balance is ≤ −₿100M at Close Finances (end of season).",
       },
       {
         id: "eos_balance_interest",
         label: "Balance interest",
         types: ["eos_balance_interest"],
-        note: "0.5% credit on positive balances at Close Finances (paid by central bank).",
+        note: "0.25% of a positive balance paid at each month-end check-in (paid by central bank).",
       },
       {
         id: "eos_injection",

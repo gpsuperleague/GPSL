@@ -1628,7 +1628,7 @@ export const GATE_ENTRY_LABELS = {
   contract_release_comp_received: "Contract release (received)",
   new_owner_release: "New Owner release",
   contract_termination: "Contract termination",
-  eos_debt_interest: "Debt interest",
+  eos_debt_interest: "Overdraft interest",
   eos_ffp_charge: "FFP charge",
   eos_balance_interest: "Balance interest",
   eos_injection: "End of season injection",

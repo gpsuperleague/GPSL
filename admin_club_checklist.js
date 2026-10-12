@@ -1,7 +1,7 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { isGpslAdminUser } from "./global.js";
 import { formatMoney } from "./competition.js";
-import { loadFinanceSeasonContext } from "./finance_page_common.js?v=20261010-cup-pending";
+import { loadFinanceSeasonContext } from "./finance_page_common.js?v=20261012-monthly-interest";
 import {
   MIN_GOALKEEPERS,
   MIN_HOME_GROWN,

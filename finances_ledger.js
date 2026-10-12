@@ -1,4 +1,4 @@
-import { initFinanceSubPage } from "./finance_page_common.js?v=20261010-cup-pending";
+import { initFinanceSubPage } from "./finance_page_common.js?v=20261012-monthly-interest";
 
 document.addEventListener("DOMContentLoaded", () => {
   initFinanceSubPage({
