@@ -951,7 +951,19 @@ function renderFinanceLineRow(line, bucket, running, pending, subsidyPreview) {
   `;
 }
 
-function renderProjectedFooter(currentBalance, totalPending, running) {
+function renderProjectedFooter(currentBalance, totalPending, running, closed = false) {
+  if (closed) {
+    const bal = Number(currentBalance ?? running) || 0;
+    return `
+    <div class="fin-projected-footer">
+      <div class="fin-projected-main">
+        <span><b>Closing balance</b></span>
+        <span class="fin-projected-value amt ${bal >= 0 ? "income-amt" : "cost-amt"}">${formatMoney(bal)}</span>
+      </div>
+      <p class="fin-projected-sub">Running total (posted) ${formatMoney(running)}</p>
+    </div>
+  `;
+  }
   const projected =
     currentBalance != null
       ? Number(currentBalance) + totalPending
@@ -1054,7 +1066,7 @@ export function renderFinanceSections(byLine, options = {}) {
   }
 
   parts.push(
-    renderProjectedFooter(options.currentBalance, totalPending, running),
+    renderProjectedFooter(options.currentBalance, totalPending, running, Boolean(options.closed)),
     "</div>"
   );
 

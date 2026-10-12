@@ -858,6 +858,7 @@ export async function initFinanceAccountsPage() {
       runningStart: data.inferredOpeningAdjusted,
       currentBalance: data.balanceNow,
       subsidyPreview: data.subsidyPreview,
+      closed: Boolean(data.isHistorical),
     });
   }
 }

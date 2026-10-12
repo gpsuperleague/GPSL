@@ -7,8 +7,27 @@
 
   <link rel="stylesheet" href="dashboard.css?v=20260728-sticky-scroll-fix">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="finance_workbook.css?v=20261012-club-accounts">
 
   <style>
+    .club-accounts { width: 95%; max-width: 1280px; margin: 24px auto 40px; }
+    .club-accounts h2 { color: #ff9900; font-size: 18px; margin: 0 0 6px; }
+    .club-accounts-intro,
+    .club-accounts-empty { color: #888; font-size: 12px; margin: 0 0 12px; }
+    .club-accounts-season {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .club-accounts-season > summary {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px;
+      padding: 10px 14px; cursor: pointer; font-size: 13px; color: #aaa;
+    }
+    .club-accounts-label { color: #ff9900; font-weight: bold; min-width: 6rem; }
+    .club-accounts-stat b { color: #ddd; }
+    .club-accounts-stat b.income-amt { color: #8d8; }
+    .club-accounts-stat b.cost-amt { color: #e99; }
+    .club-accounts-sheet { padding: 0 14px 14px; }
+
     body {
       background: #111;
       color: #ddd;
@@ -598,6 +617,8 @@
 
   <div id="squadContainer"></div>
 
+  <section id="clubSeasonAccounts" class="club-accounts"></section>
+
   <!-- Offer Modal -->
   <div id="offerModal" class="modal">
     <div class="modal-content">
@@ -673,6 +694,7 @@
       pesdbPlayerCardUrl,
     } from "./player_links.js";
     import { loadOwnerSupporterMap, ownerTagHtml } from "./owner_badge.js";
+    import { renderClubSeasonAccounts } from "./club_season_accounts.js?v=20261012-club-accounts";
 
     let transferWindowOpen = false;
     let buyerShortName = null;
@@ -704,6 +726,7 @@
       transferStatusState = await loadTransferStatusState(supabase);
       await loadPlayers();
       setupModalHandlers();
+      renderClubSeasonAccounts(document.getElementById("clubSeasonAccounts"), clubShortName);
     });
 
     async function loadTransferWindowStatus() {

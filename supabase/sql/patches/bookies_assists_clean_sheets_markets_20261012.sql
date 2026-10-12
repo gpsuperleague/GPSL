@@ -147,6 +147,24 @@ AS $function$
   LIMIT 40;
 $function$;
 
+-- Market-create block: allow the stat-markets builder to list markets pre-open
+CREATE OR REPLACE FUNCTION public.trg_bookies_markets_block_before_july()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  IF coalesce(current_setting('gpsl.bookies_preopen_ok', true), '') = 'on' THEN
+    RETURN NEW;
+  END IF;
+  IF NOT public.bookies_shop_open(NEW.season_id) THEN
+    RAISE EXCEPTION 'The bookies opens in GPSL August — markets can''t be opened before then';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
 -- Create (or refresh) the assists + clean sheets markets for a season
 CREATE OR REPLACE FUNCTION public.bookies_open_stat_markets(
   p_season_id bigint DEFAULT NULL,
@@ -173,10 +191,8 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', 'No season');
   END IF;
 
-  IF to_regprocedure('public.bookies_shop_open(bigint)') IS NOT NULL
-     AND NOT public.bookies_shop_open(v_season) THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'Bookies not open yet this season');
-  END IF;
+  -- Markets may be listed before the shop opens; bets stay blocked until then
+  PERFORM set_config('gpsl.bookies_preopen_ok', 'on', true);
 
   FOR r IN
     SELECT * FROM (VALUES
@@ -225,6 +241,8 @@ BEGIN
     PERFORM public.bookies_apply_odds_from_weights(v_market);
     v_out := v_out || jsonb_build_object('code', r.code, 'market_id', v_market, 'action', 'built');
   END LOOP;
+
+  PERFORM set_config('gpsl.bookies_preopen_ok', 'off', true);
 
   RETURN jsonb_build_object('ok', true, 'season_id', v_season, 'markets', v_out);
 END;
@@ -485,15 +503,15 @@ NOTIFY pgrst, 'reload schema';
 -- Report: each player market — options, withdrawn, positions still offered
 SELECT mk.market_code, mk.title,
        (public.bookies_market_state(mk.id)->>'running')::boolean AS running,
-       count(*) FILTER (WHERE NOT coalesce((s.metadata->>'withdrawn')::boolean, false)) AS options,
-       count(*) FILTER (WHERE coalesce((s.metadata->>'withdrawn')::boolean, false)) AS withdrawn,
+       count(s.id) FILTER (WHERE NOT coalesce((s.metadata->>'withdrawn')::boolean, false)) AS options,
+       count(s.id) FILTER (WHERE coalesce((s.metadata->>'withdrawn')::boolean, false)) AS withdrawn,
        string_agg(DISTINCT upper(p."Position"::text), ', ')
          FILTER (WHERE NOT coalesce((s.metadata->>'withdrawn')::boolean, false)) AS positions,
        (SELECT count(*) FROM public.bookies_bets bb
         WHERE bb.market_id = mk.id
           AND bb.metadata->>'void_reason' IN ('non_scoring_position', 'ineligible_position')) AS bets_refunded
 FROM public.bookies_markets mk
-JOIN public.bookies_selections s ON s.market_id = mk.id
+LEFT JOIN public.bookies_selections s ON s.market_id = mk.id
 LEFT JOIN public."Players" p ON p."Konami_ID"::text = s.selection_key
 WHERE mk.market_kind = 'player' AND mk.status IN ('open', 'closed')
   AND mk.season_id = (SELECT id FROM public.competition_seasons WHERE is_current ORDER BY id DESC LIMIT 1)
