@@ -3,8 +3,17 @@ import { rejectFixtureResult, normalizeClubKey } from "./competition.js";
 import { loadInboxMessages, INBOX_CATEGORY_FILTERS, filterInboxByCategory } from "./competition_inbox.js?v=20260929-mc";
 import { inboxActionForMessage } from "./competition_inbox_actions.js?v=20260929-mc";
 import { acceptProposal, confirmMutualOverride } from "./match_scheduling.js";
+import { downloadIcs, downloadIcsEach, fixtureKickoffEvent } from "./calendar_ics.js";
+
+/** Inbox types that announce a settled kick-off time. */
+const AGREED_KICKOFF_TYPES = new Set([
+  "match_time_accepted",
+  "match_mutual_override_applied",
+]);
 
 let myClub = { short: null, name: null };
+/** @type {Map<string, object>|null} my club's fixtures (club_fixtures_my_club), by id */
+let myFixturesById = null;
 let myOwnerId = null;
 let viewArchived = false;
 /** Multi-select category ids. Empty = All. */
@@ -320,6 +329,198 @@ function scheduleInboxActionLabel(msg, proposalProposers) {
   return null;
 }
 
+async function loadMyFixtures(force = false) {
+  if (!myClub.short) return new Map();
+  if (myFixturesById && !force) return myFixturesById;
+  const { data, error } = await supabase.rpc("club_fixtures_my_club");
+  if (error) {
+    console.warn("inbox: club_fixtures_my_club failed", error);
+    myFixturesById = new Map();
+    return myFixturesById;
+  }
+  myFixturesById = new Map(
+    (Array.isArray(data) ? data : []).map((f) => [String(f.id), f])
+  );
+  return myFixturesById;
+}
+
+/** Agreed, unplayed and kick-off not more than 2 hours ago. */
+function isUpcomingAgreed(f) {
+  if (!f || f.schedule_status !== "agreed" || !f.agreed_kickoff_at) return false;
+  if (f.status === "played") return false;
+  const t = new Date(f.agreed_kickoff_at).getTime();
+  return Number.isFinite(t) && t > Date.now() - 2 * 60 * 60 * 1000;
+}
+
+function fixtureKickoffLabel(f) {
+  try {
+    return new Date(f.agreed_kickoff_at).toLocaleString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function fixtureCalendarFilename(f) {
+  const home = String(f?.home_club_name || f?.home_club_short_name || "Home").trim();
+  const away = String(f?.away_club_name || f?.away_club_short_name || "Away").trim();
+  const prefix =
+    f?.competition_type === "league" && f.matchday != null && f.matchday !== ""
+      ? `MD${f.matchday}`
+      : "GPSL";
+  const safe = `${prefix} - ${home} vs ${away}`
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return `${safe || "gpsl-fixture"}.ics`;
+}
+
+function fixtureCalendarEvent(f) {
+  return fixtureKickoffEvent({
+    id: f.id,
+    home: f.home_club_name || f.home_club_short_name,
+    away: f.away_club_name || f.away_club_short_name,
+    kickoffAt: f.agreed_kickoff_at,
+  });
+}
+
+async function markFixturesAddedToCalendar(fixtures) {
+  for (const f of fixtures) {
+    const { error } = await supabase.rpc("club_fixture_calendar_mark_set", {
+      p_fixture_id: Number(f.id),
+      p_added: true,
+    });
+    if (error) {
+      console.warn("inbox: calendar mark failed", f.id, error);
+      continue;
+    }
+    f.calendar_added = true;
+  }
+}
+
+function pendingCalendarFixtures() {
+  return [...(myFixturesById?.values() || [])]
+    .filter((f) => isUpcomingAgreed(f) && !f.calendar_added)
+    .sort((a, b) => new Date(a.agreed_kickoff_at) - new Date(b.agreed_kickoff_at));
+}
+
+async function addFixturesToCalendar(fixtures, { separateFiles = false } = {}) {
+  const list = fixtures.filter(isUpcomingAgreed);
+  if (!list.length) {
+    setStatus("No upcoming agreed kick-offs to add.", true);
+    return false;
+  }
+  const ok = separateFiles
+    ? downloadIcsEach(
+        list.map((f) => ({ filename: fixtureCalendarFilename(f), vevent: fixtureCalendarEvent(f) }))
+      )
+    : list.length === 1
+      ? downloadIcs(fixtureCalendarFilename(list[0]), [fixtureCalendarEvent(list[0])])
+      : downloadIcs("gpsl-agreed-kickoffs.ics", list.map(fixtureCalendarEvent));
+  if (!ok) {
+    setStatus("Could not build the calendar file.", true);
+    return false;
+  }
+  await markFixturesAddedToCalendar(list);
+  setStatus(
+    list.length === 1
+      ? "Calendar file downloaded — open it to add the match. Marked as added on My Fixtures."
+      : `Calendar file${separateFiles ? "s" : ""} downloaded for ${list.length} matches — marked as added on My Fixtures.`
+  );
+  renderCalendarCatchup();
+  return true;
+}
+
+function renderCalendarCatchup() {
+  const el = document.getElementById("inboxCalCatchup");
+  if (!el) return;
+  const pending = viewArchived ? [] : pendingCalendarFixtures();
+  if (!pending.length) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  const n = pending.length;
+  const next = pending[0];
+  el.hidden = false;
+  el.innerHTML = "";
+
+  const text = document.createElement("span");
+  text.className = "cal-text";
+  text.textContent =
+    `📅 ${n} agreed kick-off${n === 1 ? "" : "s"} not in your calendar yet` +
+    ` (next: ${fixtureKickoffLabel(next)}).`;
+
+  const allBtn = document.createElement("button");
+  allBtn.type = "button";
+  allBtn.className = "button";
+  allBtn.style.cssText = "padding:6px 12px;font-size:12px;";
+  allBtn.textContent = n === 1 ? "Add to calendar" : `Catch up — add all ${n}`;
+  allBtn.onclick = async () => {
+    allBtn.disabled = true;
+    await addFixturesToCalendar(pending);
+    allBtn.disabled = false;
+    await renderInbox();
+  };
+
+  el.appendChild(text);
+  el.appendChild(allBtn);
+
+  if (n > 1) {
+    const alt = document.createElement("button");
+    alt.type = "button";
+    alt.className = "cal-alt";
+    alt.textContent = "Outlook? one file per match";
+    alt.title = "Outlook on Windows often imports only the first match from a multi-match file";
+    alt.onclick = async () => {
+      await addFixturesToCalendar(pending, { separateFiles: true });
+      await renderInbox();
+    };
+    el.appendChild(alt);
+  }
+}
+
+/** "Add to calendar" for an agreed kick-off message (uses the fixture's current time). */
+function appendAgreedCalendarAction(actions, msg) {
+  if (!AGREED_KICKOFF_TYPES.has(msg.message_type) || !msg.fixture_id) return;
+  const f = myFixturesById?.get(String(msg.fixture_id));
+  if (!f) return;
+
+  if (!isUpcomingAgreed(f)) {
+    const note = document.createElement("span");
+    note.className = "inbox-cal-note";
+    note.textContent =
+      f.status === "played"
+        ? "Match played."
+        : f.schedule_status !== "agreed"
+          ? "Kick-off no longer agreed — check the schedule."
+          : "Kick-off has passed.";
+    actions.appendChild(note);
+    return;
+  }
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = f.calendar_added ? "button secondary" : "button";
+  btn.textContent = f.calendar_added ? "📅 Added — download again" : "📅 Add to calendar";
+  btn.title = `Kick-off ${fixtureKickoffLabel(f)} (your local time)`;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const ok = await addFixturesToCalendar([f]);
+    btn.disabled = false;
+    if (ok) {
+      btn.className = "button secondary";
+      btn.textContent = "📅 Added — download again";
+    }
+  };
+  actions.appendChild(btn);
+}
+
 function buildInboxFilters() {
   const el = document.getElementById("inboxFilters");
   if (!el || el.dataset.ready === "1") return;
@@ -371,6 +572,9 @@ async function renderInbox() {
   if (filters) filters.hidden = false;
   buildInboxFilters();
   setArchivedViewMode(viewArchived);
+
+  await loadMyFixtures();
+  renderCalendarCatchup();
 
   const allMessages = await loadInboxMessages(supabase, {
     clubShortName: myClub.short,
@@ -591,6 +795,7 @@ async function renderInbox() {
             return;
           }
           setStatus("Kick-off agreed.");
+          myFixturesById = null;
           await renderInbox();
           await refreshInboxNavBadge();
         } catch (err) {
@@ -637,6 +842,7 @@ async function renderInbox() {
             return;
           }
           setStatus(res.applied ? "Kick-off updated." : res.msg || "Confirmed.");
+          myFixturesById = null;
           await renderInbox();
           await refreshInboxNavBadge();
         } catch (err) {
@@ -660,6 +866,7 @@ async function renderInbox() {
       actions.appendChild(confirmMutualBtn);
       actions.appendChild(scheduleBtn);
     } else if (!viewArchived && !isArchived) {
+      appendAgreedCalendarAction(actions, msg);
       if (action?.href) {
         const openBtn = document.createElement("button");
         openBtn.className = "button";
