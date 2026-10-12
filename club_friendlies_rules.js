@@ -19,9 +19,9 @@ export function getClubFriendliesRules() {
       },
       {
         heading: "Gate receipts",
-        tip: "First 10 paid friendlies each month earn ₿5,000 gate each. Season cap: ₿500,000 total from friendlies.",
+        tip: "First 15 paid friendlies each month earn ₿5,000 gate each. Season cap: ₿500,000 total from friendlies.",
         items: [
-          "First <b>10 paid</b> friendlies each month earn <b>₿5,000</b> each.",
+          "First <b>15 paid</b> friendlies each month earn <b>₿5,000</b> each.",
           "Season cap: <b>₿500,000</b> total from friendlies.",
         ],
       },
