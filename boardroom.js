@@ -364,7 +364,7 @@ function renderSubsidyGrid(preview, loadError) {
     <div class="subsidy-card">
       <h3>Weak squad bonus</h3>
       <p class="subsidy-status">${statusOrDash(bnb.status)}</p>
-      <p class="subsidy-meta">${bnb.count ?? 0} of ${bnb.min_required ?? 14} at rating ≤${bnb.max_rating ?? 72} · ${formatMoney(Number(bnb.flat_bonus ?? 10000000))} bonus when qualified</p>
+      <p class="subsidy-meta">${bnb.count ?? 0} of ${bnb.min_required ?? 15} at rating ≤${bnb.max_rating ?? 73} · ${formatMoney(Number(bnb.flat_bonus ?? 10000000))} bonus when qualified</p>
       <p class="subsidy-amount">Est. payout ${formatMoney(Number(bnb.amount || 0))}</p>
     </div>
   `;

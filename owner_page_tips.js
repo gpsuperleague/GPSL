@@ -157,7 +157,7 @@ export const BOARDROOM_TIPS = {
   manager:
     "Managers sign 2-season deals. Hit ≥1 season target to renew; miss both → leave at market value with a 2-season rehire ban. List/sack in June, July, August, and January (Jan needs transfer window). Sack costs half MV once per season.",
   subsidies:
-    "Status from your current squad. Payouts at season end when all divisions finish 38/38. HG bands: Quota ≤5, Flying 6–8, Pride 9+. Weak squad pays if enough ≤72-rated players.",
+    "Status from your current squad. Payouts at season end when all divisions finish 38/38. HG bands: Quota ≤5, Flying 6–8, Pride 9+. Weak squad pays if enough players are at or below the rating cap (see the card).",
   analysis:
     "Last two seasons’ final league positions (1st at top). Full history on Club History.",
 };

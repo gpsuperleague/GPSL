@@ -244,7 +244,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "gov_bnb",
         label: "Weak squad bonus",
         types: ["gov_bnb_subsidy"],
-        note: "14+ squad players rated ≤72 qualify for a flat ₿10M bonus at season end.",
+        note: "Flat bonus at season end when enough squad players are at or below the rating cap.",
       },
       {
         id: "gov_emergency_tax",
@@ -807,8 +807,8 @@ function subsidyQualifyingNote(lineId, preview) {
   const count = Number(block.count ?? 0);
 
   if (lineId === "gov_bnb") {
-    const min = Number(block.min_required ?? 14);
-    const maxR = block.max_rating ?? 72;
+    const min = Number(block.min_required ?? 15);
+    const maxR = block.max_rating ?? 73;
     const bonus = Number(block.flat_bonus ?? 10000000);
     const qual = `${count} of ${min} at ≤${maxR}`;
     return `Est. ${formatMoney(amt)} — ${qual} for ${formatMoney(bonus)} weak squad bonus${status ? ` · ${status}` : ""} · paid at 38/38`;
@@ -891,7 +891,16 @@ function renderSheetColumnsHead() {
   </div>`;
 }
 
+function weakSquadRuleNote(preview) {
+  const b = preview?.bnb;
+  if (!b?.min_required || b.max_rating == null) return null;
+  return `${b.min_required}+ squad players rated ≤${b.max_rating} qualify for a flat ${formatMoney(
+    Number(b.flat_bonus || 0)
+  )} bonus at season end.`;
+}
+
 function renderFinanceLineRow(line, bucket, running, pending, subsidyPreview) {
+  const note = (line.id === "gov_bnb" && weakSquadRuleNote(subsidyPreview)) || line.note;
   const hasData = bucket && Math.abs(bucket.amount) > 0.001;
   const planned = line.planned && !hasData;
   const isLoan = LOAN_LINE_IDS.has(line.id);
@@ -930,7 +939,7 @@ function renderFinanceLineRow(line, bucket, running, pending, subsidyPreview) {
         <span class="fin-col-running">${formatRunningAmount(running)}</span>
         <span class="fin-col-pending">${formatPendingAmount(pending)}</span>
       </div>
-      ${line.note ? `<p class="fin-line-note">${line.note}</p>` : ""}
+      ${note ? `<p class="fin-line-note">${note}</p>` : ""}
       ${
         bucket?.fromHistory
           ? `<p class="fin-line-note">Season total from completed transfers (transfer history).</p>`
