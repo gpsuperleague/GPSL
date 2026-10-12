@@ -217,11 +217,32 @@ function renderMarkets() {
     return;
   }
 
-  const ordered = [...markets].sort(
+  const shopClosed = markets.some((m) =>
+    String(marketState(m.id).reason || "").startsWith("Betting opens")
+  );
+  const visible = markets.filter((m) => {
+    if (shopClosed || marketState(m.id).running || m.status === "settled") return true;
+    return myBets.some((b) => Number(b.market_id) === Number(m.id) && b.status !== "void");
+  });
+  const hiddenCount = markets.length - visible.length;
+
+  const ordered = [...visible].sort(
     (a, b) => Number(!marketState(a.id).running) - Number(!marketState(b.id).running)
   );
 
-  root.innerHTML = ordered
+  const hiddenNote = hiddenCount
+    ? `<p class="bk-muted">${hiddenCount} market${hiddenCount === 1 ? "" : "s"} hidden until ${
+        hiddenCount === 1 ? "its" : "their"
+      } fixtures are drawn.</p>`
+    : "";
+
+  if (!ordered.length) {
+    root.innerHTML =
+      hiddenNote || `<p class="bk-muted">No competitions have fixtures yet.</p>`;
+    return;
+  }
+
+  root.innerHTML = hiddenNote + ordered
     .map((m) => {
       const state = marketState(m.id);
       const sels = (selectionsByMarket.get(m.id) || []).filter(
