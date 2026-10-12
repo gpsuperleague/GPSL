@@ -289,7 +289,7 @@ function renderAgreedPanel(root, f, sch) {
       </p>
       <p class="meta">${checkinStatus}</p>
       <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
-      <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:#ff9900;">Check your squad</a> before kick-off.</p>
+      <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, 12 subs, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:#ff9900;">Check your squad</a> before kick-off.</p>
       <p class="meta">If only one club checks in, the other is marked as a no-show. If the match is still unplayed when the GPSL month locks, the no-show becomes a <b>3–0 forfeit plus a ₿5m fine</b>.</p>
       ${
         ci.my_has_manager === false

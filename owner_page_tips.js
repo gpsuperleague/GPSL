@@ -203,9 +203,9 @@ export const CHALLENGES_TIPS = {
 
 export const MATCHDAY_TIPS = {
   page:
-    "Save your matchday squad (exactly 11 starters + 0–12 bench) before kick-off — it is checked when you check in. Then submit results with optional squad stats; opponent confirms via Inbox.",
+    "Save your matchday squad (exactly 11 starters + 12 subs) before kick-off — it is checked when you check in. Then submit results with optional squad stats; opponent confirms via Inbox.",
   squad:
-    "Your matchday squad: exactly 11 starters (incl. a GK) + 0–12 bench, no injured or suspended players. Used for every match until you change it, and checked at check-in. Starters auto-tick Started on match stats. Formation presets only apply when you click Apply Default Formation.",
+    "Your matchday squad: exactly 11 starters (incl. a GK) + 12 subs (or every fit player if you have fewer), no injured or suspended players. Used for every match until you change it, and checked at check-in. Starters auto-tick Started on match stats. Formation presets only apply when you click Apply Default Formation.",
   submit:
     "Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Optional stats: exactly 11 Started, 0–5 Subbed on, goals must match your open-play total, one POTM.",
   yellow:

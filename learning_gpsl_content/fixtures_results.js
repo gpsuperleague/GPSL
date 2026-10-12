@@ -234,7 +234,7 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `Before kick-off, save a valid squad on <a href="matchday.html">Match Day</a> (exactly 11 starters incl. a GK, no injured or suspended players) — check-in is refused otherwise.`,
+        `Before kick-off, save a valid squad on <a href="matchday.html">Match Day</a> (exactly 11 starters incl. a GK, 12 subs, no injured or suspended players) — check-in is refused otherwise.`,
         `Both owners open the <b>schedule page</b> and <b>Check in</b> — from 10 minutes before kick-off until 10 minutes after.`,
         `When both have checked in, Match Day unlocks for a <b>30-minute</b> play window.`,
         `<b>Both miss check-in</b> — no fine. Pick a new time on the schedule page and try again.`,

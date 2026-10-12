@@ -14,7 +14,7 @@ export function getMatchdaySquadRules() {
         heading: "How your squad is used",
         items: [
           "You save <b>one squad</b> and it is used for <b>every fixture</b> until you change it — there is no separate submit step.",
-          "It is checked when you <b>check in</b> (from 10 minutes before kick-off): <b>exactly 11 starters</b>, a goalkeeper, and <b>no injured or suspended players</b>. If it fails, check-in is refused.",
+          "It is checked when you <b>check in</b> (from 10 minutes before kick-off): <b>exactly 11 starters</b>, <b>12 subs</b> (every fit player if you have fewer), a goalkeeper, and <b>no injured or suspended players</b>. If it fails, check-in is refused.",
           "Injuries and suspensions change between matches — re-check before each kick-off. You'll get an Inbox warning if your saved squad isn't valid for a kick-off in the next 48 hours.",
           "Your opponent can see your saved XI in the Match Centre preview.",
         ],

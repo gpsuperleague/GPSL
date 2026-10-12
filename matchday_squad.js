@@ -1252,6 +1252,12 @@ export function initMatchdaySquadPanel({
     onChange?.(buildSlotsPayload(state), state);
   }
 
+  /** 12 subs, or every available non-starter when the club cannot name 12 fit players. */
+  function requiredSubsCount() {
+    const available = allPlayers.filter((p) => !statusFor(p)).length;
+    return Math.max(0, Math.min(MAX_BENCH, benchLimit, available - MAX_PITCH));
+  }
+
   function updateMatchdayCompositionStrip() {
     if (!matchdayComposition || !matchdayCompStrip) return;
     const pitchPlayers = [...state.pitch.values()].filter(Boolean);
@@ -1260,12 +1266,16 @@ export function initMatchdaySquadPanel({
     const chip = (label, value, min, ok) =>
       `<span class="matchday-comp-chip ${ok ? "ok" : "short"}" title="${label}: ${value} / ${min}">${label} <b>${value}</b><i>/${min}</i></span>`;
     const startersOk = pitchPlayers.length === MAX_PITCH;
+    const subsRequired = requiredSubsCount();
+    const subsOk = benchPlayers.length >= subsRequired;
     const unavailableN = unavailableSelectedErrors().length;
     let verdict;
     if (!c.ok) {
       verdict = `<span class="matchday-comp-warn">Fix before save</span>`;
     } else if (!startersOk) {
       verdict = `<span class="matchday-comp-warn" title="Check-in is refused until exactly ${MAX_PITCH} starters are saved">Not ready for check-in (${pitchPlayers.length}/${MAX_PITCH} starters)</span>`;
+    } else if (!subsOk) {
+      verdict = `<span class="matchday-comp-warn" title="Check-in is refused until ${subsRequired} subs are saved on the bench">Not ready for check-in (${benchPlayers.length}/${subsRequired} subs)</span>`;
     } else if (unavailableN) {
       verdict = `<span class="matchday-comp-warn">Remove ${unavailableN} unavailable player${unavailableN === 1 ? "" : "s"}</span>`;
     } else {
@@ -1274,6 +1284,7 @@ export function initMatchdaySquadPanel({
     matchdayCompStrip.innerHTML = `
       <span class="matchday-comp-label">Matchday rules</span>
       ${chip("Starters", pitchPlayers.length, MAX_PITCH, startersOk)}
+      ${chip("Subs", benchPlayers.length, subsRequired, subsOk)}
       ${chip("XI GK", c.gkXi ?? c.goalkeepers, c.minGk, c.gkOk)}
       <span class="matchday-comp-chip muted" title="U21 / home-grown minimums apply to your overall club squad only">No U21/HG min on matchday</span>
       ${verdict}`;
@@ -1469,6 +1480,17 @@ export function initMatchdaySquadPanel({
         return;
       }
     }
+    const benchN = payload.filter((s) => s.slot_kind === "bench").length;
+    const subsRequired = requiredSubsCount();
+    if (matchdayComposition && pitchN >= MAX_PITCH && benchN < subsRequired) {
+      if (
+        !confirm(
+          `Only ${benchN}/${subsRequired} subs on the bench.\n\nYou can save this as a draft, but check-in will be refused until ${subsRequired} subs are saved. Save anyway?`
+        )
+      ) {
+        return;
+      }
+    }
     if (!guardFormationRules()) return;
 
     const unavailErrors = unavailableSelectedErrors();
@@ -1509,7 +1531,9 @@ export function initMatchdaySquadPanel({
       statusText.textContent =
         matchdayComposition && pitchN < MAX_PITCH
           ? `Saved ${payload.length} players — not ready for check-in (${pitchN}/${MAX_PITCH} starters).`
-          : `Saved ${payload.length} players.`;
+          : matchdayComposition && benchN < subsRequired
+            ? `Saved ${payload.length} players — not ready for check-in (${benchN}/${subsRequired} subs).`
+            : `Saved ${payload.length} players.`;
     } catch (err) {
       statusText.textContent = err?.message || "Save failed";
       alert(err?.message || "Save failed");
