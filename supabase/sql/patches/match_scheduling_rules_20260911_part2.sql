@@ -548,7 +548,7 @@ BEGIN
     || E'  END;\n\n'
     || E'  RETURN v_out;\nEND;';
 
-  EXECUTE 'CREATE OR REPLACE ' || replace(v_def, v_old, v_new);
+  EXECUTE replace(v_def, v_old, v_new);
   RAISE NOTICE 'Wired window awards + deadline warnings into month-lock jobs';
 EXCEPTION
   WHEN OTHERS THEN
