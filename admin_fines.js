@@ -64,6 +64,61 @@ function renderAutoFines(s) {
     const local = new Date(liveFrom.getTime() - liveFrom.getTimezoneOffset() * 60000);
     input.value = local.toISOString().slice(0, 16);
   }
+  renderFineSwitches(s);
+}
+
+function renderFineSwitches(s) {
+  const wrap = document.getElementById("autoFineSwitches");
+  if (!wrap) return;
+  const rows = Array.isArray(s?.switches) ? s.switches : null;
+  if (!rows) {
+    wrap.innerHTML = "❌ Run <code>auto_fines_per_type_switches_20261012.sql</code> in Supabase.";
+    return;
+  }
+  if (!rows.length) {
+    wrap.textContent = "No automatic fine types found.";
+    return;
+  }
+  const masterOff = !s.active;
+  wrap.innerHTML = rows
+    .map((r) => {
+      const amount =
+        r.amount_mode === "manual" || r.amount == null
+          ? ""
+          : ` <span style="color:#999;">${formatMoney(Number(r.amount) || 0)}</span>`;
+      const waived = Number(r.waived_count || 0)
+        ? ` <span style="color:#fc6;font-size:11px;">(${r.waived_count} waived)</span>`
+        : "";
+      return `<label style="display:flex;gap:6px;align-items:center;cursor:pointer;${masterOff ? "opacity:.6;" : ""}">
+        <input type="checkbox" data-fine-switch="${escapeHtml(r.code)}"${r.enabled ? " checked" : ""}>
+        <span>${escapeHtml(r.label)}${amount}${waived}</span>
+      </label>`;
+    })
+    .join("");
+
+  wrap.querySelectorAll("[data-fine-switch]").forEach((box) => {
+    box.addEventListener("change", async () => {
+      const code = box.getAttribute("data-fine-switch");
+      box.disabled = true;
+      setStatus("autoFinesStatus", "Saving…");
+      const { data, error } = await supabase.rpc("admin_set_auto_fine_switch", {
+        p_code: code,
+        p_enabled: box.checked,
+      });
+      if (error) {
+        box.checked = !box.checked;
+        box.disabled = false;
+        setStatus("autoFinesStatus", "❌ " + error.message, false);
+        return;
+      }
+      renderAutoFines(data);
+      const label = rows.find((r) => r.code === code)?.label || code;
+      setStatus(
+        "autoFinesStatus",
+        box.checked ? `✅ ${label}: ON` : `✅ ${label}: OFF (waived)`
+      );
+    });
+  });
 }
 
 async function loadAutoFines() {

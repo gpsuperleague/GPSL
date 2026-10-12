@@ -67,6 +67,45 @@ function clubBadgeUrl(short) {
   return code ? `images/club_badges/${code}.png` : null;
 }
 
+/** Admin-only "post as" authors (stored as natter_posts.author_kind). */
+const LEAGUE_AUTHORS = {
+  ADMIN: { label: "GPSL Admin", badge: "images/League/Logos/GPSL_logo.png" },
+  SUPERLEAGUE: { label: "SuperLeague", badge: "images/league_badges/superleague.png" },
+  CHAMPIONSHIP_A: { label: "Championship A", badge: "images/league_badges/championship.png" },
+  CHAMPIONSHIP_B: { label: "Championship B", badge: "images/league_badges/championship.png" },
+  CHAMPIONSHIP: { label: "Championship", badge: "images/league_badges/championship.png" },
+};
+
+let postAs = "club";
+
+function postBadgeUrl(post) {
+  return LEAGUE_AUTHORS[post?.author_kind]?.badge || clubBadgeUrl(post?.club_short);
+}
+
+function ensurePostAsSelect() {
+  if (!isAdmin || document.getElementById("natterPostAs")) return;
+  const meta = document.getElementById("composeMeta");
+  if (!meta) return;
+  const wrap = document.createElement("div");
+  wrap.className = "natter-compose-meta";
+  wrap.style.marginTop = "4px";
+  const hasClub = Boolean(composeState?.club_short_name);
+  wrap.innerHTML =
+    `<label>Post as <select id="natterPostAs">` +
+    (hasClub ? `<option value="club">My club</option>` : "") +
+    Object.entries(LEAGUE_AUTHORS)
+      .map(([k, a]) => `<option value="${k}">${escapeHtml(a.label.toUpperCase())}</option>`)
+      .join("") +
+    `</select></label>`;
+  meta.after(wrap);
+  const sel = wrap.querySelector("select");
+  if (!hasClub) postAs = sel.value;
+  sel.addEventListener("change", () => {
+    postAs = sel.value;
+    renderComposeUi(composeState);
+  });
+}
+
 function publicImageUrl(path) {
   if (!path) return null;
   const { data } = supabase.storage.from("natter-media").getPublicUrl(path);
@@ -120,7 +159,7 @@ function syncPostButton() {
   if (!btn || !input) return;
   const body = String(input.value || "").trim();
   const ok =
-    Boolean(composeState?.can_compose) &&
+    (postAs === "club" ? Boolean(composeState?.can_compose) : isAdmin) &&
     body.length >= 1 &&
     body.length <= MAX_CHARS;
   btn.disabled = !ok;
@@ -452,10 +491,10 @@ async function onImagePicked(file) {
   }
 }
 
-function setComposeAvatar(clubShort, clubName) {
+function setComposeAvatar(clubShort, clubName, badgeOverride = null) {
   const badge = document.getElementById("composeBadge");
   const fallback = document.getElementById("composeFallback");
-  const badgeSrc = clubBadgeUrl(clubShort);
+  const badgeSrc = badgeOverride || clubBadgeUrl(clubShort);
 
   if (badge && badgeSrc) {
     badge.alt = clubName || "";
@@ -530,10 +569,21 @@ function renderComposeUi(state) {
 
   setComposeAvatar(clubShort, clubName);
 
-  if (compose) compose.hidden = !state?.can_compose;
-  if (banner) banner.hidden = !state?.already_posted;
+  const adminCanPost = isAdmin && Boolean(ctx.gpsl_month);
+  if (adminCanPost) ensurePostAsSelect();
+  const league = postAs !== "club" ? LEAGUE_AUTHORS[postAs] : null;
+  if (league) {
+    if (composeClub) composeClub.textContent = league.label;
+    if (composeMeta) {
+      composeMeta.textContent = `League post for ${natterWindowLabel(ctx)} — separate from your club's posts`;
+    }
+    setComposeAvatar("", league.label, league.badge);
+  }
 
-  if (state?.can_compose) {
+  if (compose) compose.hidden = !(state?.can_compose || adminCanPost);
+  if (banner) banner.hidden = !state?.already_posted || adminCanPost;
+
+  if (state?.can_compose || adminCanPost) {
     updateCharCount();
   }
 }
@@ -670,7 +720,7 @@ function renderFeed(posts) {
   feed.innerHTML = feedPosts
     .map((p) => {
       const club = p.club_name || p.club_short || "Club";
-      const badge = clubBadgeUrl(p.club_short);
+      const badge = postBadgeUrl(p);
       const avatar = badge
         ? `<img class="natter-avatar" src="${escapeHtml(badge)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.hidden=false)">`
         : "";
@@ -873,7 +923,8 @@ async function uploadImage(clubShort) {
 async function submitPost() {
   const input = document.getElementById("natterBody");
   const btn = document.getElementById("natterPostBtn");
-  if (!input || !composeState?.can_compose) return;
+  const asLeague = isAdmin && postAs !== "club";
+  if (!input || !(composeState?.can_compose || asLeague)) return;
 
   const body = String(input.value || "").trim();
   if (!body) {
@@ -891,13 +942,22 @@ async function submitPost() {
   try {
     let imagePath = null;
     if (selectedFile) {
+      if (!composeState?.club_short_name) {
+        throw new Error("Images need a club folder — remove the image or post from an account with a club.");
+      }
       imagePath = await uploadImage(composeState.club_short_name);
     }
 
-    const { data, error } = await supabase.rpc("natter_create_post", {
-      p_body: body,
-      p_image_path: imagePath,
-    });
+    const { data, error } = asLeague
+      ? await supabase.rpc("natter_admin_create_league_post", {
+          p_author_kind: postAs,
+          p_body: body,
+          p_image_path: imagePath,
+        })
+      : await supabase.rpc("natter_create_post", {
+          p_body: body,
+          p_image_path: imagePath,
+        });
 
     if (error) {
       throw new Error(error.message || "Post failed.");
@@ -913,13 +973,20 @@ async function submitPost() {
         too_long: `Too long — max ${MAX_CHARS} characters.`,
         invalid_image_path: "Image path was rejected.",
         no_club: "No club found for your account.",
+        admin_only: "Only the GPSL admin can post as the league.",
+        bad_author: "Pick who to post as.",
+        no_active_month: "No active Natter window right now.",
       };
       throw new Error(reasons[data?.reason] || "Could not post.");
     }
 
     input.value = "";
     clearSelectedImage();
-    setComposeHint("Posted — appears in next month’s GPSL Sport Club news.");
+    setComposeHint(
+      asLeague
+        ? `Posted as ${LEAGUE_AUTHORS[postAs]?.label || postAs}.`
+        : "Posted — appears in next month’s GPSL Sport Club news."
+    );
     await loadComposeState();
     await loadMonths();
     await loadFeed();

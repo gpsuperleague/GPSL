@@ -75,6 +75,12 @@
           </div>
         </div>
         <div id="autoFinesStatus" class="status-line"></div>
+        <h3 style="margin:14px 0 4px;font-size:15px;">Fine types</h3>
+        <p class="note" style="margin:0 0 8px;">
+          Untick a type to waive just that fine (owners get the "would have been fined" message).
+          Ticks only matter while the master switch above is ON — when it's OFF everything is waived.
+        </p>
+        <div id="autoFineSwitches" class="note" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:4px 16px;">Loading…</div>
       </div>
 
       <div class="card">
@@ -204,6 +210,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fines.js?v=20260929-auto-fines"></script>
+  <script type="module" src="admin_fines.js?v=20261012-fine-ticks"></script>
 </body>
 </html>
