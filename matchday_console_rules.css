@@ -111,6 +111,15 @@
   color: #ffb060 !important;
 }
 
+.mr-console-check .mr-prematch-check-sub {
+  margin: 2px 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffcc66;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .mr-console-list {
   list-style: none;
   margin: 0;

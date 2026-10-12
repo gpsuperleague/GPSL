@@ -159,7 +159,7 @@ export function prematchConsoleChecklistHtml() {
     ["Match length", "10 minutes | Injuries off (all other settings default)"],
     [
       "Display",
-      "Show Manager · Show Subtactic · Show Squad · No individual player instructions · Show Fluid Formation",
+      "Manager · Subtactic (Standard formations only) · Squad · Player instructions (Blank) · Fluid Formation (Standard formations only)",
     ],
     [
       "Boosts",
@@ -185,6 +185,7 @@ export function prematchConsoleChecklistHtml() {
   return `
     <div class="mr-prematch-check mr-console-check">
       <div class="mr-prematch-check-title">Prematch console checklist</div>
+      <p class="mr-prematch-check-sub">Show all on recording</p>
       <p class="mr-prematch-check-note">Confirm these in eFootball before kick-off (not verified by the site).</p>
       <ul class="mr-console-list">${rows}</ul>
     </div>`;
@@ -200,7 +201,7 @@ export function getMatchdayConsoleRulesCards() {
           "<b>10-minute</b> match, <b>Injuries off</b> (all other settings default).",
           "<b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b> on — they must stay visible on the match recording or you can be reported and fined.",
           "<b>Individual player instructions are blocked</b> — do not use them (₿10m if used).",
-          "<b>Show Fluid Formation</b> on.",
+          "<b>Subtactic</b> and <b>Fluid Formation</b>: <b>standard formations only</b>.",
           "<b>Single Red or Blue</b> only from the <b>80th minute</b> (before 80' = fine).",
           "<b>Double Red/Blue</b> only from the <b>90th minute</b> (before 90' = fine).",
           "<b>Cup knockout (1-leg):</b> Extra Time and Penalties if level after 90.",

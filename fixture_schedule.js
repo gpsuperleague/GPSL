@@ -29,7 +29,7 @@ import {
   matchConsoleStripHtml,
   pitchBehaviourPanelHtml,
   wirePitchAck,
-} from "./matchday_console_rules.js?v=20261012-console-text";
+} from "./matchday_console_rules.js?v=20261012-console-text2";
 import { downloadIcs, fixtureKickoffEvent } from "./calendar_ics.js";
 
 function replayResetConfirmMessage(allowances) {

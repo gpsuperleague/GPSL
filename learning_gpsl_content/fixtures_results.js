@@ -347,7 +347,7 @@ export const SECTION_MATCHDAY = {
     {
       type: "ul",
       items: [
-        `<b>Display:</b> 10-minute match · <b>Injuries off</b> · Show Manager · Show Subtactic · Show Squad · <b>no individual player instructions</b> · Show Fluid Formation.`,
+        `<b>Display:</b> 10-minute match · <b>Injuries off</b> · show on recording: Manager · Subtactic (standard formations only) · Squad · Player instructions (<b>blank</b>) · Fluid Formation (standard formations only).`,
         `<b>Boosts:</b> Single Red/Blue from the <b>80th</b> minute · Double Red/Blue from the <b>90th</b> only.`,
         `<b>Pause before KO:</b> PA3 or PA4 (PA1 and PA2 not allowed) · Advanced skill only.`,
         `<b>On the pitch:</b> NO DOGSO · NO TIMEWASTING · NO MATCH MANIPULATION.`,
