@@ -70,6 +70,40 @@
     .friendly-meta b { color:#ccc; font-weight:600; }
     .empty { color:#888; padding:24px; }
     .pending-note { color:#fc9; font-size:12px; margin-top:6px; }
+    .wdl {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:22px; height:22px; border-radius:4px; font-size:12px; font-weight:bold;
+      color:#111; margin-right:3px;
+    }
+    .wdl--W { background:#3fbf6f; }
+    .wdl--D { background:#c9b24a; }
+    .wdl--L { background:#d9534f; color:#fff; }
+    .wdl-pending .wdl { opacity:.45; outline:1px dashed #888; }
+    .fdr {
+      font-size:11px; font-weight:bold; padding:3px 8px; border-radius:4px;
+      cursor:help;
+    }
+    .fdr--1 { background:#1a5030; color:#9fdfb0; }
+    .fdr--2 { background:#2a5040; color:#b8e0a8; }
+    .fdr--3 { background:#504820; color:#e0d090; }
+    .fdr--4 { background:#603028; color:#f0b090; }
+    .fdr--5 { background:#602028; color:#f09090; }
+    #friendliesForm {
+      display:none; background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:12px 16px; margin:0 0 18px;
+    }
+    .form-head { color:#ff9900; font-weight:bold; margin-bottom:8px; }
+    .form-hint { color:#888; font-weight:normal; font-size:12px; }
+    .form-row {
+      display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px;
+      padding:6px 0; border-top:1px solid #2a2a2a;
+    }
+    .form-row:first-of-type { border-top:none; }
+    .form-month { width:48px; color:#ccc; font-weight:bold; }
+    .form-chips { display:inline-flex; flex-wrap:wrap; gap:2px; }
+    .form-stats { color:#aaa; font-size:13px; }
+    .form-stats b { color:#ffcc66; }
+    .form-empty { color:#777; font-size:13px; }
   </style>
 </head>
 <body>
@@ -103,8 +137,9 @@
     </div>
     <div id="friendliesError"></div>
     <div id="friendliesSummary" class="summary gpsl-has-tip" data-gpsl-tip="Quick counts for this season: paid friendlies, gate earned, and remaining room under the season cap." tabindex="0"></div>
+    <div id="friendliesForm"></div>
     <div id="friendliesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_friendlies.js?v=20260915-myclub-tips"></script>
+  <script type="module" src="club_friendlies.js?v=20261012-form-diff"></script>
 </body>
 </html>

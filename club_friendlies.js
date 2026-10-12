@@ -5,6 +5,51 @@ import { formatMoney } from "./competition.js";
 import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20260915-myclub-tips";
 
 let myClub = { short: null };
+/** Opponent ShortName (upper) → { fdr, ranking_fdr, bookies_fdr, bookies_rank, bookies_pool } */
+let difficultyByClub = {};
+
+const FORM_MONTHS = [
+  { key: "june", label: "June" },
+  { key: "july", label: "July" },
+];
+
+function myResult(row) {
+  const left = Number(row.score_left);
+  const right = Number(row.score_right);
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
+  const mine = row.is_home ? left : right;
+  const theirs = row.is_home ? right : left;
+  if (mine > theirs) return { code: "W", mine, theirs };
+  if (mine < theirs) return { code: "L", mine, theirs };
+  return { code: "D", mine, theirs };
+}
+
+const RESULT_TITLES = { W: "Win", D: "Draw", L: "Loss" };
+
+function resultChip(code, title) {
+  if (!code) return "";
+  return `<span class="wdl wdl--${code}" title="${escapeHtml(title || RESULT_TITLES[code])}">${code}</span>`;
+}
+
+function opponentShort(row) {
+  return String((row.is_home ? row.club_right : row.club_left) || "").toUpperCase();
+}
+
+function difficultyChip(row) {
+  const d = difficultyByClub[opponentShort(row)];
+  const fdr = Number(d?.fdr);
+  if (!Number.isFinite(fdr) || fdr < 1) return "";
+  const parts = [];
+  if (d.ranking_fdr != null) parts.push(`Ranking ${d.ranking_fdr}/5`);
+  if (d.bookies_fdr != null) {
+    parts.push(
+      `Bookies ${d.bookies_fdr}/5` +
+        (d.bookies_rank ? ` (#${d.bookies_rank} of ${d.bookies_pool})` : "")
+    );
+  }
+  const title = `Difficulty ${fdr}/5 — ${parts.join(" · ") || "ranking"}`;
+  return `<span class="fdr fdr--${fdr}" title="${escapeHtml(title)}">Diff ${fdr}</span>`;
+}
 
 function showError(msg) {
   const el = document.getElementById("friendliesError");
@@ -60,12 +105,15 @@ function payoutBadge(row) {
 }
 
 function renderConfirmedCard(row) {
+  const res = myResult(row);
   return `
     <div class="friendly-card">
       <div class="friendly-top">
+        ${resultChip(res?.code)}
         <span class="friendly-badge friendly">Friendly</span>
         <div class="friendly-match">${matchLineHtml(row)}</div>
         <span class="friendly-score">${escapeHtml(row.score_left)} - ${escapeHtml(row.score_right)}</span>
+        ${difficultyChip(row)}
         ${payoutBadge(row)}
       </div>
       <div class="friendly-meta">
@@ -81,12 +129,15 @@ function renderPendingCard(row) {
   const waiting = row.i_reported
     ? "Waiting for opponent to post the matching result in Discord."
     : "Opponent posted — post the matching result in Discord to confirm.";
+  const res = myResult(row);
   return `
     <div class="friendly-card">
       <div class="friendly-top">
+        ${res ? `<span class="wdl-pending">${resultChip(res.code, `${RESULT_TITLES[res.code]} (not confirmed yet)`)}</span>` : ""}
         <span class="friendly-badge pending">Pending</span>
         <div class="friendly-match">${matchLineHtml(row)}</div>
         <span class="friendly-score">${escapeHtml(row.score_left)} - ${escapeHtml(row.score_right)}</span>
+        ${difficultyChip(row)}
       </div>
       <div class="friendly-meta">
         <span><b>Stadium</b> ${escapeHtml(row.stadium || "—")}</span>
@@ -136,12 +187,85 @@ function renderSummary(data) {
   `;
 }
 
+function renderFormTracker(months) {
+  const el = document.getElementById("friendliesForm");
+  if (!el) return;
+  const byKey = new Map(
+    months.map((m) => [String(m.gpsl_month || "").toLowerCase(), m])
+  );
+
+  const rows = FORM_MONTHS.map(({ key, label }) => {
+    const games = (byKey.get(key)?.friendlies || [])
+      .slice()
+      .sort((a, b) => new Date(a.confirmed_at) - new Date(b.confirmed_at));
+    const results = games.map((g) => ({ g, r: myResult(g) })).filter((x) => x.r);
+
+    if (!results.length) {
+      return `
+        <div class="form-row">
+          <span class="form-month">${label}</span>
+          <span class="form-empty">No confirmed friendlies</span>
+        </div>`;
+    }
+
+    const w = results.filter((x) => x.r.code === "W").length;
+    const d = results.filter((x) => x.r.code === "D").length;
+    const l = results.filter((x) => x.r.code === "L").length;
+    const gf = results.reduce((s, x) => s + x.r.mine, 0);
+    const ga = results.reduce((s, x) => s + x.r.theirs, 0);
+    const ppg = (w * 3 + d) / results.length;
+    const fdrs = results
+      .map((x) => Number(difficultyByClub[opponentShort(x.g)]?.fdr))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const avgFdr = fdrs.length ? fdrs.reduce((s, n) => s + n, 0) / fdrs.length : null;
+
+    const chips = results
+      .map(({ g, r }) => {
+        const opp = opponentShort(g);
+        return resultChip(r.code, `${RESULT_TITLES[r.code]} ${r.mine}-${r.theirs} vs ${opp}`);
+      })
+      .join("");
+
+    return `
+      <div class="form-row">
+        <span class="form-month">${label}</span>
+        <span class="form-chips" title="Oldest → newest">${chips}</span>
+        <span class="form-stats">
+          <b>${w}</b>W <b>${d}</b>D <b>${l}</b>L ·
+          Goals <b>${gf}-${ga}</b> ·
+          <b>${ppg.toFixed(2)}</b> pts/game${
+            avgFdr != null ? ` · Avg difficulty <b>${avgFdr.toFixed(1)}</b>` : ""
+          }
+        </span>
+      </div>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="form-head">Pre-season form <span class="form-hint">(confirmed friendlies, oldest → newest)</span></div>
+    ${rows}
+  `;
+  el.style.display = "block";
+}
+
+async function loadDifficulty() {
+  const { data, error } = await supabase.rpc("club_friendlies_opponent_difficulty");
+  if (error) {
+    console.warn("Friendly difficulty unavailable:", error.message);
+    difficultyByClub = {};
+    return;
+  }
+  difficultyByClub = data && typeof data === "object" ? data : {};
+}
+
 async function loadPage() {
   showError("");
   const root = document.getElementById("friendliesRoot");
   root.innerHTML = `<p class="empty">Loading…</p>`;
 
-  const { data, error } = await supabase.rpc("club_friendlies_my_club");
+  const [{ data, error }] = await Promise.all([
+    supabase.rpc("club_friendlies_my_club"),
+    loadDifficulty(),
+  ]);
   if (error) {
     root.innerHTML = `<p class="empty">Could not load friendlies.</p>`;
     showError(
@@ -163,6 +287,7 @@ async function loadPage() {
   renderSummary(data);
 
   const months = Array.isArray(data.months) ? data.months : [];
+  renderFormTracker(months);
   if (!months.length) {
     root.innerHTML = `
       <p class="empty">
