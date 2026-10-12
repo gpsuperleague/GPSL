@@ -781,7 +781,7 @@ export const ADMIN_MAIN_NAV = [
         "Close Finances",
         "admin_wage_bills.html",
         null,
-        "LAST money step on the OLD season: wages + manager salary + 34+ + star tax → stadium maintenance → debt interest → FFP → balance interest, then refreshes season finance archive. Do this BEFORE End season / Create Pre-Season. Expiry transfers are NOT here — they post on Create Pre-Season to the new year."
+        "LAST money step on the OLD season: wages + manager salary + 34+ + star tax → stadium maintenance → FFP (balance/debt interest is monthly at each month lock), then refreshes season finance archive. Do this BEFORE End season / Create Pre-Season. Expiry transfers are NOT here — they post on Create Pre-Season to the new year."
       ),
     ],
   },

@@ -142,7 +142,7 @@ BEGIN
     || E'  RETURN v_out;\n'
     || E'END;';
 
-  EXECUTE 'CREATE OR REPLACE ' || replace(v_def, v_old, v_new);
+  EXECUTE replace(v_def, v_old, v_new);
   RAISE NOTICE 'Wired month-end balance snapshots into competition_run_month_lock_jobs';
 EXCEPTION
   WHEN OTHERS THEN

@@ -22,9 +22,9 @@
         <ol class="note" style="margin:0 0 12px 18px;line-height:1.5">
           <li><b>Wage bills</b> — player wages, manager salary (weekly × 52), 34+ fee, star tax</li>
           <li><b>Stadium maintenance</b> — capacity × ₿1,500 × maintenance % (Stadium costs)</li>
-          <li><b>Debt interest</b> — bank rate (default 5%) on overdrawn balances</li>
+          <li><b>Debt interest</b> — skipped while monthly interest is on (0.5% a month on overdrafts at each month-end lock)</li>
           <li><b>FFP</b> — flat ₿50M if balance ≤ −₿100M; then release highest-MV players @ MV until balance &gt; −₿99,999,999; buy embargo for the next transfer window</li>
-          <li><b>Balance interest</b> — 0.5% credit on positive balances only</li>
+          <li><b>Balance interest</b> — skipped while monthly interest is on (0.25% a month on positive balances at each month-end lock)</li>
           <li><b>Finance archive refresh</b> — updates Season accounts snapshot (so Archive-before-this is safe)</li>
         </ol>
         <p class="note">
@@ -93,6 +93,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_wage_bills.js?v=20260928-resettle2"></script>
+  <script type="module" src="admin_wage_bills.js?v=20261012-monthly-interest"></script>
 </body>
 </html>

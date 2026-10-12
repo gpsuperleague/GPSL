@@ -179,9 +179,9 @@ async function closeFinances() {
   if (
     !confirm(
       "Close Finances for the current season?\n\n" +
-        "This posts wage bills, stadium maintenance, debt interest, " +
-        "FFP (₿50M + MV player releases until above −₿99,999,999 + next-window buy embargo), " +
-        "and 0.5% interest on positive balances.\n\n" +
+        "This posts wage bills, stadium maintenance and " +
+        "FFP (₿50M + MV player releases until above −₿99,999,999 + next-window buy embargo). " +
+        "Balance and debt interest are charged monthly at each month-end lock, not here.\n\n" +
         "Already-posted lines are skipped."
     )
   ) {

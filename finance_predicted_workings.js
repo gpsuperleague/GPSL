@@ -139,11 +139,11 @@ export function renderPredictedWorkingsHtml(data, extra = {}) {
   );
   if (projected >= 0) {
     missing.push(
-      "<b>Balance interest</b> — a small credit on a positive balance at Close Finances. Not estimated."
+      "<b>Balance interest</b> — 0.25% of a positive balance paid at each month-end check-in. Not estimated."
     );
   } else {
     missing.push(
-      "<b>Debt interest</b> — charged on a negative balance at Close Finances. Not estimated, so the real figure will be lower."
+      "<b>Overdraft interest</b> — 0.5% of the overdraft charged at each month-end check-in. Not estimated, so the real figure will be lower."
     );
   }
   if (projected <= FFP_THRESHOLD) {
