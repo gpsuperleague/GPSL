@@ -176,7 +176,7 @@ function renderSummary(data) {
   const el = document.getElementById("friendliesSummary");
   if (!el) return;
   const seasonPaid = Number(data.season_paid_total) || 0;
-  const seasonCap = Number(data.season_cap) || 500000;
+  const seasonCap = Number(data.season_cap) || 750000;
   const payout = Number(data.payout_amount) || 5000;
   const monthCap = Number(data.month_cap) || 15;
   el.innerHTML = `
