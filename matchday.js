@@ -47,7 +47,7 @@ import {
   pitchBehaviourPanelHtml,
   wirePitchAck,
   getMatchdayConsoleRulesCards,
-} from "./matchday_console_rules.js?v=20260926-dmf-amf-caps";
+} from "./matchday_console_rules.js?v=20261012-console-text";
 import { playerNameLinkHtml } from "./player_links.js";
 import { fullClubName } from "./clubs_lookup.js";
 import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261004-guidance";

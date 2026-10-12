@@ -156,10 +156,10 @@ export function wirePitchAck(root, opts = {}) {
 /** Prematch checklist for match report (soft honesty items). */
 export function prematchConsoleChecklistHtml() {
   const rows = [
-    ["Match length", "10 minutes (all other settings default)"],
+    ["Match length", "10 minutes | Injuries off (all other settings default)"],
     [
       "Display",
-      "Show Manager · Show Subtactic · Show Squad · No individual player instructions · Fluid Formation allowed (On preferred)",
+      "Show Manager · Show Subtactic · Show Squad · No individual player instructions · Show Fluid Formation",
     ],
     [
       "Boosts",
@@ -172,12 +172,12 @@ export function prematchConsoleChecklistHtml() {
     ],
     [
       "Stadium",
-      "Licensed = real stadium · else Konami (home-kit colours, borders only, real-life name)",
+      "Licensed Club = Licensed Stadium · else Konami (DECORATED as home-kit colours, borders only, real-life name)",
     ],
   ]
     .map(
       ([k, v]) =>
-        `<li><span class="mr-console-k">${escapeHtml(k)}</span><span class="mr-console-v">${escapeHtml(
+        `<li><span class="mr-console-k">${escapeHtml(k)}:</span> <span class="mr-console-v">${escapeHtml(
           v
         )}</span></li>`
     )
@@ -197,10 +197,10 @@ export function getMatchdayConsoleRulesCards() {
       {
         heading: "Display checks",
         items: [
-          "<b>10-minute</b> match (all other settings default).",
+          "<b>10-minute</b> match, <b>Injuries off</b> (all other settings default).",
           "<b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b> on — they must stay visible on the match recording or you can be reported and fined.",
           "<b>Individual player instructions are blocked</b> — do not use them (₿10m if used).",
-          "<b>Fluid Formation</b> is <b>allowed</b> — set to <b>On</b> if preferred.",
+          "<b>Show Fluid Formation</b> on.",
           "<b>Single Red or Blue</b> only from the <b>80th minute</b> (before 80' = fine).",
           "<b>Double Red/Blue</b> only from the <b>90th minute</b> (before 90' = fine).",
           "<b>Cup knockout (1-leg):</b> Extra Time and Penalties if level after 90.",

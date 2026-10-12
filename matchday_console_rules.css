@@ -119,9 +119,8 @@
 }
 
 .mr-console-list li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
+  display: block;
+  line-height: 1.45;
   margin: 4px 0;
   color: #ddd;
 }
@@ -129,10 +128,8 @@
 .mr-console-k {
   color: #ff9900;
   font-weight: 600;
-  min-width: 110px;
 }
 
 .mr-console-v {
   color: #ccc;
-  flex: 1 1 160px;
 }
