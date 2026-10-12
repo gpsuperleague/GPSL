@@ -23,6 +23,93 @@ import {
 
 const MAX_OWNER_TAG_LEN = 64;
 
+const TRANSLATE_LANGUAGES = [
+  ["AR", "العربية — Arabic"],
+  ["BG", "Български — Bulgarian"],
+  ["CS", "Čeština — Czech"],
+  ["DA", "Dansk — Danish"],
+  ["DE", "Deutsch — German"],
+  ["EL", "Ελληνικά — Greek"],
+  ["ES", "Español — Spanish"],
+  ["ET", "Eesti — Estonian"],
+  ["FI", "Suomi — Finnish"],
+  ["FR", "Français — French"],
+  ["HU", "Magyar — Hungarian"],
+  ["ID", "Bahasa Indonesia — Indonesian"],
+  ["IT", "Italiano — Italian"],
+  ["JA", "日本語 — Japanese"],
+  ["KO", "한국어 — Korean"],
+  ["LT", "Lietuvių — Lithuanian"],
+  ["LV", "Latviešu — Latvian"],
+  ["NB", "Norsk — Norwegian"],
+  ["NL", "Nederlands — Dutch"],
+  ["PL", "Polski — Polish"],
+  ["PT-BR", "Português (Brasil) — Portuguese (Brazil)"],
+  ["PT-PT", "Português (Portugal) — Portuguese (Portugal)"],
+  ["RO", "Română — Romanian"],
+  ["RU", "Русский — Russian"],
+  ["SK", "Slovenčina — Slovak"],
+  ["SL", "Slovenščina — Slovenian"],
+  ["SV", "Svenska — Swedish"],
+  ["TR", "Türkçe — Turkish"],
+  ["UK", "Українська — Ukrainian"],
+  ["ZH", "中文 (简体) — Chinese (Simplified)"],
+];
+
+function setLanguageHint(message, isError = false) {
+  const el = document.getElementById("ownerLanguageHint");
+  if (!el) return;
+  el.textContent = message || "";
+  el.style.color = isError ? "#ff6b6b" : "#8bc34a";
+}
+
+async function wireOwnerLanguage() {
+  const select = document.getElementById("ownerLanguageSelect");
+  const dmBox = document.getElementById("ownerLanguageDm");
+  const saveBtn = document.getElementById("saveOwnerLanguageBtn");
+  if (!select || !dmBox || !saveBtn) return;
+
+  select.innerHTML = [
+    `<option value="">English (no translation)</option>`,
+    ...TRANSLATE_LANGUAGES.map(([code, label]) => `<option value="${code}">${label}</option>`),
+  ].join("");
+
+  const syncDmBox = () => {
+    dmBox.disabled = !select.value;
+  };
+  select.addEventListener("change", syncDmBox);
+
+  const { data, error } = await supabase.rpc("my_owner_language_get");
+  if (error) {
+    console.warn("my_owner_language_get:", error);
+    setLanguageHint("Translation settings unavailable right now.", true);
+    saveBtn.disabled = true;
+    return;
+  }
+  select.value = data?.language || "";
+  dmBox.checked = data?.dm_announcements !== false;
+  syncDmBox();
+
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    setLanguageHint("Saving…");
+    const { data: res, error: saveErr } = await supabase.rpc("my_owner_language_set", {
+      p_language: select.value || null,
+      p_dm_announcements: dmBox.checked,
+    });
+    saveBtn.disabled = false;
+    if (saveErr || res?.ok === false) {
+      setLanguageHint(`Could not save (${saveErr?.message || res?.reason || "error"}).`, true);
+      return;
+    }
+    setLanguageHint(
+      select.value
+        ? "Saved. In Discord: right-click a message → Apps → Translate."
+        : "Saved — translation off."
+    );
+  });
+}
+
 function normalizeOwnerTagInput(raw) {
   return String(raw ?? "")
     .trim()
@@ -762,6 +849,7 @@ async function initOwnerDetailsPage() {
   });
   wireOwnerBadgeField(user.id, () => storedTag || ownerEls.input.value);
   await refreshOwnerSupporterBadgeGate();
+  await wireOwnerLanguage();
 
   const { data: club, error } = await loadOwnerClub(user.id);
 

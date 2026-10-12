@@ -84,8 +84,78 @@ async function loadAlerts() {
   });
 }
 
+const SITE_BASE = "https://gpsuperleague.github.io/GPSL/";
+const DISCORD_DM_LIMIT = 2000;
+
+function vacantClubsMessage(data) {
+  const clubs = Array.isArray(data?.clubs) ? data.clubs : [];
+  if (!clubs.length) return "";
+  const lines = [
+    `**GPSL — clubs looking for an owner${data.season_label ? ` (${data.season_label})` : ""}**`,
+  ];
+  let division = null;
+  for (const c of clubs) {
+    if (c.division_label !== division) {
+      division = c.division_label;
+      lines.push("", `**${division}**`);
+    }
+    lines.push(`• ${c.club_name} (${c.short_name})`);
+  }
+  lines.push(
+    "",
+    `Browse them: ${SITE_BASE}club_database.html (Owner filter → Vacant)`,
+    "Interested in one? Reply here and let us know which."
+  );
+  return lines.join("\n");
+}
+
+async function loadVacantClubs() {
+  const text = document.getElementById("vacantText");
+  setStatus("vacantStatus", "Loading…");
+  const { data, error } = await supabase.rpc("staff_vacant_clubs_list");
+  if (error || data?.ok === false) {
+    setStatus(
+      "vacantStatus",
+      `${error?.message || data?.reason || "Could not load"} — run staff_vacant_clubs_list_20261012.sql`,
+      false
+    );
+    if (text) text.value = "";
+    return;
+  }
+  const message = vacantClubsMessage(data);
+  if (text) text.value = message;
+  const count = Array.isArray(data?.clubs) ? data.clubs.length : 0;
+  if (!count) {
+    setStatus("vacantStatus", "No vacant clubs this season.", true);
+    return;
+  }
+  setStatus(
+    "vacantStatus",
+    message.length > DISCORD_DM_LIMIT
+      ? `${count} vacant club(s) · ${message.length} characters — over Discord's 2000 limit, send in two parts.`
+      : `${count} vacant club(s).`,
+    message.length <= DISCORD_DM_LIMIT ? true : "warn"
+  );
+}
+
+async function copyVacantClubs() {
+  const text = document.getElementById("vacantText");
+  if (!text?.value) await loadVacantClubs();
+  if (!text?.value) return;
+  try {
+    await navigator.clipboard.writeText(text.value);
+    setStatus("vacantStatus", "Copied — paste it into the member's Discord DM.", true);
+  } catch {
+    text.select();
+    setStatus("vacantStatus", "Copy blocked by the browser — text selected, press Ctrl+C.", false);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage({ allowMod: true }))) return;
+  document.getElementById("vacantCopyBtn")?.addEventListener("click", copyVacantClubs);
+  document.getElementById("vacantRefreshBtn")?.addEventListener("click", loadVacantClubs);
+  loadVacantClubs();
   document.getElementById("refreshBtn")?.addEventListener("click", loadAlerts);
   document.getElementById("markAllBtn")?.addEventListener("click", async () => {
     const { data, error } = await supabase.rpc("gpsl_staff_alerts_mark_all_read");

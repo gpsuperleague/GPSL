@@ -270,6 +270,31 @@
       line-height: 1.4;
     }
 
+    .owner-language-select {
+      display: block;
+      width: 100%;
+      max-width: 260px;
+      margin-bottom: 6px;
+      padding: 5px 6px;
+      background: #1b1b1b;
+      color: #ddd;
+      border: 1px solid #444;
+      border-radius: 4px;
+    }
+
+    .owner-language-dm {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    #languageCell .owner-tag-hint {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+    }
+
     .owner-detail-link {
       font-size: 12px;
       color: #ff9900;
@@ -420,6 +445,18 @@
           <button type="button" id="editAvailabilityBtn" class="owner-detail-link">Edit availability</button>
         </div>
 
+        <div class="owner-detail-cell gpsl-has-tip" id="languageCell" data-gpsl-tip="Discord stays in English. With a language set, right-click any Discord message → Apps → Translate for a private translation, and league announcements are also DM'd to you translated. In Discord you can also use /language and /english." tabindex="0">
+          <label class="owner-detail-label" for="ownerLanguageSelect">Discord translation</label>
+          <p class="owner-detail-summary">Read GPSL Discord in your language — only you see it.</p>
+          <select id="ownerLanguageSelect" class="owner-language-select"></select>
+          <label class="owner-language-dm">
+            <input type="checkbox" id="ownerLanguageDm" checked>
+            DM me league announcements, translated
+          </label>
+          <button type="button" id="saveOwnerLanguageBtn" class="small-btn">Save</button>
+          <span id="ownerLanguageHint" class="owner-tag-hint" role="status"></span>
+        </div>
+
         <div class="owner-detail-cell owner-detail-cell--wide owner-detail-cell--owner">
           <label class="owner-detail-label gpsl-has-tip" for="ownerInput" data-gpsl-tip="Discord username shown publicly on fixtures and markets. Save locks it — use Edit to change later." tabindex="0">Owner tag (Discord username)</label>
           <div class="owner-tag-field">
@@ -558,6 +595,6 @@
     </div>
   </div>
 
-  <script type="module" src="owner_details.js?v=20260930-world-tz"></script>
+  <script type="module" src="owner_details.js?v=20261012-language"></script>
 </body>
 </html>

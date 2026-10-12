@@ -23,6 +23,11 @@
       color:#111; background:#ff9900; border-radius:3px; padding:1px 6px; margin-left:8px;
       vertical-align:middle;
     }
+    .vacant-title { margin:0 0 6px; color:#ff9900; font-size:16px; }
+    .vacant-text {
+      width:100%; box-sizing:border-box; background:#1a1a1a; color:#ddd;
+      border:1px solid #333; border-radius:6px; padding:10px; font:13px/1.45 Consolas, monospace;
+    }
   </style>
 </head>
 <body class="admin-page">
@@ -44,8 +49,22 @@
         <div id="status" class="status-line"></div>
         <div id="alertList" class="alert-list"></div>
       </div>
+
+      <div class="card">
+        <h2 class="vacant-title">Vacant clubs — send to a member</h2>
+        <p class="note">
+          Every club in a league this season with no owner. <b>Copy</b> and paste it into a Discord DM
+          to a member without a club. Needs <code>staff_vacant_clubs_list_20261012.sql</code>.
+        </p>
+        <div class="row" style="margin-bottom:10px;">
+          <button type="button" id="vacantCopyBtn" class="button">Copy vacant clubs</button>
+          <button type="button" id="vacantRefreshBtn" class="button secondary">Refresh</button>
+        </div>
+        <div id="vacantStatus" class="status-line"></div>
+        <textarea id="vacantText" class="vacant-text" rows="12" readonly></textarea>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_staff_alerts.js"></script>
+  <script type="module" src="admin_staff_alerts.js?v=20261012-vacant"></script>
 </body>
 </html>
