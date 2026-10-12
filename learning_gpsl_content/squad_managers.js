@@ -48,7 +48,7 @@ export const SECTION_SQUAD = {
     {
       type: "ul",
       items: [
-        `<b>34+ fee</b> — <b><span data-gs="wage_34plus_per_player" data-gs-fmt="money">₿500,000</span></b> for every squad player aged <b><span data-gs="wage_34plus_min_rating" data-gs-fmt="int">34</span> or over</b>. It goes by <b>age</b>, not rating.`,
+        `<b>34+ fee</b> — <b><span data-gs="wage_34plus_per_player" data-gs-fmt="money">₿500,000</span></b> for every squad player aged <b><span data-gs="wage_34plus_min_rating" data-gs-fmt="int">34</span> or over</b>. It goes by <b>age</b>, not rating. Your <b>One of Our Own</b> player is exempt.`,
         `<b>Star tax</b> — <b><span data-gs="star_tax_per_player" data-gs-fmt="money">₿1,000,000</span></b> for every star player (rated <b><span data-gs="star_tax_min_rating" data-gs-fmt="int">79</span>+</b>). Your <b>One of our own</b> player is excused.`,
         `Check ages and ratings before renewing, winning expiry bids or signing older stars — selling or releasing before season end avoids the charge.`,
         `See each season's figures under <a href="finances.html">Finances</a> → Player upkeep.`,

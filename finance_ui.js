@@ -276,7 +276,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "upkeep_34plus",
         label: "34+ age fee",
         types: ["wage_renewal_34plus"],
-        note: "Per-player fee for squad players aged at or above the admin minimum (default 34).",
+        note: "Per-player fee for squad players aged at or above the admin minimum (default 34). One of Our Own is exempt.",
       },
       {
         id: "upkeep_star_tax",
