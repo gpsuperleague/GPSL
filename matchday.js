@@ -38,7 +38,7 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20261012-12subs";
+} from "./matchday_squad.js?v=20261012-md-picker";
 import { loadGpslFormations } from "./gpsl_formations.js?v=20260926-catalogue-xy";
 import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20261012-12subs";
 import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
@@ -1172,6 +1172,7 @@ function initSquadPanel() {
     savedPitchLayout: matchdayPitchLayout,
     matchdayComposition: true,
     clubNation: myClub.nation,
+    slotPicker: true,
     onSave: saveMatchdaySquad,
     onChange: () => {},
   });

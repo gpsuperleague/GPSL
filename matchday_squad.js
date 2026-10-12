@@ -683,6 +683,8 @@ function injectSlotPickerStyles() {
 .slot-player-opt .spo-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slot-player-opt .spo-rt { flex: 0 0 auto; font-weight: bold; color: #ffcc66; }
 .slot-player-opt .spo-where { flex: 0 0 auto; font-size: 10px; color: #888; }
+.slot-player-opt.is-unavailable { opacity: 0.55; }
+.slot-player-opt .spo-status { flex: 0 0 auto; font-size: 10px; font-weight: 700; color: #f88; text-transform: uppercase; }
 .slot-player-opt--clear { color: #f99; }
 .slot-player-menu-empty { padding: 10px; font-size: 12px; color: #888; }`;
   document.head.appendChild(css);
@@ -704,7 +706,13 @@ function escapeText(text) {
 }
 
 /** ▾ buttons on slots → searchable list of pool players (and swaps with placed players). */
-function wireSlotPlayerPicker({ root, getState, rerender, slotName, slotRole }) {
+const PICKER_STATUS_LABEL = {
+  suspended: "Suspended",
+  injured: "Injured",
+  recovery: "Recovering",
+};
+
+function wireSlotPlayerPicker({ root, getState, rerender, slotName, slotRole, statusFor = null }) {
   injectSlotPickerStyles();
   let menu = document.querySelector("body > .slot-player-menu");
   if (!menu) {
@@ -779,7 +787,9 @@ function wireSlotPlayerPicker({ root, getState, rerender, slotName, slotRole }) 
       normalizeSearch(p.Name || p.player_name).includes(q) ||
       normalizeSearch(p.Position).includes(q);
     const isRoleMatch = (p) => role && String(p.Position || "").toUpperCase() === role;
+    const unavailableOf = (p) => (statusFor ? statusFor(p) : null);
     const byFit = (a, b) =>
+      Number(!!unavailableOf(a)) - Number(!!unavailableOf(b)) ||
       Number(isRoleMatch(b)) - Number(isRoleMatch(a)) ||
       Number(b.Rating || 0) - Number(a.Rating || 0);
 
@@ -791,13 +801,17 @@ function wireSlotPlayerPicker({ root, getState, rerender, slotName, slotRole }) 
       .filter((p) => playerKey(p) !== currentId && matchesQ(p))
       .sort(byFit);
 
-    const optHtml = (p, where = "") => `
-      <button type="button" class="slot-player-opt${isRoleMatch(p) ? " is-match" : ""}" data-pid="${escapeText(playerKey(p))}">
+    const optHtml = (p, where = "") => {
+      const st = unavailableOf(p);
+      return `
+      <button type="button" class="slot-player-opt${isRoleMatch(p) ? " is-match" : ""}${st ? " is-unavailable" : ""}" data-pid="${escapeText(playerKey(p))}">
         <span class="spo-pos">${escapeText(p.Position || "—")}</span>
         <span class="spo-name">${escapeText(p.Name || p.player_name || playerKey(p))}</span>
+        ${st ? `<span class="spo-status">${escapeText(PICKER_STATUS_LABEL[st] || st)}</span>` : ""}
         ${where ? `<span class="spo-where">${escapeText(where)}</span>` : ""}
         <span class="spo-rt">${escapeText(p.Rating ?? "")}</span>
       </button>`;
+    };
 
     let html = "";
     if (current) {
@@ -1387,6 +1401,7 @@ export function initMatchdaySquadPanel({
             : `Squad ${target.index + 1}`,
       slotRole: (target) =>
         target.area === "pitch" ? slotLabels[target.slotId] || target.slotId : null,
+      statusFor,
     });
   }
 
