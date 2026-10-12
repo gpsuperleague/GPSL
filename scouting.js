@@ -38,7 +38,7 @@ import {
   buildPlayerDraftUiState,
   renderDraftManageCell,
   submitScoutingDraftBid,
-} from "./scouting_draft_actions.js?v=20261008-opener-rebid-free";
+} from "./scouting_draft_actions.js?v=20261012-unavailable";
 import {
   confirmSquadRulesBeforeBid,
   isHomeGrownPlayer,
@@ -89,6 +89,7 @@ function autoBidSeedRows() {
     .map((row) => {
       const p = playerMapCache.get(String(row.player_id));
       if (!p) return null;
+      if (draftUiByPlayerCache.get(String(row.player_id))?.unavailable) return null;
       return {
         player_id: String(row.player_id),
         name: p.Name || String(row.player_id),
@@ -101,11 +102,16 @@ function autoBidSeedRows() {
     .filter(Boolean);
 }
 
+const PLAYER_LOCK_COLUMNS =
+  ", pesdb_unavailable, foreign_contract_club, foreign_contract_sold_season_id, foreign_contract_unlock_season_label, foreign_contract_lock_kind";
+
 const PLAYER_COLUMNS =
-  "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, contract_wage, Playstyle, Contracted_Team";
+  "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, contract_wage, Playstyle, Contracted_Team" +
+  PLAYER_LOCK_COLUMNS;
 
 const PLAYER_COLUMNS_LEGACY =
-  "Konami_ID, Name, Nation, Position, Rating, Age, market_value, contract_wage, Playstyle, Contracted_Team";
+  "Konami_ID, Name, Nation, Position, Rating, Age, market_value, contract_wage, Playstyle, Contracted_Team" +
+  PLAYER_LOCK_COLUMNS;
 
 const SQUAD_REG_COLUMNS = "Konami_ID, Nation, Position, Rating, Age";
 
@@ -222,6 +228,9 @@ function activeTargetBudgetTitle(pid) {
   }
   if (ui?.budgetKind === "to_overtake") {
     return `Active target: next bid to lead ${amt}`;
+  }
+  if (ui?.budgetKind === "unavailable") {
+    return "Active target: unavailable to sign — not counted in the budget";
   }
   return `Active target: market value ${amt}`;
 }
@@ -1150,7 +1159,9 @@ function renderScoutPlayerRow({
   };
   const yourBidClass = draftUi.isLeading ? "scout-leading-bid" : "";
   const draftCells = showDraft
-    ? `<td class="scout-draft-status">${draftUi.status}</td>
+    ? `<td class="scout-draft-status"${
+        draftUi.statusTitle ? ` title="${escapeHtml(draftUi.statusTitle)}"` : ""
+      }>${draftUi.status}</td>
             <td>${draftUi.leadingText}</td>
             <td class="${yourBidClass}">${draftUi.yourBidText}</td>
             <td>${renderDraftManageCell(draftUi)}</td>`
@@ -1169,6 +1180,7 @@ function renderScoutPlayerRow({
     isActive ? "scout-active-row" : "",
     hasYourBid ? "scout-bid-owned-row" : "",
     isLockedActive ? "scout-active-owned-row" : "",
+    draftUi.unavailable ? "scout-unavailable-row" : "",
   ]
     .filter(Boolean)
     .join(" ");

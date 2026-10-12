@@ -668,6 +668,19 @@
       cursor: not-allowed;
       opacity: 0.75;
     }
+    table.scout-table tr.scout-unavailable-row td {
+      color: #7d838c;
+      opacity: 0.55;
+    }
+    table.scout-table tr.scout-unavailable-row td.name a {
+      color: #9aa0a8;
+      text-decoration: line-through;
+    }
+    table.scout-table tr.scout-unavailable-row td.scout-draft-status {
+      color: #c98a5a;
+      opacity: 1;
+      cursor: help;
+    }
     .scout-active-check {
       width: 16px;
       height: 16px;
@@ -812,6 +825,6 @@
     </div>
   </div>
 
-  <script type="module" src="scouting.js?v=20261009-slot-picker"></script>
+  <script type="module" src="scouting.js?v=20261012-unavailable"></script>
 </body>
 </html>

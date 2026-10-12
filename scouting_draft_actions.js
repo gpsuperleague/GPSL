@@ -23,6 +23,45 @@ import {
 } from "./draft_engine.js";
 import { formatMoney } from "./competition.js";
 import { displayClubName } from "./clubs_lookup.js";
+import { loadCurrentGpslSeasonId } from "./player_season_transfer.js";
+import {
+  playerForeignContractLocked,
+  playerForeignContractLockKind,
+  playerExpiryFaBlockedForClub,
+} from "./player_foreign_contract.js";
+
+/** Free agent who cannot be signed by this club right now (null = available). */
+export function scoutingUnavailableReason(player, ctx) {
+  if (!player) return null;
+  if (player.pesdb_unavailable === true) {
+    return {
+      status: "Unavailable — legacy card",
+      title: "Legacy card — off pesdb.net; cannot be signed until the next PESDB sync",
+    };
+  }
+  if (playerForeignContractLocked(player, ctx?.currentSeasonId)) {
+    const until =
+      String(player.foreign_contract_unlock_season_label ?? "").trim() || "next season";
+    const club = String(player.foreign_contract_club ?? "").trim();
+    if (playerForeignContractLockKind(player) === "paid_up") {
+      return {
+        status: `Unavailable until ${until}`,
+        title: `Contract paid up by ${club ? displayClubName(club) : "their previous club"} — cannot be signed until ${until}`,
+      };
+    }
+    return {
+      status: `Unavailable until ${until}`,
+      title: `Sold abroad${club ? ` to ${club}` : ""} — cannot be signed until ${until}`,
+    };
+  }
+  if (playerExpiryFaBlockedForClub(player, ctx?.clubShort)) {
+    return {
+      status: "Your former player",
+      title: "Contract ended at your club — other clubs can sign him, you cannot re-sign him",
+    };
+  }
+  return null;
+}
 
 function getDraftAuctionTimesForNewListing() {
   const uk = getUKWallClockParts();
@@ -246,14 +285,16 @@ export async function loadScoutingDraftContext(supabase, clubShort, playerIds) {
     }
   }
 
-  const [bidsGrouped, draftCredits] = await Promise.all([
+  const [bidsGrouped, draftCredits, currentSeasonId] = await Promise.all([
     fetchDraftBidsGroupedForPlayers(normalized, draftStart ? new Date(draftStart) : null),
     !auctionEnded && clubShort
       ? getDraftCreditsCount(clubShort, new Date(draftStart)).catch(() => 0)
       : Promise.resolve(0),
+    loadCurrentGpslSeasonId(supabase).catch(() => null),
   ]);
 
   return {
+    currentSeasonId,
     draftCredits,
     settings,
     draftStart,
@@ -288,6 +329,26 @@ export async function buildPlayerDraftUiState(ctx, player) {
       highBidAmount: null,
       budgetAmount: mvFallback,
       budgetKind: "mv",
+    };
+  }
+
+  const unavailable = scoutingUnavailableReason(player, ctx);
+  if (unavailable) {
+    return {
+      playerId: pid,
+      status: unavailable.status,
+      statusTitle: unavailable.title,
+      unavailable: true,
+      leadingText: "—",
+      yourBidText: "—",
+      canBid: false,
+      canBidInline: false,
+      minBid: null,
+      playerPageUrl: null,
+      isLeading: false,
+      highBidAmount: null,
+      budgetAmount: 0,
+      budgetKind: "unavailable",
     };
   }
 
