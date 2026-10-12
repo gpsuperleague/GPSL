@@ -23,8 +23,20 @@
       color:#111; background:#ff9900; border-radius:3px; padding:1px 6px; margin-left:8px;
       vertical-align:middle;
     }
-    .vacant-title { margin:0 0 6px; color:#ff9900; font-size:16px; }
-    .vacant-text {
+    .share-list > summary {
+      cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px; user-select:none;
+    }
+    .share-list > summary::-webkit-details-marker { display:none; }
+    .share-list > summary::before {
+      content:"▸"; color:#ff9900; font-size:14px; width:12px; transition:transform 0.15s;
+    }
+    .share-list[open] > summary::before { transform:rotate(90deg); }
+    .share-list[open] > summary { margin-bottom:10px; }
+    .share-title { color:#ff9900; font-size:16px; font-weight:bold; }
+    .share-count { color:#999; font-size:13px; }
+    .share-actions { margin-bottom:10px; gap:8px; flex-wrap:wrap; }
+    .share-copy { display:inline-flex; flex-wrap:wrap; gap:8px; }
+    .share-text {
       width:100%; box-sizing:border-box; background:#1a1a1a; color:#ddd;
       border:1px solid #333; border-radius:6px; padding:10px; font:13px/1.45 Consolas, monospace;
     }
@@ -35,6 +47,39 @@
   <h1 class="admin-title">Staff alerts</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
+      <details class="card share-list" id="vacantClubsBox">
+        <summary>
+          <span class="share-title">Vacant clubs</span>
+          <span class="share-count" id="vacantClubsCount">loading…</span>
+        </summary>
+        <p class="note">
+          Every club in a league this season with no owner — copy and paste into a Discord DM to a
+          member without a club. Needs <code>staff_vacant_clubs_list_20261012.sql</code>.
+        </p>
+        <div class="row share-actions">
+          <span id="vacantClubsCopy" class="share-copy"></span>
+          <button type="button" id="vacantClubsRefresh" class="button secondary">Refresh</button>
+        </div>
+        <div id="vacantClubsStatus" class="status-line"></div>
+        <textarea id="vacantClubsText" class="share-text" rows="12" readonly></textarea>
+      </details>
+
+      <details class="card share-list" id="faManagersBox">
+        <summary>
+          <span class="share-title">Available managers</span>
+          <span class="share-count" id="faManagersCount">loading…</span>
+        </summary>
+        <p class="note">
+          Every manager not contracted to a club, best rating first — copy and paste into a Discord DM.
+        </p>
+        <div class="row share-actions">
+          <span id="faManagersCopy" class="share-copy"></span>
+          <button type="button" id="faManagersRefresh" class="button secondary">Refresh</button>
+        </div>
+        <div id="faManagersStatus" class="status-line"></div>
+        <textarea id="faManagersText" class="share-text" rows="12" readonly></textarea>
+      </details>
+
       <div class="card">
         <p class="note">
           Alerts for league admins and mods — e.g. when someone joins GPSL via Discord.
@@ -49,22 +94,8 @@
         <div id="status" class="status-line"></div>
         <div id="alertList" class="alert-list"></div>
       </div>
-
-      <div class="card">
-        <h2 class="vacant-title">Vacant clubs — send to a member</h2>
-        <p class="note">
-          Every club in a league this season with no owner. <b>Copy</b> and paste it into a Discord DM
-          to a member without a club. Needs <code>staff_vacant_clubs_list_20261012.sql</code>.
-        </p>
-        <div class="row" style="margin-bottom:10px;">
-          <button type="button" id="vacantCopyBtn" class="button">Copy vacant clubs</button>
-          <button type="button" id="vacantRefreshBtn" class="button secondary">Refresh</button>
-        </div>
-        <div id="vacantStatus" class="status-line"></div>
-        <textarea id="vacantText" class="vacant-text" rows="12" readonly></textarea>
-      </div>
     </div>
   </div>
-  <script type="module" src="admin_staff_alerts.js?v=20261012-vacant"></script>
+  <script type="module" src="admin_staff_alerts.js?v=20261012-share-lists"></script>
 </body>
 </html>

@@ -87,9 +87,32 @@ async function loadAlerts() {
 const SITE_BASE = "https://gpsuperleague.github.io/GPSL/";
 const DISCORD_DM_LIMIT = 2000;
 
-function vacantClubsMessage(data) {
+/** Whole lines into chunks that each fit one Discord message. */
+function splitForDiscord(lines) {
+  const parts = [];
+  let current = "";
+  for (const line of lines) {
+    const next = current ? `${current}\n${line}` : line;
+    if (next.length > DISCORD_DM_LIMIT && current) {
+      parts.push(current.trimEnd());
+      current = line;
+    } else {
+      current = next;
+    }
+  }
+  if (current.trim()) parts.push(current.trimEnd());
+  return parts;
+}
+
+async function vacantClubsLines() {
+  const { data, error } = await supabase.rpc("staff_vacant_clubs_list");
+  if (error || data?.ok === false) {
+    throw new Error(
+      `${error?.message || data?.reason || "Could not load"} — run staff_vacant_clubs_list_20261012.sql`
+    );
+  }
   const clubs = Array.isArray(data?.clubs) ? data.clubs : [];
-  if (!clubs.length) return "";
+  if (!clubs.length) return { count: 0, lines: [] };
   const lines = [
     `**GPSL — clubs looking for an owner${data.season_label ? ` (${data.season_label})` : ""}**`,
   ];
@@ -106,56 +129,106 @@ function vacantClubsMessage(data) {
     `Browse them: ${SITE_BASE}club_database.html (Owner filter → Vacant)`,
     "Interested in one? Reply here and let us know which."
   );
-  return lines.join("\n");
+  return { count: clubs.length, lines };
 }
 
-async function loadVacantClubs() {
-  const text = document.getElementById("vacantText");
-  setStatus("vacantStatus", "Loading…");
-  const { data, error } = await supabase.rpc("staff_vacant_clubs_list");
-  if (error || data?.ok === false) {
-    setStatus(
-      "vacantStatus",
-      `${error?.message || data?.reason || "Could not load"} — run staff_vacant_clubs_list_20261012.sql`,
-      false
-    );
-    if (text) text.value = "";
-    return;
+async function faManagersLines() {
+  const { data, error } = await supabase
+    .from("managers_gpdb_public")
+    .select("name, nation, rating, contracted_club")
+    .order("rating", { ascending: false })
+    .order("name", { ascending: true });
+  if (error) throw new Error(error.message);
+  const managers = (data || []).filter((m) => !String(m.contracted_club || "").trim());
+  if (!managers.length) return { count: 0, lines: [] };
+  const lines = ["**GPSL — managers available to sign**", ""];
+  for (const m of managers) {
+    lines.push(`• ${m.name}${m.nation ? ` (${m.nation})` : ""} · ${m.rating ?? "—"}`);
   }
-  const message = vacantClubsMessage(data);
-  if (text) text.value = message;
-  const count = Array.isArray(data?.clubs) ? data.clubs.length : 0;
-  if (!count) {
-    setStatus("vacantStatus", "No vacant clubs this season.", true);
-    return;
-  }
-  setStatus(
-    "vacantStatus",
-    message.length > DISCORD_DM_LIMIT
-      ? `${count} vacant club(s) · ${message.length} characters — over Discord's 2000 limit, send in two parts.`
-      : `${count} vacant club(s).`,
-    message.length <= DISCORD_DM_LIMIT ? true : "warn"
-  );
+  lines.push("", `Full details: ${SITE_BASE}MGDB.html`);
+  return { count: managers.length, lines };
 }
 
-async function copyVacantClubs() {
-  const text = document.getElementById("vacantText");
-  if (!text?.value) await loadVacantClubs();
-  if (!text?.value) return;
-  try {
-    await navigator.clipboard.writeText(text.value);
-    setStatus("vacantStatus", "Copied — paste it into the member's Discord DM.", true);
-  } catch {
-    text.select();
-    setStatus("vacantStatus", "Copy blocked by the browser — text selected, press Ctrl+C.", false);
-  }
+function wireShareList({ prefix, noun, emptyText, loadLines }) {
+  const textEl = document.getElementById(`${prefix}Text`);
+  const copyWrap = document.getElementById(`${prefix}Copy`);
+  const countEl = document.getElementById(`${prefix}Count`);
+  const statusId = `${prefix}Status`;
+  let parts = [];
+
+  const copyPart = async (i) => {
+    try {
+      await navigator.clipboard.writeText(parts[i]);
+      setStatus(
+        statusId,
+        parts.length > 1
+          ? `Copied part ${i + 1} of ${parts.length} — paste it into the Discord DM, then copy the next.`
+          : "Copied — paste it into the member's Discord DM.",
+        true
+      );
+    } catch {
+      textEl.value = parts[i];
+      textEl.select();
+      setStatus(statusId, "Copy blocked by the browser — text selected, press Ctrl+C.", false);
+    }
+  };
+
+  const load = async () => {
+    setStatus(statusId, "Loading…");
+    copyWrap.innerHTML = "";
+    try {
+      const { count, lines } = await loadLines();
+      parts = splitForDiscord(lines);
+      textEl.value = parts.join("\n\n— next message —\n\n");
+      countEl.textContent = `${count} ${noun}`;
+      if (!count) {
+        setStatus(statusId, emptyText, true);
+        return;
+      }
+      copyWrap.innerHTML = parts
+        .map(
+          (_, i) =>
+            `<button type="button" class="button" data-part="${i}">${
+              parts.length > 1 ? `Copy part ${i + 1}/${parts.length}` : "Copy"
+            }</button>`
+        )
+        .join("");
+      copyWrap.querySelectorAll("[data-part]").forEach((btn) => {
+        btn.addEventListener("click", () => copyPart(Number(btn.dataset.part)));
+      });
+      setStatus(
+        statusId,
+        parts.length > 1
+          ? `${count} ${noun} · too long for one Discord message, so split into ${parts.length} parts.`
+          : `${count} ${noun}.`,
+        true
+      );
+    } catch (err) {
+      parts = [];
+      textEl.value = "";
+      countEl.textContent = "unavailable";
+      setStatus(statusId, err?.message || String(err), false);
+    }
+  };
+
+  document.getElementById(`${prefix}Refresh`)?.addEventListener("click", load);
+  load();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage({ allowMod: true }))) return;
-  document.getElementById("vacantCopyBtn")?.addEventListener("click", copyVacantClubs);
-  document.getElementById("vacantRefreshBtn")?.addEventListener("click", loadVacantClubs);
-  loadVacantClubs();
+  wireShareList({
+    prefix: "vacantClubs",
+    noun: "vacant club(s)",
+    emptyText: "No vacant clubs this season.",
+    loadLines: vacantClubsLines,
+  });
+  wireShareList({
+    prefix: "faManagers",
+    noun: "available manager(s)",
+    emptyText: "No unsigned managers.",
+    loadLines: faManagersLines,
+  });
   document.getElementById("refreshBtn")?.addEventListener("click", loadAlerts);
   document.getElementById("markAllBtn")?.addEventListener("click", async () => {
     const { data, error } = await supabase.rpc("gpsl_staff_alerts_mark_all_read");
