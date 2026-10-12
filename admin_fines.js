@@ -383,17 +383,52 @@ async function loadTariffs() {
     return;
   }
 
+  const opt = (value, label, current) =>
+    `<option value="${value}"${value === current ? " selected" : ""}>${label}</option>`;
+  const categories = ["matchday", "squad", "transfer", "manager", "compensation", "other"];
+
   list.innerHTML = tariffs
     .map((t) => {
       const amt =
         t.amount_mode === "manual" ? "manual" : formatMoney(Number(t.amount || 0));
+      const code = escapeHtml(t.code);
       return `
-        <div class="challenge-admin-item">
-          <div>
-            <b>${t.label}</b>
-            <span class="challenge-admin-meta">${t.code} · ${t.category} · ${t.direction} · ${amt}${t.is_active ? "" : " · inactive"}</span>
+        <div class="challenge-admin-item" data-tariff-row="${code}" style="flex-wrap:wrap;${t.is_active ? "" : "opacity:.6;"}">
+          <div style="flex:1;min-width:240px;">
+            <b>${escapeHtml(t.label)}</b>
+            <span class="challenge-admin-meta">${code} · ${escapeHtml(t.category)} · ${escapeHtml(t.direction)} · ${amt}${t.is_active ? "" : " · inactive"}</span>
           </div>
-          <button type="button" class="button fine-edit-btn" data-code="${t.code}">Edit</button>
+          <div style="display:flex;gap:6px;">
+            <button type="button" class="button fine-edit-btn" data-code="${code}">Edit</button>
+            <button type="button" class="button secondary fine-delete-btn" data-code="${code}" style="color:#f88;">Delete</button>
+          </div>
+          <div class="fine-inline-edit" data-edit-for="${code}" hidden style="flex-basis:100%;margin-top:8px;">
+            <div class="row gov-subsidy-row" style="flex-wrap:wrap;gap:8px;">
+              <div><label>Label</label><input type="text" data-f="label" value="${escapeHtml(t.label)}" style="width:260px;"></div>
+              <div><label>Category</label><select data-f="category">${categories
+                .map((c) => opt(c, c[0].toUpperCase() + c.slice(1), t.category))
+                .join("")}</select></div>
+              <div><label>Direction</label><select data-f="direction">${opt("fine", "Fine (debit)", t.direction)}${opt(
+                "compensation",
+                "Compensation (credit)",
+                t.direction
+              )}</select></div>
+              <div><label>Amount ₿</label><input type="number" data-f="amount" min="0" step="50000" style="width:120px;" value="${
+                t.amount != null ? escapeHtml(String(t.amount)) : ""
+              }"></div>
+              <div><label>Mode</label><select data-f="amount_mode">${opt("fixed", "Fixed", t.amount_mode)}${opt(
+                "manual",
+                "Manual at apply",
+                t.amount_mode
+              )}</select></div>
+              <div><label>Sort</label><input type="number" data-f="sort_order" style="width:70px;" value="${Number(t.sort_order) || 0}"></div>
+              <div><label><input type="checkbox" data-f="is_active"${t.is_active ? " checked" : ""}> Active</label></div>
+            </div>
+            <div class="row" style="margin-top:8px;gap:6px;">
+              <button type="button" class="button fine-inline-save" data-code="${code}">Save</button>
+              <button type="button" class="button secondary fine-inline-cancel" data-code="${code}">Cancel</button>
+            </div>
+          </div>
         </div>
       `;
     })
@@ -401,13 +436,98 @@ async function loadTariffs() {
 
   list.querySelectorAll(".fine-edit-btn").forEach((btn) => {
     btn.onclick = () => {
-      const t = tariffs.find((x) => x.code === btn.dataset.code);
-      if (t) fillEditForm(t);
+      const box = list.querySelector(`[data-edit-for="${CSS.escape(btn.dataset.code)}"]`);
+      if (box) box.hidden = !box.hidden;
     };
+  });
+  list.querySelectorAll(".fine-inline-cancel").forEach((btn) => {
+    btn.onclick = () => {
+      const box = list.querySelector(`[data-edit-for="${CSS.escape(btn.dataset.code)}"]`);
+      if (box) box.hidden = true;
+    };
+  });
+  list.querySelectorAll(".fine-inline-save").forEach((btn) => {
+    btn.onclick = () => saveInlineTariff(btn.dataset.code);
+  });
+  list.querySelectorAll(".fine-delete-btn").forEach((btn) => {
+    btn.onclick = () => deleteTariff(btn.dataset.code);
   });
 
   onTariffPick();
   setStatus("fineTariffStatus", `${tariffs.length} tariff(s) loaded.`, true);
+}
+
+async function saveInlineTariff(code) {
+  const box = document.querySelector(`[data-edit-for="${CSS.escape(code)}"]`);
+  if (!box) return;
+  const f = (name) => box.querySelector(`[data-f="${name}"]`);
+  const label = f("label").value.trim();
+  if (!label) {
+    setStatus("fineTariffStatus", "Label required.", false);
+    return;
+  }
+  const amountVal = f("amount").value;
+  setStatus("fineTariffStatus", "Saving…");
+  const { error } = await supabase.rpc("competition_admin_save_fine_tariff", {
+    p_tariff: {
+      code,
+      label,
+      category: f("category").value,
+      direction: f("direction").value,
+      amount: amountVal === "" ? null : Number(amountVal),
+      amount_mode: f("amount_mode").value,
+      is_active: f("is_active").checked,
+      sort_order: Number(f("sort_order").value) || 0,
+    },
+  });
+  if (error) {
+    setStatus("fineTariffStatus", "❌ " + error.message, false);
+    return;
+  }
+  await loadTariffs();
+  await loadAutoFines();
+  setStatus("fineTariffStatus", `✅ Saved ${label}.`, true);
+}
+
+async function deleteTariff(code) {
+  const t = tariffs.find((x) => x.code === code);
+  if (!confirm(`Delete tariff "${t?.label || code}" (${code})?\n\nIf fines have already been charged under it, it will be deactivated instead so history keeps its record.`)) {
+    return;
+  }
+  setStatus("fineTariffStatus", "Deleting…");
+  const { data, error } = await supabase.rpc("admin_delete_fine_tariff", { p_code: code });
+  if (error) {
+    const msg = String(error.message || "");
+    setStatus(
+      "fineTariffStatus",
+      msg.includes("admin_delete_fine_tariff")
+        ? "❌ Run fine_tariff_admin_delete_20261012.sql in Supabase."
+        : "❌ " + msg,
+      false
+    );
+    return;
+  }
+  if (!data?.ok) {
+    if (data?.reason === "used_by_system") {
+      setStatus(
+        "fineTariffStatus",
+        `❌ ${code} is used by automatic fines (${(data.used_by || []).join(", ")}). Untick it under "Fine types" to stop charging it instead.`,
+        false
+      );
+    } else {
+      setStatus("fineTariffStatus", "❌ Could not delete (" + (data?.reason || "unknown") + ").", false);
+    }
+    return;
+  }
+  await loadTariffs();
+  await loadAutoFines();
+  setStatus(
+    "fineTariffStatus",
+    data.action === "deactivated"
+      ? `✅ ${code} deactivated — ${data.applied_count} fine(s) already applied under it, so it's kept for history.`
+      : `✅ ${code} deleted.`,
+    true
+  );
 }
 
 function fillEditForm(t) {
@@ -448,8 +568,8 @@ async function saveTariff() {
       direction: document.getElementById("fineEditDirection").value,
       amount: amountVal === "" ? null : Number(amountVal),
       amount_mode: document.getElementById("fineEditMode").value,
-      is_active: true,
-      sort_order: 0,
+      is_active: tariffs.find((t) => t.code === code)?.is_active ?? true,
+      sort_order: Number(tariffs.find((t) => t.code === code)?.sort_order) || 0,
     },
   });
 

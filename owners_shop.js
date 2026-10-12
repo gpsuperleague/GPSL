@@ -255,5 +255,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     .maybeSingle();
   currentClub = club?.ShortName || null;
 
-  await refreshAll();
+  await Promise.all([refreshAll(), renderBookiesReminder()]);
 });
+
+async function renderBookiesReminder() {
+  const el = document.getElementById("shopBookiesReminder");
+  if (!el) return;
+  const { data, error } = await supabase.rpc("bookies_shop_status");
+  if (error || !data) return;
+
+  const opensAt = data.opens_at ? new Date(data.opens_at) : null;
+  const when = opensAt
+    ? opensAt.toLocaleString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Europe/London",
+      })
+    : null;
+
+  if (data.open && Number(data.open_markets) > 0) {
+    el.innerHTML =
+      `🎰 <b>The GPSL Bookies is open</b> — bet on league champions, cup winners and top scorers from your owner balance. ` +
+      `<a href="bookies.html" style="color:#9fdf9f;">Place a bet →</a>`;
+  } else if (!data.open) {
+    el.innerHTML =
+      `🎰 <b>The GPSL Bookies opens in GPSL August</b>${when ? ` (${escapeHtml(when)} UK)` : ""}. ` +
+      `Odds are built from June and July friendly results — every friendly counts.`;
+  } else {
+    el.innerHTML = `🎰 <b>The GPSL Bookies opens shortly</b> — markets are being set up for GPSL August.`;
+  }
+  el.hidden = false;
+}
