@@ -21,6 +21,13 @@ function isOwnSelection(sel) {
   return Boolean(club && currentClub && club.toUpperCase() === String(currentClub).toUpperCase());
 }
 
+/** Club-market selection for a club with no owner — always finishes bottom, so no odds offered. */
+function isVacantClubSelection(sel) {
+  if (sel?.metadata?.club) return false;
+  const club = selectionClub(sel);
+  return Boolean(club && !ownerTagForClub(club));
+}
+
 function selectionOwnerTagHtml(sel) {
   const club = selectionClub(sel);
   if (!club) return "";
@@ -155,6 +162,10 @@ async function loadMarkets() {
   }
   for (const list of selectionsByMarket.values()) {
     list.sort((a, b) => {
+      const va = isVacantClubSelection(a);
+      const vb = isVacantClubSelection(b);
+      if (va !== vb) return va ? 1 : -1;
+      if (va) return String(a.label || "").localeCompare(String(b.label || ""));
       const oa = Number(a.odds_decimal) || Infinity;
       const ob = Number(b.odds_decimal) || Infinity;
       if (oa !== ob) return oa - ob;
@@ -232,14 +243,17 @@ function renderMarkets() {
         .map((s) => {
           const taken = alreadyBetOn(s.id);
           const own = isOwnSelection(s);
+          const vacant = isVacantClubSelection(s);
           const canBet =
-            m.status === "open" && state.running && currentClub && !marketTaken && !own;
-          return `<tr class="${taken ? "bk-sel--yours" : ""}">
+            m.status === "open" && state.running && currentClub && !marketTaken && !own && !vacant;
+          return `<tr class="${taken ? "bk-sel--yours" : ""}${vacant ? " bk-sel--vacant" : ""}">
             <td>${escapeHtml(s.label)}${selectionOwnerTagHtml(s)}${taken ? ` <span class="bk-yours-mark">Your slip</span>` : ""}</td>
-            <td class="bk-odds">${escapeHtml(formatFractionalOdds(s.odds_decimal, s.odds_fractional))}</td>
+            <td class="bk-odds">${vacant ? "—" : escapeHtml(formatFractionalOdds(s.odds_decimal, s.odds_fractional))}</td>
             <td>
               ${
-                canBet
+                vacant && !taken
+                  ? `<span class="bk-muted" title="Clubs without an owner always finish at the bottom">No odds — vacant</span>`
+                  : canBet
                   ? `<div class="bk-bet-row">
                       <input type="number" min="1" max="1000" step="1" value="100"
                         data-stake-for="${s.id}" aria-label="Stake" />

@@ -136,6 +136,10 @@ body.bookies-page {
   background: rgba(232, 192, 96, 0.16);
 }
 
+.bk-sel--vacant td {
+  opacity: 0.55;
+}
+
 .bk-yours-mark {
   display: inline-block;
   margin-left: 6px;
