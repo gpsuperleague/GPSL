@@ -333,6 +333,17 @@
         }
         banner.textContent =
           "Draft auction ended — you can review bids below but cannot place new ones.";
+      } else if (!canBid) {
+        panel.classList.add("view-only");
+        if (h3) h3.textContent = "Bidding (view only)";
+        if (!banner) {
+          banner = document.createElement("p");
+          banner.id = "draftEndedBanner";
+          banner.className = "bid-ended-banner";
+          panel.insertBefore(banner, panel.firstChild);
+        }
+        banner.textContent =
+          "View only — your club can't bid on this player right now (for example, no draft credits left).";
       } else {
         panel.classList.remove("view-only");
         if (h3) h3.textContent = "Place Bid";
