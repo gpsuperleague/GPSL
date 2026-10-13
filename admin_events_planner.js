@@ -206,7 +206,23 @@ async function saveEvent() {
   }
   const auto = AUCTION_KINDS.has(kind) && document.getElementById("epAuto").checked;
   const armHours = Number(document.getElementById("epArmHours").value) || 0;
-  if (auto) {
+  const editId = document.getElementById("epId").value;
+  const existing = editId ? events.find((e) => String(e.id) === String(editId)) : null;
+  const keepsSchedule =
+    existing &&
+    existing.auto_start &&
+    existing.auto_status !== "none" &&
+    existing.kind === kind &&
+    new Date(existing.starts_at).getTime() === new Date(startsIso).getTime();
+  if (auto && !keepsSchedule && new Date(startsIso) <= new Date()) {
+    setStatus(
+      "epStatus",
+      `❌ ${formatUk(startsIso)} UK has already passed. Untick Auto-start to keep it as a calendar note, or pick a later start. To open the auction right now use Admin → Transfers.`,
+      false
+    );
+    return;
+  }
+  if (auto && !keepsSchedule) {
     const armAt = new Date(new Date(startsIso).getTime() - armHours * 3600_000);
     const msg =
       `Auto-start ${KIND_LABELS[kind]}\n\n` +
