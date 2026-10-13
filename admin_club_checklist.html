@@ -176,7 +176,9 @@
           <b>OooO</b> and <b>Fan Fav</b> for a quick status check.
           <b>Discord tag</b> checks registry tag vs <code>Clubs.owner</code> (must match).
           <b>Availability</b> lists weekly match times for the current season (flagged if unset on owned clubs).
-          <b>Projected EOS</b> loads after the table. Owned clubs without a manager, nation, or GK are flagged.
+          <b>Projected EOS</b> loads after the table (same forecast as the club's Finances page).
+          <b>1st-season releases</b> shows New Owner release/list slots used (of 3) for owners in their first season at the club.
+          Owned clubs without a manager or GK are flagged; a missing nation is flagged from Season 3.
           Deploy <code>admin_club_season_checklist_avail_tag_20260814.sql</code> in Supabase for tag/availability columns.
           Nav: <b>Admin → Season Management → Club Season Checklist</b>.
         </p>
@@ -269,6 +271,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20261012-monthly-interest"></script>
+  <script type="module" src="admin_club_checklist.js?v=20261013-releases-nation"></script>
 </body>
 </html>

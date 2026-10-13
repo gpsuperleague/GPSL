@@ -27,8 +27,19 @@ const STAR_CAP_SUPERLEAGUE = 3;
 /** Championship / unassigned star registration cap. */
 const STAR_CAP_CHAMPIONSHIP = 2;
 
+/** Nation becomes a checklist requirement from this GPSL season onwards. */
+const NATION_REQUIRED_FROM_SEASON = 3;
+/** New Owner first-season release/list slots (club_new_owner_release_state max_total). */
+const NEW_OWNER_RELEASES_MAX = 3;
+
 /** @type {Array<Record<string, unknown>>} */
 let allRows = [];
+/** @type {{ id: number|null, ordinal: number|null }} */
+let currentSeason = { id: null, ordinal: null };
+
+function nationRequired() {
+  return Number(currentSeason.ordinal) >= NATION_REQUIRED_FROM_SEASON;
+}
 let sortKey = "club_name";
 let sortDir = "asc";
 
@@ -172,7 +183,7 @@ function evaluateRowIssues(row) {
     }
   }
   if (hasOwner && !rowHasManager(row)) issues.add("manager");
-  if (hasOwner && !(row.nation_code || row.nation_name)) issues.add("nation");
+  if (nationRequired() && hasOwner && !(row.nation_code || row.nation_name)) issues.add("nation");
   if (squad < MIN_SQUAD_SIZE) issues.add("squad_low");
   if (squad > SQUAD_SIZE) issues.add("squad_high");
   if (gk < MIN_GK) issues.add("gk");
@@ -366,6 +377,7 @@ function compareValues(a, b, key) {
     key === "gk_count" ||
     key === "star_count" ||
     key === "contract_releases_remaining" ||
+    key === "new_owner_releases_used" ||
     key === "foreign_sales_remaining" ||
     key === "fines_count" ||
     key === "u21_count" ||
@@ -661,6 +673,80 @@ async function enrichLiveBids(rows) {
   renderTable();
 }
 
+/** New Owner first-season release/list slots: used / max, only while it's the owner's first season. */
+function newOwnerReleasesCell(row) {
+  if (row.new_owner_releases_used === undefined) {
+    return `<td class="num chk-cell-ok proj-loading">…</td>`;
+  }
+  if (row.new_owner_releases_used === null) {
+    return textCell(
+      '<span class="muted">—</span>',
+      "ok",
+      rowHasOwner(row)
+        ? "Not the owner's first season at this club — New Owner releases don't apply"
+        : "Vacant club",
+      "num"
+    );
+  }
+  const used = Number(row.new_owner_releases_used);
+  const left = NEW_OWNER_RELEASES_MAX - used;
+  return textCell(
+    `<strong>${used}</strong>/${NEW_OWNER_RELEASES_MAX}`,
+    "ok",
+    `First season in charge: ${used} of ${NEW_OWNER_RELEASES_MAX} New Owner release/list slots used (${left} left)`,
+    "num"
+  );
+}
+
+async function loadCurrentSeasonOrdinal() {
+  const { data, error } = await supabase
+    .from("competition_seasons")
+    .select("id, is_current")
+    .order("id", { ascending: true });
+  if (error) {
+    console.warn("competition_seasons", error);
+    return { id: null, ordinal: null };
+  }
+  const idx = (data || []).findIndex((s) => s.is_current === true);
+  if (idx < 0) return { id: null, ordinal: null };
+  return { id: Number(data[idx].id), ordinal: idx + 1 };
+}
+
+async function enrichNewOwnerReleases(rows) {
+  const { data, error } = await supabase
+    .from("Clubs")
+    .select("ShortName, owner_assigned_season_id, new_owner_releases_remaining");
+  if (error) {
+    console.warn("new owner releases", error);
+    rows.forEach((row) => {
+      row.new_owner_releases_used = null;
+    });
+    renderTable();
+    return;
+  }
+  const byClub = new Map(
+    (data || []).map((c) => [String(c.ShortName || "").trim().toUpperCase(), c])
+  );
+  rows.forEach((row) => {
+    const c = byClub.get(String(row.club_short_name || "").trim().toUpperCase());
+    const firstSeason =
+      rowHasOwner(row) &&
+      currentSeason.id != null &&
+      c?.owner_assigned_season_id != null &&
+      Number(c.owner_assigned_season_id) === currentSeason.id;
+    if (!firstSeason) {
+      row.new_owner_releases_used = null;
+      return;
+    }
+    const remaining = Math.max(
+      0,
+      Math.min(NEW_OWNER_RELEASES_MAX, Number(c.new_owner_releases_remaining ?? 0))
+    );
+    row.new_owner_releases_used = NEW_OWNER_RELEASES_MAX - remaining;
+  });
+  renderTable();
+}
+
 function textCell(content, level = "ok", title = "", extraClass = "") {
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
   return `<td class="${cellClass(level)}${extraClass ? ` ${extraClass}` : ""}"${titleAttr}>${content}</td>`;
@@ -714,6 +800,7 @@ function renderTable() {
     ["projected_eos_balance", "Proj. EOS", ""],
     ["total_wages", "Wages", ""],
     ["contract_releases_remaining", "Releases", ""],
+    ["new_owner_releases_used", "1st-season releases", ""],
     ["foreign_sales_remaining", "Foreign", ""],
     ["fines_count", "Fines", ""],
   ];
@@ -724,7 +811,7 @@ function renderTable() {
         <tr class="chk-group-row">
           <th colspan="7" class="chk-group-club">Club</th>
           <th colspan="10" class="chk-group-squad">Squad registration</th>
-          <th colspan="6" class="chk-group-fin">Finances &amp; allowances</th>
+          <th colspan="7" class="chk-group-fin">Finances &amp; allowances</th>
         </tr>
         <tr>
           ${headers
@@ -815,7 +902,9 @@ function renderTable() {
 
             const nation = row.nation_name || row.nation_code
               ? escapeHtml(row.nation_name || row.nation_code)
-              : "—";
+              : nationRequired() || !hasOwner
+                ? "—"
+                : `<span class="muted">Not needed until Season ${NATION_REQUIRED_FROM_SEASON}</span>`;
 
             const ooo = row.ooo_player_name ? escapeHtml(row.ooo_player_name) : "—";
             const ff = row.ff_player_name ? escapeHtml(row.ff_player_name) : "—";
@@ -930,6 +1019,7 @@ function renderTable() {
             ${moneyCell(row.projected_eos_balance, projLevel, projTip)}
             ${moneyCell(row.total_wages)}
             ${numCell(row.contract_releases_remaining)}
+            ${newOwnerReleasesCell(row)}
             ${numCell(row.foreign_sales_remaining)}
             ${numCell(row.fines_count, finesLevel, finesTip)}
           </tr>`;
@@ -995,7 +1085,11 @@ async function loadTable() {
   const wrap = document.getElementById("tableWrap");
   if (wrap) wrap.innerHTML = '<p class="note">Loading…</p>';
 
-  const { data, error } = await supabase.rpc("admin_club_season_checklist");
+  const [{ data, error }, season] = await Promise.all([
+    supabase.rpc("admin_club_season_checklist"),
+    loadCurrentSeasonOrdinal(),
+  ]);
+  currentSeason = season;
 
   if (error) {
     const msg = [error.message, error.hint].filter(Boolean).join(" — ");
@@ -1014,11 +1108,16 @@ async function loadTable() {
     leading_bids_count: undefined,
     bidding_on_count: undefined,
     projected_squad_size: undefined,
+    new_owner_releases_used: undefined,
   }));
 
   renderTable();
   setStatus("pageStatus", `Loaded ${allRows.length} clubs — loading live bids & projecting balances…`);
 
-  await Promise.all([enrichLiveBids(allRows), enrichProjectedBalances(allRows)]);
+  await Promise.all([
+    enrichLiveBids(allRows),
+    enrichProjectedBalances(allRows),
+    enrichNewOwnerReleases(allRows),
+  ]);
   setStatus("pageStatus", `✅ ${allRows.length} clubs loaded.`);
 }
