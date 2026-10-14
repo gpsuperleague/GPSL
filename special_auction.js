@@ -119,6 +119,8 @@ export function roundToThousand(n) {
 export function snapIdentityHidden(auction) {
   if (!auction || auction.auction_type !== "snap") return false;
   if (!["scheduled", "active"].includes(String(auction.status || ""))) return false;
+  const start = new Date(auction.start_time).getTime();
+  if (!Number.isFinite(start) || Date.now() < start) return true;
   if (typeof auction.snap_bidding_open === "boolean") {
     return auction.snap_bidding_open;
   }

@@ -14,7 +14,7 @@ import {
   fetchPrizeSquadSpace,
   prizeSquadSpaceText,
   formatPrizePackHtml,
-} from "./special_auction.js?v=20261010-prize-v3";
+} from "./special_auction.js?v=20261014-snap-hide";
 import { playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { parseMoneyInput, wireMoneyBidInput } from "./money_input.js";
 import { renderHonoursHtml } from "./player_career_medals.js";
