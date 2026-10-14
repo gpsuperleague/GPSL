@@ -4,6 +4,7 @@
  */
 
 import { formatInstantUK, isValidInstant } from "./countdown_display.js";
+import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
 
 const TYPE_LABELS = {
   snap: "Snap auction",
@@ -66,10 +67,35 @@ export async function loadUpcomingSpecialAuctions(supabase) {
  * @param {Array} auctions
  * @param {number|string|null} currentId auction shown on this page
  */
+function auctionCalendarEvents(a) {
+  const typeLabel = TYPE_LABELS[a.auction_type] || "Special auction";
+  return auctionWindowEvents({
+    id: `special-${a.id}`,
+    title: `GPSL ${typeLabel}: ${a.title || typeLabel}`,
+    startAt: a.start_time,
+    // Snap finish is random — never put the hard end (or random end) in calendars
+    endAt: a.auction_type === "snap" ? null : a.end_time || null,
+    url: new URL(auctionHref(a), window.location.href).href,
+  });
+}
+
+function wireCalendarButtons(rootEl, list) {
+  const byId = new Map(list.map((a) => [String(a.id), a]));
+  rootEl.querySelectorAll("[data-sa-cal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const a = byId.get(btn.dataset.saCal);
+      if (a) downloadIcs(`gpsl-special-auction-${a.id}.ics`, auctionCalendarEvents(a));
+    });
+  });
+  rootEl.querySelector("[data-sa-cal-all]")?.addEventListener("click", () => {
+    downloadIcs("gpsl-special-auctions.ics", list.flatMap(auctionCalendarEvents));
+  });
+}
+
 export function renderUpcomingSpecialAuctions(rootEl, auctions, currentId = null) {
   if (!rootEl) return;
   const list = auctions || [];
-  if (list.length < 2 && list.every((a) => String(a.id) === String(currentId))) {
+  if (!list.length) {
     rootEl.hidden = true;
     rootEl.innerHTML = "";
     return;
@@ -96,29 +122,44 @@ export function renderUpcomingSpecialAuctions(rootEl, auctions, currentId = null
           <div class="sa-upcoming-meta">${escapeHtml(TYPE_LABELS[a.auction_type] || a.auction_type)} · ${escapeHtml(prizeLabel(a))}</div>
         </div>
         <div class="sa-upcoming-when">${escapeHtml(when)}</div>`;
+      const calBtn = `<button type="button" class="sa-upcoming-cal" data-sa-cal="${a.id}" title="Add to your calendar (phone / Outlook / Google)">📅</button>`;
       return isCurrent
-        ? `<li class="sa-upcoming-item is-current">${inner}</li>`
-        : `<li class="sa-upcoming-item"><a href="${auctionHref(a)}">${inner}</a></li>`;
+        ? `<li class="sa-upcoming-item is-current"><div class="sa-upcoming-card">${inner}</div>${calBtn}</li>`
+        : `<li class="sa-upcoming-item"><a class="sa-upcoming-card" href="${auctionHref(a)}">${inner}</a>${calBtn}</li>`;
     })
     .join("");
 
   rootEl.hidden = false;
   rootEl.innerHTML = `
-    <h2 class="sa-upcoming-heading">Upcoming auctions</h2>
+    <div class="sa-upcoming-head">
+      <h2 class="sa-upcoming-heading">Upcoming auctions</h2>
+      <button type="button" class="sa-upcoming-cal-all" data-sa-cal-all>📅 Add all to calendar</button>
+    </div>
     <ul class="sa-upcoming-list">${rows}</ul>`;
+  wireCalendarButtons(rootEl, list);
 }
 
 export const UPCOMING_SPECIAL_AUCTIONS_CSS = `
   .sa-upcoming { margin: 16px auto; }
-  .sa-upcoming-heading { color: #ffcc66; font-size: 16px; margin: 0 0 10px; }
+  .sa-upcoming-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
+  .sa-upcoming-heading { color: #ffcc66; font-size: 16px; margin: 0; }
   .sa-upcoming-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-  .sa-upcoming-item > a, .sa-upcoming-item.is-current {
+  .sa-upcoming-item { display: flex; gap: 8px; align-items: stretch; }
+  .sa-upcoming-card {
+    flex: 1; min-width: 0;
     display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px;
     padding: 10px 12px; background: #1f1f1f; border: 1px solid #333; border-radius: 8px;
     color: #ddd; text-decoration: none;
   }
-  .sa-upcoming-item > a:hover { border-color: #ff9900; }
-  .sa-upcoming-item.is-current { border-color: #555; opacity: 0.85; }
+  a.sa-upcoming-card:hover { border-color: #ff9900; }
+  .sa-upcoming-item.is-current .sa-upcoming-card { border-color: #555; opacity: 0.85; }
+  .sa-upcoming-cal, .sa-upcoming-cal-all {
+    background: #2a2a2a; color: #ddd; border: 1px solid #444; border-radius: 8px;
+    cursor: pointer; font-size: 13px;
+  }
+  .sa-upcoming-cal { width: 44px; font-size: 18px; }
+  .sa-upcoming-cal-all { padding: 6px 12px; }
+  .sa-upcoming-cal:hover, .sa-upcoming-cal-all:hover { border-color: #ff9900; }
   .sa-upcoming-title { font-weight: 700; color: #eee; }
   .sa-upcoming-meta { font-size: 12px; color: #999; margin-top: 2px; }
   .sa-upcoming-when { font-size: 13px; color: #ffcc66; align-self: center; white-space: nowrap; }

@@ -106,6 +106,90 @@
       padding: 12px;
       margin: 12px 0;
     }
+    .sa-rules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .sa-rule-card {
+      background: #1c1c1c;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #bbb;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .sa-rule-icon { font-size: 18px; line-height: 1; }
+    .sa-rule-label {
+      margin: 6px 0 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #ffcc66;
+    }
+    .sa-rule-body b { color: #eee; }
+    .sa-clue-track {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+      margin: 14px 0 6px;
+    }
+    .sa-clue-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 120px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+    }
+    .sa-clue-card.open {
+      border-color: #ff9900;
+      background: linear-gradient(160deg, #2e2210 0%, #1c1c1c 70%);
+      box-shadow: 0 0 0 1px rgba(255, 153, 0, 0.25), 0 6px 18px rgba(255, 153, 0, 0.12);
+    }
+    .sa-clue-card.locked { opacity: 0.55; border-style: dashed; }
+    .sa-clue-card.locked.next { opacity: 0.85; border-color: #806020; }
+    .sa-clue-head { display: flex; align-items: center; justify-content: space-between; }
+    .sa-clue-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-weight: 800;
+      background: #333;
+      color: #aaa;
+    }
+    .sa-clue-card.open .sa-clue-num { background: #ff9900; color: #111; }
+    .sa-clue-time { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #888; }
+    .sa-clue-text { flex: 1; color: #f2f2f2; font-size: 15px; font-weight: 600; line-height: 1.4; }
+    .sa-clue-locked { flex: 1; color: #888; font-size: 13px; display: flex; align-items: center; }
+    .sa-clue-disc {
+      align-self: flex-start;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #24361f;
+      color: #8fd27a;
+    }
+    .sa-clue-disc.none { background: #2a2a2a; color: #888; }
+    .sa-identity-note {
+      margin: 8px 0 0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #1c1c1c;
+      border: 1px solid #333;
+      color: #ccc;
+      font-size: 13px;
+    }
     .sa-player-row {
       display: flex;
       flex-wrap: wrap;
@@ -381,7 +465,7 @@
         <p id="prizeOptionsStatus" class="secret-note"></p>
       </div>
       <div id="playerReveal"></div>
-      <p id="rulesLine" class="secret-note"></p>
+      <div id="rulesLine" class="secret-note"></div>
       <p id="myBidLine"></p>
       <div class="sa-actions" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px;">
         <button id="openBidBtn" class="button" style="display:none;">Place bid</button>
@@ -480,8 +564,8 @@
       wireMoneyBidInput,
     } from "./money_input.js";
     import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
-    import { getSpecialAuctionRulesText } from "./special_auction_rules.js";
-    import { mountUpcomingSpecialAuctions } from "./special_auction_upcoming.js?v=20261014-upcoming2";
+    import { getSpecialAuctionRulesText, getSnapRulesHtml } from "./special_auction_rules.js?v=20261014-snap-cards";
+    import { mountUpcomingSpecialAuctions } from "./special_auction_upcoming.js?v=20261014-upcoming-cal";
 
     const SNAP_MIN_BID = 1000000;
     const LUB_MIN_BID = 1000;
@@ -728,6 +812,45 @@
       await refreshData({ manual: true });
     };
 
+    const SNAP_CLUE_SLOTS = [
+      { n: 1, at_min: 0, discount_pct: 20 },
+      { n: 2, at_min: 20, discount_pct: 10 },
+      { n: 3, at_min: 40, discount_pct: 5 },
+      { n: 4, at_min: 50, discount_pct: 0 },
+    ];
+
+    function snapClueTrackHtml(clues) {
+      const byN = new Map((clues || []).map((c) => [Number(c.n), c]));
+      const slots = SNAP_CLUE_SLOTS.filter((s) => !clues?.length || byN.has(s.n)).map(
+        (s) => ({ ...s, ...(byN.get(s.n) || {}) })
+      );
+      const nextLocked = slots.find((s) => !(s.visible && s.text));
+      const cards = slots
+        .map((c) => {
+          const open = Boolean(c.visible && c.text);
+          const discount = Number(c.discount_pct) > 0
+            ? `<span class="sa-clue-disc">First bid now: ${c.discount_pct}% off</span>`
+            : `<span class="sa-clue-disc none">No discount</span>`;
+          const body = open
+            ? `<div class="sa-clue-text">${String(c.text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")}</div>`
+            : `<div class="sa-clue-locked">🔒 Unlocks at ${c.at_min} min</div>`;
+          const cls = open ? "open" : c === nextLocked ? "locked next" : "locked";
+          return `
+            <div class="sa-clue-card ${cls}">
+              <div class="sa-clue-head">
+                <span class="sa-clue-num">${c.n}</span>
+                <span class="sa-clue-time">${c.at_min === 0 ? "Start" : `${c.at_min} min`}</span>
+              </div>
+              ${body}
+              ${discount}
+            </div>`;
+        })
+        .join("");
+      return `<div class="sa-clue-track">${cards}</div>`;
+    }
+
     async function renderPlayerBlock() {
       els.playerReveal.innerHTML = "";
       const mode = auction.player_mode || "known";
@@ -737,28 +860,9 @@
 
       if (auction.auction_type === "snap") {
         const clues = await fetchVisibleClues(supabase, auction.id);
-        const visible = (clues || []).filter((c) => c.visible && c.text);
-        const locked = (clues || []).filter((c) => !c.visible && c.text);
-        let html = "";
-        if (visible.length) {
-          html += visible
-            .map(
-              (c) =>
-                `<div class="clue-box"><b>Clue ${c.n}</b>${
-                  c.discount_pct
-                    ? ` · first bid here → ${c.discount_pct}% off if you win`
-                    : " · no win discount"
-                }<br>${String(c.text)
-                  .replace(/&/g, "&amp;")
-                  .replace(/</g, "&lt;")}</div>`
-            )
-            .join("");
-        }
+        let html = snapClueTrackHtml(clues);
         if (identityHidden) {
-          if (locked.length) {
-            html += `<p style="color:#888;font-size:13px;">Next clue unlocks later in the auction.</p>`;
-          }
-          html += `<p class="secret-note">Player identity is revealed when the auction ends (random finish in the last 10 minutes).</p>`;
+          html += `<p class="sa-identity-note">🎭 Identity revealed at the random finish (minute 50–60).</p>`;
           els.playerReveal.innerHTML = html;
           return;
         }
@@ -1051,7 +1155,14 @@
         }
       }
 
-      els.rules.textContent = getSpecialAuctionRulesText(isLub);
+      if (isLub) {
+        els.rules.textContent = getSpecialAuctionRulesText(true);
+      } else {
+        els.rules.innerHTML = getSnapRulesHtml({
+          bidFee: snapBidUnitFee(auction),
+          increment: BID_INCREMENT,
+        });
+      }
 
       await renderPlayerBlock();
       await refreshParticipation();
