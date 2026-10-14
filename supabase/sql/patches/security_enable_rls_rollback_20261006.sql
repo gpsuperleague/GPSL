@@ -1,5 +1,6 @@
 -- =============================================================================
--- Undo security_enable_rls_all_public_20261006.sql.
+-- Undo security_enable_rls_all_public_20261006.sql or
+-- security_rls_lockdown_20261014.sql.
 -- Run the whole file to undo every table, or set v_only to one table name to
 -- undo just that table (e.g. if one page broke).
 -- =============================================================================
@@ -19,6 +20,10 @@ BEGIN
       CONTINUE;
     END IF;
     EXECUTE format('DROP POLICY IF EXISTS gpsl_keep_current_access ON public.%I', r.table_name);
+    EXECUTE format('DROP POLICY IF EXISTS gpsl_api_read ON public.%I', r.table_name);
+    EXECUTE format('DROP POLICY IF EXISTS gpsl_api_insert ON public.%I', r.table_name);
+    EXECUTE format('DROP POLICY IF EXISTS gpsl_api_update ON public.%I', r.table_name);
+    EXECUTE format('DROP POLICY IF EXISTS gpsl_api_delete ON public.%I', r.table_name);
     EXECUTE format('ALTER TABLE public.%I DISABLE ROW LEVEL SECURITY', r.table_name);
     DELETE FROM public.gpsl_rls_hardening_log WHERE table_name = r.table_name;
     v_n := v_n + 1;
