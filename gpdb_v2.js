@@ -1032,8 +1032,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return `<span class="locked-msg gpdb-excluded-msg" title="Admin season exclusion">Unavailable</span>`;
   }
 
+  /** Same look as a season exclusion so mystery auction prizes are not given away. */
   function auctionExcludedBidHtml() {
-    return `<span class="locked-msg gpdb-auction-reserved-msg" title="Reserved for a special auction — not available in the draft">Reserved for special auction</span>`;
+    return seasonExcludedBidHtml();
   }
 
   function legacyCardBidHtml() {
@@ -2424,9 +2425,8 @@ document.addEventListener("DOMContentLoaded", () => {
         nameCell += suspBadge;
 
         const rowClasses = [
-          seasonExcluded ? "gpdb-row-excluded" : "",
+          seasonExcluded || auctionExcluded ? "gpdb-row-excluded" : "",
           legacyCard ? "gpdb-row-legacy" : "",
-          auctionExcluded ? "gpdb-row-auction-reserved" : "",
           suspRows.length ? "gpdb-row-suspended" : "",
         ]
           .filter(Boolean)
@@ -2442,9 +2442,8 @@ document.addEventListener("DOMContentLoaded", () => {
               data-contract-seasons="${player.contract_seasons_remaining ?? ""}"
               data-nation="${player.Nation ?? ""}"
               data-age="${player.Age ?? ""}"
-              data-season-excluded="${seasonExcluded ? "1" : "0"}"
-              data-legacy="${legacyCard ? "1" : "0"}"
-              data-auction-excluded="${auctionExcluded ? "1" : "0"}">
+              data-season-excluded="${seasonExcluded || auctionExcluded ? "1" : "0"}"
+              data-legacy="${legacyCard ? "1" : "0"}">
             <td>${playerThumbLinkHtml(player.Konami_ID, {
               className: "gpdb-thumb",
               alt: player.Name,
@@ -2545,11 +2544,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (
-      row.dataset.auctionExcluded === "1" ||
-      AUCTION_EXCLUDED_PLAYER_IDS.has(String(konamiId).trim())
-    ) {
-      alert("This player is reserved for a special auction and cannot be bid on in the draft.");
+    if (AUCTION_EXCLUDED_PLAYER_IDS.has(String(konamiId).trim())) {
+      alert("This player is unavailable this season.");
       return;
     }
 
