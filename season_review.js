@@ -219,22 +219,39 @@ function managerOutcomeCell(r) {
 function financeCell(r) {
   const f = r.finance;
   if (!f) return `<span class="sr-sub">Not projected yet</span>`;
-  const lines = [
-    `<div>Now <b>${money(f.balance_now)}</b></div>`,
-    `<div>Projected close <b class="${Number(f.closing) < 0 ? "sr-neg" : "sr-plus"}">${money(f.closing)}</b></div>`,
-  ];
+  const closeCls = (v) => (Number(v) < 0 ? "sr-neg" : "sr-plus");
+  const lines = [`<div>Now <b>${money(f.balance_now)}</b></div>`];
+  const ffpProjected = f.ffp && !f.eos_posted;
+  if (ffpProjected) {
+    const beforeFfp = Number(f.pre_close) - Number(f.debt_interest || 0);
+    lines.push(
+      `<div>Projected close before FFP <b class="${closeCls(beforeFfp)}">${money(beforeFfp)}</b></div>`
+    );
+  } else {
+    lines.push(`<div>Projected close <b class="${closeCls(f.closing)}">${money(f.closing)}</b></div>`);
+  }
   if (f.eos_posted) lines.push(`<div class="sr-sub">Season finances already closed</div>`);
   if (Number(f.debt_interest) > 0) {
     lines.push(`<div class="sr-sub">Includes debt interest −${money(f.debt_interest)}</div>`);
   }
   if (f.ffp) {
-    lines.push(`<div>${chip(`FFP fine ${money(f.ffp_fine || board.ffp_fine)}`, "bad")}</div>`);
+    lines.push(
+      `<div>${chip(`FFP fine ${money(f.ffp_fine || board.ffp_fine)}`, "bad")}</div>` +
+        (ffpProjected
+          ? `<div class="sr-sub">Closing at ${money(-Number(board.ffp_threshold))} or worse triggers the fine; players are then sold (highest value first) until the balance is back above ${money(-Number(board.ffp_threshold))}.</div>`
+          : "")
+    );
     const rel = f.releases || [];
     if (rel.length) {
       lines.push(
         `<div class="sr-block"><b>Forced sales:</b> ${rel
           .map((p) => `${esc(p.name)} (${money(p.market_value)})`)
-          .join(", ")}</div>`
+          .join(", ")} = +${money(f.release_total)}</div>`
+      );
+    }
+    if (ffpProjected) {
+      lines.push(
+        `<div>Close after FFP <b class="${closeCls(f.closing)}">${money(f.closing)}</b></div>`
       );
     }
     lines.push(`<div class="sr-sub">Can't buy players in the next transfer window</div>`);
