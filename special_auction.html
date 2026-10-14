@@ -400,6 +400,8 @@
     </div>
   </div>
 
+  <div id="upcomingAuctions" class="panel sa-upcoming" hidden></div>
+
   <div id="bidModalBackdrop" class="bid-modal-backdrop">
     <div class="bid-modal">
       <h3 id="bidModalTitle">Submit bid</h3>
@@ -479,6 +481,7 @@
     } from "./money_input.js";
     import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
     import { getSpecialAuctionRulesText } from "./special_auction_rules.js";
+    import { mountUpcomingSpecialAuctions } from "./special_auction_upcoming.js?v=20261014-upcoming";
 
     const SNAP_MIN_BID = 1000000;
     const LUB_MIN_BID = 1000;
@@ -1370,17 +1373,20 @@
       const { clubShort: cs } = await loadOwnerClub(supabase);
       clubShort = cs;
 
-      auction = await fetchActiveSpecialAuction(supabase);
-      if (!auction) {
-        const params = new URLSearchParams(location.search);
-        const id = params.get("id");
-        if (id) auction = await fetchAuctionById(supabase, id);
-      }
+      const requestedId = new URLSearchParams(location.search).get("id");
+      if (requestedId) auction = await fetchAuctionById(supabase, requestedId);
+      if (!auction) auction = await fetchActiveSpecialAuction(supabase);
 
       if (auction?.auction_type === "blind_gauntlet" && auction?.id) {
         window.location = `special_auction_gauntlet.html?id=${auction.id}`;
         return;
       }
+
+      mountUpcomingSpecialAuctions(
+        supabase,
+        document.getElementById("upcomingAuctions"),
+        auction?.id ?? null
+      );
 
       await refreshData({ quiet: true });
 

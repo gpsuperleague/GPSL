@@ -19,6 +19,7 @@ import { playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { parseMoneyInput, wireMoneyBidInput } from "./money_input.js";
 import { renderHonoursHtml } from "./player_career_medals.js";
 import { renderBlindGauntletRules } from "./special_auction_gauntlet_rules.js";
+import { mountUpcomingSpecialAuctions } from "./special_auction_upcoming.js?v=20261014-upcoming";
 
 let state = null;
 let auctionId = null;
@@ -527,6 +528,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
   }
+
+  mountUpcomingSpecialAuctions(
+    supabase,
+    document.getElementById("upcomingAuctions"),
+    auctionId || null
+  );
 
   if (!auctionId) {
     document.getElementById("phaseLabel").textContent = "No Blind Gauntlet auction is live.";
