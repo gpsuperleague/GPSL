@@ -1000,6 +1000,13 @@ body.squad-page .squad-contract-stack {
 body.squad-page .squad-contract-years {
   font-size: 12px;
   color: #ddd;
+  white-space: nowrap;
+}
+
+body.squad-page .squad-contract-window {
+  margin-right: 4px;
+  font-size: 11px;
+  cursor: help;
 }
 
 body.squad-page .squad-contract-wage {

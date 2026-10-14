@@ -418,30 +418,74 @@ BEGIN
 END;
 $roll$;
 
--- Expiry resolver: filter by end window (default summer; January run sets the GUC)
-DO $res$
-DECLARE
-  v_sig regprocedure := to_regprocedure('public.contract_resolve_all_expiry_bids(bigint,text)');
-  v_def text;
-  v_old text := 'WHERE public.player_expiry_auction_applies(p."Konami_ID"::text)';
-  v_new text := 'WHERE public.player_expiry_auction_applies(p."Konami_ID"::text)
-      AND coalesce(p.contract_end_window, ''summer'')
-        = coalesce(nullif(current_setting(''gpsl.expiry_end_window'', true), ''''), ''summer'')';
+-- Expiry resolver: only resolve contracts ending in the current window.
+-- Wrappers (no text patching): the live functions are renamed to *_base / *_core
+-- and replaced by thin wrappers. NOTE: a later CREATE OR REPLACE of
+-- player_expiry_auction_applies or contract_resolve_all_expiry_bids would drop
+-- the window filter — patch the *_base / *_core functions instead.
+DO $wrap$
 BEGIN
-  IF v_sig IS NULL THEN
-    RAISE EXCEPTION 'contract_resolve_all_expiry_bids(bigint,text) not found';
+  IF to_regprocedure('public.player_expiry_auction_applies_base(text)') IS NULL THEN
+    ALTER FUNCTION public.player_expiry_auction_applies(text)
+      RENAME TO player_expiry_auction_applies_base;
   END IF;
-  v_def := pg_get_functiondef(v_sig);
-  IF position('gpsl.expiry_end_window' IN v_def) > 0 THEN
-    RAISE NOTICE 'contract_resolve_all_expiry_bids already window-aware';
-    RETURN;
+  IF to_regprocedure('public.contract_resolve_all_expiry_bids_core(bigint,text)') IS NULL THEN
+    ALTER FUNCTION public.contract_resolve_all_expiry_bids(bigint, text)
+      RENAME TO contract_resolve_all_expiry_bids_core;
   END IF;
-  IF position(v_old IN v_def) = 0 THEN
-    RAISE EXCEPTION 'contract_resolve_all_expiry_bids: loop marker not found';
-  END IF;
-  EXECUTE replace(v_def, v_old, v_new);
 END;
-$res$;
+$wrap$;
+
+-- GUC gpsl.expiry_end_window is only set during a resolve run ('summer' / 'january');
+-- unset (market list, bids) = no window filter.
+CREATE OR REPLACE FUNCTION public.player_expiry_auction_applies(p_player_id text)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_win text := nullif(current_setting('gpsl.expiry_end_window', true), '');
+BEGIN
+  IF NOT coalesce(public.player_expiry_auction_applies_base(p_player_id), false) THEN
+    RETURN false;
+  END IF;
+  IF v_win IS NULL THEN
+    RETURN true;
+  END IF;
+  RETURN EXISTS (
+    SELECT 1
+    FROM public."Players" p
+    WHERE p."Konami_ID"::text = btrim(p_player_id)
+      AND coalesce(p.contract_end_window, 'summer') = v_win
+  );
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.player_expiry_auction_applies(text) TO authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.contract_resolve_all_expiry_bids(
+  p_ledger_season_id bigint DEFAULT NULL,
+  p_bid_season_label text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_prev text := nullif(current_setting('gpsl.expiry_end_window', true), '');
+  v_out jsonb;
+BEGIN
+  PERFORM set_config('gpsl.expiry_end_window', coalesce(v_prev, 'summer'), true);
+  v_out := public.contract_resolve_all_expiry_bids_core(p_ledger_season_id, p_bid_season_label);
+  PERFORM set_config('gpsl.expiry_end_window', coalesce(v_prev, ''), true);
+  RETURN v_out;
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.contract_resolve_all_expiry_bids(bigint, text) TO authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 7. Close listings for players who have become locked
@@ -637,6 +681,25 @@ NOTIFY pgrst, 'reload schema';
 -- Report
 -- ---------------------------------------------------------------------------
 SELECT 'phase' AS section, public.gpsl_contract_phase()::text AS detail, NULL::bigint AS players
+UNION ALL
+SELECT 'expiry window wrappers',
+       'base=' || (to_regprocedure('public.player_expiry_auction_applies_base(text)') IS NOT NULL)::text
+       || ' core=' || (to_regprocedure('public.contract_resolve_all_expiry_bids_core(bigint,text)') IS NOT NULL)::text,
+       NULL
+UNION ALL
+SELECT 'rollover summer-only: ' || f.fn,
+       CASE
+         WHEN to_regprocedure('public.' || f.fn || '()') IS NULL THEN 'function missing'
+         WHEN position('contract_end_window' IN pg_get_functiondef(to_regprocedure('public.' || f.fn || '()'))) > 0 THEN 'ok'
+         ELSE 'NOT PATCHED'
+       END,
+       NULL
+FROM unnest(ARRAY[
+  'contract_tick_rollover_step_fa',
+  'contract_tick_rollover_step_decrement',
+  'contract_tick_rollover_step_contested',
+  'contract_tick_season_rollover'
+]) AS f(fn)
 UNION ALL
 SELECT 'contracts by end window / seasons left',
        coalesce(p.contract_end_window, 'summer') || ' · ' || coalesce(p.contract_seasons_remaining::text, 'null'),

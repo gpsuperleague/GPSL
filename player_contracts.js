@@ -184,6 +184,17 @@ export function playerBlockedFromTransferMarket(player, currentSeasonLabel) {
   return !playerCanListOrSell(player, currentSeasonLabel);
 }
 
+/** ☀️ summer contract (ends at the summer rollover) / ❄️ January contract (ends at GPSL January). */
+export function contractWindowIconHtml(player) {
+  const jan = contractEndWindow(player) === "january";
+  const title = jan
+    ? "January signing — contract ends at GPSL January"
+    : "Summer signing — contract ends at the summer rollover";
+  return `<span class="squad-contract-window squad-contract-window--${
+    jan ? "january" : "summer"
+  }" title="${title}" aria-label="${title}">${jan ? "❄️" : "☀️"}</span>`;
+}
+
 export function formatSquadContractCell(player) {
   const years = contractYearsLabel(
     player?.contract_seasons_remaining,
@@ -191,8 +202,9 @@ export function formatSquadContractCell(player) {
   );
   const wage = formatWage(player?.contract_wage);
   if (years === "—" && wage === "—") return "—";
+  const icon = years === "—" ? "" : contractWindowIconHtml(player);
   return `<div class="squad-contract-stack">
-    <span class="squad-contract-years">${years}</span>
+    <span class="squad-contract-years">${icon}${years}</span>
     <span class="squad-contract-wage">${wage}</span>
   </div>`;
 }

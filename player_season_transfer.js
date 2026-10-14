@@ -24,7 +24,7 @@ export function playerBlockedSameSeasonTransfer(player, currentSeasonLabel) {
   return playerSignedCurrentSeason(player, currentSeasonLabel);
 }
 
-import { loadContractPhase } from "./player_contracts.js?v=20261014-half-windows";
+import { loadContractPhase } from "./player_contracts.js?v=20261014-window-icons";
 
 /** @param {object} player — may include contract_seasons_remaining */
 export {
@@ -32,7 +32,7 @@ export {
   playerSellLockReason,
   sellLockMessage,
   FINAL_YEAR_TRANSFER_MESSAGE,
-} from "./player_contracts.js?v=20261014-half-windows";
+} from "./player_contracts.js?v=20261014-window-icons";
 
 /** Season label plus the contract half-season phase used by sell-lock checks. */
 export async function loadCurrentGpslSeasonLabel(supabase) {

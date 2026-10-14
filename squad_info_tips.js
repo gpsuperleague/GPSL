@@ -7,7 +7,7 @@ import {
   isContractFinalHalf,
   isContractFinalYear,
   isPesdbLegacyCard,
-} from "./player_contracts.js?v=20261014-half-windows";
+} from "./player_contracts.js?v=20261014-window-icons";
 import {
   isExpiryAuctionExempt,
   isOooOWageUpliftRenew,

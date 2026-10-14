@@ -44,7 +44,7 @@ import {
   loadTransferStatusState,
   resolvePlayerTransferStatus,
   formatSquadStatusHtml,
-} from "./player_transfer_status.js?v=20261014-half-windows";
+} from "./player_transfer_status.js?v=20261014-window-icons";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -61,7 +61,7 @@ import {
   playerBlockedFromTransferMarket,
   SAME_SEASON_TRANSFER_MESSAGE,
   FINAL_YEAR_TRANSFER_MESSAGE,
-} from "./player_season_transfer.js?v=20261014-half-windows";
+} from "./player_season_transfer.js?v=20261014-window-icons";
 import {
   formatSquadContractCell,
   squadContractActionOptionsHtml,
@@ -71,7 +71,7 @@ import {
   playerSellLockReason,
   sellLockMessage,
   sellLockShortLabel,
-} from "./player_contracts.js?v=20261014-half-windows";
+} from "./player_contracts.js?v=20261014-window-icons";
 import { loadCalendarStatus } from "./competition_calendar.js";
 import { formatWage, oooRenewUpliftPct } from "./wages.js";
 import {
@@ -149,7 +149,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20261014-half-windows";
+} from "./squad_info_tips.js?v=20261014-window-icons";
 
 window.supabase = supabase;
 
