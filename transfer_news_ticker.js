@@ -236,6 +236,7 @@ export function initTransferNewsStrip() {
 
   if (__refreshTimer) return;
   __refreshTimer = setInterval(() => {
+    if (document.visibilityState === "hidden") return;
     refreshTransferNewsStrip();
   }, REFRESH_MS);
 }

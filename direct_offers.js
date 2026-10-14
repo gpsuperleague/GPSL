@@ -102,7 +102,10 @@ export function isPendingContractedDirectOffer(row) {
 export async function loadPendingDirectOfferState(supabase) {
   const { data, error } = await supabase
     .from("Player_Transfer_Bids")
-    .select("player_id, direct_bid_id, listing_id, seller_club_id, status, is_direct");
+    .select("player_id, direct_bid_id, listing_id, seller_club_id, status, is_direct")
+    .eq("is_direct", true)
+    .is("listing_id", null)
+    .not("seller_club_id", "is", null);
 
   if (error) {
     console.error("Failed to load pending direct offers:", error);

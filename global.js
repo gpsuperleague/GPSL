@@ -1501,9 +1501,22 @@ async function refreshSpecialAuctionNavLive() {
   }
 }
 
+const EXPIRING_NAV_CACHE_KEY = "gpsl_expiring_market_live_v1";
+const EXPIRING_NAV_CACHE_MS = 5 * 60_000;
+
 /** Contested final-year market — Active badge when any players are listed. */
 async function refreshExpiringContractNavLive() {
   try {
+    // The full market RPC is heavy; the badge only needs yes/no — share across pages for 5 min
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(EXPIRING_NAV_CACHE_KEY) || "null");
+      if (cached && Date.now() - cached.at < EXPIRING_NAV_CACHE_MS) {
+        expiringContractMarketLive = cached.live === true;
+        return;
+      }
+    } catch {
+      /* ignore bad cache */
+    }
     const { data, error } = await supabase.rpc("list_expiring_contract_market");
     if (error) {
       // Schema not applied yet — fail quiet
@@ -1511,6 +1524,14 @@ async function refreshExpiringContractNavLive() {
       return;
     }
     expiringContractMarketLive = Array.isArray(data) && data.length > 0;
+    try {
+      sessionStorage.setItem(
+        EXPIRING_NAV_CACHE_KEY,
+        JSON.stringify({ at: Date.now(), live: expiringContractMarketLive })
+      );
+    } catch {
+      /* storage full / private mode */
+    }
   } catch (err) {
     console.warn("refreshExpiringContractNavLive:", err);
     expiringContractMarketLive = false;
@@ -1921,6 +1942,8 @@ let __navAuctionRefreshInterval = null;
 function startNavAuctionBadgeRefresh() {
   if (__navAuctionRefreshInterval) return;
   __navAuctionRefreshInterval = setInterval(() => {
+    // Background tabs left open were polling all day
+    if (document.visibilityState === "hidden") return;
     Promise.all([
       draftEnabled || managerDraftEnabled || clubAuctionEnabled
         ? refreshDraftBiddingOpen().catch((err) => {

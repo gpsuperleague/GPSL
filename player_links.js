@@ -21,10 +21,18 @@ export function pesdbPlayerCardUrl(konamiId) {
   return `https://pesdb.net/assets/img/card/b${encodeURIComponent(id)}.png`;
 }
 
+/** Edge function: copies the card into storage on first miss, then redirects. */
 export function cachedPesdbPlayerCardUrl(konamiId) {
   const id = String(konamiId ?? "").trim();
   if (!id) return PESDB_FALLBACK_CARD_IMG;
   return `${SUPABASE_URL}/functions/v1/pesdb-card-cache?id=${encodeURIComponent(id)}`;
+}
+
+/** Public storage copy (CDN cached, no edge function call). */
+export function storedPesdbPlayerCardUrl(konamiId) {
+  const id = String(konamiId ?? "").trim();
+  if (!id) return PESDB_FALLBACK_CARD_IMG;
+  return `${SUPABASE_URL}/storage/v1/object/public/player-cards/${encodeURIComponent(id)}.png`;
 }
 
 export function gpslPlayerCareerUrl(konamiId) {
@@ -60,9 +68,10 @@ export function playerThumbLinkHtml(konamiId, options = {}) {
     fallback = PESDB_FALLBACK_CARD_IMG,
     wrapLink = true,
   } = options;
+  // Storage copy first; on miss the edge function caches it (and falls back to pesdb), then placeholder.
+  const storedUrl = storedPesdbPlayerCardUrl(id);
   const cacheUrl = cachedPesdbPlayerCardUrl(id);
-  const pesdbUrl = pesdbPlayerCardUrl(id);
-  const img = `<img src="${cacheUrl}" class="${className}" alt="${escapePlayerHtml(alt)}" data-pesdb-fallback="${pesdbUrl}" onerror="if(!this.dataset.pesdbTried){this.dataset.pesdbTried='1';this.src=this.dataset.pesdbFallback;}else{this.src='${fallback}';}">`;
+  const img = `<img src="${storedUrl}" class="${className}" alt="${escapePlayerHtml(alt)}" loading="lazy" data-card-cache="${cacheUrl}" onerror="if(!this.dataset.cacheTried){this.dataset.cacheTried='1';this.src=this.dataset.cardCache;}else{this.onerror=null;this.src='${fallback}';}">`;
 
   if (!wrapLink) return img;
 

@@ -287,6 +287,7 @@ export async function refreshSeasonScheduleStrip({ force = false } = {}) {
 
   // Called from every nav badge refresh — at most one load per minute per tab
   if (__stripInFlight) return __stripInFlight;
+  if (!force && __lastStripLoadMs === 0 && paintStripFromCache(el)) return;
   const fresh = Date.now() - __lastStripLoadMs < STRIP_MIN_REFRESH_MS;
   if (!force && (fresh || document.visibilityState === "hidden")) return;
 
@@ -294,6 +295,23 @@ export async function refreshSeasonScheduleStrip({ force = false } = {}) {
     __stripInFlight = null;
   });
   return __stripInFlight;
+}
+
+const STRIP_CACHE_KEY = "gpsl_season_strip_v1";
+
+function paintStripFromCache(el) {
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(STRIP_CACHE_KEY) || "null");
+    if (!cached || Date.now() - cached.at >= STRIP_MIN_REFRESH_MS || !cached.html) {
+      return false;
+    }
+    el.innerHTML = cached.html;
+    el.hidden = false;
+    __lastStripLoadMs = cached.at;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function loadStripOnce(el) {
@@ -308,6 +326,11 @@ async function loadStripOnce(el) {
     }
     el.innerHTML = html;
     el.hidden = false;
+    try {
+      sessionStorage.setItem(STRIP_CACHE_KEY, JSON.stringify({ at: Date.now(), html }));
+    } catch {
+      /* storage full / private mode */
+    }
   } catch (err) {
     console.warn("season schedule strip:", err);
     el.hidden = true;
@@ -331,8 +354,11 @@ export function ensureSeasonScheduleStripMount() {
 }
 
 export function initSeasonScheduleStrip() {
-  ensureSeasonScheduleStripMount();
-  refreshSeasonScheduleStrip({ force: true });
+  const mount = ensureSeasonScheduleStripMount();
+  // Page navigation within a minute reuses the last strip instead of re-querying
+  if (!mount || !paintStripFromCache(mount)) {
+    refreshSeasonScheduleStrip({ force: true });
+  }
 
   if (__refreshTimer) return;
   __refreshTimer = setInterval(() => {
