@@ -1,6 +1,7 @@
 /**
- * Same-season transfer lock: players signed in the current GPSL season
- * cannot be listed, sold abroad, or receive transfer-market activity until next season.
+ * Signing lock: players signed in the current GPSL season (or in the second half of
+ * last season, until GPSL January) cannot be listed, sold abroad, or receive
+ * transfer-market activity.
  */
 
 export const SAME_SEASON_TRANSFER_MESSAGE =
@@ -23,13 +24,26 @@ export function playerBlockedSameSeasonTransfer(player, currentSeasonLabel) {
   return playerSignedCurrentSeason(player, currentSeasonLabel);
 }
 
+import { loadContractPhase } from "./player_contracts.js?v=20261014-half-windows";
+
 /** @param {object} player — may include contract_seasons_remaining */
 export {
   playerBlockedFromTransferMarket,
+  playerSellLockReason,
+  sellLockMessage,
   FINAL_YEAR_TRANSFER_MESSAGE,
-} from "./player_contracts.js";
+} from "./player_contracts.js?v=20261014-half-windows";
 
+/** Season label plus the contract half-season phase used by sell-lock checks. */
 export async function loadCurrentGpslSeasonLabel(supabase) {
+  const [label] = await Promise.all([
+    loadCurrentGpslSeasonLabelOnly(supabase),
+    loadContractPhase(supabase),
+  ]);
+  return label;
+}
+
+async function loadCurrentGpslSeasonLabelOnly(supabase) {
   const { data: rpcLabel, error: rpcErr } = await supabase.rpc(
     "current_gpsl_season_label"
   );

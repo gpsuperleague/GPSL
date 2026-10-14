@@ -42,11 +42,11 @@ import {
   loadTransferStatusState,
   buildGpdbContractedBidCellHtml,
   formatForeignContractGpdbHtml,
-} from "./player_transfer_status.js";
-import { isPesdbLegacyCard } from "./player_contracts.js";
+} from "./player_transfer_status.js?v=20261014-half-windows";
+import { isPesdbLegacyCard } from "./player_contracts.js?v=20261014-half-windows";
 import { installRangeSteppers } from "./range_filter_steppers.js?v=20260819-contract-steppers";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
-import { GPDB_TIPS } from "./owner_page_tips.js";
+import { GPDB_TIPS } from "./owner_page_tips.js?v=20261014-half-windows";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -62,11 +62,14 @@ import {
   playerBlockedFromTransferMarket,
   SAME_SEASON_TRANSFER_MESSAGE,
   FINAL_YEAR_TRANSFER_MESSAGE,
-} from "./player_season_transfer.js";
+} from "./player_season_transfer.js?v=20261014-half-windows";
 import {
   contractYearsLabel,
   isContractFinalYear,
-} from "./player_contracts.js";
+  isContractFinalHalf,
+  playerSellLockReason,
+  sellLockMessage,
+} from "./player_contracts.js?v=20261014-half-windows";
 import {
   confirmSquadRulesBeforeBid,
   squadRulesBidWarningLines,
@@ -1552,9 +1555,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return `<span class="gpdb-status-fa">Free agent</span>`;
     }
     if (isContractFinalYear(player)) {
-      return `<span class="gpdb-status-final" title="Final contract year — wage bids on Expiring Contracts (standard players)">Final year</span>`;
+      return isContractFinalHalf(player)
+        ? `<span class="gpdb-status-final" title="Final half of contract — not sellable; wage bids on Expiring Contracts (standard players)">Final half</span>`
+        : `<span class="gpdb-status-final" title="Final contract year — still sellable until GPSL January, then wage bids open">Final year</span>`;
     }
-    const years = contractYearsLabel(player?.contract_seasons_remaining);
+    const years = contractYearsLabel(
+      player?.contract_seasons_remaining,
+      player?.contract_end_window
+    );
     if (years === "—" || years === "Expired") {
       return `<span class="gpdb-status-mid">${years}</span>`;
     }
@@ -2845,9 +2853,14 @@ document.addEventListener("DOMContentLoaded", () => {
       CURRENT_OFFER_PLAYER,
       TRANSFER_STATUS_STATE?.currentSeasonLabel
     )) {
-      errorBox.textContent = isContractFinalYear(CURRENT_OFFER_PLAYER)
-        ? FINAL_YEAR_TRANSFER_MESSAGE
-        : SAME_SEASON_TRANSFER_MESSAGE;
+      errorBox.textContent =
+        sellLockMessage(
+          playerSellLockReason(
+            CURRENT_OFFER_PLAYER,
+            TRANSFER_STATUS_STATE?.currentSeasonLabel
+          ),
+          SAME_SEASON_TRANSFER_MESSAGE
+        ) || SAME_SEASON_TRANSFER_MESSAGE;
       return;
     }
 

@@ -44,7 +44,7 @@ import {
   loadTransferStatusState,
   resolvePlayerTransferStatus,
   formatSquadStatusHtml,
-} from "./player_transfer_status.js?v=20260813-squad-unlist";
+} from "./player_transfer_status.js?v=20261014-half-windows";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -61,14 +61,17 @@ import {
   playerBlockedFromTransferMarket,
   SAME_SEASON_TRANSFER_MESSAGE,
   FINAL_YEAR_TRANSFER_MESSAGE,
-} from "./player_season_transfer.js?v=20260807-preseason-season-lock";
+} from "./player_season_transfer.js?v=20261014-half-windows";
 import {
   formatSquadContractCell,
   squadContractActionOptionsHtml,
   isContractFinalYear,
   isPesdbLegacyCard,
   analyseSquadContractOutlook,
-} from "./player_contracts.js?v=20260821-ooo-renew";
+  playerSellLockReason,
+  sellLockMessage,
+  sellLockShortLabel,
+} from "./player_contracts.js?v=20261014-half-windows";
 import { loadCalendarStatus } from "./competition_calendar.js";
 import { formatWage, oooRenewUpliftPct } from "./wages.js";
 import {
@@ -146,13 +149,16 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20260815-mgr-archive";
+} from "./squad_info_tips.js?v=20261014-half-windows";
 
 window.supabase = supabase;
 
 /** Columns needed for squad table + list modal (avoid select *). */
 const SQUAD_PLAYER_COLUMNS =
   "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed, contract_seasons_remaining, contract_wage";
+
+const SQUAD_CONTRACT_WINDOW_COLUMNS =
+  "contract_end_window, contract_join_second_half";
 
 const SQUAD_PLAYER_COLUMNS_LEGACY =
   "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed, contract_seasons_remaining, contract_wage";
@@ -821,28 +827,33 @@ function squadActionOptionsHtml(player) {
   const pidKey = String(player?.Konami_ID ?? "").trim();
   const hasWageBid =
     !!transferStatusState?.myExpiryWageBidPlayerIds?.has(pidKey);
+  const lockReason = playerSellLockReason(player, currentGpslSeasonLabel);
+  const foreignOpts =
+    foreignTrackingTeams.length > 0
+      ? foreignSaleOptionsHtml(foreignTrackingTeams)
+      : `<option value="foreign">Sell to foreign club</option>`;
   const contractOpts = squadContractActionOptionsHtml(
     player,
     clubNation,
     {
       optionHtml: `${rewardOpts}${releaseGroup}`,
+      sellOptionsHtml: lockReason
+        ? ""
+        : `<option value="list">Transfer List</option>${foreignOpts}`,
       hasWageBid,
     },
     squadDesignationsState?.one_of_our_own_player_id ?? null
   );
   if (contractOpts) return contractOpts;
 
-  if (!playerCanListOrSellLocal(player)) {
-    if (isContractFinalYear(player)) {
-      return `${rewardOpts}${squadInfoOptionHtml("Final contract year")}${releaseGroup}`;
+  if (lockReason) {
+    const short = sellLockShortLabel(lockReason);
+    if (short) {
+      return `${rewardOpts}${squadInfoOptionHtml(short)}${releaseGroup}`;
     }
     return `${rewardOpts}${releaseGroup}
             ${squadInfoOptionHtml("Signed this season — not listable")}`;
   }
-  const foreignOpts =
-    foreignTrackingTeams.length > 0
-      ? foreignSaleOptionsHtml(foreignTrackingTeams)
-      : `<option value="foreign">Sell to foreign club</option>`;
 
   return `
             ${rewardOpts}
@@ -853,6 +864,15 @@ function squadActionOptionsHtml(player) {
 
 function playerCanListOrSellLocal(player) {
   return playerBlockedFromTransferMarket(player, currentGpslSeasonLabel) === false;
+}
+
+function sellLockMessageLocal(player) {
+  return (
+    sellLockMessage(
+      playerSellLockReason(player, currentGpslSeasonLabel),
+      SAME_SEASON_TRANSFER_MESSAGE
+    ) || SAME_SEASON_TRANSFER_MESSAGE
+  );
 }
 
 /** New Owner transfer list bypasses the same-season signing lock. */
@@ -1259,10 +1279,15 @@ function applyForeignSaleOptionState() {
   document.querySelectorAll("select.squad-action-select").forEach((sel) => {
     const pid = sel.dataset.playerId;
     const row = sel.closest("tr[data-konami-id]");
-    const blocked = pid && !playerCanListOrSellLocal({
+    const rowPlayer = {
       Season_Signed: row?.dataset.seasonSigned,
       contract_seasons_remaining: row?.dataset.contractSeasons,
-    });
+      contract_end_window: row?.dataset.contractEndWindow,
+      contract_join_second_half: row?.dataset.contractJoinSecondHalf === "1",
+    };
+    const lockReason = pid
+      ? playerSellLockReason(rowPlayer, currentGpslSeasonLabel)
+      : null;
 
     const listOpt = sel.querySelector(
       'option[value="list"], option[data-live-value="list"]'
@@ -1271,10 +1296,11 @@ function applyForeignSaleOptionState() {
       'option[value="foreign"], option[value^="foreign:"], option[data-live-value="foreign"], option[data-live-value^="foreign:"]'
     );
 
-    if (blocked) {
-      setSquadOptionAvailable(listOpt, false, null, "Signed this season");
+    if (lockReason) {
+      const lockLabel = sellLockShortLabel(lockReason) || "Signed this season";
+      setSquadOptionAvailable(listOpt, false, null, lockLabel);
       foreignOpts.forEach((opt) => {
-        setSquadOptionAvailable(opt, false, null, "Signed this season");
+        setSquadOptionAvailable(opt, false, null, lockLabel);
       });
       return;
     }
@@ -1282,14 +1308,11 @@ function applyForeignSaleOptionState() {
     // Listings allowed with TW shut; bidding stays window-gated server-side
     setSquadOptionAvailable(listOpt, true, "Transfer List", null);
 
-    const finalYear = row?.dataset.contractSeasons === "1";
     foreignOpts.forEach((opt) => {
-      const ok = allowForeign && !finalYear;
-      const label = finalYear
-        ? "Final contract year"
-        : allowForeign
-          ? opt.dataset.liveLabel || opt.textContent
-          : "No foreign interest left";
+      const ok = allowForeign;
+      const label = allowForeign
+        ? opt.dataset.liveLabel || opt.textContent
+        : "No foreign interest left";
       if (!opt.dataset.liveLabel && opt.value && !opt.value.startsWith("noop:")) {
         opt.dataset.liveLabel = opt.textContent;
       }
@@ -1300,12 +1323,10 @@ function applyForeignSaleOptionState() {
       'option[value="foreign"], option[data-live-value="foreign"]'
     );
     if (legacyForeign && foreignTrackingTeams.length === 0) {
-      const ok = allowForeign && !finalYear;
-      const label = finalYear
-        ? "Final contract year"
-        : allowForeign
-          ? "Sell to foreign club"
-          : "No foreign interest left";
+      const ok = allowForeign;
+      const label = allowForeign
+        ? "Sell to foreign club"
+        : "No foreign interest left";
       setSquadOptionAvailable(
         legacyForeign,
         ok,
@@ -1358,8 +1379,15 @@ async function loadSquad() {
 
   let { data: players, error } = await supabase
     .from("Players")
-    .select(SQUAD_PLAYER_COLUMNS)
+    .select(`${SQUAD_PLAYER_COLUMNS}, ${SQUAD_CONTRACT_WINDOW_COLUMNS}`)
     .eq("Contracted_Team", currentUserShort);
+
+  if (error && String(error.message || "").includes("contract_")) {
+    ({ data: players, error } = await supabase
+      .from("Players")
+      .select(SQUAD_PLAYER_COLUMNS)
+      .eq("Contracted_Team", currentUserShort));
+  }
 
   if (error && isMissingEconomicsColumnError(error)) {
     ({ data: players, error } = await supabase
@@ -1624,15 +1652,16 @@ function renderContractOutlookHtml(players) {
       outlook.midDealCount > 8
         ? ` +${outlook.midDealCount - 8} more`
         : "";
-    const monthLabel =
-      outlook.activeGpslMonth === "january" ? "January" : "December";
+    const lockAt = outlook.lastChanceLocksAtJanuary
+      ? "GPSL January"
+      : "the summer rollover";
     parts.push(`
       <div class="squad-contract-outlook-block squad-contract-outlook-block--warn">
-        <strong>${monthLabel} transfer heads-up</strong>
+        <strong>Last chance to sell</strong>
         <p>
           <strong>${outlook.midDealCount}</strong> player${outlook.midDealCount === 1 ? "" : "s"}
-          on <b>2 seasons</b> remaining (~5 months before their final season starts).
-          Consider selling in the January window while they can still be listed:
+          can still be listed or sold, but enter the final half of their contract at
+          <b>${lockAt}</b> (no sales after that — renew if eligible, or wage bids):
           ${names}${more}.
         </p>
       </div>`);
@@ -1643,8 +1672,8 @@ function renderContractOutlookHtml(players) {
       <div class="squad-contract-outlook-block">
         <strong>Final-year contracts</strong>
         <p>
-          <strong>${outlook.finalYearCount}</strong> potentially leaving at season end
-          if not renewed / won.
+          <strong>${outlook.finalYearCount}</strong> potentially leaving when their contract
+          ends (season end, or GPSL January for January signings) if not renewed / won.
           · Re-signable on Squad (HG ≤23 / non-HG ≤21 / OooO +2.5% / legacy):
           <strong>${outlook.reSignableCount}</strong>
           · Contested wage market:
@@ -1890,6 +1919,8 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
               state: transferState,
               seasonSigned: p.Season_Signed,
               contractSeasonsRemaining: p.contract_seasons_remaining,
+              contractEndWindow: p.contract_end_window,
+              contractJoinSecondHalf: p.contract_join_second_half === true,
             })
           : {
               label: "—",
@@ -1905,6 +1936,8 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         p.contract_seasons_remaining != null
           ? String(p.contract_seasons_remaining)
           : "";
+      tr.dataset.contractEndWindow = p.contract_end_window || "summer";
+      tr.dataset.contractJoinSecondHalf = p.contract_join_second_half ? "1" : "0";
       if (suspRows.length) tr.classList.add("squad-row-suspended");
       if (injuryRows.some((i) => (Number(i.matches_out_remaining) || 0) > 0 || i.phase === "out")) {
         tr.classList.add("squad-row-injured");
@@ -2162,6 +2195,8 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
               seasonsRaw !== undefined && seasonsRaw !== ""
                 ? Number(seasonsRaw)
                 : null,
+            contractEndWindow: row.dataset.contractEndWindow || null,
+            contractJoinSecondHalf: row.dataset.contractJoinSecondHalf === "1",
           });
       status.innerHTML = `${injuryHtml}${suspHtml}${cardsHtml}${formatSquadStatusHtml(statusRow)}`;
       row.classList.toggle("squad-row-suspended", suspRows.length > 0);
@@ -2332,15 +2367,13 @@ async function handlePlayerAction(playerId, action, selectEl) {
       }
       const { data: pRow } = await supabase
         .from("Players")
-        .select("Konami_ID, Name, market_value, Maximum_Reserve_Price, Season_Signed")
+        .select(
+          "Konami_ID, Name, market_value, Maximum_Reserve_Price, Season_Signed, contract_seasons_remaining, contract_end_window, contract_join_second_half"
+        )
         .eq("Konami_ID", playerId)
         .maybeSingle();
       if (!playerCanListOrSellLocal(pRow)) {
-        alert(
-          isContractFinalYear(pRow)
-            ? FINAL_YEAR_TRANSFER_MESSAGE
-            : SAME_SEASON_TRANSFER_MESSAGE
-        );
+        alert(sellLockMessageLocal(pRow));
         return;
       }
       await openListPlayerModalByID(pRow || { Konami_ID: playerId });
@@ -2977,11 +3010,7 @@ async function sellPlayerToForeignClub(playerId, foreignTeamName) {
   }
 
   if (!playerCanListOrSellLocal(player)) {
-    alert(
-      isContractFinalYear(player)
-        ? FINAL_YEAR_TRANSFER_MESSAGE
-        : SAME_SEASON_TRANSFER_MESSAGE
-    );
+    alert(sellLockMessageLocal(player));
     return;
   }
 
@@ -3168,9 +3197,7 @@ async function validateAndCreateListing() {
 
   if (!playerCanListOrSellLocal(selectedPlayerForListing)) {
     document.getElementById("reserveError").textContent =
-      isContractFinalYear(selectedPlayerForListing)
-        ? FINAL_YEAR_TRANSFER_MESSAGE
-        : SAME_SEASON_TRANSFER_MESSAGE;
+      sellLockMessageLocal(selectedPlayerForListing);
     return;
   }
 
@@ -3227,13 +3254,14 @@ async function validateAndCreateListing() {
   if (error) {
     console.error("LISTING INSERT ERROR:", error);
     const msg = String(error.message || "");
-    document.getElementById("reserveError").textContent = msg.includes(
-      "final year"
-    )
-      ? FINAL_YEAR_TRANSFER_MESSAGE
-      : msg.includes("current season")
-        ? SAME_SEASON_TRANSFER_MESSAGE
-        : "Failed to create listing. Please try again.";
+    document.getElementById("reserveError").textContent =
+      msg.includes("final year") || msg.includes("final half")
+        ? FINAL_YEAR_TRANSFER_MESSAGE
+        : msg.includes("current season") ||
+            msg.includes("signed this season") ||
+            msg.includes("one-season lock")
+          ? msg
+          : "Failed to create listing. Please try again.";
     return;
   }
 

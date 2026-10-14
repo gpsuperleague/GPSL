@@ -13,11 +13,13 @@ import {
   playerBlockedSameSeasonTransfer,
 } from "./player_season_transfer.js";
 import {
-  isContractFinalYear,
+  isContractFinalHalf,
+  isExpiryBiddingOpen,
   isOnExpiryWageMarket,
   isPesdbLegacyCard,
   playerBlockedFromTransferMarket,
-} from "./player_contracts.js";
+  playerSellLockReason,
+} from "./player_contracts.js?v=20261014-half-windows";
 import { playerSignedCurrentSeason } from "./player_season_transfer.js";
 import {
   playerForeignContractLocked,
@@ -58,8 +60,8 @@ export const TRANSFER_STATUS_LABELS = {
   [TRANSFER_STATUS.SIGNED_THIS_SEASON]:
     "Recently signed — not available for transfer until next season",
   [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]:
-    "Final contract year — renew or expire in Squad",
-  [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "Contract offered — Pending EOS",
+    "Final half of contract — renew or wage bid in Squad",
+  [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "Contract offered — pending expiry",
   [TRANSFER_STATUS.FOREIGN_CONTRACT]:
     "Unavailable — sold to foreign club until next season",
   [TRANSFER_STATUS.OVERFLOW_PAID_UP]:
@@ -264,18 +266,23 @@ export function resolvePlayerTransferStatus({
   pageClubShort = null,
   seasonSigned = null,
   contractSeasonsRemaining = null,
+  contractEndWindow = null,
+  contractJoinSecondHalf = false,
 }) {
   const pid = String(konamiId ?? "").trim();
+  const contractPlayer = {
+    Season_Signed: seasonSigned,
+    contract_seasons_remaining: contractSeasonsRemaining,
+    contract_end_window: contractEndWindow,
+    contract_join_second_half: contractJoinSecondHalf === true,
+  };
   const sellerNorm = normalizeClubShort(contractedTeam, state);
   const viewerNorm = normalizeClubShort(viewerClubShort, state);
   const pageClubNorm = normalizeClubShort(pageClubShort || contractedTeam, state);
   const isViewerSeller =
     !!viewerNorm && !!sellerNorm && viewerNorm === sellerNorm;
 
-  if (
-    isViewerSeller &&
-    isContractFinalYear({ contract_seasons_remaining: contractSeasonsRemaining })
-  ) {
+  if (isViewerSeller && isContractFinalHalf(contractPlayer)) {
     if (state?.myExpiryWageBidPlayerIds?.has(pid)) {
       return {
         code: TRANSFER_STATUS.EXPIRY_WAGE_BID,
@@ -290,10 +297,13 @@ export function resolvePlayerTransferStatus({
     };
   }
 
-  const recentlySigned = playerSignedCurrentSeason(
-    { Season_Signed: seasonSigned },
+  const signingLock = playerSellLockReason(
+    contractPlayer,
     state?.currentSeasonLabel
   );
+  const recentlySigned =
+    signingLock === "signed_this_season" ||
+    signingLock === "signed_last_season_half";
 
   // Listing / window status wins over same-season lock (New Owner list can bypass it)
   if (playerHasActiveListing(state.activeListedPlayerIds, pid)) {
@@ -327,7 +337,10 @@ export function resolvePlayerTransferStatus({
     return {
       code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
       label: "Recently signed",
-      subLabel: "Not available for transfer",
+      subLabel:
+        signingLock === "signed_last_season_half"
+          ? "Sellable from GPSL January"
+          : "Not available for transfer",
       pillClass: PILL_CLASS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
     };
   }
@@ -423,14 +436,24 @@ export function buildGpdbContractedBidCellHtml({
     });
   }
 
-  if (playerSignedCurrentSeason(player, state?.currentSeasonLabel)) {
+  const lockReason = playerSellLockReason(player, state?.currentSeasonLabel);
+  if (lockReason === "signed_this_season") {
     return formatTransferStatusMessageHtml({
       code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
       label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
     });
   }
+  if (lockReason === "signed_last_season_half") {
+    return formatTransferStatusMessageHtml({
+      code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
+      label: "Recently signed — available for transfer from GPSL January",
+    });
+  }
 
-  if (isOnExpiryWageMarket(player, holdingClubNation)) {
+  if (
+    isOnExpiryWageMarket(player, holdingClubNation) &&
+    isExpiryBiddingOpen(player)
+  ) {
     const pid = String(konamiId ?? "").trim();
     if (state?.myExpiryWageBidPlayerIds?.has(pid)) {
       return formatTransferStatusMessageHtml({
@@ -442,7 +465,7 @@ export function buildGpdbContractedBidCellHtml({
     return `<a href="${href}" class="button" style="font-size:11px;padding:4px 8px;">Wage bid</a>`;
   }
 
-  if (isContractFinalYear(player)) {
+  if (isContractFinalHalf(player)) {
     const pid = String(konamiId ?? "").trim();
     if (state?.myExpiryWageBidPlayerIds?.has(pid)) {
       return formatTransferStatusMessageHtml({
@@ -463,6 +486,8 @@ export function buildGpdbContractedBidCellHtml({
     state,
     seasonSigned: player?.Season_Signed,
     contractSeasonsRemaining: player?.contract_seasons_remaining,
+    contractEndWindow: player?.contract_end_window,
+    contractJoinSecondHalf: player?.contract_join_second_half === true,
   });
 
   if (status.code === TRANSFER_STATUS.LISTED) {

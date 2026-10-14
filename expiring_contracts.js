@@ -6,7 +6,7 @@ import {
   expiryWageMinUpliftPct,
   minExpiryWageOffer,
 } from "./wages.js?v=20260805-nbsp";
-import { renderExpiringContractRules, CHAMP_SL_SIGNING_FEE_PCT } from "./expiring_contracts_rules.js?v=20260806-league-fee2";
+import { renderExpiringContractRules, CHAMP_SL_SIGNING_FEE_PCT } from "./expiring_contracts_rules.js?v=20261014-half-windows";
 import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260811-step-pairs";
 import { textMatchesSearch } from "./search_normalize.js";
 import { leagueBadgeHtml } from "./competition.js";
@@ -481,10 +481,11 @@ function renderMarket() {
     return;
   }
 
+  const bidRule = `hidden bids, open in the final half of the contract (from GPSL January for summer contracts) and resolved when the contract ends (min +${expiryWageMinUpliftPct()}% wage).`;
   status.textContent =
     rows.length === marketRows.length
-      ? `${marketRows.length} player(s) — hidden bids until season rollover (min +${expiryWageMinUpliftPct()}% wage).`
-      : `Showing ${rows.length} of ${marketRows.length} — hidden bids until season rollover (min +${expiryWageMinUpliftPct()}% wage).`;
+      ? `${marketRows.length} player(s) — ${bidRule}`
+      : `Showing ${rows.length} of ${marketRows.length} — ${bidRule}`;
 
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="12">No players match these filters.</td></tr>';
@@ -510,9 +511,23 @@ function renderMarket() {
         row.holding_division || row.holding_league,
         { size: "xs" }
       );
+      const biddingOpen = row.bidding_open !== false;
+      const endsJan =
+        String(row.contract_end_window || "").toLowerCase() === "january";
+      const endBadge = endsJan
+        ? ` <span class="fee-badge" title="January contract — bids resolve when GPSL January unlocks">Ends Jan</span>`
+        : "";
+      let bidCell;
+      if (row.my_wage_bid != null) {
+        bidCell = `<span class="my-bid" title="Wage bid locked — cannot be changed">Locked</span>`;
+      } else if (!biddingOpen) {
+        bidCell = `<span class="muted" title="Bids open for the final half of the contract (GPSL January for summer contracts)">Opens GPSL January</span>`;
+      } else {
+        bidCell = `<button type="button" class="bid-btn" data-player-id="${row.player_id}">Place bid</button>`;
+      }
       return `
         <tr data-player-id="${row.player_id}">
-          <td class="name-cell">${escapeHtml(row.player_name)}</td>
+          <td class="name-cell">${escapeHtml(row.player_name)}${endBadge}</td>
           <td>${escapeHtml(row.position || "—")}</td>
           <td>${escapeHtml(row.nation || "—")}</td>
           <td>${row.age ?? "—"}</td>
@@ -523,13 +538,7 @@ function renderMarket() {
           <td class="league-cell">${leagueBadge}${escapeHtml(league)}${feeBadge}</td>
           <td class="wage-cell">${formatWage(row.current_wage)}</td>
           <td class="wage-cell">${myBid}</td>
-          <td>
-            ${
-              row.my_wage_bid != null
-                ? `<span class="my-bid" title="Wage bid locked — cannot be changed">Locked</span>`
-                : `<button type="button" class="bid-btn" data-player-id="${row.player_id}">Place bid</button>`
-            }
-          </td>
+          <td>${bidCell}</td>
         </tr>
       `;
     })

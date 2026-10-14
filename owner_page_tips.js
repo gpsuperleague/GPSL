@@ -75,7 +75,7 @@ export const GPDB_TIPS = {
   contractedTeam:
     "Current club (or FREE AGENT). Contracted players need a direct offer; free agents use the draft when open.",
   seasonsRemaining:
-    "Seasons left on the contract. Final year (1) cannot be listed/sold — contested players go to Expiring Contracts.",
+    "Seasons left on the contract. Final year (1): sellable until GPSL January, then the final half-season locks sales and contested players open on Expiring Contracts. January signings show ½ seasons and end at GPSL January.",
   quickBid:
     "Raises your offer by one standard increment toward / above the minimum. Use ± buttons for fine control.",
   maxBid:

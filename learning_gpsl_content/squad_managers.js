@@ -34,11 +34,12 @@ export const SECTION_SQUAD = {
     {
       type: "ul",
       items: [
-        `Standard contracts run in <b>3-season</b> cycles. Track expiry on <a href="expiring_contracts.html">Expiring Contracts</a> and the squad page.`,
-        `<b>Final season</b> — you cannot list or sell the player on the transfer market. They enter the hidden wage auction at expiry (all clubs, including yours, may bid once) — unless they are a <b>legacy card</b> (see below).`,
+        `Every contract is <b>3 seasons</b> from the window the player joined: summer signings end at the <b>summer rollover</b>, January signings end at <b>GPSL January</b> (shown as ½ seasons). Every signing — including buying a player in his final year — starts a fresh 3-season deal. Track expiry on <a href="expiring_contracts.html">Expiring Contracts</a> and the squad page.`,
+        `<b>Sale windows</b> — the contract covers 6 half-seasons: the <b>first two</b> are locked (one-season signing lock), the <b>middle three</b> are sellable, and the <b>final half-season</b> is locked again.`,
+        `<b>Final half-season</b> (from GPSL January of the final year for summer deals; from the summer rollover for January deals) — you cannot list or sell the player. Hidden wage bids open then (all clubs, including yours, may bid once) and resolve when the contract ends — unless they are a <b>legacy card</b> (see below).`,
         `<b>Home-grown ≤23</b> or <b>non-home-grown ≤21</b> — protected from the expiry auction; renew uncontested on Squad while still eligible. Protection ends at age 24 (home-grown) or 22 (non-home-grown).`,
         `<b>One of our own</b> aged over the bracket also skips the contested market and renews at <b>+2.5%</b> wage.`,
-        `Winning an expiry bid gives a new 3-season contract at the bid wage from season rollover.`,
+        `Winning an expiry bid gives a new 3-season contract at the bid wage when the old contract ends (summer rollover, or GPSL January for January deals). Renewals keep the same end window.`,
       ],
     },
     { type: "h3", html: "Season squad charges (34+ fee &amp; star tax)" },

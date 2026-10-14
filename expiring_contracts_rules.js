@@ -21,7 +21,8 @@ export function getExpiringContractRules() {
         items: [
           "Players in their <b>final contract year</b> on the <b>contested</b> path.",
           "<b>Not listed here:</b> home-grown ≤23, non-home-grown ≤21 (renew uncontested on Squad), and <b>emergency / season loans</b> drafted in as stop-gaps.",
-          "The player <b>stays at the holding club</b> all season while bids are collected.",
+          "Bids open for the <b>final half-season</b> only: from <b>GPSL January</b> for summer contracts (before that the holder can still sell them), and from the <b>summer rollover</b> for January contracts (marked <b>Ends Jan</b>).",
+          "The player <b>stays at the holding club</b> while bids are collected and cannot be sold.",
         ],
       },
       {
@@ -30,17 +31,17 @@ export function getExpiringContractRules() {
           "<b>One</b> wage offer per club per player — <b>locked in</b> once submitted (cannot be changed).",
           `Minimum offer: <b>+${uplift}%</b> above the player’s current wage.`,
           "Any <b>whole ₿</b> amount at or above that floor is allowed.",
-          "Rival amounts stay <b>hidden</b> until season rollover.",
+          "Rival amounts stay <b>hidden</b> until the contract ends.",
         ],
       },
       {
-        heading: "At season rollover",
+        heading: "When the contract ends (summer rollover, or GPSL January for January contracts)",
         items: [
           "<b>Highest wage</b> wins a new <b>3-season</b> contract at that wage.",
           "<b>Ties</b> favour the holding club.",
           "Another club winning pays <b>market value</b> to the holder.",
           `Championship club taking a Super League player also pays <b>${CHAMP_SL_SIGNING_FEE_PCT}% of market value</b> to the player as a signing-on fee (shown on the market for Championship owners).`,
-          "<b>No mid-season expire.</b> If nobody re-signs them, they become a free agent — holding club receives market value then.",
+          "If nobody re-signs them, they become a free agent — holding club receives market value then.",
         ],
       },
     ],

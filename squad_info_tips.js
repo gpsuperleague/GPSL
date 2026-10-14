@@ -2,7 +2,12 @@
  * Squad page owner-help tip copy (hover / focus).
  */
 
-import { isContractFinalYear, isPesdbLegacyCard } from "./player_contracts.js";
+import {
+  contractEndWindow,
+  isContractFinalHalf,
+  isContractFinalYear,
+  isPesdbLegacyCard,
+} from "./player_contracts.js?v=20261014-half-windows";
 import {
   isExpiryAuctionExempt,
   isOooOWageUpliftRenew,
@@ -43,16 +48,16 @@ export const SQUAD_TIPS = {
     "GPSL market value (MV). Floor for transfer bids and foreign sales. Overflow releases and many settle payouts use MV (or a % of MV).",
 
   status:
-    "Current availability — transfer-listed, injured, suspended, yellow-card tally, same-season lock, etc.\n\nSigned this season? Cannot Transfer List or sell until next season (New Owner list can bypass that lock).",
+    "Current availability — transfer-listed, injured, suspended, yellow-card tally, signing lock, etc.\n\nSigning lock: one full season after signing. Summer signings become sellable next summer; January signings from the next GPSL January (New Owner list can bypass that lock).",
 
   action:
     "Player actions: Transfer List, sell abroad (uses a foreign-interest slot), final-year renew / wage bid / legacy renew, medical consults, red-card appeals, set One of our own (HG star) or Fan Favourite (76–78, 50% wage — XOR, editable in GPSL preseason or January), and voluntary / New Owner releases when available.\n\nScroll sideways if the column is off-screen.",
 
   contractHeader:
-    "Contract length + seasonal wage.\n\nStandard deals are 3 seasons. In the final year the player cannot be listed or sold — they enter the expiry wage auction unless legacy or young HG / non-HG uncontested rules apply (hover a contract cell for that player’s path).",
+    "Contract length + seasonal wage.\n\nEvery deal is 3 seasons from the window the player joined (summer → ends at the summer rollover; January → ends at GPSL January). Sale windows: locked for the first season after signing, sellable in the middle, locked again in the final half-season — when expiry wage bids open unless legacy or young HG / non-HG uncontested rules apply (hover a contract cell for that player’s path).",
 
   registration:
-    "Squad registration for your club this season.\n\n• Size: at least 24 contracted players from August, never more than 28\n• ≥1 GK · ≥8 home-grown · ≥5 U21 (age ≤21)\n• Star cap (automatic by rating ≥79): Super League 3 / Championship 2 — One of our own (HG star you set) is excused from the cap\n• One of our own XOR Fan Favourite (76–78 any nation, Central Bank pays 50% wage). Nations with no GPDB 79+ get Fan Favourite only. Change in GPSL preseason or January only.\n\nFrom August, shortfalls and over-cap trigger ₿2.5m fines and emergency loans. Going over 28 on a signing: prefer a foreign-interest sell, else overflow release at MV + ₿10m fine.\n\nContract outlook (below): December/January heads-up for 2-season deals; final-year split into re-signable vs contested wage market.",
+    "Squad registration for your club this season.\n\n• Size: at least 24 contracted players from August, never more than 28\n• ≥1 GK · ≥8 home-grown · ≥5 U21 (age ≤21)\n• Star cap (automatic by rating ≥79): Super League 3 / Championship 2 — One of our own (HG star you set) is excused from the cap\n• One of our own XOR Fan Favourite (76–78 any nation, Central Bank pays 50% wage). Nations with no GPDB 79+ get Fan Favourite only. Change in GPSL preseason or January only.\n\nFrom August, shortfalls and over-cap trigger ₿2.5m fines and emergency loans. Going over 28 on a signing: prefer a foreign-interest sell, else overflow release at MV + ₿10m fine.\n\nContract outlook (below): last-chance-to-sell warning before a player's final half-season locks; final-year split into re-signable vs contested wage market.",
 
   ifWon:
     "Projected count if your pending leading bids complete (transfer list, draft, or your expiry wage bid).\n\nGhost players are not contracted yet — if you are outbid, they drop off.",
@@ -61,7 +66,7 @@ export const SQUAD_TIPS = {
     "Pending acquisitions — players you are leading on (or have a locked expiry wage bid for) but do not own yet.\n\nShown for planning only. They count in the Registration “If won” column, including toward the star cap when eligible.",
 
   contractOutlook:
-    "Season contract planning.\n\nIn December/January, players with 2 seasons left get a January-window sell warning (next season they enter final year and cannot be sold).\n\nFinal-year block: re-signable on Squad (HG ≤23 / non-HG ≤21 / legacy) vs contested players on Expiring Contracts.",
+    "Season contract planning.\n\nLast chance to sell: players who can still be listed now but lock at the next switch — summer contracts in their final year lock at GPSL January; January contracts lock at the summer rollover before their final half.\n\nFinal-year block: re-signable on Squad (HG ≤23 / non-HG ≤21 / legacy) vs contested players on Expiring Contracts.",
 
   wageBillTitle:
     "Estimated seasonal wage bill for Close Finances — player contract wages plus manager salary (weekly × 52).",
@@ -113,6 +118,12 @@ export function squadContractTip(player, clubNation, oooPlayerId = null) {
   const n = Number(player?.contract_seasons_remaining);
   const wageNote =
     "The lower line is this player’s seasonal contract wage (counts toward your wage bill).";
+  const janDeal = contractEndWindow(player) === "january";
+  const endsAt = janDeal ? "GPSL January" : "the summer rollover";
+  const finalHalf = isContractFinalHalf(player);
+  const sellNote = finalHalf
+    ? "Cannot Transfer List or sell — final half of the contract."
+    : "Can still be listed or sold until GPSL January, when the final half locks.";
 
   if (isPesdbLegacyCard(player)) {
     if (isContractFinalYear(player)) {
@@ -138,7 +149,7 @@ export function squadContractTip(player, clubNation, oooPlayerId = null) {
         `Use Action to renew for 3 seasons at +${uplift}% wage. ` +
         `Each later final year works the same while they stay OooO. ` +
         `If you clear OooO, normal age/HG rules apply (often contested). ` +
-        `Cannot Transfer List or sell in the final year.\n\n` +
+        `${sellNote}\n\n` +
         wageNote
       );
     }
@@ -146,32 +157,42 @@ export function squadContractTip(player, clubNation, oooPlayerId = null) {
       return (
         "Final contract year — uncontested renewal (home-grown ≤23, or non-home-grown ≤21).\n\n" +
         "Protected from the expiry wage auction. Use Action to renew at the same wage (fresh 3-season deal). " +
-        "Cannot expire mid-season — if you do not renew, they become a free agent at season rollover and your club receives market value then. " +
-        "Cannot Transfer List or sell while in the final year.\n\n" +
+        `If you do not renew, they become a free agent at ${endsAt} and your club receives market value then. ` +
+        `${sellNote}\n\n` +
         wageNote
       );
     }
     if (player?.hasExpiryWageBid) {
       return (
-        "Contract offered — Pending EOS.\n\n" +
+        "Contract offered — pending expiry.\n\n" +
         "Your wage bid is locked for this player on the Expiring Contracts market. " +
-        "Highest bid wins at season rollover (end of season). You cannot change the bid.\n\n" +
+        `Highest bid wins when the contract ends (${endsAt}). You cannot change the bid.\n\n` +
+        wageNote
+      );
+    }
+    if (!finalHalf) {
+      return (
+        "Final contract year — first half.\n\n" +
+        "Last chance to sell: you can still Transfer List or sell abroad until GPSL January. " +
+        "From GPSL January the final half locks sales and the Expiring Contracts wage bids open (other clubs and you may place one hidden bid; highest wins at the summer rollover).\n\n" +
         wageNote
       );
     }
     return (
-      "Final contract year (1 season left of a 3-season deal).\n\n" +
-      "Cannot Transfer List or sell. They are on the Expiring Contracts market — other clubs (and you) may place one hidden wage bid; highest wins at season rollover.\n\n" +
-      "Use Action → Offer wage bid to compete. No mid-season renew or expire — if nobody wins them at rollover they become a free agent (holding club receives market value).\n\n" +
+      "Final half of the contract.\n\n" +
+      `Cannot Transfer List or sell. They are on the Expiring Contracts market — other clubs (and you) may place one hidden wage bid; highest wins at ${endsAt}.\n\n` +
+      "Use Action → Offer wage bid to compete. If nobody bids they become a free agent when the contract ends (holding club receives market value).\n\n" +
       wageNote
     );
   }
 
   if (Number.isFinite(n) && n === 2) {
     return (
-      "Two seasons remaining on this 3-season contract.\n\n" +
-      "Next season becomes the final year — then no sales until you renew or they hit the expiry auction.\n\n" +
-      "In December/January, Contract outlook warns you to consider selling while they can still be listed.\n\n" +
+      (janDeal
+        ? "January contract — about 1½ seasons left.\n\n" +
+          "Sellable until the summer rollover. After that the final half (to GPSL January) locks sales and wage bids open.\n\n"
+        : "Two seasons remaining on this 3-season contract.\n\n" +
+          "Next season is the final year: still sellable until GPSL January, then the final half locks sales and wage bids open.\n\n") +
       wageNote
     );
   }
@@ -179,7 +200,7 @@ export function squadContractTip(player, clubNation, oooPlayerId = null) {
   if (Number.isFinite(n) && n >= 3) {
     return (
       "Full (or reset) 3-season contract still running.\n\n" +
-      "You can list or sell (if not signed this season / not legacy). Watch the countdown toward the final year.\n\n" +
+      "One-season signing lock after joining (summer signing → sellable next summer; January signing → next GPSL January), then you can list or sell (not legacy). Watch the countdown toward the final half.\n\n" +
       wageNote
     );
   }
