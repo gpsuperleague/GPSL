@@ -60,6 +60,10 @@ BEGIN
       $b$
     $f$;
 
+    -- Game-rule triggers (signing lock etc.) run before RLS and would hide the
+    -- security result; switch them off for this rolled-back block only.
+    EXECUTE 'ALTER TABLE public."Player_Transfer_Listings" DISABLE TRIGGER USER';
+
     -- ---------- Logged-in owner ----------
     PERFORM set_config(
       'request.jwt.claims',
@@ -177,7 +181,7 @@ BEGIN
       i,
       r[i * 2 - 1],
       CASE r[i * 2 - 1]
-        WHEN 'owner lists own player' THEN 'ALLOWED (or a game rule like season lock)'
+        WHEN 'owner lists own player' THEN 'ALLOWED'
         WHEN 'owner lists for another club' THEN 'BLOCKED BY RLS'
         WHEN 'owner deletes Club_Finances' THEN '0 row(s) deleted'
         WHEN 'owner reads Club_Finances' THEN 'more than 0 rows'
