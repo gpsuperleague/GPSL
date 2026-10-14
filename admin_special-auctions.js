@@ -111,7 +111,7 @@ async function refreshSpecialAuctionSelect() {
       const phase = a.auction_type === "blind_gauntlet" && a.gauntlet_phase
         ? `/${a.gauntlet_phase}`
         : "";
-      return `<option value="${a.id}">#${a.id} ${a.title} [${a.status}${phase}] ${a.auction_type}</option>`;
+      return `<option value="${a.id}" data-type="${a.auction_type}">#${a.id} ${a.title} [${a.status}${phase}] ${a.auction_type}</option>`;
     })
     .join("");
 }
@@ -280,13 +280,11 @@ async function activateAuction() {
     setStatus("saManageStatus", "Select an auction.", false);
     return;
   }
+  const sel = document.getElementById("saSelect");
+  const type = sel.selectedOptions[0]?.dataset.type;
   const { error } = await supabase.rpc("special_auction_activate", { p_auction_id: id });
-  if (!error) {
-    try {
-      await supabase.rpc("special_auction_gauntlet_prepare", { p_auction_id: id });
-    } catch {
-      /* optional — non-gauntlet auctions */
-    }
+  if (!error && type === "blind_gauntlet") {
+    await supabase.rpc("special_auction_gauntlet_prepare", { p_auction_id: id });
   }
   setStatus(
     "saManageStatus",
