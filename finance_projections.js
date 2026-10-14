@@ -13,6 +13,7 @@ import {
   loadStadiumMaintenanceRate,
   formatMaintenancePct,
 } from "./competition.js";
+import { loadFanFavouriteSubsidy } from "./club_wage_bill.js?v=20261014-ff-wage";
 
 const STADIUM_VALUE_PER_SEAT = 1500;
 
@@ -233,20 +234,26 @@ export async function buildFinanceProjections(
     );
   }
 
-  const { data: upkeepPreview, error: upkeepErr } = await supabase.rpc(
-    "competition_club_upkeep_preview",
-    { p_club_short_name: clubShortName }
-  );
+  const [{ data: upkeepPreview, error: upkeepErr }, fanFavourite] = await Promise.all([
+    supabase.rpc("competition_club_upkeep_preview", { p_club_short_name: clubShortName }),
+    loadFanFavouriteSubsidy(supabase, clubShortName),
+  ]);
+  const ffSubsidy = fanFavourite?.subsidy || 0;
+  const ffNote = ffSubsidy > 0.5
+    ? ` — after Fan Favourite subsidy −${formatMoney(ffSubsidy)}${
+        fanFavourite.playerName ? ` (${fanFavourite.playerName})` : ""
+      }`
+    : "";
 
   if (!upkeepErr && upkeepPreview) {
     const postedWages = Math.abs(byLine.get("upkeep_wages")?.amount || 0);
-    const wageBill = Number(upkeepPreview.wage_bill || 0);
+    const wageBill = Number(upkeepPreview.wage_bill || 0) - ffSubsidy;
     if (wageBill > postedWages + 0.5) {
       setPendingForecast(
         pendingByLine,
         "upkeep_wages",
         -(wageBill - postedWages),
-        `Remaining player wage bill est. ${formatMoney(wageBill - postedWages)} (${formatMoney(postedWages)} already posted)`,
+        `Remaining player wage bill est. ${formatMoney(wageBill - postedWages)} (${formatMoney(postedWages)} already posted)${ffNote}`,
         byLine
       );
     }
@@ -306,10 +313,8 @@ export async function buildFinanceProjections(
       .eq("Contracted_Team", clubShortName);
 
     if (!playersErr && players?.length) {
-      const squadWage = players.reduce(
-        (s, p) => s + (Number(p.contract_wage) || 0),
-        0
-      );
+      const squadWage =
+        players.reduce((s, p) => s + (Number(p.contract_wage) || 0), 0) - ffSubsidy;
       const postedWages = Math.abs(byLine.get("upkeep_wages")?.amount || 0);
       const remaining = squadWage - postedWages;
       if (remaining > 0.5) {
@@ -317,7 +322,7 @@ export async function buildFinanceProjections(
           pendingByLine,
           "upkeep_wages",
           -remaining,
-          `Remaining squad wages est. ${formatMoney(remaining)} (${formatMoney(squadWage)} total)`,
+          `Remaining squad wages est. ${formatMoney(remaining)} (${formatMoney(squadWage)} total)${ffNote}`,
           byLine
         );
       }

@@ -195,17 +195,24 @@ export function contractWindowIconHtml(player) {
   }" title="${title}" aria-label="${title}">${jan ? "❄️" : "☀️"}</span>`;
 }
 
-export function formatSquadContractCell(player) {
+export function formatSquadContractCell(player, { fanFavourite = false } = {}) {
   const years = contractYearsLabel(
     player?.contract_seasons_remaining,
     contractEndWindow(player)
   );
-  const wage = formatWage(player?.contract_wage);
+  const fullWage = Number(player?.contract_wage);
+  const ffApplies = fanFavourite && Number.isFinite(fullWage) && fullWage > 0;
+  const wage = formatWage(ffApplies ? Math.round(fullWage / 2) : player?.contract_wage);
   if (years === "—" && wage === "—") return "—";
   const icon = years === "—" ? "" : contractWindowIconHtml(player);
+  const wageHtml = ffApplies
+    ? `<span class="squad-contract-wage squad-contract-wage--ff" title="Fan Favourite — contract wage ${formatWage(
+        fullWage
+      )}; Central Bank pays 50%">${wage} <small>FF</small></span>`
+    : `<span class="squad-contract-wage">${wage}</span>`;
   return `<div class="squad-contract-stack">
     <span class="squad-contract-years">${icon}${years}</span>
-    <span class="squad-contract-wage">${wage}</span>
+    ${wageHtml}
   </div>`;
 }
 

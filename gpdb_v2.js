@@ -42,8 +42,8 @@ import {
   loadTransferStatusState,
   buildGpdbContractedBidCellHtml,
   formatForeignContractGpdbHtml,
-} from "./player_transfer_status.js?v=20261014-window-icons";
-import { isPesdbLegacyCard } from "./player_contracts.js?v=20261014-window-icons";
+} from "./player_transfer_status.js?v=20261014-ff-wage";
+import { isPesdbLegacyCard } from "./player_contracts.js?v=20261014-ff-wage";
 import { installRangeSteppers } from "./range_filter_steppers.js?v=20260819-contract-steppers";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 import { GPDB_TIPS } from "./owner_page_tips.js?v=20261014-half-windows";
@@ -62,14 +62,14 @@ import {
   playerBlockedFromTransferMarket,
   SAME_SEASON_TRANSFER_MESSAGE,
   FINAL_YEAR_TRANSFER_MESSAGE,
-} from "./player_season_transfer.js?v=20261014-window-icons";
+} from "./player_season_transfer.js?v=20261014-ff-wage";
 import {
   contractYearsLabel,
   isContractFinalYear,
   isContractFinalHalf,
   playerSellLockReason,
   sellLockMessage,
-} from "./player_contracts.js?v=20261014-window-icons";
+} from "./player_contracts.js?v=20261014-ff-wage";
 import {
   confirmSquadRulesBeforeBid,
   squadRulesBidWarningLines,

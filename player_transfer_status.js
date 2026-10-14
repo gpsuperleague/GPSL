@@ -19,7 +19,7 @@ import {
   isPesdbLegacyCard,
   playerBlockedFromTransferMarket,
   playerSellLockReason,
-} from "./player_contracts.js?v=20261014-window-icons";
+} from "./player_contracts.js?v=20261014-ff-wage";
 import { playerSignedCurrentSeason } from "./player_season_transfer.js";
 import {
   playerForeignContractLocked,

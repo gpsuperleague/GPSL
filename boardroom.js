@@ -11,12 +11,12 @@ import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, loadClubLoans, leagueBadgeHtml } from "./competition.js";
 import { loadCalendarStatus } from "./competition_calendar.js";
-import { loadClubWageBillSummary } from "./club_wage_bill.js";
-import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js?v=20261012-monthly-interest";
+import { loadClubWageBillSummary } from "./club_wage_bill.js?v=20261014-ff-wage";
+import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js?v=20261014-ff-wage";
 import {
   loadFinanceSeasonContext,
   resolveFinanceSeasonView,
-} from "./finance_page_common.js?v=20261012-monthly-interest";
+} from "./finance_page_common.js?v=20261014-ff-wage";
 import {
   computeBoardFinanceRating,
   computeClubPerformanceRating,
@@ -414,7 +414,9 @@ function renderBoardFinanceSection({
 
   const wageHint =
     wages?.players != null
-      ? `Players ${formatMoney(wages.players)} · Manager ${formatMoney(wages.manager)}`
+      ? `Players ${formatMoney(wages.players)} · Manager ${formatMoney(wages.manager)}${
+          wages.fanFavourite ? ` · FF subsidy −${formatMoney(wages.fanFavourite.subsidy)}` : ""
+        }`
       : "";
   const transferHint = advisory?.runwayNegative
     ? `Runway ${formatMoney(advisory.raw)} — spend shown as ₿0`

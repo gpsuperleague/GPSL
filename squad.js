@@ -44,7 +44,7 @@ import {
   loadTransferStatusState,
   resolvePlayerTransferStatus,
   formatSquadStatusHtml,
-} from "./player_transfer_status.js?v=20261014-window-icons";
+} from "./player_transfer_status.js?v=20261014-ff-wage";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -61,7 +61,7 @@ import {
   playerBlockedFromTransferMarket,
   SAME_SEASON_TRANSFER_MESSAGE,
   FINAL_YEAR_TRANSFER_MESSAGE,
-} from "./player_season_transfer.js?v=20261014-window-icons";
+} from "./player_season_transfer.js?v=20261014-ff-wage";
 import {
   formatSquadContractCell,
   squadContractActionOptionsHtml,
@@ -71,13 +71,13 @@ import {
   playerSellLockReason,
   sellLockMessage,
   sellLockShortLabel,
-} from "./player_contracts.js?v=20261014-window-icons";
+} from "./player_contracts.js?v=20261014-ff-wage";
 import { loadCalendarStatus } from "./competition_calendar.js";
 import { formatWage, oooRenewUpliftPct } from "./wages.js";
 import {
   loadClubWageBillSummary,
   wageBillSummaryHtml,
-} from "./club_wage_bill.js";
+} from "./club_wage_bill.js?v=20261014-ff-wage";
 import {
   escapeHtml,
   formatForeignTrackingMessage,
@@ -149,7 +149,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20261014-window-icons";
+} from "./squad_info_tips.js?v=20261014-ff-wage";
 
 window.supabase = supabase;
 
@@ -1992,7 +1992,9 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
             clubNation,
             designationsState?.one_of_our_own_player_id ?? null
           )
-        )}>${formatSquadContractCell(p)}</td>
+        )}>${formatSquadContractCell(p, {
+          fanFavourite: designationForPlayer(designationsState, p.Konami_ID) === DESIGNATION_FF,
+        })}</td>
         <td class="squad-col-status gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.status)}>
           <div class="squad-status-stack">
             ${status}
@@ -2307,7 +2309,15 @@ async function refreshAfterDesignationChange() {
     const roleBadge = roleBadgeForPlayer(player, squadDesignationsState);
     const qualBadges = playerSquadQualificationBadges(player, clubNation);
     nameCell.innerHTML = `${playerNameLinkHtml(player.Konami_ID, player.Name)}${loanBadge}${roleBadge}${qualBadges}`;
+    const contractCell = row.querySelector("td.squad-col-contract");
+    if (contractCell) {
+      contractCell.innerHTML = formatSquadContractCell(player, {
+        fanFavourite:
+          designationForPlayer(squadDesignationsState, player.Konami_ID) === DESIGNATION_FF,
+      });
+    }
   });
+  await refreshSquadWageBill();
 }
 
 // Blocks listing when transfer window is closed

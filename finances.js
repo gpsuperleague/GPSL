@@ -1,11 +1,11 @@
 import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { formatMoney } from "./competition.js";
-import { loadClubWageBillSummary } from "./club_wage_bill.js";
+import { loadClubWageBillSummary } from "./club_wage_bill.js?v=20261014-ff-wage";
 import {
   advisoryBudgetTitle,
   computeAdvisoryTransferBudget,
-} from "./finance_advisory_budget.js?v=20261012-monthly-interest";
+} from "./finance_advisory_budget.js?v=20261014-ff-wage";
 import {
   applyFinanceClubHeader,
   applyHistoricalFinanceBanner,
@@ -16,7 +16,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20261012-monthly-interest";
+} from "./finance_page_common.js?v=20261014-ff-wage";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20260806-help-blocks";
 import {
   loadListedSaleBids,
@@ -203,6 +203,12 @@ function setWageBillDisplay(bill) {
   playersEl.textContent = formatMoney(bill.players);
   managerEl.textContent = formatMoney(bill.manager);
   totalEl.textContent = formatMoney(bill.total);
+  const totalLabel = totalEl.parentElement?.querySelector(".label");
+  if (totalLabel) {
+    totalLabel.textContent = bill.fanFavourite
+      ? `Net wage bill (after FF −${formatMoney(bill.fanFavourite.subsidy)})`
+      : "Total wage bill";
+  }
 }
 
 async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false } = {}) {

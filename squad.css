@@ -1015,6 +1015,17 @@ body.squad-page .squad-contract-wage {
   white-space: nowrap;
 }
 
+body.squad-page .squad-contract-wage--ff {
+  color: #7ee0a0;
+  cursor: help;
+}
+
+body.squad-page .squad-contract-wage--ff small {
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
 body.squad-page .squad-loan-badge {
   display: inline-block;
   margin-left: 4px;
