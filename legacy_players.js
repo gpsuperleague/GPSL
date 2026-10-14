@@ -5,7 +5,7 @@ import {
   playerThumbLinkHtml,
   playerNameLinkHtml,
 } from "./player_links.js";
-import { renderLegacyPlayersRules } from "./legacy_players_rules.js";
+import { renderLegacyPlayersRules } from "./legacy_players_rules.js?v=20261014-expiry-brackets";
 import { textMatchesSearch } from "./search_normalize.js";
 
 /** @type {object[]} */

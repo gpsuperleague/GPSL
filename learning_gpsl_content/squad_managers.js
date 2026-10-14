@@ -36,7 +36,8 @@ export const SECTION_SQUAD = {
       items: [
         `Standard contracts run in <b>3-season</b> cycles. Track expiry on <a href="expiring_contracts.html">Expiring Contracts</a> and the squad page.`,
         `<b>Final season</b> — you cannot list or sell the player on the transfer market. They enter the hidden wage auction at expiry (all clubs, including yours, may bid once) — unless they are a <b>legacy card</b> (see below).`,
-        `<b>Home-grown ≤23</b> — protected from the expiry auction; uncontested renewal applies while still eligible. Protection ends at age 24.`,
+        `<b>Home-grown ≤23</b> or <b>non-home-grown ≤21</b> — protected from the expiry auction; renew uncontested on Squad while still eligible. Protection ends at age 24 (home-grown) or 22 (non-home-grown).`,
+        `<b>One of our own</b> aged over the bracket also skips the contested market and renews at <b>+2.5%</b> wage.`,
         `Winning an expiry bid gives a new 3-season contract at the bid wage from season rollover.`,
       ],
     },
@@ -65,7 +66,7 @@ export const SECTION_SQUAD = {
       items: [
         `<b>Cannot be sold or listed</b> on the transfer market at any time.`,
         `<b>Not on the expiring-contracts wage bid market</b> — other clubs cannot bid for them.`,
-        `In the <b>final contract year</b>, renew from <a href="squad.html">Squad</a>: <b>one season at a time</b> (not a new 3-year deal). Home-grown ≤23 may keep the same wage on renew.`,
+        `In the <b>final contract year</b>, renew from <a href="squad.html">Squad</a>: <b>one season at a time</b> (not a new 3-year deal). Home-grown ≤23 and non-home-grown ≤21 may keep the same wage on renew.`,
         `Or choose <b>Expire — release for MV</b> from Squad to drop the player for market value.`,
         `If the card returns on a future sync, it becomes a normal GPDB card again.`,
       ],
