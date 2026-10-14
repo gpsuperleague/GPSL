@@ -99,7 +99,7 @@ export const SECTION_EXPECTATIONS = {
           Bad/abysmal: one random player from your <b>top four rated</b>. Listed at <b>market value</b>.`,
         `<b>Medium clubs</b> — slight miss: rated <b>68–73</b> (over 21). Bad/abysmal: rated <b>74–78</b> (over 21).`,
         `<b>Low clubs</b> — a player rated <b>72 or below</b> may hand in a transfer request.`,
-        `<b>Protected</b> — your <b>One of our Own</b> and <b>Fan Favourite</b> never hand in a transfer request. A protected player is skipped; if nobody else is eligible in the usual group, the request drops down to the next group (top 4 → rated 76 or below → 74–78 → 68–73 → 72 or below → anyone), so another player is listed.`,
+        `<b>Protected</b> — your <b>One of our Own</b>, <b>Fan Favourite</b>, <b>home-grown players aged 23 or under</b> and <b>non-home-grown players aged 21 or under</b> never hand in a transfer request. A protected player is skipped; if nobody else is eligible in the usual group, the request drops down to the next group (top 4 → rated 76 or below → 74–78 → 68–73 → 72 or below → anyone), so another player is listed.`,
         `<b>Board fine</b> — on a <b>club</b> expectation miss only, 25% of your personal GPSL Building Society balance can be taken (manager target misses do not trigger this).`,
         `<b>Owner salary</b> — at season end the club pays you ₿100 per 1,000 stadium seats into your Building Society wallet, only if the club met its expectation (on target, or a slight miss rescued by a cup). It's paid after any board fine.`,
         `<b>Manager deals</b> — after <b>season 1</b>, a bad or abysmal <b>club</b> miss (3+ places below expectation) means the board sacks the manager (MV credited, 2-season re-hire ban).

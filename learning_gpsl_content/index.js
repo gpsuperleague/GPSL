@@ -9,7 +9,7 @@ import {
   SECTION_MY_CLUB,
   SECTION_FINANCES,
   SECTION_EXPECTATIONS,
-} from "./club_pages.js";
+} from "./club_pages.js?v=20261014-young-protected";
 import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261014-expiry-brackets";
 import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js";
 import {

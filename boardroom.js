@@ -137,23 +137,25 @@ function failurePunishmentNote(tier) {
     "Gate fill drifts down when below expectation (slight −7%, bad −15%, abysmal −20%).";
   const fine =
     "If the club misses expectation, the board may fine you 25% of your personal GPSL Building Society balance (manager target misses do not trigger this fine).";
+  const protectedNote =
+    "Never asked to leave: One of our Own, Fan Favourite, home-grown aged 23 or under, non-home-grown aged 21 or under.";
   if (tier === "big") {
     return (
       `At season end, a transfer request is forced at market value (perpetual relisting, cannot remove): ` +
       `slight miss → a lower-rated squad player (not your top four); bad/abysmal → one of your top four rated. ` +
-      `${stadium} ${fine}`
+      `${protectedNote} ${stadium} ${fine}`
     );
   }
   if (tier === "medium") {
     return (
       `At season end, a transfer request is forced at market value (perpetual relisting, cannot remove): ` +
       `slight miss → a player rated 68–73 (over 21); bad/abysmal → rated 74–78 (over 21). ` +
-      `${stadium} ${fine}`
+      `${protectedNote} ${stadium} ${fine}`
     );
   }
   return (
     `At season end, a low-rated player (72 or below) may hand in a transfer request at market value ` +
-    `(perpetual relisting, cannot remove). ${stadium} ${fine}`
+    `(perpetual relisting, cannot remove). ${protectedNote} ${stadium} ${fine}`
   );
 }
 
