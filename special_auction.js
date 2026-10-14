@@ -118,6 +118,7 @@ export function roundToThousand(n) {
 /** True while a snap is still before its random finish — player identity must stay hidden. */
 export function snapIdentityHidden(auction) {
   if (!auction || auction.auction_type !== "snap") return false;
+  if (String(auction.status || "") === "draft") return true;
   if (!["scheduled", "active"].includes(String(auction.status || ""))) return false;
   const start = new Date(auction.start_time).getTime();
   if (!Number.isFinite(start) || Date.now() < start) return true;
