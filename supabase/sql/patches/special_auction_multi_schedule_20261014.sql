@@ -7,8 +7,16 @@
 -- 2) Snap player identity is also hidden while the snap is a draft, so the
 --    owner pages never show a mystery prize (admin pages read the table).
 --
+-- 3) The "one live auction" unique index now only covers status = 'active'
+--    (several may be 'scheduled'; overlapping windows are still prevented).
+--
 -- Body otherwise identical to special_auction_inbox_notify.sql. Safe re-run.
 -- =============================================================================
+
+DROP INDEX IF EXISTS public.special_auctions_one_live_idx;
+CREATE UNIQUE INDEX IF NOT EXISTS special_auctions_one_active_idx
+  ON public.special_auctions ((true))
+  WHERE status = 'active';
 
 CREATE OR REPLACE FUNCTION public.special_auction_snap_identity_hidden(p_auction public.special_auctions)
 RETURNS boolean

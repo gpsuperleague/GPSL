@@ -282,7 +282,11 @@ async function activateAuction() {
   }
   const { error } = await supabase.rpc("special_auction_activate", { p_auction_id: id });
   if (!error) {
-    await supabase.rpc("special_auction_gauntlet_prepare", { p_auction_id: id }).catch(() => {});
+    try {
+      await supabase.rpc("special_auction_gauntlet_prepare", { p_auction_id: id });
+    } catch {
+      /* optional — non-gauntlet auctions */
+    }
   }
   setStatus(
     "saManageStatus",
