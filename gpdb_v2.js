@@ -943,6 +943,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let SEASON_EXCLUDED_NATION_CODES = new Set();
   /** Special-auction reserves — block draft bids in GPDB. */
   let AUCTION_EXCLUDED_PLAYER_IDS = new Set();
+  /** player id → full name of the club that last let them go (for the "paid up" cover story). */
+  let AUCTION_EXCLUDED_RELEASED_BY = new Map();
 
   async function loadSeasonExclusions() {
     SEASON_EXCLUDED_PLAYER_IDS = new Set();
@@ -981,9 +983,48 @@ document.addEventListener("DOMContentLoaded", () => {
         const s = String(row?.player_id ?? "").trim();
         if (s) AUCTION_EXCLUDED_PLAYER_IDS.add(s);
       }
+      await loadAuctionExcludedReleasedBy();
     } catch (e) {
       console.warn("loadAuctionExclusions:", e);
     }
+  }
+
+  async function loadAuctionExcludedReleasedBy() {
+    AUCTION_EXCLUDED_RELEASED_BY = new Map();
+    const ids = [...AUCTION_EXCLUDED_PLAYER_IDS];
+    if (!ids.length) return;
+    const { data: hist, error } = await supabase
+      .from("Transfer_History")
+      .select("player_id, seller_club_id, transfer_time")
+      .in("player_id", ids)
+      .order("transfer_time", { ascending: false });
+    if (error) {
+      console.warn("auction released-by:", error);
+      return;
+    }
+    const shortById = new Map();
+    for (const row of hist || []) {
+      const id = String(row?.player_id ?? "").trim();
+      const seller = String(row?.seller_club_id ?? "").trim();
+      if (!id || !seller || seller === "FOREIGN" || shortById.has(id)) continue;
+      shortById.set(id, seller);
+    }
+    if (!shortById.size) return;
+    const { data: clubs } = await supabase
+      .from("Clubs")
+      .select("ShortName, Club")
+      .in("ShortName", [...new Set(shortById.values())]);
+    const nameByShort = new Map((clubs || []).map((c) => [c.ShortName, c.Club || c.ShortName]));
+    for (const [id, short] of shortById) {
+      AUCTION_EXCLUDED_RELEASED_BY.set(id, nameByShort.get(short) || short);
+    }
+  }
+
+  function auctionExcludedCoverText(playerId) {
+    const club = AUCTION_EXCLUDED_RELEASED_BY.get(String(playerId ?? "").trim());
+    return club
+      ? `Contract paid up by ${club} — unavailable until next season`
+      : "Contract paid up — unavailable until next season";
   }
 
   function applyExclusionBundle(data) {
@@ -1032,9 +1073,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return `<span class="locked-msg gpdb-excluded-msg" title="Admin season exclusion">Unavailable</span>`;
   }
 
-  /** Same look as a season exclusion so mystery auction prizes are not given away. */
-  function auctionExcludedBidHtml() {
-    return seasonExcludedBidHtml();
+  function auctionExcludedBidHtml(playerId) {
+    return `<span class="locked-msg gpdb-excluded-msg" title="Contractual small print">${escapePlayerHtml(
+      auctionExcludedCoverText(playerId)
+    )}</span>`;
   }
 
   function legacyCardBidHtml() {
@@ -2358,7 +2400,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (legacyCard) {
           bidCell = legacyCardBidHtml();
         } else if (auctionExcluded) {
-          bidCell = auctionExcludedBidHtml();
+          bidCell = auctionExcludedBidHtml(player.Konami_ID);
         } else if (GLOBAL_SETTINGS) {
           if (hasClub) {
             const holderShort = resolveContractedClubShort(
@@ -2545,7 +2587,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (AUCTION_EXCLUDED_PLAYER_IDS.has(String(konamiId).trim())) {
-      alert("This player is unavailable this season.");
+      alert(`${auctionExcludedCoverText(konamiId)} (contractual small print).`);
       return;
     }
 
