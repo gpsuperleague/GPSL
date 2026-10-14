@@ -19,7 +19,7 @@ import { playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { parseMoneyInput, wireMoneyBidInput } from "./money_input.js";
 import { renderHonoursHtml } from "./player_career_medals.js";
 import { renderBlindGauntletRules } from "./special_auction_gauntlet_rules.js";
-import { mountUpcomingSpecialAuctions } from "./special_auction_upcoming.js?v=20261014-upcoming";
+import { mountUpcomingSpecialAuctions } from "./special_auction_upcoming.js?v=20261014-upcoming2";
 
 let state = null;
 let auctionId = null;

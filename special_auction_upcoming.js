@@ -42,20 +42,23 @@ function auctionHref(a) {
     : `special_auction.html?id=${a.id}`;
 }
 
+const UPCOMING_COLUMNS = [
+  "id, title, auction_type, status, start_time, end_time, prize_type, prize_cash_amount, prize_discount_pct",
+  "id, title, auction_type, status, start_time, end_time",
+];
+
 export async function loadUpcomingSpecialAuctions(supabase) {
-  const { data, error } = await supabase
-    .from("special_auctions")
-    .select(
-      "id, title, auction_type, status, start_time, end_time, prize_type, prize_cash_amount, prize_discount_pct"
-    )
-    .in("status", ["scheduled", "active"])
-    .order("start_time", { ascending: true })
-    .limit(10);
-  if (error) {
+  for (const cols of UPCOMING_COLUMNS) {
+    const { data, error } = await supabase
+      .from("special_auctions")
+      .select(cols)
+      .in("status", ["scheduled", "active"])
+      .order("start_time", { ascending: true })
+      .limit(10);
+    if (!error) return data || [];
     console.warn("loadUpcomingSpecialAuctions:", error.message);
-    return [];
   }
-  return data || [];
+  return [];
 }
 
 /**
