@@ -93,7 +93,7 @@ export function renderPredictedWorkingsHtml(data, extra = {}) {
   const maybeIn =
     "<b>Additionally, you may earn more</b> depending on how your season goes — challenge prizes, " +
     "further cup runs (extra prize money and gate receipts), more of your matches picked for TV, " +
-    "sponsor bonuses, merchandise and player sales. Not counted until they happen.";
+    "sponsor bonuses, merchandise, interest on a positive bank balance and player sales. Not counted until they happen.";
   const maybeOut =
     "<b>Additionally, you may pay more</b> depending on your season — fines, new signings and their wages, " +
     "medical staff, stadium work, overdraft interest and any FFP penalty. Not counted until they happen.";

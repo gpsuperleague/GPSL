@@ -21,7 +21,7 @@ import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20261015-shor
 import {
   loadListedSaleBids,
   renderPredictedWorkingsHtml,
-} from "./finance_predicted_workings.js?v=20261015-maybe-more";
+} from "./finance_predicted_workings.js?v=20261015-interest";
 
 /** @type {{ data: object, shortName: string, rendered: boolean } | null} */
 let predictedState = null;
