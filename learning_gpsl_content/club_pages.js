@@ -52,6 +52,37 @@ export const SECTION_FINANCES = {
       type: "tip",
       html: `Fines, cup prizes, challenge payouts, and transfer fees all arrive as inbox messages and ledger lines.`,
     },
+    { type: "h3", html: "Predicted end-of-season balance" },
+    {
+      type: "p",
+      html: `Shown on <a href="finances.html">Finances</a>. It answers one question: <b>if nothing else happens, how much money will my club have when the season closes?</b> Click it to see the full workings.`,
+    },
+    {
+      type: "ul",
+      items: [
+        `<b>Starts from your current balance</b> — the money in the bank right now.`,
+        `<b>Adds what is still to come in</b> that we already know about — league home gate receipts, cup ties you are already drawn in (prize money + gate share), TV money for matches already picked, the league prize for where you sit in the table now, and subsidies you are on track for.`,
+        `<b>Takes off what is still to go out</b> — player wages (after any Fan Favourite subsidy), manager salary, stadium maintenance, loan repayments due this season, and tax.`,
+        `<b>Takes off your winning bids</b> — players and managers you are currently top bidder on are counted as if you win them.`,
+        `<b>Leaves out anything not known yet</b> — challenge prizes, further cup runs, more TV picks, sponsor bonuses, merchandise, bank interest, player sales, fines, new signings, stadium work and FFP penalties. These are only counted once they happen.`,
+      ],
+    },
+    {
+      type: "p",
+      html: `<b>What it means:</b> it is a prediction, not a promise. Early in the season most of the year is still a forecast, so the figure can move a lot. As matches are played and money is posted to the ledger, more of it becomes fact and the prediction gets more and more accurate. By Close Finances it is close to the real figure.`,
+    },
+    {
+      type: "ul",
+      items: [
+        `<b>Below zero?</b> You are on course to finish in the red — you will see <b>"Short by ₿X"</b> next to your transfer budget, and the advisory transfer budget shows ₿0.`,
+        `<b>At or below −₿100m</b> at Close Finances triggers an FFP fine, so a prediction near that line is an early warning.`,
+        `The <b>advisory transfer budget</b> is the same sum without transfer sales/purchases — guidance only, it never blocks a bid.`,
+      ],
+    },
+    {
+      type: "tip",
+      html: `Want to improve the figure? Sell players you don't need, trim wages, avoid fines, and go deep in the cups — every win that earns money is added the moment it is posted.`,
+    },
   ],
 };
 
