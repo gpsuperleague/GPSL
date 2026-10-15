@@ -252,6 +252,19 @@
       cursor: pointer;
     }
     .mc-collapsed .mc-body { display: none; }
+    .mc-rec {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: #2a1414;
+      border: 1px solid #6a2a2a;
+    }
+    .mc-rec-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; color: #f99; margin-bottom: 4px; }
+    .mc-rec-head span { font-size: 11px; color: #c99; }
+    .mc-rec-head a { margin-left: auto; font-size: 11px; color: #ff9900; }
+    .mc-rec-item { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #ddd; padding: 3px 0; cursor: pointer; }
+    .mc-rec-item input { margin-top: 2px; accent-color: #ff9900; }
+    .mc-rec-item.done span { color: #8d8; }
     .mc-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -583,6 +596,8 @@
 
     </div>
 
+    <section id="seasonReadyPanel" class="rc-panel" aria-label="Ready for August checklist" hidden></section>
+
     <section id="matchdayChecklist" class="mc-panel" aria-label="Matchday checklist" aria-live="polite" hidden></section>
 
     <section id="ownerSeasonStatusSection" aria-label="Season status" hidden>
@@ -619,7 +634,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20261009-club-wire"></script>
+  <script type="module" src="dashboard.js?v=20261015-ready"></script>
 
 </body>
 </html>

@@ -138,6 +138,90 @@ function renderFlags(flags) {
     .join("");
 }
 
+const REC_ITEMS = [
+  ["rec_started", "Recording started"],
+  ["rec_room_settings", "Showed MATCH ROOM SETTINGS (10 min, injuries OFF, 5 subs, 3 intervals, form Random)"],
+  ["rec_prematch_config", "Showed PRE-MATCH CONFIG (stadium, kits, weather / pitch)"],
+  ["rec_squad_tactics", "Showed SQUAD & TACTICS (GP manager, default sub / fluid formation, blank instructions, full squad)"],
+  ["rec_pause_pa", "Paused before kick-off to show PA3 / PA4 + advanced skill"],
+  ["rec_hud_on", "Scoreboard + HUD on for the whole match"],
+  ["rec_post_match", "Showed player ratings + player of the match, then stopped recording"],
+];
+const REC_BEFORE_MS = 30 * 60 * 1000;
+const REC_AFTER_MS = 2 * 60 * 60 * 1000;
+
+/** fixture_id → Set of ticked rec_* keys */
+let recTicks = new Map();
+
+function recordingWindowOpen(fx) {
+  if (!fx.agreed_kickoff_at) return false;
+  const ko = new Date(fx.agreed_kickoff_at).getTime();
+  if (!Number.isFinite(ko)) return false;
+  const now = Date.now();
+  if (now < ko - REC_BEFORE_MS || now > ko + REC_AFTER_MS) return false;
+  const result = (fx.steps || []).find((s) => s.key === "result");
+  return result?.state !== "done";
+}
+
+function renderRecordingBlock(fx) {
+  if (!recordingWindowOpen(fx)) return "";
+  const fid = Number(fx.fixture_id);
+  const ticked = recTicks.get(fid) || new Set();
+  const done = REC_ITEMS.filter(([k]) => ticked.has(k)).length;
+  return `
+    <div class="mc-rec">
+      <div class="mc-rec-head">🎥 <b>Start recording now</b> <span>${done} / ${REC_ITEMS.length} shown</span>
+        <a href="learning_gpsl.html#matchday-checklist" target="_blank" rel="noopener">Full checklist</a></div>
+      ${REC_ITEMS.map(
+        ([k, label]) => `
+        <label class="mc-rec-item${ticked.has(k) ? " done" : ""}">
+          <input type="checkbox" data-mc-rec="${fid}" data-mc-rec-key="${k}"${ticked.has(k) ? " checked" : ""}>
+          <span>${escapeHtml(label)}</span>
+        </label>`
+      ).join("")}
+    </div>`;
+}
+
+async function loadRecTicks(fixtures) {
+  const ids = (fixtures || []).filter(recordingWindowOpen).map((f) => Number(f.fixture_id));
+  recTicks = new Map();
+  if (!ids.length) return;
+  const { data, error } = await supabase
+    .from("owner_ready_ticks")
+    .select("fixture_id, item_key")
+    .in("fixture_id", ids);
+  if (error) {
+    console.warn("owner_ready_ticks:", error.message);
+    return;
+  }
+  for (const row of data || []) {
+    const fid = Number(row.fixture_id);
+    if (!recTicks.has(fid)) recTicks.set(fid, new Set());
+    recTicks.get(fid).add(row.item_key);
+  }
+}
+
+async function onRecTick(box) {
+  const fid = Number(box.dataset.mcRec);
+  const key = box.dataset.mcRecKey;
+  box.disabled = true;
+  const { error } = await supabase.rpc("owner_ready_tick", {
+    p_item_key: key,
+    p_ticked: box.checked,
+    p_fixture_id: fid,
+  });
+  if (error) {
+    alert(error.message || "Could not save that tick.");
+    box.checked = !box.checked;
+    box.disabled = false;
+    return;
+  }
+  if (!recTicks.has(fid)) recTicks.set(fid, new Set());
+  if (box.checked) recTicks.get(fid).add(key);
+  else recTicks.get(fid).delete(key);
+  render();
+}
+
 function renderFixture(fx) {
   const fid = Number(fx.fixture_id);
   const vs = `${fx.side === "home" ? "vs" : "@"} ${escapeHtml(clubLabel(fx.opponent_short_name))}`;
@@ -174,6 +258,7 @@ function renderFixture(fx) {
       ${showFilename ? `<div class="mc-filename">Filename: <code>${escapeHtml(video.filename)}</code></div>` : ""}
       ${fx.flags?.length ? `<div class="mc-flags">${renderFlags(fx.flags)}</div>` : ""}
       ${next ? `<div class="mc-actions">${renderActionButton(next, fid)}</div>` : ""}
+      ${renderRecordingBlock(fx)}
     </div>`;
 }
 
@@ -318,6 +403,9 @@ function render() {
   section.querySelectorAll("[data-mc-copy]").forEach((btn) => {
     btn.addEventListener("click", () => onCopy(btn));
   });
+  section.querySelectorAll("[data-mc-rec]").forEach((box) => {
+    box.addEventListener("change", () => onRecTick(box));
+  });
 }
 
 async function onCopy(btn) {
@@ -372,6 +460,7 @@ export async function fetchUpcomingArrangements() {
 
 export async function refreshMatchdayChecklist() {
   [lastData, lastArrange] = await Promise.all([fetchMatchdayChecklist(), fetchUpcomingArrangements()]);
+  await loadRecTicks(lastData?.fixtures);
   render();
 }
 

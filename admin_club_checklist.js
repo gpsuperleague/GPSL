@@ -757,6 +757,34 @@ function sortClass(key) {
   return sortDir === "asc" ? " sorted-asc" : " sorted-desc";
 }
 
+function readyCell(row) {
+  if (!rowHasOwner(row)) return textCell('<span class="muted">—</span>', "ok", "");
+  if (row.ready_total === undefined) {
+    return `<td class="num chk-cell-ok proj-loading">…</td>`;
+  }
+  if (row.ready_total == null) {
+    return textCell('<span class="muted">—</span>', "ok", "Ready-for-August checklist not available");
+  }
+  const done = Number(row.ready_done) || 0;
+  const total = Number(row.ready_total) || 0;
+  const level = done >= total ? "ok" : "warn";
+  const tip = row.ready_missing ? `Still to do: ${row.ready_missing}` : "Ready for August — all done";
+  return textCell(`<strong>${done}</strong>/${total}`, level, tip);
+}
+
+async function enrichReadySummary(rows) {
+  const { data, error } = await supabase.rpc("admin_owner_ready_summary");
+  const byClub = new Map((data || []).map((r) => [r.club_short_name, r]));
+  if (error) console.warn("admin_owner_ready_summary:", error.message);
+  for (const row of rows) {
+    const r = byClub.get(row.club_short_name);
+    row.ready_done = r ? Number(r.ready_done) : null;
+    row.ready_total = r ? Number(r.ready_total) : null;
+    row.ready_missing = r?.missing || "";
+  }
+  renderTable();
+}
+
 function renderTable() {
   const wrap = document.getElementById("tableWrap");
   const countEl = document.getElementById("rowCount");
@@ -784,6 +812,7 @@ function renderTable() {
     ["availability_slot_count", "Availability", ""],
     ["club_name", "Club", ""],
     ["_issues", "Issues", ""],
+    ["ready_done", "Ready", ""],
     ["manager_name", "Manager", ""],
     ["nation_name", "Nation", ""],
     ["squad_size", "Squad", "chk-col-squad"],
@@ -809,7 +838,7 @@ function renderTable() {
     <table class="chk-table">
       <thead>
         <tr class="chk-group-row">
-          <th colspan="7" class="chk-group-club">Club</th>
+          <th colspan="8" class="chk-group-club">Club</th>
           <th colspan="10" class="chk-group-squad">Squad registration</th>
           <th colspan="7" class="chk-group-fin">Finances &amp; allowances</th>
         </tr>
@@ -985,6 +1014,7 @@ function renderTable() {
             <td class="chk-issues-cell ${
               issues.size ? "chk-cell-bad chk-issues-hot" : cellClass("ok")
             }">${issueTagsHtml(issues, row)}</td>
+            ${readyCell(row)}
             ${textCell(
               manager,
               issues.has("manager") ? "bad" : "ok",
@@ -1118,6 +1148,7 @@ async function loadTable() {
     enrichLiveBids(allRows),
     enrichProjectedBalances(allRows),
     enrichNewOwnerReleases(allRows),
+    enrichReadySummary(allRows),
   ]);
   setStatus("pageStatus", `✅ ${allRows.length} clubs loaded.`);
 }
