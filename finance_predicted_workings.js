@@ -84,21 +84,30 @@ export function renderPredictedWorkingsHtml(data, extra = {}) {
     </tr>`;
   };
 
-  const groupHtml = (title, rows) =>
-    rows.length
-      ? `<tr class="pw-group"><td colspan="2">${title}</td></tr>${rows.map(rowHtml).join("")}`
-      : "";
+  const maybeRow = (text) =>
+    `<tr class="pw-maybe"><td colspan="2">${text}</td></tr>`;
+
+  const groupHtml = (title, rows, maybe) =>
+    `<tr class="pw-group"><td colspan="2">${title}</td></tr>${rows.map(rowHtml).join("")}${maybeRow(maybe)}`;
+
+  const maybeIn =
+    "<b>Additionally, you may earn more</b> depending on how your season goes — challenge prizes, " +
+    "further cup runs (extra prize money and gate receipts), more of your matches picked for TV, " +
+    "sponsor bonuses, merchandise and player sales. Not counted until they happen.";
+  const maybeOut =
+    "<b>Additionally, you may pay more</b> depending on your season — fines, new signings and their wages, " +
+    "medical staff, stadium work, overdraft interest and any FFP penalty. Not counted until they happen.";
 
   const workings = `
     <table class="pw-table">
       <tbody>
         <tr class="pw-total"><td>Current balance (money in the bank now)</td><td class="pw-amt">${formatMoney(data.balanceNow)}</td></tr>
-        ${groupHtml("Still to come in", income)}
-        ${groupHtml("Still to go out", costs)}
+        ${groupHtml("Still to come in", income, maybeIn)}
+        ${groupHtml("Still to go out", costs, maybeOut)}
         ${pending.length ? "" : `<tr><td colspan="2" class="pw-note">Nothing pending — every forecast line is already on the ledger.</td></tr>`}
         <tr class="pw-sub"><td>Pending income</td><td class="pw-amt">${signed(sum(income))}</td></tr>
         <tr class="pw-sub"><td>Pending costs</td><td class="pw-amt">${signed(sum(costs))}</td></tr>
-        <tr class="pw-total"><td>Predicted end-of-season balance</td><td class="pw-amt">${formatMoney(data.projectedBalance)}</td></tr>
+        <tr class="pw-total"><td>Predicted end-of-season balance<div class="pw-note">Based only on what is known today. It becomes more accurate as the season goes on and income and costs are posted to the ledger.</div></td><td class="pw-amt">${formatMoney(data.projectedBalance)}</td></tr>
       </tbody>
     </table>`;
 
