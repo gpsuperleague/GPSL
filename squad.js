@@ -1721,6 +1721,23 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
     );
   }
 
+  const designatedNameById = new Map(
+    (players || []).map((p) => [String(p.Konami_ID), p.Name || `Player ${p.Konami_ID}`])
+  );
+  const designatedId = (rule) =>
+    rule === "One of our own"
+      ? designationsState?.one_of_our_own_player_id
+      : rule === "Fan Favourite"
+        ? designationsState?.fan_favourite_player_id
+        : null;
+  const ruleLabelHtml = (rule) => {
+    const id = designatedId(rule);
+    const name = id ? designatedNameById.get(String(id)) : null;
+    return name
+      ? `${escapeHtml(rule)} <span class="squad-rules-designated">(${escapeHtml(name)})</span>`
+      : escapeHtml(rule);
+  };
+
   const preAugust = !squadMinimumStatus?.punishments_active;
   const registrationOk = c.compliant && c.minSquadOk;
   const panelClass = registrationOk
@@ -1764,7 +1781,7 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
 
       return `
     <tr class="${rowOk ? "squad-rules-row--ok" : "squad-rules-row--fail"}">
-      <th scope="row" class="gpsl-has-tip"${tipDataAttrs(rowTip)}>${r.rule}</th>
+      <th scope="row" class="gpsl-has-tip"${tipDataAttrs(rowTip)}>${ruleLabelHtml(r.rule)}</th>
       <td class="squad-rules-req-compact gpsl-has-tip"${tipDataAttrs(rowTip)}>${shortComplianceRequirement(r)}</td>
       <td class="squad-rules-count"><strong>${r.count}</strong></td>
       ${projCell}

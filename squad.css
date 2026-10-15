@@ -398,6 +398,11 @@ body.squad-page .squad-rules-req-compact {
   font-size: 11px;
 }
 
+body.squad-page .squad-rules-designated {
+  color: #ffcc66;
+  font-weight: normal;
+}
+
 body.squad-page .squad-rules-status-compact {
   white-space: nowrap;
   font-size: 11px;
