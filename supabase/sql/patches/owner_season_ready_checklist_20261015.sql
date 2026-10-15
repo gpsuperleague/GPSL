@@ -68,7 +68,7 @@ DECLARE
   v_star_min smallint := 79;
   v_ooo text;
   v_size int; v_gk int; v_u21 int; v_hg int; v_stars int; v_cap int;
-  v_mgr text; v_nation text; v_reg_tag text; v_club_tag text; v_slots int := 0;
+  v_mgr text; v_reg_tag text; v_club_tag text; v_slots int := 0;
   v_home_total int := 0; v_home_done int := 0; v_replies int := 0;
   v_sponsor boolean := false;
   r record;
@@ -131,14 +131,6 @@ BEGIN
   FROM public."Managers" m
   WHERE upper(nullif(btrim(m.contracted_club), '')) = v_club
   ORDER BY m.id LIMIT 1;
-
-  BEGIN
-    SELECT ion.nation_code INTO v_nation
-    FROM public.international_owner_nations ion
-    WHERE upper(ion.club_short_name) = v_club AND ion.is_active = true
-    LIMIT 1;
-  EXCEPTION WHEN OTHERS THEN v_nation := 'n/a';
-  END;
 
   SELECT
     public.normalize_owner_discord_tag(r2.owner_tag),
@@ -223,9 +215,6 @@ BEGIN
     jsonb_build_object('key', 'manager', 'group', 'Club set-up', 'kind', 'auto', 'href', 'manager_listings.html',
       'label', 'Manager signed', 'detail', coalesce(v_mgr, 'No manager yet'),
       'done', v_mgr IS NOT NULL),
-    jsonb_build_object('key', 'nation', 'group', 'Club set-up', 'kind', 'auto', 'href', 'nation_select.html',
-      'label', 'Nation chosen', 'detail', coalesce(v_nation, 'Not chosen yet'),
-      'done', v_nation IS NOT NULL),
     jsonb_build_object('key', 'discord_tag', 'group', 'Club set-up', 'kind', 'auto', 'href', 'owner_details.html',
       'label', 'Discord tag linked',
       'detail', CASE WHEN v_reg_tag IS NULL OR v_club_tag IS NULL THEN 'Missing — ask an admin'
@@ -267,13 +256,6 @@ BEGIN
       'label', 'I know my kits & stadium rules: licensed stadium, or Konami stadium with real name + home colours, no extras',
       'done', 'know_kits_stadium' = ANY (v_ticks))
   );
-
-  -- Nation only becomes a requirement from GPSL season 3 (same as admin checklist)
-  IF (SELECT count(*) FROM public.competition_seasons s WHERE s.id <= p_season) < 3 THEN
-    SELECT coalesce(jsonb_agg(i), '[]'::jsonb) INTO v_items
-    FROM jsonb_array_elements(v_items) i
-    WHERE i->>'key' <> 'nation';
-  END IF;
 
   RETURN v_items;
 END;
