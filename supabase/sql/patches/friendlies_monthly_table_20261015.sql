@@ -13,7 +13,7 @@
 --   snapshots every league club's difficulty (same formula as My Club →
 --   Friendlies: owner ranking FDR + Bookies strength), and each friendly stores it.
 -- • Only the first 2 friendlies against the same opponent in a month count, and
---   at most the monthly friendly cap (15) per club.
+--   at most the monthly friendly cap (20) per club.
 -- • Prize needs 3+ counted friendlies. Order: points, then higher average
 --   difficulty, then fewer counted games, then whoever reached their total first.
 -- • Every month June → May has its own table; playoffs don't.

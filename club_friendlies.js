@@ -2,7 +2,7 @@ import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
-import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20261015-table";
+import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20261015-cap-20";
 
 let myClub = { short: null };
 /** Opponent ShortName (upper) → { fdr, ranking_fdr, bookies_fdr, bookies_rank, bookies_pool } */
@@ -151,7 +151,7 @@ function renderPendingCard(row) {
 
 function renderMonth(month) {
   const paid = Number(month.paid_count) || 0;
-  const cap = Number(month.month_cap) || 15;
+  const cap = Number(month.month_cap) || 20;
   const confirmed = Array.isArray(month.friendlies) ? month.friendlies : [];
   const pending = Array.isArray(month.pending) ? month.pending : [];
   const cards = [
@@ -176,9 +176,9 @@ function renderSummary(data) {
   const el = document.getElementById("friendliesSummary");
   if (!el) return;
   const seasonPaid = Number(data.season_paid_total) || 0;
-  const seasonCap = Number(data.season_cap) || 750000;
+  const seasonCap = Number(data.season_cap) || 1200000;
   const payout = Number(data.payout_amount) || 5000;
-  const monthCap = Number(data.month_cap) || 15;
+  const monthCap = Number(data.month_cap) || 20;
   el.innerHTML = `
     <span class="pill">Club <b>${escapeHtml(data.club || "—")}</b></span>
     <span class="pill">Active month <b>${escapeHtml(data.active_gpsl_month_label || "—")}</b></span>
@@ -351,7 +351,7 @@ function renderMonthTable(t) {
         ? `<div class="ft-scroll"><table class="ft-table">
             <thead><tr>
               <th>#</th><th>Club</th>
-              <th class="num" title="Friendlies that count (first ${Number(t.same_opponent_max) || 2} per opponent, max ${Number(t.month_cap) || 15})">Games</th>
+              <th class="num" title="Friendlies that count (first ${Number(t.same_opponent_max) || 2} per opponent, max ${Number(t.month_cap) || 20})">Games</th>
               <th class="num">W</th><th class="num">D</th><th class="num">L</th>
               <th class="num">Goals</th>
               <th class="num" title="Average opponent difficulty, 1 easiest to 5 hardest">Avg diff</th>

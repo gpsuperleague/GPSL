@@ -307,7 +307,7 @@ export const CLUB_FRIENDLIES_TIPS = {
   page:
     "Discord-confirmed friendlies for your club, grouped by GPSL month. Standalone only — no league/cup records from these games.",
   gate:
-    "First 15 paid friendlies each month earn ₿5,000 gate each. Season cap: ₿750,000 total from friendlies.",
+    "First 20 paid friendlies each month earn ₿5,000 gate each. Season cap: ₿1,200,000 total from friendlies.",
   summary:
     "Quick counts for this season: paid friendlies, gate earned, and remaining room under the season cap.",
 };
