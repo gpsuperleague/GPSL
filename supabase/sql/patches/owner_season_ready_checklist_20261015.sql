@@ -147,6 +147,17 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN v_slots := 0;
   END;
 
+  -- Weekly slots are canonical per owner (carry across seasons)
+  IF v_slots = 0 AND to_regclass('public.gpsl_owner_registry_availability_slot') IS NOT NULL THEN
+    BEGIN
+      SELECT count(*)::int INTO v_slots
+      FROM public.gpsl_owner_registry_availability_slot r
+      JOIN public."Clubs" c ON c.owner_id = r.owner_id
+      WHERE upper(c."ShortName") = v_club;
+    EXCEPTION WHEN OTHERS THEN v_slots := 0;
+    END;
+  END IF;
+
   -- August + September fixtures (league + drawn cup ties) where we are home
   FOR r IN
     SELECT f.id, s.status AS sched_status
@@ -222,8 +233,9 @@ BEGIN
                      ELSE '@' || v_reg_tag END,
       'done', v_reg_tag IS NOT NULL AND v_reg_tag = v_club_tag),
     jsonb_build_object('key', 'availability', 'group', 'Club set-up', 'kind', 'auto', 'href', 'owner_details.html',
-      'label', 'Match availability set for this season',
-      'detail', CASE WHEN v_slots > 0 THEN format('%s time slots', v_slots) ELSE 'Not set yet' END,
+      'label', 'Match availability set (the weekly times you can play)',
+      'detail', CASE WHEN v_slots > 0 THEN format('%s time slots set', v_slots)
+                     ELSE 'Not set yet — add your times on Owner Details' END,
       'done', v_slots > 0),
     jsonb_build_object('key', 'sponsor', 'group', 'Club set-up', 'kind', 'recommended', 'href', 'stadium.html',
       'label', 'Main sponsor chosen (recommended)',
