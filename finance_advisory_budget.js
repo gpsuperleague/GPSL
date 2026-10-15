@@ -129,7 +129,7 @@ export function advisoryBudgetTitle(advisory) {
     );
   }
   if (advisory.runwayNegative) {
-    parts.push(`projected runway ${formatMoney(advisory.raw)}`);
+    parts.push(`on course to finish ${formatMoney(Math.abs(advisory.raw))} short`);
   }
   return `Advisory season transfer budget (excl. transfer sales/purchases). ${parts.join(" · ")}`;
 }
@@ -144,7 +144,7 @@ export function renderAdvisoryBudgetBadgeHtml(advisory, opts = {}) {
   const spendable = formatMoney(advisory.spendable);
   const bank = formatMoney(advisory.balanceNow);
   const warn = advisory.runwayNegative
-    ? `<span class="cbb-warn">Runway ${formatMoney(advisory.raw)}</span>`
+    ? `<span class="cbb-warn" title="After the costs still to come and your winning bids, you would end the season this much in the red.">Short by ${formatMoney(Math.abs(advisory.raw))}</span>`
     : "";
   const bidNote =
     advisory.bidExposure > 0.5

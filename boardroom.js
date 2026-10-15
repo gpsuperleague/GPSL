@@ -12,7 +12,7 @@ import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, loadClubLoans, leagueBadgeHtml } from "./competition.js";
 import { loadCalendarStatus } from "./competition_calendar.js";
 import { loadClubWageBillSummary } from "./club_wage_bill.js?v=20261014-ff-wage";
-import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js?v=20261014-ff-wage";
+import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js?v=20261015-short-by";
 import {
   loadFinanceSeasonContext,
   resolveFinanceSeasonView,
@@ -419,7 +419,7 @@ function renderBoardFinanceSection({
         }`
       : "";
   const transferHint = advisory?.runwayNegative
-    ? `Runway ${formatMoney(advisory.raw)} — spend shown as ₿0`
+    ? `Short by ${formatMoney(Math.abs(advisory.raw))} at season end — no spare money for transfers`
     : advisory?.bidExposure > 0.5
       ? `${advisory.bidCount} winning bid${advisory.bidCount === 1 ? "" : "s"} (−${formatMoney(advisory.bidExposure)})`
       : "Ops forecast excl. transfers";

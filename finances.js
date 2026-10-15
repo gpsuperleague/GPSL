@@ -5,7 +5,7 @@ import { loadClubWageBillSummary } from "./club_wage_bill.js?v=20261014-ff-wage"
 import {
   advisoryBudgetTitle,
   computeAdvisoryTransferBudget,
-} from "./finance_advisory_budget.js?v=20261014-ff-wage";
+} from "./finance_advisory_budget.js?v=20261015-short-by";
 import {
   applyFinanceClubHeader,
   applyHistoricalFinanceBanner,
@@ -17,7 +17,7 @@ import {
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
 } from "./finance_page_common.js?v=20261014-ff-wage";
-import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20260806-help-blocks";
+import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20261015-short-by";
 import {
   loadListedSaleBids,
   renderPredictedWorkingsHtml,
@@ -177,7 +177,7 @@ function setAdvisoryBudgetDisplay(advisory, { historical = false } = {}) {
 
   if (hint) {
     if (advisory.runwayNegative) {
-      hint.textContent = `Runway ${formatMoney(advisory.raw)} — spend shown as ₿0 →`;
+      hint.textContent = `Short by ${formatMoney(Math.abs(advisory.raw))} at season end — no spare money for transfers →`;
     } else if (advisory.bidExposure > 0.5) {
       hint.textContent = `${advisory.bidCount} winning bid${advisory.bidCount === 1 ? "" : "s"} (−${formatMoney(advisory.bidExposure)}) →`;
     } else {

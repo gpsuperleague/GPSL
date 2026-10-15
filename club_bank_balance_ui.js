@@ -10,7 +10,7 @@ import {
   advisoryBudgetTitle,
   computeAdvisoryTransferBudget,
   renderAdvisoryBudgetBadgeHtml,
-} from "./finance_advisory_budget.js?v=20261014-ff-wage";
+} from "./finance_advisory_budget.js?v=20261015-short-by";
 
 const STYLE_ID = "club-bank-balance-style";
 

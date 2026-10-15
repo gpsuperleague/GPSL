@@ -28,7 +28,7 @@ export function getFinancesOverviewNotes() {
       <ul>
         <li><b>Spend guidance</b> — current balance + predicted income − predicted expenditure (excluding transfer sales/purchases).</li>
         <li>Then minus your live winning bids on players and managers.</li>
-        <li>Shown as <b>₿0</b> minimum for spend; a warning appears if projected runway is negative.</li>
+        <li>Never shown below <b>₿0</b>. If your costs and bids add up to more than you have coming in, you'll see <b>"Short by ₿X"</b> — that's how far into the red you'd finish the season if nothing else changes.</li>
         <li>League prize pending follows your <b>current table position</b> (if that finish holds).</li>
       </ul>
       <p class="fin-help-foot">Soft only — does not block bids.</p>`,
