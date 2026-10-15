@@ -943,8 +943,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let SEASON_EXCLUDED_NATION_CODES = new Set();
   /** Special-auction reserves — block draft bids in GPDB. */
   let AUCTION_EXCLUDED_PLAYER_IDS = new Set();
-  /** player id → full name of the club that last let them go (for the "paid up" cover story). */
+  /** player id → ShortName of the club that last let them go (for the "paid up" cover story). */
   let AUCTION_EXCLUDED_RELEASED_BY = new Map();
+  /** Same unlock label a genuine paid-up player released this season carries. */
+  let AUCTION_EXCLUDED_UNLOCK_LABEL = "";
 
   async function loadSeasonExclusions() {
     SEASON_EXCLUDED_PLAYER_IDS = new Set();
@@ -1009,22 +1011,31 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!id || !seller || seller === "FOREIGN" || shortById.has(id)) continue;
       shortById.set(id, seller);
     }
-    if (!shortById.size) return;
-    const { data: clubs } = await supabase
-      .from("Clubs")
-      .select("ShortName, Club")
-      .in("ShortName", [...new Set(shortById.values())]);
-    const nameByShort = new Map((clubs || []).map((c) => [c.ShortName, c.Club || c.ShortName]));
     for (const [id, short] of shortById) {
-      AUCTION_EXCLUDED_RELEASED_BY.set(id, nameByShort.get(short) || short);
+      AUCTION_EXCLUDED_RELEASED_BY.set(id, short);
+    }
+    await loadAuctionExcludedUnlockLabel();
+  }
+
+  async function loadAuctionExcludedUnlockLabel() {
+    AUCTION_EXCLUDED_UNLOCK_LABEL = "";
+    try {
+      const { data: cur } = await supabase.rpc("current_gpsl_season_id");
+      const { data: label } = await supabase.rpc("next_gpsl_season_label", {
+        p_from_season_id: cur ?? null,
+      });
+      AUCTION_EXCLUDED_UNLOCK_LABEL = String(label ?? "").trim();
+    } catch (e) {
+      console.warn("auction unlock label:", e);
     }
   }
 
   function auctionExcludedCoverText(playerId) {
-    const club = AUCTION_EXCLUDED_RELEASED_BY.get(String(playerId ?? "").trim());
-    return club
-      ? `Contract paid up by ${club} — unavailable until next season`
-      : "Contract paid up — unavailable until next season";
+    return playerForeignContractStatusLabel({
+      foreign_contract_club: AUCTION_EXCLUDED_RELEASED_BY.get(String(playerId ?? "").trim()) || "",
+      foreign_contract_unlock_season_label: AUCTION_EXCLUDED_UNLOCK_LABEL || "Next season",
+      foreign_contract_lock_kind: "paid_up",
+    });
   }
 
   function applyExclusionBundle(data) {
@@ -1074,9 +1085,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function auctionExcludedBidHtml(playerId) {
-    return `<span class="locked-msg gpdb-excluded-msg" title="Contractual small print">${escapePlayerHtml(
-      auctionExcludedCoverText(playerId)
-    )}</span>`;
+    return `<span class="locked-msg">${escapePlayerHtml(auctionExcludedCoverText(playerId))}</span>`;
   }
 
   function legacyCardBidHtml() {
@@ -2467,7 +2476,7 @@ document.addEventListener("DOMContentLoaded", () => {
         nameCell += suspBadge;
 
         const rowClasses = [
-          seasonExcluded || auctionExcluded ? "gpdb-row-excluded" : "",
+          seasonExcluded ? "gpdb-row-excluded" : "",
           legacyCard ? "gpdb-row-legacy" : "",
           suspRows.length ? "gpdb-row-suspended" : "",
         ]
@@ -2484,7 +2493,7 @@ document.addEventListener("DOMContentLoaded", () => {
               data-contract-seasons="${player.contract_seasons_remaining ?? ""}"
               data-nation="${player.Nation ?? ""}"
               data-age="${player.Age ?? ""}"
-              data-season-excluded="${seasonExcluded || auctionExcluded ? "1" : "0"}"
+              data-season-excluded="${seasonExcluded ? "1" : "0"}"
               data-legacy="${legacyCard ? "1" : "0"}">
             <td>${playerThumbLinkHtml(player.Konami_ID, {
               className: "gpdb-thumb",
@@ -2587,7 +2596,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (AUCTION_EXCLUDED_PLAYER_IDS.has(String(konamiId).trim())) {
-      alert(`${auctionExcludedCoverText(konamiId)} (contractual small print).`);
+      alert(auctionExcludedCoverText(konamiId));
       return;
     }
 
