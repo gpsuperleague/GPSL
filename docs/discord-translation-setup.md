@@ -1,6 +1,12 @@
 # Discord translation — setup to follow
 
-Status: code written (2026-10-12), not deployed or tested yet.
+Status (2026-10-15): code pushed; function deployed (4); commands registered (6, app id
+1527242431995580558). Step 3 no longer needed — the function reads the public key with the bot token.
+Still to do: translation key (2), Interactions Endpoint URL (5).
+
+Translation provider: Microsoft Translator free tier (F0, 2M characters every month).
+Secrets `AZURE_TRANSLATOR_KEY` and `AZURE_TRANSLATOR_REGION` (e.g. `uksouth`; leave unset for a
+"Global" resource). DeepL / Google keys, if also set, are used only when Microsoft fails.
 
 ## What it does
 

@@ -311,9 +311,11 @@ function renderMonthTable(t) {
           <td>${clubWithOwnerHtml(r.club_name, r.club, "inline")}${
             notes.length ? `<span class="ft-note">${escapeHtml(notes.join(" · "))}</span>` : ""
           }</td>
-          <td class="num" title="${extra > 0 ? `${extra} more played but not counted` : ""}">${r.counted}${
-            extra > 0 ? `<span class="ft-note">+${extra}</span>` : ""
-          }</td>
+          <td class="num" title="${
+            extra > 0
+              ? `${r.counted} of ${r.played} count. Only the first ${Number(t.same_opponent_max) || 2} games against the same club each month count, up to ${Number(t.month_cap) || 20}. The rest still earn gate money.`
+              : ""
+          }">${r.counted}${extra > 0 ? `<span class="ft-note">of ${r.played}</span>` : ""}</td>
           <td class="num">${r.won}</td>
           <td class="num">${r.drawn}</td>
           <td class="num">${r.lost}</td>
@@ -364,6 +366,8 @@ function renderMonthTable(t) {
     <div class="ft-key">
       Points by opponent difficulty (1 easiest → 5 hardest):
       win 2 / 3 / 4 / 5 / 6 · draw 0.5 / 1 / 1.5 / 2.5 / 3 · loss 0 / 0 / 0 / 0.5 / 1.
+      Only your first ${Number(t.same_opponent_max) || 2} games against the same club each month count, up to ${Number(t.month_cap) || 20}
+      ("15 of 26" means 15 counted out of 26 played); extra games still earn gate money.
       Difficulty is fixed for the month. Ties: higher average difficulty, then fewer games, then first to reach the total.
     </div>
   `;

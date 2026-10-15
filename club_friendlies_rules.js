@@ -33,6 +33,7 @@ export function getClubFriendliesRules() {
           "You need 3 counted friendlies to win a prize. At month end, 1st gets ₿3,000 and 2nd ₿1,500 in their owner account.",
         items: [
           "Points for the result, more against <b>harder opponents</b>.",
+          "Only your <b>first 2 games</b> against the same club each month count (extra games still earn gate money).",
           "Month winner <b>₿3,000</b>, runner-up <b>₿1,500</b> to your owner account.",
         ],
       },

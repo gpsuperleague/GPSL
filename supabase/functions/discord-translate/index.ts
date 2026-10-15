@@ -62,6 +62,28 @@ function hexToBytes(hex: string): Uint8Array {
   return out;
 }
 
+let cachedPublicKey = "";
+
+/** DISCORD_PUBLIC_KEY secret, else the application's verify_key via the bot token. */
+async function discordPublicKey(): Promise<string> {
+  const fromEnv = Deno.env.get("DISCORD_PUBLIC_KEY") || "";
+  if (fromEnv) return fromEnv;
+  if (cachedPublicKey) return cachedPublicKey;
+  const botToken = Deno.env.get("DISCORD_BOT_TOKEN") || "";
+  if (!botToken) return "";
+  try {
+    const res = await fetch(`${DISCORD_API}/oauth2/applications/@me`, {
+      headers: { Authorization: `Bot ${botToken}` },
+    });
+    if (!res.ok) return "";
+    const app = (await res.json()) as { verify_key?: string };
+    cachedPublicKey = String(app.verify_key || "");
+  } catch {
+    cachedPublicKey = "";
+  }
+  return cachedPublicKey;
+}
+
 function verifyDiscordSignature(
   publicKey: string,
   signature: string,
@@ -508,7 +530,7 @@ Deno.serve(async (req) => {
   const timestamp = req.headers.get("x-signature-timestamp");
 
   if (signature && timestamp) {
-    const publicKey = Deno.env.get("DISCORD_PUBLIC_KEY") || "";
+    const publicKey = await discordPublicKey();
     if (!publicKey || !verifyDiscordSignature(publicKey, signature, timestamp, raw)) {
       return new Response("invalid request signature", { status: 401 });
     }
@@ -541,9 +563,11 @@ Deno.serve(async (req) => {
     if (action === "diagnose") {
       return json({
         ok: true,
-        public_key_configured: Boolean(Deno.env.get("DISCORD_PUBLIC_KEY")),
+        public_key_configured: Boolean(await discordPublicKey()),
         bot_token_configured: Boolean(botToken),
         guild_id_configured: Boolean(guildId),
+        azure_configured: Boolean(Deno.env.get("AZURE_TRANSLATOR_KEY")),
+        azure_region: Deno.env.get("AZURE_TRANSLATOR_REGION") || null,
         deepl_configured: Boolean(Deno.env.get("DEEPL_API_KEY")),
         google_configured: Boolean(Deno.env.get("GOOGLE_TRANSLATE_API_KEY")),
       });
@@ -555,7 +579,7 @@ Deno.serve(async (req) => {
     }
     if (action === "flush_dms") {
       if (!translationConfigured()) {
-        return json({ ok: false, error: "Set DEEPL_API_KEY or GOOGLE_TRANSLATE_API_KEY" }, 400);
+        return json({ ok: false, error: "Set AZURE_TRANSLATOR_KEY (or DEEPL_API_KEY / GOOGLE_TRANSLATE_API_KEY)" }, 400);
       }
       return json({ ok: true, ...(await flushDms(botToken, guildId)) });
     }

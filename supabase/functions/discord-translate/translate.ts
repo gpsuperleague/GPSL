@@ -105,7 +105,7 @@ function unprotect(text: string): string {
     text
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<\/?x>/g, "")
-      .replace(/<span translate="no">|<\/span>/g, "")
+      .replace(/<span (?:translate="no"|class="notranslate")>|<\/span>/g, "")
   );
 }
 
@@ -177,15 +177,86 @@ async function google(key: string, texts: string[], target: string): Promise<Tra
   };
 }
 
-export function translationConfigured(): boolean {
-  return Boolean(Deno.env.get("DEEPL_API_KEY") || Deno.env.get("GOOGLE_TRANSLATE_API_KEY"));
+function azureCode(code: string): string {
+  const map: Record<string, string> = {
+    "PT-BR": "pt",
+    "PT-PT": "pt-pt",
+    ZH: "zh-Hans",
+    "EN-GB": "en",
+  };
+  return map[code] || code.toLowerCase();
 }
 
-/** target: a LANGUAGES code, or "EN-GB" for English. */
+async function azure(
+  key: string,
+  region: string,
+  texts: string[],
+  target: string
+): Promise<TranslateResult> {
+  const headers: Record<string, string> = {
+    "Ocp-Apim-Subscription-Key": key,
+    "Content-Type": "application/json",
+  };
+  if (region) headers["Ocp-Apim-Subscription-Region"] = region;
+  const res = await fetch(
+    `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&textType=html&to=${encodeURIComponent(azureCode(target))}`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(
+        texts.map((t) => ({ Text: protect(t, '<span class="notranslate">', "</span>", "<br>") }))
+      ),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Microsoft Translator ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  const data = (await res.json()) as {
+    detectedLanguage?: { language?: string };
+    translations?: { text: string }[];
+  }[];
+  return {
+    texts: data.map((d) => unprotect(d.translations?.[0]?.text || "")),
+    detected: data[0]?.detectedLanguage?.language?.toUpperCase() || null,
+  };
+}
+
+export function translationConfigured(): boolean {
+  return Boolean(
+    Deno.env.get("AZURE_TRANSLATOR_KEY") ||
+      Deno.env.get("DEEPL_API_KEY") ||
+      Deno.env.get("GOOGLE_TRANSLATE_API_KEY")
+  );
+}
+
+/**
+ * target: a LANGUAGES code, or "EN-GB" for English.
+ * Order: Microsoft (free 2M chars/month) → DeepL → Google; falls through on errors
+ * (e.g. monthly quota used up).
+ */
 export async function translateTexts(texts: string[], target: string): Promise<TranslateResult> {
+  const providers: (() => Promise<TranslateResult>)[] = [];
+  const azureKey = Deno.env.get("AZURE_TRANSLATOR_KEY") || "";
+  if (azureKey) {
+    const region = Deno.env.get("AZURE_TRANSLATOR_REGION") || "";
+    providers.push(() => azure(azureKey, region, texts, target));
+  }
   const deeplKey = Deno.env.get("DEEPL_API_KEY") || "";
-  if (deeplKey) return deepl(deeplKey, texts, target);
+  if (deeplKey) providers.push(() => deepl(deeplKey, texts, target));
   const googleKey = Deno.env.get("GOOGLE_TRANSLATE_API_KEY") || "";
-  if (googleKey) return google(googleKey, texts, target);
-  throw new Error("No translation key — set DEEPL_API_KEY or GOOGLE_TRANSLATE_API_KEY");
+  if (googleKey) providers.push(() => google(googleKey, texts, target));
+
+  if (!providers.length) {
+    throw new Error("No translation key — set AZURE_TRANSLATOR_KEY (or DEEPL_API_KEY / GOOGLE_TRANSLATE_API_KEY)");
+  }
+
+  let lastErr: unknown = null;
+  for (const run of providers) {
+    try {
+      return await run();
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
