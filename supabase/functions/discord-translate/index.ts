@@ -125,8 +125,8 @@ type Interaction = {
   type: number;
   token: string;
   application_id: string;
-  member?: { user?: { id: string } };
-  user?: { id: string };
+  member?: { nick?: string | null; user?: { id: string; username?: string; global_name?: string | null } };
+  user?: { id: string; username?: string; global_name?: string | null };
   data?: {
     name?: string;
     target_id?: string;
@@ -166,17 +166,35 @@ const NO_LANGUAGE_TEXT =
   "Pick your language first: type **/language** and choose it from the list " +
   "(or set it on your GPSL **Owner Details** page). Then use Translate again.";
 
-async function lookupLanguage(userId: string): Promise<string | null> {
-  const { data, error } = await adminClient().rpc("gpsl_discord_language_for_user", {
+async function lookupLanguage(userId: string, ix?: Interaction): Promise<string | null> {
+  const db = adminClient();
+  const { data, error } = await db.rpc("gpsl_discord_language_for_user", {
     p_discord_user_id: userId,
   });
   if (error) throw new Error(error.message);
-  return (data as string | null) || null;
+  if (data) return data as string;
+  if (!ix) return null;
+
+  // Owner not linked to this Discord id yet: match their owner tag to the caller's names
+  const u = ix.member?.user || ix.user;
+  const names = [ix.member?.nick, u?.global_name, u?.username].filter(
+    (n): n is string => typeof n === "string" && n.trim() !== ""
+  );
+  if (!names.length) return null;
+  const { data: linked, error: linkErr } = await db.rpc("gpsl_discord_link_owner_by_names", {
+    p_discord_user_id: userId,
+    p_names: names,
+  });
+  if (linkErr) {
+    console.warn("gpsl_discord_link_owner_by_names:", linkErr.message);
+    return null;
+  }
+  return (linked as string | null) || null;
 }
 
 async function runTranslate(ix: Interaction, userId: string) {
   try {
-    const lang = await lookupLanguage(userId);
+    const lang = await lookupLanguage(userId, ix);
     if (!lang) {
       await editOriginal(ix, { content: NO_LANGUAGE_TEXT });
       return;
@@ -573,6 +591,18 @@ Deno.serve(async (req) => {
       });
     }
     if (!botToken) return json({ ok: false, error: "DISCORD_BOT_TOKEN secret missing" }, 400);
+    if (action === "test") {
+      const sample = "Welcome to GPSL! Your next match is on Saturday. Good luck <@123> 🎉";
+      const { texts, detected } = await translateTexts([sample], "ES");
+      return json({
+        ok: true,
+        public_key_configured: Boolean(await discordPublicKey()),
+        azure_configured: Boolean(Deno.env.get("AZURE_TRANSLATOR_KEY")),
+        sample,
+        spanish: texts[0],
+        detected,
+      });
+    }
     if (action === "register_commands") {
       if (!guildId) return json({ ok: false, error: "DISCORD_GUILD_ID secret missing" }, 400);
       return json({ ok: true, ...(await registerCommands(botToken, guildId)) });

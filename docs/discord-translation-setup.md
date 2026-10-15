@@ -2,7 +2,9 @@
 
 Status (2026-10-15): code pushed; function deployed (4); commands registered (6, app id
 1527242431995580558). Step 3 no longer needed — the function reads the public key with the bot token.
-Still to do: translation key (2), Interactions Endpoint URL (5).
+Translation key set and tested (Microsoft, 2026-10-15: test action returned Spanish OK).
+Still to do: Interactions Endpoint URL (5).
+Test any time: `SELECT public.gpsl_discord_translate_request('test');` then read `net._http_response`.
 
 Translation provider: Microsoft Translator free tier (F0, 2M characters every month).
 Secrets `AZURE_TRANSLATOR_KEY` and `AZURE_TRANSLATOR_REGION` (e.g. `uksouth`; leave unset for a
