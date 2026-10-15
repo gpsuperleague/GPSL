@@ -2806,6 +2806,9 @@ export async function buildNav() {
   refreshGpslSportNavUi();
   if (!isPreClubOwner && ownerClub) {
     void refreshMatchdayNavBadge();
+    import(`./owner_ready_lock_banner.js?v=${GLOBAL_JS_VERSION}`)
+      .then((m) => m.refreshOwnerReadyLockBanner())
+      .catch((lockErr) => console.warn("Ready lock banner skipped:", lockErr));
   }
   if (!isVisitorNav) {
     try {

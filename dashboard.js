@@ -31,7 +31,7 @@ import {
 import { startDashboardMatchday } from "./dashboard_matchday.js";
 import { renderSupportBanner } from "./support_banner.js";
 import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261015-recording";
-import { startOwnerReadyChecklist } from "./owner_ready_checklist.js?v=20261015-ready";
+import { startOwnerReadyChecklist } from "./owner_ready_checklist.js?v=20261015-ready-gate";
 import {
   leagueBadgeSrc,
   leagueTierForDivision,

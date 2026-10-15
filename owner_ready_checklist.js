@@ -1,6 +1,7 @@
 /**
  * "Ready for August" owner checklist (dashboard).
- * Data: owner_season_ready_checklist() RPC — hidden once GPSL August unlocks.
+ * Data: owner_season_ready_checklist() RPC. From GPSL August it stays visible
+ * (locked) until complete; once complete it disappears and matches unlock.
  */
 
 import { supabase } from "./global.js";
@@ -93,6 +94,12 @@ function injectCss() {
     .rc-item label { display: flex; gap: 8px; cursor: pointer; flex: 1; }
     .rc-item input[type=checkbox] { margin-top: 2px; accent-color: #ff9900; }
     .rc-foot { font-size: 11px; color: #777; margin-top: 8px; }
+    .rc-panel.rc-locked { border-left-color: #e33; border-color: #6a2222; }
+    .rc-locked .rc-head h2 { color: #f66; }
+    .rc-lock-msg { width: 100%; font-size: 13px; color: #fbb; background: #3a1414; border: 1px solid #6a2222;
+      border-radius: 6px; padding: 6px 10px; margin-top: 4px; }
+    .rc-panel.rc-unlocked { border-left-color: #3a6; }
+    .rc-unlocked h2 { color: #8d8; }
   `;
   document.head.appendChild(style);
 }
@@ -129,18 +136,27 @@ function render() {
   const section = document.getElementById("seasonReadyPanel");
   if (!section) return;
   const data = lastData;
+  if (data?.just_cleared) {
+    section.hidden = false;
+    section.className = "rc-panel rc-unlocked";
+    section.innerHTML = `
+      <div class="rc-head"><h2>✓ Checklist complete — matches unlocked</h2></div>
+      <div class="rc-foot">You can now check in and play. This message won't show again.</div>`;
+    return;
+  }
   if (!data?.visible || !Array.isArray(data.items)) {
     section.hidden = true;
     section.innerHTML = "";
     return;
   }
+  const locked = Boolean(data.locked);
 
   const counted = data.items.filter((i) => i.kind !== "recommended");
   const doneCount = counted.filter((i) => i.done).length;
   const total = counted.length;
   const complete = doneCount === total;
   const pct = total ? Math.round((doneCount / total) * 100) : 0;
-  const collapsed = isCollapsed();
+  const collapsed = !locked && isCollapsed();
 
   const groups = GROUP_ORDER.map((g) => {
     const items = data.items.filter((i) => i.group === g);
@@ -148,23 +164,28 @@ function render() {
     return `<div class="rc-group"><h3>${esc(g)}</h3>${items.map(itemHtml).join("")}</div>`;
   }).join("");
 
-  const when = data.august_unlock_at
-    ? `GPSL August opens ${esc(formatUk(data.august_unlock_at))} UK ${esc(daysUntil(data.august_unlock_at))}`
-    : "Get these in place before GPSL August opens.";
+  const when = locked
+    ? `<div class="rc-lock-msg">⚠️ GPSL August has started. Your club cannot check in or play matches until every required item below is ticked. Missed check-ins count as no-shows.</div>`
+    : data.august_unlock_at
+      ? `GPSL August opens ${esc(formatUk(data.august_unlock_at))} UK ${esc(daysUntil(data.august_unlock_at))}`
+      : "Get these in place before GPSL August opens.";
+  const foot = locked
+    ? "Ticks update by themselves as you fix things. Matches unlock and this list disappears as soon as everything required is ticked."
+    : "Ticks update by themselves as you fix things. Everything required must be ticked before you can play matches in August — if it's complete when August opens, this list simply disappears.";
 
   section.hidden = false;
-  section.className = `rc-panel${complete ? " rc-complete" : ""}${collapsed ? " rc-collapsed" : ""}`;
+  section.className = `rc-panel${complete ? " rc-complete" : ""}${locked ? " rc-locked" : ""}${collapsed ? " rc-collapsed" : ""}`;
   section.innerHTML = `
     <div class="rc-head">
-      <h2>${complete ? "✓ " : ""}Ready for August</h2>
+      <h2>${complete ? "✓ " : locked ? "🔒 " : ""}Ready for August${locked ? " — matches locked" : ""}</h2>
       <span class="rc-count">${doneCount} / ${total}</span>
       <span class="rc-bar" aria-hidden="true"><span style="width:${pct}%"></span></span>
-      <button type="button" class="rc-toggle" aria-expanded="${collapsed ? "false" : "true"}">${collapsed ? "Show" : "Hide"}</button>
+      ${locked ? "" : `<button type="button" class="rc-toggle" aria-expanded="${collapsed ? "false" : "true"}">${collapsed ? "Show" : "Hide"}</button>`}
       <span class="rc-when">${when}</span>
     </div>
     <div class="rc-body">
       <div class="rc-groups">${groups}</div>
-      <div class="rc-foot">Ticks update by themselves as you fix things. This list disappears once GPSL August opens.</div>
+      <div class="rc-foot">${foot}</div>
     </div>`;
 
   section.querySelector(".rc-toggle")?.addEventListener("click", () => {
@@ -193,6 +214,7 @@ async function onTick(box) {
   const item = lastData?.items?.find((i) => i.key === key);
   if (item) item.done = box.checked;
   render();
+  if (lastData?.locked) await refreshOwnerReadyChecklist();
 }
 
 export async function refreshOwnerReadyChecklist() {
@@ -204,6 +226,14 @@ export async function refreshOwnerReadyChecklist() {
     lastData = data;
   }
   render();
+  if (lastData && !lastData.locked) {
+    try {
+      const { clearOwnerReadyLockBanner } = await import("./owner_ready_lock_banner.js");
+      clearOwnerReadyLockBanner();
+    } catch {
+      /* banner module optional */
+    }
+  }
 }
 
 export function startOwnerReadyChecklist() {
