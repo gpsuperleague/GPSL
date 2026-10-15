@@ -227,7 +227,8 @@ BEGIN
       'done', v_slots > 0),
     jsonb_build_object('key', 'sponsor', 'group', 'Club set-up', 'kind', 'recommended', 'href', 'stadium.html',
       'label', 'Main sponsor chosen (recommended)',
-      'detail', CASE WHEN v_sponsor THEN 'Signed' ELSE 'Brings in money — choose on the Stadium page' END,
+      'detail', CASE WHEN v_sponsor THEN 'Signed'
+                     ELSE 'Optional — choose on the Stadium page by the end of the month you took over, or one is picked for you' END,
       'done', v_sponsor),
     -- Fixtures
     jsonb_build_object('key', 'aug_sep_proposed', 'group', 'Fixtures', 'kind', 'auto', 'href', 'fixture_schedule.html',

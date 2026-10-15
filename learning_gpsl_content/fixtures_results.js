@@ -10,6 +10,33 @@ export const SECTION_MATCHDAY_CHECKLIST = {
         <a href="#match-scheduling">Match scheduling</a> and <a href="#matchday">Match day &amp; results</a>.`,
     },
 
+    { type: "h3", html: "Every season — Ready for August checklist" },
+    {
+      type: "tip",
+      html: `The <b>Ready for August</b> checklist on your <a href="dashboard.html">Dashboard</a> is <b>mandatory</b>. Every required item must be ticked before your club can play matches each season.`,
+    },
+    {
+      type: "ul",
+      items: [
+        `<b>Complete when GPSL August opens</b> — the checklist disappears and you carry on as normal`,
+        {
+          html: `<b>Anything left unticked</b> — your club is <b>locked</b>:`,
+          children: [
+            `You cannot <b>check in</b>, so you cannot play or enter results`,
+            `You get an <a href="inbox.html">Inbox</a> message listing what is missing, and a red warning on every page`,
+            `Missed check-ins still count as <b>no-shows</b> — your opponent can take the result`,
+            `You can still propose and reply to fixtures (they are part of the checklist)`,
+          ],
+        },
+        `<b>Finish the checklist</b> — matches unlock straight away and the checklist disappears`,
+        `Once cleared, you stay unlocked for the rest of that season. It starts again next season`,
+        `<b>Taking over a club mid-season?</b> You start locked until you complete the checklist`,
+        `<b>Main sponsor</b> is recommended, not required — you have until the end of the month you take over to choose (one is picked for you after that). Taking over a club that already has a sponsor keeps that deal`,
+        `<b>Friendlies</b> are not locked`,
+        `Stuck on an item only an admin can fix (e.g. Discord tag)? Ask an admin — they can unlock your club`,
+      ],
+    },
+
     { type: "h3", html: "Pre-matchday — fixture management" },
     {
       type: "tip",
@@ -54,6 +81,7 @@ export const SECTION_MATCHDAY_CHECKLIST = {
       type: "ul",
       items: [
         `Both owners must <b>check in</b> on the <a href="fixture_schedule.html">schedule page</a> — opens <b>10 minutes before</b> kick-off, closes <b>10 minutes after</b>`,
+        `Check-in is refused while your <b>Ready for August</b> checklist is incomplete (from GPSL August each season)`,
         `Match should be played within the agreed <b>30-minute window</b>`,
       ],
     },
