@@ -295,6 +295,54 @@
       font-size: 11px;
     }
 
+    #languageCell { position: relative; }
+
+    .lang-howto { margin-top: 8px; font-size: 12px; }
+
+    .lang-howto summary {
+      cursor: pointer;
+      color: #7fb8ff;
+      list-style: none;
+      user-select: none;
+    }
+
+    .lang-howto summary::-webkit-details-marker { display: none; }
+
+    .lang-howto summary:hover { text-decoration: underline; }
+
+    .lang-howto-card {
+      position: absolute;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      margin-top: 6px;
+      min-width: 260px;
+      padding: 12px 14px;
+      background: #1c1f26;
+      border: 1px solid #3a4560;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+      color: #ccc;
+      line-height: 1.45;
+    }
+
+    .lang-howto-step { margin-bottom: 10px; }
+
+    .lang-howto-step b:first-child {
+      display: block;
+      color: #ffcc66;
+      margin-bottom: 2px;
+    }
+
+    .lang-howto-card code {
+      background: #2a2f3a;
+      color: #ffcc66;
+      padding: 0 4px;
+      border-radius: 3px;
+    }
+
+    .lang-howto-note { margin: 4px 0 0; color: #888; font-size: 11px; }
+
     .owner-detail-link {
       font-size: 12px;
       color: #ff9900;
@@ -445,7 +493,7 @@
           <button type="button" id="editAvailabilityBtn" class="owner-detail-link">Edit availability</button>
         </div>
 
-        <div class="owner-detail-cell gpsl-has-tip" id="languageCell" data-gpsl-tip="Discord stays in English. With a language set, right-click any Discord message → Apps → Translate for a private translation, and league announcements are also DM'd to you translated. In Discord you can also use /language and /english." tabindex="0">
+        <div class="owner-detail-cell gpsl-has-tip" id="languageCell" data-gpsl-tip="Discord channels stay in English. Pick your language here to read GPSL Discord privately in it — see How to use it in Discord below." tabindex="0">
           <label class="owner-detail-label" for="ownerLanguageSelect">Discord translation</label>
           <p class="owner-detail-summary">Read GPSL Discord in your language — only you see it.</p>
           <select id="ownerLanguageSelect" class="owner-language-select"></select>
@@ -455,6 +503,32 @@
           </label>
           <button type="button" id="saveOwnerLanguageBtn" class="small-btn">Save</button>
           <span id="ownerLanguageHint" class="owner-tag-hint" role="status"></span>
+          <details class="lang-howto">
+            <summary>ℹ️ How to use it in Discord</summary>
+            <div class="lang-howto-card">
+              <div class="lang-howto-step">
+                <b>📖 Read a message in your language</b>
+                Right-click the message (on a phone: press and hold) → <b>Apps</b> → <b>Translate</b>.
+                You get a private translation — only you can see it.
+              </div>
+              <div class="lang-howto-step">
+                <b>✍️ Write in English</b>
+                Type <code>/english</code>, pick <b>/english — GPSL Bot</b>, type your message in your own language and press Enter.
+                You get it back in English (only you see it) — copy it and paste it into the channel.
+              </div>
+              <div class="lang-howto-step">
+                <b>📬 League announcements</b>
+                With the tick box on, GPSL league announcements are also sent to you as a translated direct message.
+                You need to allow direct messages from server members in Discord.
+              </div>
+              <div class="lang-howto-step">
+                <b>🌍 Change language in Discord</b>
+                Type <code>/language</code> and choose from the list — same setting as this box.
+              </div>
+              <p class="lang-howto-note">The channels never change — nobody else sees your translations.
+                If <code>/english</code> doesn't appear, restart Discord.</p>
+            </div>
+          </details>
         </div>
 
         <div class="owner-detail-cell owner-detail-cell--wide owner-detail-cell--owner">
@@ -595,6 +669,12 @@
     </div>
   </div>
 
+  <script>
+    document.addEventListener("click", (e) => {
+      const howto = document.querySelector(".lang-howto[open]");
+      if (howto && !howto.contains(e.target)) howto.removeAttribute("open");
+    });
+  </script>
   <script type="module" src="owner_details.js?v=20261012-language"></script>
 </body>
 </html>

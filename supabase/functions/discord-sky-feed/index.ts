@@ -172,6 +172,12 @@ function isJobCenterEvent(row: FeedRow): boolean {
   return channel === "job_center" || channel === "job-center";
 }
 
+function isFriendliesTableEvent(row: FeedRow): boolean {
+  if (row.event_type === "friendlies_table") return true;
+  const channel = String(row.metadata?.channel || "").toLowerCase();
+  return channel === "friendlies_table" || channel === "friendlies-table";
+}
+
 function isNationPickEvent(row: FeedRow): boolean {
   if (row.event_type === "nation_pick") return true;
   const channel = String(row.metadata?.channel || "").toLowerCase();
@@ -546,8 +552,13 @@ function webhookForRow(
   dealsUrl: string | null = null,
   contractsUrl: string | null = null,
   jobCenterUrl: string | null = null,
-  nationPickUrl: string | null = null
+  nationPickUrl: string | null = null,
+  friendliesTableUrl: string | null = null
 ): { url: string; username: string } {
+  if (isFriendliesTableEvent(row)) {
+    // Own channel if DISCORD_FRIENDLIES_TABLE_WEBHOOK_URL is set, else #gpsl-news
+    return { url: friendliesTableUrl || newsUrl, username: "GPSL Friendlies Table" };
+  }
   if (isIntlResultsEvent(row)) {
     if (!intlResultsUrl) {
       throw new Error(
@@ -718,6 +729,8 @@ Deno.serve(async (req) => {
       Deno.env.get("DISCORD_NATION_PICK_WEBHOOK_URL") ||
       Deno.env.get("DISCORD_WEBHOOK_NATION_PICK_URL") ||
       "";
+    const friendliesTableWebhookUrl =
+      Deno.env.get("DISCORD_FRIENDLIES_TABLE_WEBHOOK_URL") || "";
     const feedKey = Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
       Deno.env.get("CRON_API_KEY") ||
       "";
@@ -1049,6 +1062,9 @@ Deno.serve(async (req) => {
           nation_pick_events: nationPickWebhookUrl
             ? "DISCORD_NATION_PICK_WEBHOOK_URL → #gpsl-nation-pick"
             : "BLOCKED until DISCORD_NATION_PICK_WEBHOOK_URL is set",
+          friendlies_table_events: friendliesTableWebhookUrl
+            ? "DISCORD_FRIENDLIES_TABLE_WEBHOOK_URL → friendlies table channel (21:00 UK daily)"
+            : "DISCORD_WEBHOOK_URL → #gpsl-news (21:00 UK daily)",
           whos_who: whosWhoWebhookUrl
             ? "DISCORD_WHOS_WHO_WEBHOOK_URL → #whos-who (silent daily edit)"
             : "BLOCKED until DISCORD_WHOS_WHO_WEBHOOK_URL is set",
@@ -1627,7 +1643,8 @@ Deno.serve(async (req) => {
         dealsWebhookUrl || null,
         contractsWebhookUrl || null,
         jobCenterWebhookUrl || null,
-        nationPickWebhookUrl || null
+        nationPickWebhookUrl || null,
+        friendliesTableWebhookUrl || null
       );
       await postWebhook(target.url, [embedFor(directRow, supabaseUrl)], {
         username: target.username,
@@ -1988,7 +2005,8 @@ Deno.serve(async (req) => {
           dealsWebhookUrl || null,
           contractsWebhookUrl || null,
           jobCenterWebhookUrl || null,
-          nationPickWebhookUrl || null
+          nationPickWebhookUrl || null,
+          friendliesTableWebhookUrl || null
         );
         const embed = embedFor(row, supabaseUrl);
         try {
