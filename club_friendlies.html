@@ -104,6 +104,43 @@
     .form-stats { color:#aaa; font-size:13px; }
     .form-stats b { color:#ffcc66; }
     .form-empty { color:#777; font-size:13px; }
+    #friendliesTable {
+      display:none; background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:12px 16px; margin:0 0 18px;
+    }
+    .ft-head {
+      display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+      gap:8px 14px; margin-bottom:8px;
+    }
+    .ft-title { color:#ff9900; font-weight:bold; font-size:16px; }
+    .ft-title .ft-live {
+      font-size:10px; text-transform:uppercase; letter-spacing:.05em; margin-left:6px;
+      padding:2px 6px; border-radius:4px; background:#14301f; color:#8d8; vertical-align:middle;
+    }
+    .ft-head select {
+      background:#111; color:#ddd; border:1px solid #444; border-radius:4px; padding:4px 6px;
+    }
+    .ft-prizes { color:#aaa; font-size:13px; margin-bottom:10px; }
+    .ft-prizes b { color:#ffcc66; }
+    .ft-winners { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .ft-winner {
+      padding:5px 10px; border-radius:6px; background:#2a2410; border:1px solid #5a4a14;
+      color:#ffd77a; font-size:13px;
+    }
+    .ft-scroll { overflow-x:auto; }
+    .ft-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .ft-table th {
+      text-align:left; color:#888; font-weight:normal; font-size:12px;
+      padding:6px 8px; border-bottom:1px solid #333; white-space:nowrap;
+    }
+    .ft-table td { padding:6px 8px; border-bottom:1px solid #242424; white-space:nowrap; }
+    .ft-table td.num, .ft-table th.num { text-align:right; }
+    .ft-table td.pts { color:#ffcc66; font-weight:bold; }
+    .ft-table tr.mine td { background:#262010; }
+    .ft-table tr.prize td:first-child { color:#ffd77a; font-weight:bold; }
+    .ft-table tr.unqualified td { color:#777; }
+    .ft-table .ft-note { color:#888; font-size:11px; margin-left:6px; }
+    .ft-key { color:#888; font-size:12px; margin-top:8px; line-height:1.5; }
   </style>
 </head>
 <body>
@@ -127,6 +164,13 @@
           </ul>
         </section>
         <section class="rules-card">
+          <h3 class="gpsl-has-tip" data-gpsl-tip="Each month has its own friendlies table. Points depend on the result and how hard the opponent is. 1st wins ₿3,000 and 2nd ₿1,500 to the owner's account at month end." tabindex="0">Monthly table</h3>
+          <ul>
+            <li>Points for the result, more against <b>harder opponents</b>.</li>
+            <li>Month winner <b>₿3,000</b>, runner-up <b>₿1,500</b> to your owner account.</li>
+          </ul>
+        </section>
+        <section class="rules-card">
           <h3 class="gpsl-has-tip" data-gpsl-tip="Standalone only — no league or cup fixtures, and no player match records from these games." tabindex="0">Standalone only</h3>
           <ul>
             <li>No league or cup fixtures.</li>
@@ -138,8 +182,9 @@
     <div id="friendliesError"></div>
     <div id="friendliesSummary" class="summary gpsl-has-tip" data-gpsl-tip="Quick counts for this season: paid friendlies, gate earned, and remaining room under the season cap." tabindex="0"></div>
     <div id="friendliesForm"></div>
+    <div id="friendliesTable"></div>
     <div id="friendliesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_friendlies.js?v=20261012-cap-15"></script>
+  <script type="module" src="club_friendlies.js?v=20261015-table"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@ import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
-import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20261012-cap-15";
+import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20261015-table";
 
 let myClub = { short: null };
 /** Opponent ShortName (upper) → { fdr, ranking_fdr, bookies_fdr, bookies_rank, bookies_pool } */
@@ -247,6 +247,144 @@ function renderFormTracker(months) {
   el.style.display = "block";
 }
 
+function fmtPts(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "0";
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
+function ordinal(n) {
+  return n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
+}
+
+function renderMonthTable(t) {
+  const el = document.getElementById("friendliesTable");
+  if (!el) return;
+  if (!t?.ok || !t.month) {
+    el.style.display = "none";
+    return;
+  }
+
+  const prizes = Array.isArray(t.prizes) ? t.prizes.map(Number) : [3000, 1500];
+  const minGames = Number(t.min_games) || 3;
+  const rows = Array.isArray(t.rows) ? t.rows : [];
+  const winners = Array.isArray(t.winners) ? t.winners : [];
+  const mine = String(t.my_club || myClub.short || "").toUpperCase();
+  const months = Array.isArray(t.months) ? t.months : [];
+
+  const options = months
+    .map(
+      (m) =>
+        `<option value="${escapeHtml(m.key)}"${m.key === t.month ? " selected" : ""}>${escapeHtml(m.label)}</option>`
+    )
+    .join("");
+
+  let prizePlace = 0;
+  const prizeClubs = new Set();
+  if (!winners.length) {
+    for (const r of rows) {
+      if (!r.qualified || !r.has_owner) continue;
+      prizePlace += 1;
+      if (prizePlace > prizes.length) break;
+      prizeClubs.add(r.club);
+    }
+  } else {
+    winners.forEach((w) => prizeClubs.add(String(w.club || "").toUpperCase()));
+  }
+
+  const body = rows
+    .map((r) => {
+      const cls = [
+        r.club === mine ? "mine" : "",
+        prizeClubs.has(r.club) ? "prize" : "",
+        r.qualified ? "" : "unqualified",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const extra = Number(r.played) - Number(r.counted);
+      const notes = [];
+      if (!r.qualified) notes.push(`needs ${minGames} games`);
+      if (!r.has_owner) notes.push("no owner");
+      return `
+        <tr class="${cls}">
+          <td>${r.place}</td>
+          <td>${clubWithOwnerHtml(r.club_name, r.club, "inline")}${
+            notes.length ? `<span class="ft-note">${escapeHtml(notes.join(" · "))}</span>` : ""
+          }</td>
+          <td class="num" title="${extra > 0 ? `${extra} more played but not counted` : ""}">${r.counted}${
+            extra > 0 ? `<span class="ft-note">+${extra}</span>` : ""
+          }</td>
+          <td class="num">${r.won}</td>
+          <td class="num">${r.drawn}</td>
+          <td class="num">${r.lost}</td>
+          <td class="num">${r.goals_for}-${r.goals_against}</td>
+          <td class="num">${Number(r.avg_difficulty).toFixed(1)}</td>
+          <td class="num pts">${fmtPts(r.points)}</td>
+        </tr>`;
+    })
+    .join("");
+
+  const winnersHtml = winners.length
+    ? `<div class="ft-winners">${winners
+        .map(
+          (w) =>
+            `<span class="ft-winner">🏆 ${ordinal(Number(w.place))} ${escapeHtml(w.club)} · ${fmtPts(w.points)} pts · ${escapeHtml(formatMoney(Number(w.amount)))} paid</span>`
+        )
+        .join("")}</div>`
+    : "";
+
+  el.innerHTML = `
+    <div class="ft-head">
+      <span class="ft-title">Friendlies table — ${escapeHtml(t.month_label || t.month)}${
+        t.is_active_month ? `<span class="ft-live">Live</span>` : ""
+      }</span>
+      ${months.length > 1 ? `<select id="ftMonthSelect" aria-label="Month">${options}</select>` : ""}
+    </div>
+    <div class="ft-prizes">
+      At month end: 1st <b>${escapeHtml(formatMoney(prizes[0] || 0))}</b>,
+      2nd <b>${escapeHtml(formatMoney(prizes[1] || 0))}</b> to the owner's account
+      (needs ${minGames}+ counted friendlies).
+    </div>
+    ${winnersHtml}
+    ${
+      rows.length
+        ? `<div class="ft-scroll"><table class="ft-table">
+            <thead><tr>
+              <th>#</th><th>Club</th>
+              <th class="num" title="Friendlies that count (first ${Number(t.same_opponent_max) || 2} per opponent, max ${Number(t.month_cap) || 15})">Games</th>
+              <th class="num">W</th><th class="num">D</th><th class="num">L</th>
+              <th class="num">Goals</th>
+              <th class="num" title="Average opponent difficulty, 1 easiest to 5 hardest">Avg diff</th>
+              <th class="num">Pts</th>
+            </tr></thead>
+            <tbody>${body}</tbody>
+          </table></div>`
+        : `<p class="form-empty">No confirmed friendlies this month yet.</p>`
+    }
+    <div class="ft-key">
+      Points by opponent difficulty (1 easiest → 5 hardest):
+      win 2 / 3 / 4 / 5 / 6 · draw 0.5 / 1 / 1.5 / 2.5 / 3 · loss 0 / 0 / 0 / 0.5 / 1.
+      Difficulty is fixed for the month. Ties: higher average difficulty, then fewer games, then first to reach the total.
+    </div>
+  `;
+  el.style.display = "block";
+
+  document.getElementById("ftMonthSelect")?.addEventListener("change", (e) => {
+    loadMonthTable(e.target.value);
+  });
+}
+
+async function loadMonthTable(month = null) {
+  const { data, error } = await supabase.rpc("gpsl_friendlies_month_table", {
+    p_gpsl_month: month,
+  });
+  if (error) {
+    console.warn("Friendlies table unavailable:", error.message);
+    return;
+  }
+  renderMonthTable(data);
+}
+
 async function loadDifficulty() {
   const { data, error } = await supabase.rpc("club_friendlies_opponent_difficulty");
   if (error) {
@@ -288,6 +426,7 @@ async function loadPage() {
 
   const months = Array.isArray(data.months) ? data.months : [];
   renderFormTracker(months);
+  loadMonthTable();
   if (!months.length) {
     root.innerHTML = `
       <p class="empty">

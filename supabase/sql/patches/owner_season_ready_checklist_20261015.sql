@@ -268,6 +268,13 @@ BEGIN
       'done', 'know_kits_stadium' = ANY (v_ticks))
   );
 
+  -- Nation only becomes a requirement from GPSL season 3 (same as admin checklist)
+  IF (SELECT count(*) FROM public.competition_seasons s WHERE s.id <= p_season) < 3 THEN
+    SELECT coalesce(jsonb_agg(i), '[]'::jsonb) INTO v_items
+    FROM jsonb_array_elements(v_items) i
+    WHERE i->>'key' <> 'nation';
+  END IF;
+
   RETURN v_items;
 END;
 $function$;
