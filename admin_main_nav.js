@@ -553,10 +553,10 @@ export const ADMIN_MAIN_NAV = [
         ),
         L(
           "Building Society (owner wealth)",
-          "admin_owner_wallets.html",
+          "owners_bank.html",
           null,
           null,
-          "Admin only — every owner’s GPSL Building Society balance and statement (not club funds; not visible to mods)."
+          "Open Building Society with an owner dropdown — preview any owner’s statement as they see it (Admin only)."
         ),
         L(
           "Apply fines",
