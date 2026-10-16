@@ -1,4 +1,4 @@
-import { initAdminPage, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, supabase } from "./admin_common.js";
 import { formatMoney } from "./competition.js";
 
 const TYPE_LABELS = {
@@ -7,18 +7,15 @@ const TYPE_LABELS = {
   bookies_income: "Bookies win",
   shop_purchase: "Owners Shop",
   gpfl_prize: "GPFL prize",
-  challenge_prize: "Challenge prize",
-  friendlies_prize: "Friendlies prize",
+  challenge_prize: "Challenge big prize",
+  friendlies_prize: "Friendlies table prize",
   supporter_lottery_credit: "Supporters' lottery",
   admin_credit: "Admin credit",
   admin_debit: "Admin debit",
 };
 
 /** @type {Array<Record<string, unknown>>} */
-let allRows = [];
-let sortKey = "balance";
-let sortDir = "desc";
-let activeOwnerId = null;
+let ownerList = [];
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -28,8 +25,11 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
-function typeLabel(t) {
-  return TYPE_LABELS[t] || String(t || "Entry").replace(/_/g, " ");
+function setStatus(msg, ok = true) {
+  const el = document.getElementById("obStatus");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.color = ok ? "#ffcc66" : "#e07070";
 }
 
 function formatWhen(iso) {
@@ -44,82 +44,56 @@ function formatWhen(iso) {
   });
 }
 
-function filteredRows() {
-  const q = String(document.getElementById("owFilter")?.value || "")
-    .trim()
-    .toLowerCase();
-  const scope = document.getElementById("owScope")?.value || "all";
-  let rows = allRows.slice();
-  if (scope === "club") rows = rows.filter((r) => r.club_short_name);
-  if (scope === "noclub") rows = rows.filter((r) => !r.club_short_name);
-  if (q) {
-    rows = rows.filter((r) => {
-      const hay = [r.owner_tag, r.email, r.club_name, r.club_short_name, r.registry_status]
-        .map((x) => String(x || "").toLowerCase())
-        .join(" ");
-      return hay.includes(q);
-    });
-  }
-  rows.sort((a, b) => {
-    let av = a[sortKey];
-    let bv = b[sortKey];
-    if (sortKey === "balance") {
-      av = Number(av) || 0;
-      bv = Number(bv) || 0;
-      return sortDir === "asc" ? av - bv : bv - av;
-    }
-    av = String(av ?? "").toLowerCase();
-    bv = String(bv ?? "").toLowerCase();
-    if (av < bv) return sortDir === "asc" ? -1 : 1;
-    if (av > bv) return sortDir === "asc" ? 1 : -1;
+function typeLabel(t) {
+  return TYPE_LABELS[t] || String(t || "Entry").replace(/_/g, " ");
+}
+
+/** Opening first, then oldest → newest (same as owners_bank.js). */
+function sortStatementEntries(entries) {
+  return [...entries].sort((a, b) => {
+    const aOpen = a.entry_type === "opening_balance" ? 0 : 1;
+    const bOpen = b.entry_type === "opening_balance" ? 0 : 1;
+    if (aOpen !== bOpen) return aOpen - bOpen;
+    const ta = new Date(a.created_at).getTime() || 0;
+    const tb = new Date(b.created_at).getTime() || 0;
+    if (ta !== tb) return ta - tb;
+    return (Number(a.id) || 0) - (Number(b.id) || 0);
+  });
+}
+
+function ownerOptionLabel(r) {
+  const tag = String(r.owner_tag || "").trim() || String(r.email || "Owner");
+  const club = String(r.club_name || "").trim();
+  const bal = formatMoney(Number(r.balance) || 0);
+  return club ? `${tag} — ${club} (${bal})` : `${tag} (${bal})`;
+}
+
+function fillOwnerSelect(keepId) {
+  const sel = document.getElementById("owOwnerSelect");
+  if (!sel) return;
+  const sorted = [...ownerList].sort((a, b) => {
+    const at = String(a.owner_tag || a.email || "").toLowerCase();
+    const bt = String(b.owner_tag || b.email || "").toLowerCase();
+    if (at < bt) return -1;
+    if (at > bt) return 1;
     return 0;
   });
-  return rows;
-}
-
-function renderSummary(rows) {
-  const el = document.getElementById("owSummary");
-  if (!el) return;
-  const total = rows.reduce((s, r) => s + (Number(r.balance) || 0), 0);
-  const withClub = rows.filter((r) => r.club_short_name).length;
-  el.innerHTML = `
-    <span><b>${rows.length}</b> shown</span>
-    <span><b>${withClub}</b> with a club</span>
-    <span>Total wealth <b>${escapeHtml(formatMoney(total))}</b></span>
-  `;
-}
-
-function renderTable() {
-  const body = document.getElementById("owBody");
-  if (!body) return;
-  const rows = filteredRows();
-  renderSummary(rows);
-  if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="5" class="ow-muted">No owners match.</td></tr>`;
-    return;
+  sel.innerHTML =
+    `<option value="">— Select owner —</option>` +
+    sorted
+      .map(
+        (r) =>
+          `<option value="${escapeHtml(r.owner_id)}">${escapeHtml(ownerOptionLabel(r))}</option>`
+      )
+      .join("");
+  if (keepId && sorted.some((r) => r.owner_id === keepId)) {
+    sel.value = keepId;
   }
-  body.innerHTML = rows
-    .map((r) => {
-      const bal = Number(r.balance) || 0;
-      const active = r.owner_id === activeOwnerId ? " ow-active" : "";
-      return `
-      <tr class="${active}" data-owner="${escapeHtml(r.owner_id)}">
-        <td>${escapeHtml(r.owner_tag || r.email || "—")}</td>
-        <td>${escapeHtml(r.club_name || "—")}</td>
-        <td class="ow-muted">${escapeHtml(r.registry_status || "—")}</td>
-        <td class="ow-bal${bal < 0 ? " neg" : ""}">${escapeHtml(formatMoney(bal))}</td>
-        <td class="ow-muted">${r.wallet_updated_at ? escapeHtml(formatWhen(r.wallet_updated_at)) : "—"}</td>
-      </tr>`;
-    })
-    .join("");
-
-  body.querySelectorAll("tr[data-owner]").forEach((tr) => {
-    tr.addEventListener("click", () => loadStatement(tr.dataset.owner));
-  });
 }
 
-async function loadOverview() {
-  setStatus("Loading…");
+async function loadOwnerList() {
+  const keep = document.getElementById("owOwnerSelect")?.value || "";
+  setStatus("Loading owners…");
   const { data, error } = await supabase.rpc("admin_owner_wallets_overview");
   if (error) {
     setStatus(
@@ -128,78 +102,103 @@ async function loadOverview() {
         : error.message,
       false
     );
-    allRows = [];
-    renderTable();
+    ownerList = [];
+    fillOwnerSelect("");
     return;
   }
-  allRows = Array.isArray(data) ? data : [];
-  setStatus(`${allRows.length} owners loaded.`);
-  renderTable();
+  ownerList = Array.isArray(data) ? data : [];
+  fillOwnerSelect(keep);
+  setStatus(`${ownerList.length} owners — pick one to preview their statement.`);
+  if (keep) await loadStatement(keep);
 }
 
 async function loadStatement(ownerId) {
-  activeOwnerId = ownerId;
-  renderTable();
-  const card = document.getElementById("owStmtCard");
-  const title = document.getElementById("owStmtTitle");
-  const meta = document.getElementById("owStmtMeta");
-  const body = document.getElementById("owStmtBody");
-  if (!card || !body) return;
-  card.hidden = false;
-  title.textContent = "Statement";
-  meta.textContent = "Loading…";
-  body.innerHTML = "";
+  const welcome = document.getElementById("obWelcome");
+  const balEl = document.getElementById("obBalance");
+  const tbody = document.querySelector("#obStatement tbody");
+  if (!ownerId) {
+    if (welcome) welcome.textContent = "Select an owner";
+    if (balEl) balEl.textContent = "—";
+    if (tbody) {
+      tbody.innerHTML =
+        `<tr><td colspan="5" class="ob-empty">Pick an owner above to load their statement.</td></tr>`;
+    }
+    setStatus("");
+    return;
+  }
 
+  setStatus("Loading statement…");
   const { data, error } = await supabase.rpc("admin_owner_wallet_statement", {
     p_owner_id: ownerId,
-    p_limit: 100,
+    p_limit: 200,
   });
   if (error) {
-    meta.textContent = error.message;
+    setStatus(error.message, false);
+    if (balEl) balEl.textContent = "—";
+    if (tbody) {
+      tbody.innerHTML =
+        `<tr><td colspan="5" class="ob-empty">Could not load statement.</td></tr>`;
+    }
     return;
   }
-  const tag = data?.owner_tag || "Owner";
-  const club = data?.club_name ? ` · ${data.club_name}` : "";
-  title.textContent = `${tag}${club}`;
-  meta.textContent = `Balance ${formatMoney(Number(data?.balance) || 0)} · last 100 entries`;
-  const entries = Array.isArray(data?.entries) ? data.entries : [];
-  if (!entries.length) {
-    body.innerHTML = `<tr><td colspan="4" class="ow-muted">No ledger entries.</td></tr>`;
-    return;
+
+  const tag = String(data?.owner_tag || "").trim();
+  const club = String(data?.club_name || "").trim();
+  if (welcome) {
+    welcome.textContent = tag
+      ? `${tag} Personal Account${club ? ` · ${club}` : ""}`
+      : club
+        ? `Personal Account · ${club}`
+        : "Personal Account";
   }
-  body.innerHTML = entries
-    .map((e) => {
-      const amt = Number(e.amount) || 0;
-      const cls = amt < 0 ? "ow-amt-neg" : "ow-amt-pos";
-      return `<tr>
-        <td class="ow-muted">${escapeHtml(formatWhen(e.created_at))}</td>
-        <td>${escapeHtml(typeLabel(e.entry_type))}</td>
-        <td>${escapeHtml(e.description || "—")}</td>
-        <td class="${cls}">${escapeHtml(formatMoney(amt))}</td>
-      </tr>`;
-    })
-    .join("");
-  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  document.title = `${tag || "Owner"} · Building Society (admin)`;
+
+  const balance = Number(data?.balance ?? 0);
+  if (balEl) balEl.textContent = formatMoney(balance);
+
+  const entries = sortStatementEntries(
+    Array.isArray(data?.entries) ? data.entries : []
+  );
+
+  let run = 0;
+  const rows = entries.map((e) => {
+    const amt = Number(e.amount) || 0;
+    run = Math.round((run + amt) * 100) / 100;
+    const out = amt < 0 ? formatMoney(Math.abs(amt)) : "—";
+    const inn = amt > 0 ? formatMoney(amt) : "—";
+    const desc = e.description || typeLabel(e.entry_type);
+    return `<tr>
+      <td>${escapeHtml(formatWhen(e.created_at))}</td>
+      <td>
+        ${escapeHtml(desc)}
+        <div class="ob-type">${escapeHtml(typeLabel(e.entry_type))}</div>
+      </td>
+      <td class="num ob-out">${out}</td>
+      <td class="num ob-in">${inn}</td>
+      <td class="num ob-run">${formatMoney(run)}</td>
+    </tr>`;
+  });
+
+  if (tbody) {
+    tbody.innerHTML =
+      rows.join("") ||
+      `<tr><td colspan="5" class="ob-empty">No movements yet.</td></tr>`;
+  }
+  setStatus(`${entries.length} statement line(s) · balance ${formatMoney(balance)}.`);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const user = await initAdminPage(); // admin only — mods redirected
+  const user = await initAdminPage(); // admin only
   if (!user) return;
 
-  document.getElementById("owReload")?.addEventListener("click", () => loadOverview());
-  document.getElementById("owFilter")?.addEventListener("input", () => renderTable());
-  document.getElementById("owScope")?.addEventListener("change", () => renderTable());
-  document.querySelectorAll("#owTable th[data-sort]").forEach((th) => {
-    th.addEventListener("click", () => {
-      const key = th.dataset.sort;
-      if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
-      else {
-        sortKey = key;
-        sortDir = key === "balance" ? "desc" : "asc";
-      }
-      renderTable();
-    });
+  document.getElementById("owOwnerSelect")?.addEventListener("change", (e) => {
+    loadStatement(e.target.value);
+  });
+  document.getElementById("owReloadList")?.addEventListener("click", () => loadOwnerList());
+  document.getElementById("obRefresh")?.addEventListener("click", () => {
+    const id = document.getElementById("owOwnerSelect")?.value;
+    loadStatement(id);
   });
 
-  await loadOverview();
+  await loadOwnerList();
 });

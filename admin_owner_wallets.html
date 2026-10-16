@@ -4,99 +4,134 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>html,body{background:#111;color:#ddd;margin:0}</style>
-  <title>Building Society — GPSL Admin</title>
+  <title>Building Society (admin) — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="owners_bank.css?v=20260822-bs">
   <style>
-    .ow-toolbar { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:flex-end; margin-bottom:12px; }
-    .ow-toolbar label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:#aaa; }
-    .ow-toolbar input, .ow-toolbar select { min-width:160px; }
-    .ow-summary { display:flex; flex-wrap:wrap; gap:12px 20px; margin:0 0 12px; font-size:13px; color:#bbb; }
-    .ow-summary b { color:#ffcc66; }
-    .ow-table-wrap { overflow:auto; max-height:70vh; }
-    .ow-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .ow-table th, .ow-table td { padding:7px 10px; border-bottom:1px solid #2a2a2a; text-align:left; white-space:nowrap; }
-    .ow-table th { position:sticky; top:0; background:#1a1a1a; color:#ff9900; cursor:pointer; user-select:none; }
-    .ow-table th:hover { color:#ffcc66; }
-    .ow-table tbody tr { cursor:pointer; }
-    .ow-table tbody tr:hover { background:#1c1c1c; }
-    .ow-table tbody tr.ow-active { background:#2a2218; }
-    .ow-bal { font-variant-numeric:tabular-nums; font-weight:bold; color:#9fdf9f; }
-    .ow-bal.neg { color:#e88; }
-    .ow-muted { color:#777; }
-    .ow-panel { margin-top:16px; }
-    .ow-panel h2 { margin:0 0 8px; color:#ff9900; font-size:16px; }
-    .ow-stmt { width:100%; border-collapse:collapse; font-size:12px; }
-    .ow-stmt th, .ow-stmt td { padding:5px 8px; border-bottom:1px solid #222; text-align:left; }
-    .ow-stmt th { color:#888; }
-    .ow-amt-pos { color:#9fdf9f; }
-    .ow-amt-neg { color:#e88; }
+    .ow-admin-bar {
+      max-width: 1100px;
+      margin: 12px auto 0;
+      padding: 12px 16px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-left: 4px solid #ff9900;
+      border-radius: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      align-items: flex-end;
+    }
+    .ow-admin-bar label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #aaa;
+      flex: 1 1 280px;
+    }
+    .ow-admin-bar select {
+      min-width: 240px;
+      padding: 8px 10px;
+      background: #111;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .ow-admin-note {
+      width: 100%;
+      margin: 0;
+      font-size: 12px;
+      color: #888;
+    }
+    body.admin-page .ob-hero { margin-top: 12px; }
+    body.admin-page .ob-links { display: none; }
   </style>
 </head>
-<body class="admin-page">
+<body class="admin-page ob-page">
   <div id="nav"></div>
-  <h1 class="admin-title">GPSL Building Society — owner wealth</h1>
-  <div id="adminLayout">
-    <div class="admin-main" id="adminMain">
-      <div class="card">
-        <p class="note" style="margin-top:0">
-          Admin only (not mods). Personal Building Society balances — separate from club finances.
-          Click a row for that owner’s recent statement.
-          SQL once: <code>supabase/sql/patches/admin_owner_wallets_overview_20261016.sql</code>
-        </p>
-        <div class="ow-toolbar">
-          <label>Filter
-            <input type="search" id="owFilter" placeholder="tag, club, email…">
-          </label>
-          <label>Show
-            <select id="owScope">
-              <option value="all">All owners</option>
-              <option value="club">With a club</option>
-              <option value="noclub">No club</option>
-            </select>
-          </label>
-          <button type="button" id="owReload" class="button">Reload</button>
-        </div>
-        <div id="owSummary" class="ow-summary"></div>
-        <div id="pageStatus" class="status-line"></div>
-        <div class="ow-table-wrap">
-          <table class="ow-table" id="owTable">
-            <thead>
-              <tr>
-                <th data-sort="owner_tag">Owner</th>
-                <th data-sort="club_name">Club</th>
-                <th data-sort="registry_status">Status</th>
-                <th data-sort="balance">Balance</th>
-                <th data-sort="wallet_updated_at">Updated</th>
-              </tr>
-            </thead>
-            <tbody id="owBody">
-              <tr><td colspan="5" class="ow-muted">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      <div class="card ow-panel" id="owStmtCard" hidden>
-        <h2 id="owStmtTitle">Statement</h2>
-        <p id="owStmtMeta" class="note"></p>
-        <div class="ow-table-wrap">
-          <table class="ow-stmt">
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody id="owStmtBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+  <div class="ow-admin-bar">
+    <label>View as owner
+      <select id="owOwnerSelect">
+        <option value="">Loading owners…</option>
+      </select>
+    </label>
+    <button type="button" class="button" id="owReloadList">Reload list</button>
+    <p class="ow-admin-note">
+      Admin only — same Building Society statement the owner sees. Not club finances.
+      SQL: <code>admin_owner_wallets_overview_20261016.sql</code>
+    </p>
   </div>
-  <script type="module" src="admin_owner_wallets.js?v=20261016-bs"></script>
+
+  <header class="ob-hero">
+    <div class="ob-hero-graphic" aria-hidden="true">
+      <svg class="ob-svg" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="obCard" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#2a1a08"/>
+            <stop offset="100%" style="stop-color:#1a1208"/>
+          </linearGradient>
+          <linearGradient id="obGold" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#ffcc66"/>
+            <stop offset="100%" style="stop-color:#ff9900"/>
+          </linearGradient>
+        </defs>
+        <rect x="36" y="48" width="248" height="128" rx="14" fill="url(#obCard)" stroke="#ff9900" stroke-width="2"/>
+        <text x="56" y="78" fill="#ffcc66" font-family="Georgia,serif" font-size="11" letter-spacing="2">GPSL</text>
+        <text x="56" y="112" fill="#ff9900" font-family="Georgia,serif" font-size="16" font-weight="bold">BUILDING</text>
+        <text x="56" y="132" fill="#ff9900" font-family="Georgia,serif" font-size="16" font-weight="bold">SOCIETY</text>
+        <text x="56" y="156" fill="#c8a070" font-family="Georgia,serif" font-size="9">Admin preview</text>
+        <circle cx="250" cy="88" r="22" fill="#1a1008" stroke="url(#obGold)" stroke-width="2"/>
+        <text x="250" y="94" text-anchor="middle" fill="#ffcc66" font-family="Georgia,serif" font-size="16" font-weight="bold">₿</text>
+      </svg>
+    </div>
+    <div class="ob-hero-text">
+      <p class="ob-welcome" id="obWelcome">Select an owner</p>
+      <h1 id="obTitle">GPSL Building Society</h1>
+      <p class="ob-tagline">
+        Preview of their private GPSL balance — separate from club transfer funds.
+      </p>
+      <div class="ob-balance-card">
+        <span class="ob-balance-label">Available balance</span>
+        <span class="ob-balance-value" id="obBalance">—</span>
+      </div>
+      <p class="ob-links"></p>
+    </div>
+  </header>
+
+  <main class="ob-main">
+    <p id="obStatus" class="ob-status" aria-live="polite"></p>
+
+    <section class="ob-panel">
+      <div class="ob-panel-head">
+        <div>
+          <p class="ob-kicker">Account statement</p>
+          <h2>Recent activity</h2>
+        </div>
+        <button type="button" class="ob-refresh" id="obRefresh">Refresh</button>
+      </div>
+      <div class="ob-statement-wrap">
+        <table class="ob-statement" id="obStatement">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th class="num">Out</th>
+              <th class="num">In</th>
+              <th class="num">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="5" class="ob-empty">Pick an owner above to load their statement.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="admin_owner_wallets.js?v=20261016-dropdown"></script>
 </body>
 </html>
