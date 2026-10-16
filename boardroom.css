@@ -203,6 +203,39 @@ body.boardroom-page {
   margin: 8px 0 0;
 }
 
+.expectation-block--punishment {
+  background: rgba(80, 36, 28, 0.35);
+  border: 1px solid #5a3028;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  border-bottom: none;
+}
+
+.expectation-block--punishment h3 {
+  color: #e8a090;
+}
+
+.punishment-list {
+  margin: 0;
+  padding: 0 0 0 1.15rem;
+  color: #d4c4b4;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.punishment-list li {
+  margin: 0 0 6px;
+}
+
+.punishment-list li:last-child {
+  margin-bottom: 0;
+}
+
+.expectation-block--punishment .expectation-note {
+  margin-top: 10px;
+}
+
 .expectation-note--archived {
   color: #e8b0b0;
 }

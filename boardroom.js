@@ -132,31 +132,45 @@ function performanceBandClass(band) {
   return "";
 }
 
-function failurePunishmentNote(tier) {
-  const stadium =
-    "Gate fill drifts down when below expectation (slight −7%, bad −15%, abysmal −20%).";
-  const fine =
-    "If the club misses expectation, the board may fine you 25% of your personal GPSL Building Society balance (manager target misses do not trigger this fine).";
-  const protectedNote =
-    "Never asked to leave: One of our Own, Fan Favourite, home-grown aged 23 or under, non-home-grown aged 21 or under.";
+function clubFailurePunishmentItems(tier) {
+  let transfer;
   if (tier === "big") {
-    return (
-      `At season end, a transfer request is forced at market value (perpetual relisting, cannot remove): ` +
-      `slight miss → a lower-rated squad player (not your top four); bad/abysmal → one of your top four rated. ` +
-      `${protectedNote} ${stadium} ${fine}`
-    );
+    transfer =
+      "Forced transfer request at market value (perpetual listing): slight miss → a lower-rated squad player (not your top four); bad/abysmal → one of your top four rated.";
+  } else if (tier === "medium") {
+    transfer =
+      "Forced transfer request at market value (perpetual listing): slight miss → rated 68–73 (over 21); bad/abysmal → rated 74–78 (over 21).";
+  } else {
+    transfer =
+      "A low-rated player (72 or below) may hand in a transfer request at market value (perpetual listing).";
   }
-  if (tier === "medium") {
-    return (
-      `At season end, a transfer request is forced at market value (perpetual relisting, cannot remove): ` +
-      `slight miss → a player rated 68–73 (over 21); bad/abysmal → rated 74–78 (over 21). ` +
-      `${protectedNote} ${stadium} ${fine}`
-    );
-  }
-  return (
-    `At season end, a low-rated player (72 or below) may hand in a transfer request at market value ` +
-    `(perpetual relisting, cannot remove). ${protectedNote} ${stadium} ${fine}`
-  );
+  return [
+    transfer,
+    "Protected — never asked to leave: One of our Own, Fan Favourite, home-grown aged 23 or under, non-home-grown aged 21 or under.",
+    "Stadium gate fill drifts down (slight −7%, bad −15%, abysmal −20%).",
+    "Board may fine you 25% of your personal GPSL Building Society balance (manager target misses do not trigger this).",
+  ];
+}
+
+function managerFailurePunishmentItems() {
+  return [
+    "After season 1 of the deal: if the club is 3+ places below expectation (bad or abysmal miss), the board sacks the manager — market value credited to the club.",
+    "At deal end: miss their personal target in both seasons → they leave (refuse) — market value credited, 2-season rehire ban.",
+    "At deal end: hit their personal target but the club misses expectation in both seasons → sacked — market value credited.",
+    "Club prestige misses do not take a Building Society fine from a manager target miss alone — that fine is club expectation only.",
+  ];
+}
+
+function failurePunishmentHtml(items, footerHtml) {
+  const list = (items || [])
+    .map((t) => `<li>${t}</li>`)
+    .join("");
+  return `
+    <div class="expectation-block expectation-block--punishment">
+      <h3>Failure punishment</h3>
+      <ul class="punishment-list">${list}</ul>
+      ${footerHtml ? `<p class="expectation-note">${footerHtml}</p>` : ""}
+    </div>`;
 }
 
 function managerLiftNote(data) {
@@ -321,11 +335,10 @@ async function loadExpectationSection(clubShortName) {
         Meeting a cup target rescues a slight miss.</p>
     </div>
 
-    <div class="expectation-block">
-      <h3>Failure punishment</h3>
-      <p class="expectation-note">${failurePunishmentNote(tier)}</p>
-      <p class="expectation-note">Checked at season archive. See <a href="learning_gpsl.html#club-expectations">Learning GPSL</a> and <a href="stadium.html">Stadium</a> for full rules.</p>
-    </div>
+    ${failurePunishmentHtml(
+      clubFailurePunishmentItems(tier),
+      `Checked at season archive. See <a href="learning_gpsl.html#club-expectations">Learning GPSL</a> and <a href="stadium.html">Stadium</a> for full rules.`
+    )}
   `;
 
   return data;
@@ -680,9 +693,13 @@ async function loadManagerSection(clubShortName) {
         archived
           ? `<p class="expectation-note expectation-note--archived">Removed from the live manager catalog. Keep them until the deal ends (full market value refund) or sack them. They cannot be listed or renewed. History is retained.</p>`
           : pendingRenewal
-            ? `<p class="expectation-note">They hit their personal target in at least one season, and the club did not miss expectation both seasons. Renew in June or July for another 2 seasons — if not renewed before August starts, they are released for market value. (If the club misses expectation both seasons of the deal, they are sacked instead, with market value credited.)</p>`
-            : `<p class="expectation-note">On target uses the live league table vs their personal deal target. Club prestige expectation is separate. After season 1: club 3+ places below expectation (bad or abysmal miss) → the board sacks them (MV credited). At deal end: miss personal target both seasons → they leave (refuse, MV credited); hit personal but club misses both seasons → sacked (MV credited). Final results lock when you run Process manager contracts.</p>`
+            ? `<p class="expectation-note">They hit their personal target in at least one season, and the club did not miss expectation both seasons. Renew in June or July for another 2 seasons — if not renewed before August starts, they are released for market value.</p>`
+            : `<p class="expectation-note">On target uses the live league table vs their personal deal target. Club prestige expectation is separate. Final results lock when you run Process manager contracts.</p>`
       }
+      ${failurePunishmentHtml(
+        managerFailurePunishmentItems(),
+        `See <a href="learning_gpsl.html#managers">Learning GPSL</a> for full manager deal rules.`
+      )}
     `;
   }
 
