@@ -31,6 +31,10 @@ const STAR_CAP_CHAMPIONSHIP = 2;
 const NATION_REQUIRED_FROM_SEASON = 3;
 /** New Owner first-season release/list slots (club_new_owner_release_state max_total). */
 const NEW_OWNER_RELEASES_MAX = 3;
+/** Flag current balance only when worse than −₿50m. */
+const BALANCE_ISSUE_BELOW = -50_000_000;
+/** Flag projected EOS only when −₿100m or worse. */
+const PROJ_EOS_ISSUE_AT_OR_BELOW = -100_000_000;
 
 /** @type {Array<Record<string, unknown>>} */
 let allRows = [];
@@ -116,8 +120,16 @@ const ISSUE_META = {
     level: "bad",
     tip: `Fewer than ${MIN_HOME_GROWN} home-grown players (nation must match club)`,
   },
-  balance: { label: "Balance", level: "bad", tip: "Current balance is negative" },
-  proj: { label: "Proj EOS", level: "warn", tip: "Projected end-of-season balance is negative" },
+  balance: {
+    label: "Balance",
+    level: "bad",
+    tip: "Current balance worse than −₿50,000,000",
+  },
+  proj: {
+    label: "Proj EOS",
+    level: "warn",
+    tip: "Projected end-of-season balance −₿100,000,000 or worse",
+  },
   fines: { label: "Fines", level: "warn", tip: "Outstanding fines on record" },
 };
 
@@ -190,11 +202,11 @@ function evaluateRowIssues(row) {
   if (stars > starCap) issues.add("stars");
   if (u21 < MIN_U21) issues.add("u21");
   if (hg < MIN_HOME_GROWN) issues.add("hg");
-  if (Number(row.current_balance) < 0) issues.add("balance");
+  if (Number(row.current_balance) < BALANCE_ISSUE_BELOW) issues.add("balance");
   if (
     row.projected_eos_balance != null &&
     row.projected_eos_balance !== "" &&
-    Number(row.projected_eos_balance) < 0
+    Number(row.projected_eos_balance) <= PROJ_EOS_ISSUE_AT_OR_BELOW
   ) {
     issues.add("proj");
   }
@@ -465,7 +477,7 @@ function renderSummary(rows) {
     if (Number(row.u21_count ?? 0) < MIN_U21) u21Short += 1;
     if (row.ff_player_name) withFf += 1;
     if (row.ooo_player_name) withOoo += 1;
-    if (Number(row.current_balance) < 0) negative += 1;
+    if (Number(row.current_balance) < BALANCE_ISSUE_BELOW) negative += 1;
     const issues = evaluateRowIssues(row);
     if (issues.size > 0) flagged += 1;
     if (issues.has("tag_missing") || issues.has("tag_mismatch")) tagBad += 1;
@@ -486,7 +498,7 @@ function renderSummary(rows) {
     <span class="chk-sum-squad">${u21Short} below ${MIN_U21} U21</span>
     <span class="chk-sum-squad">${starsOver} over star cap</span>
     <span class="chk-sum-squad">${withOoo} OooO · ${withFf} Fan Fav</span>
-    <span>${negative} negative balance</span>
+    <span>${negative} balance worse than −₿50m</span>
   `;
 }
 
@@ -977,7 +989,7 @@ function renderTable() {
 
             let balanceLevel = "ok";
             let balanceTip = "";
-            if (Number(row.current_balance) < 0) {
+            if (Number(row.current_balance) < BALANCE_ISSUE_BELOW) {
               balanceLevel = "bad";
               balanceTip = ISSUE_META.balance.tip;
             }
@@ -987,7 +999,7 @@ function renderTable() {
             if (
               row.projected_eos_balance != null &&
               row.projected_eos_balance !== "" &&
-              Number(row.projected_eos_balance) < 0
+              Number(row.projected_eos_balance) <= PROJ_EOS_ISSUE_AT_OR_BELOW
             ) {
               projLevel = "warn";
               projTip = ISSUE_META.proj.tip;
