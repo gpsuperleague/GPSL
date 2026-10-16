@@ -1,10 +1,9 @@
 -- =============================================================================
 -- Repair: wire friendlies monthly table prizes into month lock
 --
--- Wired check was false — the original inject likely missed RETURN v_out
--- (whitespace). This tries several endings, replaces the *last* match, then
--- pays any locked months that still have no payout rows (e.g. June).
--- Safe re-run.
+-- Live function ends with "RETURN v_out;" then a blank line then "END;"
+-- (and may use CRLF). Uses regexp on the normalized ending. Then catch-up
+-- pays locked months with no payout rows yet (e.g. June). Safe re-run.
 --
 -- Requires: friendlies_monthly_table_20261015.sql (pay functions present).
 -- =============================================================================
@@ -14,19 +13,8 @@ DECLARE
   v_oid oid;
   v_def text;
   v_marker text := 'gpsl_friendlies_on_gpsl_month_lock';
-  v_block text;
-  v_needles text[] := ARRAY[
-    E'  RETURN v_out;\n\nEND;',
-    E'  RETURN v_out;\nEND;',
-    E'  RETURN v_out;\n\nEND',
-    E'  RETURN v_out;\nEND',
-    E'\n  RETURN v_out;\n\nEND;',
-    E'\n  RETURN v_out;\nEND;',
-    E'\nRETURN v_out;\n\nEND;',
-    E'RETURN v_out;\n\nEND;'
-  ];
-  v_old text;
-  v_ok boolean := false;
+  v_insert text;
+  v_new text;
 BEGIN
   IF to_regprocedure('public.gpsl_friendlies_on_gpsl_month_lock(bigint,text)') IS NULL THEN
     RAISE EXCEPTION
@@ -39,14 +27,14 @@ BEGIN
   END IF;
 
   v_def := pg_get_functiondef(v_oid);
+  v_def := replace(replace(v_def, E'\r\n', E'\n'), E'\r', E'\n');
 
   IF position(v_marker IN v_def) > 0 THEN
     RAISE NOTICE 'Friendlies prizes already wired into month-lock jobs';
     RETURN;
   END IF;
 
-  -- Insert before the final RETURN; keep a normal RETURN/END ending
-  v_block :=
+  v_insert :=
     E'  -- Friendlies monthly table: owner prizes for the month that just locked\n'
     || E'  IF coalesce(v_month, '''') NOT IN ('''', ''playoffs'')\n'
     || E'     AND coalesce(nullif(v_stage, ''''), ''all'') IN (''all'', ''tables'', ''league_tables'', ''awards'', ''friendlies'')\n'
@@ -63,31 +51,26 @@ BEGIN
     || E'        ''friendlies_prizes'', jsonb_build_object(''ok'', false, ''error'', SQLERRM)\n'
     || E'      );\n'
     || E'    END;\n'
-    || E'  END IF;\n\n'
-    || E'  RETURN v_out;\n\n'
-    || E'END;';
+    || E'  END IF;\n\n';
 
-  FOREACH v_old IN ARRAY v_needles LOOP
-    IF position(v_old IN v_def) = 0 THEN
-      CONTINUE;
-    END IF;
-    -- Replace last occurrence only
-    EXECUTE reverse(replace(reverse(v_def), reverse(v_old), reverse(v_block), 1));
-    v_ok := true;
-    RAISE NOTICE 'Wired friendlies prizes (matched ending)';
-    EXIT;
-  END LOOP;
-
-  IF NOT v_ok THEN
+  IF v_def !~ E'RETURN v_out;[[:space:]]*END;[[:space:]]*\\$function\\$[[:space:]]*$' THEN
     RAISE EXCEPTION
       'Could not wire friendlies prizes — RETURN v_out ending not found. Tail:%',
       chr(10) || right(v_def, 500);
   END IF;
 
-  -- Confirm
-  IF position(v_marker IN pg_get_functiondef(v_oid)) = 0 THEN
-    RAISE EXCEPTION 'Wire appeared to run but marker still missing — check function redefine';
+  v_new := regexp_replace(
+    v_def,
+    E'RETURN v_out;[[:space:]]*END;[[:space:]]*\\$function\\$[[:space:]]*$',
+    v_insert || E'  RETURN v_out;\n\nEND;\n$function$\n'
+  );
+
+  IF v_new IS NOT DISTINCT FROM v_def OR position(v_marker IN v_new) = 0 THEN
+    RAISE EXCEPTION 'Wire replace did not insert friendlies marker';
   END IF;
+
+  EXECUTE v_new;
+  RAISE NOTICE 'Wired friendlies prizes into competition_run_month_lock_jobs';
 END;
 $wire$;
 
