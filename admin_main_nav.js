@@ -552,6 +552,13 @@ export const ADMIN_MAIN_NAV = [
           "Open Squad with a club selector — view any club’s squad read-only (Admin/Mod). Inspect Action options without executing."
         ),
         L(
+          "Building Society (owner wealth)",
+          "admin_owner_wallets.html",
+          null,
+          null,
+          "Admin only — every owner’s GPSL Building Society balance and statement (not club funds; not visible to mods)."
+        ),
+        L(
           "Apply fines",
           "admin_fines.html",
           null,
