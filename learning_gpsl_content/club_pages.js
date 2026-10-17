@@ -9,7 +9,7 @@ export const SECTION_MY_CLUB = {
       items: [
         `<b><a href="club_details.html">Club Details</a></b> — badge, division, nation, kits, dashboard colours, and club overview.`,
         `<b><a href="boardroom.html">Boardroom</a></b> — prestige expectations, season delivery, manager deal (renew / list / sack), and government subsidies (HG / Youth / Weak squad).`,
-        `<b><a href="owner_details.html">Owner Details</a></b> — login email/password, Discord owner tag, profile badge, <b>match availability</b>, timezone, and <b>holiday booking</b>
+        `<b><a href="owner_details.html">Owner Details</a></b> — login email/password, Discord owner tag, profile badge, <b>match availability</b>, timezone, <b>holiday booking</b>, and <b>season absence</b> (miss a season: fixtures awarded, finances frozen; 1 in 4)`
           (before you have a club, set tag / timezone / availability on <a href="awaiting_club.html">Owner details</a> in The Waiting Room).`,
         `<b><a href="squad.html">Squad</a></b> — registered players, home-grown and under-21 counts, contracts, list/sell actions.`,
         `<b><a href="finances.html">Finances</a></b> — current balance and links to ledger, income, costs, and season accounts.`,

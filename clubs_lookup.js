@@ -84,6 +84,17 @@ export function clubHasOwner(shortName) {
   return Boolean(ownerIdForClub(shortName));
 }
 
+/** Live check: club on active season absence (finance freeze). */
+export async function clubIsSeasonAbsent(supabase, clubShort, seasonId = null) {
+  if (!supabase?.rpc || !clubShort) return false;
+  const { data, error } = await supabase.rpc("club_is_season_absent", {
+    p_club: clubShort,
+    p_season_id: seasonId,
+  });
+  if (error) return false;
+  return Boolean(data);
+}
+
 /**
  * @param {string} homeShort
  * @param {string} awayShort

@@ -755,6 +755,111 @@ function wireHolidayExpandToggle() {
   });
 }
 
+function setSeasonAbsenceHint(msg, isError = false) {
+  const el = document.getElementById("seasonAbsenceHint");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.classList.toggle("is-error", isError);
+}
+
+async function refreshSeasonAbsenceSection() {
+  const summary = document.getElementById("seasonAbsenceSummary");
+  const reqBtn = document.getElementById("requestSeasonAbsenceBtn");
+  const retBtn = document.getElementById("returnSeasonAbsenceBtn");
+  const { data, error } = await supabase.rpc("owner_club_season_absence_status");
+  if (error) {
+    if (summary) {
+      summary.textContent =
+        error.message?.includes("owner_club_season_absence") ||
+        error.message?.includes("function")
+          ? "Season absence unavailable — admin must run club_season_absence_20261017.sql."
+          : error.message;
+    }
+    reqBtn && (reqBtn.hidden = true);
+    retBtn && (retBtn.hidden = true);
+    return;
+  }
+
+  const cur = data?.current;
+  const elig = data?.eligibility;
+  if (cur?.status === "active") {
+    if (summary) summary.textContent = "Active — finances frozen; fixtures awarded.";
+    reqBtn && (reqBtn.hidden = true);
+    retBtn && (retBtn.hidden = false);
+    setSeasonAbsenceHint("You can return early to unfreeze remaining fixtures.");
+  } else if (cur?.status === "requested") {
+    if (summary) summary.textContent = "Request pending admin approval.";
+    reqBtn && (reqBtn.hidden = true);
+    retBtn && (retBtn.hidden = true);
+    setSeasonAbsenceHint("Admin will activate from Season Management → Season absence.");
+  } else if (elig?.eligible) {
+    if (summary) {
+      summary.textContent = `Eligible (1 in 4 · window ${elig.window_from}–${elig.window_to}).`;
+    }
+    reqBtn && (reqBtn.hidden = false);
+    retBtn && (retBtn.hidden = true);
+    setSeasonAbsenceHint("");
+  } else {
+    if (summary) {
+      summary.textContent = elig?.ok
+        ? `Not eligible this window (already used ${elig.used_in_window || 0} in seasons ${elig.window_from}–${elig.window_to}).`
+        : "Not available.";
+    }
+    reqBtn && (reqBtn.hidden = true);
+    retBtn && (retBtn.hidden = true);
+  }
+}
+
+function wireSeasonAbsence() {
+  const toggle = document.getElementById("toggleSeasonAbsenceBtn");
+  const panel = document.getElementById("seasonAbsenceExpand");
+  toggle?.addEventListener("click", () => {
+    if (!panel) return;
+    const show = panel.hidden;
+    panel.hidden = !show;
+    toggle.setAttribute("aria-expanded", show ? "true" : "false");
+  });
+
+  document.getElementById("requestSeasonAbsenceBtn")?.addEventListener("click", async () => {
+    if (
+      !confirm(
+        "Request season absence?\n\nIf approved: manager released for MV, finances/loans freeze, fixtures awarded. Max 1 season in 4."
+      )
+    ) {
+      return;
+    }
+    const note = prompt("Optional note for admin") || null;
+    const { error } = await supabase.rpc("owner_club_season_absence_request", {
+      p_note: note,
+    });
+    if (error) {
+      setSeasonAbsenceHint(error.message, true);
+      return;
+    }
+    setSeasonAbsenceHint("Request submitted — waiting for admin approval.");
+    await refreshSeasonAbsenceSection();
+  });
+
+  document.getElementById("returnSeasonAbsenceBtn")?.addEventListener("click", async () => {
+    if (
+      !confirm(
+        "Return early from season absence?\n\nAwarded fixtures stay. Remaining fixtures become live. Finances/loans unfreeze from now (no catch-up)."
+      )
+    ) {
+      return;
+    }
+    const { error } = await supabase.rpc("club_season_absence_return", {
+      p_club_short_name: null,
+    });
+    if (error) {
+      setSeasonAbsenceHint(error.message, true);
+      return;
+    }
+    setSeasonAbsenceHint("Season absence ended.");
+    await refreshSeasonAbsenceSection();
+  });
+}
+
 function wireHolidayBooking() {
   const startInput = document.getElementById("holidayStartDate");
   const endInput = document.getElementById("holidayEndDate");
@@ -881,8 +986,10 @@ async function initOwnerDetailsPage() {
 
   wireHolidayBooking();
   wireHolidayExpandToggle();
+  wireSeasonAbsence();
   wireAvailabilityPanel();
   await refreshHolidaySection();
+  await refreshSeasonAbsenceSection();
 }
 
 initOwnerDetailsPage().catch((err) => {

@@ -535,6 +535,13 @@ export const ADMIN_MAIN_NAV = [
           null,
           "View / manage owner holiday periods that affect arranging fixtures."
         ),
+        L(
+          "Season absence",
+          "admin_season_absence.html",
+          null,
+          null,
+          "Freeze an owned club for a season: awarded fixtures, frozen finances/loans, manager released. 1 in 4 seasons."
+        ),
       ]),
       group("Finances", [
         L(

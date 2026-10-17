@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Season absence — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css?v=20261017-club-badges">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .abs-grid {
+      display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      max-width: 720px; margin-bottom: 14px;
+    }
+    .abs-grid label { display: block; font-size: 13px; color: #bbb; }
+    .abs-grid select, .abs-grid input, .abs-grid textarea {
+      width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .abs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .abs-table th, .abs-table td {
+      border-bottom: 1px solid #333; padding: 8px 6px; text-align: left; vertical-align: top;
+    }
+    .abs-table th { color: #999; font-weight: 600; }
+    .abs-status { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #aaa; }
+    .abs-status--active { color: #ff9900; }
+    .abs-status--requested { color: #9ec5ff; }
+    .abs-status--completed { color: #9fd4b0; }
+    .abs-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    button.button.secondary { background: #444; color: #ddd; }
+    button.button.danger { background: #662222; color: #fcc; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Season absence</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Freeze a club for the season</h2>
+        <p class="note">
+          Club stays owned. League/cup fixtures are awarded (3–0 walkovers). Finances and loans freeze;
+          manager is released for MV into the club balance. Market locked except FFP force-sell if already
+          ≤ −₿100m. Rock-bottom forced transfer request still applies. Max <b>1 season in 4</b>.
+          Requires <code>patches/club_season_absence_20261017.sql</code>.
+        </p>
+        <div class="abs-grid">
+          <label>
+            Club
+            <select id="absClub"></select>
+          </label>
+          <label style="grid-column: 1 / -1;">
+            Note (optional)
+            <input type="text" id="absNote" maxlength="200" placeholder="e.g. owner away for work">
+          </label>
+        </div>
+        <div class="abs-actions">
+          <button type="button" class="button" id="absActivateBtn">Activate absence</button>
+          <button type="button" class="button secondary" id="absRefreshBtn">Refresh list</button>
+        </div>
+        <div id="absStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Current season</h2>
+        <div style="overflow-x:auto;">
+          <table class="abs-table">
+            <thead>
+              <tr>
+                <th>Club</th>
+                <th>Owner</th>
+                <th>Status</th>
+                <th>Balance</th>
+                <th>Activated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="absBody">
+              <tr><td colspan="6">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_season_absence.js?v=20261017"></script>
+</body>
+</html>
