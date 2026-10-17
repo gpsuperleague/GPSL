@@ -315,8 +315,14 @@ async function ensureWinnerPrizeClaimIfNeeded() {
     console.warn("ensure winner prize claim", error);
     return false;
   }
+  if (data?.already_resolved) {
+    state.winner_prize_pending = false;
+    state.winner_prize_resolved = true;
+    return false;
+  }
   if (data?.ok) {
     state.winner_prize_pending = true;
+    state.winner_prize_resolved = false;
     return true;
   }
   return false;
@@ -347,6 +353,7 @@ async function renderPrizeOptionsPanel() {
     state.status === "settled" &&
     state.prize_type === "player" &&
     state.winner_prize_pending &&
+    !state.winner_prize_resolved &&
     iWon;
 
   panel.hidden = !show;
@@ -557,7 +564,17 @@ async function runPrizeAction(action) {
       false
     );
   } else {
-    setPrizeStatus("✅ Prize options updated.", false);
+    // Keep / take cash close the claim — don't let ensure re-open the panel
+    if (state) {
+      state.winner_prize_pending = false;
+      state.winner_prize_resolved = true;
+    }
+    setPrizeStatus(
+      action === "release"
+        ? `✅ Took cash ${formatMoney(result?.data?.credit)} — prize closed.`
+        : "✅ Prize kept — options closed.",
+      false
+    );
   }
   await refreshState();
 }

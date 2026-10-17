@@ -92,6 +92,7 @@ BEGIN
     'winning_club_id', a.winning_club_id,
     'winning_amount', a.winning_amount,
     'winner_prize_pending', coalesce(a.winner_prize_pending, false),
+    'winner_prize_resolved', coalesce(a.winner_prize_resolved, false),
     'winner_keep_prep_done', coalesce(a.winner_keep_prep_done, false),
     'winner_keep_prep_player_id', a.winner_keep_prep_player_id,
     'my_club', v_club,
