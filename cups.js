@@ -1,5 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { loadClubsMap, fullClubName, clubWithOwnerHtml } from "./clubs_lookup.js";
 import {
   CUP_CODES,
   CUP_LABELS,
@@ -164,9 +164,17 @@ function renderVenueHtml(m) {
   return `<div class="match-venue">${tv}${tv ? " " : ""}${escapeHtml(venue)}</div>`;
 }
 
+function cupSideHtml(name, shortName) {
+  const label = name || shortName || "TBD";
+  if (!shortName) {
+    return `<span class="fixture-club"><span class="fixture-club-body"><span class="fixture-club-name">${escapeHtml(label)}</span></span></span>`;
+  }
+  return clubWithOwnerHtml(label, shortName, "block");
+}
+
 function renderLegPane(leg, extras, opts) {
   if (!leg) {
-    return `<div class="leg-pane leg-empty"><div class="leg-label">${escapeHtml(opts.legLabel)}</div><div class="leg-teams">TBD <span class="vs">vs</span> TBD</div></div>`;
+    return `<div class="leg-pane leg-empty"><div class="leg-label">${escapeHtml(opts.legLabel)}</div><div class="leg-teams">${cupSideHtml("TBD")}<span class="vs">vs</span>${cupSideHtml("TBD")}</div></div>`;
   }
 
   const home = leg.home_club_name || leg.home_club_short_name || "TBD";
@@ -192,7 +200,7 @@ function renderLegPane(leg, extras, opts) {
   return `
     <div class="leg-pane ${isMyMatch(leg) ? "my-club" : ""} ${played ? "played" : ""}">
       <div class="leg-label">${escapeHtml(opts.legLabel)}</div>
-      <div class="leg-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
+      <div class="leg-teams">${cupSideHtml(home, leg.home_club_short_name)}<span class="vs">vs</span>${cupSideHtml(away, leg.away_club_short_name)}</div>
       ${renderVenueHtml(leg)}
       ${conditions ? `<div class="leg-conditions" style="font-size:11px;color:#888;margin:4px 0;">${escapeHtml(conditions)}</div>` : ""}
       ${renderScoreLinesHtml(scoreLines)}
@@ -250,16 +258,18 @@ function renderMatchCard(m, extras, roundNo) {
     roundNo > 1 &&
     ((m.home_club_short_name && !m.away_club_short_name) ||
       (!m.home_club_short_name && m.away_club_short_name));
-  const home = r1Bye
+  const homeName = r1Bye
     ? m.home_club_name || m.home_club_short_name || "TBD"
     : m.home_club_name ||
       m.home_club_short_name ||
       (awaitingOpp && !m.home_club_short_name ? "Awaiting opponent" : "TBD");
-  const away = r1Bye
+  const awayName = r1Bye
     ? "Bye"
     : m.away_club_name ||
       m.away_club_short_name ||
       (awaitingOpp && !m.away_club_short_name ? "Awaiting opponent" : "TBD");
+  const homeShort = m.home_club_short_name || null;
+  const awayShort = r1Bye ? null : m.away_club_short_name || null;
   const played = m.fixture_status === "played";
   const scoreLines = played ? formatCupScoreLines(m, extras) : null;
   const finance = played ? formatCupMatchFinance(m, extras) : [];
@@ -292,7 +302,7 @@ function renderMatchCard(m, extras, roundNo) {
   return `
     <div class="bracket-match ${isMyMatch(m) ? "my-club" : ""} ${played ? "played" : ""}">
       <div class="match-status">M${m.match_no} · ${escapeHtml(status)}</div>
-      <div class="match-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
+      <div class="match-teams">${cupSideHtml(homeName, homeShort)}<span class="vs">vs</span>${cupSideHtml(awayName, awayShort)}</div>
       ${renderVenueHtml(m)}
       ${conditions ? `<div class="match-conditions" style="font-size:11px;color:#888;margin:4px 0;">${escapeHtml(conditions)}</div>` : ""}
       ${renderScoreLinesHtml(scoreLines)}

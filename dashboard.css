@@ -245,15 +245,49 @@ a.club-owner-tag:focus {
   text-decoration: underline;
 }
 
+.club-badge-thumb {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.club-badge-thumb--missing {
+  display: none !important;
+}
+
 .fixture-club {
-  display: inline-block;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
   line-height: 1.25;
   vertical-align: top;
+}
+
+.fixture-club-body {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .fixture-club .club-owner-tag {
   display: block;
   margin-top: 2px;
+}
+
+.standings-club {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  line-height: 1.25;
+}
+
+.standings-club-text {
+  min-width: 0;
 }
 
 .standings-club .club-owner-tag {

@@ -65,8 +65,13 @@
       color:#ff9900; font-size:10px; font-weight:bold; text-transform:uppercase;
       margin:0 0 6px;
     }
-    .leg-teams { font-weight:bold; color:#eee; margin-bottom:4px; }
-    .leg-teams .vs { color:#666; font-weight:normal; margin:0 3px; }
+    .leg-teams {
+      display:flex; flex-wrap:wrap; align-items:flex-start; gap:4px 0;
+      font-weight:bold; color:#eee; margin-bottom:4px;
+    }
+    .leg-teams .vs { color:#666; font-weight:normal; margin:0 6px; align-self:center; }
+    .leg-teams .fixture-club { font-weight:bold; }
+    .leg-teams .fixture-club .club-owner-tag { font-weight:normal; }
     .leg-action {
       display:block; margin-top:6px; font-size:10px; color:#888;
     }
@@ -93,8 +98,13 @@
     }
     .bracket-match.my-club { border-color:#ff9900; box-shadow:0 0 0 1px #ff990066; }
     .bracket-match.played { border-color:#3a5a3a; }
-    .match-teams { font-weight:bold; color:#eee; margin-bottom:6px; }
-    .match-teams .vs { color:#666; font-weight:normal; margin:0 4px; }
+    .match-teams {
+      display:flex; flex-wrap:wrap; align-items:flex-start; gap:4px 0;
+      font-weight:bold; color:#eee; margin-bottom:6px;
+    }
+    .match-teams .vs { color:#666; font-weight:normal; margin:0 6px; align-self:center; }
+    .match-teams .fixture-club { font-weight:bold; }
+    .match-teams .fixture-club .club-owner-tag { font-weight:normal; }
     .match-status { color:#888; font-size:11px; margin-bottom:4px; }
     .score-lines { margin:6px 0; padding:6px 8px; background:#1a1a1a; border-radius:4px; }
     .score-lines div { font-size:11px; color:#ccc; margin:2px 0; }
@@ -146,6 +156,6 @@
       International: <a href="world_cup.html">World Cup</a> · <a href="nation_select.html">Nation selection</a>.
     </p>
   </div>
-  <script type="module" src="cups.js?v=20260715-final-tv"></script>
+  <script type="module" src="cups.js?v=20261017-owner-tags"></script>
 </body>
 </html>

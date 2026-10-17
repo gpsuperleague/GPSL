@@ -7,7 +7,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Competition Progress — GPSL</title>
-  <link rel="stylesheet" href="dashboard.css?v=20260806-league-badges">
+  <link rel="stylesheet" href="dashboard.css?v=20261017-club-badges">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="competition_themes.css">
   <style>
@@ -161,13 +161,24 @@
       background: #222;
     }
 
-    /* Owner tag stacked under club name (narrower column on mobile) */
+    /* Badge left; owner tag stacked under club name */
     table.standings-table .standings-club {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      line-height: 1.25;
+    }
+    table.standings-table .standings-club-text {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       gap: 1px;
-      line-height: 1.25;
+      min-width: 0;
+    }
+    table.standings-table .standings-club .club-badge-thumb {
+      width: 22px;
+      height: 22px;
     }
     table.standings-table .standings-club .club-owner-tag {
       margin-left: 0;
@@ -392,6 +403,6 @@
       · <a href="league_stats.html" style="color:#ff9900;">League stats</a>
     </p>
   </div>
-  <script type="module" src="progress.js?v=20260806-league-badges"></script>
+  <script type="module" src="progress.js?v=20261017-club-badges"></script>
 </body>
 </html>

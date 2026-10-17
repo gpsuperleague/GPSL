@@ -1,5 +1,5 @@
 import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { loadClubsMap, fullClubName, clubWithOwnerHtml } from "./clubs_lookup.js";
 import { loadCurrentSeason, CUP_LABELS, loadCupBracket, cupRoundLabel } from "./competition.js";
 import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js";
 
@@ -46,6 +46,13 @@ function escapeHtml(text) {
 
 function clubLabel(code) {
   return fullClubName(code) || code;
+}
+
+/** Club name + owner tag under (same pattern as league fixtures). */
+function clubDrawSideHtml(code) {
+  const short = String(code || "").trim();
+  if (!short) return "";
+  return clubWithOwnerHtml(clubLabel(short), short, "block");
 }
 
 function setStatus(msg, kind = "") {
@@ -300,7 +307,7 @@ async function runCeremony(ctx) {
         appendTie(`
           <div class="cup-draw-tie bye">
             <span class="match-no">M${matchNo}</span>
-            <strong>${escapeHtml(clubLabel(row.club))}</strong>
+            ${clubDrawSideHtml(row.club)}
             <span class="vs">·</span> Bye
           </div>`);
         fillBracketSlot(0, matchNo - 1, `${clubLabel(row.club)} (bye)`);
@@ -315,9 +322,9 @@ async function runCeremony(ctx) {
         appendTie(`
           <div class="cup-draw-tie">
             <span class="match-no">M${matchNo}</span>
-            <strong>${escapeHtml(clubLabel(row.home))}</strong>
+            ${clubDrawSideHtml(row.home)}
             <span class="vs">vs</span>
-            <strong>${escapeHtml(clubLabel(row.away))}</strong>
+            ${clubDrawSideHtml(row.away)}
           </div>`);
         fillBracketSlot(0, matchNo - 1, `${clubLabel(row.home)} v ${clubLabel(row.away)}`);
       }
@@ -338,7 +345,7 @@ async function runCeremony(ctx) {
         appendTie(`
           <div class="cup-draw-tie bye">
             <span class="match-no">M${matchNo}</span>
-            <strong>${escapeHtml(clubLabel(code))}</strong>
+            ${clubDrawSideHtml(code)}
             <span class="vs">·</span> Bye
           </div>`);
         fillBracketSlot(0, matchNo - 1, `${clubLabel(code)} (bye)`);
@@ -367,9 +374,9 @@ async function runCeremony(ctx) {
         appendTie(`
           <div class="cup-draw-tie">
             <span class="match-no">M${matchNo}</span>
-            <strong>${escapeHtml(clubLabel(home))}</strong>
+            ${clubDrawSideHtml(home)}
             <span class="vs">vs</span>
-            <strong>${escapeHtml(clubLabel(away))}</strong>
+            ${clubDrawSideHtml(away)}
           </div>`);
         fillBracketSlot(0, matchNo - 1, `${clubLabel(home)} v ${clubLabel(away)}`);
         await delay(280);

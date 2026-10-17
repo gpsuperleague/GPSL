@@ -138,8 +138,20 @@ export function ownerTagLinkHtml(tag, ownerId) {
     .replace('class="owner-tag-chip"', 'class="club-owner-tag owner-tag-chip"');
 }
 
+/** Club crest thumb from images/club_badges/{ShortName}.png (hidden if missing). */
+export function clubBadgeImgHtml(shortName, { className = "club-badge-thumb" } = {}) {
+  const short = String(shortName || "").trim().toUpperCase();
+  if (!short || short === FOREIGN_BUYER_SHORT) return "";
+  const src = `images/club_badges/${escapeHtml(short)}.png`;
+  return (
+    `<img class="${escapeHtml(className)}" src="${src}" alt="" ` +
+    `width="20" height="20" loading="lazy" decoding="async" ` +
+    `onerror="this.classList.add('club-badge-thumb--missing')">`
+  );
+}
+
 /** Club name plus optional Discord owner tag (layout: block = fixtures, inline = tables).
- *  Name → club history; tag → owner profile; use clubPageHref for details (badge / “club page”). */
+ *  Name → club history; tag → owner profile; crest left of the name when ShortName is known. */
 export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
   const name = escapeHtml(clubName || shortName || "—");
   const tag = ownerTagForClub(shortName);
@@ -152,15 +164,24 @@ export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
   const linkedName = href
     ? `<a href="${escapeHtml(href)}" class="standings-club-link" title="Club history">${name}</a>`
     : name;
+  const badge = clubBadgeImgHtml(shortName);
 
   if (layout === "block") {
     const blockName = href
       ? `<a href="${escapeHtml(href)}" class="fixture-club-link" title="Club history">${name}</a>`
       : name;
-    return `<span class="fixture-club"><span class="fixture-club-name">${blockName}</span>${tagHtml}</span>`;
+    return (
+      `<span class="fixture-club">${badge}` +
+      `<span class="fixture-club-body"><span class="fixture-club-name">${blockName}</span>${tagHtml}</span>` +
+      `</span>`
+    );
   }
 
-  return `<span class="standings-club">${linkedName}${tagHtml}</span>`;
+  return (
+    `<span class="standings-club">${badge}` +
+    `<span class="standings-club-text">${linkedName}${tagHtml}</span>` +
+    `</span>`
+  );
 }
 
 /** ShortName from Clubs.ShortName, or match legacy full club name in history rows. */
