@@ -229,25 +229,54 @@ async function render() {
   }
 
   const reveal = document.getElementById("revealPanel");
-  reveal.hidden = !state.revealed;
-  if (state.revealed) {
-    const win = state.winning_club_id
-      ? `<div class="winner">${clubLabel(state.winning_club_id)} won with ${formatMoney(
-          state.winning_amount
-        )}</div>`
-      : "<div class='meta'>No winner.</div>";
-    document.getElementById("winnerBanner").innerHTML = win;
-    document.getElementById("phase2Table").innerHTML = renderBidsTable(state.phase2_bids, [
-      { label: "Club", render: (r) => clubLabel(r.club_id) },
-      { label: "Bid", render: (r) => formatMoney(r.bid_amount) },
-      { label: "", render: (r) => (r.is_winner ? "★ Winner" : "") },
-    ]);
-    document.getElementById("phase1Table").innerHTML = renderBidsTable(state.phase1_bids, [
-      { label: "Club", render: (r) => clubLabel(r.club_id) },
-      { label: "Bid", render: (r) => formatMoney(r.bid_amount) },
-      { label: "Tier", render: (r) => r.tier || "—" },
-      { label: "P1 fee", render: (r) => formatMoney(r.phase1_fee || 0) },
-    ]);
+  const phase1Public =
+    state.phase1_revealed === true ||
+    ["reveal", "phase2", "complete", "failed"].includes(state.gauntlet_phase) ||
+    state.revealed === true;
+  const finalReveal = state.revealed === true;
+  reveal.hidden = !phase1Public;
+
+  const titleEl = document.getElementById("revealTitle");
+  if (titleEl) {
+    titleEl.textContent = finalReveal
+      ? "Full reveal"
+      : state.gauntlet_phase === "phase2"
+        ? "Phase 1 results (Phase 2 in progress)"
+        : "Reveal break — Phase 1 bids";
+  }
+
+  const phase2Wrap = document.getElementById("phase2RevealWrap");
+  if (phase2Wrap) phase2Wrap.hidden = !finalReveal;
+
+  if (phase1Public) {
+    if (finalReveal) {
+      const win = state.winning_club_id
+        ? `<div class="winner">${clubLabel(state.winning_club_id)} won with ${formatMoney(
+            state.winning_amount
+          )}</div>`
+        : "<div class='meta'>No winner.</div>";
+      document.getElementById("winnerBanner").innerHTML = win;
+      document.getElementById("phase2Table").innerHTML = renderBidsTable(
+        state.phase2_bids,
+        [
+          { label: "Club", render: (r) => clubLabel(r.club_id) },
+          { label: "Bid", render: (r) => formatMoney(r.bid_amount) },
+          { label: "", render: (r) => (r.is_winner ? "★ Winner" : "") },
+        ]
+      );
+    } else {
+      document.getElementById("winnerBanner").innerHTML =
+        "<div class='meta'>Phase 1 bids are public. Phase 2 bids stay secret until the auction ends.</div>";
+    }
+    document.getElementById("phase1Table").innerHTML = renderBidsTable(
+      state.phase1_bids,
+      [
+        { label: "Club", render: (r) => clubLabel(r.club_id) },
+        { label: "Bid", render: (r) => formatMoney(r.bid_amount) },
+        { label: "Tier", render: (r) => r.tier || "—" },
+        { label: "P1 fee", render: (r) => formatMoney(r.phase1_fee || 0) },
+      ]
+    );
   }
 
   await renderPrizeOptionsPanel();

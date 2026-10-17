@@ -348,16 +348,18 @@
     </div>
 
     <div class="panel" id="revealPanel" hidden>
-      <h2>Full reveal</h2>
+      <h2 id="revealTitle">Reveal break — Phase 1 bids</h2>
       <div id="winnerBanner" class="meta"></div>
-      <h3 style="color:#ccc;font-size:14px;">Phase 2 bids</h3>
-      <div id="phase2Table"></div>
+      <div id="phase2RevealWrap" hidden>
+        <h3 style="color:#ccc;font-size:14px;">Phase 2 bids</h3>
+        <div id="phase2Table"></div>
+      </div>
       <h3 style="color:#ccc;font-size:14px;margin-top:14px;">Phase 1 bids</h3>
       <div id="phase1Table"></div>
     </div>
 
     <div class="panel sa-upcoming" id="upcomingAuctions" hidden></div>
   </div>
-  <script type="module" src="special_auction_gauntlet.js?v=20261014-upcoming-cal"></script>
+  <script type="module" src="special_auction_gauntlet.js?v=20261017-reveal-bids"></script>
 </body>
 </html>

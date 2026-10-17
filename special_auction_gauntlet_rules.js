@@ -12,7 +12,7 @@ export function getBlindGauntletRulesHtml() {
       </li>
       <li>
         <strong>Reveal · 5 min</strong>
-        <span>Everyone ranked. Top ~25% advance; bottom ~25% pay the higher fee; the rest are Middle.</span>
+        <span>Everyone’s Phase&nbsp;1 bids and tiers are shown. Top ~25% advance; bottom ~25% pay the higher fee; the rest are Middle.</span>
       </li>
       <li>
         <strong>Phase 2 · 10 min</strong>
