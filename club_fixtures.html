@@ -48,8 +48,17 @@
     }
     .fixture-match {
       font-size:15px; color:#fff; font-weight:bold;
-      display:inline-flex; flex-wrap:wrap; align-items:flex-start; gap:4px 0;
+      display:inline-flex; flex-wrap:wrap; align-items:center; gap:4px 0;
     }
+    .fixture-match .fixture-side {
+      display:inline-flex; align-items:center; gap:6px;
+    }
+    .fixture-match .fixture-kit {
+      width:28px; height:28px; object-fit:contain; flex-shrink:0;
+      border-radius:3px; background:#1a1a1a; border:1px solid #333;
+      vertical-align:middle;
+    }
+    .fixture-match .fixture-kit--missing { display:none; }
     .fixture-match .mine { color:#ffcc66; }
     .fixture-match .mine .fixture-club-name { color:#ffcc66; }
     .fixture-score {
@@ -147,6 +156,6 @@
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20260924-sim-notice"></script>
+  <script type="module" src="club_fixtures.js?v=20261017-fixture-kits"></script>
 </body>
 </html>

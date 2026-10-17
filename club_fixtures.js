@@ -47,6 +47,7 @@ import {
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
 } from "./match_videos_ui.js?v=20260924-rpc-miss";
+import { resolveKitImageSrc } from "./club_kits_common.js";
 
 let myClub = { short: null, name: null };
 /** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
@@ -176,6 +177,28 @@ function formatInjuries(injuries) {
     .join("; ");
 }
 
+function escapeAttr(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
+/** Small kit thumb left of a club name. Away falls back to third if away PNG missing. */
+function fixtureKitHtml(clubShort, kind) {
+  const short = String(clubShort || "").trim();
+  if (!short) return "";
+  const src = resolveKitImageSrc(null, short, kind);
+  const label =
+    kind === "home" ? "Home kit" : kind === "away" ? "Away kit" : "Third kit";
+  const thirdSrc =
+    kind === "away" ? resolveKitImageSrc(null, short, "third") : null;
+  const onError = thirdSrc
+    ? `if(!this.dataset.fb){this.dataset.fb='1';this.src='${escapeAttr(thirdSrc)}';this.alt='Third kit';}else{this.classList.add('fixture-kit--missing');}`
+    : `this.classList.add('fixture-kit--missing');`;
+  return `<img class="fixture-kit" src="${escapeAttr(src)}" alt="${escapeAttr(label)}" title="${escapeAttr(label)}" loading="lazy" width="28" height="28" onerror="${onError}">`;
+}
+
 function matchLineHtml(f) {
   const homeCls =
     (f.home_club_short_name || "").toUpperCase() === (myClub.short || "").toUpperCase()
@@ -186,9 +209,9 @@ function matchLineHtml(f) {
       ? "mine"
       : "";
   return `
-    <span class="${homeCls}">${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</span>
+    <span class="fixture-side ${homeCls}">${fixtureKitHtml(f.home_club_short_name, "home")}${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</span>
     <span style="color:#666;margin:0 4px;">vs</span>
-    <span class="${awayCls}">${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</span>
+    <span class="fixture-side ${awayCls}">${fixtureKitHtml(f.away_club_short_name, "away")}${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</span>
     ${matchCentreButtonHtml(f)}
   `;
 }
