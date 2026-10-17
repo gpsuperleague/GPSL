@@ -541,7 +541,10 @@ async function runPrizeAction(action) {
   }
 
   if (result?.error) {
-    setPrizeStatus("❌ " + result.error.message, true);
+    const err = result.error;
+    const detail = [err.message, err.details, err.hint].filter(Boolean).join(" — ");
+    setPrizeStatus("❌ " + (detail || "Request failed"), true);
+    console.error("prize action failed", action, err);
     await renderPrizeOptionsPanel();
     return;
   }
