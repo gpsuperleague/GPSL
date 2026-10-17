@@ -33,7 +33,7 @@ export function getBlindGauntletRulesHtml() {
         <div class="outcome">Eliminated · pay <b>₿1m</b></div>
       </div>
     </div>
-    <p class="rules-note">Winner also pays their Phase&nbsp;2 bid amount on top of the ₿3m entry fee.</p>
+    <p class="rules-note">Winner also pays their Phase&nbsp;2 bid amount on top of the ₿3m entry fee. Fees and winning bids are charged even if the club is overdrawn.</p>
   `;
 }
 
