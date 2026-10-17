@@ -39,6 +39,14 @@ export const SECTION_CENTRAL_BANK = {
       html: `League-wide banking separate from your club balance — loans and services between owners and the league.`,
     },
     {
+      type: "ul",
+      items: [
+        `Policy loan rate is usually <b>5%</b> p.a. New loans are refused while you are a <b>financial risk</b> (6 overdrawn month-ends in a row, FFP in the last 5 seasons, or 2 seasons ending overdrawn).`,
+        `While at financial risk, monthly overdraft interest is higher (default <b>1%</b> vs <b>0.5%</b>).`,
+        `After you clear risk, new loans carry a <b>post-risk premium</b> for a set number of seasons (default <b>+2.5%</b> for <b>2</b> seasons) — then the normal policy rate returns.`,
+      ],
+    },
+    {
       type: "links",
       items: [
         { href: "central_bank.html", label: "Bank balance" },

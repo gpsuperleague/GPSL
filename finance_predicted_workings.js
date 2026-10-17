@@ -152,7 +152,7 @@ export function renderPredictedWorkingsHtml(data, extra = {}) {
     );
   } else {
     missing.push(
-      "<b>Overdraft interest</b> — 0.5% of the overdraft charged at each month-end check-in. Not estimated, so the real figure will be lower."
+      "<b>Overdraft interest</b> — 0.5% of the overdraft at each month-end check-in (1% while rated a financial risk). Not estimated, so the real figure will be lower."
     );
   }
   if (projected <= FFP_THRESHOLD) {

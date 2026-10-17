@@ -229,13 +229,25 @@ function paintLimits(bank, loans, options = {}) {
   const seasonLoanUsed = options.seasonLoanUsed === true;
   const effectiveMax = seasonLoanUsed ? 0 : Math.min(maxDraw, headroom);
 
+  const baseRate = Number(bank?.policy_interest_rate_pct ?? 5);
+  const premiumPct = Number(bank?.loan_interest_post_risk_premium_pct ?? 0);
+  const credit = options.credit || null;
+  const postRisk = credit?.post_risk_premium === true;
+  const rate = Number(
+    credit?.interest_rate_pct ??
+      (postRisk ? baseRate + premiumPct : baseRate)
+  );
+  const rateNote = postRisk
+    ? ` · Rate ${rate.toFixed(2)}% p.a. (includes post-risk premium)`
+    : ` · Rate ${rate.toFixed(2)}% p.a.`;
+
   const limitsEl = document.getElementById("loanLimits");
   if (limitsEl) {
     limitsEl.textContent = seasonLoanUsed
       ? `${MAX_ACTIVE_LOANS} active loans already — pay one off to take another`
       : `Up to ${MAX_ACTIVE_LOANS} active loans · ${formatMoney(maxOwed)} owed in total · Min ${formatMoney(
           min
-        )} · Headroom ${formatMoney(headroom)} · Term 20 GPSL months`;
+        )} · Headroom ${formatMoney(headroom)} · Term 20 GPSL months${rateNote}`;
   }
 
   const headroomEl = document.getElementById("counterHeadroom");
@@ -381,8 +393,11 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
 
   paintLimits(bank, loans);
   hideLoanCreditPanels();
-  void clubTookLoanThisSeason(supabase).then((seasonLoanUsed) => {
-    paintLimits(bank, loans, { seasonLoanUsed });
+  void Promise.all([
+    clubTookLoanThisSeason(supabase),
+    checkClubLoanCredit(supabase),
+  ]).then(([seasonLoanUsed, credit]) => {
+    paintLimits(bank, loans, { seasonLoanUsed, credit });
   });
   void renderMyLoansAtCounter(supabase, loans).then(() => {
     wireEarlyButtons(supabase, onSuccess);
@@ -448,12 +463,16 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
       return;
     }
 
+    const rate = Number(credit.interest_rate_pct ?? bankNow?.policy_interest_rate_pct ?? 5);
+    const rateBit = credit.post_risk_premium
+      ? ` at ${rate.toFixed(2)}% p.a. (post-risk premium)`
+      : ` at ${rate.toFixed(2)}% p.a.`;
     showLoanCreditCheckFlash("Credit check clear — processing drawdown…");
     const res = await takeClubLoan(supabase, amt);
     hideLoanCreditPanels();
     if (takeBtn) takeBtn.disabled = false;
     if (res.error) {
-      if (/creditworthiness|unfavourable|overdrawn for two seasons/i.test(res.error)) {
+      if (/creditworthiness|unfavourable|overdrawn for two seasons|financial risk/i.test(res.error)) {
         showLoanCreditRejection(res.error);
         showCounterMsg("loanTakeMsg", "Application declined.", false);
         return;
@@ -465,7 +484,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
       "loanTakeMsg",
       `Approved — loan #${res.loanId}, ${formatMoney(
         amt
-      )} credited. Repay over ${months} GPSL months (interest on top of principal).`,
+      )} credited${rateBit}. Repay over ${months} GPSL months (interest on top of principal).`,
       true
     );
     await onSuccess();

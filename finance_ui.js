@@ -332,7 +332,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "eos_debt_interest",
         label: "Overdraft interest",
         types: ["eos_debt_interest", "loan_interest_payment"],
-        note: "0.5% of the overdraft charged at each month-end check-in while the balance is negative (paid to central bank).",
+        note: "0.5% of the overdraft at each month-end check-in while negative (1% while rated a financial risk). Paid to central bank.",
       },
       {
         id: "eos_ffp",
