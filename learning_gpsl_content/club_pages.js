@@ -75,7 +75,7 @@ export const SECTION_FINANCES = {
       type: "ul",
       items: [
         `<b>Below zero?</b> You are on course to finish in the red — you will see <b>"Short by ₿X"</b> next to your transfer budget, and the advisory transfer budget shows ₿0.`,
-        `<b>At or below −₿100m</b> at Close Finances triggers an FFP fine, so a prediction near that line is an early warning.`,
+        `<b>At or below −₿100m</b> at Close Finances triggers an FFP fine (plus forced MV sales and a one-window buy ban), so a prediction near that line is an early warning. During that buy ban you still cannot transfer or sign free agents — but if fit players fall below <b>24</b>, <b>emergency loans</b> remain allowed.`,
         `The <b>advisory transfer budget</b> is the same sum without transfer sales/purchases — guidance only, it never blocks a bid.`,
       ],
     },

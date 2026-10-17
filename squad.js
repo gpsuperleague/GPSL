@@ -134,7 +134,7 @@ import {
   loadEmergencyLoanStatus,
   openEmergencyLoanPicker,
   takeEmergencyLoan,
-} from "./emergency_loan.js?v=20260828-emg";
+} from "./emergency_loan.js?v=20261017-ffp-emg";
 import {
   playerThumbLinkHtml,
   playerNameLinkHtml,

@@ -78,6 +78,11 @@ export function emergencyLoanBannerHtml(status) {
           until end of ${ends}. Fee ${fee} to Central Bank.
         </span>
         ${need > slots ? `<span class="emergency-loan-banner-note">Shortfall ${need}; ${slots} slot${slots === 1 ? "" : "s"} free this half-season.</span>` : ""}
+        ${
+          status.ffp_embargo_note
+            ? `<span class="emergency-loan-banner-note">${escapeHtml(status.ffp_embargo_note)}</span>`
+            : ""
+        }
       </div>
       <button type="button" class="button emergency-loan-open-btn" id="emergencyLoanOpenBtn"
         ${afford ? "" : "disabled"}
@@ -130,6 +135,11 @@ export function openEmergencyLoanPicker(candidates, status) {
         <p class="emergency-loan-dialog-intro">
           Free agents rated ≤${status?.max_rating ?? EMERGENCY_LOAN_MAX_RATING}.
           Fee ${fee}. Returns to free agency at end of ${ends || "the half-season"}.
+          ${
+            status?.ffp_embargo_note
+              ? `<br><span class="emergency-loan-banner-note">${escapeHtml(status.ffp_embargo_note)}</span>`
+              : ""
+          }
         </p>
         <div class="emergency-loan-table-wrap">
           ${
