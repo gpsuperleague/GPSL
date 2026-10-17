@@ -649,7 +649,11 @@ async function loadManagerSection(clubShortName) {
   if (!data?.manager_id) {
     if (statusEl) {
       statusEl.innerHTML =
-        'No manager signed. <a href="MGDB.html">Browse MGDB</a> or the manager transfer market.';
+        `<p class="expectation-note">No manager signed. <a href="MGDB.html">Browse MGDB</a> or the manager transfer market.</p>` +
+        failurePunishmentHtml(
+          managerFailurePunishmentItems(),
+          `See <a href="learning_gpsl.html#managers">Learning GPSL</a> for full manager deal rules.`
+        );
     }
     setBtnVisible(listBtn, false);
     setBtnVisible(sackBtn, false);
