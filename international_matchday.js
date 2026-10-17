@@ -8,6 +8,7 @@ import { loadCalendarStatus } from "./competition_calendar.js";
 import { isFixtureMonthPlayable, GPSL_MONTH_LABELS } from "./competition.js";
 import {
   formatKickoffPair,
+  formatKickoffSlotHtml,
   filterSelectableKickoffSlots,
   isSelectableKickoffSlot,
   formatOwnerNowLine,
@@ -913,7 +914,11 @@ async function renderSchedulePanel(f) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "slot-btn";
-    btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
+    btn.innerHTML = formatKickoffSlotHtml(iso, {
+      ownerTz,
+      homeTz,
+      awayTz,
+    });
     btn.onclick = () => {
       selectedKickoffIso = iso;
       list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));

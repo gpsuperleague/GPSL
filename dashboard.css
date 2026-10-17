@@ -245,6 +245,21 @@ a.club-owner-tag:focus {
   text-decoration: underline;
 }
 
+/* Kick-off slot buttons (fixture schedule / intl matchday) */
+.slot-btn .slot-main {
+  display: block;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.slot-btn .slot-sub {
+  display: block;
+  font-size: 10px;
+  color: #888;
+  line-height: 1.25;
+  font-weight: normal;
+  margin-top: 2px;
+}
+
 .club-badge-thumb {
   width: 20px;
   height: 20px;

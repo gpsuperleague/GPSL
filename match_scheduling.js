@@ -10,27 +10,102 @@ export const SLOT_MINUTES = 30;
 /** ISO weekday 1=Mon … 7=Sun */
 export const ISO_DOW_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function formatKickoff(iso, timezone = UK_TZ) {
-  if (!iso) return "—";
+/** Wall-clock pieces in a timezone for tidy kick-off labels. */
+function kickoffParts(iso, timezone = UK_TZ) {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("en-GB", {
-    timeZone: timezone,
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone || UK_TZ,
     weekday: "short",
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  });
+  }).formatToParts(d);
+  const pick = (type) => parts.find((p) => p.type === type)?.value || "";
+  const weekday = pick("weekday");
+  const day = pick("day");
+  const month = pick("month");
+  const hour = pick("hour");
+  const minute = pick("minute");
+  return {
+    weekday,
+    dayMonth: `${day} ${month}`,
+    time: `${hour}:${minute}`,
+    dateKey: `${weekday}|${day}|${month}`,
+  };
 }
 
+/** e.g. Sat 17 Oct · 19:00 */
+export function formatKickoff(iso, timezone = UK_TZ) {
+  const p = kickoffParts(iso, timezone);
+  if (!p) return "—";
+  return `${p.weekday} ${p.dayMonth} · ${p.time}`;
+}
+
+/** Time only, or weekday+time when the calendar day differs from UK. */
+function formatLocalVsUk(iso, timezone) {
+  const local = kickoffParts(iso, timezone);
+  const uk = kickoffParts(iso, UK_TZ);
+  if (!local) return "—";
+  if (uk && local.dateKey === uk.dateKey) return local.time;
+  return `${local.weekday} ${local.time}`;
+}
+
+/**
+ * Compact kick-off for propose / accept / agreed lines.
+ * Always leads with UK; adds Home/Away times only when those zones differ.
+ */
 export function formatKickoffPair(iso, homeTz, awayTz) {
-  const uk = formatKickoff(iso, UK_TZ) + " UK";
-  if (!homeTz || homeTz === awayTz) {
-    return uk;
+  const uk = formatKickoff(iso, UK_TZ);
+  if (!uk || uk === "—") return "—";
+
+  const h = homeTz && homeTz !== UK_TZ ? homeTz : null;
+  const a = awayTz && awayTz !== UK_TZ ? awayTz : null;
+
+  if (!h && !a) return `${uk} UK`;
+
+  if (h && a && h === a) {
+    return `${uk} UK · Local ${formatLocalVsUk(iso, h)}`;
   }
-  return `${uk} · Home: ${formatKickoff(iso, homeTz)} · Away: ${formatKickoff(iso, awayTz)}`;
+
+  const bits = [`${uk} UK`];
+  if (h) bits.push(`Home ${formatLocalVsUk(iso, h)}`);
+  if (a && a !== h) bits.push(`Away ${formatLocalVsUk(iso, a)}`);
+  return bits.join(" · ");
+}
+
+/**
+ * Slot button HTML: owner-local on top; UK / Home / Away extras muted underneath.
+ */
+export function formatKickoffSlotHtml(iso, { ownerTz, homeTz, awayTz } = {}) {
+  const primaryTz = ownerTz || UK_TZ;
+  const main = formatKickoff(iso, primaryTz);
+  const extras = [];
+
+  if (primaryTz !== UK_TZ) {
+    const uk = kickoffParts(iso, UK_TZ);
+    if (uk) extras.push(`${uk.time} UK`);
+  }
+
+  const h = homeTz && homeTz !== primaryTz && homeTz !== UK_TZ ? homeTz : null;
+  const a = awayTz && awayTz !== primaryTz && awayTz !== UK_TZ ? awayTz : null;
+
+  if (h && a && h === a) {
+    extras.push(`Opp ${formatLocalVsUk(iso, h)}`);
+  } else {
+    if (h) extras.push(`H ${formatLocalVsUk(iso, h)}`);
+    if (a && a !== h) extras.push(`A ${formatLocalVsUk(iso, a)}`);
+  }
+
+  if (!extras.length) {
+    return `<span class="slot-main">${main}</span>`;
+  }
+  return (
+    `<span class="slot-main">${main}</span>` +
+    `<span class="slot-sub">${extras.join(" · ")}</span>`
+  );
 }
 
 /** Wall-clock parts in a timezone (for comparing local date/time). */

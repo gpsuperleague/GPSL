@@ -24,11 +24,18 @@
     }
     .slot-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
     .slot-btn {
+      display:flex; flex-direction:column; gap:2px;
       padding:8px 12px; background:#222; border:1px solid #444; color:#ddd;
       border-radius:6px; cursor:pointer; font-size:12px; text-align:left;
+      min-width:9.5rem;
     }
-    .slot-btn:hover { border-color:#ff9900; color:#ff9900; }
+    .slot-btn .slot-main { font-weight:600; color:#eee; line-height:1.25; }
+    .slot-btn .slot-sub { font-size:10px; color:#888; line-height:1.25; font-weight:normal; }
+    .slot-btn:hover { border-color:#ff9900; }
+    .slot-btn:hover .slot-main { color:#ff9900; }
     .slot-btn.selected { background:#3d3200; border-color:#ff9900; }
+    .slot-btn.selected .slot-main { color:#ffcc66; }
+    .kickoff-line { line-height:1.35; }
     .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; align-items:center; }
     .button {
       padding:8px 14px; background:#ff9900; color:#111; border:none;
@@ -96,6 +103,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261012-12subs"></script>
+  <script type="module" src="fixture_schedule.js?v=20261017-tidy-times"></script>
 </body>
 </html>

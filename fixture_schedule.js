@@ -14,7 +14,9 @@ import {
   requestMutualOverrideNewTime,
   confirmMutualOverride,
   cancelMutualOverride,
+  formatKickoff,
   formatKickoffPair,
+  formatKickoffSlotHtml,
   UK_TZ,
   filterSelectableKickoffSlots,
   isSelectableKickoffSlot,
@@ -102,7 +104,11 @@ function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, o
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "slot-btn";
-    btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
+    btn.innerHTML = formatKickoffSlotHtml(iso, {
+      ownerTz,
+      homeTz,
+      awayTz,
+    });
     if (onSelect) {
       btn.onclick = () => onSelect(iso, btn, container);
     } else {
@@ -119,16 +125,8 @@ function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, o
 
 function formatUkWhen(iso) {
   if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return `${d.toLocaleString("en-GB", {
-    timeZone: UK_TZ,
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  })} UK`;
+  const label = formatKickoff(iso, UK_TZ);
+  return label && label !== "—" ? `${label} UK` : "";
 }
 
 function relWhen(iso) {
@@ -241,7 +239,7 @@ function renderAgreedPanel(root, f, sch) {
         <h2>Mutual override pending</h2>
         <p class="status-pending">
           <b>${fromName}</b> wants to ${kindLabel}:
-          ${formatKickoffPair(mo.proposed_kickoff_at, homeTz, awayTz)}
+          <span class="kickoff-line">${formatKickoffPair(mo.proposed_kickoff_at, homeTz, awayTz)}</span>
         </p>
         <p class="meta">Both clubs must agree. No reschedule or emergency allowance is used.</p>
         <div class="actions">
@@ -283,7 +281,7 @@ function renderAgreedPanel(root, f, sch) {
     ${holidayEarlyBannerHtml()}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
-      <p class="status-agreed"><b>Kick-off agreed:</b> ${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
+      <p class="status-agreed"><b>Kick-off agreed:</b> <span class="kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</span></p>
       <p class="meta" style="margin-top:6px;">
         <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
       </p>
@@ -619,7 +617,7 @@ function render() {
         ${responseHtml}
         <p class="status-pending">
           <b>${fullClubName(pending.proposed_by_club_short_name)}</b> proposed
-          ${formatKickoffPair(pending.kickoff_at, homeTz, awayTz)}
+          <span class="kickoff-line">${formatKickoffPair(pending.kickoff_at, homeTz, awayTz)}</span>
         </p>
         ${
           !pendingStillValid
