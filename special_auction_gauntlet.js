@@ -290,6 +290,38 @@ function setPrizeStatus(msg, isError = false) {
   el.className = "status" + (isError ? " err" : msg ? " ok" : "");
 }
 
+async function ensureWinnerPrizeClaimIfNeeded() {
+  if (!state || !auctionId) return false;
+  const myClub = state.my_club;
+  const iWon =
+    state.i_won ||
+    (myClub &&
+      state.winning_club_id &&
+      String(state.winning_club_id).toUpperCase() === String(myClub).toUpperCase());
+  if (
+    !iWon ||
+    state.status !== "settled" ||
+    state.prize_type !== "player" ||
+    !(state.prize_player_id || state.known_player_id) ||
+    state.winner_prize_pending ||
+    state.winner_prize_resolved
+  ) {
+    return false;
+  }
+  const { data, error } = await supabase.rpc("special_auction_ensure_winner_prize_claim", {
+    p_auction_id: auctionId,
+  });
+  if (error) {
+    console.warn("ensure winner prize claim", error);
+    return false;
+  }
+  if (data?.ok) {
+    state.winner_prize_pending = true;
+    return true;
+  }
+  return false;
+}
+
 async function renderPrizeOptionsPanel() {
   const panel = document.getElementById("prizeOptionsPanel");
   if (!panel || !state) return;
@@ -301,6 +333,16 @@ async function renderPrizeOptionsPanel() {
       state.winning_club_id &&
       String(state.winning_club_id).toUpperCase() === String(myClub).toUpperCase());
 
+  if (
+    iWon &&
+    state.status === "settled" &&
+    state.prize_type === "player" &&
+    !state.winner_prize_pending &&
+    !state.winner_prize_resolved
+  ) {
+    await ensureWinnerPrizeClaimIfNeeded();
+  }
+
   const show =
     state.status === "settled" &&
     state.prize_type === "player" &&
@@ -308,7 +350,31 @@ async function renderPrizeOptionsPanel() {
     iWon;
 
   panel.hidden = !show;
-  if (!show) return;
+  if (!show) {
+    const notice = document.getElementById("prizeClaimNotice");
+    if (notice) {
+      if (
+        iWon &&
+        state.status === "settled" &&
+        state.prize_type === "player" &&
+        !state.winner_prize_pending &&
+        !state.winner_prize_resolved
+      ) {
+        notice.hidden = false;
+        notice.textContent =
+          "Prize claim did not open automatically. Admin: run special_auction_gauntlet_prize_claim_fix_20261017.sql, then refresh this page.";
+      } else {
+        notice.hidden = true;
+        notice.textContent = "";
+      }
+    }
+    return;
+  }
+  const noticeOk = document.getElementById("prizeClaimNotice");
+  if (noticeOk) {
+    noticeOk.hidden = true;
+    noticeOk.textContent = "";
+  }
 
   const keepBtn = document.getElementById("prizeKeepBtn");
   const releaseBtn = document.getElementById("prizeReleaseBtn");
