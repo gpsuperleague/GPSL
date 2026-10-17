@@ -460,7 +460,10 @@ Deno.serve(async (req) => {
         usernameTag(msg.author),
         msg.author.username || "",
       ];
-      const club = matchClubByTags(byTag, clubShorts, keys);
+      // Prefer Discord snowflake (reliable); then nick/tag / "| MAR" decoration
+      const club =
+        byDiscordId.get(String(msg.author.id)) ||
+        matchClubByTags(byTag, clubShorts, keys);
       if (!club) {
         ignored += 1;
         results.push({
@@ -469,9 +472,10 @@ Deno.serve(async (req) => {
           reason: "No GPSL club for Discord user",
           content,
           discord_user: usernameTag(msg.author) || msg.author.username,
+          discord_user_id: msg.author.id,
           lookup_keys: keys.filter(Boolean),
           hint:
-            "Nick/tag must match Clubs.owner / gpsl_owner_registry.owner_tag, or end with | CLUB (e.g. croroshi - Marseille | MAR).",
+            "Link gpsl_owner_registry.discord_user_id, or match owner_tag / nick (including '| MAR' style).",
         });
         continue;
       }
