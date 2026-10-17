@@ -62,8 +62,14 @@ function usernameTag(u: DiscordUser | undefined): string {
   return u.username;
 }
 
+/**
+ * Map Discord identity → club.
+ * Registry tags are usually plain ("croroshi"); nicks are often decorated
+ * ("croroshi - Marseille | MAR"). Match exact, then "| CODE", then tag prefix.
+ */
 function matchClubByTags(
   byTag: Map<string, string>,
+  clubShorts: Set<string>,
   keys: string[]
 ): string | null {
   for (const key of keys) {
@@ -72,6 +78,36 @@ function matchClubByTags(
     const club = byTag.get(k);
     if (club) return club;
   }
+
+  for (const key of keys) {
+    const pipe = String(key || "").match(/\|\s*([A-Za-z0-9]{2,8})\s*$/i);
+    if (pipe) {
+      const code = pipe[1].toUpperCase();
+      if (clubShorts.has(code)) return code;
+    }
+  }
+
+  for (const key of keys) {
+    const k = key.trim().toLowerCase();
+    if (!k) continue;
+    const head = k.split(/\s+-\s+/)[0]?.trim();
+    if (head) {
+      const byHead = byTag.get(head);
+      if (byHead) return byHead;
+    }
+    for (const [tag, club] of byTag) {
+      if (tag.length < 2) continue;
+      if (
+        k === tag ||
+        k.startsWith(`${tag} `) ||
+        k.startsWith(`${tag}-`) ||
+        k.startsWith(`${tag} -`)
+      ) {
+        return club;
+      }
+    }
+  }
+
   return null;
 }
 
@@ -209,8 +245,14 @@ async function reactMany(
 
 async function buildOwnerTagMap(
   adminClient: ReturnType<typeof createClient>
-): Promise<Map<string, string>> {
+): Promise<{
+  byTag: Map<string, string>;
+  byDiscordId: Map<string, string>;
+  clubShorts: Set<string>;
+}> {
   const byTag = new Map<string, string>();
+  const byDiscordId = new Map<string, string>();
+  const clubShorts = new Set<string>();
 
   const { data: clubRows } = await adminClient
     .from("Clubs")
@@ -218,7 +260,7 @@ async function buildOwnerTagMap(
 
   const { data: registryRows } = await adminClient
     .from("gpsl_owner_registry")
-    .select("owner_id, owner_tag");
+    .select("owner_id, owner_tag, discord_user_id");
 
   const clubByOwner = new Map<string, string>();
   for (const row of clubRows || []) {
@@ -226,6 +268,7 @@ async function buildOwnerTagMap(
       .trim()
       .toUpperCase();
     if (!short) continue;
+    clubShorts.add(short);
     if (row.owner_id) clubByOwner.set(String(row.owner_id), short);
 
     const tag = String(row.owner || "")
@@ -235,15 +278,20 @@ async function buildOwnerTagMap(
   }
 
   for (const row of registryRows || []) {
+    if (!row.owner_id) continue;
+    const club = clubByOwner.get(String(row.owner_id));
+    if (!club) continue;
+
     const tag = String(row.owner_tag || "")
       .trim()
       .toLowerCase();
-    if (!tag || !row.owner_id) continue;
-    const club = clubByOwner.get(String(row.owner_id));
-    if (club) byTag.set(tag, club);
+    if (tag) byTag.set(tag, club);
+
+    const discordId = String(row.discord_user_id || "").trim();
+    if (discordId) byDiscordId.set(discordId, club);
   }
 
-  return byTag;
+  return { byTag, byDiscordId, clubShorts };
 }
 
 function authorized(
@@ -340,7 +388,7 @@ Deno.serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const byTag = await buildOwnerTagMap(adminClient);
+    const { byTag, byDiscordId, clubShorts } = await buildOwnerTagMap(adminClient);
     const memberCache = new Map<string, DiscordMember | null>();
 
     const results: Record<string, unknown>[] = [];
@@ -412,7 +460,7 @@ Deno.serve(async (req) => {
         usernameTag(msg.author),
         msg.author.username || "",
       ];
-      const club = matchClubByTags(byTag, keys);
+      const club = matchClubByTags(byTag, clubShorts, keys);
       if (!club) {
         ignored += 1;
         results.push({
@@ -422,6 +470,8 @@ Deno.serve(async (req) => {
           content,
           discord_user: usernameTag(msg.author) || msg.author.username,
           lookup_keys: keys.filter(Boolean),
+          hint:
+            "Nick/tag must match Clubs.owner / gpsl_owner_registry.owner_tag, or end with | CLUB (e.g. croroshi - Marseille | MAR).",
         });
         continue;
       }

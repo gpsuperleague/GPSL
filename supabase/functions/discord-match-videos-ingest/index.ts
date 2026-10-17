@@ -72,8 +72,13 @@ function usernameTag(u: DiscordUser | undefined): string {
   return u.username;
 }
 
+/**
+ * Registry tags are usually plain ("croroshi"); Discord nicks are often
+ * "croroshi - Marseille | MAR". Match exact, then "| CODE", then tag prefix.
+ */
 function matchClubByTags(
   byTag: Map<string, string>,
+  clubShorts: Set<string>,
   keys: string[]
 ): string | null {
   for (const key of keys) {
@@ -82,6 +87,36 @@ function matchClubByTags(
     const club = byTag.get(k);
     if (club) return club;
   }
+
+  for (const key of keys) {
+    const pipe = String(key || "").match(/\|\s*([A-Za-z0-9]{2,8})\s*$/i);
+    if (pipe) {
+      const code = pipe[1].toUpperCase();
+      if (clubShorts.has(code)) return code;
+    }
+  }
+
+  for (const key of keys) {
+    const k = key.trim().toLowerCase();
+    if (!k) continue;
+    const head = k.split(/\s+-\s+/)[0]?.trim();
+    if (head) {
+      const byHead = byTag.get(head);
+      if (byHead) return byHead;
+    }
+    for (const [tag, club] of byTag) {
+      if (tag.length < 2) continue;
+      if (
+        k === tag ||
+        k.startsWith(`${tag} `) ||
+        k.startsWith(`${tag}-`) ||
+        k.startsWith(`${tag} -`)
+      ) {
+        return club;
+      }
+    }
+  }
+
   return null;
 }
 
@@ -191,6 +226,7 @@ async function fetchGuildChannels(
 type OwnerMaps = {
   byTag: Map<string, string>;
   byDiscordId: Map<string, string>;
+  clubShorts: Set<string>;
 };
 
 function isAllowedVideoUrl(raw: string): boolean {
@@ -220,6 +256,7 @@ async function buildOwnerMaps(
 ): Promise<OwnerMaps> {
   const byTag = new Map<string, string>();
   const byDiscordId = new Map<string, string>();
+  const clubShorts = new Set<string>();
 
   const { data: clubRows } = await adminClient
     .from("Clubs")
@@ -235,6 +272,7 @@ async function buildOwnerMaps(
       .trim()
       .toUpperCase();
     if (!short) continue;
+    clubShorts.add(short);
     if (row.owner_id) clubByOwner.set(String(row.owner_id), short);
 
     const tag = String(row.owner || "")
@@ -257,7 +295,7 @@ async function buildOwnerMaps(
     if (discordId) byDiscordId.set(discordId, club);
   }
 
-  return { byTag, byDiscordId };
+  return { byTag, byDiscordId, clubShorts };
 }
 
 function authorized(
@@ -559,7 +597,7 @@ async function ingestOneMessage(
   // Prefer Discord snowflake → gpsl_owner_registry; fall back to owner tag / nick
   const club =
     owners.byDiscordId.get(String(msg.author.id)) ||
-    matchClubByTags(owners.byTag, keys);
+    matchClubByTags(owners.byTag, owners.clubShorts, keys);
 
   const out: Record<string, unknown>[] = [];
   let anyOk = false;
