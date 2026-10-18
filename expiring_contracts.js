@@ -886,3 +886,194 @@ async function submitBid() {
   closeBidModal();
   await loadMarket();
 }
+
+async function loadPendingDirectOffers() {
+  pendingDirectOfferPlayers = new Set();
+  if (!myClubShort) return;
+  try {
+    const { data, error } = await supabase
+      .from("Player_Transfer_Bids")
+      .select("player_id, direct_bid_id, bidder_club_id, is_direct, status, listing_id")
+      .eq("bidder_club_id", myClubShort)
+      .eq("is_direct", true)
+      .eq("status", "active");
+    if (error || !Array.isArray(data)) return;
+    for (const row of data) {
+      if (!isPendingContractedDirectOffer(row)) continue;
+      const id = getBidPlayerId(row);
+      if (id) pendingDirectOfferPlayers.add(String(id).trim());
+    }
+  } catch (e) {
+    console.warn("loadPendingDirectOffers", e);
+  }
+}
+
+function wireTransferOfferModal() {
+  const cancel = document.getElementById("transferOfferCancelBtn");
+  const submit = document.getElementById("transferOfferSubmitBtn");
+  const stepRow = document.getElementById("transferOfferStepRow");
+  const input = document.getElementById("transferOfferAmount");
+  if (cancel) cancel.onclick = closeTransferOfferModal;
+  if (submit) submit.onclick = () => void submitTransferOffer();
+  if (stepRow && stepRow.dataset.wired !== "1") {
+    stepRow.dataset.wired = "1";
+    stepRow.addEventListener("click", (e) => {
+      const btn = e.target.closest(".bid-step-btn");
+      if (!btn || !input) return;
+      const delta = Number(btn.dataset.delta);
+      if (!Number.isFinite(delta)) return;
+      const current = parseWageInputValue(input.value);
+      const base =
+        Number.isFinite(current) && current > 0 ? current : transferMinOffer;
+      input.value = formatWageInputValue(
+        Math.max(transferMinOffer || 0, Math.round(base + delta))
+      );
+    });
+  }
+  if (input && input.dataset.wired !== "1") {
+    input.dataset.wired = "1";
+    input.addEventListener("input", () => {
+      const n = parseWageInputValue(input.value);
+      const digits = String(input.value).replace(/[^\d]/g, "");
+      input.value = digits ? formatWageInputValue(Number(digits)) : "";
+      if (Number.isFinite(n) && n > 0) input.value = formatWageInputValue(n);
+    });
+  }
+}
+
+function openTransferOfferModal(row) {
+  if (!myClubShort) {
+    alert("Link a club to your account to make offers.");
+    return;
+  }
+  if (isHoldingClub(row)) {
+    alert("You cannot make an offer for your own player.");
+    return;
+  }
+  if (pendingDirectOfferPlayers.has(String(row.player_id))) {
+    alert("An offer is already under review for this player.");
+    return;
+  }
+
+  transferTarget = row;
+  const mv = Number(row.market_value) || 0;
+  transferMinOffer = mv;
+  const modal = document.getElementById("transferOfferModal");
+  document.getElementById("transferOfferTitle").textContent =
+    `Transfer offer — ${row.player_name}`;
+  document.getElementById("transferOfferHint").innerHTML = `
+    <dl>
+      <dt>Holding club</dt>
+      <dd>${escapeHtml(displayClubName(row.holding_club))}</dd>
+      <dt>Market value (minimum)</dt>
+      <dd>${formatMv(mv)}</dd>
+    </dl>
+    <ul>
+      <li>Same as a GPDB direct offer — seller reviews in Transfer Centre</li>
+      <li>Minimum offer is market value</li>
+      <li>Only one pending direct offer per player</li>
+    </ul>`;
+  document.getElementById("transferOfferAmount").value = formatWageInputValue(mv);
+  document.getElementById("transferOfferError").textContent = "";
+  if (modal) modal.style.display = "flex";
+}
+
+function closeTransferOfferModal() {
+  const modal = document.getElementById("transferOfferModal");
+  if (modal) modal.style.display = "none";
+  transferTarget = null;
+  transferMinOffer = 0;
+}
+
+async function submitTransferOffer() {
+  const errEl = document.getElementById("transferOfferError");
+  if (errEl) errEl.textContent = "";
+  if (!transferTarget || !myClubShort) return;
+
+  const offer = parseWageInputValue(
+    document.getElementById("transferOfferAmount")?.value
+  );
+  const mv = Number(transferTarget.market_value) || 0;
+  if (!Number.isFinite(offer) || offer <= 0) {
+    if (errEl) errEl.textContent = "Enter a valid offer amount.";
+    return;
+  }
+  if (offer < mv) {
+    if (errEl) {
+      errEl.textContent = `Minimum direct offer is market value (${formatMv(mv)}).`;
+    }
+    return;
+  }
+
+  const sellerShort = String(transferTarget.holding_club || "").trim();
+  const konamiId = String(transferTarget.player_id).trim();
+  const { error } = await supabase.from("Player_Transfer_Bids").insert({
+    listing_id: null,
+    player_id: konamiId,
+    direct_bid_id: konamiId,
+    bidder_club_id: myClubShort,
+    seller_club_id: sellerShort,
+    bid_amount: offer,
+    bid_time: new Date().toISOString(),
+    is_direct: true,
+    status: "active",
+  });
+
+  if (error) {
+    const msg = String(error.message || "");
+    if (errEl) {
+      errEl.textContent = msg.includes("already under review")
+        ? "An offer is already under review for this player."
+        : msg.includes("transfer window") || msg.includes("Transfer window")
+          ? "Transfer window is closed."
+          : msg || "Failed to submit offer.";
+    }
+    console.error(error);
+    return;
+  }
+
+  pendingDirectOfferPlayers.add(konamiId);
+  closeTransferOfferModal();
+  await loadMarket();
+  alert("Transfer offer submitted — the holding club will see it in Transfer Centre.");
+}
+
+async function submitAgentBribe(playerId) {
+  if (
+    !confirm(
+      "Spend ₿50,000 owner wealth to bribe the agent and reveal contract offer amounts?\n\n5% chance this leaks as a public story."
+    )
+  ) {
+    return;
+  }
+
+  const { data, error } = await supabase.rpc(
+    "expiring_bribe_reveal_contract_offers",
+    { p_player_id: String(playerId) }
+  );
+
+  if (error) {
+    alert(error.message || "Bribe failed.");
+    return;
+  }
+
+  const leaked = data?.leaked === true;
+  const offers = Array.isArray(data?.offers) ? data.offers : [];
+  const lines = offers.length
+    ? offers
+        .map(
+          (o) =>
+            `${displayClubName(o.club_short_name)}: ${formatWage(o.wage_offer)}`
+        )
+        .join("\n")
+    : "No contract offers to reveal.";
+
+  alert(
+    (data?.already_bribed
+      ? "Already bribed this season — showing offers again.\n\n"
+      : leaked
+        ? "Bribe paid — but it leaked as a story.\n\n"
+        : "Bribe paid — offers revealed quietly.\n\n") + lines
+  );
+  await loadMarket();
+}

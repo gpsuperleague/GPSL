@@ -14,34 +14,48 @@ export function getExpiringContractRules() {
   const uplift = expiryWageMinUpliftPct();
 
   return {
-    title: "Hidden wage bid rules",
+    title: "Final-year market rules",
     cards: [
       {
         heading: "Who is on this market",
         items: [
           "Players in their <b>final contract year</b> on the <b>contested</b> path.",
-          "<b>Not listed here:</b> home-grown ≤23, non-home-grown ≤21 (renew uncontested on Squad), and <b>emergency / season loans</b> drafted in as stop-gaps.",
-          "Bids open for the <b>final half-season</b> only: from <b>GPSL January</b> for summer contracts (before that the holder can still sell them), and from the <b>summer rollover</b> for January contracts (marked <b>Ends Jan</b>).",
-          "The player <b>stays at the holding club</b> while bids are collected and cannot be sold.",
+          "<b>Not listed here:</b> home-grown ≤23, non-home-grown ≤21 (renew uncontested on Squad), and <b>emergency / season loans</b>.",
+          "Playoffs sit <b>outside</b> the 10 GPSL months (Aug–May).",
         ],
       },
       {
-        heading: "How to bid",
+        heading: "August–December — transfer offers",
         items: [
-          "<b>One</b> wage offer per club per player — <b>locked in</b> once submitted (cannot be changed).",
-          `Minimum offer: <b>+${uplift}%</b> above the player’s current wage.`,
-          "Any <b>whole ₿</b> amount at or above that floor is allowed.",
-          "Rival amounts stay <b>hidden</b> until the contract ends.",
+          "Use <b>Make transfer offer</b> (fee to the holding club) — same as a GPDB direct offer.",
+          "Seller reviews in <a href=\"transfer_center.html\">Transfer Centre</a>.",
+          "Wage contract offers are <b>not</b> open yet.",
         ],
       },
       {
-        heading: "When the contract ends (summer rollover, or GPSL January for January contracts)",
+        heading: "January–May — wage contract offers",
         items: [
-          "<b>Highest wage</b> wins a new <b>3-season</b> contract at that wage.",
-          "<b>Ties</b> favour the holding club.",
+          "<b>One</b> wage offer per club per player — <b>locked</b> once submitted.",
+          `Minimum offer: <b>+${uplift}%</b> above current wage.`,
+          "Rival amounts stay <b>hidden</b>; clubs that bid show as <b>interested</b> to the holding club.",
+          "Highest wage wins a new <b>3-season</b> deal when the contract ends; ties favour the holder.",
+        ],
+      },
+      {
+        heading: "Playoffs — owner only + agent bribe",
+        items: [
+          "<b>Rivals cannot</b> make contract offers in Playoffs.",
+          "Only the <b>holding club</b> can submit a contract offer.",
+          "Holding club can <b>bribe the agent</b> for <b>₿50,000 owner wealth</b> to reveal rival wage amounts.",
+          "<b>5% chance</b> the bribe leaks as a public story.",
+        ],
+      },
+      {
+        heading: "When the contract ends",
+        items: [
           "Another club winning pays <b>market value</b> to the holder.",
-          `Championship club taking a Super League player also pays <b>${CHAMP_SL_SIGNING_FEE_PCT}% of market value</b> to the player as a signing-on fee (shown on the market for Championship owners).`,
-          "If nobody re-signs them, they become a free agent — holding club receives market value then.",
+          `Championship club taking a Super League player also pays <b>${CHAMP_SL_SIGNING_FEE_PCT}% of MV</b> to the player as a signing-on fee.`,
+          "If nobody re-signs them, they become a free agent — holder receives market value then.",
         ],
       },
     ],
