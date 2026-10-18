@@ -15,6 +15,10 @@
 -- Safe re-run. Then re-try settle on the stuck auction.
 -- =============================================================================
 
+-- Existing live overload may have DEFAULT args; CREATE OR REPLACE cannot
+-- remove defaults (42P13) — drop then recreate.
+DROP FUNCTION IF EXISTS public.special_auction_award_prize(public.special_auctions, text, numeric);
+
 CREATE OR REPLACE FUNCTION public.special_auction_award_prize(
   p_auction public.special_auctions,
   p_winner_club text,
