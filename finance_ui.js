@@ -3,7 +3,7 @@
  * Formulas for many lines are not live yet; amounts come from the season ledger where posted.
  */
 
-import { formatMoney, financeEntryLabel, isFinanceIncomeEntry } from "./competition.js";
+import { formatMoney, financeEntryLabel, isFinanceIncomeEntry } from "./competition.js?v=20261018-clawback-out";
 import { fullClubName } from "./clubs_lookup.js";
 
 /** @typedef {{ id: string, label: string, types: string[], planned?: boolean, note?: string }} FinanceLineDef */

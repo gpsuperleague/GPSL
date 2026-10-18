@@ -11,13 +11,13 @@ import {
   loadFinanceLedger,
   financeEntryLabel,
   isFinanceIncomeEntry,
-} from "./competition.js";
+} from "./competition.js?v=20261018-clawback-out";
 import {
   aggregateLedgerByLine,
   enrichLedgerFineFixtures,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20261012-monthly-interest";
+} from "./finance_ui.js?v=20261018-clawback-out";
 import { buildFinanceProjections } from "./finance_projections.js?v=20261014-ff-wage";
 import {
   appendAssignmentInfraPurchaseLedger,

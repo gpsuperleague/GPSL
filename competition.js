@@ -1698,8 +1698,11 @@ export function financeEntryLabel(type) {
 }
 
 export function isFinanceIncomeEntry(type, amount) {
-  if (INCOME_TYPES.has(type)) return true;
-  return Number(amount) > 0;
+  const amt = Number(amount);
+  if (!Number.isFinite(amt) || amt === 0) return false;
+  // Income types with a negative amount are clawbacks/reversals → show as costs
+  if (INCOME_TYPES.has(type)) return amt > 0;
+  return amt > 0;
 }
 
 export async function loadGpslBankPublic(supabase) {
