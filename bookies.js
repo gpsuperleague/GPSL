@@ -310,6 +310,19 @@ function renderMarkets() {
           <span class="bk-muted">${sels.length} options · ${escapeHtml(m.market_kind)}</span>
         </div>
         <div class="bk-market-body">
+          ${
+            m.market_kind === "player" && m.status === "open" && state.running
+              ? `<div class="bk-player-search" data-player-search-market="${m.id}">
+                  <label class="bk-muted">Find a player not on the board</label>
+                  <div class="bk-player-search-row">
+                    <input type="search" class="bk-player-search-input" data-search-input="${m.id}"
+                      placeholder="Search name…" autocomplete="off" />
+                    <button type="button" class="bk-btn" data-search-go="${m.id}">Search</button>
+                  </div>
+                  <div class="bk-player-search-results" data-search-results="${m.id}" hidden></div>
+                </div>`
+              : ""
+          }
           <table class="bk-sel-table">
             <thead><tr><th>Selection</th><th>Odds</th><th>Bet (max ₿1,000)</th></tr></thead>
             <tbody>${rows || `<tr><td colspan="3" class="bk-muted">No selections</td></tr>`}</tbody>
@@ -353,6 +366,146 @@ function renderMarkets() {
   root.querySelectorAll("[data-close]").forEach((btn) => {
     btn.addEventListener("click", () => closeMarket(Number(btn.dataset.close)));
   });
+
+  wirePlayerSearch(root);
+}
+
+function wirePlayerSearch(root) {
+  root.querySelectorAll("[data-search-go]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      void runPlayerSearch(Number(btn.dataset.searchGo));
+    });
+  });
+  root.querySelectorAll("[data-search-input]").forEach((input) => {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        void runPlayerSearch(Number(input.dataset.searchInput));
+      }
+    });
+    input.addEventListener("click", (e) => e.stopPropagation());
+  });
+}
+
+async function runPlayerSearch(marketId) {
+  const input = document.querySelector(`[data-search-input="${marketId}"]`);
+  const results = document.querySelector(`[data-search-results="${marketId}"]`);
+  if (!input || !results) return;
+
+  const q = String(input.value || "").trim();
+  if (q.length < 2) {
+    results.hidden = false;
+    results.innerHTML = `<p class="bk-muted">Type at least 2 letters.</p>`;
+    return;
+  }
+
+  results.hidden = false;
+  results.innerHTML = `<p class="bk-muted">Searching…</p>`;
+
+  const { data, error } = await supabase.rpc("bookies_search_players_for_market", {
+    p_market_id: marketId,
+    p_query: q,
+    p_limit: 12,
+  });
+
+  if (error) {
+    results.innerHTML = `<p class="bk-muted" style="color:#e07070;">${escapeHtml(error.message)}</p>`;
+    return;
+  }
+
+  const list = Array.isArray(data) ? data : [];
+  if (!list.length) {
+    results.innerHTML = `<p class="bk-muted">No eligible players match. Position rules still apply (e.g. GKs only on clean sheets).</p>`;
+    return;
+  }
+
+  const m = markets.find((x) => Number(x.id) === Number(marketId));
+  const state = marketState(marketId);
+  const myBet = myBets.find(
+    (b) => Number(b.market_id) === Number(marketId) && b.status !== "void"
+  );
+
+  results.innerHTML = list
+    .map((p) => {
+      const club = String(p.club || "");
+      const own =
+        club && currentClub && club.toUpperCase() === String(currentClub).toUpperCase();
+      const listed = p.already_listed === true;
+      const canAdd =
+        m?.status === "open" && state.running && currentClub && !myBet && !own;
+      return `<div class="bk-player-search-hit">
+        <div>
+          <b>${escapeHtml(p.player_name)}</b>
+          <span class="bk-muted"> · ${escapeHtml(p.position || "—")} · ${escapeHtml(fullClubName(club) || club)}</span>
+          ${listed ? ` <span class="bk-yours-mark">On board</span>` : ""}
+        </div>
+        <div>
+          ${
+            own
+              ? `<span class="bk-muted">Your club</span>`
+              : myBet
+                ? `<span class="bk-muted">Already bet this market</span>`
+                : canAdd
+                  ? `<button type="button" class="bk-btn bk-btn--gold" data-ensure-player="${escapeHtml(p.player_id)}" data-ensure-market="${marketId}">
+                      ${listed ? "Show & bet" : "Add & bet"}
+                    </button>`
+                  : `<span class="bk-muted">—</span>`
+          }
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  results.querySelectorAll("[data-ensure-player]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      void ensurePlayerAndBet(
+        Number(btn.dataset.ensureMarket),
+        String(btn.dataset.ensurePlayer)
+      );
+    });
+  });
+}
+
+async function ensurePlayerAndBet(marketId, playerId) {
+  setStatus("Adding player to market…");
+  const { data, error } = await supabase.rpc("bookies_ensure_player_selection", {
+    p_market_id: marketId,
+    p_player_id: playerId,
+  });
+
+  if (error) {
+    setStatus(error.message || "Could not add player.", false);
+    return;
+  }
+
+  const selectionId = Number(data?.selection_id);
+  if (!selectionId) {
+    setStatus("Player added but selection id missing — refresh and try again.", false);
+    await refreshAll();
+    return;
+  }
+
+  await refreshAll();
+
+  // Open the market accordion and focus stake for this selection
+  const art = document.querySelector(`.bk-market[data-market="${marketId}"]`);
+  art?.classList.add("open");
+  const stakeInput = document.querySelector(`[data-stake-for="${selectionId}"]`);
+  if (stakeInput) {
+    stakeInput.focus();
+    stakeInput.select?.();
+    setStatus(
+      data?.created
+        ? "Player added to the board — enter stake and Bet."
+        : "Player already on the board — enter stake and Bet.",
+      true
+    );
+  } else {
+    setStatus("Player is on the board. Open the market list to place your bet.", true);
+  }
 }
 
 function renderMyBets() {

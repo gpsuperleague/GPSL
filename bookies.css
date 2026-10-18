@@ -302,3 +302,47 @@ body.bookies-page {
 }
 
 .bk-status.err { color: #f88; }
+
+.bk-player-search {
+  padding: 10px 12px 4px;
+  border-bottom: 1px solid #2a3a2e;
+  background: #0e1610;
+}
+
+.bk-player-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+.bk-player-search-input {
+  flex: 1 1 180px;
+  min-width: 140px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid #3a5a42;
+  background: #0c140e;
+  color: #ddd;
+  font-size: 13px;
+}
+
+.bk-player-search-results {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.bk-player-search-hit {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  background: #121a14;
+  border: 1px solid #2e4a36;
+  border-radius: 6px;
+  font-size: 12px;
+}
