@@ -14,7 +14,7 @@ import {
   fetchPrizeSquadSpace,
   prizeSquadSpaceText,
   formatPrizePackHtml,
-} from "./special_auction.js?v=20261014-snap-hide";
+} from "./special_auction.js?v=20261018-prize-defer";
 import { playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { parseMoneyInput, wireMoneyBidInput } from "./money_input.js";
 import { renderHonoursHtml } from "./player_career_medals.js";
@@ -395,7 +395,6 @@ async function renderPrizeOptionsPanel() {
   setPrizeStatus("");
 
   const pid = state.prize_player_id || state.known_player_id;
-  const keepPrepDone = Boolean(state.winner_keep_prep_done);
   const [space, player, listing, squadForPrep] = await Promise.all([
     fetchPrizeSquadSpace(supabase, auctionId, myClub),
     fetchPrizePlayerBrief(supabase, pid),
@@ -404,21 +403,22 @@ async function renderPrizeOptionsPanel() {
   ]);
 
   const listed = Boolean(listing);
-  const canKeep = winnerCanKeepPrize(space.total);
+  const prizeSigned = Boolean(space.prize_signed);
+  const canKeep = winnerCanKeepPrize(space);
   const mv = Number(player?.market_value) || 0;
   const releaseCredit = Math.round(mv);
 
   if (intro) {
-    if (keepPrepDone) {
-      intro.textContent = canKeep
-        ? "You released a squad player to make room. Confirm Keep player to finish — the cash option is no longer available."
-        : "You released a squad player but are still over the limit. Release another squad player at MV, then Keep.";
-    } else if (listed) {
+    if (listed) {
       intro.textContent =
         "Prize is still listed on the transfer market from the old options. Wait for the sale, or take cash at MV (cancels the listing).";
+    } else if (canKeep) {
+      intro.textContent = prizeSigned
+        ? "Confirm Keep — the prize is already in your squad and you have room."
+        : "Choose: Sign the player into your squad, or turn him down and take his market value in cash. He is not signed until you choose Sign.";
     } else {
       intro.textContent =
-        "Choose: Keep the player (needs room — leading auction bids count), release a squad player at MV to make room then Keep, or turn the player down and take his market value in cash.";
+        "Squad is full. Sign the prize only by releasing a current squad player at MV (one step), or take cash — the prize stays unsigned.";
     }
   }
 
@@ -459,25 +459,27 @@ async function renderPrizeOptionsPanel() {
   }
 
   if (squadEl) {
-    const overBy = Math.max(space.total - space.max, 0);
+    const slotsNeeded = Number(space.slots_needed) || (prizeSigned ? 0 : 1);
+    const overBy = Math.max(space.total + slotsNeeded - space.max, 0);
     squadEl.textContent = canKeep
-      ? `${prizeSquadSpaceText(space)} — room to keep.`
-      : `${prizeSquadSpaceText(space)} — over by ${overBy}. Release ${overBy} squad player${overBy === 1 ? "" : "s"} at MV to keep${keepPrepDone ? "" : ", or take the cash"}.`;
+      ? `${prizeSquadSpaceText(space)} — room to sign.`
+      : `${prizeSquadSpaceText(space)} — need ${overBy} release${overBy === 1 ? "" : "s"} at MV to sign, or take the cash.`;
   }
 
   if (keepBtn) {
-    keepBtn.style.display = listed ? "none" : "inline-block";
+    keepBtn.style.display = listed || !canKeep ? "none" : "inline-block";
     keepBtn.disabled = !canKeep;
+    keepBtn.textContent = prizeSigned ? "Keep player" : "Sign player";
   }
   if (releaseBtn) {
-    releaseBtn.style.display = keepPrepDone ? "none" : "inline-block";
+    releaseBtn.style.display = "inline-block";
     releaseBtn.disabled = false;
     releaseBtn.textContent = listed
       ? `Cancel listing & take cash (${formatMoney(releaseCredit)})`
       : `Take cash (MV ${formatMoney(releaseCredit)})`;
   }
 
-  const showKeepPrep = !listed && !canKeep;
+  const showKeepPrep = !listed && !canKeep && !prizeSigned;
   if (keepPrep) keepPrep.hidden = !showKeepPrep;
   if (showKeepPrep && keepPrepSelect) {
     const opts = (squadForPrep || [])
@@ -506,7 +508,7 @@ async function runPrizeAction(action) {
 
   let result;
   if (action === "keep") {
-    if (!confirm("Keep this prize player in your squad and close prize options?")) {
+    if (!confirm("Sign this prize player into your squad and close prize options?")) {
       setPrizeStatus("");
       await renderPrizeOptionsPanel();
       return;
@@ -518,7 +520,7 @@ async function runPrizeAction(action) {
     const credit = Math.round(Number(player?.market_value) || 0);
     if (
       !confirm(
-        `Turn down ${player?.Name || "the prize player"} and take ${formatMoney(credit)} cash (his market value)?\n\nHe becomes a free agent. This does not use a voluntary contract release.`
+        `Turn down ${player?.Name || "the prize player"} and take ${formatMoney(credit)} cash (his market value)?\n\nHe is NOT signed to your club. This does not use a voluntary contract release.`
       )
     ) {
       setPrizeStatus("");
@@ -537,7 +539,7 @@ async function runPrizeAction(action) {
     const pickLabel = sel?.selectedOptions?.[0]?.textContent || "this player";
     if (
       !confirm(
-        `Release ${pickLabel} at market value to make room for the prize?\n\nAfter this, the cash option is gone — you keep the prize. Does not use voluntary release quota.`
+        `Release ${pickLabel} at market value AND sign the prize player?\n\nThis completes the prize claim. Does not use voluntary release quota.`
       )
     ) {
       setPrizeStatus("");
@@ -557,10 +559,14 @@ async function runPrizeAction(action) {
   }
 
   if (action === "keep_prep") {
+    if (state && result?.data?.resolved) {
+      state.winner_prize_pending = false;
+      state.winner_prize_resolved = true;
+    }
     setPrizeStatus(
-      result?.data?.can_keep === false
-        ? `✅ Released ${result?.data?.player_name || "squad player"} — still over the limit, release another.`
-        : `✅ Released ${result?.data?.player_name || "squad player"} — now use Keep player.`,
+      result?.data?.resolved
+        ? `✅ Signed prize — released ${result?.data?.player_name || "squad player"} for ${formatMoney(result?.data?.market_value)}. Options closed.`
+        : `✅ Released ${result?.data?.player_name || "squad player"}.`,
       false
     );
   } else {
@@ -571,8 +577,8 @@ async function runPrizeAction(action) {
     }
     setPrizeStatus(
       action === "release"
-        ? `✅ Took cash ${formatMoney(result?.data?.credit)} — prize closed.`
-        : "✅ Prize kept — options closed.",
+        ? `✅ Took cash ${formatMoney(result?.data?.credit)} — prize not signed. Options closed.`
+        : "✅ Prize signed — options closed.",
       false
     );
   }

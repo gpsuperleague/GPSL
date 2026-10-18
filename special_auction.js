@@ -831,39 +831,79 @@ export async function fetchPrizeActiveListing(supabase, playerId, clubShort) {
   return data;
 }
 
-/** Winner can keep only when contracted squad (incl. prize) + leading auction bids ≤ 28. */
-export function winnerCanKeepPrize(squadTotal) {
-  return Number(squadTotal) <= SPECIAL_AUCTION_SQUAD_MAX;
+/**
+ * Winner can sign/keep when RPC says can_keep, or fallback:
+ * unsigned prize needs total + 1 ≤ 28; already-signed prize needs total ≤ 28.
+ */
+export function winnerCanKeepPrize(spaceOrTotal, prizeSigned = false) {
+  if (spaceOrTotal && typeof spaceOrTotal === "object") {
+    if (typeof spaceOrTotal.can_keep === "boolean") return spaceOrTotal.can_keep;
+    const total = Number(spaceOrTotal.total) || 0;
+    const max = Number(spaceOrTotal.max) || SPECIAL_AUCTION_SQUAD_MAX;
+    const signed = Boolean(spaceOrTotal.prize_signed ?? prizeSigned);
+    return signed ? total <= max : total + 1 <= max;
+  }
+  const total = Number(spaceOrTotal) || 0;
+  return prizeSigned
+    ? total <= SPECIAL_AUCTION_SQUAD_MAX
+    : total + 1 <= SPECIAL_AUCTION_SQUAD_MAX;
 }
 
 /**
- * Squad room for the prize winner: contracted (incl. prize) + leading auction bids.
- * Falls back to contracted-only if the RPC is not deployed yet.
- * @returns {Promise<{ squad: number, pending: number, total: number, max: number, cashValue: number }>}
+ * Squad room for the prize winner. Prize is NOT auto-signed at settle.
+ * @returns {Promise<{ squad: number, pending: number, total: number, max: number, cashValue: number, prize_signed: boolean, can_keep: boolean, slots_needed: number }>}
  */
 export async function fetchPrizeSquadSpace(supabase, auctionId, clubShort) {
   const { data, error } = await supabase.rpc("special_auction_winner_prize_space", {
     p_auction_id: auctionId,
   });
   if (!error && data) {
+    const squad = Number(data.squad) || 0;
+    const pending = Number(data.pending) || 0;
+    const total = Number(data.total) || 0;
+    const max = Number(data.max) || SPECIAL_AUCTION_SQUAD_MAX;
+    const prize_signed = Boolean(data.prize_signed);
+    const slots_needed =
+      data.slots_needed != null ? Number(data.slots_needed) : prize_signed ? 0 : 1;
+    const can_keep =
+      typeof data.can_keep === "boolean"
+        ? data.can_keep
+        : total + slots_needed <= max;
     return {
-      squad: Number(data.squad) || 0,
-      pending: Number(data.pending) || 0,
-      total: Number(data.total) || 0,
-      max: Number(data.max) || SPECIAL_AUCTION_SQUAD_MAX,
+      squad,
+      pending,
+      total,
+      max,
       cashValue: Number(data.cash_value) || 0,
+      prize_signed,
+      slots_needed,
+      can_keep,
     };
   }
   if (error) console.warn("special_auction_winner_prize_space:", error);
   const squad = await fetchClubSquadSize(supabase, clubShort);
-  return { squad, pending: 0, total: squad, max: SPECIAL_AUCTION_SQUAD_MAX, cashValue: 0 };
+  return {
+    squad,
+    pending: 0,
+    total: squad,
+    max: SPECIAL_AUCTION_SQUAD_MAX,
+    cashValue: 0,
+    prize_signed: false,
+    slots_needed: 1,
+    can_keep: squad + 1 <= SPECIAL_AUCTION_SQUAD_MAX,
+  };
 }
 
 export function prizeSquadSpaceText(space) {
   const pendingPart = space.pending
     ? ` + ${space.pending} leading auction bid${space.pending === 1 ? "" : "s"}`
     : "";
-  return `Squad: ${space.squad} contracted (incl. prize)${pendingPart} = ${space.total} / ${space.max}`;
+  const prizePart = space.prize_signed
+    ? " (incl. prize)"
+    : space.slots_needed
+      ? " (prize not signed yet)"
+      : "";
+  return `Squad: ${space.squad} contracted${prizePart}${pendingPart} = ${space.total} / ${space.max}`;
 }
 
 export async function winnerKeepPrize(supabase, auctionId) {

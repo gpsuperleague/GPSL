@@ -447,18 +447,19 @@
         <div id="prizeOptionsPlayer"></div>
         <p id="prizeOptionsSquad" class="secret-note"></p>
         <div class="prize-options-actions">
-          <button type="button" id="prizeKeepBtn" class="button">Keep player</button>
+          <button type="button" id="prizeKeepBtn" class="button">Sign player</button>
           <button type="button" id="prizeReleaseBtn" class="button secondary">Take cash (MV)</button>
         </div>
         <div id="prizeKeepPrep" class="prize-keep-prep" style="display:none;margin-top:12px;">
           <p class="secret-note" style="margin:0 0 8px;">
-            No room? Release a current squad player at market value (not a voluntary
-            release) to make space. After that, cash is no longer available — only Keep.
+            Squad is full (28). To sign the prize, pick a current squad player to release
+            at market value (not a voluntary release). That signs the prize in one step.
+            Or take cash instead — the prize is never force-signed.
           </p>
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
             <select id="prizeKeepPrepSelect" style="min-width:220px;max-width:100%;padding:6px 8px;"></select>
             <button type="button" id="prizeKeepPrepBtn" class="button secondary">
-              Release squad player (MV)
+              Sign prize &amp; release selected (MV)
             </button>
           </div>
         </div>
@@ -553,7 +554,7 @@
       fetchSquadPlayersForPrizeKeepPrep,
       fetchPrizeSquadSpace,
       prizeSquadSpaceText,
-    } from "./special_auction.js?v=20261014-snap-hide";
+    } from "./special_auction.js?v=20261018-prize-defer";
     import {
       playerThumbLinkHtml,
       playerNameLinkHtml,
@@ -1260,7 +1261,6 @@
       setPrizeStatus("");
 
       const pid = auction.prize_player_id || auction.known_player_id;
-      const keepPrepDone = Boolean(auction.winner_keep_prep_done);
       const [space, player, listing, squadForPrep] = await Promise.all([
         fetchPrizeSquadSpace(supabase, auction.id, clubShort),
         fetchPrizePlayerBrief(supabase, pid),
@@ -1269,20 +1269,21 @@
       ]);
 
       const listed = Boolean(listing);
-      const canKeep = winnerCanKeepPrize(space.total);
+      const prizeSigned = Boolean(space.prize_signed);
+      const canKeep = winnerCanKeepPrize(space);
       const mv = Number(player?.market_value) || 0;
       const releaseCredit = Math.round(mv);
 
-      if (keepPrepDone) {
-        els.prizeOptionsIntro.textContent = canKeep
-          ? "You released a squad player to make room. Confirm Keep player to finish — the cash option is no longer available."
-          : "You released a squad player but are still over the limit. Release another squad player at MV, then Keep.";
-      } else if (listed) {
+      if (listed) {
         els.prizeOptionsIntro.textContent =
           "Prize is still listed on the transfer market from the old options. Wait for the sale, or take cash at MV (cancels the listing).";
+      } else if (canKeep) {
+        els.prizeOptionsIntro.textContent = prizeSigned
+          ? "Confirm Keep — the prize is already in your squad and you have room."
+          : "Choose: Sign the player into your squad, or turn him down and take his market value in cash. He is not signed until you choose Sign.";
       } else {
         els.prizeOptionsIntro.textContent =
-          "Choose: Keep the player (needs room — leading auction bids count), release a squad player at MV to make room then Keep, or turn the player down and take his market value in cash.";
+          "Squad is full. Sign the prize only by releasing a current squad player at MV (one step), or take cash — the prize stays unsigned and you are not forced to drop anyone.";
       }
 
       if (player) {
@@ -1319,27 +1320,31 @@
           : `<p class="secret-note">Prize player details unavailable.</p>`;
       }
 
-      const overBy = Math.max(space.total - space.max, 0);
+      const slotsNeeded = Number(space.slots_needed) || (prizeSigned ? 0 : 1);
+      const overBy = Math.max(space.total + slotsNeeded - space.max, 0);
       els.prizeOptionsSquad.textContent = canKeep
-        ? `${prizeSquadSpaceText(space)} — room to keep.`
-        : `${prizeSquadSpaceText(space)} — over by ${overBy}. Release ${overBy} squad player${overBy === 1 ? "" : "s"} at MV to keep${keepPrepDone ? "" : ", or take the cash"}.`;
+        ? `${prizeSquadSpaceText(space)} — room to sign.`
+        : `${prizeSquadSpaceText(space)} — need ${overBy} release${overBy === 1 ? "" : "s"} at MV to sign, or take the cash.`;
 
       if (els.prizeKeepBtn) {
-        els.prizeKeepBtn.style.display = listed ? "none" : "inline-block";
+        els.prizeKeepBtn.style.display = listed || !canKeep ? "none" : "inline-block";
         els.prizeKeepBtn.disabled = !canKeep;
+        els.prizeKeepBtn.textContent = prizeSigned ? "Keep player" : "Sign player";
         els.prizeKeepBtn.title = canKeep
-          ? "Confirm you are keeping this player in your squad"
-          : "No room — release a squad player at MV first, or take the cash";
+          ? prizeSigned
+            ? "Confirm you are keeping this player in your squad"
+            : "Sign this prize into your squad"
+          : "No room — use Sign & release, or take the cash";
       }
       if (els.prizeReleaseBtn) {
-        els.prizeReleaseBtn.style.display = keepPrepDone ? "none" : "inline-block";
+        els.prizeReleaseBtn.style.display = "inline-block";
         els.prizeReleaseBtn.disabled = false;
         els.prizeReleaseBtn.textContent = listed
           ? `Cancel listing & take cash (${formatMoney(releaseCredit)})`
           : `Take cash (MV ${formatMoney(releaseCredit)})`;
       }
 
-      const showKeepPrep = !listed && !canKeep;
+      const showKeepPrep = !listed && !canKeep && !prizeSigned;
       if (els.prizeKeepPrep) {
         els.prizeKeepPrep.style.display = showKeepPrep ? "block" : "none";
       }
@@ -1375,7 +1380,7 @@
       if (action === "keep") {
         if (
           !confirm(
-            "Keep this prize player in your squad and close prize options?"
+            "Sign this prize player into your squad and close prize options?"
           )
         ) {
           setPrizeStatus("");
@@ -1389,7 +1394,7 @@
         const credit = Math.round(Number(player?.market_value) || 0);
         if (
           !confirm(
-            `Turn down ${player?.Name || "the prize player"} and take ${formatMoney(credit)} cash (his market value)?\n\nHe becomes a free agent. This does not use a voluntary contract release.`
+            `Turn down ${player?.Name || "the prize player"} and take ${formatMoney(credit)} cash (his market value)?\n\nHe is NOT signed to your club. This does not use a voluntary contract release.`
           )
         ) {
           setPrizeStatus("");
@@ -1409,7 +1414,7 @@
           "this player";
         if (
           !confirm(
-            `Release ${pickLabel} at market value to make room for the prize?\n\nAfter this, the cash option is gone — you keep the prize. Does not use voluntary release quota.`
+            `Release ${pickLabel} at market value AND sign the prize player?\n\nThis completes the prize claim. Does not use voluntary release quota.`
           )
         ) {
           setPrizeStatus("");
@@ -1437,20 +1442,20 @@
       }
 
       if (action === "keep_prep") {
-        setPrizeStatus(
-          data?.can_keep === false
-            ? `Released ${data?.player_name || "squad player"} for ${formatMoney(data?.market_value)} — still over the limit, release another.`
-            : `Released ${data?.player_name || "squad player"} for ${formatMoney(data?.market_value)} — now use Keep player.`
-        );
+        const doneMsg = data?.resolved
+          ? `Signed prize — released ${data?.player_name || "squad player"} for ${formatMoney(data?.market_value)}. Options closed.`
+          : `Released ${data?.player_name || "squad player"} for ${formatMoney(data?.market_value)}.`;
+        setPrizeStatus(doneMsg);
+        alert(doneMsg);
         auction = await refreshAuctionRecord(supabase, auction);
-        await renderPrizeOptionsPanel();
+        await refreshData({ quiet: true });
         return;
       }
 
       const doneMsg =
         action === "keep"
-          ? "Prize kept — options closed."
-          : `Took ${formatMoney(data?.credit)} cash — options closed.`;
+          ? "Prize signed — options closed."
+          : `Took ${formatMoney(data?.credit)} cash — prize not signed. Options closed.`;
       setPrizeStatus(doneMsg);
       alert(doneMsg);
       auction = await refreshAuctionRecord(supabase, auction);

@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261016-owner-wallets";
+export const APP_VERSION = "20261018-prize-defer";

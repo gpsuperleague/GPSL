@@ -313,23 +313,24 @@
     <div class="panel" id="prizeOptionsPanel" hidden>
       <h2>Your prize options</h2>
       <p class="meta" id="prizeOptionsIntro">
-        Choose what to do with your prize player. Keep needs room in your 28 (leading auction bids count).
+        Choose what to do with your prize player. He is not signed until you pick Sign
+        (or Sign &amp; release). Take cash never signs him.
       </p>
       <div id="prizeOptionsPlayer"></div>
       <p class="meta" id="prizeOptionsSquad"></p>
       <div class="prize-options-actions">
-        <button type="button" class="button" id="prizeKeepBtn">Keep player</button>
+        <button type="button" class="button" id="prizeKeepBtn">Sign player</button>
         <button type="button" class="button secondary" id="prizeReleaseBtn">Take cash (MV)</button>
       </div>
       <div id="prizeKeepPrep" class="prize-keep-prep" hidden style="margin-top:12px;">
         <p class="meta" style="margin:0 0 8px;">
-          No room? Release a current squad player at market value (not a voluntary
-          release) to make space. After that, cash is no longer available — only Keep.
+          Squad is full (28). Pick a squad player to release at market value, then the
+          prize is signed in one step. Or take cash — the prize stays unsigned.
         </p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
           <select id="prizeKeepPrepSelect" style="min-width:220px;max-width:100%;padding:6px 8px;"></select>
           <button type="button" class="button secondary" id="prizeKeepPrepBtn">
-            Release squad player (MV)
+            Sign prize &amp; release selected (MV)
           </button>
         </div>
       </div>
