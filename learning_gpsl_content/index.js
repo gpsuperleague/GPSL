@@ -9,7 +9,7 @@ import {
   SECTION_MY_CLUB,
   SECTION_FINANCES,
   SECTION_EXPECTATIONS,
-} from "./club_pages.js?v=20261015-projected";
+} from "./club_pages.js?v=20261018-syntax";
 import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261014-half-windows";
 import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js";
 import {

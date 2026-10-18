@@ -270,7 +270,8 @@
 </head>
 <body>
   <div id="nav"></div>
-  <h1 class="gpsl-has-tip" data-gpsl-tip="Contested final-year players only. Bids open in the final half-season (from GPSL January for summer contracts). Place one hidden wage bid per player — locked once submitted. Highest wage wins a new 3-season deal when the contract ends; ties favour the holding club." tabindex="0">Expiring Contracts</h1>
+  <h1 class="gpsl-has-tip" data-gpsl-tip="Contested final-year players. August–December: make a transfer offer (fee). January–May: wage contract offers only. Playoffs: only the holding club can offer a new contract; rivals are locked out. Highest wage wins at contract end; ties favour the holder." tabindex="0">Expiring Contracts</h1>
+  <p id="phaseBanner" class="meta" style="color:#fc6;margin:-4px 0 14px;font-size:13px;"></p>
 
   <div class="info-box" id="expiringRules" aria-label="Expiring contract rules">
     <!-- Filled by expiring_contracts_rules.js -->
@@ -353,7 +354,8 @@
             <th>Holding club</th>
             <th class="gpsl-has-tip" style="color:#ffcc66;" data-gpsl-tip="Holding club’s division. Championship clubs taking a Super League player also pay a signing-on fee % of MV to the player at rollover." tabindex="0">League</th>
             <th class="gpsl-has-tip" data-gpsl-tip="Player’s current seasonal contract wage. Bids must clear the minimum uplift above this." tabindex="0">Current wage</th>
-            <th class="gpsl-has-tip" data-gpsl-tip="Your locked wage offer for this player (hidden from rivals until rollover). Cannot be changed after submit." tabindex="0">Your bid</th>
+            <th class="gpsl-has-tip" data-gpsl-tip="Your locked wage offer (Jan–May / Playoff owner). Hidden from rivals until rollover or a Playoff agent bribe." tabindex="0">Your bid</th>
+            <th class="gpsl-has-tip" data-gpsl-tip="Clubs that have made a wage contract offer (names only). Holding club sees this. In Playoffs you can bribe the agent (₿50,000 owner wealth) to reveal amounts — 5% chance of a leak story." tabindex="0">Interest</th>
             <th></th>
           </tr>
         </thead>
@@ -382,6 +384,26 @@
     </div>
   </div>
 
-  <script type="module" src="expiring_contracts.js?v=20261014-half-windows"></script>
+  <div id="transferOfferModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1200;align-items:center;justify-content:center;">
+    <div class="modal-inner" style="max-width:420px;width:92%;background:#1a1a1a;border:1px solid #444;border-radius:8px;padding:18px;">
+      <h3 id="transferOfferTitle" style="color:#ff9900;margin-top:0;">Make transfer offer</h3>
+      <p id="transferOfferHint" class="bid-modal-hint" style="color:#aaa;font-size:13px;"></p>
+      <label>Offer amount (₿)</label>
+      <input type="text" id="transferOfferAmount" inputmode="numeric" style="width:100%;box-sizing:border-box;padding:8px;margin:6px 0 10px;background:#111;border:1px solid #444;color:#ddd;border-radius:4px;">
+      <div class="bid-step-row" id="transferOfferStepRow" aria-label="Adjust transfer offer">
+        <button type="button" class="bid-step-btn" data-delta="-5000000">−5m</button>
+        <button type="button" class="bid-step-btn" data-delta="-1000000">−1m</button>
+        <button type="button" class="bid-step-btn" data-delta="-500000">−500k</button>
+        <button type="button" class="bid-step-btn" data-delta="500000">+500k</button>
+        <button type="button" class="bid-step-btn" data-delta="1000000">+1m</button>
+        <button type="button" class="bid-step-btn" data-delta="5000000">+5m</button>
+      </div>
+      <p id="transferOfferError" style="color:#f66;font-size:12px;"></p>
+      <button type="button" id="transferOfferSubmitBtn" class="button">Submit Offer for Review</button>
+      <button type="button" id="transferOfferCancelBtn" class="button" style="background:#444;margin-left:8px;">Cancel</button>
+    </div>
+  </div>
+
+  <script type="module" src="expiring_contracts.js?v=20261018-season-phases"></script>
 </body>
 </html>

@@ -6,11 +6,16 @@ import {
   expiryWageMinUpliftPct,
   minExpiryWageOffer,
 } from "./wages.js?v=20260805-nbsp";
-import { renderExpiringContractRules, CHAMP_SL_SIGNING_FEE_PCT } from "./expiring_contracts_rules.js?v=20261014-half-windows";
+import { renderExpiringContractRules, CHAMP_SL_SIGNING_FEE_PCT } from "./expiring_contracts_rules.js?v=20261018-season-phases";
 import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260811-step-pairs";
 import { textMatchesSearch } from "./search_normalize.js";
 import { leagueBadgeHtml } from "./competition.js";
 import { installRangeSteppers } from "./range_filter_steppers.js?v=20260811-step-pairs";
+import { loadCalendarStatus } from "./competition_calendar.js";
+import {
+  isPendingContractedDirectOffer,
+  getBidPlayerId,
+} from "./direct_offers.js";
 
 const POSITION_ORDER = [
   "GK",
@@ -57,6 +62,50 @@ let myViewerTier = null;
 let marketRows = [];
 let bidTarget = null;
 let bidMinOffer = 0;
+/** @type {'transfer'|'wage'|'playoff'|'other'} */
+let marketPhase = "other";
+let transferTarget = null;
+let transferMinOffer = 0;
+/** @type {Set<string>} */
+let pendingDirectOfferPlayers = new Set();
+
+function phaseFromCalendarMonth(month) {
+  const m = String(month || "").toLowerCase();
+  if (["august", "september", "october", "november", "december"].includes(m)) {
+    return "transfer";
+  }
+  if (["january", "february", "march", "april", "may"].includes(m)) {
+    return "wage";
+  }
+  if (m === "playoffs" || m === "playoff") return "playoff";
+  return "other";
+}
+
+function phaseBannerText(phase) {
+  if (phase === "transfer") {
+    return "August–December: Make a transfer offer (fee) to the holding club. Wage contract offers open from GPSL January.";
+  }
+  if (phase === "wage") {
+    return "January–May: Wage contract offers only. Place one locked hidden wage bid per player.";
+  }
+  if (phase === "playoff") {
+    return "Playoffs: Only the holding club can make a contract offer. Rivals are locked out. Holding clubs can bribe the agent (₿50,000 owner wealth) to reveal rival offer amounts (5% leak chance).";
+  }
+  return "Expiring-contract actions are closed this GPSL month.";
+}
+
+function updatePhaseBanner() {
+  const el = document.getElementById("phaseBanner");
+  if (el) el.textContent = phaseBannerText(marketPhase);
+}
+
+function isHoldingClub(row) {
+  if (!myClubShort || !row?.holding_club) return false;
+  return (
+    String(row.holding_club).trim().toUpperCase() ===
+    String(myClubShort).trim().toUpperCase()
+  );
+}
 
 const multiFilters = createDraftAdvancedFilterController({
   rootId: "expiryMultiFilters",
@@ -100,8 +149,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   myClubShort = club?.ShortName ?? null;
   myViewerTier = await loadMyViewerTier(myClubShort);
 
+  const cal = await loadCalendarStatus(supabase);
+  marketPhase = phaseFromCalendarMonth(cal?.active_gpsl_month);
+  updatePhaseBanner();
+
   wireBidModal();
+  wireTransferOfferModal();
   wireFilters();
+  await loadPendingDirectOffers();
   await loadMarket();
 
   // Prefer tier from market RPC if present
@@ -469,26 +524,102 @@ function formatMv(value) {
   return `<span class="money">₿\u00a0${n.toLocaleString("en-GB")}</span>`;
 }
 
+function actionCellHtml(row) {
+  const phase = row.market_phase || marketPhase;
+  const pid = String(row.player_id);
+  const isMine = isHoldingClub(row);
+  const pendingOffer = pendingDirectOfferPlayers.has(pid);
+
+  if (phase === "transfer") {
+    if (isMine) {
+      return `<span class="muted" title="Your player">Your player</span>`;
+    }
+    if (pendingOffer) {
+      return `<span class="my-bid" title="Direct offer under review">Offer pending</span>`;
+    }
+    return `<button type="button" class="transfer-btn button" data-player-id="${pid}">Make transfer offer</button>`;
+  }
+
+  if (phase === "wage" || phase === "playoff") {
+    if (row.my_wage_bid != null) {
+      return `<span class="my-bid" title="Wage bid locked — cannot be changed">Locked</span>`;
+    }
+    if (phase === "playoff" && !isMine) {
+      return `<span class="muted" title="Playoffs: only the holding club can offer">Playoff lock</span>`;
+    }
+    if (row.bidding_open === false && phase !== "playoff") {
+      return `<span class="muted" title="Wage bids open GPSL January–May">Closed</span>`;
+    }
+    if (phase === "playoff" && isMine) {
+      return `<button type="button" class="bid-btn" data-player-id="${pid}">Contract offer</button>`;
+    }
+    if (row.bidding_open !== false) {
+      return `<button type="button" class="bid-btn" data-player-id="${pid}">Place bid</button>`;
+    }
+    return `<span class="muted">Closed</span>`;
+  }
+
+  return `<span class="muted">Closed</span>`;
+}
+
+function interestCellHtml(row) {
+  const isMine = isHoldingClub(row);
+  if (!isMine) return "—";
+
+  const revealed = Array.isArray(row.revealed_offers) ? row.revealed_offers : null;
+  if (revealed?.length) {
+    return revealed
+      .map(
+        (o) =>
+          `${escapeHtml(displayClubName(o.club_short_name))} ${formatWage(o.wage_offer)}`
+      )
+      .join("<br>");
+  }
+
+  const clubs = Array.isArray(row.interested_clubs) ? row.interested_clubs : [];
+  const names = clubs
+    .map((c) => displayClubName(c.club_short_name || c))
+    .filter(Boolean);
+  const phase = row.market_phase || marketPhase;
+  let html = names.length
+    ? escapeHtml(names.join(", "))
+    : `<span class="muted">None yet</span>`;
+
+  if (phase === "playoff") {
+    if (row.bribe_used) {
+      html += `<div class="muted" style="margin-top:4px;">Offers revealed</div>`;
+    } else {
+      html += `<div style="margin-top:6px;"><button type="button" class="bribe-btn button secondary" data-player-id="${row.player_id}" style="font-size:11px;padding:4px 8px;">Bribe agent (₿50,000)</button></div>`;
+    }
+  }
+  return html;
+}
+
 function renderMarket() {
   const status = document.getElementById("marketStatus");
   const tbody = document.getElementById("marketBody");
   const rows = filteredRows();
 
+  if (marketRows[0]?.market_phase) {
+    marketPhase = marketRows[0].market_phase;
+    updatePhaseBanner();
+  }
+
   if (!marketRows.length) {
     status.textContent =
       "No players on the expiring-contract market right now (final-year standard players only).";
-    tbody.innerHTML = '<tr><td colspan="12">—</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13">—</td></tr>';
     return;
   }
 
-  const bidRule = `hidden bids, open in the final half of the contract (from GPSL January for summer contracts) and resolved when the contract ends (min +${expiryWageMinUpliftPct()}% wage).`;
+  const phaseNote = phaseBannerText(marketPhase);
   status.textContent =
     rows.length === marketRows.length
-      ? `${marketRows.length} player(s) — ${bidRule}`
-      : `Showing ${rows.length} of ${marketRows.length} — ${bidRule}`;
+      ? `${marketRows.length} player(s). ${phaseNote}`
+      : `Showing ${rows.length} of ${marketRows.length}. ${phaseNote}`;
 
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="12">No players match these filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13">No players match these filters.</td></tr>';
     return;
   }
 
@@ -511,20 +642,11 @@ function renderMarket() {
         row.holding_division || row.holding_league,
         { size: "xs" }
       );
-      const biddingOpen = row.bidding_open !== false;
       const endsJan =
         String(row.contract_end_window || "").toLowerCase() === "january";
       const endBadge = endsJan
         ? ` <span class="fee-badge" title="January contract — bids resolve when GPSL January unlocks">Ends Jan</span>`
         : "";
-      let bidCell;
-      if (row.my_wage_bid != null) {
-        bidCell = `<span class="my-bid" title="Wage bid locked — cannot be changed">Locked</span>`;
-      } else if (!biddingOpen) {
-        bidCell = `<span class="muted" title="Bids open for the final half of the contract (GPSL January for summer contracts)">Opens GPSL January</span>`;
-      } else {
-        bidCell = `<button type="button" class="bid-btn" data-player-id="${row.player_id}">Place bid</button>`;
-      }
       return `
         <tr data-player-id="${row.player_id}">
           <td class="name-cell">${escapeHtml(row.player_name)}${endBadge}</td>
@@ -538,7 +660,8 @@ function renderMarket() {
           <td class="league-cell">${leagueBadge}${escapeHtml(league)}${feeBadge}</td>
           <td class="wage-cell">${formatWage(row.current_wage)}</td>
           <td class="wage-cell">${myBid}</td>
-          <td>${bidCell}</td>
+          <td class="interest-cell" style="font-size:12px;max-width:12rem;">${interestCellHtml(row)}</td>
+          <td>${actionCellHtml(row)}</td>
         </tr>
       `;
     })
@@ -549,6 +672,19 @@ function renderMarket() {
       const id = btn.dataset.playerId;
       const row = marketRows.find((r) => String(r.player_id) === String(id));
       if (row) openBidModal(row);
+    });
+  });
+  tbody.querySelectorAll(".transfer-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.playerId;
+      const row = marketRows.find((r) => String(r.player_id) === String(id));
+      if (row) openTransferOfferModal(row);
+    });
+  });
+  tbody.querySelectorAll(".bribe-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.playerId;
+      void submitAgentBribe(id);
     });
   });
 }
