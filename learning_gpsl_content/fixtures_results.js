@@ -48,7 +48,7 @@ export const SECTION_MATCHDAY_CHECKLIST = {
         {
           html: `<b>Home club</b>`,
           children: [
-            `Proposes in GPSL at least <b>1 GPSL month before</b> the fixture (the propose-by date is on the schedule page and dashboard checklist; the last 48 hours before it carry a ₿2.5m late fee)`,
+            `Proposes in GPSL at least <b>1 GPSL month before</b> the fixture (the propose-by date is on the schedule page and dashboard checklist; the last 48 hours before it carry a ₿1m late fee)`,
             `Responds to counters from the opponent`,
           ],
         },
@@ -197,8 +197,8 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "p",
       html: `Before you can play a <b>league or cup</b> game, you and your opponent must
-        <b>agree a kick-off on the site</b> (Discord chat is fine for talking — the time still needs
-        to be set here). Same rules for all cups.`,
+        <b>agree a kick-off on the site</b> (Discord chat is fine for talking — then lock the time here with
+        <b>We agreed on Discord — lock this kick-off</b>). Same rules for all cups.`,
     },
     {
       type: "links",
@@ -253,8 +253,8 @@ export const SECTION_MATCH_SCHEDULING = {
         `<b>Home proposes first</b> — pick a slot from <em>your</em> availability (opponent does not need theirs set yet).`,
         `Away gets an <a href="inbox.html">Inbox</a> message — <b>Accept</b> or <b>counter</b> with their own slot.`,
         `You can’t double-book a 30-minute slot already agreed or pending for either club.`,
-        `After a couple of proposals each way, the site may suggest finishing the chat on <b>Discord</b>, then locking the slot on the schedule page.`,
-        `<b>Reply on time.</b> While you are negotiating, each turn has a deadline (often 24 hours — see the schedule page / Inbox). Money is not taken the moment you go overdue; it is assessed when the <b>GPSL month locks</b>.`,
+        `You can agree on <b>Discord</b> anytime — then use <b>We agreed on Discord — lock this kick-off</b> on the schedule page so both clubs confirm (reply clocks keep running until locked).`,
+        `<b>Reply on time.</b> While you are negotiating, each turn has a deadline (often 24 hours — see the schedule page / Inbox). First overdue month lock is a <b>warning only</b>; later locks while still overdue charge a fine.`,
       ],
     },
 
@@ -266,7 +266,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `Both owners open the <b>schedule page</b> and <b>Check in</b> — from 10 minutes before kick-off until 10 minutes after.`,
         `When both have checked in, Match Day unlocks for a <b>30-minute</b> play window.`,
         `<b>Both miss check-in</b> — no fine. Pick a new time on the schedule page and try again.`,
-        `<b>Only one checks in</b> — recorded as a no-show, but <b>not</b> an instant 3–0. If you still play and confirm a normal result, you are fine. If the next month lock arrives and the match is still unfinished, the no-show club gets <b>3–0 + ₿5m</b> (same rule for catch-up games arranged later).`,
+        `<b>Only one checks in</b> — recorded as a no-show (both clubs get an Inbox warning), but <b>not</b> an instant 3–0. If you still play and confirm a normal result, you are fine. If the next month lock arrives and the match is still unfinished, the no-show club gets <b>3–0 + ₿2.5m</b> (same rule for catch-up games arranged later).`,
         `<b>Voluntary drop</b> (≥24h before KO) — 1 per GPSL month; back to arranging. Not on catch-up.`,
         `<b>Emergency drop</b> (&lt;24h before KO) — 2 per season; if none left → 3–0 + fine. Not on catch-up.`,
         `<b>Mutual override</b> — either club can ask to play now or pick a new time; both must confirm in Inbox (expires in 24 hours).`,
@@ -282,12 +282,12 @@ export const SECTION_MATCH_SCHEDULING = {
       type: "ul",
       items: [
         `<b>Home should propose in the month before</b> the fixture’s play month (e.g. September fixture → propose before August locks). You may propose as early as you like once fixtures exist.`,
-        `<b>Last 48h before the play month opens</b> and home only then proposes → <b>₿2.5m</b> Late Arrangement Fee.`,
-        `<b>No home proposal</b> by that prior lock → <b>₿5m</b> Match Management (repeats each later lock until they propose). Suppressed while home is on a booked holiday.`,
-        `<b>Reply overdue</b> when the month locks → that club is fined <b>₿2.5m</b>. Negotiation <b>continues</b> (not wiped). Still overdue next lock → another ₿2.5m, and so on.`,
+        `<b>Last 48h before the play month opens</b> and home only then proposes → <b>₿1m</b> Late Arrangement Fee.`,
+        `<b>No home proposal</b> by that prior lock → <b>₿2.5m</b> Match Management (repeats each later lock until they propose). Suppressed while home is on a booked holiday.`,
+        `<b>Reply overdue</b> at month lock → <b>warning first</b> (Inbox only). Still overdue at a later lock → <b>₿2.5m</b>. Negotiation <b>continues</b> (not wiped).`,
         `<b>League play window</b>: scheduled month <b>+ 2</b> (August → end of October). <b>Cups</b>: scheduled month <b>+ 1</b> (May cups: no extra month).`,
         `<b>After the window</b>, still unplayed → awarded by activity (negotiation replies, logins, matches played, other scheduling misses, check-ins). True tie → <b>0–0</b>. Vacant club loses 3–0. Holiday covering the scheduled month without playing → that club forfeits.`,
-        `<b>Recorded one-sided no-show</b> and still unfinished → <b>3–0 + ₿5m</b> for the no-show club (unchanged).`,
+        `<b>Recorded one-sided no-show</b> and still unfinished → <b>3–0 + ₿2.5m</b> for the no-show club.`,
       ],
     },
 
@@ -296,8 +296,8 @@ export const SECTION_MATCH_SCHEDULING = {
       type: "ul",
       items: [
         `Shown with a <b>catch-up</b> badge on <a href="fixtures.html">Fixtures</a> / <a href="club_fixtures.html">My club fixtures</a> while still inside the play window.`,
-        `Propose times in the <b>current</b> GPSL month. Reply deadlines still apply; overdue replies fine at month lock, but negotiation keeps going.`,
-        `If you agree a kick-off and one side no-shows, the same <b>3–0 + ₿5m</b> rule applies at the next month lock if you never finish the match.`,
+        `Propose times in the <b>current</b> GPSL month. Reply deadlines still apply; overdue replies warn then fine at later locks, but negotiation keeps going.`,
+        `If you agree a kick-off and one side no-shows, the same <b>3–0 + ₿2.5m</b> rule applies at the next month lock if you never finish the match.`,
         `Voluntary / emergency drops are <b>not</b> available on catch-up — use the schedule page reset for a stale agreed time if needed.`,
       ],
     },
@@ -306,10 +306,10 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `<b>₿5m</b> — home never proposed by the prior-month lock (can repeat each lock until they do).`,
-        `<b>₿2.5m</b> — home first proposed only in the last 48h before the play month opened.`,
-        `<b>₿2.5m</b> — you owed a reply and were overdue when the month locked (negotiation continues).`,
-        `<b>₿5m + 3–0</b> — one-sided no-show, match never finished before month lock.`,
+        `<b>₿2.5m</b> — home never proposed by the prior-month lock (can repeat each lock until they do).`,
+        `<b>₿1m</b> — home first proposed only in the last 48h before the play month opened.`,
+        `<b>Warn → ₿2.5m</b> — you owed a reply and were overdue at lock (first lock warns; later locks fine while still overdue).`,
+        `<b>₿2.5m + 3–0</b> — one-sided no-show, match never finished before month lock.`,
         `<b>₿3m + 3–0</b> — emergency drop with no season allowance left.`,
       ],
     },

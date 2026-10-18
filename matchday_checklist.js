@@ -314,7 +314,7 @@ function renderArrangeBlock(list) {
     <div class="mc-arrange">
       <div class="mc-arrange-head">
         <b>Arrange now — upcoming GPSL months</b>
-        <span>Home proposes a kick-off <b>before</b> that GPSL month starts. Last 48h = ₿2.5m late fee; no proposal by then = ₿5m.</span>
+        <span>Home proposes a kick-off <b>before</b> that GPSL month starts. Last 48h = ₿1m late fee; no proposal by then = ₿2.5m. Discord lock CTA on the schedule page if you already agreed off-site.</span>
       </div>
       <div class="mc-list">${list.map(renderArrangeRow).join("")}</div>
     </div>`;

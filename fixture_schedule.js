@@ -123,6 +123,124 @@ function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, o
   return count;
 }
 
+/** Pending mutual / Discord-lock confirm panel (works before or after agreed). */
+function mutualPendingPanelHtml(mo, homeTz, awayTz) {
+  if (!mo) return "";
+  const fromName = fullClubName(mo.requested_by_club_short_name);
+  const kindLabel =
+    mo.kind === "play_now"
+      ? "play now"
+      : "lock this kick-off";
+  return `
+    <div class="panel mutual-panel">
+      <h2>Mutual confirm pending</h2>
+      <p class="status-pending">
+        <b>${fromName}</b> wants to ${kindLabel}:
+        <span class="kickoff-line">${formatKickoffPair(mo.proposed_kickoff_at, homeTz, awayTz)}</span>
+      </p>
+      <p class="meta">Both clubs must agree. Deadlines keep running until locked.</p>
+      <div class="actions">
+        ${mo.can_confirm ? '<button type="button" id="confirmMutualBtn" class="button">Confirm</button>' : ""}
+        ${mo.my_confirmed && !mo.can_confirm ? '<span class="meta">You confirmed — waiting for opponent.</span>' : ""}
+        ${mo.can_cancel ? '<button type="button" id="cancelMutualBtn" class="button secondary">Cancel request</button>' : ""}
+      </div>
+    </div>
+  `;
+}
+
+function wireMutualPendingButtons() {
+  const confirmMutualBtn = document.getElementById("confirmMutualBtn");
+  if (confirmMutualBtn) {
+    confirmMutualBtn.onclick = async () => {
+      confirmMutualBtn.disabled = true;
+      setStatus("Confirming…");
+      const res = await confirmMutualOverride(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, !res.soft);
+        confirmMutualBtn.disabled = false;
+        if (res.soft) await reload();
+        return;
+      }
+      setStatus(res.applied ? "Kick-off locked." : res.msg || "Confirmed.");
+      await reload();
+    };
+  }
+
+  const cancelMutualBtn = document.getElementById("cancelMutualBtn");
+  if (cancelMutualBtn) {
+    cancelMutualBtn.onclick = async () => {
+      if (!confirm("Cancel this mutual request?")) return;
+      cancelMutualBtn.disabled = true;
+      const res = await cancelMutualOverride(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, !res.soft);
+        cancelMutualBtn.disabled = false;
+        return;
+      }
+      setStatus("Request cancelled.");
+      await reload();
+    };
+  }
+}
+
+/** Discord → site lock CTA when kick-off is not yet agreed. */
+function discordLockPanelHtml() {
+  return `
+    <div class="panel mutual-panel" id="discordLockPanel">
+      <h2>We agreed on Discord — lock this kick-off</h2>
+      <p class="meta">Pick the time you already agreed, then send it for your opponent to confirm. Reply and arrangement clocks keep running until both lock.</p>
+      <div class="slot-list" id="discordLockSlotList"></div>
+      <div class="actions">
+        <button type="button" id="discordLockBtn" class="button" disabled>Lock this kick-off (both confirm)</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireDiscordLockPanel(slots, homeTz, awayTz, ownerTz) {
+  let discordSelected = null;
+  const list = document.getElementById("discordLockSlotList");
+  const btn = document.getElementById("discordLockBtn");
+  if (!list || !btn) return;
+
+  const count = appendKickoffSlotButtons(list, slots || [], {
+    homeTz,
+    awayTz,
+    ownerTz,
+    onSelect: (iso, el, container) => {
+      discordSelected = iso;
+      container.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+      el.classList.add("selected");
+      btn.disabled = false;
+    },
+  });
+  if (!count) {
+    list.innerHTML =
+      '<p class="meta" style="color:#888;">No future slots available — set weekly availability on Owner Details, or free a booked time.</p>';
+  }
+
+  btn.onclick = async () => {
+    if (!discordSelected) return;
+    if (
+      !confirm(
+        "Lock this Discord-agreed kick-off? Your opponent must confirm. Reply deadlines keep running until both lock."
+      )
+    ) {
+      return;
+    }
+    btn.disabled = true;
+    setStatus("Sending Discord lock request…");
+    const res = await requestMutualOverrideNewTime(fixtureId, discordSelected);
+    if (!res.ok) {
+      setStatus(res.msg, true);
+      btn.disabled = false;
+      return;
+    }
+    setStatus("Request sent — waiting for opponent to confirm.");
+    await reload();
+  };
+}
+
 function formatUkWhen(iso) {
   if (!iso) return "";
   const label = formatKickoff(iso, UK_TZ);
@@ -156,8 +274,8 @@ function deadlineBoxHtml(f) {
         <b>Propose a kick-off by ${formatUkWhen(d.propose_by)}</b> (${relWhen(d.propose_by)}).
         ${
           late
-            ? "The ₿2.5m late fee now applies — propose now to avoid the ₿5m no-proposal fine."
-            : `Proposing after ${formatUkWhen(d.late_fee_from)} costs a ₿2.5m late fee; no proposal by the deadline is a ₿5m fine.`
+            ? "The ₿1m late fee now applies — propose now to avoid the ₿2.5m no-proposal fine."
+            : `Proposing after ${formatUkWhen(d.late_fee_from)} costs a ₿1m late fee; no proposal by the deadline is a ₿2.5m fine.`
         }
       </div>`;
     } else {
@@ -232,23 +350,7 @@ function renderAgreedPanel(root, f, sch) {
 
   let mutualHtml = "";
   if (mo) {
-    const fromName = fullClubName(mo.requested_by_club_short_name);
-    const kindLabel = mo.kind === "play_now" ? "play now" : "change kick-off";
-    mutualHtml = `
-      <div class="panel mutual-panel">
-        <h2>Mutual override pending</h2>
-        <p class="status-pending">
-          <b>${fromName}</b> wants to ${kindLabel}:
-          <span class="kickoff-line">${formatKickoffPair(mo.proposed_kickoff_at, homeTz, awayTz)}</span>
-        </p>
-        <p class="meta">Both clubs must agree. No reschedule or emergency allowance is used.</p>
-        <div class="actions">
-          ${mo.can_confirm ? '<button type="button" id="confirmMutualBtn" class="button">Confirm</button>' : ""}
-          ${mo.my_confirmed && !mo.can_confirm ? '<span class="meta">You confirmed — waiting for opponent.</span>' : ""}
-          ${mo.can_cancel ? '<button type="button" id="cancelMutualBtn" class="button secondary">Cancel request</button>' : ""}
-        </div>
-      </div>
-    `;
+    mutualHtml = mutualPendingPanelHtml(mo, homeTz, awayTz);
   } else if (!sch.mutual_override_used && (moOpts.can_request_play_now || moOpts.can_request_new_time)) {
     mutualHtml = `
       <div class="panel mutual-panel">
@@ -288,7 +390,7 @@ function renderAgreedPanel(root, f, sch) {
       <p class="meta">${checkinStatus}</p>
       <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
       <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, 12 subs, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:#ff9900;">Check your squad</a> before kick-off.</p>
-      <p class="meta">If only one club checks in, the other is marked as a no-show. If the match is still unplayed when the GPSL month locks, the no-show becomes a <b>3–0 forfeit plus a ₿5m fine</b>.</p>
+      <p class="meta">If only one club checks in, the other is marked as a no-show. If the match is still unplayed when the GPSL month locks, the no-show becomes a <b>3–0 forfeit plus a ₿2.5m fine</b>.</p>
       ${
         ci.my_has_manager === false
           ? `<p class="meta" style="color:#f88;"><b>No manager signed</b> — you cannot check in or play until you hire one from the <a href="manager_listings.html" style="color:#ff9900;">Manager Transfer Market</a>.</p>`
@@ -495,38 +597,7 @@ function renderAgreedPanel(root, f, sch) {
     };
   }
 
-  const confirmMutualBtn = document.getElementById("confirmMutualBtn");
-  if (confirmMutualBtn) {
-    confirmMutualBtn.onclick = async () => {
-      confirmMutualBtn.disabled = true;
-      setStatus("Confirming…");
-      const res = await confirmMutualOverride(fixtureId);
-      if (!res.ok) {
-        setStatus(res.msg, !res.soft);
-        confirmMutualBtn.disabled = false;
-        if (res.soft) await reload();
-        return;
-      }
-      setStatus(res.applied ? "Kick-off updated." : res.msg || "Confirmed.");
-      await reload();
-    };
-  }
-
-  const cancelMutualBtn = document.getElementById("cancelMutualBtn");
-  if (cancelMutualBtn) {
-    cancelMutualBtn.onclick = async () => {
-      if (!confirm("Cancel this mutual override request?")) return;
-      cancelMutualBtn.disabled = true;
-      const res = await cancelMutualOverride(fixtureId);
-      if (!res.ok) {
-        setStatus(res.msg, !res.soft);
-        cancelMutualBtn.disabled = false;
-        return;
-      }
-      setStatus("Request cancelled.");
-      await reload();
-    };
-  }
+  wireMutualPendingButtons();
 }
 
 async function applyCheckinSquadGate(fixtureId) {
@@ -564,8 +635,12 @@ function render() {
   const monthLabel = GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month;
 
   if (discord) {
-    discord.hidden = !sch.discord_hint_shown;
-    if (sch.discord_hint_shown) void fillDiscordOpponentTag(f);
+    const showDiscord =
+      sch.status !== "agreed" &&
+      f.status === "scheduled" &&
+      !f.is_forfeit;
+    discord.hidden = !showDiscord;
+    if (showDiscord) void fillDiscordOpponentTag(f);
   }
 
   if (f.status === "played" || f.is_forfeit) {
@@ -696,6 +771,16 @@ function render() {
       : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a>, or free a time already booked for another match.</p>'
     : "";
 
+  const mo = ctx.mutual_override;
+  const discordLockHtml =
+    ctx.my_has_manager === false || mo
+      ? ""
+      : discordLockPanelHtml();
+  const mutualPendingHtml =
+    mo && ctx.my_has_manager !== false
+      ? mutualPendingPanelHtml(mo, homeTz, awayTz)
+      : "";
+
   root.innerHTML = `
     ${catchUpBannerHtml()}
     ${holidayEarlyBannerHtml()}
@@ -720,6 +805,8 @@ function render() {
           : ""
       }
     </div>
+    ${mutualPendingHtml}
+    ${discordLockHtml}
     ${ctx.my_has_manager === false ? "" : pendingHtml}
     ${
       ctx.my_has_manager === false
@@ -737,6 +824,13 @@ function render() {
     </div>`
     }
   `;
+
+  if (discordLockHtml) {
+    wireDiscordLockPanel(slots, homeTz, awayTz, ownerTz);
+  }
+  if (mutualPendingHtml) {
+    wireMutualPendingButtons();
+  }
 
   const slotList = document.getElementById("slotList");
   if (slotList) {

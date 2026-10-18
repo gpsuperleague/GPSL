@@ -221,7 +221,7 @@ export const FIXTURES_TIPS = {
   calendar:
     "Current GPSL play-month / calendar gate for arranging fixtures and submitting results.",
   propose:
-    "Opens match scheduling. Home proposes first, before the GPSL month opens. Late or missed replies are fined when the GPSL month locks (₿2.5m late, ₿5m if nothing proposed).",
+    "Opens match scheduling. Home proposes first, before the GPSL month opens. Soft fines at month lock: ₿1m late proposal, ₿2.5m if nothing proposed; first missed reply is a warning.",
 };
 
 export const MEDICAL_EXTRA_TIPS = {
