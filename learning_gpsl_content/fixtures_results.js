@@ -208,6 +208,10 @@ export const SECTION_MATCH_SCHEDULING = {
         { href: "club_fixtures.html", label: "My club fixtures" },
         { href: "inbox.html", label: "Inbox" },
         {
+          href: "docs/gpsl-arrange-a-match.html",
+          label: "How to arrange a match (pathways + fines)",
+        },
+        {
           href: "docs/gpsl-month-end-unplayed.html",
           label: "Month end & unplayed (full guide)",
         },
@@ -317,6 +321,8 @@ export const SECTION_MATCH_SCHEDULING = {
       type: "tip",
       html: `Fines appear in <a href="inbox.html">Inbox</a> and on your balance. You’ll also get deadline warnings before reply / arrangement cut-offs. Longer walkthrough:
         <a href="docs/gpsl-month-end-unplayed.html">Month end &amp; unplayed fixtures</a>.
+        Prefer a pathway walkthrough?
+        <a href="docs/gpsl-arrange-a-match.html">How to arrange a match</a>.
         Site error? Ask league admin on Discord about compensation.`,
     },
 
