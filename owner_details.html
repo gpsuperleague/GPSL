@@ -571,7 +571,7 @@
           </p>
         </div>
 
-        <div class="owner-detail-cell owner-detail-cell--wide gpsl-has-tip" id="holidayCell" data-gpsl-tip="Season allowance: 14 days (21 while you are an active GPSL supporter). Book real-world dates before the overlapping GPSL month opens so those fixtures unlock for arrange/play in the current GPSL week (both clubs need min 24 squad). Cancel/amend only while upcoming." tabindex="0">
+        <div class="owner-detail-cell owner-detail-cell--wide gpsl-has-tip" id="holidayCell" data-gpsl-tip="Season allowance: 14 days (21 while you are an active GPSL supporter). Early fixture unlock needs 4+ holiday days overlapping that GPSL month (shorter trips still show UH/OH). Book before the month opens; both clubs need min 24 squad. Cancel/amend only while upcoming." tabindex="0">
           <span class="owner-detail-label">Holiday booking</span>
           <p id="holidayQuota" class="owner-detail-summary">Loading allowance…</p>
           <button
@@ -622,11 +622,11 @@
         <h3 class="club-account-expand-title">Holiday booking</h3>
         <p class="account-hint">
           Book real-world dates (up to <b>14 days per season</b>, or <b>21 days</b> while you are an active
-          GPSL supporter). If your holiday overlaps a future GPSL
-          month (e.g. August–September), those fixtures unlock for arrange/play during the
-          <b>current</b> GPSL week (including June/July) — both clubs need a full squad (min 24).
-          Book before that GPSL month opens. You can <b>cancel or amend</b> only while the holiday is
-          still upcoming; once it starts, ask admin via Season Management.
+          GPSL supporter). Early arrange/play unlocks only when the holiday covers
+          <b>4+ days</b> of a future GPSL month — then those fixtures can be played in the
+          <b>current</b> GPSL week (both clubs need a full squad, min 24). Shorter trips still
+          show as UH/OH. Book before that GPSL month opens. You can <b>cancel or amend</b> only
+          while the holiday is still upcoming; once it starts, ask admin via Season Management.
         </p>
         <p id="holidayHint" class="owner-tag-hint" role="status"></p>
         <div id="holidayList" class="holiday-list"></div>
@@ -708,6 +708,6 @@
       if (howto && !howto.contains(e.target)) howto.removeAttribute("open");
     });
   </script>
-  <script type="module" src="owner_details.js?v=20261019-supporter-holiday"></script>
+  <script type="module" src="owner_details.js?v=20261019-holiday-4d"></script>
 </body>
 </html>
