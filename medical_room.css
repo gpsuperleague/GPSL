@@ -121,6 +121,8 @@ body.medical-page {
 
 .staff-card.doctor-card { border-color: #4a7a9a; }
 .staff-card.empty { border-style: dashed; opacity: 0.95; }
+.staff-card.empty.locked { opacity: 0.55; }
+.staff-card.empty.locked button { cursor: not-allowed; opacity: 0.7; }
 
 .staff-slot-label {
   font-size: 11px;

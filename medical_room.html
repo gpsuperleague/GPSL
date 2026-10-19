@@ -37,7 +37,7 @@
     </div>
     <div class="med-hero-text">
       <p class="med-welcome">Club facilities</p>
-      <h1 class="gpsl-has-tip" data-gpsl-tip="Hire a club doctor (required for consults), up to 5 physios (each −0.5% injury chance), and spend specialist consult tokens to shorten injuries (−2 to −10 matches)." tabindex="0">Medical Room</h1>
+      <h1 class="gpsl-has-tip" data-gpsl-tip="Hire a club doctor (required for consults), physios on a fixed grade ladder (1→5, stacking injury-chance cuts), and specialist consult tokens to shorten injuries (−2 to −10 matches)." tabindex="0">Medical Room</h1>
       <p class="med-tagline" id="medTagline">Doctor · Physios · Specialist consultants</p>
       <div class="med-hero-stats" id="heroStats"></div>
     </div>
@@ -59,7 +59,7 @@
     </section>
 
     <section class="med-panel" id="physioPanel">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="Up to 5 physios at ₿3,000,000 each. Each reduces this club’s injury chance by 0.5%. 3-season contracts." tabindex="0">Physiotherapists</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Fixed ladder grades 1→5: Trainee −0.2% (₿500k), Physio −0.35% (₿750k), Senior −0.6% (₿1.25m), Advanced −1% (₿2m), Consultant −2% (₿4m). Hire in order. Full set −4.15% for ₿8.5m. 3-season contracts." tabindex="0">Physiotherapists</h2>
       <p class="med-intro" id="medPhysioIntro"><!-- Filled by medical_room_rules.js --></p>
       <div class="equipment-row equipment-inline" aria-hidden="true">
         <div class="equip-tile">
@@ -87,6 +87,6 @@
     </section>
   </main>
 
-  <script type="module" src="medical_room.js?v=20261001-lottery"></script>
+  <script type="module" src="medical_room.js?v=20261019-physio-ladder"></script>
 </body>
 </html>

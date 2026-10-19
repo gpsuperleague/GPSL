@@ -1,6 +1,6 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
-import { renderMedicalRoomIntros } from "./medical_room_rules.js";
+import { renderMedicalRoomIntros } from "./medical_room_rules.js?v=20261019-physio-ladder";
 
 let state = null;
 
@@ -193,6 +193,34 @@ function staffName(row, fallback) {
   return fallback;
 }
 
+function physioGradeMeta(slot) {
+  const fromApi = (state?.physio_grades || []).find((g) => Number(g.slot) === Number(slot));
+  if (fromApi) return fromApi;
+  const titles = {
+    1: "Trainee physiotherapist",
+    2: "Physiotherapist",
+    3: "Senior physiotherapist",
+    4: "Advanced physiotherapist",
+    5: "Consultant physiotherapist",
+  };
+  const effects = { 1: 0.2, 2: 0.35, 3: 0.6, 4: 1, 5: 2 };
+  const costs = state?.physio_hire_costs || {};
+  return {
+    slot,
+    title: titles[slot] || `Physio ${slot}`,
+    effect_pct: effects[slot] ?? 0.5,
+    hire_cost: costs[String(slot)] ?? costs[slot],
+    hireable: Number(state?.next_physio_slot) === Number(slot),
+  };
+}
+
+function effectLabel(pct) {
+  const n = Number(pct);
+  if (!Number.isFinite(n)) return "";
+  const t = Number.isInteger(n) ? String(n) : String(n);
+  return `−${t}% injury chance`;
+}
+
 function renderDoctor() {
   const el = document.getElementById("doctorSlot");
   if (!el || !state) return;
@@ -229,29 +257,32 @@ function physioBySlot(slot) {
 function renderPhysios() {
   const el = document.getElementById("physioSlots");
   if (!el || !state) return;
-  const costs = state.physio_hire_costs || {};
   let html = "";
   for (let slot = 1; slot <= 5; slot++) {
+    const g = physioGradeMeta(slot);
     const p = physioBySlot(slot);
     if (p) {
+      const title = p.title || g.title;
+      const effect = p.effect_pct ?? g.effect_pct;
       html += `
         <div class="staff-card">
-          <div class="staff-slot-label">Physio ${slot}</div>
+          <div class="staff-slot-label">Grade ${slot} · ${title}</div>
           <div class="sil-wrap">${silhouetteSvg(p.gender, true)}</div>
-          <div class="staff-name">${staffName(p, `Physio ${slot}`)}</div>
-          <div class="staff-bonus">−0.5% injury chance</div>
+          <div class="staff-name">${staffName(p, title)}</div>
+          <div class="staff-bonus">${effectLabel(effect)}</div>
           <div class="staff-contract">${p.seasons_remaining} season${p.seasons_remaining === 1 ? "" : "s"} left</div>
         </div>`;
     } else {
-      const cost = costs[String(slot)] ?? costs[slot];
+      const cost = g.hire_cost;
+      const locked = !g.hireable;
       html += `
-        <div class="staff-card empty">
-          <div class="staff-slot-label">Slot ${slot}</div>
+        <div class="staff-card empty${locked ? " locked" : ""}">
+          <div class="staff-slot-label">Grade ${slot} · ${g.title}</div>
           <div class="sil-wrap">${silhouetteSvg("male", false)}</div>
           <div class="staff-cost">${formatMoney(cost)}</div>
-          <div class="staff-bonus">−0.5% if hired</div>
+          <div class="staff-bonus">${effectLabel(g.effect_pct)}${locked ? " · hire previous grade first" : ""}</div>
           <div class="hire-row">
-            <button type="button" data-hire-physio="${slot}">Hire</button>
+            <button type="button" data-hire-physio="${slot}" ${locked ? "disabled" : ""}>${locked ? "Locked" : "Hire"}</button>
           </div>
         </div>`;
     }
@@ -331,8 +362,17 @@ async function hireDoctor() {
 }
 
 async function hirePhysio(slot) {
-  const cost = state?.physio_hire_costs?.[String(slot)];
-  if (!confirm(`Hire physio for slot ${slot} (${formatMoney(cost)})?`)) {
+  const g = physioGradeMeta(slot);
+  if (!g.hireable) {
+    setStatus("Hire the previous physio grade first (fixed ladder).", "error");
+    return;
+  }
+  const cost = g.hire_cost ?? state?.physio_hire_costs?.[String(slot)];
+  if (
+    !confirm(
+      `Hire ${g.title} (grade ${slot}) for ${formatMoney(cost)}?\n${effectLabel(g.effect_pct)} · 3-season contract`
+    )
+  ) {
     return;
   }
   setStatus("Hiring physio…");
@@ -361,7 +401,7 @@ async function hirePhysio(slot) {
     return;
   }
   setStatus(
-    `Physio hired: ${data?.display_name || "assigned"} (slot ${slot}) − ${formatMoney(data?.cost)}.`,
+    `${data?.title || "Physio"} hired: ${data?.display_name || "assigned"} (${effectLabel(data?.effect_pct)}) − ${formatMoney(data?.cost)}.`,
     "ok"
   );
   await loadState();

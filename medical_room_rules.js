@@ -8,7 +8,9 @@ export function getMedicalRoomIntros() {
         consultant (injury reduction) can be used. While hired, every new injury is shortened
         by <b>1 match</b> (out phase). Name &amp; gender assigned at random on hire.
         3-season contract, then retires.`,
-    physio: `Up to <b>5</b> physios at <b>€3,000,000</b> each. Each reduces this club’s injury chance by <b>0.5%</b>.
+    physio: `Fixed ladder — hire grades <b>1 → 5</b> in order (each unlocks the next).
+        <b>1</b> Trainee −0.2% (₿500k) · <b>2</b> Physio −0.35% (₿750k) · <b>3</b> Senior −0.6% (₿1.25m) ·
+        <b>4</b> Advanced −1% (₿2m) · <b>5</b> Consultant −2% (₿4m). Full set <b>−4.15%</b> for <b>₿8.5m</b>.
         Name &amp; gender assigned at random on hire. 3-season contracts.`,
     consultants: `The doctor assesses each injury first. To shorten recovery, they refer the player to a
         <b>specialist consultant</b> — that spends one injury-reduction consult (−2 / −4 / −6 / −8 / −10 matches).
