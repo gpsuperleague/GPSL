@@ -3,6 +3,7 @@
 --
 -- Example: current month = July → column shows August home fixtures proposed
 -- by that club as proposed/total (e.g. 2/3). Rolls with the season.
+-- Excludes fixtures involving a vacant club (either side).
 --
 -- Safe re-run. Admin only.
 -- =============================================================================
@@ -96,6 +97,7 @@ BEGIN
         WHERE c."ShortName" = f.home_club_short_name
           AND c.owner_id IS NOT NULL
       )
+      AND NOT public.competition_fixture_involves_vacant_club(f.id)
     GROUP BY upper(btrim(f.home_club_short_name))
   ) x;
 
