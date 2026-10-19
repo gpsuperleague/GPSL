@@ -292,7 +292,7 @@
           <button type="button" id="wlRecordUnplayedBtn" class="button secondary" title="Freeze unplayed counts for locked months (+ current) before you sim leftovers">Record unplayed</button>
           <button type="button" id="wlRefreshCountryBtn" class="button secondary" data-admin-only>Refresh country</button>
           <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
-          <span class="wl-paid-year-wrap" title="Supporter payments year shown in the Paid column. Rolls to the new year automatically on 1 January.">
+          <span class="wl-paid-year-wrap" title="Supporter payments year shown in the Paid column. Includes next year for annual subscriptions paid early. Rolls to the new year automatically on 1 January.">
             Paid year <select id="wlPaidYear" aria-label="Supporter payments year"></select>
           </span>
           <button type="button" id="wlPaidClearAllBtn" class="button secondary" data-admin-only title="Clear the selected year's paid months for every owner">Reset paid year</button>
@@ -341,15 +341,16 @@
   <div id="wlPaidModal" class="wl-modal-backdrop" hidden>
     <div class="wl-modal" role="dialog" aria-modal="true" aria-labelledby="wlPaidTitle">
       <h3 id="wlPaidTitle">Supporter payments</h3>
-      <p class="note">Year <b id="wlPaidYearLabel">—</b> · click a month to mark it paid / unpaid. <span id="wlPaidSummary"></span></p>
+      <p class="note">Year <b id="wlPaidYearLabel">—</b> · click a month to mark it paid / unpaid, or mark a full-year subscription in one go. <span id="wlPaidSummary"></span></p>
       <div id="wlPaidGrid" class="wl-paid-grid"></div>
       <div class="wl-modal-actions">
+        <button type="button" id="wlPaidMarkYear" class="button" title="Mark all 12 months paid for this year (annual subscription)">Mark full year paid</button>
         <button type="button" id="wlPaidClearYear" class="button secondary">Clear this year</button>
         <button type="button" id="wlPaidClose" class="button">Done</button>
       </div>
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20260930-invite-errtext"></script>
+  <script type="module" src="admin_owners.js?v=20261019-paid-year"></script>
 </body>
 </html>

@@ -79,6 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wlPaidClose")?.addEventListener("click", closeSupporterPaidModal);
   document.getElementById("wlPaidClearAllBtn")?.addEventListener("click", clearSupporterPaidYearForAll);
   document.getElementById("wlPaidClearYear")?.addEventListener("click", clearSupporterPaidYearForOwner);
+  document.getElementById("wlPaidMarkYear")?.addEventListener("click", markSupporterFullYearPaid);
   document.getElementById("wlPaidModal")?.addEventListener("click", (e) => {
     if (e.target?.id === "wlPaidModal") closeSupporterPaidModal();
   });
@@ -3362,9 +3363,12 @@ function applySupporterPaidData(res) {
 function renderSupporterPaidYearSelect() {
   const sel = document.getElementById("wlPaidYear");
   if (!sel) return;
+  const cur = Number(supporterPayData.current_year) || new Date().getFullYear();
+  // Include next year so annual subs paid early (e.g. 2027 while still in 2026) can be marked.
   const years = new Set([
-    supporterPayData.current_year,
-    supporterPayData.current_year - 1,
+    cur + 1,
+    cur,
+    cur - 1,
     supporterPayData.year,
     ...supporterPayData.years_with_data,
   ]);
@@ -3373,7 +3377,7 @@ function renderSupporterPaidYearSelect() {
     .map(
       (y) =>
         `<option value="${y}"${y === supporterPayData.year ? " selected" : ""}>${y}${
-          y === supporterPayData.current_year ? " (this year)" : ""
+          y === cur ? " (this year)" : y === cur + 1 ? " (next year)" : ""
         }</option>`
     )
     .join("");
@@ -3511,6 +3515,49 @@ async function clearSupporterPaidYearForOwner() {
   renderSupporterPaidGrid();
   refreshSupporterPaidCell(who.ownerId);
   setWlActionStatus(`✅ ${who.tag}: ${supporterPayData.year} payments cleared.`, true);
+}
+
+/** Mark all 12 months paid for the selected year (annual subscription). */
+async function markSupporterFullYearPaid() {
+  const who = supporterPaidModalOwner;
+  if (!who) return;
+  const y = supporterPayData.year;
+  if (
+    !confirm(
+      `Mark all 12 months of ${y} as paid for ${who.tag}?\n\nUse this for a full-year subscription.`
+    )
+  ) {
+    return;
+  }
+  const btn = document.getElementById("wlPaidMarkYear");
+  if (btn) btn.disabled = true;
+  const { data, error } = await supabase.rpc("admin_supporter_payment_set_year", {
+    p_owner_id: who.ownerId,
+    p_year: y,
+    p_paid: true,
+  });
+  if (btn) btn.disabled = false;
+  if (error) {
+    setWlActionStatus(
+      `❌ ${error.message}${
+        error.message?.includes("admin_supporter_payment_set_year")
+          ? " — run supporter_mark_full_year_20261019.sql"
+          : ""
+      }`,
+      false
+    );
+    return;
+  }
+  supporterPayData.paid[who.ownerId] = Array.isArray(data?.months)
+    ? data.months.map(Number)
+    : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  if (!supporterPayData.years_with_data.includes(y)) {
+    supporterPayData.years_with_data = [...supporterPayData.years_with_data, y];
+    renderSupporterPaidYearSelect();
+  }
+  renderSupporterPaidGrid();
+  refreshSupporterPaidCell(who.ownerId);
+  setWlActionStatus(`✅ ${who.tag}: full year ${y} marked paid (12/12).`, true);
 }
 
 async function clearSupporterPaidYearForAll() {
