@@ -1459,7 +1459,18 @@ function season1InviteIsRejected(row) {
   return status === "declined" || status === "rejected";
 }
 
+/** Active Ko-fi supporters (including grace) pin to the top of each section. */
+function rowIsSupporterPinned(row) {
+  return !!(row?.is_supporter || row?.supporter_active);
+}
+
 function compareRowsBySeason1ThenActivity(a, b) {
+  // Supporters stay at the top of their section; leave supporter → fall back into
+  // the same Season 1 / activity order as everyone else.
+  const aSup = rowIsSupporterPinned(a);
+  const bSup = rowIsSupporterPinned(b);
+  if (aSup !== bSup) return aSup ? -1 : 1;
+
   // Season 1 rejects sink to the bottom of their section.
   const aRejected = season1InviteIsRejected(a);
   const bRejected = season1InviteIsRejected(b);
@@ -2079,11 +2090,11 @@ async function loadWaitingListAdmin() {
   const testTotal = rows.filter((r) => !!r.confirmed_test_season).length;
   const liveTotal = rows.filter((r) => !!r.confirmed_live_season).length;
   const sortNote = data?.priority_uses_admin_sort
-    ? "Section sort: Season 1 rejects at bottom, then login activity; drag still sets saved season priority underneath"
-    : "Section sort: Season 1 rejects at bottom, then login activity";
+    ? "Section sort: supporters first (same order among themselves), then Season 1 rejects at bottom, then login activity; drag still sets saved season priority underneath"
+    : "Section sort: supporters first (same order among themselves), then Season 1 rejects at bottom, then login activity";
   const activityNote = activityRes.error
     ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · missed running total · V late / V fail (match videos) · admin IP/country review · S1 rejected at section bottom · sort: last login first unless current month logins are under 4`;
+    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · missed running total · V late / V fail (match videos) · admin IP/country review · supporters at top · S1 rejected at section bottom · sort: last login first unless current month logins are under 4`;
 
   const snapMonths = Number(activityRes.snapshotMonths || 0);
   const snapNote =
@@ -2562,7 +2573,12 @@ async function loadArchivedOwnersSection() {
     };
   });
   rows = await mergeSeason1InviteStatus(rows);
-  rows.sort((a, b) => compareRowsByActivitySort(a, b));
+  rows.sort((a, b) => {
+    const aSup = rowIsSupporterPinned(a);
+    const bSup = rowIsSupporterPinned(b);
+    if (aSup !== bSup) return aSup ? -1 : 1;
+    return compareRowsByActivitySort(a, b);
+  });
 
   const formatUnplayed = (n) => {
     if (n == null) return `<span class="muted">—</span>`;
@@ -3583,13 +3599,14 @@ async function setOwnerSupporterFlag(ownerId, isSupporter, checkboxEl) {
     setWlActionStatus("❌ " + error.message, false);
     return;
   }
-  const grace = data?.supporter_grace_until;
   setWlActionStatus(
     isSupporter
-      ? "✅ Marked as Ko-fi Supporter."
-      : "✅ Supporter unset — perks revoked immediately.",
+      ? "✅ Marked as Ko-fi Supporter — moved to top of section."
+      : "✅ Supporter unset — returned to normal section order.",
     true
   );
+  // Re-render so supporters pin / unpin in the current Season 1 + activity order.
+  await loadWaitingListAdmin();
 }
 
 async function restoreWaitingListOrder() {
