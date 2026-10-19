@@ -13,7 +13,7 @@ import {
   formatUkDateRange,
   holidayStatusLabel,
   inclusiveDayCountFromDates,
-} from "./owner_holidays.js";
+} from "./owner_holidays.js?v=20261019-supporter-holiday";
 import { wireAvailabilityPanel } from "./owner_availability.js?v=20260930-world-tz";
 import { ownerBadgePublicUrl, ownerProfileHref } from "./owner_badge.js";
 import {
@@ -564,9 +564,12 @@ async function refreshHolidaySection() {
     return;
   }
 
-  const { holidays, daysUsed, daysRemaining } = await loadOwnerHolidays();
+  const { holidays, daysUsed, daysRemaining, maxDays, supporterActive } =
+    await loadOwnerHolidays();
   if (quotaEl) {
-    quotaEl.textContent = `${daysUsed} of ${HOLIDAY_DAYS_PER_SEASON} days used this season · ${daysRemaining} remaining`;
+    const max = maxDays || HOLIDAY_DAYS_PER_SEASON;
+    const perk = supporterActive ? " (supporter)" : "";
+    quotaEl.textContent = `${daysUsed} of ${max} days used this season${perk} · ${daysRemaining} remaining`;
   }
   renderHolidayList(holidays);
 }

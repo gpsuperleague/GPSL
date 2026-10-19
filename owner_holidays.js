@@ -1,32 +1,70 @@
 /**
- * Owner holiday booking — early fixture play when away (14 days/season).
+ * Owner holiday booking — early fixture play when away
+ * (14 days/season; 21 while supporter is active).
  */
 
 import { supabase } from "./global.js";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import { isFixtureHolidayPlayable as isFixtureHolidayPlayableCore } from "./competition.js";
 
+/** Baseline for non-supporters (supporters get 21 via RPC/view). */
 export const HOLIDAY_DAYS_PER_SEASON = 14;
+export const HOLIDAY_DAYS_SUPPORTER = 21;
+
+export async function loadOwnerHolidayQuota() {
+  const { data, error } = await supabase.rpc("club_holiday_my_quota");
+  if (error) {
+    console.warn("club_holiday_my_quota:", error.message);
+    return null;
+  }
+  if (!data?.ok) return null;
+  return {
+    maxDays: Number(data.max_days) || HOLIDAY_DAYS_PER_SEASON,
+    daysUsed: Number(data.days_used) || 0,
+    daysRemaining: Number(data.days_remaining) || 0,
+    supporterActive: !!data.supporter_active,
+  };
+}
 
 export async function loadOwnerHolidays() {
-  const { data, error } = await supabase
-    .from("club_owner_holidays_public")
-    .select("*")
-    .order("starts_at", { ascending: true });
+  const [listRes, quota] = await Promise.all([
+    supabase
+      .from("club_owner_holidays_public")
+      .select("*")
+      .order("starts_at", { ascending: true }),
+    loadOwnerHolidayQuota(),
+  ]);
 
-  if (error) {
-    console.error("loadOwnerHolidays:", error);
-    return { holidays: [], daysUsed: 0, daysRemaining: HOLIDAY_DAYS_PER_SEASON };
+  if (listRes.error) {
+    console.error("loadOwnerHolidays:", listRes.error);
+    return {
+      holidays: [],
+      daysUsed: quota?.daysUsed ?? 0,
+      daysRemaining: quota?.daysRemaining ?? HOLIDAY_DAYS_PER_SEASON,
+      maxDays: quota?.maxDays ?? HOLIDAY_DAYS_PER_SEASON,
+      supporterActive: quota?.supporterActive ?? false,
+    };
   }
 
-  const holidays = data || [];
+  const holidays = listRes.data || [];
   const sample = holidays[0];
-  const daysUsed = sample?.season_days_used ?? 0;
+  const maxDays =
+    quota?.maxDays ??
+    sample?.season_days_allowance ??
+    HOLIDAY_DAYS_PER_SEASON;
+  const daysUsed = quota?.daysUsed ?? sample?.season_days_used ?? 0;
   const daysRemaining =
+    quota?.daysRemaining ??
     sample?.season_days_remaining ??
-    Math.max(0, HOLIDAY_DAYS_PER_SEASON - daysUsed);
+    Math.max(0, maxDays - daysUsed);
 
-  return { holidays, daysUsed, daysRemaining };
+  return {
+    holidays,
+    daysUsed,
+    daysRemaining,
+    maxDays,
+    supporterActive: quota?.supporterActive ?? maxDays >= HOLIDAY_DAYS_SUPPORTER,
+  };
 }
 
 export async function bookOwnerHoliday(startDate, endDate) {

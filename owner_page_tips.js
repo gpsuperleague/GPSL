@@ -135,7 +135,7 @@ export const OWNER_DETAILS_TIPS = {
   availability:
     "Weekly free slots (30-minute blocks, UK time) used when proposing or responding to fixture times. Holidays overlay as unavailable — set your timezone for accurate proposals.",
   holiday:
-    "Season allowance: 14 days total. Book real-world dates before the overlapping GPSL month opens so those fixtures unlock for arrange/play in the current GPSL week (both clubs need min 24 squad). Cancel/amend only while upcoming.",
+    "Season allowance: 14 days (21 while you are an active GPSL supporter). Book real-world dates before the overlapping GPSL month opens so those fixtures unlock for arrange/play in the current GPSL week (both clubs need min 24 squad). Cancel/amend only while upcoming.",
   ownerTag:
     "Discord username shown publicly on fixtures and markets. Save locks it — use Edit to change later.",
   badge:
