@@ -315,6 +315,12 @@ export const NAV_SECTIONS = [
         indent: true,
       },
       {
+        href: "owner_holidays_board.html",
+        label: "Owner Holidays",
+        page: "owner_holidays_board",
+        indent: true,
+      },
+      {
         href: "owner_last_login.html",
         label: "Last Login",
         page: "owner_last_login",

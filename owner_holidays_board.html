@@ -1,0 +1,72 @@
+<script>window.CURRENT_PAGE = "owner_holidays_board";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Owner Holidays — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <style>
+    .hol-page { max-width: 1100px; margin: 0 auto; padding: 16px 20px 40px; }
+    .hol-page h1 { color: #ff9900; margin: 12px 0 8px; font-size: 1.5rem; }
+    .hol-page .card {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+    .hol-page .note { color: #aaa; font-size: 13px; margin: 0 0 12px; line-height: 1.45; }
+    .hol-page .status-line { margin: 8px 0 12px; color: #ccc; font-size: 13px; }
+    .hol-page .status-line.error { color: #f88; }
+    .hol-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .hol-toolbar input[type="search"] {
+      padding: 8px 10px; min-width: 220px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    button.button.secondary { background: #444; color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+    .hol-section-title {
+      margin: 18px 0 8px; font-size: 14px; font-weight: 700; color: #ccc;
+      border-bottom: 1px solid #333; padding-bottom: 6px;
+    }
+    .hol-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .hol-table th, .hol-table td {
+      border-bottom: 1px solid #333; padding: 8px 6px; text-align: left; vertical-align: top;
+    }
+    .hol-table th { color: #ff9900; font-weight: 600; white-space: nowrap; }
+    .hol-table .muted { color: #888; font-size: 12px; }
+    .hol-fixtures { margin: 0; padding-left: 18px; color: #ccc; }
+    .hol-fixtures li { margin: 2px 0; }
+    .hol-empty { color: #888; font-size: 13px; margin: 0; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 0 0 12px; font-size: 12px; color: #bbb; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="hol-page">
+    <h1>Owner Holidays</h1>
+    <div class="card">
+      <p class="note">
+        See who has a holiday coming up or is away now, and which fixtures should be arranged / played early.
+        Owner tags show <b>UH</b> (upcoming) or <b>OH</b> (on holiday) site-wide. Back from holiday = no mark.
+        Club names and owner tags only — no emails or login details.
+      </p>
+      <div class="legend">
+        <span><span class="owner-holiday-pill owner-holiday-pill--uh">UH</span> Upcoming Holiday</span>
+        <span><span class="owner-holiday-pill owner-holiday-pill--oh">OH</span> On Holiday</span>
+      </div>
+      <div class="hol-toolbar">
+        <input type="search" id="holSearch" placeholder="Filter club / owner / month…">
+        <button type="button" id="holRefreshBtn" class="button secondary">Refresh</button>
+      </div>
+      <div id="holStatus" class="status-line"></div>
+
+      <h2 class="hol-section-title">On holiday now</h2>
+      <div id="holActiveWrap"></div>
+
+      <h2 class="hol-section-title">Upcoming holidays</h2>
+      <div id="holUpcomingWrap"></div>
+    </div>
+  </div>
+  <script type="module" src="owner_holidays_board.js?v=20261019-holidays"></script>
+</body>
+</html>

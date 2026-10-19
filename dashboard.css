@@ -3331,6 +3331,32 @@ img.header-league-badge {
   padding:1px 6px;
   line-height:1.35;
 }
+.owner-holiday-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:6px;
+  width:1.55em;
+  height:1.55em;
+  border-radius:50%;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:0.02em;
+  line-height:1;
+  vertical-align:middle;
+  border:1px solid transparent;
+  box-sizing:border-box;
+}
+.owner-holiday-pill--uh{
+  color:#0b1e33;
+  background:linear-gradient(180deg,#9fd0ff 0%,#5aa8ef 100%);
+  border-color:#3a7ec0;
+}
+.owner-holiday-pill--oh{
+  color:#2a1400;
+  background:linear-gradient(180deg,#ffc28a 0%,#ef8a2e 100%);
+  border-color:#c56a12;
+}
 .owner-tag-chip .owner-tag-label,
 .club-owner-tag .owner-tag-label{
   vertical-align:middle;

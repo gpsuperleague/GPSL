@@ -1,6 +1,12 @@
 // clubs_lookup.js
 
-import { loadOwnerSupporterMap, ownerTagHtml } from "./owner_badge.js";
+import {
+  loadOwnerSupporterMap,
+  loadOwnerHolidayStatusMap,
+  ownerHolidayStatusForClub,
+  setOwnerHolidayByOwnerId,
+  ownerTagHtml,
+} from "./owner_badge.js";
 
 let clubsMap = new Map();
 let stadiumMap = new Map();
@@ -48,11 +54,20 @@ export async function loadClubsMap() {
     if (oid) ownerIdsMap.set(row.ShortName, oid);
   });
 
-  // Supporter marks for owner tags on fixtures / tables / etc.
+  // Supporter + holiday (UH/OH) marks for owner tags on fixtures / tables / etc.
   try {
     await loadOwnerSupporterMap();
   } catch (err) {
     console.warn("loadClubsMap: supporter map", err);
+  }
+  try {
+    await loadOwnerHolidayStatusMap();
+    for (const [short, oid] of ownerIdsMap.entries()) {
+      const hol = ownerHolidayStatusForClub(short);
+      if (hol) setOwnerHolidayByOwnerId(oid, hol);
+    }
+  } catch (err) {
+    console.warn("loadClubsMap: holiday map", err);
   }
 }
 
@@ -130,13 +145,14 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
-/** Discord owner tag → owner profile when owner_id is known (+ Supporter mark). */
-export function ownerTagLinkHtml(tag, ownerId) {
+/** Discord owner tag → owner profile when owner_id is known (+ Supporter / UH·OH marks). */
+export function ownerTagLinkHtml(tag, ownerId, clubShortName = null) {
   const label = String(tag || "").trim();
   if (!label) return "";
   const html = ownerTagHtml({
     ownerId,
     ownerTag: label,
+    clubShortName,
     link: !!ownerId,
     showBadgeImage: true,
     compact: true,
@@ -167,7 +183,7 @@ export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
   const name = escapeHtml(clubName || shortName || "—");
   const tag = ownerTagForClub(shortName);
   const oid = ownerIdForClub(shortName);
-  let tagHtml = ownerTagLinkHtml(tag, oid);
+  let tagHtml = ownerTagLinkHtml(tag, oid, shortName);
   if (!tagHtml && layout === "block" && shortName && !oid) {
     tagHtml = `<span class="club-owner-tag club-owner-tag--vacant">Vacant</span>`;
   }
