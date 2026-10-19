@@ -34,6 +34,7 @@ const INBOX_CATEGORY_TYPES = {
     "match_checkin_open",
     "match_mutual_override_requested",
     "match_mutual_override_applied",
+    "owner_holiday",
     "intl_result_to_confirm",
     "intl_result_submitted",
     "intl_result_confirmed",
