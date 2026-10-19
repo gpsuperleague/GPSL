@@ -480,9 +480,11 @@ function renderHolidayList(holidays) {
 
   list.innerHTML = holidays
     .map((h) => {
-      const status = holidayStatusLabel(h);
-      const statusClass =
-        status === "Active"
+      const paused = h.is_effective === false || h.needs_supporter === true;
+      const status = paused ? "Paused (supporter)" : holidayStatusLabel(h);
+      const statusClass = paused
+        ? "holiday-status holiday-status--paused"
+        : status === "Active"
           ? "holiday-status holiday-status--active"
           : "holiday-status";
       const actions = h.is_upcoming
@@ -491,12 +493,14 @@ function renderHolidayList(holidays) {
             <button type="button" class="small-btn holiday-cancel-btn" data-id="${h.id}">Cancel</button>
           </span>`
         : `<span class="holiday-item-meta">${
-            h.is_active
-              ? "Active — ask admin to change"
-              : "Ended — ask admin to change"
+            paused
+              ? "Over 14-day base — renew supporter to keep active"
+              : h.is_active
+                ? "Active — ask admin to change"
+                : "Ended — ask admin to change"
           }</span>`;
       return `
-        <div class="holiday-item">
+        <div class="holiday-item${paused ? " holiday-item--paused" : ""}">
           <div class="holiday-item-dates">
             <b>${formatUkDateRange(h.starts_at, h.ends_at)}</b>
             <span class="holiday-item-meta"> · ${h.day_count} day${h.day_count === 1 ? "" : "s"}</span>

@@ -246,7 +246,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `On <a href="owner_details.html">Owner Details</a>, mark the <b>30-minute blocks</b> (UK time) you are free each week.`,
         `Set your <b>timezone</b> so kick-offs show in your local time.`,
         `Availability stays with your owner account across seasons — set it once.`,
-        `<b>Holidays</b> (up to 14 days/season, or 21 while you are an active GPSL supporter). Early arrange/play unlocks only when the holiday covers <b>4+ days</b> of that GPSL month; shorter bookings still show UH/OH. Book before that month opens; both clubs need a full squad (min 24). Details on Owner Details.`,
+        `<b>Holidays</b> (up to 14 days/season, or 21 while you are an active GPSL supporter — extra days beyond 14 only stay valid while subscribed). Early arrange/play unlocks only when an <b>effective</b> holiday covers <b>4+ days</b> of that GPSL month. Book before that month opens; both clubs need a full squad (min 24). Details on Owner Details.`,
       ],
     },
 

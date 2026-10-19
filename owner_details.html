@@ -97,6 +97,16 @@
       color: #ffcc66;
     }
 
+    .holiday-status--paused {
+      background: #3a2222;
+      color: #f0a0a0;
+    }
+
+    .holiday-item--paused {
+      opacity: 0.85;
+      border-color: #553333;
+    }
+
     .holiday-book-form {
       border-top: 1px solid #333;
       padding-top: 14px;
@@ -622,11 +632,10 @@
         <h3 class="club-account-expand-title">Holiday booking</h3>
         <p class="account-hint">
           Book real-world dates (up to <b>14 days per season</b>, or <b>21 days</b> while you are an active
-          GPSL supporter). Early arrange/play unlocks only when the holiday covers
-          <b>4+ days</b> of a future GPSL month — then those fixtures can be played in the
-          <b>current</b> GPSL week (both clubs need a full squad, min 24). Shorter trips still
-          show as UH/OH. Book before that GPSL month opens. You can <b>cancel or amend</b> only
-          while the holiday is still upcoming; once it starts, ask admin via Season Management.
+          GPSL supporter). Extra days beyond 14 <b>only stay valid while subscribed</b> — if support
+          lapses, the earliest bookings fill the 14-day budget and the rest pause (UH/OH, early unlock,
+          fine relief) until you renew. Early arrange/play needs <b>4+ days</b> overlapping a future
+          GPSL month. Both clubs need a full squad (min 24). Cancel/amend only while upcoming.
         </p>
         <p id="holidayHint" class="owner-tag-hint" role="status"></p>
         <div id="holidayList" class="holiday-list"></div>
@@ -708,6 +717,6 @@
       if (howto && !howto.contains(e.target)) howto.removeAttribute("open");
     });
   </script>
-  <script type="module" src="owner_details.js?v=20261019-holiday-4d"></script>
+  <script type="module" src="owner_details.js?v=20261019-holiday-supporter-valid"></script>
 </body>
 </html>
