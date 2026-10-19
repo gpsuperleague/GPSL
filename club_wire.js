@@ -1,6 +1,6 @@
 /**
- * Club Wire — outbid / offer / result alerts (dashboard card + nav badge).
- * One shared poll per tab (club_wire_list, ~60s, paused while hidden).
+ * Club Wire — outbid / offer / result alerts + fine/forfeit cutoffs
+ * (dashboard card + nav badge). One shared poll per tab (~60s, paused while hidden).
  */
 import { supabase } from "./supabase_client.js";
 
@@ -23,6 +23,16 @@ const KIND_BADGE = {
   offer_rejected: ["REJECTED", "cw-badge--bad"],
   won: ["WON", "cw-badge--good"],
   lost: ["LOST", "cw-badge--bad"],
+};
+
+const CUTOFF_BADGE = {
+  month_lock: ["LOCK", "cw-badge--lock"],
+  propose: ["PROPOSE", "cw-badge--cutoff"],
+  late_fee: ["LATE FEE", "cw-badge--cutoff"],
+  reply: ["REPLY", "cw-badge--cutoff"],
+  checkin: ["CHECK-IN", "cw-badge--cutoff"],
+  noshow: ["NO-SHOW", "cw-badge--bad"],
+  play_window: ["PLAY BY", "cw-badge--lock"],
 };
 
 const STYLE = `
@@ -62,8 +72,11 @@ const STYLE = `
 .cw-badge--outbid { background: #f5b041; color: #1b1300; }
 .cw-badge--good { background: #27ae60; color: #fff; }
 .cw-badge--bad { background: #5d6d7e; color: #fff; }
+.cw-badge--cutoff { background: #e67e22; color: #fff; }
+.cw-badge--lock { background: #8e44ad; color: #fff; }
 .cw-text { flex: 1 1 auto; min-width: 0; line-height: 1.3; }
 .cw-text .cw-market { color: #8aa0b4; font-size: 0.75rem; display: block; }
+.cw-text .cw-detail { color: #8aa0b4; font-size: 0.75rem; display: block; margin-top: 2px; }
 .cw-time { color: #8aa0b4; font-size: 0.75rem; white-space: nowrap; }
 .cw-go {
   white-space: nowrap; font-weight: 700; font-size: 0.8rem; text-decoration: none;
@@ -73,6 +86,13 @@ const STYLE = `
 .cw-x { background: none; border: 0; color: #5d6d7e; cursor: pointer; font-size: 1rem; padding: 0 4px; }
 .cw-x:hover { color: #fff; }
 .cw-empty { padding: 9px 12px; color: #8aa0b4; font-size: 0.85rem; }
+.cw-cutoffs { border-bottom: 1px solid #2c3e50; background: #121c26; }
+.cw-cutoffs-head {
+  padding: 6px 12px 2px; font-family: "Courier New", ui-monospace, monospace;
+  font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: #e67e22;
+}
+.cw-item.cw-sev-urgent { background: rgba(230,126,34,0.12); }
+.cw-item.cw-sev-warn { background: rgba(245,176,65,0.08); }
 a.nav-club-wire { position: relative; }
 a.nav-club-wire .nav-club-wire-mark { font-size: 1rem; }
 a.nav-club-wire .nav-club-wire-badge {
@@ -84,7 +104,7 @@ a.nav-club-wire.cw-pulse .nav-club-wire-badge { animation: cwPulse 1s ease-in-ou
 @keyframes cwPulse { 50% { transform: scale(1.35); } }
 `;
 
-let state = { count: 0, items: [] };
+let state = { count: 0, items: [], cutoffs: [] };
 let started = false;
 let seenIds = new Set();
 const listeners = new Set();
@@ -116,6 +136,34 @@ function ago(iso) {
   if (s < 60) return "just now";
   if (s < 3600) return `${Math.floor(s / 60)} min ago`;
   return `${Math.floor(s / 3600)} h ago`;
+}
+
+function formatUk(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-GB", {
+    timeZone: "Europe/London",
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function relWhen(iso) {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "";
+  const diff = t - Date.now();
+  const mins = Math.round(Math.abs(diff) / 60000);
+  const txt =
+    mins < 60
+      ? `${mins}m`
+      : mins < 2880
+        ? `${Math.floor(mins / 60)}h`
+        : `${Math.floor(mins / 1440)}d`;
+  return diff >= 0 ? `in ${txt}` : `${txt} ago`;
 }
 
 function itemText(it) {
@@ -163,10 +211,23 @@ function emit() {
 async function poll() {
   if (document.hidden) return;
   try {
-    const { data, error } = await supabase.rpc("club_wire_list", { p_limit: 8 });
-    if (error) return;
-    const items = Array.isArray(data?.items) ? data.items : [];
-    state = { count: Number(data?.count) || 0, items };
+    const [wireRes, cutRes] = await Promise.all([
+      supabase.rpc("club_wire_list", { p_limit: 8 }),
+      supabase.rpc("club_wire_cutoffs"),
+    ]);
+    if (wireRes.error) {
+      console.warn("club_wire_list:", wireRes.error.message);
+    }
+    const items = Array.isArray(wireRes.data?.items) ? wireRes.data.items : [];
+    const cutoffs = Array.isArray(cutRes.data?.cutoffs) ? cutRes.data.cutoffs : [];
+    if (cutRes.error) {
+      console.warn("club_wire_cutoffs:", cutRes.error.message);
+    }
+    state = {
+      count: Number(wireRes.data?.count) || 0,
+      items,
+      cutoffs,
+    };
     emit();
   } catch (err) {
     console.warn("club wire poll:", err);
@@ -195,10 +256,11 @@ async function dismiss(id) {
     return;
   }
   state = id == null
-    ? { count: 0, items: [] }
+    ? { count: 0, items: [], cutoffs: state.cutoffs || [] }
     : {
         count: Math.max(0, state.count - 1),
         items: state.items.filter((i) => i.id !== id),
+        cutoffs: state.cutoffs || [],
       };
   emit();
   void poll();
@@ -254,6 +316,34 @@ export function mountClubWireNavBadge(nav, opts = {}) {
   startClubWire();
 }
 
+function cutoffRowsHtml(cutoffs) {
+  if (!cutoffs?.length) return "";
+  const rows = cutoffs
+    .map((c) => {
+      const [label, cls] = CUTOFF_BADGE[c.kind] || ["CUTOFF", "cw-badge--cutoff"];
+      const sev = c.severity === "urgent" || c.severity === "warn" ? ` cw-sev-${c.severity}` : "";
+      const go = c.href
+        ? `<a class="cw-go cw-go--plain" href="${esc(c.href)}">Open →</a>`
+        : "";
+      return `
+        <li class="cw-item${sev}">
+          <span class="cw-badge ${cls}">${label}</span>
+          <span class="cw-text">
+            <b>${esc(c.title)}</b>
+            ${c.detail ? `<span class="cw-detail">${esc(c.detail)}</span>` : ""}
+          </span>
+          <span class="cw-time" title="${esc(formatUk(c.at))} UK">${relWhen(c.at)}<br>${esc(formatUk(c.at))}</span>
+          ${go}
+        </li>`;
+    })
+    .join("");
+  return `
+    <div class="cw-cutoffs">
+      <div class="cw-cutoffs-head">Cutoffs · fines &amp; forfeits</div>
+      <ul class="cw-list">${rows}</ul>
+    </div>`;
+}
+
 /** Dashboard card. */
 export function mountClubWireCard(host) {
   if (!host) return;
@@ -261,6 +351,7 @@ export function mountClubWireCard(host) {
 
   const render = (s) => {
     const items = s.items || [];
+    const cutoffs = s.cutoffs || [];
     const rows = items
       .map((it) => {
         const [label, cls] = KIND_BADGE[it.kind] || ["ALERT", "cw-badge--bad"];
@@ -281,17 +372,20 @@ export function mountClubWireCard(host) {
     items.forEach((it) => seenIds.add(it.id));
     if (!seenIds.size) seenIds.add(-1);
 
+    const alertsBody = items.length
+      ? `<ul class="cw-list">${rows}</ul>`
+      : `<div class="cw-empty">${cutoffs.length ? "No market alerts — cutoffs above." : "All quiet — no outbids, results, or cutoffs right now."}</div>`;
+
     host.innerHTML = `
       <section class="cw-card" aria-label="Club Wire">
         <div class="cw-head">
           <span class="cw-live" aria-hidden="true"></span>
           <span class="cw-title">Club Wire</span>
-          <span class="cw-sub">Outbids &amp; results · last 24h</span>
+          <span class="cw-sub">Cutoffs · outbids &amp; results</span>
           ${items.length ? `<button type="button" class="cw-clear">Clear all</button>` : ""}
         </div>
-        ${items.length
-          ? `<ul class="cw-list">${rows}</ul>`
-          : `<div class="cw-empty">All quiet — no outbids or results right now.</div>`}
+        ${cutoffRowsHtml(cutoffs)}
+        ${alertsBody}
       </section>`;
     host.hidden = false;
 
