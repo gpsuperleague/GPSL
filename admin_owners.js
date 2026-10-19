@@ -1319,27 +1319,37 @@ async function fetchOwnerTimezoneMap() {
 }
 
 async function fetchOwnerActivityById() {
-  const [{ data, error }, { data: secData, error: secError }, { data: vidData }] =
-    await Promise.all([
-      supabase.rpc("admin_owner_last_logins"),
-      supabase.rpc("admin_owner_login_security_map", { p_recent_days: 30 }),
-      supabase.rpc("admin_match_video_owner_metrics"),
-    ]);
+  const [
+    { data, error },
+    { data: secData, error: secError },
+    { data: vidData },
+    { data: homePropData, error: homePropError },
+  ] = await Promise.all([
+    supabase.rpc("admin_owner_last_logins"),
+    supabase.rpc("admin_owner_login_security_map", { p_recent_days: 30 }),
+    supabase.rpc("admin_match_video_owner_metrics"),
+    supabase.rpc("admin_club_next_month_home_proposals"),
+  ]);
   const byId = new Map();
   const securityById = new Map();
   const videoByClub = new Map();
+  const homePropByClub = new Map();
   let previousLabel = "Prev month";
   let currentLabel = "Current month";
+  let nextMonthLabel = null;
   if (error) {
     return {
       byId,
       securityById,
       videoByClub,
+      homePropByClub,
       previousLabel,
       currentLabel,
+      nextMonthLabel,
       snapshotMonths: 0,
       error,
       securityError: secError,
+      homePropError,
     };
   }
   const owners = Array.isArray(data?.owners) ? data.owners : Array.isArray(data) ? data : [];
@@ -1360,16 +1370,42 @@ async function fetchOwnerActivityById() {
       video_failed_count: Number(stats?.video_failed_count) || 0,
     });
   }
+  if (!homePropError && homePropData && typeof homePropData === "object") {
+    nextMonthLabel = homePropData.next_gpsl_month_label || homePropData.next_gpsl_month || null;
+    const map =
+      homePropData.by_club && typeof homePropData.by_club === "object"
+        ? homePropData.by_club
+        : {};
+    for (const [club, stats] of Object.entries(map)) {
+      homePropByClub.set(String(club).toUpperCase(), {
+        proposed: Number(stats?.proposed) || 0,
+        total: Number(stats?.total) || 0,
+      });
+    }
+  }
   return {
     byId,
     securityById,
     videoByClub,
+    homePropByClub,
     previousLabel,
     currentLabel,
+    nextMonthLabel,
     snapshotMonths,
     error: null,
     securityError: secError,
+    homePropError,
   };
+}
+
+function formatHomeProposalRatio(proposed, total) {
+  if (total == null || !Number.isFinite(Number(total)) || Number(total) <= 0) {
+    return `<span class="muted">—</span>`;
+  }
+  const p = Number(proposed) || 0;
+  const t = Number(total) || 0;
+  const cls = p >= t ? "" : p === 0 ? "unplayed-bad" : "unplayed-warn";
+  return `<span class="${cls}">${p}/${t}</span>`;
 }
 
 function filterSeasonOwnerBoard(filterText) {
@@ -2023,8 +2059,10 @@ async function loadWaitingListAdmin() {
   const data = boardRes.data;
   const activityById = activityRes.byId;
   const videoByClub = activityRes.videoByClub || new Map();
+  const homePropByClub = activityRes.homePropByClub || new Map();
   const prevLabel = activityRes.previousLabel || "Prev month";
   const curLabel = activityRes.currentLabel || "Current month";
+  const nextMonthLabel = activityRes.nextMonthLabel || "Next month";
 
   const withActivity = (r) => {
     const act = activityById.get(r.owner_id) || null;
@@ -2032,6 +2070,7 @@ async function loadWaitingListAdmin() {
       .trim()
       .toUpperCase();
     const vid = clubKey ? videoByClub.get(clubKey) : null;
+    const homeProp = clubKey ? homePropByClub.get(clubKey) : null;
     const supp = supporterMap[r.owner_id] || supporterMap[String(r.owner_id)] || {};
     return {
       ...r,
@@ -2040,11 +2079,14 @@ async function loadWaitingListAdmin() {
             ...act,
             video_late_count: vid?.video_late_count ?? 0,
             video_failed_count: vid?.video_failed_count ?? 0,
+            home_prop_proposed: homeProp?.proposed ?? null,
+            home_prop_total: homeProp?.total ?? null,
           }
         : act,
       security: activityRes.securityById.get(r.owner_id) || null,
       owner_timezone: timezoneMap.get(r.owner_id) || "",
       video: vid || { video_late_count: 0, video_failed_count: 0 },
+      home_proposals: homeProp || null,
       is_supporter: !!supp.is_supporter,
       supporter_active: !!supp.supporter_active,
       supporter_grace_until: supp.supporter_grace_until || null,
@@ -2094,15 +2136,18 @@ async function loadWaitingListAdmin() {
     : "Section sort: supporters first (same order among themselves), then Season 1 rejects at bottom, then login activity";
   const activityNote = activityRes.error
     ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · missed running total · V late / V fail (match videos) · admin IP/country review · supporters at top · S1 rejected at section bottom · sort: last login first unless current month logins are under 4`;
+    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · H ${nextMonthLabel} home proposes · missed running total · V late / V fail (match videos) · admin IP/country review · supporters at top · S1 rejected at section bottom · sort: last login first unless current month logins are under 4`;
 
   const snapMonths = Number(activityRes.snapshotMonths || 0);
   const snapNote =
     snapMonths > 0
       ? ` · ${snapMonths} month(s) snapshotted`
       : " · no month snapshots yet — click Record unplayed before simming leftovers";
+  const homePropHint = activityRes.homePropError
+    ? ` · H prop unavailable (run admin_next_month_home_proposals_20261019.sql)`
+    : "";
 
-  const colSpan = 29;
+  const colSpan = 30;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
   let overallIndex = 0;
@@ -2113,7 +2158,7 @@ async function loadWaitingListAdmin() {
     `<tr class="wl-group-row">` +
     `<th colspan="7" class="wl-group-owner">Owner</th>` +
     `<th colspan="6" class="wl-group-season">Season</th>` +
-    `<th colspan="13" class="wl-group-activity">Activity</th>` +
+    `<th colspan="14" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions">Actions</th>` +
     `</tr>` +
     `<tr>` +
@@ -2134,6 +2179,7 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-login" title="${escapeWl(curLabel)} logins">${escapeWl(curLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(prevLabel)} (league + cups)">U ${escapeWl(prevLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">U ${escapeWl(curLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="Home kick-off proposals for next GPSL month (${escapeWl(nextMonthLabel)}) — league + cup. proposed/total.">H ${escapeWl(nextMonthLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Running total of unplayed fixtures frozen at month end / Record unplayed (survives catch-up sims). Includes live current month until that month is snapshotted.">U missed</th>` +
     `<th class="num wl-num-unplayed" title="Match videos uploaded after that fixture’s GPSL month lock_at">V late</th>` +
     `<th class="num wl-num-unplayed" title="Match videos still missing when lock_at + grace hours passed (fined / failed)">V fail</th>` +
@@ -2146,7 +2192,7 @@ async function loadWaitingListAdmin() {
     `</tr></thead><tbody id="wlPriorityTbody">`;
 
   html += sectionRow(
-    `Owners (${ownerCount}) — current club owners. Drag handle sets season priority with the waiting list. ${escapeWl(activityNote)}${escapeWl(snapNote)}.`
+    `Owners (${ownerCount}) — current club owners. Drag handle sets season priority with the waiting list. ${escapeWl(activityNote)}${escapeWl(snapNote)}${escapeWl(homePropHint)}.`
   );
   if (!ownerCount) {
     html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No club owners on the board.</td></tr>`;
@@ -3006,6 +3052,18 @@ function renderWaitingListAdminRow(
     act.video_failed_count != null
       ? Number(act.video_failed_count) || 0
       : Number(row.video?.video_failed_count) || 0;
+  const homePropProposed =
+    act.home_prop_proposed != null
+      ? Number(act.home_prop_proposed) || 0
+      : row.home_proposals?.proposed != null
+        ? Number(row.home_proposals.proposed) || 0
+        : null;
+  const homePropTotal =
+    act.home_prop_total != null
+      ? Number(act.home_prop_total) || 0
+      : row.home_proposals?.total != null
+        ? Number(row.home_proposals.total) || 0
+        : null;
   const sec = row.security || {};
   const formatUnplayed = (n) => {
     if (n == null) return `<span class="muted">—</span>`;
@@ -3156,6 +3214,9 @@ function renderWaitingListAdminRow(
     <td class="num wl-num-login">${curN}</td>
     <td class="num wl-num-unplayed" title="Unplayed previous GPSL month">${formatUnplayed(unplayedPrev)}</td>
     <td class="num wl-num-unplayed" title="Unplayed current GPSL month">${formatUnplayed(unplayedCur)}</td>
+    <td class="num wl-num-unplayed" title="Next month home kick-off proposals (league + cup)">${
+      hasClub ? formatHomeProposalRatio(homePropProposed, homePropTotal) : `<span class="muted">—</span>`
+    }</td>
     <td class="num wl-num-unplayed" title="Missed running total (month snapshots + live until snapshotted)">${formatUnplayed(unplayedMissed)}</td>
     <td class="num wl-num-unplayed" title="Match videos uploaded after month lock">${formatUnplayed(hasClub ? videoLate : null)}</td>
     <td class="num wl-num-unplayed" title="Missing match video past grace (failed / fined)">${formatUnplayed(hasClub ? videoFail : null)}</td>
