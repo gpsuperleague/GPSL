@@ -196,19 +196,74 @@ function absolutePageUrl(pathWithQuery) {
 }
 
 /**
+ * Human title for an agreed kick-off (never bare fixture ids).
+ * @param {{ home?: string, away?: string, competitionLabel?: string|null, matchday?: number|string|null }} p
+ */
+export function fixtureKickoffTitle(p) {
+  const home = String(p?.home || "").trim() || "Home";
+  const away = String(p?.away || "").trim() || "Away";
+  const md =
+    p?.matchday != null && p.matchday !== ""
+      ? `MD${p.matchday}`
+      : "";
+  const comp = String(p?.competitionLabel || md || "GPSL").trim() || "GPSL";
+  return `${comp}: ${home} vs ${away}`;
+}
+
+/**
+ * Safe .ics download name, e.g. "MD21 - Monaco vs Urawa.ics"
+ * (avoids opaque gpsl-fixture-12345.ics filenames).
+ * @param {{ home?: string, away?: string, competitionLabel?: string|null, matchday?: number|string|null, competition_type?: string|null }} p
+ */
+export function fixtureKickoffFilename(p) {
+  const home = String(p?.home || "Home").trim() || "Home";
+  const away = String(p?.away || "Away").trim() || "Away";
+  let prefix;
+  if (
+    String(p?.competition_type || "").toLowerCase() === "league" &&
+    p?.matchday != null &&
+    p.matchday !== ""
+  ) {
+    prefix = `MD${p.matchday}`;
+  } else {
+    prefix = String(p?.competitionLabel || "GPSL")
+      .replace(/[·•]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim() || "GPSL";
+  }
+  const raw = `${prefix} - ${home} vs ${away}`;
+  const safe = raw.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim();
+  return `${safe || "gpsl-fixture"}.ics`;
+}
+
+/**
  * Agreed fixture kick-off (90 min duration).
- * @param {{ id: string|number, home: string, away: string, kickoffAt: string|Date, url?: string }} p
+ * @param {{
+ *   id: string|number,
+ *   home: string,
+ *   away: string,
+ *   kickoffAt: string|Date,
+ *   url?: string,
+ *   competitionLabel?: string|null,
+ *   matchday?: number|string|null,
+ * }} p
  */
 export function fixtureKickoffEvent(p) {
   const id = String(p.id ?? "").trim();
   if (!id || !p.kickoffAt) return null;
-  const home = p.home || "Home";
-  const away = p.away || "Away";
+  const home = String(p.home || "").trim() || "Home";
+  const away = String(p.away || "").trim() || "Away";
   const url = p.url || absolutePageUrl(`fixture_schedule.html?fixture=${encodeURIComponent(id)}`);
+  const title = fixtureKickoffTitle({
+    home,
+    away,
+    competitionLabel: p.competitionLabel,
+    matchday: p.matchday,
+  });
   return buildVEvent({
     uid: `gpsl-fixture-${id}@gpsl`,
-    title: `GPSL: ${home} vs ${away}`,
-    description: `Agreed kick-off (GPSL).\nOpen: ${url}`,
+    title,
+    description: `Agreed kick-off (GPSL).\n${home} vs ${away}\nOpen: ${url}`,
     startAt: p.kickoffAt,
     durationMs: DEFAULT_DURATION_MS,
     url,

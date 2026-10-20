@@ -27,7 +27,11 @@ import {
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import { scheduleActionLabel } from "./match_scheduling.js";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
-import { downloadIcs, fixtureKickoffEvent } from "./calendar_ics.js";
+import {
+  downloadIcs,
+  fixtureKickoffEvent,
+  fixtureKickoffFilename,
+} from "./calendar_ics.js?v=20261020-ics-teams";
 import {
   loadMatchSimStatus,
   matchSimBannerHtml,
@@ -646,6 +650,18 @@ function requestedClubFixturesMonth() {
   return raw || null;
 }
 
+function fixtureCalMeta(f) {
+  const home = f?.home_club_name || f?.home_club_short_name;
+  const away = f?.away_club_name || f?.away_club_short_name;
+  return {
+    home,
+    away,
+    competitionLabel: competitionLabel(f),
+    matchday: f?.matchday,
+    competition_type: f?.competition_type,
+  };
+}
+
 function downloadAgreedKickoffs(fixtures) {
   const agreed = (fixtures || []).filter(
     (f) => f.schedule_status === "agreed" && f.agreed_kickoff_at && f.status !== "played"
@@ -654,9 +670,8 @@ function downloadAgreedKickoffs(fixtures) {
     .map((f) =>
       fixtureKickoffEvent({
         id: f.id,
-        home: f.home_club_name || f.home_club_short_name,
-        away: f.away_club_name || f.away_club_short_name,
         kickoffAt: f.agreed_kickoff_at,
+        ...fixtureCalMeta(f),
       })
     )
     .filter(Boolean);
@@ -668,37 +683,19 @@ function downloadAgreedKickoffs(fixtures) {
   downloadIcs("gpsl-my-fixtures.ics", events);
 }
 
-/** Safe .ics download name, e.g. "MD21 - Monaco vs Urawa.ics" */
-function fixtureCalendarFilename(f) {
-  const home = String(f?.home_club_name || f?.home_club_short_name || "Home").trim();
-  const away = String(f?.away_club_name || f?.away_club_short_name || "Away").trim();
-  let prefix;
-  if (f?.competition_type === "league" && f.matchday != null && f.matchday !== "") {
-    prefix = `MD${f.matchday}`;
-  } else {
-    prefix = String(competitionLabel(f) || "GPSL")
-      .replace(/[·•]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-  const raw = `${prefix} - ${home} vs ${away}`;
-  const safe = raw.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim();
-  return `${safe || "gpsl-fixture"}.ics`;
-}
-
 function wireCalendarButtons(root) {
   root?.querySelectorAll("[data-cal-fixture]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.getAttribute("data-cal-fixture");
       const f = lastFixtures.find((row) => String(row.id) === String(id));
       if (!f?.agreed_kickoff_at) return;
+      const meta = fixtureCalMeta(f);
       const ev = fixtureKickoffEvent({
         id: f.id,
-        home: f.home_club_name || f.home_club_short_name,
-        away: f.away_club_name || f.away_club_short_name,
         kickoffAt: f.agreed_kickoff_at,
+        ...meta,
       });
-      downloadIcs(fixtureCalendarFilename(f), [ev]);
+      downloadIcs(fixtureKickoffFilename(meta), [ev]);
     });
   });
   root?.querySelectorAll(".cal-added-cb").forEach((cb) => {

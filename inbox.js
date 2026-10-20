@@ -3,7 +3,12 @@ import { rejectFixtureResult, normalizeClubKey } from "./competition.js";
 import { loadInboxMessages, INBOX_CATEGORY_FILTERS, filterInboxByCategory } from "./competition_inbox.js?v=20260929-mc";
 import { inboxActionForMessage } from "./competition_inbox_actions.js?v=20260929-mc";
 import { acceptProposal, confirmMutualOverride } from "./match_scheduling.js";
-import { downloadIcs, downloadIcsEach, fixtureKickoffEvent } from "./calendar_ics.js";
+import {
+  downloadIcs,
+  downloadIcsEach,
+  fixtureKickoffEvent,
+  fixtureKickoffFilename,
+} from "./calendar_ics.js?v=20261020-ics-teams";
 
 /** Inbox types that announce a settled kick-off time. */
 const AGREED_KICKOFF_TYPES = new Set([
@@ -366,26 +371,31 @@ function fixtureKickoffLabel(f) {
   }
 }
 
-function fixtureCalendarFilename(f) {
-  const home = String(f?.home_club_name || f?.home_club_short_name || "Home").trim();
-  const away = String(f?.away_club_name || f?.away_club_short_name || "Away").trim();
-  const prefix =
-    f?.competition_type === "league" && f.matchday != null && f.matchday !== ""
-      ? `MD${f.matchday}`
-      : "GPSL";
-  const safe = `${prefix} - ${home} vs ${away}`
-    .replace(/[\\/:*?"<>|]+/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return `${safe || "gpsl-fixture"}.ics`;
+function fixtureCalendarMeta(f) {
+  const home = f?.home_club_name || f?.home_club_short_name;
+  const away = f?.away_club_name || f?.away_club_short_name;
+  let competitionLabel = "GPSL";
+  if (f?.competition_type === "league" && f.matchday != null && f.matchday !== "") {
+    competitionLabel = `MD${f.matchday}`;
+  } else if (f?.cup_code) {
+    competitionLabel = String(f.cup_code);
+  } else if (f?.division) {
+    competitionLabel = String(f.division);
+  }
+  return {
+    home,
+    away,
+    competitionLabel,
+    matchday: f?.matchday,
+    competition_type: f?.competition_type,
+  };
 }
 
 function fixtureCalendarEvent(f) {
   return fixtureKickoffEvent({
     id: f.id,
-    home: f.home_club_name || f.home_club_short_name,
-    away: f.away_club_name || f.away_club_short_name,
     kickoffAt: f.agreed_kickoff_at,
+    ...fixtureCalendarMeta(f),
   });
 }
 
@@ -417,10 +427,15 @@ async function addFixturesToCalendar(fixtures, { separateFiles = false } = {}) {
   }
   const ok = separateFiles
     ? downloadIcsEach(
-        list.map((f) => ({ filename: fixtureCalendarFilename(f), vevent: fixtureCalendarEvent(f) }))
+        list.map((f) => ({
+          filename: fixtureKickoffFilename(fixtureCalendarMeta(f)),
+          vevent: fixtureCalendarEvent(f),
+        }))
       )
     : list.length === 1
-      ? downloadIcs(fixtureCalendarFilename(list[0]), [fixtureCalendarEvent(list[0])])
+      ? downloadIcs(fixtureKickoffFilename(fixtureCalendarMeta(list[0])), [
+          fixtureCalendarEvent(list[0]),
+        ])
       : downloadIcs("gpsl-agreed-kickoffs.ics", list.map(fixtureCalendarEvent));
   if (!ok) {
     setStatus("Could not build the calendar file.", true);

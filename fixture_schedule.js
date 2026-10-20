@@ -32,7 +32,11 @@ import {
   pitchBehaviourPanelHtml,
   wirePitchAck,
 } from "./matchday_console_rules.js?v=20261012-console-text2";
-import { downloadIcs, fixtureKickoffEvent } from "./calendar_ics.js";
+import {
+  downloadIcs,
+  fixtureKickoffEvent,
+  fixtureKickoffFilename,
+} from "./calendar_ics.js?v=20261020-ics-teams";
 
 function replayResetConfirmMessage(allowances) {
   if (allowances?.can_replay_reset) {
@@ -437,13 +441,19 @@ function renderAgreedPanel(root, f, sch) {
     calBtn.onclick = () => {
       const home = fullClubName(f.home_club_short_name) || f.home_club_short_name;
       const away = fullClubName(f.away_club_short_name) || f.away_club_short_name;
-      const ev = fixtureKickoffEvent({
-        id: f.id,
+      const calMeta = {
         home,
         away,
+        competitionLabel: formatFixtureCompetition(f),
+        matchday: f.matchday,
+        competition_type: f.competition_type,
+      };
+      const ev = fixtureKickoffEvent({
+        id: f.id,
         kickoffAt: sch.agreed_kickoff_at,
+        ...calMeta,
       });
-      if (!downloadIcs(`gpsl-fixture-${f.id}.ics`, [ev])) {
+      if (!downloadIcs(fixtureKickoffFilename(calMeta), [ev])) {
         setStatus("Could not build calendar file.", true);
       }
     };
