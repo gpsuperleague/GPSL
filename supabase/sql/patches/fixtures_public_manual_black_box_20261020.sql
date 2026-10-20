@@ -5,8 +5,10 @@
 
 DROP VIEW IF EXISTS public.competition_fixtures_public;
 
+-- security_invoker=false: schedule/check-in RLS is club/admin-only; the public
+-- fixtures board must still show kick-off status to every owner (read-only).
 CREATE VIEW public.competition_fixtures_public
-WITH (security_invoker = true)
+WITH (security_invoker = false)
 AS
 SELECT
   f.id,
@@ -93,6 +95,8 @@ LEFT JOIN LATERAL (
 WHERE s.status = 'active'::text
   AND s.is_current = true;
 
+REVOKE ALL ON public.competition_fixtures_public FROM PUBLIC;
+REVOKE ALL ON public.competition_fixtures_public FROM anon, authenticated;
 GRANT SELECT ON public.competition_fixtures_public TO authenticated;
 GRANT SELECT ON public.competition_fixtures_public TO anon;
 
