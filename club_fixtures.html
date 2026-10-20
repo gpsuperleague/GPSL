@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Club Fixtures — GPSL</title>
-  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="dashboard.css?v=20261020-absent-away">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260915-myclub-tips">
   <link rel="stylesheet" href="match_report.css?v=20260918-match-centre">
@@ -41,6 +41,13 @@
     .fixture-card--vacant-pair {
       background: linear-gradient(90deg, rgba(140, 150, 170, 0.12), rgba(90, 100, 120, 0.04) 55%, transparent);
       box-shadow: inset 3px 0 0 rgba(150, 160, 180, 0.45);
+    }
+    .fixture-card--absent {
+      background: linear-gradient(90deg, rgba(120, 80, 170, 0.14), rgba(90, 50, 140, 0.05) 55%, transparent);
+      box-shadow: inset 3px 0 0 rgba(160, 110, 220, 0.55);
+    }
+    .fixture-badge.absent {
+      background: #3a2a55; color: #d8c4ff; border: 1px solid #6a4a8a;
     }
     .fixture-top {
       display:flex; flex-wrap:wrap; align-items:flex-start; gap:10px 16px;
@@ -156,6 +163,6 @@
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20261020-ics-teams"></script>
+  <script type="module" src="club_fixtures.js?v=20261020-absent-away"></script>
 </body>
 </html>

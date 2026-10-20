@@ -89,6 +89,28 @@
     .deadline-box.deadline-late { background:#2a1212; border-color:#a04040; color:#ffb8b8; }
     .deadline-box.deadline-info { background:#101c28; border-color:#2a4a6a; color:#cfe3ff; }
     .deadline-box a { color:#ff9900; }
+    .tz-compare {
+      margin:10px 0 12px; padding:10px 12px;
+      background:#121820; border:1px solid #2a3a4a; border-radius:6px;
+    }
+    .tz-compare-title {
+      color:#9cf; font-size:12px; font-weight:700; letter-spacing:0.02em;
+      text-transform:uppercase; margin-bottom:8px;
+    }
+    .tz-compare-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:10px;
+    }
+    @media (max-width:700px) {
+      .tz-compare-grid { grid-template-columns:1fr; }
+    }
+    .tz-compare-card {
+      background:#0e141c; border:1px solid #243040; border-radius:5px; padding:8px 10px;
+    }
+    .tz-compare-club { color:#aaa; font-size:11px; font-weight:600; margin-bottom:2px; }
+    .tz-compare-zone { color:#e8f0ff; font-size:13px; font-weight:700; }
+    .tz-compare-now { color:#8ab; font-size:12px; margin-top:3px; }
+    .tz-compare-note { color:#8899aa; font-size:12px; line-height:1.4; margin:8px 0 0; }
+    .tz-compare-note b { color:#cde; }
   </style>
 </head>
 <body>
@@ -103,6 +125,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261020-owner-tz-avail"></script>
+  <script type="module" src="fixture_schedule.js?v=20261020-tz-compare"></script>
 </body>
 </html>

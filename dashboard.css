@@ -234,6 +234,27 @@ th a:hover,
   font-style: italic;
 }
 
+.club-owner-tag--absent {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #d8c4ff;
+  background: #3a2a55;
+  border: 1px solid #6a4a8a;
+  font-style: normal;
+}
+
+.standings-club.is-season-absent .standings-club-link,
+.fixture-club.is-season-absent .fixture-club-name,
+.fixture-club.is-season-absent .fixture-club-link {
+  color: #c4b0e8;
+}
+
 a.club-owner-tag {
   text-decoration: none;
   cursor: pointer;

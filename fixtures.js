@@ -321,6 +321,7 @@ function applyFixtureRowClasses(tr, fixture) {
     fixture.home_club_short_name,
     fixture.away_club_short_name
   );
+  if (occ.involvesSeasonAbsent) tr.classList.add("fixture-season-absent");
   if (occ.isPartialVacant) tr.classList.add("fixture-sim");
   else if (occ.isVacantVsVacant) tr.classList.add("fixture-vacant-pair");
 }

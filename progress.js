@@ -1,5 +1,9 @@
 import { supabase, initGlobal } from "./global.js";
-import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
+import {
+  loadClubsMap,
+  clubWithOwnerHtml,
+  clubIsSeasonAbsentCached,
+} from "./clubs_lookup.js";
 import {
   loadCurrentSeason,
   loadStandingsWithPrizes,
@@ -285,6 +289,9 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
         normalizeClubKey(row.club_short_name) === normalizeClubKey(myClub.short)
           ? " my-club"
           : "";
+      const absent = clubIsSeasonAbsentCached(row.club_short_name)
+        ? " season-absent"
+        : "";
 
       const prizeCell = showPrize
         ? (() => {
@@ -301,7 +308,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
       const leader = displayRank === 1 ? " row-leader" : "";
 
       return `
-        <tr class="prestige-${prestigeKey} league-${tintKey}${prestigeBoundary ? " zone-boundary" : ""}${playoffBoundary ? " zone-boundary-playoff" : ""}${relegationBoundary || bowlBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}">
+        <tr class="prestige-${prestigeKey} league-${tintKey}${prestigeBoundary ? " zone-boundary" : ""}${playoffBoundary ? " zone-boundary-playoff" : ""}${relegationBoundary || bowlBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}${absent}">
           <td class="num pos-col">${displayRank}</td>
           <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
           <td class="status-col">${statusText}</td>

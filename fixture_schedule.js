@@ -97,6 +97,64 @@ function fixtureTitle(f) {
   return comp ? `${comp} · ${home} vs ${away}` : `${home} vs ${away}`;
 }
 
+function tzDisplayName(tz) {
+  return String(tz || UK_TZ).replace(/_/g, " ");
+}
+
+function localNowInTz(tz) {
+  return new Date().toLocaleString("en-GB", {
+    timeZone: tz || UK_TZ,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+/** Home + away timezone strip so owners can verify local matching. */
+function timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz) {
+  const homeName = fullClubName(f.home_club_short_name) || f.home_club_short_name;
+  const awayName = fullClubName(f.away_club_short_name) || f.away_club_short_name;
+  const hTz = homeTz || UK_TZ;
+  const aTz = awayTz || UK_TZ;
+  const same = hTz === aTz;
+  return `
+    <div class="tz-compare" role="region" aria-label="Club timezones">
+      <div class="tz-compare-title">Timezones (for matching)</div>
+      <div class="tz-compare-grid">
+        <div class="tz-compare-card">
+          <div class="tz-compare-club">Home · ${escapeHtmlLite(homeName)}</div>
+          <div class="tz-compare-zone">${escapeHtmlLite(tzDisplayName(hTz))}</div>
+          <div class="tz-compare-now">Now: ${escapeHtmlLite(localNowInTz(hTz))}</div>
+        </div>
+        <div class="tz-compare-card">
+          <div class="tz-compare-club">Away · ${escapeHtmlLite(awayName)}</div>
+          <div class="tz-compare-zone">${escapeHtmlLite(tzDisplayName(aTz))}</div>
+          <div class="tz-compare-now">Now: ${escapeHtmlLite(localNowInTz(aTz))}</div>
+        </div>
+      </div>
+      <p class="tz-compare-note">
+        ${
+          same
+            ? "Both clubs use the same timezone — compatible slots use the same local clock."
+            : "Slot buttons show each kick-off in your local time, with UK / home / away underneath so you can check the match."
+        }
+        Your zone: <b>${escapeHtmlLite(tzDisplayName(ownerTz || UK_TZ))}</b>
+        (${escapeHtmlLite(localNowInTz(ownerTz || UK_TZ))}).
+      </p>
+    </div>`;
+}
+
+function escapeHtmlLite(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, onSelect, excludeIso }) {
   if (!container) return 0;
 
@@ -382,11 +440,24 @@ function renderAgreedPanel(root, f, sch) {
     mutualHtml = `<p class="meta">Mutual kick-off change already used for this fixture.</p>`;
   }
 
+  const agreedMeta = document.getElementById("scheduleMeta");
+  if (agreedMeta) {
+    agreedMeta.textContent = [
+      formatFixtureCompetition(f),
+      GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month,
+      `Home ${tzDisplayName(homeTz)} · Away ${tzDisplayName(awayTz)}`,
+      formatOwnerNowLine(ownerTz),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
   root.innerHTML = `
     ${catchUpBannerHtml()}
     ${holidayEarlyBannerHtml()}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
+      ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
       <p class="status-agreed"><b>Kick-off agreed:</b> <span class="kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</span></p>
       <p class="meta" style="margin-top:6px;">
         <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
@@ -713,7 +784,10 @@ function render() {
   if (meta) {
     const comp = formatFixtureCompetition(f);
     const roleText = ctx.my_role === "home" ? "You are the home club" : ctx.my_role === "away" ? "You are the away club" : "";
-    meta.textContent = [comp, monthLabel, roleText, formatOwnerNowLine(ownerTz)].filter(Boolean).join(" · ");
+    const tzLine = `Home ${tzDisplayName(homeTz)} · Away ${tzDisplayName(awayTz)}`;
+    meta.textContent = [comp, monthLabel, roleText, tzLine, formatOwnerNowLine(ownerTz)]
+      .filter(Boolean)
+      .join(" · ");
   }
 
   let pendingHtml = "";
@@ -823,6 +897,7 @@ function render() {
     ${noManagerBanner}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
+      ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
       ${responseHtml}
       ${deadlineBoxHtml(f)}
       ${unavailablePanelHtml(f)}

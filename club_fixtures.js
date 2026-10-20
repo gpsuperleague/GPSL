@@ -338,16 +338,24 @@ function fixtureCardHtml(f) {
     f.home_club_short_name,
     f.away_club_short_name
   );
-  const simClass = occ.isPartialVacant
-    ? " fixture-card--sim"
-    : occ.isVacantVsVacant
-      ? " fixture-card--vacant-pair"
-      : "";
-  const simBadge = occ.isPartialVacant
-    ? `<span class="fixture-badge sim" title="One club has no owner — simulation match">Simulation</span>`
-    : occ.isVacantVsVacant
-      ? `<span class="fixture-badge sim-vacant" title="Neither club has an owner">Vacant vs vacant</span>`
-      : "";
+  const simClass = [
+    occ.involvesSeasonAbsent ? " fixture-card--absent" : "",
+    occ.isPartialVacant
+      ? " fixture-card--sim"
+      : occ.isVacantVsVacant
+        ? " fixture-card--vacant-pair"
+        : "",
+  ].join("");
+  const simBadge = [
+    occ.involvesSeasonAbsent
+      ? `<span class="fixture-badge absent" title="Owner on season absence — fixtures awarded to the active club (like vacant)">Away</span>`
+      : "",
+    occ.isPartialVacant
+      ? `<span class="fixture-badge sim" title="One club has no owner — simulation match">Simulation</span>`
+      : occ.isVacantVsVacant
+        ? `<span class="fixture-badge sim-vacant" title="Neither club has an owner">Vacant vs vacant</span>`
+        : "",
+  ].join("");
 
   let playedBlock = "";
   if (f.status === "played") {

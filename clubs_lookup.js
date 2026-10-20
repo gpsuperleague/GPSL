@@ -13,6 +13,8 @@ let stadiumMap = new Map();
 let ownerTagsMap = new Map();
 /** @type {Map<string, string>} club ShortName → owner uuid */
 let ownerIdsMap = new Map();
+/** @type {Set<string>} upper ShortName on active season absence */
+const seasonAbsentClubs = new Set();
 
 function getSupabase() {
   return window.supabase;
@@ -44,6 +46,7 @@ export async function loadClubsMap() {
   stadiumMap.clear();
   ownerTagsMap.clear();
   ownerIdsMap.clear();
+  seasonAbsentClubs.clear();
 
   data.forEach(row => {
     clubsMap.set(row.ShortName, row.Club);
@@ -69,6 +72,28 @@ export async function loadClubsMap() {
   } catch (err) {
     console.warn("loadClubsMap: holiday map", err);
   }
+  try {
+    await loadSeasonAbsentClubsMap(supabase);
+  } catch (err) {
+    console.warn("loadClubsMap: season absence map", err);
+  }
+}
+
+/** Batch-load clubs on active season absence. */
+export async function loadSeasonAbsentClubsMap(supabaseClient = null) {
+  const supabase = supabaseClient || getSupabase();
+  seasonAbsentClubs.clear();
+  if (!supabase?.rpc) return seasonAbsentClubs;
+  const { data, error } = await supabase.rpc("season_absent_clubs_map");
+  if (error) {
+    console.warn("season_absent_clubs_map:", error.message || error);
+    return seasonAbsentClubs;
+  }
+  const map = data && typeof data === "object" ? data : {};
+  for (const [club, on] of Object.entries(map)) {
+    if (on) seasonAbsentClubs.add(String(club).trim().toUpperCase());
+  }
+  return seasonAbsentClubs;
 }
 
 /* ============================================================
@@ -110,20 +135,37 @@ export async function clubIsSeasonAbsent(supabase, clubShort, seasonId = null) {
   return Boolean(data);
 }
 
+/** Sync: from map loaded with loadClubsMap / loadSeasonAbsentClubsMap. */
+export function clubIsSeasonAbsentCached(shortName) {
+  const key = String(shortName || "").trim().toUpperCase();
+  if (!key) return false;
+  return seasonAbsentClubs.has(key);
+}
+
 /**
  * @param {string} homeShort
  * @param {string} awayShort
- * @returns {{ homeOwned: boolean, awayOwned: boolean, isPartialVacant: boolean, isVacantVsVacant: boolean }}
+ * @returns {{ homeOwned: boolean, awayOwned: boolean, isPartialVacant: boolean, isVacantVsVacant: boolean, homeAbsent: boolean, awayAbsent: boolean, involvesSeasonAbsent: boolean }}
  */
 export function fixtureOwnerOccupancy(homeShort, awayShort) {
   const homeOwned = clubHasOwner(homeShort);
   const awayOwned = clubHasOwner(awayShort);
+  const homeAbsent = clubIsSeasonAbsentCached(homeShort);
+  const awayAbsent = clubIsSeasonAbsentCached(awayShort);
   return {
     homeOwned,
     awayOwned,
     isPartialVacant: homeOwned !== awayOwned,
     isVacantVsVacant: !homeOwned && !awayOwned,
+    homeAbsent,
+    awayAbsent,
+    involvesSeasonAbsent: homeAbsent || awayAbsent,
   };
+}
+
+/** Pill shown next to club name when owner is on season absence. */
+export function seasonAbsentMarkHtml() {
+  return `<span class="club-owner-tag club-owner-tag--absent" title="Season absence — owner away; fixtures awarded to opponents (like vacant)">Away</span>`;
 }
 
 /** Owner profile / history page for a club’s current owner. */
@@ -183,29 +225,34 @@ export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
   const name = escapeHtml(clubName || shortName || "—");
   const tag = ownerTagForClub(shortName);
   const oid = ownerIdForClub(shortName);
+  const absent = clubIsSeasonAbsentCached(shortName);
   let tagHtml = ownerTagLinkHtml(tag, oid, shortName);
   if (!tagHtml && layout === "block" && shortName && !oid) {
     tagHtml = `<span class="club-owner-tag club-owner-tag--vacant">Vacant</span>`;
+  }
+  if (absent) {
+    tagHtml = `${tagHtml || ""}${seasonAbsentMarkHtml()}`;
   }
   const href = clubHistoryHref(shortName);
   const linkedName = href
     ? `<a href="${escapeHtml(href)}" class="standings-club-link" title="Club history">${name}</a>`
     : name;
   const badge = clubBadgeImgHtml(shortName);
+  const absentCls = absent ? " is-season-absent" : "";
 
   if (layout === "block") {
     const blockName = href
       ? `<a href="${escapeHtml(href)}" class="fixture-club-link" title="Club history">${name}</a>`
       : name;
     return (
-      `<span class="fixture-club">${badge}` +
+      `<span class="fixture-club${absentCls}">${badge}` +
       `<span class="fixture-club-body"><span class="fixture-club-name">${blockName}</span>${tagHtml}</span>` +
       `</span>`
     );
   }
 
   return (
-    `<span class="standings-club">${badge}` +
+    `<span class="standings-club${absentCls}">${badge}` +
     `<span class="standings-club-text">${linkedName}${tagHtml}</span>` +
     `</span>`
   );
