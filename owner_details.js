@@ -14,7 +14,7 @@ import {
   holidayStatusLabel,
   inclusiveDayCountFromDates,
 } from "./owner_holidays.js?v=20261019-supporter-holiday";
-import { wireAvailabilityPanel } from "./owner_availability.js?v=20260930-world-tz";
+import { wireAvailabilityPanel } from "./owner_availability.js?v=20261020-owner-tz-avail";
 import {
   ownerBadgePublicUrl,
   ownerBadgeStoragePath,

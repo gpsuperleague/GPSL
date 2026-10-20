@@ -771,7 +771,7 @@
           </div>
         </div>
 
-        <div class="owner-detail-cell gpsl-has-tip" id="availabilityCell" data-gpsl-tip="Weekly free slots (30-minute blocks, UK time) used when proposing or responding to fixture times. Holidays overlay as unavailable — set your timezone for accurate proposals." tabindex="0">
+        <div class="owner-detail-cell gpsl-has-tip" id="availabilityCell" data-gpsl-tip="Weekly free slots in your timezone (30-minute blocks). Match Schedule only offers times that overlap both clubs’ local availability as compatible world kick-offs." tabindex="0">
           <span class="owner-detail-label">Match availability</span>
           <p class="owner-detail-summary">Weekly slots for league and cup scheduling.</p>
           <button type="button" id="editAvailabilityBtn" class="owner-detail-link">Edit availability</button>
@@ -1048,6 +1048,6 @@
       if (howto && !howto.contains(e.target)) howto.removeAttribute("open");
     });
   </script>
-  <script type="module" src="owner_details.js?v=20261020-badge-cache"></script>
+  <script type="module" src="owner_details.js?v=20261020-owner-tz-avail"></script>
 </body>
 </html>

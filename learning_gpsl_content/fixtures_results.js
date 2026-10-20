@@ -261,7 +261,7 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `On <a href="owner_details.html">Owner Details</a>, mark the <b>30-minute blocks</b> (UK time) you are free each week.`,
+        `On <a href="owner_details.html">Owner Details</a>, mark the <b>30-minute blocks</b> in <b>your timezone</b> that you are free each week.`,
         `Set your <b>timezone</b> so kick-offs show in your local time.`,
         `Availability stays with your owner account across seasons — set it once.`,
         `<b>Holidays</b> (up to 14 days/season, or 21 while you are an active GPSL supporter — extra days beyond 14 only stay valid while subscribed). Early arrange/play unlocks only when an <b>effective</b> holiday covers <b>4+ days</b> of that GPSL month. Book before that month opens; both clubs need a full squad (min 24). Details on Owner Details.`,
@@ -272,7 +272,7 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `<b>Home proposes first</b> — pick a slot from <em>your</em> availability (opponent does not need theirs set yet).`,
+        `<b>Home proposes first</b> — pick a kick-off from times free for <b>both</b> clubs (each owner’s local availability, matched as world time).`,
         `Away gets an <a href="inbox.html">Inbox</a> message — <b>Accept</b> or <b>counter</b> with their own slot.`,
         `You can’t double-book a 30-minute slot already agreed or pending for either club.`,
         `You can agree on <b>Discord</b> anytime — then use <b>We agreed on Discord — lock this kick-off</b> on the schedule page so both clubs confirm (reply clocks keep running until locked).`,

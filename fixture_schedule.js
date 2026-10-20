@@ -688,14 +688,21 @@ function render() {
     return;
   }
 
-  const hasOwnSlotsField = Array.isArray(ctx.my_window_slots);
-  const slots = hasOwnSlotsField
-    ? ctx.my_window_slots
-    : ctx.intersection_slots || [];
-  const usingOwnSlots = hasOwnSlotsField;
+  const intersectionSlots = Array.isArray(ctx.intersection_slots)
+    ? ctx.intersection_slots
+    : [];
+  const ownSlots = Array.isArray(ctx.my_window_slots) ? ctx.my_window_slots : [];
   const homeTz = ctx.home_timezone || UK_TZ;
   const awayTz = ctx.away_timezone || UK_TZ;
   const ownerTz = ctx.my_timezone || UK_TZ;
+  // Prefer times free for BOTH clubs (each in their own timezone). Away waiting
+  // for home's first propose can still see own slots for reference.
+  const isAwayWaitingPreview =
+    ctx.my_role === "away" &&
+    !(ctx.can_propose_first || ctx.can_respond) &&
+    !ctx.pending_proposal;
+  const slots = isAwayWaitingPreview ? ownSlots : intersectionSlots;
+  const usingCompatibleSlots = !isAwayWaitingPreview;
   const selectableSlots = filterSelectableKickoffSlots(slots, ownerTz);
   const pastHidden = slots.length - selectableSlots.length;
   const responseLine = formatResponseDeadlineLine(ctx.response_deadline, myClub.short);
@@ -785,17 +792,19 @@ function render() {
 
   const isAwayWaiting = ctx.my_role === "away" && !canPick;
   const slotIntro = isAwayWaiting
-    ? `The home club proposes first. Your availability is shown below for reference — once they propose you can accept, or counter with one of these times (${slotCountLine}).`
+    ? `The home club proposes first. Your local availability is shown below for reference — once they propose you can accept, or counter with a time free for <b>both</b> clubs (${slotCountLine}).`
     : ctx.can_respond
-      ? `Accept the proposed time above, or pick one of your own times below and press Counter-propose (${slotCountLine}).`
-      : usingOwnSlots
-        ? `Pick a time from <b>your</b> weekly availability and press Propose kick-off — your opponent doesn't need to have set theirs yet. They can then accept or counter (${slotCountLine}).`
+      ? `Accept the proposed time above, or counter with another time free for <b>both</b> clubs in your local timezones (${slotCountLine}).`
+      : usingCompatibleSlots
+        ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). Then press Propose kick-off (${slotCountLine}).`
         : `Pick a 30-minute block from available times (${slotCountLine}).`;
 
   const emptySlotsMsg = !selectableSlots.length
     ? slots.length
       ? '<p class="meta" style="color:#f88;">All listed slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
-      : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a>, or free a time already booked for another match.</p>'
+      : usingCompatibleSlots
+        ? '<p class="meta" style="color:#f88;">No overlapping times this window — both clubs need weekly availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a> in their own timezones that share a common world kick-off (or free a time already booked).</p>'
+        : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a>, or free a time already booked for another match.</p>'
     : "";
 
   const mo = ctx.mutual_override;
@@ -839,7 +848,13 @@ function render() {
       ctx.my_has_manager === false
         ? ""
         : `<div class="panel">
-      <h2>${isAwayWaiting ? "Your availability (for reference)" : usingOwnSlots ? "Your availability slots" : "Available slots"}</h2>
+      <h2>${
+        isAwayWaiting
+          ? "Your availability (for reference)"
+          : usingCompatibleSlots
+            ? "Compatible times (both clubs free)"
+            : "Available slots"
+      }</h2>
       <div class="slot-list" id="slotList"></div>
       ${
         canPick && selectableSlots.length

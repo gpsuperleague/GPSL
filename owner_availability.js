@@ -33,11 +33,12 @@ function ensureModal() {
         <button type="button" class="avail-modal-close" data-close="1" aria-label="Close">×</button>
       </div>
       <p class="avail-modal-intro">
-        Mark when you are generally free to play (30-minute blocks, UK time).
-        Holidays booked below overlay as unavailable. Set your display timezone for proposals.
+        Mark when you are generally free to play in <b>your</b> timezone (30-minute blocks).
+        Match Schedule only offers times that overlap both clubs’ local availability.
+        Holidays booked below overlay as unavailable.
       </p>
       <div class="avail-tz-row">
-        <label>Your timezone
+        <label>Your timezone (grid below uses this)
           <select id="availTimezoneSelect"></select>
         </label>
         <button type="button" id="availDetectTzBtn" class="small-btn secondary">Use my device timezone</button>
@@ -243,7 +244,9 @@ function populateTimezoneSelect(current) {
     const status = document.getElementById("availStatus");
     const res = await setOwnerTimezone(sel.value);
     if (status) {
-      status.textContent = res.ok ? "Timezone saved." : res.msg;
+      status.textContent = res.ok
+        ? "Timezone saved — grid times stay as clock times in this zone. Re-check your blocks if you switched zones."
+        : res.msg;
       status.style.color = res.ok ? "#8c8" : "#f88";
     }
   };
@@ -459,11 +462,12 @@ export async function mountAvailabilityPanel(container, options) {
 
   container.innerHTML = `
     <p class="avail-modal-intro">
-      Mark when this club is generally free to play (30-minute blocks, UK time).
+      Mark when this club is generally free to play in <b>its</b> timezone (30-minute blocks).
+      Match Schedule offers times that overlap both clubs’ local availability.
       Holidays booked by the owner overlay as unavailable.
     </p>
     <div class="avail-tz-row">
-      <label>Your timezone
+      <label>Timezone (grid below uses this)
         <select id="availTimezoneSelect"></select>
       </label>
       <button type="button" id="availDetectTzBtn" class="small-btn secondary">Use my device timezone</button>
