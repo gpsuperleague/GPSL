@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+  <!-- Scouting board: cork board + pins -->
+  <rect x="2" y="2.8" width="16" height="14.4" rx="1.4" fill="#8a6a3d"/>
+  <rect x="3.2" y="4" width="13.6" height="12" rx="0.8" fill="#c4a574"/>
+  <rect x="4.4" y="5.4" width="4.2" height="3.2" rx="0.4" fill="#f5f0e6"/>
+  <rect x="9.6" y="5.8" width="5.2" height="2.6" rx="0.4" fill="#eef5ff"/>
+  <rect x="5" y="10.2" width="5.6" height="3.4" rx="0.4" fill="#e8f8ef"/>
+  <rect x="11.4" y="10.6" width="3.6" height="2.8" rx="0.4" fill="#fff4e6"/>
+  <circle cx="5.2" cy="5.2" r="0.85" fill="#c0392b"/>
+  <circle cx="10.4" cy="5.6" r="0.85" fill="#2980b9"/>
+  <circle cx="5.8" cy="10" r="0.85" fill="#27ae60"/>
+  <circle cx="12.2" cy="10.4" r="0.85" fill="#8e44ad"/>
+</svg>

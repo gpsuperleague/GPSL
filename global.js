@@ -1652,14 +1652,31 @@ function navAuctionActiveBadgeHtml(kind, visible = isNavAuctionActive(kind)) {
 
 const NAV_MENU_ICON_FILES = {
   boardroom: { src: "images/nav/boardroom.svg", title: "Boardroom" },
+  club_details: { src: "images/nav/club_details.svg", title: "Club Details" },
+  owner_details: { src: "images/nav/owner_details.svg", title: "Owner Details" },
   finances: { src: "images/nav/finances.svg", title: "Club Finances" },
   building_society: {
     src: "images/nav/building_society.svg",
     title: "GPSL Building Society",
   },
+  club_history: { src: "images/nav/club_history.svg", title: "Club History" },
   stadium: { src: "images/nav/stadium.svg", title: "Stadium" },
+  challenges: { src: "images/nav/challenges.svg", title: "Challenges" },
   matchday: { src: "images/nav/matchday.svg", title: "Match Day" },
   fixtures: { src: "images/nav/fixtures.svg", title: "Fixtures" },
+  friendlies: { src: "images/nav/friendlies.svg", title: "Friendlies" },
+  transfer_center: {
+    src: "images/nav/transfer_center.svg",
+    title: "Transfer Centre",
+  },
+  scouting_targets: {
+    src: "images/nav/scouting_targets.svg",
+    title: "Scouting Targets",
+  },
+  scouting_board: {
+    src: "images/nav/scouting_board.svg",
+    title: "Scouting board",
+  },
 };
 
 function navLinkLeadingHtml(item) {
@@ -1684,7 +1701,7 @@ function navLinkLeadingHtml(item) {
   if (menuIcon) {
     return (
       `<span class="nav-menu-icon" title="${escapeNavAttr(menuIcon.title)}" aria-hidden="true">` +
-      `<img src="${escapeNavAttr(menuIcon.src)}?v=20261020-myclub" alt="" width="18" height="18" loading="lazy" />` +
+      `<img src="${escapeNavAttr(menuIcon.src)}?v=20261020-myclub2" alt="" width="18" height="18" loading="lazy" />` +
       `</span>`
     );
   }

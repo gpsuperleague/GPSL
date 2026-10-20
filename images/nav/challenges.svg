@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+  <!-- Challenge flag on peak -->
+  <path d="M2.5 16.8 L10 4.2 L17.5 16.8 Z" fill="#3d566e"/>
+  <path d="M6.2 16.8 L10 8.6 L13.8 16.8 Z" fill="#5a738c"/>
+  <path d="M8.6 11.2 L10 8.6 L11.4 11.2 Z" fill="#e8eef4"/>
+  <rect x="9.5" y="3.2" width="1" height="5.2" fill="#2c3e50"/>
+  <path d="M10.5 3.4 H15.2 L14.2 5.2 L15.2 7 H10.5 Z" fill="#c0392b"/>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+  <!-- History book + timeline -->
+  <path d="M3.2 3.4 H10.2 C11.4 3.4 12.2 4.2 12.2 5.2 V16.4 H4.4 C3.6 16.4 3.2 15.9 3.2 15.2 Z" fill="#5c3d2e"/>
+  <path d="M12.2 5.2 C12.2 4.2 13 3.4 14.2 3.4 H16.8 V15.2 C16.8 15.9 16.4 16.4 15.6 16.4 H12.2 Z" fill="#7a5238"/>
+  <rect x="4.6" y="6" width="5.4" height="1" rx="0.3" fill="#c4a574"/>
+  <rect x="4.6" y="8.2" width="4.4" height="1" rx="0.3" fill="#a0845c"/>
+  <rect x="4.6" y="10.4" width="5" height="1" rx="0.3" fill="#a0845c"/>
+  <circle cx="14.6" cy="8.4" r="1.5" fill="#f0c14b"/>
+  <rect x="14.2" y="9.8" width="0.8" height="3.6" fill="#f0c14b"/>
+  <path d="M13.2 13.4 H16" stroke="#f0c14b" stroke-width="0.9" stroke-linecap="round"/>
+</svg>

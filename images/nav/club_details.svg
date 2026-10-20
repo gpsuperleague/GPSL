@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+  <!-- Club crest / details card -->
+  <path d="M10 2.2 L15.6 4.2 V9.2 C15.6 13.2 13.2 16.4 10 17.8 C6.8 16.4 4.4 13.2 4.4 9.2 V4.2 Z" fill="#1e3a5f"/>
+  <path d="M10 3.6 L14.2 5.2 V9.1 C14.2 12.2 12.3 14.8 10 16.1 C7.7 14.8 5.8 12.2 5.8 9.1 V5.2 Z" fill="#2e5a8f"/>
+  <circle cx="10" cy="8.2" r="2.2" fill="#f0c14b"/>
+  <rect x="7.2" y="11.2" width="5.6" height="1.1" rx="0.4" fill="#d0d7e2"/>
+  <rect x="8" y="13.2" width="4" height="1.1" rx="0.4" fill="#8aa4c4"/>
+</svg>
