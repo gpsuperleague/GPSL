@@ -148,7 +148,7 @@ function clubFailurePunishmentItems(tier) {
     transfer,
     "Protected — never asked to leave: One of our Own, Fan Favourite, home-grown aged 23 or under, non-home-grown aged 21 or under.",
     "Stadium gate fill drifts down (slight −7%, bad −15%, abysmal −20%).",
-    "Board may fine you 25% of your personal GPSL Building Society balance (manager target misses do not trigger this).",
+    "Board may fine you 10% of your personal GPSL Building Society balance (manager target misses do not trigger this).",
   ];
 }
 
