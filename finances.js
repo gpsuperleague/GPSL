@@ -16,7 +16,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20261014-ff-wage";
+} from "./finance_page_common.js?v=20261020-opening-650";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20261015-short-by";
 import {
   loadListedSaleBids,

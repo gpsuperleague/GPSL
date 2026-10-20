@@ -648,6 +648,7 @@ async function resolveSeasonOpeningBalance(
   const prevClosing = await loadPreviousSeasonClosingBalance(supabase, shortName, seasonId);
   if (prevClosing != null) return prevClosing;
 
+  // Season 1 / first-funded clubs: assignment starting budget (usually ₿650m)
   const fromLedger = ledgerStartingBudget(ledger);
   if (fromLedger != null) return fromLedger;
 
@@ -657,8 +658,10 @@ async function resolveSeasonOpeningBalance(
 
   if (error) {
     console.warn("club_assignment_finance_display:", error);
-  } else if (assign?.show_in_accounts) {
-    const starting = Number(assign.starting_budget);
+  } else {
+    // Use starting_budget even when stadium is already posted (show_in_accounts
+    // false). Transfer-history gap math must not inflate opening above ₿650m.
+    const starting = Number(assign?.starting_budget);
     if (Number.isFinite(starting) && starting > 0) return starting;
   }
 

@@ -16,7 +16,7 @@ import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js?v=20
 import {
   loadFinanceSeasonContext,
   resolveFinanceSeasonView,
-} from "./finance_page_common.js?v=20261014-ff-wage";
+} from "./finance_page_common.js?v=20261020-opening-650";
 import {
   computeBoardFinanceRating,
   computeClubPerformanceRating,

@@ -445,9 +445,11 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.admin_assign_club_owner(text, text) TO authenticated;
 
--- One-shot ACM repair (20 Oct takeover). Preventative helpers above stop
--- recurrence; do not auto-repair other clubs (small pre-link ledger noise is
--- normal on first assign). Safe re-run via repair log.
+-- One-shot ACM balance repair (20 Oct takeover). Stadium purchase must REMAIN
+-- for season 1 — only the fresh ₿650m balance reset was wrong. If a later
+-- edit removed ACM's infra_purchase, restore it separately (see repair log
+-- RESTORED season-1 stadium). Preventative helpers above stop recurrence.
+-- Safe re-run via repair log.
 CREATE TABLE IF NOT EXISTS public.club_takeover_finance_repair_log (
   id bigserial PRIMARY KEY,
   club_short_name text NOT NULL,
