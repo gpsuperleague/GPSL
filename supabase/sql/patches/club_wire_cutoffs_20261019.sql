@@ -120,6 +120,10 @@ BEGIN
       AND cal.unlock_at <= now() + interval '21 days'
       AND coalesce(s.status, 'unscheduled') <> 'agreed'
       AND NOT public.competition_fixture_involves_vacant_club(f.id)
+      AND NOT (
+        to_regprocedure('public.fixture_is_manual_black_box(bigint)') IS NOT NULL
+        AND public.fixture_is_manual_black_box(f.id)
+      )
     ORDER BY cal.unlock_at, f.id
   LOOP
     v_side := CASE WHEN upper(btrim(r.home_club_short_name)) = v_club THEN 'home' ELSE 'away' END;
@@ -288,6 +292,10 @@ BEGIN
       AND cal_play.unlock_at <= now()
       AND public.competition_gpsl_month_sort(f.gpsl_month) IS NOT NULL
       AND NOT public.competition_fixture_involves_vacant_club(f.id)
+      AND NOT (
+        to_regprocedure('public.fixture_is_manual_black_box(bigint)') IS NOT NULL
+        AND public.fixture_is_manual_black_box(f.id)
+      )
     ORDER BY f.id
     LIMIT 12
   LOOP
