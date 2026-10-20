@@ -164,21 +164,33 @@ function kickoffStatusNoteHtml(fixture) {
 }
 
 async function enrichManualBlackBoxFlags(fixtures) {
-  const ids = (fixtures || [])
+  const list = fixtures || [];
+  // Prefer column from competition_fixtures_public when present
+  if (list.some((f) => typeof f.manual_black_box === "boolean")) {
+    return list.map((f) => ({
+      ...f,
+      manual_black_box: f.manual_black_box === true,
+    }));
+  }
+  const ids = list
     .map((f) => Number(f.id))
     .filter((id) => Number.isFinite(id));
-  if (!ids.length) return fixtures || [];
+  if (!ids.length) return list;
   try {
     const { data, error } = await supabase.rpc("fixtures_manual_black_box_map", {
       p_fixture_ids: ids,
     });
-    if (error || !data || typeof data !== "object") return fixtures;
-    return fixtures.map((f) => ({
+    if (error || !data || typeof data !== "object") {
+      if (error) console.warn("fixtures_manual_black_box_map:", error.message);
+      return list;
+    }
+    return list.map((f) => ({
       ...f,
       manual_black_box: data[String(f.id)] === true,
     }));
-  } catch {
-    return fixtures;
+  } catch (err) {
+    console.warn("enrichManualBlackBoxFlags:", err);
+    return list;
   }
 }
 
