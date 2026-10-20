@@ -214,6 +214,26 @@
       white-space:nowrap;
     }
     .fee-badge[title] { cursor:help; }
+    .leak-stamp {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #c45a4a;
+      border: 2px solid #c45a4a;
+      border-radius: 2px;
+      background: rgba(196, 90, 74, 0.08);
+      transform: rotate(-8deg);
+      vertical-align: middle;
+      white-space: nowrap;
+      box-shadow: inset 0 0 0 1px rgba(196, 90, 74, 0.25);
+      opacity: 0.92;
+      cursor: help;
+      user-select: none;
+    }
     #bidModal {
       display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
       align-items:center; justify-content:center; z-index:100;
@@ -355,7 +375,7 @@
             <th class="gpsl-has-tip" style="color:#ffcc66;" data-gpsl-tip="Holding club’s division. Championship clubs taking a Super League player also pay a signing-on fee % of MV to the player at rollover." tabindex="0">League</th>
             <th class="gpsl-has-tip" data-gpsl-tip="Player’s current seasonal contract wage. Bids must clear the minimum uplift above this." tabindex="0">Current wage</th>
             <th class="gpsl-has-tip" data-gpsl-tip="Your locked wage offer (Jan–May / Playoff owner). Hidden from rivals until rollover or a Playoff agent bribe." tabindex="0">Your bid</th>
-            <th class="gpsl-has-tip" data-gpsl-tip="Clubs that have made a wage contract offer (names only). Holding club sees this. In Playoffs you can bribe the agent (₿50,000 owner wealth) to reveal amounts — 5% chance of a leak story." tabindex="0">Interest</th>
+            <th class="gpsl-has-tip" data-gpsl-tip="Clubs that have made a wage contract offer (names only). Holding club sees this. In Playoffs the holding club can bribe with a Side door brown envelope to reveal amounts — 20% chance a Leaked bids stamp appears (amounts stay private)." tabindex="0">Interest</th>
             <th></th>
           </tr>
         </thead>
@@ -404,6 +424,6 @@
     </div>
   </div>
 
-  <script type="module" src="expiring_contracts.js?v=20261020-side-door"></script>
+  <script type="module" src="expiring_contracts.js?v=20261020-leak-stamp"></script>
 </body>
 </html>

@@ -46,9 +46,9 @@ export function getExpiringContractRules() {
         items: [
           "<b>Rivals cannot</b> make contract offers in Playoffs.",
           "Only the <b>holding club</b> can submit a contract offer.",
-          "Holding club can <b>bribe the agent</b> with a <b>Side door brown envelope</b> (Owners Shop) or <b>₿50,000 owner wealth</b> to reveal rival wage amounts.",
-          "Wallet bribes post as a <b>personal cheque to a made-up name</b> on Building Society.",
-          "<b>5% chance</b> the bribe leaks as a public story.",
+          "Only the <b>holding club</b> can bribe — and only with a <b>Side door brown envelope</b> from <b>Owners Shop</b> (₿50,000).",
+          "Shop buy posts Building Society as a <b>personal cheque to a made-up name</b>.",
+          "<b>20% chance</b> a public <b>Leaked bids</b> stamp appears on the listing — rivals see the stamp only, not the amounts.",
         ],
       },
       {

@@ -89,7 +89,7 @@ function phaseBannerText(phase) {
     return "January–May: Wage contract offers only. Place one locked hidden wage bid per player.";
   }
   if (phase === "playoff") {
-    return "Playoffs: Only the holding club can make a contract offer. Rivals are locked out. Holding clubs can bribe the agent with a Side door brown envelope (or ₿50,000 owner wealth) to reveal rival offer amounts (5% leak chance).";
+    return "Playoffs: Only the holding club can make a contract offer. Rivals are locked out. Holding clubs can bribe the agent with a Side door brown envelope from Owners Shop to reveal rival offer amounts (20% chance a Leaked bids stamp appears — amounts stay private).";
   }
   return "Expiring-contract actions are closed this GPSL month.";
 }
@@ -589,7 +589,7 @@ function interestCellHtml(row) {
     if (row.bribe_used) {
       html += `<div class="muted" style="margin-top:4px;">Offers revealed</div>`;
     } else {
-      html += `<div style="margin-top:6px;"><button type="button" class="bribe-btn button secondary" data-player-id="${row.player_id}" style="font-size:11px;padding:4px 8px;">Bribe agent (envelope / ₿50,000)</button></div>`;
+      html += `<div style="margin-top:6px;"><button type="button" class="bribe-btn button secondary" data-player-id="${row.player_id}" style="font-size:11px;padding:4px 8px;">Bribe agent (brown envelope)</button></div>`;
     }
   }
   return html;
@@ -647,9 +647,12 @@ function renderMarket() {
       const endBadge = endsJan
         ? ` <span class="fee-badge" title="January contract — bids resolve when GPSL January unlocks">Ends Jan</span>`
         : "";
+      const leakStamp = row.bribe_leaked
+        ? ` <span class="leak-stamp" title="Someone used a brown envelope here — bid amounts stay private">Leaked bids</span>`
+        : "";
       return `
         <tr data-player-id="${row.player_id}">
-          <td class="name-cell">${escapeHtml(row.player_name)}${endBadge}</td>
+          <td class="name-cell">${escapeHtml(row.player_name)}${endBadge}${leakStamp}</td>
           <td>${escapeHtml(row.position || "—")}</td>
           <td>${escapeHtml(row.nation || "—")}</td>
           <td>${row.age ?? "—"}</td>
@@ -1041,7 +1044,7 @@ async function submitTransferOffer() {
 async function submitAgentBribe(playerId) {
   if (
     !confirm(
-      "Bribe the agent to reveal rival contract offer amounts?\n\nUses a Side door brown envelope if you have one; otherwise ₿50,000 owner wealth (Building Society shows a personal cheque to a made-up name).\n\n5% chance this leaks as a public story."
+      "Use a Side door brown envelope to bribe the agent and reveal rival contract offer amounts?\n\nOnly the holding club can do this. Buy envelopes from Owners Shop first (₿50,000).\n\n20% chance a public “Leaked bids” stamp appears on the listing (amounts stay private to you)."
     )
   ) {
     return;
@@ -1071,18 +1074,10 @@ async function submitAgentBribe(playerId) {
   let preface;
   if (data?.already_bribed) {
     preface = "Already bribed this season — showing offers again.\n\n";
-  } else if (data?.used_envelope) {
-    preface = leaked
-      ? "Brown envelope used — but it leaked as a story.\n\n"
-      : "Brown envelope used — offers revealed quietly.\n\n";
-  } else if (data?.payee) {
-    preface = leaked
-      ? `Cheque to ${data.payee} — but it leaked as a story.\n\n`
-      : `Cheque to ${data.payee} — offers revealed quietly.\n\n`;
   } else {
     preface = leaked
-      ? "Bribe paid — but it leaked as a story.\n\n"
-      : "Bribe paid — offers revealed quietly.\n\n";
+      ? "Brown envelope used — a Leaked bids stamp is now on the listing (rivals see the stamp only).\n\n"
+      : "Brown envelope used — offers revealed quietly.\n\n";
   }
 
   alert(preface + lines);

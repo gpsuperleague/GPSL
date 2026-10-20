@@ -4,7 +4,7 @@
 -- • Own aisle (theme_key = shady)
 -- • Buy posts Building Society as anonymous personal cheque to a made-up payee
 -- • Grants club inventory prize_type agent_bribe
--- • Playoff bribe on expiring contracts consumes envelope first; else wallet cheque
+-- • Playoff bribe on expiring contracts requires a shop-bought envelope (no wallet shortcut)
 --
 -- Bribe already existed on expiring contracts — this adds the shop SKU + disguise.
 -- Safe re-run.
@@ -467,7 +467,7 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.owners_shop_buy(bigint) TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- Playoff bribe: prefer brown-envelope stock; wallet cheque if none
+-- Playoff bribe: Side door brown envelope required (buy from Owners Shop)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.expiring_bribe_reveal_contract_offers(p_player_id text)
 RETURNS jsonb
@@ -482,17 +482,10 @@ DECLARE
   v_holder text;
   v_phase text := public.gpsl_expiring_market_phase(now());
   v_season text;
-  v_season_id bigint;
-  v_bal numeric;
-  v_cost numeric := 50000;
   v_leaked boolean := false;
   v_offers jsonb := '[]'::jsonb;
   v_player_name text;
-  v_club_name text;
-  v_headline text;
-  v_payee text;
   v_inv_id bigint;
-  v_used_envelope boolean := false;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
@@ -547,11 +540,12 @@ BEGIN
       'already_bribed', true,
       'leaked', false,
       'cost', 0,
+      'used_envelope', false,
       'offers', v_offers
     );
   END IF;
 
-  -- Prefer Side door brown envelope (already paid as disguised cheque at shop)
+  -- Must have bought a Side door brown envelope (paid as disguised cheque at shop)
   SELECT i.id INTO v_inv_id
   FROM public.club_prize_inventory i
   WHERE upper(btrim(i.club_short_name)) = upper(btrim(v_club))
@@ -561,49 +555,22 @@ BEGIN
   LIMIT 1
   FOR UPDATE;
 
-  IF v_inv_id IS NOT NULL THEN
-    UPDATE public.club_prize_inventory
-    SET status = 'consumed',
-        consumed_at = now(),
-        metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
-          'consumed_for', 'expiring_bribe',
-          'player_id', v_pid
-        )
-    WHERE id = v_inv_id;
-    v_used_envelope := true;
-    v_cost := 0;
-  ELSE
-    PERFORM public.owner_wallet_ensure(v_uid);
-    SELECT balance INTO v_bal
-    FROM public.owner_wallets
-    WHERE owner_id = v_uid
-    FOR UPDATE;
-    IF coalesce(v_bal, 0) < 50000 THEN
-      RAISE EXCEPTION
-        'Need ₿50,000 owner wealth (or a Side door brown envelope) to bribe the agent (you have ₿%)',
-        to_char(coalesce(v_bal, 0), 'FM999,999,999');
-    END IF;
-
-    v_payee := public.owner_wallet_fictitious_payee();
-    PERFORM public._post_owner_ledger_internal(
-      v_uid,
-      'agent_bribe',
-      -50000,
-      format('Cheque to %s', v_payee),
-      jsonb_build_object(
-        'player_id', v_pid,
-        'club', v_club,
-        'payee', v_payee,
-        'disguised', true,
-        'source', 'expiring_bribe_direct'
-      ),
-      NULL,
-      true
-    );
-    v_cost := 50000;
+  IF v_inv_id IS NULL THEN
+    RAISE EXCEPTION
+      'Buy a Brown envelope from the Owners Shop Side door aisle first (₿50,000)';
   END IF;
 
-  v_leaked := (random() < 0.05);
+  UPDATE public.club_prize_inventory
+  SET status = 'consumed',
+      consumed_at = now(),
+      metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+        'consumed_for', 'expiring_bribe',
+        'player_id', v_pid
+      )
+  WHERE id = v_inv_id;
+
+  -- Leak stamp only (see expiring_bribe_leak_stamp_20261020.sql for live 20% + no rumour)
+  v_leaked := (random() < 0.20);
 
   INSERT INTO public.contract_expiry_offer_bribes (
     player_id, owner_id, season_label, leaked
@@ -625,48 +592,15 @@ BEGIN
   WHERE b.player_id = v_pid
     AND b.season_label = v_season;
 
-  IF v_leaked THEN
-    SELECT id INTO v_season_id
-    FROM public.competition_seasons
-    WHERE is_current = true
-    ORDER BY id DESC
-    LIMIT 1;
-
-    BEGIN
-      v_club_name := public.club_display_name(v_club);
-    EXCEPTION
-      WHEN OTHERS THEN
-        v_club_name := v_club;
-    END;
-
-    v_headline :=
-      'LEAK: '
-      || coalesce(v_club_name, v_club)
-      || ' bribed an agent for contract intel on '
-      || coalesce(v_player_name, 'a player');
-
-    IF v_season_id IS NOT NULL THEN
-      INSERT INTO public.gpsl_transfer_rumours (
-        season_id, source, kind, club_short_name, club_name,
-        player_id, player_name, headline, expires_at
-      )
-      VALUES (
-        v_season_id, 'idle', 'rumour', v_club, v_club_name,
-        v_pid, v_player_name, v_headline,
-        now() + interval '48 hours'
-      );
-    END IF;
-  END IF;
-
   RETURN jsonb_build_object(
     'ok', true,
     'already_bribed', false,
     'leaked', v_leaked,
-    'cost', v_cost,
-    'used_envelope', v_used_envelope,
-    'payee', v_payee,
+    'cost', 0,
+    'used_envelope', true,
+    'inventory_id', v_inv_id,
     'offers', v_offers,
-    'headline', CASE WHEN v_leaked THEN v_headline ELSE NULL END
+    'player_name', v_player_name
   );
 END;
 $function$;
