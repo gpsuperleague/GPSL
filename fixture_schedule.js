@@ -656,6 +656,23 @@ function render() {
     return;
   }
 
+  if (ctx.manual_black_box === true) {
+    if (discord) discord.hidden = true;
+    root.innerHTML = `
+      <div class="panel">
+        <div class="fixture-head">${fixtureTitle(f)}</div>
+        <p class="status-agreed"><b>Manual arrange</b> — both clubs have GPSL match system OFF.</p>
+        <p class="meta">Arrange off-site. No propose / reply deadlines on this fixture. Play and enter the result on Match Day during the GPSL month. Still unplayed at month lock → mutual forfeit (0 pts each) + ₿2.5m each.</p>
+        <div class="actions">
+          <a href="${`matchday.html?fixture=${encodeURIComponent(String(f.id))}`}" class="button" style="text-decoration:none;display:inline-block;">Match Day</a>
+          <a href="fixtures.html" class="button secondary" style="text-decoration:none;display:inline-block;">Fixtures</a>
+          <a href="owner_details.html" class="button secondary" style="text-decoration:none;display:inline-block;">Owner Details</a>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
   if (sch.status === "agreed" && sch.agreed_kickoff_at) {
     renderAgreedPanel(root, f, sch);
     return;
@@ -903,6 +920,14 @@ function render() {
 
 async function reload() {
   ctx = await loadScheduleContext(fixtureId);
+  try {
+    const { data: bb } = await supabase.rpc("fixture_is_manual_black_box", {
+      p_fixture_id: fixtureId,
+    });
+    if (ctx && typeof ctx === "object") ctx.manual_black_box = bb === true;
+  } catch {
+    if (ctx && typeof ctx === "object") ctx.manual_black_box = false;
+  }
   fixtureUnavailable = await loadFixtureUnavailable(supabase, fixtureId);
   const { data: dl, error: dlErr } = await supabase.rpc("match_schedule_fixture_deadlines", {
     p_fixture_id: fixtureId,

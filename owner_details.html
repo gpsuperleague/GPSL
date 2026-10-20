@@ -595,6 +595,20 @@
           </button>
         </div>
 
+        <div class="owner-detail-cell owner-detail-cell--wide gpsl-has-tip" id="matchSystemCell" data-gpsl-tip="GPSL match system ON (default) = propose/reply deadlines and arrangement fines. OFF = you arrange fully off-site with opponents who are also OFF. Still unplayed at month lock → mutual forfeit (0 pts) + ₿2.5m each. Set Aug–Dec in July; Jan onward in December." tabindex="0">
+          <span class="owner-detail-label">GPSL match system</span>
+          <p id="matchSystemSummary" class="owner-detail-summary">Loading…</p>
+          <button
+            type="button"
+            class="owner-detail-link"
+            id="toggleMatchSystemBtn"
+            aria-expanded="false"
+            aria-controls="matchSystemExpand"
+          >
+            Details
+          </button>
+        </div>
+
         <div class="owner-detail-cell owner-detail-cell--wide gpsl-has-tip" id="seasonAbsenceCell" data-gpsl-tip="Miss a full season while keeping your club: fixtures awarded, finances/loans frozen, manager released for MV. Max 1 season in 4. Admin approves requests; you can return early." tabindex="0">
           <span class="owner-detail-label">Season absence</span>
           <p id="seasonAbsenceSummary" class="owner-detail-summary">Loading…</p>
@@ -607,6 +621,30 @@
           >
             Details
           </button>
+        </div>
+      </div>
+
+      <div class="club-account-expand" id="matchSystemExpand" hidden>
+        <h3 class="club-account-expand-title">GPSL match system</h3>
+        <p class="account-hint">
+          <b>ON (default)</b> — use the normal GPSL propose / reply / Discord-lock flow, with arrangement
+          deadlines and fines. <b>OFF</b> — leave the safety net: you arrange entirely off-site with any
+          opponent who is also OFF (black box until the match is played). If that fixture is still
+          unplayed when its GPSL month locks: <b>mutual forfeit</b> (0 points each — not a draw) and
+          <b>₿2.5m</b> each. Cups: both clubs go out; the next-round opponent gets a bye.
+          If <b>either</b> club has GPSL ON, the normal GPSL system applies.
+        </p>
+        <p class="account-hint">
+          Windows: set Aug–Dec preference in <b>July</b>; set Jan–end preference in <b>December</b>
+          (takes effect from January). No December change keeps your Aug–Dec choice.
+        </p>
+        <p id="matchSystemHint" class="owner-tag-hint" role="status"></p>
+        <div class="holiday-book-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ccc;">
+            <input type="checkbox" id="matchSystemOnChk" />
+            GPSL match system ON
+          </label>
+          <button type="button" id="saveMatchSystemBtn" class="small-btn" hidden>Save preference</button>
         </div>
       </div>
 
@@ -717,6 +755,6 @@
       if (howto && !howto.contains(e.target)) howto.removeAttribute("open");
     });
   </script>
-  <script type="module" src="owner_details.js?v=20261019-holiday-supporter-valid"></script>
+  <script type="module" src="owner_details.js?v=20261020-match-system"></script>
 </body>
 </html>

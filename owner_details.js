@@ -762,11 +762,102 @@ function wireHolidayExpandToggle() {
   });
 }
 
+function setMatchSystemHint(msg, isError = false) {
+  const el = document.getElementById("matchSystemHint");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.classList.toggle("is-error", isError);
+}
+
 function setSeasonAbsenceHint(msg, isError = false) {
   const el = document.getElementById("seasonAbsenceHint");
   if (!el) return;
   el.textContent = msg || "";
   el.classList.toggle("is-error", isError);
+}
+
+async function refreshMatchSystemSection() {
+  const summary = document.getElementById("matchSystemSummary");
+  const chk = document.getElementById("matchSystemOnChk");
+  const saveBtn = document.getElementById("saveMatchSystemBtn");
+  const { data, error } = await supabase.rpc("owner_match_system_status");
+  if (error) {
+    if (summary) {
+      summary.textContent =
+        error.message?.includes("owner_match_system") ||
+        error.message?.includes("function")
+          ? "Unavailable — admin must run gpsl_match_system_toggle_20261020.sql."
+          : error.message;
+    }
+    saveBtn && (saveBtn.hidden = true);
+    return;
+  }
+
+  const on = data?.effective_gpsl_system_on !== false;
+  const half = data?.editable_half;
+  const canEdit = Boolean(half);
+  if (summary) {
+    const windowNote = canEdit
+      ? half === "h1"
+        ? "July window — editing Aug–Dec."
+        : "December window — editing Jan onward."
+      : "Locked until next July / December window.";
+    summary.textContent = `${on ? "ON — GPSL arranging" : "OFF — manual / Discord black box"} · ${windowNote}`;
+  }
+  if (chk) {
+    const editOn =
+      half === "h2"
+        ? data?.h2_gpsl_system_on !== false
+        : data?.h1_gpsl_system_on !== false;
+    chk.checked = canEdit ? editOn : on;
+    chk.disabled = !canEdit;
+  }
+  if (saveBtn) saveBtn.hidden = !canEdit;
+  setMatchSystemHint(
+    canEdit
+      ? half === "h1"
+        ? "Saving applies for August–December fixtures."
+        : "Saving applies from January onward (Aug–Dec unchanged)."
+      : "Preference is locked mid-half. Next change windows: July (Aug–Dec) and December (Jan–end)."
+  );
+}
+
+function wireMatchSystem() {
+  const toggle = document.getElementById("toggleMatchSystemBtn");
+  const panel = document.getElementById("matchSystemExpand");
+  toggle?.addEventListener("click", () => {
+    if (!panel) return;
+    const show = panel.hidden;
+    panel.hidden = !show;
+    toggle.setAttribute("aria-expanded", show ? "true" : "false");
+  });
+
+  document.getElementById("saveMatchSystemBtn")?.addEventListener("click", async () => {
+    const chk = document.getElementById("matchSystemOnChk");
+    const turningOff = chk && !chk.checked;
+    if (
+      turningOff &&
+      !confirm(
+        "Turn GPSL match system OFF?\n\nAgainst other OFF clubs you arrange fully off-site (no propose deadlines). Still unplayed at month lock → mutual forfeit (0 pts each) + ₿2.5m each. Cups: both go out."
+      )
+    ) {
+      return;
+    }
+    const { data, error } = await supabase.rpc("owner_match_system_set", {
+      p_gpsl_system_on: chk ? chk.checked : true,
+      p_half: null,
+    });
+    if (error) {
+      setMatchSystemHint(error.message, true);
+      return;
+    }
+    setMatchSystemHint(
+      data?.saved_on === false
+        ? "Saved — GPSL match system OFF for this window."
+        : "Saved — GPSL match system ON for this window."
+    );
+    await refreshMatchSystemSection();
+  });
 }
 
 async function refreshSeasonAbsenceSection() {
@@ -993,9 +1084,11 @@ async function initOwnerDetailsPage() {
 
   wireHolidayBooking();
   wireHolidayExpandToggle();
+  wireMatchSystem();
   wireSeasonAbsence();
   wireAvailabilityPanel();
   await refreshHolidaySection();
+  await refreshMatchSystemSection();
   await refreshSeasonAbsenceSection();
 }
 

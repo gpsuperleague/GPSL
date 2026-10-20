@@ -1151,6 +1151,11 @@ export function canSubmitResult(
     return false;
   }
 
+  // Both clubs GPSL match system OFF — black box: no KO/check-in gate
+  if (fixture.manual_black_box === true) {
+    return true;
+  }
+
   if (
     fixture.schedule_status != null &&
     fixture.schedule_status !== "agreed"

@@ -40,23 +40,24 @@ export const SECTION_MATCHDAY_CHECKLIST = {
     { type: "h3", html: "Pre-matchday — fixture management" },
     {
       type: "tip",
-      html: `Fixtures can be arranged in Discord, but must be <b>finalised using the GPSL fixture management system</b>.`,
+      html: `Default: fixtures can be talked about in Discord, but must be <b>finalised using the GPSL fixture management system</b>.
+        Exception: if <b>both</b> clubs have <b>GPSL match system OFF</b>, they arrange fully off-site (see Match scheduling).`,
     },
     {
       type: "ul",
       items: [
         {
-          html: `<b>Home club</b>`,
+          html: `<b>Home club</b> (GPSL system ON)`,
           children: [
             `Proposes in GPSL at least <b>1 GPSL month before</b> the fixture (the propose-by date is on the schedule page and dashboard checklist; the last 48 hours before it carry a ₿1m late fee)`,
             `Responds to counters from the opponent`,
           ],
         },
         {
-          html: `<b>Away club</b>`,
+          html: `<b>Away club</b> (GPSL system ON)`,
           children: [`Replies via <a href="inbox.html">Inbox</a> (Accept / Counter)`],
         },
-        `<b>Cups:</b> arrange as soon as the draw appears`,
+        `<b>Cups:</b> arrange as soon as the draw appears (same GPSL ON / OFF rules)`,
       ],
     },
 
@@ -196,14 +197,15 @@ export const SECTION_MATCH_SCHEDULING = {
   blocks: [
     {
       type: "p",
-      html: `Before you can play a <b>league or cup</b> game, you and your opponent must
-        <b>agree a kick-off on the site</b> (Discord chat is fine for talking — then lock the time here with
-        <b>We agreed on Discord — lock this kick-off</b>). Same rules for all cups.`,
+      html: `By default, before you can play a <b>league or cup</b> game you and your opponent
+        <b>agree a kick-off on the site</b> (Discord chat is fine for talking — then lock the time with
+        <b>We agreed on Discord — lock this kick-off</b>). Owners who both switch <b>GPSL match system OFF</b>
+        on Owner Details can skip that and arrange fully off-site (see below).`,
     },
     {
       type: "links",
       items: [
-        { href: "owner_details.html", label: "Owner Details (availability)" },
+        { href: "owner_details.html", label: "Owner Details (availability + match system)" },
         { href: "fixtures.html", label: "Fixtures" },
         { href: "club_fixtures.html", label: "My club fixtures" },
         { href: "inbox.html", label: "Inbox" },
@@ -222,10 +224,26 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `<b>1.</b> Set your weekly availability on <a href="owner_details.html">Owner Details</a>.`,
+        `<b>1.</b> Set your weekly availability on <a href="owner_details.html">Owner Details</a> (and keep GPSL match system ON unless you want the manual lane).`,
         `<b>2.</b> <b>Home proposes first</b> on Fixtures → Schedule (or via Inbox). Away accepts or counters.`,
         `<b>3.</b> Save your Match Day squad, then both <b>check in</b> (10 minutes before to 10 minutes after kick-off) and enter the result on Match Day.`,
         `<b>4.</b> If the month ends and the game still isn’t played, it becomes <b>catch-up</b> — you can still play it later. It is <b>not</b> an automatic 3–0 (unless there was a recorded no-show).`,
+      ],
+    },
+
+    { type: "h3", html: "Optional — GPSL match system OFF (manual / Discord black box)" },
+    {
+      type: "tip",
+      html: `This is an <b>opt-out of the safety net</b>. Default is <b>ON</b>. Only use OFF if you and your opponent both want to arrange completely off-site.`,
+    },
+    {
+      type: "ul",
+      items: [
+        `Toggle on <a href="owner_details.html">Owner Details</a> → <b>GPSL match system</b>.`,
+        `<b>July</b> window sets Aug–Dec. <b>December</b> window sets Jan onward (takes effect from January). No December change keeps your Aug–Dec choice.`,
+        `<b>Both clubs OFF</b> for that fixture → no propose / reply deadlines; Fixtures shows <b>Manual arrange</b>. Play and enter the result on Match Day in the GPSL month.`,
+        `<b>Either club ON</b> → normal GPSL arranging applies.`,
+        `Still <b>unplayed at that month’s lock</b> → <b>mutual forfeit</b> (0 points each — not a draw) + <b>₿2.5m</b> each. Cups: both go out; the next-round opponent gets a bye.`,
       ],
     },
 

@@ -140,6 +140,11 @@ function kickoffStatusNoteHtml(fixture) {
 
   const catchUp = isCatchUpFixture(fixture);
   const prefix = catchUp ? "Catch-up · " : "";
+
+  if (fixture.manual_black_box === true) {
+    return `<span class="ko-status ko-status--pending" title="Both clubs GPSL match system OFF">${prefix}Manual arrange</span>`;
+  }
+
   const status = String(fixture.schedule_status || "unscheduled").toLowerCase();
 
   if (status === "agreed" && fixture.agreed_kickoff_at) {
@@ -156,6 +161,25 @@ function kickoffStatusNoteHtml(fixture) {
   }
 
   return `<span class="ko-status ko-status--open">${prefix}Not scheduled</span>`;
+}
+
+async function enrichManualBlackBoxFlags(fixtures) {
+  const ids = (fixtures || [])
+    .map((f) => Number(f.id))
+    .filter((id) => Number.isFinite(id));
+  if (!ids.length) return fixtures || [];
+  try {
+    const { data, error } = await supabase.rpc("fixtures_manual_black_box_map", {
+      p_fixture_ids: ids,
+    });
+    if (error || !data || typeof data !== "object") return fixtures;
+    return fixtures.map((f) => ({
+      ...f,
+      manual_black_box: data[String(f.id)] === true,
+    }));
+  } catch {
+    return fixtures;
+  }
 }
 
 function actionCell(fixture) {
@@ -200,6 +224,10 @@ function actionCell(fixture) {
       } else {
         parts.push(`<span style="color:#888;font-size:12px;">Played</span>`);
       }
+    } else if (fixture.manual_black_box === true) {
+      parts.push(
+        `<a href="${matchdayUrl(fixture.id)}" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Manual · Match Day</a>`
+      );
     } else {
       const sched = scheduleActionLabel(fixture, myClub.short);
       if (sched) {
@@ -632,7 +660,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const league = await loadLeagueFixtures(supabase);
   const cups = await loadCupFixtures(supabase);
-  allFixtures = [...league, ...cups];
+  allFixtures = await enrichManualBlackBoxFlags([...league, ...cups]);
   await loadTvFixtureIds(supabase, season.id);
   ensureMatchVideoStyles();
   const allIds = allFixtures.map((f) => f.id);
