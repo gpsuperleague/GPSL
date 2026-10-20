@@ -1650,6 +1650,18 @@ function navAuctionActiveBadgeHtml(kind, visible = isNavAuctionActive(kind)) {
   return `<span class="nav-auction-active${hidden}" title="${title}" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
 }
 
+const NAV_MENU_ICON_FILES = {
+  boardroom: { src: "images/nav/boardroom.svg", title: "Boardroom" },
+  finances: { src: "images/nav/finances.svg", title: "Club Finances" },
+  building_society: {
+    src: "images/nav/building_society.svg",
+    title: "GPSL Building Society",
+  },
+  stadium: { src: "images/nav/stadium.svg", title: "Stadium" },
+  matchday: { src: "images/nav/matchday.svg", title: "Match Day" },
+  fixtures: { src: "images/nav/fixtures.svg", title: "Fixtures" },
+};
+
 function navLinkLeadingHtml(item) {
   if (item?.navIcon === "first_aid") {
     return (
@@ -1665,6 +1677,14 @@ function navLinkLeadingHtml(item) {
     return (
       `<span class="nav-rewards-icon" title="Rewards Centre" aria-hidden="true">` +
       `<img src="images/nav/rewards_medal.png?v=20260717-alpha" alt="" width="18" height="18" loading="lazy" />` +
+      `</span>`
+    );
+  }
+  const menuIcon = item?.navIcon ? NAV_MENU_ICON_FILES[item.navIcon] : null;
+  if (menuIcon) {
+    return (
+      `<span class="nav-menu-icon" title="${escapeNavAttr(menuIcon.title)}" aria-hidden="true">` +
+      `<img src="${escapeNavAttr(menuIcon.src)}?v=20261020-myclub" alt="" width="18" height="18" loading="lazy" />` +
       `</span>`
     );
   }

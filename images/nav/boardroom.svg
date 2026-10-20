@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+  <!-- Boardroom: oval table + chairs -->
+  <ellipse cx="10" cy="11.2" rx="7.2" ry="3.4" fill="#3d2a1a"/>
+  <ellipse cx="10" cy="10.4" rx="6.4" ry="2.8" fill="#6b4423"/>
+  <ellipse cx="10" cy="10.1" rx="4.2" ry="1.6" fill="#8a5a2b"/>
+  <circle cx="10" cy="10.1" r="0.7" fill="#c4a574"/>
+  <rect x="8.7" y="4.2" width="2.6" height="2.8" rx="1.2" fill="#2c3e50"/>
+  <rect x="3.2" y="6.4" width="2.4" height="2.4" rx="1.1" fill="#34495e"/>
+  <rect x="14.4" y="6.4" width="2.4" height="2.4" rx="1.1" fill="#34495e"/>
+  <rect x="2.4" y="12.6" width="2.4" height="2.4" rx="1.1" fill="#34495e"/>
+  <rect x="15.2" y="12.6" width="2.4" height="2.4" rx="1.1" fill="#34495e"/>
+  <rect x="8.8" y="14.2" width="2.4" height="2.4" rx="1.1" fill="#2c3e50"/>
+</svg>

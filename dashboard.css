@@ -1588,6 +1588,23 @@ button.nav-admin-trigger {
   object-fit: contain;
 }
 
+.nav-menu-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.nav-menu-icon img {
+  display: block;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
 .nav-dropdown .nav-link {
   pointer-events: auto;
   display: flex;

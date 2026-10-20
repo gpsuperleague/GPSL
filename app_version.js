@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261020-acm-opening-650";
+export const APP_VERSION = "20261020-myclub-nav-icons";
