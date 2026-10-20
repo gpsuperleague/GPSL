@@ -33,12 +33,14 @@ function stockLabel(row) {
   if (row.prize_type === "appeal_card") return "Appeal card";
   if (row.prize_type === "fee_discount") return `Fee discount ${row.param_int}%`;
   if (row.prize_type === "draft_token") return "Draft token";
+  if (row.prize_type === "agent_bribe") return "Brown envelope";
   return row.prize_type;
 }
 
 function stockTypeClass(prizeType) {
   if (prizeType === "medical_token") return "shop-stock-type--med";
   if (prizeType === "appeal_card") return "shop-stock-type--disc";
+  if (prizeType === "agent_bribe") return "shop-stock-type--shady";
   return "";
 }
 
@@ -47,6 +49,7 @@ function stockTypeLabel(prizeType) {
   if (prizeType === "appeal_card") return "Discipline";
   if (prizeType === "fee_discount") return "Fees";
   if (prizeType === "draft_token") return "Draft";
+  if (prizeType === "agent_bribe") return "Side door";
   return prizeType;
 }
 
@@ -105,7 +108,15 @@ function renderAisles() {
     .map((s, idx) => {
       const theme = s.theme_key || "default";
       const mark =
-        theme === "medical" ? "+" : theme === "discipline" ? "■" : theme === "coming" ? "…" : "•";
+        theme === "medical"
+          ? "+"
+          : theme === "discipline"
+            ? "■"
+            : theme === "shady"
+              ? "‽"
+              : theme === "coming"
+                ? "…"
+                : "•";
       const soon = theme === "coming" ? " shop-aisle--soon" : "";
       const active = idx === 0 ? " is-active" : "";
       return `<a class="shop-aisle shop-aisle--${escapeHtml(theme)}${soon}${active}" href="#aisle-${escapeHtml(s.code)}">
@@ -128,9 +139,11 @@ function renderSections() {
           ? "shop-panel--med"
           : theme === "discipline"
             ? "shop-panel--disc"
-            : theme === "coming"
-              ? "shop-panel--soon"
-              : "";
+            : theme === "shady"
+              ? "shop-panel--shady"
+              : theme === "coming"
+                ? "shop-panel--soon"
+                : "";
 
       if (theme === "coming") {
         return `<section class="shop-panel ${panelMod}" id="aisle-${escapeHtml(s.code)}">
@@ -149,11 +162,24 @@ function renderSections() {
         .map((i) => {
           const feat = i.is_featured ? " shop-item--featured" : "";
           const visualMod =
-            theme === "discipline" ? "shop-item-visual--disc" : "shop-item-visual--med";
-          const buyMod = theme === "discipline" ? " shop-buy--disc" : "";
+            theme === "discipline"
+              ? "shop-item-visual--disc"
+              : theme === "shady"
+                ? "shop-item-visual--shady"
+                : "shop-item-visual--med";
+          const buyMod =
+            theme === "discipline"
+              ? " shop-buy--disc"
+              : theme === "shady"
+                ? " shop-buy--shady"
+                : "";
           const badge = i.badge_label || "•";
           const canBuy = currentClub && ownerBalance >= Number(i.price);
-          return `<article class="shop-item${feat}">
+          const buyLabel =
+            theme === "shady"
+              ? "Slip cash under the door"
+              : `Buy for ${currentClub || "club"}`;
+          return `<article class="shop-item${feat}${theme === "shady" ? " shop-item--shady" : ""}">
             <div class="shop-item-visual ${visualMod}">${escapeHtml(badge)}</div>
             <h3>${escapeHtml(i.title)}</h3>
             <p>${escapeHtml(i.description || "")}</p>
@@ -161,7 +187,7 @@ function renderSections() {
               <span class="shop-price">${formatMoney(i.price)}</span>
               <button type="button" class="shop-buy${buyMod}" data-buy="${i.id}"
                 ${canBuy ? "" : "disabled"}>
-                Buy for ${escapeHtml(currentClub || "club")}
+                ${escapeHtml(buyLabel)}
               </button>
             </div>
           </article>`;
@@ -209,9 +235,12 @@ async function buyItem(itemId) {
   }
   const item = catalogue.flatMap((s) => s.items || []).find((i) => i.id === itemId);
   const label = item?.title || "item";
+  const shady = item?.prize_type === "agent_bribe";
   if (
     !window.confirm(
-      `Buy ${label} for ${formatMoney(item?.price)}?\n\nDebits your owner balance and stocks ${currentClub}.`
+      shady
+        ? `${label} for ${formatMoney(item?.price)}?\n\nNo shop receipt. Building Society will show a personal cheque to someone who does not exist. Envelope stocks on ${currentClub}.`
+        : `Buy ${label} for ${formatMoney(item?.price)}?\n\nDebits your owner balance and stocks ${currentClub}.`
     )
   ) {
     return;
@@ -222,9 +251,15 @@ async function buyItem(itemId) {
     setStatus(error.message || "Purchase failed", false);
     return;
   }
-  setStatus(
-    `Bought ${data?.item_title || label} ×${data?.quantity || 1} for ${data?.club_short_name || currentClub}.`
-  );
+  if (shady && data?.disguised_payee) {
+    setStatus(
+      `Envelope slipped under the door for ${data?.club_short_name || currentClub}. Statement: Cheque to ${data.disguised_payee}.`
+    );
+  } else {
+    setStatus(
+      `Bought ${data?.item_title || label} ×${data?.quantity || 1} for ${data?.club_short_name || currentClub}.`
+    );
+  }
   await refreshAll();
 }
 
