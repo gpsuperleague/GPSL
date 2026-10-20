@@ -109,7 +109,7 @@ const FIXTURE_TABLE_HEAD = `
   <th>Stadium</th>
   <th>Continent</th>
   <th>Conditions</th>
-  <th class="my-actions">Your match</th>
+  <th class="my-actions">Kick-off</th>
 `;
 
 function homeStadium(fixture) {
@@ -134,6 +134,30 @@ function matchdayUrl(fixtureId) {
   return `matchday.html?fixture=${encodeURIComponent(String(fixtureId))}`;
 }
 
+/** Small-print schedule status for every fixture (no link). */
+function kickoffStatusNoteHtml(fixture) {
+  if (!fixture || fixture.status === "played") return "";
+
+  const catchUp = isCatchUpFixture(fixture);
+  const prefix = catchUp ? "Catch-up · " : "";
+  const status = String(fixture.schedule_status || "unscheduled").toLowerCase();
+
+  if (status === "agreed" && fixture.agreed_kickoff_at) {
+    const when = formatKickoff(fixture.agreed_kickoff_at, UK_TZ);
+    const ci =
+      fixture.home_checked_in && fixture.away_checked_in
+        ? " · both checked in"
+        : "";
+    return `<span class="ko-status ko-status--agreed">${prefix}Agreed · ${when} UK${ci}</span>`;
+  }
+
+  if (status === "negotiating") {
+    return `<span class="ko-status ko-status--pending">${prefix}Proposal pending</span>`;
+  }
+
+  return `<span class="ko-status ko-status--open">${prefix}Not scheduled</span>`;
+}
+
 function actionCell(fixture) {
   const occ = fixtureOwnerOccupancy(
     fixture.home_club_short_name,
@@ -143,10 +167,11 @@ function actionCell(fixture) {
     matchSimStatus.isStaff === true || matchSimStatus.isAdmin === true;
   const vacantPairStaff = occ.isVacantVsVacant && staffOk;
   const involvesMe = Boolean(myClub.short && fixtureInvolvesClub(fixture, myClub));
+  const note = kickoffStatusNoteHtml(fixture);
 
-  // Non-involved rows are blank — except admin/mod vacant vs vacant sim controls
+  // Everyone sees kick-off status; only involved clubs get action buttons
   if (!involvesMe && !vacantPairStaff) {
-    return "";
+    return note;
   }
 
   const parts = [];
@@ -178,19 +203,9 @@ function actionCell(fixture) {
     } else {
       const sched = scheduleActionLabel(fixture, myClub.short);
       if (sched) {
-        const agreed =
-          fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at;
-        let kickoffLabel = "";
-        if (agreed) {
-          const ci =
-            fixture.home_checked_in && fixture.away_checked_in
-              ? "Both checked in"
-              : "Check in at kick-off";
-          kickoffLabel = `<span style="display:block;color:#8c8;font-size:11px;margin-top:2px;">${formatKickoff(fixture.agreed_kickoff_at, UK_TZ)} UK · ${ci}</span>`;
-        }
         const cls = sched.muted ? "btn-result secondary" : "btn-result";
         parts.push(
-          `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>${kickoffLabel}`
+          `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>`
         );
       }
     }
@@ -231,7 +246,11 @@ function actionCell(fixture) {
     }
   }
 
-  return parts.join(" ");
+  const actions = parts.join(" ");
+  if (actions && note) {
+    return `${actions}<div class="ko-status-wrap">${note}</div>`;
+  }
+  return actions || note;
 }
 
 function fixtureRowHtml(fixture) {

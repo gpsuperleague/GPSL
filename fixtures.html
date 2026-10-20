@@ -81,6 +81,17 @@
     }
     .catch-up-cell { display:block; margin-top:4px; }
     .my-actions { text-align:center; white-space:normal; }
+    .ko-status-wrap { margin-top:4px; }
+    .ko-status {
+      display:block;
+      font-size:11px;
+      line-height:1.35;
+      color:#888;
+      font-weight:normal;
+    }
+    .ko-status--agreed { color:#8c8; }
+    .ko-status--pending { color:#c9a227; }
+    .ko-status--open { color:#777; }
     .my-actions .btn-link,
     .my-actions button.sim-result-btn {
       display:block;
@@ -117,9 +128,9 @@
     <p id="seasonMeta" class="meta">Loading…</p>
     <div id="matchSimBannerHost"></div>
     <p id="calendarBanner" class="meta gpsl-has-tip" style="display:none;margin-top:-8px;border:1px solid #444;background:#1a1a22;padding:10px 12px;border-radius:6px;" data-gpsl-tip="Current GPSL play-month / calendar gate for arranging fixtures and submitting results." tabindex="0"></p>
-    <p id="fixturesHint" class="meta gpsl-has-tip" style="margin-top:-8px;" data-gpsl-tip="Propose kick-off / Reply to proposal opens match scheduling. Home proposes first, before the GPSL month opens. Soft fines at month lock: ₿1m late proposal, ₿2.5m if nothing proposed; first missed reply is a warning. Enter result opens Match Day." tabindex="0">
-      Your club’s games are highlighted. <b>Stadium</b> and <b>Continent</b> are the home venue (yours at home; opponent’s when away); cup finals are at Wembley. Weeks run 1–38 through the season.
-      <b>Propose kick-off</b> / <b>Reply to proposal</b> opens match scheduling (set availability on
+    <p id="fixturesHint" class="meta gpsl-has-tip" style="margin-top:-8px;" data-gpsl-tip="Kick-off column shows schedule status for every match. Propose / Reply buttons appear on your club’s games only. Soft fines at month lock: ₿1m late proposal, ₿2.5m if nothing proposed; first missed reply is a warning." tabindex="0">
+      Your club’s games are highlighted. The <b>Kick-off</b> column shows status for every match (agreed time, proposal pending, or not scheduled). Weeks run 1–38 through the season.
+      On your fixtures, <b>Propose kick-off</b> / <b>Reply to proposal</b> opens match scheduling (set availability on
       <a href="owner_details.html" style="color:#ff9900;">Owner Details</a> first).
       Save your squad on Match Day before kick-off — it is checked when you check in.
       <b>Enter result</b> opens
@@ -129,6 +140,6 @@
     <div id="fixturesRoot"></div>
   </div>
 
-  <script type="module" src="fixtures.js?v=20260924-sim-notice"></script>
+  <script type="module" src="fixtures.js?v=20261020-ko-status"></script>
 </body>
 </html>
