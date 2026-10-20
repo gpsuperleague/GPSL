@@ -58,6 +58,7 @@ BEGIN
         nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), ''),
         nullif(btrim(c.owner), '')
       ) AS owner_tag,
+      public.match_schedule_club_timezone(c."ShortName") AS owner_timezone,
       coalesce(h1.gpsl_system_on, true) AS h1_gpsl_system_on,
       CASE
         WHEN h2.club_short_name IS NOT NULL THEN h2.gpsl_system_on

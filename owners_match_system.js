@@ -51,11 +51,24 @@ function matchesFilter(row) {
 
   const q = filterText.trim().toLowerCase();
   if (!q) return true;
-  const blob = [row.club_short_name, row.club_name, row.owner_tag, arrangement, onOffLabel(row)]
+  const blob = [
+    row.club_short_name,
+    row.club_name,
+    row.owner_tag,
+    row.owner_timezone,
+    arrangement,
+    onOffLabel(row),
+  ]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
   return blob.includes(q);
+}
+
+function timezoneLabel(tz) {
+  const raw = String(tz || "").trim();
+  if (!raw) return "—";
+  return raw.replace(/_/g, " ");
 }
 
 function onOffLabel(row) {
@@ -68,7 +81,7 @@ function render() {
 
   const list = (directory.clubs || []).filter(matchesFilter);
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="5" class="muted">No clubs match this filter.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6" class="muted">No clubs match this filter.</td></tr>`;
     return;
   }
 
@@ -81,9 +94,11 @@ function render() {
         "inline"
       );
       const h2Explicit = row.h2_explicitly_set === true;
+      const tz = timezoneLabel(row.owner_timezone);
       return `<tr>
         <td>${i + 1}</td>
         <td>${club}</td>
+        <td class="ms-tz" title="${escapeHtml(tz)}">${escapeHtml(tz)}</td>
         <td>${systemPill(on)} <span class="muted">${
           on ? "GPSL arranging" : "Manual / Discord"
         }</span></td>
