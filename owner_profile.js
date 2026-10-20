@@ -1,6 +1,11 @@
 import { supabase, initGlobal } from "./global.js";
 import { formatMoney } from "./competition.js";
 import { loadClubsMap, displayClubName, clubPageHref } from "./clubs_lookup.js";
+import {
+  ownerBadgePublicUrl,
+  ownerBadgeStoragePath,
+  removeStaleOwnerBadges,
+} from "./owner_badge.js?v=20261020-badge-cache";
 
 function escapeHtml(text) {
   return String(text ?? "")
@@ -40,12 +45,6 @@ function clubLink(shortName, name) {
     : escapeHtml(label);
 }
 
-function badgePublicUrl(path) {
-  if (!path) return null;
-  const { data } = supabase.storage.from("owner-badges").getPublicUrl(path);
-  return data?.publicUrl || null;
-}
-
 function renderHeader(profile, totals) {
   const tag = profile.owner_tag || profile.owner_name || "Owner";
   document.title = `${tag} — GPSL`;
@@ -76,8 +75,11 @@ function renderHeader(profile, totals) {
 
   const img = document.getElementById("ownerBadge");
   const fallback = document.getElementById("ownerBadgeFallback");
-  const url = badgePublicUrl(profile.badge_path);
+  const url = ownerBadgePublicUrl(profile.badge_path, {
+    cacheBust: profile.badge_updated_at || Date.now(),
+  });
   if (url && profile.badge_path) {
+    img.removeAttribute("src");
     img.src = url;
     img.alt = tag;
     img.hidden = false;
@@ -272,11 +274,18 @@ async function uploadBadge(ownerId) {
   status.textContent = "Uploading…";
   await supabase.rpc("owner_registry_ensure_self");
 
-  const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const path = `${ownerId}/badge.${ext || "png"}`;
+  const path = ownerBadgeStoragePath(ownerId, file.name);
+  if (!path) {
+    status.textContent = "❌ Could not build badge path.";
+    return;
+  }
   const { error: upErr } = await supabase.storage
     .from("owner-badges")
-    .upload(path, file, { upsert: true, contentType: file.type });
+    .upload(path, file, {
+      upsert: false,
+      contentType: file.type || "image/png",
+      cacheControl: "3600",
+    });
 
   if (upErr) {
     status.textContent = "❌ " + upErr.message;
@@ -288,7 +297,10 @@ async function uploadBadge(ownerId) {
     status.textContent = "❌ " + error.message;
     return;
   }
+  void removeStaleOwnerBadges(ownerId, path);
   status.textContent = "✅ Badge saved.";
+  const fileInput = document.getElementById("badgeFile");
+  if (fileInput) fileInput.value = "";
   await loadProfile(ownerId);
 }
 

@@ -240,6 +240,7 @@ export const DASHBOARD_PANELS = [
   p("admin_owner_holidays", "Owner holidays", "admin_owner_holidays.html", { adminOnly: true }),
   p("admin_season_absence", "Season absence", "admin_season_absence.html", { adminOnly: true }),
   p("owner_holidays_board", "Owner Holidays", "owner_holidays_board.html"),
+  p("owners_match_system", "Match System", "owners_match_system.html"),
   p("owner_last_login", "Owner Last Login", "owner_last_login.html"),
   p("admin_special_auctions", "Special Auctions Admin", "admin_special-auctions.html", {
     page: "admin_special-auctions.html",

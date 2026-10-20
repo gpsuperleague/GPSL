@@ -15,7 +15,12 @@ import {
   inclusiveDayCountFromDates,
 } from "./owner_holidays.js?v=20261019-supporter-holiday";
 import { wireAvailabilityPanel } from "./owner_availability.js?v=20260930-world-tz";
-import { ownerBadgePublicUrl, ownerProfileHref } from "./owner_badge.js";
+import {
+  ownerBadgePublicUrl,
+  ownerBadgeStoragePath,
+  ownerProfileHref,
+  removeStaleOwnerBadges,
+} from "./owner_badge.js?v=20261020-badge-cache";
 import {
   applyClubDashboardTheme,
   loadClubDashboardTheme,
@@ -222,7 +227,7 @@ function clearOwnerBadgeObjectUrl() {
 }
 
 /** @param {string|null} badgePathOrUrl storage path, full http(s) URL, or null */
-function renderOwnerBadgePreview(badgePathOrUrl, tag) {
+function renderOwnerBadgePreview(badgePathOrUrl, tag, { cacheBust } = {}) {
   const img = document.getElementById("ownerBadgePreview");
   const fallback = document.getElementById("ownerBadgeFallback");
   if (!img || !fallback) return;
@@ -231,9 +236,13 @@ function renderOwnerBadgePreview(badgePathOrUrl, tag) {
   const url =
     raw.startsWith("blob:") || raw.startsWith("http")
       ? raw
-      : ownerBadgePublicUrl(raw || null);
+      : ownerBadgePublicUrl(raw || null, {
+          cacheBust: cacheBust ?? Date.now(),
+        });
 
   if (url) {
+    // Force a fetch even when the path string is unchanged.
+    img.removeAttribute("src");
     img.src = url;
     img.alt = tag || "Owner badge";
     img.hidden = false;
@@ -358,13 +367,19 @@ function wireOwnerBadgeField(userId, getTag) {
       return;
     }
 
-    const ext = (file.name.split(".").pop() || "png")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "");
-    const path = `${userId}/badge.${ext || "png"}`;
+    const path = ownerBadgeStoragePath(userId, file.name);
+    if (!path) {
+      uploadBtn.disabled = false;
+      setOwnerBadgeHint("Could not build badge path.", true);
+      return;
+    }
     const { error: upErr } = await supabase.storage
       .from("owner-badges")
-      .upload(path, file, { upsert: true, contentType: file.type || "image/png" });
+      .upload(path, file, {
+        upsert: false,
+        contentType: file.type || "image/png",
+        cacheControl: "3600",
+      });
 
     if (upErr) {
       uploadBtn.disabled = false;
@@ -387,10 +402,11 @@ function wireOwnerBadgeField(userId, getTag) {
       return;
     }
 
+    void removeStaleOwnerBadges(userId, path);
     clearOwnerBadgeObjectUrl();
     fileInput.value = "";
     setOwnerBadgeHint("Badge saved — this is now your owner profile icon.");
-    renderOwnerBadgePreview(path, getTag());
+    renderOwnerBadgePreview(path, getTag(), { cacheBust: Date.now() });
   });
 
   clearBtn.addEventListener("click", async () => {

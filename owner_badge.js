@@ -31,11 +31,55 @@ export function ownerProfileHref(ownerId) {
   return `owner_profile.html?owner=${encodeURIComponent(ownerId)}`;
 }
 
-export function ownerBadgePublicUrl(badgePath) {
+/**
+ * Public URL for an owner badge storage path.
+ * @param {string|null|undefined} badgePath
+ * @param {{ cacheBust?: string|number|null }} [opts] — append ?v= to defeat CDN/browser cache
+ */
+export function ownerBadgePublicUrl(badgePath, opts = {}) {
   const path = pathOrEmpty(badgePath);
   if (!path) return null;
   const { data } = supabase.storage.from("owner-badges").getPublicUrl(path);
-  return data?.publicUrl || null;
+  let url = data?.publicUrl || null;
+  if (!url) return null;
+  const bust = opts?.cacheBust;
+  if (bust != null && String(bust) !== "") {
+    const sep = url.includes("?") ? "&" : "?";
+    url = `${url}${sep}v=${encodeURIComponent(String(bust))}`;
+  }
+  return url;
+}
+
+/** Unique storage path so a new upload is never the same CDN URL as the previous badge. */
+export function ownerBadgeStoragePath(ownerId, fileName) {
+  const id = String(ownerId || "").trim();
+  if (!id) return null;
+  const ext = (String(fileName || "png").split(".").pop() || "png")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  return `${id}/badge-${Date.now()}.${ext || "png"}`;
+}
+
+/** Best-effort cleanup of older badge files in the owner's folder (keeps `keepPath`). */
+export async function removeStaleOwnerBadges(ownerId, keepPath) {
+  const id = String(ownerId || "").trim();
+  if (!id) return;
+  try {
+    const { data: listed, error } = await supabase.storage
+      .from("owner-badges")
+      .list(id, { limit: 50 });
+    if (error || !Array.isArray(listed) || !listed.length) return;
+    const keepName = keepPath ? String(keepPath).split("/").pop() : null;
+    const toRemove = listed
+      .map((f) => f?.name)
+      .filter((name) => name && name !== keepName)
+      .map((name) => `${id}/${name}`);
+    if (toRemove.length) {
+      await supabase.storage.from("owner-badges").remove(toRemove);
+    }
+  } catch (e) {
+    console.warn("removeStaleOwnerBadges:", e);
+  }
 }
 
 /** Gold “Supporter” mark for owner tags. */

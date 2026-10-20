@@ -1,0 +1,105 @@
+<script>window.CURRENT_PAGE = "owners_match_system";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Match System — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <style>
+    .ms-page { max-width: 1100px; margin: 0 auto; padding: 16px 20px 40px; }
+    .ms-page h1 { color: #ff9900; margin: 12px 0 8px; font-size: 1.5rem; }
+    .ms-page .card {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 16px 18px;
+    }
+    .ms-page .note { color: #aaa; font-size: 13px; margin: 0 0 12px; line-height: 1.45; }
+    .ms-page .status-line { margin: 8px 0 12px; color: #ccc; font-size: 13px; }
+    .ms-page .status-line.error { color: #f88; }
+    .ms-toolbar {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+      margin-bottom: 12px;
+    }
+    .ms-toolbar input[type="search"] {
+      padding: 8px 10px; min-width: 220px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .ms-toolbar select {
+      padding: 8px 10px; background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    button.button.secondary {
+      background: #444; color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;
+    }
+    .ms-legend {
+      display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+      margin: 0 0 12px; font-size: 12px; color: #bbb;
+    }
+    .ms-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-weight: 700; font-size: 12px; letter-spacing: 0.02em;
+      padding: 3px 9px; border-radius: 999px; border: 1px solid transparent;
+    }
+    .ms-pill--on {
+      color: #0b2a12; background: #5dca78; border-color: #8fe5a4;
+    }
+    .ms-pill--off {
+      color: #2a0b0b; background: #e07070; border-color: #f0a0a0;
+    }
+    .ms-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ms-table th, .ms-table td {
+      border-bottom: 1px solid #333; padding: 8px 6px; text-align: left; vertical-align: middle;
+    }
+    .ms-table th { color: #ff9900; font-weight: 600; white-space: nowrap; }
+    .ms-table .muted { color: #888; font-size: 12px; }
+    .ms-table .half-cell { color: #ccc; font-size: 12px; }
+    .ms-meta { color: #9ab; font-size: 12px; margin: 0 0 10px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="ms-page">
+    <h1 class="gpsl-has-tip" data-gpsl-tip="GPSL match system ON = propose/reply deadlines and arrangement fines. OFF = manual / Discord arrange only vs other OFF clubs. Change your own setting on Owner Details in July (Aug–Dec) or December (Jan onward)." tabindex="0">Match System</h1>
+    <div class="card">
+      <p class="note">
+        See which arrangement lane each owner is using for the <b>current</b> half-season.
+        <b>ON</b> = GPSL propose / reply / fines.
+        <b>OFF</b> = manual black box (off-site arrange vs other OFF clubs; still unplayed at month lock → mutual forfeit + ₿2.5m).
+        Change yours on <a href="owner_details.html" style="color:#7ec8e8;">Owner Details</a>.
+      </p>
+      <div class="ms-legend">
+        <span><span class="ms-pill ms-pill--on">ON</span> GPSL arranging</span>
+        <span><span class="ms-pill ms-pill--off">OFF</span> Manual / Discord</span>
+      </div>
+      <p class="ms-meta" id="msMeta"></p>
+      <div class="ms-toolbar">
+        <input type="search" id="msSearch" placeholder="Filter club / owner…">
+        <select id="msFilter" aria-label="Filter by system">
+          <option value="all">All systems</option>
+          <option value="gpsl">GPSL ON only</option>
+          <option value="manual">Manual OFF only</option>
+        </select>
+        <button type="button" id="msRefreshBtn" class="button secondary">Refresh</button>
+      </div>
+      <div id="msStatus" class="status-line"></div>
+      <div style="overflow-x:auto;">
+        <table class="ms-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Club / owner</th>
+              <th>Current</th>
+              <th>Aug–Dec</th>
+              <th>Jan–May</th>
+            </tr>
+          </thead>
+          <tbody id="msTableBody">
+            <tr><td colspan="5">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="owners_match_system.js?v=20261020-match-system-board"></script>
+</body>
+</html>
