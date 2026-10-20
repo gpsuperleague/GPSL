@@ -776,19 +776,67 @@ function setSeasonAbsenceHint(msg, isError = false) {
   el.classList.toggle("is-error", isError);
 }
 
-async function refreshMatchSystemSection() {
-  const summary = document.getElementById("matchSystemSummary");
+function matchSystemIsOn(el) {
+  if (!el) return true;
+  return el.getAttribute("aria-checked") !== "false";
+}
+
+function setMatchSystemSwitch(el, on, { morph = false } = {}) {
+  if (!el) return;
+  const next = on !== false;
+  const prev = matchSystemIsOn(el);
+  el.setAttribute("aria-checked", next ? "true" : "false");
+  if (morph && prev !== next) {
+    el.classList.add("is-morphing");
+    window.setTimeout(() => el.classList.remove("is-morphing"), 550);
+  }
+  const caption = document.getElementById("matchSystemCaption");
+  if (caption) {
+    caption.classList.toggle("is-on", next);
+    caption.classList.toggle("is-off", !next);
+    caption.innerHTML = next
+      ? "<strong>GPSL arranging</strong>Propose / reply deadlines and arrangement fines apply."
+      : "<strong>Manual black box</strong>Off-site arrange only vs other OFF clubs — month lock = mutual forfeit + ₿2.5m.";
+  }
+}
+
+function paintMatchSystemChrome(on, { morph = false } = {}) {
+  const cell = document.getElementById("matchSystemCell");
+  const pill = document.getElementById("matchSystemPill");
+  const pillText = document.getElementById("matchSystemPillText");
+  if (cell) {
+    cell.classList.toggle("is-ms-on", on);
+    cell.classList.toggle("is-ms-off", !on);
+    if (morph) {
+      cell.classList.remove("is-ms-morph");
+      // restart animation
+      void cell.offsetWidth;
+      cell.classList.add("is-ms-morph");
+      window.setTimeout(() => cell.classList.remove("is-ms-morph"), 700);
+    }
+  }
+  if (pill) {
+    pill.classList.toggle("is-on", on);
+    pill.classList.toggle("is-off", !on);
+  }
+  if (pillText) pillText.textContent = on ? "ON" : "OFF";
+}
+
+async function refreshMatchSystemSection({ morph = false } = {}) {
+  const note = document.getElementById("matchSystemNote");
+  const pillText = document.getElementById("matchSystemPillText");
   const chk = document.getElementById("matchSystemOnChk");
   const saveBtn = document.getElementById("saveMatchSystemBtn");
   const { data, error } = await supabase.rpc("owner_match_system_status");
   if (error) {
-    if (summary) {
-      summary.textContent =
+    if (note) {
+      note.textContent =
         error.message?.includes("owner_match_system") ||
         error.message?.includes("function")
           ? "Unavailable — admin must run gpsl_match_system_toggle_20261020.sql."
           : error.message;
     }
+    if (pillText) pillText.textContent = "?";
     saveBtn && (saveBtn.hidden = true);
     return;
   }
@@ -796,20 +844,24 @@ async function refreshMatchSystemSection() {
   const on = data?.effective_gpsl_system_on !== false;
   const half = data?.editable_half;
   const canEdit = Boolean(half);
-  if (summary) {
-    const windowNote = canEdit
-      ? half === "h1"
-        ? "July window — editing Aug–Dec."
-        : "December window — editing Jan onward."
-      : "Locked until next July / December window.";
-    summary.textContent = `${on ? "ON — GPSL arranging" : "OFF — manual / Discord black box"} · ${windowNote}`;
+  const windowNote = canEdit
+    ? half === "h1"
+      ? "July window — editing Aug–Dec."
+      : "December window — editing Jan onward."
+    : "Locked until next July / December window.";
+  if (note) {
+    note.textContent = `${
+      on ? "GPSL arranging — propose / reply / fines." : "Manual / Discord black box."
+    } ${windowNote}`;
   }
+  paintMatchSystemChrome(on, { morph });
+
   if (chk) {
     const editOn =
       half === "h2"
         ? data?.h2_gpsl_system_on !== false
         : data?.h1_gpsl_system_on !== false;
-    chk.checked = canEdit ? editOn : on;
+    setMatchSystemSwitch(chk, canEdit ? editOn : on, { morph });
     chk.disabled = !canEdit;
   }
   if (saveBtn) saveBtn.hidden = !canEdit;
@@ -825,6 +877,7 @@ async function refreshMatchSystemSection() {
 function wireMatchSystem() {
   const toggle = document.getElementById("toggleMatchSystemBtn");
   const panel = document.getElementById("matchSystemExpand");
+  const chk = document.getElementById("matchSystemOnChk");
   toggle?.addEventListener("click", () => {
     if (!panel) return;
     const show = panel.hidden;
@@ -832,19 +885,26 @@ function wireMatchSystem() {
     toggle.setAttribute("aria-expanded", show ? "true" : "false");
   });
 
+  chk?.addEventListener("click", () => {
+    if (chk.disabled) return;
+    const next = !matchSystemIsOn(chk);
+    setMatchSystemSwitch(chk, next, { morph: true });
+  });
+
   document.getElementById("saveMatchSystemBtn")?.addEventListener("click", async () => {
-    const chk = document.getElementById("matchSystemOnChk");
-    const turningOff = chk && !chk.checked;
+    const switchEl = document.getElementById("matchSystemOnChk");
+    const turningOff = switchEl && !matchSystemIsOn(switchEl);
     if (
       turningOff &&
       !confirm(
         "Turn GPSL match system OFF?\n\nAgainst other OFF clubs you arrange fully off-site (no propose deadlines). Still unplayed at month lock → mutual forfeit (0 pts each) + ₿2.5m each. Cups: both go out."
       )
     ) {
+      setMatchSystemSwitch(switchEl, true, { morph: true });
       return;
     }
     const { data, error } = await supabase.rpc("owner_match_system_set", {
-      p_gpsl_system_on: chk ? chk.checked : true,
+      p_gpsl_system_on: switchEl ? matchSystemIsOn(switchEl) : true,
       p_half: null,
     });
     if (error) {
@@ -856,7 +916,7 @@ function wireMatchSystem() {
         ? "Saved — GPSL match system OFF for this window."
         : "Saved — GPSL match system ON for this window."
     );
-    await refreshMatchSystemSection();
+    await refreshMatchSystemSection({ morph: true });
   });
 }
 
