@@ -227,6 +227,36 @@ function canShowSimButtons(f) {
   return true;
 }
 
+async function enrichManualBlackBoxFlags(fixtures) {
+  const list = fixtures || [];
+  if (list.some((f) => typeof f.manual_black_box === "boolean")) {
+    return list.map((f) => ({
+      ...f,
+      manual_black_box: f.manual_black_box === true,
+    }));
+  }
+  const ids = list
+    .map((f) => Number(f.id))
+    .filter((id) => Number.isFinite(id));
+  if (!ids.length) return list;
+  try {
+    const { data, error } = await supabase.rpc("fixtures_manual_black_box_map", {
+      p_fixture_ids: ids,
+    });
+    if (error || !data || typeof data !== "object") {
+      if (error) console.warn("fixtures_manual_black_box_map:", error.message);
+      return list;
+    }
+    return list.map((f) => ({
+      ...f,
+      manual_black_box: data[String(f.id)] === true,
+    }));
+  } catch (err) {
+    console.warn("enrichManualBlackBoxFlags:", err);
+    return list;
+  }
+}
+
 function actionHtml(f) {
   if (!myClub.short || !fixtureInvolvesClub(f, myClub)) return "";
 
@@ -237,6 +267,8 @@ function actionHtml(f) {
     parts.push(`<a href="${url}" class="btn-link">Enter result</a>`);
   } else if (needsInboxConfirm(f, myClub)) {
     parts.push(`<a href="${url}" class="btn-link secondary">Confirm result</a>`);
+  } else if (f.manual_black_box === true && f.status !== "played") {
+    parts.push(`<a href="${url}" class="btn-link secondary">Manual arrange · Match Day</a>`);
   } else {
     const sched = scheduleActionLabel(f, myClub.short);
     if (sched && f.status !== "played") {
@@ -551,6 +583,7 @@ function mergeFixtureActions(rpcRows, publicRows) {
     "schedule_discord_hint",
     "home_checked_in",
     "away_checked_in",
+    "manual_black_box",
   ];
 
   return (rpcRows || []).map((f) => {
@@ -861,10 +894,11 @@ async function refreshFixtures(seasonId = null) {
     return;
   }
   const publicFixtures = await loadPublicFixturesForClub();
-  const clubFixtures = mergeFixtureActions(
+  let clubFixtures = mergeFixtureActions(
     Array.isArray(data) ? data : [],
     publicFixtures
   );
+  clubFixtures = await enrichManualBlackBoxFlags(clubFixtures);
   const intlFixtures = await loadMyInternationalFixtures(seasonId);
   const fixtures = [...clubFixtures, ...intlFixtures];
   ensureMatchVideoStyles();
