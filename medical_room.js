@@ -1,8 +1,19 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
-import { renderMedicalRoomIntros } from "./medical_room_rules.js?v=20261019-physio-ladder";
+import { renderMedicalRoomIntros } from "./medical_room_rules.js?v=20261020-hire-window";
 
 let state = null;
+
+function hireWindowOpen() {
+  return state?.hire_window_open !== false;
+}
+
+function hireWindowMessage() {
+  return (
+    state?.hire_window?.message ||
+    "Medical staff hiring is closed from September through May. Open again in June–August."
+  );
+}
 
 function setStatus(msg, kind = "") {
   const el = document.getElementById("medStatus");
@@ -237,17 +248,24 @@ function renderDoctor() {
     return;
   }
   const cost = state.doctor_hire_cost;
+  const closed = !hireWindowOpen();
   el.innerHTML = `
-    <div class="staff-card empty doctor-card">
+    <div class="staff-card empty doctor-card${closed ? " locked" : ""}">
       <div class="staff-slot-label">Vacant — hire doctor</div>
       <div class="sil-wrap">${silhouetteSvg("male", false)}</div>
       <div class="staff-cost">${formatMoney(cost)}</div>
-      <div class="staff-contract">3-season contract · name &amp; gender assigned on hire</div>
+      <div class="staff-contract">3-season contract · name &amp; gender assigned on hire${
+        closed ? " · hiring closed until June" : ""
+      }</div>
       <div class="hire-row">
-        <button type="button" data-hire-doctor="1">Hire</button>
+        <button type="button" data-hire-doctor="1" ${closed ? "disabled" : ""}>${
+          closed ? "Closed" : "Hire"
+        }</button>
       </div>
     </div>`;
-  el.querySelector("[data-hire-doctor]").onclick = () => hireDoctor();
+  if (!closed) {
+    el.querySelector("[data-hire-doctor]").onclick = () => hireDoctor();
+  }
 }
 
 function physioBySlot(slot) {
@@ -274,21 +292,29 @@ function renderPhysios() {
         </div>`;
     } else {
       const cost = g.hire_cost;
-      const locked = !g.hireable;
+      const windowClosed = !hireWindowOpen();
+      const locked = !g.hireable || windowClosed;
+      const lockHint = windowClosed
+        ? " · hiring closed until June"
+        : !g.hireable
+          ? " · hire previous grade first"
+          : "";
       html += `
         <div class="staff-card empty${locked ? " locked" : ""}">
           <div class="staff-slot-label">Grade ${slot} · ${g.title}</div>
           <div class="sil-wrap">${silhouetteSvg("male", false)}</div>
           <div class="staff-cost">${formatMoney(cost)}</div>
-          <div class="staff-bonus">${effectLabel(g.effect_pct)}${locked ? " · hire previous grade first" : ""}</div>
+          <div class="staff-bonus">${effectLabel(g.effect_pct)}${lockHint}</div>
           <div class="hire-row">
-            <button type="button" data-hire-physio="${slot}" ${locked ? "disabled" : ""}>${locked ? "Locked" : "Hire"}</button>
+            <button type="button" data-hire-physio="${slot}" ${locked ? "disabled" : ""}>${
+              windowClosed ? "Closed" : locked ? "Locked" : "Hire"
+            }</button>
           </div>
         </div>`;
     }
   }
   el.innerHTML = html;
-  el.querySelectorAll("[data-hire-physio]").forEach((btn) => {
+  el.querySelectorAll("[data-hire-physio]:not([disabled])").forEach((btn) => {
     btn.onclick = () => hirePhysio(Number(btn.dataset.hirePhysio));
   });
 }
@@ -313,6 +339,9 @@ async function loadState() {
     return;
   }
   state = data;
+  if (data.hire_window_open === false) {
+    setStatus(hireWindowMessage(), "");
+  }
   try {
     const { data: prizeTok, error: prizeErr } = await supabase.rpc(
       "medical_room_prize_tokens",
@@ -345,6 +374,10 @@ async function loadState() {
 }
 
 async function hireDoctor() {
+  if (!hireWindowOpen()) {
+    setStatus(hireWindowMessage(), "error");
+    return;
+  }
   if (!confirm(`Hire a club doctor for ${formatMoney(state?.doctor_hire_cost)}?`)) {
     return;
   }
@@ -362,6 +395,10 @@ async function hireDoctor() {
 }
 
 async function hirePhysio(slot) {
+  if (!hireWindowOpen()) {
+    setStatus(hireWindowMessage(), "error");
+    return;
+  }
   const g = physioGradeMeta(slot);
   if (!g.hireable) {
     setStatus("Hire the previous physio grade first (fixed ladder).", "error");
