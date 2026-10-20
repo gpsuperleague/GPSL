@@ -141,8 +141,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location = "login.html";
     return;
   }
-  const ok = await isGpslAdminUser();
-  if (!ok) {
+  if (!isGpslAdminUser(user)) {
     document.getElementById("listStatus").textContent = "Admin only.";
     return;
   }

@@ -117,7 +117,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location = "login.html";
     return;
   }
-  if (!(await isGpslAdminUser())) {
+  // isGpslAdminUser(user) needs the auth user — bare call always returns false
+  if (!isGpslAdminUser(user)) {
     document.getElementById("adminMain").innerHTML =
       '<p class="note" style="color:#f88">Admin only.</p>';
     return;
