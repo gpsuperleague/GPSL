@@ -2228,7 +2228,7 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-unplayed" title="Running total of unplayed fixtures frozen at month end / Record unplayed (survives catch-up sims). Includes live current month until that month is snapshotted.">U missed</th>` +
     `<th class="num wl-num-unplayed" title="Match videos uploaded after that fixture’s GPSL month lock_at">V late</th>` +
     `<th class="num wl-num-unplayed" title="Match videos still missing when lock_at + grace hours passed (fined / failed)">V fail</th>` +
-    `<th class="num wl-num-fine" title="Projected scheduling fines if ${escapeWl(fineLockLabel)} locks as things stand (no proposal / overdue reply after warning)">F lock</th>` +
+    `<th class="num wl-num-fine" title="Projected scheduling fines if ${escapeWl(fineLockLabel)} locks as things stand: next-month homes with no proposal or late arrangement (last 48h before that month unlock), leftover unproposed homes, overdue reply after warning">F lock</th>` +
     `<th class="num wl-num-fine" title="Season fine total applied this competition season (not waived)">F tot</th>` +
     `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord</th>` +
     `<th title="Offset vs British time: saved timezone, else login timezone, else estimated from country (~).">UK +/-</th>` +
