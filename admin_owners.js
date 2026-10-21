@@ -1408,7 +1408,7 @@ function formatHomeProposalRatio(proposed, total) {
   return `<span class="${cls}">${p}/${t}</span>`;
 }
 
-/** Month-lock forecast / season fine total cell for season owner board. */
+/** Month-lock forecast / season fine total cell for season owner board (debit = −₿…). */
 function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } = {}) {
   const n = Number(amount) || 0;
   if (n <= 0 && !detail) {
@@ -1423,8 +1423,8 @@ function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } =
     : count
       ? `${count} fine(s)`
       : "";
-  return `<span class="${cls}"${tip ? ` title="${escapeWl(tip)}"` : ""}>${escapeWl(
-    formatBudgetLabel(n)
+  return `<span class="${cls}"${tip ? ` title="${escapeWl(tip)}"` : ""}>−${escapeWl(
+    formatBudgetLabel(Math.abs(n))
   )}</span>`;
 }
 
