@@ -1408,6 +1408,26 @@ function formatHomeProposalRatio(proposed, total) {
   return `<span class="${cls}">${p}/${t}</span>`;
 }
 
+/** Month-lock forecast / season fine total cell for season owner board. */
+function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } = {}) {
+  const n = Number(amount) || 0;
+  if (n <= 0 && !detail) {
+    return `<span class="muted">${escapeWl(empty)}</span>`;
+  }
+  if (n <= 0 && detail) {
+    return `<span class="unplayed-warn" title="${escapeWl(detail)}">warn</span>`;
+  }
+  const cls = n >= 5_000_000 ? "unplayed-bad" : "unplayed-warn";
+  const tip = detail
+    ? `${detail}${count ? ` (${count})` : ""}`
+    : count
+      ? `${count} fine(s)`
+      : "";
+  return `<span class="${cls}"${tip ? ` title="${escapeWl(tip)}"` : ""}>${escapeWl(
+    formatBudgetLabel(n)
+  )}</span>`;
+}
+
 function filterSeasonOwnerBoard(filterText) {
   const q = String(filterText ?? document.getElementById("wlBoardFilter")?.value ?? "")
     .trim()
@@ -2037,13 +2057,15 @@ async function loadWaitingListAdmin() {
   if (!tableWrap) return;
 
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
-  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes] = await Promise.all([
-    supabase.rpc("waiting_list_admin"),
-    fetchOwnerActivityById(),
-    fetchOwnerTimezoneMap(),
-    supabase.rpc("admin_owner_supporter_map"),
-    supabase.rpc("admin_supporter_payments_map", { p_year: supporterPayYear }),
-  ]);
+  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes] =
+    await Promise.all([
+      supabase.rpc("waiting_list_admin"),
+      fetchOwnerActivityById(),
+      fetchOwnerTimezoneMap(),
+      supabase.rpc("admin_owner_supporter_map"),
+      supabase.rpc("admin_supporter_payments_map", { p_year: supporterPayYear }),
+      supabase.rpc("admin_owner_board_fine_forecast"),
+    ]);
   const supporterMap =
     supporterRes.error || !supporterRes.data || typeof supporterRes.data !== "object"
       ? {}
@@ -2063,6 +2085,12 @@ async function loadWaitingListAdmin() {
   const prevLabel = activityRes.previousLabel || "Prev month";
   const curLabel = activityRes.currentLabel || "Current month";
   const nextMonthLabel = activityRes.nextMonthLabel || "Next month";
+  const fineByClub =
+    !fineRes.error && fineRes.data?.by_club && typeof fineRes.data.by_club === "object"
+      ? fineRes.data.by_club
+      : {};
+  const fineLockLabel =
+    fineRes.data?.lock_month_label || fineRes.data?.lock_month || "month lock";
 
   const withActivity = (r) => {
     const act = activityById.get(r.owner_id) || null;
@@ -2071,22 +2099,36 @@ async function loadWaitingListAdmin() {
       .toUpperCase();
     const vid = clubKey ? videoByClub.get(clubKey) : null;
     const homeProp = clubKey ? homePropByClub.get(clubKey) : null;
+    const fines = clubKey ? fineByClub[clubKey] || null : null;
+    const fineFields = {
+      fine_month_lock_amount: fines?.month_lock_amount ?? 0,
+      fine_month_lock_count: fines?.month_lock_count ?? 0,
+      fine_month_lock_detail: fines?.month_lock_detail || "",
+      fine_season_total: fines?.season_total ?? 0,
+      fine_season_count: fines?.season_count ?? 0,
+    };
     const supp = supporterMap[r.owner_id] || supporterMap[String(r.owner_id)] || {};
     return {
       ...r,
-      activity: act
-        ? {
-            ...act,
-            video_late_count: vid?.video_late_count ?? 0,
-            video_failed_count: vid?.video_failed_count ?? 0,
-            home_prop_proposed: homeProp?.proposed ?? null,
-            home_prop_total: homeProp?.total ?? null,
-          }
-        : act,
+      activity: {
+        ...(act || {}),
+        video_late_count: vid?.video_late_count ?? act?.video_late_count ?? 0,
+        video_failed_count: vid?.video_failed_count ?? act?.video_failed_count ?? 0,
+        home_prop_proposed: homeProp?.proposed ?? null,
+        home_prop_total: homeProp?.total ?? null,
+        ...fineFields,
+      },
       security: activityRes.securityById.get(r.owner_id) || null,
       owner_timezone: timezoneMap.get(r.owner_id) || "",
       video: vid || { video_late_count: 0, video_failed_count: 0 },
       home_proposals: homeProp || null,
+      fines: fines || {
+        month_lock_amount: 0,
+        month_lock_count: 0,
+        month_lock_detail: "",
+        season_total: 0,
+        season_count: 0,
+      },
       is_supporter: !!supp.is_supporter,
       supporter_active: !!supp.supporter_active,
       supporter_grace_until: supp.supporter_grace_until || null,
@@ -2136,7 +2178,7 @@ async function loadWaitingListAdmin() {
     : "Section sort: supporters first (same order among themselves), then Season 1 rejects at bottom, then login activity";
   const activityNote = activityRes.error
     ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · H ${nextMonthLabel} home proposes · missed running total · V late / V fail (match videos) · admin IP/country review · supporters at top · S1 rejected at section bottom · sort: last login first unless current month logins are under 4`;
+    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · H ${nextMonthLabel} home proposes · missed running total · V late / V fail (match videos) · F lock (on course at ${fineLockLabel}) · F tot (season fines) · admin IP/country review · supporters at top · S1 rejected at section bottom · sort: last login first unless current month logins are under 4`;
 
   const snapMonths = Number(activityRes.snapshotMonths || 0);
   const snapNote =
@@ -2146,8 +2188,11 @@ async function loadWaitingListAdmin() {
   const homePropHint = activityRes.homePropError
     ? ` · H prop unavailable (run admin_next_month_home_proposals_20261019.sql)`
     : "";
+  const fineHint = fineRes.error
+    ? ` · Fines unavailable (run admin_owner_board_fine_forecast_20261021.sql)`
+    : "";
 
-  const colSpan = 30;
+  const colSpan = 32;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
   let overallIndex = 0;
@@ -2158,7 +2203,7 @@ async function loadWaitingListAdmin() {
     `<tr class="wl-group-row">` +
     `<th colspan="7" class="wl-group-owner">Owner</th>` +
     `<th colspan="6" class="wl-group-season">Season</th>` +
-    `<th colspan="14" class="wl-group-activity">Activity</th>` +
+    `<th colspan="18" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions">Actions</th>` +
     `</tr>` +
     `<tr>` +
@@ -2183,6 +2228,8 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-unplayed" title="Running total of unplayed fixtures frozen at month end / Record unplayed (survives catch-up sims). Includes live current month until that month is snapshotted.">U missed</th>` +
     `<th class="num wl-num-unplayed" title="Match videos uploaded after that fixture’s GPSL month lock_at">V late</th>` +
     `<th class="num wl-num-unplayed" title="Match videos still missing when lock_at + grace hours passed (fined / failed)">V fail</th>` +
+    `<th class="num wl-num-fine" title="Projected scheduling fines if ${escapeWl(fineLockLabel)} locks as things stand (no proposal / overdue reply after warning)">F lock</th>` +
+    `<th class="num wl-num-fine" title="Season fine total applied this competition season (not waived)">F tot</th>` +
     `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord</th>` +
     `<th title="Offset vs British time: saved timezone, else login timezone, else estimated from country (~).">UK +/-</th>` +
     `<th title="Latest login country (admin only).">Country</th>` +
@@ -2192,7 +2239,7 @@ async function loadWaitingListAdmin() {
     `</tr></thead><tbody id="wlPriorityTbody">`;
 
   html += sectionRow(
-    `Owners (${ownerCount}) — current club owners. Drag handle sets season priority with the waiting list. ${escapeWl(activityNote)}${escapeWl(snapNote)}${escapeWl(homePropHint)}.`
+    `Owners (${ownerCount}) — current club owners. Drag handle sets season priority with the waiting list. ${escapeWl(activityNote)}${escapeWl(snapNote)}${escapeWl(homePropHint)}${escapeWl(fineHint)}.`
   );
   if (!ownerCount) {
     html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No club owners on the board.</td></tr>`;
@@ -2638,7 +2685,7 @@ async function loadArchivedOwnersSection() {
     `<tr class="wl-group-row">` +
     `<th colspan="7" class="wl-group-owner">Owner</th>` +
     `<th colspan="5" class="wl-group-season">Season</th>` +
-    `<th colspan="15" class="wl-group-activity">Activity</th>` +
+    `<th colspan="17" class="wl-group-activity">Activity</th>` +
     `<th colspan="1" class="wl-group-actions">Actions</th>` +
     `</tr>` +
     `<tr>` +
@@ -2663,6 +2710,8 @@ async function loadArchivedOwnersSection() {
     `<th class="num wl-num-unplayed" title="Missed running total">U missed</th>` +
     `<th class="num wl-num-unplayed" title="Match videos uploaded after month lock">V late</th>` +
     `<th class="num wl-num-unplayed" title="Missing match video past grace">V fail</th>` +
+    `<th class="num wl-num-fine" title="Projected month-lock scheduling fines">F lock</th>` +
+    `<th class="num wl-num-fine" title="Season fine total">F tot</th>` +
     `<th title="Discord server join date when known">Discord</th>` +
     `<th title="Offset vs British time">UK +/-</th>` +
     `<th title="Latest login country (admin only)">Country</th>` +
@@ -2814,6 +2863,8 @@ async function loadArchivedOwnersSection() {
       <td class="num wl-num-unplayed">${formatUnplayed(unplayedMissed)}</td>
       <td class="num wl-num-unplayed">${formatUnplayed(videoLate)}</td>
       <td class="num wl-num-unplayed">${formatUnplayed(videoFail)}</td>
+      <td class="num wl-num-fine"><span class="muted" title="No current club">—</span></td>
+      <td class="num wl-num-fine"><span class="muted" title="No current club">—</span></td>
       <td>${discordCell}</td>
       <td title="${tzDelta.title ? escapeWl(tzDelta.title) : ""}">${escapeWl(tzDelta.text)}</td>
       <td title="${lastCountry ? escapeWl(lastCountry) : ""}">${lastCountry ? escapeWl(lastCountryName) : `<span class="muted">—</span>`}</td>
@@ -3220,6 +3271,28 @@ function renderWaitingListAdminRow(
     <td class="num wl-num-unplayed" title="Missed running total (month snapshots + live until snapshotted)">${formatUnplayed(unplayedMissed)}</td>
     <td class="num wl-num-unplayed" title="Match videos uploaded after month lock">${formatUnplayed(hasClub ? videoLate : null)}</td>
     <td class="num wl-num-unplayed" title="Missing match video past grace (failed / fined)">${formatUnplayed(hasClub ? videoFail : null)}</td>
+    <td class="num wl-num-fine">${
+      hasClub
+        ? formatFineBoardCell(
+            act.fine_month_lock_amount ?? row.fines?.month_lock_amount,
+            {
+              detail: act.fine_month_lock_detail || row.fines?.month_lock_detail || "",
+              count: act.fine_month_lock_count ?? row.fines?.month_lock_count ?? 0,
+            }
+          )
+        : `<span class="muted">—</span>`
+    }</td>
+    <td class="num wl-num-fine">${
+      hasClub
+        ? formatFineBoardCell(
+            act.fine_season_total ?? row.fines?.season_total,
+            {
+              count: act.fine_season_count ?? row.fines?.season_count ?? 0,
+              empty: "0",
+            }
+          )
+        : `<span class="muted">—</span>`
+    }</td>
     <td>${discordCell}</td>
     <td title="${tzDelta.title ? escapeWl(tzDelta.title) : ""}">${escapeWl(tzDelta.text)}</td>
     <td title="${lastCountry ? escapeWl(lastCountry) : ""}">${lastCountry ? escapeWl(lastCountryName) : `<span class="muted">—</span>`}</td>
