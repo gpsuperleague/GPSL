@@ -927,7 +927,7 @@ function render() {
         isAwayWaiting
           ? "Your availability (for reference)"
           : usingCompatibleSlots
-            ? "Compatible times (both clubs free)"
+            ? "Kick-off times both clubs can play"
             : "Available slots"
       }</h2>
       <div class="slot-list" id="slotList"></div>
