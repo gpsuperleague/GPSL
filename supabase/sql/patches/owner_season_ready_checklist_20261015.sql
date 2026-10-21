@@ -158,7 +158,7 @@ BEGIN
     END;
   END IF;
 
-  -- August + September fixtures (league + drawn cup ties) where we are home
+  -- August fixtures (league + drawn cup ties) where we are home
   FOR r IN
     SELECT f.id, s.status AS sched_status
     FROM public.competition_fixtures f
@@ -166,7 +166,7 @@ BEGIN
     WHERE f.season_id = p_season
       AND f.status = 'scheduled'
       AND coalesce(f.competition_type, 'league') IN ('league', 'cup')
-      AND lower(btrim(f.gpsl_month)) IN ('august', 'september')
+      AND lower(btrim(f.gpsl_month)) = 'august'
       AND upper(btrim(f.home_club_short_name)) = v_club
       AND NOT public.competition_fixture_involves_vacant_club(f.id)
   LOOP
@@ -243,8 +243,8 @@ BEGIN
                      ELSE 'Optional — choose on the Stadium page by the end of the month you took over, or one is picked for you' END,
       'done', v_sponsor),
     -- Fixtures
-    jsonb_build_object('key', 'aug_sep_proposed', 'group', 'Fixtures', 'kind', 'auto', 'href', 'fixture_schedule.html',
-      'label', 'August & September home matches proposed (incl. cup ties)',
+    jsonb_build_object('key', 'aug_proposed', 'group', 'Fixtures', 'kind', 'auto', 'href', 'fixture_schedule.html',
+      'label', 'August home matches proposed (incl. cup ties)',
       'detail', CASE WHEN v_home_total = 0 THEN 'None to propose yet'
                      ELSE format('%s of %s proposed', v_home_done, v_home_total) END,
       'done', v_home_done >= v_home_total),

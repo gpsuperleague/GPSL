@@ -26,7 +26,7 @@ Open your **Dashboard** and work through the ready checklist until it’s clear.
 - Match availability set (Owner Details — the weekly times you can play)
 
 **Fixtures**
-- Propose kick-offs for your **August & September home** matches (including cup ties)
+- Propose kick-offs for your **August home** matches (including cup ties)
 - Reply to every proposal sitting in your **Inbox**
 
 **Matchday ready** (self-ticks — open Learning GPSL if you need a refresh)
