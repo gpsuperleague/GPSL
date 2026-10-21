@@ -21,6 +21,10 @@ const KIND_BADGE = {
   outbid: ["OUTBID", "cw-badge--outbid"],
   offer_accepted: ["ACCEPTED", "cw-badge--good"],
   offer_rejected: ["REJECTED", "cw-badge--bad"],
+  review_needed: ["REVIEW", "cw-badge--cutoff"],
+  under_review: ["PENDING", "cw-badge--cutoff"],
+  review_accepted: ["ACCEPTED", "cw-badge--good"],
+  review_declined: ["DECLINED", "cw-badge--bad"],
   won: ["WON", "cw-badge--good"],
   lost: ["LOST", "cw-badge--bad"],
 };
@@ -177,6 +181,23 @@ function itemText(it) {
       return `${by} accepted your ${amt} offer for ${who} — it's now a 24h listing`;
     case "offer_rejected":
       return `${by} rejected your ${amt} offer for ${who}`;
+    case "review_needed": {
+      const bidBit = amt ? ` leading bid ${amt}` : " a leading bid";
+      const fromBit = by ? ` from ${by}` : "";
+      return `${who} needs your seller review —${bidBit}${fromBit}`;
+    }
+    case "under_review":
+      return `Your bid for ${who}${amt ? ` (${amt})` : ""} is with ${
+        by || "the seller"
+      } for review`;
+    case "review_accepted":
+      return `Seller review accepted for ${who}${amt ? ` at ${amt}` : ""}${
+        by ? ` (${by})` : ""
+      }`;
+    case "review_declined":
+      return `Seller review declined for ${who}${amt ? ` at ${amt}` : ""}${
+        by ? ` (${by})` : ""
+      }`;
     case "won":
       return it.market === "wage_bid"
         ? `You won ${who}'s contract (your offer ${amt})`
@@ -193,8 +214,13 @@ function itemText(it) {
 
 function actionHtml(it) {
   if (!it.href) return "";
-  const label = it.kind === "outbid" ? "Rebid →" : "View →";
-  const cls = it.kind === "outbid" ? "cw-go" : "cw-go cw-go--plain";
+  let label = "View →";
+  if (it.kind === "outbid") label = "Rebid →";
+  else if (it.kind === "review_needed") label = "Review →";
+  const cls =
+    it.kind === "outbid" || it.kind === "review_needed"
+      ? "cw-go"
+      : "cw-go cw-go--plain";
   return `<a class="${cls}" href="${esc(it.href)}">${label}</a>`;
 }
 

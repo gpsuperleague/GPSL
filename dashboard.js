@@ -10,7 +10,7 @@ import {
   isEmailHidden,
   setEmailHidden,
   loadClubWire,
-} from "./global.js?v=20261009-club-wire";
+} from "./global.js?v=20261021-club-wire-review";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
 import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js";
