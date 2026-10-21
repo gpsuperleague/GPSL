@@ -45,3 +45,7 @@ verify_jwt = false
 # Discord interactions (ed25519 signature) + feed invoke key for DM flush.
 [functions.discord-translate]
 verify_jwt = false
+
+# Auth checked inside (admin/mod JWT / feed invoke key / service_role).
+[functions.discord-sync-roles]
+verify_jwt = false

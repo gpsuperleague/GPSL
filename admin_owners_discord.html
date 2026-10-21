@@ -64,8 +64,18 @@
           <code>DISCORD_BOT_TOKEN</code> + <code>DISCORD_GUILD_ID</code>.
           Also redeploy <code>create-owner-club-auction</code> (supports Discord tag).
         </p>
+        <p class="note">
+          <b>GPSL → Discord roles:</b> registry (incl. archived / on break) → <b>Member</b>;
+          club owner → <b>Owner</b> + Member; no GPSL account → <b>Visitor</b>.
+          Assign/remove club and join/visitor login sync automatically after you deploy
+          <code>discord-sync-roles</code>, run <code>discord_role_sync_from_gpsl_20261021.sql</code>,
+          and set <code>DISCORD_ROLE_MEMBER_ID</code> / <code>DISCORD_ROLE_OWNER_ID</code> /
+          <code>DISCORD_ROLE_VISITOR_ID</code> (bot role must sit above those three).
+          Use <b>Sync roles now</b> to catch up linked accounts.
+        </p>
         <div class="discord-filters">
           <button type="button" id="discordRefreshBtn" class="button">Refresh from Discord</button>
+          <button type="button" id="discordSyncRolesBtn" class="button secondary" title="Apply Member / Owner / Visitor from GPSL status for linked Discord accounts">Sync roles now</button>
           <input type="search" id="discordSearch" placeholder="Filter by name / username…">
           <label class="note" style="display:flex;align-items:center;gap:6px;margin:0;">
             <input type="checkbox" id="discordHideKnown">
@@ -77,6 +87,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners_discord.js"></script>
+  <script type="module" src="admin_owners_discord.js?v=20261021-role-sync"></script>
 </body>
 </html>

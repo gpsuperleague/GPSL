@@ -336,12 +336,57 @@ async function confirmSetTag(discordId) {
   await loadMembers();
 }
 
+async function syncDiscordRolesFromGpsl() {
+  const btn = document.getElementById("discordSyncRolesBtn");
+  if (btn) btn.disabled = true;
+  setStatus(
+    "discordStatus",
+    "Syncing Discord roles from GPSL (linked accounts)…"
+  );
+
+  const { data, error } = await invokeEdgeFunction("discord-sync-roles", {
+    action: "sync_linked",
+    limit: 80,
+  });
+
+  if (btn) btn.disabled = false;
+
+  if (error) {
+    const hint = /roles_not_configured|Unauthorized|Failed to send/i.test(
+      error.message || ""
+    )
+      ? " — deploy discord-sync-roles, set DISCORD_ROLE_*_ID secrets, run discord_role_sync_from_gpsl_20261021.sql"
+      : "";
+    setStatus("discordStatus", "❌ " + error.message + hint, false);
+    return;
+  }
+  if (data?.reason === "roles_not_configured" || data?.ok === false) {
+    setStatus(
+      "discordStatus",
+      `❌ ${data?.error || data?.reason || "Role sync not ready"}`,
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "discordStatus",
+    `✅ Role sync: ${data?.changed ?? 0} updated · ${data?.scanned ?? 0} checked` +
+      (data?.errors ? ` · ${data.errors} errors` : "") +
+      " (Member = GPSL account, Owner = has club, Visitor = neither).",
+    true
+  );
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage({ allowMod: true }))) return;
 
   await loadClubAuctionConfig();
 
   document.getElementById("discordRefreshBtn")?.addEventListener("click", loadMembers);
+  document
+    .getElementById("discordSyncRolesBtn")
+    ?.addEventListener("click", syncDiscordRolesFromGpsl);
   document.getElementById("discordSearch")?.addEventListener("input", renderTable);
   document.getElementById("discordHideKnown")?.addEventListener("change", renderTable);
 

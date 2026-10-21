@@ -190,6 +190,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Best-effort Discord Visitor role (never fail login if sync is unavailable)
+    try {
+      await admin.rpc("gpsl_discord_roles_request_sync", {
+        p_owner_id: null,
+        p_discord_user_id: me.id,
+      });
+    } catch (roleCatch) {
+      console.warn("discord role sync after visitor login failed:", roleCatch);
+    }
+
     return jsonResponse({
       ok: true,
       token_hash: tokenHash,

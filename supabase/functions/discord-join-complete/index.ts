@@ -232,6 +232,16 @@ Deno.serve(async (req) => {
       console.warn("staff alert notify exception:", alertCatch);
     }
 
+    // Best-effort Discord Member role (never fail join if sync is unavailable)
+    try {
+      await admin.rpc("gpsl_discord_roles_request_sync", {
+        p_owner_id: userId,
+        p_discord_user_id: discordUserId,
+      });
+    } catch (roleCatch) {
+      console.warn("discord role sync after join failed:", roleCatch);
+    }
+
     return jsonResponse({
       ok: true,
       email,
