@@ -1682,6 +1682,25 @@ const NAV_MENU_ICON_FILES = {
   playoffs: { src: "images/nav/playoffs.svg", title: "Playoffs" },
   stats: { src: "images/nav/stats.svg", title: "Stats" },
   injuries: { src: "images/nav/injuries.svg", title: "Injuries" },
+  // Real GPSL trophy art (same assets as cup pages)
+  league_cup: {
+    src: "images/trophies/league_cup.png",
+    title: "League Cup",
+    trophy: true,
+  },
+  world_cup: {
+    src: "images/trophies/world_cup.png",
+    title: "World Cup",
+    trophy: true,
+  },
+  super8: {
+    src: "images/trophies/super8.png",
+    title: "Super8",
+    trophy: true,
+  },
+  plate: { src: "images/trophies/plate.png", title: "Plate", trophy: true },
+  shield: { src: "images/trophies/shield.png", title: "Shield", trophy: true },
+  bowl: { src: "images/trophies/bowl.png", title: "Bowl", trophy: true },
 };
 
 function navInlineIconHtml(title, svgInner) {
@@ -1734,9 +1753,10 @@ function navLinkLeadingHtml(item) {
   }
   const menuIcon = item?.navIcon ? NAV_MENU_ICON_FILES[item.navIcon] : null;
   if (menuIcon) {
+    const trophyCls = menuIcon.trophy ? " nav-menu-icon--trophy" : "";
     return (
-      `<span class="nav-menu-icon" title="${escapeNavAttr(menuIcon.title)}" aria-hidden="true">` +
-      `<img src="${escapeNavAttr(menuIcon.src)}?v=20261022-league-nav2" alt="" width="18" height="18" loading="lazy" />` +
+      `<span class="nav-menu-icon${trophyCls}" title="${escapeNavAttr(menuIcon.title)}" aria-hidden="true">` +
+      `<img src="${escapeNavAttr(menuIcon.src)}?v=20261022-cups-nav" alt="" width="18" height="18" loading="lazy" />` +
       `</span>`
     );
   }

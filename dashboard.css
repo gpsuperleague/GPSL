@@ -1605,6 +1605,18 @@ button.nav-admin-trigger {
   object-fit: contain;
 }
 
+/* Tall trophy PNGs — slightly taller slot so the cup reads clearly */
+.nav-menu-icon--trophy {
+  width: 16px;
+  height: 20px;
+}
+.nav-menu-icon--trophy img {
+  width: 16px;
+  height: 20px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85));
+}
+
 .nav-dropdown .nav-link {
   pointer-events: auto;
   display: flex;
