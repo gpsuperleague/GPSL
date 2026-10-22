@@ -435,5 +435,25 @@ export const SECTION_MATCHDAY = {
         `Holiday early-play: result can be saved early; league table/stats wait until that GPSL month is active. See <a href="owner_details.html">Owner Details</a>.`,
       ],
     },
+
+    { type: "h3", html: "Bad connections in match" },
+    {
+      type: "tip",
+      html: `This is about the <b>online connection</b> (lag, delay, freezes, heaviness, catch-up) — <b>not</b> your opponent as a person or how they played.`,
+    },
+    {
+      type: "p",
+      html: `If the link becomes <b>unplayable</b>, you may <b>stop the match</b>. Do not grind through a game that is clearly broken for either side. Agree a replay / new kick-off through the normal scheduling tools, and use Match Day’s
+        <b>Network / mid-match issue</b> panel if you need a record for staff.`,
+    },
+    {
+      type: "ul",
+      items: [
+        `<b>Stop when unplayable</b> — severe lag, freezes, constant catch-up, or heaviness that makes fair play impossible.`,
+        `<b>Talk to your opponent</b> (Discord is fine) and rearrange on Fixtures → Schedule.`,
+        `<b>Log a network report</b> on Match Day if you want evidence / staff visibility (optional; separate from the 1–5 connection rating on result submit).`,
+        `When you do enter a result, the <b>connection quality</b> rating helps admins see where the league has weak links — rate the connection, not the person.`,
+      ],
+    },
   ],
 };

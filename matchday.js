@@ -172,6 +172,9 @@ const CONNECTION_STAR_LABELS = {
   1: "Unplayable",
 };
 
+const BAD_CONNECTIONS_HANDBOOK_HREF =
+  "learning_gpsl.html#matchday--bad-connections-in-match";
+
 function syncConnectionStarsVisual() {
   const el = document.getElementById("connectionStarsVisual");
   const sel = document.getElementById("connectionStars");
@@ -182,6 +185,52 @@ function syncConnectionStarsVisual() {
     return;
   }
   el.textContent = `${"★".repeat(n)}${"☆".repeat(5 - n)}  ${CONNECTION_STAR_LABELS[n] || ""}`;
+}
+
+function showUnplayableConnectionNote() {
+  let overlay = document.getElementById("connectionUnplayableOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "connectionUnplayableOverlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-labelledby", "connectionUnplayableTitle");
+    overlay.style.cssText =
+      "position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;" +
+      "background:rgba(0,0,0,0.72);padding:16px;";
+    overlay.innerHTML = `
+      <div style="max-width:440px;width:100%;background:#1a1a1a;border:1px solid #664400;border-radius:10px;padding:18px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.5);">
+        <h3 id="connectionUnplayableTitle" style="margin:0 0 10px;color:#fc6;font-size:17px;">Unplayable connection</h3>
+        <p style="margin:0 0 10px;color:#ddd;font-size:14px;line-height:1.45;">
+          You rated this match’s connection as <b>Unplayable</b>.
+          Remember: you are rating the <b>online link</b>, not your opponent.
+        </p>
+        <p style="margin:0 0 14px;color:#ccc;font-size:14px;line-height:1.45;">
+          Matches <b>can be stopped</b> when the connection is this bad — do not feel you must finish an unplayable game.
+          See the GPSL handbook for what to do next (rearrange, network report if needed).
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;">
+          <a class="button secondary" href="${BAD_CONNECTIONS_HANDBOOK_HREF}" target="_blank" rel="noopener"
+            style="text-decoration:none;display:inline-block;">Open handbook — bad connections</a>
+          <button type="button" class="button" id="connectionUnplayableOk">Got it</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+    overlay.querySelector("#connectionUnplayableOk")?.addEventListener("click", () => {
+      overlay.remove();
+    });
+  }
+  overlay.style.display = "flex";
+}
+
+function onConnectionStarsChange() {
+  syncConnectionStarsVisual();
+  if (Number(document.getElementById("connectionStars")?.value) === 1) {
+    showUnplayableConnectionNote();
+  }
 }
 
 function readConnectionStars() {
@@ -2093,7 +2142,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("submitResultBtn").onclick = submitResult;
   document.getElementById("rejectResultBtn").onclick = rejectPendingResult;
   document.getElementById("fillTestStatsBtn")?.addEventListener("click", fillTestMatchStats);
-  document.getElementById("connectionStars")?.addEventListener("change", syncConnectionStarsVisual);
+  document
+    .getElementById("connectionStars")
+    ?.addEventListener("change", onConnectionStarsChange);
   syncConnectionStarsVisual();
   async function runMatchdaySim(mode) {
     const f = selectedFixture();
