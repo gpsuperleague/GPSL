@@ -91,8 +91,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   ]);
 });
 
+function applyPackRaceRow(p) {
+  if (!p?.window_phase) return;
+  const phase = p.window_phase === "mid" ? "mid" : "start";
+  const active = Number(p.active_challenges);
+  if (Number.isFinite(active) && active >= 0) {
+    raceActiveByPhase[phase] = active;
+  }
+  const req = Number(p.required_to_win);
+  if (Number.isFinite(req) && req > 0) {
+    raceRequiredByPhase[phase] = req;
+  }
+}
+
 /**
  * Resolve big-prize N for each window (e.g. 6), independent of standings RPC.
+ * Tolerates older DBs missing required_to_win / the RPC (run
+ * challenge_required_to_win_expose_20261022.sql).
  */
 async function loadRaceTargets() {
   raceRequiredByPhase = { start: null, mid: null };
@@ -100,23 +115,23 @@ async function loadRaceTargets() {
 
   const seasonId = await loadCurrentSeasonId();
 
-  const { data: packs } = await supabase
-    .from("competition_challenge_period_packs_public")
-    .select("window_phase, required_to_win, active_challenges");
-
-  for (const p of packs || []) {
-    const phase = p.window_phase === "mid" ? "mid" : "start";
-    const active = Number(p.active_challenges);
-    if (Number.isFinite(active) && active >= 0) {
-      raceActiveByPhase[phase] = active;
-    }
-    const req = Number(p.required_to_win);
-    if (Number.isFinite(req) && req > 0) {
-      raceRequiredByPhase[phase] = req;
+  // Prefer columns that exist on current DB; fall back if view is outdated
+  let packs = null;
+  {
+    const full = await supabase
+      .from("competition_challenge_period_packs_public")
+      .select("window_phase, required_to_win, active_challenges");
+    if (!full.error) {
+      packs = full.data;
+    } else {
+      const basic = await supabase
+        .from("competition_challenge_period_packs_public")
+        .select("window_phase");
+      if (!basic.error) packs = basic.data;
     }
   }
+  for (const p of packs || []) applyPackRaceRow(p);
 
-  // Authoritative race N from settings (overwrites view if present)
   if (seasonId) {
     for (const phase of ["start", "mid"]) {
       const { data, error } = await supabase.rpc("competition_challenge_required_to_win", {
