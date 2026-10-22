@@ -1684,6 +1684,14 @@ const NAV_MENU_ICON_FILES = {
   injuries: { src: "images/nav/injuries.svg", title: "Injuries" },
 };
 
+function navInlineIconHtml(title, svgInner) {
+  return (
+    `<span class="nav-menu-icon" title="${escapeNavAttr(title)}" aria-hidden="true">` +
+    `<svg viewBox="0 0 20 20" width="18" height="18" focusable="false">${svgInner}</svg>` +
+    `</span>`
+  );
+}
+
 function navLinkLeadingHtml(item) {
   if (item?.navIcon === "first_aid") {
     return (
@@ -1693,6 +1701,28 @@ function navLinkLeadingHtml(item) {
       `<rect x="8" y="4" width="4" height="12" fill="#f5f5f5"/>` +
       `<rect x="4" y="8" width="12" height="4" fill="#f5f5f5"/>` +
       `</svg></span>`
+    );
+  }
+  // Inline so League icons still show if images/nav/*.svg is not deployed yet.
+  if (item?.navIcon === "clubs") {
+    return navInlineIconHtml(
+      "Clubs",
+      `<path d="M10 1.8 L16.2 4 V9.4 C16.2 13.8 13.4 17.2 10 18.6 C6.6 17.2 3.8 13.8 3.8 9.4 V4 Z" fill="#1e3a5f"/>` +
+        `<path d="M10 3.2 L14.8 5 V9.3 C14.8 12.8 12.6 15.6 10 16.8 C7.4 15.6 5.2 12.8 5.2 9.3 V5 Z" fill="#2e5a8f"/>` +
+        `<circle cx="10" cy="8.6" r="2.4" fill="#f0c14b"/>` +
+        `<circle cx="10" cy="8.6" r="1.55" fill="#1e3a5f"/>` +
+        `<path d="M10 7.2c.35.3.6.75.7 1.25h-1.4c.1-.5.35-.95.7-1.25zm-1.45 1.55c.1.55.4 1 .8 1.3-.45-.1-.85-.4-1.1-.8.1-.15.2-.3.3-.5zm2.1 0c.1.2.2.35.3.5-.25.4-.65.7-1.1.8.4-.3.7-.75.8-1.3zm-1.85-1.05c-.35.25-.6.65-.75 1.1h.8c0-.4.15-.75.4-1.05-.15 0-.3 0-.45-.05zm1.2 0c-.15.05-.3.05-.45.05.25.3.4.65.4 1.05h.8c-.15-.45-.4-.85-.75-1.1z" fill="#f5f5f5"/>` +
+        `<rect x="6.8" y="12.2" width="6.4" height="1.15" rx="0.4" fill="#d0d7e2"/>` +
+        `<rect x="7.6" y="14" width="4.8" height="1.05" rx="0.4" fill="#8aa4c4"/>`
+    );
+  }
+  if (item?.navIcon === "injuries") {
+    return navInlineIconHtml(
+      "Injuries",
+      `<rect x="1.5" y="1.5" width="17" height="17" rx="3.2" fill="#8b1a1a"/>` +
+        `<rect x="2.7" y="2.7" width="14.6" height="14.6" rx="2.4" fill="#a82828"/>` +
+        `<rect x="8.5" y="4.6" width="3" height="10.8" rx="0.7" fill="#f5f5f5"/>` +
+        `<rect x="4.6" y="8.5" width="10.8" height="3" rx="0.7" fill="#f5f5f5"/>`
     );
   }
   if (item?.navIcon === "rewards") {
@@ -1706,7 +1736,7 @@ function navLinkLeadingHtml(item) {
   if (menuIcon) {
     return (
       `<span class="nav-menu-icon" title="${escapeNavAttr(menuIcon.title)}" aria-hidden="true">` +
-      `<img src="${escapeNavAttr(menuIcon.src)}?v=20261022-league-nav" alt="" width="18" height="18" loading="lazy" />` +
+      `<img src="${escapeNavAttr(menuIcon.src)}?v=20261022-league-nav2" alt="" width="18" height="18" loading="lazy" />` +
       `</span>`
     );
   }
