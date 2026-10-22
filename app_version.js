@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261022-player-xfer-nav";
+export const APP_VERSION = "20261022-mgr-club-nav";

@@ -1865,6 +1865,92 @@ const NAV_INLINE_ICONS = {
       `<circle cx="15.6" cy="6.8" r="2.4" fill="#f5f5f5"/>` +
       `<path d="M15.6 4.6c.45.35.75.9.9 1.5h-1.8c.15-.6.45-1.15.9-1.5z" fill="#2c3e50"/>`,
   },
+  manager_database: {
+    title: "Manager Database",
+    svg:
+      `<rect x="3" y="2.4" width="11.2" height="15.2" rx="1.4" fill="#3d2a1e"/>` +
+      `<rect x="4.2" y="3.6" width="8.8" height="12.8" rx="0.8" fill="#5a4030"/>` +
+      `<circle cx="8.6" cy="7" r="2" fill="#f0c14b"/>` +
+      `<path d="M5.4 13.2 C5.4 11 6.8 9.8 8.6 9.8 C10.4 9.8 11.8 11 11.8 13.2 Z" fill="#d0d7e2"/>` +
+      `<rect x="6.4" y="5.2" width="4.4" height="1.3" rx="0.4" fill="#1e3a5f"/>` +
+      `<rect x="14.2" y="5.2" width="3.2" height="9.6" rx="0.7" fill="#f0c14b"/>` +
+      `<rect x="14.7" y="6.2" width="2.2" height="1" rx="0.3" fill="#3d2a1e"/>` +
+      `<rect x="14.7" y="8.2" width="2.2" height="1" rx="0.3" fill="#3d2a1e"/>` +
+      `<rect x="14.7" y="10.2" width="2.2" height="1" rx="0.3" fill="#3d2a1e"/>`,
+  },
+  manager_market: {
+    title: "Manager Market",
+    svg:
+      `<rect x="1.8" y="3.2" width="16.4" height="13.6" rx="2" fill="#3d2a1e"/>` +
+      `<path d="M4 8.2 H12.2" stroke="#e8c070" stroke-width="1.5" stroke-linecap="round"/>` +
+      `<path d="M10.4 6.2 L13.2 8.2 L10.4 10.2" stroke="#e8c070" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<path d="M16 11.8 H7.8" stroke="#f0c14b" stroke-width="1.5" stroke-linecap="round"/>` +
+      `<path d="M9.6 9.8 L6.8 11.8 L9.6 13.8" stroke="#f0c14b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<circle cx="4.2" cy="8.2" r="1.3" fill="#f0c14b"/>` +
+      `<rect x="14.6" y="10.6" width="2.4" height="2.4" rx="0.4" fill="#1e3a5f"/>`,
+  },
+  manager_draft: {
+    title: "Manager Draft Auction",
+    svg:
+      `<rect x="8.6" y="9.2" width="2.8" height="7.2" rx="0.7" fill="#8a6a3a"/>` +
+      `<path d="M4.2 4.4 L10 8.8 L8.2 10.6 L2.4 6.2 Z" fill="#c0a060"/>` +
+      `<path d="M10 8.8 L15.8 4.4 L17.6 6.2 L11.8 10.6 Z" fill="#d4b87a"/>` +
+      `<circle cx="10" cy="9.8" r="1.5" fill="#f0c14b"/>` +
+      `<circle cx="15.4" cy="14.6" r="2.5" fill="#f0c14b"/>` +
+      `<rect x="14.2" y="13.4" width="2.4" height="2.4" rx="0.35" fill="#1e3a5f"/>`,
+  },
+  season_manager_transfers: {
+    title: "Seasons Manager Transfers",
+    svg:
+      `<rect x="2" y="3.4" width="11.2" height="13.2" rx="1.4" fill="#3d2a1e"/>` +
+      `<rect x="2" y="3.4" width="11.2" height="3" rx="1.4" fill="#5a4030"/>` +
+      `<rect x="4.2" y="2.2" width="1.3" height="2.8" rx="0.4" fill="#d0d7e2"/>` +
+      `<rect x="9.6" y="2.2" width="1.3" height="2.8" rx="0.4" fill="#d0d7e2"/>` +
+      `<rect x="3.6" y="8.2" width="2.2" height="2" rx="0.35" fill="#f0c14b"/>` +
+      `<rect x="6.6" y="8.2" width="2.2" height="2" rx="0.35" fill="#e8c070"/>` +
+      `<rect x="3.6" y="11.4" width="2.2" height="2" rx="0.35" fill="#c0a060"/>` +
+      `<path d="M13.2 10.2 H18" stroke="#e8c070" stroke-width="1.35" stroke-linecap="round"/>` +
+      `<path d="M16.4 8.4 L18.2 10.2 L16.4 12" stroke="#e8c070" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<path d="M18 14.2 H13.2" stroke="#f0c14b" stroke-width="1.35" stroke-linecap="round"/>` +
+      `<path d="M14.8 12.4 L13 14.2 L14.8 16" stroke="#f0c14b" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  },
+  club_database: {
+    title: "Club Database",
+    svg:
+      `<rect x="3" y="2.4" width="11.2" height="15.2" rx="1.4" fill="#1e3a5f"/>` +
+      `<rect x="4.2" y="3.6" width="8.8" height="12.8" rx="0.8" fill="#2e5a8f"/>` +
+      `<path d="M8.6 5.2 L11.6 6.4 V9.4 C11.6 11.6 10.2 13.2 8.6 14 C7 13.2 5.6 11.6 5.6 9.4 V6.4 Z" fill="#f0c14b"/>` +
+      `<circle cx="8.6" cy="9" r="1.3" fill="#1e3a5f"/>` +
+      `<rect x="14.2" y="5.2" width="3.2" height="9.6" rx="0.7" fill="#f0c14b"/>` +
+      `<rect x="14.7" y="6.2" width="2.2" height="1" rx="0.3" fill="#1e3a5f"/>` +
+      `<rect x="14.7" y="8.2" width="2.2" height="1" rx="0.3" fill="#1e3a5f"/>` +
+      `<rect x="14.7" y="10.2" width="2.2" height="1" rx="0.3" fill="#1e3a5f"/>`,
+  },
+  club_auction: {
+    title: "Club Auction",
+    svg:
+      `<rect x="8.6" y="9.2" width="2.8" height="7.2" rx="0.7" fill="#8a6a3a"/>` +
+      `<path d="M4.2 4.4 L10 8.8 L8.2 10.6 L2.4 6.2 Z" fill="#c0a060"/>` +
+      `<path d="M10 8.8 L15.8 4.4 L17.6 6.2 L11.8 10.6 Z" fill="#d4b87a"/>` +
+      `<circle cx="10" cy="9.8" r="1.5" fill="#f0c14b"/>` +
+      `<path d="M14.2 12.4 L16.8 13.4 V15.8 C16.8 17.2 15.8 18.2 14.2 18.8 C12.6 18.2 11.6 17.2 11.6 15.8 V13.4 Z" fill="#2e5a8f"/>` +
+      `<circle cx="14.2" cy="15.2" r="1.15" fill="#f0c14b"/>`,
+  },
+  season_club_purchases: {
+    title: "Season Club Purchases",
+    svg:
+      `<rect x="2" y="3.4" width="11.2" height="13.2" rx="1.4" fill="#1e3a5f"/>` +
+      `<rect x="2" y="3.4" width="11.2" height="3" rx="1.4" fill="#2e5a8f"/>` +
+      `<rect x="4.2" y="2.2" width="1.3" height="2.8" rx="0.4" fill="#d0d7e2"/>` +
+      `<rect x="9.6" y="2.2" width="1.3" height="2.8" rx="0.4" fill="#d0d7e2"/>` +
+      `<path d="M7.6 8 L10.2 9 V11.4 C10.2 13.2 9.1 14.5 7.6 15.2 C6.1 14.5 5 13.2 5 11.4 V9 Z" fill="#f0c14b"/>` +
+      `<circle cx="7.6" cy="11" r="1.05" fill="#1e3a5f"/>` +
+      `<path d="M13.4 11.6 H18.2" stroke="#7dcea0" stroke-width="1.35" stroke-linecap="round"/>` +
+      `<path d="M16.4 9.8 L18.2 11.6 L16.4 13.4" stroke="#7dcea0" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<circle cx="15.6" cy="16" r="2" fill="#f0c14b"/>` +
+      `<circle cx="15.6" cy="16" r="1.15" fill="#1e3a5f"/>` +
+      `<circle cx="15.6" cy="16" r="0.55" fill="#f0c14b"/>`,
+  },
 };
 
 function navLinkLeadingHtml(item) {

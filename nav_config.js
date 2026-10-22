@@ -336,6 +336,7 @@ export const NAV_SECTIONS = [
         page: "mgdb",
         indent: true,
         auctionNav: "manager",
+        navIcon: "manager_database",
       },
       {
         href: "manager_listings.html",
@@ -343,6 +344,7 @@ export const NAV_SECTIONS = [
         page: "manager_listings",
         indent: true,
         listingNav: "manager",
+        navIcon: "manager_market",
       },
       {
         href: "manager_draftauction.html",
@@ -350,12 +352,14 @@ export const NAV_SECTIONS = [
         page: "manager_draftauction",
         indent: true,
         auctionNav: "manager",
+        navIcon: "manager_draft",
       },
       {
         href: "season_manager_transfers.html",
         label: "Seasons Manager Transfers",
         page: "season_manager_transfers",
         indent: true,
+        navIcon: "season_manager_transfers",
       },
       { heading: true, label: "Clubs" },
       {
@@ -364,6 +368,7 @@ export const NAV_SECTIONS = [
         page: "club_database",
         indent: true,
         auctionNav: "club",
+        navIcon: "club_database",
       },
       {
         href: "club_auction.html",
@@ -371,12 +376,14 @@ export const NAV_SECTIONS = [
         page: "club_auction",
         indent: true,
         auctionNav: "club",
+        navIcon: "club_auction",
       },
       {
         href: "season_club_purchases.html",
         label: "Season Club Purchases",
         page: "season_club_purchases",
         indent: true,
+        navIcon: "season_club_purchases",
       },
     ],
   },
