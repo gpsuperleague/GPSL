@@ -422,7 +422,8 @@ BEGIN
     performance_gap numeric,
     division text
   ) ON COMMIT DROP;
-  DELETE FROM _oot_season_cands;
+  -- safeupdate / pg_safeupdate rejects DELETE without a WHERE clause
+  DELETE FROM _oot_season_cands WHERE true;
 
   FOR r IN
     SELECT

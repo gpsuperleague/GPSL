@@ -39,6 +39,7 @@ export const MOD_NAV_SECTION = {
     L("Match videos", "admin_match_videos.html"),
     L("Match video reports", "admin_match_video_reports.html"),
     L("Network incidents", "admin_network_incidents.html"),
+    L("Connection ratings", "admin_connection_ratings.html"),
     L("Transfer Gossip", "admin_discord_transfer_gossip.html"),
     L("Republish GPSL Sport", "admin_gpsl_sport.html"),
 

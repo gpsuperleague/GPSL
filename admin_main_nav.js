@@ -634,6 +634,13 @@ export const ADMIN_MAIN_NAV = [
           null,
           "Mid-match network / visibility reports. Resolve records decision only — apply forfeit/replay with existing tools."
         ),
+        L(
+          "Connection ratings",
+          "admin_connection_ratings.html",
+          null,
+          null,
+          "1–5 star Match Day connection quality (lag/delay/freezes) — not mid-match incidents."
+        ),
       ]),
       group("Transfers", [
         L(

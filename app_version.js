@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261022-stats-tabs";
+export const APP_VERSION = "20261022-connection-rating";

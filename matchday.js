@@ -155,6 +155,62 @@ function setScoreInputsEnabled(enabled) {
   }
   const statsPanel = document.getElementById("playerStatsPanel");
   if (statsPanel) statsPanel.style.display = showStats ? "block" : "none";
+  const connPanel = document.getElementById("connectionRatingPanel");
+  if (connPanel) connPanel.style.display = showStats ? "block" : "none";
+  if (!showStats) {
+    const sel = document.getElementById("connectionStars");
+    if (sel) sel.value = "";
+    syncConnectionStarsVisual();
+  }
+}
+
+const CONNECTION_STAR_LABELS = {
+  5: "Perfect",
+  4: "Great",
+  3: "Playable",
+  2: "Hard work",
+  1: "Unplayable",
+};
+
+function syncConnectionStarsVisual() {
+  const el = document.getElementById("connectionStarsVisual");
+  const sel = document.getElementById("connectionStars");
+  if (!el || !sel) return;
+  const n = Number(sel.value);
+  if (!n || n < 1 || n > 5) {
+    el.textContent = "";
+    return;
+  }
+  el.textContent = `${"★".repeat(n)}${"☆".repeat(5 - n)}  ${CONNECTION_STAR_LABELS[n] || ""}`;
+}
+
+function readConnectionStars() {
+  const n = Number(document.getElementById("connectionStars")?.value);
+  if (!Number.isFinite(n) || n < 1 || n > 5) return null;
+  return n;
+}
+
+async function saveConnectionRating(fixtureId) {
+  const stars = readConnectionStars();
+  if (stars == null) {
+    return { error: { message: "Select a connection quality rating (1–5 stars)." } };
+  }
+  const { data, error } = await supabase.rpc("fixture_connection_rating_upsert", {
+    p_fixture_id: fixtureId,
+    p_stars: stars,
+  });
+  if (error) return { error };
+  if (data && data.ok === false) {
+    return {
+      error: {
+        message:
+          data.reason === "bad_stars"
+            ? "Select a connection quality rating (1–5 stars)."
+            : data.reason || "Could not save connection rating.",
+      },
+    };
+  }
+  return { data };
 }
 
 function getPendingScoreContext(fixture, submission) {
@@ -1804,6 +1860,16 @@ async function confirmPendingResult() {
     return;
   }
 
+  if (readConnectionStars() == null) {
+    setStatus(
+      "submitStatus",
+      "Select a connection quality rating — rate the online link, not your opponent.",
+      true
+    );
+    document.getElementById("connectionStars")?.focus();
+    return;
+  }
+
   setStatus("submitStatus", "Confirming…");
   const { error } = await confirmFixtureResult(
     supabase,
@@ -1816,7 +1882,16 @@ async function confirmPendingResult() {
     return;
   }
 
-  setStatus("submitStatus", "✅ Result confirmed.");
+  const conn = await saveConnectionRating(f.id);
+  if (conn.error) {
+    setStatus(
+      "submitStatus",
+      "✅ Result confirmed, but connection rating failed: " + conn.error.message,
+      true
+    );
+  } else {
+    setStatus("submitStatus", "✅ Result confirmed.");
+  }
   confirmMode = null;
   applyConfirmModeUI();
   await loadUpcomingFixtures();
@@ -1891,6 +1966,16 @@ async function submitResult() {
     return;
   }
 
+  if (readConnectionStars() == null) {
+    setStatus(
+      "submitStatus",
+      "Select a connection quality rating — rate the online link, not your opponent.",
+      true
+    );
+    document.getElementById("connectionStars")?.focus();
+    return;
+  }
+
   setStatus("submitStatus", "Submitting…");
   const { error } = await submitFixtureResult(
     supabase,
@@ -1906,7 +1991,18 @@ async function submitResult() {
     return;
   }
 
-  setStatus("submitStatus", "✅ Submitted. Opponent notified via Inbox.");
+  const conn = await saveConnectionRating(f.id);
+  if (conn.error) {
+    setStatus(
+      "submitStatus",
+      "✅ Submitted, but connection rating failed: " +
+        conn.error.message +
+        " (opponent still notified).",
+      true
+    );
+  } else {
+    setStatus("submitStatus", "✅ Submitted. Opponent notified via Inbox.");
+  }
   await loadUpcomingFixtures();
   populateFixtureSelect();
 }
@@ -1997,6 +2093,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("submitResultBtn").onclick = submitResult;
   document.getElementById("rejectResultBtn").onclick = rejectPendingResult;
   document.getElementById("fillTestStatsBtn")?.addEventListener("click", fillTestMatchStats);
+  document.getElementById("connectionStars")?.addEventListener("change", syncConnectionStarsVisual);
+  syncConnectionStarsVisual();
   async function runMatchdaySim(mode) {
     const f = selectedFixture();
     if (!f) return;

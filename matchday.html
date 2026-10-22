@@ -390,6 +390,25 @@
         <datalist id="statRatingList"></datalist>
       </div>
 
+      <div id="connectionRatingPanel" class="fixture-preview" style="display:none;margin-top:14px;border-color:#3a4a5a;background:#121820;">
+        <h3 style="margin:0 0 6px;color:#9cf;font-size:15px;">Connection quality</h3>
+        <p class="stats-hint" style="margin:0 0 10px;color:#aaa;">
+          Rate the <b>online connection</b> during this match — lag, delay, freezes, heaviness, catch-up —
+          <b>not</b> your opponent as a person or how they played.
+          Required when submitting or confirming a result. Helps admins spot weak links across the league.
+        </p>
+        <label for="connectionStars" style="display:block;margin-bottom:6px;color:#ccc;font-size:13px;">Your experience</label>
+        <select id="connectionStars" style="width:100%;max-width:520px;padding:8px 10px;background:#111;border:1px solid #444;color:#eee;border-radius:6px;font-size:13px;">
+          <option value="">— Select connection rating —</option>
+          <option value="5">★★★★★ Perfect — no lag, delay, freezes, heaviness, or catch-up</option>
+          <option value="4">★★★★☆ Great — mostly ok; 1–2 minor issues, non-impacting</option>
+          <option value="3">★★★☆☆ Playable — intermittent issues, but playable</option>
+          <option value="2">★★☆☆☆ Hard work — frequent/consistent lag, delay, freezes, heaviness, catch-up</option>
+          <option value="1">★☆☆☆☆ Unplayable</option>
+        </select>
+        <div id="connectionStarsVisual" style="margin-top:8px;font-size:22px;letter-spacing:2px;color:#fc6;" aria-hidden="true"></div>
+      </div>
+
       <div id="confirmActions" style="display:none;margin-top:12px;">
         <button type="button" id="rejectResultBtn" class="button danger">Reject result</button>
       </div>
@@ -401,6 +420,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20261015-recording"></script>
+  <script type="module" src="matchday.js?v=20261022-connection-rating"></script>
 </body>
 </html>
