@@ -298,7 +298,7 @@ async function loadChallengeDefaults() {
   const maxEl = document.getElementById("challengeMaxPerWindow");
   if (maxEl) maxEl.value = data.challenge_max_per_window ?? 10;
   const reqEl = document.getElementById("challengeBigPrizeRequired");
-  if (reqEl) reqEl.value = data.challenge_big_prize_required ?? 5;
+  if (reqEl) reqEl.value = data.challenge_big_prize_required ?? 6;
   const prizeEl = document.getElementById("challengePrize");
   if (prizeEl && !String(prizeEl.value || "").trim()) {
     setMoneyInput("challengePrize", data.challenge_default_prize ?? 1000000);

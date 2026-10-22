@@ -9,7 +9,7 @@
 -- =============================================================================
 
 ALTER TABLE public.global_settings
-  ADD COLUMN IF NOT EXISTS challenge_big_prize_required smallint NOT NULL DEFAULT 5,
+  ADD COLUMN IF NOT EXISTS challenge_big_prize_required smallint NOT NULL DEFAULT 6,
   ADD COLUMN IF NOT EXISTS challenge_max_per_window smallint NOT NULL DEFAULT 10;
 
 CREATE OR REPLACE FUNCTION public.competition_challenge_required_to_win(
@@ -25,7 +25,7 @@ AS $$
   WITH s AS (
     SELECT coalesce(
       (SELECT challenge_big_prize_required FROM public.global_settings WHERE id = 1),
-      5
+      6
     )::int AS req
   ), n AS (
     SELECT count(*)::int AS total
