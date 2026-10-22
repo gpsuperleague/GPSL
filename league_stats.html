@@ -18,11 +18,14 @@
       display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;
     }
     .stats-tab {
-      padding:8px 16px; background:#222; border:1px solid #444;
-      color:#bbb; border-radius:6px; cursor:pointer; font-size:14px; font-weight:600;
+      padding:8px 14px; background:#222; border:1px solid #444;
+      color:#bbb; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;
     }
     .stats-tab:hover { background:#2a2a2a; color:#ddd; }
     .stats-tab.active { background:#332200; border-color:#ff9900; color:#ff9900; }
+    @media (max-width:700px) {
+      .stats-tab { padding:7px 11px; font-size:12px; }
+    }
     .award-season-tabs,
     .award-month-tabs {
       display: flex;
@@ -288,8 +291,11 @@
     <h1>Competition stats</h1>
     <p id="pageMeta" class="meta">Loading…</p>
 
-    <div class="stats-tabs" role="tablist">
+    <div class="stats-tabs" role="tablist" aria-label="Stats section">
       <button type="button" class="stats-tab active" data-tab="league" role="tab" aria-selected="true">League</button>
+      <button type="button" class="stats-tab" data-tab="ballon" role="tab" aria-selected="false">Ballon d'Or</button>
+      <button type="button" class="stats-tab" data-tab="monthly" role="tab" aria-selected="false">Monthly awards</button>
+      <button type="button" class="stats-tab" data-tab="toty" role="tab" aria-selected="false">Team of the Year</button>
       <button type="button" class="stats-tab" data-tab="cups" role="tab" aria-selected="false">Cups</button>
       <button type="button" class="stats-tab" data-tab="worldcup" role="tab" aria-selected="false">World Cup</button>
     </div>
@@ -305,19 +311,6 @@
         </select>
       </div>
       <div class="stats-grid" id="leagueStatsGrid">
-        <div class="panel panel--wide" id="ballonRacePanel">
-          <h2>Ballon d'Or race</h2>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">
-            Live Super League top 20 (configurable weights). Championship clubs compete for
-            <b>Championship Player of the Season</b> instead.
-            Min appearances and weights are set in Admin → Ballon d'Or settings.
-          </p>
-          <div class="award-month-tabs" id="ballonRaceTabs" role="tablist" aria-label="Award race">
-            <button type="button" class="award-month-tab active" data-race="ballon">Ballon d'Or</button>
-            <button type="button" class="award-month-tab" data-race="championship">Championship POTY</button>
-          </div>
-          <div id="ballonRaceTable"><span class="empty">Loading…</span></div>
-        </div>
         <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Top scorers</h2></div>
           <div id="scorersTable"></div>
@@ -351,54 +344,76 @@
           </div>
           <div id="disciplineTable"></div>
         </div>
-        <div class="panel panel--wide">
-          <h2>Monthly awards</h2>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">
-            Pick a season, then a GPSL month. Owner of the Month (₿2,500) and Team of the Month are awarded when that month locks.
-            History shows up to the latest 5 game seasons.
-          </p>
-          <div class="award-season-tabs" id="totmSeasonTabs" role="tablist" aria-label="Award season"></div>
-          <div class="award-month-tabs" id="totmMonthTabs" role="tablist" aria-label="Award month"></div>
-
-          <h3 style="margin:14px 0 6px;color:#ff9900;font-size:16px;">Owner of the Month</h3>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">
-            Best league record — Super League and Championship (A &amp; B) separately.
-            <a href="owner_of_the_month.html" style="color:#ff9900;">Full history</a>
-          </p>
-          <div class="ootm-stats-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
-            <div id="ootmSuperPanel" style="background:#121820;border:1px solid #2a3a4a;border-radius:8px;padding:12px 14px;">
-              <span class="empty">Loading…</span>
-            </div>
-            <div id="ootmChampPanel" style="background:#141a12;border:1px solid #3a4a2a;border-radius:8px;padding:12px 14px;">
-              <span class="empty">Loading…</span>
-            </div>
-          </div>
-          <style>
-            @media (max-width:700px) {
-              .ootm-stats-grid { grid-template-columns:1fr !important; }
-            }
-          </style>
-
-          <h3 style="margin:8px 0 6px;color:#ff9900;font-size:16px;">Team of the Month — Super League</h3>
-          <div id="totmSuperPanel"><span class="empty">Loading…</span></div>
-          <h3 style="margin:18px 0 6px;color:#ff9900;font-size:16px;">Team of the Month — Championship</h3>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">Combined Championship A &amp; B XI (min. 2 apps).</p>
-          <div id="totmChampionshipPanel"><span class="empty">Loading…</span></div>
-        </div>
-        <div class="panel panel--wide">
-          <h2>Team of the Year</h2>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">
-            Super League season XI (min. 5 apps). Awarded at season close.
-            History covers up to the latest 5 game seasons.
-          </p>
-          <div class="award-season-tabs" id="totySeasonTabs" role="tablist" aria-label="Team of the Year season"></div>
-          <div id="totySuperPanel"><span class="empty">Loading…</span></div>
-        </div>
       </div>
       <p class="footer-note" id="leagueFooter">
         League stats are recorded when you submit on
         <a href="matchday.html" style="color:#ff9900;">Match Day</a> and your opponent confirms.
       </p>
+    </div>
+
+    <div id="ballonPanel" class="stats-tab-panel" role="tabpanel" hidden>
+      <div class="panel panel--wide stats-data-panel" id="ballonRacePanel" style="min-height:auto;">
+        <h2>Ballon d'Or race</h2>
+        <p class="meta" style="margin:0 0 8px;font-size:12px;">
+          Live Super League top 20 (configurable weights). Championship clubs compete for
+          <b>Championship Player of the Season</b> instead.
+          Min appearances and weights are set in Admin → Ballon d'Or settings.
+        </p>
+        <div class="award-month-tabs" id="ballonRaceTabs" role="tablist" aria-label="Award race">
+          <button type="button" class="award-month-tab active" data-race="ballon">Ballon d'Or</button>
+          <button type="button" class="award-month-tab" data-race="championship">Championship POTY</button>
+        </div>
+        <div id="ballonRaceTable"><span class="empty">Loading…</span></div>
+      </div>
+    </div>
+
+    <div id="monthlyPanel" class="stats-tab-panel" role="tabpanel" hidden>
+      <div class="panel panel--wide" style="min-height:auto;">
+        <h2>Monthly awards</h2>
+        <p class="meta" style="margin:0 0 8px;font-size:12px;">
+          Pick a season, then a GPSL month. Owner of the Month (₿2,500) and Team of the Month are awarded when that month locks.
+          History shows up to the latest 5 game seasons.
+        </p>
+        <div class="award-season-tabs" id="totmSeasonTabs" role="tablist" aria-label="Award season"></div>
+        <div class="award-month-tabs" id="totmMonthTabs" role="tablist" aria-label="Award month"></div>
+
+        <h3 style="margin:14px 0 6px;color:#ff9900;font-size:16px;">Owner of the Month</h3>
+        <p class="meta" style="margin:0 0 8px;font-size:12px;">
+          Best league record — Super League and Championship (A &amp; B) separately.
+          <a href="owner_of_the_month.html" style="color:#ff9900;">Full history</a>
+        </p>
+        <div class="ootm-stats-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+          <div id="ootmSuperPanel" style="background:#121820;border:1px solid #2a3a4a;border-radius:8px;padding:12px 14px;">
+            <span class="empty">Loading…</span>
+          </div>
+          <div id="ootmChampPanel" style="background:#141a12;border:1px solid #3a4a2a;border-radius:8px;padding:12px 14px;">
+            <span class="empty">Loading…</span>
+          </div>
+        </div>
+        <style>
+          @media (max-width:700px) {
+            .ootm-stats-grid { grid-template-columns:1fr !important; }
+          }
+        </style>
+
+        <h3 style="margin:8px 0 6px;color:#ff9900;font-size:16px;">Team of the Month — Super League</h3>
+        <div id="totmSuperPanel"><span class="empty">Loading…</span></div>
+        <h3 style="margin:18px 0 6px;color:#ff9900;font-size:16px;">Team of the Month — Championship</h3>
+        <p class="meta" style="margin:0 0 8px;font-size:12px;">Combined Championship A &amp; B XI (min. 2 apps).</p>
+        <div id="totmChampionshipPanel"><span class="empty">Loading…</span></div>
+      </div>
+    </div>
+
+    <div id="totyPanel" class="stats-tab-panel" role="tabpanel" hidden>
+      <div class="panel panel--wide" style="min-height:auto;">
+        <h2>Team of the Year</h2>
+        <p class="meta" style="margin:0 0 8px;font-size:12px;">
+          Super League season XI (min. 5 apps). Awarded at season close.
+          History covers up to the latest 5 game seasons.
+        </p>
+        <div class="award-season-tabs" id="totySeasonTabs" role="tablist" aria-label="Team of the Year season"></div>
+        <div id="totySuperPanel"><span class="empty">Loading…</span></div>
+      </div>
     </div>
 
     <div id="cupsPanel" class="stats-tab-panel" role="tabpanel" hidden>
@@ -483,6 +498,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="league_stats.js?v=20261022-oots-prizes"></script>
+  <script type="module" src="league_stats.js?v=20261022-stats-tabs"></script>
 </body>
 </html>

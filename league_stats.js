@@ -1234,24 +1234,62 @@ async function renderTeamOfYear() {
   });
 }
 
-function setActiveTab(tab) {
-  activeTab = tab;
+const STATS_TAB_IDS = {
+  league: "leaguePanel",
+  ballon: "ballonPanel",
+  monthly: "monthlyPanel",
+  toty: "totyPanel",
+  cups: "cupsPanel",
+  worldcup: "worldcupPanel",
+};
+
+function setActiveTab(tab, { syncHash = true } = {}) {
+  const next = STATS_TAB_IDS[tab] ? tab : "league";
+  activeTab = next;
   document.querySelectorAll(".stats-tab").forEach((btn) => {
-    const on = btn.dataset.tab === tab;
+    const on = btn.dataset.tab === next;
     btn.classList.toggle("active", on);
     btn.setAttribute("aria-selected", on ? "true" : "false");
   });
-  document.getElementById("leaguePanel").hidden = tab !== "league";
-  document.getElementById("cupsPanel").hidden = tab !== "cups";
-  document.getElementById("worldcupPanel").hidden = tab !== "worldcup";
+  Object.entries(STATS_TAB_IDS).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = key !== next;
+  });
 
-  if (tab === "league") {
+  if (next === "league") {
     renderLeague();
-    void refreshTotmSelectorsAndPanels();
-    void renderTeamOfYear();
+  } else if (next === "ballon") {
     void loadBallonRace();
-  } else if (tab === "cups") renderCups();
-  else renderWorldCup();
+  } else if (next === "monthly") {
+    void refreshTotmSelectorsAndPanels();
+  } else if (next === "toty") {
+    void renderTeamOfYear();
+  } else if (next === "cups") {
+    renderCups();
+  } else if (next === "worldcup") {
+    renderWorldCup();
+  }
+
+  if (syncHash) {
+    const url = new URL(window.location.href);
+    if (next === "league") url.hash = "";
+    else url.hash = next;
+    window.history.replaceState({}, "", url);
+  }
+}
+
+function tabFromHash() {
+  const raw = String(window.location.hash || "")
+    .replace(/^#/, "")
+    .toLowerCase();
+  if (raw === "ballon" || raw === "ballondor" || raw === "ballon_dor") return "ballon";
+  if (raw === "monthly" || raw === "awards" || raw === "ootm" || raw === "totm") {
+    return "monthly";
+  }
+  if (raw === "toty" || raw === "team_of_the_year" || raw === "teamofyear") return "toty";
+  if (raw === "cups" || raw === "cup") return "cups";
+  if (raw === "worldcup" || raw === "wc" || raw === "international") return "worldcup";
+  return "league";
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -1304,12 +1342,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("divisionFilter")?.addEventListener("change", renderLeague);
   document.getElementById("cupFilter")?.addEventListener("change", renderCups);
   wireBallonRaceTabs();
-  void loadBallonRace();
   document.querySelectorAll(".stats-tab").forEach((btn) => {
     btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
   });
+  window.addEventListener("hashchange", () => {
+    setActiveTab(tabFromHash(), { syncHash: false });
+  });
 
-  setActiveTab("league");
+  setActiveTab(tabFromHash(), { syncHash: false });
 
   window.addEventListener("resize", () => {
     scheduleLeaderboardSync();
