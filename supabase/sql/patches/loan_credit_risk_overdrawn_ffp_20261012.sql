@@ -253,8 +253,10 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.club_credit_risk_status(text) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.club_credit_risk_status(text) TO service_role;
+-- Needed by club_loan_credit_check / club_take_loan (SECURITY DEFINER chain).
+-- Authenticated may call for read-only risk summary; take-loan still goes through credit_check.
+REVOKE ALL ON FUNCTION public.club_credit_risk_status(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.club_credit_risk_status(text) TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- Loan credit check (same shape the bank page already reads)
