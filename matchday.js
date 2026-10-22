@@ -18,7 +18,7 @@ import {
   LEAGUE_DIVISIONS,
   deferredResultNote,
   leagueBadgeHtml,
-} from "./competition.js";
+} from "./competition.js?v=20261022-submit-window";
 import {
   loadCalendarStatus,
   calendarStatusBanner,

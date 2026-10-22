@@ -12,7 +12,7 @@ import {
   loadClubLoanInstallments,
   checkClubLoanCredit,
   clubTookLoanThisSeason,
-} from "./competition.js";
+} from "./competition.js?v=20261022-loan-confirm";
 
 /** Must match public.club_loan_max_active(). */
 const MAX_ACTIVE_LOANS = 2;
