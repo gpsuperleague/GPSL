@@ -8,6 +8,8 @@ import { challengeStatDescription } from "./challenge_labels.js";
 let standingsData = null;
 let myClubShort = null;
 let activeStandingsTab = "overall";
+/** Big-prize race targets from packs (required_to_win), keyed by window_phase. */
+let raceRequiredByPhase = { start: null, mid: null };
 
 function windowLabel(phase) {
   if (phase === "mid") return "Mid-season";
@@ -216,6 +218,15 @@ async function loadBigPrizePacks(progressItems = []) {
     return pack || { window_phase: phase, pack_summary: "Pack not configured yet." };
   });
 
+  raceRequiredByPhase = { start: null, mid: null };
+  for (const p of ordered) {
+    const phase = p.window_phase === "mid" ? "mid" : "start";
+    const req = Number(p.required_to_win);
+    if (Number.isFinite(req) && req > 0) {
+      raceRequiredByPhase[phase] = req;
+    }
+  }
+
   el.innerHTML = ordered
     .map((p) =>
       renderBigPrizeCard(
@@ -225,6 +236,9 @@ async function loadBigPrizePacks(progressItems = []) {
       )
     )
     .join("");
+
+  // Packs often load with standings — refresh bars once we know the race target (e.g. 6).
+  if (standingsData) renderStandings();
 }
 
 function renderChallengeCards(items) {
@@ -350,41 +364,63 @@ function standingsRowsForTab(tab) {
   };
 }
 
+function raceRequired(phase) {
+  const fromPack = raceRequiredByPhase[phase];
+  if (Number.isFinite(fromPack) && fromPack > 0) return fromPack;
+
+  if (phase === "start") {
+    const n = Number(standingsData?.start_required);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  if (phase === "mid") {
+    const n = Number(standingsData?.mid_required);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return null;
+}
+
+function racePct(done, required) {
+  if (!required || required <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((100 * done) / required)));
+}
+
 function rowMetrics(row, mode) {
   if (mode === "start") {
-    const required = Number(
-      row.start_required ?? standingsData?.start_required ?? row.start_total ?? 0
-    );
+    const catalogue = Number(row.start_total || standingsData?.start_total || 0);
+    const required = raceRequired("start") || catalogue;
+    const done = Number(row.start_completed || 0);
     return {
-      done: Number(row.start_completed || 0),
+      done,
       required,
-      catalogue: Number(row.start_total || 0),
-      pct: Number(row.start_pct || 0),
+      catalogue,
+      pct: racePct(done, required),
       prize: Number(row.start_prize || 0),
     };
   }
   if (mode === "mid") {
-    const required = Number(
-      row.mid_required ?? standingsData?.mid_required ?? row.mid_total ?? 0
-    );
+    const catalogue = Number(row.mid_total || standingsData?.mid_total || 0);
+    const required = raceRequired("mid") || catalogue;
+    const done = Number(row.mid_completed || 0);
     return {
-      done: Number(row.mid_completed || 0),
+      done,
       required,
-      catalogue: Number(row.mid_total || 0),
-      pct: Number(row.mid_pct || 0),
+      catalogue,
+      pct: racePct(done, required),
       prize: Number(row.mid_prize || 0),
     };
   }
-  const required = Number(
-    row.overall_required ??
-      standingsData?.overall_required ??
-      (Number(standingsData?.start_required || 0) + Number(standingsData?.mid_required || 0))
-  );
+  const startReq = raceRequired("start") || Number(standingsData?.start_total || 0);
+  const midReq = raceRequired("mid") || Number(standingsData?.mid_total || 0);
+  const required =
+    Number(standingsData?.overall_required) > 0
+      ? Number(standingsData.overall_required)
+      : startReq + midReq;
+  const done = Number(row.total_completed || 0);
   return {
-    done: Number(row.total_completed || 0),
+    done,
     required,
     catalogue: Number(row.total_challenges || 0),
-    pct: Number(row.overall_pct || 0),
+    pct: racePct(done, required),
     prize: Number(row.total_prize || 0),
   };
 }
@@ -450,13 +486,15 @@ function renderStandings() {
     })
     .join("");
 
+  const startRace = raceRequired("start");
+  const midRace = raceRequired("mid");
   const reqNote =
-    mode === "start" && standingsData?.start_required
-      ? `Big prize: first to ${standingsData.start_required} start challenges.`
-      : mode === "mid" && standingsData?.mid_required
-        ? `Big prize: first to ${standingsData.mid_required} mid challenges.`
-        : standingsData?.start_required || standingsData?.mid_required
-          ? `Big prize targets: start ${standingsData.start_required || "—"}, mid ${standingsData.mid_required || "—"}.`
+    mode === "start" && startRace
+      ? `Big prize: first to ${startRace} start challenges.`
+      : mode === "mid" && midRace
+        ? `Big prize: first to ${midRace} mid challenges.`
+        : startRace || midRace
+          ? `Big prize targets: start ${startRace || "—"}, mid ${midRace || "—"}.`
           : "";
 
   el.innerHTML = `

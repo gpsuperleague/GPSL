@@ -75,13 +75,13 @@ BEGIN
   WHERE season_id = v_season_id
     AND is_active = true;
 
-  IF to_regprocedure('public.competition_challenge_required_to_win(bigint,text)') IS NOT NULL THEN
+  BEGIN
     v_start_required := public.competition_challenge_required_to_win(v_season_id, 'start');
     v_mid_required := public.competition_challenge_required_to_win(v_season_id, 'mid');
-  ELSE
+  EXCEPTION WHEN undefined_function THEN
     v_start_required := v_start_total;
     v_mid_required := v_mid_total;
-  END IF;
+  END;
 
   IF v_start_total = 0 THEN
     v_start_required := 0;
