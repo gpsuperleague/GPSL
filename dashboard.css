@@ -1605,16 +1605,20 @@ button.nav-admin-trigger {
   object-fit: contain;
 }
 
-/* Tall trophy PNGs — slightly taller slot so the cup reads clearly */
+/* Tall trophy PNGs — Cups menu only (+40% vs standard 18px icons) */
 .nav-menu-icon--trophy {
-  width: 16px;
-  height: 20px;
+  width: 22px;
+  height: 28px;
 }
 .nav-menu-icon--trophy img {
-  width: 16px;
-  height: 20px;
+  width: 22px;
+  height: 28px;
   object-fit: contain;
   filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85));
+}
+.nav-link-leading:has(.nav-menu-icon--trophy),
+.nav-link-sub .nav-link-leading:has(.nav-menu-icon--trophy) {
+  width: 24px;
 }
 
 .nav-dropdown .nav-link {
