@@ -8,8 +8,10 @@ import { challengeStatDescription } from "./challenge_labels.js";
 let standingsData = null;
 let myClubShort = null;
 let activeStandingsTab = "overall";
-/** Big-prize race targets from packs (required_to_win), keyed by window_phase. */
+/** Big-prize race targets (required_to_win), keyed by window_phase. */
 let raceRequiredByPhase = { start: null, mid: null };
+/** Active challenge counts per window (catalogue size). */
+let raceActiveByPhase = { start: 0, mid: 0 };
 
 function windowLabel(phase) {
   if (phase === "mid") return "Mid-season";
@@ -80,12 +82,55 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   bindStandingsTabs();
 
+  // Race targets first so standings never fall back to catalogue size (e.g. 10).
+  await loadRaceTargets();
   await Promise.all([
     loadBigPrizePacks(progressItems),
     loadStandings(),
     loadCatalog(),
   ]);
 });
+
+/**
+ * Resolve big-prize N for each window (e.g. 6), independent of standings RPC.
+ */
+async function loadRaceTargets() {
+  raceRequiredByPhase = { start: null, mid: null };
+  raceActiveByPhase = { start: 0, mid: 0 };
+
+  const seasonId = await loadCurrentSeasonId();
+
+  const { data: packs } = await supabase
+    .from("competition_challenge_period_packs_public")
+    .select("window_phase, required_to_win, active_challenges");
+
+  for (const p of packs || []) {
+    const phase = p.window_phase === "mid" ? "mid" : "start";
+    const active = Number(p.active_challenges);
+    if (Number.isFinite(active) && active >= 0) {
+      raceActiveByPhase[phase] = active;
+    }
+    const req = Number(p.required_to_win);
+    if (Number.isFinite(req) && req > 0) {
+      raceRequiredByPhase[phase] = req;
+    }
+  }
+
+  // Authoritative race N from settings (overwrites view if present)
+  if (seasonId) {
+    for (const phase of ["start", "mid"]) {
+      const { data, error } = await supabase.rpc("competition_challenge_required_to_win", {
+        p_season_id: seasonId,
+        p_window_phase: phase,
+      });
+      if (error) continue;
+      const n = Number(data);
+      if (Number.isFinite(n) && n > 0) {
+        raceRequiredByPhase[phase] = n;
+      }
+    }
+  }
+}
 
 async function loadCurrentSeasonId() {
   const { data } = await supabase
@@ -218,12 +263,15 @@ async function loadBigPrizePacks(progressItems = []) {
     return pack || { window_phase: phase, pack_summary: "Pack not configured yet." };
   });
 
-  raceRequiredByPhase = { start: null, mid: null };
   for (const p of ordered) {
     const phase = p.window_phase === "mid" ? "mid" : "start";
     const req = Number(p.required_to_win);
     if (Number.isFinite(req) && req > 0) {
       raceRequiredByPhase[phase] = req;
+    }
+    const active = Number(p.active_challenges);
+    if (Number.isFinite(active) && active >= 0) {
+      raceActiveByPhase[phase] = active;
     }
   }
 
@@ -237,7 +285,6 @@ async function loadBigPrizePacks(progressItems = []) {
     )
     .join("");
 
-  // Packs often load with standings — refresh bars once we know the race target (e.g. 6).
   if (standingsData) renderStandings();
 }
 
@@ -370,13 +417,49 @@ function raceRequired(phase) {
 
   if (phase === "start") {
     const n = Number(standingsData?.start_required);
-    if (Number.isFinite(n) && n > 0) return n;
+    // Ignore values that are just the catalogue size when we know the catalogue
+    const catalogue = Number(standingsData?.start_total || raceActiveByPhase.start || 0);
+    if (Number.isFinite(n) && n > 0 && !(catalogue > 0 && n === catalogue && raceRequiredByPhase.start == null)) {
+      // Prefer standings only if it looks like a real race target, or packs never loaded
+      if (catalogue <= 0 || n < catalogue) return n;
+    }
   }
   if (phase === "mid") {
     const n = Number(standingsData?.mid_required);
-    if (Number.isFinite(n) && n > 0) return n;
+    const catalogue = Number(standingsData?.mid_total || raceActiveByPhase.mid || 0);
+    if (Number.isFinite(n) && n > 0 && (catalogue <= 0 || n < catalogue)) return n;
   }
   return null;
+}
+
+function phaseCatalogue(phase) {
+  if (phase === "start") {
+    return Number(
+      raceActiveByPhase.start ||
+        standingsData?.start_total ||
+        0
+    );
+  }
+  if (phase === "mid") {
+    return Number(raceActiveByPhase.mid || standingsData?.mid_total || 0);
+  }
+  return 0;
+}
+
+/** Race denominator for a window: big-prize N, never the full catalogue unless N is unknown. */
+function phaseRaceTarget(phase) {
+  const req = raceRequired(phase);
+  const catalogue = phaseCatalogue(phase);
+  if (catalogue <= 0) return 0;
+  if (req != null && req > 0) return Math.min(req, catalogue);
+  return catalogue;
+}
+
+function overallRaceTarget() {
+  let sum = 0;
+  if (phaseCatalogue("start") > 0) sum += phaseRaceTarget("start");
+  if (phaseCatalogue("mid") > 0) sum += phaseRaceTarget("mid");
+  return sum;
 }
 
 function racePct(done, required) {
@@ -386,8 +469,8 @@ function racePct(done, required) {
 
 function rowMetrics(row, mode) {
   if (mode === "start") {
-    const catalogue = Number(row.start_total || standingsData?.start_total || 0);
-    const required = raceRequired("start") || catalogue;
+    const catalogue = phaseCatalogue("start");
+    const required = phaseRaceTarget("start");
     const done = Number(row.start_completed || 0);
     return {
       done,
@@ -398,8 +481,8 @@ function rowMetrics(row, mode) {
     };
   }
   if (mode === "mid") {
-    const catalogue = Number(row.mid_total || standingsData?.mid_total || 0);
-    const required = raceRequired("mid") || catalogue;
+    const catalogue = phaseCatalogue("mid");
+    const required = phaseRaceTarget("mid");
     const done = Number(row.mid_completed || 0);
     return {
       done,
@@ -409,17 +492,13 @@ function rowMetrics(row, mode) {
       prize: Number(row.mid_prize || 0),
     };
   }
-  const startReq = raceRequired("start") || Number(standingsData?.start_total || 0);
-  const midReq = raceRequired("mid") || Number(standingsData?.mid_total || 0);
-  const required =
-    Number(standingsData?.overall_required) > 0
-      ? Number(standingsData.overall_required)
-      : startReq + midReq;
+  const required = overallRaceTarget();
   const done = Number(row.total_completed || 0);
   return {
     done,
     required,
-    catalogue: Number(row.total_challenges || 0),
+    catalogue:
+      phaseCatalogue("start") + phaseCatalogue("mid"),
     pct: racePct(done, required),
     prize: Number(row.total_prize || 0),
   };
