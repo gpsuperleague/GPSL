@@ -273,6 +273,7 @@ export const NAV_SECTIONS = [
         page: "gpdb",
         indent: true,
         auctionNav: "player",
+        navIcon: "player_database",
       },
       {
         href: "all_listings.html",
@@ -280,6 +281,7 @@ export const NAV_SECTIONS = [
         page: "all_listings",
         indent: true,
         listingNav: "player",
+        navIcon: "transfer_market",
       },
       {
         href: "draftauction.html",
@@ -287,12 +289,14 @@ export const NAV_SECTIONS = [
         page: "draftauction",
         indent: true,
         auctionNav: "player",
+        navIcon: "player_draft",
       },
       {
         href: "legacy_players.html",
         label: "Legacy Players",
         page: "legacy_players",
         indent: true,
+        navIcon: "legacy_players",
       },
       {
         href: "expiring_contracts.html",
@@ -300,12 +304,14 @@ export const NAV_SECTIONS = [
         page: "expiring_contracts",
         indent: true,
         auctionNav: "expiring",
+        navIcon: "expiring_contracts",
       },
       {
         href: "season_transfers.html",
         label: "Seasons Player Transfers",
         page: "season_transfers",
         indent: true,
+        navIcon: "season_player_transfers",
       },
       {
         href: "special_auction.html",
@@ -314,12 +320,14 @@ export const NAV_SECTIONS = [
         indent: true,
         auctionNav: "special",
         requiresSpecialAuction: true,
+        navIcon: "special_auction",
       },
       {
         href: "nextgen_youth.html",
         label: "Next Gen Youth",
         page: "nextgen_youth",
         indent: true,
+        navIcon: "nextgen_youth",
       },
       { heading: true, label: "Managers" },
       {
