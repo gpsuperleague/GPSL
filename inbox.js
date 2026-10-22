@@ -2,7 +2,11 @@ import { supabase, initGlobal, refreshInboxNavBadge, getAuthUserFast } from "./g
 import { rejectFixtureResult, normalizeClubKey } from "./competition.js";
 import { loadInboxMessages, INBOX_CATEGORY_FILTERS, filterInboxByCategory } from "./competition_inbox.js?v=20260929-mc";
 import { inboxActionForMessage } from "./competition_inbox_actions.js?v=20260929-mc";
-import { acceptProposal, confirmMutualOverride } from "./match_scheduling.js";
+import {
+  acceptProposal,
+  cancelMutualOverride,
+  confirmMutualOverride,
+} from "./match_scheduling.js";
 import {
   downloadIcs,
   downloadIcsEach,
@@ -866,6 +870,40 @@ async function renderInbox() {
         }
       };
 
+      const declineMutualBtn = document.createElement("button");
+      declineMutualBtn.className = "button secondary";
+      declineMutualBtn.textContent = "Decline";
+      declineMutualBtn.title =
+        "Decline if you did not agree this kick-off on Discord";
+      declineMutualBtn.onclick = async () => {
+        if (
+          !confirm(
+            "Decline this Discord lock?\n\nUse this if you did not agree that kick-off. They can propose another time on Schedule."
+          )
+        ) {
+          return;
+        }
+        declineMutualBtn.disabled = true;
+        confirmMutualBtn.disabled = true;
+        try {
+          const res = await cancelMutualOverride(msg.fixture_id);
+          if (!res.ok) {
+            setStatus(res.soft ? res.msg : "❌ " + res.msg, !res.soft);
+            declineMutualBtn.disabled = false;
+            confirmMutualBtn.disabled = false;
+            return;
+          }
+          setStatus(res.msg || "Declined — Discord lock cancelled.");
+          myFixturesById = null;
+          await renderInbox();
+          await refreshInboxNavBadge();
+        } catch (err) {
+          setStatus("❌ " + err.message, true);
+          declineMutualBtn.disabled = false;
+          confirmMutualBtn.disabled = false;
+        }
+      };
+
       const scheduleBtn = document.createElement("button");
       scheduleBtn.className = "button secondary";
       scheduleBtn.textContent = "Open schedule";
@@ -879,6 +917,7 @@ async function renderInbox() {
       };
 
       actions.appendChild(confirmMutualBtn);
+      actions.appendChild(declineMutualBtn);
       actions.appendChild(scheduleBtn);
     } else if (!viewArchived && !isArchived) {
       appendAgreedCalendarAction(actions, msg);

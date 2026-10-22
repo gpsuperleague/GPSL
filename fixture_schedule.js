@@ -193,6 +193,10 @@ function mutualPendingPanelHtml(mo, homeTz, awayTz) {
     mo.kind === "play_now"
       ? "play now"
       : "lock this kick-off";
+  const cancelLabel = mo.can_confirm ? "Decline" : "Cancel request";
+  const cancelTitle = mo.can_confirm
+    ? "Decline this Discord lock — you did not agree this time"
+    : "Cancel your Discord lock request";
   return `
     <div class="panel mutual-panel">
       <h2>Mutual confirm pending</h2>
@@ -200,11 +204,15 @@ function mutualPendingPanelHtml(mo, homeTz, awayTz) {
         <b>${fromName}</b> wants to ${kindLabel}:
         <span class="kickoff-line">${formatKickoffPair(mo.proposed_kickoff_at, homeTz, awayTz)}</span>
       </p>
-      <p class="meta">Both clubs must agree. Deadlines keep running until locked.</p>
+      <p class="meta">Both clubs must agree. Deadlines keep running until locked. If you did not agree this time on Discord, use <b>Decline</b>.</p>
       <div class="actions">
         ${mo.can_confirm ? '<button type="button" id="confirmMutualBtn" class="button">Confirm</button>' : ""}
         ${mo.my_confirmed && !mo.can_confirm ? '<span class="meta">You confirmed — waiting for opponent.</span>' : ""}
-        ${mo.can_cancel ? '<button type="button" id="cancelMutualBtn" class="button secondary">Cancel request</button>' : ""}
+        ${
+          mo.can_cancel
+            ? `<button type="button" id="cancelMutualBtn" class="button secondary" title="${cancelTitle}">${cancelLabel}</button>`
+            : ""
+        }
       </div>
     </div>
   `;
@@ -231,7 +239,16 @@ function wireMutualPendingButtons() {
   const cancelMutualBtn = document.getElementById("cancelMutualBtn");
   if (cancelMutualBtn) {
     cancelMutualBtn.onclick = async () => {
-      if (!confirm("Cancel this mutual request?")) return;
+      const declining = /decline/i.test(cancelMutualBtn.textContent || "");
+      if (
+        !confirm(
+          declining
+            ? "Decline this Discord lock?\n\nUse this if you did not agree that kick-off on Discord. They can propose a different time on Schedule."
+            : "Cancel this mutual request?"
+        )
+      ) {
+        return;
+      }
       cancelMutualBtn.disabled = true;
       const res = await cancelMutualOverride(fixtureId);
       if (!res.ok) {
@@ -239,7 +256,7 @@ function wireMutualPendingButtons() {
         cancelMutualBtn.disabled = false;
         return;
       }
-      setStatus("Request cancelled.");
+      setStatus(res.msg || (declining ? "Declined." : "Request cancelled."));
       await reload();
     };
   }
