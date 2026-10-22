@@ -848,8 +848,18 @@ DECLARE
   v_inbox_error text := NULL;
   v_under_error text := NULL;
   v_oots_error text := NULL;
+  v_jwt_role text := coalesce(
+    auth.jwt() ->> 'role',
+    current_setting('request.jwt.claim.role', true),
+    ''
+  );
 BEGIN
   PERFORM set_config('statement_timeout', '300s', true);
+
+  -- Block PostgREST anon key (SQL Editor as postgres still allowed)
+  IF v_jwt_role = 'anon' THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
 
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -919,6 +929,8 @@ BEGIN
 END;
 $function$;
 
+REVOKE ALL ON FUNCTION public.competition_admin_archive_season_followup(bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.competition_admin_archive_season_followup(bigint) FROM anon;
 GRANT EXECUTE ON FUNCTION public.competition_admin_archive_season_followup(bigint)
   TO authenticated;
 
