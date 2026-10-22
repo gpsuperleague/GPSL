@@ -2775,18 +2775,21 @@ export async function buildNav() {
           href: "nation_select.html",
           label: "Nation selection",
           page: "nation_select",
+          navIcon: "nation_select",
         });
       } else {
         items.unshift({
           href: "nation_select.html",
           label: "Choose your nation",
           page: "nation_select",
+          navIcon: "nation_select",
         });
       }
       items.push({
         href: "nation_player_pool.html",
         label: "Nation player pool",
         page: "nation_player_pool",
+        navIcon: "nation_player_pool",
       });
       return items;
     }
