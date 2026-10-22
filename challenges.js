@@ -156,6 +156,9 @@ function renderBigPrizeCard(pack, winner, windowOpen) {
       Won by <b>${clubName}</b>
       ${winner.amount != null ? ` · ${formatMoney(Number(winner.amount))}` : ""}
       ${when ? ` · completed ${when}` : ""}
+      <div class="challenge-meta" style="margin-top:4px;">
+        Big prize claimed — other clubs can still complete challenges for individual cash prizes.
+      </div>
     </div>`;
   } else if (windowOpen === false) {
     statusHtml = `<div class="prize-status-closed">
@@ -170,6 +173,7 @@ function renderBigPrizeCard(pack, winner, windowOpen) {
             ? pack.required_to_win
             : "all"
       } ${phaseName} challenges wins.
+      Hitting the target after a winner is declared does not award this pack.
     </div>`;
   }
 
@@ -348,27 +352,49 @@ function standingsRowsForTab(tab) {
 
 function rowMetrics(row, mode) {
   if (mode === "start") {
+    const required = Number(
+      row.start_required ?? standingsData?.start_required ?? row.start_total ?? 0
+    );
     return {
       done: Number(row.start_completed || 0),
-      total: Number(row.start_total || 0),
+      required,
+      catalogue: Number(row.start_total || 0),
       pct: Number(row.start_pct || 0),
       prize: Number(row.start_prize || 0),
     };
   }
   if (mode === "mid") {
+    const required = Number(
+      row.mid_required ?? standingsData?.mid_required ?? row.mid_total ?? 0
+    );
     return {
       done: Number(row.mid_completed || 0),
-      total: Number(row.mid_total || 0),
+      required,
+      catalogue: Number(row.mid_total || 0),
       pct: Number(row.mid_pct || 0),
       prize: Number(row.mid_prize || 0),
     };
   }
+  const required = Number(
+    row.overall_required ??
+      standingsData?.overall_required ??
+      (Number(standingsData?.start_required || 0) + Number(standingsData?.mid_required || 0))
+  );
   return {
     done: Number(row.total_completed || 0),
-    total: Number(row.total_challenges || 0),
+    required,
+    catalogue: Number(row.total_challenges || 0),
     pct: Number(row.overall_pct || 0),
     prize: Number(row.total_prize || 0),
   };
+}
+
+function raceDoneLabel(m) {
+  const done = m.done;
+  const req = m.required;
+  if (!req) return String(done);
+  if (done > req) return `${done} (${req} for prize)`;
+  return `${done}/${req}`;
 }
 
 function renderStandings() {
@@ -404,13 +430,19 @@ function renderStandings() {
       const clubCell = href
         ? `<a href="${href}">${name}</a>`
         : name;
+      const raceTitle =
+        m.required > 0
+          ? `${m.done} completed · big prize needs ${m.required}${
+              m.catalogue > m.required ? ` of ${m.catalogue} available` : ""
+            }`
+          : `${m.done} completed`;
 
       return `<tr class="${isMe ? "me" : ""}">
         <td class="pos">${i + 1}</td>
         <td class="club">${clubCell}</td>
-        <td class="num">${m.done}/${m.total}</td>
+        <td class="num" title="${raceTitle}">${raceDoneLabel(m)}</td>
         <td class="bar-cell">
-          <span class="${barClass}" title="${pct}%"><span style="width:${pct}%"></span></span>
+          <span class="${barClass}" title="${pct}% of big-prize target"><span style="width:${pct}%"></span></span>
           <span class="pct-label">${pct}%</span>
         </td>
         <td class="num">${m.prize > 0 ? formatMoney(m.prize) : "—"}</td>
@@ -418,18 +450,28 @@ function renderStandings() {
     })
     .join("");
 
+  const reqNote =
+    mode === "start" && standingsData?.start_required
+      ? `Big prize: first to ${standingsData.start_required} start challenges.`
+      : mode === "mid" && standingsData?.mid_required
+        ? `Big prize: first to ${standingsData.mid_required} mid challenges.`
+        : standingsData?.start_required || standingsData?.mid_required
+          ? `Big prize targets: start ${standingsData.start_required || "—"}, mid ${standingsData.mid_required || "—"}.`
+          : "";
+
   el.innerHTML = `
     <table class="league-table">
       <thead>
         <tr>
           <th class="pos">#</th>
           <th>Club</th>
-          <th class="num">Done</th>
+          <th class="num">Toward prize</th>
           <th>Progress</th>
           <th class="num">Prizes won</th>
         </tr>
       </thead>
       <tbody>${body}</tbody>
     </table>
+    ${reqNote ? `<p class="standings-note" style="margin-top:10px;">${reqNote}</p>` : ""}
   `;
 }
