@@ -1951,6 +1951,45 @@ const NAV_INLINE_ICONS = {
       `<circle cx="15.6" cy="16" r="1.15" fill="#1e3a5f"/>` +
       `<circle cx="15.6" cy="16" r="0.55" fill="#f0c14b"/>`,
   },
+  bank_balance: {
+    title: "Bank balance",
+    svg:
+      `<path d="M2.4 7.8 L10 2.8 L17.6 7.8 Z" fill="#2c3e50"/>` +
+      `<rect x="3.2" y="7.8" width="13.6" height="8.8" rx="0.6" fill="#3d566e"/>` +
+      `<rect x="4.4" y="9.4" width="2.2" height="5.4" rx="0.3" fill="#dfe6ee"/>` +
+      `<rect x="8.9" y="9.4" width="2.2" height="5.4" rx="0.3" fill="#dfe6ee"/>` +
+      `<rect x="13.4" y="9.4" width="2.2" height="5.4" rx="0.3" fill="#dfe6ee"/>` +
+      `<rect x="2.8" y="16.2" width="14.4" height="1.4" rx="0.3" fill="#1a252f"/>` +
+      `<ellipse cx="14.6" cy="5.8" rx="3.6" ry="1.35" fill="#b8860b"/>` +
+      `<ellipse cx="14.6" cy="4.6" rx="3.6" ry="1.35" fill="#daa520"/>` +
+      `<ellipse cx="14.6" cy="3.4" rx="3.6" ry="1.35" fill="#ffd700"/>`,
+  },
+  league_loans: {
+    title: "League loans",
+    svg:
+      `<rect x="2.2" y="3.2" width="10.4" height="13.6" rx="1.2" fill="#2c3e50"/>` +
+      `<rect x="3.4" y="4.4" width="8" height="11.2" rx="0.7" fill="#e8eef4"/>` +
+      `<rect x="4.4" y="6" width="6" height="1.1" rx="0.3" fill="#8aa4c4"/>` +
+      `<rect x="4.4" y="8.2" width="4.8" height="1.1" rx="0.3" fill="#8aa4c4"/>` +
+      `<rect x="4.4" y="10.4" width="5.4" height="1.1" rx="0.3" fill="#8aa4c4"/>` +
+      `<path d="M12.4 11.2 H18" stroke="#7dcea0" stroke-width="1.4" stroke-linecap="round"/>` +
+      `<path d="M16.2 9.4 L18 11.2 L16.2 13" stroke="#7dcea0" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<circle cx="15.2" cy="15.6" r="2.6" fill="#f0c14b"/>` +
+      `<circle cx="15.2" cy="15.6" r="1.45" fill="#1e3a5f"/>` +
+      `<circle cx="15.2" cy="15.6" r="0.65" fill="#f0c14b"/>`,
+  },
+  service_counter: {
+    title: "Service counter",
+    svg:
+      `<rect x="1.8" y="11.6" width="16.4" height="5.2" rx="1" fill="#3d566e"/>` +
+      `<rect x="2.6" y="12.4" width="14.8" height="1.4" rx="0.35" fill="#f0c14b"/>` +
+      `<rect x="4.2" y="3.2" width="11.6" height="8.4" rx="1.2" fill="#2c3e50"/>` +
+      `<rect x="5.4" y="4.4" width="9.2" height="5.2" rx="0.7" fill="#7eb0e0"/>` +
+      `<rect x="5.4" y="4.4" width="9.2" height="1.6" rx="0.7" fill="#a8c8e8"/>` +
+      `<circle cx="10" cy="7.4" r="1.5" fill="#d0d7e2"/>` +
+      `<path d="M7.6 11 C7.6 9.4 8.6 8.6 10 8.6 C11.4 8.6 12.4 9.4 12.4 11" fill="#d0d7e2"/>` +
+      `<rect x="8.2" y="14.2" width="3.6" height="1.6" rx="0.35" fill="#1a252f"/>`,
+  },
 };
 
 function navLinkLeadingHtml(item) {
