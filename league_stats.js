@@ -17,6 +17,18 @@ import {
 } from "./player_links.js";
 import { renderFormationPitchHtml } from "./pitch_display.js";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
+import {
+  loadOwnerSupporterMap,
+  ownerTagHtml,
+} from "./owner_badge.js";
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 const DIVISION_TITLES = {
   superleague: "Super League",
@@ -903,22 +915,28 @@ async function loadTotmMonthsForSeason(seasonId) {
     return;
   }
 
-  const { data, error } = await supabase
-    .from("competition_period_team")
-    .select("gpsl_month")
-    .eq("period_kind", "month")
-    .eq("season_id", seasonId);
+  const [totmRes, ootmRes] = await Promise.all([
+    supabase
+      .from("competition_period_team")
+      .select("gpsl_month")
+      .eq("period_kind", "month")
+      .eq("season_id", seasonId),
+    supabase
+      .from("competition_owner_month_awards_public")
+      .select("gpsl_month")
+      .eq("season_id", seasonId),
+  ]);
 
-  if (error) {
-    console.warn("TOTM months:", error);
-    totmMonths = [];
-    totmSelectedMonth = null;
-    return;
+  if (totmRes.error) {
+    console.warn("TOTM months:", totmRes.error);
+  }
+  if (ootmRes.error && !/competition_owner_month|schema cache|does not exist/i.test(ootmRes.error.message || "")) {
+    console.warn("OotM months:", ootmRes.error);
   }
 
   const unique = [
     ...new Set(
-      (data || [])
+      [...(totmRes.data || []), ...(ootmRes.data || [])]
         .map((r) => String(r.gpsl_month || "").toLowerCase())
         .filter(Boolean)
     ),
@@ -943,7 +961,7 @@ function renderTotmMonthTabs() {
 
   if (!totmMonths.length) {
     root.innerHTML =
-      '<span class="meta" style="font-size:12px;">No Team of the Month awards for this season yet.</span>';
+      '<span class="meta" style="font-size:12px;">No monthly awards for this season yet (Owner / Team of the Month appear after a GPSL month locks).</span>';
     return;
   }
 
@@ -966,7 +984,7 @@ function renderTotmMonthTabs() {
       if (!month || month === totmSelectedMonth) return;
       totmSelectedMonth = month;
       renderTotmMonthTabs();
-      void renderTeamOfMonth();
+      void Promise.all([renderOwnerOfMonth(), renderTeamOfMonth()]);
     });
   });
 }
@@ -1071,11 +1089,84 @@ async function onTotmSeasonSelect(id) {
   await refreshTotmSelectorsAndPanels();
 }
 
+function ootmRecordLine(a) {
+  const gd = (a.gf ?? 0) - (a.ga ?? 0);
+  const gdLabel = gd > 0 ? `+${gd}` : String(gd);
+  return `${a.won ?? 0}–${a.drawn ?? 0}–${a.lost ?? 0} · ${a.pts ?? 0} pts · GD ${gdLabel} (${a.gf ?? 0}–${a.ga ?? 0})`;
+}
+
+function renderOotmCard(panelId, heading, award, emptyLabel) {
+  const el = document.getElementById(panelId);
+  if (!el) return;
+  if (!award) {
+    el.innerHTML = `<div style="font-size:12px;font-weight:700;color:#9cf;text-transform:uppercase;margin-bottom:6px;">${heading}</div><p class="empty">${emptyLabel}</p>`;
+    return;
+  }
+  const tag = ownerTagHtml({
+    ownerId: award.owner_id,
+    ownerTag: award.owner_tag || "—",
+    link: !!award.owner_id,
+    compact: true,
+    showBadgeImage: true,
+  });
+  el.innerHTML = `
+    <div style="font-size:12px;font-weight:700;color:#9cf;text-transform:uppercase;margin-bottom:6px;">${heading}</div>
+    <div style="font-size:17px;font-weight:700;margin-bottom:4px;">${tag}</div>
+    <div style="color:#ffcc66;font-size:13px;margin-bottom:6px;">${escapeHtml(award.club_name || award.club_short_name || "—")}</div>
+    <div style="color:#aaa;font-size:12px;">${escapeHtml(ootmRecordLine(award))}</div>
+  `;
+}
+
+async function renderOwnerOfMonth() {
+  const seasonLabel =
+    rollingSeasons.find((s) => s.id === totmSelectedSeasonId)?.label ||
+    "this season";
+  const monthLabel = totmSelectedMonth
+    ? formatGpslMonthLabel(totmSelectedMonth)
+    : null;
+  const emptyBase = monthLabel
+    ? `${monthLabel} · ${seasonLabel}`
+    : seasonLabel;
+
+  const emptySl = `No Super League Owner of the Month for ${emptyBase} yet — awarded when a GPSL month locks.`;
+  const emptyCh = `No Championship Owner of the Month for ${emptyBase} yet — awarded when a GPSL month locks.`;
+
+  if (!totmSelectedSeasonId || !totmSelectedMonth) {
+    renderOotmCard("ootmSuperPanel", "Super League", null, emptySl);
+    renderOotmCard("ootmChampPanel", "Championship", null, emptyCh);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("competition_owner_month_awards_public")
+    .select("*")
+    .eq("season_id", totmSelectedSeasonId)
+    .eq("gpsl_month", totmSelectedMonth);
+
+  if (error) {
+    const miss =
+      /competition_owner_month|schema cache|does not exist/i.test(
+        error.message || ""
+      )
+        ? "Run supabase/sql/patches/owner_of_the_month_20261022.sql in Supabase."
+        : error.message || "Could not load Owner of the Month.";
+    renderOotmCard("ootmSuperPanel", "Super League", null, miss);
+    renderOotmCard("ootmChampPanel", "Championship", null, miss);
+    return;
+  }
+
+  const rows = data || [];
+  const sl = rows.find((r) => r.division_scope === "superleague") || null;
+  const ch = rows.find((r) => r.division_scope === "championship") || null;
+  renderOotmCard("ootmSuperPanel", "Super League", sl, emptySl);
+  renderOotmCard("ootmChampPanel", "Championship", ch, emptyCh);
+}
+
 async function refreshTotmSelectorsAndPanels() {
   renderAwardSeasonTabs({
     rootId: "totmSeasonTabs",
     selectedSeasonId: totmSelectedSeasonId,
-    ariaLabel: "TOTM season",
+    ariaLabel: "Award season",
     onSelect: (id) => {
       void onTotmSeasonSelect(id);
     },
@@ -1083,7 +1174,7 @@ async function refreshTotmSelectorsAndPanels() {
 
   await loadTotmMonthsForSeason(totmSelectedSeasonId);
   renderTotmMonthTabs();
-  await renderTeamOfMonth();
+  await Promise.all([renderOwnerOfMonth(), renderTeamOfMonth()]);
 }
 
 async function renderTeamOfMonth() {
@@ -1166,6 +1257,7 @@ function setActiveTab(tab) {
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
   await loadClubsMap();
+  await loadOwnerSupporterMap().catch(() => {});
 
   const {
     data: { user },

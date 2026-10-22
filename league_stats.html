@@ -352,17 +352,37 @@
           <div id="disciplineTable"></div>
         </div>
         <div class="panel panel--wide">
-          <h2>Team of the Month</h2>
+          <h2>Monthly awards</h2>
           <p class="meta" style="margin:0 0 8px;font-size:12px;">
-            Pick a season, then a GPSL month (min. 2 apps). Awarded when that month locks.
-            History shows up to the latest 5 game seasons (e.g. Season 1–2 while Season 2 is live).
+            Pick a season, then a GPSL month. Owner of the Month and Team of the Month are awarded when that month locks.
+            History shows up to the latest 5 game seasons.
           </p>
-          <div class="award-season-tabs" id="totmSeasonTabs" role="tablist" aria-label="TOTM season"></div>
-          <div class="award-month-tabs" id="totmMonthTabs" role="tablist" aria-label="TOTM month"></div>
-          <h3 style="margin:8px 0 6px;color:#ff9900;font-size:16px;">Super League</h3>
+          <div class="award-season-tabs" id="totmSeasonTabs" role="tablist" aria-label="Award season"></div>
+          <div class="award-month-tabs" id="totmMonthTabs" role="tablist" aria-label="Award month"></div>
+
+          <h3 style="margin:14px 0 6px;color:#ff9900;font-size:16px;">Owner of the Month</h3>
+          <p class="meta" style="margin:0 0 8px;font-size:12px;">
+            Best league record — Super League and Championship (A &amp; B) separately.
+            <a href="owner_of_the_month.html" style="color:#ff9900;">Full history</a>
+          </p>
+          <div class="ootm-stats-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+            <div id="ootmSuperPanel" style="background:#121820;border:1px solid #2a3a4a;border-radius:8px;padding:12px 14px;">
+              <span class="empty">Loading…</span>
+            </div>
+            <div id="ootmChampPanel" style="background:#141a12;border:1px solid #3a4a2a;border-radius:8px;padding:12px 14px;">
+              <span class="empty">Loading…</span>
+            </div>
+          </div>
+          <style>
+            @media (max-width:700px) {
+              .ootm-stats-grid { grid-template-columns:1fr !important; }
+            }
+          </style>
+
+          <h3 style="margin:8px 0 6px;color:#ff9900;font-size:16px;">Team of the Month — Super League</h3>
           <div id="totmSuperPanel"><span class="empty">Loading…</span></div>
-          <h3 style="margin:18px 0 6px;color:#ff9900;font-size:16px;">Championship</h3>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">Combined Championship A &amp; B XI.</p>
+          <h3 style="margin:18px 0 6px;color:#ff9900;font-size:16px;">Team of the Month — Championship</h3>
+          <p class="meta" style="margin:0 0 8px;font-size:12px;">Combined Championship A &amp; B XI (min. 2 apps).</p>
           <div id="totmChampionshipPanel"><span class="empty">Loading…</span></div>
         </div>
         <div class="panel panel--wide">
@@ -463,6 +483,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="league_stats.js?v=20260904-own-goals"></script>
+  <script type="module" src="league_stats.js?v=20261022-ootm-stats"></script>
 </body>
 </html>
