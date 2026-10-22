@@ -154,10 +154,12 @@ export const PRE_CLUB_NAV_ITEMS = [
     href: "learning_gpsl.html",
     label: "Learning GPSL",
     page: "learning_gpsl",
+    navIcon: "learning_gpsl",
   },
   {
     href: "video_tutorials.html",
     label: "Video tutorials",
     page: "video_tutorials",
+    navIcon: "video_tutorials",
   },
 ];

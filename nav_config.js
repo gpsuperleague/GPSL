@@ -430,12 +430,14 @@ export const NAV_SECTIONS = [
         label: "Learning GPSL",
         page: "learning_gpsl",
         indent: true,
+        navIcon: "learning_gpsl",
       },
       {
         href: "video_tutorials.html",
         label: "Video tutorials",
         page: "video_tutorials",
         indent: true,
+        navIcon: "video_tutorials",
       },
       { heading: true, label: "Community" },
       {

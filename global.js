@@ -2151,7 +2151,74 @@ const NAV_INLINE_ICONS = {
       `<path d="M13.6 4.4 H17.2 L16.2 5.8 L17.2 7.2 H13.6 Z" fill="#f0c14b"/>` +
       `<rect x="13.1" y="4.2" width="1" height="4.6" rx="0.3" fill="#2c3e50"/>`,
   },
+  learning_gpsl: {
+    title: "Learning GPSL",
+    svg:
+      `<path d="M2.4 4.2 C4.6 3.4 7.2 3.4 10 4.2 C12.8 3.4 15.4 3.4 17.6 4.2 V15.6 C15.4 14.8 12.8 14.8 10 15.6 C7.2 14.8 4.6 14.8 2.4 15.6 Z" fill="#2e5a8f"/>` +
+      `<path d="M10 4.2 V15.6" stroke="#1e3a5f" stroke-width="1.1"/>` +
+      `<path d="M4.2 6.2 H8.2" stroke="#f0c14b" stroke-width="1.1" stroke-linecap="round"/>` +
+      `<path d="M4.2 8.6 H7.4" stroke="#d0d7e2" stroke-width="1" stroke-linecap="round"/>` +
+      `<path d="M4.2 11 H7.8" stroke="#d0d7e2" stroke-width="1" stroke-linecap="round"/>` +
+      `<path d="M11.8 6.2 H15.8" stroke="#f0c14b" stroke-width="1.1" stroke-linecap="round"/>` +
+      `<path d="M12.6 8.6 H15.8" stroke="#d0d7e2" stroke-width="1" stroke-linecap="round"/>`,
+  },
+  video_tutorials: {
+    title: "Video tutorials",
+    svg:
+      `<rect x="2" y="3.6" width="16" height="12.8" rx="2" fill="#1e3a5f"/>` +
+      `<rect x="3.2" y="4.8" width="13.6" height="10.4" rx="1.2" fill="#2e5a8f"/>` +
+      `<path d="M8.2 7.2 L13.4 10 L8.2 12.8 Z" fill="#f0c14b"/>`,
+  },
+  video_transfers_short: {
+    title: "Transfers short",
+    svg:
+      `<rect x="1.8" y="4" width="16.4" height="12" rx="1.6" fill="#1e3a5f"/>` +
+      `<path d="M4.2 8.2 H10.4" stroke="#7dcea0" stroke-width="1.4" stroke-linecap="round"/>` +
+      `<path d="M8.6 6.4 L11.2 8.2 L8.6 10" stroke="#7dcea0" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<path d="M15.8 11.8 H9.6" stroke="#f0c14b" stroke-width="1.4" stroke-linecap="round"/>` +
+      `<path d="M11.4 10 L8.8 11.8 L11.4 13.6" stroke="#f0c14b" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<rect x="13.2" y="4.8" width="4" height="2.4" rx="0.5" fill="#c0392b"/>` +
+      `<text x="15.2" y="6.55" text-anchor="middle" fill="#f5f5f5" font-size="2.4" font-family="Arial,sans-serif" font-weight="700">S</text>`,
+  },
+  video_transfers_detailed: {
+    title: "Transfers detailed",
+    svg:
+      `<rect x="1.8" y="3.2" width="10.4" height="13.6" rx="1.2" fill="#2e5a8f"/>` +
+      `<rect x="2.8" y="4.4" width="8.4" height="11.2" rx="0.7" fill="#e8eef4"/>` +
+      `<rect x="3.8" y="5.8" width="6.4" height="1" rx="0.3" fill="#8aa4c4"/>` +
+      `<rect x="3.8" y="8" width="5" height="1" rx="0.3" fill="#8aa4c4"/>` +
+      `<rect x="3.8" y="10.2" width="5.8" height="1" rx="0.3" fill="#8aa4c4"/>` +
+      `<path d="M13 7.6 H18" stroke="#7dcea0" stroke-width="1.3" stroke-linecap="round"/>` +
+      `<path d="M16.2 5.8 L18 7.6 L16.2 9.4" stroke="#7dcea0" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<path d="M18 12.4 H13" stroke="#f0c14b" stroke-width="1.3" stroke-linecap="round"/>` +
+      `<path d="M14.8 10.6 L13 12.4 L14.8 14.2" stroke="#f0c14b" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  },
+  video_matchday_short: {
+    title: "Matchday short",
+    svg:
+      `<rect x="1.8" y="3.6" width="16.4" height="12.8" rx="1.6" fill="#2a6b45"/>` +
+      `<circle cx="8.2" cy="10" r="3.6" fill="#f5f5f5"/>` +
+      `<path d="M8.2 6.7c.7.55 1.15 1.4 1.35 2.4H6.85c.2-1 .65-1.85 1.35-2.4zm-2.55 2.9c.15 1 .7 1.85 1.5 2.45-.85-.2-1.55-.75-2-1.55.2-.3.35-.6.5-.9zm3.75 0c.15.3.3.6.5.9-.45.8-1.15 1.35-2 1.55.8-.6 1.35-1.45 1.5-2.45z" fill="#2c3e50"/>` +
+      `<rect x="12.4" y="5.2" width="4.4" height="2.6" rx="0.5" fill="#c0392b"/>` +
+      `<text x="14.6" y="7.1" text-anchor="middle" fill="#f5f5f5" font-size="2.5" font-family="Arial,sans-serif" font-weight="700">S</text>` +
+      `<path d="M12.8 10.2 H17.2" stroke="#f0c14b" stroke-width="1.2" stroke-linecap="round"/>` +
+      `<path d="M12.8 12.6 H16.2" stroke="#a8d4b5" stroke-width="1.1" stroke-linecap="round"/>`,
+  },
 };
+
+/** Pick a nav icon for a Video tutorials folder (slug/title from admin). */
+export function videoTutorialFolderNavIcon(slug, title) {
+  const key = `${slug || ""} ${title || ""}`.toLowerCase().replace(/[_-]+/g, " ");
+  const isTransfer = key.includes("transfer");
+  if (isTransfer && (key.includes("detail") || key.includes("full") || key.includes("long"))) {
+    return "video_transfers_detailed";
+  }
+  if (isTransfer) return "video_transfers_short";
+  if (key.includes("matchday") || key.includes("match day")) {
+    return "video_matchday_short";
+  }
+  return "video_tutorials";
+}
 
 function navLinkLeadingHtml(item) {
   if (item?.navIcon === "first_aid") {
@@ -3089,11 +3156,13 @@ export async function buildNav() {
               href: "learning_gpsl.html",
               label: "Learning GPSL",
               page: "learning_gpsl",
+              navIcon: "learning_gpsl",
             },
             {
               href: "video_tutorials.html",
               label: "Video tutorials",
               page: "video_tutorials",
+              navIcon: "video_tutorials",
             },
           ],
         },
@@ -3119,6 +3188,7 @@ export async function buildNav() {
           page: "video_tutorials",
           hash: f.slug,
           indent: parent.indent ? 2 : true,
+          navIcon: videoTutorialFolderNavIcon(f.slug, f.title),
         }));
         return { ...section, items: [...items.slice(0, at + 1), ...subs, ...items.slice(at + 1)] };
       });

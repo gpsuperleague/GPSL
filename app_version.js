@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261022-owners-icons";
+export const APP_VERSION = "20261022-knowledge-icons-2";
