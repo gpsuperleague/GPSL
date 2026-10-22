@@ -2,40 +2,7 @@ import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, loadCurrentSeason } from "./competition.js";
-
-const STAT_LABELS = {
-  player_max_goals: "Best player goals (at least X)",
-  player_max_assists: "Best player assists (at least X)",
-  club_wins: "League/cup wins",
-  club_goals_for: "Goals scored",
-  club_clean_sheets: "Clean sheets",
-  club_potm_awards: "POTM awards",
-  player_hattrick_matchday: "Hat-trick on matchday",
-  transfer_sign_nation: "Sign by nationality",
-  transfer_sign_homegrown: "Sign home-grown",
-  transfer_sign_rated: "Sign low-rated player",
-};
-
-function formatStatParamDetail(statType, param) {
-  if (!param) return "";
-  if (statType === "transfer_sign_nation") return ` (${param})`;
-  if (statType === "player_hattrick_matchday") {
-    const md = String(param).replace(/[^0-9]/g, "") || param;
-    return md === "1" ? " (opening day)" : ` (MD${md})`;
-  }
-  if (statType === "transfer_sign_rated") {
-    try {
-      const o = typeof param === "object" ? param : JSON.parse(param);
-      const bits = [`≤${o.max_rating}`];
-      if (o.require_age) bits.push(`age≤${o.max_age ?? 21}`);
-      if (o.require_hg) bits.push("HG");
-      return ` (${bits.join(", ")})`;
-    } catch {
-      return "";
-    }
-  }
-  return "";
-}
+import { challengeStatDescription } from "./challenge_labels.js";
 
 function windowLabel(phase) {
   if (phase === "mid") return "Mid-season";
@@ -131,10 +98,7 @@ function renderChallengeCards(items) {
           <p class="challenge-progress ${st.className}">${st.text}</p>
           <p class="challenge-meta">
             ${months ? `${months}<br>` : ""}
-            ${STAT_LABELS[c.stat_type] || c.stat_type}${formatStatParamDetail(
-              c.stat_type,
-              c.stat_param
-            )}
+            ${challengeStatDescription(c.stat_type, c.target_value, c.stat_param)}
             · Prize ${formatMoney(Number(c.prize_amount || 0))}
           </p>
         </div>

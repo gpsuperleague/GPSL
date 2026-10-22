@@ -3,44 +3,11 @@ import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 import { renderChallengesIntro } from "./challenges_rules.js";
+import { challengeStatDescription } from "./challenge_labels.js";
 
 let standingsData = null;
 let myClubShort = null;
 let activeStandingsTab = "overall";
-
-const STAT_LABELS = {
-  player_max_goals: "Best player goals (at least X)",
-  player_max_assists: "Best player assists (at least X)",
-  club_wins: "League/cup wins",
-  club_goals_for: "Goals scored",
-  club_clean_sheets: "Clean sheets",
-  club_potm_awards: "POTM awards",
-  player_hattrick_matchday: "Hat-trick on matchday",
-  transfer_sign_nation: "Sign by nationality",
-  transfer_sign_homegrown: "Sign home-grown",
-  transfer_sign_rated: "Sign low-rated player",
-};
-
-function formatStatParamDetail(statType, param) {
-  if (!param) return "";
-  if (statType === "transfer_sign_nation") return ` (${param})`;
-  if (statType === "player_hattrick_matchday") {
-    const md = String(param).replace(/[^0-9]/g, "") || param;
-    return md === "1" ? " (opening day)" : ` (MD${md})`;
-  }
-  if (statType === "transfer_sign_rated") {
-    try {
-      const o = typeof param === "object" ? param : JSON.parse(param);
-      const bits = [`≤${o.max_rating}`];
-      if (o.require_age) bits.push(`age≤${o.max_age ?? 21}`);
-      if (o.require_hg) bits.push("HG");
-      return ` (${bits.join(", ")})`;
-    } catch {
-      return "";
-    }
-  }
-  return "";
-}
 
 function windowLabel(phase) {
   if (phase === "mid") return "Mid-season";
@@ -131,7 +98,7 @@ async function loadBigPrizeWinners(seasonId) {
   if (!seasonId) return new Map();
   const { data, error } = await supabase
     .from("competition_challenge_period_bonus_awarded")
-    .select("window_phase, club_short_name, amount, awarded_at")
+    .select("window_phase, club_short_name, amount, awarded_at, pack_snapshot")
     .eq("season_id", seasonId);
 
   if (error) {
@@ -144,6 +111,13 @@ async function loadBigPrizeWinners(seasonId) {
     map.set(row.window_phase, row);
   }
   return map;
+}
+
+/** Prefer the Nth challenge completion time when stored on the award. */
+function bigPrizeFinishedAt(winner) {
+  const finish = winner?.pack_snapshot?.finished_at || winner?.pack_snapshot?.nth_completed_at;
+  if (finish) return finish;
+  return winner?.awarded_at || null;
 }
 
 function fallbackPackHtml(p) {
@@ -167,13 +141,21 @@ function renderBigPrizeCard(pack, winner, windowOpen) {
 
   if (winner?.club_short_name) {
     const clubName = fullClubName(winner.club_short_name) || winner.club_short_name;
-    const when = winner.awarded_at
-      ? new Date(winner.awarded_at).toLocaleDateString("en-GB")
+    const finishedAt = bigPrizeFinishedAt(winner);
+    const when = finishedAt
+      ? new Date(finishedAt).toLocaleString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Europe/London",
+        })
       : "";
     statusHtml = `<div class="prize-status-won">
       Won by <b>${clubName}</b>
       ${winner.amount != null ? ` · ${formatMoney(Number(winner.amount))}` : ""}
-      ${when ? ` · ${when}` : ""}
+      ${when ? ` · completed ${when}` : ""}
     </div>`;
   } else if (windowOpen === false) {
     statusHtml = `<div class="prize-status-closed">
@@ -255,10 +237,7 @@ function renderChallengeCards(items) {
                 ? `${c.gpsl_month_from_label}–${c.gpsl_month_to_label}<br>`
                 : ""
             }
-            ${STAT_LABELS[c.stat_type] || c.stat_type}${formatStatParamDetail(
-              c.stat_type,
-              c.stat_param
-            )} ≥ <b>${c.target_value}</b>
+            ${challengeStatDescription(c.stat_type, c.target_value, c.stat_param)}
             · Prize ${formatMoney(Number(c.prize_amount || 0))}
           </p>
         </div>

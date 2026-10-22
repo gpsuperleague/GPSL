@@ -1,5 +1,9 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { formatMoney, loadCurrentSeason } from "./competition.js";
+import {
+  CHALLENGE_STAT_LABELS,
+  challengeStatDescription,
+} from "./challenge_labels.js";
 
 primeAdminPageChrome();
 
@@ -54,39 +58,7 @@ function wireMoneyInputs() {
   }
 }
 
-const STAT_LABELS = {
-  player_max_goals: "Best player goals (at least X)",
-  player_max_assists: "Best player assists (at least X)",
-  club_wins: "Club wins",
-  club_goals_for: "Club goals",
-  club_clean_sheets: "Clean sheets",
-  club_potm_awards: "POTM awards",
-  player_hattrick_matchday: "Hat-trick on matchday",
-  transfer_sign_nation: "Sign by nationality",
-  transfer_sign_homegrown: "Sign home-grown",
-  transfer_sign_rated: "Sign low-rated player",
-};
-
-function formatStatParamDetail(statType, param) {
-  if (!param) return "";
-  if (statType === "transfer_sign_nation") return ` (${param})`;
-  if (statType === "player_hattrick_matchday") {
-    const md = String(param).replace(/[^0-9]/g, "") || param;
-    return md === "1" ? " (opening day / MD1)" : ` (MD${md})`;
-  }
-  if (statType === "transfer_sign_rated") {
-    try {
-      const o = typeof param === "object" ? param : JSON.parse(param);
-      const bits = [`≤${o.max_rating}`];
-      if (o.require_age) bits.push(`age≤${o.max_age ?? 21}`);
-      if (o.require_hg) bits.push("HG");
-      return ` (${bits.join(", ")})`;
-    } catch {
-      return ` (${param})`;
-    }
-  }
-  return "";
-}
+const STAT_LABELS = CHALLENGE_STAT_LABELS;
 
 function buildRatedStatParam() {
   const maxRating = Number(document.getElementById("challengeMaxRating")?.value);
@@ -426,15 +398,14 @@ async function loadChallengeList() {
 
   function renderRow(row) {
     const comps = [row.include_league && "league", row.include_cup && "cup"].filter(Boolean).join("+");
-    const nation =
-      formatStatParamDetail(row.stat_type, row.stat_param);
+    const human = challengeStatDescription(row.stat_type, row.target_value, row.stat_param);
     return `
       <div class="challenge-admin-item">
         <div>
           <b>${row.title}</b>
           <span class="challenge-admin-meta">
             ${row.gpsl_month_from_label}–${row.gpsl_month_to_label}
-            · ${STAT_LABELS[row.stat_type] || row.stat_type}${nation} ≥ ${row.target_value}
+            · ${human}
             · ${formatMoney(row.prize_amount)} · ${comps || "—"}
             ${row.is_active ? "" : " · <i>inactive</i>"}
           </span>
@@ -561,10 +532,11 @@ async function loadChallengeProgressBoard() {
           <div>
             <b>${c.title}</b>
             <span class="challenge-admin-meta">
-              ${c.window_phase} · ${STAT_LABELS[c.stat_type] || c.stat_type}${formatStatParamDetail(
+              ${c.window_phase} · ${challengeStatDescription(
                 c.stat_type,
+                c.target_value,
                 c.stat_param
-              )} ≥ ${c.target_value} · ${formatMoney(c.prize_amount)} · ${openTag}
+              )} · ${formatMoney(c.prize_amount)} · ${openTag}
               · ${c.achiever_count || 0} club(s)
             </span>
           </div>
