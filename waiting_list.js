@@ -222,8 +222,10 @@ function renderTagRows(tbody, rows, highlightPosition, { sectioned = false } = {
       section.className = "wl-section";
       const label =
         kind === "club_owner"
-          ? "Current owners"
-          : "Waiting list";
+          ? "Club owners"
+          : kind === "confirmed"
+            ? "Invite accepted (awaiting club)"
+            : "Waiting list";
       section.innerHTML = `<td colspan="4">${escapeHtml(label)}</td>`;
       tbody.appendChild(section);
     }
@@ -310,20 +312,27 @@ export async function initWaitingListPage() {
     const list = await loadWaitingListPublic();
     const rows = list?.rows || [];
     const onBoard = list?.on_board || [];
-    const season1Confirmed = list?.season1_confirmed || [];
+    const season1Confirmed =
+      list?.current_season_confirmed || list?.season1_confirmed || [];
+    const confirmedTotal =
+      list?.current_season_confirmed_total ??
+      list?.season1_confirmed_total ??
+      season1Confirmed.length;
+    const myConfirmedPos =
+      list?.my_current_season_confirmed_position ||
+      list?.my_season1_confirmed_position ||
+      null;
     const highlightWaiting =
       self?.is_member && list?.my_position ? list.my_position : null;
     const highlightOnBoard = list?.my_on_board_position || null;
-    const highlightSeason1 = list?.my_season1_confirmed_position || null;
+    const highlightSeason1 = myConfirmedPos;
 
     if (onBoardIntro) {
       onBoardIntro.textContent =
-        "Owners invited to Season 1 and waiting to accept or decline. Priority (S1#) first; mass invites after.";
+        "Owners invited to the current season and waiting to accept or decline. Priority (S1#) first; mass invites after.";
     }
     if (season1ConfirmedCount) {
-      season1ConfirmedCount.textContent = `(${
-        list?.season1_confirmed_total ?? season1Confirmed.length
-      })`;
+      season1ConfirmedCount.textContent = `(${confirmedTotal})`;
     }
     if (onBoardCount) {
       onBoardCount.textContent = `(${list?.on_board_total ?? onBoard.length})`;
@@ -335,9 +344,11 @@ export async function initWaitingListPage() {
     if (season1ConfirmedBody) {
       if (!season1Confirmed.length) {
         season1ConfirmedBody.innerHTML =
-          '<tr><td colspan="4" style="color:#666">No one confirmed for Season 1 yet.</td></tr>';
+          '<tr><td colspan="4" style="color:#666">No one confirmed for the current season yet.</td></tr>';
       } else {
-        renderTagRows(season1ConfirmedBody, season1Confirmed, highlightSeason1);
+        renderTagRows(season1ConfirmedBody, season1Confirmed, highlightSeason1, {
+          sectioned: true,
+        });
       }
     }
 
@@ -359,35 +370,29 @@ export async function initWaitingListPage() {
 
     if (
       self?.is_member &&
-      (list?.my_season1_confirmed_position ||
-        list?.my_on_board_position ||
-        list?.my_position)
+      (myConfirmedPos || list?.my_on_board_position || list?.my_position)
     ) {
       myCard.hidden = false;
-      if (list.my_season1_confirmed_position) {
-        myPos.textContent = `#${list.my_season1_confirmed_position} of ${
-          list.season1_confirmed_total || season1Confirmed.length
-        } confirmed`;
-        mySummary.textContent = "You are confirmed for Season 1.";
+      if (myConfirmedPos) {
+        myPos.textContent = `#${myConfirmedPos} of ${confirmedTotal} confirmed`;
+        mySummary.textContent = "You are confirmed for the current season.";
       } else if (list.my_on_board_position) {
         myPos.textContent = `#${list.my_on_board_position} of ${list.on_board_total || onBoard.length} invited`;
-        mySummary.textContent = "You are invited to Season 1 — accept or decline from this page or your inbox.";
+        mySummary.textContent =
+          "You are invited to the current season — accept or decline from this page or your inbox.";
       } else {
         const me = rows.find((r) => r.position === list.my_position);
-        const isOwner = me?.list_kind === "club_owner" || !!me?.has_club;
-        myPos.textContent = `#${list.my_position} of ${list.total || rows.length} on the board`;
+        myPos.textContent = `#${list.my_position} of ${list.total || rows.length} on the waiting list`;
         if (me?.season1_rejected) {
           mySummary.textContent =
-            "You declined Season 1 and are listed at the bottom of the waiting list.";
+            "You declined your season invite and are listed at the bottom of the waiting list.";
         } else {
-          mySummary.textContent = isOwner
-            ? "You are a current club owner on the season board."
-            : list.my_position === 1
+          mySummary.textContent =
+            list.my_position === 1
               ? "You are next in line when a club slot opens."
               : `${list.my_position - 1} member(s) ahead of you.`;
         }
-        // Soft reminder: interest + backup required before auction
-        if (!isOwner && !me?.season1_rejected) {
+        if (!me?.season1_rejected) {
           mySummary.innerHTML +=
             ' Also mark <a href="club_database.html" style="color:#e8c84a;">1 interest + 1 backup</a> on Club Database before you are invited.';
         }

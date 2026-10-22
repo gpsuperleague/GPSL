@@ -100,8 +100,8 @@
     </div>
     <div class="wl-panels">
       <div class="wl-card wl-panel">
-        <h2>Confirmed for Season 1 <span class="wl-count" id="wlSeason1ConfirmedCount"></span></h2>
-        <p id="wlSeason1ConfirmedIntro">Owners who accepted their Season 1 invite. Priority (S1#) first; mass invites follow in accept order.</p>
+        <h2>Confirmed for current season <span class="wl-count" id="wlSeason1ConfirmedCount"></span></h2>
+        <p id="wlSeason1ConfirmedIntro">Owners confirmed for the current season — club owners first, then invite acceptors still waiting for a club (priority / accept order).</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
@@ -121,7 +121,7 @@
       </div>
       <div class="wl-card wl-panel">
         <h2>Owner waiting list <span class="wl-count" id="wlWaitingCount"></span></h2>
-        <p>All owners who are not Confirmed or Invited for Season 1 (archived owners excluded). Club owners first; Season 1 declines sink to the bottom.</p>
+        <p>Members still waiting for a club (not confirmed for the current season and not holding a live invite). Archived owners excluded; declined invites sink to the bottom.</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
@@ -141,7 +141,7 @@
     </p>
   </div>
   <script type="module">
-    import { initWaitingListPage } from "./waiting_list.js?v=20260930-next-auction";
+    import { initWaitingListPage } from "./waiting_list.js?v=20261022-current-season";
     initWaitingListPage();
   </script>
 </body>
