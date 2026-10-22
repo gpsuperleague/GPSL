@@ -1113,7 +1113,7 @@ function renderOotmCard(panelId, heading, award, emptyLabel) {
     <div style="font-size:12px;font-weight:700;color:#9cf;text-transform:uppercase;margin-bottom:6px;">${heading}</div>
     <div style="font-size:17px;font-weight:700;margin-bottom:4px;">${tag}</div>
     <div style="color:#ffcc66;font-size:13px;margin-bottom:6px;">${escapeHtml(award.club_name || award.club_short_name || "—")}</div>
-    <div style="color:#aaa;font-size:12px;">${escapeHtml(ootmRecordLine(award))}</div>
+    <div style="color:#aaa;font-size:12px;">${escapeHtml(ootmRecordLine(award))} · ₿2,500</div>
   `;
 }
 

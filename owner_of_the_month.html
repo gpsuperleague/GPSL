@@ -58,14 +58,16 @@
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1>Owner of the Month</h1>
+    <h1>Owner awards</h1>
     <p class="meta">
-      Best league record in each GPSL month — awarded separately for
-      <b>Super League</b> and <b>Championship</b> (A &amp; B combined) when the month locks.
-      Tie-break: goal difference, then goals scored.
+      <b>Owner of the Month</b> — best league record each GPSL month (Super League and Championship).
+      Prize: <b>₿2,500</b> Building Society credits. Tie-break: GD, then goals scored.
+      <br><br>
+      <b>Owner of the Season</b> — biggest overachievement vs board expectation (expected finish − actual).
+      Prize: <b>₿10,000</b> Super League · <b>₿7,500</b> Championship. Awarded at season archive.
     </p>
     <div class="panel">
-      <h2>Latest awards</h2>
+      <h2>Latest monthly awards</h2>
       <div class="month-tabs" id="ootmMonthTabs" role="tablist" aria-label="GPSL month"></div>
       <div class="ootm-grid">
         <div class="ootm-card" id="ootmSuperCard">
@@ -78,11 +80,25 @@
         </div>
       </div>
     </div>
+    <div class="panel" id="season">
+      <h2>Owner of the Season</h2>
+      <div class="ootm-grid" id="ootsLatest">
+        <div class="ootm-card" id="ootsSuperCard">
+          <h3>Super League · ₿10,000</h3>
+          <p class="ootm-empty">Loading…</p>
+        </div>
+        <div class="ootm-card champ" id="ootsChampCard">
+          <h3>Championship · ₿7,500</h3>
+          <p class="ootm-empty">Loading…</p>
+        </div>
+      </div>
+      <div id="ootsHistory" style="margin-top:14px"><p class="ootm-empty">Loading…</p></div>
+    </div>
     <div class="panel">
-      <h2>Award history</h2>
+      <h2>Monthly award history</h2>
       <div id="ootmHistory"><p class="ootm-empty">Loading…</p></div>
     </div>
   </div>
-  <script type="module" src="owner_of_the_month.js?v=20261022-ootm"></script>
+  <script type="module" src="owner_of_the_month.js?v=20261022-oots-prizes"></script>
 </body>
 </html>

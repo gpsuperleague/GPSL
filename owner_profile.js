@@ -219,6 +219,46 @@ function renderTrophies(rows) {
   </ul>`;
 }
 
+function monthNice(m) {
+  if (!m) return "";
+  return String(m).charAt(0).toUpperCase() + String(m).slice(1);
+}
+
+function renderAchievements(rows) {
+  const el = document.getElementById("achievementsPanel");
+  if (!el) return;
+  if (!rows?.length) {
+    el.innerHTML =
+      '<p class="empty">No Owner of the Month / Season awards yet.</p>';
+    return;
+  }
+  el.innerHTML = `<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+    ${rows
+      .map((a) => {
+        const d = a.detail || {};
+        let extra = "";
+        if (a.achievement_type === "owner_of_the_season") {
+          extra = ` · Expected ${d.expected_position ?? "—"} → ${d.actual_position ?? "—"} (${d.position_overachievement ?? 0} places)`;
+        } else if (a.gpsl_month) {
+          extra = ` · ${monthNice(a.gpsl_month)}`;
+          if (d.record) extra += ` · ${d.record}`;
+        }
+        const prize =
+          a.prize_amount != null
+            ? ` · ₿${Number(a.prize_amount).toLocaleString("en-GB")}`
+            : "";
+        return `<li class="highlight">
+      <b>${escapeHtml(a.label || a.achievement_type)}</b>
+      <div class="note">${escapeHtml(a.season_label || "")}${escapeHtml(extra)} · ${clubLink(
+          a.club_short_name,
+          a.club_name
+        )}${escapeHtml(prize)}</div>
+    </li>`;
+      })
+      .join("")}
+  </ul>`;
+}
+
 function awardLabel(type) {
   return (
     {
@@ -353,6 +393,7 @@ async function loadProfile(ownerId) {
   renderTransfers(data.transfers, data.highest_fee_paid, data.highest_fee_received);
   renderSeasons(data.seasons || []);
   renderTrophies(data.trophies || []);
+  renderAchievements(data.achievements || []);
   renderAwards(data.awards || []);
 
   document.getElementById("badgeSaveBtn").onclick = () => uploadBadge(ownerId);
