@@ -659,6 +659,13 @@ export const ADMIN_MAIN_NAV = [
     entries: [
       group("August", [
         L(
+          "Open bookies markets",
+          "bookies.html",
+          null,
+          null,
+          "After GPSL August unlocks: admin Open markets on Bookies. Uses final June/July friendlies; board odds then track league/cup/stats as the season runs."
+        ),
+        L(
           "Special Auction",
           "admin_special-auctions.html",
           null,

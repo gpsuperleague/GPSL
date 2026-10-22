@@ -318,7 +318,7 @@ async function renderBookiesReminder() {
   } else if (!data.open) {
     el.innerHTML =
       `🎰 <b>The GPSL Bookies opens in GPSL August</b>${when ? ` (${escapeHtml(when)} UK)` : ""}. ` +
-      `Odds use pooled June + July friendlies (both months). Playing friendlies still helps, but non-players get a low fixed score, full credit needs 4+ games, and friendlies cannot dominate the prices alone.`;
+      `Opening prices use June/July friendlies; once league and cups are underway the board tracks the table, cup progress and scoring charts. Early bets keep the odds you took.`;
   } else {
     el.innerHTML = `🎰 <b>The GPSL Bookies opens shortly</b> — markets are being set up for GPSL August.`;
   }

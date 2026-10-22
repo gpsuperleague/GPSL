@@ -572,10 +572,27 @@ async function placeBet(selectionId) {
 }
 
 async function openMarkets(refresh) {
-  setStatus(refresh ? "Refreshing odds…" : "Opening markets…");
+  if (refresh) {
+    setStatus("Refreshing board odds from table / cup / stats…");
+    const { data, error } = await supabase.rpc("admin_bookies_recompute_all_odds", {
+      p_season_id: null,
+    });
+    if (error) {
+      setStatus(error.message, false);
+      return;
+    }
+    setStatus(
+      `Board odds updated — ${data?.markets_repriced ?? 0} markets (placed bets keep their slip odds).`,
+      true
+    );
+    await refreshAll();
+    return;
+  }
+
+  setStatus("Opening markets…");
   const { data, error } = await supabase.rpc("admin_bookies_open_markets", {
     p_season_id: null,
-    p_refresh: Boolean(refresh),
+    p_refresh: false,
   });
   if (error) {
     setStatus(error.message, false);
