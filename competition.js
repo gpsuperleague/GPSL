@@ -1130,9 +1130,33 @@ export function canSimulateMatchResult(
  * @param {{ calendar_configured?: boolean, active_gpsl_month?: string|null }|null} [calendarStatus]
  * @param {{ holidays?: object[], calendarMonths?: object[] }|null} [holidayContext]
  */
+/** True when results may be filed for this fixture’s GPSL month / later catch-up months. */
+export function isFixtureResultMonthOpen(fixture, calendarStatus = null) {
+  if (!fixture) return false;
+  if (!calendarStatus?.calendar_configured) return true;
+
+  const active = calendarStatus.active_gpsl_month;
+  if (!active) return false;
+
+  const fixMonth = String(fixture.gpsl_month || "").toLowerCase();
+  const activeMonth = String(active).toLowerCase();
+  if (fixMonth && fixMonth === activeMonth) return true;
+
+  // Later active months while still unplayed (catch-up through subsequent locks)
+  const playSort = gpslMonthSortIndex(fixture.gpsl_month);
+  const activeSort = gpslMonthSortIndex(active);
+  if (playSort != null && activeSort != null && activeSort > playSort) return true;
+
+  // Catch-up / holiday flags from the fixtures view
+  if (fixture.is_catch_up === true || fixture.is_holiday_early === true) return true;
+
+  return false;
+}
+
 /**
  * Human reason a result cannot be submitted (or null if it can).
- * Keep in sync with canSubmitResult.
+ * Keep in sync with canSubmitResult + match_schedule_assert_ready_to_play.
+ * Both checked in → submit immediately (no KO wait / no 30-min block).
  */
 export function whyCantSubmitResult(
   fixture,
@@ -1164,14 +1188,23 @@ export function whyCantSubmitResult(
     return "Kick-off is not agreed yet — finish arranging the match first.";
   }
 
-  const bothCheckedIn =
-    sched === "agreed" &&
-    !!fixture.home_checked_in &&
-    !!fixture.away_checked_in;
+  if (sched === "agreed" && !fixture.agreed_kickoff_at) {
+    return "Agreed kick-off time is missing — re-arrange the match.";
+  }
 
-  // Month gate — but if both clubs already checked in, let them finish the match
+  if (!fixture.home_checked_in || !fixture.away_checked_in) {
+    const missing = [
+      !fixture.home_checked_in ? "home" : null,
+      !fixture.away_checked_in ? "away" : null,
+    ]
+      .filter(Boolean)
+      .join(" and ");
+    return `Both clubs must check in before submitting (missing: ${missing}).`;
+  }
+
+  // Month open / later catch-up months (holiday early still via isFixtureMonthPlayable)
   if (
-    !bothCheckedIn &&
+    !isFixtureResultMonthOpen(fixture, calendarStatus) &&
     !isFixtureMonthPlayable(
       fixture,
       clubIdentity,
@@ -1182,30 +1215,8 @@ export function whyCantSubmitResult(
     const month = fixture.gpsl_month || "its";
     const active = calendarStatus?.active_gpsl_month;
     return active
-      ? `This fixture’s GPSL month (${month}) is not open yet (current month: ${active}).`
-      : `This fixture’s GPSL month (${month}) is not open for results yet.`;
-  }
-
-  if (sched === "agreed") {
-    const kickoff = fixture.agreed_kickoff_at
-      ? new Date(fixture.agreed_kickoff_at).getTime()
-      : NaN;
-    const now = Date.now();
-    if (!Number.isFinite(kickoff)) {
-      return "Agreed kick-off time is missing — re-arrange the match.";
-    }
-    if (now < kickoff) {
-      return "Result submit opens at the agreed kick-off (after both clubs check in).";
-    }
-    if (!fixture.home_checked_in || !fixture.away_checked_in) {
-      const missing = [
-        !fixture.home_checked_in ? "home" : null,
-        !fixture.away_checked_in ? "away" : null,
-      ]
-        .filter(Boolean)
-        .join(" and ");
-      return `Both clubs must check in before submitting (missing: ${missing}).`;
-    }
+      ? `Result entry opens again when a GPSL month is active (fixture month: ${month}; current: ${active}).`
+      : `Result entry is closed until a GPSL month is open (fixture month: ${month}).`;
   }
 
   return null;

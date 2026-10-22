@@ -12,13 +12,15 @@ import {
   loadPendingSubmission,
   canSubmitResult,
   whyCantSubmitResult,
+  isFixtureResultMonthOpen,
+  isFixtureMonthPlayable,
   canSimulateMatchResult,
   needsInboxConfirm,
   normalizeClubKey,
   LEAGUE_DIVISIONS,
   deferredResultNote,
   leagueBadgeHtml,
-} from "./competition.js?v=20261023-submit-checked-in";
+} from "./competition.js?v=20261023-submit-checkin-month";
 import {
   loadCalendarStatus,
   calendarStatusBanner,
@@ -1882,11 +1884,11 @@ async function loadUpcomingFixtures() {
       if (f.submission_status === "pending") return true;
       if (f.status !== "scheduled") return false;
       if (canSubmitResult(f, myClub, calendarStatus, holidayContext)) return true;
-      // Keep Play-now / just-checked-in matches visible (explain why submit waits)
+      // Keep agreed matches visible when the month window allows (show why submit waits)
+      if (f.schedule_status !== "agreed") return false;
       return (
-        f.schedule_status === "agreed" &&
-        !!f.home_checked_in &&
-        !!f.away_checked_in
+        isFixtureResultMonthOpen(f, calendarStatus) ||
+        isFixtureMonthPlayable(f, myClub, calendarStatus, holidayContext)
       );
     })
     .sort((a, b) => {
