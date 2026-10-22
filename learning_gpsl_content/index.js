@@ -11,6 +11,7 @@ import {
   SECTION_EXPECTATIONS,
 } from "./club_pages.js?v=20261018-syntax";
 import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261014-half-windows";
+import { SECTION_MEDICAL } from "./medical.js?v=20261022-handbook";
 import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js";
 import {
   SECTION_MATCHDAY_CHECKLIST,
@@ -43,6 +44,7 @@ export const LEARNING_GPSL_SECTIONS = [
   SECTION_EXPECTATIONS,
   SECTION_SQUAD,
   SECTION_MANAGERS,
+  SECTION_MEDICAL,
   SECTION_TRANSFERS,
   SECTION_AUCTIONS,
   SECTION_MATCHDAY_CHECKLIST,
