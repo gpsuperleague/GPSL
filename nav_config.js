@@ -150,8 +150,18 @@ export const NAV_SECTIONS = [
     items: [
       { href: "national_team.html", label: "National team", page: "national_team" },
       { href: "international_matchday.html", label: "Intl matchday", page: "international_matchday" },
-      { href: "nation_select.html", label: "Nation selection", page: "nation_select" },
-      { href: "nation_player_pool.html", label: "Nation player pool", page: "nation_player_pool" },
+      {
+        href: "nation_select.html",
+        label: "Nation selection",
+        page: "nation_select",
+        navIcon: "nation_select",
+      },
+      {
+        href: "nation_player_pool.html",
+        label: "Nation player pool",
+        page: "nation_player_pool",
+        navIcon: "nation_player_pool",
+      },
     ],
   },
   {

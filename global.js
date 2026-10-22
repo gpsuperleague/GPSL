@@ -1665,6 +1665,14 @@ const NAV_MENU_ICON_FILES = {
   matchday: { src: "images/nav/matchday.svg", title: "Match Day" },
   fixtures: { src: "images/nav/fixtures.svg", title: "Fixtures" },
   friendlies: { src: "images/nav/friendlies.svg", title: "Friendlies" },
+  nation_select: {
+    src: "images/nav/nation_select.svg",
+    title: "Nation selection",
+  },
+  nation_player_pool: {
+    src: "images/nav/nation_player_pool.svg",
+    title: "Nation player pool",
+  },
   transfer_center: {
     src: "images/nav/transfer_center.svg",
     title: "Transfer Centre",
@@ -1742,6 +1750,46 @@ function navLinkLeadingHtml(item) {
         `<rect x="2.7" y="2.7" width="14.6" height="14.6" rx="2.4" fill="#a82828"/>` +
         `<rect x="8.5" y="4.6" width="3" height="10.8" rx="0.7" fill="#f5f5f5"/>` +
         `<rect x="4.6" y="8.5" width="10.8" height="3" rx="0.7" fill="#f5f5f5"/>`
+    );
+  }
+  if (item?.navIcon === "friendlies") {
+    return navInlineIconHtml(
+      "Friendlies",
+      `<rect x="1.6" y="4" width="16.8" height="12" rx="2" fill="#2a6b45"/>` +
+        `<rect x="2.5" y="4.9" width="15" height="10.2" rx="1.2" fill="none" stroke="#a8d4b5" stroke-width="0.75"/>` +
+        `<line x1="10" y1="4.9" x2="10" y2="15.1" stroke="#a8d4b5" stroke-width="0.65" stroke-dasharray="1.4 1.1"/>` +
+        `<circle cx="10" cy="10" r="2.2" fill="none" stroke="#a8d4b5" stroke-width="0.65" stroke-dasharray="1.2 1"/>` +
+        `<circle cx="14.4" cy="13.6" r="3.5" fill="#1a1a1a"/>` +
+        `<circle cx="14.4" cy="13.6" r="3.1" fill="#f5f5f5"/>` +
+        `<path d="M14.4 10.7c.65.55 1.1 1.35 1.3 2.3h-2.6c.2-.95.65-1.75 1.3-2.3zm-2.7 2.9c.15 1 .7 1.85 1.5 2.4-.85-.2-1.55-.75-2-1.5.2-.3.35-.6.5-.9zm3.9 0c.15.3.3.6.5.9-.45.75-1.15 1.3-2 1.5.8-.55 1.35-1.4 1.5-2.4zm-3.3-2.25c-.55.4-1 1.05-1.2 1.8h1.45c0-.65.25-1.2.65-1.7-.3 0-.6-.05-.9-.1zm2.7 0c-.3.05-.6.1-.9.1.4.5.65 1.05.65 1.7h1.45c-.2-.75-.65-1.4-1.2-1.8z" fill="#2c3e50"/>` +
+        `<path d="M4.2 8.2 C5.1 7.1 6.6 7.1 7.5 8.2" stroke="#f0c14b" stroke-width="1.15" stroke-linecap="round" fill="none"/>` +
+        `<path d="M4.2 8.2 C4.5 9.6 5.2 10.4 5.85 10.4 C6.5 10.4 7.2 9.6 7.5 8.2" stroke="#f0c14b" stroke-width="1.15" stroke-linecap="round" fill="none"/>`
+    );
+  }
+  if (item?.navIcon === "nation_select") {
+    return navInlineIconHtml(
+      "Nation selection",
+      `<circle cx="9.2" cy="10" r="7.2" fill="#1e3a5f"/>` +
+        `<circle cx="9.2" cy="10" r="7.2" fill="none" stroke="#4a7fb0" stroke-width="0.7"/>` +
+        `<ellipse cx="9.2" cy="10" rx="3.2" ry="7.2" fill="none" stroke="#6a9ad0" stroke-width="0.65"/>` +
+        `<path d="M2.2 10 H16.2" stroke="#6a9ad0" stroke-width="0.65"/>` +
+        `<path d="M3.4 6.4 H15" stroke="#4a7fb0" stroke-width="0.55"/>` +
+        `<path d="M3.4 13.6 H15" stroke="#4a7fb0" stroke-width="0.55"/>` +
+        `<path d="M13.2 3.2 L13.2 11.2" stroke="#2c3e50" stroke-width="1.15" stroke-linecap="round"/>` +
+        `<path d="M13.2 3.2 H18 L16.9 5.1 L18 7 H13.2 Z" fill="#c0392b"/>`
+    );
+  }
+  if (item?.navIcon === "nation_player_pool") {
+    return navInlineIconHtml(
+      "Nation player pool",
+      `<circle cx="5.2" cy="6.2" r="2.1" fill="#d0d7e2"/>` +
+        `<path d="M1.8 12.2 C1.8 9.9 3.3 8.4 5.2 8.4 C7.1 8.4 8.6 9.9 8.6 12.2 Z" fill="#2e5a8f"/>` +
+        `<circle cx="10.4" cy="5.6" r="2.35" fill="#e8eef4"/>` +
+        `<path d="M6.6 12.6 C6.6 10 8.3 8.2 10.4 8.2 C12.5 8.2 14.2 10 14.2 12.6 Z" fill="#1e3a5f"/>` +
+        `<circle cx="15.4" cy="6.2" r="2.1" fill="#d0d7e2"/>` +
+        `<path d="M12 12.2 C12 9.9 13.5 8.4 15.4 8.4 C17.3 8.4 18.8 9.9 18.8 12.2 Z" fill="#2e5a8f"/>` +
+        `<rect x="8.6" y="13.6" width="1.15" height="4.2" rx="0.35" fill="#2c3e50"/>` +
+        `<path d="M9.75 13.7 H14.4 L13.5 15.15 L14.4 16.6 H9.75 Z" fill="#c0392b"/>`
     );
   }
   if (item?.navIcon === "rewards") {

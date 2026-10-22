@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+  <!-- Choose nation: globe + flag pin -->
+  <circle cx="9.2" cy="10" r="7.2" fill="#1e3a5f"/>
+  <circle cx="9.2" cy="10" r="7.2" fill="none" stroke="#4a7fb0" stroke-width="0.7"/>
+  <ellipse cx="9.2" cy="10" rx="3.2" ry="7.2" fill="none" stroke="#6a9ad0" stroke-width="0.65"/>
+  <path d="M2.2 10 H16.2" stroke="#6a9ad0" stroke-width="0.65"/>
+  <path d="M3.4 6.4 H15" stroke="#4a7fb0" stroke-width="0.55"/>
+  <path d="M3.4 13.6 H15" stroke="#4a7fb0" stroke-width="0.55"/>
+  <path d="M13.2 3.2 L13.2 11.2" stroke="#2c3e50" stroke-width="1.15" stroke-linecap="round"/>
+  <path d="M13.2 3.2 H18 L16.9 5.1 L18 7 H13.2 Z" fill="#c0392b"/>
+</svg>
