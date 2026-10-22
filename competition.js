@@ -1130,15 +1130,27 @@ export function canSimulateMatchResult(
  * @param {{ calendar_configured?: boolean, active_gpsl_month?: string|null }|null} [calendarStatus]
  * @param {{ holidays?: object[], calendarMonths?: object[] }|null} [holidayContext]
  */
-export function canSubmitResult(
+/**
+ * Human reason a result cannot be submitted (or null if it can).
+ * Keep in sync with canSubmitResult.
+ */
+export function whyCantSubmitResult(
   fixture,
   clubIdentity,
   calendarStatus = null,
   holidayContext = null
 ) {
-  if (!fixture || !clubIdentity) return false;
-  if (!fixtureInvolvesClub(fixture, clubIdentity)) return false;
-  if (fixture.status !== "scheduled" || fixture.submission_id) return false;
+  if (!fixture) return "Select a fixture first.";
+  if (!clubIdentity) return "No club linked to this account.";
+  if (!fixtureInvolvesClub(fixture, clubIdentity)) {
+    return "That fixture is not one of yours.";
+  }
+  if (fixture.status !== "scheduled") {
+    return "This fixture is not open for a new result.";
+  }
+  if (fixture.submission_id) {
+    return "A result is already pending for this fixture — confirm or wait for your opponent.";
+  }
 
   if (
     !isFixtureMonthPlayable(
@@ -1148,36 +1160,64 @@ export function canSubmitResult(
       holidayContext
     )
   ) {
-    return false;
+    const month = fixture.gpsl_month || "its";
+    const active = calendarStatus?.active_gpsl_month;
+    return active
+      ? `This fixture’s GPSL month (${month}) is not open yet (current month: ${active}).`
+      : `This fixture’s GPSL month (${month}) is not open for results yet.`;
   }
 
-  // Both clubs GPSL match system OFF — black box: no KO/check-in gate
   if (fixture.manual_black_box === true) {
-    return true;
+    return null;
   }
 
-  if (
-    fixture.schedule_status != null &&
-    fixture.schedule_status !== "agreed"
-  ) {
-    return false;
+  const sched = fixture.schedule_status;
+  if (sched != null && sched !== "agreed") {
+    if (sched === "unscheduled" || !sched) {
+      return "Agree a kick-off time before submitting the result.";
+    }
+    return "Kick-off is not agreed yet — finish arranging the match first.";
   }
 
-  if (fixture.schedule_status === "agreed") {
+  if (sched === "agreed") {
     const kickoff = fixture.agreed_kickoff_at
       ? new Date(fixture.agreed_kickoff_at).getTime()
       : NaN;
     const now = Date.now();
-    const blockEnd = kickoff + 30 * 60 * 1000;
-    if (!Number.isFinite(kickoff) || now < kickoff || now >= blockEnd) {
-      return false;
+    if (!Number.isFinite(kickoff)) {
+      return "Agreed kick-off time is missing — re-arrange the match.";
+    }
+    if (now < kickoff) {
+      return "Result submit opens at the agreed kick-off (after both clubs check in).";
     }
     if (!fixture.home_checked_in || !fixture.away_checked_in) {
-      return false;
+      const missing = [
+        !fixture.home_checked_in ? "home" : null,
+        !fixture.away_checked_in ? "away" : null,
+      ]
+        .filter(Boolean)
+        .join(" and ");
+      return `Both clubs must check in before submitting (missing: ${missing}).`;
     }
   }
 
-  return true;
+  return null;
+}
+
+export function canSubmitResult(
+  fixture,
+  clubIdentity,
+  calendarStatus = null,
+  holidayContext = null
+) {
+  return (
+    whyCantSubmitResult(
+      fixture,
+      clubIdentity,
+      calendarStatus,
+      holidayContext
+    ) == null
+  );
 }
 
 function rangesOverlap(aStart, aEnd, bStart, bEnd) {

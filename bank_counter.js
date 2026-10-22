@@ -467,7 +467,18 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
     const rateBit = credit.post_risk_premium
       ? ` at ${rate.toFixed(2)}% p.a. (post-risk premium)`
       : ` at ${rate.toFixed(2)}% p.a.`;
-    showLoanCreditCheckFlash("Credit check clear — processing drawdown…");
+    showLoanCreditCheckFlash("Credit check clear.");
+    if (
+      !confirm(
+        `Take a loan of ${formatMoney(amt)}${rateBit}?\n\nRepay over ${months} GPSL months (interest on top of principal).`
+      )
+    ) {
+      hideLoanCreditPanels();
+      if (takeBtn) takeBtn.disabled = false;
+      showCounterMsg("loanTakeMsg", "Loan cancelled.", true);
+      return;
+    }
+    showLoanCreditCheckFlash("Processing drawdown…");
     const res = await takeClubLoan(supabase, amt);
     hideLoanCreditPanels();
     if (takeBtn) takeBtn.disabled = false;

@@ -11,6 +11,7 @@ import {
   rejectFixtureResult,
   loadPendingSubmission,
   canSubmitResult,
+  whyCantSubmitResult,
   canSimulateMatchResult,
   needsInboxConfirm,
   normalizeClubKey,
@@ -1802,16 +1803,18 @@ async function updateFixturePreview() {
       deferred || "Result confirmed."
     );
   } else {
+    const why =
+      whyCantSubmitResult(f, myClub, calendarStatus, holidayContext) ||
+      "This fixture cannot accept a new result.";
     const canSim =
       matchSimStatus.enabled &&
       canSimulateMatchResult(f, myClub, calendarStatus, holidayContext);
     setStatus(
       "submitStatus",
       canSim
-        ? "Use Instant result or Simulate match (test mode), or arrange kick-off / wait for the play month."
-        : matchSimStatus.enabled && f.status === "scheduled"
-          ? "Propose / arrange kick-off anytime. Instant result & Simulate match unlock when this fixture’s GPSL month is active."
-          : "This fixture cannot accept a new result."
+        ? `${why} You can still use Instant result or Simulate match (test mode) when the month is open.`
+        : why,
+      true
     );
   }
 }
@@ -1974,8 +1977,14 @@ async function submitResult() {
   }
 
   const f = selectedFixture();
-  if (!f || !canSubmitResult(f, myClub, calendarStatus, holidayContext)) {
-    setStatus("submitStatus", "Select a fixture you can submit.", true);
+  const blocked = whyCantSubmitResult(
+    f,
+    myClub,
+    calendarStatus,
+    holidayContext
+  );
+  if (blocked) {
+    setStatus("submitStatus", blocked, true);
     return;
   }
 
