@@ -1998,6 +1998,159 @@ const NAV_INLINE_ICONS = {
       `<path d="M7.6 11 C7.6 9.4 8.6 8.6 10 8.6 C11.4 8.6 12.4 9.4 12.4 11" fill="#d0d7e2"/>` +
       `<rect x="8.2" y="14.2" width="3.6" height="1.6" rx="0.35" fill="#1a252f"/>`,
   },
+  natter: {
+    title: "Natter",
+    svg:
+      `<path d="M2.4 3.6 H12.4 C13.6 3.6 14.6 4.6 14.6 5.8 V10.4 C14.6 11.6 13.6 12.6 12.4 12.6 H8.2 L5.2 15.2 V12.6 H3.6 C2.4 12.6 1.4 11.6 1.4 10.4 V5.8 C1.4 4.6 2.4 3.6 3.6 3.6 Z" fill="#2e5a8f"/>` +
+      `<path d="M7.2 7.2 H15.2 C16.2 7.2 17 8 17 9 V12.6 C17 13.6 16.2 14.4 15.2 14.4 H14.2 V16.6 L11.6 14.4 H8.4 C7.4 14.4 6.6 13.6 6.6 12.6 V9 C6.6 8 7.4 7.2 8.4 7.2 Z" fill="#f0c14b"/>` +
+      `<circle cx="9.6" cy="10.6" r="0.7" fill="#1e3a5f"/>` +
+      `<circle cx="12" cy="10.6" r="0.7" fill="#1e3a5f"/>` +
+      `<circle cx="14.4" cy="10.6" r="0.7" fill="#1e3a5f"/>`,
+  },
+  feedback_survey: {
+    title: "Feedback survey",
+    svg:
+      `<rect x="3.2" y="2.2" width="13.6" height="15.6" rx="1.4" fill="#2e5a8f"/>` +
+      `<rect x="4.4" y="3.4" width="11.2" height="13.2" rx="0.8" fill="#e8eef4"/>` +
+      `<path d="M6.2 7.2 L7.6 8.6 L10.8 5.2" stroke="#27ae60" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<rect x="6" y="10.2" width="8" height="1.15" rx="0.35" fill="#8aa4c4"/>` +
+      `<rect x="6" y="12.8" width="5.6" height="1.15" rx="0.35" fill="#8aa4c4"/>` +
+      `<path d="M14.6 14.2 L15.1 15.4 H16.4 L15.35 16.15 L15.75 17.4 L14.6 16.7 L13.45 17.4 L13.85 16.15 L12.8 15.4 H14.1 Z" fill="#f0c14b"/>`,
+  },
+  bookies: {
+    title: "Bookies",
+    svg:
+      `<rect x="2.2" y="4.2" width="7.2" height="7.2" rx="1.2" fill="#1e3a5f"/>` +
+      `<circle cx="4.2" cy="6.2" r="0.85" fill="#f5f5f5"/>` +
+      `<circle cx="7.4" cy="6.2" r="0.85" fill="#f5f5f5"/>` +
+      `<circle cx="5.8" cy="7.8" r="0.85" fill="#f5f5f5"/>` +
+      `<circle cx="4.2" cy="9.4" r="0.85" fill="#f5f5f5"/>` +
+      `<circle cx="7.4" cy="9.4" r="0.85" fill="#f5f5f5"/>` +
+      `<rect x="10.6" y="6.4" width="7.2" height="7.2" rx="1.2" fill="#8b1a1a"/>` +
+      `<circle cx="14.2" cy="10" r="1.7" fill="#f5f5f5"/>` +
+      `<ellipse cx="10" cy="16.2" rx="6.4" ry="1.5" fill="#f0c14b"/>` +
+      `<ellipse cx="10" cy="15.4" rx="6.4" ry="1.5" fill="#daa520"/>`,
+  },
+  owners_shop: {
+    title: "Owners Shop",
+    svg:
+      `<path d="M5.2 7.2 H14.8 L13.6 16.4 H6.4 Z" fill="#2e5a8f"/>` +
+      `<path d="M5.2 7.2 H14.8 L14.2 9.2 H5.8 Z" fill="#1e3a5f"/>` +
+      `<path d="M7.2 7.2 V5.6 C7.2 4.1 8.4 3 10 3 C11.6 3 12.8 4.1 12.8 5.6 V7.2" stroke="#f0c14b" stroke-width="1.35" stroke-linecap="round" fill="none"/>` +
+      `<circle cx="8.2" cy="12.4" r="1.1" fill="#f0c14b"/>` +
+      `<circle cx="11.8" cy="12.4" r="1.1" fill="#f0c14b"/>`,
+  },
+  challenges: {
+    title: "Season Challenges",
+    svg:
+      `<path d="M2.5 16.8 L10 4.2 L17.5 16.8 Z" fill="#3d566e"/>` +
+      `<path d="M6.2 16.8 L10 8.6 L13.8 16.8 Z" fill="#5a738c"/>` +
+      `<path d="M8.6 11.2 L10 8.6 L11.4 11.2 Z" fill="#e8eef4"/>` +
+      `<rect x="9.5" y="3.2" width="1" height="5.2" fill="#2c3e50"/>` +
+      `<path d="M10.5 3.4 H15.2 L14.2 5.2 L15.2 7 H10.5 Z" fill="#c0392b"/>`,
+  },
+  fantasy: {
+    title: "GP Fantasy League",
+    svg:
+      `<rect x="1.8" y="3.6" width="16.4" height="12.8" rx="2" fill="#1e3a5f"/>` +
+      `<rect x="2.8" y="4.6" width="14.4" height="10.8" rx="1.2" fill="#2a6b45"/>` +
+      `<line x1="10" y1="4.6" x2="10" y2="15.4" stroke="#a8d4b5" stroke-width="0.7"/>` +
+      `<circle cx="10" cy="10" r="2.4" fill="none" stroke="#a8d4b5" stroke-width="0.7"/>` +
+      `<circle cx="6.4" cy="8.2" r="1.15" fill="#f0c14b"/>` +
+      `<circle cx="13.6" cy="8.2" r="1.15" fill="#f5f5f5"/>` +
+      `<circle cx="7.6" cy="12.4" r="1.15" fill="#f5f5f5"/>` +
+      `<circle cx="12.4" cy="12.4" r="1.15" fill="#f0c14b"/>` +
+      `<path d="M4.2 16.8 H15.8" stroke="#f0c14b" stroke-width="1.2" stroke-linecap="round"/>`,
+  },
+  game_380: {
+    title: "38-0-0",
+    svg:
+      `<rect x="1.6" y="3.2" width="16.8" height="13.6" rx="1.6" fill="#1a1a1a"/>` +
+      `<rect x="2.6" y="4.2" width="14.8" height="11.6" rx="1" fill="#0d2818"/>` +
+      `<text x="10" y="12.2" text-anchor="middle" fill="#7dcea0" font-size="6.2" font-family="Arial,sans-serif" font-weight="700">38-0</text>`,
+  },
+  season_calendar: {
+    title: "Season Calendar",
+    svg:
+      `<rect x="2.4" y="3.8" width="15.2" height="13.4" rx="1.4" fill="#2e5a8f"/>` +
+      `<rect x="2.4" y="3.8" width="15.2" height="3.4" rx="1.4" fill="#1e3a5f"/>` +
+      `<rect x="5" y="2.4" width="1.4" height="3.2" rx="0.4" fill="#d0d7e2"/>` +
+      `<rect x="13.6" y="2.4" width="1.4" height="3.2" rx="0.4" fill="#d0d7e2"/>` +
+      `<rect x="4.4" y="9" width="2.2" height="2" rx="0.35" fill="#f0c14b"/>` +
+      `<rect x="7.6" y="9" width="2.2" height="2" rx="0.35" fill="#7eb0e0"/>` +
+      `<rect x="10.8" y="9" width="2.2" height="2" rx="0.35" fill="#7eb0e0"/>` +
+      `<rect x="14" y="9" width="2.2" height="2" rx="0.35" fill="#7eb0e0"/>` +
+      `<rect x="4.4" y="12.2" width="2.2" height="2" rx="0.35" fill="#7eb0e0"/>` +
+      `<rect x="7.6" y="12.2" width="2.2" height="2" rx="0.35" fill="#c0392b"/>` +
+      `<rect x="10.8" y="12.2" width="2.2" height="2" rx="0.35" fill="#7eb0e0"/>`,
+  },
+  season_review: {
+    title: "Season Review",
+    svg:
+      `<rect x="2.2" y="3" width="10.4" height="14" rx="1.2" fill="#2e5a8f"/>` +
+      `<rect x="3.4" y="4.2" width="8" height="11.6" rx="0.7" fill="#e8eef4"/>` +
+      `<rect x="4.4" y="5.8" width="6" height="1.1" rx="0.3" fill="#8aa4c4"/>` +
+      `<rect x="4.4" y="8" width="4.8" height="1.1" rx="0.3" fill="#8aa4c4"/>` +
+      `<rect x="4.4" y="10.2" width="5.4" height="1.1" rx="0.3" fill="#8aa4c4"/>` +
+      `<path d="M13.2 8.2 L15.6 11.8 L18.2 5.6" stroke="#27ae60" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<circle cx="15.2" cy="15.6" r="2.4" fill="#f0c14b"/>` +
+      `<path d="M15.2 14.2 V15.6 L16.3 16.4" stroke="#1e3a5f" stroke-width="1" stroke-linecap="round" fill="none"/>`,
+  },
+  owner_rankings: {
+    title: "Rankings",
+    svg:
+      `<rect x="2.4" y="10.4" width="4" height="7" rx="0.6" fill="#8aa4c4"/>` +
+      `<rect x="8" y="5.6" width="4" height="11.8" rx="0.6" fill="#f0c14b"/>` +
+      `<rect x="13.6" y="8.2" width="4" height="9.2" rx="0.6" fill="#c0a060"/>` +
+      `<path d="M10 2.2 L10.7 4 H12.6 L11.1 5.2 L11.7 7 L10 6 L8.3 7 L8.9 5.2 L7.4 4 H9.3 Z" fill="#f5f5f5"/>`,
+  },
+  owner_last_login: {
+    title: "Last Login",
+    svg:
+      `<circle cx="10" cy="10" r="7.4" fill="#1e3a5f"/>` +
+      `<circle cx="10" cy="10" r="6.4" fill="#2e5a8f"/>` +
+      `<circle cx="10" cy="10" r="5.2" fill="#1a252f"/>` +
+      `<path d="M10 5.4 V10.2 L13.4 12.2" stroke="#f0c14b" stroke-width="1.35" stroke-linecap="round" fill="none"/>` +
+      `<circle cx="10" cy="10" r="1" fill="#f5f5f5"/>`,
+  },
+  waiting_list: {
+    title: "Waiting List",
+    svg:
+      `<circle cx="6.2" cy="5.6" r="2" fill="#d0d7e2"/>` +
+      `<path d="M2.8 11.4 C2.8 9.2 4.2 7.8 6.2 7.8 C8.2 7.8 9.6 9.2 9.6 11.4 Z" fill="#2e5a8f"/>` +
+      `<circle cx="13.8" cy="5.6" r="2" fill="#d0d7e2"/>` +
+      `<path d="M10.4 11.4 C10.4 9.2 11.8 7.8 13.8 7.8 C15.8 7.8 17.2 9.2 17.2 11.4 Z" fill="#2e5a8f"/>` +
+      `<rect x="3.2" y="13.2" width="13.6" height="1.3" rx="0.4" fill="#f0c14b"/>` +
+      `<rect x="4.4" y="15.4" width="11.2" height="1.3" rx="0.4" fill="#8aa4c4"/>`,
+  },
+  owner_holidays: {
+    title: "Owner Holidays",
+    svg:
+      `<circle cx="10" cy="10" r="7.6" fill="#f0c14b"/>` +
+      `<circle cx="10" cy="10" r="6.4" fill="#f5d76e"/>` +
+      `<path d="M10 4.2 C12.8 6.4 14.2 8.8 14.2 11.2 C14.2 13.6 12.4 15.4 10 15.4 C7.6 15.4 5.8 13.6 5.8 11.2 C5.8 8.8 7.2 6.4 10 4.2 Z" fill="#27ae60"/>` +
+      `<path d="M10 6.8 C11.4 8.2 12.2 9.6 12.2 11 C12.2 12.4 11.2 13.4 10 13.4 C8.8 13.4 7.8 12.4 7.8 11 C7.8 9.6 8.6 8.2 10 6.8 Z" fill="#1f6b3a"/>` +
+      `<rect x="9.4" y="13.2" width="1.2" height="3.4" rx="0.35" fill="#8a6a3a"/>`,
+  },
+  match_system: {
+    title: "Match System",
+    svg:
+      `<rect x="2" y="4" width="16" height="12" rx="2" fill="#2c3e50"/>` +
+      `<rect x="3.2" y="5.2" width="13.6" height="9.6" rx="1.2" fill="#1a252f"/>` +
+      `<circle cx="7.2" cy="10" r="2.6" fill="#27ae60"/>` +
+      `<path d="M6.1 10 L6.9 10.8 L8.5 9" stroke="#f5f5f5" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>` +
+      `<rect x="11.2" y="7.6" width="4.2" height="1.3" rx="0.35" fill="#8aa4c4"/>` +
+      `<rect x="11.2" y="10" width="3.2" height="1.3" rx="0.35" fill="#8aa4c4"/>` +
+      `<rect x="11.2" y="12.4" width="3.8" height="1.3" rx="0.35" fill="#8aa4c4"/>`,
+  },
+  owner_profile: {
+    title: "My Profile",
+    svg:
+      `<circle cx="10" cy="6.4" r="3.2" fill="#d0d7e2"/>` +
+      `<path d="M3.6 17.2 C3.6 12.8 6.4 10.4 10 10.4 C13.6 10.4 16.4 12.8 16.4 17.2 Z" fill="#2e5a8f"/>` +
+      `<path d="M13.6 4.4 H17.2 L16.2 5.8 L17.2 7.2 H13.6 Z" fill="#f0c14b"/>` +
+      `<rect x="13.1" y="4.2" width="1" height="4.6" rx="0.3" fill="#2c3e50"/>`,
+  },
 };
 
 function navLinkLeadingHtml(item) {
