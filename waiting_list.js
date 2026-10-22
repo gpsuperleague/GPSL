@@ -329,7 +329,12 @@ export async function initWaitingListPage() {
 
     if (onBoardIntro) {
       onBoardIntro.textContent =
-        "Owners invited to the current season and waiting to accept or decline. Priority (S1#) first; mass invites after.";
+        "Members invited to the current season and waiting to accept or decline. Priority (S1#) first; mass invites after.";
+    }
+    const confirmedIntro = document.getElementById("wlSeason1ConfirmedIntro");
+    if (confirmedIntro) {
+      confirmedIntro.textContent =
+        "Club owners in the current season (archived accounts are excluded).";
     }
     if (season1ConfirmedCount) {
       season1ConfirmedCount.textContent = `(${confirmedTotal})`;
@@ -346,9 +351,7 @@ export async function initWaitingListPage() {
         season1ConfirmedBody.innerHTML =
           '<tr><td colspan="4" style="color:#666">No one confirmed for the current season yet.</td></tr>';
       } else {
-        renderTagRows(season1ConfirmedBody, season1Confirmed, highlightSeason1, {
-          sectioned: true,
-        });
+        renderTagRows(season1ConfirmedBody, season1Confirmed, highlightSeason1);
       }
     }
 

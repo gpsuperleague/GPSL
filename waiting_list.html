@@ -101,7 +101,7 @@
     <div class="wl-panels">
       <div class="wl-card wl-panel">
         <h2>Confirmed for current season <span class="wl-count" id="wlSeason1ConfirmedCount"></span></h2>
-        <p id="wlSeason1ConfirmedIntro">Owners confirmed for the current season — club owners first, then invite acceptors still waiting for a club (priority / accept order).</p>
+        <p id="wlSeason1ConfirmedIntro">Club owners in the current season (archived accounts are excluded).</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
@@ -111,7 +111,7 @@
       </div>
       <div class="wl-card wl-panel">
         <h2>Invited <span class="wl-count" id="wlOnBoardCount"></span></h2>
-        <p id="wlOnBoardIntro">Owners invited to Season 1 and waiting to accept or decline. Priority (S1#) first; mass invites after.</p>
+        <p id="wlOnBoardIntro">Members invited to the current season and waiting to accept or decline. Priority (S1#) first; mass invites after.</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
@@ -120,8 +120,8 @@
         </table>
       </div>
       <div class="wl-card wl-panel">
-        <h2>Owner waiting list <span class="wl-count" id="wlWaitingCount"></span></h2>
-        <p>Members still waiting for a club (not confirmed for the current season and not holding a live invite). Archived owners excluded; declined invites sink to the bottom.</p>
+        <h2>Waiting list <span class="wl-count" id="wlWaitingCount"></span></h2>
+        <p>Members without a club who are not archived and not holding a live invite. Declined invites sink to the bottom.</p>
         <table class="wl-table">
           <thead>
             <tr><th>#</th><th>Tag</th><th>Country</th><th>UK +/-</th></tr>
@@ -141,7 +141,7 @@
     </p>
   </div>
   <script type="module">
-    import { initWaitingListPage } from "./waiting_list.js?v=20261022-current-season";
+    import { initWaitingListPage } from "./waiting_list.js?v=20261022-current-season3";
     initWaitingListPage();
   </script>
 </body>

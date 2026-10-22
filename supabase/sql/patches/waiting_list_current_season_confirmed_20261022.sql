@@ -1,12 +1,12 @@
 -- =============================================================================
--- Waiting list: Confirmed for current season (not Season 1-only branding)
+-- Waiting list panels (corrected)
 --
--- Confirmed panel = owners in the current season:
---   • currently own a club, OR
---   • accepted their season invite (season1_invite_response = 'accepted')
---
--- Waiting list = members still waiting only (excludes confirmed + live invited).
--- Club owners no longer appear on the waiting list board.
+-- Confirmed for current season = club owners only (Clubs.owner_id set),
+--   excluding archived registry accounts.
+-- Invited                 = live season invite awaiting accept/decline.
+-- Waiting list            = non-owners on the registry who are not archived
+--   and not holding a live invite.
+-- Archived accounts never appear on this page.
 --
 -- Safe re-run. Replaces waiting_list_public().
 -- =============================================================================
@@ -26,38 +26,50 @@ DECLARE
   v_on_board jsonb;
   v_on_board_total int;
   v_self_on_board_pos int;
-  v_s1_confirmed jsonb;
-  v_s1_confirmed_total int;
-  v_self_s1_confirmed_pos int;
+  v_confirmed jsonb;
+  v_confirmed_total int;
+  v_self_confirmed_pos int;
   v_use_admin boolean;
   v_debug jsonb;
 BEGIN
   v_on_board_mode := 'invited';
 
   SELECT jsonb_build_object(
-    'registry_non_archived', count(*) FILTER (WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'),
-    'registry_accepted', count(*) FILTER (WHERE r.season1_invite_response = 'accepted'),
+    'registry_non_archived', count(*) FILTER (
+      WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
+    ),
+    'registry_archived', count(*) FILTER (
+      WHERE coalesce(r.status, '') = 'archived'
+    ),
+    'club_owners', (
+      SELECT count(DISTINCT c.owner_id)
+      FROM public."Clubs" c
+      WHERE c.owner_id IS NOT NULL
+    ),
+    'club_owners_non_archived', (
+      SELECT count(DISTINCT c.owner_id)
+      FROM public."Clubs" c
+      LEFT JOIN public.gpsl_owner_registry r ON r.owner_id = c.owner_id
+      WHERE c.owner_id IS NOT NULL
+        AND coalesce(r.status, '') IS DISTINCT FROM 'archived'
+    ),
     'registry_offered_live', count(*) FILTER (
       WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
         AND coalesce(r.season1_invite_status, '') = 'offered'
         AND r.season1_invite_response IS NULL
         AND (r.season1_invite_deadline_at IS NULL OR r.season1_invite_deadline_at > now())
-    ),
-    'club_owners', (
-      SELECT count(DISTINCT c.owner_id) FROM public."Clubs" c WHERE c.owner_id IS NOT NULL
     )
   )
   INTO v_debug
   FROM public.gpsl_owner_registry r;
 
-  -- Admin sort applies only to true waiting-list candidates (not confirmed / invited).
+  -- Admin sort only among true waiting-list candidates
   SELECT coalesce(bool_and(
     r.waiting_list_use_admin_sort AND r.waiting_list_admin_sort IS NOT NULL
   ), false)
   INTO v_use_admin
   FROM public.gpsl_owner_registry r
   WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
-    AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
     AND NOT EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
     AND NOT (
       r.season1_invite_status = 'offered'
@@ -68,7 +80,7 @@ BEGIN
       )
     );
 
-  -- Middle: season invites awaiting reply
+  -- Middle: live invites awaiting reply (never archived)
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -114,6 +126,8 @@ BEGIN
         r.season1_invite_deadline_at IS NULL
         OR r.season1_invite_deadline_at > now()
       )
+      -- If they already own a club, they belong in Confirmed, not Invited
+      AND NOT EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
   ),
   invited_ranked AS (
     SELECT
@@ -146,7 +160,7 @@ BEGIN
   INTO v_on_board, v_on_board_total, v_self_on_board_pos
   FROM invited_ranked;
 
-  -- Left: confirmed for current season (club owners + accepted invite)
+  -- Left: confirmed = current club owners (not archived)
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -163,59 +177,43 @@ BEGIN
     WHERE nullif(btrim(coalesce(e.timezone_name, '')), '') IS NOT NULL
     ORDER BY e.owner_id, e.logged_in_at DESC, e.id DESC
   ),
-  confirmed_ids AS (
-    SELECT r.owner_id
-    FROM public.gpsl_owner_registry r
-    WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
-      AND r.season1_invite_response = 'accepted'
-    UNION
-    SELECT c.owner_id
-    FROM public."Clubs" c
-    WHERE c.owner_id IS NOT NULL
-  ),
   confirmed AS (
-    SELECT
-      ids.owner_id,
-      coalesce(nullif(btrim(public.owner_registry_resolve_tag(ids.owner_id)), ''), '—') AS owner_tag,
+    SELECT DISTINCT ON (c.owner_id)
+      c.owner_id,
+      coalesce(nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), ''), '—') AS owner_tag,
       r.season1_invite_queue_num AS queue_num,
       r.season1_invite_responded_at AS responded_at,
-      EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = ids.owner_id) AS has_club,
-      CASE
-        WHEN EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = ids.owner_id)
-          THEN 'club_owner'::text
-        ELSE 'confirmed'::text
-      END AS list_kind,
+      true AS has_club,
+      'club_owner'::text AS list_kind,
       lc.country_code,
       lt.timezone_name AS origin_timezone,
       coalesce(
         nullif(btrim(coalesce(r.owner_timezone, '')), ''),
-        (
-          SELECT nullif(btrim(coalesce(c.owner_timezone, '')), '')
-          FROM public."Clubs" c
-          WHERE c.owner_id = ids.owner_id
-          ORDER BY c."ShortName"
-          LIMIT 1
-        )
-      ) AS owner_timezone
-    FROM confirmed_ids ids
-    LEFT JOIN public.gpsl_owner_registry r ON r.owner_id = ids.owner_id
-    LEFT JOIN latest_country lc ON lc.owner_id = ids.owner_id
-    LEFT JOIN latest_timezone lt ON lt.owner_id = ids.owner_id
-    WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
-       OR r.owner_id IS NULL
+        nullif(btrim(coalesce(c.owner_timezone, '')), '')
+      ) AS owner_timezone,
+      (
+        SELECT min(c2."ShortName")
+        FROM public."Clubs" c2
+        WHERE c2.owner_id = c.owner_id
+      ) AS club_sort
+    FROM public."Clubs" c
+    LEFT JOIN public.gpsl_owner_registry r ON r.owner_id = c.owner_id
+    LEFT JOIN latest_country lc ON lc.owner_id = c.owner_id
+    LEFT JOIN latest_timezone lt ON lt.owner_id = c.owner_id
+    WHERE c.owner_id IS NOT NULL
+      AND coalesce(r.status, '') IS DISTINCT FROM 'archived'
+    ORDER BY c.owner_id, c."ShortName"
   ),
   confirmed_ranked AS (
     SELECT
-      c.*,
+      conf.*,
       row_number() OVER (
         ORDER BY
-          CASE WHEN c.has_club THEN 0 ELSE 1 END,
-          c.queue_num NULLS LAST,
-          c.responded_at NULLS LAST,
-          c.owner_tag,
-          c.owner_id
+          conf.club_sort NULLS LAST,
+          conf.owner_tag,
+          conf.owner_id
       )::int AS position
-    FROM confirmed c
+    FROM confirmed conf
   )
   SELECT
     coalesce(jsonb_agg(
@@ -234,10 +232,10 @@ BEGIN
     ), '[]'::jsonb),
     count(*)::int,
     max(CASE WHEN confirmed_ranked.owner_id = auth.uid() THEN confirmed_ranked.position END)
-  INTO v_s1_confirmed, v_s1_confirmed_total, v_self_s1_confirmed_pos
+  INTO v_confirmed, v_confirmed_total, v_self_confirmed_pos
   FROM confirmed_ranked;
 
-  -- Right: waiting list only (not confirmed, not live invited, not archived)
+  -- Right: waiting list = non-owners, not archived, not live invited
   WITH latest_country AS (
     SELECT DISTINCT ON (e.owner_id)
       e.owner_id,
@@ -270,25 +268,15 @@ BEGIN
       'waiting'::text AS list_kind,
       lc.country_code,
       lt.timezone_name AS origin_timezone,
-      coalesce(
-        nullif(btrim(coalesce(r.owner_timezone, '')), ''),
-        (
-          SELECT nullif(btrim(coalesce(c.owner_timezone, '')), '')
-          FROM public."Clubs" c
-          WHERE c.owner_id = r.owner_id
-          ORDER BY c."ShortName"
-          LIMIT 1
-        )
-      ) AS owner_timezone,
+      nullif(btrim(coalesce(r.owner_timezone, '')), '') AS owner_timezone,
       (r.season1_invite_response = 'declined') AS season1_rejected
     FROM public.gpsl_owner_registry r
     LEFT JOIN latest_country lc ON lc.owner_id = r.owner_id
     LEFT JOIN latest_timezone lt ON lt.owner_id = r.owner_id
     WHERE coalesce(r.status, '') IS DISTINCT FROM 'archived'
-      -- Confirmed for current season → left panel only
-      AND coalesce(r.season1_invite_response, '') IS DISTINCT FROM 'accepted'
+      -- Not a club owner
       AND NOT EXISTS (SELECT 1 FROM public."Clubs" c WHERE c.owner_id = r.owner_id)
-      -- Live Invited → middle panel only
+      -- Not on the Invited panel
       AND NOT (
         coalesce(r.season1_invite_status, '') = 'offered'
         AND r.season1_invite_response IS NULL
@@ -340,13 +328,12 @@ BEGIN
     'on_board', coalesce(v_on_board, '[]'::jsonb),
     'on_board_total', coalesce(v_on_board_total, 0),
     'my_on_board_position', v_self_on_board_pos,
-    -- Legacy keys (kept for older clients) + clearer aliases
-    'season1_confirmed', coalesce(v_s1_confirmed, '[]'::jsonb),
-    'season1_confirmed_total', coalesce(v_s1_confirmed_total, 0),
-    'my_season1_confirmed_position', v_self_s1_confirmed_pos,
-    'current_season_confirmed', coalesce(v_s1_confirmed, '[]'::jsonb),
-    'current_season_confirmed_total', coalesce(v_s1_confirmed_total, 0),
-    'my_current_season_confirmed_position', v_self_s1_confirmed_pos,
+    'season1_confirmed', coalesce(v_confirmed, '[]'::jsonb),
+    'season1_confirmed_total', coalesce(v_confirmed_total, 0),
+    'my_season1_confirmed_position', v_self_confirmed_pos,
+    'current_season_confirmed', coalesce(v_confirmed, '[]'::jsonb),
+    'current_season_confirmed_total', coalesce(v_confirmed_total, 0),
+    'my_current_season_confirmed_position', v_self_confirmed_pos,
     'debug', v_debug
   );
 END;
