@@ -111,6 +111,31 @@
     .tz-compare-now { color:#8ab; font-size:12px; margin-top:3px; }
     .tz-compare-note { color:#8899aa; font-size:12px; line-height:1.4; margin:8px 0 0; }
     .tz-compare-note b { color:#cde; }
+    .schedule-manual-note {
+      background:#101c28; border:1px solid #2a4a6a; border-radius:6px;
+      padding:10px 12px; color:#cfe3ff; font-size:13px; line-height:1.45; margin:0 0 14px;
+    }
+    .schedule-manual-note a { color:#ff9900; }
+    .schedule-tabs {
+      display:flex; flex-wrap:wrap; gap:0; margin:0 0 14px;
+      border-bottom:1px solid #333;
+    }
+    .schedule-tab {
+      appearance:none; background:transparent; border:none;
+      border-bottom:2px solid transparent; margin-bottom:-1px;
+      padding:10px 14px; color:#aaa; font-size:13px; font-weight:700;
+      cursor:pointer; font-family:inherit;
+    }
+    .schedule-tab:hover { color:#eee; }
+    .schedule-tab.active {
+      color:#ff9900; border-bottom-color:#ff9900;
+    }
+    .schedule-tab-pane h2 { color:#ff9900; font-size:16px; margin:0 0 10px; }
+    .schedule-tab-pane.discord-pane h2 { color:#9cf; }
+    .schedule-tab-pane.discord-pane {
+      background:#151820; border:1px solid #446; border-radius:8px;
+      padding:14px 16px;
+    }
   </style>
 </head>
 <body>
@@ -120,11 +145,11 @@
     <h1>Schedule match</h1>
     <p id="scheduleMeta" class="meta">Loading…</p>
     <div id="discordHint" class="discord-hint" hidden>
-      Agreed a time on <b>Discord</b><span id="discordOpponentTag"></span>? Use <b>We agreed on Discord — lock this kick-off</b> below so both clubs confirm on the site. Reply and arrangement deadlines keep running until it is locked. You can still propose or counter here as usual.
+      Agreed a time on <b>Discord</b><span id="discordOpponentTag"></span>? Open the <b>Agreed on Discord scheduling</b> tab below so both clubs confirm on the site. Reply and arrangement deadlines keep running until it is locked. Use <b>GPSL Match Scheduling</b> to propose or counter as usual.
     </div>
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261022-mutual-decline"></script>
+  <script type="module" src="fixture_schedule.js?v=20261022-schedule-tabs"></script>
 </body>
 </html>

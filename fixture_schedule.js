@@ -262,18 +262,44 @@ function wireMutualPendingButtons() {
   }
 }
 
-/** Discord → site lock CTA when kick-off is not yet agreed. */
-function discordLockPanelHtml() {
+/** Discord → site lock body (embedded in Agreed on Discord tab). */
+function discordLockPanelBodyHtml() {
   return `
-    <div class="panel mutual-panel" id="discordLockPanel">
-      <h2>We agreed on Discord — lock this kick-off</h2>
-      <p class="meta">Pick the time you already agreed, then send it for your opponent to confirm. Reply and arrangement clocks keep running until both lock.</p>
+    <div id="discordLockPanel">
+      <h2>Agreed on Discord scheduling</h2>
+      <p class="meta">Use this only when you already agreed a time on Discord. Pick that time, then send it for your opponent to confirm on the site. Reply and arrangement clocks keep running until both lock.</p>
       <div class="slot-list" id="discordLockSlotList"></div>
       <div class="actions">
         <button type="button" id="discordLockBtn" class="button" disabled>Lock this kick-off (both confirm)</button>
       </div>
     </div>
   `;
+}
+
+function wireScheduleModeTabs(defaultTab = "gpsl") {
+  const tabs = Array.from(document.querySelectorAll(".schedule-tab"));
+  const panes = {
+    gpsl: document.getElementById("tabGpsl"),
+    discord: document.getElementById("tabDiscord"),
+  };
+  if (!tabs.length || !panes.gpsl || !panes.discord) return;
+
+  const activate = (key) => {
+    tabs.forEach((tab) => {
+      const on = tab.dataset.tab === key;
+      tab.classList.toggle("active", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    Object.entries(panes).forEach(([k, pane]) => {
+      if (!pane) return;
+      pane.hidden = k !== key;
+    });
+  };
+
+  tabs.forEach((tab) => {
+    tab.onclick = () => activate(tab.dataset.tab || "gpsl");
+  });
+  activate(defaultTab === "discord" ? "discord" : "gpsl");
 }
 
 function wireDiscordLockPanel(slots, homeTz, awayTz, ownerTz) {
@@ -899,14 +925,77 @@ function render() {
     : "";
 
   const mo = ctx.mutual_override;
-  const discordLockHtml =
-    ctx.my_has_manager === false || mo
-      ? ""
-      : discordLockPanelHtml();
+  const showDiscordTab = ctx.my_has_manager !== false && !mo;
   const mutualPendingHtml =
     mo && ctx.my_has_manager !== false
       ? mutualPendingPanelHtml(mo, homeTz, awayTz)
       : "";
+
+  const gpslSlotsHeading = isAwayWaiting
+    ? "Your availability (for reference)"
+    : usingCompatibleSlots
+      ? "Kick-off times both clubs can play"
+      : "Available slots";
+
+  const gpslSlotBody = `
+      <h2>${showDiscordTab ? "GPSL Match Scheduling" : gpslSlotsHeading}</h2>
+      ${
+        showDiscordTab
+          ? `<p class="meta">${
+              isAwayWaiting
+                ? "Normal GPSL flow — home proposes from times free for both clubs; you can accept or counter later."
+                : usingCompatibleSlots
+                  ? "Normal GPSL flow — pick a kick-off free for both clubs (each owner’s availability in their timezone), then propose or counter."
+                  : "Normal GPSL flow — pick a 30-minute block from available times, then propose."
+            }</p>`
+          : ""
+      }
+      <p class="meta">${slotIntro}</p>
+      ${emptySlotsMsg}
+      <div class="slot-list" id="slotList"></div>
+      ${
+        canPick && selectableSlots.length
+          ? `<div class="actions">
+              <button type="button" id="proposeBtn" class="button" disabled>${proposeLabel}</button>
+            </div>`
+          : waitingForHomeHtml
+      }
+  `;
+
+  const manualNoteHtml = `
+    <p class="schedule-manual-note">
+      <b>Manual arrange</b> (fully off-site, no propose/reply clocks) is only available when
+      <b>both</b> owners have <b>GPSL match system OFF</b> on
+      <a href="owner_details.html">Owner Details</a>.
+      ${
+        showDiscordTab
+          ? "If either club is ON, use the tabs below — GPSL Match Scheduling or Agreed on Discord scheduling."
+          : "If either club is ON, schedule on this page as usual (GPSL propose/reply)."
+      }
+    </p>
+  `;
+
+  const schedulingTabsHtml =
+    ctx.my_has_manager === false
+      ? ""
+      : showDiscordTab
+        ? `<div class="panel schedule-mode-panel">
+      ${manualNoteHtml}
+      <div class="schedule-tabs" role="tablist" aria-label="Scheduling mode">
+        <button type="button" class="schedule-tab active" data-tab="gpsl" role="tab" aria-selected="true" aria-controls="tabGpsl" id="tabBtnGpsl">GPSL Match Scheduling</button>
+        <button type="button" class="schedule-tab" data-tab="discord" role="tab" aria-selected="false" aria-controls="tabDiscord" id="tabBtnDiscord">Agreed on Discord scheduling</button>
+      </div>
+      <div class="schedule-tab-pane" id="tabGpsl" role="tabpanel" aria-labelledby="tabBtnGpsl">
+        ${gpslSlotBody}
+      </div>
+      <div class="schedule-tab-pane discord-pane" id="tabDiscord" role="tabpanel" aria-labelledby="tabBtnDiscord" hidden>
+        ${discordLockPanelBodyHtml()}
+      </div>
+    </div>`
+        : `<div class="panel">
+      ${manualNoteHtml}
+      ${gpslSlotBody}
+    </div>`;
 
   root.innerHTML = `
     ${catchUpBannerHtml()}
@@ -918,8 +1007,6 @@ function render() {
       ${responseHtml}
       ${deadlineBoxHtml(f)}
       ${unavailablePanelHtml(f)}
-      <p class="meta">${slotIntro}</p>
-      ${emptySlotsMsg}
       ${
         ctx.my_has_manager !== false &&
         (ctx.allowances?.can_replay_reset || ctx.allowances?.can_catch_up_reset)
@@ -934,32 +1021,12 @@ function render() {
       }
     </div>
     ${mutualPendingHtml}
-    ${discordLockHtml}
     ${ctx.my_has_manager === false ? "" : pendingHtml}
-    ${
-      ctx.my_has_manager === false
-        ? ""
-        : `<div class="panel">
-      <h2>${
-        isAwayWaiting
-          ? "Your availability (for reference)"
-          : usingCompatibleSlots
-            ? "Kick-off times both clubs can play"
-            : "Available slots"
-      }</h2>
-      <div class="slot-list" id="slotList"></div>
-      ${
-        canPick && selectableSlots.length
-          ? `<div class="actions">
-              <button type="button" id="proposeBtn" class="button" disabled>${proposeLabel}</button>
-            </div>`
-          : waitingForHomeHtml
-      }
-    </div>`
-    }
+    ${schedulingTabsHtml}
   `;
 
-  if (discordLockHtml) {
+  if (showDiscordTab) {
+    wireScheduleModeTabs("gpsl");
     wireDiscordLockPanel(slots, homeTz, awayTz, ownerTz);
   }
   if (mutualPendingHtml) {
