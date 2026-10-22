@@ -213,6 +213,7 @@ DECLARE
   v_bench_required int;
   v_issues text[] := ARRAY[]::text[];
   v_unavailable text[] := ARRAY[]::text[];
+  v_age numeric;
   r record;
 BEGIN
   IF v_club IS NULL OR v_club = '' THEN
@@ -236,7 +237,7 @@ BEGIN
       sp.player_id,
       sp.slot_kind,
       p."Name" AS player_name,
-      p."Age" AS age,
+      p."Age"::text AS age_text,
       upper(btrim(coalesce(p."Position", ''))) AS pos,
       coalesce(public.is_player_homegrown(sp.player_id, v_club), false) AS is_hg,
       CASE
@@ -261,7 +262,13 @@ BEGIN
     IF r.pos IN ('GK', 'GOALKEEPER') THEN
       v_gk := v_gk + 1;
     END IF;
-    IF r.age IS NOT NULL AND r.age <= 21 THEN
+    -- Players."Age" is text — never compare with <= integer directly
+    BEGIN
+      v_age := public.player_age_numeric(r.age_text);
+    EXCEPTION WHEN others THEN
+      v_age := NULL;
+    END;
+    IF v_age IS NOT NULL AND v_age <= 21 THEN
       v_u21 := v_u21 + 1;
     END IF;
     IF r.is_hg THEN

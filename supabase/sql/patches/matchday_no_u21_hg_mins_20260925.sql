@@ -259,7 +259,10 @@ BEGIN
     IF r.pos IN ('GK', 'GOALKEEPER') THEN
       v_gk := v_gk + 1;
     END IF;
-    IF r.age IS NOT NULL AND r.age <= 21 THEN
+    -- Players."Age" is text — cast before compare
+    IF r.age IS NOT NULL
+       AND public.player_age_numeric(r.age::text) IS NOT NULL
+       AND public.player_age_numeric(r.age::text) <= 21 THEN
       v_u21 := v_u21 + 1;
     END IF;
     IF r.is_hg THEN
