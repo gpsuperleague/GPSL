@@ -18,7 +18,7 @@ import {
   LEAGUE_DIVISIONS,
   deferredResultNote,
   leagueBadgeHtml,
-} from "./competition.js?v=20261022-submit-window";
+} from "./competition.js?v=20261023-submit-checked-in";
 import {
   loadCalendarStatus,
   calendarStatusBanner,
@@ -1881,7 +1881,13 @@ async function loadUpcomingFixtures() {
       if (!fixtureInvolvesClub(f, myClub)) return false;
       if (f.submission_status === "pending") return true;
       if (f.status !== "scheduled") return false;
-      return canSubmitResult(f, myClub, calendarStatus, holidayContext);
+      if (canSubmitResult(f, myClub, calendarStatus, holidayContext)) return true;
+      // Keep Play-now / just-checked-in matches visible (explain why submit waits)
+      return (
+        f.schedule_status === "agreed" &&
+        !!f.home_checked_in &&
+        !!f.away_checked_in
+      );
     })
     .sort((a, b) => {
       if (a.competition_type !== b.competition_type) {

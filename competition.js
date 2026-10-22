@@ -1152,7 +1152,26 @@ export function whyCantSubmitResult(
     return "A result is already pending for this fixture — confirm or wait for your opponent.";
   }
 
+  if (fixture.manual_black_box === true) {
+    return null;
+  }
+
+  const sched = fixture.schedule_status;
+  if (sched != null && sched !== "agreed") {
+    if (sched === "unscheduled" || !sched) {
+      return "Agree a kick-off time before submitting the result.";
+    }
+    return "Kick-off is not agreed yet — finish arranging the match first.";
+  }
+
+  const bothCheckedIn =
+    sched === "agreed" &&
+    !!fixture.home_checked_in &&
+    !!fixture.away_checked_in;
+
+  // Month gate — but if both clubs already checked in, let them finish the match
   if (
+    !bothCheckedIn &&
     !isFixtureMonthPlayable(
       fixture,
       clubIdentity,
@@ -1165,18 +1184,6 @@ export function whyCantSubmitResult(
     return active
       ? `This fixture’s GPSL month (${month}) is not open yet (current month: ${active}).`
       : `This fixture’s GPSL month (${month}) is not open for results yet.`;
-  }
-
-  if (fixture.manual_black_box === true) {
-    return null;
-  }
-
-  const sched = fixture.schedule_status;
-  if (sched != null && sched !== "agreed") {
-    if (sched === "unscheduled" || !sched) {
-      return "Agree a kick-off time before submitting the result.";
-    }
-    return "Kick-off is not agreed yet — finish arranging the match first.";
   }
 
   if (sched === "agreed") {
