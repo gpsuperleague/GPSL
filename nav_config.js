@@ -196,6 +196,12 @@ export const NAV_SECTIONS = [
         navIcon: "stats",
       },
       {
+        href: "owner_of_the_month.html",
+        label: "Owner of the Month",
+        page: "owner_of_the_month",
+        navIcon: "owner_of_the_month",
+      },
+      {
         href: "league_injuries.html",
         label: "Injuries",
         page: "league_injuries",

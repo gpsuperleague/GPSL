@@ -10,7 +10,7 @@ import {
   isEmailHidden,
   setEmailHidden,
   loadClubWire,
-} from "./global.js?v=20261022-central-bank-nav";
+} from "./global.js?v=20261022-ootm";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
 import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js";

@@ -18,6 +18,7 @@ const TILE_IMAGE_BY_ID = {
   history: `${PANEL_BG}/History.png`,
   progress: `${PANEL_BG}/Progress.png`,
   league_stats: `${PANEL_BG}/Progress.png`,
+  owner_of_the_month: `${PANEL_BG}/Progress.png`,
   central_bank: `${PANEL_BG}/Central_Bank.png`,
   central_bank_loans: `${PANEL_BG}/Central_Bank.png`,
   central_bank_counter: `${PANEL_BG}/Central_Bank.png`,
@@ -154,6 +155,9 @@ export const DASHBOARD_PANELS = [
   p("history", "Club History", "history.html", { defaultOn: true }),
   p("progress", "Competition Progress", "progress.html", { defaultOn: true }),
   p("league_stats", "League Stats", "league_stats.html", { defaultOn: true }),
+  p("owner_of_the_month", "Owner of the Month", "owner_of_the_month.html", {
+    defaultOn: true,
+  }),
   p("league_injuries", "League Injuries", "league_injuries.html", { defaultOn: true }),
   p("cups", "Cups", "cups.html", { defaultOn: true }),
   p("world_cup", "World Cup", "world_cup.html", { defaultOn: true }),

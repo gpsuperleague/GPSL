@@ -1,0 +1,88 @@
+<script>window.CURRENT_PAGE = "owner_of_the_month";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Owner of the Month — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:960px; margin:20px auto 40px; }
+    h1 { color:#ff9900; margin:0 0 8px; font-size:22px; }
+    .meta { color:#aaa; font-size:13px; line-height:1.45; margin-bottom:16px; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:16px 18px; margin-bottom:16px;
+    }
+    .panel h2 { color:#ff9900; font-size:16px; margin:0 0 10px; }
+    .month-tabs {
+      display:flex; flex-wrap:wrap; gap:8px; margin:0 0 14px;
+    }
+    .month-tab {
+      padding:6px 12px; background:#222; border:1px solid #444; border-radius:6px;
+      color:#aaa; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;
+    }
+    .month-tab:hover { background:#2a2a2a; color:#ddd; }
+    .month-tab.active { background:#332200; border-color:#ff9900; color:#ff9900; }
+    .ootm-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:14px;
+    }
+    @media (max-width:700px) {
+      .ootm-grid { grid-template-columns:1fr; }
+    }
+    .ootm-card {
+      background:#121820; border:1px solid #2a3a4a; border-radius:8px;
+      padding:14px 16px;
+    }
+    .ootm-card.champ { border-color:#3a4a2a; background:#141a12; }
+    .ootm-card h3 {
+      margin:0 0 8px; font-size:13px; font-weight:700; letter-spacing:0.03em;
+      text-transform:uppercase; color:#9cf;
+    }
+    .ootm-card.champ h3 { color:#9c8; }
+    .ootm-tag { font-size:18px; font-weight:700; color:#eee; margin:0 0 4px; }
+    .ootm-club { color:#ffcc66; font-size:14px; margin:0 0 8px; }
+    .ootm-record { color:#aaa; font-size:13px; line-height:1.4; }
+    .ootm-empty { color:#777; font-size:13px; font-style:italic; }
+    .history-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .history-table th, .history-table td {
+      text-align:left; padding:8px 6px; border-bottom:1px solid #2a2a2a;
+    }
+    .history-table th { color:#888; font-size:11px; text-transform:uppercase; }
+    .history-table .scope-sl { color:#9cf; }
+    .history-table .scope-ch { color:#9c8; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>Owner of the Month</h1>
+    <p class="meta">
+      Best league record in each GPSL month — awarded separately for
+      <b>Super League</b> and <b>Championship</b> (A &amp; B combined) when the month locks.
+      Tie-break: goal difference, then goals scored.
+    </p>
+    <div class="panel">
+      <h2>Latest awards</h2>
+      <div class="month-tabs" id="ootmMonthTabs" role="tablist" aria-label="GPSL month"></div>
+      <div class="ootm-grid">
+        <div class="ootm-card" id="ootmSuperCard">
+          <h3>Super League</h3>
+          <p class="ootm-empty">Loading…</p>
+        </div>
+        <div class="ootm-card champ" id="ootmChampCard">
+          <h3>Championship</h3>
+          <p class="ootm-empty">Loading…</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Award history</h2>
+      <div id="ootmHistory"><p class="ootm-empty">Loading…</p></div>
+    </div>
+  </div>
+  <script type="module" src="owner_of_the_month.js?v=20261022-ootm"></script>
+</body>
+</html>

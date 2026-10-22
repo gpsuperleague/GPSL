@@ -1865,6 +1865,14 @@ const NAV_INLINE_ICONS = {
       `<circle cx="15.6" cy="6.8" r="2.4" fill="#f5f5f5"/>` +
       `<path d="M15.6 4.6c.45.35.75.9.9 1.5h-1.8c.15-.6.45-1.15.9-1.5z" fill="#2c3e50"/>`,
   },
+  owner_of_the_month: {
+    title: "Owner of the Month",
+    svg:
+      `<path d="M10 1.8 L11.4 6.2 H15.6 L12.2 8.8 L13.4 12.8 L10 10.4 L6.6 12.8 L7.8 8.8 L4.4 6.2 H8.6 Z" fill="#f0c14b"/>` +
+      `<circle cx="10" cy="15.4" r="2.5" fill="#2e5a8f"/>` +
+      `<path d="M6.6 18.4 C6.6 16.6 8.1 15.6 10 15.6 C11.9 15.6 13.4 16.6 13.4 18.4" fill="#1e3a5f"/>` +
+      `<rect x="3.2" y="17.2" width="13.6" height="1.4" rx="0.4" fill="#c0a060"/>`,
+  },
   manager_database: {
     title: "Manager Database",
     svg:
