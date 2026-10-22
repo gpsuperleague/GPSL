@@ -1677,6 +1677,11 @@ const NAV_MENU_ICON_FILES = {
     src: "images/nav/scouting_board.svg",
     title: "Scouting board",
   },
+  clubs: { src: "images/nav/clubs.svg", title: "Clubs" },
+  tables: { src: "images/nav/tables.svg", title: "Tables" },
+  playoffs: { src: "images/nav/playoffs.svg", title: "Playoffs" },
+  stats: { src: "images/nav/stats.svg", title: "Stats" },
+  injuries: { src: "images/nav/injuries.svg", title: "Injuries" },
 };
 
 function navLinkLeadingHtml(item) {
@@ -1701,7 +1706,7 @@ function navLinkLeadingHtml(item) {
   if (menuIcon) {
     return (
       `<span class="nav-menu-icon" title="${escapeNavAttr(menuIcon.title)}" aria-hidden="true">` +
-      `<img src="${escapeNavAttr(menuIcon.src)}?v=20261020-myclub2" alt="" width="18" height="18" loading="lazy" />` +
+      `<img src="${escapeNavAttr(menuIcon.src)}?v=20261022-league-nav" alt="" width="18" height="18" loading="lazy" />` +
       `</span>`
     );
   }

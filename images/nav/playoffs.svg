@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+  <!-- Knockout bracket -->
+  <rect x="1.8" y="2.6" width="5.2" height="3.2" rx="0.7" fill="#1e3a5f"/>
+  <rect x="1.8" y="7.4" width="5.2" height="3.2" rx="0.7" fill="#1e3a5f"/>
+  <rect x="1.8" y="12.2" width="5.2" height="3.2" rx="0.7" fill="#2e5a8f"/>
+  <rect x="13" y="5" width="5.2" height="3.2" rx="0.7" fill="#2e5a8f"/>
+  <rect x="13" y="11.8" width="5.2" height="3.2" rx="0.7" fill="#1e3a5f"/>
+  <path d="M7 4.2 H9.2 V8.2 H11.6" stroke="#8aa4c4" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M7 9 H9.2 V14 H11.6" stroke="#8aa4c4" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M11.6 8.2 H13" stroke="#f0c14b" stroke-width="1.15" stroke-linecap="round"/>
+  <path d="M11.6 14 H13" stroke="#8aa4c4" stroke-width="1.1" stroke-linecap="round"/>
+  <circle cx="10" cy="17.2" r="1.1" fill="#f0c14b"/>
+</svg>
