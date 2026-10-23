@@ -622,11 +622,14 @@ function applyPlayerStatsDraft(stats) {
     if (goals) goals.value = String(row.goals ?? 0);
     if (ogs) ogs.value = String(row.own_goals ?? 0);
     if (assists) assists.value = String(row.assists ?? 0);
-    if (rating && row.rating != null) rating.value = String(row.rating);
+    if (rating && row.rating != null) {
+      rating.value = normalizeRatingInput(String(row.rating)) || String(row.rating);
+    }
     if (potm && !potm.disabled) potm.checked = !!row.potm;
     if (yellow && !yellow.disabled) yellow.checked = !!row.yellow_card;
     if (red && !red.disabled) red.checked = !!row.red_card;
-    started?.dispatchEvent(new Event("change"));
+    // Fill blank ratings for appeared players; preserve draft values when set.
+    syncRatingForAppearance(tr);
     applied += 1;
   }
   updateLineupCounter();
@@ -929,7 +932,7 @@ function myTeamGoalsForFixture(fixture, homeGoals, awayGoals) {
   return home ? homeGoals : awayGoals;
 }
 
-const DEFAULT_MATCH_RATING = "3.0";
+const DEFAULT_MATCH_RATING = "6.0";
 const STAT_COUNT_MAX = 20;
 
 let statDatalistsReady = false;
@@ -939,8 +942,10 @@ function ensureStatDatalists() {
   const ratingList = document.getElementById("statRatingList");
   if (!ratingList) return;
 
-  for (let i = 1; i <= 100; i++) {
-    ratingList.appendChild(new Option((i / 10).toFixed(1), (i / 10).toFixed(1)));
+  // 0.0, 0.5, 1.0 … 10.0
+  for (let i = 0; i <= 20; i++) {
+    const v = (i / 2).toFixed(1);
+    ratingList.appendChild(new Option(v, v));
   }
   statDatalistsReady = true;
 }
@@ -1024,8 +1029,29 @@ function normalizeRatingInput(raw) {
   if (!s) return null;
   const n = Number(s);
   if (!Number.isFinite(n)) return null;
-  const clamped = Math.min(10, Math.max(0.1, Math.round(n * 10) / 10));
+  // Clamp 0–10 and snap to 0.5 steps
+  const clamped = Math.min(10, Math.max(0, Math.round(n * 2) / 2));
   return clamped.toFixed(1);
+}
+
+/**
+ * Keep rating in sync with Started / Subbed on.
+ * @param {{ forceDefault?: boolean }} [opts] forceDefault=true always sets 6.0 when appeared
+ *   (user tick). When false, only fill blank appeared rows (draft / default lineup).
+ */
+function syncRatingForAppearance(tr, { forceDefault = false } = {}) {
+  const rating = tr.querySelector(".stat-rating");
+  if (!rating || rating.disabled) return;
+  const appeared =
+    !!tr.querySelector(".stat-started")?.checked ||
+    !!tr.querySelector(".stat-subbed")?.checked;
+  if (!appeared) {
+    rating.value = "";
+    return;
+  }
+  if (forceDefault || !String(rating.value ?? "").trim()) {
+    rating.value = DEFAULT_MATCH_RATING;
+  }
 }
 
 /** Click/focus selects all text so a new value can be typed immediately. */
@@ -1057,7 +1083,7 @@ function wireSelectAllOnFocus(input) {
 
 function wireRatingInput(input) {
   if (!input) return;
-  // Rating is optional — leave blank; submit applies DEFAULT_MATCH_RATING for appeared players.
+  // Optional to edit; Started/Subbed defaults to 6.0; submit also fills blank appeared players.
   wireSelectAllOnFocus(input);
   input.addEventListener("blur", () => {
     const raw = String(input.value ?? "").trim();
@@ -1356,6 +1382,7 @@ function applyDefaultLineupFromSquad() {
     const isStarter = starters.includes(id);
     startCb.checked = isStarter;
     if (isStarter && subCb) subCb.checked = false;
+    syncRatingForAppearance(tr);
   }
   updateLineupCounter();
 }
@@ -1654,6 +1681,7 @@ function wirePlayedCheckboxes(tr) {
       const { started: n } = countLineupFromDom();
       if (n > MAX_STARTERS) started.checked = false;
     }
+    syncRatingForAppearance(tr, { forceDefault: true });
     updateLineupCounter();
   });
   subbed.addEventListener("change", () => {
@@ -1662,6 +1690,7 @@ function wirePlayedCheckboxes(tr) {
       const { subbed: n } = countLineupFromDom();
       if (n > MAX_SUBS) subbed.checked = false;
     }
+    syncRatingForAppearance(tr, { forceDefault: true });
     updateLineupCounter();
   });
 }
@@ -1680,7 +1709,7 @@ function collectPlayerStats() {
     const ratingRaw = tr.querySelector(".stat-rating")?.value;
     const ratingNorm = normalizeRatingInput(ratingRaw);
     let rating = ratingNorm ? Number(ratingNorm) : null;
-    // Starters / introduced subs without a rating get an automatic 3.0
+    // Starters / introduced subs without a rating get an automatic 6.0
     if (appeared && (rating == null || Number.isNaN(rating))) {
       rating = Number(DEFAULT_MATCH_RATING);
     }
@@ -1747,8 +1776,13 @@ function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats, cupExtr
   for (const row of playerStats) {
     teamGoals += row.goals || 0;
     if (row.potm) potmCount += 1;
-    if (row.rating != null && (row.rating < 0.1 || row.rating > 10)) {
-      return "Ratings must be between 0.1 and 10.";
+    if (row.rating != null) {
+      if (row.rating < 0 || row.rating > 10) {
+        return "Ratings must be between 0 and 10.";
+      }
+      if (Math.abs(row.rating * 2 - Math.round(row.rating * 2)) > 1e-9) {
+        return "Ratings must be in 0.5 steps (e.g. 6.0, 6.5, 7.0).";
+      }
     }
     if (row.started && row.subbed_on) {
       return "A player cannot be both started and subbed on.";

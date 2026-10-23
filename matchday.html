@@ -265,7 +265,7 @@
     </div>
 
     <div class="panel submit-panel-wrap hidden" id="submitPanel">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Required: exactly 11 Started, 0–5 Subbed on, goals and assists for those who played (G total ≤ team score; shortfall = opponent OGs). Rating and POTM optional — blank ratings on starters/subs become 3.0." tabindex="0">Submit result</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Required: exactly 11 Started, 0–5 Subbed on, goals and assists for those who played (G total ≤ team score; shortfall = opponent OGs). Rating and POTM optional — Started/Subbed defaults to 6.0 (0–10 in 0.5 steps)." tabindex="0">Submit result</h2>
       <div id="matchdayConsoleMount"></div>
       <div class="info-box" id="matchdayConsoleRules" style="margin:0 0 14px;max-width:none;padding:12px 14px;" aria-label="Match console rules"></div>
       <p class="meta" style="margin-top:0;">
@@ -347,7 +347,7 @@
         <p id="confirmStatsHint" class="stats-hint" style="display:none;color:#9c9;margin-bottom:8px;"></p>
         <p class="stats-hint" id="statsPanelHint">
           You must tick exactly <b>11 Started</b> (subs optional: 0–5 <b>Subbed on</b>) and enter <b>G</b> / <b>A</b> for those who played.
-          Rating and POTM are optional — blank ratings on starters / introduced subs become <b>3.0</b> automatically.
+          Rating and POTM are optional — Started / Subbed on defaults to <b>6.0</b> (0–10 in 0.5 steps).
           <b>G</b> = goals by your players. <b>OG−</b> = own goals by your players (against you).
           <b>OG+</b> (below) = opponent own goals that count for your scoreline.
           Your <b>G + OG+</b> must equal your team score. Not penalties. One POTM max.
@@ -373,7 +373,7 @@
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Goals scored by your player for your team. Do not include opponent own goals here — put those in OG+ above." tabindex="0">G</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Own goals against — by your player (counts for the opponent on the scoreboard, not your G total)." tabindex="0">OG−</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Assists by your player. Required with goals for players who appeared." tabindex="0">A</th>
-                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Optional. Leave blank for an automatic 3.0 on starters and introduced subs. Range 0.1–10 if entered." tabindex="0">Rating</th>
+                <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Defaults to 6.0 when Started or Subbed on. Range 0–10 in 0.5 steps (0, 0.5, 1.0 … 10.0)." tabindex="0">Rating</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Optional. At most one Player of the Match; must have started or been subbed on." tabindex="0">POTM</th>
                 <th colspan="2" class="stat-group-hdr">Cards</th>
               </tr>
@@ -420,6 +420,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20261023-result-draft"></script>
+  <script type="module" src="matchday.js?v=20261023-rating-half"></script>
 </body>
 </html>
