@@ -1534,8 +1534,15 @@ export function compareStandingsRows(a, b) {
 /**
  * Build home or away-only records from played league fixtures.
  * Keeps overall table_position for Status column; stats/form are venue-only.
+ * When calendarStatus is provided, skips fixtures that do not yet count in
+ * overall tables (early holiday results deferred until their GPSL month).
  */
-export function buildVenueStandings(baseRows, fixtures, venue) {
+export function buildVenueStandings(
+  baseRows,
+  fixtures,
+  venue,
+  calendarStatus = null
+) {
   const byKey = new Map();
   for (const row of baseRows || []) {
     byKey.set(`${row.division}:${row.club_short_name}`, {
@@ -1563,6 +1570,19 @@ export function buildVenueStandings(baseRows, fixtures, venue) {
     if (f.competition_type !== "league" || f.status !== "played") continue;
     const isVoid = isVoidFixture(f);
     if (!isVoid && (f.home_goals == null || f.away_goals == null)) continue;
+
+    // Same month-defer rule as the overall league table / season stats.
+    if (calendarStatus) {
+      if (isVoid) {
+        const active = calendarStatus.active_gpsl_month;
+        if (!active) continue;
+        const fSort = gpslMonthSortIndex(f.gpsl_month);
+        const aSort = gpslMonthSortIndex(active);
+        if (fSort != null && aSort != null && fSort > aSort) continue;
+      } else if (!fixtureCountsInTables(f, calendarStatus)) {
+        continue;
+      }
+    }
 
     const club = homeVenue ? f.home_club_short_name : f.away_club_short_name;
     const key = `${f.division}:${club}`;

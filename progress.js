@@ -24,7 +24,8 @@ import {
   formatMoney,
   divisionLabelWithBadgeHtml,
   normalizeClubKey,
-} from "./competition.js";
+} from "./competition.js?v=20261023-venue-defer";
+import { loadCalendarStatus } from "./competition_calendar.js";
 
 function seasonFromUrl() {
   return new URLSearchParams(window.location.search).get("season")?.trim() || "";
@@ -494,10 +495,10 @@ function wireDivisionFilter() {
   }
 }
 
-function buildVenueGroups(allStandings, fixtures) {
+function buildVenueGroups(allStandings, fixtures, calendarStatus = null) {
   for (const venue of ["home", "away"]) {
     const ranked = rankVenueStandings(
-      buildVenueStandings(allStandings, fixtures, venue)
+      buildVenueStandings(allStandings, fixtures, venue, calendarStatus)
     );
     venueStandingsGroups[venue] = groupStandingsByDivision(ranked);
   }
@@ -565,14 +566,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       : ""
   } · 3 pts win · 1 pt draw`;
 
-  const [standings, fixtures, playoffQualifiers] = await Promise.all([
-    loadStandingsWithPrizes(supabase),
-    loadLeagueFixtures(supabase),
-    loadShieldSpoonPlayoffQualifiers(supabase, season.id),
-  ]);
+  const [standings, fixtures, playoffQualifiers, calendarStatus] =
+    await Promise.all([
+      loadStandingsWithPrizes(supabase),
+      loadLeagueFixtures(supabase),
+      loadShieldSpoonPlayoffQualifiers(supabase, season.id),
+      loadCalendarStatus(supabase),
+    ]);
   shieldSpoonPlayoffQualifiers = playoffQualifiers;
   standingsGroups = groupStandingsByDivision(standings);
-  buildVenueGroups(standings, fixtures);
+  buildVenueGroups(standings, fixtures, calendarStatus);
 
   applyDivisionFilterFromUrl();
   wireDivisionFilter();
