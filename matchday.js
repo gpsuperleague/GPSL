@@ -94,6 +94,11 @@ let squadPanelApi = null;
 const MAX_STARTERS = 11;
 const MAX_SUBS = 5;
 
+/** localStorage key prefix for in-progress result entry (survives race / refresh). */
+const RESULT_DRAFT_PREFIX = "gpsl_matchday_result_draft_v1:";
+let resultDraftSaveTimer = null;
+let resultDraftRestoreNotice = null;
+
 /** Squad picker order on Match Day (GK → CF). */
 const MATCHDAY_POSITION_ORDER = [
   "GK",
@@ -495,6 +500,193 @@ function clearScoreFields() {
   const penRow = document.getElementById("cupPenRow");
   if (etRow) etRow.style.display = "none";
   if (penRow) penRow.style.display = "none";
+}
+
+function resultDraftStorageKey(fixtureId) {
+  const club = normalizeClubKey(myClub?.short || "");
+  if (!fixtureId || !club) return null;
+  return `${RESULT_DRAFT_PREFIX}${club}:${fixtureId}`;
+}
+
+function readResultDraft(fixtureId) {
+  const key = resultDraftStorageKey(fixtureId);
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft || typeof draft !== "object") return null;
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+function resultDraftHasContent(draft) {
+  if (!draft || typeof draft !== "object") return false;
+  if (draft.home_goals != null && String(draft.home_goals).trim() !== "") return true;
+  if (draft.away_goals != null && String(draft.away_goals).trim() !== "") return true;
+  if (draft.et_home_goals != null && String(draft.et_home_goals).trim() !== "") return true;
+  if (draft.et_away_goals != null && String(draft.et_away_goals).trim() !== "") return true;
+  if (draft.pen_winner) return true;
+  if (Number(draft.opponent_own_goals) > 0) return true;
+  if (draft.connection_stars != null && String(draft.connection_stars) !== "") return true;
+  const stats = Array.isArray(draft.player_stats) ? draft.player_stats : [];
+  return stats.some(
+    (r) =>
+      r?.started ||
+      r?.subbed_on ||
+      r?.appeared ||
+      (r?.goals || 0) > 0 ||
+      (r?.own_goals || 0) > 0 ||
+      (r?.assists || 0) > 0 ||
+      r?.potm ||
+      r?.yellow_card ||
+      r?.red_card ||
+      (r?.rating != null && String(r.rating) !== "")
+  );
+}
+
+function collectResultDraftPayload(fixtureId) {
+  const fId = fixtureId ?? selectedFixture()?.id;
+  if (!fId) return null;
+  const pen =
+    document.querySelector('input[name="penWinner"]:checked')?.value || null;
+  return {
+    fixture_id: Number(fId),
+    saved_at: new Date().toISOString(),
+    home_goals: document.getElementById("homeGoals")?.value ?? "",
+    away_goals: document.getElementById("awayGoals")?.value ?? "",
+    et_home_goals: document.getElementById("etHomeGoals")?.value ?? "",
+    et_away_goals: document.getElementById("etAwayGoals")?.value ?? "",
+    pen_winner: pen,
+    opponent_own_goals: readOpponentOwnGoals(),
+    connection_stars: document.getElementById("connectionStars")?.value ?? "",
+    player_stats: collectPlayerStats(),
+  };
+}
+
+function saveResultDraft(fixtureId = null) {
+  const payload = collectResultDraftPayload(fixtureId);
+  if (!payload) return false;
+  if (!resultDraftHasContent(payload)) return false;
+  const key = resultDraftStorageKey(payload.fixture_id);
+  if (!key) return false;
+  try {
+    localStorage.setItem(key, JSON.stringify(payload));
+    return true;
+  } catch (err) {
+    console.warn("saveResultDraft:", err);
+    return false;
+  }
+}
+
+function clearResultDraft(fixtureId) {
+  const key = resultDraftStorageKey(fixtureId);
+  if (!key) return;
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+function scheduleResultDraftSave() {
+  if (resultDraftSaveTimer) clearTimeout(resultDraftSaveTimer);
+  resultDraftSaveTimer = setTimeout(() => {
+    resultDraftSaveTimer = null;
+    saveResultDraft();
+  }, 400);
+}
+
+function applyPlayerStatsDraft(stats) {
+  if (!Array.isArray(stats) || !stats.length) return false;
+  const byId = new Map(stats.map((r) => [String(r.player_id), r]));
+  let applied = 0;
+  for (const tr of document.querySelectorAll(
+    "#playerStatsBody tr[data-stat-player]"
+  )) {
+    const row = byId.get(String(tr.dataset.statPlayer));
+    if (!row) continue;
+    const started = tr.querySelector(".stat-started");
+    const subbed = tr.querySelector(".stat-subbed");
+    if (started && !started.disabled) started.checked = !!row.started;
+    if (subbed && !subbed.disabled) subbed.checked = !!row.subbed_on;
+    const goals = tr.querySelector(".stat-goals");
+    const ogs = tr.querySelector(".stat-own-goals");
+    const assists = tr.querySelector(".stat-assists");
+    const rating = tr.querySelector(".stat-rating");
+    const potm = tr.querySelector(".stat-potm");
+    const yellow = tr.querySelector(".stat-yellow");
+    const red = tr.querySelector(".stat-red");
+    if (goals) goals.value = String(row.goals ?? 0);
+    if (ogs) ogs.value = String(row.own_goals ?? 0);
+    if (assists) assists.value = String(row.assists ?? 0);
+    if (rating && row.rating != null) rating.value = String(row.rating);
+    if (potm && !potm.disabled) potm.checked = !!row.potm;
+    if (yellow && !yellow.disabled) yellow.checked = !!row.yellow_card;
+    if (red && !red.disabled) red.checked = !!row.red_card;
+    started?.dispatchEvent(new Event("change"));
+    applied += 1;
+  }
+  updateLineupCounter();
+  updateOgBalanceHint();
+  return applied > 0;
+}
+
+function restoreResultDraft(fixtureId, { restoreScores = true } = {}) {
+  const draft = readResultDraft(fixtureId);
+  if (!resultDraftHasContent(draft)) return false;
+
+  if (restoreScores && !confirmMode) {
+    const setVal = (id, v) => {
+      const el = document.getElementById(id);
+      if (el && v != null && String(v).trim() !== "") el.value = String(v);
+    };
+    setVal("homeGoals", draft.home_goals);
+    setVal("awayGoals", draft.away_goals);
+    setVal("etHomeGoals", draft.et_home_goals);
+    setVal("etAwayGoals", draft.et_away_goals);
+    if (draft.pen_winner) {
+      const pen = document.querySelector(
+        `input[name="penWinner"][value="${draft.pen_winner}"]`
+      );
+      if (pen) pen.checked = true;
+    }
+    updateCupScoreSections();
+  }
+
+  if (draft.opponent_own_goals != null) {
+    setOpponentOwnGoals(draft.opponent_own_goals);
+  }
+  if (draft.connection_stars != null && String(draft.connection_stars) !== "") {
+    const sel = document.getElementById("connectionStars");
+    if (sel) {
+      sel.value = String(draft.connection_stars);
+      syncConnectionStarsVisual();
+    }
+  }
+
+  applyPlayerStatsDraft(draft.player_stats);
+  return true;
+}
+
+function isResultAlreadyPendingError(message) {
+  const m = String(message || "").toLowerCase();
+  return (
+    m.includes("already awaiting confirmation") ||
+    m.includes("duplicate key") ||
+    m.includes("one_pending") ||
+    (m.includes("unique") && m.includes("pending"))
+  );
+}
+
+function wireResultDraftAutosave() {
+  const panel = document.getElementById("submitPanel");
+  if (!panel || panel.dataset.draftAutosave === "1") return;
+  panel.dataset.draftAutosave = "1";
+  panel.addEventListener("input", scheduleResultDraftSave);
+  panel.addEventListener("change", scheduleResultDraftSave);
 }
 
 function resetCupExtraScores() {
@@ -1420,7 +1612,12 @@ function renderPlayerStatsTable() {
     tr.querySelector(".stat-goals")?.addEventListener("change", updateOgBalanceHint);
     tbody.appendChild(tr);
   }
-  applyDefaultLineupFromSquad();
+  const draft = readResultDraft(fixtureId);
+  if (resultDraftHasContent(draft) && Array.isArray(draft.player_stats) && draft.player_stats.length) {
+    applyPlayerStatsDraft(draft.player_stats);
+  } else {
+    applyDefaultLineupFromSquad();
+  }
   updateLineupCounter();
   updateOgBalanceHint();
 }
@@ -1738,6 +1935,20 @@ async function updateFixturePreview() {
 
   if (needsInboxConfirm(f, myClub)) {
     await enterConfirmMode(f);
+    if (restoreResultDraft(f.id, { restoreScores: false })) {
+      if (resultDraftRestoreNotice) {
+        setStatus("submitStatus", resultDraftRestoreNotice);
+        resultDraftRestoreNotice = null;
+      } else {
+        setStatus(
+          "submitStatus",
+          "Opponent already submitted — your saved squad stats were restored. Confirm or reject below."
+        );
+      }
+    } else if (resultDraftRestoreNotice) {
+      setStatus("submitStatus", resultDraftRestoreNotice);
+      resultDraftRestoreNotice = null;
+    }
     return;
   }
 
@@ -1748,6 +1959,7 @@ async function updateFixturePreview() {
   clearScoreFields();
   setScoreInputsEnabled(canSubmit);
   updateCupScoreSections();
+  const restoredDraft = restoreResultDraft(f.id, { restoreScores: true });
 
   const simWrap = document.getElementById("simulateActions");
   const simBtn = document.getElementById("simulateResultBtn");
@@ -1780,7 +1992,10 @@ async function updateFixturePreview() {
     }
   }
 
-  if (
+  if (resultDraftRestoreNotice) {
+    setStatus("submitStatus", resultDraftRestoreNotice);
+    resultDraftRestoreNotice = null;
+  } else if (
     f.submission_id &&
     f.submitted_by_club &&
     f.submitted_by_club.toUpperCase() === (myClub.short || "").toUpperCase()
@@ -1796,7 +2011,9 @@ async function updateFixturePreview() {
       "submitStatus",
       holidayEarly
         ? "Holiday unlock — arrange/play this match in the current GPSL week (before its month). Both clubs need min 24 players. Result will not count on the table until that GPSL month."
-        : "Enter home and away goals, then submit."
+        : restoredDraft
+          ? "Draft restored — check scores and stats, then submit."
+          : "Enter home and away goals, then submit."
     );
   } else if (f.status === "played") {
     const deferred = deferredResultNote(f, calendarStatus);
@@ -1821,8 +2038,12 @@ async function updateFixturePreview() {
   }
 }
 
-function populateFixtureSelect() {
+function populateFixtureSelect(preferredFixtureId = null) {
   const sel = document.getElementById("fixtureSelect");
+  const keepId =
+    preferredFixtureId != null
+      ? String(preferredFixtureId)
+      : sel.value || null;
   sel.innerHTML = "";
 
   if (!upcomingFixtures.length) {
@@ -1847,6 +2068,10 @@ function populateFixtureSelect() {
     opt.textContent = `${label}: ${f.home_club_name} vs ${f.away_club_name}${pending}`;
     opt.dataset.baseLabel = opt.textContent;
     sel.appendChild(opt);
+  }
+
+  if (keepId && [...sel.options].some((o) => o.value === keepId)) {
+    sel.value = keepId;
   }
 
   sel.onchange = () => {
@@ -1930,6 +2155,7 @@ async function confirmPendingResult() {
     return;
   }
 
+  saveResultDraft(f.id);
   setStatus("submitStatus", "Confirming…");
   const { error } = await confirmFixtureResult(
     supabase,
@@ -1942,6 +2168,7 @@ async function confirmPendingResult() {
     return;
   }
 
+  clearResultDraft(f.id);
   const conn = await saveConnectionRating(f.id);
   if (conn.error) {
     setStatus(
@@ -1960,6 +2187,8 @@ async function confirmPendingResult() {
 
 async function rejectPendingResult() {
   if (!confirmMode?.submissionId) return;
+  const fixtureId = confirmMode.fixture?.id || selectedFixture()?.id;
+  saveResultDraft(fixtureId);
   const reason = prompt("Reason for rejection (optional):") || null;
   setStatus("submitStatus", "Rejecting…");
   const { error } = await rejectFixtureResult(
@@ -1971,11 +2200,12 @@ async function rejectPendingResult() {
     setStatus("submitStatus", "❌ " + error.message, true);
     return;
   }
-  setStatus("submitStatus", "Result rejected.");
+  resultDraftRestoreNotice =
+    "Result rejected — your saved stats were kept so you can submit again without starting over.";
   confirmMode = null;
   applyConfirmModeUI();
   await loadUpcomingFixtures();
-  populateFixtureSelect();
+  populateFixtureSelect(fixtureId);
 }
 
 async function submitResult() {
@@ -2042,6 +2272,7 @@ async function submitResult() {
     return;
   }
 
+  saveResultDraft(f.id);
   setStatus("submitStatus", "Submitting…");
   const { error } = await submitFixtureResult(
     supabase,
@@ -2053,10 +2284,24 @@ async function submitResult() {
   );
 
   if (error) {
-    setStatus("submitStatus", "❌ " + error.message, true);
+    if (isResultAlreadyPendingError(error.message)) {
+      resultDraftRestoreNotice =
+        "Opponent submitted first — your score and squad stats were saved. Check their proposed score, then Confirm (or Reject). You do not need to re-enter stats.";
+      await loadUpcomingFixtures();
+      populateFixtureSelect(f.id);
+      return;
+    }
+    setStatus(
+      "submitStatus",
+      "❌ " +
+        error.message +
+        " (Your entries are still on screen and auto-saved — you can fix and submit again.)",
+      true
+    );
     return;
   }
 
+  clearResultDraft(f.id);
   const conn = await saveConnectionRating(f.id);
   if (conn.error) {
     setStatus(
@@ -2070,7 +2315,7 @@ async function submitResult() {
     setStatus("submitStatus", "✅ Submitted. Opponent notified via Inbox.");
   }
   await loadUpcomingFixtures();
-  populateFixtureSelect();
+  populateFixtureSelect(f.id);
 }
 
 async function preselectFixtureFromUrl() {
@@ -2158,6 +2403,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("submitResultBtn").onclick = submitResult;
   document.getElementById("rejectResultBtn").onclick = rejectPendingResult;
+  wireResultDraftAutosave();
   document.getElementById("fillTestStatsBtn")?.addEventListener("click", fillTestMatchStats);
   document
     .getElementById("connectionStars")
