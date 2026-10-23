@@ -17,8 +17,8 @@ import {
   SECTION_MATCHDAY_CHECKLIST,
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
-} from "./fixtures_results.js?v=20261022-bad-connections";
-import { SECTION_DISCIPLINE } from "./discipline.js?v=20261023-discipline";
+} from "./fixtures_results.js?v=20261023-video-500k";
+import { SECTION_DISCIPLINE } from "./discipline.js?v=20261023-video-500k";
 import { SECTION_LEAGUE, SECTION_INTERNATIONAL } from "./league_world.js";
 import {
   SECTION_OWNERS,

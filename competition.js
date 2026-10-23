@@ -1193,13 +1193,15 @@ export function whyCantSubmitResult(
   }
 
   if (!fixture.home_checked_in || !fixture.away_checked_in) {
+    const homeLabel = fixture.home_club_name || fixture.home_club_short_name || "Home";
+    const awayLabel = fixture.away_club_name || fixture.away_club_short_name || "Away";
     const missing = [
-      !fixture.home_checked_in ? "home" : null,
-      !fixture.away_checked_in ? "away" : null,
+      !fixture.home_checked_in ? homeLabel : null,
+      !fixture.away_checked_in ? awayLabel : null,
     ]
       .filter(Boolean)
       .join(" and ");
-    return `Both clubs must check in before submitting (missing: ${missing}).`;
+    return `Both clubs must check in before submitting (still needed: ${missing}).`;
   }
 
   // Month open / later catch-up months (holiday early still via isFixtureMonthPlayable)

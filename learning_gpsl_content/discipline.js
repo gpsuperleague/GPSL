@@ -69,7 +69,7 @@ export const SECTION_DISCIPLINE = {
     {
       type: "ul",
       items: [
-        `<b>Grace</b> — after month lock + grace hours (default 72h), if your side still has no matched video: <b>money fine</b> (amount set by admin; can be ₿0) <b>and</b> <b>1 league point suspended</b> for 24 hours.`,
+        `<b>Grace</b> — after month lock + grace hours (default 72h), if your side still has no matched video: <b>₿500k</b> fine <b>and</b> <b>1 league point suspended</b> for 24 hours.`,
         `<b>Clear the suspend</b> — upload within that 24h window and the point is cancelled.`,
         `<b>Full strike</b> — still missing after 24h → <b>−1 point</b> on the table (counts as a full strike for the season).`,
         `<b>3rd full strike in a season</b> — extra <b>−9 points now</b>, plus <b>−3 points carried into next season</b>.`,
