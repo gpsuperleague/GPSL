@@ -19,16 +19,55 @@ export async function loadFixtureMatchVideos(supabase, fixtureIds) {
 
   if (error) {
     console.warn("loadFixtureMatchVideos:", error.message);
-    return map;
   }
 
   for (const row of data || []) {
     const key = String(row.fixture_id);
-    const cur = map.get(key) || { home_url: null, away_url: null };
+    const cur = map.get(key) || {
+      home_url: null,
+      away_url: null,
+      home_pending: false,
+      away_pending: false,
+    };
     if (row.side === "home") cur.home_url = row.video_url;
     if (row.side === "away") cur.away_url = row.video_url;
     map.set(key, cur);
   }
+
+  // Early Discord uploads held until the GPSL result is confirmed
+  try {
+    const { data: pending, error: pendErr } = await supabase.rpc(
+      "match_video_pending_sides",
+      { p_fixture_ids: ids }
+    );
+    if (pendErr) {
+      if (pendErr.code !== "PGRST202") {
+        console.warn("match_video_pending_sides:", pendErr.message);
+      }
+    } else {
+      for (const row of pending || []) {
+        const key = String(row.fixture_id);
+        const cur = map.get(key) || {
+          home_url: null,
+          away_url: null,
+          home_pending: false,
+          away_pending: false,
+        };
+        if (row.side === "home" && !cur.home_url) {
+          cur.home_url = row.video_url || "#";
+          cur.home_pending = true;
+        }
+        if (row.side === "away" && !cur.away_url) {
+          cur.away_url = row.video_url || "#";
+          cur.away_pending = true;
+        }
+        map.set(key, cur);
+      }
+    }
+  } catch (err) {
+    console.warn("loadFixtureMatchVideos pending:", err);
+  }
+
   return map;
 }
 
@@ -51,8 +90,12 @@ function upper(s) {
   return String(s || "").trim().toUpperCase();
 }
 
-function tickHtml(sideLabel, url) {
+function tickHtml(sideLabel, url, pending = false) {
   const has = Boolean(url);
+  if (has && pending) {
+    const href = url && url !== "#" ? ` href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer"` : "";
+    return `<a class="mv-tick mv-tick-pending"${href} title="${sideLabel} video received — waiting for GPSL result confirm">${sideLabel}⏳</a>`;
+  }
   if (has) {
     return `<a class="mv-tick mv-tick-on" href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer" title="${sideLabel} video uploaded — open">${sideLabel}✓</a>`;
   }
@@ -186,8 +229,8 @@ export function matchVideoTicksHtml(videos, opts = {}) {
 
   return (
     `<span class="mv-ticks">` +
-    `<span class="mv-side">${tickHtml("H", v.home_url)}${homeReport}</span>` +
-    `<span class="mv-side">${tickHtml("A", v.away_url)}${awayReport}</span>` +
+    `<span class="mv-side">${tickHtml("H", v.home_url, v.home_pending)}${homeReport}</span>` +
+    `<span class="mv-side">${tickHtml("A", v.away_url, v.away_pending)}${awayReport}</span>` +
     `</span>`
   );
 }
@@ -235,6 +278,8 @@ export const MATCH_VIDEO_TICK_CSS = `
 .mv-tick { text-decoration:none; padding:1px 4px; border-radius:3px; font-weight:600; letter-spacing:0.02em; }
 .mv-tick-on { color:#1a1a1a; background:#8d8; border:1px solid #6a6; }
 .mv-tick-on:hover { filter:brightness(1.08); }
+.mv-tick-pending { color:#1a1a1a; background:#fc6; border:1px solid #c96; text-decoration:none; }
+.mv-tick-pending:hover { filter:brightness(1.05); }
 .mv-tick-off { color:#777; background:#222; border:1px solid #444; }
 .mv-report {
   display:inline-flex; align-items:center; justify-content:center;

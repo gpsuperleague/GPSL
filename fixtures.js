@@ -49,7 +49,7 @@ import {
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20260924-rpc-miss";
+} from "./match_videos_ui.js?v=20261023-pending-video";
 
 let calendarStatus = null;
 let holidayContext = null;

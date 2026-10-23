@@ -644,13 +644,18 @@ async function ingestOneMessage(
     });
   }
 
-  // React only on first successful match (duplicates skip re-react via status)
+  // ✅ matched · ⏳ held until GPSL result confirmed · ⚠️ real failure
   const freshMatch = out.some(
     (r) => r.ok === true && r.status === "matched" && Number(r.credited || 0) >= 0
+  );
+  const freshPending = out.some(
+    (r) => r.ok === true && r.status === "pending"
   );
   const freshFail = out.every((r) => r.ok === false);
   if (freshMatch && out.some((r) => r.status === "matched")) {
     await addReaction(botToken, channelId, msg.id, "✅");
+  } else if (freshPending) {
+    await addReaction(botToken, channelId, msg.id, "⏳");
   } else if (freshFail && anyFail && !anyOk) {
     await addReaction(botToken, channelId, msg.id, "⚠️");
   }
