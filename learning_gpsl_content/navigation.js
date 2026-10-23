@@ -88,6 +88,7 @@ export const SECTION_NAVIGATION = {
       type: "links",
       items: [
         { href: "learning_gpsl.html", label: "Learning GPSL" },
+        { href: "learning_gpsl.html#discipline", label: "Discipline & fines" },
         { href: "waiting_list.html", label: "Waiting list" },
         { href: "owner_rankings.html", label: "Owner rankings" },
         { href: "challenges.html", label: "Season challenges" },

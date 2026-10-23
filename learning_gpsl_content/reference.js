@@ -154,6 +154,13 @@ export const SECTION_RECENT = {
         check in at kick-off; <b>fines at GPSL month lock</b> (arrangement, missed response, no-show if still unplayed).
         Missed check-in with no result? Use <b>Pick new time to play this month</b> on <a href="fixture_schedule.html">Schedule</a> — both miss = no fine.`,
     },
+    { type: "h3", html: "Discipline &amp; fines handbook" },
+    {
+      type: "p",
+      html: `Owners can read deadlines, automatic scheduling fines, match-video points strikes (including 3rd-strike escalation),
+        recording tariffs, and how manual points deductions work in one section:
+        <a href="#discipline">Discipline &amp; fines</a>.`,
+    },
     { type: "h3", html: "Manager draft auto-settlement" },
     {
       type: "ul",
@@ -191,6 +198,7 @@ export const SECTION_HELP = {
         `If you do not have a club yet, start with <a href="#waiting-room">The Waiting Room</a> and your <a href="waiting_list.html">waiting list</a> place.`,
         `With a club, check your <a href="inbox.html">Inbox</a> first — it is the hub for anything needing action.`,
         `Use this page and the linked screens; rules on squad, finances, and match day are also shown in context where they apply.`,
+        `Deadlines, fines, points deductions, and repeat offences: <a href="#discipline">Discipline &amp; fines</a>.`,
         `League admins can assist with disputes, fines, account linking, and technical issues.`,
       ],
     },

@@ -18,6 +18,7 @@ import {
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
 } from "./fixtures_results.js?v=20261022-bad-connections";
+import { SECTION_DISCIPLINE } from "./discipline.js?v=20261023-discipline";
 import { SECTION_LEAGUE, SECTION_INTERNATIONAL } from "./league_world.js";
 import {
   SECTION_OWNERS,
@@ -33,7 +34,8 @@ export const LEARNING_GPSL_META_HTML = `A guide for new and returning owners  
   <a href="waiting_list.html">waiting list</a> place, and
   <a href="awaiting_club.html">Owner details</a>.
   Once you have a club, most actions start from your
-  <a href="inbox.html">Inbox</a> or the <a href="dashboard.html">Dashboard</a>.`;
+  <a href="inbox.html">Inbox</a> or the <a href="dashboard.html">Dashboard</a>.
+  Deadlines, fines, and points: <a href="#discipline">Discipline &amp; fines</a>.`;
 
 /** @type {{ id: string, title: string, blocks: object[] }[]} */
 export const LEARNING_GPSL_SECTIONS = [
@@ -50,6 +52,7 @@ export const LEARNING_GPSL_SECTIONS = [
   SECTION_MATCHDAY_CHECKLIST,
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
+  SECTION_DISCIPLINE,
   SECTION_LEAGUE,
   SECTION_INTERNATIONAL,
   SECTION_OWNERS,

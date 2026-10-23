@@ -337,7 +337,9 @@ export const SECTION_MATCH_SCHEDULING = {
     },
     {
       type: "tip",
-      html: `Fines appear in <a href="inbox.html">Inbox</a> and on your balance. You’ll also get deadline warnings before reply / arrangement cut-offs. Longer walkthrough:
+      html: `Fines appear in <a href="inbox.html">Inbox</a> and on your balance. Full list of deadlines, video points strikes, recording tariffs, and repeat offences:
+        <a href="#discipline">Discipline &amp; fines</a>.
+        Longer walkthrough:
         <a href="docs/gpsl-month-end-unplayed.html">Month end &amp; unplayed fixtures</a>.
         Prefer a pathway walkthrough?
         <a href="docs/gpsl-arrange-a-match.html">How to arrange a match</a>.
@@ -383,6 +385,7 @@ export const SECTION_MATCHDAY = {
         { href: "fixture_schedule.html", label: "Fixture schedule / check-in" },
         { href: "fixtures.html", label: "Fixtures" },
         { href: "match_report.html", label: "Match Centre" },
+        { href: "#discipline", label: "Discipline & fines" },
       ],
     },
     {
