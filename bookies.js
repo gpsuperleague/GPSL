@@ -179,18 +179,23 @@ async function loadMarkets() {
 }
 
 async function loadMyBets() {
+  myBets = [];
+  if (!currentUserId) return;
+
   const { data, error } = await supabase
     .from("bookies_my_bets_public")
     .select("*")
+    .eq("owner_id", currentUserId)
     .order("placed_at", { ascending: false })
     .limit(80);
 
   if (error) {
+    console.warn("bookies_my_bets_public:", error.message);
     myBets = [];
   } else {
-    // Belt-and-braces: never show another owner's slip under My slips
+    // Own slips only — never include another owner's row
     myBets = (data || []).filter(
-      (b) => !currentUserId || String(b.owner_id) === String(currentUserId)
+      (b) => String(b.owner_id) === String(currentUserId)
     );
   }
   const openN = myBets.filter((b) => b.status === "open").length;
@@ -226,12 +231,14 @@ function setSlipsTab(tab) {
   const allBtn = document.getElementById("bkTabAll");
   const minePanel = document.getElementById("bkMyBets");
   const allPanel = document.getElementById("bkAllBets");
+  if (allBtn) allBtn.hidden = !isAdmin;
   mineBtn?.classList.toggle("is-active", slipsTab === "mine");
   allBtn?.classList.toggle("is-active", slipsTab === "all");
   if (mineBtn) mineBtn.setAttribute("aria-selected", slipsTab === "mine" ? "true" : "false");
   if (allBtn) allBtn.setAttribute("aria-selected", slipsTab === "all" ? "true" : "false");
   if (minePanel) minePanel.hidden = slipsTab !== "mine";
-  if (allPanel) allPanel.hidden = slipsTab !== "all";
+  // Non-admins never see the all-slips panel
+  if (allPanel) allPanel.hidden = !isAdmin || slipsTab !== "all";
 }
 
 function alreadyBetOnMarket(marketId) {

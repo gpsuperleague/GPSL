@@ -274,6 +274,14 @@ body.bookies-page {
 
 .bk-bets-list { display: grid; gap: 8px; }
 
+/* Author display:grid must not override the HTML hidden attribute */
+.bk-bets-list[hidden],
+.bk-tab[hidden],
+#bkTabAll[hidden],
+#bkAllBets[hidden] {
+  display: none !important;
+}
+
 .bk-bet-card {
   display: grid;
   grid-template-columns: 1fr auto;
