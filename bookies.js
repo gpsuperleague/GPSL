@@ -67,10 +67,14 @@ function formatFractionalOdds(decimalOdds, fractionalLabel) {
 
 let currentClub = null;
 let ownerTag = null;
+let currentUserId = null;
 let isAdmin = false;
 let markets = [];
 let selectionsByMarket = new Map();
 let myBets = [];
+/** @type {Array<Record<string, unknown>>} */
+let allBetsAdmin = [];
+let slipsTab = "mine";
 /** @type {Map<number, { running: boolean, reason: string|null, cupClubs: Set<string>|null }>} */
 let marketStates = new Map();
 
@@ -183,12 +187,51 @@ async function loadMyBets() {
 
   if (error) {
     myBets = [];
-    return;
+  } else {
+    // Belt-and-braces: never show another owner's slip under My slips
+    myBets = (data || []).filter(
+      (b) => !currentUserId || String(b.owner_id) === String(currentUserId)
+    );
   }
-  myBets = data || [];
   const openN = myBets.filter((b) => b.status === "open").length;
   const el = document.getElementById("bkOpenCount");
   if (el) el.textContent = String(openN);
+}
+
+async function loadAllBetsAdmin() {
+  allBetsAdmin = [];
+  if (!isAdmin) return;
+  const { data, error } = await supabase
+    .from("bookies_admin_bets_public")
+    .select("*")
+    .order("placed_at", { ascending: false })
+    .limit(500);
+  if (error) {
+    console.warn("bookies_admin_bets_public:", error.message);
+    return;
+  }
+  allBetsAdmin = data || [];
+}
+
+function marketKindSectionLabel(kind) {
+  const k = String(kind || "").toLowerCase();
+  if (k === "club") return "Club markets";
+  if (k === "player") return "Player markets";
+  return kind ? String(kind) : "Other markets";
+}
+
+function setSlipsTab(tab) {
+  slipsTab = tab === "all" && isAdmin ? "all" : "mine";
+  const mineBtn = document.getElementById("bkTabMine");
+  const allBtn = document.getElementById("bkTabAll");
+  const minePanel = document.getElementById("bkMyBets");
+  const allPanel = document.getElementById("bkAllBets");
+  mineBtn?.classList.toggle("is-active", slipsTab === "mine");
+  allBtn?.classList.toggle("is-active", slipsTab === "all");
+  if (mineBtn) mineBtn.setAttribute("aria-selected", slipsTab === "mine" ? "true" : "false");
+  if (allBtn) allBtn.setAttribute("aria-selected", slipsTab === "all" ? "true" : "false");
+  if (minePanel) minePanel.hidden = slipsTab !== "mine";
+  if (allPanel) allPanel.hidden = slipsTab !== "all";
 }
 
 function alreadyBetOnMarket(marketId) {
@@ -508,28 +551,88 @@ async function ensurePlayerAndBet(marketId, playerId) {
   }
 }
 
+function betCardHtml(b, { showBettor = false } = {}) {
+  const st = String(b.status || "open");
+  const selById = betCardHtml._selById || new Map();
+  const sel = selById.get(Number(b.selection_id));
+  const bettor = showBettor
+    ? `<div class="bk-bettor">Bettor: <b>${escapeHtml(b.bettor_tag || "—")}</b></div>`
+    : "";
+  return `<div class="bk-bet-card">
+    <div>
+      <div><b>${escapeHtml(b.market_title)}</b></div>
+      <div class="bk-muted">${escapeHtml(b.selection_label)}${sel ? selectionOwnerTagHtml(sel) : ""} @ ${escapeHtml(formatFractionalOdds(b.odds_decimal, b.odds_fractional))}</div>
+      ${bettor}
+      <div>Stake ${formatMoney(b.stake)} · returns ${formatMoney(b.potential_return)}</div>
+    </div>
+    <div class="status-${st}">${escapeHtml(st)}</div>
+  </div>`;
+}
+
 function renderMyBets() {
   const root = document.getElementById("bkMyBets");
   if (!root) return;
-  if (!myBets.length) {
-    root.innerHTML = `<p class="bk-muted">No bets yet this season.</p>`;
-    return;
-  }
   const selById = new Map();
   for (const list of selectionsByMarket.values()) {
     for (const s of list) selById.set(Number(s.id), s);
   }
-  root.innerHTML = myBets
-    .map((b) => {
-      const st = String(b.status || "open");
-      const sel = selById.get(Number(b.selection_id));
-      return `<div class="bk-bet-card">
-        <div>
-          <div><b>${escapeHtml(b.market_title)}</b></div>
-          <div class="bk-muted">${escapeHtml(b.selection_label)}${sel ? selectionOwnerTagHtml(sel) : ""} @ ${escapeHtml(formatFractionalOdds(b.odds_decimal, b.odds_fractional))}</div>
-          <div>Stake ${formatMoney(b.stake)} · returns ${formatMoney(b.potential_return)}</div>
-        </div>
-        <div class="status-${st}">${escapeHtml(st)}</div>
+  betCardHtml._selById = selById;
+  if (!myBets.length) {
+    root.innerHTML = `<p class="bk-muted">No bets placed on your owner account yet.</p>`;
+    return;
+  }
+  root.innerHTML = myBets.map((b) => betCardHtml(b, { showBettor: false })).join("");
+}
+
+function renderAllBetsAdmin() {
+  const root = document.getElementById("bkAllBets");
+  if (!root || !isAdmin) return;
+  const selById = new Map();
+  for (const list of selectionsByMarket.values()) {
+    for (const s of list) selById.set(Number(s.id), s);
+  }
+  betCardHtml._selById = selById;
+
+  if (!allBetsAdmin.length) {
+    root.innerHTML = `<p class="bk-muted">No slips placed by any owner yet.</p>`;
+    return;
+  }
+
+  const kindOrder = ["club", "player"];
+  const byKind = new Map();
+  for (const b of allBetsAdmin) {
+    const kind = String(b.market_kind || "other").toLowerCase();
+    if (!byKind.has(kind)) byKind.set(kind, []);
+    byKind.get(kind).push(b);
+  }
+
+  const kinds = [
+    ...kindOrder.filter((k) => byKind.has(k)),
+    ...[...byKind.keys()].filter((k) => !kindOrder.includes(k)).sort(),
+  ];
+
+  root.innerHTML = kinds
+    .map((kind) => {
+      const bets = byKind.get(kind) || [];
+      const byMarket = new Map();
+      for (const b of bets) {
+        const title = String(b.market_title || "Market");
+        if (!byMarket.has(title)) byMarket.set(title, []);
+        byMarket.get(title).push(b);
+      }
+      const marketsHtml = [...byMarket.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([title, list]) => {
+          const openN = list.filter((x) => x.status === "open").length;
+          return `<div class="bk-admin-market">
+            <h4>${escapeHtml(title)} <span class="bk-muted">(${list.length} slip${list.length === 1 ? "" : "s"}${openN ? ` · ${openN} open` : ""})</span></h4>
+            ${list.map((b) => betCardHtml(b, { showBettor: true })).join("")}
+          </div>`;
+        })
+        .join("");
+      return `<div class="bk-admin-kind">
+        <h3>${escapeHtml(marketKindSectionLabel(kind))}</h3>
+        ${marketsHtml}
       </div>`;
     })
     .join("");
@@ -650,9 +753,16 @@ function escapeHtml(s) {
 }
 
 async function refreshAll() {
-  await Promise.all([loadMarkets(), loadMyBets(), loadHeader(), loadMarketStates()]);
+  await Promise.all([
+    loadMarkets(),
+    loadMyBets(),
+    loadAllBetsAdmin(),
+    loadHeader(),
+    loadMarketStates(),
+  ]);
   renderMarkets();
   renderMyBets();
+  renderAllBetsAdmin();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -666,6 +776,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location = "login.html";
     return;
   }
+  currentUserId = user.id;
 
   const { data: club } = await supabase
     .from("Clubs")
@@ -684,9 +795,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   isAdmin = await resolveAdmin();
   const adminPanel = document.getElementById("bkAdminPanel");
   if (adminPanel) adminPanel.hidden = !isAdmin;
+  const allTab = document.getElementById("bkTabAll");
+  if (allTab) allTab.hidden = !isAdmin;
 
   document.getElementById("bkOpenMarketsBtn")?.addEventListener("click", () => openMarkets(false));
   document.getElementById("bkRefreshOddsBtn")?.addEventListener("click", () => openMarkets(true));
+  document.getElementById("bkTabMine")?.addEventListener("click", () => setSlipsTab("mine"));
+  document.getElementById("bkTabAll")?.addEventListener("click", () => {
+    setSlipsTab("all");
+    renderAllBetsAdmin();
+  });
 
+  setSlipsTab("mine");
   await refreshAll();
 });

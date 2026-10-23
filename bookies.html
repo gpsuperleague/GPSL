@@ -82,15 +82,28 @@
       </div>
     </section>
 
-    <section class="bk-panel">
-      <h2>My slips</h2>
-      <div id="bkMyBets" class="bk-bets-list">
+    <section class="bk-panel" id="bkSlipsPanel">
+      <div class="bk-slips-head">
+        <h2>Slips</h2>
+        <div class="bk-slips-tabs" role="tablist" aria-label="Bet slips">
+          <button type="button" class="bk-tab is-active" role="tab" aria-selected="true" data-slips-tab="mine" id="bkTabMine">
+            My slips
+          </button>
+          <button type="button" class="bk-tab" role="tab" aria-selected="false" data-slips-tab="all" id="bkTabAll" hidden>
+            All slips
+          </button>
+        </div>
+      </div>
+      <div id="bkMyBets" class="bk-bets-list" data-slips-panel="mine">
         <p class="bk-muted">No bets yet.</p>
+      </div>
+      <div id="bkAllBets" class="bk-bets-list" data-slips-panel="all" hidden>
+        <p class="bk-muted">Admin only — all owners’ slips by market.</p>
       </div>
     </section>
   </main>
 
   <script type="module" src="global.js?v=20261002-light-mode"></script>
-  <script type="module" src="bookies.js?v=20261018-player-search"></script>
+  <script type="module" src="bookies.js?v=20261023-slips-tabs"></script>
 </body>
 </html>
