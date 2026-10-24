@@ -1,0 +1,154 @@
+﻿pg_get_functiondef
+"CREATE OR REPLACE FUNCTION public.competition_confirm_result(p_submission_id bigint, p_confirmer_player_stats jsonb DEFAULT '[]'::jsonb)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_club text := public.my_club_shortname();
+  v_sub public.competition_result_submissions;
+  v_fixture public.competition_fixtures;
+  v_opponent text;
+  v_home_name text;
+  v_away_name text;
+  v_label text;
+  v_home_total smallint;
+  v_away_total smallint;
+  v_body text;
+  v_pen_winner_name text;
+  v_confirmer_expected int;
+BEGIN
+  IF v_club IS NULL THEN
+    RAISE EXCEPTION 'No club linked to this account';
+  END IF;
+
+  IF p_confirmer_player_stats IS NULL OR jsonb_typeof(p_confirmer_player_stats) <> 'array' THEN
+    RAISE EXCEPTION 'player_stats must be a JSON array';
+  END IF;
+
+  IF jsonb_array_length(p_confirmer_player_stats) = 0 THEN
+    RAISE EXCEPTION 'Enter your squad match stats (11 starters) before confirming';
+  END IF;
+
+  SELECT * INTO v_sub
+  FROM public.competition_result_submissions
+  WHERE id = p_submission_id AND status = 'pending';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Pending submission not found';
+  END IF;
+
+  SELECT * INTO v_fixture FROM public.competition_fixtures WHERE id = v_sub.fixture_id;
+
+  v_opponent := public.competition_fixture_opponent(v_sub.fixture_id, v_club);
+  IF v_opponent <> v_sub.submitted_by_club THEN
+    RAISE EXCEPTION 'Only the opponent can confirm this result';
+  END IF;
+
+  v_confirmer_expected := public.competition_expected_goals_for_club(v_fixture, v_sub, v_club);
+
+  IF v_fixture.competition_type = 'cup' THEN
+    SELECT t.home_total, t.away_total
+    INTO v_home_total, v_away_total
+    FROM public.competition_cup_open_play_totals(
+      v_sub.home_goals, v_sub.away_goals, v_sub.et_home_goals, v_sub.et_away_goals
+    ) t;
+
+    IF public.competition_cup_winner_from_submission(
+      v_sub.home_goals, v_sub.away_goals, v_sub.et_home_goals, v_sub.et_away_goals,
+      v_sub.pen_winner_club_short_name,
+      v_fixture.home_club_short_name, v_fixture.away_club_short_name
+    ) IS NULL THEN
+      RAISE EXCEPTION 'Invalid cup submission 窶・extra time or penalties required';
+    END IF;
+
+    UPDATE public.competition_fixtures
+    SET home_goals = v_home_total,
+        away_goals = v_away_total,
+        cup_pen_winner_club_short_name = v_sub.pen_winner_club_short_name,
+        status = 'played'
+    WHERE id = v_sub.fixture_id;
+  ELSE
+    v_home_total := v_sub.home_goals;
+    v_away_total := v_sub.away_goals;
+
+    UPDATE public.competition_fixtures
+    SET home_goals = v_sub.home_goals,
+        away_goals = v_sub.away_goals,
+        cup_pen_winner_club_short_name = NULL,
+        status = 'played'
+    WHERE id = v_sub.fixture_id;
+  END IF;
+
+  PERFORM public.competition_apply_submission_player_stats(p_submission_id);
+
+  PERFORM public.competition_apply_club_player_stats(
+    v_fixture.id,
+    v_fixture.season_id,
+    v_club,
+    p_confirmer_player_stats,
+    v_confirmer_expected
+  );
+
+  PERFORM public.competition_settle_fixture_gates(v_sub.fixture_id);
+  PERFORM public.competition_tv_settle_fixture(v_sub.fixture_id);
+
+  PERFORM public.competition_try_award_challenges(v_fixture.season_id, v_fixture.home_club_short_name);
+  PERFORM public.competition_try_award_challenges(v_fixture.season_id, v_fixture.away_club_short_name);
+
+  IF v_fixture.competition_type = 'cup' THEN
+    PERFORM public.competition_cup_on_fixture_played(v_sub.fixture_id);
+  ELSIF v_fixture.competition_type = 'league' THEN
+    PERFORM public.competition_try_pay_league_division_prizes(v_fixture.season_id, v_fixture.division);
+  END IF;
+
+  UPDATE public.competition_result_submissions
+  SET status = 'confirmed',
+      responded_by_club = v_club,
+      responded_at = now()
+  WHERE id = p_submission_id;
+
+  UPDATE public.competition_inbox
+  SET read_at = coalesce(read_at, now())
+  WHERE submission_id = p_submission_id
+    AND recipient_club_short_name = v_club
+    AND message_type = 'result_to_confirm';
+
+  SELECT ""Club"" INTO v_home_name FROM public.""Clubs"" WHERE ""ShortName"" = v_fixture.home_club_short_name;
+  SELECT ""Club"" INTO v_away_name FROM public.""Clubs"" WHERE ""ShortName"" = v_fixture.away_club_short_name;
+
+  v_label := CASE
+    WHEN v_fixture.competition_type = 'cup' THEN public.competition_cup_fixture_label(v_fixture)
+    ELSE format('Matchday %s', v_fixture.matchday)
+  END;
+
+  IF v_sub.et_home_goals IS NOT NULL THEN
+    v_body := format(
+      '%s 窶・%s窶・s confirmed (90 min %s窶・s, after ET %s窶・s).',
+      v_label, v_home_total, v_away_total,
+      v_sub.home_goals, v_sub.away_goals, v_sub.et_home_goals, v_sub.et_away_goals
+    );
+  ELSE
+    v_body := format(
+      '%s 窶・%s窶・s confirmed (90 min %s窶・s).',
+      v_label, v_home_total, v_away_total, v_sub.home_goals, v_sub.away_goals
+    );
+  END IF;
+
+  IF v_sub.pen_winner_club_short_name IS NOT NULL THEN
+    SELECT ""Club"" INTO v_pen_winner_name FROM public.""Clubs"" WHERE ""ShortName"" = v_sub.pen_winner_club_short_name;
+    v_body := v_body || format(' Pens: %s won.', coalesce(v_pen_winner_name, v_sub.pen_winner_club_short_name));
+  END IF;
+
+  PERFORM public.competition_inbox_notify(
+    v_sub.submitted_by_club,
+    'result_confirmed',
+    v_sub.fixture_id,
+    p_submission_id,
+    format('Result confirmed: %s vs %s', v_home_name, v_away_name),
+    v_body
+  );
+END;
+$function$
+"

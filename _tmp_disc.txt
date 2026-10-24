@@ -1,0 +1,112 @@
+﻿pg_get_functiondef
+"CREATE OR REPLACE FUNCTION public.competition_process_match_discipline(p_fixture_id bigint, p_season_id bigint, p_club text, p_player_stats jsonb)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_item jsonb;
+  v_player_id text;
+  v_appeared boolean;
+  v_started boolean;
+  v_subbed boolean;
+  v_yellow boolean;
+  v_red boolean;
+  v_y_count int;
+  v_prev_count int;
+  v_threshold int;
+  v_block text;
+  v_vacant boolean := public.match_sim_club_is_vacant(p_club);
+BEGIN
+  FOR v_item IN SELECT value FROM jsonb_array_elements(coalesce(p_player_stats, '[]'::jsonb))
+  LOOP
+    v_player_id := trim(both '""' FROM (v_item ->> 'player_id'));
+    IF v_player_id IS NULL OR v_player_id = '' THEN
+      CONTINUE;
+    END IF;
+
+    v_started := coalesce((v_item ->> 'started')::boolean, false);
+    v_subbed := coalesce((v_item ->> 'subbed_on')::boolean, false);
+    IF v_item ? 'started' OR v_item ? 'subbed_on' THEN
+      v_appeared := v_started OR v_subbed;
+    ELSE
+      v_appeared := coalesce((v_item ->> 'appeared')::boolean, false);
+    END IF;
+
+    v_yellow := coalesce((v_item ->> 'yellow_card')::boolean, false)
+      OR coalesce((v_item ->> 'yellow')::boolean, false);
+    v_red := coalesce((v_item ->> 'red_card')::boolean, false)
+      OR coalesce((v_item ->> 'red')::boolean, false);
+
+    IF (v_yellow OR v_red) AND NOT v_appeared THEN
+      RAISE EXCEPTION 'Player % must have appeared to receive a card', v_player_id;
+    END IF;
+
+    IF v_appeared AND NOT v_vacant THEN
+      v_block := public.competition_player_unavailable_for_fixture(p_fixture_id, v_player_id);
+      IF v_block IS NOT NULL THEN
+        RAISE EXCEPTION 'Player % is unavailable for this match (%)', v_player_id, v_block;
+      END IF;
+    END IF;
+  END LOOP;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(coalesce(p_player_stats, '[]'::jsonb))
+  LOOP
+    v_player_id := trim(both '""' FROM (v_item ->> 'player_id'));
+    IF v_player_id IS NULL OR v_player_id = '' THEN
+      CONTINUE;
+    END IF;
+
+    v_yellow := coalesce((v_item ->> 'yellow_card')::boolean, false)
+      OR coalesce((v_item ->> 'yellow')::boolean, false);
+    v_red := coalesce((v_item ->> 'red_card')::boolean, false)
+      OR coalesce((v_item ->> 'red')::boolean, false);
+
+    UPDATE public.competition_match_player_stats
+    SET yellow_card = v_yellow,
+        red_card = v_red
+    WHERE fixture_id = p_fixture_id
+      AND club_short_name = p_club
+      AND player_id = v_player_id;
+  END LOOP;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(coalesce(p_player_stats, '[]'::jsonb))
+  LOOP
+    v_player_id := trim(both '""' FROM (v_item ->> 'player_id'));
+    IF v_player_id IS NULL OR v_player_id = '' THEN
+      CONTINUE;
+    END IF;
+
+    v_yellow := coalesce((v_item ->> 'yellow_card')::boolean, false)
+      OR coalesce((v_item ->> 'yellow')::boolean, false);
+    v_red := coalesce((v_item ->> 'red_card')::boolean, false)
+      OR coalesce((v_item ->> 'red')::boolean, false);
+
+    IF v_red THEN
+      PERFORM public.competition_issue_player_suspension(
+        p_season_id, v_player_id, p_club, 'red_card', p_fixture_id, NULL, 2
+      );
+    END IF;
+
+    IF v_yellow THEN
+      SELECT count(*)::int
+      INTO v_y_count
+      FROM public.competition_match_player_stats m
+      WHERE m.season_id = p_season_id
+        AND m.player_id = v_player_id
+        AND m.yellow_card = true;
+
+      v_prev_count := greatest(v_y_count - 1, 0);
+      IF (v_y_count / 8) > (v_prev_count / 8) THEN
+        v_threshold := (v_y_count / 8) * 8;
+        PERFORM public.competition_issue_player_suspension(
+          p_season_id, v_player_id, p_club, 'yellow_accumulation',
+          p_fixture_id, v_threshold, 2
+        );
+      END IF;
+    END IF;
+  END LOOP;
+END;
+$function$
+"

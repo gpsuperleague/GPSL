@@ -345,9 +345,27 @@ document.getElementById("refreshLogBtn")?.addEventListener("click", () => {
 
 document.getElementById("syncCodesBtn")?.addEventListener("click", async () => {
   setStatus("codesStatus", "Posting cup codes add-on to Discord…");
+  // Prefer server-side invoke (same path as daily 21:00 UK cron)
+  const { data: rpcData, error: rpcErr } = await supabase.rpc(
+    "admin_discord_match_videos_sync_cup_codes_now"
+  );
+  if (!rpcErr && rpcData?.ok) {
+    setStatus(
+      "codesStatus",
+      "Cup codes sync requested — check #upload-codes in a few seconds." +
+        (rpcData.request_id != null ? ` (req ${rpcData.request_id})` : ""),
+      true
+    );
+    return;
+  }
+  // Fallback: direct Edge invoke (older DB without the RPC)
   const { data, error } = await invokePoll({ mode: "sync_codes" });
   if (error) {
-    setStatus("codesStatus", error.message, false);
+    setStatus(
+      "codesStatus",
+      rpcErr?.message || error.message,
+      false
+    );
     return;
   }
   if (data?.ok === false || data?.error) {
