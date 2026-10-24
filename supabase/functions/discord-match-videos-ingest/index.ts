@@ -240,7 +240,7 @@ function competitionCodesMessageBody() {
   return {
     content:
       "**Cup competition codes** (add-on to the club / league list above)\n" +
-      "Same link format: `[HomeShort 2-0 AwayShort [CUP-ROUND]](https://youtu.be/xxxxx)`",
+      "Same link format: `[HomeShort 2-0 AwayShort [CUP-ROUND]](https://youtu.be/… or https://mega.nz/…)`",
     embeds: [
       {
         title: "GPSL cups — video tags",
@@ -469,6 +469,8 @@ function isAllowedVideoUrl(raw: string): boolean {
     host === "m.youtube.com" ||
     host === "youtu.be" ||
     host === "youtube-nocookie.com" ||
+    host === "mega.nz" ||
+    host === "mega.co.nz" ||
     host === "cdn.discordapp.com" ||
     host === "media.discordapp.net"
   );

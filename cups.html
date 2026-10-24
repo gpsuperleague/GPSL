@@ -125,6 +125,32 @@
 
     /* League Cup: six rounds — slightly narrower columns, horizontal scroll only */
     .bracket-flow--league-cup .bracket-round { min-width: 200px; }
+
+    /* Kick-off / check-in / video ops — compact, keeps bracket card layout */
+    .cup-ops-meta {
+      display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px;
+      margin:6px 0 2px; font-size:10px; line-height:1.35; color:#aaa;
+    }
+    .cup-ops-meta .mv-ticks { margin-left:0; font-size:10px; }
+    .cup-ops-meta--videos { margin-top:4px; }
+    .cup-ko--agreed { color:#8d8; }
+    .cup-ko--pending { color:#fc6; }
+    .cup-ko--open, .cup-ko--manual { color:#888; }
+    .cup-ci { color:#9ab; letter-spacing:0.02em; white-space:nowrap; }
+    .cup-ci--both { color:#8d8; }
+    .cup-ops-actions { margin-top:4px; }
+    a.leg-sched { color:#9ab; text-decoration:none; font-weight:normal; }
+    a.leg-sched:hover { text-decoration:underline; color:#ff9900; }
+    a.leg-sched.muted { color:#777; }
+    .match-centre-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      margin-left:6px; width:18px; height:18px; border-radius:50%;
+      border:1px solid #555; background:#1e1e1e; color:#ff9900;
+      text-decoration:none; font-size:10px; line-height:1; flex:0 0 auto;
+      align-self:center;
+    }
+    .match-centre-btn:hover { border-color:#ff9900; background:#2a2200; }
+    .match-centre-btn.is-played { color:#8d8; border-color:#3a5a3a; }
   </style>
 </head>
 <body>
@@ -145,6 +171,7 @@
       <p class="meta" style="margin-top:0;">
         Progression left → right. Scores show 90 minutes, after extra time, and penalty shootout winner when applicable.
         Stadium is the home venue for each tie (cup finals at Wembley). Gate receipts and prize money appear after results are confirmed.
+        Each tie shows kick-off / check-in, Match Centre, and match-video ticks (H/A ✓ · report R) like league fixtures.
       </p>
       <div id="bracketRoot"></div>
     </div>
@@ -156,6 +183,6 @@
       International: <a href="world_cup.html">World Cup</a> · <a href="nation_select.html">Nation selection</a>.
     </p>
   </div>
-  <script type="module" src="cups.js?v=20261017-owner-tags"></script>
+  <script type="module" src="cups.js?v=20261024-cup-ops"></script>
 </body>
 </html>

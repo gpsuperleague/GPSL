@@ -695,7 +695,18 @@ export async function loadCupMatchExtras(supabase, fixtureIds) {
   };
   if (!ids.length) return empty;
 
-  const [subsRes, ledgerRes, fixRes] = await Promise.all([
+  const pubCols =
+    "id, home_goals, away_goals, home_club_short_name, away_club_short_name, status, " +
+    "competition_type, cup_code, cup_round, cup_match, cup_leg, " +
+    "schedule_status, agreed_kickoff_at, schedule_pending_proposal_id, " +
+    "schedule_home_proposal_count, schedule_away_proposal_count, " +
+    "schedule_discord_hint, schedule_response_due_at, schedule_response_required_club, " +
+    "home_checked_in, away_checked_in, manual_black_box, is_catch_up, " +
+    "submission_id, submission_status, submitted_by_club, " +
+    "proposed_home_goals, proposed_away_goals, proposed_et_home_goals, " +
+    "proposed_et_away_goals, proposed_pen_winner_club";
+
+  const [subsRes, ledgerRes, fixRes, pubRes] = await Promise.all([
     supabase
       .from("competition_result_submissions")
       .select(
@@ -710,13 +721,17 @@ export async function loadCupMatchExtras(supabase, fixtureIds) {
       .in("entry_type", ["gate_cup_share", "prize", "prize_cup", "tv_revenue"]),
     supabase
       .from("competition_fixtures")
-      .select("id, cup_pen_winner_club_short_name, home_goals, away_goals, home_club_short_name, away_club_short_name")
+      .select(
+        "id, cup_pen_winner_club_short_name, home_goals, away_goals, home_club_short_name, away_club_short_name, status"
+      )
       .in("id", ids),
+    supabase.from("competition_fixtures_public").select(pubCols).in("id", ids),
   ]);
 
   if (subsRes.error) console.error("loadCupMatchExtras submissions:", subsRes.error);
   if (ledgerRes.error) console.error("loadCupMatchExtras ledger:", ledgerRes.error);
   if (fixRes.error) console.error("loadCupMatchExtras fixtures:", fixRes.error);
+  if (pubRes.error) console.error("loadCupMatchExtras fixtures_public:", pubRes.error);
 
   const submissionsByFixture = new Map();
   for (const row of subsRes.data || []) {
@@ -732,7 +747,11 @@ export async function loadCupMatchExtras(supabase, fixtureIds) {
 
   const fixturesById = new Map();
   for (const row of fixRes.data || []) {
-    fixturesById.set(Number(row.id), row);
+    fixturesById.set(Number(row.id), { ...row });
+  }
+  for (const row of pubRes.data || []) {
+    const id = Number(row.id);
+    fixturesById.set(id, { ...(fixturesById.get(id) || {}), ...row });
   }
 
   return { submissionsByFixture, financeByFixture, fixturesById };

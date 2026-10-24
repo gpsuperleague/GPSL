@@ -18,11 +18,29 @@ import {
   formatCupMatchFinance,
   formatMoney,
   normalizeClubKey,
+  canSubmitResult,
+  needsInboxConfirm,
+  deferredResultNote,
 } from "./competition.js";
 import { loadCalendarStatus, isGpslMonthCurrentlyPlayable } from "./competition_calendar.js";
 import { formatMatchConditions } from "./competition_conditions.js";
 import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
+import {
+  scheduleActionLabel,
+  formatKickoff,
+  UK_TZ,
+  isCatchUpFixture,
+} from "./match_scheduling.js";
+import { matchCentreButtonHtml } from "./match_centre_link.js";
+import {
+  loadFixtureMatchVideos,
+  loadMatchVideoReportedSides,
+  matchVideoTicksHtml,
+  MATCH_VIDEO_TICK_CSS,
+  wireMatchVideoReportButtons,
+} from "./match_videos_ui.js?v=20261024-mega";
+import { loadHolidayPlayContext } from "./owner_holidays.js";
 
 function cupFromUrl() {
   const raw = new URLSearchParams(window.location.search).get("cup");
@@ -38,6 +56,33 @@ function seasonFromUrl() {
 let myClubShort = null;
 let currentCup = "league_cup";
 let calendarStatus = null;
+let holidayContext = null;
+/** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
+let matchVideoMap = new Map();
+/** @type {Set<string>} */
+let matchVideoReportedSides = new Set();
+/** @type {Map<number, object>} last fixturesById for report wiring */
+let lastCupFixturesById = new Map();
+let matchVideoReportsWired = false;
+
+function ensureMatchVideoStyles() {
+  let el = document.getElementById("matchVideoTickStyles");
+  if (!el) {
+    el = document.createElement("style");
+    el.id = "matchVideoTickStyles";
+    document.head.appendChild(el);
+  }
+  el.textContent = MATCH_VIDEO_TICK_CSS;
+}
+
+function ensureMatchVideoReportsWired() {
+  if (matchVideoReportsWired) return;
+  matchVideoReportsWired = true;
+  wireMatchVideoReportButtons(supabase, document.getElementById("bracketRoot"), {
+    resolveFixture: (fixtureId) => lastCupFixturesById.get(Number(fixtureId)) || null,
+    formatMoney,
+  });
+}
 
 function renderToolbar() {
   const bar = document.getElementById("cupToolbar");
@@ -97,6 +142,135 @@ function escapeHtml(s) {
 
 function matchdayUrl(fixtureId) {
   return `matchday.html?fixture=${encodeURIComponent(String(fixtureId))}`;
+}
+
+/** Merge bracket node + competition_fixtures_public row for schedule / videos / actions. */
+function cupFixtureView(leg, extras) {
+  if (!leg?.fixture_id) return null;
+  const fid = Number(leg.fixture_id);
+  const pub = extras?.fixturesById?.get(fid) || {};
+  return {
+    id: fid,
+    ...pub,
+    home_club_short_name: leg.home_club_short_name || pub.home_club_short_name,
+    away_club_short_name: leg.away_club_short_name || pub.away_club_short_name,
+    home_club_name: leg.home_club_name || pub.home_club_name,
+    away_club_name: leg.away_club_name || pub.away_club_name,
+    status: pub.status || leg.fixture_status,
+    home_goals: pub.home_goals ?? leg.home_goals,
+    away_goals: pub.away_goals ?? leg.away_goals,
+    competition_type: pub.competition_type || "cup",
+    cup_code: pub.cup_code || currentCup,
+    gpsl_month: leg.fixture_gpsl_month || leg.round_gpsl_month || pub.gpsl_month,
+  };
+}
+
+function cupCheckInHtml(f) {
+  if (!f || f.status === "played") return "";
+  if (String(f.schedule_status || "").toLowerCase() !== "agreed") return "";
+  const h = f.home_checked_in ? "H✓" : "H○";
+  const a = f.away_checked_in ? "A✓" : "A○";
+  const both = f.home_checked_in && f.away_checked_in;
+  return `<span class="cup-ci${both ? " cup-ci--both" : ""}" title="Check-in (home / away)">${h} ${a}</span>`;
+}
+
+function cupKickoffHtml(f) {
+  if (!f || f.status === "played") return "";
+  if (f.manual_black_box === true) {
+    return `<span class="cup-ko cup-ko--manual" title="Both clubs GPSL match system OFF">Manual arrange</span>`;
+  }
+  const status = String(f.schedule_status || "unscheduled").toLowerCase();
+  const catchUp = isCatchUpFixture(f) ? "Catch-up · " : "";
+  if (status === "agreed" && f.agreed_kickoff_at) {
+    return `<span class="cup-ko cup-ko--agreed">${catchUp}${escapeHtml(formatKickoff(f.agreed_kickoff_at, UK_TZ))} UK</span>`;
+  }
+  if (status === "negotiating") {
+    return `<span class="cup-ko cup-ko--pending">${catchUp}Proposal pending</span>`;
+  }
+  if (f.id) {
+    return `<span class="cup-ko cup-ko--open">${catchUp}Not scheduled</span>`;
+  }
+  return "";
+}
+
+function cupVideoTicksHtml(f) {
+  if (!f?.id) return "";
+  return matchVideoTicksHtml(matchVideoMap.get(String(f.id)), {
+    fixtureId: f.id,
+    fixture: f,
+    myClubShort: myClubShort,
+    allowReport: Boolean(myClubShort),
+    reportedSides: matchVideoReportedSides,
+  });
+}
+
+function cupOpsHtml(leg, extras) {
+  const f = cupFixtureView(leg, extras);
+  if (!f) return "";
+
+  const myClub = { short: myClubShort };
+  const involvesMe = isMyMatch(leg);
+  const parts = [];
+
+  const ko = cupKickoffHtml(f);
+  const ci = cupCheckInHtml(f);
+  if (ko || ci) {
+    parts.push(
+      `<div class="cup-ops-meta">${ko}${ci ? ` ${ci}` : ""}${cupVideoTicksHtml(f)}</div>`
+    );
+  } else if (f.status === "played" || matchVideoMap.has(String(f.id))) {
+    parts.push(`<div class="cup-ops-meta cup-ops-meta--videos">${cupVideoTicksHtml(f)}</div>`);
+  }
+
+  const actionBits = [];
+  if (involvesMe && myClubShort) {
+    if (canSubmitResult(f, myClub, calendarStatus, holidayContext)) {
+      actionBits.push(
+        `<a class="leg-action leg-enter" href="${matchdayUrl(f.id)}">Enter result</a>`
+      );
+    } else if (needsInboxConfirm(f, myClub)) {
+      actionBits.push(
+        `<a class="leg-action leg-enter" href="${matchdayUrl(f.id)}">Confirm result</a>`
+      );
+    } else if (
+      f.submission_status === "pending" &&
+      f.submitted_by_club &&
+      normalizeClubKey(f.submitted_by_club) === normalizeClubKey(myClubShort)
+    ) {
+      actionBits.push(`<div class="leg-action leg-locked">Awaiting confirm</div>`);
+    } else if (f.status === "played") {
+      const deferred = deferredResultNote(f, calendarStatus);
+      actionBits.push(
+        `<div class="leg-action played-tag">${deferred ? "Played · pending table" : "Played"}</div>`
+      );
+    } else if (f.manual_black_box === true) {
+      actionBits.push(
+        `<a class="leg-action leg-enter" href="${matchdayUrl(f.id)}">Manual · Match Day</a>`
+      );
+    } else {
+      const sched = scheduleActionLabel(f, myClubShort);
+      if (sched) {
+        const cls = sched.muted ? "leg-action leg-sched muted" : "leg-action leg-enter";
+        actionBits.push(`<a class="${cls}" href="${sched.href}">${escapeHtml(sched.label)}</a>`);
+      }
+    }
+  } else if (f.status === "played") {
+    actionBits.push(`<div class="leg-action played-tag">Played</div>`);
+  } else if (
+    f.id &&
+    ["agreed", "negotiating"].includes(String(f.schedule_status || "").toLowerCase())
+  ) {
+    const schedHref = `fixture_schedule.html?fixture=${encodeURIComponent(String(f.id))}`;
+    actionBits.push(
+      `<a class="leg-action leg-sched muted" href="${schedHref}">Schedule / check-in</a>`
+    );
+  }
+
+  if (actionBits.length) {
+    parts.push(`<div class="cup-ops-actions">${actionBits.join("")}</div>`);
+  }
+
+  return parts.join("");
 }
 
 function renderScoreLinesHtml(lines) {
@@ -186,25 +360,28 @@ function renderLegPane(leg, extras, opts) {
     leg.fixture_id && (leg.weather || leg.pitch_condition || leg.kit_season)
       ? formatMatchConditions(leg)
       : "";
+  const f = cupFixtureView(leg, extras);
+  const opsHtml = cupOpsHtml(leg, extras);
   const { playable, reason } = legPlayable(leg, extras, opts);
-
-  let actionHtml = "";
-  if (played) {
-    actionHtml = `<div class="leg-action played-tag">Played</div>`;
-  } else if (playable && leg.fixture_id) {
-    actionHtml = `<a class="leg-action leg-enter" href="${matchdayUrl(leg.fixture_id)}">Enter result</a>`;
-  } else {
-    actionHtml = `<div class="leg-action leg-locked">${escapeHtml(reason)}</div>`;
+  let fallbackAction = "";
+  if (!opsHtml) {
+    if (played) {
+      fallbackAction = `<div class="leg-action played-tag">Played</div>`;
+    } else if (playable && leg.fixture_id) {
+      fallbackAction = `<a class="leg-action leg-enter" href="${matchdayUrl(leg.fixture_id)}">Enter result</a>`;
+    } else {
+      fallbackAction = `<div class="leg-action leg-locked">${escapeHtml(reason)}</div>`;
+    }
   }
 
   return `
     <div class="leg-pane ${isMyMatch(leg) ? "my-club" : ""} ${played ? "played" : ""}">
       <div class="leg-label">${escapeHtml(opts.legLabel)}</div>
-      <div class="leg-teams">${cupSideHtml(home, leg.home_club_short_name)}<span class="vs">vs</span>${cupSideHtml(away, leg.away_club_short_name)}</div>
+      <div class="leg-teams">${cupSideHtml(home, leg.home_club_short_name)}<span class="vs">vs</span>${cupSideHtml(away, leg.away_club_short_name)}${f ? matchCentreButtonHtml(f) : ""}</div>
       ${renderVenueHtml(leg)}
       ${conditions ? `<div class="leg-conditions" style="font-size:11px;color:#888;margin:4px 0;">${escapeHtml(conditions)}</div>` : ""}
       ${renderScoreLinesHtml(scoreLines)}
-      ${actionHtml}
+      ${opsHtml || fallbackAction}
       ${renderFinanceHtml(finance)}
     </div>`;
 }
@@ -288,25 +465,27 @@ function renderMatchCard(m, extras, roundNo) {
     winnerHtml = `<div class="match-winner">→ ${escapeHtml(m.winner_club_name)}</div>`;
   }
 
-  let actionHtml = "";
   const month = m.fixture_gpsl_month || m.round_gpsl_month;
   const monthOpen = isGpslMonthCurrentlyPlayable(month, calendarStatus);
   const conditions =
     m.fixture_id && (m.weather || m.pitch_condition || m.kit_season)
       ? formatMatchConditions(m)
       : "";
-  if (!played && m.fixture_id && monthOpen && isMyMatch(m)) {
-    actionHtml = `<a class="leg-action leg-enter" href="${matchdayUrl(m.fixture_id)}">Enter result</a>`;
+  const f = cupFixtureView(m, extras);
+  const opsHtml = cupOpsHtml(m, extras);
+  let fallbackAction = "";
+  if (!opsHtml && !played && m.fixture_id && monthOpen && isMyMatch(m)) {
+    fallbackAction = `<a class="leg-action leg-enter" href="${matchdayUrl(m.fixture_id)}">Enter result</a>`;
   }
 
   return `
     <div class="bracket-match ${isMyMatch(m) ? "my-club" : ""} ${played ? "played" : ""}">
       <div class="match-status">M${m.match_no} · ${escapeHtml(status)}</div>
-      <div class="match-teams">${cupSideHtml(homeName, homeShort)}<span class="vs">vs</span>${cupSideHtml(awayName, awayShort)}</div>
+      <div class="match-teams">${cupSideHtml(homeName, homeShort)}<span class="vs">vs</span>${cupSideHtml(awayName, awayShort)}${f ? matchCentreButtonHtml(f) : ""}</div>
       ${renderVenueHtml(m)}
       ${conditions ? `<div class="match-conditions" style="font-size:11px;color:#888;margin:4px 0;">${escapeHtml(conditions)}</div>` : ""}
       ${renderScoreLinesHtml(scoreLines)}
-      ${actionHtml}
+      ${opsHtml || fallbackAction}
       ${winnerHtml}
       ${renderFinanceHtml(finance)}
     </div>`;
@@ -360,7 +539,21 @@ function renderBracketRoundColumn(round_no, matches, extras) {
     </div>`;
 }
 
+async function loadCupVideosAndExtras(fixtureIds) {
+  const [extras, videos, reported] = await Promise.all([
+    loadCupMatchExtras(supabase, fixtureIds),
+    loadFixtureMatchVideos(supabase, fixtureIds),
+    loadMatchVideoReportedSides(supabase, fixtureIds),
+  ]);
+  matchVideoMap = videos;
+  matchVideoReportedSides = reported;
+  lastCupFixturesById = extras.fixturesById || new Map();
+  return extras;
+}
+
 async function renderCup() {
+  ensureMatchVideoStyles();
+  ensureMatchVideoReportsWired();
   const archiveSeason = seasonFromUrl();
   const pageMeta = document.getElementById("pageMeta");
 
@@ -378,7 +571,7 @@ async function renderCup() {
       ? `<span class="empty">Archived ${escapeHtml(archiveSeason)} — ${nodes.length} bracket node${nodes.length === 1 ? "" : "s"}.</span>`
       : `<span class="empty">No archived bracket for ${escapeHtml(archiveSeason)} ${escapeHtml(CUP_LABELS[currentCup] || currentCup)}.</span>`;
     const fixtureIds = nodes.map((n) => n.fixture_id).filter(Boolean);
-    const extras = await loadCupMatchExtras(supabase, fixtureIds);
+    const extras = await loadCupVideosAndExtras(fixtureIds);
     const seasonId = nodes[0]?.season_id;
     if (seasonId) await loadTvFixtureIds(supabase, seasonId);
     renderBracket(nodes, extras);
@@ -387,7 +580,7 @@ async function renderCup() {
 
   if (pageMeta) {
     pageMeta.textContent =
-      "Prestige cups (table places) and League Cup (60-club knockout)";
+      "Prestige cups (table places) and League Cup (60-club knockout) — kick-off, check-in, Match Day and video ticks on each tie";
   }
 
   const qualified = await loadCupQualified(supabase, currentCup);
@@ -395,7 +588,7 @@ async function renderCup() {
 
   const nodes = await loadCupBracket(supabase, currentCup);
   const fixtureIds = nodes.map((n) => n.fixture_id).filter(Boolean);
-  const extras = await loadCupMatchExtras(supabase, fixtureIds);
+  const extras = await loadCupVideosAndExtras(fixtureIds);
   const seasonId = nodes[0]?.season_id;
   if (seasonId) await loadTvFixtureIds(supabase, seasonId);
   renderBracket(nodes, extras);
@@ -405,6 +598,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
   await loadClubsMap();
   calendarStatus = await loadCalendarStatus(supabase);
+  holidayContext = await loadHolidayPlayContext();
 
   const {
     data: { user },
