@@ -108,7 +108,7 @@ let resultDraftSaveFixtureId = null;
 let statsFormFixtureId = null;
 let resultDraftRestoreNotice = null;
 
-/** Squad picker order on Match Day (GK → CF). */
+/** Squad / stats table order on Match Day (GK → CF). */
 const MATCHDAY_POSITION_ORDER = [
   "GK",
   "LB",
@@ -127,10 +127,46 @@ const MATCHDAY_POSITION_ORDER = [
   "CF",
 ];
 
+/** Pitch area → CSS class for coloured position badges. */
+const POSITION_AREA_CLASS = {
+  GK: "stat-pos-gk",
+  LB: "stat-pos-def",
+  CB: "stat-pos-def",
+  RB: "stat-pos-def",
+  LWB: "stat-pos-def",
+  RWB: "stat-pos-def",
+  DMF: "stat-pos-mid",
+  LMF: "stat-pos-mid",
+  CMF: "stat-pos-mid",
+  RMF: "stat-pos-mid",
+  AMF: "stat-pos-mid",
+  LWF: "stat-pos-fwd",
+  LW: "stat-pos-fwd",
+  SS: "stat-pos-fwd",
+  RWF: "stat-pos-fwd",
+  RW: "stat-pos-fwd",
+  CF: "stat-pos-fwd",
+};
+
+function normalizePositionCode(position) {
+  return String(position || "").trim().toUpperCase();
+}
+
 function positionSortIndex(position) {
-  const p = String(position || "").trim().toUpperCase();
+  const p = normalizePositionCode(position);
   const i = MATCHDAY_POSITION_ORDER.indexOf(p);
   return i >= 0 ? i : 999;
+}
+
+function positionAreaClass(position) {
+  const p = normalizePositionCode(position);
+  return POSITION_AREA_CLASS[p] || "stat-pos-other";
+}
+
+function positionBadgeHtml(position) {
+  const p = normalizePositionCode(position);
+  if (!p) return "";
+  return `<span class="stat-pos ${positionAreaClass(p)}" title="${p}">${p}</span>`;
 }
 
 function sortPlayersByPosition(players) {
@@ -141,6 +177,37 @@ function sortPlayersByPosition(players) {
       sensitivity: "base",
     });
   });
+}
+
+/** Started (by pos) → Subbed on (by pos) → rest (by pos). */
+function sortPlayerStatsRows() {
+  const tbody = document.getElementById("playerStatsBody");
+  if (!tbody) return;
+  const rows = [...tbody.querySelectorAll("tr[data-stat-player]")];
+  if (rows.length < 2) return;
+
+  const tier = (tr) => {
+    if (tr.querySelector(".stat-started")?.checked) return 0;
+    if (tr.querySelector(".stat-subbed")?.checked) return 1;
+    return 2;
+  };
+
+  rows.sort((a, b) => {
+    const t = tier(a) - tier(b);
+    if (t !== 0) return t;
+    const pos =
+      positionSortIndex(a.dataset.statPos) - positionSortIndex(b.dataset.statPos);
+    if (pos !== 0) return pos;
+    const nameA = a.dataset.statName || "";
+    const nameB = b.dataset.statName || "";
+    return nameA.localeCompare(nameB, "en", { sensitivity: "base" });
+  });
+
+  for (const tr of rows) {
+    tr.classList.toggle("stat-row-started", tier(tr) === 0);
+    tr.classList.toggle("stat-row-subbed", tier(tr) === 1);
+    tbody.appendChild(tr);
+  }
 }
 
 function setStatus(elId, msg, isError = false) {
@@ -820,6 +887,7 @@ function applyPlayerStatsDraft(stats) {
     syncRatingForAppearance(tr);
     applied += 1;
   }
+  sortPlayerStatsRows();
   updateLineupCounter();
   updateOgBalanceHint();
   return applied > 0;
@@ -1467,6 +1535,7 @@ function fillTestMatchStats() {
   }
 
   setOpponentOwnGoals(0);
+  sortPlayerStatsRows();
   updateLineupCounter();
   updateOgBalanceHint();
   setStatus(
@@ -1579,6 +1648,7 @@ function applyDefaultLineupFromSquad() {
     if (isStarter && subCb) subCb.checked = false;
     syncRatingForAppearance(tr);
   }
+  sortPlayerStatsRows();
   updateLineupCounter();
 }
 
@@ -1790,8 +1860,11 @@ function renderPlayerStatsTable() {
 
   for (const p of squadPlayers) {
     const id = String(p.Konami_ID);
+    const pos = normalizePositionCode(p.Position);
     const tr = document.createElement("tr");
     tr.dataset.statPlayer = id;
+    tr.dataset.statPos = pos;
+    tr.dataset.statName = String(p.Name || "");
     if (benchIds.has(id)) tr.classList.add("squad-bench-stat");
 
     const suspRows = suspensionsByPlayer.get(id) || [];
@@ -1815,7 +1888,7 @@ function renderPlayerStatsTable() {
       : "";
 
     tr.innerHTML = `
-      <td class="name">${playerNameLinkHtml(id, p.Name)} <span style="color:#666;">${p.Position || ""}</span>${benchTag}${suspTag}</td>
+      <td class="name">${positionBadgeHtml(pos)} ${playerNameLinkHtml(id, p.Name)}${benchTag}${suspTag}</td>
       <td><input type="checkbox" class="stat-started" aria-label="Started" ${suspendedHere ? "disabled" : ""}></td>
       <td><input type="checkbox" class="stat-subbed" aria-label="Subbed on" ${suspendedHere ? "disabled" : ""}></td>
       <td>${statCountSelectHtml("stat-goals", "Goals", 0)}</td>
@@ -1840,6 +1913,7 @@ function renderPlayerStatsTable() {
   } else {
     applyDefaultLineupFromSquad();
   }
+  sortPlayerStatsRows();
   updateLineupCounter();
   updateOgBalanceHint();
 }
@@ -1877,6 +1951,7 @@ function wirePlayedCheckboxes(tr) {
       if (n > MAX_STARTERS) started.checked = false;
     }
     syncRatingForAppearance(tr, { forceDefault: true });
+    sortPlayerStatsRows();
     updateLineupCounter();
   });
   subbed.addEventListener("change", () => {
@@ -1886,6 +1961,7 @@ function wirePlayedCheckboxes(tr) {
       if (n > MAX_SUBS) subbed.checked = false;
     }
     syncRatingForAppearance(tr, { forceDefault: true });
+    sortPlayerStatsRows();
     updateLineupCounter();
   });
 }

@@ -212,6 +212,50 @@
       border-radius: 3px;
       vertical-align: middle;
     }
+    table.stats-table .stat-pos {
+      display: inline-block;
+      min-width: 2.4em;
+      margin-right: 6px;
+      padding: 1px 5px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-align: center;
+      border-radius: 3px;
+      vertical-align: middle;
+      border: 1px solid transparent;
+    }
+    table.stats-table .stat-pos-gk {
+      color: #1a1400;
+      background: #ffcc33;
+      border-color: #e6a800;
+    }
+    table.stats-table .stat-pos-def {
+      color: #061018;
+      background: #5eb0ff;
+      border-color: #3a8fd4;
+    }
+    table.stats-table .stat-pos-mid {
+      color: #06140a;
+      background: #6dce7a;
+      border-color: #3a9a4a;
+    }
+    table.stats-table .stat-pos-fwd {
+      color: #1a0a00;
+      background: #ff8a4a;
+      border-color: #d46528;
+    }
+    table.stats-table .stat-pos-other {
+      color: #ddd;
+      background: #444;
+      border-color: #666;
+    }
+    table.stats-table tr.stat-row-started td.name {
+      box-shadow: inset 3px 0 0 #8d8;
+    }
+    table.stats-table tr.stat-row-subbed td.name {
+      box-shadow: inset 3px 0 0 #fc6;
+    }
     .next-fx-check { margin:0 0 12px; padding:10px 12px; border-radius:6px; font-size:13px; line-height:1.45; }
     .next-fx-check.ok { background:#142014; border:1px solid #2f5a2f; color:#bfe8bf; }
     .next-fx-check.bad { background:#2a1414; border:1px solid #7a2a2a; color:#ffc0c0; }
@@ -420,6 +464,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20261024-draft-isolate"></script>
+  <script type="module" src="matchday.js?v=20261024-stats-sort"></script>
 </body>
 </html>
