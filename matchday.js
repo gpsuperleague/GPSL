@@ -223,10 +223,16 @@ function applyStatsEditModeUI() {
   const panelTitle = document.querySelector("#submitPanel h2");
   const submitBtn = document.getElementById("submitResultBtn");
   const statsHeading = document.querySelector("#playerStatsPanel h3");
-  if (on && panelTitle) panelTitle.textContent = "Edit match stats (one-time)";
-  if (on && submitBtn) submitBtn.textContent = "Save stats edit (one-time)";
-  if (on && statsHeading) {
-    statsHeading.textContent = "Your squad — amend match stats";
+  if (panelTitle) {
+    panelTitle.textContent = on ? "Edit match stats (one-time)" : "Submit result";
+  }
+  if (submitBtn) {
+    submitBtn.textContent = on ? "Save stats edit (one-time)" : "Submit result";
+  }
+  if (statsHeading) {
+    statsHeading.textContent = on
+      ? "Your squad — amend match stats"
+      : "Your squad — match stats";
   }
 }
 
