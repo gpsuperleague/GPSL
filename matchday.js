@@ -96,9 +96,16 @@ let squadPanelApi = null;
 const MAX_STARTERS = 11;
 const MAX_SUBS = 5;
 
+/** Default player rating when Started / Subbed (0.5 steps). */
+const DEFAULT_MATCH_RATING = "6.0";
+
 /** localStorage key prefix for in-progress result entry (survives race / refresh). */
 const RESULT_DRAFT_PREFIX = "gpsl_matchday_result_draft_v1:";
 let resultDraftSaveTimer = null;
+/** Fixture id the pending autosave was scheduled for (avoids writing stats onto the next match). */
+let resultDraftSaveFixtureId = null;
+/** Fixture id the current score/stats DOM belongs to. */
+let statsFormFixtureId = null;
 let resultDraftRestoreNotice = null;
 
 /** Squad picker order on Match Day (GK → CF). */
@@ -647,6 +654,10 @@ function clearScoreFields() {
   const penRow = document.getElementById("cupPenRow");
   if (etRow) etRow.style.display = "none";
   if (penRow) penRow.style.display = "none";
+  const conn = document.getElementById("connectionStars");
+  if (conn) conn.value = "";
+  syncConnectionStarsVisual();
+  setOpponentOwnGoals(0);
 }
 
 function resultDraftStorageKey(fixtureId) {
@@ -679,23 +690,24 @@ function resultDraftHasContent(draft) {
   if (Number(draft.opponent_own_goals) > 0) return true;
   if (draft.connection_stars != null && String(draft.connection_stars) !== "") return true;
   const stats = Array.isArray(draft.player_stats) ? draft.player_stats : [];
-  return stats.some(
-    (r) =>
-      r?.started ||
-      r?.subbed_on ||
-      r?.appeared ||
-      (r?.goals || 0) > 0 ||
-      (r?.own_goals || 0) > 0 ||
-      (r?.assists || 0) > 0 ||
-      r?.potm ||
-      r?.yellow_card ||
-      r?.red_card ||
-      (r?.rating != null && String(r.rating) !== "")
-  );
+  // Pitch XI + default 6.0 alone is not a real draft — otherwise every glance at a
+  // fixture "restores" previous-looking stats on the next match.
+  return stats.some((r) => {
+    if ((r?.goals || 0) > 0) return true;
+    if ((r?.own_goals || 0) > 0) return true;
+    if ((r?.assists || 0) > 0) return true;
+    if (r?.potm) return true;
+    if (r?.yellow_card || r?.red_card) return true;
+    if (r?.rating != null && String(r.rating).trim() !== "") {
+      const n = Number(r.rating);
+      if (Number.isFinite(n) && n !== Number(DEFAULT_MATCH_RATING)) return true;
+    }
+    return false;
+  });
 }
 
 function collectResultDraftPayload(fixtureId) {
-  const fId = fixtureId ?? selectedFixture()?.id;
+  const fId = fixtureId ?? statsFormFixtureId ?? selectedFixture()?.id;
   if (!fId) return null;
   const pen =
     document.querySelector('input[name="penWinner"]:checked')?.value || null;
@@ -714,7 +726,16 @@ function collectResultDraftPayload(fixtureId) {
 }
 
 function saveResultDraft(fixtureId = null) {
-  const payload = collectResultDraftPayload(fixtureId);
+  const fId = fixtureId ?? resultDraftSaveFixtureId ?? statsFormFixtureId;
+  if (!fId) return false;
+  // Never attribute the current DOM to a different fixture than the form owner.
+  if (
+    statsFormFixtureId != null &&
+    String(fId) !== String(statsFormFixtureId)
+  ) {
+    return false;
+  }
+  const payload = collectResultDraftPayload(fId);
   if (!payload) return false;
   if (!resultDraftHasContent(payload)) return false;
   const key = resultDraftStorageKey(payload.fixture_id);
@@ -738,11 +759,31 @@ function clearResultDraft(fixtureId) {
   }
 }
 
+function cancelResultDraftSave() {
+  if (resultDraftSaveTimer) {
+    clearTimeout(resultDraftSaveTimer);
+    resultDraftSaveTimer = null;
+  }
+  resultDraftSaveFixtureId = null;
+}
+
+function flushResultDraftForCurrentForm() {
+  cancelResultDraftSave();
+  if (statsFormFixtureId != null) {
+    saveResultDraft(statsFormFixtureId);
+  }
+}
+
 function scheduleResultDraftSave() {
+  const fId = statsFormFixtureId ?? selectedFixture()?.id;
+  if (!fId) return;
+  resultDraftSaveFixtureId = fId;
   if (resultDraftSaveTimer) clearTimeout(resultDraftSaveTimer);
   resultDraftSaveTimer = setTimeout(() => {
     resultDraftSaveTimer = null;
-    saveResultDraft();
+    const id = resultDraftSaveFixtureId;
+    resultDraftSaveFixtureId = null;
+    if (id != null) saveResultDraft(id);
   }, 400);
 }
 
@@ -787,6 +828,14 @@ function applyPlayerStatsDraft(stats) {
 function restoreResultDraft(fixtureId, { restoreScores = true } = {}) {
   const draft = readResultDraft(fixtureId);
   if (!resultDraftHasContent(draft)) return false;
+  // Reject drafts written under the wrong fixture (legacy autosave race).
+  if (
+    draft.fixture_id != null &&
+    String(draft.fixture_id) !== String(fixtureId)
+  ) {
+    clearResultDraft(fixtureId);
+    return false;
+  }
 
   if (restoreScores && !confirmMode) {
     const setVal = (id, v) => {
@@ -1079,7 +1128,6 @@ function myTeamGoalsForFixture(fixture, homeGoals, awayGoals) {
   return home ? homeGoals : awayGoals;
 }
 
-const DEFAULT_MATCH_RATING = "6.0";
 const STAT_COUNT_MAX = 20;
 
 let statDatalistsReady = false;
@@ -2046,7 +2094,16 @@ async function updateFixturePreview() {
   const f = selectedFixture();
   const preview = document.getElementById("fixturePreview");
 
+  // Persist the form against the fixture it belonged to before switching.
+  if (
+    statsFormFixtureId != null &&
+    (!f || String(f.id) !== String(statsFormFixtureId))
+  ) {
+    flushResultDraftForCurrentForm();
+  }
+
   if (!f) {
+    statsFormFixtureId = null;
     preview.textContent = "Select a fixture from the list above.";
     fixtureUnavailable = null;
     myUnavailableIds = new Set();
@@ -2055,11 +2112,14 @@ async function updateFixturePreview() {
     setScoreInputsEnabled(false);
     confirmMode = null;
     applyConfirmModeUI();
+    clearScoreFields();
     const niMount = document.getElementById("networkIncidentsMount");
     if (niMount) niMount.innerHTML = "";
     return;
   }
 
+  statsFormFixtureId = f.id;
+  cancelResultDraftSave();
   await loadLeg1Companion(f);
 
   const month = GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month;
@@ -2112,6 +2172,8 @@ async function updateFixturePreview() {
   document.getElementById("homeLabel").textContent = f.home_club_name;
   document.getElementById("awayLabel").textContent = f.away_club_name;
 
+  // Always rebuild a clean stats grid for this fixture (no leftover DOM values).
+  clearScoreFields();
   renderPlayerStatsTable();
 
   if (needsInboxConfirm(f, myClub)) {
@@ -2137,7 +2199,6 @@ async function updateFixturePreview() {
   applyConfirmModeUI();
 
   const canSubmit = canSubmitResult(f, myClub, calendarStatus, holidayContext);
-  clearScoreFields();
   setScoreInputsEnabled(canSubmit);
   updateCupScoreSections();
   const restoredDraft = restoreResultDraft(f.id, { restoreScores: true });
