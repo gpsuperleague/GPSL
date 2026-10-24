@@ -291,7 +291,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `<b>Only one checks in</b> — recorded as a no-show (both clubs get an Inbox warning), but <b>not</b> an instant 3–0. If you still play and confirm a normal result, you are fine. If the next month lock arrives and the match is still unfinished, the no-show club gets <b>3–0 + ₿2.5m</b> (same rule for catch-up games arranged later).`,
         `<b>Voluntary drop</b> (≥24h before KO) — 1 per GPSL month; back to arranging. Not on catch-up.`,
         `<b>Emergency drop</b> (&lt;24h before KO) — 2 per season; if none left → 3–0 + fine. Not on catch-up.`,
-        `<b>Mutual override</b> — either club can ask to play now or pick a new time; both must confirm in Inbox (expires in 24 hours).`,
+        `<b>Mutual override</b> — either club can ask to play now or pick a new time; both must confirm in Inbox (expires in 24 hours). One free mutual new-time per fixture; Play now can be used again if both agree.`,
       ],
     },
 

@@ -456,11 +456,14 @@ function renderAgreedPanel(root, f, sch) {
   let mutualHtml = "";
   if (mo) {
     mutualHtml = mutualPendingPanelHtml(mo, homeTz, awayTz);
-  } else if (!sch.mutual_override_used && (moOpts.can_request_play_now || moOpts.can_request_new_time)) {
+  } else if (moOpts.can_request_play_now || moOpts.can_request_new_time) {
+    const freeNewTimeNote = sch.mutual_override_used
+      ? "Free mutual new-time already used for this fixture — Play now is still available if both agree."
+      : "One free mutual new-time per fixture; Play now can be used again later if both agree.";
     mutualHtml = `
       <div class="panel mutual-panel">
         <h2>Both agree? (no allowance used)</h2>
-        <p class="meta">If you have already agreed on Discord, you can update kick-off without using your monthly reschedule or an emergency drop. One change per fixture.</p>
+        <p class="meta">Update kick-off without using your monthly reschedule or an emergency drop. ${freeNewTimeNote}</p>
         <div class="actions">
           ${
             moOpts.can_request_play_now && moOpts.play_now_kickoff_at
@@ -480,7 +483,7 @@ function renderAgreedPanel(root, f, sch) {
       </div>
     `;
   } else if (sch.mutual_override_used) {
-    mutualHtml = `<p class="meta">Mutual kick-off change already used for this fixture.</p>`;
+    mutualHtml = `<p class="meta">Free mutual new-time already used for this fixture. Play now appears again when an earlier slot is available before kick-off.</p>`;
   }
 
   const agreedMeta = document.getElementById("scheduleMeta");
