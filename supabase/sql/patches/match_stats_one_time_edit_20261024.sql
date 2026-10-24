@@ -280,17 +280,7 @@ BEGIN
     v_expected := coalesce(v_f.away_goals, 0);
   END IF;
 
-  -- Temporary: strip discipline side-effects by calling apply then NOT serving
-  -- new suspensions from card flips. Apply still runs process_match_discipline;
-  -- issue_player_suspension is typically fixture-deduped. Prefer stable stats rewrite.
-  PERFORM public.competition_apply_club_player_stats(
-    v_f.id,
-    v_f.season_id,
-    v_club,
-    p_player_stats,
-    v_expected
-  );
-
+  -- Claim the one-time edit first (race-safe), then rewrite stats.
   IF v_side = 'home' THEN
     UPDATE public.competition_fixtures
     SET home_stats_edit_used_at = now()
@@ -307,6 +297,27 @@ BEGIN
     RAISE EXCEPTION 'Edit already used (race)';
   END IF;
 
+  BEGIN
+    PERFORM public.competition_apply_club_player_stats(
+      v_f.id,
+      v_f.season_id,
+      v_club,
+      p_player_stats,
+      v_expected
+    );
+  EXCEPTION WHEN OTHERS THEN
+    IF v_side = 'home' THEN
+      UPDATE public.competition_fixtures
+      SET home_stats_edit_used_at = NULL
+      WHERE id = p_fixture_id;
+    ELSE
+      UPDATE public.competition_fixtures
+      SET away_stats_edit_used_at = NULL
+      WHERE id = p_fixture_id;
+    END IF;
+    RAISE;
+  END;
+
   RETURN jsonb_build_object(
     'ok', true,
     'fixture_id', p_fixture_id,
@@ -322,7 +333,7 @@ GRANT EXECUTE ON FUNCTION public.competition_edit_club_match_stats(bigint, jsonb
 NOTIFY pgrst, 'reload schema';
 
 SELECT
-  count(*) FILTER (WHERE status = 'played' AND result_posted_gpsl_month IS NOT NULL) AS stamped_played,
-  count(*) FILTER (WHERE status = 'played') AS played_total
+  count(*) FILTER (WHERE f.status = 'played' AND f.result_posted_gpsl_month IS NOT NULL) AS stamped_played,
+  count(*) FILTER (WHERE f.status = 'played') AS played_total
 FROM public.competition_fixtures f
 JOIN public.competition_seasons s ON s.id = f.season_id AND s.is_current;

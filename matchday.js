@@ -73,6 +73,8 @@ let holidayContext = null;
 /** @type {{ enabled: boolean, isAdmin: boolean, error: string|null }} */
 let matchSimStatus = { enabled: false, isAdmin: false, error: null };
 let confirmMode = null;
+/** One-time stats amend on a played fixture (window = result_posted_gpsl_month). */
+let statsEditMode = null;
 let myDivision = null;
 let upcomingFixtures = [];
 let allLeagueFixtures = [];
@@ -149,27 +151,155 @@ function selectedFixture() {
 
 function setScoreInputsEnabled(enabled) {
   const confirming = !!confirmMode;
-  const showStats = enabled || confirming;
-  document.getElementById("homeGoals").disabled = !enabled || confirming;
-  document.getElementById("awayGoals").disabled = !enabled || confirming;
+  const editing = !!statsEditMode;
+  const showStats = enabled || confirming || editing;
+  document.getElementById("homeGoals").disabled = !enabled || confirming || editing;
+  document.getElementById("awayGoals").disabled = !enabled || confirming || editing;
   document.getElementById("submitResultBtn").disabled = !showStats;
   for (const id of ["etHomeGoals", "etAwayGoals"]) {
     const el = document.getElementById(id);
-    if (el) el.disabled = !enabled || confirming;
+    if (el) el.disabled = !enabled || confirming || editing;
   }
   for (const id of ["penWinnerHome", "penWinnerAway"]) {
     const el = document.getElementById(id);
-    if (el) el.disabled = !enabled || confirming;
+    if (el) el.disabled = !enabled || confirming || editing;
   }
   const statsPanel = document.getElementById("playerStatsPanel");
   if (statsPanel) statsPanel.style.display = showStats ? "block" : "none";
   const connPanel = document.getElementById("connectionRatingPanel");
-  if (connPanel) connPanel.style.display = showStats ? "block" : "none";
+  // Connection rating is only for first submit/confirm — hide on stats edit
+  if (connPanel) connPanel.style.display = showStats && !editing ? "block" : "none";
   if (!showStats) {
     const sel = document.getElementById("connectionStars");
     if (sel) sel.value = "";
     syncConnectionStarsVisual();
   }
+}
+
+async function loadStatsEditCandidates() {
+  const { data, error } = await supabase.rpc("competition_match_stats_edit_list");
+  if (error) {
+    console.warn("competition_match_stats_edit_list:", error.message);
+    return [];
+  }
+  if (!data?.ok || !Array.isArray(data.fixtures)) return [];
+  return data.fixtures.map((f) => ({
+    ...f,
+    status: "played",
+    _statsEditCandidate: true,
+  }));
+}
+
+async function loadClubMatchStatsForEdit(fixtureId) {
+  if (!myClub.short || !fixtureId) return [];
+  const { data, error } = await supabase
+    .from("competition_match_player_stats")
+    .select(
+      "player_id, started, subbed_on, appeared, goals, own_goals, assists, rating, is_player_of_match, yellow_card, red_card"
+    )
+    .eq("fixture_id", fixtureId)
+    .eq("club_short_name", myClub.short);
+  if (error) {
+    console.warn("loadClubMatchStatsForEdit:", error.message);
+    return [];
+  }
+  return (data || []).map((r) => ({
+    player_id: r.player_id,
+    started: !!r.started,
+    subbed_on: !!r.subbed_on,
+    appeared: !!r.appeared,
+    goals: r.goals ?? 0,
+    own_goals: r.own_goals ?? 0,
+    assists: r.assists ?? 0,
+    rating: r.rating,
+    potm: !!r.is_player_of_match,
+    yellow_card: !!r.yellow_card,
+    red_card: !!r.red_card,
+  }));
+}
+
+function applyStatsEditModeUI() {
+  const on = !!statsEditMode;
+  const panelTitle = document.querySelector("#submitPanel h2");
+  const submitBtn = document.getElementById("submitResultBtn");
+  const statsHeading = document.querySelector("#playerStatsPanel h3");
+  if (on && panelTitle) panelTitle.textContent = "Edit match stats (one-time)";
+  if (on && submitBtn) submitBtn.textContent = "Save stats edit (one-time)";
+  if (on && statsHeading) {
+    statsHeading.textContent = "Your squad — amend match stats";
+  }
+}
+
+async function enterStatsEditMode(fixture) {
+  statsEditMode = null;
+  if (!fixture || fixture.status !== "played") {
+    applyStatsEditModeUI();
+    return false;
+  }
+  const { data, error } = await supabase.rpc("competition_match_stats_edit_info", {
+    p_fixture_id: fixture.id,
+  });
+  if (error || !data?.can_edit) {
+    if (error) console.warn("stats edit info:", error.message);
+    applyStatsEditModeUI();
+    return false;
+  }
+  statsEditMode = { fixture, info: data };
+  confirmMode = null;
+  applyConfirmModeUI();
+  applyStatsEditModeUI();
+  setScoreInputsEnabled(false);
+  const hg = document.getElementById("homeGoals");
+  const ag = document.getElementById("awayGoals");
+  if (hg) hg.value = String(data.home_goals ?? fixture.home_goals ?? "");
+  if (ag) ag.value = String(data.away_goals ?? fixture.away_goals ?? "");
+  const statsPanel = document.getElementById("playerStatsPanel");
+  if (statsPanel) statsPanel.style.display = "block";
+  document.getElementById("submitResultBtn").disabled = false;
+  const existing = await loadClubMatchStatsForEdit(fixture.id);
+  if (existing.length) applyPlayerStatsDraft(existing);
+  const month = data.window_month
+    ? GPSL_MONTH_LABELS[data.window_month] || data.window_month
+    : "this GPSL month";
+  setStatus(
+    "submitStatus",
+    `One-time stats edit — score is locked. Available during GPSL ${month} only. Cards/goals/ratings for your club only.`
+  );
+  return true;
+}
+
+async function submitStatsEdit() {
+  const f = statsEditMode?.fixture || selectedFixture();
+  if (!f) return;
+  const playerStats = collectPlayerStats();
+  const homeGoals = Number(statsEditMode?.info?.home_goals ?? f.home_goals);
+  const awayGoals = Number(statsEditMode?.info?.away_goals ?? f.away_goals);
+  const statsErr = validatePlayerStats(f, homeGoals, awayGoals, playerStats, null);
+  if (statsErr) {
+    setStatus("submitStatus", statsErr, true);
+    return;
+  }
+  setStatus("submitStatus", "Saving stats edit…");
+  const { data, error } = await supabase.rpc("competition_edit_club_match_stats", {
+    p_fixture_id: f.id,
+    p_player_stats: playerStats,
+  });
+  if (error) {
+    setStatus("submitStatus", "❌ " + error.message, true);
+    return;
+  }
+  if (!data?.ok) {
+    setStatus("submitStatus", "❌ " + (data?.reason || "Edit failed"), true);
+    return;
+  }
+  statsEditMode = null;
+  applyStatsEditModeUI();
+  setStatus(
+    "submitStatus",
+    "✅ Stats updated. Your one-time edit for this match is used."
+  );
+  await loadUpcomingFixtures();
+  populateFixtureSelect(f.id);
 }
 
 const CONNECTION_STAR_LABELS = {
@@ -352,6 +482,7 @@ function updateConfirmStatsHint() {
 
 function applyConfirmModeUI() {
   const on = !!confirmMode;
+  if (on) statsEditMode = null;
   const panelTitle = document.querySelector("#submitPanel h2");
   const panelIntro = document.querySelector("#submitPanel > p.meta");
   const scoreRow = document.getElementById("scoreEntryRow");
@@ -364,7 +495,11 @@ function applyConfirmModeUI() {
   const statsHeading = document.querySelector("#playerStatsPanel h3");
 
   if (panelTitle) {
-    panelTitle.textContent = on ? "Confirm result — your squad stats" : "Submit result";
+    panelTitle.textContent = on
+      ? "Confirm result — your squad stats"
+      : statsEditMode
+        ? "Edit match stats (one-time)"
+        : "Submit result";
   }
   if (panelIntro) {
     panelIntro.style.display = on ? "none" : "";
@@ -390,12 +525,18 @@ function applyConfirmModeUI() {
   updateOgBalanceHint();
   if (confirmActions) confirmActions.style.display = on ? "block" : "none";
   if (submitBtn) {
-    submitBtn.textContent = on ? "Confirm result" : "Submit for confirmation";
+    submitBtn.textContent = on
+      ? "Confirm result"
+      : statsEditMode
+        ? "Save stats edit (one-time)"
+        : "Submit for confirmation";
   }
   if (statsHeading) {
     statsHeading.textContent = on
       ? "Your squad — enter match stats to confirm"
-      : "Your squad — match stats";
+      : statsEditMode
+        ? "Your squad — amend match stats"
+        : "Your squad — match stats";
   }
 }
 
@@ -2050,11 +2191,17 @@ async function updateFixturePreview() {
           : "Enter home and away goals, then submit."
     );
   } else if (f.status === "played") {
-    const deferred = deferredResultNote(f, calendarStatus);
-    setStatus(
-      "submitStatus",
-      deferred || "Result confirmed."
-    );
+    statsEditMode = null;
+    const entered = await enterStatsEditMode(f);
+    if (!entered) {
+      applyStatsEditModeUI();
+      const deferred = deferredResultNote(f, calendarStatus);
+      setStatus(
+        "submitStatus",
+        deferred || "Result confirmed. One-time stats edit is not available for this match."
+      );
+      setScoreInputsEnabled(false);
+    }
   } else {
     const why =
       whyCantSubmitResult(f, myClub, calendarStatus, holidayContext) ||
@@ -2094,12 +2241,15 @@ function populateFixtureSelect(preferredFixtureId = null) {
     opt.value = f.id;
     const pending =
       f.submission_status === "pending" ? " · pending" : "";
+    const editTag = f._statsEditCandidate ? " · edit stats" : "";
     const comp = formatFixtureCompetition(f);
     const label =
       f.competition_type === "cup"
         ? `${comp} R${f.cup_round}M${f.cup_match}`
         : `${comp} · MD${f.matchday}`;
-    opt.textContent = `${label}: ${f.home_club_name} vs ${f.away_club_name}${pending}`;
+    const home = f.home_club_name || f.home_club_short_name || "Home";
+    const away = f.away_club_name || f.away_club_short_name || "Away";
+    opt.textContent = `${label}: ${home} vs ${away}${pending}${editTag}`;
     opt.dataset.baseLabel = opt.textContent;
     sel.appendChild(opt);
   }
@@ -2137,9 +2287,19 @@ async function loadUpcomingFixtures() {
   const league = await loadLeagueFixtures(supabase, myDivision);
   const cups = await loadCupFixtures(supabase);
   allLeagueFixtures = [...league, ...cups];
-  upcomingFixtures = allLeagueFixtures
+  const editCandidates = await loadStatsEditCandidates();
+  const byId = new Map();
+  for (const f of allLeagueFixtures) {
+    if (!fixtureInvolvesClub(f, myClub)) continue;
+    byId.set(String(f.id), f);
+  }
+  for (const f of editCandidates) {
+    const prev = byId.get(String(f.id));
+    byId.set(String(f.id), prev ? { ...prev, ...f, _statsEditCandidate: true } : f);
+  }
+  upcomingFixtures = [...byId.values()]
     .filter((f) => {
-      if (!fixtureInvolvesClub(f, myClub)) return false;
+      if (f._statsEditCandidate) return true;
       if (f.submission_status === "pending") return true;
       if (f.status !== "scheduled") return false;
       if (canSubmitResult(f, myClub, calendarStatus, holidayContext)) return true;
@@ -2151,6 +2311,10 @@ async function loadUpcomingFixtures() {
       );
     })
     .sort((a, b) => {
+      // Editable played fixtures first
+      if (!!a._statsEditCandidate !== !!b._statsEditCandidate) {
+        return a._statsEditCandidate ? -1 : 1;
+      }
       if (a.competition_type !== b.competition_type) {
         return a.competition_type === "cup" ? -1 : 1;
       }
@@ -2243,6 +2407,10 @@ async function rejectPendingResult() {
 }
 
 async function submitResult() {
+  if (statsEditMode) {
+    await submitStatsEdit();
+    return;
+  }
   if (confirmMode) {
     await confirmPendingResult();
     return;
