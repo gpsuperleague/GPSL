@@ -8,6 +8,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
  *   A) Poll (default when no attachments) — cron / Admin "Poll now"
  *      Scans month channels under DISCORD_MATCH_VIDEOS_CATEGORY_ID
  *   B) Push — body has message/attachments (optional live bot)
+ *   C) sync_codes — post/update competition-code guide in #upload-codes
  */
 
 const DISCORD_API = "https://discord.com/api/v10";
@@ -221,6 +222,228 @@ async function fetchGuildChannels(
   }
   const batch = (await res.json()) as DiscordChannel[];
   return Array.isArray(batch) ? batch : [];
+}
+
+/** Fold channel names for matching (emoji / separators stripped). */
+function foldChannelName(name: string | undefined | null): string {
+  return String(name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+/** Cup-codes supplement only — club/league lists already live in #upload-codes. */
+const COMP_CODES_FOOTER = "gpsl-match-video-cup-codes-v1";
+
+function competitionCodesMessageBody() {
+  return {
+    content:
+      "**Cup competition codes** (add-on to the club / league list above)\n" +
+      "Same link format: `[HomeShort 2-0 AwayShort [CUP-ROUND]](https://youtu.be/xxxxx)`",
+    embeds: [
+      {
+        title: "GPSL cups — video tags",
+        color: 0xff9900,
+        description:
+          "League tags (**SL** / **CA** / **CB** + `MD{n}`) stay as already listed in this channel.",
+        fields: [
+          {
+            name: "Cup codes",
+            value:
+              "**S8** — Super8\n" +
+              "**PL** — Plate\n" +
+              "**SH** — Shield\n" +
+              "**BO** — Bowl _(BW also accepted)_\n" +
+              "**LC** — League Cup",
+            inline: true,
+          },
+          {
+            name: "Round tags",
+            value:
+              "`F` / `FINAL`\n" +
+              "`SF` — semi\n" +
+              "`QF` — quarter\n" +
+              "`R16` · `R32` · or `R{n}`",
+            inline: true,
+          },
+          {
+            name: "Examples",
+            value:
+              "`[ARS 2-0 CHE [S8-QF]](https://youtu.be/xxxxx)`\n" +
+              "`[LIV 1-0 MCI [LC-R32]](https://youtu.be/xxxxx)`\n" +
+              "`[MON 0-0 ATA [SH-SF]](https://youtu.be/xxxxx)`\n" +
+              "Match Day → **Copy video filename** builds the exact tag.",
+            inline: false,
+          },
+        ],
+        footer: { text: COMP_CODES_FOOTER },
+      },
+    ],
+  };
+}
+
+function findUploadCodesChannel(
+  channels: DiscordChannel[],
+  categoryId: string | null,
+  forcedId: string | null
+): DiscordChannel | null {
+  if (forcedId) {
+    const hit = channels.find((c) => c.id === forcedId);
+    if (hit) return hit;
+  }
+  const textChannels = channels.filter(
+    (c) => c.type === 0 || c.type === undefined
+  );
+  const preferParent = categoryId
+    ? textChannels.filter((c) => c.parent_id === categoryId)
+    : textChannels;
+  const pools = [preferParent, textChannels];
+  for (const pool of pools) {
+    for (const c of pool) {
+      const fold = foldChannelName(c.name);
+      if (
+        fold === "uploadcodes" ||
+        fold === "uploadcode" ||
+        fold.includes("uploadcodes") ||
+        (fold.includes("upload") && fold.includes("code"))
+      ) {
+        return c;
+      }
+    }
+  }
+  return null;
+}
+
+async function postOrEditChannelMessage(
+  botToken: string,
+  channelId: string,
+  messageId: string | null,
+  body: Record<string, unknown>
+): Promise<{ id: string; edited: boolean }> {
+  if (messageId) {
+    const res = await fetch(
+      `${DISCORD_API}/channels/${channelId}/messages/${messageId}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+    if (res.ok) {
+      const msg = (await res.json()) as DiscordMessage;
+      return { id: String(msg.id), edited: true };
+    }
+  }
+
+  // Look for an existing guide we posted (footer marker)
+  try {
+    const recent = await fetchChannelMessages(botToken, channelId, 50);
+    const existing = recent.find((m) => {
+      const embeds = (m as { embeds?: { footer?: { text?: string } }[] })
+        .embeds;
+      return embeds?.some((e) => e?.footer?.text === COMP_CODES_FOOTER);
+    });
+    if (existing?.id) {
+      const res = await fetch(
+        `${DISCORD_API}/channels/${channelId}/messages/${existing.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+      if (res.ok) {
+        return { id: String(existing.id), edited: true };
+      }
+    }
+  } catch {
+    /* fall through to create */
+  }
+
+  const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `Discord post codes ${res.status}: ${text.slice(0, 300)}`
+    );
+  }
+  const msg = (await res.json()) as DiscordMessage;
+  return { id: String(msg.id), edited: false };
+}
+
+async function syncCompetitionCodesGuide(
+  adminClient: ReturnType<typeof createClient>,
+  botToken: string,
+  guildId: string,
+  categoryId: string | null
+): Promise<Record<string, unknown>> {
+  const forcedId =
+    String(Deno.env.get("DISCORD_MATCH_VIDEOS_CODES_CHANNEL_ID") || "").trim() ||
+    null;
+
+  const all = await fetchGuildChannels(botToken, guildId);
+  const channel = findUploadCodesChannel(all, categoryId, forcedId);
+  if (!channel) {
+    return {
+      ok: false,
+      error:
+        "No upload-codes channel found. Create a text channel named upload-codes (under Matchday videos is fine), or set Edge secret DISCORD_MATCH_VIDEOS_CODES_CHANNEL_ID.",
+    };
+  }
+
+  const { data: settingsRow } = await adminClient
+    .from("gpsl_discord_match_videos_settings")
+    .select("codes_channel_id, codes_message_id")
+    .eq("id", 1)
+    .maybeSingle();
+
+  const priorMsgId =
+    channel.id === settingsRow?.codes_channel_id
+      ? String(settingsRow?.codes_message_id || "").trim() || null
+      : null;
+
+  const result = await postOrEditChannelMessage(
+    botToken,
+    channel.id,
+    priorMsgId,
+    competitionCodesMessageBody()
+  );
+
+  const { error: saveErr } = await adminClient
+    .from("gpsl_discord_match_videos_settings")
+    .update({
+      codes_channel_id: channel.id,
+      codes_message_id: result.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", 1);
+  if (saveErr) {
+    // Columns may be missing until SQL patch is applied — still return Discord OK.
+    console.warn("codes settings save:", saveErr.message);
+  }
+
+  return {
+    ok: true,
+    mode: "sync_codes",
+    channel_id: channel.id,
+    channel_name: channel.name || channel.id,
+    message_id: result.id,
+    edited: result.edited,
+  };
 }
 
 type OwnerMaps = {
@@ -722,6 +945,35 @@ Deno.serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // ----- Sync competition codes guide (#upload-codes) -----
+    if (body.mode === "sync_codes" || body.sync_codes === true) {
+      const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
+      if (!botToken || !guildId) {
+        return jsonResponse(
+          { error: "Missing DISCORD_BOT_TOKEN / DISCORD_GUILD_ID" },
+          500
+        );
+      }
+      try {
+        const out = await syncCompetitionCodesGuide(
+          adminClient,
+          botToken,
+          guildId,
+          categoryId || null
+        );
+        return jsonResponse(out, out.ok === false ? 400 : 200);
+      } catch (e) {
+        return jsonResponse(
+          {
+            ok: false,
+            mode: "sync_codes",
+            error: e instanceof Error ? e.message : String(e),
+          },
+          500
+        );
+      }
+    }
 
     // ----- Push mode (single message / attachments) -----
     const msgPush = body.message as DiscordMessage | undefined;

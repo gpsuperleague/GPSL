@@ -57,11 +57,30 @@
     </p>
     <div class="fmt">[MON 2-1 WOL [CA-MD10]](https://youtu.be/xxxxx)</div>
     <div class="fmt">[ARS 2-0 CHE [SL-MD5]](https://youtu.be/xxxxx)</div>
+    <div class="fmt">[LIV 1-0 MCI [S8-QF]](https://youtu.be/xxxxx)</div>
     <p class="note" style="margin-top:0">
-      Tags: <b>SL</b> SuperLeague · <b>CA</b> Championship A · <b>CB</b> Championship B ·
-      cups <b>S8</b>/<b>PL</b>/<b>SH</b>/<b>BO</b>/<b>LC</b>. Division is verified against the fixture.
+      <b>Leagues:</b> <b>SL</b> SuperLeague · <b>CA</b> Championship A · <b>CB</b> Championship B
+      (use <code>SL-MD5</code> style).<br>
+      <b>Cups:</b> <b>S8</b> Super8 · <b>PL</b> Plate · <b>SH</b> Shield · <b>BO</b> Bowl · <b>LC</b> League Cup
+      (rounds <code>F</code>/<code>SF</code>/<code>QF</code>/<code>R16</code>/<code>R32</code>/<code>R{n}</code>).<br>
+      Post the same guide to Discord <b>#upload-codes</b> with the button below.
       Setup: <a href="docs/match-videos-setup.html" style="color:#ff9900;">docs/match-videos-setup.html</a>
     </p>
+  </div>
+
+  <div class="card">
+    <h2 class="section">Discord #upload-codes — cup codes</h2>
+    <p class="note">
+      Club short names and league tags (SL/CA/CB) are already in
+      <code>upload-codes</code>. This posts or updates a <b>cup-codes only</b> add-on
+      message (S8 / PL / SH / BO / LC + round tags) — it does not replace the club list.
+      Bot needs <b>Send Messages</b> / <b>Embed Links</b>.
+      Optional Edge secret: <code>DISCORD_MATCH_VIDEOS_CODES_CHANNEL_ID</code>.
+    </p>
+    <div class="actions">
+      <button type="button" class="button" id="syncCodesBtn">Post / refresh cup codes</button>
+    </div>
+    <div id="codesStatus"></div>
   </div>
 
   <div class="card">
@@ -162,6 +181,6 @@
     <div id="logWrap"><p class="note">Loading…</p></div>
   </div>
 
-  <script type="module" src="admin_match_videos.js?v=20260914-money-fmt"></script>
+  <script type="module" src="admin_match_videos.js?v=20261024-cup-codes"></script>
 </body>
 </html>

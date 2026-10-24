@@ -343,6 +343,25 @@ document.getElementById("refreshLogBtn")?.addEventListener("click", () => {
   refreshLog();
 });
 
+document.getElementById("syncCodesBtn")?.addEventListener("click", async () => {
+  setStatus("codesStatus", "Posting cup codes add-on to Discord…");
+  const { data, error } = await invokePoll({ mode: "sync_codes" });
+  if (error) {
+    setStatus("codesStatus", error.message, false);
+    return;
+  }
+  if (data?.ok === false || data?.error) {
+    setStatus("codesStatus", String(data?.error || "Failed"), false);
+    return;
+  }
+  setStatus(
+    "codesStatus",
+    `${data?.edited ? "Updated" : "Posted"} cup codes in #${data?.channel_name || "upload-codes"}` +
+      (data?.message_id ? ` · message ${data.message_id}` : ""),
+    true
+  );
+});
+
 document.getElementById("pollNowBtn")?.addEventListener("click", async () => {
   setStatus("pollStatus", "Polling Discord…");
   const { data, error } = await invokePoll({ poll: true, limit: 50 });
