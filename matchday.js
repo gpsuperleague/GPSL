@@ -2526,26 +2526,73 @@ async function submitResult() {
   populateFixtureSelect(f.id);
 }
 
-async function preselectFixtureFromUrl() {
+/** Deep-link target from fixtures / inbox / cups (`?fixture=` / `?confirm=`). */
+function fixtureIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const id = params.get("fixture");
-  const confirmId = params.get("confirm");
-  if (!id && !confirmId) return;
+  const fixtureParam = params.get("fixture");
+  const confirmParam = params.get("confirm");
+  return {
+    fixtureId: fixtureParam ? String(fixtureParam).trim() : null,
+    confirmId: confirmParam ? String(confirmParam).trim() : null,
+    fixCheckinSquad: params.get("fix_checkin_squad") === "1",
+  };
+}
+
+/** If the linked fixture was filtered out of the dropdown, pull it in so preselect works. */
+async function ensureFixtureInUpcomingList(fixtureId) {
+  const id = String(fixtureId || "").trim();
+  if (!id) return null;
+  const existing = upcomingFixtures.find((f) => String(f.id) === id);
+  if (existing) return existing;
+
+  const fromAll = allLeagueFixtures.find((f) => String(f.id) === id);
+  if (fromAll && fixtureInvolvesClub(fromAll, myClub)) {
+    upcomingFixtures = [fromAll, ...upcomingFixtures];
+    return fromAll;
+  }
+
+  const { data, error } = await supabase
+    .from("competition_fixtures_public")
+    .select("*")
+    .eq("id", Number(id))
+    .maybeSingle();
+  if (error) {
+    console.warn("ensureFixtureInUpcomingList:", error.message);
+    return null;
+  }
+  if (!data || !fixtureInvolvesClub(data, myClub)) return null;
+  upcomingFixtures = [data, ...upcomingFixtures];
+  return data;
+}
+
+async function preselectFixtureFromUrl() {
+  const { fixtureId, confirmId, fixCheckinSquad } = fixtureIdFromUrl();
+  if (!fixtureId && !confirmId) return;
+
+  let targetId = fixtureId;
+  if (!targetId && confirmId) {
+    const sub = await loadPendingSubmission(supabase, Number(confirmId));
+    if (sub?.fixture_id) targetId = String(sub.fixture_id);
+  }
+  if (!targetId) return;
+
+  await ensureFixtureInUpcomingList(targetId);
+  populateFixtureSelect(targetId);
 
   const sel = document.getElementById("fixtureSelect");
-  if (id && [...sel.options].some((o) => o.value === id)) {
-    sel.value = id;
-    await updateFixturePreview();
+  if (!sel || ![...sel.options].some((o) => o.value === String(targetId))) {
+    setStatus(
+      "submitStatus",
+      "Linked fixture is not available on Match Day for your club (wrong club, or not in this season).",
+      true
+    );
     return;
   }
 
-  if (confirmId) {
-    const sub = await loadPendingSubmission(supabase, Number(confirmId));
-    if (sub?.fixture_id && [...sel.options].some((o) => o.value === String(sub.fixture_id))) {
-      sel.value = String(sub.fixture_id);
-      await updateFixturePreview();
-    }
-  }
+  sel.value = String(targetId);
+  // Enter/confirm links should land on Submit result — not the squad tab.
+  if (!fixCheckinSquad) setMatchdayTab("submit");
+  await updateFixturePreview();
 }
 
 function maybeShowCheckinFixNotice() {
@@ -2723,7 +2770,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   await loadUpcomingFixtures();
-  populateFixtureSelect();
+  const deepLink = fixtureIdFromUrl();
+  if (deepLink.fixtureId) {
+    await ensureFixtureInUpcomingList(deepLink.fixtureId);
+  }
+  populateFixtureSelect(deepLink.fixtureId || null);
   await preselectFixtureFromUrl();
   maybeShowCheckinFixNotice();
 });
