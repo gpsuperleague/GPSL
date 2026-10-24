@@ -11,7 +11,7 @@ import {
   SECTION_EXPECTATIONS,
 } from "./club_pages.js?v=20261018-syntax";
 import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261014-half-windows";
-import { SECTION_MEDICAL } from "./medical.js?v=20261022-handbook";
+import { SECTION_MEDICAL } from "./medical.js?v=20261024-half-cap";
 import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js";
 import {
   SECTION_MATCHDAY_CHECKLIST,

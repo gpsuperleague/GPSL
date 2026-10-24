@@ -16,6 +16,7 @@ export function getMedicalRoomIntros() {
         <b>Hiring open June–August only</b> (closed September–May).`,
     consultants: `The doctor assesses each injury first. To shorten recovery, they refer the player to a
         <b>specialist consultant</b> — that spends one injury-reduction consult (−2 / −4 / −6 / −8 / −10 matches).
+        <b>Cap:</b> at most <b>half</b> of the matches still left (e.g. 18 left + −10 token → remove 9 → 9 left).
         One consult per injury. Same consults can also be used from
         <a href="club_prizes.html" style="color:#7ec8e8;">Rewards Centre</a>
         and the squad Action menu.`,

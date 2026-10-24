@@ -183,7 +183,7 @@ export const REWARDS_TIPS = {
   discount:
     "Lock one fee discount to a transfer listing, draft listing, or special auction. Seller still gets the full fee; Central Bank tops up the gap. Only one discount locked at a time.",
   medical:
-    "Doctor must be hired. One consult per injury (−2 / −4 / −6 / −8 / −10 matches). Same flow on Medical Room and Squad Action.",
+    "Doctor must be hired. One consult per injury (−2 / −4 / −6 / −8 / −10 matches), capped at half of remaining length. Same flow on Medical Room and Squad Action.",
   appeal:
     "Spend an appeal card on an active red-card ban. Admin reviews — DOGSO / clear goal-scoring chances are usually rejected.",
   draftToken:
@@ -226,7 +226,7 @@ export const FIXTURES_TIPS = {
 
 export const MEDICAL_EXTRA_TIPS = {
   injuries:
-    "Active injuries after doctor assessment. Refer to a specialist consultant (token) to shorten recovery — one consult per injury.",
+    "Active injuries after doctor assessment. Refer to a specialist consultant (token) to shorten recovery — one consult per injury, capped at half of remaining matches.",
 };
 
 export const SCOUTING_EXTRA_TIPS = {

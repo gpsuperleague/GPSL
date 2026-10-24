@@ -1,6 +1,6 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
-import { renderMedicalRoomIntros } from "./medical_room_rules.js?v=20261020-hire-window";
+import { renderMedicalRoomIntros } from "./medical_room_rules.js?v=20261024-half-cap";
 
 let state = null;
 

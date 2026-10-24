@@ -37,7 +37,7 @@
     </div>
     <div class="med-hero-text">
       <p class="med-welcome">Club facilities</p>
-      <h1 class="gpsl-has-tip" data-gpsl-tip="Hire a club doctor (required for consults), physios on a fixed grade ladder (1→5, stacking injury-chance cuts), and specialist consult tokens to shorten injuries (−2 to −10 matches). Staff hiring is open June–August only (closed September–May)." tabindex="0">Medical Room</h1>
+      <h1 class="gpsl-has-tip" data-gpsl-tip="Hire a club doctor (required for consults), physios on a fixed grade ladder (1→5, stacking injury-chance cuts), and specialist consult tokens to shorten injuries (−2 to −10 matches, capped at half of remaining length). Staff hiring is open June–August only (closed September–May)." tabindex="0">Medical Room</h1>
       <p class="med-tagline" id="medTagline">Doctor · Physios · Specialist consultants</p>
       <div class="med-hero-stats" id="heroStats"></div>
     </div>
@@ -79,10 +79,10 @@
     </section>
 
     <section class="med-panel" id="tokenPanel">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="After the doctor assesses an injury, spend one consult token (−2 / −4 / −6 / −8 / −10 matches). One consult per injury. Same tokens work from Rewards Centre and Squad Action." tabindex="0">Specialist consultants</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="After the doctor assesses an injury, spend one consult token (−2 / −4 / −6 / −8 / −10 matches), capped at half of matches still left (e.g. 18 left + −10 → remove 9). One consult per injury. Same tokens work from Rewards Centre and Squad Action." tabindex="0">Specialist consultants</h2>
       <p class="med-intro" id="medConsultantsIntro"><!-- Filled by medical_room_rules.js --></p>
       <div class="token-vault" id="tokenVault"></div>
-      <h3 class="gpsl-has-tip" style="color:#9ed4f0;font-size:15px;margin:16px 0 8px;" data-gpsl-tip="Active injuries after doctor assessment. Refer to a specialist consultant (token) to shorten recovery — one consult per injury." tabindex="0">Active injuries</h3>
+      <h3 class="gpsl-has-tip" style="color:#9ed4f0;font-size:15px;margin:16px 0 8px;" data-gpsl-tip="Active injuries after doctor assessment. Refer to a specialist consultant (token) to shorten recovery — one consult per injury, capped at half of remaining matches." tabindex="0">Active injuries</h3>
       <div class="injury-list" id="injuryList"></div>
     </section>
   </main>
