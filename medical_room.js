@@ -151,7 +151,10 @@ function renderTokens() {
           : `Building fitness — match availability in ${rec} match${rec === 1 ? "" : "es"}`;
       const used = !!inj.token_used;
       const usable = usableConsults();
-      const canUse = usable.length > 0 && !used && (out > 0 || rec > 0);
+      const rem = out > 0 ? out : rec;
+      const halfCap = Math.floor(rem / 2);
+      const canUse =
+        usable.length > 0 && !used && rem > 0 && halfCap >= 1;
       const tokenOpts = usable.map(
         (c) => `<option value="${c.key}">${c.label}</option>`
       );
@@ -164,9 +167,11 @@ function renderTokens() {
         ? "Hire a club doctor first"
         : used
           ? "Consult already used"
-          : !consults.length
-            ? "No consults available"
-            : "";
+          : rem > 0 && halfCap < 1
+            ? "Too short to shorten further (half-cap is 0)"
+            : !consults.length
+              ? "No consults available"
+              : "";
       return `
         <div class="injury-row">
           <div>
@@ -174,6 +179,11 @@ function renderTokens() {
             <div class="meta">${inj.label || "Injury"} · ${inj.severity || ""}</div>
             <div class="meta">${phase}</div>
             ${used ? `<div class="meta">Specialist consult already used on this injury</div>` : ""}
+            ${
+              !used && rem > 0
+                ? `<div class="meta">Consult cap: max −${halfCap} (half of ${rem} left)</div>`
+                : ""
+            }
             ${!canUse && disabledReason ? `<div class="meta">${disabledReason}</div>` : ""}
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
@@ -444,16 +454,34 @@ async function hirePhysio(slot) {
   await loadState();
 }
 
+function specialistEffectiveCut(tier, remaining) {
+  const t = Math.max(0, Number(tier) || 0);
+  const left = Math.max(0, Number(remaining) || 0);
+  const cap = Math.floor(left / 2);
+  return Math.min(t, cap, left);
+}
+
 async function applyToken(injuryId, pickValue = null) {
   const consults = usableConsults();
   const picked =
     (pickValue && consults.find((c) => c.key === pickValue)) || consults[0] || null;
   const tier = picked?.tier || state?.specialist_matches_removed || 2;
   const who = picked?.label || `specialist consult (−${tier})`;
+  const inj = (state?.active_injuries || []).find(
+    (i) => Number(i.injury_id) === Number(injuryId)
+  );
+  const remaining =
+    (Number(inj?.matches_out_remaining) || 0) > 0
+      ? Number(inj.matches_out_remaining)
+      : Number(inj?.recovery_remaining) || 0;
+  const effective = specialistEffectiveCut(tier, remaining);
 
   if (
     !confirm(
-      `Doctor refers this injury to:\n${who}\n\n(−${tier} matches; one consult per injury.)`
+      `Doctor refers this injury to:\n${who}\n\n` +
+        `Token −${tier} · max half of ${remaining} left → removes ${effective} ` +
+        `(${remaining - effective} still remaining).\n` +
+        `One consult per injury.`
     )
   ) {
     return;
@@ -472,8 +500,19 @@ async function applyToken(injuryId, pickValue = null) {
     setStatus("❌ " + error.message, "error");
     return;
   }
+  const removed = data?.matches_removed ?? 0;
+  const after =
+    data?.remaining_after != null
+      ? data.remaining_after
+      : Math.max(0, remaining - removed);
   setStatus(
-    `${data?.label || who}: removed ${data?.matches_removed ?? 0} match(es).`,
+    `${data?.label || who}: removed ${removed} match(es)` +
+      (data?.token_tier != null && removed < Number(data.token_tier)
+        ? ` (capped at half — ${after} still left)`
+        : after != null
+          ? ` · ${after} still left`
+          : "") +
+      `.`,
     "ok"
   );
   await loadState();

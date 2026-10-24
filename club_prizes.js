@@ -211,9 +211,23 @@ async function applyMedicalToken() {
     setStatus("Select an eligible injury.", "err");
     return;
   }
+  const injOpt = document.getElementById("medicalInjurySelect")?.selectedOptions?.[0];
+  const leftMatch = String(injOpt?.textContent || "").match(/\((\d+)\s*left\)/i);
+  const remaining = leftMatch ? Number(leftMatch[1]) : null;
+  const cap =
+    remaining != null && Number.isFinite(remaining)
+      ? Math.floor(remaining / 2)
+      : null;
+  const effective =
+    cap != null ? Math.min(Number(picked.tier) || 0, cap, remaining) : null;
+
   if (
     !confirm(
-      `Doctor refers this injury to:\n${picked.label}\n\n(−${picked.tier} matches; one consult per injury.)`
+      `Doctor refers this injury to:\n${picked.label}\n\n` +
+        (effective != null
+          ? `Token −${picked.tier} · max half of ${remaining} left → removes ${effective} (${remaining - effective} still remaining).\n`
+          : `(−${picked.tier} matches; capped at half of remaining length.)\n`) +
+        `One consult per injury.`
     )
   ) {
     return;
@@ -229,8 +243,11 @@ async function applyMedicalToken() {
     setStatus("❌ " + error.message, "err");
     return;
   }
+  const removed = data?.matches_removed ?? 0;
   setStatus(
-    `✅ ${data?.label || picked.label}: removed ${data?.matches_removed ?? 0} match(es).`,
+    `✅ ${data?.label || picked.label}: removed ${removed} match(es)` +
+      (data?.remaining_after != null ? ` · ${data.remaining_after} still left` : "") +
+      `.`,
     "ok"
   );
   await loadInventory();

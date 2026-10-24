@@ -44,6 +44,8 @@ export const SECTION_MEDICAL = {
       items: [
         `After the doctor assesses an injury, spend <b>one consult token</b> to shorten recovery:
           <b>−2 / −4 / −6 / −8 / −10</b> matches depending on the token.`,
+        `<b>Cap:</b> a consult can remove at most <b>half</b> of the matches still left on that injury
+          (e.g. 18 left + a −10 token → removes 9 → <b>9 left</b>).`,
         `<b>One consult per injury</b> — you cannot stack multiple tokens on the same injury.`,
         `Same tokens work from Medical Room, <a href="club_prizes.html">Rewards Centre</a>, and the squad Action menu.`,
         `Challenge big-prize packs and other prizes can award medical tokens (e.g. 2–10 match reductions).`,

@@ -1580,7 +1580,10 @@ async function applySquadMedicalToken(injuryId) {
     `Specialist consult (−${tier})`;
   if (
     !confirm(
-      `Doctor refers this injury to:\n${who}\n\n(−${tier} matches; one consult per injury.)`
+      `Doctor refers this injury to:\n${who}\n\n` +
+        `Token −${tier} matches, but capped at half of the matches still left on this injury ` +
+        `(e.g. 18 left + −10 token → remove 9, 9 remain).\n` +
+        `One consult per injury.`
     )
   ) {
     return;
@@ -1600,7 +1603,9 @@ async function applySquadMedicalToken(injuryId) {
     return;
   }
   alert(
-    `${data?.label || who}: removed ${data?.matches_removed ?? 0} match(es).`
+    `${data?.label || who}: removed ${data?.matches_removed ?? 0} match(es)` +
+      (data?.remaining_after != null ? ` · ${data.remaining_after} still left` : "") +
+      `.`
   );
   await loadSquad();
 }
