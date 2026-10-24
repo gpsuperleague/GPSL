@@ -266,19 +266,25 @@ async function loadStatsEditCandidates() {
 
 async function loadClubMatchStatsForEdit(fixtureId) {
   if (!myClub.short || !fixtureId) return [];
+  const club = String(myClub.short || "").trim();
   const { data, error } = await supabase
     .from("competition_match_player_stats")
     .select(
-      "player_id, started, subbed_on, appeared, goals, own_goals, assists, rating, is_player_of_match, yellow_card, red_card"
+      "player_id, started, subbed_on, appeared, goals, own_goals, assists, rating, is_player_of_match, yellow_card, red_card, club_short_name"
     )
     .eq("fixture_id", fixtureId)
-    .eq("club_short_name", myClub.short);
+    .ilike("club_short_name", club);
   if (error) {
     console.warn("loadClubMatchStatsForEdit:", error.message);
     return [];
   }
-  return (data || []).map((r) => ({
-    player_id: r.player_id,
+  const mine = (data || []).filter(
+    (r) =>
+      String(r.club_short_name || "").trim().toUpperCase() ===
+      club.toUpperCase()
+  );
+  return mine.map((r) => ({
+    player_id: String(r.player_id),
     started: !!r.started,
     subbed_on: !!r.subbed_on,
     appeared: !!r.appeared,
@@ -290,6 +296,31 @@ async function loadClubMatchStatsForEdit(fixtureId) {
     yellow_card: !!r.yellow_card,
     red_card: !!r.red_card,
   }));
+}
+
+/** Players who have saved match stats but are not in the current Match Day 23. */
+async function loadExtraPlayersForStatsEdit(existingStats) {
+  const have = new Set(
+    (squadPlayers || []).map((p) => String(p.Konami_ID))
+  );
+  const missing = [
+    ...new Set(
+      (existingStats || [])
+        .map((r) => String(r.player_id || ""))
+        .filter((id) => id && !have.has(id))
+    ),
+  ];
+  if (!missing.length || !myClub.short) return [];
+  const { data, error } = await supabase
+    .from("Players")
+    .select("Konami_ID, Name, Position, Rating, Age, Nation")
+    .eq("Contracted_Team", myClub.short)
+    .in("Konami_ID", missing);
+  if (error) {
+    console.warn("loadExtraPlayersForStatsEdit:", error.message);
+    return [];
+  }
+  return data || [];
 }
 
 function applyStatsEditModeUI() {
@@ -336,14 +367,28 @@ async function enterStatsEditMode(fixture) {
   const statsPanel = document.getElementById("playerStatsPanel");
   if (statsPanel) statsPanel.style.display = "block";
   document.getElementById("submitResultBtn").disabled = false;
+
+  // Prefill from DB match stats only — never pitch defaults / local drafts.
   const existing = await loadClubMatchStatsForEdit(fixture.id);
-  if (existing.length) applyPlayerStatsDraft(existing);
+  const extras = await loadExtraPlayersForStatsEdit(existing);
+  clearScoreFields();
+  renderPlayerStatsTable({ skipAutoFill: true, extraPlayers: extras });
+  resetPlayerStatsDom();
+  if (existing.length) {
+    applyPlayerStatsDraft(existing);
+  } else {
+    sortPlayerStatsRows();
+    updateLineupCounter();
+  }
+
   const month = data.window_month
     ? GPSL_MONTH_LABELS[data.window_month] || data.window_month
     : "this GPSL month";
   setStatus(
     "submitStatus",
-    `One-time stats edit — score is locked. Available during GPSL ${month} only. Cards/goals/ratings for your club only.`
+    existing.length
+      ? `One-time stats edit — prefilled from your submitted match stats (${existing.length} players). Score locked. GPSL ${month} only.`
+      : `One-time stats edit — score is locked. No saved club stats found to prefill. Available during GPSL ${month} only.`
   );
   return true;
 }
@@ -865,8 +910,10 @@ function applyPlayerStatsDraft(stats) {
     if (!row) continue;
     const started = tr.querySelector(".stat-started");
     const subbed = tr.querySelector(".stat-subbed");
-    if (started && !started.disabled) started.checked = !!row.started;
-    if (subbed && !subbed.disabled) subbed.checked = !!row.subbed_on;
+    // Prefill even if the control is disabled (e.g. suspension UI), so edit mode
+    // still shows the originally submitted lineup.
+    if (started) started.checked = !!row.started;
+    if (subbed) subbed.checked = !!row.subbed_on;
     const goals = tr.querySelector(".stat-goals");
     const ogs = tr.querySelector(".stat-own-goals");
     const assists = tr.querySelector(".stat-assists");
@@ -877,13 +924,20 @@ function applyPlayerStatsDraft(stats) {
     if (goals) goals.value = String(row.goals ?? 0);
     if (ogs) ogs.value = String(row.own_goals ?? 0);
     if (assists) assists.value = String(row.assists ?? 0);
-    if (rating && row.rating != null) {
-      rating.value = normalizeRatingInput(String(row.rating)) || String(row.rating);
+    if (rating) {
+      if (row.rating != null && String(row.rating).trim() !== "") {
+        rating.value =
+          normalizeRatingInput(String(row.rating)) || String(row.rating);
+      } else if (row.started || row.subbed_on || row.appeared) {
+        rating.value = DEFAULT_MATCH_RATING;
+      } else {
+        rating.value = "";
+      }
     }
-    if (potm && !potm.disabled) potm.checked = !!row.potm;
-    if (yellow && !yellow.disabled) yellow.checked = !!row.yellow_card;
-    if (red && !red.disabled) red.checked = !!row.red_card;
-    // Fill blank ratings for appeared players; preserve draft values when set.
+    if (potm) potm.checked = !!row.potm;
+    if (yellow) yellow.checked = !!row.yellow_card;
+    if (red) red.checked = !!row.red_card;
+    // Keep submitted rating; only fill blanks for appeared players.
     syncRatingForAppearance(tr);
     applied += 1;
   }
@@ -1841,14 +1895,27 @@ function refreshSquadCardStatuses() {
   squadPanelApi?.setPlayerStatuses(map);
 }
 
-function renderPlayerStatsTable() {
+function renderPlayerStatsTable(opts = {}) {
+  const skipAutoFill = opts.skipAutoFill === true;
+  const extraPlayers = Array.isArray(opts.extraPlayers) ? opts.extraPlayers : [];
   const tbody = document.getElementById("playerStatsBody");
   if (!tbody) return;
 
   ensureStatDatalists();
   ensureOpponentOwnGoalsSelect();
   tbody.innerHTML = "";
-  if (!squadPlayers.length) {
+
+  const byId = new Map();
+  for (const p of squadPlayers || []) {
+    byId.set(String(p.Konami_ID), p);
+  }
+  for (const p of extraPlayers) {
+    const id = String(p.Konami_ID);
+    if (!byId.has(id)) byId.set(id, p);
+  }
+  const tablePlayers = sortPlayersByPosition([...byId.values()]);
+
+  if (!tablePlayers.length) {
     tbody.innerHTML =
       '<tr><td colspan="9" style="color:#888;">No squad players found.</td></tr>';
     return;
@@ -1858,7 +1925,7 @@ function renderPlayerStatsTable() {
   const fixture = selectedFixture();
   const fixtureId = fixture?.id;
 
-  for (const p of squadPlayers) {
+  for (const p of tablePlayers) {
     const id = String(p.Konami_ID);
     const pos = normalizePositionCode(p.Position);
     const tr = document.createElement("tr");
@@ -1907,11 +1974,17 @@ function renderPlayerStatsTable() {
     tr.querySelector(".stat-goals")?.addEventListener("change", updateOgBalanceHint);
     tbody.appendChild(tr);
   }
-  const draft = readResultDraft(fixtureId);
-  if (resultDraftHasContent(draft) && Array.isArray(draft.player_stats) && draft.player_stats.length) {
-    applyPlayerStatsDraft(draft.player_stats);
-  } else {
-    applyDefaultLineupFromSquad();
+  if (!skipAutoFill) {
+    const draft = readResultDraft(fixtureId);
+    if (
+      resultDraftHasContent(draft) &&
+      Array.isArray(draft.player_stats) &&
+      draft.player_stats.length
+    ) {
+      applyPlayerStatsDraft(draft.player_stats);
+    } else {
+      applyDefaultLineupFromSquad();
+    }
   }
   sortPlayerStatsRows();
   updateLineupCounter();
@@ -2248,6 +2321,28 @@ async function updateFixturePreview() {
   document.getElementById("homeLabel").textContent = f.home_club_name;
   document.getElementById("awayLabel").textContent = f.away_club_name;
 
+  // Played fixtures: load submitted club stats only (skip pitch defaults / drafts).
+  if (f.status === "played" && !needsInboxConfirm(f, myClub)) {
+    confirmMode = null;
+    applyConfirmModeUI();
+    const simWrapPlayed = document.getElementById("simulateActions");
+    if (simWrapPlayed) simWrapPlayed.style.display = "none";
+    statsEditMode = null;
+    const entered = await enterStatsEditMode(f);
+    if (!entered) {
+      clearScoreFields();
+      renderPlayerStatsTable({ skipAutoFill: true });
+      applyStatsEditModeUI();
+      const deferred = deferredResultNote(f, calendarStatus);
+      setStatus(
+        "submitStatus",
+        deferred || "Result confirmed. One-time stats edit is not available for this match."
+      );
+      setScoreInputsEnabled(false);
+    }
+    return;
+  }
+
   // Always rebuild a clean stats grid for this fixture (no leftover DOM values).
   clearScoreFields();
   renderPlayerStatsTable();
@@ -2333,18 +2428,6 @@ async function updateFixturePreview() {
           ? "Draft restored — check scores and stats, then submit."
           : "Enter home and away goals, then submit."
     );
-  } else if (f.status === "played") {
-    statsEditMode = null;
-    const entered = await enterStatsEditMode(f);
-    if (!entered) {
-      applyStatsEditModeUI();
-      const deferred = deferredResultNote(f, calendarStatus);
-      setStatus(
-        "submitStatus",
-        deferred || "Result confirmed. One-time stats edit is not available for this match."
-      );
-      setScoreInputsEnabled(false);
-    }
   } else {
     const why =
       whyCantSubmitResult(f, myClub, calendarStatus, holidayContext) ||
