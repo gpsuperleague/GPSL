@@ -1073,25 +1073,31 @@ async function loadLegacyClubsReport() {
   const whileLegacy = cards.filter((c) => c.bought_while_legacy).length;
   setStatus(
     "legacyClubsStatus",
-    `${cards.length} legacy card(s) at clubs · ${whileLegacy} bought while legacy · ${refunds.length} refund(s) done so far.`,
+    `${cards.length} legacy card(s) at clubs · ${whileLegacy} bought while legacy · ${refunds.length} release(s) recorded.`,
     true
   );
   wrap.hidden = !cards.length;
   tbody.innerHTML = cards
     .map((c) => {
-      const refund = Number(c.refund) || 0;
-      const paid = `${fmtLegacyMoney(c.fee_paid)} + ${fmtLegacyMoney(c.agent_fee)} + ${fmtLegacyMoney(c.income_tax)}`;
+      const payout = Number(c.refund) || 0;
+      const mv = Number(c.market_value) || 0;
       return `<tr${c.bought_while_legacy ? ' style="background:#3a1820;"' : ""}>
         <td>${escapeHtml(c.club)}</td>
         <td>${escapeHtml(c.name)}${c.bought_while_legacy ? " <b>(bought while legacy)</b>" : ""}</td>
         <td>${escapeHtml(c.how || "—")}</td>
         <td>${escapeHtml(fmtLegacyDate(c.bought_at))}</td>
         <td>${escapeHtml(fmtLegacyDate(c.legacy_since))}</td>
-        <td>${c.already_refunded ? "Already refunded" : `${paid} = <b>${fmtLegacyMoney(refund)}</b>`}</td>
+        <td>${c.already_refunded ? "Already released" : `<b>${fmtLegacyMoney(mv || payout)}</b> market value`}</td>
         <td><button type="button" class="button legacy-admin-refund-btn" data-id="${escapeHtml(c.player_id)}" data-name="${escapeHtml(
           c.name
-        )}" data-club="${escapeHtml(c.club)}" data-refund="${refund}" style="font-size:11px;padding:4px 8px;">${
-          refund > 0 ? `Refund ${fmtLegacyMoney(refund)}` : "Release"
+        )}" data-club="${escapeHtml(c.club)}" data-refund="${payout}" style="font-size:11px;padding:4px 8px;" ${
+          c.already_refunded ? "disabled" : ""
+        }>${
+          c.already_refunded
+            ? "Already released"
+            : payout > 0
+              ? `Release ${fmtLegacyMoney(payout)}`
+              : "Release"
         }</button></td>
       </tr>`;
     })
@@ -1102,19 +1108,19 @@ async function adminRefundLegacyCard(btn) {
   const refund = Number(btn.dataset.refund) || 0;
   const msg =
     refund > 0
-      ? `Hand ${btn.dataset.name} back from ${btn.dataset.club} and refund ${fmtLegacyMoney(refund)}? He becomes a free agent.`
-      : `Release ${btn.dataset.name} from ${btn.dataset.club}? Nothing to refund. He becomes a free agent.`;
+      ? `Release ${btn.dataset.name} from ${btn.dataset.club} for ${fmtLegacyMoney(refund)} (market value)? He becomes an unsignable legacy free agent.`
+      : `Release ${btn.dataset.name} from ${btn.dataset.club}? Market value ₿0. He becomes an unsignable legacy free agent.`;
   if (!confirm(msg)) return;
   btn.disabled = true;
   const { data, error } = await supabase.rpc("admin_legacy_card_refund", { p_player_id: btn.dataset.id });
   if (error) {
-    setStatus("legacyClubsStatus", error.message || "Refund failed.", false);
+    setStatus("legacyClubsStatus", error.message || "Release failed.", false);
     btn.disabled = false;
     return;
   }
   setStatus(
     "legacyClubsStatus",
-    `${data?.player_name || btn.dataset.name} returned from ${data?.club || btn.dataset.club} — ${fmtLegacyMoney(data?.refund)} refunded.`,
+    `${data?.player_name || btn.dataset.name} released from ${data?.club || btn.dataset.club} — ${fmtLegacyMoney(data?.refund)} (market value).`,
     true
   );
   await loadLegacyClubsReport();

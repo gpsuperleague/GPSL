@@ -144,6 +144,7 @@ export const SECTION_RECENT = {
       items: [
         `Not sellable and not on the expiry wage auction.`,
         `Final-year renewals: <b>1 season</b> at a time from Squad.`,
+        `Squad <b>Legacy cards</b> panel: always visible when you have one; <b>release for market value</b> only in GPSL June / July — no release quota; stays an unsignable legacy free agent.`,
         `League-wide list: Transfers → <a href="legacy_players.html">Legacy players</a>.`,
       ],
     },

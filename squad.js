@@ -116,7 +116,7 @@ import {
   DESIGNATION_FF,
 } from "./squad_designations.js?v=20261003-big-star";
 import { mountStarDemotionPanel } from "./squad_star_demotion.js?v=20261003-big-star";
-import { mountLegacyCardsPanel } from "./squad_legacy_cards.js?v=20261010-legacy-refund";
+import { mountLegacyCardsPanel } from "./squad_legacy_cards.js?v=20261025-legacy-jj";
 import {
   loadActiveSeasonLoanPlayerIds,
   loadClubSquadMinimumStatus,

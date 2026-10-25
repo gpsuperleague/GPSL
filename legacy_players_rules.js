@@ -27,9 +27,11 @@ export function getLegacyPlayersRules() {
           "<b>Not on the expiring-contracts wage bid market</b> — other clubs cannot bid for them.",
           `In the <b>final contract year</b>, renew from <a href="squad.html">Squad</a>:
         <b>one season at a time</b> (not a new 3-year deal). Home-grown ≤23 and non-home-grown ≤21 may keep the same wage on renew.`,
-          "Or choose <b>Expire — release for MV</b> from Squad to drop the player for market value.",
+          `On <a href="squad.html">Squad</a>, legacy cards always show in the <b>Legacy cards</b> panel.
+        In <b>GPSL June and July</b> only, you can <b>release for market value</b> (any contract length).
+        This does <b>not</b> use a voluntary or New Owner release slot.`,
           `<b>If released</b>, they stay in GPDB as a free agent but remain <b>unpurchaseable</b>
-        (no draft / FA bids) until a future PESDB sync restores the card.`,
+        (no draft / free-agent bids) until a future PESDB sync restores the card.`,
           "If the card returns on a future PESDB sync, it becomes a normal GPDB card again (sellable or draftable as a free agent).",
         ],
       },
