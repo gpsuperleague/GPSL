@@ -400,7 +400,7 @@ async function fillDiscordOpponentTag(f) {
   const opp = ctx?.my_role === "home" ? f.away_club_short_name : f.home_club_short_name;
   const { data } = await supabase.from("Clubs").select("owner").eq("ShortName", opp).maybeSingle();
   const tag = String(data?.owner || "").trim();
-  if (tag) el.innerHTML = ` (<b>${tag.replace(/[<>&"]/g, "")}</b>)`;
+  if (tag) el.innerHTML = ` with <b>${tag.replace(/[<>&"]/g, "")}</b>`;
 }
 
 function finalPlayLineHtml() {
@@ -1014,14 +1014,15 @@ function render() {
 
   const manualNoteHtml = `
     <p class="schedule-manual-note">
-      <b>Manual arrange</b> (fully off-site, no propose/reply clocks) is only available when
-      <b>both</b> owners have <b>GPSL match system OFF</b> on
-      <a href="owner_details.html">Owner Details</a>.
+      <b>Preferred:</b> GPSL Match Scheduling (propose / accept / counter).
       ${
         showDiscordTab
-          ? "If either club is ON, use the tabs below — GPSL Match Scheduling or Agreed on Discord scheduling."
-          : "If either club is ON, schedule on this page as usual (GPSL propose/reply)."
+          ? "<b>Alternative:</b> Agreed on Discord tab if you already picked a time off-site (both still confirm here)."
+          : ""
       }
+      <b>Manual arrange</b> (fully off-site, no clocks) only when
+      <b>both</b> owners have <b>GPSL match system OFF</b> on
+      <a href="owner_details.html">Owner Details</a>.
     </p>
   `;
 

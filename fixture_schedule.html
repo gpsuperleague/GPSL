@@ -19,9 +19,10 @@
     .status-agreed { color:#8c8; }
     .status-pending { color:#fc6; }
     .discord-hint {
-      background:#2a2200; border:1px solid #664400; border-radius:6px;
-      padding:12px 14px; color:#ecc; font-size:13px; line-height:1.45; margin-bottom:16px;
+      background:transparent; border:none; border-left:2px solid #445;
+      padding:2px 0 2px 12px; color:#889; font-size:12px; line-height:1.45; margin:0 0 14px;
     }
+    .discord-hint b { color:#bbb; font-weight:600; }
     .slot-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
     .slot-btn {
       display:flex; flex-direction:column; gap:2px;
@@ -145,11 +146,13 @@
     <h1>Schedule match</h1>
     <p id="scheduleMeta" class="meta">Loading…</p>
     <div id="discordHint" class="discord-hint" hidden>
-      Agreed a time on <b>Discord</b><span id="discordOpponentTag"></span>? Open the <b>Agreed on Discord scheduling</b> tab below so both clubs confirm on the site. Reply and arrangement deadlines keep running until it is locked. Use <b>GPSL Match Scheduling</b> to propose or counter as usual.
+      Prefer <b>GPSL Match Scheduling</b> below (propose / accept / counter).
+      Already agreed a time off-site<span id="discordOpponentTag"></span>? Use the <b>Agreed on Discord</b> tab instead — both clubs still confirm here; reply clocks keep running until locked.
+      Full manual (no site clocks) only when <b>both</b> Match systems are OFF.
     </div>
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261025-noshow-strikes-v2"></script>
+  <script type="module" src="fixture_schedule.js?v=20261025-schedule-hint"></script>
 </body>
 </html>
