@@ -440,6 +440,41 @@ function holidayEarlyBannerHtml() {
   </div>`;
 }
 
+function noShowLadderBannerHtml(f) {
+  const ladder = ctx?.no_show_ladder || {};
+  const sch = ctx?.schedule || {};
+  const attempt = Number(ladder.play_attempt_count ?? sch.play_attempt_count ?? 0);
+  const openPlay = !!(ladder.open_play_active ?? sch.open_play_active);
+  const deadlineKey = String(
+    ladder.open_play_deadline_gpsl_month || sch.open_play_deadline_gpsl_month || ""
+  ).toLowerCase();
+  const deadlineLabel = deadlineKey
+    ? GPSL_MONTH_LABELS[deadlineKey] || deadlineKey
+    : null;
+  const homeN = Number(ladder.home_no_show_count ?? 0);
+  const awayN = Number(ladder.away_no_show_count ?? 0);
+  const homeName = fullClubName(f.home_club_short_name);
+  const awayName = fullClubName(f.away_club_short_name);
+
+  if (!openPlay && attempt < 3) return "";
+
+  if (openPlay) {
+    return `<div class="catch-up-banner">
+      <strong>Open play (attempt 3+)</strong> — arrange by propose / accept through
+      <b>${deadlineLabel || "the open-play deadline"}</b>.
+      No-shows: ${homeName} <b>${homeN}</b> · ${awayName} <b>${awayN}</b>.
+      First miss per club = warning; each further miss by that club = <b>₿1.5m</b>.
+      Still unplayed at the deadline → higher no-show count forfeits; equal counts → both 0–0 + ₿1.5m each.
+    </div>`;
+  }
+
+  return `<div class="catch-up-banner">
+    <strong>Attempt ${attempt}</strong> — no-show ladder is active.
+    First miss per club = warning; each further miss by that club = <b>₿1.5m</b> and opens a 2-month arrange window.
+    No-shows so far: ${homeName} <b>${homeN}</b> · ${awayName} <b>${awayN}</b>.
+  </div>`;
+}
+
 function renderAgreedPanel(root, f, sch) {
   const homeTz = ctx.home_timezone || UK_TZ;
   const awayTz = ctx.away_timezone || UK_TZ;
@@ -498,9 +533,14 @@ function renderAgreedPanel(root, f, sch) {
       .join(" · ");
   }
 
+  const ladderActive =
+    !!(ctx?.no_show_ladder?.ladder_active || ctx?.no_show_ladder?.open_play_active) ||
+    Number(sch.play_attempt_count || 0) >= 3;
+
   root.innerHTML = `
     ${catchUpBannerHtml()}
     ${holidayEarlyBannerHtml()}
+    ${noShowLadderBannerHtml(f)}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
@@ -511,7 +551,11 @@ function renderAgreedPanel(root, f, sch) {
       <p class="meta">${checkinStatus}</p>
       <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
       <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, 12 subs, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:#ff9900;">Check your squad</a> before kick-off.</p>
-      <p class="meta">If only one club checks in, the other is marked as a no-show. If the match is still unplayed when the GPSL month locks, the no-show becomes a <b>3–0 forfeit plus a ₿2.5m fine</b>.</p>
+      <p class="meta">${
+        ladderActive
+          ? "Attempt 3+ no-show rules apply on this fixture (see banner). Both-miss check-in still has no fine — pick a new time."
+          : "If only one club checks in, the other is marked as a no-show. If the match is still unplayed when the GPSL month locks, the no-show becomes a <b>3–0 forfeit plus a ₿2.5m fine</b> (attempts 1–2). From attempt 3, warnings / ₿1.5m fines / open play apply instead."
+      }</p>
       ${
         ci.my_has_manager === false
           ? `<p class="meta" style="color:#f88;"><b>No manager signed</b> — you cannot check in or play until you hire one from the <a href="manager_listings.html" style="color:#ff9900;">Manager Transfer Market</a>.</p>`
