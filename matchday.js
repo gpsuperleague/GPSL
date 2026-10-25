@@ -97,7 +97,7 @@ const MAX_STARTERS = 11;
 const MAX_SUBS = 5;
 
 /** Default player rating when Started / Subbed (0.5 steps). */
-const DEFAULT_MATCH_RATING = "6.0";
+const DEFAULT_MATCH_RATING = "3.0";
 
 /** localStorage key prefix for in-progress result entry (survives race / refresh). */
 const RESULT_DRAFT_PREFIX = "gpsl_matchday_result_draft_v1:";
@@ -802,7 +802,7 @@ function resultDraftHasContent(draft) {
   if (Number(draft.opponent_own_goals) > 0) return true;
   if (draft.connection_stars != null && String(draft.connection_stars) !== "") return true;
   const stats = Array.isArray(draft.player_stats) ? draft.player_stats : [];
-  // Pitch XI + default 6.0 alone is not a real draft — otherwise every glance at a
+  // Pitch XI + default rating alone is not a real draft — otherwise every glance at a
   // fixture "restores" previous-looking stats on the next match.
   return stats.some((r) => {
     if ((r?.goals || 0) > 0) return true;
@@ -1353,7 +1353,7 @@ function normalizeRatingInput(raw) {
 
 /**
  * Keep rating in sync with Started / Subbed on.
- * @param {{ forceDefault?: boolean }} [opts] forceDefault=true always sets 6.0 when appeared
+ * @param {{ forceDefault?: boolean }} [opts] forceDefault=true always sets default when appeared
  *   (user tick). When false, only fill blank appeared rows (draft / default lineup).
  */
 function syncRatingForAppearance(tr, { forceDefault = false } = {}) {
@@ -1400,7 +1400,7 @@ function wireSelectAllOnFocus(input) {
 
 function wireRatingInput(input) {
   if (!input) return;
-  // Optional to edit; Started/Subbed defaults to 6.0; submit also fills blank appeared players.
+  // Optional to edit; Started/Subbed defaults to DEFAULT_MATCH_RATING; submit also fills blanks.
   wireSelectAllOnFocus(input);
   input.addEventListener("blur", () => {
     const raw = String(input.value ?? "").trim();
@@ -2053,7 +2053,7 @@ function collectPlayerStats() {
     const ratingRaw = tr.querySelector(".stat-rating")?.value;
     const ratingNorm = normalizeRatingInput(ratingRaw);
     let rating = ratingNorm ? Number(ratingNorm) : null;
-    // Starters / introduced subs without a rating get an automatic 6.0
+    // Starters / introduced subs without a rating get the automatic default
     if (appeared && (rating == null || Number.isNaN(rating))) {
       rating = Number(DEFAULT_MATCH_RATING);
     }
