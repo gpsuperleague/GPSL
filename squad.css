@@ -994,13 +994,15 @@ body.squad-page .squad-miss-section {
 }
 
 body.squad-page .squad-miss-head {
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.01em;
-  line-height: 1.25;
+  line-height: 1.2;
   text-transform: none;
   opacity: 0.95;
   white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 body.squad-page .squad-miss-out .squad-miss-head {
@@ -1172,11 +1174,14 @@ body.squad-page .squad-col-status {
   min-width: 140px;
   max-width: 260px;
   vertical-align: middle;
+  overflow: hidden;
 }
 
 body.squad-page .squad-col-fitness {
   white-space: normal;
   vertical-align: middle;
+  overflow: hidden;
+  max-width: 130px;
 }
 
 body.squad-page .status-suspended {
