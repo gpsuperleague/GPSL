@@ -55,7 +55,7 @@ import {
   formatInjuryStatusHtml,
   formatInjuryMatchFitnessHtml,
   formatCardsStatusHtml,
-} from "./player_discipline.js?v=20261026-fit-injury-col";
+} from "./player_discipline.js?v=20261026-miss-labels";
 import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,

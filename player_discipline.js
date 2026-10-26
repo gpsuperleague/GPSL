@@ -415,9 +415,13 @@ function injuryPendingMatchesStatusHtml(pendingMatches) {
   const { outLabels, recLabels, otherLabels } =
     injuryPendingLabelGroups(pendingMatches);
   const parts = [
-    missSectionHtml("squad-miss-out", "Out", outLabels),
-    missSectionHtml("squad-miss-light", "Light", recLabels),
-    missSectionHtml("squad-miss-other", "Misses", otherLabels),
+    missSectionHtml("squad-miss-out", "Unavailable through injury", outLabels),
+    missSectionHtml(
+      "squad-miss-light",
+      "Light training (building fitness, unavailable)",
+      recLabels
+    ),
+    missSectionHtml("squad-miss-other", "Unavailable", otherLabels),
   ].filter(Boolean);
   return parts.join("");
 }
