@@ -75,7 +75,7 @@
       color:#111;
       letter-spacing:.02em;
     }
-    .sc-now-badge, .sc-pre-badge {
+    .sc-now-badge, .sc-pre-badge, .sc-done-badge {
       position:absolute;
       right:6px;
       top:50%;
@@ -93,6 +93,31 @@
       background:#111;
       color:var(--gpsl-accent, #ff9900);
     }
+    .sc-month--passed .sc-done-badge {
+      background:#1a5c32;
+      color:#c8f0d4;
+    }
+    .sc-month-tick {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:1.15em;
+      height:1.15em;
+      margin-right:2px;
+      border-radius:50%;
+      background:#1f7a3a;
+      color:#fff;
+      font-size:12px;
+      font-weight:800;
+      line-height:1;
+      box-shadow:0 0 0 1px rgba(0,0,0,.2);
+    }
+    .sc-month--passed {
+      opacity:0.92;
+    }
+    .sc-month--passed .sc-month-body {
+      background:#f3f7f3;
+    }
 
     /* GPSL-themed month header colours */
     .sc-month[data-month="pre_season"] .sc-month-banner { background:#d4c4a8; }
@@ -104,7 +129,12 @@
     .sc-month[data-month="november"] .sc-month-banner { background:#5a7db5; color:#fff; }
     .sc-month[data-month="november"] .sc-month-banner h2,
     .sc-month[data-month="november"] .sc-pre-badge,
-    .sc-month[data-month="november"] .sc-now-badge { color:#fff; }
+    .sc-month[data-month="november"] .sc-now-badge,
+    .sc-month[data-month="november"] .sc-done-badge { color:#fff; }
+    .sc-month[data-month="november"].sc-month--passed .sc-done-badge {
+      background:#0d3d24;
+      color:#c8f0d4;
+    }
     .sc-month[data-month="december"] .sc-month-banner { background:#9b87b8; }
     .sc-month[data-month="january"] .sc-month-banner { background:#7ec8e3; }
     .sc-month[data-month="february"] .sc-month-banner { background:#6ecf8a; }
@@ -118,17 +148,49 @@
       background:#faf8f4;
     }
     .sc-bullets {
-      list-style:disc;
+      list-style:none;
       margin:0;
-      padding:0 0 0 18px;
+      padding:0;
       display:flex;
       flex-direction:column;
-      gap:4px;
+      gap:5px;
     }
     .sc-bullet {
+      display:flex;
+      align-items:flex-start;
+      gap:7px;
       font-size:12.5px;
       line-height:1.35;
       color:#222;
+    }
+    .sc-tick {
+      flex:0 0 auto;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:1.05em;
+      height:1.05em;
+      margin-top:1px;
+      border-radius:50%;
+      background:#1f7a3a;
+      color:#fff;
+      font-size:11px;
+      font-weight:800;
+      line-height:1;
+      box-shadow:0 0 0 1px rgba(31,122,58,.35);
+    }
+    .sc-tick--pending {
+      background:transparent;
+      box-shadow:inset 0 0 0 1.5px #c5bba8;
+      color:transparent;
+    }
+    .sc-bullet--done .sc-bullet-btn {
+      color:#3a5a42;
+      text-decoration-color:rgba(31,122,58,.35);
+    }
+    .sc-bullet-main {
+      flex:1 1 auto;
+      min-width:0;
     }
     .sc-bullet-btn {
       display:inline;
@@ -169,7 +231,7 @@
     }
     .sc-bullet-detail {
       display:none;
-      margin:6px 0 4px -6px;
+      margin:6px 0 4px 0;
       padding:8px 10px 10px;
       background:#fff;
       border:1px solid #d8d0c4;
@@ -371,6 +433,6 @@
     <p class="sc-hint">Tip: your club fixtures appear as highlighted bullets when you own a club.</p>
     <div id="seasonCalendarRoot"></div>
   </div>
-  <script type="module" src="season_calendar.js?v=20260929-planner"></script>
+  <script type="module" src="season_calendar.js?v=20261026-done-ticks"></script>
 </body>
 </html>

@@ -443,6 +443,7 @@ function plannedEventOverlay(ev, nowMs) {
     links: link ? [link] : [],
     live,
     at: ev.starts_at,
+    ends_at: ev.ends_at || (isAuction ? new Date(end).toISOString() : null),
     planned: true,
   };
 }
@@ -940,6 +941,49 @@ function isCurrentMonth(monthKey, status) {
   return false;
 }
 
+function currentSeasonMonthIndex(status) {
+  for (let i = 0; i < SEASON_MONTH_ORDER.length; i++) {
+    if (isCurrentMonth(SEASON_MONTH_ORDER[i], status)) return i;
+  }
+  return -1;
+}
+
+/** GPSL months before the active / next month in the season guide. */
+function isMonthPassed(monthKey, status) {
+  const cur = currentSeasonMonthIndex(status);
+  if (cur < 0) return false;
+  const i = SEASON_MONTH_ORDER.indexOf(monthKey);
+  return i >= 0 && i < cur;
+}
+
+/**
+ * Green-tick when the month is past, or the item is clearly finished
+ * (played fixtures, ended auctions, completed overlays).
+ */
+function eventIsDone(ev, monthKey, ctx) {
+  if (!ev) return false;
+  if (ev.done === true) return true;
+  if (ev.live) return false;
+  if (isMonthPassed(monthKey, ctx?.status)) return true;
+  if (!isCurrentMonth(monthKey, ctx?.status)) return false;
+
+  if (ev.kind === "club-fixture") {
+    const fixtures = ctx?.club?.byMonth?.[monthKey] || [];
+    return (
+      fixtures.length > 0 &&
+      fixtures.every((f) => String(f.status || "").toLowerCase() === "played")
+    );
+  }
+
+  const endRaw = ev.ends_at || ev.end_time || null;
+  if (endRaw) {
+    const endMs = new Date(endRaw).getTime();
+    if (!Number.isNaN(endMs) && endMs < Date.now()) return true;
+  }
+
+  return false;
+}
+
 function eventShortLabel(ev) {
   return ev.short || ev.text || "Event";
 }
@@ -1027,21 +1071,29 @@ function renderBullet(ev, monthKey, ctx, idx) {
       )}</a>`;
     })
     .join("");
+  const done = eventIsDone(ev, monthKey, ctx);
   const cls = [
     "sc-bullet",
     `sc-bullet--${ev.kind}`,
     ev.live ? "sc-bullet--live" : "",
     ev.mine ? "sc-bullet--mine" : "",
+    done ? "sc-bullet--done" : "",
   ]
     .filter(Boolean)
     .join(" ");
   const id = `sc-b-${monthKey}-${idx}`;
+  const tick = done
+    ? `<span class="sc-tick" title="Completed" aria-label="Completed">✓</span>`
+    : `<span class="sc-tick sc-tick--pending" aria-hidden="true"></span>`;
   return (
     `<li class="${cls}" data-bullet-id="${id}">` +
+    tick +
+    `<div class="sc-bullet-main">` +
     `<button type="button" class="sc-bullet-btn" aria-expanded="false" aria-controls="${id}-detail">${short}</button>` +
     `<div class="sc-bullet-detail" id="${id}-detail" hidden>` +
     bodyHtml +
     (links ? `<div class="sc-bullet-links">${links}</div>` : "") +
+    `</div>` +
     `</div>` +
     `</li>`
   );
@@ -1052,6 +1104,7 @@ function renderMonthCard(monthKey, ctx) {
   const isPreSeasonCard = monthKey === "pre_season";
   const isEarlyMonth = monthKey === "june" || monthKey === "july";
   const current = isCurrentMonth(monthKey, ctx.status);
+  const passed = isMonthPassed(monthKey, ctx.status);
   const calRow = ctx.calendarMonths.find(
     (r) => String(r.gpsl_month || "").toLowerCase() === monthKey
   );
@@ -1094,13 +1147,21 @@ function renderMonthCard(monthKey, ctx) {
   return (
     `<article class="sc-month${
       isPreSeasonCard || isEarlyMonth ? " sc-month--pre" : ""
-    }${current ? " sc-month--current" : ""}" id="month-${escapeHtml(
+    }${current ? " sc-month--current" : ""}${
+      passed ? " sc-month--passed" : ""
+    }" id="month-${escapeHtml(monthKey)}" data-month="${escapeHtml(
       monthKey
-    )}" data-month="${escapeHtml(monthKey)}">` +
+    )}">` +
     `<header class="sc-month-banner">` +
+    (passed
+      ? `<span class="sc-month-tick" title="Month completed" aria-label="Month completed">✓</span>`
+      : "") +
     `<h2>${escapeHtml(label)}</h2>` +
     (current ? `<span class="sc-now-badge">Now</span>` : "") +
-    (isPreSeasonCard && !current
+    (passed && !current
+      ? `<span class="sc-done-badge">Done</span>`
+      : "") +
+    (isPreSeasonCard && !current && !passed
       ? `<span class="sc-pre-badge">Pre</span>`
       : "") +
     `</header>` +
