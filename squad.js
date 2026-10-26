@@ -1907,16 +1907,27 @@ function formatMatchFitnessCell(playerId) {
   const label =
     row?.label || MATCH_FITNESS_LABELS[level] || MATCH_FITNESS_LABELS[1];
   const streak = Number(row?.consecutive) || 0;
-  const cls =
-    level >= 5
-      ? "squad-fitness squad-fitness-5"
-      : level >= 4
-        ? "squad-fitness squad-fitness-4"
-        : level >= 3
-          ? "squad-fitness squad-fitness-3"
-          : "squad-fitness";
-  const title = `L${level} ${label}${streak ? ` · ${streak} consecutive` : ""}`;
-  return `<span class="${cls}" title="${title.replace(/"/g, "&quot;")}">L${level} ${label}</span>`;
+  const title = `${label} (level ${level}/5)${
+    streak ? ` · ${streak} consecutive appearance${streak === 1 ? "" : "s"}` : ""
+  }`;
+  const pips = [1, 2, 3, 4, 5]
+    .map(
+      (n) =>
+        `<span class="squad-fit-pip squad-fit-pip-${n}${
+          n <= level ? " is-on" : ""
+        }" aria-hidden="true"></span>`
+    )
+    .join("");
+  return `<div class="squad-fit squad-fit-l${level}" title="${title.replace(
+    /"/g,
+    "&quot;"
+  )}">
+    <div class="squad-fit-meter" role="img" aria-label="${title.replace(
+      /"/g,
+      "&quot;"
+    )}">${pips}</div>
+    <div class="squad-fit-name">${label}</div>
+  </div>`;
 }
 
 async function loadSquadMatchFitness(clubShort) {

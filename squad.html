@@ -77,10 +77,42 @@
     #legacyCardsPanel .star-demotion-table th { color:#d7a8ff; }
     #legacyCardsPanel .star-demotion-table th, #legacyCardsPanel .star-demotion-table td { border-bottom-color:#3a2a48; }
     .legacy-flag { display:inline-block; margin-left:4px; padding:1px 6px; border-radius:8px; font-size:11px; background:#5a1f2a; color:#ffb3c0; }
-    .squad-fitness { font-size:12px; white-space:nowrap; color:#9ab; }
-    .squad-fitness-3 { color:#c9b46a; }
-    .squad-fitness-4 { color:#e67e22; }
-    .squad-fitness-5 { color:#e74c3c; font-weight:700; }
+    .squad-fit {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      min-width: 7.5rem;
+    }
+    .squad-fit-meter {
+      display: flex;
+      gap: 3px;
+      width: 100%;
+    }
+    .squad-fit-pip {
+      flex: 1;
+      height: 8px;
+      border-radius: 2px;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+    }
+    .squad-fit-pip.is-on.squad-fit-pip-1 { background: #27ae60; border-color: #2ecc71; }
+    .squad-fit-pip.is-on.squad-fit-pip-2 { background: #52b788; border-color: #74c69d; }
+    .squad-fit-pip.is-on.squad-fit-pip-3 { background: #f1c40f; border-color: #f4d03f; }
+    .squad-fit-pip.is-on.squad-fit-pip-4 { background: #e67e22; border-color: #f39c12; }
+    .squad-fit-pip.is-on.squad-fit-pip-5 { background: #e74c3c; border-color: #ff6b5a; }
+    .squad-fit-name {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .squad-fit-l1 .squad-fit-name { color: #2ecc71; }
+    .squad-fit-l2 .squad-fit-name { color: #74c69d; }
+    .squad-fit-l3 .squad-fit-name { color: #f1c40f; }
+    .squad-fit-l4 .squad-fit-name { color: #e67e22; }
+    .squad-fit-l5 .squad-fit-name { color: #e74c3c; }
   </style>
 </head>
 
@@ -205,7 +237,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20261026-match-fitness"></script>
+  <script type="module" src="squad.js?v=20261026-match-fitness-meter"></script>
 
 </body>
 </html>
