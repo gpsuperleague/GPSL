@@ -11,17 +11,17 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:900px; margin:30px auto 50px; }
-    h1 { color:#ff9900; margin-bottom:4px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:4px; }
     .sub { color:#999; margin:0 0 18px; }
     .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:20px; margin-bottom:18px; }
-    .panel h2 { color:#ffcc66; margin:0 0 12px; font-size:17px; }
+    .panel h2 { color:var(--gpsl-accent-hover, #ffcc66); margin:0 0 12px; font-size:17px; }
     .head-row { display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap; }
     .player-thumb { width:96px; border-radius:6px; }
     .totals { display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; }
     .totals span { background:#222; border:1px solid #444; border-radius:6px; padding:8px 12px; font-size:14px; }
-    .totals b { color:#ff9900; }
+    .totals b { color:var(--gpsl-accent, #ff9900); }
     .gpsl-table { width:100%; border-collapse:collapse; font-size:14px; }
-    .gpsl-table th { text-align:left; padding:8px; background:#222; color:#ff9900; }
+    .gpsl-table th { text-align:left; padding:8px; background:#222; color:var(--gpsl-accent, #ff9900); }
     .gpsl-table td { padding:8px; border-bottom:1px solid #2a2a2a; }
     .num { text-align:right; font-variant-numeric:tabular-nums; }
     .gpsl-table .move-row td { color:#bbb; }
@@ -30,21 +30,21 @@
       display:inline-block; font-size:11px; text-transform:uppercase; letter-spacing:0.04em;
       color:#888; margin-right:6px;
     }
-    .gpsl-link { color:#ff9900; text-decoration:none; }
+    .gpsl-link { color:var(--gpsl-accent, #ff9900); text-decoration:none; }
     .discipline-active { background: rgba(160, 55, 35, 0.2); }
     .card-pill {
       display:inline-block; border-radius:4px; padding:2px 7px; font-size:12px; font-weight:600; margin-right:4px;
     }
     .card-pill.y { background:#5a5010; color:#ffe08a; border:1px solid #8a7820; }
     .card-pill.r { background:#5a2018; color:#ffd0a8; border:1px solid #a04830; }
-    .award-pill { display:inline-block; background:#332200; border:1px solid #664400; color:#ffcc66; border-radius:4px; padding:4px 8px; margin:4px 6px 0 0; font-size:13px; }
+    .award-pill { display:inline-block; background:#332200; border:1px solid #664400; color:var(--gpsl-accent-hover, #ffcc66); border-radius:4px; padding:4px 8px; margin:4px 6px 0 0; font-size:13px; }
     .trophy-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
     .trophy-item {
       display:flex; gap:12px; align-items:flex-start;
       background:#222; border:1px solid #3a3a3a; border-radius:8px; padding:12px 14px;
     }
     .trophy-icon { font-size:24px; line-height:1; margin-top:2px; }
-    .trophy-title { color:#ffcc66; font-weight:600; font-size:15px; }
+    .trophy-title { color:var(--gpsl-accent-hover, #ffcc66); font-weight:600; font-size:15px; }
     .trophy-meta { color:#999; font-size:13px; margin-top:4px; }
     .honours-subhead { color:#ccc; font-size:14px; margin:0 0 10px; font-weight:600; }
     #careerError { color:#f88; display:none; margin-bottom:12px; }

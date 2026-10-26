@@ -142,7 +142,7 @@ export function renderUpcomingSpecialAuctions(rootEl, auctions, currentId = null
 export const UPCOMING_SPECIAL_AUCTIONS_CSS = `
   .sa-upcoming { margin: 16px auto; }
   .sa-upcoming-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
-  .sa-upcoming-heading { color: #ffcc66; font-size: 16px; margin: 0; }
+  .sa-upcoming-heading { color: var(--gpsl-accent-hover, #ffcc66); font-size: 16px; margin: 0; }
   .sa-upcoming-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
   .sa-upcoming-item { display: flex; gap: 8px; align-items: stretch; }
   .sa-upcoming-card {
@@ -151,7 +151,7 @@ export const UPCOMING_SPECIAL_AUCTIONS_CSS = `
     padding: 10px 12px; background: #1f1f1f; border: 1px solid #333; border-radius: 8px;
     color: #ddd; text-decoration: none;
   }
-  a.sa-upcoming-card:hover { border-color: #ff9900; }
+  a.sa-upcoming-card:hover { border-color: var(--gpsl-accent, #ff9900); }
   .sa-upcoming-item.is-current .sa-upcoming-card { border-color: #555; opacity: 0.85; }
   .sa-upcoming-cal, .sa-upcoming-cal-all {
     background: #2a2a2a; color: #ddd; border: 1px solid #444; border-radius: 8px;
@@ -159,10 +159,10 @@ export const UPCOMING_SPECIAL_AUCTIONS_CSS = `
   }
   .sa-upcoming-cal { width: 44px; font-size: 18px; }
   .sa-upcoming-cal-all { padding: 6px 12px; }
-  .sa-upcoming-cal:hover, .sa-upcoming-cal-all:hover { border-color: #ff9900; }
+  .sa-upcoming-cal:hover, .sa-upcoming-cal-all:hover { border-color: var(--gpsl-accent, #ff9900); }
   .sa-upcoming-title { font-weight: 700; color: #eee; }
   .sa-upcoming-meta { font-size: 12px; color: #999; margin-top: 2px; }
-  .sa-upcoming-when { font-size: 13px; color: #ffcc66; align-self: center; white-space: nowrap; }
+  .sa-upcoming-when { font-size: 13px; color: var(--gpsl-accent-hover, #ffcc66); align-self: center; white-space: nowrap; }
   .sa-upcoming-tag {
     display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px;
     font-size: 10px; font-weight: 700; text-transform: uppercase; vertical-align: middle;

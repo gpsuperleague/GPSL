@@ -165,7 +165,7 @@ function renderMonth(month) {
     <section class="month-block">
       <div class="month-head">
         <span>${escapeHtml(month.gpsl_month_label || month.gpsl_month || "Month")}</span>
-        <span class="cap">Paid friendlies: <b style="color:#ffcc66">${paid}</b> / ${cap}</span>
+        <span class="cap">Paid friendlies: <b style="color:var(--gpsl-accent-hover, #ffcc66)">${paid}</b> / ${cap}</span>
       </div>
       ${cards}
     </section>
@@ -435,7 +435,7 @@ async function loadPage() {
     root.innerHTML = `
       <p class="empty">
         No friendlies yet. Post in Discord <b>#gpsl-friendly-results</b> as
-        <code style="color:#ffcc66">JUB 2 - 2 BEN</code> or <code style="color:#ffcc66">ROS 2 - JUB 3</code>.
+        <code style="color:var(--gpsl-accent-hover, #ffcc66)">JUB 2 - 2 BEN</code> or <code style="color:var(--gpsl-accent-hover, #ffcc66)">ROS 2 - JUB 3</code>.
         When your opponent posts the matching scoreline, it appears here.
       </p>`;
     return;

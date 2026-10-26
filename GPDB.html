@@ -27,7 +27,7 @@
       display: inline-block;
       padding: 8px 16px;
       background: #1a1a1a;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       border: 1px solid #666;
       border-radius: 6px;
       text-decoration: none;
@@ -50,8 +50,8 @@
     }
     button.button.draft-offer-btn {
       background: #3d2a00;
-      color: #ffcc66;
-      border-color: #ff9900;
+      color: var(--gpsl-accent-hover, #ffcc66);
+      border-color: var(--gpsl-accent, #ff9900);
     }
     button.button.draft-offer-btn:hover {
       background: #4d3600;
@@ -99,19 +99,19 @@
     }
 
     button.scout-btn.scout-on {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
     }
 
     #myScoutedFilterBtn.is-active,
     #finalYearFilterBtn.is-active,
     #myClubFilterBtn.is-active {
       background: #3d3200;
-      border-color: #ff9900;
-      color: #ffcc66;
+      border-color: var(--gpsl-accent, #ff9900);
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
 
     .gpdb-status-final {
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
       font-weight: bold;
       font-size: 12px;
     }
@@ -133,7 +133,7 @@
     }
 
     .locked-msg {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 12px;
       font-weight: bold;
     }
@@ -200,7 +200,7 @@
 
     #pageTitle {
       background:#222;
-      color:#ff9900;
+      color:var(--gpsl-accent, #ff9900);
       padding:10px 16px;
       border-radius:6px;
       display:inline-block;
@@ -215,7 +215,7 @@
 
     .filter-group {
       background:#1a1a1a;
-      color:#ff9900;
+      color:var(--gpsl-accent, #ff9900);
       padding:10px 14px;
       border-radius:6px;
       margin-bottom:12px;
@@ -270,7 +270,7 @@
 
     th {
       background: #222;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       padding: 8px;
       font-size: 13px;
       border-bottom: 2px solid #444;
@@ -322,14 +322,14 @@
     }
 
     #pagination {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
       margin-top: 20px;
     }
 
     #rowsPerPage {
       margin-top: 20px;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
     }
 
     .modal-backdrop {
@@ -399,7 +399,7 @@
     }
 
     .bid-row label {
-      color:#ff9900;
+      color:var(--gpsl-accent, #ff9900);
       margin-right:6px;
     }
 
@@ -443,7 +443,7 @@
     }
 
     .gpdb-draft-filter-tag {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
     }
 
@@ -456,7 +456,7 @@
     }
 
     .multi-filter-draft-hint b {
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
 
     .multi-filter-control {
@@ -513,7 +513,7 @@
     }
 
     .multi-filter-search:focus {
-      outline:1px solid #ff9900;
+      outline:1px solid var(--gpsl-accent, #ff9900);
     }
 
     .multi-filter-options {
@@ -717,8 +717,8 @@
           to right,
           #444 0%,
           #444 var(--range-min, 0%),
-          #ff9900 var(--range-min, 0%),
-          #ff9900 var(--range-max, 100%),
+          var(--gpsl-accent, #ff9900) var(--range-min, 0%),
+          var(--gpsl-accent, #ff9900) var(--range-max, 100%),
           #444 var(--range-max, 100%),
           #444 100%
         );
@@ -763,7 +763,7 @@
       width: 14px;
       height: 14px;
       border-radius: 50%;
-      background: #ff9900;
+      background: var(--gpsl-accent, #ff9900);
       border: 2px solid #111;
       box-shadow: 0 0 0 1px #aa6a00;
       margin-top: -4px;
@@ -777,7 +777,7 @@
       width: 14px;
       height: 14px;
       border-radius: 50%;
-      background: #ff9900;
+      background: var(--gpsl-accent, #ff9900);
       border: 2px solid #111;
       box-shadow: 0 0 0 1px #aa6a00;
       cursor: pointer;
@@ -813,7 +813,7 @@
     }
 
     #draftCountdown {
-      color:#ff9900;
+      color:var(--gpsl-accent, #ff9900);
       font-weight:bold;
       font-family:monospace;
       font-size:16px;
@@ -949,7 +949,7 @@
         <div class="player-header">
           <img id="offerPlayerImg" class="player-thumb" alt="Player">
           <div class="player-header-info">
-            <div id="offerPlayerName" style="font-size:18px; color:#ff9900; font-weight:bold;"></div>
+            <div id="offerPlayerName" style="font-size:18px; color:var(--gpsl-accent, #ff9900); font-weight:bold;"></div>
             <div id="offerPlayerPosition"></div>
             <div id="offerPlayerPlaystyle"></div>
             <div id="offerPlayerRating"></div>

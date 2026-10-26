@@ -30,7 +30,7 @@ function ratingRow(q) {
       `<label for="r_${q.key}_na" class="na" title="Skip — no opinion">–</label>`;
   return `
     <div class="fb-rate">
-      <div class="lbl">${esc(q.label)}${q.required ? ' <span style="color:#ff9900">*</span>' : ""}<small>${esc(q.hint || "")}</small></div>
+      <div class="lbl">${esc(q.label)}${q.required ? ' <span style="color:var(--gpsl-accent, #ff9900)">*</span>' : ""}<small>${esc(q.hint || "")}</small></div>
       <div class="fb-scale" role="radiogroup" aria-label="${esc(q.label)}">${opts}${na}</div>
     </div>`;
 }

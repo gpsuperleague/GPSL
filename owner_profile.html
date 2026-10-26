@@ -10,10 +10,10 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:980px; margin:30px auto 50px; }
-    h1 { color:#ff9900; margin:0 0 4px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin:0 0 4px; }
     .sub { color:#999; margin:0 0 18px; }
     .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:20px; margin-bottom:18px; }
-    .panel h2 { color:#ffcc66; margin:0 0 12px; font-size:17px; }
+    .panel h2 { color:var(--gpsl-accent-hover, #ffcc66); margin:0 0 12px; font-size:17px; }
     .head-row { display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap; }
     .owner-badge {
       width:96px; height:96px; border-radius:10px; object-fit:cover;
@@ -21,7 +21,7 @@
     }
     .owner-badge-fallback {
       width:96px; height:96px; border-radius:10px; display:flex; align-items:center;
-      justify-content:center; background:#222; border:1px solid #444; color:#ff9900;
+      justify-content:center; background:#222; border:1px solid #444; color:var(--gpsl-accent, #ff9900);
       font-size:28px; font-weight:700;
     }
     .owner-badge[hidden],
@@ -30,17 +30,17 @@
     }
     .totals { display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; }
     .totals span { background:#222; border:1px solid #444; border-radius:6px; padding:8px 12px; font-size:13px; }
-    .totals b { color:#ff9900; }
+    .totals b { color:var(--gpsl-accent, #ff9900); }
     .gpsl-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .gpsl-table th { text-align:left; padding:7px 8px; background:#222; color:#ff9900; white-space:nowrap; }
+    .gpsl-table th { text-align:left; padding:7px 8px; background:#222; color:var(--gpsl-accent, #ff9900); white-space:nowrap; }
     .gpsl-table td { padding:7px 8px; border-bottom:1px solid #2a2a2a; }
     .gpsl-table .num { text-align:right; font-variant-numeric:tabular-nums; }
     .empty { color:#777; font-style:italic; }
-    .gpsl-link { color:#ff9900; text-decoration:none; }
+    .gpsl-link { color:var(--gpsl-accent, #ff9900); text-decoration:none; }
     .gpsl-link:hover { text-decoration:underline; }
     #profileError { color:#f88; display:none; margin-bottom:12px; }
     .highlight { background:#222; border:1px solid #3a3a3a; border-radius:8px; padding:12px 14px; margin-bottom:10px; }
-    .highlight b { color:#ffcc66; }
+    .highlight b { color:var(--gpsl-accent-hover, #ffcc66); }
     .badge-edit { margin-top:12px; font-size:13px; color:#aaa; }
     .badge-edit input[type="file"] { margin-top:6px; color:#ccc; }
     .note { font-size:12px; color:#888; margin-top:6px; }

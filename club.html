@@ -11,7 +11,7 @@
 
   <style>
     .club-accounts { width: 95%; max-width: 1280px; margin: 24px auto 40px; }
-    .club-accounts h2 { color: #ff9900; font-size: 18px; margin: 0 0 6px; }
+    .club-accounts h2 { color: var(--gpsl-accent, #ff9900); font-size: 18px; margin: 0 0 6px; }
     .club-accounts-intro,
     .club-accounts-empty { color: #888; font-size: 12px; margin: 0 0 12px; }
     .club-accounts-season {
@@ -22,7 +22,7 @@
       display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px;
       padding: 10px 14px; cursor: pointer; font-size: 13px; color: #aaa;
     }
-    .club-accounts-label { color: #ff9900; font-weight: bold; min-width: 6rem; }
+    .club-accounts-label { color: var(--gpsl-accent, #ff9900); font-weight: bold; min-width: 6rem; }
     .club-accounts-stat b { color: #ddd; }
     .club-accounts-stat b.income-amt { color: #8d8; }
     .club-accounts-stat b.cost-amt { color: #e99; }
@@ -41,7 +41,7 @@
     .modal-footer .submit-btn {
       display: inline-block;
       padding: 10px 20px;
-      background: #ff9900;
+      background: var(--gpsl-accent, #ff9900);
       color: #111;
       text-decoration: none;
       font-weight: bold;
@@ -131,7 +131,7 @@
       text-decoration: none;
     }
     .club-header-meta h1 a.gpsl-link:hover {
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
       text-decoration: underline;
     }
     a:has(> .club-header-badge) {
@@ -140,7 +140,7 @@
     }
 
     .club-header-meta a.gpsl-link {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       text-decoration: none;
     }
     .club-header-meta a.gpsl-link:hover {
@@ -149,7 +149,7 @@
 
     h2.section-title {
       margin-left: 20px;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       margin-top: 40px;
     }
 
@@ -197,7 +197,7 @@
 
     table.gpsl-table th {
       background: #222;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
     }
 
     table.gpsl-table tr:nth-child(even) td {
@@ -391,11 +391,11 @@
 
     .player-link:hover {
       text-decoration: underline;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
 
     .offer-btn {
-      background: #ff9900;
+      background: var(--gpsl-accent, #ff9900);
       color: #111;
       border: none;
       padding: 4px 8px;
@@ -413,7 +413,7 @@
     .offer-review-msg {
       display: inline-block;
       max-width: 100%;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 11px;
       font-weight: bold;
       line-height: 1.35;
@@ -591,7 +591,7 @@
     }
 
     .submit-btn {
-      background: #ff9900;
+      background: var(--gpsl-accent, #ff9900);
       color: #111;
     }
 

@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260805-rules">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    h1 { margin:20px; color:#ff9900; }
+    h1 { margin:20px; color:var(--gpsl-accent, #ff9900); }
     .draft-header-row {
       display:flex; justify-content:space-between; align-items:center;
       flex-wrap:wrap; gap:16px; margin:0 20px 16px;
@@ -22,23 +22,23 @@
     }
     .status-note { font-size:13px; color:#ccc; }
     .important-notice {
-      background:#2a2208; border:1px solid #ff9900; border-left:4px solid #ff9900;
+      background:#2a2208; border:1px solid var(--gpsl-accent, #ff9900); border-left:4px solid var(--gpsl-accent, #ff9900);
       padding:14px 16px; margin:0 20px 16px; border-radius:8px; font-size:13px; line-height:1.55;
     }
-    .important-notice a { color:#ffcc66; font-weight:bold; }
+    .important-notice a { color:var(--gpsl-accent-hover, #ffcc66); font-weight:bold; }
     .bid-btn {
       padding:6px 12px; border-radius:4px; border:none; font-weight:bold; cursor:pointer;
     }
-    .bid-btn.enabled { background:#ff9900; color:#111; }
+    .bid-btn.enabled { background:var(--gpsl-accent, #ff9900); color:#111; }
     .bid-btn.disabled { background:#444; color:#999; cursor:not-allowed; }
     .bid-btn.view-only { background:#555; color:#ddd; }
     .bid-btn.view-only:hover { background:#666; }
     .auction-actions { display:inline-flex; flex-wrap:wrap; gap:6px; align-items:center; }
     .high-bid-link {
-      color:#ff9900; cursor:pointer; text-decoration:underline; text-underline-offset:2px;
+      color:var(--gpsl-accent, #ff9900); cursor:pointer; text-decoration:underline; text-underline-offset:2px;
     }
-    .high-bid-link:hover { color:#ffcc66; }
-    .player-link { color:#ff9900; font-weight:bold; text-decoration:none; }
+    .high-bid-link:hover { color:var(--gpsl-accent-hover, #ffcc66); }
+    .player-link { color:var(--gpsl-accent, #ff9900); font-weight:bold; text-decoration:none; }
     .manager-list-cell { display:inline-flex; align-items:center; gap:10px; }
     .manager-list-thumb-wrap {
       width:40px; height:40px; flex-shrink:0; border-radius:6px; overflow:hidden;
@@ -47,9 +47,9 @@
     }
     .manager-list-thumb { width:100%; height:100%; object-fit:cover; display:block; }
     .manager-list-thumb-fallback {
-      font-size:13px; font-weight:bold; color:#ff9900; letter-spacing:0.5px;
+      font-size:13px; font-weight:bold; color:var(--gpsl-accent, #ff9900); letter-spacing:0.5px;
     }
-    #draftCountdown { color:#ff9900; font-weight:bold; font-family:monospace; font-size:16px; }
+    #draftCountdown { color:var(--gpsl-accent, #ff9900); font-weight:bold; font-family:monospace; font-size:16px; }
   </style>
 </head>
 <body>

@@ -19,7 +19,7 @@
 }
 
 .nav-gpsl-sport.has-unread .nav-gpsl-sport-icon {
-  filter: drop-shadow(0 0 4px rgba(255, 153, 0, 0.8));
+  filter: drop-shadow(0 0 4px rgba(var(--gpsl-accent-rgb), 0.8));
 }
 
 .gpsl-sport-nav-badge {

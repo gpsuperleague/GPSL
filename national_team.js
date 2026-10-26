@@ -178,7 +178,7 @@ function renderSummary(summary, isMyNation) {
   }
 
   if (isMyNation) {
-    footnote += `<p class="squad-rules-footnote">Manage call-ups in <a href="GPDB.html" style="color:#ff9900;">GPDB</a> (My nation filter) or release below.</p>`;
+    footnote += `<p class="squad-rules-footnote">Manage call-ups in <a href="GPDB.html" style="color:var(--gpsl-accent, #ff9900);">GPDB</a> (My nation filter) or release below.</p>`;
   }
 
   el.innerHTML = `

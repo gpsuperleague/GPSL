@@ -155,7 +155,7 @@ export function ensureClubThemeStylesheet() {
   const link = document.createElement("link");
   link.id = "clubDashboardThemeCss";
   link.rel = "stylesheet";
-  link.href = "club_dashboard_theme.css?v=20261026-theme-full";
+  link.href = "club_dashboard_theme.css?v=20261026-theme-vars";
   document.head.appendChild(link);
 }
 

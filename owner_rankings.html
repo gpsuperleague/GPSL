@@ -10,14 +10,14 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1200px; margin:20px auto 40px; }
-    h1 { color:#ff9900; margin-bottom:8px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:8px; }
     .meta { color:#aaa; margin-bottom:16px; line-height:1.45; }
     .tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
     .tabs button {
       padding:8px 14px; background:#222; border:1px solid #444; color:#ddd;
       border-radius:6px; cursor:pointer; font-size:13px;
     }
-    .tabs button.active { background:#333; border-color:#ff9900; color:#ff9900; }
+    .tabs button.active { background:#333; border-color:var(--gpsl-accent, #ff9900); color:var(--gpsl-accent, #ff9900); }
     .toolbar { margin-bottom:16px; }
     .toolbar label { margin-right:8px; }
     .toolbar select {
@@ -30,15 +30,15 @@
     }
     table.lb { width:100%; border-collapse:collapse; font-size:13px; }
     table.lb th, table.lb td { border:1px solid #333; padding:6px 8px; }
-    table.lb th { background:#222; color:#ff9900; text-align:left; }
+    table.lb th { background:#222; color:var(--gpsl-accent, #ff9900); text-align:left; }
     table.lb td.num { text-align:right; }
-    tr.highlight { outline:1px solid #ff9900; }
+    tr.highlight { outline:1px solid var(--gpsl-accent, #ff9900); }
     tr.me { background:#2a2200; }
     .empty { color:#888; font-size:13px; }
     .breakdown { color:#999; font-size:12px; }
     .nation-cell { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
     .nat-flag-img.nat-flag-sm { height:18px; width:auto; vertical-align:middle; }
-    a.gpsl-link { color:#ff9900; text-decoration:none; }
+    a.gpsl-link { color:var(--gpsl-accent, #ff9900); text-decoration:none; }
     a.gpsl-link:hover { text-decoration:underline; }
   </style>
 </head>

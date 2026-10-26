@@ -18,7 +18,7 @@
   --club-accent: var(--gpsl-accent);
   --club-panel: var(--gpsl-panel);
   --club-border: var(--gpsl-border);
-  --club-glow: rgba(255, 153, 0, 0.12);
+  --club-glow: rgba(var(--gpsl-accent-rgb), 0.12);
   --club-accent-rgb: var(--gpsl-accent-rgb);
 }
 
@@ -78,7 +78,12 @@ th a:hover,
   color: var(--gpsl-accent-hover, #ffcc66);
 }
 
-/* Top nav + dashboard chrome stay GPSL orange even when page content is club-themed */
+/*
+ * Nav/toolbar map club vars to --gpsl-accent.
+ * Default :root keeps --gpsl-accent as GPSL orange.
+ * Full club colours sets --gpsl-accent on <html>, so nav follows club colour then.
+ * Dashboard-only / club-pages leave :root orange, so nav stays league orange.
+ */
 #nav,
 #nav *,
 .dashboard-toolbar,
@@ -615,7 +620,7 @@ table.gpsl-table tr:nth-child(even) {
   padding: 8px 10px;
   background: #332200;
   border-left: 3px solid var(--club-accent);
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   font-size: 12px;
   font-weight: 600;
   text-align: center;
@@ -922,7 +927,7 @@ table.gpsl-table td {
   border-radius: 5px;
   overflow: hidden;
   background: #111820;
-  box-shadow: inset 0 0 0 1px rgba(255, 153, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(var(--gpsl-accent-rgb), 0.35);
 }
 
 .nav-fantasy-mark img {
@@ -935,11 +940,11 @@ table.gpsl-table td {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
 }
 
 .nav-fantasy.active {
-  border-color: #ff9900;
+  border-color: var(--gpsl-accent, #ff9900);
   background: #2a2200;
 }
 
@@ -1288,10 +1293,10 @@ button.nav-admin-trigger {
   height: 36px;
   padding: 8px 12px;
   text-decoration: none;
-  color: var(--club-accent, #ff9900);
+  color: var(--club-accent, var(--gpsl-accent, #ff9900));
 }
 .nav-staff-alerts:hover {
-  color: var(--club-accent, #ff9900);
+  color: var(--club-accent, var(--gpsl-accent, #ff9900));
 }
 .nav-staff-alerts.active,
 .nav-staff-alerts.active .nav-staff-alerts-mark {
@@ -1305,8 +1310,8 @@ button.nav-admin-trigger {
   color: inherit;
 }
 .nav-staff-alerts.has-unread:not(.active) .nav-staff-alerts-mark {
-  color: #ff9900;
-  filter: drop-shadow(0 0 4px rgba(255, 153, 0, 0.7));
+  color: var(--gpsl-accent, #ff9900);
+  filter: drop-shadow(0 0 4px rgba(var(--gpsl-accent-rgb), 0.7));
 }
 .nav-group-staff-badge {
   display: inline-block;
@@ -1409,7 +1414,7 @@ button.nav-admin-trigger {
   font-size: 10px;
   font-weight: 600;
   line-height: 1.1;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   white-space: nowrap;
   max-width: 11rem;
   overflow: hidden;
@@ -1427,7 +1432,7 @@ button.nav-admin-trigger {
 .nav-group.open .nav-group-summary,
 .nav-group-active .nav-group-summary {
   background: #2a2218;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
 }
 
 .nav-group-active:not(.open) .nav-group-summary {
@@ -1501,8 +1506,8 @@ button.nav-admin-trigger {
 }
 
 .nav-admin-search-input:focus {
-  border-color: var(--club-accent, #ff9900);
-  box-shadow: 0 0 0 1px rgba(255, 153, 0, 0.25);
+  border-color: var(--club-accent, var(--gpsl-accent, #ff9900));
+  box-shadow: 0 0 0 1px rgba(var(--gpsl-accent-rgb), 0.25);
 }
 
 .nav-admin-search-empty {
@@ -1754,7 +1759,7 @@ button.nav-admin-trigger {
 
 .nav-subgroup-summary:hover {
   background: #2a2a2a;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   border-left-color: #444;
 }
 
@@ -1780,7 +1785,7 @@ button.nav-admin-trigger {
 
 /* Admin: Season management → category → task (nested submenus) */
 .nav-subgroup-mega > .nav-subgroup-summary {
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   font-size: 13px;
 }
 
@@ -2398,7 +2403,7 @@ a.ssc-chip:hover {
 .nav-shortcut.nav-admin {
   border: 1px solid #886622;
   background: #2a2218;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
 }
 
 .nav-shortcut.nav-admin:hover {
@@ -2932,12 +2937,12 @@ body.dashboard-tile-dragging .dashboard-section-head-drop-label {
 
 .dashboard-section-head-tile-drop {
   background: rgba(var(--club-accent-rgb), 0.1) !important;
-  outline: 2px dashed var(--club-accent, #ff9900) !important;
+  outline: 2px dashed var(--club-accent, var(--gpsl-accent, #ff9900)) !important;
   outline-offset: -2px;
 }
 
 .dashboard-section-head-tile-drop .dashboard-section-head-drop-label {
-  color: var(--club-accent, #ff9900);
+  color: var(--club-accent, var(--gpsl-accent, #ff9900));
 }
 
 .dashboard-section-title {
@@ -2945,7 +2950,7 @@ body.dashboard-tile-dragging .dashboard-section-head-drop-label {
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: var(--club-accent, #ff9900);
+  color: var(--club-accent, var(--gpsl-accent, #ff9900));
 }
 
 .dashboard-section-title-input {
@@ -2954,7 +2959,7 @@ body.dashboard-tile-dragging .dashboard-section-head-drop-label {
   padding: 6px 10px;
   font-size: 15px;
   font-weight: 700;
-  color: var(--club-accent, #ff9900);
+  color: var(--club-accent, var(--gpsl-accent, #ff9900));
   background: transparent;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -2962,7 +2967,7 @@ body.dashboard-tile-dragging .dashboard-section-head-drop-label {
 
 .dashboard-section-title-input:focus {
   outline: none;
-  border-color: var(--club-accent, #ff9900);
+  border-color: var(--club-accent, var(--gpsl-accent, #ff9900));
   background: #1a1a1a;
 }
 
@@ -3003,7 +3008,7 @@ body.dashboard-tile-dragging .dashboard-section-head-drop-label {
 }
 
 .dashboard-section-drop-target {
-  border-color: var(--club-accent, #ff9900);
+  border-color: var(--club-accent, var(--gpsl-accent, #ff9900));
   box-shadow: 0 0 0 1px rgba(var(--club-accent-rgb), 0.35);
 }
 
@@ -3049,9 +3054,9 @@ body.dashboard-tile-dragging .dashboard-section-head-drop-label {
 
 .dashboard-tile-label-input:focus {
   outline: none;
-  border-color: var(--club-accent, #ff9900);
+  border-color: var(--club-accent, var(--gpsl-accent, #ff9900));
   background: #1a1a1a;
-  color: var(--club-accent, #ff9900);
+  color: var(--club-accent, var(--gpsl-accent, #ff9900));
 }
 
 .dashboard-tile-label-input.is-custom {
@@ -3123,12 +3128,12 @@ body.dashboard-tile-dragging .dashboard-tile-label-input {
   transform: translate(-50%, -50%);
   z-index: 2;
   background: rgba(0, 0, 0, 0.82);
-  color: var(--club-accent, #ff9900);
+  color: var(--club-accent, var(--gpsl-accent, #ff9900));
   font-size: 11px;
   font-weight: 700;
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid var(--club-accent, #ff9900);
+  border: 1px solid var(--club-accent, var(--gpsl-accent, #ff9900));
   pointer-events: none;
   white-space: nowrap;
 }
@@ -3257,7 +3262,7 @@ body.dashboard-tile-dragging .dashboard-tile-label-input {
 .dashboard-pin-btn.dashboard-pin-on {
   border-color: #6a5a20;
   background: #2a2418;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
 }
 
 .dashboard-pin-btn:disabled {

@@ -24,7 +24,7 @@
 
     h1 {
       text-align: left;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       margin: 0;
       font-size: 26px;
     }
@@ -40,11 +40,11 @@
     }
 
     .fav-btn.fav-on, .draft-fav-remove.fav-on {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
     }
 
     .page-container a.gpsl-link {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       text-decoration: none;
       font-weight: bold;
     }
@@ -68,8 +68,8 @@
     .page-container a.gpsl-link.tc-action-link:hover,
     .page-container a.gpsl-link.tc-action-link:focus {
       background: #332a1a;
-      color: #ffcc66;
-      border-color: #ff9900;
+      color: var(--gpsl-accent-hover, #ffcc66);
+      border-color: var(--gpsl-accent, #ff9900);
       text-decoration: none;
     }
 
@@ -84,7 +84,7 @@
     .tc-deadline-live .countdown-duration {
       display: block;
       font-weight: bold;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-variant-numeric: tabular-nums;
     }
 
@@ -145,8 +145,8 @@
     }
 
     .tc-jump a:hover {
-      border-color: #ff9900;
-      color: #ff9900;
+      border-color: var(--gpsl-accent, #ff9900);
+      color: var(--gpsl-accent, #ff9900);
     }
 
     .tc-block {
@@ -154,7 +154,7 @@
     }
 
     .tc-block-header {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 18px;
       margin: 0 0 12px;
       padding-bottom: 8px;
@@ -191,13 +191,13 @@
     }
 
     .tc-panel > h2 {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 16px;
       margin: 0 0 10px;
     }
 
     .tc-panel > h3 {
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
       font-size: 14px;
       margin: 0 0 8px;
     }
@@ -271,7 +271,7 @@
       <div id="headerRight">
         <div id="clubBankBalance" class="club-bank-balance" hidden style="margin-bottom:8px;"></div>
         <div id="draftCountdownContainer" style="text-align:right;">
-          <span id="draftCountdown" style="display:block;color:#ff9900;font-weight:bold;"></span>
+          <span id="draftCountdown" style="display:block;color:var(--gpsl-accent, #ff9900);font-weight:bold;"></span>
           <div id="draftLocalStart" style="font-size:12px;color:#ccc;margin-top:4px;"></div>
         </div>
       </div>
@@ -306,7 +306,7 @@
             <i>Loading…</i>
           </div>
           <p style="margin:12px 0 0;">
-            <a href="scouting.html" class="button secondary" style="display:inline-block;padding:8px 14px;background:#333;color:#ff9900;border:1px solid #666;border-radius:6px;text-decoration:none;font-weight:bold;">Open scouting board →</a>
+            <a href="scouting.html" class="button secondary" style="display:inline-block;padding:8px 14px;background:#333;color:var(--gpsl-accent, #ff9900);border:1px solid #666;border-radius:6px;text-decoration:none;font-weight:bold;">Open scouting board →</a>
           </p>
           <hr style="border:none;border-top:1px solid #333;margin:18px 0 14px;">
           <h3 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Draft auction threads you starred on the Draft Auction page — quick jump back to those listings." tabindex="0">Saved draft auctions</h3>

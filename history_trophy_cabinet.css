@@ -145,7 +145,7 @@ a.trophy-on-shelf.trophy-link {
 }
 
 a.trophy-on-shelf.trophy-link:focus-visible {
-  outline: 2px solid #ff9900;
+  outline: 2px solid var(--gpsl-accent, #ff9900);
   outline-offset: 3px;
   border-radius: 4px;
 }

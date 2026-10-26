@@ -13,7 +13,7 @@
   <style>
     body { background: #111; color: #ddd; font-family: Arial, sans-serif; margin: 0; }
     .page-container { width: 95%; max-width: 1400px; margin: 20px auto 40px; }
-    h1 { color: #ff9900; margin-bottom: 8px; }
+    h1 { color: var(--gpsl-accent, #ff9900); margin-bottom: 8px; }
     .season-meta { color: #aaa; margin-bottom: 16px; }
     .division-filter {
       display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
@@ -30,18 +30,18 @@
       cursor: pointer; color: #ddd; user-select: none;
     }
     .division-filter label.filter-all {
-      color: #ff9900; font-weight: bold;
+      color: var(--gpsl-accent, #ff9900); font-weight: bold;
       padding-right: 12px; border-right: 1px solid #444;
     }
     .division-filter input[type="checkbox"],
     .division-filter input[type="radio"] {
-      width: 16px; height: 16px; accent-color: #ff9900; cursor: pointer;
+      width: 16px; height: 16px; accent-color: var(--gpsl-accent, #ff9900); cursor: pointer;
     }
     .home-away-section {
       margin-top: 8px;
     }
     .home-away-section h2 {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       margin: 0 0 8px;
       font-size: 22px;
     }
@@ -84,7 +84,7 @@
       overflow: visible;
     }
     .division-panel h2 {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       margin: 0 0 12px;
       font-size: 20px;
     }
@@ -125,7 +125,7 @@
     }
     table.standings-table th {
       background: #222;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       text-align: center;
       white-space: nowrap;
     }
@@ -287,40 +287,40 @@
     }
     table.standings-table tbody tr.my-club td {
       background: #2a2418 !important;
-      box-shadow: inset 0 0 0 1px #ff990066;
+      box-shadow: inset 0 0 0 1px var(--gpsl-accent, #ff9900)66;
     }
     table.standings-table tbody tr.my-club.prestige-super8 td.pos-col {
-      box-shadow: inset 5px 0 0 var(--cup-super8), inset 0 0 0 1px #ff990066 !important;
+      box-shadow: inset 5px 0 0 var(--cup-super8), inset 0 0 0 1px var(--gpsl-accent, #ff9900)66 !important;
     }
     table.standings-table tbody tr.my-club.prestige-plate td.pos-col {
-      box-shadow: inset 5px 0 0 var(--cup-plate), inset 0 0 0 1px #ff990066 !important;
+      box-shadow: inset 5px 0 0 var(--cup-plate), inset 0 0 0 1px var(--gpsl-accent, #ff9900)66 !important;
     }
     table.standings-table tbody tr.my-club.prestige-shield td.pos-col {
-      box-shadow: inset 5px 0 0 var(--cup-shield), inset 0 0 0 1px #ff990066 !important;
+      box-shadow: inset 5px 0 0 var(--cup-shield), inset 0 0 0 1px var(--gpsl-accent, #ff9900)66 !important;
     }
     table.standings-table tbody tr.my-club.prestige-bowl td.pos-col {
-      box-shadow: inset 5px 0 0 var(--cup-bowl), inset 0 0 0 1px #ff990066 !important;
+      box-shadow: inset 5px 0 0 var(--cup-bowl), inset 0 0 0 1px var(--gpsl-accent, #ff9900)66 !important;
     }
     table.standings-table tbody tr.my-club.prestige-none td.pos-col {
-      box-shadow: inset 0 0 0 1px #ff990066;
+      box-shadow: inset 0 0 0 1px var(--gpsl-accent, #ff9900)66;
     }
     /* Keep freeze shadow on club when my-club outline is applied */
     table.standings-table tbody tr.my-club td.club-col {
-      box-shadow: inset 0 0 0 1px #ff990066, 3px 0 6px rgba(0, 0, 0, 0.45);
+      box-shadow: inset 0 0 0 1px var(--gpsl-accent, #ff9900)66, 3px 0 6px rgba(0, 0, 0, 0.45);
     }
     /* Table leader — bold rank; prestige bar + champion tint unchanged */
     table.standings-table tbody tr.row-leader td {
-      box-shadow: inset 0 0 0 1px #ff990044;
+      box-shadow: inset 0 0 0 1px var(--gpsl-accent, #ff9900)44;
     }
     table.standings-table tbody tr.row-leader td.pos-col {
-      color: #ffcc66 !important;
+      color: var(--gpsl-accent-hover, #ffcc66) !important;
       font-weight: bold;
       font-size: 14px;
     }
     table.standings-table tbody tr.row-leader td.club-col {
       font-weight: bold;
       color: #f0f0f0;
-      box-shadow: inset 0 0 0 1px #ff990044, 3px 0 6px rgba(0, 0, 0, 0.45);
+      box-shadow: inset 0 0 0 1px var(--gpsl-accent, #ff9900)44, 3px 0 6px rgba(0, 0, 0, 0.45);
     }
     table.standings-table tbody tr.row-leader a.standings-club-link {
       color: #f0f0f0;
@@ -331,18 +331,18 @@
       font-weight: 600;
     }
     table.standings-table tbody tr.row-leader td.num b {
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
     table.standings-table tbody tr.row-leader td.prize-col {
       color: #eee;
     }
 
     table.standings-table tbody tr.my-club.row-leader td.pos-col {
-      color: #ffcc66 !important;
+      color: var(--gpsl-accent-hover, #ffcc66) !important;
     }
 
     table.standings-table tbody tr.my-club.row-leader td.club-col {
-      box-shadow: inset 0 0 0 1px #ff990066, 3px 0 6px rgba(0, 0, 0, 0.45);
+      box-shadow: inset 0 0 0 1px var(--gpsl-accent, #ff9900)66, 3px 0 6px rgba(0, 0, 0, 0.45);
     }
 
     .form-cell { letter-spacing: 2px; font-weight: bold; text-align: center; white-space: nowrap; }
@@ -408,9 +408,9 @@
     </section>
     <p class="footer-note">
       Form shows last 10 results in <b>matchday order</b> (oldest → newest, left → right).
-      Results update when fixtures are marked played via <a href="matchday.html" style="color:#ff9900;">Match Day</a>.
-      <a href="fixtures.html" style="color:#ff9900;">Fixtures</a>
-      · <a href="league_stats.html" style="color:#ff9900;">League stats</a>
+      Results update when fixtures are marked played via <a href="matchday.html" style="color:var(--gpsl-accent, #ff9900);">Match Day</a>.
+      <a href="fixtures.html" style="color:var(--gpsl-accent, #ff9900);">Fixtures</a>
+      · <a href="league_stats.html" style="color:var(--gpsl-accent, #ff9900);">League stats</a>
     </p>
   </div>
   <script type="module" src="progress.js?v=20261023-venue-defer"></script>

@@ -26,7 +26,7 @@ import {
   saveClubDashboardTheme,
   suggestThemeFromKit,
   THEME_SCOPES,
-} from "./club_theme_common.js?v=20261026-theme-full";
+} from "./club_theme_common.js?v=20261026-theme-vars";
 
 let cachedKitRow = null;
 let themeDraft = { ...GPSL_THEME_DEFAULTS };

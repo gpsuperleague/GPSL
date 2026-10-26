@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261026-theme-full";
+export const APP_VERSION = "20261026-theme-vars";

@@ -275,7 +275,7 @@
   transform: translateX(-50%);
   width: 200px;
   height: 200px;
-  background: radial-gradient(circle, rgba(255, 153, 0, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--gpsl-accent-rgb), 0.15) 0%, transparent 70%);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.4s ease;
@@ -308,7 +308,7 @@
 .cup-draw-announce .headline {
   font-size: 18px;
   font-weight: bold;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   line-height: 1.35;
 }
 
@@ -328,7 +328,7 @@
 }
 
 .cup-draw-panel h2 {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-size: 16px;
   margin: 0 0 12px;
 }
@@ -412,7 +412,7 @@
 
 .cup-draw-bracket-col .col-title {
   font-size: 10px;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   text-transform: uppercase;
   margin-bottom: 8px;
   font-weight: bold;
@@ -469,9 +469,9 @@
 }
 
 .cup-draw-speed button.active {
-  background: #ff9900;
+  background: var(--gpsl-accent, #ff9900);
   color: #111;
-  border-color: #ff9900;
+  border-color: var(--gpsl-accent, #ff9900);
 }
 
 .cup-draw-status {

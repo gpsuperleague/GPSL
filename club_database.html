@@ -20,7 +20,7 @@
     }
     #pageTitle {
       background: #222;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       padding: 10px 16px;
       border-radius: 6px;
       display: inline-block;
@@ -30,7 +30,7 @@
     }
     .filter-group {
       background: #1a1a1a;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       padding: 10px 14px;
       border-radius: 6px;
       margin-bottom: 12px;
@@ -69,7 +69,7 @@
     }
     th {
       background: #222;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       padding: 8px;
       font-size: 12px;
       border-bottom: 2px solid #444;
@@ -95,14 +95,14 @@
     tbody tr:nth-child(even) { background: #262626; }
     tbody tr:hover { background: #333 !important; }
     .money { white-space: nowrap; }
-    a.club-link { color: #ff9900; text-decoration: none; font-weight: bold; }
+    a.club-link { color: var(--gpsl-accent, #ff9900); text-decoration: none; font-weight: bold; }
     a.club-link:hover { text-decoration: underline; }
     .pager { margin-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     a.button, button.button {
       display: inline-block;
       padding: 6px 12px;
       background: #1a1a1a;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       border: 1px solid #666;
       border-radius: 6px;
       text-decoration: none;
@@ -141,16 +141,16 @@
       display: inline-block; padding: 2px 8px; border-radius: 4px; cursor: help;
       border: 1px solid #555; background: #1a1a1a; font-weight: bold; font-size: 11px;
     }
-    .interest-count { color: #ffcc66; border-color: #665522; }
+    .interest-count { color: var(--gpsl-accent-hover, #ffcc66); border-color: #665522; }
     .backup-count { color: #9cf; border-color: #456; }
     .interest-btn {
       padding: 4px 10px; border: none; cursor: pointer; font-size: 11px; font-weight: bold;
-      margin-top: 2px; background: #ff9900; color: #111; border-radius: 4px;
+      margin-top: 2px; background: var(--gpsl-accent, #ff9900); color: #111; border-radius: 4px;
     }
     .interest-btn:disabled { background: #555 !important; color: #888 !important; cursor: not-allowed; }
     .interest-btn.is-marked { background: #2f5f2f; color: #dfd; }
     .club-tier { display:block; width:max-content; margin:3px auto 0; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:bold; text-transform:uppercase; letter-spacing:0.03em; }
-    .club-tier-big { background:#ff9900; color:#111; }
+    .club-tier-big { background:var(--gpsl-accent, #ff9900); color:#111; }
     .club-tier-medium { background:#2f4f6f; color:#cfe3ff; }
     .club-tier-low { background:#333; color:#aaa; }
     .vacant-badge {
@@ -187,7 +187,7 @@
       margin: 0 0 12px; padding: 10px 12px; background: #1a1a1a;
       border: 1px solid #333; border-radius: 6px; display: inline-block;
     }
-    #draftCountdown { font-size: 22px; font-weight: bold; color: #ff9900; }
+    #draftCountdown { font-size: 22px; font-weight: bold; color: var(--gpsl-accent, #ff9900); }
   </style>
 </head>
 <body>
@@ -260,7 +260,7 @@
       <label for="cdbInterestNote" style="font-size:12px;color:#aaa;">Note (optional)</label>
       <textarea id="cdbInterestNote" maxlength="280" placeholder="e.g. Open to swapping — DM me on Discord"></textarea>
       <div class="cdb-interest-modal-actions">
-        <button type="button" class="button" id="cdbInterestSaveBtn" style="background:#ff9900;color:#111;">Save mark</button>
+        <button type="button" class="button" id="cdbInterestSaveBtn" style="background:var(--gpsl-accent, #ff9900);color:#111;">Save mark</button>
         <button type="button" class="button" id="cdbInterestClearBtn" style="background:#442222;color:#fcc;">Remove</button>
       </div>
       <p id="cdbInterestModalError"></p>

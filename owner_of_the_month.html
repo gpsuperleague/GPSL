@@ -10,13 +10,13 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:960px; margin:20px auto 40px; }
-    h1 { color:#ff9900; margin:0 0 8px; font-size:22px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin:0 0 8px; font-size:22px; }
     .meta { color:#aaa; font-size:13px; line-height:1.45; margin-bottom:16px; }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:16px 18px; margin-bottom:16px;
     }
-    .panel h2 { color:#ff9900; font-size:16px; margin:0 0 10px; }
+    .panel h2 { color:var(--gpsl-accent, #ff9900); font-size:16px; margin:0 0 10px; }
     .month-tabs {
       display:flex; flex-wrap:wrap; gap:8px; margin:0 0 14px;
     }
@@ -25,7 +25,7 @@
       color:#aaa; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;
     }
     .month-tab:hover { background:#2a2a2a; color:#ddd; }
-    .month-tab.active { background:#332200; border-color:#ff9900; color:#ff9900; }
+    .month-tab.active { background:#332200; border-color:var(--gpsl-accent, #ff9900); color:var(--gpsl-accent, #ff9900); }
     .ootm-grid {
       display:grid; grid-template-columns:1fr 1fr; gap:14px;
     }
@@ -43,7 +43,7 @@
     }
     .ootm-card.champ h3 { color:#9c8; }
     .ootm-tag { font-size:18px; font-weight:700; color:#eee; margin:0 0 4px; }
-    .ootm-club { color:#ffcc66; font-size:14px; margin:0 0 8px; }
+    .ootm-club { color:var(--gpsl-accent-hover, #ffcc66); font-size:14px; margin:0 0 8px; }
     .ootm-record { color:#aaa; font-size:13px; line-height:1.4; }
     .ootm-empty { color:#777; font-size:13px; font-style:italic; }
     .history-table { width:100%; border-collapse:collapse; font-size:13px; }

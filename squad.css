@@ -255,7 +255,7 @@ body.squad-page .squad-wage-bill-panel {
 body.squad-page .squad-wage-bill-title {
   margin: 0 0 10px;
   font-size: 14px;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-weight: 600;
 }
 
@@ -286,13 +286,13 @@ body.squad-page .wage-bill-label {
 }
 
 body.squad-page .wage-bill-value {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-size: 16px;
   font-weight: bold;
 }
 
 body.squad-page .wage-bill-stat--total .wage-bill-value {
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   font-size: 18px;
 }
 
@@ -304,7 +304,7 @@ body.squad-page .wage-bill-note {
 }
 
 body.squad-page .squad-wage-fin-link {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   text-decoration: none;
   margin-left: 4px;
 }
@@ -342,7 +342,7 @@ body.squad-page .squad-rules-panel--warn {
 body.squad-page .squad-rules-title {
   margin: 0 0 6px;
   font-size: 17px;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-weight: 600;
 }
 
@@ -399,7 +399,7 @@ body.squad-page .squad-rules-req-compact {
 }
 
 body.squad-page .squad-rules-designated {
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   font-weight: normal;
 }
 
@@ -453,7 +453,7 @@ body.squad-page .squad-contract-outlook-title {
   margin: 0 0 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -474,7 +474,7 @@ body.squad-page .squad-contract-outlook-block p {
   margin: 4px 0 0;
 }
 body.squad-page .squad-contract-outlook-block a {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
 }
 body.squad-page .squad-contract-outlook-block--warn {
   border-color: rgba(201, 160, 128, 0.45);
@@ -493,7 +493,7 @@ body.squad-page .squad-rules-table td {
 }
 
 body.squad-page .squad-rules-table thead th {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-weight: 600;
   font-size: 12px;
   text-transform: uppercase;
@@ -567,7 +567,7 @@ body.squad-page .squad-rules-issues li {
 
 /* Section headers */
 body.squad-page .section-header {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-size: 24px;
   margin-bottom: 10px;
 }
@@ -601,7 +601,7 @@ body.squad-page .squad-pos-section {
 body.squad-page .squad-pos-section-title {
   margin: 0 0 6px;
   padding: 0 2px;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -647,7 +647,7 @@ body.squad-page .gpsl-table {
 
 body.squad-page .gpsl-table th {
   background: rgba(255, 255, 255, 0.08);
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   padding: 8px 10px;
   border-bottom: 1px solid #444;
   text-align: center;
@@ -896,7 +896,7 @@ body.squad-page .squad-section-row {
 }
 
 body.squad-page .squad-section-title {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-weight: bold;
   padding: 8px;
   font-size: 18px;
@@ -911,7 +911,7 @@ body.squad-page tr.squad-section-cols-row th {
   font-weight: 600;
   line-height: 1.2;
   color: #c88;
-  background: rgba(255, 153, 0, 0.06);
+  background: rgba(var(--gpsl-accent-rgb), 0.06);
   border-bottom: 1px solid #3a3a3a;
   text-align: center;
   white-space: nowrap;
@@ -958,7 +958,7 @@ body.squad-page .squad-col-action {
 
 body.squad-page tr.squad-section-cols-row th.squad-col-action {
   /* Same tint as other section column headers (not inherit from <tr>) */
-  background: rgba(255, 153, 0, 0.06);
+  background: rgba(var(--gpsl-accent-rgb), 0.06);
 }
 
 body.squad-page tr[data-konami-id]:hover td.squad-col-action {
@@ -1093,7 +1093,7 @@ body.squad-page .squad-contract-window {
 
 body.squad-page .squad-contract-wage {
   font-size: 11px;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   white-space: nowrap;
 }
 
@@ -1210,7 +1210,7 @@ body.squad-page .status-cards {
 
 body.squad-page .status-cards-warn {
   background: #4a3010;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   border: 1px solid #8a6020;
 }
 
@@ -1260,7 +1260,7 @@ body.squad-page .squad-yc-badge {
 
 body.squad-page .squad-yc-badge.warn {
   background: #4a3010;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   border-color: #8a6020;
 }
 
@@ -1271,7 +1271,7 @@ body.squad-page .squad-yc-badge.ban {
 }
 
 body.squad-page .status-listed {
-  background: #ff9900;
+  background: var(--gpsl-accent, #ff9900);
 }
 
 body.squad-page .status-contract-final {
@@ -1407,7 +1407,7 @@ body.squad-page #list-player-modal {
 }
 
 body.squad-page #list-player-modal h3 {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   margin-top: 0;
 }
 

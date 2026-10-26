@@ -32,7 +32,7 @@
     .stat-sub { display:block; font-size:10px; color:#666; margin-top:2px; }
     .rank-pill { display:inline-block; min-width:22px; text-align:center; padding:2px 6px; font-weight:bold; font-size:11px; }
     .club-tier { display:block; width:max-content; margin-top:4px; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:bold; text-transform:uppercase; letter-spacing:0.03em; }
-    .club-tier-big { background:#ff9900; color:#111; }
+    .club-tier-big { background:var(--gpsl-accent, #ff9900); color:#111; }
     .club-tier-medium { background:#2f4f6f; color:#cfe3ff; }
     .club-tier-low { background:#333; color:#aaa; }
     .exp-pos { color:#ccc; font-weight:bold; }
@@ -43,7 +43,7 @@
       display:inline-block; padding:2px 8px; border-radius:4px; cursor:help;
       border:1px solid #555; background:#1a1a1a; font-weight:bold; font-size:11px;
     }
-    .interest-count { color:#ffcc66; border-color:#665522; }
+    .interest-count { color:var(--gpsl-accent-hover, #ffcc66); border-color:#665522; }
     .backup-count { color:#9cf; border-color:#456; }
     .interest-btn { padding:4px 10px; border:none; cursor:pointer; font-size:11px; font-weight:bold; margin-top:2px; }
     .interest-btn:disabled { background:#555 !important; color:#888 !important; cursor:not-allowed; }
@@ -244,7 +244,7 @@
         <p id="clubBidError"></p>
       </div>
 
-      <h3 style="color:#ff9900;font-size:14px;margin:16px 0 8px;">Bid history</h3>
+      <h3 style="color:var(--gpsl-accent, #ff9900);font-size:14px;margin:16px 0 8px;">Bid history</h3>
       <table class="club-bid-history">
         <thead><tr><th>Owner</th><th>Amount</th><th>Time</th></tr></thead>
         <tbody id="clubBidHistoryBody"><tr><td colspan="3">Loading…</td></tr></tbody>
@@ -266,7 +266,7 @@
       <label for="clubInterestNote" style="font-size:12px;color:#aaa;">Note (optional)</label>
       <textarea id="clubInterestNote" maxlength="280" placeholder="e.g. Open to swapping — DM me on Discord"></textarea>
       <div class="club-interest-modal-actions">
-        <button type="button" class="button" id="clubInterestSaveBtn" style="background:#ff9900;color:#111;">Save mark</button>
+        <button type="button" class="button" id="clubInterestSaveBtn" style="background:var(--gpsl-accent, #ff9900);color:#111;">Save mark</button>
         <button type="button" class="button" id="clubInterestClearBtn" style="background:#442222;color:#fcc;">Remove</button>
       </div>
       <p id="clubInterestModalError"></p>

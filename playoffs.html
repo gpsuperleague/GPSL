@@ -13,7 +13,7 @@
   <style>
     body { background: #111; color: #ddd; font-family: Arial, sans-serif; margin: 0; }
     .page-container { width: 95%; max-width: 1100px; margin: 20px auto 40px; }
-    h1 { color: #ff9900; margin-bottom: 8px; }
+    h1 { color: var(--gpsl-accent, #ff9900); margin-bottom: 8px; }
     .meta { color: #aaa; margin-bottom: 16px; font-size: 14px; }
     .banner {
       background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
@@ -22,7 +22,7 @@
     .banner.warn { border-color: #665533; color: #fc9; }
     .section { margin-bottom: 28px; }
     .section h2 {
-      color: #ff9900; font-size: 18px; margin: 0 0 12px;
+      color: var(--gpsl-accent, #ff9900); font-size: 18px; margin: 0 0 12px;
       border-bottom: 1px solid #333; padding-bottom: 8px;
     }
     .tie {
@@ -36,7 +36,7 @@
       padding: 12px 14px;
       margin-bottom: 10px;
     }
-    .tie.mine { border-color: #ff9900; box-shadow: inset 3px 0 0 #ff9900; }
+    .tie.mine { border-color: var(--gpsl-accent, #ff9900); box-shadow: inset 3px 0 0 var(--gpsl-accent, #ff9900); }
     .tie .label { grid-column: 1 / -1; color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
     .tie .club { font-size: 15px; }
     .tie .club.winner { color: #9d9; font-weight: bold; }
@@ -45,16 +45,16 @@
       min-width: 72px;
     }
     .tie .status { grid-column: 1 / -1; font-size: 13px; color: #999; }
-    .tie a { color: #ff9900; }
+    .tie a { color: var(--gpsl-accent, #ff9900); }
     .tbd { color: #666; font-style: italic; }
     .movements { width: 100%; border-collapse: collapse; font-size: 13px; }
     .movements th, .movements td {
       border-bottom: 1px solid #333; padding: 8px 10px; text-align: left;
     }
-    .movements th { color: #ff9900; font-size: 12px; text-transform: uppercase; }
+    .movements th { color: var(--gpsl-accent, #ff9900); font-size: 12px; text-transform: uppercase; }
     .admin-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     button.button {
-      background: #ff9900; color: #111; border: 0; border-radius: 4px;
+      background: var(--gpsl-accent, #ff9900); color: #111; border: 0; border-radius: 4px;
       padding: 8px 14px; font-weight: bold; cursor: pointer;
     }
     button.button.secondary { background: #444; color: #ddd; }

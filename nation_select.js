@@ -108,7 +108,7 @@ function renderWindow(windowState, myPick, draft, nations) {
   const waiting = windowState.waiting_count ?? draft.filter((d) => !d.nation_code).length;
   if (isFfa) {
     el.innerHTML = `
-      <b>Nation selection</b> is open · <b style="color:#ff9900;">Free-for-all</b>
+      <b>Nation selection</b> is open · <b style="color:var(--gpsl-accent, #ff9900);">Free-for-all</b>
       · any club without a nation can claim now
       · appoint a <b>national manager</b> when you claim (no fee; cannot be shared across nations)
       · ${nationCount} nations available · ${windowState.nations_assigned || 0} assigned · ${waiting} still to pick
@@ -117,7 +117,7 @@ function renderWindow(windowState, myPick, draft, nations) {
   }
   const mine =
     myPick && windowState.current_pick_rank === myPick
-      ? ' <b style="color:#ff9900;">— your pick!</b>'
+      ? ' <b style="color:var(--gpsl-accent, #ff9900);">— your pick!</b>'
       : "";
   const draftSize =
     windowState.draft_order_size || draft.length || windowState.nations_total || nations.length || 60;

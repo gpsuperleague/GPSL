@@ -112,7 +112,7 @@ function injectStyles() {
     .scout-ab-panel { background: #141a22; border: 1px solid #2c3a4a; border-radius: 10px; width: min(1080px, 100%);
       padding: 18px 20px; color: #e6e6e6; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
     .scout-ab-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .scout-ab-head h2 { margin: 0; font-size: 18px; color: #ff9900; }
+    .scout-ab-head h2 { margin: 0; font-size: 18px; color: var(--gpsl-accent, #ff9900); }
     .scout-ab-intro { font-size: 12.5px; color: #b8c2cc; margin: 8px 0 12px; line-height: 1.45; }
     .scout-ab-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 8px 0; }
     .scout-ab-row label { font-size: 12.5px; color: #c9d3dd; }

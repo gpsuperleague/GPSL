@@ -661,16 +661,16 @@ function injectSlotPickerStyles() {
   slotPickerStylesInjected = true;
   const css = document.createElement("style");
   css.textContent = `
-.slot-pick-btn { cursor: pointer; border: 1px solid #555; background: #222; color: #ffcc66;
+.slot-pick-btn { cursor: pointer; border: 1px solid #555; background: #222; color: var(--gpsl-accent-hover, #ffcc66);
   font-size: 10px; line-height: 1; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-.slot-pick-btn:hover { background: #333; border-color: #ffcc66; }
+.slot-pick-btn:hover { background: #333; border-color: var(--gpsl-accent-hover, #ffcc66); }
 .slot-pick-btn--pitch { margin-top: 2px; opacity: .85; }
 .pitch-slot:hover .slot-pick-btn--pitch { opacity: 1; }
 .bench-slot-label .slot-pick-btn { padding: 1px 5px; margin-left: 2px; vertical-align: middle; }
 .slot-player-menu { position: fixed; z-index: 1001; width: 280px; max-height: 380px; display: flex; flex-direction: column;
   background: #1e1e1e; border: 1px solid #555; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.55); color: #ddd; }
 .slot-player-menu[hidden] { display: none; }
-.slot-player-menu-title { padding: 8px 10px 4px; font-size: 12px; font-weight: bold; color: #ffcc66; }
+.slot-player-menu-title { padding: 8px 10px 4px; font-size: 12px; font-weight: bold; color: var(--gpsl-accent-hover, #ffcc66); }
 .slot-player-menu-search { margin: 4px 10px 6px; padding: 5px 8px; border-radius: 4px; border: 1px solid #444;
   background: #111; color: #ddd; font-size: 12px; }
 .slot-player-menu-list { overflow-y: auto; padding: 0 4px 6px; }
@@ -681,7 +681,7 @@ function injectSlotPickerStyles() {
 .slot-player-opt .spo-pos { flex: 0 0 34px; font-size: 10px; font-weight: bold; color: #aaa; }
 .slot-player-opt.is-match .spo-pos { color: #8fbf6a; }
 .slot-player-opt .spo-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.slot-player-opt .spo-rt { flex: 0 0 auto; font-weight: bold; color: #ffcc66; }
+.slot-player-opt .spo-rt { flex: 0 0 auto; font-weight: bold; color: var(--gpsl-accent-hover, #ffcc66); }
 .slot-player-opt .spo-where { flex: 0 0 auto; font-size: 10px; color: #888; }
 .slot-player-opt.is-unavailable { opacity: 0.55; }
 .slot-player-opt .spo-status { flex: 0 0 auto; font-size: 10px; font-weight: 700; color: #f88; text-transform: uppercase; }

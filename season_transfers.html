@@ -19,7 +19,7 @@
 
     h1 {
       background: #222;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       padding: 10px 16px;
       border-radius: 6px;
       width: fit-content;
@@ -36,7 +36,7 @@
       display: inline-block;
       padding: 8px 16px;
       background: #1a1a1a;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       border: 1px solid #666;
       border-radius: 6px;
       text-decoration: none;
@@ -83,9 +83,9 @@
     }
 
     .filter-btn.active {
-      background: #ff9900;
+      background: var(--gpsl-accent, #ff9900);
       color: #111;
-      border-color: #ff9900;
+      border-color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
     }
 
@@ -98,7 +98,7 @@
 
     table.gpsl-table th {
       background: #222;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       padding: 8px;
       text-align: left;
       position: sticky;
@@ -117,7 +117,7 @@
     }
 
     .gpsl-link {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       text-decoration: none;
     }
 
@@ -136,7 +136,7 @@
     }
 
     .type-pill.transfer { background: #2a3d2a; color: #9fdf9f; }
-    .type-pill.draft { background: #3d3520; color: #ffcc66; }
+    .type-pill.draft { background: #3d3520; color: var(--gpsl-accent-hover, #ffcc66); }
     .type-pill.special { background: #2a353d; color: #9fd4ff; }
     .type-pill.foreign { background: #2a2a3d; color: #aabfff; }
     .type-pill.release { background: #3d2a2a; color: #ffaaaa; }

@@ -92,7 +92,7 @@ body.medical-page {
 
 .med-status {
   min-height: 1.2em;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   margin: 0 0 12px;
   font-size: 13px;
 }

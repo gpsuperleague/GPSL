@@ -55,8 +55,8 @@ function render(data) {
     `Complete your Ready for August checklist before you can check in or play — ` +
     `${n} required item${n === 1 ? "" : "s"} left. Missed check-ins count as no-shows. ` +
     (onDashboard
-      ? `<a href="#seasonReadyPanel" style="color:#ff9900;font-weight:bold">See the checklist ↓</a>`
-      : `<a href="dashboard.html#seasonReadyPanel" style="color:#ff9900;font-weight:bold">Open the checklist →</a>`);
+      ? `<a href="#seasonReadyPanel" style="color:var(--gpsl-accent, #ff9900);font-weight:bold">See the checklist ↓</a>`
+      : `<a href="dashboard.html#seasonReadyPanel" style="color:var(--gpsl-accent, #ff9900);font-weight:bold">Open the checklist →</a>`);
 
   const nav = document.getElementById("nav");
   if (nav?.parentNode) {

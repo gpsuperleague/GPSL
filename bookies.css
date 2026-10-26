@@ -124,7 +124,7 @@ body.bookies-page {
 
 .bk-pill--yours {
   background: #3d3420;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   border: 1px solid #8a7040;
 }
 
@@ -146,7 +146,7 @@ body.bookies-page {
   font-size: 10px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   border: 1px solid #8a7040;
   border-radius: 3px;
   padding: 1px 6px;
@@ -226,7 +226,7 @@ body.bookies-page {
 
 .bk-odds {
   font-weight: 700;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -295,7 +295,7 @@ body.bookies-page {
 
 .bk-bet-card .status-won { color: #9fdf9f; font-weight: 700; }
 .bk-bet-card .status-lost { color: #e88; font-weight: 700; }
-.bk-bet-card .status-open { color: #ffcc66; font-weight: 700; }
+.bk-bet-card .status-open { color: var(--gpsl-accent-hover, #ffcc66); font-weight: 700; }
 
 .bk-admin {
   border-style: dashed;
@@ -417,4 +417,4 @@ body.bookies-page {
   margin: 2px 0;
 }
 
-.bk-bettor b { color: #ffcc66; }
+.bk-bettor b { color: var(--gpsl-accent-hover, #ffcc66); }

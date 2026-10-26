@@ -2189,12 +2189,12 @@ function showNoFixturesHelp() {
   } else if (calendarStatus?.calendar_configured && !calendarStatus.active_gpsl_month) {
     el.innerHTML = `
       <b>No fixtures open this GPSL month.</b> ${calendarStatusBanner(calendarStatus)}
-      See <a href="fixtures.html" style="color:#ff9900;">Fixtures</a> for the full schedule.
+      See <a href="fixtures.html" style="color:var(--gpsl-accent, #ff9900);">Fixtures</a> for the full schedule.
     `;
   } else {
     el.innerHTML = `
       <b>No fixtures ready to submit.</b> Open
-      <a href="fixtures.html" style="color:#ff9900;">Fixtures</a> for your highlighted games.
+      <a href="fixtures.html" style="color:var(--gpsl-accent, #ff9900);">Fixtures</a> for your highlighted games.
     `;
   }
 
@@ -2285,7 +2285,7 @@ async function updateFixturePreview() {
           : f.home_club_name;
       extra = ` · Awaiting confirmation from ${oppName}`;
     } else {
-      extra = ` · They submitted ${f.proposed_home_goals}–${f.proposed_away_goals} — select here or <a href="inbox.html" style="color:#ff9900;">Inbox</a> to enter your stats and confirm`;
+      extra = ` · They submitted ${f.proposed_home_goals}–${f.proposed_away_goals} — select here or <a href="inbox.html" style="color:var(--gpsl-accent, #ff9900);">Inbox</a> to enter your stats and confirm`;
     }
   }
 

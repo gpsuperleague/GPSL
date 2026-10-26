@@ -1,4 +1,4 @@
-/* GPSL competition page themes — keeps #111 / #ff9900 base with competition accents */
+/* GPSL competition page themes — keeps #111 / var(--gpsl-accent, #ff9900) base with competition accents */
 
 .comp-hero {
   display: flex;
@@ -28,7 +28,7 @@
 .comp-hero-title {
   margin: 0;
   font-size: 28px;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
 }
 
 .comp-hero-tagline {

@@ -28,7 +28,7 @@ export function applyMemberViewOnlyChrome({ homeHref = "waiting_list.html" } = {
         color: #ddd; font-size: 13px; font-family: Arial, sans-serif;
       }
       #${BAR_ID} a {
-        color: #ff9900; font-weight: bold; text-decoration: none;
+        color: var(--gpsl-accent, #ff9900); font-weight: bold; text-decoration: none;
         border: 1px solid #665533; padding: 4px 10px; border-radius: 4px; background: #221a10;
       }
       #${BAR_ID} a:hover { background: #332810; }

@@ -12,7 +12,7 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1320px; margin:20px auto 40px; }
-    h1 { color:#ff9900; margin-bottom:8px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:8px; }
     .meta { color:#aaa; margin-bottom:16px; }
     .stats-tabs {
       display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;
@@ -22,7 +22,7 @@
       color:#bbb; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;
     }
     .stats-tab:hover { background:#2a2a2a; color:#ddd; }
-    .stats-tab.active { background:#332200; border-color:#ff9900; color:#ff9900; }
+    .stats-tab.active { background:#332200; border-color:var(--gpsl-accent, #ff9900); color:var(--gpsl-accent, #ff9900); }
     @media (max-width:700px) {
       .stats-tab { padding:7px 11px; font-size:12px; }
     }
@@ -58,8 +58,8 @@
     .award-season-tab.active,
     .award-month-tab.active {
       background: #332200;
-      border-color: #ff9900;
-      color: #ff9900;
+      border-color: var(--gpsl-accent, #ff9900);
+      color: var(--gpsl-accent, #ff9900);
     }
     .toolbar { margin-bottom:20px; }
     .toolbar label { display:inline; margin-right:8px; }
@@ -98,7 +98,7 @@
     .stats-data-panel > div[id$="Table"] {
       flex: 0 0 auto;
     }
-    .panel h2 { color:#ff9900; font-size:17px; line-height:1.2; }
+    .panel h2 { color:var(--gpsl-accent, #ff9900); font-size:17px; line-height:1.2; }
     .stats-data-panel .panel-title-slot {
       flex: 0 0 56px;
       height: 56px;
@@ -168,7 +168,7 @@
       hyphens: none;
       box-sizing: border-box;
     }
-    table.lb th { background:#222; color:#ff9900; text-align:left; font-size:11px; }
+    table.lb th { background:#222; color:var(--gpsl-accent, #ff9900); text-align:left; font-size:11px; }
     .stats-data-panel table.lb thead th {
       border-top: 1px solid #333;
     }
@@ -263,7 +263,7 @@
         grid-column: auto;
       }
     }
-    tr.highlight { outline:1px solid #ff9900; }
+    tr.highlight { outline:1px solid var(--gpsl-accent, #ff9900); }
     .empty { color:#888; font-size:13px; }
     .footer-note { color:#888; font-size:12px; margin-top:16px; }
     table.lb.lb-collapsed tbody tr:nth-child(n+11) { display: none; }
@@ -275,7 +275,7 @@
       background: #222;
       border: 1px solid #444;
       border-radius: 4px;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
@@ -347,7 +347,7 @@
       </div>
       <p class="footer-note" id="leagueFooter">
         League stats are recorded when you submit on
-        <a href="matchday.html" style="color:#ff9900;">Match Day</a> and your opponent confirms.
+        <a href="matchday.html" style="color:var(--gpsl-accent, #ff9900);">Match Day</a> and your opponent confirms.
       </p>
     </div>
 
@@ -377,10 +377,10 @@
         <div class="award-season-tabs" id="totmSeasonTabs" role="tablist" aria-label="Award season"></div>
         <div class="award-month-tabs" id="totmMonthTabs" role="tablist" aria-label="Award month"></div>
 
-        <h3 style="margin:14px 0 6px;color:#ff9900;font-size:16px;">Owner of the Month</h3>
+        <h3 style="margin:14px 0 6px;color:var(--gpsl-accent, #ff9900);font-size:16px;">Owner of the Month</h3>
         <p class="meta" style="margin:0 0 8px;font-size:12px;">
           Best league record — Super League and Championship (A &amp; B) separately.
-          <a href="owner_of_the_month.html" style="color:#ff9900;">Full history</a>
+          <a href="owner_of_the_month.html" style="color:var(--gpsl-accent, #ff9900);">Full history</a>
         </p>
         <div class="ootm-stats-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
           <div id="ootmSuperPanel" style="background:#121820;border:1px solid #2a3a4a;border-radius:8px;padding:12px 14px;">
@@ -396,9 +396,9 @@
           }
         </style>
 
-        <h3 style="margin:8px 0 6px;color:#ff9900;font-size:16px;">Team of the Month — Super League</h3>
+        <h3 style="margin:8px 0 6px;color:var(--gpsl-accent, #ff9900);font-size:16px;">Team of the Month — Super League</h3>
         <div id="totmSuperPanel"><span class="empty">Loading…</span></div>
-        <h3 style="margin:18px 0 6px;color:#ff9900;font-size:16px;">Team of the Month — Championship</h3>
+        <h3 style="margin:18px 0 6px;color:var(--gpsl-accent, #ff9900);font-size:16px;">Team of the Month — Championship</h3>
         <p class="meta" style="margin:0 0 8px;font-size:12px;">Combined Championship A &amp; B XI (min. 2 apps).</p>
         <div id="totmChampionshipPanel"><span class="empty">Loading…</span></div>
       </div>

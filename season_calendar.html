@@ -10,7 +10,7 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1180px; margin:20px auto 48px; }
-    h1 { color:#ff9900; margin:0 0 8px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin:0 0 8px; }
     .meta { color:#aaa; margin-bottom:12px; font-size:14px; line-height:1.45; }
     #seasonCalendarError {
       color:#f88; background:#2a1515; border:1px solid #633;
@@ -51,8 +51,8 @@
       box-shadow:0 2px 0 rgba(0,0,0,.35);
     }
     .sc-month--current {
-      border-color:#ff9900;
-      box-shadow:0 0 0 2px rgba(255,153,0,.45), 0 2px 0 rgba(0,0,0,.35);
+      border-color:var(--gpsl-accent, #ff9900);
+      box-shadow:0 0 0 2px rgba(var(--gpsl-accent-rgb), .45), 0 2px 0 rgba(0,0,0,.35);
     }
     .sc-month--pre .sc-month-banner {
       letter-spacing:.04em;
@@ -91,14 +91,14 @@
     }
     .sc-month--current .sc-now-badge {
       background:#111;
-      color:#ff9900;
+      color:var(--gpsl-accent, #ff9900);
     }
 
     /* GPSL-themed month header colours */
     .sc-month[data-month="pre_season"] .sc-month-banner { background:#d4c4a8; }
     .sc-month[data-month="june"] .sc-month-banner { background:#c9a84c; }
     .sc-month[data-month="july"] .sc-month-banner { background:#e0b85a; }
-    .sc-month[data-month="august"] .sc-month-banner { background:#ff9900; }
+    .sc-month[data-month="august"] .sc-month-banner { background:var(--gpsl-accent, #ff9900); }
     .sc-month[data-month="september"] .sc-month-banner { background:#6d9f7a; }
     .sc-month[data-month="october"] .sc-month-banner { background:#c98652; }
     .sc-month[data-month="november"] .sc-month-banner { background:#5a7db5; color:#fff; }
@@ -147,7 +147,7 @@
     .sc-bullet-btn:hover,
     .sc-bullet.is-open .sc-bullet-btn {
       color:#b36b00;
-      text-decoration-color:#ff9900;
+      text-decoration-color:var(--gpsl-accent, #ff9900);
     }
     .sc-bullet--live .sc-bullet-btn {
       color:#1a5c32;
@@ -173,7 +173,7 @@
       padding:8px 10px 10px;
       background:#fff;
       border:1px solid #d8d0c4;
-      border-left:3px solid #ff9900;
+      border-left:3px solid var(--gpsl-accent, #ff9900);
       border-radius:4px;
       font-size:12px;
       line-height:1.45;
@@ -264,7 +264,7 @@
       padding:4px 9px;
       font-size:11px;
       font-weight:bold;
-      background:#ff9900;
+      background:var(--gpsl-accent, #ff9900);
       color:#111;
       border-radius:3px;
       text-decoration:none;
@@ -306,7 +306,7 @@
     .sc-upcoming {
       background:#1a1a1a;
       border:1px solid #333;
-      border-left:4px solid #ff9900;
+      border-left:4px solid var(--gpsl-accent, #ff9900);
       border-radius:8px;
       padding:10px 14px;
       margin:0 0 16px;
@@ -316,7 +316,7 @@
       font-size:13px;
       text-transform:uppercase;
       letter-spacing:.06em;
-      color:#ff9900;
+      color:var(--gpsl-accent, #ff9900);
     }
     .sc-upcoming ul {
       list-style:none;
@@ -338,7 +338,7 @@
       text-decoration:none;
       color:#ddd;
     }
-    .sc-up-item a:hover { border-color:#ff9900; }
+    .sc-up-item a:hover { border-color:var(--gpsl-accent, #ff9900); }
     .sc-up-when { font-size:11px; color:#aaa; }
     .sc-up-title { font-size:13px; font-weight:bold; color:#eee; }
     .sc-up-item.is-live .sc-up-when { color:#8d8; font-weight:bold; }

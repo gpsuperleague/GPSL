@@ -10,7 +10,7 @@
   <style>
     body { background:#111; color:#ddd; margin:0; font-family:Arial,sans-serif; }
     .page-wrap { width:min(1200px, 95%); margin:20px auto 40px; }
-    h1 { color:#ff9900; margin:0 0 8px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin:0 0 8px; }
     .note { color:#aaa; margin:0 0 18px; line-height:1.45; }
     .summary {
       display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:12px;
@@ -22,13 +22,13 @@
       background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:14px 16px;
     }
     .metric-label { color:#999; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
-    .metric-value { color:#ff9900; font-size:28px; font-weight:700; margin-top:4px; }
+    .metric-value { color:var(--gpsl-accent, #ff9900); font-size:28px; font-weight:700; margin-top:4px; }
     .table-wrap {
       background:#1a1a1a; border:1px solid #333; border-radius:8px; overflow:auto;
     }
     table { width:100%; border-collapse:collapse; min-width:860px; }
     th, td { padding:9px 10px; border-bottom:1px solid #333; text-align:left; }
-    th { background:#222; color:#ff9900; font-size:12px; }
+    th { background:#222; color:var(--gpsl-accent, #ff9900); font-size:12px; }
     td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
     tr.highlight td { background:#171717; }
     .muted { color:#888; }

@@ -63,16 +63,16 @@ function injectCss() {
   style.id = "readyChecklistCss";
   style.textContent = `
     .rc-panel { background: var(--club-panel, #1a1a1a); border: 1px solid var(--club-border, #333);
-      border-left: 4px solid var(--club-accent, #ff9900); border-radius: 8px; padding: 10px 14px; margin: 0 0 18px; }
+      border-left: 4px solid var(--club-accent, var(--gpsl-accent, #ff9900)); border-radius: 8px; padding: 10px 14px; margin: 0 0 18px; }
     .rc-panel[hidden] { display: none !important; }
     .rc-panel.rc-complete { border-left-color: #3a6; }
     .rc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
-    .rc-head h2 { margin: 0; font-size: 15px; color: var(--club-accent, #ff9900); }
+    .rc-head h2 { margin: 0; font-size: 15px; color: var(--club-accent, var(--gpsl-accent, #ff9900)); }
     .rc-complete .rc-head h2 { color: #8d8; }
-    .rc-count { font-size: 13px; color: #ffcc66; font-weight: bold; }
+    .rc-count { font-size: 13px; color: var(--gpsl-accent-hover, #ffcc66); font-weight: bold; }
     .rc-complete .rc-count { color: #8d8; }
     .rc-bar { flex: 1 1 120px; max-width: 220px; height: 8px; background: #2a2a2a; border-radius: 999px; overflow: hidden; }
-    .rc-bar span { display: block; height: 100%; background: linear-gradient(90deg, #cc7a00, #ff9900); }
+    .rc-bar span { display: block; height: 100%; background: linear-gradient(90deg, #cc7a00, var(--gpsl-accent, #ff9900)); }
     .rc-complete .rc-bar span { background: #3a6; }
     .rc-when { font-size: 12px; color: #999; width: 100%; }
     .rc-toggle { margin-left: auto; background: none; border: 1px solid #444; color: #aaa; border-radius: 4px;
@@ -90,9 +90,9 @@ function injectCss() {
     .rc-text { flex: 1; min-width: 0; }
     .rc-detail { font-size: 11px; color: #888; margin-top: 1px; }
     .rc-item.todo .rc-detail { color: #e9a; }
-    .rc-item a.rc-go { font-size: 11px; color: #ff9900; white-space: nowrap; align-self: center; }
+    .rc-item a.rc-go { font-size: 11px; color: var(--gpsl-accent, #ff9900); white-space: nowrap; align-self: center; }
     .rc-item label { display: flex; gap: 8px; cursor: pointer; flex: 1; }
-    .rc-item input[type=checkbox] { margin-top: 2px; accent-color: #ff9900; }
+    .rc-item input[type=checkbox] { margin-top: 2px; accent-color: var(--gpsl-accent, #ff9900); }
     .rc-foot { font-size: 11px; color: #777; margin-top: 8px; }
     .rc-panel.rc-locked { border-left-color: #e33; border-color: #6a2222; }
     .rc-locked .rc-head h2 { color: #f66; }

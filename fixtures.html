@@ -12,20 +12,20 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1400px; margin:20px auto 40px; }
-    h1 { color:#ff9900; margin-bottom:8px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:8px; }
     .meta { color:#aaa; margin-bottom:16px; }
     .toolbar { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; align-items:center; }
     .toolbar select, .toolbar button {
       padding:8px 12px; background:#222; border:1px solid #444; color:#ddd; border-radius:6px;
     }
-    .toolbar button.active { border-color:#ff9900; color:#ff9900; }
+    .toolbar button.active { border-color:var(--gpsl-accent, #ff9900); color:var(--gpsl-accent, #ff9900); }
     .matchday-block {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       margin-bottom:16px; overflow:hidden;
       scroll-margin-top: 72px;
     }
     .matchday-head {
-      background:#222; padding:10px 14px; color:#ff9900; font-weight:bold;
+      background:#222; padding:10px 14px; color:var(--gpsl-accent, #ff9900); font-weight:bold;
       display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
     }
     table.gpsl-table { width:100%; border-collapse:collapse; table-layout:fixed; }
@@ -40,10 +40,10 @@
     table.gpsl-table th, table.gpsl-table td {
       border-top:1px solid #333; padding:8px 10px; font-size:13px;
     }
-    table.gpsl-table th { color:#ff9900; text-align:left; background:#1a1a1a; }
+    table.gpsl-table th { color:var(--gpsl-accent, #ff9900); text-align:left; background:#1a1a1a; }
     table.gpsl-table td { overflow-wrap:anywhere; word-break:break-word; }
     tr.my-fixture td { background:#3d3200 !important; }
-    tr.my-fixture { box-shadow: inset 3px 0 0 #ff9900; }
+    tr.my-fixture { box-shadow: inset 3px 0 0 var(--gpsl-accent, #ff9900); }
     /* Soft highlight: owner vs vacant (simulation) */
     tr.fixture-sim td {
       background: rgba(255, 176, 96, 0.10) !important;
@@ -79,7 +79,7 @@
     tr.my-fixture .fixture-conditions { color:#ddd; }
     .empty { color:#888; padding:24px; }
     .btn-result {
-      padding:4px 10px; font-size:12px; background:#ff9900; color:#111;
+      padding:4px 10px; font-size:12px; background:var(--gpsl-accent, #ff9900); color:#111;
       border:none; border-radius:4px; font-weight:bold; cursor:pointer;
     }
     .btn-result.secondary { background:#555; color:#eee; }
@@ -131,7 +131,7 @@
   <div class="page-container">
     <h1 class="gpsl-has-tip" data-gpsl-tip="Your games are highlighted. Stadium/Continent = home venue (Wembley for cup finals). Propose time needs availability on Owner Details. Enter result opens Match Day for score + squad stats." tabindex="0">Fixtures</h1>
     <p class="meta" style="margin-top:-4px;margin-bottom:10px;">
-      <a href="docs/gpsl-month-end-unplayed.html" style="color:#ff9900;">Month end &amp; unplayed fixtures</a>
+      <a href="docs/gpsl-month-end-unplayed.html" style="color:var(--gpsl-accent, #ff9900);">Month end &amp; unplayed fixtures</a>
       — deadlines, catch-up, and scheduling fines
     </p>
     <p id="seasonMeta" class="meta">Loading…</p>
@@ -140,10 +140,10 @@
     <p id="fixturesHint" class="meta gpsl-has-tip" style="margin-top:-8px;" data-gpsl-tip="Kick-off column shows schedule status for every match. Propose / Reply buttons appear on your club’s games only. Soft fines at month lock: ₿1m late proposal, ₿2.5m if nothing proposed; first missed reply is a warning." tabindex="0">
       Your club’s games are highlighted. The <b>Kick-off</b> column shows status for every match (agreed time, proposal pending, or not scheduled). Weeks run 1–38 through the season.
       On your fixtures, <b>Propose kick-off</b> / <b>Reply to proposal</b> opens match scheduling (set availability on
-      <a href="owner_details.html" style="color:#ff9900;">Owner Details</a> first).
+      <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a> first).
       Save your squad on Match Day before kick-off — it is checked when you check in.
       <b>Enter result</b> opens
-      <a href="matchday.html" style="color:#ff9900;">Match Day</a> — score plus squad stats (11 starters, goals, ratings).
+      <a href="matchday.html" style="color:var(--gpsl-accent, #ff9900);">Match Day</a> — score plus squad stats (11 starters, goals, ratings).
     </p>
     <div class="toolbar" id="divisionToolbar"></div>
     <div id="fixturesRoot"></div>

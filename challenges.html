@@ -11,13 +11,13 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
-    h1 { color:#ff9900; margin:0 0 8px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin:0 0 8px; }
     .meta { color:#aaa; font-size:13px; margin-bottom:16px; line-height:1.45; }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:18px 20px; margin-bottom:20px;
     }
-    .panel h2 { color:#ff9900; font-size:16px; margin:0 0 12px; }
+    .panel h2 { color:var(--gpsl-accent, #ff9900); font-size:16px; margin:0 0 12px; }
     .panel h3 {
       color:#ccc; font-size:14px; margin:18px 0 10px;
       padding-bottom:6px; border-bottom:1px solid #333;
@@ -29,7 +29,7 @@
     .challenge-card {
       background:#222; border:1px solid #333; border-radius:6px; padding:14px;
     }
-    .challenge-card h3 { margin:0 0 8px; font-size:15px; color:#ffcc66; border:none; padding:0; }
+    .challenge-card h3 { margin:0 0 8px; font-size:15px; color:var(--gpsl-accent-hover, #ffcc66); border:none; padding:0; }
     .challenge-meta { font-size:12px; color:#888; line-height:1.4; }
     .window-tag {
       display:inline-block; font-size:10px; text-transform:uppercase;
@@ -56,7 +56,7 @@
     }
     .standings-tab:hover { border-color:#666; color:#fff; }
     .standings-tab.active {
-      background:#333; border-color:#ff9900; color:#ffcc66;
+      background:#333; border-color:var(--gpsl-accent, #ff9900); color:var(--gpsl-accent-hover, #ffcc66);
     }
     .standings-wrap { overflow-x:auto; }
     table.league-table {
@@ -78,7 +78,7 @@
     }
     table.league-table tr.me:hover td { background:#243320; }
     table.league-table .pos { color:#888; width:2.5em; }
-    table.league-table .club a { color:#ffcc66; text-decoration:none; }
+    table.league-table .club a { color:var(--gpsl-accent-hover, #ffcc66); text-decoration:none; }
     table.league-table .club a:hover { text-decoration:underline; }
     table.league-table .bar-cell { min-width:120px; }
     .progress-bar {

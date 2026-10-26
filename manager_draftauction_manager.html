@@ -21,7 +21,7 @@
     }
     .manager-portrait { width:100%; height:100%; object-fit:cover; display:block; }
     .manager-portrait-fallback {
-      font-size:42px; font-weight:bold; color:#ff9900; letter-spacing:1px;
+      font-size:42px; font-weight:bold; color:var(--gpsl-accent, #ff9900); letter-spacing:1px;
     }
     .manager-header-text { flex:1; min-width:0; }
     .meta { font-size:13px; color:#ccc; margin-top:6px; }
@@ -41,9 +41,9 @@
     .bid-view-banner { background:#1a2430; border:1px solid #456; color:#bcd; }
     table.history { width:100%; border-collapse:collapse; margin-top:12px; }
     table.history th, table.history td { border:1px solid #333; padding:6px; font-size:12px; }
-    table.history th { color:#ff9900; background:#222; }
+    table.history th { color:var(--gpsl-accent, #ff9900); background:#222; }
     #bidError { color:#f88; font-size:12px; min-height:16px; }
-    a.button { display:inline-block; padding:10px 16px; background:#ff9900; color:#111; text-decoration:none; font-weight:bold; border-radius:6px; }
+    a.button { display:inline-block; padding:10px 16px; background:var(--gpsl-accent, #ff9900); color:#111; text-decoration:none; font-weight:bold; border-radius:6px; }
   </style>
 </head>
 <body>
@@ -56,7 +56,7 @@
         <div id="managerPortraitFallback" class="manager-portrait-fallback" hidden>?</div>
       </div>
       <div class="manager-header-text">
-        <h1 id="managerName" style="color:#ff9900;margin:0;">Loading…</h1>
+        <h1 id="managerName" style="color:var(--gpsl-accent, #ff9900);margin:0;">Loading…</h1>
         <div class="meta" id="managerMeta"></div>
         <div class="meta" id="managerValue"></div>
         <div class="meta" id="currentHighest"></div>
@@ -73,10 +73,10 @@
     </div>
 
     <div class="bid-panel" id="bidPanel">
-      <h3 id="bidPanelTitle" style="color:#ff9900;margin-top:0;">Place bid</h3>
+      <h3 id="bidPanelTitle" style="color:var(--gpsl-accent, #ff9900);margin-top:0;">Place bid</h3>
       <div class="bid-controls">
       <div class="bid-row">
-        <span style="color:#ff9900;font-weight:bold;font-size:18px;">₿</span>
+        <span style="color:var(--gpsl-accent, #ff9900);font-weight:bold;font-size:18px;">₿</span>
         <input type="text" id="bidAmount" inputmode="numeric" autocomplete="off">
         <button type="button" id="quickBidBtn" class="quick-btn">Min bid</button>
         <button type="button" class="dec-btn" data-delta="-5000000">−5m</button>
@@ -96,7 +96,7 @@
           Do not open rooms just to force rivals’ auto-bids upward — that is against fair play.
         </p>
         <div class="bid-row">
-          <span style="color:#ff9900;font-weight:bold;font-size:18px;">₿</span>
+          <span style="color:var(--gpsl-accent, #ff9900);font-weight:bold;font-size:18px;">₿</span>
           <input type="text" id="managerMaxBidAmount" inputmode="numeric" autocomplete="off" placeholder="Max bid">
           <button type="button" id="managerMaxBidSetBtn" class="quick-btn">Set max</button>
           <button type="button" id="managerMaxBidClearBtn" class="quick-btn" style="background:#333;">Clear</button>
@@ -106,7 +106,7 @@
       </div>
     </div>
 
-    <h3 style="color:#ff9900;">Bid history</h3>
+    <h3 style="color:var(--gpsl-accent, #ff9900);">Bid history</h3>
     <p style="margin:0 0 8px;font-size:12px;color:#999;">Live list of bids on this manager (newest first). Safe to check via View without placing a bid.</p>
     <table class="history">
       <thead><tr><th>Club</th><th>Owner</th><th>Amount</th><th>Time</th></tr></thead>

@@ -12,19 +12,19 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1200px; margin:20px auto 48px; }
-    h1 { color:#ff9900; margin:0 0 8px; font-size:26px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin:0 0 8px; font-size:26px; }
     .meta { color:#aaa; font-size:14px; margin-bottom:20px; line-height:1.5; }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:18px 20px; margin-bottom:22px;
     }
-    .panel h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
+    .panel h2 { color:var(--gpsl-accent, #ff9900); font-size:18px; margin:0 0 12px; }
     .panel-transfer::after {
       background-image: url("images/panel_bg/Transfer.png");
     }
     .tier-block { margin-bottom:28px; }
     .tier-block h3 {
-      color:#ffcc66; font-size:15px; margin:0 0 4px;
+      color:var(--gpsl-accent-hover, #ffcc66); font-size:15px; margin:0 0 4px;
       border-bottom:1px solid #333; padding-bottom:6px;
     }
     .scout-tier-balance {
@@ -102,7 +102,7 @@
       border-top: 2px solid #c9842a;
     }
     .scout-add-nest, .scout-unlink-nest {
-      background:#333; color:#ff9900; border:1px solid #555;
+      background:#333; color:var(--gpsl-accent, #ff9900); border:1px solid #555;
       border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer;
       font-weight:bold;
     }
@@ -145,7 +145,7 @@
       flex: 0 0 auto;
     }
     .scout-nest-picker-head h3 {
-      margin: 0 0 4px; color: #ff9900; font-size: 16px;
+      margin: 0 0 4px; color: var(--gpsl-accent, #ff9900); font-size: 16px;
     }
     .scout-nest-picker-head p {
       margin: 0; color: #999; font-size: 12px; line-height: 1.4;
@@ -155,7 +155,7 @@
     }
     .scout-nest-picker-group {
       padding: 8px 14px 4px;
-      color: #ffcc66; font-size: 11px; font-weight: bold;
+      color: var(--gpsl-accent-hover, #ffcc66); font-size: 11px; font-weight: bold;
       letter-spacing: 0.03em; text-transform: uppercase;
       position: sticky; top: 0; background: #1a1a1a;
       border-bottom: 1px solid #2a2a2a;
@@ -189,8 +189,8 @@
       display: block; color: #888; font-size: 10px; font-weight: normal;
       margin-top: 2px;
     }
-    .scout-nest-picker-item .np-pos { color: #ff9900; font-weight: bold; }
-    .scout-nest-picker-item .np-rating { color: #ffcc66; }
+    .scout-nest-picker-item .np-pos { color: var(--gpsl-accent, #ff9900); font-weight: bold; }
+    .scout-nest-picker-item .np-rating { color: var(--gpsl-accent-hover, #ffcc66); }
     .scout-nest-picker-item .np-muted { color: #aaa; }
     .scout-nest-picker-cols {
       cursor: default !important;
@@ -224,14 +224,14 @@
     .scout-pos-group { margin:0 0 14px; }
     .scout-pos-heading {
       color:#ddd; font-size:13px; margin:0 0 6px; font-weight:bold;
-      padding:4px 0 4px 8px; border-left:3px solid #ff9900;
+      padding:4px 0 4px 8px; border-left:3px solid var(--gpsl-accent, #ff9900);
     }
     .scout-pos-empty { padding:4px 0 4px 12px; font-size:12px; }
     table.scout-table {
       width:100%; border-collapse:collapse; font-size:12px;
     }
     table.scout-table th {
-      background:#222; color:#ff9900; padding:8px 6px;
+      background:#222; color:var(--gpsl-accent, #ff9900); padding:8px 6px;
       border-bottom:2px solid #444; text-align:center; position:sticky; top:0;
     }
     table.scout-table td {
@@ -258,7 +258,7 @@
       display: inline-block;
       padding: 8px 14px;
       background: #1a1a1a;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       border: 1px solid #666;
       border-radius: 6px;
       text-decoration: none;
@@ -268,7 +268,7 @@
     }
     a.button:hover, .button-link:hover, button.button:hover {
       background: #222;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
     button.button.secondary {
       background: #222;
@@ -320,7 +320,7 @@
       padding: 12px 14px;
       background: #161616;
       border: 1px solid #3d3200;
-      border-left: 3px solid #ff9900;
+      border-left: 3px solid var(--gpsl-accent, #ff9900);
       border-radius: 6px;
     }
     .scout-autofill-head {
@@ -328,7 +328,7 @@
     }
     .scout-autofill-head strong {
       display: block;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 14px;
       margin-bottom: 4px;
     }
@@ -378,13 +378,13 @@
     #scoutingPlannerRoot .button,
     #scoutingPlannerRoot button.button {
       background: #1a1a1a;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       border: 1px solid #666;
     }
     #scoutingPlannerRoot .button:hover,
     #scoutingPlannerRoot button.button:hover {
       background: #222;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
     #scoutingPlannerRoot .button.secondary,
     #scoutingPlannerRoot button.button.secondary {
@@ -430,7 +430,7 @@
       padding:8px 14px; background:#333; color:#ddd; border:1px solid #555;
       border-radius:6px; cursor:pointer; font-weight:bold;
     }
-    .scout-tabs button.active { background:#ff9900; color:#111; border-color:#ff9900; }
+    .scout-tabs button.active { background:var(--gpsl-accent, #ff9900); color:#111; border-color:var(--gpsl-accent, #ff9900); }
     .scout-tab-panel { display:none; }
     .scout-tab-panel.active { display:block; }
     .scout-draft-status { font-size:11px; color:#bbb; max-width:120px; }
@@ -442,7 +442,7 @@
       font-size: 12px;
     }
     .scout-draft-manage a:hover {
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
       text-decoration: none;
     }
     .scout-bid-row { display:flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content:center; }
@@ -463,7 +463,7 @@
       display: block;
       margin: 0 auto;
     }
-    #scoutingPlannerRoot .squad-hint b { color:#ffcc66; }
+    #scoutingPlannerRoot .squad-hint b { color:var(--gpsl-accent-hover, #ffcc66); }
     .scout-board-top {
       margin: 0 0 14px;
       padding-bottom: 12px;
@@ -476,7 +476,7 @@
       text-decoration: none;
       font-size: 18px;
       line-height: 1.2;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
     }
     .scout-budget-line {
       display: flex;
@@ -505,7 +505,7 @@
     }
     .scout-budget-item .val,
     .scout-budget-item .cbb-amount {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
       font-variant-numeric: tabular-nums;
     }
@@ -622,7 +622,7 @@
       font-size: 11px;
     }
     .scout-planner-mv b {
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
       font-weight: bold;
     }
     .scout-planner-wage b {
@@ -636,10 +636,10 @@
       color: #8ec8ff !important;
     }
     table.scout-table tr.scout-active-row td {
-      background: rgba(255, 153, 0, 0.14);
+      background: rgba(var(--gpsl-accent-rgb), 0.14);
     }
     table.scout-table tr.scout-active-row:hover td {
-      background: rgba(255, 153, 0, 0.22);
+      background: rgba(var(--gpsl-accent-rgb), 0.22);
     }
     table.scout-table tr.scout-bid-owned-row td {
       background: rgba(126, 134, 146, 0.14);
@@ -649,12 +649,12 @@
     }
     table.scout-table tr.scout-active-row.scout-bid-owned-row td {
       background:
-        linear-gradient(0deg, rgba(255, 153, 0, 0.14), rgba(255, 153, 0, 0.14)),
+        linear-gradient(0deg, rgba(var(--gpsl-accent-rgb), 0.14), rgba(var(--gpsl-accent-rgb), 0.14)),
         linear-gradient(0deg, rgba(126, 134, 146, 0.10), rgba(126, 134, 146, 0.10));
     }
     table.scout-table tr.scout-active-row.scout-bid-owned-row:hover td {
       background:
-        linear-gradient(0deg, rgba(255, 153, 0, 0.22), rgba(255, 153, 0, 0.22)),
+        linear-gradient(0deg, rgba(var(--gpsl-accent-rgb), 0.22), rgba(var(--gpsl-accent-rgb), 0.22)),
         linear-gradient(0deg, rgba(126, 134, 146, 0.16), rgba(126, 134, 146, 0.16));
     }
     table.scout-table tr.scout-active-owned-row td {
@@ -685,7 +685,7 @@
       width: 16px;
       height: 16px;
       cursor: pointer;
-      accent-color: #ff9900;
+      accent-color: var(--gpsl-accent, #ff9900);
     }
     .scout-badges {
       display: inline-flex;
@@ -705,7 +705,7 @@
       white-space: nowrap;
     }
     .scout-badge-hg {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       background: #12202a;
       border-color: #2a5570;
     }
@@ -732,7 +732,7 @@
       </div>
     </div>
     <p class="meta" id="scoutingPageMeta">
-      Star players in <a href="GPDB.html" style="color:#ff9900;">GPDB</a> (☆ column) to add them here.
+      Star players in <a href="GPDB.html" style="color:var(--gpsl-accent, #ff9900);">GPDB</a> (☆ column) to add them here.
       Targets and the tactic board are saved to <b>you (the owner)</b> — they stay with you across season reset, archive, and club moves.
       Tick <b>Active Targets</b> to highlight players and sum a draft budget (market value, your leading bid, or the next increment if outbid).
       When the draft window opens, use <b>Bid</b> on free agents (first bid opens the auction thread at market value). You can also use the full bid page.

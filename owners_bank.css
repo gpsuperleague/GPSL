@@ -16,7 +16,7 @@ body.ob-page {
   margin: 0 auto;
   padding: 28px 20px 22px;
   border-bottom: 2px solid #5a3a18;
-  background: radial-gradient(ellipse at 25% 0%, rgba(255, 153, 0, 0.12) 0%, transparent 55%);
+  background: radial-gradient(ellipse at 25% 0%, rgba(var(--gpsl-accent-rgb), 0.12) 0%, transparent 55%);
 }
 
 @media (max-width: 720px) {
@@ -43,7 +43,7 @@ body.ob-page {
   margin: 4px 0 8px;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(26px, 4vw, 36px);
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
 }
 
 .ob-tagline {
@@ -76,7 +76,7 @@ body.ob-page {
   font-family: Georgia, serif;
   font-size: clamp(22px, 3.5vw, 30px);
   font-weight: bold;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   font-variant-numeric: tabular-nums;
 }
 
@@ -87,11 +87,11 @@ body.ob-page {
 }
 
 .ob-links a {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   text-decoration: none;
 }
 
-.ob-links a:hover { color: #ffcc66; text-decoration: underline; }
+.ob-links a:hover { color: var(--gpsl-accent-hover, #ffcc66); text-decoration: underline; }
 
 .ob-main {
   max-width: 1100px;
@@ -102,7 +102,7 @@ body.ob-page {
 .ob-status {
   min-height: 1.2em;
   font-size: 13px;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   margin: 0 0 12px;
 }
 
@@ -133,13 +133,13 @@ body.ob-page {
   margin: 4px 0 0;
   font-family: Georgia, serif;
   font-size: 20px;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
 }
 
 .ob-refresh {
   border: 1px solid #6a4a20;
   background: #241808;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 12px;
@@ -147,7 +147,7 @@ body.ob-page {
 }
 
 .ob-refresh:hover {
-  border-color: #ff9900;
+  border-color: var(--gpsl-accent, #ff9900);
   background: #2e1e0c;
 }
 
@@ -163,7 +163,7 @@ body.ob-page {
   text-align: left;
   padding: 10px 12px;
   border-bottom: 2px solid #5a3a18;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-weight: normal;
   white-space: nowrap;
   background: #221808;
@@ -176,7 +176,7 @@ body.ob-page {
   vertical-align: top;
 }
 
-.ob-statement tr:hover td { background: rgba(255, 153, 0, 0.04); }
+.ob-statement tr:hover td { background: rgba(var(--gpsl-accent-rgb), 0.04); }
 
 .ob-statement .num {
   text-align: right;
@@ -186,7 +186,7 @@ body.ob-page {
 
 .ob-statement .ob-out { color: #e09090; }
 .ob-statement .ob-in { color: #9fdf9f; }
-.ob-statement .ob-run { color: #ffcc66; font-weight: bold; }
+.ob-statement .ob-run { color: var(--gpsl-accent-hover, #ffcc66); font-weight: bold; }
 
 .ob-type {
   display: inline-block;

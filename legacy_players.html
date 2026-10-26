@@ -13,7 +13,7 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     #nav { padding:15px; background:#1a1a1a; border-bottom:1px solid #333; text-align:center; }
-    h1 { margin:20px 20px 8px; color:#ff9900; font-size:26px; }
+    h1 { margin:20px 20px 8px; color:var(--gpsl-accent, #ff9900); font-size:26px; }
     .subtitle { margin:0 20px 16px; color:#999; font-size:14px; max-width:920px; line-height:1.5; }
     .info-box.info-box--accent { margin:0 20px 16px; max-width:920px; font-size:14px; line-height:1.6; }
     .panel { margin:20px; padding:20px; background:#1a1a1a; border:1px solid #333; border-radius:8px; }
@@ -21,7 +21,7 @@
     table.gpsl-table th, table.gpsl-table td {
       border:1px solid #333; padding:8px 10px; font-size:13px; text-align:left;
     }
-    table.gpsl-table th { background:#222; color:#ff9900; text-align:center; }
+    table.gpsl-table th { background:#222; color:var(--gpsl-accent, #ff9900); text-align:center; }
     table.gpsl-table td.num { text-align:center; }
     .tag-legacy { color:#fc8; font-size:12px; }
     .empty-note { color:#888; padding:16px; text-align:center; }
@@ -51,7 +51,7 @@
     #legacyPlayerSearch::placeholder { color: #666; }
     #legacyPlayerSearch:focus {
       outline: none;
-      border-color: #ff9900;
+      border-color: var(--gpsl-accent, #ff9900);
     }
     #legacyClubFilter {
       min-width: 180px;
@@ -65,7 +65,7 @@
     }
     #legacyClubFilter:focus {
       outline: none;
-      border-color: #ff9900;
+      border-color: var(--gpsl-accent, #ff9900);
     }
   </style>
 </head>
@@ -73,7 +73,7 @@
   <div id="nav"></div>
   <h1>Legacy players</h1>
   <p class="subtitle">
-    Cards removed from <a href="https://pesdb.net/efootball/" target="_blank" rel="noopener" style="color:#ff9900;">pesdb.net</a>
+    Cards removed from <a href="https://pesdb.net/efootball/" target="_blank" rel="noopener" style="color:var(--gpsl-accent, #ff9900);">pesdb.net</a>
     but still owned in GPSL.
   </p>
 

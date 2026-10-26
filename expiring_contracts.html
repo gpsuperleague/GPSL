@@ -14,7 +14,7 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     #nav { padding:15px; background:#1a1a1a; border-bottom:1px solid #333; text-align:center; }
-    h1 { margin:20px; color:#ff9900; }
+    h1 { margin:20px; color:var(--gpsl-accent, #ff9900); }
     .panel { margin:20px; padding:20px; background:#1a1a1a; border:1px solid #333; border-radius:8px; }
     .filter-bar {
       display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center;
@@ -153,8 +153,8 @@
           to right,
           #444 0%,
           #444 var(--range-min, 0%),
-          #ff9900 var(--range-min, 0%),
-          #ff9900 var(--range-max, 100%),
+          var(--gpsl-accent, #ff9900) var(--range-min, 0%),
+          var(--gpsl-accent, #ff9900) var(--range-max, 100%),
           #444 var(--range-max, 100%),
           #444 100%
         );
@@ -175,12 +175,12 @@
     .range-filter-sliders input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance:none; appearance:none;
       width:14px; height:14px; border-radius:50%;
-      background:#ff9900; border:2px solid #111; box-shadow:0 0 0 1px #aa6a00;
+      background:var(--gpsl-accent, #ff9900); border:2px solid #111; box-shadow:0 0 0 1px #aa6a00;
       margin-top:-4px; cursor:pointer; pointer-events:auto;
     }
     .range-filter-sliders input[type="range"]::-moz-range-thumb {
       width:14px; height:14px; border-radius:50%;
-      background:#ff9900; border:2px solid #111; box-shadow:0 0 0 1px #aa6a00;
+      background:var(--gpsl-accent, #ff9900); border:2px solid #111; box-shadow:0 0 0 1px #aa6a00;
       cursor:pointer; pointer-events:auto;
     }
     .range-filter-sliders input[type="range"]:disabled { opacity:0.45; }
@@ -188,7 +188,7 @@
     table.gpsl-table th, table.gpsl-table td {
       border:1px solid #333; padding:8px; font-size:13px; text-align:center;
     }
-    table.gpsl-table th { background:#222; color:#ff9900; }
+    table.gpsl-table th { background:#222; color:var(--gpsl-accent, #ff9900); }
     table.gpsl-table td.name-cell { text-align:left; }
     table.gpsl-table td.wage-cell {
       white-space: nowrap;
@@ -372,7 +372,7 @@
             <th>Playstyle</th>
             <th class="gpsl-has-tip" data-gpsl-tip="Market value paid to the holding club if another club wins the wage auction when the contract ends." tabindex="0">MV</th>
             <th>Holding club</th>
-            <th class="gpsl-has-tip" style="color:#ffcc66;" data-gpsl-tip="Holding club’s division. Championship clubs taking a Super League player also pay a signing-on fee % of MV to the player at rollover." tabindex="0">League</th>
+            <th class="gpsl-has-tip" style="color:var(--gpsl-accent-hover, #ffcc66);" data-gpsl-tip="Holding club’s division. Championship clubs taking a Super League player also pay a signing-on fee % of MV to the player at rollover." tabindex="0">League</th>
             <th class="gpsl-has-tip" data-gpsl-tip="Player’s current seasonal contract wage. Bids must clear the minimum uplift above this." tabindex="0">Current wage</th>
             <th class="gpsl-has-tip" data-gpsl-tip="Your locked wage offer (Jan–May / Playoff owner). Hidden from rivals until rollover or a Playoff agent bribe." tabindex="0">Your bid</th>
             <th class="gpsl-has-tip" data-gpsl-tip="Clubs that have made a wage contract offer (names only). Holding club sees this. In Playoffs the holding club can bribe with a Side door brown envelope to reveal amounts — 20% chance a Leaked bids stamp appears (amounts stay private)." tabindex="0">Interest</th>
@@ -386,7 +386,7 @@
 
   <div id="bidModal">
     <div class="modal-inner">
-      <h3 id="bidModalTitle" style="color:#ff9900;margin-top:0;">Wage bid</h3>
+      <h3 id="bidModalTitle" style="color:var(--gpsl-accent, #ff9900);margin-top:0;">Wage bid</h3>
       <div id="bidModalHint" class="bid-modal-hint"></div>
       <label>Wage offer (₿)</label>
       <input type="text" id="bidWageInput" inputmode="numeric">
@@ -406,7 +406,7 @@
 
   <div id="transferOfferModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1200;align-items:center;justify-content:center;">
     <div class="modal-inner" style="max-width:420px;width:92%;background:#1a1a1a;border:1px solid #444;border-radius:8px;padding:18px;">
-      <h3 id="transferOfferTitle" style="color:#ff9900;margin-top:0;">Make transfer offer</h3>
+      <h3 id="transferOfferTitle" style="color:var(--gpsl-accent, #ff9900);margin-top:0;">Make transfer offer</h3>
       <p id="transferOfferHint" class="bid-modal-hint" style="color:#aaa;font-size:13px;"></p>
       <label>Offer amount (₿)</label>
       <input type="text" id="transferOfferAmount" inputmode="numeric" style="width:100%;box-sizing:border-box;padding:8px;margin:6px 0 10px;background:#111;border:1px solid #444;color:#ddd;border-radius:4px;">

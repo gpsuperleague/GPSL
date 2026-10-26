@@ -27,7 +27,7 @@ import { refreshAllDashboardPins } from "./dashboard_pin.js";
 import {
   applyClubDashboardTheme,
   loadClubDashboardTheme,
-} from "./club_theme_common.js?v=20261026-theme-full";
+} from "./club_theme_common.js?v=20261026-theme-vars";
 import { startDashboardMatchday } from "./dashboard_matchday.js";
 import { renderSupportBanner } from "./support_banner.js";
 import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261020-blackbox";
@@ -970,13 +970,13 @@ function showNoClubBanner(email, ownerTag = "") {
   }
   const tagPrompt = ownerTag
     ? ""
-    : `<div style="color:#aaa;font-size:12px;margin-top:6px;">Set your Discord name on the <a href="awaiting_club.html" style="color:#ff9900;">club auction page</a>.</div>`;
+    : `<div style="color:#aaa;font-size:12px;margin-top:6px;">Set your Discord name on the <a href="awaiting_club.html" style="color:var(--gpsl-accent, #ff9900);">club auction page</a>.</div>`;
   const adminNote = isAdmin
     ? `<div style="color:#9f9;font-size:12px;margin-top:6px;">Admin: use the nav to preview any page while you wait.</div>`
     : "";
   banner.innerHTML = `
     <b>No club linked yet</b> — clubs are assigned through the
-    <a href="awaiting_club.html" style="color:#ff9900;">club auction</a>.
+    <a href="awaiting_club.html" style="color:var(--gpsl-accent, #ff9900);">club auction</a>.
     ${tagPrompt}${adminNote}
   `;
   const badge = document.getElementById("clubBadgeHeader");

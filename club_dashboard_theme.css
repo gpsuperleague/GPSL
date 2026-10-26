@@ -72,12 +72,15 @@
 }
 
 /* ------------------------------------------------------------------
-   Full club colours (theme_scope = full) — deeper accents on tables,
-   toolbars, headings. Hardcoded GPSL orange on owner pages yields.
+   Full club colours (theme_scope = full)
+   Accent tokens already remapped on <html.club-theme-full> by JS.
+   Scope also remaps locally so page CSS using --gpsl-accent follows.
+   Non-full / theme-off keep :root GPSL orange — no club override.
    ------------------------------------------------------------------ */
 
 .club-themed-scope--full {
   --gpsl-accent: var(--club-accent);
+  --gpsl-accent-hover: color-mix(in srgb, var(--club-accent) 75%, white);
   --gpsl-accent-rgb: var(--club-accent-rgb);
 }
 

@@ -12,7 +12,7 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
-    h1 { color:#ff9900; margin-bottom:8px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:8px; }
     .meta { color:#aaa; margin-bottom:16px; font-size:14px; line-height:1.45; }
     #clubFriendliesRules {
       margin:0 0 18px;
@@ -31,13 +31,13 @@
       padding:6px 12px; border:1px solid #333; border-radius:6px;
       background:#1a1a1a; color:#ccc; font-size:13px;
     }
-    .summary .pill b { color:#ffcc66; font-weight:600; }
+    .summary .pill b { color:var(--gpsl-accent-hover, #ffcc66); font-weight:600; }
     .month-block {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       margin-bottom:18px; overflow:hidden;
     }
     .month-head {
-      background:#222; padding:12px 16px; color:#ff9900; font-weight:bold;
+      background:#222; padding:12px 16px; color:var(--gpsl-accent, #ff9900); font-weight:bold;
       font-size:16px; border-bottom:1px solid #333;
       display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px 16px;
     }
@@ -51,7 +51,7 @@
       margin-bottom:8px;
     }
     .friendly-match { font-size:15px; color:#fff; font-weight:bold; }
-    .friendly-match .mine { color:#ffcc66; }
+    .friendly-match .mine { color:var(--gpsl-accent-hover, #ffcc66); }
     .friendly-score {
       font-size:16px; font-weight:bold; color:#fff;
       background:#2a2a2a; padding:2px 10px; border-radius:4px;
@@ -92,7 +92,7 @@
       display:none; background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:12px 16px; margin:0 0 18px;
     }
-    .form-head { color:#ff9900; font-weight:bold; margin-bottom:8px; }
+    .form-head { color:var(--gpsl-accent, #ff9900); font-weight:bold; margin-bottom:8px; }
     .form-hint { color:#888; font-weight:normal; font-size:12px; }
     .form-row {
       display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px;
@@ -102,7 +102,7 @@
     .form-month { width:48px; color:#ccc; font-weight:bold; }
     .form-chips { display:inline-flex; flex-wrap:wrap; gap:2px; }
     .form-stats { color:#aaa; font-size:13px; }
-    .form-stats b { color:#ffcc66; }
+    .form-stats b { color:var(--gpsl-accent-hover, #ffcc66); }
     .form-empty { color:#777; font-size:13px; }
     #friendliesTable {
       display:none; background:#1a1a1a; border:1px solid #333; border-radius:8px;
@@ -112,7 +112,7 @@
       display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
       gap:8px 14px; margin-bottom:8px;
     }
-    .ft-title { color:#ff9900; font-weight:bold; font-size:16px; }
+    .ft-title { color:var(--gpsl-accent, #ff9900); font-weight:bold; font-size:16px; }
     .ft-title .ft-live {
       font-size:10px; text-transform:uppercase; letter-spacing:.05em; margin-left:6px;
       padding:2px 6px; border-radius:4px; background:#14301f; color:#8d8; vertical-align:middle;
@@ -121,7 +121,7 @@
       background:#111; color:#ddd; border:1px solid #444; border-radius:4px; padding:4px 6px;
     }
     .ft-prizes { color:#aaa; font-size:13px; margin-bottom:10px; }
-    .ft-prizes b { color:#ffcc66; }
+    .ft-prizes b { color:var(--gpsl-accent-hover, #ffcc66); }
     .ft-winners { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
     .ft-winner {
       padding:5px 10px; border-radius:6px; background:#2a2410; border:1px solid #5a4a14;
@@ -135,7 +135,7 @@
     }
     .ft-table td { padding:6px 8px; border-bottom:1px solid #242424; white-space:nowrap; }
     .ft-table td.num, .ft-table th.num { text-align:right; }
-    .ft-table td.pts { color:#ffcc66; font-weight:bold; }
+    .ft-table td.pts { color:var(--gpsl-accent-hover, #ffcc66); font-weight:bold; }
     .ft-table tr.mine td { background:#262010; }
     .ft-table tr.prize td:first-child { color:#ffd77a; font-weight:bold; }
     .ft-table tr.unqualified td { color:#777; }

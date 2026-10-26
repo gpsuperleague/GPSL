@@ -11,8 +11,8 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1280px; margin:20px auto 40px; }
-    h1 { color:#ff9900; }
-    h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
+    h1 { color:var(--gpsl-accent, #ff9900); }
+    h2 { color:var(--gpsl-accent, #ff9900); font-size:18px; margin:0 0 12px; }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:20px; margin-bottom:24px;
@@ -20,14 +20,14 @@
     #statusMsg { margin:12px 0; font-size:14px; }
     #statusMsg.ok { color:#8d8; }
     #statusMsg.err { color:#f88; }
-    a { color:#ff9900; }
+    a { color:var(--gpsl-accent, #ff9900); }
     .nat-pick-card .nat-mgr {
       display: block;
       font-size: 10px;
       color: #888;
       margin-top: 2px;
     }
-    .nat-pick-card a.nat-card-link { color: #ff9900; text-decoration: none; }
+    .nat-pick-card a.nat-card-link { color: var(--gpsl-accent, #ff9900); text-decoration: none; }
     .nat-pick-card a.nat-card-link:hover { text-decoration: underline; }
     #managerModal {
       display: none;
@@ -47,7 +47,7 @@
       padding: 20px;
       width: min(440px, 100%);
     }
-    .manager-modal-box h3 { color: #ff9900; margin: 0 0 8px; }
+    .manager-modal-box h3 { color: var(--gpsl-accent, #ff9900); margin: 0 0 8px; }
     .manager-modal-box p { color: #aaa; font-size: 12px; margin: 0 0 12px; line-height: 1.4; }
     .manager-modal-box select {
       width: 100%;
@@ -68,14 +68,14 @@
       padding: 8px 14px;
       background: #222;
       border: 1px solid #666;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
     }
     .manager-modal-actions .button.primary {
       background: #332200;
-      border-color: #ff9900;
+      border-color: var(--gpsl-accent, #ff9900);
     }
   </style>
 </head>

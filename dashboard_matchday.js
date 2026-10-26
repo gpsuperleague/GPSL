@@ -183,7 +183,7 @@ async function applyCheckinReadinessToCards(fixtures) {
     }
     if (gate) {
       gate.hidden = false;
-      gate.innerHTML = `${escapeHtml(issues[0])} <a href="${matchdayFixHref(fid)}" style="color:#ff9900;">Fix on Match Day</a>`;
+      gate.innerHTML = `${escapeHtml(issues[0])} <a href="${matchdayFixHref(fid)}" style="color:var(--gpsl-accent, #ff9900);">Fix on Match Day</a>`;
       gate.style.color = "#f88";
       gate.style.fontSize = "12px";
       gate.style.marginTop = "6px";

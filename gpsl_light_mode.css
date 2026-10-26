@@ -51,7 +51,7 @@ html[data-gpsl-theme="light"]
 
 .gpsl-theme-toggle:hover,
 .gpsl-theme-toggle:focus-visible {
-  border-color: #ff9900;
-  color: #ff9900;
+  border-color: var(--gpsl-accent, #ff9900);
+  color: var(--gpsl-accent, #ff9900);
   outline: none;
 }

@@ -11,7 +11,7 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page { width:95%; max-width:900px; margin:20px auto 40px; }
-    h1 { color:#ff9900; margin:0 0 8px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin:0 0 8px; }
     .meta { color:#aaa; font-size:13px; line-height:1.45; margin-bottom:14px; }
     .rules-panel {
       background: linear-gradient(165deg, #1c1c1c 0%, #151515 100%);
@@ -46,7 +46,7 @@
     .rules-steps li::before {
       content: "Step " counter(gauntlet-step);
       display: block;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.04em;
@@ -112,8 +112,8 @@
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:18px 20px; margin-bottom:16px;
     }
-    .panel h2 { color:#ffcc66; font-size:16px; margin:0 0 10px; }
-    .timer { font-family:monospace; font-size:20px; color:#ff9900; }
+    .panel h2 { color:var(--gpsl-accent-hover, #ffcc66); font-size:16px; margin:0 0 10px; }
+    .timer { font-family:monospace; font-size:20px; color:var(--gpsl-accent, #ff9900); }
     .tier {
       display:inline-block; padding:4px 10px; border-radius:4px;
       font-weight:700; margin:6px 0;
@@ -159,7 +159,7 @@
       content: "·";
       position: absolute;
       left: 2px;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: 700;
     }
     .button { cursor:pointer; }
@@ -190,7 +190,7 @@
       color: #eee;
     }
     .sa-player-meta .gpsl-player-link {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
       text-decoration: none;
     }
@@ -208,7 +208,7 @@
       gap: 12px;
     }
     .sa-career-heading {
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
       font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
@@ -228,7 +228,7 @@
       font-size: 12px;
       color: #ddd;
     }
-    .sa-career-totals b { color: #ff9900; }
+    .sa-career-totals b { color: var(--gpsl-accent, #ff9900); }
     .sa-career-empty {
       margin: 0;
       color: #777;
@@ -252,13 +252,13 @@
       display: inline-block;
       background: #332200;
       border: 1px solid #664400;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
       border-radius: 4px;
       padding: 4px 8px;
       font-size: 12px;
     }
     .sa-career-link {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 12px;
       text-decoration: none;
     }
@@ -268,7 +268,7 @@
     }
     table { width:100%; border-collapse:collapse; font-size:13px; }
     th, td { border-bottom:1px solid #333; padding:8px; text-align:left; }
-    th { color:#ff9900; }
+    th { color:var(--gpsl-accent, #ff9900); }
     .status { margin-top:10px; font-size:13px; color:#aaa; }
     .status.ok { color:#8d8; }
     .status.err { color:#f88; }

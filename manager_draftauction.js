@@ -171,7 +171,7 @@ async function loadManagerDraftListings(options = {}) {
   const listings = dedupeManagerDraftListings(listingsRaw || []);
 
   if (!listings.length) {
-    tbody.innerHTML = `<tr><td colspan="9">No active manager draft auctions. Open a free agent in <a href="MGDB.html" style="color:#ff9900;">MGDB</a>.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9">No active manager draft auctions. Open a free agent in <a href="MGDB.html" style="color:var(--gpsl-accent, #ff9900);">MGDB</a>.</td></tr>`;
     stopListPoll();
     return;
   }

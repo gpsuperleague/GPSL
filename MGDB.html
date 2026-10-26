@@ -23,7 +23,7 @@
       display: inline-block;
       padding: 8px 16px;
       background: #1a1a1a;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       border: 1px solid #666;
       border-radius: 6px;
       text-decoration: none;
@@ -40,7 +40,7 @@
 
     #pageTitle {
       background: #222;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       padding: 10px 16px;
       border-radius: 6px;
       display: inline-block;
@@ -51,7 +51,7 @@
 
     .filter-group {
       background: #1a1a1a;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       padding: 10px 14px;
       border-radius: 6px;
       margin-bottom: 12px;
@@ -89,7 +89,7 @@
 
     th {
       background: #222;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       padding: 8px;
       font-size: 13px;
       border-bottom: 2px solid #444;
@@ -154,7 +154,7 @@
       margin-bottom: 12px;
     }
     .mgdb-impact summary {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
       cursor: pointer;
     }
@@ -257,7 +257,7 @@
       flex-shrink: 0;
     }
     .multi-filter-search:focus {
-      outline: 1px solid #ff9900;
+      outline: 1px solid var(--gpsl-accent, #ff9900);
     }
     .multi-filter-options {
       overflow: auto;
@@ -326,8 +326,8 @@
           to right,
           #444 0%,
           #444 var(--range-min, 0%),
-          #ff9900 var(--range-min, 0%),
-          #ff9900 var(--range-max, 100%),
+          var(--gpsl-accent, #ff9900) var(--range-min, 0%),
+          var(--gpsl-accent, #ff9900) var(--range-max, 100%),
           #444 var(--range-max, 100%),
           #444 100%
         );
@@ -362,7 +362,7 @@
       width: 14px;
       height: 14px;
       border-radius: 50%;
-      background: #ff9900;
+      background: var(--gpsl-accent, #ff9900);
       border: 2px solid #111;
       box-shadow: 0 0 0 1px #aa6a00;
       margin-top: -4px;
@@ -375,7 +375,7 @@
       width: 14px;
       height: 14px;
       border-radius: 50%;
-      background: #ff9900;
+      background: var(--gpsl-accent, #ff9900);
       border: 2px solid #111;
       box-shadow: 0 0 0 1px #aa6a00;
       cursor: pointer;
@@ -389,7 +389,7 @@
     }
 
     #draftCountdown {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
       font-family: monospace;
       font-size: 16px;
@@ -442,9 +442,9 @@
       <tbody id="tableBody"></tbody>
     </table>
 
-    <div id="pagination" style="color:#ff9900;font-weight:bold;margin-top:20px;"></div>
+    <div id="pagination" style="color:var(--gpsl-accent, #ff9900);font-weight:bold;margin-top:20px;"></div>
 
-    <div id="rowsPerPage" style="margin-top:20px;color:#ff9900;">
+    <div id="rowsPerPage" style="margin-top:20px;color:var(--gpsl-accent, #ff9900);">
       <label>Rows per page:
         <select id="pageSizeSelect">
           <option value="50">50</option>

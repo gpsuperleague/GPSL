@@ -1235,7 +1235,7 @@ function renderScoutPlayerRow({
               name
             )} <a href="${gpdbPlayerUrl(
               pid
-            )}" class="gpsl-link" style="color:#ff9900;">GPDB</a>${scoutingPlayerBadgesHtml(
+            )}" class="gpsl-link" style="color:var(--gpsl-accent, #ff9900);">GPDB</a>${scoutingPlayerBadgesHtml(
               p
             )}</td>
             <td>${p?.Nation || "—"}</td>
@@ -1434,7 +1434,7 @@ async function renderScoutingLists() {
 
   if (!scoutingRows.length) {
     wrap.innerHTML =
-      '<p class="scout-empty">No scouting targets yet. Open <a href="GPDB.html" style="color:#ff9900;">GPDB</a> and click ☆ on players to add them.</p>';
+      '<p class="scout-empty">No scouting targets yet. Open <a href="GPDB.html" style="color:var(--gpsl-accent, #ff9900);">GPDB</a> and click ☆ on players to add them.</p>';
     scoutingPlayers = [];
     draftUiByPlayerCache = new Map();
     if (clubShort) await loadOwnedSquadForReg();
@@ -2919,7 +2919,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if (metaEl) {
       metaEl.innerHTML =
-        "Star players in <a href=\"GPDB.html\" style=\"color:#ff9900;\">GPDB</a> (☆ column) to add them here. " +
+        "Star players in <a href=\"GPDB.html\" style=\"color:var(--gpsl-accent, #ff9900);\">GPDB</a> (☆ column) to add them here. " +
         "Targets and up to <b>4 named tactic boards</b> are saved to <b>you</b> — they stay with you when you get a club. " +
         "Draft bidding unlocks after you are assigned a club.";
     }

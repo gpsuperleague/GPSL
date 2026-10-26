@@ -412,8 +412,8 @@ function syncMyClubFilterBtn() {
   const active = Boolean(myClubShort && clubSel?.value === myClubShort);
   btn.classList.toggle("is-active", active);
   btn.style.background = active ? "#3d3200" : "";
-  btn.style.borderColor = active ? "#ff9900" : "";
-  btn.style.color = active ? "#ffcc66" : "";
+  btn.style.borderColor = active ? "var(--gpsl-accent, #ff9900)" : "";
+  btn.style.color = active ? "var(--gpsl-accent-hover, #ffcc66)" : "";
 }
 
 function fillSelect(id, values, labelFn = (v) => v) {

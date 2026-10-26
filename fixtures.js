@@ -405,7 +405,7 @@ function renderCupFixtures() {
 
   if (!fixtures.length) {
     root.innerHTML =
-      `<p class="empty">No ${CUP_LABELS[currentCup] || currentCup} fixtures. Draw in <b>GPSL Admin → Cup competitions</b> or see <a href="cups.html" style="color:#ff9900;">Cups</a> bracket.</p>`;
+      `<p class="empty">No ${CUP_LABELS[currentCup] || currentCup} fixtures. Draw in <b>GPSL Admin → Cup competitions</b> or see <a href="cups.html" style="color:var(--gpsl-accent, #ff9900);">Cups</a> bracket.</p>`;
     return;
   }
 

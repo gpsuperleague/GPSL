@@ -66,7 +66,7 @@
       padding: 6px 12px;
     }
     #hasManagerBanner[hidden] { display: none !important; }
-    .mgr-card-link { color: #ffcc66; font-weight: bold; text-decoration: none; cursor: pointer; }
+    .mgr-card-link { color: var(--gpsl-accent-hover, #ffcc66); font-weight: bold; text-decoration: none; cursor: pointer; }
     .mgr-card-link:hover { text-decoration: underline; }
     .club-bank-wrap {
       width: 95%;
@@ -150,10 +150,10 @@
 
   <div id="bidModal">
     <div class="modal-box">
-      <h3 id="bidManagerName" style="color:#ff9900;margin-top:0;"></h3>
+      <h3 id="bidManagerName" style="color:var(--gpsl-accent, #ff9900);margin-top:0;"></h3>
       <p id="bidHint" style="font-size:12px;color:#aaa;"></p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;">
-        <span style="color:#ff9900;font-weight:bold;font-size:18px;">₿</span>
+        <span style="color:var(--gpsl-accent, #ff9900);font-weight:bold;font-size:18px;">₿</span>
         <input id="bidAmount" type="text" inputmode="numeric" autocomplete="off" style="width:160px;padding:6px;border-radius:4px;border:1px solid #444;background:#111;color:#ddd;">
         <button type="button" class="button" id="bidQuickMin" style="padding:6px 10px;font-size:12px;">Min bid</button>
       </div>

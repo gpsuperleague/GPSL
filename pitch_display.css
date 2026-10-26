@@ -144,9 +144,9 @@
 }
 
 .pitch-player-card--highlight {
-  outline: 2px solid #ff9900;
+  outline: 2px solid var(--gpsl-accent, #ff9900);
   border-radius: 6px;
-  background: rgba(255, 153, 0, 0.12);
+  background: rgba(var(--gpsl-accent-rgb), 0.12);
 }
 
 .pitch-display-table {
@@ -157,7 +157,7 @@
 
 .pitch-display-table summary {
   cursor: pointer;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-size: 12px;
   font-weight: 600;
   margin-bottom: 8px;
@@ -165,7 +165,7 @@
 }
 
 .pitch-display-table summary:hover {
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
 }
 
 .pitch-display-table[open] summary {

@@ -3,13 +3,13 @@
 :root {
   --lg-ink: #e8e2d6;
   --lg-ink-muted: #b3ab9c;
-  --lg-gold: #ff9900;
-  --lg-gold-soft: #ffcc66;
+  --lg-gold: var(--gpsl-accent, #ff9900);
+  --lg-gold-soft: var(--gpsl-accent-hover, #ffcc66);
   --lg-leather: #1a1410;
   --lg-leather-deep: #0c0a08;
   --lg-page: #181410;
   --lg-page-edge: #2a2218;
-  --lg-rule: rgba(255, 153, 0, 0.35);
+  --lg-rule: rgba(var(--gpsl-accent-rgb), 0.35);
   --lg-display: "Fraunces", "Georgia", "Times New Roman", serif;
   --lg-body: "Source Serif 4", "Georgia", "Times New Roman", serif;
 }
@@ -64,7 +64,7 @@ body.learning-gpsl-page {
     linear-gradient(180deg, #1f1812 0%, var(--lg-page) 8%, #15110d 100%);
   border: 1px solid var(--lg-page-edge);
   box-shadow:
-    0 0 0 1px rgba(255, 153, 0, 0.08),
+    0 0 0 1px rgba(var(--gpsl-accent-rgb), 0.08),
     0 24px 48px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 220, 160, 0.06),
     inset 12px 0 28px -12px rgba(0, 0, 0, 0.65),
@@ -136,7 +136,7 @@ body.learning-gpsl-page {
   letter-spacing: 0.04em;
   color: var(--lg-gold);
   margin: 0 0 12px;
-  text-shadow: 0 2px 24px rgba(255, 153, 0, 0.25);
+  text-shadow: 0 2px 24px rgba(var(--gpsl-accent-rgb), 0.25);
 }
 
 .learning-cover-title {
@@ -195,7 +195,7 @@ body.learning-gpsl-page {
 .learning-toc.is-stuck {
   box-shadow:
     0 12px 32px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(255, 153, 0, 0.12);
+    0 0 0 1px rgba(var(--gpsl-accent-rgb), 0.12);
 }
 
 .learning-toc h2 {
@@ -264,7 +264,7 @@ body.learning-gpsl-page {
 .learning-search input:focus {
   outline: none;
   border-color: var(--lg-gold);
-  box-shadow: 0 0 0 2px rgba(255, 153, 0, 0.18);
+  box-shadow: 0 0 0 2px rgba(var(--gpsl-accent-rgb), 0.18);
 }
 
 .learning-search-count {
@@ -306,7 +306,7 @@ body.learning-gpsl-page {
 
 .learning-search-snippet mark,
 mark.learning-hit {
-  background: rgba(255, 153, 0, 0.35);
+  background: rgba(var(--gpsl-accent-rgb), 0.35);
   color: inherit;
   border-radius: 2px;
   padding: 0 1px;
@@ -369,7 +369,7 @@ mark.learning-hit {
   position: relative;
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(255, 153, 0, 0.12);
+  border-bottom: 1px solid rgba(var(--gpsl-accent-rgb), 0.12);
   border-radius: 0;
   padding: 8px 0 28px;
   margin-bottom: 8px;
@@ -487,7 +487,7 @@ mark.learning-hit {
   color: var(--lg-gold);
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(255, 153, 0, 0.35);
+  border-bottom: 1px solid rgba(var(--gpsl-accent-rgb), 0.35);
   border-radius: 0;
 }
 
@@ -529,7 +529,7 @@ mark.learning-hit {
 
   .learning-book {
     box-shadow:
-      0 0 0 1px rgba(255, 153, 0, 0.08),
+      0 0 0 1px rgba(var(--gpsl-accent-rgb), 0.08),
       0 12px 28px rgba(0, 0, 0, 0.5),
       inset 0 1px 0 rgba(255, 220, 160, 0.05);
   }

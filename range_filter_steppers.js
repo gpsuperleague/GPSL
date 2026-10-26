@@ -69,8 +69,8 @@ export function ensureRangeStepperStyles() {
     }
     .range-step-btn:hover:not(:disabled) {
       background: #333;
-      border-color: #ff9900;
-      color: #ffcc66;
+      border-color: var(--gpsl-accent, #ff9900);
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
     .range-step-btn:active:not(:disabled) {
       background: #3d2a00;

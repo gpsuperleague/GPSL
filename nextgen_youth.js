@@ -65,7 +65,7 @@ async function loadList() {
     .map((p) => {
       const clubLabel = p.club ? displayClubName(p.club) || p.club : "—";
       const clubCell = p.club
-        ? `<a href="${escapeHtml(clubPageHref(p.club))}" style="color:#ff9900;">${escapeHtml(clubLabel)}</a>`
+        ? `<a href="${escapeHtml(clubPageHref(p.club))}" style="color:var(--gpsl-accent, #ff9900);">${escapeHtml(clubLabel)}</a>`
         : "—";
       return `
       <tr>

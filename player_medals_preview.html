@@ -11,9 +11,9 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:900px; margin:30px auto 50px; }
-    h1 { color:#ff9900; margin-bottom:8px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:8px; }
     .sub { color:#999; margin:0 0 20px; font-size:14px; line-height:1.45; }
-    .gpsl-link { color:#ff9900; text-decoration:none; }
+    .gpsl-link { color:var(--gpsl-accent, #ff9900); text-decoration:none; }
     .gpsl-link:hover { text-decoration:underline; }
     .preview-toolbar {
       display:flex;
@@ -43,7 +43,7 @@
       padding:18px 18px 20px;
       margin-bottom:22px;
     }
-    .preview-scenario h2 { color:#ffcc66; margin:0 0 6px; font-size:17px; }
+    .preview-scenario h2 { color:var(--gpsl-accent-hover, #ffcc66); margin:0 0 6px; font-size:17px; }
     .preview-scenario .blurb {
       color:#999;
       font-size:13px;
@@ -59,22 +59,22 @@
       padding:20px;
       margin-top:12px;
     }
-    .panel h3 { color:#ffcc66; margin:0 0 8px; font-size:16px; }
+    .panel h3 { color:var(--gpsl-accent-hover, #ffcc66); margin:0 0 8px; font-size:16px; }
     .honours-subhead { color:#ccc; font-size:14px; margin:0 0 10px; font-weight:600; }
-    .mock-player { color:#ff9900; font-size:20px; margin:0 0 4px; }
+    .mock-player { color:var(--gpsl-accent, #ff9900); font-size:20px; margin:0 0 4px; }
     .mock-meta { color:#999; font-size:13px; margin:0 0 14px; }
     .trophy-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
     .trophy-item {
       display:flex; gap:12px; align-items:flex-start;
       background:#222; border:1px solid #3a3a3a; border-radius:8px; padding:12px 14px;
     }
-    .trophy-title { color:#ffcc66; font-weight:600; font-size:15px; }
+    .trophy-title { color:var(--gpsl-accent-hover, #ffcc66); font-weight:600; font-size:15px; }
     .trophy-meta { color:#999; font-size:13px; margin-top:4px; }
     .medal-item .medal-link {
       display:flex; gap:12px; align-items:flex-start;
       color:inherit; text-decoration:none; width:100%;
     }
-    .medal-item .medal-link:hover .trophy-title { color:#ff9900; }
+    .medal-item .medal-link:hover .trophy-title { color:var(--gpsl-accent, #ff9900); }
     .medal-thumb { width:44px; height:56px; object-fit:contain; flex-shrink:0; }
     .medal-thumb-fallback { font-size:28px; line-height:1; margin-top:4px; }
     .empty { color:#777; font-style:italic; }
@@ -82,7 +82,7 @@
       display:inline-block;
       background:#332200;
       border:1px solid #664400;
-      color:#ffcc66;
+      color:var(--gpsl-accent-hover, #ffcc66);
       font-size:11px;
       font-weight:bold;
       padding:3px 8px;

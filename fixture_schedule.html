@@ -11,10 +11,10 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:900px; margin:20px auto 40px; }
-    h1 { color:#ff9900; margin-bottom:8px; font-size:22px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:8px; font-size:22px; }
     .meta { color:#aaa; font-size:13px; line-height:1.45; margin-bottom:14px; }
     .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:16px 18px; margin-bottom:16px; }
-    .panel h2 { color:#ff9900; font-size:16px; margin:0 0 10px; }
+    .panel h2 { color:var(--gpsl-accent, #ff9900); font-size:16px; margin:0 0 10px; }
     .fixture-head { font-size:18px; font-weight:bold; margin-bottom:6px; }
     .status-agreed { color:#8c8; }
     .status-pending { color:#fc6; }
@@ -32,14 +32,14 @@
     }
     .slot-btn .slot-main { font-weight:600; color:#eee; line-height:1.25; }
     .slot-btn .slot-sub { font-size:10px; color:#888; line-height:1.25; font-weight:normal; }
-    .slot-btn:hover { border-color:#ff9900; }
-    .slot-btn:hover .slot-main { color:#ff9900; }
-    .slot-btn.selected { background:#3d3200; border-color:#ff9900; }
-    .slot-btn.selected .slot-main { color:#ffcc66; }
+    .slot-btn:hover { border-color:var(--gpsl-accent, #ff9900); }
+    .slot-btn:hover .slot-main { color:var(--gpsl-accent, #ff9900); }
+    .slot-btn.selected { background:#3d3200; border-color:var(--gpsl-accent, #ff9900); }
+    .slot-btn.selected .slot-main { color:var(--gpsl-accent-hover, #ffcc66); }
     .kickoff-line { line-height:1.35; }
     .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; align-items:center; }
     .button {
-      padding:8px 14px; background:#ff9900; color:#111; border:none;
+      padding:8px 14px; background:var(--gpsl-accent, #ff9900); color:#111; border:none;
       border-radius:6px; font-weight:bold; cursor:pointer; font-size:13px;
     }
     .button.secondary { background:#444; color:#eee; }
@@ -56,7 +56,7 @@
       border-top:1px solid #333;
     }
     .fixture-unavailable-title {
-      color:#ffcc66; font-weight:600; font-size:13px; margin-bottom:8px;
+      color:var(--gpsl-accent-hover, #ffcc66); font-weight:600; font-size:13px; margin-bottom:8px;
     }
     .fixture-unavailable-grid {
       display:grid; grid-template-columns:1fr 1fr; gap:12px;
@@ -89,7 +89,7 @@
     }
     .deadline-box.deadline-late { background:#2a1212; border-color:#a04040; color:#ffb8b8; }
     .deadline-box.deadline-info { background:#101c28; border-color:#2a4a6a; color:#cfe3ff; }
-    .deadline-box a { color:#ff9900; }
+    .deadline-box a { color:var(--gpsl-accent, #ff9900); }
     .tz-compare {
       margin:10px 0 12px; padding:10px 12px;
       background:#121820; border:1px solid #2a3a4a; border-radius:6px;
@@ -116,7 +116,7 @@
       background:#101c28; border:1px solid #2a4a6a; border-radius:6px;
       padding:10px 12px; color:#cfe3ff; font-size:13px; line-height:1.45; margin:0 0 14px;
     }
-    .schedule-manual-note a { color:#ff9900; }
+    .schedule-manual-note a { color:var(--gpsl-accent, #ff9900); }
     .schedule-tabs {
       display:flex; flex-wrap:wrap; gap:0; margin:0 0 14px;
       border-bottom:1px solid #333;
@@ -129,9 +129,9 @@
     }
     .schedule-tab:hover { color:#eee; }
     .schedule-tab.active {
-      color:#ff9900; border-bottom-color:#ff9900;
+      color:var(--gpsl-accent, #ff9900); border-bottom-color:var(--gpsl-accent, #ff9900);
     }
-    .schedule-tab-pane h2 { color:#ff9900; font-size:16px; margin:0 0 10px; }
+    .schedule-tab-pane h2 { color:var(--gpsl-accent, #ff9900); font-size:16px; margin:0 0 10px; }
     .schedule-tab-pane.discord-pane h2 { color:#9cf; }
     .schedule-tab-pane.discord-pane {
       background:#151820; border:1px solid #446; border-radius:8px;
@@ -142,7 +142,7 @@
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <p><a href="fixtures.html" style="color:#ff9900;">← Fixtures</a></p>
+    <p><a href="fixtures.html" style="color:var(--gpsl-accent, #ff9900);">← Fixtures</a></p>
     <h1>Schedule match</h1>
     <p id="scheduleMeta" class="meta">Loading…</p>
     <div id="discordHint" class="discord-hint" hidden>

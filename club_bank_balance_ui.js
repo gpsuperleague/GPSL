@@ -69,8 +69,8 @@ export function ensureClubBankBalanceStyles() {
     }
     .club-bank-balance .cbb-refresh-btn:hover:not(:disabled) {
       background: #333;
-      border-color: #ff9900;
-      color: #ffcc66;
+      border-color: var(--gpsl-accent, #ff9900);
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
     .club-bank-balance .cbb-refresh-btn:disabled,
     .club-bank-balance .cbb-refresh-btn.is-busy {
@@ -86,7 +86,7 @@ export function ensureClubBankBalanceStyles() {
     .club-bank-balance[hidden] { display: none !important; }
     .club-bank-balance .cbb-label { color: #888; }
     .club-bank-balance .cbb-amount {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
       font-variant-numeric: tabular-nums;
     }
@@ -103,7 +103,7 @@ export function ensureClubBankBalanceStyles() {
       align-items: baseline;
       gap: 8px;
     }
-    .club-bank-balance a:hover .cbb-amount { color: #ffcc66; }
+    .club-bank-balance a:hover .cbb-amount { color: var(--gpsl-accent-hover, #ffcc66); }
     .club-bank-balance .cbb-stack {
       display: flex;
       flex-direction: column;

@@ -38,7 +38,7 @@ function setStatus(msg, ok = true) {
   const el = document.getElementById("obStatus");
   if (!el) return;
   el.textContent = msg || "";
-  el.style.color = ok ? "#ffcc66" : "#e07070";
+  el.style.color = ok ? "var(--gpsl-accent-hover, #ffcc66)" : "#e07070";
 }
 
 function formatWhen(iso) {

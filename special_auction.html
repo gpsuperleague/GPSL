@@ -13,7 +13,7 @@
   <style>
     body { background: #111; color: #ddd; font-family: Arial, sans-serif; margin: 0; }
     #nav { padding: 15px; background: #1a1a1a; border-bottom: 1px solid #333; text-align: center; }
-    h1 { color: #ff9900; margin: 20px; }
+    h1 { color: var(--gpsl-accent, #ff9900); margin: 20px; }
     .panel {
       background: #1a1a1a;
       border: 1px solid #333;
@@ -22,12 +22,12 @@
       padding: 22px 24px;
       max-width: 920px;
     }
-    .panel h2 { color: #ff9900; margin: 0 0 8px; font-size: 22px; }
+    .panel h2 { color: var(--gpsl-accent, #ff9900); margin: 0 0 8px; font-size: 22px; }
     .sa-type-badge {
       display: inline-block;
       background: #2a2200;
       border: 1px solid #664400;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
       border-radius: 999px;
       padding: 3px 10px;
       font-size: 12px;
@@ -93,16 +93,16 @@
     .sa-participation-bar > span {
       display: block;
       height: 100%;
-      background: linear-gradient(90deg, #cc7a00, #ff9900);
+      background: linear-gradient(90deg, #cc7a00, var(--gpsl-accent, #ff9900));
       width: 0%;
       transition: width 0.35s ease;
     }
-    .timer { font-family: monospace; font-size: 20px; color: #ff9900; margin: 0; }
+    .timer { font-family: monospace; font-size: 20px; color: var(--gpsl-accent, #ff9900); margin: 0; }
     .timer.countup { color: #ff6666; }
     .timer-sub { display: block; font-size: 12px; color: #ccc; margin-top: 4px; font-family: Arial, sans-serif; }
     .clue-box {
       background: #222;
-      border-left: 4px solid #ff9900;
+      border-left: 4px solid var(--gpsl-accent, #ff9900);
       padding: 12px;
       margin: 12px 0;
     }
@@ -128,7 +128,7 @@
       font-weight: 700;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
     .sa-rule-body b { color: #eee; }
     .sa-clue-track {
@@ -149,9 +149,9 @@
       background: #1a1a1a;
     }
     .sa-clue-card.open {
-      border-color: #ff9900;
+      border-color: var(--gpsl-accent, #ff9900);
       background: linear-gradient(160deg, #2e2210 0%, #1c1c1c 70%);
-      box-shadow: 0 0 0 1px rgba(255, 153, 0, 0.25), 0 6px 18px rgba(255, 153, 0, 0.12);
+      box-shadow: 0 0 0 1px rgba(var(--gpsl-accent-rgb), 0.25), 0 6px 18px rgba(var(--gpsl-accent-rgb), 0.12);
     }
     .sa-clue-card.locked { opacity: 0.55; border-style: dashed; }
     .sa-clue-card.locked.next { opacity: 0.85; border-color: #806020; }
@@ -167,7 +167,7 @@
       background: #333;
       color: #aaa;
     }
-    .sa-clue-card.open .sa-clue-num { background: #ff9900; color: #111; }
+    .sa-clue-card.open .sa-clue-num { background: var(--gpsl-accent, #ff9900); color: #111; }
     .sa-clue-time { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #888; }
     .sa-clue-text { flex: 1; color: #f2f2f2; font-size: 15px; font-weight: 600; line-height: 1.4; }
     .sa-clue-locked { flex: 1; color: #888; font-size: 13px; display: flex; align-items: center; }
@@ -221,7 +221,7 @@
       color: #eee;
     }
     .sa-player-meta .gpsl-player-link {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
       text-decoration: none;
     }
@@ -239,7 +239,7 @@
       gap: 12px;
     }
     .sa-career-heading {
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
       font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
@@ -259,7 +259,7 @@
       font-size: 12px;
       color: #ddd;
     }
-    .sa-career-totals b { color: #ff9900; }
+    .sa-career-totals b { color: var(--gpsl-accent, #ff9900); }
     .sa-career-empty {
       margin: 0;
       color: #777;
@@ -283,13 +283,13 @@
       display: inline-block;
       background: #332200;
       border: 1px solid #664400;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
       border-radius: 4px;
       padding: 4px 8px;
       font-size: 12px;
     }
     .sa-career-link {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 12px;
       text-decoration: none;
     }
@@ -301,14 +301,14 @@
       text-align: center;
       font-size: 13px;
     }
-    table.gpsl-table th { background: #222; color: #ff9900; }
+    table.gpsl-table th { background: #222; color: var(--gpsl-accent, #ff9900); }
     tr.winner-row { background: linear-gradient(90deg, #3d3200, #1a1a1a); }
     tr.winner-row td { color: #ffd700; font-weight: bold; }
     .winner-banner {
       white-space: pre-line;
       line-height: 1.45;
       background: #2a2200;
-      border: 1px solid #ff9900;
+      border: 1px solid var(--gpsl-accent, #ff9900);
       border-radius: 6px;
       padding: 12px 14px;
       margin: 12px 0;
@@ -386,7 +386,7 @@
       margin: 10px 0;
     }
     .bid-amount-prefix {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
       font-size: 18px;
     }
@@ -402,7 +402,7 @@
       margin: 0;
     }
     .secret-note { color: #888; font-size: 13px; }
-    .button { padding: 10px 18px; background: #ff9900; color: #111; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 4px; }
+    .button { padding: 10px 18px; background: var(--gpsl-accent, #ff9900); color: #111; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 4px; }
     .button.secondary { background: #444; color: #ddd; }
     .button:disabled { opacity: 0.5; cursor: not-allowed; }
     #bidError { color: #ff6666; min-height: 1.2em; }

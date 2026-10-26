@@ -318,7 +318,7 @@ function renderPage() {
           if (phase === "random_locked") {
             return `<td style="color:#888;font-size:11px;">Locked</td>`;
           }
-          return `<td><a href="manager_draftauction.html" style="color:#ff9900;font-size:11px;">Auction</a></td>`;
+          return `<td><a href="manager_draftauction.html" style="color:var(--gpsl-accent, #ff9900);font-size:11px;">Auction</a></td>`;
         }
         let val = row[col.key];
         if (col.key === "contracted_display") val = displayClub(val);
@@ -336,7 +336,7 @@ function renderPage() {
         }
         if (col.key === "name") {
           const href = `manager_career.html?manager=${encodeURIComponent(row.id)}`;
-          return `<td><a href="${href}" class="gpsl-link" style="color:#ffcc66;text-decoration:none;">${val ?? "—"}</a></td>`;
+          return `<td><a href="${href}" class="gpsl-link" style="color:var(--gpsl-accent-hover, #ffcc66);text-decoration:none;">${val ?? "—"}</a></td>`;
         }
         return `<td>${val ?? "—"}</td>`;
       }).join("");
@@ -818,7 +818,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const parts = [];
     if (settings?.manager_draft_auction_enabled) {
       parts.push(
-        'Manager draft is <b>on</b> — <a href="manager_draftauction.html" style="color:#ff9900;">Manager Draft Auction</a> · bidding from Day 1 7pm UK until the Day 2 6:50pm random window.'
+        'Manager draft is <b>on</b> — <a href="manager_draftauction.html" style="color:var(--gpsl-accent, #ff9900);">Manager Draft Auction</a> · bidding from Day 1 7pm UK until the Day 2 6:50pm random window.'
       );
     }
     if (settings?.transfer_window_open) {

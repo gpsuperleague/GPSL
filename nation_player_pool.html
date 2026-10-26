@@ -56,7 +56,7 @@
       font-size: 13px;
       color: #ccc;
     }
-    .pool-chip b { color: #ff9900; }
+    .pool-chip b { color: var(--gpsl-accent, #ff9900); }
     .pool-table-wrap {
       overflow: auto;
       border: 1px solid #333;
@@ -80,7 +80,7 @@
     }
     .pool-table th {
       background: #222;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       position: sticky;
       top: 0;
       z-index: 2;
@@ -139,7 +139,7 @@
     }
     .pool-detail-table th {
       background: #1c1c1c;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
     }
     .pool-detail-table td:first-child {
       text-align: left;
@@ -222,7 +222,7 @@
   <div id="nav"></div>
 
   <div class="pool-wrap">
-    <h1 style="color:#ff9900;margin:16px 0 8px;">Nation player pool</h1>
+    <h1 style="color:var(--gpsl-accent, #ff9900);margin:16px 0 8px;">Nation player pool</h1>
     <p class="pool-intro">
       GPDB counts for each selectable nation — rating bands, U21 (age ≤21), and position breakdown
       (GK / DEF / MID / FWD). GPDB uses LWF/RWF for wide forwards. Uses the same nation matching as international call-ups.

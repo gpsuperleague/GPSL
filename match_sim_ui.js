@@ -1295,11 +1295,11 @@ export const MATCH_SIM_BANNER_STYLE = `
 .match-sim-fail--error {
   background:#2a1515; border:1px solid #633; color:#f0b0b0;
 }
-.match-sim-fail-title { font-weight:700; font-size:14px; margin:0 0 4px; color:#ffcc66; }
+.match-sim-fail-title { font-weight:700; font-size:14px; margin:0 0 4px; color:var(--gpsl-accent-hover, #ffcc66); }
 .match-sim-fail--error .match-sim-fail-title { color:#f99; }
 .match-sim-fail-body { color:inherit; opacity:.95; }
 .match-sim-fail-link {
-  display:inline-block; margin-top:8px; color:#ff9900; font-weight:700; text-decoration:none;
+  display:inline-block; margin-top:8px; color:var(--gpsl-accent, #ff9900); font-weight:700; text-decoration:none;
 }
 .match-sim-fail-link:hover { text-decoration:underline; }
 .sim-actions { display:inline-flex; flex-wrap:wrap; gap:6px; align-items:center; }
@@ -1334,9 +1334,9 @@ button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled 
 }
 .msim-home-name { text-align:left; }
 .msim-away-name { text-align:right; }
-.msim-score { font-size:22px; font-variant-numeric:tabular-nums; color:#ff9900; min-width:4.5ch; text-align:center; }
+.msim-score { font-size:22px; font-variant-numeric:tabular-nums; color:var(--gpsl-accent, #ff9900); min-width:4.5ch; text-align:center; }
 .msim-score--flash { transform:scale(1.12); transition:transform .15s ease; }
-.msim-clock { font-size:14px; color:#ff9900; text-align:center; font-weight:700; font-variant-numeric:tabular-nums; }
+.msim-clock { font-size:14px; color:var(--gpsl-accent, #ff9900); text-align:center; font-weight:700; font-variant-numeric:tabular-nums; }
 .msim-phase { font-size:11px; color:#888; text-align:center; margin-top:2px; }
 .msim-ht {
   margin:8px 0 10px; padding:12px 10px; text-align:center;
@@ -1344,7 +1344,7 @@ button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled 
 }
 .msim-ht[hidden] { display:none !important; }
 .msim-ht-label { font-size:12px; font-weight:800; letter-spacing:.08em; color:#9ab; }
-.msim-ht-score { font-size:26px; font-weight:800; color:#ff9900; margin-top:4px; font-variant-numeric:tabular-nums; }
+.msim-ht-score { font-size:26px; font-weight:800; color:var(--gpsl-accent, #ff9900); margin-top:4px; font-variant-numeric:tabular-nums; }
 .msim-ev--halftime { color:#9ab; font-weight:700; }
 .msim-pitch { margin:8px 0 10px; position:relative; }
 .msim-bar {
@@ -1401,7 +1401,7 @@ button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled 
   min-width:min(280px, 86%);
   padding:12px 16px 10px; border-radius:10px; text-align:center;
   background:linear-gradient(180deg, #1a1f28 0%, #10141a 100%);
-  border:2px solid var(--msim-burst-accent, #ff9900);
+  border:2px solid var(--msim-burst-accent, var(--gpsl-accent, #ff9900));
   box-shadow:0 8px 24px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.06) inset;
   transform:scale(.92); transition:transform .22s cubic-bezier(.2,1.2,.3,1);
 }
@@ -1471,7 +1471,7 @@ button.sim-instant-btn.sim-busy:disabled, button.sim-play-btn.sim-busy:disabled 
 .msim-ev--red { color:#f88; font-weight:700; }
 .msim-ev--yellow { color:#e6c35c; }
 .msim-ev--injury { color:#f0a070; }
-.msim-ev--fulltime { color:#ff9900; font-weight:700; }
+.msim-ev--fulltime { color:var(--gpsl-accent, #ff9900); font-weight:700; }
 .msim-ev--center { width:100%; }
 .msim-foot { margin-top:10px; text-align:right; }
 .msim-skip { background:#333; color:#ddd; border:0; padding:6px 12px; border-radius:4px; cursor:pointer; }

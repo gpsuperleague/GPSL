@@ -5,7 +5,7 @@
 }
 
 .gpsl-has-tip:not(th):not(td):not(select):not(a) {
-  border-bottom: 1px dotted rgba(255, 153, 0, 0.45);
+  border-bottom: 1px dotted rgba(var(--gpsl-accent-rgb), 0.45);
 }
 
 /* th/td already skip the dotted underline via :not(th):not(td) above —
@@ -56,7 +56,7 @@ strong.gpsl-has-tip {
   max-width: min(320px, calc(100vw - 24px));
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 153, 0, 0.35);
+  border: 1px solid rgba(var(--gpsl-accent-rgb), 0.35);
   background: rgba(18, 18, 22, 0.82);
   color: #f0f0f0;
   font-size: 12.5px;

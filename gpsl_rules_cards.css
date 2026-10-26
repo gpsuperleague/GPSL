@@ -15,7 +15,7 @@
 .info-box > h2,
 .info-box .rules-title {
   margin: 0 0 12px;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-size: 15px;
   font-weight: bold;
 }
@@ -26,7 +26,7 @@
 }
 
 .info-box .rules-lead a {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
 }
 
 .info-box .rules-lead:last-child {
@@ -36,8 +36,8 @@
 /* Highlighted callout (e.g. credits warning) */
 .rules-notice {
   background: #2a2208;
-  border: 1px solid #ff9900;
-  border-left: 4px solid #ff9900;
+  border: 1px solid var(--gpsl-accent, #ff9900);
+  border-left: 4px solid var(--gpsl-accent, #ff9900);
   padding: 12px 14px;
   margin: 0 0 14px;
   border-radius: 6px;
@@ -46,7 +46,7 @@
 
 .rules-notice-title {
   display: block;
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
   font-size: 13px;
   margin-bottom: 6px;
 }
@@ -57,7 +57,7 @@
 }
 
 .rules-notice-body a {
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   font-weight: 600;
 }
 
@@ -105,8 +105,8 @@ a.rules-notice-btn:hover {
   height: 24px;
   border-radius: 50%;
   background: #3d2a00;
-  border: 1px solid #ff9900;
-  color: #ffcc66;
+  border: 1px solid var(--gpsl-accent, #ff9900);
+  color: var(--gpsl-accent-hover, #ffcc66);
   font-size: 12px;
   font-weight: 700;
   display: inline-flex;
@@ -122,7 +122,7 @@ a.rules-notice-btn:hover {
 
 .rules-step-body h3 {
   margin: 0 0 4px;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   font-size: 13px;
   font-weight: bold;
 }
@@ -164,7 +164,7 @@ a.rules-notice-btn:hover {
 
 .rules-card h3 {
   margin: 0 0 8px;
-  color: #ffcc66;
+  color: var(--gpsl-accent-hover, #ffcc66);
   font-size: 13px;
   font-weight: bold;
   letter-spacing: 0.02em;
@@ -194,7 +194,7 @@ a.rules-notice-btn:hover {
 }
 
 .info-box a {
-  color: #ff9900;
+  color: var(--gpsl-accent, #ff9900);
 }
 
 /* Transfer market page: full-width panel under the toolbar */

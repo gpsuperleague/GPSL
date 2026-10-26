@@ -404,7 +404,7 @@ export function injectAvailabilityStyles() {
     .avail-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.75); }
     .avail-modal-panel { position: relative; background: #1a1a1a; border: 1px solid #444; border-radius: 10px; max-width: 960px; width: 100%; max-height: 90vh; overflow: auto; padding: 18px 20px 24px; }
     .avail-modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    .avail-modal-head h2 { color: #ff9900; margin: 0; font-size: 20px; }
+    .avail-modal-head h2 { color: var(--gpsl-accent, #ff9900); margin: 0; font-size: 20px; }
     .avail-modal-close { background: none; border: none; color: #aaa; font-size: 28px; cursor: pointer; line-height: 1; }
     .avail-modal-intro { color: #aaa; font-size: 13px; line-height: 1.45; margin: 10px 0 14px; }
     .avail-tz-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
@@ -414,20 +414,20 @@ export function injectAvailabilityStyles() {
     .avail-grid-toolbar .secondary { background: #333; color: #ddd; border: 1px solid #555; }
     .avail-grid { display: grid; grid-template-columns: 52px repeat(7, 1fr); gap: 2px; margin: 14px 0 8px; user-select: none; }
     .avail-grid-corner { }
-    .avail-grid-dow { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: #ff9900; font-weight: bold; padding: 4px 0; }
+    .avail-grid-dow { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: var(--gpsl-accent, #ff9900); font-weight: bold; padding: 4px 0; }
     .avail-copy-day {
       font-size: 9px; font-weight: normal; color: #888; background: none; border: 1px solid #444;
       border-radius: 3px; padding: 1px 4px; cursor: pointer; line-height: 1.3;
     }
-    .avail-copy-day:hover { color: #ff9900; border-color: #666; }
+    .avail-copy-day:hover { color: var(--gpsl-accent, #ff9900); border-color: #666; }
     .avail-grid-time { font-size: 10px; color: #666; text-align: right; padding: 2px 4px 0 0; line-height: 28px; }
     .avail-cell { height: 28px; min-width: 0; border: 1px solid #333; background: #111; border-radius: 3px; cursor: pointer; padding: 0; }
-    .avail-cell.on { background: #3d3200; border-color: #ff9900; }
+    .avail-cell.on { background: #3d3200; border-color: var(--gpsl-accent, #ff9900); }
     .avail-cell:hover { border-color: #666; }
     .avail-slot-count { font-size: 12px; color: #888; margin: 0 0 12px; }
     .avail-modal-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
     .avail-holiday-note { margin-top: 16px; border-top: 1px solid #333; padding-top: 12px; }
-    .avail-holiday-note h3 { font-size: 14px; color: #ff9900; margin: 0 0 8px; }
+    .avail-holiday-note h3 { font-size: 14px; color: var(--gpsl-accent, #ff9900); margin: 0 0 8px; }
     .avail-holiday-note ul { margin: 0; padding-left: 18px; color: #aaa; font-size: 13px; }
     .avail-holiday-empty { color: #666; font-size: 13px; margin: 0; }
     body.avail-modal-open { overflow: hidden; }

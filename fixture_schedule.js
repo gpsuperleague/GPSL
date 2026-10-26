@@ -553,7 +553,7 @@ function renderAgreedPanel(root, f, sch) {
       </p>
       <p class="meta">${checkinStatus}</p>
       <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
-      <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, 12 subs, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:#ff9900;">Check your squad</a> before kick-off.</p>
+      <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, 12 subs, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:var(--gpsl-accent, #ff9900);">Check your squad</a> before kick-off.</p>
       <p class="meta">${
         ladderActive
           ? "No-show fines apply instantly when the check-in window closes (see banner). Month-lock no-show 3–0 is not used on GPSL-arranged fixtures."
@@ -561,7 +561,7 @@ function renderAgreedPanel(root, f, sch) {
       }</p>
       ${
         ci.my_has_manager === false
-          ? `<p class="meta" style="color:#f88;"><b>No manager signed</b> — you cannot check in or play until you hire one from the <a href="manager_listings.html" style="color:#ff9900;">Manager Transfer Market</a>.</p>`
+          ? `<p class="meta" style="color:#f88;"><b>No manager signed</b> — you cannot check in or play until you hire one from the <a href="manager_listings.html" style="color:var(--gpsl-accent, #ff9900);">Manager Transfer Market</a>.</p>`
           : ci.home_has_manager === false || ci.away_has_manager === false
             ? `<p class="meta" style="color:#e8a87c;"><b>Manager required</b> — ${
                 ci.home_has_manager === false && ci.away_has_manager === false
@@ -789,7 +789,7 @@ async function applyCheckinSquadGate(fixtureId) {
   }
 
   gate.style.display = "block";
-  gate.innerHTML = `<b>Matchday squad not ready for check-in.</b> ${issues[0]} <a href="${matchdayFixHref(fixtureId)}" style="color:#ff9900;">Open Match Day and fix squad</a>.`;
+  gate.innerHTML = `<b>Matchday squad not ready for check-in.</b> ${issues[0]} <a href="${matchdayFixHref(fixtureId)}" style="color:var(--gpsl-accent, #ff9900);">Open Match Day and fix squad</a>.`;
   if (checkInBtn) {
     checkInBtn.disabled = true;
     checkInBtn.title = issues[0];
@@ -916,7 +916,7 @@ function render() {
       ? `<div class="panel" style="border-color:#662222;background:#1a0a0a;">
           <p style="margin:0;color:#f88;">
             <b>No manager signed</b> — you cannot arrange kick-off times or play fixtures until you hire one from the
-            <a href="manager_listings.html" style="color:#ff9900;">Manager Transfer Market</a>
+            <a href="manager_listings.html" style="color:var(--gpsl-accent, #ff9900);">Manager Transfer Market</a>
             (bidding while vacant is fine; scheduling unlocks once they are signed).
           </p>
         </div>`
@@ -936,7 +936,7 @@ function render() {
     ctx.my_has_manager !== false
       ? `<p class="meta" style="margin-top:12px;">
           <b>${fullClubName(f.home_club_short_name)}</b> (home) must propose first.
-          You will get an <a href="inbox.html" style="color:#ff9900;">Inbox</a> message to accept or counter-propose.
+          You will get an <a href="inbox.html" style="color:var(--gpsl-accent, #ff9900);">Inbox</a> message to accept or counter-propose.
         </p>`
       : "";
 
@@ -970,8 +970,8 @@ function render() {
     ? slots.length
       ? '<p class="meta" style="color:#f88;">All listed slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
       : usingCompatibleSlots
-        ? '<p class="meta" style="color:#f88;">No overlapping times this window — both clubs need weekly availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a> in their own timezones that share a common world kick-off (or free a time already booked).</p>'
-        : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a>, or free a time already booked for another match.</p>'
+        ? '<p class="meta" style="color:#f88;">No overlapping times this window — both clubs need weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a> in their own timezones that share a common world kick-off (or free a time already booked).</p>'
+        : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a>, or free a time already booked for another match.</p>'
     : "";
 
   const mo = ctx.mutual_override;

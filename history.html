@@ -13,22 +13,22 @@
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1100px; margin:30px auto 50px; }
-    h1 { color:#ff9900; margin-bottom:8px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:8px; }
     .sub { color:#999; margin:0 0 20px; font-size:14px; }
     .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:20px; margin-bottom:18px; }
-    .panel h2 { color:#ffcc66; margin:0 0 12px; font-size:18px; }
+    .panel h2 { color:var(--gpsl-accent-hover, #ffcc66); margin:0 0 12px; font-size:18px; }
     .record-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
-    .record-card { background:#222; border-left:3px solid #ff9900; padding:12px 14px; border-radius:4px; }
+    .record-card { background:#222; border-left:3px solid var(--gpsl-accent, #ff9900); padding:12px 14px; border-radius:4px; }
     .record-card .label { color:#aaa; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
     .record-card .value { font-size:18px; color:#fff; margin-top:4px; }
     .record-card .meta { color:#888; font-size:13px; margin-top:4px; }
     .gpsl-table { width:100%; border-collapse:collapse; font-size:14px; }
-    .gpsl-table th { text-align:left; padding:8px; background:#222; color:#ff9900; border-bottom:1px solid #444; }
+    .gpsl-table th { text-align:left; padding:8px; background:#222; color:var(--gpsl-accent, #ff9900); border-bottom:1px solid #444; }
     .gpsl-table td { padding:8px; border-bottom:1px solid #2a2a2a; }
     .gpsl-table tr:hover td { background:#1f1f1f; }
     .num { text-align:right; font-variant-numeric:tabular-nums; }
     .empty { color:#777; font-style:italic; }
-    .gpsl-link { color:#ff9900; text-decoration:none; }
+    .gpsl-link { color:var(--gpsl-accent, #ff9900); text-decoration:none; }
     .gpsl-link:hover { text-decoration:underline; }
     #historyError { color:#f88; background:#2a1515; border:1px solid #633; padding:10px; border-radius:6px; margin-bottom:14px; display:none; }
     .chart-wrap {

@@ -12,7 +12,7 @@
 
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="club_dashboard_theme.css?v=20261026-theme-full">
+  <link rel="stylesheet" href="club_dashboard_theme.css?v=20261026-theme-vars">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260915-myclub-tips">
 
   <style>
@@ -31,7 +31,7 @@
     }
 
     h1 {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       margin-bottom: 16px;
     }
 
@@ -56,7 +56,7 @@
     }
 
     .holiday-title {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       margin: 0 0 8px;
       font-size: 18px;
     }
@@ -111,7 +111,7 @@
 
     .holiday-status--active {
       background: #3d3200;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
 
     .holiday-book-form {
@@ -162,7 +162,7 @@
     }
 
     .subsidy-title {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       margin: 0 0 8px;
       font-size: 18px;
     }
@@ -190,7 +190,7 @@
     .subsidy-card h3 {
       margin: 0 0 8px;
       font-size: 14px;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
 
     .subsidy-status {
@@ -257,7 +257,7 @@
 
     .account-quick-link {
       font-size: 12px;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       background: none;
       border: none;
       padding: 0;
@@ -268,7 +268,7 @@
 
     .account-quick-link:hover {
       text-decoration: underline;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
 
     .club-account-expand {
@@ -286,7 +286,7 @@
     .club-account-expand-title {
       margin: 0 0 6px;
       font-size: 14px;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
 
     .club-info-panel {
@@ -369,7 +369,7 @@
       justify-content: center;
       background: #222;
       border: 1px solid #444;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 14px;
       font-weight: 700;
       flex-shrink: 0;
@@ -438,7 +438,7 @@
 
     .club-detail-link {
       font-size: 12px;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       text-decoration: none;
       background: none;
       border: none;
@@ -449,7 +449,7 @@
 
     .club-detail-link:hover {
       text-decoration: underline;
-      color: #ffcc66;
+      color: var(--gpsl-accent-hover, #ffcc66);
     }
 
     a.club-detail-link--value {
@@ -501,7 +501,7 @@
 
     .club-detail-label {
       display: block;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-weight: bold;
       font-size: 12px;
       margin-bottom: 6px;
@@ -524,7 +524,7 @@
     }
 
     .club-kits-title {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       margin: 0 0 6px;
       font-size: 18px;
     }
@@ -557,7 +557,7 @@
     }
 
     .club-kit-label {
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 12px;
       font-weight: bold;
       margin-bottom: 10px;
@@ -634,7 +634,7 @@
 
     .theme-scope-fieldset legend {
       padding: 0 6px;
-      color: #ff9900;
+      color: var(--gpsl-accent, #ff9900);
       font-size: 13px;
       font-weight: bold;
     }
@@ -855,6 +855,7 @@
       <h2 class="club-kits-title gpsl-has-tip" data-gpsl-tip="Ko-fi Supporter perk: three coverage levels — Dashboard only, Club pages (titles/panels), or Full club colours (tables, fixtures chrome, and accents across your owner pages). Admin pages stay GPSL orange." tabindex="0">Dashboard colours</h2>
       <p class="club-kits-intro">
         Ko-fi Supporters can pick club accent colours, then choose how far they spread.
+        Leave <strong>Use club colours</strong> off (or reset to GPSL orange) for the standard league look.
         Suggest from a kit, tweak if needed, then save.
       </p>
 
@@ -959,7 +960,7 @@
 
   </div>
 
-  <script type="module" src="club_details.js?v=20261026-theme-full"></script>
+  <script type="module" src="club_details.js?v=20261026-theme-vars"></script>
 
 </body>
 </html>

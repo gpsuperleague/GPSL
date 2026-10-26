@@ -2175,7 +2175,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ${renderNationFlag(MY_NATION, "sm")}
         <b>${MY_NATION.name} squad:</b> ${s.total}/${s.max} · ${gkNote}
         · Call up or remove players below, or
-        <a href="national_team.html?nation=${encodeURIComponent(MY_NATION.code)}" style="color:#ff9900;">view squad</a>
+        <a href="national_team.html?nation=${encodeURIComponent(MY_NATION.code)}" style="color:var(--gpsl-accent, #ff9900);">view squad</a>
       `;
     }
   }

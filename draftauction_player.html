@@ -10,7 +10,7 @@
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     #nav { padding:15px; background:#1a1a1a; border-bottom:1px solid #333; text-align:center; }
     a.button, button.button {
-      display:inline-block; padding:10px 20px; background:#ff9900; color:#111;
+      display:inline-block; padding:10px 20px; background:var(--gpsl-accent, #ff9900); color:#111;
       text-decoration:none; font-weight:bold; border-radius:6px; margin:5px;
       transition:0.2s; cursor:pointer; border:none;
     }
@@ -44,7 +44,7 @@
     .bid-panel.view-only .inc-btn,
     .bid-panel.view-only .dec-btn { pointer-events:none; opacity:0.55; }
     .bid-ended-banner {
-      color:#ff9900;
+      color:var(--gpsl-accent, #ff9900);
       font-size:13px;
       margin:0 0 10px;
       font-weight:bold;
@@ -63,7 +63,7 @@
     table.history th, table.history td {
       border:1px solid #333; padding:6px; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-    table.history th { background:#222; color:#ff9900; }
+    table.history th { background:#222; color:var(--gpsl-accent, #ff9900); }
 
     .fav-btn {
       background:transparent;
@@ -76,8 +76,8 @@
       margin-left:8px;
       vertical-align:middle;
     }
-    .fav-btn.fav-on { color:#ff9900; border-color:#ff9900; }
-    .fav-btn:hover { color:#ffcc66; }
+    .fav-btn.fav-on { color:var(--gpsl-accent, #ff9900); border-color:var(--gpsl-accent, #ff9900); }
+    .fav-btn:hover { color:var(--gpsl-accent-hover, #ffcc66); }
   </style>
 </head>
 
@@ -122,7 +122,7 @@
     <div class="bid-panel">
       <h3>Place Bid</h3>
       <div class="bid-row">
-        <span style="font-size:18px; color:#ff9900; font-weight:bold;">₿</span>
+        <span style="font-size:18px; color:var(--gpsl-accent, #ff9900); font-weight:bold;">₿</span>
         <input type="text" id="bidAmount" placeholder="amount">
         <button id="quickBidBtn" class="quick-btn">Quick Bid</button>
         <button class="inc-btn" data-delta="500000">+500k</button>
@@ -143,7 +143,7 @@
           Do not open rooms just to force rivals’ auto-bids upward — that is against fair play.
         </p>
         <div class="bid-row">
-          <span style="font-size:18px; color:#ff9900; font-weight:bold;">₿</span>
+          <span style="font-size:18px; color:var(--gpsl-accent, #ff9900); font-weight:bold;">₿</span>
           <input type="text" id="playerMaxBidAmount" inputmode="numeric" autocomplete="off" placeholder="22,000,000">
           <button type="button" id="playerMaxBidSetBtn" class="quick-btn">Set max</button>
           <button type="button" id="playerMaxBidClearBtn" class="quick-btn" style="background:#333;">Clear</button>
@@ -856,7 +856,7 @@
       }
 
       document.getElementById("bidStatus").innerHTML =
-        'Bid submitted. <a href="draftauction.html" style="color:#ff9900;font-weight:bold;">Return to Draft Auction</a>';
+        'Bid submitted. <a href="draftauction.html" style="color:var(--gpsl-accent, #ff9900);font-weight:bold;">Return to Draft Auction</a>';
       await loadPlayerAndBids();
       mountClubBankBalance("clubBankBalance", {
         clubShortName: buyerShortName,

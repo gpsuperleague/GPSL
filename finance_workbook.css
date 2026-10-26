@@ -32,7 +32,7 @@
 .fin-section:first-of-type { margin-top:0; }
 .fin-section h3 {
   grid-column:1 / -1;
-  color:#ff9900; font-size:15px; margin:0 0 8px;
+  color:var(--gpsl-accent, #ff9900); font-size:15px; margin:0 0 8px;
   border-bottom:1px solid #333; padding-bottom:6px;
 }
 .fin-section-intro {

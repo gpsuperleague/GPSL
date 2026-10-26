@@ -370,7 +370,7 @@ export const MATCH_VIDEO_TICK_CSS = `
   position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:12000;
   display:flex; align-items:center; justify-content:center; padding:16px;
 }
-.mv-report-modal h3 { margin:0 0 8px; color:#ffcc66; font-size:16px; }
+.mv-report-modal h3 { margin:0 0 8px; color:var(--gpsl-accent-hover, #ffcc66); font-size:16px; }
 .mv-report-modal p { margin:0 0 12px; font-size:13px; color:#aaa; line-height:1.4; }
 .mv-report-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
 .mv-report-actions button {
