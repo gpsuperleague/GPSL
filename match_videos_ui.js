@@ -1,6 +1,7 @@
 /**
  * Fixture match video ticks (home / away Discord uploads) + breach report (R).
  */
+import { ownerTagForClub } from "./clubs_lookup.js";
 
 /**
  * @param {import("@supabase/supabase-js").SupabaseClient} supabase
@@ -90,11 +91,45 @@ function upper(s) {
   return String(s || "").trim().toUpperCase();
 }
 
-function tickHtml(sideLabel, url, pending = false) {
+/**
+ * Pending-video tooltip: who must confirm, or that no result is in yet.
+ * @param {object|null|undefined} fixture
+ */
+export function matchVideoPendingResultHint(fixture) {
+  const status = String(fixture?.submission_status || "").toLowerCase();
+  const submittedBy = upper(fixture?.submitted_by_club);
+  const home = upper(fixture?.home_club_short_name);
+  const away = upper(fixture?.away_club_short_name);
+
+  if (status === "pending" && submittedBy) {
+    let waitingClub = null;
+    if (submittedBy === home && away) waitingClub = away;
+    else if (submittedBy === away && home) waitingClub = home;
+    if (waitingClub) {
+      const owner = ownerTagForClub(waitingClub) || waitingClub;
+      return `waiting for ${owner} to confirm the result`;
+    }
+    return "waiting for opponent to confirm the result";
+  }
+
+  if (String(fixture?.status || "").toLowerCase() === "played") {
+    return "GPSL result confirmed";
+  }
+
+  return "no result submitted";
+}
+
+function tickHtml(sideLabel, url, pending = false, pendingHint = "") {
   const has = Boolean(url);
   if (has && pending) {
-    const href = url && url !== "#" ? ` href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer"` : "";
-    return `<a class="mv-tick mv-tick-pending"${href} title="${sideLabel} video received — waiting for GPSL result confirm">${sideLabel}⏳</a>`;
+    const href =
+      url && url !== "#"
+        ? ` href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer"`
+        : "";
+    const why = pendingHint || "no result submitted";
+    return `<a class="mv-tick mv-tick-pending"${href} title="${escapeAttr(
+      `${sideLabel} video received — ${why}`
+    )}">${sideLabel}⏳</a>`;
   }
   if (has) {
     return `<a class="mv-tick mv-tick-on" href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer" title="${sideLabel} video uploaded — open">${sideLabel}✓</a>`;
@@ -227,10 +262,22 @@ export function matchVideoTicksHtml(videos, opts = {}) {
       )
     : "";
 
+  const pendingHint = matchVideoPendingResultHint(opts.fixture);
+
   return (
     `<span class="mv-ticks">` +
-    `<span class="mv-side">${tickHtml("H", v.home_url, v.home_pending)}${homeReport}</span>` +
-    `<span class="mv-side">${tickHtml("A", v.away_url, v.away_pending)}${awayReport}</span>` +
+    `<span class="mv-side">${tickHtml(
+      "H",
+      v.home_url,
+      v.home_pending,
+      pendingHint
+    )}${homeReport}</span>` +
+    `<span class="mv-side">${tickHtml(
+      "A",
+      v.away_url,
+      v.away_pending,
+      pendingHint
+    )}${awayReport}</span>` +
     `</span>`
   );
 }

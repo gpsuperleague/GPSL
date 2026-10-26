@@ -39,7 +39,7 @@ import {
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20261024-mega";
+} from "./match_videos_ui.js?v=20261026-pending-hint";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 
 function cupFromUrl() {

@@ -50,7 +50,7 @@ import {
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20261023-pending-video";
+} from "./match_videos_ui.js?v=20261026-pending-hint";
 import { resolveKitImageSrc } from "./club_kits_common.js";
 
 let myClub = { short: null, name: null };
