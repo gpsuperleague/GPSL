@@ -1914,7 +1914,7 @@ function formatMatchFitnessCell(playerId) {
     .map(
       (n) =>
         `<span class="squad-fit-pip squad-fit-pip-${n}${
-          n <= level ? " is-on" : ""
+          n === level ? " is-on" : ""
         }" aria-hidden="true"></span>`
     )
     .join("");

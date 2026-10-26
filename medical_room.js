@@ -124,7 +124,7 @@ function fitnessWatchMeterHtml(level) {
   const pips = [1, 2, 3, 4, 5]
     .map(
       (n) =>
-        `<span class="med-fit-pip med-fit-pip-${n}${n <= lvl ? " is-on" : ""}"></span>`
+        `<span class="med-fit-pip med-fit-pip-${n}${n === lvl ? " is-on" : ""}"></span>`
     )
     .join("");
   return `<div class="med-fit-meter" aria-hidden="true">${pips}</div>`;
