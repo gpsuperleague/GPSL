@@ -53,8 +53,9 @@ import {
   cardsByPlayerId,
   injuriesByPlayerId,
   formatInjuryStatusHtml,
+  formatInjuryMatchFitnessHtml,
   formatCardsStatusHtml,
-} from "./player_discipline.js?v=20261026-club-squad-lwf";
+} from "./player_discipline.js?v=20261026-fit-injury-col";
 import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,
@@ -1901,7 +1902,7 @@ function formatSeasonStat(row, key, fallback = "—") {
   return v;
 }
 
-function formatMatchFitnessCell(playerId) {
+function formatMatchFitnessCell(playerId, injuryRows = []) {
   const row = squadMatchFitnessByPlayer.get(String(playerId));
   const level = Math.max(1, Math.min(5, Number(row?.level) || 1));
   const label =
@@ -1918,10 +1919,12 @@ function formatMatchFitnessCell(playerId) {
         }" aria-hidden="true"></span>`
     )
     .join("");
+  const injuryBlock = formatInjuryMatchFitnessHtml(injuryRows);
   return `<div class="squad-fit squad-fit-l${level}" title="${title.replace(
     /"/g,
     "&quot;"
   )}">
+    ${injuryBlock}
     <div class="squad-fit-meter" role="img" aria-label="${title.replace(
       /"/g,
       "&quot;"
@@ -2072,7 +2075,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         <td class="num squad-col-goals gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.goals)}>${formatSeasonStat(st, "goals", "0")}</td>
         <td class="num squad-col-assists gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.assists)}>${formatSeasonStat(st, "assists", "0")}</td>
         <td class="num squad-col-avg gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.avg)}>${avg}</td>
-        <td class="squad-col-fitness gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.matchFitness)}>${formatMatchFitnessCell(pid)}</td>
+        <td class="squad-col-fitness gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.matchFitness)}>${formatMatchFitnessCell(pid, injuryRows)}</td>
         <td class="squad-col-playstyle gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.playstyle)}>${p.Playstyle || "-"}</td>
         <td class="squad-col-value gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.marketValue)}><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
         <td class="squad-col-contract gpsl-has-tip"${tipDataAttrs(
@@ -2168,7 +2171,8 @@ function measureSquadTableCellWidth(cell) {
 /** Minimum px widths — Action must never collapse to 0 under table-layout:fixed. */
 const SQUAD_COL_MIN_WIDTHS = {
   "squad-col-action": 136,
-  "squad-col-status": 110,
+  "squad-col-status": 140,
+  "squad-col-fitness": 118,
   "squad-col-contract": 72,
   "squad-col-player": 120,
   "squad-col-thumb": 48,
@@ -2253,6 +2257,7 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
     const assists = row.querySelector(".squad-col-assists");
     const avg = row.querySelector(".squad-col-avg");
     const status = row.querySelector(".squad-col-status");
+    const fitness = row.querySelector(".squad-col-fitness");
 
     if (apps) apps.textContent = formatSeasonStat(st, "appearances", "0");
     if (goals) goals.textContent = formatSeasonStat(st, "goals", "0");
@@ -2261,10 +2266,13 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
       avg.textContent =
         st?.avg_rating != null ? Number(st.avg_rating).toFixed(2) : "—";
     }
+    const injuryRows = squadInjuriesByPlayer.get(id) || [];
+    if (fitness) {
+      fitness.innerHTML = formatMatchFitnessCell(id, injuryRows);
+    }
     if (status && transferState) {
       const seasonsRaw = row.dataset.contractSeasons;
       const suspRows = squadSuspensionsByPlayer.get(id) || [];
-      const injuryRows = squadInjuriesByPlayer.get(id) || [];
       const cardRow = squadCardsByPlayer.get(id) || null;
       const suspHtml = formatSuspensionStatusHtml(suspRows);
       const injuryHtml = formatInjuryStatusHtml(injuryRows);

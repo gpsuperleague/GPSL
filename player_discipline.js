@@ -148,12 +148,17 @@ export function formatSuspensionStatusHtml(rows) {
   if (!label) return "";
   const reason = suspensionReasonLabel(rows[0]);
   const pendingReview = anyAppealPending(rows);
-  const title = pendingReview ? `${reason} — appeal pending review` : reason;
+  const title = (pendingReview ? `${reason} — appeal pending review` : reason).replace(
+    /"/g,
+    "&quot;"
+  );
   const unique = pendingMatchLabels(rows);
   const head = pendingReview ? "Suspended — Pending review" : "Suspended";
   if (unique.length) {
-    const matches = unique.join("<br>");
-    return `<div class="squad-status-lines"><span class="status-pill status-suspended" title="${title}">${head}<br>${matches}</span></div>`;
+    return `<div class="squad-status-lines squad-miss-block" title="${title}">
+      <span class="status-pill status-suspended">${head}</span>
+      ${missSectionHtml("squad-miss-susp", "Misses", unique)}
+    </div>`;
   }
   return `<div class="squad-status-lines"><span class="status-pill status-suspended" title="${title}">${label}</span></div>`;
 }
@@ -357,8 +362,7 @@ function matchWord(n) {
   return `${n} match${n === 1 ? "" : "es"}`;
 }
 
-/** Full pending fixture labels (no truncation). */
-function injuryPendingMatchesHtml(pendingMatches) {
+function injuryPendingLabelGroups(pendingMatches) {
   const pending = Array.isArray(pendingMatches) ? pendingMatches : [];
   const outLabels = pending
     .filter((m) => m?.phase === "out" && m.label)
@@ -369,7 +373,17 @@ function injuryPendingMatchesHtml(pendingMatches) {
   const otherLabels = pending
     .filter((m) => m?.label && m.phase !== "out" && m.phase !== "recovery")
     .map((m) => m.label);
+  if (!outLabels.length && !recLabels.length && !otherLabels.length) {
+    const fallback = pending.map((m) => m?.label).filter(Boolean);
+    return { outLabels: [], recLabels: [], otherLabels: fallback };
+  }
+  return { outLabels, recLabels, otherLabels };
+}
 
+/** Full pending fixture labels (no truncation) — used by club.html badges. */
+function injuryPendingMatchesHtml(pendingMatches) {
+  const { outLabels, recLabels, otherLabels } =
+    injuryPendingLabelGroups(pendingMatches);
   const lines = [];
   if (outLabels.length) {
     lines.push(`Out: ${outLabels.join(", ")}`);
@@ -380,12 +394,78 @@ function injuryPendingMatchesHtml(pendingMatches) {
   if (otherLabels.length) {
     lines.push(otherLabels.join(", "));
   }
-  if (!lines.length) {
-    const fallback = pending.map((m) => m?.label).filter(Boolean);
-    if (!fallback.length) return "";
-    return `<br>Misses: ${fallback.join(", ")}`;
-  }
+  if (!lines.length) return "";
   return `<br>${lines.join("<br>")}`;
+}
+
+function missChip(label) {
+  return `<span class="squad-miss-chip">${label}</span>`;
+}
+
+function missSectionHtml(phaseClass, head, labels) {
+  if (!labels?.length) return "";
+  return `<div class="squad-miss-section ${phaseClass}">
+    <div class="squad-miss-head">${head}</div>
+    <div class="squad-miss-chips">${labels.map(missChip).join("")}</div>
+  </div>`;
+}
+
+/** Compact horizontal unavailable-match chips for squad Status column. */
+function injuryPendingMatchesStatusHtml(pendingMatches) {
+  const { outLabels, recLabels, otherLabels } =
+    injuryPendingLabelGroups(pendingMatches);
+  const parts = [
+    missSectionHtml("squad-miss-out", "Out", outLabels),
+    missSectionHtml("squad-miss-light", "Light", recLabels),
+    missSectionHtml("squad-miss-other", "Misses", otherLabels),
+  ].filter(Boolean);
+  return parts.join("");
+}
+
+function injuryDurationShort(outLeft, recLeft, phase) {
+  if (outLeft > 0 || phase === "out") {
+    if (recLeft > 0) {
+      return `Out ${matchWord(outLeft)} · then ${matchWord(recLeft)} light`;
+    }
+    return `Out ${matchWord(outLeft)} · then available`;
+  }
+  return `${matchWord(recLeft)} light training left`;
+}
+
+/**
+ * Injury type + duration for the Match Fitness column (above the meter).
+ * @param {any[]} injuryRows
+ */
+export function formatInjuryMatchFitnessHtml(injuryRows) {
+  if (!injuryRows?.length) return "";
+  return injuryRows
+    .map((inj) => {
+      const label = inj.label || "Injury";
+      const outLeft = Number(inj.matches_out_remaining) || 0;
+      const recLeft = Number(inj.recovery_remaining) || 0;
+      const dur = injuryDurationShort(outLeft, recLeft, inj.phase);
+      if (outLeft > 0 || inj.phase === "out") {
+        const title = `Injured — ${label} — ${injuryOutPhaseTitle(outLeft, recLeft)}`;
+        return `<div class="squad-fit-injury squad-fit-injury-out" title="${title.replace(
+          /"/g,
+          "&quot;"
+        )}">
+          <div class="squad-fit-injury-kicker">Injured</div>
+          <div class="squad-fit-injury-type">${label}</div>
+          <div class="squad-fit-injury-dur">${dur}</div>
+        </div>`;
+      }
+      const title = `Building Fitness & Match sharpness — ${label} — Returning to match availability in ${matchWord(recLeft)}`;
+      return `<div class="squad-fit-injury squad-fit-injury-rec" title="${title.replace(
+        /"/g,
+        "&quot;"
+      )}">
+        <div class="squad-fit-injury-kicker">Building fitness</div>
+        <div class="squad-fit-injury-type">${label}</div>
+        <div class="squad-fit-injury-dur">${dur}</div>
+      </div>`;
+    })
+    .join("");
 }
 
 function injuryOutPhaseDetail(outLeft, recLeft) {
@@ -404,24 +484,27 @@ function injuryOutPhaseTitle(outLeft, recLeft) {
   return `${back}; then available`;
 }
 
-/** @param {any[]} injuryRows */
+/**
+ * Squad Status column: unavailable fixtures only (injury detail lives in Match Fitness).
+ * @param {any[]} injuryRows
+ */
 export function formatInjuryStatusHtml(injuryRows) {
   if (!injuryRows?.length) return "";
   return injuryRows
     .map((inj) => {
+      const matchesHtml = injuryPendingMatchesStatusHtml(inj.pending_matches);
+      if (!matchesHtml) return "";
       const label = inj.label || "Injury";
       const outLeft = Number(inj.matches_out_remaining) || 0;
       const recLeft = Number(inj.recovery_remaining) || 0;
-      const pendingText = injuryPendingMatchesHtml(inj.pending_matches);
-
-      if (outLeft > 0 || inj.phase === "out") {
-        const detail = injuryOutPhaseDetail(outLeft, recLeft);
-        const title = `Injured — ${label} — ${injuryOutPhaseTitle(outLeft, recLeft)}`;
-        return `<div class="squad-status-lines"><span class="status-pill status-injured" title="${title}">Injured<br>${label}<br>${detail}${pendingText}</span></div>`;
-      }
-      const detail = `Returning to match availability in ${matchWord(recLeft)}`;
-      const title = `Building Fitness & Match sharpness — ${label} — ${detail}`;
-      return `<div class="squad-status-lines"><span class="status-pill status-recovery" title="${title}">Building Fitness &amp; Match sharpness<br>${label}<br>${detail}${pendingText}</span></div>`;
+      const isOut = outLeft > 0 || inj.phase === "out";
+      const title = isOut
+        ? `Injured — ${label} — ${injuryOutPhaseTitle(outLeft, recLeft)}`
+        : `Building Fitness & Match sharpness — ${label} — Returning to match availability in ${matchWord(recLeft)}`;
+      return `<div class="squad-status-lines squad-miss-block" title="${title.replace(
+        /"/g,
+        "&quot;"
+      )}">${matchesHtml}</div>`;
     })
     .join("");
 }

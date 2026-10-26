@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="dashboard.css?v=20260806-league-badges2">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
-  <link rel="stylesheet" href="squad.css?v=20261015-designated-names">
+  <link rel="stylesheet" href="squad.css?v=20261026-fit-injury-col">
 
   <style>
     body {
@@ -83,6 +83,43 @@
       align-items: flex-start;
       gap: 4px;
       min-width: 7.5rem;
+      max-width: 11rem;
+    }
+    .squad-fit-injury {
+      width: 100%;
+      padding: 3px 5px;
+      border-radius: 4px;
+      line-height: 1.2;
+      margin-bottom: 2px;
+    }
+    .squad-fit-injury-out {
+      background: #1a3a4a;
+      color: #9ed4f0;
+      border: 1px solid #3a6a8a;
+    }
+    .squad-fit-injury-rec {
+      background: #2a3a1a;
+      color: #c8e89a;
+      border: 1px solid #5a7a3a;
+    }
+    .squad-fit-injury-kicker {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.9;
+    }
+    .squad-fit-injury-type {
+      font-size: 11px;
+      font-weight: 700;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .squad-fit-injury-dur {
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0.95;
+      white-space: normal;
     }
     .squad-fit-meter {
       display: flex;
@@ -237,7 +274,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20261026-fit-pip-active"></script>
+  <script type="module" src="squad.js?v=20261026-fit-injury-col"></script>
 
 </body>
 </html>

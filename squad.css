@@ -976,10 +976,83 @@ body.squad-page .squad-col-status {
 body.squad-page .squad-status-lines {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 4px;
   white-space: normal;
   line-height: 1.25;
+}
+
+body.squad-page .squad-miss-block {
+  gap: 5px;
+  text-align: left;
+}
+
+body.squad-page .squad-miss-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+body.squad-page .squad-miss-head {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+body.squad-page .squad-miss-out .squad-miss-head {
+  color: #9ed4f0;
+}
+
+body.squad-page .squad-miss-light .squad-miss-head {
+  color: #c8e89a;
+}
+
+body.squad-page .squad-miss-susp .squad-miss-head,
+body.squad-page .squad-miss-other .squad-miss-head {
+  color: #ffd0a8;
+}
+
+body.squad-page .squad-miss-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: flex-start;
+}
+
+body.squad-page .squad-miss-chip {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #2a2a2a;
+  border: 1px solid #4a4a4a;
+  color: #e8e8e8;
+}
+
+body.squad-page .squad-miss-out .squad-miss-chip {
+  background: #1a3a4a;
+  border-color: #3a6a8a;
+  color: #9ed4f0;
+}
+
+body.squad-page .squad-miss-light .squad-miss-chip {
+  background: #2a3a1a;
+  border-color: #5a7a3a;
+  color: #c8e89a;
+}
+
+body.squad-page .squad-miss-susp .squad-miss-chip {
+  background: #5a2018;
+  border-color: #a04830;
+  color: #ffd0a8;
 }
 
 body.squad-page .squad-status-sub {
@@ -1082,19 +1155,26 @@ body.squad-page .status-pill.status-recovery {
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
-  line-height: 1.35;
+  line-height: 1.3;
   text-align: left;
+  align-self: flex-start;
 }
 
-body.squad-page .status-pill.status-injured,
-body.squad-page .status-pill.status-recovery {
+body.squad-page .squad-miss-block > .status-pill {
   font-size: 11px;
+  padding: 3px 7px;
 }
 
 body.squad-page .squad-col-status {
   white-space: normal;
-  min-width: 160px;
-  max-width: 320px;
+  min-width: 140px;
+  max-width: 260px;
+  vertical-align: middle;
+}
+
+body.squad-page .squad-col-fitness {
+  white-space: normal;
+  vertical-align: middle;
 }
 
 body.squad-page .status-suspended {
