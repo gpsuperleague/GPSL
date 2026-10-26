@@ -17,16 +17,23 @@ export const GPSL_THEME_DEFAULTS = {
   source_kit: "manual",
 };
 
-/** Where club colours apply (top nav always stays GPSL orange). */
+/**
+ * Where club colours apply.
+ * - dashboard: dashboard page only (nav stays GPSL orange)
+ * - club_pages: allowlisted owner pages (nav stays GPSL orange)
+ * - full: owner pages + deeper accents; root GPSL accent follows club (nav can tint)
+ */
 export const THEME_SCOPES = {
   dashboard: "dashboard",
   clubPages: "club_pages",
+  full: "full",
 };
 
 /**
  * Owner pages that pick up club colours when theme_scope = club_pages.
  * Keys match HTML filenames (without .html). Dashboard always applies when enabled.
- * Top nav / admin / public pages are never included.
+ * theme_scope = full also uses this list, plus a few extra owner tools.
+ * Admin / login / public pages are never included.
  */
 export const CLUB_PAGES_THEME_KEYS = new Set([
   "club_details",
@@ -83,6 +90,11 @@ export const CLUB_PAGES_THEME_KEYS = new Set([
   "season_manager_transfers",
   "owners_bank",
   "owners_shop",
+  "club_friendlies",
+  "club_auction",
+  "match_report",
+  "manager_career",
+  "learning_gpsl",
 ]);
 
 /** @typedef {string} ThemePageKey */
@@ -91,8 +103,21 @@ export function normalizeThemeScope(value) {
   const v = String(value ?? "")
     .trim()
     .toLowerCase();
+  if (v === THEME_SCOPES.full || v === "full_club" || v === "sitewide") {
+    return THEME_SCOPES.full;
+  }
   if (v === THEME_SCOPES.clubPages) return THEME_SCOPES.clubPages;
   return THEME_SCOPES.dashboard;
+}
+
+function isThemeBlockedPageKey(key) {
+  return (
+    !key ||
+    key.startsWith("admin") ||
+    key === "login" ||
+    key === "signup" ||
+    key === "index"
+  );
 }
 
 /** Page key from CURRENT_PAGE or the HTML filename (e.g. squad.html -> squad). */
@@ -113,11 +138,14 @@ export function themeAppliesOnPage(theme, pageKey) {
     .trim()
     .toLowerCase()
     .replace(/\.html$/, "");
-  if (!key) return false;
+  if (isThemeBlockedPageKey(key)) return false;
   if (key === "dashboard") return true;
   const scope = normalizeThemeScope(theme.theme_scope);
-  if (scope !== THEME_SCOPES.clubPages) return false;
-  return CLUB_PAGES_THEME_KEYS.has(key);
+  if (scope === THEME_SCOPES.dashboard) return false;
+  if (scope === THEME_SCOPES.full || scope === THEME_SCOPES.clubPages) {
+    return CLUB_PAGES_THEME_KEYS.has(key);
+  }
+  return false;
 }
 
 export function ensureClubThemeStylesheet() {
@@ -127,7 +155,7 @@ export function ensureClubThemeStylesheet() {
   const link = document.createElement("link");
   link.id = "clubDashboardThemeCss";
   link.rel = "stylesheet";
-  link.href = "club_dashboard_theme.css?v=20260922-club-pages";
+  link.href = "club_dashboard_theme.css?v=20261026-theme-full";
   document.head.appendChild(link);
 }
 
@@ -140,19 +168,7 @@ export async function initOwnerClubThemeAuto(supabaseClient) {
   if (window.GPSL_PRE_CLUB) return null;
 
   const pageKey = themePageKeyFromLocation();
-  if (!pageKey) return null;
-  if (
-    pageKey.startsWith("admin") ||
-    pageKey === "login" ||
-    pageKey === "signup" ||
-    pageKey === "index"
-  ) {
-    return null;
-  }
-
-  if (pageKey !== "dashboard" && !CLUB_PAGES_THEME_KEYS.has(pageKey)) {
-    return null;
-  }
+  if (isThemeBlockedPageKey(pageKey)) return null;
 
   const {
     data: { user },
@@ -518,7 +534,7 @@ export async function saveClubDashboardTheme(supabase, theme) {
 
 function clearClubThemeVars(scope) {
   if (!scope) return;
-  scope.classList.remove("club-themed-scope");
+  scope.classList.remove("club-themed-scope", "club-themed-scope--full");
   scope.style.removeProperty("--club-accent");
   scope.style.removeProperty("--club-panel");
   scope.style.removeProperty("--club-border");
@@ -527,18 +543,59 @@ function clearClubThemeVars(scope) {
   scope.style.removeProperty("--club-accent-rgb");
 }
 
+function clearFullThemeRoot() {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.classList.remove("club-theme-full");
+  root.style.removeProperty("--club-accent");
+  root.style.removeProperty("--club-panel");
+  root.style.removeProperty("--club-border");
+  root.style.removeProperty("--club-tile-text");
+  root.style.removeProperty("--club-glow");
+  root.style.removeProperty("--club-accent-rgb");
+  root.style.removeProperty("--gpsl-accent");
+  root.style.removeProperty("--gpsl-accent-hover");
+  root.style.removeProperty("--gpsl-accent-rgb");
+}
+
+function applyFullThemeRoot(primary, secondary, border, tileText, rgb) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.classList.add("club-theme-full");
+  root.style.setProperty("--club-accent", primary);
+  root.style.setProperty("--club-panel", secondary);
+  root.style.setProperty("--club-border", border);
+  root.style.setProperty("--club-tile-text", tileText);
+  root.style.setProperty("--club-glow", `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`);
+  root.style.setProperty("--club-accent-rgb", `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+  // Pages / nav that lock to --gpsl-accent then follow club colours.
+  root.style.setProperty("--gpsl-accent", primary);
+  root.style.setProperty(
+    "--gpsl-accent-hover",
+    `rgba(${Math.min(255, rgb.r + 40)}, ${Math.min(255, rgb.g + 40)}, ${Math.min(
+      255,
+      rgb.b + 40
+    )}, 1)`
+  );
+  root.style.setProperty("--gpsl-accent-rgb", `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+}
+
 export function applyClubDashboardTheme(theme, options = {}) {
   const scope =
     options.scopeEl || document.querySelector(".page-container") || document.body;
   const pageKey = options.pageKey || window.CURRENT_PAGE || "dashboard";
   const active = themeAppliesOnPage(theme, pageKey);
+  const themeScope = normalizeThemeScope(theme?.theme_scope);
+  const isFull = themeScope === THEME_SCOPES.full;
 
   if (!active) {
     clearClubThemeVars(scope);
+    clearFullThemeRoot();
     return;
   }
 
   scope.classList.add("club-themed-scope");
+  scope.classList.toggle("club-themed-scope--full", isFull);
 
   const primary =
     normalizeHexColor(theme.color_primary, GPSL_THEME_DEFAULTS.color_primary) ||
@@ -560,6 +617,12 @@ export function applyClubDashboardTheme(theme, options = {}) {
   scope.style.setProperty("--club-tile-text", tileText);
   scope.style.setProperty("--club-glow", `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`);
   scope.style.setProperty("--club-accent-rgb", `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+
+  if (isFull) {
+    applyFullThemeRoot(primary, secondary, border, tileText, rgb);
+  } else {
+    clearFullThemeRoot();
+  }
 }
 
 export function renderThemePreviewHtml(theme) {

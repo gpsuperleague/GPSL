@@ -12,7 +12,7 @@
 
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="club_dashboard_theme.css">
+  <link rel="stylesheet" href="club_dashboard_theme.css?v=20261026-theme-full">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260915-myclub-tips">
 
   <style>
@@ -852,9 +852,9 @@
     </div>
 
     <div class="panel panel-bg club-theme-panel" id="clubThemePanel">
-      <h2 class="club-kits-title gpsl-has-tip" data-gpsl-tip="Ko-fi Supporter perk: club accent colours on your dashboard, and optionally across your main owner pages (Squad, Finances, Fixtures, Match Day, Inbox, Transfers, Stadium, and more). Top GPSL menu stays orange." tabindex="0">Dashboard colours</h2>
+      <h2 class="club-kits-title gpsl-has-tip" data-gpsl-tip="Ko-fi Supporter perk: three coverage levels — Dashboard only, Club pages (titles/panels), or Full club colours (tables, fixtures chrome, and accents across your owner pages). Admin pages stay GPSL orange." tabindex="0">Dashboard colours</h2>
       <p class="club-kits-intro">
-        Ko-fi Supporters can pick club accent colours for the dashboard - and optionally spread them across your main owner pages.
+        Ko-fi Supporters can pick club accent colours, then choose how far they spread.
         Suggest from a kit, tweak if needed, then save.
       </p>
 
@@ -869,20 +869,27 @@
       <fieldset class="theme-scope-fieldset" id="themeScopeFieldset">
         <legend>Apply club colours to</legend>
         <label class="theme-scope-option">
-          <input type="radio" name="themeScope" id="themeScopeDashboard" value="dashboard" checked>
+          <input type="radio" name="themeScope" id="themeScopeFull" value="full">
           <span>
-            <strong>Dashboard only</strong>
-            <span class="theme-scope-hint">Tiles and header on your dashboard page</span>
+            <strong>Full club colours</strong>
+            <span class="theme-scope-hint">Owner pages with deeper accents — tables, fixture toolbars, headings, and related chrome. Menu accents can follow your club colour.</span>
           </span>
         </label>
         <label class="theme-scope-option">
           <input type="radio" name="themeScope" id="themeScopeClubPages" value="club_pages">
           <span>
-            <strong>Dashboard and club pages</strong>
-            <span class="theme-scope-hint">Also Squad, Finances, Fixtures, Match Day, Inbox, Transfer Centre, Stadium, Club/Owner Details, Cups, History, and other owner pages below the menu</span>
+            <strong>Just club pages</strong>
+            <span class="theme-scope-hint">Dashboard plus Squad, Finances, Fixtures, Match Day, Inbox, Transfer Centre, Stadium, Club/Owner Details, Cups, History, and other owner pages — lighter accent pass (titles, panels, primary buttons). Top menu stays GPSL orange.</span>
           </span>
         </label>
-        <p class="theme-scope-note">The top GPSL menu always stays standard orange. Admin pages stay GPSL orange.</p>
+        <label class="theme-scope-option">
+          <input type="radio" name="themeScope" id="themeScopeDashboard" value="dashboard" checked>
+          <span>
+            <strong>Just dashboard</strong>
+            <span class="theme-scope-hint">Tiles and header on your dashboard page only. Top menu stays GPSL orange.</span>
+          </span>
+        </label>
+        <p class="theme-scope-note">Supporters only. Admin pages always stay GPSL orange. Non-supporters keep the standard GPSL look.</p>
       </fieldset>
 
       <div class="theme-color-grid">
@@ -952,7 +959,7 @@
 
   </div>
 
-  <script type="module" src="club_details.js?v=20260922-supporter-gates"></script>
+  <script type="module" src="club_details.js?v=20261026-theme-full"></script>
 
 </body>
 </html>

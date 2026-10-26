@@ -27,7 +27,7 @@ import { refreshAllDashboardPins } from "./dashboard_pin.js";
 import {
   applyClubDashboardTheme,
   loadClubDashboardTheme,
-} from "./club_theme_common.js";
+} from "./club_theme_common.js?v=20261026-theme-full";
 import { startDashboardMatchday } from "./dashboard_matchday.js";
 import { renderSupportBanner } from "./support_banner.js";
 import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261020-blackbox";

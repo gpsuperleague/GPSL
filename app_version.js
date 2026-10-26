@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261022-challenge-race-pct";
+export const APP_VERSION = "20261026-theme-full";

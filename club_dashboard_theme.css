@@ -70,3 +70,63 @@
 .club-themed-scope .btn-result.secondary {
   border-color: var(--club-border);
 }
+
+/* ------------------------------------------------------------------
+   Full club colours (theme_scope = full) — deeper accents on tables,
+   toolbars, headings. Hardcoded GPSL orange on owner pages yields.
+   ------------------------------------------------------------------ */
+
+.club-themed-scope--full {
+  --gpsl-accent: var(--club-accent);
+  --gpsl-accent-rgb: var(--club-accent-rgb);
+}
+
+.club-themed-scope--full h1,
+.club-themed-scope--full h2,
+.club-themed-scope--full .page-title,
+.club-themed-scope--full .section-title,
+.club-themed-scope--full .panel-title,
+.club-themed-scope--full .squad-header-title,
+.club-themed-scope--full .club-kits-title {
+  color: var(--club-accent);
+}
+
+.club-themed-scope--full table.gpsl-table th,
+.club-themed-scope--full .gpsl-table th,
+.club-themed-scope--full table th {
+  color: var(--club-accent);
+}
+
+.club-themed-scope--full .toolbar button.active,
+.club-themed-scope--full .toolbar .active,
+.club-themed-scope--full .filter-btn.active,
+.club-themed-scope--full .tab.active,
+.club-themed-scope--full .tabs .active {
+  border-color: var(--club-accent);
+  color: var(--club-accent);
+}
+
+.club-themed-scope--full tr.my-fixture {
+  box-shadow: inset 3px 0 0 var(--club-accent);
+}
+
+.club-themed-scope--full .gpsl-link,
+.club-themed-scope--full .gpsl-content-link,
+.club-themed-scope--full a.club-link,
+.club-themed-scope--full a.account-quick-link {
+  color: var(--club-accent);
+}
+
+.club-themed-scope--full .small-btn:not(.secondary):not(.danger),
+.club-themed-scope--full button.small-btn:not(.secondary):not(.danger) {
+  background: var(--club-accent);
+  color: #111;
+  border-color: var(--club-accent);
+}
+
+/* When full is on, documentElement carries club --gpsl-accent so #nav
+   locks that still map --club-accent → --gpsl-accent follow the club. */
+html.club-theme-full #nav .nav-group-summary:hover,
+html.club-theme-full #nav a:hover {
+  color: var(--gpsl-accent, var(--club-accent));
+}

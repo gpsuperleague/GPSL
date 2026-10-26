@@ -26,7 +26,7 @@ import {
   saveClubDashboardTheme,
   suggestThemeFromKit,
   THEME_SCOPES,
-} from "./club_theme_common.js";
+} from "./club_theme_common.js?v=20261026-theme-full";
 
 let cachedKitRow = null;
 let themeDraft = { ...GPSL_THEME_DEFAULTS };
@@ -316,9 +316,18 @@ function themeFieldIds() {
 }
 
 function readThemeScopeFromForm() {
+  const full = document.getElementById("themeScopeFull");
+  if (full?.checked) return THEME_SCOPES.full;
   const clubPages = document.getElementById("themeScopeClubPages");
   if (clubPages?.checked) return THEME_SCOPES.clubPages;
   return THEME_SCOPES.dashboard;
+}
+
+function themeScopeLabel(scope) {
+  const s = normalizeThemeScope(scope);
+  if (s === THEME_SCOPES.full) return "Full club colours";
+  if (s === THEME_SCOPES.clubPages) return "Just club pages";
+  return "Just dashboard";
 }
 
 function readThemeDraftFromForm() {
@@ -358,8 +367,10 @@ function writeThemeDraftToForm(theme) {
   const scope = normalizeThemeScope(themeDraft.theme_scope);
   const dashRadio = document.getElementById("themeScopeDashboard");
   const clubRadio = document.getElementById("themeScopeClubPages");
+  const fullRadio = document.getElementById("themeScopeFull");
   if (dashRadio) dashRadio.checked = scope === THEME_SCOPES.dashboard;
   if (clubRadio) clubRadio.checked = scope === THEME_SCOPES.clubPages;
+  if (fullRadio) fullRadio.checked = scope === THEME_SCOPES.full;
 
   for (const [pickerId, hexId, key] of themeFieldIds()) {
     const pickerEl = document.getElementById(pickerId);
@@ -426,7 +437,11 @@ function wireDashboardThemePanel(clubShort) {
     writeThemeDraftToForm(themeDraft);
   });
 
-  for (const id of ["themeScopeDashboard", "themeScopeClubPages"]) {
+  for (const id of [
+    "themeScopeDashboard",
+    "themeScopeClubPages",
+    "themeScopeFull",
+  ]) {
     document.getElementById(id)?.addEventListener("change", () => {
       themeDraft = readThemeDraftFromForm();
       writeThemeDraftToForm(themeDraft);
@@ -486,26 +501,23 @@ function wireDashboardThemePanel(clubShort) {
     setThemeStatus("Saving…");
     try {
       await saveClubDashboardTheme(supabase, themeDraft);
-      const scopeLabel =
-        normalizeThemeScope(themeDraft.theme_scope) === THEME_SCOPES.clubPages
-          ? "Dashboard and club pages"
-          : "Dashboard only";
-      setThemeStatus(`Club colours saved and applied (${scopeLabel}).`, "ok");
+      setThemeStatus(
+        `Club colours saved and applied (${themeScopeLabel(themeDraft.theme_scope)}).`,
+        "ok"
+      );
     } catch (err) {
       console.warn("Theme save:", err);
       const msg = String(err?.message || err);
-      if (msg.includes("club_owner_dashboard_theme_save") || msg.includes("function")) {
-        setThemeStatus(
-          "Could not save — run supabase/sql/patches/club_dashboard_theme_scope.sql in Supabase.",
-          "err"
-        );
-      } else if (
+      if (
+        msg.includes("club_owner_dashboard_theme_save") ||
+        msg.includes("function") ||
         msg.includes("color_text") ||
         msg.includes("theme_scope") ||
-        msg.includes("column")
+        msg.includes("column") ||
+        msg.includes("check")
       ) {
         setThemeStatus(
-          "Could not save — run supabase/sql/patches/club_dashboard_theme_scope.sql in Supabase.",
+          "Could not save — run supabase/sql/patches/club_dashboard_theme_scope_full_20261026.sql in Supabase.",
           "err"
         );
       } else {

@@ -24,7 +24,7 @@ import {
 import {
   applyClubDashboardTheme,
   loadClubDashboardTheme,
-} from "./club_theme_common.js";
+} from "./club_theme_common.js?v=20261026-theme-full";
 
 const MAX_OWNER_TAG_LEN = 64;
 
