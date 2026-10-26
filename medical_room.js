@@ -147,7 +147,11 @@ function renderTokens() {
       const rec = Number(inj.recovery_remaining) || 0;
       const phase =
         out > 0
-          ? `Injured — returning to light training in ${out} match${out === 1 ? "" : "es"}`
+          ? `Injured — returning to light training in ${out} match${out === 1 ? "" : "es"}${
+              rec > 0
+                ? `; then ${rec} match${rec === 1 ? "" : "es"} of light training before available`
+                : "; then available"
+            }`
           : `Building fitness — match availability in ${rec} match${rec === 1 ? "" : "es"}`;
       const used = !!inj.token_used;
       const usable = usableConsults();

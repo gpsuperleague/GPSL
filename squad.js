@@ -54,7 +54,7 @@ import {
   injuriesByPlayerId,
   formatInjuryStatusHtml,
   formatCardsStatusHtml,
-} from "./player_discipline.js?v=20260717-appeal-pending";
+} from "./player_discipline.js?v=20261026-injury-detail";
 import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,

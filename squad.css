@@ -1093,8 +1093,8 @@ body.squad-page .status-pill.status-recovery {
 
 body.squad-page .squad-col-status {
   white-space: normal;
-  min-width: 140px;
-  max-width: 220px;
+  min-width: 160px;
+  max-width: 320px;
 }
 
 body.squad-page .status-suspended {

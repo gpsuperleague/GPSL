@@ -355,6 +355,57 @@ export function injuriesByPlayerId(injuries) {
   return map;
 }
 
+function matchWord(n) {
+  return `${n} match${n === 1 ? "" : "es"}`;
+}
+
+/** Full pending fixture labels (no truncation). */
+function injuryPendingMatchesHtml(pendingMatches) {
+  const pending = Array.isArray(pendingMatches) ? pendingMatches : [];
+  const outLabels = pending
+    .filter((m) => m?.phase === "out" && m.label)
+    .map((m) => m.label);
+  const recLabels = pending
+    .filter((m) => m?.phase === "recovery" && m.label)
+    .map((m) => m.label);
+  const otherLabels = pending
+    .filter((m) => m?.label && m.phase !== "out" && m.phase !== "recovery")
+    .map((m) => m.label);
+
+  const lines = [];
+  if (outLabels.length) {
+    lines.push(`Out: ${outLabels.join(", ")}`);
+  }
+  if (recLabels.length) {
+    lines.push(`Light training: ${recLabels.join(", ")}`);
+  }
+  if (otherLabels.length) {
+    lines.push(otherLabels.join(", "));
+  }
+  if (!lines.length) {
+    const fallback = pending.map((m) => m?.label).filter(Boolean);
+    if (!fallback.length) return "";
+    return `<br>Misses: ${fallback.join(", ")}`;
+  }
+  return `<br>${lines.join("<br>")}`;
+}
+
+function injuryOutPhaseDetail(outLeft, recLeft) {
+  const back = `Returning to light training in ${matchWord(outLeft)}`;
+  if (recLeft > 0) {
+    return `${back}<br>then ${matchWord(recLeft)} of light training before available`;
+  }
+  return `${back}<br>then available (no light-training matches left)`;
+}
+
+function injuryOutPhaseTitle(outLeft, recLeft) {
+  const back = `Returning to light training in ${matchWord(outLeft)}`;
+  if (recLeft > 0) {
+    return `${back}; then ${matchWord(recLeft)} of light training before available`;
+  }
+  return `${back}; then available`;
+}
+
 /** @param {any[]} injuryRows */
 export function formatInjuryStatusHtml(injuryRows) {
   if (!injuryRows?.length) return "";
@@ -363,19 +414,14 @@ export function formatInjuryStatusHtml(injuryRows) {
       const label = inj.label || "Injury";
       const outLeft = Number(inj.matches_out_remaining) || 0;
       const recLeft = Number(inj.recovery_remaining) || 0;
-      const pending = (inj.pending_matches || [])
-        .map((m) => m.label)
-        .filter(Boolean);
-      const pendingText = pending.length
-        ? ` — ${pending.slice(0, 2).join(", ")}${pending.length > 2 ? "…" : ""}`
-        : "";
+      const pendingText = injuryPendingMatchesHtml(inj.pending_matches);
 
       if (outLeft > 0 || inj.phase === "out") {
-        const detail = `Returning to light training in ${outLeft} match${outLeft === 1 ? "" : "es"}`;
-        const title = `Injured — ${label} — ${detail}`;
+        const detail = injuryOutPhaseDetail(outLeft, recLeft);
+        const title = `Injured — ${label} — ${injuryOutPhaseTitle(outLeft, recLeft)}`;
         return `<div class="squad-status-lines"><span class="status-pill status-injured" title="${title}">Injured<br>${label}<br>${detail}${pendingText}</span></div>`;
       }
-      const detail = `Returning to Match availability in ${recLeft} match${recLeft === 1 ? "" : "es"}`;
+      const detail = `Returning to match availability in ${matchWord(recLeft)}`;
       const title = `Building Fitness & Match sharpness — ${label} — ${detail}`;
       return `<div class="squad-status-lines"><span class="status-pill status-recovery" title="${title}">Building Fitness &amp; Match sharpness<br>${label}<br>${detail}${pendingText}</span></div>`;
     })
@@ -391,12 +437,12 @@ export function formatInjuryBadgeHtml(injuryRows) {
       const outLeft = Number(inj.matches_out_remaining) || 0;
       const recLeft = Number(inj.recovery_remaining) || 0;
       if (outLeft > 0 || inj.phase === "out") {
-        const detail = `Returning to light training in ${outLeft} match${outLeft === 1 ? "" : "es"}`;
-        const title = `Injured — ${label} — ${detail}`;
+        const detail = injuryOutPhaseDetail(outLeft, recLeft);
+        const title = `Injured — ${label} — ${injuryOutPhaseTitle(outLeft, recLeft)}`;
         const body = `Injured<br>${label}<br>${detail}`;
         return `<span class="injury-badge injury-badge-out" title="${title}">${body}</span>`;
       }
-      const detail = `Returning to Match availability in ${recLeft} match${recLeft === 1 ? "" : "es"}`;
+      const detail = `Returning to match availability in ${matchWord(recLeft)}`;
       const title = `Building Fitness & Match sharpness — ${label} — ${detail}`;
       const body = `Building Fitness &amp; Match sharpness<br>${label}<br>${detail}`;
       return `<span class="injury-badge injury-badge-recovery" title="${title}">${body}</span>`;
