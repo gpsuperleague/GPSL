@@ -163,7 +163,7 @@ const SQUAD_CONTRACT_WINDOW_COLUMNS =
 const SQUAD_PLAYER_COLUMNS_LEGACY =
   "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed, contract_seasons_remaining, contract_wage";
 
-const SQUAD_TABLE_COLS = 15;
+const SQUAD_TABLE_COLS = 16;
 
 const SQUAD_COLGROUP_HTML = `<colgroup>
   <col class="squad-col-thumb" />
@@ -176,6 +176,7 @@ const SQUAD_COLGROUP_HTML = `<colgroup>
   <col class="squad-col-stat" />
   <col class="squad-col-stat" />
   <col class="squad-col-stat" />
+  <col class="squad-col-fitness" />
   <col class="squad-col-playstyle" />
   <col class="squad-col-value" />
   <col class="squad-col-contract" />
@@ -194,12 +195,21 @@ const SQUAD_COLUMN_HEADER_CELLS = [
   ["squad-col-stat", "G"],
   ["squad-col-stat", "A"],
   ["squad-col-stat", "Avg"],
+  ["squad-col-fitness", "Match Fitness"],
   ["squad-col-playstyle", "Playstyle"],
   ["squad-col-value", "Market Value"],
   ["squad-col-contract", "Contract"],
   ["squad-col-status", "Status"],
   ["squad-col-action", "Action"],
 ];
+
+const MATCH_FITNESS_LABELS = {
+  1: "Fully Fit",
+  2: "Match Ready",
+  3: "Managing Load",
+  4: "Fitness Concern",
+  5: "Injury Risk",
+};
 
 let squadColumnWidthResizeTimer = null;
 
@@ -217,7 +227,9 @@ function createSquadSectionColumnHeaderRow() {
             ? SQUAD_TIPS.assists
             : label === "Avg"
               ? SQUAD_TIPS.avg
-              : "");
+              : label === "Match Fitness"
+                ? SQUAD_TIPS.matchFitness
+                : "");
     return `<th scope="col"${tipAttrs(tip, cls)}>${label}</th>`;
   }).join("");
   return tr;
@@ -292,6 +304,8 @@ let transferStatusState = null;
 let squadSuspensionsByPlayer = new Map();
 /** @type {Map<string, any[]>} */
 let squadInjuriesByPlayer = new Map();
+/** @type {Map<string, { level: number, label: string, consecutive: number }>} */
+let squadMatchFitnessByPlayer = new Map();
 /** @type {Map<string, { yellows: number, reds: number }>} */
 let squadCardsByPlayer = new Map();
 /** Tokens / appeal cards available for squad Action menu */
@@ -1449,6 +1463,7 @@ async function loadSquad() {
   squadSuspensionsByPlayer = suspensionsByPlayerId(suspensionList);
   squadInjuriesByPlayer = injuriesByPlayerId(discipline.injuries);
   squadCardsByPlayer = cardsByPlayerId(discipline.cards);
+  await loadSquadMatchFitness(currentUserShort);
   await loadSquadRewardContext();
   if (!transferStatusState.currentSeasonLabel && currentGpslSeasonLabel) {
     transferStatusState.currentSeasonLabel = currentGpslSeasonLabel;
@@ -1867,6 +1882,7 @@ function ghostPlayerRowHtml(p, playerCell) {
         <td class="num squad-col-goals squad-ghost-muted">—</td>
         <td class="num squad-col-assists squad-ghost-muted">—</td>
         <td class="num squad-col-avg squad-ghost-muted">—</td>
+        <td class="squad-col-fitness squad-ghost-muted">—</td>
         <td class="squad-col-playstyle gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.playstyle)}>${p.Playstyle || "-"}</td>
         <td class="squad-col-value gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.marketValue)}><span class="money squad-ghost-muted">₿ ${Number(p.market_value || 0).toLocaleString("en-GB")}</span></td>
         <td class="squad-col-contract squad-ghost-muted gpsl-has-tip"${tipDataAttrs(ghostContractTip(p))}>${ghostContractCellLabel(p)}</td>
@@ -1883,6 +1899,50 @@ function formatSeasonStat(row, key, fallback = "—") {
   const v = row[key];
   if (v == null || v === "") return fallback;
   return v;
+}
+
+function formatMatchFitnessCell(playerId) {
+  const row = squadMatchFitnessByPlayer.get(String(playerId));
+  const level = Math.max(1, Math.min(5, Number(row?.level) || 1));
+  const label =
+    row?.label || MATCH_FITNESS_LABELS[level] || MATCH_FITNESS_LABELS[1];
+  const streak = Number(row?.consecutive) || 0;
+  const cls =
+    level >= 5
+      ? "squad-fitness squad-fitness-5"
+      : level >= 4
+        ? "squad-fitness squad-fitness-4"
+        : level >= 3
+          ? "squad-fitness squad-fitness-3"
+          : "squad-fitness";
+  const title = `L${level} ${label}${streak ? ` · ${streak} consecutive` : ""}`;
+  return `<span class="${cls}" title="${title.replace(/"/g, "&quot;")}">L${level} ${label}</span>`;
+}
+
+async function loadSquadMatchFitness(clubShort) {
+  squadMatchFitnessByPlayer = new Map();
+  if (!clubShort) return;
+  try {
+    const { data, error } = await supabase.rpc("club_match_fitness_map", {
+      p_club: clubShort,
+    });
+    if (error) {
+      if (!/club_match_fitness_map|schema cache|Could not find/i.test(error.message || "")) {
+        console.warn("club_match_fitness_map:", error.message);
+      }
+      return;
+    }
+    const by = data?.by_player && typeof data.by_player === "object" ? data.by_player : {};
+    for (const [pid, v] of Object.entries(by)) {
+      squadMatchFitnessByPlayer.set(String(pid), {
+        level: Number(v?.level) || 1,
+        label: v?.label || MATCH_FITNESS_LABELS[Number(v?.level) || 1],
+        consecutive: Number(v?.consecutive) || 0,
+      });
+    }
+  } catch (err) {
+    console.warn("club_match_fitness_map:", err);
+  }
 }
 
 function renderSquad(players, transferState, statsByPlayer = new Map(), designationsState = null, ghostPlayers = []) {
@@ -2001,6 +2061,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         <td class="num squad-col-goals gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.goals)}>${formatSeasonStat(st, "goals", "0")}</td>
         <td class="num squad-col-assists gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.assists)}>${formatSeasonStat(st, "assists", "0")}</td>
         <td class="num squad-col-avg gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.avg)}>${avg}</td>
+        <td class="squad-col-fitness gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.matchFitness)}>${formatMatchFitnessCell(pid)}</td>
         <td class="squad-col-playstyle gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.playstyle)}>${p.Playstyle || "-"}</td>
         <td class="squad-col-value gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.marketValue)}><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
         <td class="squad-col-contract gpsl-has-tip"${tipDataAttrs(

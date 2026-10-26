@@ -33,9 +33,16 @@ function renderSettings() {
     <div><label>Max major / season</label><input id="max_major" type="number" min="0" value="${s.max_major ?? 1}"></div>
     <div><label>Max moderate / season</label><input id="max_moderate" type="number" min="0" value="${s.max_moderate ?? 2}"></div>
     <div><label>Max minor / season</label><input id="max_minor" type="number" min="0" value="${s.max_minor ?? 4}"></div>
-    <div><label>Max total / season</label><input id="max_total" type="number" min="0" value="${s.max_total ?? 4}"></div>
+    <div><label>Max total injuries / club / season</label><input id="max_total" type="number" min="0" value="${s.max_total ?? 4}"></div>
     <div><label>Base chance / club match (pace off)</label><input id="base_match_chance" type="number" step="0.01" min="0" max="1" value="${s.base_match_chance ?? 0.09}"></div>
     <div><label>Cooldown matches after injury</label><input id="cooldown_matches" type="number" min="0" value="${s.cooldown_matches ?? 5}"></div>
+    <div><label>Match fitness: consecutive apps to L5</label><input id="fitness_matches_to_max" type="number" min="1" value="${s.fitness_matches_to_max ?? 4}"></div>
+    <div><label>Fitness return level (after injury)</label><input id="fitness_return_level" type="number" min="1" max="5" value="${s.fitness_return_level ?? 2}"></div>
+    <div><label>Fitness weight L1 Fully Fit</label><input id="fitness_weight_l1" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l1 ?? 0.5}"></div>
+    <div><label>Fitness weight L2 Match Ready</label><input id="fitness_weight_l2" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l2 ?? 0.75}"></div>
+    <div><label>Fitness weight L3 Managing Load</label><input id="fitness_weight_l3" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l3 ?? 1}"></div>
+    <div><label>Fitness weight L4 Fitness Concern</label><input id="fitness_weight_l4" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l4 ?? 1.4}"></div>
+    <div><label>Fitness weight L5 Injury Risk</label><input id="fitness_weight_l5" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l5 ?? 1.85}"></div>
     <div><label>Pace over season</label>
       <select id="pace_enabled">
         <option value="true" ${(s.pace_enabled !== false) ? "selected" : ""}>On (spread quota)</option>
@@ -79,6 +86,13 @@ function readSettingsFromForm() {
     ),
     risk_min: Number(document.getElementById("risk_min").value),
     risk_max: Number(document.getElementById("risk_max").value),
+    fitness_matches_to_max: Number(document.getElementById("fitness_matches_to_max").value),
+    fitness_return_level: Number(document.getElementById("fitness_return_level").value),
+    fitness_weight_l1: Number(document.getElementById("fitness_weight_l1").value),
+    fitness_weight_l2: Number(document.getElementById("fitness_weight_l2").value),
+    fitness_weight_l3: Number(document.getElementById("fitness_weight_l3").value),
+    fitness_weight_l4: Number(document.getElementById("fitness_weight_l4").value),
+    fitness_weight_l5: Number(document.getElementById("fitness_weight_l5").value),
   };
 }
 

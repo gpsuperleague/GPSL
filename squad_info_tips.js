@@ -41,6 +41,9 @@ export const SQUAD_TIPS = {
 
   avg: "Average match rating this GPSL season (when recorded).",
 
+  matchFitness:
+    "Match fitness level from consecutive league/cup appearances (cups count too). L1 Fully Fit → L5 Injury Risk. Playing raises the level; missing a club match drops one level. Higher levels are more likely to be picked if the club’s injury roll hits. Returning from injury starts around Match Ready (L2). Does not show the club’s secret injury-risk ratio.",
+
   playstyle:
     "Card playstyle (e.g. Goal Poacher, Anchor Man). Affects how the player plays in eFootball; shown here for squad planning.",
 
@@ -215,6 +218,7 @@ export const SQUAD_COLUMN_TIPS = {
   "squad-col-position": SQUAD_TIPS.position,
   "squad-col-age": SQUAD_TIPS.age,
   "squad-col-rating": SQUAD_TIPS.rating,
+  "squad-col-fitness": SQUAD_TIPS.matchFitness,
   "squad-col-playstyle": SQUAD_TIPS.playstyle,
   "squad-col-value": SQUAD_TIPS.marketValue,
   "squad-col-contract": SQUAD_TIPS.contractHeader,
