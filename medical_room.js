@@ -111,6 +111,109 @@ function renderHero() {
   `;
 }
 
+const FITNESS_WATCH_LABELS = {
+  1: "Fully Fit",
+  2: "Match Ready",
+  3: "Managing Load",
+  4: "Fitness Concern",
+  5: "Injury Risk",
+};
+
+function fitnessWatchMeterHtml(level) {
+  const lvl = Math.max(1, Math.min(5, Number(level) || 1));
+  const pips = [1, 2, 3, 4, 5]
+    .map(
+      (n) =>
+        `<span class="med-fit-pip med-fit-pip-${n}${n <= lvl ? " is-on" : ""}"></span>`
+    )
+    .join("");
+  return `<div class="med-fit-meter" aria-hidden="true">${pips}</div>`;
+}
+
+async function renderFitnessWatch() {
+  const host = document.getElementById("fitnessWatchList");
+  if (!host) return;
+
+  host.innerHTML = `<p class="med-muted">Loading match fitness…</p>`;
+
+  try {
+    const { data, error } = await supabase.rpc("club_match_fitness_map", {
+      p_club: null,
+    });
+    if (error) {
+      if (/club_match_fitness_map|schema cache|Could not find/i.test(error.message || "")) {
+        host.innerHTML = `<p class="med-muted">Match fitness not installed yet — run match_fitness_injury_weights_20261026.sql.</p>`;
+        return;
+      }
+      throw error;
+    }
+
+    const by = data?.by_player && typeof data.by_player === "object" ? data.by_player : {};
+    const elevated = Object.entries(by)
+      .map(([pid, v]) => ({
+        playerId: String(pid),
+        level: Math.max(1, Math.min(5, Number(v?.level) || 1)),
+        label: v?.label || FITNESS_WATCH_LABELS[Number(v?.level) || 1],
+        consecutive: Number(v?.consecutive) || 0,
+      }))
+      .filter((r) => r.level >= 3)
+      .sort(
+        (a, b) =>
+          b.level - a.level ||
+          b.consecutive - a.consecutive ||
+          a.playerId.localeCompare(b.playerId)
+      );
+
+    if (!elevated.length) {
+      host.innerHTML = `<p class="med-muted">No players at Managing Load or above — squad load looks fine.</p>`;
+      return;
+    }
+
+    const ids = elevated.map((r) => r.playerId);
+    const nameMap = new Map();
+    const { data: players, error: pErr } = await supabase
+      .from("Players")
+      .select("Konami_ID, Name, Position")
+      .in("Konami_ID", ids);
+    if (!pErr) {
+      for (const p of players || []) {
+        nameMap.set(String(p.Konami_ID), {
+          name: p.Name || String(p.Konami_ID),
+          position: p.Position || "",
+        });
+      }
+    }
+
+    host.innerHTML = elevated
+      .map((r) => {
+        const info = nameMap.get(r.playerId) || {
+          name: r.playerId,
+          position: "",
+        };
+        const streak =
+          r.consecutive > 0
+            ? `${r.consecutive} consecutive`
+            : "elevated load";
+        return `
+          <div class="fitness-watch-row med-fit-l${r.level}">
+            <div class="fitness-watch-main">
+              <strong>${info.name}</strong>
+              ${info.position ? `<span class="meta">${info.position}</span>` : ""}
+              <div class="meta">${streak}</div>
+            </div>
+            <div class="fitness-watch-level">
+              ${fitnessWatchMeterHtml(r.level)}
+              <span class="fitness-watch-label">${r.label}</span>
+            </div>
+          </div>`;
+      })
+      .join("");
+  } catch (err) {
+    console.warn("renderFitnessWatch:", err);
+    host.innerHTML = `<p class="med-muted">Could not load match fitness.</p>`;
+  }
+}
+
 function renderTokens() {
   const vault = document.getElementById("tokenVault");
   const list = document.getElementById("injuryList");
@@ -385,6 +488,7 @@ async function loadState() {
   renderDoctor();
   renderPhysios();
   renderTokens();
+  await renderFitnessWatch();
 }
 
 async function hireDoctor() {

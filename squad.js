@@ -149,7 +149,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20261014-ff-wage";
+} from "./squad_info_tips.js?v=20261026-fit-injury-scale";
 
 window.supabase = supabase;
 

@@ -216,6 +216,43 @@ body.medical-page {
   box-shadow: none;
 }
 
+.fitness-watch-list { display: flex; flex-direction: column; gap: 10px; }
+.fitness-watch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f161c;
+  border: 1px solid #33444e;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.fitness-watch-row.med-fit-l3 { border-color: #6a5a20; }
+.fitness-watch-row.med-fit-l4 { border-color: #8a4a18; }
+.fitness-watch-row.med-fit-l5 { border-color: #8a2a2a; background: #161012; }
+.fitness-watch-main strong { color: #e8f4ff; }
+.fitness-watch-main .meta { font-size: 12px; color: #8aa; margin-top: 2px; display: inline-block; margin-right: 8px; }
+.fitness-watch-level { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 7.5rem; }
+.med-fit-meter { display: flex; gap: 3px; width: 7.5rem; }
+.med-fit-pip {
+  flex: 1;
+  height: 8px;
+  border-radius: 2px;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+}
+.med-fit-pip.is-on.med-fit-pip-1 { background: #27ae60; border-color: #2ecc71; }
+.med-fit-pip.is-on.med-fit-pip-2 { background: #52b788; border-color: #74c69d; }
+.med-fit-pip.is-on.med-fit-pip-3 { background: #f1c40f; border-color: #f4d03f; }
+.med-fit-pip.is-on.med-fit-pip-4 { background: #e67e22; border-color: #f39c12; }
+.med-fit-pip.is-on.med-fit-pip-5 { background: #e74c3c; border-color: #ff6b5a; }
+.fitness-watch-label { font-size: 12px; font-weight: 700; }
+.med-fit-l3 .fitness-watch-label { color: #f1c40f; }
+.med-fit-l4 .fitness-watch-label { color: #e67e22; }
+.med-fit-l5 .fitness-watch-label { color: #e74c3c; }
+.med-muted { color: #8aa; font-size: 13px; margin: 0; }
+
 .injury-list { display: flex; flex-direction: column; gap: 10px; }
 
 .injury-row {

@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
-  <link rel="stylesheet" href="medical_room.css">
+  <link rel="stylesheet" href="medical_room.css?v=20261026-fitness-watch">
 </head>
 <body class="medical-page">
   <div id="nav"></div>
@@ -78,6 +78,12 @@
       <div class="staff-grid" id="physioSlots"></div>
     </section>
 
+    <section class="med-panel" id="fitnessWatchPanel">
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Players at Managing Load (L3) or higher. Consecutive league/cup appearances raise the meter; rest drops it. Injured players sit at Injury Risk and ease back toward Match Ready as they recover." tabindex="0">Match fitness watch</h2>
+      <p class="med-intro">Squad players currently at <b>Managing Load</b> or above — higher load, worth rotating. Injured players show as Injury Risk until they work back toward Match Ready.</p>
+      <div class="fitness-watch-list" id="fitnessWatchList"></div>
+    </section>
+
     <section class="med-panel" id="tokenPanel">
       <h2 class="gpsl-has-tip" data-gpsl-tip="After the doctor assesses an injury, spend one consult token (−2 / −4 / −6 / −8 / −10 matches), capped at half of matches still left (e.g. 18 left + −10 → remove 9). One consult per injury. Same tokens work from Rewards Centre and Squad Action." tabindex="0">Specialist consultants</h2>
       <p class="med-intro" id="medConsultantsIntro"><!-- Filled by medical_room_rules.js --></p>
@@ -87,6 +93,6 @@
     </section>
   </main>
 
-  <script type="module" src="medical_room.js?v=20261026-injury-detail"></script>
+  <script type="module" src="medical_room.js?v=20261026-fit-injury-scale"></script>
 </body>
 </html>
