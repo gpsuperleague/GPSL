@@ -20,14 +20,90 @@
     h1 {
       text-align: center;
       color: #ff9900;
-      margin-top: 20px;
+      margin: 20px 0 8px;
+    }
+
+    .clubs-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      align-items: end;
+      justify-content: center;
+      max-width: 960px;
+      margin: 0 auto 18px;
+      padding: 0 16px;
+    }
+
+    .clubs-toolbar label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #aaa;
+      min-width: min(100%, 220px);
+    }
+
+    .clubs-toolbar select {
+      background: #1a1a1a;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 13px;
+      min-width: 220px;
+    }
+
+    .clubs-toolbar .button {
+      padding: 8px 14px;
+      background: #333;
+      color: #ddd;
+      border: 1px solid #555;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      height: 36px;
+    }
+
+    .clubs-toolbar .button:hover {
+      border-color: #ff9900;
+      color: #ff9900;
+    }
+
+    .clubs-sections {
+      max-width: 1200px;
+      margin: 0 auto 40px;
+      padding: 0 12px;
+    }
+
+    .clubs-section {
+      margin-bottom: 28px;
+    }
+
+    .clubs-section[hidden] {
+      display: none;
+    }
+
+    .clubs-section-title {
+      color: #ff9900;
+      font-size: 18px;
+      margin: 0 0 12px;
+      padding: 0 8px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 8px;
+    }
+
+    .clubs-section-title .count {
+      color: #888;
+      font-size: 13px;
+      font-weight: normal;
+      margin-left: 8px;
     }
 
     .club-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 20px;
-      padding: 20px;
+      padding: 8px;
     }
 
     .club-card {
@@ -40,7 +116,8 @@
       transition: 0.2s;
     }
 
-    .club-card:hover {
+    .club-card:hover,
+    .club-card.is-focus {
       transform: scale(1.05);
       border-color: #ff9900;
     }
@@ -51,6 +128,36 @@
       object-fit: contain;
       margin-bottom: 10px;
     }
+
+    .club-card .club-name {
+      color: #eee;
+      font-weight: 600;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    .club-card .club-owner {
+      color: #9ab;
+      font-size: 11px;
+      margin-top: 6px;
+      line-height: 1.3;
+    }
+
+    .club-card .club-div-tag {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 10px;
+      color: #888;
+      border: 1px solid #444;
+      border-radius: 999px;
+      padding: 1px 7px;
+    }
+
+    .clubs-empty {
+      text-align: center;
+      color: #888;
+      padding: 24px;
+    }
   </style>
 </head>
 
@@ -60,9 +167,26 @@
 
   <h1>Clubs</h1>
 
-  <div id="clubs" class="club-grid"></div>
+  <div class="clubs-toolbar">
+    <label>
+      Search club
+      <select id="clubSearch" aria-label="Search club">
+        <option value="">All clubs</option>
+      </select>
+    </label>
+    <label>
+      Search by owner
+      <select id="ownerSearch" aria-label="Search by owner">
+        <option value="">All owners</option>
+      </select>
+    </label>
+    <button type="button" id="clearClubFilters" class="button">Clear</button>
+  </div>
 
-  <script type="module" src="clubs.js"></script>
+  <div id="clubsSections" class="clubs-sections"></div>
+  <p id="clubsEmpty" class="clubs-empty" hidden>No clubs match the current filters.</p>
+
+  <script type="module" src="clubs.js?v=20261026-sections-search"></script>
 
 </body>
 </html>
