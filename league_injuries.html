@@ -13,9 +13,11 @@
     h1 { color:#ff9900; margin:0 0 8px; }
     .note { color:#aaa; margin:0 0 18px; line-height:1.45; }
     .summary {
-      display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:12px;
+      display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:12px;
       margin:0 0 18px;
     }
+    a.gpsl-link { color:#9cf; text-decoration:none; }
+    a.gpsl-link:hover { text-decoration:underline; color:#b8d4ff; }
     .card {
       background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:14px 16px;
     }
@@ -34,7 +36,10 @@
       background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:16px;
     }
     .error { color:#f88; }
-    @media (max-width: 900px) {
+    @media (max-width: 1100px) {
+      .summary { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 700px) {
       .summary { grid-template-columns:repeat(2, minmax(0, 1fr)); }
     }
   </style>
@@ -46,6 +51,7 @@
     <p class="note">
       Club-by-club injury view for the current season. <b>Season total</b> counts all injuries recorded this season.
       <b>Current injuries</b> counts active injuries still keeping players out. Low / medium / long term map to minor / moderate / major.
+      Club names open that club’s page. <b>Longest out</b> is the active injury with the most matches still remaining.
     </p>
 
     <div class="summary" id="injurySummary">
@@ -54,12 +60,13 @@
       <div class="card"><div class="metric-label">Current Injuries</div><div class="metric-value">—</div></div>
       <div class="card"><div class="metric-label">Long Term</div><div class="metric-value">—</div></div>
       <div class="card"><div class="metric-label">Worst Hit Club</div><div class="metric-value" style="font-size:18px">—</div></div>
+      <div class="card"><div class="metric-label">Longest Out</div><div class="metric-value" style="font-size:18px">—</div></div>
     </div>
 
     <div id="leagueInjuriesStatus" class="note">Loading injuries…</div>
     <div class="table-wrap" id="leagueInjuriesTableWrap"></div>
   </div>
 
-  <script type="module" src="league_injuries.js?v=20260908-league-injuries"></script>
+  <script type="module" src="league_injuries.js?v=20261026-league-injuries"></script>
 </body>
 </html>
