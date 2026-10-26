@@ -682,7 +682,7 @@
       loadClubActiveInjuries,
       injuriesByPlayerId,
       formatInjuryBadgeHtml,
-    } from "./player_discipline.js?v=20261026-injury-detail";
+    } from "./player_discipline.js?v=20261026-club-squad-lwf";
     import { SAME_SEASON_TRANSFER_MESSAGE } from "./player_season_transfer.js";
     import {
       confirmSquadRulesBeforeBid,
@@ -876,10 +876,11 @@
     }
 
     const POSITION_GROUPS = {
-      "Goalkeepers": ["GK"],
-      "Defenders": ["LB", "CB", "RB"],
-      "Midfielders": ["DMF", "LMF", "CMF", "RMF", "AMF"],
-      "Attackers": ["SS", "LW", "CF", "RW"]
+      Goalkeepers: ["GK"],
+      Defenders: ["LB", "CB", "RB"],
+      Midfielders: ["DMF", "LMF", "CMF", "RMF", "AMF"],
+      // LWF/RWF are the live GPDB codes; LW/RW kept for any legacy rows
+      Attackers: ["LW", "LWF", "SS", "RW", "RWF", "CF"],
     };
 
     function clubOfferCellHtml(p) {
@@ -943,20 +944,11 @@
       const container = document.getElementById("squadContainer");
       container.innerHTML = "";
 
-      for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
-
-        const groupPlayers = data
-          .filter(p => positions.includes(p.Position))
-          .sort((a, b) => {
-            const posA = positions.indexOf(a.Position);
-            const posB = positions.indexOf(b.Position);
-            if (posA !== posB) return posA - posB;
-            return b.market_value - a.market_value;
-          });
-
-        if (!groupPlayers.length) continue;
-
-               container.innerHTML += `
+      const rows = Array.isArray(data) ? data : [];
+      const groupedIds = new Set();
+      const renderGroup = (groupName, groupPlayers) => {
+        if (!groupPlayers.length) return;
+        container.innerHTML += `
           <h2 class="section-title">${groupName}</h2>
           <div class="panel">
             <div class="club-table-scroll">
@@ -974,23 +966,26 @@
                 </tr>
               </thead>
               <tbody>
-                ${groupPlayers.map(p => {
-                  const pid = String(p.Konami_ID);
-                  const suspRows = clubSuspensionsByPlayer.get(pid) || [];
-                  const injuryRows = clubInjuriesByPlayer.get(pid) || [];
-                  const suspBadge = formatSuspensionBadgeHtml(suspRows);
-                  const injuryBadge = formatInjuryBadgeHtml(injuryRows);
-                  const injuredOut = injuryRows.some(
-                    (i) => (Number(i.matches_out_remaining) || 0) > 0 || i.phase === "out"
-                  );
-                  const rowClass = suspRows.length
-                    ? ' class="club-row-suspended"'
-                    : injuredOut
-                      ? ' class="club-row-injured"'
-                      : injuryRows.length
-                        ? ' class="club-row-recovery"'
-                        : "";
-                  return `
+                ${groupPlayers
+                  .map((p) => {
+                    const pid = String(p.Konami_ID);
+                    const suspRows = clubSuspensionsByPlayer.get(pid) || [];
+                    const injuryRows = clubInjuriesByPlayer.get(pid) || [];
+                    const suspBadge = formatSuspensionBadgeHtml(suspRows);
+                    const injuryBadge = formatInjuryBadgeHtml(injuryRows);
+                    const injuredOut = injuryRows.some(
+                      (i) =>
+                        (Number(i.matches_out_remaining) || 0) > 0 ||
+                        i.phase === "out"
+                    );
+                    const rowClass = suspRows.length
+                      ? ' class="club-row-suspended"'
+                      : injuredOut
+                        ? ' class="club-row-injured"'
+                        : injuryRows.length
+                          ? ' class="club-row-recovery"'
+                          : "";
+                    return `
                   <tr${rowClass}>
                     <td class="club-col-thumb">${playerThumbLinkHtml(p.Konami_ID, {
                       className: "club-thumb",
@@ -998,18 +993,46 @@
                     })}</td>
                     <td>${playerNameLinkHtml(p.Konami_ID, p.Name)}${injuryBadge}${suspBadge}</td>
                     <td>${p.Nation}</td>
-                    <td>${p.Position}</td>
+                    <td>${p.Position || "—"}</td>
                     <td>${p.Rating}</td>
                     <td>₿ ${Number(p.market_value).toLocaleString("en-GB")}</td>
                     <td>${p.Playstyle || "-"}</td>
                     <td>${clubOfferCellHtml(p)}</td>
                   </tr>`;
-                }).join("")}
+                  })
+                  .join("")}
               </tbody>
             </table>
             </div>
           </div>
         `;
+      };
+
+      for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
+        const groupPlayers = rows
+          .filter((p) => positions.includes(p.Position))
+          .sort((a, b) => {
+            const posA = positions.indexOf(a.Position);
+            const posB = positions.indexOf(b.Position);
+            if (posA !== posB) return posA - posB;
+            return (Number(b.market_value) || 0) - (Number(a.market_value) || 0);
+          });
+        groupPlayers.forEach((p) => groupedIds.add(String(p.Konami_ID)));
+        renderGroup(groupName, groupPlayers);
+      }
+
+      // Never silently drop players with unexpected / blank positions
+      const otherPlayers = rows
+        .filter((p) => !groupedIds.has(String(p.Konami_ID)))
+        .sort(
+          (a, b) =>
+            (Number(b.market_value) || 0) - (Number(a.market_value) || 0)
+        );
+      renderGroup("Other", otherPlayers);
+
+      if (!rows.length) {
+        container.innerHTML =
+          '<p class="note" style="color:#aaa;">No players currently contracted to this club.</p>';
       }
     }
 

@@ -54,7 +54,7 @@ import {
   injuriesByPlayerId,
   formatInjuryStatusHtml,
   formatCardsStatusHtml,
-} from "./player_discipline.js?v=20261026-injury-detail";
+} from "./player_discipline.js?v=20261026-club-squad-lwf";
 import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,

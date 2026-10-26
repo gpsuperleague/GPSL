@@ -152,13 +152,13 @@ export function formatSuspensionStatusHtml(rows) {
   const unique = pendingMatchLabels(rows);
   const head = pendingReview ? "Suspended — Pending review" : "Suspended";
   if (unique.length) {
-    const matches = unique.slice(0, 2).join("<br>") + (unique.length > 2 ? "<br>…" : "");
+    const matches = unique.join("<br>");
     return `<div class="squad-status-lines"><span class="status-pill status-suspended" title="${title}">${head}<br>${matches}</span></div>`;
   }
   return `<div class="squad-status-lines"><span class="status-pill status-suspended" title="${title}">${label}</span></div>`;
 }
 
-/** Compact badge for name cells (GPDB / club). */
+/** Compact badge for name cells (GPDB / club). Full pending match list. */
 export function formatSuspensionBadgeHtml(rows) {
   if (!rows?.length) return "";
   const pendingReview = anyAppealPending(rows);
@@ -168,9 +168,7 @@ export function formatSuspensionBadgeHtml(rows) {
       ? `Suspended — Pending review (${unique.join(", ")})`
       : "Suspended — Pending review";
     const body = unique.length
-      ? `Suspended — Pending review<br>${unique.slice(0, 2).join("<br>")}${
-          unique.length > 2 ? "<br>…" : ""
-        }`
+      ? `Suspended — Pending review<br>${unique.join("<br>")}`
       : "Suspended — Pending review";
     return `<span class="suspension-badge" title="${title}">${body}</span>`;
   }
@@ -180,7 +178,7 @@ export function formatSuspensionBadgeHtml(rows) {
     return `<span class="suspension-badge" title="${fallback}">${fallback}</span>`;
   }
   const title = `Suspended — ${unique.join(", ")}`;
-  const body = `Suspended<br>${unique.slice(0, 2).join("<br>")}${unique.length > 2 ? "<br>…" : ""}`;
+  const body = `Suspended<br>${unique.join("<br>")}`;
   return `<span class="suspension-badge" title="${title}">${body}</span>`;
 }
 
@@ -428,7 +426,7 @@ export function formatInjuryStatusHtml(injuryRows) {
     .join("");
 }
 
-/** Compact badge for club.html name cells (multi-line so it wraps in the column). */
+/** Compact badge for club.html name cells (multi-line). Includes full miss list. */
 export function formatInjuryBadgeHtml(injuryRows) {
   if (!injuryRows?.length) return "";
   return injuryRows
@@ -436,15 +434,16 @@ export function formatInjuryBadgeHtml(injuryRows) {
       const label = inj.label || "Injury";
       const outLeft = Number(inj.matches_out_remaining) || 0;
       const recLeft = Number(inj.recovery_remaining) || 0;
+      const pendingText = injuryPendingMatchesHtml(inj.pending_matches);
       if (outLeft > 0 || inj.phase === "out") {
         const detail = injuryOutPhaseDetail(outLeft, recLeft);
         const title = `Injured — ${label} — ${injuryOutPhaseTitle(outLeft, recLeft)}`;
-        const body = `Injured<br>${label}<br>${detail}`;
+        const body = `Injured<br>${label}<br>${detail}${pendingText}`;
         return `<span class="injury-badge injury-badge-out" title="${title}">${body}</span>`;
       }
       const detail = `Returning to match availability in ${matchWord(recLeft)}`;
       const title = `Building Fitness & Match sharpness — ${label} — ${detail}`;
-      const body = `Building Fitness &amp; Match sharpness<br>${label}<br>${detail}`;
+      const body = `Building Fitness &amp; Match sharpness<br>${label}<br>${detail}${pendingText}`;
       return `<span class="injury-badge injury-badge-recovery" title="${title}">${body}</span>`;
     })
     .join("");
