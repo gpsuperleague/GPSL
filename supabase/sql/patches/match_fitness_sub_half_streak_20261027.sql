@@ -228,13 +228,25 @@ BEGIN
       CONTINUE;
     END IF;
 
+    -- Reset first: SELECT INTO keeps prior loop values when NOT FOUND
+    v_streak := 0;
+    v_level := 1;
+    v_started := false;
+    v_subbed := false;
+    v_credit := 0;
+
     SELECT f.consecutive_appearances, f.fitness_level
     INTO v_streak, v_level
     FROM public.competition_player_match_fitness f
     WHERE f.season_id = v_fixture.season_id AND f.player_id = v_pid;
 
-    v_streak := coalesce(v_streak, 0);
-    v_level := coalesce(v_level, 1);
+    IF NOT FOUND THEN
+      v_streak := 0;
+      v_level := 1;
+    ELSE
+      v_streak := coalesce(v_streak, 0);
+      v_level := coalesce(v_level, 1);
+    END IF;
 
     SELECT
       coalesce(bool_or(m.started), false),
