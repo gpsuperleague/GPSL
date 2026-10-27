@@ -48,6 +48,10 @@ import { playerNameLinkHtml } from "./player_links.js";
 import { loadCurrentSeasonStart } from "./finance_transfers.js";
 import { formatTimeRemainingHtml, getCountdownParts } from "./countdown_display.js";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js";
+import {
+  loadActiveInjuriesForPlayers,
+  formatListingInjuryMarkerHtml,
+} from "./player_discipline.js";
 
 /** Current competition season start — scopes Season Signings / Sales / Closed Listings. */
 let currentSeasonStartedAt = null;
@@ -413,9 +417,11 @@ async function loadActiveListings(shortName) {
   }
 
   const playerIds = listings.map((l) => l.player_id);
-  const players = await fetchPlayersMap(playerIds);
-
   const listingIds = listings.map((l) => l.id);
+  const [players, injuryMap] = await Promise.all([
+    fetchPlayersMap(playerIds),
+    loadActiveInjuriesForPlayers(supabase, playerIds),
+  ]);
   let bidsCountMap = new Map();
 
   if (listingIds.length > 0) {
@@ -450,6 +456,17 @@ async function loadActiveListings(shortName) {
           const endTime = row.end_time ? new Date(row.end_time) : null;
           const bidsCount = bidsCountMap.get(row.id) || 0;
           const forced = row.perpetual_renew === true;
+          const injury = injuryMap.get(String(row.player_id));
+          const injuryMarker = formatListingInjuryMarkerHtml(injury);
+          const injuredOut =
+            injury &&
+            ((Number(injury.matches_out_remaining) || 0) > 0 ||
+              injury.phase === "out");
+          const rowClass = injury
+            ? injuredOut
+              ? ' class="listing-row-injured"'
+              : ' class="listing-row-recovery"'
+            : "";
 
           let actionsHtml = "";
           const forcedNote = forced
@@ -475,8 +492,8 @@ async function loadActiveListings(shortName) {
           }
 
           return `
-            <tr>
-              <td>${playerLinkCell(row.player_id, player, name)}${forcedNote}${pendingNote}</td>
+            <tr${rowClass}>
+              <td>${playerLinkCell(row.player_id, player, name)}${injuryMarker}${forcedNote}${pendingNote}</td>
               <td>₿ ${reserve}</td>
               <td>${
                 pendingWindow

@@ -250,6 +250,35 @@
         grid-template-columns: 1fr;
       }
     }
+
+    .listing-injury {
+      display: block;
+      margin-top: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 4px;
+      padding: 2px 6px;
+      width: fit-content;
+      max-width: 100%;
+      line-height: 1.3;
+      white-space: normal;
+    }
+    .listing-injury-out {
+      color: #9ed4f0;
+      background: #1a3a4a;
+      border: 1px solid #3a6a8a;
+    }
+    .listing-injury-rec {
+      color: #c8e89a;
+      background: #2a3a1a;
+      border: 1px solid #5a7a3a;
+    }
+    tr.listing-row-injured td {
+      background: rgba(40, 90, 120, 0.16);
+    }
+    tr.listing-row-recovery td {
+      background: rgba(60, 100, 40, 0.12);
+    }
   </style>
 </head>
 
@@ -409,7 +438,7 @@
   <script type="module" src="global.js?v=20261004-hide-email"></script>
   <script type="module" src="global_ui.js"></script>
   <script type="module" src="clubs_lookup.js"></script>
-  <script type="module" src="transfer_center.js?v=20260813-pending-window-listings"></script>
+  <script type="module" src="transfer_center.js?v=20261027-listing-injury"></script>
 
 </body>
 </html>

@@ -536,6 +536,84 @@ export function formatInjuryBadgeHtml(injuryRows) {
     .join("");
 }
 
+function htmlEscapeText(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function htmlEscapeAttr(s) {
+  return htmlEscapeText(s).replace(/"/g, "&quot;");
+}
+
+/**
+ * Compact single-line injury marker for transfer market / listing name cells.
+ * Accepts a squad injury row or competition_active_injuries_for_players payload.
+ * @param {any} inj
+ */
+export function formatListingInjuryMarkerHtml(inj) {
+  if (!inj) return "";
+  const label = inj.label || "Injury";
+  const outLeft = Number(inj.matches_out_remaining) || 0;
+  const recLeft = Number(inj.recovery_remaining) || 0;
+  const isOut = outLeft > 0 || inj.phase === "out";
+  const safeLabel = htmlEscapeText(label);
+  if (isOut) {
+    const title = htmlEscapeAttr(
+      `Injured — ${label} — ${injuryOutPhaseTitle(outLeft, recLeft)}`
+    );
+    const left =
+      recLeft > 0 ? `${outLeft} out then ${recLeft} light` : `${outLeft} left`;
+    return `<span class="listing-injury listing-injury-out" title="${title}">Injured · ${safeLabel} · ${left}</span>`;
+  }
+  const title = htmlEscapeAttr(
+    `Building Fitness & Match sharpness — ${label} — Returning to match availability in ${matchWord(recLeft)}`
+  );
+  return `<span class="listing-injury listing-injury-rec" title="${title}">Recovering · ${safeLabel} · ${recLeft} light</span>`;
+}
+
+/**
+ * Compact injury map for transfer listings (player_id → payload).
+ * @param {import("@supabase/supabase-js").SupabaseClient} supabase
+ * @param {Array<string|number>} playerIds
+ * @returns {Promise<Map<string, any>>}
+ */
+export async function loadActiveInjuriesForPlayers(supabase, playerIds) {
+  /** @type {Map<string, any>} */
+  const map = new Map();
+  const ids = [
+    ...new Set((playerIds || []).map((id) => String(id)).filter(Boolean)),
+  ];
+  if (!ids.length) return map;
+
+  const { data, error } = await supabase.rpc(
+    "competition_active_injuries_for_players",
+    { p_player_ids: ids }
+  );
+  if (error) {
+    if (
+      /competition_active_injuries_for_players|schema cache|Could not find/i.test(
+        error.message || ""
+      )
+    ) {
+      console.warn(
+        "competition_active_injuries_for_players missing — run transfer_move_injury_fitness_20261027.sql"
+      );
+      return map;
+    }
+    console.error("competition_active_injuries_for_players:", error);
+    return map;
+  }
+
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    for (const [pid, payload] of Object.entries(data)) {
+      if (payload) map.set(String(pid), payload);
+    }
+  }
+  return map;
+}
+
 /** @param {{ yellows?: number, reds?: number }|null} cards */
 export function formatCardsStatusHtml(cards) {
   if (!cards) return "";
