@@ -160,12 +160,20 @@ BEGIN
     WHERE fixture_id = v_fid;
   END IF;
 
-  -- 2) Finance reverse (video credits already handled by admin clear)
+  -- 2) Finance reverse
+  -- Video credits were already balance-reversed by match_video_admin_clear
+  -- (which inserts offsetting gate_match_video rows). Drop ALL video ledger
+  -- rows for this fixture without a second balance pass.
+  DELETE FROM public.competition_finance_ledger
+  WHERE fixture_id = v_fid
+    AND entry_type = 'gate_match_video';
+  GET DIAGNOSTICS v_n = ROW_COUNT;
+  v_ledger_n := v_ledger_n + v_n;
+
   FOR v_ledger IN
     SELECT id, club_short_name, amount
     FROM public.competition_finance_ledger
     WHERE fixture_id = v_fid
-      AND entry_type IS DISTINCT FROM 'gate_match_video'
   LOOP
     IF to_regprocedure('public.competition_credit_club_balance(text, numeric)') IS NOT NULL THEN
       PERFORM public.competition_credit_club_balance(
