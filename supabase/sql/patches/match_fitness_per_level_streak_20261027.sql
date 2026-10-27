@@ -52,6 +52,9 @@ $$;
 COMMENT ON FUNCTION public.competition_match_fitness_streak_for_level(int, int) IS
   'Minimum consecutive streak that maps to the given fitness level.';
 
+COMMENT ON COLUMN public.competition_injury_settings.fitness_matches_to_max IS
+  'Consecutive league/cup appearances needed to climb one fitness level (not total to L5). Cup + league both count; cups are scheduled first each GPSL month. Default 4.';
+
 -- Recalibrate current-season rows that are not on an active injury timeline
 DO $$
 DECLARE
