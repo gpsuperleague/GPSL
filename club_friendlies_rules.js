@@ -19,10 +19,11 @@ export function getClubFriendliesRules() {
       },
       {
         heading: "Gate receipts",
-        tip: "First 20 paid friendlies each month earn ₿5,000 gate each (up to ₿100,000 a month). Season cap: ₿1,200,000 total from friendlies across the 12 months, June to May.",
+        tip: "First 20 paid friendlies each month earn club gate. Standard rate ₿5,000. Ko-fi Supporters earn ₿15,000 on the first 10 of the month, then ₿5,000 for 11–20. Season caps: ₿1,200,000 standard / ₿2,000,000 for Supporters.",
         items: [
-          "First <b>20 paid</b> friendlies each month earn <b>₿5,000</b> each.",
-          "Season cap: <b>₿1,200,000</b> total from friendlies.",
+          "First <b>20 paid</b> friendlies each month earn gate receipts.",
+          "Standard: <b>₿5,000</b> each. Season cap <b>₿1,200,000</b>.",
+          "<b>Ko-fi Supporters:</b> first <b>10</b> → <b>₿15,000</b>, then <b>₿5,000</b> for 11–20. Season cap <b>₿2,000,000</b>.",
         ],
       },
       {

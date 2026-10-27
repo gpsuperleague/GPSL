@@ -2,7 +2,7 @@ import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
-import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20261015-cap-20";
+import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20261027-supporter-gate";
 
 let myClub = { short: null };
 /** Opponent ShortName (upper) → { fdr, ranking_fdr, bookies_fdr, bookies_rank, bookies_pool } */
@@ -178,11 +178,19 @@ function renderSummary(data) {
   const seasonPaid = Number(data.season_paid_total) || 0;
   const seasonCap = Number(data.season_cap) || 1200000;
   const payout = Number(data.payout_amount) || 5000;
+  const boostPay = Number(data.supporter_payout_amount) || 15000;
+  const boostN = Number(data.supporter_boost_count) || 10;
   const monthCap = Number(data.month_cap) || 20;
+  const supporter = data.supporter_active === true;
+  const payLabel = supporter
+    ? `${formatMoney(boostPay)} × first ${boostN}, then ${formatMoney(payout)} (to ${monthCap})`
+    : `${formatMoney(payout)} each (first ${monthCap} / month)`;
   el.innerHTML = `
     <span class="pill">Club <b>${escapeHtml(data.club || "—")}</b></span>
     <span class="pill">Active month <b>${escapeHtml(data.active_gpsl_month_label || "—")}</b></span>
-    <span class="pill">Pay <b>${escapeHtml(formatMoney(payout))}</b> each (first ${monthCap} / month)</span>
+    <span class="pill">Pay <b>${escapeHtml(payLabel)}</b>${
+      supporter ? ' <span title="Ko-fi Supporter">💛</span>' : ""
+    }</span>
     <span class="pill">Season friendlies income <b>${escapeHtml(formatMoney(seasonPaid))}</b> / ${escapeHtml(formatMoney(seasonCap))}</span>
   `;
 }
