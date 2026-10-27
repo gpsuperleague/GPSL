@@ -31,7 +31,15 @@ import {
   fixtureStadiumLabel,
 } from "./competition_conditions.js";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
-import { scheduleActionLabel, formatKickoff, UK_TZ, catchUpBadgeHtml, isCatchUpFixture } from "./match_scheduling.js";
+import {
+  scheduleActionLabel,
+  formatKickoff,
+  UK_TZ,
+  catchUpBadgeHtml,
+  isCatchUpFixture,
+  fixtureOpponentIsInactive,
+  vacantOpponentKickoffNoteHtml,
+} from "./match_scheduling.js?v=20261027-vacant-ko";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
@@ -140,6 +148,31 @@ function kickoffStatusNoteHtml(fixture) {
 
   const catchUp = isCatchUpFixture(fixture);
   const prefix = catchUp ? "Catch-up · " : "";
+  const occ = fixtureOwnerOccupancy(
+    fixture.home_club_short_name,
+    fixture.away_club_short_name
+  );
+
+  // Owned club vs vacant / season-absent → walkover messaging (not home-only)
+  if (occ.isPartialVacant || occ.involvesSeasonAbsent) {
+    if (!occ.isVacantVsVacant) {
+      const forOwned = Boolean(
+        myClub.short && fixtureOpponentIsInactive(fixture, myClub.short, occ)
+      );
+      const seasonAbsent = forOwned
+        ? (String(fixture.home_club_short_name || "").toUpperCase() ===
+          String(myClub.short || "").toUpperCase()
+            ? occ.awayAbsent
+            : occ.homeAbsent)
+        : occ.involvesSeasonAbsent && !occ.isPartialVacant;
+      return vacantOpponentKickoffNoteHtml({
+        forOwnedClub: forOwned,
+        catchUp,
+        seasonAbsent: Boolean(seasonAbsent),
+      });
+    }
+    return `<span class="ko-status ko-status--vacant" title="Neither club has an active owner — settled at GPSL month end">${prefix}Vacant vs vacant · settled at month end</span>`;
+  }
 
   if (fixture.manual_black_box === true) {
     return `<span class="ko-status ko-status--pending" title="Both clubs GPSL match system OFF">${prefix}Manual arrange</span>`;
@@ -240,9 +273,11 @@ function actionCell(fixture) {
       parts.push(
         `<a href="${matchdayUrl(fixture.id)}" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Manual · Match Day</a>`
       );
+    } else if (fixtureOpponentIsInactive(fixture, myClub.short, occ)) {
+      // Kick-off note explains walkover — no propose/reply button
     } else {
       const sched = scheduleActionLabel(fixture, myClub.short);
-      if (sched) {
+      if (sched && !sched.vacantWalkover) {
         const cls = sched.muted ? "btn-result secondary" : "btn-result";
         parts.push(
           `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>`

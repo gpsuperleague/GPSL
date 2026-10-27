@@ -3,6 +3,7 @@
  */
 
 import { supabase } from "./global.js";
+import { fixtureOwnerOccupancy } from "./clubs_lookup.js";
 
 export const UK_TZ = "Europe/London";
 export const SLOT_MINUTES = 30;
@@ -453,9 +454,88 @@ export function slotsFromKeys(keys) {
 /** Hours shown on the weekly grid (UK wall clock). */
 export const GRID_HOURS = Array.from({ length: 18 }, (_, i) => 6 + i);
 
+/**
+ * True when my club faces a vacant or season-absent opponent (walkover path).
+ * @param {object} fixture
+ * @param {string} myClubShort
+ * @param {ReturnType<typeof fixtureOwnerOccupancy>} [occ]
+ */
+export function fixtureOpponentIsInactive(fixture, myClubShort, occ = null) {
+  if (!fixture || !myClubShort) return false;
+  const occupancy =
+    occ ||
+    fixtureOwnerOccupancy(
+      fixture.home_club_short_name,
+      fixture.away_club_short_name
+    );
+  const me = String(myClubShort).toUpperCase();
+  const home = String(fixture.home_club_short_name || "").toUpperCase();
+  const away = String(fixture.away_club_short_name || "").toUpperCase();
+  if (home === me) {
+    return !occupancy.awayOwned || occupancy.awayAbsent;
+  }
+  if (away === me) {
+    return !occupancy.homeOwned || occupancy.homeAbsent;
+  }
+  return false;
+}
+
+function escapeKoAttr(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
+/**
+ * Kick-off column note when one side is vacant / season-absent.
+ * Owned club is awarded 3–0 at month end — not necessarily the home side.
+ */
+export function vacantOpponentKickoffNoteHtml({
+  forOwnedClub = false,
+  catchUp = false,
+  seasonAbsent = false,
+} = {}) {
+  const prefix = catchUp ? "Catch-up · " : "";
+  const why = seasonAbsent ? "season absence" : "no owner (vacant)";
+  if (forOwnedClub) {
+    const title = escapeKoAttr(
+      `Opponent has ${why}. You are awarded 3–0 at GPSL month end — no need to arrange kick-off. If they pick up a new owner before the month ends, match arrangement still does not apply until the following month.`
+    );
+    return (
+      `<span class="ko-status ko-status--vacant" title="${title}">` +
+      `${prefix}Vacant / inactive opponent · 3–0 walkover at month end` +
+      `</span>` +
+      `<span class="ko-status-detail">No arrange needed. New owner mid-month → arrangement from next month only.</span>`
+    );
+  }
+  const title = escapeKoAttr(
+    `One club has ${why}. The owned club is awarded 3–0 at GPSL month end. No match arrangement is required.`
+  );
+  return (
+    `<span class="ko-status ko-status--vacant" title="${title}">` +
+    `${prefix}Vacant / inactive opponent · walkover at month end (3–0 to owned club)` +
+    `</span>`
+  );
+}
+
 export function scheduleActionLabel(fixture, myClubShort) {
   if (!fixture || !myClubShort) return null;
   if (fixture.status !== "scheduled") return null;
+
+  // Vacant / season-absent opponent — no propose / reply loop
+  if (fixtureOpponentIsInactive(fixture, myClubShort)) {
+    const catchUpEarly = isCatchUpFixture(fixture);
+    return {
+      label: catchUpEarly
+        ? "Catch-up · walkover (no arrange)"
+        : "Walkover — no arrange needed",
+      href: scheduleUrl(fixture.id),
+      muted: true,
+      vacantWalkover: true,
+    };
+  }
+
   const catchUp = isCatchUpFixture(fixture);
   if (fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at) {
     const kickoff = new Date(fixture.agreed_kickoff_at).getTime();

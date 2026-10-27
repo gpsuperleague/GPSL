@@ -25,7 +25,12 @@ import {
   loadCalendarStatus,
 } from "./competition_calendar.js";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
-import { scheduleActionLabel } from "./match_scheduling.js";
+import {
+  scheduleActionLabel,
+  fixtureOpponentIsInactive,
+  vacantOpponentKickoffNoteHtml,
+  isCatchUpFixture,
+} from "./match_scheduling.js?v=20261027-vacant-ko";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,
@@ -273,9 +278,14 @@ function actionHtml(f) {
     parts.push(`<a href="${url}" class="btn-link secondary">Confirm result</a>`);
   } else if (f.manual_black_box === true && f.status !== "played") {
     parts.push(`<a href="${url}" class="btn-link secondary">Manual arrange · Match Day</a>`);
+  } else if (
+    f.status !== "played" &&
+    fixtureOpponentIsInactive(f, myClub.short)
+  ) {
+    // Walkover note on the card — no propose/reply
   } else {
     const sched = scheduleActionLabel(f, myClub.short);
-    if (sched && f.status !== "played") {
+    if (sched && f.status !== "played" && !sched.vacantWalkover) {
       const cls = sched.muted ? "btn-link secondary" : "btn-link";
       parts.push(`<a href="${sched.href}" class="${cls}">${sched.label}</a>`);
     } else if (f.status === "played") {
@@ -351,11 +361,30 @@ function fixtureCardHtml(f) {
       ? `<span class="fixture-badge absent" title="Owner on season absence — fixtures awarded to the active club (like vacant)">Away</span>`
       : "",
     occ.isPartialVacant
-      ? `<span class="fixture-badge sim" title="One club has no owner — simulation match">Simulation</span>`
+      ? `<span class="fixture-badge sim" title="One club has no active owner — owned club awarded 3–0 at month end">Walkover</span>`
       : occ.isVacantVsVacant
         ? `<span class="fixture-badge sim-vacant" title="Neither club has an owner">Vacant vs vacant</span>`
         : "",
   ].join("");
+
+  const forOwnedWalkover =
+    Boolean(myClub.short) && fixtureOpponentIsInactive(f, myClub.short, occ);
+  const walkoverSeasonAbsent = forOwnedWalkover
+    ? String(f.home_club_short_name || "").toUpperCase() ===
+      String(myClub.short || "").toUpperCase()
+      ? occ.awayAbsent
+      : occ.homeAbsent
+    : occ.involvesSeasonAbsent && !occ.isPartialVacant;
+  const walkoverNote =
+    f.status !== "played" &&
+    (occ.isPartialVacant || occ.involvesSeasonAbsent) &&
+    !occ.isVacantVsVacant
+      ? `<div class="fixture-walkover-note">${vacantOpponentKickoffNoteHtml({
+          forOwnedClub: forOwnedWalkover,
+          catchUp: isCatchUpFixture(f),
+          seasonAbsent: Boolean(walkoverSeasonAbsent),
+        })}</div>`
+      : "";
 
   let playedBlock = "";
   if (f.status === "played") {
@@ -442,6 +471,7 @@ function fixtureCardHtml(f) {
         <span class="pitch">Pitch: ${pitch}</span>
       </div>
       ${playedBlock}
+      ${walkoverNote}
       <div class="fixture-actions">${actionHtml(f)}</div>
     </div>
   `;
