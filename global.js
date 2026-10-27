@@ -474,8 +474,8 @@ function applyDraftRandomFinishRevealed(data) {
     !("club_auction_random_finish_revealed" in data) &&
     "draft_random_finish_revealed" in data
   ) {
-    const raw = data.draft_random_finish_revealed;
-    if (raw) {
+  const raw = data.draft_random_finish_revealed;
+  if (raw) {
       playerDraftRandomFinishRevealed = raw;
       if (managerDraftEnabled) managerDraftRandomFinishRevealed = raw;
       if (clubAuctionEnabled) clubDraftRandomFinishRevealed = raw;
@@ -616,12 +616,12 @@ export function getDraftCountdownKind() {
   if (managerDraftEnabled && !draftEnabled && !clubAuctionEnabled) return "manager";
   if (draftEnabled && !managerDraftEnabled && !clubAuctionEnabled) return "player";
 
-  if (managerDraftBiddingOpen === true && playerDraftBiddingOpen !== true) {
-    return "manager";
-  }
-  if (playerDraftBiddingOpen === true && managerDraftBiddingOpen !== true) {
-    return "player";
-  }
+    if (managerDraftBiddingOpen === true && playerDraftBiddingOpen !== true) {
+      return "manager";
+    }
+    if (playerDraftBiddingOpen === true && managerDraftBiddingOpen !== true) {
+      return "player";
+    }
   if (clubAuctionBiddingOpen === true) return "club";
 
   if (managerDraftEnabled) return "manager";
@@ -3091,7 +3091,7 @@ export async function buildNav() {
     ? registrySelf?.needs_club_auction
       ? "awaiting_club.html"
       : memberHomeHref
-    : "dashboard.html";
+      : "dashboard.html";
 
   const dashActive = pathNorm === normalizeNavPath(homeHref);
   const inboxActive = pathNorm === "inbox.html";
@@ -3358,9 +3358,9 @@ export async function buildNav() {
   } else if (!isPreClubOwner) {
     html += renderNavSeasonCalendarLink(calendarActive);
     html += renderNavHandbookLink(handbookActive);
-    html += renderNavNatterLink(natterActive, natterUnread);
+  html += renderNavNatterLink(natterActive, natterUnread);
     html += renderNavFantasyLink(fantasyActive);
-    html += renderNavGpslSportButton();
+  html += renderNavGpslSportButton();
   } else {
     html += renderNavHandbookLink(handbookActive);
     const bal = Number(registrySelf?.pending_starting_balance);
@@ -3372,10 +3372,10 @@ export async function buildNav() {
     }
   }
   if (!isVisitorNav) {
-    html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
+  html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
   }
   if (!isPreClubOwner && !isVisitorNav) {
-    html += renderNavInboxLink(inboxActive, unread);
+  html += renderNavInboxLink(inboxActive, unread);
   }
   if (isGpslAdminNav || isGpslModOnlyNav) {
     const staffActive = pathNorm === "admin_staff_alerts.html";
@@ -3414,10 +3414,10 @@ export async function buildNav() {
       const sched = await import(
         `./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`
       );
-      sched.ensureSeasonScheduleStripMount();
-      sched.refreshSeasonScheduleStrip();
-    } catch (schedErr) {
-      console.warn("Season schedule strip skipped:", schedErr);
+    sched.ensureSeasonScheduleStripMount();
+    sched.refreshSeasonScheduleStrip();
+  } catch (schedErr) {
+    console.warn("Season schedule strip skipped:", schedErr);
     }
     try {
       const tn = await import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`);
@@ -3529,13 +3529,13 @@ export async function initGlobal() {
       console.warn("Dashboard pin UI skipped:", err);
     });
     if (!window.GPSL_PRE_CLUB) {
-      refreshGpslSportNavUi();
-      refreshNatterNavBadge().catch((err) => {
-        console.warn("Natter nav badge skipped:", err);
-      });
-      import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`)
-        .then((m) => m.initSeasonScheduleStrip())
-        .catch((err) => console.warn("Season schedule strip skipped:", err));
+    refreshGpslSportNavUi();
+    refreshNatterNavBadge().catch((err) => {
+      console.warn("Natter nav badge skipped:", err);
+    });
+    import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`)
+      .then((m) => m.initSeasonScheduleStrip())
+      .catch((err) => console.warn("Season schedule strip skipped:", err));
       import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`)
         .then((m) => m.initTransferNewsStrip())
         .catch((err) => console.warn("Transfer news strip skipped:", err));
