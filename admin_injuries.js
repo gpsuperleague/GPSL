@@ -46,11 +46,16 @@ function renderSettings() {
       </p>
     </div>
     <div><label>Fitness return level (after injury)</label><input id="fitness_return_level" type="number" min="1" max="5" value="${s.fitness_return_level ?? 2}"></div>
-    <div><label>Fitness weight L1 Fully Fit</label><input id="fitness_weight_l1" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l1 ?? 0.5}"></div>
-    <div><label>Fitness weight L2 Match Ready</label><input id="fitness_weight_l2" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l2 ?? 0.75}"></div>
+    <div><label>Fitness weight L1 Fully Fit (victim pick)</label><input id="fitness_weight_l1" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l1 ?? 0.25}"></div>
+    <div><label>Fitness weight L2 Match Ready</label><input id="fitness_weight_l2" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l2 ?? 0.55}"></div>
     <div><label>Fitness weight L3 Managing Load</label><input id="fitness_weight_l3" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l3 ?? 1}"></div>
-    <div><label>Fitness weight L4 Fitness Concern</label><input id="fitness_weight_l4" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l4 ?? 1.4}"></div>
-    <div><label>Fitness weight L5 Injury Risk</label><input id="fitness_weight_l5" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l5 ?? 1.85}"></div>
+    <div><label>Fitness weight L4 Fitness Concern</label><input id="fitness_weight_l4" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l4 ?? 1.75}"></div>
+    <div><label>Fitness weight L5 Injury Risk</label><input id="fitness_weight_l5" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l5 ?? 2.75}"></div>
+    <p class="note" style="grid-column:1/-1;margin:0;font-size:12px;color:#aaa;">
+      Victim weights: higher = more likely to be the injured player when the club hits.
+      Also: L4/L5 apps give a small club hit-chance boost (max +25%). Severity tilts by level
+      (L1–2 mostly minor; L3 more moderate; L4–5 more serious) — injury lengths stay from the catalogue.
+    </p>
     <div><label>Pace over season</label>
       <select id="pace_enabled">
         <option value="true" ${(s.pace_enabled !== false) ? "selected" : ""}>On (spread quota)</option>

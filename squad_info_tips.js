@@ -42,7 +42,7 @@ export const SQUAD_TIPS = {
   avg: "Average match rating this GPSL season (when recorded).",
 
   matchFitness:
-    "Match fitness (green → red): Fully Fit → Match Ready → Managing Load → Fitness Concern → Injury Risk. Needs consecutive league/cup apps to climb each level (default 4); missing a club match drops one level. While injured the label shows Injured / Regaining fitness — the meter still tracks recovery (Injury Risk → Match Ready).",
+    "Match fitness (green → red): Fully Fit → Match Ready → Managing Load → Fitness Concern → Injury Risk. Needs consecutive league/cup apps to climb each level (default 4); missing a club match drops one level. Higher levels are more likely to be injured and tilt toward worse severity (L4–5); lengths stay from the injury type. While injured the label shows Injured / Regaining fitness — the meter still tracks recovery.",
 
   playstyle:
     "Card playstyle (e.g. Goal Poacher, Anchor Man). Affects how the player plays in eFootball; shown here for squad planning.",

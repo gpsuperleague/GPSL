@@ -150,7 +150,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20261027-fit-per-level";
+} from "./squad_info_tips.js?v=20261027-fit-severity";
 
 window.supabase = supabase;
 
