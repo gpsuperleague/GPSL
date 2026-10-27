@@ -1919,11 +1919,14 @@ function formatMatchFitnessCell(playerId, injuryRows = []) {
     row?.label || MATCH_FITNESS_LABELS[level] || MATCH_FITNESS_LABELS[1];
   const label = matchFitnessStatusLabel(level, injuryRows);
   const streak = Number(row?.consecutive) || 0;
+  const streakLabel = Number.isFinite(streak)
+    ? String(Math.round(streak * 10) / 10).replace(/\.0$/, "")
+    : "0";
   const title = injuryRows?.length
     ? `${label} · meter ${baseLabel} (level ${level}/5)`
     : `${label} (level ${level}/5)${
         streak
-          ? ` · ${streak} consecutive appearance${streak === 1 ? "" : "s"}`
+          ? ` · ${streakLabel} consecutive (start=1, sub=0.5)`
           : ""
       }`;
   const pips = [1, 2, 3, 4, 5]
