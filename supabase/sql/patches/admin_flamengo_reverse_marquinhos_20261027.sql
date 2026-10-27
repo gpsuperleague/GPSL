@@ -122,7 +122,8 @@ BEGIN
                                 AND v_h.transfer_time + interval '6 hours'
             AND l.entry_type IN (
               'transfer_purchase', 'transfer_fee', 'player_purchase',
-              'income_tax', 'transfer_income_tax', 'agent_fee'
+              'gov_income_tax', 'income_tax', 'transfer_income_tax',
+              'transfer_agent_fee', 'agent_fee'
             )
           )
         )

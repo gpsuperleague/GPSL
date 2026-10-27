@@ -515,6 +515,13 @@ export const ADMIN_MAIN_NAV = [
     entries: [
       group("Clubs & owners", [
         L(
+          "Sign free agents at MV",
+          "admin_sign_players.html",
+          null,
+          null,
+          "Mid-season club fill: search free agents, preview fee + income tax, sign at market value (no auction)."
+        ),
+        L(
           "Club Season Checklist",
           "admin_club_checklist.html",
           null,

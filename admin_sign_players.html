@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Sign free agents — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .form-grid { display:grid; gap:12px; max-width:720px; }
+    .form-grid label { display:block; font-size:13px; color:#bbb; }
+    .form-grid select, .form-grid input[type="text"] {
+      width:100%; max-width:720px; padding:8px; margin-top:4px;
+      background:#111; border:1px solid #444; color:#ddd; border-radius:4px;
+    }
+    .hint { font-size:12px; color:#888; margin-top:4px; line-height:1.45; }
+    .search-row { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
+    .search-row > label { flex:1 1 280px; }
+    .basket, .results {
+      margin-top:12px; border:1px solid #333; border-radius:6px;
+      background:#161616; max-height:360px; overflow:auto;
+    }
+    table.sign-table { width:100%; border-collapse:collapse; font-size:12px; }
+    table.sign-table th, table.sign-table td {
+      padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left;
+    }
+    table.sign-table th { color:#ff9900; position:sticky; top:0; background:#161616; }
+    table.sign-table .num { text-align:right; font-variant-numeric:tabular-nums; }
+    .actions { margin-top:14px; display:flex; flex-wrap:wrap; gap:10px; }
+    .totals {
+      margin-top:12px; padding:10px 12px; background:#1a1a1a; border:1px solid #333;
+      border-radius:6px; font-size:13px; line-height:1.5;
+    }
+    .totals b { color:#ffcc66; }
+    .empty { color:#888; padding:12px; font-size:13px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Sign free agents at market value</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Mid-season club fill (no auction). Search free agents, add to basket, preview fee + income tax, then sign.
+        Uses the same ledger path as draft / populate-squad. Does <b>not</b> reset opening balance.
+        Run <code>supabase/sql/patches/admin_sign_free_agents_at_mv_20261027.sql</code> once.
+      </p>
+
+      <div class="card">
+        <h2>Club</h2>
+        <div class="form-grid">
+          <label>
+            Destination club
+            <select id="clubSelect"><option value="">Loading…</option></select>
+          </label>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h2>Find free agents</h2>
+        <div class="search-row">
+          <label>
+            Name or Konami ID
+            <input type="text" id="searchQ" placeholder="e.g. Vinicius / 12345" autocomplete="off">
+          </label>
+          <button type="button" id="searchBtn" class="button">Search</button>
+        </div>
+        <p class="hint">Only free agents (not legacy / season-excluded). Click Add to put them in the basket.</p>
+        <div id="searchResults" class="results"><p class="empty">Search to see players.</p></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h2>Basket</h2>
+        <div id="basketBox" class="basket"><p class="empty">No players selected yet.</p></div>
+        <div id="totalsBox" class="totals" hidden></div>
+        <div class="actions">
+          <button type="button" id="previewBtn" class="button">1. Preview</button>
+          <button type="button" id="signBtn" class="button" style="background:#446633;" disabled>2. Sign at market value</button>
+          <button type="button" id="clearBtn" class="button">Clear basket</button>
+        </div>
+        <div id="pageStatus" class="status-line"></div>
+        <pre id="resultBox" class="hint" style="white-space:pre-wrap;margin-top:10px;"></pre>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_sign_players.js?v=20261027-sign-fa"></script>
+</body>
+</html>
