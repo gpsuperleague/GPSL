@@ -51,6 +51,8 @@ import { mountClubBankBalance } from "./club_bank_balance_ui.js";
 import {
   loadActiveInjuriesForPlayers,
   formatListingInjuryMarkerHtml,
+  loadMatchFitnessForPlayers,
+  formatListingMatchFitnessHtml,
 } from "./player_discipline.js";
 
 /** Current competition season start — scopes Season Signings / Sales / Closed Listings. */
@@ -418,10 +420,12 @@ async function loadActiveListings(shortName) {
 
   const playerIds = listings.map((l) => l.player_id);
   const listingIds = listings.map((l) => l.id);
-  const [players, injuryMap] = await Promise.all([
+  const [players, injuryMap, fitnessResult] = await Promise.all([
     fetchPlayersMap(playerIds),
     loadActiveInjuriesForPlayers(supabase, playerIds),
+    loadMatchFitnessForPlayers(supabase, playerIds),
   ]);
+  const fitnessMap = fitnessResult.byPlayer;
   let bidsCountMap = new Map();
 
   if (listingIds.length > 0) {
@@ -458,6 +462,10 @@ async function loadActiveListings(shortName) {
           const forced = row.perpetual_renew === true;
           const injury = injuryMap.get(String(row.player_id));
           const injuryMarker = formatListingInjuryMarkerHtml(injury);
+          const fitnessMarker = formatListingMatchFitnessHtml(
+            fitnessMap.get(String(row.player_id)),
+            injury
+          );
           const injuredOut =
             injury &&
             ((Number(injury.matches_out_remaining) || 0) > 0 ||
@@ -493,7 +501,7 @@ async function loadActiveListings(shortName) {
 
           return `
             <tr${rowClass}>
-              <td>${playerLinkCell(row.player_id, player, name)}${injuryMarker}${forcedNote}${pendingNote}</td>
+              <td>${playerLinkCell(row.player_id, player, name)}${injuryMarker}${fitnessMarker}${forcedNote}${pendingNote}</td>
               <td>₿ ${reserve}</td>
               <td>${
                 pendingWindow

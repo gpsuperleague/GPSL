@@ -279,6 +279,43 @@
     tr.listing-row-recovery td {
       background: rgba(60, 100, 40, 0.12);
     }
+
+    .listing-fit {
+      margin-top: 4px;
+      max-width: 140px;
+    }
+    .listing-fit-meter {
+      display: flex;
+      gap: 2px;
+      width: 100%;
+    }
+    .listing-fit-pip {
+      flex: 1;
+      height: 6px;
+      border-radius: 2px;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+    }
+    .listing-fit-pip.is-on.listing-fit-pip-1 { background: #27ae60; border-color: #2ecc71; }
+    .listing-fit-pip.is-on.listing-fit-pip-2 { background: #52b788; border-color: #74c69d; }
+    .listing-fit-pip.is-on.listing-fit-pip-3 { background: #f1c40f; border-color: #f4d03f; }
+    .listing-fit-pip.is-on.listing-fit-pip-4 { background: #e67e22; border-color: #f39c12; }
+    .listing-fit-pip.is-on.listing-fit-pip-5 { background: #e74c3c; border-color: #ff6b5a; }
+    .listing-fit-name {
+      margin-top: 2px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .listing-fit-l1 .listing-fit-name { color: #2ecc71; }
+    .listing-fit-l2 .listing-fit-name { color: #74c69d; }
+    .listing-fit-l3 .listing-fit-name { color: #f1c40f; }
+    .listing-fit-l4 .listing-fit-name { color: #e67e22; }
+    .listing-fit-l5 .listing-fit-name { color: #e74c3c; }
+    .listing-fit-name--injured { color: #9ed4f0 !important; }
+    .listing-fit-name--recovery { color: #c8e89a !important; }
   </style>
 </head>
 
@@ -438,7 +475,7 @@
   <script type="module" src="global.js?v=20261004-hide-email"></script>
   <script type="module" src="global_ui.js"></script>
   <script type="module" src="clubs_lookup.js"></script>
-  <script type="module" src="transfer_center.js?v=20261027-listing-injury"></script>
+  <script type="module" src="transfer_center.js?v=20261027-listing-fitness"></script>
 
 </body>
 </html>

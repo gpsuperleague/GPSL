@@ -573,6 +573,91 @@ export function formatListingInjuryMarkerHtml(inj) {
   return `<span class="listing-injury listing-injury-rec" title="${title}">Recovering · ${safeLabel} · ${recLeft} light</span>`;
 }
 
+const MATCH_FITNESS_LABELS = {
+  1: "Fully Fit",
+  2: "Match Ready",
+  3: "Managing Load",
+  4: "Fitness Concern",
+  5: "Injury Risk",
+};
+
+/**
+ * Compact match-fitness meter for transfer market / listing name cells.
+ * @param {{ level?: number, label?: string, consecutive?: number }|null|undefined} fitness
+ * @param {any} [injury] optional active injury payload (overrides status label)
+ */
+export function formatListingMatchFitnessHtml(fitness, injury = null) {
+  const level = Math.max(1, Math.min(5, Number(fitness?.level) || 1));
+  const baseLabel =
+    fitness?.label || MATCH_FITNESS_LABELS[level] || MATCH_FITNESS_LABELS[1];
+  let statusLabel = baseLabel;
+  let nameMod = "";
+  if (injury) {
+    const out =
+      (Number(injury.matches_out_remaining) || 0) > 0 || injury.phase === "out";
+    statusLabel = out ? "Injured" : "Regaining fitness";
+    nameMod = out ? " listing-fit-name--injured" : " listing-fit-name--recovery";
+  }
+  const title = injury
+    ? `${statusLabel} · meter ${baseLabel} (level ${level}/5)`
+    : `${statusLabel} (level ${level}/5)`;
+  const safeTitle = htmlEscapeAttr(title);
+  const pips = [1, 2, 3, 4, 5]
+    .map(
+      (n) =>
+        `<span class="listing-fit-pip listing-fit-pip-${n}${
+          n === level ? " is-on" : ""
+        }" aria-hidden="true"></span>`
+    )
+    .join("");
+  return `<div class="listing-fit listing-fit-l${level}" title="${safeTitle}">
+    <div class="listing-fit-meter" role="img" aria-label="${safeTitle}">${pips}</div>
+    <div class="listing-fit-name${nameMod}">${htmlEscapeText(statusLabel)}</div>
+  </div>`;
+}
+
+/**
+ * Match fitness map for listings (player_id → { level, label, consecutive }).
+ * @param {import("@supabase/supabase-js").SupabaseClient} supabase
+ * @param {Array<string|number>} playerIds
+ * @returns {Promise<{ byPlayer: Map<string, any>, matchesToMax: number }>}
+ */
+export async function loadMatchFitnessForPlayers(supabase, playerIds) {
+  /** @type {Map<string, any>} */
+  const byPlayer = new Map();
+  const ids = [
+    ...new Set((playerIds || []).map((id) => String(id)).filter(Boolean)),
+  ];
+  if (!ids.length) return { byPlayer, matchesToMax: 4 };
+
+  const { data, error } = await supabase.rpc(
+    "competition_match_fitness_for_players",
+    { p_player_ids: ids }
+  );
+  if (error) {
+    if (
+      /competition_match_fitness_for_players|schema cache|Could not find/i.test(
+        error.message || ""
+      )
+    ) {
+      console.warn(
+        "competition_match_fitness_for_players missing — run listing_match_fitness_for_players_20261027.sql"
+      );
+      return { byPlayer, matchesToMax: 4 };
+    }
+    console.error("competition_match_fitness_for_players:", error);
+    return { byPlayer, matchesToMax: 4 };
+  }
+
+  const by =
+    data?.by_player && typeof data.by_player === "object" ? data.by_player : {};
+  for (const [pid, payload] of Object.entries(by)) {
+    if (payload) byPlayer.set(String(pid), payload);
+  }
+  const matchesToMax = Math.max(1, Number(data?.matches_to_max) || 4);
+  return { byPlayer, matchesToMax };
+}
+
 /**
  * Compact injury map for transfer listings (player_id → payload).
  * @param {import("@supabase/supabase-js").SupabaseClient} supabase

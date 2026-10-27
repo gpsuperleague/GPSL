@@ -42,6 +42,8 @@ import { downloadIcs, transferListingEndEvent } from "./calendar_ics.js";
 import {
   loadActiveInjuriesForPlayers,
   formatListingInjuryMarkerHtml,
+  loadMatchFitnessForPlayers,
+  formatListingMatchFitnessHtml,
 } from "./player_discipline.js";
 
 // Use global Supabase client (created in all_listings.html)
@@ -79,6 +81,8 @@ let listingsRefreshMs = null;
 let listingsLoading = false;
 /** @type {Map<string, any>} */
 let listingsInjuryByPlayer = new Map();
+/** @type {Map<string, any>} */
+let listingsFitnessByPlayer = new Map();
 /** @type {Map<string, number>} */
 let scoutingTargetMap = new Map();
 let scoutingTargetsOnly = false;
@@ -1360,13 +1364,16 @@ async function renderListings() {
   const playerIds = [...new Set(sortedRows.map((l) => String(l.player_id)))];
   const listingIds = sortedRows.map((l) => l.id).filter((id) => id != null);
 
-  const [playerMap, userBidListingIds, injuryMap] = await Promise.all([
-    fetchPlayersMap(playerIds),
-    loadListingIdsWhereUserBid(listingIds, currentUserShort),
-    loadActiveInjuriesForPlayers(supabase, playerIds),
-  ]);
+  const [playerMap, userBidListingIds, injuryMap, fitnessResult] =
+    await Promise.all([
+      fetchPlayersMap(playerIds),
+      loadListingIdsWhereUserBid(listingIds, currentUserShort),
+      loadActiveInjuriesForPlayers(supabase, playerIds),
+      loadMatchFitnessForPlayers(supabase, playerIds),
+    ]);
   if (gen !== renderGeneration) return;
   listingsInjuryByPlayer = injuryMap;
+  listingsFitnessByPlayer = fitnessResult.byPlayer;
 
   const { nameQuery, myBidsOnly } = getListingFilterState();
   rebuildAdvancedFiltersFromData(sortedRows, playerMap);
@@ -1436,6 +1443,10 @@ async function renderListings() {
     const clubLabel = fullClubName(listing.seller_club_id);
     const playerName = player?.Name || "Unknown";
     const injuryMarker = formatListingInjuryMarkerHtml(injury);
+    const fitnessMarker = formatListingMatchFitnessHtml(
+      listingsFitnessByPlayer.get(String(listing.player_id)),
+      injury
+    );
 
     const isPendingWindow = listing.status === "Pending Window";
     const end = listing.end_time ? new Date(listing.end_time) : null;
@@ -1483,7 +1494,7 @@ async function renderListings() {
       </td>
 
       <td>
-        ${playerNameLinkHtml(listing.player_id, playerName)}${injuryMarker}
+        ${playerNameLinkHtml(listing.player_id, playerName)}${injuryMarker}${fitnessMarker}
       </td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Playstyle || "-"}</td>
@@ -1701,10 +1712,13 @@ async function openBidModal(listing, player) {
 
   const playerName = player?.Name || "Unknown";
   if (nameEl) {
-    const injuryMarker = formatListingInjuryMarkerHtml(
-      listingsInjuryByPlayer.get(konamiId)
+    const injury = listingsInjuryByPlayer.get(konamiId);
+    const injuryMarker = formatListingInjuryMarkerHtml(injury);
+    const fitnessMarker = formatListingMatchFitnessHtml(
+      listingsFitnessByPlayer.get(konamiId),
+      injury
     );
-    nameEl.innerHTML = `${playerNameLinkHtml(konamiId, playerName)}${injuryMarker}`;
+    nameEl.innerHTML = `${playerNameLinkHtml(konamiId, playerName)}${injuryMarker}${fitnessMarker}`;
   }
   document.getElementById("bid-player-position").textContent =
     player?.Position || "-";
