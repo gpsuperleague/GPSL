@@ -110,8 +110,7 @@ BEGIN
   END IF;
   IF to_regclass('public.competition_player_injuries') IS NOT NULL THEN
     UPDATE public.competition_player_injuries i
-    SET status = 'cancelled',
-        updated_at = now()
+    SET status = 'cancelled'
     WHERE i.source_fixture_id = v_fid
       AND i.status = 'active';
     GET DIAGNOSTICS v_inj = ROW_COUNT;
