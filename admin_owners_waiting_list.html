@@ -211,6 +211,20 @@
       padding: 8px 10px; font-size: 14px;
       background: #111; border: 1px solid #555; color: #eee; border-radius: 4px;
     }
+    #wlAssignClubSelect {
+      min-height: 16em;
+      font-size: 13px;
+    }
+    #wlAssignClubSelect optgroup {
+      color: #ff9900;
+      font-weight: 700;
+      font-style: normal;
+    }
+    #wlAssignClubSelect option {
+      color: #eee;
+      font-weight: 400;
+      padding: 2px 0;
+    }
     .wl-modal-actions {
       display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; justify-content: flex-end;
     }
@@ -325,8 +339,8 @@
     <div class="wl-modal" role="dialog" aria-modal="true" aria-labelledby="wlAssignClubTitle">
       <h3 id="wlAssignClubTitle">Add club</h3>
       <p class="note" id="wlAssignClubWho">Assign a vacant club.</p>
-      <label for="wlAssignClubSelect">Available clubs</label>
-      <select id="wlAssignClubSelect">
+      <label for="wlAssignClubSelect">Vacant clubs (unowned only)</label>
+      <select id="wlAssignClubSelect" size="14">
         <option value="">Loading…</option>
       </select>
       <label for="wlAssignClubTag">Discord tag (optional — if not set yet)</label>
@@ -351,6 +365,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20261021-fine-forecast-v3"></script>
+  <script type="module" src="admin_owners.js?v=20261027-vacant-optgroups"></script>
 </body>
 </html>

@@ -2485,19 +2485,11 @@ async function assignClubFromWaitingRow({ email, tag }) {
   select.innerHTML = `<option value="">Loading vacant clubs…</option>`;
   modal.hidden = false;
 
-  const { data, error } = await supabase
-    .from("Clubs")
-    .select("ShortName, Club")
-    .is("owner_id", null)
-    .order("Club");
-
-  if (error) {
+  const clubs = await loadVacantClubsForAssignSelect();
+  if (clubs == null) {
     select.innerHTML = `<option value="">Could not load clubs</option>`;
-    setWlActionStatus("❌ " + error.message, false);
     return;
   }
-
-  const clubs = data || [];
   if (!clubs.length) {
     select.innerHTML = `<option value="">No vacant clubs available</option>`;
     return;
@@ -2505,13 +2497,75 @@ async function assignClubFromWaitingRow({ email, tag }) {
 
   select.innerHTML =
     `<option value="">Select club…</option>` +
-    clubs
+    buildVacantClubOptgroupsHtml(clubs);
+}
+
+/** Vacant (unowned) clubs for Add club — Super League → Champ A/B → not in a division. */
+async function loadVacantClubsForAssignSelect() {
+  const { data, error } = await supabase.rpc("staff_vacant_clubs_list");
+  if (!error && data?.ok !== false && Array.isArray(data?.clubs)) {
+    return data.clubs;
+  }
+
+  // Fallback if RPC missing / stale schema: flat vacant list, no division headers
+  if (
+    error &&
+    /staff_vacant_clubs_list|schema cache|Could not find/i.test(error.message || "")
+  ) {
+    console.warn(
+      "staff_vacant_clubs_list missing — run staff_vacant_clubs_list_undivided_20261027.sql"
+    );
+  } else if (error || data?.ok === false) {
+    setWlActionStatus(
+      "❌ " + (error?.message || data?.reason || "Could not load vacant clubs"),
+      false
+    );
+    return null;
+  }
+
+  const { data: rows, error: clubsErr } = await supabase
+    .from("Clubs")
+    .select("ShortName, Club")
+    .is("owner_id", null)
+    .order("Club");
+  if (clubsErr) {
+    setWlActionStatus("❌ " + clubsErr.message, false);
+    return null;
+  }
+  return (rows || [])
+    .filter((c) => String(c.ShortName || "").toUpperCase() !== "FOREIGN")
+    .map((c) => ({
+      short_name: c.ShortName,
+      club_name: c.Club || c.ShortName,
+      division: null,
+      division_label: "Vacant clubs",
+    }));
+}
+
+function buildVacantClubOptgroupsHtml(clubs) {
+  /** @type {Map<string, typeof clubs>} */
+  const groups = new Map();
+  for (const c of clubs || []) {
+    const label = c.division_label || "Vacant clubs";
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(c);
+  }
+  const parts = [];
+  for (const [label, rows] of groups) {
+    const opts = rows
       .map((c) => {
-        const full = c.Club || c.ShortName;
-        const short = c.ShortName || "";
-        return `<option value="${escapeWl(short)}">${escapeWl(full)} (${escapeWl(short)})</option>`;
+        const full = c.club_name || c.short_name;
+        const short = c.short_name || "";
+        return `<option value="${escapeWl(short)}">${escapeWl(full)} (${escapeWl(
+          short
+        )})</option>`;
       })
       .join("");
+    parts.push(
+      `<optgroup label="${escapeWl(label)}">${opts}</optgroup>`
+    );
+  }
+  return parts.join("");
 }
 
 function closeAssignClubModal() {
