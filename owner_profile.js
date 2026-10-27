@@ -1,11 +1,13 @@
 import { supabase, initGlobal } from "./global.js";
 import { formatMoney } from "./competition.js";
-import { loadClubsMap, displayClubName, clubPageHref } from "./clubs_lookup.js";
+import { loadClubsMap, displayClubName, clubPageHref, fullClubName } from "./clubs_lookup.js";
 import {
   ownerBadgePublicUrl,
   ownerBadgeStoragePath,
   removeStaleOwnerBadges,
+  holidayStatusMarkHtml,
 } from "./owner_badge.js?v=20261020-badge-cache";
+import { formatUkDateRange } from "./owner_holidays.js";
 
 function escapeHtml(text) {
   return String(text ?? "")
@@ -130,6 +132,101 @@ function renderHeader(profile, totals) {
       }
     }
   }
+}
+
+function holidayFixtureLine(f) {
+  const home = fullClubName(f.home_club) || f.home_club;
+  const away = fullClubName(f.away_club) || f.away_club;
+  const month = f.gpsl_month || "—";
+  const comp = f.competition || "Match";
+  const fid = f.fixture_id;
+  const label = `${comp} · ${month} · ${home} vs ${away}`;
+  if (fid == null) return `<li>${escapeHtml(label)}</li>`;
+  const href = `fixture_schedule.html?fixture=${encodeURIComponent(String(fid))}`;
+  return `<li><a class="gpsl-link" href="${escapeHtml(href)}">${escapeHtml(
+    label
+  )}</a></li>`;
+}
+
+function renderHolidays(rows, { isSelf = false } = {}) {
+  const el = document.getElementById("holidaysPanel");
+  if (!el) return;
+
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) {
+    el.innerHTML = `<p class="empty">No current or upcoming holidays.${
+      isSelf
+        ? ` Book one from <a class="gpsl-link" href="owner_details.html">Owner Details</a>.`
+        : ""
+    }</p>`;
+    return;
+  }
+
+  el.innerHTML = list
+    .map((row) => {
+      const code =
+        row.status_code || (row.status === "active" ? "OH" : "UH");
+      const statusLabel = code === "OH" ? "On holiday" : "Upcoming";
+      const dates = formatUkDateRange(row.starts_at, row.ends_at);
+      const days = Number(row.day_count) || "—";
+      const club = clubLink(
+        row.club_short_name,
+        row.club_name || row.club_short_name
+      );
+      const fixtures = Array.isArray(row.fixtures) ? row.fixtures : [];
+      const fixHtml = fixtures.length
+        ? `<div class="hol-card-meta" style="margin-top:4px">Matches impacted (arrange / play early while this holiday covers the month):</div>
+           <ul class="hol-fixtures">${fixtures.map(holidayFixtureLine).join("")}</ul>`
+        : `<div class="hol-card-meta" style="margin-top:6px">No overlapping scheduled fixtures yet.</div>`;
+      return `<div class="hol-card">
+        <div class="hol-card-head">
+          ${holidayStatusMarkHtml(code)}
+          <b>${escapeHtml(statusLabel)}</b>
+          <span class="hol-card-meta">${escapeHtml(dates)} · ${escapeHtml(
+            String(days)
+          )} day${days === 1 ? "" : "s"}</span>
+          <span class="hol-card-meta">${club}</span>
+        </div>
+        ${fixHtml}
+      </div>`;
+    })
+    .join("");
+
+  if (isSelf) {
+    el.insertAdjacentHTML(
+      "beforeend",
+      `<p class="note" style="margin-top:10px">Manage bookings on <a class="gpsl-link" href="owner_details.html">Owner Details</a>. Full league board: <a class="gpsl-link" href="owner_holidays_board.html">Owner Holidays</a>.</p>`
+    );
+  }
+}
+
+async function loadOwnerHolidaysForProfile(ownerId, { isSelf = false } = {}) {
+  const el = document.getElementById("holidaysPanel");
+  if (!el) return;
+
+  const { data, error } = await supabase.rpc("owner_holidays_directory");
+  if (error) {
+    el.innerHTML = `<p class="empty">${
+      /owner_holidays_directory|schema cache|Could not find/i.test(
+        error.message || ""
+      )
+        ? "Holiday directory not available yet."
+        : escapeHtml(error.message)
+    }</p>`;
+    return;
+  }
+
+  const all = Array.isArray(data?.holidays) ? data.holidays : [];
+  const oid = String(ownerId || "");
+  const mine = all.filter((h) => String(h.owner_id || "") === oid);
+  // Active first, then upcoming; earliest start first within each
+  mine.sort((a, b) => {
+    const aActive = a.status === "active" || a.status_code === "OH" ? 0 : 1;
+    const bActive = b.status === "active" || b.status_code === "OH" ? 0 : 1;
+    if (aActive !== bActive) return aActive - bActive;
+    return String(a.starts_at || "").localeCompare(String(b.starts_at || ""));
+  });
+  renderHolidays(mine, { isSelf });
 }
 
 function renderTransfers(transfers, highPaid, highRecv) {
@@ -390,6 +487,7 @@ async function loadProfile(ownerId) {
     profile.owner_balance = wallet?.balance ?? 0;
   }
   renderHeader(profile, data.career_totals);
+  void loadOwnerHolidaysForProfile(ownerId, { isSelf: !!profile.is_self });
   renderTransfers(data.transfers, data.highest_fee_paid, data.highest_fee_received);
   renderSeasons(data.seasons || []);
   renderTrophies(data.trophies || []);
