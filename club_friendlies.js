@@ -2,7 +2,7 @@ import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
-import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20261027-supporter-gate";
+import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20261027-month-tabs";
 
 let myClub = { short: null };
 /** Opponent ShortName (upper) → { fdr, ranking_fdr, bookies_fdr, bookies_rank, bookies_pool } */
@@ -149,7 +149,19 @@ function renderPendingCard(row) {
   `;
 }
 
-function renderMonth(month) {
+function monthHasFriendlies(month) {
+  const confirmed = Array.isArray(month?.friendlies) ? month.friendlies.length : 0;
+  const pending = Array.isArray(month?.pending) ? month.pending.length : 0;
+  return confirmed + pending > 0;
+}
+
+function monthFriendlyCount(month) {
+  const confirmed = Array.isArray(month?.friendlies) ? month.friendlies.length : 0;
+  const pending = Array.isArray(month?.pending) ? month.pending.length : 0;
+  return confirmed + pending;
+}
+
+function renderMonthPanel(month) {
   const paid = Number(month.paid_count) || 0;
   const cap = Number(month.month_cap) || 20;
   const confirmed = Array.isArray(month.friendlies) ? month.friendlies : [];
@@ -170,6 +182,72 @@ function renderMonth(month) {
       ${cards}
     </section>
   `;
+}
+
+function renderMonthsAsTabs(months, activeMonthKey) {
+  const withGames = (months || []).filter(monthHasFriendlies);
+  if (!withGames.length) {
+    return `<p class="empty">No friendlies yet.</p>`;
+  }
+
+  const activeKey = String(activeMonthKey || "").toLowerCase();
+  let selected =
+    withGames.find((m) => String(m.gpsl_month || "").toLowerCase() === activeKey) ||
+    withGames[0];
+  const selectedKey = String(selected.gpsl_month || "").toLowerCase();
+
+  const tabs = withGames
+    .map((m) => {
+      const key = String(m.gpsl_month || "").toLowerCase();
+      const label = m.gpsl_month_label || m.gpsl_month || "Month";
+      const n = monthFriendlyCount(m);
+      const on = key === selectedKey ? " is-active" : "";
+      return `<button type="button" class="month-tab${on}" data-month="${escapeHtml(
+        key
+      )}" aria-pressed="${key === selectedKey ? "true" : "false"}">${escapeHtml(
+        label
+      )}<span class="tab-count">${n}</span></button>`;
+    })
+    .join("");
+
+  return `
+    <div class="month-tabs" role="tablist" aria-label="Friendly months">${tabs}</div>
+    <div id="friendliesMonthPanel">${renderMonthPanel(selected)}</div>
+  `;
+}
+
+function wireMonthTabs(months, activeMonthKey) {
+  const root = document.getElementById("friendliesRoot");
+  if (!root) return;
+  const withGames = (months || []).filter(monthHasFriendlies);
+
+  root.querySelectorAll(".month-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-month") || "";
+      const month =
+        withGames.find((m) => String(m.gpsl_month || "").toLowerCase() === key) ||
+        withGames[0];
+      if (!month) return;
+
+      root.querySelectorAll(".month-tab").forEach((b) => {
+        const on = b === btn;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+
+      const panel = document.getElementById("friendliesMonthPanel");
+      if (panel) panel.innerHTML = renderMonthPanel(month);
+    });
+  });
+
+  // Prefer active GPSL month tab when present
+  const prefer = String(activeMonthKey || "").toLowerCase();
+  if (prefer) {
+    const preferBtn = root.querySelector(`.month-tab[data-month="${prefer}"]`);
+    if (preferBtn && !preferBtn.classList.contains("is-active")) {
+      preferBtn.click();
+    }
+  }
 }
 
 function renderSummary(data) {
@@ -449,8 +527,8 @@ async function loadPage() {
     return;
   }
 
-  root.innerHTML = months.map(renderMonth).join("") ||
-    `<p class="empty">No friendlies yet.</p>`;
+  root.innerHTML = renderMonthsAsTabs(months, data.active_gpsl_month);
+  wireMonthTabs(months, data.active_gpsl_month);
 }
 
 async function main() {

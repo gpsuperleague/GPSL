@@ -32,6 +32,23 @@
       background:#1a1a1a; color:#ccc; font-size:13px;
     }
     .summary .pill b { color:var(--gpsl-accent-hover, #ffcc66); font-weight:600; }
+    .month-tabs {
+      display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px;
+    }
+    .month-tab {
+      appearance:none; cursor:pointer;
+      background:#1a1a1a; border:1px solid #444; color:#ccc;
+      border-radius:6px; padding:6px 12px; font:inherit; font-size:13px;
+    }
+    .month-tab:hover { border-color:var(--gpsl-accent, #ff9900); color:#eee; }
+    .month-tab.is-active {
+      background:#2a2210; border-color:var(--gpsl-accent, #ff9900);
+      color:var(--gpsl-accent-hover, #ffcc66); font-weight:700;
+    }
+    .month-tab .tab-count {
+      margin-left:6px; color:#888; font-weight:normal; font-size:11px;
+    }
+    .month-tab.is-active .tab-count { color:#c9a86a; }
     .month-block {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       margin-bottom:18px; overflow:hidden;
@@ -152,10 +169,10 @@
     <div class="info-box" id="clubFriendliesRules" aria-label="Friendlies help">
       <div class="rules-grid">
         <section class="rules-card">
-          <h3 class="gpsl-has-tip" data-gpsl-tip="Discord-confirmed friendlies for your club. Grouped by GPSL month." tabindex="0">What you see</h3>
+          <h3 class="gpsl-has-tip" data-gpsl-tip="Discord-confirmed friendlies for your club. Use the month tabs to switch results." tabindex="0">What you see</h3>
           <ul>
             <li><b>Discord-confirmed</b> friendlies for your club.</li>
-            <li>Grouped by <b>GPSL month</b>.</li>
+            <li>Results by <b>GPSL month</b> (tabs).</li>
           </ul>
         </section>
         <section class="rules-card">
@@ -188,6 +205,6 @@
     <div id="friendliesTable"></div>
     <div id="friendliesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_friendlies.js?v=20261027-supporter-gate"></script>
+  <script type="module" src="club_friendlies.js?v=20261027-month-tabs"></script>
 </body>
 </html>

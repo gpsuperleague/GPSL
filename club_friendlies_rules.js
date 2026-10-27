@@ -11,10 +11,10 @@ export function getClubFriendliesRules() {
     cards: [
       {
         heading: "What you see",
-        tip: "Discord-confirmed friendlies for your club. Grouped by GPSL month.",
+        tip: "Discord-confirmed friendlies for your club. Use the month tabs to switch results.",
         items: [
           "<b>Discord-confirmed</b> friendlies for your club.",
-          "Grouped by <b>GPSL month</b>.",
+          "Results by <b>GPSL month</b> (tabs).",
         ],
       },
       {

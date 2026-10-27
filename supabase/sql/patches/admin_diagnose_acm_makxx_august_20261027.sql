@@ -63,9 +63,16 @@ SELECT
   sch.status AS schedule_status,
   sch.agreed_kickoff_at,
   public.match_schedule_fixture_within_play_window(f.id) AS in_play_window,
-  public.match_schedule_fixture_play_window_expired(f.id) AS window_expired,
+  public.match_schedule_fixture_is_catch_up(f.id) AS is_catch_up,
+  public.match_schedule_fixture_play_window_expired(f.id, 'august') AS expired_if_august_lock,
+  public.match_schedule_fixture_play_window_expired(f.id, 'september') AS expired_if_september_lock,
+  public.match_schedule_fixture_play_window_expired(f.id, 'october') AS expired_if_october_lock,
   public.match_schedule_fixture_new_owner_catchup_through_sort(f.id) AS owner_catchup_through,
-  public.club_holiday_allows_fixture_early(f.id, 'ACM') AS holiday_early_acm
+  CASE
+    WHEN to_regprocedure('public.club_holiday_allows_fixture_early(bigint, text)') IS NOT NULL
+    THEN public.club_holiday_allows_fixture_early(f.id, 'ACM')
+    ELSE NULL
+  END AS holiday_early_acm
 FROM public.competition_fixtures f
 LEFT JOIN public.competition_fixture_schedule sch ON sch.fixture_id = f.id
 JOIN public.competition_seasons s ON s.id = f.season_id AND s.is_current
