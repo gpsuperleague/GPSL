@@ -25,13 +25,14 @@ SELECT
   s.id,
   s.role,
   s.slot_index,
+  s.gender,
   s.display_name,
   s.hired_at,
-  s.contract_seasons_left,
-  s.is_active
+  s.seasons_remaining,
+  s.hire_cost
 FROM public.club_medical_staff s
 WHERE s.club_short_name = 'AJX'
-ORDER BY s.role, s.slot_index;
+ORDER BY s.role, s.slot_index NULLS FIRST;
 
 -- 3) Prize inventory medical tokens (shop / challenges)
 SELECT
@@ -75,9 +76,10 @@ SELECT public.medical_room_prize_tokens('AJX') AS prize_tokens_rpc;
 SELECT
   i.id,
   i.player_id,
+  i.label,
   i.status,
-  i.matches_remaining,
-  i.doctor_assessed,
+  i.matches_out_remaining,
+  i.recovery_remaining,
   EXISTS (
     SELECT 1 FROM public.club_medical_token_use u WHERE u.injury_id = i.id
   ) AS consult_already_used
