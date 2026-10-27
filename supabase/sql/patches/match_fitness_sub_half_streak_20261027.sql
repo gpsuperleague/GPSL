@@ -294,4 +294,69 @@ GRANT EXECUTE ON FUNCTION public.competition_match_fitness_ensure(bigint, text, 
 GRANT EXECUTE ON FUNCTION public.competition_match_fitness_tick_club(bigint, text)
   TO service_role;
 
+-- Expose matches_to_max for squad UI consecutive progress (3.5/4)
+CREATE OR REPLACE FUNCTION public.club_match_fitness_map(p_club text DEFAULT NULL)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := upper(nullif(btrim(coalesce(p_club, public.my_club_shortname())), ''));
+  v_season bigint;
+  v_to_max int := 4;
+BEGIN
+  IF v_club IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'no_club', 'by_player', '{}'::jsonb);
+  END IF;
+
+  BEGIN
+    v_to_max := greatest(
+      coalesce((public.competition_injury_settings_row()).fitness_matches_to_max, 4),
+      1
+    );
+  EXCEPTION WHEN OTHERS THEN
+    v_to_max := 4;
+  END;
+
+  SELECT id INTO v_season
+  FROM public.competition_seasons
+  WHERE is_current = true
+  ORDER BY id DESC
+  LIMIT 1;
+
+  IF v_season IS NULL THEN
+    RETURN jsonb_build_object(
+      'ok', true,
+      'club', v_club,
+      'matches_to_max', v_to_max,
+      'by_player', '{}'::jsonb
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'club', v_club,
+    'season_id', v_season,
+    'matches_to_max', v_to_max,
+    'by_player', coalesce((
+      SELECT jsonb_object_agg(
+        f.player_id,
+        jsonb_build_object(
+          'level', f.fitness_level,
+          'label', public.competition_match_fitness_label(f.fitness_level),
+          'consecutive', f.consecutive_appearances
+        )
+      )
+      FROM public.competition_player_match_fitness f
+      WHERE f.season_id = v_season
+        AND upper(btrim(f.club_short_name)) = v_club
+    ), '{}'::jsonb)
+  );
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.club_match_fitness_map(text) TO authenticated;
+
 NOTIFY pgrst, 'reload schema';

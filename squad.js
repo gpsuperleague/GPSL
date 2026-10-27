@@ -307,6 +307,8 @@ let squadSuspensionsByPlayer = new Map();
 let squadInjuriesByPlayer = new Map();
 /** @type {Map<string, { level: number, label: string, consecutive: number }>} */
 let squadMatchFitnessByPlayer = new Map();
+/** Consecutive units needed to climb one fitness level (start=1, sub=0.5). */
+let squadMatchFitnessToMax = 4;
 /** @type {Map<string, { yellows: number, reds: number }>} */
 let squadCardsByPlayer = new Map();
 /** Tokens / appeal cards available for squad Action menu */
@@ -1912,6 +1914,31 @@ function matchFitnessStatusLabel(level, injuryRows = []) {
   return MATCH_FITNESS_LABELS[level] || MATCH_FITNESS_LABELS[1];
 }
 
+function formatFitnessStreakNumber(n) {
+  if (!Number.isFinite(n)) return "0";
+  return String(Math.round(n * 10) / 10).replace(/\.0$/, "");
+}
+
+/** Units toward next level rise within the current band (start=1, sub=0.5). */
+function formatFitnessStreakProgress(streak, level, toMax = 4) {
+  const step = Math.max(1, Number(toMax) || 4);
+  const lvl = Math.max(1, Math.min(5, Number(level) || 1));
+  const total = Math.max(0, Number(streak) || 0);
+  const bandBase = (lvl - 1) * step;
+  const within = Math.max(0, Math.round((total - bandBase) * 10) / 10);
+  const withinLabel = formatFitnessStreakNumber(Math.min(within, step));
+  if (lvl >= 5 && within >= step) {
+    return {
+      text: "max",
+      title: `Consecutive streak ${formatFitnessStreakNumber(total)} · already at highest risk band`,
+    };
+  }
+  return {
+    text: `${withinLabel}/${step}`,
+    title: `Consecutive toward next level: ${withinLabel} of ${step} (start=1, sub=0.5). Total streak ${formatFitnessStreakNumber(total)}.`,
+  };
+}
+
 function formatMatchFitnessCell(playerId, injuryRows = []) {
   const row = squadMatchFitnessByPlayer.get(String(playerId));
   const level = Math.max(1, Math.min(5, Number(row?.level) || 1));
@@ -1919,16 +1946,11 @@ function formatMatchFitnessCell(playerId, injuryRows = []) {
     row?.label || MATCH_FITNESS_LABELS[level] || MATCH_FITNESS_LABELS[1];
   const label = matchFitnessStatusLabel(level, injuryRows);
   const streak = Number(row?.consecutive) || 0;
-  const streakLabel = Number.isFinite(streak)
-    ? String(Math.round(streak * 10) / 10).replace(/\.0$/, "")
-    : "0";
+  const toMax = Number(squadMatchFitnessToMax) || 4;
+  const progress = formatFitnessStreakProgress(streak, level, toMax);
   const title = injuryRows?.length
     ? `${label} · meter ${baseLabel} (level ${level}/5)`
-    : `${label} (level ${level}/5)${
-        streak
-          ? ` · ${streakLabel} consecutive (start=1, sub=0.5)`
-          : ""
-      }`;
+    : `${label} (level ${level}/5) · ${progress.title}`;
   const pips = [1, 2, 3, 4, 5]
     .map(
       (n) =>
@@ -1943,6 +1965,12 @@ function formatMatchFitnessCell(playerId, injuryRows = []) {
         label === "Injured" ? "injured" : "recovery"
       }`
     : "squad-fit-name";
+  const streakHtml = injuryRows?.length
+    ? ""
+    : `<div class="squad-fit-streak" title="${progress.title.replace(
+        /"/g,
+        "&quot;"
+      )}">${progress.text}</div>`;
   return `<div class="squad-fit squad-fit-l${level}" title="${title.replace(
     /"/g,
     "&quot;"
@@ -1952,6 +1980,7 @@ function formatMatchFitnessCell(playerId, injuryRows = []) {
       /"/g,
       "&quot;"
     )}">${pips}</div>
+    ${streakHtml}
     <div class="${nameClass}">${label}</div>
   </div>`;
 }
@@ -1969,6 +1998,8 @@ async function loadSquadMatchFitness(clubShort) {
       }
       return;
     }
+    const toMax = Number(data?.matches_to_max);
+    squadMatchFitnessToMax = Number.isFinite(toMax) && toMax >= 1 ? toMax : 4;
     const by = data?.by_player && typeof data.by_player === "object" ? data.by_player : {};
     for (const [pid, v] of Object.entries(by)) {
       squadMatchFitnessByPlayer.set(String(pid), {
