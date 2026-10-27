@@ -58,6 +58,9 @@ AS $$
   SELECT public.competition_match_fitness_level_from_streak(p_streak::numeric, p_to_max);
 $$;
 
+DROP FUNCTION IF EXISTS public.competition_match_fitness_streak_for_level(integer, integer);
+DROP FUNCTION IF EXISTS public.competition_match_fitness_streak_for_level(int, int);
+
 CREATE OR REPLACE FUNCTION public.competition_match_fitness_streak_for_level(
   p_level int,
   p_to_max int DEFAULT 4
