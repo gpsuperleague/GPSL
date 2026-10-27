@@ -1,0 +1,109 @@
+<script>window.CURRENT_PAGE = "admin_fixture_reset";</script>
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Reset fixture for replay — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .danger-card { border-color: #844; background: #1a1212; }
+    .danger-card h2 { color: #f66; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .form-row label { font-size: 13px; color: #bbb; }
+    .form-row select,
+    .form-row input,
+    .phrase-input,
+    .reason-input {
+      display: block; min-width: 220px; max-width: 520px; width: 100%;
+      padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .phrase-input { border-color: #844; }
+    .fixture-box {
+      margin-top: 12px; padding: 12px; background: #111; border: 1px solid #333;
+      border-radius: 6px; font-size: 13px; line-height: 1.5;
+    }
+    .fixture-box .ok { color: #9d9; }
+    .fixture-box .warn { color: #e8a87c; }
+    .fixture-box code { color: #ff9900; }
+    .counts { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 8px; }
+    .counts span { color: #aaa; }
+    .counts b { color: #eee; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Reset fixture for replay</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Full wipe of a fixture back to <b>scheduled / unscheduled</b> so clubs can re-arrange
+        (catch-up / September replay). Clears result, stats, videos, schedule, check-ins,
+        fixture-linked finance, and discipline sourced from that match.
+        Run <code>admin_fixture_reset_for_replay_20261027.sql</code> in Supabase once.
+      </p>
+
+      <div class="card">
+        <h2>1. Choose fixture</h2>
+        <div class="form-row">
+          <label>
+            GPSL month
+            <select id="monthSelect"></select>
+          </label>
+          <label>
+            Club
+            <select id="clubSelect">
+              <option value="">Select month first…</option>
+            </select>
+          </label>
+          <label>
+            Fixture
+            <select id="fixtureSelect" style="min-width:360px;">
+              <option value="">Select club first…</option>
+            </select>
+          </label>
+        </div>
+        <p class="note" style="margin:12px 0 4px;">Or paste a fixture id:</p>
+        <div class="form-row">
+          <label>
+            Fixture id
+            <input id="fixtureIdInput" type="number" min="1" step="1" placeholder="e.g. 8981">
+          </label>
+          <button type="button" id="loadIdBtn" class="button secondary">Load id</button>
+        </div>
+        <div id="fixtureDetail" class="fixture-box" hidden></div>
+        <div id="pickStatus" class="status-line"></div>
+      </div>
+
+      <div class="card danger-card" style="margin-top:16px;">
+        <h2>2. Reset for replay</h2>
+        <p class="note" style="margin-top:0;">
+          Undoes the match as if it was never completed, then leaves schedule <b>unscheduled</b>
+          so either club can propose a new time. Does <b>not</b> apply a new fine.
+        </p>
+        <label style="display:block;font-size:13px;color:#bbb;">
+          Reason (shown in admin notes)
+          <input id="reasonInput" class="reason-input" type="text" maxlength="200"
+                 placeholder="e.g. No recording / accidental rule break / staff exemption">
+        </label>
+        <p class="note">Type exactly: <code>RESET FIXTURE REPLAY</code></p>
+        <input id="confirmPhrase" class="phrase-input" type="text" autocomplete="off"
+               placeholder="Type: RESET FIXTURE REPLAY">
+        <div style="margin-top:12px;">
+          <button type="button" id="resetBtn" class="button" style="background:#882222;">
+            Reset fixture for replay
+          </button>
+        </div>
+        <div id="resetStatus" class="status-line" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="admin_fixture_reset.js?v=20261027-v1"></script>
+</body>
+</html>

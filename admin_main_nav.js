@@ -635,6 +635,13 @@ export const ADMIN_MAIN_NAV = [
           "Mid-match network / visibility reports. Resolve records decision only — apply forfeit/replay with existing tools."
         ),
         L(
+          "Reset fixture for replay",
+          "admin_fixture_reset.html",
+          null,
+          null,
+          "Full wipe of a fixture (result, stats, videos, schedule, linked finance) back to unscheduled so clubs can re-arrange. Confirm phrase required."
+        ),
+        L(
           "Connection ratings",
           "admin_connection_ratings.html",
           null,
