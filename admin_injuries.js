@@ -36,7 +36,7 @@ function renderSettings() {
     <div><label>Max total injuries / club / season</label><input id="max_total" type="number" min="0" value="${s.max_total ?? 4}"></div>
     <div><label>Base chance / club match (pace off)</label><input id="base_match_chance" type="number" step="0.01" min="0" max="1" value="${s.base_match_chance ?? 0.09}"></div>
     <div><label>Cooldown matches after injury</label><input id="cooldown_matches" type="number" min="0" value="${s.cooldown_matches ?? 5}"></div>
-    <div><label>Match fitness: consecutive apps to L5</label><input id="fitness_matches_to_max" type="number" min="1" value="${s.fitness_matches_to_max ?? 4}"></div>
+    <div><label>Match fitness: consecutive apps per level up</label><input id="fitness_matches_to_max" type="number" min="1" value="${s.fitness_matches_to_max ?? 4}"></div>
     <div><label>Fitness return level (after injury)</label><input id="fitness_return_level" type="number" min="1" max="5" value="${s.fitness_return_level ?? 2}"></div>
     <div><label>Fitness weight L1 Fully Fit</label><input id="fitness_weight_l1" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l1 ?? 0.5}"></div>
     <div><label>Fitness weight L2 Match Ready</label><input id="fitness_weight_l2" type="number" step="0.05" min="0.01" value="${s.fitness_weight_l2 ?? 0.75}"></div>

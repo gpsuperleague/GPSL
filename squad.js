@@ -150,7 +150,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20261026-fit-injury-scale";
+} from "./squad_info_tips.js?v=20261027-fit-per-level";
 
 window.supabase = supabase;
 
@@ -1902,15 +1902,30 @@ function formatSeasonStat(row, key, fallback = "—") {
   return v;
 }
 
+function matchFitnessStatusLabel(level, injuryRows = []) {
+  if (injuryRows?.length) {
+    const out = injuryRows.some(
+      (i) => (Number(i.matches_out_remaining) || 0) > 0 || i.phase === "out"
+    );
+    return out ? "Injured" : "Regaining fitness";
+  }
+  return MATCH_FITNESS_LABELS[level] || MATCH_FITNESS_LABELS[1];
+}
+
 function formatMatchFitnessCell(playerId, injuryRows = []) {
   const row = squadMatchFitnessByPlayer.get(String(playerId));
   const level = Math.max(1, Math.min(5, Number(row?.level) || 1));
-  const label =
+  const baseLabel =
     row?.label || MATCH_FITNESS_LABELS[level] || MATCH_FITNESS_LABELS[1];
+  const label = matchFitnessStatusLabel(level, injuryRows);
   const streak = Number(row?.consecutive) || 0;
-  const title = `${label} (level ${level}/5)${
-    streak ? ` · ${streak} consecutive appearance${streak === 1 ? "" : "s"}` : ""
-  }`;
+  const title = injuryRows?.length
+    ? `${label} · meter ${baseLabel} (level ${level}/5)`
+    : `${label} (level ${level}/5)${
+        streak
+          ? ` · ${streak} consecutive appearance${streak === 1 ? "" : "s"}`
+          : ""
+      }`;
   const pips = [1, 2, 3, 4, 5]
     .map(
       (n) =>
@@ -1920,6 +1935,11 @@ function formatMatchFitnessCell(playerId, injuryRows = []) {
     )
     .join("");
   const injuryBlock = formatInjuryMatchFitnessHtml(injuryRows);
+  const nameClass = injuryRows?.length
+    ? `squad-fit-name squad-fit-name--${
+        label === "Injured" ? "injured" : "recovery"
+      }`
+    : "squad-fit-name";
   return `<div class="squad-fit squad-fit-l${level}" title="${title.replace(
     /"/g,
     "&quot;"
@@ -1929,7 +1949,7 @@ function formatMatchFitnessCell(playerId, injuryRows = []) {
       /"/g,
       "&quot;"
     )}">${pips}</div>
-    <div class="squad-fit-name">${label}</div>
+    <div class="${nameClass}">${label}</div>
   </div>`;
 }
 

@@ -149,6 +149,19 @@ async function renderFitnessWatch() {
     }
 
     const by = data?.by_player && typeof data.by_player === "object" ? data.by_player : {};
+    // Fitness watch = load management, not injury timeline (those have their own list).
+    const injuredIds = new Set(
+      (state?.active_injuries || [])
+        .filter(
+          (i) =>
+            i &&
+            ((Number(i.matches_out_remaining) || 0) > 0 ||
+              (Number(i.recovery_remaining) || 0) > 0 ||
+              i.phase === "out" ||
+              i.phase === "recovery")
+        )
+        .map((i) => String(i.player_id))
+    );
     const elevated = Object.entries(by)
       .map(([pid, v]) => ({
         playerId: String(pid),
@@ -156,7 +169,7 @@ async function renderFitnessWatch() {
         label: v?.label || FITNESS_WATCH_LABELS[Number(v?.level) || 1],
         consecutive: Number(v?.consecutive) || 0,
       }))
-      .filter((r) => r.level >= 3)
+      .filter((r) => r.level >= 3 && !injuredIds.has(r.playerId))
       .sort(
         (a, b) =>
           b.level - a.level ||
