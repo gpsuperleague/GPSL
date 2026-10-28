@@ -239,6 +239,12 @@ export const NAV_SECTIONS = [
         page: "world_cup",
         navIcon: "world_cup",
       },
+      {
+        href: "cup_records.html",
+        label: "Cup Records",
+        page: "cup_records",
+        navIcon: "stats",
+      },
       { heading: true, label: "Prestige Cups" },
       {
         href: "cups.html?cup=super8",
@@ -271,12 +277,6 @@ export const NAV_SECTIONS = [
         cup: "bowl",
         indent: true,
         navIcon: "bowl",
-      },
-      {
-        href: "cup_records.html",
-        label: "Cup Records",
-        page: "cup_records",
-        navIcon: "stats",
       },
     ],
   },

@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261028-records-theme";
+export const APP_VERSION = "20261028-cup-records-nav";
