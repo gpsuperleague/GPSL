@@ -6,6 +6,10 @@
 import { supabase } from "./global.js";
 import { fullClubName } from "./clubs_lookup.js";
 import { loadMatchdayCheckinReadiness } from "./match_scheduling.js";
+import {
+  loadFixtureUnavailable,
+  formatOwnUnavailableLine,
+} from "./player_discipline.js?v=20261028-unavail";
 
 const REFRESH_MS = 20_000;
 
@@ -133,6 +137,7 @@ function renderFixtureCard(fx) {
       <div class="dash-md-vs">${vs}</div>
       <div class="dash-md-time" title="UK: ${escapeHtml(kickUk)}">${escapeHtml(kickLocal)}</div>
       <div class="dash-md-status">${escapeHtml(statusLine(fx))}</div>
+      <div class="dash-md-unavail" data-fixture-unavail="${fid}" hidden></div>
       <div class="dash-md-gate" data-fixture-gate="${fid}" hidden></div>
       <div class="dash-md-actions">${actions}</div>
     </div>
@@ -163,7 +168,29 @@ function renderSynopsis(data) {
   body.querySelectorAll(".dash-md-checkin").forEach((btn) => {
     btn.addEventListener("click", () => onCheckIn(Number(btn.dataset.fixtureId), btn));
   });
+  applyUnavailableToCards(fixtures);
   applyCheckinReadinessToCards(fixtures);
+}
+
+async function applyUnavailableToCards(fixtures) {
+  for (const fx of fixtures || []) {
+    const fid = Number(fx.fixture_id);
+    if (!fid) continue;
+    // Show for check-in window and pre-kickoff planning
+    if (!fx.can_check_in && !fx.before_kickoff) continue;
+    try {
+      const payload = await loadFixtureUnavailable(supabase, fid);
+      const line = formatOwnUnavailableLine(payload, clubShort, { maxNames: 3 });
+      if (!line) continue;
+      const el = document.querySelector(`[data-fixture-unavail="${fid}"]`);
+      if (!el) continue;
+      el.hidden = false;
+      el.textContent = line;
+      el.title = line;
+    } catch (err) {
+      console.warn("dashboard unavailable:", err);
+    }
+  }
 }
 
 async function applyCheckinReadinessToCards(fixtures) {

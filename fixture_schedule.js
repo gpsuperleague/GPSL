@@ -25,8 +25,8 @@ import {
 } from "./match_scheduling.js";
 import {
   loadFixtureUnavailable,
-  formatFixtureUnavailableHtml,
-} from "./player_discipline.js";
+  formatFixtureUnavailableBannerHtml,
+} from "./player_discipline.js?v=20261028-unavail";
 import {
   matchConsoleStripHtml,
   pitchBehaviourPanelHtml,
@@ -69,9 +69,10 @@ function matchdayFixHref(fid) {
 }
 
 function unavailablePanelHtml(f) {
-  return formatFixtureUnavailableHtml(fixtureUnavailable, {
+  return formatFixtureUnavailableBannerHtml(fixtureUnavailable, {
     homeName: fullClubName(f.home_club_short_name) || f.home_club_short_name,
     awayName: fullClubName(f.away_club_short_name) || f.away_club_short_name,
+    clubShort: myClub?.short || ctx?.my_club_short_name || null,
   });
 }
 
@@ -551,6 +552,7 @@ function renderAgreedPanel(root, f, sch) {
       <p class="meta" style="margin-top:6px;">
         <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
       </p>
+      ${unavailablePanelHtml(f)}
       <p class="meta">${checkinStatus}</p>
       <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
       <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, 12 subs, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:var(--gpsl-accent, #ff9900);">Check your squad</a> before kick-off.</p>
@@ -574,7 +576,6 @@ function renderAgreedPanel(root, f, sch) {
       }
       <p class="meta" id="checkInSquadGate" style="display:none;color:#f88;"></p>
       <p class="meta">Emergency drops remaining this season: <b>${al.emergency_drops_remaining ?? "—"}</b>/2 · Reschedule this GPSL month: <b>${al.reschedule_used_this_month ? "used" : "available"}</b></p>
-      ${unavailablePanelHtml(f)}
       <div id="scheduleConsoleMount">
         ${matchConsoleStripHtml({ isCup: String(f.competition_type || "").toLowerCase() === "cup" })}
         ${pitchBehaviourPanelHtml({ fixtureId: f.id, requireAck: true })}
@@ -895,6 +896,7 @@ function render() {
           <b>${fullClubName(pending.proposed_by_club_short_name)}</b> proposed
           <span class="kickoff-line">${formatKickoffPair(pending.kickoff_at, homeTz, awayTz)}</span>
         </p>
+        ${unavailablePanelHtml(f)}
         ${
           !pendingStillValid
             ? '<p class="meta" style="color:#f88;">This time has passed — ask your opponent to counter-propose a future slot.</p>'
@@ -1055,9 +1057,9 @@ function render() {
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
+      ${unavailablePanelHtml(f)}
       ${responseHtml}
       ${deadlineBoxHtml(f)}
-      ${unavailablePanelHtml(f)}
       ${
         ctx.my_has_manager !== false &&
         (ctx.allowances?.can_replay_reset || ctx.allowances?.can_catch_up_reset)

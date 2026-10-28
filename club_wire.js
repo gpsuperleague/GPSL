@@ -3,6 +3,10 @@
  * (dashboard card + nav badge). One shared poll per tab (~60s, paused while hidden).
  */
 import { supabase } from "./supabase_client.js";
+import {
+  loadFixtureUnavailable,
+  formatOwnUnavailableLine,
+} from "./player_discipline.js?v=20261028-unavail";
 
 const POLL_MS = 60000;
 
@@ -81,6 +85,10 @@ const STYLE = `
 .cw-text { flex: 1 1 auto; min-width: 0; line-height: 1.3; }
 .cw-text .cw-market { color: #8aa0b4; font-size: 0.75rem; display: block; }
 .cw-text .cw-detail { color: #8aa0b4; font-size: 0.75rem; display: block; margin-top: 2px; }
+.cw-text .cw-unavail {
+  color: #ffd0a8; font-size: 0.78rem; display: block; margin-top: 4px;
+  font-weight: 600; line-height: 1.35;
+}
 .cw-time { color: #8aa0b4; font-size: 0.75rem; white-space: nowrap; }
 .cw-go {
   white-space: nowrap; font-weight: 700; font-size: 0.8rem; text-decoration: none;
@@ -234,6 +242,44 @@ function emit() {
   }
 }
 
+const UNAVAIL_CUTOFF_KINDS = new Set([
+  "propose",
+  "late_fee",
+  "reply",
+  "checkin",
+]);
+
+/** Attach own-club suspended/injured line onto propose / check-in cutoffs. */
+async function enrichCutoffsWithUnavailable(cutoffs, clubShort) {
+  if (!cutoffs?.length || !clubShort) return cutoffs || [];
+  const ids = [
+    ...new Set(
+      cutoffs
+        .filter((c) => UNAVAIL_CUTOFF_KINDS.has(c.kind) && c.fixture_id != null)
+        .map((c) => Number(c.fixture_id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    ),
+  ].slice(0, 10);
+
+  if (!ids.length) return cutoffs;
+
+  const payloads = await Promise.all(
+    ids.map((id) => loadFixtureUnavailable(supabase, id))
+  );
+  const byId = new Map(ids.map((id, i) => [id, payloads[i]]));
+
+  return cutoffs.map((c) => {
+    if (!UNAVAIL_CUTOFF_KINDS.has(c.kind) || c.fixture_id == null) return c;
+    const line = formatOwnUnavailableLine(
+      byId.get(Number(c.fixture_id)),
+      clubShort,
+      { maxNames: 3 }
+    );
+    if (!line) return c;
+    return { ...c, unavailable_line: line };
+  });
+}
+
 async function poll() {
   if (document.hidden) return;
   try {
@@ -245,9 +291,16 @@ async function poll() {
       console.warn("club_wire_list:", wireRes.error.message);
     }
     const items = Array.isArray(wireRes.data?.items) ? wireRes.data.items : [];
-    const cutoffs = Array.isArray(cutRes.data?.cutoffs) ? cutRes.data.cutoffs : [];
+    let cutoffs = Array.isArray(cutRes.data?.cutoffs) ? cutRes.data.cutoffs : [];
     if (cutRes.error) {
       console.warn("club_wire_cutoffs:", cutRes.error.message);
+    }
+    const clubShort =
+      cutRes.data?.club_short_name || wireRes.data?.club_short_name || null;
+    try {
+      cutoffs = await enrichCutoffsWithUnavailable(cutoffs, clubShort);
+    } catch (err) {
+      console.warn("club wire unavailable enrich:", err);
     }
     state = {
       count: Number(wireRes.data?.count) || 0,
@@ -357,6 +410,11 @@ function cutoffRowsHtml(cutoffs) {
           <span class="cw-text">
             <b>${esc(c.title)}</b>
             ${c.detail ? `<span class="cw-detail">${esc(c.detail)}</span>` : ""}
+            ${
+              c.unavailable_line
+                ? `<span class="cw-unavail">${esc(c.unavailable_line)}</span>`
+                : ""
+            }
           </span>
           <span class="cw-time" title="${esc(formatUk(c.at))} UK">${relWhen(c.at)}<br>${esc(formatUk(c.at))}</span>
           ${go}

@@ -226,6 +226,86 @@ function formatUnavailableSideList(players) {
     .join("");
 }
 
+/** @param {FixtureUnavailablePlayer[]|undefined} players */
+function countUnavailableReasons(players) {
+  let suspended = 0;
+  let injured = 0;
+  let recovery = 0;
+  for (const p of players || []) {
+    if (p.reason === "injured") injured += 1;
+    else if (p.reason === "recovery") recovery += 1;
+    else suspended += 1;
+  }
+  return { suspended, injured, recovery, total: suspended + injured + recovery };
+}
+
+/**
+ * Players on one side for this fixture (own club).
+ * @param {FixtureUnavailablePayload|null} payload
+ * @param {string|null|undefined} clubShort
+ * @returns {FixtureUnavailablePlayer[]}
+ */
+export function unavailablePlayersForClub(payload, clubShort) {
+  if (!payload || !clubShort) return [];
+  const key = String(clubShort).toUpperCase();
+  if ((payload.home_club_short_name || "").toUpperCase() === key) {
+    return payload.home || [];
+  }
+  if ((payload.away_club_short_name || "").toUpperCase() === key) {
+    return payload.away || [];
+  }
+  return [];
+}
+
+/**
+ * One-line summary for Club Wire / dashboard / inbox.
+ * e.g. "Your unavailable (2): Smith (susp), Jones (inj)"
+ * @param {FixtureUnavailablePayload|null} payload
+ * @param {string|null|undefined} clubShort
+ * @param {{ maxNames?: number, prefix?: string }} opts
+ */
+export function formatOwnUnavailableLine(payload, clubShort, opts = {}) {
+  const side = unavailablePlayersForClub(payload, clubShort);
+  if (!side.length) return "";
+  const maxNames = opts.maxNames ?? 4;
+  const prefix = opts.prefix ?? "Your unavailable";
+  const counts = countUnavailableReasons(side);
+  const bits = [];
+  if (counts.suspended) bits.push(`${counts.suspended} susp`);
+  if (counts.injured) bits.push(`${counts.injured} inj`);
+  if (counts.recovery) bits.push(`${counts.recovery} fitness`);
+  const names = side.slice(0, maxNames).map((p) => {
+    const name = p.player_name || p.player_id;
+    const tag =
+      p.reason === "injured"
+        ? "inj"
+        : p.reason === "recovery"
+          ? "fit"
+          : "susp";
+    return `${name} (${tag})`;
+  });
+  const more =
+    side.length > maxNames ? ` +${side.length - maxNames} more` : "";
+  return `${prefix} (${counts.total}: ${bits.join(", ")}): ${names.join(", ")}${more}`;
+}
+
+/**
+ * Compact both-clubs line when you don't need the full panel.
+ * @param {FixtureUnavailablePayload|null} payload
+ */
+export function formatFixtureUnavailableCompact(payload) {
+  if (!payload) return "";
+  const home = payload.home || [];
+  const away = payload.away || [];
+  if (!home.length && !away.length) return "";
+  const homeKey = payload.home_club_short_name || "Home";
+  const awayKey = payload.away_club_short_name || "Away";
+  const parts = [];
+  if (home.length) parts.push(`${homeKey} ${home.length} out`);
+  if (away.length) parts.push(`${awayKey} ${away.length} out`);
+  return parts.join(" · ");
+}
+
 /**
  * Two-column panel for Match Day / fixture schedule.
  * @param {FixtureUnavailablePayload|null} payload
@@ -243,7 +323,7 @@ export function formatFixtureUnavailableHtml(payload, names = {}) {
   }
   const homeLabel = names.homeName || payload.home_club_short_name || "Home";
   const awayLabel = names.awayName || payload.away_club_short_name || "Away";
-  return `<div class="fixture-unavailable">
+  return `<div class="fixture-unavailable has-outs">
     <div class="fixture-unavailable-title">Unavailable for this match</div>
     <div class="fixture-unavailable-grid">
       <div>
@@ -252,6 +332,60 @@ export function formatFixtureUnavailableHtml(payload, names = {}) {
       </div>
       <div>
         <div class="fixture-unavailable-club">${awayLabel}</div>
+        <ul class="unavailable-list">${formatUnavailableSideList(away)}</ul>
+      </div>
+    </div>
+  </div>`;
+}
+
+/**
+ * Prominent schedule / check-in banner — hidden when nobody is out.
+ * Own club called out first when `clubShort` is set.
+ * @param {FixtureUnavailablePayload|null} payload
+ * @param {{ homeName?: string, awayName?: string, clubShort?: string|null }} opts
+ */
+export function formatFixtureUnavailableBannerHtml(payload, opts = {}) {
+  if (!payload) return "";
+  const home = payload.home || [];
+  const away = payload.away || [];
+  if (!home.length && !away.length) return "";
+
+  const homeLabel = opts.homeName || payload.home_club_short_name || "Home";
+  const awayLabel = opts.awayName || payload.away_club_short_name || "Away";
+  const ownLine = formatOwnUnavailableLine(payload, opts.clubShort);
+  const alert = ownLine
+    ? `<div class="fixture-unavailable-alert">${ownLine
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")}</div>`
+    : `<div class="fixture-unavailable-alert">Players unavailable for this match — check both clubs below before proposing or checking in.</div>`;
+
+  return `<div class="fixture-unavailable has-outs" role="status">
+    ${alert}
+    <div class="fixture-unavailable-title">Unavailable for this match</div>
+    <div class="fixture-unavailable-grid">
+      <div class="${
+        opts.clubShort &&
+        (payload.home_club_short_name || "").toUpperCase() ===
+          String(opts.clubShort).toUpperCase()
+          ? "fixture-unavailable-own"
+          : ""
+      }">
+        <div class="fixture-unavailable-club">${homeLabel}${
+          home.length ? ` · ${home.length} out` : ""
+        }</div>
+        <ul class="unavailable-list">${formatUnavailableSideList(home)}</ul>
+      </div>
+      <div class="${
+        opts.clubShort &&
+        (payload.away_club_short_name || "").toUpperCase() ===
+          String(opts.clubShort).toUpperCase()
+          ? "fixture-unavailable-own"
+          : ""
+      }">
+        <div class="fixture-unavailable-club">${awayLabel}${
+          away.length ? ` · ${away.length} out` : ""
+        }</div>
         <ul class="unavailable-list">${formatUnavailableSideList(away)}</ul>
       </div>
     </div>

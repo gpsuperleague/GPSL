@@ -51,9 +51,21 @@
       padding:12px 14px; color:#ecc; font-size:13px; line-height:1.45; margin-bottom:16px;
     }
     .fixture-unavailable {
-      margin:12px 0 4px;
+      margin:12px 0 10px;
       padding:10px 0 0;
       border-top:1px solid #333;
+    }
+    .fixture-unavailable.has-outs {
+      margin:14px 0 16px;
+      padding:12px 14px;
+      border:1px solid #a04830;
+      border-radius:8px;
+      background:linear-gradient(180deg, #2a1612 0%, #1a1210 100%);
+      border-top:1px solid #a04830;
+    }
+    .fixture-unavailable-alert {
+      font-size:13px; font-weight:700; color:#ffd0a8;
+      line-height:1.4; margin:0 0 10px;
     }
     .fixture-unavailable-title {
       color:var(--gpsl-accent-hover, #ffcc66); font-weight:600; font-size:13px; margin-bottom:8px;
@@ -65,6 +77,11 @@
       .fixture-unavailable-grid { grid-template-columns:1fr; }
     }
     .fixture-unavailable-club { color:#aaa; font-size:12px; margin-bottom:4px; font-weight:600; }
+    .fixture-unavailable-own {
+      padding:8px; border-radius:6px; background:rgba(160,72,48,0.18);
+      border:1px solid rgba(160,72,48,0.45);
+    }
+    .fixture-unavailable-own .fixture-unavailable-club { color:#ffd0a8; }
     .unavailable-list { list-style:none; margin:0; padding:0; font-size:12px; }
     .unavailable-list li { margin:3px 0; }
     .unavailable-none, .unavailable-empty { color:#777; font-style:italic; }
@@ -153,6 +170,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261028-dropper-propose"></script>
+  <script type="module" src="fixture_schedule.js?v=20261028-unavail"></script>
 </body>
 </html>
