@@ -17,18 +17,126 @@ const POSITION_GROUPS = {
   Attackers: ["LW", "LWF", "SS", "RW", "RWF", "CF"],
 };
 
+const DRAFT_KEY = "gpsl_admin_sign_fa_draft_v1";
+
 /** @type {Map<string, object>} */
 const basket = new Map();
 /** @type {object|null} */
 let lastPreview = null;
 /** @type {object|null} */
 let clubContext = null;
+/** Skip auto home-nation when restoring a saved draft */
+let restoreNationOverride = null;
+/** Prevent club-change handler from double-loading during bootstrap */
+let bootstrapping = false;
+/** Last club the basket belonged to (select value is already new on change) */
+let activeClub = "";
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
   wireUi();
   await loadClubs();
+  await restoreDraftOnLoad();
 });
+
+function readDraftStore() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return { version: 1, lastClub: "", clubs: {} };
+    const parsed = JSON.parse(raw);
+    return {
+      version: 1,
+      lastClub: String(parsed?.lastClub || ""),
+      clubs: parsed?.clubs && typeof parsed.clubs === "object" ? parsed.clubs : {},
+    };
+  } catch {
+    return { version: 1, lastClub: "", clubs: {} };
+  }
+}
+
+function writeDraftStore(store) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(store));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function persistDraft(forClub) {
+  const club = forClub || document.getElementById("clubSelect")?.value || "";
+  if (!club) return;
+  const store = readDraftStore();
+  const players = [...basket.values()];
+  const nation = document.getElementById("nationSelect")?.value || "";
+  const searchQ = document.getElementById("searchQ")?.value || "";
+
+  if (!players.length) {
+    delete store.clubs[club];
+  } else {
+    store.clubs[club] = {
+      players,
+      nation,
+      searchQ,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  store.lastClub = club;
+  writeDraftStore(store);
+}
+
+function clearDraftForClub(club) {
+  if (!club) return;
+  const store = readDraftStore();
+  delete store.clubs[club];
+  if (store.lastClub === club) store.lastClub = "";
+  writeDraftStore(store);
+}
+
+function applyBasketFromDraft(club) {
+  basket.clear();
+  const draft = readDraftStore().clubs?.[club];
+  if (!draft || !Array.isArray(draft.players)) return null;
+  for (const p of draft.players) {
+    const id = String(p?.player_id || "");
+    if (!id) continue;
+    basket.set(id, normalizeSearchRow(p));
+  }
+  return draft;
+}
+
+async function restoreDraftOnLoad() {
+  const store = readDraftStore();
+  const club = store.lastClub;
+  const sel = document.getElementById("clubSelect");
+  if (!club || !sel) return;
+  if (![...sel.options].some((o) => o.value === club)) return;
+
+  bootstrapping = true;
+  const draft = store.clubs?.[club] || null;
+  restoreNationOverride =
+    draft && Object.prototype.hasOwnProperty.call(draft, "nation")
+      ? draft.nation
+      : null;
+  if (draft?.searchQ) {
+    const qEl = document.getElementById("searchQ");
+    if (qEl) qEl.value = draft.searchQ;
+  }
+  sel.value = club;
+  activeClub = club;
+  applyBasketFromDraft(club);
+  await loadClubContext({ fromRestore: true });
+  renderBasket();
+  renderBuildPanel();
+  bootstrapping = false;
+  restoreNationOverride = null;
+
+  if (basket.size) {
+    setStatus(
+      "pageStatus",
+      `Restored draft for ${club}: ${basket.size} player(s) in basket.`
+    );
+  }
+}
 
 function wireUi() {
   document.getElementById("searchBtn")?.addEventListener("click", runSearch);
@@ -38,7 +146,9 @@ function wireUi() {
       runSearch();
     }
   });
+  document.getElementById("searchQ")?.addEventListener("change", persistDraft);
   document.getElementById("nationSelect")?.addEventListener("change", () => {
+    persistDraft();
     const q = document.getElementById("searchQ")?.value?.trim() || "";
     const nation = document.getElementById("nationSelect")?.value || "";
     if (nation || q.length >= 2) runSearch();
@@ -46,8 +156,10 @@ function wireUi() {
   document.getElementById("previewBtn")?.addEventListener("click", () => runSign(true));
   document.getElementById("signBtn")?.addEventListener("click", () => runSign(false));
   document.getElementById("clearBtn")?.addEventListener("click", () => {
+    const club = document.getElementById("clubSelect")?.value || "";
     basket.clear();
     lastPreview = null;
+    clearDraftForClub(club);
     renderBasket();
     renderBuildPanel();
     document.getElementById("signBtn").disabled = true;
@@ -55,9 +167,29 @@ function wireUi() {
     setStatus("pageStatus", "Basket cleared.");
   });
   document.getElementById("clubSelect")?.addEventListener("change", async () => {
+    if (bootstrapping) return;
+    const next = document.getElementById("clubSelect")?.value || "";
+    if (activeClub) persistDraft(activeClub);
     lastPreview = null;
     document.getElementById("signBtn").disabled = true;
-    await loadClubContext();
+    const draft = next ? applyBasketFromDraft(next) : (basket.clear(), null);
+    activeClub = next;
+    restoreNationOverride =
+      draft && Object.prototype.hasOwnProperty.call(draft, "nation")
+        ? draft.nation
+        : null;
+    if (draft?.searchQ != null) {
+      const qEl = document.getElementById("searchQ");
+      if (qEl) qEl.value = draft.searchQ;
+    } else if (!draft) {
+      const qEl = document.getElementById("searchQ");
+      if (qEl) qEl.value = "";
+    }
+    await loadClubContext({ fromRestore: !!draft });
+    restoreNationOverride = null;
+    renderBasket();
+    renderBuildPanel();
+    if (next) persistDraft(next);
   });
 }
 
@@ -84,7 +216,7 @@ async function loadClubs() {
       .join("");
 }
 
-async function loadClubContext() {
+async function loadClubContext(opts = {}) {
   const club = document.getElementById("clubSelect")?.value || "";
   clubContext = null;
   renderManager(null);
@@ -110,10 +242,18 @@ async function loadClubContext() {
   }
 
   clubContext = data;
-  fillNationSelect(Array.isArray(data.fa_nations) ? data.fa_nations : [], data.club_nation);
+  activeClub = club;
+  const preferred =
+    restoreNationOverride != null ? restoreNationOverride : data.club_nation;
+  fillNationSelect(Array.isArray(data.fa_nations) ? data.fa_nations : [], preferred, {
+    forcePreferred: restoreNationOverride != null || !!opts.fromRestore,
+  });
+  // Re-flag basket rows now that club HG/star context is known
+  for (const [id, row] of basket) basket.set(id, normalizeSearchRow(row));
   renderManager(data.manager);
   renderBuildPanel();
-  // Browse home-nation FAs so HG fill is one click away
+  persistDraft(club);
+  // Browse filtered FAs (home nation or restored nation)
   if (document.getElementById("nationSelect")?.value) {
     runSearch();
   }
@@ -127,33 +267,46 @@ function nationKeyLoose(s) {
     .replace(/[^a-z0-9]+/g, "");
 }
 
-function fillNationSelect(nations, preferredNation) {
+function fillNationSelect(nations, preferredNation, opts = {}) {
   const sel = document.getElementById("nationSelect");
   if (!sel) return;
 
   const list = [...(nations || []).map((n) => String(n || "")).filter(Boolean)];
-  const home = String(preferredNation || clubContext?.club_nation || "").trim();
-  if (home && !list.some((n) => nationKeyLoose(n) === nationKeyLoose(home))) {
-    list.unshift(home);
+  const clubHome = String(clubContext?.club_nation || "").trim();
+  const preferred = String(
+    preferredNation != null ? preferredNation : clubHome
+  ).trim();
+  if (clubHome && !list.some((n) => nationKeyLoose(n) === nationKeyLoose(clubHome))) {
+    list.unshift(clubHome);
+  }
+  if (
+    preferred &&
+    !list.some((n) => nationKeyLoose(n) === nationKeyLoose(preferred))
+  ) {
+    list.unshift(preferred);
   }
   list.sort((a, b) => a.localeCompare(b));
 
-  const preferKey = nationKeyLoose(home);
-  const matchedHome = preferKey
+  const homeKey = nationKeyLoose(clubHome);
+  const preferKey = nationKeyLoose(preferred);
+  const matchedPreferred = preferKey
     ? list.find((n) => nationKeyLoose(n) === preferKey)
     : "";
 
-  const opts = ['<option value="">Any nation</option>'].concat(
+  const optsHtml = ['<option value="">Any nation</option>'].concat(
     list.map((v) => {
-      const label =
-        matchedHome && nationKeyLoose(v) === preferKey
-          ? `${v} (home · HG)`
-          : v;
+      const isHome = homeKey && nationKeyLoose(v) === homeKey;
+      const label = isHome ? `${v} (home · HG)` : v;
       return `<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`;
     })
   );
-  sel.innerHTML = opts.join("");
-  sel.value = matchedHome || "";
+  sel.innerHTML = optsHtml.join("");
+
+  if (preferred === "" && opts.forcePreferred) {
+    sel.value = "";
+  } else {
+    sel.value = matchedPreferred || (homeKey ? list.find((n) => nationKeyLoose(n) === homeKey) || "" : "");
+  }
 }
 
 function renderManager(mgr) {
@@ -426,6 +579,7 @@ async function runSearch() {
       btn.textContent = "Added";
       renderBasket();
       renderBuildPanel();
+      persistDraft();
     });
   });
 }
@@ -470,6 +624,7 @@ function renderBasket() {
       document.getElementById("signBtn").disabled = true;
       renderBasket();
       renderBuildPanel();
+      persistDraft();
     });
   });
 }
@@ -546,9 +701,17 @@ async function runSign(dryRun) {
 
   if (!dryRun && Number(data.signed_count) > 0) {
     for (const s of data.signed || []) basket.delete(String(s.player_id));
+    if (!basket.size) clearDraftForClub(club);
+    else persistDraft();
     renderBasket();
     document.getElementById("signBtn").disabled = true;
-    await loadClubContext();
+    await loadClubContext({ fromRestore: true });
+    if (basket.size) {
+      setStatus(
+        "pageStatus",
+        `Signed ${data.signed_count}. ${basket.size} still in draft basket.`
+      );
+    }
   }
 }
 
