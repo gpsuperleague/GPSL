@@ -28,13 +28,23 @@ function divisionLabel(div) {
   return "";
 }
 
+function isChampionshipDiv(div) {
+  const d = String(div || "").toLowerCase();
+  return d === "championship_a" || d === "championship_b" || d.startsWith("championship");
+}
+
 function sectionForClub(club) {
   const owned = Boolean(club.owner_id);
   const div = String(club.division || "").toLowerCase();
-  if (!owned) return "unowned";
-  if (div === "superleague") return "superleague";
-  if (div === "championship_a" || div === "championship_b") return "championship";
-  return "other";
+  if (owned) {
+    if (div === "superleague") return "superleague";
+    if (isChampionshipDiv(div)) return "championship";
+    return "other";
+  }
+  // Vacant: keep league seats separate from pool clubs with no division
+  if (div === "superleague") return "empty_superleague";
+  if (isChampionshipDiv(div)) return "empty_championship";
+  return "unowned";
 }
 
 function alphaClubName(a, b) {
@@ -205,24 +215,16 @@ function renderClubs() {
   if (!root) return;
 
   const list = filteredClubs();
-  const superleague = list
-    .filter((c) => sectionForClub(c) === "superleague")
-    .sort(alphaClubName);
-  const championship = list
-    .filter((c) => sectionForClub(c) === "championship")
-    .sort(alphaClubName);
-  const other = list
-    .filter((c) => sectionForClub(c) === "other")
-    .sort(alphaClubName);
-  const unowned = list
-    .filter((c) => sectionForClub(c) === "unowned")
-    .sort(alphaClubName);
+  const bySection = (key) =>
+    list.filter((c) => sectionForClub(c) === key).sort(alphaClubName);
 
   root.innerHTML =
-    renderSection("Super League", superleague) +
-    renderSection("Championship", championship) +
-    renderSection("Other owned", other) +
-    renderSection("Unowned", unowned);
+    renderSection("Super League", bySection("superleague")) +
+    renderSection("Championship", bySection("championship")) +
+    renderSection("Empty Super League", bySection("empty_superleague")) +
+    renderSection("Empty Championship", bySection("empty_championship")) +
+    renderSection("Other owned", bySection("other")) +
+    renderSection("Unowned (no division)", bySection("unowned"));
 
   empty.hidden = list.length > 0;
 

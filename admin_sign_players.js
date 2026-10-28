@@ -39,31 +39,84 @@ document.addEventListener("DOMContentLoaded", async () => {
   await restoreDraftOnLoad();
 });
 
-function readDraftStore() {
+function emptyStore() {
+  return { version: 1, lastClub: "", clubs: {} };
+}
+
+function parseStoreRaw(raw) {
+  if (!raw) return null;
   try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return { version: 1, lastClub: "", clubs: {} };
     const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
     return {
       version: 1,
-      lastClub: String(parsed?.lastClub || ""),
-      clubs: parsed?.clubs && typeof parsed.clubs === "object" ? parsed.clubs : {},
+      lastClub: String(parsed.lastClub || ""),
+      clubs: parsed.clubs && typeof parsed.clubs === "object" ? parsed.clubs : {},
     };
   } catch {
-    return { version: 1, lastClub: "", clubs: {} };
+    return null;
   }
+}
+
+function clubDraftScore(draft) {
+  if (!draft || !Array.isArray(draft.players) || !draft.players.length) return 0;
+  const t = Date.parse(draft.updatedAt || "") || 0;
+  return draft.players.length * 1e15 + t;
+}
+
+/** Merge localStorage + sessionStorage; keep richest draft per club. */
+function readDraftStore() {
+  const local = parseStoreRaw(
+    (() => {
+      try {
+        return localStorage.getItem(DRAFT_KEY);
+      } catch {
+        return null;
+      }
+    })()
+  );
+  const session = parseStoreRaw(
+    (() => {
+      try {
+        return sessionStorage.getItem(DRAFT_KEY);
+      } catch {
+        return null;
+      }
+    })()
+  );
+
+  if (!local && !session) return emptyStore();
+  if (!local) return session;
+  if (!session) return local;
+
+  const clubs = { ...local.clubs };
+  for (const [k, draft] of Object.entries(session.clubs || {})) {
+    if (clubDraftScore(draft) >= clubDraftScore(clubs[k])) clubs[k] = draft;
+  }
+  const lastClub =
+    clubDraftScore(clubs[session.lastClub]) >= clubDraftScore(clubs[local.lastClub])
+      ? session.lastClub || local.lastClub
+      : local.lastClub || session.lastClub;
+  return { version: 1, lastClub: String(lastClub || ""), clubs };
 }
 
 function writeDraftStore(store) {
+  const raw = JSON.stringify(store);
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(store));
+    localStorage.setItem(DRAFT_KEY, raw);
   } catch {
-    /* ignore quota / private mode */
+    /* ignore */
   }
+  try {
+    sessionStorage.setItem(DRAFT_KEY, raw);
+  } catch {
+    /* ignore */
+  }
+  renderDraftBadge();
 }
 
-function persistDraft(forClub) {
-  const club = forClub || document.getElementById("clubSelect")?.value || "";
+function persistDraft(forClub, opts = {}) {
+  const club = forClub || activeClub || document.getElementById("clubSelect")?.value || "";
   if (!club) return;
   const store = readDraftStore();
   const players = [...basket.values()];
@@ -71,7 +124,9 @@ function persistDraft(forClub) {
   const searchQ = document.getElementById("searchQ")?.value || "";
 
   if (!players.length) {
-    delete store.clubs[club];
+    // Only drop saved draft when caller intends it (clear / finished sign).
+    // Avoid wipe if something persists while basket is transiently empty.
+    if (opts.allowClear) delete store.clubs[club];
   } else {
     store.clubs[club] = {
       players,
@@ -88,8 +143,23 @@ function clearDraftForClub(club) {
   if (!club) return;
   const store = readDraftStore();
   delete store.clubs[club];
-  if (store.lastClub === club) store.lastClub = "";
+  if (store.lastClub === club) {
+    const remaining = Object.keys(store.clubs);
+    store.lastClub = remaining[0] || "";
+  }
   writeDraftStore(store);
+}
+
+function pickRestoreClub(store, sel) {
+  const options = new Set([...sel.options].map((o) => o.value).filter(Boolean));
+  const withPlayers = Object.entries(store.clubs || {})
+    .filter(([k, d]) => options.has(k) && Array.isArray(d?.players) && d.players.length)
+    .sort((a, b) => clubDraftScore(b[1]) - clubDraftScore(a[1]));
+  if (store.lastClub && options.has(store.lastClub)) {
+    const d = store.clubs[store.lastClub];
+    if (Array.isArray(d?.players) && d.players.length) return store.lastClub;
+  }
+  return withPlayers[0]?.[0] || "";
 }
 
 function applyBasketFromDraft(club) {
@@ -104,12 +174,31 @@ function applyBasketFromDraft(club) {
   return draft;
 }
 
+function renderDraftBadge() {
+  const el = document.getElementById("draftBadge");
+  if (!el) return;
+  const store = readDraftStore();
+  const club = activeClub || document.getElementById("clubSelect")?.value || store.lastClub;
+  const draft = club ? store.clubs?.[club] : null;
+  const n = Array.isArray(draft?.players) ? draft.players.length : 0;
+  if (!n) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  el.hidden = false;
+  el.textContent = `Draft saved · ${club} · ${n} player(s) — survives refresh`;
+}
+
 async function restoreDraftOnLoad() {
   const store = readDraftStore();
-  const club = store.lastClub;
   const sel = document.getElementById("clubSelect");
-  if (!club || !sel) return;
-  if (![...sel.options].some((o) => o.value === club)) return;
+  if (!sel) return;
+  const club = pickRestoreClub(store, sel);
+  if (!club) {
+    renderDraftBadge();
+    return;
+  }
 
   bootstrapping = true;
   const draft = store.clubs?.[club] || null;
@@ -127,8 +216,10 @@ async function restoreDraftOnLoad() {
   await loadClubContext({ fromRestore: true });
   renderBasket();
   renderBuildPanel();
+  persistDraft(club);
   bootstrapping = false;
   restoreNationOverride = null;
+  renderDraftBadge();
 
   if (basket.size) {
     setStatus(
@@ -146,7 +237,7 @@ function wireUi() {
       runSearch();
     }
   });
-  document.getElementById("searchQ")?.addEventListener("change", persistDraft);
+  document.getElementById("searchQ")?.addEventListener("change", () => persistDraft());
   document.getElementById("nationSelect")?.addEventListener("change", () => {
     persistDraft();
     const q = document.getElementById("searchQ")?.value?.trim() || "";
@@ -160,8 +251,10 @@ function wireUi() {
     basket.clear();
     lastPreview = null;
     clearDraftForClub(club);
+    persistDraft(club, { allowClear: true });
     renderBasket();
     renderBuildPanel();
+    renderDraftBadge();
     document.getElementById("signBtn").disabled = true;
     document.getElementById("resultBox").textContent = "";
     setStatus("pageStatus", "Basket cleared.");
@@ -190,6 +283,16 @@ function wireUi() {
     renderBasket();
     renderBuildPanel();
     if (next) persistDraft(next);
+    renderDraftBadge();
+  });
+
+  window.addEventListener("beforeunload", () => {
+    if (activeClub && basket.size) persistDraft(activeClub);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && activeClub && basket.size) {
+      persistDraft(activeClub);
+    }
   });
 }
 
@@ -580,6 +683,7 @@ async function runSearch() {
       renderBasket();
       renderBuildPanel();
       persistDraft();
+      renderDraftBadge();
     });
   });
 }
@@ -624,7 +728,8 @@ function renderBasket() {
       document.getElementById("signBtn").disabled = true;
       renderBasket();
       renderBuildPanel();
-      persistDraft();
+      persistDraft(undefined, { allowClear: !basket.size });
+      renderDraftBadge();
     });
   });
 }
@@ -748,9 +853,10 @@ async function runSign(dryRun) {
         for (const p of parts) {
           for (const s of p.signed || []) basket.delete(String(s.player_id));
         }
-        persistDraft();
+        persistDraft(club, { allowClear: !basket.size });
         renderBasket();
         renderBuildPanel();
+        renderDraftBadge();
         await loadClubContext({ fromRestore: true });
       }
       return;
@@ -770,9 +876,10 @@ async function runSign(dryRun) {
 
     if (!dryRun) {
       for (const s of data.signed || []) basket.delete(String(s.player_id));
-      persistDraft();
+      persistDraft(club, { allowClear: !basket.size });
       renderBasket();
       renderBuildPanel();
+      renderDraftBadge();
     }
   }
 
@@ -798,7 +905,8 @@ async function runSign(dryRun) {
   }
 
   if (!basket.size) clearDraftForClub(club);
-  else persistDraft();
+  else persistDraft(club);
+  renderDraftBadge();
   document.getElementById("signBtn").disabled = true;
   await loadClubContext({ fromRestore: true });
   setStatus(
