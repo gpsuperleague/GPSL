@@ -110,23 +110,50 @@ async function loadClubContext() {
   }
 
   clubContext = data;
-  fillNationSelect(Array.isArray(data.fa_nations) ? data.fa_nations : []);
+  fillNationSelect(Array.isArray(data.fa_nations) ? data.fa_nations : [], data.club_nation);
   renderManager(data.manager);
   renderBuildPanel();
+  // Browse home-nation FAs so HG fill is one click away
+  if (document.getElementById("nationSelect")?.value) {
+    runSearch();
+  }
 }
 
-function fillNationSelect(nations) {
+function nationKeyLoose(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function fillNationSelect(nations, preferredNation) {
   const sel = document.getElementById("nationSelect");
   if (!sel) return;
-  const current = sel.value;
+
+  const list = [...(nations || []).map((n) => String(n || "")).filter(Boolean)];
+  const home = String(preferredNation || clubContext?.club_nation || "").trim();
+  if (home && !list.some((n) => nationKeyLoose(n) === nationKeyLoose(home))) {
+    list.unshift(home);
+  }
+  list.sort((a, b) => a.localeCompare(b));
+
+  const preferKey = nationKeyLoose(home);
+  const matchedHome = preferKey
+    ? list.find((n) => nationKeyLoose(n) === preferKey)
+    : "";
+
   const opts = ['<option value="">Any nation</option>'].concat(
-    (nations || []).map((n) => {
-      const v = String(n || "");
-      return `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`;
+    list.map((v) => {
+      const label =
+        matchedHome && nationKeyLoose(v) === preferKey
+          ? `${v} (home · HG)`
+          : v;
+      return `<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`;
     })
   );
   sel.innerHTML = opts.join("");
-  if (current && nations.includes(current)) sel.value = current;
+  sel.value = matchedHome || "";
 }
 
 function renderManager(mgr) {

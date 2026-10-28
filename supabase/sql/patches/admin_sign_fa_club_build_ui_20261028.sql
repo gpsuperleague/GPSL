@@ -172,12 +172,15 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_q text := lower(btrim(coalesce(p_query, '')));
+  v_raw text := btrim(coalesce(p_query, ''));
+  v_q text := lower(v_raw);
+  v_norm text := NULL;
   v_nation text := nullif(btrim(coalesce(p_nation, '')), '');
   v_club text := upper(btrim(coalesce(p_club_short_name, '')));
   v_nation_key text := '';
   v_star_min int := 79;
   v_lim int := greatest(1, least(coalesce(p_limit, 30), 80));
+  v_has_norm boolean := to_regprocedure('public.gpdb_normalize_search_text(text)') IS NOT NULL;
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -185,6 +188,10 @@ BEGIN
 
   IF length(v_q) < 2 AND v_nation IS NULL THEN
     RETURN '[]'::jsonb;
+  END IF;
+
+  IF length(v_q) >= 2 AND v_has_norm THEN
+    v_norm := public.gpdb_normalize_search_text(v_raw);
   END IF;
 
   IF v_club <> '' THEN
@@ -237,11 +244,30 @@ BEGIN
       FROM public."Players" p
       WHERE nullif(btrim(p."Contracted_Team"::text), '') IS NULL
         AND coalesce(p.pesdb_unavailable, false) = false
-        AND (v_nation IS NULL OR p."Nation" ILIKE v_nation)
+        AND (
+          v_nation IS NULL
+          OR p."Nation" ILIKE v_nation
+          OR (
+            v_has_norm
+            AND public.normalize_nation_key(p."Nation")
+              = public.normalize_nation_key(v_nation)
+          )
+        )
         AND (
           length(v_q) < 2
-          OR lower(p."Name") LIKE '%' || v_q || '%'
-          OR p."Konami_ID"::text = btrim(coalesce(p_query, ''))
+          OR p."Konami_ID"::text = v_raw
+          OR (
+            v_norm IS NOT NULL
+            AND v_norm <> ''
+            AND (
+              coalesce(p.name_search_key, public.gpdb_normalize_search_text(p."Name"))
+                LIKE '%' || v_norm || '%'
+            )
+          )
+          OR (
+            v_norm IS NULL
+            AND lower(p."Name") LIKE '%' || v_q || '%'
+          )
         )
         AND (
           to_regprocedure('public.gpdb_player_is_season_excluded(text)') IS NULL
