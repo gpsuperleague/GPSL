@@ -140,6 +140,8 @@ function fillFilterDropdowns() {
 function wireFilters() {
   const clubSel = document.getElementById("clubSearch");
   const ownerSel = document.getElementById("ownerSearch");
+  const divSel = document.getElementById("divisionFilter");
+  const ownSel = document.getElementById("ownershipFilter");
   const clearBtn = document.getElementById("clearClubFilters");
 
   clubSel?.addEventListener("change", () => {
@@ -150,22 +152,53 @@ function wireFilters() {
     if (ownerSel.value && clubSel) clubSel.value = "";
     renderClubs();
   });
+  divSel?.addEventListener("change", renderClubs);
+  ownSel?.addEventListener("change", renderClubs);
   clearBtn?.addEventListener("click", () => {
     if (clubSel) clubSel.value = "";
     if (ownerSel) ownerSel.value = "";
+    if (divSel) divSel.value = "";
+    if (ownSel) ownSel.value = "";
     renderClubs();
   });
 }
 
+function clubHasDivision(club) {
+  const div = String(club.division || "").toLowerCase();
+  return div === "superleague" || isChampionshipDiv(div);
+}
+
+function matchesDivisionFilter(club, filter) {
+  if (!filter) return true;
+  const div = String(club.division || "").toLowerCase();
+  if (filter === "none") return !div;
+  if (filter === "superleague") return div === "superleague";
+  if (filter === "championship") return isChampionshipDiv(div);
+  if (filter === "championship_a") return div === "championship_a";
+  if (filter === "championship_b") return div === "championship_b";
+  return true;
+}
+
+function matchesOwnershipFilter(club, filter) {
+  if (!filter) return true;
+  const owned = Boolean(club.owner_id);
+  if (filter === "owned") return owned;
+  if (filter === "unowned") return !owned;
+  if (filter === "unowned_in_division") return !owned && clubHasDivision(club);
+  return true;
+}
+
 function filteredClubs() {
-  const clubSel = document.getElementById("clubSearch");
-  const ownerSel = document.getElementById("ownerSearch");
-  const clubFilter = clubSel?.value || "";
-  const ownerFilter = ownerSel?.value || "";
+  const clubFilter = document.getElementById("clubSearch")?.value || "";
+  const ownerFilter = document.getElementById("ownerSearch")?.value || "";
+  const divFilter = document.getElementById("divisionFilter")?.value || "";
+  const ownFilter = document.getElementById("ownershipFilter")?.value || "";
 
   return allClubs.filter((c) => {
     if (clubFilter && String(c.ShortName) !== clubFilter) return false;
     if (ownerFilter && String(c.owner_id || "") !== ownerFilter) return false;
+    if (!matchesDivisionFilter(c, divFilter)) return false;
+    if (!matchesOwnershipFilter(c, ownFilter)) return false;
     return true;
   });
 }

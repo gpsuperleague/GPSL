@@ -180,13 +180,33 @@
         <option value="">All owners</option>
       </select>
     </label>
+    <label>
+      Division
+      <select id="divisionFilter" aria-label="Filter by division">
+        <option value="">All divisions</option>
+        <option value="superleague">Super League</option>
+        <option value="championship">Championship (all)</option>
+        <option value="championship_a">Championship A</option>
+        <option value="championship_b">Championship B</option>
+        <option value="none">No division</option>
+      </select>
+    </label>
+    <label>
+      Ownership
+      <select id="ownershipFilter" aria-label="Filter by ownership">
+        <option value="">All clubs</option>
+        <option value="owned">Owned only</option>
+        <option value="unowned">Unowned (all)</option>
+        <option value="unowned_in_division">Unowned + in a division</option>
+      </select>
+    </label>
     <button type="button" id="clearClubFilters" class="button">Clear</button>
   </div>
 
   <div id="clubsSections" class="clubs-sections"></div>
   <p id="clubsEmpty" class="clubs-empty" hidden>No clubs match the current filters.</p>
 
-  <script type="module" src="clubs.js?v=20261028-empty-div-sections"></script>
+  <script type="module" src="clubs.js?v=20261028-div-own-filters"></script>
 
 </body>
 </html>
