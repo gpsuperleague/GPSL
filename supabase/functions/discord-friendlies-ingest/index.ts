@@ -85,6 +85,14 @@ function matchClubByTags(
       const code = pipe[1].toUpperCase();
       if (clubShorts.has(code)) return code;
     }
+    // "Wortho - PSG" / "Nick - JUB" (club code after dash, no pipe)
+    const dashCode = String(key || "").match(
+      /\s[-–—]\s+([A-Za-z0-9]{2,8})\s*$/i
+    );
+    if (dashCode) {
+      const code = dashCode[1].toUpperCase();
+      if (clubShorts.has(code)) return code;
+    }
   }
 
   for (const key of keys) {
@@ -414,32 +422,46 @@ Deno.serve(async (req) => {
         (settingsRow?.last_ingested_message_id as string | null) || null;
     }
 
+    const useAfter = Boolean(lastIngestedId) && !forceRescan && !inject?.id;
     const messages = inject?.id
       ? [inject]
       : await fetchChannelMessages(
           botToken,
           channelId,
           Number(body.limit) > 0 ? Number(body.limit) : 40,
-          lastIngestedId
+          useAfter ? lastIngestedId : null
         );
 
-    let newestSeenId = lastIngestedId;
+    // Discord: with `after` → oldest first; default/force → newest first.
+    // Always process oldest → newest so poster 1 is pending before poster 2 matches.
+    const ordered = useAfter ? [...messages] : [...messages].reverse();
 
-    // Oldest first so the original poster becomes report_1
-    const ordered = [...messages].reverse();
+    // Only advance watermark through a contiguous prefix of handled messages.
+    // If the 2nd post errors, do NOT jump the watermark past it (was the bug).
+    let watermarkTo = lastIngestedId;
+    let stopWatermark = false;
+    let errors = 0;
 
     for (const msg of ordered) {
       if (!msg?.id) continue;
-      newestSeenId = maxSnowflake(newestSeenId, msg.id);
 
-      if (!msg.author || msg.author.bot) continue;
+      const bumpWatermark = () => {
+        if (!stopWatermark) watermarkTo = maxSnowflake(watermarkTo, msg.id);
+      };
+
+      if (!msg.author || msg.author.bot) {
+        bumpWatermark();
+        continue;
+      }
       const content = cleanContent(String(msg.content || ""));
       if (!content) {
         empty_content += 1;
+        bumpWatermark();
         continue;
       }
       if (!scorelineLooksValid(content)) {
         skipped_format += 1;
+        bumpWatermark();
         continue;
       }
 
@@ -466,6 +488,8 @@ Deno.serve(async (req) => {
         matchClubByTags(byTag, clubShorts, keys);
       if (!club) {
         ignored += 1;
+        // Visible ❌ so owners know the post did not register (was silent before)
+        await addReaction(botToken, channelId, msg.id, "❌");
         results.push({
           message_id: msg.id,
           status: "ignored",
@@ -475,8 +499,10 @@ Deno.serve(async (req) => {
           discord_user_id: msg.author.id,
           lookup_keys: keys.filter(Boolean),
           hint:
-            "Link gpsl_owner_registry.discord_user_id, or match owner_tag / nick (including '| MAR' style).",
+            "Link gpsl_owner_registry.discord_user_id, or match owner_tag / nick (including '| MAR' or 'Name - PSG' style).",
         });
+        // Still advance — re-post needed after linking; don't block the queue
+        bumpWatermark();
         continue;
       }
 
@@ -492,6 +518,9 @@ Deno.serve(async (req) => {
       );
 
       if (error) {
+        errors += 1;
+        stopWatermark = true; // retry this message next poll
+        await addReaction(botToken, channelId, msg.id, "❌");
         results.push({
           message_id: msg.id,
           status: "error",
@@ -518,8 +547,11 @@ Deno.serve(async (req) => {
         // Already ingested — do not re-react (was notifying posters every 2 min)
       } else {
         ignored += 1;
+        // Bad format / unknown club / reporter not in scoreline / no month, etc.
+        await addReaction(botToken, channelId, msg.id, "❌");
       }
 
+      bumpWatermark();
       results.push({
         message_id: msg.id,
         club,
@@ -529,11 +561,16 @@ Deno.serve(async (req) => {
     }
 
     // Advance watermark so the 2-minute cron only sees new posts
-    if (!inject?.id && newestSeenId && newestSeenId !== lastIngestedId) {
+    if (
+      !inject?.id &&
+      !forceRescan &&
+      watermarkTo &&
+      watermarkTo !== lastIngestedId
+    ) {
       const { error: wmErr } = await adminClient
         .from("gpsl_discord_friendlies_settings")
         .update({
-          last_ingested_message_id: newestSeenId,
+          last_ingested_message_id: watermarkTo,
           updated_at: new Date().toISOString(),
         })
         .eq("id", 1);
@@ -552,7 +589,9 @@ Deno.serve(async (req) => {
       duplicates,
       skipped_format,
       empty_content,
-      last_ingested_message_id: newestSeenId,
+      errors,
+      watermark_stopped: stopWatermark,
+      last_ingested_message_id: watermarkTo,
       hint:
         empty_content > 0 && scanned === 0
           ? "Discord returned messages with empty content — enable Message Content Intent and ensure the bot can read #gpsl-friendly-results"
