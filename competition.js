@@ -2060,21 +2060,100 @@ export async function takeClubLoan(supabase, amount) {
 }
 
 /**
- * Credit check before / with loan applications.
- * @returns {{ ok: boolean, negative_seasons?: number, message?: string|null }}
+ * Credit check / rating for the signed-in owner's club (or admin preview of p_club).
+ * Own-club only unless admin. Used by Service Counter + Finances summary.
+ *
+ * @returns {Promise<object>}
  */
-export async function checkClubLoanCredit(supabase) {
-  const { data, error } = await supabase.rpc("club_loan_credit_check", {
-    p_club: null,
-  });
+export async function checkClubLoanCredit(supabase, clubShort = null) {
+  const params = { p_club: clubShort || null };
+  const { data, error } = await supabase.rpc("club_loan_credit_check", params);
   if (error) {
     console.warn("checkClubLoanCredit:", error);
-    return { ok: true, message: null };
+    return {
+      available: false,
+      ok: null,
+      financial_risk: false,
+      message: error.message || "Credit rating unavailable",
+    };
+  }
+  const atRisk = data?.ok === false || data?.financial_risk === true;
+  return {
+    available: true,
+    ok: !atRisk,
+    financial_risk: atRisk,
+    negative_seasons: Number(data?.negative_seasons || 0),
+    overdrawn_month_ends: Number(data?.overdrawn_month_ends || 0),
+    ffp_seasons: Array.isArray(data?.ffp_seasons) ? data.ffp_seasons : [],
+    reasons: Array.isArray(data?.reasons) ? data.reasons : [],
+    interest_rate_pct:
+      data?.interest_rate_pct != null ? Number(data.interest_rate_pct) : null,
+    policy_interest_rate_pct:
+      data?.policy_interest_rate_pct != null
+        ? Number(data.policy_interest_rate_pct)
+        : null,
+    post_risk_premium: data?.post_risk_premium === true,
+    post_risk_premium_pct: Number(data?.post_risk_premium_pct || 0),
+    probation_until_season_id: data?.probation_until_season_id ?? null,
+    message: data?.message || null,
+    rating_label: atRisk
+      ? "Financial risk"
+      : data?.post_risk_premium
+        ? "Creditworthy (post-risk rate)"
+        : "Creditworthy",
+  };
+}
+
+/** Short owner-facing lines for a credit check result. */
+export function clubCreditRatingSummaryLines(credit) {
+  if (!credit?.available) {
+    return {
+      label: "Unavailable",
+      detail: credit?.message || "Could not load credit rating.",
+      tone: "muted",
+    };
+  }
+  if (credit.financial_risk || credit.ok === false) {
+    const bits = [];
+    if (credit.overdrawn_month_ends > 0) {
+      bits.push(
+        `${credit.overdrawn_month_ends} consecutive overdrawn month-end${
+          credit.overdrawn_month_ends === 1 ? "" : "s"
+        }`
+      );
+    }
+    if (credit.negative_seasons >= 2) {
+      bits.push(`${credit.negative_seasons} seasons ended overdrawn`);
+    }
+    if (Array.isArray(credit.ffp_seasons) && credit.ffp_seasons.length) {
+      bits.push(`FFP in lookback (${credit.ffp_seasons.length})`);
+    }
+    return {
+      label: credit.rating_label || "Financial risk",
+      detail:
+        bits.join(" · ") ||
+        (credit.message ? String(credit.message).slice(0, 180) : "New loans refused"),
+      tone: "bad",
+    };
+  }
+  const bits = [];
+  if (credit.interest_rate_pct != null) {
+    bits.push(`Loan rate ${Number(credit.interest_rate_pct).toFixed(2)}% p.a.`);
+  }
+  if (credit.post_risk_premium) {
+    bits.push("post-risk premium applying");
+  }
+  if (credit.overdrawn_month_ends > 0) {
+    bits.push(
+      `${credit.overdrawn_month_ends} recent overdrawn month-end${
+        credit.overdrawn_month_ends === 1 ? "" : "s"
+      } (below refuse threshold)`
+    );
   }
   return {
-    ok: data?.ok !== false,
-    negative_seasons: Number(data?.negative_seasons || 0),
-    message: data?.message || null,
+    label: credit.rating_label || "Creditworthy",
+    detail: bits.join(" · ") || "Eligible for bank loans (subject to limits)",
+    tone: credit.post_risk_premium ? "warn" : "good",
   };
 }
 

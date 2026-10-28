@@ -11,8 +11,9 @@ import {
   loadClubLoans,
   loadClubLoanInstallments,
   checkClubLoanCredit,
+  clubCreditRatingSummaryLines,
   clubTookLoanThisSeason,
-} from "./competition.js?v=20261022-loan-confirm";
+} from "./competition.js?v=20261028-credit-rating";
 
 /** Must match public.club_loan_max_active(). */
 const MAX_ACTIVE_LOANS = 2;
@@ -241,13 +242,16 @@ function paintLimits(bank, loans, options = {}) {
     ? ` · Rate ${rate.toFixed(2)}% p.a. (includes post-risk premium)`
     : ` · Rate ${rate.toFixed(2)}% p.a.`;
 
+  const creditBlocked = credit?.available && credit?.ok === false;
   const limitsEl = document.getElementById("loanLimits");
   if (limitsEl) {
-    limitsEl.textContent = seasonLoanUsed
-      ? `${MAX_ACTIVE_LOANS} active loans already — pay one off to take another`
-      : `Up to ${MAX_ACTIVE_LOANS} active loans · ${formatMoney(maxOwed)} owed in total · Min ${formatMoney(
-          min
-        )} · Headroom ${formatMoney(headroom)} · Term 20 GPSL months${rateNote}`;
+    limitsEl.textContent = creditBlocked
+      ? "Credit rating: financial risk — new loans refused until the club clears the bank’s checks"
+      : seasonLoanUsed
+        ? `${MAX_ACTIVE_LOANS} active loans already — pay one off to take another`
+        : `Up to ${MAX_ACTIVE_LOANS} active loans · ${formatMoney(maxOwed)} owed in total · Min ${formatMoney(
+            min
+          )} · Headroom ${formatMoney(headroom)} · Term 20 GPSL months${rateNote}`;
   }
 
   const headroomEl = document.getElementById("counterHeadroom");
@@ -263,7 +267,7 @@ function paintLimits(bank, loans, options = {}) {
     amountInput.dataset.maxAmount = String(
       effectiveMax > 0 ? effectiveMax : min
     );
-    amountInput.disabled = seasonLoanUsed;
+    amountInput.disabled = seasonLoanUsed || creditBlocked;
     if (
       String(amountInput.value).trim() !== "" &&
       Number.isFinite(parseMoneyInput(amountInput.value))
@@ -274,7 +278,9 @@ function paintLimits(bank, loans, options = {}) {
   wireLoanMoneyInputs();
 
   const takeBtn = document.getElementById("loanTakeBtn");
-  if (takeBtn) takeBtn.disabled = seasonLoanUsed || effectiveMax < min;
+  if (takeBtn) {
+    takeBtn.disabled = seasonLoanUsed || creditBlocked || effectiveMax < min;
+  }
 
   const repayBtn = document.getElementById("loanRepayBtn");
   const repayAllBtn = document.getElementById("loanRepayAllBtn");
@@ -298,7 +304,33 @@ function paintLimits(bank, loans, options = {}) {
   }
 
   fillRepaySelect(loans);
+  paintClubCreditRating(credit);
   return { outstanding, min, maxDraw, headroom, effectiveMax, seasonLoanUsed };
+}
+
+function paintClubCreditRating(credit) {
+  const box = document.getElementById("clubCreditRating");
+  const valueEl = document.getElementById("clubCreditRatingValue");
+  const detailEl = document.getElementById("clubCreditRatingDetail");
+  if (!box || !valueEl) return;
+
+  if (!credit) {
+    box.setAttribute("hidden", "");
+    return;
+  }
+
+  const summary = clubCreditRatingSummaryLines(credit);
+  box.removeAttribute("hidden");
+  valueEl.textContent = summary.label;
+  valueEl.className =
+    summary.tone === "good"
+      ? "credit-ok"
+      : summary.tone === "bad"
+        ? "credit-bad"
+        : summary.tone === "warn"
+          ? "credit-warn"
+          : "";
+  if (detailEl) detailEl.textContent = summary.detail;
 }
 
 function sleep(ms) {

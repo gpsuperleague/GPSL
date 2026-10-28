@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
-  <link rel="stylesheet" href="central_bank.css?v=20260720-loan-reject-ui">
+  <link rel="stylesheet" href="central_bank.css?v=20261028-credit-rating">
 </head>
 <body class="bank-page">
   <div id="nav"></div>
@@ -41,6 +41,10 @@
             <h3 class="gpsl-has-tip" data-gpsl-tip="Open loans with remaining principal and interest. Season accounts only show payments already posted — full terms live here." tabindex="0">Your loans</h3>
             <p class="bank-hint">Full terms, interest, and early repayment — Season accounts only lists payments already made.</p>
             <p class="gpsl-has-tip" data-gpsl-tip="Credit headroom left for new borrowing after existing loans. Requests still go through a credit check." tabindex="0">Available to borrow: <strong id="counterHeadroom">—</strong></p>
+            <div class="club-credit-rating gpsl-has-tip" id="clubCreditRating" hidden data-gpsl-tip="Your club’s bank credit rating (you only). Financial risk blocks new loans until the club clears the month-end / FFP rules." tabindex="0">
+              <p class="club-credit-rating-label">Bank credit rating: <strong id="clubCreditRatingValue">—</strong></p>
+              <p class="bank-hint" id="clubCreditRatingDetail"></p>
+            </div>
             <div id="counterLoanList"></div>
           </div>
 
@@ -93,6 +97,6 @@
     </section>
   </main>
 
-  <script type="module" src="central_bank_counter.js?v=20261022-loan-confirm"></script>
+  <script type="module" src="central_bank_counter.js?v=20261028-credit-rating"></script>
 </body>
 </html>

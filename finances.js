@@ -1,6 +1,10 @@
 import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
-import { formatMoney } from "./competition.js";
+import {
+  checkClubLoanCredit,
+  clubCreditRatingSummaryLines,
+  formatMoney,
+} from "./competition.js";
 import { loadClubWageBillSummary } from "./club_wage_bill.js?v=20261014-ff-wage";
 import {
   advisoryBudgetTitle,
@@ -211,6 +215,41 @@ function setWageBillDisplay(bill) {
   }
 }
 
+async function paintCreditRating(shortName, { historical = false } = {}) {
+  const labelEl = document.getElementById("creditRatingLabel");
+  const hintEl = document.getElementById("creditRatingHint");
+  if (!labelEl) return;
+
+  if (historical) {
+    labelEl.textContent = "—";
+    labelEl.className = "value muted";
+    if (hintEl) hintEl.textContent = "Live rating on current season →";
+    return;
+  }
+
+  try {
+    const credit = await checkClubLoanCredit(supabase, shortName);
+    const summary = clubCreditRatingSummaryLines(credit);
+    labelEl.textContent = summary.label;
+    labelEl.className = `value ${
+      summary.tone === "good"
+        ? "positive"
+        : summary.tone === "bad"
+          ? "negative"
+          : summary.tone === "warn"
+            ? "neutral"
+            : "muted"
+    }`;
+    labelEl.title = summary.detail;
+    if (hintEl) hintEl.textContent = `${summary.detail} →`;
+  } catch (err) {
+    console.warn("credit rating:", err);
+    labelEl.textContent = "—";
+    labelEl.className = "value muted";
+    if (hintEl) hintEl.textContent = "Service Counter →";
+  }
+}
+
 async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false } = {}) {
   const seasonView = await resolveFinanceSeasonView(supabase, shortName);
   const seasonRef = seasonView.isHistorical
@@ -255,6 +294,7 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     setAdvisoryBudgetDisplay(null, { historical: true });
     setWageBillDisplay(null);
     resetPredictedWorkings(null);
+    await paintCreditRating(shortName, { historical: true });
     return;
   }
 
@@ -280,6 +320,8 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
   document.getElementById("openingBalance").textContent = formatMoney(
     data.inferredOpeningAdjusted
   );
+
+  await paintCreditRating(shortName, { historical: seasonView.isHistorical });
 
   const predictedEl = document.getElementById("predictedBalance");
   const balanceLabel = document

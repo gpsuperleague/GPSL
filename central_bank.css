@@ -348,6 +348,23 @@ body.bank-page {
 }
 .bank-hint { font-size: 12px; color: #888; margin: 4px 0 10px; line-height: 1.4; }
 
+.club-credit-rating {
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #1a1a1a;
+}
+.club-credit-rating-label {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: #ccc;
+}
+.club-credit-rating-label .credit-ok { color: #8d8; }
+.club-credit-rating-label .credit-bad { color: #f88; }
+.club-credit-rating-label .credit-warn { color: #fc6; }
+.club-credit-rating .bank-hint { margin: 0; }
+
 .loan-credit-check {
   margin-top: 12px;
   padding: 10px 12px;
