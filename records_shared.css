@@ -1,4 +1,5 @@
 body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+.page-container.rec-wrap,
 .rec-wrap { width:95%; max-width:980px; margin:20px auto 48px; }
 .rec-wrap h1 { color:var(--gpsl-accent, #ff9900); margin:0 0 6px; font-size:26px; }
 .rec-intro { color:#aaa; font-size:14px; line-height:1.5; margin:0 0 12px; }
@@ -37,6 +38,27 @@ body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
 .rec-holder { color:#bbb; }
 .rec-value { color:#888; font-style:italic; }
 .rec-when { color:#777; white-space:nowrap; }
+
+/* Supporter club colours (theme_scope club_pages / full) */
+.club-themed-scope .rec-wrap h1,
+.club-themed-scope.rec-wrap h1,
+.club-themed-scope .rec-section h2,
+.club-themed-scope .rec-sib,
+.club-themed-scope .rec-table th {
+  color: var(--club-accent, var(--gpsl-accent, #ff9900));
+}
+.club-themed-scope .rec-toc a:hover {
+  border-color: var(--club-accent, var(--gpsl-accent, #ff9900));
+  color: var(--club-accent, var(--gpsl-accent, #ff9900));
+}
+.club-themed-scope .rec-panel {
+  background: var(--club-panel, #1a1a1a);
+  border-color: var(--club-border, #333);
+}
+.club-themed-scope .rec-section h2 {
+  border-bottom-color: var(--club-border, #333);
+}
+
 @media (max-width:640px) {
   .rec-table th:nth-child(4), .rec-table td:nth-child(4) { display:none; }
 }
