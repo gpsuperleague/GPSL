@@ -232,17 +232,25 @@ async function paintCreditRating(shortName, { historical = false } = {}) {
     const credit = await checkClubLoanCredit(supabase, shortName);
     const summary = clubCreditRatingSummaryLines(credit);
     labelEl.textContent = summary.label;
-    labelEl.className = `value ${
+    const toneClass =
       summary.tone === "good"
         ? "positive"
         : summary.tone === "bad"
           ? "negative"
           : summary.tone === "warn"
             ? "neutral"
-            : "muted"
-    }`;
+            : "muted";
+    labelEl.className = `value credit-rating-value ${toneClass}`;
     labelEl.title = summary.detail;
-    if (hintEl) hintEl.textContent = `${summary.detail} →`;
+    if (hintEl) {
+      // Keep the box readable — full detail stays on the title tooltip
+      const rate =
+        credit.interest_rate_pct != null
+          ? `Loan ${Number(credit.interest_rate_pct).toFixed(2)}%`
+          : null;
+      hintEl.textContent = [rate, "Service Counter →"].filter(Boolean).join(" · ");
+      hintEl.title = summary.detail;
+    }
   } catch (err) {
     console.warn("credit rating:", err);
     labelEl.textContent = "—";
