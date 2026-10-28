@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.gpsl_alltime_records (
   holder_name text,
   holder_club text,
   holder_key text,
+  owner_tag text,
   value_num numeric,
   value_text text,
   context_label text,
@@ -17,6 +18,9 @@ CREATE TABLE IF NOT EXISTS public.gpsl_alltime_records (
   computed_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (catalog, record_id)
 );
+
+ALTER TABLE public.gpsl_alltime_records
+  ADD COLUMN IF NOT EXISTS owner_tag text;
 
 CREATE TABLE IF NOT EXISTS public.gpsl_alltime_records_meta (
   id int PRIMARY KEY DEFAULT 1 CHECK (id = 1),

@@ -46,18 +46,25 @@ export async function mountRecordsPage(opts) {
 
   /** @type {Map<string, object>} */
   const byId = new Map();
+  /** @type {Map<string, { club: string, owner: string }>} */
+  const clubsByShort = new Map();
   let meta = null;
-  try {
-    const { data, error } = await supabase.rpc("gpsl_records_get", {
-      p_catalog: opts.catalog,
+
+  const [{ data, error }, clubsRes] = await Promise.all([
+    supabase.rpc("gpsl_records_get", { p_catalog: opts.catalog }),
+    supabase.from("Clubs").select("ShortName, Club, owner").neq("ShortName", "FOREIGN"),
+  ]);
+
+  if (error) console.warn("gpsl_records_get:", error);
+  meta = data?.meta || null;
+  for (const row of data?.records || []) {
+    if (row?.record_id) byId.set(String(row.record_id), row);
+  }
+  for (const c of clubsRes.data || []) {
+    clubsByShort.set(String(c.ShortName).toUpperCase(), {
+      club: c.Club || c.ShortName,
+      owner: String(c.owner || "").trim(),
     });
-    if (error) throw error;
-    meta = data?.meta || null;
-    for (const row of data?.records || []) {
-      if (row?.record_id) byId.set(String(row.record_id), row);
-    }
-  } catch (err) {
-    console.warn("gpsl_records_get:", err);
   }
 
   if (metaEl) {
@@ -72,19 +79,62 @@ export async function mountRecordsPage(opts) {
       : "Holders fill in after the weekly refresh (run the SQL patch once).";
   }
 
+  function resolveClubShort(live) {
+    const club = String(live?.holder_club || "").trim();
+    const key = String(live?.holder_key || "").trim();
+    if (club && clubsByShort.has(club.toUpperCase())) return club;
+    if (key && clubsByShort.has(key.toUpperCase())) return key;
+    return club || key || "";
+  }
+
+  function holderHtml(live) {
+    if (!live?.holder_name && !live?.value_text) return "—";
+    if (!live?.holder_name) return "—";
+
+    const short = resolveClubShort(live);
+    const clubInfo = short ? clubsByShort.get(short.toUpperCase()) : null;
+    const ownerTag =
+      String(live.owner_tag || "").trim() || clubInfo?.owner || "";
+
+    const nameIsClub =
+      short &&
+      (String(live.holder_name).toUpperCase() === short.toUpperCase() ||
+        (clubInfo &&
+          String(live.holder_name).toUpperCase() ===
+            String(clubInfo.club).toUpperCase()) ||
+        String(live.holder_key || "").toUpperCase() === short.toUpperCase());
+
+    const clubLine = nameIsClub
+      ? escapeHtml(live.holder_name)
+      : short
+        ? escapeHtml(clubInfo?.club || short)
+        : "";
+
+    const primary = nameIsClub
+      ? ""
+      : `<div class="rec-holder-name">${escapeHtml(live.holder_name)}</div>`;
+
+    const clubBlock = clubLine
+      ? `<div class="rec-holder-club">${clubLine}</div>`
+      : "";
+
+    const ownerBlock = ownerTag
+      ? `<div class="rec-holder-owner">${escapeHtml(ownerTag)}</div>`
+      : "";
+
+    // Club-only: club then owner. Player: name, then club, then owner.
+    if (nameIsClub) {
+      return `${clubBlock}${ownerBlock}` || escapeHtml(live.holder_name);
+    }
+    return `${primary}${clubBlock}${ownerBlock}`;
+  }
+
   root.innerHTML = opts.groups
     .map((g) => {
       const rows = g.records
         .map((r) => {
           const live = byId.get(r.id);
-          const holder = live?.holder_name
-            ? escapeHtml(live.holder_name) +
-              (live.holder_club && live.holder_club !== live.holder_key
-                ? ` <span class="rec-club">(${escapeHtml(
-                    live.holder_club
-                  )})</span>`
-                : "")
-            : "—";
+          const holder = live ? holderHtml(live) : "—";
           const mark = live?.value_text
             ? escapeHtml(live.value_text)
             : live
