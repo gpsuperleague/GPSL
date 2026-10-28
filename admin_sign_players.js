@@ -629,6 +629,74 @@ function renderBasket() {
   });
 }
 
+/** Apply signs in small RPCs — full-basket ledger path was timing out. */
+const SIGN_BATCH_SIZE = 5;
+
+function chunkIds(ids, size) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size));
+  return out;
+}
+
+function formatSignResultLines(label, data) {
+  const lines = [
+    label,
+    `Club ${data.club} · tax ${data.income_tax_pct}%`,
+    `Balance before ${formatMoney(Number(data.balance_before) || 0)} · squad ${data.squad_before}`,
+    `Would sign / signed: ${data.signed_count} · skipped: ${data.skipped_count}`,
+    `Fees ${formatMoney(Number(data.fees_total) || 0)} + est. tax ${formatMoney(
+      Number(data.est_income_tax_total) || 0
+    )} = ${formatMoney(Number(data.est_total_cost) || 0)}`,
+  ];
+  if (Array.isArray(data.signed) && data.signed.length) {
+    lines.push("", "Signed:");
+    for (const s of data.signed) {
+      lines.push(
+        `  ${s.player_name} (${s.player_id}) ${s.position || ""} ${s.rating ?? ""} · ${formatMoney(
+          Number(s.market_value) || 0
+        )}`
+      );
+    }
+  }
+  if (Array.isArray(data.skipped) && data.skipped.length) {
+    lines.push("", "Skipped:");
+    for (const s of data.skipped) {
+      lines.push(`  ${s.player_name || s.player_id}: ${s.reason}${s.detail ? " — " + s.detail : ""}`);
+    }
+  }
+  return lines;
+}
+
+function mergeSignBatches(parts) {
+  if (!parts.length) return null;
+  const first = parts[0];
+  const signed = [];
+  const skipped = [];
+  let fees = 0;
+  let tax = 0;
+  for (const p of parts) {
+    if (Array.isArray(p.signed)) signed.push(...p.signed);
+    if (Array.isArray(p.skipped)) skipped.push(...p.skipped);
+    fees += Number(p.fees_total) || 0;
+    tax += Number(p.est_income_tax_total) || 0;
+  }
+  return {
+    ok: parts.every((p) => p?.ok),
+    dry_run: first.dry_run,
+    club: first.club,
+    income_tax_pct: first.income_tax_pct,
+    balance_before: first.balance_before,
+    squad_before: first.squad_before,
+    signed_count: signed.length,
+    skipped_count: skipped.length,
+    fees_total: fees,
+    est_income_tax_total: tax,
+    est_total_cost: fees + tax,
+    signed,
+    skipped,
+  };
+}
+
 async function runSign(dryRun) {
   const club = document.getElementById("clubSelect")?.value || "";
   const ids = [...basket.keys()];
@@ -646,73 +714,99 @@ async function runSign(dryRun) {
     return;
   }
 
-  setStatus("pageStatus", dryRun ? "Previewing…" : "Signing…");
   out.textContent = "";
 
-  const { data, error } = await supabase.rpc("admin_sign_free_agents_at_mv", {
-    p_club_short_name: club,
-    p_player_ids: ids,
-    p_dry_run: dryRun,
-  });
+  // Preview: one call (read-only, fast). Apply: batches of SIGN_BATCH_SIZE.
+  const batches = dryRun ? [ids] : chunkIds(ids, SIGN_BATCH_SIZE);
+  const parts = [];
 
-  if (error) {
-    setStatus("pageStatus", error.message, true);
-    out.textContent = error.message;
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    setStatus(
+      "pageStatus",
+      dryRun
+        ? "Previewing…"
+        : `Signing batch ${i + 1}/${batches.length} (${batch.length} player(s))…`
+    );
+
+    const { data, error } = await supabase.rpc("admin_sign_free_agents_at_mv", {
+      p_club_short_name: club,
+      p_player_ids: batch,
+      p_dry_run: dryRun,
+    });
+
+    if (error) {
+      setStatus("pageStatus", error.message, true);
+      out.textContent =
+        (parts.length
+          ? formatSignResultLines(
+              `PARTIAL (${parts.length} batch(es) before error)`,
+              mergeSignBatches(parts)
+            ).join("\n") + "\n\n"
+          : "") + `ERROR: ${error.message}`;
+      if (!dryRun && parts.length) {
+        for (const p of parts) {
+          for (const s of p.signed || []) basket.delete(String(s.player_id));
+        }
+        persistDraft();
+        renderBasket();
+        renderBuildPanel();
+        await loadClubContext({ fromRestore: true });
+      }
+      return;
+    }
+
+    if (!data?.ok) {
+      setStatus(
+        "pageStatus",
+        data?.detail || data?.reason || "Sign failed",
+        true
+      );
+      out.textContent = JSON.stringify(data, null, 2);
+      return;
+    }
+
+    parts.push(data);
+
+    if (!dryRun) {
+      for (const s of data.signed || []) basket.delete(String(s.player_id));
+      persistDraft();
+      renderBasket();
+      renderBuildPanel();
+    }
+  }
+
+  const data = mergeSignBatches(parts);
+  lastPreview = dryRun ? data : null;
+  document.getElementById("signBtn").disabled = !(
+    dryRun &&
+    data?.ok &&
+    Number(data.signed_count) > 0
+  );
+
+  out.textContent = formatSignResultLines(
+    dryRun ? "PREVIEW" : `SIGNED (${batches.length} batch(es))`,
+    data
+  ).join("\n");
+
+  if (dryRun) {
+    setStatus(
+      "pageStatus",
+      `Preview ready — ${data.signed_count} to sign. Click Sign to apply.`
+    );
     return;
   }
 
-  lastPreview = dryRun ? data : null;
-  document.getElementById("signBtn").disabled = !(dryRun && data?.ok && Number(data.signed_count) > 0);
-
-  const lines = [
-    dryRun ? "PREVIEW" : "SIGNED",
-    `Club ${data.club} · tax ${data.income_tax_pct}%`,
-    `Balance before ${formatMoney(Number(data.balance_before) || 0)} · squad ${data.squad_before}`,
-    `Would sign / signed: ${data.signed_count} · skipped: ${data.skipped_count}`,
-    `Fees ${formatMoney(Number(data.fees_total) || 0)} + est. tax ${formatMoney(
-      Number(data.est_income_tax_total) || 0
-    )} = ${formatMoney(Number(data.est_total_cost) || 0)}`,
-  ];
-
-  if (Array.isArray(data.signed) && data.signed.length) {
-    lines.push("", "Signed:");
-    for (const s of data.signed) {
-      lines.push(
-        `  ${s.player_name} (${s.player_id}) ${s.position || ""} ${s.rating ?? ""} · ${formatMoney(
-          Number(s.market_value) || 0
-        )}`
-      );
-    }
-  }
-  if (Array.isArray(data.skipped) && data.skipped.length) {
-    lines.push("", "Skipped:");
-    for (const s of data.skipped) {
-      lines.push(`  ${s.player_name || s.player_id}: ${s.reason}${s.detail ? " — " + s.detail : ""}`);
-    }
-  }
-
-  out.textContent = lines.join("\n");
+  if (!basket.size) clearDraftForClub(club);
+  else persistDraft();
+  document.getElementById("signBtn").disabled = true;
+  await loadClubContext({ fromRestore: true });
   setStatus(
     "pageStatus",
-    dryRun
-      ? `Preview ready — ${data.signed_count} to sign. Click Sign to apply.`
+    basket.size
+      ? `Signed ${data.signed_count}. ${basket.size} still in draft basket.`
       : `Done — signed ${data.signed_count}.`
   );
-
-  if (!dryRun && Number(data.signed_count) > 0) {
-    for (const s of data.signed || []) basket.delete(String(s.player_id));
-    if (!basket.size) clearDraftForClub(club);
-    else persistDraft();
-    renderBasket();
-    document.getElementById("signBtn").disabled = true;
-    await loadClubContext({ fromRestore: true });
-    if (basket.size) {
-      setStatus(
-        "pageStatus",
-        `Signed ${data.signed_count}. ${basket.size} still in draft basket.`
-      );
-    }
-  }
 }
 
 function normalizeSearchRow(r) {
