@@ -41,6 +41,8 @@ const CUTOFF_BADGE = {
   checkin: ["CHECK-IN", "cw-badge--cutoff"],
   noshow: ["NO-SHOW", "cw-badge--bad"],
   play_window: ["PLAY BY", "cw-badge--lock"],
+  video: ["VIDEO", "cw-badge--cutoff"],
+  video_suspend: ["VIDEO PT", "cw-badge--bad"],
 };
 
 const STYLE = `
@@ -401,8 +403,10 @@ function cutoffRowsHtml(cutoffs) {
     .map((c) => {
       const [label, cls] = CUTOFF_BADGE[c.kind] || ["CUTOFF", "cw-badge--cutoff"];
       const sev = c.severity === "urgent" || c.severity === "warn" ? ` cw-sev-${c.severity}` : "";
+      const goLabel =
+        c.kind === "video" || c.kind === "video_suspend" ? "Upload →" : "Open →";
       const go = c.href
-        ? `<a class="cw-go cw-go--plain" href="${esc(c.href)}">Open →</a>`
+        ? `<a class="cw-go cw-go--plain" href="${esc(c.href)}">${goLabel}</a>`
         : "";
       return `
         <li class="cw-item${sev}">
@@ -423,7 +427,7 @@ function cutoffRowsHtml(cutoffs) {
     .join("");
   return `
     <div class="cw-cutoffs">
-      <div class="cw-cutoffs-head">Cutoffs · fines &amp; forfeits</div>
+      <div class="cw-cutoffs-head">Cutoffs · fines, forfeits &amp; videos</div>
       <ul class="cw-list">${rows}</ul>
     </div>`;
 }
@@ -465,7 +469,7 @@ export function mountClubWireCard(host) {
         <div class="cw-head">
           <span class="cw-live" aria-hidden="true"></span>
           <span class="cw-title">Club Wire</span>
-          <span class="cw-sub">Cutoffs · outbids &amp; results</span>
+          <span class="cw-sub">Cutoffs · videos · outbids &amp; results</span>
           ${items.length ? `<button type="button" class="cw-clear">Clear all</button>` : ""}
         </div>
         ${cutoffRowsHtml(cutoffs)}
