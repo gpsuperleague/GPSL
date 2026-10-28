@@ -196,6 +196,12 @@ export const NAV_SECTIONS = [
         navIcon: "stats",
       },
       {
+        href: "league_records.html",
+        label: "League Records",
+        page: "league_records",
+        navIcon: "stats",
+      },
+      {
         href: "owner_of_the_month.html",
         label: "Owner of the Month",
         page: "owner_of_the_month",
@@ -265,6 +271,12 @@ export const NAV_SECTIONS = [
         cup: "bowl",
         indent: true,
         navIcon: "bowl",
+      },
+      {
+        href: "cup_records.html",
+        label: "Cup Records",
+        page: "cup_records",
+        navIcon: "stats",
       },
     ],
   },
@@ -507,6 +519,13 @@ export const NAV_SECTIONS = [
         navIcon: "season_review",
       },
       { heading: true, label: "Owners directory" },
+      {
+        href: "fun_records.html",
+        label: "Fun Records",
+        page: "fun_records",
+        indent: true,
+        navIcon: "owner_rankings",
+      },
       {
         href: "owner_rankings.html",
         label: "Rankings",

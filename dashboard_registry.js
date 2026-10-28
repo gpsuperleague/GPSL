@@ -155,6 +155,9 @@ export const DASHBOARD_PANELS = [
   p("history", "Club History", "history.html", { defaultOn: true }),
   p("progress", "Competition Progress", "progress.html", { defaultOn: true }),
   p("league_stats", "League Stats", "league_stats.html", { defaultOn: true }),
+  p("league_records", "League Records", "league_records.html"),
+  p("cup_records", "Cup Records", "cup_records.html"),
+  p("fun_records", "Fun Records", "fun_records.html"),
   p("owner_of_the_month", "Owner of the Month", "owner_of_the_month.html", {
     defaultOn: true,
   }),
