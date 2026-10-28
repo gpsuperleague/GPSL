@@ -48,6 +48,79 @@ REVOKE ALL ON TABLE public.gpsl_alltime_records_meta FROM PUBLIC;
 GRANT SELECT ON public.gpsl_alltime_records TO authenticated, anon;
 GRANT SELECT ON public.gpsl_alltime_records_meta TO authenticated, anon;
 
+-- Owner at achievement time (season ranking) — never current Clubs.owner
+CREATE OR REPLACE FUNCTION public.gpsl_records_historical_owner(
+  p_club_short text,
+  p_season_label text DEFAULT NULL,
+  p_season_id bigint DEFAULT NULL
+)
+RETURNS text
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := upper(btrim(coalesce(p_club_short, '')));
+  v_label text := nullif(btrim(coalesce(p_season_label, '')), '');
+  v_owner uuid;
+  v_tag text;
+BEGIN
+  IF v_club = '' THEN RETURN NULL; END IF;
+  IF v_label IS NOT NULL THEN
+    v_label := btrim(regexp_replace(v_label, '\s*\(.*\)$', ''));
+  END IF;
+  IF v_label IN ('Current', 'League', 'All cups', 'All-time league', 'Cup match', 'Super League') THEN
+    v_label := NULL;
+  END IF;
+  IF to_regclass('public.competition_owner_season_ranking') IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT r.owner_id INTO v_owner
+  FROM public.competition_owner_season_ranking r
+  WHERE upper(r.club_short_name) = v_club
+    AND r.owner_id IS NOT NULL
+    AND (
+      (p_season_id IS NOT NULL AND r.season_id = p_season_id)
+      OR (v_label IS NOT NULL AND r.season_label = v_label)
+    )
+  ORDER BY r.season_id DESC NULLS LAST
+  LIMIT 1;
+
+  IF v_owner IS NULL AND v_label IS NOT NULL THEN
+    SELECT r.owner_id INTO v_owner
+    FROM public.competition_owner_season_ranking r
+    WHERE upper(r.club_short_name) = v_club
+      AND r.owner_id IS NOT NULL
+      AND (
+        r.season_label = v_label
+        OR v_label LIKE r.season_label || ' %'
+        OR v_label LIKE r.season_label || '·%'
+        OR v_label LIKE r.season_label || '· %'
+      )
+    ORDER BY r.season_id DESC NULLS LAST
+    LIMIT 1;
+  END IF;
+
+  IF v_owner IS NULL THEN RETURN NULL; END IF;
+
+  BEGIN
+    IF to_regprocedure('public.owner_registry_resolve_tag(uuid)') IS NOT NULL THEN
+      v_tag := nullif(btrim(public.owner_registry_resolve_tag(v_owner)), '');
+    END IF;
+  EXCEPTION WHEN OTHERS THEN v_tag := NULL;
+  END;
+  IF v_tag IS NULL AND to_regprocedure('public.competition_owner_display_name(uuid)') IS NOT NULL THEN
+    BEGIN
+      v_tag := nullif(btrim(public.competition_owner_display_name(v_owner)), '');
+    EXCEPTION WHEN OTHERS THEN v_tag := NULL;
+    END;
+  END IF;
+  RETURN v_tag;
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.gpsl_records_upsert(
   p_catalog text,
   p_record_id text,
@@ -64,21 +137,48 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $function$
+DECLARE
+  v_owner text;
+  v_club_key text;
+  v_season_label text;
+  v_season_id bigint;
+  v_meta jsonb := coalesce(p_meta, '{}'::jsonb);
 BEGIN
   IF p_holder_name IS NULL AND p_value_text IS NULL AND p_value_num IS NULL THEN
     RETURN;
   END IF;
+
+  v_club_key := nullif(btrim(coalesce(p_holder_club, '')), '');
+  IF v_club_key IS NULL THEN
+    v_club_key := nullif(btrim(coalesce(p_holder_key, '')), '');
+  END IF;
+
+  v_season_label := nullif(btrim(coalesce(v_meta->>'season_label', '')), '');
+  IF v_season_label IS NULL THEN
+    v_season_label := nullif(btrim(coalesce(p_context, '')), '');
+  END IF;
+  BEGIN
+    v_season_id := nullif(v_meta->>'season_id', '')::bigint;
+  EXCEPTION WHEN OTHERS THEN
+    v_season_id := NULL;
+  END;
+
+  IF v_club_key IS NOT NULL THEN
+    v_owner := public.gpsl_records_historical_owner(v_club_key, v_season_label, v_season_id);
+  END IF;
+
   INSERT INTO public.gpsl_alltime_records (
-    catalog, record_id, holder_name, holder_club, holder_key,
+    catalog, record_id, holder_name, holder_club, holder_key, owner_tag,
     value_num, value_text, context_label, meta, computed_at
   ) VALUES (
-    p_catalog, p_record_id, p_holder_name, p_holder_club, p_holder_key,
-    p_value_num, p_value_text, p_context, coalesce(p_meta, '{}'::jsonb), now()
+    p_catalog, p_record_id, p_holder_name, p_holder_club, p_holder_key, v_owner,
+    p_value_num, p_value_text, p_context, v_meta, now()
   )
   ON CONFLICT (catalog, record_id) DO UPDATE SET
     holder_name = excluded.holder_name,
     holder_club = excluded.holder_club,
     holder_key = excluded.holder_key,
+    owner_tag = excluded.owner_tag,
     value_num = excluded.value_num,
     value_text = excluded.value_text,
     context_label = excluded.context_label,
@@ -162,6 +262,7 @@ DECLARE
   v_txt text;
   v_ctx text;
   v_label text;
+  v_sid bigint;
 BEGIN
   PERFORM set_config('statement_timeout', '180s', true);
 
@@ -378,59 +479,72 @@ BEGIN
     v_n := v_n + 1;
   END IF;
 
-  -- Match extremes
+  -- Match extremes (season_id in meta → historical owner at that season)
   SELECT
-    CASE WHEN home_goals >= away_goals THEN home_club_short_name ELSE away_club_short_name END,
-    abs(home_goals - away_goals)::int,
-    format('%s %s–%s %s', home_club_short_name, home_goals, away_goals, away_club_short_name)
-  INTO v_club, v_val, v_ctx
-  FROM public.competition_fixtures
-  WHERE competition_type = 'league' AND status = 'played'
-    AND home_goals IS NOT NULL AND away_goals IS NOT NULL AND home_goals <> away_goals
-  ORDER BY abs(home_goals - away_goals) DESC, (home_goals + away_goals) DESC
+    CASE WHEN f.home_goals >= f.away_goals THEN f.home_club_short_name ELSE f.away_club_short_name END,
+    abs(f.home_goals - f.away_goals)::int,
+    format('%s %s–%s %s', f.home_club_short_name, f.home_goals, f.away_goals, f.away_club_short_name),
+    f.season_id,
+    cs.label
+  INTO v_club, v_val, v_ctx, v_sid, v_label
+  FROM public.competition_fixtures f
+  LEFT JOIN public.competition_seasons cs ON cs.id = f.season_id
+  WHERE f.competition_type = 'league' AND f.status = 'played'
+    AND f.home_goals IS NOT NULL AND f.away_goals IS NOT NULL AND f.home_goals <> f.away_goals
+  ORDER BY abs(f.home_goals - f.away_goals) DESC, (f.home_goals + f.away_goals) DESC
   LIMIT 1;
   IF FOUND THEN
     PERFORM public.gpsl_records_upsert(
       'league', 'biggest_league_win',
       public.gpsl_records_club_name(v_club), v_club, v_club,
-      v_val, v_val::text || ' goal margin', v_ctx, '{}'::jsonb
+      v_val, v_val::text || ' goal margin', coalesce(v_label, v_ctx),
+      jsonb_build_object('season_id', v_sid, 'season_label', v_label, 'match', v_ctx)
     );
     v_n := v_n + 1;
   END IF;
 
   SELECT
-    (home_goals + away_goals)::int,
-    format('%s %s–%s %s', home_club_short_name, home_goals, away_goals, away_club_short_name)
-  INTO v_val, v_ctx
-  FROM public.competition_fixtures
-  WHERE competition_type = 'league' AND status = 'played'
-    AND home_goals IS NOT NULL AND away_goals IS NOT NULL
-  ORDER BY (home_goals + away_goals) DESC
+    (f.home_goals + f.away_goals)::int,
+    format('%s %s–%s %s', f.home_club_short_name, f.home_goals, f.away_goals, f.away_club_short_name),
+    CASE WHEN f.home_goals >= f.away_goals THEN f.home_club_short_name ELSE f.away_club_short_name END,
+    f.season_id,
+    cs.label
+  INTO v_val, v_ctx, v_club, v_sid, v_label
+  FROM public.competition_fixtures f
+  LEFT JOIN public.competition_seasons cs ON cs.id = f.season_id
+  WHERE f.competition_type = 'league' AND f.status = 'played'
+    AND f.home_goals IS NOT NULL AND f.away_goals IS NOT NULL
+  ORDER BY (f.home_goals + f.away_goals) DESC
   LIMIT 1;
   IF FOUND THEN
     PERFORM public.gpsl_records_upsert(
       'league', 'highest_scoring_match',
-      v_ctx, NULL, NULL,
-      v_val, v_val::text || ' goals', v_ctx, '{}'::jsonb
+      v_ctx, v_club, v_club,
+      v_val, v_val::text || ' goals', coalesce(v_label, v_ctx),
+      jsonb_build_object('season_id', v_sid, 'season_label', v_label, 'match', v_ctx)
     );
     v_n := v_n + 1;
   END IF;
 
   SELECT
-    CASE WHEN home_goals >= away_goals THEN home_club_short_name ELSE away_club_short_name END,
-    greatest(home_goals, away_goals)::int,
-    format('%s %s–%s %s', home_club_short_name, home_goals, away_goals, away_club_short_name)
-  INTO v_club, v_val, v_ctx
-  FROM public.competition_fixtures
-  WHERE competition_type = 'league' AND status = 'played'
-    AND home_goals IS NOT NULL AND away_goals IS NOT NULL
-  ORDER BY greatest(home_goals, away_goals) DESC
+    CASE WHEN f.home_goals >= f.away_goals THEN f.home_club_short_name ELSE f.away_club_short_name END,
+    greatest(f.home_goals, f.away_goals)::int,
+    format('%s %s–%s %s', f.home_club_short_name, f.home_goals, f.away_goals, f.away_club_short_name),
+    f.season_id,
+    cs.label
+  INTO v_club, v_val, v_ctx, v_sid, v_label
+  FROM public.competition_fixtures f
+  LEFT JOIN public.competition_seasons cs ON cs.id = f.season_id
+  WHERE f.competition_type = 'league' AND f.status = 'played'
+    AND f.home_goals IS NOT NULL AND f.away_goals IS NOT NULL
+  ORDER BY greatest(f.home_goals, f.away_goals) DESC
   LIMIT 1;
   IF FOUND THEN
     PERFORM public.gpsl_records_upsert(
       'league', 'most_goals_one_team_match',
       public.gpsl_records_club_name(v_club), v_club, v_club,
-      v_val, v_val::text || ' goals', v_ctx, '{}'::jsonb
+      v_val, v_val::text || ' goals', coalesce(v_label, v_ctx),
+      jsonb_build_object('season_id', v_sid, 'season_label', v_label, 'match', v_ctx)
     );
     v_n := v_n + 1;
   END IF;
@@ -692,19 +806,23 @@ BEGIN
   END IF;
 
   SELECT
-    CASE WHEN home_goals >= away_goals THEN home_club_short_name ELSE away_club_short_name END,
-    abs(home_goals - away_goals)::int,
-    format('%s %s–%s %s (%s)', home_club_short_name, home_goals, away_goals, away_club_short_name, coalesce(cup_code, 'cup'))
-  INTO v_club, v_val, v_ctx
-  FROM public.competition_fixtures
-  WHERE competition_type = 'cup' AND status = 'played'
-    AND home_goals IS NOT NULL AND away_goals IS NOT NULL AND home_goals <> away_goals
-  ORDER BY abs(home_goals - away_goals) DESC LIMIT 1;
+    CASE WHEN f.home_goals >= f.away_goals THEN f.home_club_short_name ELSE f.away_club_short_name END,
+    abs(f.home_goals - f.away_goals)::int,
+    format('%s %s–%s %s (%s)', f.home_club_short_name, f.home_goals, f.away_goals, f.away_club_short_name, coalesce(f.cup_code, 'cup')),
+    f.season_id,
+    cs.label
+  INTO v_club, v_val, v_ctx, v_sid, v_label
+  FROM public.competition_fixtures f
+  LEFT JOIN public.competition_seasons cs ON cs.id = f.season_id
+  WHERE f.competition_type = 'cup' AND f.status = 'played'
+    AND f.home_goals IS NOT NULL AND f.away_goals IS NOT NULL AND f.home_goals <> f.away_goals
+  ORDER BY abs(f.home_goals - f.away_goals) DESC LIMIT 1;
   IF FOUND THEN
     PERFORM public.gpsl_records_upsert(
       'cup', 'biggest_cup_match_victory',
       public.gpsl_records_club_name(v_club), v_club, v_club,
-      v_val, v_val::text || ' goal margin', v_ctx, '{}'::jsonb
+      v_val, v_val::text || ' goal margin', coalesce(v_label, v_ctx),
+      jsonb_build_object('season_id', v_sid, 'season_label', v_label, 'match', v_ctx)
     );
     v_n := v_n + 1;
   END IF;
@@ -836,13 +954,16 @@ BEGIN
   SELECT
     CASE WHEN h.division LIKE 'championship%' THEN f.home_club_short_name ELSE f.away_club_short_name END,
     abs(f.home_goals - f.away_goals)::int,
-    format('%s %s–%s %s', f.home_club_short_name, f.home_goals, f.away_goals, f.away_club_short_name)
-  INTO v_club, v_val, v_ctx
+    format('%s %s–%s %s', f.home_club_short_name, f.home_goals, f.away_goals, f.away_club_short_name),
+    f.season_id,
+    cs.label
+  INTO v_club, v_val, v_ctx, v_sid, v_label
   FROM public.competition_fixtures f
   JOIN public.competition_club_seasons h
     ON h.season_id = f.season_id AND h.club_short_name = f.home_club_short_name
   JOIN public.competition_club_seasons a
     ON a.season_id = f.season_id AND a.club_short_name = f.away_club_short_name
+  LEFT JOIN public.competition_seasons cs ON cs.id = f.season_id
   WHERE f.competition_type = 'cup' AND f.status = 'played'
     AND f.home_goals IS NOT NULL AND f.away_goals IS NOT NULL
     AND (
@@ -855,7 +976,8 @@ BEGIN
     PERFORM public.gpsl_records_upsert(
       'fun', 'biggest_giant_killing',
       public.gpsl_records_club_name(v_club), v_club, v_club,
-      v_val, 'Champ beat Super League', v_ctx, '{}'::jsonb
+      v_val, 'Champ beat Super League', coalesce(v_label, v_ctx),
+      jsonb_build_object('season_id', v_sid, 'season_label', v_label, 'match', v_ctx)
     );
     v_n := v_n + 1;
   END IF;

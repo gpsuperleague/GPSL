@@ -22,7 +22,11 @@ import {
   needsInboxConfirm,
   deferredResultNote,
 } from "./competition.js";
-import { loadCalendarStatus, isGpslMonthCurrentlyPlayable } from "./competition_calendar.js";
+import {
+  loadCalendarStatus,
+  loadSeasonCalendarMonths,
+  isGpslMonthCurrentlyPlayable,
+} from "./competition_calendar.js";
 import { formatMatchConditions } from "./competition_conditions.js";
 import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
@@ -31,7 +35,10 @@ import {
   formatKickoff,
   UK_TZ,
   isCatchUpFixture,
-} from "./match_scheduling.js";
+  fixtureNewOwnerArrangeGrace,
+  newOwnerGraceKickoffNoteHtml,
+  setSeasonCalendarMonths,
+} from "./match_scheduling.js?v=20261028-new-owner-grace";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
@@ -180,15 +187,20 @@ function cupKickoffHtml(f) {
     return `<span class="cup-ko cup-ko--manual" title="Both clubs GPSL match system OFF">Manual arrange</span>`;
   }
   const status = String(f.schedule_status || "unscheduled").toLowerCase();
-  const catchUp = isCatchUpFixture(f) ? "Catch-up · " : "";
+  const catchUp = isCatchUpFixture(f);
+  const catchUpPrefix = catchUp ? "Catch-up · " : "";
   if (status === "agreed" && f.agreed_kickoff_at) {
-    return `<span class="cup-ko cup-ko--agreed">${catchUp}${escapeHtml(formatKickoff(f.agreed_kickoff_at, UK_TZ))} UK</span>`;
+    return `<span class="cup-ko cup-ko--agreed">${catchUpPrefix}${escapeHtml(formatKickoff(f.agreed_kickoff_at, UK_TZ))} UK</span>`;
+  }
+  const grace = fixtureNewOwnerArrangeGrace(f);
+  if (grace && status !== "agreed") {
+    return newOwnerGraceKickoffNoteHtml(grace, { catchUp });
   }
   if (status === "negotiating") {
-    return `<span class="cup-ko cup-ko--pending">${catchUp}Proposal pending</span>`;
+    return `<span class="cup-ko cup-ko--pending">${catchUpPrefix}Proposal pending</span>`;
   }
   if (f.id) {
-    return `<span class="cup-ko cup-ko--open">${catchUp}Not scheduled</span>`;
+    return `<span class="cup-ko cup-ko--open">${catchUpPrefix}Not scheduled</span>`;
   }
   return "";
 }
@@ -249,7 +261,7 @@ function cupOpsHtml(leg, extras) {
       );
     } else {
       const sched = scheduleActionLabel(f, myClubShort);
-      if (sched) {
+      if (sched && !sched.vacantWalkover && !sched.newOwnerGrace) {
         const cls = sched.muted ? "leg-action leg-sched muted" : "leg-action leg-enter";
         actionBits.push(`<a class="${cls}" href="${sched.href}">${escapeHtml(sched.label)}</a>`);
       }
@@ -598,6 +610,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
   await loadClubsMap();
   calendarStatus = await loadCalendarStatus(supabase);
+  try {
+    setSeasonCalendarMonths(await loadSeasonCalendarMonths(supabase));
+  } catch (err) {
+    console.warn("cups: season calendar months", err);
+  }
   holidayContext = await loadHolidayPlayContext();
 
   const {

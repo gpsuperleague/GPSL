@@ -22,6 +22,7 @@ import {
 } from "./competition.js";
 import {
   loadCalendarStatus,
+  loadSeasonCalendarMonths,
   calendarStatusBanner,
 } from "./competition_calendar.js";
 import { loadClubsMap, clubWithOwnerHtml, stadiumName, fixtureOwnerOccupancy } from "./clubs_lookup.js";
@@ -39,7 +40,10 @@ import {
   isCatchUpFixture,
   fixtureOpponentIsInactive,
   vacantOpponentKickoffNoteHtml,
-} from "./match_scheduling.js?v=20261027-vacant-ko";
+  fixtureNewOwnerArrangeGrace,
+  newOwnerGraceKickoffNoteHtml,
+  setSeasonCalendarMonths,
+} from "./match_scheduling.js?v=20261028-new-owner-grace";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
@@ -189,6 +193,11 @@ function kickoffStatusNoteHtml(fixture) {
     return `<span class="ko-status ko-status--agreed">${prefix}Agreed · ${when} UK${ci}</span>`;
   }
 
+  const newOwnerGrace = fixtureNewOwnerArrangeGrace(fixture);
+  if (newOwnerGrace && status !== "agreed") {
+    return newOwnerGraceKickoffNoteHtml(newOwnerGrace, { catchUp });
+  }
+
   if (status === "negotiating") {
     return `<span class="ko-status ko-status--pending">${prefix}Proposal pending</span>`;
   }
@@ -277,7 +286,7 @@ function actionCell(fixture) {
       // Kick-off note explains walkover — no propose/reply button
     } else {
       const sched = scheduleActionLabel(fixture, myClub.short);
-      if (sched && !sched.vacantWalkover) {
+      if (sched && !sched.vacantWalkover && !sched.newOwnerGrace) {
         const cls = sched.muted ? "btn-result secondary" : "btn-result";
         parts.push(
           `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>`
@@ -695,6 +704,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   calendarStatus = await loadCalendarStatus(supabase);
+  try {
+    setSeasonCalendarMonths(await loadSeasonCalendarMonths(supabase));
+  } catch (err) {
+    console.warn("fixtures: season calendar months", err);
+  }
   holidayContext = await loadHolidayPlayContext();
   matchSimStatus = await loadMatchSimStatus();
   renderSimBanner();

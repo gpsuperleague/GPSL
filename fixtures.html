@@ -102,6 +102,7 @@
     .ko-status--pending { color:#c9a227; }
     .ko-status--open { color:#777; }
     .ko-status--vacant { color:#9ec8e8; }
+    .ko-status--grace { color:#9ec8e8; }
     .ko-status-detail {
       display:block;
       font-size:10px;
@@ -147,7 +148,7 @@
     <div id="matchSimBannerHost"></div>
     <p id="calendarBanner" class="meta gpsl-has-tip" style="display:none;margin-top:-8px;border:1px solid #444;background:#1a1a22;padding:10px 12px;border-radius:6px;" data-gpsl-tip="Current GPSL play-month / calendar gate for arranging fixtures and submitting results." tabindex="0"></p>
     <p id="fixturesHint" class="meta gpsl-has-tip" style="margin-top:-8px;" data-gpsl-tip="Kick-off column shows schedule status for every match. Propose / Reply buttons appear on your club’s games only. Soft fines at month lock: ₿1m late proposal, ₿2.5m if nothing proposed; first missed reply is a warning." tabindex="0">
-      Your club’s games are highlighted. The <b>Kick-off</b> column shows status for every match (agreed time, proposal pending, or not scheduled). Weeks run 1–38 through the season.
+      Your club’s games are highlighted. The <b>Kick-off</b> column shows status for every match (agreed time, proposal pending, not scheduled, or new-owner grace). Weeks run 1–38 through the season.
       On your fixtures, <b>Propose kick-off</b> / <b>Reply to proposal</b> opens match scheduling (set availability on
       <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a> first).
       Save your squad on Match Day before kick-off — it is checked when you check in.
@@ -158,6 +159,6 @@
     <div id="fixturesRoot"></div>
   </div>
 
-  <script type="module" src="fixtures.js?v=20261027-vacant-ko"></script>
+  <script type="module" src="fixtures.js?v=20261028-new-owner-grace"></script>
 </body>
 </html>

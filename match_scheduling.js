@@ -3,10 +3,123 @@
  */
 
 import { supabase } from "./global.js";
-import { fixtureOwnerOccupancy } from "./clubs_lookup.js";
+import {
+  fixtureOwnerOccupancy,
+  ownerAssignedAtForClub,
+} from "./clubs_lookup.js";
+import { GPSL_MONTH_LABELS, GPSL_MONTH_ORDER } from "./competition.js";
 
 export const UK_TZ = "Europe/London";
 export const SLOT_MINUTES = 30;
+
+/** @type {Map<string, { unlock_at?: string|null, lock_at?: string|null, sort_order?: number|null }>} */
+let seasonCalendarByMonth = new Map();
+
+/** Cache GPSL month unlock/lock rows for new-owner arrange grace checks. */
+export function setSeasonCalendarMonths(rows) {
+  seasonCalendarByMonth = new Map();
+  for (const row of rows || []) {
+    const key = String(row.gpsl_month || "").trim().toLowerCase();
+    if (!key) continue;
+    seasonCalendarByMonth.set(key, {
+      unlock_at: row.unlock_at || null,
+      lock_at: row.lock_at || null,
+      sort_order: row.sort_order ?? null,
+    });
+  }
+}
+
+function monthLabel(monthKey) {
+  const key = String(monthKey || "").toLowerCase();
+  return GPSL_MONTH_LABELS[key] || monthKey || "—";
+}
+
+function nextGpslMonthKey(monthKey) {
+  const key = String(monthKey || "").toLowerCase();
+  const i = GPSL_MONTH_ORDER.indexOf(key);
+  if (i < 0 || i >= GPSL_MONTH_ORDER.length - 1) return null;
+  return GPSL_MONTH_ORDER[i + 1];
+}
+
+/**
+ * Mid–play-month new owner on either side → arrangement deferred to next GPSL month.
+ * @returns {null | {
+ *   clubShort: string,
+ *   playMonth: string,
+ *   playMonthLabel: string,
+ *   arrangeFromMonth: string|null,
+ *   arrangeFromLabel: string,
+ *   graceUntilIso: string|null,
+ * }}
+ */
+export function fixtureNewOwnerArrangeGrace(fixture, nowMs = Date.now()) {
+  if (!fixture || fixture.status === "played") return null;
+  const playMonth = String(fixture.gpsl_month || "").trim().toLowerCase();
+  if (!playMonth) return null;
+
+  const cal = seasonCalendarByMonth.get(playMonth) || null;
+  const unlockMs = cal?.unlock_at ? new Date(cal.unlock_at).getTime() : NaN;
+  const lockMs = cal?.lock_at ? new Date(cal.lock_at).getTime() : NaN;
+
+  // Grace only while the fixture's play month is still open (or calendar unknown).
+  if (Number.isFinite(lockMs) && nowMs > lockMs) return null;
+
+  const sides = [
+    fixture.home_club_short_name,
+    fixture.away_club_short_name,
+  ];
+  for (const short of sides) {
+    const assignedIso = ownerAssignedAtForClub(short);
+    if (!assignedIso) continue;
+    const assignedMs = new Date(assignedIso).getTime();
+    if (!Number.isFinite(assignedMs)) continue;
+
+    let inPlayMonth = false;
+    if (Number.isFinite(unlockMs)) {
+      inPlayMonth =
+        assignedMs >= unlockMs &&
+        (!Number.isFinite(lockMs) || assignedMs <= lockMs);
+    } else {
+      // No calendar row — treat recent appointment during this fixture month label
+      // as grace only when the fixture month matches (caller should load calendar).
+      inPlayMonth = false;
+    }
+    if (!inPlayMonth) continue;
+
+    const arrangeFrom = nextGpslMonthKey(playMonth);
+    return {
+      clubShort: String(short || "").toUpperCase(),
+      playMonth,
+      playMonthLabel: monthLabel(playMonth),
+      arrangeFromMonth: arrangeFrom,
+      arrangeFromLabel: arrangeFrom
+        ? monthLabel(arrangeFrom)
+        : "the following GPSL month",
+      graceUntilIso: cal?.lock_at || null,
+    };
+  }
+  return null;
+}
+
+/**
+ * Kick-off column: to be scheduled while new-owner mid-month grace applies.
+ */
+export function newOwnerGraceKickoffNoteHtml(grace, { catchUp = false } = {}) {
+  if (!grace) return "";
+  const prefix = catchUp ? "Catch-up · " : "";
+  const untilBit = grace.graceUntilIso
+    ? ` through ${formatKickoff(grace.graceUntilIso, UK_TZ)} UK (end of ${grace.playMonthLabel})`
+    : ` through end of ${grace.playMonthLabel}`;
+  const title = escapeKoAttr(
+    `A new owner took charge during ${grace.playMonthLabel}. Match arrangement does not apply until ${grace.arrangeFromLabel}. Grace${untilBit}.`
+  );
+  return (
+    `<span class="ko-status ko-status--grace" title="${title}">` +
+    `${prefix}To be scheduled · grace period in play` +
+    `</span>` +
+    `<span class="ko-status-detail">Grace${untilBit} — arrange from ${grace.arrangeFromLabel}</span>`
+  );
+}
 
 /** ISO weekday 1=Mon … 7=Sun */
 export const ISO_DOW_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -537,6 +650,23 @@ export function scheduleActionLabel(fixture, myClubShort) {
   }
 
   const catchUp = isCatchUpFixture(fixture);
+  const newOwnerGrace = fixtureNewOwnerArrangeGrace(fixture);
+  // Mid-month takeover: arrangement deferred until the following GPSL month
+  if (
+    newOwnerGrace &&
+    fixture.schedule_status !== "agreed" &&
+    !fixture.agreed_kickoff_at
+  ) {
+    return {
+      label: catchUp
+        ? `Catch-up · grace — arrange from ${newOwnerGrace.arrangeFromLabel}`
+        : `Grace period — arrange from ${newOwnerGrace.arrangeFromLabel}`,
+      href: scheduleUrl(fixture.id),
+      muted: true,
+      newOwnerGrace: true,
+    };
+  }
+
   if (fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at) {
     const kickoff = new Date(fixture.agreed_kickoff_at).getTime();
     const stale = Number.isFinite(kickoff) && kickoff < Date.now();

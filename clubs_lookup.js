@@ -13,6 +13,8 @@ let stadiumMap = new Map();
 let ownerTagsMap = new Map();
 /** @type {Map<string, string>} club ShortName → owner uuid */
 let ownerIdsMap = new Map();
+/** @type {Map<string, string>} club ShortName → owner_assigned_at ISO */
+let ownerAssignedAtMap = new Map();
 /** @type {Set<string>} upper ShortName on active season absence */
 const seasonAbsentClubs = new Set();
 
@@ -33,9 +35,18 @@ export async function loadClubsMap() {
     return;
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("Clubs")
-    .select("ShortName, Club, Stadium, owner, owner_id");
+    .select("ShortName, Club, Stadium, owner, owner_id, owner_assigned_at");
+
+  if (error) {
+    // Older DBs / schema cache without owner_assigned_at — still load clubs
+    const fallback = await supabase
+      .from("Clubs")
+      .select("ShortName, Club, Stadium, owner, owner_id");
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) {
     console.error("Failed to load clubs map:", error);
@@ -46,6 +57,7 @@ export async function loadClubsMap() {
   stadiumMap.clear();
   ownerTagsMap.clear();
   ownerIdsMap.clear();
+  ownerAssignedAtMap.clear();
   seasonAbsentClubs.clear();
 
   data.forEach(row => {
@@ -55,6 +67,12 @@ export async function loadClubsMap() {
     if (tag) ownerTagsMap.set(row.ShortName, tag);
     const oid = row.owner_id ? String(row.owner_id).trim() : "";
     if (oid) ownerIdsMap.set(row.ShortName, oid);
+    const assigned = row.owner_assigned_at
+      ? String(row.owner_assigned_at).trim()
+      : "";
+    if (assigned && row.ShortName) {
+      ownerAssignedAtMap.set(String(row.ShortName).toUpperCase(), assigned);
+    }
   });
 
   // Supporter + holiday (UH/OH) marks for owner tags on fixtures / tables / etc.
@@ -117,6 +135,13 @@ export function ownerIdForClub(shortName) {
   const key = String(shortName || "").trim();
   if (!key) return null;
   return ownerIdsMap.get(key) || null;
+}
+
+/** When the current owner was assigned (ISO), if known. */
+export function ownerAssignedAtForClub(shortName) {
+  const key = String(shortName || "").trim().toUpperCase();
+  if (!key) return null;
+  return ownerAssignedAtMap.get(key) || null;
 }
 
 /** True when the club has a linked owner account (owner_id). */

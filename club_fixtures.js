@@ -23,6 +23,7 @@ import {
 } from "./competition_conditions.js";
 import {
   loadCalendarStatus,
+  loadSeasonCalendarMonths,
 } from "./competition_calendar.js";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import {
@@ -30,7 +31,10 @@ import {
   fixtureOpponentIsInactive,
   vacantOpponentKickoffNoteHtml,
   isCatchUpFixture,
-} from "./match_scheduling.js?v=20261027-vacant-ko";
+  fixtureNewOwnerArrangeGrace,
+  newOwnerGraceKickoffNoteHtml,
+  setSeasonCalendarMonths,
+} from "./match_scheduling.js?v=20261028-new-owner-grace";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,
@@ -285,7 +289,12 @@ function actionHtml(f) {
     // Walkover note on the card — no propose/reply
   } else {
     const sched = scheduleActionLabel(f, myClub.short);
-    if (sched && f.status !== "played" && !sched.vacantWalkover) {
+    if (
+      sched &&
+      f.status !== "played" &&
+      !sched.vacantWalkover &&
+      !sched.newOwnerGrace
+    ) {
       const cls = sched.muted ? "btn-link secondary" : "btn-link";
       parts.push(`<a href="${sched.href}" class="${cls}">${sched.label}</a>`);
     } else if (f.status === "played") {
@@ -375,6 +384,12 @@ function fixtureCardHtml(f) {
       ? occ.awayAbsent
       : occ.homeAbsent
     : occ.involvesSeasonAbsent && !occ.isPartialVacant;
+  const newOwnerGrace =
+    f.status !== "played" &&
+    !(occ.isPartialVacant || occ.involvesSeasonAbsent) &&
+    String(f.schedule_status || "").toLowerCase() !== "agreed"
+      ? fixtureNewOwnerArrangeGrace(f)
+      : null;
   const walkoverNote =
     f.status !== "played" &&
     (occ.isPartialVacant || occ.involvesSeasonAbsent) &&
@@ -384,7 +399,12 @@ function fixtureCardHtml(f) {
           catchUp: isCatchUpFixture(f),
           seasonAbsent: Boolean(walkoverSeasonAbsent),
         })}</div>`
-      : "";
+      : newOwnerGrace
+        ? `<div class="fixture-walkover-note">${newOwnerGraceKickoffNoteHtml(
+            newOwnerGrace,
+            { catchUp: isCatchUpFixture(f) }
+          )}</div>`
+        : "";
 
   let playedBlock = "";
   if (f.status === "played") {
@@ -1012,6 +1032,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadMatchSimEnabled();
 
     calendarStatus = await loadCalendarStatus(supabase);
+    try {
+      setSeasonCalendarMonths(await loadSeasonCalendarMonths(supabase));
+    } catch (err) {
+      console.warn("club_fixtures: season calendar months", err);
+    }
     holidayContext = await loadHolidayPlayContext(supabase, myClub.short);
 
     await refreshFixtures(season.id);

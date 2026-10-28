@@ -46,13 +46,13 @@ export async function mountRecordsPage(opts) {
 
   /** @type {Map<string, object>} */
   const byId = new Map();
-  /** @type {Map<string, { club: string, owner: string }>} */
+  /** @type {Map<string, string>} short → club display name */
   const clubsByShort = new Map();
   let meta = null;
 
   const [{ data, error }, clubsRes] = await Promise.all([
     supabase.rpc("gpsl_records_get", { p_catalog: opts.catalog }),
-    supabase.from("Clubs").select("ShortName, Club, owner").neq("ShortName", "FOREIGN"),
+    supabase.from("Clubs").select("ShortName, Club").neq("ShortName", "FOREIGN"),
   ]);
 
   if (error) console.warn("gpsl_records_get:", error);
@@ -61,10 +61,7 @@ export async function mountRecordsPage(opts) {
     if (row?.record_id) byId.set(String(row.record_id), row);
   }
   for (const c of clubsRes.data || []) {
-    clubsByShort.set(String(c.ShortName).toUpperCase(), {
-      club: c.Club || c.ShortName,
-      owner: String(c.owner || "").trim(),
-    });
+    clubsByShort.set(String(c.ShortName).toUpperCase(), c.Club || c.ShortName);
   }
 
   if (metaEl) {
@@ -92,22 +89,20 @@ export async function mountRecordsPage(opts) {
     if (!live?.holder_name) return "—";
 
     const short = resolveClubShort(live);
-    const clubInfo = short ? clubsByShort.get(short.toUpperCase()) : null;
-    const ownerTag =
-      String(live.owner_tag || "").trim() || clubInfo?.owner || "";
+    const clubName = short ? clubsByShort.get(short.toUpperCase()) || short : "";
+    // Historical only — set at refresh from season ranking, never current owner
+    const ownerTag = String(live.owner_tag || "").trim();
 
     const nameIsClub =
       short &&
       (String(live.holder_name).toUpperCase() === short.toUpperCase() ||
-        (clubInfo &&
-          String(live.holder_name).toUpperCase() ===
-            String(clubInfo.club).toUpperCase()) ||
+        String(live.holder_name).toUpperCase() === String(clubName).toUpperCase() ||
         String(live.holder_key || "").toUpperCase() === short.toUpperCase());
 
     const clubLine = nameIsClub
       ? escapeHtml(live.holder_name)
       : short
-        ? escapeHtml(clubInfo?.club || short)
+        ? escapeHtml(clubName)
         : "";
 
     const primary = nameIsClub
@@ -122,7 +117,6 @@ export async function mountRecordsPage(opts) {
       ? `<div class="rec-holder-owner">${escapeHtml(ownerTag)}</div>`
       : "";
 
-    // Club-only: club then owner. Player: name, then club, then owner.
     if (nameIsClub) {
       return `${clubBlock}${ownerBlock}` || escapeHtml(live.holder_name);
     }
