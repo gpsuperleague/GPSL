@@ -603,6 +603,21 @@ export async function enrichLedgerFineFixtures(supabase, ledger) {
   });
 }
 
+/** Compact monthly interest: one breakdown row per GPSL month. */
+function compactInterestBreakdownLabel(row) {
+  const md = parseMetadata(row.metadata);
+  const monthKey = String(md.gpsl_month || "").toLowerCase();
+  if (MONTH_SHORT[monthKey]) {
+    return titleCaseMonthName(monthKey);
+  }
+  const desc = String(row.description || "");
+  const fromDesc = desc.match(
+    /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/i
+  );
+  if (fromDesc?.[1]) return titleCaseMonthName(fromDesc[1]);
+  return financeEntryLabel(row.entry_type || "eos_balance_interest");
+}
+
 /** Compact loan breakdown: "Aug · #12 · 3/20" instead of long scheduled descriptions. */
 function compactLoanBreakdownLabel(row) {
   const type = row.entry_type || "other";
@@ -668,6 +683,9 @@ function ledgerBreakdownLabel(row) {
   const type = row.entry_type || "other";
   if (LOAN_LEDGER_TYPES.has(type)) {
     return compactLoanBreakdownLabel(row);
+  }
+  if (type === "eos_balance_interest" || type === "eos_debt_interest") {
+    return compactInterestBreakdownLabel(row);
   }
   if (type === "bookies_income" || type === "bookies_expenditure") {
     const desc = String(row.description || "").trim();
@@ -838,8 +856,42 @@ function resolvePendingForLine(lineId, pending, byLine) {
   return pending;
 }
 
-function sortBreakdownEntries(entries, { loans = false } = {}) {
+/** GPSL season order (preseason June/July, then Aug–May). */
+const GPSL_MONTH_SORT = {
+  june: 0,
+  july: 1,
+  august: 2,
+  september: 3,
+  october: 4,
+  november: 5,
+  december: 6,
+  january: 7,
+  february: 8,
+  march: 9,
+  april: 10,
+  may: 11,
+};
+
+function breakdownMonthSortKey(label) {
+  const lower = String(label || "")
+    .trim()
+    .toLowerCase();
+  if (GPSL_MONTH_SORT[lower] != null) return GPSL_MONTH_SORT[lower];
+  for (const [month, short] of Object.entries(MONTH_SHORT)) {
+    if (lower === short.toLowerCase() || lower.startsWith(`${short.toLowerCase()} `)) {
+      return GPSL_MONTH_SORT[month] ?? 99;
+    }
+  }
+  return 99;
+}
+
+function sortBreakdownEntries(entries, { loans = false, byGpslMonth = false } = {}) {
   return entries.sort((a, b) => {
+    if (byGpslMonth) {
+      const ma = breakdownMonthSortKey(a[0]);
+      const mb = breakdownMonthSortKey(b[0]);
+      if (ma !== mb) return ma - mb;
+    }
     if (loans) {
       const loanA = Number((a[0].match(/#(\d+)/) || [])[1]);
       const loanB = Number((b[0].match(/#(\d+)/) || [])[1]);
@@ -860,11 +912,11 @@ function sortBreakdownEntries(entries, { loans = false } = {}) {
   });
 }
 
-function formatBreakdownColumn(bucket, { loans = false } = {}) {
+function formatBreakdownColumn(bucket, { loans = false, byGpslMonth = false } = {}) {
   if (!bucket?.detail) return '<span class="amt zero">—</span>';
   const rows = sortBreakdownEntries(
     Object.entries(bucket.detail).filter(([, v]) => Math.abs(v) > 0.001),
-    { loans }
+    { loans, byGpslMonth }
   ).map(([t, v]) => {
     const n = Number(v);
     const sign = n >= 0 ? "+" : "−";
@@ -904,6 +956,8 @@ function renderFinanceLineRow(line, bucket, running, pending, subsidyPreview) {
   const hasData = bucket && Math.abs(bucket.amount) > 0.001;
   const planned = line.planned && !hasData;
   const isLoan = LOAN_LINE_IDS.has(line.id);
+  const isMonthlyInterest =
+    line.id === "eos_balance_interest" || line.id === "eos_debt_interest";
 
   const pendingNote =
     pending?.note && Math.abs(pending.amount) > 0.001
@@ -933,7 +987,10 @@ function renderFinanceLineRow(line, bucket, running, pending, subsidyPreview) {
         <span class="fin-col-posted">${formatLineAmount(bucket?.amount ?? 0, hasData, line.planned)}</span>
         <span class="fin-col-breakdown">${
           hasData
-            ? formatBreakdownColumn(bucket, { loans: isLoan })
+            ? formatBreakdownColumn(bucket, {
+                loans: isLoan,
+                byGpslMonth: isMonthlyInterest,
+              })
             : '<span class="amt zero">—</span>'
         }</span>
         <span class="fin-col-running">${formatRunningAmount(running)}</span>

@@ -1,4 +1,4 @@
-import { initFinanceAccountsPage } from "./finance_page_common.js?v=20261020-opening-650";
+import { initFinanceAccountsPage } from "./finance_page_common.js?v=20261028-interest-months";
 import { renderFinancesAccountsGuide } from "./finances_rules.js";
 
 document.addEventListener("DOMContentLoaded", () => {

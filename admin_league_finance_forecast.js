@@ -4,7 +4,7 @@
  * Current season only (competition_finance_ledger_public is current-season scoped).
  */
 
-import { aggregateLedgerByLine } from "./finance_ui.js?v=20261012-monthly-interest";
+import { aggregateLedgerByLine } from "./finance_ui.js?v=20261028-interest-months";
 import {
   loadCupFixtures,
   loadCurrentSeason,

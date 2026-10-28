@@ -4,7 +4,7 @@ import {
   aggregateLedgerByLine,
   enrichLedgerFineFixtures,
   renderFinanceSections,
-} from "./finance_ui.js?v=20261012-monthly-interest";
+} from "./finance_ui.js?v=20261028-interest-months";
 
 /**
  * Published season accounts on club.html. A season appears once Close Finances
