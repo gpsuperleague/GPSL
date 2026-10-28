@@ -959,7 +959,7 @@ function render() {
 
   const isAwayWaiting = ctx.my_role === "away" && !canPick;
   const slotIntro = isAwayWaiting
-    ? `The home club proposes first. Your local availability is shown below for reference — once they propose you can accept, or counter with a time free for <b>both</b> clubs (${slotCountLine}).`
+    ? `Waiting for <b>${fullClubName(f.home_club_short_name)}</b> (home) to propose first — slot buttons below are for reference only and won’t select. Once they propose you can accept or counter (${slotCountLine}). If you already agreed off-site, use the <b>Agreed on Discord</b> tab.`
     : ctx.can_respond
       ? `Accept the proposed time above, or counter with another time free for <b>both</b> clubs in your local timezones (${slotCountLine}).`
       : usingCompatibleSlots
@@ -1098,8 +1098,18 @@ function render() {
             const proposeBtn = document.getElementById("proposeBtn");
             if (proposeBtn) proposeBtn.disabled = false;
           }
-        : null,
+        : null, // reference-only when waiting for home (unless you opened the drop)
     });
+    if (!canPick && selectableSlots.length) {
+      const note = document.createElement("p");
+      note.className = "meta";
+      note.style.color = "#fc6";
+      note.style.marginTop = "8px";
+      note.innerHTML = isAwayWaiting
+        ? "Clicks on these times are ignored until home proposes (or use <b>Agreed on Discord</b>)."
+        : "You can’t propose from this club right now.";
+      slotList.insertAdjacentElement("afterend", note);
+    }
   }
 
   const proposeBtn = document.getElementById("proposeBtn");
