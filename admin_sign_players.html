@@ -11,30 +11,68 @@
   <style>
     .form-grid { display:grid; gap:12px; max-width:720px; }
     .form-grid label { display:block; font-size:13px; color:#bbb; }
-    .form-grid select, .form-grid input[type="text"] {
+    .form-grid select, .form-grid input[type="text"], .search-row select {
       width:100%; max-width:720px; padding:8px; margin-top:4px;
       background:#111; border:1px solid #444; color:#ddd; border-radius:4px;
     }
     .hint { font-size:12px; color:#888; margin-top:4px; line-height:1.45; }
     .search-row { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
-    .search-row > label { flex:1 1 280px; }
-    .basket, .results {
-      margin-top:12px; border:1px solid #333; border-radius:6px;
-      background:#161616; max-height:360px; overflow:auto;
+    .search-row > label { flex:1 1 180px; }
+    .build-layout {
+      display:grid; gap:14px;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      align-items:start;
     }
+    @media (max-width: 980px) {
+      .build-layout { grid-template-columns: 1fr; }
+    }
+    .basket, .results, .squad-build {
+      margin-top:12px; border:1px solid #333; border-radius:6px;
+      background:#161616; max-height:420px; overflow:auto;
+    }
+    .squad-build { max-height:560px; }
     table.sign-table { width:100%; border-collapse:collapse; font-size:12px; }
     table.sign-table th, table.sign-table td {
       padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left;
     }
-    table.sign-table th { color:#ff9900; position:sticky; top:0; background:#161616; }
+    table.sign-table th { color:#ff9900; position:sticky; top:0; background:#161616; z-index:1; }
     table.sign-table .num { text-align:right; font-variant-numeric:tabular-nums; }
     .actions { margin-top:14px; display:flex; flex-wrap:wrap; gap:10px; }
-    .totals {
+    .totals, .finance-box, .manager-box {
       margin-top:12px; padding:10px 12px; background:#1a1a1a; border:1px solid #333;
       border-radius:6px; font-size:13px; line-height:1.5;
     }
-    .totals b { color:#ffcc66; }
+    .totals b, .finance-box b, .manager-box b { color:#ffcc66; }
     .empty { color:#888; padding:12px; font-size:13px; }
+    .stat-grid {
+      display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));
+      gap:8px; margin-top:10px;
+    }
+    .stat {
+      background:#141414; border:1px solid #333; border-radius:6px; padding:8px 10px;
+    }
+    .stat .lbl { font-size:11px; color:#999; text-transform:uppercase; letter-spacing:0.04em; }
+    .stat .val { font-size:18px; font-variant-numeric:tabular-nums; margin-top:2px; color:#eee; }
+    .stat .lim { font-size:11px; color:#888; margin-top:2px; }
+    .stat.ok .val { color:#8fd18f; }
+    .stat.warn .val { color:#e6c35c; }
+    .stat.bad .val { color:#f08080; }
+    .tag {
+      display:inline-block; font-size:10px; padding:1px 5px; border-radius:3px;
+      margin-left:4px; border:1px solid #444; color:#ccc; vertical-align:middle;
+    }
+    .tag.hg { border-color:#3a6; color:#9d9; }
+    .tag.u21 { border-color:#369; color:#9cf; }
+    .tag.star { border-color:#a80; color:#fc6; }
+    .tag.new { border-color:#ff9900; color:#ff9900; }
+    .squad-sec-title {
+      margin:0; padding:8px 10px; font-size:12px; color:#ff9900;
+      background:#1c1c1c; border-bottom:1px solid #2a2a2a; position:sticky; top:0; z-index:1;
+    }
+    .squad-sec + .squad-sec { border-top:1px solid #2a2a2a; }
+    .finance-row { display:flex; justify-content:space-between; gap:12px; }
+    .finance-row.neg b { color:#f08080; }
+    .finance-row.pos b { color:#8fd18f; }
   </style>
 </head>
 <body class="admin-page">
@@ -46,7 +84,8 @@
         <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
         · Mid-season club fill (no auction). Search free agents, add to basket, preview fee + income tax, then sign.
         Uses the same ledger path as draft / populate-squad. Does <b>not</b> reset opening balance.
-        Run <code>supabase/sql/patches/admin_sign_free_agents_at_mv_20261027.sql</code> once.
+        Run <code>supabase/sql/patches/admin_sign_free_agents_at_mv_20261027.sql</code> then
+        <code>admin_sign_fa_club_build_ui_20261028.sql</code>.
       </p>
 
       <div class="card">
@@ -57,35 +96,60 @@
             <select id="clubSelect"><option value="">Loading…</option></select>
           </label>
         </div>
+        <div id="managerBox" class="manager-box" hidden></div>
       </div>
 
-      <div class="card" style="margin-top:14px;">
-        <h2>Find free agents</h2>
-        <div class="search-row">
-          <label>
-            Name or Konami ID
-            <input type="text" id="searchQ" placeholder="e.g. Vinicius / 12345" autocomplete="off">
-          </label>
-          <button type="button" id="searchBtn" class="button">Search</button>
-        </div>
-        <p class="hint">Only free agents (not legacy / season-excluded). Click Add to put them in the basket.</p>
-        <div id="searchResults" class="results"><p class="empty">Search to see players.</p></div>
-      </div>
+      <div class="build-layout" style="margin-top:14px;">
+        <div>
+          <div class="card">
+            <h2>Find free agents</h2>
+            <div class="search-row">
+              <label>
+                Nation
+                <select id="nationSelect">
+                  <option value="">Any nation</option>
+                </select>
+              </label>
+              <label>
+                Name or Konami ID
+                <input type="text" id="searchQ" placeholder="e.g. Vinicius / 12345" autocomplete="off">
+              </label>
+              <button type="button" id="searchBtn" class="button">Search</button>
+            </div>
+            <p class="hint">Only free agents (not legacy / season-excluded). Nation alone is enough to browse. Click Add to put them in the basket.</p>
+            <div id="searchResults" class="results"><p class="empty">Pick a club, then search or filter by nation.</p></div>
+          </div>
 
-      <div class="card" style="margin-top:14px;">
-        <h2>Basket</h2>
-        <div id="basketBox" class="basket"><p class="empty">No players selected yet.</p></div>
-        <div id="totalsBox" class="totals" hidden></div>
-        <div class="actions">
-          <button type="button" id="previewBtn" class="button">1. Preview</button>
-          <button type="button" id="signBtn" class="button" style="background:#446633;" disabled>2. Sign at market value</button>
-          <button type="button" id="clearBtn" class="button">Clear basket</button>
+          <div class="card" style="margin-top:14px;">
+            <h2>Basket</h2>
+            <div id="basketBox" class="basket"><p class="empty">No players selected yet.</p></div>
+            <div class="actions">
+              <button type="button" id="previewBtn" class="button">1. Preview</button>
+              <button type="button" id="signBtn" class="button" style="background:#446633;" disabled>2. Sign at market value</button>
+              <button type="button" id="clearBtn" class="button">Clear basket</button>
+            </div>
+            <div id="pageStatus" class="status-line"></div>
+            <pre id="resultBox" class="hint" style="white-space:pre-wrap;margin-top:10px;"></pre>
+          </div>
         </div>
-        <div id="pageStatus" class="status-line"></div>
-        <pre id="resultBox" class="hint" style="white-space:pre-wrap;margin-top:10px;"></pre>
+
+        <div>
+          <div class="card">
+            <h2>Squad build</h2>
+            <div id="limitsBox" class="stat-grid">
+              <div class="stat"><div class="lbl">Squad</div><div class="val">—</div><div class="lim">min 24 · max 28</div></div>
+              <div class="stat"><div class="lbl">Stars</div><div class="val">—</div><div class="lim">cap —</div></div>
+              <div class="stat"><div class="lbl">U21</div><div class="val">—</div><div class="lim">min 5</div></div>
+              <div class="stat"><div class="lbl">Home grown</div><div class="val">—</div><div class="lim">min 8</div></div>
+              <div class="stat"><div class="lbl">GK</div><div class="val">—</div><div class="lim">min 1</div></div>
+            </div>
+            <div id="financeBox" class="finance-box" hidden></div>
+            <div id="squadBuild" class="squad-build"><p class="empty">Select a club to load the current squad.</p></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_sign_players.js?v=20261027-sign-fa"></script>
+  <script type="module" src="admin_sign_players.js?v=20261028-sign-fa-build"></script>
 </body>
 </html>

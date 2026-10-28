@@ -1,12 +1,28 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { formatMoney } from "./competition.js";
+import {
+  MIN_GOALKEEPERS,
+  MIN_HOME_GROWN,
+  MIN_SQUAD_SIZE,
+  MIN_UNDER_21,
+  SQUAD_SIZE,
+} from "./squad_rules.js";
 
 primeAdminPageChrome();
+
+const POSITION_GROUPS = {
+  Goalkeepers: ["GK"],
+  Defenders: ["LB", "CB", "RB"],
+  Midfielders: ["DMF", "LMF", "CMF", "RMF", "AMF"],
+  Attackers: ["LW", "LWF", "SS", "RW", "RWF", "CF"],
+};
 
 /** @type {Map<string, object>} */
 const basket = new Map();
 /** @type {object|null} */
 let lastPreview = null;
+/** @type {object|null} */
+let clubContext = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
@@ -22,19 +38,26 @@ function wireUi() {
       runSearch();
     }
   });
+  document.getElementById("nationSelect")?.addEventListener("change", () => {
+    const q = document.getElementById("searchQ")?.value?.trim() || "";
+    const nation = document.getElementById("nationSelect")?.value || "";
+    if (nation || q.length >= 2) runSearch();
+  });
   document.getElementById("previewBtn")?.addEventListener("click", () => runSign(true));
   document.getElementById("signBtn")?.addEventListener("click", () => runSign(false));
   document.getElementById("clearBtn")?.addEventListener("click", () => {
     basket.clear();
     lastPreview = null;
     renderBasket();
+    renderBuildPanel();
     document.getElementById("signBtn").disabled = true;
     document.getElementById("resultBox").textContent = "";
     setStatus("pageStatus", "Basket cleared.");
   });
-  document.getElementById("clubSelect")?.addEventListener("change", () => {
+  document.getElementById("clubSelect")?.addEventListener("change", async () => {
     lastPreview = null;
     document.getElementById("signBtn").disabled = true;
+    await loadClubContext();
   });
 }
 
@@ -61,17 +84,270 @@ async function loadClubs() {
       .join("");
 }
 
-async function runSearch() {
-  const q = document.getElementById("searchQ")?.value?.trim() || "";
-  const box = document.getElementById("searchResults");
-  if (q.length < 2) {
-    box.innerHTML = `<p class="empty">Type at least 2 characters.</p>`;
+async function loadClubContext() {
+  const club = document.getElementById("clubSelect")?.value || "";
+  clubContext = null;
+  renderManager(null);
+  renderBuildPanel();
+
+  if (!club) {
+    fillNationSelect([]);
+    document.getElementById("squadBuild").innerHTML =
+      `<p class="empty">Select a club to load the current squad.</p>`;
     return;
   }
+
+  document.getElementById("squadBuild").innerHTML = `<p class="empty">Loading squad…</p>`;
+  const { data, error } = await supabase.rpc("admin_sign_fa_club_build_context", {
+    p_club_short_name: club,
+  });
+
+  if (error || !data?.ok) {
+    document.getElementById("squadBuild").innerHTML = `<p class="empty">${escapeHtml(
+      error?.message || data?.reason || "Failed to load club context"
+    )}</p>`;
+    return;
+  }
+
+  clubContext = data;
+  fillNationSelect(Array.isArray(data.fa_nations) ? data.fa_nations : []);
+  renderManager(data.manager);
+  renderBuildPanel();
+}
+
+function fillNationSelect(nations) {
+  const sel = document.getElementById("nationSelect");
+  if (!sel) return;
+  const current = sel.value;
+  const opts = ['<option value="">Any nation</option>'].concat(
+    (nations || []).map((n) => {
+      const v = String(n || "");
+      return `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`;
+    })
+  );
+  sel.innerHTML = opts.join("");
+  if (current && nations.includes(current)) sel.value = current;
+}
+
+function renderManager(mgr) {
+  const box = document.getElementById("managerBox");
+  if (!box) return;
+  if (!mgr) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  box.hidden = false;
+  box.innerHTML = `Manager: <b>${escapeHtml(mgr.manager_name || "—")}</b>
+    · OVR <b>${mgr.manager_rating ?? "—"}</b>
+    · MV <b>${escapeHtml(formatMoney(Number(mgr.manager_market_value) || 0))}</b>`;
+}
+
+function projectedPlayers() {
+  const owned = Array.isArray(clubContext?.players) ? clubContext.players : [];
+  const ownedIds = new Set(owned.map((p) => String(p.player_id)));
+  const incoming = [...basket.values()]
+    .filter((p) => !ownedIds.has(String(p.player_id)))
+    .map((p) => ({
+      player_id: String(p.player_id),
+      player_name: p.player_name,
+      position: p.position,
+      nation: p.nation,
+      rating: p.rating,
+      age: p.age,
+      market_value: Number(p.market_value) || 0,
+      is_home_grown: !!p.is_home_grown,
+      is_u21: !!p.is_u21,
+      is_star: !!p.is_star,
+      is_gk: !!p.is_gk || String(p.position || "").toUpperCase() === "GK",
+      from_basket: true,
+    }));
+  return [...owned.map((p) => ({ ...p, from_basket: false })), ...incoming];
+}
+
+function countFlags(players) {
+  return {
+    total: players.length,
+    stars: players.filter((p) => p.is_star).length,
+    u21: players.filter((p) => p.is_u21).length,
+    hg: players.filter((p) => p.is_home_grown).length,
+    gk: players.filter((p) => p.is_gk || String(p.position || "").toUpperCase() === "GK").length,
+  };
+}
+
+function financeProjection() {
+  const balance = Number(clubContext?.balance) || 0;
+  const taxPct = Number(clubContext?.income_tax_pct) || 0;
+  let fees = 0;
+  for (const p of basket.values()) fees += Number(p.market_value) || 0;
+  const tax = fees * (taxPct / 100);
+  const totalCost = fees + tax;
+  return {
+    balance,
+    taxPct,
+    fees,
+    tax,
+    totalCost,
+    after: balance - totalCost,
+  };
+}
+
+function renderLimits(counts) {
+  const box = document.getElementById("limitsBox");
+  if (!box) return;
+  const starCap = Number(clubContext?.star_cap) || 2;
+  const minHg = Number(clubContext?.min_home_grown) || MIN_HOME_GROWN;
+  const minU21 = Number(clubContext?.min_under_21) || MIN_UNDER_21;
+  const minGk = Number(clubContext?.min_goalkeepers) || MIN_GOALKEEPERS;
+  const minSquad = Number(clubContext?.min_squad_size) || MIN_SQUAD_SIZE;
+  const maxSquad = Number(clubContext?.max_squad_size) || SQUAD_SIZE;
+
+  const squadCls =
+    counts.total > maxSquad ? "bad" : counts.total >= minSquad ? "ok" : "warn";
+  const starCls = counts.stars > starCap ? "bad" : counts.stars === starCap ? "warn" : "ok";
+  const u21Cls = counts.u21 >= minU21 ? "ok" : "bad";
+  const hgCls = counts.hg >= minHg ? "ok" : "bad";
+  const gkCls = counts.gk >= minGk ? "ok" : "bad";
+
+  box.innerHTML = `
+    <div class="stat ${squadCls}">
+      <div class="lbl">Squad</div>
+      <div class="val">${counts.total}</div>
+      <div class="lim">min ${minSquad} · max ${maxSquad}</div>
+    </div>
+    <div class="stat ${starCls}">
+      <div class="lbl">Stars</div>
+      <div class="val">${counts.stars}</div>
+      <div class="lim">cap ${starCap} (≥${clubContext?.star_min_rating ?? 79})</div>
+    </div>
+    <div class="stat ${u21Cls}">
+      <div class="lbl">U21</div>
+      <div class="val">${counts.u21}</div>
+      <div class="lim">min ${minU21}</div>
+    </div>
+    <div class="stat ${hgCls}">
+      <div class="lbl">Home grown</div>
+      <div class="val">${counts.hg}</div>
+      <div class="lim">min ${minHg}${clubContext?.club_nation ? ` · ${escapeHtml(clubContext.club_nation)}` : ""}</div>
+    </div>
+    <div class="stat ${gkCls}">
+      <div class="lbl">GK</div>
+      <div class="val">${counts.gk}</div>
+      <div class="lim">min ${minGk}</div>
+    </div>`;
+}
+
+function renderFinance() {
+  const box = document.getElementById("financeBox");
+  if (!box) return;
+  if (!clubContext) {
+    box.hidden = true;
+    return;
+  }
+  const f = financeProjection();
+  const afterCls = f.after < 0 ? "neg" : "pos";
+  box.hidden = false;
+  box.innerHTML = `
+    <div class="finance-row"><span>Balance</span><b>${escapeHtml(formatMoney(f.balance))}</b></div>
+    <div class="finance-row"><span>Basket fees</span><b>${escapeHtml(formatMoney(f.fees))}</b></div>
+    <div class="finance-row"><span>Est. income tax (${f.taxPct}%)</span><b>${escapeHtml(formatMoney(f.tax))}</b></div>
+    <div class="finance-row"><span>Est. total cost</span><b>${escapeHtml(formatMoney(f.totalCost))}</b></div>
+    <div class="finance-row ${afterCls}"><span>Balance after</span><b>${escapeHtml(formatMoney(f.after))}</b></div>
+    <div class="hint" style="margin-top:6px;">Updates as you add/remove players. Tax confirmed on Preview.</div>`;
+}
+
+function playerTags(p) {
+  const tags = [];
+  if (p.from_basket) tags.push('<span class="tag new">new</span>');
+  if (p.is_star) tags.push('<span class="tag star">★</span>');
+  if (p.is_u21) tags.push('<span class="tag u21">U21</span>');
+  if (p.is_home_grown) tags.push('<span class="tag hg">HG</span>');
+  return tags.join("");
+}
+
+function renderSquadList(players) {
+  const box = document.getElementById("squadBuild");
+  if (!box) return;
+  if (!clubContext) {
+    box.innerHTML = `<p class="empty">Select a club to load the current squad.</p>`;
+    return;
+  }
+  if (!players.length) {
+    box.innerHTML = `<p class="empty">No players yet — add free agents to the basket.</p>`;
+    return;
+  }
+
+  const used = new Set();
+  const sections = [];
+
+  for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
+    const groupPlayers = players
+      .filter((p) => positions.includes(String(p.position || "").toUpperCase()))
+      .sort((a, b) => (Number(b.market_value) || 0) - (Number(a.market_value) || 0));
+    groupPlayers.forEach((p) => used.add(String(p.player_id)));
+    if (!groupPlayers.length) continue;
+    sections.push(renderSquadSection(groupName, groupPlayers));
+  }
+
+  const other = players
+    .filter((p) => !used.has(String(p.player_id)))
+    .sort((a, b) => (Number(b.market_value) || 0) - (Number(a.market_value) || 0));
+  if (other.length) sections.push(renderSquadSection("Other", other));
+
+  box.innerHTML = sections.join("") || `<p class="empty">No players.</p>`;
+}
+
+function renderSquadSection(title, rows) {
+  return `<div class="squad-sec">
+    <h3 class="squad-sec-title">${escapeHtml(title)} (${rows.length})</h3>
+    <table class="sign-table">
+      <tbody>
+        ${rows
+          .map(
+            (p) => `<tr>
+              <td>${escapeHtml(p.player_name || "—")}${playerTags(p)}
+                <div class="hint">${escapeHtml(p.position || "—")} · ${escapeHtml(p.nation || "—")}${
+                  p.age != null ? ` · ${escapeHtml(p.age)}` : ""
+                }</div>
+              </td>
+              <td class="num">${p.rating ?? "—"}</td>
+              <td class="num">${escapeHtml(formatMoney(Number(p.market_value) || 0))}</td>
+            </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function renderBuildPanel() {
+  const players = projectedPlayers();
+  renderLimits(countFlags(players));
+  renderFinance();
+  renderSquadList(players);
+}
+
+async function runSearch() {
+  const q = document.getElementById("searchQ")?.value?.trim() || "";
+  const nation = document.getElementById("nationSelect")?.value || "";
+  const club = document.getElementById("clubSelect")?.value || "";
+  const box = document.getElementById("searchResults");
+
+  if (q.length < 2 && !nation) {
+    box.innerHTML = `<p class="empty">Type at least 2 characters, or pick a nation.</p>`;
+    return;
+  }
+  if (!club) {
+    box.innerHTML = `<p class="empty">Pick a destination club first (needed for HG flags).</p>`;
+    return;
+  }
+
   box.innerHTML = `<p class="empty">Searching…</p>`;
   const { data, error } = await supabase.rpc("admin_search_free_agents_for_sign", {
     p_query: q,
-    p_limit: 40,
+    p_limit: 50,
+    p_nation: nation || null,
+    p_club_short_name: club,
   });
   if (error) {
     box.innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
@@ -85,7 +361,7 @@ async function runSearch() {
   box.innerHTML = `
     <table class="sign-table">
       <thead><tr>
-        <th></th><th>Player</th><th>Pos</th><th class="num">OVR</th><th class="num">MV</th>
+        <th></th><th>Player</th><th>Pos</th><th>Nation</th><th class="num">Age</th><th class="num">OVR</th><th class="num">MV</th>
       </tr></thead>
       <tbody>
         ${rows
@@ -96,8 +372,13 @@ async function runSearch() {
               <td><button type="button" class="button add-btn" data-id="${escapeHtml(id)}" ${
                 inBasket ? "disabled" : ""
               }>${inBasket ? "Added" : "Add"}</button></td>
-              <td>${escapeHtml(r.player_name)} <span class="hint">${escapeHtml(id)}</span></td>
+              <td>${escapeHtml(r.player_name)}${playerTags({
+                ...r,
+                from_basket: false,
+              })} <span class="hint">${escapeHtml(id)}</span></td>
               <td>${escapeHtml(r.position || "—")}</td>
+              <td>${escapeHtml(r.nation || "—")}</td>
+              <td class="num">${r.age ?? "—"}</td>
               <td class="num">${r.rating ?? "—"}</td>
               <td class="num">${escapeHtml(formatMoney(Number(r.market_value) || 0))}</td>
             </tr>`;
@@ -111,27 +392,25 @@ async function runSearch() {
       const id = btn.getAttribute("data-id");
       const row = rows.find((r) => String(r.player_id) === id);
       if (!row) return;
-      basket.set(id, row);
+      basket.set(id, normalizeSearchRow(row));
       lastPreview = null;
       document.getElementById("signBtn").disabled = true;
       btn.disabled = true;
       btn.textContent = "Added";
       renderBasket();
+      renderBuildPanel();
     });
   });
 }
 
 function renderBasket() {
   const box = document.getElementById("basketBox");
-  const totals = document.getElementById("totalsBox");
   const rows = [...basket.values()];
   if (!rows.length) {
     box.innerHTML = `<p class="empty">No players selected yet.</p>`;
-    totals.hidden = true;
     return;
   }
 
-  let feeSum = 0;
   box.innerHTML = `
     <table class="sign-table">
       <thead><tr>
@@ -141,10 +420,12 @@ function renderBasket() {
         ${rows
           .map((r) => {
             const mv = Number(r.market_value) || 0;
-            feeSum += mv;
             const id = String(r.player_id || "");
             return `<tr>
-              <td>${escapeHtml(r.player_name)} <span class="hint">${escapeHtml(id)}</span></td>
+              <td>${escapeHtml(r.player_name)}${playerTags({
+                ...r,
+                from_basket: true,
+              })}</td>
               <td>${escapeHtml(r.position || "—")}</td>
               <td class="num">${r.rating ?? "—"}</td>
               <td class="num">${escapeHtml(formatMoney(mv))}</td>
@@ -155,17 +436,13 @@ function renderBasket() {
       </tbody>
     </table>`;
 
-  totals.hidden = false;
-  totals.innerHTML = `<b>${rows.length}</b> player(s) · fees <b>${escapeHtml(
-    formatMoney(feeSum)
-  )}</b> (income tax added on Preview)`;
-
   box.querySelectorAll(".rm-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       basket.delete(btn.getAttribute("data-id"));
       lastPreview = null;
       document.getElementById("signBtn").disabled = true;
       renderBasket();
+      renderBuildPanel();
     });
   });
 }
@@ -244,7 +521,32 @@ async function runSign(dryRun) {
     for (const s of data.signed || []) basket.delete(String(s.player_id));
     renderBasket();
     document.getElementById("signBtn").disabled = true;
+    await loadClubContext();
   }
+}
+
+function normalizeSearchRow(r) {
+  const starMin = Number(clubContext?.star_min_rating) || 79;
+  const ratingNum = Number(String(r.rating ?? "").replace(/[^0-9]/g, "")) || 0;
+  const ageNum = r.age != null && String(r.age).trim() !== "" ? Number(r.age) : null;
+  const nationKey = String(clubContext?.club_nation_key || "").toLowerCase();
+  const playerNation = String(r.nation || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+  const isHg =
+    r.is_home_grown != null
+      ? !!r.is_home_grown
+      : !!nationKey && playerNation === nationKey;
+  return {
+    ...r,
+    is_home_grown: isHg,
+    is_u21: r.is_u21 != null ? !!r.is_u21 : ageNum != null && ageNum <= 21,
+    is_star: r.is_star != null ? !!r.is_star : ratingNum >= starMin,
+    is_gk:
+      r.is_gk != null
+        ? !!r.is_gk
+        : String(r.position || "").toUpperCase() === "GK",
+  };
 }
 
 function escapeHtml(s) {
