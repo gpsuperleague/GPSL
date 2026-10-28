@@ -133,3 +133,16 @@ html.club-theme-full #nav .nav-group-summary:hover,
 html.club-theme-full #nav a:hover {
   color: var(--gpsl-accent, var(--club-accent));
 }
+
+/* Active / auction-live Transfers was hard-locked to GPSL orange — force club accent */
+html.club-theme-full #nav .nav-group-active .nav-group-summary,
+html.club-theme-full #nav .nav-group-has-auction .nav-group-summary,
+html.club-theme-full #nav .nav-group-has-auction.open .nav-group-summary,
+html.club-theme-full #nav .nav-group-has-auction.nav-group-active .nav-group-summary,
+html.club-theme-full #nav .nav-group-active-page {
+  color: var(--gpsl-accent-hover, var(--club-accent));
+}
+
+html.club-theme-full #nav .nav-group-has-auction:not(.nav-group-active):not(.open) .nav-group-summary {
+  color: var(--gpsl-accent, var(--club-accent));
+}
