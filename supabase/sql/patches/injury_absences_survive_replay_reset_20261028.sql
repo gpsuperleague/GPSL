@@ -713,7 +713,48 @@ GRANT EXECUTE ON FUNCTION public.competition_fixture_unavailable_players(bigint)
 NOTIFY pgrst, 'reload schema';
 
 -- ---------------------------------------------------------------------------
--- DIAGNOSE: scheduled fixtures where club has active injuries but no link
+-- DIAGNOSE A: under-assigned injuries (real gaps)
+-- need = out_remaining + recovery_remaining; should equal unserved link count
+-- ---------------------------------------------------------------------------
+SELECT
+  i.id AS injury_id,
+  i.club_short_name,
+  i.player_id,
+  p."Name" AS player_name,
+  i.label,
+  coalesce(i.matches_out_remaining, 0) AS out_rem,
+  coalesce(i.recovery_remaining, 0) AS rec_rem,
+  coalesce(i.matches_out_remaining, 0) + coalesce(i.recovery_remaining, 0) AS need,
+  (
+    SELECT count(*)::int
+    FROM public.competition_player_injury_fixtures iff
+    WHERE iff.injury_id = i.id
+      AND iff.served = false
+  ) AS unserved_links
+FROM public.competition_player_injuries i
+LEFT JOIN public."Players" p ON p."Konami_ID"::text = i.player_id
+WHERE i.status = 'active'
+  AND (
+    coalesce(i.matches_out_remaining, 0) + coalesce(i.recovery_remaining, 0)
+  ) > (
+    SELECT count(*)
+    FROM public.competition_player_injury_fixtures iff
+    WHERE iff.injury_id = i.id
+      AND iff.served = false
+  )
+ORDER BY i.club_short_name, p."Name";
+
+-- Reassign under-assigned injuries (safe; rebuilds next N scheduled only):
+-- SELECT i.id, public.competition_injury_assign_fixtures(i.id)
+-- FROM public.competition_player_injuries i
+-- WHERE i.status = 'active'
+--   AND (coalesce(i.matches_out_remaining,0) + coalesce(i.recovery_remaining,0))
+--     > (SELECT count(*) FROM public.competition_player_injury_fixtures iff
+--        WHERE iff.injury_id = i.id AND iff.served = false);
+
+-- ---------------------------------------------------------------------------
+-- DIAGNOSE B: known replay fixtures missing injury absences
+-- (do NOT repair every scheduled MD — that list is expected to be huge)
 -- ---------------------------------------------------------------------------
 SELECT
   f.id AS fixture_id,
@@ -721,12 +762,10 @@ SELECT
   f.home_club_short_name AS home,
   f.away_club_short_name AS away,
   i.club_short_name,
-  i.player_id,
   p."Name" AS player_name,
   i.label,
   i.matches_out_remaining,
-  i.recovery_remaining,
-  i.status
+  i.recovery_remaining
 FROM public.competition_fixtures f
 JOIN public.competition_player_injuries i
   ON upper(btrim(i.club_short_name)) IN (
@@ -740,7 +779,25 @@ JOIN public.competition_player_injuries i
   )
   AND i.source_fixture_id IS DISTINCT FROM f.id
 LEFT JOIN public."Players" p ON p."Konami_ID"::text = i.player_id
-WHERE f.status = 'scheduled'
+WHERE f.id IN (
+    -- Recent admin replay resets (edit / add ids as needed)
+    8981,  -- SLB vs CHE MD3
+    (
+      SELECT f2.id FROM public.competition_fixtures f2
+      WHERE upper(f2.home_club_short_name) = 'SOA'
+        AND upper(f2.away_club_short_name) = 'COR'
+        AND f2.matchday = 1
+      ORDER BY f2.id DESC LIMIT 1
+    ),
+    (
+      SELECT f2.id FROM public.competition_fixtures f2
+      WHERE upper(f2.home_club_short_name) = 'BOC'
+        AND upper(f2.away_club_short_name) = 'SOA'
+        AND f2.matchday = 3
+      ORDER BY f2.id DESC LIMIT 1
+    )
+  )
+  AND f.status = 'scheduled'
   AND NOT EXISTS (
     SELECT 1
     FROM public.competition_player_injury_fixtures iff
@@ -748,27 +805,9 @@ WHERE f.status = 'scheduled'
       AND iff.fixture_id = f.id
       AND iff.served = false
   )
-ORDER BY f.matchday, f.id, i.club_short_name;
+ORDER BY f.matchday, f.id;
 
--- Repair one fixture (edit id):
--- SELECT public.admin_repair_replay_fixture_injuries(9027);
-
--- Or repair every diagnosed fixture:
--- SELECT f.id, public.admin_repair_replay_fixture_injuries(f.id)
--- FROM (
---   SELECT DISTINCT f.id
---   FROM public.competition_fixtures f
---   JOIN public.competition_player_injuries i
---     ON upper(btrim(i.club_short_name)) IN (
---          upper(btrim(f.home_club_short_name)),
---          upper(btrim(f.away_club_short_name))
---        )
---    AND i.status = 'active'
---    AND (coalesce(i.matches_out_remaining,0) > 0 OR coalesce(i.recovery_remaining,0) > 0)
---    AND i.source_fixture_id IS DISTINCT FROM f.id
---   WHERE f.status = 'scheduled'
---     AND NOT EXISTS (
---       SELECT 1 FROM public.competition_player_injury_fixtures iff
---       WHERE iff.injury_id = i.id AND iff.fixture_id = f.id AND iff.served = false
---     )
--- ) f;
+-- Repair known replay fixtures only:
+-- SELECT public.admin_repair_replay_fixture_injuries(8981);
+-- SELECT public.admin_repair_replay_fixture_injuries(<soa_cor_id>);
+-- SELECT public.admin_repair_replay_fixture_injuries(<boc_soa_id>);
