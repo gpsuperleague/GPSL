@@ -1,6 +1,11 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { isGpslAdminUser } from "./global.js";
-import { formatMoney } from "./competition.js";
+import {
+  formatMoney,
+  checkClubLoanCredit,
+  clubCreditRatingSummaryLines,
+  publishClubEosForecast,
+} from "./competition.js";
 import { loadFinanceSeasonContext } from "./finance_page_common.js?v=20261020-opening-650";
 import {
   MIN_GOALKEEPERS,
@@ -839,6 +844,7 @@ function renderTable() {
     ["ff_player_name", "Fan Fav", "chk-col-squad"],
     ["current_balance", "Balance", ""],
     ["projected_eos_balance", "Proj. EOS", ""],
+    ["credit_rating_label", "Credit", ""],
     ["total_wages", "Wages", ""],
     ["contract_releases_remaining", "Releases", ""],
     ["new_owner_releases_used", "1st-season releases", ""],
@@ -852,7 +858,7 @@ function renderTable() {
         <tr class="chk-group-row">
           <th colspan="8" class="chk-group-club">Club</th>
           <th colspan="10" class="chk-group-squad">Squad registration</th>
-          <th colspan="7" class="chk-group-fin">Finances &amp; allowances</th>
+          <th colspan="8" class="chk-group-fin">Finances &amp; allowances</th>
         </tr>
         <tr>
           ${headers
@@ -1059,6 +1065,7 @@ function renderTable() {
             )}
             ${moneyCell(row.current_balance, balanceLevel, balanceTip)}
             ${moneyCell(row.projected_eos_balance, projLevel, projTip)}
+            ${creditRatingCell(row)}
             ${moneyCell(row.total_wages)}
             ${numCell(row.contract_releases_remaining)}
             ${newOwnerReleasesCell(row)}
@@ -1085,6 +1092,23 @@ function renderTable() {
   });
 }
 
+function creditRatingCell(row) {
+  if (row.credit_rating_label === undefined) {
+    return textCell("…", "ok", "Loading credit rating…");
+  }
+  if (!row.credit_rating_label) {
+    return textCell("—", "ok", row.credit_rating_detail || "No rating");
+  }
+  const tone = String(row.credit_rating_tone || "ok");
+  const level =
+    tone === "bad" ? "bad" : tone === "warn" ? "warn" : tone === "good" ? "ok" : "ok";
+  return textCell(
+    row.credit_rating_label,
+    level,
+    row.credit_rating_detail || row.credit_rating_label
+  );
+}
+
 async function enrichProjectedBalances(rows) {
   const concurrency = 6;
   let index = 0;
@@ -1108,9 +1132,28 @@ async function enrichProjectedBalances(rows) {
       try {
         const ctx = await loadFinanceSeasonContext(supabase, club);
         row.projected_eos_balance = ctx.projectedBalance;
+        if (
+          ctx.projectedBalance != null &&
+          Number.isFinite(Number(ctx.projectedBalance))
+        ) {
+          await publishClubEosForecast(supabase, ctx.projectedBalance, club);
+        }
       } catch (err) {
         console.warn("projected balance", club, err);
         row.projected_eos_balance = null;
+      }
+
+      try {
+        const credit = await checkClubLoanCredit(supabase, club);
+        const summary = clubCreditRatingSummaryLines(credit);
+        row.credit_rating_label = summary.label;
+        row.credit_rating_detail = summary.detail;
+        row.credit_rating_tone = summary.tone;
+      } catch (err) {
+        console.warn("credit rating", club, err);
+        row.credit_rating_label = "—";
+        row.credit_rating_detail = err?.message || "Unavailable";
+        row.credit_rating_tone = "muted";
       }
 
       scheduleRender();
@@ -1147,6 +1190,9 @@ async function loadTable() {
   allRows = (data || []).map((row) => ({
     ...row,
     projected_eos_balance: undefined,
+    credit_rating_label: undefined,
+    credit_rating_detail: undefined,
+    credit_rating_tone: undefined,
     leading_bids_count: undefined,
     bidding_on_count: undefined,
     projected_squad_size: undefined,
@@ -1154,7 +1200,10 @@ async function loadTable() {
   }));
 
   renderTable();
-  setStatus("pageStatus", `Loaded ${allRows.length} clubs — loading live bids & projecting balances…`);
+  setStatus(
+    "pageStatus",
+    `Loaded ${allRows.length} clubs — loading live bids, Proj. EOS & credit ratings…`
+  );
 
   await Promise.all([
     enrichLiveBids(allRows),

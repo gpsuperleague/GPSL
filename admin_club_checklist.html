@@ -177,6 +177,7 @@
           <b>Discord tag</b> checks registry tag vs <code>Clubs.owner</code> (must match).
           <b>Availability</b> lists weekly match times for the current season (flagged if unset on owned clubs).
           <b>Projected EOS</b> loads after the table (same forecast as the club's Finances page).
+          <b>Credit</b> is the live loan credit rating (same labels as Finances / Service Counter), refreshed with Proj. EOS.
           <b>1st-season releases</b> shows New Owner release/list slots used (of 3) for owners in their first season at the club.
           Owned clubs without a manager or GK are flagged; a missing nation is flagged from Season 3.
           Deploy <code>admin_club_season_checklist_avail_tag_20260814.sql</code> in Supabase for tag/availability columns.
@@ -271,6 +272,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20261016-bal-thresh"></script>
+  <script type="module" src="admin_club_checklist.js?v=20261028-credit"></script>
 </body>
 </html>
