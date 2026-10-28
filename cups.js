@@ -37,8 +37,10 @@ import {
   isCatchUpFixture,
   fixtureNewOwnerArrangeGrace,
   newOwnerGraceKickoffNoteHtml,
+  fixtureHolidayArrangeNote,
+  holidayKickoffNoteHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261028-new-owner-grace";
+} from "./match_scheduling.js?v=20261028-holiday-ko";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
@@ -198,6 +200,10 @@ function cupKickoffHtml(f) {
   }
   if (status === "negotiating") {
     return `<span class="cup-ko cup-ko--pending">${catchUpPrefix}Proposal pending</span>`;
+  }
+  const holidayNote = fixtureHolidayArrangeNote(f);
+  if (holidayNote) {
+    return holidayKickoffNoteHtml(holidayNote, { catchUp });
   }
   if (f.id) {
     return `<span class="cup-ko cup-ko--open">${catchUpPrefix}Not scheduled</span>`;

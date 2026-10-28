@@ -33,8 +33,10 @@ import {
   isCatchUpFixture,
   fixtureNewOwnerArrangeGrace,
   newOwnerGraceKickoffNoteHtml,
+  fixtureHolidayArrangeNote,
+  holidayKickoffNoteHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261028-new-owner-grace";
+} from "./match_scheduling.js?v=20261028-holiday-ko";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,
@@ -384,11 +386,20 @@ function fixtureCardHtml(f) {
       ? occ.awayAbsent
       : occ.homeAbsent
     : occ.involvesSeasonAbsent && !occ.isPartialVacant;
+  const statusLower = String(f.schedule_status || "").toLowerCase();
   const newOwnerGrace =
     f.status !== "played" &&
     !(occ.isPartialVacant || occ.involvesSeasonAbsent) &&
-    String(f.schedule_status || "").toLowerCase() !== "agreed"
+    statusLower !== "agreed"
       ? fixtureNewOwnerArrangeGrace(f)
+      : null;
+  const holidayNote =
+    !newOwnerGrace &&
+    f.status !== "played" &&
+    !(occ.isPartialVacant || occ.involvesSeasonAbsent) &&
+    statusLower !== "agreed" &&
+    statusLower !== "negotiating"
+      ? fixtureHolidayArrangeNote(f)
       : null;
   const walkoverNote =
     f.status !== "played" &&
@@ -404,7 +415,12 @@ function fixtureCardHtml(f) {
             newOwnerGrace,
             { catchUp: isCatchUpFixture(f) }
           )}</div>`
-        : "";
+        : holidayNote
+          ? `<div class="fixture-walkover-note">${holidayKickoffNoteHtml(
+              holidayNote,
+              { catchUp: isCatchUpFixture(f) }
+            )}</div>`
+          : "";
 
   let playedBlock = "";
   if (f.status === "played") {

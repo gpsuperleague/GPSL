@@ -7,6 +7,8 @@ import {
   fixtureOwnerOccupancy,
   ownerAssignedAtForClub,
 } from "./clubs_lookup.js";
+import { ownerHolidayStatusForClub } from "./owner_badge.js";
+import { formatUkDateRange } from "./owner_holidays.js";
 import { GPSL_MONTH_LABELS, GPSL_MONTH_ORDER } from "./competition.js";
 
 export const UK_TZ = "Europe/London";
@@ -118,6 +120,99 @@ export function newOwnerGraceKickoffNoteHtml(grace, { catchUp = false } = {}) {
     `${prefix}To be scheduled · grace period in play` +
     `</span>` +
     `<span class="ko-status-detail">Grace${untilBit} — arrange from ${grace.arrangeFromLabel}</span>`
+  );
+}
+
+function holidayOverlapsPlayMonth(hol, playMonth) {
+  if (!hol?.starts_at || !hol?.ends_at || !playMonth) return false;
+  const cal = seasonCalendarByMonth.get(String(playMonth).toLowerCase());
+  if (!cal?.unlock_at || !cal?.lock_at) return false;
+  const startMs = new Date(hol.starts_at).getTime();
+  const endMs = new Date(hol.ends_at).getTime();
+  const unlockMs = new Date(cal.unlock_at).getTime();
+  const lockMs = new Date(cal.lock_at).getTime();
+  if (
+    ![startMs, endMs, unlockMs, lockMs].every((n) => Number.isFinite(n))
+  ) {
+    return false;
+  }
+  // Same rule as match_schedule_club_on_holiday_for_month
+  return startMs < lockMs && endMs > unlockMs;
+}
+
+/**
+ * UH/OH on either side that overlaps this fixture's GPSL month.
+ * @returns {null | {
+ *   clubShort: string,
+ *   code: 'OH'|'UH',
+ *   status: string,
+ *   starts_at: string,
+ *   ends_at: string,
+ *   rangeLabel: string,
+ *   playMonthLabel: string,
+ * }}
+ */
+export function fixtureHolidayArrangeNote(fixture) {
+  if (!fixture || fixture.status === "played") return null;
+  const playMonth = String(fixture.gpsl_month || "").trim().toLowerCase();
+  if (!playMonth) return null;
+
+  const sides = [
+    fixture.home_club_short_name,
+    fixture.away_club_short_name,
+  ];
+  /** Prefer active (OH) over upcoming when both overlap. */
+  let best = null;
+  for (const short of sides) {
+    const hol = ownerHolidayStatusForClub(short);
+    if (!hol || (hol.code !== "OH" && hol.code !== "UH")) continue;
+    if (!holidayOverlapsPlayMonth(hol, playMonth)) continue;
+    const entry = {
+      clubShort: String(short || "").toUpperCase(),
+      code: hol.code,
+      status: hol.status || (hol.code === "OH" ? "active" : "upcoming"),
+      starts_at: hol.starts_at,
+      ends_at: hol.ends_at,
+      rangeLabel: formatUkDateRange(hol.starts_at, hol.ends_at),
+      playMonthLabel: monthLabel(playMonth),
+    };
+    if (!best || (best.code === "UH" && entry.code === "OH")) {
+      best = entry;
+    }
+  }
+  return best;
+}
+
+function escapeKoText(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
+ * Kick-off column when a booked holiday covers this fixture's play month.
+ */
+export function holidayKickoffNoteHtml(note, { catchUp = false } = {}) {
+  if (!note) return "";
+  const prefix = catchUp ? "Catch-up · " : "";
+  const onHoliday = note.code === "OH";
+  const main = onHoliday
+    ? "To be scheduled · holiday in play"
+    : "To be scheduled · holiday booked";
+  const detail = onHoliday
+    ? `${note.clubShort} on holiday ${note.rangeLabel} — scheduling fines paused`
+    : `${note.clubShort} holiday ${note.rangeLabel} covers ${note.playMonthLabel} — arrange/play early where possible`;
+  const title = escapeKoAttr(
+    onHoliday
+      ? `${note.clubShort} is on holiday (${note.rangeLabel}). Scheduling fines are paused while away; arrange when both sides can.`
+      : `${note.clubShort} has a booked holiday (${note.rangeLabel}) covering ${note.playMonthLabel}. Arrange/play early where possible (4+ day month overlap unlocks early play).`
+  );
+  return (
+    `<span class="ko-status ko-status--holiday" title="${title}">` +
+    `${prefix}${main}` +
+    `</span>` +
+    `<span class="ko-status-detail">${escapeKoText(detail)}</span>`
   );
 }
 

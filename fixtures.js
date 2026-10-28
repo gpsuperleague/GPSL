@@ -42,8 +42,10 @@ import {
   vacantOpponentKickoffNoteHtml,
   fixtureNewOwnerArrangeGrace,
   newOwnerGraceKickoffNoteHtml,
+  fixtureHolidayArrangeNote,
+  holidayKickoffNoteHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261028-new-owner-grace";
+} from "./match_scheduling.js?v=20261028-holiday-ko";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
@@ -200,6 +202,11 @@ function kickoffStatusNoteHtml(fixture) {
 
   if (status === "negotiating") {
     return `<span class="ko-status ko-status--pending">${prefix}Proposal pending</span>`;
+  }
+
+  const holidayNote = fixtureHolidayArrangeNote(fixture);
+  if (holidayNote) {
+    return holidayKickoffNoteHtml(holidayNote, { catchUp });
   }
 
   return `<span class="ko-status ko-status--open">${prefix}Not scheduled</span>`;
