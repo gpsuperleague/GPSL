@@ -43,6 +43,7 @@ export const SECTION_CENTRAL_BANK = {
       items: [
         `Policy loan rate is usually <b>5%</b> p.a. New loans are refused while you are a <b>financial risk</b> (6 overdrawn month-ends in a row, FFP in the last 5 seasons, or 2 seasons ending overdrawn).`,
         `While at financial risk, monthly overdraft interest is higher (default <b>1%</b> vs <b>0.5%</b>).`,
+        `If your <b>predicted end-of-season balance</b> is at or below <b>−₿100m</b> (FFP territory), the rating steps to <b>Watch — FFP forecast</b>: loans stay available, but the loan rate rises slightly (default <b>+1%</b>) and monthly overdraft interest sits between normal and bad-credit (default <b>0.75%</b>).`,
         `After you clear risk, new loans carry a <b>post-risk premium</b> for a set number of seasons (default <b>+2.5%</b> for <b>2</b> seasons) — then the normal policy rate returns.`,
       ],
     },

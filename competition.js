@@ -2074,10 +2074,20 @@ export async function checkClubLoanCredit(supabase, clubShort = null) {
       available: false,
       ok: null,
       financial_risk: false,
+      ffp_forecast_distress: false,
       message: error.message || "Credit rating unavailable",
     };
   }
   const atRisk = data?.ok === false || data?.financial_risk === true;
+  const forecastDistress = data?.ffp_forecast_distress === true;
+  const postRisk = data?.post_risk_premium === true;
+  let ratingLabel = "Creditworthy";
+  if (atRisk) ratingLabel = "Financial risk";
+  else if (forecastDistress && postRisk)
+    ratingLabel = "Watch — FFP forecast (post-risk rate)";
+  else if (forecastDistress) ratingLabel = "Watch — FFP forecast";
+  else if (postRisk) ratingLabel = "Creditworthy (post-risk rate)";
+
   return {
     available: true,
     ok: !atRisk,
@@ -2092,16 +2102,45 @@ export async function checkClubLoanCredit(supabase, clubShort = null) {
       data?.policy_interest_rate_pct != null
         ? Number(data.policy_interest_rate_pct)
         : null,
-    post_risk_premium: data?.post_risk_premium === true,
+    post_risk_premium: postRisk,
     post_risk_premium_pct: Number(data?.post_risk_premium_pct || 0),
+    ffp_forecast_distress: forecastDistress,
+    ffp_forecast_premium_pct: Number(data?.ffp_forecast_premium_pct || 0),
+    ffp_forecast_balance:
+      data?.ffp_forecast_balance != null
+        ? Number(data.ffp_forecast_balance)
+        : null,
+    ffp_forecast_threshold:
+      data?.ffp_forecast_threshold != null
+        ? Number(data.ffp_forecast_threshold)
+        : null,
+    ffp_forecast_source: data?.ffp_forecast_source || null,
     probation_until_season_id: data?.probation_until_season_id ?? null,
     message: data?.message || null,
-    rating_label: atRisk
-      ? "Financial risk"
-      : data?.post_risk_premium
-        ? "Creditworthy (post-risk rate)"
-        : "Creditworthy",
+    rating_label: ratingLabel,
   };
+}
+
+/** Publish predicted EOS balance for soft FFP credit distress (own club / admin). */
+export async function publishClubEosForecast(
+  supabase,
+  projectedBalance,
+  clubShort = null
+) {
+  if (projectedBalance == null || !Number.isFinite(Number(projectedBalance))) {
+    return { ok: false, error: "invalid_projected_balance" };
+  }
+  const params = {
+    p_projected_balance: Number(projectedBalance),
+    p_source: "finances",
+  };
+  if (clubShort) params.p_club = clubShort;
+  const { data, error } = await supabase.rpc("club_publish_eos_forecast", params);
+  if (error) {
+    console.warn("publishClubEosForecast:", error);
+    return { ok: false, error: error.message };
+  }
+  return data || { ok: true };
 }
 
 /** Short owner-facing lines for a credit check result. */
@@ -2143,6 +2182,15 @@ export function clubCreditRatingSummaryLines(credit) {
   if (credit.post_risk_premium) {
     bits.push("post-risk premium applying");
   }
+  if (credit.ffp_forecast_distress) {
+    const thr =
+      credit.ffp_forecast_threshold != null
+        ? Number(credit.ffp_forecast_threshold)
+        : 100000000;
+    bits.push(
+      `EOS forecast in FFP territory (≤ −₿${Math.round(thr / 1e6)}m)`
+    );
+  }
   if (credit.overdrawn_month_ends > 0) {
     bits.push(
       `${credit.overdrawn_month_ends} recent overdrawn month-end${
@@ -2150,10 +2198,11 @@ export function clubCreditRatingSummaryLines(credit) {
       } (below refuse threshold)`
     );
   }
+  const warn = credit.post_risk_premium || credit.ffp_forecast_distress;
   return {
     label: credit.rating_label || "Creditworthy",
     detail: bits.join(" · ") || "Eligible for bank loans (subject to limits)",
-    tone: credit.post_risk_premium ? "warn" : "good",
+    tone: warn ? "warn" : "good",
   };
 }
 

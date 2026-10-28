@@ -4,7 +4,8 @@ import {
   checkClubLoanCredit,
   clubCreditRatingSummaryLines,
   formatMoney,
-} from "./competition.js";
+  publishClubEosForecast,
+} from "./competition.js?v=20261028-ffp-forecast";
 import { loadClubWageBillSummary } from "./club_wage_bill.js?v=20261014-ff-wage";
 import {
   advisoryBudgetTitle,
@@ -321,8 +322,6 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     data.inferredOpeningAdjusted
   );
 
-  await paintCreditRating(shortName, { historical: seasonView.isHistorical });
-
   const predictedEl = document.getElementById("predictedBalance");
   const balanceLabel = document
     .getElementById("balanceAmount")
@@ -344,6 +343,13 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     predictedEl.className = `value ${data.projectedBalance >= 0 ? "positive" : "negative"}`;
     resetPredictedWorkings({ data, shortName, rendered: false });
 
+    // Soft FFP credit distress uses this published EOS prediction
+    try {
+      await publishClubEosForecast(supabase, data.projectedBalance, shortName);
+    } catch (err) {
+      console.warn("eos forecast publish:", err);
+    }
+
     try {
       const advisory = await computeAdvisoryTransferBudget(supabase, shortName, {
         balanceNow: data.balanceNow,
@@ -358,6 +364,8 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     }
   }
 
+  // After forecast publish so soft FFP distress is reflected
+  await paintCreditRating(shortName, { historical: seasonView.isHistorical });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

@@ -13,7 +13,7 @@ import {
   checkClubLoanCredit,
   clubCreditRatingSummaryLines,
   clubTookLoanThisSeason,
-} from "./competition.js?v=20261028-credit-rating";
+} from "./competition.js?v=20261028-ffp-forecast";
 
 /** Must match public.club_loan_max_active(). */
 const MAX_ACTIVE_LOANS = 2;
@@ -232,15 +232,30 @@ function paintLimits(bank, loans, options = {}) {
 
   const baseRate = Number(bank?.policy_interest_rate_pct ?? 5);
   const premiumPct = Number(bank?.loan_interest_post_risk_premium_pct ?? 0);
+  const ffpPremiumPct = Number(
+    bank?.loan_interest_ffp_forecast_premium_pct ?? 0
+  );
   const credit = options.credit || null;
   const postRisk = credit?.post_risk_premium === true;
+  const ffpWatch = credit?.ffp_forecast_distress === true;
   const rate = Number(
     credit?.interest_rate_pct ??
-      (postRisk ? baseRate + premiumPct : baseRate)
+      (postRisk || ffpWatch
+        ? baseRate +
+          Math.max(
+            postRisk ? premiumPct : 0,
+            ffpWatch ? ffpPremiumPct : 0
+          )
+        : baseRate)
   );
-  const rateNote = postRisk
-    ? ` · Rate ${rate.toFixed(2)}% p.a. (includes post-risk premium)`
-    : ` · Rate ${rate.toFixed(2)}% p.a.`;
+  let rateNote = ` · Rate ${rate.toFixed(2)}% p.a.`;
+  if (postRisk && ffpWatch) {
+    rateNote = ` · Rate ${rate.toFixed(2)}% p.a. (post-risk + FFP forecast)`;
+  } else if (postRisk) {
+    rateNote = ` · Rate ${rate.toFixed(2)}% p.a. (includes post-risk premium)`;
+  } else if (ffpWatch) {
+    rateNote = ` · Rate ${rate.toFixed(2)}% p.a. (FFP forecast premium)`;
+  }
 
   const creditBlocked = credit?.available && credit?.ok === false;
   const limitsEl = document.getElementById("loanLimits");
@@ -498,7 +513,9 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
     const rate = Number(credit.interest_rate_pct ?? bankNow?.policy_interest_rate_pct ?? 5);
     const rateBit = credit.post_risk_premium
       ? ` at ${rate.toFixed(2)}% p.a. (post-risk premium)`
-      : ` at ${rate.toFixed(2)}% p.a.`;
+      : credit.ffp_forecast_distress
+        ? ` at ${rate.toFixed(2)}% p.a. (FFP forecast premium)`
+        : ` at ${rate.toFixed(2)}% p.a.`;
     showLoanCreditCheckFlash("Credit check clear.");
     if (
       !confirm(

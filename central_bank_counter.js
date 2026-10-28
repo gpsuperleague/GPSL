@@ -9,7 +9,7 @@ import {
   loadClubLoans,
   processMyDueLoanInstallments,
 } from "./competition.js";
-import { initBankCounter } from "./bank_counter.js?v=20261028-credit-rating";
+import { initBankCounter } from "./bank_counter.js?v=20261028-ffp-forecast";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 
 // Month lock is primary; visit catch-up settles installment_no <= expected only.
