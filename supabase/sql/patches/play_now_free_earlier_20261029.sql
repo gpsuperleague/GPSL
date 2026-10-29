@@ -241,11 +241,14 @@ BEGIN
 END;
 $req$;
 
--- Context: treat play-now as available whenever status.can_request (even without default slot)
+-- Context: declare helpers + soft-gate play now via status helper (idempotent)
 DO $ctx$
 DECLARE
   v_oid oid;
   v_def text;
+  v_old_pn text;
+  v_new_pn text;
+  v_changed boolean := false;
 BEGIN
   v_oid := to_regprocedure('public.match_schedule_fixture_context(bigint)');
   IF v_oid IS NULL THEN
@@ -254,64 +257,102 @@ BEGIN
 
   v_def := replace(replace(pg_get_functiondef(v_oid), E'\r\n', E'\n'), E'\r', E'\n');
 
-  -- Ensure play_now_status helper path exists (from play_now_block_reason patch)
-  IF position('match_schedule_play_now_status(p_fixture_id)' IN v_def) = 0
-     AND position('v_play_now_kickoff := public.match_schedule_play_now_kickoff(p_fixture_id);' IN v_def) > 0
+  -- DECLARE: always inject before body uses these names
+  IF position('v_play_now_json jsonb;' IN v_def) = 0
+     AND position('v_play_now_kickoff timestamptz;' IN v_def) > 0
   THEN
-    -- Soft-gate: agreed future ⇒ can_request; suggested slot optional
     v_def := replace(
       v_def,
-      E'BEGIN\n'
-      || E'      v_play_now_kickoff := public.match_schedule_play_now_kickoff(p_fixture_id);\n'
-      || E'      v_can_play_now := true;\n'
-      || E'    EXCEPTION WHEN OTHERS THEN\n'
-      || E'      v_can_play_now := false; v_play_now_kickoff := NULL;\n'
-      || E'    END;',
-      E'BEGIN\n'
-      || E'      IF to_regprocedure(''public.match_schedule_play_now_status(bigint)'') IS NOT NULL THEN\n'
-      || E'        v_play_now_json := public.match_schedule_play_now_status(p_fixture_id);\n'
-      || E'        v_can_play_now := coalesce((v_play_now_json->>''can_request'')::boolean, false);\n'
-      || E'        v_play_now_kickoff := (v_play_now_json->>''kickoff_at'')::timestamptz;\n'
-      || E'        v_play_now_reason := v_play_now_json->>''reason'';\n'
-      || E'      ELSE\n'
-      || E'        v_can_play_now := true;\n'
-      || E'        BEGIN\n'
-      || E'          v_play_now_kickoff := public.match_schedule_play_now_kickoff(p_fixture_id);\n'
-      || E'        EXCEPTION WHEN OTHERS THEN\n'
-      || E'          v_play_now_kickoff := NULL;\n'
-      || E'        END;\n'
-      || E'      END IF;\n'
-      || E'    EXCEPTION WHEN OTHERS THEN\n'
-      || E'      v_can_play_now := true; v_play_now_kickoff := NULL; v_play_now_reason := SQLERRM;\n'
-      || E'    END;'
+      'v_play_now_kickoff timestamptz;',
+      E'v_play_now_kickoff timestamptz;\n  v_play_now_reason text;\n  v_play_now_json jsonb;'
     );
+    v_changed := true;
+  ELSIF position('v_play_now_reason text;' IN v_def) = 0
+        AND position('v_play_now_kickoff timestamptz;' IN v_def) > 0
+  THEN
+    v_def := replace(
+      v_def,
+      'v_play_now_kickoff timestamptz;',
+      E'v_play_now_kickoff timestamptz;\n  v_play_now_reason text;'
+    );
+    v_changed := true;
+  END IF;
 
-    IF position('v_play_now_reason' IN v_def) = 0
-       AND position('v_play_now_kickoff timestamptz;' IN v_def) > 0
+  v_new_pn :=
+    E'BEGIN\n'
+    || E'      IF to_regprocedure(''public.match_schedule_play_now_status(bigint)'') IS NOT NULL THEN\n'
+    || E'        v_play_now_json := public.match_schedule_play_now_status(p_fixture_id);\n'
+    || E'        v_can_play_now := coalesce((v_play_now_json->>''can_request'')::boolean, false);\n'
+    || E'        v_play_now_kickoff := (v_play_now_json->>''kickoff_at'')::timestamptz;\n'
+    || E'        v_play_now_reason := v_play_now_json->>''reason'';\n'
+    || E'      ELSE\n'
+    || E'        v_can_play_now := true;\n'
+    || E'        BEGIN\n'
+    || E'          v_play_now_kickoff := public.match_schedule_play_now_kickoff(p_fixture_id);\n'
+    || E'        EXCEPTION WHEN OTHERS THEN\n'
+    || E'          v_play_now_kickoff := NULL;\n'
+    || E'        END;\n'
+    || E'      END IF;\n'
+    || E'    EXCEPTION WHEN OTHERS THEN\n'
+    || E'      v_can_play_now := true; v_play_now_kickoff := NULL; v_play_now_reason := SQLERRM;\n'
+    || E'    END;';
+
+  -- Legacy hard-fail play-now block
+  v_old_pn :=
+    E'BEGIN\n'
+    || E'      v_play_now_kickoff := public.match_schedule_play_now_kickoff(p_fixture_id);\n'
+    || E'      v_can_play_now := true;\n'
+    || E'    EXCEPTION WHEN OTHERS THEN\n'
+    || E'      v_can_play_now := false; v_play_now_kickoff := NULL;\n'
+    || E'    END;';
+
+  IF position(v_old_pn IN v_def) > 0 THEN
+    v_def := replace(v_def, v_old_pn, v_new_pn);
+    v_changed := true;
+  END IF;
+
+  -- play_now_block_reason variant that still hard-fails can_request
+  v_old_pn :=
+    E'BEGIN\n'
+    || E'      IF to_regprocedure(''public.match_schedule_play_now_status(bigint)'') IS NOT NULL THEN\n'
+    || E'        v_play_now_json := public.match_schedule_play_now_status(p_fixture_id);\n'
+    || E'        v_can_play_now := coalesce((v_play_now_json->>''can_request'')::boolean, false);\n'
+    || E'        v_play_now_kickoff := (v_play_now_json->>''kickoff_at'')::timestamptz;\n'
+    || E'        v_play_now_reason := v_play_now_json->>''reason'';\n'
+    || E'      ELSE\n'
+    || E'        v_play_now_kickoff := public.match_schedule_play_now_kickoff(p_fixture_id);\n'
+    || E'        v_can_play_now := true;\n'
+    || E'        v_play_now_reason := NULL;\n'
+    || E'      END IF;\n'
+    || E'    EXCEPTION WHEN OTHERS THEN\n'
+    || E'      v_can_play_now := false; v_play_now_kickoff := NULL; v_play_now_reason := SQLERRM;\n'
+    || E'    END;';
+
+  IF position(v_old_pn IN v_def) > 0 THEN
+    v_def := replace(v_def, v_old_pn, v_new_pn);
+    v_changed := true;
+  END IF;
+
+  IF position('''play_now_block_reason'', v_play_now_reason' IN v_def) = 0
+     AND position(
+           '''mutual_override_options'', jsonb_build_object(''can_request_play_now'', v_can_play_now, ''play_now_kickoff_at'', v_play_now_kickoff, ''can_request_new_time'', v_can_mutual_new_time)'
+           IN v_def
+         ) > 0
+  THEN
+    v_def := replace(
+      v_def,
+      '''mutual_override_options'', jsonb_build_object(''can_request_play_now'', v_can_play_now, ''play_now_kickoff_at'', v_play_now_kickoff, ''can_request_new_time'', v_can_mutual_new_time)',
+      '''mutual_override_options'', jsonb_build_object(''can_request_play_now'', v_can_play_now, ''play_now_kickoff_at'', v_play_now_kickoff, ''can_request_new_time'', v_can_mutual_new_time, ''play_now_block_reason'', v_play_now_reason)'
+    );
+    v_changed := true;
+  END IF;
+
+  IF v_changed THEN
+    IF position('v_play_now_json jsonb;' IN v_def) = 0
+       AND position('v_play_now_json' IN v_def) > 0
     THEN
-      v_def := replace(
-        v_def,
-        'v_play_now_kickoff timestamptz;',
-        E'v_play_now_kickoff timestamptz;\n  v_play_now_reason text;\n  v_play_now_json jsonb;'
-      );
+      RAISE EXCEPTION 'Context still references v_play_now_json without DECLARE';
     END IF;
-
-    IF position(
-         '''play_now_block_reason'', v_play_now_reason'
-         IN v_def
-       ) = 0
-       AND position(
-         '''can_request_new_time'', v_can_mutual_new_time)'
-         IN v_def
-       ) > 0
-    THEN
-      v_def := replace(
-        v_def,
-        '''mutual_override_options'', jsonb_build_object(''can_request_play_now'', v_can_play_now, ''play_now_kickoff_at'', v_play_now_kickoff, ''can_request_new_time'', v_can_mutual_new_time)',
-        '''mutual_override_options'', jsonb_build_object(''can_request_play_now'', v_can_play_now, ''play_now_kickoff_at'', v_play_now_kickoff, ''can_request_new_time'', v_can_mutual_new_time, ''play_now_block_reason'', v_play_now_reason)'
-      );
-    END IF;
-
     EXECUTE v_def;
   END IF;
 END;
@@ -324,4 +365,7 @@ SELECT
     AS assert_fn,
   (position('match_schedule_assert_play_now_kickoff_ok' IN pg_get_functiondef(
     'public.fixture_mutual_override_request(bigint,text,timestamptz)'::regprocedure
-  )) > 0) AS request_uses_free_play_now;
+  )) > 0) AS request_uses_free_play_now,
+  (position('v_play_now_json jsonb;' IN pg_get_functiondef(
+    'public.match_schedule_fixture_context(bigint)'::regprocedure
+  )) > 0) AS context_declares_json;
