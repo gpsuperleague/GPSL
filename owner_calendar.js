@@ -175,28 +175,42 @@ function truncateChip(text, max = 14) {
   return `${s.slice(0, max - 1)}…`;
 }
 
+function nameFromLoadedFixtures(short) {
+  const upper = String(short || "")
+    .trim()
+    .toUpperCase();
+  if (!upper) return null;
+  for (const f of fixtures || []) {
+    const h = (f.home_club_short_name || "").trim().toUpperCase();
+    const a = (f.away_club_short_name || "").trim().toUpperCase();
+    if (h === upper && f.home_club_name) return String(f.home_club_name).trim();
+    if (a === upper && f.away_club_name) return String(f.away_club_name).trim();
+  }
+  return null;
+}
+
 function clubFull(short, fallbackName) {
   const s = String(short || "").trim();
   const fb = String(fallbackName || "").trim();
   if (!s) return fb || "?";
-  for (const key of [s, s.toUpperCase(), s.toLowerCase()]) {
-    const n = fullClubName(key);
-    if (n && n !== key) return n;
-  }
+  const fromMap = fullClubName(s);
+  if (fromMap && fromMap !== s && fromMap !== s.toUpperCase()) return fromMap;
+  const fromFix = nameFromLoadedFixtures(s);
+  if (fromFix) return fromFix;
   const displayed = displayClubName(s);
   if (displayed && displayed !== s && displayed !== s.toUpperCase()) return displayed;
-  // Prefer an explicit full-name fallback over a 2–5 letter code
-  if (fb && fb.length > 5) return fb;
-  if (fb && fb !== s && fb !== s.toUpperCase()) return fb;
-  return displayed || fb || s;
+  if (fb && fb.length > 3 && fb.toUpperCase() !== s.toUpperCase()) return fb;
+  return fromMap || displayed || fb || s;
 }
 
-/** Expand "vs ABC" / trailing short codes in Club Wire titles to full club names. */
+/** Expand Club Wire short codes in titles/details to full club names. */
 function expandShortsInLabel(text) {
-  return String(text || "").replace(
-    /\bvs\s+([A-Za-z0-9]{2,6})\b/gi,
-    (_, code) => `vs ${clubFull(code, null)}`
-  );
+  return String(text || "")
+    .replace(/\bvs\s+([A-Za-z0-9]{2,6})\b/gi, (_, code) => `vs ${clubFull(code, null)}`)
+    .replace(
+      /\b(@|against)\s+([A-Za-z0-9]{2,6})\b/gi,
+      (_, prep, code) => `${prep} ${clubFull(code, null)}`
+    );
 }
 
 function oppShortForMe(f) {

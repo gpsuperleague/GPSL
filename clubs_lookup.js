@@ -9,6 +9,8 @@ import {
 } from "./owner_badge.js";
 
 let clubsMap = new Map();
+/** @type {Map<string, string>} upper(ShortName) → Club (case-insensitive lookup) */
+let clubsMapUpper = new Map();
 let stadiumMap = new Map();
 let ownerTagsMap = new Map();
 /** @type {Map<string, string>} club ShortName → owner uuid */
@@ -54,6 +56,7 @@ export async function loadClubsMap() {
   }
 
   clubsMap.clear();
+  clubsMapUpper.clear();
   stadiumMap.clear();
   ownerTagsMap.clear();
   ownerIdsMap.clear();
@@ -61,17 +64,20 @@ export async function loadClubsMap() {
   seasonAbsentClubs.clear();
 
   data.forEach(row => {
-    clubsMap.set(row.ShortName, row.Club);
-    if (row.Stadium?.trim()) stadiumMap.set(row.ShortName, row.Stadium.trim());
+    const short = String(row.ShortName || "").trim();
+    if (!short) return;
+    clubsMap.set(short, row.Club);
+    clubsMapUpper.set(short.toUpperCase(), row.Club);
+    if (row.Stadium?.trim()) stadiumMap.set(short, row.Stadium.trim());
     const tag = row.owner?.trim();
-    if (tag) ownerTagsMap.set(row.ShortName, tag);
+    if (tag) ownerTagsMap.set(short, tag);
     const oid = row.owner_id ? String(row.owner_id).trim() : "";
-    if (oid) ownerIdsMap.set(row.ShortName, oid);
+    if (oid) ownerIdsMap.set(short, oid);
     const assigned = row.owner_assigned_at
       ? String(row.owner_assigned_at).trim()
       : "";
-    if (assigned && row.ShortName) {
-      ownerAssignedAtMap.set(String(row.ShortName).toUpperCase(), assigned);
+    if (assigned) {
+      ownerAssignedAtMap.set(short.toUpperCase(), assigned);
     }
   });
 
@@ -118,7 +124,9 @@ export async function loadSeasonAbsentClubsMap(supabaseClient = null) {
    Convert ShortName → Full Club Name
    ============================================================ */
 export function fullClubName(shortName) {
-  return clubsMap.get(shortName) || shortName;
+  const key = String(shortName || "").trim();
+  if (!key) return key;
+  return clubsMap.get(key) || clubsMapUpper.get(key.toUpperCase()) || key;
 }
 
 export function stadiumName(shortName) {
@@ -302,9 +310,10 @@ export function displayClubName(shortOrFull, foreignBuyerName) {
     const name = String(foreignBuyerName || "").trim();
     return name || "Foreign club";
   }
-  const fromShort = clubsMap.get(key);
+  const fromShort =
+    clubsMap.get(key) || clubsMapUpper.get(key.toUpperCase());
   if (fromShort) return fromShort;
-  for (const [short, full] of clubsMap.entries()) {
+  for (const [, full] of clubsMap.entries()) {
     if (full === key) return full;
   }
   return key;
