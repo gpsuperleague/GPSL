@@ -3,10 +3,11 @@
 -- =============================================================================
 -- · Fixed survey: 1–5 ratings per area, 0–10 "recommend GPSL", three text boxes
 --   (working well / frustrations / recommendations).
--- · Automatic: once the GPSL calendar moves past August (September onwards) an
---   inbox invite goes to every club owner; open for global_settings
---   .owner_feedback_days (default 14). One reminder 48h before it closes to
---   owners who haven't responded.
+-- · Automatic: once GPSL December is the active play month an inbox invite
+--   goes to every club owner; open for global_settings.owner_feedback_days
+--   (default 14). One reminder 48h before it closes to owners who haven't
+--   responded. (Timing moved from post-August → December; see
+--   owner_feedback_open_december_20261029.sql.)
 -- · Owners may tick "submit anonymously": the response is then stored with no
 --   owner / club and only a day-level date; a separate completion row (owner
 --   only, no answers) stops repeat submissions and reminders.
@@ -236,17 +237,18 @@ BEGIN
     END;
 
     IF v_month IS NOT NULL
-       AND public.competition_gpsl_month_sort(v_month) > public.competition_gpsl_month_sort('august')
+       AND public.competition_gpsl_month_sort(v_month)
+           >= public.competition_gpsl_month_sort('december')
        AND NOT EXISTS (
          SELECT 1 FROM public.owner_feedback_surveys
-         WHERE season_id = v_season_id AND survey_key = 'post_august'
+         WHERE season_id = v_season_id AND survey_key = 'december'
        ) THEN
       SELECT greatest(coalesce(gs.owner_feedback_days, 14), 3) INTO v_days
       FROM public.global_settings gs WHERE gs.id = 1;
 
       INSERT INTO public.owner_feedback_surveys (season_id, survey_key, title, opens_at, closes_at)
       VALUES (
-        v_season_id, 'post_august', 'Owner feedback survey',
+        v_season_id, 'december', 'Owner feedback survey',
         now(), now() + make_interval(days => coalesce(v_days, 14))
       )
       ON CONFLICT (season_id, survey_key) DO NOTHING

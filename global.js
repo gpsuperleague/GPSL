@@ -2076,6 +2076,21 @@ const NAV_INLINE_ICONS = {
   season_calendar: {
     title: "Season Calendar",
     svg:
+      // Roadmap / month list (Aug–May style), not a wall grid
+      `<rect x="2.2" y="2.4" width="15.6" height="15.2" rx="1.6" fill="#1e3a5f"/>` +
+      `<rect x="3.4" y="3.6" width="13.2" height="12.8" rx="0.9" fill="#e8eef4"/>` +
+      `<circle cx="5.4" cy="6.2" r="1.05" fill="#f0c14b"/>` +
+      `<rect x="7.2" y="5.5" width="8" height="1.4" rx="0.4" fill="#8aa4c4"/>` +
+      `<circle cx="5.4" cy="9.6" r="1.05" fill="#2e5a8f"/>` +
+      `<rect x="7.2" y="8.9" width="6.4" height="1.4" rx="0.4" fill="#8aa4c4"/>` +
+      `<circle cx="5.4" cy="13" r="1.05" fill="#27ae60"/>` +
+      `<rect x="7.2" y="12.3" width="7.2" height="1.4" rx="0.4" fill="#8aa4c4"/>` +
+      `<path d="M5.4 7.3 V8.5 M5.4 10.7 V11.9" stroke="#c5d0dc" stroke-width="0.9" stroke-linecap="round"/>`,
+  },
+  owner_calendar: {
+    title: "My Calendar",
+    svg:
+      // Classic wall-month grid (former Season Calendar mark)
       `<rect x="2.4" y="3.8" width="15.2" height="13.4" rx="1.4" fill="#2e5a8f"/>` +
       `<rect x="2.4" y="3.8" width="15.2" height="3.4" rx="1.4" fill="#1e3a5f"/>` +
       `<rect x="5" y="2.4" width="1.4" height="3.2" rx="0.4" fill="#d0d7e2"/>` +
@@ -2087,18 +2102,6 @@ const NAV_INLINE_ICONS = {
       `<rect x="4.4" y="12.2" width="2.2" height="2" rx="0.35" fill="#7eb0e0"/>` +
       `<rect x="7.6" y="12.2" width="2.2" height="2" rx="0.35" fill="#c0392b"/>` +
       `<rect x="10.8" y="12.2" width="2.2" height="2" rx="0.35" fill="#7eb0e0"/>`,
-  },
-  owner_calendar: {
-    title: "My Calendar",
-    svg:
-      `<rect x="2.2" y="3.6" width="15.6" height="14" rx="1.6" fill="#0f3d3a"/>` +
-      `<rect x="2.2" y="3.6" width="15.6" height="3.6" rx="1.6" fill="#1a5c56"/>` +
-      `<rect x="5" y="2.2" width="1.5" height="3.4" rx="0.45" fill="#e8f5f3"/>` +
-      `<rect x="13.5" y="2.2" width="1.5" height="3.4" rx="0.45" fill="#e8f5f3"/>` +
-      `<rect x="6.2" y="9.2" width="7.6" height="6.4" rx="1" fill="#f0c14b"/>` +
-      `<text x="10" y="13.7" text-anchor="middle" fill="#1a1a1a" font-size="5.2" font-family="Arial,sans-serif" font-weight="700">29</text>` +
-      `<circle cx="15.6" cy="15.4" r="2.35" fill="#2a9d8f"/>` +
-      `<path d="M15.6 14.2v1.4l0.9 0.6" stroke="#e8f5f3" stroke-width="0.85" stroke-linecap="round" fill="none"/>`,
   },
   season_review: {
     title: "Season Review",
