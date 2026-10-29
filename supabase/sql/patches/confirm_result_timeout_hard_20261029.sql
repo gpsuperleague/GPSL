@@ -341,8 +341,12 @@ COMMENT ON FUNCTION public.competition_confirm_result(bigint, jsonb) IS
 
 SELECT
   p.proname,
-  (SELECT setting FROM pg_options_to_table(p.proconfig)
-   WHERE option_name = 'statement_timeout' LIMIT 1) AS statement_timeout_setting,
+  (
+    SELECT option_value
+    FROM pg_options_to_table(p.proconfig) AS opt(option_name, option_value)
+    WHERE opt.option_name = 'statement_timeout'
+    LIMIT 1
+  ) AS statement_timeout_setting,
   position('gpsl.skip_clinch_scan' IN pg_get_functiondef(p.oid)) > 0 AS skips_clinch,
   position('gpsl.defer_injury_fitness' IN pg_get_functiondef(p.oid)) > 0 AS defers_fitness
 FROM pg_proc p
