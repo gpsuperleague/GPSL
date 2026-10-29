@@ -34,7 +34,7 @@
     table.gpsl-table col.col-away { width: 18%; }
     table.gpsl-table col.col-score { width: 12%; }
     table.gpsl-table col.col-stadium { width: 18%; }
-    table.gpsl-table col.col-continent { width: 10%; }
+    table.gpsl-table col.col-continent { width: 6%; }
     table.gpsl-table col.col-conditions { width: 16%; }
     table.gpsl-table col.col-actions { width: 16%; }
     table.gpsl-table th, table.gpsl-table td {
@@ -72,7 +72,11 @@
     .score { font-weight:bold; color:#fff; text-align:center; min-width:48px; }
     .weather { color:#888; font-size:12px; }
     .fixture-stadium { color:#ccc; font-size:12px; max-width:200px; line-height:1.35; }
-    .fixture-continent { color:#999; font-size:12px; white-space:nowrap; }
+    .fixture-continent {
+      color:#999; font-size:12px; line-height:1.15; white-space:normal;
+      text-align:left; max-width:4.5rem;
+    }
+    .fixture-continent .continent-line { display:block; }
     .fixture-conditions { color:#aaa; font-size:12px; line-height:1.35; min-width:180px; }
     tr.my-fixture .fixture-stadium,
     tr.my-fixture .fixture-continent,
@@ -160,6 +164,6 @@
     <div id="fixturesRoot"></div>
   </div>
 
-  <script type="module" src="fixtures.js?v=20261029-admin-replay"></script>
+  <script type="module" src="fixtures.js?v=20261029-continent-stack"></script>
 </body>
 </html>

@@ -28,9 +28,9 @@ import {
 import { loadClubsMap, clubWithOwnerHtml, stadiumName, fixtureOwnerOccupancy } from "./clubs_lookup.js";
 import {
   formatMatchConditions,
-  formatFixtureContinent,
+  formatFixtureContinentStackedHtml,
   fixtureStadiumLabel,
-} from "./competition_conditions.js";
+} from "./competition_conditions.js?v=20261029-continent-stack";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import {
   scheduleActionLabel,
@@ -138,7 +138,7 @@ function fixtureStadiumCell(fixture) {
 }
 
 function fixtureContinentCell(fixture) {
-  return formatFixtureContinent(fixture);
+  return formatFixtureContinentStackedHtml(fixture);
 }
 
 function fixtureConditionsCell(fixture) {

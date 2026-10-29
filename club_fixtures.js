@@ -18,9 +18,9 @@ import {
 import {
   formatWeatherLabel,
   formatPitchLabel,
-  formatFixtureContinent,
+  formatFixtureContinentStackedHtml,
   fixtureStadiumLabel,
-} from "./competition_conditions.js";
+} from "./competition_conditions.js?v=20261029-continent-stack";
 import {
   loadCalendarStatus,
   loadSeasonCalendarMonths,
@@ -353,7 +353,7 @@ function fixtureCardHtml(f) {
   const score = formatFixtureScore(f, myClub);
   const weather = formatWeatherLabel(f.weather);
   const pitch = formatPitchLabel(f.pitch_condition);
-  const continent = formatFixtureContinent(f);
+  const continent = formatFixtureContinentStackedHtml(f);
   const stadium = fixtureStadiumLabel(f, myClub.short, f.venue_name || null);
   const occ = fixtureOwnerOccupancy(
     f.home_club_short_name,
@@ -499,7 +499,7 @@ function fixtureCardHtml(f) {
         <span><b>${mdLabel}</b></span>
         <span><b>${ha}</b></span>
         <span>${stadium}</span>
-        <span>${continent}</span>
+        <span class="fixture-continent">${continent}</span>
       </div>
       <div class="conditions-row">
         <span class="weather">Weather: ${weather}</span>

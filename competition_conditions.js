@@ -181,6 +181,25 @@ export function formatFixtureContinent(fixture) {
   return CONTINENT_LABELS[fixture.home_continent] || fixture.home_continent || "—";
 }
 
+/** Two-word continents as stacked lines (saves fixtures column width). */
+export function formatFixtureContinentStackedHtml(fixture) {
+  const label = formatFixtureContinent(fixture);
+  if (!label || label === "—") return "—";
+  const parts = String(label).trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return escapeContinentAttr(parts[0] || label);
+  return parts
+    .map((p) => `<span class="continent-line">${escapeContinentAttr(p)}</span>`)
+    .join("");
+}
+
+function escapeContinentAttr(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 /** Stadium label for fixtures table (home venue, or neutral e.g. Wembley). */
 export function fixtureStadiumLabel(fixture, myClubShort, homeStadiumName) {
   if (!fixture) return "—";
