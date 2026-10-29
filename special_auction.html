@@ -463,6 +463,19 @@
             </button>
           </div>
         </div>
+        <div id="prizeStarSwap" class="prize-star-swap" style="display:none;margin-top:12px;">
+          <p class="secret-note" style="margin:0 0 8px;">
+            <b>4. Star swap</b> — release an existing star at market value and sign this
+            prize star in one step. One of Our Own is not listed unless the prize can
+            take OooO immediately (home-grown star for your club).
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <select id="prizeStarSwapSelect" style="min-width:220px;max-width:100%;padding:6px 8px;"></select>
+            <button type="button" id="prizeStarSwapBtn" class="button secondary">
+              Star swap — release selected (MV) &amp; sign prize
+            </button>
+          </div>
+        </div>
         <p id="prizeOptionsStatus" class="secret-note"></p>
       </div>
       <div id="playerReveal"></div>
@@ -551,6 +564,8 @@
       winnerKeepPrize,
       winnerReleasePrize,
       winnerReleaseSquadForKeep,
+      winnerStarSwap,
+      fetchStarSwapOptions,
       fetchSquadPlayersForPrizeKeepPrep,
       fetchPrizeSquadSpace,
       prizeSquadSpaceText,
@@ -632,6 +647,9 @@
       prizeKeepPrep: document.getElementById("prizeKeepPrep"),
       prizeKeepPrepSelect: document.getElementById("prizeKeepPrepSelect"),
       prizeKeepPrepBtn: document.getElementById("prizeKeepPrepBtn"),
+      prizeStarSwap: document.getElementById("prizeStarSwap"),
+      prizeStarSwapSelect: document.getElementById("prizeStarSwapSelect"),
+      prizeStarSwapBtn: document.getElementById("prizeStarSwapBtn"),
     };
 
     const TIMER_MS = 1000;
@@ -1261,11 +1279,12 @@
       setPrizeStatus("");
 
       const pid = auction.prize_player_id || auction.known_player_id;
-      const [space, player, listing, squadForPrep] = await Promise.all([
+      const [space, player, listing, squadForPrep, starSwap] = await Promise.all([
         fetchPrizeSquadSpace(supabase, auction.id, clubShort),
         fetchPrizePlayerBrief(supabase, pid),
         fetchPrizeActiveListing(supabase, pid, clubShort),
         fetchSquadPlayersForPrizeKeepPrep(supabase, clubShort, pid),
+        fetchStarSwapOptions(supabase, auction.id),
       ]);
 
       const listed = Boolean(listing);
@@ -1273,6 +1292,8 @@
       const canKeep = winnerCanKeepPrize(space);
       const mv = Number(player?.market_value) || 0;
       const releaseCredit = Math.round(mv);
+      const starSwapAvail =
+        !listed && !prizeSigned && Boolean(starSwap?.available);
 
       if (listed) {
         els.prizeOptionsIntro.textContent =
@@ -1280,10 +1301,10 @@
       } else if (canKeep) {
         els.prizeOptionsIntro.textContent = prizeSigned
           ? "Confirm Keep — the prize is already in your squad and you have room."
-          : "Choose: Sign the player into your squad, or turn him down and take his market value in cash. He is not signed until you choose Sign.";
+          : "Choose: Sign the player, take cash (MV), or — if this prize is a star — star-swap an existing star at MV. He is not signed until you choose Sign / Sign & release / Star swap.";
       } else {
         els.prizeOptionsIntro.textContent =
-          "Squad is full. Sign the prize only by releasing a current squad player at MV (one step), or take cash — the prize stays unsigned and you are not forced to drop anyone.";
+          "Squad is full. Sign the prize by releasing a squad player at MV, use star swap if the prize is a star, or take cash — the prize stays unsigned unless you pick a sign path.";
       }
 
       if (player) {
@@ -1363,6 +1384,31 @@
           els.prizeKeepPrepBtn.disabled = !opts;
         }
       }
+
+      if (els.prizeStarSwap) {
+        els.prizeStarSwap.style.display = starSwapAvail ? "block" : "none";
+      }
+      if (starSwapAvail && els.prizeStarSwapSelect) {
+        const cands = starSwap?.candidates || [];
+        const opts = cands
+          .map((p) => {
+            const mvP = Number(p.market_value) || 0;
+            const ooo = p.is_oooo
+              ? p.transfers_oooo
+                ? " · OooO → transfers to prize"
+                : " · OooO"
+              : "";
+            const label = `${p.name || p.player_id} · ${p.position || "?"} · ${p.rating || "?"} · ${formatMoney(mvP)}${ooo}`;
+            return `<option value="${String(p.player_id)}">${label}</option>`;
+          })
+          .join("");
+        els.prizeStarSwapSelect.innerHTML = opts
+          ? `<option value="">Select star to release…</option>${opts}`
+          : `<option value="">No star candidates</option>`;
+        if (els.prizeStarSwapBtn) {
+          els.prizeStarSwapBtn.disabled = !opts;
+        }
+      }
     }
 
     async function runPrizeAction(action) {
@@ -1372,6 +1418,7 @@
         els.prizeKeepBtn,
         els.prizeReleaseBtn,
         els.prizeKeepPrepBtn,
+        els.prizeStarSwapBtn,
       ].forEach((b) => {
         if (b) b.disabled = true;
       });
@@ -1422,6 +1469,29 @@
           return;
         }
         result = await winnerReleaseSquadForKeep(supabase, auction.id, pickId);
+      } else if (action === "star_swap") {
+        const pickId = els.prizeStarSwapSelect?.value;
+        if (!pickId) {
+          setPrizeStatus("Select a star player to release.", true);
+          await renderPrizeOptionsPanel();
+          return;
+        }
+        const pickLabel =
+          els.prizeStarSwapSelect?.selectedOptions?.[0]?.textContent ||
+          "this star";
+        const oooNote = /OooO/i.test(pickLabel)
+          ? "\n\nOne of Our Own will transfer onto the prize immediately after sign."
+          : "";
+        if (
+          !confirm(
+            `Star swap: release ${pickLabel} at market value AND sign the prize star?${oooNote}\n\nDoes not use voluntary release quota.`
+          )
+        ) {
+          setPrizeStatus("");
+          await renderPrizeOptionsPanel();
+          return;
+        }
+        result = await winnerStarSwap(supabase, auction.id, pickId);
       }
 
       const { data, error } = result || {};
@@ -1441,10 +1511,13 @@
         return;
       }
 
-      if (action === "keep_prep") {
+      if (action === "keep_prep" || action === "star_swap") {
+        const oooBit = data?.oooo_transferred
+          ? " OooO transferred to the prize."
+          : "";
         const doneMsg = data?.resolved
-          ? `Signed prize — released ${data?.player_name || "squad player"} for ${formatMoney(data?.market_value)}. Options closed.`
-          : `Released ${data?.player_name || "squad player"} for ${formatMoney(data?.market_value)}.`;
+          ? `${action === "star_swap" ? "Star swap done" : "Signed prize"} — released ${data?.player_name || "player"} for ${formatMoney(data?.market_value)}.${oooBit} Options closed.`
+          : `Released ${data?.player_name || "player"} for ${formatMoney(data?.market_value)}.`;
         setPrizeStatus(doneMsg);
         alert(doneMsg);
         auction = await refreshAuctionRecord(supabase, auction);
@@ -1533,6 +1606,9 @@
       els.prizeReleaseBtn?.addEventListener("click", () => runPrizeAction("release"));
       els.prizeKeepPrepBtn?.addEventListener("click", () =>
         runPrizeAction("keep_prep")
+      );
+      els.prizeStarSwapBtn?.addEventListener("click", () =>
+        runPrizeAction("star_swap")
       );
     }
 

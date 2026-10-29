@@ -933,6 +933,27 @@ export async function winnerReleaseSquadForKeep(supabase, auctionId, playerId) {
   });
 }
 
+/** Option 4: release a star at MV and sign the prize star (OooO only if transferable). */
+export async function winnerStarSwap(supabase, auctionId, playerId) {
+  return supabase.rpc("special_auction_winner_star_swap", {
+    p_auction_id: auctionId,
+    p_player_id: String(playerId),
+  });
+}
+
+/** Star-swap candidates + availability for prize option 4. */
+export async function fetchStarSwapOptions(supabase, auctionId) {
+  const { data, error } = await supabase.rpc(
+    "special_auction_winner_star_swap_options",
+    { p_auction_id: auctionId }
+  );
+  if (error) {
+    console.warn("special_auction_winner_star_swap_options:", error);
+    return { ok: false, available: false, candidates: [] };
+  }
+  return data || { ok: false, available: false, candidates: [] };
+}
+
 /** Squad players eligible to release while deciding on a special-auction prize. */
 export async function fetchSquadPlayersForPrizeKeepPrep(
   supabase,
