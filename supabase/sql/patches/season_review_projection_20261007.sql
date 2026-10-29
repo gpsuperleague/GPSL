@@ -506,6 +506,8 @@ BEGIN
           END LOOP;
         END IF;
       ELSE
+        -- Actual post-close ledger (pre_close is only a historical snapshot)
+        v_bal := v_snap.balance_now;
         v_ffp := EXISTS (
           SELECT 1 FROM public.competition_season_charge_paid cp
           WHERE cp.season_id = v_season_id
@@ -518,7 +520,7 @@ BEGIN
         'balance_now', v_snap.balance_now,
         'pre_close', v_snap.pre_close,
         'debt_interest', v_interest,
-        'ffp_fine', CASE WHEN v_ffp AND NOT v_snap.eos_posted THEN v_fine ELSE 0 END,
+        'ffp_fine', CASE WHEN v_ffp THEN v_fine ELSE 0 END,
         'ffp', v_ffp,
         'releases', v_releases,
         'release_total', v_release_total,

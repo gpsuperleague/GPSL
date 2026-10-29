@@ -216,30 +216,83 @@ function managerOutcomeCell(r) {
     ${m.next_season ? `<div class="sr-block sr-next">Next season: ${esc(m.next_season)}</div>` : ""}`;
 }
 
+function ffpLineLabel(balance) {
+  const thr = Number(board?.ffp_threshold) || 100_000_000;
+  const room = thr + Number(balance); // ≥0 = headroom above −thr; <0 = past the line
+  const line = money(-thr);
+  if (room >= 0) {
+    return `<div class="sr-sub">${money(room)} headroom above the FFP line (${line})</div>`;
+  }
+  return `<div class="sr-sub">${money(Math.abs(room))} past the FFP line (${line})</div>`;
+}
+
 function financeCell(r) {
   const f = r.finance;
   if (!f) return `<span class="sr-sub">Not projected yet</span>`;
   const closeCls = (v) => (Number(v) < 0 ? "sr-neg" : "sr-plus");
-  const lines = [`<div>Now <b>${money(f.balance_now)}</b></div>`];
-  const ffpProjected = f.ffp && !f.eos_posted;
-  if (ffpProjected) {
-    const beforeFfp = Number(f.pre_close) - Number(f.debt_interest || 0);
+  const closed = !!f.eos_posted;
+  const thr = Number(board?.ffp_threshold) || 100_000_000;
+  const lines = [];
+  const ffpProjected = f.ffp && !closed;
+
+  // After EOS, "closing" must be the live ledger — not the stale pre_close snapshot.
+  const displayClose = closed
+    ? Number(f.balance_now)
+    : Number(f.closing ?? f.pre_close);
+
+  if (closed) {
     lines.push(
-      `<div>Projected close before FFP <b class="${closeCls(beforeFfp)}">${money(beforeFfp)}</b></div>`
+      `<div>Closing balance <b class="${closeCls(displayClose)}">${money(
+        displayClose
+      )}</b></div>`
     );
+    const pre = Number(f.pre_close);
+    if (Number.isFinite(pre) && Math.abs(pre - displayClose) > 500) {
+      lines.push(
+        `<div class="sr-sub">Pre-close snapshot ${money(pre)}${
+          pre <= -thr ? " (was past FFP)" : ""
+        }</div>`
+      );
+    }
+    lines.push(`<div class="sr-sub">Season finances already closed</div>`);
   } else {
-    lines.push(`<div>Projected close <b class="${closeCls(f.closing)}">${money(f.closing)}</b></div>`);
+    lines.push(`<div>Now <b>${money(f.balance_now)}</b></div>`);
+    if (ffpProjected) {
+      const beforeFfp = Number(f.pre_close) - Number(f.debt_interest || 0);
+      lines.push(
+        `<div>Projected close before FFP <b class="${closeCls(beforeFfp)}">${money(
+          beforeFfp
+        )}</b></div>`
+      );
+    } else {
+      lines.push(
+        `<div>Projected close <b class="${closeCls(displayClose)}">${money(
+          displayClose
+        )}</b></div>`
+      );
+    }
   }
-  if (f.eos_posted) lines.push(`<div class="sr-sub">Season finances already closed</div>`);
-  if (Number(f.debt_interest) > 0) {
+
+  if (Number(f.debt_interest) > 0 && !closed) {
     lines.push(`<div class="sr-sub">Includes debt interest −${money(f.debt_interest)}</div>`);
   }
-  if (f.ffp) {
+
+  // Treat posted FFP charges OR a live/projected balance still past the line as FFP.
+  const pastLine = displayClose <= -thr;
+  const showFfp = !!f.ffp || (closed && pastLine);
+
+  if (showFfp) {
     lines.push(
       `<div>${chip(`FFP fine ${money(f.ffp_fine || board.ffp_fine)}`, "bad")}</div>` +
         (ffpProjected
-          ? `<div class="sr-sub">Closing at ${money(-Number(board.ffp_threshold))} or worse triggers the fine; players are then sold (highest value first) until the balance is back above ${money(-Number(board.ffp_threshold))}.</div>`
-          : "")
+          ? `<div class="sr-sub">Closing at ${money(-thr)} or worse triggers the fine; players are then sold (highest value first) until the balance is back above ${money(
+              -thr
+            )}.</div>`
+          : closed
+            ? `<div class="sr-sub">FFP applied (or still past ${money(
+                -thr
+              )}) — forced sales clear debt back above the line; no buys next window.</div>`
+            : "")
     );
     const rel = f.releases || [];
     if (rel.length) {
@@ -255,10 +308,10 @@ function financeCell(r) {
       );
     }
     lines.push(`<div class="sr-sub">Can't buy players in the next transfer window</div>`);
-  } else if (Number(f.closing) < 0) {
-    const room = Number(board.ffp_threshold) + Number(f.closing);
-    lines.push(`<div class="sr-sub">${money(room)} above the FFP line</div>`);
+  } else if (Number(displayClose) < 0) {
+    lines.push(ffpLineLabel(displayClose));
   }
+
   return lines.join("");
 }
 
