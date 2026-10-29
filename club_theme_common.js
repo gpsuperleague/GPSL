@@ -77,6 +77,7 @@ export const CLUB_PAGES_THEME_KEYS = new Set([
   "bookies",
   "fantasy",
   "season_calendar",
+  "owner_calendar",
   "national_team",
   "nation_select",
   "nation_player_pool",
