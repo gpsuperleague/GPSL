@@ -33,9 +33,9 @@
     table.gpsl-table col.col-home,
     table.gpsl-table col.col-away { width: 18%; }
     table.gpsl-table col.col-score { width: 12%; }
-    table.gpsl-table col.col-stadium { width: 18%; }
+    table.gpsl-table col.col-stadium { width: 12%; }
     table.gpsl-table col.col-continent { width: 6%; }
-    table.gpsl-table col.col-conditions { width: 16%; }
+    table.gpsl-table col.col-conditions { width: 18%; }
     table.gpsl-table col.col-actions { width: 16%; }
     table.gpsl-table th, table.gpsl-table td {
       border-top:1px solid #333; padding:8px 10px; font-size:13px;
@@ -71,13 +71,29 @@
     }
     .score { font-weight:bold; color:#fff; text-align:center; min-width:48px; }
     .weather { color:#888; font-size:12px; }
-    .fixture-stadium { color:#ccc; font-size:12px; max-width:200px; line-height:1.35; }
+    .fixture-stadium {
+      color:#ccc; font-size:12px; line-height:1.2; white-space:normal; max-width:9rem;
+    }
+    .fixture-stadium .stadium-line { display:block; }
     .fixture-continent {
       color:#999; font-size:12px; line-height:1.15; white-space:normal;
       text-align:left; max-width:4.5rem;
     }
     .fixture-continent .continent-line { display:block; }
-    .fixture-conditions { color:#aaa; font-size:12px; line-height:1.35; min-width:180px; }
+    .fixture-conditions {
+      color:#aaa; font-size:12px; line-height:1.35; white-space:normal;
+    }
+    .fixture-conditions .cond-chip {
+      display:inline-flex; align-items:center; gap:4px; vertical-align:middle;
+      white-space:nowrap;
+    }
+    .fixture-conditions .cond-icon {
+      width:16px; height:16px; flex:0 0 16px; display:block;
+    }
+    .fixture-conditions .cond-sep {
+      margin:0 5px; color:#666;
+    }
+    .fixture-conditions .cond-kit { white-space:normal; }
     tr.my-fixture .fixture-stadium,
     tr.my-fixture .fixture-continent,
     tr.my-fixture .fixture-conditions { color:#ddd; }
@@ -164,6 +180,6 @@
     <div id="fixturesRoot"></div>
   </div>
 
-  <script type="module" src="fixtures.js?v=20261029-continent-stack"></script>
+  <script type="module" src="fixtures.js?v=20261029-cond-icons"></script>
 </body>
 </html>

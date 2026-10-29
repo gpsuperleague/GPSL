@@ -16,11 +16,11 @@ import {
   isFixtureMonthPlayable,
 } from "./competition.js";
 import {
-  formatWeatherLabel,
-  formatPitchLabel,
+  formatWeatherChipHtml,
+  formatPitchChipHtml,
   formatFixtureContinentStackedHtml,
-  fixtureStadiumLabel,
-} from "./competition_conditions.js?v=20261029-continent-stack";
+  fixtureStadiumLabelStackedHtml,
+} from "./competition_conditions.js?v=20261029-cond-icons";
 import {
   loadCalendarStatus,
   loadSeasonCalendarMonths,
@@ -351,10 +351,14 @@ function fixtureCardHtml(f) {
   const badgeCls = isLeague ? "league" : "cup";
   const ha = f.is_home ? "Home" : "Away";
   const score = formatFixtureScore(f, myClub);
-  const weather = formatWeatherLabel(f.weather);
-  const pitch = formatPitchLabel(f.pitch_condition);
+  const weather = formatWeatherChipHtml(f.weather);
+  const pitch = formatPitchChipHtml(f.pitch_condition);
   const continent = formatFixtureContinentStackedHtml(f);
-  const stadium = fixtureStadiumLabel(f, myClub.short, f.venue_name || null);
+  const stadium = fixtureStadiumLabelStackedHtml(
+    f,
+    myClub.short,
+    f.venue_name || null
+  );
   const occ = fixtureOwnerOccupancy(
     f.home_club_short_name,
     f.away_club_short_name

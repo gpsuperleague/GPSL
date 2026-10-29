@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+  <g stroke="#c4a35a" stroke-width="1.35" stroke-linecap="round">
+    <path d="M3.5 13.5c1.8-2.2 3.2-2.2 5 0"/>
+    <path d="M6.2 11c1.8-2.2 3.2-2.2 5 0"/>
+    <path d="M9 8.8c1.8-2.2 3.2-2.2 5 0"/>
+    <path d="M11.5 12.2c1.6-1.9 2.8-1.9 4.4 0"/>
+    <path d="M4.8 15.2c1.5-1.7 2.6-1.7 4.1 0"/>
+    <path d="M8.2 14.4c1.5-1.7 2.6-1.7 4.1 0"/>
+  </g>
+  <g stroke="#a8883f" stroke-width="1.1" stroke-linecap="round">
+    <path d="M5 10.5c1.2-1.4 2.1-1.4 3.3 0"/>
+    <path d="M10.5 9.2c1.2-1.4 2.1-1.4 3.3 0"/>
+  </g>
+</svg>

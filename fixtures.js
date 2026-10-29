@@ -27,10 +27,10 @@ import {
 } from "./competition_calendar.js";
 import { loadClubsMap, clubWithOwnerHtml, stadiumName, fixtureOwnerOccupancy } from "./clubs_lookup.js";
 import {
-  formatMatchConditions,
+  formatMatchConditionsHtml,
   formatFixtureContinentStackedHtml,
-  fixtureStadiumLabel,
-} from "./competition_conditions.js?v=20261029-continent-stack";
+  fixtureStadiumLabelStackedHtml,
+} from "./competition_conditions.js?v=20261029-cond-icons";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import {
   scheduleActionLabel,
@@ -134,7 +134,11 @@ function homeStadium(fixture) {
 }
 
 function fixtureStadiumCell(fixture) {
-  return fixtureStadiumLabel(fixture, myClub.short, homeStadium(fixture));
+  return fixtureStadiumLabelStackedHtml(
+    fixture,
+    myClub.short,
+    homeStadium(fixture)
+  );
 }
 
 function fixtureContinentCell(fixture) {
@@ -142,7 +146,7 @@ function fixtureContinentCell(fixture) {
 }
 
 function fixtureConditionsCell(fixture) {
-  return formatMatchConditions(fixture);
+  return formatMatchConditionsHtml(fixture);
 }
 
 function matchdayUrl(fixtureId) {

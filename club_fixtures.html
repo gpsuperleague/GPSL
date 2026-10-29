@@ -104,6 +104,12 @@
     .fixture-meta b { color:#ccc; font-weight:600; }
     .fixture-meta .fixture-continent { line-height:1.15; }
     .fixture-meta .continent-line { display:block; }
+    .fixture-meta .fixture-stadium { line-height:1.2; }
+    .fixture-meta .stadium-line { display:block; }
+    .conditions-row .cond-chip {
+      display:inline-flex; align-items:center; gap:4px; vertical-align:middle;
+    }
+    .conditions-row .cond-icon { width:16px; height:16px; display:block; }
     .conditions-row {
       font-size:13px; color:#bbb; margin-bottom:6px;
     }
@@ -175,6 +181,6 @@
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20261029-continent-stack"></script>
+  <script type="module" src="club_fixtures.js?v=20261029-cond-icons"></script>
 </body>
 </html>

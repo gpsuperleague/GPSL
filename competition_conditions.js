@@ -166,6 +166,42 @@ export function formatKitSeasonLabel(value) {
   return value || "—";
 }
 
+const WEATHER_ICON = {
+  fine: "images/conditions/weather-fine.svg",
+  rain: "images/conditions/weather-rain.svg",
+  snow: "images/conditions/weather-snow.svg",
+};
+
+const PITCH_ICON = {
+  normal: "images/conditions/pitch-normal.svg",
+  dry: "images/conditions/pitch-dry.svg",
+  wet: "images/conditions/pitch-wet.svg",
+};
+
+function conditionIconHtml(src, label) {
+  if (!src) return escapeHtmlText(label);
+  return (
+    `<span class="cond-chip" title="${escapeHtmlText(label)}">` +
+    `<img class="cond-icon" src="${src}" alt="" width="16" height="16" loading="lazy">` +
+    `<span class="cond-label">${escapeHtmlText(label)}</span>` +
+    `</span>`
+  );
+}
+
+export function formatWeatherChipHtml(value) {
+  const key = String(value || "").toLowerCase();
+  const label = formatWeatherLabel(value);
+  if (!label || label === "—") return "—";
+  return conditionIconHtml(WEATHER_ICON[key], label);
+}
+
+export function formatPitchChipHtml(value) {
+  const key = String(value || "").toLowerCase();
+  const label = formatPitchLabel(value);
+  if (!label || label === "—") return "—";
+  return conditionIconHtml(PITCH_ICON[key], label);
+}
+
 /** One-line summary for fixtures / matchday. */
 export function formatMatchConditions(fixture) {
   if (!fixture) return "—";
@@ -174,6 +210,23 @@ export function formatMatchConditions(fixture) {
   if (fixture.weather) parts.push(formatWeatherLabel(fixture.weather));
   if (fixture.pitch_condition) parts.push(formatPitchLabel(fixture.pitch_condition));
   return parts.length ? parts.join(" · ") : fixture.weather || "—";
+}
+
+/** Fixtures table: kit text + weather/pitch icons. */
+export function formatMatchConditionsHtml(fixture) {
+  if (!fixture) return "—";
+  const parts = [];
+  if (fixture.kit_season) {
+    parts.push(
+      `<span class="cond-kit">${escapeHtmlText(formatKitSeasonLabel(fixture.kit_season))}</span>`
+    );
+  }
+  if (fixture.weather) parts.push(formatWeatherChipHtml(fixture.weather));
+  if (fixture.pitch_condition) parts.push(formatPitchChipHtml(fixture.pitch_condition));
+  if (!parts.length) {
+    return fixture.weather ? formatWeatherChipHtml(fixture.weather) : "—";
+  }
+  return parts.join(`<span class="cond-sep">·</span>`);
 }
 
 export function formatFixtureContinent(fixture) {
@@ -186,13 +239,13 @@ export function formatFixtureContinentStackedHtml(fixture) {
   const label = formatFixtureContinent(fixture);
   if (!label || label === "—") return "—";
   const parts = String(label).trim().split(/\s+/).filter(Boolean);
-  if (parts.length < 2) return escapeContinentAttr(parts[0] || label);
+  if (parts.length < 2) return escapeHtmlText(parts[0] || label);
   return parts
-    .map((p) => `<span class="continent-line">${escapeContinentAttr(p)}</span>`)
+    .map((p) => `<span class="continent-line">${escapeHtmlText(p)}</span>`)
     .join("");
 }
 
-function escapeContinentAttr(s) {
+function escapeHtmlText(s) {
   return String(s || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -216,6 +269,46 @@ export function fixtureStadiumLabel(fixture, myClubShort, homeStadiumName) {
   if (mine && home === mine) return name;
   if (mine && home !== mine) return `At ${name}`;
   return name;
+}
+
+/**
+ * Balance a long stadium name across two lines near the midpoint.
+ * Short names stay on one line.
+ */
+export function formatStadiumLabelStackedHtml(label, { minChars = 16 } = {}) {
+  const text = String(label || "").trim();
+  if (!text || text === "—") return "—";
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length < 2 || text.length < minChars) {
+    return `<span class="stadium-line">${escapeHtmlText(text)}</span>`;
+  }
+  let best = 1;
+  let bestDiff = Infinity;
+  for (let i = 1; i < words.length; i++) {
+    const a = words.slice(0, i).join(" ");
+    const b = words.slice(i).join(" ");
+    const diff = Math.abs(a.length - b.length);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = i;
+    }
+  }
+  const top = words.slice(0, best).join(" ");
+  const bottom = words.slice(best).join(" ");
+  return (
+    `<span class="stadium-line">${escapeHtmlText(top)}</span>` +
+    `<span class="stadium-line">${escapeHtmlText(bottom)}</span>`
+  );
+}
+
+export function fixtureStadiumLabelStackedHtml(
+  fixture,
+  myClubShort,
+  homeStadiumName
+) {
+  return formatStadiumLabelStackedHtml(
+    fixtureStadiumLabel(fixture, myClubShort, homeStadiumName)
+  );
 }
 
 export const WEATHER_KEYS = ["fine", "rain", "snow"];
