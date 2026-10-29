@@ -9,6 +9,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
  *      Scans month channels under DISCORD_MATCH_VIDEOS_CATEGORY_ID
  *   B) Push — body has message/attachments (optional live bot)
  *   C) sync_codes — post/update competition-code guide in #upload-codes
+ *   D) upgrade_reactions — after SQL promote: Discord ⏳ → ✅
  */
 
 const DISCORD_API = "https://discord.com/api/v10";
@@ -139,26 +140,135 @@ async function fetchGuildMember(
   return (await res.json()) as DiscordMember;
 }
 
+async function reactionRequest(
+  botToken: string,
+  method: "PUT" | "DELETE",
+  channelId: string,
+  messageId: string,
+  emoji: string
+): Promise<{ ok: boolean; status: number }> {
+  const encoded = encodeURIComponent(emoji);
+  const url =
+    `${DISCORD_API}/channels/${channelId}/messages/${messageId}/reactions/${encoded}/@me`;
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          ...(method === "PUT" ? { "Content-Length": "0" } : {}),
+        },
+      });
+      if (res.status === 429) {
+        let waitMs = 1000 * (attempt + 1);
+        try {
+          const body = (await res.json()) as { retry_after?: number };
+          if (typeof body.retry_after === "number") {
+            waitMs = Math.ceil(body.retry_after * 1000) + 100;
+          }
+        } catch {
+          /* ignore parse */
+        }
+        await sleep(waitMs);
+        continue;
+      }
+      // 204 success; 404 on DELETE = already gone (fine)
+      if (res.ok || (method === "DELETE" && res.status === 404)) {
+        return { ok: true, status: res.status };
+      }
+      return { ok: false, status: res.status };
+    } catch {
+      await sleep(300 * (attempt + 1));
+    }
+  }
+  return { ok: false, status: 0 };
+}
+
 async function addReaction(
   botToken: string,
   channelId: string,
   messageId: string,
   emoji: string
 ) {
-  const encoded = encodeURIComponent(emoji);
-  const url =
-    `${DISCORD_API}/channels/${channelId}/messages/${messageId}/reactions/${encoded}/@me`;
-  try {
-    await fetch(url, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bot ${botToken}`,
-        "Content-Length": "0",
-      },
-    });
-  } catch {
-    /* ignore */
+  await reactionRequest(botToken, "PUT", channelId, messageId, emoji);
+}
+
+async function removeReaction(
+  botToken: string,
+  channelId: string,
+  messageId: string,
+  emoji: string
+) {
+  await reactionRequest(botToken, "DELETE", channelId, messageId, emoji);
+}
+
+/** After GPSL promote: swap Discord ⏳ → ✅ on the original upload message(s). */
+async function upgradePendingReactions(
+  botToken: string,
+  messages: Array<{ channel_id?: string; message_id?: string }>
+): Promise<{
+  ok: true;
+  upgraded: number;
+  skipped: number;
+  failed_add: number;
+  failed: Array<{ channel_id: string; message_id: string; add_status: number }>;
+}> {
+  const seen = new Set<string>();
+  let upgraded = 0;
+  let skipped = 0;
+  let failedAdd = 0;
+  const failed: Array<{
+    channel_id: string;
+    message_id: string;
+    add_status: number;
+  }> = [];
+
+  for (const raw of messages || []) {
+    const channelId = String(raw?.channel_id || "").trim();
+    const messageId = String(raw?.message_id || "").trim();
+    if (!channelId || !messageId) {
+      skipped += 1;
+      continue;
+    }
+    const key = `${channelId}:${messageId}`;
+    if (seen.has(key)) {
+      skipped += 1;
+      continue;
+    }
+    seen.add(key);
+
+    // Add ✅ first so a mid-batch timeout never leaves a bare message.
+    const added = await reactionRequest(
+      botToken,
+      "PUT",
+      channelId,
+      messageId,
+      "✅"
+    );
+    if (!added.ok) {
+      failedAdd += 1;
+      failed.push({
+        channel_id: channelId,
+        message_id: messageId,
+        add_status: added.status,
+      });
+      await sleep(400);
+      continue;
+    }
+
+    await reactionRequest(botToken, "DELETE", channelId, messageId, "⏳");
+    upgraded += 1;
+    await sleep(400);
   }
+
+  return {
+    ok: true,
+    upgraded,
+    skipped,
+    failed_add: failedAdd,
+    failed: failed.slice(0, 20),
+  };
 }
 
 function sleep(ms: number) {
@@ -970,6 +1080,41 @@ Deno.serve(async (req) => {
           {
             ok: false,
             mode: "sync_codes",
+            error: e instanceof Error ? e.message : String(e),
+          },
+          500
+        );
+      }
+    }
+
+    // ----- Upgrade reactions after pending → matched promote -----
+    if (
+      body.mode === "upgrade_reactions" ||
+      body.upgrade_reactions === true
+    ) {
+      if (!botToken) {
+        return jsonResponse({ error: "Missing DISCORD_BOT_TOKEN" }, 500);
+      }
+      const rawMsgs = Array.isArray(body.messages) ? body.messages : [];
+      const messages = rawMsgs.map((m) => {
+        const row = (m || {}) as Record<string, unknown>;
+        return {
+          channel_id: String(row.channel_id || row.discord_channel_id || ""),
+          message_id: String(row.message_id || row.discord_message_id || ""),
+        };
+      });
+      try {
+        const out = await upgradePendingReactions(botToken, messages);
+        return jsonResponse({
+          ok: true,
+          mode: "upgrade_reactions",
+          ...out,
+        });
+      } catch (e) {
+        return jsonResponse(
+          {
+            ok: false,
+            mode: "upgrade_reactions",
             error: e instanceof Error ? e.message : String(e),
           },
           500
