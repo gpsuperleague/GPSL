@@ -26,6 +26,8 @@ let fixtures = [];
 let cutoffs = [];
 let seasonMonths = [];
 let selectedYmd = null;
+/** @type {string|null} event key to highlight/scroll in the day panel */
+let focusEventKey = null;
 let myClub = { short: null, name: null };
 
 function pad2(n) {
@@ -241,6 +243,7 @@ function buildEventsByDay() {
     const day = ymdInTz(f.agreed_kickoff_at, ownerTz);
     const hhmm = hhmmInTz(f.agreed_kickoff_at, ownerTz);
     push(day, {
+      key: `match:${f.id}`,
       kind: "match",
       sort: new Date(f.agreed_kickoff_at).getTime(),
       title: fixtureTitle(f),
@@ -259,9 +262,11 @@ function buildEventsByDay() {
     if (!c?.at) continue;
     const day = ymdInTz(c.at, ownerTz);
     const hhmm = hhmmInTz(c.at, ownerTz);
+    const sort = new Date(c.at).getTime();
     push(day, {
+      key: `deadline:${sort}:${c.kind || c.title || ""}`,
       kind: "deadline",
-      sort: new Date(c.at).getTime(),
+      sort,
       title: c.title || "Deadline",
       detail: `${timeInTz(c.at, ownerTz)}${c.detail ? ` — ${c.detail}` : ""}`,
       href: c.href || "dashboard.html",
@@ -273,10 +278,12 @@ function buildEventsByDay() {
   for (const m of seasonMonths) {
     const label =
       GPSL_MONTH_LABELS[m.gpsl_month] || m.gpsl_month_label || m.gpsl_month || "Month";
+    const monthKey = m.gpsl_month || label;
     if (m.unlock_at) {
       const day = ymdInTz(m.unlock_at, ownerTz);
       const hhmm = hhmmInTz(m.unlock_at, ownerTz);
       push(day, {
+        key: `gpsl:unlock:${monthKey}`,
         kind: "gpsl",
         sort: new Date(m.unlock_at).getTime(),
         title: `GPSL ${label} unlocks`,
@@ -290,6 +297,7 @@ function buildEventsByDay() {
       const day = ymdInTz(m.lock_at, ownerTz);
       const hhmm = hhmmInTz(m.lock_at, ownerTz);
       push(day, {
+        key: `gpsl:lock:${monthKey}`,
         kind: "gpsl",
         sort: new Date(m.lock_at).getTime(),
         title: `GPSL ${label} locks`,
@@ -458,6 +466,7 @@ function goToMonth(y, m) {
   viewYear = y;
   viewMonth = m;
   selectedYmd = null;
+  focusEventKey = null;
   renderGrid();
   renderPanel();
 }
@@ -483,14 +492,19 @@ function renderGrid() {
       const chipHtml = shown
         .map(
           (ev) =>
-            `<span class="oc-chip oc-chip--${escapeHtml(ev.kind)}" title="${escapeHtml(
-              ev.chipTitle || ev.title
-            )}">${escapeHtml(ev.chip || ev.title)}</span>`
+            `<span class="oc-chip oc-chip--${escapeHtml(ev.kind)}" data-ev-key="${escapeHtml(
+              ev.key
+            )}" title="${escapeHtml(ev.chipTitle || ev.title)}">${escapeHtml(
+              ev.chip || ev.title
+            )}</span>`
         )
         .join("");
+      const overflowKey = more > 0 && events[2] ? events[2].key : "";
       const extra =
         more > 0
-          ? `<span class="oc-more">+${more} more</span>`
+          ? `<span class="oc-more" data-ev-key="${escapeHtml(
+              overflowKey
+            )}">+${more} more</span>`
           : "";
       const cls = [
         "oc-day",
@@ -503,20 +517,50 @@ function renderGrid() {
         .filter(Boolean)
         .join(" ");
       return `
-        <button type="button" class="${cls}" data-ymd="${c.ymd}" aria-label="${c.ymd}">
+        <div class="${cls}" data-ymd="${c.ymd}" role="button" tabindex="0" aria-label="${c.ymd}">
           <div class="oc-day-num">${c.day}</div>
           <div class="oc-chips">${chipHtml}${extra}</div>
-        </button>`;
+        </div>`;
     })
     .join("");
 
-  grid.querySelectorAll(".oc-day").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      selectedYmd = btn.getAttribute("data-ymd");
+  grid.querySelectorAll(".oc-day").forEach((cell) => {
+    const activate = (e) => {
+      const hit = e.target?.closest?.("[data-ev-key]");
+      selectedYmd = cell.getAttribute("data-ymd");
+      focusEventKey = hit?.getAttribute?.("data-ev-key") || null;
       renderGrid();
       renderPanel();
+      zoomToFocusedEvent();
+    };
+    cell.addEventListener("click", activate);
+    cell.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        activate(e);
+      }
     });
   });
+}
+
+function zoomToFocusedEvent() {
+  if (!focusEventKey) return;
+  const panel = document.getElementById("ocPanel");
+  const body = document.getElementById("ocPanelBody");
+  if (!body) return;
+  const esc =
+    typeof CSS !== "undefined" && CSS.escape
+      ? CSS.escape(focusEventKey)
+      : focusEventKey.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const el = body.querySelector(`[data-ev-key="${esc}"]`);
+  if (!el) return;
+  panel?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  el.classList.remove("is-focus");
+  // re-trigger animation
+  void el.offsetWidth;
+  el.classList.add("is-focus");
+  window.setTimeout(() => el.classList.remove("is-focus"), 1600);
 }
 
 function renderPanel() {
@@ -549,7 +593,7 @@ function renderPanel() {
   const parts = [];
   if (availLine) {
     parts.push(`
-      <div class="oc-event">
+      <div class="oc-event" data-ev-key="avail">
         <span class="oc-event-kind oc-event-kind--avail">AVAILABILITY</span>
         <b>Usually free</b>
         <div class="detail">${escapeHtml(availLine)} (${escapeHtml(ownerTz)})</div>
@@ -557,7 +601,7 @@ function renderPanel() {
       </div>`);
   } else {
     parts.push(`
-      <div class="oc-event">
+      <div class="oc-event" data-ev-key="avail">
         <span class="oc-event-kind oc-event-kind--avail">AVAILABILITY</span>
         <b>No weekly slots this weekday</b>
         <div class="detail">Set availability so opponents can propose overlapping times.</div>
@@ -569,8 +613,9 @@ function renderPanel() {
     parts.push(`<p class="oc-empty">No matches, deadlines, or GPSL locks on this day.</p>`);
   } else {
     for (const ev of events) {
+      const focused = focusEventKey && ev.key === focusEventKey ? " is-focus" : "";
       parts.push(`
-        <div class="oc-event">
+        <div class="oc-event${focused}" data-ev-key="${escapeHtml(ev.key)}">
           <span class="oc-event-kind oc-event-kind--${escapeHtml(ev.kind)}">${escapeHtml(
             ev.kind === "match"
               ? "MATCH"
@@ -648,6 +693,7 @@ function shiftMonth(delta) {
   viewYear = y;
   viewMonth = m;
   selectedYmd = null;
+  focusEventKey = null;
   renderGrid();
   renderPanel();
 }
@@ -658,6 +704,7 @@ function goToday() {
   viewYear = y;
   viewMonth = m;
   selectedYmd = t;
+  focusEventKey = null;
   renderGrid();
   renderPanel();
 }
