@@ -80,11 +80,12 @@
       display:grid; grid-template-columns:repeat(7, minmax(0, 1fr));
     }
     .oc-day {
-      min-height:88px; border-right:1px solid #2a2a2a; border-bottom:1px solid #2a2a2a;
-      padding:6px; cursor:pointer; position:relative; background:#161616;
+      min-height:102px; border-right:1px solid #2a2a2a; border-bottom:1px solid #2a2a2a;
+      padding:5px 5px 6px; cursor:pointer; position:relative; background:#161616;
       transition:background .12s ease;
       width:100%; margin:0; font:inherit; color:inherit; text-align:left;
       appearance:none; -webkit-appearance:none;
+      display:flex; flex-direction:column; align-items:stretch; gap:4px;
     }
     .oc-day:nth-child(7n) { border-right:none; }
     .oc-day:hover { background:#1e1e1e; }
@@ -100,16 +101,20 @@
     }
     .oc-day.is-today .oc-day-num { color:var(--gpsl-accent, #ff9900); }
     .oc-chips {
-      display:flex; flex-wrap:wrap; gap:3px; margin-top:6px;
+      display:flex; flex-direction:column; gap:3px; flex:1; min-width:0;
     }
     .oc-chip {
-      width:8px; height:8px; border-radius:2px;
+      display:block; width:100%; box-sizing:border-box;
+      font-size:10px; line-height:1.25; font-weight:600;
+      padding:2px 4px; border-radius:3px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      text-align:left;
     }
-    .oc-chip--match { background:#3b82f6; }
-    .oc-chip--deadline { background:#e67e22; }
-    .oc-chip--gpsl { background:#f0c14b; }
+    .oc-chip--match { background:rgba(59,130,246,0.22); color:#9ec5ff; border-left:2px solid #3b82f6; }
+    .oc-chip--deadline { background:rgba(230,126,34,0.22); color:#ffc089; border-left:2px solid #e67e22; }
+    .oc-chip--gpsl { background:rgba(240,193,75,0.2); color:#f0d78a; border-left:2px solid #f0c14b; }
     .oc-more {
-      font-size:10px; color:#888; margin-top:4px;
+      font-size:10px; color:#6ea8ff; font-weight:600; padding:1px 2px;
     }
     .oc-panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
@@ -190,6 +195,6 @@
       </aside>
     </div>
   </div>
-  <script type="module" src="owner_calendar.js?v=20261029-cal-nav-icon"></script>
+  <script type="module" src="owner_calendar.js?v=20261029-cal-chips"></script>
 </body>
 </html>

@@ -102,6 +102,44 @@ function timeInTz(iso, timeZone) {
   });
 }
 
+/** HH:MM in owner TZ for compact chips. */
+function hhmmInTz(iso, timeZone) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function truncateChip(text, max = 14) {
+  const s = String(text || "").trim();
+  if (s.length <= max) return s;
+  return `${s.slice(0, max - 1)}…`;
+}
+
+function fixtureChipText(f) {
+  const home = (f.home_club_short_name || "?").toUpperCase();
+  const away = (f.away_club_short_name || "?").toUpperCase();
+  const me = (myClub.short || "").toUpperCase();
+  if (me && home === me) return `vs ${away}`;
+  if (me && away === me) return `@ ${home}`;
+  return `${home}-${away}`;
+}
+
+function deadlineChipText(c) {
+  const t = String(c.title || c.kind || "Deadline");
+  if (/reply/i.test(t)) return "Reply";
+  if (/propose/i.test(t)) return "Propose";
+  if (/check.?in/i.test(t)) return "Check-in";
+  if (/video/i.test(t)) return "Video";
+  if (/month.?lock/i.test(t)) return "Month lock";
+  if (/late/i.test(t)) return "Late fee";
+  return truncateChip(t, 12);
+}
+
 function formatSlotRange(slotsForDow) {
   if (!slotsForDow.length) return "";
   const sorted = [...slotsForDow].sort(
@@ -165,6 +203,7 @@ function buildEventsByDay() {
   for (const f of fixtures) {
     if (!f.agreed_kickoff_at) continue;
     const day = ymdInTz(f.agreed_kickoff_at, ownerTz);
+    const hhmm = hhmmInTz(f.agreed_kickoff_at, ownerTz);
     push(day, {
       kind: "match",
       sort: new Date(f.agreed_kickoff_at).getTime(),
@@ -174,12 +213,14 @@ function buildEventsByDay() {
       }`,
       href: fixtureHref(f),
       hrefLabel: f.status === "played" ? "Match Day →" : "Match Day / schedule →",
+      chip: `${hhmm} ${fixtureChipText(f)}`,
     });
   }
 
   for (const c of cutoffs) {
     if (!c?.at) continue;
     const day = ymdInTz(c.at, ownerTz);
+    const hhmm = hhmmInTz(c.at, ownerTz);
     push(day, {
       kind: "deadline",
       sort: new Date(c.at).getTime(),
@@ -187,6 +228,7 @@ function buildEventsByDay() {
       detail: `${timeInTz(c.at, ownerTz)}${c.detail ? ` — ${c.detail}` : ""}`,
       href: c.href || "dashboard.html",
       hrefLabel: "Open →",
+      chip: `${hhmm} ${deadlineChipText(c)}`,
     });
   }
 
@@ -195,6 +237,7 @@ function buildEventsByDay() {
       GPSL_MONTH_LABELS[m.gpsl_month] || m.gpsl_month_label || m.gpsl_month || "Month";
     if (m.unlock_at) {
       const day = ymdInTz(m.unlock_at, ownerTz);
+      const hhmm = hhmmInTz(m.unlock_at, ownerTz);
       push(day, {
         kind: "gpsl",
         sort: new Date(m.unlock_at).getTime(),
@@ -202,10 +245,12 @@ function buildEventsByDay() {
         detail: `${timeInTz(m.unlock_at, ownerTz)} · play month opens (UK lock cycle: ${formatUkDateTime(m.unlock_at)} UK)`,
         href: "season_calendar.html",
         hrefLabel: "Season Calendar →",
+        chip: `${hhmm} Unlock`,
       });
     }
     if (m.lock_at) {
       const day = ymdInTz(m.lock_at, ownerTz);
+      const hhmm = hhmmInTz(m.lock_at, ownerTz);
       push(day, {
         kind: "gpsl",
         sort: new Date(m.lock_at).getTime(),
@@ -213,6 +258,7 @@ function buildEventsByDay() {
         detail: `${timeInTz(m.lock_at, ownerTz)} · month end / fines window (${formatUkDateTime(m.lock_at)} UK)`,
         href: "fixtures.html",
         hrefLabel: "Fixtures →",
+        chip: `${hhmm} Lock`,
       });
     }
   }
@@ -281,13 +327,20 @@ function renderGrid() {
       const events = eventsByDay.get(c.ymd) || [];
       const dow = isoDowForYmd(c.ymd, ownerTz);
       const hasAvail = availDows.has(dow);
-      const kinds = new Set(events.map((e) => e.kind));
-      const chips = [];
-      if (kinds.has("match")) chips.push('<i class="oc-chip oc-chip--match" title="Match"></i>');
-      if (kinds.has("deadline"))
-        chips.push('<i class="oc-chip oc-chip--deadline" title="Deadline"></i>');
-      if (kinds.has("gpsl")) chips.push('<i class="oc-chip oc-chip--gpsl" title="GPSL"></i>');
-      const extra = events.length > 3 ? `<div class="oc-more">+${events.length - 3}</div>` : "";
+      const shown = events.slice(0, 2);
+      const more = events.length - shown.length;
+      const chipHtml = shown
+        .map(
+          (ev) =>
+            `<span class="oc-chip oc-chip--${escapeHtml(ev.kind)}" title="${escapeHtml(
+              ev.title
+            )}">${escapeHtml(ev.chip || ev.title)}</span>`
+        )
+        .join("");
+      const extra =
+        more > 0
+          ? `<span class="oc-more">+${more} more</span>`
+          : "";
       const cls = [
         "oc-day",
         c.outside ? "is-outside" : "",
@@ -300,8 +353,7 @@ function renderGrid() {
       return `
         <button type="button" class="${cls}" data-ymd="${c.ymd}" aria-label="${c.ymd}">
           <div class="oc-day-num">${c.day}</div>
-          <div class="oc-chips">${chips.slice(0, 4).join("")}</div>
-          ${extra}
+          <div class="oc-chips">${chipHtml}${extra}</div>
         </button>`;
     })
     .join("");
