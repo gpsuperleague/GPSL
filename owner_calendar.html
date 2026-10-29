@@ -75,6 +75,7 @@
     .oc-dot--transfer { background:#0284c7; }
     .oc-dot--video { background:#be185d; }
     .oc-dot--video_ext { background:#e11d48; }
+    .oc-dot--holiday { background:#64748b; }
     .oc-dot--avail { background:#2f6b3a; }
     .oc-layout {
       display:grid;
@@ -117,6 +118,15 @@
     .oc-day.has-avail.is-selected {
       background:linear-gradient(180deg, rgba(47,107,58,0.22), #242018 42%);
     }
+    .oc-day.has-holiday {
+      background:linear-gradient(180deg, rgba(100,116,139,0.28), #161616 48%);
+    }
+    .oc-day.has-holiday.has-avail {
+      background:linear-gradient(180deg, rgba(100,116,139,0.22) 0%, rgba(47,107,58,0.14) 40%, #161616 70%);
+    }
+    .oc-day.has-holiday.is-selected {
+      background:linear-gradient(180deg, rgba(100,116,139,0.3), #242018 48%);
+    }
     .oc-day-num {
       font-size:12px; color:#ccc; font-weight:bold; text-align:right;
     }
@@ -139,6 +149,7 @@
     .oc-chip--transfer { background:rgba(2,132,199,0.22); color:#7dd3fc; border-left:2px solid #0284c7; }
     .oc-chip--video { background:rgba(190,24,93,0.2); color:#f9a8d4; border-left:2px solid #be185d; }
     .oc-chip--video_ext { background:rgba(225,29,72,0.22); color:#fda4af; border-left:2px solid #e11d48; }
+    .oc-chip--holiday { background:rgba(100,116,139,0.28); color:#cbd5e1; border-left:2px solid #94a3b8; }
     .oc-more {
       font-size:10px; color:#6ea8ff; font-weight:600; padding:1px 2px; cursor:pointer;
     }
@@ -177,6 +188,7 @@
     .oc-event-kind--transfer { background:#0284c7; color:#fff; }
     .oc-event-kind--video { background:#be185d; color:#fff; }
     .oc-event-kind--video_ext { background:#e11d48; color:#fff; }
+    .oc-event-kind--holiday { background:#64748b; color:#fff; }
     .oc-event-kind--avail { background:#2f6b3a; color:#dff5e4; }
     .oc-event b { display:block; color:#eee; font-size:13px; margin-bottom:4px; }
     .oc-event .detail { color:#999; font-size:12px; line-height:1.4; }
@@ -196,7 +208,7 @@
     <h1>My Calendar</h1>
     <p class="oc-intro">
       Real-world month in <b>your</b> timezone — agreed kick-offs, Club Wire deadlines,
-      GPSL play-month unlock/lock, planned auctions, transfer windows, match video deadlines, and your weekly availability wash.
+      GPSL play-month unlock/lock, planned auctions, transfer windows, match video deadlines, owner holidays, and your weekly availability wash.
       Season structure (Aug–May) stays on
       <a href="season_calendar.html" style="color:var(--gpsl-accent,#ff9900);">Season Calendar</a>.
     </p>
@@ -219,6 +231,7 @@
       <span><i class="oc-dot oc-dot--transfer"></i> Transfer window</span>
       <span><i class="oc-dot oc-dot--video"></i> Video due</span>
       <span><i class="oc-dot oc-dot--video_ext"></i> Video +24h (missed)</span>
+      <span><i class="oc-dot oc-dot--holiday"></i> Owner holiday</span>
       <span><i class="oc-dot oc-dot--avail"></i> Availability day</span>
     </div>
     <div class="oc-layout">
@@ -241,6 +254,6 @@
       </aside>
     </div>
   </div>
-  <script type="module" src="owner_calendar.js?v=20261029-cal-video-due"></script>
+  <script type="module" src="owner_calendar.js?v=20261029-cal-holidays"></script>
 </body>
 </html>

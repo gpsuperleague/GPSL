@@ -2,7 +2,7 @@
  * My Calendar — real-world month view for owners (V1).
  * Agreed KOs · Club Wire cutoffs · GPSL unlock/lock · availability wash ·
  * special/planned auctions · transfer window guide + live status ·
- * match video upload deadlines (+24h extension only after miss).
+ * match video upload deadlines (+24h extension only after miss) · owner holidays.
  */
 import { supabase, initGlobal, getAuthUserFast } from "./global.js";
 import { GPSL_MONTH_LABELS, CUP_LABELS, DIVISION_LABELS } from "./competition.js";
@@ -17,6 +17,10 @@ import {
   ownerTagForClub,
 } from "./clubs_lookup.js";
 import { loadUpcomingSpecialAuctions } from "./special_auction_upcoming.js";
+import {
+  loadOwnerHolidays,
+  formatUkDateRange,
+} from "./owner_holidays.js";
 
 const UK = UK_TZ || "Europe/London";
 const DOW_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -59,6 +63,10 @@ let marketSettings = null;
 /** First video-due deadlines computed for played fixtures still missing a video. */
 let videoDeadlines = [];
 let videoGraceHours = 72;
+/** @type {object[]} */
+let ownerHolidays = [];
+/** @type {Set<string>} owner-local ymd values covered by a holiday */
+let holidayYmds = new Set();
 let selectedYmd = null;
 /** @type {string|null} event key to highlight/scroll in the day panel */
 let focusEventKey = null;
@@ -279,7 +287,64 @@ function eventKindLabel(kind) {
   if (kind === "transfer") return "TRANSFER";
   if (kind === "video") return "VIDEO";
   if (kind === "video_ext") return "VIDEO +24h";
+  if (kind === "holiday") return "HOLIDAY";
   return String(kind || "EVENT").toUpperCase();
+}
+
+/** Inclusive owner-TZ calendar days for a holiday (ends_at exclusive). */
+function holidayYmdList(h, timeZone) {
+  const start = ymdInTz(h.starts_at, timeZone);
+  if (!start) return [];
+  const endEx = new Date(h.ends_at);
+  if (Number.isNaN(endEx.getTime())) return [start];
+  const lastInclusive = new Date(endEx.getTime() - 1);
+  const end = ymdInTz(lastInclusive, timeZone) || start;
+  const out = [];
+  let [y, m, d] = start.split("-").map(Number);
+  const [ey, em, ed] = end.split("-").map(Number);
+  for (let guard = 0; guard < 60; guard++) {
+    const cur = ymd(y, m, d);
+    out.push(cur);
+    if (y === ey && m === em && d === ed) break;
+    const dt = new Date(Date.UTC(y, m - 1, d + 1));
+    y = dt.getUTCFullYear();
+    m = dt.getUTCMonth() + 1;
+    d = dt.getUTCDate();
+  }
+  return out;
+}
+
+function holidayEventFromRow(h) {
+  const range = formatUkDateRange(h.starts_at, h.ends_at);
+  const days = Number(h.day_count) || holidayYmdList(h, ownerTz).length || 1;
+  let status = "Booked";
+  if (h.needs_supporter) status = "Paused — needs Supporter for extra days";
+  else if (h.is_active) status = "On holiday now";
+  else if (h.is_upcoming) status = "Upcoming";
+  else if (h.is_ended) status = "Ended";
+  else if (h.is_effective === false) status = "Not counting toward fines (inactive)";
+  return {
+    key: `holiday:${h.id}`,
+    kind: "holiday",
+    sort: new Date(h.starts_at).getTime(),
+    title: `Owner holiday · ${days} day${days === 1 ? "" : "s"}`,
+    detail: `${range} · ${status}`,
+    href: "owner_details.html",
+    hrefLabel: "Manage holidays →",
+    chip: h.is_active ? "On holiday" : "Holiday",
+    chipTitle: `Owner holiday ${range}`,
+  };
+}
+
+function rebuildHolidayYmds() {
+  const set = new Set();
+  for (const h of ownerHolidays || []) {
+    if (h.is_ended && !h.is_active) {
+      // Still show past holidays lightly on the calendar for this season
+    }
+    for (const day of holidayYmdList(h, ownerTz || UK)) set.add(day);
+  }
+  holidayYmds = set;
 }
 
 function pushVideoCutoffEvent(push, c, kind) {
@@ -389,6 +454,21 @@ function buildEventsByDay() {
     if (videoExtFixtureIds.has(fid) || videoDueSeen.has(fid)) continue;
     videoDueSeen.add(fid);
     pushVideoCutoffEvent(push, v, "video");
+  }
+
+  for (const h of ownerHolidays) {
+    if (!h?.starts_at) continue;
+    const days = holidayYmdList(h, ownerTz);
+    if (!days.length) continue;
+    const base = holidayEventFromRow(h);
+    // Chip on the first day only; every day still gets a panel event.
+    days.forEach((day, i) => {
+      push(day, {
+        ...base,
+        sort: base.sort + i,
+        hideChip: i > 0,
+      });
+    });
   }
 
   for (const m of seasonMonths) {
@@ -707,6 +787,10 @@ function monthSelectBounds() {
   for (const f of fixtures || []) considerIso(f.agreed_kickoff_at);
   for (const c of cutoffs || []) considerIso(c?.at);
   for (const v of videoDeadlines || []) considerIso(v?.at);
+  for (const h of ownerHolidays || []) {
+    considerIso(h.starts_at);
+    considerIso(h.ends_at);
+  }
   for (const a of specialAuctions || []) {
     considerIso(a.start_time);
     considerIso(a.end_time);
@@ -801,9 +885,11 @@ function renderGrid() {
       const events = eventsByDay.get(c.ymd) || [];
       const dow = isoDowForYmd(c.ymd, ownerTz);
       const hasAvail = availDows.has(dow);
+      const hasHoliday = holidayYmds.has(c.ymd);
       const expanded = c.ymd === selectedYmd;
-      const shown = expanded ? events : events.slice(0, 2);
-      const more = expanded ? 0 : Math.max(0, events.length - shown.length);
+      const chipEvents = events.filter((ev) => !ev.hideChip || expanded);
+      const shown = expanded ? chipEvents : chipEvents.slice(0, 2);
+      const more = expanded ? 0 : Math.max(0, chipEvents.length - shown.length);
       const chipHtml = shown
         .map(
           (ev) =>
@@ -814,7 +900,7 @@ function renderGrid() {
             )}</span>`
         )
         .join("");
-      const overflowKey = more > 0 && events[2] ? events[2].key : "";
+      const overflowKey = more > 0 && chipEvents[2] ? chipEvents[2].key : "";
       const extra =
         more > 0
           ? `<span class="oc-more" data-ev-key="${escapeHtml(
@@ -826,8 +912,9 @@ function renderGrid() {
         c.outside ? "is-outside" : "",
         c.ymd === today ? "is-today" : "",
         expanded ? "is-selected" : "",
-        expanded && events.length > 2 ? "is-expanded" : "",
+        expanded && chipEvents.length > 2 ? "is-expanded" : "",
         hasAvail ? "has-avail" : "",
+        hasHoliday ? "has-holiday" : "",
       ]
         .filter(Boolean)
         .join(" ");
@@ -1204,6 +1291,15 @@ async function boot() {
       console.warn(e);
       return [];
     });
+
+    try {
+      const hol = await loadOwnerHolidays();
+      ownerHolidays = hol?.holidays || [];
+    } catch (e) {
+      console.warn(e);
+      ownerHolidays = [];
+    }
+    rebuildHolidayYmds();
 
     selectedYmd = todayYmd(ownerTz);
     const [y, m] = selectedYmd.split("-").map(Number);
