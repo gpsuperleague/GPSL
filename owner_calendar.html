@@ -192,11 +192,20 @@
     .oc-event-kind--avail { background:#2f6b3a; color:#dff5e4; }
     .oc-event b { display:block; color:#eee; font-size:13px; margin-bottom:4px; }
     .oc-event .detail { color:#999; font-size:12px; line-height:1.4; }
+    .oc-event-actions {
+      display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; margin-top:8px;
+    }
     .oc-event a {
-      display:inline-block; margin-top:8px; color:var(--gpsl-accent, #ff9900);
+      display:inline-block; color:var(--gpsl-accent, #ff9900);
       font-size:12px; text-decoration:none;
     }
     .oc-event a:hover { text-decoration:underline; }
+    .oc-cal-btn {
+      margin:0; padding:0; border:none; background:none; cursor:pointer;
+      color:var(--gpsl-accent, #ff9900); font:inherit; font-size:12px;
+      text-decoration:none;
+    }
+    .oc-cal-btn:hover { text-decoration:underline; }
     .oc-empty { color:#777; font-size:13px; padding:12px 0; }
     .oc-links { margin-top:14px; font-size:12px; color:#888; }
     .oc-links a { color:var(--gpsl-accent, #ff9900); }
@@ -254,6 +263,6 @@
       </aside>
     </div>
   </div>
-  <script type="module" src="owner_calendar.js?v=20261029-cal-holidays"></script>
+  <script type="module" src="owner_calendar.js?v=20261029-cal-ics"></script>
 </body>
 </html>

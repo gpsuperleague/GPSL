@@ -14,6 +14,7 @@ import { loadAvailabilityContext, UK_TZ } from "./match_scheduling.js";
 import {
   loadClubsMap,
   fullClubName,
+  displayClubName,
   ownerTagForClub,
 } from "./clubs_lookup.js";
 import { loadUpcomingSpecialAuctions } from "./special_auction_upcoming.js";
@@ -21,6 +22,11 @@ import {
   loadOwnerHolidays,
   formatUkDateRange,
 } from "./owner_holidays.js";
+import {
+  downloadIcs,
+  fixtureKickoffEvent,
+  fixtureKickoffFilename,
+} from "./calendar_ics.js";
 
 const UK = UK_TZ || "Europe/London";
 const DOW_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -171,9 +177,26 @@ function truncateChip(text, max = 14) {
 
 function clubFull(short, fallbackName) {
   const s = String(short || "").trim();
-  const fromMap = s ? fullClubName(s) : "";
-  if (fromMap && fromMap !== s) return fromMap;
-  return String(fallbackName || fromMap || s || "?").trim() || "?";
+  const fb = String(fallbackName || "").trim();
+  if (!s) return fb || "?";
+  for (const key of [s, s.toUpperCase(), s.toLowerCase()]) {
+    const n = fullClubName(key);
+    if (n && n !== key) return n;
+  }
+  const displayed = displayClubName(s);
+  if (displayed && displayed !== s && displayed !== s.toUpperCase()) return displayed;
+  // Prefer an explicit full-name fallback over a 2–5 letter code
+  if (fb && fb.length > 5) return fb;
+  if (fb && fb !== s && fb !== s.toUpperCase()) return fb;
+  return displayed || fb || s;
+}
+
+/** Expand "vs ABC" / trailing short codes in Club Wire titles to full club names. */
+function expandShortsInLabel(text) {
+  return String(text || "").replace(
+    /\bvs\s+([A-Za-z0-9]{2,6})\b/gi,
+    (_, code) => `vs ${clubFull(code, null)}`
+  );
 }
 
 function oppShortForMe(f) {
@@ -353,15 +376,29 @@ function pushVideoCutoffEvent(push, c, kind) {
   const hhmm = hhmmInTz(c.at, ownerTz);
   const sort = new Date(c.at).getTime();
   const isExt = kind === "video_ext";
+  const title = expandShortsInLabel(
+    c.title || (isExt ? "Video upload — 24h extension" : "Upload match video")
+  );
+  const oppMatch = /\bvs\s+(.+)$/i.exec(title);
+  const oppLabel = oppMatch ? oppMatch[1].trim() : "";
+  const chipCore = isExt
+    ? oppLabel
+      ? `+24h ${oppLabel}`
+      : "Video +24h"
+    : oppLabel
+      ? `Video ${oppLabel}`
+      : "Video due";
   push(day, {
     key: `${kind}:${c.fixture_id || c.id || sort}`,
     kind,
     sort,
-    title: c.title || (isExt ? "Video upload — 24h extension" : "Upload match video"),
-    detail: `${timeInTz(c.at, ownerTz)}${c.detail ? ` — ${c.detail}` : ""}`,
+    title,
+    detail: `${timeInTz(c.at, ownerTz)}${
+      c.detail ? ` — ${expandShortsInLabel(c.detail)}` : ""
+    }`,
     href: c.href || (c.fixture_id ? `matchday.html?fixture=${c.fixture_id}` : "dashboard.html"),
     hrefLabel: "Match Day →",
-    chip: `${hhmm} ${isExt ? "Video +24h" : "Video due"}`,
+    chip: `${hhmm} ${chipCore}`,
     chipTitle: isExt
       ? "24h point-suspend window — upload to clear the suspended point"
       : "Match video upload deadline (month lock + grace)",
@@ -405,6 +442,8 @@ function buildEventsByDay() {
       chip: `${hhmm} ${fixtureChipText(f)}`,
       chipTitle: fixtureChipHover(f),
       ownerLine: fixtureOppOwnerLine(f),
+      fixtureId: f.id,
+      canAddToCalendar: true,
     });
   }
 
@@ -431,15 +470,18 @@ function buildEventsByDay() {
     const day = ymdInTz(c.at, ownerTz);
     const hhmm = hhmmInTz(c.at, ownerTz);
     const sort = new Date(c.at).getTime();
+    const title = expandShortsInLabel(c.title || "Deadline");
     push(day, {
       key: `deadline:${sort}:${c.kind || c.title || ""}`,
       kind: "deadline",
       sort,
-      title: c.title || "Deadline",
-      detail: `${timeInTz(c.at, ownerTz)}${c.detail ? ` — ${c.detail}` : ""}`,
+      title,
+      detail: `${timeInTz(c.at, ownerTz)}${
+        c.detail ? ` — ${expandShortsInLabel(c.detail)}` : ""
+      }`,
       href: c.href || "dashboard.html",
       hrefLabel: "Open →",
-      chip: `${hhmm} ${deadlineChipText(c)}`,
+      chip: `${hhmm} ${deadlineChipText({ ...c, title })}`,
     });
   }
 
@@ -692,7 +734,13 @@ function buildEventsByDay() {
   );
 
   for (const [, list] of map) {
-    list.sort((a, b) => a.sort - b.sort);
+    list.sort((a, b) => {
+      const pri = (k) =>
+        k === "video_ext" ? 0 : k === "video" ? 1 : k === "deadline" ? 2 : 3;
+      const d = pri(a.kind) - pri(b.kind);
+      if (d) return d;
+      return a.sort - b.sort;
+    });
   }
   return map;
 }
@@ -1028,16 +1076,68 @@ function renderPanel() {
               ? `<div class="detail">${escapeHtml(ev.ownerLine)}</div>`
               : ""
           }
+          <div class="oc-event-actions">
           ${
             ev.href
               ? `<a href="${escapeHtml(ev.href)}">${escapeHtml(ev.hrefLabel || "Open →")}</a>`
               : ""
           }
+          ${
+            ev.kind === "match" && ev.canAddToCalendar && ev.fixtureId != null
+              ? `<button type="button" class="oc-cal-btn" data-oc-cal-fixture="${escapeHtml(
+                  String(ev.fixtureId)
+                )}">Add to calendar</button>`
+              : ""
+          }
+          </div>
         </div>`);
     }
   }
 
   body.innerHTML = parts.join("");
+  body.querySelectorAll("[data-oc-cal-fixture]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      downloadMatchToCalendar(btn.getAttribute("data-oc-cal-fixture"));
+    });
+  });
+}
+
+function matchCalMeta(f) {
+  const home = clubFull(f.home_club_short_name, f.home_club_name);
+  const away = clubFull(f.away_club_short_name, f.away_club_name);
+  const competitionLabel =
+    f.competition_type === "cup"
+      ? CUP_LABELS[f.cup_code] || f.cup_code || "Cup"
+      : DIVISION_LABELS[f.division] || f.division || "League";
+  return {
+    home,
+    away,
+    competitionLabel,
+    matchday: f.matchday,
+    competition_type: f.competition_type,
+  };
+}
+
+function downloadMatchToCalendar(fixtureId) {
+  const f = fixtures.find((row) => String(row.id) === String(fixtureId));
+  if (!f?.agreed_kickoff_at) return;
+  const meta = matchCalMeta(f);
+  let url;
+  try {
+    url = new URL(fixtureHref(f), window.location.href).href;
+  } catch {
+    url = fixtureHref(f);
+  }
+  const ev = fixtureKickoffEvent({
+    id: f.id,
+    kickoffAt: f.agreed_kickoff_at,
+    url,
+    ...meta,
+  });
+  if (!ev) return;
+  downloadIcs(fixtureKickoffFilename(meta), [ev]);
 }
 
 async function loadMyClub(user) {
@@ -1104,7 +1204,7 @@ async function loadVideoDeadlines() {
   const { data: rows, error } = await supabase
     .from("competition_fixtures_public")
     .select(
-      "id, home_club_short_name, away_club_short_name, status, gpsl_month, competition_type"
+      "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, status, gpsl_month, competition_type"
     )
     .eq("status", "played");
   if (error) {
@@ -1120,20 +1220,27 @@ async function loadVideoDeadlines() {
   if (!mine.length) return [];
 
   const ids = mine.map((f) => f.id);
-  const { data: vids, error: vidErr } = await supabase
+  let vids = [];
+  const { data: vidRows, error: vidErr } = await supabase
     .from("fixture_match_videos")
     .select("fixture_id, side")
     .in("fixture_id", ids);
-  if (vidErr) console.warn("owner_calendar fixture_match_videos:", vidErr);
+  if (vidErr) {
+    console.warn("owner_calendar fixture_match_videos:", vidErr);
+  } else {
+    vids = vidRows || [];
+  }
 
   const hasVideo = new Set();
-  for (const v of vids || []) {
+  for (const v of vids) {
     hasVideo.add(`${v.fixture_id}:${v.side}`);
   }
 
   const lockByMonth = new Map();
   for (const m of seasonMonths || []) {
-    const key = String(m.gpsl_month || "").toLowerCase();
+    const key = String(m.gpsl_month || "")
+      .trim()
+      .toLowerCase();
     if (key && m.lock_at) lockByMonth.set(key, m.lock_at);
   }
 
@@ -1144,24 +1251,31 @@ async function loadVideoDeadlines() {
     const side = home === me ? "home" : "away";
     if (hasVideo.has(`${f.id}:${side}`)) continue;
 
-    const monthKey = String(f.gpsl_month || "").toLowerCase();
+    const monthKey = String(f.gpsl_month || "")
+      .trim()
+      .toLowerCase();
+    if (!monthKey) continue;
     const lockAt = lockByMonth.get(monthKey);
     if (!lockAt) continue;
 
     const dueMs = new Date(lockAt).getTime() + videoGraceHours * 3600_000;
     if (!Number.isFinite(dueMs)) continue;
-    // Drop stale dues (>7d overdue) — extension chip covers the active suspend window.
-    if (dueMs < now - 7 * 86400_000) continue;
+    // Keep visible from well before due through ~6 weeks overdue (extension chip
+    // still only appears once Club Wire marks the point suspended).
+    if (dueMs < now - 42 * 86400_000) continue;
+    if (dueMs > now + 180 * 86400_000) continue;
 
     const oppShort =
       side === "home" ? f.away_club_short_name : f.home_club_short_name;
-    const opp = clubFull(oppShort, null);
+    const oppName =
+      side === "home" ? f.away_club_name : f.home_club_name;
+    const opp = clubFull(oppShort, oppName);
     out.push({
       fixture_id: f.id,
       kind: "video",
       at: new Date(dueMs).toISOString(),
       title: `Upload match video vs ${opp}`,
-      detail: `Due ${videoGraceHours}h after GPSL ${monthKey || "month"} lock. Discord upload with Match Day filename (+₿200k). Miss this and a point is suspended for 24h.`,
+      detail: `Due ${videoGraceHours}h after GPSL ${monthKey || "month"} lock (${formatUkDateTime(lockAt)} UK + ${videoGraceHours}h). Discord upload with Match Day filename (+₿200k). Miss this and a point is suspended for 24h.`,
       href: `matchday.html?fixture=${encodeURIComponent(String(f.id))}`,
     });
   }
