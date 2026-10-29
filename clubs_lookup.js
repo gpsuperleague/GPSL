@@ -70,9 +70,15 @@ export async function loadClubsMap() {
     clubsMapUpper.set(short.toUpperCase(), row.Club);
     if (row.Stadium?.trim()) stadiumMap.set(short, row.Stadium.trim());
     const tag = row.owner?.trim();
-    if (tag) ownerTagsMap.set(short, tag);
+    if (tag) {
+      ownerTagsMap.set(short, tag);
+      ownerTagsMap.set(short.toUpperCase(), tag);
+    }
     const oid = row.owner_id ? String(row.owner_id).trim() : "";
-    if (oid) ownerIdsMap.set(short, oid);
+    if (oid) {
+      ownerIdsMap.set(short, oid);
+      ownerIdsMap.set(short.toUpperCase(), oid);
+    }
     const assigned = row.owner_assigned_at
       ? String(row.owner_assigned_at).trim()
       : "";
@@ -136,13 +142,13 @@ export function stadiumName(shortName) {
 export function ownerTagForClub(shortName) {
   const key = String(shortName || "").trim();
   if (!key) return null;
-  return ownerTagsMap.get(key) || null;
+  return ownerTagsMap.get(key) || ownerTagsMap.get(key.toUpperCase()) || null;
 }
 
 export function ownerIdForClub(shortName) {
   const key = String(shortName || "").trim();
   if (!key) return null;
-  return ownerIdsMap.get(key) || null;
+  return ownerIdsMap.get(key) || ownerIdsMap.get(key.toUpperCase()) || null;
 }
 
 /** When the current owner was assigned (ISO), if known. */

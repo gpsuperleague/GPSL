@@ -7,6 +7,11 @@ import {
   loadFixtureUnavailable,
   formatOwnUnavailableLine,
 } from "./player_discipline.js?v=20261028-unavail";
+import {
+  loadClubsMap,
+  fullClubName,
+  ownerTagForClub,
+} from "./clubs_lookup.js";
 
 const POLL_MS = 60000;
 
@@ -251,6 +256,34 @@ const UNAVAIL_CUTOFF_KINDS = new Set([
   "checkin",
 ]);
 
+/** Expand RPC short codes (e.g. vs BOC) to full Clubs.Club names. */
+function expandShortsInLabel(text) {
+  return String(text || "")
+    .replace(/\bvs\s+([A-Za-z0-9]{2,6})\b/gi, (_, code) => {
+      const full = fullClubName(code);
+      return `vs ${full || code}`;
+    })
+    .replace(
+      /\b(@|against)\s+([A-Za-z0-9]{2,6})\b/gi,
+      (_, prep, code) => `${prep} ${fullClubName(code) || code}`
+    );
+}
+
+function oppShortFromCutoffTitle(title) {
+  const m = String(title || "").match(/\b(?:vs|@|against)\s+([A-Za-z0-9]{2,6})\b/i);
+  return m ? m[1] : null;
+}
+
+/** Hover text for opponent owner (Vacant when club known but no tag). */
+function ownerHoverForCutoff(title) {
+  const code = oppShortFromCutoffTitle(title);
+  if (!code) return "";
+  const full = fullClubName(code);
+  if (!full || full === code) return "";
+  const owner = ownerTagForClub(code);
+  return owner ? `Owner: ${owner}` : "Owner: Vacant";
+}
+
 /** Attach own-club suspended/injured line onto propose / check-in cutoffs. */
 async function enrichCutoffsWithUnavailable(cutoffs, clubShort) {
   if (!cutoffs?.length || !clubShort) return cutoffs || [];
@@ -285,6 +318,11 @@ async function enrichCutoffsWithUnavailable(cutoffs, clubShort) {
 async function poll() {
   if (document.hidden) return;
   try {
+    try {
+      await loadClubsMap();
+    } catch (err) {
+      console.warn("club wire loadClubsMap:", err);
+    }
     const [wireRes, cutRes] = await Promise.all([
       supabase.rpc("club_wire_list", { p_limit: 8 }),
       supabase.rpc("club_wire_cutoffs"),
@@ -408,11 +446,14 @@ function cutoffRowsHtml(cutoffs) {
       const go = c.href
         ? `<a class="cw-go cw-go--plain" href="${esc(c.href)}">${goLabel}</a>`
         : "";
+      const title = expandShortsInLabel(c.title);
+      const ownerHover = ownerHoverForCutoff(c.title);
+      const titleAttr = ownerHover ? ` title="${esc(ownerHover)}"` : "";
       return `
         <li class="cw-item${sev}">
           <span class="cw-badge ${cls}">${label}</span>
           <span class="cw-text">
-            <b>${esc(c.title)}</b>
+            <b${titleAttr}>${esc(title)}</b>
             ${c.detail ? `<span class="cw-detail">${esc(c.detail)}</span>` : ""}
             ${
               c.unavailable_line
