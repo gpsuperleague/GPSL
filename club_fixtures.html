@@ -45,11 +45,21 @@
       inset:0;
       pointer-events:none;
       z-index:0;
+      overflow:hidden;
     }
-    .month-head .md-season-icon {
+    .month-head .matchday-season-banner {
       position:absolute;
-      display:block;
-      filter:drop-shadow(0 1px 1px rgba(0,0,0,.45));
+      left:50%;
+      top:50%;
+      width:72%;
+      height:160%;
+      max-width:none;
+      object-fit:cover;
+      object-position:center;
+      transform:translate(-50%, -50%);
+      opacity:0.18;
+      mix-blend-mode:screen;
+      filter:saturate(0.85) brightness(1.05);
     }
     .fixture-card {
       padding:14px 16px; border-top:1px solid #2a2a2a;
@@ -203,6 +213,6 @@
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20261029-season-decor"></script>
+  <script type="module" src="club_fixtures.js?v=20261029-season-watermark"></script>
 </body>
 </html>

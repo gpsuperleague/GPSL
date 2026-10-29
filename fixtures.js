@@ -31,7 +31,7 @@ import {
   formatFixtureContinentStackedHtml,
   fixtureStadiumLabelStackedHtml,
 } from "./competition_conditions.js?v=20261029-cond-icons";
-import { matchdaySeasonDecorHtml } from "./matchday_season_decor.js?v=20261029-season-decor";
+import { matchdaySeasonDecorHtml } from "./matchday_season_decor.js?v=20261029-season-watermark";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import {
   scheduleActionLabel,
