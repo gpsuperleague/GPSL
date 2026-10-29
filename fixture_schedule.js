@@ -17,6 +17,7 @@ import {
   formatKickoff,
   formatKickoffPair,
   formatKickoffSlotHtml,
+  setSeasonCalendarMonths,
   UK_TZ,
   filterSelectableKickoffSlots,
   isSelectableKickoffSlot,
@@ -26,7 +27,8 @@ import {
   zonedDateTimeLocalValue,
   snapToUkHalfHourSlot,
   snapToUkTenMinSlot,
-} from "./match_scheduling.js?v=20261029-playnow-10m";
+} from "./match_scheduling.js?v=20261029-audit-fixes";
+import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
   formatFixtureUnavailableBannerHtml,
@@ -710,15 +712,15 @@ function renderAgreedPanel(root, f, sch) {
   const checkinStatus = `Home (${homeName}): ${ci.home_checked_in ? "checked in ✓" : "waiting…"} · Away (${awayName}): ${ci.away_checked_in ? "checked in ✓" : "waiting…"}`;
 
   let mutualHtml = "";
+  const agreedFuture =
+    sch.status === "agreed" &&
+    sch.agreed_kickoff_at &&
+    new Date(sch.agreed_kickoff_at).getTime() > Date.now();
+  const playNowBlockedReason = String(moOpts.play_now_block_reason || "").trim();
   if (mo) {
     mutualHtml = mutualPendingPanelHtml(mo, homeTz, awayTz);
-  } else if (
-    (moOpts.can_request_play_now ||
-      (sch.status === "agreed" &&
-        sch.agreed_kickoff_at &&
-        new Date(sch.agreed_kickoff_at).getTime() > Date.now())) &&
-    ctx.my_has_manager !== false
-  ) {
+  } else if (agreedFuture && ctx.my_has_manager !== false) {
+    const canPlayNow = moOpts.can_request_play_now === true;
     const freeNewTimeNote = sch.mutual_override_used
       ? "Free mutual new-time already used for this fixture — Play now is still available if both agree."
       : "One free mutual new-time per fixture; Play now can be used again later if both agree.";
@@ -737,6 +739,12 @@ function renderAgreedPanel(root, f, sch) {
       playNowDefaultDate && !Number.isNaN(playNowDefaultDate.getTime())
         ? zonedDateTimeLocalValue(playNowDefaultDate, ownerTz)
         : "";
+    const blockNote =
+      !canPlayNow && playNowBlockedReason
+        ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Play now unavailable:</b> ${escapeHtmlLite(playNowBlockedReason)}</p>`
+        : !canPlayNow
+          ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Play now unavailable</b> right now (holiday early squad, double-booked, or outside the play window).</p>`
+          : "";
     mutualHtml = `
       <div class="panel mutual-panel">
         <h2>Play now (no allowance used)</h2>
@@ -744,9 +752,12 @@ function renderAgreedPanel(root, f, sch) {
           You already agreed a kick-off — pick <b>any earlier</b> date/time to play sooner (UK <b>10‑minute</b> steps).
           Does <b>not</b> need to match weekly availability. Opponent confirms; then check in from 10 minutes before the new kick-off (30‑minute play block as normal).
         </p>
+        ${blockNote}
         <div class="poke-free-row" style="margin-top:10px;">
-          <input type="datetime-local" id="playNowDateTime" step="600" value="${playNowDefault}" />
-          <button type="button" id="playNowMutualBtn" class="button">Request Play now</button>
+          <input type="datetime-local" id="playNowDateTime" step="600" value="${playNowDefault}" ${canPlayNow ? "" : "disabled"} />
+          <button type="button" id="playNowMutualBtn" class="button" ${canPlayNow ? "" : "disabled"} title="${
+            canPlayNow ? "" : escapeHtmlLite(playNowBlockedReason || "Play now unavailable")
+          }">Request Play now</button>
         </div>
         <p class="meta" id="playNowPreview" hidden></p>
         <p class="meta" style="margin-top:8px;">${freeNewTimeNote}</p>
@@ -1017,8 +1028,15 @@ function renderAgreedPanel(root, f, sch) {
     refreshPlayNowPreview();
   }
 
-  if (playNowBtn) {
+  if (playNowBtn && !playNowBtn.disabled) {
     playNowBtn.onclick = async () => {
+      if (moOpts.can_request_play_now !== true) {
+        setStatus(
+          playNowBlockedReason || "Play now is unavailable for this fixture right now.",
+          true
+        );
+        return;
+      }
       const iso = readPlayNowIso();
       if (!iso) {
         setStatus("Pick a Play now date/time first.", true);
@@ -1152,6 +1170,40 @@ function render() {
     return;
   }
 
+  const newOwnerGrace = ctx.new_owner_arrange_grace;
+  if (
+    newOwnerGrace &&
+    sch.status !== "agreed" &&
+    !sch.agreed_kickoff_at
+  ) {
+    if (discord) discord.hidden = true;
+    const fromLabel =
+      newOwnerGrace.arrange_from_label ||
+      newOwnerGrace.arrangeFromLabel ||
+      "the following GPSL month";
+    const playLabel =
+      newOwnerGrace.play_month_label ||
+      newOwnerGrace.playMonthLabel ||
+      monthLabel;
+    const clubBit = newOwnerGrace.club_short || newOwnerGrace.clubShort || "";
+    root.innerHTML = `
+      <div class="panel" style="border-color:#3a5a7a;background:#0c1824;">
+        <div class="fixture-head">${fixtureTitle(f)}</div>
+        <p class="status-agreed"><b>New-owner grace</b> — match arrangement deferred.</p>
+        <p class="meta">
+          ${clubBit ? `<b>${escapeHtmlLite(clubBit)}</b> took` : "A club took"} charge during
+          <b>${escapeHtmlLite(playLabel)}</b>. Propose / reply / Discord lock stay closed until
+          <b>${escapeHtmlLite(fromLabel)}</b>.
+        </p>
+        <div class="actions">
+          <a href="fixtures.html" class="button secondary" style="text-decoration:none;display:inline-block;">Fixtures</a>
+          <a href="club_fixtures.html" class="button secondary" style="text-decoration:none;display:inline-block;">My fixtures</a>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
   if (sch.status === "agreed" && sch.agreed_kickoff_at) {
     renderAgreedPanel(root, f, sch);
     return;
@@ -1180,13 +1232,17 @@ function render() {
     !(ctx.can_propose_first || ctx.can_respond) &&
     !ctx.pending_proposal;
   const futureIntersection = filterSelectableKickoffSlots(intersectionSlots, ownerTz);
-  const pokeAllowed =
-    ctx.poke_allowed === true ||
-    (ctx.poke_allowed == null && futureIntersection.length === 0);
+  // Only when server explicitly allows (schedule_poke_no_overlap patch live).
+  // Do not infer poke from empty intersection — that looked allowed before the patch.
+  const pokeAllowed = ctx.poke_allowed === true;
   const slots = isAwayWaitingPreview ? ownSlots : intersectionSlots;
   const usingCompatibleSlots = !isAwayWaitingPreview;
   const usingPoke =
     !isAwayWaitingPreview && pokeAllowed && futureIntersection.length === 0;
+  const pokePatchPending =
+    !isAwayWaitingPreview &&
+    futureIntersection.length === 0 &&
+    ctx.poke_allowed == null;
   const selectableSlots = filterSelectableKickoffSlots(slots, ownerTz);
   const pastHidden = slots.length - selectableSlots.length;
   const selectableOppSlots = filterSelectableKickoffSlots(oppSlots, ownerTz);
@@ -1307,13 +1363,17 @@ function render() {
 
   const emptySlotsMsg = usingPoke
     ? ""
-    : !selectableSlots.length
-      ? slots.length
-        ? '<p class="meta" style="color:#f88;">All listed slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
-        : usingCompatibleSlots
-          ? '<p class="meta" style="color:#f88;">No overlapping times this window — both clubs need weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a> in their own timezones that share a common world kick-off (or free a time already booked).</p>'
-          : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a>, or free a time already booked for another match.</p>'
-      : "";
+    : pokePatchPending
+      ? '<p class="meta" style="color:#fc6;">No overlapping weekly times. Availability poke is not enabled on the server yet — both clubs need shared weekly slots on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a>, or agree on Discord.</p>'
+      : !selectableSlots.length
+        ? slots.length
+          ? '<p class="meta" style="color:#f88;">All listed slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
+          : usingCompatibleSlots
+            ? ctx.poke_allowed === false
+              ? '<p class="meta" style="color:#f88;">No overlapping times this window — both clubs need weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a> that share a common kick-off (or free a booked time). Poke is only available when the server reports no mutual slots.</p>'
+              : '<p class="meta" style="color:#f88;">No overlapping times this window — both clubs need weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a> in their own timezones that share a common world kick-off (or free a time already booked).</p>'
+            : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a>, or free a time already booked for another match.</p>'
+        : "";
 
   const pokePanelHtml = usingPoke && canPick
     ? `
@@ -1607,6 +1667,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await initGlobal();
   await loadClubsMap();
+  setSeasonCalendarMonths(await loadSeasonCalendarMonths(supabase));
 
   const {
     data: { user },

@@ -12,7 +12,7 @@
 --    (cron-safe version of club_matchday_checkin_ready).
 -- 6. match_owner_guidance_reminders()           → hourly cron:
 --      · home "propose kick-off" reminders: ≤5 days, ≤60h (just before the
---        ₿2.5m late fee) and once the late fee applies
+--        ₿1m late fee) and once the late fee applies
 --      · "reply deadline soon" (≤12h)
 --      · saved squad not valid for an agreed kick-off in the next 48h
 -- 7. Check-in open messages say the saved squad is checked at check-in.
@@ -536,20 +536,20 @@ BEGIN
     IF v_stage = 'early' THEN
       v_title := 'Arrange your next match';
       v_body := format(
-        E'You are home in %s vs %s (GPSL %s).\n\nPropose a kick-off by %s. The ₿2.5m late fee starts 48 hours before that, and no proposal by then is a ₿5m fine.\n\nOpen Schedule, pick a slot from your availability and press Propose kick-off.',
+        E'You are home in %s vs %s (GPSL %s).\n\nPropose a kick-off by %s. The ₿1m late fee starts 48 hours before that, and no proposal by then is a ₿2.5m fine.\n\nOpen Schedule, pick a slot from your availability and press Propose kick-off.',
         v_label, v_opp, public.competition_gpsl_month_label(r.gpsl_month), v_deadline_txt
       );
     ELSIF v_stage = 'final' THEN
       v_title := 'Propose kick-off now — late fee soon';
       v_body := format(
-        E'You still need to propose a kick-off for %s vs %s (GPSL %s).\n\nThe ₿2.5m late fee starts in about %s hours. Deadline: %s (no proposal by then = ₿5m).',
+        E'You still need to propose a kick-off for %s vs %s (GPSL %s).\n\nThe ₿1m late fee starts in about %s hours. Deadline: %s (no proposal by then = ₿2.5m).',
         v_label, v_opp, public.competition_gpsl_month_label(r.gpsl_month),
         greatest(1, floor(v_hours - 48))::int, v_deadline_txt
       );
     ELSE
       v_title := 'Propose kick-off — late fee now applies';
       v_body := format(
-        E'No kick-off proposed yet for %s vs %s (GPSL %s). Proposing now costs a ₿2.5m late fee.\n\nPropose before %s to avoid the ₿5m no-proposal fine (repeats at every month lock until you propose).',
+        E'No kick-off proposed yet for %s vs %s (GPSL %s). Proposing now costs a ₿1m late fee.\n\nPropose before %s to avoid the ₿2.5m no-proposal fine (repeats at every month lock until you propose).',
         v_label, v_opp, public.competition_gpsl_month_label(r.gpsl_month), v_deadline_txt
       );
     END IF;

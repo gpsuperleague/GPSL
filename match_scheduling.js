@@ -527,6 +527,30 @@ export async function loadScheduleContext(fixtureId) {
     ctx.can_respond = false;
   }
 
+  // Mid-month new-owner arrange grace: list copy + Schedule must both block propose.
+  // Prefer server flag; fall back to client calendar helper when patch not live.
+  const sch = ctx.schedule || {};
+  const agreed =
+    sch.status === "agreed" || !!sch.agreed_kickoff_at || !!ctx.fixture?.agreed_kickoff_at;
+  let grace = ctx.new_owner_arrange_grace || null;
+  if (!grace && !agreed && ctx.fixture) {
+    grace = fixtureNewOwnerArrangeGrace(ctx.fixture);
+    if (grace) {
+      ctx.new_owner_arrange_grace = {
+        club_short: grace.clubShort,
+        play_month: grace.playMonth,
+        play_month_label: grace.playMonthLabel,
+        arrange_from_month: grace.arrangeFromMonth,
+        arrange_from_label: grace.arrangeFromLabel,
+        grace_until: grace.graceUntilIso,
+      };
+    }
+  }
+  if (grace && !agreed) {
+    ctx.can_propose_first = false;
+    ctx.can_respond = false;
+  }
+
   return ctx;
 }
 

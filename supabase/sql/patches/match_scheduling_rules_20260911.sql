@@ -1,12 +1,12 @@
 -- =============================================================================
 -- Match scheduling rules refresh (2026-09-11)
 --
--- Agreed owner rules:
---   • Late band = last 48h before play-month unlock → ₿2.5m late arrangement
---   • No home proposal by prior-month lock → ₿5m every later lock until proposed
+-- Agreed owner rules (amounts later softened 2026-10-18 — see soft_fines patch):
+--   • Late band = last 48h before play-month unlock → ₿1m late arrangement
+--   • No home proposal by prior-month lock → ₿2.5m every later lock until proposed
 --   • First reply: due at prior unlock if proposed early; 48h if late-band first
 --     offer; counters / catch-up → 24h
---   • Response fine ₿2.5m at lock ONLY if reply deadline already exceeded
+--   • Response: first overdue lock = warning; later locks while overdue → ₿2.5m
 --   • Carry negotiation (do NOT reset to unscheduled)
 --   • League play window = scheduled month + 2; cup = +1 (May: no extra)
 --   • After window: award by activity ladder; tie → 0–0
@@ -18,29 +18,40 @@
 
 -- ---------------------------------------------------------------------------
 -- Tariffs
+-- Soft fines (2026-10-18) own the live amounts: no-proposal ₿2.5m, late ₿1m.
+-- Do NOT reset to the original ₿5m / ₿2.5m late band if this file is re-run.
 -- ---------------------------------------------------------------------------
-UPDATE public.competition_fine_tariff
-SET
-  amount = 5000000,
-  label = 'Match Management Fine (no proposal)',
-  is_active = true,
-  updated_at = now()
-WHERE code = 'match_mgmt_no_proposal';
+DO $tariffs$
+BEGIN
+  -- Prefer soft amounts whenever this historical patch is re-applied.
+  UPDATE public.competition_fine_tariff
+  SET
+    amount = 2500000,
+    label = 'Match Management Fine (no proposal)',
+    is_active = true,
+    updated_at = now()
+  WHERE code = 'match_mgmt_no_proposal';
 
-UPDATE public.competition_fine_tariff
-SET
-  amount = 2500000,
-  label = 'Late Arrangement Fee',
-  is_active = true,
-  updated_at = now()
-WHERE code = 'match_late_arrangement';
+  UPDATE public.competition_fine_tariff
+  SET
+    amount = 1000000,
+    label = 'Late Arrangement Fee',
+    is_active = true,
+    updated_at = now()
+  WHERE code = 'match_late_arrangement';
 
-UPDATE public.competition_fine_tariff
-SET
-  label = 'Missed scheduling response',
-  is_active = true,
-  updated_at = now()
-WHERE code = 'match_response_deadline';
+  UPDATE public.competition_fine_tariff
+  SET
+    amount = 2500000,
+    label = 'Missed scheduling response',
+    is_active = true,
+    updated_at = now()
+  WHERE code = 'match_response_deadline';
+
+  RAISE NOTICE
+    'match_scheduling_rules_20260911: tariffs kept at soft levels (₿2.5m none / ₿1m late / ₿2.5m reply)';
+END;
+$tariffs$;
 
 INSERT INTO public.competition_fine_tariff (
   code, label, category, direction, amount, amount_mode, sort_order, is_active

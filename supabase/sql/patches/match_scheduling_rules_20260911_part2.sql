@@ -431,7 +431,7 @@ BEGIN
       'match_response_deadline_warning',
       'Reply deadline soon',
       format(
-        'Reply to the pending match time for MD%s (%s) within about %s hours or face a ₿2.5m missed-response fine at month lock. Negotiation continues if you miss — fines can repeat each lock until you reply.',
+        'Reply to the pending match time for MD%s (%s) within about %s hours. First overdue month lock is a warning only; later locks while still overdue charge ₿2.5m. Negotiation continues if you miss.',
         v_row.matchday,
         public.competition_gpsl_month_label(v_row.gpsl_month),
         greatest(1, ceil(v_hours))::int
@@ -484,7 +484,7 @@ BEGIN
       'match_arrangement_deadline_warning',
       'Propose match time soon',
       format(
-        'As home for MD%s (%s), propose a kick-off before the play month opens. Last 48h = ₿2.5m late fee; no proposal by lock = ₿5m (repeats each lock until you propose).',
+        'As home for MD%s (%s), propose a kick-off before the play month opens. Last 48h = ₿1m late fee; no proposal by lock = ₿2.5m (repeats each lock until you propose).',
         v_row.matchday,
         public.competition_gpsl_month_label(v_row.gpsl_month)
       ),
