@@ -175,9 +175,19 @@ function clubFixturesHref(monthKey) {
   return `club_fixtures.html?month=${encodeURIComponent(monthKey)}`;
 }
 
-function staticEventsForMonth(monthKey) {
+function staticEventsForMonth(monthKey, ctx = null) {
   const events = [];
   const monthLabel = MONTH_LABELS[monthKey] || monthKey;
+  const cupsActive = ctx?.activeCups;
+  const cupsKnown = ctx?.activeCupsLoaded === true;
+  const cupIsActive = (code) => {
+    if (!cupsKnown) return true; // fail open if catalog failed to load
+    const key = String(code || "")
+      .trim()
+      .toLowerCase();
+    if (!key) return false;
+    return cupsActive?.has(key) === true;
+  };
 
   if (monthKey === "pre_season") {
     events.push({
@@ -223,7 +233,7 @@ function staticEventsForMonth(monthKey) {
     });
   }
 
-  if (monthKey === "playoffs") {
+  if (monthKey === "playoffs" && (!cupsKnown || ctx?.hasPlayoffs)) {
     events.push({
       kind: "phase",
       short: "League playoffs",
@@ -238,6 +248,7 @@ function staticEventsForMonth(monthKey) {
 
   for (const cup of CUP_BY_MONTH[monthKey] || []) {
     if (cup.cup === "playoffs") continue;
+    if (!cupIsActive(cup.cup)) continue;
     events.push({
       kind: "cup",
       short: cup.label,
@@ -855,6 +866,60 @@ async function loadLiveOverlays(status) {
   };
 }
 
+/**
+ * Cups that exist for the current season (bracket drawn and/or fixtures created).
+ * Used to hide guide bullets for competitions that aren't running (e.g. no Super8).
+ */
+async function loadActiveSeasonCompetitions() {
+  const cups = new Set();
+  let hasPlayoffs = false;
+
+  const addCup = (raw) => {
+    const c = String(raw || "")
+      .trim()
+      .toLowerCase();
+    if (!c || c === "playoffs") return;
+    cups.add(c);
+  };
+
+  try {
+    const { data: bracket, error: bErr } = await supabase
+      .from("competition_cup_bracket_public")
+      .select("cup_code")
+      .limit(4000);
+    if (bErr) console.warn("season calendar cup brackets:", bErr);
+    for (const row of bracket || []) addCup(row.cup_code);
+  } catch (err) {
+    console.warn("season calendar cup brackets:", err);
+  }
+
+  try {
+    const { data: fixtures, error: fErr } = await supabase
+      .from("competition_fixtures_public")
+      .select("cup_code, competition_type, gpsl_month")
+      .limit(4000);
+    if (fErr) console.warn("season calendar cup fixtures:", fErr);
+    for (const row of fixtures || []) {
+      const month = String(row.gpsl_month || "")
+        .trim()
+        .toLowerCase();
+      const ctype = String(row.competition_type || "")
+        .trim()
+        .toLowerCase();
+      if (month === "playoffs" || ctype === "playoff" || ctype === "playoffs") {
+        hasPlayoffs = true;
+      }
+      if (ctype === "cup" || row.cup_code) addCup(row.cup_code);
+    }
+  } catch (err) {
+    console.warn("season calendar cup fixtures:", err);
+  }
+
+  // Bracket/fixture queries failed entirely → treat as unknown (show guide cups).
+  const activeCupsLoaded = true;
+  return { activeCups: cups, activeCupsLoaded, hasPlayoffs };
+}
+
 async function loadClubFixturesByMonth(user) {
   const empty = { clubShort: null, clubName: null, byMonth: {}, rows: [] };
   if (!user) return empty;
@@ -1109,7 +1174,7 @@ function renderMonthCard(monthKey, ctx) {
     (r) => String(r.gpsl_month || "").toLowerCase() === monthKey
   );
 
-  const staticEvents = staticEventsForMonth(monthKey);
+  const staticEvents = staticEventsForMonth(monthKey, ctx);
   const liveEvents = ctx.live.byMonth[monthKey] || [];
   const clubEvents = clubFixtureEvents(ctx.club.byMonth[monthKey] || [], monthKey);
   const events = [...staticEvents, ...liveEvents, ...clubEvents];
@@ -1252,14 +1317,23 @@ async function renderPage(user) {
   root.innerHTML = `<p class="sc-loading">Loading season calendar…</p>`;
 
   const status = await loadCalendarStatus(supabase);
-  const [calendarMonths, live, club, seasonLabel] = await Promise.all([
+  const [calendarMonths, live, club, seasonLabel, comps] = await Promise.all([
     loadSeasonCalendarMonths(supabase),
     loadLiveOverlays(status),
     loadClubFixturesByMonth(user),
     loadSeasonLabel(),
+    loadActiveSeasonCompetitions(),
   ]);
 
-  const ctx = { status, calendarMonths, live, club };
+  const ctx = {
+    status,
+    calendarMonths,
+    live,
+    club,
+    activeCups: comps.activeCups,
+    activeCupsLoaded: comps.activeCupsLoaded,
+    hasPlayoffs: comps.hasPlayoffs,
+  };
   const monthLabel = navGpslMonthDisplay(status);
   const meta = document.getElementById("seasonCalendarMeta");
   if (meta) {
