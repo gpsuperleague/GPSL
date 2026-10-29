@@ -196,6 +196,22 @@ function formatNearGapLabel(ms) {
   return m ? `${h}h ${m}m apart` : `${h}h apart`;
 }
 
+/**
+ * Gap 0 → green, gap at 2h → red (HSL). Returns CSS vars for the slot button.
+ * @param {number} gapMs
+ */
+function pokeNearGradeStyle(gapMs) {
+  const t = Math.min(1, Math.max(0, Number(gapMs) / POKE_NEAR_MS));
+  // 120 = green, 60 = yellow, 0 = red
+  const hue = Math.round(120 * (1 - t));
+  return {
+    borderColor: `hsl(${hue} 58% 42%)`,
+    background: `hsl(${hue} 28% 14%)`,
+    tagColor: `hsl(${hue} 70% 72%)`,
+    mainColor: `hsl(${hue} 55% 82%)`,
+  };
+}
+
 function appendKickoffSlotButtons(
   container,
   slots,
@@ -210,13 +226,21 @@ function appendKickoffSlotButtons(
     if (excludeIso && iso === excludeIso) continue;
     const btn = document.createElement("button");
     btn.type = "button";
-    const isNear = nearIsoSet?.has(iso);
+    const gapMs = nearGapByIso?.get(iso);
+    const isNear = nearIsoSet?.has(iso) && Number.isFinite(gapMs);
     btn.className = isNear ? "slot-btn slot-near" : "slot-btn";
     btn.dataset.kickoff = iso;
-    const gapLabel = isNear ? formatNearGapLabel(nearGapByIso?.get(iso)) : "";
+    const gapLabel = isNear ? formatNearGapLabel(gapMs) : "";
     btn.title = gapLabel
-      ? `Within 2 hours of a slot on the other list (${gapLabel})`
+      ? `Within 2 hours of a slot on the other list (${gapLabel}) — greener = closer`
       : "";
+    if (isNear) {
+      const grade = pokeNearGradeStyle(gapMs);
+      btn.style.setProperty("--near-border", grade.borderColor);
+      btn.style.setProperty("--near-bg", grade.background);
+      btn.style.setProperty("--near-tag", grade.tagColor);
+      btn.style.setProperty("--near-main", grade.mainColor);
+    }
     btn.innerHTML =
       formatKickoffSlotHtml(iso, {
         ownerTz,
@@ -322,7 +346,9 @@ function wirePokePanel({
     const n = oppNear.size;
     nearNote.hidden = n === 0;
     if (n) {
-      nearNote.textContent = `${n} opponent time${n === 1 ? "" : "s"} within 2 hours of one of yours — highlighted.`;
+      nearNote.textContent = `${n} opponent time${
+        n === 1 ? "" : "s"
+      } within 2 hours of yours — colour graded (green = closest, red = nearer 2h).`;
     }
   }
 
@@ -1195,7 +1221,7 @@ function render() {
         <h3 class="poke-heading">Opponent availability · ${escapeHtmlLite(
           fullClubName(oppClubShort) || oppClubShort || "Opponent"
         )} (${escapeHtmlLite(tzDisplayName(oppTz))})</h3>
-        <p class="meta">Shown in <b>your</b> timezone so you can compare with your own slots (their local clock is on the second line). Times within <b>2 hours</b> of one of yours are highlighted. Click one to start from it, or enter any free date/time below.</p>
+        <p class="meta">Shown in <b>your</b> timezone so you can compare with your own slots (their local clock is on the second line). Times within <b>2 hours</b> of one of yours are colour‑graded: <b style="color:#8f8;">green = closest</b>, through yellow, to <b style="color:#f88;">red = nearer 2h</b>. Click one to start from it, or enter any free date/time below.</p>
         <p class="meta poke-near-note" id="pokeNearNote" hidden></p>
         <div class="slot-list" id="oppSlotList"></div>
         ${

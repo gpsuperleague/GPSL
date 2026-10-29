@@ -171,15 +171,18 @@
     }
     .poke-near-note { color:#c8e6a0; margin:6px 0 0; }
     .slot-btn.slot-near {
-      border-color:#8bc34a; background:#1e2a14; box-shadow:inset 0 0 0 1px rgba(139,195,74,.35);
+      border-color:var(--near-border, #8bc34a);
+      background:var(--near-bg, #1e2a14);
+      box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--near-border, #8bc34a) 40%, transparent);
     }
-    .slot-btn.slot-near .slot-main { color:#d8f0b0; }
+    .slot-btn.slot-near .slot-main { color:var(--near-main, #d8f0b0); }
     .slot-btn.slot-near:disabled { opacity:1; }
     .slot-btn .slot-near-tag {
-      font-size:10px; color:#b7e07a; font-weight:600; margin-top:2px; line-height:1.2;
+      font-size:10px; color:var(--near-tag, #b7e07a); font-weight:600; margin-top:2px; line-height:1.2;
     }
     .slot-btn.slot-near.selected {
-      background:#2a3d18; border-color:#a5d96a;
+      filter:brightness(1.12);
+      box-shadow:inset 0 0 0 1px var(--near-border, #a5d96a), 0 0 0 1px var(--near-border, #a5d96a);
     }
   </style>
 </head>
@@ -197,6 +200,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261029-poke-near"></script>
+  <script type="module" src="fixture_schedule.js?v=20261029-poke-grade"></script>
 </body>
 </html>
