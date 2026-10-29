@@ -581,8 +581,21 @@ function buildEventsByDay() {
       .filter((c) => c?.kind === "video" && c.fixture_id != null)
       .map((c) => String(c.fixture_id))
   );
+  const videoMonthSeen = new Set(
+    cutoffs
+      .filter((c) => c?.kind === "video" && c.fixture_id == null)
+      .map((c) => String(c.id || c.title || ""))
+  );
   for (const v of videoDeadlines) {
-    if (!v?.at || v.fixture_id == null) continue;
+    if (!v?.at) continue;
+    // Month-level markers use fixture_id null — still show them.
+    if (v.fixture_id == null) {
+      const mid = String(v.id || v.title || "");
+      if (mid && videoMonthSeen.has(mid)) continue;
+      if (mid) videoMonthSeen.add(mid);
+      pushVideoCutoffEvent(push, v, "video");
+      continue;
+    }
     const fid = String(v.fixture_id);
     if (videoExtFixtureIds.has(fid) || videoDueSeen.has(fid)) continue;
     videoDueSeen.add(fid);
@@ -1486,39 +1499,50 @@ async function resolveVideoGraceHours() {
  * that only appears from Club Wire once a point is suspended (missed first due).
  */
 async function loadVideoDeadlines() {
-  const meRaw = String(myClub.short || "").trim();
-  const me = meRaw.toUpperCase();
+  const me = String(myClub.short || "")
+    .trim()
+    .toUpperCase();
   if (!me) return [];
 
   videoGraceHours = await resolveVideoGraceHours();
 
-  // Scope to this club in the query — a league-wide .eq(status,played) can hit
-  // PostgREST row limits and silently drop our fixtures.
-  const { data: rows, error } = await supabase
-    .from("competition_fixtures_public")
-    .select(
-      "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, status, gpsl_month, competition_type"
-    )
-    .eq("status", "played")
-    .or(
-      `home_club_short_name.eq.${meRaw},away_club_short_name.eq.${meRaw},home_club_short_name.eq.${me},away_club_short_name.eq.${me}`
-    )
-    .limit(200);
-  if (error) {
-    console.warn("owner_calendar video fixtures:", error);
-    return [];
+  // Prefer club_fixtures_my_club (same source as Season Calendar / My Fixtures).
+  let allMine = [];
+  const { data: rpcRows, error: rpcErr } = await supabase.rpc(
+    "club_fixtures_my_club"
+  );
+  if (rpcErr) {
+    console.warn("owner_calendar video via club_fixtures_my_club:", rpcErr);
+  } else {
+    allMine = Array.isArray(rpcRows) ? rpcRows : [];
   }
 
-  const mine = (rows || []).filter((f) => {
-    const h = (f.home_club_short_name || "").trim().toUpperCase();
-    const a = (f.away_club_short_name || "").trim().toUpperCase();
-    return h === me || a === me;
-  });
-  if (!mine.length) return [];
+  // Fallback if RPC missing / empty
+  if (!allMine.length) {
+    const { data: rows, error } = await supabase
+      .from("competition_fixtures_public")
+      .select(
+        "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, status, gpsl_month, competition_type"
+      )
+      .limit(500);
+    if (error) {
+      console.warn("owner_calendar video fixtures:", error);
+    } else {
+      allMine = (rows || []).filter((f) => {
+        const h = (f.home_club_short_name || "").trim().toUpperCase();
+        const a = (f.away_club_short_name || "").trim().toUpperCase();
+        return h === me || a === me;
+      });
+    }
+  }
 
-  const ids = mine.map((f) => f.id);
+  const mine = allMine.filter(
+    (f) => String(f.status || "").toLowerCase() === "played"
+  );
+  if (!allMine.length) return [];
+
+  const ids = mine.map((f) => f.id).filter(Boolean);
   let vids = [];
-  // Chunk .in() — large ID lists can fail or truncate.
   for (let i = 0; i < ids.length; i += 80) {
     const chunk = ids.slice(i, i + 80);
     const { data: vidRows, error: vidErr } = await supabase
@@ -1527,6 +1551,7 @@ async function loadVideoDeadlines() {
       .in("fixture_id", chunk);
     if (vidErr) {
       console.warn("owner_calendar fixture_match_videos:", vidErr);
+      // Don't abort — treat as no uploads yet so dues still appear.
       break;
     }
     vids = vids.concat(vidRows || []);
@@ -1550,11 +1575,52 @@ async function loadVideoDeadlines() {
 
   const now = Date.now();
   const out = [];
-  /** One shared “videos due” marker per GPSL month (in addition to per-match). */
   const monthMarkerDone = new Set();
+  let missingCount = 0;
+
+  const pushMonthMarker = (monthKey, lockAt, dueIso) => {
+    if (!monthKey || monthMarkerDone.has(monthKey)) return;
+    monthMarkerDone.add(monthKey);
+    const monthLabel =
+      GPSL_MONTH_LABELS[monthKey] ||
+      monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
+    const dueHhmm = hhmmInTz(dueIso, ownerTz || UK);
+    out.push({
+      fixture_id: null,
+      id: `video-month:${monthKey}`,
+      kind: "video",
+      at: dueIso,
+      title: `Match videos due · GPSL ${monthLabel}`,
+      detail: `${videoGraceHours}h after GPSL ${monthLabel} lock (${formatUkDateTime(lockAt)} UK + ${videoGraceHours}h). Upload via Discord with the Match Day filename (+₿200k) for each played match still missing your video.`,
+      href: "dashboard.html",
+      chip: `${dueHhmm} Videos due`,
+    });
+  };
+
+  // Always pin the month-level “Videos due” day when you have any fixtures that
+  // GPSL month (guide date = lock + grace), so it shows even before results land.
+  for (const f of allMine) {
+    const monthKey = String(f.gpsl_month || "")
+      .trim()
+      .toLowerCase();
+    if (!monthKey || monthMarkerDone.has(monthKey)) continue;
+    const lockAt = lockByMonth.get(monthKey);
+    if (!lockAt) continue;
+    const dueMs = new Date(lockAt).getTime() + videoGraceHours * 3600_000;
+    if (!Number.isFinite(dueMs)) continue;
+    if (dueMs < now - 42 * 86400_000) continue;
+    if (dueMs > now + 180 * 86400_000) continue;
+    pushMonthMarker(monthKey, lockAt, new Date(dueMs).toISOString());
+  }
 
   for (const f of mine) {
-    const home = (f.home_club_short_name || "").trim().toUpperCase();
+    const home = (
+      f.home_club_short_name ||
+      f.home_short ||
+      ""
+    )
+      .trim()
+      .toUpperCase();
     const side = home === me ? "home" : "away";
     if (hasVideo.has(`${f.id}:${side}`)) continue;
 
@@ -1567,33 +1633,21 @@ async function loadVideoDeadlines() {
 
     const dueMs = new Date(lockAt).getTime() + videoGraceHours * 3600_000;
     if (!Number.isFinite(dueMs)) continue;
-    // Keep visible from well before due through ~6 weeks overdue (extension chip
-    // still only appears once Club Wire marks the point suspended).
+    // Visible from ~6 months before due through ~6 weeks overdue.
     if (dueMs < now - 42 * 86400_000) continue;
     if (dueMs > now + 180 * 86400_000) continue;
 
+    missingCount += 1;
     const dueIso = new Date(dueMs).toISOString();
     const monthLabel =
       GPSL_MONTH_LABELS[monthKey] ||
       monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
-
-    if (!monthMarkerDone.has(monthKey)) {
-      monthMarkerDone.add(monthKey);
-      const dueHhmm = hhmmInTz(dueIso, ownerTz);
-      out.push({
-        fixture_id: null,
-        id: `video-month:${monthKey}`,
-        kind: "video",
-        at: dueIso,
-        title: `Match videos due · GPSL ${monthLabel}`,
-        detail: `${videoGraceHours}h after GPSL ${monthLabel} lock (${formatUkDateTime(lockAt)} UK + ${videoGraceHours}h). Upload via Discord with the Match Day filename (+₿200k).`,
-        href: "dashboard.html",
-        chip: `${dueHhmm} Videos due`,
-      });
-    }
+    pushMonthMarker(monthKey, lockAt, dueIso);
 
     const oppShort =
-      side === "home" ? f.away_club_short_name : f.home_club_short_name;
+      side === "home"
+        ? f.away_club_short_name || f.away_short
+        : f.home_club_short_name || f.home_short;
     const oppName =
       side === "home" ? f.away_club_name : f.home_club_name;
     const opp = clubFull(oppShort, oppName);
@@ -1605,6 +1659,12 @@ async function loadVideoDeadlines() {
       detail: `Due ${videoGraceHours}h after GPSL ${monthLabel} lock (${formatUkDateTime(lockAt)} UK + ${videoGraceHours}h). Discord upload with Match Day filename (+₿200k). Miss this and a point is suspended for 24h.`,
       href: `matchday.html?fixture=${encodeURIComponent(String(f.id))}`,
     });
+  }
+
+  if (!missingCount) {
+    console.info(
+      "owner_calendar: no outstanding match-video dues (played fixtures all have your upload, or none played yet)."
+    );
   }
   return out;
 }

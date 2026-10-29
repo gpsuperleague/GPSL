@@ -118,11 +118,11 @@
       width:100%; margin:0; font:inherit; color:inherit; text-align:left;
       appearance:none; -webkit-appearance:none;
       display:flex; flex-direction:column; align-items:stretch; gap:4px;
-      box-sizing:border-box; min-width:0; overflow:hidden;
+      box-sizing:border-box; min-width:0;
     }
     .oc-day:nth-child(7n) {
       border-right:none;
-      padding-right:8px; /* Sunday — stop day number clipping on the rounded edge */
+      padding-right:10px; /* Sunday — keep day numbers inside the rounded edge */
     }
     .oc-day:hover { background:#1e1e1e; }
     .oc-day.is-outside { opacity:0.38; }
@@ -283,6 +283,6 @@
       </aside>
     </div>
   </div>
-  <script type="module" src="owner_calendar.js?v=20261029-oc-video-sun"></script>
+  <script type="module" src="owner_calendar.js?v=20261029-oc-video3"></script>
 </body>
 </html>
