@@ -3,13 +3,15 @@
 --   • Always offered while agreed KO is still in the future
 --   • Clubs pick any earlier UK 30-minute kick-off (or default "now" slot)
 --   • Does NOT require mutual weekly availability / common times
---   • Still: proposal window, not double-booked, holiday-early squad if needed
+--   • Still: not double-booked; holiday-early squad if needed; within play/grace
+--   • Does NOT require GPSL arrange unlock (Thu 19:00) — that blocked Play now
 --   • Both clubs still confirm (Inbox / Schedule)
 --
 -- Safe re-run. Apply after holiday_fixture_corridor / play_now_block_reason if used.
+-- Prefer also: play_now_ignore_arrange_unlock_20261029.sql (same assert body).
 -- =============================================================================
 
--- Free earlier KO: window + slot rules only (no availability intersection)
+-- Free earlier KO: no availability; no arrange-unlock gate
 CREATE OR REPLACE FUNCTION public.match_schedule_assert_play_now_kickoff_ok(
   p_fixture_id bigint,
   p_kickoff timestamptz
@@ -22,8 +24,6 @@ SET search_path = public
 AS $function$
 DECLARE
   v_schedule public.competition_fixture_schedule;
-  v_unlock timestamptz;
-  v_lock timestamptz;
 BEGIN
   SELECT * INTO v_schedule
   FROM public.competition_fixture_schedule
@@ -53,22 +53,14 @@ BEGIN
     RAISE EXCEPTION 'Play-now kick-off must be earlier than the agreed kick-off';
   END IF;
 
+  IF to_regprocedure('public.match_schedule_fixture_within_play_window(bigint,timestamptz)') IS NOT NULL
+     AND NOT public.match_schedule_fixture_within_play_window(p_fixture_id, now())
+  THEN
+    RAISE EXCEPTION 'This fixture is past its play window — Play now is closed';
+  END IF;
+
   IF to_regprocedure('public.match_schedule_assert_holiday_early_squad_ready(bigint)') IS NOT NULL THEN
     PERFORM public.match_schedule_assert_holiday_early_squad_ready(p_fixture_id);
-  END IF;
-
-  SELECT w.unlock_at, w.lock_at
-  INTO v_unlock, v_lock
-  FROM public.match_schedule_proposal_kickoff_window(p_fixture_id) w;
-
-  IF v_unlock IS NULL THEN
-    RAISE EXCEPTION 'No GPSL month window for this fixture';
-  END IF;
-
-  IF p_kickoff < v_unlock OR p_kickoff + interval '30 minutes' > v_lock THEN
-    RAISE EXCEPTION 'Play-now kick-off must fall within the GPSL arrange window (% – % UK)',
-      public.match_schedule_format_kickoff_uk(v_unlock),
-      public.match_schedule_format_kickoff_uk(v_lock);
   END IF;
 
   IF to_regprocedure('public.match_schedule_assert_kickoff_not_double_booked(bigint,timestamptz)') IS NOT NULL THEN
