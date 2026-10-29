@@ -1385,6 +1385,46 @@ function downloadDayEventsToCalendar(list) {
   downloadIcs(`gpsl-my-calendar-${stamp}.ics`, vevents);
 }
 
+/** Every timed appointment currently loaded on My Calendar (deduped). */
+function collectAllCalendarEvents() {
+  const byDay = buildEventsByDay();
+  const seen = new Set();
+  const list = [];
+  for (const events of byDay.values()) {
+    for (const ev of events || []) {
+      if (!ev?.canAddToCalendar || !ev.startAt) continue;
+      const key = String(ev.key || "");
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      list.push(ev);
+    }
+  }
+  list.sort(
+    (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+  );
+  return list;
+}
+
+function refreshAddAllCalButton() {
+  const btn = document.getElementById("ocAddAllCal");
+  if (!btn) return;
+  const n = collectAllCalendarEvents().length;
+  btn.disabled = n === 0;
+  btn.textContent =
+    n === 0 ? "Add all to calendar" : `Add all to calendar (${n})`;
+  btn.title =
+    n === 0
+      ? "No timed appointments to export yet"
+      : `Download one .ics with all ${n} timed appointments (matches, deadlines, GPSL locks, auctions, video dues, holidays)`;
+}
+
+function downloadAllEventsToCalendar() {
+  const list = collectAllCalendarEvents();
+  const vevents = list.map(veventFromPanelEvent).filter(Boolean);
+  if (!vevents.length) return;
+  downloadIcs("gpsl-my-calendar-all.ics", vevents);
+}
+
 async function loadMyClub(user) {
   const { data: club } = await supabase
     .from("Clubs")
@@ -1608,11 +1648,15 @@ async function boot() {
   document.getElementById("ocPrev")?.addEventListener("click", () => shiftMonth(-1));
   document.getElementById("ocNext")?.addEventListener("click", () => shiftMonth(1));
   document.getElementById("ocToday")?.addEventListener("click", goToday);
+  document.getElementById("ocAddAllCal")?.addEventListener("click", () => {
+    downloadAllEventsToCalendar();
+  });
   document.getElementById("ocMonthSelect")?.addEventListener("change", (e) => {
     const v = e.target?.value || "";
     const [y, m] = v.split("-").map(Number);
     goToMonth(y, m);
   });
+  refreshAddAllCalButton();
 
   try {
     const [avail, months, fix, cuts, auctions, planned, settings] =
@@ -1676,6 +1720,7 @@ async function boot() {
 
     renderGrid();
     renderPanel();
+    refreshAddAllCalButton();
   } catch (e) {
     console.error(e);
     showError(e.message || "Could not load calendar.");

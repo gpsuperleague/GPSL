@@ -38,6 +38,16 @@
     .oc-season-link {
       border-color:#2a5c56; color:#9fd9d0; margin-left:4px;
     }
+    .oc-cal-all-btn {
+      padding:8px 12px; background:#222; border:1px solid #5a4a20; color:#f0c14b;
+      border-radius:6px; cursor:pointer; font-size:13px; margin-left:4px;
+    }
+    .oc-cal-all-btn:hover {
+      border-color:var(--gpsl-accent, #ff9900); color:var(--gpsl-accent, #ff9900);
+    }
+    .oc-cal-all-btn:disabled {
+      opacity:.45; cursor:not-allowed; border-color:#444; color:#888;
+    }
     .oc-month-title,
     .oc-month-select {
       font-size:18px; font-weight:bold; color:#eee; min-width:10rem; text-align:center;
@@ -228,6 +238,9 @@
         <select class="oc-month-select" id="ocMonthSelect" aria-label="Select month"></select>
         <button type="button" id="ocNext" aria-label="Next month">→</button>
         <button type="button" id="ocToday">Today</button>
+        <button type="button" class="oc-cal-all-btn" id="ocAddAllCal" title="Download a .ics with every timed appointment on My Calendar (matches, deadlines, locks, auctions, video dues, holidays)">
+          Add all to calendar
+        </button>
         <a class="oc-season-link" href="season_calendar.html" title="GPSL Aug–May season roadmap">Season roadmap</a>
       </div>
       <div class="oc-tz" id="ocTzLabel">Times in —</div>
@@ -263,6 +276,6 @@
       </aside>
     </div>
   </div>
-  <script type="module" src="owner_calendar.js?v=20261029-oc-ics"></script>
+  <script type="module" src="owner_calendar.js?v=20261029-oc-ics-all"></script>
 </body>
 </html>
