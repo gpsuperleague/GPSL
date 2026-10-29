@@ -1,4 +1,4 @@
-import { initFinanceSubPage } from "./finance_page_common.js?v=20261018-clawback-out";
+import { initFinanceSubPage } from "./finance_page_common.js?v=20261029-infra-merge";
 import { renderFinancesOutgoingIntro } from "./finances_rules.js";
 
 document.addEventListener("DOMContentLoaded", () => {

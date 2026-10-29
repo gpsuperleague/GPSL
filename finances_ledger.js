@@ -1,4 +1,4 @@
-import { initFinanceSubPage } from "./finance_page_common.js?v=20261020-opening-650";
+import { initFinanceSubPage } from "./finance_page_common.js?v=20261029-infra-merge";
 
 document.addEventListener("DOMContentLoaded", () => {
   initFinanceSubPage({

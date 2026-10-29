@@ -23,7 +23,7 @@ import {
   appendAssignmentInfraPurchaseLedger,
   ledgerStartingBudget,
   clubHadPriorFinanceSeason,
-} from "./finance_assignment_ledger.js?v=20260720-infra-strip2";
+} from "./finance_assignment_ledger.js?v=20261029-infra-merge";
 import {
   aggregateClubTransfersFromHistory,
   loadClubTransferHistoryForSeason,
@@ -727,7 +727,9 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
 
   const balanceRow = await loadClubBalance(supabase, shortName);
   const balanceNow = Number(balanceRow?.balance ?? 0);
-  let ledger = await loadFinanceLedger(supabase, shortName, 1000);
+  // Cap is for activity volume; assignment stadium buys are merged back in
+  // via appendAssignmentInfraPurchaseLedger if they fell outside the window.
+  let ledger = await loadFinanceLedger(supabase, shortName, 2500);
   const currentSeason = await loadCurrentSeasonId(supabase);
   const continuingClub = await clubHadPriorFinanceSeason(
     supabase,
@@ -937,7 +939,7 @@ export async function initFinanceSubPage({
   } else if (seasonView.isHistorical) {
     ledger = [];
   } else {
-    ledger = await loadFinanceLedger(supabase, shortName, 500);
+    ledger = await loadFinanceLedger(supabase, shortName, 2500);
     const currentSeason = await loadCurrentSeasonId(supabase);
     ledger = await appendAssignmentInfraPurchaseLedger(supabase, shortName, ledger, {
       currentSeasonId: currentSeason?.id ?? null,
