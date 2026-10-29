@@ -37,6 +37,7 @@ import {
   formatKickoff,
   UK_TZ,
   catchUpBadgeHtml,
+  catchUpKickoffPrefix,
   isCatchUpFixture,
   fixtureOpponentIsInactive,
   vacantOpponentKickoffNoteHtml,
@@ -45,7 +46,7 @@ import {
   fixtureHolidayArrangeNote,
   holidayKickoffNoteHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261028-holiday-ko";
+} from "./match_scheduling.js?v=20261029-catchup-replay";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
@@ -153,7 +154,7 @@ function kickoffStatusNoteHtml(fixture) {
   if (!fixture || fixture.status === "played") return "";
 
   const catchUp = isCatchUpFixture(fixture);
-  const prefix = catchUp ? "Catch-up · " : "";
+  const prefix = catchUp ? catchUpKickoffPrefix() : "";
   const occ = fixtureOwnerOccupancy(
     fixture.home_club_short_name,
     fixture.away_club_short_name
@@ -201,7 +202,9 @@ function kickoffStatusNoteHtml(fixture) {
   }
 
   if (status === "negotiating") {
-    return `<span class="ko-status ko-status--pending">${prefix}Proposal pending</span>`;
+    return `<span class="ko-status ko-status--pending" title="${
+      catchUp ? "Catch-up / replay — accept or counter the proposed kick-off" : ""
+    }">${prefix}Proposal pending</span>`;
   }
 
   const holidayNote = fixtureHolidayArrangeNote(fixture);
@@ -209,7 +212,13 @@ function kickoffStatusNoteHtml(fixture) {
     return holidayKickoffNoteHtml(holidayNote, { catchUp });
   }
 
-  return `<span class="ko-status ko-status--open">${prefix}Not scheduled</span>`;
+  return `<span class="ko-status ko-status--open" title="${
+    catchUp
+      ? "Play month finished — re-arrange a new kick-off (catch-up / replay)"
+      : ""
+  }">${prefix}${
+    catchUp ? "Not scheduled — re-arrange kick-off" : "Not scheduled"
+  }</span>`;
 }
 
 async function enrichManualBlackBoxFlags(fixtures) {

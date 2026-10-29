@@ -108,7 +108,7 @@ export function fixtureNewOwnerArrangeGrace(fixture, nowMs = Date.now()) {
  */
 export function newOwnerGraceKickoffNoteHtml(grace, { catchUp = false } = {}) {
   if (!grace) return "";
-  const prefix = catchUp ? "Catch-up · " : "";
+  const prefix = catchUp ? catchUpKickoffPrefix() : "";
   const untilBit = grace.graceUntilIso
     ? ` through ${formatKickoff(grace.graceUntilIso, UK_TZ)} UK (end of ${grace.playMonthLabel})`
     : ` through end of ${grace.playMonthLabel}`;
@@ -195,7 +195,7 @@ function escapeKoText(s) {
  */
 export function holidayKickoffNoteHtml(note, { catchUp = false } = {}) {
   if (!note) return "";
-  const prefix = catchUp ? "Catch-up · " : "";
+  const prefix = catchUp ? catchUpKickoffPrefix() : "";
   const onHoliday = note.code === "OH";
   const main = onHoliday
     ? "To be scheduled · holiday in play"
@@ -373,7 +373,12 @@ export function isCatchUpFixture(fixture) {
 }
 
 export function catchUpBadgeHtml() {
-  return '<span class="catch-up-badge">Catch-up</span>';
+  return '<span class="catch-up-badge" title="Play month finished — re-arrange and play as catch-up / replay">Catch-up / replay</span>';
+}
+
+/** Kick-off column prefix when the fixture’s play month has already locked. */
+export function catchUpKickoffPrefix() {
+  return "Catch-up / replay · ";
 }
 
 /** Human-readable response deadline line for schedule UI. */
@@ -704,7 +709,7 @@ export function vacantOpponentKickoffNoteHtml({
   catchUp = false,
   seasonAbsent = false,
 } = {}) {
-  const prefix = catchUp ? "Catch-up · " : "";
+  const prefix = catchUp ? catchUpKickoffPrefix() : "";
   const why = seasonAbsent ? "season absence" : "no owner (vacant)";
   if (forOwnedClub) {
     const title = escapeKoAttr(
@@ -736,7 +741,7 @@ export function scheduleActionLabel(fixture, myClubShort) {
     const catchUpEarly = isCatchUpFixture(fixture);
     return {
       label: catchUpEarly
-        ? "Catch-up · walkover (no arrange)"
+        ? "Catch-up / replay · walkover (no arrange)"
         : "Walkover — no arrange needed",
       href: scheduleUrl(fixture.id),
       muted: true,
@@ -754,7 +759,7 @@ export function scheduleActionLabel(fixture, myClubShort) {
   ) {
     return {
       label: catchUp
-        ? `Catch-up · grace — arrange from ${newOwnerGrace.arrangeFromLabel}`
+        ? `Catch-up / replay · grace — arrange from ${newOwnerGrace.arrangeFromLabel}`
         : `Grace period — arrange from ${newOwnerGrace.arrangeFromLabel}`,
       href: scheduleUrl(fixture.id),
       muted: true,
@@ -766,10 +771,15 @@ export function scheduleActionLabel(fixture, myClubShort) {
     const kickoff = new Date(fixture.agreed_kickoff_at).getTime();
     const stale = Number.isFinite(kickoff) && kickoff < Date.now();
     if (catchUp && stale) {
-      return { label: "Catch-up · re-schedule", href: scheduleUrl(fixture.id) };
+      return {
+        label: "Catch-up / replay · re-schedule",
+        href: scheduleUrl(fixture.id),
+      };
     }
     return {
-      label: catchUp ? "Catch-up · kick-off agreed" : "Kick-off agreed",
+      label: catchUp
+        ? "Catch-up / replay · kick-off agreed"
+        : "Kick-off agreed",
       href: scheduleUrl(fixture.id),
       muted: true,
     };
@@ -780,13 +790,17 @@ export function scheduleActionLabel(fixture, myClubShort) {
 
   if (fixture.schedule_status === "unscheduled" && isHome) {
     return {
-      label: catchUp ? "Catch-up · propose kick-off" : "Propose kick-off",
+      label: catchUp
+        ? "Catch-up / replay · propose kick-off"
+        : "Propose kick-off",
       href: scheduleUrl(fixture.id),
     };
   }
   if (fixture.schedule_status === "unscheduled" && isAway) {
     return {
-      label: catchUp ? "Catch-up · waiting for home" : "Waiting for home",
+      label: catchUp
+        ? "Catch-up / replay · waiting for home"
+        : "Waiting for home",
       href: scheduleUrl(fixture.id),
       muted: true,
     };
@@ -800,14 +814,14 @@ export function scheduleActionLabel(fixture, myClubShort) {
     if (myTurn) {
       return {
         label: catchUp
-          ? "Catch-up · reply to proposal"
+          ? "Catch-up / replay · reply to proposal"
           : "Reply to proposal",
         href: scheduleUrl(fixture.id),
       };
     }
     return {
       label: catchUp
-        ? "Catch-up · waiting on opponent"
+        ? "Catch-up / replay · waiting on opponent"
         : "Waiting on opponent",
       href: scheduleUrl(fixture.id),
       muted: true,
@@ -816,13 +830,13 @@ export function scheduleActionLabel(fixture, myClubShort) {
 
   if (fixture.schedule_status === "negotiating" && isHome) {
     return {
-      label: catchUp ? "Catch-up · schedule" : "Schedule",
+      label: catchUp ? "Catch-up / replay · schedule" : "Schedule",
       href: scheduleUrl(fixture.id),
     };
   }
 
   return {
-    label: catchUp ? "Catch-up · schedule" : "Schedule",
+    label: catchUp ? "Catch-up / replay · schedule" : "Schedule",
     href: scheduleUrl(fixture.id),
   };
 }
