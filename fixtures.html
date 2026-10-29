@@ -25,9 +25,43 @@
       scroll-margin-top: 72px;
     }
     .matchday-head {
+      position:relative;
+      isolation:isolate;
+      overflow:hidden;
       background:#222; padding:10px 14px; color:var(--gpsl-accent, #ff9900); font-weight:bold;
       display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+      align-items:center;
+      min-height:42px;
     }
+    .matchday-head-label,
+    .matchday-head-meta {
+      position:relative;
+      z-index:1;
+      text-shadow:0 0 8px rgba(0,0,0,.85), 0 1px 0 rgba(0,0,0,.7);
+    }
+    .matchday-season-decor {
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index:0;
+    }
+    .matchday-season-decor .md-season-icon {
+      position:absolute;
+      display:block;
+      filter:drop-shadow(0 1px 1px rgba(0,0,0,.45));
+    }
+    .matchday-head[data-season="october"] { background:linear-gradient(90deg,#221a16 0%,#2a2220 50%,#221a16 100%); }
+    .matchday-head[data-season="november"] { background:linear-gradient(90deg,#1c1f22 0%,#25201c 50%,#1c1f22 100%); }
+    .matchday-head[data-season="december"] { background:linear-gradient(90deg,#1a222a 0%,#222830 50%,#1a222a 100%); }
+    .matchday-head[data-season="january"] { background:linear-gradient(90deg,#1a2430 0%,#222c36 50%,#1a2430 100%); }
+    .matchday-head[data-season="february"] { background:linear-gradient(90deg,#261a22 0%,#2c2028 50%,#261a22 100%); }
+    .matchday-head[data-season="march"] { background:linear-gradient(90deg,#1a261c 0%,#222c24 50%,#1a261c 100%); }
+    .matchday-head[data-season="april"] { background:linear-gradient(90deg,#1c2430 0%,#222a32 50%,#1c2430 100%); }
+    .matchday-head[data-season="may"] { background:linear-gradient(90deg,#262018 0%,#2e281c 50%,#262018 100%); }
+    .matchday-head[data-season="june"],
+    .matchday-head[data-season="july"],
+    .matchday-head[data-season="august"] { background:linear-gradient(90deg,#26220f 0%,#2c2818 50%,#26220f 100%); }
+    .matchday-head[data-season="september"] { background:linear-gradient(90deg,#241e16 0%,#2a241c 50%,#241e16 100%); }
     table.gpsl-table { width:100%; border-collapse:collapse; table-layout:fixed; }
     table.gpsl-table col.col-match { width: 7%; }
     table.gpsl-table col.col-home,
@@ -76,8 +110,8 @@
     }
     .fixture-stadium .stadium-line { display:block; }
     .fixture-continent {
-      color:#999; font-size:12px; line-height:1.15; white-space:normal;
-      text-align:left; max-width:4.5rem;
+      color:#999; font-size:10px; line-height:1.1; white-space:normal;
+      text-align:left; max-width:4.2rem;
     }
     .fixture-continent .continent-line { display:block; }
     .fixture-conditions {
@@ -180,6 +214,6 @@
     <div id="fixturesRoot"></div>
   </div>
 
-  <script type="module" src="fixtures.js?v=20261029-cond-icons"></script>
+  <script type="module" src="fixtures.js?v=20261029-season-decor"></script>
 </body>
 </html>

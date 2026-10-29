@@ -26,8 +26,30 @@
       margin-bottom:18px; overflow:hidden;
     }
     .month-head {
+      position:relative;
+      isolation:isolate;
+      overflow:hidden;
+      min-height:40px;
+      display:flex;
+      align-items:center;
       background:#222; padding:12px 16px; color:var(--gpsl-accent, #ff9900); font-weight:bold;
       font-size:16px; border-bottom:1px solid #333;
+    }
+    .month-head-label {
+      position:relative;
+      z-index:1;
+      text-shadow:0 0 8px rgba(0,0,0,.85);
+    }
+    .month-head .matchday-season-decor {
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index:0;
+    }
+    .month-head .md-season-icon {
+      position:absolute;
+      display:block;
+      filter:drop-shadow(0 1px 1px rgba(0,0,0,.45));
     }
     .fixture-card {
       padding:14px 16px; border-top:1px solid #2a2a2a;
@@ -102,7 +124,7 @@
       margin-bottom:6px;
     }
     .fixture-meta b { color:#ccc; font-weight:600; }
-    .fixture-meta .fixture-continent { line-height:1.15; }
+    .fixture-meta .fixture-continent { font-size:11px; line-height:1.1; }
     .fixture-meta .continent-line { display:block; }
     .fixture-meta .fixture-stadium { line-height:1.2; }
     .fixture-meta .stadium-line { display:block; }
@@ -181,6 +203,6 @@
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20261029-cond-icons"></script>
+  <script type="module" src="club_fixtures.js?v=20261029-season-decor"></script>
 </body>
 </html>

@@ -31,6 +31,7 @@ import {
   formatFixtureContinentStackedHtml,
   fixtureStadiumLabelStackedHtml,
 } from "./competition_conditions.js?v=20261029-cond-icons";
+import { matchdaySeasonDecorHtml } from "./matchday_season_decor.js?v=20261029-season-decor";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import {
   scheduleActionLabel,
@@ -581,9 +582,10 @@ function renderFixtures() {
     block.dataset.matchday = String(matchday);
 
     block.innerHTML = `
-      <div class="matchday-head">
-        <span>Matchday ${matchday}</span>
-        <span>${monthLabel} · Week ${matchday}${monthStatus}</span>
+      <div class="matchday-head" data-season="${String(sample.gpsl_month || "").toLowerCase()}">
+        ${matchdaySeasonDecorHtml(sample.gpsl_month)}
+        <span class="matchday-head-label">Matchday ${matchday}</span>
+        <span class="matchday-head-meta">${monthLabel} · Week ${matchday}${monthStatus}</span>
       </div>
       <table class="gpsl-table">
         ${LEAGUE_COLGROUP}

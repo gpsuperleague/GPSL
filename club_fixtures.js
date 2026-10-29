@@ -21,6 +21,7 @@ import {
   formatFixtureContinentStackedHtml,
   fixtureStadiumLabelStackedHtml,
 } from "./competition_conditions.js?v=20261029-cond-icons";
+import { matchdaySeasonDecorHtml } from "./matchday_season_decor.js?v=20261029-season-decor";
 import {
   loadCalendarStatus,
   loadSeasonCalendarMonths,
@@ -917,7 +918,10 @@ function renderFixtures(fixtures) {
         const monthKey = String(g.gpsl_month || "").toLowerCase();
         return `
         <div class="month-block" id="month-${monthKey}" data-gpsl-month="${monthKey}">
-          <div class="month-head">${label}</div>
+          <div class="month-head" data-season="${monthKey}">
+            ${matchdaySeasonDecorHtml(monthKey)}
+            <span class="month-head-label">${label}</span>
+          </div>
           ${cards}
         </div>
       `;
