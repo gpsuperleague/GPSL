@@ -414,7 +414,9 @@ async function publishFinance(manual) {
     btn.textContent = "Projecting…";
   }
   try {
-    const { buildLeagueFinanceForecast } = await import("./admin_league_finance_forecast.js");
+    const { buildLeagueFinanceForecast } = await import(
+      "./admin_league_finance_forecast.js?v=20261029-eos-posted-fix"
+    );
     const forecast = await buildLeagueFinanceForecast(supabase, {
       onProgress: (done, total) => {
         if (btn) btn.textContent = `Projecting… ${done}/${total}`;
@@ -424,13 +426,13 @@ async function publishFinance(manual) {
       const pendingPreEos = Object.entries(c.pending)
         .filter(([id]) => id !== "eos_debt_interest" && id !== "eos_ffp")
         .reduce((s, [, v]) => s + (Number(v) || 0), 0);
+      // Monthly overdraft interest reuses eos_debt_interest — do not treat that
+      // as "season finances already closed" (especially mid GPSL season).
       return {
         club: c.club,
         balance_now: Math.round(c.balanceNow),
         pre_close: Math.round(c.balanceNow + pendingPreEos),
-        eos_posted:
-          Math.abs(Number(c.posted.eos_debt_interest) || 0) > 0.5 ||
-          Math.abs(Number(c.posted.eos_ffp) || 0) > 0.5,
+        eos_posted: !!c.eosFinancesClosed,
       };
     });
     const { error } = await supabase.rpc("admin_season_review_publish_finance", { p_rows: rows });

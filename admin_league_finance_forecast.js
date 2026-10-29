@@ -125,11 +125,16 @@ async function loadAllCurrentLedger(supabase) {
 }
 
 async function loadBankEosSettings(supabase) {
-  const settings = { ratePct: 5, ffpThreshold: 100000000, ffpFine: 50000000 };
+  const settings = {
+    ratePct: 5,
+    ffpThreshold: 100000000,
+    ffpFine: 50000000,
+    monthlyInterestEnabled: true,
+  };
   const { data, error } = await supabase
     .from("gpsl_bank_account")
     .select(
-      "eos_debt_interest_pct, policy_interest_rate_pct, eos_ffp_debt_threshold, eos_ffp_flat_fine"
+      "eos_debt_interest_pct, policy_interest_rate_pct, eos_ffp_debt_threshold, eos_ffp_flat_fine, monthly_interest_enabled"
     )
     .eq("id", 1)
     .maybeSingle();
@@ -143,6 +148,9 @@ async function loadBankEosSettings(supabase) {
     if (data.eos_ffp_flat_fine != null) {
       settings.ffpFine = Math.max(0, Number(data.eos_ffp_flat_fine));
     }
+    if (data.monthly_interest_enabled != null) {
+      settings.monthlyInterestEnabled = !!data.monthly_interest_enabled;
+    }
     return settings;
   }
   const { data: pub } = await supabase
@@ -153,6 +161,49 @@ async function loadBankEosSettings(supabase) {
     settings.ratePct = Number(pub.policy_interest_rate_pct);
   }
   return settings;
+}
+
+function parseLedgerMetadata(raw) {
+  if (!raw) return {};
+  if (typeof raw === "object") return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+/** Monthly interest reuses eos_* ledger types with metadata.monthly = true. */
+function isMonthlyInterestLedgerRow(row) {
+  if (!row) return false;
+  const meta = parseLedgerMetadata(row.metadata);
+  if (meta.monthly === true || meta.monthly === "true") return true;
+  const desc = String(row.description || "");
+  // Mid-season month-lock interest copy (not "End of season …")
+  if (/overdraft interest|balance interest/i.test(desc) && !/^End of season/i.test(desc)) {
+    return true;
+  }
+  return false;
+}
+
+/** True end-of-season debt interest only (excludes monthly overdraft interest). */
+function sumTrueEosDebtInterest(clubLedger) {
+  let sum = 0;
+  for (const r of clubLedger || []) {
+    if (r.entry_type !== "eos_debt_interest") continue;
+    if (isMonthlyInterestLedgerRow(r)) continue;
+    sum += Number(r.amount || 0);
+  }
+  return sum;
+}
+
+function sumPostedEosFfp(clubLedger) {
+  let sum = 0;
+  for (const r of clubLedger || []) {
+    if (r.entry_type !== "eos_ffp_charge") continue;
+    sum += Number(r.amount || 0);
+  }
+  return sum;
 }
 
 async function rpcOrNull(supabase, fn, args) {
@@ -365,14 +416,30 @@ export async function buildLeagueFinanceForecast(supabase, opts = {}) {
     ).reduce((s, id) => s + pending[id], 0);
     const preClose = balanceNow + preEosPending;
 
+    // Monthly interest posts as eos_debt_interest with metadata.monthly — that is
+    // NOT end-of-season close. Only true EOS rows (or FFP charge) mean closed.
+    const trueEosDebtPosted = sumTrueEosDebtInterest(clubLedger);
+    const trueEosFfpPosted = sumPostedEosFfp(clubLedger);
+    const seasonStatus = String(season?.status || "").toLowerCase();
+    const seasonStillOpen =
+      seasonStatus === "active" || seasonStatus === "preseason";
+    const eosFinancesClosed =
+      !seasonStillOpen &&
+      (Math.abs(trueEosDebtPosted) > 0.5 || Math.abs(trueEosFfpPosted) > 0.5);
+
     let afterInterest = preClose;
-    if (Math.abs(posted.eos_debt_interest) < 0.5 && preClose < 0) {
+    // While monthly interest is on, skip projecting a second EOS debt charge.
+    const projectEosDebt =
+      !bank.monthlyInterestEnabled &&
+      Math.abs(trueEosDebtPosted) < 0.5 &&
+      preClose < 0;
+    if (projectEosDebt) {
       const interest = Math.round((Math.abs(preClose) * bank.ratePct) / 100);
       pending.eos_debt_interest = -interest;
       afterInterest = preClose - interest;
     }
     if (
-      Math.abs(posted.eos_ffp) < 0.5 &&
+      Math.abs(trueEosFfpPosted) < 0.5 &&
       bank.ffpFine > 0 &&
       afterInterest <= -bank.ffpThreshold
     ) {
@@ -401,7 +468,10 @@ export async function buildLeagueFinanceForecast(supabase, opts = {}) {
       net,
       balanceNow,
       projectedBalance: balanceNow + totalPending,
-      ffpRisk: pending.eos_ffp < 0 || posted.eos_ffp < 0,
+      ffpRisk: pending.eos_ffp < 0 || trueEosFfpPosted < 0,
+      eosFinancesClosed,
+      trueEosDebtPosted,
+      trueEosFfpPosted,
     };
   });
 
