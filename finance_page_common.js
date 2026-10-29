@@ -9,9 +9,10 @@ import {
   formatMoney,
   loadClubBalance,
   loadFinanceLedger,
+  loadFinanceLedgerAll,
   financeEntryLabel,
   isFinanceIncomeEntry,
-} from "./competition.js?v=20261018-clawback-out";
+} from "./competition.js?v=20261029-infra-synth";
 import {
   aggregateLedgerByLine,
   enrichLedgerFineFixtures,
@@ -23,7 +24,7 @@ import {
   appendAssignmentInfraPurchaseLedger,
   ledgerStartingBudget,
   clubHadPriorFinanceSeason,
-} from "./finance_assignment_ledger.js?v=20261029-infra-merge";
+} from "./finance_assignment_ledger.js?v=20261029-infra-synth";
 import {
   aggregateClubTransfersFromHistory,
   loadClubTransferHistoryForSeason,
@@ -727,9 +728,9 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
 
   const balanceRow = await loadClubBalance(supabase, shortName);
   const balanceNow = Number(balanceRow?.balance ?? 0);
-  // Cap is for activity volume; assignment stadium buys are merged back in
-  // via appendAssignmentInfraPurchaseLedger if they fell outside the window.
-  let ledger = await loadFinanceLedger(supabase, shortName, 2500);
+  // Full current-season ledger (paginated). Infra merge/synth still runs as a
+  // safety net when the public view misses the assignment stadium row.
+  let ledger = await loadFinanceLedgerAll(supabase, shortName);
   const currentSeason = await loadCurrentSeasonId(supabase);
   const continuingClub = await clubHadPriorFinanceSeason(
     supabase,
@@ -939,7 +940,7 @@ export async function initFinanceSubPage({
   } else if (seasonView.isHistorical) {
     ledger = [];
   } else {
-    ledger = await loadFinanceLedger(supabase, shortName, 2500);
+    ledger = await loadFinanceLedgerAll(supabase, shortName);
     const currentSeason = await loadCurrentSeasonId(supabase);
     ledger = await appendAssignmentInfraPurchaseLedger(supabase, shortName, ledger, {
       currentSeasonId: currentSeason?.id ?? null,

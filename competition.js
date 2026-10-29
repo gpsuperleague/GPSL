@@ -1854,6 +1854,32 @@ export async function loadFinanceLedger(supabase, clubShortName, limit = 50) {
   return data || [];
 }
 
+/**
+ * Full current-season ledger for a club (paginated past PostgREST 1000-row cap).
+ * Season accounts must not drop early posts (e.g. assignment stadium buy).
+ */
+export async function loadFinanceLedgerAll(supabase, clubShortName) {
+  if (!supabase || !clubShortName) return [];
+  const pageSize = 1000;
+  const rows = [];
+  for (let from = 0; from < 20000; from += pageSize) {
+    const { data, error } = await supabase
+      .from("competition_finance_ledger_public")
+      .select("*")
+      .eq("club_short_name", clubShortName)
+      .order("created_at", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) {
+      console.error("loadFinanceLedgerAll:", error);
+      break;
+    }
+    const batch = data || [];
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+  }
+  return rows;
+}
+
 export async function loadClubSeasonArchive(supabase, clubShortName) {
   const { data, error } = await supabase
     .from("competition_club_season_archive_public")

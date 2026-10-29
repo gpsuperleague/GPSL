@@ -21,7 +21,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20261029-infra-merge";
+} from "./finance_page_common.js?v=20261029-infra-synth";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20261015-short-by";
 import {
   loadListedSaleBids,

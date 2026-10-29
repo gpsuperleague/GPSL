@@ -195,7 +195,7 @@ export async function appendAssignmentInfraPurchaseLedger(
   if (hasInfra) return rows;
 
   // Prefer the real posted row(s) over a synthetic — recovers rows dropped by
-  // the recent-ledger load limit.
+  // the recent-ledger load limit / PostgREST cap.
   const posted = await fetchPostedInfraPurchaseRows(supabase, clubShortName);
   const postedUsable = posted.filter((r) => Math.abs(Number(r.amount) || 0) > 0.5);
   if (postedUsable.length) {
@@ -211,13 +211,19 @@ export async function appendAssignmentInfraPurchaseLedger(
     return rows;
   }
 
-  if (data?.ledger_posted || data?.continuing_club) {
-    return data?.continuing_club ? stripRepeatAssignmentInfraPurchases(rows, true) : rows;
+  if (data?.continuing_club) {
+    return stripRepeatAssignmentInfraPurchases(rows, true);
   }
-  if (!data?.show_in_accounts || Number(data.total_debit) <= 0) return rows;
+
+  // Show a display row whenever we know the stadium debit but can't see it on
+  // the loaded ledger (never posted, wrong season_id, or public-view miss).
+  // Previously ledger_posted short-circuited and left Infrastructure at ₿0.
+  const debit = Number(data?.total_debit) || 0;
+  if (debit <= 0) return rows;
+  if (!data?.show_in_accounts && !data?.ledger_posted) return rows;
 
   const stadiumName = String(data.stadium_name || data.club_name || "Stadium purchase").trim();
-  const amount = -Math.abs(Number(data.total_debit));
+  const amount = -Math.abs(debit);
 
   rows.push({
     entry_type: "infra_purchase",
