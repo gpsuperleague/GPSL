@@ -73,6 +73,8 @@
     .oc-dot--gpsl { background:#f0c14b; }
     .oc-dot--auction { background:#0d9488; }
     .oc-dot--transfer { background:#0284c7; }
+    .oc-dot--video { background:#be185d; }
+    .oc-dot--video_ext { background:#e11d48; }
     .oc-dot--avail { background:#2f6b3a; }
     .oc-layout {
       display:grid;
@@ -135,6 +137,8 @@
     .oc-chip--gpsl { background:rgba(240,193,75,0.2); color:#f0d78a; border-left:2px solid #f0c14b; }
     .oc-chip--auction { background:rgba(13,148,136,0.22); color:#5eead4; border-left:2px solid #0d9488; }
     .oc-chip--transfer { background:rgba(2,132,199,0.22); color:#7dd3fc; border-left:2px solid #0284c7; }
+    .oc-chip--video { background:rgba(190,24,93,0.2); color:#f9a8d4; border-left:2px solid #be185d; }
+    .oc-chip--video_ext { background:rgba(225,29,72,0.22); color:#fda4af; border-left:2px solid #e11d48; }
     .oc-more {
       font-size:10px; color:#6ea8ff; font-weight:600; padding:1px 2px; cursor:pointer;
     }
@@ -171,6 +175,8 @@
     .oc-event-kind--gpsl { background:#f0c14b; }
     .oc-event-kind--auction { background:#0d9488; color:#fff; }
     .oc-event-kind--transfer { background:#0284c7; color:#fff; }
+    .oc-event-kind--video { background:#be185d; color:#fff; }
+    .oc-event-kind--video_ext { background:#e11d48; color:#fff; }
     .oc-event-kind--avail { background:#2f6b3a; color:#dff5e4; }
     .oc-event b { display:block; color:#eee; font-size:13px; margin-bottom:4px; }
     .oc-event .detail { color:#999; font-size:12px; line-height:1.4; }
@@ -190,7 +196,7 @@
     <h1>My Calendar</h1>
     <p class="oc-intro">
       Real-world month in <b>your</b> timezone — agreed kick-offs, Club Wire deadlines,
-      GPSL play-month unlock/lock, planned auctions, transfer windows, and your weekly availability wash.
+      GPSL play-month unlock/lock, planned auctions, transfer windows, match video deadlines, and your weekly availability wash.
       Season structure (Aug–May) stays on
       <a href="season_calendar.html" style="color:var(--gpsl-accent,#ff9900);">Season Calendar</a>.
     </p>
@@ -211,6 +217,8 @@
       <span><i class="oc-dot oc-dot--gpsl"></i> GPSL unlock / lock</span>
       <span><i class="oc-dot oc-dot--auction"></i> Auction</span>
       <span><i class="oc-dot oc-dot--transfer"></i> Transfer window</span>
+      <span><i class="oc-dot oc-dot--video"></i> Video due</span>
+      <span><i class="oc-dot oc-dot--video_ext"></i> Video +24h (missed)</span>
       <span><i class="oc-dot oc-dot--avail"></i> Availability day</span>
     </div>
     <div class="oc-layout">
@@ -233,6 +241,6 @@
       </aside>
     </div>
   </div>
-  <script type="module" src="owner_calendar.js?v=20261029-cal-auctions-tw"></script>
+  <script type="module" src="owner_calendar.js?v=20261029-cal-video-due"></script>
 </body>
 </html>

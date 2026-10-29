@@ -1,7 +1,8 @@
 /**
  * My Calendar — real-world month view for owners (V1).
  * Agreed KOs · Club Wire cutoffs · GPSL unlock/lock · availability wash ·
- * special/planned auctions · transfer window guide + live status.
+ * special/planned auctions · transfer window guide + live status ·
+ * match video upload deadlines (+24h extension only after miss).
  */
 import { supabase, initGlobal, getAuthUserFast } from "./global.js";
 import { GPSL_MONTH_LABELS, CUP_LABELS, DIVISION_LABELS } from "./competition.js";
@@ -55,6 +56,9 @@ let specialAuctions = [];
 let plannedEvents = [];
 /** @type {object|null} */
 let marketSettings = null;
+/** First video-due deadlines computed for played fixtures still missing a video. */
+let videoDeadlines = [];
+let videoGraceHours = 72;
 let selectedYmd = null;
 /** @type {string|null} event key to highlight/scroll in the day panel */
 let focusEventKey = null;
@@ -198,11 +202,14 @@ function fixtureChipHover(f) {
 }
 
 function deadlineChipText(c) {
+  const kind = String(c.kind || "");
+  if (kind === "video_suspend") return "Video +24h";
+  if (kind === "video") return "Video due";
   const t = String(c.title || c.kind || "Deadline");
   if (/reply/i.test(t)) return "Reply";
   if (/propose/i.test(t)) return "Propose";
   if (/check.?in/i.test(t)) return "Check-in";
-  if (/video/i.test(t)) return "Video";
+  if (/video/i.test(t)) return "Video due";
   if (/month.?lock/i.test(t)) return "Month lock";
   if (/late/i.test(t)) return "Late fee";
   return truncateChip(t, 12);
@@ -270,7 +277,30 @@ function eventKindLabel(kind) {
   if (kind === "gpsl") return "GPSL";
   if (kind === "auction") return "AUCTION";
   if (kind === "transfer") return "TRANSFER";
+  if (kind === "video") return "VIDEO";
+  if (kind === "video_ext") return "VIDEO +24h";
   return String(kind || "EVENT").toUpperCase();
+}
+
+function pushVideoCutoffEvent(push, c, kind) {
+  if (!c?.at) return;
+  const day = ymdInTz(c.at, ownerTz);
+  const hhmm = hhmmInTz(c.at, ownerTz);
+  const sort = new Date(c.at).getTime();
+  const isExt = kind === "video_ext";
+  push(day, {
+    key: `${kind}:${c.fixture_id || c.id || sort}`,
+    kind,
+    sort,
+    title: c.title || (isExt ? "Video upload — 24h extension" : "Upload match video"),
+    detail: `${timeInTz(c.at, ownerTz)}${c.detail ? ` — ${c.detail}` : ""}`,
+    href: c.href || (c.fixture_id ? `matchday.html?fixture=${c.fixture_id}` : "dashboard.html"),
+    hrefLabel: "Match Day →",
+    chip: `${hhmm} ${isExt ? "Video +24h" : "Video due"}`,
+    chipTitle: isExt
+      ? "24h point-suspend window — upload to clear the suspended point"
+      : "Match video upload deadline (month lock + grace)",
+  });
 }
 
 /** Build event list keyed by owner-local ymd. */
@@ -313,8 +343,26 @@ function buildEventsByDay() {
     });
   }
 
+  /** Fixtures already in the 24h suspend window — extension only, not a second "due". */
+  const videoExtFixtureIds = new Set();
+  for (const c of cutoffs) {
+    if (c?.kind === "video_suspend" && c.fixture_id != null) {
+      videoExtFixtureIds.add(String(c.fixture_id));
+    }
+  }
+
   for (const c of cutoffs) {
     if (!c?.at) continue;
+    if (c.kind === "video_suspend") {
+      // Only visible after missing the first deadline (Club Wire sets pts_status=suspended).
+      pushVideoCutoffEvent(push, c, "video_ext");
+      continue;
+    }
+    if (c.kind === "video") {
+      if (c.fixture_id != null && videoExtFixtureIds.has(String(c.fixture_id))) continue;
+      pushVideoCutoffEvent(push, c, "video");
+      continue;
+    }
     const day = ymdInTz(c.at, ownerTz);
     const hhmm = hhmmInTz(c.at, ownerTz);
     const sort = new Date(c.at).getTime();
@@ -328,6 +376,19 @@ function buildEventsByDay() {
       hrefLabel: "Open →",
       chip: `${hhmm} ${deadlineChipText(c)}`,
     });
+  }
+
+  const videoDueSeen = new Set(
+    cutoffs
+      .filter((c) => c?.kind === "video" && c.fixture_id != null)
+      .map((c) => String(c.fixture_id))
+  );
+  for (const v of videoDeadlines) {
+    if (!v?.at || v.fixture_id == null) continue;
+    const fid = String(v.fixture_id);
+    if (videoExtFixtureIds.has(fid) || videoDueSeen.has(fid)) continue;
+    videoDueSeen.add(fid);
+    pushVideoCutoffEvent(push, v, "video");
   }
 
   for (const m of seasonMonths) {
@@ -645,6 +706,7 @@ function monthSelectBounds() {
   }
   for (const f of fixtures || []) considerIso(f.agreed_kickoff_at);
   for (const c of cutoffs || []) considerIso(c?.at);
+  for (const v of videoDeadlines || []) considerIso(v?.at);
   for (const a of specialAuctions || []) {
     considerIso(a.start_time);
     considerIso(a.end_time);
@@ -929,6 +991,96 @@ async function loadCutoffs() {
   return Array.isArray(data?.cutoffs) ? data.cutoffs : [];
 }
 
+async function resolveVideoGraceHours() {
+  try {
+    const { data, error } = await supabase.rpc("match_video_missing_fine_grace_hours");
+    if (!error && Number.isFinite(Number(data)) && Number(data) > 0) {
+      return Number(data);
+    }
+  } catch {
+    /* default */
+  }
+  return 72;
+}
+
+/**
+ * First video-upload deadlines for played fixtures still missing our side's video.
+ * Due = GPSL month lock + grace hours. Does NOT invent the +24h extension —
+ * that only appears from Club Wire once a point is suspended (missed first due).
+ */
+async function loadVideoDeadlines() {
+  const me = (myClub.short || "").trim().toUpperCase();
+  if (!me) return [];
+
+  videoGraceHours = await resolveVideoGraceHours();
+
+  const { data: rows, error } = await supabase
+    .from("competition_fixtures_public")
+    .select(
+      "id, home_club_short_name, away_club_short_name, status, gpsl_month, competition_type"
+    )
+    .eq("status", "played");
+  if (error) {
+    console.warn("owner_calendar video fixtures:", error);
+    return [];
+  }
+
+  const mine = (rows || []).filter((f) => {
+    const h = (f.home_club_short_name || "").trim().toUpperCase();
+    const a = (f.away_club_short_name || "").trim().toUpperCase();
+    return h === me || a === me;
+  });
+  if (!mine.length) return [];
+
+  const ids = mine.map((f) => f.id);
+  const { data: vids, error: vidErr } = await supabase
+    .from("fixture_match_videos")
+    .select("fixture_id, side")
+    .in("fixture_id", ids);
+  if (vidErr) console.warn("owner_calendar fixture_match_videos:", vidErr);
+
+  const hasVideo = new Set();
+  for (const v of vids || []) {
+    hasVideo.add(`${v.fixture_id}:${v.side}`);
+  }
+
+  const lockByMonth = new Map();
+  for (const m of seasonMonths || []) {
+    const key = String(m.gpsl_month || "").toLowerCase();
+    if (key && m.lock_at) lockByMonth.set(key, m.lock_at);
+  }
+
+  const now = Date.now();
+  const out = [];
+  for (const f of mine) {
+    const home = (f.home_club_short_name || "").trim().toUpperCase();
+    const side = home === me ? "home" : "away";
+    if (hasVideo.has(`${f.id}:${side}`)) continue;
+
+    const monthKey = String(f.gpsl_month || "").toLowerCase();
+    const lockAt = lockByMonth.get(monthKey);
+    if (!lockAt) continue;
+
+    const dueMs = new Date(lockAt).getTime() + videoGraceHours * 3600_000;
+    if (!Number.isFinite(dueMs)) continue;
+    // Drop stale dues (>7d overdue) — extension chip covers the active suspend window.
+    if (dueMs < now - 7 * 86400_000) continue;
+
+    const oppShort =
+      side === "home" ? f.away_club_short_name : f.home_club_short_name;
+    const opp = clubFull(oppShort, null);
+    out.push({
+      fixture_id: f.id,
+      kind: "video",
+      at: new Date(dueMs).toISOString(),
+      title: `Upload match video vs ${opp}`,
+      detail: `Due ${videoGraceHours}h after GPSL ${monthKey || "month"} lock. Discord upload with Match Day filename (+₿200k). Miss this and a point is suspended for 24h.`,
+      href: `matchday.html?fixture=${encodeURIComponent(String(f.id))}`,
+    });
+  }
+  return out;
+}
+
 async function loadPlannedAuctionEvents() {
   const { data, error } = await supabase
     .from("gpsl_planned_events")
@@ -1048,6 +1200,10 @@ async function boot() {
     specialAuctions = auctions || [];
     plannedEvents = planned || [];
     marketSettings = settings;
+    videoDeadlines = await loadVideoDeadlines().catch((e) => {
+      console.warn(e);
+      return [];
+    });
 
     selectedYmd = todayYmd(ownerTz);
     const [y, m] = selectedYmd.split("-").map(Number);
