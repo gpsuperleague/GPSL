@@ -22,7 +22,10 @@ import {
   isSelectableKickoffSlot,
   formatOwnerNowLine,
   formatResponseDeadlineLine,
-} from "./match_scheduling.js";
+  dateFromZonedDateTimeLocal,
+  zonedDateTimeLocalValue,
+  snapToUkHalfHourSlot,
+} from "./match_scheduling.js?v=20261029-poke";
 import {
   loadFixtureUnavailable,
   formatFixtureUnavailableBannerHtml,
@@ -184,6 +187,115 @@ function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, o
   }
 
   return count;
+}
+
+function setPokeSelection(iso, { homeTz, awayTz, ownerTz, clearLists = true } = {}) {
+  selectedKickoff = iso || null;
+  const proposeBtn = document.getElementById("proposeBtn");
+  if (proposeBtn) proposeBtn.disabled = !selectedKickoff;
+  const preview = document.getElementById("pokePreview");
+  const dt = document.getElementById("pokeDateTime");
+  if (preview) {
+    if (selectedKickoff) {
+      preview.hidden = false;
+      preview.innerHTML = `Poke will send: <span class="kickoff-line">${formatKickoffPair(
+        selectedKickoff,
+        homeTz,
+        awayTz
+      )}</span>`;
+    } else {
+      preview.hidden = true;
+      preview.textContent = "";
+    }
+  }
+  if (dt && selectedKickoff) {
+    dt.value = zonedDateTimeLocalValue(selectedKickoff, ownerTz);
+  }
+  if (clearLists) {
+    document
+      .querySelectorAll("#oppSlotList .slot-btn, #ownSlotList .slot-btn")
+      .forEach((b) => b.classList.remove("selected"));
+  }
+}
+
+function wirePokePanel({
+  homeTz,
+  awayTz,
+  ownerTz,
+  oppTz,
+  selectableOppSlots,
+  selectableOwnSlots,
+}) {
+  const oppList = document.getElementById("oppSlotList");
+  const ownList = document.getElementById("ownSlotList");
+  const dt = document.getElementById("pokeDateTime");
+  const useBtn = document.getElementById("pokeUseBtn");
+
+  if (oppList) {
+    appendKickoffSlotButtons(oppList, selectableOppSlots, {
+      homeTz,
+      awayTz,
+      // Primary line = opponent's local clock
+      ownerTz: oppTz || awayTz,
+      onSelect: (iso, btn, list) => {
+        setPokeSelection(iso, { homeTz, awayTz, ownerTz, clearLists: false });
+        list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+        document
+          .querySelectorAll("#ownSlotList .slot-btn")
+          .forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+      },
+    });
+  }
+
+  if (ownList) {
+    appendKickoffSlotButtons(ownList, selectableOwnSlots, {
+      homeTz,
+      awayTz,
+      ownerTz,
+      onSelect: null, // comparison only
+    });
+  }
+
+  if (dt && !dt.value) {
+    const first =
+      selectableOppSlots[0] ||
+      selectableOwnSlots[0] ||
+      null;
+    if (first) {
+      dt.value = zonedDateTimeLocalValue(first, ownerTz);
+    }
+  }
+
+  const applyFreeTime = () => {
+    if (!dt?.value) {
+      setStatus("Pick a date and time first.", true);
+      return;
+    }
+    const raw = dateFromZonedDateTimeLocal(dt.value, ownerTz);
+    if (!raw) {
+      setStatus("Could not read that date/time.", true);
+      return;
+    }
+    const snapped = snapToUkHalfHourSlot(raw);
+    if (!snapped) {
+      setStatus("Could not snap to a UK 30‑minute kick-off.", true);
+      return;
+    }
+    if (!isSelectableKickoffSlot(snapped.toISOString(), ownerTz)) {
+      setStatus("That kick-off is in the past — pick a future time.", true);
+      return;
+    }
+    setPokeSelection(snapped.toISOString(), { homeTz, awayTz, ownerTz });
+    setStatus("");
+  };
+
+  if (useBtn) useBtn.onclick = applyFreeTime;
+  if (dt) {
+    dt.addEventListener("change", () => {
+      if (dt.value) applyFreeTime();
+    });
+  }
 }
 
 /** Pending mutual / Discord-lock confirm panel (works before or after agreed). */
@@ -857,19 +969,36 @@ function render() {
     ? ctx.intersection_slots
     : [];
   const ownSlots = Array.isArray(ctx.my_window_slots) ? ctx.my_window_slots : [];
+  const oppSlots = Array.isArray(ctx.opp_window_slots) ? ctx.opp_window_slots : [];
   const homeTz = ctx.home_timezone || UK_TZ;
   const awayTz = ctx.away_timezone || UK_TZ;
   const ownerTz = ctx.my_timezone || UK_TZ;
+  const oppTz =
+    ctx.my_role === "home" ? awayTz : ctx.my_role === "away" ? homeTz : awayTz;
+  const oppClubShort =
+    ctx.my_role === "home"
+      ? f.away_club_short_name
+      : ctx.my_role === "away"
+        ? f.home_club_short_name
+        : f.away_club_short_name;
   // Prefer times free for BOTH clubs (each in their own timezone). Away waiting
   // for home's first propose can still see own slots for reference.
   const isAwayWaitingPreview =
     ctx.my_role === "away" &&
     !(ctx.can_propose_first || ctx.can_respond) &&
     !ctx.pending_proposal;
+  const futureIntersection = filterSelectableKickoffSlots(intersectionSlots, ownerTz);
+  const pokeAllowed =
+    ctx.poke_allowed === true ||
+    (ctx.poke_allowed == null && futureIntersection.length === 0);
   const slots = isAwayWaitingPreview ? ownSlots : intersectionSlots;
   const usingCompatibleSlots = !isAwayWaitingPreview;
+  const usingPoke =
+    !isAwayWaitingPreview && pokeAllowed && futureIntersection.length === 0;
   const selectableSlots = filterSelectableKickoffSlots(slots, ownerTz);
   const pastHidden = slots.length - selectableSlots.length;
+  const selectableOppSlots = filterSelectableKickoffSlots(oppSlots, ownerTz);
+  const selectableOwnSlots = filterSelectableKickoffSlots(ownSlots, ownerTz);
   const responseLine = formatResponseDeadlineLine(ctx.response_deadline, myClub.short);
   const responseHtml = responseLine
     ? `<p class="meta" style="color:${ctx.response_deadline?.overdue && ctx.response_deadline?.my_turn ? "#f88" : "#fc6"};">${responseLine}</p>`
@@ -888,6 +1017,16 @@ function render() {
   if (pending) {
     const fromOpponent = pending.proposed_by_club_short_name !== myClub.short;
     const pendingStillValid = isSelectableKickoffSlot(pending.kickoff_at, ownerTz);
+    const pendingInMySlots = selectableOwnSlots.some(
+      (iso) => String(iso) === String(pending.kickoff_at)
+    );
+    const pokeIncomingNote =
+      fromOpponent &&
+      pokeAllowed &&
+      !pendingInMySlots &&
+      pendingStillValid
+        ? `<p class="meta" style="color:#fc6;">This looks like an <b>availability poke</b> (outside mutual weekly slots). Accept if you can make it, counter with another time, or update your availability on Owner Details.</p>`
+        : "";
     pendingHtml = `
       <div class="panel">
         <h2>Pending proposal</h2>
@@ -896,6 +1035,7 @@ function render() {
           <b>${fullClubName(pending.proposed_by_club_short_name)}</b> proposed
           <span class="kickoff-line">${formatKickoffPair(pending.kickoff_at, homeTz, awayTz)}</span>
         </p>
+        ${pokeIncomingNote}
         ${unavailablePanelHtml(f)}
         ${
           !pendingStillValid
@@ -962,18 +1102,59 @@ function render() {
   const isAwayWaiting = ctx.my_role === "away" && !canPick;
   const slotIntro = isAwayWaiting
     ? `Waiting for <b>${fullClubName(f.home_club_short_name)}</b> (home) to propose first — slot buttons below are for reference only and won’t select. Once they propose you can accept or counter (${slotCountLine}). If you already agreed off-site, use the <b>Agreed on Discord</b> tab.`
-    : ctx.can_respond
-      ? `Accept the proposed time above, or counter with another time free for <b>both</b> clubs in your local timezones (${slotCountLine}).`
-      : usingCompatibleSlots
-        ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). Then press Propose kick-off (${slotCountLine}).`
-        : `Pick a 30-minute block from available times (${slotCountLine}).`;
+    : usingPoke
+      ? `No mutual times this window. <b>Poke</b> a kick-off (free date/time) — see the opponent’s availability below (in <b>their</b> timezone) so you can aim close to something they already offer. Same accept / counter / reply rules after you send.`
+      : ctx.can_respond
+        ? `Accept the proposed time above, or counter with another time free for <b>both</b> clubs in your local timezones (${slotCountLine}).`
+        : usingCompatibleSlots
+          ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). Then press Propose kick-off (${slotCountLine}).`
+          : `Pick a 30-minute block from available times (${slotCountLine}).`;
 
-  const emptySlotsMsg = !selectableSlots.length
-    ? slots.length
-      ? '<p class="meta" style="color:#f88;">All listed slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
-      : usingCompatibleSlots
-        ? '<p class="meta" style="color:#f88;">No overlapping times this window — both clubs need weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a> in their own timezones that share a common world kick-off (or free a time already booked).</p>'
-        : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a>, or free a time already booked for another match.</p>'
+  const emptySlotsMsg = usingPoke
+    ? ""
+    : !selectableSlots.length
+      ? slots.length
+        ? '<p class="meta" style="color:#f88;">All listed slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
+        : usingCompatibleSlots
+          ? '<p class="meta" style="color:#f88;">No overlapping times this window — both clubs need weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a> in their own timezones that share a common world kick-off (or free a time already booked).</p>'
+          : '<p class="meta" style="color:#f88;">No slots in this window — set weekly availability on <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">Owner Details</a>, or free a time already booked for another match.</p>'
+      : "";
+
+  const pokePanelHtml = usingPoke && canPick
+    ? `
+      <div class="poke-panel" id="pokePanel">
+        <h3 class="poke-heading">Opponent availability · ${escapeHtmlLite(
+          fullClubName(oppClubShort) || oppClubShort || "Opponent"
+        )} (${escapeHtmlLite(tzDisplayName(oppTz))})</h3>
+        <p class="meta">Read their times in <b>their</b> timezone (your clock on the second line). Click one to start from it, or enter any free date/time below.</p>
+        <div class="slot-list" id="oppSlotList"></div>
+        ${
+          selectableOppSlots.length
+            ? ""
+            : `<p class="meta" style="color:#fc6;">They have no free slots in this window — ask them to set weekly availability on Owner Details, or poke any valid GPSL time anyway.</p>`
+        }
+        <h3 class="poke-heading">Your availability (comparison)</h3>
+        <div class="slot-list" id="ownSlotList"></div>
+        ${
+          selectableOwnSlots.length
+            ? ""
+            : `<p class="meta" style="color:#fc6;">You have no free slots listed — still free to poke a time, or <a href="owner_details.html" style="color:var(--gpsl-accent, #ff9900);">set availability</a>.</p>`
+        }
+        <h3 class="poke-heading">Poke date &amp; time (${escapeHtmlLite(
+          tzDisplayName(ownerTz)
+        )})</h3>
+        <p class="meta">Any future time in the GPSL month window. Snapped to a UK 30‑minute kick-off boundary.</p>
+        <div class="poke-free-row">
+          <input type="datetime-local" id="pokeDateTime" step="1800" />
+          <button type="button" id="pokeUseBtn" class="button secondary">Use this time</button>
+        </div>
+        <p class="meta" id="pokePreview" hidden></p>
+        <div class="actions">
+          <button type="button" id="proposeBtn" class="button" disabled>${
+            ctx.can_respond ? "Send poke counter" : "Send poke"
+          }</button>
+        </div>
+      </div>`
     : "";
 
   const mo = ctx.mutual_override;
@@ -985,9 +1166,11 @@ function render() {
 
   const gpslSlotsHeading = isAwayWaiting
     ? "Your availability (for reference)"
-    : usingCompatibleSlots
-      ? "Kick-off times both clubs can play"
-      : "Available slots";
+    : usingPoke
+      ? "No mutual slots — poke a time"
+      : usingCompatibleSlots
+        ? "Kick-off times both clubs can play"
+        : "Available slots";
 
   const gpslSlotBody = `
       <h2>${showDiscordTab ? "GPSL Match Scheduling" : gpslSlotsHeading}</h2>
@@ -996,21 +1179,27 @@ function render() {
           ? `<p class="meta">${
               isAwayWaiting
                 ? "Normal GPSL flow — home proposes from times free for both clubs; you can accept or counter later."
-                : usingCompatibleSlots
-                  ? "Normal GPSL flow — pick a kick-off free for both clubs (each owner’s availability in their timezone), then propose or counter."
-                  : "Normal GPSL flow — pick a 30-minute block from available times, then propose."
+                : usingPoke
+                  ? "No overlapping weekly times — send an availability poke (free date/time). Opponent still accepts or counters here; Discord remains an off-site option."
+                  : usingCompatibleSlots
+                    ? "Normal GPSL flow — pick a kick-off free for both clubs (each owner’s availability in their timezone), then propose or counter."
+                    : "Normal GPSL flow — pick a 30-minute block from available times, then propose."
             }</p>`
           : ""
       }
       <p class="meta">${slotIntro}</p>
       ${emptySlotsMsg}
-      <div class="slot-list" id="slotList"></div>
+      ${
+        usingPoke
+          ? pokePanelHtml || waitingForHomeHtml
+          : `<div class="slot-list" id="slotList"></div>
       ${
         canPick && selectableSlots.length
           ? `<div class="actions">
               <button type="button" id="proposeBtn" class="button" disabled>${proposeLabel}</button>
             </div>`
           : waitingForHomeHtml
+      }`
       }
   `;
 
@@ -1080,7 +1269,12 @@ function render() {
 
   if (showDiscordTab) {
     wireScheduleModeTabs("gpsl");
-    wireDiscordLockPanel(slots, homeTz, awayTz, ownerTz);
+    wireDiscordLockPanel(
+      usingPoke ? ownSlots : slots,
+      homeTz,
+      awayTz,
+      ownerTz
+    );
   }
   if (mutualPendingHtml) {
     wireMutualPendingButtons();
@@ -1114,19 +1308,34 @@ function render() {
     }
   }
 
+  if (usingPoke && canPick) {
+    wirePokePanel({
+      homeTz,
+      awayTz,
+      ownerTz,
+      oppTz,
+      selectableOppSlots,
+      selectableOwnSlots,
+    });
+  }
+
   const proposeBtn = document.getElementById("proposeBtn");
   if (proposeBtn) {
     proposeBtn.onclick = async () => {
       if (!selectedKickoff) return;
       proposeBtn.disabled = true;
-      setStatus("Sending proposal…");
+      setStatus(usingPoke ? "Sending poke…" : "Sending proposal…");
       const res = await proposeKickoff(fixtureId, selectedKickoff);
       if (!res.ok) {
         setStatus(res.msg, true);
         proposeBtn.disabled = false;
         return;
       }
-      setStatus("Proposal sent — check your inbox.");
+      setStatus(
+        usingPoke
+          ? "Poke sent — opponent can accept or counter (reply clock running)."
+          : "Proposal sent — check your inbox."
+      );
       await reload();
     };
   }

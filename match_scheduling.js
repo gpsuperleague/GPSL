@@ -348,6 +348,79 @@ export function filterSelectableKickoffSlots(slots, ownerTimezone = UK_TZ) {
   return (slots || []).filter((iso) => isSelectableKickoffSlot(iso, ownerTimezone));
 }
 
+/** Wall-clock Y/M/D/H/M in a timezone. */
+function zonedYmdHm(date, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timeZone || UK_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const pick = (type) => parts.find((p) => p.type === type)?.value || "00";
+  let hour = pick("hour");
+  if (hour === "24") hour = "00";
+  return {
+    y: Number(pick("year")),
+    mo: Number(pick("month")),
+    d: Number(pick("day")),
+    h: Number(hour),
+    mi: Number(pick("minute")),
+  };
+}
+
+/**
+ * datetime-local value (wall clock in `timeZone`) → Date (UTC instant).
+ * Used for Schedule “poke” free date/time entry.
+ */
+export function dateFromZonedDateTimeLocal(localValue, timeZone = UK_TZ) {
+  const m = String(localValue || "").match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/
+  );
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const h = Number(m[4]);
+  const mi = Number(m[5]);
+  const tz = timeZone || UK_TZ;
+  let utc = Date.UTC(y, mo - 1, d, h, mi, 0);
+  for (let i = 0; i < 4; i++) {
+    const got = zonedYmdHm(new Date(utc), tz);
+    const wantMs = Date.UTC(y, mo - 1, d, h, mi, 0);
+    const gotMs = Date.UTC(got.y, got.mo - 1, got.d, got.h, got.mi, 0);
+    const diff = wantMs - gotMs;
+    if (diff === 0) break;
+    utc += diff;
+  }
+  const out = new Date(utc);
+  return Number.isNaN(out.getTime()) ? null : out;
+}
+
+/** ISO instant → datetime-local string in `timeZone`. */
+export function zonedDateTimeLocalValue(isoOrDate, timeZone = UK_TZ) {
+  const d = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = zonedYmdHm(d, timeZone || UK_TZ);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${p.y}-${pad(p.mo)}-${pad(p.d)}T${pad(p.h)}:${pad(p.mi)}`;
+}
+
+/**
+ * Snap to a UK 30-minute GPSL kick-off boundary (floor).
+ * @returns {Date|null}
+ */
+export function snapToUkHalfHourSlot(isoOrDate) {
+  const d = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+  if (Number.isNaN(d.getTime())) return null;
+  const uk = zonedYmdHm(d, UK_TZ);
+  const snappedMi = uk.mi < 30 ? 0 : 30;
+  const local = `${uk.y}-${String(uk.mo).padStart(2, "0")}-${String(uk.d).padStart(2, "0")}T${String(uk.h).padStart(2, "0")}:${String(snappedMi).padStart(2, "0")}`;
+  return dateFromZonedDateTimeLocal(local, UK_TZ);
+}
+
 export function formatOwnerNowLine(ownerTimezone = UK_TZ) {
   const tz = ownerTimezone || UK_TZ;
   const now = new Date();

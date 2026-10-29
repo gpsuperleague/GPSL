@@ -154,6 +154,21 @@
       background:#151820; border:1px solid #446; border-radius:8px;
       padding:14px 16px;
     }
+    .poke-panel {
+      margin-top:12px; padding:12px 14px; border:1px solid #664;
+      border-radius:8px; background:#1a1810;
+    }
+    .poke-heading {
+      margin:14px 0 6px; font-size:13px; color:#fc6; font-weight:600;
+    }
+    .poke-panel .poke-heading:first-child { margin-top:0; }
+    .poke-free-row {
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;
+    }
+    .poke-free-row input[type="datetime-local"] {
+      background:#222; border:1px solid #555; color:#eee; border-radius:6px;
+      padding:8px 10px; font-size:13px;
+    }
   </style>
 </head>
 <body>
@@ -170,6 +185,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261028-unavail"></script>
+  <script type="module" src="fixture_schedule.js?v=20261029-poke"></script>
 </body>
 </html>
