@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261029-cw-fullname-owner";
+export const APP_VERSION = "20261029-oc-ics";

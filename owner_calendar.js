@@ -24,9 +24,46 @@ import {
 } from "./owner_holidays.js";
 import {
   downloadIcs,
+  buildVEvent,
   fixtureKickoffEvent,
   fixtureKickoffFilename,
 } from "./calendar_ics.js";
+
+const CAL_MARKER_MS = 15 * 60 * 1000;
+const CAL_AUCTION_OPEN_MS = 60 * 60 * 1000;
+
+/** Attach .ics fields for day-panel “Add to calendar”. */
+function withCal(ev, startAt, opts = {}) {
+  if (!startAt || !ev) return ev;
+  const t = new Date(startAt).getTime();
+  if (!Number.isFinite(t)) return ev;
+  return {
+    ...ev,
+    startAt,
+    canAddToCalendar: true,
+    calEndAt: opts.endAt || null,
+    calDurationMs: opts.durationMs ?? null,
+    calUid: opts.uid || `gpsl-oc-${String(ev.key || "event").replace(/[^a-zA-Z0-9:_-]+/g, "-")}@gpsl`,
+  };
+}
+
+function absoluteHref(href) {
+  if (!href) return "";
+  try {
+    return new URL(href, window.location.href).href;
+  } catch {
+    return href;
+  }
+}
+
+function safeIcsFilename(label) {
+  const safe = String(label || "gpsl-event")
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  return `${safe || "gpsl-event"}.ics`;
+}
 
 const UK = UK_TZ || "Europe/London";
 const DOW_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -360,17 +397,24 @@ function holidayEventFromRow(h) {
   else if (h.is_upcoming) status = "Upcoming";
   else if (h.is_ended) status = "Ended";
   else if (h.is_effective === false) status = "Not counting toward fines (inactive)";
-  return {
-    key: `holiday:${h.id}`,
-    kind: "holiday",
-    sort: new Date(h.starts_at).getTime(),
-    title: `Owner holiday · ${days} day${days === 1 ? "" : "s"}`,
-    detail: `${range} · ${status}`,
-    href: "owner_details.html",
-    hrefLabel: "Manage holidays →",
-    chip: h.is_active ? "On holiday" : "Holiday",
-    chipTitle: `Owner holiday ${range}`,
-  };
+  return withCal(
+    {
+      key: `holiday:${h.id}`,
+      kind: "holiday",
+      sort: new Date(h.starts_at).getTime(),
+      title: `Owner holiday · ${days} day${days === 1 ? "" : "s"}`,
+      detail: `${range} · ${status}`,
+      href: "owner_details.html",
+      hrefLabel: "Manage holidays →",
+      chip: h.is_active ? "On holiday" : "Holiday",
+      chipTitle: `Owner holiday ${range}`,
+    },
+    h.starts_at,
+    {
+      endAt: h.ends_at || null,
+      uid: `gpsl-owner-holiday-${h.id}@gpsl`,
+    }
+  );
 }
 
 function rebuildHolidayYmds() {
@@ -402,21 +446,33 @@ function pushVideoCutoffEvent(push, c, kind) {
     : oppLabel
       ? `Video ${oppLabel}`
       : "Video due";
-  push(day, {
-    key: `${kind}:${c.fixture_id || c.id || sort}`,
-    kind,
-    sort,
-    title,
-    detail: `${timeInTz(c.at, ownerTz)}${
-      c.detail ? ` — ${expandShortsInLabel(c.detail)}` : ""
-    }`,
-    href: c.href || (c.fixture_id ? `matchday.html?fixture=${c.fixture_id}` : "dashboard.html"),
-    hrefLabel: "Match Day →",
-    chip: `${hhmm} ${chipCore}`,
-    chipTitle: isExt
-      ? "24h point-suspend window — upload to clear the suspended point"
-      : "Match video upload deadline (month lock + grace)",
-  });
+  push(
+    day,
+    withCal(
+      {
+        key: `${kind}:${c.fixture_id || c.id || sort}`,
+        kind,
+        sort,
+        title,
+        detail: `${timeInTz(c.at, ownerTz)}${
+          c.detail ? ` — ${expandShortsInLabel(c.detail)}` : ""
+        }`,
+        href:
+          c.href ||
+          (c.fixture_id ? `matchday.html?fixture=${c.fixture_id}` : "dashboard.html"),
+        hrefLabel: "Match Day →",
+        chip: `${hhmm} ${chipCore}`,
+        chipTitle: isExt
+          ? "24h point-suspend window — upload to clear the suspended point"
+          : "Match video upload deadline (month lock + grace)",
+      },
+      c.at,
+      {
+        durationMs: CAL_MARKER_MS,
+        uid: `gpsl-video-${kind}-${c.fixture_id || sort}@gpsl`,
+      }
+    )
+  );
 }
 
 /** Build event list keyed by owner-local ymd. */
@@ -443,22 +499,28 @@ function buildEventsByDay() {
     if (!f.agreed_kickoff_at) continue;
     const day = ymdInTz(f.agreed_kickoff_at, ownerTz);
     const hhmm = hhmmInTz(f.agreed_kickoff_at, ownerTz);
-    push(day, {
-      key: `match:${f.id}`,
-      kind: "match",
-      sort: new Date(f.agreed_kickoff_at).getTime(),
-      title: fixtureTitle(f),
-      detail: `${timeInTz(f.agreed_kickoff_at, ownerTz)} · ${
-        f.status === "played" ? "Played" : "Agreed kick-off"
-      }`,
-      href: fixtureHref(f),
-      hrefLabel: f.status === "played" ? "Match Day →" : "Match Day / schedule →",
-      chip: `${hhmm} ${fixtureChipText(f)}`,
-      chipTitle: fixtureChipHover(f),
-      ownerLine: fixtureOppOwnerLine(f),
-      fixtureId: f.id,
-      canAddToCalendar: true,
-    });
+    push(
+      day,
+      withCal(
+        {
+          key: `match:${f.id}`,
+          kind: "match",
+          sort: new Date(f.agreed_kickoff_at).getTime(),
+          title: fixtureTitle(f),
+          detail: `${timeInTz(f.agreed_kickoff_at, ownerTz)} · ${
+            f.status === "played" ? "Played" : "Agreed kick-off"
+          }`,
+          href: fixtureHref(f),
+          hrefLabel: f.status === "played" ? "Match Day →" : "Match Day / schedule →",
+          chip: `${hhmm} ${fixtureChipText(f)}`,
+          chipTitle: fixtureChipHover(f),
+          ownerLine: fixtureOppOwnerLine(f),
+          fixtureId: f.id,
+        },
+        f.agreed_kickoff_at,
+        { uid: `gpsl-fixture-${f.id}@gpsl` }
+      )
+    );
   }
 
   /** Fixtures already in the 24h suspend window — extension only, not a second "due". */
@@ -485,18 +547,28 @@ function buildEventsByDay() {
     const hhmm = hhmmInTz(c.at, ownerTz);
     const sort = new Date(c.at).getTime();
     const title = expandShortsInLabel(c.title || "Deadline");
-    push(day, {
-      key: `deadline:${sort}:${c.kind || c.title || ""}`,
-      kind: "deadline",
-      sort,
-      title,
-      detail: `${timeInTz(c.at, ownerTz)}${
-        c.detail ? ` — ${expandShortsInLabel(c.detail)}` : ""
-      }`,
-      href: c.href || "dashboard.html",
-      hrefLabel: "Open →",
-      chip: `${hhmm} ${deadlineChipText({ ...c, title })}`,
-    });
+    push(
+      day,
+      withCal(
+        {
+          key: `deadline:${sort}:${c.kind || c.title || ""}`,
+          kind: "deadline",
+          sort,
+          title,
+          detail: `${timeInTz(c.at, ownerTz)}${
+            c.detail ? ` — ${expandShortsInLabel(c.detail)}` : ""
+          }`,
+          href: c.href || "dashboard.html",
+          hrefLabel: "Open →",
+          chip: `${hhmm} ${deadlineChipText({ ...c, title })}`,
+        },
+        c.at,
+        {
+          durationMs: CAL_MARKER_MS,
+          uid: `gpsl-deadline-${c.kind || "x"}-${c.fixture_id || sort}@gpsl`,
+        }
+      )
+    );
   }
 
   const videoDueSeen = new Set(
@@ -534,87 +606,147 @@ function buildEventsByDay() {
     if (m.unlock_at) {
       const day = ymdInTz(m.unlock_at, ownerTz);
       const hhmm = hhmmInTz(m.unlock_at, ownerTz);
-      push(day, {
-        key: `gpsl:unlock:${monthKey}`,
-        kind: "gpsl",
-        sort: new Date(m.unlock_at).getTime(),
-        title: `GPSL ${label} unlocks`,
-        detail: `${timeInTz(m.unlock_at, ownerTz)} · play month opens (UK lock cycle: ${formatUkDateTime(m.unlock_at)} UK)`,
-        href: "season_calendar.html",
-        hrefLabel: "Season Calendar →",
-        chip: `${hhmm} Unlock`,
-      });
+      push(
+        day,
+        withCal(
+          {
+            key: `gpsl:unlock:${monthKey}`,
+            kind: "gpsl",
+            sort: new Date(m.unlock_at).getTime(),
+            title: `GPSL ${label} unlocks`,
+            detail: `${timeInTz(m.unlock_at, ownerTz)} · play month opens (UK lock cycle: ${formatUkDateTime(m.unlock_at)} UK)`,
+            href: "season_calendar.html",
+            hrefLabel: "Season Calendar →",
+            chip: `${hhmm} Unlock`,
+          },
+          m.unlock_at,
+          {
+            durationMs: CAL_MARKER_MS,
+            uid: `gpsl-month-${monthKey}-unlock@gpsl`,
+          }
+        )
+      );
 
       if (monthKey === "pre_season" || monthKey === "june") {
-        push(day, {
-          key: `transfer:guide:open:${monthKey}`,
-          kind: "transfer",
-          sort: new Date(m.unlock_at).getTime() + 1,
-          title:
-            monthKey === "pre_season"
-              ? "Pre-season transfer window (guide)"
-              : "Summer transfer window opens (guide)",
-          detail:
-            "Season guide: transfers are normally open pre-season through August (and again in January). Live open/closed is admin-controlled — confirm on Transfer Centre.",
-          href: "transfer_center.html",
-          hrefLabel: "Transfer Centre →",
-          chip: `${hhmm} Transfers`,
-          chipTitle: "Transfer window (season guide)",
-        });
+        push(
+          day,
+          withCal(
+            {
+              key: `transfer:guide:open:${monthKey}`,
+              kind: "transfer",
+              sort: new Date(m.unlock_at).getTime() + 1,
+              title:
+                monthKey === "pre_season"
+                  ? "Pre-season transfer window (guide)"
+                  : "Summer transfer window opens (guide)",
+              detail:
+                "Season guide: transfers are normally open pre-season through August (and again in January). Live open/closed is admin-controlled — confirm on Transfer Centre.",
+              href: "transfer_center.html",
+              hrefLabel: "Transfer Centre →",
+              chip: `${hhmm} Transfers`,
+              chipTitle: "Transfer window (season guide)",
+            },
+            m.unlock_at,
+            {
+              durationMs: CAL_MARKER_MS,
+              uid: `gpsl-transfer-guide-open-${monthKey}@gpsl`,
+            }
+          )
+        );
       } else if (monthKey === "january") {
-        push(day, {
-          key: "transfer:guide:open:january",
-          kind: "transfer",
-          sort: new Date(m.unlock_at).getTime() + 1,
-          title: "January transfer window opens (guide)",
-          detail:
-            "Season guide: January transfer window. Live open/closed is admin-controlled — confirm on Transfer Centre.",
-          href: "transfer_center.html",
-          hrefLabel: "Transfer Centre →",
-          chip: `${hhmm} Transfers`,
-          chipTitle: "January transfer window (season guide)",
-        });
+        push(
+          day,
+          withCal(
+            {
+              key: "transfer:guide:open:january",
+              kind: "transfer",
+              sort: new Date(m.unlock_at).getTime() + 1,
+              title: "January transfer window opens (guide)",
+              detail:
+                "Season guide: January transfer window. Live open/closed is admin-controlled — confirm on Transfer Centre.",
+              href: "transfer_center.html",
+              hrefLabel: "Transfer Centre →",
+              chip: `${hhmm} Transfers`,
+              chipTitle: "January transfer window (season guide)",
+            },
+            m.unlock_at,
+            {
+              durationMs: CAL_MARKER_MS,
+              uid: "gpsl-transfer-guide-open-january@gpsl",
+            }
+          )
+        );
       } else if (monthKey === "september") {
-        push(day, {
-          key: "transfer:guide:close:summer",
-          kind: "transfer",
-          sort: new Date(m.unlock_at).getTime() + 1,
-          title: "Summer transfer window ends (guide)",
-          detail:
-            "Season guide: summer window (Jun–Aug) is closed from September. Confirm live status on Transfer Centre.",
-          href: "transfer_center.html",
-          hrefLabel: "Transfer Centre →",
-          chip: `${hhmm} TW ends`,
-          chipTitle: "Summer transfer window ends (guide)",
-        });
+        push(
+          day,
+          withCal(
+            {
+              key: "transfer:guide:close:summer",
+              kind: "transfer",
+              sort: new Date(m.unlock_at).getTime() + 1,
+              title: "Summer transfer window ends (guide)",
+              detail:
+                "Season guide: summer window (Jun–Aug) is closed from September. Confirm live status on Transfer Centre.",
+              href: "transfer_center.html",
+              hrefLabel: "Transfer Centre →",
+              chip: `${hhmm} TW ends`,
+              chipTitle: "Summer transfer window ends (guide)",
+            },
+            m.unlock_at,
+            {
+              durationMs: CAL_MARKER_MS,
+              uid: "gpsl-transfer-guide-close-summer@gpsl",
+            }
+          )
+        );
       } else if (monthKey === "february") {
-        push(day, {
-          key: "transfer:guide:close:january",
-          kind: "transfer",
-          sort: new Date(m.unlock_at).getTime() + 1,
-          title: "January transfer window ends (guide)",
-          detail:
-            "Season guide: January window is closed from February. Confirm live status on Transfer Centre.",
-          href: "transfer_center.html",
-          hrefLabel: "Transfer Centre →",
-          chip: `${hhmm} TW ends`,
-          chipTitle: "January transfer window ends (guide)",
-        });
+        push(
+          day,
+          withCal(
+            {
+              key: "transfer:guide:close:january",
+              kind: "transfer",
+              sort: new Date(m.unlock_at).getTime() + 1,
+              title: "January transfer window ends (guide)",
+              detail:
+                "Season guide: January window is closed from February. Confirm live status on Transfer Centre.",
+              href: "transfer_center.html",
+              hrefLabel: "Transfer Centre →",
+              chip: `${hhmm} TW ends`,
+              chipTitle: "January transfer window ends (guide)",
+            },
+            m.unlock_at,
+            {
+              durationMs: CAL_MARKER_MS,
+              uid: "gpsl-transfer-guide-close-january@gpsl",
+            }
+          )
+        );
       }
     }
     if (m.lock_at) {
       const day = ymdInTz(m.lock_at, ownerTz);
       const hhmm = hhmmInTz(m.lock_at, ownerTz);
-      push(day, {
-        key: `gpsl:lock:${monthKey}`,
-        kind: "gpsl",
-        sort: new Date(m.lock_at).getTime(),
-        title: `GPSL ${label} locks`,
-        detail: `${timeInTz(m.lock_at, ownerTz)} · month end / fines window (${formatUkDateTime(m.lock_at)} UK)`,
-        href: "fixtures.html",
-        hrefLabel: "Fixtures →",
-        chip: `${hhmm} Lock`,
-      });
+      push(
+        day,
+        withCal(
+          {
+            key: `gpsl:lock:${monthKey}`,
+            kind: "gpsl",
+            sort: new Date(m.lock_at).getTime(),
+            title: `GPSL ${label} locks`,
+            detail: `${timeInTz(m.lock_at, ownerTz)} · month end / fines window (${formatUkDateTime(m.lock_at)} UK)`,
+            href: "fixtures.html",
+            hrefLabel: "Fixtures →",
+            chip: `${hhmm} Lock`,
+          },
+          m.lock_at,
+          {
+            durationMs: CAL_MARKER_MS,
+            uid: `gpsl-month-${monthKey}-lock@gpsl`,
+          }
+        )
+      );
     }
   }
 
@@ -645,38 +777,58 @@ function buildEventsByDay() {
         a.status === "active" ||
         (new Date(a.start_time).getTime() <= Date.now() &&
           (!a.end_time || new Date(a.end_time).getTime() > Date.now()));
-      push(day, {
-        key: `auction:special:${a.id}`,
-        kind: "auction",
-        sort: new Date(a.start_time).getTime(),
-        title: live ? `${title} — live` : title,
-        detail: `${typeLabel} · ${timeInTz(a.start_time, ownerTz)}${
-          a.auction_type === "snap"
-            ? " · snap finish is secret"
-            : a.end_time
-              ? ` → ${timeInTz(a.end_time, ownerTz)}`
-              : ""
-        }`,
-        href,
-        hrefLabel: "Open auction →",
-        chip: `${hhmm} ${a.auction_type === "blind_gauntlet" ? "Gauntlet" : "Special"}`,
-        chipTitle: `${typeLabel}: ${title}`,
-      });
+      push(
+        day,
+        withCal(
+          {
+            key: `auction:special:${a.id}`,
+            kind: "auction",
+            sort: new Date(a.start_time).getTime(),
+            title: live ? `${title} — live` : title,
+            detail: `${typeLabel} · ${timeInTz(a.start_time, ownerTz)}${
+              a.auction_type === "snap"
+                ? " · snap finish is secret"
+                : a.end_time
+                  ? ` → ${timeInTz(a.end_time, ownerTz)}`
+                  : ""
+            }`,
+            href,
+            hrefLabel: "Open auction →",
+            chip: `${hhmm} ${a.auction_type === "blind_gauntlet" ? "Gauntlet" : "Special"}`,
+            chipTitle: `${typeLabel}: ${title}`,
+          },
+          a.start_time,
+          {
+            durationMs: CAL_AUCTION_OPEN_MS,
+            uid: `gpsl-auction-${a.id}-open@gpsl`,
+          }
+        )
+      );
     }
     if (a.auction_type !== "snap" && a.end_time) {
       const day = ymdInTz(a.end_time, ownerTz);
       const hhmm = hhmmInTz(a.end_time, ownerTz);
-      push(day, {
-        key: `auction:special:end:${a.id}`,
-        kind: "auction",
-        sort: new Date(a.end_time).getTime(),
-        title: `${title} ends`,
-        detail: `${typeLabel} scheduled end · ${timeInTz(a.end_time, ownerTz)}`,
-        href,
-        hrefLabel: "Open auction →",
-        chip: `${hhmm} Auc. end`,
-        chipTitle: `${title} ends`,
-      });
+      push(
+        day,
+        withCal(
+          {
+            key: `auction:special:end:${a.id}`,
+            kind: "auction",
+            sort: new Date(a.end_time).getTime(),
+            title: `${title} ends`,
+            detail: `${typeLabel} scheduled end · ${timeInTz(a.end_time, ownerTz)}`,
+            href,
+            hrefLabel: "Open auction →",
+            chip: `${hhmm} Auc. end`,
+            chipTitle: `${title} ends`,
+          },
+          a.end_time,
+          {
+            durationMs: CAL_MARKER_MS,
+            uid: `gpsl-auction-${a.id}-end@gpsl`,
+          }
+        )
+      );
     }
   }
 
@@ -689,19 +841,30 @@ function buildEventsByDay() {
       ? { href: ev.link_href, label: "Open →" }
       : PLANNED_DEFAULT_LINK[ev.kind];
     const chipWord = PLANNED_CHIP[ev.kind] || "Auction";
-    push(day, {
-      key: `auction:planned:${ev.id}`,
-      kind: "auction",
-      sort: new Date(ev.starts_at).getTime(),
-      title: ev.title || chipWord,
-      detail: `${timeInTz(ev.starts_at, ownerTz)}${
-        ev.ends_at ? ` → ${timeInTz(ev.ends_at, ownerTz)}` : ""
-      }${ev.detail ? ` — ${ev.detail}` : ""}`,
-      href: link?.href || "season_calendar.html",
-      hrefLabel: link?.label || "Season Calendar →",
-      chip: `${hhmm} ${chipWord}`,
-      chipTitle: ev.title || chipWord,
-    });
+    push(
+      day,
+      withCal(
+        {
+          key: `auction:planned:${ev.id}`,
+          kind: "auction",
+          sort: new Date(ev.starts_at).getTime(),
+          title: ev.title || chipWord,
+          detail: `${timeInTz(ev.starts_at, ownerTz)}${
+            ev.ends_at ? ` → ${timeInTz(ev.ends_at, ownerTz)}` : ""
+          }${ev.detail ? ` — ${ev.detail}` : ""}`,
+          href: link?.href || "season_calendar.html",
+          hrefLabel: link?.label || "Season Calendar →",
+          chip: `${hhmm} ${chipWord}`,
+          chipTitle: ev.title || chipWord,
+        },
+        ev.starts_at,
+        {
+          endAt: ev.ends_at || null,
+          durationMs: ev.ends_at ? null : CAL_AUCTION_OPEN_MS,
+          uid: `gpsl-planned-${ev.id}@gpsl`,
+        }
+      )
+    );
   }
 
   const pushArmed = (enabled, startIso, key, title, href, chipWord) => {
@@ -709,17 +872,27 @@ function buildEventsByDay() {
     if (!claimAuctionStart(startIso)) return;
     const day = ymdInTz(startIso, ownerTz);
     const hhmm = hhmmInTz(startIso, ownerTz);
-    push(day, {
-      key,
-      kind: "auction",
-      sort: new Date(startIso).getTime(),
-      title,
-      detail: `${timeInTz(startIso, ownerTz)} · armed start time`,
-      href,
-      hrefLabel: "Open →",
-      chip: `${hhmm} ${chipWord}`,
-      chipTitle: title,
-    });
+    push(
+      day,
+      withCal(
+        {
+          key,
+          kind: "auction",
+          sort: new Date(startIso).getTime(),
+          title,
+          detail: `${timeInTz(startIso, ownerTz)} · armed start time`,
+          href,
+          hrefLabel: "Open →",
+          chip: `${hhmm} ${chipWord}`,
+          chipTitle: title,
+        },
+        startIso,
+        {
+          durationMs: CAL_AUCTION_OPEN_MS,
+          uid: `gpsl-${key}@gpsl`,
+        }
+      )
+    );
   };
   const gs = marketSettings || {};
   pushArmed(
@@ -1073,6 +1246,8 @@ function renderPanel() {
       </div>`);
   }
 
+  const calEvents = events.filter((ev) => ev?.canAddToCalendar && ev.startAt);
+
   if (!events.length) {
     parts.push(`<p class="oc-empty">No matches, deadlines, or GPSL locks on this day.</p>`);
   } else {
@@ -1097,10 +1272,10 @@ function renderPanel() {
               : ""
           }
           ${
-            ev.kind === "match" && ev.canAddToCalendar && ev.fixtureId != null
-              ? `<button type="button" class="oc-cal-btn" data-oc-cal-fixture="${escapeHtml(
-                  String(ev.fixtureId)
-                )}">Add to calendar</button>`
+            ev.canAddToCalendar && ev.startAt
+              ? `<button type="button" class="oc-cal-btn" data-oc-cal-key="${escapeHtml(
+                  String(ev.key)
+                )}" title="Download .ics for your personal calendar">Add to calendar</button>`
               : ""
           }
           </div>
@@ -1108,13 +1283,31 @@ function renderPanel() {
     }
   }
 
+  if (calEvents.length > 1) {
+    parts.push(`
+      <div class="oc-event oc-event--bulk-cal">
+        <div class="oc-event-actions">
+          <button type="button" class="oc-cal-btn" data-oc-cal-day="1" title="Download one .ics with every timed item on this day">
+            Add all ${calEvents.length} to calendar
+          </button>
+        </div>
+      </div>`);
+  }
+
   body.innerHTML = parts.join("");
-  body.querySelectorAll("[data-oc-cal-fixture]").forEach((btn) => {
+  body.querySelectorAll("[data-oc-cal-key]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      downloadMatchToCalendar(btn.getAttribute("data-oc-cal-fixture"));
+      const key = btn.getAttribute("data-oc-cal-key");
+      const ev = events.find((row) => String(row.key) === String(key));
+      if (ev) downloadPanelEventToCalendar(ev);
     });
+  });
+  body.querySelector("[data-oc-cal-day]")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    downloadDayEventsToCalendar(calEvents);
   });
 }
 
@@ -1134,24 +1327,62 @@ function matchCalMeta(f) {
   };
 }
 
-function downloadMatchToCalendar(fixtureId) {
-  const f = fixtures.find((row) => String(row.id) === String(fixtureId));
-  if (!f?.agreed_kickoff_at) return;
-  const meta = matchCalMeta(f);
-  let url;
-  try {
-    url = new URL(fixtureHref(f), window.location.href).href;
-  } catch {
-    url = fixtureHref(f);
+function veventFromPanelEvent(ev) {
+  if (!ev?.startAt) return null;
+  if (ev.kind === "match" && ev.fixtureId != null) {
+    const f = fixtures.find((row) => String(row.id) === String(ev.fixtureId));
+    if (!f?.agreed_kickoff_at) return null;
+    const meta = matchCalMeta(f);
+    return fixtureKickoffEvent({
+      id: f.id,
+      kickoffAt: f.agreed_kickoff_at,
+      url: absoluteHref(fixtureHref(f)),
+      ...meta,
+    });
   }
-  const ev = fixtureKickoffEvent({
-    id: f.id,
-    kickoffAt: f.agreed_kickoff_at,
-    url,
-    ...meta,
+  const url = absoluteHref(ev.href);
+  const descParts = [ev.detail, ev.ownerLine, url ? `Open: ${url}` : ""]
+    .filter(Boolean)
+    .join("\n");
+  return buildVEvent({
+    uid: ev.calUid || `gpsl-oc-${ev.key}@gpsl`,
+    title: ev.title || "GPSL",
+    description: descParts,
+    startAt: ev.startAt,
+    endAt: ev.calEndAt || null,
+    durationMs: ev.calDurationMs ?? CAL_MARKER_MS,
+    url: url || undefined,
+    location: "GPSL",
   });
-  if (!ev) return;
-  downloadIcs(fixtureKickoffFilename(meta), [ev]);
+}
+
+function downloadPanelEventToCalendar(ev) {
+  if (ev?.kind === "match" && ev.fixtureId != null) {
+    const f = fixtures.find((row) => String(row.id) === String(ev.fixtureId));
+    if (f?.agreed_kickoff_at) {
+      const meta = matchCalMeta(f);
+      const ve = fixtureKickoffEvent({
+        id: f.id,
+        kickoffAt: f.agreed_kickoff_at,
+        url: absoluteHref(fixtureHref(f)),
+        ...meta,
+      });
+      if (ve) {
+        downloadIcs(fixtureKickoffFilename(meta), [ve]);
+        return;
+      }
+    }
+  }
+  const ve = veventFromPanelEvent(ev);
+  if (!ve) return;
+  downloadIcs(safeIcsFilename(ev.title), [ve]);
+}
+
+function downloadDayEventsToCalendar(list) {
+  const vevents = (list || []).map(veventFromPanelEvent).filter(Boolean);
+  if (!vevents.length) return;
+  const stamp = selectedYmd || "day";
+  downloadIcs(`gpsl-my-calendar-${stamp}.ics`, vevents);
 }
 
 async function loadMyClub(user) {
