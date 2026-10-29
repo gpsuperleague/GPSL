@@ -25,11 +25,19 @@
       justify-content:space-between; margin-bottom:14px;
     }
     .oc-month-nav { display:flex; gap:8px; align-items:center; }
-    .oc-month-nav button {
+    .oc-month-nav button,
+    .oc-season-link {
       padding:8px 12px; background:#222; border:1px solid #444; color:#ddd;
       border-radius:6px; cursor:pointer; font-size:13px;
+      text-decoration:none; display:inline-block;
     }
-    .oc-month-nav button:hover { border-color:var(--gpsl-accent, #ff9900); color:var(--gpsl-accent, #ff9900); }
+    .oc-month-nav button:hover,
+    .oc-season-link:hover {
+      border-color:var(--gpsl-accent, #ff9900); color:var(--gpsl-accent, #ff9900);
+    }
+    .oc-season-link {
+      border-color:#2a5c56; color:#9fd9d0; margin-left:4px;
+    }
     .oc-month-title {
       font-size:18px; font-weight:bold; color:#eee; min-width:10rem; text-align:center;
     }
@@ -152,6 +160,7 @@
         <div class="oc-month-title" id="ocMonthTitle">—</div>
         <button type="button" id="ocNext" aria-label="Next month">→</button>
         <button type="button" id="ocToday">Today</button>
+        <a class="oc-season-link" href="season_calendar.html" title="GPSL Aug–May season roadmap">Season roadmap</a>
       </div>
       <div class="oc-tz" id="ocTzLabel">Times in —</div>
     </div>
@@ -181,6 +190,6 @@
       </aside>
     </div>
   </div>
-  <script type="module" src="owner_calendar.js?v=20261029-owner-calendar"></script>
+  <script type="module" src="owner_calendar.js?v=20261029-cal-nav-icon"></script>
 </body>
 </html>

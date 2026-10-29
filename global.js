@@ -87,11 +87,15 @@ function getGpslSportModule() {
 }
 
 function renderNavSeasonCalendarLink(calendarActive = false) {
+  // Top shortcut = My Calendar (wall month). Season roadmap stays under Owners
+  // and via the Season button on My Calendar.
   return (
-    `<a href="season_calendar.html" class="nav-shortcut nav-season-calendar${
+    `<a href="owner_calendar.html" class="nav-shortcut nav-season-calendar nav-owner-calendar${
       calendarActive ? " active" : ""
-    }" title="Season calendar" aria-label="Season calendar">` +
-    `<span class="nav-season-calendar-mark" aria-hidden="true">📅</span>` +
+    }" title="My Calendar — matches, deadlines &amp; availability (Season roadmap inside)" aria-label="My Calendar">` +
+    `<span class="nav-season-calendar-mark nav-owner-calendar-mark" aria-hidden="true">` +
+    `<img src="images/nav/owner_calendar.svg?v=${GLOBAL_JS_VERSION}" alt="" width="18" height="18" loading="lazy" />` +
+    `</span>` +
     `<span class="nav-season-calendar-label">Calendar</span>` +
     `</a>`
   );
@@ -2084,6 +2088,18 @@ const NAV_INLINE_ICONS = {
       `<rect x="7.6" y="12.2" width="2.2" height="2" rx="0.35" fill="#c0392b"/>` +
       `<rect x="10.8" y="12.2" width="2.2" height="2" rx="0.35" fill="#7eb0e0"/>`,
   },
+  owner_calendar: {
+    title: "My Calendar",
+    svg:
+      `<rect x="2.2" y="3.6" width="15.6" height="14" rx="1.6" fill="#0f3d3a"/>` +
+      `<rect x="2.2" y="3.6" width="15.6" height="3.6" rx="1.6" fill="#1a5c56"/>` +
+      `<rect x="5" y="2.2" width="1.5" height="3.4" rx="0.45" fill="#e8f5f3"/>` +
+      `<rect x="13.5" y="2.2" width="1.5" height="3.4" rx="0.45" fill="#e8f5f3"/>` +
+      `<rect x="6.2" y="9.2" width="7.6" height="6.4" rx="1" fill="#f0c14b"/>` +
+      `<text x="10" y="13.7" text-anchor="middle" fill="#1a1a1a" font-size="5.2" font-family="Arial,sans-serif" font-weight="700">29</text>` +
+      `<circle cx="15.6" cy="15.4" r="2.35" fill="#2a9d8f"/>` +
+      `<path d="M15.6 14.2v1.4l0.9 0.6" stroke="#e8f5f3" stroke-width="0.85" stroke-linecap="round" fill="none"/>`,
+  },
   season_review: {
     title: "Season Review",
     svg:
@@ -3096,7 +3112,8 @@ export async function buildNav() {
   const dashActive = pathNorm === normalizeNavPath(homeHref);
   const inboxActive = pathNorm === "inbox.html";
   const natterActive = pathNorm === "natter.html";
-  const calendarActive = pathNorm === "season_calendar.html";
+  const calendarActive =
+    pathNorm === "owner_calendar.html" || pathNorm === "season_calendar.html";
   const fantasyActive = pathNorm === "fantasy.html";
   const handbookActive = pathNorm === "learning_gpsl.html";
 

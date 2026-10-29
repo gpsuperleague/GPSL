@@ -516,7 +516,7 @@ export const NAV_SECTIONS = [
         label: "My Calendar",
         page: "owner_calendar",
         indent: true,
-        navIcon: "season_calendar",
+        navIcon: "owner_calendar",
       },
       {
         href: "season_review.html",
