@@ -1,6 +1,7 @@
 /**
  * My Calendar — real-world month view for owners (V1).
- * Agreed KOs · Club Wire cutoffs · GPSL unlock/lock · availability wash.
+ * Agreed KOs · Club Wire cutoffs · GPSL unlock/lock · availability wash ·
+ * special/planned auctions · transfer window guide + live status.
  */
 import { supabase, initGlobal, getAuthUserFast } from "./global.js";
 import { GPSL_MONTH_LABELS, CUP_LABELS, DIVISION_LABELS } from "./competition.js";
@@ -14,9 +15,34 @@ import {
   fullClubName,
   ownerTagForClub,
 } from "./clubs_lookup.js";
+import { loadUpcomingSpecialAuctions } from "./special_auction_upcoming.js";
 
 const UK = UK_TZ || "Europe/London";
 const DOW_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const AUCTION_TYPE_LABELS = {
+  snap: "Snap auction",
+  blind_gauntlet: "Blind Gauntlet",
+  lowest_unique: "Lowest unique bid",
+};
+
+const PLANNED_AUCTION_KINDS = new Set([
+  "player_draft",
+  "manager_draft",
+  "club_auction",
+]);
+
+const PLANNED_DEFAULT_LINK = {
+  player_draft: { href: "draftauction.html", label: "Draft auction →" },
+  manager_draft: { href: "manager_draftauction.html", label: "Manager draft →" },
+  club_auction: { href: "club_auction.html", label: "Club auction →" },
+};
+
+const PLANNED_CHIP = {
+  player_draft: "Draft",
+  manager_draft: "Mgr draft",
+  club_auction: "Club auc.",
+};
 
 let viewYear;
 let viewMonth; // 1–12
@@ -25,6 +51,10 @@ let weeklySlots = [];
 let fixtures = [];
 let cutoffs = [];
 let seasonMonths = [];
+let specialAuctions = [];
+let plannedEvents = [];
+/** @type {object|null} */
+let marketSettings = null;
 let selectedYmd = null;
 /** @type {string|null} event key to highlight/scroll in the day panel */
 let focusEventKey = null;
@@ -228,6 +258,21 @@ function fixtureHref(f) {
   return `fixture_schedule.html?fixture=${encodeURIComponent(String(f.id))}`;
 }
 
+function specialAuctionHref(a) {
+  return a?.auction_type === "blind_gauntlet"
+    ? `special_auction_gauntlet.html?id=${a.id}`
+    : `special_auction.html?id=${encodeURIComponent(String(a.id))}`;
+}
+
+function eventKindLabel(kind) {
+  if (kind === "match") return "MATCH";
+  if (kind === "deadline") return "DEADLINE";
+  if (kind === "gpsl") return "GPSL";
+  if (kind === "auction") return "AUCTION";
+  if (kind === "transfer") return "TRANSFER";
+  return String(kind || "EVENT").toUpperCase();
+}
+
 /** Build event list keyed by owner-local ymd. */
 function buildEventsByDay() {
   /** @type {Map<string, object[]>} */
@@ -236,6 +281,16 @@ function buildEventsByDay() {
     if (!day) return;
     if (!map.has(day)) map.set(day, []);
     map.get(day).push(ev);
+  };
+  /** Dedupe auction-like starts that land on the same minute. */
+  const seenAuctionStarts = new Set();
+  const claimAuctionStart = (iso) => {
+    const t = new Date(iso).getTime();
+    if (!Number.isFinite(t)) return true;
+    const bucket = Math.round(t / 60_000);
+    if (seenAuctionStarts.has(bucket)) return false;
+    seenAuctionStarts.add(bucket);
+    return true;
   };
 
   for (const f of fixtures) {
@@ -278,7 +333,7 @@ function buildEventsByDay() {
   for (const m of seasonMonths) {
     const label =
       GPSL_MONTH_LABELS[m.gpsl_month] || m.gpsl_month_label || m.gpsl_month || "Month";
-    const monthKey = m.gpsl_month || label;
+    const monthKey = String(m.gpsl_month || label || "").toLowerCase();
     if (m.unlock_at) {
       const day = ymdInTz(m.unlock_at, ownerTz);
       const hhmm = hhmmInTz(m.unlock_at, ownerTz);
@@ -292,6 +347,63 @@ function buildEventsByDay() {
         hrefLabel: "Season Calendar →",
         chip: `${hhmm} Unlock`,
       });
+
+      if (monthKey === "pre_season" || monthKey === "june") {
+        push(day, {
+          key: `transfer:guide:open:${monthKey}`,
+          kind: "transfer",
+          sort: new Date(m.unlock_at).getTime() + 1,
+          title:
+            monthKey === "pre_season"
+              ? "Pre-season transfer window (guide)"
+              : "Summer transfer window opens (guide)",
+          detail:
+            "Season guide: transfers are normally open pre-season through August (and again in January). Live open/closed is admin-controlled — confirm on Transfer Centre.",
+          href: "transfer_center.html",
+          hrefLabel: "Transfer Centre →",
+          chip: `${hhmm} Transfers`,
+          chipTitle: "Transfer window (season guide)",
+        });
+      } else if (monthKey === "january") {
+        push(day, {
+          key: "transfer:guide:open:january",
+          kind: "transfer",
+          sort: new Date(m.unlock_at).getTime() + 1,
+          title: "January transfer window opens (guide)",
+          detail:
+            "Season guide: January transfer window. Live open/closed is admin-controlled — confirm on Transfer Centre.",
+          href: "transfer_center.html",
+          hrefLabel: "Transfer Centre →",
+          chip: `${hhmm} Transfers`,
+          chipTitle: "January transfer window (season guide)",
+        });
+      } else if (monthKey === "september") {
+        push(day, {
+          key: "transfer:guide:close:summer",
+          kind: "transfer",
+          sort: new Date(m.unlock_at).getTime() + 1,
+          title: "Summer transfer window ends (guide)",
+          detail:
+            "Season guide: summer window (Jun–Aug) is closed from September. Confirm live status on Transfer Centre.",
+          href: "transfer_center.html",
+          hrefLabel: "Transfer Centre →",
+          chip: `${hhmm} TW ends`,
+          chipTitle: "Summer transfer window ends (guide)",
+        });
+      } else if (monthKey === "february") {
+        push(day, {
+          key: "transfer:guide:close:january",
+          kind: "transfer",
+          sort: new Date(m.unlock_at).getTime() + 1,
+          title: "January transfer window ends (guide)",
+          detail:
+            "Season guide: January window is closed from February. Confirm live status on Transfer Centre.",
+          href: "transfer_center.html",
+          hrefLabel: "Transfer Centre →",
+          chip: `${hhmm} TW ends`,
+          chipTitle: "January transfer window ends (guide)",
+        });
+      }
     }
     if (m.lock_at) {
       const day = ymdInTz(m.lock_at, ownerTz);
@@ -308,6 +420,135 @@ function buildEventsByDay() {
       });
     }
   }
+
+  if (marketSettings?.transfer_window_open) {
+    const today = todayYmd(ownerTz);
+    push(today, {
+      key: "transfer:live",
+      kind: "transfer",
+      sort: Date.now(),
+      title: "Transfer window open (live)",
+      detail: "The transfer window is open right now — list, bid, and manage offers.",
+      href: "transfer_center.html",
+      hrefLabel: "Transfer Centre →",
+      chip: "Window open",
+      chipTitle: "Transfer window is open live",
+    });
+  }
+
+  for (const a of specialAuctions) {
+    if (!a?.start_time) continue;
+    const typeLabel = AUCTION_TYPE_LABELS[a.auction_type] || "Special auction";
+    const title = a.title || typeLabel;
+    const href = specialAuctionHref(a);
+    if (claimAuctionStart(a.start_time)) {
+      const day = ymdInTz(a.start_time, ownerTz);
+      const hhmm = hhmmInTz(a.start_time, ownerTz);
+      const live =
+        a.status === "active" ||
+        (new Date(a.start_time).getTime() <= Date.now() &&
+          (!a.end_time || new Date(a.end_time).getTime() > Date.now()));
+      push(day, {
+        key: `auction:special:${a.id}`,
+        kind: "auction",
+        sort: new Date(a.start_time).getTime(),
+        title: live ? `${title} — live` : title,
+        detail: `${typeLabel} · ${timeInTz(a.start_time, ownerTz)}${
+          a.auction_type === "snap"
+            ? " · snap finish is secret"
+            : a.end_time
+              ? ` → ${timeInTz(a.end_time, ownerTz)}`
+              : ""
+        }`,
+        href,
+        hrefLabel: "Open auction →",
+        chip: `${hhmm} ${a.auction_type === "blind_gauntlet" ? "Gauntlet" : "Special"}`,
+        chipTitle: `${typeLabel}: ${title}`,
+      });
+    }
+    if (a.auction_type !== "snap" && a.end_time) {
+      const day = ymdInTz(a.end_time, ownerTz);
+      const hhmm = hhmmInTz(a.end_time, ownerTz);
+      push(day, {
+        key: `auction:special:end:${a.id}`,
+        kind: "auction",
+        sort: new Date(a.end_time).getTime(),
+        title: `${title} ends`,
+        detail: `${typeLabel} scheduled end · ${timeInTz(a.end_time, ownerTz)}`,
+        href,
+        hrefLabel: "Open auction →",
+        chip: `${hhmm} Auc. end`,
+        chipTitle: `${title} ends`,
+      });
+    }
+  }
+
+  for (const ev of plannedEvents) {
+    if (!ev?.starts_at || !PLANNED_AUCTION_KINDS.has(ev.kind)) continue;
+    if (!claimAuctionStart(ev.starts_at)) continue;
+    const day = ymdInTz(ev.starts_at, ownerTz);
+    const hhmm = hhmmInTz(ev.starts_at, ownerTz);
+    const link = ev.link_href
+      ? { href: ev.link_href, label: "Open →" }
+      : PLANNED_DEFAULT_LINK[ev.kind];
+    const chipWord = PLANNED_CHIP[ev.kind] || "Auction";
+    push(day, {
+      key: `auction:planned:${ev.id}`,
+      kind: "auction",
+      sort: new Date(ev.starts_at).getTime(),
+      title: ev.title || chipWord,
+      detail: `${timeInTz(ev.starts_at, ownerTz)}${
+        ev.ends_at ? ` → ${timeInTz(ev.ends_at, ownerTz)}` : ""
+      }${ev.detail ? ` — ${ev.detail}` : ""}`,
+      href: link?.href || "season_calendar.html",
+      hrefLabel: link?.label || "Season Calendar →",
+      chip: `${hhmm} ${chipWord}`,
+      chipTitle: ev.title || chipWord,
+    });
+  }
+
+  const pushArmed = (enabled, startIso, key, title, href, chipWord) => {
+    if (!enabled || !startIso) return;
+    if (!claimAuctionStart(startIso)) return;
+    const day = ymdInTz(startIso, ownerTz);
+    const hhmm = hhmmInTz(startIso, ownerTz);
+    push(day, {
+      key,
+      kind: "auction",
+      sort: new Date(startIso).getTime(),
+      title,
+      detail: `${timeInTz(startIso, ownerTz)} · armed start time`,
+      href,
+      hrefLabel: "Open →",
+      chip: `${hhmm} ${chipWord}`,
+      chipTitle: title,
+    });
+  };
+  const gs = marketSettings || {};
+  pushArmed(
+    gs.draft_auction_enabled,
+    gs.draft_auction_start_time,
+    "auction:armed:player",
+    "Player draft auction",
+    "draftauction.html",
+    "Draft"
+  );
+  pushArmed(
+    gs.manager_draft_auction_enabled,
+    gs.manager_draft_auction_start_time,
+    "auction:armed:manager",
+    "Manager draft auction",
+    "manager_draftauction.html",
+    "Mgr draft"
+  );
+  pushArmed(
+    gs.club_auction_enabled,
+    gs.club_auction_start_time,
+    "auction:armed:club",
+    "Club auction",
+    "club_auction.html",
+    "Club auc."
+  );
 
   for (const [, list] of map) {
     list.sort((a, b) => a.sort - b.sort);
@@ -404,6 +645,18 @@ function monthSelectBounds() {
   }
   for (const f of fixtures || []) considerIso(f.agreed_kickoff_at);
   for (const c of cutoffs || []) considerIso(c?.at);
+  for (const a of specialAuctions || []) {
+    considerIso(a.start_time);
+    considerIso(a.end_time);
+  }
+  for (const ev of plannedEvents || []) {
+    considerIso(ev.starts_at);
+    considerIso(ev.ends_at);
+  }
+  const gs = marketSettings || {};
+  considerIso(gs.draft_auction_start_time);
+  considerIso(gs.manager_draft_auction_start_time);
+  considerIso(gs.club_auction_start_time);
 
   // Always include a usable window around the current view / today.
   const today = todayYmd(ownerTz || UK);
@@ -617,11 +870,7 @@ function renderPanel() {
       parts.push(`
         <div class="oc-event${focused}" data-ev-key="${escapeHtml(ev.key)}">
           <span class="oc-event-kind oc-event-kind--${escapeHtml(ev.kind)}">${escapeHtml(
-            ev.kind === "match"
-              ? "MATCH"
-              : ev.kind === "deadline"
-                ? "DEADLINE"
-                : "GPSL"
+            eventKindLabel(ev.kind)
           )}</span>
           <b>${escapeHtml(ev.title)}</b>
           <div class="detail">${escapeHtml(ev.detail)}</div>
@@ -678,6 +927,34 @@ async function loadCutoffs() {
     return [];
   }
   return Array.isArray(data?.cutoffs) ? data.cutoffs : [];
+}
+
+async function loadPlannedAuctionEvents() {
+  const { data, error } = await supabase
+    .from("gpsl_planned_events")
+    .select("id, title, detail, kind, starts_at, ends_at, link_href")
+    .eq("visible", true)
+    .order("starts_at", { ascending: true })
+    .limit(200);
+  if (error) {
+    console.warn("gpsl_planned_events:", error);
+    return [];
+  }
+  return (data || []).filter((ev) => PLANNED_AUCTION_KINDS.has(ev.kind));
+}
+
+async function loadMarketSettings() {
+  const { data, error } = await supabase
+    .from("global_settings_public")
+    .select(
+      "transfer_window_open, draft_auction_enabled, draft_auction_start_time, manager_draft_auction_enabled, manager_draft_auction_start_time, club_auction_enabled, club_auction_start_time"
+    )
+    .maybeSingle();
+  if (error) {
+    console.warn("global_settings_public:", error);
+    return null;
+  }
+  return data || null;
 }
 
 function shiftMonth(delta) {
@@ -740,21 +1017,37 @@ async function boot() {
   });
 
   try {
-    const [avail, months, fix, cuts] = await Promise.all([
-      loadAvailabilityContext().catch((e) => {
-        console.warn(e);
-        return null;
-      }),
-      loadSeasonCalendarMonths(supabase),
-      loadClubsMap().then(() => loadMyFixtures()),
-      loadCutoffs(),
-    ]);
+    const [avail, months, fix, cuts, auctions, planned, settings] =
+      await Promise.all([
+        loadAvailabilityContext().catch((e) => {
+          console.warn(e);
+          return null;
+        }),
+        loadSeasonCalendarMonths(supabase),
+        loadClubsMap().then(() => loadMyFixtures()),
+        loadCutoffs(),
+        loadUpcomingSpecialAuctions(supabase).catch((e) => {
+          console.warn(e);
+          return [];
+        }),
+        loadPlannedAuctionEvents().catch((e) => {
+          console.warn(e);
+          return [];
+        }),
+        loadMarketSettings().catch((e) => {
+          console.warn(e);
+          return null;
+        }),
+      ]);
 
     ownerTz = avail?.timezone || UK;
     weeklySlots = Array.isArray(avail?.weekly_slots) ? avail.weekly_slots : [];
     seasonMonths = months || [];
     fixtures = fix || [];
     cutoffs = cuts || [];
+    specialAuctions = auctions || [];
+    plannedEvents = planned || [];
+    marketSettings = settings;
 
     selectedYmd = todayYmd(ownerTz);
     const [y, m] = selectedYmd.split("-").map(Number);
