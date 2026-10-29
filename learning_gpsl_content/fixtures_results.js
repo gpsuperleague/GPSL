@@ -264,7 +264,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `On <a href="owner_details.html">Owner Details</a>, mark the <b>30-minute blocks</b> in <b>your timezone</b> that you are free each week.`,
         `Set your <b>timezone</b> so kick-offs show in your local time.`,
         `Availability stays with your owner account across seasons — set it once.`,
-        `<b>Holidays</b> (up to 14 days/season, or 21 while you are an active GPSL supporter — extra days beyond 14 only stay valid while subscribed). Early arrange/play unlocks only when an <b>effective</b> holiday covers <b>4+ days</b> of that GPSL month. Book before that month opens; both clubs need a full squad (min 24). Details on Owner Details.`,
+        `<b>Holidays</b> (up to 14 days/season, or 21 while you are an active GPSL supporter — extra days beyond 14 only stay valid while subscribed). When an <b>effective</b> holiday covers <b>4+ days</b> of a fixture’s GPSL month, that fixture alone gets a <b>holiday corridor</b>: arrange/play early (before the holiday) through the play month and catch-up (<b>+2</b> GPSL months for league, <b>+1</b> cups, May cups <b>+0</b> / season end). Other months stay normal — play in-month. Book before that month opens; both clubs need a full squad (min 24) for early play. Details on Owner Details.`,
       ],
     },
 

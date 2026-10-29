@@ -1,5 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
-import { GPSL_MONTH_LABELS, formatFixtureCompetition, formatGpslMonthRangeList } from "./competition.js";
+import { GPSL_MONTH_LABELS, formatFixtureCompetition } from "./competition.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   loadScheduleContext,
@@ -630,8 +630,14 @@ function catchUpBannerHtml() {
         : "the current GPSL month";
   return `<div class="catch-up-banner">
     <strong>Catch-up match</strong> — originally due in <b>${playMonth}</b>.
-    Arrange and play in <b>${schedMonth}</b> (or a later GPSL month) until completed.
+    Arrange and play through <b>${schedMonth}</b> until completed.
   </div>`;
+}
+
+function holidayCorridorEndLabel() {
+  const prop = ctx?.proposal_window || {};
+  const endKey = String(prop.gpsl_month || ctx?.fixture?.gpsl_month || "").toLowerCase();
+  return GPSL_MONTH_LABELS[endKey] || prop.gpsl_month || null;
 }
 
 function holidayEarlyBannerHtml() {
@@ -639,12 +645,14 @@ function holidayEarlyBannerHtml() {
   const playMonthKey = String(ctx.fixture?.gpsl_month || "").toLowerCase();
   const playMonth =
     GPSL_MONTH_LABELS[playMonthKey] || ctx.fixture?.gpsl_month || "later";
-  const prop = ctx.proposal_window || {};
-  const fromMonth = prop.gpsl_month || playMonthKey;
-  const windowLabel = formatGpslMonthRangeList(fromMonth, playMonthKey);
+  const endLabel = holidayCorridorEndLabel() || playMonth;
+  const windowBit =
+    endLabel && String(endLabel).toLowerCase() !== String(playMonth).toLowerCase()
+      ? `from now through <b>${endLabel}</b> (holiday corridor — early arrange plus catch-up)`
+      : `during <b>${playMonth}</b>`;
   return `<div class="catch-up-banner holiday-early-banner">
     <strong>Holiday early play</strong> — this <b>${playMonth}</b> fixture is unlocked now.
-    Arrange and play during <b>${windowLabel}</b> (both clubs need a full squad, min 24).
+    Arrange and play ${windowBit}. Both clubs need a full squad (min 24).
     To play before a later agreed kick-off (e.g. before 19:00): open this Schedule page and use <b>Play now</b> (both must confirm) — Match Day alone has no Play now button.
   </div>`;
 }
@@ -1200,12 +1208,15 @@ function render() {
         </p>`
       : "";
 
-  const propMonth =
-    ctx.is_holiday_early
-      ? formatGpslMonthRangeList(
-          ctx.proposal_window?.gpsl_month || ctx.fixture?.gpsl_month,
-          ctx.fixture?.gpsl_month
-        )
+  const holidayEnd = holidayCorridorEndLabel();
+  const propMonth = ctx.is_holiday_early
+    ? holidayEnd &&
+      String(holidayEnd).toLowerCase() !==
+        String(GPSL_MONTH_LABELS[ctx.fixture?.gpsl_month] || ctx.fixture?.gpsl_month || "").toLowerCase()
+      ? `now through ${holidayEnd}`
+      : holidayEnd || "this holiday corridor"
+    : ctx.is_catch_up && holidayEnd
+      ? `through ${holidayEnd}`
       : ctx.proposal_window?.gpsl_month && GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
         ? GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
         : ctx.is_catch_up
