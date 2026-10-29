@@ -46,7 +46,7 @@ BEGIN
   END IF;
 
   IF p_kickoff <= now() THEN
-    RAISE EXCEPTION 'That kick-off time has already passed';
+    RAISE EXCEPTION 'That kick-off time has already passed — pick the next UK 30-minute slot';
   END IF;
 
   IF p_kickoff >= v_schedule.agreed_kickoff_at THEN

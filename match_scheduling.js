@@ -421,6 +421,19 @@ export function snapToUkHalfHourSlot(isoOrDate) {
   return dateFromZonedDateTimeLocal(local, UK_TZ);
 }
 
+/**
+ * Snap to a UK 10-minute boundary (floor) — Play now only.
+ * @returns {Date|null}
+ */
+export function snapToUkTenMinSlot(isoOrDate) {
+  const d = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+  if (Number.isNaN(d.getTime())) return null;
+  const uk = zonedYmdHm(d, UK_TZ);
+  const snappedMi = Math.floor(uk.mi / 10) * 10;
+  const local = `${uk.y}-${String(uk.mo).padStart(2, "0")}-${String(uk.d).padStart(2, "0")}T${String(uk.h).padStart(2, "0")}:${String(snappedMi).padStart(2, "0")}`;
+  return dateFromZonedDateTimeLocal(local, UK_TZ);
+}
+
 export function formatOwnerNowLine(ownerTimezone = UK_TZ) {
   const tz = ownerTimezone || UK_TZ;
   const now = new Date();

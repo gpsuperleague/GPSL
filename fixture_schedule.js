@@ -25,7 +25,8 @@ import {
   dateFromZonedDateTimeLocal,
   zonedDateTimeLocalValue,
   snapToUkHalfHourSlot,
-} from "./match_scheduling.js?v=20261029-playnow-free";
+  snapToUkTenMinSlot,
+} from "./match_scheduling.js?v=20261029-playnow-10m";
 import {
   loadFixtureUnavailable,
   formatFixtureUnavailableBannerHtml,
@@ -721,18 +722,30 @@ function renderAgreedPanel(root, f, sch) {
     const freeNewTimeNote = sch.mutual_override_used
       ? "Free mutual new-time already used for this fixture — Play now is still available if both agree."
       : "One free mutual new-time per fixture; Play now can be used again later if both agree.";
-    const playNowDefault = moOpts.play_now_kickoff_at
-      ? zonedDateTimeLocalValue(moOpts.play_now_kickoff_at, ownerTz)
-      : "";
+    const playNowDefaultRaw = moOpts.play_now_kickoff_at
+      ? new Date(moOpts.play_now_kickoff_at)
+      : new Date(Date.now() + 5 * 60 * 1000);
+    let playNowDefaultDate = snapToUkTenMinSlot(playNowDefaultRaw) || playNowDefaultRaw;
+    while (
+      playNowDefaultDate &&
+      !Number.isNaN(playNowDefaultDate.getTime()) &&
+      playNowDefaultDate.getTime() <= Date.now()
+    ) {
+      playNowDefaultDate = new Date(playNowDefaultDate.getTime() + 10 * 60 * 1000);
+    }
+    const playNowDefault =
+      playNowDefaultDate && !Number.isNaN(playNowDefaultDate.getTime())
+        ? zonedDateTimeLocalValue(playNowDefaultDate, ownerTz)
+        : "";
     mutualHtml = `
       <div class="panel mutual-panel">
         <h2>Play now (no allowance used)</h2>
         <p class="meta">
-          You already agreed a kick-off — pick <b>any earlier</b> date/time to play sooner.
-          Does <b>not</b> need to match weekly availability. Opponent confirms; then check in from 10 minutes before the new kick-off.
+          You already agreed a kick-off — pick <b>any earlier</b> date/time to play sooner (UK <b>10‑minute</b> steps).
+          Does <b>not</b> need to match weekly availability. Opponent confirms; then check in from 10 minutes before the new kick-off (30‑minute play block as normal).
         </p>
         <div class="poke-free-row" style="margin-top:10px;">
-          <input type="datetime-local" id="playNowDateTime" step="1800" value="${playNowDefault}" />
+          <input type="datetime-local" id="playNowDateTime" step="600" value="${playNowDefault}" />
           <button type="button" id="playNowMutualBtn" class="button">Request Play now</button>
         </div>
         <p class="meta" id="playNowPreview" hidden></p>
@@ -956,24 +969,46 @@ function renderAgreedPanel(root, f, sch) {
   const playNowPreview = document.getElementById("playNowPreview");
   const playNowBtn = document.getElementById("playNowMutualBtn");
 
+  const bumpPlayNowToFuture = (snapped) => {
+    if (!snapped || Number.isNaN(snapped.getTime())) return null;
+    let out = snapped;
+    let bumped = false;
+    // Local datetime → UK floor snap can land in the past.
+    for (let i = 0; i < 144 && out.getTime() <= Date.now(); i++) {
+      out = new Date(out.getTime() + 10 * 60 * 1000);
+      bumped = true;
+    }
+    return { iso: out.toISOString(), bumped };
+  };
+
   const readPlayNowIso = () => {
     if (!playNowDt?.value) return null;
     const raw = dateFromZonedDateTimeLocal(playNowDt.value, ownerTz);
     if (!raw) return null;
-    const snapped = snapToUkHalfHourSlot(raw);
-    return snapped && !Number.isNaN(snapped.getTime()) ? snapped.toISOString() : null;
+    const snapped = snapToUkTenMinSlot(raw);
+    const bumped = bumpPlayNowToFuture(snapped);
+    return bumped?.iso || null;
   };
 
   const refreshPlayNowPreview = () => {
     if (!playNowPreview) return;
-    const iso = readPlayNowIso();
-    if (!iso) {
+    if (!playNowDt?.value) {
+      playNowPreview.hidden = true;
+      playNowPreview.textContent = "";
+      return;
+    }
+    const raw = dateFromZonedDateTimeLocal(playNowDt.value, ownerTz);
+    const snapped = raw ? snapToUkTenMinSlot(raw) : null;
+    const bumped = bumpPlayNowToFuture(snapped);
+    if (!bumped?.iso) {
       playNowPreview.hidden = true;
       playNowPreview.textContent = "";
       return;
     }
     playNowPreview.hidden = false;
-    playNowPreview.textContent = `Will request: ${formatKickoffPair(iso, homeTz, awayTz)} (UK 30‑min snap)`;
+    playNowPreview.textContent = bumped.bumped
+      ? `Will request: ${formatKickoffPair(bumped.iso, homeTz, awayTz)} (bumped to next future UK 10‑min slot)`
+      : `Will request: ${formatKickoffPair(bumped.iso, homeTz, awayTz)} (UK 10‑min snap)`;
   };
 
   if (playNowDt) {
@@ -987,6 +1022,10 @@ function renderAgreedPanel(root, f, sch) {
       const iso = readPlayNowIso();
       if (!iso) {
         setStatus("Pick a Play now date/time first.", true);
+        return;
+      }
+      if (new Date(iso).getTime() <= Date.now()) {
+        setStatus("That kick-off is already in the past — pick a later time.", true);
         return;
       }
       if (new Date(iso).getTime() >= new Date(sch.agreed_kickoff_at).getTime()) {
