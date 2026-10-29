@@ -439,13 +439,18 @@ function pushVideoCutoffEvent(push, c, kind) {
   );
   const oppMatch = /\bvs\s+(.+)$/i.exec(title);
   const oppLabel = oppMatch ? oppMatch[1].trim() : "";
-  const chipCore = isExt
-    ? oppLabel
-      ? `+24h ${oppLabel}`
-      : "Video +24h"
-    : oppLabel
-      ? `Video ${oppLabel}`
-      : "Video due";
+  const chipCore = c.chip
+    ? null
+    : isExt
+      ? oppLabel
+        ? `+24h ${oppLabel}`
+        : "Video +24h"
+      : oppLabel
+        ? `Video ${oppLabel}`
+        : /\bvideos due\b/i.test(title)
+          ? "Videos due"
+          : "Video due";
+  const chipText = c.chip || `${hhmm} ${chipCore}`;
   push(
     day,
     withCal(
@@ -460,8 +465,8 @@ function pushVideoCutoffEvent(push, c, kind) {
         href:
           c.href ||
           (c.fixture_id ? `matchday.html?fixture=${c.fixture_id}` : "dashboard.html"),
-        hrefLabel: "Match Day →",
-        chip: `${hhmm} ${chipCore}`,
+        hrefLabel: c.fixture_id ? "Match Day →" : "Club Wire →",
+        chip: chipText,
         chipTitle: isExt
           ? "24h point-suspend window — upload to clear the suspended point"
           : "Match video upload deadline (month lock + grace)",
@@ -1481,17 +1486,24 @@ async function resolveVideoGraceHours() {
  * that only appears from Club Wire once a point is suspended (missed first due).
  */
 async function loadVideoDeadlines() {
-  const me = (myClub.short || "").trim().toUpperCase();
+  const meRaw = String(myClub.short || "").trim();
+  const me = meRaw.toUpperCase();
   if (!me) return [];
 
   videoGraceHours = await resolveVideoGraceHours();
 
+  // Scope to this club in the query — a league-wide .eq(status,played) can hit
+  // PostgREST row limits and silently drop our fixtures.
   const { data: rows, error } = await supabase
     .from("competition_fixtures_public")
     .select(
       "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, status, gpsl_month, competition_type"
     )
-    .eq("status", "played");
+    .eq("status", "played")
+    .or(
+      `home_club_short_name.eq.${meRaw},away_club_short_name.eq.${meRaw},home_club_short_name.eq.${me},away_club_short_name.eq.${me}`
+    )
+    .limit(200);
   if (error) {
     console.warn("owner_calendar video fixtures:", error);
     return [];
@@ -1506,19 +1518,26 @@ async function loadVideoDeadlines() {
 
   const ids = mine.map((f) => f.id);
   let vids = [];
-  const { data: vidRows, error: vidErr } = await supabase
-    .from("fixture_match_videos")
-    .select("fixture_id, side")
-    .in("fixture_id", ids);
-  if (vidErr) {
-    console.warn("owner_calendar fixture_match_videos:", vidErr);
-  } else {
-    vids = vidRows || [];
+  // Chunk .in() — large ID lists can fail or truncate.
+  for (let i = 0; i < ids.length; i += 80) {
+    const chunk = ids.slice(i, i + 80);
+    const { data: vidRows, error: vidErr } = await supabase
+      .from("fixture_match_videos")
+      .select("fixture_id, side")
+      .in("fixture_id", chunk);
+    if (vidErr) {
+      console.warn("owner_calendar fixture_match_videos:", vidErr);
+      break;
+    }
+    vids = vids.concat(vidRows || []);
   }
 
   const hasVideo = new Set();
   for (const v of vids) {
-    hasVideo.add(`${v.fixture_id}:${v.side}`);
+    const side = String(v.side || "")
+      .trim()
+      .toLowerCase();
+    if (side) hasVideo.add(`${v.fixture_id}:${side}`);
   }
 
   const lockByMonth = new Map();
@@ -1531,6 +1550,9 @@ async function loadVideoDeadlines() {
 
   const now = Date.now();
   const out = [];
+  /** One shared “videos due” marker per GPSL month (in addition to per-match). */
+  const monthMarkerDone = new Set();
+
   for (const f of mine) {
     const home = (f.home_club_short_name || "").trim().toUpperCase();
     const side = home === me ? "home" : "away";
@@ -1550,6 +1572,26 @@ async function loadVideoDeadlines() {
     if (dueMs < now - 42 * 86400_000) continue;
     if (dueMs > now + 180 * 86400_000) continue;
 
+    const dueIso = new Date(dueMs).toISOString();
+    const monthLabel =
+      GPSL_MONTH_LABELS[monthKey] ||
+      monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
+
+    if (!monthMarkerDone.has(monthKey)) {
+      monthMarkerDone.add(monthKey);
+      const dueHhmm = hhmmInTz(dueIso, ownerTz);
+      out.push({
+        fixture_id: null,
+        id: `video-month:${monthKey}`,
+        kind: "video",
+        at: dueIso,
+        title: `Match videos due · GPSL ${monthLabel}`,
+        detail: `${videoGraceHours}h after GPSL ${monthLabel} lock (${formatUkDateTime(lockAt)} UK + ${videoGraceHours}h). Upload via Discord with the Match Day filename (+₿200k).`,
+        href: "dashboard.html",
+        chip: `${dueHhmm} Videos due`,
+      });
+    }
+
     const oppShort =
       side === "home" ? f.away_club_short_name : f.home_club_short_name;
     const oppName =
@@ -1558,9 +1600,9 @@ async function loadVideoDeadlines() {
     out.push({
       fixture_id: f.id,
       kind: "video",
-      at: new Date(dueMs).toISOString(),
+      at: dueIso,
       title: `Upload match video vs ${opp}`,
-      detail: `Due ${videoGraceHours}h after GPSL ${monthKey || "month"} lock (${formatUkDateTime(lockAt)} UK + ${videoGraceHours}h). Discord upload with Match Day filename (+₿200k). Miss this and a point is suspended for 24h.`,
+      detail: `Due ${videoGraceHours}h after GPSL ${monthLabel} lock (${formatUkDateTime(lockAt)} UK + ${videoGraceHours}h). Discord upload with Match Day filename (+₿200k). Miss this and a point is suspended for 24h.`,
       href: `matchday.html?fixture=${encodeURIComponent(String(f.id))}`,
     });
   }
