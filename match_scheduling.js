@@ -369,14 +369,15 @@ export function scheduleUrl(fixtureId) {
 }
 
 export function isCatchUpFixture(fixture) {
-  return fixture?.is_catch_up === true;
+  // Calendar catch-up (play month locked) or admin wipe stamped for replay.
+  return fixture?.is_catch_up === true || fixture?.is_admin_replay === true;
 }
 
 export function catchUpBadgeHtml() {
-  return '<span class="catch-up-badge" title="Play month finished — re-arrange and play as catch-up / replay">Catch-up / replay</span>';
+  return '<span class="catch-up-badge" title="Re-arrange and play as catch-up / replay (month locked or admin reset)">Catch-up / replay</span>';
 }
 
-/** Kick-off column prefix when the fixture’s play month has already locked. */
+/** Kick-off column prefix for catch-up (month locked) or admin replay reset. */
 export function catchUpKickoffPrefix() {
   return "Catch-up / replay · ";
 }

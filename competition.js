@@ -701,7 +701,7 @@ export async function loadCupMatchExtras(supabase, fixtureIds) {
     "schedule_status, agreed_kickoff_at, schedule_pending_proposal_id, " +
     "schedule_home_proposal_count, schedule_away_proposal_count, " +
     "schedule_discord_hint, schedule_response_due_at, schedule_response_required_club, " +
-    "home_checked_in, away_checked_in, manual_black_box, is_catch_up, " +
+    "home_checked_in, away_checked_in, manual_black_box, is_catch_up, is_admin_replay, " +
     "submission_id, submission_status, submitted_by_club, " +
     "proposed_home_goals, proposed_away_goals, proposed_et_home_goals, " +
     "proposed_et_away_goals, proposed_pen_winner_club";
@@ -1098,7 +1098,8 @@ export function isFixtureMonthPlayable(
     active &&
     String(fixture.gpsl_month || "").toLowerCase() ===
       String(active).toLowerCase();
-  const catchUp = fixture.is_catch_up === true;
+  const catchUp =
+    fixture.is_catch_up === true || fixture.is_admin_replay === true;
 
   if (
     !inActiveMonth &&

@@ -36,7 +36,7 @@ import {
   fixtureHolidayArrangeNote,
   holidayKickoffNoteHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261028-holiday-ko";
+} from "./match_scheduling.js?v=20261029-admin-replay";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,

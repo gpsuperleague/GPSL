@@ -46,7 +46,7 @@ import {
   fixtureHolidayArrangeNote,
   holidayKickoffNoteHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261029-catchup-replay";
+} from "./match_scheduling.js?v=20261029-admin-replay";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
