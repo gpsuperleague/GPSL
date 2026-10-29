@@ -306,7 +306,7 @@ BEGIN
         'code', 'missed',
         'text', format('Missed expectation (%s)', replace(v_band, '_', ' ')),
         'cup_rescue_possible', v_club_rescue_possible,
-        'board_fine_pct', 25,
+        'board_fine_pct', 10, -- keep in sync with board_fine_owner_pct() / global_settings
         'listing', public.season_review_listing_pool(v_c.club_short_name, v_tier, v_band)
       );
     END IF;

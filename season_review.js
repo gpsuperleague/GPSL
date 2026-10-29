@@ -168,7 +168,7 @@ function clubOutcomeCell(r) {
   const shown = pool.slice(0, 6).map((p) => `${esc(p.name)} (${p.rating ?? "?"})`);
   const more = pool.length > 6 ? ` +${pool.length - 6} more` : "";
   return `
-    <div>${chip(`Owner fined ${c.board_fine_pct || 25}% of personal wealth`, "bad")}</div>
+    <div>${chip(`Owner fined ${Number(c.board_fine_pct) > 0 ? c.board_fine_pct : 10}% of personal wealth`, "bad")}</div>
     ${salaryLine(c)}
     <div class="sr-block"><b>Transfer request:</b> ${esc(listing.rule || "one player")} — listed at market value until sold.</div>
     ${listing.dropped ? `<div class="sr-sub">Dropped down a group — no eligible player in the usual group (One of our Own, Fan Favourite, home-grown ≤23 and non-home-grown ≤21 are protected).</div>` : ""}
