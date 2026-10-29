@@ -311,10 +311,122 @@ function gridCells(year, month) {
   return cells;
 }
 
+function ymKey(y, m) {
+  return `${y}-${String(m).padStart(2, "0")}`;
+}
+
+/** Months offered in the dropdown (season span if known, else ±18 around view). */
+function monthSelectBounds() {
+  let minY = viewYear;
+  let minM = viewMonth;
+  let maxY = viewYear;
+  let maxM = viewMonth;
+
+  const bump = (y, m, delta) => {
+    let mm = m + delta;
+    let yy = y;
+    while (mm < 1) {
+      mm += 12;
+      yy -= 1;
+    }
+    while (mm > 12) {
+      mm -= 12;
+      yy += 1;
+    }
+    return [yy, mm];
+  };
+
+  const considerIso = (iso) => {
+    if (!iso) return;
+    const day = ymdInTz(iso, ownerTz || UK);
+    if (!day) return;
+    const [y, m] = day.split("-").map(Number);
+    if (!y || !m) return;
+    if (y < minY || (y === minY && m < minM)) {
+      minY = y;
+      minM = m;
+    }
+    if (y > maxY || (y === maxY && m > maxM)) {
+      maxY = y;
+      maxM = m;
+    }
+  };
+
+  for (const m of seasonMonths || []) {
+    considerIso(m.unlock_at);
+    considerIso(m.lock_at);
+  }
+  for (const f of fixtures || []) considerIso(f.agreed_kickoff_at);
+  for (const c of cutoffs || []) considerIso(c?.at);
+
+  // Always include a usable window around the current view / today.
+  const today = todayYmd(ownerTz || UK);
+  const [ty, tm] = (today || "").split("-").map(Number);
+  if (ty && tm) {
+    const [aY, aM] = bump(ty, tm, -6);
+    const [bY, bM] = bump(ty, tm, 18);
+    if (aY < minY || (aY === minY && aM < minM)) {
+      minY = aY;
+      minM = aM;
+    }
+    if (bY > maxY || (bY === maxY && bM > maxM)) {
+      maxY = bY;
+      maxM = bM;
+    }
+  }
+
+  // Ensure current view is inside the list.
+  if (viewYear < minY || (viewYear === minY && viewMonth < minM)) {
+    minY = viewYear;
+    minM = viewMonth;
+  }
+  if (viewYear > maxY || (viewYear === maxY && viewMonth > maxM)) {
+    maxY = viewYear;
+    maxM = viewMonth;
+  }
+
+  return { minY, minM, maxY, maxM };
+}
+
+function syncMonthSelect() {
+  const sel = document.getElementById("ocMonthSelect");
+  if (!sel) return;
+  const { minY, minM, maxY, maxM } = monthSelectBounds();
+  const current = ymKey(viewYear, viewMonth);
+  const opts = [];
+  let y = minY;
+  let m = minM;
+  while (y < maxY || (y === maxY && m <= maxM)) {
+    opts.push(`<option value="${ymKey(y, m)}">${monthLabel(y, m)}</option>`);
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  sel.innerHTML = opts.join("");
+  if (![...sel.options].some((o) => o.value === current)) {
+    const extra = document.createElement("option");
+    extra.value = current;
+    extra.textContent = monthLabel(viewYear, viewMonth);
+    sel.appendChild(extra);
+  }
+  sel.value = current;
+}
+
+function goToMonth(y, m) {
+  if (!y || !m || m < 1 || m > 12) return;
+  if (y === viewYear && m === viewMonth) return;
+  viewYear = y;
+  viewMonth = m;
+  selectedYmd = null;
+  renderGrid();
+  renderPanel();
+}
+
 function renderGrid() {
   const grid = document.getElementById("ocGrid");
-  const title = document.getElementById("ocMonthTitle");
-  if (title) title.textContent = monthLabel(viewYear, viewMonth);
+  syncMonthSelect();
   if (!grid) return;
 
   const eventsByDay = buildEventsByDay();
@@ -327,8 +439,9 @@ function renderGrid() {
       const events = eventsByDay.get(c.ymd) || [];
       const dow = isoDowForYmd(c.ymd, ownerTz);
       const hasAvail = availDows.has(dow);
-      const shown = events.slice(0, 2);
-      const more = events.length - shown.length;
+      const expanded = c.ymd === selectedYmd;
+      const shown = expanded ? events : events.slice(0, 2);
+      const more = expanded ? 0 : Math.max(0, events.length - shown.length);
       const chipHtml = shown
         .map(
           (ev) =>
@@ -345,7 +458,8 @@ function renderGrid() {
         "oc-day",
         c.outside ? "is-outside" : "",
         c.ymd === today ? "is-today" : "",
-        c.ymd === selectedYmd ? "is-selected" : "",
+        expanded ? "is-selected" : "",
+        expanded && events.length > 2 ? "is-expanded" : "",
         hasAvail ? "has-avail" : "",
       ]
         .filter(Boolean)
@@ -529,6 +643,11 @@ async function boot() {
   document.getElementById("ocPrev")?.addEventListener("click", () => shiftMonth(-1));
   document.getElementById("ocNext")?.addEventListener("click", () => shiftMonth(1));
   document.getElementById("ocToday")?.addEventListener("click", goToday);
+  document.getElementById("ocMonthSelect")?.addEventListener("change", (e) => {
+    const v = e.target?.value || "";
+    const [y, m] = v.split("-").map(Number);
+    goToMonth(y, m);
+  });
 
   try {
     const [avail, months, fix, cuts] = await Promise.all([

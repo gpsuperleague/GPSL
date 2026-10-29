@@ -38,8 +38,24 @@
     .oc-season-link {
       border-color:#2a5c56; color:#9fd9d0; margin-left:4px;
     }
-    .oc-month-title {
+    .oc-month-title,
+    .oc-month-select {
       font-size:18px; font-weight:bold; color:#eee; min-width:10rem; text-align:center;
+    }
+    .oc-month-select {
+      appearance:none; -webkit-appearance:none;
+      background:#1a1a1a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23aaa' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 10px center;
+      border:1px solid #444; border-radius:6px;
+      padding:6px 28px 6px 12px; cursor:pointer; color:#eee;
+      font:inherit; font-size:18px; font-weight:bold;
+    }
+    .oc-month-select:hover,
+    .oc-month-select:focus {
+      border-color:var(--gpsl-accent, #ff9900); color:var(--gpsl-accent, #ff9900);
+      outline:none;
+    }
+    .oc-month-select option {
+      background:#1a1a1a; color:#eee; font-weight:normal; font-size:14px;
     }
     .oc-tz { color:#888; font-size:12px; }
     .oc-legend {
@@ -92,6 +108,7 @@
     .oc-day.is-outside { opacity:0.38; }
     .oc-day.is-today { box-shadow:inset 0 0 0 1px var(--gpsl-accent, #ff9900); }
     .oc-day.is-selected { background:#242018; box-shadow:inset 0 0 0 1px #c9a227; }
+    .oc-day.is-expanded { min-height:auto; z-index:2; }
     .oc-day.has-avail { background:linear-gradient(180deg, rgba(47,107,58,0.18), #161616 42%); }
     .oc-day.has-avail.is-selected {
       background:linear-gradient(180deg, rgba(47,107,58,0.22), #242018 42%);
@@ -162,7 +179,7 @@
     <div class="oc-toolbar">
       <div class="oc-month-nav">
         <button type="button" id="ocPrev" aria-label="Previous month">←</button>
-        <div class="oc-month-title" id="ocMonthTitle">—</div>
+        <select class="oc-month-select" id="ocMonthSelect" aria-label="Select month"></select>
         <button type="button" id="ocNext" aria-label="Next month">→</button>
         <button type="button" id="ocToday">Today</button>
         <a class="oc-season-link" href="season_calendar.html" title="GPSL Aug–May season roadmap">Season roadmap</a>
@@ -195,6 +212,6 @@
       </aside>
     </div>
   </div>
-  <script type="module" src="owner_calendar.js?v=20261029-cal-chips"></script>
+  <script type="module" src="owner_calendar.js?v=20261029-cal-expand-more"></script>
 </body>
 </html>
