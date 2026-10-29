@@ -645,6 +645,7 @@ function holidayEarlyBannerHtml() {
   return `<div class="catch-up-banner holiday-early-banner">
     <strong>Holiday early play</strong> — this <b>${playMonth}</b> fixture is unlocked now.
     Arrange and play during <b>${windowLabel}</b> (both clubs need a full squad, min 24).
+    To play before a later agreed kick-off (e.g. before 19:00): open this Schedule page and use <b>Play now</b> (both must confirm) — Match Day alone has no Play now button.
   </div>`;
 }
 
@@ -730,6 +731,28 @@ function renderAgreedPanel(root, f, sch) {
     `;
   } else if (sch.mutual_override_used) {
     mutualHtml = `<p class="meta">Free mutual new-time already used for this fixture. Play now appears again when an earlier slot is available before kick-off.</p>`;
+  } else if (
+    sch.status === "agreed" &&
+    sch.agreed_kickoff_at &&
+    new Date(sch.agreed_kickoff_at).getTime() > Date.now() &&
+    ctx.my_has_manager !== false
+  ) {
+    // Agreed KO in the future but Play now is not offered — explain the usual blockers.
+    mutualHtml = `
+      <div class="panel mutual-panel">
+        <h2>Want to play earlier than the agreed kick-off?</h2>
+        <p class="meta"><b>Play now</b> is not available right now. It only appears on this Schedule page when:</p>
+        <ul class="meta" style="margin:8px 0 0 1.1rem;padding:0;line-height:1.45;">
+          <li>Kick-off is already <b>agreed</b> (you have that).</li>
+          <li>There is still a UK 30‑minute slot <b>before</b> that kick-off.</li>
+          <li>For <b>holiday early play</b>, <b>both</b> clubs need a full squad (min 24).</li>
+          <li>Both clubs have a signed manager.</li>
+        </ul>
+        <p class="meta" style="margin-top:10px;">
+          Alternative: use <b>Change kick-off</b> / Discord lock to agree an earlier time, or propose a daytime slot first instead of 19:00.
+          After Play now (or a new agreed time), both check in on Match Day from 10 minutes before the new kick-off.
+        </p>
+      </div>`;
   }
 
   const agreedMeta = document.getElementById("scheduleMeta");
