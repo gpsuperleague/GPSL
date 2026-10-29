@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261029-cal-icon-swap";
+export const APP_VERSION = "20261029-cal-full-club";

@@ -9,6 +9,11 @@ import {
   formatUkDateTime,
 } from "./competition_calendar.js";
 import { loadAvailabilityContext, UK_TZ } from "./match_scheduling.js";
+import {
+  loadClubsMap,
+  fullClubName,
+  ownerTagForClub,
+} from "./clubs_lookup.js";
 
 const UK = UK_TZ || "Europe/London";
 const DOW_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -120,13 +125,44 @@ function truncateChip(text, max = 14) {
   return `${s.slice(0, max - 1)}…`;
 }
 
-function fixtureChipText(f) {
-  const home = (f.home_club_short_name || "?").toUpperCase();
-  const away = (f.away_club_short_name || "?").toUpperCase();
+function clubFull(short, fallbackName) {
+  const s = String(short || "").trim();
+  const fromMap = s ? fullClubName(s) : "";
+  if (fromMap && fromMap !== s) return fromMap;
+  return String(fallbackName || fromMap || s || "?").trim() || "?";
+}
+
+function oppShortForMe(f) {
   const me = (myClub.short || "").toUpperCase();
-  if (me && home === me) return `vs ${away}`;
-  if (me && away === me) return `@ ${home}`;
-  return `${home}-${away}`;
+  const home = (f.home_club_short_name || "").trim().toUpperCase();
+  const away = (f.away_club_short_name || "").trim().toUpperCase();
+  if (me && home === me) return f.away_club_short_name;
+  if (me && away === me) return f.home_club_short_name;
+  return null;
+}
+
+function fixtureChipText(f) {
+  const home = clubFull(f.home_club_short_name, f.home_club_name);
+  const away = clubFull(f.away_club_short_name, f.away_club_name);
+  const me = (myClub.short || "").toUpperCase();
+  const homeKey = (f.home_club_short_name || "").trim().toUpperCase();
+  const awayKey = (f.away_club_short_name || "").trim().toUpperCase();
+  if (me && homeKey === me) return `vs ${away}`;
+  if (me && awayKey === me) return `@ ${home}`;
+  return `${home} vs ${away}`;
+}
+
+function fixtureOppOwnerLine(f) {
+  const opp = oppShortForMe(f);
+  if (!opp) return "";
+  const owner = ownerTagForClub(opp);
+  return owner ? `Owner: ${owner}` : "Owner: Vacant";
+}
+
+function fixtureChipHover(f) {
+  const ownerBit = fixtureOppOwnerLine(f);
+  const base = fixtureTitle(f);
+  return ownerBit ? `${base} · ${ownerBit}` : base;
 }
 
 function deadlineChipText(c) {
@@ -169,8 +205,8 @@ function formatSlotRange(slotsForDow) {
 }
 
 function fixtureTitle(f) {
-  const home = f.home_club_short_name || "?";
-  const away = f.away_club_short_name || "?";
+  const home = clubFull(f.home_club_short_name, f.home_club_name);
+  const away = clubFull(f.away_club_short_name, f.away_club_name);
   if (f.competition_type === "cup") {
     const cup = CUP_LABELS[f.cup_code] || f.cup_code || "Cup";
     return `${home} vs ${away} · ${cup}`;
@@ -214,6 +250,8 @@ function buildEventsByDay() {
       href: fixtureHref(f),
       hrefLabel: f.status === "played" ? "Match Day →" : "Match Day / schedule →",
       chip: `${hhmm} ${fixtureChipText(f)}`,
+      chipTitle: fixtureChipHover(f),
+      ownerLine: fixtureOppOwnerLine(f),
     });
   }
 
@@ -446,7 +484,7 @@ function renderGrid() {
         .map(
           (ev) =>
             `<span class="oc-chip oc-chip--${escapeHtml(ev.kind)}" title="${escapeHtml(
-              ev.title
+              ev.chipTitle || ev.title
             )}">${escapeHtml(ev.chip || ev.title)}</span>`
         )
         .join("");
@@ -543,6 +581,11 @@ function renderPanel() {
           <b>${escapeHtml(ev.title)}</b>
           <div class="detail">${escapeHtml(ev.detail)}</div>
           ${
+            ev.ownerLine
+              ? `<div class="detail">${escapeHtml(ev.ownerLine)}</div>`
+              : ""
+          }
+          ${
             ev.href
               ? `<a href="${escapeHtml(ev.href)}">${escapeHtml(ev.hrefLabel || "Open →")}</a>`
               : ""
@@ -569,7 +612,7 @@ async function loadMyFixtures() {
   const { data, error } = await supabase
     .from("competition_fixtures_public")
     .select(
-      "id, home_club_short_name, away_club_short_name, competition_type, cup_code, division, matchday, status, schedule_status, agreed_kickoff_at, gpsl_month"
+      "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, competition_type, cup_code, division, matchday, status, schedule_status, agreed_kickoff_at, gpsl_month"
     );
   if (error) {
     console.warn("owner_calendar fixtures:", error);
@@ -656,7 +699,7 @@ async function boot() {
         return null;
       }),
       loadSeasonCalendarMonths(supabase),
-      loadMyFixtures(),
+      loadClubsMap().then(() => loadMyFixtures()),
       loadCutoffs(),
     ]);
 
