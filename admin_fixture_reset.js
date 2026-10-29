@@ -316,7 +316,7 @@ async function runReset() {
     : `fixture #${id}`;
   if (
     !window.confirm(
-      `Reset ${label} for replay?\n\nThis clears result, stats, videos, schedule and linked finance.`
+      `Reset ${label} for replay?\n\nThis clears result, stats, videos, schedule and linked finance.\n\nCup ties: the winner is also pulled out of the next-round draw (unplayed next-round fixture removed if a feeder slot empties).`
     )
   ) {
     return;

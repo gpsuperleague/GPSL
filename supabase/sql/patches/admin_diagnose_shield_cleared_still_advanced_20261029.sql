@@ -1,12 +1,10 @@
--- Diagnose: Shield (or any cup) nodes where fixture is unplayed but winner still advanced
--- Safe read-only.
+-- Diagnose: Shield nodes where fixture is unplayed/cleared but winner still advanced
 
 SELECT
   n.id AS node_id,
   n.cup_code,
-  n.round_code,
-  n.round_index,
-  n.bracket_index,
+  n.round_no,
+  n.match_no,
   n.home_club_short_name AS node_home,
   n.away_club_short_name AS node_away,
   n.winner_club_short_name AS node_winner,
@@ -34,4 +32,4 @@ WHERE lower(btrim(coalesce(n.cup_code, ''))) = 'shield'
     OR f.home_goals IS NULL
     OR f.away_goals IS NULL
   )
-ORDER BY n.round_index, n.bracket_index;
+ORDER BY n.round_no, n.match_no;
