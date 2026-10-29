@@ -283,7 +283,7 @@ DECLARE
   v_before jsonb;
   v_after jsonb;
   v_preserve jsonb := '[]'::jsonb;
-  v_row jsonb;
+  v_elem jsonb;
   v_phase text;
 BEGIN
   IF NOT public.is_gpsl_admin()
@@ -444,8 +444,8 @@ BEGIN
   WHERE fixture_id = v_fid;
 
   IF NOT FOUND THEN
-    INSERT INTO public.competition_fixture_schedule (fixture_id, status)
-    VALUES (v_fid, 'unscheduled')
+    INSERT INTO public.competition_fixture_schedule (fixture_id, season_id, status)
+    VALUES (v_fid, v_f.season_id, 'unscheduled')
     ON CONFLICT (fixture_id) DO UPDATE
     SET status = 'unscheduled',
         agreed_kickoff_at = NULL,
@@ -457,14 +457,18 @@ BEGIN
 
   -- 7b) Restore injury absences onto the replay fixture (parity with suspensions)
   IF to_regclass('public.competition_player_injury_fixtures') IS NOT NULL THEN
-    FOR v_row IN
-      SELECT value AS j FROM jsonb_array_elements(coalesce(v_preserve, '[]'::jsonb))
+    FOR v_elem IN
+      SELECT value
+      FROM jsonb_array_elements(coalesce(v_preserve, '[]'::jsonb))
     LOOP
-      v_phase := lower(coalesce(v_row.j->>'phase', 'out'));
+      v_phase := lower(coalesce(v_elem->>'phase', 'out'));
 
-      IF coalesce((v_row.j->>'served')::boolean, false) THEN
+      IF coalesce((v_elem->>'served')::boolean, false)
+         AND to_regprocedure(
+               'public.competition_injury_undo_absence_serve(bigint,text)'
+             ) IS NOT NULL THEN
         PERFORM public.competition_injury_undo_absence_serve(
-          (v_row.j->>'injury_id')::bigint,
+          (v_elem->>'injury_id')::bigint,
           v_phase
         );
       END IF;
@@ -473,7 +477,7 @@ BEGIN
       IF EXISTS (
         SELECT 1
         FROM public.competition_player_injuries i
-        WHERE i.id = (v_row.j->>'injury_id')::bigint
+        WHERE i.id = (v_elem->>'injury_id')::bigint
           AND i.status = 'active'
           AND (
             coalesce(i.matches_out_remaining, 0) > 0
@@ -484,7 +488,7 @@ BEGIN
           injury_id, fixture_id, phase, served
         )
         VALUES (
-          (v_row.j->>'injury_id')::bigint,
+          (v_elem->>'injury_id')::bigint,
           v_fid,
           v_phase,
           false
