@@ -658,11 +658,13 @@ export async function emergencyDrop(fixtureId) {
   return { ok: true };
 }
 
-export async function requestMutualOverridePlayNow(fixtureId) {
-  const { data, error } = await supabase.rpc("fixture_mutual_override_request", {
+export async function requestMutualOverridePlayNow(fixtureId, kickoffAt = null) {
+  const args = {
     p_fixture_id: fixtureId,
     p_kind: "play_now",
-  });
+  };
+  if (kickoffAt) args.p_kickoff_at = kickoffAt;
+  const { data, error } = await supabase.rpc("fixture_mutual_override_request", args);
   if (error) return { ok: false, msg: error.message };
   return { ok: true, data };
 }

@@ -25,7 +25,7 @@ import {
   dateFromZonedDateTimeLocal,
   zonedDateTimeLocalValue,
   snapToUkHalfHourSlot,
-} from "./match_scheduling.js?v=20261029-poke";
+} from "./match_scheduling.js?v=20261029-playnow-free";
 import {
   loadFixtureUnavailable,
   formatFixtureUnavailableBannerHtml,
@@ -711,24 +711,35 @@ function renderAgreedPanel(root, f, sch) {
   let mutualHtml = "";
   if (mo) {
     mutualHtml = mutualPendingPanelHtml(mo, homeTz, awayTz);
-  } else if (moOpts.can_request_play_now || moOpts.can_request_new_time) {
+  } else if (
+    (moOpts.can_request_play_now ||
+      (sch.status === "agreed" &&
+        sch.agreed_kickoff_at &&
+        new Date(sch.agreed_kickoff_at).getTime() > Date.now())) &&
+    ctx.my_has_manager !== false
+  ) {
     const freeNewTimeNote = sch.mutual_override_used
       ? "Free mutual new-time already used for this fixture — Play now is still available if both agree."
       : "One free mutual new-time per fixture; Play now can be used again later if both agree.";
+    const playNowDefault = moOpts.play_now_kickoff_at
+      ? zonedDateTimeLocalValue(moOpts.play_now_kickoff_at, ownerTz)
+      : "";
     mutualHtml = `
       <div class="panel mutual-panel">
-        <h2>Both agree? (no allowance used)</h2>
-        <p class="meta">Update kick-off without using your monthly reschedule or an emergency drop. ${freeNewTimeNote}</p>
-        <div class="actions">
-          ${
-            moOpts.can_request_play_now && moOpts.play_now_kickoff_at
-              ? `<button type="button" id="playNowMutualBtn" class="button">Play now (${formatKickoffPair(moOpts.play_now_kickoff_at, homeTz, awayTz)})</button>`
-              : ""
-          }
+        <h2>Play now (no allowance used)</h2>
+        <p class="meta">
+          You already agreed a kick-off — pick <b>any earlier</b> date/time to play sooner.
+          Does <b>not</b> need to match weekly availability. Opponent confirms; then check in from 10 minutes before the new kick-off.
+        </p>
+        <div class="poke-free-row" style="margin-top:10px;">
+          <input type="datetime-local" id="playNowDateTime" step="1800" value="${playNowDefault}" />
+          <button type="button" id="playNowMutualBtn" class="button">Request Play now</button>
         </div>
+        <p class="meta" id="playNowPreview" hidden></p>
+        <p class="meta" style="margin-top:8px;">${freeNewTimeNote}</p>
         ${
           moOpts.can_request_new_time
-            ? `<p class="meta" style="margin-top:12px;">Or pick a new mutual slot:</p>
+            ? `<p class="meta" style="margin-top:12px;">Or change kick-off to another <b>mutual</b> weekly slot:</p>
                <div class="slot-list" id="mutualSlotList"></div>
                <div class="actions">
                  <button type="button" id="newTimeMutualBtn" class="button secondary" disabled>Change kick-off (both agree)</button>
@@ -738,29 +749,7 @@ function renderAgreedPanel(root, f, sch) {
       </div>
     `;
   } else if (sch.mutual_override_used) {
-    mutualHtml = `<p class="meta">Free mutual new-time already used for this fixture. Play now appears again when an earlier slot is available before kick-off.</p>`;
-  } else if (
-    sch.status === "agreed" &&
-    sch.agreed_kickoff_at &&
-    new Date(sch.agreed_kickoff_at).getTime() > Date.now() &&
-    ctx.my_has_manager !== false
-  ) {
-    // Agreed KO in the future but Play now is not offered — explain the usual blockers.
-    mutualHtml = `
-      <div class="panel mutual-panel">
-        <h2>Want to play earlier than the agreed kick-off?</h2>
-        <p class="meta"><b>Play now</b> is not available right now. It only appears on this Schedule page when:</p>
-        <ul class="meta" style="margin:8px 0 0 1.1rem;padding:0;line-height:1.45;">
-          <li>Kick-off is already <b>agreed</b> (you have that).</li>
-          <li>There is still a UK 30‑minute slot <b>before</b> that kick-off.</li>
-          <li>For <b>holiday early play</b>, <b>both</b> clubs need a full squad (min 24).</li>
-          <li>Both clubs have a signed manager.</li>
-        </ul>
-        <p class="meta" style="margin-top:10px;">
-          Alternative: use <b>Change kick-off</b> / Discord lock to agree an earlier time, or propose a daytime slot first instead of 19:00.
-          After Play now (or a new agreed time), both check in on Match Day from 10 minutes before the new kick-off.
-        </p>
-      </div>`;
+    mutualHtml = `<p class="meta">Free mutual new-time already used for this fixture. Play now appears again while the agreed kick-off is still in the future.</p>`;
   }
 
   const agreedMeta = document.getElementById("scheduleMeta");
@@ -963,19 +952,57 @@ function renderAgreedPanel(root, f, sch) {
     }
   }
 
+  const playNowDt = document.getElementById("playNowDateTime");
+  const playNowPreview = document.getElementById("playNowPreview");
   const playNowBtn = document.getElementById("playNowMutualBtn");
+
+  const readPlayNowIso = () => {
+    if (!playNowDt?.value) return null;
+    const raw = dateFromZonedDateTimeLocal(playNowDt.value, ownerTz);
+    if (!raw) return null;
+    const snapped = snapToUkHalfHourSlot(raw);
+    return snapped && !Number.isNaN(snapped.getTime()) ? snapped.toISOString() : null;
+  };
+
+  const refreshPlayNowPreview = () => {
+    if (!playNowPreview) return;
+    const iso = readPlayNowIso();
+    if (!iso) {
+      playNowPreview.hidden = true;
+      playNowPreview.textContent = "";
+      return;
+    }
+    playNowPreview.hidden = false;
+    playNowPreview.textContent = `Will request: ${formatKickoffPair(iso, homeTz, awayTz)} (UK 30‑min snap)`;
+  };
+
+  if (playNowDt) {
+    playNowDt.addEventListener("input", refreshPlayNowPreview);
+    playNowDt.addEventListener("change", refreshPlayNowPreview);
+    refreshPlayNowPreview();
+  }
+
   if (playNowBtn) {
     playNowBtn.onclick = async () => {
+      const iso = readPlayNowIso();
+      if (!iso) {
+        setStatus("Pick a Play now date/time first.", true);
+        return;
+      }
+      if (new Date(iso).getTime() >= new Date(sch.agreed_kickoff_at).getTime()) {
+        setStatus("Play now must be earlier than the agreed kick-off.", true);
+        return;
+      }
       if (
         !confirm(
-          "Request play now? Your opponent must confirm. No reschedule allowance is used."
+          `Request Play now at ${formatKickoffPair(iso, homeTz, awayTz)}? Opponent must confirm. No reschedule allowance is used.`
         )
       ) {
         return;
       }
       playNowBtn.disabled = true;
       setStatus("Sending play-now request…");
-      const res = await requestMutualOverridePlayNow(fixtureId);
+      const res = await requestMutualOverridePlayNow(fixtureId, iso);
       if (!res.ok) {
         setStatus(res.msg, true);
         playNowBtn.disabled = false;
