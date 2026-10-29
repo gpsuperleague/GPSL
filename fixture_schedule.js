@@ -235,8 +235,8 @@ function wirePokePanel({
     appendKickoffSlotButtons(oppList, selectableOppSlots, {
       homeTz,
       awayTz,
-      // Primary line = opponent's local clock
-      ownerTz: oppTz || awayTz,
+      // Primary = your clock so both lists compare; opp local is on the sub line
+      ownerTz,
       onSelect: (iso, btn, list) => {
         setPokeSelection(iso, { homeTz, awayTz, ownerTz, clearLists: false });
         list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
@@ -1103,7 +1103,7 @@ function render() {
   const slotIntro = isAwayWaiting
     ? `Waiting for <b>${fullClubName(f.home_club_short_name)}</b> (home) to propose first — slot buttons below are for reference only and won’t select. Once they propose you can accept or counter (${slotCountLine}). If you already agreed off-site, use the <b>Agreed on Discord</b> tab.`
     : usingPoke
-      ? `No mutual times this window. <b>Poke</b> a kick-off (free date/time) — see the opponent’s availability below (in <b>their</b> timezone) so you can aim close to something they already offer. Same accept / counter / reply rules after you send.`
+      ? `No mutual times this window. <b>Poke</b> a kick-off (free date/time) — see the opponent’s availability below <b>in your timezone</b> so you can aim close to something they already offer. Same accept / counter / reply rules after you send.`
       : ctx.can_respond
         ? `Accept the proposed time above, or counter with another time free for <b>both</b> clubs in your local timezones (${slotCountLine}).`
         : usingCompatibleSlots
@@ -1126,7 +1126,7 @@ function render() {
         <h3 class="poke-heading">Opponent availability · ${escapeHtmlLite(
           fullClubName(oppClubShort) || oppClubShort || "Opponent"
         )} (${escapeHtmlLite(tzDisplayName(oppTz))})</h3>
-        <p class="meta">Read their times in <b>their</b> timezone (your clock on the second line). Click one to start from it, or enter any free date/time below.</p>
+        <p class="meta">Shown in <b>your</b> timezone so you can compare with your own slots (their local clock is on the second line). Click one to start from it, or enter any free date/time below.</p>
         <div class="slot-list" id="oppSlotList"></div>
         ${
           selectableOppSlots.length
