@@ -169,6 +169,18 @@
       background:#222; border:1px solid #555; color:#eee; border-radius:6px;
       padding:8px 10px; font-size:13px;
     }
+    .poke-near-note { color:#c8e6a0; margin:6px 0 0; }
+    .slot-btn.slot-near {
+      border-color:#8bc34a; background:#1e2a14; box-shadow:inset 0 0 0 1px rgba(139,195,74,.35);
+    }
+    .slot-btn.slot-near .slot-main { color:#d8f0b0; }
+    .slot-btn.slot-near:disabled { opacity:1; }
+    .slot-btn .slot-near-tag {
+      font-size:10px; color:#b7e07a; font-weight:600; margin-top:2px; line-height:1.2;
+    }
+    .slot-btn.slot-near.selected {
+      background:#2a3d18; border-color:#a5d96a;
+    }
   </style>
 </head>
 <body>
@@ -185,6 +197,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261029-poke-tz"></script>
+  <script type="module" src="fixture_schedule.js?v=20261029-poke-near"></script>
 </body>
 </html>

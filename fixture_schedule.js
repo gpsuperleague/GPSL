@@ -159,7 +159,48 @@ function escapeHtmlLite(text) {
     .replace(/"/g, "&quot;");
 }
 
-function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, onSelect, excludeIso }) {
+const POKE_NEAR_MS = 2 * 60 * 60 * 1000;
+
+/** Slots within 2h of any slot in the other list (absolute UTC gap). */
+function pokeNearIsoSets(oppSlots, ownSlots, withinMs = POKE_NEAR_MS) {
+  const oppNear = new Set();
+  const ownNear = new Set();
+  /** @type {Map<string, number>} iso → closest gap ms */
+  const closestGap = new Map();
+  const opp = (oppSlots || []).map((iso) => ({ iso, t: new Date(iso).getTime() }))
+    .filter((x) => Number.isFinite(x.t));
+  const own = (ownSlots || []).map((iso) => ({ iso, t: new Date(iso).getTime() }))
+    .filter((x) => Number.isFinite(x.t));
+
+  for (const a of opp) {
+    for (const b of own) {
+      const gap = Math.abs(a.t - b.t);
+      if (gap >= withinMs || gap === 0) continue;
+      oppNear.add(a.iso);
+      ownNear.add(b.iso);
+      const prevA = closestGap.get(a.iso);
+      if (prevA == null || gap < prevA) closestGap.set(a.iso, gap);
+      const prevB = closestGap.get(b.iso);
+      if (prevB == null || gap < prevB) closestGap.set(b.iso, gap);
+    }
+  }
+  return { oppNear, ownNear, closestGap };
+}
+
+function formatNearGapLabel(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return "";
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins} min apart`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h}h ${m}m apart` : `${h}h apart`;
+}
+
+function appendKickoffSlotButtons(
+  container,
+  slots,
+  { homeTz, awayTz, ownerTz, onSelect, excludeIso, nearIsoSet, nearGapByIso }
+) {
   if (!container) return 0;
 
   const selectable = filterSelectableKickoffSlots(slots, ownerTz);
@@ -169,18 +210,28 @@ function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, o
     if (excludeIso && iso === excludeIso) continue;
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "slot-btn";
-    btn.innerHTML = formatKickoffSlotHtml(iso, {
-      ownerTz,
-      homeTz,
-      awayTz,
-    });
+    const isNear = nearIsoSet?.has(iso);
+    btn.className = isNear ? "slot-btn slot-near" : "slot-btn";
+    btn.dataset.kickoff = iso;
+    const gapLabel = isNear ? formatNearGapLabel(nearGapByIso?.get(iso)) : "";
+    btn.title = gapLabel
+      ? `Within 2 hours of a slot on the other list (${gapLabel})`
+      : "";
+    btn.innerHTML =
+      formatKickoffSlotHtml(iso, {
+        ownerTz,
+        homeTz,
+        awayTz,
+      }) +
+      (isNear
+        ? `<span class="slot-near-tag">Near · ${escapeHtmlLite(gapLabel || "<2h")}</span>`
+        : "");
     if (onSelect) {
       btn.onclick = () => onSelect(iso, btn, container);
     } else {
       btn.disabled = true;
-      btn.style.opacity = "0.65";
       btn.style.cursor = "default";
+      if (!isNear) btn.style.opacity = "0.65";
     }
     container.appendChild(btn);
     count += 1;
@@ -231,12 +282,19 @@ function wirePokePanel({
   const dt = document.getElementById("pokeDateTime");
   const useBtn = document.getElementById("pokeUseBtn");
 
+  const { oppNear, ownNear, closestGap } = pokeNearIsoSets(
+    selectableOppSlots,
+    selectableOwnSlots
+  );
+
   if (oppList) {
     appendKickoffSlotButtons(oppList, selectableOppSlots, {
       homeTz,
       awayTz,
       // Primary = your clock so both lists compare; opp local is on the sub line
       ownerTz,
+      nearIsoSet: oppNear,
+      nearGapByIso: closestGap,
       onSelect: (iso, btn, list) => {
         setPokeSelection(iso, { homeTz, awayTz, ownerTz, clearLists: false });
         list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
@@ -253,8 +311,19 @@ function wirePokePanel({
       homeTz,
       awayTz,
       ownerTz,
+      nearIsoSet: ownNear,
+      nearGapByIso: closestGap,
       onSelect: null, // comparison only
     });
+  }
+
+  const nearNote = document.getElementById("pokeNearNote");
+  if (nearNote) {
+    const n = oppNear.size;
+    nearNote.hidden = n === 0;
+    if (n) {
+      nearNote.textContent = `${n} opponent time${n === 1 ? "" : "s"} within 2 hours of one of yours — highlighted.`;
+    }
   }
 
   if (dt && !dt.value) {
@@ -1126,7 +1195,8 @@ function render() {
         <h3 class="poke-heading">Opponent availability · ${escapeHtmlLite(
           fullClubName(oppClubShort) || oppClubShort || "Opponent"
         )} (${escapeHtmlLite(tzDisplayName(oppTz))})</h3>
-        <p class="meta">Shown in <b>your</b> timezone so you can compare with your own slots (their local clock is on the second line). Click one to start from it, or enter any free date/time below.</p>
+        <p class="meta">Shown in <b>your</b> timezone so you can compare with your own slots (their local clock is on the second line). Times within <b>2 hours</b> of one of yours are highlighted. Click one to start from it, or enter any free date/time below.</p>
+        <p class="meta poke-near-note" id="pokeNearNote" hidden></p>
         <div class="slot-list" id="oppSlotList"></div>
         ${
           selectableOppSlots.length
