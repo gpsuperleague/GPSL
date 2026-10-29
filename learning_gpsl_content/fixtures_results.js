@@ -287,7 +287,6 @@ export const SECTION_MATCH_SCHEDULING = {
         `Before kick-off, save a valid squad on <a href="matchday.html">Match Day</a> (exactly 11 starters incl. a GK, 12 subs, no injured or suspended players) — check-in is refused otherwise.`,
         `Both owners open the <b>schedule page</b> and <b>Check in</b> — from 10 minutes before kick-off until 10 minutes after.`,
         `When both have checked in, Match Day unlocks for a <b>30-minute</b> play window.`,
-        `<b>Both miss check-in</b> — no fine. Pick a new time on the schedule page and try again.`,
         `<b>Only one checks in</b> — instant no-show: <b>₿500k / ₿1m / ₿1.5m</b> by that club’s count on this fixture, plus a <b>season strike</b>. <b>3rd</b> on the same fixture → <b>0–3 forfeit</b>. Attempt bumps (1→2→3).`,
         `<b>Both miss check-in</b> — each club <b>₿500k + 1 season strike</b>; pick a new time (attempt bumps).`,
         `<b>Season strikes</b> — every <b>3rd</b> strike (3, 6, 9…) → extra <b>₿2.5m</b>.`,
