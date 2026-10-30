@@ -108,6 +108,7 @@ function renderHeader(profile, totals) {
   document.getElementById("totalsRow").innerHTML = `
     ${walletBit}
     <span><b>${t.seasons ?? 0}</b> seasons</span>
+    <span>Played <b>${t.mp ?? 0}</b></span>
     <span><b>${t.won ?? 0}</b>-${t.drawn ?? 0}-${t.lost ?? 0}</span>
     <span>Win % <b>${pct(t.win_pct)}</b></span>
     <span>Draw % <b>${pct(t.draw_pct)}</b></span>
@@ -117,6 +118,7 @@ function renderHeader(profile, totals) {
     <span>Avg GA <b>${pct(t.avg_ga)}</b></span>
     <span>Pts <b>${t.pts ?? 0}</b></span>
     <span>GD <b>${t.gd ?? 0}</b></span>
+    <span class="totals-note" title="League, cup and World Cup only — friendlies excluded">League · Cup · WC</span>
   `;
 
   const edit = document.getElementById("badgeEdit");

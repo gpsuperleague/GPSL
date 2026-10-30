@@ -165,13 +165,17 @@ GRANT EXECUTE ON FUNCTION public.competition_catchup_month_awards(bigint, text[]
 SELECT public.competition_catchup_month_awards(NULL, NULL, false) AS catchup_result;
 
 -- Include MotM/OotM in the "awards" month-lock stage going forward
+-- (Postgres replace() is 3-arg only — no occurrence count)
 DO $wire$
 DECLARE
   v_oid oid;
   v_def text;
   v_new text;
   v_awards_pos int;
+  v_flag_pos int;
   v_chunk text;
+  v_old text := 'v_do_motm := false;';
+  v_on text := 'v_do_motm := true;';
 BEGIN
   v_oid := to_regprocedure(
     'public.competition_run_month_lock_jobs(bigint,boolean,text,text)'
@@ -189,36 +193,33 @@ BEGIN
   END IF;
 
   v_chunk := substring(v_def from v_awards_pos for 500);
-  IF position('v_do_motm := true;' IN v_chunk) > 0 THEN
+  IF position(v_on IN v_chunk) > 0 THEN
     RAISE NOTICE 'awards stage already enables motm';
     RETURN;
   END IF;
 
-  IF position('v_do_motm := false;' IN v_chunk) = 0 THEN
+  v_flag_pos := position(v_old IN v_chunk);
+  IF v_flag_pos = 0 THEN
     RAISE NOTICE 'awards stage motm flag not found in expected chunk';
     RETURN;
   END IF;
 
-  -- Flip only the first v_do_motm := false inside the awards stage chunk
   v_new := overlay(
     v_def
-    placing replace(
-      v_chunk,
-      'v_do_motm := false;',
-      'v_do_motm := true;',
-      1
-    )
-    from v_awards_pos
-    for 500
+    placing v_on
+    from v_awards_pos + v_flag_pos - 1
+    for length(v_old)
   );
 
-  IF v_new IS DISTINCT FROM v_def
-     AND position('v_do_motm := true;' IN substring(v_new from v_awards_pos for 500)) > 0 THEN
+  IF v_new IS DISTINCT FROM v_def THEN
     EXECUTE v_new;
     RAISE NOTICE 'awards stage now includes MotM/OotM';
   ELSE
     RAISE NOTICE 'awards stage motm flag not rewritten';
   END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'awards stage wire skipped: %', SQLERRM;
 END;
 $wire$;
 
