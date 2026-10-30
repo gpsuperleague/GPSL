@@ -12,6 +12,40 @@
     .page-container { width:95%; max-width:1200px; margin:20px auto 40px; }
     h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:8px; }
     .meta { color:#aaa; margin-bottom:16px; line-height:1.45; }
+    .rank-explain {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 0;
+      margin: 0 0 20px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1a1a1a;
+      overflow: hidden;
+    }
+    .rank-explain-mod {
+      flex: 1 1 200px;
+      min-width: 180px;
+      padding: 12px 14px;
+      color: #bbb;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .rank-explain-mod + .rank-explain-mod {
+      border-left: 1px solid #333;
+    }
+    .rank-explain-mod h2 {
+      margin: 0 0 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--gpsl-accent, #ff9900);
+    }
+    .rank-explain-mod p { margin: 0; }
+    .rank-explain-mod .breakdown { margin-top: 6px; }
+    @media (max-width: 720px) {
+      .rank-explain-mod + .rank-explain-mod { border-left: none; border-top: 1px solid #333; }
+    }
     .tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
     .tabs button {
       padding:8px 14px; background:#222; border:1px solid #444; color:#ddd;
@@ -46,13 +80,21 @@
   <div id="nav"></div>
   <div class="page-container">
     <h1>Owner rankings</h1>
-    <p class="meta">
-      Points from SuperLeague finishes and cup runs each season.
-      <b>World Cup ranking</b> sums the last four seasons (nation draft order) and shows your
-      <b>current nation</b> once assigned.
-      <b>All-time</b> is the hall of fame — club season points plus World Cup national team points
-      (winner 10, runner-up 8, semi-finals 5, quarters 3, last 16 2, finals groups 1). Records stay even if an owner leaves.
-    </p>
+    <div class="rank-explain" aria-label="How owner rankings work">
+      <div class="rank-explain-mod">
+        <h2>Season points</h2>
+        <p>Points from Super League finishes and cup runs each season.</p>
+      </div>
+      <div class="rank-explain-mod">
+        <h2>World Cup ranking</h2>
+        <p>Sums the last four seasons for nation draft order, and shows your current nation once assigned.</p>
+      </div>
+      <div class="rank-explain-mod">
+        <h2>All-time</h2>
+        <p>Hall of fame — club season points plus World Cup national team points. Records stay even if an owner leaves.</p>
+        <p class="breakdown">Winner 10 · runner-up 8 · SF 5 · QF 3 · last 16 2 · finals groups 1</p>
+      </div>
+    </div>
 
     <div class="tabs" role="tablist">
       <button type="button" class="active" data-tab="rolling" role="tab">World Cup (last 4 seasons)</button>
