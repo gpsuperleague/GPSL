@@ -1,7 +1,11 @@
 /**
  * Classy seasonal watermark for Fixtures matchday / Club Fixtures month headers.
  * One large, low-opacity banner per GPSL month — subtle, not busy.
+ * Motifs: British / European seasonal culture with light Asian & Americas accents.
+ * No sports equipment (GPSL is association football).
  */
+
+const SEASON_BANNER_V = "20261030-intl";
 
 const SEASON_BANNER = {
   june: "images/matchday_seasons/june.jpg",
@@ -29,9 +33,10 @@ export function matchdaySeasonDecorHtml(gpslMonth) {
   const src = SEASON_BANNER[key];
   if (!src) return "";
 
+  const bust = `${src}?v=${SEASON_BANNER_V}`;
   return (
     `<div class="matchday-season-decor" data-season="${key}" aria-hidden="true">` +
-    `<img class="matchday-season-banner" src="${src}" alt="" loading="lazy" decoding="async">` +
+    `<img class="matchday-season-banner" src="${bust}" alt="" loading="lazy" decoding="async">` +
     `</div>`
   );
 }

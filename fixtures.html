@@ -48,17 +48,16 @@
     }
     .matchday-season-banner {
       position:absolute;
-      left:50%;
-      top:50%;
-      width:72%;
-      height:160%;
+      inset:0;
+      width:100%;
+      height:100%;
       max-width:none;
       object-fit:cover;
-      object-position:center;
-      transform:translate(-50%, -50%);
-      opacity:0.18;
+      /* Art sits lower-right; keep left clearer for the month label */
+      object-position:78% 72%;
+      opacity:0.26;
       mix-blend-mode:screen;
-      filter:saturate(0.85) brightness(1.05);
+      filter:saturate(0.9) brightness(1.12) contrast(1.05);
     }
     table.gpsl-table { width:100%; border-collapse:collapse; table-layout:fixed; }
     table.gpsl-table col.col-match { width: 7%; }
@@ -212,6 +211,6 @@
     <div id="fixturesRoot"></div>
   </div>
 
-  <script type="module" src="fixtures.js?v=20261029-season-watermark"></script>
+  <script type="module" src="fixtures.js?v=20261030-intl"></script>
 </body>
 </html>
