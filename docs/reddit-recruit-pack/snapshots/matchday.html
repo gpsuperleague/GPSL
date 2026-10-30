@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Match Day — GPSL</title>
+  <link rel="stylesheet" href="../../../dashboard.css" />
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:900px; margin:16px auto 40px; }
+    h1,h2 { color:var(--gpsl-accent,#ff9900); }
+    h1 { margin-bottom:8px; }
+    h2 { font-size:18px; margin:0 0 12px; }
+    .meta { color:#aaa; margin-bottom:16px; font-size:13px; }
+    .nav-fake {
+      display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center;
+      background:#0d0d0d; border-bottom:1px solid #333; padding:10px 18px; font-size:13px;
+    }
+    .nav-fake b { color:var(--gpsl-accent,#ff9900); margin-right:8px; }
+    .nav-fake a { color:#ccc; text-decoration:none; }
+    .nav-fake a.on { color:var(--gpsl-accent,#ff9900); }
+    .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:18px; margin-bottom:18px; }
+    .fixture-preview {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:12px 14px; margin:0 0 14px; font-size:14px; line-height:1.45;
+    }
+    .score-inputs { display:flex; align-items:center; gap:10px; margin:10px 0 14px; }
+    .score-field { display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .score-field label { font-size:11px; color:#aaa; margin:0; }
+    .score-input {
+      width:52px; padding:6px 4px; background:#222; border:1px solid #444; color:#ddd;
+      border-radius:6px; font-size:18px; font-weight:bold; text-align:center;
+    }
+    .score-vs { color:var(--gpsl-accent,#ff9900); font-weight:bold; font-size:20px; }
+    .button {
+      padding:10px 18px; background:var(--gpsl-accent,#ff9900); color:#111; border:none;
+      border-radius:6px; font-weight:bold; cursor:pointer; margin-right:8px;
+    }
+    .button.secondary { background:#444; color:#ddd; }
+    .checkrow { display:flex; gap:18px; flex-wrap:wrap; margin:12px 0; font-size:13px; }
+    .pill {
+      display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700;
+      background:#1a3a1a; color:#8d8; border:1px solid #3a6a3a;
+    }
+    .pill.warn { background:#3a2a10; color:#fc6; border-color:#886620; }
+    table.stats { width:100%; border-collapse:collapse; font-size:12px; margin-top:8px; }
+    table.stats th, table.stats td { border-top:1px solid #333; padding:6px 8px; text-align:left; }
+    table.stats th { color:var(--gpsl-accent,#ff9900); }
+  </style>
+</head>
+<body>
+  <div class="nav-fake">
+    <b>GPSL</b>
+    <a href="#">Fixtures</a>
+    <a class="on" href="#">Match Day</a>
+    <a href="#">Schedule</a>
+    <a href="#">Inbox</a>
+  </div>
+  <div class="page-container">
+    <h1>Match Day</h1>
+    <p class="meta">Pre-match squad · Check-in · Post-match stats — then confirm result.</p>
+
+    <div class="fixture-preview">
+      <div><b>Júbilo Iwata</b> vs <b>SO de l'Armée</b></div>
+      <div class="meta" style="margin:4px 0 0;">League · Matchday 14 · Sun 15 Nov 2026 · 22:00 UK · Yamaha Stadium</div>
+      <div class="checkrow">
+        <span class="pill">Home checked in</span>
+        <span class="pill">Away checked in</span>
+        <span class="pill warn">Result not submitted</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Enter score</h2>
+      <div class="score-inputs">
+        <div class="score-field">
+          <label>Júbilo Iwata</label>
+          <input class="score-input" value="2" readonly />
+        </div>
+        <div class="score-vs">–</div>
+        <div class="score-field">
+          <label>SO de l'Armée</label>
+          <input class="score-input" value="1" readonly />
+        </div>
+      </div>
+      <button class="button" type="button">Submit result</button>
+      <button class="button secondary" type="button">Save squad stats</button>
+    </div>
+
+    <div class="panel">
+      <h2>Your squad stats</h2>
+      <p class="meta" style="margin-top:0;">Started / subbed · goals · assists · rating · POTM · cards. Goals must add up.</p>
+      <table class="stats">
+        <thead>
+          <tr><th>Player</th><th>Role</th><th>G</th><th>A</th><th>Rating</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Isaak Touré</td><td>Started</td><td>0</td><td>0</td><td>7.0</td><td></td></tr>
+          <tr><td>Shota Kofie</td><td>Started</td><td>1</td><td>0</td><td>8.0</td><td>POTM</td></tr>
+          <tr><td>L. Yamal</td><td>Sub</td><td>1</td><td>1</td><td>7.5</td><td></td></tr>
+          <tr><td>…</td><td colspan="5" style="color:#777;">11 starters · 12 bench · validated at check-in</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

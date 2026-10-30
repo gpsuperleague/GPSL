@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Club Finances — GPSL</title>
+  <link rel="stylesheet" href="../../../dashboard.css" />
+  <link rel="stylesheet" href="../../../finances_subpage.css" />
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1100px; margin:16px auto 40px; }
+    h1,h2 { color:var(--gpsl-accent,#ff9900); }
+    h1 { margin:0 0 4px; }
+    h2 { font-size:16px; margin:0 0 12px; }
+    .meta { color:#aaa; font-size:13px; margin:0 0 8px; }
+    .nav-fake {
+      display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center;
+      background:#0d0d0d; border-bottom:1px solid #333; padding:10px 18px; font-size:13px;
+    }
+    .nav-fake b { color:var(--gpsl-accent,#ff9900); margin-right:8px; }
+    .nav-fake a { color:#ccc; text-decoration:none; }
+    .nav-fake a.on { color:var(--gpsl-accent,#ff9900); }
+    .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:16px; margin-bottom:16px; }
+    .balance-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px;
+    }
+    .stat-box {
+      background:#151515; border:1px solid #333; border-radius:8px; padding:12px;
+      text-decoration:none; color:inherit; display:block;
+    }
+    .stat-box .label { font-size:11px; color:#999; margin-bottom:6px; }
+    .stat-box .value { font-size:18px; font-weight:700; color:#eee; }
+    .stat-box .value.positive { color:#8d8; }
+    .stat-box .value.negative { color:#f88; }
+    .stat-box .value.accent { color:var(--gpsl-accent-hover,#ffcc66); }
+    .link-hint { display:block; margin-top:6px; font-size:11px; color:var(--gpsl-accent,#ff9900); }
+    .header-row { display:flex; gap:14px; align-items:center; margin-bottom:14px; }
+    .badge {
+      width:54px; height:54px; border-radius:8px; background:#222; border:1px solid #444;
+      display:flex; align-items:center; justify-content:center; font-weight:800; color:var(--gpsl-accent,#ff9900);
+    }
+  </style>
+</head>
+<body>
+  <div class="nav-fake">
+    <b>GPSL</b>
+    <a href="#">Dashboard</a>
+    <a class="on" href="#">Finances</a>
+    <a href="#">Transfer Centre</a>
+    <a href="#">Central Bank</a>
+  </div>
+  <div class="page-container">
+    <div class="header-row">
+      <div class="badge">JUB</div>
+      <div>
+        <h1>Júbilo Iwata — Finances</h1>
+        <p class="meta">Season ledger · wages · credit rating · advisory transfer budget</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Seasonal wage bill</h2>
+      <div class="balance-grid">
+        <div class="stat-box"><div class="label">Player wages (season)</div><div class="value">₿48.2m</div></div>
+        <div class="stat-box"><div class="label">Manager salary (season)</div><div class="value">₿2.6m</div></div>
+        <div class="stat-box"><div class="label">Total wage bill</div><div class="value accent">₿50.8m</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Balance</h2>
+      <div class="balance-grid">
+        <div class="stat-box"><div class="label">Season opening balance</div><div class="value">₿95.0m</div></div>
+        <div class="stat-box"><div class="label">Current balance</div><div class="value positive">₿71.4m</div><span class="link-hint">View activity ledger →</span></div>
+        <div class="stat-box"><div class="label">Predicted end-of-season</div><div class="value">₿63.1m</div><span class="link-hint">Show the workings ↓</span></div>
+        <div class="stat-box"><div class="label">Advisory transfer budget</div><div class="value accent">₿18.7m</div><span class="link-hint">Ops forecast excl. transfers →</span></div>
+        <div class="stat-box"><div class="label">Posted income</div><div class="value positive">₿22.9m</div></div>
+        <div class="stat-box"><div class="label">Posted costs</div><div class="value negative">₿46.5m</div></div>
+        <div class="stat-box"><div class="label">Posted net</div><div class="value negative">−₿23.6m</div></div>
+        <div class="stat-box"><div class="label">Bank credit rating</div><div class="value accent">A−</div><span class="link-hint">Service Counter →</span></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

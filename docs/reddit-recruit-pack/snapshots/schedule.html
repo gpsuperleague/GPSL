@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Schedule match — GPSL</title>
+  <link rel="stylesheet" href="../../../dashboard.css" />
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:900px; margin:16px auto 40px; }
+    h1 { color:var(--gpsl-accent,#ff9900); margin-bottom:8px; font-size:22px; }
+    h2, .poke-heading { color:var(--gpsl-accent,#ff9900); font-size:15px; margin:14px 0 8px; }
+    .meta { color:#aaa; font-size:13px; line-height:1.45; margin-bottom:14px; }
+    .nav-fake {
+      display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center;
+      background:#0d0d0d; border-bottom:1px solid #333; padding:10px 18px; font-size:13px;
+    }
+    .nav-fake b { color:var(--gpsl-accent,#ff9900); margin-right:8px; }
+    .nav-fake a { color:#ccc; text-decoration:none; }
+    .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:16px 18px; margin-bottom:16px; }
+    .fixture-head { font-size:18px; font-weight:bold; margin-bottom:6px; }
+    .slot-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .slot-btn {
+      display:flex; flex-direction:column; gap:2px;
+      padding:8px 12px; background:#222; border:1px solid #444; color:#ddd;
+      border-radius:6px; font-size:12px; text-align:left; min-width:9.5rem;
+    }
+    .slot-btn .slot-main { font-weight:600; color:#eee; }
+    .slot-btn .slot-sub { font-size:10px; color:#888; }
+    .slot-exact { border-color:#5a9a5a; background:#1a2a1a; }
+    .slot-exact .slot-main { color:#a8e06a; }
+    .slot-compromise { border-color:#6a8fd4; background:#151c2a; }
+    .slot-compromise .slot-main { color:#9ec0ff; }
+    .slot-prior { opacity:0.45; border-style:dashed; }
+    .slot-tag { font-size:10px; font-weight:700; }
+    .slot-tag.green { color:#a8e06a; }
+    .slot-tag.blue { color:#9ec0ff; }
+    .button {
+      padding:8px 14px; background:var(--gpsl-accent,#ff9900); color:#111; border:none;
+      border-radius:6px; font-weight:bold; font-size:13px; margin-top:12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="nav-fake">
+    <b>GPSL</b>
+    <a href="#">Fixtures</a>
+    <a href="#">Schedule</a>
+    <a href="#">Match Day</a>
+  </div>
+  <div class="page-container">
+    <h1>Schedule match</h1>
+    <div class="panel">
+      <div class="fixture-head">Júbilo Iwata vs Juventus</div>
+      <p class="meta" style="margin:0;">League · propose / accept / counter · already-suggested times greyed out</p>
+    </div>
+
+    <div class="panel">
+      <h2>Kick-off times both clubs can play</h2>
+      <p class="meta"><span style="color:#a8e06a;">Green = exact match</span> (both free). Nearby exclusive times under 2 hours appear as <span style="color:#9ec0ff;">blue compromises</span>.</p>
+      <div class="slot-list">
+        <div class="slot-btn slot-exact">
+          <span class="slot-main">Sun 18:30 UK</span>
+          <span class="slot-sub">Both free</span>
+          <span class="slot-tag green">Exact</span>
+        </div>
+        <div class="slot-btn slot-prior">
+          <span class="slot-main">Sat 20:00 UK</span>
+          <span class="slot-sub">Already suggested</span>
+        </div>
+      </div>
+
+      <div class="poke-heading">Compromise suggestions (under 2h apart)</div>
+      <p class="meta">Meet them · meet you · midpoint if novel.</p>
+      <div class="slot-list">
+        <div class="slot-btn slot-compromise">
+          <span class="slot-main">Sun 18:00 UK</span>
+          <span class="slot-sub">Juventus only · +1h</span>
+          <span class="slot-tag blue">Compromise</span>
+        </div>
+        <div class="slot-btn slot-compromise">
+          <span class="slot-main">Sun 19:00 UK</span>
+          <span class="slot-sub">Júbilo only · +1h</span>
+          <span class="slot-tag blue">Compromise</span>
+        </div>
+      </div>
+      <button class="button" type="button">Propose selected kick-off</button>
+    </div>
+  </div>
+</body>
+</html>

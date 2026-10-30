@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>League tables — GPSL</title>
+  <link rel="stylesheet" href="../../../dashboard.css" />
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1000px; margin:16px auto 40px; }
+    h1 { color:var(--gpsl-accent,#ff9900); margin-bottom:8px; }
+    .meta { color:#aaa; font-size:13px; margin-bottom:14px; }
+    .nav-fake {
+      display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center;
+      background:#0d0d0d; border-bottom:1px solid #333; padding:10px 18px; font-size:13px;
+    }
+    .nav-fake b { color:var(--gpsl-accent,#ff9900); margin-right:8px; }
+    .nav-fake a { color:#ccc; text-decoration:none; }
+    .nav-fake a.on { color:var(--gpsl-accent,#ff9900); }
+    .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; overflow:hidden; }
+    .panel-head {
+      background:#222; padding:10px 14px; color:var(--gpsl-accent,#ff9900); font-weight:bold;
+      border-bottom:1px solid #333;
+    }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { padding:8px 10px; border-top:1px solid #333; text-align:left; }
+    th { color:var(--gpsl-accent,#ff9900); background:#1a1a1a; }
+    td.num, th.num { text-align:center; }
+    tr.me td { background:#3d3200; }
+    tr.me { box-shadow: inset 3px 0 0 var(--gpsl-accent,#ff9900); }
+    .form span {
+      display:inline-block; width:14px; height:14px; line-height:14px; text-align:center;
+      font-size:9px; font-weight:700; border-radius:2px; margin-right:2px;
+    }
+    .W { background:#2a5a2a; color:#cfc; }
+    .D { background:#555; color:#ddd; }
+    .L { background:#5a2a2a; color:#fcc; }
+  </style>
+</head>
+<body>
+  <div class="nav-fake">
+    <b>GPSL</b>
+    <a class="on" href="#">Tables</a>
+    <a href="#">Fixtures</a>
+    <a href="#">Records</a>
+  </div>
+  <div class="page-container">
+    <h1>League table — Super League</h1>
+    <p class="meta">Live standings for the active GPSL month. Your club is highlighted.</p>
+    <div class="panel">
+      <div class="panel-head">GPSL Super League · Season live</div>
+      <table>
+        <thead>
+          <tr>
+            <th class="num">#</th><th>Club</th><th class="num">P</th><th class="num">W</th><th class="num">D</th><th class="num">L</th>
+            <th class="num">GD</th><th class="num">Pts</th><th>Form</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">1</td><td>Benfica</td><td class="num">13</td><td class="num">9</td><td class="num">2</td><td class="num">2</td><td class="num">+14</td><td class="num"><b>29</b></td><td class="form"><span class="W">W</span><span class="W">W</span><span class="D">D</span><span class="W">W</span><span class="L">L</span></td></tr>
+          <tr><td class="num">2</td><td>Juventus</td><td class="num">13</td><td class="num">8</td><td class="num">3</td><td class="num">2</td><td class="num">+11</td><td class="num"><b>27</b></td><td class="form"><span class="W">W</span><span class="D">D</span><span class="W">W</span><span class="W">W</span><span class="D">D</span></td></tr>
+          <tr class="me"><td class="num">3</td><td><b>Júbilo Iwata</b></td><td class="num">13</td><td class="num">8</td><td class="num">2</td><td class="num">3</td><td class="num">+9</td><td class="num"><b>26</b></td><td class="form"><span class="W">W</span><span class="W">W</span><span class="L">L</span><span class="W">W</span><span class="W">W</span></td></tr>
+          <tr><td class="num">4</td><td>Flamengo</td><td class="num">13</td><td class="num">7</td><td class="num">3</td><td class="num">3</td><td class="num">+7</td><td class="num"><b>24</b></td><td class="form"><span class="D">D</span><span class="W">W</span><span class="W">W</span><span class="L">L</span><span class="W">W</span></td></tr>
+          <tr><td class="num">5</td><td>Tigres UANL</td><td class="num">13</td><td class="num">7</td><td class="num">2</td><td class="num">4</td><td class="num">+5</td><td class="num"><b>23</b></td><td class="form"><span class="W">W</span><span class="L">L</span><span class="W">W</span><span class="D">D</span><span class="W">W</span></td></tr>
+          <tr><td class="num">6</td><td>Villarreal CF</td><td class="num">13</td><td class="num">6</td><td class="num">3</td><td class="num">4</td><td class="num">+3</td><td class="num"><b>21</b></td><td class="form"><span class="L">L</span><span class="W">W</span><span class="D">D</span><span class="W">W</span><span class="L">L</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

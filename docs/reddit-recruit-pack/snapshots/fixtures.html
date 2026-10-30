@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fixtures — GPSL</title>
+  <link rel="stylesheet" href="../../../dashboard.css" />
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1200px; margin:16px auto 40px; }
+    h1 { color:var(--gpsl-accent,#ff9900); margin-bottom:8px; }
+    .meta { color:#aaa; margin-bottom:14px; font-size:13px; line-height:1.45; }
+    .nav-fake {
+      display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center;
+      background:#0d0d0d; border-bottom:1px solid #333; padding:10px 18px; font-size:13px;
+    }
+    .nav-fake b { color:var(--gpsl-accent,#ff9900); margin-right:8px; }
+    .nav-fake a { color:#ccc; text-decoration:none; }
+    .nav-fake a.on { color:var(--gpsl-accent,#ff9900); }
+    .matchday-block {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      margin-bottom:16px; overflow:hidden;
+    }
+    .matchday-head {
+      position:relative; isolation:isolate; overflow:hidden;
+      background:#222; padding:10px 14px; color:var(--gpsl-accent,#ff9900); font-weight:bold;
+      display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; align-items:center; min-height:42px;
+    }
+    .matchday-season-banner {
+      position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+      object-position:78% 72%; opacity:0.26; mix-blend-mode:screen;
+    }
+    .matchday-head-label, .matchday-head-meta { position:relative; z-index:1; text-shadow:0 0 8px rgba(0,0,0,.85); }
+    table.gpsl-table { width:100%; border-collapse:collapse; }
+    table.gpsl-table th, table.gpsl-table td {
+      border-top:1px solid #333; padding:8px 10px; font-size:13px; text-align:left;
+    }
+    table.gpsl-table th { color:var(--gpsl-accent,#ff9900); background:#1a1a1a; }
+    tr.my-fixture td { background:#3d3200 !important; }
+    tr.my-fixture { box-shadow: inset 3px 0 0 var(--gpsl-accent,#ff9900); }
+    .score { font-weight:bold; color:#fff; text-align:center; }
+    .weather { color:#888; font-size:12px; }
+    .btn-mini {
+      display:inline-block; padding:4px 8px; margin:2px 0; border-radius:4px;
+      background:#333; border:1px solid #555; color:#eee; font-size:11px; text-decoration:none;
+    }
+    .btn-mini.accent { border-color:var(--gpsl-accent,#ff9900); color:var(--gpsl-accent,#ff9900); }
+    .kick { color:#8c8; font-size:12px; }
+    .kick.pending { color:#fc6; }
+  </style>
+</head>
+<body>
+  <div class="nav-fake">
+    <b>GPSL</b>
+    <a href="#">Dashboard</a>
+    <a class="on" href="#">Fixtures</a>
+    <a href="#">Match Day</a>
+    <a href="#">Finances</a>
+    <a href="#">Transfer Centre</a>
+    <a href="#">Tables</a>
+    <a href="#">Medical</a>
+  </div>
+  <div class="page-container">
+    <h1>Fixtures</h1>
+    <p class="meta">Your club’s games are highlighted. Kick-off shows agreed time, proposal pending, or not scheduled. Save your squad on Match Day before check-in.</p>
+
+    <div class="matchday-block">
+      <div class="matchday-head" data-season="november">
+        <img class="matchday-season-banner" src="../../../images/matchday_seasons/november.jpg" alt="" />
+        <span class="matchday-head-label">Matchday 14</span>
+        <span class="matchday-head-meta">November · Week 14</span>
+      </div>
+      <table class="gpsl-table">
+        <thead>
+          <tr>
+            <th>Home</th><th>Score</th><th>Away</th><th>Kick-off</th><th>Stadium</th><th>Conditions</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Tigres UANL</td>
+            <td class="score">—</td>
+            <td>Paris FC</td>
+            <td><span class="kick">Mon 16 Nov · 21:00 UK</span></td>
+            <td>Estadio Universitario</td>
+            <td class="weather">Fine · Normal</td>
+            <td></td>
+          </tr>
+          <tr class="my-fixture">
+            <td><b>Júbilo Iwata</b></td>
+            <td class="score">—</td>
+            <td>SO de l'Armée</td>
+            <td><span class="kick">Sun 15 Nov · 22:00 UK</span></td>
+            <td>Yamaha Stadium</td>
+            <td class="weather">Fine · Normal</td>
+            <td>
+              <a class="btn-mini accent" href="#">Open Match Day</a>
+            </td>
+          </tr>
+          <tr>
+            <td>Juventus</td>
+            <td class="score">—</td>
+            <td>Flamengo</td>
+            <td><span class="kick pending">Proposal pending</span></td>
+            <td>Allianz Stadium</td>
+            <td class="weather">Rain · Wet</td>
+            <td><a class="btn-mini" href="#">Reply to proposal</a></td>
+          </tr>
+          <tr>
+            <td>Benfica</td>
+            <td class="score">2–1</td>
+            <td>Villarreal CF</td>
+            <td><span class="kick">Played</span></td>
+            <td>Estádio da Luz</td>
+            <td class="weather">Fine · Normal</td>
+            <td><a class="btn-mini" href="#">Match report</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
