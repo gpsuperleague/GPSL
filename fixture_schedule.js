@@ -30,7 +30,7 @@ import {
   priorProposedKickoffSet,
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
-} from "./match_scheduling.js?v=20261030-exact-green";
+} from "./match_scheduling.js?v=20261030-compromise-row";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -1363,10 +1363,9 @@ function render() {
     selectableOppSlots,
     { ownerTimezone: ownerTz, excludeIsoSet: usedIsoSet }
   );
-  // Mutual list stays exact-match green; compromise chips are poke-only extras
-  const compromiseMetaByIso = usingPoke
-    ? new Map(compromiseCandidates.map((c) => [kickoffIsoKey(c.iso), c]))
-    : null;
+  const compromiseMetaByIso = new Map(
+    compromiseCandidates.map((c) => [kickoffIsoKey(c.iso), c])
+  );
   const responseLine = formatResponseDeadlineLine(ctx.response_deadline, myClub.short);
   const responseHtml = responseLine
     ? `<p class="meta" style="color:${ctx.response_deadline?.overdue && ctx.response_deadline?.my_turn ? "#f88" : "#fc6"};">${responseLine}</p>`
@@ -1420,6 +1419,12 @@ function render() {
 
   const canPick =
     (ctx.can_propose_first || ctx.can_respond) && ctx.my_has_manager !== false;
+  // Show midpoints under exact matches (poke panel has its own list)
+  const showCompromiseRow =
+    canPick &&
+    !isAwayWaitingPreview &&
+    compromiseCandidates.length > 0 &&
+    !usingPoke;
 
   const noManagerBanner =
     ctx.my_has_manager === false
@@ -1478,7 +1483,7 @@ function render() {
       : ctx.can_respond
         ? `Accept the proposed time above, or counter with another time free for <b>both</b> clubs in your local timezones (${slotCountLine}). Already-suggested times in this arrangement are greyed out.`
         : usingCompatibleSlots
-          ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). <b style="color:#a8e06a;">Green = exact match</b> (both free). Times already suggested in this arrangement are greyed out. Then press Propose kick-off (${slotCountLine}).`
+          ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). <b style="color:#a8e06a;">Green = exact match</b> (both free). If you each have nearby times under 2 hours apart, <b style="color:#9ec0ff;">blue compromise midpoints</b> appear underneath. Already-suggested times are greyed out (${slotCountLine}).`
           : `Pick a 30-minute block from available times (${slotCountLine}). Already-suggested times are greyed out.`;
 
   const emptySlotsMsg = usingPoke
@@ -1573,7 +1578,14 @@ function render() {
           ? pokePanelHtml || waitingForHomeHtml
           : `<div class="slot-list" id="slotList"></div>
       ${
-        canPick && selectableSlots.length
+        showCompromiseRow
+          ? `<h3 class="poke-heading" style="margin-top:14px;">Compromise suggestions (midpoint · under 2h apart)</h3>
+        <p class="meta">You each have a nearby time that isn’t an exact match — halfway between them, snapped to a UK 30‑minute kick-off. Blue chips; green above stays exact mutual only.</p>
+        <div class="slot-list" id="compromiseSlotList"></div>`
+          : ""
+      }
+      ${
+        canPick && (selectableSlots.length || showCompromiseRow)
           ? `<div class="actions">
               <button type="button" id="proposeBtn" class="button" disabled>${proposeLabel}</button>
             </div>`
@@ -1673,7 +1685,9 @@ function render() {
         ? (iso, btn, list) => {
             if (usedIsoSet.has(kickoffIsoKey(iso))) return;
             selectedKickoff = iso;
-            list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+            document
+              .querySelectorAll("#slotList .slot-btn, #compromiseSlotList .slot-btn")
+              .forEach((b) => b.classList.remove("selected"));
             btn.classList.add("selected");
             const proposeBtn = document.getElementById("proposeBtn");
             if (proposeBtn) proposeBtn.disabled = false;
@@ -1702,6 +1716,31 @@ function render() {
       selectableOwnSlots,
       usedIsoSet,
     });
+  } else if (showCompromiseRow) {
+    const compromiseList = document.getElementById("compromiseSlotList");
+    if (compromiseList) {
+      appendKickoffSlotButtons(
+        compromiseList,
+        compromiseCandidates.map((c) => c.iso),
+        {
+          homeTz,
+          awayTz,
+          ownerTz,
+          usedIsoSet,
+          compromiseMetaByIso,
+          onSelect: (iso, btn, list) => {
+            if (usedIsoSet.has(kickoffIsoKey(iso))) return;
+            selectedKickoff = iso;
+            document
+              .querySelectorAll("#slotList .slot-btn, #compromiseSlotList .slot-btn")
+              .forEach((b) => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            const proposeBtn = document.getElementById("proposeBtn");
+            if (proposeBtn) proposeBtn.disabled = false;
+          },
+        }
+      );
+    }
   }
 
   const proposeBtn = document.getElementById("proposeBtn");
