@@ -1924,8 +1924,10 @@ function formatFitnessStreakProgress(streak, level, toMax = 4) {
   const step = Math.max(1, Number(toMax) || 4);
   const lvl = Math.max(1, Math.min(5, Number(level) || 1));
   const total = Math.max(0, Number(streak) || 0);
-  // Progress inside the current 4-unit band (from total streak, not assumed level base)
-  const within = Math.round((total % step) * 10) / 10;
+  // Progress inside the current 4-unit band (from total streak, not assumed level base).
+  // Exact multiples (4, 8, …) are % step === 0 — that is "band complete", not "zero played".
+  let within = Math.round((total % step) * 10) / 10;
+  if (within === 0 && total > 0) within = step;
   const withinLabel = formatFitnessStreakNumber(within);
   if (lvl >= 5 && total >= (5 - 1) * step) {
     return {
@@ -1933,9 +1935,13 @@ function formatFitnessStreakProgress(streak, level, toMax = 4) {
       title: `Consecutive streak ${formatFitnessStreakNumber(total)} · already at highest risk band`,
     };
   }
+  const bandNote =
+    within === step && total > 0
+      ? `Band complete — reached level ${lvl}; next ${step} units climb again.`
+      : `Toward next level: ${withinLabel} of ${step} (start=1, sub=0.5).`;
   return {
     text: `${withinLabel}/${step}`,
-    title: `Consecutive toward next level: ${withinLabel} of ${step} (start=1, sub=0.5). Total streak ${formatFitnessStreakNumber(total)}.`,
+    title: `${bandNote} Total streak ${formatFitnessStreakNumber(total)}.`,
   };
 }
 
