@@ -264,6 +264,18 @@ async function loadStatsEditCandidates() {
   }));
 }
 
+/** Opponent submitted — you still need to enter stats + confirm. */
+function fixtureNeedsConfirm(f) {
+  return needsInboxConfirm(f, myClub);
+}
+
+/** You submitted — waiting on them (not confirm UI). */
+function fixtureAwaitingOpponent(f) {
+  if (!f || f.submission_status !== "pending" || !f.submitted_by_club) return false;
+  const me = String(myClub.short || "").toUpperCase();
+  return String(f.submitted_by_club).toUpperCase() === me;
+}
+
 async function loadClubMatchStatsForEdit(fixtureId) {
   if (!myClub.short || !fixtureId) return [];
   const club = String(myClub.short || "").trim();
@@ -387,8 +399,8 @@ async function enterStatsEditMode(fixture) {
   setStatus(
     "submitStatus",
     existing.length
-      ? `One-time stats edit — prefilled from your submitted match stats (${existing.length} players). Score locked. GPSL ${month} only.`
-      : `One-time stats edit — score is locked. No saved club stats found to prefill. Available during GPSL ${month} only.`
+      ? `Result already confirmed. One-time stats edit only — prefilled (${existing.length} players). Score locked. GPSL ${month} only. Confirm is not needed.`
+      : `Result already confirmed. One-time stats edit only — score locked. GPSL ${month} only. Confirm is not needed.`
   );
   return true;
 }
@@ -2336,7 +2348,8 @@ async function updateFixturePreview() {
       const deferred = deferredResultNote(f, calendarStatus);
       setStatus(
         "submitStatus",
-        deferred || "Result confirmed. One-time stats edit is not available for this match."
+        deferred ||
+          "This result is already confirmed — there is nothing left to confirm. One-time stats edit is not available for this match."
       );
       setScoreInputsEnabled(false);
     }
@@ -2465,9 +2478,11 @@ function populateFixtureSelect(preferredFixtureId = null) {
   for (const f of upcomingFixtures) {
     const opt = document.createElement("option");
     opt.value = f.id;
-    const pending =
-      f.submission_status === "pending" ? " · pending" : "";
-    const editTag = f._statsEditCandidate ? " · edit stats" : "";
+    let tag = "";
+    if (fixtureNeedsConfirm(f)) tag = " · CONFIRM RESULT";
+    else if (fixtureAwaitingOpponent(f)) tag = " · awaiting opponent";
+    else if (f._statsEditCandidate) tag = " · edit stats (one-time)";
+    else if (f.submission_status === "pending") tag = " · pending";
     const comp = formatFixtureCompetition(f);
     const label =
       f.competition_type === "cup"
@@ -2475,14 +2490,19 @@ function populateFixtureSelect(preferredFixtureId = null) {
         : `${comp} · MD${f.matchday}`;
     const home = f.home_club_name || f.home_club_short_name || "Home";
     const away = f.away_club_name || f.away_club_short_name || "Away";
-    opt.textContent = `${label}: ${home} vs ${away}${pending}${editTag}`;
+    opt.textContent = `${label}: ${home} vs ${away}${tag}`;
     opt.dataset.baseLabel = opt.textContent;
     sel.appendChild(opt);
   }
 
-  if (keepId && [...sel.options].some((o) => o.value === keepId)) {
-    sel.value = keepId;
-  }
+  const preferConfirm = upcomingFixtures.find((f) => fixtureNeedsConfirm(f));
+  const pickId =
+    keepId && [...sel.options].some((o) => o.value === keepId)
+      ? keepId
+      : preferConfirm
+        ? String(preferConfirm.id)
+        : null;
+  if (pickId) sel.value = pickId;
 
   sel.onchange = () => {
     void updateFixturePreview();
@@ -2521,10 +2541,24 @@ async function loadUpcomingFixtures() {
   }
   for (const f of editCandidates) {
     const prev = byId.get(String(f.id));
-    byId.set(String(f.id), prev ? { ...prev, ...f, _statsEditCandidate: true } : f);
+    // Keep live fixture fields (pending submission, check-ins); only mark edit + fill gaps
+    byId.set(
+      String(f.id),
+      prev
+        ? {
+            ...f,
+            ...prev,
+            status: prev.status || "played",
+            _statsEditCandidate: true,
+            home_club_name: prev.home_club_name || f.home_club_name,
+            away_club_name: prev.away_club_name || f.away_club_name,
+          }
+        : f
+    );
   }
   upcomingFixtures = [...byId.values()]
     .filter((f) => {
+      if (fixtureNeedsConfirm(f) || fixtureAwaitingOpponent(f)) return true;
       if (f._statsEditCandidate) return true;
       if (f.submission_status === "pending") return true;
       if (f.status !== "scheduled") return false;
@@ -2532,15 +2566,22 @@ async function loadUpcomingFixtures() {
       // Keep agreed matches visible when the month window allows (show why submit waits)
       if (f.schedule_status !== "agreed") return false;
       return (
-        isFixtureResultMonthOpen(f, calendarStatus) ||
+        isFixtureResultMonthOpen(f, calendarStatus, holidayContext) ||
         isFixtureMonthPlayable(f, myClub, calendarStatus, holidayContext)
       );
     })
     .sort((a, b) => {
-      // Editable played fixtures first
-      if (!!a._statsEditCandidate !== !!b._statsEditCandidate) {
-        return a._statsEditCandidate ? -1 : 1;
-      }
+      // Confirm-needed first, then submit, then awaiting, then one-time stats edit
+      const rank = (f) => {
+        if (fixtureNeedsConfirm(f)) return 0;
+        if (f.status === "scheduled" && !f.submission_status) return 1;
+        if (fixtureAwaitingOpponent(f)) return 2;
+        if (f._statsEditCandidate) return 3;
+        return 4;
+      };
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return ra - rb;
       if (a.competition_type !== b.competition_type) {
         return a.competition_type === "cup" ? -1 : 1;
       }

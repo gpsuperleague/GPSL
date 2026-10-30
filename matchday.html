@@ -313,17 +313,17 @@
       <div id="matchdayConsoleMount"></div>
       <div class="info-box" id="matchdayConsoleRules" style="margin:0 0 14px;max-width:none;padding:12px 14px;" aria-label="Match console rules"></div>
       <p class="meta" style="margin-top:0;">
-        Pick a fixture and enter the score plus squad stats below (started / subs / goals / assists are required).
-        Rating and Player of the Match are optional. You can also use
-        <a href="fixtures.html" style="color:var(--gpsl-accent, #ff9900);">Fixtures</a>
-        for score-only entry,
-        <a href="inbox.html" style="color:var(--gpsl-accent, #ff9900);">Inbox</a> to confirm opponent scores, or
-        <a href="league_stats.html" style="color:var(--gpsl-accent, #ff9900);">League stats</a> for leaderboards.
+        Pick a fixture: <b>CONFIRM RESULT</b> = opponent already submitted (enter your stats, then confirm).
+        <b>edit stats (one-time)</b> = result already confirmed — amend your stats only, not a confirm step.
+        Also:
+        <a href="inbox.html" style="color:var(--gpsl-accent, #ff9900);">Inbox</a> (confirm),
+        <a href="fixtures.html" style="color:var(--gpsl-accent, #ff9900);">Fixtures</a>,
+        <a href="league_stats.html" style="color:var(--gpsl-accent, #ff9900);">League stats</a>.
       </p>
 
       <div id="noFixturesHelp" class="fixture-preview" style="display:none;color:#f99;border:1px solid #633;"></div>
 
-      <label for="fixtureSelect">Your fixtures (scheduled, awaiting confirm, or one-time stats edit)</label>
+      <label for="fixtureSelect">Your fixtures (confirm first, then submit, then one-time stats edit)</label>
       <select id="fixtureSelect"></select>
 
       <div id="fixturePreview" class="fixture-preview">Select a fixture.</div>
@@ -464,6 +464,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20261030-holiday-early-result"></script>
+  <script type="module" src="matchday.js?v=20261030-confirm-priority"></script>
 </body>
 </html>
