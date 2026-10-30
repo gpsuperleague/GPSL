@@ -355,7 +355,13 @@ function applyStatsEditModeUI() {
 
 async function enterStatsEditMode(fixture) {
   statsEditMode = null;
-  if (!fixture || fixture.status !== "played") {
+  // Never treat an unplayed / unscored fixture as a one-time stats edit
+  if (
+    !fixture ||
+    fixture.status !== "played" ||
+    fixture.home_goals == null ||
+    fixture.away_goals == null
+  ) {
     applyStatsEditModeUI();
     return false;
   }
@@ -2356,6 +2362,9 @@ async function updateFixturePreview() {
     return;
   }
 
+  // Leaving a played / one-time-edit fixture — never keep edit mode on a live match
+  statsEditMode = null;
+
   // Always rebuild a clean stats grid for this fixture (no leftover DOM values).
   clearScoreFields();
   renderPlayerStatsTable();
@@ -2380,7 +2389,9 @@ async function updateFixturePreview() {
   }
 
   confirmMode = null;
+  statsEditMode = null;
   applyConfirmModeUI();
+  applyStatsEditModeUI();
 
   const canSubmit = canSubmitResult(f, myClub, calendarStatus, holidayContext);
   setScoreInputsEnabled(canSubmit);
@@ -2541,14 +2552,15 @@ async function loadUpcomingFixtures() {
   }
   for (const f of editCandidates) {
     const prev = byId.get(String(f.id));
-    // Keep live fixture fields (pending submission, check-ins); only mark edit + fill gaps
+    // Never overlay "played / edit stats" onto a still-scheduled fixture
+    if (prev && prev.status !== "played") continue;
     byId.set(
       String(f.id),
       prev
         ? {
             ...f,
             ...prev,
-            status: prev.status || "played",
+            status: "played",
             _statsEditCandidate: true,
             home_club_name: prev.home_club_name || f.home_club_name,
             away_club_name: prev.away_club_name || f.away_club_name,
