@@ -30,7 +30,7 @@ import {
   priorProposedKickoffSet,
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
-} from "./match_scheduling.js?v=20261030-compromise";
+} from "./match_scheduling.js?v=20261030-exact-green";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -231,6 +231,7 @@ function appendKickoffSlotButtons(
     nearGapByIso,
     usedIsoSet,
     compromiseMetaByIso,
+    exactMatchIsoSet,
   }
 ) {
   if (!container) return 0;
@@ -245,11 +246,16 @@ function appendKickoffSlotButtons(
     const btn = document.createElement("button");
     btn.type = "button";
     const gapMs = nearGapByIso?.get(iso) ?? nearGapByIso?.get(key);
-    const compromise = compromiseMetaByIso?.get(key) || compromiseMetaByIso?.get(iso);
+    // Exact mutual match always wins over compromise / near tagging
+    const isExact = exactMatchIsoSet?.has(key) || exactMatchIsoSet?.has(iso);
+    const compromise =
+      !isExact && (compromiseMetaByIso?.get(key) || compromiseMetaByIso?.get(iso));
     const isCompromise = Boolean(compromise);
-    const isNear = !isCompromise && nearIsoSet?.has(iso) && Number.isFinite(gapMs);
+    const isNear =
+      !isExact && !isCompromise && nearIsoSet?.has(iso) && Number.isFinite(gapMs);
     btn.className = [
       "slot-btn",
+      isExact ? "slot-exact" : "",
       isCompromise ? "slot-compromise" : "",
       isNear ? "slot-near" : "",
       alreadyUsed ? "slot-used" : "",
@@ -263,6 +269,8 @@ function appendKickoffSlotButtons(
     if (alreadyUsed) {
       btn.title = "Already suggested in this arrangement — pick a different time";
       btn.disabled = true;
+    } else if (isExact) {
+      btn.title = "Exact match — both clubs are free at this kick-off";
     } else if (isCompromise) {
       btn.title = gapLabel
         ? `Compromise midpoint (${gapLabel} between the two availability slots)`
@@ -281,13 +289,15 @@ function appendKickoffSlotButtons(
     }
     const tagHtml = alreadyUsed
       ? `<span class="slot-used-tag">Already suggested</span>`
-      : isCompromise
-        ? `<span class="slot-compromise-tag">Compromise${
-            gapLabel ? ` · ${escapeHtmlLite(gapLabel)}` : ""
-          }</span>`
-        : isNear
-          ? `<span class="slot-near-tag">Near · ${escapeHtmlLite(gapLabel || "<2h")}</span>`
-          : "";
+      : isExact
+        ? `<span class="slot-exact-tag">Exact match</span>`
+        : isCompromise
+          ? `<span class="slot-compromise-tag">Compromise${
+              gapLabel ? ` · ${escapeHtmlLite(gapLabel)}` : ""
+            }</span>`
+          : isNear
+            ? `<span class="slot-near-tag">Near · ${escapeHtmlLite(gapLabel || "<2h")}</span>`
+            : "";
     btn.innerHTML =
       formatKickoffSlotHtml(iso, {
         ownerTz,
@@ -301,7 +311,7 @@ function appendKickoffSlotButtons(
     } else {
       btn.disabled = true;
       btn.style.cursor = "default";
-      if (!isNear && !isCompromise) btn.style.opacity = "0.65";
+      if (!isNear && !isCompromise && !isExact) btn.style.opacity = "0.65";
     }
     container.appendChild(btn);
     count += 1;
@@ -1343,22 +1353,20 @@ function render() {
   const selectableOppSlots = filterSelectableKickoffSlots(oppSlots, ownerTz);
   const selectableOwnSlots = filterSelectableKickoffSlots(ownSlots, ownerTz);
   const usedIsoSet = priorProposedKickoffSet(ctx);
-  // Mutual mode: midpoints only help when they land on a shared slot (rare) or poke.
-  // Poke mode: always offer under-2h midpoints as selectable compromises.
+  // Exact mutual kick-offs (both free) — green; never retag as compromise
+  const exactMatchIsoSet = new Set(
+    (futureIntersection || []).map(kickoffIsoKey)
+  );
+  // Novel midpoints only (not already on either owner's list / not exact matches)
   const compromiseCandidates = buildCompromiseMidpointSlots(
     selectableOwnSlots,
     selectableOppSlots,
     { ownerTimezone: ownerTz, excludeIsoSet: usedIsoSet }
   );
-  const intersectionKeySet = new Set(
-    (futureIntersection || []).map(kickoffIsoKey)
-  );
-  const mutualCompromiseSlots = usingPoke
-    ? compromiseCandidates
-    : compromiseCandidates.filter((c) => intersectionKeySet.has(kickoffIsoKey(c.iso)));
-  const compromiseMetaByIso = new Map(
-    mutualCompromiseSlots.map((c) => [kickoffIsoKey(c.iso), c])
-  );
+  // Mutual list stays exact-match green; compromise chips are poke-only extras
+  const compromiseMetaByIso = usingPoke
+    ? new Map(compromiseCandidates.map((c) => [kickoffIsoKey(c.iso), c]))
+    : null;
   const responseLine = formatResponseDeadlineLine(ctx.response_deadline, myClub.short);
   const responseHtml = responseLine
     ? `<p class="meta" style="color:${ctx.response_deadline?.overdue && ctx.response_deadline?.my_turn ? "#f88" : "#fc6"};">${responseLine}</p>`
@@ -1470,7 +1478,7 @@ function render() {
       : ctx.can_respond
         ? `Accept the proposed time above, or counter with another time free for <b>both</b> clubs in your local timezones (${slotCountLine}). Already-suggested times in this arrangement are greyed out.`
         : usingCompatibleSlots
-          ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). Times already suggested in this arrangement are greyed out. Then press Propose kick-off (${slotCountLine}).`
+          ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). <b style="color:#a8e06a;">Green = exact match</b> (both free). Times already suggested in this arrangement are greyed out. Then press Propose kick-off (${slotCountLine}).`
           : `Pick a 30-minute block from available times (${slotCountLine}). Already-suggested times are greyed out.`;
 
   const emptySlotsMsg = usingPoke
@@ -1659,7 +1667,8 @@ function render() {
       awayTz,
       ownerTz,
       usedIsoSet,
-      compromiseMetaByIso: usingPoke ? null : compromiseMetaByIso,
+      exactMatchIsoSet: usingCompatibleSlots ? exactMatchIsoSet : null,
+      compromiseMetaByIso: null, // mutual list = exact matches only (green)
       onSelect: canPick
         ? (iso, btn, list) => {
             if (usedIsoSet.has(kickoffIsoKey(iso))) return;
