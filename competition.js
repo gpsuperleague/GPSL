@@ -1151,7 +1151,11 @@ export function canSimulateMatchResult(
  * @param {{ holidays?: object[], calendarMonths?: object[] }|null} [holidayContext]
  */
 /** True when results may be filed for this fixture’s GPSL month / later catch-up months. */
-export function isFixtureResultMonthOpen(fixture, calendarStatus = null) {
+export function isFixtureResultMonthOpen(
+  fixture,
+  calendarStatus = null,
+  holidayContext = null
+) {
   if (!fixture) return false;
   if (!calendarStatus?.calendar_configured) return true;
 
@@ -1167,8 +1171,16 @@ export function isFixtureResultMonthOpen(fixture, calendarStatus = null) {
   const activeSort = gpslMonthSortIndex(active);
   if (playSort != null && activeSort != null && activeSort > playSort) return true;
 
-  // Catch-up / holiday flags from the fixtures view
-  if (fixture.is_catch_up === true || fixture.is_holiday_early === true) return true;
+  // Catch-up / holiday early (column and/or RPC id list)
+  if (fixture.is_catch_up === true || fixture.is_holiday_early === true) {
+    return true;
+  }
+  if (holidayContext?.earlyFixtureIds instanceof Set) {
+    const id = Number(fixture.id);
+    if (Number.isFinite(id) && holidayContext.earlyFixtureIds.has(id)) {
+      return true;
+    }
+  }
 
   return false;
 }
@@ -1224,9 +1236,9 @@ export function whyCantSubmitResult(
     return `Both clubs must check in before submitting (still needed: ${missing}).`;
   }
 
-  // Month open / later catch-up months (holiday early still via isFixtureMonthPlayable)
+  // Month open / later catch-up / holiday-early (before fixture GPSL month)
   if (
-    !isFixtureResultMonthOpen(fixture, calendarStatus) &&
+    !isFixtureResultMonthOpen(fixture, calendarStatus, holidayContext) &&
     !isFixtureMonthPlayable(
       fixture,
       clubIdentity,

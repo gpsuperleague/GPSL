@@ -20,7 +20,7 @@ import {
   LEAGUE_DIVISIONS,
   deferredResultNote,
   leagueBadgeHtml,
-} from "./competition.js?v=20261023-submit-checkin-month";
+} from "./competition.js?v=20261030-holiday-early-result";
 import {
   loadCalendarStatus,
   calendarStatusBanner,
