@@ -276,24 +276,33 @@ function renderArrangeRow(a) {
   const vs = `${a.side === "home" ? "vs" : "@"} ${escapeHtml(clubLabel(a.opponent_short_name))}`;
   const by = a.propose_by ? `${formatUk(a.propose_by)} UK (${relTime(a.propose_by)})` : "";
   const lateNow = a.late_fee_from && new Date(a.late_fee_from).getTime() <= Date.now();
+  const replay = a.is_admin_replay === true;
+  const catchUp = a.is_catch_up === true && !replay;
+  const replayTag = replay ? "Replay · " : catchUp ? "Catch-up · " : "";
   let label;
   let detail = "";
   let cls = "mc-next-quiet";
   let action = "";
   if (a.state === "propose") {
-    label = lateNow ? "Propose a kick-off now — ₿2.5m late fee applies" : "Propose a kick-off";
+    label = replay
+      ? "Re-arrange replay — propose a new kick-off"
+      : catchUp
+        ? "Catch-up — propose a kick-off"
+        : lateNow
+          ? "Propose a kick-off now — ₿2.5m late fee applies"
+          : "Propose a kick-off";
     detail = by ? `by ${by}` : "";
-    cls = lateNow ? "mc-next-overdue" : "mc-next-todo";
+    cls = replay || catchUp || lateNow ? "mc-next-overdue" : "mc-next-todo";
     action = "Propose";
   } else if (a.state === "reply") {
-    label = "Reply to kick-off proposal";
+    label = `${replayTag}Reply to kick-off proposal`;
     detail = a.response_due_at ? `due ${formatUk(a.response_due_at)} UK (${relTime(a.response_due_at)})` : "";
     cls = "mc-next-todo";
     action = "Reply";
   } else if (a.state === "waiting") {
-    label = "Kick-off proposed — waiting on opponent";
+    label = `${replayTag}Kick-off proposed — waiting on opponent`;
   } else {
-    label = "Waiting for the home club to propose";
+    label = `${replayTag}Waiting for the home club to propose`;
     detail = by ? `they must propose by ${by}` : "";
   }
   return `
@@ -301,7 +310,7 @@ function renderArrangeRow(a) {
       <div class="mc-fx-head">
         <span class="mc-fx-comp">${escapeHtml(competitionShortLabel(a))}</span>
         <a class="mc-fx-vs" href="fixture_schedule.html?fixture=${fid}">${vs}</a>
-        <span class="mc-fx-ko">GPSL ${escapeHtml(monthName(a.gpsl_month))}</span>
+        <span class="mc-fx-ko">${replay ? "Replay · " : catchUp ? "Catch-up · " : ""}GPSL ${escapeHtml(monthName(a.gpsl_month))}</span>
       </div>
       <div class="mc-next ${cls}"><b>${escapeHtml(label)}</b>${detail ? ` <span class="mc-next-detail">${escapeHtml(detail)}</span>` : ""}</div>
       ${action ? `<div class="mc-actions"><a class="mc-btn mc-btn-primary" href="fixture_schedule.html?fixture=${fid}">${action}</a></div>` : ""}
@@ -313,8 +322,8 @@ function renderArrangeBlock(list) {
   return `
     <div class="mc-arrange">
       <div class="mc-arrange-head">
-        <b>Arrange now — upcoming GPSL months</b>
-        <span>Home proposes a kick-off <b>before</b> that GPSL month starts. Last 48h = ₿1m late fee; no proposal by then = ₿2.5m. Discord lock CTA on the schedule page if you already agreed off-site. Fixtures where <b>both</b> clubs have GPSL match system OFF are arranged manually and do not appear here.</span>
+        <b>Arrange now — upcoming months + replays</b>
+        <span>Home proposes a kick-off <b>before</b> that GPSL month starts (last 48h = ₿1m late fee; miss unlock = ₿2.5m). <b>Replay / catch-up</b> fixtures from a reset or closed month also appear here — re-propose in the current window. Discord lock CTA on the schedule page if you already agreed off-site. Both clubs GPSL match system OFF = manual; those do not appear here.</span>
       </div>
       <div class="mc-list">${list.map(renderArrangeRow).join("")}</div>
     </div>`;
