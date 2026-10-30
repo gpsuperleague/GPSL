@@ -957,6 +957,7 @@ function applyPlayerStatsDraft(stats) {
     if (red) red.checked = !!row.red_card;
     // Keep submitted rating; only fill blanks for appeared players.
     syncRatingForAppearance(tr);
+    syncCardAvailability(tr);
     applied += 1;
   }
   sortPlayerStatsRows();
@@ -1526,6 +1527,7 @@ function resetPlayerStatsDom() {
     const red = tr.querySelector(".stat-red");
     if (yellow) yellow.checked = false;
     if (red) red.checked = false;
+    syncCardAvailability(tr);
   });
   updateOgBalanceHint();
 }
@@ -1609,6 +1611,7 @@ function fillTestMatchStats() {
   setOpponentOwnGoals(0);
   sortPlayerStatsRows();
   updateLineupCounter();
+  syncAllCardAvailability();
   updateOgBalanceHint();
   setStatus(
     "submitStatus",
@@ -1719,6 +1722,7 @@ function applyDefaultLineupFromSquad() {
     startCb.checked = isStarter;
     if (isStarter && subCb) subCb.checked = false;
     syncRatingForAppearance(tr);
+    syncCardAvailability(tr);
   }
   sortPlayerStatsRows();
   updateLineupCounter();
@@ -1893,9 +1897,23 @@ async function loadClubSuspensions() {
   refreshSquadCardStatuses();
 }
 
-/** Red = suspended, purple = injured / recovery (matchday pitch cards). */
+/**
+ * Red = suspended, purple = injured / recovery (matchday pitch cards).
+ * With a fixture selected, only fixture-scoped stickiness applies — club-wide
+ * remaining outs must not block early/future matches outside the injury sequence.
+ */
 function refreshSquadCardStatuses() {
-  const map = unavailableStatusByPlayerId(fixtureUnavailable, myClub.short);
+  // Fixture context: only server stickiness for *this* match (injury_fixtures /
+  // suspension_matches). Do not overlay club-wide remaining outs — that wrongly
+  // blocked early-played future fixtures outside the absence sequence.
+  if (selectedFixture()) {
+    squadPanelApi?.setPlayerStatuses(
+      unavailableStatusByPlayerId(fixtureUnavailable, myClub.short)
+    );
+    return;
+  }
+
+  const map = new Map();
   for (const [id, rows] of suspensionsByPlayer) {
     if (rows?.length) map.set(id, "suspended");
   }
@@ -2009,25 +2027,52 @@ function renderPlayerStatsTable(opts = {}) {
   updateOgBalanceHint();
 }
 
-function wireCardCheckboxes(tr) {
+/** Y/R only when Started or Subbed is ticked (must re-run after programmatic lineup). */
+function syncCardAvailability(tr) {
+  if (!tr) return;
   const yellow = tr.querySelector(".stat-yellow");
   const red = tr.querySelector(".stat-red");
   const started = tr.querySelector(".stat-started");
   const subbed = tr.querySelector(".stat-subbed");
-  const sync = () => {
-    const appeared = !!(started?.checked || subbed?.checked);
-    if (!appeared) {
-      if (yellow) yellow.checked = false;
-      if (red) red.checked = false;
+  // Unavailable for this match: both play ticks locked off (not merely
+  // "Start" locked because the XI is already full).
+  const lockedOut =
+    !!started?.disabled &&
+    !!subbed?.disabled &&
+    !started.checked &&
+    !subbed.checked;
+  if (lockedOut) {
+    if (yellow) {
+      yellow.checked = false;
+      yellow.disabled = true;
     }
-    if (yellow) yellow.disabled = !appeared;
-    if (red) red.disabled = !appeared;
-  };
-  started?.addEventListener("change", sync);
-  subbed?.addEventListener("change", sync);
-  yellow?.addEventListener("change", sync);
-  red?.addEventListener("change", sync);
-  sync();
+    if (red) {
+      red.checked = false;
+      red.disabled = true;
+    }
+    return;
+  }
+  const appeared = !!(started?.checked || subbed?.checked);
+  if (!appeared) {
+    if (yellow) yellow.checked = false;
+    if (red) red.checked = false;
+  }
+  if (yellow) yellow.disabled = !appeared;
+  if (red) red.disabled = !appeared;
+}
+
+function syncAllCardAvailability() {
+  document
+    .querySelectorAll("#playerStatsBody tr[data-stat-player]")
+    .forEach((tr) => syncCardAvailability(tr));
+}
+
+function wireCardCheckboxes(tr) {
+  const started = tr.querySelector(".stat-started");
+  const subbed = tr.querySelector(".stat-subbed");
+  started?.addEventListener("change", () => syncCardAvailability(tr));
+  subbed?.addEventListener("change", () => syncCardAvailability(tr));
+  syncCardAvailability(tr);
 }
 
 function wirePlayedCheckboxes(tr) {
@@ -2042,6 +2087,7 @@ function wirePlayedCheckboxes(tr) {
       if (n > MAX_STARTERS) started.checked = false;
     }
     syncRatingForAppearance(tr, { forceDefault: true });
+    syncCardAvailability(tr);
     sortPlayerStatsRows();
     updateLineupCounter();
   });
@@ -2052,6 +2098,7 @@ function wirePlayedCheckboxes(tr) {
       if (n > MAX_SUBS) subbed.checked = false;
     }
     syncRatingForAppearance(tr, { forceDefault: true });
+    syncCardAvailability(tr);
     sortPlayerStatsRows();
     updateLineupCounter();
   });
