@@ -348,6 +348,73 @@ export function filterSelectableKickoffSlots(slots, ownerTimezone = UK_TZ) {
   return (slots || []).filter((iso) => isSelectableKickoffSlot(iso, ownerTimezone));
 }
 
+/** Normalize kick-off ISO strings for Set membership (ms precision). */
+export function kickoffIsoKey(iso) {
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) ? new Date(t).toISOString() : String(iso || "");
+}
+
+/**
+ * Prior kick-offs already offered in this arrangement (from schedule context).
+ * @returns {Set<string>} ISO keys
+ */
+export function priorProposedKickoffSet(ctx) {
+  const raw = ctx?.prior_proposed_kickoffs;
+  const list = Array.isArray(raw) ? raw : [];
+  return new Set(list.map(kickoffIsoKey).filter(Boolean));
+}
+
+const COMPROMISE_NEAR_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Midpoint compromise slots between two availability lists when the UTC gap is
+ * under 2 hours (exclusive of exact matches). Snapped to UK 30-minute kick-offs.
+ * @returns {Array<{ iso: string, gapMs: number, fromIso: string, toIso: string }>}
+ */
+export function buildCompromiseMidpointSlots(
+  slotsA,
+  slotsB,
+  { withinMs = COMPROMISE_NEAR_MS, ownerTimezone = UK_TZ, excludeIsoSet = null } = {}
+) {
+  const a = (slotsA || [])
+    .map((iso) => ({ iso: String(iso), t: new Date(iso).getTime() }))
+    .filter((x) => Number.isFinite(x.t));
+  const b = (slotsB || [])
+    .map((iso) => ({ iso: String(iso), t: new Date(iso).getTime() }))
+    .filter((x) => Number.isFinite(x.t));
+
+  /** @type {Map<string, { iso: string, gapMs: number, fromIso: string, toIso: string }>} */
+  const byIso = new Map();
+
+  for (const left of a) {
+    for (const right of b) {
+      const gap = Math.abs(left.t - right.t);
+      if (gap <= 0 || gap >= withinMs) continue;
+      const midMs = Math.round((left.t + right.t) / 2);
+      const snapped = snapToUkHalfHourSlot(new Date(midMs));
+      if (!snapped || Number.isNaN(snapped.getTime())) continue;
+      const iso = snapped.toISOString();
+      if (!isSelectableKickoffSlot(iso, ownerTimezone)) continue;
+      if (excludeIsoSet?.has(kickoffIsoKey(iso))) continue;
+      // Skip if midpoint collapsed onto either endpoint
+      if (kickoffIsoKey(iso) === kickoffIsoKey(left.iso)) continue;
+      if (kickoffIsoKey(iso) === kickoffIsoKey(right.iso)) continue;
+
+      const prev = byIso.get(iso);
+      if (!prev || gap < prev.gapMs) {
+        byIso.set(iso, {
+          iso,
+          gapMs: gap,
+          fromIso: left.t <= right.t ? left.iso : right.iso,
+          toIso: left.t <= right.t ? right.iso : left.iso,
+        });
+      }
+    }
+  }
+
+  return [...byIso.values()].sort((x, y) => x.gapMs - y.gapMs || x.iso.localeCompare(y.iso));
+}
+
 /** Wall-clock Y/M/D/H/M in a timezone. */
 function zonedYmdHm(date, timeZone) {
   const parts = new Intl.DateTimeFormat("en-GB", {

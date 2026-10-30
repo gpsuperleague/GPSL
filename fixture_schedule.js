@@ -27,7 +27,10 @@ import {
   zonedDateTimeLocalValue,
   snapToUkHalfHourSlot,
   snapToUkTenMinSlot,
-} from "./match_scheduling.js?v=20261029-audit-fixes";
+  priorProposedKickoffSet,
+  kickoffIsoKey,
+  buildCompromiseMidpointSlots,
+} from "./match_scheduling.js?v=20261030-compromise";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -218,7 +221,17 @@ function pokeNearGradeStyle(gapMs) {
 function appendKickoffSlotButtons(
   container,
   slots,
-  { homeTz, awayTz, ownerTz, onSelect, excludeIso, nearIsoSet, nearGapByIso }
+  {
+    homeTz,
+    awayTz,
+    ownerTz,
+    onSelect,
+    excludeIso,
+    nearIsoSet,
+    nearGapByIso,
+    usedIsoSet,
+    compromiseMetaByIso,
+  }
 ) {
   if (!container) return 0;
 
@@ -227,38 +240,68 @@ function appendKickoffSlotButtons(
 
   for (const iso of selectable) {
     if (excludeIso && iso === excludeIso) continue;
+    const key = kickoffIsoKey(iso);
+    const alreadyUsed = usedIsoSet?.has(key);
     const btn = document.createElement("button");
     btn.type = "button";
-    const gapMs = nearGapByIso?.get(iso);
-    const isNear = nearIsoSet?.has(iso) && Number.isFinite(gapMs);
-    btn.className = isNear ? "slot-btn slot-near" : "slot-btn";
+    const gapMs = nearGapByIso?.get(iso) ?? nearGapByIso?.get(key);
+    const compromise = compromiseMetaByIso?.get(key) || compromiseMetaByIso?.get(iso);
+    const isCompromise = Boolean(compromise);
+    const isNear = !isCompromise && nearIsoSet?.has(iso) && Number.isFinite(gapMs);
+    btn.className = [
+      "slot-btn",
+      isCompromise ? "slot-compromise" : "",
+      isNear ? "slot-near" : "",
+      alreadyUsed ? "slot-used" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     btn.dataset.kickoff = iso;
-    const gapLabel = isNear ? formatNearGapLabel(gapMs) : "";
-    btn.title = gapLabel
-      ? `Within 2 hours of a slot on the other list (${gapLabel}) — greener = closer`
+    const gapLabel = isNear || isCompromise
+      ? formatNearGapLabel(isCompromise ? compromise.gapMs : gapMs)
       : "";
-    if (isNear) {
+    if (alreadyUsed) {
+      btn.title = "Already suggested in this arrangement — pick a different time";
+      btn.disabled = true;
+    } else if (isCompromise) {
+      btn.title = gapLabel
+        ? `Compromise midpoint (${gapLabel} between the two availability slots)`
+        : "Compromise midpoint between nearby availability slots";
+    } else if (gapLabel) {
+      btn.title = `Within 2 hours of a slot on the other list (${gapLabel}) — greener = closer`;
+    } else {
+      btn.title = "";
+    }
+    if (isNear && !alreadyUsed) {
       const grade = pokeNearGradeStyle(gapMs);
       btn.style.setProperty("--near-border", grade.borderColor);
       btn.style.setProperty("--near-bg", grade.background);
       btn.style.setProperty("--near-tag", grade.tagColor);
       btn.style.setProperty("--near-main", grade.mainColor);
     }
+    const tagHtml = alreadyUsed
+      ? `<span class="slot-used-tag">Already suggested</span>`
+      : isCompromise
+        ? `<span class="slot-compromise-tag">Compromise${
+            gapLabel ? ` · ${escapeHtmlLite(gapLabel)}` : ""
+          }</span>`
+        : isNear
+          ? `<span class="slot-near-tag">Near · ${escapeHtmlLite(gapLabel || "<2h")}</span>`
+          : "";
     btn.innerHTML =
       formatKickoffSlotHtml(iso, {
         ownerTz,
         homeTz,
         awayTz,
-      }) +
-      (isNear
-        ? `<span class="slot-near-tag">Near · ${escapeHtmlLite(gapLabel || "<2h")}</span>`
-        : "");
-    if (onSelect) {
+      }) + tagHtml;
+    if (alreadyUsed) {
+      btn.style.cursor = "not-allowed";
+    } else if (onSelect) {
       btn.onclick = () => onSelect(iso, btn, container);
     } else {
       btn.disabled = true;
       btn.style.cursor = "default";
-      if (!isNear) btn.style.opacity = "0.65";
+      if (!isNear && !isCompromise) btn.style.opacity = "0.65";
     }
     container.appendChild(btn);
     count += 1;
@@ -303,9 +346,11 @@ function wirePokePanel({
   oppTz,
   selectableOppSlots,
   selectableOwnSlots,
+  usedIsoSet,
 }) {
   const oppList = document.getElementById("oppSlotList");
   const ownList = document.getElementById("ownSlotList");
+  const compromiseList = document.getElementById("compromiseSlotList");
   const dt = document.getElementById("pokeDateTime");
   const useBtn = document.getElementById("pokeUseBtn");
 
@@ -313,6 +358,28 @@ function wirePokePanel({
     selectableOppSlots,
     selectableOwnSlots
   );
+
+  const compromises = buildCompromiseMidpointSlots(
+    selectableOwnSlots,
+    selectableOppSlots,
+    { ownerTimezone: ownerTz, excludeIsoSet: usedIsoSet }
+  );
+  const compromiseIsos = compromises.map((c) => c.iso);
+  const compromiseMetaByIso = new Map(
+    compromises.map((c) => [kickoffIsoKey(c.iso), c])
+  );
+
+  const selectPokeSlot = (iso, btn, list) => {
+    if (usedIsoSet?.has(kickoffIsoKey(iso))) return;
+    setPokeSelection(iso, { homeTz, awayTz, ownerTz, clearLists: false });
+    document
+      .querySelectorAll(
+        "#oppSlotList .slot-btn, #ownSlotList .slot-btn, #compromiseSlotList .slot-btn"
+      )
+      .forEach((b) => b.classList.remove("selected"));
+    list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+    btn.classList.add("selected");
+  };
 
   if (oppList) {
     appendKickoffSlotButtons(oppList, selectableOppSlots, {
@@ -322,14 +389,8 @@ function wirePokePanel({
       ownerTz,
       nearIsoSet: oppNear,
       nearGapByIso: closestGap,
-      onSelect: (iso, btn, list) => {
-        setPokeSelection(iso, { homeTz, awayTz, ownerTz, clearLists: false });
-        list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
-        document
-          .querySelectorAll("#ownSlotList .slot-btn")
-          .forEach((b) => b.classList.remove("selected"));
-        btn.classList.add("selected");
-      },
+      usedIsoSet,
+      onSelect: (iso, btn, list) => selectPokeSlot(iso, btn, list),
     });
   }
 
@@ -340,18 +401,42 @@ function wirePokePanel({
       ownerTz,
       nearIsoSet: ownNear,
       nearGapByIso: closestGap,
+      usedIsoSet,
       onSelect: null, // comparison only
     });
+  }
+
+  if (compromiseList) {
+    if (compromiseIsos.length) {
+      appendKickoffSlotButtons(compromiseList, compromiseIsos, {
+        homeTz,
+        awayTz,
+        ownerTz,
+        usedIsoSet,
+        compromiseMetaByIso,
+        onSelect: (iso, btn, list) => selectPokeSlot(iso, btn, list),
+      });
+    } else {
+      compromiseList.innerHTML =
+        '<p class="meta" style="color:#888;">No midpoint between nearby slots (need two availability times under 2 hours apart).</p>';
+    }
   }
 
   const nearNote = document.getElementById("pokeNearNote");
   if (nearNote) {
     const n = oppNear.size;
-    nearNote.hidden = n === 0;
-    if (n) {
-      nearNote.textContent = `${n} opponent time${
-        n === 1 ? "" : "s"
-      } within 2 hours of yours — colour graded (green = closest, red = nearer 2h).`;
+    const c = compromises.length;
+    nearNote.hidden = n === 0 && c === 0;
+    if (n || c) {
+      const nearBit =
+        n > 0
+          ? `${n} opponent time${n === 1 ? "" : "s"} within 2 hours of yours (green = closest, red = nearer 2h)`
+          : "";
+      const midBit =
+        c > 0
+          ? `${c} compromise midpoint${c === 1 ? "" : "s"} suggested`
+          : "";
+      nearNote.textContent = [nearBit, midBit].filter(Boolean).join(" · ") + ".";
     }
   }
 
@@ -380,11 +465,19 @@ function wirePokePanel({
       setStatus("Could not snap to a UK 30‑minute kick-off.", true);
       return;
     }
-    if (!isSelectableKickoffSlot(snapped.toISOString(), ownerTz)) {
+    const iso = snapped.toISOString();
+    if (!isSelectableKickoffSlot(iso, ownerTz)) {
       setStatus("That kick-off is in the past — pick a future time.", true);
       return;
     }
-    setPokeSelection(snapped.toISOString(), { homeTz, awayTz, ownerTz });
+    if (usedIsoSet?.has(kickoffIsoKey(iso))) {
+      setStatus(
+        "That kick-off was already suggested in this arrangement — pick a different time.",
+        true
+      );
+      return;
+    }
+    setPokeSelection(iso, { homeTz, awayTz, ownerTz });
     setStatus("");
   };
 
@@ -513,7 +606,7 @@ function wireScheduleModeTabs(defaultTab = "gpsl") {
   activate(defaultTab === "discord" ? "discord" : "gpsl");
 }
 
-function wireDiscordLockPanel(slots, homeTz, awayTz, ownerTz) {
+function wireDiscordLockPanel(slots, homeTz, awayTz, ownerTz, usedIsoSet = null) {
   let discordSelected = null;
   const list = document.getElementById("discordLockSlotList");
   const btn = document.getElementById("discordLockBtn");
@@ -523,7 +616,9 @@ function wireDiscordLockPanel(slots, homeTz, awayTz, ownerTz) {
     homeTz,
     awayTz,
     ownerTz,
+    usedIsoSet,
     onSelect: (iso, el, container) => {
+      if (usedIsoSet?.has(kickoffIsoKey(iso))) return;
       discordSelected = iso;
       container.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
       el.classList.add("selected");
@@ -1247,6 +1342,23 @@ function render() {
   const pastHidden = slots.length - selectableSlots.length;
   const selectableOppSlots = filterSelectableKickoffSlots(oppSlots, ownerTz);
   const selectableOwnSlots = filterSelectableKickoffSlots(ownSlots, ownerTz);
+  const usedIsoSet = priorProposedKickoffSet(ctx);
+  // Mutual mode: midpoints only help when they land on a shared slot (rare) or poke.
+  // Poke mode: always offer under-2h midpoints as selectable compromises.
+  const compromiseCandidates = buildCompromiseMidpointSlots(
+    selectableOwnSlots,
+    selectableOppSlots,
+    { ownerTimezone: ownerTz, excludeIsoSet: usedIsoSet }
+  );
+  const intersectionKeySet = new Set(
+    (futureIntersection || []).map(kickoffIsoKey)
+  );
+  const mutualCompromiseSlots = usingPoke
+    ? compromiseCandidates
+    : compromiseCandidates.filter((c) => intersectionKeySet.has(kickoffIsoKey(c.iso)));
+  const compromiseMetaByIso = new Map(
+    mutualCompromiseSlots.map((c) => [kickoffIsoKey(c.iso), c])
+  );
   const responseLine = formatResponseDeadlineLine(ctx.response_deadline, myClub.short);
   const responseHtml = responseLine
     ? `<p class="meta" style="color:${ctx.response_deadline?.overdue && ctx.response_deadline?.my_turn ? "#f88" : "#fc6"};">${responseLine}</p>`
@@ -1353,13 +1465,13 @@ function render() {
   const isAwayWaiting = ctx.my_role === "away" && !canPick;
   const slotIntro = isAwayWaiting
     ? `Waiting for <b>${fullClubName(f.home_club_short_name)}</b> (home) to propose first — slot buttons below are for reference only and won’t select. Once they propose you can accept or counter (${slotCountLine}). If you already agreed off-site, use the <b>Agreed on Discord</b> tab.`
-    : usingPoke
-      ? `No mutual times this window. <b>Poke</b> a kick-off (free date/time) — see the opponent’s availability below <b>in your timezone</b> so you can aim close to something they already offer. Same accept / counter / reply rules after you send.`
+      : usingPoke
+      ? `No mutual times this window. <b>Poke</b> a kick-off — use opponent availability, a <b>compromise midpoint</b> (under 2h apart), or any free date/time. Already-suggested times are greyed out. Same accept / counter / reply rules after you send.`
       : ctx.can_respond
-        ? `Accept the proposed time above, or counter with another time free for <b>both</b> clubs in your local timezones (${slotCountLine}).`
+        ? `Accept the proposed time above, or counter with another time free for <b>both</b> clubs in your local timezones (${slotCountLine}). Already-suggested times in this arrangement are greyed out.`
         : usingCompatibleSlots
-          ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). Then press Propose kick-off (${slotCountLine}).`
-          : `Pick a 30-minute block from available times (${slotCountLine}).`;
+          ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). Times already suggested in this arrangement are greyed out. Then press Propose kick-off (${slotCountLine}).`
+          : `Pick a 30-minute block from available times (${slotCountLine}). Already-suggested times are greyed out.`;
 
   const emptySlotsMsg = usingPoke
     ? ""
@@ -1381,7 +1493,7 @@ function render() {
         <h3 class="poke-heading">Opponent availability · ${escapeHtmlLite(
           fullClubName(oppClubShort) || oppClubShort || "Opponent"
         )} (${escapeHtmlLite(tzDisplayName(oppTz))})</h3>
-        <p class="meta">Shown in <b>your</b> timezone so you can compare with your own slots (their local clock is on the second line). Times within <b>2 hours</b> of one of yours are colour‑graded: <b style="color:#8f8;">green = closest</b>, through yellow, to <b style="color:#f88;">red = nearer 2h</b>. Click one to start from it, or enter any free date/time below.</p>
+        <p class="meta">Shown in <b>your</b> timezone so you can compare with your own slots (their local clock is on the second line). Times within <b>2 hours</b> of one of yours are colour‑graded: <b style="color:#8f8;">green = closest</b>, through yellow, to <b style="color:#f88;">red = nearer 2h</b>. Click one to start from it, pick a <b>compromise midpoint</b> below, or enter any free date/time. Times already suggested in this arrangement are greyed out.</p>
         <p class="meta poke-near-note" id="pokeNearNote" hidden></p>
         <div class="slot-list" id="oppSlotList"></div>
         ${
@@ -1389,6 +1501,9 @@ function render() {
             ? ""
             : `<p class="meta" style="color:#fc6;">They have no free slots in this window — ask them to set weekly availability on Owner Details, or poke any valid GPSL time anyway.</p>`
         }
+        <h3 class="poke-heading">Compromise suggestions (midpoint · under 2h apart)</h3>
+        <p class="meta">Halfway between a time of yours and theirs when the gap is under 2 hours — snapped to a UK 30‑minute kick-off.</p>
+        <div class="slot-list" id="compromiseSlotList"></div>
         <h3 class="poke-heading">Your availability (comparison)</h3>
         <div class="slot-list" id="ownSlotList"></div>
         ${
@@ -1399,7 +1514,7 @@ function render() {
         <h3 class="poke-heading">Poke date &amp; time (${escapeHtmlLite(
           tzDisplayName(ownerTz)
         )})</h3>
-        <p class="meta">Any future time in the GPSL month window. Snapped to a UK 30‑minute kick-off boundary.</p>
+        <p class="meta">Any future time in the GPSL month window. Snapped to a UK 30‑minute kick-off boundary. Already-suggested times are blocked.</p>
         <div class="poke-free-row">
           <input type="datetime-local" id="pokeDateTime" step="1800" />
           <button type="button" id="pokeUseBtn" class="button secondary">Use this time</button>
@@ -1529,7 +1644,8 @@ function render() {
       usingPoke ? ownSlots : slots,
       homeTz,
       awayTz,
-      ownerTz
+      ownerTz,
+      usedIsoSet
     );
   }
   if (mutualPendingHtml) {
@@ -1542,8 +1658,11 @@ function render() {
       homeTz,
       awayTz,
       ownerTz,
+      usedIsoSet,
+      compromiseMetaByIso: usingPoke ? null : compromiseMetaByIso,
       onSelect: canPick
         ? (iso, btn, list) => {
+            if (usedIsoSet.has(kickoffIsoKey(iso))) return;
             selectedKickoff = iso;
             list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
             btn.classList.add("selected");
@@ -1572,6 +1691,7 @@ function render() {
       oppTz,
       selectableOppSlots,
       selectableOwnSlots,
+      usedIsoSet,
     });
   }
 
@@ -1579,6 +1699,13 @@ function render() {
   if (proposeBtn) {
     proposeBtn.onclick = async () => {
       if (!selectedKickoff) return;
+      if (usedIsoSet.has(kickoffIsoKey(selectedKickoff))) {
+        setStatus(
+          "That kick-off was already suggested in this arrangement — pick a different time.",
+          true
+        );
+        return;
+      }
       proposeBtn.disabled = true;
       setStatus(usingPoke ? "Sending poke…" : "Sending proposal…");
       const res = await proposeKickoff(fixtureId, selectedKickoff);

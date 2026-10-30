@@ -184,6 +184,29 @@
       filter:brightness(1.12);
       box-shadow:inset 0 0 0 1px var(--near-border, #a5d96a), 0 0 0 1px var(--near-border, #a5d96a);
     }
+    .slot-btn.slot-compromise {
+      border-color:#6a9eff;
+      background:#142033;
+    }
+    .slot-btn.slot-compromise .slot-main { color:#c8dcff; }
+    .slot-btn .slot-compromise-tag {
+      font-size:10px; color:#9ec0ff; font-weight:600; margin-top:2px; line-height:1.2;
+    }
+    .slot-btn.slot-compromise.selected {
+      filter:brightness(1.12);
+      box-shadow:inset 0 0 0 1px #6a9eff, 0 0 0 1px #6a9eff;
+    }
+    .slot-btn.slot-used {
+      opacity:0.45;
+      border-color:#555;
+      background:#1a1a1a;
+      filter:grayscale(0.7);
+    }
+    .slot-btn.slot-used .slot-main { color:#888; }
+    .slot-btn .slot-used-tag {
+      font-size:10px; color:#999; font-weight:600; margin-top:2px; line-height:1.2;
+    }
+    .slot-btn.slot-used:disabled { cursor:not-allowed; }
   </style>
 </head>
 <body>
@@ -200,6 +223,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261029-audit-fixes"></script>
+  <script type="module" src="fixture_schedule.js?v=20261030-compromise"></script>
 </body>
 </html>
