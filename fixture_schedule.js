@@ -30,7 +30,7 @@ import {
   priorProposedKickoffSet,
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
-} from "./match_scheduling.js?v=20261030-compromise-row";
+} from "./match_scheduling.js?v=20261030-meet-either";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -272,9 +272,10 @@ function appendKickoffSlotButtons(
     } else if (isExact) {
       btn.title = "Exact match — both clubs are free at this kick-off";
     } else if (isCompromise) {
+      const kind = compromise?.kind === "endpoint" ? "nearby exclusive time" : "midpoint";
       btn.title = gapLabel
-        ? `Compromise midpoint (${gapLabel} between the two availability slots)`
-        : "Compromise midpoint between nearby availability slots";
+        ? `Compromise · ${kind} (${gapLabel} from the other club’s slot)`
+        : `Compromise · ${kind}`;
     } else if (gapLabel) {
       btn.title = `Within 2 hours of a slot on the other list (${gapLabel}) — greener = closer`;
     } else {
@@ -292,9 +293,9 @@ function appendKickoffSlotButtons(
       : isExact
         ? `<span class="slot-exact-tag">Exact match</span>`
         : isCompromise
-          ? `<span class="slot-compromise-tag">Compromise${
-              gapLabel ? ` · ${escapeHtmlLite(gapLabel)}` : ""
-            }</span>`
+          ? `<span class="slot-compromise-tag">${
+              compromise?.kind === "endpoint" ? "Compromise" : "Compromise · mid"
+            }${gapLabel ? ` · ${escapeHtmlLite(gapLabel)}` : ""}</span>`
           : isNear
             ? `<span class="slot-near-tag">Near · ${escapeHtmlLite(gapLabel || "<2h")}</span>`
             : "";
@@ -428,7 +429,7 @@ function wirePokePanel({
       });
     } else {
       compromiseList.innerHTML =
-        '<p class="meta" style="color:#888;">No midpoint between nearby slots (need two availability times under 2 hours apart).</p>';
+        '<p class="meta" style="color:#888;">No compromise between nearby exclusive slots (need two under 2 hours apart).</p>';
     }
   }
 
@@ -444,7 +445,7 @@ function wirePokePanel({
           : "";
       const midBit =
         c > 0
-          ? `${c} compromise midpoint${c === 1 ? "" : "s"} suggested`
+          ? `${c} compromise${c === 1 ? "" : "s"} suggested (meet-them / meet-you / mid)`
           : "";
       nearNote.textContent = [nearBit, midBit].filter(Boolean).join(" · ") + ".";
     }
@@ -1479,11 +1480,11 @@ function render() {
   const slotIntro = isAwayWaiting
     ? `Waiting for <b>${fullClubName(f.home_club_short_name)}</b> (home) to propose first — slot buttons below are for reference only and won’t select. Once they propose you can accept or counter (${slotCountLine}). If you already agreed off-site, use the <b>Agreed on Discord</b> tab.`
       : usingPoke
-      ? `No mutual times this window. <b>Poke</b> a kick-off — use opponent availability, a <b>compromise midpoint</b> (under 2h apart), or any free date/time. Already-suggested times are greyed out. Same accept / counter / reply rules after you send.`
+      ? `No mutual times this window. <b>Poke</b> a kick-off — use opponent availability, a <b>compromise</b> (their time, yours, or midpoint when under 2h apart), or any free date/time. Already-suggested times are greyed out. Same accept / counter / reply rules after you send.`
       : ctx.can_respond
         ? `Accept the proposed time above, or counter with another time free for <b>both</b> clubs in your local timezones (${slotCountLine}). Already-suggested times in this arrangement are greyed out.`
         : usingCompatibleSlots
-          ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). <b style="color:#a8e06a;">Green = exact match</b> (both free). If you each have nearby times under 2 hours apart, <b style="color:#9ec0ff;">blue compromise midpoints</b> appear underneath. Already-suggested times are greyed out (${slotCountLine}).`
+          ? `Pick a kick-off that is free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). <b style="color:#a8e06a;">Green = exact match</b> (both free). Nearby exclusive times under 2 hours apart appear as <b style="color:#9ec0ff;">blue compromises</b> (meet them, meet you, and midpoint if novel). Already-suggested times are greyed out (${slotCountLine}).`
           : `Pick a 30-minute block from available times (${slotCountLine}). Already-suggested times are greyed out.`;
 
   const emptySlotsMsg = usingPoke
@@ -1506,7 +1507,7 @@ function render() {
         <h3 class="poke-heading">Opponent availability · ${escapeHtmlLite(
           fullClubName(oppClubShort) || oppClubShort || "Opponent"
         )} (${escapeHtmlLite(tzDisplayName(oppTz))})</h3>
-        <p class="meta">Shown in <b>your</b> timezone so you can compare with your own slots (their local clock is on the second line). Times within <b>2 hours</b> of one of yours are colour‑graded: <b style="color:#8f8;">green = closest</b>, through yellow, to <b style="color:#f88;">red = nearer 2h</b>. Click one to start from it, pick a <b>compromise midpoint</b> below, or enter any free date/time. Times already suggested in this arrangement are greyed out.</p>
+        <p class="meta">Shown in <b>your</b> timezone so you can compare with your own slots (their local clock is on the second line). Times within <b>2 hours</b> of one of yours are colour‑graded: <b style="color:#8f8;">green = closest</b>, through yellow, to <b style="color:#f88;">red = nearer 2h</b>. Click one to start from it, pick a <b>compromise</b> below, or enter any free date/time. Times already suggested in this arrangement are greyed out.</p>
         <p class="meta poke-near-note" id="pokeNearNote" hidden></p>
         <div class="slot-list" id="oppSlotList"></div>
         ${
@@ -1514,8 +1515,8 @@ function render() {
             ? ""
             : `<p class="meta" style="color:#fc6;">They have no free slots in this window — ask them to set weekly availability on Owner Details, or poke any valid GPSL time anyway.</p>`
         }
-        <h3 class="poke-heading">Compromise suggestions (midpoint · under 2h apart)</h3>
-        <p class="meta">Halfway between a time of yours and theirs when the gap is under 2 hours — snapped to a UK 30‑minute kick-off.</p>
+        <h3 class="poke-heading">Compromise suggestions (under 2h apart)</h3>
+        <p class="meta">Blue chips: <b>their exclusive time</b>, <b>yours</b>, and a <b>midpoint</b> if neither already has it. Exact mutuals stay green above.</p>
         <div class="slot-list" id="compromiseSlotList"></div>
         <h3 class="poke-heading">Your availability (comparison)</h3>
         <div class="slot-list" id="ownSlotList"></div>
@@ -1579,8 +1580,8 @@ function render() {
           : `<div class="slot-list" id="slotList"></div>
       ${
         showCompromiseRow
-          ? `<h3 class="poke-heading" style="margin-top:14px;">Compromise suggestions (midpoint · under 2h apart)</h3>
-        <p class="meta">You each have a nearby time that isn’t an exact match — halfway between them, snapped to a UK 30‑minute kick-off. Blue chips; green above stays exact mutual only.</p>
+          ? `<h3 class="poke-heading" style="margin-top:14px;">Compromise suggestions (under 2h apart)</h3>
+        <p class="meta">You each have a nearby time the other doesn’t. Blue chips offer <b>their time</b>, <b>your time</b>, and a <b>midpoint</b> (if nobody already has it). Green above stays exact mutual only — e.g. both free 18:30 stays green; 18:00 (them only) and 19:00 (you only) can appear blue.</p>
         <div class="slot-list" id="compromiseSlotList"></div>`
           : ""
       }

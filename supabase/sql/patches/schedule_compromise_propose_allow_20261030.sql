@@ -1,11 +1,12 @@
 -- =============================================================================
--- Allow proposing compromise midpoints even when mutual slots also exist
+-- Allow proposing compromise times even when mutual slots also exist
 -- (2026-10-30)
 --
--- UI shows blue "Compromise" chips: halfway between your slot and theirs when
--- the gap is under 2 hours, snapped to a UK 30-minute kick-off, and not already
--- an exact availability on either side. This lets fixture_schedule_propose
--- accept those times (same poke bypass path) without requiring zero mutuals.
+-- UI shows blue "Compromise" chips for home-only × away-only pairs under 2h:
+--   • either exclusive endpoint (meet them / meet you)
+--   • novel midpoint snapped to UK 30-min (only if neither already has it)
+-- Exact mutuals stay green / never compromise. fixture_schedule_propose accepts
+-- these without requiring zero mutuals (same poke-style bypass).
 --
 -- Safe re-run.
 -- =============================================================================
@@ -67,25 +68,57 @@ BEGIN
     RETURN false;
   END IF;
 
+  -- Mutual exact times are never "compromise"
+  IF EXISTS (
+       SELECT 1 FROM public.match_schedule_club_window_slots(p_fixture_id, v_home) h
+       WHERE h.kickoff_at = v_target
+     )
+     AND EXISTS (
+       SELECT 1 FROM public.match_schedule_club_window_slots(p_fixture_id, v_away) a
+       WHERE a.kickoff_at = v_target
+     )
+  THEN
+    RETURN false;
+  END IF;
+
+  -- Home-only × away-only pair under 2h: allow either endpoint OR novel midpoint
   RETURN EXISTS (
     SELECT 1
     FROM public.match_schedule_club_window_slots(p_fixture_id, v_home) h
     CROSS JOIN public.match_schedule_club_window_slots(p_fixture_id, v_away) a
     WHERE abs(extract(epoch FROM (h.kickoff_at - a.kickoff_at))) > 0
       AND abs(extract(epoch FROM (h.kickoff_at - a.kickoff_at))) < 7200
-      AND public.match_schedule_snap_uk_half_hour(
+      -- home exclusive
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.match_schedule_club_window_slots(p_fixture_id, v_away) ax
+        WHERE ax.kickoff_at = h.kickoff_at
+      )
+      -- away exclusive
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.match_schedule_club_window_slots(p_fixture_id, v_home) hx
+        WHERE hx.kickoff_at = a.kickoff_at
+      )
+      AND (
+        -- meet at either exclusive endpoint
+        v_target IN (h.kickoff_at, a.kickoff_at)
+        -- or novel midpoint (neither club already has it)
+        OR (
+          public.match_schedule_snap_uk_half_hour(
             h.kickoff_at + ((a.kickoff_at - h.kickoff_at) / 2)
           ) = v_target
-      -- Midpoint must not already be an exact slot for either club
-      AND NOT EXISTS (
-        SELECT 1
-        FROM public.match_schedule_club_window_slots(p_fixture_id, v_home) x
-        WHERE x.kickoff_at = v_target
-      )
-      AND NOT EXISTS (
-        SELECT 1
-        FROM public.match_schedule_club_window_slots(p_fixture_id, v_away) x
-        WHERE x.kickoff_at = v_target
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.match_schedule_club_window_slots(p_fixture_id, v_home) x
+            WHERE x.kickoff_at = v_target
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.match_schedule_club_window_slots(p_fixture_id, v_away) x
+            WHERE x.kickoff_at = v_target
+          )
+        )
       )
   );
 END;
@@ -97,7 +130,7 @@ GRANT EXECUTE ON FUNCTION public.match_schedule_kickoff_is_compromise_midpoint(b
   TO authenticated, service_role;
 
 COMMENT ON FUNCTION public.match_schedule_kickoff_is_compromise_midpoint(bigint, timestamptz) IS
-  'True when kick-off is the UK 30-min midpoint of a home/away availability pair under 2h apart, and not already exact for either club.';
+  'True for compromise proposes: exclusive endpoint within 2h of the other club''s exclusive slot, or a novel midpoint of such a pair.';
 
 -- Expand poke-style availability bypass to also allow compromise midpoints
 DO $propose$

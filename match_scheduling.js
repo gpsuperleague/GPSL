@@ -367,15 +367,17 @@ export function priorProposedKickoffSet(ctx) {
 const COMPROMISE_NEAR_MS = 2 * 60 * 60 * 1000;
 
 /**
- * Midpoint compromise slots between two availability lists when the UTC gap is
- * under 2 hours (exclusive of exact matches). Snapped to UK 30-minute kick-offs.
+ * Compromise suggestions when owners have close-but-not-exact times (&lt; 2h).
  *
- * Never returns a time that either owner already has exactly — those stay as
- * normal / mutual (green) slots and must not be overwritten by midpoints of
- * trailing/preceding neighbours (e.g. 7:00+8:00 must not retag 7:30 if 7:30
- * is already on either list).
+ * Only pairs **A-only × B-only** (each free when the other is not).
  *
- * @returns {Array<{ iso: string, gapMs: number, fromIso: string, toIso: string }>}
+ * For each such pair, offer:
+ *   1) **Both exclusive endpoints** — e.g. you 19:00 / them 18:00 → suggest
+ *      18:00 (meet them) and 19:00 (they meet you)
+ *   2) **Novel midpoint** — e.g. 18:30, only if neither already has it
+ *      (if 18:30 is already mutual, it stays a green exact match)
+ *
+ * @returns {Array<{ iso: string, gapMs: number, fromIso: string, toIso: string, kind?: string }>}
  */
 export function buildCompromiseMidpointSlots(
   slotsA,
@@ -389,42 +391,49 @@ export function buildCompromiseMidpointSlots(
     .map((iso) => ({ iso: String(iso), t: new Date(iso).getTime() }))
     .filter((x) => Number.isFinite(x.t));
 
-  // Exact times already on either calendar — never emit as "compromise"
-  const alreadyExact = new Set([
-    ...a.map((x) => kickoffIsoKey(x.iso)),
-    ...b.map((x) => kickoffIsoKey(x.iso)),
-  ]);
+  const keysA = new Set(a.map((x) => kickoffIsoKey(x.iso)));
+  const keysB = new Set(b.map((x) => kickoffIsoKey(x.iso)));
+  const onlyA = a.filter((x) => !keysB.has(kickoffIsoKey(x.iso)));
+  const onlyB = b.filter((x) => !keysA.has(kickoffIsoKey(x.iso)));
+  // Mutual times — never re-list as blue
+  const mutualKeys = new Set([...keysA].filter((k) => keysB.has(k)));
 
-  /** @type {Map<string, { iso: string, gapMs: number, fromIso: string, toIso: string }>} */
+  /** @type {Map<string, { iso: string, gapMs: number, fromIso: string, toIso: string, kind: string }>} */
   const byIso = new Map();
 
-  for (const left of a) {
-    for (const right of b) {
+  const consider = (iso, gap, fromIso, toIso, kind) => {
+    const key = kickoffIsoKey(iso);
+    if (!key || mutualKeys.has(key)) return;
+    if (excludeIsoSet?.has(key)) return;
+    if (!isSelectableKickoffSlot(iso, ownerTimezone)) return;
+    const prev = byIso.get(key);
+    if (!prev || gap < prev.gapMs) {
+      byIso.set(key, { iso, gapMs: gap, fromIso, toIso, kind });
+    }
+  };
+
+  for (const left of onlyA) {
+    for (const right of onlyB) {
       const gap = Math.abs(left.t - right.t);
-      // Exact match (gap 0) is mutual — not a compromise
       if (gap <= 0 || gap >= withinMs) continue;
+      const earlier = left.t <= right.t ? left : right;
+      const later = left.t <= right.t ? right : left;
+
+      // 1) Offer each exclusive endpoint (meet-them / meet-you)
+      consider(left.iso, gap, earlier.iso, later.iso, "endpoint");
+      consider(right.iso, gap, earlier.iso, later.iso, "endpoint");
+
+      // 2) Novel midpoint only if neither calendar already has it
       const midMs = Math.round((left.t + right.t) / 2);
       const snapped = snapToUkHalfHourSlot(new Date(midMs));
       if (!snapped || Number.isNaN(snapped.getTime())) continue;
-      const iso = snapped.toISOString();
-      const key = kickoffIsoKey(iso);
-      if (!isSelectableKickoffSlot(iso, ownerTimezone)) continue;
-      if (excludeIsoSet?.has(key)) continue;
-      // Skip if midpoint is already an exact availability on either side
-      if (alreadyExact.has(key)) continue;
-      // Skip if midpoint collapsed onto either endpoint of this pair
-      if (key === kickoffIsoKey(left.iso)) continue;
-      if (key === kickoffIsoKey(right.iso)) continue;
-
-      const prev = byIso.get(key);
-      if (!prev || gap < prev.gapMs) {
-        byIso.set(key, {
-          iso,
-          gapMs: gap,
-          fromIso: left.t <= right.t ? left.iso : right.iso,
-          toIso: left.t <= right.t ? right.iso : left.iso,
-        });
+      const midIso = snapped.toISOString();
+      const midKey = kickoffIsoKey(midIso);
+      if (keysA.has(midKey) || keysB.has(midKey)) continue;
+      if (midKey === kickoffIsoKey(left.iso) || midKey === kickoffIsoKey(right.iso)) {
+        continue;
       }
+      consider(midIso, gap, earlier.iso, later.iso, "midpoint");
     }
   }
 
