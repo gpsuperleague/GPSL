@@ -393,7 +393,7 @@ async function loadClubRowByShort(shortName) {
   const clubRes = await supabase
     .from("Clubs")
     .select(
-      "ShortName, Club, Nation, foreign_interest_remaining, voluntary_contract_releases_remaining"
+      "ShortName, Club, Nation, foreign_interest_remaining, voluntary_contract_releases_remaining, handpick_intake, foreign_tracking_teams"
     )
     .eq("ShortName", shortName)
     .maybeSingle();
@@ -402,7 +402,9 @@ async function loadClubRowByShort(shortName) {
   if (clubErr?.code === "42703") {
     const fallback = await supabase
       .from("Clubs")
-      .select("ShortName, Club, Nation, foreign_interest_remaining")
+      .select(
+        "ShortName, Club, Nation, foreign_interest_remaining, handpick_intake"
+      )
       .eq("ShortName", shortName)
       .maybeSingle();
     club = fallback.data;
@@ -472,6 +474,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   currentUserShort = club.ShortName;
+  renderHandpickIntakeBanner(club);
   clubNation = club.Nation ?? null;
   window.GPSL_CLUB_SHORTNAME = currentUserShort;
 
@@ -538,6 +541,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadSquad();
   }, 30000);
 });
+
+function renderHandpickIntakeBanner(club) {
+  const el = document.getElementById("handpickIntakeBanner");
+  if (!el) return;
+  if (!club?.handpick_intake) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  const short = encodeURIComponent(String(club.ShortName || "").toUpperCase());
+  el.hidden = false;
+  el.innerHTML =
+    `<b>Mid-season handpick is open for this club.</b> ` +
+    `Your squad is empty until you build a wishlist and admin approves it. ` +
+    `<a href="handpick_squad.html?club=${short}" style="color:#ffe08a;font-weight:700;">Open Handpick Squad →</a>` +
+    ` · <a href="GPDB.html" style="color:#ffe08a;">Tag players in GPDB</a>`;
+}
 
 // ⭐ NEW: Load transfer window status
 async function loadTransferWindowStatus() {

@@ -303,7 +303,7 @@ export const NAV_SECTIONS = [
       },
       {
         href: "handpick_squad.html",
-        label: "Handpick Squad",
+        label: "Handpick Squad (rebuild)",
         page: "handpick_squad",
         indent: true,
         navIcon: "player_database",

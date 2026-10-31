@@ -3085,6 +3085,22 @@ export async function buildNav() {
     console.warn("Nav owner club skipped:", clubErr);
   }
 
+  let handpickIntakeClub = null;
+  if (ownerClub?.ShortName) {
+    try {
+      const { data: hpClub } = await supabase
+        .from("Clubs")
+        .select("ShortName, handpick_intake")
+        .eq("ShortName", ownerClub.ShortName)
+        .maybeSingle();
+      if (hpClub?.handpick_intake) {
+        handpickIntakeClub = String(hpClub.ShortName).toUpperCase();
+      }
+    } catch (hpErr) {
+      console.warn("Nav handpick intake skipped:", hpErr);
+    }
+  }
+
   let registrySelf = null;
   try {
     const { data: reg } = await supabase.rpc("owner_registry_get_self");
@@ -3393,6 +3409,15 @@ export async function buildNav() {
   }
   if (!isVisitorNav) {
   html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
+  }
+  if (handpickIntakeClub && !isVisitorNav) {
+    const hpActive = pathNorm === "handpick_squad.html";
+    html +=
+      `<a href="handpick_squad.html?club=${encodeURIComponent(handpickIntakeClub)}" ` +
+      `class="nav-shortcut${hpActive ? " active" : ""}" ` +
+      `title="Mid-season handpick — build wishlist / submit squad" ` +
+      `style="color:#e8c84a;font-weight:bold;white-space:nowrap;">` +
+      `Handpick</a>`;
   }
   if (!isPreClubOwner && !isVisitorNav) {
   html += renderNavInboxLink(inboxActive, unread);
