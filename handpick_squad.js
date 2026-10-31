@@ -1,5 +1,5 @@
 import { initGlobal, supabase } from "./global.js";
-import { formatMoney } from "./competition.js";
+import { formatMoney, leagueTierForDivision } from "./competition.js";
 import { gpdbPlayerUrl } from "./player_links.js";
 import {
   loadHandpickBasketState,
@@ -18,6 +18,7 @@ import {
   isGoalkeeper,
 } from "./squad_rules.js";
 import { loadSquadDesignationsState } from "./squad_designations.js";
+import { loadWagePercentages, wageFromMarketValue } from "./wages.js";
 
 /** @type {Map<string, object>} */
 const basket = new Map();
@@ -33,8 +34,49 @@ let activeClub = "";
 let activeClubName = "";
 /** @type {object|null} */
 let designations = null;
-/** Planned OooO player id (preview only) */
+/** Planned OooO player id (preview only) — sticky in localStorage per club */
 let plannedOooId = "";
+/** @type {{ superleague: number, championship: number }} */
+let wagePctSettings = { superleague: 5, championship: 4 };
+/** @type {'superleague'|'championship'} */
+let wageTier = "championship";
+
+/** Catalogue wage if set, else division % of market value (same idea as Scouting). */
+function playerSeasonWage(player) {
+  if (!player) return 0;
+  const stored = Number(player.contract_wage);
+  if (Number.isFinite(stored) && stored > 0) return stored;
+  const mv = Number(player.market_value) || 0;
+  if (!mv) return 0;
+  return wageFromMarketValue(mv, wageTier, wagePctSettings);
+}
+
+function oooStorageKey(club) {
+  const c = String(club || "").trim().toUpperCase();
+  return c ? `gpsl_handpick_ooo_${c}` : "";
+}
+
+function readStickyOoo(club) {
+  const key = oooStorageKey(club);
+  if (!key) return "";
+  try {
+    return String(localStorage.getItem(key) || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function writeStickyOoo(club, playerId) {
+  const key = oooStorageKey(club);
+  if (!key) return;
+  try {
+    const id = String(playerId || "").trim();
+    if (id) localStorage.setItem(key, id);
+    else localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
 
 function clubFromUrl() {
   return String(new URLSearchParams(window.location.search).get("club") || "")
@@ -82,14 +124,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function wireUi() {
-  document.getElementById("searchBtn")?.addEventListener("click", () => runPlayerSearch());
-  document.getElementById("searchQ")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") runPlayerSearch();
-  });
-  document.getElementById("mgrSearchBtn")?.addEventListener("click", () => runManagerSearch());
-  document.getElementById("mgrSearchQ")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") runManagerSearch();
-  });
   document.getElementById("submitBtn")?.addEventListener("click", () => submitWishlist());
   document.getElementById("clearBtn")?.addEventListener("click", async () => {
     try {
@@ -107,19 +141,22 @@ function wireUi() {
     activeClub = document.getElementById("clubSelect")?.value || "";
     basket.clear();
     pickedManager = null;
-    plannedOooId = "";
     await loadContext();
   });
   document.getElementById("plannedOooSelect")?.addEventListener("change", (e) => {
     plannedOooId = e.target?.value || "";
-    try {
-      if (activeClub) {
-        sessionStorage.setItem(`gpsl_handpick_ooo_${activeClub}`, plannedOooId);
-      }
-    } catch {
-      /* ignore */
-    }
+    writeStickyOoo(activeClub, plannedOooId);
     renderBuildPanel();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !activeClub) return;
+    void (async () => {
+      await hydrateBasketFromDb();
+      renderBasket();
+      renderManager();
+      renderBuildPanel();
+      await loadSubmissions();
+    })();
   });
 }
 
@@ -274,18 +311,28 @@ async function loadContext() {
     ? `Home nation: ${data.club_nation}`
     : "";
 
-  fillNations(data.fa_nations || [], data.club_nation || "");
   try {
     designations = await loadSquadDesignationsState(supabase, activeClub);
   } catch (err) {
     console.warn("handpick designations", err);
     designations = null;
   }
+  plannedOooId = readStickyOoo(activeClub);
   try {
-    plannedOooId =
-      sessionStorage.getItem(`gpsl_handpick_ooo_${activeClub}`) || "";
+    wagePctSettings = await loadWagePercentages(supabase);
+  } catch (err) {
+    console.warn("handpick wage pct", err);
+  }
+  try {
+    const { data: reg } = await supabase
+      .from("competition_club_season_public")
+      .select("division")
+      .eq("club_short_name", activeClub)
+      .maybeSingle();
+    const tier = leagueTierForDivision(reg?.division);
+    wageTier = tier === "superleague" ? "superleague" : "championship";
   } catch {
-    plannedOooId = "";
+    wageTier = "championship";
   }
   await hydrateBasketFromDb();
   renderBasket();
@@ -348,7 +395,7 @@ function countProjected(players) {
     if (isUnder21(p)) u21 += 1;
     if (isHomeGrownPlayer(p, clubNation)) hg += 1;
     if (isGoalkeeper(p)) gk += 1;
-    wages += Number(p.contract_wage) || 0;
+    wages += playerSeasonWage(p);
   }
   return { total: players.length, stars, u21, hg, gk, wages };
 }
@@ -379,7 +426,8 @@ function renderBuildPanel() {
       <div class="stat ${starCls}"><div class="lbl">Stars</div><div class="val">${counts.stars}</div><div class="lim">cap ${starCap} (≥${starMin}${plannedOooId ? ", OooO excl." : ""})</div></div>
       <div class="stat ${u21Cls}"><div class="lbl">U21</div><div class="val">${counts.u21}</div><div class="lim">min ${minU21}</div></div>
       <div class="stat ${hgCls}"><div class="lbl">Home grown</div><div class="val">${counts.hg}</div><div class="lim">min ${minHg}${clubNation ? ` · ${escapeHtml(clubNation)}` : ""}</div></div>
-      <div class="stat ${gkCls}"><div class="lbl">GK</div><div class="val">${counts.gk}</div><div class="lim">min ${minGk}</div></div>`;
+      <div class="stat ${gkCls}"><div class="lbl">GK</div><div class="val">${counts.gk}</div><div class="lim">min ${minGk}</div></div>
+      <div class="stat ok"><div class="lbl">Wages</div><div class="val" style="font-size:14px;">${escapeHtml(formatMoney(counts.wages))}</div><div class="lim">est. season</div></div>`;
   }
 
   const balance = Number(clubContext?.balance) || 0;
@@ -396,27 +444,47 @@ function renderBuildPanel() {
       <div class="finance-row"><span>Balance</span><b>${escapeHtml(formatMoney(balance))}</b></div>
       <div class="finance-row"><span>Wishlist fees</span><b>${escapeHtml(formatMoney(fees + mgrFee))}</b></div>
       <div class="finance-row"><span>Est. income tax (${taxRate}%)</span><b>${escapeHtml(formatMoney(tax))}</b></div>
-      <div class="finance-row"><span>Est. catalogue wages</span><b>${escapeHtml(formatMoney(counts.wages))}</b></div>
+      <div class="finance-row"><span>Est. season wages (${wageTier === "superleague" ? "SL" : "Champ"} %)</span><b>${escapeHtml(formatMoney(counts.wages))}</b></div>
       <div class="finance-row ${after < 0 ? "neg" : "pos"}"><span>Balance after signings</span><b>${escapeHtml(formatMoney(after))}</b></div>
-      <p class="hint" style="margin-top:8px;">Wages are catalogue estimates — final wages apply when admin approves. Tagged players also appear as ghosts on Squad.</p>`;
+      <p class="hint" style="margin-top:8px;">Wage = stored contract wage when set, otherwise ${wageTier === "superleague" ? "SuperLeague" : "Championship"} % of MV. Final wages apply when admin approves. Tagged players also appear as ghosts on Squad.</p>`;
   }
 
   const oooSel = document.getElementById("plannedOooSelect");
   if (oooSel) {
     const hgEligible = players.filter((p) => isHomeGrownPlayer(p, clubNation));
+    const byId = new Map(
+      players.map((p) => [String(p.Konami_ID || ""), p])
+    );
+    // Keep sticky OooO even if they are briefly off the HG list (e.g. untagged)
+    if (
+      plannedOooId &&
+      !hgEligible.some((p) => String(p.Konami_ID) === plannedOooId)
+    ) {
+      const saved = byId.get(plannedOooId);
+      if (saved) hgEligible.unshift(saved);
+      else {
+        hgEligible.unshift({
+          Konami_ID: plannedOooId,
+          Name: `Saved OooO (${plannedOooId})`,
+          from_basket: false,
+          _stickyOrphan: true,
+        });
+      }
+    }
     const opts = [`<option value="">— none yet —</option>`].concat(
       hgEligible.map((p) => {
         const id = String(p.Konami_ID || "");
-        const mark = p.from_basket ? " (wishlist)" : "";
+        const mark = p._stickyOrphan
+          ? " (saved — re-tag HG to confirm)"
+          : p.from_basket
+            ? " (wishlist)"
+            : "";
         return `<option value="${escapeHtml(id)}"${
           id && id === plannedOooId ? " selected" : ""
         }>${escapeHtml(p.Name || id)}${mark}</option>`;
       })
     );
     oooSel.innerHTML = opts.join("");
-    if (plannedOooId && ![...oooSel.options].some((o) => o.value === plannedOooId)) {
-      plannedOooId = "";
-    }
   }
 }
 
@@ -654,21 +722,24 @@ function renderBasket() {
 
   let fees = 0;
   let tax = 0;
+  let wages = 0;
   for (const r of rows) {
     const mv = Number(r.market_value) || 0;
     fees += mv;
     tax += Math.round(((mv * taxPct()) / 100) * 100) / 100;
+    wages += playerSeasonWage(r);
   }
   const mgrFee = pickedManager ? Number(pickedManager.market_value) || 0 : 0;
 
   box.innerHTML = rows.length
     ? `<table class="sign-table"><thead><tr>
-        <th>Player</th><th>Pos</th><th class="num">OVR</th><th class="num">MV</th><th class="num">Est.</th><th></th>
+        <th>Player</th><th>Pos</th><th class="num">OVR</th><th class="num">MV</th><th class="num">Wage</th><th class="num">Fee+tax</th><th></th>
       </tr></thead><tbody>
       ${rows
         .map((r) => {
           const id = String(r.player_id);
           const mv = Number(r.market_value) || 0;
+          const wage = playerSeasonWage(r);
           return `<tr>
             <td><a href="${escapeHtml(gpdbPlayerUrl(id))}" target="_blank" rel="noopener" style="color:#e8c84a;">${escapeHtml(
               r.player_name
@@ -676,6 +747,7 @@ function renderBasket() {
             <td>${escapeHtml(r.position || "—")}</td>
             <td class="num">${r.rating ?? "—"}</td>
             <td class="num">${escapeHtml(formatMoney(mv))}</td>
+            <td class="num">${escapeHtml(formatMoney(wage))}</td>
             <td class="num">${escapeHtml(formatMoney(estCost(mv)))}</td>
             <td><button type="button" class="button rm-btn" data-id="${escapeHtml(id)}">Remove</button></td>
           </tr>`;
@@ -690,10 +762,11 @@ function renderBasket() {
   )}</b> + est. tax <b>${escapeHtml(formatMoney(tax))}</b>
     ${
       mgrFee
-        ? ` · manager <b>${escapeHtml(formatMoney(mgrFee))}</b>`
+        ? ` · manager fee <b>${escapeHtml(formatMoney(mgrFee))}</b>`
         : ""
     }
-    · est. total <b>${escapeHtml(formatMoney(fees + tax + mgrFee))}</b>
+    · wages <b>${escapeHtml(formatMoney(wages))}</b>
+    · est. total fees <b>${escapeHtml(formatMoney(fees + tax + mgrFee))}</b>
     · balance <b>${escapeHtml(formatMoney(Number(clubContext?.balance) || 0))}</b>`;
 
   box.querySelectorAll(".rm-btn").forEach((btn) => {

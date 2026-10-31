@@ -86,9 +86,9 @@
       <div class="card" style="border-color:#665522;background:#1a1810;">
         <h2 style="margin-bottom:8px;">How to handpick</h2>
         <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#ddd;">
-          Open <b style="color:#e8c84a;">GPDB</b> / <b style="color:#e8c84a;">MGDB</b> while signed in as the club owner.
-          Use the <b>Handpick</b> column — click ☐ to temp-tag free-agent players and one manager onto your wishlist.
-          Then return here to review and <b>Submit for approval</b>.
+          Tag free agents in <b style="color:#e8c84a;">GPDB</b> and one manager in <b style="color:#e8c84a;">MGDB</b>
+          (Handpick ☐ column). Return here to review the basket, pick a planned OooO, and
+          <b>Submit for approval</b>.
         </p>
         <p style="margin:0;display:flex;flex-wrap:wrap;gap:10px;">
           <a id="gpdbLink" class="button" href="GPDB.html" target="_blank" rel="noopener"
@@ -102,6 +102,7 @@
         </p>
         <p class="hint" style="margin-top:10px;">
           Temp tags are <b>not</b> contracts — stay free agents until admin approves. Must be logged in (not anonymous Discord browse).
+          This page refreshes the basket when you come back from GPDB / MGDB.
         </p>
       </div>
 
@@ -121,46 +122,11 @@
       <div class="build-layout">
         <div>
           <div class="card">
-            <h2>Add free agents to wishlist</h2>
-            <p class="hint" style="margin:0 0 10px;">
-              Search below after you’ve scouted in
-              <a href="GPDB.html" target="_blank" rel="noopener" style="color:#e8c84a;">GPDB</a>
-              (or search here directly by name / Konami ID).
-            </p>
-            <div class="search-row">
-              <label>
-                Nation
-                <select id="nationSelect"><option value="">Any nation</option></select>
-              </label>
-              <label>
-                Name or Konami ID
-                <input type="text" id="searchQ" placeholder="e.g. Vinicius / 12345" autocomplete="off">
-              </label>
-              <button type="button" id="searchBtn" class="button">Search</button>
-            </div>
-            <div id="searchResults" class="results"><p class="empty">Search free agents to add to your wishlist.</p></div>
-          </div>
-
-          <div class="card">
-            <h2>Manager (optional)</h2>
-            <p class="hint" style="margin:0 0 10px;">
-              Scout in
-              <a id="mgdbLinkInline" href="MGDB.html" target="_blank" rel="noopener" style="color:#e8c84a;">MGDB</a>
-              (Handpick ☐) or search here. One manager at a time.
-            </p>
-            <div class="search-row">
-              <label>
-                Name or ID
-                <input type="text" id="mgrSearchQ" placeholder="e.g. Guardiola" autocomplete="off">
-              </label>
-              <button type="button" id="mgrSearchBtn" class="button">Search managers</button>
-            </div>
-            <div id="mgrResults" class="results"><p class="empty">Optional — pick one free-agent manager.</p></div>
-          </div>
-
-          <div class="card">
             <h2>Wishlist basket</h2>
-            <div id="basketBox" class="basket"><p class="empty">No players selected yet.</p></div>
+            <p class="hint" style="margin:0 0 10px;">
+              Players and manager tagged in GPDB / MGDB. Remove here or untag there.
+            </p>
+            <div id="basketBox" class="basket"><p class="empty">No players selected yet — tag in GPDB.</p></div>
             <div id="totalsBox" class="totals" hidden></div>
             <div class="actions">
               <button type="button" id="submitBtn" class="button" style="background:#446633;">Submit for approval</button>
@@ -186,7 +152,7 @@
               </select>
             </label>
             <p class="hint" style="margin-top:6px;">
-              Preview only until players are signed. Official OooO is set on Squad after approval.
+              Sticky per club on this device. Preview only until signed — official OooO is set on Squad after approval.
             </p>
           </div>
           <div class="card">
@@ -198,6 +164,6 @@
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261031-mgdb-tag"></script>
+  <script type="module" src="handpick_squad.js?v=20261031-wages"></script>
 </body>
 </html>
