@@ -3,9 +3,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { isGpslAdminOrMod } from "../_shared/gpsl_staff.ts";
 import {
   WELCOME_PACK_BODY,
+  welcomePackBody,
   ensureVisitorRole,
   sendWelcomeChannel,
   sendWelcomeDm,
+  type WelcomePackAudience,
 } from "../_shared/discord_welcome_pack.ts";
 
 /**
@@ -82,6 +84,7 @@ async function welcomeOneUser(opts: {
   assignVisitor: boolean;
   force: boolean;
   via: string;
+  audience?: WelcomePackAudience;
 }): Promise<Record<string, unknown>> {
   const {
     admin,
@@ -94,6 +97,7 @@ async function welcomeOneUser(opts: {
     assignVisitor,
     force,
     via,
+    audience = via === "welcome_members" ? "member" : "visitor",
   } = opts;
 
   const { data: reg } = await admin
@@ -138,8 +142,14 @@ async function welcomeOneUser(opts: {
     );
   }
 
-  const dm = await sendWelcomeDm(botToken, discordUserId);
-  const hall = await sendWelcomeChannel(botToken, guildId, discordUserId);
+  const dm = await sendWelcomeDm(botToken, discordUserId, undefined, audience);
+  const hall = await sendWelcomeChannel(
+    botToken,
+    guildId,
+    discordUserId,
+    null,
+    audience
+  );
 
   const ok = dm.ok || hall.ok;
   const errParts = [
@@ -166,6 +176,7 @@ async function welcomeOneUser(opts: {
   return {
     ok,
     discord_user_id: discordUserId,
+    audience,
     visitor_role: roleResult,
     dm,
     great_hall: hall,
@@ -382,6 +393,7 @@ Deno.serve(async (req) => {
             // Re-send past welcome_sent / registry skip — audience already role-filtered
             force: true,
             via: "welcome_members",
+            audience: "member",
           });
           results.push(r);
           if (r.ok && !r.skipped) welcomed += 1;
@@ -482,7 +494,9 @@ Deno.serve(async (req) => {
     return jsonResponse({
       ...one,
       action,
-      content_preview: WELCOME_PACK_BODY.slice(0, 120) + "…",
+      content_preview: welcomePackBody(
+        one.audience === "member" ? "member" : "visitor"
+      ).slice(0, 120) + "…",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

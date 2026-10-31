@@ -1,58 +1,93 @@
-/** Welcome pack copy + Discord DM / Great Hall helpers for new Visitors. */
+/** Welcome pack copy + Discord DM / Great Hall helpers. */
 
 export const GPSL_SITE = "https://gpsuperleague.github.io/GPSL";
 
-export const WELCOME_PACK_BODY = [
-  "**Welcome to GPSL**",
-  "",
-  "You're in as a **Visitor** — hang out in Discord and browse the site read-only.",
-  "",
-  "**a. Just watching?**",
-  `Sign in as Visitor: ${GPSL_SITE}/login.html`,
-  "→ **Visitor — sign in with Discord** (tables, cups, auctions, market — read only).",
-  "",
-  "**b. Want a club (draft / pre-season)?**",
-  `Apply (no need to message admin): ${GPSL_SITE}/join_gpsl.html`,
-  "→ Creates your account + waiting list (by Discord join date).",
-  "When a slot opens, admin invites you to the **club draft auction**.",
-  "",
-  "**c. Want a club mid-season?**",
-  "Same apply link. On the waiting list, **pick a vacant club**, then go straight into",
-  "**handpick** (build from scratch) and **submit for approval** — no auction.",
-  `Waiting list: ${GPSL_SITE}/waiting_list.html`,
-  `Handpick: ${GPSL_SITE}/handpick_squad.html`,
-  "",
-  "**Then**",
-  "1. Waiting list + owner details on the site",
-  `2. Handbook: ${GPSL_SITE}/learning_gpsl.html`,
-  "3. Path **b** (auction) or **c** (pick club → handpick), depending on the calendar",
-  "",
-  "**Roles**",
-  "• **Visitor** — in Discord, no GPSL owner account yet",
-  "• **Member** — GPSL account (waiting list / etc.)",
-  "• **Owner** — has a club",
-  "",
-  "**Learning the rules**",
-  "GPSL does **not** expect a new owner to know every rule on day one.",
-  "After several games in, we do expect **strong familiarity** with how the league works",
-  "(scheduling, check-in, results, transfers). Use the handbook, ask in Discord, and learn as you play.",
-  "",
-  `Full pack: ${GPSL_SITE}/welcome_gpsl.html`,
-  "",
-  "Questions → ask in Discord. Applying for a place doesn't need a DM to admin.",
-].join("\n");
+export type WelcomePackAudience = "visitor" | "member";
 
-/** @deprecated use WELCOME_PACK_BODY */
+export function welcomePackBody(
+  audience: WelcomePackAudience = "visitor"
+): string {
+  const statusLine =
+    audience === "member"
+      ? "You're currently in as a **Member**, without a club — GPSL account ready; waiting list / next steps below."
+      : "You're in as a **Visitor** — hang out in Discord and browse the site read-only.";
+
+  const nextSteps =
+    audience === "member"
+      ? [
+          "**Next**",
+          "1. Confirm waiting list + owner details on the site",
+          `2. Handbook: ${GPSL_SITE}/learning_gpsl.html`,
+          "3. Path **b** (auction) or **c** (pick club → handpick), depending on the calendar",
+        ]
+      : [
+          "**Then**",
+          "1. Waiting list + owner details on the site",
+          `2. Handbook: ${GPSL_SITE}/learning_gpsl.html`,
+          "3. Path **b** (auction) or **c** (pick club → handpick), depending on the calendar",
+        ];
+
+  return [
+    "**Welcome to GPSL**",
+    "",
+    statusLine,
+    "",
+    "**a. Just watching?**",
+    `Sign in as Visitor: ${GPSL_SITE}/login.html`,
+    "→ **Visitor — sign in with Discord** (tables, cups, auctions, market — read only).",
+    "",
+    "**b. Want a club (draft / pre-season)?**",
+    `Apply (no need to message admin): ${GPSL_SITE}/join_gpsl.html`,
+    "→ Creates your account + waiting list (by Discord join date).",
+    "When a slot opens, admin invites you to the **club draft auction**.",
+    "",
+    "**c. Want a club mid-season?**",
+    "Same apply link. On the waiting list, **pick a vacant club**, then go straight into",
+    "**handpick** (build from scratch) and **submit for approval** — no auction.",
+    `Waiting list: ${GPSL_SITE}/waiting_list.html`,
+    `Handpick: ${GPSL_SITE}/handpick_squad.html`,
+    "",
+    ...nextSteps,
+    "",
+    "**Roles**",
+    "• **Visitor** — in Discord, no GPSL owner account yet",
+    "• **Member** — GPSL account, no club yet (waiting list / etc.)",
+    "• **Owner** — has a club",
+    "",
+    "**Learning the rules**",
+    "GPSL does **not** expect a new owner to know every rule on day one.",
+    "After several games in, we do expect **strong familiarity** with how the league works",
+    "(scheduling, check-in, results, transfers). Use the handbook, ask in Discord, and learn as you play.",
+    "",
+    `Full pack: ${GPSL_SITE}/welcome_gpsl.html`,
+    "",
+    "Questions → ask in Discord. Applying for a place doesn't need a DM to admin.",
+  ].join("\n");
+}
+
+/** Default Visitor copy (cron / on_join). */
+export const WELCOME_PACK_BODY = welcomePackBody("visitor");
+
+/** @deprecated use WELCOME_PACK_BODY / welcomePackBody */
 export const WELCOME_PACK_CONTENT = WELCOME_PACK_BODY;
 
 const DISCORD_API = "https://discord.com/api/v10";
 
-export function welcomePackWithMention(discordUserId: string): string {
+export function welcomePackWithMention(
+  discordUserId: string,
+  audience: WelcomePackAudience = "visitor"
+): string {
   const id = String(discordUserId || "").trim();
   const mention = id ? `<@${id}>` : "";
-  return [mention ? `Hey ${mention} — welcome!` : "Hey — welcome!", "", WELCOME_PACK_BODY].join(
-    "\n"
-  );
+  const hello =
+    audience === "member"
+      ? mention
+        ? `Hey ${mention} — you're a GPSL **Member**.`
+        : "Hey — you're a GPSL **Member**."
+      : mention
+        ? `Hey ${mention} — welcome!`
+        : "Hey — welcome!";
+  return [hello, "", welcomePackBody(audience)].join("\n");
 }
 
 export async function discordApi(
@@ -122,9 +157,10 @@ export async function resolveGreatHallChannelId(
 export async function sendWelcomeDm(
   botToken: string,
   discordUserId: string,
-  content?: string
+  content?: string,
+  audience: WelcomePackAudience = "visitor"
 ): Promise<{ ok: boolean; channel_id?: string; error?: string }> {
-  const body = content || welcomePackWithMention(discordUserId);
+  const body = content || welcomePackWithMention(discordUserId, audience);
   const dm = await discordApi(botToken, "/users/@me/channels", {
     method: "POST",
     body: JSON.stringify({ recipient_id: discordUserId }),
@@ -163,7 +199,8 @@ export async function sendWelcomeChannel(
   botToken: string,
   guildId: string,
   discordUserId: string,
-  channelId?: string | null
+  channelId?: string | null,
+  audience: WelcomePackAudience = "visitor"
 ): Promise<{
   ok: boolean;
   channel_id?: string;
@@ -186,7 +223,7 @@ export async function sendWelcomeChannel(
   const msg = await discordApi(botToken, `/channels/${resolved}/messages`, {
     method: "POST",
     body: JSON.stringify({
-      content: welcomePackWithMention(discordUserId),
+      content: welcomePackWithMention(discordUserId, audience),
       allowed_mentions: { parse: [], users: [discordUserId] },
     }),
   });
