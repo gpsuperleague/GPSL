@@ -4,6 +4,7 @@ import { isGpslAdminOrMod } from "../_shared/gpsl_staff.ts";
 import {
   WELCOME_PACK_BODY,
   welcomePackBody,
+  welcomePackWithMention,
   ensureVisitorRole,
   sendWelcomeChannel,
   sendWelcomeDm,
@@ -23,7 +24,12 @@ import {
  *   DISCORD_FEED_INVOKE_KEY or CRON_API_KEY
  */
 
-type GuildHuman = { id: string; roles: string[] };
+type GuildHuman = {
+  id: string;
+  roles: string[];
+  username?: string;
+  display_name?: string;
+};
 
 async function fetchGuildHumans(
   botToken: string,
@@ -46,16 +52,29 @@ async function fetchGuildHumans(
       throw new Error(`Discord members ${res.status}: ${text.slice(0, 200)}`);
     }
     const batch = (await res.json()) as Array<{
-      user?: { id?: string; bot?: boolean };
+      nick?: string | null;
+      user?: {
+        id?: string;
+        bot?: boolean;
+        username?: string;
+        global_name?: string | null;
+      };
       roles?: string[];
     }>;
     if (!Array.isArray(batch) || batch.length === 0) break;
     for (const m of batch) {
       const id = m.user?.id ? String(m.user.id) : "";
       if (!id || m.user?.bot) continue;
+      const username = m.user?.username ? String(m.user.username) : undefined;
+      const display =
+        (m.nick && String(m.nick).trim()) ||
+        (m.user?.global_name && String(m.user.global_name).trim()) ||
+        username;
       out.push({
         id,
         roles: Array.isArray(m.roles) ? m.roles.map(String) : [],
+        username,
+        display_name: display,
       });
       after = id;
     }
@@ -367,6 +386,7 @@ Deno.serve(async (req) => {
         // Default: re-send new pack to Members∩¬Owners (even if seed_existing marked them).
         // Pass only_unsent:true to skip people already in gpsl_discord_welcome_sent.
         const onlyUnsent = body.only_unsent === true;
+        const dryRun = body.dry_run === true || body.preview === true;
         const memberOnly = humans.filter((h) => {
           const roles = new Set(h.roles);
           if (!roles.has(memberRole)) return false;
@@ -375,6 +395,34 @@ Deno.serve(async (req) => {
           return true;
         });
         const batch = memberOnly.slice(0, limit);
+
+        // Preview only — no DMs, no Great Hall, no welcome_sent writes
+        if (dryRun) {
+          const sampleId = batch[0]?.id || "123456789012345678";
+          return jsonResponse({
+            ok: true,
+            dry_run: true,
+            action: "welcome_members",
+            guild_humans: humans.length,
+            member_not_owner: memberOnly.length,
+            would_send_this_batch: batch.length,
+            remaining_after_batch: Math.max(memberOnly.length - batch.length, 0),
+            only_unsent: onlyUnsent,
+            delivers_to: ["discord_dm", "great_hall_channel"],
+            recipients: batch.map((h) => ({
+              discord_user_id: h.id,
+              username: h.username || null,
+              display_name: h.display_name || null,
+              already_in_welcome_sent: sent.has(h.id),
+              mention: `<@${h.id}>`,
+            })),
+            all_matching_ids: memberOnly.map((h) => h.id),
+            message_preview: welcomePackWithMention(sampleId, "member"),
+            note:
+              "Dry run — nothing sent. Drop dry_run/preview to send this batch for real.",
+          });
+        }
+
         const results: Record<string, unknown>[] = [];
         let welcomed = 0;
         let errors = 0;
