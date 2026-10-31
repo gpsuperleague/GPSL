@@ -212,10 +212,11 @@ export function formatMatchConditions(fixture) {
   return parts.length ? parts.join(" · ") : fixture.weather || "—";
 }
 
-/** Plain weather · pitch for wire / checklist meta (no icons). */
+/** Plain kit · weather · pitch for wire / checklist meta (no icons). */
 export function formatWeatherPitchPlain(fixture) {
   if (!fixture) return "";
   const parts = [];
+  if (fixture.kit_season) parts.push(formatKitSeasonLabel(fixture.kit_season));
   if (fixture.weather) parts.push(formatWeatherLabel(fixture.weather));
   if (fixture.pitch_condition) parts.push(formatPitchLabel(fixture.pitch_condition));
   return parts.join(" · ");

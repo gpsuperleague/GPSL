@@ -344,6 +344,7 @@ async function enrichCutoffsWithHomeWeather(cutoffs) {
       home_club_short_name: homeShort || c.home_club_short_name,
       weather: m.weather ?? null,
       pitch_condition: m.pitch_condition ?? null,
+      kit_season: m.kit_season ?? null,
       detail,
     };
   });

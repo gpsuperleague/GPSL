@@ -26,6 +26,7 @@ async function enrichChecklistFixturesWithHomeWeather(data, arrange) {
       away_club_short_name: m.away_club_short_name || row.away_club_short_name,
       weather: m.weather ?? row.weather ?? null,
       pitch_condition: m.pitch_condition ?? row.pitch_condition ?? null,
+      kit_season: m.kit_season ?? row.kit_season ?? null,
     };
   };
 
@@ -277,15 +278,16 @@ function fixtureMetaHtml(fx) {
   const homeBit = home
     ? `<span class="mc-fx-meta-home">Home: <b>${escapeHtml(clubLabel(home))}</b></span>`
     : "";
-  const wxHtml = fx.weather || fx.pitch_condition
-    ? `<span class="mc-fx-meta-wx">${formatMatchConditionsHtml({
-        weather: fx.weather,
-        pitch_condition: fx.pitch_condition,
-        kit_season: null,
-      })}</span>`
-    : "";
-  if (!homeBit && !wxHtml) return "";
-  return `<div class="mc-fx-meta">${homeBit}${homeBit && wxHtml ? `<span class="mc-fx-meta-sep">·</span>` : ""}${wxHtml}</div>`;
+  const condHtml =
+    fx.kit_season || fx.weather || fx.pitch_condition
+      ? `<span class="mc-fx-meta-wx">${formatMatchConditionsHtml({
+          weather: fx.weather,
+          pitch_condition: fx.pitch_condition,
+          kit_season: fx.kit_season,
+        })}</span>`
+      : "";
+  if (!homeBit && !condHtml) return "";
+  return `<div class="mc-fx-meta">${homeBit}${homeBit && condHtml ? `<span class="mc-fx-meta-sep">·</span>` : ""}${condHtml}</div>`;
 }
 
 function renderFixture(fx) {
