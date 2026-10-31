@@ -43,6 +43,7 @@ let plannedOooId = "";
 let wagePctSettings = { superleague: 5, championship: 4 };
 /** @type {'superleague'|'championship'} */
 let wageTier = "championship";
+let adminApprovalsScrolled = false;
 
 /** Catalogue wage if set, else division % of market value (same idea as Scouting). */
 function playerSeasonWage(player) {
@@ -186,9 +187,14 @@ async function boot() {
     : { data: {}, error: null };
 
   if (isAdmin) {
+    document.body.classList.add("hp-admin-mode");
     document.getElementById("clubSelectWrap").hidden = false;
     const adminBanner = document.getElementById("adminBanner");
     if (adminBanner) adminBanner.hidden = false;
+    const adminSection = document.getElementById("adminApprovalsSection");
+    if (adminSection) adminSection.hidden = false;
+    const pageH1 = document.querySelector(".hp-wrap > h1");
+    if (pageH1) pageH1.textContent = "Handpick approvals (admin)";
     const subTitle = document.getElementById("submissionsTitle");
     if (subTitle) subTitle.textContent = "Pending approvals (admin)";
     await loadAdminClubs(mapRes.data || {});
@@ -864,45 +870,70 @@ async function submitWishlist() {
   await loadSubmissions();
 }
 
-async function loadSubmissions() {
-  const box = document.getElementById("pendingBox");
-  const { data, error } = await supabase.rpc("handpick_list_submissions", {
-    p_status: isAdmin ? "pending" : "all",
-    p_club_short_name: isAdmin ? null : activeClub,
-  });
-
-  if (error) {
-    box.innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
-    return;
-  }
-
-  const rows = Array.isArray(data) ? data : [];
-  if (!rows.length) {
-    box.innerHTML = isAdmin
-      ? `<p class="empty">No pending wishlists. Owner must tag in GPDB/MGDB then click <b>Submit for approval</b> on Handpick Squad — tags alone do not create a submission.</p>`
-      : `<p class="empty">No submissions yet.</p>`;
-    return;
-  }
-
-  box.innerHTML = rows
+function renderSubmissionCards(rows, { adminLayout }) {
+  return rows
     .map((s) => {
       const players = Array.isArray(s.players) ? s.players : [];
+      let fees = 0;
+      for (const p of players) fees += Number(p.market_value) || 0;
+      const mgrFee = Number(s.manager_market_value) || 0;
+      const tax = Math.round((((fees + mgrFee) * taxPct()) / 100) * 100) / 100;
       const playerLines = players
         .map(
           (p) =>
-            `${escapeHtml(p.player_name)} (${escapeHtml(p.position || "?")}) ${escapeHtml(
-              formatMoney(Number(p.market_value) || 0)
-            )}${p.is_fa === false ? " · not FA" : ""}`
+            `${escapeHtml(p.player_name)} (${escapeHtml(p.position || "?")}) · OVR ${escapeHtml(
+              String(p.rating ?? "—")
+            )} · ${escapeHtml(formatMoney(Number(p.market_value) || 0))}${
+              p.is_fa === false ? " · <span style='color:#f88'>not FA</span>" : ""
+            }`
         )
         .join("<br>");
-      const adminBtns =
-        isAdmin && s.status === "pending"
-          ? `<div class="actions" style="margin-top:8px;">
-              <button type="button" class="button appr-btn" data-id="${s.id}" data-dry="1">Preview approve</button>
-              <button type="button" class="button appr-btn" data-id="${s.id}" data-dry="0" style="background:#446633;">Approve &amp; sign</button>
+
+      if (adminLayout && s.status === "pending") {
+        return `<article class="hp-approve-card" data-sub-id="${s.id}">
+          <div class="hp-approve-head">
+            <div>
+              <p class="hp-approve-title">${escapeHtml(s.club_name || s.club_short_name)} (${escapeHtml(
+                s.club_short_name || ""
+              )})</p>
+              <div class="hp-approve-meta">
+                Pending · owner ${escapeHtml(s.owner_tag || "—")} · submission #${s.id}
+                · ${escapeHtml(new Date(s.submitted_at).toLocaleString())}
+              </div>
+            </div>
+            <div class="hp-approve-actions">
+              <button type="button" class="button appr-btn appr-go" data-id="${s.id}" data-dry="0">
+                Approve &amp; sign
+              </button>
+              <button type="button" class="button appr-btn appr-preview" data-id="${s.id}" data-dry="1">
+                Preview
+              </button>
               <button type="button" class="button rej-btn" data-id="${s.id}">Reject</button>
-            </div>`
-          : "";
+            </div>
+          </div>
+          <div class="hp-approve-summary">
+            <span>Players <b>${players.length}</b></span>
+            <span>Fees <b>${escapeHtml(formatMoney(fees))}</b></span>
+            <span>Est. tax <b>${escapeHtml(formatMoney(tax))}</b></span>
+            <span>Manager <b>${
+              s.manager_id
+                ? `${escapeHtml(s.manager_name || s.manager_id)} · ${escapeHtml(formatMoney(mgrFee))}`
+                : "—"
+            }</b></span>
+            <span>Est. total <b>${escapeHtml(formatMoney(fees + mgrFee + tax))}</b></span>
+          </div>
+          <details open>
+            <summary style="cursor:pointer;color:#9ab;font-size:13px;margin-bottom:6px;">
+              Wishlist players (${players.length})
+            </summary>
+            <div class="hp-approve-players">${
+              playerLines || "<span class='empty'>No players</span>"
+            }</div>
+          </details>
+          <pre class="hint" id="subOut${s.id}" style="white-space:pre-wrap;margin-top:10px;"></pre>
+        </article>`;
+      }
+
       return `<div style="padding:10px;border-bottom:1px solid #2a2a2a;">
         <div><b>${escapeHtml(s.club_name || s.club_short_name)}</b>
           · ${escapeHtml(s.status)}
@@ -917,20 +948,69 @@ async function loadSubmissions() {
               )}</b> · ${escapeHtml(formatMoney(Number(s.manager_market_value) || 0))}</div>`
             : ""
         }
-        ${adminBtns}
         <pre class="hint" id="subOut${s.id}" style="white-space:pre-wrap;margin-top:6px;"></pre>
       </div>`;
     })
     .join("");
+}
 
-  box.querySelectorAll(".appr-btn").forEach((btn) => {
+function wireSubmissionActions(root) {
+  if (!root) return;
+  root.querySelectorAll(".appr-btn").forEach((btn) => {
     btn.addEventListener("click", () =>
       approveSubmission(Number(btn.dataset.id), btn.dataset.dry === "1")
     );
   });
-  box.querySelectorAll(".rej-btn").forEach((btn) => {
+  root.querySelectorAll(".rej-btn").forEach((btn) => {
     btn.addEventListener("click", () => rejectSubmission(Number(btn.dataset.id)));
   });
+}
+
+async function loadSubmissions() {
+  const ownerBox = document.getElementById("pendingBox");
+  const adminSection = document.getElementById("adminApprovalsSection");
+  const adminBox = document.getElementById("adminPendingBox");
+
+  document.body.classList.toggle("hp-admin-mode", !!isAdmin);
+  if (adminSection) adminSection.hidden = !isAdmin;
+
+  const { data, error } = await supabase.rpc("handpick_list_submissions", {
+    p_status: isAdmin ? "pending" : "all",
+    p_club_short_name: isAdmin ? null : activeClub,
+  });
+
+  if (error) {
+    const msg = `<p class="empty">${escapeHtml(error.message)}</p>`;
+    if (ownerBox) ownerBox.innerHTML = msg;
+    if (adminBox) adminBox.innerHTML = msg;
+    return;
+  }
+
+  const rows = Array.isArray(data) ? data : [];
+  if (!rows.length) {
+    const empty = isAdmin
+      ? `<p class="empty">No pending wishlists. Owner must click <b>Submit for approval</b> after tagging — tags alone are not a submission.</p>`
+      : `<p class="empty">No submissions yet.</p>`;
+    if (ownerBox) ownerBox.innerHTML = empty;
+    if (adminBox) adminBox.innerHTML = empty;
+    return;
+  }
+
+  if (isAdmin && adminBox) {
+    adminBox.innerHTML = renderSubmissionCards(rows, { adminLayout: true });
+    wireSubmissionActions(adminBox);
+    if (!adminApprovalsScrolled) {
+      adminApprovalsScrolled = true;
+      document.getElementById("adminApprovalsSection")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }
+  if (ownerBox) {
+    ownerBox.innerHTML = renderSubmissionCards(rows, { adminLayout: false });
+    wireSubmissionActions(ownerBox);
+  }
 }
 
 async function approveSubmission(id, dryRun) {

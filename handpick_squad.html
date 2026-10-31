@@ -29,6 +29,80 @@
       margin-top:12px; border:1px solid #333; border-radius:6px;
       background:#161616; max-height:420px; overflow:auto;
     }
+    .pending-box.admin-pending {
+      max-height: none;
+      overflow: visible;
+      border: none;
+      background: transparent;
+      margin-top: 0;
+    }
+    .hp-approve-card {
+      border: 2px solid #3a6a3a;
+      border-radius: 8px;
+      background: #121a12;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .hp-approve-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .hp-approve-title { font-size: 17px; font-weight: 700; color: #9fe09f; margin: 0; }
+    .hp-approve-meta { font-size: 12px; color: #9a9; margin-top: 4px; }
+    .hp-approve-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .hp-approve-actions .button {
+      font-weight: 700;
+      padding: 10px 14px;
+      font-size: 14px;
+    }
+    .hp-approve-actions .appr-go {
+      background: #2e6b2e !important;
+      border-color: #4a8a4a;
+      color: #fff;
+    }
+    .hp-approve-actions .appr-preview {
+      background: #1a2a3a !important;
+      border-color: #3a5a7a;
+      color: #cde;
+    }
+    .hp-approve-actions .rej-btn {
+      background: #3a1a1a !important;
+      border-color: #844;
+      color: #f88;
+    }
+    .hp-approve-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      font-size: 13px;
+      margin-bottom: 10px;
+      color: #ccc;
+    }
+    .hp-approve-summary b { color: #ffcc66; }
+    .hp-approve-players {
+      max-height: 220px;
+      overflow: auto;
+      border: 1px solid #2a3a2a;
+      border-radius: 6px;
+      background: #0e120e;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    body.hp-admin-mode .hp-owner-tools { opacity: 0.72; }
+    body.hp-admin-mode .build-layout {
+      grid-template-columns: 1fr;
+    }
+    body.hp-admin-mode #submissionsCard { display: none; }
     table.sign-table { width:100%; border-collapse:collapse; font-size:12px; }
     table.sign-table th, table.sign-table td {
       padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left;
@@ -85,17 +159,22 @@
     <div id="handpickApp" hidden>
       <div id="adminBanner" class="card" hidden style="border-color:#446633;background:#142014;margin-top:14px;">
         <h2 style="margin:0 0 8px;color:#8fd18f;">Admin — handpick approvals</h2>
-        <p class="hint" style="margin:0 0 10px;">
-          Pending wishlists appear in <b>Pending approvals</b> below (all clubs). Use
-          <b>Preview approve</b> then <b>Approve &amp; sign</b> to contract at market value.
-          Switching club only previews that club’s basket — it does not take ownership.
-        </p>
         <p class="hint" style="margin:0;">
-          Also listed under Admin → Season Management → <b>Handpick approvals</b>.
+          Big green <b>Approve &amp; sign</b> buttons are in the panel below. Club switch only previews a basket — it does not take ownership.
         </p>
       </div>
 
-      <div class="card" style="border-color:#665522;background:#1a1810;">
+      <div id="adminApprovalsSection" class="card" hidden style="border-color:#3a8a3a;background:#101810;margin-top:14px;">
+        <h2 style="margin:0 0 6px;color:#8fd18f;font-size:20px;">Pending approvals</h2>
+        <p class="hint" style="margin:0 0 12px;">
+          Actions are at the <b>top</b> of each club card. Preview first, then Approve &amp; sign (charges MV + tax).
+        </p>
+        <div id="adminPendingBox" class="pending-box admin-pending">
+          <p class="empty">Loading…</p>
+        </div>
+      </div>
+
+      <div class="card hp-owner-tools" style="border-color:#665522;background:#1a1810;">
         <h2 style="margin-bottom:8px;">How to handpick</h2>
         <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#ddd;">
           Tag free agents in <b style="color:#e8c84a;">GPDB</b> and one manager in <b style="color:#e8c84a;">MGDB</b>
@@ -118,12 +197,12 @@
         </p>
       </div>
 
-      <div class="card">
+      <div class="card hp-owner-tools">
         <h2>Club</h2>
         <div class="form-grid">
           <p id="clubTitle" style="margin:0;font-size:18px;color:#ffcc66;font-weight:600;">—</p>
           <label id="clubSelectWrap" hidden>
-            Switch club (admin)
+            Switch club (admin preview)
             <select id="clubSelect"><option value="">—</option></select>
           </label>
           <p id="clubMeta" class="hint"></p>
@@ -131,7 +210,7 @@
         <div id="managerPicked" class="manager-box" hidden></div>
       </div>
 
-      <div class="build-layout">
+      <div class="build-layout hp-owner-tools">
         <div>
           <div class="card">
             <h2>Wishlist basket</h2>
@@ -179,6 +258,6 @@
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261031-admin-approve"></script>
+  <script type="module" src="handpick_squad.js?v=20261031-admin-approve-ui"></script>
 </body>
 </html>
