@@ -1226,13 +1226,31 @@ async function approveSubmission(id, dryRun) {
     label: "Finalising submission (manager + mark approved)…",
     logLine: "Calling admin_handpick_approve_submission…",
   });
-  const { data: finalData, error: finalErr } = await supabase.rpc(
+  // Players already signed in batches above — skip re-sign (avoids batch_too_large on 9+).
+  const finalizeArgs = {
+    p_submission_id: id,
+    p_dry_run: false,
+    p_skip_player_sign: signParts.length > 0,
+  };
+  let { data: finalData, error: finalErr } = await supabase.rpc(
     "admin_handpick_approve_submission",
-    {
-      p_submission_id: id,
-      p_dry_run: false,
-    }
+    finalizeArgs
   );
+  // Older DB without p_skip_player_sign: retry 2-arg (server must batch internally).
+  if (
+    finalErr &&
+    /p_skip_player_sign|could not find|schema cache|function/i.test(
+      String(finalErr.message || "")
+    )
+  ) {
+    setApproveProgress(id, {
+      logLine: "Retry finalize without skip flag (apply handpick_approve_sign_batches SQL)…",
+    });
+    ({ data: finalData, error: finalErr } = await supabase.rpc(
+      "admin_handpick_approve_submission",
+      { p_submission_id: id, p_dry_run: false }
+    ));
+  }
   if (finalErr) {
     setApproveProgress(id, {
       pct: 100,
