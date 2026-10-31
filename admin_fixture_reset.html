@@ -45,7 +45,8 @@
         · Full wipe of a fixture back to <b>scheduled / unscheduled</b> so clubs can re-arrange
         (catch-up / September replay). Clears result, stats, videos, schedule, check-ins,
         fixture-linked finance, and discipline sourced from that match.
-        Run <code>admin_fixture_reset_for_replay_20261027.sql</code> in Supabase once.
+        Run <code>admin_fixture_reset_for_replay_20261027.sql</code> (reset) and
+        <code>admin_unlock_result_keep_noshow_20261031.sql</code> (unlock keep fines) in Supabase once.
       </p>
 
       <div class="card">
@@ -80,8 +81,30 @@
         <div id="pickStatus" class="status-line"></div>
       </div>
 
+      <div class="card" style="margin-top:16px;border-color:#364;background:#121a12;">
+        <h2 style="color:#8fd18f;">2. Unlock result entry (keep no-show penalties)</h2>
+        <p class="note" style="margin-top:0;">
+          When one club checked in and the other missed: add the missing check-in so either
+          side can submit on Match Day. <b>Does not</b> waive fines, delete no-show events,
+          or clear season strikes. Run
+          <code>admin_unlock_result_keep_noshow_20261031.sql</code> once (also unlocks
+          BEN vs ARS MD4 #9376).
+        </p>
+        <label style="display:block;font-size:13px;color:#bbb;">
+          Note (optional)
+          <input id="unlockNoteInput" class="reason-input" type="text" maxlength="200"
+                 placeholder="e.g. Played offline — Arsenal missed check-in">
+        </label>
+        <div style="margin-top:12px;">
+          <button type="button" id="unlockResultBtn" class="button" style="background:#2e6b2e;">
+            Unlock result entry
+          </button>
+        </div>
+        <div id="unlockStatus" class="status-line" style="margin-top:10px;"></div>
+      </div>
+
       <div class="card danger-card" style="margin-top:16px;">
-        <h2>2. Reset for replay</h2>
+        <h2>3. Reset for replay</h2>
         <p class="note" style="margin-top:0;">
           Undoes the match as if it was never completed, then leaves schedule <b>unscheduled</b>
           so either club can propose a new time. Does <b>not</b> apply a new fine.
@@ -104,6 +127,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_fixture_reset.js?v=20261027-v1"></script>
+  <script type="module" src="admin_fixture_reset.js?v=20261031-unlock-result"></script>
 </body>
 </html>

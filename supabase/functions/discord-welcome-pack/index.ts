@@ -13,6 +13,7 @@ import {
  *
  * Actions:
  *   welcome_newcomers — cron/poll (no VPS bot needed)
+ *   welcome_members — Members role, exclude Owners (backfill new pack)
  *   on_join / welcome_one — single user
  *
  * Secrets: DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, DISCORD_ROLE_*,
@@ -20,11 +21,13 @@ import {
  *   DISCORD_FEED_INVOKE_KEY or CRON_API_KEY
  */
 
-async function fetchGuildHumanIds(
+type GuildHuman = { id: string; roles: string[] };
+
+async function fetchGuildHumans(
   botToken: string,
   guildId: string
-): Promise<string[]> {
-  const ids: string[] = [];
+): Promise<GuildHuman[]> {
+  const out: GuildHuman[] = [];
   let after: string | null = null;
   for (let page = 0; page < 20; page++) {
     const url = new URL(`https://discord.com/api/v10/guilds/${guildId}/members`);
@@ -42,17 +45,29 @@ async function fetchGuildHumanIds(
     }
     const batch = (await res.json()) as Array<{
       user?: { id?: string; bot?: boolean };
+      roles?: string[];
     }>;
     if (!Array.isArray(batch) || batch.length === 0) break;
     for (const m of batch) {
       const id = m.user?.id ? String(m.user.id) : "";
       if (!id || m.user?.bot) continue;
-      ids.push(id);
+      out.push({
+        id,
+        roles: Array.isArray(m.roles) ? m.roles.map(String) : [],
+      });
       after = id;
     }
     if (batch.length < 1000) break;
   }
-  return ids;
+  return out;
+}
+
+async function fetchGuildHumanIds(
+  botToken: string,
+  guildId: string
+): Promise<string[]> {
+  const humans = await fetchGuildHumans(botToken, guildId);
+  return humans.map((h) => h.id);
 }
 
 async function welcomeOneUser(opts: {
@@ -254,8 +269,19 @@ Deno.serve(async (req) => {
     const assignVisitor = body.assign_visitor !== false;
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
-    if (action === "seed_existing" || action === "welcome_newcomers") {
-      const humans = await fetchGuildHumanIds(botToken, guildId);
+    if (
+      action === "seed_existing" ||
+      action === "welcome_newcomers" ||
+      action === "welcome_members"
+    ) {
+      const humans =
+        action === "welcome_members"
+          ? await fetchGuildHumans(botToken, guildId)
+          : (await fetchGuildHumanIds(botToken, guildId)).map((id) => ({
+              id,
+              roles: [] as string[],
+            }));
+      const humanIds = humans.map((h) => h.id);
       const { data: sentRows } = await admin
         .from("gpsl_discord_welcome_sent")
         .select("discord_user_id");
@@ -280,7 +306,7 @@ Deno.serve(async (req) => {
       // One-shot: mark everyone already in the server as "sent" so cron only
       // DMs people who join after this. Does not send messages.
       if (action === "seed_existing") {
-        const toSeed = humans.filter((id) => !sent.has(id));
+        const toSeed = humanIds.filter((id) => !sent.has(id));
         const now = new Date().toISOString();
         let seeded = 0;
         for (let i = 0; i < toSeed.length; i += 50) {
@@ -304,9 +330,80 @@ Deno.serve(async (req) => {
         return jsonResponse({
           ok: true,
           action: "seed_existing",
-          guild_humans: humans.length,
+          guild_humans: humanIds.length,
           seeded,
           note: "Existing members marked; cron will only welcome future joiners.",
+        });
+      }
+
+      // Members role, exclude Owners role — backfill new pack (no Visitor assign).
+      if (action === "welcome_members") {
+        if (!memberRole) {
+          return jsonResponse(
+            {
+              ok: false,
+              reason: "member_role_not_configured",
+              error: "DISCORD_ROLE_MEMBER_ID missing",
+            },
+            200
+          );
+        }
+        const limitRaw = Number(body.limit);
+        const limit = Math.min(
+          Math.max(Number.isFinite(limitRaw) ? limitRaw : 12, 1),
+          25
+        );
+        // Default: re-send new pack to Members∩¬Owners (even if seed_existing marked them).
+        // Pass only_unsent:true to skip people already in gpsl_discord_welcome_sent.
+        const onlyUnsent = body.only_unsent === true;
+        const memberOnly = humans.filter((h) => {
+          const roles = new Set(h.roles);
+          if (!roles.has(memberRole)) return false;
+          if (ownerRole && roles.has(ownerRole)) return false;
+          if (onlyUnsent && sent.has(h.id)) return false;
+          return true;
+        });
+        const batch = memberOnly.slice(0, limit);
+        const results: Record<string, unknown>[] = [];
+        let welcomed = 0;
+        let errors = 0;
+        let skipped = 0;
+
+        for (const h of batch) {
+          const r = await welcomeOneUser({
+            admin,
+            botToken,
+            guildId,
+            discordUserId: h.id,
+            visitorRole,
+            memberRole,
+            ownerRole,
+            assignVisitor: false,
+            // Re-send past welcome_sent / registry skip — audience already role-filtered
+            force: true,
+            via: "welcome_members",
+          });
+          results.push(r);
+          if (r.ok && !r.skipped) welcomed += 1;
+          else if (r.skipped) skipped += 1;
+          if (r.ok === false) errors += 1;
+          await new Promise((res) => setTimeout(res, 400));
+        }
+
+        return jsonResponse({
+          ok: true,
+          action: "welcome_members",
+          guild_humans: humans.length,
+          member_not_owner: memberOnly.length,
+          processed: batch.length,
+          welcomed,
+          skipped,
+          errors,
+          remaining: Math.max(memberOnly.length - batch.length, 0),
+          only_unsent: onlyUnsent,
+          note:
+            "Discord Members role only; Owners role excluded. No Visitor assign. Re-run until remaining=0.",
+          results: results.slice(0, 20),
         });
       }
 
@@ -317,7 +414,7 @@ Deno.serve(async (req) => {
         25
       );
 
-      const pending = humans.filter((id) => !sent.has(id) && !owners.has(id));
+      const pending = humanIds.filter((id) => !sent.has(id) && !owners.has(id));
       const batch = pending.slice(0, limit);
       const results: Record<string, unknown>[] = [];
       let welcomed = 0;
@@ -345,7 +442,7 @@ Deno.serve(async (req) => {
       return jsonResponse({
         ok: true,
         action: "welcome_newcomers",
-        guild_humans: humans.length,
+        guild_humans: humanIds.length,
         pending: pending.length,
         processed: batch.length,
         welcomed,
@@ -359,7 +456,7 @@ Deno.serve(async (req) => {
       return jsonResponse(
         {
           error:
-            "Unknown action — use welcome_newcomers, on_join, or welcome_one",
+            "Unknown action — use welcome_newcomers, welcome_members, on_join, or welcome_one",
         },
         400
       );

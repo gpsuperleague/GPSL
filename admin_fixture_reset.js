@@ -355,6 +355,63 @@ async function runReset() {
   await loadPreview(id);
 }
 
+async function runUnlockResult() {
+  const id = selectedFixtureId();
+  const note = String(document.getElementById("unlockNoteInput")?.value || "").trim();
+
+  if (!id) {
+    setStatus("unlockStatus", "Select or enter a fixture first.", false);
+    return;
+  }
+
+  const label = preview
+    ? `${preview.home_club_short_name} vs ${preview.away_club_short_name} (#${id})`
+    : `fixture #${id}`;
+  if (
+    !window.confirm(
+      `Unlock result entry for ${label}?\n\nAdds any missing check-in so Match Day submit works.\nNo-show fines and season strikes stay in place.`
+    )
+  ) {
+    return;
+  }
+
+  setStatus("unlockStatus", "Unlocking…");
+  const { data, error } = await supabase.rpc("admin_fixture_unlock_result_entry", {
+    p_fixture_id: id,
+    p_note: note || null,
+  });
+
+  if (error) {
+    setStatus(
+      "unlockStatus",
+      /admin_fixture_unlock_result_entry|schema cache|Could not find/i.test(
+        error.message || ""
+      )
+        ? "❌ Run admin_unlock_result_keep_noshow_20261031.sql in Supabase first."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+
+  if (!data?.ok) {
+    setStatus("unlockStatus", "⚠ " + (data?.reason || "Unlock failed"), false);
+    return;
+  }
+
+  const inserted = Array.isArray(data.inserted_checkins)
+    ? data.inserted_checkins.join(", ")
+    : data.already_both_checked_in
+      ? "(already both in)"
+      : "—";
+  setStatus(
+    "unlockStatus",
+    `✅ Unlocked #${data.fixture_id} (${data.home} vs ${data.away}) — check-ins added: ${inserted}. Kept ${data.preserved_noshow_events ?? 0} no-show event(s), ${data.preserved_noshow_fines ?? 0} fine(s) (₿${Number(data.preserved_noshow_fines_amount || 0).toLocaleString("en-GB")}).`,
+    true
+  );
+  await loadPreview(id);
+}
+
 whenDomReady(async () => {
   await initAdminPage({ requireAdmin: true });
   populateMonthSelect();
@@ -376,6 +433,9 @@ whenDomReady(async () => {
       e.preventDefault();
       void onLoadId();
     }
+  });
+  document.getElementById("unlockResultBtn")?.addEventListener("click", () => {
+    void runUnlockResult();
   });
   document.getElementById("resetBtn")?.addEventListener("click", () => {
     void runReset();

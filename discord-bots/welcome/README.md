@@ -10,4 +10,8 @@ Welcome DMs run from **Supabase only**:
 
 That polls Discord for new server members, assigns **Visitor**, and DMs the welcome pack — no VPS.
 
+**Backfill Members (not Owners):** after deploy, invoke the edge function with
+`{"action":"welcome_members","limit":12}` (repeat until `remaining` is 0).
+Uses Discord **Member** role and skips anyone with the **Owner** role.
+
 This Node bot is only if you want **instant** DMs on join (gateway event) instead of ~2 minute polling.
