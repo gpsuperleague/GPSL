@@ -135,24 +135,6 @@ BEGIN
             AND c.owner_id IS NULL
             AND upper(c."ShortName") <> 'FOREIGN'
             AND coalesce(c.is_archived, false) = false
-
-          UNION ALL
-
-          SELECT
-            c."ShortName",
-            coalesce(nullif(btrim(c."Club"), ''), c."ShortName"),
-            NULL::text,
-            'Not in a division'::text,
-            5
-          FROM public."Clubs" c
-          WHERE c.owner_id IS NULL
-            AND upper(c."ShortName") <> 'FOREIGN'
-            AND coalesce(c.is_archived, false) = false
-            AND NOT EXISTS (
-              SELECT 1 FROM public.competition_club_seasons ccs
-              WHERE ccs.season_id = v_season_id
-                AND ccs.club_short_name = c."ShortName"
-            )
         ) q
       ), '[]'::jsonb)
     END
