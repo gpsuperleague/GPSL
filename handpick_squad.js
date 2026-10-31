@@ -194,7 +194,7 @@ async function loadContext() {
   const gpdb = document.getElementById("gpdbLink");
   if (gpdb) {
     gpdb.href = "GPDB.html";
-    gpdb.textContent = "Player Database (GPDB)";
+    gpdb.textContent = "Open GPDB — handpick players here";
   }
 
   // Keep URL in sync so refresh / share keeps the chosen club

@@ -56,13 +56,30 @@
   <div class="hp-wrap">
     <h1 style="color:#ff9900;font-size:22px;margin:8px 0 6px;">Handpick squad</h1>
     <p class="hint">
-      Mid-season rebuild: pick free agents (+ optional manager), submit for admin approval at market value.
+      Mid-season rebuild: build a wishlist, then submit for admin approval at market value.
       Admins turn Handpick on/off from the Season owner board (releases squad to FA, clears manager, sets rebuild cash — other clubs’ ledgers untouched).
     </p>
 
     <div id="gateBox" class="gate-box">Loading…</div>
 
     <div id="handpickApp" hidden>
+      <div class="card" style="border-color:#665522;background:#1a1810;">
+        <h2 style="margin-bottom:8px;">How to handpick</h2>
+        <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#ddd;">
+          Use the <b style="color:#e8c84a;">Player Database (GPDB)</b> to find free agents for your club.
+          Note the players you want, then come back here to add them to your wishlist and submit for approval.
+        </p>
+        <p style="margin:0;">
+          <a id="gpdbLink" class="button" href="GPDB.html" target="_blank" rel="noopener"
+             style="display:inline-block;background:#c9a227;color:#111;font-weight:700;text-decoration:none;padding:10px 16px;">
+            Open GPDB — handpick players here
+          </a>
+        </p>
+        <p class="hint" style="margin-top:10px;">
+          Players stay free agents in GPDB until an admin approves your wishlist (no club tag while you’re still picking).
+        </p>
+      </div>
+
       <div class="card">
         <h2>Club</h2>
         <div class="form-grid">
@@ -72,11 +89,6 @@
             <select id="clubSelect"><option value="">—</option></select>
           </label>
           <p id="clubMeta" class="hint"></p>
-          <p class="hint" style="margin-top:8px;">
-            Browse / research in
-            <a id="gpdbLink" href="GPDB.html" target="_blank" rel="noopener" style="color:#e8c84a;">Player Database (GPDB)</a>
-            — players stay free agents until admin approves your wishlist (no mid-pick club tag).
-          </p>
         </div>
         <div id="managerPicked" class="manager-box" hidden></div>
       </div>
@@ -84,7 +96,12 @@
       <div class="build-layout">
         <div>
           <div class="card">
-            <h2>Find free agents</h2>
+            <h2>Add free agents to wishlist</h2>
+            <p class="hint" style="margin:0 0 10px;">
+              Search below after you’ve scouted in
+              <a href="GPDB.html" target="_blank" rel="noopener" style="color:#e8c84a;">GPDB</a>
+              (or search here directly by name / Konami ID).
+            </p>
             <div class="search-row">
               <label>
                 Nation
@@ -134,6 +151,6 @@
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261031-club-gpdb"></script>
+  <script type="module" src="handpick_squad.js?v=20261031-gpdb-howto"></script>
 </body>
 </html>
