@@ -15,7 +15,7 @@ import {
   isVisitorUser,
   isVisitorAllowedPage,
   visitorHome,
-} from "./member_access.js?v=20261002-visitor";
+} from "./member_access.js?v=20261031-welcome";
 
 function isAdminPath() {
   const p = (window.location.pathname || "").toLowerCase();
@@ -53,7 +53,7 @@ export async function enforceOwnerClubGate() {
       return;
     }
     try {
-      const { applyVisitorChrome } = await import("./visitor_chrome.js?v=20261002-visitor");
+      const { applyVisitorChrome } = await import("./visitor_chrome.js?v=20261031-apply");
       applyVisitorChrome();
     } catch (chromeErr) {
       console.warn("Visitor chrome skipped:", chromeErr);
@@ -108,4 +108,4 @@ export {
   isMemberAllowedPage,
   isClubOwnerPage,
   normalizePageId,
-} from "./member_access.js?v=20261002-visitor";
+} from "./member_access.js?v=20261031-welcome";

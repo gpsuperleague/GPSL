@@ -9,6 +9,7 @@ export const AUTH_PAGES = new Set([
   "reset_password",
   "index",
   "join_gpsl",
+  "welcome_gpsl",
 ]);
 
 /**
@@ -40,9 +41,12 @@ export const VISITOR_ALLOWED_PAGES = new Set([
   "owner_rankings",
   "learning_gpsl",
   "video_tutorials",
+  "welcome_gpsl",
+  "join_gpsl",
 ]);
 
 export const VISITOR_NAV_ITEMS = [
+  { href: "welcome_gpsl.html", label: "Welcome / apply", page: "welcome_gpsl" },
   { href: "progress.html", label: "Tables", page: "progress" },
   { href: "cups.html", label: "Cups", page: "cups" },
   { href: "draftauction.html", label: "Player draft auction", page: "draftauction" },

@@ -85,22 +85,38 @@ async function discordJson(
   path: string,
   init?: RequestInit
 ): Promise<{ ok: boolean; status: number; json: unknown; text: string }> {
-  const res = await fetch(`${DISCORD_API}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bot ${botToken}`,
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
-  });
-  const text = await res.text();
-  let json: unknown = null;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    json = null;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const res = await fetch(`${DISCORD_API}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        "Content-Type": "application/json",
+        ...(init?.headers || {}),
+      },
+    });
+    const text = await res.text();
+    let json: unknown = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = null;
+    }
+    if (res.status === 429) {
+      const retryAfter =
+        Number((json as { retry_after?: number })?.retry_after) ||
+        Number(res.headers.get("retry-after")) ||
+        1;
+      await sleep(Math.min(Math.ceil(retryAfter * 1000) + 150, 5000));
+      continue;
+    }
+    return { ok: res.ok, status: res.status, json, text };
   }
-  return { ok: res.ok, status: res.status, json, text };
+  return {
+    ok: false,
+    status: 429,
+    json: null,
+    text: "rate_limited_exhausted",
+  };
 }
 
 async function syncDiscordUser(
@@ -154,7 +170,7 @@ async function syncDiscordUser(
         result.error = `add_${roleId}_${put.status}: ${put.text.slice(0, 160)}`;
         return result;
       }
-      await sleep(250);
+      await sleep(400);
     } else if (!shouldHave && has) {
       const del = await discordJson(
         botToken,
@@ -167,7 +183,7 @@ async function syncDiscordUser(
         result.error = `remove_${roleId}_${del.status}: ${del.text.slice(0, 160)}`;
         return result;
       }
-      await sleep(250);
+      await sleep(400);
     }
   }
 
@@ -638,6 +654,7 @@ Deno.serve(async (req) => {
           roles
         );
         results.push({ ...sync, linked_owner_id: resolved.linked_owner_id || null });
+        await sleep(350);
       }
 
       const errors = results.filter((r) => r.error).length;
@@ -659,10 +676,87 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "audit_guild") {
+      // Count people who currently hold the three managed roles (bots excluded).
+      const members: Array<{ user?: { bot?: boolean }; roles?: string[] }> = [];
+      let afterAudit: string | null = null;
+      for (let page = 0; page < 20; page++) {
+        const url = new URL(`${DISCORD_API}/guilds/${guildId}/members`);
+        url.searchParams.set("limit", "1000");
+        if (afterAudit) url.searchParams.set("after", afterAudit);
+        const listRes = await fetch(url.toString(), {
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (!listRes.ok) {
+          const text = await listRes.text();
+          return jsonResponse(
+            { error: `Discord members ${listRes.status}: ${text.slice(0, 200)}` },
+            500
+          );
+        }
+        const batch = (await listRes.json()) as typeof members;
+        if (!Array.isArray(batch) || batch.length === 0) break;
+        members.push(...batch);
+        const last = batch[batch.length - 1]?.user
+          ? String((batch[batch.length - 1] as { user?: { id?: string } }).user?.id || "")
+          : "";
+        // deno-lint-ignore no-explicit-any
+        const lastId = String((batch[batch.length - 1] as any)?.user?.id || "");
+        if (!lastId || batch.length < 1000) break;
+        afterAudit = lastId;
+        void last;
+      }
+
+      const people = members.filter((m) => m.user && !m.user.bot);
+      let owner = 0;
+      let member = 0;
+      let visitor = 0;
+      let none = 0;
+      let bothOwnerMember = 0;
+      for (const m of people) {
+        const ids = Array.isArray(m.roles) ? m.roles.map(String) : [];
+        const hasO = !!(roles.owner && ids.includes(roles.owner));
+        const hasM = !!(roles.member && ids.includes(roles.member));
+        const hasV = !!(roles.visitor && ids.includes(roles.visitor));
+        if (hasO) owner += 1;
+        if (hasM) member += 1;
+        if (hasV) visitor += 1;
+        if (hasO && hasM) bothOwnerMember += 1;
+        if (!hasO && !hasM && !hasV) none += 1;
+      }
+
+      return jsonResponse({
+        ok: true,
+        action: "audit_guild",
+        humans: people.length,
+        discord_role_counts: {
+          owner,
+          member,
+          visitor,
+          none_of_three: none,
+          owner_and_member: bothOwnerMember,
+        },
+        exclusive_buckets: {
+          owner: owner,
+          member_only: Math.max(member - bothOwnerMember, 0),
+          visitor,
+          unsynced: none,
+          sum:
+            owner +
+            Math.max(member - bothOwnerMember, 0) +
+            visitor +
+            none,
+        },
+      });
+    }
+
     return jsonResponse(
       {
         error:
-          "Unknown action — use sync_one, sync_linked, or sync_guild",
+          "Unknown action — use sync_one, sync_linked, sync_guild, or audit_guild",
       },
       400
     );
