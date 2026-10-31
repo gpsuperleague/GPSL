@@ -487,6 +487,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   foreignInterestRemaining = normalizeForeignInterest(
     club.foreign_interest_remaining
   );
+  // Seed from Clubs row so a failed sync RPC does not blank the badge (load blip).
+  foreignTrackingTeams = Array.isArray(club.foreign_tracking_teams)
+    ? club.foreign_tracking_teams.map((t) => String(t)).filter(Boolean)
+    : [];
   voluntaryReleasesRemaining = normalizeVoluntaryReleasesRemaining(
     club.voluntary_contract_releases_remaining
   );
@@ -566,17 +570,12 @@ async function loadForeignInterestState() {
   const { data, error } = await supabase.rpc("club_foreign_interest_state");
 
   if (error) {
-    const msg = String(error.message || "").toLowerCase();
-    if (
-      msg.includes("club_foreign_interest_state") ||
-      msg.includes("foreign_tracking") ||
-      error.code === "42883"
-    ) {
-      foreignTrackingTeams = [];
-      return;
-    }
-    console.warn("club_foreign_interest_state:", error);
-    foreignTrackingTeams = [];
+    // Keep Clubs-row seed already set at page load — avoid badge flash / empty state.
+    console.warn("club_foreign_interest_state (using Clubs row fallback):", error.message || error);
+    return;
+  }
+
+  if (data?.ok === false && data?.reason === "no_club") {
     return;
   }
 
@@ -585,9 +584,9 @@ async function loadForeignInterestState() {
       data.foreign_interest_remaining
     );
   }
-  foreignTrackingTeams = Array.isArray(data?.tracking_teams)
-    ? data.tracking_teams.map((t) => String(t))
-    : [];
+  if (Array.isArray(data?.tracking_teams)) {
+    foreignTrackingTeams = data.tracking_teams.map((t) => String(t)).filter(Boolean);
+  }
 }
 
 function renderForeignInterestBadge() {
@@ -2261,22 +2260,30 @@ function syncSquadTableColumnWidths() {
     widths[i] = Math.max(widths[i], measureSquadTableCellWidth(cell));
   };
 
+  // Measure on off-DOM clones so clearing col widths does not flash the live tables.
   tables.forEach((table) => {
-    const cols = table.querySelectorAll("colgroup col");
-    cols.forEach((col) => {
+    const host = table.parentElement;
+    if (!host) return;
+    const clone = table.cloneNode(true);
+    clone.setAttribute("aria-hidden", "true");
+    clone.style.cssText =
+      "position:absolute;left:-99999px;top:0;visibility:hidden;pointer-events:none;table-layout:auto;width:max-content;";
+    clone.querySelectorAll("colgroup col").forEach((col) => {
       col.style.width = "";
       col.style.minWidth = "";
       col.style.maxWidth = "";
     });
-    table.style.width = "";
-    table.style.tableLayout = "auto";
-
-    table.querySelectorAll("tr.squad-section-cols-row th").forEach((th, i) => {
-      measureCell(th, i);
-    });
-    table.querySelectorAll("tbody tr[data-konami-id] td").forEach((td, i) => {
-      measureCell(td, i);
-    });
+    host.appendChild(clone);
+    try {
+      clone.querySelectorAll("tr.squad-section-cols-row th").forEach((th, i) => {
+        measureCell(th, i);
+      });
+      clone.querySelectorAll("tbody tr[data-konami-id] td").forEach((td, i) => {
+        measureCell(td, i);
+      });
+    } finally {
+      clone.remove();
+    }
   });
 
   let contentTotal = 0;
