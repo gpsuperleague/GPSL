@@ -21,6 +21,7 @@ export const GHOST_SOURCE = {
   DRAFT_AUCTION: "draft_auction",
   AWAITING_SELLER: "awaiting_seller",
   EXPIRY_WAGE: "expiry_wage",
+  HANDPICK_WISHLIST: "handpick_wishlist",
 };
 
 export const GHOST_SOURCE_LABELS = {
@@ -28,6 +29,7 @@ export const GHOST_SOURCE_LABELS = {
   [GHOST_SOURCE.DRAFT_AUCTION]: "Draft auction · winning bid",
   [GHOST_SOURCE.AWAITING_SELLER]: "Transfer market · awaiting seller",
   [GHOST_SOURCE.EXPIRY_WAGE]: "Expiring contract · wage bid",
+  [GHOST_SOURCE.HANDPICK_WISHLIST]: "Handpick wishlist · pending approval",
 };
 
 function isMissingEconomicsColumnError(error) {
@@ -35,7 +37,7 @@ function isMissingEconomicsColumnError(error) {
   return msg.includes("potential") || msg.includes("calc_potential");
 }
 
-function ghostHref(source, konamiId) {
+function ghostHref(source, konamiId, clubShort = "") {
   const id = encodeURIComponent(String(konamiId));
   if (source === GHOST_SOURCE.DRAFT_AUCTION) {
     return `draftauction_player.html?player=${id}`;
@@ -43,20 +45,62 @@ function ghostHref(source, konamiId) {
   if (source === GHOST_SOURCE.EXPIRY_WAGE) {
     return `expiring_contracts.html?player=${id}`;
   }
+  if (source === GHOST_SOURCE.HANDPICK_WISHLIST) {
+    const club = encodeURIComponent(String(clubShort || "").trim().toUpperCase());
+    return club
+      ? `handpick_squad.html?club=${club}`
+      : "handpick_squad.html";
+  }
   return `GPDB.html?player=${id}`;
 }
 
-function ghostPlayerFromRow(player, meta) {
+function ghostPlayerFromRow(player, meta, clubShort = "") {
   const source = meta?.source || GHOST_SOURCE.TRANSFER_LIVE;
   return {
     ...player,
     ghost: true,
     ghostSource: source,
     ghostLabel: GHOST_SOURCE_LABELS[source] || "Pending signing",
-    ghostHref: ghostHref(source, player.Konami_ID),
+    ghostHref: ghostHref(source, player.Konami_ID, clubShort),
     ghostBidAmount: meta?.bidAmount != null ? Number(meta.bidAmount) : null,
     ghostIsWage: source === GHOST_SOURCE.EXPIRY_WAGE,
   };
+}
+
+async function loadHandpickWishlistPending(supabase, clubShort, pendingByPlayer) {
+  const club = String(clubShort || "").trim().toUpperCase();
+  if (!club) return;
+
+  try {
+    const { data: clubRow } = await supabase
+      .from("Clubs")
+      .select("handpick_intake")
+      .eq("ShortName", club)
+      .maybeSingle();
+    if (!clubRow?.handpick_intake) return;
+  } catch (err) {
+    console.warn("loadSquadGhostAcquisitions handpick club:", err);
+    return;
+  }
+
+  const { data, error } = await supabase.rpc("handpick_basket_list", {
+    p_club_short_name: club,
+  });
+  if (error) {
+    console.warn("loadSquadGhostAcquisitions handpick basket:", error);
+    return;
+  }
+  if (!data?.handpick_intake) return;
+
+  const ids = Array.isArray(data?.player_ids) ? data.player_ids : [];
+  for (const raw of ids) {
+    const pid = String(raw || "").trim();
+    if (!pid || pendingByPlayer.has(pid)) continue;
+    pendingByPlayer.set(pid, {
+      source: GHOST_SOURCE.HANDPICK_WISHLIST,
+      bidAmount: null,
+    });
+  }
 }
 
 /**
@@ -209,6 +253,7 @@ export async function loadSquadGhostAcquisitions(supabase, clubShort) {
 
   await loadLeadingListingsPending(supabase, clubShort, filterOpts, pendingByPlayer);
   await loadExpiryWagePending(supabase, pendingByPlayer);
+  await loadHandpickWishlistPending(supabase, clubShort, pendingByPlayer);
 
   if (!pendingByPlayer.size) return [];
 
@@ -244,7 +289,9 @@ export async function loadSquadGhostAcquisitions(supabase, clubShort) {
       const team = String(p.Contracted_Team || "").trim().toUpperCase();
       return !team || team !== clubKey;
     })
-    .map((p) => ghostPlayerFromRow(p, pendingByPlayer.get(String(p.Konami_ID))));
+    .map((p) =>
+      ghostPlayerFromRow(p, pendingByPlayer.get(String(p.Konami_ID)), clubShort)
+    );
 }
 
 export function ghostAcquisitionTypeLabel(ghost) {
@@ -253,6 +300,7 @@ export function ghostAcquisitionTypeLabel(ghost) {
   if (source === GHOST_SOURCE.AWAITING_SELLER) return "TRANSFER";
   if (source === GHOST_SOURCE.TRANSFER_LIVE) return "TRANSFER";
   if (source === GHOST_SOURCE.EXPIRY_WAGE) return "EXPIRY";
+  if (source === GHOST_SOURCE.HANDPICK_WISHLIST) return "HANDPICK";
   return "PENDING";
 }
 
@@ -305,12 +353,18 @@ export function ghostContractCellLabel(ghost) {
   if (ghost?.ghostSource === GHOST_SOURCE.EXPIRY_WAGE) {
     return "If successful";
   }
+  if (ghost?.ghostSource === GHOST_SOURCE.HANDPICK_WISHLIST) {
+    return "If approved";
+  }
   return "If won";
 }
 
 export function ghostContractTip(ghost) {
   if (ghost?.ghostSource === GHOST_SOURCE.EXPIRY_WAGE) {
     return "Not contracted yet. Your wage bid stays hidden until season rollover — if you win, they join on a new 3-season contract. Ghost rows count toward “If won” registration previews only.";
+  }
+  if (ghost?.ghostSource === GHOST_SOURCE.HANDPICK_WISHLIST) {
+    return "Not contracted yet. On your mid-season handpick wishlist — counts toward registration preview until admin approves (or you untag).";
   }
   return "Not contracted yet. If your winning bid settles, they join your squad on a new 3-season contract. Ghost rows count toward “If won” registration previews only.";
 }
@@ -326,6 +380,9 @@ export function ghostActionLinkHtml(ghost) {
       amount != null ? ` · ₿${amount}` : ""
     }</a>`;
   }
+  if (ghost?.ghostSource === GHOST_SOURCE.HANDPICK_WISHLIST) {
+    return `<a href="${href}" class="squad-ghost-action-link">Handpick wishlist</a>`;
+  }
   return `<a href="${href}" class="squad-ghost-action-link">View bid${
     amount != null ? ` · ₿${amount}` : ""
   }</a>`;
@@ -334,6 +391,9 @@ export function ghostActionLinkHtml(ghost) {
 export function ghostActionTip(ghost) {
   if (ghost?.ghostSource === GHOST_SOURCE.EXPIRY_WAGE) {
     return "Open Expiring Contracts — rival wage bids stay hidden until season rollover.";
+  }
+  if (ghost?.ghostSource === GHOST_SOURCE.HANDPICK_WISHLIST) {
+    return "Open Handpick Squad to review or untag this wishlist player.";
   }
   return "Open the listing or draft auction where you are leading this bid.";
 }

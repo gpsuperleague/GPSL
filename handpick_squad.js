@@ -6,6 +6,17 @@ import {
   setHandpickBasketPlayer,
   clearHandpickBasket,
 } from "./handpick_basket.js?v=20261031-handpick-tag";
+import {
+  MIN_GOALKEEPERS,
+  MIN_HOME_GROWN,
+  MIN_SQUAD_SIZE,
+  MIN_UNDER_21,
+  SQUAD_SIZE,
+  isHomeGrownPlayer,
+  isUnder21,
+  isGoalkeeper,
+} from "./squad_rules.js";
+import { loadSquadDesignationsState } from "./squad_designations.js";
 
 /** @type {Map<string, object>} */
 const basket = new Map();
@@ -19,6 +30,10 @@ let isAdmin = false;
 let activeClub = "";
 /** @type {string} */
 let activeClubName = "";
+/** @type {object|null} */
+let designations = null;
+/** Planned OooO player id (preview only) */
+let plannedOooId = "";
 
 function clubFromUrl() {
   return String(new URLSearchParams(window.location.search).get("club") || "")
@@ -91,7 +106,19 @@ function wireUi() {
     activeClub = document.getElementById("clubSelect")?.value || "";
     basket.clear();
     pickedManager = null;
+    plannedOooId = "";
     await loadContext();
+  });
+  document.getElementById("plannedOooSelect")?.addEventListener("change", (e) => {
+    plannedOooId = e.target?.value || "";
+    try {
+      if (activeClub) {
+        sessionStorage.setItem(`gpsl_handpick_ooo_${activeClub}`, plannedOooId);
+      }
+    } catch {
+      /* ignore */
+    }
+    renderBuildPanel();
   });
 }
 
@@ -240,10 +267,144 @@ async function loadContext() {
     : "";
 
   fillNations(data.fa_nations || [], data.club_nation || "");
+  try {
+    designations = await loadSquadDesignationsState(supabase, activeClub);
+  } catch (err) {
+    console.warn("handpick designations", err);
+    designations = null;
+  }
+  try {
+    plannedOooId =
+      sessionStorage.getItem(`gpsl_handpick_ooo_${activeClub}`) || "";
+  } catch {
+    plannedOooId = "";
+  }
   await hydrateBasketFromDb();
   renderBasket();
   renderManager();
+  renderBuildPanel();
   await loadSubmissions();
+}
+
+function basketPlayerAsSquadShape(p) {
+  return {
+    Konami_ID: String(p.player_id || ""),
+    Name: p.player_name,
+    Nation: p.nation,
+    Position: p.position,
+    Rating: p.rating,
+    Age: p.age,
+    market_value: Number(p.market_value) || 0,
+    contract_wage: Number(p.contract_wage) || 0,
+  };
+}
+
+function projectedSquadPlayers() {
+  const owned = Array.isArray(clubContext?.players) ? clubContext.players : [];
+  const ownedIds = new Set(owned.map((p) => String(p.player_id || "")));
+  const fromOwned = owned.map((p) => ({
+    Konami_ID: String(p.player_id || ""),
+    Name: p.player_name,
+    Nation: p.nation,
+    Position: p.position,
+    Rating: p.rating,
+    Age: p.age,
+    market_value: Number(p.market_value) || 0,
+    contract_wage: Number(p.contract_wage) || 0,
+    from_basket: false,
+  }));
+  const fromBasket = [...basket.values()]
+    .filter((p) => !ownedIds.has(String(p.player_id)))
+    .map((p) => ({ ...basketPlayerAsSquadShape(p), from_basket: true }));
+  return [...fromOwned, ...fromBasket];
+}
+
+function countProjected(players) {
+  const clubNation = clubContext?.club_nation || "";
+  const starMin = Number(designations?.star_min_rating ?? clubContext?.star_min_rating ?? 79);
+  let stars = 0;
+  let u21 = 0;
+  let hg = 0;
+  let gk = 0;
+  let wages = 0;
+  for (const p of players) {
+    const rating = Number(
+      String(p.Rating ?? p.rating ?? "").replace(/[^\d.]/g, "")
+    );
+    if (Number.isFinite(rating) && rating >= starMin) stars += 1;
+    if (isUnder21(p)) u21 += 1;
+    if (isHomeGrownPlayer(p, clubNation)) hg += 1;
+    if (isGoalkeeper(p)) gk += 1;
+    wages += Number(p.contract_wage) || 0;
+  }
+  return { total: players.length, stars, u21, hg, gk, wages };
+}
+
+function renderBuildPanel() {
+  const players = projectedSquadPlayers();
+  const counts = countProjected(players);
+  const starCap = Number(designations?.star_cap ?? clubContext?.star_cap ?? 2);
+  const starMin = Number(designations?.star_min_rating ?? clubContext?.star_min_rating ?? 79);
+  const minHg = Number(clubContext?.min_home_grown) || MIN_HOME_GROWN;
+  const minU21 = Number(clubContext?.min_under_21) || MIN_UNDER_21;
+  const minGk = Number(clubContext?.min_goalkeepers) || MIN_GOALKEEPERS;
+  const minSquad = Number(clubContext?.min_squad_size) || MIN_SQUAD_SIZE;
+  const maxSquad = Number(clubContext?.max_squad_size) || SQUAD_SIZE;
+  const clubNation = clubContext?.club_nation || "";
+
+  const limits = document.getElementById("limitsBox");
+  if (limits) {
+    const squadCls =
+      counts.total > maxSquad ? "bad" : counts.total >= minSquad ? "ok" : "warn";
+    const starCls =
+      counts.stars > starCap ? "bad" : counts.stars === starCap ? "warn" : "ok";
+    const u21Cls = counts.u21 >= minU21 ? "ok" : "bad";
+    const hgCls = counts.hg >= minHg ? "ok" : "bad";
+    const gkCls = counts.gk >= minGk ? "ok" : "bad";
+    limits.innerHTML = `
+      <div class="stat ${squadCls}"><div class="lbl">Squad</div><div class="val">${counts.total}</div><div class="lim">min ${minSquad} · max ${maxSquad}</div></div>
+      <div class="stat ${starCls}"><div class="lbl">Stars</div><div class="val">${counts.stars}</div><div class="lim">cap ${starCap} (≥${starMin})</div></div>
+      <div class="stat ${u21Cls}"><div class="lbl">U21</div><div class="val">${counts.u21}</div><div class="lim">min ${minU21}</div></div>
+      <div class="stat ${hgCls}"><div class="lbl">Home grown</div><div class="val">${counts.hg}</div><div class="lim">min ${minHg}${clubNation ? ` · ${escapeHtml(clubNation)}` : ""}</div></div>
+      <div class="stat ${gkCls}"><div class="lbl">GK</div><div class="val">${counts.gk}</div><div class="lim">min ${minGk}</div></div>`;
+  }
+
+  const balance = Number(clubContext?.balance) || 0;
+  const taxRate = taxPct();
+  let fees = 0;
+  for (const p of basket.values()) fees += Number(p.market_value) || 0;
+  const mgrFee = pickedManager ? Number(pickedManager.market_value) || 0 : 0;
+  const tax = Math.round(((fees + mgrFee) * taxRate) / 100 * 100) / 100;
+  const totalCost = fees + mgrFee + tax;
+  const after = balance - totalCost;
+  const finance = document.getElementById("financeBox");
+  if (finance) {
+    finance.innerHTML = `
+      <div class="finance-row"><span>Balance</span><b>${escapeHtml(formatMoney(balance))}</b></div>
+      <div class="finance-row"><span>Wishlist fees</span><b>${escapeHtml(formatMoney(fees + mgrFee))}</b></div>
+      <div class="finance-row"><span>Est. income tax (${taxRate}%)</span><b>${escapeHtml(formatMoney(tax))}</b></div>
+      <div class="finance-row"><span>Est. catalogue wages</span><b>${escapeHtml(formatMoney(counts.wages))}</b></div>
+      <div class="finance-row ${after < 0 ? "neg" : "pos"}"><span>Balance after signings</span><b>${escapeHtml(formatMoney(after))}</b></div>
+      <p class="hint" style="margin-top:8px;">Wages are catalogue estimates — final wages apply when admin approves. Tagged players also appear as ghosts on Squad.</p>`;
+  }
+
+  const oooSel = document.getElementById("plannedOooSelect");
+  if (oooSel) {
+    const hgEligible = players.filter((p) => isHomeGrownPlayer(p, clubNation));
+    const opts = [`<option value="">— none yet —</option>`].concat(
+      hgEligible.map((p) => {
+        const id = String(p.Konami_ID || "");
+        const mark = p.from_basket ? " (wishlist)" : "";
+        return `<option value="${escapeHtml(id)}"${
+          id && id === plannedOooId ? " selected" : ""
+        }>${escapeHtml(p.Name || id)}${mark}</option>`;
+      })
+    );
+    oooSel.innerHTML = opts.join("");
+    if (plannedOooId && ![...oooSel.options].some((o) => o.value === plannedOooId)) {
+      plannedOooId = "";
+    }
+  }
 }
 
 async function hydrateBasketFromDb() {
@@ -262,7 +423,9 @@ async function hydrateBasketFromDb() {
         position: p.position,
         rating: p.rating,
         nation: p.nation,
+        age: p.age,
         market_value: p.market_value,
+        contract_wage: p.contract_wage,
       });
     }
   } catch (err) {
@@ -408,6 +571,7 @@ function renderManager() {
   if (!pickedManager) {
     box.hidden = true;
     box.innerHTML = "";
+    renderBuildPanel();
     return;
   }
   box.hidden = false;
@@ -420,6 +584,7 @@ function renderManager() {
     renderManager();
     renderBasket();
   });
+  renderBuildPanel();
 }
 
 function renderBasket() {
@@ -430,6 +595,7 @@ function renderBasket() {
   if (!rows.length && !pickedManager) {
     box.innerHTML = `<p class="empty">No players selected yet.</p>`;
     totals.hidden = true;
+    renderBuildPanel();
     return;
   }
 
@@ -485,6 +651,7 @@ function renderBasket() {
       renderBasket();
     });
   });
+  renderBuildPanel();
 }
 
 async function submitWishlist() {

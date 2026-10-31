@@ -35,7 +35,7 @@ import {
   ghostContractTip,
   ghostActionLinkHtml,
   ghostActionTip,
-} from "./squad_ghost_acquisitions.js?v=20261009-leading-listings";
+} from "./squad_ghost_acquisitions.js?v=20261031-handpick-ghost2";
 import {
   loadPlayerValueTables,
   formatRatingWithPotential,
@@ -1808,7 +1808,7 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
           : projCount;
       const projTip =
         hasGhosts && projCount != null
-          ? `${SQUAD_TIPS.ifWon}\n\nIf ${ghosts.length} pending bid${ghosts.length === 1 ? "" : "s"} complete.`
+          ? `${SQUAD_TIPS.ifWon}\n\nIf ${ghosts.length} pending signing${ghosts.length === 1 ? "" : "s"} complete (bids / handpick wishlist).`
           : "";
       const projCell =
         hasGhosts && projCount != null
@@ -1818,7 +1818,7 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
             : "";
       const projHint =
         proj && !proj.ok && rowOk
-          ? ` → ${shortComplianceStatus(proj)} if won`
+          ? ` → ${shortComplianceStatus(proj)} if pending`
           : "";
       const rowTip =
         r.rule === "Star players" || r.rule === "One of our own"
@@ -1843,7 +1843,7 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
 
   let footnote = "";
   if (hasGhosts) {
-    footnote = `<p class="squad-rules-footnote">👻 <strong>If won</strong> includes ${ghosts.length} player${ghosts.length === 1 ? "" : "s"} from market/draft/expiring wage bids — not contracted yet (ghost rows below).</p>`;
+    footnote = `<p class="squad-rules-footnote">👻 <strong>If won</strong> includes ${ghosts.length} player${ghosts.length === 1 ? "" : "s"} from market/draft/expiry bids or handpick wishlist — not contracted yet (ghost rows below).</p>`;
   }
   if (failCount > 0) {
     const issues = c.issues

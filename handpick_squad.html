@@ -49,6 +49,26 @@
     .status-line { margin-top:10px; font-size:13px; }
     .status-line.err { color:#f88; }
     .status-line.ok { color:#8fd18f; }
+    .hp-limits {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:8px;
+    }
+    .hp-limits .stat {
+      background:#111; border:1px solid #333; border-radius:6px; padding:8px 6px; text-align:center;
+    }
+    .hp-limits .stat .lbl { font-size:11px; color:#999; }
+    .hp-limits .stat .val { font-size:20px; font-weight:700; color:#ffcc66; margin:2px 0; }
+    .hp-limits .stat .lim { font-size:10px; color:#777; }
+    .hp-limits .stat.ok { border-color:#364; }
+    .hp-limits .stat.warn { border-color:#864; }
+    .hp-limits .stat.bad { border-color:#844; }
+    .hp-limits .stat.ok .val { color:#8fd18f; }
+    .hp-limits .stat.bad .val { color:#f88; }
+    .hp-finance .finance-row {
+      display:flex; justify-content:space-between; gap:10px; font-size:13px;
+      padding:4px 0; border-bottom:1px solid #2a2a2a;
+    }
+    .hp-finance .finance-row.neg b { color:#f88; }
+    .hp-finance .finance-row.pos b { color:#8fd18f; }
   </style>
 </head>
 <body>
@@ -144,6 +164,23 @@
 
         <div>
           <div class="card">
+            <h2>Projected squad</h2>
+            <p class="hint" style="margin:0 0 10px;">
+              Same registration rules as Squad / Scouting — wishlist players count as “if approved”.
+            </p>
+            <div id="limitsBox" class="hp-limits"></div>
+            <div id="financeBox" class="hp-finance" style="margin-top:12px;"></div>
+            <label style="display:block;margin-top:12px;font-size:13px;color:#bbb;">
+              Planned One of our Own (preview)
+              <select id="plannedOooSelect" style="width:100%;margin-top:4px;padding:8px;background:#111;border:1px solid #444;color:#ddd;border-radius:4px;">
+                <option value="">— none yet —</option>
+              </select>
+            </label>
+            <p class="hint" style="margin-top:6px;">
+              Preview only until players are signed. Official OooO is set on Squad after approval.
+            </p>
+          </div>
+          <div class="card">
             <h2>Submissions</h2>
             <div id="pendingBox" class="pending-box"><p class="empty">No submissions yet.</p></div>
           </div>
@@ -152,6 +189,6 @@
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261031-takeover-fee"></script>
+  <script type="module" src="handpick_squad.js?v=20261031-reg-strip2"></script>
 </body>
 </html>
