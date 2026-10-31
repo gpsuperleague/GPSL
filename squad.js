@@ -495,25 +495,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     club.voluntary_contract_releases_remaining
   );
 
+  // Paint badges from Clubs row immediately — don't block squad on foreign-interest RPC.
+  renderForeignInterestBadge();
+  renderVoluntaryReleaseBadge();
+
   if (staffPreview) {
     // Club-scoped owner RPCs would hit the staff user's club — skip; badges use Clubs row.
-    renderForeignInterestBadge();
-    renderVoluntaryReleaseBadge();
     await loadSquadManagerState();
     renderSquadManagerBadge();
   } else {
     await Promise.all([
-      loadForeignInterestState(),
       loadVoluntaryReleaseState(),
       loadNewOwnerReleaseState(),
       loadSquadManagerState(),
     ]);
-    renderForeignInterestBadge();
-    renderVoluntaryReleaseBadge();
     renderNewOwnerReleaseBadge();
     renderSquadManagerBadge();
     applyForeignSaleOptionState();
     applyVoluntaryReleaseOptionState();
+    // Refresh tracking names in the background (must not delay table paint).
+    void loadForeignInterestState().then(() => {
+      renderForeignInterestBadge();
+      applyForeignSaleOptionState();
+    });
   }
 
   wireButtons();
