@@ -322,16 +322,21 @@ function projectedSquadPlayers() {
 function countProjected(players) {
   const clubNation = clubContext?.club_nation || "";
   const starMin = Number(designations?.star_min_rating ?? clubContext?.star_min_rating ?? 79);
+  const ooo = plannedOooId ? String(plannedOooId) : "";
   let stars = 0;
   let u21 = 0;
   let hg = 0;
   let gk = 0;
   let wages = 0;
   for (const p of players) {
+    const id = String(p.Konami_ID || p.player_id || "");
     const rating = Number(
       String(p.Rating ?? p.rating ?? "").replace(/[^\d.]/g, "")
     );
-    if (Number.isFinite(rating) && rating >= starMin) stars += 1;
+    // Same as scouting: planned OooO does not count toward the star cap
+    if (Number.isFinite(rating) && rating >= starMin && !(ooo && id === ooo)) {
+      stars += 1;
+    }
     if (isUnder21(p)) u21 += 1;
     if (isHomeGrownPlayer(p, clubNation)) hg += 1;
     if (isGoalkeeper(p)) gk += 1;
@@ -363,7 +368,7 @@ function renderBuildPanel() {
     const gkCls = counts.gk >= minGk ? "ok" : "bad";
     limits.innerHTML = `
       <div class="stat ${squadCls}"><div class="lbl">Squad</div><div class="val">${counts.total}</div><div class="lim">min ${minSquad} · max ${maxSquad}</div></div>
-      <div class="stat ${starCls}"><div class="lbl">Stars</div><div class="val">${counts.stars}</div><div class="lim">cap ${starCap} (≥${starMin})</div></div>
+      <div class="stat ${starCls}"><div class="lbl">Stars</div><div class="val">${counts.stars}</div><div class="lim">cap ${starCap} (≥${starMin}${plannedOooId ? ", OooO excl." : ""})</div></div>
       <div class="stat ${u21Cls}"><div class="lbl">U21</div><div class="val">${counts.u21}</div><div class="lim">min ${minU21}</div></div>
       <div class="stat ${hgCls}"><div class="lbl">Home grown</div><div class="val">${counts.hg}</div><div class="lim">min ${minHg}${clubNation ? ` · ${escapeHtml(clubNation)}` : ""}</div></div>
       <div class="stat ${gkCls}"><div class="lbl">GK</div><div class="val">${counts.gk}</div><div class="lim">min ${minGk}</div></div>`;
