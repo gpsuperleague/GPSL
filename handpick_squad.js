@@ -163,17 +163,34 @@ function wireUi() {
   });
 }
 
+async function detectAdmin() {
+  // Prefer explicit is_gpsl_admin(); fall back to admin-only map RPC.
+  try {
+    const { data, error } = await supabase.rpc("is_gpsl_admin");
+    if (!error && data === true) return true;
+  } catch {
+    /* ignore */
+  }
+  const mapRes = await supabase.rpc("admin_handpick_intake_map");
+  return !mapRes.error;
+}
+
 async function boot() {
   const gate = document.getElementById("gateBox");
   const app = document.getElementById("handpickApp");
   const qClub = clubFromUrl();
 
-  // Probe admin via map RPC (admin-only); owners get an error — that's fine.
-  const mapRes = await supabase.rpc("admin_handpick_intake_map");
-  isAdmin = !mapRes.error;
+  isAdmin = await detectAdmin();
+  const mapRes = isAdmin
+    ? await supabase.rpc("admin_handpick_intake_map")
+    : { data: {}, error: null };
 
   if (isAdmin) {
     document.getElementById("clubSelectWrap").hidden = false;
+    const adminBanner = document.getElementById("adminBanner");
+    if (adminBanner) adminBanner.hidden = false;
+    const subTitle = document.getElementById("submissionsTitle");
+    if (subTitle) subTitle.textContent = "Pending approvals (admin)";
     await loadAdminClubs(mapRes.data || {});
     const sel = document.getElementById("clubSelect");
     if (qClub && [...sel.options].some((o) => o.value === qClub)) {
@@ -188,10 +205,12 @@ async function boot() {
     }
     activeClub = sel?.value || qClub || "";
     if (!activeClub) {
+      // Still show the page so admin can see pending approvals even with no intake club
       gate.className = "gate-box warn";
       gate.textContent =
-        "No club in handpick intake. Turn Handpick on from the Season owner board first.";
-      app.hidden = true;
+        "No club in handpick intake right now — pending approvals (if any) still listed below. Turn Handpick on from the Season owner board to preview a club.";
+      app.hidden = false;
+      await loadSubmissions();
       return;
     }
   } else {
@@ -242,9 +261,21 @@ async function loadContext() {
   }
 
   clubContext = data;
-  isAdmin = !!data?.is_admin;
+  // Never downgrade: map / is_gpsl_admin already decided; context may omit is_admin
+  if (data?.is_admin) isAdmin = true;
   activeClub = String(data?.club || club || "").toUpperCase();
   activeClubName = String(data?.club_name || "").trim();
+
+  const adminBanner = document.getElementById("adminBanner");
+  if (adminBanner) adminBanner.hidden = !isAdmin;
+  const clubSelectWrap = document.getElementById("clubSelectWrap");
+  if (clubSelectWrap && isAdmin) clubSelectWrap.hidden = false;
+  const subTitle = document.getElementById("submissionsTitle");
+  if (subTitle) {
+    subTitle.textContent = isAdmin
+      ? "Pending approvals (admin)"
+      : "Submissions";
+  }
 
   if (!data?.ok) {
     gate.className = "gate-box warn";
@@ -300,6 +331,13 @@ async function loadContext() {
   if (!data.handpick_intake && isAdmin) {
     gate.className = "gate-box warn";
     gate.innerHTML = `Club <b>${escapeHtml(clubLabel)}</b> is not in handpick intake. Enable it on the Season owner board before approving wishlists.`;
+  } else if (isAdmin) {
+    gate.className = "gate-box ok";
+    gate.innerHTML = `<b>Admin review</b> for <b>${escapeHtml(
+      clubLabel
+    )}</b> · balance ${escapeHtml(formatMoney(Number(data.balance) || 0))} · tax ${escapeHtml(
+      String(data.income_tax_pct ?? 0)
+    )}% · use <b>Pending approvals</b> below to Preview / Approve &amp; sign (you are not claiming this club).`;
   } else {
     gate.className = "gate-box ok";
     gate.innerHTML = `Handpick open for <b>${escapeHtml(clubLabel)}</b> · balance ${escapeHtml(
@@ -840,7 +878,9 @@ async function loadSubmissions() {
 
   const rows = Array.isArray(data) ? data : [];
   if (!rows.length) {
-    box.innerHTML = `<p class="empty">No submissions.</p>`;
+    box.innerHTML = isAdmin
+      ? `<p class="empty">No pending wishlists. Owner must tag in GPDB/MGDB then click <b>Submit for approval</b> on Handpick Squad — tags alone do not create a submission.</p>`
+      : `<p class="empty">No submissions yet.</p>`;
     return;
   }
 
@@ -920,6 +960,11 @@ async function approveSubmission(id, dryRun) {
   );
   if (!dryRun && data?.ok) {
     await loadContext();
+    await loadSubmissions();
+  } else if (dryRun) {
+    /* keep preview JSON on card */
+  } else {
+    await loadSubmissions();
   }
 }
 

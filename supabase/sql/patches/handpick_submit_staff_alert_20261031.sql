@@ -103,12 +103,22 @@ BEGIN
   END IF;
 
   BEGIN
-    SELECT nullif(btrim(o.owner_tag), '') INTO v_owner_tag
-    FROM public."Owners" o
-    WHERE o.id = coalesce(v_owner, auth.uid());
+    SELECT nullif(btrim(r.owner_tag), '') INTO v_owner_tag
+    FROM public.gpsl_owner_registry r
+    WHERE r.owner_id = coalesce(v_owner, auth.uid());
   EXCEPTION WHEN OTHERS THEN
     v_owner_tag := NULL;
   END;
+  IF v_owner_tag IS NULL THEN
+    BEGIN
+      SELECT nullif(btrim(o.owner_tag), '') INTO v_owner_tag
+      FROM public."Owners" o
+      WHERE o.id = coalesce(v_owner, auth.uid())
+         OR o.owner_id = coalesce(v_owner, auth.uid());
+    EXCEPTION WHEN OTHERS THEN
+      v_owner_tag := NULL;
+    END;
+  END IF;
 
   -- Notify admins / mods on Staff alerts
   IF to_regprocedure('public.gpsl_staff_alert_create(text,text,text,text,jsonb,text)') IS NOT NULL THEN

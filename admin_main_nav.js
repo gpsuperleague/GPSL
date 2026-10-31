@@ -522,11 +522,11 @@ export const ADMIN_MAIN_NAV = [
           "Mid-season club fill: search free agents, preview fee + income tax, sign at market value (no auction)."
         ),
         L(
-          "Handpick squad",
-          "handpick_squad.html",
+          "Handpick approvals",
+          "handpick_squad.html?admin=1",
           null,
           null,
-          "Mid-season intake: owner wishlist → admin approve at MV. Enable Handpick on Season owner board first (reset squad/manager/cash without reversing other clubs)."
+          "Mid-season intake: review pending owner wishlists → Preview / Approve & sign at MV. Enable Handpick on Season owner board first."
         ),
         L(
           "Club Season Checklist",

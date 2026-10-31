@@ -83,6 +83,18 @@
     <div id="gateBox" class="gate-box">Loading…</div>
 
     <div id="handpickApp" hidden>
+      <div id="adminBanner" class="card" hidden style="border-color:#446633;background:#142014;margin-top:14px;">
+        <h2 style="margin:0 0 8px;color:#8fd18f;">Admin — handpick approvals</h2>
+        <p class="hint" style="margin:0 0 10px;">
+          Pending wishlists appear in <b>Pending approvals</b> below (all clubs). Use
+          <b>Preview approve</b> then <b>Approve &amp; sign</b> to contract at market value.
+          Switching club only previews that club’s basket — it does not take ownership.
+        </p>
+        <p class="hint" style="margin:0;">
+          Also listed under Admin → Season Management → <b>Handpick approvals</b>.
+        </p>
+      </div>
+
       <div class="card" style="border-color:#665522;background:#1a1810;">
         <h2 style="margin-bottom:8px;">How to handpick</h2>
         <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#ddd;">
@@ -138,6 +150,13 @@
         </div>
 
         <div>
+          <div class="card" id="submissionsCard" style="border-color:#446633;">
+            <h2 id="submissionsTitle">Submissions</h2>
+            <p id="submissionsHint" class="hint" style="margin:0 0 10px;">
+              Owner: your submitted wishlists. Admin: all pending clubs — approve here.
+            </p>
+            <div id="pendingBox" class="pending-box"><p class="empty">No submissions yet.</p></div>
+          </div>
           <div class="card">
             <h2>Projected squad</h2>
             <p class="hint" style="margin:0 0 10px;">
@@ -155,15 +174,11 @@
               Only home-grown star players for this club’s nation. Sticky per club on this device — official OooO is set on Squad after approval.
             </p>
           </div>
-          <div class="card">
-            <h2>Submissions</h2>
-            <div id="pendingBox" class="pending-box"><p class="empty">No submissions yet.</p></div>
-          </div>
         </div>
       </div>
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261031-ooo-hg-star"></script>
+  <script type="module" src="handpick_squad.js?v=20261031-admin-approve"></script>
 </body>
 </html>
