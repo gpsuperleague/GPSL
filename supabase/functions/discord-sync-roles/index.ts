@@ -174,11 +174,59 @@ async function syncDiscordUser(
   return result;
 }
 
+function normalizeTag(s: string): string {
+  return String(s || "")
+    .trim()
+    .toLowerCase();
+}
+
+function memberLookupTags(m: {
+  nick?: string | null;
+  user?: {
+    username?: string;
+    global_name?: string | null;
+    discriminator?: string;
+  };
+}): string[] {
+  const u = m.user;
+  const username = u?.username
+    ? u.discriminator && u.discriminator !== "0"
+      ? `${u.username}#${u.discriminator}`
+      : u.username
+    : "";
+  return [m.nick || "", u?.global_name || "", username, u?.username || ""]
+    .map(normalizeTag)
+    .filter(Boolean);
+}
+
+async function ownerHasClub(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  ownerId: string
+): Promise<boolean> {
+  const { data: club } = await admin
+    .from("Clubs")
+    .select("ShortName")
+    .eq("owner_id", ownerId)
+    .limit(1)
+    .maybeSingle();
+  const short = String(club?.ShortName || "").trim();
+  return !!(short && short.toUpperCase() !== "FOREIGN");
+}
+
 async function resolveTier(
   // deno-lint-ignore no-explicit-any
   admin: any,
-  opts: { owner_id?: string | null; discord_user_id?: string | null }
-): Promise<{ discord_user_id: string; tier: Tier } | { error: string }> {
+  opts: {
+    owner_id?: string | null;
+    discord_user_id?: string | null;
+    lookup_tags?: string[];
+    auto_link?: boolean;
+  }
+): Promise<
+  | { discord_user_id: string; tier: Tier; linked_owner_id?: string | null }
+  | { error: string }
+> {
   let ownerId = opts.owner_id ? String(opts.owner_id).trim() : "";
   let discordUserId = opts.discord_user_id
     ? String(opts.discord_user_id).trim()
@@ -195,15 +243,9 @@ async function resolveTier(
     discordUserId = String(reg.discord_user_id || "").trim();
     if (!discordUserId) return { error: "no_discord_user_id" };
 
-    const { data: club } = await admin
-      .from("Clubs")
-      .select("ShortName")
-      .eq("owner_id", ownerId)
-      .limit(1)
-      .maybeSingle();
     return {
       discord_user_id: discordUserId,
-      tier: club?.ShortName ? "owner" : "member",
+      tier: (await ownerHasClub(admin, ownerId)) ? "owner" : "member",
     };
   }
 
@@ -215,16 +257,93 @@ async function resolveTier(
     .eq("discord_user_id", discordUserId)
     .maybeSingle();
   if (byDiscord?.owner_id) {
-    const { data: club } = await admin
-      .from("Clubs")
-      .select("ShortName")
-      .eq("owner_id", byDiscord.owner_id)
-      .limit(1)
-      .maybeSingle();
     return {
       discord_user_id: discordUserId,
-      tier: club?.ShortName ? "owner" : "member",
+      tier: (await ownerHasClub(admin, String(byDiscord.owner_id)))
+        ? "owner"
+        : "member",
     };
+  }
+
+  // Tag match → link snowflake so Owner/Member roles can apply
+  const tags = (opts.lookup_tags || []).map(normalizeTag).filter(Boolean);
+  if (tags.length) {
+    const { data: registryRows } = await admin
+      .from("gpsl_owner_registry")
+      .select("owner_id, owner_tag, discord_user_id");
+
+    let matched: { owner_id: string; owner_tag: string } | null = null;
+    for (const row of registryRows || []) {
+      const tag = normalizeTag(row.owner_tag || "");
+      if (!tag || !tags.includes(tag)) continue;
+      const existing = String(row.discord_user_id || "").trim();
+      if (existing && existing !== discordUserId) continue; // taken by someone else
+      matched = {
+        owner_id: String(row.owner_id),
+        owner_tag: String(row.owner_tag || ""),
+      };
+      break;
+    }
+
+    if (matched?.owner_id) {
+      const matchedRow = (registryRows || []).find(
+        (r: { owner_id: string; discord_user_id?: string | null }) =>
+          String(r.owner_id) === matched!.owner_id
+      ) as { discord_user_id?: string | null } | undefined;
+      const existing = String(matchedRow?.discord_user_id || "").trim();
+      if (opts.auto_link !== false && !existing) {
+        const { error: linkErr } = await admin
+          .from("gpsl_owner_registry")
+          .update({ discord_user_id: discordUserId })
+          .eq("owner_id", matched.owner_id);
+        if (linkErr) {
+          const { data: again } = await admin
+            .from("gpsl_owner_registry")
+            .select("owner_id")
+            .eq("discord_user_id", discordUserId)
+            .maybeSingle();
+          if (!again?.owner_id) {
+            return { error: `auto_link_failed: ${linkErr.message}` };
+          }
+        }
+      }
+      return {
+        discord_user_id: discordUserId,
+        tier: (await ownerHasClub(admin, matched.owner_id)) ? "owner" : "member",
+        linked_owner_id: matched.owner_id,
+      };
+    }
+
+    // Clubs.owner text match when registry tag missing/mismatched
+    const { data: clubRows } = await admin
+      .from("Clubs")
+      .select("ShortName, owner, owner_id, is_archived");
+    for (const row of clubRows || []) {
+      if (row.is_archived === true) continue;
+      const short = String(row.ShortName || "").trim();
+      if (!short || short.toUpperCase() === "FOREIGN") continue;
+      const clubTag = normalizeTag(row.owner || "");
+      if (!clubTag || !tags.includes(clubTag) || !row.owner_id) continue;
+      const oid = String(row.owner_id);
+      if (opts.auto_link !== false) {
+        const { data: regForClub } = await admin
+          .from("gpsl_owner_registry")
+          .select("discord_user_id")
+          .eq("owner_id", oid)
+          .maybeSingle();
+        if (!String(regForClub?.discord_user_id || "").trim()) {
+          await admin
+            .from("gpsl_owner_registry")
+            .update({ discord_user_id: discordUserId })
+            .eq("owner_id", oid);
+        }
+      }
+      return {
+        discord_user_id: discordUserId,
+        tier: "owner",
+        linked_owner_id: oid,
+      };
+    }
   }
 
   // Site visitor or Discord-only → Visitor
@@ -440,20 +559,15 @@ Deno.serve(async (req) => {
 
     if (action === "sync_guild") {
       // Walk Discord guild members and apply Owner / Member / Visitor.
-      // Needed so Discord-only people get Visitor (sync_linked never sees them).
-      if (!isAdminJwt) {
-        return jsonResponse(
-          { error: "sync_guild requires admin JWT" },
-          403
-        );
-      }
-
+      // Allows feed key / service role / admin JWT (needed for SQL catch-up).
+      // Also tag-matches unlinked GPSL registry rows and writes discord_user_id.
       const limitRaw = Number(body.limit);
       const limit = Math.min(
-        Math.max(Number.isFinite(limitRaw) ? limitRaw : 80, 1),
-        150
+        Math.max(Number.isFinite(limitRaw) ? limitRaw : 100, 1),
+        isAdminJwt ? 200 : 100
       );
       const after = String(body.after || "").trim() || null;
+      const autoLink = body.auto_link !== false;
 
       const url = new URL(`${DISCORD_API}/guilds/${guildId}/members`);
       url.searchParams.set("limit", String(Math.min(limit, 1000)));
@@ -476,14 +590,23 @@ Deno.serve(async (req) => {
       }
 
       const batch = (await listRes.json()) as Array<{
-        user?: { id?: string; bot?: boolean };
+        nick?: string | null;
+        user?: {
+          id?: string;
+          bot?: boolean;
+          username?: string;
+          global_name?: string | null;
+          discriminator?: string;
+        };
       }>;
       if (!Array.isArray(batch)) {
         return jsonResponse({ error: "Unexpected Discord members payload" }, 500);
       }
 
-      const results: SyncResult[] = [];
+      const results: Array<SyncResult & { linked_owner_id?: string | null }> =
+        [];
       let lastId: string | null = null;
+      let linked = 0;
 
       for (const m of batch) {
         const uid = m.user?.id ? String(m.user.id) : "";
@@ -491,7 +614,11 @@ Deno.serve(async (req) => {
         lastId = uid;
         if (m.user?.bot) continue;
 
-        const resolved = await resolveTier(admin, { discord_user_id: uid });
+        const resolved = await resolveTier(admin, {
+          discord_user_id: uid,
+          lookup_tags: memberLookupTags(m),
+          auto_link: autoLink,
+        });
         if ("error" in resolved) {
           results.push({
             discord_user_id: uid,
@@ -502,15 +629,15 @@ Deno.serve(async (req) => {
           });
           continue;
         }
-        results.push(
-          await syncDiscordUser(
-            botToken,
-            guildId,
-            resolved.discord_user_id,
-            resolved.tier,
-            roles
-          )
+        if (resolved.linked_owner_id) linked += 1;
+        const sync = await syncDiscordUser(
+          botToken,
+          guildId,
+          resolved.discord_user_id,
+          resolved.tier,
+          roles
         );
+        results.push({ ...sync, linked_owner_id: resolved.linked_owner_id || null });
       }
 
       const errors = results.filter((r) => r.error).length;
@@ -524,6 +651,7 @@ Deno.serve(async (req) => {
         action: "sync_guild",
         scanned: results.length,
         changed,
+        linked,
         errors,
         next_after: done ? null : lastId,
         done,
