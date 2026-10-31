@@ -394,6 +394,31 @@
       font-family: monospace;
       font-size: 16px;
     }
+
+    .mgdb-handpick-col {
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    button.handpick-btn {
+      background: transparent;
+      border: none;
+      color: #666;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+
+    button.handpick-btn.handpick-on {
+      color: #7dcf7d;
+    }
+
+    #myHandpickMgrFilterBtn.is-active {
+      background: #3d3200;
+      border-color: var(--gpsl-accent, #ff9900);
+      color: var(--gpsl-accent-hover, #ffcc66);
+    }
   </style>
 </head>
 <body>
@@ -404,9 +429,13 @@
 
   <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:12px;">
     <p id="statusNote" style="margin:0;"></p>
-    <div id="draftCountdownContainer" class="draft-timer" style="flex-direction:column; align-items:flex-end;">
-      <span id="draftCountdown"></span>
-      <div id="draftLocalStart" style="font-size:12px; color:#ccc; margin-top:2px; white-space:pre-line; line-height:1.4;"></div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+      <button id="myHandpickMgrFilterBtn" class="button" type="button" hidden title="Show only the free-agent manager you temp-tagged for handpick">☑ My handpick manager</button>
+      <a id="handpickSquadLink" href="handpick_squad.html" class="button" style="text-decoration:none;display:none;" title="Open handpick wishlist">Handpick wishlist →</a>
+      <div id="draftCountdownContainer" class="draft-timer" style="flex-direction:column; align-items:flex-end;">
+        <span id="draftCountdown"></span>
+        <div id="draftLocalStart" style="font-size:12px; color:#ccc; margin-top:2px; white-space:pre-line; line-height:1.4;"></div>
+      </div>
     </div>
   </div>
   <p id="mgdbError" hidden></p>
@@ -456,6 +485,6 @@
   </div>
 
   <script type="module" src="global.js?v=20261002-light-mode"></script>
-  <script type="module" src="mgdb.js?v=20261009-poll30"></script>
+  <script type="module" src="mgdb.js?v=20261031-handpick-mgr"></script>
 </body>
 </html>

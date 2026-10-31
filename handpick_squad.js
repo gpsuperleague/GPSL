@@ -4,8 +4,9 @@ import { gpdbPlayerUrl } from "./player_links.js";
 import {
   loadHandpickBasketState,
   setHandpickBasketPlayer,
+  setHandpickManager,
   clearHandpickBasket,
-} from "./handpick_basket.js?v=20261031-handpick-tag";
+} from "./handpick_basket.js?v=20261031-mgr-tag";
 import {
   MIN_GOALKEEPERS,
   MIN_HOME_GROWN,
@@ -100,7 +101,7 @@ function wireUi() {
     pickedManager = null;
     renderBasket();
     renderManager();
-    setPageStatus("Basket cleared.");
+    setPageStatus("Basket and manager tag cleared.");
   });
   document.getElementById("clubSelect")?.addEventListener("change", async () => {
     activeClub = document.getElementById("clubSelect")?.value || "";
@@ -233,6 +234,13 @@ async function loadContext() {
     gpdb.href = "GPDB.html";
     gpdb.textContent = "Open GPDB — handpick / temp-tag players";
   }
+  const mgdbHref = activeClub
+    ? `MGDB.html?club=${encodeURIComponent(activeClub)}`
+    : "MGDB.html";
+  const mgdb = document.getElementById("mgdbLink");
+  if (mgdb) mgdb.href = mgdbHref;
+  const mgdbInline = document.getElementById("mgdbLinkInline");
+  if (mgdbInline) mgdbInline.href = mgdbHref;
 
   // Keep URL in sync so refresh / share keeps the chosen club
   if (activeClub && clubFromUrl() !== activeClub) {
@@ -433,9 +441,44 @@ async function hydrateBasketFromDb() {
         contract_wage: p.contract_wage,
       });
     }
+    if (hp.manager?.manager_id != null && !hp.manager.contracted_club) {
+      pickedManager = {
+        manager_id: hp.manager.manager_id,
+        manager_name: hp.manager.manager_name,
+        rating: hp.manager.rating,
+        nation: hp.manager.nation,
+        market_value: hp.manager.market_value,
+      };
+    } else {
+      pickedManager = null;
+    }
   } catch (err) {
     console.warn("hydrateBasketFromDb", err);
   }
+}
+
+async function persistPickedManager(rowOrNull) {
+  const club = activeClub;
+  if (!club) return;
+  if (!rowOrNull) {
+    if (pickedManager?.manager_id != null) {
+      await setHandpickManager(supabase, pickedManager.manager_id, false, club);
+    }
+    pickedManager = null;
+    return;
+  }
+  const res = await setHandpickManager(
+    supabase,
+    rowOrNull.manager_id,
+    true,
+    club
+  );
+  if (!res?.ok) {
+    setPageStatus(res?.detail || res?.reason || "Could not tag manager", true);
+    return false;
+  }
+  pickedManager = rowOrNull;
+  return true;
 }
 
 function fillNations(list, home) {
@@ -559,11 +602,16 @@ async function runManagerSearch() {
   </tbody></table>`;
 
   box.querySelectorAll(".mgr-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
       const row = rows.find((r) => String(r.manager_id) === id);
       if (!row) return;
-      pickedManager = row;
+      btn.disabled = true;
+      const ok = await persistPickedManager(row);
+      if (ok === false) {
+        btn.disabled = false;
+        return;
+      }
       renderManager();
       renderBasket();
       runManagerSearch();
@@ -584,8 +632,8 @@ function renderManager() {
     formatMoney(Number(pickedManager.market_value) || 0)
   )}
     <button type="button" class="button" id="clearMgrBtn" style="margin-left:8px;">Clear</button>`;
-  document.getElementById("clearMgrBtn")?.addEventListener("click", () => {
-    pickedManager = null;
+  document.getElementById("clearMgrBtn")?.addEventListener("click", async () => {
+    await persistPickedManager(null);
     renderManager();
     renderBasket();
   });

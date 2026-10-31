@@ -86,18 +86,22 @@
       <div class="card" style="border-color:#665522;background:#1a1810;">
         <h2 style="margin-bottom:8px;">How to handpick</h2>
         <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#ddd;">
-          Open <b style="color:#e8c84a;">GPDB</b> while signed in as the club owner.
-          You’ll see a <b>Handpick</b> column — click ☐ to temp-tag free agents onto your wishlist.
-          Then return here to review the basket and <b>Submit for approval</b>.
+          Open <b style="color:#e8c84a;">GPDB</b> / <b style="color:#e8c84a;">MGDB</b> while signed in as the club owner.
+          Use the <b>Handpick</b> column — click ☐ to temp-tag free-agent players and one manager onto your wishlist.
+          Then return here to review and <b>Submit for approval</b>.
         </p>
-        <p style="margin:0;">
+        <p style="margin:0;display:flex;flex-wrap:wrap;gap:10px;">
           <a id="gpdbLink" class="button" href="GPDB.html" target="_blank" rel="noopener"
              style="display:inline-block;background:#c9a227;color:#111;font-weight:700;text-decoration:none;padding:10px 16px;">
-            Open GPDB — handpick / temp-tag players
+            Open GPDB — tag players
+          </a>
+          <a id="mgdbLink" class="button" href="MGDB.html" target="_blank" rel="noopener"
+             style="display:inline-block;background:#3a6ea5;color:#fff;font-weight:700;text-decoration:none;padding:10px 16px;">
+            Open MGDB — tag manager
           </a>
         </p>
         <p class="hint" style="margin-top:10px;">
-          Temp tags are <b>not</b> contracts — players stay free agents until admin approves. Must be logged in (not anonymous Discord browse).
+          Temp tags are <b>not</b> contracts — stay free agents until admin approves. Must be logged in (not anonymous Discord browse).
         </p>
       </div>
 
@@ -139,6 +143,11 @@
 
           <div class="card">
             <h2>Manager (optional)</h2>
+            <p class="hint" style="margin:0 0 10px;">
+              Scout in
+              <a id="mgdbLinkInline" href="MGDB.html" target="_blank" rel="noopener" style="color:#e8c84a;">MGDB</a>
+              (Handpick ☐) or search here. One manager at a time.
+            </p>
             <div class="search-row">
               <label>
                 Name or ID
@@ -189,6 +198,6 @@
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261031-ooo-star"></script>
+  <script type="module" src="handpick_squad.js?v=20261031-mgdb-tag"></script>
 </body>
 </html>

@@ -17,6 +17,11 @@ import {
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 import { installRangeSteppers } from "./range_filter_steppers.js?v=20260811-step-pairs";
+import {
+  loadHandpickBasketState,
+  setHandpickManager,
+  handpickTagChar,
+} from "./handpick_basket.js?v=20261031-mgr-tag";
 
 const TABLE_COLUMNS = [
   { key: "name", label: "Manager" },
@@ -24,6 +29,7 @@ const TABLE_COLUMNS = [
   { key: "expectancy", label: "Expectation" },
   { key: "impact", label: "Player boost" },
   { key: "draft_action", label: "Draft" },
+  { key: "handpick", label: "Handpick" },
   { key: "contracted_display", label: "Contracted Club" },
   { key: "nation", label: "Nation" },
   { key: "possession", label: "Possession" },
@@ -64,6 +70,26 @@ let viewerClubHasManager = false;
 let viewerSackedManagerIds = new Set();
 let multiFilterClickWired = false;
 let impactChart = new Map();
+/** Handpick intake club (owner club or ?club= for admin). */
+let HANDPICK_CLUB = null;
+let HANDPICK_INTAKE = false;
+let HANDPICK_MANAGER_ID = null;
+let HANDPICK_MGR_ONLY = false;
+let CURRENT_USER = null;
+
+function clubFromUrl() {
+  return String(new URLSearchParams(window.location.search).get("club") || "")
+    .trim()
+    .toUpperCase();
+}
+
+function isManagerFreeAgent(row) {
+  return (
+    !row?.contracted_club ||
+    !String(row.contracted_club).trim() ||
+    String(row.contracted_display) === "FREE AGENT"
+  );
+}
 
 const IMPACT_MIN_PROFICIENCY = 73;
 const IMPACT_MAX_PROFICIENCY = 89;
@@ -186,23 +212,40 @@ async function loadImpactChart() {
   renderImpactPanel();
 }
 
+function visibleTableColumns() {
+  return TABLE_COLUMNS.filter(
+    (col) => col.key !== "handpick" || (CURRENT_USER && HANDPICK_INTAKE)
+  );
+}
+
 function buildTableHead() {
   const head = document.getElementById("tableHead");
   if (!head) return;
-  head.innerHTML = `<tr>${TABLE_COLUMNS.map((col) => {
+  head.innerHTML = `<tr>${visibleTableColumns().map((col) => {
     const sortClass =
       CURRENT_SORT_COLUMN === col.key
         ? CURRENT_SORT_DIR === "asc"
           ? "sort-asc"
           : "sort-desc"
         : "";
-    return `<th data-col="${col.key}" class="${sortClass}">${col.label}</th>`;
+    const extra = col.key === "handpick" ? " mgdb-handpick-col" : "";
+    return `<th data-col="${col.key}" class="${sortClass}${extra}"${
+      col.key === "handpick"
+        ? ' title="Temp mid-season handpick tag — free agent until admin approves"'
+        : ""
+    }>${col.label}</th>`;
   }).join("")}</tr>`;
 
   head.querySelectorAll("th").forEach((th) => {
     th.addEventListener("click", () => {
       const col = th.dataset.col;
-      if (col === "expectancy" || col === "impact" || col === "draft_action") return;
+      if (
+        col === "expectancy" ||
+        col === "impact" ||
+        col === "draft_action" ||
+        col === "handpick"
+      )
+        return;
       if (CURRENT_SORT_COLUMN === col) {
         CURRENT_SORT_DIR = CURRENT_SORT_DIR === "asc" ? "desc" : "asc";
       } else {
@@ -261,11 +304,12 @@ function applyFilters(rows) {
   }
 
   if (FREE_AGENTS_ONLY) {
+    filtered = filtered.filter((r) => isManagerFreeAgent(r));
+  }
+
+  if (HANDPICK_MGR_ONLY && HANDPICK_INTAKE && HANDPICK_MANAGER_ID != null) {
     filtered = filtered.filter(
-      (r) =>
-        !r.contracted_club ||
-        !String(r.contracted_club).trim() ||
-        String(r.contracted_display) === "FREE AGENT"
+      (r) => Number(r.id) === Number(HANDPICK_MANAGER_ID)
     );
   }
 
@@ -286,10 +330,9 @@ function renderPage() {
 
   body.innerHTML = pageRows
     .map((row) => {
-      const cells = TABLE_COLUMNS.map((col) => {
+      const cells = visibleTableColumns().map((col) => {
         if (col.key === "draft_action") {
-          const isFa =
-            !row.contracted_club || String(row.contracted_display) === "FREE AGENT";
+          const isFa = isManagerFreeAgent(row);
           const phaseOpts = getDraftPhaseOptions();
           const now = getUKNow();
           const phase = draftStartTime
@@ -320,6 +363,25 @@ function renderPage() {
           }
           return `<td><a href="manager_draftauction.html" style="color:var(--gpsl-accent, #ff9900);font-size:11px;">Auction</a></td>`;
         }
+        if (col.key === "handpick") {
+          if (!CURRENT_USER || !HANDPICK_INTAKE) {
+            return `<td class="mgdb-handpick-col">—</td>`;
+          }
+          const isFa = isManagerFreeAgent(row);
+          const tagged =
+            HANDPICK_MANAGER_ID != null &&
+            Number(row.id) === Number(HANDPICK_MANAGER_ID);
+          if (!isFa) {
+            return `<td class="mgdb-handpick-col" title="Handpick tags are for free-agent managers only"><span style="color:#555;">—</span></td>`;
+          }
+          return `<td class="mgdb-handpick-col"><button type="button" class="handpick-btn${
+            tagged ? " handpick-on" : ""
+          }" data-manager-id="${row.id}" title="${
+            tagged
+              ? "On your handpick wishlist — click to untag"
+              : "Temp-tag as handpick manager (replaces any previous tag)"
+          }">${handpickTagChar(tagged)}</button></td>`;
+        }
         let val = row[col.key];
         if (col.key === "contracted_display") val = displayClub(val);
         if (col.key === "market_value") {
@@ -343,6 +405,36 @@ function renderPage() {
       return `<tr>${cells}</tr>`;
     })
     .join("");
+
+  body.querySelectorAll(".handpick-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!CURRENT_USER || !HANDPICK_INTAKE) return;
+      const mid = Number(btn.getAttribute("data-manager-id"));
+      if (!Number.isFinite(mid)) return;
+      const wasTagged =
+        HANDPICK_MANAGER_ID != null && Number(HANDPICK_MANAGER_ID) === mid;
+      btn.disabled = true;
+      const res = await setHandpickManager(
+        supabase,
+        mid,
+        !wasTagged,
+        HANDPICK_CLUB
+      );
+      btn.disabled = false;
+      if (!res?.ok) {
+        window.alert(
+          res?.detail ||
+            res?.reason ||
+            "Could not update handpick manager tag."
+        );
+        return;
+      }
+      HANDPICK_MANAGER_ID = res.tagged ? mid : null;
+      if (HANDPICK_MGR_ONLY && !HANDPICK_MANAGER_ID) HANDPICK_MGR_ONLY = false;
+      syncHandpickUi();
+      renderPage();
+    });
+  });
 
   const pagination = document.getElementById("pagination");
   if (pagination) {
@@ -368,10 +460,55 @@ function renderPage() {
   buildTableHead();
 }
 
+function syncHandpickUi() {
+  const hpBtn = document.getElementById("myHandpickMgrFilterBtn");
+  if (hpBtn) {
+    hpBtn.hidden = !HANDPICK_INTAKE;
+    hpBtn.classList.toggle("is-active", HANDPICK_MGR_ONLY);
+    if (!HANDPICK_INTAKE) HANDPICK_MGR_ONLY = false;
+  }
+  const hpLink = document.getElementById("handpickSquadLink");
+  if (hpLink) {
+    hpLink.style.display = HANDPICK_INTAKE ? "inline-block" : "none";
+    if (HANDPICK_CLUB) {
+      hpLink.href = `handpick_squad.html?club=${encodeURIComponent(HANDPICK_CLUB)}`;
+    } else {
+      hpLink.href = "handpick_squad.html";
+    }
+  }
+}
+
+async function loadHandpickState() {
+  HANDPICK_INTAKE = false;
+  HANDPICK_MANAGER_ID = null;
+  HANDPICK_CLUB = null;
+  if (!CURRENT_USER) {
+    syncHandpickUi();
+    return;
+  }
+  const urlClub = clubFromUrl();
+  try {
+    const hp = await loadHandpickBasketState(
+      supabase,
+      urlClub || viewerClubShort || null
+    );
+    HANDPICK_INTAKE = !!hp.handpickIntake;
+    HANDPICK_CLUB = hp.club || urlClub || viewerClubShort || null;
+    HANDPICK_MANAGER_ID =
+      hp.managerId != null && Number.isFinite(Number(hp.managerId))
+        ? Number(hp.managerId)
+        : null;
+  } catch (err) {
+    console.warn("MGDB handpick:", err);
+  }
+  syncHandpickUi();
+}
+
 async function loadViewerClub() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  CURRENT_USER = user || null;
   if (!user) return;
 
   const { data: club } = await supabase
@@ -835,8 +972,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   buildTableHead();
   await loadViewerClub();
+  await loadHandpickState();
   await loadImpactChart();
   await loadManagers();
+
+  document.getElementById("myHandpickMgrFilterBtn")?.addEventListener("click", () => {
+    if (!CURRENT_USER || !HANDPICK_INTAKE) return;
+    HANDPICK_MGR_ONLY = !HANDPICK_MGR_ONLY;
+    syncHandpickUi();
+    CURRENT_PAGE = 1;
+    renderPage();
+  });
 
   if (managerDraftOn && draftStartTime) {
     const pollDraftState = async () => {
