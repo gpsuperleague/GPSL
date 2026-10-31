@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Handpick squad — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    body { background:#111; color:#ddd; margin:0; }
+    .hp-wrap { max-width:1200px; margin:0 auto; padding:16px 18px 40px; }
+    .form-grid { display:grid; gap:12px; max-width:720px; }
+    .form-grid label { display:block; font-size:13px; color:#bbb; }
+    .form-grid select, .form-grid input[type="text"], .search-row select, .search-row input {
+      width:100%; max-width:720px; padding:8px; margin-top:4px;
+      background:#111; border:1px solid #444; color:#ddd; border-radius:4px;
+    }
+    .hint { font-size:12px; color:#888; margin-top:4px; line-height:1.45; }
+    .search-row { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
+    .search-row > label { flex:1 1 180px; }
+    .build-layout {
+      display:grid; gap:14px;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      align-items:start;
+    }
+    @media (max-width: 980px) { .build-layout { grid-template-columns: 1fr; } }
+    .basket, .results, .pending-box {
+      margin-top:12px; border:1px solid #333; border-radius:6px;
+      background:#161616; max-height:420px; overflow:auto;
+    }
+    table.sign-table { width:100%; border-collapse:collapse; font-size:12px; }
+    table.sign-table th, table.sign-table td {
+      padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left;
+    }
+    table.sign-table th { color:#ff9900; position:sticky; top:0; background:#161616; z-index:1; }
+    table.sign-table .num { text-align:right; font-variant-numeric:tabular-nums; }
+    .actions { margin-top:14px; display:flex; flex-wrap:wrap; gap:10px; }
+    .totals, .manager-box, .gate-box {
+      margin-top:12px; padding:10px 12px; background:#1a1a1a; border:1px solid #333;
+      border-radius:6px; font-size:13px; line-height:1.5;
+    }
+    .totals b, .manager-box b { color:#ffcc66; }
+    .empty { color:#888; padding:12px; font-size:13px; }
+    .gate-box.warn { border-color:#864; color:#eca; }
+    .gate-box.ok { border-color:#364; color:#bdb; }
+    .card { margin-top:14px; padding:14px; border:1px solid #333; border-radius:8px; background:#141414; }
+    .card h2 { margin:0 0 10px; font-size:16px; color:#ff9900; }
+    .status-line { margin-top:10px; font-size:13px; }
+    .status-line.err { color:#f88; }
+    .status-line.ok { color:#8fd18f; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="hp-wrap">
+    <h1 style="color:#ff9900;font-size:22px;margin:8px 0 6px;">Handpick squad</h1>
+    <p class="hint">
+      Mid-season rebuild: pick free agents (+ optional manager), submit for admin approval at market value.
+      Admins turn Handpick on/off from the Season owner board (releases squad to FA, clears manager, sets rebuild cash — other clubs’ ledgers untouched).
+    </p>
+
+    <div id="gateBox" class="gate-box">Loading…</div>
+
+    <div id="handpickApp" hidden>
+      <div class="card">
+        <h2>Club</h2>
+        <div class="form-grid">
+          <label id="clubSelectWrap" hidden>
+            Club
+            <select id="clubSelect"><option value="">—</option></select>
+          </label>
+          <p id="clubMeta" class="hint"></p>
+        </div>
+        <div id="managerPicked" class="manager-box" hidden></div>
+      </div>
+
+      <div class="build-layout">
+        <div>
+          <div class="card">
+            <h2>Find free agents</h2>
+            <div class="search-row">
+              <label>
+                Nation
+                <select id="nationSelect"><option value="">Any nation</option></select>
+              </label>
+              <label>
+                Name or Konami ID
+                <input type="text" id="searchQ" placeholder="e.g. Vinicius / 12345" autocomplete="off">
+              </label>
+              <button type="button" id="searchBtn" class="button">Search</button>
+            </div>
+            <div id="searchResults" class="results"><p class="empty">Search free agents to add to your wishlist.</p></div>
+          </div>
+
+          <div class="card">
+            <h2>Manager (optional)</h2>
+            <div class="search-row">
+              <label>
+                Name or ID
+                <input type="text" id="mgrSearchQ" placeholder="e.g. Guardiola" autocomplete="off">
+              </label>
+              <button type="button" id="mgrSearchBtn" class="button">Search managers</button>
+            </div>
+            <div id="mgrResults" class="results"><p class="empty">Optional — pick one free-agent manager.</p></div>
+          </div>
+
+          <div class="card">
+            <h2>Wishlist basket</h2>
+            <div id="basketBox" class="basket"><p class="empty">No players selected yet.</p></div>
+            <div id="totalsBox" class="totals" hidden></div>
+            <div class="actions">
+              <button type="button" id="submitBtn" class="button" style="background:#446633;">Submit for approval</button>
+              <button type="button" id="clearBtn" class="button">Clear basket</button>
+            </div>
+            <div id="pageStatus" class="status-line"></div>
+            <pre id="resultBox" class="hint" style="white-space:pre-wrap;margin-top:10px;"></pre>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h2>Submissions</h2>
+            <div id="pendingBox" class="pending-box"><p class="empty">No submissions yet.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>const CURRENT_PAGE = "handpick_squad";</script>
+  <script type="module" src="handpick_squad.js?v=20261030-handpick1"></script>
+</body>
+</html>

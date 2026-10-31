@@ -302,6 +302,13 @@ export const NAV_SECTIONS = [
         navIcon: "transfer_market",
       },
       {
+        href: "handpick_squad.html",
+        label: "Handpick Squad",
+        page: "handpick_squad",
+        indent: true,
+        navIcon: "player_database",
+      },
+      {
         href: "draftauction.html",
         label: "Player Draft Auctions",
         page: "draftauction",

@@ -2057,7 +2057,7 @@ async function loadWaitingListAdmin() {
   if (!tableWrap) return;
 
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
-  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes] =
+  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes, handpickRes] =
     await Promise.all([
       supabase.rpc("waiting_list_admin"),
       fetchOwnerActivityById(),
@@ -2065,7 +2065,12 @@ async function loadWaitingListAdmin() {
       supabase.rpc("admin_owner_supporter_map"),
       supabase.rpc("admin_supporter_payments_map", { p_year: supporterPayYear }),
       supabase.rpc("admin_owner_board_fine_forecast"),
+      supabase.rpc("admin_handpick_intake_map"),
     ]);
+  window.__wlHandpickMap =
+    handpickRes.error || !handpickRes.data || typeof handpickRes.data !== "object"
+      ? {}
+      : handpickRes.data;
   const supporterMap =
     supporterRes.error || !supporterRes.data || typeof supporterRes.data !== "object"
       ? {}
@@ -2427,6 +2432,22 @@ async function runWlRowAction(action, { ownerId, email, tag, club, s1Status, s1R
     });
     return;
   }
+  if (action === "handpick_on") {
+    await setClubHandpickIntake(club, true, label);
+    return;
+  }
+  if (action === "handpick_off") {
+    await setClubHandpickIntake(club, false, label);
+    return;
+  }
+  if (action === "handpick_open") {
+    if (!club) {
+      setWlActionStatus("No club on this row for handpick.", false);
+      return;
+    }
+    window.location.assign(`handpick_squad.html?club=${encodeURIComponent(club)}`);
+    return;
+  }
   if (action === "to_waiting") {
     // From owners section: remove club + enqueue waiting
     if (club) {
@@ -2455,6 +2476,66 @@ async function runWlRowAction(action, { ownerId, email, tag, club, s1Status, s1R
       button: select,
     });
   }
+}
+
+async function setClubHandpickIntake(club, enabled, label) {
+  const short = String(club || "").trim();
+  if (!short) {
+    setWlActionStatus("No club on this row for handpick.", false);
+    return;
+  }
+  if (enabled) {
+    const ok = confirm(
+      `Turn Handpick ON for ${label || short}?\n\n` +
+        `This will:\n` +
+        `• Release the whole squad to free agents (no fees paid to this club)\n` +
+        `• Clear the manager (no MV payout)\n` +
+        `• Set cash to the default rebuild pot via one Central Bank adjustment\n\n` +
+        `Other clubs’ past deals and ledgers are NOT reversed.\n` +
+        `Takeover inherit is unchanged — this is intake only.`
+    );
+    if (!ok) return;
+  } else {
+    const ok = confirm(
+      `Turn Handpick OFF for ${label || short}?\n\n` +
+        `Pending wishlists are rejected. Squad/cash are left as they are.`
+    );
+    if (!ok) return;
+  }
+
+  setWlActionStatus(enabled ? "Enabling handpick (reset)…" : "Turning handpick off…");
+  const { data, error } = await supabase.rpc("admin_club_handpick_set", {
+    p_club_short_name: short,
+    p_enabled: !!enabled,
+    p_confirm_reset: !!enabled,
+  });
+
+  if (error) {
+    const hint = /admin_club_handpick_set|schema cache|Could not find/i.test(error.message)
+      ? " — run club_handpick_intake_20261030.sql"
+      : "";
+    setWlActionStatus(`❌ ${error.message}${hint}`, false);
+    return;
+  }
+  if (!data?.ok) {
+    setWlActionStatus(
+      `❌ ${data?.detail || data?.reason || "Handpick update failed"}`,
+      false
+    );
+    return;
+  }
+
+  if (enabled && data.action === "enabled") {
+    setWlActionStatus(
+      `✅ Handpick ON · ${data.club} · released ${data.players_released ?? 0} · cash → ${data.target_balance}`,
+      true
+    );
+  } else if (enabled && data.already_on) {
+    setWlActionStatus(`ℹ️ ${data.club} already in handpick (no re-reset)`, true);
+  } else {
+    setWlActionStatus(`✅ Handpick OFF · ${data.club || short}`, true);
+  }
+  await loadWaitingListAdmin();
 }
 
 let wlAssignClubPending = null;
@@ -3267,6 +3348,21 @@ function renderWaitingListAdminRow(
         <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
         <option value="s1_decline_dm">Mark S1 declined (DM)</option>
         ${s1ExpireOption}`;
+  const clubShortRaw = String(row.club_short_name || act.club_short_name || "").trim();
+  const clubShort = clubShortRaw.toUpperCase();
+  const hpMap = window.__wlHandpickMap || {};
+  const handpickOn = !!(
+    hpMap[clubShortRaw] ||
+    hpMap[clubShort] ||
+    Object.keys(hpMap).some((k) => String(k).toUpperCase() === clubShort)
+  );
+  const handpickOptions =
+    section === "owners" || hasClub
+      ? handpickOn
+        ? `<option value="handpick_off">Handpick OFF</option>
+        <option value="handpick_open">Open handpick page…</option>`
+        : `<option value="handpick_on">Handpick ON (reset club)…</option>`
+      : "";
   const actionSelect =
     section === "owners" || hasClub
       ? `<select class="wl-row-action" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}" data-club="${escapeWl(row.club_short_name || "")}" data-s1-status="${escapeWl(s1Status)}" data-s1-response="${escapeWl(s1Response)}" aria-label="Actions">
@@ -3274,6 +3370,7 @@ function renderWaitingListAdminRow(
         <option value="invite_season1">${s1InviteLabel}</option>
         <option value="invite_season1_mass">${s1MassLabel}</option>
         ${s1DmOptions}
+        ${handpickOptions}
         <option value="remove_club">Remove club → on break</option>
         <option value="to_waiting">→ Waiting</option>
       </select>`
@@ -3287,12 +3384,15 @@ function renderWaitingListAdminRow(
         <option value="absence_off">Clear absence</option>
         <option value="remove_waiting">Remove → archived</option>
       </select>`;
+  const handpickMark = handpickOn
+    ? `<span class="tag" style="margin-left:6px;border-color:#3a6;color:#9d9;" title="Handpick intake open">Handpick</span>`
+    : "";
 
   return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" data-filter-text="${escapeWl(filterText)}">
     <td class="wl-col-owner num">${overallIndex ?? "—"}</td>
     <td class="num wl-pos">${pos ?? "—"}</td>
     ${dragCell}
-        <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${season1TagMarkHtml(row)}</td>
+        <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${season1TagMarkHtml(row)}${handpickMark}</td>
         <td>${escapeWl(email)}</td>
     <td>${escapeWl(hasClub ? "—" : row.tier || "—")}</td>
     <td>${escapeWl(status)}</td>
