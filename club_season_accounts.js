@@ -4,7 +4,7 @@ import {
   aggregateLedgerByLine,
   enrichLedgerFineFixtures,
   renderFinanceSections,
-} from "./finance_ui.js?v=20261028-interest-months";
+} from "./finance_ui.js?v=20261031-takeover-fee-line";
 
 /**
  * Published season accounts on club.html. A season appears once Close Finances

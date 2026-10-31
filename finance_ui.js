@@ -40,6 +40,7 @@ export const LEDGER_TYPE_TO_LINE = {
   commercial_merchandise: "commercial_merchandise",
   infra_maintenance: "infra_maintenance",
   infra_purchase: "infra_purchase",
+  club_takeover_fee: "club_takeover_fee",
   infra_expansion: "infra_expansion",
   infra_expansion_refund: "infra_expansion",
   infra_expansion_penalty: "infra_expansion",
@@ -204,9 +205,15 @@ export const FINANCE_UI_SECTIONS = [
       },
       {
         id: "infra_purchase",
-        label: "Infrastructure purchases",
+        label: "Stadium purchase",
         types: ["infra_purchase"],
-        note: "Stadium purchase at club assignment — capacity × ₿1,000 (club auction win or admin assign).",
+        note: "Stadium at club assignment / auction — capacity × stadium rate (club auction win or admin assign).",
+      },
+      {
+        id: "club_takeover_fee",
+        label: "Club takeover Fee",
+        types: ["club_takeover_fee"],
+        note: "Mid-season vacant-club takeover — same amount as stadium purchase; buying the club from the previous owners. Season history kept.",
       },
       {
         id: "infra_expansion",
@@ -697,12 +704,18 @@ function ledgerBreakdownLabel(row) {
     }
     return financeEntryLabel(type);
   }
+  if (type === "club_takeover_fee" || isClubTakeoverFeeRow(row)) {
+    const desc = String(row.description || "").trim();
+    if (/^Club takeover Fee/i.test(desc)) return "Club takeover Fee";
+    return "Club takeover Fee";
+  }
   if (type === "infra_purchase") {
     const md = parseMetadata(row.metadata);
     if (md.stadium_name) return String(md.stadium_name);
     const desc = String(row.description || "");
     const fromDesc = desc.match(/Stadium purchase — (.+?)(?:\s*\(|$)/i);
     if (fromDesc?.[1]) return fromDesc[1].trim();
+    if (/^Club auction/i.test(desc)) return "Stadium (club auction)";
     if (row.club_name) return String(row.club_name);
   }
   // Fines & compensation: compact per-entry labels (not one collapsed line)
@@ -722,6 +735,18 @@ function parseMetadata(raw) {
   }
 }
 
+function isClubTakeoverFeeRow(row) {
+  const type = row?.entry_type || "";
+  if (type === "club_takeover_fee") return true;
+  if (type !== "infra_purchase") return false;
+  const meta = parseMetadata(row?.metadata);
+  if (meta.kind === "club_takeover_fee") return true;
+  if (meta.source === "handpick_mid_season_takeover" && meta.kind === "club_takeover_fee") {
+    return true;
+  }
+  return /^Club takeover Fee/i.test(String(row?.description || ""));
+}
+
 export function aggregateLedgerByLine(rows) {
   /** @type {Map<string, { amount: number, detail: Record<string, number> }>} */
   const byLine = new Map();
@@ -736,6 +761,9 @@ export function aggregateLedgerByLine(rows) {
     const amt = Number(r.amount || 0);
     const meta = parseMetadata(r.metadata);
     let lineId = LEDGER_TYPE_TO_LINE[type];
+    if (isClubTakeoverFeeRow(r)) {
+      lineId = "club_takeover_fee";
+    }
     if (
       type === "transfer_purchase" &&
       (meta.kind === "manager" || meta.manager_draft === true || meta.manager_draft === "true")

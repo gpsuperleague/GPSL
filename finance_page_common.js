@@ -12,13 +12,13 @@ import {
   loadFinanceLedgerAll,
   financeEntryLabel,
   isFinanceIncomeEntry,
-} from "./competition.js?v=20261029-infra-synth";
+} from "./competition.js?v=20261031-takeover-fee-line";
 import {
   aggregateLedgerByLine,
   enrichLedgerFineFixtures,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20261028-interest-months";
+} from "./finance_ui.js?v=20261031-takeover-fee-line";
 import { buildFinanceProjections } from "./finance_projections.js?v=20261014-ff-wage";
 import {
   appendAssignmentInfraPurchaseLedger,
