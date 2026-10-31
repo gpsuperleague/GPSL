@@ -1,5 +1,6 @@
 import { initGlobal, supabase } from "./global.js";
 import { formatMoney } from "./competition.js";
+import { gpdbPlayerUrl } from "./player_links.js";
 
 /** @type {Map<string, object>} */
 const basket = new Map();
@@ -11,6 +12,14 @@ let clubContext = null;
 let isAdmin = false;
 /** @type {string} */
 let activeClub = "";
+/** @type {string} */
+let activeClubName = "";
+
+function clubFromUrl() {
+  return String(new URLSearchParams(window.location.search).get("club") || "")
+    .trim()
+    .toUpperCase();
+}
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -79,6 +88,7 @@ function wireUi() {
 async function boot() {
   const gate = document.getElementById("gateBox");
   const app = document.getElementById("handpickApp");
+  const qClub = clubFromUrl();
 
   // Probe admin via map RPC (admin-only); owners get an error — that's fine.
   const mapRes = await supabase.rpc("admin_handpick_intake_map");
@@ -87,13 +97,18 @@ async function boot() {
   if (isAdmin) {
     document.getElementById("clubSelectWrap").hidden = false;
     await loadAdminClubs(mapRes.data || {});
-    const params = new URLSearchParams(window.location.search);
-    const qClub = (params.get("club") || "").toUpperCase();
     const sel = document.getElementById("clubSelect");
     if (qClub && [...sel.options].some((o) => o.value === qClub)) {
       sel.value = qClub;
+    } else if (qClub) {
+      // Claimed club may be the only option of interest — keep URL club even if map lag
+      const opt = document.createElement("option");
+      opt.value = qClub;
+      opt.textContent = `${qClub} (from link)`;
+      sel.appendChild(opt);
+      sel.value = qClub;
     }
-    activeClub = sel?.value || "";
+    activeClub = sel?.value || qClub || "";
     if (!activeClub) {
       gate.className = "gate-box warn";
       gate.textContent =
@@ -102,7 +117,8 @@ async function boot() {
       return;
     }
   } else {
-    activeClub = "";
+    // Owner: prefer ?club= from claim redirect, else RPC resolves my_club
+    activeClub = qClub || "";
   }
 
   await loadContext();
@@ -150,12 +166,42 @@ async function loadContext() {
   clubContext = data;
   isAdmin = !!data?.is_admin;
   activeClub = String(data?.club || club || "").toUpperCase();
+  activeClubName = String(data?.club_name || "").trim();
 
   if (!data?.ok) {
     gate.className = "gate-box warn";
     gate.textContent = data?.reason || "Could not load club.";
     app.hidden = true;
     return;
+  }
+
+  if (!activeClubName && activeClub) {
+    const { data: clubRow } = await supabase
+      .from("Clubs")
+      .select("Club, ShortName")
+      .eq("ShortName", activeClub)
+      .maybeSingle();
+    activeClubName = String(clubRow?.Club || "").trim();
+  }
+
+  const clubLabel = activeClubName
+    ? `${activeClubName} (${activeClub})`
+    : activeClub || "—";
+
+  const titleEl = document.getElementById("clubTitle");
+  if (titleEl) titleEl.textContent = clubLabel;
+
+  const gpdb = document.getElementById("gpdbLink");
+  if (gpdb) {
+    gpdb.href = "GPDB.html";
+    gpdb.textContent = "Player Database (GPDB)";
+  }
+
+  // Keep URL in sync so refresh / share keeps the chosen club
+  if (activeClub && clubFromUrl() !== activeClub) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("club", activeClub);
+    window.history.replaceState({}, "", url);
   }
 
   if (!data.handpick_intake && !isAdmin) {
@@ -168,10 +214,10 @@ async function loadContext() {
 
   if (!data.handpick_intake && isAdmin) {
     gate.className = "gate-box warn";
-    gate.innerHTML = `Club <b>${escapeHtml(activeClub)}</b> is not in handpick intake. Enable it on the Season owner board before approving wishlists.`;
+    gate.innerHTML = `Club <b>${escapeHtml(clubLabel)}</b> is not in handpick intake. Enable it on the Season owner board before approving wishlists.`;
   } else {
     gate.className = "gate-box ok";
-    gate.innerHTML = `Handpick open for <b>${escapeHtml(activeClub)}</b> · rebuild pot ${escapeHtml(
+    gate.innerHTML = `Handpick open for <b>${escapeHtml(clubLabel)}</b> · rebuild pot ${escapeHtml(
       formatMoney(Number(data.target_balance) || 0)
     )} · balance ${escapeHtml(formatMoney(Number(data.balance) || 0))} · tax ${escapeHtml(
       String(data.income_tax_pct ?? 0)
@@ -232,8 +278,11 @@ async function runPlayerSearch() {
     .map((r) => {
       const id = String(r.player_id || "");
       const inBasket = basket.has(id);
+      const gpdbHref = gpdbPlayerUrl(id);
       return `<tr>
-        <td>${escapeHtml(r.player_name)}</td>
+        <td><a href="${escapeHtml(gpdbHref)}" target="_blank" rel="noopener" style="color:#e8c84a;">${escapeHtml(
+          r.player_name
+        )}</a></td>
         <td>${escapeHtml(r.position || "—")}</td>
         <td>${escapeHtml(r.nation || "—")}</td>
         <td class="num">${r.rating ?? "—"}</td>
@@ -361,7 +410,9 @@ function renderBasket() {
           const id = String(r.player_id);
           const mv = Number(r.market_value) || 0;
           return `<tr>
-            <td>${escapeHtml(r.player_name)}</td>
+            <td><a href="${escapeHtml(gpdbPlayerUrl(id))}" target="_blank" rel="noopener" style="color:#e8c84a;">${escapeHtml(
+              r.player_name
+            )}</a></td>
             <td>${escapeHtml(r.position || "—")}</td>
             <td class="num">${r.rating ?? "—"}</td>
             <td class="num">${escapeHtml(formatMoney(mv))}</td>

@@ -66,11 +66,17 @@
       <div class="card">
         <h2>Club</h2>
         <div class="form-grid">
+          <p id="clubTitle" style="margin:0;font-size:18px;color:#ffcc66;font-weight:600;">—</p>
           <label id="clubSelectWrap" hidden>
-            Club
+            Switch club (admin)
             <select id="clubSelect"><option value="">—</option></select>
           </label>
           <p id="clubMeta" class="hint"></p>
+          <p class="hint" style="margin-top:8px;">
+            Browse / research in
+            <a id="gpdbLink" href="GPDB.html" target="_blank" rel="noopener" style="color:#e8c84a;">Player Database (GPDB)</a>
+            — players stay free agents until admin approves your wishlist (no mid-pick club tag).
+          </p>
         </div>
         <div id="managerPicked" class="manager-box" hidden></div>
       </div>
@@ -128,6 +134,6 @@
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261030-handpick1"></script>
+  <script type="module" src="handpick_squad.js?v=20261031-club-gpdb"></script>
 </body>
 </html>
