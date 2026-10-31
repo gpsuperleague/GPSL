@@ -18,6 +18,7 @@ export async function initMemberHomePage() {
     if (self?.is_archived || archived) {
       main.hidden = true;
       archivedCard.hidden = false;
+      wireRejoinWaitingList(!!self?.has_club);
       return;
     }
 
@@ -50,6 +51,69 @@ export async function initMemberHomePage() {
   } catch (err) {
     console.error(err);
   }
+}
+
+function wireRejoinWaitingList(hasClub) {
+  const btn = document.getElementById("mhRejoinWaitingBtn");
+  const status = document.getElementById("mhRejoinStatus");
+  if (!btn) return;
+
+  if (hasClub) {
+    btn.disabled = true;
+    btn.title = "You still have a club linked — contact admin";
+    if (status) {
+      status.hidden = false;
+      status.className = "mh-status err";
+      status.textContent =
+        "Your account still has a club. Contact admin before rejoining the waiting list.";
+    }
+    return;
+  }
+
+  btn.addEventListener("click", async () => {
+    if (
+      !confirm(
+        "Rejoin the owner waiting list?\n\nYou’ll be added as a returning member and can take part in mid-season vacant club claims or the next club auction."
+      )
+    ) {
+      return;
+    }
+    btn.disabled = true;
+    if (status) {
+      status.hidden = false;
+      status.className = "mh-status";
+      status.textContent = "Rejoining waiting list…";
+    }
+
+    const { data, error } = await supabase.rpc(
+      "waiting_list_self_unarchive_to_list"
+    );
+
+    if (error) {
+      btn.disabled = false;
+      if (status) {
+        status.className = "mh-status err";
+        status.textContent = error.message;
+      }
+      return;
+    }
+
+    if (!data?.ok) {
+      btn.disabled = false;
+      if (status) {
+        status.className = "mh-status err";
+        status.textContent =
+          data?.detail || data?.reason || "Could not rejoin waiting list.";
+      }
+      return;
+    }
+
+    if (status) {
+      status.className = "mh-status";
+      status.textContent = "You’re back on the waiting list — redirecting…";
+    }
+    window.location.assign(data.redirect || "waiting_list.html");
+  });
 }
 
 function escapeHtml(s) {
