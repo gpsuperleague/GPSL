@@ -890,7 +890,13 @@ function renderSubmissionCards(rows, { adminLayout }) {
         .join("<br>");
 
       if (adminLayout && s.status === "pending") {
-        return `<article class="hp-approve-card" data-sub-id="${s.id}">
+        const ids = (Array.isArray(s.player_ids) ? s.player_ids : players.map((p) => p.player_id))
+          .map((x) => String(x || "").trim())
+          .filter(Boolean);
+        return `<article class="hp-approve-card" data-sub-id="${s.id}"
+          data-club="${escapeHtml(s.club_short_name || "")}"
+          data-manager-id="${s.manager_id != null ? escapeHtml(String(s.manager_id)) : ""}"
+          data-player-ids="${escapeHtml(ids.join(","))}">
           <div class="hp-approve-head">
             <div>
               <p class="hp-approve-title">${escapeHtml(s.club_name || s.club_short_name)} (${escapeHtml(
@@ -921,6 +927,11 @@ function renderSubmissionCards(rows, { adminLayout }) {
                 : "—"
             }</b></span>
             <span>Est. total <b>${escapeHtml(formatMoney(fees + mgrFee + tax))}</b></span>
+          </div>
+          <div id="subProgress${s.id}" class="hp-sign-progress" hidden>
+            <div id="subProgressLabel${s.id}">Preparing…</div>
+            <div class="hp-bar"><i id="subProgressBar${s.id}"></i></div>
+            <pre class="hp-log" id="subProgressLog${s.id}"></pre>
           </div>
           <details open>
             <summary style="cursor:pointer;color:#9ab;font-size:13px;margin-bottom:6px;">
@@ -1013,38 +1024,254 @@ async function loadSubmissions() {
   }
 }
 
+const SIGN_BATCH_SIZE = 5;
+
+function chunkIds(ids, size) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size));
+  return out;
+}
+
+function setApproveProgress(id, { pct, label, logLine, show = true }) {
+  const wrap = document.getElementById(`subProgress${id}`);
+  const bar = document.getElementById(`subProgressBar${id}`);
+  const lab = document.getElementById(`subProgressLabel${id}`);
+  const log = document.getElementById(`subProgressLog${id}`);
+  if (wrap) wrap.hidden = !show;
+  if (lab && label != null) lab.textContent = label;
+  if (bar && pct != null) bar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  if (log && logLine) {
+    log.textContent = `${log.textContent ? `${log.textContent}\n` : ""}${logLine}`;
+    log.scrollTop = log.scrollHeight;
+  }
+}
+
+function formatSignSummary(signParts, mgr) {
+  const signed = [];
+  const skipped = [];
+  let fees = 0;
+  let tax = 0;
+  for (const part of signParts) {
+    for (const p of part?.signed || []) {
+      signed.push(p);
+      fees += Number(p.market_value) || 0;
+      tax += Number(p.est_income_tax) || 0;
+    }
+    for (const p of part?.skipped || []) skipped.push(p);
+  }
+  const lines = [
+    `Signed ${signed.length} player(s) · skipped ${skipped.length}`,
+    `Fees ${formatMoney(fees)} + tax ${formatMoney(tax)} = ${formatMoney(fees + tax)}`,
+  ];
+  if (mgr?.ok === false) {
+    lines.push(`Manager failed: ${mgr.error || mgr.reason || "unknown"}`);
+  } else if (mgr?.manager_id || mgr?.ok) {
+    lines.push(
+      mgr?.dry_run
+        ? `Manager preview fee ${formatMoney(mgr.est_fee)}`
+        : `Manager assigned`
+    );
+  }
+  if (skipped.length) {
+    lines.push(
+      "Skipped: " +
+        skipped
+          .slice(0, 12)
+          .map((p) => `${p.player_name || p.player_id} (${p.reason})`)
+          .join("; ") +
+        (skipped.length > 12 ? "…" : "")
+    );
+  }
+  return { lines: lines.join("\n"), signedCount: signed.length, skippedCount: skipped.length };
+}
+
 async function approveSubmission(id, dryRun) {
+  const card = document.querySelector(`[data-sub-id="${id}"]`);
+  const out = document.getElementById(`subOut${id}`);
+  const club =
+    card?.getAttribute("data-club") ||
+    activeClub ||
+    "";
+  const playerIds = String(card?.getAttribute("data-player-ids") || "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
   if (
     !dryRun &&
-    !confirm(`Approve submission #${id} and sign at market value?\n\nThis spends club cash.`)
+    !confirm(
+      `Approve submission #${id} and sign at market value?\n\n${playerIds.length} player(s)` +
+        (card?.getAttribute("data-manager-id") ? " + manager" : "") +
+        `\nThis spends club cash.`
+    )
   ) {
     return;
   }
-  setPageStatus(dryRun ? "Previewing…" : "Approving…");
-  const { data, error } = await supabase.rpc("admin_handpick_approve_submission", {
-    p_submission_id: id,
-    p_dry_run: dryRun,
+
+  card?.querySelectorAll("button").forEach((b) => {
+    b.disabled = true;
   });
-  const out = document.getElementById(`subOut${id}`);
-  if (error) {
-    setPageStatus(error.message, true);
-    if (out) out.textContent = error.message;
+
+  // Preview: single dry-run RPC (fast)
+  if (dryRun) {
+    setPageStatus("Previewing…");
+    setApproveProgress(id, {
+      show: true,
+      pct: 15,
+      label: "Running dry-run preview…",
+      logLine: "Preview (no cash spent)…",
+    });
+    const { data, error } = await supabase.rpc("admin_handpick_approve_submission", {
+      p_submission_id: id,
+      p_dry_run: true,
+    });
+    if (error) {
+      setPageStatus(error.message, true);
+      setApproveProgress(id, { pct: 100, label: "Preview failed", logLine: error.message });
+      card?.querySelectorAll("button").forEach((b) => {
+        b.disabled = false;
+      });
+      return;
+    }
+    const players = data?.players || {};
+    setApproveProgress(id, {
+      pct: 100,
+      label: `Preview: would sign ${players.signed_count ?? 0}, skip ${players.skipped_count ?? 0}`,
+      logLine: JSON.stringify(
+        {
+          signed_count: players.signed_count,
+          skipped_count: players.skipped_count,
+          fees_total: players.fees_total,
+          est_income_tax_total: players.est_income_tax_total,
+          manager: data?.manager,
+        },
+        null,
+        2
+      ),
+    });
+    if (out) out.textContent = "";
+    setPageStatus(
+      `Preview #${id}: would sign ${players.signed_count ?? "?"} · skip ${players.skipped_count ?? 0}`,
+      !data?.ok
+    );
+    card?.querySelectorAll("button").forEach((b) => {
+      b.disabled = false;
+    });
     return;
   }
-  if (out) out.textContent = JSON.stringify(data, null, 2);
-  setPageStatus(
-    dryRun
-      ? `Preview #${id}: would sign ${data?.players?.signed_count ?? "?"} player(s).`
-      : `Approved #${id}.`,
-    !data?.ok
+
+  // Live approve: sign in batches (same as admin Sign FA) so progress is visible
+  setPageStatus("Signing wishlist…");
+  const batches = playerIds.length ? chunkIds(playerIds, SIGN_BATCH_SIZE) : [];
+  const signParts = [];
+  const totalSteps = Math.max(1, batches.length + 1); // + finalize/manager
+  let step = 0;
+
+  setApproveProgress(id, {
+    show: true,
+    pct: 0,
+    label: `Signing ${playerIds.length} player(s) in ${batches.length || 1} batch(es)…`,
+    logLine: `Club ${club} · ${playerIds.length} players`,
+  });
+  if (out) out.textContent = "";
+
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    step += 1;
+    setApproveProgress(id, {
+      pct: Math.round((step / totalSteps) * 90),
+      label: `Signing batch ${i + 1}/${batches.length} (${batch.length} player(s))…`,
+      logLine: `Batch ${i + 1}: ${batch.join(", ")}`,
+    });
+    const { data, error } = await supabase.rpc("admin_sign_free_agents_at_mv", {
+      p_club_short_name: club,
+      p_player_ids: batch,
+      p_dry_run: false,
+    });
+    if (error) {
+      setApproveProgress(id, {
+        pct: 100,
+        label: `Stopped on batch ${i + 1}: ${error.message}`,
+        logLine: error.message,
+      });
+      setPageStatus(error.message, true);
+      card?.querySelectorAll("button").forEach((b) => {
+        b.disabled = false;
+      });
+      return;
+    }
+    if (!data?.ok) {
+      setApproveProgress(id, {
+        pct: 100,
+        label: `Batch ${i + 1} failed: ${data?.reason || "sign_failed"}`,
+        logLine: JSON.stringify(data, null, 2),
+      });
+      setPageStatus(data?.reason || "Sign batch failed", true);
+      card?.querySelectorAll("button").forEach((b) => {
+        b.disabled = false;
+      });
+      return;
+    }
+    signParts.push(data);
+    const names = (data.signed || []).map((p) => p.player_name).filter(Boolean);
+    setApproveProgress(id, {
+      logLine: `  ✓ signed ${data.signed_count || 0}${
+        names.length ? `: ${names.join(", ")}` : ""
+      }${data.skipped_count ? ` · skipped ${data.skipped_count}` : ""}`,
+    });
+  }
+
+  setApproveProgress(id, {
+    pct: 92,
+    label: "Finalising submission (manager + mark approved)…",
+    logLine: "Calling admin_handpick_approve_submission…",
+  });
+  const { data: finalData, error: finalErr } = await supabase.rpc(
+    "admin_handpick_approve_submission",
+    {
+      p_submission_id: id,
+      p_dry_run: false,
+    }
   );
-  if (!dryRun && data?.ok) {
+  if (finalErr) {
+    setApproveProgress(id, {
+      pct: 100,
+      label: `Players may be signed, but finalise failed: ${finalErr.message}`,
+      logLine: finalErr.message,
+    });
+    setPageStatus(finalErr.message, true);
+    card?.querySelectorAll("button").forEach((b) => {
+      b.disabled = false;
+    });
+    return;
+  }
+
+  // Prefer batch sign counts; finalize may report skips for already-signed
+  const summary = formatSignSummary(
+    signParts.length ? signParts : [finalData?.players].filter(Boolean),
+    finalData?.manager
+  );
+  setApproveProgress(id, {
+    pct: 100,
+    label: finalData?.ok
+      ? `Done — ${summary.signedCount} signed, ${summary.skippedCount} skipped`
+      : `Finished with errors: ${finalData?.reason || "unknown"}`,
+    logLine: summary.lines,
+  });
+  setPageStatus(
+    finalData?.ok
+      ? `Approved #${id}: signed ${summary.signedCount}, skipped ${summary.skippedCount}.`
+      : finalData?.reason || "Approve failed",
+    !finalData?.ok
+  );
+
+  if (finalData?.ok) {
     await loadContext();
     await loadSubmissions();
-  } else if (dryRun) {
-    /* keep preview JSON on card */
   } else {
-    await loadSubmissions();
+    card?.querySelectorAll("button").forEach((b) => {
+      b.disabled = false;
+    });
   }
 }
 
