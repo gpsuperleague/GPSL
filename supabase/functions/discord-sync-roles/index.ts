@@ -166,6 +166,35 @@ async function syncDiscordUser(
       // 204 No Content = success; 404 role/member missing
       if (put.ok || put.status === 204) {
         result.added.push(roleId);
+        // First-time Visitor → welcome pack DM (idempotent edge)
+        if (roles.visitor && roleId === roles.visitor && tier === "visitor") {
+          try {
+            const welcomeUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/discord-welcome-pack`;
+            const feedKey =
+              Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
+              Deno.env.get("CRON_API_KEY") ||
+              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
+              "";
+            if (feedKey) {
+              await fetch(welcomeUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${feedKey}`,
+                  "x-discord-feed-key": feedKey,
+                },
+                body: JSON.stringify({
+                  action: "welcome_one",
+                  discord_user_id: discordUserId,
+                  assign_visitor: false,
+                  source: "discord-sync-roles",
+                }),
+              });
+            }
+          } catch {
+            /* non-fatal */
+          }
+        }
       } else if (put.status !== 404) {
         result.error = `add_${roleId}_${put.status}: ${put.text.slice(0, 160)}`;
         return result;

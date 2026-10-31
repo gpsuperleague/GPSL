@@ -164,8 +164,59 @@ const client = new Client({
   partials: [Partials.Channel, Partials.Message],
 });
 
+const welcomeUrl =
+  process.env.DISCORD_WELCOME_URL ||
+  `${supabaseUrl}/functions/v1/discord-welcome-pack`;
+
+async function sendWelcomePack(discordUserId, displayName) {
+  try {
+    const res = await fetch(welcomeUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${invokeKey}`,
+        "x-discord-welcome-key": invokeKey,
+        "x-discord-feed-key": invokeKey,
+      },
+      body: JSON.stringify({
+        action: "on_join",
+        discord_user_id: discordUserId,
+        assign_visitor: true,
+        source: "match_videos_bot",
+        display_name: displayName || null,
+      }),
+    });
+    const text = await res.text();
+    let json = null;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      json = { raw: text };
+    }
+    if (!res.ok) console.error("welcome failed", res.status, json);
+    else console.log("welcome", discordUserId, json?.skipped || json?.ok);
+  } catch (err) {
+    console.error("welcome error", err);
+  }
+}
+
 client.once("ready", () => {
   console.log(`GPSL match-videos bot ready as ${client.user?.tag}`);
+});
+
+client.on("guildMemberAdd", async (member) => {
+  try {
+    if (member.user?.bot) return;
+    if (member.guild?.id !== guildId) return;
+    const name =
+      member.displayName ||
+      member.user?.globalName ||
+      member.user?.username ||
+      member.id;
+    await sendWelcomePack(member.id, name);
+  } catch (err) {
+    console.error("guildMemberAdd error", err);
+  }
 });
 
 client.on("messageCreate", async (message) => {

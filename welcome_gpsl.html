@@ -45,13 +45,6 @@
       font-size: 12px; background: #111; border: 1px solid #333;
       border-radius: 4px; padding: 2px 6px; color: #ccc;
     }
-    textarea {
-      width: 100%; box-sizing: border-box; min-height: 160px;
-      margin-top: 8px; padding: 10px; border-radius: 6px;
-      border: 1px solid #444; background: #111; color: #ddd;
-      font-family: ui-monospace, Consolas, monospace; font-size: 12px; line-height: 1.4;
-    }
-    #copyStatus { font-size: 12px; color: #9d9; margin-top: 6px; min-height: 1.2em; }
   </style>
 </head>
 <body>
@@ -63,22 +56,31 @@
     </p>
 
     <div class="card">
-      <h2>1. Two ways in</h2>
-      <ol>
+      <h2>1. Ways in</h2>
+      <ol type="a">
         <li>
           <b>Just browsing?</b> Sign in as a Visitor with Discord — tables, cups, auctions and
           the transfer market (read only).
         </li>
         <li>
-          <b>Want a club?</b> Apply to join the league — creates your GPSL account and puts you
-          on the waiting list (ordered by Discord join date). Admin invites you to a club auction when a slot opens.
+          <b>Want a club (draft / pre-season)?</b> Apply to join the league — creates your GPSL account
+          and puts you on the waiting list (by Discord join date). When a slot opens, admin invites you
+          to the <a href="club_auction.html">club draft auction</a>.
+        </li>
+        <li>
+          <b>Want a club mid-season?</b> Still apply the same way (waiting list). While the season is
+          underway (outside the main draft window), admin may assign you a <b>free club</b>. You then
+          <a href="handpick_squad.html">handpick your squad</a> and <b>submit for approval</b> — not an auction bid.
         </li>
       </ol>
       <div class="btn-row">
         <a class="btn" href="join_gpsl.html">Apply to join the league</a>
         <a class="btn secondary" href="login.html">Login / Visitor sign-in</a>
       </div>
-      <p class="meta">You must already be in the GPSL Discord server for either path.</p>
+      <p class="meta">
+        Discord server members only. Paths <b>b</b> and <b>c</b> both start with Apply — what happens next
+        depends on whether the league is in draft/pre-season or mid-season.
+      </p>
     </div>
 
     <div class="card">
@@ -87,7 +89,8 @@
         <li>You’ll land on the <a href="waiting_list.html">waiting list</a>.</li>
         <li>Fill in <a href="awaiting_club.html">owner details</a> (tag, timezone, availability).</li>
         <li>Read the <a href="learning_gpsl.html">handbook</a> — especially The Waiting Room.</li>
-        <li>When invited, bid in the <a href="club_auction.html">club draft auction</a>.</li>
+        <li><b>Draft / pre-season:</b> when invited, bid in the <a href="club_auction.html">club draft auction</a>.</li>
+        <li><b>Mid-season:</b> when assigned a free club, open <a href="handpick_squad.html">Handpick squad</a>, build your wishlist, and submit for admin approval.</li>
       </ul>
       <p class="meta">No need to DM for a place on the list — the apply button does that.</p>
     </div>
@@ -101,41 +104,6 @@
       </ul>
     </div>
 
-    <div class="card">
-      <h2>Pin this in Discord (welcome channel)</h2>
-      <p>Copy and paste into your welcome / rules channel:</p>
-      <textarea id="discordWelcome" readonly>Welcome to GPSL 👋
-
-**Just watching?**
-→ https://gpsuperleague.github.io/GPSL/login.html
-Use **Visitor — sign in with Discord** (read-only site access).
-
-**Want to manage a club?**
-→ https://gpsuperleague.github.io/GPSL/join_gpsl.html
-**Apply to join the league** — creates your account and puts you on the waiting list (by Discord join date). No need to message admin for that.
-
-**Then**
-1. Waiting list + owner details on the site
-2. Handbook: https://gpsuperleague.github.io/GPSL/learning_gpsl.html
-3. Admin invites you to a club auction when a slot opens
-
-Full welcome pack: https://gpsuperleague.github.io/GPSL/welcome_gpsl.html</textarea>
-      <button type="button" class="btn secondary" id="copyBtn">Copy Discord welcome text</button>
-      <div id="copyStatus"></div>
-    </div>
   </div>
-  <script>
-    document.getElementById("copyBtn")?.addEventListener("click", async () => {
-      const text = document.getElementById("discordWelcome")?.value || "";
-      const status = document.getElementById("copyStatus");
-      try {
-        await navigator.clipboard.writeText(text);
-        if (status) status.textContent = "Copied — paste into Discord.";
-      } catch {
-        document.getElementById("discordWelcome")?.select();
-        if (status) status.textContent = "Select the text and copy (Ctrl+C).";
-      }
-    });
-  </script>
 </body>
 </html>

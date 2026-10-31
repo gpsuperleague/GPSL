@@ -49,3 +49,6 @@ verify_jwt = false
 # Auth checked inside (admin/mod JWT / feed invoke key / service_role).
 [functions.discord-sync-roles]
 verify_jwt = false
+
+[functions.discord-welcome-pack]
+verify_jwt = false
