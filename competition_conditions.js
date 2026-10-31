@@ -212,6 +212,50 @@ export function formatMatchConditions(fixture) {
   return parts.length ? parts.join(" · ") : fixture.weather || "—";
 }
 
+/** Plain weather · pitch for wire / checklist meta (no icons). */
+export function formatWeatherPitchPlain(fixture) {
+  if (!fixture) return "";
+  const parts = [];
+  if (fixture.weather) parts.push(formatWeatherLabel(fixture.weather));
+  if (fixture.pitch_condition) parts.push(formatPitchLabel(fixture.pitch_condition));
+  return parts.join(" · ");
+}
+
+/**
+ * Batch-load home/away + weather/pitch for checklist & Club Wire.
+ * @param {import("@supabase/supabase-js").SupabaseClient} client
+ * @param {Array<number|string>} fixtureIds
+ * @returns {Promise<Map<number, object>>}
+ */
+export async function fetchFixturesHomeWeatherMeta(client, fixtureIds) {
+  const ids = [
+    ...new Set(
+      (fixtureIds || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    ),
+  ];
+  const out = new Map();
+  if (!client || !ids.length) return out;
+
+  const { data, error } = await client
+    .from("competition_fixtures_public")
+    .select(
+      "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, weather, pitch_condition, kit_season"
+    )
+    .in("id", ids);
+
+  if (error) {
+    console.warn("fetchFixturesHomeWeatherMeta:", error.message);
+    return out;
+  }
+
+  for (const row of data || []) {
+    out.set(Number(row.id), row);
+  }
+  return out;
+}
+
 /** Fixtures table: kit text + weather/pitch icons. */
 export function formatMatchConditionsHtml(fixture) {
   if (!fixture) return "—";

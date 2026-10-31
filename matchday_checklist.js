@@ -5,6 +5,33 @@
 
 import { supabase } from "./global.js";
 import { fullClubName } from "./clubs_lookup.js";
+import {
+  fetchFixturesHomeWeatherMeta,
+  formatMatchConditionsHtml,
+} from "./competition_conditions.js";
+
+async function enrichChecklistFixturesWithHomeWeather(data, arrange) {
+  const fx = Array.isArray(data?.fixtures) ? data.fixtures : [];
+  const arr = Array.isArray(arrange?.fixtures) ? arrange.fixtures : [];
+  const ids = [...fx, ...arr].map((r) => r.fixture_id);
+  const meta = await fetchFixturesHomeWeatherMeta(supabase, ids);
+  if (!meta.size) return;
+
+  const merge = (row) => {
+    const m = meta.get(Number(row.fixture_id));
+    if (!m) return row;
+    return {
+      ...row,
+      home_club_short_name: m.home_club_short_name || row.home_club_short_name,
+      away_club_short_name: m.away_club_short_name || row.away_club_short_name,
+      weather: m.weather ?? row.weather ?? null,
+      pitch_condition: m.pitch_condition ?? row.pitch_condition ?? null,
+    };
+  };
+
+  if (data?.fixtures) data.fixtures = fx.map(merge);
+  if (arrange?.fixtures) arrange.fixtures = arr.map(merge);
+}
 
 const REFRESH_MS = 120_000;
 const TICK_MS = 30_000;
@@ -222,9 +249,47 @@ async function onRecTick(box) {
   render();
 }
 
+function resolveHomeAway(fx, myClub) {
+  const home =
+    fx.home_club_short_name ||
+    (fx.side === "home" ? myClub || lastData?.club_short_name : fx.opponent_short_name);
+  const away =
+    fx.away_club_short_name ||
+    (fx.side === "home" ? fx.opponent_short_name : myClub || lastData?.club_short_name);
+  return {
+    home: home ? String(home).toUpperCase() : "",
+    away: away ? String(away).toUpperCase() : "",
+  };
+}
+
+function fixtureMatchupHtml(fx, href) {
+  const { home, away } = resolveHomeAway(fx);
+  const homeLabel = escapeHtml(clubLabel(home));
+  const awayLabel = escapeHtml(clubLabel(away));
+  const line = home && away
+    ? `<span class="mc-fx-home" title="Home team">${homeLabel}</span> <span class="mc-fx-sep">vs</span> ${awayLabel}`
+    : `${fx.side === "home" ? "vs" : "@"} ${escapeHtml(clubLabel(fx.opponent_short_name))}`;
+  return `<a class="mc-fx-vs" href="${href}">${line}</a>`;
+}
+
+function fixtureMetaHtml(fx) {
+  const { home } = resolveHomeAway(fx);
+  const homeBit = home
+    ? `<span class="mc-fx-meta-home">Home: <b>${escapeHtml(clubLabel(home))}</b></span>`
+    : "";
+  const wxHtml = fx.weather || fx.pitch_condition
+    ? `<span class="mc-fx-meta-wx">${formatMatchConditionsHtml({
+        weather: fx.weather,
+        pitch_condition: fx.pitch_condition,
+        kit_season: null,
+      })}</span>`
+    : "";
+  if (!homeBit && !wxHtml) return "";
+  return `<div class="mc-fx-meta">${homeBit}${homeBit && wxHtml ? `<span class="mc-fx-meta-sep">·</span>` : ""}${wxHtml}</div>`;
+}
+
 function renderFixture(fx) {
   const fid = Number(fx.fixture_id);
-  const vs = `${fx.side === "home" ? "vs" : "@"} ${escapeHtml(clubLabel(fx.opponent_short_name))}`;
   const steps = Array.isArray(fx.steps) ? fx.steps : [];
   const next = fx.next_action;
   const nextDetail = next
@@ -250,9 +315,10 @@ function renderFixture(fx) {
     <div class="mc-fixture${fx.needs_you > 0 ? " mc-has-todo" : ""}" data-fixture-id="${fid}">
       <div class="mc-fx-head">
         <span class="mc-fx-comp">${escapeHtml(competitionShortLabel(fx))}</span>
-        <a class="mc-fx-vs" href="matchday.html?fixture=${fid}">${vs}</a>
+        ${fixtureMatchupHtml(fx, `matchday.html?fixture=${fid}`)}
         ${fx.agreed_kickoff_at ? `<span class="mc-fx-ko">${escapeHtml(formatUk(fx.agreed_kickoff_at))}</span>` : ""}
       </div>
+      ${fixtureMetaHtml(fx)}
       <div class="mc-steps">${steps.map(renderStepPill).join("")}</div>
       ${status}
       ${showFilename ? `<div class="mc-filename">Filename: <code>${escapeHtml(video.filename)}</code></div>` : ""}
@@ -273,7 +339,6 @@ function arrangeNeedsYou(a) {
 
 function renderArrangeRow(a) {
   const fid = Number(a.fixture_id);
-  const vs = `${a.side === "home" ? "vs" : "@"} ${escapeHtml(clubLabel(a.opponent_short_name))}`;
   const by = a.propose_by ? `${formatUk(a.propose_by)} UK (${relTime(a.propose_by)})` : "";
   const lateNow = a.late_fee_from && new Date(a.late_fee_from).getTime() <= Date.now();
   const replay = a.is_admin_replay === true;
@@ -309,9 +374,10 @@ function renderArrangeRow(a) {
     <div class="mc-fixture mc-arrange-row${arrangeNeedsYou(a) ? " mc-has-todo" : ""}">
       <div class="mc-fx-head">
         <span class="mc-fx-comp">${escapeHtml(competitionShortLabel(a))}</span>
-        <a class="mc-fx-vs" href="fixture_schedule.html?fixture=${fid}">${vs}</a>
+        ${fixtureMatchupHtml(a, `fixture_schedule.html?fixture=${fid}`)}
         <span class="mc-fx-ko">${replay ? "Replay · " : catchUp ? "Catch-up · " : ""}GPSL ${escapeHtml(monthName(a.gpsl_month))}</span>
       </div>
+      ${fixtureMetaHtml(a)}
       <div class="mc-next ${cls}"><b>${escapeHtml(label)}</b>${detail ? ` <span class="mc-next-detail">${escapeHtml(detail)}</span>` : ""}</div>
       ${action ? `<div class="mc-actions"><a class="mc-btn mc-btn-primary" href="fixture_schedule.html?fixture=${fid}">${action}</a></div>` : ""}
     </div>`;
@@ -469,6 +535,11 @@ export async function fetchUpcomingArrangements() {
 
 export async function refreshMatchdayChecklist() {
   [lastData, lastArrange] = await Promise.all([fetchMatchdayChecklist(), fetchUpcomingArrangements()]);
+  try {
+    await enrichChecklistFixturesWithHomeWeather(lastData, lastArrange);
+  } catch (err) {
+    console.warn("checklist home/weather enrich:", err);
+  }
   await loadRecTicks(lastData?.fixtures);
   render();
 }

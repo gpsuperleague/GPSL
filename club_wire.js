@@ -12,6 +12,10 @@ import {
   fullClubName,
   ownerTagForClub,
 } from "./clubs_lookup.js";
+import {
+  fetchFixturesHomeWeatherMeta,
+  formatWeatherPitchPlain,
+} from "./competition_conditions.js";
 
 const POLL_MS = 60000;
 
@@ -315,6 +319,36 @@ async function enrichCutoffsWithUnavailable(cutoffs, clubShort) {
   });
 }
 
+/** Attach home club + matchday weather/pitch onto fixture cutoffs. */
+async function enrichCutoffsWithHomeWeather(cutoffs) {
+  if (!cutoffs?.length) return cutoffs || [];
+  const ids = cutoffs.map((c) => c.fixture_id);
+  const meta = await fetchFixturesHomeWeatherMeta(supabase, ids);
+  if (!meta.size) return cutoffs;
+
+  return cutoffs.map((c) => {
+    if (c.fixture_id == null) return c;
+    const m = meta.get(Number(c.fixture_id));
+    if (!m) return c;
+    const homeShort = String(m.home_club_short_name || "").toUpperCase();
+    const homeName = fullClubName(homeShort) || homeShort;
+    const wx = formatWeatherPitchPlain(m);
+    const bits = [];
+    if (homeName) bits.push(`Home ${homeName}`);
+    if (wx) bits.push(wx);
+    if (!bits.length) return c;
+    const metaLine = bits.join(" · ");
+    const detail = c.detail ? `${c.detail} · ${metaLine}` : metaLine;
+    return {
+      ...c,
+      home_club_short_name: homeShort || c.home_club_short_name,
+      weather: m.weather ?? null,
+      pitch_condition: m.pitch_condition ?? null,
+      detail,
+    };
+  });
+}
+
 async function poll() {
   if (document.hidden) return;
   try {
@@ -341,6 +375,11 @@ async function poll() {
       cutoffs = await enrichCutoffsWithUnavailable(cutoffs, clubShort);
     } catch (err) {
       console.warn("club wire unavailable enrich:", err);
+    }
+    try {
+      cutoffs = await enrichCutoffsWithHomeWeather(cutoffs);
+    } catch (err) {
+      console.warn("club wire home/weather enrich:", err);
     }
     state = {
       count: Number(wireRes.data?.count) || 0,
