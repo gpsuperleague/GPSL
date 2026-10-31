@@ -17,7 +17,10 @@ import {
   isUnder21,
   isGoalkeeper,
 } from "./squad_rules.js";
-import { loadSquadDesignationsState } from "./squad_designations.js";
+import {
+  loadSquadDesignationsState,
+  playerEligibleOoo,
+} from "./squad_designations.js";
 import { loadWagePercentages, wageFromMarketValue } from "./wages.js";
 
 /** @type {Map<string, object>} */
@@ -451,37 +454,32 @@ function renderBuildPanel() {
 
   const oooSel = document.getElementById("plannedOooSelect");
   if (oooSel) {
-    const hgEligible = players.filter((p) => isHomeGrownPlayer(p, clubNation));
-    const byId = new Map(
-      players.map((p) => [String(p.Konami_ID || ""), p])
-    );
-    // Keep sticky OooO even if they are briefly off the HG list (e.g. untagged)
+    // OooO = home-grown for this club's nation AND star-rated (same as Squad / Scouting)
+    const oooEligible = players
+      .filter((p) => playerEligibleOoo(p, clubNation, starMin))
+      .sort((a, b) =>
+        String(a.Name || "").localeCompare(String(b.Name || ""), undefined, {
+          sensitivity: "base",
+        })
+      );
     if (
       plannedOooId &&
-      !hgEligible.some((p) => String(p.Konami_ID) === plannedOooId)
+      !oooEligible.some((p) => String(p.Konami_ID) === plannedOooId)
     ) {
-      const saved = byId.get(plannedOooId);
-      if (saved) hgEligible.unshift(saved);
-      else {
-        hgEligible.unshift({
-          Konami_ID: plannedOooId,
-          Name: `Saved OooO (${plannedOooId})`,
-          from_basket: false,
-          _stickyOrphan: true,
-        });
-      }
+      // Drop sticky pick if no longer a HG star in the projected squad
+      plannedOooId = "";
+      writeStickyOoo(activeClub, "");
     }
-    const opts = [`<option value="">— none yet —</option>`].concat(
-      hgEligible.map((p) => {
+    const emptyLabel = clubNation
+      ? `— none yet (need HG ★ ≥${starMin} · ${clubNation}) —`
+      : `— none yet (need HG ★ ≥${starMin}) —`;
+    const opts = [`<option value="">${escapeHtml(emptyLabel)}</option>`].concat(
+      oooEligible.map((p) => {
         const id = String(p.Konami_ID || "");
-        const mark = p._stickyOrphan
-          ? " (saved — re-tag HG to confirm)"
-          : p.from_basket
-            ? " (wishlist)"
-            : "";
+        const mark = p.from_basket ? " (wishlist)" : "";
         return `<option value="${escapeHtml(id)}"${
           id && id === plannedOooId ? " selected" : ""
-        }>${escapeHtml(p.Name || id)}${mark}</option>`;
+        }>${escapeHtml(p.Name || id)} (${escapeHtml(String(p.Rating ?? "—"))})${mark}</option>`;
       })
     );
     oooSel.innerHTML = opts.join("");

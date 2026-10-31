@@ -284,6 +284,12 @@ export const NAV_SECTIONS = [
     id: "transfers",
     label: "Transfers",
     items: [
+      {
+        href: "handpick_squad.html",
+        label: "Handpick Squad (rebuild)",
+        page: "handpick_squad",
+        navIcon: "player_database",
+      },
       { heading: true, label: "Players" },
       {
         href: "GPDB.html",
@@ -300,13 +306,6 @@ export const NAV_SECTIONS = [
         indent: true,
         listingNav: "player",
         navIcon: "transfer_market",
-      },
-      {
-        href: "handpick_squad.html",
-        label: "Handpick Squad (rebuild)",
-        page: "handpick_squad",
-        indent: true,
-        navIcon: "player_database",
       },
       {
         href: "draftauction.html",
