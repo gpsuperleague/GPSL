@@ -108,6 +108,39 @@
       color: #7dcf7d;
     }
 
+    .gpdb-reg-badges {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+    .gpdb-reg-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 3px;
+      border: 1px solid #444;
+      white-space: nowrap;
+    }
+    .gpdb-reg-badge-star {
+      color: #ffcc00;
+      background: #2a2200;
+      border-color: #886600;
+    }
+    .gpdb-reg-badge-hg {
+      color: var(--gpsl-accent, #ff9900);
+      background: #12202a;
+      border-color: #2a5570;
+    }
+    .gpdb-reg-badge-u21 {
+      color: #8d8;
+      background: #152215;
+      border-color: #3a5a3a;
+    }
+
     #myScoutedFilterBtn.is-active,
     #myHandpickFilterBtn.is-active,
     #finalYearFilterBtn.is-active,
@@ -1015,7 +1048,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js?v=20261002-light-mode"></script>
-  <script type="module" src="gpdb_v2.js?v=20261031-handpick-exp"></script>
+  <script type="module" src="gpdb_v2.js?v=20261031-reg-badges"></script>
   <script type="module">
     import { initGpdbAddPlayerRequest } from "./gpdb_add_player_request.js?v=20261001-legacy";
     initGpdbAddPlayerRequest();

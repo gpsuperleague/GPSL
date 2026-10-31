@@ -73,7 +73,13 @@ import {
 import {
   confirmSquadRulesBeforeBid,
   squadRulesBidWarningLines,
+  isHomeGrownPlayer,
+  isUnder21,
 } from "./squad_rules.js";
+import {
+  loadSquadDesignationsState,
+  playerEligibleStar,
+} from "./squad_designations.js";
 import {
   loadPlayerValueTables,
   calcPotentialForPlayer,
@@ -944,6 +950,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let MY_NATION = null;
   let MY_CLUB_NATION = null;
+  /** Star threshold for name badges (from club designations / default 79). */
+  let GPDB_STAR_MIN = 79;
+
+  /** ★ / HG / U21 next to name — same idea as Scouting targets. */
+  function gpdbPlayerRegBadgesHtml(player) {
+    if (!player) return "";
+    const clubNation =
+      MY_CLUB_NATION?.name ||
+      (CURRENT_USER_CLUB_SHORT
+        ? CLUB_NATION_MAP[CURRENT_USER_CLUB_SHORT] || ""
+        : "");
+    const bits = [];
+    if (playerEligibleStar(player, GPDB_STAR_MIN)) {
+      bits.push(
+        `<span class="gpdb-reg-badge gpdb-reg-badge-star" title="Star-rated (${GPDB_STAR_MIN}+)">★</span>`
+      );
+    }
+    if (clubNation && isHomeGrownPlayer(player, clubNation)) {
+      bits.push(
+        `<span class="gpdb-reg-badge gpdb-reg-badge-hg" title="Home-grown for ${escapePlayerHtml(
+          clubNation
+        )} (matches your club nation)">HG</span>`
+      );
+    }
+    if (isUnder21(player)) {
+      bits.push(
+        `<span class="gpdb-reg-badge gpdb-reg-badge-u21" title="Under-21 (age 21 or younger)">U21</span>`
+      );
+    }
+    if (!bits.length) return "";
+    return ` <span class="gpdb-reg-badges">${bits.join("")}</span>`;
+  }
   let NATIONAL_CALLED_UP = new Set();
   let NATIONAL_SQUAD_SUMMARY = null;
   /** Season exclusions — grey out + block bids/call-ups (player ids + nation labels/codes). */
@@ -1148,6 +1186,18 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
           console.warn("Handpick basket:", err);
         }
+        try {
+          const des = await loadSquadDesignationsState(
+            supabase,
+            CURRENT_USER_CLUB_SHORT
+          );
+          GPDB_STAR_MIN = Number(des?.star_min_rating) || 79;
+        } catch (err) {
+          console.warn("GPDB star min:", err);
+          GPDB_STAR_MIN = 79;
+        }
+      } else {
+        GPDB_STAR_MIN = 79;
       }
       const hpBtn = document.getElementById("myHandpickFilterBtn");
       if (hpBtn) {
@@ -2570,6 +2620,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const suspRows = GPDB_SUSPENSIONS_BY_PLAYER.get(String(player.Konami_ID)) || [];
         const suspBadge = formatSuspensionBadgeHtml(suspRows);
         let nameCell = formatCellValue("Name", player);
+        nameCell += gpdbPlayerRegBadgesHtml(player);
         if (seasonExcluded) {
           nameCell += ` <span class="gpdb-excluded-badge" title="Admin season exclusion">Unavailable</span>`;
         } else if (legacyCard) {
