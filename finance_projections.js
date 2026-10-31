@@ -19,16 +19,114 @@ const STADIUM_VALUE_PER_SEAT = 1500;
 
 const BUYER_COMMITTED_STATUSES = ["Active", "Review", "Seller Review"];
 
+function emptyHandpickExposure() {
+  return {
+    fees: 0,
+    tax: 0,
+    taxPct: 0,
+    count: 0,
+    playerCount: 0,
+    managerCount: 0,
+    players: [],
+    manager: null,
+  };
+}
+
 /**
- * Unsettled player/manager listings this club leads (winning bids).
- * Soft exposure only — drops when outbid or the listing settles/closes.
+ * Soft cash exposure for mid-season handpick wishlist tags (same idea as
+ * winning auction bids — not ledgered until admin approves / signs).
+ * Fees = catalogue MV; tax = est. gov income tax on those fees.
+ */
+export async function loadClubHandpickWishlistExposure(supabase, clubShortName) {
+  if (!supabase || !clubShortName) return emptyHandpickExposure();
+
+  const { data, error } = await supabase.rpc("handpick_basket_list", {
+    p_club_short_name: clubShortName,
+  });
+  if (error) {
+    // Club not in handpick / RPC not applied yet — treat as no exposure
+    if (!/handpick/i.test(String(error.message || ""))) {
+      console.warn("handpick wishlist exposure:", error);
+    }
+    return emptyHandpickExposure();
+  }
+  if (!data?.handpick_intake) return emptyHandpickExposure();
+
+  const players = (Array.isArray(data.players) ? data.players : [])
+    .filter((p) => !p.contracted_team)
+    .map((p) => ({
+      player_id: p.player_id,
+      player_name: p.player_name,
+      amount: Number(p.market_value) || 0,
+    }));
+
+  let manager = null;
+  const rawMgr = data.manager;
+  if (
+    rawMgr &&
+    rawMgr.manager_id != null &&
+    !nullifString(rawMgr.contracted_club)
+  ) {
+    manager = {
+      manager_id: rawMgr.manager_id,
+      manager_name: rawMgr.manager_name,
+      amount: Number(rawMgr.market_value) || 0,
+    };
+  }
+
+  const fees =
+    players.reduce((s, r) => s + r.amount, 0) +
+    (manager ? manager.amount : 0);
+
+  let taxPct = 0;
+  try {
+    const { data: gs } = await supabase
+      .from("global_settings")
+      .select("gov_income_tax_pct")
+      .eq("id", 1)
+      .maybeSingle();
+    taxPct = Number(gs?.gov_income_tax_pct) || 0;
+  } catch (err) {
+    console.warn("handpick tax pct:", err);
+  }
+  const tax = Math.round(((fees * taxPct) / 100) * 100) / 100;
+
+  return {
+    fees,
+    tax,
+    taxPct,
+    count: players.length + (manager ? 1 : 0),
+    playerCount: players.length,
+    managerCount: manager ? 1 : 0,
+    players,
+    manager,
+  };
+}
+
+function nullifString(v) {
+  const s = String(v ?? "").trim();
+  return s ? s : null;
+}
+
+/**
+ * Unsettled player/manager listings this club leads (winning bids),
+ * plus mid-season handpick wishlist fees (MV only — tax is separate).
+ * Soft exposure only — drops when outbid / untagged / settled.
  */
 export async function loadClubWinningBidExposure(supabase, clubShortName) {
   if (!clubShortName) {
-    return { total: 0, count: 0, players: [], managers: [] };
+    return {
+      total: 0,
+      count: 0,
+      auctionTotal: 0,
+      auctionCount: 0,
+      players: [],
+      managers: [],
+      handpick: emptyHandpickExposure(),
+    };
   }
 
-  const [playerRes, managerRes] = await Promise.all([
+  const [playerRes, managerRes, handpick] = await Promise.all([
     supabase
       .from("Player_Transfer_Listings")
       .select(
@@ -45,6 +143,7 @@ export async function loadClubWinningBidExposure(supabase, clubShortName) {
       .eq("current_highest_bidder", clubShortName)
       .in("status", BUYER_COMMITTED_STATUSES)
       .gt("current_highest_bid", 0),
+    loadClubHandpickWishlistExposure(supabase, clubShortName),
   ]);
 
   if (playerRes.error) {
@@ -69,15 +168,21 @@ export async function loadClubWinningBidExposure(supabase, clubShortName) {
     amount: Number(row.current_highest_bid) || 0,
   }));
 
-  const total =
+  const auctionTotal =
     players.reduce((s, r) => s + r.amount, 0) +
     managers.reduce((s, r) => s + r.amount, 0);
+  const auctionCount = players.length + managers.length;
+  const handpickFees = Number(handpick?.fees) || 0;
+  const handpickCount = Number(handpick?.count) || 0;
 
   return {
-    total,
-    count: players.length + managers.length,
+    total: auctionTotal + handpickFees,
+    count: auctionCount + handpickCount,
+    auctionTotal,
+    auctionCount,
     players,
     managers,
+    handpick: handpick || emptyHandpickExposure(),
   };
 }
 
@@ -547,22 +652,50 @@ export async function buildFinanceProjections(
     winningBidExposure ||
     (await loadClubWinningBidExposure(supabase, clubShortName));
   if (bidExposure.total > 0.5) {
-    const count = bidExposure.count;
+    const auctionCount = Number(bidExposure.auctionCount ?? bidExposure.count) || 0;
     const draftCount = (bidExposure.players || []).filter(
       (r) => String(r.listing_type || "").toLowerCase() === "draft"
     ).length;
     const mgrCount = (bidExposure.managers || []).length;
+    const marketCount = Math.max(0, auctionCount - mgrCount - draftCount);
+    const hp = bidExposure.handpick || emptyHandpickExposure();
     const bits = [];
-    if (count - mgrCount - draftCount > 0) {
-      bits.push(`${count - mgrCount - draftCount} market`);
-    }
+    if (marketCount > 0) bits.push(`${marketCount} market`);
     if (draftCount > 0) bits.push(`${draftCount} draft`);
     if (mgrCount > 0) bits.push(`${mgrCount} manager`);
+    if (hp.count > 0) {
+      bits.push(
+        `${hp.count} handpick tag${hp.count === 1 ? "" : "s"}`
+      );
+    }
+    const auctionNote =
+      auctionCount > 0
+        ? `${auctionCount} winning bid${auctionCount === 1 ? "" : "s"}`
+        : "";
+    const hpNote =
+      hp.count > 0
+        ? `${hp.count} handpick wishlist tag${hp.count === 1 ? "" : "s"}`
+        : "";
+    const head = [auctionNote, hpNote].filter(Boolean).join(" + ");
     setPendingForecast(
       pendingByLine,
       "transfer_purchases",
       -bidExposure.total,
-      `${count} winning bid${count === 1 ? "" : "s"} (${bits.join(", ") || "transfer"} — unsettled, drops if outbid)`,
+      `${head} (${bits.join(", ") || "pending"} — soft hold, drops if outbid / untagged)`,
+      byLine,
+      { remaining: true }
+    );
+  }
+
+  const hpTax = Number(bidExposure?.handpick?.tax) || 0;
+  const hpTaxPct = Number(bidExposure?.handpick?.taxPct) || 0;
+  if (hpTax > 0.5) {
+    const hpCount = Number(bidExposure?.handpick?.count) || 0;
+    setPendingForecast(
+      pendingByLine,
+      "gov_income_tax",
+      -hpTax,
+      `Est. income tax (${hpTaxPct}%) on ${hpCount} handpick wishlist fee${hpCount === 1 ? "" : "s"} — charged when admin approves`,
       byLine,
       { remaining: true }
     );

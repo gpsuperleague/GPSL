@@ -1,4 +1,4 @@
-import { initFinanceSubPage } from "./finance_page_common.js?v=20261029-infra-synth";
+import { initFinanceSubPage } from "./finance_page_common.js?v=20261031-handpick-exp";
 
 document.addEventListener("DOMContentLoaded", () => {
   initFinanceSubPage({

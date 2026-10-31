@@ -10,7 +10,7 @@ import { loadClubWageBillSummary } from "./club_wage_bill.js?v=20261014-ff-wage"
 import {
   advisoryBudgetTitle,
   computeAdvisoryTransferBudget,
-} from "./finance_advisory_budget.js?v=20261015-short-by";
+} from "./finance_advisory_budget.js?v=20261031-handpick-exp";
 import {
   applyFinanceClubHeader,
   applyHistoricalFinanceBanner,
@@ -21,7 +21,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20261029-infra-synth";
+} from "./finance_page_common.js?v=20261031-handpick-exp";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20261015-short-by";
 import {
   loadListedSaleBids,
@@ -184,7 +184,15 @@ function setAdvisoryBudgetDisplay(advisory, { historical = false } = {}) {
     if (advisory.runwayNegative) {
       hint.textContent = `Short by ${formatMoney(Math.abs(advisory.raw))} at season end — no spare money for transfers →`;
     } else if (advisory.bidExposure > 0.5) {
-      hint.textContent = `${advisory.bidCount} winning bid${advisory.bidCount === 1 ? "" : "s"} (−${formatMoney(advisory.bidExposure)}) →`;
+      const hp = Number(advisory.bidBreakdown?.handpick?.count) || 0;
+      const auction = Math.max(0, (advisory.bidCount || 0) - hp);
+      const label =
+        hp > 0 && auction > 0
+          ? `${auction} bid${auction === 1 ? "" : "s"} + ${hp} handpick`
+          : hp > 0
+            ? `${hp} handpick tag${hp === 1 ? "" : "s"}`
+            : `${advisory.bidCount} winning bid${advisory.bidCount === 1 ? "" : "s"}`;
+      hint.textContent = `${label} (−${formatMoney(advisory.bidExposure)}) →`;
     } else {
       hint.textContent = "Ops forecast excl. transfers →";
     }

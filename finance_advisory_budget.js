@@ -11,7 +11,7 @@ import { aggregateLedgerByLine } from "./finance_ui.js?v=20261031-takeover-fee-l
 import {
   buildFinanceProjections,
   loadClubWinningBidExposure,
-} from "./finance_projections.js?v=20261014-ff-wage";
+} from "./finance_projections.js?v=20261031-handpick-exp";
 
 export const TRANSFER_PENDING_LINE_IDS = new Set([
   "transfer_sales",
@@ -124,9 +124,15 @@ export function advisoryBudgetTitle(advisory) {
     `ops +${formatMoney(advisory.pendingIncome)} / −${formatMoney(advisory.pendingExpenditure)}`,
   ];
   if (advisory.bidExposure > 0.5) {
-    parts.push(
-      `${advisory.bidCount} winning bid${advisory.bidCount === 1 ? "" : "s"} −${formatMoney(advisory.bidExposure)}`
-    );
+    const hp = Number(advisory.bidBreakdown?.handpick?.count) || 0;
+    const auction = Math.max(0, (advisory.bidCount || 0) - hp);
+    const label =
+      hp > 0 && auction > 0
+        ? `${auction} bid${auction === 1 ? "" : "s"} + ${hp} handpick`
+        : hp > 0
+          ? `${hp} handpick tag${hp === 1 ? "" : "s"}`
+          : `${advisory.bidCount} winning bid${advisory.bidCount === 1 ? "" : "s"}`;
+    parts.push(`${label} −${formatMoney(advisory.bidExposure)}`);
   }
   if (advisory.runwayNegative) {
     parts.push(`on course to finish ${formatMoney(Math.abs(advisory.raw))} short`);
@@ -146,9 +152,12 @@ export function renderAdvisoryBudgetBadgeHtml(advisory, opts = {}) {
   const warn = advisory.runwayNegative
     ? `<span class="cbb-warn" title="After the costs still to come and your winning bids, you would end the season this much in the red.">Short by ${formatMoney(Math.abs(advisory.raw))}</span>`
     : "";
+  const hp = Number(advisory.bidBreakdown?.handpick?.count) || 0;
   const bidNote =
     advisory.bidExposure > 0.5
-      ? `<span class="cbb-subline">Incl. −${formatMoney(advisory.bidExposure)} winning bids</span>`
+      ? `<span class="cbb-subline">Incl. −${formatMoney(advisory.bidExposure)}${
+          hp > 0 ? " bids/handpick" : " winning bids"
+        }</span>`
       : `<span class="cbb-subline">Bank ${bank}</span>`;
 
   const inner = `

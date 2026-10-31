@@ -116,9 +116,12 @@ export function renderPredictedWorkingsHtml(data, extra = {}) {
   const listed = extra.listedSales || { total: 0, count: 0 };
   const missing = [];
 
-  if (bids.count > 0) {
+  const auctionCount =
+    Number(bids.auctionCount) ||
+    Math.max(0, (Number(bids.count) || 0) - (Number(bids.handpick?.count) || 0));
+  if (auctionCount > 0) {
     missing.push(
-      `<b>Tax and agent fees on your ${bids.count} winning bid${bids.count === 1 ? "" : "s"}.</b> The bids are counted at their price only. Income tax on player purchases, and the agent fee on transfer list deals, are added when they settle.`
+      `<b>Tax and agent fees on your ${auctionCount} winning bid${auctionCount === 1 ? "" : "s"}.</b> The bids are counted at their price only. Income tax on player purchases, and the agent fee on transfer list deals, are added when they settle.`
     );
   }
   if (listed.count > 0) {

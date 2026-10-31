@@ -12,7 +12,7 @@ import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, loadClubLoans, leagueBadgeHtml } from "./competition.js";
 import { loadCalendarStatus } from "./competition_calendar.js";
 import { loadClubWageBillSummary } from "./club_wage_bill.js?v=20261014-ff-wage";
-import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js?v=20261015-short-by";
+import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js?v=20261031-handpick-exp";
 import {
   loadFinanceSeasonContext,
   resolveFinanceSeasonView,
@@ -431,10 +431,18 @@ function renderBoardFinanceSection({
           wages.fanFavourite ? ` · FF subsidy −${formatMoney(wages.fanFavourite.subsidy)}` : ""
         }`
       : "";
+  const hpCount = Number(advisory?.bidBreakdown?.handpick?.count) || 0;
+  const auctionCount = Math.max(0, (advisory?.bidCount || 0) - hpCount);
   const transferHint = advisory?.runwayNegative
     ? `Short by ${formatMoney(Math.abs(advisory.raw))} at season end — no spare money for transfers`
     : advisory?.bidExposure > 0.5
-      ? `${advisory.bidCount} winning bid${advisory.bidCount === 1 ? "" : "s"} (−${formatMoney(advisory.bidExposure)})`
+      ? `${
+          hpCount > 0 && auctionCount > 0
+            ? `${auctionCount} bid${auctionCount === 1 ? "" : "s"} + ${hpCount} handpick`
+            : hpCount > 0
+              ? `${hpCount} handpick tag${hpCount === 1 ? "" : "s"}`
+              : `${advisory.bidCount} winning bid${advisory.bidCount === 1 ? "" : "s"}`
+        } (−${formatMoney(advisory.bidExposure)})`
       : "Ops forecast excl. transfers";
   const loanHint =
     loanCount > 0

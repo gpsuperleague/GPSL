@@ -13,7 +13,7 @@ import {
 
 import { formatMoney } from "./competition.js";
 import { loadWagePercentages, wageFromMarketValue } from "./wages.js";
-import { mountClubBankBalance } from "./club_bank_balance_ui.js?v=20260919-isvideo-fix";
+import { mountClubBankBalance } from "./club_bank_balance_ui.js?v=20261031-handpick-exp";
 import {
   emergencyLoanBannerHtml,
   ensureEmergencyLoanStyles,

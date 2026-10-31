@@ -19,7 +19,7 @@ import {
   renderFinanceSections,
   summariseLedgerTotals,
 } from "./finance_ui.js?v=20261031-takeover-fee-line";
-import { buildFinanceProjections } from "./finance_projections.js?v=20261014-ff-wage";
+import { buildFinanceProjections } from "./finance_projections.js?v=20261031-handpick-exp";
 import {
   appendAssignmentInfraPurchaseLedger,
   ledgerStartingBudget,
