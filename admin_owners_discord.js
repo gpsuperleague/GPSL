@@ -4,6 +4,10 @@ primeAdminPageChrome();
 
 /** @type {Array<Record<string, unknown>>} */
 let allMembers = [];
+/** @type {Record<string, unknown>|null} */
+let lastAudit = null;
+/** @type {Record<string, unknown>|null} */
+let lastGpslAudit = null;
 let clubAuctionStartingBalance = 650000000;
 /** @type {string|null} */
 let openPanelId = null;
@@ -78,14 +82,38 @@ function gpslStatusHtml(m) {
   return `<span class="discord-status none">Not on GPSL</span>`;
 }
 
+function roleTierHtml(m) {
+  if (m.actual_tier == null && m.expected_tier) {
+    return `<span class="discord-meta">expect ${escapeHtml(m.expected_tier)}</span>`;
+  }
+  const actual = m.actual_tier || "—";
+  const expected = m.expected_tier || "—";
+  const mismatch =
+    m.role_mismatch === true ||
+    (m.actual_tier && m.expected_tier && m.actual_tier !== m.expected_tier);
+  const cls = mismatch ? "mismatch" : "ok-tier";
+  return `<span class="discord-status ${cls}">${escapeHtml(actual)} → want ${escapeHtml(expected)}</span>`;
+}
+
 function filteredMembers() {
   const q = (document.getElementById("discordSearch")?.value || "")
     .trim()
     .toLowerCase();
   const hideKnown = document.getElementById("discordHideKnown")?.checked === true;
+  const mismatchesOnly =
+    document.getElementById("discordShowMismatches")?.checked === true;
 
   return allMembers.filter((m) => {
     if (hideKnown && (m.on_waiting_list || m.awaiting_club_auction || m.gpsl_club || m.gpsl_status)) {
+      return false;
+    }
+    if (
+      mismatchesOnly &&
+      !(
+        m.role_mismatch === true ||
+        (m.actual_tier && m.expected_tier && m.actual_tier !== m.expected_tier)
+      )
+    ) {
       return false;
     }
     if (!q) return true;
@@ -97,12 +125,119 @@ function filteredMembers() {
       m.gpsl_club,
       m.gpsl_matched_tag,
       m.gpsl_email,
+      m.expected_tier,
+      m.actual_tier,
     ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
     return hay.includes(q);
   });
+}
+
+function renderAuditPanel() {
+  const el = document.getElementById("discordAuditPanel");
+  if (!el) return;
+
+  const g = lastGpslAudit?.gpsl || null;
+  const a = lastAudit || null;
+  const dc = a?.discord_role_counts || null;
+  const ex = a?.expected_from_guild_match || null;
+  const link = a?.gpsl_linkage || g || null;
+
+  if (!g && !a) {
+    el.innerHTML = `<p class="note" style="margin:0;">Membership audit not loaded yet.</p>`;
+    return;
+  }
+
+  const mismatchN = a?.role_mismatches;
+  const ownersMissing =
+    link?.club_owners_missing_discord_id ??
+    g?.club_owners_missing_discord_id ??
+    null;
+
+  el.innerHTML = `
+    <h3>Owner / Member / Visitor audit</h3>
+    <div class="discord-audit-grid">
+      <div>
+        <div class="k">Discord Owner role</div>
+        <div class="v">${dc ? escapeHtml(dc.owner) : "—"}</div>
+      </div>
+      <div>
+        <div class="k">Discord Member role</div>
+        <div class="v">${dc ? escapeHtml(dc.member) : "—"}</div>
+      </div>
+      <div>
+        <div class="k">Discord Visitor role</div>
+        <div class="v">${dc ? escapeHtml(dc.visitor) : "—"}</div>
+      </div>
+      <div>
+        <div class="k">Discord none of 3</div>
+        <div class="v">${dc ? escapeHtml(dc.none_of_three) : "—"}</div>
+      </div>
+      <div>
+        <div class="k">GPSL club owners</div>
+        <div class="v">${escapeHtml(g?.club_owners ?? link?.club_owners ?? "—")}</div>
+      </div>
+      <div>
+        <div class="k">Owners with Discord ID</div>
+        <div class="v">${escapeHtml(
+          g?.club_owners_with_discord_id ?? link?.club_owners_with_discord_id ?? "—"
+        )}</div>
+      </div>
+      <div>
+        <div class="k">GPSL registry (non-archived)</div>
+        <div class="v">${escapeHtml(g?.registry_non_archived ?? "—")}</div>
+      </div>
+      <div>
+        <div class="k">Registry with Discord ID</div>
+        <div class="v">${escapeHtml(
+          g?.registry_non_archived_with_discord_id ??
+            g?.registry_with_discord_id ??
+            link?.registry_with_discord_id ??
+            "—"
+        )}</div>
+      </div>
+      <div>
+        <div class="k">Expected from guild match</div>
+        <div class="v" style="font-size:14px;">
+          ${
+            ex
+              ? `O ${escapeHtml(ex.owner)} · M ${escapeHtml(ex.member)} · V ${escapeHtml(ex.visitor)}`
+              : "—"
+          }
+        </div>
+      </div>
+      <div>
+        <div class="k">Role mismatches</div>
+        <div class="v ${mismatchN > 0 ? "warn" : ""}">${
+          mismatchN == null ? "—" : escapeHtml(mismatchN)
+        }</div>
+      </div>
+    </div>
+    <p class="note" style="margin:10px 0 0;">
+      ${
+        ownersMissing > 0
+          ? `<span class="warn">${escapeHtml(ownersMissing)} club owners have no discord_user_id on GPSL</span> — they cannot get the Owner role until linked. `
+          : ""
+      }
+      Sync linked only touches linked accounts. Sync entire guild assigns Visitor to Discord-only people
+      and corrects roles for everyone the bot can see.
+      ${
+        Array.isArray(a?.sample_mismatches) && a.sample_mismatches.length
+          ? ` Sample gap: ${escapeHtml(
+              a.sample_mismatches
+                .slice(0, 3)
+                .map(
+                  (x) =>
+                    `${x.display_name || x.username} (${x.actual}→${x.expected})`
+                )
+                .join("; ")
+            )}.`
+          : ""
+      }
+    </p>
+  `;
 }
 
 function defaultTag(m) {
@@ -132,6 +267,7 @@ function renderTable() {
           <th>Member</th>
           <th>Joined Discord</th>
           <th>GPSL</th>
+          <th>Discord role</th>
           <th></th>
         </tr>
       </thead>
@@ -158,10 +294,17 @@ function renderTable() {
                 m.gpsl_matched_tag
                   ? ` · tag ${escapeHtml(m.gpsl_matched_tag)}`
                   : ""
+              }${
+                m.gpsl_match_via === "discord_user_id"
+                  ? " · linked id"
+                  : m.gpsl_match_via === "tag"
+                    ? " · tag match"
+                    : ""
               }</div>
             </td>
             <td>${escapeHtml(formatJoinedAt(m.joined_at))}</td>
             <td>${gpslStatusHtml(m)}</td>
+            <td>${roleTierHtml(m)}</td>
             <td>
               <div style="display:flex;flex-wrap:wrap;gap:6px;">
                 ${
@@ -225,6 +368,17 @@ function renderTable() {
   });
 }
 
+async function loadGpslAudit() {
+  const { data, error } = await supabase.rpc("admin_discord_gpsl_roles_audit");
+  if (error) {
+    lastGpslAudit = null;
+    // RPC may not be deployed yet — panel still works from Discord audit
+    return;
+  }
+  lastGpslAudit = data && typeof data === "object" ? data : null;
+  renderAuditPanel();
+}
+
 async function loadMembers() {
   setStatus("discordStatus", "Loading Discord members…");
   const { data, error } = await invokeEdgeFunction("discord-guild-members", {});
@@ -238,9 +392,14 @@ async function loadMembers() {
   }
 
   allMembers = Array.isArray(data?.members) ? data.members : [];
+  lastAudit = data?.audit && typeof data.audit === "object" ? data.audit : null;
+  renderAuditPanel();
+
+  const mismatchN = lastAudit?.role_mismatches;
   setStatus(
     "discordStatus",
-    `✅ ${allMembers.length} member${allMembers.length === 1 ? "" : "s"} (oldest first)`,
+    `✅ ${allMembers.length} member${allMembers.length === 1 ? "" : "s"} (oldest first)` +
+      (mismatchN != null ? ` · ${mismatchN} role mismatch${mismatchN === 1 ? "" : "es"}` : ""),
     true
   );
   openPanelId = null;
@@ -346,7 +505,7 @@ async function syncDiscordRolesFromGpsl() {
 
   const { data, error } = await invokeEdgeFunction("discord-sync-roles", {
     action: "sync_linked",
-    limit: 80,
+    limit: 200,
   });
 
   if (btn) btn.disabled = false;
@@ -371,24 +530,87 @@ async function syncDiscordRolesFromGpsl() {
 
   setStatus(
     "discordStatus",
-    `✅ Role sync: ${data?.changed ?? 0} updated · ${data?.scanned ?? 0} checked` +
+    `✅ Linked sync: ${data?.changed ?? 0} updated · ${data?.scanned ?? 0} checked` +
       (data?.errors ? ` · ${data.errors} errors` : "") +
-      " (Member = GPSL account, Owner = has club, Visitor = neither).",
+      " (Member = GPSL account, Owner = has club).",
     true
   );
+  await loadMembers();
+}
+
+async function syncEntireGuildRoles() {
+  const btn = document.getElementById("discordSyncGuildBtn");
+  if (btn) btn.disabled = true;
+
+  let after = null;
+  let totalScanned = 0;
+  let totalChanged = 0;
+  let totalErrors = 0;
+  let pages = 0;
+
+  try {
+    for (;;) {
+      pages += 1;
+      setStatus(
+        "discordStatus",
+        `Syncing entire guild… page ${pages} (scanned ${totalScanned})…`
+      );
+      const { data, error } = await invokeEdgeFunction("discord-sync-roles", {
+        action: "sync_guild",
+        limit: 80,
+        after,
+      });
+      if (error) {
+        setStatus("discordStatus", "❌ " + error.message, false);
+        return;
+      }
+      if (data?.reason === "roles_not_configured" || data?.ok === false) {
+        setStatus(
+          "discordStatus",
+          `❌ ${data?.error || data?.reason || "Role sync not ready"}`,
+          false
+        );
+        return;
+      }
+      totalScanned += Number(data?.scanned || 0);
+      totalChanged += Number(data?.changed || 0);
+      totalErrors += Number(data?.errors || 0);
+      if (data?.done || !data?.next_after) break;
+      after = data.next_after;
+      if (pages >= 40) break;
+    }
+
+    setStatus(
+      "discordStatus",
+      `✅ Guild sync: ${totalChanged} updated · ${totalScanned} checked` +
+        (totalErrors ? ` · ${totalErrors} errors` : "") +
+        " (includes Visitors).",
+      true
+    );
+    await loadMembers();
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage({ allowMod: true }))) return;
 
   await loadClubAuctionConfig();
+  await loadGpslAudit();
 
   document.getElementById("discordRefreshBtn")?.addEventListener("click", loadMembers);
   document
     .getElementById("discordSyncRolesBtn")
     ?.addEventListener("click", syncDiscordRolesFromGpsl);
+  document
+    .getElementById("discordSyncGuildBtn")
+    ?.addEventListener("click", syncEntireGuildRoles);
   document.getElementById("discordSearch")?.addEventListener("input", renderTable);
   document.getElementById("discordHideKnown")?.addEventListener("change", renderTable);
+  document
+    .getElementById("discordShowMismatches")
+    ?.addEventListener("change", renderTable);
 
   await loadMembers();
 });

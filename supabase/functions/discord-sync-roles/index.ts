@@ -438,8 +438,104 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "sync_guild") {
+      // Walk Discord guild members and apply Owner / Member / Visitor.
+      // Needed so Discord-only people get Visitor (sync_linked never sees them).
+      if (!isAdminJwt) {
+        return jsonResponse(
+          { error: "sync_guild requires admin JWT" },
+          403
+        );
+      }
+
+      const limitRaw = Number(body.limit);
+      const limit = Math.min(
+        Math.max(Number.isFinite(limitRaw) ? limitRaw : 80, 1),
+        150
+      );
+      const after = String(body.after || "").trim() || null;
+
+      const url = new URL(`${DISCORD_API}/guilds/${guildId}/members`);
+      url.searchParams.set("limit", String(Math.min(limit, 1000)));
+      if (after) url.searchParams.set("after", after);
+
+      const listRes = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!listRes.ok) {
+        const text = await listRes.text();
+        return jsonResponse(
+          {
+            error: `Discord members ${listRes.status}: ${text.slice(0, 200)}`,
+          },
+          500
+        );
+      }
+
+      const batch = (await listRes.json()) as Array<{
+        user?: { id?: string; bot?: boolean };
+      }>;
+      if (!Array.isArray(batch)) {
+        return jsonResponse({ error: "Unexpected Discord members payload" }, 500);
+      }
+
+      const results: SyncResult[] = [];
+      let lastId: string | null = null;
+
+      for (const m of batch) {
+        const uid = m.user?.id ? String(m.user.id) : "";
+        if (!uid) continue;
+        lastId = uid;
+        if (m.user?.bot) continue;
+
+        const resolved = await resolveTier(admin, { discord_user_id: uid });
+        if ("error" in resolved) {
+          results.push({
+            discord_user_id: uid,
+            tier: "visitor",
+            added: [],
+            removed: [],
+            error: resolved.error,
+          });
+          continue;
+        }
+        results.push(
+          await syncDiscordUser(
+            botToken,
+            guildId,
+            resolved.discord_user_id,
+            resolved.tier,
+            roles
+          )
+        );
+      }
+
+      const errors = results.filter((r) => r.error).length;
+      const changed = results.filter(
+        (r) => r.added.length || r.removed.length
+      ).length;
+      const done = batch.length < Math.min(limit, 1000);
+
+      return jsonResponse({
+        ok: true,
+        action: "sync_guild",
+        scanned: results.length,
+        changed,
+        errors,
+        next_after: done ? null : lastId,
+        done,
+        results: results.slice(0, 40),
+      });
+    }
+
     return jsonResponse(
-      { error: "Unknown action — use sync_one or sync_linked" },
+      {
+        error:
+          "Unknown action — use sync_one, sync_linked, or sync_guild",
+      },
       400
     );
   } catch (err) {

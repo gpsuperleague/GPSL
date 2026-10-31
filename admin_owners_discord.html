@@ -33,6 +33,19 @@
     .discord-add-panel input { min-width:180px; }
     .discord-filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
     .discord-filters input[type="search"] { min-width:220px; flex:1; }
+    .discord-audit {
+      margin:0 0 14px; padding:12px 14px; background:#1a1a1a; border:1px solid #333; border-radius:6px;
+      font-size:13px; line-height:1.5; color:#ccc;
+    }
+    .discord-audit h3 { margin:0 0 8px; color:#ff9900; font-size:14px; font-weight:600; }
+    .discord-audit-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px 16px; margin:8px 0 4px;
+    }
+    .discord-audit-grid .k { color:#888; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; }
+    .discord-audit-grid .v { font-size:18px; color:#eee; font-variant-numeric:tabular-nums; }
+    .discord-audit .warn { color:#fc9; }
+    .discord-status.mismatch { color:#f99; }
+    .discord-status.ok-tier { color:#8d8; }
   </style>
 </head>
 <body class="admin-page">
@@ -67,19 +80,28 @@
         <p class="note">
           <b>GPSL → Discord roles:</b> registry (incl. archived / on break) → <b>Member</b>;
           club owner → <b>Owner</b> + Member; no GPSL account → <b>Visitor</b>.
-          Assign/remove club and join/visitor login sync automatically after you deploy
-          <code>discord-sync-roles</code>, run <code>discord_role_sync_from_gpsl_20261021.sql</code>,
+          Deploy <code>discord-sync-roles</code>, run <code>discord_role_sync_from_gpsl_20261021.sql</code>,
           and set <code>DISCORD_ROLE_MEMBER_ID</code> / <code>DISCORD_ROLE_OWNER_ID</code> /
-          <code>DISCORD_ROLE_VISITOR_ID</code> (bot role must sit above those three).
-          Use <b>Sync roles now</b> to catch up linked accounts.
+          <code>DISCORD_ROLE_VISITOR_ID</code> (bot role above those three).
+          <b>Sync linked</b> only updates GPSL accounts with a Discord ID.
+          <b>Sync entire guild</b> walks everyone in Discord (needed for Visitors).
+          Run SQL <code>admin_discord_roles_audit_20261031.sql</code> for GPSL linkage counts.
         </p>
+        <div id="discordAuditPanel" class="discord-audit" aria-live="polite">
+          <p class="note" style="margin:0;">Loading membership audit…</p>
+        </div>
         <div class="discord-filters">
           <button type="button" id="discordRefreshBtn" class="button">Refresh from Discord</button>
-          <button type="button" id="discordSyncRolesBtn" class="button secondary" title="Apply Member / Owner / Visitor from GPSL status for linked Discord accounts">Sync roles now</button>
+          <button type="button" id="discordSyncRolesBtn" class="button secondary" title="Apply Member / Owner / Visitor for GPSL accounts that have discord_user_id">Sync linked</button>
+          <button type="button" id="discordSyncGuildBtn" class="button secondary" title="Walk every Discord member and set Owner / Member / Visitor">Sync entire guild</button>
           <input type="search" id="discordSearch" placeholder="Filter by name / username…">
           <label class="note" style="display:flex;align-items:center;gap:6px;margin:0;">
             <input type="checkbox" id="discordHideKnown">
             Hide already on GPSL / waiting list
+          </label>
+          <label class="note" style="display:flex;align-items:center;gap:6px;margin:0;">
+            <input type="checkbox" id="discordShowMismatches">
+            Role mismatches only
           </label>
         </div>
         <div id="discordStatus" class="status-line"></div>
@@ -87,6 +109,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners_discord.js?v=20261021-role-sync"></script>
+  <script type="module" src="admin_owners_discord.js?v=20261031-role-audit"></script>
 </body>
 </html>
