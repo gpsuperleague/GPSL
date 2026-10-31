@@ -83,12 +83,14 @@
       white-space: nowrap;
     }
 
-    .gpdb-scout-col {
+    .gpdb-scout-col,
+    .gpdb-handpick-col {
       text-align: center;
       white-space: nowrap;
     }
 
-    button.scout-btn {
+    button.scout-btn,
+    button.handpick-btn {
       background: transparent;
       border: none;
       color: #666;
@@ -102,7 +104,12 @@
       color: var(--gpsl-accent, #ff9900);
     }
 
+    button.handpick-btn.handpick-on {
+      color: #7dcf7d;
+    }
+
     #myScoutedFilterBtn.is-active,
+    #myHandpickFilterBtn.is-active,
     #finalYearFilterBtn.is-active,
     #myClubFilterBtn.is-active {
       background: #3d3200;
@@ -910,6 +917,8 @@
       <button id="myClubFilterBtn" class="button secondary gpsl-has-tip" type="button" hidden data-gpsl-tip="Show only players currently contracted to your club." tabindex="0">My Club</button>
       <button id="finalYearFilterBtn" class="button secondary gpsl-has-tip" type="button" data-gpsl-tip="Show only players in their final contract year (1 season left). Contested ones appear on Expiring Contracts; young HG / non-HG renew on Squad." tabindex="0">Final year only</button>
       <button id="myScoutedFilterBtn" class="button secondary gpsl-has-tip" type="button" hidden data-gpsl-tip="Show only players on your scouting shortlist (☆ in the Scout column)." tabindex="0">★ My scouting targets</button>
+      <button id="myHandpickFilterBtn" class="button secondary gpsl-has-tip" type="button" hidden data-gpsl-tip="Show only free agents you temp-tagged for mid-season handpick (Handpick column). Not a contract until admin approves." tabindex="0">☑ My handpick tags</button>
+      <a id="handpickSquadLink" href="handpick_squad.html" class="button secondary gpsl-has-tip" style="text-decoration:none;display:none;" data-gpsl-tip="Open your handpick wishlist and submit for admin approval." tabindex="0">Handpick wishlist →</a>
       <button id="myNationFilterBtn" class="button secondary gpsl-has-tip" type="button" hidden data-gpsl-tip="Filter to your national team’s nation (call-ups / international planning)." tabindex="0">My National Team</button>
       <button id="myClubNationFilterBtn" class="button secondary gpsl-has-tip" type="button" hidden data-gpsl-tip="Filter to your club’s home nation — useful for home-grown planning (≥8 HG required)." tabindex="0">My Club Nation</button>
       <span id="gpdbPlayerCount" class="gpdb-player-count" aria-live="polite"></span>
@@ -1006,7 +1015,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js?v=20261002-light-mode"></script>
-  <script type="module" src="gpdb_v2.js?v=20261015-paid-up-match"></script>
+  <script type="module" src="gpdb_v2.js?v=20261031-handpick-tag"></script>
   <script type="module">
     import { initGpdbAddPlayerRequest } from "./gpdb_add_player_request.js?v=20261001-legacy";
     initGpdbAddPlayerRequest();

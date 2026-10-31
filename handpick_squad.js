@@ -1,6 +1,11 @@
 import { initGlobal, supabase } from "./global.js";
 import { formatMoney } from "./competition.js";
 import { gpdbPlayerUrl } from "./player_links.js";
+import {
+  loadHandpickBasketState,
+  setHandpickBasketPlayer,
+  clearHandpickBasket,
+} from "./handpick_basket.js?v=20261031-handpick-tag";
 
 /** @type {Map<string, object>} */
 const basket = new Map();
@@ -70,7 +75,12 @@ function wireUi() {
     if (e.key === "Enter") runManagerSearch();
   });
   document.getElementById("submitBtn")?.addEventListener("click", () => submitWishlist());
-  document.getElementById("clearBtn")?.addEventListener("click", () => {
+  document.getElementById("clearBtn")?.addEventListener("click", async () => {
+    try {
+      if (activeClub) await clearHandpickBasket(supabase, activeClub);
+    } catch (err) {
+      console.warn("handpick_basket_clear", err);
+    }
     basket.clear();
     pickedManager = null;
     renderBasket();
@@ -194,7 +204,7 @@ async function loadContext() {
   const gpdb = document.getElementById("gpdbLink");
   if (gpdb) {
     gpdb.href = "GPDB.html";
-    gpdb.textContent = "Open GPDB — handpick players here";
+    gpdb.textContent = "Open GPDB — handpick / temp-tag players";
   }
 
   // Keep URL in sync so refresh / share keeps the chosen club
@@ -230,9 +240,34 @@ async function loadContext() {
     : "";
 
   fillNations(data.fa_nations || [], data.club_nation || "");
+  await hydrateBasketFromDb();
   renderBasket();
   renderManager();
   await loadSubmissions();
+}
+
+async function hydrateBasketFromDb() {
+  if (!activeClub || !clubContext?.handpick_intake) return;
+  try {
+    const hp = await loadHandpickBasketState(supabase, activeClub);
+    basket.clear();
+    for (const p of hp.players || []) {
+      const id = String(p.player_id || "").trim();
+      if (!id) continue;
+      // Skip anyone no longer FA (signed elsewhere / already contracted)
+      if (p.contracted_team) continue;
+      basket.set(id, {
+        player_id: id,
+        player_name: p.player_name,
+        position: p.position,
+        rating: p.rating,
+        nation: p.nation,
+        market_value: p.market_value,
+      });
+    }
+  } catch (err) {
+    console.warn("hydrateBasketFromDb", err);
+  }
 }
 
 function fillNations(list, home) {
@@ -296,13 +331,19 @@ async function runPlayerSearch() {
   </tbody></table>`;
 
   box.querySelectorAll(".add-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
       const row = rows.find((r) => String(r.player_id) === id);
       if (!row) return;
+      btn.disabled = true;
+      const res = await setHandpickBasketPlayer(supabase, id, true, club);
+      if (!res?.ok) {
+        btn.disabled = false;
+        setPageStatus(res?.detail || res?.reason || "Could not tag", true);
+        return;
+      }
       basket.set(id, row);
       renderBasket();
-      btn.disabled = true;
       btn.textContent = "Added";
     });
   });
@@ -437,8 +478,10 @@ function renderBasket() {
     · balance <b>${escapeHtml(formatMoney(Number(clubContext?.balance) || 0))}</b>`;
 
   box.querySelectorAll(".rm-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      basket.delete(btn.getAttribute("data-id"));
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-id");
+      await setHandpickBasketPlayer(supabase, id, false, activeClub);
+      basket.delete(id);
       renderBasket();
     });
   });

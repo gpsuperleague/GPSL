@@ -105,6 +105,11 @@ import {
   isScoutingAvailable,
 } from "./scouting_targets.js?v=20260805-owner-scout";
 import {
+  loadHandpickBasketState,
+  toggleHandpickBasketPlayer,
+  handpickTagChar,
+} from "./handpick_basket.js?v=20261031-handpick-tag";
+import {
   playerDraftGetMyMaxBid,
   playerDraftSetMaxBid,
   playerDraftClearMaxBid,
@@ -714,6 +719,10 @@ document.addEventListener("DOMContentLoaded", () => {
   /** @type {Map<string, number>} */
   let SCOUTING_TARGET_MAP = new Map();
   let SCOUTED_ONLY = false;
+  /** @type {Set<string>} */
+  let HANDPICK_BASKET_IDS = new Set();
+  let HANDPICK_INTAKE = false;
+  let HANDPICK_ONLY = false;
   let FINAL_YEAR_ONLY = false;
   let MY_CLUB_ONLY = false;
   let CURRENT_USER_CLUB_FULL = null;
@@ -1126,6 +1135,35 @@ document.addEventListener("DOMContentLoaded", () => {
         console.warn("Scouting targets:", err);
         SCOUTING_TARGET_MAP = new Map();
       }
+      HANDPICK_INTAKE = false;
+      HANDPICK_BASKET_IDS = new Set();
+      if (CURRENT_USER_CLUB_SHORT) {
+        try {
+          const hp = await loadHandpickBasketState(
+            supabase,
+            CURRENT_USER_CLUB_SHORT
+          );
+          HANDPICK_INTAKE = !!hp.handpickIntake;
+          HANDPICK_BASKET_IDS = hp.playerIds || new Set();
+        } catch (err) {
+          console.warn("Handpick basket:", err);
+        }
+      }
+      const hpBtn = document.getElementById("myHandpickFilterBtn");
+      if (hpBtn) {
+        hpBtn.hidden = !HANDPICK_INTAKE;
+        hpBtn.classList.toggle("is-active", HANDPICK_ONLY);
+        if (!HANDPICK_INTAKE) HANDPICK_ONLY = false;
+      }
+      const hpLink = document.getElementById("handpickSquadLink");
+      if (hpLink) {
+        hpLink.style.display = HANDPICK_INTAKE ? "inline-block" : "none";
+        if (CURRENT_USER_CLUB_SHORT) {
+          hpLink.href = `handpick_squad.html?club=${encodeURIComponent(
+            CURRENT_USER_CLUB_SHORT
+          )}`;
+        }
+      }
     }
   }
 
@@ -1385,6 +1423,18 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
       query = query.in("Konami_ID", scoutIds);
+    }
+
+    if (HANDPICK_ONLY && CURRENT_USER && HANDPICK_INTAKE) {
+      const hpIds = Array.from(HANDPICK_BASKET_IDS).filter(Boolean);
+      if (!hpIds.length) {
+        TOTAL_ROWS = 0;
+        renderTable([]);
+        renderPagination();
+        updatePlayerCountDisplay();
+        return;
+      }
+      query = query.in("Konami_ID", hpIds);
     }
 
     if (FINAL_YEAR_ONLY) {
@@ -2320,6 +2370,14 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPage(1);
   }
 
+  function toggleHandpickOnlyFilter() {
+    if (!CURRENT_USER || !HANDPICK_INTAKE) return;
+    HANDPICK_ONLY = !HANDPICK_ONLY;
+    const btn = document.getElementById("myHandpickFilterBtn");
+    if (btn) btn.classList.toggle("is-active", HANDPICK_ONLY);
+    loadPage(1);
+  }
+
   function toggleFinalYearOnlyFilter() {
     FINAL_YEAR_ONLY = !FINAL_YEAR_ONLY;
     const btn = document.getElementById("finalYearFilterBtn");
@@ -2349,6 +2407,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const showCallUpCol = !!MY_NATION?.code;
     const showScoutCol = !!CURRENT_USER;
+    const showHandpickCol = !!CURRENT_USER && HANDPICK_INTAKE;
 
     const colTip = (col) => {
       if (col === "market_value") return GPDB_TIPS.marketValue;
@@ -2383,6 +2442,11 @@ document.addEventListener("DOMContentLoaded", () => {
           .join("")}
         ${showCallUpCol ? `<th class="gpdb-callup-col"${tipAttrs(GPDB_TIPS.callUpCol)}>Call up</th>` : ""}
         ${showScoutCol ? `<th class="gpdb-scout-col"${tipAttrs(GPDB_TIPS.scoutCol)}>Scout</th>` : ""}
+        ${
+          showHandpickCol
+            ? `<th class="gpdb-handpick-col" title="Temp mid-season handpick tag — free agent until admin approves">Handpick</th>`
+            : ""
+        }
         <th${tipAttrs(GPDB_TIPS.bidCol)}>Bid</th>
       </tr>
     `;
@@ -2402,6 +2466,21 @@ document.addEventListener("DOMContentLoaded", () => {
           ? seasonExcluded
             ? `<span class="locked-msg">—</span>`
             : `<button type="button" class="scout-btn${scouted ? " scout-on" : ""}" data-player-id="${player.Konami_ID}" title="${scouted ? `Scouting (tier ${scoutTier}) — click to remove` : "Add to scouting (top target)"}">${scoutingStarChar(scouted)}</button>`
+          : "";
+        const hpTagged = HANDPICK_BASKET_IDS.has(String(player.Konami_ID));
+        const canHandpickTag =
+          showHandpickCol &&
+          !hasClub &&
+          !seasonExcluded &&
+          !legacyCard;
+        const handpickCell = showHandpickCol
+          ? canHandpickTag
+            ? `<button type="button" class="handpick-btn${hpTagged ? " handpick-on" : ""}" data-player-id="${player.Konami_ID}" title="${
+                hpTagged
+                  ? "On your handpick wishlist — click to untag (still a free agent)"
+                  : "Temp-tag for mid-season handpick wishlist (stays free agent until admin approves)"
+              }">${handpickTagChar(hpTagged)}</button>`
+            : `<span class="locked-msg" title="Handpick tags are for free agents only">—</span>`
           : "";
 
         if (seasonExcluded) {
@@ -2505,6 +2584,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }).join("")}
             ${showCallUpCol ? `<td class="gpdb-callup-col">${callUpCell || '<span class="locked-msg">—</span>'}</td>` : ""}
             ${showScoutCol ? `<td class="gpdb-scout-col">${scoutCell}</td>` : ""}
+            ${showHandpickCol ? `<td class="gpdb-handpick-col">${handpickCell}</td>` : ""}
             <td>${bidCell}</td>
           </tr>
         `;
@@ -2574,6 +2654,48 @@ document.addEventListener("DOMContentLoaded", () => {
           if (SCOUTED_ONLY) await loadPage(CURRENT_PAGE);
         } catch (err) {
           alert(err?.message || "Could not update scouting list.");
+        }
+      });
+    });
+
+    document.querySelectorAll(".handpick-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!CURRENT_USER || !HANDPICK_INTAKE) return;
+        const pid = btn.dataset.playerId;
+        btn.disabled = true;
+        try {
+          const res = await toggleHandpickBasketPlayer(
+            supabase,
+            pid,
+            CURRENT_USER_CLUB_SHORT
+          );
+          if (!res?.ok) {
+            alert(
+              res?.detail ||
+                res?.reason ||
+                "Could not update handpick tag. Sign in as the club owner with handpick open."
+            );
+            return;
+          }
+          if (res.tagged) {
+            HANDPICK_BASKET_IDS.add(String(pid));
+            btn.classList.add("handpick-on");
+            btn.textContent = handpickTagChar(true);
+            btn.title =
+              "On your handpick wishlist — click to untag (still a free agent)";
+          } else {
+            HANDPICK_BASKET_IDS.delete(String(pid));
+            btn.classList.remove("handpick-on");
+            btn.textContent = handpickTagChar(false);
+            btn.title =
+              "Temp-tag for mid-season handpick wishlist (stays free agent until admin approves)";
+          }
+          if (HANDPICK_ONLY) await loadPage(CURRENT_PAGE);
+        } catch (err) {
+          alert(err?.message || "Could not update handpick tag.");
+        } finally {
+          btn.disabled = false;
         }
       });
     });
@@ -3702,6 +3824,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("myScoutedFilterBtn")?.addEventListener("click", () => {
       toggleScoutedOnlyFilter();
+    });
+    document.getElementById("myHandpickFilterBtn")?.addEventListener("click", () => {
+      toggleHandpickOnlyFilter();
     });
 
     document.getElementById("finalYearFilterBtn")?.addEventListener("click", () => {
