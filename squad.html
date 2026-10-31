@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="dashboard.css?v=20260806-league-badges2">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
-  <link rel="stylesheet" href="squad.css?v=20261026-fit-text-sm">
+  <link rel="stylesheet" href="squad.css?v=20261031-zoom-sync">
 
   <style>
     body {
@@ -207,8 +207,8 @@
   <p id="staffSquadPreviewBanner" class="note" hidden
      style="margin:10px 20px 0;padding:10px 12px;background:#1a2a1a;border:1px solid #3a5a3a;border-radius:6px;color:#b8e0b8;"></p>
 
-  <!-- MAIN CONTENT -->
-  <div style="padding:20px;">
+  <!-- MAIN CONTENT — shared width shell so wage/registration + player tables stay aligned under zoom -->
+  <div class="squad-page-main">
 
     <!-- ⭐ TRANSFER WINDOW CLOSED MESSAGE -->
     <div id="windowClosedMessage"
@@ -231,7 +231,7 @@
 
     <div id="squadCompliancePanel" class="squad-compliance-wrap"></div>
 
-    <div class="panel">
+    <div class="panel squad-players-panel">
       <h2 class="section-header">Squad</h2>
       <p class="note gpsl-has-tip" style="margin:0 0 10px;color:#aaa;font-size:13px;" data-gpsl-tip="Each position group has its own horizontal scrollbar. On desktop, player image and name stay pinned on the left; on a phone only the image stays pinned so more columns remain visible." tabindex="0">
         Each position group has its own scrollbar underneath. On desktop, image and name stay pinned on the left; on a phone only the image stays pinned. Actions are in the <b>Action</b> column on the right.
@@ -294,7 +294,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20261030-fit-band-complete"></script>
+  <script type="module" src="squad.js?v=20261031-zoom-sync"></script>
 
 </body>
 </html>

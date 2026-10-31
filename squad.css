@@ -68,9 +68,6 @@ body.squad-page .squad-header-title-row .squad-header-league-badge {
   flex: 0 0 auto;
   margin-left: 0;
 }
-  align-items: flex-start;
-  gap: 4px;
-}
 
 body.squad-page .squad-header-titles #userEmail {
   color: #888;
@@ -235,6 +232,26 @@ body.squad-page .foreign-interest-badge--empty {
 
 body.squad-page .foreign-interest-badge--empty .foreign-interest-hint {
   display: none;
+}
+
+/* Shared shell so wage/registration + player tables share one width under zoom */
+body.squad-page .squad-page-main {
+  padding: 20px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: clip;
+}
+
+body.squad-page .squad-page-main > .squad-wage-bill-wrap,
+body.squad-page .squad-page-main > .squad-compliance-wrap,
+body.squad-page .squad-page-main > .panel,
+body.squad-page .squad-players-panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 body.squad-page .squad-compliance-wrap {
@@ -580,7 +597,10 @@ body.squad-page .squad-table-scroll {
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   scrollbar-gutter: stable;
   padding-bottom: 4px;
   margin-bottom: 4px;
@@ -591,11 +611,16 @@ body.squad-page .squad-sections {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 body.squad-page .squad-pos-section {
   margin: 0;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 body.squad-page .squad-pos-section-title {

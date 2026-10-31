@@ -2238,6 +2238,15 @@ const SQUAD_COL_MIN_WIDTHS = {
   "squad-col-thumb": 48,
 };
 
+/** Scrollport width shared with wage/registration panels (same page shell). */
+function squadTableAvailableWidth() {
+  const scroll = document.querySelector("#squadSections .squad-table-scroll");
+  if (scroll && scroll.clientWidth > 0) return scroll.clientWidth;
+  const main = document.querySelector(".squad-page-main");
+  if (main && main.clientWidth > 0) return Math.max(0, main.clientWidth - 40);
+  return 0;
+}
+
 function syncSquadTableColumnWidths() {
   const tables = [
     ...document.querySelectorAll("#squadSections table.gpsl-table.squad-table"),
@@ -2270,14 +2279,30 @@ function syncSquadTableColumnWidths() {
     });
   });
 
-  let total = 0;
-  const finalWidths = widths.map((w, i) => {
+  let contentTotal = 0;
+  let finalWidths = widths.map((w, i) => {
     const colClass = SQUAD_COLUMN_HEADER_CELLS[i]?.[0] || "";
     const minFromClass = SQUAD_COL_MIN_WIDTHS[colClass] || 40;
     const fw = Math.max(w || 0, minFromClass);
-    total += fw;
+    contentTotal += fw;
     return fw;
   });
+
+  // Stretch to the same shell width as wage/registration when content fits —
+  // keeps both blocks aligned under browser zoom / display scaling.
+  const available = squadTableAvailableWidth();
+  if (available > 0 && contentTotal > 0 && contentTotal < available) {
+    const scale = available / contentTotal;
+    finalWidths = finalWidths.map((w) => Math.max(1, Math.floor(w * scale)));
+    let used = finalWidths.reduce((a, b) => a + b, 0);
+    let rem = available - used;
+    // Prefer giving leftover px to the player name column (index 1).
+    const growIdx = finalWidths.length > 1 ? 1 : 0;
+    if (rem !== 0 && growIdx < finalWidths.length) {
+      finalWidths[growIdx] = Math.max(1, finalWidths[growIdx] + rem);
+    }
+    contentTotal = available;
+  }
 
   const thumbW = finalWidths[0] || SQUAD_COL_MIN_WIDTHS["squad-col-thumb"] || 48;
 
@@ -2291,17 +2316,31 @@ function syncSquadTableColumnWidths() {
     });
     table.style.setProperty("--squad-sticky-thumb-w", `${thumbW}px`);
     table.style.tableLayout = "fixed";
-    table.style.width = total > 0 ? `${total}px` : "max-content";
+    table.style.width = contentTotal > 0 ? `${contentTotal}px` : "max-content";
   });
+
+  window.__squadLastTableShellWidth = available;
 }
 
 function ensureSquadTableColumnWidthSync() {
   if (window.__squadColumnWidthSyncBound) return;
   window.__squadColumnWidthSyncBound = true;
-  window.addEventListener("resize", () => {
+
+  const scheduleSync = () => {
     clearTimeout(squadColumnWidthResizeTimer);
-    squadColumnWidthResizeTimer = setTimeout(syncSquadTableColumnWidths, 120);
-  });
+    squadColumnWidthResizeTimer = setTimeout(() => {
+      const next = squadTableAvailableWidth();
+      const prev = Number(window.__squadLastTableShellWidth) || 0;
+      // Ignore tiny sub-pixel jitter from zoom; remeasure when shell width moves.
+      if (prev && Math.abs(next - prev) < 2) return;
+      syncSquadTableColumnWidths();
+    }, 120);
+  };
+
+  window.addEventListener("resize", scheduleSync);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", scheduleSync);
+  }
 }
 
 /** Update stats + listing pills only — keeps action dropdowns mounted and clickable. */
