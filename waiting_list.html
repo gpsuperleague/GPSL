@@ -60,6 +60,17 @@
       color: var(--gpsl-accent, #ff9900);
     }
     .wl-links a { color: var(--gpsl-accent, #ff9900); margin-right: 14px; }
+    .wl-claim-row {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      padding: 10px 12px; background: #111; border: 1px solid #333; border-radius: 6px;
+    }
+    .wl-claim-row b { color: #eee; }
+    .wl-claim-row .meta { color: #888; font-size: 12px; }
+    .wl-claim-row button {
+      margin-left: auto; padding: 8px 14px; border: none; border-radius: 6px;
+      background: var(--gpsl-accent, #ff9900); color: #111; font-weight: 700; cursor: pointer;
+    }
+    .wl-claim-row button:disabled { opacity: 0.55; cursor: not-allowed; }
     #draftCountdownContainer {
       margin-top: 4px;
       padding: 10px 12px;
@@ -97,6 +108,22 @@
       <h1>Your place</h1>
       <p id="wlMySummary"></p>
       <div class="wl-pos" id="wlMyPos"></div>
+    </div>
+    <div class="wl-card" id="wlClaimCard" hidden>
+      <h1>Pick a free club</h1>
+      <p id="wlClaimIntro">
+        Mid-season intake — choose a vacant club, then handpick your squad from scratch and submit for approval.
+      </p>
+      <div id="wlClaimStatus" style="color:#fc6;margin:8px 0;min-height:1.2em;"></div>
+      <div id="wlClaimList" style="display:grid;gap:8px;"></div>
+    </div>
+    <div class="wl-card" id="wlPreSeasonCard" hidden>
+      <h1>Pre-season / draft path</h1>
+      <p>
+        The season isn’t in mid-season intake right now. Stay on the waiting list, complete
+        <a href="awaiting_club.html">owner details</a>, and join the
+        <a href="club_auction.html">club draft auction</a> when invited.
+      </p>
     </div>
     <div class="wl-panels">
       <div class="wl-card wl-panel">
@@ -141,7 +168,7 @@
     </p>
   </div>
   <script type="module">
-    import { initWaitingListPage } from "./waiting_list.js?v=20261022-current-season3";
+    import { initWaitingListPage } from "./waiting_list.js?v=20261031-mid-claim";
     initWaitingListPage();
   </script>
 </body>

@@ -402,6 +402,8 @@ export async function initWaitingListPage() {
       }
     }
 
+    await loadMidSeasonClaimCard(self);
+
     // Season 1 invite respond card (waiting-list room)
     try {
       const { data: s1 } = await supabase.rpc("owner_season1_invite_get_mine");
@@ -510,4 +512,133 @@ function escapeHtml(s) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+async function loadMidSeasonClaimCard(self) {
+  const claimCard = document.getElementById("wlClaimCard");
+  const preCard = document.getElementById("wlPreSeasonCard");
+  const listEl = document.getElementById("wlClaimList");
+  const statusEl = document.getElementById("wlClaimStatus");
+  const introEl = document.getElementById("wlClaimIntro");
+  if (!claimCard || !listEl) return;
+
+  claimCard.hidden = true;
+  if (preCard) preCard.hidden = true;
+  listEl.innerHTML = "";
+  if (statusEl) statusEl.textContent = "";
+
+  // Only for logged-in waiting-list members without a club
+  if (!self || self.has_club || self.is_archived) return;
+  if (!(self.is_member || self.status === "member" || self.status === "on_absence")) {
+    // still allow awaiting_club_auction to see pre-season card only
+  }
+
+  const { data, error } = await supabase.rpc("waiting_list_vacant_clubs_for_claim");
+  if (error) {
+    console.warn("waiting_list_vacant_clubs_for_claim", error);
+    if (statusEl) {
+      statusEl.textContent =
+        /Could not find|schema cache|waiting_list_vacant/i.test(error.message || "")
+          ? "Mid-season club pick needs SQL mid_season_claim_vacant_club_20261031.sql"
+          : error.message;
+    }
+    return;
+  }
+
+  const mode = data?.mode || "pre_season";
+  const canClaim = data?.can_claim === true;
+  const clubs = Array.isArray(data?.clubs) ? data.clubs : [];
+
+  if (mode === "pre_season") {
+    if (preCard && (self.is_member || self.needs_club_auction || !self.has_club)) {
+      // Show auction path hint for people without a club
+      if (!self.has_club && self.status !== "archived") {
+        preCard.hidden = false;
+      }
+    }
+    return;
+  }
+
+  // mid_season
+  if (!canClaim) {
+    if (data?.reason === "auction_invite_active" && preCard) {
+      preCard.hidden = false;
+      preCard.querySelector("p").textContent =
+        "You have a club auction invite — use the Club draft auction page instead of picking a free club.";
+    }
+    return;
+  }
+
+  claimCard.hidden = false;
+  if (introEl) {
+    introEl.textContent = clubs.length
+      ? `${clubs.length} vacant club${clubs.length === 1 ? "" : "s"} — pick one to start handpicking your squad immediately.`
+      : "No vacant clubs right now. Check back soon, or browse Club Database.";
+  }
+
+  if (!clubs.length) {
+    listEl.innerHTML =
+      '<p style="color:#888;margin:0;">No free clubs available at the moment.</p>';
+    return;
+  }
+
+  listEl.innerHTML = clubs
+    .map((c) => {
+      const short = escapeHtml(c.short_name || "");
+      const name = escapeHtml(c.club_name || c.short_name || "");
+      const div = escapeHtml(c.division_label || c.division || "—");
+      return `<div class="wl-claim-row" data-club="${short}">
+        <div>
+          <b>${name}</b>
+          <div class="meta">${short} · ${div}</div>
+        </div>
+        <button type="button" class="wl-claim-btn" data-club="${short}">Choose club</button>
+      </div>`;
+    })
+    .join("");
+
+  listEl.querySelectorAll(".wl-claim-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const club = btn.getAttribute("data-club");
+      if (!club) return;
+      const label =
+        clubs.find((x) => String(x.short_name) === club)?.club_name || club;
+      if (
+        !confirm(
+          `Claim ${label} (${club})?\n\nYou will become owner, the squad will be cleared for handpick, and you will go straight to Handpick squad.`
+        )
+      ) {
+        return;
+      }
+      listEl.querySelectorAll(".wl-claim-btn").forEach((b) => {
+        b.disabled = true;
+      });
+      if (statusEl) statusEl.textContent = `Claiming ${club}…`;
+      const { data: claimed, error: claimErr } = await supabase.rpc(
+        "waiting_list_claim_vacant_club",
+        { p_club_short_name: club }
+      );
+      if (claimErr || claimed?.ok === false) {
+        if (statusEl) {
+          statusEl.textContent =
+            "❌ " +
+            (claimErr?.message ||
+              claimed?.detail ||
+              claimed?.reason ||
+              "Could not claim club");
+        }
+        listEl.querySelectorAll(".wl-claim-btn").forEach((b) => {
+          b.disabled = false;
+        });
+        return;
+      }
+      if (statusEl) {
+        statusEl.textContent = `✅ ${claimed.club_name || club} yours — opening handpick…`;
+      }
+      const dest =
+        claimed.redirect ||
+        `handpick_squad.html?club=${encodeURIComponent(claimed.club || club)}`;
+      window.location.assign(dest);
+    });
+  });
 }
