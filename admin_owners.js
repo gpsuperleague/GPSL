@@ -2490,9 +2490,9 @@ async function setClubHandpickIntake(club, enabled, label) {
         `This will:\n` +
         `• Release the whole squad to free agents (no fees paid to this club)\n` +
         `• Clear the manager (no MV payout)\n` +
-        `• Set cash to the default rebuild pot via one Central Bank adjustment\n\n` +
-        `Other clubs’ past deals and ledgers are NOT reversed.\n` +
-        `Takeover inherit is unchanged — this is intake only.`
+        `• Set cash to starting balance (₿650m) — prior season history kept\n` +
+        `• Charge Club takeover Fee (same as stadium purchase for new owners)\n\n` +
+        `Other clubs’ past deals and ledgers are NOT reversed.`
     );
     if (!ok) return;
   } else {
@@ -2527,7 +2527,7 @@ async function setClubHandpickIntake(club, enabled, label) {
 
   if (enabled && data.action === "enabled") {
     setWlActionStatus(
-      `✅ Handpick ON · ${data.club} · released ${data.players_released ?? 0} · cash → ${data.target_balance}`,
+      `✅ Handpick ON · ${data.club} · released ${data.players_released ?? 0} · cash ${data.balance_after ?? data.finances?.balance_after ?? "—"} (650m − takeover fee)`,
       true
     );
   } else if (enabled && data.already_on) {

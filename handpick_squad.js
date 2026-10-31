@@ -227,9 +227,9 @@ async function loadContext() {
     gate.innerHTML = `Club <b>${escapeHtml(clubLabel)}</b> is not in handpick intake. Enable it on the Season owner board before approving wishlists.`;
   } else {
     gate.className = "gate-box ok";
-    gate.innerHTML = `Handpick open for <b>${escapeHtml(clubLabel)}</b> · rebuild pot ${escapeHtml(
-      formatMoney(Number(data.target_balance) || 0)
-    )} · balance ${escapeHtml(formatMoney(Number(data.balance) || 0))} · tax ${escapeHtml(
+    gate.innerHTML = `Handpick open for <b>${escapeHtml(clubLabel)}</b> · balance ${escapeHtml(
+      formatMoney(Number(data.balance) || 0)
+    )} (mid-season takeover: starting balance − Club takeover Fee) · tax ${escapeHtml(
       String(data.income_tax_pct ?? 0)
     )}%`;
   }

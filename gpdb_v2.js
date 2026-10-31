@@ -2468,11 +2468,32 @@ document.addEventListener("DOMContentLoaded", () => {
             : `<button type="button" class="scout-btn${scouted ? " scout-on" : ""}" data-player-id="${player.Konami_ID}" title="${scouted ? `Scouting (tier ${scoutTier}) — click to remove` : "Add to scouting (top target)"}">${scoutingStarChar(scouted)}</button>`
           : "";
         const hpTagged = HANDPICK_BASKET_IDS.has(String(player.Konami_ID));
+        const foreignLocked = !!formatForeignContractGpdbHtml(
+          player,
+          TRANSFER_STATUS_STATE
+        );
+        const auctionBlocked = auctionExcluded;
         const canHandpickTag =
           showHandpickCol &&
           !hasClub &&
           !seasonExcluded &&
-          !legacyCard;
+          !legacyCard &&
+          !foreignLocked &&
+          !auctionBlocked;
+        let handpickBlockedTitle = "Handpick tags are for signable free agents only";
+        if (foreignLocked) {
+          handpickBlockedTitle =
+            playerForeignContractStatusLabel(player) ||
+            "Unavailable until next season";
+        } else if (auctionBlocked) {
+          handpickBlockedTitle = auctionExcludedCoverText(player.Konami_ID);
+        } else if (legacyCard) {
+          handpickBlockedTitle = "Legacy card — not signable";
+        } else if (seasonExcluded) {
+          handpickBlockedTitle = "Season excluded";
+        } else if (hasClub) {
+          handpickBlockedTitle = "Already contracted";
+        }
         const handpickCell = showHandpickCol
           ? canHandpickTag
             ? `<button type="button" class="handpick-btn${hpTagged ? " handpick-on" : ""}" data-player-id="${player.Konami_ID}" title="${
@@ -2480,7 +2501,9 @@ document.addEventListener("DOMContentLoaded", () => {
                   ? "On your handpick wishlist — click to untag (still a free agent)"
                   : "Temp-tag for mid-season handpick wishlist (stays free agent until admin approves)"
               }">${handpickTagChar(hpTagged)}</button>`
-            : `<span class="locked-msg" title="Handpick tags are for free agents only">—</span>`
+            : `<span class="locked-msg" title="${escapePlayerHtml(
+                handpickBlockedTitle
+              )}">—</span>`
           : "";
 
         if (seasonExcluded) {
