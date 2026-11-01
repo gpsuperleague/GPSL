@@ -164,6 +164,7 @@ async function welcomeOneUser(opts: {
       };
     }
   }
+  // force=true is used for rejoins (joined_at after last sent_at) and admin resends.
 
   let roleResult: Awaited<ReturnType<typeof ensureVisitorRole>> | null = null;
   if (assignVisitor) {
@@ -311,9 +312,95 @@ Deno.serve(async (req) => {
 
     const action = String(body.action || "welcome_newcomers").trim();
     const discordUserId = String(body.discord_user_id || "").trim();
-    const force = body.force === true && (isAdminJwt || authBearer === serviceRoleKey);
+    // Allow force for admin JWT, service role, or invoke/feed key (cron/SQL kicks).
+    const force =
+      body.force === true &&
+      (isAdminJwt ||
+        authBearer === serviceRoleKey ||
+        (!!feedKey &&
+          (invokeHeader === feedKey || authBearer === feedKey)));
     const assignVisitor = body.assign_visitor !== false;
     const admin = createClient(supabaseUrl, serviceRoleKey);
+
+    if (action === "diagnose_pending") {
+      const humans = await fetchGuildHumans(botToken, guildId);
+      const { data: sentRows } = await admin
+        .from("gpsl_discord_welcome_sent")
+        .select("discord_user_id, via, ok, sent_at, error");
+      const sentMap = new Map(
+        (sentRows || []).map(
+          (r: {
+            discord_user_id: string;
+            via?: string;
+            ok?: boolean;
+            sent_at?: string;
+            error?: string;
+          }) => [String(r.discord_user_id), r]
+        )
+      );
+      const { data: regRows } = await admin
+        .from("gpsl_owner_registry")
+        .select("discord_user_id, status")
+        .not("discord_user_id", "is", null);
+      const ownerMap = new Map(
+        (regRows || [])
+          .map((r: { discord_user_id: string | null; status?: string }) => [
+            String(r.discord_user_id || "").trim(),
+            String(r.status || ""),
+          ])
+          .filter((x: [string, string]) => x[0])
+      );
+
+      const newest = [...humans]
+        .filter((h) => h.joined_at)
+        .sort(
+          (a, b) =>
+            Date.parse(String(b.joined_at)) - Date.parse(String(a.joined_at))
+        )
+        .slice(0, 10)
+        .map((h) => {
+          const sent = sentMap.get(h.id);
+          const regStatus = ownerMap.get(h.id);
+          const roles = new Set(h.roles);
+          return {
+            discord_user_id: h.id,
+            username: h.username || null,
+            display_name: h.display_name || null,
+            joined_at: h.joined_at,
+            days_in_server:
+              daysInGuild(h.joined_at) != null
+                ? Math.floor(daysInGuild(h.joined_at) as number)
+                : null,
+            in_welcome_sent: !!sent,
+            welcome_via: sent?.via || null,
+            welcome_ok: sent?.ok ?? null,
+            in_owner_registry: regStatus != null,
+            registry_status: regStatus ?? null,
+            has_visitor_role: !!(visitorRole && roles.has(visitorRole)),
+            has_member_role: !!(memberRole && roles.has(memberRole)),
+            has_owner_role: !!(ownerRole && roles.has(ownerRole)),
+            would_be_pending: !sent && regStatus == null,
+          };
+        });
+
+      const pendingCount = humans.filter(
+        (h) => !sentMap.has(h.id) && !ownerMap.has(h.id)
+      ).length;
+
+      return jsonResponse({
+        ok: true,
+        action: "diagnose_pending",
+        guild_humans: humans.length,
+        welcome_sent_rows: sentMap.size,
+        registry_discord_ids: ownerMap.size,
+        pending_for_welcome_newcomers: pendingCount,
+        newest_joiners: newest,
+        great_hall_env: !!(
+          Deno.env.get("DISCORD_GREAT_HALL_CHANNEL_ID") ||
+          Deno.env.get("DISCORD_WELCOME_CHANNEL_ID")
+        ),
+      });
+    }
 
     if (action === "resolve_great_hall") {
       const info = await listGreatHallCandidates(botToken, guildId);
@@ -345,20 +432,22 @@ Deno.serve(async (req) => {
       action === "welcome_newcomers" ||
       action === "welcome_members"
     ) {
-      const humans =
-        action === "welcome_members"
-          ? await fetchGuildHumans(botToken, guildId)
-          : (await fetchGuildHumanIds(botToken, guildId)).map((id) => ({
-              id,
-              roles: [] as string[],
-            }));
+      const humans = await fetchGuildHumans(botToken, guildId);
       const humanIds = humans.map((h) => h.id);
       const { data: sentRows } = await admin
         .from("gpsl_discord_welcome_sent")
-        .select("discord_user_id");
+        .select("discord_user_id, sent_at");
       const sent = new Set(
         (sentRows || []).map((r: { discord_user_id: string }) =>
           String(r.discord_user_id)
+        )
+      );
+      const sentAt = new Map(
+        (sentRows || []).map(
+          (r: { discord_user_id: string; sent_at?: string }) => [
+            String(r.discord_user_id),
+            r.sent_at ? String(r.sent_at) : "",
+          ]
         )
       );
 
@@ -587,24 +676,41 @@ Deno.serve(async (req) => {
         25
       );
 
-      const pending = humanIds.filter((id) => !sent.has(id) && !owners.has(id));
-      const batch = pending.slice(0, limit);
+      // Never sent, or rejoined after last welcome (left + came back).
+      const pendingHumans = humans.filter((h) => {
+        if (owners.has(h.id)) return false;
+        const prev = sentAt.get(h.id);
+        if (!prev) return true;
+        if (!h.joined_at) return false;
+        const joinedMs = Date.parse(h.joined_at);
+        const sentMs = Date.parse(prev);
+        return (
+          Number.isFinite(joinedMs) &&
+          Number.isFinite(sentMs) &&
+          joinedMs > sentMs
+        );
+      });
+      const batch = pendingHumans.slice(0, limit);
       const results: Record<string, unknown>[] = [];
       let welcomed = 0;
       let errors = 0;
+      let rejoins = 0;
 
-      for (const id of batch) {
+      for (const h of batch) {
+        const isRejoin = sent.has(h.id);
+        if (isRejoin) rejoins += 1;
         const r = await welcomeOneUser({
           admin,
           botToken,
           guildId,
-          discordUserId: id,
+          discordUserId: h.id,
           visitorRole,
           memberRole,
           ownerRole,
           assignVisitor: true,
-          force: false,
+          force: isRejoin, // rejoin must bypass already_sent
           via: "welcome_newcomers",
+          audience: "visitor",
         });
         results.push(r);
         if (r.ok && !r.skipped) welcomed += 1;
@@ -616,11 +722,12 @@ Deno.serve(async (req) => {
         ok: true,
         action: "welcome_newcomers",
         guild_humans: humanIds.length,
-        pending: pending.length,
+        pending: pendingHumans.length,
+        rejoins,
         processed: batch.length,
         welcomed,
         errors,
-        remaining: Math.max(pending.length - batch.length, 0),
+        remaining: Math.max(pendingHumans.length - batch.length, 0),
         results: results.slice(0, 20),
       });
     }
@@ -629,7 +736,7 @@ Deno.serve(async (req) => {
       return jsonResponse(
         {
           error:
-            "Unknown action — use welcome_newcomers, welcome_members, resolve_great_hall, on_join, or welcome_one",
+            "Unknown action — use welcome_newcomers, welcome_members, diagnose_pending, resolve_great_hall, on_join, or welcome_one",
         },
         400
       );
