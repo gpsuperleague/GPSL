@@ -6,6 +6,7 @@ import {
   welcomePackBody,
   welcomePackWithMention,
   ensureVisitorRole,
+  listGreatHallCandidates,
   sendWelcomeChannel,
   sendWelcomeDm,
   type WelcomePackAudience,
@@ -29,6 +30,12 @@ type GuildHuman = {
   roles: string[];
   username?: string;
   display_name?: string;
+  joined_at?: string | null;
+};
+
+type WelcomeTarget = GuildHuman & {
+  audience: WelcomePackAudience;
+  bucket: "member_not_owner" | "visitor_week_plus";
 };
 
 async function fetchGuildHumans(
@@ -53,6 +60,7 @@ async function fetchGuildHumans(
     }
     const batch = (await res.json()) as Array<{
       nick?: string | null;
+      joined_at?: string | null;
       user?: {
         id?: string;
         bot?: boolean;
@@ -75,12 +83,20 @@ async function fetchGuildHumans(
         roles: Array.isArray(m.roles) ? m.roles.map(String) : [],
         username,
         display_name: display,
+        joined_at: m.joined_at || null,
       });
       after = id;
     }
     if (batch.length < 1000) break;
   }
   return out;
+}
+
+function daysInGuild(joinedAt: string | null | undefined): number | null {
+  if (!joinedAt) return null;
+  const t = Date.parse(joinedAt);
+  if (!Number.isFinite(t)) return null;
+  return (Date.now() - t) / (1000 * 60 * 60 * 24);
 }
 
 async function fetchGuildHumanIds(
@@ -299,6 +315,31 @@ Deno.serve(async (req) => {
     const assignVisitor = body.assign_visitor !== false;
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
+    if (action === "resolve_great_hall") {
+      const info = await listGreatHallCandidates(botToken, guildId);
+      const hallish = info.text_channels.filter((c) => {
+        const n = c.name.toLowerCase();
+        return (
+          n.includes("great") ||
+          n.includes("hall") ||
+          n.includes("welcome") ||
+          n.includes("arrival")
+        );
+      });
+      return jsonResponse({
+        ok: true,
+        action: "resolve_great_hall",
+        resolved_id: info.resolved_id,
+        from_env: info.from_env,
+        hallish_channels: hallish,
+        text_channels: info.text_channels,
+        text_channel_count: info.text_channels.length,
+        note: info.resolved_id
+          ? "Resolved — set Edge secret DISCORD_GREAT_HALL_CHANNEL_ID to this id if from_env is null."
+          : "No match — pick a text channel id from text_channels and set DISCORD_GREAT_HALL_CHANNEL_ID.",
+      });
+    }
+
     if (
       action === "seed_existing" ||
       action === "welcome_newcomers" ||
@@ -366,60 +407,128 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Members role, exclude Owners role — backfill new pack (no Visitor assign).
+      // Members∩¬Owners + Visitors in server ≥7 days — backfill pack.
       if (action === "welcome_members") {
-        if (!memberRole) {
+        if (!memberRole && !visitorRole) {
           return jsonResponse(
             {
               ok: false,
-              reason: "member_role_not_configured",
-              error: "DISCORD_ROLE_MEMBER_ID missing",
+              reason: "roles_not_configured",
+              error: "DISCORD_ROLE_MEMBER_ID / DISCORD_ROLE_VISITOR_ID missing",
             },
             200
           );
         }
         const limitRaw = Number(body.limit);
-        const limit = Math.min(
-          Math.max(Number.isFinite(limitRaw) ? limitRaw : 12, 1),
-          25
-        );
-        // Default: re-send new pack to Members∩¬Owners (even if seed_existing marked them).
-        // Pass only_unsent:true to skip people already in gpsl_discord_welcome_sent.
-        const onlyUnsent = body.only_unsent === true;
+        const offsetRaw = Number(body.offset);
         const dryRun = body.dry_run === true || body.preview === true;
-        const memberOnly = humans.filter((h) => {
+        // Dry run can list a larger set; live send stays batched.
+        const limit = Math.min(
+          Math.max(Number.isFinite(limitRaw) ? limitRaw : dryRun ? 100 : 12, 1),
+          dryRun ? 150 : 25
+        );
+        const offset = Math.max(
+          Number.isFinite(offsetRaw) ? Math.floor(offsetRaw) : 0,
+          0
+        );
+        const onlyUnsent = body.only_unsent === true;
+        const minVisitorDaysRaw = Number(body.min_visitor_days);
+        const minVisitorDays = Number.isFinite(minVisitorDaysRaw)
+          ? Math.max(minVisitorDaysRaw, 0)
+          : 7;
+        const includeVisitors = body.include_visitors !== false;
+
+        const targets: WelcomeTarget[] = [];
+        for (const h of humans) {
+          if (onlyUnsent && sent.has(h.id)) continue;
           const roles = new Set(h.roles);
-          if (!roles.has(memberRole)) return false;
-          if (ownerRole && roles.has(ownerRole)) return false;
-          if (onlyUnsent && sent.has(h.id)) return false;
-          return true;
-        });
-        const batch = memberOnly.slice(0, limit);
+          if (ownerRole && roles.has(ownerRole)) continue;
+
+          if (memberRole && roles.has(memberRole)) {
+            targets.push({
+              ...h,
+              audience: "member",
+              bucket: "member_not_owner",
+            });
+            continue;
+          }
+
+          if (
+            includeVisitors &&
+            visitorRole &&
+            roles.has(visitorRole) &&
+            !(memberRole && roles.has(memberRole))
+          ) {
+            const days = daysInGuild(h.joined_at);
+            if (days != null && days >= minVisitorDays) {
+              targets.push({
+                ...h,
+                audience: "visitor",
+                bucket: "visitor_week_plus",
+              });
+            }
+          }
+        }
+
+        const memberCount = targets.filter(
+          (t) => t.bucket === "member_not_owner"
+        ).length;
+        const visitorCount = targets.filter(
+          (t) => t.bucket === "visitor_week_plus"
+        ).length;
+        const batch = targets.slice(offset, offset + limit);
 
         // Preview only — no DMs, no Great Hall, no welcome_sent writes
         if (dryRun) {
-          const sampleId = batch[0]?.id || "123456789012345678";
+          const memberSample =
+            batch.find((t) => t.audience === "member")?.id ||
+            "123456789012345678";
+          const visitorSample =
+            batch.find((t) => t.audience === "visitor")?.id ||
+            "123456789012345678";
           return jsonResponse({
             ok: true,
             dry_run: true,
             action: "welcome_members",
             guild_humans: humans.length,
-            member_not_owner: memberOnly.length,
+            member_not_owner: memberCount,
+            visitors_week_plus: visitorCount,
+            matching_total: targets.length,
+            offset,
             would_send_this_batch: batch.length,
-            remaining_after_batch: Math.max(memberOnly.length - batch.length, 0),
+            remaining_after_batch: Math.max(
+              targets.length - (offset + batch.length),
+              0
+            ),
             only_unsent: onlyUnsent,
+            include_visitors: includeVisitors,
+            min_visitor_days: minVisitorDays,
             delivers_to: ["discord_dm", "great_hall_channel"],
             recipients: batch.map((h) => ({
               discord_user_id: h.id,
               username: h.username || null,
               display_name: h.display_name || null,
+              audience: h.audience,
+              bucket: h.bucket,
+              joined_at: h.joined_at || null,
+              days_in_server:
+                daysInGuild(h.joined_at) != null
+                  ? Math.floor(daysInGuild(h.joined_at) as number)
+                  : null,
               already_in_welcome_sent: sent.has(h.id),
               mention: `<@${h.id}>`,
             })),
-            all_matching_ids: memberOnly.map((h) => h.id),
-            message_preview: welcomePackWithMention(sampleId, "member"),
+            all_matching_ids: targets.map((h) => h.id),
+            message_preview_member: welcomePackWithMention(
+              memberSample,
+              "member"
+            ),
+            message_preview_visitor: welcomePackWithMention(
+              visitorSample,
+              "visitor"
+            ),
             note:
-              "Dry run — nothing sent. Drop dry_run/preview to send this batch for real.",
+              "Dry run — nothing sent. Members (no Owner) + Visitors in server ≥ min_visitor_days.",
           });
         }
 
@@ -438,10 +547,9 @@ Deno.serve(async (req) => {
             memberRole,
             ownerRole,
             assignVisitor: false,
-            // Re-send past welcome_sent / registry skip — audience already role-filtered
             force: true,
             via: "welcome_members",
-            audience: "member",
+            audience: h.audience,
           });
           results.push(r);
           if (r.ok && !r.skipped) welcomed += 1;
@@ -454,15 +562,20 @@ Deno.serve(async (req) => {
           ok: true,
           action: "welcome_members",
           guild_humans: humans.length,
-          member_not_owner: memberOnly.length,
+          member_not_owner: memberCount,
+          visitors_week_plus: visitorCount,
+          matching_total: targets.length,
+          offset,
           processed: batch.length,
           welcomed,
           skipped,
           errors,
-          remaining: Math.max(memberOnly.length - batch.length, 0),
+          remaining: Math.max(targets.length - (offset + batch.length), 0),
           only_unsent: onlyUnsent,
+          include_visitors: includeVisitors,
+          min_visitor_days: minVisitorDays,
           note:
-            "Discord Members role only; Owners role excluded. No Visitor assign. Re-run until remaining=0.",
+            "Members∩¬Owners + Visitors (≥7d by default). Next batch: pass offset += processed.",
           results: results.slice(0, 20),
         });
       }
@@ -516,7 +629,7 @@ Deno.serve(async (req) => {
       return jsonResponse(
         {
           error:
-            "Unknown action — use welcome_newcomers, welcome_members, on_join, or welcome_one",
+            "Unknown action — use welcome_newcomers, welcome_members, resolve_great_hall, on_join, or welcome_one",
         },
         400
       );

@@ -53,8 +53,10 @@ BEGIN
     body := jsonb_build_object(
       'action', 'welcome_members',
       'dry_run', true,
-      'limit', greatest(1, least(coalesce(p_limit, 25), 100)),
+      'limit', greatest(1, least(coalesce(p_limit, 150), 150)),
       'only_unsent', coalesce(p_only_unsent, false),
+      'include_visitors', true,
+      'min_visitor_days', 7,
       'source', 'gpsl_discord_welcome_members_preview'
     ),
     timeout_milliseconds := 120000

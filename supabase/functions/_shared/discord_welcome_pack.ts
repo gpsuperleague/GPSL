@@ -134,24 +134,96 @@ export async function resolveGreatHallChannelId(
   }>;
   // Guild text = 0
   const textChannels = channels.filter((c) => c.type === 0 && c.id && c.name);
+  // Discord channel names often use Mathematical Bold (𝐓𝐡𝐞-𝐆𝐫𝐞𝐚𝐭-𝐇𝐚𝐥𝐥).
+  const foldMath = (s: string) => {
+    let out = "";
+    for (const ch of s) {
+      const cp = ch.codePointAt(0)!;
+      const blocks: Array<[number, number, number]> = [
+        [0x1d400, 0x1d419, 65], // bold A–Z
+        [0x1d41a, 0x1d433, 97], // bold a–z
+        [0x1d434, 0x1d44d, 65], // italic A–Z
+        [0x1d44e, 0x1d467, 97],
+        [0x1d468, 0x1d481, 65], // bold italic A–Z
+        [0x1d482, 0x1d49b, 97],
+        [0x1d5d4, 0x1d5ed, 65], // sans bold A–Z
+        [0x1d5ee, 0x1d607, 97],
+        [0x1d63c, 0x1d655, 65], // sans bold italic A–Z
+        [0x1d656, 0x1d66f, 97],
+      ];
+      let mapped = false;
+      for (const [lo, hi, base] of blocks) {
+        if (cp >= lo && cp <= hi) {
+          out += String.fromCharCode(base + (cp - lo));
+          mapped = true;
+          break;
+        }
+      }
+      if (!mapped) out += ch;
+    }
+    return out;
+  };
   const norm = (s: string) =>
-    s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    foldMath(s)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
 
-  const preferred = [
+  const preferredExact = [
     "greathall",
     "thegreathall",
-    "great-hall",
+    "greathallgpsl",
+    "gpslgreathall",
     "welcome",
     "arrivals",
   ];
-  for (const key of preferred) {
-    const hit = textChannels.find((c) => {
-      const n = norm(String(c.name));
-      return n === norm(key) || n.includes("greathall");
-    });
+  for (const key of preferredExact) {
+    const hit = textChannels.find((c) => norm(String(c.name)) === key);
     if (hit?.id) return String(hit.id);
   }
+  // Fuzzy: channel name contains "great" + "hall", or greathall
+  const fuzzy = textChannels.find((c) => {
+    const n = norm(String(c.name));
+    return (
+      n.includes("greathall") ||
+      (n.includes("great") && n.includes("hall"))
+    );
+  });
+  if (fuzzy?.id) return String(fuzzy.id);
   return null;
+}
+
+/** Admin helper: list text channels + which one resolveGreatHall would pick. */
+export async function listGreatHallCandidates(
+  botToken: string,
+  guildId: string
+): Promise<{
+  resolved_id: string | null;
+  from_env: string | null;
+  text_channels: Array<{ id: string; name: string }>;
+}> {
+  const fromEnv = (
+    Deno.env.get("DISCORD_GREAT_HALL_CHANNEL_ID") ||
+    Deno.env.get("DISCORD_WELCOME_CHANNEL_ID") ||
+    ""
+  ).trim() || null;
+
+  const res = await discordApi(botToken, `/guilds/${guildId}/channels`);
+  const text_channels: Array<{ id: string; name: string }> = [];
+  if (res.ok && Array.isArray(res.json)) {
+    for (const c of res.json as Array<{
+      id?: string;
+      name?: string;
+      type?: number;
+    }>) {
+      if (c.type === 0 && c.id && c.name) {
+        text_channels.push({ id: String(c.id), name: String(c.name) });
+      }
+    }
+    text_channels.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const resolved_id = fromEnv || (await resolveGreatHallChannelId(botToken, guildId));
+  return { resolved_id, from_env: fromEnv, text_channels };
 }
 
 export async function sendWelcomeDm(
