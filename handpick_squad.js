@@ -1284,6 +1284,32 @@ async function approveSubmission(id, dryRun) {
   );
 
   if (finalData?.ok) {
+    // Approved clubs leave handpick_intake — refresh admin dropdown
+    if (isAdmin) {
+      const mapRes = await supabase.rpc("admin_handpick_intake_map");
+      if (!mapRes.error) {
+        await loadAdminClubs(mapRes.data || {});
+        const sel = document.getElementById("clubSelect");
+        const stillThere =
+          sel &&
+          club &&
+          [...sel.options].some(
+            (o) => String(o.value).toUpperCase() === String(club).toUpperCase()
+          );
+        if (sel && !stillThere) {
+          activeClub = sel.value || "";
+          if (activeClub) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("club", activeClub);
+            history.replaceState({}, "", url);
+          } else {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("club");
+            history.replaceState({}, "", url);
+          }
+        }
+      }
+    }
     await loadContext();
     await loadSubmissions();
   } else {
