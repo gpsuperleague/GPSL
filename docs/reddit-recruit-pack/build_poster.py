@@ -1,5 +1,6 @@
 """
-GPSL recruit poster — cinematic hero + dark translucent site montage + editorial bands.
+GPSL recruit poster — classy hero + editorial copy + custom art strip at bottom.
+No website screenshots. Art stays below the text, not under it.
 """
 from pathlib import Path
 
@@ -7,31 +8,30 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
 ROOT = Path(__file__).resolve().parents[2]
 PACK = Path(__file__).resolve().parent
+ART = PACK / "art"
 OUT_PNG = PACK / "00-recruit-poster.png"
 OUT_JPG = PACK / "00-recruit-poster.jpg"
 LOGO = ROOT / "images" / "League" / "Logos" / "GPSL_logo.png"
-AI_BASE = Path(
+STADIUM = Path(
     r"C:\Users\Rotav\.cursor\projects\d-GPSL-Cursor\assets\gpsl-stadium-hero-clean.jpg"
 )
 STADIUM_FALLBACK = ROOT / "images" / "stadiums" / "BAR.jpg"
-BADGE_DIR = ROOT / "images" / "club_badges"
-
-SHOTS = [
-    PACK / "02-site-matchday.png",
-    PACK / "04-site-finances.png",
-    PACK / "01-site-fixtures.png",
-    PACK / "05-site-tables.png",
-    PACK / "03-site-schedule.png",
-]
 
 W, H = 1080, 1440
 ORANGE = (255, 153, 0)
 WHITE = (246, 246, 246)
 SILVER = (196, 196, 196)
-MUTED = (175, 175, 175)
+MUTED = (168, 168, 168)
 DIM = (110, 110, 110)
-RULE = (55, 55, 55)
+RULE = (48, 48, 48)
 BG = (5, 5, 5)
+
+ART_TILES = [
+    (ART / "matchday.jpg", "MATCH DAY"),
+    (ART / "transfers.jpg", "TRANSFERS"),
+    (ART / "finances.jpg", "FINANCES"),
+    (ART / "platform.jpg", "THE SITE"),
+]
 
 
 def font(path: str, size: int) -> ImageFont.ImageFont:
@@ -51,133 +51,96 @@ def cover(src: Image.Image, tw: int, th: int, bias_y: float = 0.35) -> Image.Ima
     return im.crop((left, top, left + tw, top + th))
 
 
-def hero_from_ai_or_stadium() -> Image.Image:
-    hero_h = 620
-    src = AI_BASE if AI_BASE.exists() else STADIUM_FALLBACK
-    cut = cover(Image.open(src).convert("RGB"), W, hero_h, bias_y=0.35)
-    cut = ImageEnhance.Brightness(cut).enhance(0.78 if AI_BASE.exists() else 0.48)
-    cut = ImageEnhance.Contrast(cut).enhance(1.12)
-    cut = ImageEnhance.Color(cut).enhance(0.9)
+def hero_band(height: int) -> Image.Image:
+    src = STADIUM if STADIUM.exists() else STADIUM_FALLBACK
+    cut = cover(Image.open(src).convert("RGB"), W, height, bias_y=0.35)
+    cut = ImageEnhance.Brightness(cut).enhance(0.75 if STADIUM.exists() else 0.48)
+    cut = ImageEnhance.Contrast(cut).enhance(1.1)
     grade = Image.new("RGB", cut.size, (12, 6, 0))
-    cut = Image.blend(cut, grade, 0.16)
-
-    fade = Image.new("L", (W, hero_h), 0)
+    cut = Image.blend(cut, grade, 0.18)
+    fade = Image.new("L", (W, height), 0)
     fd = ImageDraw.Draw(fade)
-    for y in range(hero_h):
-        t = y / (hero_h - 1)
-        a = 255 if t < 0.55 else int(255 * (1 - (t - 0.55) / 0.45) ** 1.1)
+    for y in range(height):
+        t = y / max(height - 1, 1)
+        if t < 0.58:
+            a = 255
+        else:
+            fade_t = max(0.0, min(1.0, (t - 0.58) / 0.42))
+            a = int(255 * ((1.0 - fade_t) ** 1.1))
         fd.line([(0, y), (W, y)], fill=max(0, min(255, a)))
-    return Image.composite(cut, Image.new("RGB", (W, hero_h), BG), fade)
+    return Image.composite(cut, Image.new("RGB", (W, height), BG), fade)
 
 
-def dark_panel(src: Path, tw: int, th: int) -> Image.Image:
-    im = cover(Image.open(src).convert("RGB"), tw, th, bias_y=0.0)
-    im = ImageEnhance.Brightness(im).enhance(0.42)
+def style_tile(path: Path, tw: int, th: int) -> Image.Image:
+    im = cover(Image.open(path).convert("RGB"), tw, th, bias_y=0.4)
+    im = ImageEnhance.Brightness(im).enhance(0.72)
+    im = ImageEnhance.Color(im).enhance(0.85)
     im = ImageEnhance.Contrast(im).enhance(1.08)
-    im = ImageEnhance.Color(im).enhance(0.5)
-    # charcoal wash — keep darker / classier
-    wash = Image.new("RGB", im.size, (8, 8, 8))
-    im = Image.blend(im, wash, 0.38)
-    return im.convert("RGBA")
+    # dark vignette
+    vig = Image.new("L", (tw, th), 0)
+    vd = ImageDraw.Draw(vig)
+    for y in range(th):
+        for x in range(0, tw, 4):
+            pass
+    # edge darken via radial-ish gradient
+    overlay = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
+    od = ImageDraw.Draw(overlay)
+    od.rectangle([0, 0, tw, th], fill=(0, 0, 0, 40))
+    # bottom gradient for label
+    for i in range(56):
+        a = int(170 * (i / 55))
+        od.line([(0, th - 1 - i), (tw, th - 1 - i)], fill=(0, 0, 0, a))
+    out = im.convert("RGBA")
+    out = Image.alpha_composite(out, overlay)
+    return out
 
 
-def build_lower_montage(top: int, bottom: int) -> Image.Image:
-    """Translucent overlapping site panels + faint crests for the lower half."""
-    h = bottom - top
-    canvas = Image.new("RGBA", (W, h), (0, 0, 0, 0))
+def build_art_strip(width: int, height: int) -> Image.Image:
+    """2×2 classy custom art montage for the bottom section only."""
+    gap = 10
+    pad = 56
+    inner_w = width - pad * 2
+    inner_h = height - 8
+    tile_w = (inner_w - gap) // 2
+    tile_h = (inner_h - gap) // 2
+    canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(canvas)
+    f_lab = font(r"C:\Windows\Fonts\seguisb.ttf", 13)
 
-    # Placement: staggered overlapping frames (classy collage, not a grid)
-    layout = [
-        # path, x, y, w, h, rotate, alpha (0–255 panel opacity)
-        (SHOTS[0], -40, 10, 580, 310, -3.2, 155),   # Match Day
-        (SHOTS[1], 460, 30, 660, 290, 2.6, 145),    # Finances
-        (SHOTS[2], 20, 240, 540, 270, 2.0, 140),    # Fixtures
-        (SHOTS[3], 500, 270, 600, 260, -2.0, 140),  # Tables
-        (SHOTS[4], 160, 420, 720, 230, 1.1, 125),   # Schedule
-    ]
-
-    for path, x, y, tw, th, rot, alpha in layout:
+    for i, (path, label) in enumerate(ART_TILES):
         if not path.exists():
             continue
-        panel = dark_panel(path, tw, th)
-        # subtle border
-        bd = ImageDraw.Draw(panel)
-        bd.rectangle([0, 0, tw - 1, th - 1], outline=(70, 70, 70, 90), width=1)
-        panel = panel.rotate(rot, resample=Image.Resampling.BICUBIC, expand=True)
-        # apply overall alpha
-        a = panel.split()[-1].point(lambda p: int(p * alpha / 255))
-        panel.putalpha(a)
-        canvas.alpha_composite(panel, (x, y))
+        r, c = divmod(i, 2)
+        x = pad + c * (tile_w + gap)
+        y = r * (tile_h + gap)
+        tile = style_tile(path, tile_w, tile_h)
+        # thin frame
+        framed = Image.new("RGBA", (tile_w, tile_h), (0, 0, 0, 0))
+        framed.alpha_composite(tile)
+        fd = ImageDraw.Draw(framed)
+        fd.rectangle([0, 0, tile_w - 1, tile_h - 1], outline=(70, 55, 30, 160), width=1)
+        # label
+        tw = draw.textbbox((0, 0), label, font=f_lab)
+        # use framed draw
+        fd.text((14, tile_h - 28), label, font=f_lab, fill=(255, 153, 0, 230))
+        canvas.alpha_composite(framed, (x, y))
 
-    # faint crest constellation (atmosphere, not a vacancy board)
-    crests = ["RMA", "BAR", "LIV", "JUV", "PSG", "INT", "ACM", "ATM", "ARS", "CHE"]
-    crest_layer = Image.new("RGBA", (W, h), (0, 0, 0, 0))
-    size = 52
-    positions = [
-        (70, 80), (160, 500), (980, 90), (920, 480),
-        (30, 340), (1000, 300), (500, 560), (700, 30),
-    ]
-    for i, (cx, cy) in enumerate(positions):
-        code = crests[i % len(crests)]
-        bp = BADGE_DIR / f"{code}.png"
-        if not bp.exists():
-            continue
-        badge = Image.open(bp).convert("RGBA")
-        badge.thumbnail((size, size), Image.Resampling.LANCZOS)
-        # darken + low alpha
-        dark = Image.new("RGBA", badge.size, (0, 0, 0, 160))
-        badge = Image.alpha_composite(badge, dark)
-        a = badge.split()[-1].point(lambda p: int(p * 0.28))
-        badge.putalpha(a)
-        crest_layer.alpha_composite(badge, (cx, cy))
-    crest_layer = crest_layer.filter(ImageFilter.GaussianBlur(0.6))
-    canvas.alpha_composite(crest_layer)
-
-    # soft vignette so edges dissolve into black
-    vig = Image.new("L", (W, h), 0)
-    vd = ImageDraw.Draw(vig)
-    for y in range(h):
-        for edge in (True, False):
-            pass
-        # vertical fade top/bottom of montage band
-        t = y / max(h - 1, 1)
-        if t < 0.08:
-            a = int(255 * (t / 0.08))
-        elif t > 0.88:
-            a = int(255 * ((1 - t) / 0.12))
-        else:
-            a = 255
-        vd.line([(0, y), (W, y)], fill=a)
-    # horizontal side fade
-    side = Image.new("L", (W, h), 255)
-    sd = ImageDraw.Draw(side)
-    for x in range(70):
-        a = int(255 * (x / 70))
-        sd.line([(x, 0), (x, h)], fill=a)
-        sd.line([(W - 1 - x, 0), (W - 1 - x, h)], fill=a)
-    mask = Image.composite(vig, Image.new("L", (W, h), 0), side)
-    out = Image.new("RGBA", (W, h), (0, 0, 0, 0))
-    out = Image.composite(canvas, out, mask)
-
-    # light dark veil — montage should read, not vanish
-    veil = Image.new("RGBA", (W, h), (5, 5, 5, 55))
-    out = Image.alpha_composite(out, veil)
-    return out
+    return canvas
 
 
 def main() -> None:
     img = Image.new("RGB", (W, H), BG)
-    hero = hero_from_ai_or_stadium()
-    img.paste(hero, (0, 0))
+    hero_h = 480
+    img.paste(hero_band(hero_h), (0, 0))
     draw = ImageDraw.Draw(img)
 
     f_eye = font(r"C:\Windows\Fonts\seguisb.ttf", 15)
-    f_h1 = font(r"C:\Windows\Fonts\georgia.ttf", 78)
-    f_sub = font(r"C:\Windows\Fonts\georgiai.ttf", 28)
-    f_lab = font(r"C:\Windows\Fonts\seguisb.ttf", 15)
-    f_body = font(r"C:\Windows\Fonts\segoeui.ttf", 18)
-    f_foot = font(r"C:\Windows\Fonts\segoeui.ttf", 15)
-    f_tag = font(r"C:\Windows\Fonts\georgiai.ttf", 20)
+    f_h1 = font(r"C:\Windows\Fonts\georgia.ttf", 74)
+    f_sub = font(r"C:\Windows\Fonts\georgiai.ttf", 26)
+    f_lab = font(r"C:\Windows\Fonts\seguisb.ttf", 14)
+    f_body = font(r"C:\Windows\Fonts\segoeui.ttf", 17)
+    f_foot = font(r"C:\Windows\Fonts\segoeui.ttf", 14)
+    f_tag = font(r"C:\Windows\Fonts\georgiai.ttf", 18)
 
     def size(text, fnt):
         b = draw.textbbox((0, 0), text, font=fnt)
@@ -188,88 +151,73 @@ def main() -> None:
         draw.text(((W - tw) / 2, y), text, font=fnt, fill=fill)
         return th
 
+    # logo
     logo = Image.open(LOGO).convert("RGBA")
-    lw = 300
+    lw = 280
     lh = int(logo.height * (lw / logo.width))
     logo = logo.resize((lw, lh), Image.Resampling.LANCZOS)
     plate = Image.new("RGBA", (lw + 80, lh + 50), (0, 0, 0, 0))
     pd = ImageDraw.Draw(plate)
-    pd.ellipse([0, 10, lw + 80, lh + 40], fill=(0, 0, 0, 140))
-    plate = plate.filter(ImageFilter.GaussianBlur(18))
+    pd.ellipse([0, 10, lw + 80, lh + 40], fill=(0, 0, 0, 150))
+    plate = plate.filter(ImageFilter.GaussianBlur(16))
     layer = img.convert("RGBA")
     lx = (W - lw) // 2
-    ly = 56
-    layer.alpha_composite(plate, (lx - 40, ly - 15))
+    ly = 48
+    layer.alpha_composite(plate, (lx - 40, ly - 12))
     layer.alpha_composite(logo, (lx, ly))
     img = layer.convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    y = ly + lh + 36
+    y = ly + lh + 28
     center("GP SUPER LEAGUE", y, f_eye, SILVER)
-    y += 36
+    y += 32
 
     line = "Own the club."
     tw, _ = size(line, f_h1)
     x = (W - tw) / 2
     draw.text((x + 2, y + 3), line, font=f_h1, fill=(0, 0, 0))
     draw.text((x, y), line, font=f_h1, fill=WHITE)
-    y += 92
+    y += 86
     center("Run everything that matters.", y, f_sub, ORANGE)
-    y += 52
-    draw.line([W // 2 - 28, y, W // 2 + 28, y], fill=ORANGE, width=2)
+    y += 44
+    draw.line([W // 2 - 26, y, W // 2 + 26, y], fill=ORANGE, width=2)
     y += 28
-
-    # --- dark translucent montage behind the bands ---
-    montage_top = y - 10
-    montage_bottom = H - 130
-    montage = build_lower_montage(montage_top, montage_bottom)
-    layer = img.convert("RGBA")
-    layer.alpha_composite(montage, (0, montage_top))
-    img = layer.convert("RGB")
-    draw = ImageDraw.Draw(img)
 
     bands = [
         (
             "MATCH DAY",
-            "Propose kick-offs, check in, submit the score and walk the fixture "
-            "on a club site built around how GPSL actually plays.",
+            "Propose kick-offs, check in, submit the score — the fixture lives on your club site.",
         ),
         (
             "TRANSFER CENTRE",
-            "Owner-to-owner deals, player draft auctions, special auctions, "
-            "club drafts and manager auctions — then contract renewals that matter.",
+            "Owner deals, player drafts, special auctions, club & manager auctions, renewals.",
         ),
         (
             "FINANCES",
-            "Season wages, credit rating, ledgers, budgets and FFP pressure. "
-            "Every signing hits the books. Every result feeds the forecast.",
+            "Wages, credit, ledgers, budgets and FFP pressure. Every signing hits the books.",
         ),
         (
             "BESPOKE WEBSITE",
-            "Built specifically for GPSL — not a shared multi-league template. "
-            "Match Day, transfers and finances go deeper because the platform is ours.",
+            "Built specifically for GPSL — not a shared multi-league template. Deeper because it’s ours.",
         ),
         (
             "TRUE COMPETITION",
-            "GP-only · unique players, clubs, stadiums and managers · PA3 · "
-            "60-club pyramid with promotion, relegation and playoffs.",
+            "GP-only · unique assets · PA3 · 60-club pyramid with promotion & relegation.",
         ),
     ]
 
     left = 72
-    label_w = 210
-    text_x = left + label_w + 24
+    label_w = 200
+    text_x = left + label_w + 20
     text_w = W - text_x - 72
 
     for i, (label, body) in enumerate(bands):
         if i:
             draw.line([left, y, W - left, y], fill=RULE, width=1)
-            y += 22
-
-        # soft text plate for readability over montage
+            y += 16
+        draw.text((left, y + 1), label, font=f_lab, fill=ORANGE)
         words = body.split()
-        lines = []
-        cur = ""
+        lines, cur = [], ""
         for w in words:
             trial = w if not cur else f"{cur} {w}"
             if size(trial, f_body)[0] <= text_w:
@@ -279,36 +227,36 @@ def main() -> None:
                 cur = w
         if cur:
             lines.append(cur)
-        block_h = max(28, len(lines) * (size("Ay", f_body)[1] + 5) + 8)
-        plate = Image.new("RGBA", (W - left * 2 + 16, block_h + 10), (0, 0, 0, 0))
-        pd = ImageDraw.Draw(plate)
-        pd.rounded_rectangle(
-            [0, 0, plate.width - 1, plate.height - 1],
-            radius=6,
-            fill=(0, 0, 0, 110),
-        )
-        layer = img.convert("RGBA")
-        layer.alpha_composite(plate, (left - 8, y - 4))
-        img = layer.convert("RGB")
-        draw = ImageDraw.Draw(img)
-
-        draw.text((left, y + 2), label, font=f_lab, fill=ORANGE)
         by = y
         for ln in lines:
             draw.text((text_x, by), ln, font=f_body, fill=MUTED)
-            by += size(ln, f_body)[1] + 5
-        y = max(y + 28, by) + 16
+            by += size(ln, f_body)[1] + 4
+        y = max(y + 24, by) + 12
 
-    y = max(y + 8, H - 140)
+    # --- custom art strip BELOW the text (not underneath it) ---
+    y += 8
     draw.line([left, y, W - left, y], fill=RULE, width=1)
-    y += 26
+    y += 18
+    center("LIFE AS A GPSL OWNER", y, f_eye, DIM)
+    y += 28
+
+    footer_reserve = 110
+    art_h = max(280, H - y - footer_reserve)
+    strip = build_art_strip(W, art_h)
+    layer = img.convert("RGBA")
+    layer.alpha_composite(strip, (0, y))
+    img = layer.convert("RGB")
+    draw = ImageDraw.Draw(img)
+    y += art_h + 16
+
+    y = min(y, H - 95)
     center(
         "Waiting list open  ·  Discord  ·  PC & Console  ·  GP-only  ·  PA3",
         y,
         f_foot,
         DIM,
     )
-    y += 34
+    y += 30
     center("More than just a match.", y, f_tag, (128, 128, 128))
 
     draw.rectangle([22, 22, W - 22, H - 22], outline=(34, 34, 34), width=1)
