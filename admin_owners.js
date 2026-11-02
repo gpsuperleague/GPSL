@@ -55,6 +55,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   bind("removeAllOnlyBtn", () => bulkRemoveClubOwners({ addToWaitingList: false }));
 
   document.getElementById("tagOwnerSelect")?.addEventListener("change", syncOwnerTagInputFromSelect);
+  document.getElementById("tagOwnerFilter")?.addEventListener("input", () => filterTagOwnerSelect());
+  document.getElementById("tagOwnerMode")?.addEventListener("change", () => filterTagOwnerSelect());
   document.getElementById("clubOwnerFilter")?.addEventListener("input", () =>
     renderClubOwnersRemoveList(window.__clubOwnersRemoveCache || [])
   );
@@ -120,7 +122,6 @@ async function loadOwnerList() {
   }
 
   if (dropdown) dropdown.innerHTML = "";
-  if (tagDropdown) tagDropdown.innerHTML = "";
   if (archiveDropdown) {
     archiveDropdown.innerHTML = `<option value="">Select owner…</option>`;
   }
@@ -130,6 +131,7 @@ async function loadOwnerList() {
 
   const archiveOptions = [];
   const unarchiveOptions = [];
+  const tagOptions = [];
 
   const statusLabel = (row) => {
     if (row.clubShortName) return row.clubShortName;
@@ -145,35 +147,36 @@ async function loadOwnerList() {
     return "NO CLUB";
   };
 
-  const formatTagOptionLabel = (shortName, email, tag) => {
+  const formatTagOptionLabel = (shortName, email, tag, issue) => {
+    if (issue?.kind === "missing") return `${shortName} — no tag — ${email}`;
+    if (issue) return `${shortName} — ${tag || "?"} (${issue.label}) — ${email}`;
     if (tag) return `${shortName} — ${tag} — ${email}`;
     return `${shortName} — no tag — ${email}`;
   };
 
   owners.forEach((row) => {
     const shortName = statusLabel(row);
-    const currentTag = String(row.ownerTag || "").trim();
+    // Raw registry tag only — resolve_tag falls back to email local-part and looks "set"
+    const currentTag = String(row.ownerTagRaw ?? row.ownerTag ?? "").trim();
+    const issue = classifyOwnerTagIssue(row);
     const option = document.createElement("option");
     option.value = row.id;
     option.textContent = `${shortName} — ${row.email}`;
     dropdown?.appendChild(option);
 
-    if (tagDropdown) {
-      const tagOption = document.createElement("option");
-      tagOption.value = row.email;
-      tagOption.dataset.ownerId = row.id;
-      tagOption.textContent = formatTagOptionLabel(shortName, row.email, currentTag);
-      if (currentTag) tagOption.dataset.currentTag = currentTag;
-      tagDropdown.appendChild(tagOption);
-    }
-
     const entry = {
       email: row.email,
       ownerId: row.id,
-      label: formatTagOptionLabel(shortName, row.email, currentTag),
+      label: formatTagOptionLabel(shortName, row.email, currentTag, issue),
       tag: currentTag,
       shortName,
+      issueKind: issue?.kind || null,
+      issueLabel: issue?.label || null,
+      needsTag: !!issue,
+      displayFallback: String(row.ownerTagResolved || "").trim(),
     };
+
+    if (tagDropdown) tagOptions.push(entry);
 
     if (archiveDropdown && row.registryStatus !== "archived") {
       archiveOptions.push(entry);
@@ -182,6 +185,18 @@ async function loadOwnerList() {
       unarchiveOptions.push(entry);
     }
   });
+
+  if (tagDropdown) {
+    // Needs-attention first (missing / wrong), then club/email
+    tagOptions.sort((a, b) => {
+      if (a.needsTag !== b.needsTag) return a.needsTag ? -1 : 1;
+      const ak = (a.shortName || a.email || "").toLowerCase();
+      const bk = (b.shortName || b.email || "").toLowerCase();
+      return ak.localeCompare(bk) || String(a.email).localeCompare(String(b.email));
+    });
+    window.__tagOwnerOptionsCache = tagOptions;
+    filterTagOwnerSelect();
+  }
 
   if (archiveDropdown) {
     window.__archiveOwnerOptionsCache = archiveOptions;
@@ -193,6 +208,110 @@ async function loadOwnerList() {
   }
 
   await syncOwnerTagInputFromSelect();
+}
+
+/** Placeholders / email-shaped / email-local / club-code / registry≠Clubs.owner */
+function classifyOwnerTagIssue(row) {
+  const raw = String(row.ownerTagRaw ?? "").trim();
+  const emailLocal = String(row.email || "")
+    .split("@")[0]
+    .trim();
+  const clubOwner = String(row.clubOwnerText || "").trim();
+  const clubShort = String(row.clubShortName || "").trim();
+
+  if (!raw) {
+    return { kind: "missing", label: "no tag" };
+  }
+
+  const lower = raw.toLowerCase();
+  const placeholders = new Set([
+    "new owner",
+    "@new owner",
+    "—",
+    "-",
+    "–",
+    "n/a",
+    "na",
+    "none",
+    "tbd",
+    "unknown",
+    "owner",
+    "discord",
+    "@username",
+  ]);
+  if (placeholders.has(lower)) {
+    return { kind: "placeholder", label: "placeholder" };
+  }
+  if (raw.includes("@") && /@.+\./.test(raw)) {
+    return { kind: "email", label: "looks like email" };
+  }
+  if (emailLocal && lower === emailLocal.toLowerCase()) {
+    return { kind: "email_local", label: "email username" };
+  }
+  if (clubShort && lower === clubShort.toLowerCase()) {
+    return { kind: "club_code", label: "club code" };
+  }
+  if (
+    clubOwner &&
+    clubOwner.toLowerCase() !== lower &&
+    clubOwner.toLowerCase() !== clubShort.toLowerCase()
+  ) {
+    return { kind: "mismatch", label: `club has ${clubOwner}` };
+  }
+  return null;
+}
+
+function filterTagOwnerSelect() {
+  const dropdown = document.getElementById("tagOwnerSelect");
+  if (!dropdown) return;
+
+  const cache = window.__tagOwnerOptionsCache || [];
+  const q = String(document.getElementById("tagOwnerFilter")?.value || "")
+    .trim()
+    .toLowerCase();
+  const mode = document.getElementById("tagOwnerMode")?.value || "needs";
+  const prev = dropdown.value;
+
+  let rows = mode === "all" ? cache : cache.filter((r) => r.needsTag);
+  if (q) {
+    rows = rows.filter((row) => {
+      const hay = [row.label, row.tag, row.email, row.shortName, row.issueLabel]
+        .map((x) => String(x || "").toLowerCase())
+        .join(" ");
+      return hay.includes(q);
+    });
+  }
+
+  dropdown.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  const scope =
+    mode === "all" ? "owners" : "needing a tag";
+  placeholder.textContent = rows.length
+    ? q
+      ? `Select owner… (${rows.length} match${rows.length === 1 ? "" : "es"})`
+      : `Select owner… (${rows.length} ${scope})`
+    : mode === "all"
+      ? "No matching owners"
+      : "No owners needing a tag — switch to All";
+  dropdown.appendChild(placeholder);
+
+  for (const row of rows) {
+    const opt = document.createElement("option");
+    opt.value = row.email;
+    opt.dataset.ownerId = row.ownerId;
+    if (row.tag) opt.dataset.currentTag = row.tag;
+    if (row.issueKind) opt.dataset.issueKind = row.issueKind;
+    if (row.displayFallback) opt.dataset.displayFallback = row.displayFallback;
+    opt.textContent = row.label;
+    dropdown.appendChild(opt);
+  }
+
+  if (prev && rows.some((r) => r.email === prev)) {
+    dropdown.value = prev;
+  }
+
+  syncOwnerTagInputFromSelect();
 }
 
 function filterOwnerSelectDropdown(dropdownId, cacheKey, filterText, emptyLabel) {
@@ -261,37 +380,68 @@ async function fetchAdminOwnerRows() {
 
   if (!rpcError && rpcOwners?.length) {
     for (const row of rpcOwners) {
+      const raw =
+        row.registry_owner_tag != null
+          ? String(row.registry_owner_tag || "").trim()
+          : "";
       byId.set(row.owner_id, {
         id: row.owner_id,
         email: row.email,
         clubShortName: row.club_short_name || null,
         lastClubShortName: row.club_short_name || null,
-        ownerTag: row.owner_tag || "",
+        // owner_tag from RPC is resolve_tag (email local-part fallback) — display only
+        ownerTagResolved: row.owner_tag || "",
+        ownerTag: raw,
+        ownerTagRaw: raw,
+        clubOwnerText: String(row.club_owner_text || "").trim(),
         registryStatus: row.registry_status || null,
       });
     }
   }
 
+  const { data: registry } = await supabase
+    .from("gpsl_owner_registry")
+    .select("owner_id, status, last_club_short_name, owner_tag");
+  const { data: clubs } = await supabase.from("Clubs").select("ShortName, owner_id, owner");
+
   const { data: ownerData } = await supabase.functions.invoke("list-owners");
   if (ownerData?.users?.length) {
-    const { data: registry } = await supabase
-      .from("gpsl_owner_registry")
-      .select("owner_id, status, last_club_short_name, owner_tag");
-    const { data: clubs } = await supabase.from("Clubs").select("ShortName, owner_id, owner");
-
     for (const u of ownerData.users) {
       if (byId.has(u.id)) continue;
       const club = clubs?.find((c) => c.owner_id === u.id);
       const reg = registry?.find((r) => r.owner_id === u.id);
+      const raw = String(reg?.owner_tag || "").trim();
       byId.set(u.id, {
         id: u.id,
         email: u.email,
         clubShortName: club?.ShortName || null,
         lastClubShortName: reg?.last_club_short_name || club?.ShortName || null,
-        ownerTag: reg?.owner_tag || club?.owner || "",
+        ownerTagResolved: raw || String(club?.owner || "").trim(),
+        ownerTag: raw,
+        ownerTagRaw: raw,
+        clubOwnerText: String(club?.owner || "").trim(),
         registryStatus: reg?.status || null,
       });
     }
+  }
+
+  // Overlay raw registry + Clubs.owner so tag UI does not treat email fallback as a real tag
+  for (const row of byId.values()) {
+    const reg = registry?.find((r) => r.owner_id === row.id);
+    const club = clubs?.find((c) => c.owner_id === row.id);
+    if (reg) {
+      row.ownerTagRaw = String(reg.owner_tag || "").trim();
+      if (!row.registryStatus) row.registryStatus = reg.status || null;
+      if (!row.lastClubShortName) {
+        row.lastClubShortName = reg.last_club_short_name || row.lastClubShortName;
+      }
+    }
+    if (club) {
+      row.clubOwnerText = String(club.owner || "").trim();
+      if (!row.clubShortName) row.clubShortName = club.ShortName || null;
+    }
+    // Editing uses raw only; resolved stays for "display fallback" hints
+    row.ownerTag = row.ownerTagRaw;
   }
 
   return [...byId.values()].sort((a, b) => {
@@ -308,23 +458,32 @@ async function syncOwnerTagInputFromSelect() {
   if (!tagDropdown || !tagInput) return;
 
   const opt = tagDropdown.selectedOptions[0];
-  let currentTag = opt?.dataset?.currentTag || "";
-
-  const ownerId = opt?.dataset?.ownerId;
-  if (ownerId) {
-    const { data, error } = await supabase.rpc("owner_registry_resolve_tag", {
-      p_owner_id: ownerId,
-    });
-    if (!error && data) {
-      currentTag = String(data).trim();
-      if (currentTag) opt.dataset.currentTag = currentTag;
-    }
+  if (!opt?.value) {
+    tagInput.value = "";
+    tagInput.placeholder = "Discord username";
+    if (hint) hint.textContent = "";
+    return;
   }
 
+  // Use raw registry tag from the option — never prefill resolve_tag email fallback
+  const currentTag = String(opt.dataset?.currentTag || "").trim();
+  const issueKind = String(opt.dataset?.issueKind || "").trim();
+  const displayFallback = String(opt.dataset?.displayFallback || "").trim();
+
   tagInput.value = currentTag;
-  tagInput.placeholder = currentTag ? currentTag : "e.g. @username";
+  tagInput.placeholder = currentTag ? currentTag : "Discord username";
   if (hint) {
-    hint.textContent = currentTag ? `Current tag: ${currentTag}` : "No tag set for this owner.";
+    if (!currentTag || issueKind === "missing") {
+      const fallbackNote =
+        displayFallback && displayFallback.toLowerCase() !== currentTag.toLowerCase()
+          ? ` Lists may still show “${displayFallback}” from email/club fallback until a real tag is saved.`
+          : "";
+      hint.textContent = `No Discord tag in registry.${fallbackNote}`;
+    } else if (issueKind) {
+      hint.textContent = `Current tag looks wrong (${issueKind.replace(/_/g, " ")}): ${currentTag}`;
+    } else {
+      hint.textContent = `Current tag: ${currentTag}`;
+    }
   }
 }
 

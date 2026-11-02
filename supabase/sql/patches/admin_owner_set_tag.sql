@@ -3,6 +3,9 @@
 -- Run in Supabase SQL Editor. Admin UI: admin_owners.html → Set owner tag
 -- =============================================================================
 
+-- Drop prior signature if column set changed (safe re-run)
+DROP FUNCTION IF EXISTS public.admin_owner_list();
+
 CREATE OR REPLACE FUNCTION public.admin_owner_list()
 RETURNS TABLE (
   owner_id uuid,
@@ -10,6 +13,8 @@ RETURNS TABLE (
   club_short_name text,
   club_name text,
   owner_tag text,
+  registry_owner_tag text,
+  club_owner_text text,
   registry_status text
 )
 LANGUAGE plpgsql
@@ -34,6 +39,8 @@ BEGIN
     c."ShortName"::text,
     c."Club"::text,
     public.owner_registry_resolve_tag(o.owner_id),
+    nullif(btrim(reg.owner_tag), '')::text,
+    nullif(btrim(c.owner), '')::text,
     coalesce(
       reg.status,
       CASE WHEN c.owner_id IS NOT NULL THEN 'active' ELSE 'on_break' END

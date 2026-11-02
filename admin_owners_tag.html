@@ -12,6 +12,8 @@
     .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
     button.button.secondary { background:#444; color:#ddd; }
     button.button.secondary:hover { background:#555; }
+    #tagOwnerSelect { min-width: min(100%, 420px); }
+    #tagOwnerFilter { min-width: min(100%, 220px); }
   </style>
 </head>
 <body class="admin-page">
@@ -22,10 +24,26 @@
       <div class="card" id="ow-set-tag">
         <h2>Set owner tag</h2>
         <p class="note">
-          Lists every owner in the registry or linked to a club — with or without a tag — so you can set
-          tags for owners who have not set one yet (e.g. after linking a club).
-          Requires <code>patches/admin_owner_set_tag.sql</code> (includes <code>admin_owner_list</code>).
+          Defaults to owners with <b>no registry Discord tag</b>, or a tag that looks wrong
+          (placeholder, email-shaped, email username, club code, or Clubs.owner mismatch).
+          Join-flow accounts often have <code>discord_user_id</code> but an empty
+          <code>owner_tag</code> — display names elsewhere can still show the email local-part
+          via <code>owner_registry_resolve_tag</code> until you set a real tag here.
+          Requires <code>patches/admin_owner_set_tag.sql</code>.
         </p>
+        <div class="row">
+          <div>
+            <label for="tagOwnerMode">Show</label>
+            <select id="tagOwnerMode">
+              <option value="needs" selected>Needs tag / wrong tag</option>
+              <option value="all">All owners</option>
+            </select>
+          </div>
+          <div>
+            <label for="tagOwnerFilter">Search</label>
+            <input id="tagOwnerFilter" type="search" placeholder="Club, email, tag…" autocomplete="off">
+          </div>
+        </div>
         <div class="row">
           <div>
             <label for="tagOwnerSelect">Owner</label>
@@ -33,7 +51,7 @@
           </div>
           <div>
             <label for="ownerTagInput">Discord tag</label>
-            <input id="ownerTagInput" placeholder="e.g. @username" maxlength="64" autocomplete="off">
+            <input id="ownerTagInput" placeholder="Discord username" maxlength="64" autocomplete="off">
           </div>
         </div>
         <p id="currentTagHint" class="note" style="margin-top:8px;"></p>
@@ -42,6 +60,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js"></script>
+  <script type="module" src="admin_owners.js?v=20261102-tag-needs"></script>
 </body>
 </html>
