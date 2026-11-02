@@ -4,68 +4,119 @@ export const GPSL_SITE = "https://gpsuperleague.github.io/GPSL";
 
 export type WelcomePackAudience = "visitor" | "member";
 
-export function welcomePackBody(
-  audience: WelcomePackAudience = "visitor"
-): string {
-  const statusLine =
-    audience === "member"
-      ? "You're currently in as a **Member**, without a club — GPSL account ready; waiting list / next steps below."
-      : "You're in as a **Visitor** — hang out in Discord and browse the site read-only.";
+/** Matches public.gpsl_owner_intake_mode(): live season → mid_season, else pre_season. */
+export type WelcomeIntakeMode = "mid_season" | "pre_season";
 
-  const nextSteps =
-    audience === "member"
-      ? [
-          "**Next**",
-          "1. Confirm waiting list + owner details on the site",
-          `2. Handbook: ${GPSL_SITE}/learning_gpsl.html`,
-          "3. Path **b** (auction) or **c** (pick club → handpick), depending on the calendar",
-        ]
-      : [
-          "**Then**",
-          "1. Waiting list + owner details on the site",
-          `2. Handbook: ${GPSL_SITE}/learning_gpsl.html`,
-          "3. Path **b** (auction) or **c** (pick club → handpick), depending on the calendar",
-        ];
+export type WelcomePackContext = {
+  audience?: WelcomePackAudience;
+  /** When omitted, copy explains both paths without claiming “we are X right now”. */
+  intakeMode?: WelcomeIntakeMode | null;
+  /** e.g. 2025/26 — shown in the “right now” line when known. */
+  seasonLabel?: string | null;
+};
 
-  return [
-    "**Welcome to GPSL**",
+function link(label: string, path: string): string {
+  const href = path.startsWith("http") ? path : `${GPSL_SITE}/${path.replace(/^\//, "")}`;
+  return `[${label}](${href})`;
+}
+
+function nowLine(
+  mode: WelcomeIntakeMode | null | undefined,
+  seasonLabel: string | null | undefined
+): string | null {
+  const season = seasonLabel?.trim() ? ` (${seasonLabel.trim()})` : "";
+  if (mode === "mid_season") {
+    return `**Right now:** mid-season${season} — free clubs can be claimed from the waiting list (no auction).`;
+  }
+  if (mode === "pre_season") {
+    return `**Right now:** pre-season / setup${season} — new clubs are filled by the **club draft auction** when a slot opens.`;
+  }
+  return null;
+}
+
+export function welcomePackBody(ctx: WelcomePackContext | WelcomePackAudience = "visitor"): string {
+  const opts: WelcomePackContext =
+    typeof ctx === "string" ? { audience: ctx } : ctx || {};
+  const audience = opts.audience || "visitor";
+  const mode = opts.intakeMode ?? null;
+  const seasonLabel = opts.seasonLabel ?? null;
+
+  const who =
+    audience === "member"
+      ? "You have a **GPSL account** but no club yet (Member)."
+      : "You're in Discord as a **Visitor** — you can hang out here and browse the site read-only until you apply.";
+
+  const calendar = nowLine(mode, seasonLabel);
+
+  const browse = [
+    "**Browse first (optional)**",
+    `${link("Sign in as Visitor", "login.html")} — league tables, cups, auctions and the transfer market (read only). No club needed.`,
+  ];
+
+  const applyBlock = [
+    "**Want a club?**",
+    `${link("Apply to join GPSL", "join_gpsl.html")} — creates your account and puts you on the **waiting list** (order by Discord join date). You do **not** need to DM an admin.`,
+  ];
+
+  let pathDetail: string[];
+  if (mode === "mid_season") {
+    pathDetail = [
+      "",
+      "**What happens next (mid-season)**",
+      `1. After applying, open the ${link("waiting list", "waiting_list.html")}.`,
+      "2. If a club shows as vacant, claim it.",
+      `3. ${link("Build your starting squad (handpick)", "handpick_squad.html")} and submit for approval — no auction.`,
+      `4. Fill in your ${link("owner profile", "awaiting_club.html")} (Discord tag, timezone, when you can play).`,
+    ];
+  } else if (mode === "pre_season") {
+    pathDetail = [
+      "",
+      "**What happens next (pre-season)**",
+      `1. After applying, open the ${link("waiting list", "waiting_list.html")}.`,
+      `2. Fill in your ${link("owner profile", "awaiting_club.html")} (Discord tag, timezone, when you can play).`,
+      `3. When a slot opens, admin invites you to the ${link("club draft auction", "club_auction.html")} — you bid for a club there.`,
+    ];
+  } else {
+    pathDetail = [
+      "",
+      "**What happens next** (depends on the calendar)",
+      `• **Mid-season** (league already running): on the ${link("waiting list", "waiting_list.html")} claim a vacant club → ${link("handpick your squad", "handpick_squad.html")} → submit for approval.`,
+      `• **Pre-season / setup**: stay on the waiting list, complete your ${link("owner profile", "awaiting_club.html")}, then join the ${link("club draft auction", "club_auction.html")} when invited.`,
+    ];
+  }
+
+  const extras = [
     "",
-    statusLine,
+    "**Useful links**",
+    `• ${link("League handbook (how GPSL works)", "learning_gpsl.html")}`,
+    `• ${link("Full welcome page on the site", "welcome_gpsl.html")}`,
     "",
-    "**a. Just watching?**",
-    `Sign in as Visitor: ${GPSL_SITE}/login.html`,
-    "→ **Visitor — sign in with Discord** (tables, cups, auctions, market — read only).",
-    "",
-    "**b. Want a club (draft / pre-season)?**",
-    `Apply (no need to message admin): ${GPSL_SITE}/join_gpsl.html`,
-    "→ Creates your account + waiting list (by Discord join date).",
-    "When a slot opens, admin invites you to the **club draft auction**.",
-    "",
-    "**c. Want a club mid-season?**",
-    "Same apply link. On the waiting list, **pick a vacant club**, then go straight into",
-    "**handpick** (build from scratch) and **submit for approval** — no auction.",
-    `Waiting list: ${GPSL_SITE}/waiting_list.html`,
-    `Handpick: ${GPSL_SITE}/handpick_squad.html`,
-    "",
-    ...nextSteps,
-    "",
-    "**Roles**",
-    "• **Visitor** — in Discord, no GPSL owner account yet",
-    "• **Member** — GPSL account, no club yet (waiting list / etc.)",
+    "**Roles (quick)**",
+    "• **Visitor** — in Discord, no GPSL account yet",
+    "• **Member** — GPSL account, no club yet (waiting list)",
     "• **Owner** — has a club",
     "",
     "**Learning the rules**",
-    "GPSL does **not** expect a new owner to know every rule on day one.",
-    "After several games in, we do expect **strong familiarity** with how the league works",
-    "(scheduling, check-in, results, transfers). Use the handbook, ask in Discord, and learn as you play.",
+    "Nobody expects you to know every rule on day one. After a few matches we do expect you to know the basics (scheduling, check-in, results, transfers). Use the handbook, ask in Discord, learn as you play.",
     "",
-    `Full pack: ${GPSL_SITE}/welcome_gpsl.html`,
+    "Questions → ask in Discord. Applying for a place does **not** need a DM to admin.",
+  ];
+
+  return [
+    who,
+    calendar ? ["", calendar] : [],
     "",
-    "Questions → ask in Discord. Applying for a place doesn't need a DM to admin.",
-  ].join("\n");
+    ...browse,
+    "",
+    ...applyBlock,
+    ...pathDetail,
+    ...extras,
+  ]
+    .flat()
+    .join("\n");
 }
 
-/** Default Visitor copy (cron / on_join). */
+/** Default Visitor copy (static fallback when intake mode unknown). */
 export const WELCOME_PACK_BODY = welcomePackBody("visitor");
 
 /** @deprecated use WELCOME_PACK_BODY / welcomePackBody */
@@ -75,19 +126,22 @@ const DISCORD_API = "https://discord.com/api/v10";
 
 export function welcomePackWithMention(
   discordUserId: string,
-  audience: WelcomePackAudience = "visitor"
+  ctx: WelcomePackContext | WelcomePackAudience = "visitor"
 ): string {
+  const opts: WelcomePackContext =
+    typeof ctx === "string" ? { audience: ctx } : ctx || {};
+  const audience = opts.audience || "visitor";
   const id = String(discordUserId || "").trim();
   const mention = id ? `<@${id}>` : "";
   const hello =
     audience === "member"
       ? mention
-        ? `Hey ${mention} — you're a GPSL **Member**.`
-        : "Hey — you're a GPSL **Member**."
+        ? `Hey ${mention}`
+        : "Hey"
       : mention
-        ? `Hey ${mention} — welcome!`
-        : "Hey — welcome!";
-  return [hello, "", welcomePackBody(audience)].join("\n");
+        ? `Hey ${mention}`
+        : "Hey";
+  return [hello, "", welcomePackBody(opts)].join("\n");
 }
 
 export async function discordApi(
@@ -230,9 +284,14 @@ export async function sendWelcomeDm(
   botToken: string,
   discordUserId: string,
   content?: string,
-  audience: WelcomePackAudience = "visitor"
+  ctx: WelcomePackContext | WelcomePackAudience = "visitor"
 ): Promise<{ ok: boolean; channel_id?: string; error?: string }> {
-  const body = content || welcomePackWithMention(discordUserId, audience);
+  const body =
+    content ||
+    welcomePackWithMention(
+      discordUserId,
+      typeof ctx === "string" ? { audience: ctx } : ctx
+    );
   const dm = await discordApi(botToken, "/users/@me/channels", {
     method: "POST",
     body: JSON.stringify({ recipient_id: discordUserId }),
@@ -272,7 +331,7 @@ export async function sendWelcomeChannel(
   guildId: string,
   discordUserId: string,
   channelId?: string | null,
-  audience: WelcomePackAudience = "visitor"
+  ctx: WelcomePackContext | WelcomePackAudience = "visitor"
 ): Promise<{
   ok: boolean;
   channel_id?: string;
@@ -292,10 +351,13 @@ export async function sendWelcomeChannel(
     };
   }
 
+  const packCtx: WelcomePackContext =
+    typeof ctx === "string" ? { audience: ctx } : ctx || {};
+
   const msg = await discordApi(botToken, `/channels/${resolved}/messages`, {
     method: "POST",
     body: JSON.stringify({
-      content: welcomePackWithMention(discordUserId, audience),
+      content: welcomePackWithMention(discordUserId, packCtx),
       allowed_mentions: { parse: [], users: [discordUserId] },
     }),
   });

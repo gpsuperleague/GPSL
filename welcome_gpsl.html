@@ -40,67 +40,111 @@
     .btn:hover { filter: brightness(1.08); }
     .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
     .meta { font-size: 12px; color: #888; margin-top: 10px; }
+    .now {
+      background: #221a0a;
+      border: 1px solid #5a3d00;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      color: #f0d9a8;
+    }
+    .now strong { color: #ff9900; }
     a { color: var(--gpsl-accent, #ff9900); }
     code {
       font-size: 12px; background: #111; border: 1px solid #333;
       border-radius: 4px; padding: 2px 6px; color: #ccc;
     }
+    [data-mode] { display: none; }
+    [data-mode].show { display: block; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Welcome to GPSL</h1>
     <p class="sub">
-      Global Pro Super League — a Discord-based football management league.
-      Here’s how to get started without messaging admins for the basics.
+      Global Pro Super League — a Discord football management league on eFootball.
+      You do not need to message admins for the basics.
     </p>
 
-    <div class="card">
-      <h2>1. Ways in</h2>
-      <ol type="a">
-        <li>
-          <b>Just browsing?</b> Sign in as a Visitor with Discord — tables, cups, auctions and
-          the transfer market (read only).
-        </li>
-        <li>
-          <b>Want a club (draft / pre-season)?</b> Apply to join the league — creates your GPSL account
-          and puts you on the waiting list (by Discord join date). When a slot opens, admin invites you
-          to the <a href="club_auction.html">club draft auction</a>.
-        </li>
-        <li>
-          <b>Want a club mid-season?</b> Apply the same way. On the
-          <a href="waiting_list.html">waiting list</a> you’ll see vacant clubs — <b>pick one</b>,
-          then go straight into <a href="handpick_squad.html">handpick</a> (build from scratch and
-          submit for approval). No auction bid.
-        </li>
-      </ol>
-      <div class="btn-row">
-        <a class="btn" href="join_gpsl.html">Apply to join the league</a>
-        <a class="btn secondary" href="login.html">Login / Visitor sign-in</a>
-      </div>
-      <p class="meta">
-        Discord server members only. Paths <b>b</b> and <b>c</b> both start with Apply — what happens next
-        depends on whether the league is in draft/pre-season or mid-season.
-      </p>
+    <div class="now" id="nowBanner">
+      Checking whether GPSL is mid-season or in pre-season…
     </div>
 
     <div class="card">
-      <h2>2. After you apply</h2>
-      <ul>
-        <li>You’ll land on the <a href="waiting_list.html">waiting list</a>.</li>
-        <li>Fill in <a href="awaiting_club.html">owner details</a> (tag, timezone, availability).</li>
-        <li>Read the <a href="learning_gpsl.html">handbook</a> — especially The Waiting Room.</li>
-        <li><b>Draft / pre-season:</b> when invited, bid in the <a href="club_auction.html">club draft auction</a>.</li>
-        <li><b>Mid-season:</b> pick a free club on the waiting list → handpick squad → submit for approval.</li>
-      </ul>
-      <p class="meta">No need to DM for a place on the list — the apply button does that.</p>
+      <h2>1. Browse the site (optional)</h2>
+      <p>
+        Sign in as a <b>Visitor</b> with Discord to follow tables, cups, auctions and the
+        transfer market — read only. No club required.
+      </p>
+      <div class="btn-row">
+        <a class="btn secondary" href="login.html">Sign in as Visitor</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. Want a club?</h2>
+      <p>
+        <a href="join_gpsl.html"><b>Apply to join GPSL</b></a> — creates your account and
+        puts you on the <b>waiting list</b> (order by Discord join date). No DM to admin needed.
+      </p>
+      <div class="btn-row">
+        <a class="btn" href="join_gpsl.html">Apply to join the league</a>
+      </div>
+
+      <div data-mode="mid_season">
+        <p class="meta" style="margin-top:16px"><b>What happens next (mid-season)</b></p>
+        <ol>
+          <li>Open the <a href="waiting_list.html">waiting list</a>.</li>
+          <li>If a club is vacant, claim it.</li>
+          <li>
+            <a href="handpick_squad.html">Build your starting squad (handpick)</a> and submit
+            for approval — no auction.
+          </li>
+          <li>
+            Fill in your <a href="awaiting_club.html">owner profile</a>
+            (Discord tag, timezone, when you can play).
+          </li>
+        </ol>
+      </div>
+
+      <div data-mode="pre_season">
+        <p class="meta" style="margin-top:16px"><b>What happens next (pre-season)</b></p>
+        <ol>
+          <li>Open the <a href="waiting_list.html">waiting list</a>.</li>
+          <li>
+            Fill in your <a href="awaiting_club.html">owner profile</a>
+            (Discord tag, timezone, when you can play).
+          </li>
+          <li>
+            When a slot opens, admin invites you to the
+            <a href="club_auction.html">club draft auction</a> — you bid for a club there.
+          </li>
+        </ol>
+      </div>
+
+      <div data-mode="unknown">
+        <p class="meta" style="margin-top:16px"><b>What happens next</b> depends on the calendar:</p>
+        <ul>
+          <li>
+            <b>Mid-season</b> (league already running): claim a vacant club on the
+            <a href="waiting_list.html">waiting list</a> →
+            <a href="handpick_squad.html">handpick</a> → submit for approval.
+          </li>
+          <li>
+            <b>Pre-season / setup</b>: stay on the list, complete your
+            <a href="awaiting_club.html">owner profile</a>, then join the
+            <a href="club_auction.html">club draft auction</a> when invited.
+          </li>
+        </ul>
+      </div>
     </div>
 
     <div class="card">
       <h2>3. Discord roles</h2>
       <ul>
-        <li><b>Visitor</b> — in the server, no GPSL owner account yet.</li>
-        <li><b>Member</b> — GPSL account (waiting list / on break / etc.).</li>
+        <li><b>Visitor</b> — in the server, no GPSL account yet.</li>
+        <li><b>Member</b> — GPSL account, no club yet (waiting list).</li>
         <li><b>Owner</b> — has an assigned club.</li>
       </ul>
     </div>
@@ -108,15 +152,47 @@
     <div class="card">
       <h2>4. Learning the rules</h2>
       <p>
-        GPSL does <b>not</b> expect a new owner to know every rule on day one.
-        After several games in, we do expect <b>strong familiarity</b> with how the league
-        works (scheduling, check-in, results, transfers).
+        Nobody expects you to know every rule on day one. After a few matches we do expect
+        the basics (scheduling, check-in, results, transfers).
       </p>
       <p>
-        Use the <a href="learning_gpsl.html">handbook</a>, ask in Discord, and learn as you play.
+        Use the <a href="learning_gpsl.html">league handbook</a>, ask in Discord, and learn as you play.
       </p>
     </div>
 
   </div>
+  <script type="module">
+    import { supabase } from "./supabase_client.js";
+
+    const banner = document.getElementById("nowBanner");
+    const show = (mode) => {
+      for (const el of document.querySelectorAll("[data-mode]")) {
+        el.classList.toggle("show", el.getAttribute("data-mode") === mode);
+      }
+    };
+
+    try {
+      const { data } = await supabase
+        .from("competition_seasons")
+        .select("status, label")
+        .eq("is_current", true)
+        .order("id", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const status = String(data?.status || "").toLowerCase();
+      const label = data?.label ? ` (${data.label})` : "";
+      if (status === "active") {
+        banner.innerHTML = `<strong>Right now:</strong> mid-season${label} — free clubs can be claimed from the waiting list (no auction).`;
+        show("mid_season");
+      } else {
+        banner.innerHTML = `<strong>Right now:</strong> pre-season / setup${label} — new clubs are filled by the <b>club draft auction</b> when a slot opens.`;
+        show("pre_season");
+      }
+    } catch {
+      banner.innerHTML = `<strong>Calendar:</strong> path depends on whether the league is mid-season (claim a vacant club) or pre-season (draft auction). Both start with Apply.`;
+      show("unknown");
+    }
+  </script>
 </body>
 </html>

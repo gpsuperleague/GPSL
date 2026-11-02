@@ -2,7 +2,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { isGpslAdminOrMod } from "../_shared/gpsl_staff.ts";
 import {
-  WELCOME_PACK_BODY,
   welcomePackBody,
   welcomePackWithMention,
   ensureVisitorRole,
@@ -10,7 +9,35 @@ import {
   sendWelcomeChannel,
   sendWelcomeDm,
   type WelcomePackAudience,
+  type WelcomeIntakeMode,
+  type WelcomePackContext,
 } from "../_shared/discord_welcome_pack.ts";
+
+/** Live season → mid_season (claim vacant); otherwise auction / pre_season. */
+async function resolveWelcomeIntake(
+  // deno-lint-ignore no-explicit-any
+  admin: any
+): Promise<{ intakeMode: WelcomeIntakeMode; seasonLabel: string | null }> {
+  try {
+    const { data } = await admin
+      .from("competition_seasons")
+      .select("status, label")
+      .eq("is_current", true)
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const status = String(data?.status || "")
+      .trim()
+      .toLowerCase();
+    const seasonLabel = data?.label ? String(data.label).trim() : null;
+    return {
+      intakeMode: status === "active" ? "mid_season" : "pre_season",
+      seasonLabel,
+    };
+  } catch {
+    return { intakeMode: "pre_season", seasonLabel: null };
+  }
+}
 
 /**
  * Welcome pack for new Discord Visitors: DM + Great Hall channel, both with <@tag>.
@@ -120,6 +147,7 @@ async function welcomeOneUser(opts: {
   force: boolean;
   via: string;
   audience?: WelcomePackAudience;
+  packCtx?: WelcomePackContext;
 }): Promise<Record<string, unknown>> {
   const {
     admin,
@@ -133,7 +161,21 @@ async function welcomeOneUser(opts: {
     force,
     via,
     audience = via === "welcome_members" ? "member" : "visitor",
+    packCtx,
   } = opts;
+
+  const intake =
+    packCtx?.intakeMode != null
+      ? {
+          intakeMode: packCtx.intakeMode,
+          seasonLabel: packCtx.seasonLabel ?? null,
+        }
+      : await resolveWelcomeIntake(admin);
+  const welcomeCtx: WelcomePackContext = {
+    audience,
+    intakeMode: intake.intakeMode,
+    seasonLabel: intake.seasonLabel,
+  };
 
   const { data: reg } = await admin
     .from("gpsl_owner_registry")
@@ -178,13 +220,13 @@ async function welcomeOneUser(opts: {
     );
   }
 
-  const dm = await sendWelcomeDm(botToken, discordUserId, undefined, audience);
+  const dm = await sendWelcomeDm(botToken, discordUserId, undefined, welcomeCtx);
   const hall = await sendWelcomeChannel(
     botToken,
     guildId,
     discordUserId,
     null,
-    audience
+    welcomeCtx
   );
 
   const ok = dm.ok || hall.ok;
@@ -213,6 +255,8 @@ async function welcomeOneUser(opts: {
     ok,
     discord_user_id: discordUserId,
     audience,
+    intake_mode: welcomeCtx.intakeMode,
+    season_label: welcomeCtx.seasonLabel,
     visitor_role: roleResult,
     dm,
     great_hall: hall,
@@ -321,6 +365,7 @@ Deno.serve(async (req) => {
           (invokeHeader === feedKey || authBearer === feedKey)));
     const assignVisitor = body.assign_visitor !== false;
     const admin = createClient(supabaseUrl, serviceRoleKey);
+    const intake = await resolveWelcomeIntake(admin);
 
     if (action === "diagnose_pending") {
       const humans = await fetchGuildHumans(botToken, guildId);
@@ -608,14 +653,16 @@ Deno.serve(async (req) => {
               mention: `<@${h.id}>`,
             })),
             all_matching_ids: targets.map((h) => h.id),
-            message_preview_member: welcomePackWithMention(
-              memberSample,
-              "member"
-            ),
-            message_preview_visitor: welcomePackWithMention(
-              visitorSample,
-              "visitor"
-            ),
+            message_preview_member: welcomePackWithMention(memberSample, {
+              audience: "member",
+              ...intake,
+            }),
+            message_preview_visitor: welcomePackWithMention(visitorSample, {
+              audience: "visitor",
+              ...intake,
+            }),
+            intake_mode: intake.intakeMode,
+            season_label: intake.seasonLabel,
             note:
               "Dry run — nothing sent. Members (no Owner) + Visitors in server ≥ min_visitor_days.",
           });
@@ -639,6 +686,7 @@ Deno.serve(async (req) => {
             force: true,
             via: "welcome_members",
             audience: h.audience,
+            packCtx: { audience: h.audience, ...intake },
           });
           results.push(r);
           if (r.ok && !r.skipped) welcomed += 1;
@@ -711,6 +759,7 @@ Deno.serve(async (req) => {
           force: isRejoin, // rejoin must bypass already_sent
           via: "welcome_newcomers",
           audience: "visitor",
+          packCtx: { audience: "visitor", ...intake },
         });
         results.push(r);
         if (r.ok && !r.skipped) welcomed += 1;
@@ -746,6 +795,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "discord_user_id required" }, 400);
     }
 
+    const oneAudience: WelcomePackAudience =
+      action === "welcome_members" ? "member" : "visitor";
     const one = await welcomeOneUser({
       admin,
       botToken,
@@ -757,14 +808,18 @@ Deno.serve(async (req) => {
       assignVisitor,
       force,
       via: action,
+      audience: oneAudience,
+      packCtx: { audience: oneAudience, ...intake },
     });
 
     return jsonResponse({
       ...one,
       action,
-      content_preview: welcomePackBody(
-        one.audience === "member" ? "member" : "visitor"
-      ).slice(0, 120) + "…",
+      content_preview:
+        welcomePackBody({
+          audience: oneAudience,
+          ...intake,
+        }).slice(0, 160) + "…",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
