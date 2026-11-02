@@ -19,7 +19,7 @@ import {
   leagueBadgeHtml,
   divisionLabelWithBadgeHtml,
   isFixtureMonthPlayable,
-} from "./competition.js";
+} from "./competition.js?v=20261102-onesided-checkin";
 import {
   loadCalendarStatus,
   loadSeasonCalendarMonths,

@@ -14,7 +14,7 @@ import {
   fixtureInvolvesClub,
   leagueBadgeHtml,
   isFixtureMonthPlayable,
-} from "./competition.js";
+} from "./competition.js?v=20261102-onesided-checkin";
 import {
   formatWeatherChipHtml,
   formatPitchChipHtml,

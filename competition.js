@@ -1185,10 +1185,53 @@ export function isFixtureResultMonthOpen(
   return false;
 }
 
+/** Default matches public.match_schedule_checkin_minutes() (10). */
+export const MATCH_CHECKIN_MINUTES = 10;
+
+/** True when agreed KO + check-in grace has passed. */
+export function isFixtureCheckinWindowClosed(fixture, checkinMinutes = MATCH_CHECKIN_MINUTES) {
+  if (!fixture?.agreed_kickoff_at) return false;
+  const mins = Number(checkinMinutes);
+  const grace = Number.isFinite(mins) && mins > 0 ? mins : MATCH_CHECKIN_MINUTES;
+  const end =
+    new Date(fixture.agreed_kickoff_at).getTime() + grace * 60 * 1000;
+  return Date.now() >= end;
+}
+
+/**
+ * After check-in window: exactly one side checked in, and that side is me.
+ * Server applies no-show fine/strike; this only mirrors the submit unlock.
+ */
+export function isOnesidedCheckinSubmitUnlock(fixture, clubIdentity) {
+  if (!fixture || !clubIdentity) return false;
+  if (fixture.manual_black_box === true) return false;
+  if (fixture.status !== "scheduled") return false;
+  if (fixture.schedule_status != null && fixture.schedule_status !== "agreed") {
+    return false;
+  }
+  if (!fixture.agreed_kickoff_at) return false;
+  if (!isFixtureCheckinWindowClosed(fixture)) return false;
+
+  const homeIn = !!fixture.home_checked_in;
+  const awayIn = !!fixture.away_checked_in;
+  if (homeIn === awayIn) return false; // both or neither
+
+  const myShort = String(clubIdentity.short || clubIdentity.ShortName || "")
+    .trim()
+    .toUpperCase();
+  if (!myShort) return false;
+  const home = String(fixture.home_club_short_name || "").trim().toUpperCase();
+  const away = String(fixture.away_club_short_name || "").trim().toUpperCase();
+  if (homeIn && myShort === home) return true;
+  if (awayIn && myShort === away) return true;
+  return false;
+}
+
 /**
  * Human reason a result cannot be submitted (or null if it can).
  * Keep in sync with canSubmitResult + match_schedule_assert_ready_to_play.
  * Both checked in → submit immediately (no KO wait / no 30-min block).
+ * One checked in after window → that club may submit (no-show still penalised).
  */
 export function whyCantSubmitResult(
   fixture,
@@ -1225,15 +1268,41 @@ export function whyCantSubmitResult(
   }
 
   if (!fixture.home_checked_in || !fixture.away_checked_in) {
-    const homeLabel = fixture.home_club_name || fixture.home_club_short_name || "Home";
-    const awayLabel = fixture.away_club_name || fixture.away_club_short_name || "Away";
-    const missing = [
-      !fixture.home_checked_in ? homeLabel : null,
-      !fixture.away_checked_in ? awayLabel : null,
-    ]
-      .filter(Boolean)
-      .join(" and ");
-    return `Both clubs must check in before submitting (still needed: ${missing}).`;
+    if (isOnesidedCheckinSubmitUnlock(fixture, clubIdentity)) {
+      // Allowed — opponent missed check-in; penalties still apply server-side
+    } else {
+      const homeLabel = fixture.home_club_name || fixture.home_club_short_name || "Home";
+      const awayLabel = fixture.away_club_name || fixture.away_club_short_name || "Away";
+      const myShort = String(clubIdentity.short || clubIdentity.ShortName || "")
+        .trim()
+        .toUpperCase();
+      const home = String(fixture.home_club_short_name || "").trim().toUpperCase();
+      const away = String(fixture.away_club_short_name || "").trim().toUpperCase();
+      const homeIn = !!fixture.home_checked_in;
+      const awayIn = !!fixture.away_checked_in;
+      const iCheckedIn =
+        (homeIn && myShort === home) || (awayIn && myShort === away);
+      const oppCheckedIn =
+        (homeIn && myShort === away) || (awayIn && myShort === home);
+
+      if (
+        iCheckedIn &&
+        homeIn !== awayIn &&
+        !isFixtureCheckinWindowClosed(fixture)
+      ) {
+        return "You checked in — waiting for opponent check-in (or for the check-in window to close).";
+      }
+      if (oppCheckedIn && isFixtureCheckinWindowClosed(fixture)) {
+        return "You missed check-in — only your opponent can submit the result (your no-show penalty still applies).";
+      }
+      const missing = [
+        !fixture.home_checked_in ? homeLabel : null,
+        !fixture.away_checked_in ? awayLabel : null,
+      ]
+        .filter(Boolean)
+        .join(" and ");
+      return `Both clubs must check in before submitting (still needed: ${missing}).`;
+    }
   }
 
   // Month open / later catch-up / holiday-early (before fixture GPSL month)

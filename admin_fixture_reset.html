@@ -84,11 +84,13 @@
       <div class="card" style="margin-top:16px;border-color:#364;background:#121a12;">
         <h2 style="color:#8fd18f;">2. Unlock result entry (keep no-show penalties)</h2>
         <p class="note" style="margin-top:0;">
-          When one club checked in and the other missed: add the missing check-in so either
-          side can submit on Match Day. <b>Does not</b> waive fines, delete no-show events,
-          or clear season strikes. Run
-          <code>admin_unlock_result_keep_noshow_20261031.sql</code> once (also unlocks
-          BEN vs ARS MD4 #9376).
+          <b>Automatic (preferred):</b> after the check-in window closes, the club that
+          checked in can submit on Match Day — no-show fine/strike still apply
+          (<code>onesided_checkin_result_unlock_20261102.sql</code>).
+          <br><br>
+          <b>Admin fallback:</b> add the missing check-in so either side can submit.
+          <b>Does not</b> waive fines, delete no-show events, or clear season strikes.
+          Run <code>admin_unlock_result_keep_noshow_20261031.sql</code> once if needed.
         </p>
         <label style="display:block;font-size:13px;color:#bbb;">
           Note (optional)

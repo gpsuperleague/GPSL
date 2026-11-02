@@ -11,6 +11,7 @@ import {
   rejectFixtureResult,
   loadPendingSubmission,
   canSubmitResult,
+  isOnesidedCheckinSubmitUnlock,
   whyCantSubmitResult,
   isFixtureResultMonthOpen,
   isFixtureMonthPlayable,
@@ -20,7 +21,7 @@ import {
   LEAGUE_DIVISIONS,
   deferredResultNote,
   leagueBadgeHtml,
-} from "./competition.js?v=20261030-holiday-early-result";
+} from "./competition.js?v=20261102-onesided-checkin";
 import {
   loadCalendarStatus,
   calendarStatusBanner,
@@ -2491,13 +2492,16 @@ async function updateFixturePreview() {
     const holidayEarly =
       holidayContext &&
       isFixtureHolidayPlayable(f, myClub, holidayContext);
+    const onesided = isOnesidedCheckinSubmitUnlock(f, myClub);
     setStatus(
       "submitStatus",
       holidayEarly
         ? "Holiday unlock — arrange/play this match in the current GPSL week (before its month). Both clubs need min 24 players. Result will not count on the table until that GPSL month."
-        : restoredDraft
-          ? "Draft restored — check scores and stats, then submit."
-          : "Enter home and away goals, then submit."
+        : onesided
+          ? "Opponent missed check-in — their no-show fine/strike still apply. You checked in, so you can submit the result."
+          : restoredDraft
+            ? "Draft restored — check scores and stats, then submit."
+            : "Enter home and away goals, then submit."
     );
   } else {
     const why =
