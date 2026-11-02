@@ -1,37 +1,46 @@
 """
-GPSL recruit poster — classy hero + editorial copy + custom art strip at bottom.
-No website screenshots. Art stays below the text, not under it.
+GPSL Reddit invite poster — Pillow, from scratch.
+Real aerial stadium photo + cropped GPSL logo + 6 available clubs + plain-English detail.
 """
+from __future__ import annotations
+
+import json
+import urllib.request
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 
 ROOT = Path(__file__).resolve().parents[2]
 PACK = Path(__file__).resolve().parent
-ART = PACK / "art"
 OUT_PNG = PACK / "00-recruit-poster.png"
 OUT_JPG = PACK / "00-recruit-poster.jpg"
-LOGO = ROOT / "images" / "League" / "Logos" / "GPSL_logo.png"
-STADIUM = Path(
-    r"C:\Users\Rotav\.cursor\projects\d-GPSL-Cursor\assets\gpsl-stadium-hero-clean.jpg"
+# Real aerial with city fabric — hard to mistake for eFootball art
+STADIUM = ROOT / "images" / "stadiums" / "LIV.jpg"
+BADGE_DIR = ROOT / "images" / "club_badges"
+
+SUPABASE_URL = "https://omyyogfumrjoaweuawjn.supabase.co"
+SUPABASE_ANON_KEY = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0."
+    "7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
 )
-STADIUM_FALLBACK = ROOT / "images" / "stadiums" / "BAR.jpg"
 
-W, H = 1080, 1440
-ORANGE = (255, 153, 0)
-WHITE = (246, 246, 246)
-SILVER = (196, 196, 196)
-MUTED = (168, 168, 168)
-DIM = (110, 110, 110)
-RULE = (48, 48, 48)
-BG = (5, 5, 5)
-
-ART_TILES = [
-    (ART / "matchday.jpg", "MATCH DAY"),
-    (ART / "transfers.jpg", "TRANSFERS"),
-    (ART / "finances.jpg", "FINANCES"),
-    (ART / "platform.jpg", "THE SITE"),
+FALLBACK_AVAILABLE = [
+    ("ATM", "Atlético Madrid"),
+    ("INT", "Inter Milan"),
+    ("LEV", "Leverkusen"),
+    ("LIV", "Liverpool"),
+    ("MAR", "Marseille"),
+    ("AVL", "Aston Villa"),
 ]
+
+W, H = 1080, 1550
+ORANGE = (255, 153, 0)
+WHITE = (245, 245, 245)
+MUTED = (188, 188, 188)
+DIM = (145, 145, 145)
+PANEL_FILL = (10, 10, 12, 220)
+PANEL_EDGE = (55, 48, 28)
 
 
 def font(path: str, size: int) -> ImageFont.ImageFont:
@@ -41,7 +50,7 @@ def font(path: str, size: int) -> ImageFont.ImageFont:
         return ImageFont.load_default()
 
 
-def cover(src: Image.Image, tw: int, th: int, bias_y: float = 0.35) -> Image.Image:
+def cover(src: Image.Image, tw: int, th: int, bias_y: float = 0.4) -> Image.Image:
     sw, sh = src.size
     scale = max(tw / sw, th / sh)
     nw, nh = int(sw * scale), int(sh * scale)
@@ -51,96 +60,137 @@ def cover(src: Image.Image, tw: int, th: int, bias_y: float = 0.35) -> Image.Ima
     return im.crop((left, top, left + tw, top + th))
 
 
-def hero_band(height: int) -> Image.Image:
-    src = STADIUM if STADIUM.exists() else STADIUM_FALLBACK
-    cut = cover(Image.open(src).convert("RGB"), W, height, bias_y=0.35)
-    cut = ImageEnhance.Brightness(cut).enhance(0.75 if STADIUM.exists() else 0.48)
-    cut = ImageEnhance.Contrast(cut).enhance(1.1)
-    grade = Image.new("RGB", cut.size, (12, 6, 0))
-    cut = Image.blend(cut, grade, 0.18)
-    fade = Image.new("L", (W, height), 0)
-    fd = ImageDraw.Draw(fade)
-    for y in range(height):
-        t = y / max(height - 1, 1)
-        if t < 0.58:
-            a = 255
-        else:
-            fade_t = max(0.0, min(1.0, (t - 0.58) / 0.42))
-            a = int(255 * ((1.0 - fade_t) ** 1.1))
-        fd.line([(0, y), (W, y)], fill=max(0, min(255, a)))
-    return Image.composite(cut, Image.new("RGB", (W, height), BG), fade)
+def fetch_available_clubs(limit: int = 6) -> list[tuple[str, str]]:
+    headers = {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+    }
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
+
+    def add(code: str, name: str) -> None:
+        code = code.strip().upper()
+        if not code or code in seen or code == "FOREIGN":
+            return
+        if not (BADGE_DIR / f"{code}.png").exists():
+            return
+        seen.add(code)
+        out.append((code, name.strip() or code))
+
+    try:
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/Clubs?handpick_intake=eq.true"
+            "&select=ShortName,Club&order=Club",
+            headers=headers,
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            for row in json.loads(resp.read().decode()):
+                add(str(row.get("ShortName") or ""), str(row.get("Club") or ""))
+                if len(out) >= limit:
+                    return out[:limit]
+    except Exception as e:
+        print("handpick fetch failed:", e)
+
+    notables = [
+        "FIO", "AVL", "LAZ", "ROM", "VAL", "BET", "CEL", "FEY",
+        "SPO", "PSV", "MCI", "RMA", "MUN", "TOT",
+    ]
+    try:
+        q = ",".join(notables)
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/Clubs?owner_id=is.null"
+            f"&ShortName=in.({q})&select=ShortName,Club&order=Club",
+            headers=headers,
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            for row in json.loads(resp.read().decode()):
+                add(str(row.get("ShortName") or ""), str(row.get("Club") or ""))
+                if len(out) >= limit:
+                    return out[:limit]
+    except Exception as e:
+        print("vacant fetch failed:", e)
+
+    for code, name in FALLBACK_AVAILABLE:
+        add(code, name)
+        if len(out) >= limit:
+            break
+    return out[:limit]
 
 
-def style_tile(path: Path, tw: int, th: int) -> Image.Image:
-    im = cover(Image.open(path).convert("RGB"), tw, th, bias_y=0.4)
-    im = ImageEnhance.Brightness(im).enhance(0.72)
-    im = ImageEnhance.Color(im).enhance(0.85)
-    im = ImageEnhance.Contrast(im).enhance(1.08)
-    # dark vignette
-    vig = Image.new("L", (tw, th), 0)
-    vd = ImageDraw.Draw(vig)
-    for y in range(th):
-        for x in range(0, tw, 4):
-            pass
-    # edge darken via radial-ish gradient
-    overlay = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
-    od = ImageDraw.Draw(overlay)
-    od.rectangle([0, 0, tw, th], fill=(0, 0, 0, 40))
-    # bottom gradient for label
-    for i in range(56):
-        a = int(170 * (i / 55))
-        od.line([(0, th - 1 - i), (tw, th - 1 - i)], fill=(0, 0, 0, a))
-    out = im.convert("RGBA")
-    out = Image.alpha_composite(out, overlay)
-    return out
-
-
-def build_art_strip(width: int, height: int) -> Image.Image:
-    """2×2 classy custom art montage for the bottom section only."""
-    gap = 10
-    pad = 56
-    inner_w = width - pad * 2
-    inner_h = height - 8
-    tile_w = (inner_w - gap) // 2
-    tile_h = (inner_h - gap) // 2
-    canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(canvas)
-    f_lab = font(r"C:\Windows\Fonts\seguisb.ttf", 13)
-
-    for i, (path, label) in enumerate(ART_TILES):
-        if not path.exists():
-            continue
-        r, c = divmod(i, 2)
-        x = pad + c * (tile_w + gap)
-        y = r * (tile_h + gap)
-        tile = style_tile(path, tile_w, tile_h)
-        # thin frame
-        framed = Image.new("RGBA", (tile_w, tile_h), (0, 0, 0, 0))
-        framed.alpha_composite(tile)
-        fd = ImageDraw.Draw(framed)
-        fd.rectangle([0, 0, tile_w - 1, tile_h - 1], outline=(70, 55, 30, 160), width=1)
-        # label
-        tw = draw.textbbox((0, 0), label, font=f_lab)
-        # use framed draw
-        fd.text((14, tile_h - 28), label, font=f_lab, fill=(255, 153, 0, 230))
-        canvas.alpha_composite(framed, (x, y))
-
+def circle_badge(path: Path, size: int) -> Image.Image:
+    im = Image.open(path).convert("RGBA")
+    im.thumbnail((size - 10, size - 10), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    disc = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(disc)
+    d.ellipse(
+        [0, 0, size - 1, size - 1],
+        fill=(14, 14, 14, 240),
+        outline=(255, 153, 0, 200),
+        width=2,
+    )
+    canvas.alpha_composite(disc)
+    canvas.alpha_composite(im, ((size - im.width) // 2, (size - im.height) // 2))
     return canvas
 
 
+def wrap(draw: ImageDraw.ImageDraw, text: str, fnt, max_w: int) -> list[str]:
+    words = text.split()
+    lines, cur = [], ""
+    for w in words:
+        trial = w if not cur else f"{cur} {w}"
+        b = draw.textbbox((0, 0), trial, font=fnt)
+        if b[2] - b[0] <= max_w:
+            cur = trial
+        else:
+            if cur:
+                lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    return lines
+
+
 def main() -> None:
-    img = Image.new("RGB", (W, H), BG)
-    hero_h = 480
-    img.paste(hero_band(hero_h), (0, 0))
+    available = fetch_available_clubs(6)
+    print("available:", available)
+
+    # --- background: real aerial stadium, soft darken (keep city detail) ---
+    stadium = cover(Image.open(STADIUM).convert("RGB"), W, H, bias_y=0.55)
+    stadium = ImageEnhance.Brightness(stadium).enhance(0.55)
+    stadium = ImageEnhance.Contrast(stadium).enhance(1.08)
+    stadium = ImageEnhance.Color(stadium).enhance(0.85)
+    wash = Image.new("RGB", (W, H), (8, 8, 10))
+    img = Image.blend(stadium, wash, 0.38)
+
+    # gradient: darker top for logo/type, mid readable, bottom for CTA
+    fade = Image.new("L", (W, H), 0)
+    fd = ImageDraw.Draw(fade)
+    for y in range(H):
+        t = y / (H - 1)
+        if t < 0.18:
+            a = 210
+        elif t < 0.38:
+            a = int(210 - 100 * ((t - 0.18) / 0.20))
+        elif t < 0.72:
+            a = 110
+        else:
+            a = int(110 + 90 * ((t - 0.72) / 0.28))
+        fd.line([(0, y), (W, y)], fill=max(0, min(255, a)))
+    img = Image.composite(img, wash, fade)
     draw = ImageDraw.Draw(img)
 
-    f_eye = font(r"C:\Windows\Fonts\seguisb.ttf", 15)
-    f_h1 = font(r"C:\Windows\Fonts\georgia.ttf", 74)
-    f_sub = font(r"C:\Windows\Fonts\georgiai.ttf", 26)
-    f_lab = font(r"C:\Windows\Fonts\seguisb.ttf", 14)
-    f_body = font(r"C:\Windows\Fonts\segoeui.ttf", 17)
-    f_foot = font(r"C:\Windows\Fonts\segoeui.ttf", 14)
-    f_tag = font(r"C:\Windows\Fonts\georgiai.ttf", 18)
+    f_mark = font(r"C:\Windows\Fonts\arialbd.ttf", 72)
+    f_eye = font(r"C:\Windows\Fonts\seguisb.ttf", 13)
+    f_h1 = font(r"C:\Windows\Fonts\georgia.ttf", 58)
+    f_sub = font(r"C:\Windows\Fonts\georgiai.ttf", 22)
+    f_body = font(r"C:\Windows\Fonts\segoeui.ttf", 15)
+    f_panel_t = font(r"C:\Windows\Fonts\seguisb.ttf", 13)
+    f_panel_b = font(r"C:\Windows\Fonts\segoeui.ttf", 12)
+    f_club = font(r"C:\Windows\Fonts\segoeui.ttf", 11)
+    f_foot = font(r"C:\Windows\Fonts\segoeui.ttf", 13)
+    f_tag = font(r"C:\Windows\Fonts\georgiai.ttf", 17)
+    f_cta = font(r"C:\Windows\Fonts\seguisb.ttf", 15)
 
     def size(text, fnt):
         b = draw.textbbox((0, 0), text, font=fnt)
@@ -149,121 +199,187 @@ def main() -> None:
     def center(text, y, fnt, fill):
         tw, th = size(text, fnt)
         draw.text(((W - tw) / 2, y), text, font=fnt, fill=fill)
-        return th
+        return y + th
 
-    # logo
-    logo = Image.open(LOGO).convert("RGBA")
-    lw = 280
-    lh = int(logo.height * (lw / logo.width))
-    logo = logo.resize((lw, lh), Image.Resampling.LANCZOS)
-    plate = Image.new("RGBA", (lw + 80, lh + 50), (0, 0, 0, 0))
-    pd = ImageDraw.Draw(plate)
-    pd.ellipse([0, 10, lw + 80, lh + 40], fill=(0, 0, 0, 150))
-    plate = plate.filter(ImageFilter.GaussianBlur(16))
+    # --- single GPSL mark (one text draw only — no shadow / no PNG) ---
+    y = 44
+    mark = "GPSL"
+    # Use absolute textbbox so descenders/padding don't overlap the rule below
+    mw, _ = size(mark, f_mark)
+    mx = (W - mw) / 2
+    draw.text((mx, y), mark, font=f_mark, fill=(235, 235, 235))
+    ink = draw.textbbox((mx, y), mark, font=f_mark)
+    rule_w = 56
+    rule_y = ink[3] + 12
+    draw.rectangle(
+        [(W - rule_w) / 2, rule_y, (W + rule_w) / 2, rule_y + 2],
+        fill=ORANGE,
+    )
+    y = rule_y + 14
+    y = center("GP SUPER LEAGUE", y, f_eye, DIM) + 12
+    y = center("You're invited.", y, f_h1, WHITE) + 8
+    y = center("Own a club in the GP Super League.", y, f_sub, ORANGE) + 10
+    for line in (
+        "A community Master League on eFootball — run on a website",
+        "built only for GPSL, not a shared multi-league template.",
+    ):
+        y = center(line, y, f_body, MUTED) + 2
+    y += 18
+
+    # --- 6 available clubs ---
+    n = len(available)
+    y = center(f"CLUBS AVAILABLE NOW  ·  {n}", y, f_eye, ORANGE) + 12
+
+    badge = 72
+    gap = 16
+    total_w = n * badge + (n - 1) * gap
+    x0 = (W - total_w) // 2
     layer = img.convert("RGBA")
-    lx = (W - lw) // 2
-    ly = 48
-    layer.alpha_composite(plate, (lx - 40, ly - 12))
-    layer.alpha_composite(logo, (lx, ly))
+    for i, (code, name) in enumerate(available):
+        b = circle_badge(BADGE_DIR / f"{code}.png", badge)
+        bx = x0 + i * (badge + gap)
+        layer.alpha_composite(b, (bx, y))
     img = layer.convert("RGB")
     draw = ImageDraw.Draw(img)
+    y += badge + 5
+    for i, (code, name) in enumerate(available):
+        label = name if len(name) <= 13 else code
+        tw, _ = size(label, f_club)
+        bx = x0 + i * (badge + gap) + (badge - tw) // 2
+        draw.text((bx, y), label, font=f_club, fill=DIM)
+    y += 26
 
-    y = ly + lh + 28
-    center("GP SUPER LEAGUE", y, f_eye, SILVER)
-    y += 32
-
-    line = "Own the club."
-    tw, _ = size(line, f_h1)
-    x = (W - tw) / 2
-    draw.text((x + 2, y + 3), line, font=f_h1, fill=(0, 0, 0))
-    draw.text((x, y), line, font=f_h1, fill=WHITE)
-    y += 86
-    center("Run everything that matters.", y, f_sub, ORANGE)
-    y += 44
-    draw.line([W // 2 - 26, y, W // 2 + 26, y], fill=ORANGE, width=2)
-    y += 28
-
-    bands = [
+    # --- human-readable categories (no leading dashes) ---
+    panels = [
         (
-            "MATCH DAY",
-            "Propose kick-offs, check in, submit the score — the fixture lives on your club site.",
+            "Match Day",
+            "You and your opponent agree a kick-off, both check in on the site, "
+            "play the match, then enter the score and key stats. Fixtures, "
+            "results and form all live in one place.",
         ),
         (
-            "TRANSFER CENTRE",
-            "Owner deals, player drafts, special auctions, club & manager auctions, renewals.",
+            "Transfer market",
+            "Buy and sell with other owners — negotiate fees, move players, "
+            "and live with the wage bill that comes with every deal.",
         ),
         (
-            "FINANCES",
-            "Wages, credit, ledgers, budgets and FFP pressure. Every signing hits the books.",
+            "Player drafts",
+            "When the league opens a draft window, free agents go up for bids. "
+            "Timed rounds; highest bid takes the player.",
         ),
         (
-            "BESPOKE WEBSITE",
-            "Built specifically for GPSL — not a shared multi-league template. Deeper because it’s ours.",
+            "Special auctions",
+            "Featured one-offs and event lots beyond the day-to-day market — "
+            "big names and oddities when the league puts them up.",
         ),
         (
-            "TRUE COMPETITION",
-            "GP-only · unique assets · PA3 · 60-club pyramid with promotion & relegation.",
+            "Club auctions",
+            "Before a season, vacant clubs go to auction. You bid for the seat "
+            "you want, then build from that squad.",
+        ),
+        (
+            "Manager auctions",
+            "Hire your manager at auction. Their style and contract matter — "
+            "and when the deal ends, they can go back to market.",
+        ),
+        (
+            "Contract renewals",
+            "Players and managers expire. Keep them, let them walk, or watch "
+            "them hit the market for someone else.",
+        ),
+        (
+            "Club finances",
+            "Season wages, ledgers, credit rating, budgets and FFP pressure. "
+            "Every signing hits the books — overspend and you feel it.",
+        ),
+        (
+            "Divisions & promotion",
+            "Sixty clubs across three divisions. Win your league, go up. "
+            "Struggle, go down. Tables update as results come in.",
+        ),
+        (
+            "Discipline & fair play",
+            "Missed kick-offs and no-shows carry fines and strikes. The rules "
+            "are written down so everyone plays by the same clock.",
+        ),
+        (
+            "Bespoke GPSL website",
+            "Not a shared multi-league template. Match Day, transfers, auctions "
+            "and finances go deeper because the platform is built for us.",
+        ),
+        (
+            "How we play",
+            "GP-only squads. Unique players, clubs, stadiums and managers. "
+            "PA3. Smart Assist banned. PC and console welcome.",
         ),
     ]
 
-    left = 72
-    label_w = 200
-    text_x = left + label_w + 20
-    text_w = W - text_x - 72
+    margin = 48
+    gap_x, gap_y = 10, 8
+    cols = 2
+    col_w = (W - margin * 2 - gap_x * (cols - 1)) // cols
+    panel_h = 92
+    rows = (len(panels) + cols - 1) // cols
 
-    for i, (label, body) in enumerate(bands):
-        if i:
-            draw.line([left, y, W - left, y], fill=RULE, width=1)
-            y += 16
-        draw.text((left, y + 1), label, font=f_lab, fill=ORANGE)
-        words = body.split()
-        lines, cur = [], ""
-        for w in words:
-            trial = w if not cur else f"{cur} {w}"
-            if size(trial, f_body)[0] <= text_w:
-                cur = trial
-            else:
-                lines.append(cur)
-                cur = w
-        if cur:
-            lines.append(cur)
-        by = y
-        for ln in lines:
-            draw.text((text_x, by), ln, font=f_body, fill=MUTED)
-            by += size(ln, f_body)[1] + 4
-        y = max(y + 24, by) + 12
+    # fit remaining space
+    room = H - y - 110
+    need = rows * (panel_h + gap_y)
+    if need > room:
+        panel_h = max(78, int((room - rows * gap_y) / rows))
 
-    # --- custom art strip BELOW the text (not underneath it) ---
-    y += 8
-    draw.line([left, y, W - left, y], fill=RULE, width=1)
-    y += 18
-    center("LIFE AS A GPSL OWNER", y, f_eye, DIM)
-    y += 28
-
-    footer_reserve = 110
-    art_h = max(280, H - y - footer_reserve)
-    strip = build_art_strip(W, art_h)
     layer = img.convert("RGBA")
-    layer.alpha_composite(strip, (0, y))
+    pd = ImageDraw.Draw(layer)
+
+    for idx, (title, body) in enumerate(panels):
+        r, c = divmod(idx, cols)
+        px = margin + c * (col_w + gap_x)
+        py = y + r * (panel_h + gap_y)
+
+        # panel plate
+        plate = Image.new("RGBA", (col_w, panel_h), (0, 0, 0, 0))
+        pdraw = ImageDraw.Draw(plate)
+        pdraw.rounded_rectangle(
+            [0, 0, col_w - 1, panel_h - 1],
+            radius=7,
+            fill=PANEL_FILL,
+            outline=(*PANEL_EDGE, 255),
+            width=1,
+        )
+        layer.alpha_composite(plate, (px, py))
+
+        # title only — no leading dash / accent bar
+        pd.text((px + 14, py + 10), title, font=f_panel_t, fill=ORANGE)
+        lines = wrap(pd, body, f_panel_b, col_w - 28)
+        by = py + 32
+        line_h = size("Ag", f_panel_b)[1] + 2
+        max_lines = max(2, (panel_h - 40) // line_h)
+        for ln in lines[:max_lines]:
+            pd.text((px + 12, by), ln, font=f_panel_b, fill=MUTED)
+            by += line_h
+
     img = layer.convert("RGB")
     draw = ImageDraw.Draw(img)
-    y += art_h + 16
+    y = y + rows * (panel_h + gap_y) + 14
 
-    y = min(y, H - 95)
-    center(
-        "Waiting list open  ·  Discord  ·  PC & Console  ·  GP-only  ·  PA3",
-        y,
-        f_foot,
-        DIM,
-    )
-    y += 30
-    center("More than just a match.", y, f_tag, (128, 128, 128))
+    # CTA
+    cta = "JOIN THE WAITING LIST"
+    tw, th = size(cta, f_cta)
+    cw, ch = tw + 52, th + 20
+    cx = (W - cw) // 2
+    if y + ch + 56 > H - 20:
+        y = H - 90
+    draw.rectangle([cx, y, cx + cw, y + ch], fill=ORANGE)
+    draw.text((cx + 26, y + 9), cta, font=f_cta, fill=(17, 17, 17))
+    y += ch + 10
+    center("Discord  ·  PC & Console  ·  GP-only  ·  PA3", y, f_foot, DIM)
+    y += 24
+    center("More than just a match.", y, f_tag, (150, 150, 150))
 
-    draw.rectangle([22, 22, W - 22, H - 22], outline=(34, 34, 34), width=1)
+    draw.rectangle([18, 18, W - 18, H - 18], outline=(42, 42, 42), width=1)
 
     img.save(OUT_PNG)
     img.save(OUT_JPG, quality=94)
-    print(f"saved {OUT_PNG} {img.size}")
+    print(f"saved {OUT_PNG}")
 
 
 if __name__ == "__main__":
