@@ -1,5 +1,7 @@
 // Shared competition helpers (Phase 0+)
 
+import { clubIsVacant } from "./clubs_lookup.js";
+
 export const DIVISION_LABELS = {
   unassigned: "Unassigned",
   standby: "Standby (no league)",
@@ -1622,13 +1624,32 @@ export function formatFormHtml(formStr) {
     .join("");
 }
 
-/** Sort standings rows best → worst (pts, GD, GF, name). */
+/**
+ * Sort standings rows for display / venue tables.
+ * Vacant clubs (no owner_id) sink below every occupied club, A–Z among themselves
+ * (points ignored). Occupied clubs: pts → GD → GF → name.
+ * When a club is claimed again, they return to merit order.
+ */
 export function compareStandingsRows(a, b) {
+  const aVacant =
+    a?.is_vacant === true ||
+    (a?.is_vacant !== false && clubIsVacant(a?.club_short_name));
+  const bVacant =
+    b?.is_vacant === true ||
+    (b?.is_vacant !== false && clubIsVacant(b?.club_short_name));
+
+  if (aVacant !== bVacant) return aVacant ? 1 : -1;
+
+  const nameCmp = String(a?.club_name || "").localeCompare(
+    String(b?.club_name || "")
+  );
+  if (aVacant && bVacant) return nameCmp;
+
   return (
     (b.pts ?? 0) - (a.pts ?? 0) ||
     (b.gd ?? 0) - (a.gd ?? 0) ||
     (b.gf ?? 0) - (a.gf ?? 0) ||
-    String(a.club_name || "").localeCompare(String(b.club_name || ""))
+    nameCmp
   );
 }
 

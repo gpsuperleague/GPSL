@@ -163,6 +163,23 @@ export function clubHasOwner(shortName) {
   return Boolean(ownerIdForClub(shortName));
 }
 
+/**
+ * True when the club is known from loadClubsMap and has no owner_id.
+ * Returns false if the map is not loaded / club unknown (do not sink on sort).
+ */
+export function clubIsVacant(shortName) {
+  const key = String(shortName || "").trim();
+  if (!key) return false;
+  const upper = key.toUpperCase();
+  const known =
+    clubsMap.has(key) ||
+    clubsMapUpper.has(upper) ||
+    ownerIdsMap.has(key) ||
+    ownerIdsMap.has(upper);
+  if (!known) return false;
+  return !clubHasOwner(key);
+}
+
 /** Live check: club on active season absence (finance freeze). */
 export async function clubIsSeasonAbsent(supabase, clubShort, seasonId = null) {
   if (!supabase?.rpc || !clubShort) return false;

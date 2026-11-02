@@ -3,6 +3,7 @@ import {
   loadClubsMap,
   clubWithOwnerHtml,
   clubIsSeasonAbsentCached,
+  clubIsVacant,
 } from "./clubs_lookup.js";
 import {
   loadCurrentSeason,
@@ -13,6 +14,7 @@ import {
   groupStandingsByDivision,
   buildVenueStandings,
   rankVenueStandings,
+  compareStandingsRows,
   LEAGUE_DIVISIONS,
   statusForStanding,
   prestigeBarKeyForStanding,
@@ -24,7 +26,7 @@ import {
   formatMoney,
   divisionLabelWithBadgeHtml,
   normalizeClubKey,
-} from "./competition.js?v=20261023-venue-defer";
+} from "./competition.js?v=20261102-vacant-sink";
 import { loadCalendarStatus } from "./competition_calendar.js";
 
 function seasonFromUrl() {
@@ -232,7 +234,19 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
     return panel;
   }
 
+  // Live tables: vacant clubs sink to the bottom (A–Z). Archived seasons keep
+  // historical final_position order (don't re-rank by today's owner_id).
+  const sinkVacant = opts.sinkVacant === true;
   const sortedRows = [...rows].sort((a, b) => {
+    if (sinkVacant) {
+      if (rankField === "venue_rank") return compareStandingsRows(a, b);
+      const aVacant = clubIsVacant(a.club_short_name);
+      const bVacant = clubIsVacant(b.club_short_name);
+      if (aVacant !== bVacant) return aVacant ? 1 : -1;
+      if (aVacant && bVacant) {
+        return String(a.club_name || "").localeCompare(String(b.club_name || ""));
+      }
+    }
     const ra = a[rankField] ?? 999;
     const rb = b[rankField] ?? 999;
     return ra - rb;
@@ -414,7 +428,9 @@ function renderTables() {
   } else {
     for (const div of visible) {
       root.appendChild(
-        renderStandingsTable(div, standingsGroups[div] || [], myClubRef)
+        renderStandingsTable(div, standingsGroups[div] || [], myClubRef, {
+          sinkVacant: !seasonFromUrl(),
+        })
       );
     }
   }
@@ -457,6 +473,7 @@ function renderVenueTables() {
         rankField: "venue_rank",
         showPrize: false,
         zoneBoundaries: false,
+        sinkVacant: true,
         panelTitle: `${DIVISION_TITLES[div]} · ${venueLabel}`,
         rankHeader: venue === "home" ? "H#" : "A#",
         tableClass: "standings-table venue-standings-table",
