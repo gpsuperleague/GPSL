@@ -51,7 +51,7 @@ import {
   pitchBehaviourPanelHtml,
   wirePitchAck,
   getMatchdayConsoleRulesCards,
-} from "./matchday_console_rules.js?v=20261103-display-cols2";
+} from "./matchday_console_rules.js?v=20261103-no-dup";
 import { playerNameLinkHtml } from "./player_links.js";
 import { fullClubName } from "./clubs_lookup.js";
 import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261020-blackbox";
@@ -1870,7 +1870,7 @@ function initSquadPanel() {
   });
 }
 
-/** Console strip + pitch ack for the selected fixture (submit tab). */
+/** Cup badge (if any) + slim pitch ack — Display checks below has the full rules. */
 function refreshMatchdayConsoleMount() {
   const mount = document.getElementById("matchdayConsoleMount");
   if (!mount) return;
@@ -1882,6 +1882,7 @@ function refreshMatchdayConsoleMount() {
     cupNeedsEtPens(f, home90, away90, leg1CompanionFixture);
   mount.innerHTML =
     matchConsoleStripHtml({
+      chips: false,
       isCup: isCupFixture(f),
       isTwoLegFirst: isTwoLegFirstLeg(f, upcomingFixtures),
       isTwoLegSecond: isTwoLegSecondLeg(f),
@@ -1890,6 +1891,7 @@ function refreshMatchdayConsoleMount() {
     pitchBehaviourPanelHtml({
       fixtureId: f?.id || null,
       requireAck: !!f?.id,
+      hideItems: true,
     });
   wirePitchAck(mount);
 }

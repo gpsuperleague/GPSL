@@ -60,38 +60,52 @@ export function cupConsoleBadge(opts = {}) {
 
 /**
  * Compact always-on strip HTML.
- * @param {{ isCup?: boolean, isTwoLegFirst?: boolean, isTwoLegSecond?: boolean, levelOnAggregate?: boolean, className?: string }} [opts]
+ * @param {{
+ *   isCup?: boolean,
+ *   isTwoLegFirst?: boolean,
+ *   isTwoLegSecond?: boolean,
+ *   levelOnAggregate?: boolean,
+ *   className?: string,
+ *   chips?: boolean,  // false = cup badge only (no duplicate of Display checks)
+ * }} [opts]
  */
 export function matchConsoleStripHtml(opts = {}) {
+  const showChips = opts.chips !== false;
   const cup = cupConsoleBadge(opts);
-  const chips = [
-    ...CONSOLE_DISPLAY_CHIPS,
-    ...CONSOLE_PAUSE_CHIPS,
-    ...CONSOLE_IN_MATCH_CHIPS,
-  ]
-    .map((c) => `<span class="md-console-chip">${escapeHtml(c)}</span>`)
-    .join("");
+  const chips = showChips
+    ? [
+        ...CONSOLE_DISPLAY_CHIPS,
+        ...CONSOLE_PAUSE_CHIPS,
+        ...CONSOLE_IN_MATCH_CHIPS,
+      ]
+        .map((c) => `<span class="md-console-chip">${escapeHtml(c)}</span>`)
+        .join("")
+    : "";
   const cupHtml = cup
     ? `<span class="md-console-cup" title="${escapeHtml(cup.detail)}"><b>${escapeHtml(
         cup.label
       )}</b> · ${escapeHtml(cup.detail)}</span>`
     : "";
+  if (!showChips && !cupHtml) return "";
   return `
     <div class="md-console-strip ${opts.className || ""}" role="note" aria-label="Match console settings">
-      <div class="md-console-strip-label">Console</div>
-      <div class="md-console-chips">${chips}</div>
+      <div class="md-console-strip-label">${showChips ? "Console" : "Cup"}</div>
+      ${chips ? `<div class="md-console-chips">${chips}</div>` : ""}
       ${cupHtml}
     </div>`;
 }
 
 /**
  * Pitch behaviour block + optional once-per-fixture acknowledgement.
- * @param {{ fixtureId?: string|null, requireAck?: boolean }} [opts]
+ * @param {{ fixtureId?: string|null, requireAck?: boolean, hideItems?: boolean }} [opts]
  */
 export function pitchBehaviourPanelHtml(opts = {}) {
-  const items = PITCH_BEHAVIOUR_ITEMS.map(
-    (t) => `<li><b>${escapeHtml(t)}</b></li>`
-  ).join("");
+  const hideItems = !!opts.hideItems;
+  const items = hideItems
+    ? ""
+    : `<ul class="md-pitch-behaviour-list">${PITCH_BEHAVIOUR_ITEMS.map(
+        (t) => `<li><b>${escapeHtml(t)}</b></li>`
+      ).join("")}</ul>`;
   const fid = opts.fixtureId ? String(opts.fixtureId) : "";
   const already = fid && hasPitchAck(fid);
   const ackBlock =
@@ -105,10 +119,11 @@ export function pitchBehaviourPanelHtml(opts = {}) {
       : opts.requireAck && fid && already
         ? `<p class="md-pitch-ack-done">Pitch behaviour acknowledged for this fixture.</p>`
         : "";
+  if (hideItems && !ackBlock) return "";
   return `
-    <div class="md-pitch-behaviour" role="note" aria-label="On the pitch behaviour">
-      <div class="md-pitch-behaviour-title">On the pitch</div>
-      <ul class="md-pitch-behaviour-list">${items}</ul>
+    <div class="md-pitch-behaviour${hideItems ? " md-pitch-behaviour--ack" : ""}" role="note" aria-label="On the pitch behaviour">
+      ${hideItems ? "" : `<div class="md-pitch-behaviour-title">On the pitch</div>`}
+      ${items}
       ${ackBlock}
     </div>`;
 }

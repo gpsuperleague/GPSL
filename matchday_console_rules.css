@@ -102,6 +102,11 @@
   font-style: italic;
 }
 
+.md-pitch-behaviour--ack {
+  border-color: #444;
+  background: rgba(30, 30, 30, 0.35);
+}
+
 .mr-console-check {
   border-color: rgba(var(--gpsl-accent-rgb), 0.35) !important;
   background: rgba(40, 28, 8, 0.35) !important;
