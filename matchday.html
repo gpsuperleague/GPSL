@@ -305,8 +305,10 @@
     <p id="calendarBanner" class="meta" style="display:none;border:1px solid #444;background:#1a1a22;padding:10px 12px;border-radius:6px;"></p>
 
     <div class="matchday-tabs" role="tablist">
-      <button type="button" class="active" data-tab="squad" role="tab">Match squad</button>
-      <button type="button" data-tab="submit" role="tab">Submit result</button>
+      <button type="button" class="active gpsl-has-tip" data-tab="squad" role="tab"
+        data-gpsl-tip="Save one default matchday 23 (11 starters + up to 12 subs). It is checked at check-in for every fixture until you change it. Starters auto-tick Started when you submit stats.">Match squad</button>
+      <button type="button" class="gpsl-has-tip" data-tab="submit" role="tab"
+        data-gpsl-tip="After the match: pick the fixture, enter the score, tick who played (11 Started, 0–5 Subbed on), G/A, optional rating/POTM and cards. Opponent confirms via Inbox. Cups may need ET / pens.">Submit result</button>
     </div>
 
     <div class="panel squad-panel-wrap active" id="squadPanel">
@@ -358,8 +360,10 @@
 
       <div id="noFixturesHelp" class="fixture-preview" style="display:none;color:#f99;border:1px solid #633;"></div>
 
-      <label for="fixtureSelect">Your fixtures (confirm first, then submit, then one-time stats edit)</label>
-      <select id="fixtureSelect"></select>
+      <label for="fixtureSelect" class="gpsl-has-tip" tabindex="0"
+        data-gpsl-tip="Order: CONFIRM RESULT first (opponent already submitted), then open fixtures to submit your score, then one-time edit stats after confirmation. Catch-up / replay fixtures appear once a kick-off is agreed.">Your fixtures (confirm first, then submit, then one-time stats edit)</label>
+      <select id="fixtureSelect" class="gpsl-has-tip"
+        data-gpsl-tip="Choose your fixture. Confirm-needed games list first. You need an agreed kick-off and check-in before you can submit a new result."></select>
 
       <div id="fixturePreview" class="fixture-preview">Select a fixture.</div>
 
@@ -446,17 +450,21 @@
             <thead>
               <tr>
                 <th class="name" rowspan="2">Player</th>
-                <th colspan="2" class="stat-group-hdr">Played</th>
+                <th colspan="2" class="stat-group-hdr gpsl-has-tip" tabindex="0"
+                  data-gpsl-tip="Exactly 11 Started. Optional 0–5 Subbed on. A player cannot be both. Suspended / injured players are locked out.">Played</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Goals scored by your player for your team. Do not include opponent own goals here — put those in OG+ above." tabindex="0">G</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Own goals against — by your player (counts for the opponent on the scoreboard, not your G total)." tabindex="0">OG−</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Assists by your player. Required with goals for players who appeared." tabindex="0">A</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Defaults to 3.0 when Started or Subbed on. Change or leave as 3.0. Range 0–10 in 0.5 steps (0, 0.5, 1.0 … 10.0)." tabindex="0">Rating</th>
                 <th rowspan="2" class="gpsl-has-tip" data-gpsl-tip="Optional. At most one Player of the Match; must have started or been subbed on." tabindex="0">POTM</th>
-                <th colspan="2" class="stat-group-hdr">Cards</th>
+                <th colspan="2" class="stat-group-hdr gpsl-has-tip" tabindex="0"
+                  data-gpsl-tip="Yellow / red only if the player Started or was Subbed on. Red = 2-match ban. Eight yellows in a season = 2-match ban.">Cards</th>
               </tr>
               <tr>
-                <th class="stat-sub-hdr">Started</th>
-                <th class="stat-sub-hdr">Subbed on</th>
+                <th class="stat-sub-hdr gpsl-has-tip" tabindex="0"
+                  data-gpsl-tip="Tick the 11 who started. Mutually exclusive with Subbed on. Auto-ticked from your saved matchday XI when the panel loads.">Started</th>
+                <th class="stat-sub-hdr gpsl-has-tip" tabindex="0"
+                  data-gpsl-tip="Optional — up to 5 players who came on. Mutually exclusive with Started. Bench rows from your default squad are highlighted to help.">Subbed on</th>
                 <th class="stat-sub-hdr gpsl-has-tip" data-gpsl-tip="Yellow card. Player must have played. Eight yellows in a season = 2-match ban." tabindex="0">Y</th>
                 <th class="stat-sub-hdr gpsl-has-tip" data-gpsl-tip="Red card = 2-match ban. Player must have played. Appeals via Rewards Centre / Squad Action." tabindex="0">R</th>
               </tr>
@@ -468,7 +476,8 @@
       </div>
 
       <div id="connectionRatingPanel" class="fixture-preview" style="display:none;margin-top:14px;border-color:#3a4a5a;background:#121820;">
-        <h3 style="margin:0 0 6px;color:#9cf;font-size:15px;">Connection quality</h3>
+        <h3 class="gpsl-has-tip" tabindex="0" style="margin:0 0 6px;color:#9cf;font-size:15px;"
+          data-gpsl-tip="Rate the online connection only (lag, delay, freezes) — not the opponent as a person. Required when submitting or confirming.">Connection quality</h3>
         <p class="stats-hint" style="margin:0 0 10px;color:#aaa;">
           Rate the <b>online connection</b> during this match — lag, delay, freezes, heaviness, catch-up —
           <b>not</b> your opponent as a person or how they played.
@@ -487,9 +496,11 @@
       </div>
 
       <div id="confirmActions" style="display:none;margin-top:12px;">
-        <button type="button" id="rejectResultBtn" class="button danger">Reject result</button>
+        <button type="button" id="rejectResultBtn" class="button danger gpsl-has-tip"
+          data-gpsl-tip="Reject the opponent’s submitted score if it is wrong. They will need to re-submit.">Reject result</button>
       </div>
-      <button type="button" id="submitResultBtn" class="button">Submit for confirmation</button>
+      <button type="button" id="submitResultBtn" class="button gpsl-has-tip"
+        data-gpsl-tip="Sends your score and stats for the opponent to confirm. Needs agreed kick-off, check-in (or one-sided unlock after the window), and a valid lineup (11 Started, G+OG+ = your score).">Submit for confirmation</button>
       <span id="simulateActions" style="display:none;margin-left:8px;" class="sim-actions">
         <button type="button" id="instantResultBtn" class="button sim-instant-btn" style="background:#333;">Instant result</button>
         <button type="button" id="simulateResultBtn" class="button sim-play-btn" style="background:#2a5535;">Simulate match</button>
@@ -497,6 +508,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20261030-card-availability"></script>
+  <script type="module" src="matchday.js?v=20261103-tab-tips"></script>
 </body>
 </html>

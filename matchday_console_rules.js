@@ -228,6 +228,7 @@ export function getMatchdayConsoleRulesCards() {
     cards: [
       {
         heading: "Pre-Match Settings",
+        tip: "Match length and injuries. Cup ET / pens rules when this fixture is a cup.",
         items: [
           "<b>10-minute</b> match, <b>Injuries off</b> (all other settings default).",
           "<b>Cup knockout (1-leg):</b> Extra Time and Penalties if level after 90.",
@@ -236,6 +237,7 @@ export function getMatchdayConsoleRulesCards() {
       },
       {
         heading: "Stadium",
+        tip: "Licensed club = real stadium. Everyone else = Konami stadium, home-kit colours, real-life name.",
         items: [
           "<b>Licensed clubs only</b> may use their real eFootball stadium.",
           "<b>Non-licensed clubs</b> must use the <b>Konami stadium</b>.",
@@ -245,12 +247,14 @@ export function getMatchdayConsoleRulesCards() {
       },
       {
         heading: "Personnel",
+        tip: "Show Manager, Subtactic and Squad on the recording for the whole match.",
         items: [
           "<b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b> on — they must stay visible on the match recording or you can be reported and fined.",
         ],
       },
       {
         heading: "Tactics",
+        tip: "Blank player instructions. Subtactic and Fluid Formation = standard formations only.",
         items: [
           "<b>Player instructions</b> blank (blocked if used — ₿10m).",
           "<b>Subtactic</b>: <b>standard formations only</b>.",
@@ -259,6 +263,7 @@ export function getMatchdayConsoleRulesCards() {
       },
       {
         heading: "Pause before kick-off",
+        tip: "Pause and show PA3 or PA4 plus Advanced skill before kick-off.",
         items: [
           "Show <b>PA level</b> — <b>PA3</b> or <b>PA4</b> only.",
           "<b>Advanced</b> skill setting only.",
@@ -266,6 +271,7 @@ export function getMatchdayConsoleRulesCards() {
       },
       {
         heading: "On the pitch",
+        tip: "Single Red/Blue from 80'. Double from 90'. No DOGSO, timewasting or match manipulation.",
         items: [
           "<b>Single Red or Blue</b> only from the <b>80th minute</b> (before 80' = fine).",
           "<b>Double Red/Blue</b> only from the <b>90th minute</b> (before 90' = fine).",

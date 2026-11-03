@@ -12,6 +12,7 @@ export function getMatchdaySquadRules() {
     cards: [
       {
         heading: "How your squad is used",
+        tip: "One saved 23 for every fixture until you change it. Validated at check-in (not when you press Save as a draft).",
         items: [
           "You save <b>one squad</b> and it is used for <b>every fixture</b> until you change it — there is no separate submit step.",
           "It is checked when you <b>check in</b> (from 10 minutes before kick-off): <b>exactly 11 starters</b>, <b>12 subs</b> (every fit player if you have fewer), a goalkeeper, and <b>no injured or suspended players</b>. If it fails, check-in is refused.",
@@ -21,6 +22,7 @@ export function getMatchdaySquadRules() {
       },
       {
         heading: "Build the 23",
+        tip: "Drag cards onto the pitch (11) and bench (12). Players must be from your club squad.",
         items: [
           "Drag player cards onto the pitch (<b>11 starters</b>) and bench (<b>12 subs</b>).",
           "This is your <b>default matchday squad</b> for the season — players must be from your <b>club squad</b>.",
@@ -29,6 +31,7 @@ export function getMatchdaySquadRules() {
       },
       {
         heading: "Squad selection",
+        tip: "No injured or suspended players. At least one GK in the starting XI. U21 / home-grown rules are for the club squad page, not this 23.",
         items: [
           "Only players currently at your club.",
           "<b>No injured</b> or <b>suspended</b> players in the matchday 23 (save is blocked).",
@@ -39,6 +42,7 @@ export function getMatchdaySquadRules() {
       },
       {
         heading: "Formations",
+        tip: "Dropdown presets only — no free marker drag. Role mirrors and DMF/AMF / CF+SS limits apply.",
         items: [
           "Pick a formation from the <b>dropdown</b> — the pitch layout updates straight away. <b>Apply Formation</b> resets the markers to that template.",
           "<b>No free positioning</b> — marker layout comes from the formation template set by the league.",
