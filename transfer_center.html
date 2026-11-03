@@ -1,11 +1,10 @@
 ﻿<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GPSL Transfer Centre</title>
 
-  <!-- CURRENT PAGE IDENTIFIER -->
   <script>
     window.CURRENT_PAGE = "transfer_center";
   </script>
@@ -13,313 +12,10 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
-  <style>
-    body {
-      background: #111;
-      color: #ddd;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-
-    h1 {
-      text-align: left;
-      color: var(--gpsl-accent, #ff9900);
-      margin: 0;
-      font-size: 26px;
-    }
-
-    .fav-btn, .draft-fav-remove {
-      background: transparent;
-      border: none;
-      color: #666;
-      font-size: 18px;
-      cursor: pointer;
-      padding: 0 4px;
-      line-height: 1;
-    }
-
-    .fav-btn.fav-on, .draft-fav-remove.fav-on {
-      color: var(--gpsl-accent, #ff9900);
-    }
-
-    .page-container a.gpsl-link {
-      color: var(--gpsl-accent, #ff9900);
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    .page-container a.gpsl-link:hover,
-    .page-container a.gpsl-link:focus {
-      color: #ffaa22;
-      text-decoration: none;
-    }
-
-    .page-container a.gpsl-link.tc-action-link {
-      display: inline-block;
-      padding: 4px 10px;
-      background: #2a2218;
-      border: 1px solid #664400;
-      border-radius: 4px;
-      font-size: 12px;
-      line-height: 1.3;
-    }
-
-    .page-container a.gpsl-link.tc-action-link:hover,
-    .page-container a.gpsl-link.tc-action-link:focus {
-      background: #332a1a;
-      color: var(--gpsl-accent-hover, #ffcc66);
-      border-color: var(--gpsl-accent, #ff9900);
-      text-decoration: none;
-    }
-
-    table.gpsl-table th.countdown-col,
-    table.gpsl-table td.countdown-cell {
-      min-width: 220px;
-      width: 220px;
-      vertical-align: top;
-    }
-
-    .countdown-cell .countdown-duration,
-    .tc-deadline-live .countdown-duration {
-      display: block;
-      font-weight: bold;
-      color: var(--gpsl-accent, #ff9900);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .countdown-cell .countdown-times,
-    .tc-deadline-live .countdown-times {
-      display: block;
-      font-size: 11px;
-      color: #aaa;
-      margin-top: 3px;
-      line-height: 1.35;
-      font-weight: normal;
-    }
-
-    .countdown-cell .countdown-uk,
-    .countdown-cell .countdown-local,
-    .tc-deadline-live .countdown-uk,
-    .tc-deadline-live .countdown-local {
-      display: block;
-    }
-
-    .tc-deadline-urgent .countdown-duration {
-      color: #ff6b4a;
-      animation: tc-deadline-pulse 1.2s ease-in-out infinite;
-    }
-
-    .tc-deadline-expired .countdown-duration {
-      color: #d9534f;
-      animation: none;
-    }
-
-    .tc-deadline-empty {
-      color: #888;
-      font-size: 12px;
-    }
-
-    @keyframes tc-deadline-pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.55; }
-    }
-
-    /* ---- Modular 2-column Transfer Centre ---- */
-    .tc-jump {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 0 0 18px;
-    }
-
-    .tc-jump a {
-      display: inline-block;
-      padding: 5px 12px;
-      font-size: 12px;
-      text-decoration: none;
-      color: #ccc;
-      background: #1a1a1a;
-      border: 1px solid #444;
-      border-radius: 999px;
-    }
-
-    .tc-jump a:hover {
-      border-color: var(--gpsl-accent, #ff9900);
-      color: var(--gpsl-accent, #ff9900);
-    }
-
-    .tc-block {
-      margin-bottom: 28px;
-    }
-
-    .tc-block-header {
-      color: var(--gpsl-accent, #ff9900);
-      font-size: 18px;
-      margin: 0 0 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #333;
-      letter-spacing: 0.02em;
-    }
-
-    .tc-block-header span {
-      color: #888;
-      font-size: 12px;
-      font-weight: normal;
-      margin-left: 10px;
-    }
-
-    .tc-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-      align-items: start;
-    }
-
-    .tc-panel {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 16px 18px;
-      margin: 0;
-      min-width: 0;
-    }
-
-    .tc-panel::after {
-      display: none !important;
-      content: none !important;
-    }
-
-    .tc-panel > h2 {
-      color: var(--gpsl-accent, #ff9900);
-      font-size: 16px;
-      margin: 0 0 10px;
-    }
-
-    .tc-panel > h3 {
-      color: var(--gpsl-accent-hover, #ffcc66);
-      font-size: 14px;
-      margin: 0 0 8px;
-    }
-
-    .tc-panel .tc-note {
-      font-size: 13px;
-      color: #aaa;
-      margin: 0 0 10px;
-      line-height: 1.45;
-    }
-    .tc-panel h2 {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-    .tc-clear-closed {
-      border: 1px solid #555;
-      background: #333;
-      color: #ddd;
-      border-radius: 4px;
-      font-size: 11px;
-      padding: 2px 8px;
-      cursor: pointer;
-      font-weight: normal;
-    }
-    .tc-clear-closed:hover { background: #444; }
-    .tc-dismiss-closed {
-      border: none;
-      background: transparent;
-      color: #888;
-      font-size: 16px;
-      line-height: 1;
-      cursor: pointer;
-      padding: 0 4px;
-    }
-    .tc-dismiss-closed:hover { color: #f88; }
-
-    .tc-panel .tc-scroll {
-      overflow-x: auto;
-      max-width: 100%;
-    }
-
-    .tc-panel .gpsl-table {
-      font-size: 12px;
-    }
-
-    @media (max-width: 960px) {
-      .tc-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .listing-injury {
-      display: block;
-      margin-top: 4px;
-      font-size: 10px;
-      font-weight: 600;
-      border-radius: 4px;
-      padding: 2px 6px;
-      width: fit-content;
-      max-width: 100%;
-      line-height: 1.3;
-      white-space: normal;
-    }
-    .listing-injury-out {
-      color: #9ed4f0;
-      background: #1a3a4a;
-      border: 1px solid #3a6a8a;
-    }
-    .listing-injury-rec {
-      color: #c8e89a;
-      background: #2a3a1a;
-      border: 1px solid #5a7a3a;
-    }
-    tr.listing-row-injured td {
-      background: rgba(40, 90, 120, 0.16);
-    }
-    tr.listing-row-recovery td {
-      background: rgba(60, 100, 40, 0.12);
-    }
-
-    .listing-fit {
-      margin-top: 4px;
-      max-width: 140px;
-    }
-    .listing-fit-meter {
-      display: flex;
-      gap: 2px;
-      width: 100%;
-    }
-    .listing-fit-pip {
-      flex: 1;
-      height: 6px;
-      border-radius: 2px;
-      background: #2a2a2a;
-      border: 1px solid #3a3a3a;
-    }
-    .listing-fit-pip.is-on.listing-fit-pip-1 { background: #27ae60; border-color: #2ecc71; }
-    .listing-fit-pip.is-on.listing-fit-pip-2 { background: #52b788; border-color: #74c69d; }
-    .listing-fit-pip.is-on.listing-fit-pip-3 { background: #f1c40f; border-color: #f4d03f; }
-    .listing-fit-pip.is-on.listing-fit-pip-4 { background: #e67e22; border-color: #f39c12; }
-    .listing-fit-pip.is-on.listing-fit-pip-5 { background: #e74c3c; border-color: #ff6b5a; }
-    .listing-fit-name {
-      margin-top: 2px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      line-height: 1.2;
-      white-space: nowrap;
-    }
-    .listing-fit-l1 .listing-fit-name { color: #2ecc71; }
-    .listing-fit-l2 .listing-fit-name { color: #74c69d; }
-    .listing-fit-l3 .listing-fit-name { color: #f1c40f; }
-    .listing-fit-l4 .listing-fit-name { color: #e67e22; }
-    .listing-fit-l5 .listing-fit-name { color: #e74c3c; }
-    .listing-fit-name--injured { color: #9ed4f0 !important; }
-    .listing-fit-name--recovery { color: #c8e89a !important; }
-  </style>
+  <link rel="stylesheet" href="transfer_center.css?v=20261103-desk1">
 </head>
 
-<body class="dashboard-page">
+<body class="dashboard-page tc-page">
 
   <div id="nav"></div>
 
@@ -344,18 +40,15 @@
     </div>
 
     <nav class="tc-jump" aria-label="Transfer Centre sections">
-      <a href="#transfers-in">Transfers In</a>
-      <a href="#transfers-out">Transfers Out</a>
-      <a href="#scouting-targets">Scouting</a>
+      <a class="tc-jump-primary" href="#transfers-in">Transfers In</a>
+      <a class="tc-jump-primary" href="#transfers-out">Transfers Out</a>
       <a href="#active-bids">Active Bids</a>
-      <a href="#marked-for-sale">Marked for sale</a>
-      <a href="#active-listings">Active Listings</a>
       <a href="#seller-review">Seller Review</a>
+      <a href="#scouting-targets">Scouting</a>
+      <a href="#marked-for-sale">Marked for sale</a>
+      <a href="#active-listings">Listings</a>
     </nav>
 
-    <!-- ================================
-         TRANSFERS IN
-         ================================ -->
     <section id="transfers-in" class="tc-block" aria-labelledby="tc-in-heading">
       <h2 id="tc-in-heading" class="tc-block-header gpsl-has-tip" data-gpsl-tip="Buying side: scouting, live high bids, deals waiting on sellers, and this season’s signings." tabindex="0">
         Transfers In
@@ -363,41 +56,29 @@
       </h2>
 
       <div class="tc-grid">
-        <div id="scouting-targets" data-dashboard-panel="tc_scouting" class="panel tc-panel">
-          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Players you starred in GPDB (☆ column). Open the scouting board to plan draft bids and track active targets against registration rules." tabindex="0">Scouting targets</h2>
-          <p class="tc-note">
-            Star players in <a href="GPDB.html" class="gpsl-link">GPDB</a> (☆ column) for a tiered shortlist.
-            Manage draft bids on the <a href="scouting.html" class="gpsl-link">scouting board</a>.
-          </p>
-          <div id="gpdbScoutingSummary" class="tc-scroll">
-            <i>Loading…</i>
-          </div>
-          <p style="margin:12px 0 0;">
-            <a href="scouting.html" class="button secondary" style="display:inline-block;padding:8px 14px;background:#333;color:var(--gpsl-accent, #ff9900);border:1px solid #666;border-radius:6px;text-decoration:none;font-weight:bold;">Open scouting board →</a>
-          </p>
-          <hr style="border:none;border-top:1px solid #333;margin:18px 0 14px;">
-          <h3 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Draft auction threads you starred on the Draft Auction page — quick jump back to those listings." tabindex="0">Saved draft auctions</h3>
-          <p class="tc-note">Threads you starred on the Draft Auction page.</p>
-          <div id="draftFavouritesContainer" class="tc-scroll">
-            <i>Loading…</i>
-          </div>
-        </div>
-
-        <div id="active-bids" data-dashboard-panel="tc_active_bids" class="panel tc-panel">
+        <div id="active-bids" data-dashboard-panel="tc_active_bids" class="panel tc-panel tc-panel--priority">
           <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Open transfer-list auctions where you are currently the high bidder. Outbid rivals before the listing ends." tabindex="0">Active Bids</h2>
-          <p class="tc-note">
-            Open transfer-list auctions where you are the high bidder.
-          </p>
           <div id="activeBidsContainer" class="tc-scroll"></div>
         </div>
 
-        <div id="awaiting-seller" data-dashboard-panel="tc_awaiting_seller" class="panel tc-panel">
+        <div id="awaiting-seller" data-dashboard-panel="tc_awaiting_seller" class="panel tc-panel tc-panel--priority">
           <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Not on the open market anymore — ended below reserve, direct GPDB offers, or seller review. Below-reserve rows show an accept/reject cutoff with a countdown." tabindex="0">Awaiting seller</h2>
-          <p class="tc-note">
-            Auction ended below reserve, direct offers, or seller review — not on the open market.
-            Below-reserve items show the accept/reject cutoff with a live countdown.
-          </p>
           <div id="awaitingSellerBidsContainer" class="tc-scroll"></div>
+        </div>
+
+        <div id="scouting-targets" data-dashboard-panel="tc_scouting" class="panel tc-panel">
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Players you starred in GPDB (☆ column). Open the scouting board to plan draft bids and track active targets against registration rules." tabindex="0">Scouting targets</h2>
+          <div id="gpdbScoutingSummary" class="tc-scroll">
+            <span class="tc-empty">Loading…</span>
+          </div>
+          <a href="scouting.html" class="tc-panel-cta">Open scouting board →</a>
+        </div>
+
+        <div id="draft-favourites" data-dashboard-panel="tc_draft_favs" class="panel tc-panel">
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Draft auction threads you starred on the Draft Auction page — quick jump back to those listings." tabindex="0">Saved draft auctions</h2>
+          <div id="draftFavouritesContainer" class="tc-scroll">
+            <span class="tc-empty">Loading…</span>
+          </div>
         </div>
 
         <div id="season-signings" data-dashboard-panel="tc_season_signings" class="panel tc-panel">
@@ -407,9 +88,6 @@
       </div>
     </section>
 
-    <!-- ================================
-         TRANSFERS OUT
-         ================================ -->
     <section id="transfers-out" class="tc-block" aria-labelledby="tc-out-heading">
       <h2 id="tc-out-heading" class="tc-block-header gpsl-has-tip" data-gpsl-tip="Selling side: your live listings, closed listings, seller decisions, and this season’s sales." tabindex="0">
         Transfers Out
@@ -417,18 +95,20 @@
       </h2>
 
       <div class="tc-grid">
-        <div id="marked-for-sale" data-dashboard-panel="tc_marked_sale" class="panel tc-panel">
-          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Private want-to-sell tags from Squad (Action → Mark for sale). Not a listing — only you see this. Combined market value is shown below. Club badges = other owners who have them on their scouting shortlist (hover for club + owner tag)." tabindex="0">Marked for sale</h2>
-          <p class="tc-note">
-            Your private sale marks from Squad. List them when ready — badges show clubs scouting them.
-          </p>
-          <div id="markedForSaleSummary" class="tc-note" style="margin-top:0;"></div>
-          <div id="markedForSaleContainer" class="tc-scroll"></div>
+        <div id="seller-review" data-dashboard-panel="tc_seller_review" class="panel tc-panel tc-panel--priority">
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Decisions waiting on you: accept/reject below-reserve bids before the cutoff, or respond to direct GPDB offers." tabindex="0">Seller Review</h2>
+          <div id="sellerReviewContainer" class="tc-scroll"></div>
         </div>
 
-        <div id="active-listings" data-dashboard-panel="tc_active_listings" class="panel tc-panel">
+        <div id="active-listings" data-dashboard-panel="tc_active_listings" class="panel tc-panel tc-panel--priority">
           <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Your players currently on the transfer list. Reserve price and live high bid appear here. Scout badges = other clubs watching that player." tabindex="0">Active Listings</h2>
           <div id="activeListingsContainer" class="tc-scroll"></div>
+        </div>
+
+        <div id="marked-for-sale" data-dashboard-panel="tc_marked_sale" class="panel tc-panel">
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Private want-to-sell tags from Squad (Action → Mark for sale). Not a listing — only you see this. Combined market value is shown below. Club badges = other owners who have them on their scouting shortlist (hover for club + owner tag)." tabindex="0">Marked for sale</h2>
+          <div id="markedForSaleSummary" class="tc-note" style="margin-top:0;"></div>
+          <div id="markedForSaleContainer" class="tc-scroll"></div>
         </div>
 
         <div id="closed-listings" data-dashboard-panel="tc_closed_listings" class="panel tc-panel">
@@ -437,15 +117,6 @@
             <button type="button" id="clearClosedListingsBtn" class="tc-clear-closed" title="Hide closed listings from this view" hidden>Clear</button>
           </h2>
           <div id="closedListingsContainer" class="tc-scroll"></div>
-        </div>
-
-        <div id="seller-review" data-dashboard-panel="tc_seller_review" class="panel tc-panel">
-          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Decisions waiting on you: accept/reject below-reserve bids before the cutoff, or respond to direct GPDB offers." tabindex="0">Seller Review</h2>
-          <p class="tc-note">
-            <b>Below reserve:</b> accept or reject before the cutoff (live countdown).
-            <b>Direct offers:</b> GPDB offers awaiting your decision.
-          </p>
-          <div id="sellerReviewContainer" class="tc-scroll"></div>
         </div>
 
         <div id="season-sales" data-dashboard-panel="tc_season_sales" class="panel tc-panel">
@@ -485,37 +156,7 @@
   <script type="module" src="global.js?v=20261004-hide-email"></script>
   <script type="module" src="global_ui.js"></script>
   <script type="module" src="clubs_lookup.js"></script>
-  <script type="module" src="transfer_center.js?v=20261103-sale-scout"></script>
-  <style>
-    .tc-scout-interest-badge {
-      display: inline-block;
-      margin-left: 4px;
-      width: 18px;
-      height: 18px;
-      vertical-align: middle;
-      border-radius: 2px;
-      object-fit: contain;
-      cursor: help;
-      background: #1a1a1a;
-      border: 1px solid #444;
-    }
-    .tc-sale-listed-pill {
-      display: inline-block;
-      margin-left: 6px;
-      padding: 1px 6px;
-      font-size: 10px;
-      font-weight: 700;
-      border-radius: 4px;
-      background: #2a3a1a;
-      color: #9c9;
-      border: 1px solid #4a6a3a;
-      vertical-align: middle;
-    }
-    .tc-marked-total {
-      color: var(--gpsl-accent, #ff9900);
-      font-weight: bold;
-    }
-  </style>
+  <script type="module" src="transfer_center.js?v=20261103-desk1"></script>
 
 </body>
 </html>

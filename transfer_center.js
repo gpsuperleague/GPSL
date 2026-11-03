@@ -236,7 +236,7 @@ async function loadGpdbScoutingSummary(shortName) {
   if (!el) return;
 
   if (!isScoutingAvailable()) {
-    el.innerHTML = `<i style="color:#c96;">${scoutingSetupHint()}</i>`;
+    el.innerHTML = `<span class="tc-empty" style="color:#c96;">${scoutingSetupHint()}</span>`;
     return;
   }
 
@@ -244,7 +244,7 @@ async function loadGpdbScoutingSummary(shortName) {
     const rows = await loadScoutingTargets(supabase, shortName);
     if (!rows.length) {
       el.innerHTML =
-        '<i style="color:#888;">No GPDB scouting targets yet — use ☆ in GPDB.</i>';
+        '<span class="tc-empty">No GPDB targets yet — star players in GPDB.</span>';
       return;
     }
 
@@ -263,7 +263,7 @@ async function loadGpdbScoutingSummary(shortName) {
           .join("")}
       </ul>`;
   } catch (err) {
-    el.innerHTML = `<i style="color:#c96;">${err?.message || "Could not load scouting targets."}</i>`;
+    el.innerHTML = `<span class="tc-empty" style="color:#c96;">${err?.message || "Could not load scouting targets."}</span>`;
   }
 }
 
@@ -280,13 +280,13 @@ async function loadDraftFavouritesSection(shortName) {
   const favouriteIds = await loadDraftFavouriteIds(supabase, shortName);
 
   if (!isDraftFavouritesAvailable()) {
-    container.innerHTML = `<i style="color:#c96;">${draftFavouritesSetupHint()}</i>`;
+    container.innerHTML = `<span class="tc-empty" style="color:#c96;">${draftFavouritesSetupHint()}</span>`;
     return;
   }
 
   if (favouriteIds.size === 0) {
     container.innerHTML =
-      "<i>No saved draft auctions. Open <a href=\"draftauction.html\" class=\"gpsl-link\">Draft Auction</a> and click ☆ on a player.</i>";
+      '<span class="tc-empty">No saved drafts — star threads on <a href="draftauction.html" class="gpsl-link">Draft Auction</a>.</span>';
     return;
   }
 
@@ -442,9 +442,9 @@ async function loadMarkedForSale(shortName) {
     marksPayload = await loadClubSaleMarks(supabase);
   } catch (err) {
     console.warn("marked for sale:", err);
-    container.innerHTML = `<i style="color:#c96;">${
+    container.innerHTML = `<span class="tc-empty" style="color:#c96;">${
       err?.message || "Could not load sale marks — run club_player_sale_marks_scouting_interest_20261103.sql"
-    }</i>`;
+    }</span>`;
     return;
   }
 
@@ -463,7 +463,7 @@ async function loadMarkedForSale(shortName) {
 
   if (!marks.length) {
     container.innerHTML =
-      "<i>No private sale marks yet — use Action → Mark for sale on Squad.</i>";
+      '<span class="tc-empty">No sale marks yet — Squad → Action → Mark for sale.</span>';
     return;
   }
 
@@ -533,7 +533,7 @@ async function loadActiveListings(shortName) {
     .order("created_at", { ascending: false });
 
   if (!listings || listings.length === 0) {
-    container.innerHTML = "<i>No active listings.</i>";
+    container.innerHTML = '<span class="tc-empty">No active listings.</span>';
     return;
   }
 
@@ -754,7 +754,7 @@ async function renderBuyerBidTable(bids, listingMap, emptyText, options = {}) {
   const showSeller = options.showSeller === true;
 
   if (!bids.length) {
-    return `<i>${emptyText}</i>`;
+    return `<span class="tc-empty">${emptyText}</span>`;
   }
 
   const listingBids = bids.filter((b) => b.listing_id != null);
@@ -857,7 +857,7 @@ async function loadActiveBids(shortName) {
   container.innerHTML = await renderBuyerBidTable(
     liveBids,
     listingMap,
-    "No live auction bids — only open listings where you are the high bidder appear here (same as the transfer market Active filter)."
+    "No live high bids right now."
   );
 }
 
@@ -1067,7 +1067,7 @@ async function loadSellerReview(shortName) {
   }
   if (bidsRes.error) {
     console.error("Seller review load error:", bidsRes.error);
-    container.innerHTML = "<i>Could not load seller review items.</i>";
+    container.innerHTML = '<span class="tc-empty">Could not load seller review items.</span>';
     return;
   }
 
@@ -1076,7 +1076,7 @@ async function loadSellerReview(shortName) {
 
   if (!reviewListings.length && !bids.length) {
     container.innerHTML =
-      "<i>Nothing to review — no below-reserve auctions or direct offers.</i>";
+      '<span class="tc-empty">Nothing to review.</span>';
     return;
   }
 
@@ -1303,7 +1303,7 @@ async function loadClosedListings(shortName) {
   const { data: listings } = await q;
 
   if (!listings || listings.length === 0) {
-    container.innerHTML = "<i>No closed listings this season.</i>";
+    container.innerHTML = '<span class="tc-empty">No closed listings this season.</span>';
     return;
   }
 
@@ -1398,7 +1398,7 @@ async function loadSeasonSignings(shortName) {
   const { data: transfers } = await q;
 
   if (!transfers || transfers.length === 0) {
-    container.innerHTML = "<i>No signings this season.</i>";
+    container.innerHTML = '<span class="tc-empty">No signings this season.</span>';
     return;
   }
 
@@ -1458,7 +1458,7 @@ async function loadSeasonSales(shortName) {
   const { data: transfers } = await q;
 
   if (!transfers || transfers.length === 0) {
-    container.innerHTML = "<i>No sales this season.</i>";
+    container.innerHTML = '<span class="tc-empty">No sales this season.</span>';
     return;
   }
 
