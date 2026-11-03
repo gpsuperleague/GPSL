@@ -254,6 +254,34 @@
     .wl-paid-month.is-paid span { color: #8d8; }
     .wl-paid-month.is-now { box-shadow: 0 0 0 1px #ff9900 inset; }
     .wl-paid-month:disabled { opacity: .5; cursor: wait; }
+    .wl-renewal-box {
+      margin-top: 14px; padding: 12px 12px 10px; background: #151515;
+      border: 1px solid #3a3a3a; border-radius: 8px;
+    }
+    .wl-renewal-box h4 {
+      margin: 0 0 6px; font-size: 13px; color: #ff9900; font-weight: 700;
+    }
+    .wl-renewal-status {
+      margin: 0 0 10px; font-size: 12px; color: #aaa; line-height: 1.45;
+    }
+    .wl-renewal-status b.ok { color: #8d8; }
+    .wl-renewal-status b.leeway { color: #e0b050; }
+    .wl-renewal-status b.overdue { color: #f88; }
+    .wl-renewal-status b.unset { color: #888; }
+    .wl-renewal-row {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .wl-renewal-row input[type="date"] {
+      padding: 7px 8px; background: #111; border: 1px solid #444;
+      color: #ddd; border-radius: 4px; font: inherit;
+    }
+    .wl-paid-cell.renewal-leeway { border-color: #a66a1a; }
+    .wl-paid-cell.renewal-overdue { border-color: #a33; background: #1f1010; }
+    .wl-paid-renewal {
+      font-size: 10px; color: #999; font-variant-numeric: tabular-nums; line-height: 1.2;
+    }
+    .wl-paid-cell.renewal-leeway .wl-paid-renewal { color: #e0b050; }
+    .wl-paid-cell.renewal-overdue .wl-paid-renewal { color: #f88; }
     .wl-board-toolbar .wl-paid-year-wrap { display: inline-flex; gap: 6px; align-items: center; color: #bbb; font-size: 13px; }
     .wl-board-toolbar select {
       padding: 7px 8px; background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
@@ -357,14 +385,26 @@
       <h3 id="wlPaidTitle">Supporter payments</h3>
       <p class="note">Year <b id="wlPaidYearLabel">—</b> · click a month to mark it paid / unpaid, or mark a full-year subscription in one go. <span id="wlPaidSummary"></span></p>
       <div id="wlPaidGrid" class="wl-paid-grid"></div>
+      <div class="wl-renewal-box">
+        <h4>Ko-fi renewal due</h4>
+        <p class="wl-renewal-status" id="wlRenewalStatus">Not set.</p>
+        <div class="wl-renewal-row">
+          <input type="date" id="wlRenewalDate" aria-label="Renewal due date">
+          <button type="button" id="wlRenewalSave" class="button" title="Save this due date">Save due date</button>
+          <button type="button" id="wlRenewalPlusMonth" class="button secondary" title="Advance due by 1 month from max(due, today)">+1 month</button>
+          <button type="button" id="wlRenewalPlusYear" class="button secondary" title="Advance due by 12 months (annual sub)">+1 year</button>
+          <button type="button" id="wlRenewalClear" class="button secondary" title="Clear renewal due date">Clear</button>
+        </div>
+        <p class="note" style="margin:8px 0 0">Payment should land by the due date. A <b>3-day leeway</b> after that still counts as on time. Month ticks above stay manual.</p>
+      </div>
       <div class="wl-modal-actions">
-        <button type="button" id="wlPaidMarkYear" class="button" title="Mark all 12 months paid for this year (annual subscription)">Mark full year paid</button>
+        <button type="button" id="wlPaidMarkYear" class="button" title="Mark all 12 months paid for this year and push renewal +1 year">Mark full year paid</button>
         <button type="button" id="wlPaidClearYear" class="button secondary">Clear this year</button>
         <button type="button" id="wlPaidClose" class="button">Done</button>
       </div>
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20261030-handpick"></script>
+  <script type="module" src="admin_owners.js?v=20261103-renewal"></script>
 </body>
 </html>

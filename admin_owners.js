@@ -82,6 +82,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wlPaidClearAllBtn")?.addEventListener("click", clearSupporterPaidYearForAll);
   document.getElementById("wlPaidClearYear")?.addEventListener("click", clearSupporterPaidYearForOwner);
   document.getElementById("wlPaidMarkYear")?.addEventListener("click", markSupporterFullYearPaid);
+  document.getElementById("wlRenewalSave")?.addEventListener("click", saveSupporterRenewalDue);
+  document.getElementById("wlRenewalPlusMonth")?.addEventListener("click", () => bumpSupporterRenewal(1));
+  document.getElementById("wlRenewalPlusYear")?.addEventListener("click", () => bumpSupporterRenewal(12));
+  document.getElementById("wlRenewalClear")?.addEventListener("click", clearSupporterRenewalDue);
   document.getElementById("wlPaidModal")?.addEventListener("click", (e) => {
     if (e.target?.id === "wlPaidModal") closeSupporterPaidModal();
   });
@@ -2234,6 +2238,7 @@ async function loadWaitingListAdmin() {
     supporterRes.error || !supporterRes.data || typeof supporterRes.data !== "object"
       ? {}
       : supporterRes.data;
+  supporterMapById = supporterMap;
   applySupporterPaidData(paidRes);
 
   if (boardRes.error) {
@@ -2296,6 +2301,9 @@ async function loadWaitingListAdmin() {
       is_supporter: !!supp.is_supporter,
       supporter_active: !!supp.supporter_active,
       supporter_grace_until: supp.supporter_grace_until || null,
+      supporter_renewal_due_on: supp.supporter_renewal_due_on || null,
+      renewal_leeway_until: supp.renewal_leeway_until || null,
+      renewal_status: supp.renewal_status || (supp.supporter_renewal_due_on ? "ok" : "unset"),
       paid_months: supporterPaidMonths(r.owner_id),
     };
   };
@@ -3807,7 +3815,54 @@ let supporterPayData = {
   paid: {},
   error: null,
 };
+/** @type {Record<string, object>} owner_id → supporter map row (includes renewal) */
+let supporterMapById = {};
 let supporterPaidModalOwner = null;
+
+const RENEWAL_STATUS_LABEL = {
+  ok: "On track",
+  leeway: "In 3-day leeway",
+  overdue: "Overdue",
+  unset: "Not set",
+};
+
+function supporterRenewalFor(ownerId) {
+  const row =
+    supporterMapById[ownerId] ||
+    supporterMapById[String(ownerId)] ||
+    {};
+  return {
+    due_on: row.supporter_renewal_due_on || null,
+    leeway_until: row.renewal_leeway_until || null,
+    status: row.renewal_status || (row.supporter_renewal_due_on ? "ok" : "unset"),
+    leeway_days: Number(row.leeway_days) || 3,
+  };
+}
+
+function formatRenewalDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(`${String(iso).slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function rememberSupporterRenewal(ownerId, payload) {
+  const key = String(ownerId);
+  const prev = supporterMapById[key] || supporterMapById[ownerId] || {};
+  const next = {
+    ...prev,
+    supporter_renewal_due_on: payload?.supporter_renewal_due_on ?? null,
+    renewal_leeway_until: payload?.renewal_leeway_until ?? null,
+    renewal_status: payload?.renewal_status || "unset",
+    leeway_days: Number(payload?.leeway_days) || prev.leeway_days || 3,
+  };
+  supporterMapById[key] = next;
+  if (supporterMapById[ownerId]) supporterMapById[ownerId] = next;
+}
 
 function applySupporterPaidData(res) {
   const d = res?.data && typeof res.data === "object" ? res.data : null;
@@ -3859,6 +3914,17 @@ function supporterPaidCellHtml(row) {
   const isThisYear = supporterPayData.year === supporterPayData.current_year;
   const curMonth = supporterPayData.current_month;
   const owesNow = isThisYear && row.is_supporter && !months.includes(curMonth);
+  const renewal = {
+    due_on: row.supporter_renewal_due_on,
+    leeway_until: row.renewal_leeway_until,
+    status: row.renewal_status || supporterRenewalFor(row.owner_id).status,
+  };
+  const renewalCls =
+    renewal.status === "overdue"
+      ? " renewal-overdue"
+      : renewal.status === "leeway"
+        ? " renewal-leeway"
+        : "";
   const dots = PAID_MONTH_LABELS.map((label, i) => {
     const m = i + 1;
     const cls = [
@@ -3870,14 +3936,29 @@ function supporterPaidCellHtml(row) {
       .join(" ");
     return `<span class="${cls}" title="${label}"></span>`;
   }).join("");
-  const title = months.length
-    ? `Paid ${supporterPayData.year}: ${months.map((m) => PAID_MONTH_LABELS[m - 1]).join(", ")}`
-    : `Nothing marked paid for ${supporterPayData.year}`;
-  return `<button type="button" class="wl-paid-cell${owesNow ? " owes-now" : ""}" data-owner-id="${escapeWl(
+  const titleParts = [
+    months.length
+      ? `Paid ${supporterPayData.year}: ${months.map((m) => PAID_MONTH_LABELS[m - 1]).join(", ")}`
+      : `Nothing marked paid for ${supporterPayData.year}`,
+  ];
+  if (owesNow) titleParts.push(`${PAID_MONTH_LABELS[curMonth - 1]} not marked yet`);
+  if (renewal.due_on) {
+    titleParts.push(
+      `Renewal due ${formatRenewalDate(renewal.due_on)} (${RENEWAL_STATUS_LABEL[renewal.status] || renewal.status}; leeway until ${formatRenewalDate(renewal.leeway_until)})`
+    );
+  } else if (row.is_supporter) {
+    titleParts.push("No renewal due date set");
+  }
+  const renewalLine = renewal.due_on
+    ? `<span class="wl-paid-renewal">${escapeWl(formatRenewalDate(renewal.due_on))}</span>`
+    : row.is_supporter
+      ? `<span class="wl-paid-renewal">no due</span>`
+      : "";
+  return `<button type="button" class="wl-paid-cell${owesNow ? " owes-now" : ""}${renewalCls}" data-owner-id="${escapeWl(
     row.owner_id
   )}" data-tag="${escapeWl(row.owner_tag || row.email || "")}" title="${escapeWl(
-    title + (owesNow ? ` · ${PAID_MONTH_LABELS[curMonth - 1]} not marked yet` : "")
-  )}"><span class="wl-paid-count">${months.length}/12</span><span class="wl-paid-dots">${dots}</span></button>`;
+    titleParts.join(" · ")
+  )}"><span class="wl-paid-count">${months.length}/12</span><span class="wl-paid-dots">${dots}</span>${renewalLine}</button>`;
 }
 
 function renderSupporterPaidGrid() {
@@ -3897,6 +3978,24 @@ function renderSupporterPaidGrid() {
   if (sum) sum.textContent = `${months.length} of 12 months paid in ${supporterPayData.year}.`;
 }
 
+function renderSupporterRenewalPanel() {
+  const who = supporterPaidModalOwner;
+  const statusEl = document.getElementById("wlRenewalStatus");
+  const dateEl = document.getElementById("wlRenewalDate");
+  if (!who || !statusEl) return;
+  const renewal = supporterRenewalFor(who.ownerId);
+  const status = renewal.status || "unset";
+  const label = RENEWAL_STATUS_LABEL[status] || status;
+  if (!renewal.due_on) {
+    statusEl.innerHTML = `<b class="unset">Not set</b> — pick the next payment-by date (3-day leeway after).`;
+  } else {
+    statusEl.innerHTML = `<b class="${escapeWl(status)}">${escapeWl(label)}</b> · due <b>${escapeWl(
+      formatRenewalDate(renewal.due_on)
+    )}</b> · leeway until <b>${escapeWl(formatRenewalDate(renewal.leeway_until))}</b>`;
+  }
+  if (dateEl) dateEl.value = renewal.due_on ? String(renewal.due_on).slice(0, 10) : "";
+}
+
 function openSupporterPaidModal(ownerId, tag) {
   if (!ownerId) return;
   supporterPaidModalOwner = { ownerId, tag: tag || "owner" };
@@ -3905,6 +4004,7 @@ function openSupporterPaidModal(ownerId, tag) {
   const yearEl = document.getElementById("wlPaidYearLabel");
   if (yearEl) yearEl.textContent = String(supporterPayData.year);
   renderSupporterPaidGrid();
+  renderSupporterRenewalPanel();
   const modal = document.getElementById("wlPaidModal");
   if (modal) modal.hidden = false;
 }
@@ -3923,11 +4023,15 @@ function refreshSupporterPaidCell(ownerId) {
   if (!td) return;
   const tr = btn.closest("tr");
   const supporterCb = tr?.querySelector(".wl-supporter");
+  const renewal = supporterRenewalFor(ownerId);
   td.innerHTML = supporterPaidCellHtml({
     owner_id: ownerId,
     owner_tag: btn.dataset.tag,
     is_supporter: !!supporterCb?.checked,
     paid_months: supporterPaidMonths(ownerId),
+    supporter_renewal_due_on: renewal.due_on,
+    renewal_leeway_until: renewal.leeway_until,
+    renewal_status: renewal.status,
   });
   const fresh = td.querySelector("button.wl-paid-cell");
   fresh?.addEventListener("pointerdown", (e) => e.stopPropagation());
@@ -3987,7 +4091,7 @@ async function markSupporterFullYearPaid() {
   const y = supporterPayData.year;
   if (
     !confirm(
-      `Mark all 12 months of ${y} as paid for ${who.tag}?\n\nUse this for a full-year subscription.`
+      `Mark all 12 months of ${y} as paid for ${who.tag}?\n\nAlso advances Ko-fi renewal due by +1 year (from max of today / current due).\n\nUse this for a full-year subscription.`
     )
   ) {
     return;
@@ -3999,8 +4103,8 @@ async function markSupporterFullYearPaid() {
     p_year: y,
     p_paid: true,
   });
-  if (btn) btn.disabled = false;
   if (error) {
+    if (btn) btn.disabled = false;
     setWlActionStatus(
       `❌ ${error.message}${
         error.message?.includes("admin_supporter_payment_set_year")
@@ -4018,9 +4122,118 @@ async function markSupporterFullYearPaid() {
     supporterPayData.years_with_data = [...supporterPayData.years_with_data, y];
     renderSupporterPaidYearSelect();
   }
+
+  const bump = await supabase.rpc("admin_supporter_renewal_bump", {
+    p_owner_id: who.ownerId,
+    p_months: 12,
+  });
+  if (btn) btn.disabled = false;
+  if (bump.error) {
+    renderSupporterPaidGrid();
+    refreshSupporterPaidCell(who.ownerId);
+    setWlActionStatus(
+      `✅ ${who.tag}: full year ${y} marked paid — renewal bump failed (${bump.error.message}). Set due date manually.`,
+      false
+    );
+    return;
+  }
+  rememberSupporterRenewal(who.ownerId, bump.data);
   renderSupporterPaidGrid();
+  renderSupporterRenewalPanel();
   refreshSupporterPaidCell(who.ownerId);
-  setWlActionStatus(`✅ ${who.tag}: full year ${y} marked paid (12/12).`, true);
+  setWlActionStatus(
+    `✅ ${who.tag}: full year ${y} marked paid · renewal due ${formatRenewalDate(
+      bump.data?.supporter_renewal_due_on
+    )}.`,
+    true
+  );
+}
+
+async function saveSupporterRenewalDue() {
+  const who = supporterPaidModalOwner;
+  if (!who) return;
+  const raw = document.getElementById("wlRenewalDate")?.value || "";
+  if (!raw) {
+    setWlActionStatus("❌ Pick a renewal due date (or use Clear).", false);
+    return;
+  }
+  const { data, error } = await supabase.rpc("admin_supporter_renewal_set", {
+    p_owner_id: who.ownerId,
+    p_due_on: raw,
+  });
+  if (error) {
+    setWlActionStatus(
+      `❌ ${error.message}${
+        /admin_supporter_renewal_set|42883/i.test(error.message || "")
+          ? " — run supporter_renewal_due_20261103.sql"
+          : ""
+      }`,
+      false
+    );
+    return;
+  }
+  rememberSupporterRenewal(who.ownerId, data);
+  renderSupporterRenewalPanel();
+  refreshSupporterPaidCell(who.ownerId);
+  setWlActionStatus(
+    `✅ ${who.tag}: renewal due ${formatRenewalDate(data?.supporter_renewal_due_on)} (leeway until ${formatRenewalDate(
+      data?.renewal_leeway_until
+    )}).`,
+    true
+  );
+}
+
+async function bumpSupporterRenewal(months) {
+  const who = supporterPaidModalOwner;
+  if (!who) return;
+  const n = Math.max(1, Number(months) || 1);
+  const { data, error } = await supabase.rpc("admin_supporter_renewal_bump", {
+    p_owner_id: who.ownerId,
+    p_months: n,
+  });
+  if (error) {
+    setWlActionStatus(
+      `❌ ${error.message}${
+        /admin_supporter_renewal_bump|42883/i.test(error.message || "")
+          ? " — run supporter_renewal_due_20261103.sql"
+          : ""
+      }`,
+      false
+    );
+    return;
+  }
+  rememberSupporterRenewal(who.ownerId, data);
+  renderSupporterRenewalPanel();
+  refreshSupporterPaidCell(who.ownerId);
+  setWlActionStatus(
+    `✅ ${who.tag}: renewal advanced +${n} month${n === 1 ? "" : "s"} → ${formatRenewalDate(
+      data?.supporter_renewal_due_on
+    )}.`,
+    true
+  );
+}
+
+async function clearSupporterRenewalDue() {
+  const who = supporterPaidModalOwner;
+  if (!who) return;
+  if (!confirm(`Clear renewal due date for ${who.tag}?`)) return;
+  const { data, error } = await supabase.rpc("admin_supporter_renewal_set", {
+    p_owner_id: who.ownerId,
+    p_due_on: null,
+  });
+  if (error) {
+    setWlActionStatus(`❌ ${error.message}`, false);
+    return;
+  }
+  rememberSupporterRenewal(who.ownerId, {
+    supporter_renewal_due_on: null,
+    renewal_leeway_until: null,
+    renewal_status: "unset",
+    leeway_days: data?.leeway_days || 3,
+  });
+  renderSupporterRenewalPanel();
+  refreshSupporterPaidCell(who.ownerId);
+  setWlActionStatus(`✅ ${who.tag}: renewal due cleared.`, true);
 }
 
 async function clearSupporterPaidYearForAll() {
