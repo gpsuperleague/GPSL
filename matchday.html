@@ -13,7 +13,12 @@
   <link rel="stylesheet" href="matchday_console_rules.css?v=20261103-display-cols">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    .page-container { width:95%; max-width:900px; margin:20px auto 40px; }
+    .page-container {
+      width: min(96%, 1400px);
+      max-width: 1400px;
+      margin: 20px auto 40px;
+      box-sizing: border-box;
+    }
     h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:8px; }
     h2 { color:var(--gpsl-accent, #ff9900); font-size:18px; margin:0 0 12px; }
     .meta { color:#aaa; margin-bottom:20px; }
@@ -127,6 +132,7 @@
     }
     .unavailable-pos { color:#777; }
     .unavailable-detail { color:#999; }
+    .score-preview {
       background:#222; padding:12px; border-radius:6px; margin-bottom:12px;
       font-size:14px; color:#ccc;
     }
@@ -140,9 +146,9 @@
       margin: 0 0 12px;
     }
     .stats-tip-mod {
-      flex: 1 1 140px;
-      min-width: 140px;
-      max-width: 220px;
+      flex: 1 1 160px;
+      min-width: 160px;
+      max-width: none;
       margin: 0;
       padding: 8px 10px;
       background: #1a1a1a;
