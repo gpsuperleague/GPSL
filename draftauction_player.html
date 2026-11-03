@@ -189,6 +189,8 @@
       getDraftTimelineFromStart,
       draftPhaseLabel,
       getDraftCredits,
+      loadPlayerDraftModeState,
+      isPlayerDraftLimited,
       canClubBidOnPlayerDraft,
       getActiveDraftListingId,
       syncDraftListingHighBid,
@@ -554,10 +556,22 @@
         if (sub) sub.textContent = "";
       }
 
-      /* --- Credits --- */
-      const { credits } = await getDraftCredits(buyerShortName, draftAuctionStartTimeUK);
-      document.getElementById("creditsInfo").textContent =
-        `Draft Credits: ${credits}`;
+      /* --- Credits / Limited Draft --- */
+      const mode = await loadPlayerDraftModeState(buyerShortName, true);
+      const creditsEl = document.getElementById("creditsInfo");
+      if (creditsEl) {
+        if (isPlayerDraftLimited(mode)) {
+          const max = Number(mode.max_signings) || 3;
+          const left = Math.max(Number(mode.slots_left) || 0, 0);
+          creditsEl.textContent = `Limited Draft — max ${max} · slots left ${left} (no credits)`;
+        } else {
+          const { credits } = await getDraftCredits(
+            buyerShortName,
+            draftAuctionStartTimeUK
+          );
+          creditsEl.textContent = `Draft Credits: ${credits}`;
+        }
+      }
 
       /* --- Eligibility (Unified) --- */
       const nowUK = getUKNow();
@@ -790,31 +804,51 @@
       let draft_join_consumed = false;
 
       if (!hasBids) {
-        // First bid on this player in the live draft window (earns 2 credits).
+        // First bid on this player in the live draft window (earns 2 credits in unlimited mode).
+        const modeOpen = await loadPlayerDraftModeState(buyerShortName, true);
+        if (isPlayerDraftLimited(modeOpen) && Number(modeOpen.slots_left) <= 0) {
+          document.getElementById("bidStatus").textContent =
+            `Limited Draft: max ${modeOpen.max_signings} win(s)/high bid(s). You have no slots left.`;
+          return;
+        }
         is_first_draft_bid = true;
       } else if (openerClub === buyerShortName) {
         // Opening club raising their bid — no join credit.
         is_first_draft_bid = false;
         is_draft_join = false;
       } else {
-        is_draft_join = true;
-
-        const priorJoins = windowBids.filter(
-          (b) =>
-            b.bidder_club_id === buyerShortName && b.is_draft_join === true
-        );
-
-        if (!priorJoins.length) {
-          const { credits } = await getDraftCredits(
-            buyerShortName,
-            draftAuctionStartTimeUK
+        const modeBid = await loadPlayerDraftModeState(buyerShortName, true);
+        if (isPlayerDraftLimited(modeBid)) {
+          is_draft_join = false;
+          draft_join_consumed = false;
+          const alreadyIn = windowBids.some(
+            (b) => b.bidder_club_id === buyerShortName
           );
-          if (credits <= 0) {
+          if (!alreadyIn && Number(modeBid.slots_left) <= 0) {
             document.getElementById("bidStatus").textContent =
-              "You do not have enough draft credits to join this auction. Open a new free agent in GPDB first to earn credits.";
+              `Limited Draft: max ${modeBid.max_signings} win(s)/high bid(s). You have no slots left.`;
             return;
           }
-          draft_join_consumed = true;
+        } else {
+          is_draft_join = true;
+
+          const priorJoins = windowBids.filter(
+            (b) =>
+              b.bidder_club_id === buyerShortName && b.is_draft_join === true
+          );
+
+          if (!priorJoins.length) {
+            const { credits } = await getDraftCredits(
+              buyerShortName,
+              draftAuctionStartTimeUK
+            );
+            if (credits <= 0) {
+              document.getElementById("bidStatus").textContent =
+                "You do not have enough draft credits to join this auction. Open a new free agent in GPDB first to earn credits.";
+              return;
+            }
+            draft_join_consumed = true;
+          }
         }
       }
 

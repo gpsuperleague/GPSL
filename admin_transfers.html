@@ -29,6 +29,13 @@
             </select>
           </div>
           <div>
+            <label>Player draft style</label>
+            <select id="playerDraftStyleSelect">
+              <option value="unlimited">Unlimited (credits)</option>
+              <option value="limited3">Limited Draft — max 3 signings, no credits</option>
+            </select>
+          </div>
+          <div>
             <label>Manager draft auction</label>
             <select id="managerDraftAuctionSelect">
               <option value="false">Off</option>
@@ -43,6 +50,10 @@
             </select>
           </div>
         </div>
+        <p class="note" style="margin-top:8px;">
+          <b>Limited Draft</b> uses the same schedule/listings as normal player draft, but each club may only
+          <b>win or lead up to 3</b> auctions (combined). Join credits are off. Switch back to Unlimited anytime — existing draft threads stay <code>listing_type=draft</code>.
+        </p>
         <button class="button" id="saveSettingsBtn">Save transfer settings</button>
         <button class="button" id="resetDraftBtn" style="background:#664400;margin-left:8px;">Reset all draft schedules</button>
         <div id="settingsMessage" class="status-line"></div>
@@ -176,6 +187,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_transfers.js?v=20261009-mgr-undo"></script>
+  <script type="module" src="admin_transfers.js?v=20261103-limited-draft"></script>
 </body>
 </html>

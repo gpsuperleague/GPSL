@@ -232,7 +232,64 @@ export function getDraftPhase(nowUK, draftAuctionStartTime) {
    MODULE E: Credits Logic
    ============================================================ */
 
+/** Cached Limited Draft mode (null max = unlimited / credits on). */
+let _playerDraftModeCache = null;
+let _playerDraftModeAt = 0;
+
+export async function loadPlayerDraftModeState(clubShortName = null, force = false) {
+  const now = Date.now();
+  if (
+    !force &&
+    _playerDraftModeCache &&
+    now - _playerDraftModeAt < 15000 &&
+    (!clubShortName ||
+      !_playerDraftModeCache.club ||
+      _playerDraftModeCache.club === clubShortName)
+  ) {
+    return _playerDraftModeCache;
+  }
+  const { data, error } = await supabase.rpc("player_draft_mode_state", {
+    p_club: clubShortName || null,
+  });
+  if (error) {
+    console.warn("player_draft_mode_state:", error.message);
+    _playerDraftModeCache = {
+      ok: false,
+      limited: false,
+      credits_disabled: false,
+      max_signings: null,
+      slots_left: null,
+    };
+  } else {
+    _playerDraftModeCache = data || {
+      limited: false,
+      credits_disabled: false,
+      max_signings: null,
+    };
+  }
+  _playerDraftModeAt = now;
+  return _playerDraftModeCache;
+}
+
+export function isPlayerDraftLimited(mode = _playerDraftModeCache) {
+  return !!(mode && mode.limited && Number(mode.max_signings) > 0);
+}
+
 export async function getDraftCredits(clubShortName, draftAuctionStartTime) {
+  const mode = await loadPlayerDraftModeState(clubShortName);
+  if (isPlayerDraftLimited(mode)) {
+    return {
+      earned: 0,
+      used: 0,
+      credits: 999,
+      limited: true,
+      max_signings: mode.max_signings,
+      slots_left: mode.slots_left,
+      my_wins: mode.my_wins,
+      my_leads: mode.my_leads,
+    };
+  }
+
   const timeline = getDraftTimelineFromStart(
     draftAuctionStartTime ? new Date(draftAuctionStartTime) : null
   );
@@ -266,7 +323,7 @@ export async function getDraftCredits(clubShortName, draftAuctionStartTime) {
   const earned = firsts ? firsts.length * 2 : 0;
   const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
 
-  return { earned, used, credits: earned - used };
+  return { earned, used, credits: earned - used, limited: false };
 }
 
 export async function getDraftCreditsCount(clubShortName, draftAuctionStartTime) {
@@ -276,6 +333,7 @@ export async function getDraftCreditsCount(clubShortName, draftAuctionStartTime)
 
 /**
  * Eligibility check using preloaded bids/credits (no extra Supabase round-trips).
+ * Limited Draft: credits ignored — pass limitedSlotsLeft / alreadyInThread instead.
  */
 export function canClubBidOnPlayerDraftSync({
   buyerShortName,
@@ -283,6 +341,8 @@ export function canClubBidOnPlayerDraftSync({
   draftAuctionStartTime,
   windowBids = [],
   draftCredits = 0,
+  limitedMode = false,
+  limitedSlotsLeft = null,
   nowUK = getUKNow(),
 }) {
   const start = draftAuctionStartTime ? new Date(draftAuctionStartTime) : null;
@@ -311,7 +371,14 @@ export function canClubBidOnPlayerDraftSync({
 
   if (bids.length === 0) {
     if (nowUK >= timeline.cutoff) return false;
+    if (limitedMode && limitedSlotsLeft != null && limitedSlotsLeft <= 0) {
+      return false;
+    }
     return true;
+  }
+
+  if (limitedMode) {
+    return limitedSlotsLeft == null || limitedSlotsLeft > 0;
   }
 
   return (draftCredits ?? 0) > 0;
@@ -333,16 +400,27 @@ export async function canClubBidOnPlayerDraft({
   const bids =
     windowBids ??
     (await fetchCurrentDraftAuctionBids(konamiId, start));
+  const mode = await loadPlayerDraftModeState(buyerShortName);
+  const limited = isPlayerDraftLimited(mode);
   let credits = draftCredits;
-  if (credits == null && buyerShortName) {
+  if (!limited && credits == null && buyerShortName) {
     credits = await getDraftCreditsCount(buyerShortName, start);
   }
+  const alreadyIn = (bids || []).some(
+    (b) => b.bidder_club_id === buyerShortName
+  );
   return canClubBidOnPlayerDraftSync({
     buyerShortName,
     draftAuctionEnabled,
     draftAuctionStartTime: start,
     windowBids: bids,
-    draftCredits: credits ?? 0,
+    draftCredits: limited ? 999 : credits ?? 0,
+    limitedMode: limited,
+    limitedSlotsLeft: alreadyIn
+      ? 1
+      : mode?.slots_left == null
+        ? null
+        : Number(mode.slots_left),
   });
 }
 

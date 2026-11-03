@@ -798,6 +798,8 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
       getUKNow,
       isDraftAuctionEnded,
       getDraftCredits,
+      loadPlayerDraftModeState,
+      isPlayerDraftLimited,
       canClubBidOnPlayerDraftSync,
       getEffectiveDraftPhase,
       draftPhaseLabel,
@@ -1153,8 +1155,28 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
        ============================================================ */
 
     async function updateCreditPanel() {
+      const panel = document.getElementById("creditPanel");
+      if (!panel) return;
       if (!buyerShortName || !draftEnabled) {
-        document.getElementById("creditPanel").textContent = "";
+        panel.textContent = "";
+        return;
+      }
+
+      const mode = await loadPlayerDraftModeState(buyerShortName, true);
+      if (isPlayerDraftLimited(mode)) {
+        const max = Number(mode.max_signings) || 3;
+        const wins = Number(mode.my_wins) || 0;
+        const leads = Number(mode.my_leads) || 0;
+        const left =
+          mode.slots_left == null ? max - wins - leads : Number(mode.slots_left);
+        panel.innerHTML = `
+          <b>Limited Draft</b> — max ${max} signing${max === 1 ? "" : "s"} · no credits<br>
+          <span style="font-size:11px;color:#aaa;">
+            Wins ${wins} · High bids ${leads} · Slots left ${Math.max(left, 0)}
+          </span>
+        `;
+        panel.dataset.gpslTip =
+          "Limited Draft: you may only win or lead up to the max signings. No join credits.";
         return;
       }
 
@@ -1163,7 +1185,7 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
         draftAuctionStartTimeUK
       );
 
-      document.getElementById("creditPanel").innerHTML = `
+      panel.innerHTML = `
         <b>Draft Credits:</b> ${credits}<br>
         <span style="font-size:11px;color:#aaa;">
           Earned: ${earned} | Used: ${used}
@@ -1773,6 +1795,7 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
         bidsByPlayer,
         ,
         draftCreditsResult,
+        draftMode,
       ] = await Promise.all([
         fetchDraftPlayersByIds(playerIds),
         fetchDraftBidsGroupedForPlayers(playerIdKeys, draftAuctionStartTimeUK),
@@ -1780,10 +1803,16 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
         buyerShortName
           ? getDraftCredits(buyerShortName, draftAuctionStartTimeUK)
           : Promise.resolve({ credits: 0 }),
+        buyerShortName
+          ? loadPlayerDraftModeState(buyerShortName)
+          : Promise.resolve({ limited: false }),
       ]);
 
       const playerMap = new Map((players || []).map(p => [Number(p.Konami_ID), p]));
       const draftCredits = draftCreditsResult?.credits ?? 0;
+      const limitedMode = isPlayerDraftLimited(draftMode);
+      const limitedSlotsLeft =
+        draftMode?.slots_left == null ? null : Number(draftMode.slots_left);
 
       const auctionEnded = isDraftAuctionEnded(nowUK, draftAuctionStartTimeUK);
 
@@ -1839,6 +1868,8 @@ Fair play: do not min-step probe just to inflate prices against someone’s max 
             draftAuctionStartTime: draftAuctionStartTimeUK,
             windowBids: playerBids,
             draftCredits,
+            limitedMode,
+            limitedSlotsLeft: myClubBid ? 1 : limitedSlotsLeft,
             nowUK,
           });
 

@@ -191,6 +191,11 @@ async function loadSettings() {
   document.getElementById("draftAuctionSelect").value = data.draft_auction_enabled
     ? "true"
     : "false";
+  const styleSel = document.getElementById("playerDraftStyleSelect");
+  if (styleSel) {
+    const max = Number(data.player_draft_max_signings_per_club) || 0;
+    styleSel.value = max > 0 ? "limited3" : "unlimited";
+  }
   const mgrDraftSel = document.getElementById("managerDraftAuctionSelect");
   if (mgrDraftSel) {
     mgrDraftSel.value = data.manager_draft_auction_enabled ? "true" : "false";
@@ -330,6 +335,13 @@ async function saveSettings() {
   }
 
   try {
+    const styleSel = document.getElementById("playerDraftStyleSelect");
+    const limited = styleSel?.value === "limited3";
+    const { error: styleErr } = await supabase.rpc("admin_set_player_draft_style", {
+      p_max_signings: limited ? 3 : null,
+    });
+    if (styleErr) throw styleErr;
+
     const { error: mgrErr } = await supabase.rpc("admin_set_manager_draft_enabled", {
       p_enabled: manager_draft_auction_enabled,
     });

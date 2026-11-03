@@ -13,6 +13,8 @@ import {
   draftMinimumBidAmount,
   highestDraftBid,
   getDraftCreditsCount,
+  loadPlayerDraftModeState,
+  isPlayerDraftLimited,
   syncDraftListingHighBid,
   getUKNow,
   isDraftAuctionEnded,
@@ -215,23 +217,48 @@ export async function submitScoutingDraftBid(
         listingId
       );
     } else {
-      const credits = await getDraftCreditsCount(buyerShortName, draftStart);
-      if (credits <= 0) {
-        return {
-          ok: false,
-          msg: "Not enough draft credits to join this auction.",
-        };
+      const mode = await loadPlayerDraftModeState(buyerShortName, true);
+      if (isPlayerDraftLimited(mode)) {
+        if (Number(mode.slots_left) <= 0) {
+          return {
+            ok: false,
+            msg: `Limited Draft: max ${mode.max_signings} win(s)/high bid(s). No slots left.`,
+          };
+        }
+        bidResult = await insertDraftBid(
+          supabase,
+          player,
+          offerAmount,
+          buyerShortName,
+          { isFirst: false, isJoin: false, consumeJoin: false },
+          listingId
+        );
+      } else {
+        const credits = await getDraftCreditsCount(buyerShortName, draftStart);
+        if (credits <= 0) {
+          return {
+            ok: false,
+            msg: "Not enough draft credits to join this auction.",
+          };
+        }
+        bidResult = await insertDraftBid(
+          supabase,
+          player,
+          offerAmount,
+          buyerShortName,
+          { isFirst: false, isJoin: true, consumeJoin: true },
+          listingId
+        );
       }
-      bidResult = await insertDraftBid(
-        supabase,
-        player,
-        offerAmount,
-        buyerShortName,
-        { isFirst: false, isJoin: true, consumeJoin: true },
-        listingId
-      );
     }
   } else {
+    const modeFirst = await loadPlayerDraftModeState(buyerShortName, true);
+    if (isPlayerDraftLimited(modeFirst) && Number(modeFirst.slots_left) <= 0) {
+      return {
+        ok: false,
+        msg: `Limited Draft: max ${modeFirst.max_signings} win(s)/high bid(s). No slots left.`,
+      };
+    }
     bidResult = await insertDraftBid(
       supabase,
       player,

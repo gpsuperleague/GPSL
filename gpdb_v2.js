@@ -29,6 +29,8 @@ import {
   isGpdbFreeAgentOfferAllowed,
   gpdbFreeAgentLockMessage,
   getDraftCredits,
+  loadPlayerDraftModeState,
+  isPlayerDraftLimited,
   syncDraftListingHighBid,
   fetchCurrentDraftAuctionBids,
   draftMinimumBidAmount,
@@ -156,21 +158,35 @@ async function loadDraftCreditsForOwner() {
       return;
     }
 
+    const mode = await loadPlayerDraftModeState(buyerShortName, true);
+    const panel = document.getElementById("draftCreditsPanel");
+    if (!panel) return;
+
+    if (isPlayerDraftLimited(mode)) {
+      const max = Number(mode.max_signings) || 3;
+      const wins = Number(mode.my_wins) || 0;
+      const leads = Number(mode.my_leads) || 0;
+      const left = mode.slots_left == null ? max - wins - leads : Number(mode.slots_left);
+      panel.innerHTML = `
+        <b>Limited Draft</b> — max ${max} signing${max === 1 ? "" : "s"} (no credits)<br>
+        <span style="font-size:11px;color:#aaa;">
+          Wins ${wins} · High bids ${leads} · Slots left ${Math.max(left, 0)}
+        </span>
+      `;
+      return;
+    }
+
     const { earned, used, credits } = await getDraftCredits(
       buyerShortName,
       draftAuctionStartTime
     );
-    const remaining = credits;
 
-    const panel = document.getElementById("draftCreditsPanel");
-    if (panel) {
-      panel.innerHTML = `
-        <b>Draft Credits:</b> ${remaining}<br>
-        <span style="font-size:11px;color:#aaa;">
-          Earned: ${earned} | Used: ${used}
-        </span>
-      `;
-    }
+    panel.innerHTML = `
+      <b>Draft Credits:</b> ${credits}<br>
+      <span style="font-size:11px;color:#aaa;">
+        Earned: ${earned} | Used: ${used}
+      </span>
+    `;
   } catch (err) {
     console.error("Error loading draft credits:", err);
   }
@@ -3407,31 +3423,57 @@ document.addEventListener("DOMContentLoaded", () => {
           listingId
         );
       } else {
-        const credits = await getDraftCreditsForGPDB(buyerShortName);
-        console.log("submitDraftBid credits =", credits);
+        const mode = await loadPlayerDraftModeState(buyerShortName, true);
+        if (isPlayerDraftLimited(mode)) {
+          if (Number(mode.slots_left) <= 0) {
+            return {
+              ok: false,
+              msg: `Limited Draft: you already have ${mode.max_signings} win(s)/high bid(s). Clear a lead or wait for settle before joining another.`,
+            };
+          }
+          bidResult = await insertDraftBid(
+            player,
+            offerAmount,
+            buyerShortName,
+            false,
+            false,
+            false,
+            listingId
+          );
+        } else {
+          const credits = await getDraftCreditsForGPDB(buyerShortName);
+          console.log("submitDraftBid credits =", credits);
 
-        if (credits <= 0) {
-          console.log("submitDraftBid blocked: no credits");
-          return {
-            ok: false,
-            msg:
-              "You do not have enough draft credits to join this auction. Be the first club to bid on a free agent in GPDB to earn credits.",
-          };
+          if (credits <= 0) {
+            console.log("submitDraftBid blocked: no credits");
+            return {
+              ok: false,
+              msg:
+                "You do not have enough draft credits to join this auction. Be the first club to bid on a free agent in GPDB to earn credits.",
+            };
+          }
+
+          bidResult = await insertDraftBid(
+            player,
+            offerAmount,
+            buyerShortName,
+            false,
+            true,
+            true,
+            listingId
+          );
         }
-
-        bidResult = await insertDraftBid(
-          player,
-          offerAmount,
-          buyerShortName,
-          false,
-          true,
-          true,
-          listingId
-        );
       }
 
     } else {
       console.log("submitDraftBid: FIRST BID path");
+      const modeFirst = await loadPlayerDraftModeState(buyerShortName, true);
+      if (isPlayerDraftLimited(modeFirst) && Number(modeFirst.slots_left) <= 0) {
+        return {
+          ok: false,
+          msg: `Limited Draft: you already have ${modeFirst.max_signings} win(s)/high bid(s). Max ${modeFirst.max_signings} this draft.`,
+        };
+      }
       bidResult = await insertDraftBid(
         player,
         offerAmount,
