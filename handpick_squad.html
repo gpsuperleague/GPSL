@@ -170,17 +170,25 @@
     .hp-checklist {
       margin:0; padding:0; list-style:none;
       display:grid;
-      grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
-      gap:8px;
+      grid-template-columns:1fr 1fr;
+      gap:6px 10px;
+    }
+    @media (max-width: 640px) {
+      .hp-checklist { grid-template-columns:1fr; }
     }
     .hp-checklist li {
-      display:flex; flex-direction:column; gap:4px;
-      padding:10px 10px 11px; border-radius:6px; border:1px solid #333; background:#111;
-      font-size:13px; line-height:1.35; min-height:100%;
+      display:grid;
+      grid-template-columns:44px minmax(0, 1fr);
+      gap:6px 8px;
+      align-items:start;
+      padding:7px 9px;
+      border-radius:6px; border:1px solid #333; background:#111;
+      font-size:12px; line-height:1.35;
     }
     .hp-checklist li .mark {
       font-weight:700; font-size:10px;
       letter-spacing:0.04em; text-transform:uppercase;
+      padding-top:2px;
     }
     .hp-checklist li.ok { border-color:#364; background:#101610; }
     .hp-checklist li.ok .mark { color:#8fd18f; }
@@ -188,9 +196,9 @@
     .hp-checklist li.warn .mark { color:#eca; }
     .hp-checklist li.bad { border-color:#844; background:#181010; }
     .hp-checklist li.bad .mark { color:#f88; }
-    .hp-checklist li .body { color:#ddd; }
-    .hp-checklist li .body b { color:#ffcc66; display:block; margin-bottom:2px; }
-    .hp-checklist li .sub { display:block; color:#888; font-size:11px; margin-top:2px; }
+    .hp-checklist li .body { color:#ddd; min-width:0; }
+    .hp-checklist li .body b { color:#ffcc66; }
+    .hp-checklist li .sub { display:block; color:#888; font-size:11px; margin-top:1px; }
     #submitBtn:disabled {
       opacity:0.45; cursor:not-allowed; filter:grayscale(0.35);
     }
@@ -326,6 +334,6 @@
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261103-checklist-h"></script>
+  <script type="module" src="handpick_squad.js?v=20261103-checklist-2col"></script>
 </body>
 </html>
