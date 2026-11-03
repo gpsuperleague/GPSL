@@ -6,6 +6,7 @@
 const ACK_STORAGE_PREFIX = "gpsl_pitch_ack:";
 
 /** Compact chips shown on arrange / check-in / submit surfaces. */
+/** Compact chips — pre-match / personnel / tactics (boosts live under On the pitch). */
 export const CONSOLE_DISPLAY_CHIPS = [
   "10-min match",
   "Show Manager",
@@ -13,11 +14,14 @@ export const CONSOLE_DISPLAY_CHIPS = [
   "Show Squad",
   "No individual instructions",
   "Fluid Formation OK (On preferred)",
-  "Single Red/Blue from 80'",
-  "Double Red/Blue from 90'",
 ];
 
 export const CONSOLE_PAUSE_CHIPS = ["PA3 or PA4", "Advanced skill only"];
+
+export const CONSOLE_IN_MATCH_CHIPS = [
+  "Single Red/Blue from 80'",
+  "Double Red/Blue from 90'",
+];
 
 export const PITCH_BEHAVIOUR_ITEMS = [
   "NO DOGSO",
@@ -60,7 +64,11 @@ export function cupConsoleBadge(opts = {}) {
  */
 export function matchConsoleStripHtml(opts = {}) {
   const cup = cupConsoleBadge(opts);
-  const chips = [...CONSOLE_DISPLAY_CHIPS, ...CONSOLE_PAUSE_CHIPS]
+  const chips = [
+    ...CONSOLE_DISPLAY_CHIPS,
+    ...CONSOLE_PAUSE_CHIPS,
+    ...CONSOLE_IN_MATCH_CHIPS,
+  ]
     .map((c) => `<span class="md-console-chip">${escapeHtml(c)}</span>`)
     .join("");
   const cupHtml = cup
@@ -156,19 +164,26 @@ export function wirePitchAck(root, opts = {}) {
 /** Prematch checklist for match report (soft honesty items). */
 export function prematchConsoleChecklistHtml() {
   const rows = [
-    ["Match length", "10 minutes | Injuries off (all other settings default)"],
     [
-      "Display",
-      "Manager · Subtactic (Standard formations only) · Squad · Player instructions (Blank) · Fluid Formation (Standard formations only)",
+      "Pre-Match Settings",
+      "10 minutes | Injuries off (all other settings default)",
     ],
     [
-      "Boosts",
-      "Single Red or Blue from the 80th minute · Double Red/Blue from the 90th minute only",
+      "Personnel",
+      "Show Manager · Show Subtactic · Show Squad · Player instructions Blank (blocked if used)",
+    ],
+    [
+      "Tactics",
+      "Subtactic + Fluid Formation — standard formations only (Fluid On preferred)",
     ],
     ["Pause before KO", "PA3 or PA4 · Advanced skill only"],
     [
       "On the pitch",
-      PITCH_BEHAVIOUR_ITEMS.map((s) => s.replace(/^NO /, "No ")).join(" · "),
+      [
+        "Single Red/Blue from 80'",
+        "Double Red/Blue from 90'",
+        ...PITCH_BEHAVIOUR_ITEMS.map((s) => s.replace(/^NO /, "No ")),
+      ].join(" · "),
     ],
     [
       "Stadium",
@@ -194,18 +209,28 @@ export function prematchConsoleChecklistHtml() {
 /** Rules-card content for Match Day submit panel. */
 export function getMatchdayConsoleRulesCards() {
   return {
+    title: "Display checks",
     cards: [
       {
-        heading: "Display checks",
+        heading: "Pre-Match Settings",
         items: [
           "<b>10-minute</b> match, <b>Injuries off</b> (all other settings default).",
-          "<b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b> on — they must stay visible on the match recording or you can be reported and fined.",
-          "<b>Individual player instructions are blocked</b> — do not use them (₿10m if used).",
-          "<b>Subtactic</b> and <b>Fluid Formation</b>: <b>standard formations only</b>.",
-          "<b>Single Red or Blue</b> only from the <b>80th minute</b> (before 80' = fine).",
-          "<b>Double Red/Blue</b> only from the <b>90th minute</b> (before 90' = fine).",
           "<b>Cup knockout (1-leg):</b> Extra Time and Penalties if level after 90.",
           "<b>2-legged cups:</b> default 90 min only (no ET/pens). If level on aggregate after the 2nd leg — play a <b>5-minute</b> match with ET + pens; scores combine with both legs to decide the winner.",
+        ],
+      },
+      {
+        heading: "Personnel",
+        items: [
+          "<b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b> on — they must stay visible on the match recording or you can be reported and fined.",
+          "<b>Individual player instructions are blocked</b> — do not use them (₿10m if used).",
+        ],
+      },
+      {
+        heading: "Tactics",
+        items: [
+          "<b>Subtactic</b> and <b>Fluid Formation</b>: <b>standard formations only</b>.",
+          "<b>Fluid Formation</b> is allowed (On preferred).",
         ],
       },
       {
@@ -217,7 +242,11 @@ export function getMatchdayConsoleRulesCards() {
       },
       {
         heading: "On the pitch",
-        items: PITCH_BEHAVIOUR_ITEMS.map((t) => `<b>${t}</b>`),
+        items: [
+          "<b>Single Red or Blue</b> only from the <b>80th minute</b> (before 80' = fine).",
+          "<b>Double Red/Blue</b> only from the <b>90th minute</b> (before 90' = fine).",
+          ...PITCH_BEHAVIOUR_ITEMS.map((t) => `<b>${t}</b>`),
+        ],
       },
       {
         heading: "Stadium",
