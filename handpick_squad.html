@@ -154,19 +154,43 @@
     .status-line.err { color:#f88; }
     .status-line.ok { color:#8fd18f; }
     .hp-limits {
-      display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:8px;
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:8px;
     }
     .hp-limits .stat {
       background:#111; border:1px solid #333; border-radius:6px; padding:8px 6px; text-align:center;
     }
     .hp-limits .stat .lbl { font-size:11px; color:#999; }
     .hp-limits .stat .val { font-size:20px; font-weight:700; color:#ffcc66; margin:2px 0; }
-    .hp-limits .stat .lim { font-size:10px; color:#777; }
+    .hp-limits .stat .lim { font-size:10px; color:#777; line-height:1.35; }
     .hp-limits .stat.ok { border-color:#364; }
     .hp-limits .stat.warn { border-color:#864; }
     .hp-limits .stat.bad { border-color:#844; }
     .hp-limits .stat.ok .val { color:#8fd18f; }
     .hp-limits .stat.bad .val { color:#f88; }
+    .hp-checklist {
+      margin:0; padding:0; list-style:none; display:grid; gap:6px;
+    }
+    .hp-checklist li {
+      display:flex; gap:10px; align-items:flex-start;
+      padding:8px 10px; border-radius:6px; border:1px solid #333; background:#111;
+      font-size:13px; line-height:1.4;
+    }
+    .hp-checklist li .mark {
+      flex:0 0 auto; min-width:52px; font-weight:700; font-size:11px;
+      letter-spacing:0.03em; text-transform:uppercase; padding-top:1px;
+    }
+    .hp-checklist li.ok { border-color:#364; background:#101610; }
+    .hp-checklist li.ok .mark { color:#8fd18f; }
+    .hp-checklist li.warn { border-color:#864; background:#18140e; }
+    .hp-checklist li.warn .mark { color:#eca; }
+    .hp-checklist li.bad { border-color:#844; background:#181010; }
+    .hp-checklist li.bad .mark { color:#f88; }
+    .hp-checklist li .body { flex:1 1 auto; color:#ddd; }
+    .hp-checklist li .body b { color:#ffcc66; }
+    .hp-checklist li .sub { display:block; color:#888; font-size:12px; margin-top:2px; }
+    #submitBtn:disabled {
+      opacity:0.45; cursor:not-allowed; filter:grayscale(0.35);
+    }
     .hp-finance .finance-row {
       display:flex; justify-content:space-between; gap:10px; font-size:13px;
       padding:4px 0; border-bottom:1px solid #2a2a2a;
@@ -180,8 +204,10 @@
   <div class="hp-wrap">
     <h1 style="color:#ff9900;font-size:22px;margin:8px 0 6px;">Handpick squad</h1>
     <p class="hint">
-      Mid-season rebuild: build a wishlist, then submit for admin approval at market value.
-      Admins turn Handpick on/off from the Season owner board (releases squad to FA, clears manager, sets rebuild cash — other clubs’ ledgers untouched).
+      Mid-season rebuild: tag free agents (and one manager), hit the same squad rules as registration,
+      then submit for admin approval at market value + tax. Cash is takeover balance; you may go at most
+      <b style="color:#eca;">₿50m overdrawn</b> on the wishlist.
+      Admins enable Handpick from the Season owner board.
     </p>
 
     <div id="gateBox" class="gate-box">Loading…</div>
@@ -208,7 +234,7 @@
         <h2 style="margin-bottom:8px;">How to handpick</h2>
         <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#ddd;">
           Tag free agents in <b style="color:#e8c84a;">GPDB</b> and one manager in <b style="color:#e8c84a;">MGDB</b>
-          (Handpick ☐ column). Return here to review the basket, pick a planned OooO, and
+          (Handpick ☐ column). Return here to review the checklist, pick a planned OooO, and
           <b>Submit for approval</b>.
         </p>
         <p style="margin:0;display:flex;flex-wrap:wrap;gap:10px;">
@@ -223,8 +249,16 @@
         </p>
         <p class="hint" style="margin-top:10px;">
           Temp tags are <b>not</b> contracts — stay free agents until admin approves. Must be logged in (not anonymous Discord browse).
-          This page refreshes the basket when you come back from GPDB / MGDB.
+          Tags that would put you more than ₿50m overdrawn are blocked. This page refreshes when you come back from GPDB / MGDB.
         </p>
+      </div>
+
+      <div class="card hp-owner-tools" id="expectationsCard" style="border-color:#3a5a7a;background:#10161c;">
+        <h2 style="margin:0 0 8px;color:#9ec5e8;">Squad expectations</h2>
+        <p class="hint" style="margin:0 0 10px;">
+          Build toward a legal registration squad. Green = met · amber = short · red = over a hard cap.
+        </p>
+        <ul id="checklistBox" class="hp-checklist"></ul>
       </div>
 
       <div class="card hp-owner-tools">
@@ -270,6 +304,7 @@
             <h2>Projected squad</h2>
             <p class="hint" style="margin:0 0 10px;">
               Same registration rules as Squad / Scouting — wishlist players count as “if approved”.
+              Star <b>tags</b> (handpick max 3) are separate from registration star <b>cap</b> after OooO.
             </p>
             <div id="limitsBox" class="hp-limits"></div>
             <div id="financeBox" class="hp-finance" style="margin-top:12px;"></div>
@@ -288,6 +323,6 @@
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261103-star-tag-cap3"></script>
+  <script type="module" src="handpick_squad.js?v=20261103-checklist-od50"></script>
 </body>
 </html>

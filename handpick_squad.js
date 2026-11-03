@@ -423,6 +423,8 @@ function projectedSquadPlayers() {
 
 /** Max star-rated players that may be tagged in the handpick basket at once. */
 const HANDPICK_STAR_TAG_CAP = 3;
+/** Lowest allowed projected cash after wishlist fees + tax. */
+const HANDPICK_OVERDRAFT_FLOOR = -50_000_000;
 
 function playerIsStarRated(p, starMin) {
   const rating = Number(
@@ -463,6 +465,45 @@ function countBasketStarsOnly() {
   return n;
 }
 
+function wishlistFinance() {
+  const balance = Number(clubContext?.balance) || 0;
+  const taxRate = taxPct();
+  let fees = 0;
+  for (const p of basket.values()) fees += Number(p.market_value) || 0;
+  const mgrFee = pickedManager ? Number(pickedManager.market_value) || 0 : 0;
+  const tax = Math.round(((fees + mgrFee) * taxRate) / 100 * 100) / 100;
+  const totalCost = fees + mgrFee + tax;
+  const after = balance - totalCost;
+  return {
+    balance,
+    taxRate,
+    fees: fees + mgrFee,
+    tax,
+    totalCost,
+    after,
+    withinOverdraft: after >= HANDPICK_OVERDRAFT_FLOOR,
+  };
+}
+
+function handpickHardBlocks(counts, fin) {
+  const starTagCap = HANDPICK_STAR_TAG_CAP;
+  const basketStars = countBasketStarsOnly();
+  const maxSquad = Number(clubContext?.max_squad_size) || SQUAD_SIZE;
+  const blocks = [];
+  if (basketStars > starTagCap) {
+    blocks.push(`Too many stars tagged (${basketStars}/${starTagCap}). Untag a star.`);
+  }
+  if (counts.total > maxSquad) {
+    blocks.push(`Squad over max (${counts.total}/${maxSquad}).`);
+  }
+  if (!fin.withinOverdraft) {
+    blocks.push(
+      `More than ₿50m overdrawn after fees+tax (${formatMoney(fin.after)}). Untag or pick cheaper.`
+    );
+  }
+  return blocks;
+}
+
 function renderBuildPanel() {
   const players = projectedSquadPlayers();
   const counts = countProjected(players);
@@ -476,48 +517,121 @@ function renderBuildPanel() {
   const minSquad = Number(clubContext?.min_squad_size) || MIN_SQUAD_SIZE;
   const maxSquad = Number(clubContext?.max_squad_size) || SQUAD_SIZE;
   const clubNation = clubContext?.club_nation || "";
+  const fin = wishlistFinance();
+  const hardBlocks = handpickHardBlocks(counts, fin);
+
+  const squadCls =
+    counts.total > maxSquad ? "bad" : counts.total >= minSquad ? "ok" : "warn";
+  const tagStarCls =
+    basketStars > starTagCap ? "bad" : basketStars === starTagCap ? "warn" : "ok";
+  const regStarCls = counts.stars > regStarCap ? "bad" : counts.stars === regStarCap ? "warn" : "ok";
+  const u21Cls = counts.u21 >= minU21 ? "ok" : "warn";
+  const hgCls = counts.hg >= minHg ? "ok" : "warn";
+  const gkCls = counts.gk >= minGk ? "ok" : "warn";
+  const mgrCls = pickedManager ? "ok" : "warn";
+  const odCls = fin.withinOverdraft ? (fin.after < 0 ? "warn" : "ok") : "bad";
+
+  const checklist = document.getElementById("checklistBox");
+  if (checklist) {
+    const row = (cls, mark, title, sub) =>
+      `<li class="${cls}"><span class="mark">${mark}</span><span class="body"><b>${title}</b><span class="sub">${sub}</span></span></li>`;
+    checklist.innerHTML = [
+      row(
+        squadCls,
+        squadCls === "ok" ? "Met" : squadCls === "bad" ? "Over" : "Need",
+        `Squad size ${counts.total}`,
+        `Aim for ${minSquad}–${maxSquad} players once approved.`
+      ),
+      row(
+        tagStarCls,
+        tagStarCls === "ok" ? "Ok" : tagStarCls === "bad" ? "Over" : "At cap",
+        `Stars tagged ${basketStars} / ${starTagCap}`,
+        `Handpick wishlist max ${starTagCap} players rated ≥${starMin}. Extra tags are blocked.`
+      ),
+      row(
+        regStarCls,
+        regStarCls === "ok" ? "Ok" : "Over",
+        `Registration stars ${counts.stars} / ${regStarCap}`,
+        plannedOooId
+          ? `After approval, star cap is ${regStarCap} (planned OooO excluded from the count).`
+          : `After approval, star cap is ${regStarCap}. Pick a home-grown ★ as OooO to excuse one.`
+      ),
+      row(
+        hgCls,
+        hgCls === "ok" ? "Met" : "Need",
+        `Home grown ${counts.hg} / ${minHg}`,
+        clubNation
+          ? `Need ≥${minHg} ${escapeHtml(clubNation)} nationals.`
+          : `Need ≥${minHg} home-grown players.`
+      ),
+      row(
+        u21Cls,
+        u21Cls === "ok" ? "Met" : "Need",
+        `Under-21 ${counts.u21} / ${minU21}`,
+        `Need ≥${minU21} players aged 21 or younger.`
+      ),
+      row(
+        gkCls,
+        gkCls === "ok" ? "Met" : "Need",
+        `Goalkeepers ${counts.gk} / ${minGk}`,
+        `Need ≥${minGk} GK.`
+      ),
+      row(
+        mgrCls,
+        mgrCls === "ok" ? "Met" : "Need",
+        pickedManager
+          ? `Manager: ${escapeHtml(pickedManager.manager_name || "#" + pickedManager.manager_id)}`
+          : "Manager not tagged",
+        "Tag one free-agent manager in MGDB before submit (recommended)."
+      ),
+      row(
+        odCls,
+        odCls === "ok" ? "Ok" : odCls === "bad" ? "Blocked" : "Overdraft",
+        `Cash after wishlist ${escapeHtml(formatMoney(fin.after))}`,
+        `Fees + tax vs club balance. Hard floor ${escapeHtml(
+          formatMoney(HANDPICK_OVERDRAFT_FLOOR)
+        )} — cannot tag or submit deeper.`
+      ),
+    ].join("");
+  }
 
   const limits = document.getElementById("limitsBox");
   if (limits) {
-    const squadCls =
-      counts.total > maxSquad ? "bad" : counts.total >= minSquad ? "ok" : "warn";
-    const starCls =
-      basketStars > starTagCap
-        ? "bad"
-        : basketStars === starTagCap
-          ? "warn"
-          : counts.stars > regStarCap
-            ? "warn"
-            : "ok";
-    const u21Cls = counts.u21 >= minU21 ? "ok" : "bad";
-    const hgCls = counts.hg >= minHg ? "ok" : "bad";
-    const gkCls = counts.gk >= minGk ? "ok" : "bad";
     limits.innerHTML = `
       <div class="stat ${squadCls}"><div class="lbl">Squad</div><div class="val">${counts.total}</div><div class="lim">min ${minSquad} · max ${maxSquad}</div></div>
-      <div class="stat ${starCls}"><div class="lbl">Stars tagged</div><div class="val">${basketStars}</div><div class="lim">handpick max ${starTagCap} (≥${starMin}) · reg cap ${regStarCap}${plannedOooId ? " · OooO excl. from reg" : ""}</div></div>
+      <div class="stat ${tagStarCls}"><div class="lbl">Stars tagged</div><div class="val">${basketStars}</div><div class="lim">wishlist max ${starTagCap} (≥${starMin})</div></div>
+      <div class="stat ${regStarCls}"><div class="lbl">Reg. stars</div><div class="val">${counts.stars}</div><div class="lim">cap ${regStarCap}${plannedOooId ? " · OooO out" : ""}</div></div>
       <div class="stat ${u21Cls}"><div class="lbl">U21</div><div class="val">${counts.u21}</div><div class="lim">min ${minU21}</div></div>
       <div class="stat ${hgCls}"><div class="lbl">Home grown</div><div class="val">${counts.hg}</div><div class="lim">min ${minHg}${clubNation ? ` · ${escapeHtml(clubNation)}` : ""}</div></div>
       <div class="stat ${gkCls}"><div class="lbl">GK</div><div class="val">${counts.gk}</div><div class="lim">min ${minGk}</div></div>
       <div class="stat ok"><div class="lbl">Wages</div><div class="val" style="font-size:14px;">${escapeHtml(formatMoney(counts.wages))}</div><div class="lim">est. season</div></div>`;
   }
 
-  const balance = Number(clubContext?.balance) || 0;
-  const taxRate = taxPct();
-  let fees = 0;
-  for (const p of basket.values()) fees += Number(p.market_value) || 0;
-  const mgrFee = pickedManager ? Number(pickedManager.market_value) || 0 : 0;
-  const tax = Math.round(((fees + mgrFee) * taxRate) / 100 * 100) / 100;
-  const totalCost = fees + mgrFee + tax;
-  const after = balance - totalCost;
   const finance = document.getElementById("financeBox");
   if (finance) {
     finance.innerHTML = `
-      <div class="finance-row"><span>Balance</span><b>${escapeHtml(formatMoney(balance))}</b></div>
-      <div class="finance-row"><span>Wishlist fees</span><b>${escapeHtml(formatMoney(fees + mgrFee))}</b></div>
-      <div class="finance-row"><span>Est. income tax (${taxRate}%)</span><b>${escapeHtml(formatMoney(tax))}</b></div>
+      <div class="finance-row"><span>Balance</span><b>${escapeHtml(formatMoney(fin.balance))}</b></div>
+      <div class="finance-row"><span>Wishlist fees</span><b>${escapeHtml(formatMoney(fin.fees))}</b></div>
+      <div class="finance-row"><span>Est. income tax (${fin.taxRate}%)</span><b>${escapeHtml(formatMoney(fin.tax))}</b></div>
       <div class="finance-row"><span>Est. season wages (${wageTier === "superleague" ? "SL" : "Champ"} %)</span><b>${escapeHtml(formatMoney(counts.wages))}</b></div>
-      <div class="finance-row ${after < 0 ? "neg" : "pos"}"><span>Balance after signings</span><b>${escapeHtml(formatMoney(after))}</b></div>
-      <p class="hint" style="margin-top:8px;">Wage = stored contract wage when set, otherwise ${wageTier === "superleague" ? "SuperLeague" : "Championship"} % of MV. Final wages apply when admin approves. Tagged players also appear as ghosts on Squad.</p>`;
+      <div class="finance-row ${fin.after < 0 ? "neg" : "pos"}"><span>Balance after signings</span><b>${escapeHtml(formatMoney(fin.after))}</b></div>
+      <div class="finance-row ${fin.withinOverdraft ? "pos" : "neg"}"><span>Overdraft floor</span><b>${escapeHtml(formatMoney(HANDPICK_OVERDRAFT_FLOOR))}</b></div>
+      <p class="hint" style="margin-top:8px;">Wage = stored contract wage when set, otherwise ${wageTier === "superleague" ? "SuperLeague" : "Championship"} % of MV. Final wages apply when admin approves. Tagged players also appear as ghosts on Squad.${
+        hardBlocks.length
+          ? ` <b style="color:#f88;">Blocked:</b> ${escapeHtml(hardBlocks.join(" "))}`
+          : ""
+      }</p>`;
+  }
+
+  const submitBtn = document.getElementById("submitBtn");
+  if (submitBtn) {
+    const empty = basket.size === 0 && !pickedManager;
+    submitBtn.disabled = empty || hardBlocks.length > 0;
+    submitBtn.title = empty
+      ? "Tag at least one player or a manager first"
+      : hardBlocks.length
+        ? hardBlocks.join(" ")
+        : "Submit wishlist for admin approval";
   }
 
   const oooSel = document.getElementById("plannedOooSelect");
@@ -870,10 +984,32 @@ async function submitWishlist() {
     setPageStatus("Add at least one player or a manager.", true);
     return;
   }
+  const counts = countProjected(projectedSquadPlayers());
+  const fin = wishlistFinance();
+  const hardBlocks = handpickHardBlocks(counts, fin);
+  if (hardBlocks.length) {
+    setPageStatus(hardBlocks[0], true);
+    return;
+  }
+  const soft = [];
+  const minHg = Number(clubContext?.min_home_grown) || MIN_HOME_GROWN;
+  const minU21 = Number(clubContext?.min_under_21) || MIN_UNDER_21;
+  const minGk = Number(clubContext?.min_goalkeepers) || MIN_GOALKEEPERS;
+  const minSquad = Number(clubContext?.min_squad_size) || MIN_SQUAD_SIZE;
+  if (counts.total < minSquad) soft.push(`squad ${counts.total}/${minSquad}`);
+  if (counts.hg < minHg) soft.push(`HG ${counts.hg}/${minHg}`);
+  if (counts.u21 < minU21) soft.push(`U21 ${counts.u21}/${minU21}`);
+  if (counts.gk < minGk) soft.push(`GK ${counts.gk}/${minGk}`);
+  if (!pickedManager) soft.push("no manager");
+  const softNote = soft.length
+    ? `\n\nStill short of expectations: ${soft.join(", ")}.\nYou can still submit — admin may reject incomplete wishlists.`
+    : "";
   if (
     !confirm(
       `Submit wishlist for ${club}?\n\n${ids.length} player(s)` +
         (pickedManager ? ` + manager ${pickedManager.manager_name}` : "") +
+        `\nProjected cash after fees+tax: ${formatMoney(fin.after)}` +
+        softNote +
         `\n\nAdmin must approve before anyone is signed.`
     )
   ) {
@@ -893,7 +1029,7 @@ async function submitWishlist() {
     return;
   }
   if (!data?.ok) {
-    setPageStatus(data?.reason || "Submit failed", true);
+    setPageStatus(data?.detail || data?.reason || "Submit failed", true);
     document.getElementById("resultBox").textContent = JSON.stringify(data, null, 2);
     return;
   }
