@@ -146,8 +146,8 @@ BEGIN
       m.updated_at,
       p."Name" AS player_name,
       p."Position" AS position,
-      p."Rating" AS overall_rating,
-      coalesce(p.market_value, 0)::numeric AS market_value,
+      nullif(btrim(p."Rating"::text), '') AS overall_rating,
+      coalesce(nullif(regexp_replace(coalesce(p.market_value::text, ''), '[^0-9.\-]', '', 'g'), '')::numeric, 0) AS market_value,
       EXISTS (
         SELECT 1
         FROM public."Player_Transfer_Listings" l
