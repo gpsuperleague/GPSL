@@ -235,6 +235,15 @@ export function getMatchdayConsoleRulesCards() {
         ],
       },
       {
+        heading: "Stadium",
+        items: [
+          "<b>Licensed clubs only</b> may use their real eFootball stadium.",
+          "<b>Non-licensed clubs</b> must use the <b>Konami stadium</b>.",
+          "<b>Konami stadium:</b> decorate in <b>home kit</b> colours; <b>standard borders only</b> (no statues, Halloween, or other accessories); name it as the club’s <b>correct real-life stadium</b>.",
+          `See <a href="stadium.html">Stadium</a> and <a href="learning_gpsl.html#matchday">Learning GPSL</a>.`,
+        ],
+      },
+      {
         heading: "Personnel",
         items: [
           "<b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b> on — they must stay visible on the match recording or you can be reported and fined.",
@@ -261,15 +270,6 @@ export function getMatchdayConsoleRulesCards() {
           "<b>Single Red or Blue</b> only from the <b>80th minute</b> (before 80' = fine).",
           "<b>Double Red/Blue</b> only from the <b>90th minute</b> (before 90' = fine).",
           ...PITCH_BEHAVIOUR_ITEMS.map((t) => `<b>${t}</b>`),
-        ],
-      },
-      {
-        heading: "Stadium",
-        items: [
-          "<b>Licensed clubs only</b> may use their real eFootball stadium.",
-          "<b>Non-licensed clubs</b> must use the <b>Konami stadium</b>.",
-          "<b>Konami stadium:</b> decorate in <b>home kit</b> colours; <b>standard borders only</b> (no statues, Halloween, or other accessories); name it as the club’s <b>correct real-life stadium</b>.",
-          `See <a href="stadium.html">Stadium</a> and <a href="learning_gpsl.html#matchday">Learning GPSL</a>.`,
         ],
       },
     ],
