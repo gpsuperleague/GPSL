@@ -3,9 +3,15 @@ import { getUKWallClockParts, ukLocalToInstant } from "./global.js";
 
 primeAdminPageChrome();
 
-const AUCTION_KINDS = new Set(["player_draft", "manager_draft", "club_auction"]);
+const AUCTION_KINDS = new Set([
+  "player_draft",
+  "limited_draft",
+  "manager_draft",
+  "club_auction",
+]);
 const KIND_LABELS = {
   player_draft: "Player draft",
+  limited_draft: "Limited draft",
   manager_draft: "Manager draft",
   club_auction: "Club auction",
   challenge: "Challenge",
@@ -15,6 +21,7 @@ const KIND_LABELS = {
 };
 const DEFAULT_LINKS = {
   player_draft: "draftauction.html",
+  limited_draft: "draftauction.html",
   manager_draft: "manager_draftauction.html",
   club_auction: "club_auction.html",
   challenge: "challenges.html",

@@ -404,6 +404,7 @@ function overlayMonthKey(iso, status) {
 
 const PLANNED_KIND_CLASS = {
   player_draft: "draft",
+  limited_draft: "draft",
   manager_draft: "manager-auction",
   club_auction: "club-auction",
   challenge: "challenge",
@@ -414,6 +415,7 @@ const PLANNED_KIND_CLASS = {
 
 const PLANNED_DEFAULT_LINK = {
   player_draft: { href: "draftauction.html", label: "Draft auction" },
+  limited_draft: { href: "draftauction.html", label: "Limited draft" },
   manager_draft: { href: "manager_draftauction.html", label: "Manager draft" },
   club_auction: { href: "club_auction.html", label: "Club auction" },
   challenge: { href: "challenges.html", label: "Season Challenges" },
@@ -432,7 +434,7 @@ async function loadPlannedEvents() {
 
 function plannedEventOverlay(ev, nowMs) {
   const start = new Date(ev.starts_at).getTime();
-  const isAuction = ["player_draft", "manager_draft", "club_auction"].includes(ev.kind);
+  const isAuction = ["player_draft", "limited_draft", "manager_draft", "club_auction"].includes(ev.kind);
   const end = ev.ends_at
     ? new Date(ev.ends_at).getTime()
     : isAuction
