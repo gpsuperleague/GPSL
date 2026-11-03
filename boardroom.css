@@ -133,11 +133,34 @@ body.boardroom-page {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (max-width: 900px) {
   .board-grid { grid-template-columns: 1fr; }
+}
+
+/* Equal-height columns: pin Failure punishment to the bottom of each panel body */
+.board-grid > .board-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.board-grid > .board-panel > .board-intro {
+  flex: 0 0 auto;
+}
+
+#expectationStatus,
+#managerStatus {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#expectationStatus .expectation-block--punishment,
+#managerStatus .expectation-block--punishment {
+  margin-top: auto;
 }
 
 .board-agenda {
@@ -209,7 +232,10 @@ body.boardroom-page {
   border-radius: 8px;
   padding: 12px 14px;
   margin-top: 12px;
+  margin-bottom: 0;
   border-bottom: none;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .expectation-block--punishment h3 {
@@ -267,6 +293,12 @@ body.boardroom-page {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+/* Don't leave a gap under the manager punishment box when no actions are shown */
+.board-actions:not(:has(.board-btn:not(.is-hidden))) {
+  display: none;
 }
 
 .board-btn {
@@ -297,7 +329,13 @@ body.boardroom-page {
   margin: 10px 0 0;
   font-size: 12px;
   color: #8a7a6a;
-  min-height: 1.2em;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+
+.board-hint:empty {
+  display: none;
+  margin: 0;
 }
 
 .board-error {
