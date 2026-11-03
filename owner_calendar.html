@@ -79,6 +79,11 @@
       width:10px; height:10px; border-radius:2px; display:inline-block;
     }
     .oc-dot--match { background:#3b82f6; }
+    .oc-dot--match_pending {
+      background:transparent;
+      box-shadow:inset 0 0 0 1.5px #3b82f6;
+      opacity:0.85;
+    }
     .oc-dot--deadline { background:#e67e22; }
     .oc-dot--gpsl { background:#f0c14b; }
     .oc-dot--auction { background:#0d9488; }
@@ -160,6 +165,14 @@
     }
     .oc-chip:hover { filter:brightness(1.15); }
     .oc-chip--match { background:rgba(59,130,246,0.22); color:#9ec5ff; border-left:2px solid #3b82f6; }
+    .oc-chip--match_pending {
+      background:rgba(59,130,246,0.08);
+      color:#7eb0e0;
+      border:1px dashed rgba(59,130,246,0.7);
+      border-left:2px dashed #3b82f6;
+      font-weight:500;
+      opacity:0.92;
+    }
     .oc-chip--deadline { background:rgba(230,126,34,0.22); color:#ffc089; border-left:2px solid #e67e22; }
     .oc-chip--gpsl { background:rgba(240,193,75,0.2); color:#f0d78a; border-left:2px solid #f0c14b; }
     .oc-chip--auction { background:rgba(13,148,136,0.22); color:#5eead4; border-left:2px solid #0d9488; }
@@ -183,6 +196,12 @@
       background:#141414;
       transition: box-shadow .2s ease, border-color .2s ease, background .2s ease;
     }
+    .oc-event.is-pending-ghost {
+      border-style:dashed;
+      border-color:rgba(59,130,246,0.55);
+      background:rgba(59,130,246,0.05);
+      opacity:0.95;
+    }
     .oc-event.is-focus {
       border-color: var(--gpsl-accent, #ff9900);
       background: #242018;
@@ -199,6 +218,11 @@
       padding:2px 6px; border-radius:3px; margin-bottom:6px; color:#111;
     }
     .oc-event-kind--match { background:#3b82f6; color:#fff; }
+    .oc-event-kind--match_pending {
+      background:transparent;
+      color:#9ec5ff;
+      border:1px dashed #3b82f6;
+    }
     .oc-event-kind--deadline { background:#e67e22; color:#fff; }
     .oc-event-kind--gpsl { background:#f0c14b; }
     .oc-event-kind--auction { background:#0d9488; color:#fff; }
@@ -233,8 +257,9 @@
   <div class="page-container">
     <h1>My Calendar</h1>
     <p class="oc-intro">
-      Real-world month in <b>your</b> timezone — agreed kick-offs, Club Wire deadlines,
-      GPSL play-month unlock/lock, planned auctions, transfer windows, match video deadlines, owner holidays, and your weekly availability wash.
+      Real-world month in <b>your</b> timezone — agreed kick-offs, pending proposals (ghost),
+      Club Wire deadlines, GPSL play-month unlock/lock, planned auctions, transfer windows,
+      match video deadlines, owner holidays, and your weekly availability wash.
       Season structure (Aug–May) stays on
       <a href="season_calendar.html" style="color:var(--gpsl-accent,#ff9900);">Season Calendar</a>.
     </p>
@@ -245,7 +270,7 @@
         <select class="oc-month-select" id="ocMonthSelect" aria-label="Select month"></select>
         <button type="button" id="ocNext" aria-label="Next month">→</button>
         <button type="button" id="ocToday">Today</button>
-        <button type="button" class="oc-cal-all-btn" id="ocAddAllCal" title="Download a .ics with every timed appointment on My Calendar (matches, deadlines, locks, auctions, video dues, holidays)">
+        <button type="button" class="oc-cal-all-btn" id="ocAddAllCal" title="Download a .ics with every timed appointment on My Calendar (agreed matches, pending proposals, deadlines, locks, auctions, video dues, holidays)">
           Add all to calendar
         </button>
         <a class="oc-season-link" href="season_calendar.html" title="GPSL Aug–May season roadmap">Season roadmap</a>
@@ -254,6 +279,7 @@
     </div>
     <div class="oc-legend">
       <span><i class="oc-dot oc-dot--match"></i> Match (agreed KO)</span>
+      <span><i class="oc-dot oc-dot--match_pending"></i> Pending proposal</span>
       <span><i class="oc-dot oc-dot--deadline"></i> Deadline</span>
       <span><i class="oc-dot oc-dot--gpsl"></i> GPSL unlock / lock</span>
       <span><i class="oc-dot oc-dot--auction"></i> Auction</span>
@@ -283,6 +309,6 @@
       </aside>
     </div>
   </div>
-  <script type="module" src="owner_calendar.js?v=20261029-oc-video3"></script>
+  <script type="module" src="owner_calendar.js?v=20261103-pending-ghost"></script>
 </body>
 </html>

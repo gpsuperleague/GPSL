@@ -72,6 +72,7 @@ function alarmBlock() {
  *   durationMs?: number,
  *   url?: string|null,
  *   location?: string|null,
+ *   status?: string|null,
  * }} opts
  */
 export function buildVEvent(opts) {
@@ -103,6 +104,12 @@ export function buildVEvent(opts) {
   }
   if (opts.url) {
     lines.push(`URL:${escapeIcsText(opts.url)}`);
+  }
+  const status = String(opts.status || "")
+    .trim()
+    .toUpperCase();
+  if (status === "TENTATIVE" || status === "CONFIRMED" || status === "CANCELLED") {
+    lines.push(`STATUS:${status}`);
   }
   lines.push(...alarmBlock());
   lines.push("END:VEVENT");

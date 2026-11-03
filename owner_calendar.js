@@ -1,8 +1,9 @@
 /**
  * My Calendar — real-world month view for owners (V1).
- * Agreed KOs · Club Wire cutoffs · GPSL unlock/lock · availability wash ·
- * special/planned auctions · transfer window guide + live status ·
- * match video upload deadlines (+24h extension only after miss) · owner holidays.
+ * Agreed KOs · pending schedule proposals (ghost) · Club Wire cutoffs ·
+ * GPSL unlock/lock · availability wash · special/planned auctions ·
+ * transfer window guide + live status · match video upload deadlines
+ * (+24h extension only after miss) · owner holidays.
  */
 import { supabase, initGlobal, getAuthUserFast } from "./global.js";
 import { GPSL_MONTH_LABELS, CUP_LABELS, DIVISION_LABELS } from "./competition.js";
@@ -97,6 +98,8 @@ let viewMonth; // 1–12
 let ownerTz = UK;
 let weeklySlots = [];
 let fixtures = [];
+/** Pending schedule proposals involving my club (inbound + outbound). */
+let pendingProposals = [];
 let cutoffs = [];
 let seasonMonths = [];
 let specialAuctions = [];
@@ -217,7 +220,11 @@ function nameFromLoadedFixtures(short) {
     .trim()
     .toUpperCase();
   if (!upper) return null;
-  for (const f of fixtures || []) {
+  const pools = [
+    ...(fixtures || []),
+    ...((pendingProposals || []).map((p) => p.fixture).filter(Boolean)),
+  ];
+  for (const f of pools) {
     const h = (f.home_club_short_name || "").trim().toUpperCase();
     const a = (f.away_club_short_name || "").trim().toUpperCase();
     if (h === upper && f.home_club_name) return String(f.home_club_name).trim();
@@ -355,6 +362,7 @@ function specialAuctionHref(a) {
 
 function eventKindLabel(kind) {
   if (kind === "match") return "MATCH";
+  if (kind === "match_pending") return "PENDING";
   if (kind === "deadline") return "DEADLINE";
   if (kind === "gpsl") return "GPSL";
   if (kind === "auction") return "AUCTION";
@@ -524,6 +532,48 @@ function buildEventsByDay() {
         },
         f.agreed_kickoff_at,
         { uid: `gpsl-fixture-${f.id}@gpsl` }
+      )
+    );
+  }
+
+  const agreedFixtureIds = new Set(
+    (fixtures || [])
+      .filter((f) => f.agreed_kickoff_at)
+      .map((f) => String(f.id))
+  );
+  for (const p of pendingProposals || []) {
+    const f = p?.fixture;
+    const ko = p?.kickoff_at;
+    if (!f || !ko) continue;
+    // Agreed KO already shown solid — don't double-paint a ghost for that fixture.
+    if (agreedFixtureIds.has(String(f.id))) continue;
+    const day = ymdInTz(ko, ownerTz);
+    const hhmm = hhmmInTz(ko, ownerTz);
+    const outbound = p.direction === "outbound";
+    const dirLabel = outbound ? "You proposed" : "Opponent proposed";
+    const chipArrow = outbound ? "→" : "←";
+    push(
+      day,
+      withCal(
+        {
+          key: `match_pending:${p.id}`,
+          kind: "match_pending",
+          sort: new Date(ko).getTime(),
+          title: fixtureTitle(f),
+          detail: `${timeInTz(ko, ownerTz)} · Pending · ${dirLabel} (blocks overlapping slots)`,
+          href: `fixture_schedule.html?fixture=${encodeURIComponent(String(f.id))}`,
+          hrefLabel: "Open schedule →",
+          chip: `${hhmm} ${chipArrow} ${fixtureChipText(f)}`,
+          chipTitle: `${fixtureChipHover(f)} · Pending proposal (${dirLabel.toLowerCase()})`,
+          ownerLine: fixtureOppOwnerLine(f),
+          fixtureId: f.id,
+          proposalId: p.id,
+        },
+        ko,
+        {
+          durationMs: CAL_MARKER_MS,
+          uid: `gpsl-proposal-pending-${p.id}@gpsl`,
+        }
       )
     );
   }
@@ -1271,8 +1321,9 @@ function renderPanel() {
   } else {
     for (const ev of events) {
       const focused = focusEventKey && ev.key === focusEventKey ? " is-focus" : "";
+      const ghost = ev.kind === "match_pending" ? " is-pending-ghost" : "";
       parts.push(`
-        <div class="oc-event${focused}" data-ev-key="${escapeHtml(ev.key)}">
+        <div class="oc-event${focused}${ghost}" data-ev-key="${escapeHtml(ev.key)}">
           <span class="oc-event-kind oc-event-kind--${escapeHtml(ev.kind)}">${escapeHtml(
             eventKindLabel(ev.kind)
           )}</span>
@@ -1364,13 +1415,17 @@ function veventFromPanelEvent(ev) {
     .join("\n");
   return buildVEvent({
     uid: ev.calUid || `gpsl-oc-${ev.key}@gpsl`,
-    title: ev.title || "GPSL",
+    title:
+      ev.kind === "match_pending"
+        ? `[Pending] ${ev.title || "GPSL"}`
+        : ev.title || "GPSL",
     description: descParts,
     startAt: ev.startAt,
     endAt: ev.calEndAt || null,
     durationMs: ev.calDurationMs ?? CAL_MARKER_MS,
     url: url || undefined,
     location: "GPSL",
+    status: ev.kind === "match_pending" ? "TENTATIVE" : undefined,
   });
 }
 
@@ -1433,7 +1488,7 @@ function refreshAddAllCalButton() {
   btn.title =
     n === 0
       ? "No timed appointments to export yet"
-      : `Download one .ics with all ${n} timed appointments (matches, deadlines, GPSL locks, auctions, video dues, holidays)`;
+      : `Download one .ics with all ${n} timed appointments (agreed matches, pending proposals, deadlines, GPSL locks, auctions, video dues, holidays)`;
 }
 
 function downloadAllEventsToCalendar() {
@@ -1470,6 +1525,62 @@ async function loadMyFixtures() {
       ((f.home_club_short_name || "").trim().toUpperCase() === key ||
         (f.away_club_short_name || "").trim().toUpperCase() === key)
   );
+}
+
+/** Pending inbound/outbound proposals for my club (RLS scopes to my fixtures). */
+async function loadMyPendingProposals() {
+  const me = String(myClub.short || "")
+    .trim()
+    .toUpperCase();
+  if (!me) return [];
+
+  const { data: props, error } = await supabase
+    .from("competition_fixture_schedule_proposal")
+    .select(
+      "id, fixture_id, proposed_by_club_short_name, kickoff_at, status, created_at"
+    )
+    .eq("status", "pending");
+  if (error) {
+    console.warn("owner_calendar pending proposals:", error);
+    return [];
+  }
+  const list = (props || []).filter((p) => p?.kickoff_at && p?.fixture_id);
+  if (!list.length) return [];
+
+  const ids = [...new Set(list.map((p) => p.fixture_id))];
+  const { data: fixRows, error: fixErr } = await supabase
+    .from("competition_fixtures_public")
+    .select(
+      "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, competition_type, cup_code, division, matchday, status, schedule_status, agreed_kickoff_at, gpsl_month"
+    )
+    .in("id", ids);
+  if (fixErr) {
+    console.warn("owner_calendar proposal fixtures:", fixErr);
+    return [];
+  }
+  const byId = new Map((fixRows || []).map((f) => [f.id, f]));
+
+  return list
+    .map((p) => {
+      const f = byId.get(p.fixture_id);
+      if (!f) return null;
+      const h = (f.home_club_short_name || "").trim().toUpperCase();
+      const a = (f.away_club_short_name || "").trim().toUpperCase();
+      if (h !== me && a !== me) return null;
+      const by = String(p.proposed_by_club_short_name || "")
+        .trim()
+        .toUpperCase();
+      return {
+        id: p.id,
+        fixture_id: p.fixture_id,
+        kickoff_at: p.kickoff_at,
+        proposed_by_club_short_name: p.proposed_by_club_short_name,
+        created_at: p.created_at,
+        direction: by === me ? "outbound" : "inbound",
+        fixture: f,
+      };
+    })
+    .filter(Boolean);
 }
 
 async function loadCutoffs() {
@@ -1761,14 +1872,16 @@ async function boot() {
   refreshAddAllCalButton();
 
   try {
-    const [avail, months, fix, cuts, auctions, planned, settings] =
+    await loadClubsMap();
+    const [avail, months, fix, pending, cuts, auctions, planned, settings] =
       await Promise.all([
         loadAvailabilityContext().catch((e) => {
           console.warn(e);
           return null;
         }),
         loadSeasonCalendarMonths(supabase),
-        loadClubsMap().then(() => loadMyFixtures()),
+        loadMyFixtures(),
+        loadMyPendingProposals(),
         loadCutoffs(),
         loadUpcomingSpecialAuctions(supabase).catch((e) => {
           console.warn(e);
@@ -1788,6 +1901,7 @@ async function boot() {
     weeklySlots = Array.isArray(avail?.weekly_slots) ? avail.weekly_slots : [];
     seasonMonths = months || [];
     fixtures = fix || [];
+    pendingProposals = pending || [];
     cutoffs = cuts || [];
     specialAuctions = auctions || [];
     plannedEvents = planned || [];
