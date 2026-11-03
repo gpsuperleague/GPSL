@@ -128,9 +128,9 @@ export function computeClubPerformanceRating({
       className: "sound",
       score: 0,
       pending: true,
-      summary: "Too early for dressing-room chatter — wait for the first month’s fixtures.",
+      summary: "Too early for dressing-room chatter — wait until the first league month has results.",
       detail:
-        "Club performance rating unlocks after the first month’s league results vs expected points.",
+        "Club performance rating unlocks once the first league month is complete, or as soon as the calendar moves into the next GPSL month.",
     };
   }
 

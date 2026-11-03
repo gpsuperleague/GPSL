@@ -277,7 +277,7 @@ function renderSummary(rows) {
 
   const statusLine =
     pending === rows.length
-      ? "Status: — (after first month’s fixtures)"
+      ? "Status: — (after first league month / next month unlocks)"
       : `Status: ${bands.on_target} on target · ${bands.slight} slight · ${bands.bad} bad · ${bands.abysmal} abysmal` +
         (pending ? ` · ${pending} pending` : "");
 

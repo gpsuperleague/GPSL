@@ -307,7 +307,7 @@ async function loadExpectationSection(clubShortName) {
     : "";
   const deliveryLine = statusReady
     ? `League ${actualPos}${placesNote}`
-    : "— (after first month’s fixtures)";
+    : "— (after first league month / next month unlocks)";
   const performanceLine = statusReady
     ? `<span class="${performanceBandClass(band)}">${formatPerformanceBand(band)}</span>`
     : "—";
