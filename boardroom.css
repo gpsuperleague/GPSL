@@ -129,44 +129,33 @@ body.boardroom-page {
   color: #e8d5a3;
 }
 
+/*
+ * Shared row heights via subgrid so Failure punishment boxes stay level even
+ * when the manager column has list/sack hint text (or action buttons) below.
+ */
 .board-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 18px;
   align-items: stretch;
   margin-bottom: 18px;
 }
 
-@media (max-width: 900px) {
-  .board-grid { grid-template-columns: 1fr; }
-}
-
-/*
- * Equal-height Club / Manager columns with Failure punishment pinned to the
- * bottom. Avoid min-height:100% (cyclic grid sizing → overflow into subsidies).
- */
 .board-grid > .board-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 4;
   margin-bottom: 0;
   min-height: min-content;
   box-sizing: border-box;
 }
 
-.board-grid > .board-panel > h2,
-.board-grid > .board-panel > .board-intro,
-.board-grid > .board-panel > .board-actions,
-.board-grid > .board-panel > .board-hint {
-  flex: 0 0 auto;
-}
-
 #expectationStatus,
 #managerStatus {
-  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  min-height: min-content;
+  min-height: 0;
 }
 
 #expectationStatus > .expectation-block:not(.expectation-block--punishment),
@@ -180,6 +169,37 @@ body.boardroom-page {
 #managerStatus .expectation-block--punishment {
   margin-top: auto;
   flex: 0 0 auto;
+}
+
+.board-panel-footer {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 0;
+}
+
+@media (max-width: 900px) {
+  .board-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .board-grid > .board-panel {
+    display: flex;
+    flex-direction: column;
+    grid-row: auto;
+    height: auto;
+  }
+
+  #expectationStatus,
+  #managerStatus {
+    flex: 1 1 auto;
+    min-height: min-content;
+  }
+
+  #expectationPanel > .board-panel-footer {
+    display: none;
+  }
 }
 
 .board-agenda {
@@ -318,6 +338,7 @@ body.boardroom-page {
 /* Don't leave a gap under the manager punishment box when no actions are shown */
 .board-actions:not(:has(.board-btn:not(.is-hidden))) {
   display: none;
+  margin: 0;
 }
 
 .board-btn {

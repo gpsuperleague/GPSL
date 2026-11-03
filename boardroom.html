@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260811-tips-refresh">
-  <link rel="stylesheet" href="boardroom.css?v=20261103-punish-align2">
+  <link rel="stylesheet" href="boardroom.css?v=20261103-punish-align3">
 </head>
 <body class="boardroom-page">
   <div id="nav"></div>
@@ -84,6 +84,7 @@
           Prestige sets your club baseline. A strong manager can raise the bar on medium and low clubs.
         </p>
         <div id="expectationStatus" class="board-meta">Loading…</div>
+        <div class="board-panel-footer" aria-hidden="true"></div>
       </section>
 
       <section class="board-panel" id="managerPanel">
@@ -94,12 +95,14 @@
           List for transfer or sack once per season in <b>June, July, August, or January</b> — half market value on sack.
         </p>
         <div id="managerStatus" class="board-meta">Loading…</div>
-        <div class="board-actions">
-          <button type="button" id="renewManagerBtn" class="board-btn is-hidden">Renew contract (2 seasons)</button>
-          <button type="button" id="listManagerBtn" class="board-btn secondary is-hidden">List for transfer</button>
-          <button type="button" id="sackManagerBtn" class="board-btn secondary is-hidden">Sack manager</button>
+        <div class="board-panel-footer">
+          <div class="board-actions">
+            <button type="button" id="renewManagerBtn" class="board-btn is-hidden">Renew contract (2 seasons)</button>
+            <button type="button" id="listManagerBtn" class="board-btn secondary is-hidden">List for transfer</button>
+            <button type="button" id="sackManagerBtn" class="board-btn secondary is-hidden">Sack manager</button>
+          </div>
+          <p id="managerHint" class="board-hint" role="status"></p>
         </div>
-        <p id="managerHint" class="board-hint" role="status"></p>
       </section>
     </div>
 
