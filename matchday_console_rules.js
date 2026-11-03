@@ -223,14 +223,14 @@ export function getMatchdayConsoleRulesCards() {
         heading: "Personnel",
         items: [
           "<b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b> on — they must stay visible on the match recording or you can be reported and fined.",
-          "<b>Individual player instructions are blocked</b> — do not use them (₿10m if used).",
         ],
       },
       {
         heading: "Tactics",
         items: [
-          "<b>Subtactic</b> and <b>Fluid Formation</b>: <b>standard formations only</b>.",
-          "<b>Fluid Formation</b> is allowed (On preferred).",
+          "<b>Player instructions</b> blank (blocked if used — ₿10m).",
+          "<b>Subtactic</b>: <b>standard formations only</b>.",
+          "<b>Fluid Formation: Standard formations</b>.",
         ],
       },
       {

@@ -274,7 +274,28 @@
     .mc-rec-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; color: #f99; margin-bottom: 4px; }
     .mc-rec-head span { font-size: 11px; color: #c99; }
     .mc-rec-head a { margin-left: auto; font-size: 11px; color: var(--gpsl-accent, #ff9900); }
-    .mc-rec-item { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #ddd; padding: 3px 0; cursor: pointer; }
+    .mc-rec-groups {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px 12px;
+      margin-top: 6px;
+    }
+    .mc-rec-group-h {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #f0a080;
+      margin: 0 0 2px;
+    }
+    .mc-rec-note {
+      margin: 0 0 4px;
+      font-size: 10px;
+      line-height: 1.35;
+      color: #b88;
+      font-style: italic;
+    }
+    .mc-rec-item { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #ddd; padding: 2px 0; cursor: pointer; }
     .mc-rec-item input { margin-top: 2px; accent-color: var(--gpsl-accent, #ff9900); }
     .mc-rec-item.done span { color: #8d8; }
     .mc-list {

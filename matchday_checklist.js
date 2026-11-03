@@ -166,20 +166,111 @@ function renderFlags(flags) {
     .join("");
 }
 
-const REC_ITEMS = [
-  ["rec_started", "Recording started"],
-  ["rec_room_settings", "Showed MATCH ROOM SETTINGS (10 min, injuries OFF, 5 subs, 3 intervals, form Random)"],
-  ["rec_prematch_config", "Showed PRE-MATCH CONFIG (stadium, kits, weather / pitch)"],
-  ["rec_squad_tactics", "Showed SQUAD & TACTICS (GP manager, default sub / fluid formation, blank instructions, full squad)"],
-  ["rec_pause_pa", "Paused before kick-off to show PA3 / PA4 + advanced skill"],
-  ["rec_hud_on", "Scoreboard + HUD on for the whole match"],
-  ["rec_post_match", "Showed player ratings + player of the match, then stopped recording"],
+/** Grouped recording ticks — order matches Match Day Display checks + Learning GPSL. */
+const REC_GROUPS = [
+  {
+    heading: "Recording",
+    items: [["rec_started", "Recording started"]],
+  },
+  {
+    heading: "Pre-Match Settings",
+    note: "Cups: 1-leg KO → ET + pens if level · 2-leg → FT only unless level on agg after 2nd leg → 5-min + ET + pens",
+    items: [
+      ["rec_room_10min", "10-minute match"],
+      ["rec_room_injuries", "Injuries Off"],
+      ["rec_room_subs", "Substitutes: 5"],
+      ["rec_room_intervals", "Sub intervals: 3"],
+      ["rec_room_form", "Form: Random"],
+    ],
+  },
+  {
+    heading: "Prematch config",
+    items: [
+      ["rec_cfg_stadium", "Stadium shown"],
+      ["rec_cfg_kits", "Kits shown"],
+      ["rec_cfg_weather", "Weather / Pitch shown"],
+    ],
+  },
+  {
+    heading: "Personnel",
+    items: [
+      ["rec_pers_manager", "Show Manager (GP)"],
+      ["rec_pers_subtactic", "Show Subtactic"],
+      ["rec_pers_squad", "Show Squad (incl. substitutes)"],
+    ],
+  },
+  {
+    heading: "Tactics",
+    items: [
+      ["rec_tac_instructions", "Player instructions blank (blocked if used)"],
+      ["rec_tac_subtactic", "Subtactic: standard formations only"],
+      ["rec_tac_fluid", "Fluid Formation: Standard formations"],
+    ],
+  },
+  {
+    heading: "Pause before kick-off",
+    items: [
+      ["rec_pause_pa3", "PA3 or PA4 shown"],
+      ["rec_pause_adv", "Advanced skill shown"],
+    ],
+  },
+  {
+    heading: "On the pitch",
+    note: "Single Red/Blue from 80' · Double Red/Blue from 90' · NO DOGSO · NO TIMEWASTING · NO MATCH MANIPULATION",
+    items: [
+      ["rec_pitch_scoreboard", "Scoreboard on"],
+      ["rec_pitch_hud", "HUD on for the whole match"],
+    ],
+  },
+  {
+    heading: "After the match",
+    items: [
+      ["rec_post_ratings", "Player ratings shown"],
+      ["rec_post_potm", "Player of the match shown"],
+      ["rec_post_stop", "Recording stopped"],
+    ],
+  },
 ];
+
+const REC_ITEMS = REC_GROUPS.flatMap((g) => g.items);
+
+/** Old compound ticks → expand so prior ticks still count. */
+const REC_LEGACY_EXPAND = {
+  rec_room_settings: [
+    "rec_room_10min",
+    "rec_room_injuries",
+    "rec_room_subs",
+    "rec_room_intervals",
+    "rec_room_form",
+  ],
+  rec_prematch_config: ["rec_cfg_stadium", "rec_cfg_kits", "rec_cfg_weather"],
+  rec_squad_tactics: [
+    "rec_pers_manager",
+    "rec_pers_subtactic",
+    "rec_pers_squad",
+    "rec_tac_instructions",
+    "rec_tac_subtactic",
+    "rec_tac_fluid",
+  ],
+  rec_pause_pa: ["rec_pause_pa3", "rec_pause_adv"],
+  rec_hud_on: ["rec_pitch_scoreboard", "rec_pitch_hud"],
+  rec_post_match: ["rec_post_ratings", "rec_post_potm", "rec_post_stop"],
+};
+
 const REC_BEFORE_MS = 30 * 60 * 1000;
 const REC_AFTER_MS = 2 * 60 * 60 * 1000;
 
 /** fixture_id → Set of ticked rec_* keys */
 let recTicks = new Map();
+
+function expandRecTicks(raw) {
+  const out = new Set(raw || []);
+  for (const [legacy, kids] of Object.entries(REC_LEGACY_EXPAND)) {
+    if (!out.has(legacy)) continue;
+    for (const k of kids) out.add(k);
+  }
+  return out;
+}
 
 function recordingWindowOpen(fx) {
   if (!fx.agreed_kickoff_at) return false;
@@ -194,19 +285,33 @@ function recordingWindowOpen(fx) {
 function renderRecordingBlock(fx) {
   if (!recordingWindowOpen(fx)) return "";
   const fid = Number(fx.fixture_id);
-  const ticked = recTicks.get(fid) || new Set();
+  const ticked = expandRecTicks(recTicks.get(fid));
   const done = REC_ITEMS.filter(([k]) => ticked.has(k)).length;
-  return `
-    <div class="mc-rec">
-      <div class="mc-rec-head">🎥 <b>Start recording now</b> <span>${done} / ${REC_ITEMS.length} shown</span>
-        <a href="learning_gpsl.html#matchday-checklist" target="_blank" rel="noopener">Full checklist</a></div>
-      ${REC_ITEMS.map(
+  const groupsHtml = REC_GROUPS.map((g) => {
+    const items = g.items
+      .map(
         ([k, label]) => `
         <label class="mc-rec-item${ticked.has(k) ? " done" : ""}">
           <input type="checkbox" data-mc-rec="${fid}" data-mc-rec-key="${k}"${ticked.has(k) ? " checked" : ""}>
           <span>${escapeHtml(label)}</span>
         </label>`
-      ).join("")}
+      )
+      .join("");
+    const note = g.note
+      ? `<p class="mc-rec-note">${escapeHtml(g.note)}</p>`
+      : "";
+    return `
+      <div class="mc-rec-group">
+        <div class="mc-rec-group-h">${escapeHtml(g.heading)}</div>
+        ${note}
+        ${items}
+      </div>`;
+  }).join("");
+  return `
+    <div class="mc-rec">
+      <div class="mc-rec-head">🎥 <b>Start recording now</b> <span>${done} / ${REC_ITEMS.length} shown</span>
+        <a href="learning_gpsl.html#matchday-checklist" target="_blank" rel="noopener">Full checklist</a></div>
+      <div class="mc-rec-groups">${groupsHtml}</div>
     </div>`;
 }
 
