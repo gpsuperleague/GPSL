@@ -111,7 +111,7 @@ export const SQUAD_TIPS = {
     "Voluntary releases left this season (max 3). Buy-out = seasonal wage × seasons remaining (paid immediately, even if overdrawn). Player leaves as a free agent but cannot be signed by anyone until next season. Useful when you cannot sell.",
 
   newOwnerRelease:
-    "First-season owner tools — up to 3 shared slots (release or transfer-list) in your first season at the club.\n\nWindow: pre-season through GPSL August, plus January when the transfer window is open.\n\nRelease refunds the recorded purchase fee. Transfer list at market value (slot returns if unsold). New Owner list can bypass the same-season lock.",
+    "First-season owner tools — up to 3 shared slots (release or transfer-list) in your first season at the club.\n\nWindow: pre-season through GPSL August, plus January when the transfer window is open.\n\nRelease refunds the recorded purchase fee. Transfer list at market value (slot returns if unsold). New Owner list can bypass the half-season signing lock.",
 
   starOoo:
     "Stars are automatic by rating (usually ≥79). Super League cap 3 / Championship 2. One of our own is a home-grown star you assign in Action — excused from the star cap. In their final year, if they would otherwise be contested (e.g. HG 24+), they stay off the expiry auction and you can renew at +2.5% wage (3 seasons); young OooO still renew at the same wage. Fan Favourite is a 76–78 (any nation) with 50% wage paid by Central Bank. You may set only one of OooO or Fan Favourite; editable in GPSL preseason or January. Nations with no GPDB 79+ get Fan Favourite only. Over-cap from August triggers fines and forced releases.",

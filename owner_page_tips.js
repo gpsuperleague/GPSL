@@ -33,7 +33,7 @@ export const TRANSFER_CENTER_TIPS = {
   awaitingSeller:
     "Not on the open market anymore — ended below reserve, direct GPDB offers, or seller review. Below-reserve rows show an accept/reject cutoff with a countdown.",
   seasonSignings:
-    "Players you signed this GPSL season. Same-season lock: you generally cannot list or sell them until next season.",
+    "Players you signed this GPSL season. Half-season signing lock: 1st-half signing → sellable from GPSL January; 2nd-half signing → next summer (Transfer Market + foreign listing).",
   activeListings:
     "Your players currently on the transfer list. Reserve price and live high bid appear here.",
   closedListings:
@@ -45,7 +45,7 @@ export const TRANSFER_CENTER_TIPS = {
 
 export const GPDB_TIPS = {
   page:
-    "Full player database. Filter, scout (☆), and bid: draft free agents when the window is open, or make a direct offer to contracted clubs. Watch same-season locks, final-year rules, and squad overflow (max 28).",
+    "Full player database. Filter, scout (☆), and bid: draft free agents when the window is open, or make a direct offer to contracted clubs. Watch half-season signing locks, final-half rules, and squad overflow (max 28).",
   draftCredits:
     "Draft auction join credits for this season. Listing a free agent on the draft spends a credit when the auction is created.",
   countdown:

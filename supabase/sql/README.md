@@ -374,7 +374,7 @@ Run once (after `player_wage_settings.sql` and an active `competition_seasons` r
 
 - **`Season_Signed`** → current season `competition_seasons.label` on every club assignment (transfer accept, draft win, special-auction player prize).
 - **Cleared** on foreign sale / `player_release_from_club`.
-- **Same-season lock** — if `Season_Signed` equals the current season, the player cannot be transfer-listed, sold abroad, or receive market bids until the next season (DB triggers + `assert_player_transferable`).
+- **Half-season signing lock** — `player_contract_sell_lock_reason` / `assert_player_transferable` (`patches/signing_lock_half_season_20261103.sql`): 1st-half signing → sellable from GPSL January; 2nd-half signing → next summer (Transfer Market + foreign). New Owner list / underperformance can bypass.
 - **`contract_seasons_remaining`** = 3 and **`contract_wage`** = standard wage (`calculate_player_wage_for_club`) on signing.
 - Re-run [`transferengine_standard_bigint.sql`](./transferengine_standard_bigint.sql), [`transferengine_draft.sql`](./transferengine_draft.sql), [`sell_to_foreign_club.sql`](./sell_to_foreign_club.sql), [`special_auctions.sql`](./special_auctions.sql) if those RPCs were deployed before hooks (they call `player_assign_to_club` / `player_release_from_club`).
 

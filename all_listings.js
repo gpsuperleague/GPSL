@@ -1960,7 +1960,7 @@ async function placeBid() {
       if (banner) banner.style.display = "block";
     } else if (msg.includes("current season")) {
       errorBox.textContent =
-        "This player was signed in the current season and is not available on the transfer market until next season.";
+        "This player is under a half-season signing lock (1st-half signing → sellable from GPSL January; 2nd-half signing → next summer).";
     } else if (/bid must be at least/i.test(msg)) {
       errorBox.textContent = msg;
       await loadListings();

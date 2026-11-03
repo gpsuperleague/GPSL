@@ -18,6 +18,7 @@ export const SECTION_TRANSFERS = {
       type: "ul",
       items: [
         `When the <b>transfer window</b> is open, list players from the squad or Transfer Centre, bid on <a href="all_listings.html">Transfer Market</a> listings, and accept or reject direct offers.`,
+        `<b>Signing lock</b> — half a season after joining: <b>1st-half</b> signing → listable from <b>GPSL January</b>; <b>2nd-half</b> signing → listable from <b>next summer</b> (Transfer Market and foreign listing). Squad shows <b>🔒 → Jan / summer</b>. New Owner list can bypass. Full contract windows: <a href="#squad">Squad &amp; contracts</a>.`,
         `Completed deals post to finances and appear in your <a href="inbox.html">Inbox</a>.`,
         `<b>Scouting targets</b> — save players from GPDB; review them under Transfer Centre → Scouting Targets.`,
         `<b>Legacy cards</b> — players removed from pesdb.net stay at their club but cannot be sold; see <a href="#squad">Squad &amp; contracts</a> and <a href="legacy_players.html">Legacy players</a>.`,

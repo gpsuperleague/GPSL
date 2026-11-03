@@ -2,7 +2,7 @@
 
 Authoritative design from league owner (2026). Align with legacy spreadsheet when reviewing.
 
-**Status:** **Phases 1–3 (C1–C5 core)** — signing, same-season lock, final-year rules, Squad renew/expire, hidden wage bids + resolution on rollover. Uses **`competition_seasons.label`** for `Season_Signed`. SQL: `player_contract_hooks.sql`, `player_contracts_phase2.sql`, `player_contracts_phase3_expiry.sql`.
+**Status:** **Phases 1–3 (C1–C5 core)** — signing, **half-season signing lock**, final-half rules, Squad renew/expire, hidden wage bids + resolution on rollover. Uses **`competition_seasons.label`** for `Season_Signed`. SQL: `player_contract_hooks.sql`, `player_contracts_phase2.sql`, `player_contracts_phase3_expiry.sql`, `patches/signing_lock_half_season_20261103.sql`.
 
 ---
 
@@ -12,7 +12,8 @@ Authoritative design from league owner (2026). Align with legacy spreadsheet whe
 |--------|------|
 | **Length** | **3 GPSL seasons** per signing |
 | **Decision window** | After **2 seasons played** (start of **final contract year**) |
-| **Selling** | Allowed only while **2+ seasons remain** — **cannot sell** in final year |
+| **Signing lock** | **Half a season**: 1st-half signing → sellable from GPSL January; 2nd-half signing → next summer (Transfer Market + foreign) |
+| **Selling** | After signing lock clears, allowed until **final half** — **cannot sell** in final half |
 | **Final year (1 left)** | Player **automatically** on expiring-contract / FA list — no transfer list |
 | **Owner choices (final year, contested)** | Wage bid only — **no mid-season renew/expire**; FA+MV only at rollover if unsigned |
 | **Expiry wage bid floor** | At least **+10%** above current contract wage (whole ₿; no fixed step) |

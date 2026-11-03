@@ -1010,7 +1010,7 @@ async function loadSellerReview(shortName) {
             } else if (!row.current_highest_bidder || bid <= 0) {
               actions = `<button class="reject-below-btn" data-id="${row.id}">Close listing</button>`;
             } else if (locked) {
-              actions = `<span class="locked-msg" title="${SAME_SEASON_TRANSFER_MESSAGE}">Signed this season</span>
+              actions = `<span class="locked-msg" title="${SAME_SEASON_TRANSFER_MESSAGE}">Signing lock</span>
                  <button class="reject-below-btn" data-id="${row.id}">Reject</button>`;
             } else if (expired) {
               actions = `<span style="color:#aaa;">Review window ended</span>
@@ -1059,7 +1059,7 @@ async function loadSellerReview(shortName) {
               window.__gpslCurrentSeasonLabel
             );
             const actions = locked
-              ? `<span class="locked-msg" title="${SAME_SEASON_TRANSFER_MESSAGE}">Signed this season</span>
+              ? `<span class="locked-msg" title="${SAME_SEASON_TRANSFER_MESSAGE}">Signing lock</span>
                  <button class="reject-direct-btn" data-id="${row.bid_id}">Reject</button>`
               : `<button class="accept-direct-btn" data-id="${row.bid_id}">Accept</button>
                  <button class="reject-direct-btn" data-id="${row.bid_id}">Reject</button>`;

@@ -3508,7 +3508,8 @@ async function validateAndCreateListing() {
         ? FINAL_YEAR_TRANSFER_MESSAGE
         : msg.includes("current season") ||
             msg.includes("signed this season") ||
-            msg.includes("one-season lock")
+            msg.includes("one-season lock") ||
+            msg.includes("half-season signing lock")
           ? msg
           : "Failed to create listing. Please try again.";
     return;
