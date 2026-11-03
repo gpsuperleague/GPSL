@@ -181,11 +181,18 @@ function sortPlayersByPosition(players) {
 }
 
 /** Started (by pos) → Subbed on (by pos) → rest (by pos). */
-function sortPlayerStatsRows() {
+function sortPlayerStatsRows({ keepViewport = false } = {}) {
   const tbody = document.getElementById("playerStatsBody");
   if (!tbody) return;
   const rows = [...tbody.querySelectorAll("tr[data-stat-player]")];
   if (rows.length < 2) return;
+
+  const wrap = tbody.closest(".stats-wrap");
+  const winY = window.scrollY;
+  const wrapY = wrap ? wrap.scrollTop : 0;
+  const active = document.activeElement;
+  const activeWasInTable =
+    keepViewport && active && tbody.contains(active);
 
   const tier = (tr) => {
     if (tr.querySelector(".stat-started")?.checked) return 0;
@@ -209,6 +216,22 @@ function sortPlayerStatsRows() {
     tr.classList.toggle("stat-row-subbed", tier(tr) === 1);
     tbody.appendChild(tr);
   }
+
+  if (!keepViewport) return;
+
+  const restore = () => {
+    window.scrollTo(0, winY);
+    if (wrap) wrap.scrollTop = wrapY;
+    if (activeWasInTable && typeof active.focus === "function") {
+      try {
+        active.focus({ preventScroll: true });
+      } catch {
+        active.focus();
+      }
+    }
+  };
+  restore();
+  requestAnimationFrame(restore);
 }
 
 function setStatus(elId, msg, isError = false) {
@@ -2089,7 +2112,7 @@ function wirePlayedCheckboxes(tr) {
     }
     syncRatingForAppearance(tr, { forceDefault: true });
     syncCardAvailability(tr);
-    sortPlayerStatsRows();
+    sortPlayerStatsRows({ keepViewport: true });
     updateLineupCounter();
   });
   subbed.addEventListener("change", () => {
@@ -2100,7 +2123,7 @@ function wirePlayedCheckboxes(tr) {
     }
     syncRatingForAppearance(tr, { forceDefault: true });
     syncCardAvailability(tr);
-    sortPlayerStatsRows();
+    sortPlayerStatsRows({ keepViewport: true });
     updateLineupCounter();
   });
 }

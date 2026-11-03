@@ -133,6 +133,35 @@
     .stats-panel { margin-top:16px; border-top:1px solid #333; padding-top:14px; }
     .stats-panel h3 { color:var(--gpsl-accent, #ff9900); font-size:15px; margin:0 0 8px; }
     .stats-hint { font-size:12px; color:#888; margin-bottom:10px; }
+    .stats-tip-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 12px;
+    }
+    .stats-tip-mod {
+      flex: 1 1 140px;
+      min-width: 140px;
+      max-width: 220px;
+      margin: 0;
+      padding: 8px 10px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-left: 3px solid var(--gpsl-accent, #ff9900);
+      border-radius: 4px;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #aaa;
+    }
+    .stats-tip-mod strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gpsl-accent, #ff9900);
+      letter-spacing: 0.02em;
+    }
+    .stats-tip-mod b { color: #ddd; }
     .stats-wrap {
       max-height: min(520px, 55vh);
       min-height: 360px;
@@ -389,16 +418,14 @@
           </button>
         </div>
         <p id="confirmStatsHint" class="stats-hint" style="display:none;color:#9c9;margin-bottom:8px;"></p>
-        <p class="stats-hint" id="statsPanelHint">
-          You must tick exactly <b>11 Started</b> (subs optional: 0–5 <b>Subbed on</b>) and enter <b>G</b> / <b>A</b> for those who played.
-          Rating and POTM are optional — Started / Subbed on defaults to <b>3.0</b> (0–10 in 0.5 steps). Change or leave as 3.0.
-          <b>G</b> = goals by your players. <b>OG−</b> = own goals by your players (against you).
-          <b>OG+</b> (below) = opponent own goals that count for your scoreline.
-          Your <b>G + OG+</b> must equal your team score. Not penalties. One POTM max.
-          Tick <b>Y</b> / <b>R</b> for cards (player must have played). Red = 2-match ban; 8 yellows in a season = 2-match ban.
-          Suspended players are highlighted and cannot be selected.
-          If you saved a default squad, <b>bench players are highlighted</b> (blue row + Sub tag) to help pick who subbed on.
-        </p>
+        <div class="stats-tip-strip" id="statsPanelHint" role="note" aria-label="Match stats tips">
+          <p class="stats-tip-mod"><strong>Lineup</strong> Tick exactly <b>11 Started</b>. Subs optional: 0–5 <b>Subbed on</b>.</p>
+          <p class="stats-tip-mod"><strong>G / A</strong> Enter goals and assists for everyone who played. Not penalties.</p>
+          <p class="stats-tip-mod"><strong>Rating · POTM</strong> Optional. Started / Subbed on defaults to <b>3.0</b> (0–10 in 0.5 steps). One POTM max.</p>
+          <p class="stats-tip-mod"><strong>Scoreline</strong> <b>G</b> = your players. <b>OG−</b> = your own goals (against you). <b>OG+</b> (below) = opponent OGs for you. Your <b>G + OG+</b> must equal your team score.</p>
+          <p class="stats-tip-mod"><strong>Cards</strong> Tick <b>Y</b> / <b>R</b> only if they played. Red = 2-match ban; 8 yellows in a season = 2-match ban.</p>
+          <p class="stats-tip-mod"><strong>Suspended · Bench</strong> Suspended players are highlighted and cannot be selected. Default-squad <b>bench</b> rows are blue (+ Sub tag) to help pick who subbed on.</p>
+        </div>
         <div class="og-for-row" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 12px;">
           <label for="opponentOwnGoals" class="gpsl-has-tip" tabindex="0"
             data-gpsl-tip="Opponent own goals credited to your team score. G (your players) + OG+ must equal your team score.">
