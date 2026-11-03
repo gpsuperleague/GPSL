@@ -1,11 +1,10 @@
 /**
- * Signing lock: players signed in the current GPSL season (or in the second half of
- * last season, until GPSL January) cannot be listed, sold abroad, or receive
- * transfer-market activity.
+ * Signing lock: half a GPSL season after joining.
+ * 1st-half signing → sellable from GPSL January; 2nd-half signing → next summer.
  */
 
 export const SAME_SEASON_TRANSFER_MESSAGE =
-  "This player was signed in the current season and cannot be sold or listed until the next season.";
+  "This player is under a half-season signing lock (1st-half signing → sellable from GPSL January; 2nd-half signing → next summer).";
 
 export function normalizeSeasonLabel(value) {
   if (value == null) return "";
@@ -20,11 +19,18 @@ export function playerSignedCurrentSeason(player, currentSeasonLabel) {
   return signed === cur;
 }
 
-export function playerBlockedSameSeasonTransfer(player, currentSeasonLabel) {
-  return playerSignedCurrentSeason(player, currentSeasonLabel);
-}
+import {
+  loadContractPhase,
+  playerSellLockReason,
+  playerBlockedFromTransferMarket,
+  sellLockMessage,
+  FINAL_YEAR_TRANSFER_MESSAGE,
+} from "./player_contracts.js?v=20261103-half-sell";
 
-import { loadContractPhase } from "./player_contracts.js?v=20261014-ff-wage";
+/** True while the half-season signing lock (or other sell lock) is active. */
+export function playerBlockedSameSeasonTransfer(player, currentSeasonLabel) {
+  return playerSellLockReason(player, currentSeasonLabel) === "signed_this_season";
+}
 
 /** @param {object} player — may include contract_seasons_remaining */
 export {
@@ -32,7 +38,7 @@ export {
   playerSellLockReason,
   sellLockMessage,
   FINAL_YEAR_TRANSFER_MESSAGE,
-} from "./player_contracts.js?v=20261014-ff-wage";
+};
 
 /** Season label plus the contract half-season phase used by sell-lock checks. */
 export async function loadCurrentGpslSeasonLabel(supabase) {

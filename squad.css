@@ -1270,6 +1270,21 @@ body.squad-page tr.squad-row-recovery:hover {
   background: rgba(60, 100, 40, 0.26);
 }
 
+body.squad-page .squad-sell-lock-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #ffd0a0;
+  background: rgba(120, 70, 20, 0.4);
+  border: 1px solid rgba(200, 120, 40, 0.55);
+  border-radius: 3px;
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: help;
+}
 body.squad-page .squad-yc-badge {
   display: inline-block;
   margin-left: 6px;

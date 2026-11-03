@@ -72,7 +72,8 @@ import {
   playerSellLockReason,
   sellLockMessage,
   sellLockShortLabel,
-} from "./player_contracts.js?v=20261014-ff-wage";
+  signingSellLockBadgeHtml,
+} from "./player_contracts.js?v=20261103-half-sell";
 import { loadCalendarStatus } from "./competition_calendar.js";
 import { formatWage, oooRenewUpliftPct } from "./wages.js";
 import {
@@ -887,12 +888,10 @@ function squadActionOptionsHtml(player) {
   if (contractOpts) return contractOpts;
 
   if (lockReason) {
-    const short = sellLockShortLabel(lockReason);
-    if (short) {
-      return `${rewardOpts}${squadInfoOptionHtml(short)}${releaseGroup}`;
-    }
-    return `${rewardOpts}${releaseGroup}
-            ${squadInfoOptionHtml("Signed this season — not listable")}`;
+    const short =
+      sellLockShortLabel(lockReason, player, currentGpslSeasonLabel) ||
+      "Signing lock — not listable yet";
+    return `${rewardOpts}${squadInfoOptionHtml(short)}${releaseGroup}`;
   }
 
   return `
@@ -910,7 +909,8 @@ function sellLockMessageLocal(player) {
   return (
     sellLockMessage(
       playerSellLockReason(player, currentGpslSeasonLabel),
-      SAME_SEASON_TRANSFER_MESSAGE
+      SAME_SEASON_TRANSFER_MESSAGE,
+      player
     ) || SAME_SEASON_TRANSFER_MESSAGE
   );
 }
@@ -1337,7 +1337,9 @@ function applyForeignSaleOptionState() {
     );
 
     if (lockReason) {
-      const lockLabel = sellLockShortLabel(lockReason) || "Signed this season";
+      const lockLabel =
+        sellLockShortLabel(lockReason, rowPlayer, currentGpslSeasonLabel) ||
+        "Signing lock — not listable yet";
       setSquadOptionAvailable(listOpt, false, null, lockLabel);
       foreignOpts.forEach((opt) => {
         setSquadOptionAvailable(opt, false, null, lockLabel);
@@ -2140,6 +2142,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         yCount > 0
           ? `<span class="squad-yc-badge${yCount >= 6 ? " warn" : ""}${yCount >= 8 ? " ban" : ""}" title="Season yellow cards">YC ${yCount}/8</span>`
           : "";
+      const sellLockBadge = signingSellLockBadgeHtml(p, currentGpslSeasonLabel);
 
       tr.innerHTML = `
         <td class="squad-col-thumb">${withInfoTip(
@@ -2147,7 +2150,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
           SQUAD_TIPS.card
         )}</td>
         <td class="squad-col-player">${withInfoTip(
-          `${playerNameLinkHtml(p.Konami_ID, p.Name)}${loanBadge}${roleBadge}${qualBadges}${ycBadge}`,
+          `${playerNameLinkHtml(p.Konami_ID, p.Name)}${sellLockBadge}${loanBadge}${roleBadge}${qualBadges}${ycBadge}`,
           SQUAD_TIPS.name
         )}</td>
         <td class="squad-col-nation gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.nation)}>${p.Nation || "-"}</td>
@@ -2540,7 +2543,11 @@ async function refreshAfterDesignationChange() {
         : "";
     const roleBadge = roleBadgeForPlayer(player, squadDesignationsState);
     const qualBadges = playerSquadQualificationBadges(player, clubNation);
-    nameCell.innerHTML = `${playerNameLinkHtml(player.Konami_ID, player.Name)}${loanBadge}${roleBadge}${qualBadges}`;
+    const sellLockBadge = signingSellLockBadgeHtml(
+      player,
+      currentGpslSeasonLabel
+    );
+    nameCell.innerHTML = `${playerNameLinkHtml(player.Konami_ID, player.Name)}${sellLockBadge}${loanBadge}${roleBadge}${qualBadges}`;
     const contractCell = row.querySelector("td.squad-col-contract");
     if (contractCell) {
       contractCell.innerHTML = formatSquadContractCell(player, {

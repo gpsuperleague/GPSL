@@ -35,7 +35,7 @@ export const SECTION_SQUAD = {
       type: "ul",
       items: [
         `Every contract is <b>3 seasons</b> from the window the player joined: summer signings end at the <b>summer rollover</b>, January signings end at <b>GPSL January</b> (shown as ½ seasons). Every signing — including buying a player in his final year — starts a fresh 3-season deal. Track expiry on <a href="expiring_contracts.html">Expiring Contracts</a> and the squad page.`,
-        `<b>Sale windows</b> — the contract covers 6 half-seasons: the <b>first two</b> are locked (one-season signing lock), the <b>middle three</b> are sellable, and the <b>final half-season</b> is locked again.`,
+        `<b>Sale windows</b> — the contract covers 6 half-seasons: the <b>first</b> is locked (half-season signing lock: 1st-half signing → sellable from GPSL January; 2nd-half signing → next summer), the <b>middle</b> halves are sellable, and the <b>final half-season</b> is locked again.`,
         `<b>Final half-season</b> (from GPSL January of the final year for summer deals; from the summer rollover for January deals) — you cannot list or sell the player. Hidden wage bids open then (all clubs, including yours, may bid once) and resolve when the contract ends — unless they are a <b>legacy card</b> (see below).`,
         `<b>Home-grown ≤23</b> or <b>non-home-grown ≤21</b> — protected from the expiry auction; renew uncontested on Squad while still eligible. Protection ends at age 24 (home-grown) or 22 (non-home-grown).`,
         `<b>One of our own</b> aged over the bracket also skips the contested market and renews at <b>+2.5%</b> wage.`,

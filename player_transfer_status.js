@@ -58,7 +58,7 @@ export const TRANSFER_STATUS_LABELS = {
   [TRANSFER_STATUS.YOUR_PLAYER]: "Your Player",
   [TRANSFER_STATUS.WINDOW_CLOSED]: "Window Closed",
   [TRANSFER_STATUS.SIGNED_THIS_SEASON]:
-    "Recently signed — not available for transfer until next season",
+    "Recently signed — half-season lock",
   [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]:
     "Final half of contract — renew or wage bid in Squad",
   [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "Contract offered — pending expiry",
@@ -301,9 +301,12 @@ export function resolvePlayerTransferStatus({
     contractPlayer,
     state?.currentSeasonLabel
   );
-  const recentlySigned =
-    signingLock === "signed_this_season" ||
-    signingLock === "signed_last_season_half";
+  const recentlySigned = signingLock === "signed_this_season";
+  const sellableFrom = recentlySigned
+    ? contractPlayer?.contract_join_second_half === true
+      ? "Sellable from next summer"
+      : "Sellable from GPSL January"
+    : undefined;
 
   // Listing / window status wins over same-season lock (New Owner list can bypass it)
   if (playerHasActiveListing(state.activeListedPlayerIds, pid)) {
@@ -337,10 +340,7 @@ export function resolvePlayerTransferStatus({
     return {
       code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
       label: "Recently signed",
-      subLabel:
-        signingLock === "signed_last_season_half"
-          ? "Sellable from GPSL January"
-          : "Not available for transfer",
+      subLabel: sellableFrom,
       pillClass: PILL_CLASS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
     };
   }
@@ -438,15 +438,13 @@ export function buildGpdbContractedBidCellHtml({
 
   const lockReason = playerSellLockReason(player, state?.currentSeasonLabel);
   if (lockReason === "signed_this_season") {
+    const sellable =
+      player?.contract_join_second_half === true
+        ? "Sellable from next summer"
+        : "Sellable from GPSL January";
     return formatTransferStatusMessageHtml({
       code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
-      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
-    });
-  }
-  if (lockReason === "signed_last_season_half") {
-    return formatTransferStatusMessageHtml({
-      code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
-      label: "Recently signed — available for transfer from GPSL January",
+      label: `Recently signed — ${sellable}`,
     });
   }
 

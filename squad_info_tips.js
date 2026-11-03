@@ -51,13 +51,13 @@ export const SQUAD_TIPS = {
     "GPSL market value (MV). Floor for transfer bids and foreign sales. Overflow releases and many settle payouts use MV (or a % of MV).",
 
   status:
-    "Current availability — transfer-listed, injured, suspended, yellow-card tally, signing lock, etc.\n\nSigning lock: one full season after signing. Summer signings become sellable next summer; January signings from the next GPSL January (New Owner list can bypass that lock).",
+    "Current availability — transfer-listed, injured, suspended, yellow-card tally, signing lock, etc.\n\nSigning lock: half a season. 1st-half signing → sellable from GPSL January; 2nd-half signing → sellable next summer. Badge on the name: 🔒 → Jan / summer. New Owner list can bypass that lock.",
 
   action:
     "Player actions: Transfer List, sell abroad (uses a foreign-interest slot), final-year renew / wage bid / legacy renew, medical consults, red-card appeals, set One of our own (HG star) or Fan Favourite (76–78, 50% wage — XOR, editable in GPSL preseason or January), and voluntary / New Owner releases when available.\n\nScroll sideways if the column is off-screen.",
 
   contractHeader:
-    "Contract length + seasonal wage.\n\nEvery deal is 3 seasons from the window the player joined (summer → ends at the summer rollover; January → ends at GPSL January). Sale windows: locked for the first season after signing, sellable in the middle, locked again in the final half-season — when expiry wage bids open unless legacy or young HG / non-HG uncontested rules apply (hover a contract cell for that player’s path).",
+    "Contract length + seasonal wage.\n\nEvery deal is 3 seasons from the window the player joined (summer → ends at the summer rollover; January → ends at GPSL January). Sale windows: locked for the first half-season after signing, sellable in the middle, locked again in the final half-season — when expiry wage bids open unless legacy or young HG / non-HG uncontested rules apply (hover a contract cell for that player’s path).",
 
   registration:
     "Squad registration for your club this season.\n\n• Size: at least 24 contracted players from August, never more than 28\n• ≥1 GK · ≥8 home-grown · ≥5 U21 (age ≤21)\n• Star cap (automatic by rating ≥79): Super League 3 / Championship 2 — One of our own (HG star you set) is excused from the cap\n• One of our own XOR Fan Favourite (76–78 any nation, Central Bank pays 50% wage). Nations with no GPDB 79+ get Fan Favourite only. Change in GPSL preseason or January only.\n\nFrom August, shortfalls and over-cap trigger ₿2.5m fines and emergency loans. Going over 28 on a signing: prefer a foreign-interest sell, else overflow release at MV + ₿10m fine.\n\nContract outlook (below): last-chance-to-sell warning before a player's final half-season locks; final-year split into re-signable vs contested wage market.",
@@ -203,7 +203,7 @@ export function squadContractTip(player, clubNation, oooPlayerId = null) {
   if (Number.isFinite(n) && n >= 3) {
     return (
       "Full (or reset) 3-season contract still running.\n\n" +
-      "One-season signing lock after joining (summer signing → sellable next summer; January signing → next GPSL January), then you can list or sell (not legacy). Watch the countdown toward the final half.\n\n" +
+      "Half-season signing lock after joining (1st-half signing → sellable from GPSL January; 2nd-half signing → next summer), then you can list or sell (not legacy). Watch the countdown toward the final half.\n\n" +
       wageNote
     );
   }

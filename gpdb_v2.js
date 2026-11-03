@@ -3102,7 +3102,8 @@ document.addEventListener("DOMContentLoaded", () => {
             CURRENT_OFFER_PLAYER,
             TRANSFER_STATUS_STATE?.currentSeasonLabel
           ),
-          SAME_SEASON_TRANSFER_MESSAGE
+          SAME_SEASON_TRANSFER_MESSAGE,
+          CURRENT_OFFER_PLAYER
         ) || SAME_SEASON_TRANSFER_MESSAGE;
       return;
     }

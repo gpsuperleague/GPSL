@@ -15,7 +15,13 @@ export const FINAL_YEAR_TRANSFER_MESSAGE =
   "This player is in the final half-season of their contract and cannot be sold or listed. Renew (if eligible) or use the expiry wage market from your squad.";
 
 export const SIGNING_LOCK_HALF_MESSAGE =
-  "This player joined in the second half of last season and cannot be sold or listed until the GPSL January window (one full season after signing).";
+  "This player is under a half-season signing lock and cannot be sold or listed yet.";
+
+export const SIGNING_LOCK_UNTIL_JAN_MESSAGE =
+  "Signed in the first half of this season — sellable from GPSL January.";
+
+export const SIGNING_LOCK_UNTIL_SUMMER_MESSAGE =
+  "Signed in the second half of this season — sellable from next summer.";
 
 /**
  * Contract half-season phase, shared across module copies (pages import this file
@@ -115,23 +121,21 @@ export function isPesdbLegacyCard(player) {
 
 /**
  * Mirrors SQL player_contract_sell_lock_reason (club players; free agents → null).
- * @returns {null|"legacy"|"signed_this_season"|"signed_last_season_half"|"contract_ended"|"final_half"}
+ * Half-season signing lock:
+ *   1st-half signing → locked until GPSL January (same season)
+ *   2nd-half signing → locked until next summer
+ * @returns {null|"legacy"|"signed_this_season"|"contract_ended"|"final_half"}
  */
 export function playerSellLockReason(player, currentSeasonLabel) {
   if (isPesdbLegacyCard(player)) return "legacy";
   const s = phaseState();
   const signed = String(player?.Season_Signed ?? "").trim();
   const cur = String(currentSeasonLabel || s.currentLabel || "").trim();
-  if (cur && signed && signed === cur) return "signed_this_season";
-  if (
-    player?.contract_join_second_half === true &&
-    s.loaded &&
-    !s.secondHalf &&
-    signed &&
-    s.previousLabel &&
-    signed === s.previousLabel
-  ) {
-    return "signed_last_season_half";
+  const joinedSecondHalf = player?.contract_join_second_half === true;
+  if (cur && signed && signed === cur) {
+    if (joinedSecondHalf) return "signed_this_season";
+    if (!s.loaded || !s.secondHalf) return "signed_this_season";
+    // First-half signing, calendar now in second half → sellable
   }
   const seasons = player?.contract_seasons_remaining;
   if (seasons == null || seasons === "") return null;
@@ -142,15 +146,49 @@ export function playerSellLockReason(player, currentSeasonLabel) {
   return null;
 }
 
-export function sellLockMessage(reason, sameSeasonMessage) {
+/** @returns {null|"Jan"|"summer"} unlock window while signing-locked */
+export function signingSellUnlockWindow(player, currentSeasonLabel) {
+  if (playerSellLockReason(player, currentSeasonLabel) !== "signed_this_season") {
+    return null;
+  }
+  return player?.contract_join_second_half === true ? "summer" : "Jan";
+}
+
+export function signingSellUnlockLabel(player, currentSeasonLabel) {
+  const w = signingSellUnlockWindow(player, currentSeasonLabel);
+  if (w === "Jan") return "GPSL January";
+  if (w === "summer") return "next summer";
+  return "";
+}
+
+/** Tiny squad-row badge: 🔒 → Jan / 🔒 → summer */
+export function signingSellLockBadgeHtml(player, currentSeasonLabel) {
+  const w = signingSellUnlockWindow(player, currentSeasonLabel);
+  if (!w) return "";
+  const tip =
+    w === "Jan"
+      ? SIGNING_LOCK_UNTIL_JAN_MESSAGE
+      : SIGNING_LOCK_UNTIL_SUMMER_MESSAGE;
+  const safe = String(tip)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+  return `<span class="squad-sell-lock-badge" title="${safe}">🔒 → ${w}</span>`;
+}
+
+export function sellLockMessage(reason, sameSeasonMessage, player) {
   switch (reason) {
     case "legacy":
       return "Legacy cards cannot be sold or listed.";
-    case "signed_this_season":
+    case "signed_this_season": {
+      const unlock = signingSellUnlockWindow(player);
+      if (unlock === "Jan") return SIGNING_LOCK_UNTIL_JAN_MESSAGE;
+      if (unlock === "summer") return SIGNING_LOCK_UNTIL_SUMMER_MESSAGE;
       return (
         sameSeasonMessage ||
-        "This player was signed in the current season and cannot be sold or listed until the next season."
+        "This player is under a half-season signing lock and cannot be sold or listed yet."
       );
+    }
     case "signed_last_season_half":
       return SIGNING_LOCK_HALF_MESSAGE;
     case "contract_ended":
@@ -163,12 +201,18 @@ export function sellLockMessage(reason, sameSeasonMessage) {
 }
 
 /** Short squad-menu label for a sell lock. */
-export function sellLockShortLabel(reason) {
+export function sellLockShortLabel(reason, player, currentSeasonLabel) {
   switch (reason) {
     case "final_half":
       return "Final half of contract — not sellable";
+    case "signed_this_season": {
+      const unlock = signingSellUnlockLabel(player, currentSeasonLabel);
+      return unlock
+        ? `Signing lock — sellable from ${unlock}`
+        : "Signing lock — not listable yet";
+    }
     case "signed_last_season_half":
-      return "Signing lock — sellable from GPSL January";
+      return "Signing lock — sellable from next summer";
     case "contract_ended":
       return "Contract ended";
     default:
