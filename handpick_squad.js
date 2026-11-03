@@ -421,6 +421,16 @@ function projectedSquadPlayers() {
   return [...fromOwned, ...fromBasket];
 }
 
+/** Max star-rated players that may be tagged in the handpick basket at once. */
+const HANDPICK_STAR_TAG_CAP = 3;
+
+function playerIsStarRated(p, starMin) {
+  const rating = Number(
+    String(p?.Rating ?? p?.rating ?? "").replace(/[^\d.]/g, "")
+  );
+  return Number.isFinite(rating) && rating >= starMin;
+}
+
 function countProjected(players) {
   const clubNation = clubContext?.club_nation || "";
   const starMin = Number(designations?.star_min_rating ?? clubContext?.star_min_rating ?? 79);
@@ -432,11 +442,8 @@ function countProjected(players) {
   let wages = 0;
   for (const p of players) {
     const id = String(p.Konami_ID || p.player_id || "");
-    const rating = Number(
-      String(p.Rating ?? p.rating ?? "").replace(/[^\d.]/g, "")
-    );
     // Same as scouting: planned OooO does not count toward the star cap
-    if (Number.isFinite(rating) && rating >= starMin && !(ooo && id === ooo)) {
+    if (playerIsStarRated(p, starMin) && !(ooo && id === ooo)) {
       stars += 1;
     }
     if (isUnder21(p)) u21 += 1;
@@ -447,11 +454,22 @@ function countProjected(players) {
   return { total: players.length, stars, u21, hg, gk, wages };
 }
 
+function countBasketStarsOnly() {
+  const starMin = Number(designations?.star_min_rating ?? clubContext?.star_min_rating ?? 79);
+  let n = 0;
+  for (const p of basket.values()) {
+    if (playerIsStarRated(p, starMin)) n += 1;
+  }
+  return n;
+}
+
 function renderBuildPanel() {
   const players = projectedSquadPlayers();
   const counts = countProjected(players);
-  const starCap = Number(designations?.star_cap ?? clubContext?.star_cap ?? 2);
+  const regStarCap = Number(designations?.star_cap ?? clubContext?.star_cap ?? 2);
+  const starTagCap = HANDPICK_STAR_TAG_CAP;
   const starMin = Number(designations?.star_min_rating ?? clubContext?.star_min_rating ?? 79);
+  const basketStars = countBasketStarsOnly();
   const minHg = Number(clubContext?.min_home_grown) || MIN_HOME_GROWN;
   const minU21 = Number(clubContext?.min_under_21) || MIN_UNDER_21;
   const minGk = Number(clubContext?.min_goalkeepers) || MIN_GOALKEEPERS;
@@ -464,13 +482,19 @@ function renderBuildPanel() {
     const squadCls =
       counts.total > maxSquad ? "bad" : counts.total >= minSquad ? "ok" : "warn";
     const starCls =
-      counts.stars > starCap ? "bad" : counts.stars === starCap ? "warn" : "ok";
+      basketStars > starTagCap
+        ? "bad"
+        : basketStars === starTagCap
+          ? "warn"
+          : counts.stars > regStarCap
+            ? "warn"
+            : "ok";
     const u21Cls = counts.u21 >= minU21 ? "ok" : "bad";
     const hgCls = counts.hg >= minHg ? "ok" : "bad";
     const gkCls = counts.gk >= minGk ? "ok" : "bad";
     limits.innerHTML = `
       <div class="stat ${squadCls}"><div class="lbl">Squad</div><div class="val">${counts.total}</div><div class="lim">min ${minSquad} · max ${maxSquad}</div></div>
-      <div class="stat ${starCls}"><div class="lbl">Stars</div><div class="val">${counts.stars}</div><div class="lim">cap ${starCap} (≥${starMin}${plannedOooId ? ", OooO excl." : ""})</div></div>
+      <div class="stat ${starCls}"><div class="lbl">Stars tagged</div><div class="val">${basketStars}</div><div class="lim">handpick max ${starTagCap} (≥${starMin}) · reg cap ${regStarCap}${plannedOooId ? " · OooO excl. from reg" : ""}</div></div>
       <div class="stat ${u21Cls}"><div class="lbl">U21</div><div class="val">${counts.u21}</div><div class="lim">min ${minU21}</div></div>
       <div class="stat ${hgCls}"><div class="lbl">Home grown</div><div class="val">${counts.hg}</div><div class="lim">min ${minHg}${clubNation ? ` · ${escapeHtml(clubNation)}` : ""}</div></div>
       <div class="stat ${gkCls}"><div class="lbl">GK</div><div class="val">${counts.gk}</div><div class="lim">min ${minGk}</div></div>
@@ -656,6 +680,19 @@ async function runPlayerSearch() {
       const id = btn.getAttribute("data-id");
       const row = rows.find((r) => String(r.player_id) === id);
       if (!row) return;
+      const starMin = Number(
+        designations?.star_min_rating ?? clubContext?.star_min_rating ?? 79
+      );
+      if (
+        playerIsStarRated(row, starMin) &&
+        countBasketStarsOnly() >= HANDPICK_STAR_TAG_CAP
+      ) {
+        setPageStatus(
+          `Handpick allows at most ${HANDPICK_STAR_TAG_CAP} star players (≥${starMin}) tagged at once. Untag a star first.`,
+          true
+        );
+        return;
+      }
       btn.disabled = true;
       const res = await setHandpickBasketPlayer(supabase, id, true, club);
       if (!res?.ok) {
