@@ -54,10 +54,18 @@ import {
   loadMatchFitnessForPlayers,
   formatListingMatchFitnessHtml,
 } from "./player_discipline.js";
+import {
+  loadClubSaleMarks,
+  loadMyPlayersScoutingInterest,
+  scoutingInterestBadgesHtml,
+  setClubSaleMark,
+} from "./player_sale_interest.js?v=20261103-sale-scout";
 
 /** Current competition season start — scopes Season Signings / Sales / Closed Listings. */
 let currentSeasonStartedAt = null;
 let sellerDeadlineTicker = null;
+/** @type {Map<string, object[]>} */
+let tcScoutingInterestByPlayer = new Map();
 
 function playerLinkCell(playerId, player, fallbackName) {
   const pid = String(playerId ?? player?.Konami_ID ?? "").trim();
@@ -65,6 +73,14 @@ function playerLinkCell(playerId, player, fallbackName) {
     player?.Name || fallbackName || (pid ? `Player ${pid}` : "Unknown");
   if (!pid) return name;
   return playerNameLinkHtml(pid, name);
+}
+
+function escapeTc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 /** Live countdown + cutoff wall times for seller review windows. */
@@ -152,6 +168,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   loadGpdbScoutingSummary(shortName);
   loadDraftFavouritesSection(shortName);
+  loadMarkedForSale(shortName);
   loadActiveListings(shortName);
   loadActiveBids(shortName);
   loadAwaitingSellerBids(shortName);
@@ -402,6 +419,108 @@ async function loadDraftFavouritesSection(shortName) {
 // ACTIVE LISTINGS
 // ============================================================
 
+async function ensureTcScoutingInterest(playerIds) {
+  try {
+    const interest = await loadMyPlayersScoutingInterest(supabase, playerIds);
+    for (const [pid, clubs] of interest.byPlayer.entries()) {
+      tcScoutingInterestByPlayer.set(pid, clubs);
+    }
+  } catch (err) {
+    console.warn("scouting interest:", err);
+  }
+}
+
+async function loadMarkedForSale(shortName) {
+  const container = document.getElementById("markedForSaleContainer");
+  const summary = document.getElementById("markedForSaleSummary");
+  if (!container) return;
+  container.innerHTML = "Loading…";
+  if (summary) summary.textContent = "";
+
+  let marksPayload;
+  try {
+    marksPayload = await loadClubSaleMarks(supabase);
+  } catch (err) {
+    console.warn("marked for sale:", err);
+    container.innerHTML = `<i style="color:#c96;">${
+      err?.message || "Could not load sale marks — run club_player_sale_marks_scouting_interest_20261103.sql"
+    }</i>`;
+    return;
+  }
+
+  const marks = marksPayload.marks || [];
+  const total = Number(marksPayload.totalMarketValue || 0);
+  if (summary) {
+    summary.innerHTML =
+      marks.length === 0
+        ? ""
+        : `<span class="tc-marked-total">${marks.length} player${
+            marks.length === 1 ? "" : "s"
+          }</span> · combined market value <span class="tc-marked-total">${formatMoney(
+            total
+          )}</span>`;
+  }
+
+  if (!marks.length) {
+    container.innerHTML =
+      "<i>No private sale marks yet — use Action → Mark for sale on Squad.</i>";
+    return;
+  }
+
+  const playerIds = marks.map((m) => m.player_id);
+  await ensureTcScoutingInterest(playerIds);
+
+  container.innerHTML = `
+    <table class="gpsl-table">
+      <tr>
+        <th>Player</th>
+        <th>Pos</th>
+        <th>OVR</th>
+        <th>MV</th>
+        <th>Note</th>
+        <th></th>
+      </tr>
+      ${marks
+        .map((m) => {
+          const pid = String(m.player_id);
+          const name = m.player_name || "Unknown";
+          const interest = scoutingInterestBadgesHtml(
+            tcScoutingInterestByPlayer.get(pid) || []
+          );
+          const listed = m.is_listed
+            ? `<span class="tc-sale-listed-pill">Listed</span>`
+            : "";
+          const note = m.note
+            ? escapeTc(m.note)
+            : "<span style='color:#666;'>—</span>";
+          return `
+            <tr>
+              <td>${playerLinkCell(pid, { Konami_ID: pid, Name: name }, name)}${listed}${interest}</td>
+              <td>${escapeTc(m.position || "—")}</td>
+              <td>${m.overall_rating != null ? escapeTc(m.overall_rating) : "—"}</td>
+              <td>${formatMoney(Number(m.market_value || 0))}</td>
+              <td style="font-size:12px;color:#aaa;">${note}</td>
+              <td>
+                <button type="button" class="tc-clear-sale-mark" data-player-id="${escapeTc(pid)}">Clear</button>
+              </td>
+            </tr>`;
+        })
+        .join("")}
+    </table>
+  `;
+
+  container.querySelectorAll(".tc-clear-sale-mark").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        await setClubSaleMark(supabase, btn.dataset.playerId, false);
+        await loadMarkedForSale(shortName);
+      } catch (err) {
+        alert(err.message || "Could not clear mark.");
+      }
+    });
+  });
+}
+
 async function loadActiveListings(shortName) {
   const container = document.getElementById("activeListingsContainer");
   container.innerHTML = "Loading…";
@@ -425,6 +544,7 @@ async function loadActiveListings(shortName) {
     loadActiveInjuriesForPlayers(supabase, playerIds),
     loadMatchFitnessForPlayers(supabase, playerIds),
   ]);
+  await ensureTcScoutingInterest(playerIds);
   const fitnessMap = fitnessResult.byPlayer;
   let bidsCountMap = new Map();
 
@@ -501,7 +621,9 @@ async function loadActiveListings(shortName) {
 
           return `
             <tr${rowClass}>
-              <td>${playerLinkCell(row.player_id, player, name)}${injuryMarker}${fitnessMarker}${forcedNote}${pendingNote}</td>
+              <td>${playerLinkCell(row.player_id, player, name)}${scoutingInterestBadgesHtml(
+                tcScoutingInterestByPlayer.get(String(row.player_id)) || []
+              )}${injuryMarker}${fitnessMarker}${forcedNote}${pendingNote}</td>
               <td>₿ ${reserve}</td>
               <td>${
                 pendingWindow

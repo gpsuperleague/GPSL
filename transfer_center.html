@@ -348,6 +348,7 @@
       <a href="#transfers-out">Transfers Out</a>
       <a href="#scouting-targets">Scouting</a>
       <a href="#active-bids">Active Bids</a>
+      <a href="#marked-for-sale">Marked for sale</a>
       <a href="#active-listings">Active Listings</a>
       <a href="#seller-review">Seller Review</a>
     </nav>
@@ -416,8 +417,17 @@
       </h2>
 
       <div class="tc-grid">
+        <div id="marked-for-sale" data-dashboard-panel="tc_marked_sale" class="panel tc-panel">
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Private want-to-sell tags from Squad (Action → Mark for sale). Not a listing — only you see this. Combined market value is shown below. Club badges = other owners who have them on their scouting shortlist (hover for club + owner tag)." tabindex="0">Marked for sale</h2>
+          <p class="tc-note">
+            Your private sale marks from Squad. List them when ready — badges show clubs scouting them.
+          </p>
+          <div id="markedForSaleSummary" class="tc-note" style="margin-top:0;"></div>
+          <div id="markedForSaleContainer" class="tc-scroll"></div>
+        </div>
+
         <div id="active-listings" data-dashboard-panel="tc_active_listings" class="panel tc-panel">
-          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Your players currently on the transfer list. Reserve price and live high bid appear here." tabindex="0">Active Listings</h2>
+          <h2 class="tc-tip-heading gpsl-has-tip" data-gpsl-tip="Your players currently on the transfer list. Reserve price and live high bid appear here. Scout badges = other clubs watching that player." tabindex="0">Active Listings</h2>
           <div id="activeListingsContainer" class="tc-scroll"></div>
         </div>
 
@@ -475,7 +485,37 @@
   <script type="module" src="global.js?v=20261004-hide-email"></script>
   <script type="module" src="global_ui.js"></script>
   <script type="module" src="clubs_lookup.js"></script>
-  <script type="module" src="transfer_center.js?v=20261027-listing-fitness"></script>
+  <script type="module" src="transfer_center.js?v=20261103-sale-scout"></script>
+  <style>
+    .tc-scout-interest-badge {
+      display: inline-block;
+      margin-left: 4px;
+      width: 18px;
+      height: 18px;
+      vertical-align: middle;
+      border-radius: 2px;
+      object-fit: contain;
+      cursor: help;
+      background: #1a1a1a;
+      border: 1px solid #444;
+    }
+    .tc-sale-listed-pill {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 4px;
+      background: #2a3a1a;
+      color: #9c9;
+      border: 1px solid #4a6a3a;
+      vertical-align: middle;
+    }
+    .tc-marked-total {
+      color: var(--gpsl-accent, #ff9900);
+      font-weight: bold;
+    }
+  </style>
 
 </body>
 </html>

@@ -1403,6 +1403,33 @@ body.squad-page .squad-role-ff {
   border: 1px solid #3a5a8a;
 }
 
+body.squad-page .squad-sale-mark-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+  background: #3a2210;
+  color: #e8a87c;
+  border: 1px solid #8a5020;
+  cursor: help;
+}
+
+body.squad-page .squad-scout-interest-badge {
+  display: inline-block;
+  margin-left: 3px;
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+  border-radius: 2px;
+  object-fit: contain;
+  cursor: help;
+  background: #1a1a1a;
+  border: 1px solid #444;
+}
+
 body.squad-page .status-offer-pending {
   background: #555;
   color: #ddd;

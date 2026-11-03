@@ -117,6 +117,13 @@ import {
   DESIGNATION_OOO,
   DESIGNATION_FF,
 } from "./squad_designations.js?v=20261003-big-star";
+import {
+  loadClubSaleMarks,
+  setClubSaleMark,
+  loadMyPlayersScoutingInterest,
+  saleMarkBadgeHtml,
+  scoutingInterestBadgesHtml,
+} from "./player_sale_interest.js?v=20261103-sale-scout";
 import { mountStarDemotionPanel } from "./squad_star_demotion.js?v=20261003-big-star";
 import { mountLegacyCardsPanel } from "./squad_legacy_cards.js?v=20261025-legacy-jj";
 import {
@@ -357,6 +364,10 @@ let squadManagerState = {
 };
 let playerPurchaseFeeById = new Map();
 let squadDesignationsState = null;
+/** @type {Map<string, object>} */
+let squadSaleMarksByPlayer = new Map();
+/** @type {Map<string, object[]>} */
+let squadScoutingInterestByPlayer = new Map();
 let squadMinimumStatus = null;
 /** @type {Set<string>} */
 let seasonLoanPlayerIds = new Set();
@@ -832,6 +843,36 @@ function playerOpenListingKind(playerId) {
   return null;
 }
 
+function saleMarkActionOptionsHtml(playerId) {
+  const pid = String(playerId ?? "").trim();
+  if (!pid || staffPreview) return "";
+  if (squadSaleMarksByPlayer.has(pid)) {
+    return `<option value="clear_sale_mark">Clear sale mark</option>`;
+  }
+  return `<option value="mark_sale">Mark for sale (private)</option>`;
+}
+
+function squadPlayerNameExtrasHtml(player) {
+  const pid = String(player?.Konami_ID ?? "").trim();
+  const mark = squadSaleMarksByPlayer.get(pid);
+  const interest = squadScoutingInterestByPlayer.get(pid) || [];
+  const loanBadge = seasonLoanPlayerIds.has(pid)
+    ? seasonLoanBadgeHtml()
+    : emergencyLoanPlayerIds.has(pid)
+      ? emergencyLoanBadgeHtml()
+      : "";
+  const roleBadge = roleBadgeForPlayer(player, squadDesignationsState);
+  const qualBadges = playerSquadQualificationBadges(player, clubNation);
+  const sellLockBadge = signingSellLockBadgeHtml(
+    player,
+    currentGpslSeasonLabel
+  );
+  return `${sellLockBadge}${loanBadge}${roleBadge}${qualBadges}${saleMarkBadgeHtml(
+    !!mark,
+    mark?.note
+  )}${scoutingInterestBadgesHtml(interest)}`;
+}
+
 function squadActionOptionsHtml(player) {
   const pid = String(player?.Konami_ID ?? "");
   if (seasonLoanPlayerIds.has(pid)) {
@@ -841,23 +882,27 @@ function squadActionOptionsHtml(player) {
   }
 
   const rewardOpts = squadRewardActionOptionsHtml(player);
+  const saleOpts = saleMarkActionOptionsHtml(pid);
   const listingKind = playerOpenListingKind(pid);
 
   // Already on the market (or waiting for the window): no re-list / foreign / new-owner list
   if (listingKind === "pending_window") {
     return `
             ${rewardOpts}
+            ${saleOpts}
             <option value="unlist">Remove from transfer list</option>
             ${squadInfoOptionHtml("Listed — awaiting transfer window")}`;
   }
   if (listingKind === "active") {
     return `
             ${rewardOpts}
+            ${saleOpts}
             ${squadInfoOptionHtml("Listed on transfer market")}`;
   }
   if (listingKind === "review") {
     return `
             ${rewardOpts}
+            ${saleOpts}
             ${squadInfoOptionHtml("Seller review — Transfer Centre")}`;
   }
 
@@ -877,7 +922,7 @@ function squadActionOptionsHtml(player) {
     player,
     clubNation,
     {
-      optionHtml: `${rewardOpts}${releaseGroup}`,
+      optionHtml: `${rewardOpts}${saleOpts}${releaseGroup}`,
       sellOptionsHtml: lockReason
         ? ""
         : `<option value="list">Transfer List</option>${foreignOpts}`,
@@ -891,11 +936,12 @@ function squadActionOptionsHtml(player) {
     const short =
       sellLockShortLabel(lockReason, player, currentGpslSeasonLabel) ||
       "Signing lock — not listable yet";
-    return `${rewardOpts}${squadInfoOptionHtml(short)}${releaseGroup}`;
+    return `${rewardOpts}${saleOpts}${squadInfoOptionHtml(short)}${releaseGroup}`;
   }
 
   return `
             ${rewardOpts}
+            ${saleOpts}
             <option value="list">Transfer List</option>
             ${foreignOpts}
             ${releaseGroup}`;
@@ -1481,13 +1527,28 @@ async function loadSquad() {
 
   renderSquadCompliance(list, squadDesignationsState, squadGhostPlayers);
 
-  const [state, seasonStats, suspensionList, discipline] = await Promise.all([
-    loadFreshTransferStatusState(),
-    loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
-    loadActiveSuspensions(supabase, { club: currentUserShort }),
-    loadClubSquadDiscipline(supabase, currentUserShort),
-  ]);
+  const [state, seasonStats, suspensionList, discipline, saleMarks, scoutInterest] =
+    await Promise.all([
+      loadFreshTransferStatusState(),
+      loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
+      loadActiveSuspensions(supabase, { club: currentUserShort }),
+      loadClubSquadDiscipline(supabase, currentUserShort),
+      staffPreview
+        ? Promise.resolve({ byPlayer: new Map() })
+        : loadClubSaleMarks(supabase).catch((err) => {
+            console.warn("sale marks:", err);
+            return { byPlayer: new Map() };
+          }),
+      staffPreview
+        ? Promise.resolve({ byPlayer: new Map() })
+        : loadMyPlayersScoutingInterest(supabase, playerIds).catch((err) => {
+            console.warn("scouting interest:", err);
+            return { byPlayer: new Map() };
+          }),
+    ]);
   transferStatusState = state;
+  squadSaleMarksByPlayer = saleMarks?.byPlayer || new Map();
+  squadScoutingInterestByPlayer = scoutInterest?.byPlayer || new Map();
   squadSuspensionsByPlayer = suspensionsByPlayerId(suspensionList);
   squadInjuriesByPlayer = injuriesByPlayerId(discipline.injuries);
   squadCardsByPlayer = cardsByPlayerId(discipline.cards);
@@ -2131,18 +2192,11 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         st?.avg_rating != null ? Number(st.avg_rating).toFixed(2) : "—";
       const yCount = cardRow?.yellows || 0;
 
-      const qualBadges = playerSquadQualificationBadges(p, clubNation);
-      const roleBadge = roleBadgeForPlayer(p, designationsState);
-      const loanBadge = seasonLoanPlayerIds.has(pid)
-        ? seasonLoanBadgeHtml()
-        : emergencyLoanPlayerIds.has(pid)
-          ? emergencyLoanBadgeHtml()
-          : "";
       const ycBadge =
         yCount > 0
           ? `<span class="squad-yc-badge${yCount >= 6 ? " warn" : ""}${yCount >= 8 ? " ban" : ""}" title="Season yellow cards">YC ${yCount}/8</span>`
           : "";
-      const sellLockBadge = signingSellLockBadgeHtml(p, currentGpslSeasonLabel);
+      const nameExtras = squadPlayerNameExtrasHtml(p);
 
       tr.innerHTML = `
         <td class="squad-col-thumb">${withInfoTip(
@@ -2150,7 +2204,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
           SQUAD_TIPS.card
         )}</td>
         <td class="squad-col-player">${withInfoTip(
-          `${playerNameLinkHtml(p.Konami_ID, p.Name)}${sellLockBadge}${loanBadge}${roleBadge}${qualBadges}${ycBadge}`,
+          `${playerNameLinkHtml(p.Konami_ID, p.Name)}${nameExtras}${ycBadge}`,
           SQUAD_TIPS.name
         )}</td>
         <td class="squad-col-nation gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.nation)}>${p.Nation || "-"}</td>
@@ -2535,19 +2589,10 @@ async function refreshAfterDesignationChange() {
     const player = byId.get(String(row.dataset.konamiId));
     const nameCell = row.querySelector("td.squad-col-player");
     if (!nameCell || !player) return;
-    const pidLoan = String(player.Konami_ID);
-    const loanBadge = seasonLoanPlayerIds.has(pidLoan)
-      ? seasonLoanBadgeHtml()
-      : emergencyLoanPlayerIds.has(pidLoan)
-        ? emergencyLoanBadgeHtml()
-        : "";
-    const roleBadge = roleBadgeForPlayer(player, squadDesignationsState);
-    const qualBadges = playerSquadQualificationBadges(player, clubNation);
-    const sellLockBadge = signingSellLockBadgeHtml(
-      player,
-      currentGpslSeasonLabel
-    );
-    nameCell.innerHTML = `${playerNameLinkHtml(player.Konami_ID, player.Name)}${sellLockBadge}${loanBadge}${roleBadge}${qualBadges}`;
+    nameCell.innerHTML = `${playerNameLinkHtml(
+      player.Konami_ID,
+      player.Name
+    )}${squadPlayerNameExtrasHtml(player)}`;
     const contractCell = row.querySelector("td.squad-col-contract");
     if (contractCell) {
       contractCell.innerHTML = formatSquadContractCell(player, {
@@ -2590,6 +2635,33 @@ async function handlePlayerAction(playerId, action, selectEl) {
     } catch (err) {
       console.error("Designation update failed:", err);
       alert(err.message || "Could not update squad role.");
+    }
+    return;
+  }
+
+  if (action === "mark_sale" || action === "clear_sale_mark") {
+    resetActionSelect(selectEl);
+    try {
+      let note = null;
+      if (action === "mark_sale") {
+        const existing = squadSaleMarksByPlayer.get(String(playerId))?.note;
+        const entered = window.prompt(
+          "Mark for sale (private — only you see this).\nOptional note:",
+          existing || ""
+        );
+        if (entered === null) return;
+        note = String(entered).trim() || null;
+      }
+      await setClubSaleMark(
+        supabase,
+        playerId,
+        action === "mark_sale",
+        note
+      );
+      await loadSquad();
+    } catch (err) {
+      console.error("Sale mark update failed:", err);
+      alert(err.message || "Could not update sale mark.");
     }
     return;
   }
