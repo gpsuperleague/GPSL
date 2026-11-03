@@ -73,6 +73,10 @@ let matchVideoReportedSides = new Set();
 /** @type {Map<number, object>} last fixturesById for report wiring */
 let lastCupFixturesById = new Map();
 let matchVideoReportsWired = false;
+/** @type {Map<string, number>} prize stage → amount for current cup/season */
+let cupPrizeByStage = new Map();
+/** @type {Map<number, string>} round_no → prize stage */
+let cupRoundStageByNo = new Map();
 
 function ensureMatchVideoStyles() {
   let el = document.getElementById("matchVideoTickStyles");
@@ -528,14 +532,102 @@ function renderBracket(nodes, extras) {
   `;
 }
 
+/** Compact prize for round headers, e.g. 10000000 → ₿10m */
+function formatMoneyCompact(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    const text = Number.isInteger(m) ? String(m) : String(Number(m.toFixed(2)));
+    return `₿${text}m`;
+  }
+  if (n >= 1_000) {
+    const k = n / 1_000;
+    const text = Number.isInteger(k) ? String(k) : String(Number(k.toFixed(1)));
+    return `₿${text}k`;
+  }
+  return formatMoney(n);
+}
+
+function roundPrizeHint(round_no) {
+  const stage = cupRoundStageByNo.get(Number(round_no));
+  if (!stage) return "";
+
+  if (stage === "final") {
+    const win = Number(cupPrizeByStage.get("winner") || 0);
+    const run = Number(cupPrizeByStage.get("runner_up") || 0);
+    const parts = [];
+    if (win > 0) parts.push(`Winner ${formatMoneyCompact(win)}`);
+    if (run > 0) parts.push(`Runner-up ${formatMoneyCompact(run)}`);
+    const appearance = Number(cupPrizeByStage.get("appearance") || 0);
+    if (appearance > 0) parts.push(`${formatMoneyCompact(appearance)} appearance`);
+    return parts.length ? `(${parts.join(" · ")})` : "";
+  }
+
+  const roundAmt = Number(cupPrizeByStage.get(stage) || 0);
+  const appearance = Number(cupPrizeByStage.get("appearance") || 0);
+  const parts = [];
+  if (roundAmt > 0) {
+    // Both clubs receive this when the tie is played — owners know it as appearance money.
+    parts.push(`${formatMoneyCompact(roundAmt)} appearance fee`);
+  } else if (appearance > 0) {
+    parts.push(`${formatMoneyCompact(appearance)} appearance fee`);
+  }
+  return parts.length ? `(${parts.join(" · ")})` : "";
+}
+
+async function loadCupPrizeContext(seasonId, cupCode) {
+  cupPrizeByStage = new Map();
+  cupRoundStageByNo = new Map();
+  if (!seasonId || !cupCode) return;
+
+  const [{ data: prizes, error: prizeErr }, { data: schedule, error: schedErr }] =
+    await Promise.all([
+      supabase
+        .from("competition_cup_prize_config_public")
+        .select("stage, amount")
+        .eq("season_id", seasonId)
+        .eq("cup_code", cupCode),
+      supabase
+        .from("competition_cup_round_schedule")
+        .select("round_no, stage, cup_leg")
+        .eq("cup_code", cupCode),
+    ]);
+
+  if (prizeErr) {
+    console.warn("cups prize config:", prizeErr);
+  } else {
+    for (const row of prizes || []) {
+      const amt = Number(row.amount) || 0;
+      if (amt > 0) cupPrizeByStage.set(String(row.stage), amt);
+    }
+  }
+
+  if (schedErr) {
+    console.warn("cups round schedule:", schedErr);
+  } else {
+    for (const row of schedule || []) {
+      if (row?.round_no == null || !row.stage) continue;
+      // Prefer leg 1 stage if both legs exist
+      if (cupRoundStageByNo.has(Number(row.round_no)) && Number(row.cup_leg) === 2) {
+        continue;
+      }
+      cupRoundStageByNo.set(Number(row.round_no), String(row.stage));
+    }
+  }
+}
+
 function renderBracketRoundColumn(round_no, matches, extras) {
   const sample = matches[0] || {};
   const title = sample.round_label || cupRoundLabel(cupRoundTieCount(matches));
+  const prizeHint = roundPrizeHint(round_no);
   const twoLegQf = isTwoLegCupQuarterFinal(currentCup, round_no);
 
   if (twoLegQf) {
     const ties = groupCupBracketTies(matches, currentCup, round_no);
-    const columnTitle = `${title} · ${GPSL_MONTH_LABELS.september}/${GPSL_MONTH_LABELS.october}`;
+    const columnTitle = `${title} · ${GPSL_MONTH_LABELS.september}/${GPSL_MONTH_LABELS.october}${
+      prizeHint ? ` ${prizeHint}` : ""
+    }`;
     const cards = ties.map((tie) => renderTwoLegTieCard(tie, extras)).join("");
     return `
       <div class="bracket-round bracket-round-two-leg" data-round="${round_no}">
@@ -548,7 +640,8 @@ function renderBracketRoundColumn(round_no, matches, extras) {
     GPSL_MONTH_LABELS[sample.round_gpsl_month || sample.fixture_gpsl_month] ||
     sample.round_gpsl_month ||
     "";
-  const columnTitle = month ? `${title} · ${month}` : title;
+  const base = month ? `${title} · ${month}` : title;
+  const columnTitle = prizeHint ? `${base} ${prizeHint}` : base;
   const cards = matches.map((m) => renderMatchCard(m, extras, round_no)).join("");
   return `
     <div class="bracket-round" data-round="${round_no}">
@@ -591,7 +684,15 @@ async function renderCup() {
     const fixtureIds = nodes.map((n) => n.fixture_id).filter(Boolean);
     const extras = await loadCupVideosAndExtras(fixtureIds);
     const seasonId = nodes[0]?.season_id;
-    if (seasonId) await loadTvFixtureIds(supabase, seasonId);
+    if (seasonId) {
+      await Promise.all([
+        loadTvFixtureIds(supabase, seasonId),
+        loadCupPrizeContext(seasonId, currentCup),
+      ]);
+    } else {
+      cupPrizeByStage = new Map();
+      cupRoundStageByNo = new Map();
+    }
     renderBracket(nodes, extras);
     return;
   }
@@ -608,7 +709,15 @@ async function renderCup() {
   const fixtureIds = nodes.map((n) => n.fixture_id).filter(Boolean);
   const extras = await loadCupVideosAndExtras(fixtureIds);
   const seasonId = nodes[0]?.season_id;
-  if (seasonId) await loadTvFixtureIds(supabase, seasonId);
+  if (seasonId) {
+    await Promise.all([
+      loadTvFixtureIds(supabase, seasonId),
+      loadCupPrizeContext(seasonId, currentCup),
+    ]);
+  } else {
+    cupPrizeByStage = new Map();
+    cupRoundStageByNo = new Map();
+  }
   renderBracket(nodes, extras);
 }
 
