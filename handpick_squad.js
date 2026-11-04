@@ -227,6 +227,13 @@ async function boot() {
   await loadContext();
 }
 
+function clubHasOwner(c) {
+  if (!c || typeof c !== "object") return false;
+  if (c.owner_id) return true;
+  const tag = String(c.owner ?? "").trim();
+  return !!tag;
+}
+
 async function loadAdminClubs(handpickMap) {
   const sel = document.getElementById("clubSelect");
   const keys = Object.keys(handpickMap || {}).filter(Boolean).sort();
@@ -236,17 +243,29 @@ async function loadAdminClubs(handpickMap) {
   }
   const { data: clubs } = await supabase
     .from("Clubs")
-    .select("ShortName, Club")
+    .select("ShortName, Club, owner, owner_id")
     .in("ShortName", keys)
     .order("Club");
   const rows = Array.isArray(clubs) ? clubs : keys.map((k) => ({ ShortName: k, Club: k }));
+  // Vacant first, then owned — easier for handpick admin triage
+  rows.sort((a, b) => {
+    const av = clubHasOwner(a) ? 1 : 0;
+    const bv = clubHasOwner(b) ? 1 : 0;
+    if (av !== bv) return av - bv;
+    return String(a.Club || a.ShortName).localeCompare(String(b.Club || b.ShortName), undefined, {
+      sensitivity: "base",
+    });
+  });
   sel.innerHTML = rows
-    .map(
-      (c) =>
-        `<option value="${escapeHtml(c.ShortName)}">${escapeHtml(c.Club || c.ShortName)} (${escapeHtml(
-          c.ShortName
-        )})</option>`
-    )
+    .map((c) => {
+      const vacant = !clubHasOwner(c);
+      const label = vacant
+        ? `○ ${c.Club || c.ShortName} (${c.ShortName}) — vacant`
+        : `${c.Club || c.ShortName} (${c.ShortName})`;
+      const style = vacant ? ' style="color:#f0a060;font-weight:600;"' : ' style="color:#c8c8c8;"';
+      const cls = vacant ? ' class="hp-club-vacant"' : ' class="hp-club-owned"';
+      return `<option value="${escapeHtml(c.ShortName)}"${cls}${style}>${escapeHtml(label)}</option>`;
+    })
     .join("");
 }
 
