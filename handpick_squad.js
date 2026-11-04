@@ -593,6 +593,11 @@ async function loadContext() {
       : "squad.html";
     squad.textContent = "Current squad";
   }
+  const handbook = document.getElementById("handbookLink");
+  if (handbook) {
+    handbook.href = "learning_gpsl.html";
+    handbook.textContent = "GPSL Handbook";
+  }
 
   try {
     const theme = await loadClubDashboardTheme(supabase, activeClub);

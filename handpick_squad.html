@@ -483,6 +483,20 @@
       color: #fff !important;
       border-color: #ff9900 !important;
     }
+    a.hp-cta-handbook,
+    a.hp-cta-handbook:visited,
+    a.hp-cta-handbook:hover,
+    a.hp-cta-handbook:active {
+      background: #2a2410 !important;
+      color: #f0e2b0 !important;
+      border-color: #8a7020 !important;
+      text-decoration: none !important;
+    }
+    a.hp-cta-handbook:hover {
+      background: #3a3218 !important;
+      color: #fff !important;
+      border-color: #ff9900 !important;
+    }
     #ownerPreviewBanner.hp-admin-only-strip {
       border-style: dashed !important;
       background: #152030 !important;
@@ -576,11 +590,14 @@
                 <a id="squadLink" class="hp-cta hp-cta-squad" href="squad.html">
                   Current squad
                 </a>
+                <a id="handbookLink" class="hp-cta hp-cta-handbook" href="learning_gpsl.html" target="_blank" rel="noopener">
+                  GPSL Handbook
+                </a>
               </p>
               <p class="hint" style="margin-top:12px;">
                 Temp tags are <b>not</b> contracts — stay free agents until admin approves.
                 Overdraft deeper than ₿50m is blocked. This page refreshes when you return from GPDB / MGDB.
-                Check <b>Club Finances</b> and your <b>current squad</b> while you build.
+                Check <b>Club Finances</b>, your <b>current squad</b>, and the <b>GPSL Handbook</b> while you build.
               </p>
             </div>
 
@@ -644,6 +661,6 @@
     </div>
   </div>
   <script>window.CURRENT_PAGE = "handpick_squad"; const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261104-owner-links"></script>
+  <script type="module" src="handpick_squad.js?v=20261104-handbook-link"></script>
 </body>
 </html>
