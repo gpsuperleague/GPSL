@@ -422,15 +422,40 @@
     }
     .hp-howto-card h2 { color: #cfe8b0 !important; }
     .hp-cta-row {
-      display: flex; flex-wrap: wrap; gap: 12px; margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 0;
+      justify-content: center;
+      align-items: stretch;
     }
     a.hp-cta {
-      display: inline-flex; align-items: center; justify-content: center;
-      min-height: 40px; padding: 10px 16px;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 1 148px;
+      width: 148px;
+      min-height: 64px;
+      padding: 10px 12px;
       border-radius: 8px;
-      text-decoration: none; font-weight: 700; font-size: 14px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 13px;
+      line-height: 1.25;
+      text-align: center;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      hyphens: auto;
       border: 1px solid #444;
       transition: border-color 0.12s ease, background 0.12s ease;
+    }
+    @media (max-width: 560px) {
+      a.hp-cta {
+        flex: 1 1 calc(50% - 12px);
+        width: auto;
+        max-width: calc(50% - 6px);
+      }
     }
     a.hp-cta:hover { border-color: #ff9900; }
     a.hp-cta-gpdb,
@@ -661,6 +686,6 @@
     </div>
   </div>
   <script>window.CURRENT_PAGE = "handpick_squad"; const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261104-handbook-link"></script>
+  <script type="module" src="handpick_squad.js?v=20261104-cta-equal"></script>
 </body>
 </html>
