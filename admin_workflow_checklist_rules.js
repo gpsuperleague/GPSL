@@ -16,9 +16,19 @@ export function getAdminWorkflowChecklistRules() {
           "<b>Create Season</b> — Create Pre-Season (contract tick + ledger), then GPDB season exclusions, nation setup / clear assignments, prize money, divisions, calendar, go live, fixtures, cups.",
           "<b>Pre-Season setup</b> — Next Gen, Homegrown draw, club/stadium/manager, challenges, bills, internationals selection.",
           "<b>Pre-Season (June &amp; July)</b> — transfer window, draft/special auctions, manager renewal deadline before August.",
-          "<b>Season Management</b> — live-season ops (club checklist, fines, holidays…).",
+          "<b>Season Management</b> — live-season ops (club checklist, fines, holidays, mid-season handpick, fixture scheduling history…).",
           "<b>Season Checklist</b> — month-by-month tasks through Playoffs.",
           "<b>Close Season</b> then <b>End Of Season</b> — wrap the year (Close Finances last on the old season). After End season: finish Season Break setup as needed, then <b>Create Season</b>.",
+        ],
+      },
+      {
+        heading: "Mid-season vacant / handpick",
+        items: [
+          "Archive or detach the old owner → enable <b>Handpick</b> on the Season owner board for that club (squad released; cash kept per current rules).",
+          "Invite / assign the new owner; they rebuild on <b>Handpick Squad</b> (yellow nav chip + Dashboard banner while intake is on).",
+          "Approve wishlists on Handpick → Admin approvals (signs at MV). Intake clears on approve.",
+          "Scheduling disputes: use <b>Fixture scheduling history</b> (read-only) before any replay reset — reset deletes proposal history.",
+          "GPDB <b>add player / legacy unlock</b> requests raise a <b>Staff alert</b> → review on GPDB sync → Member add requests.",
         ],
       },
       {

@@ -9,8 +9,10 @@ export const SECTION_TRANSFERS = {
       items: [
         { href: "transfer_center.html", label: "Transfer Centre" },
         { href: "all_listings.html", label: "Transfer Market" },
+        { href: "scouting.html", label: "Scouting" },
         { href: "season_transfers.html", label: "Season Transfers" },
         { href: "season_club_purchases.html", label: "Season Club Purchases" },
+        { href: "handpick_squad.html", label: "Handpick Squad (mid-season)" },
       ],
     },
     { type: "h3", html: "Transfer window" },
@@ -20,8 +22,34 @@ export const SECTION_TRANSFERS = {
         `When the <b>transfer window</b> is open, list players from the squad or Transfer Centre, bid on <a href="all_listings.html">Transfer Market</a> listings, and accept or reject direct offers.`,
         `<b>Signing lock</b> — half a season after joining: <b>1st-half</b> signing → listable from <b>GPSL January</b>; <b>2nd-half</b> signing → listable from <b>next summer</b> (Transfer Market and foreign listing). Squad shows <b>🔒 → Jan / summer</b>. New Owner list can bypass. Full contract windows: <a href="#squad">Squad &amp; contracts</a>.`,
         `Completed deals post to finances and appear in your <a href="inbox.html">Inbox</a>.`,
-        `<b>Scouting targets</b> — save players from GPDB; review them under Transfer Centre → Scouting Targets.`,
         `<b>Legacy cards</b> — players removed from pesdb.net stay at their club but cannot be sold; see <a href="#squad">Squad &amp; contracts</a> and <a href="legacy_players.html">Legacy players</a>.`,
+      ],
+    },
+    { type: "h3", html: "Scouting &amp; Active Targets" },
+    {
+      type: "ul",
+      items: [
+        `Star players in <a href="GPDB.html">GPDB</a> to build your shortlist. Plan on <a href="scouting.html">Scouting</a> (lists + tactic boards) or Transfer Centre → Scouting.`,
+        `<b>Active Targets</b> = players you are still chasing. Tick them to project spend, wages, and registration (Sq / GK / HG / U21 / ★).`,
+        `Players <b>already at your club</b> are never Active Targets (shown as <b>At club</b>). Use <b>Include club squad in stats</b> to count your current squad as the baseline, and <b>Add club squad to list</b> to put them on the shortlist for planning.`,
+      ],
+    },
+    { type: "h3", html: "Mark for sale &amp; interested clubs" },
+    {
+      type: "ul",
+      items: [
+        `From Squad / Transfer Centre you can <b>Mark for sale</b>. Clubs that have that player on their scouting shortlist show as interested.`,
+        `<b>Notify interested clubs</b> (manual) — Inbox asks those owners if they want the player before you list (once per club per day).`,
+        `When you actually <b>list</b> the player (Active or Pending Window), those same scout clubs get an automatic Inbox that the player is listed.`,
+      ],
+    },
+    { type: "h3", html: "Missing / legacy cards on GPDB" },
+    {
+      type: "ul",
+      items: [
+        `If a player is missing from GPDB but on pesdb.net, use <b>Request add</b> on GPDB (Konami ID → confirm).`,
+        `If a card is locked as <b>legacy</b> but you believe it should return, request an <b>unlock</b> from the same flow.`,
+        `Admin reviews pending requests on GPDB sync (admins get a Staff alert). Until approved, the card stays as-is.`,
       ],
     },
     { type: "h3", html: "Selling abroad" },

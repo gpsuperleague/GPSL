@@ -526,7 +526,14 @@ export const ADMIN_MAIN_NAV = [
           "handpick_squad.html?admin=1",
           null,
           null,
-          "Mid-season intake: review pending owner wishlists → Preview / Approve & sign at MV. Enable Handpick on Season owner board first. Hidden unless a club is currently in handpick."
+          "Mid-season intake: enable Handpick on Season owner board (releases squad / keeps cash). Owners rebuild via GPDB/MGDB tags → submit. Admin: Pending approvals / Owner view tabs → Preview / Approve & sign at MV (+ income tax). Clears intake on approve; prior-cycle wishlists stay hidden after reset. Yellow Handpick chip in nav while any club is in process."
+        ),
+        L(
+          "Fixture scheduling history",
+          "admin_fixture_scheduling.html",
+          null,
+          null,
+          "Read-only negotiation timeline for a fixture (proposals, inbox, Discord lock, check-ins, no-shows). Share ?fixture=id. Prefer this over Reset for investigation — reset wipes history."
         ),
         L(
           "Club Season Checklist",

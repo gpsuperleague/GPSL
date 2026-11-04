@@ -70,6 +70,7 @@ export const SECTION_SQUAD = {
         `In the <b>final contract year</b>, renew from <a href="squad.html">Squad</a>: <b>one season at a time</b> (not a new 3-year deal). Home-grown ≤23 and non-home-grown ≤21 may keep the same wage on renew.`,
         `Or choose <b>Expire — release for MV</b> from Squad to drop the player for market value.`,
         `If the card returns on a future sync, it becomes a normal GPDB card again.`,
+        `Owners can <b>request an unlock</b> from GPDB if the card should be transferable again — admin reviews (staff alert). See <a href="#transfers">Transfers &amp; markets</a>.`,
       ],
     },
     {
@@ -80,6 +81,7 @@ export const SECTION_SQUAD = {
         { href: "expiring_contracts.html", label: "Expiring Contracts" },
         { href: "GPDB.html", label: "Player Database" },
         { href: "player_career.html", label: "Player career" },
+        { href: "handpick_squad.html", label: "Handpick Squad" },
       ],
     },
   ],

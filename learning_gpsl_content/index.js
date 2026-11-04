@@ -3,16 +3,16 @@
  * Edit individual modules; this file only assembles order + intro meta.
  */
 
-import { SECTION_WAITING_ROOM } from "./waiting_room.js";
-import { SECTION_NAVIGATION } from "./navigation.js";
+import { SECTION_WAITING_ROOM } from "./waiting_room.js?v=20261104-handbook";
+import { SECTION_NAVIGATION } from "./navigation.js?v=20261104-handbook";
 import {
   SECTION_MY_CLUB,
   SECTION_FINANCES,
   SECTION_EXPECTATIONS,
 } from "./club_pages.js?v=20261018-syntax";
-import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261014-half-windows";
+import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261104-handbook";
 import { SECTION_MEDICAL } from "./medical.js?v=20261024-half-cap";
-import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js";
+import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js?v=20261104-handbook";
 import {
   SECTION_MATCHDAY_CHECKLIST,
   SECTION_MATCH_SCHEDULING,
@@ -26,7 +26,7 @@ import {
   SECTION_SEASON,
   SECTION_RECENT,
   SECTION_HELP,
-} from "./reference.js";
+} from "./reference.js?v=20261104-handbook";
 
 export const LEARNING_GPSL_META_HTML = `A guide for new and returning owners  Ehow the site works, where to go, and the main league rules
   you need day to day. <b>No club yet?</b> Start with

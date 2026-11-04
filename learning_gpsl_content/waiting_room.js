@@ -50,5 +50,22 @@ export const SECTION_WAITING_ROOM = {
         Both marks are <b>required</b> before you can bid once invited.
         Once you have a club, your badge appears in the nav and the full owner menus unlock.`,
     },
+    { type: "h3", html: "Mid-season vacant club (handpick)" },
+    {
+      type: "p",
+      html: `Sometimes a club becomes vacant mid-season. Admin may invite you to claim it from the waiting list.
+        You keep the club’s cash (minus the takeover / stadium charge when applied), the previous squad is released,
+        and you rebuild via <b>Handpick</b> — not a full club auction.`,
+    },
+    {
+      type: "ul",
+      items: [
+        `Tag free agents in <a href="GPDB.html">GPDB</a> and one manager in <a href="MGDB.html">MGDB</a> (Handpick column).`,
+        `Open <a href="handpick_squad.html">Handpick Squad</a> to review the checklist (size, HG, U21, GK, stars, cash / ₿50m overdraft floor), pick a planned One of our Own, then <b>Submit for approval</b>.`,
+        `While handpick is open for your club, a yellow <b>Handpick Squad</b> chip appears in the top nav (after Dashboard). The Dashboard also shows a banner. Both disappear once admin approves.`,
+        `Shortcuts on Handpick: Club Finances, Current squad, and the <a href="learning_gpsl.html">GPSL Handbook</a>.`,
+        `Admin signs approved wishlists at market value (+ income tax). Tags are not contracts until approved.`,
+      ],
+    },
   ],
 };

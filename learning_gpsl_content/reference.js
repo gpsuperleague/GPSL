@@ -100,6 +100,16 @@ export const SECTION_RECENT = {
       type: "p",
       html: `Summary of newer features and rule changes — also woven into the sections above.`,
     },
+    { type: "h3", html: "November 2026 — mid-season &amp; scouting" },
+    {
+      type: "ul",
+      items: [
+        `<b>Handpick</b> — mid-season vacant rebuild: yellow nav chip, Dashboard banner, GPDB/MGDB tags, Finances / Squad / Handbook links on Handpick Squad. Overdraft floor ₿50m. See <a href="#waiting-room">Waiting Room</a>.`,
+        `<b>Scouting</b> — players already at your club are not Active Targets; optional <b>Include club squad in stats</b> and <b>Add club squad to list</b>. See <a href="#transfers">Transfers</a>.`,
+        `<b>Sale interest</b> — notify scout clubs before listing; automatic Inbox when you list. See <a href="#transfers">Transfers</a>.`,
+        `<b>GPDB requests</b> — request missing players or legacy unlocks; admin gets a staff alert.`,
+      ],
+    },
     { type: "h3", html: "The Waiting Room" },
     {
       type: "ul",
