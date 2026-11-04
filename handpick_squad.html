@@ -98,11 +98,73 @@
       font-size: 12px;
       line-height: 1.45;
     }
-    body.hp-admin-mode .hp-owner-tools { opacity: 0.72; }
-    body.hp-admin-mode .build-layout {
-      grid-template-columns: 1fr;
+    .hp-admin-chrome {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid #3a5a3a;
+      border-radius: 8px;
+      background: #101810;
     }
-    body.hp-admin-mode #submissionsCard { display: none; }
+    .hp-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .hp-tabs button {
+      appearance: none;
+      border: 1px solid #456;
+      background: #1a2220;
+      color: #bcd;
+      padding: 9px 14px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .hp-tabs button.is-active {
+      background: #2e6b2e;
+      border-color: #4a8a4a;
+      color: #fff;
+    }
+    .hp-tabs button.hp-tab-owner-btn.is-active {
+      background: #3a5a7a;
+      border-color: #5a7a9a;
+    }
+    .hp-admin-club-bar label {
+      display: block;
+      font-size: 13px;
+      color: #9a9;
+    }
+    .hp-admin-club-bar select {
+      width: 100%;
+      max-width: 420px;
+      margin-top: 4px;
+      padding: 8px;
+      background: #111;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 4px;
+    }
+    .hp-admin-chrome .hp-tab-hint {
+      margin: 8px 0 0;
+      font-size: 12px;
+      color: #8a9;
+      line-height: 1.4;
+    }
+    /* Owners: single page — no tabs, no admin chrome/approvals */
+    body:not(.hp-admin-mode) .hp-admin-chrome,
+    body:not(.hp-admin-mode) .hp-admin-panel,
+    body:not(.hp-admin-mode) #ownerPreviewBanner { display: none !important; }
+    body:not(.hp-admin-mode) .hp-owner-panel { display: block; }
+    /* Admin tab: approvals only */
+    body.hp-admin-mode.hp-tab-admin .hp-owner-panel { display: none; }
+    body.hp-admin-mode.hp-tab-admin .hp-admin-panel { display: block; }
+    /* Owner preview tab: full owner UI for selected club */
+    body.hp-admin-mode.hp-tab-owner .hp-admin-panel { display: none; }
+    body.hp-admin-mode.hp-tab-owner .hp-owner-panel { display: block; }
+    body.hp-admin-mode.hp-tab-owner .hp-owner-tools { opacity: 1; }
+    body.hp-admin-mode.hp-tab-owner #ownerPreviewBanner { display: block; }
     .hp-sign-progress {
       margin-top: 12px;
       padding: 10px 12px;
@@ -224,116 +286,140 @@
     <div id="gateBox" class="gate-box">Loading…</div>
 
     <div id="handpickApp" hidden>
-      <div id="adminBanner" class="card" hidden style="border-color:#446633;background:#142014;margin-top:14px;">
-        <h2 style="margin:0 0 8px;color:#8fd18f;">Admin — handpick approvals</h2>
-        <p class="hint" style="margin:0;">
-          Big green <b>Approve &amp; sign</b> buttons are in the panel below. Club switch only previews a basket — it does not take ownership.
-        </p>
-      </div>
-
-      <div id="adminApprovalsSection" class="card" hidden style="border-color:#3a8a3a;background:#101810;margin-top:14px;">
-        <h2 style="margin:0 0 6px;color:#8fd18f;font-size:20px;">Pending approvals</h2>
-        <p class="hint" style="margin:0 0 12px;">
-          Actions are at the <b>top</b> of each club card. Preview first, then Approve &amp; sign (charges MV + tax).
-        </p>
-        <div id="adminPendingBox" class="pending-box admin-pending">
-          <p class="empty">Loading…</p>
+      <div id="adminChrome" class="hp-admin-chrome" hidden>
+        <div class="hp-tabs" role="tablist" aria-label="Handpick admin views">
+          <button type="button" id="hpTabAdmin" class="is-active" role="tab" aria-selected="true">Admin approvals</button>
+          <button type="button" id="hpTabOwner" class="hp-tab-owner-btn" role="tab" aria-selected="false">Owner view</button>
         </div>
-      </div>
-
-      <div class="card hp-owner-tools" style="border-color:#665522;background:#1a1810;">
-        <h2 style="margin-bottom:8px;">How to handpick</h2>
-        <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#ddd;">
-          Tag free agents in <b style="color:#e8c84a;">GPDB</b> and one manager in <b style="color:#e8c84a;">MGDB</b>
-          (Handpick ☐ column). Return here to review the checklist, pick a planned OooO, and
-          <b>Submit for approval</b>.
-        </p>
-        <p style="margin:0;display:flex;flex-wrap:wrap;gap:10px;">
-          <a id="gpdbLink" class="button" href="GPDB.html" target="_blank" rel="noopener"
-             style="display:inline-block;background:#c9a227;color:#111;font-weight:700;text-decoration:none;padding:10px 16px;">
-            Open GPDB — tag players
-          </a>
-          <a id="mgdbLink" class="button" href="MGDB.html" target="_blank" rel="noopener"
-             style="display:inline-block;background:#3a6ea5;color:#fff;font-weight:700;text-decoration:none;padding:10px 16px;">
-            Open MGDB — tag manager
-          </a>
-        </p>
-        <p class="hint" style="margin-top:10px;">
-          Temp tags are <b>not</b> contracts — stay free agents until admin approves. Must be logged in (not anonymous Discord browse).
-          Tags that would put you more than ₿50m overdrawn are blocked. This page refreshes when you come back from GPDB / MGDB.
-        </p>
-      </div>
-
-      <div class="card hp-owner-tools" id="expectationsCard" style="border-color:#3a5a7a;background:#10161c;">
-        <h2 style="margin:0 0 8px;color:#9ec5e8;">Squad expectations</h2>
-        <p class="hint" style="margin:0 0 10px;">
-          Build toward a legal registration squad. Green = met · amber = short · red = over a hard cap.
-        </p>
-        <ul id="checklistBox" class="hp-checklist"></ul>
-      </div>
-
-      <div class="card hp-owner-tools">
-        <h2>Club</h2>
-        <div class="form-grid">
-          <p id="clubTitle" style="margin:0;font-size:18px;color:#ffcc66;font-weight:600;">—</p>
-          <label id="clubSelectWrap" hidden>
-            Switch club (admin preview)
+        <div class="hp-admin-club-bar">
+          <label id="clubSelectWrap">
+            Club (switch for owner preview / context)
             <select id="clubSelect"><option value="">—</option></select>
           </label>
-          <p id="clubMeta" class="hint"></p>
         </div>
-        <div id="managerPicked" class="manager-box" hidden></div>
+        <p id="hpTabHint" class="hp-tab-hint">
+          Approve pending wishlists here. Switch to <b>Owner view</b> to see the selected club’s handpick UI.
+        </p>
       </div>
 
-      <div class="build-layout hp-owner-tools">
-        <div>
-          <div class="card">
-            <h2>Wishlist basket</h2>
-            <p class="hint" style="margin:0 0 10px;">
-              Players and manager tagged in GPDB / MGDB. Remove here or untag there.
-            </p>
-            <div id="basketBox" class="basket"><p class="empty">No players selected yet — tag in GPDB.</p></div>
-            <div id="totalsBox" class="totals" hidden></div>
-            <div class="actions">
-              <button type="button" id="submitBtn" class="button" style="background:#446633;">Submit for approval</button>
-              <button type="button" id="clearBtn" class="button">Clear basket</button>
-            </div>
-            <div id="pageStatus" class="status-line"></div>
-            <pre id="resultBox" class="hint" style="white-space:pre-wrap;margin-top:10px;"></pre>
-          </div>
+      <div id="hpAdminPanel" class="hp-admin-panel">
+        <div id="adminBanner" class="card" hidden style="border-color:#446633;background:#142014;margin-top:14px;">
+          <h2 style="margin:0 0 8px;color:#8fd18f;">Admin — handpick approvals</h2>
+          <p class="hint" style="margin:0;">
+            Big green <b>Approve &amp; sign</b> buttons are in the panel below. Club switch does not take ownership.
+          </p>
         </div>
 
-        <div>
-          <div class="card" id="submissionsCard" style="border-color:#446633;">
-            <h2 id="submissionsTitle">Submissions</h2>
-            <p id="submissionsHint" class="hint" style="margin:0 0 10px;">
-              Owner: your submitted wishlists. Admin: all pending clubs — approve here.
-            </p>
-            <div id="pendingBox" class="pending-box"><p class="empty">No submissions yet.</p></div>
+        <div id="adminApprovalsSection" class="card" hidden style="border-color:#3a8a3a;background:#101810;margin-top:14px;">
+          <h2 style="margin:0 0 6px;color:#8fd18f;font-size:20px;">Pending approvals</h2>
+          <p class="hint" style="margin:0 0 12px;">
+            Actions are at the <b>top</b> of each club card. Preview first, then Approve &amp; sign (charges MV + tax).
+          </p>
+          <div id="adminPendingBox" class="pending-box admin-pending">
+            <p class="empty">Loading…</p>
           </div>
-          <div class="card">
-            <h2>Projected squad</h2>
-            <p class="hint" style="margin:0 0 10px;">
-              Same registration rules as Squad / Scouting — wishlist players count as “if approved”.
-              Star <b>tags</b> (handpick max 3) are separate from registration star <b>cap</b> after OooO.
-            </p>
-            <div id="limitsBox" class="hp-limits"></div>
-            <div id="financeBox" class="hp-finance" style="margin-top:12px;"></div>
-            <label style="display:block;margin-top:12px;font-size:13px;color:#bbb;">
-              Planned One of our Own (preview)
-              <select id="plannedOooSelect" style="width:100%;margin-top:4px;padding:8px;background:#111;border:1px solid #444;color:#ddd;border-radius:4px;">
-                <option value="">— none yet —</option>
-              </select>
-            </label>
-            <p class="hint" style="margin-top:6px;">
-              Only home-grown star players for this club’s nation. Sticky per club on this device — official OooO is set on Squad after approval.
-            </p>
+        </div>
+      </div>
+
+      <div id="hpOwnerPanel" class="hp-owner-panel">
+        <div id="ownerPreviewBanner" class="card hp-owner-tools" hidden style="border-color:#3a5a7a;background:#10161c;margin-top:14px;">
+          <h2 style="margin:0 0 6px;color:#9ec5e8;">Owner view (admin preview)</h2>
+          <p class="hint" style="margin:0;">
+            This is what the selected club’s owner sees while building their wishlist — checklist, basket, GPDB/MGDB links, and projected squad.
+            You are not claiming the club.
+          </p>
+        </div>
+
+        <div class="card hp-owner-tools" style="border-color:#665522;background:#1a1810;">
+          <h2 style="margin-bottom:8px;">How to handpick</h2>
+          <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#ddd;">
+            Tag free agents in <b style="color:#e8c84a;">GPDB</b> and one manager in <b style="color:#e8c84a;">MGDB</b>
+            (Handpick ☐ column). Return here to review the checklist, pick a planned OooO, and
+            <b>Submit for approval</b>.
+          </p>
+          <p style="margin:0;display:flex;flex-wrap:wrap;gap:10px;">
+            <a id="gpdbLink" class="button" href="GPDB.html" target="_blank" rel="noopener"
+               style="display:inline-block;background:#c9a227;color:#111;font-weight:700;text-decoration:none;padding:10px 16px;">
+              Open GPDB — tag players
+            </a>
+            <a id="mgdbLink" class="button" href="MGDB.html" target="_blank" rel="noopener"
+               style="display:inline-block;background:#3a6ea5;color:#fff;font-weight:700;text-decoration:none;padding:10px 16px;">
+              Open MGDB — tag manager
+            </a>
+          </p>
+          <p class="hint" style="margin-top:10px;">
+            Temp tags are <b>not</b> contracts — stay free agents until admin approves. Must be logged in (not anonymous Discord browse).
+            Tags that would put you more than ₿50m overdrawn are blocked. This page refreshes when you come back from GPDB / MGDB.
+          </p>
+        </div>
+
+        <div class="card hp-owner-tools" id="expectationsCard" style="border-color:#3a5a7a;background:#10161c;">
+          <h2 style="margin:0 0 8px;color:#9ec5e8;">Squad expectations</h2>
+          <p class="hint" style="margin:0 0 10px;">
+            Build toward a legal registration squad. Green = met · amber = short · red = over a hard cap.
+          </p>
+          <ul id="checklistBox" class="hp-checklist"></ul>
+        </div>
+
+        <div class="card hp-owner-tools">
+          <h2>Club</h2>
+          <div class="form-grid">
+            <p id="clubTitle" style="margin:0;font-size:18px;color:#ffcc66;font-weight:600;">—</p>
+            <p id="clubMeta" class="hint"></p>
+          </div>
+          <div id="managerPicked" class="manager-box" hidden></div>
+        </div>
+
+        <div class="build-layout hp-owner-tools">
+          <div>
+            <div class="card">
+              <h2>Wishlist basket</h2>
+              <p class="hint" style="margin:0 0 10px;">
+                Players and manager tagged in GPDB / MGDB. Remove here or untag there.
+              </p>
+              <div id="basketBox" class="basket"><p class="empty">No players selected yet — tag in GPDB.</p></div>
+              <div id="totalsBox" class="totals" hidden></div>
+              <div class="actions">
+                <button type="button" id="submitBtn" class="button" style="background:#446633;">Submit for approval</button>
+                <button type="button" id="clearBtn" class="button">Clear basket</button>
+              </div>
+              <div id="pageStatus" class="status-line"></div>
+              <pre id="resultBox" class="hint" style="white-space:pre-wrap;margin-top:10px;"></pre>
+            </div>
+          </div>
+
+          <div>
+            <div class="card" id="submissionsCard" style="border-color:#446633;">
+              <h2 id="submissionsTitle">Submissions</h2>
+              <p id="submissionsHint" class="hint" style="margin:0 0 10px;">
+                Wishlists submitted for this club.
+              </p>
+              <div id="pendingBox" class="pending-box"><p class="empty">No submissions yet.</p></div>
+            </div>
+            <div class="card">
+              <h2>Projected squad</h2>
+              <p class="hint" style="margin:0 0 10px;">
+                Same registration rules as Squad / Scouting — wishlist players count as “if approved”.
+                Star <b>tags</b> (handpick max 3) are separate from registration star <b>cap</b> after OooO.
+              </p>
+              <div id="limitsBox" class="hp-limits"></div>
+              <div id="financeBox" class="hp-finance" style="margin-top:12px;"></div>
+              <label style="display:block;margin-top:12px;font-size:13px;color:#bbb;">
+                Planned One of our Own (preview)
+                <select id="plannedOooSelect" style="width:100%;margin-top:4px;padding:8px;background:#111;border:1px solid #444;color:#ddd;border-radius:4px;">
+                  <option value="">— none yet —</option>
+                </select>
+              </label>
+              <p class="hint" style="margin-top:6px;">
+                Only home-grown star players for this club’s nation. Sticky per club on this device — official OooO is set on Squad after approval.
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261104-vacant-club-opt"></script>
+  <script type="module" src="handpick_squad.js?v=20261104-admin-tabs-inbox"></script>
 </body>
 </html>

@@ -44,6 +44,54 @@ let wagePctSettings = { superleague: 5, championship: 4 };
 /** @type {'superleague'|'championship'} */
 let wageTier = "championship";
 let adminApprovalsScrolled = false;
+/** @type {"admin"|"owner"} Admin UI tab — owners never use tabs. */
+let adminUiTab = "admin";
+
+function readAdminTabFromUrl() {
+  const v = String(new URLSearchParams(window.location.search).get("view") || "")
+    .trim()
+    .toLowerCase();
+  return v === "owner" ? "owner" : "admin";
+}
+
+function setAdminUiTab(tab, { updateUrl = true } = {}) {
+  adminUiTab = tab === "owner" ? "owner" : "admin";
+  document.body.classList.toggle("hp-tab-admin", isAdmin && adminUiTab === "admin");
+  document.body.classList.toggle("hp-tab-owner", isAdmin && adminUiTab === "owner");
+
+  const btnAdmin = document.getElementById("hpTabAdmin");
+  const btnOwner = document.getElementById("hpTabOwner");
+  if (btnAdmin) {
+    btnAdmin.classList.toggle("is-active", adminUiTab === "admin");
+    btnAdmin.setAttribute("aria-selected", adminUiTab === "admin" ? "true" : "false");
+  }
+  if (btnOwner) {
+    btnOwner.classList.toggle("is-active", adminUiTab === "owner");
+    btnOwner.setAttribute("aria-selected", adminUiTab === "owner" ? "true" : "false");
+  }
+
+  const hint = document.getElementById("hpTabHint");
+  if (hint) {
+    hint.innerHTML =
+      adminUiTab === "owner"
+        ? `Previewing the <b>owner handpick page</b> for the selected club (checklist, basket, GPDB/MGDB). Switch back to <b>Admin approvals</b> to sign wishlists.`
+        : `Approve pending wishlists here. Switch to <b>Owner view</b> to see the selected club’s handpick UI.`;
+  }
+
+  const previewBanner = document.getElementById("ownerPreviewBanner");
+  if (previewBanner) previewBanner.hidden = !(isAdmin && adminUiTab === "owner");
+
+  if (isAdmin && updateUrl) {
+    try {
+      const url = new URL(window.location.href);
+      if (adminUiTab === "owner") url.searchParams.set("view", "owner");
+      else url.searchParams.delete("view");
+      history.replaceState({}, "", url);
+    } catch {
+      /* ignore */
+    }
+  }
+}
 
 /** Catalogue wage if set, else division % of market value (same idea as Scouting). */
 function playerSeasonWage(player) {
@@ -145,7 +193,29 @@ function wireUi() {
     activeClub = document.getElementById("clubSelect")?.value || "";
     basket.clear();
     pickedManager = null;
+    const url = new URL(window.location.href);
+    if (activeClub) url.searchParams.set("club", activeClub);
+    else url.searchParams.delete("club");
+    history.replaceState({}, "", url);
     await loadContext();
+  });
+  document.getElementById("hpTabAdmin")?.addEventListener("click", () => {
+    if (!isAdmin) return;
+    setAdminUiTab("admin");
+    void loadSubmissions();
+  });
+  document.getElementById("hpTabOwner")?.addEventListener("click", () => {
+    if (!isAdmin) return;
+    setAdminUiTab("owner");
+    void (async () => {
+      if (activeClub) {
+        await hydrateBasketFromDb();
+        renderBasket();
+        renderManager();
+        renderBuildPanel();
+      }
+      await loadSubmissions();
+    })();
   });
   document.getElementById("plannedOooSelect")?.addEventListener("change", (e) => {
     plannedOooId = e.target?.value || "";
@@ -188,15 +258,15 @@ async function boot() {
 
   if (isAdmin) {
     document.body.classList.add("hp-admin-mode");
-    document.getElementById("clubSelectWrap").hidden = false;
+    const chrome = document.getElementById("adminChrome");
+    if (chrome) chrome.hidden = false;
     const adminBanner = document.getElementById("adminBanner");
     if (adminBanner) adminBanner.hidden = false;
     const adminSection = document.getElementById("adminApprovalsSection");
     if (adminSection) adminSection.hidden = false;
     const pageH1 = document.querySelector(".hp-wrap > h1");
-    if (pageH1) pageH1.textContent = "Handpick approvals (admin)";
-    const subTitle = document.getElementById("submissionsTitle");
-    if (subTitle) subTitle.textContent = "Pending approvals (admin)";
+    if (pageH1) pageH1.textContent = "Handpick (admin)";
+    setAdminUiTab(readAdminTabFromUrl(), { updateUrl: false });
     await loadAdminClubs(mapRes.data || {});
     const sel = document.getElementById("clubSelect");
     if (qClub && [...sel.options].some((o) => o.value === qClub)) {
@@ -212,6 +282,7 @@ async function boot() {
     activeClub = sel?.value || qClub || "";
     if (!activeClub) {
       // Still show the page so admin can see pending approvals even with no intake club
+      setAdminUiTab("admin");
       gate.className = "gate-box warn";
       gate.textContent =
         "No club in handpick intake right now — pending approvals (if any) still listed below. Turn Handpick on from the Season owner board to preview a club.";
@@ -220,6 +291,16 @@ async function boot() {
       return;
     }
   } else {
+    // Owners: single page only — never show admin chrome/tabs
+    document.body.classList.remove("hp-admin-mode", "hp-tab-admin", "hp-tab-owner");
+    const chrome = document.getElementById("adminChrome");
+    if (chrome) chrome.hidden = true;
+    const adminBanner = document.getElementById("adminBanner");
+    if (adminBanner) adminBanner.hidden = true;
+    const adminSection = document.getElementById("adminApprovalsSection");
+    if (adminSection) adminSection.hidden = true;
+    const previewBanner = document.getElementById("ownerPreviewBanner");
+    if (previewBanner) previewBanner.hidden = true;
     // Owner: prefer ?club= from claim redirect, else RPC resolves my_club
     activeClub = qClub || "";
   }
@@ -291,15 +372,27 @@ async function loadContext() {
   activeClub = String(data?.club || club || "").toUpperCase();
   activeClubName = String(data?.club_name || "").trim();
 
+  document.body.classList.toggle("hp-admin-mode", !!isAdmin);
+  const chrome = document.getElementById("adminChrome");
+  if (chrome) chrome.hidden = !isAdmin;
   const adminBanner = document.getElementById("adminBanner");
   if (adminBanner) adminBanner.hidden = !isAdmin;
-  const clubSelectWrap = document.getElementById("clubSelectWrap");
-  if (clubSelectWrap && isAdmin) clubSelectWrap.hidden = false;
+  const adminSection = document.getElementById("adminApprovalsSection");
+  if (adminSection) adminSection.hidden = !isAdmin;
+  if (isAdmin) {
+    setAdminUiTab(adminUiTab || readAdminTabFromUrl(), { updateUrl: false });
+  } else {
+    document.body.classList.remove("hp-tab-admin", "hp-tab-owner");
+    const previewBanner = document.getElementById("ownerPreviewBanner");
+    if (previewBanner) previewBanner.hidden = true;
+  }
   const subTitle = document.getElementById("submissionsTitle");
-  if (subTitle) {
-    subTitle.textContent = isAdmin
-      ? "Pending approvals (admin)"
-      : "Submissions";
+  if (subTitle) subTitle.textContent = "Submissions";
+  const subHint = document.getElementById("submissionsHint");
+  if (subHint) {
+    subHint.textContent = isAdmin
+      ? "Wishlists submitted for this club (owner view)."
+      : "Your submitted wishlists for this club.";
   }
 
   if (!data?.ok) {
@@ -1176,43 +1269,58 @@ async function loadSubmissions() {
 
   document.body.classList.toggle("hp-admin-mode", !!isAdmin);
   if (adminSection) adminSection.hidden = !isAdmin;
-
-  const { data, error } = await supabase.rpc("handpick_list_submissions", {
-    p_status: isAdmin ? "pending" : "all",
-    p_club_short_name: isAdmin ? null : activeClub,
-  });
-
-  if (error) {
-    const msg = `<p class="empty">${escapeHtml(error.message)}</p>`;
-    if (ownerBox) ownerBox.innerHTML = msg;
-    if (adminBox) adminBox.innerHTML = msg;
-    return;
+  const chrome = document.getElementById("adminChrome");
+  if (chrome) chrome.hidden = !isAdmin;
+  if (!isAdmin) {
+    document.body.classList.remove("hp-tab-admin", "hp-tab-owner");
   }
 
-  const rows = Array.isArray(data) ? data : [];
-  if (!rows.length) {
-    const empty = isAdmin
-      ? `<p class="empty">No pending wishlists. Owner must click <b>Submit for approval</b> after tagging — tags alone are not a submission.</p>`
-      : `<p class="empty">No submissions yet.</p>`;
-    if (ownerBox) ownerBox.innerHTML = empty;
-    if (adminBox) adminBox.innerHTML = empty;
-    return;
-  }
-
+  // Admin approvals list (all pending)
   if (isAdmin && adminBox) {
-    adminBox.innerHTML = renderSubmissionCards(rows, { adminLayout: true });
-    wireSubmissionActions(adminBox);
-    if (!adminApprovalsScrolled) {
-      adminApprovalsScrolled = true;
-      document.getElementById("adminApprovalsSection")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+    const { data, error } = await supabase.rpc("handpick_list_submissions", {
+      p_status: "pending",
+      p_club_short_name: null,
+    });
+    if (error) {
+      adminBox.innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
+    } else {
+      const rows = Array.isArray(data) ? data : [];
+      adminBox.innerHTML = rows.length
+        ? renderSubmissionCards(rows, { adminLayout: true })
+        : `<p class="empty">No pending wishlists. Owner must click <b>Submit for approval</b> after tagging — tags alone are not a submission.</p>`;
+      if (rows.length) wireSubmissionActions(adminBox);
+      if (adminUiTab === "admin" && rows.length && !adminApprovalsScrolled) {
+        adminApprovalsScrolled = true;
+        document.getElementById("adminApprovalsSection")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
     }
   }
+
+  // Owner panel: this club only (real owners + admin owner-preview tab)
   if (ownerBox) {
-    ownerBox.innerHTML = renderSubmissionCards(rows, { adminLayout: false });
-    wireSubmissionActions(ownerBox);
+    const { data, error } = await supabase.rpc("handpick_list_submissions", {
+      p_status: "all",
+      p_club_short_name: activeClub || null,
+    });
+    if (error) {
+      ownerBox.innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
+    } else {
+      const rows = Array.isArray(data) ? data : [];
+      const clubRows = activeClub
+        ? rows.filter(
+            (r) =>
+              String(r.club_short_name || "").toUpperCase() ===
+              String(activeClub).toUpperCase()
+          )
+        : rows;
+      ownerBox.innerHTML = clubRows.length
+        ? renderSubmissionCards(clubRows, { adminLayout: false })
+        : `<p class="empty">No submissions yet.</p>`;
+      if (clubRows.length) wireSubmissionActions(ownerBox);
+    }
   }
 }
 
