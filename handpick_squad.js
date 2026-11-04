@@ -35,6 +35,8 @@ let isAdmin = false;
 let activeClub = "";
 /** @type {string} */
 let activeClubName = "";
+/** @type {string} Owner Discord tag / display name for admin chrome */
+let activeOwnerTag = "";
 /** @type {object|null} */
 let designations = null;
 /** Planned OooO player id (preview only) — sticky in localStorage per club */
@@ -315,6 +317,53 @@ function clubHasOwner(c) {
   return !!tag;
 }
 
+function setAdminOwnerLine(ownerTag, { vacant = false } = {}) {
+  const el = document.getElementById("adminOwnerLine");
+  if (!el) return;
+  if (!isAdmin) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  const tag = String(ownerTag || "").trim();
+  if (vacant || !tag) {
+    el.innerHTML = `Owner: <span class="vacant">vacant — no owner assigned</span>`;
+    return;
+  }
+  el.innerHTML = `Owner: <span>${escapeHtml(tag)}</span> <span class="muted">· selected club</span>`;
+}
+
+async function loadClubOwnerTag(clubShort) {
+  const club = String(clubShort || "").trim().toUpperCase();
+  if (!club) {
+    activeOwnerTag = "";
+    return "";
+  }
+  try {
+    const { data: clubRow } = await supabase
+      .from("Clubs")
+      .select("owner, owner_id")
+      .eq("ShortName", club)
+      .maybeSingle();
+    let tag = String(clubRow?.owner || "").trim();
+    const oid = clubRow?.owner_id || null;
+    if (!tag && oid) {
+      const { data: reg } = await supabase
+        .from("gpsl_owner_registry")
+        .select("owner_tag")
+        .eq("owner_id", oid)
+        .maybeSingle();
+      tag = String(reg?.owner_tag || "").trim();
+    }
+    activeOwnerTag = tag;
+    return tag;
+  } catch (err) {
+    console.warn("loadClubOwnerTag", err);
+    activeOwnerTag = "";
+    return "";
+  }
+}
+
 async function loadAdminClubs(handpickMap) {
   const sel = document.getElementById("clubSelect");
   const keys = Object.keys(handpickMap || {}).filter(Boolean).sort();
@@ -411,12 +460,18 @@ async function loadContext() {
     activeClubName = String(clubRow?.Club || "").trim();
   }
 
+  const ownerTag = isAdmin ? await loadClubOwnerTag(activeClub) : "";
+  setAdminOwnerLine(ownerTag, { vacant: !ownerTag });
+
   const clubLabel = activeClubName
     ? `${activeClubName} (${activeClub})`
     : activeClub || "—";
+  const ownerLabel = ownerTag || "vacant";
 
   const titleEl = document.getElementById("clubTitle");
-  if (titleEl) titleEl.textContent = clubLabel;
+  if (titleEl) {
+    titleEl.textContent = isAdmin ? `${clubLabel} · ${ownerLabel}` : clubLabel;
+  }
 
   const gpdb = document.getElementById("gpdbLink");
   if (gpdb) {
@@ -448,14 +503,18 @@ async function loadContext() {
 
   if (!data.handpick_intake && isAdmin) {
     gate.className = "gate-box warn";
-    gate.innerHTML = `Club <b>${escapeHtml(clubLabel)}</b> is not in handpick intake. Enable it on the Season owner board before approving wishlists.`;
+    gate.innerHTML = `Club <b>${escapeHtml(clubLabel)}</b> · owner <b>${escapeHtml(
+      ownerLabel
+    )}</b> is not in handpick intake. Enable it on the Season owner board before approving wishlists.`;
   } else if (isAdmin) {
     gate.className = "gate-box ok";
     gate.innerHTML = `<b>Admin review</b> for <b>${escapeHtml(
       clubLabel
-    )}</b> · balance ${escapeHtml(formatMoney(Number(data.balance) || 0))} · tax ${escapeHtml(
+    )}</b> · owner <b>${escapeHtml(ownerLabel)}</b> · balance ${escapeHtml(
+      formatMoney(Number(data.balance) || 0)
+    )} · tax ${escapeHtml(
       String(data.income_tax_pct ?? 0)
-    )}% · use <b>Pending approvals</b> below to Preview / Approve &amp; sign (you are not claiming this club).`;
+    )}% · use <b>Pending approvals</b> / <b>Owner view</b> (you are not claiming this club).`;
   } else {
     gate.className = "gate-box ok";
     gate.innerHTML = `Handpick open for <b>${escapeHtml(clubLabel)}</b> · balance ${escapeHtml(
@@ -466,9 +525,12 @@ async function loadContext() {
   }
 
   app.hidden = false;
-  document.getElementById("clubMeta").textContent = data.club_nation
-    ? `Home nation: ${data.club_nation}`
-    : "";
+  const metaBits = [];
+  if (data.club_nation) metaBits.push(`Home nation: ${data.club_nation}`);
+  if (isAdmin) {
+    metaBits.push(ownerTag ? `Owner: ${ownerTag}` : "Owner: vacant");
+  }
+  document.getElementById("clubMeta").textContent = metaBits.join(" · ");
 
   try {
     designations = await loadSquadDesignationsState(supabase, activeClub);

@@ -146,6 +146,15 @@
       color: #ddd;
       border-radius: 4px;
     }
+    .hp-admin-owner-line {
+      margin: 10px 0 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffcc66;
+      line-height: 1.35;
+    }
+    .hp-admin-owner-line .vacant { color: #f0a060; }
+    .hp-admin-owner-line .muted { color: #9a9; font-weight: 500; font-size: 13px; }
     .hp-admin-chrome .hp-tab-hint {
       margin: 8px 0 0;
       font-size: 12px;
@@ -296,6 +305,7 @@
             Club (switch for owner preview / context)
             <select id="clubSelect"><option value="">—</option></select>
           </label>
+          <p id="adminOwnerLine" class="hp-admin-owner-line">Owner: —</p>
         </div>
         <p id="hpTabHint" class="hp-tab-hint">
           Approve pending wishlists here. Switch to <b>Owner view</b> to see the selected club’s handpick UI.
@@ -420,6 +430,6 @@
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261104-admin-tabs-inbox"></script>
+  <script type="module" src="handpick_squad.js?v=20261104-owner-name"></script>
 </body>
 </html>
