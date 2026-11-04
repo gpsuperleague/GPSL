@@ -56,10 +56,11 @@ import {
 } from "./player_discipline.js";
 import {
   loadClubSaleMarks,
+  notifySaleInterestedClubs,
   loadMyPlayersScoutingInterest,
   scoutingInterestBadgesHtml,
   setClubSaleMark,
-} from "./player_sale_interest.js?v=20261103-sale-scout";
+} from "./player_sale_interest.js?v=20261104-sale-notify";
 
 /** Current competition season start — scopes Season Signings / Sales / Closed Listings. */
 let currentSeasonStartedAt = null;
@@ -493,6 +494,13 @@ async function loadMarkedForSale(shortName) {
           const note = m.note
             ? escapeTc(m.note)
             : "<span style='color:#666;'>—</span>";
+          const interestClubs = tcScoutingInterestByPlayer.get(pid) || [];
+          const notifyBtn =
+            !m.is_listed && interestClubs.length
+              ? `<button type="button" class="tc-notify-sale-interest" data-player-id="${escapeTc(
+                  pid
+                )}" data-count="${interestClubs.length}">Notify ${interestClubs.length}</button>`
+              : "";
           return `
             <tr>
               <td>${playerLinkCell(pid, { Konami_ID: pid, Name: name }, name)}${listed}${interest}</td>
@@ -500,7 +508,8 @@ async function loadMarkedForSale(shortName) {
               <td>${m.overall_rating != null ? escapeTc(m.overall_rating) : "—"}</td>
               <td>${formatMoney(Number(m.market_value || 0))}</td>
               <td style="font-size:12px;color:#aaa;">${note}</td>
-              <td>
+              <td style="white-space:nowrap;">
+                ${notifyBtn}
                 <button type="button" class="tc-clear-sale-mark" data-player-id="${escapeTc(pid)}">Clear</button>
               </td>
             </tr>`;
@@ -508,6 +517,35 @@ async function loadMarkedForSale(shortName) {
         .join("")}
     </table>
   `;
+
+  container.querySelectorAll(".tc-notify-sale-interest").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const n = Number(btn.dataset.count) || 0;
+      if (
+        !confirm(
+          `Notify ${n} interested club(s) that you are thinking of listing this player?\n\nOnce per club per day.`
+        )
+      ) {
+        return;
+      }
+      btn.disabled = true;
+      try {
+        const res = await notifySaleInterestedClubs(
+          supabase,
+          btn.dataset.playerId
+        );
+        if (!res?.ok) {
+          alert(res?.detail || res?.reason || "Could not send notifications.");
+          return;
+        }
+        alert(res.detail || `Notified ${res.sent ?? 0} club(s).`);
+      } catch (err) {
+        alert(err.message || "Could not notify interested clubs.");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
 
   container.querySelectorAll(".tc-clear-sale-mark").forEach((btn) => {
     btn.addEventListener("click", async () => {

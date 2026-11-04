@@ -123,7 +123,8 @@ import {
   loadMyPlayersScoutingInterest,
   saleMarkBadgeHtml,
   scoutingInterestBadgesHtml,
-} from "./player_sale_interest.js?v=20261103-sale-scout";
+  notifySaleInterestedClubs,
+} from "./player_sale_interest.js?v=20261104-sale-notify";
 import { mountStarDemotionPanel } from "./squad_star_demotion.js?v=20261003-big-star";
 import { mountLegacyCardsPanel } from "./squad_legacy_cards.js?v=20261025-legacy-jj";
 import {
@@ -847,7 +848,14 @@ function saleMarkActionOptionsHtml(playerId) {
   const pid = String(playerId ?? "").trim();
   if (!pid || staffPreview) return "";
   if (squadSaleMarksByPlayer.has(pid)) {
-    return `<option value="clear_sale_mark">Clear sale mark</option>`;
+    const interestN = (squadScoutingInterestByPlayer.get(pid) || []).length;
+    const notifyOpt =
+      interestN > 0
+        ? `<option value="notify_sale_interest">Notify ${interestN} interested club${
+            interestN === 1 ? "" : "s"
+          }</option>`
+        : "";
+    return `${notifyOpt}<option value="clear_sale_mark">Clear sale mark</option>`;
   }
   return `<option value="mark_sale">Mark for sale (private)</option>`;
 }
@@ -2662,6 +2670,44 @@ async function handlePlayerAction(playerId, action, selectEl) {
     } catch (err) {
       console.error("Sale mark update failed:", err);
       alert(err.message || "Could not update sale mark.");
+    }
+    return;
+  }
+
+  if (action === "notify_sale_interest") {
+    resetActionSelect(selectEl);
+    const interest = squadScoutingInterestByPlayer.get(String(playerId)) || [];
+    if (!interest.length) {
+      alert("No clubs currently have this player on their scouting shortlist.");
+      return;
+    }
+    const names = interest
+      .map((c) => c.club_name || c.club_short_name)
+      .filter(Boolean)
+      .slice(0, 8)
+      .join(", ");
+    const more = interest.length > 8 ? ` (+${interest.length - 8} more)` : "";
+    if (
+      !confirm(
+        `Notify ${interest.length} interested club(s) that you are thinking of listing this player?\n\n${names}${more}\n\nThey get an Inbox message (once per club per day).`
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await notifySaleInterestedClubs(supabase, playerId);
+      if (!res?.ok) {
+        alert(res?.detail || res?.reason || "Could not send notifications.");
+        return;
+      }
+      alert(
+        res.detail ||
+          `Notified ${res.sent ?? 0} club(s)` +
+            (res.skipped ? ` (${res.skipped} already notified today).` : ".")
+      );
+    } catch (err) {
+      console.error("Notify sale interest failed:", err);
+      alert(err.message || "Could not notify interested clubs.");
     }
     return;
   }

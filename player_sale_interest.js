@@ -87,3 +87,13 @@ export async function loadMyPlayersScoutingInterest(supabase, playerIds = null) 
   }
   return { byPlayer, club: data?.club || null };
 }
+
+/** Manual ping to clubs scouting this sale-marked player. */
+export async function notifySaleInterestedClubs(supabase, playerId) {
+  const { data, error } = await supabase.rpc(
+    "club_player_sale_notify_interested",
+    { p_player_id: String(playerId ?? "").trim() }
+  );
+  if (error) throw error;
+  return data;
+}
