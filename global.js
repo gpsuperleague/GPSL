@@ -3459,13 +3459,19 @@ export async function buildNav() {
   }
   if (handpickNavVisible) {
     const hpActive = pathNorm === "handpick_squad.html";
+    // Owners in intake: same yellow chip as admin, between Dashboard and Club Wire / Inbox.
     const hpHref = handpickIntakeClub
       ? `handpick_squad.html?club=${encodeURIComponent(handpickIntakeClub)}`
       : "handpick_squad.html?admin=1";
     const hpTitle = handpickIntakeClub
-      ? "Mid-season handpick — build wishlist / submit squad"
+      ? "Mid-season handpick — build wishlist / submit for approval"
       : "Handpick in progress — open admin approvals / owner preview";
-    const hpLabel = isGpslAdminNav && !handpickIntakeClub ? "Handpick ●" : "Handpick";
+    const hpLabel =
+      isGpslAdminNav && !handpickIntakeClub
+        ? "Handpick ●"
+        : handpickIntakeClub
+          ? "Handpick Squad"
+          : "Handpick";
     html +=
       `<a href="${hpHref}" ` +
       `class="nav-shortcut nav-shortcut-handpick${hpActive ? " active" : ""}" ` +
