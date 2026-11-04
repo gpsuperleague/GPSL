@@ -579,6 +579,21 @@ async function loadContext() {
   const mgdbInline = document.getElementById("mgdbLinkInline");
   if (mgdbInline) mgdbInline.href = mgdbHref;
 
+  const finances = document.getElementById("financesLink");
+  if (finances) {
+    finances.href = activeClub
+      ? `finances.html?club=${encodeURIComponent(activeClub)}`
+      : "finances.html";
+    finances.textContent = "Club Finances";
+  }
+  const squad = document.getElementById("squadLink");
+  if (squad) {
+    squad.href = activeClub
+      ? `squad.html?club=${encodeURIComponent(activeClub)}`
+      : "squad.html";
+    squad.textContent = "Current squad";
+  }
+
   try {
     const theme = await loadClubDashboardTheme(supabase, activeClub);
     applyClubDashboardTheme(theme, { pageKey: "handpick_squad" });

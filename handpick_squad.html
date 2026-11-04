@@ -455,6 +455,34 @@
       color: #fff !important;
       border-color: #ff9900 !important;
     }
+    a.hp-cta-finances,
+    a.hp-cta-finances:visited,
+    a.hp-cta-finances:hover,
+    a.hp-cta-finances:active {
+      background: #14301c !important;
+      color: #cfe9d4 !important;
+      border-color: #2f6a42 !important;
+      text-decoration: none !important;
+    }
+    a.hp-cta-finances:hover {
+      background: #1a3c24 !important;
+      color: #fff !important;
+      border-color: #ff9900 !important;
+    }
+    a.hp-cta-squad,
+    a.hp-cta-squad:visited,
+    a.hp-cta-squad:hover,
+    a.hp-cta-squad:active {
+      background: #1a1a2e !important;
+      color: #d8d8f0 !important;
+      border-color: #4a4a7a !important;
+      text-decoration: none !important;
+    }
+    a.hp-cta-squad:hover {
+      background: #242442 !important;
+      color: #fff !important;
+      border-color: #ff9900 !important;
+    }
     #ownerPreviewBanner.hp-admin-only-strip {
       border-style: dashed !important;
       background: #152030 !important;
@@ -542,10 +570,17 @@
                 <a id="mgdbLink" class="hp-cta hp-cta-mgdb" href="MGDB.html" target="_blank" rel="noopener">
                   Open MGDB — tag manager
                 </a>
+                <a id="financesLink" class="hp-cta hp-cta-finances" href="finances.html">
+                  Club Finances
+                </a>
+                <a id="squadLink" class="hp-cta hp-cta-squad" href="squad.html">
+                  Current squad
+                </a>
               </p>
               <p class="hint" style="margin-top:12px;">
                 Temp tags are <b>not</b> contracts — stay free agents until admin approves.
                 Overdraft deeper than ₿50m is blocked. This page refreshes when you return from GPDB / MGDB.
+                Check <b>Club Finances</b> and your <b>current squad</b> while you build.
               </p>
             </div>
 
@@ -609,6 +644,6 @@
     </div>
   </div>
   <script>window.CURRENT_PAGE = "handpick_squad"; const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261104-cta-contrast"></script>
+  <script type="module" src="handpick_squad.js?v=20261104-owner-links"></script>
 </body>
 </html>
