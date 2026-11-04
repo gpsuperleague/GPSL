@@ -1,0 +1,147 @@
+<script>window.CURRENT_PAGE = "admin_fixture_scheduling";</script>
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Fixture scheduling history — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .form-row label { font-size: 13px; color: #bbb; }
+    .form-row select,
+    .form-row input {
+      display: block; min-width: 220px; max-width: 520px; width: 100%;
+      padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .fixture-box {
+      margin-top: 12px; padding: 12px; background: #111; border: 1px solid #333;
+      border-radius: 6px; font-size: 13px; line-height: 1.5;
+    }
+    .fixture-box .ok { color: #9d9; }
+    .fixture-box .warn { color: #e8a87c; }
+    .fixture-box code { color: #ff9900; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 8px; }
+    .meta-row span { color: #aaa; }
+    .meta-row b { color: #eee; }
+    .timeline {
+      list-style: none; margin: 0; padding: 0;
+      border-left: 2px solid #333;
+    }
+    .timeline li {
+      position: relative;
+      margin: 0 0 14px 0;
+      padding: 0 0 0 16px;
+    }
+    .timeline li::before {
+      content: "";
+      position: absolute;
+      left: -5px; top: 6px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #666;
+    }
+    .timeline li.kind-proposal::before { background: #ff9900; }
+    .timeline li.kind-inbox::before { background: #6af; }
+    .timeline li.kind-override::before { background: #c8f; }
+    .timeline li.kind-checkin::before { background: #9d9; }
+    .timeline li.kind-noshow::before { background: #f66; }
+    .timeline .when { font-size: 12px; color: #888; }
+    .timeline .who { color: #ff9900; font-weight: 600; }
+    .timeline .tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 1px 6px;
+      margin-right: 6px;
+      border-radius: 3px;
+      background: #222;
+      border: 1px solid #444;
+      color: #bbb;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .timeline .tag.pending { border-color: #a80; color: #fc6; }
+    .timeline .tag.accepted { border-color: #484; color: #9d9; }
+    .timeline .tag.superseded,
+    .timeline .tag.withdrawn { border-color: #555; color: #888; }
+    .timeline .body {
+      white-space: pre-wrap;
+      color: #ccc;
+      margin-top: 4px;
+      font-size: 13px;
+    }
+    .filters { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 10px 0 14px; font-size: 13px; color: #bbb; }
+    .filters label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    .empty-note { color: #888; font-size: 13px; margin-top: 8px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Fixture scheduling history</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Read-only back-and-forth for a fixture (proposals, inbox, Discord lock, check-ins, no-shows).
+        Deep link: <code>admin_fixture_scheduling.html?fixture=8966</code>
+      </p>
+
+      <div class="card">
+        <h2>1. Choose fixture</h2>
+        <div class="form-row">
+          <label>
+            GPSL month
+            <select id="monthSelect"></select>
+          </label>
+          <label>
+            Club
+            <select id="clubSelect">
+              <option value="">Select month first…</option>
+            </select>
+          </label>
+          <label>
+            Fixture
+            <select id="fixtureSelect" style="min-width:360px;">
+              <option value="">Select club first…</option>
+            </select>
+          </label>
+        </div>
+        <p class="note" style="margin:12px 0 4px;">Or paste a fixture id:</p>
+        <div class="form-row">
+          <label>
+            Fixture id
+            <input id="fixtureIdInput" type="number" min="1" step="1" placeholder="e.g. 8966">
+          </label>
+          <button type="button" id="loadIdBtn" class="button secondary">Load history</button>
+        </div>
+        <p id="pickStatus" class="status-line"></p>
+      </div>
+
+      <div class="card" id="historyCard" hidden>
+        <h2>2. Negotiation timeline</h2>
+        <div id="fixtureSummary" class="fixture-box"></div>
+        <div class="filters" id="timelineFilters">
+          <label><input type="checkbox" data-kind="proposal" checked> Proposals</label>
+          <label><input type="checkbox" data-kind="inbox" checked> Inbox</label>
+          <label><input type="checkbox" data-kind="override" checked> Discord lock</label>
+          <label><input type="checkbox" data-kind="checkin" checked> Check-in</label>
+          <label><input type="checkbox" data-kind="noshow" checked> No-show</label>
+        </div>
+        <ul class="timeline" id="timeline"></ul>
+        <p id="timelineEmpty" class="empty-note" hidden>No scheduling events for this fixture.</p>
+        <p class="note" style="margin-top:14px;">
+          Owner page:
+          <a id="ownerScheduleLink" href="#" style="color:#ff9900;">fixture_schedule.html</a>
+          · Replay wipe (destroys this history):
+          <a id="resetLink" href="admin_fixture_reset.html" style="color:#f88;">admin_fixture_reset.html</a>
+        </p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_fixture_scheduling.js?v=20261104-sched-hist"></script>
+</body>
+</html>

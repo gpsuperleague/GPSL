@@ -649,6 +649,13 @@ export const ADMIN_MAIN_NAV = [
           "Mid-match network / visibility reports. Resolve records decision only — apply forfeit/replay with existing tools."
         ),
         L(
+          "Fixture scheduling history",
+          "admin_fixture_scheduling.html",
+          null,
+          null,
+          "Pick a fixture and see the proposal / inbox / Discord-lock / check-in / no-show back-and-forth (read-only). Deep link: ?fixture=id"
+        ),
+        L(
           "Reset fixture for replay",
           "admin_fixture_reset.html",
           null,
