@@ -426,20 +426,21 @@
     }
     a.hp-cta {
       display: inline-flex; align-items: center; justify-content: center;
-      min-height: 44px; padding: 11px 18px;
-      border-radius: 999px;
-      text-decoration: none; font-weight: 800; font-size: 14px;
-      border: 1px solid transparent;
-      box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset;
-      transition: transform 0.12s ease, filter 0.12s ease;
+      min-height: 40px; padding: 10px 16px;
+      border-radius: 8px;
+      text-decoration: none; font-weight: 700; font-size: 14px;
+      border: 1px solid #444;
+      transition: border-color 0.12s ease, background 0.12s ease;
     }
-    a.hp-cta:hover { transform: translateY(-1px); filter: brightness(1.05); }
+    a.hp-cta:hover { border-color: #ff9900; }
     a.hp-cta-gpdb {
-      background: #e8d9a8; color: #2a2410; border-color: #d4c08a;
+      background: #c9a227; color: #111; border-color: #a8861c;
     }
+    a.hp-cta-gpdb:hover { background: #e0b82e; color: #111; }
     a.hp-cta-mgdb {
-      background: #a8c8e8; color: #132033; border-color: #8eb4d8;
+      background: #1a2a3a; color: #ddd; border-color: #3a5a7a;
     }
+    a.hp-cta-mgdb:hover { background: #24364a; color: #fff; border-color: #ff9900; }
     #ownerPreviewBanner.hp-admin-only-strip {
       border-style: dashed !important;
       background: #152030 !important;
@@ -594,6 +595,6 @@
     </div>
   </div>
   <script>window.CURRENT_PAGE = "handpick_squad"; const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261104-pos-sort-hero"></script>
+  <script type="module" src="handpick_squad.js?v=20261104-cta-theme"></script>
 </body>
 </html>
