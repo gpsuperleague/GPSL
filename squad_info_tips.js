@@ -33,13 +33,13 @@ export const SQUAD_TIPS = {
   rating:
     "Overall rating (and calculated potential in brackets when shown). Pot. is GPSL’s formula — not always the raw pesdb max level.\n\nRating also drives automatic star status (≥79 by default).",
 
-  apps: "Appearances for your club this GPSL season (competition matches counted on this page).",
+  apps: "League appearances for your club this GPSL season (same rules as the league table). Cups are not included. Games played early for a later GPSL month stay deferred until that month is active — they are not missing, just not counted yet.",
 
-  goals: "Goals scored for your club this GPSL season.",
+  goals: "League goals for your club this GPSL season (same deferral rules as Apps).",
 
-  assists: "Assists for your club this GPSL season.",
+  assists: "League assists for your club this GPSL season (same deferral rules as Apps).",
 
-  avg: "Average match rating this GPSL season (when recorded).",
+  avg: "Average match rating from counted league apps this GPSL season (when recorded).",
 
   matchFitness:
     "Match fitness (green → red): Fully Fit → Match Ready → Managing Load → Fitness Concern → Injury Risk. Needs consecutive league/cup apps to climb each level (default 4); missing a club match drops one level. Higher levels are more likely to be injured and tilt toward worse severity (L4–5); lengths stay from the injury type. While injured the label shows Injured / Regaining fitness — the meter still tracks recovery.",
