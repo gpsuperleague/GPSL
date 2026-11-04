@@ -164,7 +164,7 @@ export const SECTION_RECENT = {
       type: "p",
       html: `Full rules: <a href="#match-scheduling">Match scheduling</a>. Summary — arrange from pre-season; play in the fixture month or catch up later;
         check in at kick-off; <b>fines at GPSL month lock</b> (arrangement, missed response, no-show if still unplayed).
-        Missed check-in with no result? Use <b>Pick new time to play this month</b> on <a href="fixture_schedule.html">Schedule</a> — both miss = no fine.`,
+        Missed check-in: fines/strikes still apply. On <a href="fixture_schedule.html">Schedule</a> choose <b>enter result</b> if you played, or <b>Pick new time</b> if not.`,
     },
     { type: "h3", html: "Discipline &amp; fines handbook" },
     {

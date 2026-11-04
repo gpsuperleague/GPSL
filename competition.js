@@ -1230,10 +1230,36 @@ export function isOnesidedCheckinSubmitUnlock(fixture, clubIdentity) {
 }
 
 /**
+ * After check-in window: neither side checked in, and I am in the fixture.
+ * Both no-show penalties still apply; either club may submit if they played.
+ */
+export function isNeitherCheckinSubmitUnlock(fixture, clubIdentity) {
+  if (!fixture || !clubIdentity) return false;
+  if (fixture.manual_black_box === true) return false;
+  if (fixture.status !== "scheduled") return false;
+  if (fixture.schedule_status != null && fixture.schedule_status !== "agreed") {
+    return false;
+  }
+  if (!fixture.agreed_kickoff_at) return false;
+  if (!isFixtureCheckinWindowClosed(fixture)) return false;
+  if (fixture.home_checked_in || fixture.away_checked_in) return false;
+  return fixtureInvolvesClub(fixture, clubIdentity);
+}
+
+/** Onesided (checked-in) or both-miss unlock after the check-in window. */
+export function isCheckinMissSubmitUnlock(fixture, clubIdentity) {
+  return (
+    isOnesidedCheckinSubmitUnlock(fixture, clubIdentity) ||
+    isNeitherCheckinSubmitUnlock(fixture, clubIdentity)
+  );
+}
+
+/**
  * Human reason a result cannot be submitted (or null if it can).
  * Keep in sync with canSubmitResult + match_schedule_assert_ready_to_play.
  * Both checked in → submit immediately (no KO wait / no 30-min block).
  * One checked in after window → that club may submit (no-show still penalised).
+ * Neither checked in after window → either club may submit (both still penalised).
  */
 export function whyCantSubmitResult(
   fixture,
@@ -1270,8 +1296,8 @@ export function whyCantSubmitResult(
   }
 
   if (!fixture.home_checked_in || !fixture.away_checked_in) {
-    if (isOnesidedCheckinSubmitUnlock(fixture, clubIdentity)) {
-      // Allowed — opponent missed check-in; penalties still apply server-side
+    if (isCheckinMissSubmitUnlock(fixture, clubIdentity)) {
+      // Allowed — miss penalties still apply server-side
     } else {
       const homeLabel = fixture.home_club_name || fixture.home_club_short_name || "Home";
       const awayLabel = fixture.away_club_name || fixture.away_club_short_name || "Away";
@@ -1295,7 +1321,14 @@ export function whyCantSubmitResult(
         return "You checked in — waiting for opponent check-in (or for the check-in window to close).";
       }
       if (oppCheckedIn && isFixtureCheckinWindowClosed(fixture)) {
-        return "You missed check-in — only your opponent can submit the result (your no-show penalty still applies).";
+        return "You missed check-in — only your opponent can submit the result (your no-show penalty still applies). Or pick a new time on Schedule if the match was not played.";
+      }
+      if (
+        !homeIn &&
+        !awayIn &&
+        !isFixtureCheckinWindowClosed(fixture)
+      ) {
+        return "Both clubs must check in before submitting (still needed: home and away).";
       }
       const missing = [
         !fixture.home_checked_in ? homeLabel : null,

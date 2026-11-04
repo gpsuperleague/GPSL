@@ -49,9 +49,61 @@ import {
 
 function replayResetConfirmMessage(allowances) {
   if (allowances?.can_replay_reset) {
-    return "Missed check-in at the agreed time? Reset and pick a new kick-off in this fixture's play month. Does not use your reschedule allowance.";
+    return "Match was not played? Reset and pick a new kick-off in this fixture's play month. Does not use your reschedule allowance. No-show fines/strikes already applied stay in place.";
   }
   return "Reset this catch-up fixture and pick a new kick-off in the current GPSL month? Does not use your reschedule allowance.";
+}
+
+/** After check-in window: choose enter result (if allowed) or reschedule. */
+function missChoicePanelHtml(f, ci, al) {
+  const mode = String(ci?.miss_choice_mode || "");
+  if (ci?.result_pending) {
+    return `<div class="panel" style="border-color:#e8a87c;">
+      <h2>Result pending</h2>
+      <p class="meta">A result is waiting for confirmation. Confirm or reject it in Inbox / Match Day before picking a new time.</p>
+      <div class="actions">
+        <a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Open Match Day</a>
+      </div>
+    </div>`;
+  }
+  if (!mode) return "";
+
+  const canEnter = !!ci.can_enter_result;
+  const canReset = !!(al.can_replay_reset || al.can_catch_up_reset);
+  const resetLabel = al.can_replay_reset
+    ? "Didn't play — pick new time"
+    : "Didn't play — reset for catch-up";
+
+  let blurb = "";
+  if (mode === "onesided_checked") {
+    blurb =
+      "Opponent missed check-in — their fine/strike still apply. If you played, enter the result (they confirm + stats). If not, pick a new time.";
+  } else if (mode === "onesided_missed") {
+    blurb =
+      "You missed check-in — your fine/strike still apply. Only your opponent can enter the result if you played. If the match was not played, pick a new time.";
+  } else if (mode === "both_miss") {
+    blurb =
+      "Neither club checked in — fines/strikes still apply to both. If you played, either owner can enter the result (opponent confirms + stats). If not, pick a new time.";
+  } else {
+    return "";
+  }
+
+  return `<div class="panel" style="border-color:var(--gpsl-accent, #ff9900);">
+    <h2>Check-in window closed</h2>
+    <p class="meta">${blurb}</p>
+    <div class="actions">
+      ${
+        canEnter
+          ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Match was played — enter result</a>`
+          : ""
+      }
+      ${
+        canReset
+          ? `<button type="button" id="catchUpResetBtn" class="button secondary">${resetLabel}</button>`
+          : ""
+      }
+    </div>
+  </div>`;
 }
 
 let ctx = null;
@@ -915,8 +967,8 @@ function renderAgreedPanel(root, f, sch) {
       <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, 12 subs, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:var(--gpsl-accent, #ff9900);">Check your squad</a> before kick-off.</p>
       <p class="meta">${
         ladderActive
-          ? "No-show fines apply instantly when the check-in window closes (see banner). Month-lock no-show 3–0 is not used on GPSL-arranged fixtures."
-          : "If only one club checks in after the window, that is a no-show: instant fine + season strike (see Schedule banner once an attempt is live). 3 no-shows on this fixture = 0–3. Both miss = ₿500k + strike each."
+          ? "No-show fines apply instantly when the check-in window closes (see banner). After a miss you can still enter a result if you played, or pick a new time. Month-lock no-show 3–0 is not used on GPSL-arranged fixtures."
+          : "If only one club checks in after the window, that is a no-show: instant fine + season strike. Both miss = ₿500k + strike each. Either way you can enter a result if you played, or pick a new time."
       }</p>
       ${
         ci.my_has_manager === false
@@ -937,11 +989,27 @@ function renderAgreedPanel(root, f, sch) {
         ${matchConsoleStripHtml({ isCup: String(f.competition_type || "").toLowerCase() === "cup" })}
         ${pitchBehaviourPanelHtml({ fixtureId: f.id, requireAck: true })}
       </div>
+      ${missChoicePanelHtml(f, ci, al)}
       <div class="actions">
         ${ci.can_check_in ? '<button type="button" id="checkInBtn" class="button">Check in now</button>' : ""}
-        ${ci.can_play ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Enter result on Match Day</a>` : ""}
-        ${al.can_replay_reset ? '<button type="button" id="catchUpResetBtn" class="button secondary">Pick new time to play this month</button>' : ""}
-        ${al.can_catch_up_reset && !al.can_replay_reset ? '<button type="button" id="catchUpResetBtn" class="button secondary">Reset for catch-up (pick new time)</button>' : ""}
+        ${
+          !ci.miss_choice_mode && !ci.result_pending && ci.can_play
+            ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Enter result on Match Day</a>`
+            : ""
+        }
+        ${
+          !ci.miss_choice_mode && !ci.result_pending && al.can_replay_reset
+            ? '<button type="button" id="catchUpResetBtn" class="button secondary">Pick new time to play this month</button>'
+            : ""
+        }
+        ${
+          !ci.miss_choice_mode &&
+          !ci.result_pending &&
+          al.can_catch_up_reset &&
+          !al.can_replay_reset
+            ? '<button type="button" id="catchUpResetBtn" class="button secondary">Reset for catch-up (pick new time)</button>'
+            : ""
+        }
         ${al.can_voluntary_drop ? '<button type="button" id="voluntaryDropBtn" class="button secondary">Drop & reschedule (24h+ notice)</button>' : ""}
         ${al.can_emergency_drop && Number(al.emergency_drops_remaining ?? 1) > 0 ? '<button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (&lt;24h)</button>' : ""}
       </div>

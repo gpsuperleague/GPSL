@@ -12,6 +12,7 @@ import {
   loadPendingSubmission,
   canSubmitResult,
   isOnesidedCheckinSubmitUnlock,
+  isNeitherCheckinSubmitUnlock,
   whyCantSubmitResult,
   isFixtureResultMonthOpen,
   isFixtureMonthPlayable,
@@ -21,7 +22,7 @@ import {
   LEAGUE_DIVISIONS,
   deferredResultNote,
   leagueBadgeHtml,
-} from "./competition.js?v=20261102-onesided-checkin";
+} from "./competition.js?v=20261104-miss-result";
 import {
   loadCalendarStatus,
   calendarStatusBanner,
@@ -2518,15 +2519,18 @@ async function updateFixturePreview() {
       holidayContext &&
       isFixtureHolidayPlayable(f, myClub, holidayContext);
     const onesided = isOnesidedCheckinSubmitUnlock(f, myClub);
+    const neither = isNeitherCheckinSubmitUnlock(f, myClub);
     setStatus(
       "submitStatus",
       holidayEarly
         ? "Holiday unlock — arrange/play this match in the current GPSL week (before its month). Both clubs need min 24 players. Result will not count on the table until that GPSL month."
         : onesided
-          ? "Opponent missed check-in — their no-show fine/strike still apply. You checked in, so you can submit the result."
-          : restoredDraft
-            ? "Draft restored — check scores and stats, then submit."
-            : "Enter home and away goals, then submit."
+          ? "Opponent missed check-in — their no-show fine/strike still apply. You checked in, so you can submit the result. Opponent confirms and enters stats after."
+          : neither
+            ? "Neither club checked in — fines/strikes still apply. If you played, submit the result; opponent confirms and enters stats. Or pick a new time on Schedule if you did not play."
+            : restoredDraft
+              ? "Draft restored — check scores and stats, then submit."
+              : "Enter home and away goals, then submit."
     );
   } else {
     const why =
