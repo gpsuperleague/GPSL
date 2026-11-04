@@ -4,7 +4,7 @@
  * Current season only (competition_finance_ledger_public is current-season scoped).
  */
 
-import { aggregateLedgerByLine } from "./finance_ui.js?v=20261031-takeover-fee-line";
+import { aggregateLedgerByLine } from "./finance_ui.js?v=20261104-takeover-owner-lines";
 import {
   loadCupFixtures,
   loadCurrentSeason,

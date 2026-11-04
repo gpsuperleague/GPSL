@@ -213,7 +213,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "club_takeover_fee",
         label: "Club takeover Fee",
         types: ["club_takeover_fee"],
-        note: "Mid-season vacant-club takeover — same amount as stadium purchase; buying the club from the previous owners. Season history kept.",
+        note: "Mid-season vacant-club takeover — same amount as stadium purchase. Each takeover this season is a separate line (owner tag + date).",
       },
       {
         id: "infra_expansion",
@@ -705,9 +705,7 @@ function ledgerBreakdownLabel(row) {
     return financeEntryLabel(type);
   }
   if (type === "club_takeover_fee" || isClubTakeoverFeeRow(row)) {
-    const desc = String(row.description || "").trim();
-    if (/^Club takeover Fee/i.test(desc)) return "Club takeover Fee";
-    return "Club takeover Fee";
+    return clubTakeoverBreakdownLabel(row);
   }
   if (type === "infra_purchase") {
     const md = parseMetadata(row.metadata);
@@ -745,6 +743,51 @@ function isClubTakeoverFeeRow(row) {
     return true;
   }
   return /^Club takeover Fee/i.test(String(row?.description || ""));
+}
+
+/** One breakdown row per takeover (owner tag + date) so multi-owner seasons don't collapse. */
+function clubTakeoverBreakdownLabel(row) {
+  const meta = parseMetadata(row?.metadata);
+  const desc = String(row?.description || "").trim();
+  let tag = String(meta.owner_tag || "").trim();
+  if (!tag) {
+    const fromDesc = desc.match(/^Club takeover Fee\s*—\s*([^·]+?)\s*·/i);
+    if (fromDesc?.[1] && !/^Stadium\b/i.test(fromDesc[1].trim())) {
+      tag = fromDesc[1].trim();
+    }
+  }
+  if (/^vacant open$/i.test(tag)) tag = "";
+
+  let when = "";
+  if (row?.created_at) {
+    try {
+      when = new Date(row.created_at).toLocaleString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        timeZone: "Europe/London",
+      });
+    } catch {
+      when = "";
+    }
+  }
+  if (!when) {
+    when =
+      String(meta.takeover_uk_date || "").trim() ||
+      (() => {
+        const m = desc.match(/·\s*(\d{1,2}\s+\w+\s+\d{4})\s*—/i);
+        return m?.[1]?.trim() || "";
+      })();
+  }
+
+  // Date+time keeps multiple takeovers this season as separate breakdown lines
+  if (tag && when) return `Takeover — ${tag} · ${when}`;
+  if (tag) return `Takeover — ${tag}`;
+  if (when) return `Takeover · ${when}`;
+  return "Takeover Fee";
 }
 
 export function aggregateLedgerByLine(rows) {

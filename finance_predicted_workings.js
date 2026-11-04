@@ -5,7 +5,7 @@
  */
 
 import { formatMoney } from "./competition.js";
-import { FINANCE_UI_SECTIONS } from "./finance_ui.js?v=20261031-takeover-fee-line";
+import { FINANCE_UI_SECTIONS } from "./finance_ui.js?v=20261104-takeover-owner-lines";
 
 const LINE_LABELS = new Map();
 for (const section of FINANCE_UI_SECTIONS) {

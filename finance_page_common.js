@@ -18,7 +18,7 @@ import {
   enrichLedgerFineFixtures,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20261031-takeover-fee-line";
+} from "./finance_ui.js?v=20261104-takeover-owner-lines";
 import { buildFinanceProjections } from "./finance_projections.js?v=20261031-handpick-exp";
 import {
   appendAssignmentInfraPurchaseLedger,

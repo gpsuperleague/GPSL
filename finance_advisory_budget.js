@@ -7,7 +7,7 @@
  */
 
 import { formatMoney, loadClubBalance, loadFinanceLedger } from "./competition.js";
-import { aggregateLedgerByLine } from "./finance_ui.js?v=20261031-takeover-fee-line";
+import { aggregateLedgerByLine } from "./finance_ui.js?v=20261104-takeover-owner-lines";
 import {
   buildFinanceProjections,
   loadClubWinningBidExposure,
