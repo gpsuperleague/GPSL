@@ -1217,6 +1217,33 @@ async function submitWishlist() {
   await loadSubmissions();
 }
 
+function renderAdminEmptyGhost() {
+  return `<article class="hp-approve-card is-ghost" aria-disabled="true">
+    <div class="hp-approve-head">
+      <div>
+        <p class="hp-approve-title">Club name (CODE)</p>
+        <div class="hp-approve-meta">Pending · owner — · submission #— · waiting for owner submit</div>
+      </div>
+      <div class="hp-approve-actions">
+        <button type="button" class="button appr-go is-ghost" disabled tabindex="-1">Approve &amp; sign</button>
+        <button type="button" class="button appr-preview is-ghost" disabled tabindex="-1">Preview</button>
+        <button type="button" class="button rej-btn is-ghost" disabled tabindex="-1">Reject</button>
+      </div>
+    </div>
+    <div class="hp-approve-summary">
+      <span>Players <b>—</b></span>
+      <span>Fees <b>—</b></span>
+      <span>Est. tax <b>—</b></span>
+      <span>Manager <b>—</b></span>
+      <span>Est. total <b>—</b></span>
+    </div>
+    <p class="hint" style="margin:8px 0 0;">
+      No pending wishlists yet. When an owner clicks <b>Submit for approval</b>, a live card appears here with these actions at the top.
+      Tags alone are not a submission.
+    </p>
+  </article>`;
+}
+
 function renderSubmissionCards(rows, { adminLayout }) {
   return rows
     .map((s) => {
@@ -1349,7 +1376,7 @@ async function loadSubmissions() {
       const rows = Array.isArray(data) ? data : [];
       adminBox.innerHTML = rows.length
         ? renderSubmissionCards(rows, { adminLayout: true })
-        : `<p class="empty">No pending wishlists. Owner must click <b>Submit for approval</b> after tagging — tags alone are not a submission.</p>`;
+        : renderAdminEmptyGhost();
       if (rows.length) wireSubmissionActions(adminBox);
       if (adminUiTab === "admin" && rows.length && !adminApprovalsScrolled) {
         adminApprovalsScrolled = true;

@@ -79,6 +79,41 @@
       border-color: #844;
       color: #f88;
     }
+    .hp-approve-card.is-ghost {
+      border-style: dashed;
+      border-color: #2a4a2a;
+      background: #0e140e;
+      opacity: 0.85;
+    }
+    .hp-approve-card.is-ghost .hp-approve-title { color: #7a9a7a; }
+    .hp-approve-actions .button.is-ghost,
+    .hp-approve-actions .button:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      filter: grayscale(0.25);
+      pointer-events: none;
+    }
+    .hp-admin-panel .card {
+      margin-top: 12px;
+      padding: 12px 14px;
+    }
+    .hp-admin-panel .hp-admin-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .hp-admin-panel .hp-admin-head h2 {
+      margin: 0;
+      font-size: 17px;
+      color: #8fd18f;
+    }
+    .hp-admin-panel .hp-admin-head .hint {
+      margin: 0;
+      max-width: 520px;
+    }
     .hp-approve-summary {
       display: flex;
       flex-wrap: wrap;
@@ -313,18 +348,12 @@
       </div>
 
       <div id="hpAdminPanel" class="hp-admin-panel">
-        <div id="adminBanner" class="card" hidden style="border-color:#446633;background:#142014;margin-top:14px;">
-          <h2 style="margin:0 0 8px;color:#8fd18f;">Admin — handpick approvals</h2>
-          <p class="hint" style="margin:0;">
-            Big green <b>Approve &amp; sign</b> buttons are in the panel below. Club switch does not take ownership.
-          </p>
-        </div>
-
-        <div id="adminApprovalsSection" class="card" hidden style="border-color:#3a8a3a;background:#101810;margin-top:14px;">
-          <h2 style="margin:0 0 6px;color:#8fd18f;font-size:20px;">Pending approvals</h2>
-          <p class="hint" style="margin:0 0 12px;">
-            Actions are at the <b>top</b> of each club card. Preview first, then Approve &amp; sign (charges MV + tax).
-          </p>
+        <div id="adminBanner" hidden></div>
+        <div id="adminApprovalsSection" class="card" hidden style="border-color:#3a5a3a;background:#101810;">
+          <div class="hp-admin-head">
+            <h2>Pending approvals</h2>
+            <p class="hint">Preview → Approve &amp; sign (MV + tax). Club switch does not take ownership.</p>
+          </div>
           <div id="adminPendingBox" class="pending-box admin-pending">
             <p class="empty">Loading…</p>
           </div>
@@ -430,6 +459,6 @@
     </div>
   </div>
   <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261104-owner-name"></script>
+  <script type="module" src="handpick_squad.js?v=20261104-admin-ghost"></script>
 </body>
 </html>
