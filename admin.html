@@ -78,7 +78,7 @@
           <ul>
             <li><a href="admin_test_populate_squad.html">Populate squad (24)</a></li>
             <li><a href="admin_sign_players.html">Sign free agents at MV</a></li>
-            <li><a href="handpick_squad.html?admin=1">Handpick approvals (mid-season intake)</a></li>
+            <li id="adminHubHandpickLi"><a href="handpick_squad.html?admin=1">Handpick approvals (mid-season intake)</a></li>
             <li><a href="admin_test_set_default_squad.html">Set default squad</a></li>
             <li><a href="admin_test_draft_seed.html">Draft Auction (Auto) Bids</a></li>
             <li><a href="admin_injuries.html">Injuries &amp; suspensions (test seed)</a></li>
@@ -105,8 +105,30 @@
   </div>
   <script type="module">
     import { initAdminPage, primeAdminPageChrome } from "./admin_common.js";
+    import { supabase } from "./global.js";
     primeAdminPageChrome();
-    document.addEventListener("DOMContentLoaded", () => initAdminPage());
+    document.addEventListener("DOMContentLoaded", async () => {
+      await initAdminPage();
+      const li = document.getElementById("adminHubHandpickLi");
+      if (!li) return;
+      try {
+        const { data: intake } = await supabase
+          .from("Clubs")
+          .select("ShortName")
+          .eq("handpick_intake", true)
+          .limit(1);
+        if (intake?.length) return;
+        const { data: pending } = await supabase
+          .from("club_handpick_submissions")
+          .select("id")
+          .eq("status", "pending")
+          .limit(1);
+        if (pending?.length) return;
+        li.hidden = true;
+      } catch {
+        /* keep link visible if check fails */
+      }
+    });
   </script>
 </body>
 </html>

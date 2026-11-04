@@ -3086,6 +3086,8 @@ export async function buildNav() {
   }
 
   let handpickIntakeClub = null;
+  /** True when any club is mid handpick (intake on and/or pending wishlist). Admin menu gate. */
+  let handpickProcessActive = false;
   if (ownerClub?.ShortName) {
     try {
       const { data: hpClub } = await supabase
@@ -3095,11 +3097,43 @@ export async function buildNav() {
         .maybeSingle();
       if (hpClub?.handpick_intake) {
         handpickIntakeClub = String(hpClub.ShortName).toUpperCase();
+        handpickProcessActive = true;
       }
     } catch (hpErr) {
       console.warn("Nav handpick intake skipped:", hpErr);
     }
   }
+  if (isGpslAdminNav && !handpickProcessActive) {
+    try {
+      const { data: intakeRows } = await supabase
+        .from("Clubs")
+        .select("ShortName")
+        .eq("handpick_intake", true)
+        .limit(1);
+      if (Array.isArray(intakeRows) && intakeRows.length) {
+        handpickProcessActive = true;
+      } else {
+        const { data: pendingRows } = await supabase
+          .from("club_handpick_submissions")
+          .select("id")
+          .eq("status", "pending")
+          .limit(1);
+        if (Array.isArray(pendingRows) && pendingRows.length) {
+          handpickProcessActive = true;
+        }
+      }
+    } catch (hpAdminErr) {
+      console.warn("Nav handpick process check skipped:", hpAdminErr);
+    }
+  }
+  // Keep Handpick visible while already on the page (approve/clear mid-session)
+  if (pathNorm === "handpick_squad.html") {
+    handpickProcessActive = true;
+  }
+  const handpickNavVisible =
+    !isVisitorNav &&
+    (handpickIntakeClub ||
+      (isGpslAdminNav && handpickProcessActive));
 
   let registrySelf = null;
   try {
@@ -3307,6 +3341,7 @@ export async function buildNav() {
         if (item.adminOnly && !isGpslAdminNav) return false;
         if (item.requiresDraft && !draftEnabled) return false;
         if (item.requiresSpecialAuction && !specialAuctionNavVisible) return false;
+        if (item.requiresHandpickIntake && !handpickNavVisible) return false;
         if (item.showWhenGpslMonth) {
           const want = String(item.showWhenGpslMonth).toLowerCase();
           const onPage = item.page && pathNorm === `${item.page}.html`;
@@ -3316,7 +3351,19 @@ export async function buildNav() {
         }
         return true;
       })
-      .map((item) => ({ ...item }));
+      .map((item) => {
+        const next = { ...item };
+        if (item.page === "handpick_squad") {
+          if (handpickIntakeClub && !isGpslAdminNav) {
+            next.href = `handpick_squad.html?club=${encodeURIComponent(handpickIntakeClub)}`;
+            next.label = "Handpick Squad";
+          } else if (isGpslAdminNav) {
+            next.href = "handpick_squad.html?admin=1";
+            next.label = "Handpick approvals";
+          }
+        }
+        return next;
+      });
     return items;
   };
 
@@ -3410,14 +3457,22 @@ export async function buildNav() {
   if (!isVisitorNav) {
   html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
   }
-  if (handpickIntakeClub && !isVisitorNav) {
+  if (handpickNavVisible) {
     const hpActive = pathNorm === "handpick_squad.html";
+    const hpHref = handpickIntakeClub
+      ? `handpick_squad.html?club=${encodeURIComponent(handpickIntakeClub)}`
+      : "handpick_squad.html?admin=1";
+    const hpTitle = handpickIntakeClub
+      ? "Mid-season handpick — build wishlist / submit squad"
+      : "Handpick in progress — open admin approvals / owner preview";
+    const hpLabel = isGpslAdminNav && !handpickIntakeClub ? "Handpick ●" : "Handpick";
     html +=
-      `<a href="handpick_squad.html?club=${encodeURIComponent(handpickIntakeClub)}" ` +
-      `class="nav-shortcut${hpActive ? " active" : ""}" ` +
-      `title="Mid-season handpick — build wishlist / submit squad" ` +
-      `style="color:#e8c84a;font-weight:bold;white-space:nowrap;">` +
-      `Handpick</a>`;
+      `<a href="${hpHref}" ` +
+      `class="nav-shortcut nav-shortcut-handpick${hpActive ? " active" : ""}" ` +
+      `title="${hpTitle}" ` +
+      `style="color:#111;background:#e8c84a;font-weight:800;white-space:nowrap;` +
+      `padding:4px 10px;border-radius:4px;border:1px solid #c9a227;">` +
+      `${hpLabel}</a>`;
   }
   if (!isPreClubOwner && !isVisitorNav) {
   html += renderNavInboxLink(inboxActive, unread);
@@ -3431,6 +3486,14 @@ export async function buildNav() {
   html += `</div></div></div>`;
 
   nav.innerHTML = html;
+  // Admin mega-menu is static — hide Handpick approvals unless a process is active
+  if (!handpickNavVisible) {
+    nav.querySelectorAll('a[href*="handpick_squad"]').forEach((a) => {
+      const row = a.closest(".nav-mega-link, li, .nav-link-row") || a;
+      if (row && row !== a) row.remove();
+      else a.remove();
+    });
+  }
   wireNavLogout();
   wireNavThemeToggle(nav);
   wireNavGroups(nav);

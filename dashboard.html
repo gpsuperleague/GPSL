@@ -124,6 +124,49 @@
       font-weight: bold;
     }
 
+    .hp-dash-banner {
+      margin: 0 0 18px;
+      padding: 16px 18px;
+      border: 2px solid #c9a227;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #2a2410 0%, #1a1810 55%, #141810 100%);
+      box-shadow: 0 0 0 1px rgba(232, 200, 74, 0.15);
+    }
+    .hp-dash-banner[hidden] { display: none !important; }
+    .hp-dash-banner h2 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      color: #e8c84a;
+    }
+    .hp-dash-banner p {
+      margin: 0 0 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #ddd;
+      max-width: 720px;
+    }
+    .hp-dash-banner .hp-dash-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .hp-dash-banner a.button {
+      display: inline-block;
+      text-decoration: none;
+      font-weight: 800;
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: 1px solid #c9a227;
+      background: #e8c84a;
+      color: #111;
+    }
+    .hp-dash-banner a.button.secondary {
+      background: #1a2a3a;
+      border-color: #3a5a7a;
+      color: #cde;
+      font-weight: 700;
+    }
+
     .dash-md-card + .dash-md-card {
       margin-top: 10px;
       padding-top: 10px;
@@ -643,6 +686,8 @@
 
     </div>
 
+    <section id="handpickDashBanner" class="hp-dash-banner" aria-label="Handpick squad" hidden></section>
+
     <section id="seasonReadyPanel" class="rc-panel" aria-label="Ready for August checklist" hidden></section>
 
     <section id="matchdayChecklist" class="mc-panel" aria-label="Matchday checklist" aria-live="polite" hidden></section>
@@ -681,7 +726,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20261030-replay-arrange"></script>
+  <script type="module" src="dashboard.js?v=20261104-handpick-banner"></script>
 
 </body>
 </html>

@@ -526,7 +526,7 @@ export const ADMIN_MAIN_NAV = [
           "handpick_squad.html?admin=1",
           null,
           null,
-          "Mid-season intake: review pending owner wishlists → Preview / Approve & sign at MV. Enable Handpick on Season owner board first."
+          "Mid-season intake: review pending owner wishlists → Preview / Approve & sign at MV. Enable Handpick on Season owner board first. Hidden unless a club is currently in handpick."
         ),
         L(
           "Club Season Checklist",

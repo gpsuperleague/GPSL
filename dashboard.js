@@ -278,10 +278,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.warn("Dashboard theme:", err);
   }
 
+  renderHandpickDashboardBanner(club);
+
   startDashboardMatchday(shortName);
   startMatchdayChecklist(shortName);
   startOwnerReadyChecklist();
 });
+
+function renderHandpickDashboardBanner(club) {
+  const el = document.getElementById("handpickDashBanner");
+  if (!el) return;
+  if (!club?.handpick_intake) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  const short = String(club.ShortName || "").toUpperCase();
+  const clubName = fullClubName(short) || club.Club || short;
+  el.hidden = false;
+  el.innerHTML = `
+    <h2>Handpick your squad</h2>
+    <p>
+      <b>${escapeDashHtml(clubName)}</b> is in mid-season handpick.
+      Build a wishlist in GPDB / MGDB, review limits on Handpick Squad, then submit for admin approval.
+      This banner and the Handpick menu disappear once your squad is approved.
+    </p>
+    <div class="hp-dash-actions">
+      <a class="button" href="handpick_squad.html?club=${encodeURIComponent(short)}">Open Handpick Squad</a>
+      <a class="button secondary" href="GPDB.html">Tag players in GPDB</a>
+      <a class="button secondary" href="MGDB.html?club=${encodeURIComponent(short)}">Tag manager in MGDB</a>
+    </div>`;
+}
+
+function escapeDashHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 async function refreshDashboardCtx() {
   const { data: settings } = await supabase

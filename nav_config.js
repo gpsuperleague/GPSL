@@ -289,6 +289,9 @@ export const NAV_SECTIONS = [
         label: "Handpick Squad (rebuild)",
         page: "handpick_squad",
         navIcon: "player_database",
+        // Only while a club is in mid-season handpick intake (owners) /
+        // or any handpick process is active (admins). Filtered in buildNav.
+        requiresHandpickIntake: true,
       },
       { heading: true, label: "Players" },
       {
