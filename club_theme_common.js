@@ -71,6 +71,7 @@ export const CLUB_PAGES_THEME_KEYS = new Set([
   "nextgen_youth",
   "medical_room",
   "boardroom",
+  "handpick_squad",
   "central_bank",
   "central_bank_loans",
   "central_bank_counter",

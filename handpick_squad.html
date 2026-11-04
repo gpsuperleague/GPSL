@@ -124,7 +124,7 @@
     }
     .hp-approve-summary b { color: #ffcc66; }
     .hp-approve-players {
-      max-height: 220px;
+      max-height: 320px;
       overflow: auto;
       border: 1px solid #2a3a2a;
       border-radius: 6px;
@@ -133,6 +133,12 @@
       font-size: 12px;
       line-height: 1.45;
     }
+    .hp-pos-band + .hp-pos-band { margin-top: 10px; padding-top: 8px; border-top: 1px solid #243024; }
+    .hp-pos-band-label {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
+      text-transform: uppercase; color: #9fe09f; margin-bottom: 4px;
+    }
+    .hp-pos-line { padding: 2px 0; color: #ccc; }
     .hp-admin-chrome {
       margin-top: 14px;
       padding: 12px 14px;
@@ -314,17 +320,141 @@
     }
     .hp-finance .finance-row.neg b { color:#f88; }
     .hp-finance .finance-row.pos b { color:#8fd18f; }
+
+    /* Owner surface — clear for admin preview */
+    .hp-owner-surface {
+      margin-top: 12px;
+      border-radius: 14px;
+      border: 1px solid #333;
+      background: #121212;
+      padding: 0 0 8px;
+    }
+    body.hp-admin-mode.hp-tab-owner .hp-owner-surface {
+      border: 2px solid #5a8ab8;
+      box-shadow: 0 0 0 4px rgba(90, 138, 184, 0.12);
+      background: #101418;
+    }
+    .hp-owner-surface-label {
+      display: none;
+      margin: 0;
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #d7ebff;
+      background: #1a3048;
+      border-bottom: 1px solid #3a5a7a;
+      border-radius: 12px 12px 0 0;
+    }
+    body.hp-admin-mode.hp-tab-owner .hp-owner-surface-label { display: block; }
+    .hp-owner-surface-inner { padding: 4px 12px 12px; }
+    body:not(.hp-admin-mode) .hp-owner-surface-inner { padding: 0; }
+    body:not(.hp-admin-mode) .hp-owner-surface {
+      border: none;
+      background: transparent;
+      padding: 0;
+    }
+
+    .hp-club-hero {
+      display: grid;
+      grid-template-columns: 88px minmax(0, 1fr) minmax(160px, 280px);
+      gap: 14px 16px;
+      align-items: center;
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--club-border, #3a3428);
+      background:
+        linear-gradient(135deg, rgba(255,153,0,0.08), transparent 42%),
+        var(--club-panel, #161410);
+      overflow: hidden;
+    }
+    @media (max-width: 820px) {
+      .hp-club-hero { grid-template-columns: 72px minmax(0, 1fr); }
+      .hp-club-hero-stadium { grid-column: 1 / -1; }
+    }
+    .hp-club-hero-badge {
+      width: 88px; height: 88px; object-fit: contain;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.35));
+    }
+    .hp-club-hero-copy h2 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      color: var(--club-accent, #ffcc66);
+      font-weight: 800;
+    }
+    .hp-club-hero-copy .hp-club-code {
+      color: #aaa; font-size: 13px; font-weight: 600;
+    }
+    .hp-club-hero-meta {
+      margin: 8px 0 0;
+      font-size: 13px;
+      color: #bbb;
+      line-height: 1.45;
+    }
+    .hp-club-hero-meta b { color: #e8d9b0; }
+    .hp-club-hero-stadium {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #333;
+      background: #0c0c0c;
+      min-height: 96px;
+      position: relative;
+    }
+    .hp-club-hero-stadium img {
+      display: block; width: 100%; height: 110px; object-fit: cover;
+    }
+    .hp-club-hero-stadium .cap {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      padding: 6px 8px;
+      font-size: 11px; color: #f2f2f2;
+      background: linear-gradient(transparent, rgba(0,0,0,0.82));
+    }
+    .hp-club-hero-stadium.is-missing {
+      display: flex; align-items: center; justify-content: center;
+      color: #777; font-size: 12px; min-height: 96px;
+    }
+
+    .hp-howto-card {
+      border-color: #4a5a3a !important;
+      background: linear-gradient(180deg, #1a2018, #141814) !important;
+    }
+    .hp-howto-card h2 { color: #cfe8b0 !important; }
+    .hp-cta-row {
+      display: flex; flex-wrap: wrap; gap: 12px; margin: 0;
+    }
+    a.hp-cta {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 44px; padding: 11px 18px;
+      border-radius: 999px;
+      text-decoration: none; font-weight: 800; font-size: 14px;
+      border: 1px solid transparent;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset;
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+    a.hp-cta:hover { transform: translateY(-1px); filter: brightness(1.05); }
+    a.hp-cta-gpdb {
+      background: #e8d9a8; color: #2a2410; border-color: #d4c08a;
+    }
+    a.hp-cta-mgdb {
+      background: #a8c8e8; color: #132033; border-color: #8eb4d8;
+    }
+    #ownerPreviewBanner.hp-admin-only-strip {
+      border-style: dashed !important;
+      background: #152030 !important;
+    }
   </style>
+  <link rel="stylesheet" href="club_dashboard_theme.css?v=20261104-hp-theme">
 </head>
 <body>
   <div id="nav"></div>
   <div class="hp-wrap">
-    <h1 style="color:#ff9900;font-size:22px;margin:8px 0 6px;">Handpick squad</h1>
-    <p class="hint">
+    <h1 id="pageHeading" style="color:var(--club-accent,#ff9900);font-size:22px;margin:8px 0 6px;">Handpick squad</h1>
+    <p id="pageIntro" class="hint">
       Mid-season rebuild: tag free agents (and one manager), hit the same squad rules as registration,
       then submit for admin approval at market value + tax. Cash is takeover balance; you may go at most
       <b style="color:#eca;">₿50m overdrawn</b> on the wishlist.
-      Admins enable Handpick from the Season owner board.
     </p>
 
     <div id="gateBox" class="gate-box">Loading…</div>
@@ -361,104 +491,109 @@
       </div>
 
       <div id="hpOwnerPanel" class="hp-owner-panel">
-        <div id="ownerPreviewBanner" class="card hp-owner-tools" hidden style="border-color:#3a5a7a;background:#10161c;margin-top:14px;">
-          <h2 style="margin:0 0 6px;color:#9ec5e8;">Owner view (admin preview)</h2>
+        <div id="ownerPreviewBanner" class="card hp-admin-only-strip" hidden style="border-color:#3a5a7a;margin-top:14px;">
+          <h2 style="margin:0 0 6px;color:#9ec5e8;">Admin only — not shown to the owner</h2>
           <p class="hint" style="margin:0;">
-            This is what the selected club’s owner sees while building their wishlist — checklist, basket, GPDB/MGDB links, and projected squad.
-            You are not claiming the club.
+            Everything inside the blue frame below is the <b>owner handpick page</b> for the selected club
+            (hero, how-to, checklist, basket, projected squad). Tabs, club switcher, and approvals stay outside that frame.
           </p>
         </div>
 
-        <div class="card hp-owner-tools" style="border-color:#665522;background:#1a1810;">
-          <h2 style="margin-bottom:8px;">How to handpick</h2>
-          <p style="margin:0 0 12px;font-size:14px;line-height:1.55;color:#ddd;">
-            Tag free agents in <b style="color:#e8c84a;">GPDB</b> and one manager in <b style="color:#e8c84a;">MGDB</b>
-            (Handpick ☐ column). Return here to review the checklist, pick a planned OooO, and
-            <b>Submit for approval</b>.
-          </p>
-          <p style="margin:0;display:flex;flex-wrap:wrap;gap:10px;">
-            <a id="gpdbLink" class="button" href="GPDB.html" target="_blank" rel="noopener"
-               style="display:inline-block;background:#c9a227;color:#111;font-weight:700;text-decoration:none;padding:10px 16px;">
-              Open GPDB — tag players
-            </a>
-            <a id="mgdbLink" class="button" href="MGDB.html" target="_blank" rel="noopener"
-               style="display:inline-block;background:#3a6ea5;color:#fff;font-weight:700;text-decoration:none;padding:10px 16px;">
-              Open MGDB — tag manager
-            </a>
-          </p>
-          <p class="hint" style="margin-top:10px;">
-            Temp tags are <b>not</b> contracts — stay free agents until admin approves. Must be logged in (not anonymous Discord browse).
-            Tags that would put you more than ₿50m overdrawn are blocked. This page refreshes when you come back from GPDB / MGDB.
-          </p>
-        </div>
-
-        <div class="card hp-owner-tools" id="expectationsCard" style="border-color:#3a5a7a;background:#10161c;">
-          <h2 style="margin:0 0 8px;color:#9ec5e8;">Squad expectations</h2>
-          <p class="hint" style="margin:0 0 10px;">
-            Build toward a legal registration squad. Green = met · amber = short · red = over a hard cap.
-          </p>
-          <ul id="checklistBox" class="hp-checklist"></ul>
-        </div>
-
-        <div class="card hp-owner-tools">
-          <h2>Club</h2>
-          <div class="form-grid">
-            <p id="clubTitle" style="margin:0;font-size:18px;color:#ffcc66;font-weight:600;">—</p>
-            <p id="clubMeta" class="hint"></p>
-          </div>
-          <div id="managerPicked" class="manager-box" hidden></div>
-        </div>
-
-        <div class="build-layout hp-owner-tools">
-          <div>
-            <div class="card">
-              <h2>Wishlist basket</h2>
-              <p class="hint" style="margin:0 0 10px;">
-                Players and manager tagged in GPDB / MGDB. Remove here or untag there.
-              </p>
-              <div id="basketBox" class="basket"><p class="empty">No players selected yet — tag in GPDB.</p></div>
-              <div id="totalsBox" class="totals" hidden></div>
-              <div class="actions">
-                <button type="button" id="submitBtn" class="button" style="background:#446633;">Submit for approval</button>
-                <button type="button" id="clearBtn" class="button">Clear basket</button>
+        <div class="hp-owner-surface">
+          <p class="hp-owner-surface-label">Owner sees this ↓</p>
+          <div class="hp-owner-surface-inner">
+            <section id="clubHero" class="hp-club-hero hp-owner-tools" aria-label="Club">
+              <img id="clubBadge" class="hp-club-hero-badge" src="" alt="" hidden>
+              <div class="hp-club-hero-copy">
+                <h2 id="clubTitle">—</h2>
+                <div id="clubCodeLine" class="hp-club-code"></div>
+                <div id="clubMeta" class="hp-club-hero-meta"></div>
+                <div id="managerPicked" class="manager-box" hidden style="margin-top:10px;"></div>
               </div>
-              <div id="pageStatus" class="status-line"></div>
-              <pre id="resultBox" class="hint" style="white-space:pre-wrap;margin-top:10px;"></pre>
-            </div>
-          </div>
+              <div id="clubStadiumWrap" class="hp-club-hero-stadium is-missing">Stadium photo</div>
+            </section>
 
-          <div>
-            <div class="card" id="submissionsCard" style="border-color:#446633;">
-              <h2 id="submissionsTitle">Submissions</h2>
-              <p id="submissionsHint" class="hint" style="margin:0 0 10px;">
-                Wishlists submitted for this club.
+            <div class="card hp-owner-tools hp-howto-card">
+              <h2 style="margin-bottom:8px;">How to handpick</h2>
+              <p style="margin:0 0 14px;font-size:14px;line-height:1.55;color:#ddd;">
+                Tag free agents in <b>GPDB</b> and one manager in <b>MGDB</b>
+                (Handpick ☐ column). Come back here to review the checklist, pick a planned OooO, and
+                <b>Submit for approval</b>.
               </p>
-              <div id="pendingBox" class="pending-box"><p class="empty">No submissions yet.</p></div>
+              <p class="hp-cta-row">
+                <a id="gpdbLink" class="hp-cta hp-cta-gpdb" href="GPDB.html" target="_blank" rel="noopener">
+                  Open GPDB — tag players
+                </a>
+                <a id="mgdbLink" class="hp-cta hp-cta-mgdb" href="MGDB.html" target="_blank" rel="noopener">
+                  Open MGDB — tag manager
+                </a>
+              </p>
+              <p class="hint" style="margin-top:12px;">
+                Temp tags are <b>not</b> contracts — stay free agents until admin approves.
+                Overdraft deeper than ₿50m is blocked. This page refreshes when you return from GPDB / MGDB.
+              </p>
             </div>
-            <div class="card">
-              <h2>Projected squad</h2>
+
+            <div class="card hp-owner-tools" id="expectationsCard" style="border-color:#3a5a7a;background:#10161c;">
+              <h2 style="margin:0 0 8px;color:#9ec5e8;">Squad expectations</h2>
               <p class="hint" style="margin:0 0 10px;">
-                Same registration rules as Squad / Scouting — wishlist players count as “if approved”.
-                Star <b>tags</b> (handpick max 3) are separate from registration star <b>cap</b> after OooO.
+                Build toward a legal registration squad. Green = met · amber = short · red = over a hard cap.
               </p>
-              <div id="limitsBox" class="hp-limits"></div>
-              <div id="financeBox" class="hp-finance" style="margin-top:12px;"></div>
-              <label style="display:block;margin-top:12px;font-size:13px;color:#bbb;">
-                Planned One of our Own (preview)
-                <select id="plannedOooSelect" style="width:100%;margin-top:4px;padding:8px;background:#111;border:1px solid #444;color:#ddd;border-radius:4px;">
-                  <option value="">— none yet —</option>
-                </select>
-              </label>
-              <p class="hint" style="margin-top:6px;">
-                Only home-grown star players for this club’s nation. Sticky per club on this device — official OooO is set on Squad after approval.
-              </p>
+              <ul id="checklistBox" class="hp-checklist"></ul>
+            </div>
+
+            <div class="build-layout hp-owner-tools">
+              <div>
+                <div class="card">
+                  <h2>Wishlist basket</h2>
+                  <p class="hint" style="margin:0 0 10px;">
+                    Players and manager tagged in GPDB / MGDB. Remove here or untag there.
+                  </p>
+                  <div id="basketBox" class="basket"><p class="empty">No players selected yet — tag in GPDB.</p></div>
+                  <div id="totalsBox" class="totals" hidden></div>
+                  <div class="actions">
+                    <button type="button" id="submitBtn" class="button" style="background:#446633;border-radius:999px;">Submit for approval</button>
+                    <button type="button" id="clearBtn" class="button" style="border-radius:999px;">Clear basket</button>
+                  </div>
+                  <div id="pageStatus" class="status-line"></div>
+                  <pre id="resultBox" class="hint" style="white-space:pre-wrap;margin-top:10px;"></pre>
+                </div>
+              </div>
+
+              <div>
+                <div class="card" id="submissionsCard" style="border-color:#446633;">
+                  <h2 id="submissionsTitle">Submissions</h2>
+                  <p id="submissionsHint" class="hint" style="margin:0 0 10px;">
+                    Wishlists submitted for this club.
+                  </p>
+                  <div id="pendingBox" class="pending-box"><p class="empty">No submissions yet.</p></div>
+                </div>
+                <div class="card">
+                  <h2>Projected squad</h2>
+                  <p class="hint" style="margin:0 0 10px;">
+                    Same registration rules as Squad / Scouting — wishlist players count as “if approved”.
+                    Star <b>tags</b> (handpick max 3) are separate from registration star <b>cap</b> after OooO.
+                  </p>
+                  <div id="limitsBox" class="hp-limits"></div>
+                  <div id="financeBox" class="hp-finance" style="margin-top:12px;"></div>
+                  <label style="display:block;margin-top:12px;font-size:13px;color:#bbb;">
+                    Planned One of our Own (preview)
+                    <select id="plannedOooSelect" style="width:100%;margin-top:4px;padding:8px;background:#111;border:1px solid #444;color:#ddd;border-radius:4px;">
+                      <option value="">— none yet —</option>
+                    </select>
+                  </label>
+                  <p class="hint" style="margin-top:6px;">
+                    Only home-grown star players for this club’s nation. Sticky per club on this device — official OooO is set on Squad after approval.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  <script>const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261104-admin-ghost"></script>
+  <script>window.CURRENT_PAGE = "handpick_squad"; const CURRENT_PAGE = "handpick_squad";</script>
+  <script type="module" src="handpick_squad.js?v=20261104-pos-sort-hero"></script>
 </body>
 </html>

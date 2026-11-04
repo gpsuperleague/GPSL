@@ -22,6 +22,11 @@ import {
   playerEligibleOoo,
 } from "./squad_designations.js";
 import { loadWagePercentages, wageFromMarketValue } from "./wages.js";
+import { stadiumImageUrl } from "./stadium_images.js";
+import {
+  applyClubDashboardTheme,
+  loadClubDashboardTheme,
+} from "./club_theme_common.js?v=20261104-hp-theme";
 
 /** @type {Map<string, object>} */
 const basket = new Map();
@@ -333,6 +338,90 @@ function setAdminOwnerLine(ownerTag, { vacant = false } = {}) {
   el.innerHTML = `Owner: <span>${escapeHtml(tag)}</span> <span class="muted">· selected club</span>`;
 }
 
+async function renderClubHero(clubShort, { clubName = "", nation = "", ownerTag = "" } = {}) {
+  const club = String(clubShort || "").trim().toUpperCase();
+  const titleEl = document.getElementById("clubTitle");
+  const codeEl = document.getElementById("clubCodeLine");
+  const metaEl = document.getElementById("clubMeta");
+  const badgeEl = document.getElementById("clubBadge");
+  const stadiumWrap = document.getElementById("clubStadiumWrap");
+
+  const displayName = clubName || club || "—";
+  if (titleEl) titleEl.textContent = displayName;
+  if (codeEl) codeEl.textContent = club ? club : "";
+
+  let stadiumName = "";
+  let capacity = null;
+  if (club) {
+    try {
+      const { data: row } = await supabase
+        .from("Clubs")
+        .select("Stadium, Capacity, Nation, Club")
+        .eq("ShortName", club)
+        .maybeSingle();
+      if (row?.Club && titleEl && !clubName) titleEl.textContent = row.Club;
+      stadiumName = String(row?.Stadium || "").trim();
+      const cap = Number(row?.Capacity);
+      capacity = Number.isFinite(cap) && cap > 0 ? cap : null;
+      if (!nation) nation = String(row?.Nation || "").trim();
+    } catch (err) {
+      console.warn("renderClubHero club row", err);
+    }
+  }
+
+  const metaBits = [];
+  if (nation) metaBits.push(`<b>Nation</b> ${escapeHtml(nation)}`);
+  if (stadiumName) metaBits.push(`<b>Stadium</b> ${escapeHtml(stadiumName)}`);
+  if (capacity != null) {
+    metaBits.push(`<b>Capacity</b> ${escapeHtml(capacity.toLocaleString("en-GB"))}`);
+  }
+  if (isAdmin) {
+    metaBits.push(
+      ownerTag
+        ? `<b>Owner</b> ${escapeHtml(ownerTag)}`
+        : `<b>Owner</b> vacant`
+    );
+  }
+  if (metaEl) metaEl.innerHTML = metaBits.join(" · ") || "—";
+
+  if (badgeEl) {
+    if (club) {
+      badgeEl.hidden = false;
+      badgeEl.alt = `${displayName} badge`;
+      badgeEl.src = `images/club_badges/${encodeURIComponent(club)}.png`;
+      badgeEl.onerror = () => {
+        badgeEl.hidden = true;
+      };
+    } else {
+      badgeEl.hidden = true;
+    }
+  }
+
+  if (stadiumWrap) {
+    const src = club ? stadiumImageUrl(club) : null;
+    if (src) {
+      stadiumWrap.classList.remove("is-missing");
+      stadiumWrap.innerHTML = `<img src="${escapeHtml(src)}" alt="${escapeHtml(
+        stadiumName || displayName + " stadium"
+      )}" loading="lazy"><div class="cap">${escapeHtml(
+        stadiumName || "Stadium"
+      )}${capacity != null ? ` · ${capacity.toLocaleString("en-GB")}` : ""}</div>`;
+      const img = stadiumWrap.querySelector("img");
+      if (img) {
+        img.onerror = () => {
+          stadiumWrap.classList.add("is-missing");
+          stadiumWrap.textContent = stadiumName
+            ? `${stadiumName}${capacity != null ? ` · ${capacity.toLocaleString("en-GB")}` : ""}`
+            : "Stadium photo unavailable";
+        };
+      }
+    } else {
+      stadiumWrap.classList.add("is-missing");
+      stadiumWrap.textContent = "Stadium photo";
+    }
+  }
+}
+
 async function loadClubOwnerTag(clubShort) {
   const club = String(clubShort || "").trim().toUpperCase();
   if (!club) {
@@ -468,23 +557,34 @@ async function loadContext() {
     : activeClub || "—";
   const ownerLabel = ownerTag || "vacant";
 
-  const titleEl = document.getElementById("clubTitle");
-  if (titleEl) {
-    titleEl.textContent = isAdmin ? `${clubLabel} · ${ownerLabel}` : clubLabel;
-  }
+  await renderClubHero(activeClub, {
+    clubName: activeClubName,
+    nation: data?.club_nation || "",
+    ownerTag: isAdmin ? ownerTag : "",
+  });
 
   const gpdb = document.getElementById("gpdbLink");
   if (gpdb) {
     gpdb.href = "GPDB.html";
-    gpdb.textContent = "Open GPDB — handpick / temp-tag players";
+    gpdb.textContent = "Open GPDB — tag players";
   }
   const mgdbHref = activeClub
     ? `MGDB.html?club=${encodeURIComponent(activeClub)}`
     : "MGDB.html";
   const mgdb = document.getElementById("mgdbLink");
-  if (mgdb) mgdb.href = mgdbHref;
+  if (mgdb) {
+    mgdb.href = mgdbHref;
+    mgdb.textContent = "Open MGDB — tag manager";
+  }
   const mgdbInline = document.getElementById("mgdbLinkInline");
   if (mgdbInline) mgdbInline.href = mgdbHref;
+
+  try {
+    const theme = await loadClubDashboardTheme(supabase, activeClub);
+    applyClubDashboardTheme(theme, { pageKey: "handpick_squad" });
+  } catch (themeErr) {
+    console.warn("handpick club theme", themeErr);
+  }
 
   // Keep URL in sync so refresh / share keeps the chosen club
   if (activeClub && clubFromUrl() !== activeClub) {
@@ -525,12 +625,6 @@ async function loadContext() {
   }
 
   app.hidden = false;
-  const metaBits = [];
-  if (data.club_nation) metaBits.push(`Home nation: ${data.club_nation}`);
-  if (isAdmin) {
-    metaBits.push(ownerTag ? `Owner: ${ownerTag}` : "Owner: vacant");
-  }
-  document.getElementById("clubMeta").textContent = metaBits.join(" · ");
 
   try {
     designations = await loadSquadDesignationsState(supabase, activeClub);
@@ -1217,6 +1311,90 @@ async function submitWishlist() {
   await loadSubmissions();
 }
 
+/** Usual pitch order (Match Day / Squad style). */
+const HANDPICK_POSITION_ORDER = [
+  "GK",
+  "LB",
+  "LWB",
+  "CB",
+  "RB",
+  "RWB",
+  "DMF",
+  "LMF",
+  "CMF",
+  "RMF",
+  "AMF",
+  "LWF",
+  "LW",
+  "SS",
+  "RWF",
+  "RW",
+  "CF",
+];
+
+function normalizePosCode(position) {
+  return String(position || "").trim().toUpperCase();
+}
+
+function positionSortIndex(position) {
+  const i = HANDPICK_POSITION_ORDER.indexOf(normalizePosCode(position));
+  return i >= 0 ? i : 999;
+}
+
+function positionBand(position) {
+  const p = normalizePosCode(position);
+  if (p === "GK") return "GK";
+  if (["LB", "LWB", "CB", "RB", "RWB"].includes(p)) return "DEF";
+  if (["DMF", "LMF", "CMF", "RMF", "AMF"].includes(p)) return "MID";
+  if (["LWF", "LW", "SS", "RWF", "RW", "CF"].includes(p)) return "FWD";
+  return "OTHER";
+}
+
+function sortPlayersByPosition(players) {
+  return [...players].sort((a, b) => {
+    const d = positionSortIndex(a.position) - positionSortIndex(b.position);
+    if (d) return d;
+    const ra = Number(String(a.rating ?? "").replace(/[^\d.]/g, "")) || 0;
+    const rb = Number(String(b.rating ?? "").replace(/[^\d.]/g, "")) || 0;
+    if (rb !== ra) return rb - ra;
+    return String(a.player_name || "").localeCompare(String(b.player_name || ""), undefined, {
+      sensitivity: "base",
+    });
+  });
+}
+
+function formatWishlistPlayerLine(p) {
+  return `${escapeHtml(p.player_name)} (${escapeHtml(p.position || "?")}) · OVR ${escapeHtml(
+    String(p.rating ?? "—")
+  )} · ${escapeHtml(formatMoney(Number(p.market_value) || 0))}${
+    p.is_fa === false ? " · <span style='color:#f88'>not FA</span>" : ""
+  }`;
+}
+
+function renderGroupedWishlistPlayers(players) {
+  const sorted = sortPlayersByPosition(players);
+  if (!sorted.length) return "<span class='empty'>No players</span>";
+  const bandOrder = ["GK", "DEF", "MID", "FWD", "OTHER"];
+  const bandLabels = {
+    GK: "Goalkeepers",
+    DEF: "Defenders",
+    MID: "Midfielders",
+    FWD: "Forwards",
+    OTHER: "Other",
+  };
+  const chunks = [];
+  for (const band of bandOrder) {
+    const group = sorted.filter((p) => positionBand(p.position) === band);
+    if (!group.length) continue;
+    chunks.push(
+      `<div class="hp-pos-band"><div class="hp-pos-band-label">${bandLabels[band]} (${group.length})</div>${group
+        .map((p) => `<div class="hp-pos-line">${formatWishlistPlayerLine(p)}</div>`)
+        .join("")}</div>`
+    );
+  }
+  return chunks.join("");
+}
+
 function renderAdminEmptyGhost() {
   return `<article class="hp-approve-card is-ghost" aria-disabled="true">
     <div class="hp-approve-head">
@@ -1247,21 +1425,16 @@ function renderAdminEmptyGhost() {
 function renderSubmissionCards(rows, { adminLayout }) {
   return rows
     .map((s) => {
-      const players = Array.isArray(s.players) ? s.players : [];
+      const players = sortPlayersByPosition(
+        Array.isArray(s.players) ? s.players : []
+      );
       let fees = 0;
       for (const p of players) fees += Number(p.market_value) || 0;
       const mgrFee = Number(s.manager_market_value) || 0;
       const tax = Math.round((((fees + mgrFee) * taxPct()) / 100) * 100) / 100;
-      const playerLines = players
-        .map(
-          (p) =>
-            `${escapeHtml(p.player_name)} (${escapeHtml(p.position || "?")}) · OVR ${escapeHtml(
-              String(p.rating ?? "—")
-            )} · ${escapeHtml(formatMoney(Number(p.market_value) || 0))}${
-              p.is_fa === false ? " · <span style='color:#f88'>not FA</span>" : ""
-            }`
-        )
-        .join("<br>");
+      const playerLines = adminLayout
+        ? renderGroupedWishlistPlayers(players)
+        : players.map((p) => formatWishlistPlayerLine(p)).join("<br>");
 
       if (adminLayout && s.status === "pending") {
         const ids = (Array.isArray(s.player_ids) ? s.player_ids : players.map((p) => p.player_id))
@@ -1311,9 +1484,7 @@ function renderSubmissionCards(rows, { adminLayout }) {
             <summary style="cursor:pointer;color:#9ab;font-size:13px;margin-bottom:6px;">
               Wishlist players (${players.length})
             </summary>
-            <div class="hp-approve-players">${
-              playerLines || "<span class='empty'>No players</span>"
-            }</div>
+            <div class="hp-approve-players">${playerLines}</div>
           </details>
           <pre class="hint" id="subOut${s.id}" style="white-space:pre-wrap;margin-top:10px;"></pre>
         </article>`;
