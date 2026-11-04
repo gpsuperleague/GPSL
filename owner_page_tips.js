@@ -25,7 +25,7 @@ export const FINANCES_TIPS = {
 
 export const TRANSFER_CENTER_TIPS = {
   scouting:
-    "Players you starred in GPDB (☆ column). Open the scouting board to plan draft bids and track active targets against registration rules.",
+    "Players you starred in GPDB (☆ column). Open the scouting board to plan draft bids and track active targets against registration rules. Players already at your club are not Active Targets.",
   draftFavourites:
     "Draft auction threads you starred on the Draft Auction page — quick jump back to those listings.",
   activeBids:
@@ -233,7 +233,7 @@ export const SCOUTING_EXTRA_TIPS = {
   tacticBoard:
     "Drag scouting targets onto the pitch (11), subs (1–12), and squad fillers (13–17). Set Plan nation per board for HG / OooO when planning different clubs. Live GK / HG / U21 / ★ / MV update as you place players. Set a planned One of our Own to exclude them from the star count. Saved separately from Match Day.",
   targetsHeading:
-    "Tiered shortlist from GPDB stars. Tick Active Targets to highlight spend and project registration (Sq / GK / HG / U21 / ★).",
+    "Tiered shortlist from GPDB stars. Tick Active Targets for players you are still chasing — club players are never Active Targets. Optionally include your club squad in registration / value stats.",
 };
 
 export const TC_EXTRA_TIPS = {

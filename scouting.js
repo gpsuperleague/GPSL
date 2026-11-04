@@ -176,6 +176,7 @@ let ownedSquadPlayers = null;
 /** @type {object|null} */
 let squadDesignationsState = null;
 const SCOUTING_ALL_VIEW_ACTIVE_KEY = "gpsl_scouting_active_targets_all";
+const SCOUTING_INCLUDE_CLUB_SQUAD_KEY = "gpsl_scouting_include_club_squad";
 /** @type {Map<string, { activeIds: string[], planNation: string|null, planDivision: string|null, planSize: string|null, boardOnly?: boolean, oooId?: string|null, hydrated: boolean }>} */
 let boardViewStateCache = new Map();
 /** Debounced auto-save after tactic-board placements. */
@@ -243,8 +244,54 @@ function isOwnedByMyClub(player) {
   );
 }
 
+function ownedPlayerIdSet() {
+  const ids = new Set();
+  for (const p of ownedSquadPlayers || []) {
+    const id = String(p?.Konami_ID || "").trim();
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
+function isOwnedScoutingPlayerId(pid) {
+  const id = String(pid || "").trim();
+  if (!id) return false;
+  if (ownedPlayerIdSet().has(id)) return true;
+  return isOwnedByMyClub(playerMapCache.get(id));
+}
+
+/** Drop club players from an active-target id list (they are already signed). */
+function withoutOwnedPlayerIds(ids) {
+  return (ids || [])
+    .map((x) => String(x || "").trim())
+    .filter((id) => id && !isOwnedScoutingPlayerId(id));
+}
+
+function readIncludeClubSquad() {
+  try {
+    return localStorage.getItem(SCOUTING_INCLUDE_CLUB_SQUAD_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeIncludeClubSquad(on) {
+  try {
+    if (on) localStorage.setItem(SCOUTING_INCLUDE_CLUB_SQUAD_KEY, "1");
+    else localStorage.removeItem(SCOUTING_INCLUDE_CLUB_SQUAD_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Active targets = still chasing (not already at your club).
+ * Owned shortlist players stay on the list for planning but are not actives.
+ */
 function activeRowsForCurrentView() {
-  return rowsForListFilter(scoutingRows).filter((row) => row.is_active_target);
+  return rowsForListFilter(scoutingRows).filter(
+    (row) => row.is_active_target && !isOwnedScoutingPlayerId(row.player_id)
+  );
 }
 
 function sumActiveTargetsBudget() {
@@ -259,11 +306,28 @@ function sumActiveTargetsBudget() {
   return { total, wages, count };
 }
 
+function sumOwnedSquadValue() {
+  let total = 0;
+  let wages = 0;
+  let count = 0;
+  for (const p of ownedSquadPlayers || []) {
+    total += Number(p?.market_value) || 0;
+    wages += playerSeasonWage(p);
+    count += 1;
+  }
+  return { total, wages, count };
+}
+
 function updateActiveTargetsHeader() {
   const totalEl = document.getElementById("scoutActiveTotal");
   const metaEl = document.getElementById("scoutActiveMeta");
   const wageEl = document.getElementById("scoutActiveWages");
   const wageMetaEl = document.getElementById("scoutActiveWagesMeta");
+  const clubValEl = document.getElementById("scoutClubSquadTotal");
+  const clubMetaEl = document.getElementById("scoutClubSquadMeta");
+  const clubWageEl = document.getElementById("scoutClubSquadWages");
+  const clubWageMetaEl = document.getElementById("scoutClubSquadWagesMeta");
+  const clubBlock = document.getElementById("scoutClubSquadBudget");
   if (!totalEl) return;
   const { total, wages, count } = sumActiveTargetsBudget();
   totalEl.textContent = formatMoney(total);
@@ -277,13 +341,29 @@ function updateActiveTargetsHeader() {
   if (wageMetaEl) {
     wageMetaEl.textContent = count > 0 ? `(${count})` : "";
   }
+
+  const includeClub = readIncludeClubSquad() && clubShort;
+  if (clubBlock) clubBlock.hidden = !includeClub;
+  if (includeClub) {
+    const club = sumOwnedSquadValue();
+    if (clubValEl) clubValEl.textContent = formatMoney(club.total);
+    if (clubMetaEl) clubMetaEl.textContent = club.count > 0 ? `(${club.count})` : "";
+    if (clubWageEl) clubWageEl.textContent = formatWage(club.wages);
+    if (clubWageMetaEl) {
+      clubWageMetaEl.textContent = club.count > 0 ? `(${club.count})` : "";
+    }
+  }
+
+  syncClubSquadControls();
   updateRegistrationStrip();
 }
 
 function currentActiveTargetIds() {
-  return scoutingRows
-    .filter((row) => row.is_active_target)
-    .map((row) => String(row.player_id));
+  return withoutOwnedPlayerIds(
+    scoutingRows
+      .filter((row) => row.is_active_target)
+      .map((row) => String(row.player_id))
+  );
 }
 
 function currentVisiblePlayerIds() {
@@ -493,12 +573,26 @@ function updateRegistrationStrip() {
 
   const nation = effectiveListNation();
   const activePlayers = activeTargetPlayers();
-  const totals = tallyAdds(activePlayers, nation);
+  const includeClub = readIncludeClubSquad() && clubShort;
+  const ownedPlayers = includeClub ? [...(ownedSquadPlayers || [])] : [];
+  const ownedIds = new Set(ownedPlayers.map((p) => String(p.Konami_ID)));
+  // Active adds = chasing targets not already in the owned baseline
+  const addPlayers = includeClub
+    ? activePlayers.filter((p) => !ownedIds.has(String(p.Konami_ID)))
+    : activePlayers;
+  const ownedTotals = tallyAdds(ownedPlayers, nation);
+  const addTotals = tallyAdds(addPlayers, nation);
+  const combinedPlayers = includeClub
+    ? [
+        ...ownedPlayers,
+        ...addPlayers.filter((p) => !ownedIds.has(String(p.Konami_ID))),
+      ]
+    : activePlayers;
   const minStar = Number(squadDesignationsState?.star_min_rating ?? 79);
   const listState =
     listBoardFilter !== "all" ? boardViewStateCache.get(String(listBoardFilter)) : null;
   const starCap = planStarCap(listState?.planDivision || null, listState?.planSize || null);
-  const oooCandidates = activePlayers
+  const oooCandidates = combinedPlayers
     .filter((p) => playerEligibleOoo(p, nation, minStar))
     .sort((a, b) =>
       String(a.Name || "").localeCompare(String(b.Name || ""), undefined, { sensitivity: "base" })
@@ -507,7 +601,9 @@ function updateRegistrationStrip() {
   const oooId = oooCandidates.some((p) => String(p.Konami_ID) === String(savedOoo))
     ? String(savedOoo)
     : null;
-  const activeStars = countStarEligible(activePlayers, minStar, oooId);
+  const ownedStars = countStarEligible(ownedPlayers, minStar, oooId);
+  const addStars = countStarEligible(addPlayers, minStar, oooId);
+  const combinedStars = countStarEligible(combinedPlayers, minStar, oooId);
   const oooSelectHtml = `
     <span class="scout-list-ooo">
       <label for="scoutListOooSelect">One of our Own</label>
@@ -523,21 +619,35 @@ function updateRegistrationStrip() {
           .join("")}
       </select>
     </span>`;
-  const activeLabel =
-    listBoardFilter === "all"
+  const activeLabel = includeClub
+    ? listBoardFilter === "all"
+      ? "Club squad + active targets"
+      : `Club + actives on ${boardLabel(listBoardFilter)}`
+    : listBoardFilter === "all"
       ? "Active targets (all views)"
       : `Active targets on ${boardLabel(listBoardFilter)}`;
-  const tip =
-    "Counts only the players currently ticked as Active Targets for this view. Targets already bought stay in the set. Sq 24–28 · ≥1 GK · ≥8 HG · ≥5 U21 · star cap.";
+  const tip = includeClub
+    ? "Club squad is the baseline; Active Targets add players you are still chasing. Owned players are never Active Targets. Sq 24–28 · ≥1 GK · ≥8 HG · ≥5 U21 · star cap."
+    : "Counts only Active Targets you are still chasing (not players already at your club). Tick “Include club squad in stats” to project registration with your current squad as the baseline.";
 
   el.hidden = false;
-  el.innerHTML = `
+  el.innerHTML = includeClub
+    ? `
     <span${tipAttrs(tip, "scout-reg-label")}>${escapeHtml(activeLabel)}:</span>
-    ${boardChip("Sq", totals.n, [MIN_SQUAD_SIZE, SQUAD_SIZE], "range", `Active targets selected: ${totals.n} (need ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`)}
-    ${boardChip("GK", totals.gk, MIN_GOALKEEPERS, "min", `Goalkeepers in active targets: ${totals.gk}`)}
-    ${boardChip("HG", totals.hg, MIN_HOME_GROWN, "min", `Home-grown in active targets vs ${nation || "—"}: ${totals.hg}`)}
-    ${boardChip("U21", totals.u21, MIN_UNDER_21, "min", `Under-21 in active targets: ${totals.u21}`)}
-    ${boardChip("★", activeStars, starCap, "max", `Stars in active targets (rating ${minStar}+${oooId ? ", planned OooO excluded" : ""}): ${activeStars} / cap ${starCap}`)}
+    ${regChip("Sq", ownedTotals.n, addTotals.n, [MIN_SQUAD_SIZE, SQUAD_SIZE], "range", `Club ${ownedTotals.n} + chasing ${addTotals.n} → ${ownedTotals.n + addTotals.n} (need ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`)}
+    ${regChip("GK", ownedTotals.gk, addTotals.gk, MIN_GOALKEEPERS, "min", `Club GK ${ownedTotals.gk} + chasing ${addTotals.gk}`)}
+    ${regChip("HG", ownedTotals.hg, addTotals.hg, MIN_HOME_GROWN, "min", `Club HG ${ownedTotals.hg} + chasing ${addTotals.hg} vs ${nation || "—"}`)}
+    ${regChip("U21", ownedTotals.u21, addTotals.u21, MIN_UNDER_21, "min", `Club U21 ${ownedTotals.u21} + chasing ${addTotals.u21}`)}
+    ${regChip("★", ownedStars, addStars, starCap, "max", `Stars club ${ownedStars} + chasing ${addStars} = ${combinedStars} / cap ${starCap} (rating ${minStar}+${oooId ? ", planned OooO excluded" : ""})`)}
+    ${oooSelectHtml}
+  `
+    : `
+    <span${tipAttrs(tip, "scout-reg-label")}>${escapeHtml(activeLabel)}:</span>
+    ${boardChip("Sq", addTotals.n, [MIN_SQUAD_SIZE, SQUAD_SIZE], "range", `Active targets selected: ${addTotals.n} (need ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`)}
+    ${boardChip("GK", addTotals.gk, MIN_GOALKEEPERS, "min", `Goalkeepers in active targets: ${addTotals.gk}`)}
+    ${boardChip("HG", addTotals.hg, MIN_HOME_GROWN, "min", `Home-grown in active targets vs ${nation || "—"}: ${addTotals.hg}`)}
+    ${boardChip("U21", addTotals.u21, MIN_UNDER_21, "min", `Under-21 in active targets: ${addTotals.u21}`)}
+    ${boardChip("★", combinedStars, starCap, "max", `Stars in active targets (rating ${minStar}+${oooId ? ", planned OooO excluded" : ""}): ${combinedStars} / cap ${starCap}`)}
     ${oooSelectHtml}
   `;
 }
@@ -1166,11 +1276,13 @@ function renderScoutPlayerRow({
             <td class="${yourBidClass}">${draftUi.yourBidText}</td>
             <td>${renderDraftManageCell(draftUi)}</td>`
     : "";
-  const isActive = row.is_active_target === true;
-  const isOwned = isOwnedByMyClub(p);
-  const isLockedActive = isActive && isOwned;
+  const isOwned = isOwnedByMyClub(p) || isOwnedScoutingPlayerId(pid);
+  // Owned players stay on the shortlist but are never Active Targets.
+  const isActive = !isOwned && row.is_active_target === true;
   const hasYourBid = !!draftUi.yourBidText && draftUi.yourBidText !== "—";
-  const activeTitle = activeTargetBudgetTitle(pid);
+  const activeTitle = isOwned
+    ? "Already at your club — not an Active Target (use Include club squad in stats)"
+    : activeTargetBudgetTitle(pid);
   const hasNests = !nested && nestChildCount > 0;
   const isLastNest = nested && nestChildIndex === nestChildCount - 1;
   const rowClass = [
@@ -1179,7 +1291,7 @@ function renderScoutPlayerRow({
     isLastNest ? "scout-nest-last" : "",
     isActive ? "scout-active-row" : "",
     hasYourBid ? "scout-bid-owned-row" : "",
-    isLockedActive ? "scout-active-owned-row" : "",
+    isOwned ? "scout-owned-row" : "",
     draftUi.unavailable ? "scout-unavailable-row" : "",
   ]
     .filter(Boolean)
@@ -1235,7 +1347,11 @@ function renderScoutPlayerRow({
               name
             )} <a href="${gpdbPlayerUrl(
               pid
-            )}" class="gpsl-link" style="color:var(--gpsl-accent, #ff9900);">GPDB</a>${scoutingPlayerBadgesHtml(
+            )}" class="gpsl-link" style="color:var(--gpsl-accent, #ff9900);">GPDB</a>${
+              isOwned
+                ? ` <span class="scout-badge scout-badge-club" title="Already contracted to your club">At club</span>`
+                : ""
+            }${scoutingPlayerBadgesHtml(
               p
             )}</td>
             <td>${p?.Nation || "—"}</td>
@@ -1248,13 +1364,9 @@ function renderScoutPlayerRow({
             ${draftCells}
             <td>
               <input type="checkbox" class="scout-active-check" data-player-id="${pid}"
-                ${isActive ? "checked" : ""} ${
-                  isLockedActive ? "disabled" : ""
-                } title="${
-                  isLockedActive
-                    ? "Already bought by your club - fixed active target"
-                    : activeTitle
-                }"
+                ${isActive ? "checked" : ""} ${isOwned ? "disabled" : ""} title="${escapeHtml(
+                  activeTitle
+                )}"
                 aria-label="Active target for ${name}">
             </td>
             ${tierCell}
@@ -1442,6 +1554,7 @@ async function renderScoutingLists() {
       ownedSquadPlayers = [];
       squadDesignationsState = null;
     }
+    wireClubSquadControls();
     await loadPlannerNationOptions();
     renderListNationPicker();
     await syncListFilterState(false);
@@ -1474,7 +1587,9 @@ async function renderScoutingLists() {
     ownedSquadPlayers = [];
     squadDesignationsState = null;
   }
+  await ensureOwnedNotActiveTargets();
   await loadPlannerNationOptions();
+  wireClubSquadControls();
 
   paintScoutingLists(wrap, playerMap, draftUiByPlayer);
   await syncListFilterState(false);
@@ -1725,6 +1840,10 @@ function wireScoutingListActions(wrap) {
   wrap.querySelectorAll(".scout-active-check").forEach((cb) => {
     cb.addEventListener("change", async () => {
       const pid = cb.dataset.playerId;
+      if (isOwnedScoutingPlayerId(pid)) {
+        cb.checked = false;
+        return;
+      }
       const active = cb.checked;
       const row = scoutingRows.find((r) => String(r.player_id) === String(pid));
       if (row) row.is_active_target = active;
@@ -2062,13 +2181,105 @@ async function saveBoardViewState(boardNo, patch = {}) {
 }
 
 async function applyActiveTargetSet(activeIds) {
-  const wanted = new Set((activeIds || []).map((x) => String(x || "").trim()).filter(Boolean));
+  const wanted = new Set(withoutOwnedPlayerIds(activeIds));
   scoutingRows.forEach((row) => {
-    row.is_active_target = wanted.has(String(row.player_id));
+    const pid = String(row.player_id);
+    row.is_active_target = wanted.has(pid) && !isOwnedScoutingPlayerId(pid);
   });
   renderScoutingListsFromCache();
   updateActiveTargetsHeader();
   await setScoutingActiveTargetsBulk(supabase, [...wanted]);
+}
+
+/** Persist: clear Active Target ticks on anyone already at the club. */
+async function ensureOwnedNotActiveTargets() {
+  const stale = scoutingRows.filter(
+    (row) => row.is_active_target && isOwnedScoutingPlayerId(row.player_id)
+  );
+  if (!stale.length) return false;
+  for (const row of stale) row.is_active_target = false;
+  await setScoutingActiveTargetsBulk(supabase, currentActiveTargetIds());
+  return true;
+}
+
+function syncClubSquadControls() {
+  const includeCb = document.getElementById("scoutIncludeClubSquad");
+  if (includeCb) {
+    includeCb.checked = readIncludeClubSquad();
+    includeCb.disabled = !clubShort;
+  }
+  const addBtn = document.getElementById("scoutAddClubSquadBtn");
+  if (addBtn) {
+    addBtn.hidden = !clubShort;
+    const ownedN = (ownedSquadPlayers || []).length;
+    const onList = new Set(scoutingRows.map((r) => String(r.player_id)));
+    const missing = (ownedSquadPlayers || []).filter(
+      (p) => !onList.has(String(p.Konami_ID))
+    ).length;
+    addBtn.disabled = !ownedN || missing === 0;
+    addBtn.title =
+      missing > 0
+        ? `Add ${missing} club player(s) to your shortlist (not as Active Targets)`
+        : ownedN
+          ? "All current club players are already on your shortlist"
+          : "No club squad loaded";
+  }
+}
+
+function wireClubSquadControls() {
+  const includeCb = document.getElementById("scoutIncludeClubSquad");
+  if (includeCb && includeCb.dataset.wired !== "1") {
+    includeCb.dataset.wired = "1";
+    includeCb.addEventListener("change", () => {
+      writeIncludeClubSquad(!!includeCb.checked);
+      updateActiveTargetsHeader();
+    });
+  }
+  const addBtn = document.getElementById("scoutAddClubSquadBtn");
+  if (addBtn && addBtn.dataset.wired !== "1") {
+    addBtn.dataset.wired = "1";
+    addBtn.addEventListener("click", () => {
+      void addClubSquadToShortlist();
+    });
+  }
+  syncClubSquadControls();
+}
+
+async function addClubSquadToShortlist() {
+  if (!clubShort) return;
+  const owned = ownedSquadPlayers || [];
+  if (!owned.length) {
+    alert("No club squad to add.");
+    return;
+  }
+  const onList = new Set(scoutingRows.map((r) => String(r.player_id)));
+  const toAdd = owned
+    .map((p) => String(p.Konami_ID || "").trim())
+    .filter((id) => id && !onList.has(id));
+  if (!toAdd.length) {
+    alert("All current club players are already on your shortlist.");
+    return;
+  }
+  const btn = document.getElementById("scoutAddClubSquadBtn");
+  if (btn) btn.disabled = true;
+  let added = 0;
+  try {
+    for (const pid of toAdd) {
+      const scouted = await toggleScoutingTarget(supabase, pid, 1);
+      if (scouted) added += 1;
+    }
+    await renderScoutingLists();
+    setTimeout(() => {
+      alert(
+        added
+          ? `Added ${added} club player(s) to your shortlist (not Active Targets).`
+          : "No new club players were added."
+      );
+    }, 0);
+  } catch (err) {
+    alert(err?.message || "Could not add club squad to shortlist.");
+    syncClubSquadControls();
+  }
 }
 
 function renderListNationPicker() {
@@ -2138,14 +2349,16 @@ async function syncListFilterState(force = false) {
   }
 
   // Soft-hydrate checkboxes from this board's saved actives (no bulk write / re-paint).
-  const wanted = new Set((state.activeIds || []).map((x) => String(x)));
+  // Club players are never Active Targets.
+  const wanted = new Set(withoutOwnedPlayerIds(state.activeIds || []));
   scoutingRows.forEach((row) => {
-    row.is_active_target = wanted.has(String(row.player_id));
+    const pid = String(row.player_id);
+    row.is_active_target = wanted.has(pid) && !isOwnedScoutingPlayerId(pid);
   });
   const wrap = document.getElementById("scoutingListsWrap");
   wrap?.querySelectorAll(".scout-active-check").forEach((cb) => {
     const pid = String(cb.dataset.playerId || "");
-    const active = wanted.has(pid);
+    const active = wanted.has(pid) && !isOwnedScoutingPlayerId(pid);
     cb.checked = active;
     wrap.querySelectorAll(`tr[data-player-id="${pid}"]`).forEach((tr) => {
       tr.classList.toggle("scout-active-row", active);
