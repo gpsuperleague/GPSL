@@ -433,14 +433,28 @@
       transition: border-color 0.12s ease, background 0.12s ease;
     }
     a.hp-cta:hover { border-color: #ff9900; }
-    a.hp-cta-gpdb {
-      background: #c9a227; color: #111; border-color: #a8861c;
+    a.hp-cta-gpdb,
+    a.hp-cta-gpdb:visited,
+    a.hp-cta-gpdb:hover,
+    a.hp-cta-gpdb:active {
+      background: #c9a227 !important;
+      color: #111 !important;
+      border-color: #a8861c !important;
     }
-    a.hp-cta-gpdb:hover { background: #e0b82e; color: #111; }
-    a.hp-cta-mgdb {
-      background: #1a2a3a; color: #ddd; border-color: #3a5a7a;
+    a.hp-cta-gpdb:hover { background: #e0b82e !important; }
+    a.hp-cta-mgdb,
+    a.hp-cta-mgdb:visited,
+    a.hp-cta-mgdb:hover,
+    a.hp-cta-mgdb:active {
+      background: #1a2a3a !important;
+      color: #eee !important;
+      border-color: #3a5a7a !important;
     }
-    a.hp-cta-mgdb:hover { background: #24364a; color: #fff; border-color: #ff9900; }
+    a.hp-cta-mgdb:hover {
+      background: #24364a !important;
+      color: #fff !important;
+      border-color: #ff9900 !important;
+    }
     #ownerPreviewBanner.hp-admin-only-strip {
       border-style: dashed !important;
       background: #152030 !important;
@@ -595,6 +609,6 @@
     </div>
   </div>
   <script>window.CURRENT_PAGE = "handpick_squad"; const CURRENT_PAGE = "handpick_squad";</script>
-  <script type="module" src="handpick_squad.js?v=20261104-cta-theme"></script>
+  <script type="module" src="handpick_squad.js?v=20261104-cta-contrast"></script>
 </body>
 </html>
