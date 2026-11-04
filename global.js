@@ -3130,10 +3130,6 @@ export async function buildNav() {
   if (pathNorm === "handpick_squad.html") {
     handpickProcessActive = true;
   }
-  const handpickNavVisible =
-    !isVisitorNav &&
-    (handpickIntakeClub ||
-      (isGpslAdminNav && handpickProcessActive));
 
   let registrySelf = null;
   try {
@@ -3144,6 +3140,10 @@ export async function buildNav() {
   }
 
   const isVisitorNav = !isGpslAdminNav && user?.app_metadata?.gpsl_visitor === true;
+  const handpickNavVisible =
+    !isVisitorNav &&
+    (handpickIntakeClub ||
+      (isGpslAdminNav && handpickProcessActive));
 
   // Admins always get full menus (even without a club). Pre-club lock is for owners only.
   const isPreClubOwner =
