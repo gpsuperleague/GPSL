@@ -177,7 +177,10 @@
   GATE -->|Normal / catch-up / holiday / attempt 3| UNSCH[Unscheduled]
 
   UNSCH --> PROP[Home proposes<br/>mutual / compromise / poke]
+  UNSCH --> AP[Already played<br/>both confirm · ₿500k + strike each]
   PROP --> NEG[Negotiating + pending]
+  NEG --> AP
+  AP -->|both confirm| PLAY
 
   NEG --> RESP{Away?}
   RESP -->|Accept| AGREED[Agreed KO]
@@ -350,6 +353,7 @@
           <tr><td>No home proposal</td><td>₿2.5m</td><td>Month lock</td></tr>
           <tr><td>Late first propose</td><td>₿1m</td><td>Month lock</td></tr>
           <tr><td>Reply overdue 1st / later</td><td>Warning / ₿1m</td><td>Month lock</td></tr>
+          <tr><td>Already played (mutual bypass)</td><td>₿500k + 1 season strike each</td><td>On both confirm</td></tr>
           <tr><td>1st / 2nd / 3rd one-sided miss</td><td>₿500k / ₿1m / ₿1.5m+0–3 + strike</td><td>Instant</td></tr>
           <tr><td>Play now miss</td><td>Same ladder</td><td>Instant at window end</td></tr>
           <tr><td>Both miss (normal KO)</td><td>Each ladder · KO kept</td><td>Instant</td></tr>

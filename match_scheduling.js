@@ -643,6 +643,18 @@ export async function loadScheduleContext(fixtureId) {
     ctx.can_respond = false;
   }
 
+  // Already played mutual bypass (separate RPC so context patch is optional)
+  if (ctx.already_played == null && !agreed) {
+    try {
+      const { data: ap } = await supabase.rpc("match_schedule_already_played_json", {
+        p_fixture_id: fixtureId,
+      });
+      if (ap && typeof ap === "object") ctx.already_played = ap;
+    } catch (_) {
+      /* patch may be missing */
+    }
+  }
+
   return ctx;
 }
 
@@ -818,6 +830,29 @@ export async function resetPlayNowSession(fixtureId) {
   if (error) return { ok: false, msg: error.message };
   if (data && data.ok === false) {
     return { ok: false, msg: data.message || "Could not reset Play now" };
+  }
+  return { ok: true, data };
+}
+
+/** Mutual Already played: both confirm → ₿500k + season strike each + unlock result. */
+export async function pressAlreadyPlayed(fixtureId) {
+  const { data, error } = await supabase.rpc("fixture_already_played_press", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message };
+  if (data && data.ok === false) {
+    return { ok: false, msg: data.message || "Could not confirm Already played" };
+  }
+  return { ok: true, data };
+}
+
+export async function cancelAlreadyPlayed(fixtureId) {
+  const { data, error } = await supabase.rpc("fixture_already_played_cancel", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message };
+  if (data && data.ok === false) {
+    return { ok: false, msg: data.message || "Could not cancel" };
   }
   return { ok: true, data };
 }

@@ -13,6 +13,8 @@ import {
   requestMutualOverridePlayNow,
   pressPlayNowReady,
   resetPlayNowSession,
+  pressAlreadyPlayed,
+  cancelAlreadyPlayed,
   requestMutualOverrideNewTime,
   confirmMutualOverride,
   cancelMutualOverride,
@@ -856,6 +858,85 @@ function noShowLadderBannerHtml(f) {
   return `<div class="catch-up-banner">
     <strong>Attempt ${attempt || 1}</strong> — ${counts} ${fines}
   </div>`;
+}
+
+function alreadyPlayedPanelHtml() {
+  const ap = ctx?.already_played;
+  if (!ap || ap.completed) return "";
+  if (ap.available === false && !ap.can_press && !ap.my_pressed) return "";
+  if (ctx?.my_has_manager === false) return "";
+
+  const bothPending =
+    ap.status === "open" && (ap.home_pressed || ap.away_pressed) && !(ap.home_pressed && ap.away_pressed);
+
+  let actions = "";
+  if (ap.can_press) {
+    actions = `<button type="button" id="alreadyPlayedBtn" class="button secondary">Already played</button>`;
+  } else if (ap.can_cancel) {
+    actions = `<button type="button" id="alreadyPlayedCancelBtn" class="button secondary">Cancel my confirm</button>`;
+  }
+
+  const statusLine = bothPending
+    ? ap.my_pressed
+      ? `<p class="meta" style="color:#e8a87c;"><b>Waiting for opponent</b> to confirm Already played.</p>`
+      : `<p class="meta" style="color:#e8a87c;"><b>Opponent confirmed</b> — confirm if you already played too.</p>`
+    : "";
+
+  return `
+    <div class="panel" style="border-color:#6a3a28;background:#1a100c;">
+      <h2>Already played?</h2>
+      <p class="meta">
+        You played this fixture without finishing GPSL arrangement.
+        <b>Both clubs must confirm.</b> Then each club pays <b>₿500k</b> and takes
+        <b>1 season no-show strike</b> (counts toward every 3rd → ₿2.5m), and Match Day unlocks for enter result / confirm + stats.
+      </p>
+      ${statusLine}
+      ${actions ? `<div class="actions">${actions}</div>` : ""}
+    </div>`;
+}
+
+function wireAlreadyPlayedButtons() {
+  const pressBtn = document.getElementById("alreadyPlayedBtn");
+  if (pressBtn) {
+    pressBtn.onclick = async () => {
+      if (
+        !confirm(
+          "Confirm Already played?\n\nWhen both clubs confirm:\n• ₿500k fine each\n• 1 season no-show strike each\n• Match Day unlocks to enter / confirm the result\n\nContinue?"
+        )
+      ) {
+        return;
+      }
+      pressBtn.disabled = true;
+      const res = await pressAlreadyPlayed(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        pressBtn.disabled = false;
+        return;
+      }
+      if (res.data?.completed) {
+        setStatus(
+          "Both confirmed — ₿500k + strike applied. Enter the result on Match Day."
+        );
+      } else {
+        setStatus("Confirmed — waiting for opponent (₿500k + strike apply when both confirm).");
+      }
+      await reload();
+    };
+  }
+  const cancelBtn = document.getElementById("alreadyPlayedCancelBtn");
+  if (cancelBtn) {
+    cancelBtn.onclick = async () => {
+      cancelBtn.disabled = true;
+      const res = await cancelAlreadyPlayed(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        cancelBtn.disabled = false;
+        return;
+      }
+      setStatus("Already played confirm cancelled.");
+      await reload();
+    };
+  }
 }
 
 function renderAgreedPanel(root, f, sch) {
@@ -1886,6 +1967,8 @@ function render() {
       ${gpslSlotBody}
     </div>`;
 
+  const alreadyPlayedHtml = alreadyPlayedPanelHtml();
+
   root.innerHTML = `
     ${catchUpBannerHtml()}
     ${holidayEarlyBannerHtml()}
@@ -1909,11 +1992,15 @@ function render() {
           : ""
       }
     </div>
+    ${alreadyPlayedHtml}
     ${mutualPendingHtml}
     ${ctx.my_has_manager === false ? "" : pendingHtml}
     ${schedulingTabsHtml}
   `;
 
+  if (alreadyPlayedHtml) {
+    wireAlreadyPlayedButtons();
+  }
   if (showDiscordTab) {
     wireScheduleModeTabs("gpsl");
     wireDiscordLockPanel(
