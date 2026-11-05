@@ -787,6 +787,7 @@ export async function emergencyDrop(fixtureId) {
   return { ok: true };
 }
 
+/** Old Play Now → Bring KO forward (mutual override earlier kick-off). */
 export async function requestMutualOverridePlayNow(fixtureId, kickoffAt = null) {
   const args = {
     p_fixture_id: fixtureId,
@@ -795,6 +796,29 @@ export async function requestMutualOverridePlayNow(fixtureId, kickoffAt = null) 
   if (kickoffAt) args.p_kickoff_at = kickoffAt;
   const { data, error } = await supabase.rpc("fixture_mutual_override_request", args);
   if (error) return { ok: false, msg: error.message };
+  return { ok: true, data };
+}
+
+/** New Play Now: bilateral ready session (20-min shared check-in window). */
+export async function pressPlayNowReady(fixtureId) {
+  const { data, error } = await supabase.rpc("fixture_play_now_press", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message };
+  if (data && data.ok === false) {
+    return { ok: false, msg: data.message || "Could not press Play now" };
+  }
+  return { ok: true, data };
+}
+
+export async function resetPlayNowSession(fixtureId) {
+  const { data, error } = await supabase.rpc("fixture_play_now_reset", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message };
+  if (data && data.ok === false) {
+    return { ok: false, msg: data.message || "Could not reset Play now" };
+  }
   return { ok: true, data };
 }
 

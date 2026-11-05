@@ -11,6 +11,8 @@ import {
   emergencyDrop,
   catchUpResetSchedule,
   requestMutualOverridePlayNow,
+  pressPlayNowReady,
+  resetPlayNowSession,
   requestMutualOverrideNewTime,
   confirmMutualOverride,
   cancelMutualOverride,
@@ -30,7 +32,7 @@ import {
   priorProposedKickoffSet,
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
-} from "./match_scheduling.js?v=20261030-meet-either";
+} from "./match_scheduling.js?v=20261105-play-now-ready";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -558,7 +560,7 @@ function mutualPendingPanelHtml(mo, homeTz, awayTz) {
   const fromName = fullClubName(mo.requested_by_club_short_name);
   const kindLabel =
     mo.kind === "play_now"
-      ? "play now"
+      ? "bring kick-off forward"
       : "lock this kick-off";
   const cancelLabel = mo.can_confirm ? "Decline" : "Cancel request";
   const cancelTitle = mo.can_confirm
@@ -875,13 +877,16 @@ function renderAgreedPanel(root, f, sch) {
     sch.agreed_kickoff_at &&
     new Date(sch.agreed_kickoff_at).getTime() > Date.now();
   const playNowBlockedReason = String(moOpts.play_now_block_reason || "").trim();
+  const pn = ctx.play_now_session || {};
+  const pnActive = pn.active === true;
+
   if (mo) {
     mutualHtml = mutualPendingPanelHtml(mo, homeTz, awayTz);
   } else if (agreedFuture && ctx.my_has_manager !== false) {
-    const canPlayNow = moOpts.can_request_play_now === true;
+    const canBringForward = moOpts.can_request_play_now === true;
     const freeNewTimeNote = sch.mutual_override_used
-      ? "Free mutual new-time already used for this fixture — Play now is still available if both agree."
-      : "One free mutual new-time per fixture; Play now can be used again later if both agree.";
+      ? "Free mutual new-time already used for this fixture — Bring KO forward is still available if both agree."
+      : "One free mutual new-time per fixture; Bring KO forward can be used again later if both agree.";
     const playNowDefaultRaw = moOpts.play_now_kickoff_at
       ? new Date(moOpts.play_now_kickoff_at)
       : new Date(Date.now() + 5 * 60 * 1000);
@@ -898,29 +903,128 @@ function renderAgreedPanel(root, f, sch) {
         ? zonedDateTimeLocalValue(playNowDefaultDate, ownerTz)
         : "";
     const blockNote =
-      !canPlayNow && playNowBlockedReason
-        ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Play now unavailable:</b> ${escapeHtmlLite(playNowBlockedReason)}</p>`
-        : !canPlayNow
-          ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Play now unavailable</b> right now (holiday early squad, double-booked, or outside the play window).</p>`
+      !canBringForward && playNowBlockedReason
+        ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Bring KO forward unavailable:</b> ${escapeHtmlLite(playNowBlockedReason)}</p>`
+        : !canBringForward
+          ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Bring KO forward unavailable</b> right now (holiday early squad, double-booked, or outside the play window).</p>`
           : "";
+
+    const pnSecs = Number(pn.seconds_remaining ?? 0);
+    const pnMins = Math.floor(pnSecs / 60);
+    const pnRem = pnSecs % 60;
+    const pnCountdown = pnActive
+      ? `${pnMins}:${String(pnRem).padStart(2, "0")}`
+      : "";
+    const readyLine = pnActive
+      ? `Home: ${pn.home_pressed ? "ready ✓" : "waiting…"} · Away: ${pn.away_pressed ? "ready ✓" : "waiting…"} · Check-ins: Home ${pn.home_checked_in ? "✓" : "—"} · Away ${pn.away_checked_in ? "✓" : "—"}`
+      : "";
+
+    let playNowReadyHtml = "";
+    if (pnActive && pn.status === "miss_open") {
+      const canEnter = pn.can_enter_result === true;
+      const canReset = pn.can_reset === true;
+      let blurb = "Play now window closed. Fines/strikes already applied. Agreed kick-off stays suspended until you enter a result or reset.";
+      if (pn.miss_choice_mode === "onesided_checked") {
+        blurb =
+          "Opponent missed Play now check-in — their fine/strike still apply. Enter the result if you played, or reset Play now.";
+      } else if (pn.miss_choice_mode === "onesided_missed") {
+        blurb =
+          "You missed Play now check-in — your fine/strike still apply. Only your opponent can enter the result. You may still reset Play now.";
+      } else if (pn.miss_choice_mode === "both_miss") {
+        blurb =
+          "Neither checked in during Play now — fines/strikes still apply. Either owner can enter a result or reset.";
+      }
+      playNowReadyHtml = `
+        <div class="panel mutual-panel" style="border-color:var(--gpsl-accent, #ff9900);">
+          <h2>Play now — window closed</h2>
+          <p class="meta">${blurb}</p>
+          <p class="meta">${readyLine}</p>
+          <div class="actions">
+            ${
+              canEnter
+                ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Match was played — enter result</a>`
+                : ""
+            }
+            ${
+              canReset
+                ? '<button type="button" id="playNowResetBtn" class="button secondary">Reset Play now (keep agreed KO)</button>'
+                : ""
+            }
+          </div>
+        </div>`;
+    } else if (pnActive) {
+      playNowReadyHtml = `
+        <div class="panel mutual-panel" style="border-color:var(--gpsl-accent, #ff9900);">
+          <h2>Play now</h2>
+          <p class="meta">
+            Both owners press <b>Play now</b>, then check in. Shared window:
+            <b><span id="playNowCountdown">${pnCountdown}</span></b> left
+            (20 min from first press). Agreed KO stays until the match is confirmed played.
+            ${pn.ko_forfeit_suspended ? " Original KO check-in fines are <b>suspended</b> while this session is active." : ""}
+          </p>
+          <p class="meta">${readyLine}</p>
+          <div class="actions">
+            ${
+              pn.can_press
+                ? '<button type="button" id="playNowReadyBtn" class="button">Play now</button>'
+                : pn.my_pressed
+                  ? '<span class="meta">You pressed Play now — waiting for opponent / check-in.</span>'
+                  : ""
+            }
+            ${
+              pn.can_check_in
+                ? '<button type="button" id="playNowCheckInBtn" class="button">Check in now</button>'
+                : ""
+            }
+            ${
+              pn.home_checked_in && pn.away_checked_in
+                ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Enter result on Match Day</a>`
+                : ""
+            }
+            ${
+              pn.can_reset
+                ? '<button type="button" id="playNowResetBtn" class="button secondary">Cancel Play now</button>'
+                : ""
+            }
+          </div>
+        </div>`;
+    } else if (pn.can_press !== false) {
+      playNowReadyHtml = `
+        <div class="panel mutual-panel" style="border-color:var(--gpsl-accent, #ff9900);">
+          <h2>Play now</h2>
+          <p class="meta">
+            Ready to play <b>now</b>? First press starts a shared <b>20‑minute</b> check-in window.
+            Both must press Play now, then check in. No allowance used. Agreed kick-off stays unless the match is confirmed played.
+          </p>
+          <div class="actions">
+            <button type="button" id="playNowReadyBtn" class="button">Play now</button>
+          </div>
+        </div>`;
+    }
+
     mutualHtml = `
+      ${playNowReadyHtml}
       <div class="panel mutual-panel">
-        <h2>Play now (no allowance used)</h2>
+        <h2>Bring KO forward (no allowance used)</h2>
         <p class="meta">
-          You already agreed a kick-off — pick <b>any earlier</b> date/time to play sooner (UK <b>10‑minute</b> steps).
-          Does <b>not</b> need to match weekly availability. Opponent confirms; then check in from 10 minutes before the new kick-off (30‑minute play block as normal).
+          Keep arranging for later, but move the agreed kick-off to an <b>earlier</b> UK <b>10‑minute</b> time.
+          Opponent confirms; then normal check-in ±10 min at the new KO.
         </p>
         ${blockNote}
         <div class="poke-free-row" style="margin-top:10px;">
-          <input type="datetime-local" id="playNowDateTime" step="600" value="${playNowDefault}" ${canPlayNow ? "" : "disabled"} />
-          <button type="button" id="playNowMutualBtn" class="button" ${canPlayNow ? "" : "disabled"} title="${
-            canPlayNow ? "" : escapeHtmlLite(playNowBlockedReason || "Play now unavailable")
-          }">Request Play now</button>
+          <input type="datetime-local" id="playNowDateTime" step="600" value="${playNowDefault}" ${canBringForward && !pnActive ? "" : "disabled"} />
+          <button type="button" id="playNowMutualBtn" class="button secondary" ${canBringForward && !pnActive ? "" : "disabled"} title="${
+            pnActive
+              ? "Finish or cancel Play now first"
+              : canBringForward
+                ? ""
+                : escapeHtmlLite(playNowBlockedReason || "Unavailable")
+          }">Request Bring KO forward</button>
         </div>
         <p class="meta" id="playNowPreview" hidden></p>
         <p class="meta" style="margin-top:8px;">${freeNewTimeNote}</p>
         ${
-          moOpts.can_request_new_time
+          moOpts.can_request_new_time && !pnActive
             ? `<p class="meta" style="margin-top:12px;">Or change kick-off to another <b>mutual</b> weekly slot:</p>
                <div class="slot-list" id="mutualSlotList"></div>
                <div class="actions">
@@ -931,7 +1035,7 @@ function renderAgreedPanel(root, f, sch) {
       </div>
     `;
   } else if (sch.mutual_override_used) {
-    mutualHtml = `<p class="meta">Free mutual new-time already used for this fixture. Play now appears again while the agreed kick-off is still in the future.</p>`;
+    mutualHtml = `<p class="meta">Free mutual new-time already used for this fixture. Bring KO forward appears again while the agreed kick-off is still in the future.</p>`;
   }
 
   const agreedMeta = document.getElementById("scheduleMeta");
@@ -1202,18 +1306,101 @@ function renderAgreedPanel(root, f, sch) {
     refreshPlayNowPreview();
   }
 
+  const playNowReadyBtn = document.getElementById("playNowReadyBtn");
+  if (playNowReadyBtn) {
+    playNowReadyBtn.onclick = async () => {
+      if (
+        !confirm(
+          "Press Play now? First press starts a shared 20-minute check-in window. Both owners must press Play now, then check in. No allowance used."
+        )
+      ) {
+        return;
+      }
+      playNowReadyBtn.disabled = true;
+      setStatus("Starting Play now…");
+      const res = await pressPlayNowReady(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        playNowReadyBtn.disabled = false;
+        return;
+      }
+      setStatus(
+        res.data?.both_ready
+          ? "Both ready — check in before the countdown ends."
+          : "Play now pressed — waiting for opponent."
+      );
+      await reload();
+    };
+  }
+
+  const playNowCheckInBtn = document.getElementById("playNowCheckInBtn");
+  if (playNowCheckInBtn) {
+    playNowCheckInBtn.onclick = async () => {
+      playNowCheckInBtn.disabled = true;
+      setStatus("Checking in…");
+      const res = await checkInToFixture(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        playNowCheckInBtn.disabled = false;
+        return;
+      }
+      setStatus("Checked in.");
+      await reload();
+    };
+  }
+
+  const playNowResetBtn = document.getElementById("playNowResetBtn");
+  if (playNowResetBtn) {
+    playNowResetBtn.onclick = async () => {
+      if (
+        !confirm(
+          "Reset Play now? Agreed kick-off stays. Any Play now fines/strikes already applied stay. Check-ins from this session are cleared."
+        )
+      ) {
+        return;
+      }
+      playNowResetBtn.disabled = true;
+      const res = await resetPlayNowSession(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        playNowResetBtn.disabled = false;
+        return;
+      }
+      setStatus(res.data?.message || "Play now cleared.");
+      await reload();
+    };
+  }
+
+  const pnCountdownEl = document.getElementById("playNowCountdown");
+  if (pnCountdownEl && pn?.window_ends_at) {
+    const endsAt = new Date(pn.window_ends_at).getTime();
+    const tick = () => {
+      const left = Math.max(0, Math.floor((endsAt - Date.now()) / 1000));
+      const m = Math.floor(left / 60);
+      const s = left % 60;
+      pnCountdownEl.textContent = `${m}:${String(s).padStart(2, "0")}`;
+      if (left <= 0) {
+        clearInterval(pnTimer);
+        void reload();
+      }
+    };
+    const pnTimer = setInterval(tick, 1000);
+    tick();
+  }
+
   if (playNowBtn && !playNowBtn.disabled) {
     playNowBtn.onclick = async () => {
       if (moOpts.can_request_play_now !== true) {
         setStatus(
-          playNowBlockedReason || "Play now is unavailable for this fixture right now.",
+          playNowBlockedReason ||
+            "Bring KO forward is unavailable for this fixture right now.",
           true
         );
         return;
       }
       const iso = readPlayNowIso();
       if (!iso) {
-        setStatus("Pick a Play now date/time first.", true);
+        setStatus("Pick a Bring KO forward date/time first.", true);
         return;
       }
       if (new Date(iso).getTime() <= Date.now()) {
@@ -1221,18 +1408,18 @@ function renderAgreedPanel(root, f, sch) {
         return;
       }
       if (new Date(iso).getTime() >= new Date(sch.agreed_kickoff_at).getTime()) {
-        setStatus("Play now must be earlier than the agreed kick-off.", true);
+        setStatus("Bring KO forward must be earlier than the agreed kick-off.", true);
         return;
       }
       if (
         !confirm(
-          `Request Play now at ${formatKickoffPair(iso, homeTz, awayTz)}? Opponent must confirm. No reschedule allowance is used.`
+          `Request Bring KO forward to ${formatKickoffPair(iso, homeTz, awayTz)}? Opponent must confirm. No reschedule allowance is used.`
         )
       ) {
         return;
       }
       playNowBtn.disabled = true;
-      setStatus("Sending play-now request…");
+      setStatus("Sending Bring KO forward request…");
       const res = await requestMutualOverridePlayNow(fixtureId, iso);
       if (!res.ok) {
         setStatus(res.msg, true);
