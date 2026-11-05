@@ -568,7 +568,7 @@ export function formatResponseDeadlineLine(deadline, myClubShort) {
   const uk = deadline.due_at_uk || formatKickoff(deadline.due_at, UK_TZ) + " UK";
   const misses = "";
   if (mine && overdue) {
-    return `Response overdue since ${uk} — reply now. First overdue month lock is a warning only; later locks while still overdue charge ₿2.5m (once per lock).`;
+    return `Response overdue since ${uk} — reply now. First overdue month lock is a warning only; later locks while still overdue charge ₿1m (once per lock).`;
   }
   if (mine) {
     return `Your response due by ${uk}${misses}.`;

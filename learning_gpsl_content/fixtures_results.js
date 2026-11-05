@@ -308,7 +308,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `<b>Home should propose in the month before</b> the fixture’s play month (e.g. September fixture → propose before August locks). You may propose as early as you like once fixtures exist.`,
         `<b>Last 48h before the play month opens</b> and home only then proposes → <b>₿1m</b> Late Arrangement Fee.`,
         `<b>No home proposal</b> by that prior lock → <b>₿2.5m</b> Match Management (repeats each later lock until they propose). Suppressed while home is on a booked holiday.`,
-        `<b>Reply overdue</b> at month lock → <b>warning first</b> (Inbox only). Still overdue at a later lock → <b>₿2.5m</b>. Negotiation <b>continues</b> (not wiped).`,
+        `<b>Reply overdue</b> at month lock → <b>warning first</b> (Inbox only). Still overdue at a later lock → <b>₿1m</b>. Negotiation <b>continues</b> (not wiped).`,
         `<b>League play window</b>: scheduled month <b>+ 2</b> (August → end of October). <b>Cups</b>: scheduled month <b>+ 1</b> (May cups: no extra month).`,
         `<b>After the window</b>, still unplayed → awarded by activity (negotiation replies, logins, matches played, other scheduling misses, check-ins). True tie → <b>0–0</b>. Vacant club loses 3–0. Holiday covering the scheduled month without playing → that club forfeits.`,
         `<b>Recorded one-sided no-show</b> and still unfinished → <b>3–0 + ₿2.5m</b> for the no-show club.`,
@@ -332,7 +332,7 @@ export const SECTION_MATCH_SCHEDULING = {
       items: [
         `<b>₿2.5m</b> — home never proposed by the prior-month lock (can repeat each lock until they do).`,
         `<b>₿1m</b> — home first proposed only in the last 48h before the play month opened.`,
-        `<b>Warn → ₿2.5m</b> — you owed a reply and were overdue at lock (first lock warns; later locks fine while still overdue).`,
+        `<b>Warn → ₿1m</b> — you owed a reply and were overdue at lock (first lock warns; later locks fine while still overdue).`,
         `<b>₿500k / ₿1m / ₿1.5m</b> — 1st / 2nd / 3rd no-show on a fixture (+ season strike each time).`,
         `<b>0–3</b> — 3rd no-show on the same fixture (instant).`,
         `<b>₿2.5m</b> — every 3rd season strike (3, 6, 9…).`,

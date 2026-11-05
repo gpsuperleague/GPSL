@@ -198,7 +198,7 @@
         <ul>
           <li><b>Arrange</b> — from fixture draw / pre-season; home proposes first; mutual 30-min slots</li>
           <li><b>Arrangement fines at month lock</b> — Match Management ₿10m (no proposal), Late arrangement ₿5m (first proposal in last 24h before play month)</li>
-          <li><b>Response deadlines</b> — tracked in-month; <b>Missed response ₿2.5m</b> at play-month lock if still overdue</li>
+          <li><b>Response deadlines</b> — tracked in-month; <b>Missed response ₿1m</b> at play-month lock if still overdue (first overdue lock = warning)</li>
           <li><b>Check-in</b> — both miss → no fine, replay reset; one misses → recorded, no instant forfeit if match later played normally; month lock → 3–0 + ₿5m if still unplayed</li>
           <li><b>Catch-up</b> — play month closed unplayed → flag + reschedule in later active month</li>
           <li><b>Cron</b> — <code>gpsl-transfer-engine-5min</code> → calendar month tick (fines throttled; deploy <code>free_tier_cron_throttle.sql</code> on Free/Pro Nano)</li>

@@ -1211,7 +1211,7 @@ function renderAgreedPanel(root, f, sch) {
       const left = al.emergency_drops_remaining ?? 0;
       if (
         !confirm(
-          `Emergency drop (<24h before kick-off)? Uses 1 of ${left} remaining this season.`
+          `Emergency drop (<24h before kick-off)? Uses 1 of ${left} remaining this season and moves the fixture to the next play attempt (1→2→3).`
         )
       ) {
         return;
@@ -1223,7 +1223,7 @@ function renderAgreedPanel(root, f, sch) {
         emBtn.disabled = false;
         return;
       }
-      setStatus("Emergency drop recorded — reschedule on this page.");
+      setStatus("Emergency drop recorded — next attempt; reschedule on this page.");
       await reload();
     };
   }

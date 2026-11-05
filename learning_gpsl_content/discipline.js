@@ -52,7 +52,7 @@ export const SECTION_DISCIPLINE = {
       items: [
         `<b>₿2.5m</b> — home never proposed by the prior-month lock (can <b>repeat each later lock</b> until they propose). Suppressed while home is on a booked holiday.`,
         `<b>₿1m</b> — home’s first proposal only in the last 48h before the play month opened.`,
-        `<b>Warning → ₿2.5m</b> — reply overdue at lock: first lock is Inbox warning only; still overdue at a later lock → fine. Negotiation continues.`,
+        `<b>Warning → ₿1m</b> — reply overdue at lock: first lock is Inbox warning only; still overdue at a later lock → fine. Negotiation continues.`,
         `<b>₿2.5m + 3–0</b> — one-sided no-show recorded, match still unfinished at month lock.`,
         `<b>₿3m + 3–0</b> — emergency drop (&lt;24h before KO) with no season allowance left (2 per season).`,
         `<b>₿2.5m each + mutual forfeit</b> — both clubs had GPSL match system OFF and the fixture is still unplayed at that month’s lock (0 points each; cups both out).`,

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GPSL Match-making system review</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #121a2b;
+      --border: #243049;
+      --text: #e8eef8;
+      --muted: #9aa8bd;
+      --accent: #d4a017;
+      --warn: #e07040;
+      --ok: #3d9a6a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 15px/1.45 system-ui, Segoe UI, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 64px; }
+    h1 { font-size: 1.6rem; font-weight: 600; margin: 0 0 8px; }
+    h2 { font-size: 1.15rem; font-weight: 600; margin: 28px 0 12px; color: var(--accent); }
+    h3 { font-size: 0.95rem; font-weight: 600; margin: 18px 0 8px; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 720px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .stat b { display: block; font-size: 1.05rem; margin-bottom: 4px; }
+    .stat span { color: var(--muted); font-size: 0.8rem; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+    .tab {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 7px 14px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .tab.active { border-color: var(--accent); color: var(--accent); }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 8px 0 16px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #182234; color: var(--muted); font-weight: 500; }
+    .callout {
+      border: 1px solid var(--border);
+      background: #162033;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 12px 0;
+      font-size: 0.9rem;
+    }
+    .callout.warn { border-color: #6a3a28; }
+    .callout.info { border-color: #2a4568; }
+    .callout b { color: var(--accent); }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .card h3 { margin-top: 0; }
+    .mermaid {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 12px;
+      margin: 12px 0 20px;
+      overflow-x: auto;
+    }
+    .mermaid svg { max-width: 100%; height: auto; }
+  </style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "dark",
+      flowchart: { curve: "basis", htmlLabels: true, padding: 12 },
+      themeVariables: {
+        primaryColor: "#1a2740",
+        primaryTextColor: "#e8eef8",
+        primaryBorderColor: "#d4a017",
+        lineColor: "#9aa8bd",
+        secondaryColor: "#162033",
+        tertiaryColor: "#121a2b",
+        fontSize: "14px",
+      },
+    });
+    window.__mermaid = mermaid;
+    window.__renderMermaid = async () => {
+      const nodes = document.querySelectorAll(".mermaid:not([data-processed])");
+      for (const el of nodes) {
+        const id = "mmd-" + Math.random().toString(36).slice(2);
+        const { svg } = await mermaid.render(id, el.textContent.trim());
+        el.innerHTML = svg;
+        el.setAttribute("data-processed", "1");
+      }
+    };
+    document.addEventListener("DOMContentLoaded", () => window.__renderMermaid());
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Match-making system review</h1>
+    <p class="sub">Live GPSL rules — 5 Nov 2026. Play now ready-session (20 min) + Bring KO forward + check-in miss dual path.</p>
+
+    <div class="stats">
+      <div class="stat"><b>20 min</b><span>Play now window</span></div>
+      <div class="stat"><b>Bring KO forward</b><span>Earlier KO rename</span></div>
+      <div class="stat"><b>Suspended</b><span>KO forfeit if both ready</span></div>
+      <div class="stat"><b>Enter or reset</b><span>After miss</span></div>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+    <div id="panels"></div>
+  </div>
+
+  <script>
+    const tabs = [
+      { id: "flow", label: "Full flow" },
+      { id: "playnow", label: "Play now" },
+      { id: "attempts", label: "Attempts 1–3" },
+      { id: "options", label: "Owner options" },
+      { id: "deadlines", label: "Deadlines" },
+      { id: "penalties", label: "Penalties" },
+      { id: "miss", label: "After miss" },
+    ];
+
+    const FLOW_MERMAID = `flowchart TD
+  START([Fixture live]) --> GATE{Entry gate?}
+
+  GATE -->|Both match system OFF| BB[Manual black-box]
+  BB --> MD_BB[Match Day only]
+  MD_BB --> LOCK_BB{Unplayed at month lock?}
+  LOCK_BB -->|Yes| FF_BB[Mutual forfeit + ₿2.5m each]
+
+  GATE -->|Opponent vacant| VAC[No arrange]
+  VAC --> WO[Walkover 3–0 at month lock]
+
+  GATE -->|New-owner grace| GRACE[Blocked until next GPSL month]
+  GRACE --> UNSCH
+
+  GATE -->|Normal / catch-up / holiday / attempt 3| UNSCH[Unscheduled]
+
+  UNSCH --> PROP[Home proposes<br/>mutual / compromise / poke]
+  PROP --> NEG[Negotiating + pending]
+
+  NEG --> RESP{Away?}
+  RESP -->|Accept| AGREED[Agreed KO]
+  RESP -->|Counter| NEG
+  RESP -->|Discord lock tab| DISC[Lock 30-min slot]
+  DISC -->|Both confirm 24h| AGREED
+  DISC -->|Decline / expire| NEG
+
+  NEG --> RDL{Response overdue at lock?}
+  RDL -->|1st| WARN[Warning]
+  RDL -->|Later| RFINE[₿1m reply fine]
+  UNSCH --> ADL{No propose by unlock?}
+  ADL -->|Yes| AFINE[₿2.5m arrange fine]
+  ADL -->|Late 48h band| LFINE[₿1m late arrange]
+
+  AGREED --> FUTURE{KO still future?}
+
+  FUTURE -->|Yes| SIDE[Agreed panel options]
+  SIDE --> PN[Play now<br/>both press · 20-min ready session]
+  SIDE --> BKO[Bring KO forward<br/>earlier UK 10-min · opponent confirms]
+  SIDE --> NT[Change KO<br/>mutual 30-min · 1 free]
+  SIDE --> VD[Voluntary drop ≥24h<br/>1/month · same attempt]
+  SIDE --> ED[Emergency drop &lt;24h<br/>2/season · escalate attempt]
+  SIDE --> WAIT[Wait for KO]
+
+  PN -->|First press| PN1[20-min countdown starts]
+  PN1 -->|Second press| PN2[Both ready · KO forfeit suspended]
+  PN2 --> PNCI[Check-in during session]
+  PN -->|One press expires| SIDE
+  PNCI -->|Both in| PLAY
+  PNCI -->|Window ends incomplete| MISS
+
+  BKO -->|Request| OVR[Mutual override pending]
+  NT -->|Request| OVR
+  OVR -->|Both confirm| AGREED
+  OVR -->|Cancel / expire| SIDE
+
+  VD --> UNSCH
+  ED --> ATTEMPT{Current attempt?}
+  ATTEMPT -->|1| A2[Unscheduled · attempt 2]
+  ATTEMPT -->|2| A3[Unscheduled · attempt 3 open play]
+  ATTEMPT -->|3+| A3S[Unscheduled · stay attempt 3 open play]
+  A2 --> UNSCH
+  A3 --> UNSCH
+  A3S --> UNSCH
+
+  FUTURE -->|No / KO reached| CI[Check-in window<br/>KO−10 → KO+10]
+  WAIT --> CI
+
+  CI --> BOTH{Both checked in?}
+  BOTH -->|Yes| PLAY[Play block KO→KO+30]
+  PLAY --> SUB[Submit result]
+  SUB --> PEND[Pending submission]
+  PEND --> CONF[Opponent confirm + stats]
+  CONF --> DONE([Played])
+  PEND --> REJ[Reject] --> PLAY
+
+  BOTH -->|Window still open| CI
+  BOTH -->|Window closed incomplete| MISS[Instant fine · KO KEPT]
+
+  MISS --> ONE{Onesided?}
+  ONE -->|Checked-in owner| RES1[Enter result OR pick new time]
+  ONE -->|Misser| RES1B[Pick new time only]
+  ONE -->|Both miss| RES2[Either: enter result OR pick new time]
+
+  RES1 --> SUB
+  RES2 --> SUB
+  RES1 --> RESET[Pick new time / catch-up reset]
+  RES1B --> RESET
+  RES2 --> RESET
+  RESET --> UNSCH
+
+  AGREED --> ATT{Attempt 3 open play?}
+  ATT -->|Yes| OP[Rearrange through month+2<br/>Play now still OK]
+  OP --> SIDE
+  OP --> AWARD{Still unplayed at open-play lock?}
+  AWARD -->|Yes| WIN[Award fewer no-shows<br/>activity/effort if tied<br/>true tie → 0–0]`;
+
+    const html = {
+      flow: `
+        <h2>Full process map</h2>
+        <p class="sub" style="margin-top:0">Updated 5 Nov 2026 — Play now ready-session + Bring KO forward.</p>
+        <div class="mermaid">${FLOW_MERMAID}</div>
+
+        <h3>0. Entry gates</h3>
+        <table>
+          <tr><th>Gate</th><th>If true</th><th>Next</th></tr>
+          <tr><td>Manual black-box</td><td>Both match system OFF</td><td>Match Day only → mutual forfeit if unplayed at lock</td></tr>
+          <tr><td>Opponent vacant</td><td>No arrange loop</td><td>Walkover 3–0 at month lock</td></tr>
+          <tr><td>New-owner grace</td><td>Assigned mid play-month</td><td>No propose until next GPSL month</td></tr>
+          <tr><td>Catch-up / holiday / attempt 3</td><td>Extended window</td><td>Same spine with banner rules</td></tr>
+        </table>
+
+        <h3>2. Agreed · future KO</h3>
+        <div class="callout info"><b>Two buttons.</b> Play now = ready session. Bring KO forward = move agreed KO earlier.</div>
+        <table>
+          <tr><th>Action</th><th>Rules</th><th>Outcome</th></tr>
+          <tr><td>Play now</td><td>Both press; 20 min from first; check-in after own press</td><td>Both ready → KO forfeit suspended until result / reset / admin</td></tr>
+          <tr><td>Bring KO forward</td><td>Earlier UK 10-min; opponent confirms 24h</td><td>New agreed KO → normal ±10 check-in</td></tr>
+          <tr><td>Change kick-off</td><td>One free mutual 30-min / fixture</td><td>Pending → confirm → new KO</td></tr>
+          <tr><td>Voluntary drop</td><td>≥24h · 1/month</td><td>→ Unscheduled · same attempt</td></tr>
+          <tr><td>Emergency drop</td><td>&lt;24h · 2/season</td><td>→ Unscheduled · attempt 1→2 / 2→3 / 3 stays open play</td></tr>
+        </table>
+      `,
+      playnow: `
+        <h2>Play now vs Bring KO forward</h2>
+        <table>
+          <tr><th></th><th>Play now</th><th>Bring KO forward</th></tr>
+          <tr><td>UI</td><td>Play now</td><td>Request Bring KO forward</td></tr>
+          <tr><td>Model</td><td>Session overlay on agreed KO</td><td>Changes agreed KO earlier</td></tr>
+          <tr><td>Confirm</td><td>Both press Play now</td><td>Opponent confirms within 24h</td></tr>
+          <tr><td>Check-in</td><td>During 20-min session</td><td>Normal ±10 at new KO</td></tr>
+          <tr><td>Allowance</td><td>None</td><td>None</td></tr>
+        </table>
+        <h3>Play now steps</h3>
+        <table>
+          <tr><th>Step</th><th>Detail</th></tr>
+          <tr><td>1. First press</td><td>Starts shared 20-min countdown</td></tr>
+          <tr><td>2. Second press</td><td>Both ready → original KO check-in fines suspended</td></tr>
+          <tr><td>3. Check-in</td><td>Only after that owner pressed; while countdown open</td></tr>
+          <tr><td>4a. Both check in</td><td>Match Day → confirm + stats → played</td></tr>
+          <tr><td>4b. Window ends incomplete</td><td>Fine ladder + enter result / reset Play now</td></tr>
+          <tr><td>One press expires</td><td>No fine; KO unchanged</td></tr>
+        </table>
+        <div class="callout warn"><b>Trap closed.</b> After both pressed Play now, original KO cannot fire check-in forfeits until result confirmed, Play now reset, or admin clear.</div>
+      `,
+      attempts: `
+        <h2>Play attempts</h2>
+        <table>
+          <tr><th>Attempt</th><th>Window</th><th>Still unplayed at deadline</th></tr>
+          <tr><td>1</td><td>Play month + grace (league +2 / cup +1)</td><td>Window awards; no-show fines already instant</td></tr>
+          <tr><td>2</td><td>Same after new KO / reset</td><td>Ladder escalates on next miss</td></tr>
+          <tr><td>3+</td><td>Open play through month + 2</td><td>Fewer no-shows wins; activity/effort if tied; true tie → 0–0</td></tr>
+        </table>
+      `,
+      options: `
+        <h2>Owner options by stage</h2>
+        <table>
+          <tr><th>Stage</th><th>Who</th><th>Actions</th></tr>
+          <tr><td>Unscheduled</td><td>Home</td><td>Propose mutual · compromise · poke</td></tr>
+          <tr><td>Negotiating</td><td>Non-proposer</td><td>Accept · Counter · Inbox</td></tr>
+          <tr><td>Negotiating</td><td>Either</td><td>Discord lock</td></tr>
+          <tr><td>Agreed · future</td><td>Either</td><td>Play now · Bring KO forward · Change KO · Drops</td></tr>
+          <tr><td>Play now active</td><td>Either</td><td>Press · Check in · Cancel · countdown</td></tr>
+          <tr><td>Play now / normal miss</td><td>See rules</td><td>Enter result · Reset / pick new time</td></tr>
+          <tr><td>Result pending</td><td>Opponent</td><td>Confirm + stats / Reject</td></tr>
+        </table>
+      `,
+      deadlines: `
+        <h2>Deadlines</h2>
+        <table>
+          <tr><th>Clock</th><th>Value</th></tr>
+          <tr><td>GPSL month</td><td>Thu 19:00 UK → next Thu 19:00 UK</td></tr>
+          <tr><td>Propose-by</td><td>Play-month unlock</td></tr>
+          <tr><td>Late arrange band</td><td>Unlock − 48h</td></tr>
+          <tr><td>Response · counter / catch-up</td><td>+24h</td></tr>
+          <tr><td>Response · first propose late/after open</td><td>+48h</td></tr>
+          <tr><td>Normal check-in</td><td>KO ±10 min</td></tr>
+          <tr><td>Play block</td><td>KO + 30 min</td></tr>
+          <tr><td>Play now session</td><td>20 min from first press</td></tr>
+          <tr><td>Bring KO forward pending</td><td>Expires 24h</td></tr>
+          <tr><td>Voluntary / emergency drop</td><td>≥24h · 1/month / &lt;24h · 2/season</td></tr>
+          <tr><td>Attempt 3 open play</td><td>Fixture month + 2</td></tr>
+        </table>
+      `,
+      penalties: `
+        <h2>Penalties</h2>
+        <table>
+          <tr><th>Trigger</th><th>Penalty</th><th>When</th></tr>
+          <tr><td>No home proposal</td><td>₿2.5m</td><td>Month lock</td></tr>
+          <tr><td>Late first propose</td><td>₿1m</td><td>Month lock</td></tr>
+          <tr><td>Reply overdue 1st / later</td><td>Warning / ₿1m</td><td>Month lock</td></tr>
+          <tr><td>1st / 2nd / 3rd one-sided miss</td><td>₿500k / ₿1m / ₿1.5m+0–3 + strike</td><td>Instant</td></tr>
+          <tr><td>Play now miss</td><td>Same ladder</td><td>Instant at window end</td></tr>
+          <tr><td>Both miss (normal KO)</td><td>Each ladder · KO kept</td><td>Instant</td></tr>
+          <tr><td>Every 3rd season strike</td><td>₿2.5m</td><td>On strike</td></tr>
+          <tr><td>Deferred GPSL month-lock 3–0</td><td>Disabled</td><td>—</td></tr>
+        </table>
+      `,
+      miss: `
+        <h2>After check-in miss</h2>
+        <div class="grid2">
+          <div class="card">
+            <h3>Normal KO miss</h3>
+            <p>Onesided: checked-in enters result; either may pick new time. Both miss: either enters or resets. KO kept. Fine ladder.</p>
+          </div>
+          <div class="card">
+            <h3>Play now miss</h3>
+            <p>Same dual CTAs. Reset clears Play now only (agreed KO stands). KO forfeit stays suspended until result, reset, or admin clear.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    const tabsEl = document.getElementById("tabs");
+    const panelsEl = document.getElementById("panels");
+
+    tabs.forEach((t, i) => {
+      const btn = document.createElement("button");
+      btn.className = "tab" + (i === 0 ? " active" : "");
+      btn.textContent = t.label;
+      btn.onclick = () => show(t.id);
+      tabsEl.appendChild(btn);
+
+      const panel = document.createElement("div");
+      panel.className = "panel" + (i === 0 ? " active" : "");
+      panel.id = "panel-" + t.id;
+      panel.innerHTML = html[t.id];
+      panelsEl.appendChild(panel);
+    });
+
+    function show(id) {
+      document.querySelectorAll(".tab").forEach((b, i) => {
+        b.classList.toggle("active", tabs[i].id === id);
+      });
+      document.querySelectorAll(".panel").forEach((p) => {
+        p.classList.toggle("active", p.id === "panel-" + id);
+      });
+      if (window.__renderMermaid) window.__renderMermaid();
+    }
+
+    // Mermaid may load after this script — poll briefly
+    (function waitMermaid(n) {
+      if (window.__renderMermaid) window.__renderMermaid();
+      else if (n < 40) setTimeout(() => waitMermaid(n + 1), 100);
+    })(0);
+  </script>
+</body>
+</html>
