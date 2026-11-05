@@ -9,9 +9,9 @@ export type WelcomeIntakeMode = "mid_season" | "pre_season";
 
 export type WelcomePackContext = {
   audience?: WelcomePackAudience;
-  /** When omitted, copy explains both paths without claiming “we are X right now”. */
+  /** mid_season → claim vacant + handpick; pre_season → wait for club auction. */
   intakeMode?: WelcomeIntakeMode | null;
-  /** e.g. 2025/26 — shown in the “right now” line when known. */
+  /** Reserved for callers; phase copy no longer embeds the label. */
   seasonLabel?: string | null;
 };
 
@@ -20,36 +20,19 @@ function link(label: string, path: string): string {
   return `[${label}](${href})`;
 }
 
-function nowLine(
-  mode: WelcomeIntakeMode | null | undefined,
-  seasonLabel: string | null | undefined
-): string | null {
-  const season = seasonLabel?.trim() ? ` (${seasonLabel.trim()})` : "";
-  if (mode === "mid_season") {
-    return `**Right now:** mid-season${season} — free clubs can be claimed from the waiting list (no auction).`;
-  }
-  if (mode === "pre_season") {
-    return `**Right now:** pre-season / setup${season} — new clubs are filled by the **club draft auction** when a slot opens.`;
-  }
-  return null;
-}
-
 export function welcomePackBody(ctx: WelcomePackContext | WelcomePackAudience = "visitor"): string {
   const opts: WelcomePackContext =
     typeof ctx === "string" ? { audience: ctx } : ctx || {};
   const audience = opts.audience || "visitor";
   const mode = opts.intakeMode ?? null;
-  const seasonLabel = opts.seasonLabel ?? null;
 
   const who =
     audience === "member"
       ? "You have a **GPSL account** but no club yet (Member)."
       : "You're in Discord as a **Visitor** — you can hang out here and browse the site read-only until you apply.";
 
-  const calendar = nowLine(mode, seasonLabel);
-
   const browse = [
-    "**Browse first (optional)**",
+    "**Casual?**",
     `${link("Sign in as Visitor", "login.html")} — league tables, cups, auctions and the transfer market (read only). No club needed.`,
   ];
 
@@ -62,26 +45,29 @@ export function welcomePackBody(ctx: WelcomePackContext | WelcomePackAudience = 
   if (mode === "mid_season") {
     pathDetail = [
       "",
-      "**What happens next (mid-season)**",
+      "**What happens next?**",
+      "**(mid-season)** — *the season is still in full flow*",
       `1. After applying, open the ${link("waiting list", "waiting_list.html")}.`,
       "2. If a club shows as vacant, claim it.",
-      `3. ${link("Build your starting squad (handpick)", "handpick_squad.html")} and submit for approval — no auction.`,
-      `4. Fill in your ${link("owner profile", "awaiting_club.html")} (Discord tag, timezone, when you can play).`,
+      `3. Fill in your ${link("owner profile", "awaiting_club.html")} (Discord tag, timezone, when you can play).`,
+      `4. ${link("Build your starting squad (handpick)", "handpick_squad.html")} and submit for approval — no auction.`,
     ];
   } else if (mode === "pre_season") {
     pathDetail = [
       "",
-      "**What happens next (pre-season)**",
-      `1. After applying, open the ${link("waiting list", "waiting_list.html")}.`,
+      "**What happens next?**",
+      "**(end of season)** — *the league is between seasons*",
+      `1. After creating an account, stay on the ${link("waiting list", "waiting_list.html")} — an admin will invite you to a club auction.`,
       `2. Fill in your ${link("owner profile", "awaiting_club.html")} (Discord tag, timezone, when you can play).`,
-      `3. When a slot opens, admin invites you to the ${link("club draft auction", "club_auction.html")} — you bid for a club there.`,
+      `3. Join the ${link("club auction", "club_auction.html")} as per the calendar and get yourself a club.`,
+      "4. Build your club via Manager and Player draft auctions.",
     ];
   } else {
     pathDetail = [
       "",
-      "**What happens next** (depends on the calendar)",
-      `• **Mid-season** (league already running): on the ${link("waiting list", "waiting_list.html")} claim a vacant club → ${link("handpick your squad", "handpick_squad.html")} → submit for approval.`,
-      `• **Pre-season / setup**: stay on the waiting list, complete your ${link("owner profile", "awaiting_club.html")}, then join the ${link("club draft auction", "club_auction.html")} when invited.`,
+      "**What happens next?** (depends on the calendar)",
+      `• **Mid-season** (league in full flow): on the ${link("waiting list", "waiting_list.html")} claim a vacant club → complete your ${link("owner profile", "awaiting_club.html")} → ${link("handpick your squad", "handpick_squad.html")}.`,
+      `• **End of season** (between seasons): stay on the waiting list, complete your ${link("owner profile", "awaiting_club.html")}, then join the ${link("club auction", "club_auction.html")} when invited.`,
     ];
   }
 
@@ -91,7 +77,7 @@ export function welcomePackBody(ctx: WelcomePackContext | WelcomePackAudience = 
     `• ${link("League handbook (how GPSL works)", "learning_gpsl.html")}`,
     `• ${link("Full welcome page on the site", "welcome_gpsl.html")}`,
     "",
-    "**Roles (quick)**",
+    "**Discord roles**",
     "• **Visitor** — in Discord, no GPSL account yet",
     "• **Member** — GPSL account, no club yet (waiting list)",
     "• **Owner** — has a club",
@@ -103,17 +89,15 @@ export function welcomePackBody(ctx: WelcomePackContext | WelcomePackAudience = 
   ];
 
   return [
+    "**Welcome**",
     who,
-    calendar ? ["", calendar] : [],
     "",
     ...browse,
     "",
     ...applyBlock,
     ...pathDetail,
     ...extras,
-  ]
-    .flat()
-    .join("\n");
+  ].join("\n");
 }
 
 /** Default Visitor copy (static fallback when intake mode unknown). */
