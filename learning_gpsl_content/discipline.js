@@ -32,7 +32,7 @@ export const SECTION_DISCIPLINE = {
         `<b>Home propose</b> — arrange a kick-off <b>before the prior month locks</b> (e.g. September game → propose before August ends). Last <b>48 hours</b> before the play month opens = late band.`,
         `<b>Reply / counter</b> — each negotiation turn has a deadline (often <b>24 hours</b>; shown on Schedule and Inbox).`,
         `<b>Check-in</b> — from <b>10 minutes before</b> agreed kick-off until <b>10 minutes after</b>.`,
-        `<b>Match video</b> — post your YouTube link after the match; missing-video money fine + points ladder start after <b>month lock + grace</b> (default <b>72 hours</b>).`,
+        `<b>Match video</b> — post your YouTube link after the match; missing-video money fine + points ladder start after <b>the month you played in locks + grace</b> (default <b>72 hours</b>). Catch-up / holiday-delayed games use that later month, not the original fixture month.`,
         `<b>New owners</b> — appointed mid-month get a scheduling-fine pass until their first full GPSL month (see Inbox / Owner board if unsure).`,
       ],
     },
@@ -69,7 +69,7 @@ export const SECTION_DISCIPLINE = {
     {
       type: "ul",
       items: [
-        `<b>Grace</b> — after month lock + grace hours (default 72h), if your side still has no matched video: <b>₿500k</b> fine <b>and</b> <b>1 league point suspended</b> for 24 hours.`,
+        `<b>Grace</b> — after the <b>play month</b> locks + grace hours (default 72h; catch-up = month you actually played), if your side still has no matched video: <b>₿500k</b> fine <b>and</b> <b>1 league point suspended</b> for 24 hours.`,
         `<b>Clear the suspend</b> — upload within that 24h window and the point is cancelled.`,
         `<b>Full strike</b> — still missing after 24h → <b>−1 point</b> on the table (counts as a full strike for the season).`,
         `<b>3rd full strike in a season</b> — extra <b>−9 points now</b>, plus <b>−3 points carried into next season</b>.`,

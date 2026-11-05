@@ -1605,9 +1605,48 @@ async function resolveVideoGraceHours() {
 }
 
 /**
+ * Video grace month: later of fixture GPSL month and month of play (kick-off).
+ * Catch-up / holiday-delayed → month played in; early holiday keeps fixture month.
+ */
+function videoDueMonthKey(fixture) {
+  const fixMonth = String(fixture?.gpsl_month || "")
+    .trim()
+    .toLowerCase();
+  const playAt = fixture?.agreed_kickoff_at || fixture?.kickoff_at || null;
+  if (!playAt || !Array.isArray(seasonMonths) || !seasonMonths.length) {
+    return fixMonth;
+  }
+  const t = new Date(playAt).getTime();
+  if (!Number.isFinite(t)) return fixMonth;
+
+  let playMonth = null;
+  let playSort = -Infinity;
+  let fixSort = -Infinity;
+  for (const m of seasonMonths) {
+    const key = String(m.gpsl_month || "")
+      .trim()
+      .toLowerCase();
+    if (!key) continue;
+    const sort = Number(m.sort_order);
+    const order = Number.isFinite(sort) ? sort : 0;
+    if (key === fixMonth) fixSort = order;
+    const unlockMs = m.unlock_at ? new Date(m.unlock_at).getTime() : NaN;
+    if (!Number.isFinite(unlockMs) || unlockMs > t) continue;
+    if (order >= playSort) {
+      playSort = order;
+      playMonth = key;
+    }
+  }
+  if (playMonth && Number.isFinite(playSort) && Number.isFinite(fixSort) && playSort > fixSort) {
+    return playMonth;
+  }
+  return fixMonth || playMonth;
+}
+
+/**
  * First video-upload deadlines for played fixtures still missing our side's video.
- * Due = GPSL month lock + grace hours. Does NOT invent the +24h extension —
- * that only appears from Club Wire once a point is suspended (missed first due).
+ * Due = play-month (or fixture month) lock + grace hours. Does NOT invent the
+ * +24h extension — that only appears from Club Wire once a point is suspended.
  */
 async function loadVideoDeadlines() {
   const me = String(myClub.short || "")
@@ -1633,7 +1672,7 @@ async function loadVideoDeadlines() {
     const { data: rows, error } = await supabase
       .from("competition_fixtures_public")
       .select(
-        "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, status, gpsl_month, competition_type"
+        "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, status, gpsl_month, competition_type, agreed_kickoff_at"
       )
       .limit(500);
     if (error) {
@@ -1702,18 +1741,15 @@ async function loadVideoDeadlines() {
       kind: "video",
       at: dueIso,
       title: `Match videos due · GPSL ${monthLabel}`,
-      detail: `${videoGraceHours}h after GPSL ${monthLabel} lock (${formatUkDateTime(lockAt)} UK + ${videoGraceHours}h). Upload via Discord with the Match Day filename (+₿200k) for each played match still missing your video.`,
+      detail: `${videoGraceHours}h after GPSL ${monthLabel} lock (${formatUkDateTime(lockAt)} UK + ${videoGraceHours}h). Catch-up / delayed games use the month you played in. Upload via Discord with the Match Day filename (+₿200k).`,
       href: "dashboard.html",
       chip: `${dueHhmm} Videos due`,
     });
   };
 
-  // Always pin the month-level “Videos due” day when you have any fixtures that
-  // GPSL month (guide date = lock + grace), so it shows even before results land.
+  // Month-level guide markers for fixture months still on the calendar.
   for (const f of allMine) {
-    const monthKey = String(f.gpsl_month || "")
-      .trim()
-      .toLowerCase();
+    const monthKey = videoDueMonthKey(f) || String(f.gpsl_month || "").trim().toLowerCase();
     if (!monthKey || monthMarkerDone.has(monthKey)) continue;
     const lockAt = lockByMonth.get(monthKey);
     if (!lockAt) continue;
@@ -1735,9 +1771,7 @@ async function loadVideoDeadlines() {
     const side = home === me ? "home" : "away";
     if (hasVideo.has(`${f.id}:${side}`)) continue;
 
-    const monthKey = String(f.gpsl_month || "")
-      .trim()
-      .toLowerCase();
+    const monthKey = videoDueMonthKey(f);
     if (!monthKey) continue;
     const lockAt = lockByMonth.get(monthKey);
     if (!lockAt) continue;

@@ -226,7 +226,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "infra_fines",
         label: "Fines & compensation",
         types: ["gov_fine_compensation"],
-        note: "Instant admin fines (debit) and compensation (credit) from tariff catalogue. Includes missing match video after month lock + grace hours.",
+        note: "Instant admin fines (debit) and compensation (credit) from tariff catalogue. Includes missing match video after the play-month lock + grace hours (catch-up uses the month played).",
       },
     ],
   },
