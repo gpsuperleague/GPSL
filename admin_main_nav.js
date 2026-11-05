@@ -83,6 +83,13 @@ export const ADMIN_MAIN_NAV = [
         L("Link existing login to club", "admin_owners_link.html"),
         L("Change Owner Club", "admin_owners_change_club.html"),
         L("Remove Owner From Club", "admin_owners_remove.html"),
+        L(
+          "Reserve vacant club",
+          "admin_club_reserve.html",
+          null,
+          null,
+          "Hold a vacant club so claim / link cannot assign it until you clear the reserve."
+        ),
       ]),
       group("Archive", [
         L("Archive Owner (left GPSL)", "admin_owners_archive.html"),

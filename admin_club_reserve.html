@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Reserve vacant club — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+    .reserve-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media (max-width:900px) { .reserve-grid { grid-template-columns:1fr; } }
+    .row.tight label { display:block; font-size:12px; color:#aaa; margin-bottom:4px; }
+    .row.tight select, .row.tight input {
+      width:100%; max-width:360px; padding:8px; background:#111;
+      border:1px solid #444; color:#ddd; border-radius:4px;
+    }
+    .reserve-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+    .reserve-table th {
+      text-align:left; padding:8px 10px; background:#222; color:#ff9900;
+      border-bottom:1px solid #333;
+    }
+    .reserve-table td {
+      padding:8px 10px; border-bottom:1px solid #2a2a2a; vertical-align:middle;
+    }
+    .pill-res { color:#e8a87c; font-size:11px; font-weight:bold; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Reserve vacant club</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note" style="margin:0 0 16px;">
+        Hold a vacant / unassigned club so it cannot be claimed from the waiting list
+        or linked via Club assignment until you clear the reserve.
+      </p>
+
+      <div class="reserve-grid">
+        <div class="card">
+          <h2>Set reserve</h2>
+          <p class="note">Only vacant, non-archived clubs appear here.</p>
+          <div class="row tight" style="display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <label for="reserveClubSelect">Vacant club</label>
+              <select id="reserveClubSelect">
+                <option value="">Loading…</option>
+              </select>
+            </div>
+            <div>
+              <label for="reserveNote">Note (optional)</label>
+              <input id="reserveNote" placeholder="e.g. holding for returning owner" autocomplete="off">
+            </div>
+            <div>
+              <button type="button" id="reserveBtn" class="button">Reserve club</button>
+            </div>
+          </div>
+          <div id="reserveStatus" class="status-line"></div>
+        </div>
+
+        <div class="card">
+          <h2>Currently reserved</h2>
+          <p class="note">Clear a reserve when the club is ready to assign again.</p>
+          <div id="reservedListWrap">
+            <p class="note" id="reservedEmpty">None reserved.</p>
+            <table class="reserve-table" id="reservedTable" hidden>
+              <thead>
+                <tr>
+                  <th>Club</th>
+                  <th>Note</th>
+                  <th>Since</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="reservedTbody"></tbody>
+            </table>
+          </div>
+          <div id="clearReserveStatus" class="status-line"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_club_reserve.js"></script>
+</body>
+</html>
