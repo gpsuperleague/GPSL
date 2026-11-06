@@ -59,10 +59,7 @@
             <input type="checkbox" id="releaseMgrContract">
             Release selected manager from their current club (if elsewhere)
           </label>
-          <label class="check-row">
-            <input type="checkbox" id="waiveFee">
-            Waive signing fee (no ledger debit — for quick testing only)
-          </label>
+          <p class="note" style="margin:8px 0 0;">The new manager’s market value is posted to Outgoing. The released manager’s market value is posted to Incoming. The club balance is not checked.</p>
         </div>
         <button type="button" class="button" id="assignBtn" style="margin-top:16px;">Assign manager</button>
         <div id="assignStatus" class="status-line"></div>
@@ -74,6 +71,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_manager_assign.js?v=20261106-assign-mv"></script>
+  <script type="module" src="admin_test_manager_assign.js?v=20261106-assign-ledger"></script>
 </body>
 </html>

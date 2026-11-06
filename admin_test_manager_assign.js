@@ -146,7 +146,6 @@ async function assignManager() {
   const seasons = Number(document.getElementById("seasonsInput")?.value || 2);
   const releaseClubMgr = !!document.getElementById("releaseClubMgr")?.checked;
   const releaseMgrContract = !!document.getElementById("releaseMgrContract")?.checked;
-  const waiveFee = !!document.getElementById("waiveFee")?.checked;
 
   if (!managerId || !clubShort) {
     setStatus("assignStatus", "Select a manager and a club.", false);
@@ -165,7 +164,7 @@ async function assignManager() {
     p_seasons: seasons,
     p_release_club_manager: releaseClubMgr,
     p_release_manager_contract: releaseMgrContract,
-    p_waive_fee: waiveFee,
+    p_waive_fee: false,
   });
 
   if (error) {

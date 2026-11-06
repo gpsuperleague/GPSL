@@ -15,9 +15,14 @@
 -- This drops the shorter copies, and a failed expectations message no longer
 -- undoes the signing.
 --
--- Admin assign does not check the buying club's balance. Releasing a manager
--- credits that club the manager's full market value (contract_release_comp).
+-- Admin assign does not check the buying club's balance.
+-- The new manager's market value is always an outgoing cost
+-- (contract_signing_offer, negative).
+-- The released manager's market value is always incoming
+-- (contract_release_comp, positive). The waive-fee flag is ignored.
 -- Owner sack is unchanged and still pays half market value.
+-- Re-run after an assign that saved the manager but wrote no ledger lines.
+-- That re-run also fills those missing lines from the last 36 hours.
 -- Run once in the SQL editor, then press Assign again.
 -- Tick "Release current manager at selected club".
 -- =============================================================================
@@ -258,15 +263,28 @@ BEGIN
     INTO v_released_name, v_released_mv
     FROM public."Managers" m
     WHERE m.id = v_club_mgr_id;
-    -- NULL amount: release credits the club the manager's full market value.
+    -- Release with no payout, then write the income line here so it cannot be skipped.
     PERFORM public.manager_release_from_club(
       v_club_mgr_id,
-      v_club,
-      NULL::numeric,
-      'contract_release_comp'::text,
-      format('Manager release — %s (market value)', coalesce(v_released_name, 'manager')),
+      NULL::text,
+      0::numeric,
+      'admin_testing'::text,
+      format('Admin release — %s', coalesce(v_released_name, 'manager')),
       jsonb_build_object('admin_replace', true)
     );
+    IF coalesce(v_released_mv, 0) > 0 THEN
+      PERFORM public.post_club_ledger(
+        v_club,
+        'contract_release_comp',
+        abs(v_released_mv),
+        format('Manager release — %s (market value)', coalesce(v_released_name, 'manager')),
+        jsonb_build_object(
+          'manager_id', v_club_mgr_id,
+          'kind', 'manager',
+          'admin_replace', true
+        )
+      );
+    END IF;
   END IF;
 
   IF v_mgr.contracted_club IS NOT NULL
@@ -281,19 +299,30 @@ BEGIN
     );
     PERFORM public.manager_release_from_club(
       p_manager_id,
-      v_other_club,
-      NULL::numeric,
-      'contract_release_comp'::text,
-      format('Manager release — %s (market value)', v_mgr.name),
+      NULL::text,
+      0::numeric,
+      'admin_testing'::text,
+      format('Admin release — %s', v_mgr.name),
       jsonb_build_object('admin_replace', true)
     );
+    IF coalesce(v_mgr.market_value, 0) > 0 THEN
+      PERFORM public.post_club_ledger(
+        v_other_club,
+        'contract_release_comp',
+        abs(v_mgr.market_value::numeric),
+        format('Manager release — %s (market value)', v_mgr.name),
+        jsonb_build_object(
+          'manager_id', p_manager_id,
+          'kind', 'manager',
+          'admin_replace', true
+        )
+      );
+    END IF;
   END IF;
 
-  IF coalesce(p_waive_fee, true) THEN
-    v_fee := 0;
-  ELSE
-    v_fee := NULL;
-  END IF;
+  -- Always charge market value. p_waive_fee is ignored so the cost reaches Outgoing.
+  v_fee := NULL;
+  v_buyer_pays := true;
 
   v_result := public.manager_assign_to_club(
     p_manager_id,
@@ -318,5 +347,102 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.manager_assign_to_club(bigint, text, smallint, numeric, boolean, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_testing_assign_manager(bigint, text, smallint, boolean, boolean, boolean) TO authenticated;
+
+-- Fill assign swaps from the last 36 hours that saved the manager and wrote
+-- no fee / no release credit. The released manager shares the new manager's
+-- updated_at, because both rows are stamped in the same transaction.
+DO $$
+DECLARE
+  v_new record;
+  v_old record;
+  v_old_count int;
+BEGIN
+  FOR v_new IN
+    SELECT m.id, m.name, m.market_value, m.contracted_club, m.updated_at
+    FROM public."Managers" m
+    WHERE m.contracted_club IS NOT NULL
+      AND btrim(m.contracted_club) <> ''
+      AND m.updated_at > now() - interval '36 hours'
+      AND EXISTS (
+        SELECT 1
+        FROM public."Managers" f
+        WHERE f.id <> m.id
+          AND (f.contracted_club IS NULL OR btrim(f.contracted_club) = '')
+          AND f.updated_at = m.updated_at
+      )
+  LOOP
+    IF coalesce(v_new.market_value, 0) > 0
+       AND NOT EXISTS (
+         SELECT 1
+         FROM public.competition_finance_ledger l
+         WHERE l.club_short_name = v_new.contracted_club
+           AND l.entry_type = 'contract_signing_offer'
+           AND l.metadata->>'manager_id' = v_new.id::text
+           AND l.created_at >= v_new.updated_at - interval '10 minutes'
+           AND l.created_at <= v_new.updated_at + interval '10 minutes'
+       ) THEN
+      BEGIN
+        PERFORM public.post_club_ledger(
+          v_new.contracted_club,
+          'contract_signing_offer',
+          -abs(v_new.market_value::numeric),
+          format('Manager signing — %s', v_new.name),
+          jsonb_build_object(
+            'manager_id', v_new.id,
+            'kind', 'manager',
+            'admin_assign', true,
+            'backfill', true
+          )
+        );
+      EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'signing backfill skipped for %: %', v_new.contracted_club, SQLERRM;
+      END;
+    END IF;
+
+    SELECT count(*) INTO v_old_count
+    FROM public."Managers" f
+    WHERE f.id <> v_new.id
+      AND (f.contracted_club IS NULL OR btrim(f.contracted_club) = '')
+      AND f.updated_at = v_new.updated_at;
+
+    IF v_old_count = 1 THEN
+      SELECT f.id, f.name, f.market_value
+      INTO v_old
+      FROM public."Managers" f
+      WHERE f.id <> v_new.id
+        AND (f.contracted_club IS NULL OR btrim(f.contracted_club) = '')
+        AND f.updated_at = v_new.updated_at;
+
+      IF coalesce(v_old.market_value, 0) > 0
+         AND NOT EXISTS (
+           SELECT 1
+           FROM public.competition_finance_ledger l
+           WHERE l.club_short_name = v_new.contracted_club
+             AND l.entry_type = 'contract_release_comp'
+             AND l.amount > 0
+             AND l.metadata->>'manager_id' = v_old.id::text
+             AND l.created_at >= v_new.updated_at - interval '10 minutes'
+             AND l.created_at <= now()
+         ) THEN
+        BEGIN
+          PERFORM public.post_club_ledger(
+            v_new.contracted_club,
+            'contract_release_comp',
+            abs(v_old.market_value::numeric),
+            format('Manager release — %s (market value)', v_old.name),
+            jsonb_build_object(
+              'manager_id', v_old.id,
+              'kind', 'manager',
+              'admin_replace', true,
+              'backfill', true
+            )
+          );
+        EXCEPTION WHEN OTHERS THEN
+          RAISE WARNING 'release backfill skipped for %: %', v_new.contracted_club, SQLERRM;
+        END;
+      END IF;
+    END IF;
+  END LOOP;
+END $$;
 
 NOTIFY pgrst, 'reload schema';
