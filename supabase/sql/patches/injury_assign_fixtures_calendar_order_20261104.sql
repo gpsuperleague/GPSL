@@ -54,6 +54,7 @@ BEGIN
       AND NOT public.competition_injury_is_preseason_month(f.gpsl_month)
     ORDER BY
       coalesce(public.competition_gpsl_month_sort(f.gpsl_month), 99),
+      CASE WHEN f.competition_type = 'cup' THEN 0 ELSE 1 END,
       coalesce(f.matchday, 9999),
       f.id
   LOOP
