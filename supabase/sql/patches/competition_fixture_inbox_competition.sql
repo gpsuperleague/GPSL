@@ -427,6 +427,7 @@ DECLARE
   v_winner text;
   v_title text;
   v_body text;
+  v_charge boolean := true;
 BEGIN
   SELECT * INTO v_fixture
   FROM public.competition_fixtures
@@ -474,14 +475,28 @@ BEGIN
     forfeit_loser_club = p_loser_club
   WHERE id = p_fixture_id;
 
-  PERFORM public.competition_apply_club_fine_tariff(
-    p_loser_club,
-    p_tariff_code,
-    NULL,
-    coalesce(p_reason, 'Match forfeit'),
-    p_fixture_id,
-    v_fixture.season_id
-  );
+  -- A fixed ₿0 tariff is the result only (window expiry, third no-show).
+  -- Charging it used to raise and roll the 3–0 back.
+  SELECT t.amount_mode = 'manual' OR coalesce(t.amount, 0) > 0
+  INTO v_charge
+  FROM public.competition_fine_tariff t
+  WHERE t.code = p_tariff_code
+    AND t.is_active;
+
+  IF NOT FOUND THEN
+    v_charge := true;
+  END IF;
+
+  IF v_charge THEN
+    PERFORM public.competition_apply_club_fine_tariff(
+      p_loser_club,
+      p_tariff_code,
+      NULL,
+      coalesce(p_reason, 'Match forfeit'),
+      p_fixture_id,
+      v_fixture.season_id
+    );
+  END IF;
 
   IF v_fixture.competition_type = 'cup' THEN
     PERFORM public.competition_cup_on_fixture_played(p_fixture_id);

@@ -381,7 +381,12 @@ const AUTOMATED_TARIFFS = new Set([
   "squad_overflow_mv_release",
 ]);
 
-const BROKEN_TARIFFS = new Set(["match_no_show_fixture_forfeit", "match_window_expiry"]);
+const RESULT_ONLY_TARIFFS = {
+  match_window_expiry:
+    "Month lock writes a 3–0 when the play window closes unplayed, and the attempt-3 job does the same. ₿0 means the result only. A full tie is still 0–0.",
+  match_no_show_fixture_forfeit:
+    "The third no-show on a fixture writes a 3–0 after the ₿1.5m no-show fine. This row adds no extra money.",
+};
 
 function tariffCanCharge(t) {
   if (t.amount_mode === "manual") return true;
@@ -390,13 +395,13 @@ function tariffCanCharge(t) {
 }
 
 function tariffWiring(t) {
-  if (BROKEN_TARIFFS.has(t.code)) {
+  if (RESULT_ONLY_TARIFFS[t.code]) {
     return {
       charge: "Automated",
-      state: "broken",
-      mark: "✕",
-      label: "Broken",
-      why: "The forfeit helper charges this after writing the 0–3. The amount is 0, so the charge is rejected and the result rolls back.",
+      state: "working",
+      mark: "✓",
+      label: "Working",
+      why: RESULT_ONLY_TARIFFS[t.code],
     };
   }
   if (t.code === "formation_player_drag") {
