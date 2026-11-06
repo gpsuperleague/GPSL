@@ -543,9 +543,17 @@ async function main() {
 
   if (error) {
     console.error(error);
-    root.innerHTML = `<div class="mr-error">Could not load match report. Run <code>competition_match_report_prematch_20260918.sql</code> in the SQL editor (adds <code>own_goals</code> if missing and refreshes this RPC).<br>${esc(
-      error.message
-    )}</div>`;
+    const msg = error.message || "";
+    const missingRpc = /own_goals|schema cache|Could not find the function|competition_match_report/i.test(
+      msg
+    );
+    root.innerHTML = missingRpc
+      ? `<div class="mr-error">Could not load match report. Run <code>competition_match_report_prematch_20260918.sql</code> in the SQL editor (adds <code>own_goals</code> if missing and refreshes this RPC).<br>${esc(
+          msg
+        )}</div>`
+      : `<div class="mr-error">Could not load match report. The database cancelled it because it took too long. Reload once any injury update in the SQL editor has finished.<br>${esc(
+          msg
+        )}</div>`;
     return;
   }
 
