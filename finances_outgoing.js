@@ -1,4 +1,4 @@
-import { initFinanceSubPage } from "./finance_page_common.js?v=20261031-handpick-exp";
+import { initFinanceSubPage } from "./finance_page_common.js?v=20261106-owner-view";
 import { renderFinancesOutgoingIntro } from "./finances_rules.js";
 
 document.addEventListener("DOMContentLoaded", () => {

@@ -18,7 +18,12 @@ function ukDate(iso) {
   });
 }
 
-export async function mountLegacyCardsPanel(supabase, clubShort, onChanged, { staffPreview = false } = {}) {
+export async function mountLegacyCardsPanel(
+  supabase,
+  clubShort,
+  onChanged,
+  { staffPreview = false, ownerLens = false } = {}
+) {
   const el = document.getElementById("legacyCardsPanel");
   if (!el || !clubShort) return;
 
@@ -32,7 +37,7 @@ export async function mountLegacyCardsPanel(supabase, clubShort, onChanged, { st
     return;
   }
 
-  const canAct = !staffPreview && data?.is_owner !== false;
+  const canAct = ownerLens || (!staffPreview && data?.is_owner !== false);
   const windowOpen = data?.release_window_open === true || data?.can_release === true;
   const canRelease = canAct && windowOpen;
 
@@ -92,6 +97,10 @@ export async function mountLegacyCardsPanel(supabase, clubShort, onChanged, { st
 
   el.querySelectorAll(".legacy-refund-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      if (staffPreview) {
+        alert("Owner view — this action is not sent. You are looking at the same screen the owner sees.");
+        return;
+      }
       const payout = Number(btn.dataset.refund) || 0;
       const msg =
         payout > 0

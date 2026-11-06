@@ -112,12 +112,12 @@ function escapeWageHtml(s) {
 }
 
 /** @param {{ players: number, manager: number, total: number, fanFavourite?: object | null }} bill */
-export function wageBillSummaryHtml(bill, { linkFinances = false } = {}) {
+export function wageBillSummaryHtml(bill, { linkFinances = false, financesHref = "finances.html" } = {}) {
   const p = formatMoney(bill?.players ?? 0);
   const m = formatMoney(bill?.manager ?? 0);
   const t = formatMoney(bill?.total ?? 0);
   const finLink = linkFinances
-    ? ` <a href="finances.html" class="squad-wage-fin-link">Finances →</a>`
+    ? ` <a href="${financesHref}" class="squad-wage-fin-link">Finances →</a>`
     : "";
   const ff = bill?.fanFavourite;
   const ffStat = ff

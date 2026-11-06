@@ -430,9 +430,7 @@ export async function applyFinanceClubHeader(
   const fullName = fullClubName(shortName) || clubLabel || shortName;
   const titleEl = document.getElementById("pageTitle");
   if (titleEl) {
-    titleEl.textContent = adminPreview
-      ? `${fullName} — ${pageSuffix} (staff preview)`
-      : `${fullName} — ${pageSuffix}`;
+    titleEl.textContent = `${fullName} — ${pageSuffix}`;
   }
   const badge = document.getElementById("clubBadgeHeader");
   if (badge) badge.src = `images/club_badges/${shortName}.png`;
@@ -833,7 +831,7 @@ export async function initFinanceAccountsPage() {
 
   const meta = document.getElementById("pageMeta");
   if (meta && adminPreview) {
-    meta.textContent = `Staff preview — viewing ${shortName}.`;
+    meta.textContent = `Owner view of ${clubLabel || shortName}. Same finances page they see. Saves are not sent.`;
   }
   applyHistoricalFinanceBanner(seasonView);
   renderFinanceSeasonHistoryNav(document.getElementById("financeSeasonHistory"), {
@@ -918,7 +916,7 @@ export async function initFinanceSubPage({
 
   const meta = document.getElementById("pageMeta");
   if (meta && adminPreview) {
-    meta.textContent = `Staff preview — viewing ${shortName}.`;
+    meta.textContent = `Owner view of ${clubLabel || shortName}. Same finances page they see. Saves are not sent.`;
   }
   applyHistoricalFinanceBanner(seasonView);
   renderFinanceSeasonHistoryNav(document.getElementById("financeSeasonHistory"), {

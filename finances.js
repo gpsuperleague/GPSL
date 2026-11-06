@@ -21,12 +21,14 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20261031-handpick-exp";
+} from "./finance_page_common.js?v=20261106-owner-view";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20261015-short-by";
 import {
   loadListedSaleBids,
   renderPredictedWorkingsHtml,
 } from "./finance_predicted_workings.js?v=20261015-interest";
+
+let financeAdminPreview = false;
 
 /** @type {{ data: object, shortName: string, rendered: boolean } | null} */
 let predictedState = null;
@@ -118,7 +120,7 @@ async function loadGpSavedWidget(shortName, { canEdit = true } = {}) {
     return;
   }
 
-  const editable = canEdit && data?.can_edit !== false;
+  const editable = financeAdminPreview || (canEdit && data?.can_edit !== false);
   input.value = formatGpAmount(data?.gp_saved);
   input.disabled = !editable;
   btn.hidden = !editable;
@@ -131,6 +133,10 @@ async function loadGpSavedWidget(shortName, { canEdit = true } = {}) {
 }
 
 async function saveGpSaved() {
+  if (financeAdminPreview) {
+    setGpSavedStatus("Owner view — this save is not sent.", false);
+    return;
+  }
   const input = document.getElementById("gpSavedInput");
   const btn = document.getElementById("gpSavedSaveBtn");
   if (!input || !btn) return;
@@ -275,16 +281,18 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
       seasonView.requestedSeasonId
     : null;
 
+  financeAdminPreview = !!adminPreview;
+
   await applyFinanceClubHeader(shortName, clubLabel, {
     adminPreview,
     pageSuffix: seasonView.isHistorical ? "Finances (archive)" : "Finances",
   });
 
-  await loadGpSavedWidget(shortName, { canEdit: !adminPreview });
+  await loadGpSavedWidget(shortName, { canEdit: true });
 
   const pageMeta = document.getElementById("pageMeta");
   if (pageMeta && adminPreview) {
-    pageMeta.textContent = `Staff preview — viewing ${shortName}. You do not own this club.`;
+    pageMeta.textContent = `Owner view of ${clubLabel || shortName}. Same finances page they see. Saves are not sent.`;
   }
   applyHistoricalFinanceBanner(seasonView);
   renderFinanceSeasonHistoryNav(document.getElementById("financeSeasonHistory"), {

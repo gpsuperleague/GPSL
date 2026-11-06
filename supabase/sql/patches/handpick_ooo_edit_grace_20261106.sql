@@ -148,7 +148,11 @@ BEGIN
   v_min := public.club_squad_star_min_rating();
   v_ooo_allowed := public.club_nation_has_gpdb_star(v_club);
   v_reason := public.club_squad_designation_edit_reason(v_club);
-  IF v_reason = 'closed' AND public.is_gpsl_admin() THEN
+  -- Admin bypass only on the admin's own club. The squad dropdown preview of
+  -- another club must match that owner: a closed window stays closed.
+  IF v_reason = 'closed'
+     AND public.is_gpsl_admin()
+     AND upper(coalesce(public.my_club_shortname(), '')) = upper(v_club) THEN
     v_reason := 'admin';
   END IF;
   v_edit_open := v_reason IS DISTINCT FROM 'closed';
@@ -370,6 +374,148 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.club_squad_set_designation(text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_assign_random_one_of_our_own(text) TO authenticated;
+
+-- Staff dropdown on Squad reads the same private bits the owner sees
+-- (new-owner slots, sale marks, scouting badges). Writes stay on the owner RPCs.
+CREATE OR REPLACE FUNCTION public.club_squad_staff_owner_snapshot(
+  p_club text,
+  p_player_ids text[] DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := upper(btrim(coalesce(p_club, '')));
+  v_season_id bigint;
+  v_assigned bigint;
+  v_remaining int;
+  v_eligible boolean;
+  v_window boolean;
+  v_active_listings int;
+  v_marks jsonb;
+  v_scout jsonb;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+  IF v_club = '' THEN
+    RAISE EXCEPTION 'Club required';
+  END IF;
+  IF NOT public.is_gpsl_admin()
+     AND NOT coalesce(public.is_gpsl_mod(), false)
+     AND upper(coalesce(public.my_club_shortname(), '')) IS DISTINCT FROM v_club THEN
+    RAISE EXCEPTION 'Not allowed';
+  END IF;
+
+  SELECT id INTO v_season_id
+  FROM public.competition_seasons
+  WHERE is_current = true
+  ORDER BY id DESC
+  LIMIT 1;
+
+  SELECT c.owner_assigned_season_id, c.new_owner_releases_remaining
+  INTO v_assigned, v_remaining
+  FROM public."Clubs" c
+  WHERE upper(c."ShortName") = v_club;
+
+  SELECT count(*)::int INTO v_active_listings
+  FROM public."Player_Transfer_Listings" l
+  WHERE l.seller_club_id = v_club
+    AND coalesce(l.new_owner_slot, false) = true
+    AND coalesce(l.new_owner_slot_settled, false) = false
+    AND l.status IN ('Active', 'Review', 'Seller Review');
+
+  v_eligible := public.club_is_new_owner_release_eligible(v_club);
+  v_window := public.club_new_owner_release_window_open();
+
+  SELECT coalesce(jsonb_agg(row_to_json(x)::jsonb), '[]'::jsonb)
+  INTO v_marks
+  FROM (
+    SELECT
+      m.player_id,
+      m.note,
+      m.updated_at,
+      p."Name" AS player_name
+    FROM public.club_player_sale_marks m
+    JOIN public."Players" p
+      ON p."Konami_ID"::text = m.player_id
+     AND upper(nullif(btrim(p."Contracted_Team"), '')) = v_club
+    WHERE m.club_short_name = v_club
+      AND (
+        p_player_ids IS NULL
+        OR cardinality(p_player_ids) = 0
+        OR m.player_id = ANY (p_player_ids)
+      )
+  ) x;
+
+  SELECT coalesce(jsonb_object_agg(z.player_id, z.clubs), '{}'::jsonb)
+  INTO v_scout
+  FROM (
+    SELECT
+      y.player_id,
+      jsonb_agg(
+        jsonb_build_object(
+          'club_short_name', y.club_short_name,
+          'club_name', y.club_name,
+          'owner_tag', y.owner_tag,
+          'tier', y.tier,
+          'is_active_target', y.is_active_target
+        )
+        ORDER BY y.club_name
+      ) AS clubs
+    FROM (
+      SELECT DISTINCT ON (t.player_id, c."ShortName")
+        t.player_id::text AS player_id,
+        c."ShortName" AS club_short_name,
+        coalesce(nullif(btrim(c."Club"), ''), c."ShortName") AS club_name,
+        coalesce(
+          nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), ''),
+          nullif(btrim(c.owner), ''),
+          '—'
+        ) AS owner_tag,
+        t.tier,
+        coalesce(t.is_active_target, false) AS is_active_target
+      FROM public.owner_scouting_targets t
+      JOIN public."Clubs" c
+        ON c.owner_id = t.owner_id
+       AND upper(c."ShortName") IS DISTINCT FROM v_club
+      JOIN public."Players" p
+        ON p."Konami_ID"::text = t.player_id::text
+       AND upper(nullif(btrim(p."Contracted_Team"), '')) = v_club
+      WHERE (
+        p_player_ids IS NULL
+        OR cardinality(p_player_ids) = 0
+        OR t.player_id::text = ANY (p_player_ids)
+      )
+      ORDER BY t.player_id, c."ShortName", coalesce(t.is_active_target, false) DESC, t.tier ASC
+    ) y
+    GROUP BY y.player_id
+  ) z;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'club', v_club,
+    'new_owner', jsonb_build_object(
+      'new_owner_releases_remaining', coalesce(v_remaining, 0),
+      'new_owner_slots_remaining', coalesce(v_remaining, 0),
+      'active_new_owner_listings', coalesce(v_active_listings, 0),
+      'first_season_at_club', (
+        v_assigned IS NOT NULL AND v_season_id IS NOT NULL AND v_assigned = v_season_id
+      ),
+      'window_open', v_window,
+      'available_now', (v_eligible AND v_window),
+      'list_available_now', (v_eligible AND v_window)
+    ),
+    'sale_marks', coalesce(v_marks, '[]'::jsonb),
+    'scouting_by_player', coalesce(v_scout, '{}'::jsonb)
+  );
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.club_squad_staff_owner_snapshot(text, text[]) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 
