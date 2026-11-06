@@ -13,7 +13,7 @@ export const CONSOLE_DISPLAY_CHIPS = [
   "Show Subtactic",
   "Show Squad",
   "No individual instructions",
-  "Don't drag players — 0–3 forfeit",
+  "No player dragging",
 ];
 
 export const CONSOLE_PAUSE_CHIPS = ["PA3 or PA4", "Advanced skill only"];
@@ -189,7 +189,7 @@ export function prematchConsoleChecklistHtml() {
     ],
     [
       "Tactics",
-      "Set a default Konami formation before kick-off. In-match changes must be another default formation. Dragging a player off the dots forfeits the match 0–3.",
+      "Sub tactic and Fluid are default Konami formations, set before the match. No dragging. Staff confirm a video report: offender won or drew → replay; opponent won → result stands; 2 or more drags → −1 point.",
     ],
     ["Pause before KO", "PA3 or PA4 · Advanced skill only"],
     [
@@ -254,12 +254,13 @@ export function getMatchdayConsoleRulesCards() {
       },
       {
         heading: "Tactics",
-        tip: "Set the formation before kick-off. Dragging a player off the default dots forfeits the match 0–3.",
+        tip: "Sub tactic and Fluid are set before the eFootball match. No dragging. Staff confirm the video report before anything changes.",
         items: [
           "<b>Player instructions</b> blank (blocked if used — ₿10m).",
-          "Set a <b>default Konami formation</b> before kick-off. Leave players on the dots.",
-          "A formation change in the match must be another <b>default Konami formation</b>. Fluid can stay on, still on a default shape.",
-          "<b>Dragging a player</b> off the dots <b>forfeits the match 0–3</b>. Report it from the Fixtures <b>R</b> button.",
+          "<b>Sub tactic</b> and <b>Fluid</b> must be a <b>default Konami formation</b>, set up <b>before</b> the match is played.",
+          "<b>No dragging players</b> at all on matchday.",
+          "Report drags from the Fixtures <b>R</b> button and say how many times. <b>Nothing happens until staff approve.</b>",
+          "If the offender <b>won or drew</b>, the match is <b>replayed</b>. If the <b>opponent won</b>, the result <b>stands</b>. <b>2 or more drags</b> in that match also deduct <b>1 league point</b>.",
         ],
       },
       {

@@ -366,6 +366,11 @@ export const MATCH_VIDEO_TICK_CSS = `
   font:inherit; min-height:56px; resize:vertical;
 }
 .mv-breach-row.is-on .mv-breach-note { display:block; }
+.mv-breach-row .mv-drag-count { display:none; margin-top:8px; font-size:13px; color:#ddd; }
+.mv-breach-row.is-on .mv-drag-count { display:block; }
+.mv-breach-row .mv-drag-count input { margin-left:8px; width:64px; padding:4px 6px; background:#111; border:1px solid #333; color:#eee; }
+.mv-breach-row .note { display:none; }
+.mv-breach-row.is-on .note { display:block; }
 .mv-report-modal-backdrop {
   position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:12000;
   display:flex; align-items:center; justify-content:center; padding:16px;
@@ -463,7 +468,8 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
           ${escapeHtml(String(accused || side).toUpperCase())} · ${escapeHtml(side)} video
           ${fixture?.matchday != null ? ` · MD${escapeHtml(fixture.matchday)}` : ""}
           <br>Select every breach you can see — each one needs a note (e.g. timestamp). One report only per match side.
-          <br>Includes display rules (e.g. <b>no individual player instructions</b>, <b>dragging a player off the default formation is a 0–3 forfeit</b>, Red/Blue timing).
+          <br>Includes display rules (e.g. <b>no individual player instructions</b>, <b>no dragging players</b> on a formation that must be set before the match, Red/Blue timing).
+          <br>Staff are notified and must approve the report. Nothing changes until then.
         </p>
         <div class="mv-breach-list" id="mvBreachList">
           ${codes
@@ -478,6 +484,14 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
               </label>
               <textarea class="mv-breach-note" data-breach-note="${escapeAttr(c.code)}"
                 maxlength="800" placeholder="Required note — e.g. 63' / what you saw"></textarea>
+              ${
+                c.code === "formation_player_drag"
+                  ? `<label class="mv-drag-count">Drags seen in this match
+                      <input type="number" min="1" max="20" value="1" data-breach-instances="${escapeAttr(c.code)}">
+                    </label>
+                    <p class="note" style="margin:6px 0 0">Staff must approve. Won or drew → replay. Opponent won → result stands. 2 or more drags → −1 point as well.</p>`
+                  : ""
+              }
             </div>`
             )
             .join("")}
@@ -523,7 +537,14 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
           row.querySelector("[data-breach-note]")?.focus();
           return;
         }
-        breaches.push({ code, note });
+        const instRaw = row.querySelector("[data-breach-instances]")?.value;
+        const instances =
+          code === "formation_player_drag"
+            ? Math.max(1, Math.min(20, Number(instRaw) || 1))
+            : undefined;
+        breaches.push(
+          instances != null ? { code, note, instances } : { code, note }
+        );
       }
       if (!breaches.length) {
         if (statusEl) {

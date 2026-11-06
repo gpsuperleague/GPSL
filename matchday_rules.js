@@ -46,7 +46,7 @@ export function getMatchdaySquadRules() {
         items: [
           "Pick a formation from the <b>dropdown</b> — the pitch layout updates straight away. <b>Apply Formation</b> resets the markers to that template.",
           "<b>No free positioning</b> — marker layout comes from the formation template set by the league.",
-          "In eFootball, set that shape <b>before kick-off</b> and leave the players on the default dots. A change during the match must be another <b>default Konami formation</b>. <b>Dragging a player forfeits the match 0–3.</b>",
+          "In eFootball, <b>sub tactic and Fluid</b> are set <b>before the match</b> on a default Konami formation. <b>No dragging players.</b> A video report needs staff approval: offender won or drew → replay; opponent won → result stands; 2 or more drags → −1 point.",
           "Click a position label to change its role, where the formation allows it.",
           "<b>Mirroring:</b> LB must have RB, LWF must have RWF, LMF must have RMF.",
           "<b>No</b> CF/CF/SS, CF/SS/SS, or SS/SS/SS (CF + SS combined ≤ 2).",

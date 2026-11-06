@@ -91,7 +91,7 @@ export const SECTION_DISCIPLINE = {
       type: "ul",
       items: [
         `<b>₿20m</b> — DOGSO.`,
-        `<b>0–3 forfeit</b> — dragging a player off the default formation dots in eFootball, including with Fluid on. Set a default Konami formation before kick-off. A change during the match must be another default Konami formation. Upheld from the match video: the official result becomes 0–3 to the opponent.`,
+        `<b>Formation drag</b> — sub tactic and Fluid must be a default Konami formation set before the eFootball match. No dragging. An owner reports it on the uploaded video (with how many drags). <b>Staff approve before anything changes</b>, and staff get an alert when the report arrives. Offender <b>won or drew</b> → match <b>replayed</b>. <b>Opponent won</b> → result <b>stands</b>. <b>2 or more drags</b> in that match → <b>−1 league point</b> as well.`,
         `<b>₿10m</b> — individual player instructions used; Show Manager / Subtactic / Squad / PA not displayed as required; illegal PA / SA; Red/Blue before allowed minute; Double Red/Blue misuse; match manipulation / timewasting / showboating / own-goal offences; illegal match termination; form manipulation; many “incorrect conditions” display failures.`,
         `<b>₿7.5m</b> — deliberate foul play.`,
         `<b>₿5m</b> — some PA/SA “sub” offences; ineligible starter (short stint); U21 / HG matchday failure; no GK; non-display scoreboard.`,

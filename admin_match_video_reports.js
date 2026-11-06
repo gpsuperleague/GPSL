@@ -44,6 +44,26 @@ function fixtureLabel(r) {
   return r.matchday != null ? `${div} MD${r.matchday} · ${ha}` : `${div} · ${ha}`;
 }
 
+function formationDragOutcome(r, instances) {
+  const accused = String(r.accused_club_short_name || "").toUpperCase();
+  const home = String(r.home_club_short_name || "").toUpperCase();
+  const hg = Number(r.home_goals);
+  const ag = Number(r.away_goals);
+  const pen = String(r.cup_pen_winner_club_short_name || "").toUpperCase();
+  let offenderWonOrDrew = false;
+  if (Number.isFinite(hg) && Number.isFinite(ag)) {
+    if (hg === ag && !pen) offenderWonOrDrew = true;
+    else if (hg === ag && pen) offenderWonOrDrew = pen === accused;
+    else if (hg > ag) offenderWonOrDrew = accused === home;
+    else offenderWonOrDrew = accused !== home && accused !== "";
+  }
+  const n = Number(instances) || 1;
+  const points = n >= 2 ? " −1 league point." : "";
+  return offenderWonOrDrew
+    ? `If you approve: match is replayed.${points}`
+    : `If you approve: result stands.${points}`;
+}
+
 function breachesHtml(r) {
   const list = Array.isArray(r.breaches) ? r.breaches : [];
   if (!list.length) {
@@ -58,6 +78,13 @@ function breachesHtml(r) {
       (b) => `
       <div class="mvr-breach">
         <b>${escapeHtml(b.label || b.code)}</b>
+        ${
+          b.code === "formation_player_drag"
+            ? `<div class="mvr-note">Drags reported: <b>${escapeHtml(
+                String(b.instances || 1)
+              )}</b>. ${escapeHtml(formationDragOutcome(r, b.instances || 1))}</div>`
+            : ""
+        }
         <div class="mvr-note">${escapeHtml(b.note || "—")}</div>
       </div>`
     )
@@ -107,6 +134,7 @@ async function loadReports() {
         </div>
         <p class="note" style="margin:8px 0 0">
           Approve applies a fine for each listed breach and credits the reporter ₿2,000 Building Society.
+          A formation-drag breach is not a fine: approve replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported.
           Reject closes this match side forever (no re-report).
         </p>`
           : `<p class="note" style="margin:0">Resolved ${
@@ -152,7 +180,7 @@ async function resolveReport(id, action) {
   if (
     action === "approve" &&
     !confirm(
-      "Approve this report? Fines will be applied for each breach. Dragging players off the default formation forfeits the match 0–3. The reporter gets ₿2,000 Building Society."
+      "Approve this report? Fines apply to ordinary breaches. A formation-drag breach replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported. The reporter gets ₿2,000 Building Society."
     )
   ) {
     return;

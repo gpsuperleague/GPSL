@@ -152,7 +152,7 @@ export const SECTION_MATCHDAY_CHECKLIST = {
             `Sub tactic (default Konami formation, set before kick-off)`,
             `Player instructions (blank)`,
             `Squad (including substitutes)`,
-            `Fluid setup (default Konami formation only — dragging a player is a 0–3 forfeit)`,
+            `Fluid setup (default Konami formation, set before the match — no dragging)`,
           ],
         },
         {
@@ -359,7 +359,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `<code>[HomeShort 2-0 AwayShort [SL-MD5]](https://youtu.be/xxxxx)</code> — https <b>YouTube</b> or <b>MEGA</b> (<code>mega.nz</code>). Division tag required: <b>SL</b> SuperLeague, <b>CA</b> Championship A, <b>CB</b> Championship B. Cups: <b>S8</b>/<b>PL</b>/<b>SH</b>/<b>BO</b>/<b>LC</b>. Score spacing flexible. GPSL verifies the poster is that club’s owner, plus division, matchday/round, clubs, and score.`,
         `GPSL ticks <b>H</b> / <b>A</b> on Fixtures when each side’s video is matched — click the tick to open the video.`,
         `Each club earns Matchday revenue <b>once</b> per fixture when <em>their</em> post is matched (amount set in Admin → Match videos). Prefer <b>enter/confirm the GPSL result first</b>, then post the video — if you post early, GPSL holds it (Discord ⏳ / amber tick) and matches automatically once the result is confirmed. Missing videos after the <b>month you played in</b> locks + grace hours (default 72h; catch-up / holiday-delayed use that later month): <b>₿500k</b> fine (plus the points ladder under <a href="#discipline">Discipline &amp; fines</a>).`,
-        `Do <b>not</b> use <b>individual player instructions</b> (blocked — can be reported and fined ₿10m). HUD should still show <b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b>. Set a <b>default Konami formation before kick-off</b>. In-match changes must be another default formation. <b>Dragging a player off the dots forfeits the match 0–3.</b> <b>Single Red/Blue</b> only from the <b>80th</b> minute; <b>Double Red/Blue</b> only from the <b>90th</b>. Report breaches from the Fixtures <b>R</b> button.`,
+        `Do <b>not</b> use <b>individual player instructions</b> (blocked — can be reported and fined ₿10m). HUD should still show <b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b>. <b>Sub tactic and Fluid</b> are default Konami formations, set <b>before</b> the match. <b>No dragging players.</b> Report it from the Fixtures <b>R</b> button with how many times you saw it. <b>Staff must approve</b> before anything changes: offender won or drew → match replayed; opponent won → result stands; 2 or more drags → <b>−1 league point</b> as well. <b>Single Red/Blue</b> only from the <b>80th</b> minute; <b>Double Red/Blue</b> only from the <b>90th</b>.`,
       ],
     },
 
@@ -407,7 +407,7 @@ export const SECTION_MATCHDAY = {
     {
       type: "ul",
       items: [
-        `<b>Display:</b> 10-minute match · <b>Injuries off</b> · show on recording: Manager · Subtactic · Squad · Player instructions (<b>blank</b>). Formation is a <b>default Konami shape, set before kick-off</b>. In-match changes must be another default formation. <b>Dragging a player forfeits the match 0–3.</b>`,
+        `<b>Display:</b> 10-minute match · <b>Injuries off</b> · show on recording: Manager · Subtactic · Squad · Player instructions (<b>blank</b>). Sub tactic and Fluid are a <b>default Konami formation set before the match</b>. <b>No dragging.</b> Staff-approved report: won or drew → replay; opponent won → result stands; 2+ drags → −1 point.`,
         `<b>Boosts:</b> Single Red/Blue from the <b>80th</b> minute · Double Red/Blue from the <b>90th</b> only.`,
         `<b>Pause before KO:</b> PA3 or PA4 (PA1 and PA2 not allowed) · Advanced skill only.`,
         `<b>On the pitch:</b> NO DOGSO · NO TIMEWASTING · NO MATCH MANIPULATION.`,
