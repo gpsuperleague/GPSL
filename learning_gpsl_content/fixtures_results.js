@@ -307,7 +307,8 @@ export const SECTION_MATCH_SCHEDULING = {
       items: [
         `<b>Home should propose in the month before</b> the fixture’s play month (e.g. September fixture → propose before August locks). You may propose as early as you like once fixtures exist.`,
         `<b>Last 48h before the play month opens</b> and home only then proposes → <b>₿1m</b> Late Arrangement Fee.`,
-        `<b>No home proposal</b> by that prior lock → <b>₿2.5m</b> Match Management (repeats each later lock until they propose). Suppressed while home is on a booked holiday.`,
+        `<b>No home proposal</b> by that prior lock → <b>₿2.5m</b> Match Management (repeats each later lock until they propose). Suppressed while home is on a booked holiday. <b>League only.</b>`,
+        `<b>Cups</b> are drawn when the round month opens, so home is not fined for the month before the tie existed. Arrange in the <b>cup round month</b>, then the <b>following month is grace</b> (May cups: no extra month). Still no proposal when that grace month locks → <b>₿2.5m</b>, then each later lock. The ₿1m last-48h fee does not apply to cups.`,
         `<b>Reply overdue</b> at month lock → <b>warning first</b> (Inbox only). Still overdue at a later lock → <b>₿1m</b>. Negotiation <b>continues</b> (not wiped).`,
         `<b>League play window</b>: scheduled month <b>+ 2</b> (August → end of October). <b>Cups</b>: scheduled month <b>+ 1</b> (May cups: no extra month).`,
         `<b>After the window</b>, still unplayed → awarded by activity (negotiation replies, logins, matches played, other scheduling misses, check-ins). True tie → <b>0–0</b>. Vacant club loses 3–0. Holiday covering the scheduled month without playing → that club forfeits.`,
@@ -330,8 +331,9 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `<b>₿2.5m</b> — home never proposed by the prior-month lock (can repeat each lock until they do).`,
-        `<b>₿1m</b> — home first proposed only in the last 48h before the play month opened.`,
+        `<b>₿2.5m</b> — league: home never proposed by the prior-month lock (can repeat each lock until they do).`,
+        `<b>₿2.5m</b> — cups: still no home proposal when the grace month after the round locks (round month to arrange, next month grace; May cups have no extra month). Not charged at the draw.`,
+        `<b>₿1m</b> — league only: home first proposed in the last 48h before the play month opened.`,
         `<b>Warn → ₿1m</b> — you owed a reply and were overdue at lock (first lock warns; later locks fine while still overdue).`,
         `<b>₿500k / ₿1m / ₿1.5m</b> — 1st / 2nd / 3rd no-show on a fixture (+ season strike each time).`,
         `<b>0–3</b> — 3rd no-show on the same fixture (instant).`,

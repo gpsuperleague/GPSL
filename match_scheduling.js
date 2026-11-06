@@ -643,6 +643,18 @@ export async function loadScheduleContext(fixtureId) {
     ctx.can_respond = false;
   }
 
+  // Play now session is a separate RPC so a context rebuild cannot hide a closed window.
+  if (ctx.play_now_session == null && agreed) {
+    try {
+      const { data: pn } = await supabase.rpc("match_schedule_play_now_session_json", {
+        p_fixture_id: fixtureId,
+      });
+      if (pn && typeof pn === "object") ctx.play_now_session = pn;
+    } catch (_) {
+      /* RPC missing until the Play now session patch is applied */
+    }
+  }
+
   // Already played mutual bypass (separate RPC so context patch is optional)
   if (ctx.already_played == null && !agreed) {
     try {

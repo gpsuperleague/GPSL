@@ -5,7 +5,7 @@ import { initGlobal, supabase } from "./global.js";
 import {
   LEARNING_GPSL_META_HTML,
   LEARNING_GPSL_SECTIONS,
-} from "./learning_gpsl_content.js?v=20261106-formation-forfeit";
+} from "./learning_gpsl_content.js?v=20261106-cup-arrange-grace";
 
 function escapeAttr(text) {
   return String(text ?? "")

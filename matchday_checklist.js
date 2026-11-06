@@ -496,7 +496,7 @@ function renderArrangeBlock(list) {
     <div class="mc-arrange">
       <div class="mc-arrange-head">
         <b>Arrange now — upcoming months + replays</b>
-        <span>Home proposes a kick-off <b>before</b> that GPSL month starts (last 48h = ₿1m late fee; miss unlock = ₿2.5m). <b>Replay / catch-up</b> fixtures from a reset or closed month also appear here — re-propose in the current window. Discord lock CTA on the schedule page if you already agreed off-site. Both clubs GPSL match system OFF = manual; those do not appear here.</span>
+        <span>League: home proposes a kick-off <b>before</b> that GPSL month starts (last 48h = ₿1m late fee; miss unlock = ₿2.5m). Cups are drawn when the round month opens — arrange in that month, then one grace month (no ₿2.5m for the month before the draw; May cups have no extra month). <b>Replay / catch-up</b> fixtures from a reset or closed month also appear here — re-propose in the current window. Discord lock CTA on the schedule page if you already agreed off-site. Both clubs GPSL match system OFF = manual; those do not appear here.</span>
       </div>
       <div class="mc-list">${list.map(renderArrangeRow).join("")}</div>
     </div>`;

@@ -50,8 +50,9 @@ export const SECTION_DISCIPLINE = {
     {
       type: "ul",
       items: [
-        `<b>₿2.5m</b> — home never proposed by the prior-month lock (can <b>repeat each later lock</b> until they propose). Suppressed while home is on a booked holiday.`,
-        `<b>₿1m</b> — home’s first proposal only in the last 48h before the play month opened.`,
+        `<b>₿2.5m</b> — league: home never proposed by the prior-month lock (can <b>repeat each later lock</b> until they propose). Suppressed while home is on a booked holiday.`,
+        `<b>₿2.5m</b> — cups: drawn at month change. Arrange in the round month, then one grace month (May: none). The fine starts only if there is still no proposal when that grace month locks.`,
+        `<b>₿1m</b> — league only: home’s first proposal in the last 48h before the play month opened. Cups do not pay this.`,
         `<b>Warning → ₿1m</b> — reply overdue at lock: first lock is Inbox warning only; still overdue at a later lock → fine. Negotiation continues.`,
         `<b>₿2.5m + 3–0</b> — one-sided no-show recorded, match still unfinished at month lock.`,
         `<b>₿3m + 3–0</b> — emergency drop (&lt;24h before KO) with no season allowance left (2 per season).`,

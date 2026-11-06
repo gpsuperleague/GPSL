@@ -34,7 +34,7 @@ import {
   priorProposedKickoffSet,
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
-} from "./match_scheduling.js?v=20261106-play-now-press";
+} from "./match_scheduling.js?v=20261106-play-now-session";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -747,13 +747,18 @@ function deadlineBoxHtml(f) {
 
   if (Number.isFinite(proposeBy) && proposeBy > now && !d.home_has_proposed) {
     const late = Number.isFinite(lateFrom) && now >= lateFrom;
+    const cupGrace =
+      d.arrangement_rule === "cup_grace" ||
+      String(f.competition_type || "").toLowerCase() === "cup";
     if (ctx.my_role === "home") {
-      html = `<div class="deadline-box${late ? " deadline-late" : ""}">
+      html = `<div class="deadline-box${late && !cupGrace ? " deadline-late" : ""}">
         <b>Propose a kick-off by ${formatUkWhen(d.propose_by)}</b> (${relWhen(d.propose_by)}).
         ${
-          late
-            ? "The ₿1m late fee now applies — propose now to avoid the ₿2.5m no-proposal fine."
-            : `Proposing after ${formatUkWhen(d.late_fee_from)} costs a ₿1m late fee; no proposal by the deadline is a ₿2.5m fine.`
+          cupGrace
+            ? "This cup tie is drawn when the round month opens, so there is no fine for the month before. Arrange in the round month; the following month is grace (May cups have no extra month). Still no proposal by this lock → ₿2.5m."
+            : late
+              ? "The ₿1m late fee now applies — propose now to avoid the ₿2.5m no-proposal fine."
+              : `Proposing after ${formatUkWhen(d.late_fee_from)} costs a ₿1m late fee; no proposal by the deadline is a ₿2.5m fine.`
         }
       </div>`;
     } else {
