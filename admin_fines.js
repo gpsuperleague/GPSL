@@ -457,7 +457,7 @@ function tariffWiring(t) {
 
 const COVERED_ELSEWHERE = {
   breach_squad_28_max:
-    "Going over 28 is charged as squad_overflow_mv_release (₿10m) when a signing forces a market-value release. This ₿5m row is never called.",
+    "Going over 28 is charged as squad_overflow_mv_release (₿2.5m) when a signing forces a market-value release. This ₿5m row is never called.",
   breach_squad_30_max:
     "The squad cap in use is 28, charged as squad_overflow_mv_release. This 30-man row is never called.",
 };

@@ -94,7 +94,7 @@ Pitch behaviour on Match Day still stands: no DOGSO, no timewasting, no match ma
 | Charge | Avoid it by |
 | --- | --- |
 | **₿2.5m each** — under 24 from August, or over the star cap | Keep at least 24 contracted players. Stay inside the star cap. One of our Own is excused from the cap. |
-| **₿10m** — forced release at market value when a signing would put you over 28 and there is no foreign-sale slot | Do not sign past 28. Sell first. |
+| **₿2.5m** — forced release at market value when a signing would put you over 28 and there is no foreign-sale slot | Do not sign past 28. Sell first. |
 | Home-grown minimum, under-21 minimum | Meet them before the check, not after the fine. |
 
 No-shows, squad size, and the star cap are **not** on the video R-button. They still charge themselves.

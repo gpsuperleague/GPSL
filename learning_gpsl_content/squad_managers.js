@@ -13,7 +13,7 @@ export const SECTION_SQUAD = {
       type: "ul",
       items: [
         `<b>Maximum 28</b> registered players. You can still bid at 28, but a 29th signing triggers an automatic release of your highest-rated player who was <em>not</em> signed this season.`,
-        `If a foreign sale slot is available, that route is used (no fine). Otherwise the player is released for market value, your club is fined <b>₿10,000,000</b>, and the player cannot be signed until next season.`,
+        `If a foreign sale slot is available, that route is used (no fine). Otherwise the player is released for market value, your club is fined <b>₿2,500,000</b>, and the player cannot be signed until next season.`,
         `<b>Home-grown</b> — minimum <b>8</b> players whose nation matches your club nation.`,
         `<b>Under-21</b> — minimum <b>5</b> players aged 21 or younger.`,
         `<b>Star players</b> — automatic from rating (OooO excluded from the cap). Super League max <b>3</b>, Championship max <b>2</b>.`,

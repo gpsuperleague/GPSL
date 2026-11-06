@@ -26,7 +26,7 @@ import {
   complianceRowTooltip,
   isExpiryAuctionExempt,
   isOooOWageUpliftRenew,
-} from "./squad_rules.js?v=20260924-apos-entity";
+} from "./squad_rules.js?v=20261106-overflow-2-5m";
 import {
   loadSquadGhostAcquisitions,
   formatGhostPlayerNameCell,
@@ -159,7 +159,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20261106-handpick-ooo";
+} from "./squad_info_tips.js?v=20261106-overflow-2-5m";
 
 window.supabase = supabase;
 

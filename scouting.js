@@ -49,7 +49,7 @@ import {
   MIN_GOALKEEPERS,
   MIN_SQUAD_SIZE,
   SQUAD_SIZE,
-} from "./squad_rules.js";
+} from "./squad_rules.js?v=20261106-overflow-2-5m";
 import {
   loadSquadDesignationsState,
   playerEligibleStar,

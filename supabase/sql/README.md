@@ -356,7 +356,7 @@ Run once:
 - Uses a **foreign club** tracking slot when `foreign_interest_remaining` &gt; 0; otherwise **MV** release.
 - GPDB / transfer engine show a confirm dialog when already at **28** players.
 - Retrospective / URD test: [`test_squad_overflow_urd.sql`](./test_squad_overflow_urd.sql) — preview release, `admin_enforce_squad_overflow('URD')` to fix 29→28 without a new signing.
-- **MV overflow fine + paid-up lock:** [`patches/squad_overflow_paid_up_fine.sql`](./patches/squad_overflow_paid_up_fine.sql) — £10m fine per forced MV release (ledger `gov_fine_compensation`); player unavailable until next season. Foreign overflow unchanged (no fine).
+- **MV overflow fine + paid-up lock:** [`patches/squad_overflow_paid_up_fine.sql`](./patches/squad_overflow_paid_up_fine.sql) — £2.5m fine per forced MV release (ledger `gov_fine_compensation`); player unavailable until next season. Foreign overflow unchanged (no fine). Amount change: [`patches/squad_overflow_fine_2_5m_20261106.sql`](./patches/squad_overflow_fine_2_5m_20261106.sql).
 - **Backfill historical MV fines:** [`patches/squad_overflow_mv_fines_backfill.sql`](./patches/squad_overflow_mv_fines_backfill.sql) — `SELECT squad_overflow_mv_fines_club_status('URD');` then `SELECT backfill_squad_overflow_mv_fines(true);`
 - **Finances blank but fines in DB:** [`patches/fix_finance_ledger_public_current_season.sql`](./patches/fix_finance_ledger_public_current_season.sql) — public ledger view required `status = 'active'`; setup/preseason seasons hid all lines.
 - **Voluntary contract release:** [`patches/voluntary_contract_release.sql`](./patches/voluntary_contract_release.sql) — squad action, 3/season, buy-out = wage × seasons left, `contract_release_comp` ledger.

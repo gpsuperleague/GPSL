@@ -109,7 +109,7 @@ export const SECTION_DISCIPLINE = {
     {
       type: "ul",
       items: [
-        `<b>Squad overflow</b> — forced release can carry a <b>₿10m</b> fine when no foreign-sale slot is available (<a href="#squad">Squad</a>).`,
+        `<b>Squad overflow</b> — forced release carries a <b>₿2.5m</b> fine when no foreign-sale slot is available (<a href="#squad">Squad</a>).`,
         `<b>Under 24 / over star cap</b> — auto path can fine <b>₿2.5m</b> per missing player or released star, plus loan fees.`,
         `<b>Withdraw from sale / withdraw bid</b> — <b>₿30m</b> / <b>₿15m</b> catalogue tariffs.`,
         `<b>FFP</b> — balance at or below <b>−₿100m</b> at Close Finances triggers FFP penalties (fine, forced MV sales, buy ban) — see <a href="#finances">Finances</a>.`,

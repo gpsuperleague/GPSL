@@ -46,7 +46,7 @@ export function squadOverflowBidWarningText(squadTotal) {
     return (
       "You are at max squad size (28). If you win this player, going over 28 will " +
       "automatically release your highest-rated player (not signed this season) — " +
-      "foreign sale if available (no fine), otherwise market value plus a ₿ 10,000,000 fine " +
+      "foreign sale if available (no fine), otherwise market value plus a ₿ 2,500,000 fine " +
       "and the player unavailable until next season."
     );
   }

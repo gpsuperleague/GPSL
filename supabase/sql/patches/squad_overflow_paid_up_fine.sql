@@ -1,6 +1,6 @@
 -- =============================================================================
--- Squad overflow (MV forced release): £10m fine + paid-up season lock
--- Foreign overflow: same foreign lock as normal abroad sale — no £10m fine
+-- Squad overflow (MV forced release): £2.5m fine + paid-up season lock
+-- Foreign overflow: same foreign lock as normal abroad sale — no £2.5m fine
 -- Run after: foreign_sale_season_lock.sql, transfer_ledger_polish.sql,
 --            competition_fines.sql, squad_overflow_enforcement.sql
 -- =============================================================================
@@ -21,7 +21,7 @@ ALTER TABLE public."Players"
     OR foreign_contract_lock_kind IN ('foreign', 'paid_up')
   );
 
--- Tariff: £10m per MV overflow forced release (not foreign overflow)
+-- Tariff: £2.5m per MV overflow forced release (not foreign overflow)
 INSERT INTO public.competition_fine_tariff (
   code, label, category, direction, amount, amount_mode, sort_order, is_active
 )
@@ -30,7 +30,7 @@ VALUES (
   'Squad overflow — forced MV release',
   'squad',
   'fine',
-  10000000,
+  2500000,
   'fixed',
   83,
   true
@@ -270,7 +270,7 @@ END;
 $function$;
 
 -- ---------------------------------------------------------------------------
--- MV overflow: MV credit + ledger + paid-up lock + £10m fine
+-- MV overflow: MV credit + ledger + paid-up lock + £2.5m fine
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.club_release_player_mv_overflow(
@@ -394,7 +394,7 @@ END;
 $function$;
 
 -- ---------------------------------------------------------------------------
--- Foreign overflow: foreign lock + MV credit + ledger — no £10m fine
+-- Foreign overflow: foreign lock + MV credit + ledger — no £2.5m fine
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.club_release_player_foreign_overflow(

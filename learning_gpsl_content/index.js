@@ -10,7 +10,7 @@ import {
   SECTION_FINANCES,
   SECTION_EXPECTATIONS,
 } from "./club_pages.js?v=20261018-syntax";
-import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261106-handpick-ooo";
+import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261106-overflow-2-5m";
 import { SECTION_MEDICAL } from "./medical.js?v=20261024-half-cap";
 import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js?v=20261104-handbook";
 import {
@@ -18,7 +18,7 @@ import {
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
 } from "./fixtures_results.js?v=20261106-cup-arrange-grace";
-import { SECTION_DISCIPLINE } from "./discipline.js?v=20261106-cup-arrange-grace";
+import { SECTION_DISCIPLINE } from "./discipline.js?v=20261106-overflow-2-5m";
 import { SECTION_LEAGUE, SECTION_INTERNATIONAL } from "./league_world.js";
 import {
   SECTION_OWNERS,
