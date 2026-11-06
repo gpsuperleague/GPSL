@@ -9,13 +9,15 @@ players_export.csv
 GPSL_backup_*.csv
 data/managers_*.csv
 
-# Agent / ad-hoc SQL scratch files (never commit)
+# Agent / ad-hoc SQL scratch — never commit (any folder)
 tmp_*
 _tmp_*
 _build_*
 _q*.sql
 _q*.json
-supabase/sql/tmp_*
+**/tmp_*
+**/_tmp_*
+.scratch/
 
 # Python
 __pycache__/
