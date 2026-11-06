@@ -1940,22 +1940,10 @@ function refreshSquadCardStatuses() {
     return;
   }
 
-  const map = new Map();
-  for (const [id, rows] of suspensionsByPlayer) {
-    if (rows?.length) map.set(id, "suspended");
-  }
-  for (const [id, rows] of injuriesByPlayer) {
-    if (map.get(id) === "suspended") continue;
-    const injuredOut = (rows || []).some(
-      (i) => (Number(i.matches_out_remaining) || 0) > 0 || i.phase === "out"
-    );
-    const recovery = (rows || []).some(
-      (i) => i.phase === "recovery" || (Number(i.recovery_remaining) || 0) > 0
-    );
-    if (injuredOut) map.set(id, "injured");
-    else if (recovery) map.set(id, "recovery");
-  }
-  squadPanelApi?.setPlayerStatuses(map);
+  // No fixture on screen: do not paint every remaining-out player as injured.
+  // That blocked advance matches which are not in the injury's fixture list.
+  // Check-in still refuses him on the specific match the absence is stuck to.
+  squadPanelApi?.setPlayerStatuses(new Map());
 }
 
 function renderPlayerStatsTable(opts = {}) {
@@ -2674,6 +2662,15 @@ async function loadUpcomingFixtures() {
       const ra = rank(a);
       const rb = rank(b);
       if (ra !== rb) return ra - rb;
+      // Kick-off time, not matchday number. A later matchday is often played
+      // before an earlier one; injury absences stay on the earlier matchday.
+      const kick = (f) => {
+        const t = f.agreed_kickoff_at ? new Date(f.agreed_kickoff_at).getTime() : NaN;
+        return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+      };
+      const ka = kick(a);
+      const kb = kick(b);
+      if (ka !== kb) return ka - kb;
       if (a.competition_type !== b.competition_type) {
         return a.competition_type === "cup" ? -1 : 1;
       }

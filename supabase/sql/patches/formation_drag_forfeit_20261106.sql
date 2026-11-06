@@ -15,7 +15,7 @@ INSERT INTO public.competition_fine_tariff (
 )
 VALUES (
   'formation_player_drag',
-  'Dragged players off the default formation (replay or −1 point after staff approve)',
+  'Dragged players off the default formation',
   'matchday',
   'fine',
   0,
