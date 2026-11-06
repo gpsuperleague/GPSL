@@ -14,6 +14,10 @@
 --
 -- This drops the shorter copies, and a failed expectations message no longer
 -- undoes the signing.
+--
+-- Admin assign does not check the buying club's balance. Releasing a manager
+-- credits that club the manager's full market value (contract_release_comp).
+-- Owner sack is unchanged and still pays half market value.
 -- Run once in the SQL editor, then press Assign again.
 -- Tick "Release current manager at selected club".
 -- =============================================================================
@@ -80,6 +84,7 @@ DECLARE
   v_season_id bigint;
   v_wage bigint;
   v_meta jsonb;
+  v_skip_balance boolean;
 BEGIN
   SELECT * INTO v_mgr FROM public."Managers" WHERE id = p_manager_id FOR UPDATE;
   IF NOT FOUND THEN
@@ -116,17 +121,21 @@ BEGIN
   ORDER BY id DESC
   LIMIT 1;
 
-  IF p_buyer_pays AND v_fee > 0 THEN
-    SELECT balance INTO v_balance
-    FROM public."Club_Finances"
-    WHERE upper(btrim(club_name)) = upper(btrim(p_club_short))
-    FOR UPDATE;
+  v_skip_balance := coalesce((p_ledger_metadata->>'skip_balance_check')::boolean, false);
 
-    IF v_balance IS NULL THEN
-      RAISE EXCEPTION 'Club finances not found for %', p_club_short;
-    END IF;
-    IF v_balance < v_fee THEN
-      RAISE EXCEPTION 'Insufficient balance (need %, have %)', v_fee, v_balance;
+  IF p_buyer_pays AND v_fee > 0 THEN
+    IF NOT v_skip_balance THEN
+      SELECT balance INTO v_balance
+      FROM public."Club_Finances"
+      WHERE upper(btrim(club_name)) = upper(btrim(p_club_short))
+      FOR UPDATE;
+
+      IF v_balance IS NULL THEN
+        RAISE EXCEPTION 'Club finances not found for %', p_club_short;
+      END IF;
+      IF v_balance < v_fee THEN
+        RAISE EXCEPTION 'Insufficient balance (need %, have %)', v_fee, v_balance;
+      END IF;
     END IF;
 
     v_meta := coalesce(p_ledger_metadata, '{}'::jsonb)
@@ -203,11 +212,14 @@ DECLARE
   v_club text;
   v_mgr public."Managers"%rowtype;
   v_club_mgr_id bigint;
+  v_released_name text;
+  v_released_mv numeric;
+  v_other_club text;
   v_result jsonb;
   v_seasons smallint := greatest(coalesce(p_seasons, 2), 1::smallint);
   v_fee numeric;
   v_buyer_pays boolean := NOT coalesce(p_waive_fee, true);
-  v_meta jsonb := '{}'::jsonb;
+  v_meta jsonb := jsonb_build_object('skip_balance_check', true, 'admin_assign', true);
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -242,12 +254,17 @@ BEGIN
     IF NOT coalesce(p_release_club_manager, false) THEN
       RAISE EXCEPTION 'Club % already has manager % — enable release current club manager', v_club, v_club_mgr_id;
     END IF;
+    SELECT m.name, m.market_value
+    INTO v_released_name, v_released_mv
+    FROM public."Managers" m
+    WHERE m.id = v_club_mgr_id;
+    -- NULL amount: release credits the club the manager's full market value.
     PERFORM public.manager_release_from_club(
       v_club_mgr_id,
-      NULL::text,
-      0::numeric,
-      'admin_testing'::text,
-      'Admin release — replaced at club'::text,
+      v_club,
+      NULL::numeric,
+      'contract_release_comp'::text,
+      format('Manager release — %s (market value)', coalesce(v_released_name, 'manager')),
       jsonb_build_object('admin_replace', true)
     );
   END IF;
@@ -258,12 +275,16 @@ BEGIN
     IF NOT coalesce(p_release_manager_contract, false) THEN
       RAISE EXCEPTION 'Manager is contracted to % — enable release from current club', v_mgr.contracted_club;
     END IF;
+    v_other_club := coalesce(
+      public.manager_club_short_canonical(v_mgr.contracted_club),
+      btrim(v_mgr.contracted_club)
+    );
     PERFORM public.manager_release_from_club(
       p_manager_id,
-      NULL::text,
-      0::numeric,
-      'admin_testing'::text,
-      'Admin release — moved to another club'::text,
+      v_other_club,
+      NULL::numeric,
+      'contract_release_comp'::text,
+      format('Manager release — %s (market value)', v_mgr.name),
       jsonb_build_object('admin_replace', true)
     );
   END IF;
@@ -285,7 +306,12 @@ BEGIN
 
   RETURN v_result || jsonb_build_object(
     'manager_name', v_mgr.name,
-    'club', v_club
+    'club', v_club,
+    'released_manager', v_released_name,
+    'release_payout', CASE
+      WHEN v_released_name IS NULL THEN NULL
+      ELSE greatest(coalesce(v_released_mv, 0), 0)
+    END
   );
 END;
 $function$;

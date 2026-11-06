@@ -183,11 +183,11 @@ async function assignManager() {
     return;
   }
 
-  setStatus(
-    "assignStatus",
-    `Assigned ${data?.manager_name || m?.name} to ${data?.club || clubShort}.`,
-    true
-  );
+  let done = `Assigned ${data?.manager_name || m?.name} to ${data?.club || clubShort}.`;
+  if (data?.released_manager && Number(data?.release_payout) > 0) {
+    done += ` ${c?.club_name || clubShort} credited ${formatMoney(data.release_payout)} for releasing ${data.released_manager}.`;
+  }
+  setStatus("assignStatus", done, true);
   await loadManagers();
   await loadClubs();
   document.getElementById("managerSelect").value = managerId;
