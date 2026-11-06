@@ -12,6 +12,9 @@ primeAdminPageChrome();
 
 let tariffs = [];
 let currentSeasonId = null;
+let videoReportCodes = new Set();
+let videoReportColumn = false;
+let tariffFilter = "all";
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage({ allowMod: true }))) return;
@@ -38,6 +41,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("reloadFinesBtn").onclick = () => loadTariffs();
   document.getElementById("saveFineTariffBtn").onclick = saveTariff;
   document.getElementById("clearFineFormBtn").onclick = clearFineForm;
+  document.getElementById("tariffFilterAll").onclick = () => setTariffFilter("all");
+  document.getElementById("tariffFilterVideo").onclick = () => setTariffFilter("video");
+  document.getElementById("tariffFilterOther").onclick = () => setTariffFilter("other");
 });
 
 function renderAutoFines(s) {
@@ -353,23 +359,66 @@ function onTariffPick() {
   }
 }
 
-async function loadTariffs() {
-  const { data, error } = await supabase
-    .from("competition_fine_tariff")
-    .select("*")
-    .order("category")
-    .order("sort_order");
+function onVideoReport(t) {
+  return videoReportCodes.has(t.code);
+}
 
-  if (error) {
+function setTariffFilter(next) {
+  tariffFilter = next;
+  for (const [id, value] of [
+    ["tariffFilterAll", "all"],
+    ["tariffFilterVideo", "video"],
+    ["tariffFilterOther", "other"],
+  ]) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    const on = value === next;
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.classList.toggle("secondary", !on);
+  }
+  renderTariffList();
+}
+
+function normaliseTariffCode(raw) {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+async function loadTariffs() {
+  const [tariffRes, reportRes] = await Promise.all([
+    supabase.from("competition_fine_tariff").select("*").order("category").order("sort_order"),
+    supabase.rpc("match_video_report_breach_codes"),
+  ]);
+
+  if (tariffRes.error) {
     setStatus(
       "fineTariffStatus",
-      "❌ " + error.message + " — run competition_fines.sql",
+      "❌ " + tariffRes.error.message + " — run competition_fines.sql",
       false
     );
     return;
   }
 
-  tariffs = data || [];
+  tariffs = tariffRes.data || [];
+  videoReportColumn = tariffs.length > 0 && Object.prototype.hasOwnProperty.call(tariffs[0], "on_video_report");
+  videoReportCodes = new Set();
+  if (!reportRes.error && Array.isArray(reportRes.data)) {
+    for (const row of reportRes.data) {
+      if (row?.code) videoReportCodes.add(row.code);
+    }
+  }
+
+  const videoBox = document.getElementById("fineEditVideoReport");
+  if (videoBox) {
+    videoBox.disabled = !videoReportColumn;
+    videoBox.title = videoReportColumn
+      ? "Owners can report this fine from a match video."
+      : "Run fine_tariff_video_report_20261106.sql to change this list.";
+  }
+
   const pick = document.getElementById("fineTariffSelect");
   pick.innerHTML = tariffs
     .filter((t) => t.is_active)
@@ -377,25 +426,56 @@ async function loadTariffs() {
     .join("");
   fitSelectToOptions(pick, { min: 160, max: 560 });
 
+  renderTariffList();
+  onTariffPick();
+
+  const reportNote = reportRes.error
+    ? " Video-report list could not be loaded."
+    : ` ${videoReportCodes.size} on the video report.`;
+  const columnNote = videoReportColumn
+    ? ""
+    : " Run fine_tariff_video_report_20261106.sql to tick fines onto that list.";
+  setStatus("fineTariffStatus", `${tariffs.length} tariff(s) loaded.${reportNote}${columnNote}`, !reportRes.error);
+}
+
+function renderTariffList() {
   const list = document.getElementById("fineTariffList");
+  if (!list) return;
   if (!tariffs.length) {
-    list.innerHTML = "<p class='note'>No tariffs — click Seed Excel tariffs.</p>";
+    list.innerHTML = "<p class='note'>No tariffs — click Seed Excel tariffs, or add one above.</p>";
     return;
   }
 
   const opt = (value, label, current) =>
     `<option value="${value}"${value === current ? " selected" : ""}>${label}</option>`;
   const categories = ["matchday", "squad", "transfer", "manager", "compensation", "other"];
+  const shown = tariffs.filter((t) => {
+    if (tariffFilter === "video") return onVideoReport(t);
+    if (tariffFilter === "other") return !onVideoReport(t);
+    return true;
+  });
 
-  list.innerHTML = tariffs
+  if (!shown.length) {
+    list.innerHTML = "<p class='note'>Nothing in this filter.</p>";
+    return;
+  }
+
+  list.innerHTML = shown
     .map((t) => {
       const amt =
         t.amount_mode === "manual" ? "manual" : formatMoney(Number(t.amount || 0));
       const code = escapeHtml(t.code);
+      const onReport = onVideoReport(t);
+      const badge = onReport
+        ? `<span style="display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;background:#e80;color:#111;font-size:11px;font-weight:700;letter-spacing:.02em;">Video report</span>`
+        : "";
+      const videoCheck = videoReportColumn
+        ? `<div style="align-self:flex-end;"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-f="on_video_report"${t.on_video_report ? " checked" : ""}> On the video report</label></div>`
+        : "";
       return `
-        <div class="challenge-admin-item" data-tariff-row="${code}" style="flex-wrap:wrap;${t.is_active ? "" : "opacity:.6;"}">
+        <div class="challenge-admin-item" data-tariff-row="${code}" style="flex-wrap:wrap;${t.is_active ? "" : "opacity:.6;"}${onReport ? "border-left:3px solid #e80;" : ""}">
           <div style="flex:1;min-width:240px;">
-            <b>${escapeHtml(t.label)}</b>
+            <b>${escapeHtml(t.label)}</b>${badge}
             <span class="challenge-admin-meta">${code} · ${escapeHtml(t.category)} · ${escapeHtml(t.direction)} · ${amt}${t.is_active ? "" : " · inactive"}</span>
           </div>
           <div style="display:flex;gap:6px;">
@@ -422,7 +502,8 @@ async function loadTariffs() {
                 t.amount_mode
               )}</select></div>
               <div><label>Sort</label><input type="number" data-f="sort_order" style="width:70px;" value="${Number(t.sort_order) || 0}"></div>
-              <div><label><input type="checkbox" data-f="is_active"${t.is_active ? " checked" : ""}> Active</label></div>
+              <div style="align-self:flex-end;"><label><input type="checkbox" data-f="is_active"${t.is_active ? " checked" : ""}> Active</label></div>
+              ${videoCheck}
             </div>
             <div class="row" style="margin-top:8px;gap:6px;">
               <button type="button" class="button fine-inline-save" data-code="${code}">Save</button>
@@ -452,9 +533,6 @@ async function loadTariffs() {
   list.querySelectorAll(".fine-delete-btn").forEach((btn) => {
     btn.onclick = () => deleteTariff(btn.dataset.code);
   });
-
-  onTariffPick();
-  setStatus("fineTariffStatus", `${tariffs.length} tariff(s) loaded.`, true);
 }
 
 async function saveInlineTariff(code) {
@@ -467,18 +545,22 @@ async function saveInlineTariff(code) {
     return;
   }
   const amountVal = f("amount").value;
+  const videoEl = f("on_video_report");
+  const wantedVideo = videoEl ? videoEl.checked : false;
   setStatus("fineTariffStatus", "Saving…");
+  const payload = {
+    code,
+    label,
+    category: f("category").value,
+    direction: f("direction").value,
+    amount: amountVal === "" ? null : Number(amountVal),
+    amount_mode: f("amount_mode").value,
+    is_active: f("is_active").checked,
+    sort_order: Number(f("sort_order").value) || 0,
+  };
+  if (videoReportColumn) payload.on_video_report = wantedVideo;
   const { error } = await supabase.rpc("competition_admin_save_fine_tariff", {
-    p_tariff: {
-      code,
-      label,
-      category: f("category").value,
-      direction: f("direction").value,
-      amount: amountVal === "" ? null : Number(amountVal),
-      amount_mode: f("amount_mode").value,
-      is_active: f("is_active").checked,
-      sort_order: Number(f("sort_order").value) || 0,
-    },
+    p_tariff: payload,
   });
   if (error) {
     setStatus("fineTariffStatus", "❌ " + error.message, false);
@@ -486,7 +568,13 @@ async function saveInlineTariff(code) {
   }
   await loadTariffs();
   await loadAutoFines();
-  setStatus("fineTariffStatus", `✅ Saved ${label}.`, true);
+  const videoNote =
+    wantedVideo && videoReportColumn && videoReportCodes.has(code)
+      ? " It is on the video report."
+      : wantedVideo && videoReportColumn
+        ? " Saved. It stays off the video report until it is an active fine."
+        : "";
+  setStatus("fineTariffStatus", `✅ Saved ${label}.${videoNote}`, true);
 }
 
 async function deleteTariff(code) {
@@ -547,30 +635,41 @@ function clearFineForm() {
   document.getElementById("fineEditCodeInput").disabled = false;
   document.getElementById("fineEditLabel").value = "";
   document.getElementById("fineEditAmount").value = "";
+  const videoBox = document.getElementById("fineEditVideoReport");
+  if (videoBox) videoBox.checked = false;
   setStatus("fineFormStatus", "");
 }
 
 async function saveTariff() {
-  const code = document.getElementById("fineEditCodeInput").value.trim();
+  const code = normaliseTariffCode(document.getElementById("fineEditCodeInput").value);
   const label = document.getElementById("fineEditLabel").value.trim();
   if (!code || !label) {
-    setStatus("fineFormStatus", "Code and label required.", false);
+    setStatus("fineFormStatus", "Code and label required. Use letters, numbers and underscores.", false);
     return;
   }
+  document.getElementById("fineEditCodeInput").value = code;
 
   const amountVal = document.getElementById("fineEditAmount").value;
+  const wantedVideo = document.getElementById("fineEditVideoReport")?.checked === true;
+  const existing = tariffs.find((t) => t.code === code);
+  const nextSort =
+    existing != null
+      ? Number(existing.sort_order) || 0
+      : Math.max(0, ...tariffs.map((t) => Number(t.sort_order) || 0)) + 10;
   setStatus("fineFormStatus", "Saving…");
+  const payload = {
+    code,
+    label,
+    category: document.getElementById("fineEditCategory").value,
+    direction: document.getElementById("fineEditDirection").value,
+    amount: amountVal === "" ? null : Number(amountVal),
+    amount_mode: document.getElementById("fineEditMode").value,
+    is_active: existing?.is_active ?? true,
+    sort_order: nextSort,
+  };
+  if (videoReportColumn) payload.on_video_report = wantedVideo;
   const { error } = await supabase.rpc("competition_admin_save_fine_tariff", {
-    p_tariff: {
-      code,
-      label,
-      category: document.getElementById("fineEditCategory").value,
-      direction: document.getElementById("fineEditDirection").value,
-      amount: amountVal === "" ? null : Number(amountVal),
-      amount_mode: document.getElementById("fineEditMode").value,
-      is_active: tariffs.find((t) => t.code === code)?.is_active ?? true,
-      sort_order: Number(tariffs.find((t) => t.code === code)?.sort_order) || 0,
-    },
+    p_tariff: payload,
   });
 
   if (error) {
@@ -579,7 +678,23 @@ async function saveTariff() {
   }
 
   await loadTariffs();
-  setStatus("fineFormStatus", "✅ Tariff saved.", true);
+  clearFineForm();
+  if (wantedVideo && !videoReportColumn) {
+    setStatus(
+      "fineFormStatus",
+      `✅ Saved ${label}. Run fine_tariff_video_report_20261106.sql before it can be ticked onto the video report.`,
+      true
+    );
+    return;
+  }
+  const onReport = videoReportCodes.has(code);
+  setStatus(
+    "fineFormStatus",
+    onReport
+      ? `✅ Saved ${label}. It is on the video report.`
+      : `✅ Saved ${label}.`,
+    true
+  );
 }
 
 async function seedTariffs() {

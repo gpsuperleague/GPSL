@@ -147,16 +147,19 @@
 
       <div class="card">
         <h2>Tariff catalogue</h2>
-        <div class="row" style="margin-bottom:12px;">
+        <p class="note">
+          Add a fine below. A row marked <b>Video report</b> is one of the choices on the match-video R button.
+          Tick <b>On the video report</b> to put a fine on that list, or clear it to take it off.
+        </p>
+        <div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">
           <button type="button" id="seedFinesBtn" class="button">Seed Excel tariffs</button>
           <button type="button" id="reloadFinesBtn" class="button">Reload</button>
+          <button type="button" id="tariffFilterAll" class="button" aria-pressed="true">All</button>
+          <button type="button" id="tariffFilterVideo" class="button secondary" aria-pressed="false">Video report</button>
+          <button type="button" id="tariffFilterOther" class="button secondary" aria-pressed="false">Not on video report</button>
         </div>
-        <div id="fineTariffList" class="challenge-admin-list"></div>
-        <div id="fineTariffStatus" class="status-line"></div>
-      </div>
 
-      <div class="card">
-        <h2>Add tariff</h2>
+        <h3 style="margin:8px 0 4px;font-size:15px;">Add a fine</h3>
         <input type="hidden" id="fineEditCode" value="">
         <div class="row gov-subsidy-row">
           <div>
@@ -196,12 +199,21 @@
               <option value="manual">Manual at apply</option>
             </select>
           </div>
+          <div style="align-self:flex-end;">
+            <label style="display:flex;gap:6px;align-items:center;">
+              <input type="checkbox" id="fineEditVideoReport">
+              On the video report
+            </label>
+          </div>
         </div>
         <div class="row" style="margin-top:12px;">
           <button type="button" id="saveFineTariffBtn" class="button">Save tariff</button>
           <button type="button" id="clearFineFormBtn" class="button">Clear</button>
         </div>
         <div id="fineFormStatus" class="status-line"></div>
+
+        <div id="fineTariffList" class="challenge-admin-list" style="margin-top:16px;"></div>
+        <div id="fineTariffStatus" class="status-line"></div>
       </div>
 
       <div class="card">
@@ -210,6 +222,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fines.js?v=20261012-tariff-edit-delete"></script>
+  <script type="module" src="admin_fines.js?v=20261106-tariff-video-report"></script>
 </body>
 </html>

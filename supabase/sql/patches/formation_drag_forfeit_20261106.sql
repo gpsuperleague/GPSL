@@ -8,6 +8,8 @@
 --   2 or more drags      → also deduct 1 league point
 -- Staff get an alert as soon as the report is submitted.
 -- Run once in the Supabase SQL Editor.
+-- If fine_tariff_video_report_20261106.sql is already applied, run it again
+-- after this file so the R button stays limited to ticked fines.
 -- =============================================================================
 
 INSERT INTO public.competition_fine_tariff (
@@ -33,6 +35,23 @@ SET
   sort_order = excluded.sort_order,
   is_active = true,
   updated_at = now();
+
+-- Keep the drag sanction on the R button once the video-report tick exists.
+DO $drag_on_report$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'competition_fine_tariff'
+      AND column_name = 'on_video_report'
+  ) THEN
+    UPDATE public.competition_fine_tariff
+    SET on_video_report = true, updated_at = now()
+    WHERE code = 'formation_player_drag';
+  END IF;
+END;
+$drag_on_report$;
 
 CREATE OR REPLACE FUNCTION public.fixture_apply_formation_drag_sanction(
   p_fixture_id bigint,
