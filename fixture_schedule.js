@@ -34,7 +34,7 @@ import {
   priorProposedKickoffSet,
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
-} from "./match_scheduling.js?v=20261105-play-now-ready";
+} from "./match_scheduling.js?v=20261106-play-now-press";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -1069,7 +1069,7 @@ function renderAgreedPanel(root, f, sch) {
             }
           </div>
         </div>`;
-    } else if (pn.can_press !== false) {
+    } else if (pn.can_press === true) {
       playNowReadyHtml = `
         <div class="panel mutual-panel" style="border-color:var(--gpsl-accent, #ff9900);">
           <h2>Play now</h2>
@@ -1399,18 +1399,27 @@ function renderAgreedPanel(root, f, sch) {
       }
       playNowReadyBtn.disabled = true;
       setStatus("Starting Play now…");
-      const res = await pressPlayNowReady(fixtureId);
-      if (!res.ok) {
-        setStatus(res.msg, true);
+      try {
+        const res = await pressPlayNowReady(fixtureId);
+        if (!res.ok) {
+          const msg = res.msg || "Could not start Play now";
+          setStatus(msg, true);
+          window.alert(msg);
+          playNowReadyBtn.disabled = false;
+          return;
+        }
+        setStatus(
+          res.data?.both_ready
+            ? "Both ready — check in before the countdown ends."
+            : "Play now pressed — waiting for opponent."
+        );
+        await reload();
+      } catch (err) {
+        const msg = err?.message || String(err) || "Play now failed";
+        setStatus(msg, true);
+        window.alert(msg);
         playNowReadyBtn.disabled = false;
-        return;
       }
-      setStatus(
-        res.data?.both_ready
-          ? "Both ready — check in before the countdown ends."
-          : "Play now pressed — waiting for opponent."
-      );
-      await reload();
     };
   }
 

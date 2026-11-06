@@ -1,1 +1,0 @@
-select "ShortName", "OwnerUserId" from "Clubs" where "ShortName" in ('BES','FLA');
