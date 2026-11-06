@@ -169,7 +169,8 @@ async function assignManager() {
   });
 
   if (error) {
-    setStatus("assignStatus", error.message, false);
+    const detail = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
+    setStatus("assignStatus", detail || "Assign failed", false);
     return;
   }
 
