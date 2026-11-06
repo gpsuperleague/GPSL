@@ -324,6 +324,9 @@ function clubPreviewPanel(title, preview, statusById = null) {
           form
         )}</span></div>`
       : `<div class="mr-preview-meta"><span class="mr-preview-k">Tactic / formation</span><span class="mr-preview-v mr-muted">Not set</span></div>`,
+    p.squad_source === "fixture"
+      ? `<div class="mr-preview-meta"><span class="mr-preview-k">Squad</span><span class="mr-preview-v">Saved for this match</span></div>`
+      : "",
   ]
     .filter(Boolean)
     .join("");

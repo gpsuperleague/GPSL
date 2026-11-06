@@ -1293,7 +1293,7 @@ export function initMatchdaySquadPanel({
     } else if (unavailableN) {
       verdict = `<span class="matchday-comp-warn">Remove ${unavailableN} unavailable player${unavailableN === 1 ? "" : "s"}</span>`;
     } else {
-      verdict = `<span class="matchday-comp-ok" title="Remember to press Save default squad">Ready for check-in once saved</span>`;
+      verdict = `<span class="matchday-comp-ok" title="Remember to press Save">Ready for check-in once saved</span>`;
     }
     matchdayCompStrip.innerHTML = `
       <span class="matchday-comp-label">Matchday rules</span>

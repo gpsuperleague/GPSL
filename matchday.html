@@ -295,6 +295,10 @@
     .next-fx-check.ok { background:#142014; border:1px solid #2f5a2f; color:#bfe8bf; }
     .next-fx-check.bad { background:#2a1414; border:1px solid #7a2a2a; color:#ffc0c0; }
     .next-fx-check ul { margin:6px 0 0 18px; padding:0; }
+    .squad-target-bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:0 0 12px; }
+    .squad-target-bar label { font-weight:600; }
+    .squad-target-bar select { min-width:min(100%, 560px); flex:1; background:#1a1a1a; color:#eee; border:1px solid #555; border-radius:4px; padding:7px 8px; }
+    #squadTargetHint { flex-basis:100%; margin:0; color:#bbb; font-size:13px; line-height:1.4; }
   </style>
 </head>
 <body>
@@ -306,21 +310,29 @@
 
     <div class="matchday-tabs" role="tablist">
       <button type="button" class="active gpsl-has-tip" data-tab="squad" role="tab"
-        data-gpsl-tip="Save one default matchday 23 (11 starters + up to 12 subs). It is checked at check-in for every fixture until you change it. Starters auto-tick Started when you submit stats.">Match squad</button>
+        data-gpsl-tip="Save a default 23 (11 starters + up to 12 subs). Pick a match in the list to save a different lineup for that fixture. Check-in uses the match lineup when one is saved, otherwise the default.">Match squad</button>
       <button type="button" class="gpsl-has-tip" data-tab="submit" role="tab"
         data-gpsl-tip="After the match: pick the fixture, enter the score, tick who played (11 Started, 0–5 Subbed on), G/A, optional rating/POTM and cards. Opponent confirms via Inbox. Cups may need ET / pens.">Submit result</button>
     </div>
 
     <div class="panel squad-panel-wrap active" id="squadPanel">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="One saved squad used for every fixture: 11 starters + up to 12 subs. Checked at check-in. Starters auto-tick Started on match stats." tabindex="0">Your matchday squad</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Default squad is used for every match that does not have its own lineup. Pick a fixture to see who is injured or suspended for it, then Save for this match." tabindex="0">Your matchday squad</h2>
       <div id="nextFixtureSquadCheck" class="next-fx-check" hidden></div>
+      <div class="squad-target-bar">
+        <label for="squadTargetSelect">Squad for</label>
+        <select id="squadTargetSelect" class="gpsl-has-tip" data-gpsl-tip="Default applies to every match without its own lineup. Choosing a match shows who is unavailable for that fixture. Save for this match keeps that lineup separate from the default.">
+          <option value="">Default squad — every match without its own lineup</option>
+        </select>
+        <button type="button" class="button secondary" id="squadUseDefaultBtn" hidden>Use default for this match</button>
+        <p id="squadTargetHint">This lineup is used for every match that does not have its own saved lineup.</p>
+      </div>
       <div class="info-box" id="matchdaySquadRules" style="margin:0 0 14px;max-width:none;padding:12px 14px;" aria-label="Matchday squad help">
         <div class="rules-grid">
           <section class="rules-card">
             <h3>Build the 23</h3>
             <ul>
               <li>Drag player cards onto the pitch (<b>11 starters</b>) and bench (<b>12 subs</b>).</li>
-              <li>Players must be from your <b>club squad</b> — this is your default matchday 23.</li>
+              <li>Players must be from your <b>club squad</b>. The default 23 is used unless you save a lineup for one match.</li>
             </ul>
           </section>
           <section class="rules-card">
@@ -508,6 +520,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20261106-injury-advance"></script>
+  <script type="module" src="matchday.js?v=20261106-fixture-squad"></script>
 </body>
 </html>

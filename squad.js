@@ -1488,12 +1488,46 @@ function applyNewOwnerReleaseOptionState() {
   });
 }
 
+function closedWindowListingMessage() {
+  let listable = 0;
+  let locked = 0;
+  document.querySelectorAll("select.squad-action-select").forEach((sel) => {
+    const listOpt = sel.querySelector(
+      'option[value="list"], option[data-live-value="list"]'
+    );
+    if (!listOpt) return;
+    if (listOpt.value === "list") listable += 1;
+    else if (/signing lock/i.test(listOpt.textContent || "")) locked += 1;
+  });
+
+  const lockRule =
+    "A player in the first half of their contract cannot be listed. A first-half signing becomes listable from the January window; a January signing from the next summer.";
+
+  if (listable === 0) {
+    return `Transfer window is currently CLOSED. ${lockRule}`;
+  }
+  const who =
+    listable === 1
+      ? "1 player is already past that lock and can be listed now"
+      : `${listable} players are already past that lock and can be listed now`;
+  const waiting = locked
+    ? ` ${locked} still in the first half cannot.`
+    : "";
+  return `Transfer window is currently CLOSED. ${lockRule} ${who}; the auction clock and bidding start when the window opens (June–August and January).${waiting}`;
+}
+
 function applyTransferWindowRules() {
   const msg = document.getElementById("windowClosedMessage");
-  if (msg) msg.style.display = transferWindowOpen ? "none" : "block";
   applyForeignSaleOptionState();
   applyVoluntaryReleaseOptionState();
   applyNewOwnerReleaseOptionState();
+  if (!msg) return;
+  if (transferWindowOpen) {
+    msg.style.display = "none";
+    return;
+  }
+  msg.textContent = closedWindowListingMessage();
+  msg.style.display = "block";
 }
 
 async function loadFreshTransferStatusState() {

@@ -4,6 +4,7 @@ import {
   loadLeagueFixtures,
   loadCupFixtures,
   GPSL_MONTH_LABELS,
+  gpslMonthSortIndex,
   formatFixtureCompetition,
   fixtureInvolvesClub,
   submitFixtureResult,
@@ -92,6 +93,13 @@ let allSquadPlayers = [];
 let squadPlayers = [];
 let matchdaySquadRows = [];
 let matchdayPitchLayout = null;
+let defaultSquadRows = [];
+let defaultPitchLayout = null;
+/** @type {Map<string, {rows: object[], layout: object|null}>} */
+let fixtureSquadOverrides = new Map();
+let fixtureSquadReady = false;
+let squadTargetUnavailable = null;
+let squadTargetLoadToken = 0;
 let matchdaySavedFormations = [];
 let squadPanelApi = null;
 
@@ -1688,14 +1696,16 @@ async function loadSquadPlayers() {
 }
 
 async function loadMatchdaySquad() {
-  matchdaySquadRows = [];
-  matchdayPitchLayout = null;
+  defaultSquadRows = [];
+  defaultPitchLayout = null;
+  fixtureSquadOverrides = new Map();
   matchdaySavedFormations = [];
 
-  const [squadRes, layoutRes, formationsRes] = await Promise.all([
+  const [squadRes, layoutRes, formationsRes, fixtureRes] = await Promise.all([
     supabase.from("club_matchday_squad_public").select("*"),
     supabase.from("club_matchday_pitch_layout_public").select("pitch_layout").maybeSingle(),
     supabase.from("club_matchday_saved_formation_public").select("*"),
+    supabase.from("club_fixture_matchday_squad_public").select("*"),
   ]);
 
   if (squadRes.error) {
@@ -1703,7 +1713,7 @@ async function loadMatchdaySquad() {
       console.error("loadMatchdaySquad:", squadRes.error);
     }
   } else {
-    matchdaySquadRows = squadRes.data || [];
+    defaultSquadRows = squadRes.data || [];
   }
 
   if (layoutRes.error) {
@@ -1711,7 +1721,7 @@ async function loadMatchdaySquad() {
       console.error("loadMatchdayPitchLayout:", layoutRes.error);
     }
   } else if (layoutRes.data?.pitch_layout) {
-    matchdayPitchLayout = layoutRes.data.pitch_layout;
+    defaultPitchLayout = layoutRes.data.pitch_layout;
   }
 
   if (formationsRes.error) {
@@ -1721,6 +1731,56 @@ async function loadMatchdaySquad() {
   } else {
     matchdaySavedFormations = formationsRes.data || [];
   }
+
+  if (fixtureRes.error) {
+    const missing =
+      fixtureRes.error.code === "PGRST205" ||
+      /club_fixture_matchday_squad_public/i.test(fixtureRes.error.message || "");
+    if (!missing) console.error("loadFixtureSquads:", fixtureRes.error);
+    fixtureSquadReady = false;
+  } else {
+    fixtureSquadReady = true;
+    const grouped = new Map();
+    for (const row of fixtureRes.data || []) {
+      const id = String(row.fixture_id);
+      if (!grouped.has(id)) {
+        grouped.set(id, { rows: [], layout: row.pitch_layout || null });
+      }
+      const bucket = grouped.get(id);
+      bucket.layout = row.pitch_layout || bucket.layout;
+      bucket.rows.push(row);
+    }
+    fixtureSquadOverrides = grouped;
+  }
+
+  matchdaySquadRows = defaultSquadRows;
+  matchdayPitchLayout = defaultPitchLayout;
+}
+
+function squadTargetFixtureId() {
+  const value = document.getElementById("squadTargetSelect")?.value || "";
+  return value || null;
+}
+
+function rowsForFixture(fixtureId) {
+  if (fixtureId != null && fixtureSquadOverrides.has(String(fixtureId))) {
+    return fixtureSquadOverrides.get(String(fixtureId)).rows;
+  }
+  return defaultSquadRows;
+}
+
+function layoutForFixture(fixtureId) {
+  if (fixtureId != null && fixtureSquadOverrides.has(String(fixtureId))) {
+    return fixtureSquadOverrides.get(String(fixtureId)).layout;
+  }
+  return defaultPitchLayout;
+}
+
+function syncStatsSquadToSelectedFixture() {
+  const fixture = statsEditMode?.fixture || selectedFixture();
+  matchdaySquadRows = rowsForFixture(fixture?.id);
+  matchdayPitchLayout = layoutForFixture(fixture?.id);
+  applyMatchdaySquadFilter();
 }
 
 function applyMatchdaySquadFilter() {
@@ -1785,6 +1845,11 @@ async function deleteMatchdayFormation(slotNo) {
   return data;
 }
 
+function noteSquadSave(message) {
+  const squadStatus = document.getElementById("squadPanelStatus");
+  if (squadStatus) squadStatus.textContent = message;
+}
+
 async function saveMatchdaySquad(slots, pitchLayout = null) {
   const { data, error } = await supabase.rpc("club_save_matchday_squad", {
     p_slots: slots,
@@ -1792,16 +1857,54 @@ async function saveMatchdaySquad(slots, pitchLayout = null) {
   });
   if (error) throw new Error(error.message);
   await loadMatchdaySquad();
-  applyMatchdaySquadFilter();
-  squadPanelApi?.setSavedRows(matchdaySquadRows, matchdayPitchLayout);
-  renderPlayerStatsTable();
-  const squadStatus = document.getElementById("squadPanelStatus");
-  if (squadStatus) {
-    squadStatus.textContent =
-      `${matchdaySquadRows.length} players saved — stats table filtered to your 23; pitch XI auto-tick Started.`;
+  if (!squadTargetFixtureId()) {
+    squadPanelApi?.setSavedRows(defaultSquadRows, defaultPitchLayout);
   }
+  renderPlayerStatsTable();
+  noteSquadSave(
+    `${defaultSquadRows.length} players saved as the default squad. A match with its own lineup keeps that lineup.`
+  );
+  populateSquadTargetSelect();
   void renderNextFixtureSquadCheck();
   return data;
+}
+
+async function saveFixtureMatchdaySquad(fixtureId, slots, pitchLayout = null) {
+  if (!fixtureSquadReady) {
+    throw new Error(
+      "Run fixture_squad_override_20261106.sql in the SQL editor, then reload this page."
+    );
+  }
+  const { data, error } = await supabase.rpc("club_save_fixture_matchday_squad", {
+    p_fixture_id: Number(fixtureId),
+    p_slots: slots,
+    p_pitch_layout: pitchLayout,
+  });
+  if (error) throw new Error(error.message);
+  await loadMatchdaySquad();
+  squadPanelApi?.setSavedRows(rowsForFixture(fixtureId), layoutForFixture(fixtureId));
+  renderPlayerStatsTable();
+  noteSquadSave(
+    "Lineup saved for this match. Check-in uses it here. Other matches keep the default, or their own saved lineup."
+  );
+  populateSquadTargetSelect();
+  updateSquadTargetChrome();
+  void renderNextFixtureSquadCheck();
+  return data;
+}
+
+async function clearFixtureMatchdaySquad(fixtureId) {
+  const { error } = await supabase.rpc("club_clear_fixture_matchday_squad", {
+    p_fixture_id: Number(fixtureId),
+  });
+  if (error) throw new Error(error.message);
+  await loadMatchdaySquad();
+  squadPanelApi?.setSavedRows(defaultSquadRows, defaultPitchLayout);
+  renderPlayerStatsTable();
+  noteSquadSave("This match is using the default squad again.");
+  populateSquadTargetSelect();
+  updateSquadTargetChrome();
+  void renderNextFixtureSquadCheck();
 }
 
 function escapeHtml(text) {
@@ -1844,7 +1947,7 @@ async function renderNextFixtureSquadCheck() {
     el.className = "next-fx-check bad";
     el.innerHTML = `<b>Your saved squad would not pass check-in for your next match</b> — ${vs} (${when}).
       <ul>${issues.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>
-      Fix it below and press <b>Save default squad</b>.`;
+      Fix the lineup below and save.`;
   }
 }
 
@@ -1861,12 +1964,16 @@ function initSquadPanel() {
   squadPanelApi = initMatchdaySquadPanel({
     root,
     allPlayers: allSquadPlayers,
-    savedRows: matchdaySquadRows,
-    savedPitchLayout: matchdayPitchLayout,
+    savedRows: defaultSquadRows,
+    savedPitchLayout: defaultPitchLayout,
     matchdayComposition: true,
     clubNation: myClub.nation,
     slotPicker: true,
-    onSave: saveMatchdaySquad,
+    onSave: (slots, layout) => {
+      const fixtureId = squadTargetFixtureId();
+      if (fixtureId) return saveFixtureMatchdaySquad(fixtureId, slots, layout);
+      return saveMatchdaySquad(slots, layout);
+    },
     onChange: () => {},
   });
 }
@@ -1930,19 +2037,21 @@ async function loadClubSuspensions() {
  * remaining outs must not block early/future matches outside the injury sequence.
  */
 function refreshSquadCardStatuses() {
-  // Fixture context: only server stickiness for *this* match (injury_fixtures /
-  // suspension_matches). Do not overlay club-wide remaining outs — that wrongly
-  // blocked early-played future fixtures outside the absence sequence.
+  // A match picked in the squad dropdown uses that match's absences.
+  // The default squad follows the fixture open on Submit result, when one is open.
+  const targetId = squadTargetFixtureId();
+  if (targetId) {
+    squadPanelApi?.setPlayerStatuses(
+      unavailableStatusByPlayerId(squadTargetUnavailable, myClub.short)
+    );
+    return;
+  }
   if (selectedFixture()) {
     squadPanelApi?.setPlayerStatuses(
       unavailableStatusByPlayerId(fixtureUnavailable, myClub.short)
     );
     return;
   }
-
-  // No fixture on screen: do not paint every remaining-out player as injured.
-  // That blocked advance matches which are not in the injury's fixture list.
-  // Check-in still refuses him on the specific match the absence is stuck to.
   squadPanelApi?.setPlayerStatuses(new Map());
 }
 
@@ -1951,6 +2060,7 @@ function renderPlayerStatsTable(opts = {}) {
   const extraPlayers = Array.isArray(opts.extraPlayers) ? opts.extraPlayers : [];
   const tbody = document.getElementById("playerStatsBody");
   if (!tbody) return;
+  syncStatsSquadToSelectedFixture();
 
   ensureStatDatalists();
   ensureOpponentOwnGoalsSelect();
@@ -2590,6 +2700,100 @@ function populateFixtureSelect(preferredFixtureId = null) {
   void decorateFixtureOptionsWithChecklist(sel);
 }
 
+function plannedSquadFixtures() {
+  return (allLeagueFixtures || [])
+    .filter((f) => fixtureInvolvesClub(f, myClub))
+    .filter((f) => f.status === "scheduled")
+    .filter((f) => (f.competition_type || "league") === "league" || f.competition_type === "cup")
+    .sort((a, b) => {
+      const month = gpslMonthSortIndex(a.gpsl_month) - gpslMonthSortIndex(b.gpsl_month);
+      if (month) return month;
+      const kickA = a.agreed_kickoff_at ? Date.parse(a.agreed_kickoff_at) : Number.POSITIVE_INFINITY;
+      const kickB = b.agreed_kickoff_at ? Date.parse(b.agreed_kickoff_at) : Number.POSITIVE_INFINITY;
+      if (kickA !== kickB) return kickA - kickB;
+      const roundA = Number(a.matchday || a.cup_round || 0);
+      const roundB = Number(b.matchday || b.cup_round || 0);
+      if (roundA !== roundB) return roundA - roundB;
+      return Number(a.id) - Number(b.id);
+    });
+}
+
+function squadFixtureOptionLabel(f) {
+  const comp = formatFixtureCompetition(f);
+  const when =
+    f.competition_type === "cup"
+      ? `${comp} R${f.cup_round || "?"}`
+      : `${comp} · MD${f.matchday}`;
+  const home = f.home_club_short_name || "Home";
+  const away = f.away_club_short_name || "Away";
+  const saved = fixtureSquadOverrides.has(String(f.id)) ? " · lineup saved" : "";
+  return `${when}: ${home} vs ${away}${saved}`;
+}
+
+function updateSquadTargetChrome() {
+  const id = squadTargetFixtureId();
+  const saveBtn = document.querySelector("#matchdaySquadRoot #squadSaveBtn");
+  const useBtn = document.getElementById("squadUseDefaultBtn");
+  const hint = document.getElementById("squadTargetHint");
+  const hasOverride = !!(id && fixtureSquadOverrides.has(String(id)));
+  if (saveBtn) saveBtn.textContent = id ? "Save for this match" : "Save default squad";
+  if (useBtn) useBtn.hidden = !hasOverride;
+  if (!hint) return;
+  if (!fixtureSquadReady) {
+    hint.textContent =
+      "Per-match lineups need fixture_squad_override_20261106.sql run once in the SQL editor. Until then, Save default squad is the lineup check-in uses.";
+    return;
+  }
+  if (!id) {
+    hint.textContent =
+      "This lineup is used for every match that does not have its own saved lineup. Pick a match to plan around who is injured or suspended for that fixture.";
+    return;
+  }
+  if (hasOverride) {
+    hint.textContent =
+      "Check-in for this match uses this lineup. Injured and suspended players for this fixture are marked on the pitch.";
+    return;
+  }
+  hint.textContent =
+    "This match is still using your default squad. Unavailable players for this fixture are marked on the pitch. Press Save for this match to keep a lineup just for it.";
+}
+
+function populateSquadTargetSelect() {
+  const sel = document.getElementById("squadTargetSelect");
+  if (!sel) return;
+  const keep = sel.value || "";
+  sel.innerHTML = "";
+  const def = document.createElement("option");
+  def.value = "";
+  def.textContent = "Default squad — every match without its own lineup";
+  sel.appendChild(def);
+  for (const f of plannedSquadFixtures()) {
+    const opt = document.createElement("option");
+    opt.value = String(f.id);
+    opt.textContent = squadFixtureOptionLabel(f);
+    sel.appendChild(opt);
+  }
+  if (keep && [...sel.options].some((o) => o.value === keep)) sel.value = keep;
+  updateSquadTargetChrome();
+}
+
+async function applySquadTarget() {
+  const id = squadTargetFixtureId();
+  const token = ++squadTargetLoadToken;
+  updateSquadTargetChrome();
+  if (!id) {
+    squadTargetUnavailable = null;
+    squadPanelApi?.setSavedRows(defaultSquadRows, defaultPitchLayout);
+    refreshSquadCardStatuses();
+    return;
+  }
+  squadPanelApi?.setSavedRows(rowsForFixture(id), layoutForFixture(id));
+  const payload = await loadFixtureUnavailable(supabase, id);
+  if (token !== squadTargetLoadToken) return;
+  squadTargetUnavailable = payload;
+  refreshSquadCardStatuses();
+}
+
 async function decorateFixtureOptionsWithChecklist(sel) {
   const data = await fetchMatchdayChecklist();
   if (!data?.ok || !Array.isArray(data.fixtures)) return;
@@ -3102,9 +3306,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const squadStatus = document.getElementById("squadPanelStatus");
   if (squadStatus) {
-    if (matchdaySquadRows.length) {
+    if (defaultSquadRows.length) {
       squadStatus.textContent =
-        `${matchdaySquadRows.length} players in your default squad — stats table shows only these players; pitch XI auto-tick Started.`;
+        `${defaultSquadRows.length} players in your default squad. Pick a match above to save a different lineup for that fixture.`;
     } else {
       squadStatus.textContent =
         "No saved squad yet. Set your 23 on the pitch, save, then submit results on the Submit result tab.";
@@ -3125,6 +3329,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     await ensureFixtureInUpcomingList(deepLink.fixtureId);
   }
   populateFixtureSelect(deepLink.fixtureId || null);
+  populateSquadTargetSelect();
+  document.getElementById("squadTargetSelect")?.addEventListener("change", () => {
+    void applySquadTarget();
+  });
+  document.getElementById("squadUseDefaultBtn")?.addEventListener("click", () => {
+    const id = squadTargetFixtureId();
+    if (!id) return;
+    if (
+      !confirm(
+        "Use your default squad for this match? The lineup saved for this match will be removed."
+      )
+    ) {
+      return;
+    }
+    clearFixtureMatchdaySquad(id).catch((err) => {
+      alert(err?.message || "Could not clear this match lineup");
+    });
+  });
   await preselectFixtureFromUrl();
   maybeShowCheckinFixNotice();
 });
