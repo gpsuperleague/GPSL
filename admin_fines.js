@@ -593,7 +593,7 @@ function renderTariffList() {
         ? `<div style="align-self:flex-end;"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-f="on_video_report"${t.on_video_report ? " checked" : ""}> On the video report</label></div>`
         : "";
       return `
-        <div class="challenge-admin-item fine-tariff-row" data-tariff-row="${code}" style="${t.is_active ? "" : "opacity:.6;"}${onReport ? "border-left:3px solid #e80;" : ""}">
+        <div class="challenge-admin-item fine-tariff-row${onReport ? " on-video" : ""}" data-tariff-row="${code}" style="${t.is_active ? "" : "opacity:.6;"}">
           <div style="min-width:0;">
             <b>${escapeHtml(t.label)}</b>
             <span class="challenge-admin-meta">${code} · ${escapeHtml(t.category)} · ${escapeHtml(t.direction)} · ${amt}${t.is_active ? "" : " · inactive"}</span>
@@ -601,7 +601,7 @@ function renderTariffList() {
           <div class="fine-charge" title="${escapeHtml(wiring.why)}">${escapeHtml(wiring.charge)}</div>
           <div class="fine-state ${wiring.state}" title="${escapeHtml(wiring.why)}">${wiring.mark} ${escapeHtml(wiring.label)}</div>
           <div class="fine-video ${videoCol.cls}" title="${escapeHtml(videoCol.why)}">${escapeHtml(videoCol.text)}</div>
-          <div style="display:flex;gap:6px;">
+          <div class="fine-tariff-actions">
             <button type="button" class="button fine-edit-btn" data-code="${code}">Edit</button>
             <button type="button" class="button secondary fine-delete-btn" data-code="${code}" style="color:#f88;">Delete</button>
           </div>

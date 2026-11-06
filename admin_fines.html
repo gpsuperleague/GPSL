@@ -47,18 +47,30 @@
       max-width: min(100%, 900px);
     }
     .fine-tariff-head,
-    .admin-page .fine-tariff-row {
+    .admin-page .challenge-admin-item.fine-tariff-row {
       display: grid;
-      grid-template-columns: minmax(180px, 1fr) 132px 108px 118px auto;
-      gap: 8px 12px;
+      grid-template-columns: minmax(160px, 1fr) 148px 112px 124px 156px;
+      column-gap: 12px;
+      row-gap: 8px;
       align-items: center;
+      justify-content: stretch;
+      box-sizing: border-box;
     }
     .fine-tariff-head {
-      margin: 14px 2px 6px;
+      margin: 14px 0 6px;
+      padding: 0 13px;
       font-size: 11px;
       letter-spacing: 0.04em;
       text-transform: uppercase;
       color: #888;
+    }
+    .admin-page .fine-tariff-row.on-video {
+      box-shadow: inset 3px 0 0 #e80;
+    }
+    .fine-tariff-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
     }
     .fine-tariff-row .fine-inline-edit {
       grid-column: 1 / -1;
@@ -266,6 +278,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fines.js?v=20261106-tariff-video-col"></script>
+  <script type="module" src="admin_fines.js?v=20261106-tariff-align"></script>
 </body>
 </html>
