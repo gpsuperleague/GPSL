@@ -116,7 +116,7 @@ import {
   DESIGNATION_STAR,
   DESIGNATION_OOO,
   DESIGNATION_FF,
-} from "./squad_designations.js?v=20261003-big-star";
+} from "./squad_designations.js?v=20261106-handpick-ooo";
 import {
   loadClubSaleMarks,
   setClubSaleMark,
@@ -159,7 +159,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20261027-fit-severity";
+} from "./squad_info_tips.js?v=20261106-handpick-ooo";
 
 window.supabase = supabase;
 

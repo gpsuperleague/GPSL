@@ -10,7 +10,7 @@ import {
   SECTION_FINANCES,
   SECTION_EXPECTATIONS,
 } from "./club_pages.js?v=20261018-syntax";
-import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261104-handbook";
+import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261106-handpick-ooo";
 import { SECTION_MEDICAL } from "./medical.js?v=20261024-half-cap";
 import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js?v=20261104-handbook";
 import {

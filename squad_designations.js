@@ -39,6 +39,17 @@ export function designationEditOpen(state) {
   return state?.designation_edit_open !== false;
 }
 
+/** Compliance-row sentence for the OooO / Fan Favourite edit lock. */
+export function designationEditNote(state, whenOpen, whenClosed) {
+  if (state?.designation_edit_reason === "handpick_new_owner") {
+    return (
+      "Mid-season handpick: you took the club after the window closed, so you can set this now. " +
+      "It locks again when the next GPSL January window closes."
+    );
+  }
+  return designationEditOpen(state) ? whenOpen : whenClosed;
+}
+
 /**
  * Role options for the per-player Action dropdown (Squad page).
  * Stars are automatic. Manual: One of our own XOR Fan Favourite.
@@ -179,7 +190,6 @@ export function projectedStarComplianceRow(state, ghostPlayers = []) {
 export function oooComplianceRow(state) {
   const has = !!state?.one_of_our_own_player_id;
   const oooAllowed = state?.ooo_allowed !== false;
-  const editOpen = designationEditOpen(state);
   if (!oooAllowed) {
     return {
       rule: "One of our own",
@@ -195,9 +205,11 @@ export function oooComplianceRow(state) {
     rule: "One of our own",
     whoCounts: "Home-grown star — Action menu (XOR Fan Favourite)",
     requirement: "Optional (1 slot)",
-    note: editOpen
-      ? "Excused from star cap/tax. Editable in GPSL preseason or January."
-      : "Excused from star cap/tax. Locked until GPSL preseason or January.",
+    note: designationEditNote(
+      state,
+      "Excused from star cap/tax. Editable in GPSL preseason or January.",
+      "Excused from star cap/tax. Locked until GPSL preseason or January."
+    ),
     count: has ? 1 : 0,
     ok: true,
     status: has ? "Assigned" : "Not assigned",
@@ -207,16 +219,17 @@ export function oooComplianceRow(state) {
 export function fanFavouriteComplianceRow(state) {
   const has = !!state?.fan_favourite_player_id;
   const oooAllowed = state?.ooo_allowed !== false;
-  const editOpen = designationEditOpen(state);
   return {
     rule: "Fan Favourite",
     whoCounts: oooAllowed
       ? "Any nationality rated 76–78 — XOR One of our own"
       : "Any nationality rated 76–78 (only option — no nation stars)",
     requirement: "Optional (1 slot)",
-    note: editOpen
-      ? "Central Bank pays 50% of their wage. Editable in GPSL preseason or January."
-      : "Central Bank pays 50% of their wage. Locked until GPSL preseason or January.",
+    note: designationEditNote(
+      state,
+      "Central Bank pays 50% of their wage. Editable in GPSL preseason or January.",
+      "Central Bank pays 50% of their wage. Locked until GPSL preseason or January."
+    ),
     count: has ? 1 : 0,
     ok: true,
     status: has ? "Assigned" : "Not assigned",
