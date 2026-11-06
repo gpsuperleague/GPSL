@@ -441,14 +441,46 @@ function tariffWiring(t) {
     };
   }
   const ok = tariffCanCharge(t);
+  const covered = COVERED_ELSEWHERE[t.code];
   return {
     charge: "Hand only",
     state: ok ? "idle" : "broken",
     mark: ok ? "○" : "✕",
     label: ok ? "Not wired" : "Broken",
-    why: ok
-      ? "Nothing calls this. An admin can still apply it from this page."
-      : "Nothing calls this, and the amount is 0 so a hand apply is rejected too.",
+    why: covered
+      ? covered
+      : ok
+        ? "Nothing calls this. An admin can still apply it from this page."
+        : "Nothing calls this, and the amount is 0 so a hand apply is rejected too.",
+  };
+}
+
+const COVERED_ELSEWHERE = {
+  breach_squad_28_max:
+    "Going over 28 is charged as squad_overflow_mv_release (₿10m) when a signing forces a market-value release. This ₿5m row is never called.",
+  breach_squad_30_max:
+    "The squad cap in use is 28, charged as squad_overflow_mv_release. This 30-man row is never called.",
+};
+
+function videoReportCell(t) {
+  if (onVideoReport(t)) {
+    return {
+      text: "Yes",
+      cls: "on",
+      why: "Owners can choose this on the match-video R button. It is charged when staff approve the report.",
+    };
+  }
+  if (videoReportColumn && t.on_video_report) {
+    return {
+      text: "Ticked, hidden",
+      cls: "off",
+      why: "The video-report tick is on, but the R button only lists an active fine. A credit and the missing-video tariff stay off it.",
+    };
+  }
+  return {
+    text: "No",
+    cls: "off",
+    why: "Not on the match-video R button.",
   };
 }
 
@@ -556,6 +588,7 @@ function renderTariffList() {
       const code = escapeHtml(t.code);
       const onReport = onVideoReport(t);
       const wiring = tariffWiring(t);
+      const videoCol = videoReportCell(t);
       const videoCheck = videoReportColumn
         ? `<div style="align-self:flex-end;"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-f="on_video_report"${t.on_video_report ? " checked" : ""}> On the video report</label></div>`
         : "";
@@ -567,6 +600,7 @@ function renderTariffList() {
           </div>
           <div class="fine-charge" title="${escapeHtml(wiring.why)}">${escapeHtml(wiring.charge)}</div>
           <div class="fine-state ${wiring.state}" title="${escapeHtml(wiring.why)}">${wiring.mark} ${escapeHtml(wiring.label)}</div>
+          <div class="fine-video ${videoCol.cls}" title="${escapeHtml(videoCol.why)}">${escapeHtml(videoCol.text)}</div>
           <div style="display:flex;gap:6px;">
             <button type="button" class="button fine-edit-btn" data-code="${code}">Edit</button>
             <button type="button" class="button secondary fine-delete-btn" data-code="${code}" style="color:#f88;">Delete</button>

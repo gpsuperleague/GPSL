@@ -49,7 +49,7 @@
     .fine-tariff-head,
     .admin-page .fine-tariff-row {
       display: grid;
-      grid-template-columns: minmax(200px, 1fr) 148px 88px auto;
+      grid-template-columns: minmax(180px, 1fr) 132px 108px 118px auto;
       gap: 8px 12px;
       align-items: center;
     }
@@ -75,6 +75,12 @@
     .fine-state.working { color: #8d8; }
     .fine-state.broken { color: #f88; }
     .fine-state.idle { color: #888; }
+    .fine-video {
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .fine-video.on { color: #e80; }
+    .fine-video.off { color: #888; }
   </style>
 </head>
 <body class="admin-page">
@@ -247,6 +253,7 @@
           <span>Fine</span>
           <span>Charge</span>
           <span>State</span>
+          <span>Video report</span>
           <span></span>
         </div>
         <div id="fineTariffList" class="challenge-admin-list"></div>
@@ -259,6 +266,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fines.js?v=20261106-tariff-state"></script>
+  <script type="module" src="admin_fines.js?v=20261106-tariff-video-col"></script>
 </body>
 </html>
