@@ -152,7 +152,7 @@ async function resolveReport(id, action) {
   if (
     action === "approve" &&
     !confirm(
-      "Approve this report? Fines will be applied for each breach and the reporter gets ₿2,000 Building Society."
+      "Approve this report? Fines will be applied for each breach. Dragging players off the default formation forfeits the match 0–3. The reporter gets ₿2,000 Building Society."
     )
   ) {
     return;

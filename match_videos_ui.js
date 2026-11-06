@@ -463,7 +463,7 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
           ${escapeHtml(String(accused || side).toUpperCase())} · ${escapeHtml(side)} video
           ${fixture?.matchday != null ? ` · MD${escapeHtml(fixture.matchday)}` : ""}
           <br>Select every breach you can see — each one needs a note (e.g. timestamp). One report only per match side.
-          <br>Includes display rules (e.g. <b>no individual player instructions</b>, Show Fluid Formation, Red/Blue timing).
+          <br>Includes display rules (e.g. <b>no individual player instructions</b>, <b>dragging a player off the default formation is a 0–3 forfeit</b>, Red/Blue timing).
         </p>
         <div class="mv-breach-list" id="mvBreachList">
           ${codes

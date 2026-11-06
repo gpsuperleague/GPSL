@@ -44,7 +44,7 @@ import {
   matchConsoleStripHtml,
   pitchBehaviourPanelHtml,
   wirePitchAck,
-} from "./matchday_console_rules.js?v=20261012-console-text2";
+} from "./matchday_console_rules.js?v=20261106-formation-forfeit";
 import {
   downloadIcs,
   fixtureKickoffEvent,

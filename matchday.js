@@ -45,17 +45,17 @@ import {
   getSquadPlayerIds,
 } from "./matchday_squad.js?v=20261012-md-picker";
 import { loadGpslFormations } from "./gpsl_formations.js?v=20260926-catalogue-xy";
-import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20261103-tab-tips";
+import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20261106-formation-forfeit";
 import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
 import {
   matchConsoleStripHtml,
   pitchBehaviourPanelHtml,
   wirePitchAck,
   getMatchdayConsoleRulesCards,
-} from "./matchday_console_rules.js?v=20261103-tab-tips";
+} from "./matchday_console_rules.js?v=20261106-formation-forfeit";
 import { playerNameLinkHtml } from "./player_links.js";
 import { fullClubName } from "./clubs_lookup.js";
-import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261020-blackbox";
+import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261106-formation-forfeit";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,

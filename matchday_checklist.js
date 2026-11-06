@@ -203,8 +203,8 @@ const REC_GROUPS = [
     heading: "Tactics",
     items: [
       ["rec_tac_instructions", "Player instructions blank (blocked if used)"],
-      ["rec_tac_subtactic", "Subtactic: standard formations only"],
-      ["rec_tac_fluid", "Fluid Formation: Standard formations"],
+      ["rec_tac_subtactic", "Default Konami formation set before kick-off"],
+      ["rec_tac_fluid", "No player dragging — in-match changes are default formations (0–3 forfeit)"],
     ],
   },
   {

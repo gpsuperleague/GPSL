@@ -17,7 +17,7 @@ import {
   formatFixtureUnavailableHtml,
   unavailableStatusByPlayerId,
 } from "./player_discipline.js";
-import { prematchConsoleChecklistHtml } from "./matchday_console_rules.js?v=20261012-console-text2";
+import { prematchConsoleChecklistHtml } from "./matchday_console_rules.js?v=20261106-formation-forfeit";
 
 function unavailableLabel(status) {
   if (status === "injured") return "Injured";

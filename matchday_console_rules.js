@@ -13,7 +13,7 @@ export const CONSOLE_DISPLAY_CHIPS = [
   "Show Subtactic",
   "Show Squad",
   "No individual instructions",
-  "Fluid Formation OK (On preferred)",
+  "Don't drag players — 0–3 forfeit",
 ];
 
 export const CONSOLE_PAUSE_CHIPS = ["PA3 or PA4", "Advanced skill only"];
@@ -189,7 +189,7 @@ export function prematchConsoleChecklistHtml() {
     ],
     [
       "Tactics",
-      "Subtactic + Fluid Formation — standard formations only (Fluid On preferred)",
+      "Set a default Konami formation before kick-off. In-match changes must be another default formation. Dragging a player off the dots forfeits the match 0–3.",
     ],
     ["Pause before KO", "PA3 or PA4 · Advanced skill only"],
     [
@@ -254,11 +254,12 @@ export function getMatchdayConsoleRulesCards() {
       },
       {
         heading: "Tactics",
-        tip: "Blank player instructions. Subtactic and Fluid Formation = standard formations only.",
+        tip: "Set the formation before kick-off. Dragging a player off the default dots forfeits the match 0–3.",
         items: [
           "<b>Player instructions</b> blank (blocked if used — ₿10m).",
-          "<b>Subtactic</b>: <b>standard formations only</b>.",
-          "<b>Fluid Formation: Standard formations</b>.",
+          "Set a <b>default Konami formation</b> before kick-off. Leave players on the dots.",
+          "A formation change in the match must be another <b>default Konami formation</b>. Fluid can stay on, still on a default shape.",
+          "<b>Dragging a player</b> off the dots <b>forfeits the match 0–3</b>. Report it from the Fixtures <b>R</b> button.",
         ],
       },
       {
