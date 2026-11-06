@@ -363,6 +363,95 @@ function onVideoReport(t) {
   return videoReportCodes.has(t.code);
 }
 
+const AUTOMATED_TARIFFS = new Set([
+  "match_mgmt_no_proposal",
+  "match_late_arrangement",
+  "match_response_deadline",
+  "match_no_show_1",
+  "match_no_show_2",
+  "match_no_show_3",
+  "match_no_show_strike_triple",
+  "match_video_missing",
+  "match_already_played_bypass",
+  "match_manual_mutual_forfeit",
+  "breach_squad_24_min",
+  "breach_squad_hg_min",
+  "breach_squad_u21_min",
+  "breach_squad_star_cap",
+  "squad_overflow_mv_release",
+]);
+
+const BROKEN_TARIFFS = new Set(["match_no_show_fixture_forfeit", "match_window_expiry"]);
+
+function tariffCanCharge(t) {
+  if (t.amount_mode === "manual") return true;
+  if (t.code === "formation_player_drag") return true;
+  return Number(t.amount) > 0;
+}
+
+function tariffWiring(t) {
+  if (BROKEN_TARIFFS.has(t.code)) {
+    return {
+      charge: "Automated",
+      state: "broken",
+      mark: "✕",
+      label: "Broken",
+      why: "The forfeit helper charges this after writing the 0–3. The amount is 0, so the charge is rejected and the result rolls back.",
+    };
+  }
+  if (t.code === "formation_player_drag") {
+    return {
+      charge: "Admin confirmed",
+      state: "working",
+      mark: "✓",
+      label: "Working",
+      why: "Staff approve the video report. The match is replayed or the result stands, with −1 point at 2 or more drags. No money is taken.",
+    };
+  }
+  if (AUTOMATED_TARIFFS.has(t.code)) {
+    return {
+      charge: "Automated",
+      state: "working",
+      mark: "✓",
+      label: "Working",
+      why: "A job charges this. While automatic fines are off, the owner gets a would-have-been-fined note instead.",
+    };
+  }
+  if (t.direction === "compensation") {
+    return {
+      charge: "Hand only",
+      state: tariffCanCharge(t) ? "idle" : "broken",
+      mark: tariffCanCharge(t) ? "○" : "✕",
+      label: tariffCanCharge(t) ? "Not wired" : "Broken",
+      why: tariffCanCharge(t)
+        ? "A credit. Nothing pays it on its own. An admin applies it and types the amount when the row has none."
+        : "No amount is set, so applying it is rejected.",
+    };
+  }
+  if (onVideoReport(t)) {
+    const ok = tariffCanCharge(t);
+    return {
+      charge: "Admin confirmed",
+      state: ok ? "working" : "broken",
+      mark: ok ? "✓" : "✕",
+      label: ok ? "Working" : "Broken",
+      why: ok
+        ? "An opponent reports it on the video. Nothing is taken until staff approve."
+        : "It is on the video report, but the amount is 0 so approval cannot charge it.",
+    };
+  }
+  const ok = tariffCanCharge(t);
+  return {
+    charge: "Hand only",
+    state: ok ? "idle" : "broken",
+    mark: ok ? "○" : "✕",
+    label: ok ? "Not wired" : "Broken",
+    why: ok
+      ? "Nothing calls this. An admin can still apply it from this page."
+      : "Nothing calls this, and the amount is 0 so a hand apply is rejected too.",
+  };
+}
+
 function setTariffFilter(next) {
   tariffFilter = next;
   for (const [id, value] of [
@@ -466,18 +555,18 @@ function renderTariffList() {
         t.amount_mode === "manual" ? "manual" : formatMoney(Number(t.amount || 0));
       const code = escapeHtml(t.code);
       const onReport = onVideoReport(t);
-      const badge = onReport
-        ? `<span style="display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;background:#e80;color:#111;font-size:11px;font-weight:700;letter-spacing:.02em;">Video report</span>`
-        : "";
+      const wiring = tariffWiring(t);
       const videoCheck = videoReportColumn
         ? `<div style="align-self:flex-end;"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-f="on_video_report"${t.on_video_report ? " checked" : ""}> On the video report</label></div>`
         : "";
       return `
-        <div class="challenge-admin-item" data-tariff-row="${code}" style="flex-wrap:wrap;${t.is_active ? "" : "opacity:.6;"}${onReport ? "border-left:3px solid #e80;" : ""}">
-          <div style="flex:1;min-width:240px;">
-            <b>${escapeHtml(t.label)}</b>${badge}
+        <div class="challenge-admin-item fine-tariff-row" data-tariff-row="${code}" style="${t.is_active ? "" : "opacity:.6;"}${onReport ? "border-left:3px solid #e80;" : ""}">
+          <div style="min-width:0;">
+            <b>${escapeHtml(t.label)}</b>
             <span class="challenge-admin-meta">${code} · ${escapeHtml(t.category)} · ${escapeHtml(t.direction)} · ${amt}${t.is_active ? "" : " · inactive"}</span>
           </div>
+          <div class="fine-charge" title="${escapeHtml(wiring.why)}">${escapeHtml(wiring.charge)}</div>
+          <div class="fine-state ${wiring.state}" title="${escapeHtml(wiring.why)}">${wiring.mark} ${escapeHtml(wiring.label)}</div>
           <div style="display:flex;gap:6px;">
             <button type="button" class="button fine-edit-btn" data-code="${code}">Edit</button>
             <button type="button" class="button secondary fine-delete-btn" data-code="${code}" style="color:#f88;">Delete</button>

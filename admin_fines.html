@@ -46,6 +46,35 @@
     .fine-apply-fields .fine-field-fixture select {
       max-width: min(100%, 900px);
     }
+    .fine-tariff-head,
+    .admin-page .fine-tariff-row {
+      display: grid;
+      grid-template-columns: minmax(200px, 1fr) 148px 88px auto;
+      gap: 8px 12px;
+      align-items: center;
+    }
+    .fine-tariff-head {
+      margin: 14px 2px 6px;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #888;
+    }
+    .fine-tariff-row .fine-inline-edit {
+      grid-column: 1 / -1;
+    }
+    .fine-charge {
+      font-size: 12px;
+      font-weight: 700;
+      color: #ddd;
+    }
+    .fine-state {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .fine-state.working { color: #8d8; }
+    .fine-state.broken { color: #f88; }
+    .fine-state.idle { color: #888; }
   </style>
 </head>
 <body class="admin-page">
@@ -148,8 +177,10 @@
       <div class="card">
         <h2>Tariff catalogue</h2>
         <p class="note">
-          Add a fine below. A row marked <b>Video report</b> is one of the choices on the match-video R button.
-          Tick <b>On the video report</b> to put a fine on that list, or clear it to take it off.
+          Add a fine below. <b>Automated</b> means a job charges it.
+          <b>Admin confirmed</b> means it waits for staff to approve a video report.
+          <b>✓</b> the charge goes through. <b>✕</b> the charge aborts the result.
+          <b>○</b> nothing calls it; an admin can still apply it by hand.
         </p>
         <div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">
           <button type="button" id="seedFinesBtn" class="button">Seed Excel tariffs</button>
@@ -212,7 +243,13 @@
         </div>
         <div id="fineFormStatus" class="status-line"></div>
 
-        <div id="fineTariffList" class="challenge-admin-list" style="margin-top:16px;"></div>
+        <div class="fine-tariff-head" aria-hidden="true">
+          <span>Fine</span>
+          <span>Charge</span>
+          <span>State</span>
+          <span></span>
+        </div>
+        <div id="fineTariffList" class="challenge-admin-list"></div>
         <div id="fineTariffStatus" class="status-line"></div>
       </div>
 
@@ -222,6 +259,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fines.js?v=20261106-tariff-video-report"></script>
+  <script type="module" src="admin_fines.js?v=20261106-tariff-state"></script>
 </body>
 </html>
