@@ -19,9 +19,10 @@ import { formatMoney } from "./competition.js";
 import { installRangeSteppers } from "./range_filter_steppers.js?v=20260811-step-pairs";
 import {
   loadHandpickBasketState,
+  loadHandpickOtherHolds,
   setHandpickManager,
   handpickTagChar,
-} from "./handpick_basket.js?v=20261031-mgr-tag";
+} from "./handpick_basket.js?v=20261106-exclusive-tag";
 
 const TABLE_COLUMNS = [
   { key: "name", label: "Manager" },
@@ -74,6 +75,7 @@ let impactChart = new Map();
 let HANDPICK_CLUB = null;
 let HANDPICK_INTAKE = false;
 let HANDPICK_MANAGER_ID = null;
+let HANDPICK_HELD_MANAGER_IDS = new Set();
 let HANDPICK_MGR_ONLY = false;
 let CURRENT_USER = null;
 
@@ -371,8 +373,13 @@ function renderPage() {
           const tagged =
             HANDPICK_MANAGER_ID != null &&
             Number(row.id) === Number(HANDPICK_MANAGER_ID);
+          const held =
+            !tagged && HANDPICK_HELD_MANAGER_IDS.has(Number(row.id));
           if (!isFa) {
             return `<td class="mgdb-handpick-col" title="Handpick tags are for free-agent managers only"><span style="color:#555;">—</span></td>`;
+          }
+          if (held) {
+            return `<td class="mgdb-handpick-col" title="Another club doing handpick already has this manager tagged"><span style="color:#888;">Held</span></td>`;
           }
           return `<td class="mgdb-handpick-col"><button type="button" class="handpick-btn${
             tagged ? " handpick-on" : ""
@@ -422,6 +429,10 @@ function renderPage() {
       );
       btn.disabled = false;
       if (!res?.ok) {
+        if (res?.reason === "held_by_other") {
+          HANDPICK_HELD_MANAGER_IDS.add(mid);
+          renderPage();
+        }
         window.alert(
           res?.detail ||
             res?.reason ||
@@ -482,6 +493,7 @@ async function loadHandpickState() {
   HANDPICK_INTAKE = false;
   HANDPICK_MANAGER_ID = null;
   HANDPICK_CLUB = null;
+  HANDPICK_HELD_MANAGER_IDS = new Set();
   if (!CURRENT_USER) {
     syncHandpickUi();
     return;
@@ -498,6 +510,10 @@ async function loadHandpickState() {
       hp.managerId != null && Number.isFinite(Number(hp.managerId))
         ? Number(hp.managerId)
         : null;
+    if (HANDPICK_INTAKE && HANDPICK_CLUB) {
+      const holds = await loadHandpickOtherHolds(supabase, HANDPICK_CLUB);
+      HANDPICK_HELD_MANAGER_IDS = holds.managerIds;
+    }
   } catch (err) {
     console.warn("MGDB handpick:", err);
   }

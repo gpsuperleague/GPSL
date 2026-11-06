@@ -114,9 +114,10 @@ import {
 } from "./scouting_targets.js?v=20260805-owner-scout";
 import {
   loadHandpickBasketState,
+  loadHandpickOtherHolds,
   toggleHandpickBasketPlayer,
   handpickTagChar,
-} from "./handpick_basket.js?v=20261031-handpick-tag";
+} from "./handpick_basket.js?v=20261106-exclusive-tag";
 import {
   playerDraftGetMyMaxBid,
   playerDraftSetMaxBid,
@@ -743,6 +744,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let SCOUTED_ONLY = false;
   /** @type {Set<string>} */
   let HANDPICK_BASKET_IDS = new Set();
+  let HANDPICK_HELD_IDS = new Set();
   let HANDPICK_INTAKE = false;
   let HANDPICK_ONLY = false;
   let FINAL_YEAR_ONLY = false;
@@ -1191,6 +1193,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       HANDPICK_INTAKE = false;
       HANDPICK_BASKET_IDS = new Set();
+      HANDPICK_HELD_IDS = new Set();
       if (CURRENT_USER_CLUB_SHORT) {
         try {
           const hp = await loadHandpickBasketState(
@@ -1199,6 +1202,13 @@ document.addEventListener("DOMContentLoaded", () => {
           );
           HANDPICK_INTAKE = !!hp.handpickIntake;
           HANDPICK_BASKET_IDS = hp.playerIds || new Set();
+          if (HANDPICK_INTAKE) {
+            const holds = await loadHandpickOtherHolds(
+              supabase,
+              CURRENT_USER_CLUB_SHORT
+            );
+            HANDPICK_HELD_IDS = holds.playerIds;
+          }
         } catch (err) {
           console.warn("Handpick basket:", err);
         }
@@ -2534,6 +2544,8 @@ document.addEventListener("DOMContentLoaded", () => {
             : `<button type="button" class="scout-btn${scouted ? " scout-on" : ""}" data-player-id="${player.Konami_ID}" title="${scouted ? `Scouting (tier ${scoutTier}) — click to remove` : "Add to scouting (top target)"}">${scoutingStarChar(scouted)}</button>`
           : "";
         const hpTagged = HANDPICK_BASKET_IDS.has(String(player.Konami_ID));
+        const hpHeld =
+          !hpTagged && HANDPICK_HELD_IDS.has(String(player.Konami_ID));
         const foreignLocked = !!formatForeignContractGpdbHtml(
           player,
           TRANSFER_STATUS_STATE
@@ -2561,7 +2573,9 @@ document.addEventListener("DOMContentLoaded", () => {
           handpickBlockedTitle = "Already contracted";
         }
         const handpickCell = showHandpickCol
-          ? canHandpickTag
+          ? hpHeld
+            ? `<span class="locked-msg" title="Another club doing handpick already has this player tagged">Held</span>`
+            : canHandpickTag
             ? `<button type="button" class="handpick-btn${hpTagged ? " handpick-on" : ""}" data-player-id="${player.Konami_ID}" title="${
                 hpTagged
                   ? "On your handpick wishlist — click to untag (still a free agent)"
@@ -2761,11 +2775,15 @@ document.addEventListener("DOMContentLoaded", () => {
             CURRENT_USER_CLUB_SHORT
           );
           if (!res?.ok) {
+            if (res?.reason === "held_by_other") {
+              HANDPICK_HELD_IDS.add(String(pid));
+            }
             alert(
               res?.detail ||
                 res?.reason ||
                 "Could not update handpick tag. Sign in as the club owner with handpick open."
             );
+            if (res?.reason === "held_by_other") await loadPage(CURRENT_PAGE);
             return;
           }
           if (res.tagged) {

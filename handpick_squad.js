@@ -6,7 +6,7 @@ import {
   setHandpickBasketPlayer,
   setHandpickManager,
   clearHandpickBasket,
-} from "./handpick_basket.js?v=20261031-mgr-tag";
+} from "./handpick_basket.js?v=20261106-exclusive-tag";
 import {
   MIN_GOALKEEPERS,
   MIN_HOME_GROWN,
@@ -1060,6 +1060,7 @@ async function runPlayerSearch() {
     .map((r) => {
       const id = String(r.player_id || "");
       const inBasket = basket.has(id);
+      const held = !!r.held_by_other && !inBasket;
       const gpdbHref = gpdbPlayerUrl(id);
       return `<tr>
         <td><a href="${escapeHtml(gpdbHref)}" target="_blank" rel="noopener" style="color:#e8c84a;">${escapeHtml(
@@ -1070,8 +1071,12 @@ async function runPlayerSearch() {
         <td class="num">${r.rating ?? "—"}</td>
         <td class="num">${escapeHtml(formatMoney(Number(r.market_value) || 0))}</td>
         <td><button type="button" class="button add-btn" data-id="${escapeHtml(id)}" ${
-          inBasket ? "disabled" : ""
-        }>${inBasket ? "Added" : "Add"}</button></td>
+          inBasket || held ? "disabled" : ""
+        } title="${
+          held
+            ? "Another handpick club has this player tagged"
+            : ""
+        }">${inBasket ? "Added" : held ? "Held" : "Add"}</button></td>
       </tr>`;
     })
     .join("")}
@@ -1117,6 +1122,7 @@ async function runManagerSearch() {
   const { data, error } = await supabase.rpc("handpick_search_managers", {
     p_query: q,
     p_limit: 20,
+    p_club_short_name: activeClub,
   });
 
   if (error) {
@@ -1137,14 +1143,17 @@ async function runManagerSearch() {
     .map((r) => {
       const id = String(r.manager_id);
       const selected = pickedManager && String(pickedManager.manager_id) === id;
+      const held = !!r.held_by_other && !selected;
       return `<tr>
         <td>${escapeHtml(r.manager_name)}</td>
         <td>${escapeHtml(r.nation || "—")}</td>
         <td class="num">${r.rating ?? "—"}</td>
         <td class="num">${escapeHtml(formatMoney(Number(r.market_value) || 0))}</td>
-        <td><button type="button" class="button mgr-btn" data-id="${escapeHtml(id)}">${
-          selected ? "Selected" : "Select"
-        }</button></td>
+        <td><button type="button" class="button mgr-btn" data-id="${escapeHtml(id)}" ${
+          held ? "disabled" : ""
+        } title="${
+          held ? "Another handpick club has this manager tagged" : ""
+        }">${selected ? "Selected" : held ? "Held" : "Select"}</button></td>
       </tr>`;
     })
     .join("")}

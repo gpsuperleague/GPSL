@@ -111,3 +111,19 @@ export async function toggleHandpickManager(
 export function handpickTagChar(on) {
   return on ? "☑" : "☐";
 }
+
+/** Player and manager ids tagged by some other club still in handpick. */
+export async function loadHandpickOtherHolds(supabase, clubShortName = null) {
+  const { data, error } = await supabase.rpc("handpick_other_holds", {
+    p_club_short_name: clubShortName || null,
+  });
+  if (error) throw error;
+  const playerIds = Array.isArray(data?.player_ids) ? data.player_ids.map(String) : [];
+  const managerIds = Array.isArray(data?.manager_ids)
+    ? data.manager_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+    : [];
+  return {
+    playerIds: new Set(playerIds.filter(Boolean)),
+    managerIds: new Set(managerIds),
+  };
+}
