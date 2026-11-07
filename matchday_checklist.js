@@ -302,7 +302,6 @@ const REC_LEGACY_EXPAND = {
   rec_post_match: ["rec_post_ratings", "rec_post_potm", "rec_post_stop"],
 };
 
-const REC_BEFORE_MS = 30 * 60 * 1000;
 const REC_AFTER_MS = 2 * 60 * 60 * 1000;
 
 /** fixture_id → Set of ticked rec_* keys */
@@ -317,19 +316,30 @@ function expandRecTicks(raw) {
   return out;
 }
 
+function checkinDone(fx) {
+  return (fx.steps || []).some((s) => s.key === "checkin" && s.state === "done");
+}
+
+/** Both checked in makes the server offer Enter result. That is not the pre-match list. */
+function enterResultIsOnlyBecauseCheckedIn(fx) {
+  const next = fx.next_action;
+  return checkinDone(fx) && next?.key === "result" && next?.action === "Enter result";
+}
+
 function recordingWindowOpen(fx) {
-  if (!fx.agreed_kickoff_at) return false;
+  if (!checkinDone(fx)) return false;
+  if (!fx.agreed_kickoff_at) return true;
   const ko = new Date(fx.agreed_kickoff_at).getTime();
-  if (!Number.isFinite(ko)) return false;
-  const now = Date.now();
-  if (now < ko - REC_BEFORE_MS || now > ko + REC_AFTER_MS) return false;
-  const result = (fx.steps || []).find((s) => s.key === "result");
-  return result?.state !== "done";
+  if (!Number.isFinite(ko)) return true;
+  return Date.now() <= ko + REC_AFTER_MS;
 }
 
 function renderRecordingBlock(fx) {
   if (!recordingWindowOpen(fx)) return "";
   const fid = Number(fx.fixture_id);
+  const resultLink = enterResultIsOnlyBecauseCheckedIn(fx)
+    ? `<div class="mc-actions"><a class="mc-btn" href="matchday.html?fixture=${fid}">Enter result when the match is played</a></div>`
+    : "";
   const ticked = expandRecTicks(recTicks.get(fid));
   const done = REC_ITEMS.filter(([k]) => ticked.has(k)).length;
   const groupsHtml = REC_GROUPS.map((g) => {
@@ -354,9 +364,10 @@ function renderRecordingBlock(fx) {
   }).join("");
   return `
     <div class="mc-rec">
-      <div class="mc-rec-head">🎥 <b>Start recording now</b> <span>${done} / ${REC_ITEMS.length} shown</span>
+      <div class="mc-rec-head">🎥 <b>Pre-match checklist</b> <span>${done} / ${REC_ITEMS.length} ticked</span>
         <a href="learning_gpsl.html#matchday-checklist" target="_blank" rel="noopener">Full checklist</a></div>
       <div class="mc-rec-groups">${groupsHtml}</div>
+      ${resultLink}
     </div>`;
 }
 
@@ -459,8 +470,12 @@ function renderFixture(fx) {
     : "";
   const video = steps.find((s) => s.key === "video");
   const showFilename = video?.filename && ["todo", "warn", "overdue"].includes(video.state);
+  const ticksheetInstead = enterResultIsOnlyBecauseCheckedIn(fx);
+  const actionNext = ticksheetInstead ? null : next;
   let status;
-  if (next) {
+  if (ticksheetInstead) {
+    status = `<div class="mc-next mc-next-todo"><b>Pre-match checklist</b> <span class="mc-next-detail">Check-in means both clubs are ready. Tick the list below yourself — check-in does not tick it.</span></div>`;
+  } else if (next) {
     status = `<div class="mc-next mc-next-${escapeHtml(next.state)}"><b>${escapeHtml(next.label)}</b>${
       nextDetail ? ` <span class="mc-next-detail">${escapeHtml(nextDetail)}</span>` : ""
     }</div>`;
@@ -485,7 +500,7 @@ function renderFixture(fx) {
       ${status}
       ${showFilename ? `<div class="mc-filename">Filename: <code>${escapeHtml(video.filename)}</code></div>` : ""}
       ${fx.flags?.length ? `<div class="mc-flags">${renderFlags(fx.flags)}</div>` : ""}
-      ${next ? `<div class="mc-actions">${renderActionButton(next, fid)}</div>` : ""}
+      ${actionNext ? `<div class="mc-actions">${renderActionButton(actionNext, fid)}</div>` : ""}
       ${renderRecordingBlock(fx)}
     </div>`;
 }
