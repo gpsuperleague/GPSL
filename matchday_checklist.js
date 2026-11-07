@@ -34,6 +34,49 @@ async function enrichChecklistFixturesWithHomeWeather(data, arrange) {
   if (arrange?.fixtures) arrange.fixtures = arr.map(merge);
 }
 
+function formatOwnerTag(raw) {
+  const t = String(raw || "").trim();
+  if (!t) return "";
+  return t.startsWith("@") ? t : `@${t}`;
+}
+
+async function enrichChecklistOwnerTags(data, arrange) {
+  const fx = Array.isArray(data?.fixtures) ? data.fixtures : [];
+  const arr = Array.isArray(arrange?.fixtures) ? arrange.fixtures : [];
+  const shorts = new Set();
+  for (const row of [...fx, ...arr]) {
+    for (const key of ["home_club_short_name", "away_club_short_name", "opponent_short_name"]) {
+      const s = String(row?.[key] || "").trim();
+      if (s) shorts.add(s);
+    }
+  }
+  if (!shorts.size) return;
+  const { data: clubs, error } = await supabase
+    .from("Clubs")
+    .select("ShortName, owner")
+    .in("ShortName", [...shorts]);
+  if (error) {
+    console.warn("checklist owner tags:", error.message);
+    return;
+  }
+  const byShort = new Map();
+  for (const c of clubs || []) {
+    const tag = formatOwnerTag(c.owner);
+    if (!c.ShortName || !tag) continue;
+    byShort.set(String(c.ShortName).toUpperCase(), tag);
+  }
+  const merge = (row) => {
+    const { home, away } = resolveHomeAway(row);
+    return {
+      ...row,
+      home_owner_tag: byShort.get(home) || row.home_owner_tag || "",
+      away_owner_tag: byShort.get(away) || row.away_owner_tag || "",
+    };
+  };
+  if (data?.fixtures) data.fixtures = fx.map(merge);
+  if (arrange?.fixtures) arrange.fixtures = arr.map(merge);
+}
+
 const REFRESH_MS = 120_000;
 const TICK_MS = 30_000;
 const COLLAPSE_KEY = "gpsl_mc_collapsed";
@@ -194,15 +237,16 @@ const REC_GROUPS = [
   {
     heading: "Personnel",
     items: [
-      ["rec_pers_manager", "Show Manager (GP)"],
-      ["rec_pers_subtactic", "Show Subtactic"],
-      ["rec_pers_squad", "Show Squad (incl. substitutes)"],
+      ["rec_pers_manager", "[show] Manager (GP)"],
+      ["rec_pers_subtactic", "[show] Subtactic"],
+      ["rec_pers_squad", "[show] Squad (incl. substitutes)"],
     ],
   },
   {
     heading: "Tactics",
     items: [
-      ["rec_tac_instructions", "Player instructions blank (blocked if used)"],
+      ["rec_tac_instructions", "[Show] player instructions blank"],
+      ["rec_tac_show_fluid", "show fluid formation"],
       ["rec_tac_subtactic", "Default Konami formation set before kick-off"],
       ["rec_tac_fluid", "No player dragging (sub tactic and Fluid set before the match)"],
     ],
@@ -249,6 +293,7 @@ const REC_LEGACY_EXPAND = {
     "rec_pers_subtactic",
     "rec_pers_squad",
     "rec_tac_instructions",
+    "rec_tac_show_fluid",
     "rec_tac_subtactic",
     "rec_tac_fluid",
   ],
@@ -391,8 +436,18 @@ function fixtureMetaHtml(fx) {
           kit_season: fx.kit_season,
         })}</span>`
       : "";
-  if (!homeBit && !condHtml) return "";
-  return `<div class="mc-fx-meta">${homeBit}${homeBit && condHtml ? `<span class="mc-fx-meta-sep">·</span>` : ""}${condHtml}</div>`;
+  const ownerBits = [
+    fx.home_owner_tag
+      ? `<span class="mc-fx-meta-owner">Home ${escapeHtml(fx.home_owner_tag)}</span>`
+      : "",
+    fx.away_owner_tag
+      ? `<span class="mc-fx-meta-owner">Away ${escapeHtml(fx.away_owner_tag)}</span>`
+      : "",
+  ].filter(Boolean);
+  const ownerHtml = ownerBits.join(`<span class="mc-fx-meta-sep">·</span>`);
+  const parts = [homeBit, ownerHtml, condHtml].filter(Boolean);
+  if (!parts.length) return "";
+  return `<div class="mc-fx-meta">${parts.join(`<span class="mc-fx-meta-sep">·</span>`)}</div>`;
 }
 
 function renderFixture(fx) {
@@ -646,6 +701,11 @@ export async function refreshMatchdayChecklist() {
     await enrichChecklistFixturesWithHomeWeather(lastData, lastArrange);
   } catch (err) {
     console.warn("checklist home/weather enrich:", err);
+  }
+  try {
+    await enrichChecklistOwnerTags(lastData, lastArrange);
+  } catch (err) {
+    console.warn("checklist owner tags:", err);
   }
   await loadRecTicks(lastData?.fixtures);
   render();
