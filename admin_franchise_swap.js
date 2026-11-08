@@ -98,8 +98,8 @@ async function swapClubs() {
     const msg = String(error.message || "");
     setStatus(
       "swapStatus",
-      msg.includes("admin_franchise_identity_swap")
-        ? "❌ Run supabase/sql/patches/swap_cop_to_lyo.sql in the Supabase SQL editor first."
+      msg.includes("admin_franchise_identity_swap") || msg.includes("schema cache")
+        ? "❌ The swap function is not in the database yet. Run supabase/sql/patches/swap_cop_to_lyo.sql in the Supabase SQL editor, then press Swap again."
         : "❌ " + msg,
       false
     );

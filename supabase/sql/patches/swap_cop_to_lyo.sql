@@ -1,8 +1,9 @@
 -- =============================================================================
--- Two-way franchise swap, then Copenhagen (COP) <-> Olympique Lyonnais (LYO)
+-- Two-way franchise swap. Installs admin_franchise_identity_swap only.
 -- =============================================================================
--- Running this file installs admin_franchise_identity_swap AND performs
--- COP <-> LYO. Run it once. Running it again swaps them back.
+-- This file does not swap Copenhagen and Lyon by itself. Run it, then use
+-- Admin → Club Management → Swap club identities and pick the two clubs.
+-- Running the swap twice swaps them back.
 --
 -- What moves with each franchise (owner, squad, money, transfers):
 --   fixtures, forfeits, scores, league slot, ledger, players, manager.
@@ -239,11 +240,3 @@ REVOKE ALL ON FUNCTION public.admin_franchise_identity_swap(text, text) FROM PUB
 GRANT EXECUTE ON FUNCTION public.admin_franchise_identity_swap(text, text) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
-
--- Performs the swap. Run the file once.
-SELECT public.admin_franchise_identity_swap('COP', 'LYO');
-
-SELECT "ShortName", "Club", "Stadium", "Capacity", "Nation", owner
-FROM public."Clubs"
-WHERE "ShortName" IN ('COP', 'LYO')
-ORDER BY "ShortName";
