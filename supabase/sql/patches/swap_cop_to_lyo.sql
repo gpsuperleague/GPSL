@@ -50,6 +50,7 @@ DECLARE
   v_src text;
   v_dst text;
   v_ord integer;
+  v_moved integer;
   r record;
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
@@ -131,21 +132,46 @@ BEGIN
     EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.tbl, r.conname);
   END LOOP;
 
+  -- Move the codes one at a time. A direct COP -> LYO hits Clubs_pkey while
+  -- LYO is still there. ZZ9 is only a stepping stone and is checked above.
+  CREATE TEMP TABLE _hops (
+    ord int PRIMARY KEY,
+    src text NOT NULL,
+    dst text NOT NULL
+  ) ON COMMIT DROP;
+
+  INSERT INTO _hops (ord, src, dst) VALUES (1, v_left, v_temp);
+  INSERT INTO _hops (ord, src, dst) VALUES (2, v_right, v_left);
+  INSERT INTO _hops (ord, src, dst) VALUES (3, v_temp, v_right);
+
   FOR v_ord, v_src, v_dst IN
-    SELECT s.ord, s.src, s.dst
-    FROM (VALUES
-      (1, v_left, v_temp),
-      (2, v_right, v_left),
-      (3, v_temp, v_right)
-    ) AS s(ord, src, dst)
-    ORDER BY s.ord
+    SELECT h.ord, h.src, h.dst
+    FROM _hops h
+    ORDER BY h.ord
   LOOP
     UPDATE public."Clubs"
     SET "ShortName" = v_dst
     WHERE "ShortName" = v_src;
+    GET DIAGNOSTICS v_moved = ROW_COUNT;
+    IF v_moved <> 1 THEN
+      RAISE EXCEPTION
+        'Club code move % (%) -> % changed % rows. Swap stopped; nothing was saved.',
+        v_ord, v_src, v_dst, v_moved;
+    END IF;
+  END LOOP;
 
-    FOR r IN SELECT tbl, col FROM _club_fks LOOP
-      EXECUTE format('UPDATE %s SET %I = %L WHERE %I = %L', r.tbl, r.col, v_dst, r.col, v_src);
+  FOR v_ord, v_src, v_dst IN
+    SELECT h.ord, h.src, h.dst
+    FROM _hops h
+    ORDER BY h.ord
+  LOOP
+    FOR r IN
+      SELECT tbl, col
+      FROM _club_fks
+      WHERE tbl NOT IN ('"Clubs"', 'public."Clubs"', 'Clubs')
+    LOOP
+      EXECUTE format('UPDATE %s SET %I = $1 WHERE %I = $2', r.tbl, r.col, r.col)
+        USING v_dst, v_src;
     END LOOP;
 
     FOR r IN
