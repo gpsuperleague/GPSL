@@ -270,6 +270,9 @@ export const DASHBOARD_PANELS = [
   p("admin_club_management", "Club Management", "admin_club_management.html", {
     adminOnly: true,
   }),
+  p("admin_franchise_swap", "Swap club identities", "admin_franchise_swap.html", {
+    adminOnly: true,
+  }),
   p("admin_star_tax", "Star tax", "admin_star_tax.html", { adminOnly: true }),
   p("admin_wage_pct", "Wage %", "admin_wage_pct.html", { adminOnly: true }),
   p("admin_tax_pct", "Tax %", "admin_tax_pct.html", { adminOnly: true }),

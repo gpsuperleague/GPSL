@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Swap club identities — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .form-grid { display: grid; gap: 12px; max-width: 640px; margin-bottom: 16px; }
+    .form-grid label { display: block; font-size: 13px; color: #bbb; }
+    .form-grid select {
+      width: 100%; max-width: 640px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .club-meta { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45; }
+    .danger-card { border-color: #844; background: #1a1212; }
+    .danger-card h2 { color: #f66; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Swap club identities</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Exchange two clubs. The owner, squad, fixtures, scores, transfers and money swap.
+        The stadium, capacity, nation, kits and badge stay on each code.
+        Scores are left as they are. Run it again to swap them back.
+      </p>
+
+      <div class="card danger-card">
+        <h2>Swap two clubs</h2>
+        <div class="form-grid">
+          <label>
+            First club
+            <select id="leftSelect">
+              <option value="">Loading clubs…</option>
+            </select>
+            <div id="leftMeta" class="club-meta"></div>
+          </label>
+          <label>
+            Second club
+            <select id="rightSelect">
+              <option value="">Loading clubs…</option>
+            </select>
+            <div id="rightMeta" class="club-meta"></div>
+          </label>
+        </div>
+        <button type="button" id="swapBtn" class="button" style="background:#990000;">Swap identities</button>
+        <div id="swapStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>SQL</h2>
+        <p class="note">Run once: <code>supabase/sql/patches/swap_cop_to_lyo.sql</code>. That file also swaps Copenhagen and Lyon.</p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_franchise_swap.js?v=20261108-franchise-swap"></script>
+</body>
+</html>
