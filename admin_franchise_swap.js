@@ -3,6 +3,7 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 primeAdminPageChrome();
 
 let clubs = [];
+let seasonOpen = false;
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -58,7 +59,47 @@ async function loadClubs() {
   updateMeta();
 }
 
+function seasonAllowsSwap(status) {
+  const key = String(status || "").toLowerCase();
+  return key === "" || key === "complete" || key === "summer_break";
+}
+
+async function loadSeasonWindow() {
+  const note = document.getElementById("seasonWindow");
+  const btn = document.getElementById("swapBtn");
+  const { data, error } = await supabase
+    .from("competition_seasons")
+    .select("id, label, status, is_current")
+    .eq("is_current", true)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    seasonOpen = false;
+    if (btn) btn.disabled = true;
+    if (note) note.textContent = "Could not read the season, so the swap stays closed.";
+    return;
+  }
+
+  const status = String(data?.status || "").toLowerCase();
+  seasonOpen = seasonAllowsSwap(data ? status : "");
+  if (btn) btn.disabled = !seasonOpen;
+  if (!note) return;
+  if (!data) {
+    note.textContent = "No season is running. A swap here rewrites both clubs' history.";
+    return;
+  }
+  note.textContent = seasonOpen
+    ? `${data.label} is ${data.status}. A swap rewrites both clubs' history.`
+    : `${data.label} is ${data.status}. The swap opens after this season is closed, before the next one starts.`;
+}
+
 async function swapClubs() {
+  if (!seasonOpen) {
+    setStatus("swapStatus", "The swap is closed while a season is running.", false);
+    return;
+  }
   const left = document.getElementById("leftSelect")?.value;
   const right = document.getElementById("rightSelect")?.value;
   const a = clubByShort(left);
@@ -132,6 +173,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   try {
+    await loadSeasonWindow();
     await loadClubs();
   } catch (err) {
     setStatus("swapStatus", "Failed to load clubs: " + err.message, false);

@@ -2763,8 +2763,8 @@ a.ssc-chip:hover {
 .dashboard-grid,
 .dashboard-section-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
 }
 
 .dashboard-section-grid {
@@ -2905,7 +2905,7 @@ a.ssc-chip:hover {
   margin: 0;
   display: flex;
   flex-direction: column;
-  min-height: 140px;
+  min-height: 108px;
   border: 1px solid var(--club-border, #444);
   border-radius: 8px;
   background: #131313;
@@ -2916,8 +2916,8 @@ a.ssc-chip:hover {
 .dashboard-section-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 6px 8px;
   margin: 0;
   flex-shrink: 0;
   border: none;
@@ -2971,7 +2971,7 @@ body.dashboard-tile-dragging .dashboard-section-head-drop-label {
 
 .dashboard-section-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--club-accent, var(--gpsl-accent, #ff9900));
@@ -2980,8 +2980,8 @@ body.dashboard-tile-dragging .dashboard-section-head-drop-label {
 .dashboard-section-title-input {
   flex: 1;
   min-width: 0;
-  padding: 6px 10px;
-  font-size: 15px;
+  padding: 4px 8px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--club-accent, var(--gpsl-accent, #ff9900));
   background: transparent;
@@ -3049,8 +3049,8 @@ body.dashboard-tile-dragging .dashboard-section-head-drop-label {
 .dashboard-tile-label {
   position: relative;
   z-index: 1;
-  line-height: 1.25;
-  font-size: 14px;
+  line-height: 1.2;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(var(--club-accent-rgb), 0.68);
   hyphens: auto;
@@ -3064,8 +3064,8 @@ body.dashboard-tile-dragging .dashboard-section-head-drop-label {
   max-width: 100%;
   box-sizing: border-box;
   margin: 0;
-  padding: 4px 6px;
-  font-size: 13px;
+  padding: 2px 4px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.25;
   text-align: center;
@@ -3098,23 +3098,23 @@ body.dashboard-tile-dragging .dashboard-tile-label-input {
   background: var(--club-panel);
   border: 1px solid var(--club-border);
   border-radius: 6px;
-  padding: 12px 8px;
+  padding: 8px 6px;
   text-align: center;
   cursor: pointer;
   transition: 0.2s;
-  min-height: 68px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: bold;
   color: var(--club-tile-text, var(--club-accent));
   box-sizing: border-box;
 }
 
 .dashboard-tile {
-  min-height: 88px;
-  padding: 16px 12px;
+  min-height: 64px;
+  padding: 8px 6px;
 }
 
 .tile:hover,
@@ -3126,8 +3126,8 @@ body.dashboard-tile-dragging .dashboard-tile-label-input {
 
 .dashboard-edit-mode .dashboard-tile {
   cursor: default;
-  padding-top: 22px;
-  padding-bottom: 22px;
+  padding-top: 18px;
+  padding-bottom: 8px;
 }
 
 .dashboard-edit-mode .dashboard-tile:active {
@@ -3209,14 +3209,14 @@ body.dashboard-tile-dragging .dashboard-tile-label-input {
 }
 
 .dashboard-toolbar-btn {
-  padding: 8px 16px;
+  padding: 4px 10px;
   background: #222;
   border: 1px solid #555;
-  border-radius: 6px;
+  border-radius: 5px;
   color: var(--club-accent);
   font-weight: bold;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .dashboard-toolbar-btn[aria-pressed="true"] {

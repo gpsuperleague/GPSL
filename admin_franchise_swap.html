@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>html,body{background:#111;color:#ddd;margin:0}</style>
-  <title>Swap club identities — GPSL Admin</title>
+  <title>Between-season club swap — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="admin.css">
@@ -22,18 +22,20 @@
 </head>
 <body class="admin-page">
   <div id="nav"></div>
-  <h1 class="admin-title">Swap club identities</h1>
+  <h1 class="admin-title">Between-season club swap</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <p class="note">
         <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
-        · Exchange two clubs. The owner, squad, fixtures, scores, transfers and money swap.
+        · Available only after a season is closed and before the next one starts.
+        The owner, squad, fixtures, scores, transfers and money swap.
         The stadium, capacity, nation, kits and badge stay on each code.
-        Scores are left as they are. Run it again to swap them back.
+        Past results move with each club and show under the other name.
       </p>
+      <p class="note" id="seasonWindow">Checking the season…</p>
 
       <div class="card danger-card">
-        <h2>Swap two clubs</h2>
+        <h2>Swap two clubs between seasons</h2>
         <div class="form-grid">
           <label>
             First club
@@ -60,6 +62,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_franchise_swap.js?v=20261108-swap-error"></script>
+  <script type="module" src="admin_franchise_swap.js?v=20261108-between-seasons"></script>
 </body>
 </html>

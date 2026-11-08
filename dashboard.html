@@ -458,6 +458,37 @@
     .mc-arrange-head b:first-child { color: var(--gpsl-accent, #ff9900); display: block; font-size: 13px; }
     .mc-arrange-head span { color: #999; }
 
+    /* Club Wire (left) + this-month checklist (right) */
+    .dash-pair {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      margin: 0 0 18px;
+    }
+    .dash-pair:not(:has(> :not([hidden]))) { display: none; }
+    .dash-pair > #clubWire,
+    .dash-pair > #matchdayChecklist {
+      min-width: 0;
+      margin: 0;
+    }
+    #clubWire[hidden] { display: none !important; }
+    .dash-pair:not(:has(#clubWire:not([hidden]))) > #matchdayChecklist:not([hidden]),
+    .dash-pair:not(:has(#matchdayChecklist:not([hidden]))) > #clubWire:not([hidden]) {
+      grid-column: 1 / -1;
+    }
+    .dash-pair .mc-panel,
+    .dash-pair .cw-card { margin: 0; }
+    .dash-pair .mc-body,
+    .dash-pair .cw-body {
+      max-height: 520px;
+      overflow: auto;
+    }
+    .dash-pair .mc-list { grid-template-columns: 1fr; }
+    @media (max-width: 900px) {
+      .dash-pair { grid-template-columns: 1fr; }
+    }
+
     #ownerSeasonStatusSection {
       background: var(--club-panel, #1a1a1a);
       border: 1px solid var(--club-border, #333);
@@ -644,7 +675,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="dashboard.css?v=20260922-supporter-pill">
+  <link rel="stylesheet" href="dashboard.css?v=20261108-dash-pair">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260802-nav-overlap-fix">
   <link rel="stylesheet" href="club_dashboard_theme.css?v=20261028-nav-active">
 </head>
@@ -691,13 +722,14 @@
 
     <section id="seasonReadyPanel" class="rc-panel" aria-label="Ready for August checklist" hidden></section>
 
-    <section id="matchdayChecklist" class="mc-panel" aria-label="Matchday checklist" aria-live="polite" hidden></section>
+    <div class="dash-pair" id="dashSidePanels">
+      <div id="clubWire" hidden></div>
+      <section id="matchdayChecklist" class="mc-panel" aria-label="Matchday checklist" aria-live="polite" hidden></section>
+    </div>
 
     <section id="ownerSeasonStatusSection" aria-label="Season status" hidden>
       <div id="ownerSeasonStatus"></div>
     </section>
-
-    <div id="clubWire" hidden></div>
     <div id="supportBanner" hidden></div>
 
     <p id="dashboardLayoutWarn" class="dashboard-layout-warn" hidden></p>
@@ -727,7 +759,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20261107-ticksheet-after-checkin"></script>
+  <script type="module" src="dashboard.js?v=20261108-dash-pair"></script>
 
 </body>
 </html>

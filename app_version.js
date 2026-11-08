@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261105-club-reserve";
+export const APP_VERSION = "20261108-dash-pair";

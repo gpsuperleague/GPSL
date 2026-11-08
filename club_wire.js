@@ -18,6 +18,7 @@ import {
 } from "./competition_conditions.js";
 
 const POLL_MS = 60000;
+const COLLAPSE_KEY = "gpsl_cw_collapsed";
 
 const MARKET_LABEL = {
   player_draft: "Draft auction",
@@ -70,15 +71,25 @@ const STYLE = `
   letter-spacing: 0.14em; text-transform: uppercase; color: #f5b041; font-size: 0.82rem;
 }
 .cw-live { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
-.cw-head .cw-sub { color: #8aa0b4; font-size: 0.78rem; }
+.cw-head .cw-sub {
+  color: #8aa0b4; font-size: 0.78rem; flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .cw-head .cw-clear {
   margin-left: auto; background: none; border: 1px solid #34495e; color: #8aa0b4;
   border-radius: 999px; padding: 2px 10px; font-size: 0.75rem; cursor: pointer;
 }
+.cw-head .cw-toggle {
+  margin-left: 8px; background: none; border: 1px solid #34495e; color: #8aa0b4;
+  border-radius: 4px; padding: 2px 8px; font-size: 0.72rem; cursor: pointer;
+}
+.cw-head .cw-toggle:hover { color: #fff; border-color: #5d6d7e; }
+.cw-card:not(:has(.cw-clear)) .cw-toggle { margin-left: auto; }
+.cw-body[hidden] { display: none !important; }
 .cw-head .cw-clear:hover { color: #fff; border-color: #5d6d7e; }
 .cw-list { list-style: none; margin: 0; padding: 0; }
 .cw-item {
-  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 8px 12px;
   border-top: 1px solid #1d2a36;
 }
 .cw-item:first-child { border-top: 0; }
@@ -513,6 +524,22 @@ function cutoffRowsHtml(cutoffs) {
     </div>`;
 }
 
+function isWireCollapsed() {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setWireCollapsed(v) {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, v ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Dashboard card. */
 export function mountClubWireCard(host) {
   if (!host) return;
@@ -545,16 +572,21 @@ export function mountClubWireCard(host) {
       ? `<ul class="cw-list">${rows}</ul>`
       : `<div class="cw-empty">${cutoffs.length ? "No market alerts — cutoffs above." : "All quiet — no outbids, results, or cutoffs right now."}</div>`;
 
+    const collapsed = isWireCollapsed();
+    const openCount = items.length + cutoffs.length;
     host.innerHTML = `
       <section class="cw-card" aria-label="Club Wire">
         <div class="cw-head">
           <span class="cw-live" aria-hidden="true"></span>
           <span class="cw-title">Club Wire</span>
-          <span class="cw-sub">Cutoffs · videos · outbids &amp; results</span>
+          <span class="cw-sub">${collapsed && openCount ? `${openCount} open` : "Cutoffs · videos · outbids &amp; results"}</span>
           ${items.length ? `<button type="button" class="cw-clear">Clear all</button>` : ""}
+          <button type="button" class="cw-toggle" aria-expanded="${collapsed ? "false" : "true"}">${collapsed ? "Show" : "Hide"}</button>
         </div>
-        ${cutoffRowsHtml(cutoffs)}
-        ${alertsBody}
+        <div class="cw-body"${collapsed ? " hidden" : ""}>
+          ${cutoffRowsHtml(cutoffs)}
+          ${alertsBody}
+        </div>
       </section>`;
     host.hidden = false;
 
@@ -565,6 +597,10 @@ export function mountClubWireCard(host) {
       });
     });
     host.querySelector(".cw-clear")?.addEventListener("click", () => void dismiss(null));
+    host.querySelector(".cw-toggle")?.addEventListener("click", () => {
+      setWireCollapsed(!isWireCollapsed());
+      render(state);
+    });
   };
 
   listeners.add(render);
