@@ -478,7 +478,40 @@
       grid-column: 1 / -1;
     }
     .dash-pair .mc-panel,
-    .dash-pair .cw-card { margin: 0; }
+    .dash-pair .cw-card {
+      margin: 0;
+      border-radius: 10px;
+      box-sizing: border-box;
+    }
+    .dash-pair .mc-panel,
+    .dash-pair .mc-panel.mc-all-done {
+      padding: 0;
+      overflow: hidden;
+    }
+    .dash-pair .mc-head,
+    .dash-pair .cw-head {
+      min-height: 42px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: 8px 10px;
+      padding: 7px 12px;
+    }
+    .dash-pair .mc-head h2,
+    .dash-pair .mc-count,
+    .dash-pair .mc-lock {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+    .dash-pair .mc-head h2 { flex: 0 1 auto; font-size: 14px; }
+    .dash-pair .mc-count { flex: 0 1 auto; }
+    .dash-pair .mc-lock { flex: 1 1 auto; }
+    .dash-pair .mc-toggle { flex: 0 0 auto; }
+    .dash-pair .mc-body { padding: 0 12px 10px; }
+    .dash-pair .cw-card:has(.cw-body[hidden]) .cw-head { border-bottom: 0; }
     .dash-pair .mc-body,
     .dash-pair .cw-body {
       max-height: 520px;
