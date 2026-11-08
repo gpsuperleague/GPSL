@@ -95,12 +95,12 @@ async function swapClubs() {
   if (btn) btn.disabled = false;
 
   if (error) {
-    const msg = String(error.message || "");
+    const msg = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
     setStatus(
       "swapStatus",
-      msg.includes("admin_franchise_identity_swap") || msg.includes("schema cache")
+      msg.includes("schema cache")
         ? "❌ The swap function is not in the database yet. Run supabase/sql/patches/swap_cop_to_lyo.sql in the Supabase SQL editor, then press Swap again."
-        : "❌ " + msg,
+        : "❌ " + (msg || "Swap failed"),
       false
     );
     return;
