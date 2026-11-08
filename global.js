@@ -20,7 +20,7 @@ import {
   isValidInstant,
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
-import { initDashboardPinUi } from "./dashboard_pin.js";
+import { initDashboardPinUi } from "./dashboard_pin.js?v=20261108-admin-pins";
 import { nationFlagSrc } from "./international_flags.js";
 import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
 import {
@@ -33,7 +33,7 @@ export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js"
 applyStoredSiteTheme();
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-import { APP_VERSION } from "./app_version.js?v=20261108-healthcheck";
+import { APP_VERSION } from "./app_version.js?v=20261108-admin-pins";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
 
@@ -2750,6 +2750,13 @@ function adminNavApplyFilterToNode(el, query, filtering) {
     return false;
   }
 
+  if (el.matches(".nav-admin-pin-row")) {
+    const link = el.querySelector("a.nav-link");
+    const match = link ? adminNavApplyFilterToNode(link, query, filtering) : false;
+    el.classList.toggle("nav-search-hidden", filtering && !match);
+    return match;
+  }
+
   if (el.matches("a.nav-link")) {
     const match = !filtering || adminNavText(el).includes(query);
     el.classList.toggle("nav-search-hidden", !match);
@@ -3639,7 +3646,7 @@ export async function initGlobal() {
       .then((m) => m.initTransferNewsStrip())
       .catch((err) => console.warn("Transfer news strip skipped:", err));
   } else if (document.getElementById("nav")) {
-    initDashboardPinUi(supabase).catch((err) => {
+    initDashboardPinUi(supabase, { isAdmin: isGpslAdminNav }).catch((err) => {
       console.warn("Dashboard pin UI skipped:", err);
     });
     if (!window.GPSL_PRE_CLUB) {

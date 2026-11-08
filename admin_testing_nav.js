@@ -95,9 +95,11 @@ export function testingAdminNavHasActive(pathname) {
 function renderTestingLinkHtml(item, pathname) {
   const active = isTestingAdminNavItemActive(item, pathname);
   const danger = item.navDanger ? " nav-link-danger" : "";
-  return `<a href="${escapeNavText(item.href)}" class="nav-link nav-link-sub${danger}${
+  const link = `<a href="${escapeNavText(item.href)}" class="nav-link nav-link-sub${danger}${
     active ? " active" : ""
   }">${escapeNavText(formatNavLabel(item.label))}</a>`;
+  const pin = `<button type="button" class="dashboard-pin-btn dashboard-pin-btn-nav" data-admin-menu-href="${escapeNavText(item.href)}" aria-label="Add ${escapeNavText(item.label)} to dashboard" title="Add to your dashboard">+</button>`;
+  return `<span class="nav-admin-pin-row">${link}${pin}</span>`;
 }
 
 /** Admin dropdown: Testing → nested subgroups (same mega style as Season management). */

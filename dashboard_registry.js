@@ -1,5 +1,7 @@
 /** Single source of dashboard shortcuts owners can pin and reorder. */
 
+import { listAdminMenuPinTargets } from "./admin_main_nav.js?v=20261108-admin-pins";
+
 const PANEL_BG = "images/panel_bg";
 
 /** Original GPSL watermark artwork (do not replace with generated placeholders). */
@@ -330,12 +332,48 @@ export const DASHBOARD_PANELS = [
   }),
 ];
 
+function hrefKey(href) {
+  const raw = String(href || "").trim().toLowerCase().replace(/\\/g, "/");
+  const hashAt = raw.indexOf("#");
+  const beforeHash = hashAt >= 0 ? raw.slice(0, hashAt) : raw;
+  const hash = hashAt >= 0 ? raw.slice(hashAt) : "";
+  const queryAt = beforeHash.indexOf("?");
+  const path = queryAt >= 0 ? beforeHash.slice(0, queryAt) : beforeHash;
+  const query = queryAt >= 0 ? beforeHash.slice(queryAt) : "";
+  const file = path.split("/").pop() || "";
+  return `${file}${query}${hash}`;
+}
+
+const adminHrefKeys = new Set(DASHBOARD_PANELS.map((item) => hrefKey(item.href)));
+const adminPanelIds = new Set(DASHBOARD_PANELS.map((item) => item.id));
+for (const item of listAdminMenuPinTargets()) {
+  const key = hrefKey(item.href);
+  if (!key || adminHrefKeys.has(key)) continue;
+  adminHrefKeys.add(key);
+  let slug = key
+    .replace(/\.html/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48);
+  let id = `adm_${slug || "item"}`;
+  let n = 2;
+  while (adminPanelIds.has(id)) id = `adm_${slug || "item"}_${n++}`;
+  adminPanelIds.add(id);
+  DASHBOARD_PANELS.push(p(id, item.label, item.href, { adminOnly: true }));
+}
+
 export const DEFAULT_DASHBOARD_PANEL_IDS = DASHBOARD_PANELS.filter((x) => x.default).map((x) => x.id);
 
 const panelById = new Map(DASHBOARD_PANELS.map((x) => [x.id, x]));
 
 export function getDashboardPanel(id) {
   return panelById.get(id) || null;
+}
+
+export function getDashboardPanelByHref(href) {
+  const key = hrefKey(href);
+  if (!key) return null;
+  return DASHBOARD_PANELS.find((item) => hrefKey(item.href) === key) || null;
 }
 
 export function getDashboardTileUrl(panelOrId) {
@@ -348,12 +386,24 @@ export function getDashboardPanelsForPage(pageFile) {
   return DASHBOARD_PANELS.filter((x) => (x.page || "").toLowerCase() === page);
 }
 
-/** Page-level pin (one per page file), not section-only entries. */
-export function getPageDashboardPanel(pageFile) {
+/** Page-level pin (one per page file), not section-only entries. Hash wins when the menu item has one. */
+export function getPageDashboardPanel(pageFile, loc = {}) {
   const page = (pageFile || "").toLowerCase();
-  return (
-    DASHBOARD_PANELS.find((x) => (x.page || "").toLowerCase() === page && !x.section) || null
+  const matches = DASHBOARD_PANELS.filter(
+    (item) => (item.page || "").toLowerCase() === page && !item.section
   );
+  if (!matches.length) return null;
+  const hash = String(loc.hash || "").replace(/^#/, "").toLowerCase();
+  const search = String(loc.search || "");
+  if (hash || search) {
+    const exact = matches.find((item) => hrefKey(item.href) === hrefKey(`${page}${search}${hash ? `#${hash}` : ""}`));
+    if (exact) return exact;
+  }
+  if (hash) {
+    const hashed = matches.find((item) => hrefKey(item.href).endsWith(`#${hash}`));
+    if (hashed) return hashed;
+  }
+  return matches.find((item) => !String(item.href).includes("#")) || matches[0];
 }
 
 export function normalizePageFile(pathname) {

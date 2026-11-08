@@ -1,4 +1,4 @@
-import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js?v=20261108-healthcheck";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js?v=20261108-admin-pins";
 
 primeAdminPageChrome();
 

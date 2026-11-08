@@ -1,8 +1,9 @@
-import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js?v=20260807-archive-inbox-types";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js?v=20261108-admin-pins";
 import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
-} from "./admin_main_nav.js?v=20260810-staff-fin-preview";
+} from "./admin_main_nav.js?v=20261108-admin-pins";
+import { wireDashboardPinRoots } from "./dashboard_pin.js?v=20261108-admin-pins";
 import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260928-owner-divs";
 
 primeAdminPageChrome();
@@ -52,6 +53,7 @@ function renderSeasonSidebar() {
   const pathname = window.location.pathname;
   const search = window.location.search || "";
   root.innerHTML = renderAdminSidebarHtml(SEASON_SIDEBAR_SECTIONS, pathname, search);
+  wireDashboardPinRoots(root);
 }
 
 function showSeasonPanel(panelId) {

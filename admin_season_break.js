@@ -1,8 +1,8 @@
-import { initAdminPage, primeAdminPageChrome } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome } from "./admin_common.js?v=20261108-admin-pins";
 import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
-} from "./admin_main_nav.js?v=20260810-staff-fin-preview";
+} from "./admin_main_nav.js?v=20261108-admin-pins";
 
 primeAdminPageChrome();
 

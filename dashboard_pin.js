@@ -1,8 +1,9 @@
 import {
   getDashboardPanel,
+  getDashboardPanelByHref,
   getPageDashboardPanel,
   normalizePageFile,
-} from "./dashboard_registry.js";
+} from "./dashboard_registry.js?v=20261108-admin-pins";
 import {
   isPanelOnDashboard,
   togglePanelOnDashboard,
@@ -10,6 +11,8 @@ import {
 
 let ownerId = null;
 let layoutTableMissing = false;
+let adminKnown = false;
+let viewerIsAdmin = false;
 
 export function setDashboardPinOwnerId(id) {
   ownerId = id;
@@ -34,9 +37,10 @@ async function refreshPinButton(btn) {
   const panel = getDashboardPanel(panelId);
   if (!panel) return;
 
+  const compact = btn.classList.contains("dashboard-pin-btn-nav");
   if (!ownerId || layoutTableMissing) {
     btn.disabled = true;
-    btn.textContent = "Add to Dashboard";
+    btn.textContent = compact ? "+" : "Add to Dashboard";
     btn.title = layoutTableMissing
       ? "Run owner_dashboard_layout.sql in Supabase first"
       : "Sign in to customize dashboard";
@@ -59,10 +63,15 @@ async function refreshPinButton(btn) {
 
   btn.disabled = false;
   btn.setAttribute("aria-pressed", on ? "true" : "false");
-  btn.textContent = on ? "On dashboard ✓" : "Add to Dashboard";
-  btn.title = on
-    ? "Remove from your dashboard"
-    : "Add this shortcut to your dashboard";
+  btn.textContent = compact ? (on ? "✓" : "+") : on ? "On dashboard ✓" : "Add to Dashboard";
+  btn.title = on ? "Remove from your dashboard" : "Add this shortcut to your dashboard";
+  if (compact) {
+    const panel = getDashboardPanel(panelId);
+    btn.setAttribute(
+      "aria-label",
+      on ? `Remove ${panel?.label || "shortcut"} from dashboard` : `Add ${panel?.label || "shortcut"} to dashboard`
+    );
+  }
   btn.classList.toggle("dashboard-pin-on", on);
 }
 
@@ -92,11 +101,61 @@ async function wirePinClick(btn) {
   });
 }
 
-function mountPinButton(anchor, panelId, position = "after") {
-  if (!anchor) return;
-  if (document.querySelector(`.dashboard-pin-btn[data-panel-id="${panelId}"]`)) {
+function resolvePinButton(btn) {
+  if (!(btn instanceof HTMLButtonElement) || btn.dataset.pinWired === "1") return;
+  const href = btn.dataset.adminMenuHref;
+  if (href && !btn.dataset.panelId) {
+    const fromHref = getDashboardPanelByHref(href);
+    if (!fromHref) {
+      btn.remove();
+      return;
+    }
+    btn.dataset.panelId = fromHref.id;
+  }
+  const panel = getDashboardPanel(btn.dataset.panelId);
+  if (!panel) {
+    btn.remove();
     return;
   }
+  if (panel.adminOnly && (!adminKnown || !viewerIsAdmin)) {
+    if (adminKnown && !viewerIsAdmin) btn.remove();
+    return;
+  }
+  btn.dataset.pinWired = "1";
+  wirePinClick(btn);
+  refreshPinButton(btn);
+}
+
+function ensureAdminMenuPinButtons() {
+  if (!viewerIsAdmin) return;
+  document.querySelectorAll(".nav-dropdown-admin a.nav-link").forEach((link) => {
+    if (link.closest(".nav-admin-pin-row") || link.closest("[data-mod-preview]")) return;
+    const href = link.getAttribute("href");
+    if (!href || !getDashboardPanelByHref(href)) return;
+    const row = document.createElement("span");
+    row.className = "nav-admin-pin-row";
+    link.parentNode.insertBefore(row, link);
+    row.appendChild(link);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "dashboard-pin-btn dashboard-pin-btn-nav";
+    btn.dataset.adminMenuHref = href;
+    btn.textContent = "+";
+    btn.title = "Add to your dashboard";
+    row.appendChild(btn);
+  });
+}
+
+/** Wire pin buttons already in the page. Safe to call again after a sidebar render. */
+export function wireDashboardPinRoots(root = document) {
+  (root || document).querySelectorAll(".dashboard-pin-btn").forEach((btn) => resolvePinButton(btn));
+}
+
+function mountPinButton(anchor, panelId, position = "after") {
+  if (!anchor) return;
+  const panel = getDashboardPanel(panelId);
+  if (panel?.adminOnly && !viewerIsAdmin) return;
+  if (anchor.querySelector?.(`.dashboard-pin-btn[data-panel-id="${panelId}"]`)) return;
 
   const wrap = document.createElement("div");
   wrap.className = "dashboard-pin-wrap";
@@ -131,7 +190,7 @@ function mountPinButton(anchor, panelId, position = "after") {
 }
 
 /** Call after auth; adds pin controls for this page and [data-dashboard-panel] sections. */
-export async function initDashboardPinUi(supabase) {
+export async function initDashboardPinUi(supabase, opts = {}) {
   if (!supabase) return;
 
   const {
@@ -139,7 +198,11 @@ export async function initDashboardPinUi(supabase) {
   } = await supabase.auth.getUser();
   if (!user) return;
 
+  adminKnown = true;
+  viewerIsAdmin = opts.isAdmin === true;
   setDashboardPinOwnerId(user.id);
+  ensureAdminMenuPinButtons();
+  wireDashboardPinRoots(document);
 
   const page = normalizePageFile(window.location.pathname);
 
@@ -149,12 +212,11 @@ export async function initDashboardPinUi(supabase) {
     mountPinButton(el, panelId, "panel-header");
   });
 
-  const pagePanel = getPageDashboardPanel(page);
+  const pagePanel = getPageDashboardPanel(page, window.location);
   if (
     pagePanel &&
     !pagePanel.noPagePin &&
-    !document.querySelector(`[data-dashboard-panel="${pagePanel.id}"]`) &&
-    !document.querySelector(`.dashboard-pin-btn[data-panel-id="${pagePanel.id}"]`)
+    !document.querySelector(`[data-dashboard-panel="${pagePanel.id}"]`)
   ) {
     const h1 =
       document.getElementById("pageTitle") ||

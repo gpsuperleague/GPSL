@@ -882,6 +882,35 @@ export function adminMainNavHref(item) {
   return item.href;
 }
 
+/** Every Admin menu link an admin may pin. Mods do not use this list. */
+export function listAdminMenuPinTargets() {
+  const out = [];
+  const push = (label, href) => {
+    const clean = String(href || "").trim();
+    if (!clean || clean === "#") return;
+    out.push({ label: String(label || clean).trim() || clean, href: clean });
+  };
+  for (const section of ADMIN_MAIN_NAV) {
+    for (const entry of section.entries || []) {
+      if (entry?.type === "link" && entry.href) push(entry.label, adminMainNavHref(entry));
+      if (entry?.type === "group") {
+        for (const item of entry.items || []) {
+          if (item?.href) push(item.label, adminMainNavHref(item));
+        }
+      }
+    }
+  }
+  for (const item of flattenTestingAdminNav()) {
+    if (item?.href) push(item.label, item.href);
+  }
+  push("Admin checklist", "admin_workflow_checklist.html");
+  return out;
+}
+
+function renderAdminPinButton(href, label) {
+  return `<button type="button" class="dashboard-pin-btn dashboard-pin-btn-nav" data-admin-menu-href="${escapeNavText(href)}" aria-label="Add ${escapeNavText(label)} to dashboard" title="Add to your dashboard">+</button>`;
+}
+
 function escapeNavText(text) {
   return String(text ?? "")
     .replace(/&/g, "&amp;")
@@ -1161,9 +1190,10 @@ export function getAdminWorkflowChecklist() {
 function renderLinkHtml(item, pathname, search) {
   const href = adminMainNavHref(item);
   const active = isAdminMainNavItemActive(item, pathname, search);
-  return `<a href="${escapeNavText(href)}" class="nav-link nav-link-sub${
+  const link = `<a href="${escapeNavText(href)}" class="nav-link nav-link-sub${
     active ? " active" : ""
   }">${escapeNavText(formatNavLabel(item.label))}</a>`;
+  return `<span class="nav-admin-pin-row">${link}${renderAdminPinButton(href, item.label)}</span>`;
 }
 
 /** One # section under Admin (e.g. Testing, Season Break). */

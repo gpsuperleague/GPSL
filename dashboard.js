@@ -10,10 +10,10 @@ import {
   isEmailHidden,
   setEmailHidden,
   loadClubWire,
-} from "./global.js?v=20261108-healthcheck";
+} from "./global.js?v=20261108-admin-pins";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
-import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js";
+import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js?v=20261108-admin-pins";
 import {
   loadOwnerDashboardLayout,
   saveOwnerDashboardLayout,
@@ -23,7 +23,7 @@ import {
   defaultPanelLabel,
   PANEL_LABEL_MAX_LEN,
 } from "./dashboard_layout.js";
-import { refreshAllDashboardPins } from "./dashboard_pin.js";
+import { refreshAllDashboardPins } from "./dashboard_pin.js?v=20261108-admin-pins";
 import {
   applyClubDashboardTheme,
   loadClubDashboardTheme,
@@ -216,6 +216,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   ownerId = user.id;
   isAdmin = isGpslAdminUser(user);
+  if (isAdmin && !document.getElementById("dashboardAdminPinNote")) {
+    const toolbar = document.querySelector(".dashboard-toolbar");
+    if (toolbar) {
+      const note = document.createElement("p");
+      note.id = "dashboardAdminPinNote";
+      note.className = "dashboard-admin-pin-note";
+      note.textContent =
+        "Admin menu: use + beside a link to pin it here. Those tiles stay on your dashboard only.";
+      toolbar.insertAdjacentElement("afterend", note);
+    }
+  }
   const ownerTag = await loadOwnerTag();
   const emailEl = document.getElementById("userEmail");
   if (emailEl) emailEl.textContent = user.email;
