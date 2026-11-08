@@ -147,6 +147,145 @@
       text-decoration: underline;
     }
 
+    .club-header-meta { flex: 1 1 240px; min-width: 0; }
+
+    .club-form {
+      margin-left: auto;
+      flex: 0 0 auto;
+      min-width: 210px;
+      max-width: 280px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(10, 10, 10, 0.82);
+    }
+    .club-form-label {
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+    .club-form-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .club-form-pill {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+      color: #111;
+    }
+    .club-form-pill.is-w { background: #8d8; }
+    .club-form-pill.is-d { background: #ccc; }
+    .club-form-pill.is-l { background: #e88; }
+    .club-form-empty { font-size: 12px; color: #aaa; }
+
+    .club-tabs {
+      display: flex;
+      gap: 8px;
+      margin: 0 20px;
+    }
+    .club-tab {
+      background: #1a1a1a;
+      color: #ccc;
+      border: 1px solid #333;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      padding: 8px 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .club-tab.is-on {
+      color: #111;
+      background: var(--gpsl-accent, #ff9900);
+      border-color: var(--gpsl-accent, #ff9900);
+    }
+
+    .club-analysis { margin: 0 20px 24px; }
+    .club-an-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .club-an-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .club-an-card h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: var(--gpsl-accent, #ff9900);
+    }
+    .club-an-lead { margin: 0; font-size: 18px; font-weight: 700; color: #eee; }
+    .club-an-meta { margin: 6px 0 0; font-size: 12px; color: #999; }
+    .club-an-empty { margin: 0; font-size: 13px; color: #888; }
+    .club-an-xi { list-style: none; margin: 0; padding: 0; }
+    .club-an-xi li {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      padding: 3px 0;
+      border-top: 1px solid #2a2a2a;
+      font-size: 13px;
+    }
+    .club-an-xi li:first-child { border-top: 0; }
+    .club-an-role {
+      flex: 0 0 3.2rem;
+      color: var(--gpsl-accent, #ff9900);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .club-an-bench { margin: 10px 0 0; font-size: 12px; color: #ccc; line-height: 1.45; }
+    .club-an-bench span {
+      display: block;
+      color: #888;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .club-an-list { list-style: none; margin: 0; padding: 0; }
+    .club-an-list li { padding: 6px 0; border-top: 1px solid #2a2a2a; font-size: 13px; }
+    .club-an-list li:first-child { border-top: 0; padding-top: 0; }
+    .club-an-list .club-an-meta { display: block; }
+    .club-an-pick {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+    .club-an-pick select {
+      background: #111;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 4px 8px;
+    }
+    .club-an-h2h { margin: 0; font-size: 16px; color: #eee; }
+    .club-an-h2h b { color: var(--gpsl-accent, #ff9900); }
+    .club-an-score {
+      display: inline-block;
+      font-size: 18px;
+      font-weight: 800;
+      color: #eee;
+      text-decoration: none;
+    }
+    .club-an-score:hover { color: var(--gpsl-accent, #ff9900); }
+    @media (max-width: 800px) {
+      .club-an-grid { grid-template-columns: 1fr; }
+      .club-form { margin-left: 0; max-width: none; width: 100%; }
+      .club-tabs, .club-analysis { margin-left: 12px; margin-right: 12px; }
+    }
+
     h2.section-title {
       margin-left: 20px;
       color: var(--gpsl-accent, #ff9900);
@@ -613,11 +752,18 @@
 
   <div id="clubHeader" class="club-header"></div>
 
-  <div id="windowNote" class="window-closed-note"></div>
+  <div class="club-tabs" id="clubTabs" hidden>
+    <button type="button" class="club-tab is-on" data-club-tab="squad" aria-selected="true">Squad</button>
+    <button type="button" class="club-tab" data-club-tab="analysis" aria-selected="false">Analysis</button>
+  </div>
 
-  <div id="squadContainer"></div>
+  <div id="clubSquadPane">
+    <div id="windowNote" class="window-closed-note"></div>
+    <div id="squadContainer"></div>
+    <section id="clubSeasonAccounts" class="club-accounts"></section>
+  </div>
 
-  <section id="clubSeasonAccounts" class="club-accounts"></section>
+  <div id="clubAnalysisPane" class="club-analysis" hidden></div>
 
   <!-- Offer Modal -->
   <div id="offerModal" class="modal">
@@ -695,6 +841,7 @@
     } from "./player_links.js";
     import { loadOwnerSupporterMap, ownerTagHtml } from "./owner_badge.js";
     import { renderClubSeasonAccounts } from "./club_season_accounts.js?v=20261012-club-accounts";
+    import { startClubInsights } from "./club_analysis.js?v=20261108-club-analysis";
 
     let transferWindowOpen = false;
     let buyerShortName = null;
@@ -723,6 +870,11 @@
       await loadTransferWindowStatus();
       await loadBuyerClubShortName(user.id);
       await loadClub();
+      void startClubInsights({
+        supabase,
+        clubShort: clubShortName,
+        viewerClub: buyerShortName,
+      });
       transferStatusState = await loadTransferStatusState(supabase);
       await loadPlayers();
       setupModalHandlers();
@@ -849,6 +1001,7 @@
           <div><strong>Owner:</strong> ${ownerHtml}</div>
           ${managerLine}
         </div>
+        <div id="clubForm" class="club-form" aria-label="Recent form"></div>
       `;
     }
 
