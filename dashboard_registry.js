@@ -1,7 +1,5 @@
 /** Single source of dashboard shortcuts owners can pin and reorder. */
 
-import { listAdminMenuPinTargets } from "./admin_main_nav.js?v=20261108-admin-pins";
-
 const PANEL_BG = "images/panel_bg";
 
 /** Original GPSL watermark artwork (do not replace with generated placeholders). */
@@ -344,22 +342,32 @@ function hrefKey(href) {
   return `${file}${query}${hash}`;
 }
 
-const adminHrefKeys = new Set(DASHBOARD_PANELS.map((item) => hrefKey(item.href)));
-const adminPanelIds = new Set(DASHBOARD_PANELS.map((item) => item.id));
-for (const item of listAdminMenuPinTargets()) {
-  const key = hrefKey(item.href);
-  if (!key || adminHrefKeys.has(key)) continue;
-  adminHrefKeys.add(key);
-  let slug = key
-    .replace(/\.html/g, "")
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 48);
-  let id = `adm_${slug || "item"}`;
-  let n = 2;
-  while (adminPanelIds.has(id)) id = `adm_${slug || "item"}_${n++}`;
-  adminPanelIds.add(id);
-  DASHBOARD_PANELS.push(p(id, item.label, item.href, { adminOnly: true }));
+let adminMenuPanelsReady = false;
+
+/** Register Admin menu links as pinnable tiles. Admins only, and only once. */
+export async function ensureAdminMenuPanels() {
+  if (adminMenuPanelsReady) return;
+  adminMenuPanelsReady = true;
+  const { listAdminMenuPinTargets } = await import(
+    "./admin_main_nav.js?v=20261108-pin-cache"
+  );
+  const keys = new Set(DASHBOARD_PANELS.map((item) => hrefKey(item.href)));
+  for (const item of listAdminMenuPinTargets()) {
+    const key = hrefKey(item.href);
+    if (!key || keys.has(key)) continue;
+    keys.add(key);
+    let slug = key
+      .replace(/\.html/g, "")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 48);
+    let id = `adm_${slug || "item"}`;
+    let n = 2;
+    while (panelById.has(id)) id = `adm_${slug || "item"}_${n++}`;
+    const panel = p(id, item.label, item.href, { adminOnly: true });
+    DASHBOARD_PANELS.push(panel);
+    panelById.set(id, panel);
+  }
 }
 
 export const DEFAULT_DASHBOARD_PANEL_IDS = DASHBOARD_PANELS.filter((x) => x.default).map((x) => x.id);
