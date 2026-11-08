@@ -9,6 +9,54 @@ const FIRE_LABEL = {
   miss: "Missed",
 };
 
+/** What each light is looking at. Keyed by the label the health read returns. */
+const CHECK_ABOUT = {
+  "End of month watcher":
+    "The clock that notices a GPSL month has locked and starts the end-of-month jobs. Wired means that job is installed and switched on. Last call means it has run in the last 20 minutes.",
+  "End of month jobs":
+    "The bundle that runs when a month locks. It looks for a successful stamp for the last GPSL month whose lock time has already passed.",
+  "Team of the month":
+    "Team of the month for that locked month. It wants a successful stamp for Super League and one for the Championship.",
+  "League tables":
+    "The league table snapshot saved when that month locked.",
+  "GPSL Sport":
+    "The GPSL Sport edition generated for that locked month.",
+  "TV pick for next month":
+    "The TV selections chosen for the following month when this month locked.",
+  "International tables":
+    "International tables for that month. This is only due while a World Cup cycle is running.",
+  "End of season":
+    "The admin step that closes a season. It is not on a clock, so it counts as not due while the season is still setup, preseason, or active.",
+  "Contract rollover":
+    "Contracts moving on when the next season is created. It does not run on a timer, so it stays not due until that season exists.",
+  "Half-season contracts":
+    "The clock that switches half-season contracts. Wired means the job is installed and on. Last call means it has run in the last 45 minutes.",
+  "Transfer engine":
+    "The clock that processes bids and listings. In the evening window it uses the one-minute schedule; otherwise the five-minute schedule. Last call means a recent run, or one still in progress.",
+  "Bid step hook":
+    "The trigger that keeps a new bid on the minimum step. Wired means it is switched on. There is no log of each bid, so last call stays unconfirmed.",
+  "Transfer window hook":
+    "The trigger that notices the transfer window open or close. Wired means it is switched on. Each firing is not written down.",
+  "Transfer inbox hook":
+    "The trigger that writes an inbox note when a transfer completes. Wired means it is switched on. Each firing is not written down.",
+  "Arrangement fines":
+    "No-proposal and late-arrangement fines for the last locked month. It looks for that month’s stamp.",
+  "Reply deadline fines":
+    "Fines for missing a reply to a proposed kick-off, stamped for the last locked month.",
+  "Check-in fines":
+    "Fines for missing check-in at an agreed kick-off, stamped for the last locked month.",
+  "Black box forfeits":
+    "Forfeits for matches left as a manual black box when that month locked.",
+  "Early arrangement awards":
+    "Rewards for arranging a match early, applied when that month locked.",
+  "Check-in notices":
+    "The clock that sends check-in notices as kick-off approaches. Last call means it has run in the last 5 minutes.",
+  "Vacant club walkovers":
+    "The clock that awards a walkover when a club in the fixture is vacant. Last call means it has run in the last 20 minutes.",
+  "Commercial income":
+    "The clock that posts club commercial income. Last call means it has run in the last 30 minutes.",
+};
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -47,6 +95,7 @@ function renderBoard(payload) {
     const wiredOn = row.wired === true;
     const firedOn = firePassed(row.fire_state);
     const fireLabel = FIRE_LABEL[row.fire_state] || "Missed";
+    const about = CHECK_ABOUT[String(row.label || "").trim()] || "";
     html += `<div class="health-item">
       <div class="health-pill tone-${tone}" role="status" aria-label="${escapeHtml(row.label)} ${tone}">
         <span>${escapeHtml(row.label)}</span>
@@ -55,6 +104,7 @@ function renderBoard(payload) {
           <span class="${firedOn ? "" : "fact-off"}">${escapeHtml(fireLabel)}</span>
         </span>
       </div>
+      ${about ? `<p class="health-about">${escapeHtml(about)}</p>` : ""}
       <p class="health-detail">${escapeHtml(row.detail)}</p>
     </div>`;
   }
