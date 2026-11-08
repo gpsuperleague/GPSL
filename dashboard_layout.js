@@ -1,7 +1,7 @@
 import {
   DEFAULT_DASHBOARD_PANEL_IDS,
   getDashboardPanel,
-} from "./dashboard_registry.js";
+} from "./dashboard_registry.js?v=20261108-pin-cache";
 
 const TABLE = "owner_dashboard_layout";
 
@@ -132,7 +132,22 @@ export function cloneDefaultSections() {
   }));
 }
 
+let layoutCache = null;
+
 export async function loadOwnerDashboardLayout(supabase, ownerId) {
+  if (layoutCache?.ownerId === ownerId && layoutCache.promise) {
+    return layoutCache.promise;
+  }
+
+  const promise = readOwnerDashboardLayout(supabase, ownerId).catch((err) => {
+    if (layoutCache?.promise === promise) layoutCache = null;
+    throw err;
+  });
+  layoutCache = { ownerId, promise };
+  return promise;
+}
+
+async function readOwnerDashboardLayout(supabase, ownerId) {
   const { data, error } = await supabase
     .from(TABLE)
     .select("panel_ids, sections, panel_labels")
@@ -175,7 +190,9 @@ export async function saveOwnerDashboardLayout(supabase, ownerId, sections, pane
   );
 
   if (error) throw error;
-  return { sections: cleaned, panelLabels: cleanedLabels };
+  const saved = { sections: cleaned, panelLabels: cleanedLabels };
+  layoutCache = { ownerId, promise: Promise.resolve(saved) };
+  return saved;
 }
 
 export async function isPanelOnDashboard(supabase, ownerId, panelId) {

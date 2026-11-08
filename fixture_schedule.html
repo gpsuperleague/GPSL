@@ -169,6 +169,18 @@
       background:#222; border:1px solid #555; color:#eee; border-radius:6px;
       padding:8px 10px; font-size:13px;
     }
+    .discord-free-row {
+      display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; margin:10px 0 4px;
+    }
+    .discord-free-row label {
+      display:flex; flex-direction:column; gap:4px;
+      font-size:12px; color:#9cf; font-weight:600;
+    }
+    .discord-free-row input[type="date"],
+    .discord-free-row select {
+      background:#222; border:1px solid #557; color:#eee; border-radius:6px;
+      padding:8px 10px; font-size:13px; font-family:inherit; min-width:11rem;
+    }
     .poke-near-note { color:#c8e6a0; margin:6px 0 0; }
     .slot-btn.slot-near {
       border-color:var(--near-border, #8bc34a);
@@ -236,6 +248,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261106-play-now-session"></script>
+  <script type="module" src="fixture_schedule.js?v=20261108-discord-any-time"></script>
 </body>
 </html>

@@ -3,8 +3,8 @@ import {
   initGlobal,
   isGpslAdminUser,
   fetchIsGpslModUser,
-} from "./global.js?v=20261108-admin-pins";
-import { APP_VERSION } from "./app_version.js?v=20261108-admin-pins";
+} from "./global.js?v=20261108-pin-cache";
+import { APP_VERSION } from "./app_version.js?v=20261108-pin-cache";
 import { isModAllowedPage } from "./mod_nav.js";
 
 /** Apply dark admin chrome immediately (avoids white flash before module loads). */

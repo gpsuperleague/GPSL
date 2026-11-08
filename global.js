@@ -20,7 +20,7 @@ import {
   isValidInstant,
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
-import { initDashboardPinUi } from "./dashboard_pin.js?v=20261108-admin-pins";
+import { initDashboardPinUi } from "./dashboard_pin.js?v=20261108-pin-cache";
 import { nationFlagSrc } from "./international_flags.js";
 import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
 import {
@@ -33,7 +33,7 @@ export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js"
 applyStoredSiteTheme();
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-import { APP_VERSION } from "./app_version.js?v=20261108-admin-pins";
+import { APP_VERSION } from "./app_version.js?v=20261108-pin-cache";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
 

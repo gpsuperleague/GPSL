@@ -638,8 +638,18 @@ function discordLockPanelBodyHtml() {
   return `
     <div id="discordLockPanel">
       <h2>Agreed on Discord scheduling</h2>
-      <p class="meta">Use this only when you already agreed a time on Discord. Pick that time, then send it for your opponent to confirm on the site. Reply and arrangement clocks keep running until both lock.</p>
-      <div class="slot-list" id="discordLockSlotList"></div>
+      <p class="meta">Use this when you already agreed a time on Discord. Pick <b>any day</b> in this fixture’s GPSL month and a <b>30-minute</b> kick-off. It does not have to be a weekly availability slot. Your opponent still confirms here. Reply and arrangement clocks keep running until both lock.</p>
+      <div class="discord-free-row">
+        <label>Day <span id="discordTzTag"></span>
+          <input type="date" id="discordDate" />
+        </label>
+        <label>Time <span id="discordTzTagTime"></span>
+          <select id="discordTime">
+            <option value="">Pick a day first</option>
+          </select>
+        </label>
+      </div>
+      <p class="meta" id="discordPreview" hidden></p>
       <div class="actions">
         <button type="button" id="discordLockBtn" class="button" disabled>Lock this kick-off (both confirm)</button>
       </div>
@@ -673,32 +683,125 @@ function wireScheduleModeTabs(defaultTab = "gpsl") {
   activate(defaultTab === "discord" ? "discord" : "gpsl");
 }
 
-function wireDiscordLockPanel(slots, homeTz, awayTz, ownerTz, usedIsoSet = null) {
-  let discordSelected = null;
-  const list = document.getElementById("discordLockSlotList");
-  const btn = document.getElementById("discordLockBtn");
-  if (!list || !btn) return;
+/** UK 30-minute kick-offs inside the fixture’s proposal window (availability ignored). */
+function enumerateDiscordKickoffs(unlockIso, lockIso) {
+  const now = Date.now();
+  const unlockMs = unlockIso ? new Date(unlockIso).getTime() : now;
+  const lockMs = lockIso ? new Date(lockIso).getTime() : now + 45 * 86400000;
+  if (!Number.isFinite(unlockMs) || !Number.isFinite(lockMs)) return [];
+  let cursor = snapToUkHalfHourSlot(new Date(Math.max(now, unlockMs)));
+  if (!cursor) return [];
+  if (cursor.getTime() <= now || cursor.getTime() < unlockMs) {
+    cursor = new Date(cursor.getTime() + 30 * 60 * 1000);
+  }
+  const end = lockMs - 30 * 60 * 1000;
+  const out = [];
+  for (let n = 0; n < 4000 && cursor.getTime() <= end; n += 1) {
+    out.push(cursor.toISOString());
+    cursor = new Date(cursor.getTime() + 30 * 60 * 1000);
+  }
+  return out;
+}
 
-  const count = appendKickoffSlotButtons(list, slots || [], {
-    homeTz,
-    awayTz,
-    ownerTz,
-    usedIsoSet,
-    onSelect: (iso, el, container) => {
-      if (usedIsoSet?.has(kickoffIsoKey(iso))) return;
-      discordSelected = iso;
-      container.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
-      el.classList.add("selected");
-      btn.disabled = false;
-    },
-  });
-  if (!count) {
-    list.innerHTML =
-      '<p class="meta" style="color:#888;">No future slots available — set weekly availability on Owner Details, or free a booked time.</p>';
+function wireDiscordLockPanel(homeTz, awayTz, ownerTz, usedIsoSet = null) {
+  const dateEl = document.getElementById("discordDate");
+  const timeEl = document.getElementById("discordTime");
+  const preview = document.getElementById("discordPreview");
+  const btn = document.getElementById("discordLockBtn");
+  if (!dateEl || !timeEl || !btn) return;
+
+  const tzName = tzDisplayName(ownerTz);
+  const tzTag = document.getElementById("discordTzTag");
+  const tzTagTime = document.getElementById("discordTzTagTime");
+  if (tzTag) tzTag.textContent = `(${tzName})`;
+  if (tzTagTime) tzTagTime.textContent = `(${tzName})`;
+
+  const prop = ctx?.proposal_window || {};
+  const kickoffs = enumerateDiscordKickoffs(prop.unlock_at, prop.lock_at);
+  const byDate = new Map();
+  for (const iso of kickoffs) {
+    const local = zonedDateTimeLocalValue(iso, ownerTz);
+    const date = local.slice(0, 10);
+    const hm = local.slice(11, 16);
+    if (!date || !hm) continue;
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push({ iso, hm });
+  }
+  const dates = [...byDate.keys()];
+
+  const selectedIso = () => timeEl.value || null;
+
+  const paintPreview = () => {
+    const iso = selectedIso();
+    const used = iso && usedIsoSet?.has(kickoffIsoKey(iso));
+    btn.disabled = !iso || used;
+    if (!preview) return;
+    if (!iso) {
+      preview.hidden = true;
+      preview.textContent = "";
+      return;
+    }
+    preview.hidden = false;
+    preview.innerHTML = used
+      ? "That kick-off was already suggested in this arrangement — pick another 30-minute time."
+      : `Lock will send: <span class="kickoff-line">${formatKickoffPair(iso, homeTz, awayTz)}</span>`;
+  };
+
+  const fillTimes = () => {
+    const rows = byDate.get(dateEl.value) || [];
+    timeEl.innerHTML = "";
+    if (!rows.length) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "No 30-minute times left that day";
+      timeEl.appendChild(opt);
+      paintPreview();
+      return;
+    }
+    for (const row of rows) {
+      const opt = document.createElement("option");
+      opt.value = row.iso;
+      const uk = zonedDateTimeLocalValue(row.iso, UK_TZ).slice(11, 16);
+      const used = usedIsoSet?.has(kickoffIsoKey(row.iso));
+      opt.textContent = uk && uk !== row.hm ? `${row.hm} · ${uk} UK` : row.hm;
+      if (used) {
+        opt.textContent += " · already suggested";
+        opt.disabled = true;
+      }
+      timeEl.appendChild(opt);
+    }
+    const firstFree = [...timeEl.options].find((opt) => !opt.disabled && opt.value);
+    timeEl.value = firstFree ? firstFree.value : "";
+    paintPreview();
+  };
+
+  if (!dates.length) {
+    dateEl.disabled = true;
+    timeEl.disabled = true;
+    if (preview) {
+      preview.hidden = false;
+      preview.textContent =
+        "No future 30-minute kick-offs are left in this fixture’s GPSL month window.";
+    }
+    return;
   }
 
+  dateEl.min = dates[0];
+  dateEl.max = dates[dates.length - 1];
+  dateEl.value = dates[0];
+  dateEl.addEventListener("change", () => {
+    if (!byDate.has(dateEl.value)) {
+      const next = dates.find((d) => d >= dateEl.value) || dates[dates.length - 1];
+      dateEl.value = next;
+    }
+    fillTimes();
+  });
+  timeEl.addEventListener("change", paintPreview);
+  fillTimes();
+
   btn.onclick = async () => {
-    if (!discordSelected) return;
+    const iso = selectedIso();
+    if (!iso || usedIsoSet?.has(kickoffIsoKey(iso))) return;
     if (
       !confirm(
         "Lock this Discord-agreed kick-off? Your opponent must confirm. Reply deadlines keep running until both lock."
@@ -708,7 +811,7 @@ function wireDiscordLockPanel(slots, homeTz, awayTz, ownerTz, usedIsoSet = null)
     }
     btn.disabled = true;
     setStatus("Sending Discord lock request…");
-    const res = await requestMutualOverrideNewTime(fixtureId, discordSelected);
+    const res = await requestMutualOverrideNewTime(fixtureId, iso);
     if (!res.ok) {
       setStatus(res.msg, true);
       btn.disabled = false;
@@ -2017,13 +2120,7 @@ function render() {
   }
   if (showDiscordTab) {
     wireScheduleModeTabs("gpsl");
-    wireDiscordLockPanel(
-      usingPoke ? ownSlots : slots,
-      homeTz,
-      awayTz,
-      ownerTz,
-      usedIsoSet
-    );
+    wireDiscordLockPanel(homeTz, awayTz, ownerTz, usedIsoSet);
   }
   if (mutualPendingHtml) {
     wireMutualPendingButtons();

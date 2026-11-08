@@ -1,13 +1,14 @@
 import {
+  ensureAdminMenuPanels,
   getDashboardPanel,
   getDashboardPanelByHref,
   getPageDashboardPanel,
   normalizePageFile,
-} from "./dashboard_registry.js?v=20261108-admin-pins";
+} from "./dashboard_registry.js?v=20261108-pin-cache";
 import {
   isPanelOnDashboard,
   togglePanelOnDashboard,
-} from "./dashboard_layout.js";
+} from "./dashboard_layout.js?v=20261108-pin-cache";
 
 let ownerId = null;
 let layoutTableMissing = false;
@@ -123,7 +124,21 @@ function resolvePinButton(btn) {
   }
   btn.dataset.pinWired = "1";
   wirePinClick(btn);
+  if (btn.classList.contains("dashboard-pin-btn-nav") && btn.closest(".nav-dropdown-admin")) return;
   refreshPinButton(btn);
+}
+
+function armAdminPinRefresh() {
+  if (!viewerIsAdmin) return;
+  const summary = document
+    .querySelector(".nav-dropdown-admin")
+    ?.closest("[data-nav-group]")
+    ?.querySelector(":scope > .nav-group-summary");
+  if (!summary || summary.dataset.pinRefreshArmed === "1") return;
+  summary.dataset.pinRefreshArmed = "1";
+  summary.addEventListener("click", () => {
+    document.querySelectorAll(".dashboard-pin-btn-nav").forEach((btn) => refreshPinButton(btn));
+  }, { once: true });
 }
 
 function ensureAdminMenuPinButtons() {
@@ -201,8 +216,10 @@ export async function initDashboardPinUi(supabase, opts = {}) {
   adminKnown = true;
   viewerIsAdmin = opts.isAdmin === true;
   setDashboardPinOwnerId(user.id);
+  if (viewerIsAdmin) await ensureAdminMenuPanels();
   ensureAdminMenuPinButtons();
   wireDashboardPinRoots(document);
+  armAdminPinRefresh();
 
   const page = normalizePageFile(window.location.pathname);
 

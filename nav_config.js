@@ -1,6 +1,6 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
-import { APP_VERSION } from "./app_version.js?v=20261108-admin-pins";
+import { APP_VERSION } from "./app_version.js?v=20261108-pin-cache";
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
 export const NAV_CONFIG_VERSION = APP_VERSION;
