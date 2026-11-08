@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Health check — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .health-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+    .health-legend span, .health-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      border-radius: 8px; padding: 8px 12px; border: 1px solid #444;
+      font-size: 13px; font-weight: 700; pointer-events: none; user-select: none;
+    }
+    .tone-green { background: #14301f; border-color: #2f8f55; color: #d7ffe6; }
+    .tone-amber { background: #33280f; border-color: #c4922a; color: #ffe7b0; }
+    .tone-red { background: #331414; border-color: #c45050; color: #ffd0d0; }
+    .health-item { margin: 0 0 12px; }
+    .health-pill { width: 100%; justify-content: space-between; box-sizing: border-box; }
+    .health-facts { display: inline-flex; gap: 6px; font-size: 12px; font-weight: 700; }
+    .health-facts span {
+      border: 1px solid currentColor; border-radius: 999px; padding: 2px 8px;
+    }
+    .fact-off { opacity: 0.55; text-decoration: line-through; }
+    .health-detail { margin: 6px 0 0; color: #aaa; font-size: 13px; line-height: 1.45; }
+    .health-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+    #runTest[disabled] { opacity: 0.6; cursor: wait; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Health check</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Read only. Run test looks up each mechanism. It does not start a month, end a season, run transfers, or post a fine.
+      </p>
+
+      <div class="card">
+        <h2>Run test</h2>
+        <p class="note">
+          Green means it is wired and the last time it was due, it succeeded. Not due yet still counts as a pass.
+          Amber means one of the two checks failed. Red means both failed. A hook with no written log stays amber.
+        </p>
+        <div class="health-legend" aria-hidden="true">
+          <span class="tone-green">Both ok</span>
+          <span class="tone-amber">One check</span>
+          <span class="tone-red">Both failed</span>
+        </div>
+        <button type="button" class="button" id="runTest">Run test</button>
+        <p id="healthStatus" class="status-line"></p>
+        <p id="healthContext" class="note"></p>
+        <div id="healthSummary" class="health-summary"></div>
+        <div id="healthBoard"></div>
+      </div>
+
+      <div class="card">
+        <h2>SQL</h2>
+        <p class="note">Run once: <code>supabase/sql/patches/admin_mechanism_health_20261108.sql</code></p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_healthcheck.js?v=20261108-healthcheck"></script>
+</body>
+</html>

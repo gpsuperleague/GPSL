@@ -22,6 +22,7 @@ function group(label, items = []) {
 
 export const TESTING_ADMIN_NAV = [
   T("Site map", "admin_site_map.html"),
+  T("Health check", "admin_healthcheck.html"),
   // Only Critical child links use navDanger (red). Testing + other subgroups stay standard.
   group("Critical", [
     T("Security hardening", "admin_security_hardening.html", { navDanger: true }),
