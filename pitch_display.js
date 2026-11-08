@@ -42,7 +42,7 @@ function renderMemberStats(member) {
     .join("")}</div>`;
 }
 
-function renderPitchPlayerCard(member, { highlight = false } = {}) {
+function renderPitchPlayerCard(member, { highlight = false, showStats = true, showClub = true } = {}) {
   if (!member?.player_id) {
     return '<span class="pitch-slot-placeholder" aria-hidden="true"></span>';
   }
@@ -50,6 +50,11 @@ function renderPitchPlayerCard(member, { highlight = false } = {}) {
   const id = String(member.player_id);
   const name = member.player_name || id;
   const highlightClass = highlight ? " pitch-player-card--highlight" : "";
+  const club = showClub
+    ? `<div class="spc-club pitch-player-club">
+          ${clubNameLinkHtml(member.club_short_name, member.club_name || member.club_short_name)}
+        </div>`
+    : "";
 
   return `
     <div class="squad-player-card squad-player-card--pitch pitch-player-card--readonly${highlightClass}">
@@ -58,10 +63,8 @@ function renderPitchPlayerCard(member, { highlight = false } = {}) {
       </a>
       <div class="spc-meta pitch-player-meta">
         <div class="spc-name pitch-player-name">${playerNameLinkHtml(id, name)}</div>
-        <div class="spc-club pitch-player-club">
-          ${clubNameLinkHtml(member.club_short_name, member.club_name || member.club_short_name)}
-        </div>
-        ${renderMemberStats(member)}
+        ${club}
+        ${showStats ? renderMemberStats(member) : ""}
       </div>
     </div>`;
 }
@@ -77,7 +80,11 @@ function renderPitchSlot(slot, member, opts) {
       <div class="pitch-slot-drop pitch-slot-drop--readonly">
         ${
           member
-            ? renderPitchPlayerCard(member, { highlight })
+            ? renderPitchPlayerCard(member, {
+                highlight,
+                showStats: opts.showStats !== false,
+                showClub: opts.showClub !== false,
+              })
             : '<span class="pitch-slot-placeholder" aria-hidden="true"></span>'
         }
       </div>
@@ -91,6 +98,10 @@ function renderPitchSlot(slot, member, opts) {
  * @param {string} [options.metaHtml]
  * @param {string|null} [options.highlightClub]
  * @param {string} [options.tableHtml]
+ * @param {Array} [options.slots] — override template slots ({ id, x, y, label })
+ * @param {string} [options.title]
+ * @param {boolean} [options.showStats]
+ * @param {boolean} [options.showClub]
  */
 export function renderFormationPitchHtml({
   formationId,
@@ -98,19 +109,27 @@ export function renderFormationPitchHtml({
   metaHtml = "",
   highlightClub = null,
   tableHtml = "",
+  slots = null,
+  title = "",
+  showStats = true,
+  showClub = true,
 }) {
   const formation = getFormation(formationId || DEFAULT_FORMATION_ID);
   const bySlot = new Map(members.map((m) => [m.pitch_slot, m]));
-  const slotsHtml = formation.slots
-    .map((slot) => renderPitchSlot(slot, bySlot.get(slot.id), { highlightClub }))
+  const slotList = Array.isArray(slots) && slots.length ? slots : formation.slots;
+  const caption = title || formationDisplayName(formation);
+  const slotsHtml = slotList
+    .map((slot) =>
+      renderPitchSlot(slot, bySlot.get(slot.id), { highlightClub, showStats, showClub })
+    )
     .join("");
 
   return `
     <div class="pitch-display">
       ${metaHtml}
-      <p class="pitch-display-formation">${escapeHtml(formationDisplayName(formation))}</p>
+      <p class="pitch-display-formation">${escapeHtml(caption)}</p>
       <div class="pitch-stage pitch-stage--readonly">
-        <div class="football-pitch football-pitch--readonly" role="img" aria-label="${escapeHtml(formationDisplayName(formation))} formation">
+        <div class="football-pitch football-pitch--readonly" role="img" aria-label="${escapeHtml(caption)} formation">
           <div class="pitch-center-circle" aria-hidden="true"></div>
           ${slotsHtml}
         </div>

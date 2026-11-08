@@ -2,12 +2,39 @@
  * Club page: recent form beside the header, and the Analysis tab
  * (Match Day formation, lineup, injuries, head-to-head, last score).
  */
-import { GPSL_MONTH_LABELS, gpslMonthSortIndex } from "./competition.js";
-import { formationDisplayName, getFormation } from "./matchday_formations.js";
+import { formatFixtureCompetition, GPSL_MONTH_LABELS, gpslMonthSortIndex } from "./competition.js";
+import {
+  formationDisplayName,
+  getFormation,
+  PITCH_SLOT_IDS,
+  resolvePitchLayout,
+} from "./matchday_formations.js";
 import { loadClubActiveInjuries } from "./player_discipline.js?v=20261026-club-squad-lwf";
 import { playerNameLinkHtml } from "./player_links.js";
+import { renderFormationPitchHtml } from "./pitch_display.js";
 
 const FORM_LIMIT = 5;
+
+/** Same GK → CF order as Match Day squad and stats tables. */
+const POSITION_ORDER = [
+  "GK",
+  "LB",
+  "CB",
+  "RB",
+  "LWB",
+  "RWB",
+  "DMF",
+  "LMF",
+  "CMF",
+  "RMF",
+  "AMF",
+  "LWF",
+  "LW",
+  "SS",
+  "RWF",
+  "RW",
+  "CF",
+];
 
 function esc(v) {
   return String(v ?? "")
@@ -64,9 +91,7 @@ function opponentOf(club, f) {
 }
 
 function compLabel(f) {
-  if (f.competition_type === "cup") return f.cup_code || "Cup";
-  if (f.competition_type === "league") return "League";
-  return f.competition_type || "Match";
+  return formatFixtureCompetition(f) || "Match";
 }
 
 function monthLabel(f) {
@@ -74,18 +99,22 @@ function monthLabel(f) {
   return GPSL_MONTH_LABELS[key] || f.gpsl_month || "";
 }
 
-function scoreLine(f) {
-  return `${esc(f.home_club_short_name)} ${esc(f.home_goals)}–${esc(f.away_goals)} ${esc(f.away_club_short_name)}`;
+function clubNameOn(f, side) {
+  return side === "home" ? f.home_club_name || "Home" : f.away_club_name || "Away";
 }
 
-function formationText(preview) {
-  const id = String(preview?.formation_id || "").trim();
-  const named = String(preview?.formation_name || "").trim();
-  const known = id && getFormation(id)?.id === id ? formationDisplayName(getFormation(id)) : "";
-  if (named && named !== id && named !== known) {
-    return known ? `${named} · ${known}` : named;
-  }
-  return known || named || "";
+function positionIndex(player) {
+  const role = String(player?.role_label || player?.player_position || "")
+    .trim()
+    .toUpperCase();
+  const i = POSITION_ORDER.indexOf(role);
+  return i >= 0 ? i : POSITION_ORDER.length;
+}
+
+function byPosition(a, b) {
+  const d = positionIndex(a) - positionIndex(b);
+  if (d) return d;
+  return String(a.player_name || "").localeCompare(String(b.player_name || ""));
 }
 
 function whenLabel(iso) {
@@ -106,7 +135,7 @@ async function loadFixtures(supabase, club) {
   const { data, error } = await supabase
     .from("competition_fixtures_public")
     .select(
-      "id, competition_type, cup_code, gpsl_month, matchday, week_in_month, home_club_short_name, home_club_name, away_club_short_name, away_club_name, home_goals, away_goals, status, is_forfeit, agreed_kickoff_at"
+      "id, competition_type, cup_code, division, gpsl_month, matchday, week_in_month, home_club_short_name, home_club_name, away_club_short_name, away_club_name, home_goals, away_goals, status, is_forfeit, agreed_kickoff_at"
     )
     .or(`home_club_short_name.eq.${code},away_club_short_name.eq.${code}`)
     .limit(200);
@@ -125,7 +154,7 @@ function renderForm(host, club, fixtures) {
         .map((f) => {
           const mark = outcome(club, f);
           const opp = opponentOf(club, f);
-          const tip = `${opp.name || opp.short} · ${f.home_goals}–${f.away_goals}${f.is_forfeit ? " · forfeit" : ""} · ${monthLabel(f)}`;
+          const tip = `${f.home_club_name || "Home"} ${f.home_goals}–${f.away_goals} ${f.away_club_name || "Away"} · ${monthLabel(f)} · ${formatFixtureCompetition(f)}${f.is_forfeit ? " · forfeit" : ""}`;
           return `<a class="club-form-pill is-${mark.toLowerCase()}" href="match_report.html?fixture=${encodeURIComponent(f.id)}" title="${esc(tip)}">${mark}</a>`;
         })
         .join("")
@@ -137,26 +166,20 @@ function renderForm(host, club, fixtures) {
 }
 
 function renderLineup(preview) {
-  const xi = Array.isArray(preview?.xi) ? preview.xi : [];
-  const bench = Array.isArray(preview?.bench) ? preview.bench : [];
+  const xi = (Array.isArray(preview?.xi) ? preview.xi : []).slice().sort(byPosition);
+  const bench = (Array.isArray(preview?.bench) ? preview.bench : []).slice().sort(byPosition);
   if (!xi.length && !bench.length) {
     return `<p class="club-an-empty">No Match Day lineup saved.</p>`;
   }
-  const rows = xi
-    .map(
-      (p) => `
+  const row = (p) => `
       <li>
         <span class="club-an-role">${esc(p.role_label || p.player_position || "")}</span>
         ${playerNameLinkHtml(p.player_id, p.player_name)}
-      </li>`
-    )
-    .join("");
-  const subs = bench
-    .map((p) => playerNameLinkHtml(p.player_id, p.player_name))
-    .join(", ");
+      </li>`;
+  const subs = bench.map(row).join("");
   return `
-    <ol class="club-an-xi">${rows}</ol>
-    ${subs ? `<p class="club-an-bench"><span>Bench</span> ${subs}</p>` : ""}
+    <ol class="club-an-xi">${xi.map(row).join("")}</ol>
+    ${subs ? `<p class="club-an-bench"><span>Bench</span></p><ol class="club-an-xi">${subs}</ol>` : ""}
   `;
 }
 
@@ -168,7 +191,8 @@ function renderInjuries(injuries, names) {
       const out = Number(inj.matches_out_remaining) || 0;
       const rec = Number(inj.recovery_remaining) || 0;
       const phase = out > 0 ? `Out · ${out} match${out === 1 ? "" : "es"}` : `Recovery · ${rec} match${rec === 1 ? "" : "es"}`;
-      return `<li>${playerNameLinkHtml(id, names.get(id) || id)} <span class="club-an-meta">${esc(inj.label || "Injury")} · ${esc(phase)}</span></li>`;
+      const label = names.get(id) || "Player";
+      return `<li>${playerNameLinkHtml(id, label)} <span class="club-an-meta">${esc(inj.label || "Injury")} · ${esc(phase)}</span></li>`;
     })
     .join("")}</ul>`;
 }
@@ -188,51 +212,93 @@ function h2hFigures(club, fixtures, opponent) {
   return { w, d, l, played: rows.length, last };
 }
 
-function opponentOptions(club, fixtures, viewerClub) {
-  const map = new Map();
-  for (const f of fixtures) {
-    const opp = opponentOf(club, f);
-    const key = clubKey(opp.short);
-    if (!key || key === clubKey(club)) continue;
-    if (!map.has(key)) map.set(key, opp.name || key);
-  }
-  const list = [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  const viewer = clubKey(viewerClub);
-  const playedRows = fixtures.filter((f) => played(f));
-  const latestOpp = playedRows.length ? clubKey(opponentOf(club, playedRows[playedRows.length - 1]).short) : "";
-  let selected = "";
-  if (viewer && viewer !== clubKey(club) && map.has(viewer)) selected = viewer;
-  else if (latestOpp && map.has(latestOpp)) selected = latestOpp;
-  else if (list.length) selected = list[0][0];
-  return { list, selected };
+function meetingsBetween(viewer, page, fixtures) {
+  const a = clubKey(viewer);
+  const b = clubKey(page);
+  return fixtures.filter((f) => {
+    const sides = [clubKey(f.home_club_short_name), clubKey(f.away_club_short_name)];
+    return sides.includes(a) && sides.includes(b);
+  });
 }
 
-function renderOpponentBlocks(club, fixtures, opponent, name) {
-  if (!opponent) {
+function renderMatchup(viewer, page, fixtures, viewerName, pageName) {
+  if (!viewer) {
     return {
-      h2h: `<p class="club-an-empty">No opponents this season.</p>`,
-      last: `<p class="club-an-empty">No score yet.</p>`,
+      h2h: `<p class="club-an-empty">Head to head appears when you are logged in with a club.</p>`,
+      last: `<p class="club-an-empty">No meeting to show.</p>`,
     };
   }
-  const fig = h2hFigures(club, fixtures, opponent);
+  if (clubKey(viewer) === clubKey(page)) {
+    return {
+      h2h: `<p class="club-an-empty">Open another club to see your head to head.</p>`,
+      last: `<p class="club-an-empty">Open another club to see your last meeting.</p>`,
+    };
+  }
+  const rows = meetingsBetween(viewer, page, fixtures).filter(played);
+  const fig = h2hFigures(viewer, rows.length ? rows : [], page);
+  const yours = viewerName || "Your club";
+  const theirs = pageName || "This club";
   const h2h = fig.played
-    ? `<p class="club-an-h2h"><b>${fig.w}</b> wins · <b>${fig.d}</b> draws · <b>${fig.l}</b> losses</p><p class="club-an-meta">${fig.played} played against ${esc(name || opponent)}</p>`
-    : `<p class="club-an-empty">No result against ${esc(name || opponent)} yet.</p>`;
+    ? `<p class="club-an-versus">${esc(yours)} <span>vs</span> ${esc(theirs)}</p>
+       <div class="club-an-record">
+         <div class="is-w"><b>${fig.w}</b><span>Wins</span></div>
+         <div class="is-d"><b>${fig.d}</b><span>Draws</span></div>
+         <div class="is-l"><b>${fig.l}</b><span>Losses</span></div>
+       </div>
+       <p class="club-an-meta">Your record · ${fig.played} played</p>`
+    : `<p class="club-an-versus">${esc(yours)} <span>vs</span> ${esc(theirs)}</p>
+       <p class="club-an-empty">No result between you yet this season.</p>`;
   let last;
   if (!fig.last) {
-    last = `<p class="club-an-empty">No score against ${esc(name || opponent)} yet.</p>`;
+    last = `<p class="club-an-empty">No score between ${esc(yours)} and ${esc(theirs)} yet.</p>`;
   } else {
-    const mark = outcome(club, fig.last);
-    const word = mark === "W" ? "Win" : mark === "L" ? "Loss" : "Draw";
-    const bits = [monthLabel(fig.last), compLabel(fig.last), word, fig.last.is_forfeit ? "Forfeit" : ""]
+    const bits = [monthLabel(fig.last), compLabel(fig.last), fig.last.is_forfeit ? "Forfeit" : ""]
       .filter(Boolean)
       .join(" · ");
     last = `
-      <a class="club-an-score" href="match_report.html?fixture=${encodeURIComponent(fig.last.id)}">${scoreLine(fig.last)}</a>
+      <a class="club-an-scoreboard" href="match_report.html?fixture=${encodeURIComponent(fig.last.id)}">
+        <span class="side">${esc(clubNameOn(fig.last, "home"))}</span>
+        <span class="nums">${esc(fig.last.home_goals)}–${esc(fig.last.away_goals)}</span>
+        <span class="side away">${esc(clubNameOn(fig.last, "away"))}</span>
+      </a>
       <p class="club-an-meta">${esc(bits)}</p>
     `;
   }
   return { h2h, last };
+}
+
+function pitchSlotsFromLayout(raw, formationId) {
+  const resolved = resolvePitchLayout(raw, formationId || undefined);
+  return PITCH_SLOT_IDS.map((id) => {
+    const pos = resolved.positions?.[id];
+    if (!pos) return null;
+    return { id, x: pos.x, y: pos.y, label: resolved.labels?.[id] || id };
+  }).filter(Boolean);
+}
+
+function renderFormation(preview, pitchLayout) {
+  const xi = Array.isArray(preview?.xi) ? preview.xi : [];
+  const id = String(preview?.formation_id || "").trim();
+  const known = id && getFormation(id)?.id === id ? formationDisplayName(getFormation(id)) : "";
+  const named = String(preview?.formation_name || "").trim();
+  const title = named && named !== id ? named : known;
+  if (!title && !xi.length) {
+    return `<p class="club-an-empty">Not set on Match Day.</p>`;
+  }
+  const members = xi.map((p) => ({
+    pitch_slot: p.pitch_slot,
+    slot_label: p.role_label || p.player_position || "",
+    player_id: p.player_id,
+    player_name: p.player_name,
+  }));
+  return renderFormationPitchHtml({
+    formationId: known ? id : undefined,
+    title: title || "Match Day shape",
+    members,
+    slots: pitchSlotsFromLayout(pitchLayout, known ? id : undefined),
+    showStats: false,
+    showClub: false,
+  });
 }
 
 async function loadInjuryNames(supabase, injuries) {
@@ -291,48 +357,44 @@ export async function startClubInsights({ supabase, clubShort, viewerClub }) {
   if (formHost) formHost.innerHTML = `<div class="club-form-label">Recent form</div><div class="club-form-empty">Loading…</div>`;
   if (analysisHost) analysisHost.innerHTML = `<p class="club-an-empty">Loading…</p>`;
 
-  const [fixtures, previewRes, injuries] = await Promise.all([
+  const nameCodes = [...new Set([clubKey(clubShort), clubKey(viewerClub)].filter(Boolean))];
+  const [fixtures, previewRes, injuries, layoutRes, nameRes] = await Promise.all([
     loadFixtures(supabase, clubShort),
     supabase.rpc("competition_match_club_preview", { p_club: clubShort }),
     loadClubActiveInjuries(supabase, clubShort),
+    supabase
+      .from("club_matchday_squad")
+      .select("pitch_layout")
+      .eq("club_short_name", clubKey(clubShort))
+      .maybeSingle(),
+    nameCodes.length
+      ? supabase.from("Clubs").select("ShortName, Club").in("ShortName", nameCodes)
+      : Promise.resolve({ data: [] }),
   ]);
 
   renderForm(formHost, clubShort, fixtures);
 
   const preview = previewRes.error ? null : previewRes.data;
   if (previewRes.error) console.warn("matchday preview:", previewRes.error.message);
+  if (layoutRes.error) console.warn("matchday shape:", layoutRes.error.message);
   const names = await loadInjuryNames(supabase, injuries);
-  const formation = formationText(preview);
+  injuries.sort((a, b) =>
+    String(names.get(String(a.player_id)) || "").localeCompare(String(names.get(String(b.player_id)) || ""))
+  );
   const updated = whenLabel(preview?.squad_updated_at);
-  const { list, selected } = opponentOptions(clubShort, fixtures, viewerClub);
-
-  const paintOpponent = (code) => {
-    const name = list.find(([short]) => short === code)?.[1] || code;
-    const blocks = renderOpponentBlocks(clubShort, fixtures, code, name);
-    const h2h = document.getElementById("clubH2hBody");
-    const last = document.getElementById("clubLastScoreBody");
-    if (h2h) h2h.innerHTML = blocks.h2h;
-    if (last) last.innerHTML = blocks.last;
-  };
+  const clubNames = new Map(
+    (nameRes.data || []).map((row) => [clubKey(row.ShortName), row.Club])
+  );
+  const pageName = clubNames.get(clubKey(clubShort)) || "";
+  const viewerName = clubNames.get(clubKey(viewerClub)) || "";
+  const matchup = renderMatchup(viewerClub, clubShort, fixtures, viewerName, pageName);
 
   if (!analysisHost) return;
-  const options = list
-    .map(
-      ([short, name]) =>
-        `<option value="${esc(short)}"${short === selected ? " selected" : ""}>${esc(name)} (${esc(short)})</option>`
-    )
-    .join("");
-  const picker = list.length
-    ? `<label class="club-an-pick">Against
-        <select id="clubOpponentPick">${options}</select>
-      </label>`
-    : "";
-
   analysisHost.innerHTML = `
     <div class="club-an-grid">
-      <section class="club-an-card">
+      <section class="club-an-card club-an-card--wide">
         <h2>Formation</h2>
-        <p class="club-an-lead">${formation ? esc(formation) : "Not set on Match Day"}</p>
+        ${renderFormation(preview, layoutRes.data?.pitch_layout)}
         <p class="club-an-meta">${updated ? `Saved ${esc(updated)}` : "Match Day setup"}</p>
       </section>
       <section class="club-an-card">
@@ -345,17 +407,12 @@ export async function startClubInsights({ supabase, clubShort, viewerClub }) {
       </section>
       <section class="club-an-card">
         <h2>Head to head</h2>
-        ${picker}
-        <div id="clubH2hBody"></div>
+        ${matchup.h2h}
       </section>
       <section class="club-an-card">
-        <h2>Last score vs opponent</h2>
-        <div id="clubLastScoreBody"></div>
+        <h2>Last score</h2>
+        ${matchup.last}
       </section>
     </div>
   `;
-  paintOpponent(selected);
-  document.getElementById("clubOpponentPick")?.addEventListener("change", (ev) => {
-    paintOpponent(ev.target.value);
-  });
 }
