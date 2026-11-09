@@ -76,6 +76,8 @@ let reviewListings = [];
 let selectedListing = null;
 let renderGeneration = 0;
 let favouriteListingIds = new Set();
+/** listing id → club short names that declared interest on a preview listing */
+let previewInterestByListing = new Map();
 let listingsRefreshTimer = null;
 let listingsRefreshMs = null;
 let listingsLoading = false;
@@ -362,11 +364,104 @@ async function loadListings() {
       ...(pendingRes.data || []),
     ]);
     reviewListings = reviewRes.data || [];
+    await loadPreviewInterest(pendingRes.data || []);
     await renderListings();
     updateListingsRefreshNote(`Updated ${new Date().toLocaleTimeString("en-GB")}`);
   } finally {
     listingsLoading = false;
   }
+}
+
+async function loadPreviewInterest(pendingRows) {
+  previewInterestByListing = new Map();
+  const ids = (pendingRows || [])
+    .map((row) => row?.id)
+    .filter((id) => id != null);
+  if (!ids.length) return;
+
+  const { data, error } = await supabase
+    .from("listing_preview_interest")
+    .select("listing_id, club_short_name, created_at")
+    .in("listing_id", ids);
+  if (error) {
+    console.warn("listing_preview_interest:", error.message || error);
+    return;
+  }
+
+  const grouped = new Map();
+  for (const row of data || []) {
+    const id = String(row.listing_id);
+    const club = String(row.club_short_name || "").trim().toUpperCase();
+    if (!club) continue;
+    const list = grouped.get(id) || [];
+    list.push({
+      club,
+      at: row.created_at ? new Date(row.created_at).getTime() : 0,
+    });
+    grouped.set(id, list);
+  }
+  for (const [id, list] of grouped) {
+    list.sort((a, b) => a.at - b.at || a.club.localeCompare(b.club));
+    previewInterestByListing.set(
+      id,
+      list.map((item) => item.club)
+    );
+  }
+}
+
+function previewInterestHtml(listing) {
+  const id = String(listing.id);
+  const clubs = previewInterestByListing.get(id) || [];
+  const mine = String(currentUserShort || "").trim().toUpperCase();
+  const seller = String(listing.seller_club_id || "").trim().toUpperCase();
+  const canDeclare = !!mine && mine !== seller;
+  const checked = canDeclare && clubs.includes(mine);
+  const badges = clubs
+    .map((short) => {
+      const name = fullClubName(short) || short;
+      const tip = `${name} declared interest`;
+      return `<img class="preview-interest-badge gpsl-has-tip" src="images/club_badges/${encodeURIComponent(
+        short
+      )}.png" alt="${escapeHtml(short)}" width="18" height="18" loading="lazy" data-gpsl-tip="${escapeAttr(
+        tip
+      )}" title="${escapeAttr(tip)}" tabindex="0" onerror="this.style.display='none'">`;
+    })
+    .join("");
+  const box = canDeclare
+    ? `<label class="preview-interest-check" title="Declare interest">
+        <input type="checkbox" data-listing-id="${escapeAttr(id)}" ${
+          checked ? "checked" : ""
+        } aria-label="Declare interest">
+      </label>`
+    : "";
+  if (!box && !badges) return "";
+  return `<span class="preview-interest">${box}${badges}</span>`;
+}
+
+async function setPreviewInterest(listingId, interested) {
+  const { error } = await supabase.rpc("listing_preview_interest_set", {
+    p_listing_id: Number(listingId),
+    p_interested: !!interested,
+  });
+  if (error) {
+    const msg = String(error.message || "");
+    alert(
+      /listing_preview_interest_set|schema cache|does not exist/i.test(msg)
+        ? "Preview interest is not ready yet. Run listing_preview_interest_20261109.sql in Supabase."
+        : msg || "Could not update interest."
+    );
+    return false;
+  }
+  const id = String(listingId);
+  const mine = String(currentUserShort || "").trim().toUpperCase();
+  const current = previewInterestByListing.get(id) || [];
+  const next = interested
+    ? current.includes(mine)
+      ? current
+      : [...current, mine]
+    : current.filter((club) => club !== mine);
+  previewInterestByListing.set(id, next);
+  return true;
 }
 
 function listingHighBidScore(listing) {
@@ -1494,7 +1589,9 @@ async function renderListings() {
       </td>
 
       <td>
-        ${playerNameLinkHtml(listing.player_id, playerName)}${injuryMarker}${fitnessMarker}
+        ${playerNameLinkHtml(listing.player_id, playerName)}${
+          isPendingWindow ? previewInterestHtml(listing) : ""
+        }${injuryMarker}${fitnessMarker}
       </td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Playstyle || "-"}</td>
@@ -1527,6 +1624,16 @@ async function renderListings() {
 
     tr.querySelectorAll(".pesdb-link, .club-link").forEach((link) => {
       link.addEventListener("click", (e) => e.stopPropagation());
+    });
+
+    tr.querySelectorAll(".preview-interest-check input").forEach((box) => {
+      box.addEventListener("click", (e) => e.stopPropagation());
+      box.addEventListener("change", async (e) => {
+        e.stopPropagation();
+        const ok = await setPreviewInterest(box.dataset.listingId, box.checked);
+        if (!ok) box.checked = !box.checked;
+        else void renderListings();
+      });
     });
 
     const favBtn = tr.querySelector(".listing-fav-btn");

@@ -393,6 +393,40 @@ body.tm-market .wrap {
   max-width: 1220px;
 }
 
+body.tm-market .preview-interest {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+body.tm-market .preview-interest-check {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  cursor: pointer;
+}
+
+body.tm-market .preview-interest-check input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #e8c060;
+  cursor: pointer;
+}
+
+body.tm-market .preview-interest-badge {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  border-radius: 2px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  cursor: help;
+}
+
 @media (max-width: 720px) {
   .tm-brand {
     font-size: 12px;
