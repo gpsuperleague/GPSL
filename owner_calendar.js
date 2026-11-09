@@ -3,7 +3,8 @@
  * Agreed KOs · pending schedule proposals (ghost) · Club Wire cutoffs ·
  * GPSL unlock/lock · availability wash · special/planned auctions ·
  * transfer window guide + live status · match video upload deadlines
- * (+24h extension only after miss) · owner holidays.
+ * (+24h extension only after miss) · result deadlines for the club that
+ * still has to enter · owner holidays.
  */
 import { supabase, initGlobal, getAuthUserFast } from "./global.js";
 import { GPSL_MONTH_LABELS, CUP_LABELS, DIVISION_LABELS } from "./competition.js";
@@ -294,6 +295,9 @@ function deadlineChipText(c) {
   const kind = String(c.kind || "");
   if (kind === "video_suspend") return "Video +24h";
   if (kind === "video") return "Video due";
+  if (kind === "result_void") return "Void";
+  if (kind === "result_enter" || kind === "result_close" || kind === "result_month") return "Result";
+  if (kind === "play_window") return "Last play";
   const t = String(c.title || c.kind || "Deadline");
   if (/reply/i.test(t)) return "Reply";
   if (/propose/i.test(t)) return "Propose";
@@ -1584,6 +1588,12 @@ async function loadMyPendingProposals() {
 }
 
 async function loadCutoffs() {
+  const { data: personal, error: personalErr } = await supabase.rpc("owner_calendar_deadlines");
+  if (!personalErr && personal?.ok && Array.isArray(personal.deadlines)) {
+    return personal.deadlines;
+  }
+  if (personalErr) console.warn("owner_calendar_deadlines:", personalErr.message || personalErr);
+
   const { data, error } = await supabase.rpc("club_wire_cutoffs");
   if (error) {
     console.warn("club_wire_cutoffs:", error);
