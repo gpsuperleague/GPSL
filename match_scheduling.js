@@ -185,7 +185,7 @@ export function fixtureHolidayArrangeNote(fixture) {
     const hol = ownerHolidayStatusForClub(short);
     if (!hol || (hol.code !== "OH" && hol.code !== "UH")) continue;
     const overlapDays = holidayOverlapDays(hol, playMonth);
-    if (overlapDays < 1) continue;
+    if (overlapDays < HOLIDAY_EARLY_MIN_DAYS) continue;
     const entry = {
       clubShort: String(short || "").toUpperCase(),
       code: hol.code,

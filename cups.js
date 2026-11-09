@@ -40,7 +40,7 @@ import {
   fixtureHolidayArrangeNote,
   holidayKickoffNoteHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261109-holiday-4d";
+} from "./match_scheduling.js?v=20261109-holiday-4d-only";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
