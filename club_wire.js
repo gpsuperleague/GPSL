@@ -53,6 +53,10 @@ const CUTOFF_BADGE = {
   play_window: ["PLAY BY", "cw-badge--lock"],
   video: ["VIDEO", "cw-badge--cutoff"],
   video_suspend: ["VIDEO PT", "cw-badge--bad"],
+  result_enter: ["RESULT", "cw-badge--cutoff"],
+  result_close: ["RESULT", "cw-badge--bad"],
+  result_month: ["RESULT", "cw-badge--cutoff"],
+  result_void: ["VOID", "cw-badge--bad"],
 };
 
 const STYLE = `
@@ -361,6 +365,181 @@ async function enrichCutoffsWithHomeWeather(cutoffs) {
   });
 }
 
+const RESULT_RECOVER_HOURS = 24;
+
+function dueMonthKey(fixture, months) {
+  const fixMonth = String(fixture?.gpsl_month || "").trim().toLowerCase();
+  const playAt = fixture?.agreed_kickoff_at || null;
+  if (!playAt || !months.length) return fixMonth;
+  const t = new Date(playAt).getTime();
+  if (!Number.isFinite(t)) return fixMonth;
+  let playMonth = null;
+  let playSort = -Infinity;
+  let fixSort = -Infinity;
+  for (const m of months) {
+    const key = String(m.gpsl_month || "").trim().toLowerCase();
+    if (!key) continue;
+    const order = Number(m.sort_order);
+    const sort = Number.isFinite(order) ? order : 0;
+    if (key === fixMonth) fixSort = sort;
+    const unlockMs = m.unlock_at ? new Date(m.unlock_at).getTime() : NaN;
+    if (!Number.isFinite(unlockMs) || unlockMs > t) continue;
+    if (sort >= playSort) {
+      playSort = sort;
+      playMonth = key;
+    }
+  }
+  if (playMonth && playSort > fixSort) return playMonth;
+  return fixMonth || playMonth;
+}
+
+/** Next result deadline for each match where this club has not entered its side. */
+async function loadWireResultDeadlines(clubShort) {
+  const me = String(clubShort || "").trim().toUpperCase();
+  if (!me) return [];
+
+  let grace = 72;
+  try {
+    const { data, error } = await supabase.rpc("match_video_missing_fine_grace_hours");
+    if (!error && Number(data) > 0) grace = Number(data);
+  } catch {
+    /* 72 */
+  }
+
+  const [fxRes, calRes] = await Promise.all([
+    supabase
+      .from("competition_fixtures_public")
+      .select(
+        "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, status, home_goals, away_goals, is_forfeit, submission_status, submitted_by_club, agreed_kickoff_at, gpsl_month, schedule_status"
+      ),
+    supabase
+      .from("competition_season_calendar_public")
+      .select("gpsl_month, lock_at, unlock_at, sort_order")
+      .order("sort_order", { ascending: true }),
+  ]);
+  if (fxRes.error) throw fxRes.error;
+  if (calRes.error) throw calRes.error;
+
+  const months = calRes.data || [];
+  const now = Date.now();
+  const pastMs = 21 * 86400_000;
+  const out = [];
+
+  for (const f of fxRes.data || []) {
+    const home = String(f.home_club_short_name || "").trim().toUpperCase();
+    const away = String(f.away_club_short_name || "").trim().toUpperCase();
+    if (home !== me && away !== me) continue;
+    if (f.is_forfeit === true) continue;
+    const ko = f.agreed_kickoff_at ? new Date(f.agreed_kickoff_at).getTime() : NaN;
+    if (!Number.isFinite(ko) || ko > now) continue;
+
+    const pending = String(f.submission_status || "").toLowerCase() === "pending";
+    const enteredBy = String(f.submitted_by_club || "").trim().toUpperCase();
+    if (pending && enteredBy === me) continue;
+    const played = String(f.status || "").toLowerCase() === "played";
+    if (!pending && played && f.home_goals != null && f.away_goals != null) continue;
+
+    const monthKey = dueMonthKey(f, months);
+    const month = months.find(
+      (m) => String(m.gpsl_month || "").trim().toLowerCase() === monthKey
+    );
+    const lockMs = month?.lock_at ? new Date(month.lock_at).getTime() : NaN;
+    if (!Number.isFinite(lockMs)) continue;
+
+    const remindMs = lockMs + grace * 3600_000;
+    const closeMs = remindMs + RESULT_RECOVER_HOURS * 3600_000;
+    const arranged = String(f.schedule_status || "").toLowerCase() === "agreed";
+    const oppShort = home === me ? f.away_club_short_name : f.home_club_short_name;
+    const oppName = home === me ? f.away_club_name : f.home_club_name;
+    const opp = fullClubName(oppShort) || oppName || oppShort || "opponent";
+    const href = `matchday.html?fixture=${encodeURIComponent(String(f.id))}`;
+    const events = [];
+
+    if (closeMs > now - 3600_000) {
+      events.push({
+        id: `result_enter:${f.id}`,
+        fixture_id: f.id,
+        kind: "result_enter",
+        at: new Date(remindMs).toISOString(),
+        title: pending ? `Confirm result vs ${opp}` : `Enter result vs ${opp}`,
+        detail: pending
+          ? "Your opponent has entered a score. ₿500,000 if you have not confirmed by this time."
+          : `₿500,000 if your result is still not in. You then have ${RESULT_RECOVER_HOURS} hours to finish it.`,
+        href,
+        severity: remindMs - now <= 24 * 3600_000 ? "urgent" : "warn",
+      });
+    }
+    if (pending || arranged) {
+      events.push({
+        id: `result_close:${f.id}`,
+        fixture_id: f.id,
+        kind: "result_close",
+        at: new Date(closeMs).toISOString(),
+        title: pending ? `Score confirmed vs ${opp}` : `Result extension vs ${opp}`,
+        detail: pending
+          ? "If you still have not confirmed, another ₿500,000 and their score is confirmed. Starters are rated 3. It cannot be edited."
+          : "No score in. Another ₿500,000 to each club. The result stays open.",
+        href,
+        severity: closeMs - now <= 24 * 3600_000 ? "urgent" : "warn",
+      });
+    }
+
+    if (!pending) {
+      const dueSort = Number(month?.sort_order);
+      if (Number.isFinite(dueSort)) {
+        const later = months
+          .filter((m) => Number(m.sort_order) > dueSort && m.lock_at)
+          .sort((a, b) => Number(a.sort_order) - Number(b.sort_order));
+        for (const m of later) {
+          const lockAt = new Date(m.lock_at).getTime();
+          if (!Number.isFinite(lockAt)) continue;
+          const step = Number(m.sort_order) - dueSort;
+          const label = m.gpsl_month || "that month";
+          if (step >= 2) {
+            events.push({
+              id: `result_void:${f.id}`,
+              fixture_id: f.id,
+              kind: "result_void",
+              at: new Date(lockAt).toISOString(),
+              title: `Result void vs ${opp}`,
+              detail: "Two months after the played month. If there is still no score, the match is void. Neither club gets the result. It counts as played.",
+              href,
+              severity: "warn",
+            });
+            break;
+          }
+          if (arranged) {
+            events.push({
+              id: `result_month:${f.id}:${String(m.gpsl_month || "").toLowerCase()}`,
+              fixture_id: f.id,
+              kind: "result_month",
+              at: new Date(lockAt).toISOString(),
+              title: `Result still open vs ${opp}`,
+              detail: `Another ₿500,000 at the ${label} lock while the match is still arranged and no score is in.`,
+              href,
+              severity: "info",
+            });
+          }
+        }
+      }
+    }
+
+    const upcoming = events
+      .filter((e) => new Date(e.at).getTime() >= now)
+      .sort((a, b) => new Date(a.at) - new Date(b.at));
+    const recent = events
+      .filter((e) => {
+        const t = new Date(e.at).getTime();
+        return t < now && t >= now - pastMs;
+      })
+      .sort((a, b) => new Date(b.at) - new Date(a.at));
+    const next = upcoming[0] || recent[0];
+    if (next) out.push(next);
+  }
+
+  return out;
+}
+
 async function poll() {
   if (document.hidden) return;
   try {
@@ -381,8 +560,35 @@ async function poll() {
     if (cutRes.error) {
       console.warn("club_wire_cutoffs:", cutRes.error.message);
     }
-    const clubShort =
+    let clubShort =
       cutRes.data?.club_short_name || wireRes.data?.club_short_name || null;
+    if (!clubShort) {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        if (auth?.user?.id) {
+          const { data: club } = await supabase
+            .from("Clubs")
+            .select("ShortName")
+            .eq("owner_id", auth.user.id)
+            .maybeSingle();
+          clubShort = club?.ShortName || null;
+        }
+      } catch (err) {
+        console.warn("club wire club:", err);
+      }
+    }
+    try {
+      const results = await loadWireResultDeadlines(clubShort);
+      const seen = new Set(cutoffs.map((c) => c?.id).filter(Boolean));
+      for (const row of results) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        cutoffs.push(row);
+      }
+      cutoffs.sort((a, b) => new Date(a?.at).getTime() - new Date(b?.at).getTime());
+    } catch (err) {
+      console.warn("club wire result deadlines:", err);
+    }
     try {
       cutoffs = await enrichCutoffsWithUnavailable(cutoffs, clubShort);
     } catch (err) {
@@ -493,7 +699,13 @@ function cutoffRowsHtml(cutoffs) {
       const [label, cls] = CUTOFF_BADGE[c.kind] || ["CUTOFF", "cw-badge--cutoff"];
       const sev = c.severity === "urgent" || c.severity === "warn" ? ` cw-sev-${c.severity}` : "";
       const goLabel =
-        c.kind === "video" || c.kind === "video_suspend" ? "Upload →" : "Open →";
+        c.kind === "video" || c.kind === "video_suspend"
+          ? "Upload →"
+          : c.kind === "result_enter"
+            ? "Enter →"
+            : c.kind === "result_close"
+              ? "Confirm →"
+              : "Open →";
       const go = c.href
         ? `<a class="cw-go cw-go--plain" href="${esc(c.href)}">${goLabel}</a>`
         : "";
@@ -519,7 +731,7 @@ function cutoffRowsHtml(cutoffs) {
     .join("");
   return `
     <div class="cw-cutoffs">
-      <div class="cw-cutoffs-head">Cutoffs · fines, forfeits &amp; videos</div>
+      <div class="cw-cutoffs-head">Cutoffs · fines, forfeits, videos &amp; results</div>
       <ul class="cw-list">${rows}</ul>
     </div>`;
 }
