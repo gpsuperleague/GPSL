@@ -9,12 +9,18 @@
 -- If the result is still not confirmed at +72h:
 --   ₿500k for each club that has not entered their side, plus an inbox reminder.
 --   A club that already submitted is not charged.
--- If it is still not confirmed at +96h:
---   another ₿500k for each club that still has not entered, then the result is closed.
---   Score already submitted is kept. If nobody submitted, the score is 0–0.
---   Starters on the matchday lineup are rated 3, with no goals, assists,
---   cards, or player of the match. The normal stat rules are not applied.
---   Neither club can edit it afterwards.
+-- If one score is in and it is still not confirmed at +96h:
+--   another ₿500k for the club that has not entered, then that score is confirmed.
+--   Starters are rated 3, with no goals, assists, cards, or player of the match.
+--   The result cannot be edited afterwards.
+-- If nobody has submitted:
+--   the result stays open. Both clubs are charged at +72h.
+--   While the match is still arranged (agreed kick-off already passed):
+--     another ₿500k each at the end of the 24 hours, and again at every
+--     later month lock, until a score is submitted.
+--   If there is still no score when the GPSL month two months after the
+--   played month has locked, the match is void. Neither club is given the
+--   result. It counts as a game played.
 --
 -- Forfeits are left alone. A confirmed result is left alone.
 -- The first fine is not refunded if they confirm during the 24 hours.
@@ -47,6 +53,28 @@ VALUES
     77,
     true,
     now()
+  ),
+  (
+    'match_result_month',
+    'Result still not submitted at month lock',
+    'matchday',
+    'fine',
+    500000,
+    'fixed',
+    78,
+    true,
+    now()
+  ),
+  (
+    'match_result_extension',
+    'No score at the end of the 24 hour extension',
+    'matchday',
+    'fine',
+    500000,
+    'fixed',
+    79,
+    true,
+    now()
   )
 ON CONFLICT (code) DO UPDATE
 SET amount = EXCLUDED.amount,
@@ -68,6 +96,12 @@ CREATE TABLE IF NOT EXISTS public.fixture_result_deadline (
   score_source text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.fixture_result_deadline
+  ADD COLUMN IF NOT EXISTS month_fines text[] NOT NULL DEFAULT '{}';
+
+ALTER TABLE public.fixture_result_deadline
+  ADD COLUMN IF NOT EXISTS extension_fined_at timestamptz;
 
 COMMENT ON TABLE public.fixture_result_deadline IS
   'One row per fixture once the result deadline has fined or closed it.';
@@ -164,9 +198,18 @@ DECLARE
   v_away_total smallint;
   v_source text;
   v_label text;
+  v_remind_body text;
+  v_month text;
   v_reminded int := 0;
   v_closed int := 0;
+  v_months int := 0;
+  v_voided int := 0;
   v_skipped int := 0;
+  v_due_sort smallint;
+  v_month_sort smallint;
+  v_arranged boolean;
+  v_void_now boolean;
+  v_void_notified boolean;
   v_player record;
 BEGIN
   IF NOT (
@@ -313,18 +356,27 @@ BEGIN
             v_r.season_id
           );
 
+          v_remind_body := CASE
+            WHEN v_entered IS NOT NULL THEN format(
+              E'The month this match was played in (%s) locked, and %s hours have passed without your confirmation.\n'
+              || E'₿500,000 has been charged to your club.\n'
+              || E'Confirm within %s hours. After that, another ₿500,000 is charged and the score already submitted is confirmed. Starters are rated 3 with no goals or assists, and it cannot be edited.',
+              v_label, v_grace, v_recover
+            )
+            ELSE format(
+              E'The month this match was played in (%s) locked, and %s hours have passed with no score submitted.\n'
+              || E'₿500,000 has been charged to your club.\n'
+              || E'The result stays open. While the match is still arranged, another ₿500,000 is charged at the end of the %s hour extension, and again at each later month lock, until a score is submitted.\n'
+              || E'If there is still no score two months after %s, the match is void. Neither club gets the result, and it counts as a game played.',
+              v_label, v_grace, v_recover, v_label
+            )
+          END;
+
           BEGIN
             PERFORM public.owner_inbox_send(
               'match_result_deadline',
               'Result deadline — 24 hours to finish',
-              format(
-                E'The month this match was played in (%s) locked, and %s hours have passed without your result.\n'
-                || E'₿500,000 has been charged to your club.\n'
-                || E'Enter and confirm within %s hours. After that, another ₿500,000 is charged and the result is closed: a score already submitted is kept, otherwise it is 0–0. Starters are rated 3 with no goals or assists, and it cannot be edited.',
-                v_label,
-                v_grace,
-                v_recover
-              ),
+              v_remind_body,
               v_club,
               NULL,
               v_r.id,
@@ -344,6 +396,272 @@ BEGIN
         SET reminded_at = now()
         WHERE fixture_id = v_r.id;
         v_reminded := v_reminded + 1;
+      END IF;
+
+      IF v_sub.id IS NULL THEN
+        v_arranged := EXISTS (
+          SELECT 1
+          FROM public.competition_fixture_schedule sch
+          WHERE sch.fixture_id = v_r.id
+            AND sch.status = 'agreed'
+            AND sch.agreed_kickoff_at IS NOT NULL
+            AND sch.agreed_kickoff_at <= now()
+        );
+        v_due_sort := public.competition_gpsl_month_sort(
+          public.match_video_due_gpsl_month(v_r.id)
+        );
+        v_void_now := v_due_sort IS NOT NULL AND EXISTS (
+          SELECT 1
+          FROM public.competition_season_calendar c
+          WHERE c.season_id = v_r.season_id
+            AND c.lock_at IS NOT NULL
+            AND c.lock_at <= now()
+            AND public.competition_gpsl_month_sort(c.gpsl_month) >= v_due_sort + 2
+        );
+        v_void_notified := false;
+
+        IF v_arranged
+           AND now() >= v_close_at
+           AND v_row.extension_fined_at IS NULL THEN
+          FOREACH v_side IN ARRAY ARRAY['home', 'away']
+          LOOP
+            v_club := CASE
+              WHEN v_side = 'home' THEN v_r.home_club_short_name
+              ELSE v_r.away_club_short_name
+            END;
+            IF v_club IS NULL THEN
+              CONTINUE;
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM public."Clubs" c
+              WHERE c."ShortName" = v_club
+                AND c.owner_id IS NOT NULL
+            ) THEN
+              CONTINUE;
+            END IF;
+
+            PERFORM public.competition_apply_club_fine_tariff(
+              v_club,
+              'match_result_extension',
+              v_fine,
+              format(
+                'No score submitted by the end of the %sh extension (MD%s). Result stays open.',
+                v_recover,
+                coalesce(v_r.matchday::text, '?')
+              ),
+              v_r.id,
+              v_r.season_id
+            );
+
+            BEGIN
+              PERFORM public.owner_inbox_send(
+                'match_result_deadline',
+                'Result still open — extension fine',
+                format(
+                  E'The %s hour extension has ended and no score has been submitted.\n'
+                  || E'Another ₿500,000 has been charged to your club.\n'
+                  || E'The result stays open. While the match is still arranged, another ₿500,000 is charged at each later month lock until a score is submitted.\n'
+                  || E'If there is still no score two months after %s, the match is void. Neither club gets the result, and it counts as a game played.',
+                  v_recover,
+                  v_label
+                ),
+                v_club,
+                NULL,
+                v_r.id,
+                NULL, NULL, NULL,
+                'matchday.html?fixture=' || v_r.id::text,
+                'result_deadline_extension:' || v_r.id::text || ':' || v_club,
+                v_r.gpsl_month,
+                v_r.season_id,
+                NULL
+              );
+            EXCEPTION WHEN OTHERS THEN
+              RAISE WARNING 'result deadline extension inbox %: %', v_r.id, SQLERRM;
+            END;
+          END LOOP;
+
+          UPDATE public.fixture_result_deadline
+          SET extension_fined_at = now()
+          WHERE fixture_id = v_r.id;
+        END IF;
+
+        IF v_arranged THEN
+          FOR v_month IN
+            SELECT lower(btrim(c.gpsl_month))
+            FROM public.competition_season_calendar c
+            WHERE c.season_id = v_r.season_id
+              AND c.lock_at IS NOT NULL
+              AND c.lock_at <= now()
+              AND public.competition_gpsl_month_sort(c.gpsl_month) > v_due_sort
+              AND NOT (
+                lower(btrim(c.gpsl_month)) = ANY (coalesce(v_row.month_fines, '{}'::text[]))
+              )
+            ORDER BY public.competition_gpsl_month_sort(c.gpsl_month)
+          LOOP
+            v_label := coalesce(public.competition_gpsl_month_label(v_month), v_month);
+            v_month_sort := public.competition_gpsl_month_sort(v_month);
+            IF v_due_sort IS NOT NULL AND v_month_sort >= v_due_sort + 2 THEN
+              v_void_notified := true;
+            END IF;
+            FOREACH v_side IN ARRAY ARRAY['home', 'away']
+            LOOP
+              v_club := CASE
+                WHEN v_side = 'home' THEN v_r.home_club_short_name
+                ELSE v_r.away_club_short_name
+              END;
+              IF v_club IS NULL THEN
+                CONTINUE;
+              END IF;
+              IF NOT EXISTS (
+                SELECT 1 FROM public."Clubs" c
+                WHERE c."ShortName" = v_club
+                  AND c.owner_id IS NOT NULL
+              ) THEN
+                CONTINUE;
+              END IF;
+
+              PERFORM public.competition_apply_club_fine_tariff(
+                v_club,
+                'match_result_month',
+                v_fine,
+                format(
+                  CASE
+                    WHEN v_void_notified AND v_month_sort >= v_due_sort + 2 THEN
+                      'No score by the %s lock (MD%s). Match void. Neither club is given the result. It counts as a game played.'
+                    ELSE
+                      'No score submitted by the %s lock (MD%s). Result stays open.'
+                  END,
+                  v_label,
+                  coalesce(v_r.matchday::text, '?')
+                ),
+                v_r.id,
+                v_r.season_id
+              );
+
+              BEGIN
+                PERFORM public.owner_inbox_send(
+                  'match_result_deadline',
+                  CASE
+                    WHEN v_month_sort >= v_due_sort + 2 THEN 'Result void — no score after two months'
+                    ELSE 'Result still open — month lock fine'
+                  END,
+                  CASE
+                    WHEN v_month_sort >= v_due_sort + 2 THEN format(
+                      E'No score was submitted by the %s lock, two months after the month this match was played in.\n'
+                      || E'Another ₿500,000 has been charged.\n'
+                      || E'The match is void. Neither club is given the result. It counts as a game played.',
+                      v_label
+                    )
+                    ELSE format(
+                      E'No score has been submitted for this arranged match.\n'
+                      || E'Another ₿500,000 has been charged at the %s lock.\n'
+                      || E'The result stays open. The fine repeats at each month lock until a score is submitted.\n'
+                      || E'If there is still no score two months after the played month, the match is void.',
+                      v_label
+                    )
+                  END,
+                  v_club,
+                  NULL,
+                  v_r.id,
+                  NULL, NULL, NULL,
+                  'matchday.html?fixture=' || v_r.id::text,
+                  'result_deadline_month:' || v_r.id::text || ':' || v_month || ':' || v_club,
+                  v_month,
+                  v_r.season_id,
+                  NULL
+                );
+              EXCEPTION WHEN OTHERS THEN
+                RAISE WARNING 'result deadline month inbox %: %', v_r.id, SQLERRM;
+              END;
+            END LOOP;
+
+            UPDATE public.fixture_result_deadline
+            SET month_fines = coalesce(month_fines, '{}'::text[]) || ARRAY[v_month]
+            WHERE fixture_id = v_r.id;
+            v_months := v_months + 1;
+          END LOOP;
+        END IF;
+
+        IF v_void_now AND v_row.closed_at IS NULL THEN
+          UPDATE public.competition_fixtures
+          SET status = 'played',
+              is_void = true,
+              is_forfeit = false,
+              home_goals = NULL,
+              away_goals = NULL,
+              cup_pen_winner_club_short_name = NULL,
+              forfeit_loser_club = NULL,
+              result_auto_closed = true,
+              home_stats_edit_used_at = coalesce(home_stats_edit_used_at, now()),
+              away_stats_edit_used_at = coalesce(away_stats_edit_used_at, now())
+          WHERE id = v_r.id;
+
+          DELETE FROM public.competition_match_player_stats
+          WHERE fixture_id = v_r.id;
+
+          IF NOT v_void_notified THEN
+            v_label := coalesce(
+              public.competition_gpsl_month_label(public.match_video_due_gpsl_month(v_r.id)),
+              public.match_video_due_gpsl_month(v_r.id),
+              '?'
+            );
+            FOREACH v_side IN ARRAY ARRAY['home', 'away']
+            LOOP
+              v_club := CASE
+                WHEN v_side = 'home' THEN v_r.home_club_short_name
+                ELSE v_r.away_club_short_name
+              END;
+              IF v_club IS NULL THEN
+                CONTINUE;
+              END IF;
+              IF NOT EXISTS (
+                SELECT 1 FROM public."Clubs" c
+                WHERE c."ShortName" = v_club
+                  AND c.owner_id IS NOT NULL
+              ) THEN
+                CONTINUE;
+              END IF;
+              BEGIN
+                PERFORM public.owner_inbox_send(
+                  'match_result_deadline',
+                  'Result void — no score after two months',
+                  format(
+                    E'No score was submitted within two months of the %s lock.\n'
+                    || E'The match is void. Neither club is given the result. It counts as a game played.',
+                    v_label
+                  ),
+                  v_club,
+                  NULL,
+                  v_r.id,
+                  NULL, NULL, NULL,
+                  'matchday.html?fixture=' || v_r.id::text,
+                  'result_deadline_void:' || v_r.id::text || ':' || v_club,
+                  v_r.gpsl_month,
+                  v_r.season_id,
+                  NULL
+                );
+              EXCEPTION WHEN OTHERS THEN
+                RAISE WARNING 'result deadline void inbox %: %', v_r.id, SQLERRM;
+              END;
+            END LOOP;
+          END IF;
+
+          IF v_r.competition_type = 'league'
+             AND to_regprocedure('public.competition_try_pay_league_division_prizes(bigint,text)') IS NOT NULL THEN
+            BEGIN
+              PERFORM public.competition_try_pay_league_division_prizes(v_r.season_id, v_r.division);
+            EXCEPTION WHEN OTHERS THEN
+              RAISE WARNING 'result deadline prizes %: %', v_r.id, SQLERRM;
+            END;
+          END IF;
+
+          UPDATE public.fixture_result_deadline
+          SET closed_at = now(),
+              score_source = 'void'
+          WHERE fixture_id = v_r.id;
+          v_voided := v_voided + 1;
+        END IF;
+        CONTINUE;
       END IF;
 
       IF now() < v_close_at OR v_row.closed_at IS NOT NULL THEN
@@ -376,32 +694,6 @@ BEGIN
             END,
             responded_at = now()
         WHERE id = v_sub.id;
-      ELSE
-        v_source := 'nil_nil';
-        v_home_total := 0;
-        v_away_total := 0;
-        INSERT INTO public.competition_result_submissions (
-          fixture_id,
-          submitted_by_club,
-          home_goals,
-          away_goals,
-          status,
-          responded_by_club,
-          submitted_at,
-          responded_at,
-          player_stats
-        )
-        VALUES (
-          v_r.id,
-          v_r.home_club_short_name,
-          0,
-          0,
-          'confirmed',
-          v_r.away_club_short_name,
-          now(),
-          now(),
-          '[]'::jsonb
-        );
       END IF;
 
       UPDATE public.competition_fixtures
@@ -570,6 +862,8 @@ BEGIN
     'fine_each', v_fine,
     'reminded', v_reminded,
     'closed', v_closed,
+    'month_fines', v_months,
+    'voided', v_voided,
     'skipped', v_skipped
   );
 END;
@@ -579,7 +873,7 @@ REVOKE ALL ON FUNCTION public.match_result_deadline_tick() FROM PUBLIC, anon, au
 GRANT EXECUTE ON FUNCTION public.match_result_deadline_tick() TO service_role;
 
 COMMENT ON FUNCTION public.match_result_deadline_tick() IS
-  'Result deadline: 72h after the played-month lock, then 24h. Fines only a club that has not entered their side, then closes an open result.';
+  'Result deadline: one submitted score is confirmed at the final deadline. No score stays open, is fined at the end of the 24 hours and at each later month lock while arranged, and is void two months after the played month.';
 
 -- Block a later submit or edit of an auto-closed result.
 CREATE OR REPLACE FUNCTION public.trg_result_submission_block_auto_close()
