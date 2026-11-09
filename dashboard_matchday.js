@@ -12,9 +12,11 @@ import {
 } from "./player_discipline.js?v=20261028-unavail";
 
 const REFRESH_MS = 20_000;
+const UK_TZ = "Europe/London";
 
 let refreshTimer = null;
 let clubShort = null;
+let ownerTz = UK_TZ;
 
 function isSquadCheckinBlockMessage(msg) {
   const text = String(msg || "").toLowerCase();
@@ -38,15 +40,38 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
-function formatKickoffLocal(iso) {
+function zoneShort(tz) {
+  const city = String(tz || UK_TZ).split("/").pop() || UK_TZ;
+  return city.replace(/_/g, " ");
+}
+
+function formatKickoffInZone(iso, timeZone) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const opts = { weekday: "short", hour: "2-digit", minute: "2-digit" };
+  try {
+    return d.toLocaleString("en-GB", { ...opts, timeZone: timeZone || UK_TZ });
+  } catch {
+    return d.toLocaleString("en-GB", { ...opts, timeZone: UK_TZ });
+  }
+}
+
+async function loadOwnerTimezone() {
+  if (!clubShort) return;
+  try {
+    const { data, error } = await supabase.rpc("match_schedule_club_timezone", {
+      p_club: clubShort,
+    });
+    if (error) {
+      console.warn("matchday timezone:", error.message);
+      return;
+    }
+    const tz = String(data || "").trim();
+    if (tz) ownerTz = tz;
+  } catch (err) {
+    console.warn("matchday timezone:", err);
+  }
 }
 
 function formatKickoffUk(iso) {
@@ -104,8 +129,12 @@ function renderFixtureCard(fx) {
   const home = fullClubName(fx.home_club_short_name) || fx.home_club_name;
   const away = fullClubName(fx.away_club_short_name) || fx.away_club_name;
   const vs = `${escapeHtml(home)} vs ${escapeHtml(away)}`;
-  const kickLocal = formatKickoffLocal(fx.agreed_kickoff_at);
+  const kickOwner = formatKickoffInZone(fx.agreed_kickoff_at, ownerTz);
   const kickUk = formatKickoffUk(fx.agreed_kickoff_at);
+  const kickLabel = ownerTz === UK_TZ ? kickOwner : `${kickOwner} ${zoneShort(ownerTz)}`;
+  const kickTitle = ownerTz === UK_TZ
+    ? `UK: ${kickUk}`
+    : `${zoneShort(ownerTz)}: ${kickOwner}. UK: ${kickUk}`;
   const fid = Number(fx.fixture_id);
   const scheduleHref = `fixture_schedule.html?fixture=${fid}`;
   const matchdayHref = `matchday.html?fixture=${fid}`;
@@ -135,7 +164,7 @@ function renderFixtureCard(fx) {
         <span class="dash-md-checks">${checks}</span>
       </div>
       <div class="dash-md-vs">${vs}</div>
-      <div class="dash-md-time" title="UK: ${escapeHtml(kickUk)}">${escapeHtml(kickLocal)}</div>
+      <div class="dash-md-time" title="${escapeHtml(kickTitle)}">${escapeHtml(kickLabel)}</div>
       <div class="dash-md-status">${escapeHtml(statusLine(fx))}</div>
       <div class="dash-md-unavail" data-fixture-unavail="${fid}" hidden></div>
       <div class="dash-md-gate" data-fixture-gate="${fid}" hidden></div>
@@ -250,6 +279,7 @@ export async function refreshDashboardMatchday() {
     return;
   }
 
+  await loadOwnerTimezone();
   const { data, error } = await supabase.rpc("dashboard_my_matchday_synopsis");
   if (error) {
     console.warn("dashboard_my_matchday_synopsis:", error.message);

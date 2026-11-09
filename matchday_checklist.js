@@ -80,8 +80,11 @@ async function enrichChecklistOwnerTags(data, arrange) {
 const REFRESH_MS = 120_000;
 const TICK_MS = 30_000;
 const COLLAPSE_KEY = "gpsl_mc_collapsed";
+const UK_TZ = "Europe/London";
 
 let lastData = null;
+let ownerClubShort = "";
+let ownerTz = UK_TZ;
 /** owner_upcoming_arrangements(): next-month fixtures still to arrange */
 let lastArrange = null;
 let refreshTimer = null;
@@ -119,18 +122,68 @@ export function competitionShortLabel(fx) {
   return `MD${fx.matchday ?? "?"}`;
 }
 
-function formatUk(iso) {
+function zoneShort(tz) {
+  const city = String(tz || UK_TZ).split("/").pop() || UK_TZ;
+  return city.replace(/_/g, " ");
+}
+
+function formatClock(iso, timeZone) {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("en-GB", {
-    timeZone: "Europe/London",
+  const zone = timeZone || UK_TZ;
+  const opts = {
     weekday: "short",
     day: "2-digit",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
-  });
+  };
+  try {
+    return d.toLocaleString("en-GB", { ...opts, timeZone: zone });
+  } catch {
+    return d.toLocaleString("en-GB", { ...opts, timeZone: UK_TZ });
+  }
+}
+
+/** Kick-off in the owner's match-availability timezone. */
+function formatOwnerClock(iso) {
+  const local = formatClock(iso, ownerTz);
+  if (!local) return "";
+  if (ownerTz === UK_TZ) return local;
+  return `${local} ${zoneShort(ownerTz)}`;
+}
+
+/** Deadlines that used to say "UK". Same clock, labelled with the owner's zone. */
+function formatOwnerDeadline(iso) {
+  const local = formatClock(iso, ownerTz);
+  if (!local) return "";
+  if (ownerTz === UK_TZ) return `${local} UK`;
+  return `${local} ${zoneShort(ownerTz)}`;
+}
+
+function clockTitle(iso) {
+  const uk = formatClock(iso, UK_TZ);
+  if (!uk) return "";
+  if (ownerTz === UK_TZ) return `${uk} UK`;
+  return `${zoneShort(ownerTz)}: ${formatClock(iso, ownerTz)}. UK: ${uk}`;
+}
+
+async function loadOwnerTimezone() {
+  if (!ownerClubShort) return;
+  try {
+    const { data, error } = await supabase.rpc("match_schedule_club_timezone", {
+      p_club: ownerClubShort,
+    });
+    if (error) {
+      console.warn("checklist timezone:", error.message);
+      return;
+    }
+    const tz = String(data || "").trim();
+    if (tz) ownerTz = tz;
+  } catch (err) {
+    console.warn("checklist timezone:", err);
+  }
 }
 
 function relTime(iso) {
@@ -149,7 +202,7 @@ function relTime(iso) {
 
 function stepDue(step) {
   if (!step?.due_at) return "";
-  if (step.state === "done") return formatUk(step.due_at);
+  if (step.state === "done") return formatOwnerDeadline(step.due_at);
   const rel = relTime(step.due_at);
   const past = new Date(step.due_at).getTime() < Date.now();
   if (step.key === "checkin" && step.state === "upcoming") return `opens ${rel}`;
@@ -493,7 +546,7 @@ function renderFixture(fx) {
       <div class="mc-fx-head">
         <span class="mc-fx-comp">${escapeHtml(competitionShortLabel(fx))}</span>
         ${fixtureMatchupHtml(fx, `matchday.html?fixture=${fid}`)}
-        ${fx.agreed_kickoff_at ? `<span class="mc-fx-ko">${escapeHtml(formatUk(fx.agreed_kickoff_at))}</span>` : ""}
+        ${fx.agreed_kickoff_at ? `<span class="mc-fx-ko" title="${escapeHtml(clockTitle(fx.agreed_kickoff_at))}">${escapeHtml(formatOwnerClock(fx.agreed_kickoff_at))}</span>` : ""}
       </div>
       ${fixtureMetaHtml(fx)}
       <div class="mc-steps">${steps.map(renderStepPill).join("")}</div>
@@ -516,7 +569,7 @@ function arrangeNeedsYou(a) {
 
 function renderArrangeRow(a) {
   const fid = Number(a.fixture_id);
-  const by = a.propose_by ? `${formatUk(a.propose_by)} UK (${relTime(a.propose_by)})` : "";
+  const by = a.propose_by ? `${formatOwnerDeadline(a.propose_by)} (${relTime(a.propose_by)})` : "";
   const lateNow = a.late_fee_from && new Date(a.late_fee_from).getTime() <= Date.now();
   const replay = a.is_admin_replay === true;
   const catchUp = a.is_catch_up === true && !replay;
@@ -538,7 +591,7 @@ function renderArrangeRow(a) {
     action = "Propose";
   } else if (a.state === "reply") {
     label = `${replayTag}Reply to kick-off proposal`;
-    detail = a.response_due_at ? `due ${formatUk(a.response_due_at)} UK (${relTime(a.response_due_at)})` : "";
+    detail = a.response_due_at ? `due ${formatOwnerDeadline(a.response_due_at)} (${relTime(a.response_due_at)})` : "";
     cls = "mc-next-todo";
     action = "Reply";
   } else if (a.state === "waiting") {
@@ -609,7 +662,7 @@ function render() {
   const done = fixtures.filter((f) => f.all_done);
   const month = data?.gpsl_month ? data.gpsl_month[0].toUpperCase() + data.gpsl_month.slice(1) : "";
   const lock = data?.month_lock_at
-    ? `<span class="mc-lock" title="${escapeHtml(formatUk(data.month_lock_at))} UK">Month locks ${escapeHtml(relTime(data.month_lock_at))}</span>`
+    ? `<span class="mc-lock" title="${escapeHtml(clockTitle(data.month_lock_at))}">Month locks ${escapeHtml(relTime(data.month_lock_at))}</span>`
     : "";
 
   if (!open.length && !clubFlags.length && !arrange.length) {
@@ -711,7 +764,11 @@ export async function fetchUpcomingArrangements() {
 }
 
 export async function refreshMatchdayChecklist() {
-  [lastData, lastArrange] = await Promise.all([fetchMatchdayChecklist(), fetchUpcomingArrangements()]);
+  [, lastData, lastArrange] = await Promise.all([
+    loadOwnerTimezone(),
+    fetchMatchdayChecklist(),
+    fetchUpcomingArrangements(),
+  ]);
   try {
     await enrichChecklistFixturesWithHomeWeather(lastData, lastArrange);
   } catch (err) {
@@ -727,6 +784,7 @@ export async function refreshMatchdayChecklist() {
 }
 
 export function startMatchdayChecklist(clubShortName) {
+  ownerClubShort = String(clubShortName || "").trim();
   const section = document.getElementById("matchdayChecklist");
   if (!section || !clubShortName) {
     if (section) section.hidden = true;
