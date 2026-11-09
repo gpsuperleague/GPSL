@@ -410,12 +410,7 @@ async function loadPreviewInterest(pendingRows) {
 }
 
 function previewInterestHtml(listing) {
-  const id = String(listing.id);
-  const clubs = previewInterestByListing.get(id) || [];
-  const mine = String(currentUserShort || "").trim().toUpperCase();
-  const seller = String(listing.seller_club_id || "").trim().toUpperCase();
-  const canDeclare = !!mine && mine !== seller;
-  const checked = canDeclare && clubs.includes(mine);
+  const clubs = previewInterestByListing.get(String(listing.id)) || [];
   const badges = clubs
     .map((short) => {
       const name = fullClubName(short) || short;
@@ -427,15 +422,25 @@ function previewInterestHtml(listing) {
       )}" title="${escapeAttr(tip)}" tabindex="0" onerror="this.style.display='none'">`;
     })
     .join("");
-  const box = canDeclare
-    ? `<label class="preview-interest-check" title="Declare interest">
-        <input type="checkbox" data-listing-id="${escapeAttr(id)}" ${
-          checked ? "checked" : ""
-        } aria-label="Declare interest">
-      </label>`
-    : "";
-  if (!box && !badges) return "";
-  return `<span class="preview-interest">${box}${badges}</span>`;
+  if (!badges) return "";
+  return `<span class="preview-interest">${badges}</span>`;
+}
+
+function previewInterestButtonHtml(listing) {
+  const id = String(listing.id);
+  const clubs = previewInterestByListing.get(id) || [];
+  const mine = String(currentUserShort || "").trim().toUpperCase();
+  const seller = String(listing.seller_club_id || "").trim().toUpperCase();
+  if (!mine || mine === seller) {
+    return `<span class="locked-msg" title="Auction clock starts when the transfer window opens">Awaiting window</span>`;
+  }
+  const on = clubs.includes(mine);
+  const label = on ? "Interest shown" : "Show interest";
+  return `<button type="button" class="preview-interest-btn${
+    on ? " is-on" : ""
+  }" data-listing-id="${escapeAttr(id)}" aria-pressed="${
+    on ? "true" : "false"
+  }">${label}</button>`;
 }
 
 async function setPreviewInterest(listingId, interested) {
@@ -1558,7 +1563,7 @@ async function renderListings() {
     const bidCellHtml = canBid
       ? `<button type="button" class="make-offer-btn" data-id="${listing.id}">Make Offer</button>`
       : isPendingWindow
-        ? `<span class="locked-msg" title="Auction clock starts when the transfer window opens">Awaiting window</span>`
+        ? previewInterestButtonHtml(listing)
         : isOpen &&
             listing.seller_club_id !== currentUserShort &&
             !!currentUserShort &&
@@ -1626,13 +1631,12 @@ async function renderListings() {
       link.addEventListener("click", (e) => e.stopPropagation());
     });
 
-    tr.querySelectorAll(".preview-interest-check input").forEach((box) => {
-      box.addEventListener("click", (e) => e.stopPropagation());
-      box.addEventListener("change", async (e) => {
+    tr.querySelectorAll(".preview-interest-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        const ok = await setPreviewInterest(box.dataset.listingId, box.checked);
-        if (!ok) box.checked = !box.checked;
-        else void renderListings();
+        const on = btn.getAttribute("aria-pressed") === "true";
+        const ok = await setPreviewInterest(btn.dataset.listingId, !on);
+        if (ok) void renderListings();
       });
     });
 

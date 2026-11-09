@@ -401,19 +401,23 @@ body.tm-market .preview-interest {
   vertical-align: middle;
 }
 
-body.tm-market .preview-interest-check {
-  display: inline-flex;
-  align-items: center;
-  margin: 0;
+body.tm-market .preview-interest-btn {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid #8a6a28;
+  border-radius: 4px;
+  background: #2a2214;
+  color: #e8c060;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-body.tm-market .preview-interest-check input {
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  accent-color: #e8c060;
-  cursor: pointer;
+body.tm-market .preview-interest-btn.is-on {
+  background: #3a3018;
+  border-color: #e8c060;
+  color: #fff4d0;
 }
 
 body.tm-market .preview-interest-badge {
