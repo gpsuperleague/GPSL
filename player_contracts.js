@@ -146,6 +146,63 @@ export function playerSellLockReason(player, currentSeasonLabel) {
   return null;
 }
 
+const TRANSFER_WINDOW_MONTHS = new Set(["january", "june", "july", "august"]);
+
+/**
+ * Where a preview listing would go live.
+ * September–December → January (still this season, second half).
+ * February–May → the summer window (first half of next season).
+ * Null during a window month, or when the month is unknown.
+ */
+export function nextTransferWindowPhase(activeGpslMonth) {
+  const month = String(activeGpslMonth || "").trim().toLowerCase();
+  if (!month || TRANSFER_WINDOW_MONTHS.has(month)) return null;
+  if (["september", "october", "november", "december"].includes(month)) {
+    return { secondHalf: true, nextSeason: false, label: "January" };
+  }
+  if (["february", "march", "april", "may"].includes(month)) {
+    return { secondHalf: false, nextSeason: true, label: "the summer window" };
+  }
+  return null;
+}
+
+/**
+ * Sell lock as it will stand at a future window.
+ * phase.nextSeason drops this season's signing lock.
+ * A summer contract with one season left ends at the summer rollover.
+ */
+export function playerSellLockAtPhase(player, currentSeasonLabel, phase) {
+  if (!phase) return "legacy";
+  if (isPesdbLegacyCard(player)) return "legacy";
+  const s = phaseState();
+  const signed = String(player?.Season_Signed ?? "").trim();
+  const cur = String(currentSeasonLabel || s.currentLabel || "").trim();
+  const joinedSecondHalf = player?.contract_join_second_half === true;
+  if (!phase.nextSeason && cur && signed && signed === cur) {
+    if (joinedSecondHalf) return "signed_this_season";
+    if (!phase.secondHalf) return "signed_this_season";
+  }
+  const seasons = player?.contract_seasons_remaining;
+  if (seasons == null || seasons === "") return null;
+  const n = Number(seasons);
+  if (!Number.isFinite(n)) return null;
+  if (n <= 0) return "contract_ended";
+  if (n === 1 && phase.nextSeason && contractEndWindow(player) === "summer") {
+    return "contract_ended";
+  }
+  if (n === 1 && (contractEndWindow(player) === "january" || phase.secondHalf)) {
+    return "final_half";
+  }
+  return null;
+}
+
+/** True when a view-only listing can wait for the next window and be sold then. */
+export function playerPreviewListable(player, currentSeasonLabel, activeGpslMonth) {
+  const phase = nextTransferWindowPhase(activeGpslMonth);
+  if (!phase) return false;
+  return playerSellLockAtPhase(player, currentSeasonLabel, phase) == null;
+}
+
 /** @returns {null|"Jan"|"summer"} unlock window while signing-locked */
 export function signingSellUnlockWindow(player, currentSeasonLabel) {
   if (playerSellLockReason(player, currentSeasonLabel) !== "signed_this_season") {

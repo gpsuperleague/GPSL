@@ -73,7 +73,9 @@ import {
   sellLockMessage,
   sellLockShortLabel,
   signingSellLockBadgeHtml,
-} from "./player_contracts.js?v=20261103-half-sell";
+  nextTransferWindowPhase,
+  playerPreviewListable,
+} from "./player_contracts.js?v=20261109-list-preview";
 import { loadCalendarStatus } from "./competition_calendar.js";
 import { formatWage, oooRenewUpliftPct } from "./wages.js";
 import {
@@ -306,6 +308,7 @@ let staffPreview = false;
 const STAFF_SQUAD_CLUB_KEY = "gpsl_admin_squad_club";
 let clubNation = null;
 let selectedPlayerForListing = null;
+let listingAsPreview = false;
 
 // ⭐ NEW: Transfer window state
 let transferWindowOpen = true;
@@ -932,21 +935,20 @@ function squadActionOptionsHtml(player) {
     foreignTrackingTeams.length > 0
       ? foreignSaleOptionsHtml(foreignTrackingTeams)
       : `<option value="foreign">Sell to foreign club</option>`;
+  const sellMenu = squadSellMenuHtml(player, lockReason, foreignOpts);
   const contractOpts = squadContractActionOptionsHtml(
     player,
     clubNation,
     {
       optionHtml: `${rewardOpts}${saleOpts}${releaseGroup}`,
-      sellOptionsHtml: lockReason
-        ? ""
-        : `<option value="list">Transfer List</option>${foreignOpts}`,
+      sellOptionsHtml: sellMenu,
       hasWageBid,
     },
     squadDesignationsState?.one_of_our_own_player_id ?? null
   );
   if (contractOpts) return contractOpts;
 
-  if (lockReason) {
+  if (lockReason && !sellMenu) {
     const short =
       sellLockShortLabel(lockReason, player, currentGpslSeasonLabel) ||
       "Signing lock — not listable yet";
@@ -956,9 +958,31 @@ function squadActionOptionsHtml(player) {
   return `
             ${rewardOpts}
             ${saleOpts}
-            <option value="list">Transfer List</option>
-            ${foreignOpts}
+            ${sellMenu}
             ${releaseGroup}`;
+}
+
+function squadPlayerPreviewListable(player) {
+  if (transferWindowOpen) return false;
+  const pid = String(player?.Konami_ID ?? "").trim();
+  if (pid && emergencyLoanPlayerIds.has(pid)) return false;
+  return playerPreviewListable(player, currentGpslSeasonLabel, activeGpslMonth);
+}
+
+/** Transfer List during a window month. List for preview outside one, for the next window only. */
+function squadSellMenuHtml(player, lockReason, foreignOpts) {
+  const month = String(activeGpslMonth || "").trim().toLowerCase();
+  const outsideWindowMonth =
+    !transferWindowOpen &&
+    !!month &&
+    !["january", "june", "july", "august"].includes(month);
+  if (outsideWindowMonth) {
+    if (!squadPlayerPreviewListable(player)) return "";
+    const foreign = lockReason ? "" : foreignOpts;
+    return `<option value="list_preview">List for preview</option>${foreign}`;
+  }
+  if (lockReason) return "";
+  return `<option value="list">Transfer List</option>${foreignOpts}`;
 }
 
 function playerCanListOrSellLocal(player) {
@@ -1493,15 +1517,27 @@ function closedWindowListingMessage() {
   let locked = 0;
   document.querySelectorAll("select.squad-action-select").forEach((sel) => {
     const listOpt = sel.querySelector(
-      'option[value="list"], option[data-live-value="list"]'
+      'option[value="list"], option[value="list_preview"], option[data-live-value="list"], option[data-live-value="list_preview"]'
     );
     if (!listOpt) return;
-    if (listOpt.value === "list") listable += 1;
+    if (listOpt.value === "list" || listOpt.value === "list_preview") listable += 1;
     else if (/signing lock/i.test(listOpt.textContent || "")) locked += 1;
   });
 
   const lockRule =
     "A player in the first half of their contract cannot be listed. A first-half signing becomes listable from the January window; a January signing from the next summer.";
+
+  const previewPhase = nextTransferWindowPhase(activeGpslMonth);
+  if (!transferWindowOpen && previewPhase) {
+    if (listable === 0) {
+      return `Transfer window is currently CLOSED. List for preview is on players who can be sold in ${previewPhase.label}. The listing is view only until that window opens.`;
+    }
+    const who =
+      listable === 1
+        ? "1 player can be listed for preview"
+        : `${listable} players can be listed for preview`;
+    return `Transfer window is currently CLOSED. ${who}. It stays view only until ${previewPhase.label}, then the auction starts.`;
+  }
 
   if (listable === 0) {
     return `Transfer window is currently CLOSED. ${lockRule}`;
@@ -2802,7 +2838,7 @@ async function handlePlayerAction(playerId, action, selectEl) {
   }
 
   try {
-    if (action === "list") {
+    if (action === "list" || action === "list_preview") {
       resetActionSelect(selectEl);
       if (playerOpenListingKind(playerId)) {
         alert("This player is already on the transfer list.");
@@ -2816,11 +2852,21 @@ async function handlePlayerAction(playerId, action, selectEl) {
         )
         .eq("Konami_ID", playerId)
         .maybeSingle();
-      if (!playerCanListOrSellLocal(pRow)) {
-        alert(sellLockMessageLocal(pRow));
-        return;
+      const row = pRow || { Konami_ID: playerId };
+      if (action === "list_preview") {
+        if (!squadPlayerPreviewListable(row)) {
+          alert("This player cannot be listed for the next transfer window.");
+          return;
+        }
+        listingAsPreview = true;
+      } else {
+        if (!playerCanListOrSellLocal(row)) {
+          alert(sellLockMessageLocal(row));
+          return;
+        }
+        listingAsPreview = false;
       }
-      await openListPlayerModalByID(pRow || { Konami_ID: playerId });
+      await openListPlayerModalByID(row);
       return;
     }
 
@@ -3536,6 +3582,16 @@ async function openListPlayerModalByID(playerRef) {
 function openListPlayerModal(player) {
   selectedPlayerForListing = player;
 
+  const title = document.querySelector("#list-player-modal h3");
+  const warning = document.getElementById("modalWarning");
+  if (title) title.textContent = listingAsPreview ? "List for preview" : "List Player";
+  if (warning) {
+    const phase = nextTransferWindowPhase(activeGpslMonth);
+    warning.textContent = listingAsPreview
+      ? `View only until ${phase?.label || "the next transfer window"}. Other clubs can see him. Bidding starts when that window opens. You can take him off before then.`
+      : "Listing a player is irreversible once confirmed.";
+  }
+
   document.getElementById("modalPlayerName").textContent = player.Name;
   document.getElementById("modalPlayerInfo").textContent =
     `${player.Position} • Rating ${player.Rating}`;
@@ -3639,15 +3695,29 @@ async function validateAndCreateListing() {
 
   if (!validateReserveInput()) return;
 
-  if (!playerCanListOrSellLocal(selectedPlayerForListing)) {
+  const asPreview = listingAsPreview;
+  await loadTransferWindowStatus();
+  if (asPreview) {
+    if (
+      transferWindowOpen ||
+      !playerPreviewListable(
+        selectedPlayerForListing,
+        currentGpslSeasonLabel,
+        activeGpslMonth
+      )
+    ) {
+      document.getElementById("reserveError").textContent =
+        "This player cannot be listed for preview.";
+      return;
+    }
+  } else if (!playerCanListOrSellLocal(selectedPlayerForListing)) {
     document.getElementById("reserveError").textContent =
       sellLockMessageLocal(selectedPlayerForListing);
     return;
   }
 
   const playerId = String(selectedPlayerForListing.Konami_ID);
-  await loadTransferWindowStatus();
-  const deferUntilWindow = !transferWindowOpen;
+  const deferUntilWindow = asPreview || !transferWindowOpen;
   const now = new Date().toISOString();
   const endTime = deferUntilWindow
     ? null
@@ -3711,6 +3781,7 @@ async function validateAndCreateListing() {
   }
 
   document.getElementById("list-player-modal-backdrop").style.display = "none";
+  listingAsPreview = false;
 
   if (deferUntilWindow) {
     alert(
@@ -3774,6 +3845,7 @@ function wireButtons() {
   if (reserveInput) reserveInput.oninput = () => validateReserveInput();
 
   if (cancelBtn) cancelBtn.onclick = () => {
+    listingAsPreview = false;
     document.getElementById("list-player-modal-backdrop").style.display = "none";
   };
 
