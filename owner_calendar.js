@@ -298,6 +298,7 @@ function deadlineChipText(c) {
   const kind = String(c.kind || "");
   if (kind === "video_suspend") return "Video +24h";
   if (kind === "video") return "Video due";
+  if (kind === "result_guide") return "Results due";
   if (kind === "result_void") return "Void";
   if (kind === "result_enter" || kind === "result_close" || kind === "result_month") return "Result";
   if (kind === "play_window") return "Last play";
@@ -1892,6 +1893,39 @@ async function loadResultDeadlines() {
   const inWindow = (ms) => ms >= now - pastMs && ms <= now + futureMs;
   const out = [];
   const months = Array.isArray(seasonMonths) ? seasonMonths : [];
+  const monthMarkerDone = new Set();
+
+  // Standing reminder for every GPSL month you have a fixture in, same as videos.
+  for (const f of data || []) {
+    const home = String(f.home_club_short_name || "").trim().toUpperCase();
+    const away = String(f.away_club_short_name || "").trim().toUpperCase();
+    if (home !== me && away !== me) continue;
+    const monthKey = videoDueMonthKey(f) || String(f.gpsl_month || "").trim().toLowerCase();
+    if (!monthKey || monthMarkerDone.has(monthKey)) continue;
+    const month = months.find(
+      (m) => String(m.gpsl_month || "").trim().toLowerCase() === monthKey
+    );
+    const lockAt = month?.lock_at;
+    const lockMs = lockAt ? new Date(lockAt).getTime() : NaN;
+    if (!Number.isFinite(lockMs)) continue;
+    const dueMs = lockMs + videoGraceHours * 3600_000;
+    if (dueMs < now - 42 * 86400_000 || dueMs > now + 180 * 86400_000) continue;
+    monthMarkerDone.add(monthKey);
+    const monthLabel =
+      GPSL_MONTH_LABELS[monthKey] ||
+      monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
+    const dueHhmm = hhmmInTz(new Date(dueMs).toISOString(), ownerTz || UK);
+    out.push({
+      fixture_id: null,
+      id: `result-month:${monthKey}`,
+      kind: "result_guide",
+      at: new Date(dueMs).toISOString(),
+      title: `Match results due · GPSL ${monthLabel}`,
+      detail: `${videoGraceHours}h after the GPSL ${monthLabel} lock (${formatUkDateTime(lockAt)} UK + ${videoGraceHours}h), then ${RESULT_RECOVER_HOURS}h. A club that has not entered is charged ₿500,000. One submitted score is confirmed after that extra time. If nobody submitted, it stays open. Catch-up games use the month you played in.`,
+      href: "dashboard.html",
+      chip: `${dueHhmm} Results due`,
+    });
+  }
 
   for (const f of data || []) {
     const home = String(f.home_club_short_name || "")
