@@ -123,21 +123,39 @@ export function newOwnerGraceKickoffNoteHtml(grace, { catchUp = false } = {}) {
   );
 }
 
-function holidayOverlapsPlayMonth(hol, playMonth) {
-  if (!hol?.starts_at || !hol?.ends_at || !playMonth) return false;
+const HOLIDAY_EARLY_MIN_DAYS = 4;
+
+function ukYmd(ms) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: UK_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(ms));
+  const pick = (type) => parts.find((p) => p.type === type)?.value || "";
+  return `${pick("year")}-${pick("month")}-${pick("day")}`;
+}
+
+/** Inclusive UK dates shared by the holiday and that GPSL week's unlock→lock. */
+function holidayOverlapDays(hol, playMonth) {
+  if (!hol?.starts_at || !hol?.ends_at || !playMonth) return 0;
   const cal = seasonCalendarByMonth.get(String(playMonth).toLowerCase());
-  if (!cal?.unlock_at || !cal?.lock_at) return false;
+  if (!cal?.unlock_at || !cal?.lock_at) return 0;
   const startMs = new Date(hol.starts_at).getTime();
   const endMs = new Date(hol.ends_at).getTime();
   const unlockMs = new Date(cal.unlock_at).getTime();
   const lockMs = new Date(cal.lock_at).getTime();
-  if (
-    ![startMs, endMs, unlockMs, lockMs].every((n) => Number.isFinite(n))
-  ) {
-    return false;
+  if (![startMs, endMs, unlockMs, lockMs].every((n) => Number.isFinite(n))) {
+    return 0;
   }
-  // Same rule as match_schedule_club_on_holiday_for_month
-  return startMs < lockMs && endMs > unlockMs;
+  if (!(startMs < lockMs && endMs > unlockMs)) return 0;
+  const from = Math.max(startMs, unlockMs);
+  const to = Math.min(endMs, lockMs);
+  if (to <= from) return 0;
+  const [ys, ms, ds] = ukYmd(from).split("-").map(Number);
+  const [ye, me, de] = ukYmd(to - 1).split("-").map(Number);
+  if (![ys, ms, ds, ye, me, de].every((n) => Number.isFinite(n))) return 0;
+  return Math.round((Date.UTC(ye, me - 1, de) - Date.UTC(ys, ms - 1, ds)) / 86400000) + 1;
 }
 
 /**
@@ -166,7 +184,8 @@ export function fixtureHolidayArrangeNote(fixture) {
   for (const short of sides) {
     const hol = ownerHolidayStatusForClub(short);
     if (!hol || (hol.code !== "OH" && hol.code !== "UH")) continue;
-    if (!holidayOverlapsPlayMonth(hol, playMonth)) continue;
+    const overlapDays = holidayOverlapDays(hol, playMonth);
+    if (overlapDays < 1) continue;
     const entry = {
       clubShort: String(short || "").toUpperCase(),
       code: hol.code,
@@ -175,6 +194,8 @@ export function fixtureHolidayArrangeNote(fixture) {
       ends_at: hol.ends_at,
       rangeLabel: formatUkDateRange(hol.starts_at, hol.ends_at),
       playMonthLabel: monthLabel(playMonth),
+      overlapDays,
+      earlyPlay: overlapDays >= HOLIDAY_EARLY_MIN_DAYS,
     };
     if (!best || (best.code === "UH" && entry.code === "OH")) {
       best = entry;
@@ -200,13 +221,19 @@ export function holidayKickoffNoteHtml(note, { catchUp = false } = {}) {
   const main = onHoliday
     ? "To be scheduled · holiday in play"
     : "To be scheduled · holiday booked";
+  const days = Number(note.overlapDays) || 0;
+  const dayWord = days === 1 ? "day" : "days";
   const detail = onHoliday
     ? `${note.clubShort} on holiday ${note.rangeLabel} — scheduling fines paused`
-    : `${note.clubShort} holiday ${note.rangeLabel} covers ${note.playMonthLabel} — arrange/play early where possible`;
+    : note.earlyPlay
+      ? `${note.clubShort} holiday ${note.rangeLabel} covers ${days} ${dayWord} of ${note.playMonthLabel} — arrange/play early`
+      : `${note.clubShort} holiday ${note.rangeLabel} covers ${days} ${dayWord} of ${note.playMonthLabel}`;
   const title = escapeKoAttr(
     onHoliday
       ? `${note.clubShort} is on holiday (${note.rangeLabel}). Scheduling fines are paused while away; arrange when both sides can.`
-      : `${note.clubShort} has a booked holiday (${note.rangeLabel}) covering ${note.playMonthLabel}. Arrange/play early where possible (4+ day month overlap unlocks early play).`
+      : note.earlyPlay
+        ? `${note.clubShort} holiday (${note.rangeLabel}) covers ${days} ${dayWord} of the ${note.playMonthLabel} week. Early play is open (4 days of that week).`
+        : `${note.clubShort} holiday (${note.rangeLabel}) covers ${days} ${dayWord} of the ${note.playMonthLabel} week. Early play needs 4 days of that week.`
   );
   return (
     `<span class="ko-status ko-status--holiday" title="${title}">` +
