@@ -523,7 +523,7 @@ BEGIN
       );
       v_due_sort := public.competition_gpsl_month_sort(v_due_month);
 
-      IF v_remind_at > now() - interval '3 days'
+      IF v_remind_at > now() - interval '21 days'
          AND v_remind_at <= now() + interval '150 days'
          AND v_close_at > now() - interval '1 hour' THEN
         v_out := v_out || jsonb_build_array(jsonb_build_object(
@@ -553,7 +553,7 @@ BEGIN
         ));
       END IF;
 
-      IF v_close_at > now() - interval '3 days'
+      IF v_close_at > now() - interval '21 days'
          AND v_close_at <= now() + interval '150 days'
          AND (v_entered IS NOT NULL OR v_arranged) THEN
         v_out := v_out || jsonb_build_array(jsonb_build_object(
@@ -588,7 +588,7 @@ BEGIN
           FROM public.competition_season_calendar c
           WHERE c.season_id = v_season
             AND c.lock_at IS NOT NULL
-            AND c.lock_at > now() - interval '3 days'
+            AND c.lock_at > now() - interval '21 days'
             AND c.lock_at <= now() + interval '180 days'
             AND public.competition_gpsl_month_sort(c.gpsl_month) > v_due_sort
           ORDER BY public.competition_gpsl_month_sort(c.gpsl_month)

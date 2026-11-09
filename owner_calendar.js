@@ -110,6 +110,9 @@ let marketSettings = null;
 /** First video-due deadlines computed for played fixtures still missing a video. */
 let videoDeadlines = [];
 let videoGraceHours = 72;
+/** Result deadlines for this club only, when its side is still not in. */
+let resultDeadlines = [];
+const RESULT_RECOVER_HOURS = 24;
 /** @type {object[]} */
 let ownerHolidays = [];
 /** @type {Set<string>} owner-local ymd values covered by a holiday */
@@ -640,6 +643,42 @@ function buildEventsByDay() {
       .filter((c) => c?.kind === "video" && c.fixture_id == null)
       .map((c) => String(c.id || c.title || ""))
   );
+  const resultSeen = new Set(
+    cutoffs
+      .filter((c) => String(c?.kind || "").startsWith("result_") && c.id)
+      .map((c) => String(c.id))
+  );
+  for (const c of resultDeadlines) {
+    if (!c?.at || resultSeen.has(String(c.id))) continue;
+    resultSeen.add(String(c.id));
+    const day = ymdInTz(c.at, ownerTz);
+    const hhmm = hhmmInTz(c.at, ownerTz);
+    const sort = new Date(c.at).getTime();
+    const title = expandShortsInLabel(c.title || "Result deadline");
+    push(
+      day,
+      withCal(
+        {
+          key: `deadline:${sort}:${c.kind || c.id}`,
+          kind: "deadline",
+          sort,
+          title,
+          detail: `${timeInTz(c.at, ownerTz)}${
+            c.detail ? ` — ${expandShortsInLabel(c.detail)}` : ""
+          }`,
+          href: c.href || "matchday.html",
+          hrefLabel: "Open →",
+          chip: `${hhmm} ${deadlineChipText({ ...c, title })}`,
+        },
+        c.at,
+        {
+          durationMs: CAL_MARKER_MS,
+          uid: `gpsl-deadline-${c.kind || "result"}-${c.fixture_id || sort}@gpsl`,
+        }
+      )
+    );
+  }
+
   for (const v of videoDeadlines) {
     if (!v?.at) continue;
     // Month-level markers use fixture_id null — still show them.
@@ -1094,6 +1133,7 @@ function monthSelectBounds() {
   for (const f of fixtures || []) considerIso(f.agreed_kickoff_at);
   for (const c of cutoffs || []) considerIso(c?.at);
   for (const v of videoDeadlines || []) considerIso(v?.at);
+  for (const c of resultDeadlines || []) considerIso(c?.at);
   for (const h of ownerHolidays || []) {
     considerIso(h.starts_at);
     considerIso(h.ends_at);
@@ -1824,6 +1864,151 @@ async function loadVideoDeadlines() {
   return out;
 }
 
+/**
+ * Result deadlines for this club, from the fixtures and season months already
+ * on the calendar. A club that has already submitted its side is left off.
+ */
+async function loadResultDeadlines() {
+  const me = String(myClub.short || "")
+    .trim()
+    .toUpperCase();
+  if (!me) return [];
+
+  videoGraceHours = await resolveVideoGraceHours();
+
+  const { data, error } = await supabase
+    .from("competition_fixtures_public")
+    .select(
+      "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, status, home_goals, away_goals, is_forfeit, submission_status, submitted_by_club, agreed_kickoff_at, gpsl_month, schedule_status"
+    );
+  if (error) {
+    console.warn("owner_calendar result deadlines:", error);
+    return [];
+  }
+
+  const now = Date.now();
+  const pastMs = 21 * 86400_000;
+  const futureMs = 150 * 86400_000;
+  const inWindow = (ms) => ms >= now - pastMs && ms <= now + futureMs;
+  const out = [];
+  const months = Array.isArray(seasonMonths) ? seasonMonths : [];
+
+  for (const f of data || []) {
+    const home = String(f.home_club_short_name || "")
+      .trim()
+      .toUpperCase();
+    const away = String(f.away_club_short_name || "")
+      .trim()
+      .toUpperCase();
+    if (home !== me && away !== me) continue;
+    if (f.is_forfeit === true) continue;
+    const ko = f.agreed_kickoff_at ? new Date(f.agreed_kickoff_at).getTime() : NaN;
+    if (!Number.isFinite(ko) || ko > now) continue;
+
+    const pending = String(f.submission_status || "").toLowerCase() === "pending";
+    const enteredBy = String(f.submitted_by_club || "")
+      .trim()
+      .toUpperCase();
+    if (pending && enteredBy === me) continue;
+    const played = String(f.status || "").toLowerCase() === "played";
+    const confirmed =
+      !pending && played && f.home_goals != null && f.away_goals != null;
+    if (confirmed) continue;
+
+    const monthKey = videoDueMonthKey(f);
+    const month = months.find(
+      (m) => String(m.gpsl_month || "").trim().toLowerCase() === monthKey
+    );
+    const lockMs = month?.lock_at ? new Date(month.lock_at).getTime() : NaN;
+    if (!Number.isFinite(lockMs)) continue;
+
+    const remindMs = lockMs + videoGraceHours * 3600_000;
+    const closeMs = remindMs + RESULT_RECOVER_HOURS * 3600_000;
+    const arranged = String(f.schedule_status || "").toLowerCase() === "agreed";
+    const oppShort = home === me ? f.away_club_short_name : f.home_club_short_name;
+    const oppName = home === me ? f.away_club_name : f.home_club_name;
+    const opp = clubFull(oppShort, oppName);
+    const href = `matchday.html?fixture=${encodeURIComponent(String(f.id))}`;
+    const monthLabel =
+      GPSL_MONTH_LABELS[monthKey] ||
+      (monthKey ? monthKey.charAt(0).toUpperCase() + monthKey.slice(1) : "that month");
+
+    if (inWindow(remindMs) && closeMs > now - 3600_000) {
+      out.push({
+        id: `result_enter:${f.id}`,
+        fixture_id: f.id,
+        kind: "result_enter",
+        at: new Date(remindMs).toISOString(),
+        title: pending ? `Confirm result vs ${opp}` : `Enter result vs ${opp}`,
+        detail: pending
+          ? "Your opponent has entered a score. ₿500,000 if you have not confirmed by this time."
+          : `₿500,000 if your result is still not in, ${videoGraceHours}h after the ${monthLabel} lock. You then have ${RESULT_RECOVER_HOURS} hours to finish it.`,
+        href,
+      });
+    }
+
+    if (inWindow(closeMs) && (pending || arranged)) {
+      out.push({
+        id: `result_close:${f.id}`,
+        fixture_id: f.id,
+        kind: "result_close",
+        at: new Date(closeMs).toISOString(),
+        title: pending ? `Score confirmed vs ${opp}` : `Result extension vs ${opp}`,
+        detail: pending
+          ? "If you still have not confirmed, another ₿500,000 and their score is confirmed. Starters are rated 3. It cannot be edited."
+          : "No score in. Another ₿500,000 to each club. The result stays open.",
+        href,
+      });
+    }
+
+    if (pending) continue;
+
+    const dueSort = Number(month?.sort_order);
+    if (!Number.isFinite(dueSort)) continue;
+    const later = months
+      .filter((m) => Number(m.sort_order) > dueSort && m.lock_at)
+      .sort((a, b) => Number(a.sort_order) - Number(b.sort_order));
+    for (const m of later) {
+      const lockAt = new Date(m.lock_at).getTime();
+      if (!Number.isFinite(lockAt) || !inWindow(lockAt) && lockAt < now) continue;
+      if (lockAt > now + 180 * 86400_000) break;
+      const step = Number(m.sort_order) - dueSort;
+      const label =
+        GPSL_MONTH_LABELS[String(m.gpsl_month || "").toLowerCase()] ||
+        m.gpsl_month ||
+        "that month";
+      if (step >= 2) {
+        if (lockAt >= now - pastMs) {
+          out.push({
+            id: `result_void:${f.id}`,
+            fixture_id: f.id,
+            kind: "result_void",
+            at: new Date(lockAt).toISOString(),
+            title: `Result void vs ${opp}`,
+            detail:
+              "Two months after the played month. If there is still no score, the match is void. Neither club gets the result. It counts as played.",
+            href,
+          });
+        }
+        break;
+      }
+      if (arranged && lockAt >= now - pastMs) {
+        out.push({
+          id: `result_month:${f.id}:${String(m.gpsl_month || "").toLowerCase()}`,
+          fixture_id: f.id,
+          kind: "result_month",
+          at: new Date(lockAt).toISOString(),
+          title: `Result still open vs ${opp}`,
+          detail: `Another ₿500,000 at the ${label} lock while the match is still arranged and no score is in.`,
+          href,
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
 async function loadPlannedAuctionEvents() {
   const { data, error } = await supabase
     .from("gpsl_planned_events")
@@ -1951,6 +2136,10 @@ async function boot() {
     plannedEvents = planned || [];
     marketSettings = settings;
     videoDeadlines = await loadVideoDeadlines().catch((e) => {
+      console.warn(e);
+      return [];
+    });
+    resultDeadlines = await loadResultDeadlines().catch((e) => {
       console.warn(e);
       return [];
     });
