@@ -81,40 +81,46 @@ function storageCardUrl(id: string) {
   return `${base}/storage/v1/object/public/player-cards/${id}.png`;
 }
 
-async function ensurePlayerCard(
+async function loadPlayerCard(
   admin: ReturnType<typeof createClient>,
   rawId: string
-): Promise<string | null> {
+): Promise<{ bytes: Uint8Array; filename: string } | null> {
   const id = String(rawId || "").trim();
   if (!/^\d{4,12}$/.test(id)) return null;
+  const filename = `card-${id}.png`;
   const publicUrl = storageCardUrl(id);
+
+  const fromUrl = async (url: string) => {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "image/png,image/*;q=0.8,*/*;q=0.2",
+      },
+    });
+    const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+    if (!res.ok || !contentType.startsWith("image/")) return null;
+    return new Uint8Array(await res.arrayBuffer());
+  };
+
   try {
-    const head = await fetch(publicUrl, { method: "HEAD" });
-    if (head.ok) return publicUrl;
+    const stored = await fromUrl(publicUrl);
+    if (stored && stored.byteLength > 32) return { bytes: stored, filename };
   } catch {
-    /* fetch a fresh copy */
+    /* pull a fresh copy below */
   }
+
   try {
-    const upstream = await fetch(
-      `https://pesdb.net/assets/img/card/b${encodeURIComponent(id)}.png`,
-      {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          Accept: "image/png,image/*;q=0.8,*/*;q=0.2",
-        },
-      }
+    const bytes = await fromUrl(
+      `https://pesdb.net/assets/img/card/b${encodeURIComponent(id)}.png`
     );
-    const contentType = String(upstream.headers.get("content-type") || "").toLowerCase();
-    if (!upstream.ok || !contentType.startsWith("image/")) return null;
-    const bytes = new Uint8Array(await upstream.arrayBuffer());
-    const { error } = await admin.storage.from("player-cards").upload(`${id}.png`, bytes, {
+    if (!bytes || bytes.byteLength <= 32) return null;
+    await admin.storage.from("player-cards").upload(`${id}.png`, bytes, {
       upsert: true,
-      contentType: contentType || "image/png",
+      contentType: "image/png",
       cacheControl: "31536000",
     });
-    if (error) return null;
-    return publicUrl;
+    return { bytes, filename };
   } catch {
     return null;
   }
@@ -124,23 +130,42 @@ async function postChannelMessage(
   botToken: string,
   channelId: string,
   content: string,
-  embed?: Record<string, unknown> | null
+  embed?: Record<string, unknown> | null,
+  file?: { bytes: Uint8Array; filename: string } | null
 ): Promise<{ message_id: string }> {
-  const body: Record<string, unknown> = {
+  const payload: Record<string, unknown> = {
     allowed_mentions: { parse: [] },
   };
-  if (content.trim()) body.content = content.slice(0, 1800);
-  if (embed && typeof embed === "object") body.embeds = [embed];
+  if (content.trim()) payload.content = content.slice(0, 1800);
+  if (embed && typeof embed === "object") payload.embeds = [embed];
+  if (file) {
+    payload.attachments = [{ id: 0, filename: file.filename }];
+  }
 
-  const send = () =>
-    fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+  const send = () => {
+    if (!file) {
+      return fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+    }
+    const form = new FormData();
+    form.append("payload_json", JSON.stringify(payload));
+    form.append(
+      "files[0]",
+      new Blob([file.bytes], { type: "image/png" }),
+      file.filename
+    );
+    return fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
       method: "POST",
-      headers: {
-        Authorization: `Bot ${botToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+      headers: { Authorization: `Bot ${botToken}` },
+      body: form,
     });
+  };
 
   let res = await send();
   if (res.status === 429) {
@@ -312,10 +337,19 @@ Deno.serve(async (req) => {
             item.embed && typeof item.embed === "object"
               ? { ...(item.embed as Record<string, unknown>) }
               : null;
-          const cardUrl = await ensurePlayerCard(adminClient, String(item.card_id || ""));
-          if (embed && cardUrl) embed.image = { url: cardUrl };
+          const card = await loadPlayerCard(adminClient, String(item.card_id || ""));
+          if (embed && card) {
+            embed.image = { url: `attachment://${card.filename}` };
+            delete embed.thumbnail;
+          }
           if (!content && !embed) throw new Error("Empty listing post");
-          const posted = await postChannelMessage(botToken, channelId, content, embed);
+          const posted = await postChannelMessage(
+            botToken,
+            channelId,
+            content,
+            embed,
+            card
+          );
           postedIds.push(posted.message_id);
           await sleep(1200);
         } catch {
