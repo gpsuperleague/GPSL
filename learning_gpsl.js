@@ -5,7 +5,7 @@ import { initGlobal, supabase } from "./global.js";
 import {
   LEARNING_GPSL_META_HTML,
   LEARNING_GPSL_SECTIONS,
-} from "./learning_gpsl_content.js?v=20261110-handbook-copy";
+} from "./learning_gpsl_content.js?v=20261110-handbook-wire";
 
 function escapeAttr(text) {
   return String(text ?? "")

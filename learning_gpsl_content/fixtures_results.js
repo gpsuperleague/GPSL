@@ -197,10 +197,11 @@ export const SECTION_MATCH_SCHEDULING = {
   blocks: [
     {
       type: "p",
-      html: `By default, before you can play a <b>league or cup</b> game you and your opponent
+      html: `This is <b>match arranging</b>. Before you can play a <b>league or cup</b> game you and your opponent
         <b>agree a kick-off on the site</b> (Discord chat is fine for talking — then lock the time with
         <b>We agreed on Discord — lock this kick-off</b>). Owners who both switch <b>GPSL match system OFF</b>
-        on Owner Details can skip that and arrange fully off-site (see below).`,
+        on Owner Details can skip that and arrange fully off-site (see below).
+        Deadlines while you are arranging also show on <a href="dashboard.html#clubWire">Club Wire</a>.`,
     },
     {
       type: "links",

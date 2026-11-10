@@ -4,7 +4,7 @@
  */
 
 import { SECTION_WAITING_ROOM } from "./waiting_room.js?v=20261110-handbook-rules";
-import { SECTION_NAVIGATION } from "./navigation.js?v=20261104-handbook";
+import { SECTION_NAVIGATION } from "./navigation.js?v=20261110-handbook-wire";
 import {
   SECTION_MY_CLUB,
   SECTION_FINANCES,
@@ -17,7 +17,7 @@ import {
   SECTION_MATCHDAY_CHECKLIST,
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
-} from "./fixtures_results.js?v=20261110-handbook-rules";
+} from "./fixtures_results.js?v=20261110-handbook-wire";
 import { SECTION_DISCIPLINE } from "./discipline.js?v=20261110-handbook-rules";
 import { SECTION_LEAGUE, SECTION_INTERNATIONAL } from "./league_world.js";
 import {

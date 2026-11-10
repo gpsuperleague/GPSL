@@ -62,10 +62,27 @@ export const SECTION_NAVIGATION = {
         { href: "cups.html?cup=bowl", label: "Bowl" },
       ],
     },
+    { type: "h3", html: "Club Wire" },
+    {
+      type: "p",
+      html: `<a href="dashboard.html#clubWire">Club Wire</a> sits on the Dashboard, and a lightning badge appears in the top nav while something needs you.
+        It is your live list, not a second inbox.`,
+    },
+    {
+      type: "ul",
+      items: [
+        `<b>Market</b> — outbid, offer accepted or rejected, won or lost, on players, managers, and auctions.`,
+        `<b>Deadlines</b> — propose a kick-off, reply, check in, no-show, last chance to play, match video, and entering the result.`,
+        `Dismiss a line when you have dealt with it. The badge counts what is still open.`,
+      ],
+    },
     { type: "h3", html: "My Club" },
     {
       type: "links",
       items: [
+        { href: "dashboard.html", label: "Dashboard" },
+        { href: "dashboard.html#clubWire", label: "Club Wire" },
+        { href: "inbox.html", label: "Inbox" },
         { href: "club_details.html", label: "Club Details" },
         { href: "boardroom.html", label: "Boardroom" },
         { href: "owner_details.html", label: "Owner Details" },
