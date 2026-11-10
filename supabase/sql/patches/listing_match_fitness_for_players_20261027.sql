@@ -61,7 +61,7 @@ BEGIN
     FROM public.competition_player_match_fitness f
     WHERE f.season_id = v_season
       AND f.player_id = ANY (p_player_ids)
-    ORDER BY f.player_id, f.updated_at DESC NULLS LAST, f.id DESC
+    ORDER BY f.player_id, f.updated_at DESC NULLS LAST
   ) y;
 
   RETURN jsonb_build_object(

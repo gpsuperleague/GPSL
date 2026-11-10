@@ -2,8 +2,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 /**
- * Keeps one index in #where-to-go: every channel, grouped by category,
- * with what it is for. Edits the same messages. No extra secret.
+ * Keeps one index in #index (or #where-to-go): every channel, grouped by category,
+ * with what it is for. The admin category and its channels are left out.
+ * Edits the same messages. No extra secret.
  *
  * Purpose: the channel topic if one is set, otherwise a built-in line.
  */
@@ -25,6 +26,8 @@ const MONTHS = new Set([
 const PURPOSES: Record<string, string> = {
   thegreathall: "Main chat.",
   whattodo: "What to do next if you are new or stuck.",
+  index: "This index. The bot keeps it up to date.",
+  channelindex: "This index. The bot keeps it up to date.",
   wheretogo: "This index. The bot keeps it up to date.",
   whatisgpsl: "What GPSL is.",
   news: "League news, posted by the bot.",
@@ -103,6 +106,11 @@ function channelSlug(name: string): string {
     .replace(/[^a-z0-9]+/g, "");
 }
 
+function isAdminCategory(name: string): boolean {
+  const slug = channelSlug(name);
+  return slug === "admin" || slug.startsWith("admin");
+}
+
 function purposeFor(ch: DiscordChannel): string {
   const topic = String(ch.topic || "").replace(/\s+/g, " ").trim();
   if (topic) return topic.slice(0, 180);
@@ -152,10 +160,19 @@ function authorized(
 
 function buildEmbeds(channels: DiscordChannel[]): Record<string, unknown>[] {
   const categories = channels
-    .filter((c) => c.type === 4)
+    .filter((c) => c.type === 4 && !isAdminCategory(c.name || ""))
     .sort((a, b) => (a.position || 0) - (b.position || 0));
+  const hiddenParents = new Set(
+    channels
+      .filter((c) => c.type === 4 && isAdminCategory(c.name || ""))
+      .map((c) => c.id)
+  );
   const listed = channels
-    .filter((c) => c.type === 0 || c.type === 5 || c.type === 15 || c.type === 2)
+    .filter(
+      (c) =>
+        (c.type === 0 || c.type === 5 || c.type === 15 || c.type === 2) &&
+        !hiddenParents.has(c.parent_id || "")
+    )
     .sort((a, b) => (a.position || 0) - (b.position || 0));
 
   const groups: { title: string; lines: string[] }[] = [];
@@ -263,9 +280,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: `List channels ${listRes.status} ${text.slice(0, 180)}` }, 502);
     }
     const channels = (await listRes.json()) as DiscordChannel[];
-    const home = channels.find((c) => channelSlug(c.name || "") === "wheretogo");
+    const home =
+      channels.find((c) => channelSlug(c.name || "") === "index") ||
+      channels.find((c) => channelSlug(c.name || "") === "channelindex") ||
+      channels.find((c) => channelSlug(c.name || "") === "wheretogo");
     if (!home) {
-      return jsonResponse({ error: "No channel named where-to-go." }, 400);
+      return jsonResponse({
+        error: "No channel named index. Create a text channel called index and allow the bot to send messages there.",
+      }, 400);
     }
 
     const embeds = buildEmbeds(channels);
@@ -328,8 +350,15 @@ Deno.serve(async (req) => {
       });
       if (!res.ok) {
         const text = await res.text();
+        const denied = res.status === 403;
         return jsonResponse(
-          { error: `Post ${res.status} ${text.slice(0, 180)}`, channel_id: home.id },
+          {
+            error: denied
+              ? "The bot cannot send messages in that channel. Allow it View Channel, Send Messages, and Embed Links."
+              : `Post ${res.status} ${text.slice(0, 180)}`,
+            channel_id: home.id,
+            channel_name: home.name,
+          },
           502
         );
       }

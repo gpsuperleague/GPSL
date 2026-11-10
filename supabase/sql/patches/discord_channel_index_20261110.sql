@@ -1,5 +1,5 @@
 -- =============================================================================
--- Discord channel index in #where-to-go
+-- Discord channel index in #index (falls back to #where-to-go)
 -- The bot edits the same message. No extra Edge secret.
 -- Deploy first: supabase functions deploy discord-channel-index
 -- =============================================================================
