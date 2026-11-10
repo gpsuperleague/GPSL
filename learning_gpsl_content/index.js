@@ -3,22 +3,22 @@
  * Edit individual modules; this file only assembles order + intro meta.
  */
 
-import { SECTION_WAITING_ROOM } from "./waiting_room.js?v=20261104-handbook";
+import { SECTION_WAITING_ROOM } from "./waiting_room.js?v=20261110-handbook-rules";
 import { SECTION_NAVIGATION } from "./navigation.js?v=20261104-handbook";
 import {
   SECTION_MY_CLUB,
   SECTION_FINANCES,
   SECTION_EXPECTATIONS,
 } from "./club_pages.js?v=20261018-syntax";
-import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261106-overflow-2-5m";
-import { SECTION_MEDICAL } from "./medical.js?v=20261024-half-cap";
-import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js?v=20261104-handbook";
+import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261110-handbook-rules";
+import { SECTION_MEDICAL } from "./medical.js?v=20261110-handbook-rules";
+import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js?v=20261110-handbook-rules";
 import {
   SECTION_MATCHDAY_CHECKLIST,
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
-} from "./fixtures_results.js?v=20261106-cup-arrange-grace";
-import { SECTION_DISCIPLINE } from "./discipline.js?v=20261106-overflow-2-5m";
+} from "./fixtures_results.js?v=20261110-handbook-rules";
+import { SECTION_DISCIPLINE } from "./discipline.js?v=20261110-handbook-rules";
 import { SECTION_LEAGUE, SECTION_INTERNATIONAL } from "./league_world.js";
 import {
   SECTION_OWNERS,

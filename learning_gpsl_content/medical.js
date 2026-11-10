@@ -10,6 +10,29 @@ export const SECTION_MEDICAL = {
         <b>physios</b>, then use <b>specialist consultant</b> tokens to shorten injuries.
         Staff hiring is only open in <b>GPSL June–August</b> (closed September–May).`,
     },
+    { type: "h3", html: "How an injury happens" },
+    {
+      type: "ul",
+      items: [
+        `After a <b>played</b> league or cup match, from <b>August</b> onward, each club is rolled <b>once</b> if someone from that club actually played. <b>June and July do not roll.</b>`,
+        `A club stops at <b>4 injuries</b> in a season: at most <b>1 major</b>, <b>2 moderate</b>, and <b>4 minor</b>, and never more than 4 in total.`,
+        `After an injury, <b>5</b> of that club’s matches must pass before it can be hit again.`,
+        `The chance is paced across the matches still left, held between <b>3% and 12%</b>, so a club is steered toward those 4 rather than hit at random all year. Physios then take their percentages off. Each club also has a small season-long swing, so two similar clubs are not identical.`,
+        `Players who appeared while at <b>Fitness Concern</b> or <b>Injury Risk</b> push that match’s chance up. The extra is capped.`,
+        `The player is picked from those who played. Your last fit goalkeeper is left out of the draw.`,
+        `<b>Injured</b> — still has matches to miss, and cannot be selected for those. <b>Regaining fitness</b> — the missed matches are done; he can play while the meter climbs back. Length comes from the injury itself.`,
+      ],
+    },
+    { type: "h3", html: "Match fitness" },
+    {
+      type: "ul",
+      items: [
+        `Every player has a meter: <b>Fully Fit → Match Ready → Managing Load → Fitness Concern → Injury Risk</b>.`,
+        `Consecutive league or cup appearances climb it (about <b>4</b> in a row per step). Missing a club match drops one step.`,
+        `Higher steps are more likely to be the one injured, and tilt toward a worse injury. They do not change how long that injury type lasts.`,
+        `While he is hurt the squad label reads Injured or Regaining fitness. The meter keeps tracking underneath.`,
+      ],
+    },
     { type: "h3", html: "Club doctor" },
     {
       type: "ul",

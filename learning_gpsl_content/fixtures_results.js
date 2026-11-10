@@ -327,6 +327,17 @@ export const SECTION_MATCH_SCHEDULING = {
       ],
     },
 
+    { type: "h3", html: "New owners" },
+    {
+      type: "ul",
+      items: [
+        `Take a club <b>during a play month</b> and that month’s matches are not arranged until the <b>next GPSL month</b>. The schedule shows <b>To be scheduled · grace period in play</b>. The same applies if the other owner arrived during that month.`,
+        `<b>Scheduling fines</b> (no proposal, late arrangement, overdue reply) are skipped for a GPSL month that had already opened when you were appointed. You are liable from the first lock of a month you have owned the whole way through.`,
+        `Unplayed fixtures involving your club stay inside the play window through the month you joined <b>plus 3 further GPSL months</b>. The normal league +2 or cup +1 still applies when that window is already longer.`,
+        `First-season squad slots (release or list) are under <a href="#squad--new-owner-release">New Owner release</a>.`,
+      ],
+    },
+
     { type: "h3", html: "Fines at a glance (league &amp; all cups)" },
     {
       type: "ul",

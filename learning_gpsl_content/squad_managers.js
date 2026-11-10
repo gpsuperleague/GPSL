@@ -30,6 +30,30 @@ export const SECTION_SQUAD = {
         },
       ],
     },
+    { type: "h3", html: "New Owner release" },
+    {
+      type: "p",
+      html: `In your <b>first season</b> at a club you get <b>3 slots</b>. Each slot is one <b>release</b> or one <b>transfer list</b>. Squad shows how many are left. They are not replaced in later seasons.`,
+    },
+    {
+      type: "ul",
+      items: [
+        `Use them in <b>pre-season, June, July, August, or January</b>.`,
+        `<b>Release</b> — the player becomes a free agent and cannot be signed again until next season. The Central Bank refunds the fee your club paid for him. If no purchase fee is on record, the refund is nothing.`,
+        `<b>Transfer list</b> — he goes on at <b>market value</b>. This can list a player who is still inside the half-season signing lock. If he does not sell, the slot comes back.`,
+        `A normal <a href="#squad--letting-a-player-go">contract release</a> or <a href="#transfers--selling-abroad">foreign sale</a> is separate and uses those allowances, not these 3 slots.`,
+      ],
+    },
+    { type: "h3", html: "Letting a player go" },
+    {
+      type: "ul",
+      items: [
+        `<b>Release from contract</b> — up to <b>3 a season</b>, from Squad. You pay <b>wage × seasons left</b> on the contract. He is out of the league until next season.`,
+        `<b>Sell to a foreign club</b> — up to <b>3 a season</b>, at market value. He cannot be signed in GPSL until next season. Using a slot can free a squad place without the overflow fine.`,
+        `<b>Overflow release</b> — the automatic 29th-player release above. That is not one of your 3 voluntary releases.`,
+        `<b>Legacy cards</b> — release for market value only in <b>June and July</b>. That does not use the quota of 3. See below.`,
+      ],
+    },
     { type: "h3", html: "Contracts (summary)" },
     {
       type: "ul",

@@ -20,7 +20,9 @@ export const SECTION_TRANSFERS = {
       type: "ul",
       items: [
         `When the <b>transfer window</b> is open, list players from the squad or Transfer Centre, bid on <a href="all_listings.html">Transfer Market</a> listings, and accept or reject direct offers.`,
-        `<b>Signing lock</b> — half a season after joining: <b>1st-half</b> signing → listable from <b>GPSL January</b>; <b>2nd-half</b> signing → listable from <b>next summer</b> (Transfer Market and foreign listing). Squad shows <b>🔒 → Jan / summer</b>. New Owner list can bypass. Full contract windows: <a href="#squad">Squad &amp; contracts</a>.`,
+        `<b>Signing lock</b> — half a season after joining: <b>1st-half</b> signing → listable from <b>GPSL January</b>; <b>2nd-half</b> signing → listable from <b>next summer</b> (Transfer Market and foreign listing). Squad shows <b>🔒 → Jan / summer</b>. A <a href="#squad--new-owner-release">New Owner list</a> can bypass that lock. Full contract windows: <a href="#squad">Squad &amp; contracts</a>.`,
+        `<b>While the window is shut</b> you can <b>list for preview</b> on players who will be sellable when it next opens. The card is view only. It becomes a normal auction when the window opens. Other clubs may <b>show interest</b>. That is not a bid and does not reserve the player.`,
+        `Once a listing is active it stays up <b>at least 24 hours</b> and closes at <b>19:00 UK</b> (or the next 19:00 if those 24 hours land after 19:00).`,
         `Completed deals post to finances and appear in your <a href="inbox.html">Inbox</a>.`,
         `<b>Legacy cards</b> — players removed from pesdb.net stay at their club but cannot be sold; see <a href="#squad">Squad &amp; contracts</a> and <a href="legacy_players.html">Legacy players</a>.`,
       ],
@@ -56,7 +58,7 @@ export const SECTION_TRANSFERS = {
     {
       type: "ul",
       items: [
-        `Limited <b>foreign club</b> sale slots per season — using one avoids the squad overflow fine when you need to free a place.`,
+        `<b>3 foreign-club slots</b> a season. Sale is at market value. The player cannot be signed in GPSL until next season. Using one avoids the squad overflow fine when you need to free a place. Details: <a href="#squad--letting-a-player-go">Letting a player go</a>.`,
         `Check squad warnings before confirming any signing or winning bid.`,
       ],
     },

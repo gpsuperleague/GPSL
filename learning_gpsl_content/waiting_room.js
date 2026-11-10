@@ -65,6 +65,7 @@ export const SECTION_WAITING_ROOM = {
         `While handpick is open for your club, a yellow <b>Handpick Squad</b> chip appears in the top nav (after Dashboard). The Dashboard also shows a banner. Both disappear once admin approves.`,
         `Shortcuts on Handpick: Club Finances, Current squad, and the <a href="learning_gpsl.html">GPSL Handbook</a>.`,
         `Admin signs approved wishlists at market value (+ income tax). Tags are not contracts until approved.`,
+        `Your first season at the club includes <b>3 slots</b> to release or list players — <a href="#squad--new-owner-release">New Owner release</a>.`,
       ],
     },
   ],
