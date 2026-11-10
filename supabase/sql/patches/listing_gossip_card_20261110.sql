@@ -311,7 +311,13 @@ BEGIN
   v_fields := v_fields || jsonb_build_array(
     jsonb_build_object('name', 'Selling club', 'value', v_club, 'inline', true),
     jsonb_build_object('name', 'Owner', 'value', v_owner, 'inline', true),
-    jsonb_build_object('name', 'Price', 'value', v_money, 'inline', true)
+    jsonb_build_object('name', 'Price', 'value', v_money, 'inline', true),
+    jsonb_build_object(
+      'name', 'Market',
+      'value', '[Open this listing](https://gpsuperleague.github.io/GPSL/all_listings.html?listing='
+        || p_listing_id || ')',
+      'inline', false
+    )
   );
 
   v_fields := v_fields || jsonb_build_object(
@@ -385,7 +391,7 @@ BEGIN
         WHEN v_position IS NULL THEN ''
         ELSE ' · ' || v_position
       END,
-      'url', 'https://gpsuperleague.github.io/GPSL/player_career.html?id=' || v_player_id,
+      'url', 'https://gpsuperleague.github.io/GPSL/all_listings.html?listing=' || p_listing_id,
       'description', v_blurb,
       'color', 15105570,
       'fields', v_fields,
@@ -426,6 +432,19 @@ AS $function$
           ''
         ),
         'color', 15105570,
+        'url', 'https://gpsuperleague.github.io/GPSL/all_listings.html?listing='
+          || coalesce(p_item ->> 'listing_id', ''),
+        'fields', (
+          SELECT coalesce(jsonb_agg(t.elem ORDER BY t.ord), '[]'::jsonb)
+          FROM jsonb_array_elements(coalesce(p_item #> '{embed,fields}', '[]'::jsonb))
+            WITH ORDINALITY AS t(elem, ord)
+          WHERE t.elem ->> 'name' IS DISTINCT FROM 'Market'
+        ) || jsonb_build_array(jsonb_build_object(
+          'name', 'Market',
+          'value', '[Open this listing](https://gpsuperleague.github.io/GPSL/all_listings.html?listing='
+            || coalesce(p_item ->> 'listing_id', '') || ')',
+          'inline', false
+        )),
         'footer', jsonb_build_object('text', 'On the market · GPSL')
       )
     )

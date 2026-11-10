@@ -1432,6 +1432,21 @@ function updateListingsFilterSummary(shown, total) {
 // ======================================================
 // MODULE D: RENDER LISTINGS TABLE
 // ======================================================
+let listingLinkScrolled = false;
+
+function focusLinkedListing() {
+  if (listingLinkScrolled) return;
+  const id = new URLSearchParams(window.location.search).get("listing");
+  if (!id) return;
+  const row = document.querySelector(
+    `#listings-body tr[data-listing-id="${CSS.escape(id)}"]`
+  );
+  if (!row) return;
+  listingLinkScrolled = true;
+  row.classList.add("listing-row-linked");
+  row.scrollIntoView({ block: "center" });
+}
+
 async function renderListings() {
   const gen = ++renderGeneration;
   const tbody = document.getElementById("listings-body");
@@ -1522,6 +1537,7 @@ async function renderListings() {
       : "";
 
     const tr = document.createElement("tr");
+    tr.dataset.listingId = String(listing.id);
 
     if (listing.current_highest_bidder === currentUserShort) {
       tr.classList.add("leading-row");
@@ -1653,6 +1669,8 @@ async function renderListings() {
 
     tbody.appendChild(tr);
   }
+
+  focusLinkedListing();
 
   if (gen !== renderGeneration) return;
 

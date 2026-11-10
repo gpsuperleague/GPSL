@@ -33,19 +33,19 @@ DECLARE
   v_club text := upper(btrim(coalesce(p_club, '')));
   v_club_name text;
   v_player_name text;
-  v_player_id text;
   v_line text;
-  v_payload jsonb;
-  v_embed jsonb;
-  v_fields jsonb;
+  v_seller text;
+  v_ask numeric;
+  v_value numeric;
+  v_price text;
 BEGIN
   SELECT coalesce(nullif(btrim(c."Club"), ''), c."ShortName")
   INTO v_club_name
   FROM public."Clubs" c
   WHERE c."ShortName" = v_club;
 
-  SELECT p."Name", l.player_id::text
-  INTO v_player_name, v_player_id
+  SELECT p."Name"
+  INTO v_player_name
   FROM public."Player_Transfer_Listings" l
   JOIN public."Players" p ON p."Konami_ID"::text = l.player_id::text
   WHERE l.id = p_listing_id;
@@ -58,47 +58,35 @@ BEGIN
 
   v_line := v_club_name || ' are interested in ' || v_player_name;
 
-  IF to_regprocedure('public.gpsl_listing_gossip_payload(bigint)') IS NOT NULL THEN
-    EXECUTE 'SELECT public.gpsl_listing_gossip_payload($1)'
-      INTO v_payload
-      USING p_listing_id;
-  END IF;
+  SELECT
+    coalesce(nullif(btrim(c."Club"), ''), l.seller_club_id),
+    l.reserve_price,
+    l.market_value
+  INTO v_seller, v_ask, v_value
+  FROM public."Player_Transfer_Listings" l
+  LEFT JOIN public."Clubs" c
+    ON c."ShortName" = upper(btrim(l.seller_club_id::text))
+  WHERE l.id = p_listing_id;
 
-  IF v_payload IS NOT NULL AND jsonb_typeof(v_payload -> 'embed') = 'object' THEN
-    v_embed := v_payload -> 'embed';
-    v_fields := jsonb_build_array(
-      jsonb_build_object('name', 'Shown by', 'value', v_club_name, 'inline', true)
-    ) || coalesce(v_embed -> 'fields', '[]'::jsonb);
-    v_embed := v_embed || jsonb_build_object(
-      'author', jsonb_build_object('name', 'Interest shown'),
-      'title', 'INTEREST · ' || regexp_replace(
-        coalesce(v_embed ->> 'title', v_player_name),
-        '^(LISTED|INTEREST) · ',
-        ''
-      ),
-      'description', 'Shown by ' || v_club_name || '. ' || coalesce(v_embed ->> 'description', ''),
-      'color', 3447003,
-      'fields', v_fields,
-      'footer', jsonb_build_object('text', 'Interest shown · GPSL')
-    );
-    RETURN jsonb_build_object(
-      'card_id', coalesce(v_payload ->> 'card_id', v_player_id),
-      'content', v_line,
-      'embed', v_embed
-    );
-  END IF;
+  v_price := CASE
+    WHEN coalesce(v_ask, 0) = coalesce(v_value, 0) THEN
+      '₿' || to_char(coalesce(v_ask, 0), 'FM999,999,999,990')
+    ELSE
+      '₿' || to_char(coalesce(v_ask, 0), 'FM999,999,999,990') || ' asking'
+  END;
 
   RETURN jsonb_build_object(
-    'card_id', v_player_id,
     'content', v_line,
     'embed', jsonb_build_object(
       'author', jsonb_build_object('name', 'Interest shown'),
       'title', 'INTEREST · ' || v_player_name,
-      'url', 'https://gpsuperleague.github.io/GPSL/player_career.html?id=' || v_player_id,
-      'description', 'Shown by ' || v_club_name || '.',
+      'url', 'https://gpsuperleague.github.io/GPSL/all_listings.html?listing=' || p_listing_id,
+      'description', v_club_name || ' have shown interest.',
       'color', 3447003,
       'fields', jsonb_build_array(
-        jsonb_build_object('name', 'Shown by', 'value', v_club_name, 'inline', true)
+        jsonb_build_object('name', 'Shown by', 'value', v_club_name, 'inline', true),
+        jsonb_build_object('name', 'Selling club', 'value', coalesce(v_seller, '—'), 'inline', true),
+        jsonb_build_object('name', 'Asking', 'value', v_price, 'inline', true)
       ),
       'footer', jsonb_build_object('text', 'Interest shown · GPSL')
     )
