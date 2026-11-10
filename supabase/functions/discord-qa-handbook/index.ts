@@ -45,8 +45,23 @@ function snowflakeMs(id: string): number {
   }
 }
 
+function foldStyledLetters(name: string): string {
+  let out = "";
+  for (const ch of String(name || "")) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (cp >= 0x1d400 && cp <= 0x1d419) {
+      out += String.fromCharCode(65 + (cp - 0x1d400));
+    } else if (cp >= 0x1d41a && cp <= 0x1d433) {
+      out += String.fromCharCode(97 + (cp - 0x1d41a));
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
 function channelSlug(name: string): string {
-  return String(name || "")
+  return foldStyledLetters(name)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "");
 }
@@ -230,21 +245,24 @@ Deno.serve(async (req) => {
 
     const listRes = await discordFetch(
       botToken,
-      `/channels/${qa.id}/threads/active`
+      `/guilds/${guildId}/threads/active`
     );
     if (!listRes.ok) {
       const text = await listRes.text();
       return jsonResponse(
         {
-          error: `List threads in ${qa.name}: ${listRes.status} ${text.slice(0, 200)}`,
+          error: `List active threads: ${listRes.status} ${text.slice(0, 200)}`,
           channel_id: qa.id,
         },
         502
       );
     }
     const listed = (await listRes.json()) as { threads?: DiscordChannel[] };
+    const inChannel = (listed.threads || []).filter(
+      (t) => String(t.parent_id || "") === qa.id
+    );
     const now = Date.now();
-    const recent = (listed.threads || []).filter((t) => {
+    const recent = inChannel.filter((t) => {
       if (!t?.id) return false;
       if (t.thread_metadata?.archived || t.thread_metadata?.locked) return false;
       const created = threadCreatedMs(t);
