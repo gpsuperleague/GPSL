@@ -1,11 +1,11 @@
 /**
- * Learning GPSL  Ebound handbook renderer (content in learning_gpsl_content/).
+ * Learning GPSL — handbook renderer (content in learning_gpsl_content/).
  */
 import { initGlobal, supabase } from "./global.js";
 import {
   LEARNING_GPSL_META_HTML,
   LEARNING_GPSL_SECTIONS,
-} from "./learning_gpsl_content.js?v=20261110-handbook-rules";
+} from "./learning_gpsl_content.js?v=20261110-handbook-copy";
 
 function escapeAttr(text) {
   return String(text ?? "")
@@ -101,7 +101,7 @@ function renderToc(sections, topicsBySection) {
       <h2>Contents</h2>
       <div class="learning-search">
         <input type="search" id="learningSearch" autocomplete="off"
-          placeholder="Search the handbook  Ee.g. fines, video, loans, holiday"
+          placeholder="Search the handbook — e.g. fines, video, loans, holiday"
           aria-label="Search the handbook">
         <span id="learningSearchCount" class="learning-search-count" aria-live="polite"></span>
       </div>
@@ -279,9 +279,9 @@ function wireSearch(root) {
     }
 
     if (!hits.length) {
-      resultsEl.innerHTML = `<p class="learning-search-empty">Nothing found for  E{escapeHtml(
+      resultsEl.innerHTML = `<p class="learning-search-empty">Nothing found for &ldquo;${escapeHtml(
         query
-      )} E Try a shorter word, e.g. “fine Einstead of “fined E</p>`;
+      )}&rdquo;. Try a shorter word, e.g. &ldquo;fine&rdquo; instead of &ldquo;fined&rdquo;.</p>`;
       resultsEl.hidden = false;
       return;
     }

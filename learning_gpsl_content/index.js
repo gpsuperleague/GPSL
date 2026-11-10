@@ -1,5 +1,5 @@
 /**
- * Learning GPSL  Ecomposed handbook sections.
+ * Learning GPSL — composed handbook sections.
  * Edit individual modules; this file only assembles order + intro meta.
  */
 
@@ -28,7 +28,7 @@ import {
   SECTION_HELP,
 } from "./reference.js?v=20261104-handbook";
 
-export const LEARNING_GPSL_META_HTML = `A guide for new and returning owners  Ehow the site works, where to go, and the main league rules
+export const LEARNING_GPSL_META_HTML = `A guide for new and returning owners &mdash; how the site works, where to go, and the main league rules
   you need day to day. <b>No club yet?</b> Start with
   <a href="#waiting-room">The Waiting Room</a>, your
   <a href="waiting_list.html">waiting list</a> place, and
