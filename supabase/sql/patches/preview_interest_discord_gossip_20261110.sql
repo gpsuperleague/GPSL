@@ -19,6 +19,86 @@ ALTER TABLE public.listing_preview_interest
 COMMENT ON COLUMN public.listing_preview_interest.gossip_posted_at IS
   'When this Show interest was queued to #gpsl-transfer-gossip.';
 
+CREATE OR REPLACE FUNCTION public.gpsl_preview_interest_gossip_item(
+  p_listing_id bigint,
+  p_club text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := upper(btrim(coalesce(p_club, '')));
+  v_club_name text;
+  v_player_name text;
+  v_player_id text;
+  v_line text;
+  v_payload jsonb;
+  v_embed jsonb;
+  v_fields jsonb;
+BEGIN
+  SELECT coalesce(nullif(btrim(c."Club"), ''), c."ShortName")
+  INTO v_club_name
+  FROM public."Clubs" c
+  WHERE c."ShortName" = v_club;
+
+  SELECT p."Name", l.player_id::text
+  INTO v_player_name, v_player_id
+  FROM public."Player_Transfer_Listings" l
+  JOIN public."Players" p ON p."Konami_ID"::text = l.player_id::text
+  WHERE l.id = p_listing_id;
+
+  v_club_name := btrim(regexp_replace(coalesce(v_club_name, v_club), '[\r\n]+', ' ', 'g'));
+  v_player_name := btrim(regexp_replace(coalesce(v_player_name, ''), '[\r\n]+', ' ', 'g'));
+  IF v_club_name = '' OR v_player_name = '' THEN
+    RETURN NULL;
+  END IF;
+
+  v_line := v_club_name || ' are interested in ' || v_player_name;
+
+  IF to_regprocedure('public.gpsl_listing_gossip_payload(bigint)') IS NOT NULL THEN
+    EXECUTE 'SELECT public.gpsl_listing_gossip_payload($1)'
+      INTO v_payload
+      USING p_listing_id;
+  END IF;
+
+  IF v_payload IS NOT NULL AND jsonb_typeof(v_payload -> 'embed') = 'object' THEN
+    v_embed := v_payload -> 'embed';
+    v_fields := jsonb_build_array(
+      jsonb_build_object('name', 'Interest', 'value', v_club_name, 'inline', true)
+    ) || coalesce(v_embed -> 'fields', '[]'::jsonb);
+    v_embed := v_embed || jsonb_build_object(
+      'fields', v_fields,
+      'footer', jsonb_build_object('text', 'Transfer interest · GPSL')
+    );
+    RETURN jsonb_build_object(
+      'card_id', coalesce(v_payload ->> 'card_id', v_player_id),
+      'content', v_line,
+      'embed', v_embed
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'card_id', v_player_id,
+    'content', v_line,
+    'embed', jsonb_build_object(
+      'title', v_player_name,
+      'url', 'https://gpsuperleague.github.io/GPSL/player_career.html?id=' || v_player_id,
+      'description', v_club_name || ' have shown interest.',
+      'color', 13934583,
+      'footer', jsonb_build_object('text', 'Transfer interest · GPSL')
+    )
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.gpsl_preview_interest_gossip_item(bigint, text)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.gpsl_preview_interest_gossip_item(bigint, text)
+  TO postgres, service_role;
+
 CREATE OR REPLACE FUNCTION public.gpsl_preview_interest_post_gossip(
   p_listing_id bigint,
   p_club text
@@ -29,9 +109,7 @@ SECURITY DEFINER
 SET search_path = public, extensions, net
 AS $function$
 DECLARE
-  v_club_name text;
-  v_player_name text;
-  v_line text;
+  v_item jsonb;
   v_url text;
   v_key text;
 BEGIN
@@ -45,27 +123,10 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT coalesce(nullif(btrim(c."Club"), ''), c."ShortName")
-  INTO v_club_name
-  FROM public."Clubs" c
-  WHERE c."ShortName" = upper(btrim(coalesce(p_club, '')));
-
-  SELECT p."Name"
-  INTO v_player_name
-  FROM public."Player_Transfer_Listings" l
-  JOIN public."Players" p
-    ON p."Konami_ID"::text = l.player_id::text
-  WHERE l.id = p_listing_id;
-
-  v_club_name := regexp_replace(coalesce(v_club_name, ''), '[\r\n]+', ' ', 'g');
-  v_player_name := regexp_replace(coalesce(v_player_name, ''), '[\r\n]+', ' ', 'g');
-  v_club_name := btrim(v_club_name);
-  v_player_name := btrim(v_player_name);
-  IF v_club_name = '' OR v_player_name = '' THEN
+  v_item := public.gpsl_preview_interest_gossip_item(p_listing_id, p_club);
+  IF v_item IS NULL THEN
     RETURN;
   END IF;
-
-  v_line := v_club_name || ' are interested in ' || v_player_name;
 
   SELECT s.edge_function_url, nullif(btrim(s.invoke_key), '')
   INTO v_url, v_key
@@ -84,10 +145,10 @@ BEGIN
       'Authorization', 'Bearer ' || v_key
     ),
     body := jsonb_build_object(
-      'action', 'post',
-      'content', v_line
+      'action', 'post_cards',
+      'items', jsonb_build_array(v_item)
     ),
-    timeout_milliseconds := 15000
+    timeout_milliseconds := 20000
   );
 
   UPDATE public.listing_preview_interest i
