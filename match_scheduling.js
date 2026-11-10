@@ -243,6 +243,183 @@ export function holidayKickoffNoteHtml(note, { catchUp = false } = {}) {
   );
 }
 
+const WARN_48H = 48 * 60 * 60 * 1000;
+const WARN_72H = 72 * 60 * 60 * 1000;
+const WARN_12H = 12 * 60 * 60 * 1000;
+const CHECKIN_EDGE_MS = 10 * 60 * 1000;
+
+function ukWhen(iso) {
+  const label = formatKickoff(iso, UK_TZ);
+  return label && label !== "—" ? `${label} UK` : "";
+}
+
+function playGraceMonths(fixture) {
+  const type = String(fixture?.competition_type || "league").toLowerCase();
+  const month = String(fixture?.gpsl_month || "").toLowerCase();
+  if (type === "cup" && month === "may") return 0;
+  if (type === "cup") return 1;
+  return 2;
+}
+
+function finalPlayLockMs(fixture) {
+  const playMonth = String(fixture?.gpsl_month || "").trim().toLowerCase();
+  const play = seasonCalendarByMonth.get(playMonth) || null;
+  const playSort = Number(play?.sort_order);
+  const grace = playGraceMonths(fixture);
+  let best = null;
+  if (Number.isFinite(playSort)) {
+    for (const row of seasonCalendarByMonth.values()) {
+      const sort = Number(row.sort_order);
+      const lock = row.lock_at ? new Date(row.lock_at).getTime() : NaN;
+      if (!Number.isFinite(sort) || !Number.isFinite(lock)) continue;
+      if (sort > playSort + grace) continue;
+      if (!best || sort > best.sort) best = { sort, lock };
+    }
+  }
+  if (best) return best.lock;
+  if (grace !== 0) return null;
+  const lock = play?.lock_at ? new Date(play.lock_at).getTime() : NaN;
+  return Number.isFinite(lock) ? lock : null;
+}
+
+/**
+ * Fixture-row warnings when a holiday early-play window or a match deadline
+ * is close, including what happens if it passes.
+ * @returns {{ kind: string, text: string, title: string }[]}
+ */
+export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
+  if (!fixture || fixture.status === "played" || fixture.manual_black_box === true) {
+    return [];
+  }
+  const occ = fixtureOwnerOccupancy(
+    fixture.home_club_short_name,
+    fixture.away_club_short_name
+  );
+  if (occ.isPartialVacant || occ.isVacantVsVacant || occ.involvesSeasonAbsent) {
+    return [];
+  }
+
+  const out = [];
+  const playMonth = String(fixture.gpsl_month || "").trim().toLowerCase();
+  const cal = seasonCalendarByMonth.get(playMonth) || null;
+  const unlockMs = cal?.unlock_at ? new Date(cal.unlock_at).getTime() : NaN;
+  const monthClosed = !Number.isFinite(unlockMs) || nowMs < unlockMs;
+  const holiday = fixtureHolidayArrangeNote(fixture);
+  if (holiday?.ends_at && holiday.earlyPlay && monthClosed) {
+    const endMs = new Date(holiday.ends_at).getTime();
+    const closesBeforeUnlock = !Number.isFinite(unlockMs) || endMs < unlockMs;
+    if (
+      closesBeforeUnlock &&
+      Number.isFinite(endMs) &&
+      endMs > nowMs &&
+      endMs - nowMs <= WARN_48H
+    ) {
+      const when = ukWhen(holiday.ends_at);
+      out.push({
+        kind: "holiday",
+        text: `Holiday early play closes ${when}. After that this match waits until ${holiday.playMonthLabel} unlocks.`,
+        title: `${holiday.clubShort} holiday (${holiday.rangeLabel}) is the reason this match can be arranged or played now. That closes at ${when}.`,
+      });
+    }
+  }
+
+  const grace = fixtureNewOwnerArrangeGrace(fixture, nowMs);
+  const status = String(fixture.schedule_status || "unscheduled").toLowerCase();
+  const cup = String(fixture.competition_type || "league").toLowerCase() === "cup";
+  let operational = null;
+
+  if (status === "agreed" && fixture.agreed_kickoff_at && !(fixture.home_checked_in && fixture.away_checked_in)) {
+    const ko = new Date(fixture.agreed_kickoff_at).getTime();
+    if (Number.isFinite(ko)) {
+      const opens = ko - CHECKIN_EDGE_MS;
+      const closes = ko + CHECKIN_EDGE_MS;
+      if (closes > nowMs && opens - nowMs <= WARN_12H) {
+        const when = ukWhen(new Date(closes).toISOString());
+        operational = {
+          kind: "checkin",
+          text: `Check-in closes ${when}. A miss is a no-show.`,
+          title: "Check-in opens 10 minutes before kick-off and closes 10 minutes after. Missing it is a no-show: a fine and a season strike.",
+        };
+      }
+    }
+  }
+
+  if (!operational && !grace && status === "negotiating" && fixture.schedule_response_due_at) {
+    const dueMs = new Date(fixture.schedule_response_due_at).getTime();
+    if (Number.isFinite(dueMs) && dueMs - nowMs <= WARN_48H && nowMs - dueMs < 14 * 24 * 60 * 60 * 1000) {
+      const when = ukWhen(fixture.schedule_response_due_at);
+      const overdue = dueMs <= nowMs;
+      operational = {
+        kind: "reply",
+        text: overdue
+          ? `Reply is overdue (was ${when}). The next month lock warns the first time. Each later lock while still overdue is ₿1,000,000.`
+          : `Reply due ${when}. Miss it and the next month lock warns the first time. Each later lock while still overdue is ₿1,000,000.`,
+        title: "The club that owes the reply is warned at the first overdue month lock. Each later lock while the reply is still overdue charges ₿1,000,000.",
+      };
+    }
+  }
+
+  const homeProposals = Number(fixture.schedule_home_proposal_count);
+  if (
+    !operational &&
+    !grace &&
+    !cup &&
+    !isCatchUpFixture(fixture) &&
+    status === "unscheduled" &&
+    homeProposals === 0 &&
+    Number.isFinite(unlockMs) &&
+    unlockMs > nowMs
+  ) {
+    const lateFrom = unlockMs - WARN_48H;
+    const whenUnlock = ukWhen(new Date(unlockMs).toISOString());
+    if (unlockMs - nowMs <= WARN_48H) {
+      operational = {
+        kind: "propose",
+        text: `No kick-off proposed. A proposal now is a ₿1,000,000 late fee. None by ${whenUnlock} is ₿2,500,000.`,
+        title: "Home has not proposed. The last 48 hours before the month opens is a ₿1,000,000 late arrangement fee. No proposal by the time the month opens is ₿2,500,000.",
+      };
+    } else if (lateFrom > nowMs && lateFrom - nowMs <= WARN_48H) {
+      operational = {
+        kind: "propose",
+        text: `Late fee starts ${ukWhen(new Date(lateFrom).toISOString())}. A first proposal after that is ₿1,000,000. None by ${whenUnlock} is ₿2,500,000.`,
+        title: "Home has not proposed. The last 48 hours before the month opens is a ₿1,000,000 late arrangement fee. No proposal by the time the month opens is ₿2,500,000.",
+      };
+    }
+  }
+
+  const lockMs = finalPlayLockMs(fixture);
+  const lockSoon = Number.isFinite(lockMs) && lockMs > nowMs && lockMs - nowMs <= WARN_72H;
+  if (!operational && !grace && cup && !isCatchUpFixture(fixture) && status !== "agreed" && lockSoon) {
+    const when = ukWhen(new Date(lockMs).toISOString());
+    operational = {
+      kind: "arrange",
+      text: `Still not arranged. No proposal by ${when} is ₿2,500,000. Still unplayed then and the result is awarded on scheduling activity (a tie is 0–0).`,
+      title: "Cups are arranged in the round month. The no-proposal fine starts when the grace month locks. A match still unplayed at that lock is awarded on scheduling activity.",
+    };
+  }
+
+  if (!operational && lockSoon) {
+    const when = ukWhen(new Date(lockMs).toISOString());
+    operational = {
+      kind: "last_play",
+      text: `Last chance to play is ${when}. Still unplayed then and the result is awarded on scheduling activity (a tie is 0–0).`,
+      title: "League matches have two extra GPSL months. Cup matches have one, and May cups have none. After that lock an unplayed match is awarded on scheduling activity.",
+    };
+  }
+
+  if (operational) out.push(operational);
+  return out;
+}
+
+export function fixtureExpiryWarningHtml(fixture) {
+  return fixtureExpiryWarnings(fixture)
+    .map(
+      (row) =>
+        `<span class="ko-status ko-status--warn" title="${escapeKoAttr(row.title)}">${escapeKoText(row.text)}</span>`
+    )
+    .join("");
+}
+
 /** ISO weekday 1=Mon … 7=Sun */
 export const ISO_DOW_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -594,11 +771,15 @@ export function formatResponseDeadlineLine(deadline, myClubShort) {
   const overdue = deadline.overdue === true;
   const uk = deadline.due_at_uk || formatKickoff(deadline.due_at, UK_TZ) + " UK";
   const misses = "";
+  const dueMs = new Date(deadline.due_at).getTime();
+  const soon = Number.isFinite(dueMs) && dueMs - Date.now() <= WARN_48H;
+  const consequence =
+    " The next month lock warns the first time this is overdue. Each later lock while still overdue is ₿1,000,000.";
   if (mine && overdue) {
-    return `Response overdue since ${uk} — reply now. First overdue month lock is a warning only; later locks while still overdue charge ₿1m (once per lock).`;
+    return `Response overdue since ${uk} — reply now. First overdue month lock is a warning only; later locks while still overdue charge ₿1,000,000 (once per lock).`;
   }
   if (mine) {
-    return `Your response due by ${uk}${misses}.`;
+    return `Your response due by ${uk}${misses}.${soon ? consequence : ""}`;
   }
   if (deadline.required_club_short_name && myClubShort) {
     const waiting =
@@ -606,10 +787,14 @@ export function formatResponseDeadlineLine(deadline, myClubShort) {
       (myClubShort || "").toUpperCase()
         ? "You"
         : "Opponent";
-    if (waiting === "You") return `Your response due by ${uk}${misses}.`;
-    return `Waiting for opponent — response due ${uk}${misses}.`;
+    if (waiting === "You") return `Your response due by ${uk}${misses}.${soon ? consequence : ""}`;
+    return `Waiting for opponent — response due ${uk}${misses}.${
+      soon
+        ? " A miss is a warning at the next month lock, then ₿1,000,000 at each later lock while still overdue."
+        : ""
+    }`;
   }
-  return `Response due ${uk}${misses}.`;
+  return `Response due ${uk}${misses}.${soon ? consequence : ""}`;
 }
 
 export async function loadScheduleContext(fixtureId) {

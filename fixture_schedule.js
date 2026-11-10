@@ -34,7 +34,8 @@ import {
   priorProposedKickoffSet,
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
-} from "./match_scheduling.js?v=20261109-holiday-4d-only";
+  fixtureExpiryWarnings,
+} from "./match_scheduling.js?v=20261110-deadline-warn";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -884,11 +885,22 @@ async function fillDiscordOpponentTag(f) {
   if (tag) el.innerHTML = ` with <b>${tag.replace(/[<>&"]/g, "")}</b>`;
 }
 
+function holidayExpiryBannerHtml(f) {
+  const row = fixtureExpiryWarnings(f).find((r) => r.kind === "holiday");
+  if (!row) return "";
+  return `<div class="deadline-box deadline-late"><b>Holiday early play is about to close.</b> ${row.text}</div>`;
+}
+
 function finalPlayLineHtml() {
   const d = deadlines;
   if (!d?.ok || !d.final_play_lock) return "";
-  return `<p class="meta">Last chance to play: before <b>${formatUkWhen(d.final_play_lock)}</b>.
-    If it's still unplayed then, the result is awarded on scheduling activity (a true tie is recorded 0–0).</p>`;
+  const lock = new Date(d.final_play_lock).getTime();
+  const soon =
+    Number.isFinite(lock) && lock > Date.now() && lock - Date.now() <= 72 * 60 * 60 * 1000;
+  const body = `Last chance to play: before <b>${formatUkWhen(d.final_play_lock)}</b>.
+    If it's still unplayed then, the result is awarded on scheduling activity (a true tie is recorded 0–0).`;
+  if (soon) return `<div class="deadline-box deadline-late">${body}</div>`;
+  return `<p class="meta">${body}</p>`;
 }
 
 function catchUpBannerHtml() {
@@ -1246,6 +1258,7 @@ function renderAgreedPanel(root, f, sch) {
   root.innerHTML = `
     ${catchUpBannerHtml()}
     ${holidayEarlyBannerHtml()}
+    ${holidayExpiryBannerHtml(f)}
     ${noShowLadderBannerHtml(f)}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
@@ -2089,6 +2102,7 @@ function render() {
   root.innerHTML = `
     ${catchUpBannerHtml()}
     ${holidayEarlyBannerHtml()}
+    ${holidayExpiryBannerHtml(f)}
     ${noManagerBanner}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>

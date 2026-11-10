@@ -39,8 +39,9 @@ import {
   newOwnerGraceKickoffNoteHtml,
   fixtureHolidayArrangeNote,
   holidayKickoffNoteHtml,
+  fixtureExpiryWarningHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261109-holiday-4d-only";
+} from "./match_scheduling.js?v=20261110-deadline-warn";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
@@ -234,7 +235,7 @@ function cupOpsHtml(leg, extras) {
   const involvesMe = isMyMatch(leg);
   const parts = [];
 
-  const ko = cupKickoffHtml(f);
+  const ko = cupKickoffHtml(f) + fixtureExpiryWarningHtml(f);
   const ci = cupCheckInHtml(f);
   if (ko || ci) {
     parts.push(

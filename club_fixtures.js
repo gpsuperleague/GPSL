@@ -36,8 +36,9 @@ import {
   newOwnerGraceKickoffNoteHtml,
   fixtureHolidayArrangeNote,
   holidayKickoffNoteHtml,
+  fixtureExpiryWarningHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261109-holiday-4d-only";
+} from "./match_scheduling.js?v=20261110-deadline-warn";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,
@@ -426,6 +427,8 @@ function fixtureCardHtml(f) {
               { catchUp: isCatchUpFixture(f) }
             )}</div>`
           : "";
+  const expiryWarn =
+    f.status !== "played" ? fixtureExpiryWarningHtml(f) : "";
 
   let playedBlock = "";
   if (f.status === "played") {
@@ -513,6 +516,7 @@ function fixtureCardHtml(f) {
       </div>
       ${playedBlock}
       ${walkoverNote}
+      ${expiryWarn ? `<div class="fixture-walkover-note">${expiryWarn}</div>` : ""}
       <div class="fixture-actions">${actionHtml(f)}</div>
     </div>
   `;
