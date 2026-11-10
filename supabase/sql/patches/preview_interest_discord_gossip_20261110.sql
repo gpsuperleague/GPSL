@@ -33,19 +33,27 @@ DECLARE
   v_club text := upper(btrim(coalesce(p_club, '')));
   v_club_name text;
   v_player_name text;
+  v_player_id text;
+  v_owner text;
   v_line text;
   v_seller text;
   v_ask numeric;
   v_value numeric;
   v_price text;
 BEGIN
-  SELECT coalesce(nullif(btrim(c."Club"), ''), c."ShortName")
-  INTO v_club_name
+  SELECT
+    coalesce(nullif(btrim(c."Club"), ''), c."ShortName"),
+    CASE
+      WHEN c.owner_id IS NULL THEN 'Vacant'
+      WHEN nullif(btrim(c.owner), '') IS NULL THEN 'Owned'
+      ELSE '@' || regexp_replace(btrim(c.owner), '^@+', '')
+    END
+  INTO v_club_name, v_owner
   FROM public."Clubs" c
   WHERE c."ShortName" = v_club;
 
-  SELECT p."Name"
-  INTO v_player_name
+  SELECT p."Name", l.player_id::text
+  INTO v_player_name, v_player_id
   FROM public."Player_Transfer_Listings" l
   JOIN public."Players" p ON p."Konami_ID"::text = l.player_id::text
   WHERE l.id = p_listing_id;
@@ -77,14 +85,20 @@ BEGIN
 
   RETURN jsonb_build_object(
     'content', v_line,
+    'card_id', v_player_id,
+    'card_layout', 'mini',
+    'badge_club', v_club,
     'embed', jsonb_build_object(
-      'author', jsonb_build_object('name', 'Interest shown'),
+      'author', jsonb_build_object(
+        'name', coalesce(v_owner, 'Interest shown')
+      ),
       'title', 'INTEREST · ' || v_player_name,
       'url', 'https://gpsuperleague.github.io/GPSL/all_listings.html?listing=' || p_listing_id,
       'description', v_club_name || ' have shown interest.',
-      'color', 3447003,
+      'color', 3066993,
       'fields', jsonb_build_array(
         jsonb_build_object('name', 'Shown by', 'value', v_club_name, 'inline', true),
+        jsonb_build_object('name', 'Owner', 'value', coalesce(v_owner, '—'), 'inline', true),
         jsonb_build_object('name', 'Selling club', 'value', coalesce(v_seller, '—'), 'inline', true),
         jsonb_build_object('name', 'Asking', 'value', v_price, 'inline', true)
       ),

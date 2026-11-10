@@ -126,24 +126,48 @@ async function loadPlayerCard(
   }
 }
 
+async function loadClubBadge(
+  rawShort: string
+): Promise<{ bytes: Uint8Array; filename: string } | null> {
+  const short = String(rawShort || "").trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,6}$/.test(short)) return null;
+  const filename = `badge-${short}.png`;
+  try {
+    const res = await fetch(
+      `https://gpsuperleague.github.io/GPSL/images/club_badges/${encodeURIComponent(short)}.png`
+    );
+    const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+    if (!res.ok || !contentType.startsWith("image/")) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.byteLength <= 32) return null;
+    return { bytes, filename };
+  } catch {
+    return null;
+  }
+}
+
 async function postChannelMessage(
   botToken: string,
   channelId: string,
   content: string,
   embed?: Record<string, unknown> | null,
-  file?: { bytes: Uint8Array; filename: string } | null
+  files?: { bytes: Uint8Array; filename: string }[] | null
 ): Promise<{ message_id: string }> {
+  const attached = (files || []).filter((file) => file?.bytes?.byteLength);
   const payload: Record<string, unknown> = {
     allowed_mentions: { parse: [] },
   };
   if (content.trim()) payload.content = content.slice(0, 1800);
   if (embed && typeof embed === "object") payload.embeds = [embed];
-  if (file) {
-    payload.attachments = [{ id: 0, filename: file.filename }];
+  if (attached.length) {
+    payload.attachments = attached.map((file, index) => ({
+      id: index,
+      filename: file.filename,
+    }));
   }
 
   const send = () => {
-    if (!file) {
+    if (!attached.length) {
       return fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
         method: "POST",
         headers: {
@@ -155,11 +179,13 @@ async function postChannelMessage(
     }
     const form = new FormData();
     form.append("payload_json", JSON.stringify(payload));
-    form.append(
-      "files[0]",
-      new Blob([file.bytes], { type: "image/png" }),
-      file.filename
-    );
+    attached.forEach((file, index) => {
+      form.append(
+        `files[${index}]`,
+        new Blob([file.bytes], { type: "image/png" }),
+        file.filename
+      );
+    });
     return fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
       method: "POST",
       headers: { Authorization: `Bot ${botToken}` },
@@ -338,9 +364,28 @@ Deno.serve(async (req) => {
               ? { ...(item.embed as Record<string, unknown>) }
               : null;
           const card = await loadPlayerCard(adminClient, String(item.card_id || ""));
+          const badge = await loadClubBadge(String(item.badge_club || ""));
+          const mini = String(item.card_layout || "") === "mini";
+          const files = [card, badge].filter(
+            (file): file is { bytes: Uint8Array; filename: string } => !!file
+          );
           if (embed && card) {
-            embed.image = { url: `attachment://${card.filename}` };
-            delete embed.thumbnail;
+            const url = `attachment://${card.filename}`;
+            if (mini) {
+              embed.thumbnail = { url };
+              delete embed.image;
+            } else {
+              embed.image = { url };
+              delete embed.thumbnail;
+            }
+          }
+          if (embed && badge) {
+            const author =
+              embed.author && typeof embed.author === "object"
+                ? { ...(embed.author as Record<string, unknown>) }
+                : {};
+            author.icon_url = `attachment://${badge.filename}`;
+            embed.author = author;
           }
           if (!content && !embed) throw new Error("Empty listing post");
           const posted = await postChannelMessage(
@@ -348,7 +393,7 @@ Deno.serve(async (req) => {
             channelId,
             content,
             embed,
-            card
+            files
           );
           postedIds.push(posted.message_id);
           await sleep(1200);
