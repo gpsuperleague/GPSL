@@ -16,6 +16,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const DISCORD_API = "https://discord.com/api/v10";
 const HANDBOOK_URL = "https://gpsuperleague.github.io/GPSL/learning_gpsl.html";
+const HANDBOOK_LINK = `📖 [GPSL Handbook](${HANDBOOK_URL})`;
 const LOOKBACK_MS = 30 * 60 * 1000;
 const DELAY_MS = 5000;
 const GPSL_ADMIN_EMAIL = "rotavator66@outlook.com";
@@ -174,6 +175,49 @@ async function resolveQaChannel(
   };
 }
 
+async function prettifyHandbookPost(
+  botToken: string,
+  threadId: string,
+  botId: string
+): Promise<boolean> {
+  const res = await discordFetch(
+    botToken,
+    `/channels/${threadId}/messages?limit=15`
+  );
+  if (!res.ok) return false;
+  let changed = false;
+  const msgs = (await res.json()) as {
+    id?: string;
+    content?: string;
+    author?: { id?: string };
+  }[];
+  for (const msg of msgs) {
+    if (!msg?.id) continue;
+    if (botId && msg.author?.id !== botId) continue;
+    const content = String(msg.content || "");
+    if (!content.includes(HANDBOOK_URL)) continue;
+    if (content.includes(`[GPSL Handbook](${HANDBOOK_URL})`)) continue;
+    const ownerId = content.match(/<@(\d+)>/)?.[1] || "";
+    const mention = ownerId ? `<@${ownerId}> ` : "";
+    const edit = await discordFetch(
+      botToken,
+      `/channels/${threadId}/messages/${msg.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          content: `${mention}have you checked in here first?\n${HANDBOOK_LINK}`,
+          flags: 4,
+          allowed_mentions: ownerId
+            ? { parse: [], users: [ownerId] }
+            : { parse: [] },
+        }),
+      }
+    );
+    if (edit.ok) changed = true;
+  }
+  return changed;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -294,10 +338,14 @@ Deno.serve(async (req) => {
 
     const posted: { thread_id: string; owner_id: string | null }[] = [];
     const skipped: string[] = [];
+    const prettified: string[] = [];
     const failed: { thread_id: string; status: number; detail: string }[] = [];
 
     for (const thread of recent) {
       if (already.has(thread.id)) {
+        if (!dryRun && (await prettifyHandbookPost(botToken, thread.id, botId))) {
+          prettified.push(thread.id);
+        }
         skipped.push(thread.id);
         continue;
       }
@@ -314,7 +362,7 @@ Deno.serve(async (req) => {
 
       const mention = ownerId ? `<@${ownerId}> ` : "";
       const content =
-        `${mention}have you checked in here first?\n${HANDBOOK_URL}`;
+        `${mention}have you checked in here first?\n${HANDBOOK_LINK}`;
 
       if (dryRun) {
         posted.push({ thread_id: thread.id, owner_id: ownerId || null });
@@ -348,6 +396,7 @@ Deno.serve(async (req) => {
           method: "POST",
           body: JSON.stringify({
             content,
+            flags: 4,
             allowed_mentions: ownerId
               ? { parse: [], users: [ownerId] }
               : { parse: [] },
@@ -380,6 +429,7 @@ Deno.serve(async (req) => {
       channel_name: qa.name,
       recent: recent.length,
       posted,
+      prettified,
       skipped: skipped.length,
       failed,
     });
