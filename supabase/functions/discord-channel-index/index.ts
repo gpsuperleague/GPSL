@@ -3,7 +3,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 /**
  * Keeps one index in #index (or #where-to-go): every channel, grouped by category,
- * with what it is for. The admin category and its channels are left out.
+ * with what it is for. The admin category, its channels, and check-pins
+ * reminders are left out.
  * Edits the same messages. No extra secret.
  *
  * Purpose: the channel topic if one is set, otherwise a built-in line.
@@ -111,6 +112,10 @@ function isAdminCategory(name: string): boolean {
   return slug === "admin" || slug.startsWith("admin");
 }
 
+function isCheckPins(name: string): boolean {
+  return channelSlug(name).includes("checkpin");
+}
+
 function purposeFor(ch: DiscordChannel): string {
   const topic = String(ch.topic || "").replace(/\s+/g, " ").trim();
   if (topic) return topic.slice(0, 180);
@@ -171,7 +176,8 @@ function buildEmbeds(channels: DiscordChannel[]): Record<string, unknown>[] {
     .filter(
       (c) =>
         (c.type === 0 || c.type === 5 || c.type === 15 || c.type === 2) &&
-        !hiddenParents.has(c.parent_id || "")
+        !hiddenParents.has(c.parent_id || "") &&
+        !isCheckPins(c.name || "")
     )
     .sort((a, b) => (a.position || 0) - (b.position || 0));
 
