@@ -203,54 +203,54 @@ BEGIN
   END;
 
   IF coalesce(v_inj_active, 0) > 0 THEN
-    v_lines := v_lines || CASE
+    v_lines := array_append(v_lines, CASE
       WHEN coalesce(v_inj_season, 0) > 1 THEN
         format('Currently injured — spell %s this season.', v_inj_season)
       ELSE 'Currently injured.'
-    END;
+    END);
   ELSIF coalesce(v_inj_season, 0) >= 2 THEN
-    v_lines := v_lines || format(
+    v_lines := array_append(v_lines, format(
       'The treatment room has seen him %s times this season.', v_inj_season
-    );
+    ));
   END IF;
 
   IF coalesce(v_apps, 0) >= 3 AND v_avg IS NOT NULL AND v_avg < 6
      AND v_overall IS NOT NULL AND v_overall >= 78 THEN
-    v_lines := v_lines || format(
+    v_lines := array_append(v_lines, format(
       'An %s-rated card averaging %s from %s games.',
       to_char(v_overall, 'FM999'), to_char(v_avg, 'FM990.00'), v_apps
-    );
+    ));
   ELSIF coalesce(v_apps, 0) >= 3 AND v_avg IS NOT NULL AND v_avg >= 7.5 THEN
-    v_lines := v_lines || format(
+    v_lines := array_append(v_lines, format(
       '%s from %s games. An odd time to cash in.',
       to_char(v_avg, 'FM990.00'), v_apps
-    );
+    ));
   ELSIF coalesce(v_apps, 0) >= 4 AND v_avg IS NOT NULL AND v_avg < 6 THEN
-    v_lines := v_lines || format(
+    v_lines := array_append(v_lines, format(
       '%s from %s games. The ratings have gone quiet.',
       to_char(v_avg, 'FM990.00'), v_apps
-    );
+    ));
   END IF;
 
   IF coalesce(v_goals, 0) >= 5 THEN
-    v_lines := v_lines || format('%s goals already this season.', v_goals);
+    v_lines := array_append(v_lines, format('%s goals already this season.', v_goals));
   ELSIF coalesce(v_assists, 0) >= 5 THEN
-    v_lines := v_lines || format('%s assists already this season.', v_assists);
+    v_lines := array_append(v_lines, format('%s assists already this season.', v_assists));
   END IF;
 
   IF v_rem IS NOT NULL AND v_rem <= 1 THEN
-    v_lines := v_lines || CASE
+    v_lines := array_append(v_lines, CASE
       WHEN v_rem <= 0 THEN 'The contract is at its end.'
       ELSE 'Only one season left on the contract.'
-    END;
+    END);
   END IF;
 
   IF v_pos = 1 AND coalesce(v_mp, 0) >= 4 AND v_division IS NOT NULL THEN
-    v_lines := v_lines || format('%s are top of the %s.', v_club, v_division);
+    v_lines := array_append(v_lines, format('%s are top of the %s.', v_club, v_division));
   ELSIF v_places IS NOT NULL AND v_places >= 6 AND v_pos IS NOT NULL
         AND v_pos >= v_places - 2 AND coalesce(v_mp, 0) >= 4
         AND v_division IS NOT NULL THEN
-    v_lines := v_lines || format(
+    v_lines := array_append(v_lines, format(
       '%s are %s in the %s.',
       v_club,
       CASE
@@ -261,34 +261,34 @@ BEGIN
         ELSE v_pos::text || 'th'
       END,
       v_division
-    );
+    ));
   END IF;
 
   IF v_form5 = 'LLLLL' THEN
-    v_lines := v_lines || 'Five league defeats in a row.';
+    v_lines := array_append(v_lines, 'Five league defeats in a row.');
   ELSIF v_form5 = 'WWWWW' THEN
-    v_lines := v_lines || 'Five league wins in a row, and still open to a sale.';
+    v_lines := array_append(v_lines, 'Five league wins in a row, and still open to a sale.');
   END IF;
 
   IF coalesce(v_value, 0) > 0 AND coalesce(v_ask, 0) >= v_value * 1.25 THEN
-    v_lines := v_lines || 'The asking price sits well above the market value.';
+    v_lines := array_append(v_lines, 'The asking price sits well above the market value.');
   ELSIF coalesce(v_value, 0) > 0 AND coalesce(v_ask, 0) > 0
         AND v_ask <= v_value * 0.75 THEN
-    v_lines := v_lines || 'The asking price is a friendly one.';
+    v_lines := array_append(v_lines, 'The asking price is a friendly one.');
   END IF;
 
   IF v_mgr_name IS NOT NULL AND v_mgr_rating IS NOT NULL
      AND v_mgr_rating BETWEEN 60 AND 99 AND v_mgr_rating <= 75 THEN
-    v_lines := v_lines || format(
+    v_lines := array_append(v_lines, format(
       '%s is rated %s in the dugout.',
       btrim(v_mgr_name), to_char(v_mgr_rating, 'FM999')
-    );
+    ));
   ELSIF v_mgr_name IS NOT NULL AND v_mgr_rating IS NOT NULL
         AND v_mgr_rating >= 84 THEN
-    v_lines := v_lines || format(
+    v_lines := array_append(v_lines, format(
       'Hard to pin this on %s — rated %s.',
       btrim(v_mgr_name), to_char(v_mgr_rating, 'FM999')
-    );
+    ));
   END IF;
 
   IF coalesce(array_length(v_lines, 1), 0) = 0 THEN
@@ -555,38 +555,7 @@ CREATE TRIGGER trg_listing_gossip_card
   FOR EACH ROW
   EXECUTE FUNCTION public.trg_listing_gossip_card();
 
-DO $retro$
-DECLARE
-  v_ids bigint[];
-  v_sent int := 0;
-  v_left int := 0;
-BEGIN
-  SELECT coalesce(array_agg(id), ARRAY[]::bigint[])
-  INTO v_ids
-  FROM (
-    SELECT l.id
-    FROM public."Player_Transfer_Listings" l
-    WHERE l.gossip_listed_at IS NULL
-      AND l.status IN ('Pending Window', 'Active')
-      AND lower(coalesce(l.listing_type::text, '')) IS DISTINCT FROM 'draft'
-      AND nullif(btrim(coalesce(l.seller_club_id::text, '')), '') IS NOT NULL
-    ORDER BY l.created_at, l.id
-    LIMIT 20
-  ) q;
-
-  v_sent := public.gpsl_listing_gossip_send(v_ids);
-
-  SELECT count(*)::int
-  INTO v_left
-  FROM public."Player_Transfer_Listings" l
-  WHERE l.gossip_listed_at IS NULL
-    AND l.status IN ('Pending Window', 'Active')
-    AND lower(coalesce(l.listing_type::text, '')) IS DISTINCT FROM 'draft'
-    AND nullif(btrim(coalesce(l.seller_club_id::text, '')), '') IS NOT NULL;
-
-  RAISE NOTICE 'listing gossip queued %; still waiting %', v_sent, v_left;
-END;
-$retro$;
+-- Backfill is preview_interest_gossip_redo_20261110.sql (listings, then interest).
 
 SELECT
   coalesce(nullif(btrim(c."Club"), ''), l.seller_club_id) AS club,
