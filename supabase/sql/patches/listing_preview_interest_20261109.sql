@@ -49,6 +49,7 @@ DECLARE
   v_seller text;
   v_status text;
   v_type text;
+  v_new int := 0;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
@@ -82,6 +83,14 @@ BEGIN
     INSERT INTO public.listing_preview_interest (listing_id, club_short_name)
     VALUES (p_listing_id, v_club)
     ON CONFLICT (listing_id, club_short_name) DO NOTHING;
+    GET DIAGNOSTICS v_new = ROW_COUNT;
+    IF v_new = 1 THEN
+      BEGIN
+        PERFORM public.gpsl_preview_interest_post_gossip(p_listing_id, v_club);
+      EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'preview interest gossip: %', SQLERRM;
+      END;
+    END IF;
   ELSE
     DELETE FROM public.listing_preview_interest
     WHERE listing_id = p_listing_id

@@ -72,6 +72,99 @@ async function fetchChannelMessages(
   return Array.isArray(batch) ? batch : [];
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function storageCardUrl(id: string) {
+  const base = String(Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "");
+  return `${base}/storage/v1/object/public/player-cards/${id}.png`;
+}
+
+async function ensurePlayerCard(
+  admin: ReturnType<typeof createClient>,
+  rawId: string
+): Promise<string | null> {
+  const id = String(rawId || "").trim();
+  if (!/^\d{4,12}$/.test(id)) return null;
+  const publicUrl = storageCardUrl(id);
+  try {
+    const head = await fetch(publicUrl, { method: "HEAD" });
+    if (head.ok) return publicUrl;
+  } catch {
+    /* fetch a fresh copy */
+  }
+  try {
+    const upstream = await fetch(
+      `https://pesdb.net/assets/img/card/b${encodeURIComponent(id)}.png`,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept: "image/png,image/*;q=0.8,*/*;q=0.2",
+        },
+      }
+    );
+    const contentType = String(upstream.headers.get("content-type") || "").toLowerCase();
+    if (!upstream.ok || !contentType.startsWith("image/")) return null;
+    const bytes = new Uint8Array(await upstream.arrayBuffer());
+    const { error } = await admin.storage.from("player-cards").upload(`${id}.png`, bytes, {
+      upsert: true,
+      contentType: contentType || "image/png",
+      cacheControl: "31536000",
+    });
+    if (error) return null;
+    return publicUrl;
+  } catch {
+    return null;
+  }
+}
+
+async function postChannelMessage(
+  botToken: string,
+  channelId: string,
+  content: string,
+  embed?: Record<string, unknown> | null
+): Promise<{ message_id: string }> {
+  const body: Record<string, unknown> = {
+    allowed_mentions: { parse: [] },
+  };
+  if (content.trim()) body.content = content.slice(0, 1800);
+  if (embed && typeof embed === "object") body.embeds = [embed];
+
+  const send = () =>
+    fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+  let res = await send();
+  if (res.status === 429) {
+    let waitMs = 2000;
+    try {
+      const retry = (await res.json()) as { retry_after?: number };
+      if (Number(retry.retry_after) > 0) {
+        waitMs = Math.min(Number(retry.retry_after) * 1000, 10000);
+      }
+    } catch {
+      /* keep the default wait */
+    }
+    await sleep(waitMs);
+    res = await send();
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Discord post ${res.status}: ${text.slice(0, 300)}`);
+  }
+  const posted = (await res.json()) as DiscordMessage;
+  if (!posted?.id) throw new Error("Discord post returned no message id");
+  return { message_id: posted.id };
+}
+
 async function addReaction(
   botToken: string,
   channelId: string,
@@ -180,6 +273,71 @@ Deno.serve(async (req) => {
       }
     }
 
+    const action = String(body.action || "").toLowerCase();
+    if (action === "post") {
+      const content = cleanContent(String(body.content || ""));
+      if (!looksLikeGossip(content)) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "Not a gossip line. Use: Club are interested in Player",
+          },
+          400
+        );
+      }
+      const posted = await postChannelMessage(botToken, channelId, content);
+      return jsonResponse({ ok: true, posted: true, ...posted });
+    }
+
+    if (action === "post_cards") {
+      const items = Array.isArray(body.items) ? body.items : [];
+      if (!items.length) {
+        return jsonResponse({ ok: true, posted: 0 });
+      }
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      const postedIds: string[] = [];
+      const failedIds: number[] = [];
+      let failed = false;
+      for (const raw of items) {
+        const item = (raw || {}) as Record<string, unknown>;
+        const listingId = Number(item.listing_id);
+        if (failed) {
+          if (Number.isFinite(listingId)) failedIds.push(listingId);
+          continue;
+        }
+        try {
+          const content = String(item.content || "").replace(/\s+/g, " ").trim();
+          const embed =
+            item.embed && typeof item.embed === "object"
+              ? { ...(item.embed as Record<string, unknown>) }
+              : null;
+          const cardUrl = await ensurePlayerCard(adminClient, String(item.card_id || ""));
+          if (embed && cardUrl) embed.image = { url: cardUrl };
+          if (!content && !embed) throw new Error("Empty listing post");
+          const posted = await postChannelMessage(botToken, channelId, content, embed);
+          postedIds.push(posted.message_id);
+          await sleep(1200);
+        } catch {
+          failed = true;
+          if (Number.isFinite(listingId)) failedIds.push(listingId);
+        }
+      }
+      if (failedIds.length) {
+        try {
+          await adminClient.rpc("gpsl_listing_gossip_unmark", { p_ids: failedIds });
+        } catch {
+          /* the SQL re-run posts anything still unmarked */
+        }
+      }
+      return jsonResponse({
+        ok: true,
+        posted: postedIds.length,
+        failed: failedIds.length,
+        message_ids: postedIds,
+      });
+    }
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const messages = await fetchChannelMessages(
       botToken,
@@ -198,9 +356,12 @@ Deno.serve(async (req) => {
     let skipped_format = 0;
 
     for (const msg of ordered) {
-      if (!msg?.id || !msg.author || msg.author.bot) continue;
+      if (!msg?.id || !msg.author) continue;
       const raw = String(msg.content || "");
       const content = cleanContent(raw);
+      // Human lines only, plus a GPSL bot line in the gossip sentence.
+      // That sentence is how a site "Show interest" reaches this reader.
+      if (msg.author.bot && !looksLikeGossip(content)) continue;
       if (samples.length < 5) {
         samples.push(
           (content || raw || "(empty)").replace(/\s+/g, " ").slice(0, 100)
