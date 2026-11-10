@@ -56,6 +56,7 @@ DECLARE
   v_value numeric;
   v_name text;
   v_position text;
+  v_playstyle text;
   v_overall numeric;
   v_rem int;
   v_club text;
@@ -105,12 +106,13 @@ BEGIN
   SELECT
     nullif(btrim(p."Name"), ''),
     nullif(btrim(p."Position"), ''),
+    nullif(btrim(p."Playstyle"), ''),
     CASE
       WHEN p."Rating"::text ~ '^[0-9]+(\.[0-9]+)?$' THEN p."Rating"::numeric
       ELSE NULL
     END,
     p.contract_seasons_remaining
-  INTO v_name, v_position, v_overall, v_rem
+  INTO v_name, v_position, v_playstyle, v_overall, v_rem
   FROM public."Players" p
   WHERE p."Konami_ID"::text = v_player_id;
 
@@ -310,6 +312,11 @@ BEGIN
 
   v_fields := v_fields || jsonb_build_array(
     jsonb_build_object('name', 'Selling club', 'value', v_club, 'inline', true),
+    jsonb_build_object(
+      'name', 'Playstyle',
+      'value', coalesce(v_playstyle, '—'),
+      'inline', true
+    ),
     jsonb_build_object('name', 'Owner', 'value', v_owner, 'inline', true),
     jsonb_build_object('name', 'Price', 'value', v_money, 'inline', true),
     jsonb_build_object(
