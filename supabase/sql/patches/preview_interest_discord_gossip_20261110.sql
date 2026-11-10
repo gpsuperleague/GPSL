@@ -67,11 +67,19 @@ BEGIN
   IF v_payload IS NOT NULL AND jsonb_typeof(v_payload -> 'embed') = 'object' THEN
     v_embed := v_payload -> 'embed';
     v_fields := jsonb_build_array(
-      jsonb_build_object('name', 'Interest', 'value', v_club_name, 'inline', true)
+      jsonb_build_object('name', 'Shown by', 'value', v_club_name, 'inline', true)
     ) || coalesce(v_embed -> 'fields', '[]'::jsonb);
     v_embed := v_embed || jsonb_build_object(
+      'author', jsonb_build_object('name', 'Interest shown'),
+      'title', 'INTEREST · ' || regexp_replace(
+        coalesce(v_embed ->> 'title', v_player_name),
+        '^(LISTED|INTEREST) · ',
+        ''
+      ),
+      'description', 'Shown by ' || v_club_name || '. ' || coalesce(v_embed ->> 'description', ''),
+      'color', 3447003,
       'fields', v_fields,
-      'footer', jsonb_build_object('text', 'Transfer interest · GPSL')
+      'footer', jsonb_build_object('text', 'Interest shown · GPSL')
     );
     RETURN jsonb_build_object(
       'card_id', coalesce(v_payload ->> 'card_id', v_player_id),
@@ -84,11 +92,15 @@ BEGIN
     'card_id', v_player_id,
     'content', v_line,
     'embed', jsonb_build_object(
-      'title', v_player_name,
+      'author', jsonb_build_object('name', 'Interest shown'),
+      'title', 'INTEREST · ' || v_player_name,
       'url', 'https://gpsuperleague.github.io/GPSL/player_career.html?id=' || v_player_id,
-      'description', v_club_name || ' have shown interest.',
-      'color', 13934583,
-      'footer', jsonb_build_object('text', 'Transfer interest · GPSL')
+      'description', 'Shown by ' || v_club_name || '.',
+      'color', 3447003,
+      'fields', jsonb_build_array(
+        jsonb_build_object('name', 'Shown by', 'value', v_club_name, 'inline', true)
+      ),
+      'footer', jsonb_build_object('text', 'Interest shown · GPSL')
     )
   );
 END;

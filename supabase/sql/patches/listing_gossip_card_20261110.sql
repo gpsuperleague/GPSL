@@ -378,21 +378,21 @@ BEGIN
   RETURN jsonb_build_object(
     'listing_id', p_listing_id,
     'card_id', v_player_id,
-    'content', CASE WHEN v_preview THEN 'Preview' ELSE 'For sale' END
-      || ': ' || v_name || ' — ' || v_club,
+    'content', 'Listed: ' || v_name || ' — ' || v_club,
     'embed', jsonb_build_object(
-      'title', v_name || CASE
+      'author', jsonb_build_object('name', 'Player listed'),
+      'title', 'LISTED · ' || v_name || CASE
         WHEN v_position IS NULL THEN ''
         ELSE ' · ' || v_position
       END,
       'url', 'https://gpsuperleague.github.io/GPSL/player_career.html?id=' || v_player_id,
       'description', v_blurb,
-      'color', 13934583,
+      'color', 15105570,
       'fields', v_fields,
       'footer', jsonb_build_object(
         'text', CASE
           WHEN v_preview THEN 'Preview listing · GPSL'
-          ELSE 'Transfer listing · GPSL'
+          ELSE 'On the market · GPSL'
         END
       )
     )
@@ -404,6 +404,33 @@ REVOKE ALL ON FUNCTION public.gpsl_listing_gossip_payload(bigint)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_listing_gossip_payload(bigint)
   TO postgres, service_role;
+
+CREATE OR REPLACE FUNCTION public.gpsl_gossip_style_listing(p_item jsonb)
+RETURNS jsonb
+LANGUAGE sql
+IMMUTABLE
+AS $function$
+  SELECT CASE
+    WHEN p_item IS NULL THEN NULL
+    ELSE p_item || jsonb_build_object(
+      'content', regexp_replace(
+        coalesce(p_item ->> 'content', ''),
+        '^(Preview|For sale|Listed)',
+        'Listed'
+      ),
+      'embed', coalesce(p_item -> 'embed', '{}'::jsonb) || jsonb_build_object(
+        'author', jsonb_build_object('name', 'Player listed'),
+        'title', 'LISTED · ' || regexp_replace(
+          coalesce(p_item #>> '{embed,title}', ''),
+          '^(LISTED|INTEREST) · ',
+          ''
+        ),
+        'color', 15105570,
+        'footer', jsonb_build_object('text', 'On the market · GPSL')
+      )
+    )
+  END;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.gpsl_listing_gossip_send(p_ids bigint[])
 RETURNS int
@@ -452,7 +479,7 @@ BEGIN
     SELECT u.id
     FROM unnest(v_ids) AS u(id)
   LOOP
-    v_payload := public.gpsl_listing_gossip_payload(r.id);
+    v_payload := public.gpsl_gossip_style_listing(public.gpsl_listing_gossip_payload(r.id));
     IF v_payload IS NOT NULL THEN
       v_items := v_items || v_payload;
     END IF;
