@@ -85,6 +85,54 @@ const UK_TZ = "Europe/London";
 let lastData = null;
 let strikeBoard = null;
 
+function placeHoverBox(tip) {
+  const box = tip.querySelector(":scope > .mc-tip-box");
+  if (!box) return;
+  const r = tip.getBoundingClientRect();
+  const width = 260;
+  const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - width - 8));
+  box.style.display = "block";
+  box.style.left = `${left}px`;
+  const h = box.offsetHeight || 72;
+  const below = r.bottom + 6;
+  const top = below + h < window.innerHeight - 8 ? below : Math.max(8, r.top - h - 6);
+  box.style.top = `${top}px`;
+}
+
+function hideHoverBox(tip) {
+  const box = tip?.querySelector(":scope > .mc-tip-box");
+  if (box) box.style.display = "none";
+}
+
+function bindHoverTips(root) {
+  if (!root || root.dataset.hoverTips === "1") return;
+  root.dataset.hoverTips = "1";
+  const tipFrom = (node) => node?.closest?.(".mc-tip");
+  root.addEventListener("mouseover", (e) => {
+    const tip = tipFrom(e.target);
+    if (tip && root.contains(tip)) placeHoverBox(tip);
+  });
+  root.addEventListener("mouseout", (e) => {
+    const tip = tipFrom(e.target);
+    if (!tip || !root.contains(tip)) return;
+    if (e.relatedTarget && tip.contains(e.relatedTarget)) return;
+    hideHoverBox(tip);
+  });
+  root.addEventListener("focusin", (e) => {
+    const tip = tipFrom(e.target);
+    if (tip && root.contains(tip)) placeHoverBox(tip);
+  });
+  root.addEventListener("focusout", (e) => {
+    const tip = tipFrom(e.target);
+    if (!tip || !root.contains(tip)) return;
+    if (e.relatedTarget && tip.contains(e.relatedTarget)) return;
+    hideHoverBox(tip);
+  });
+  root.addEventListener("scroll", () => {
+    root.querySelectorAll(".mc-tip").forEach(hideHoverBox);
+  }, true);
+}
+
 function strikeNoteHtml(fixtureId) {
   if (!strikeBoard || strikeBoard.ok === false) return "";
   const row = (strikeBoard.fixtures || []).find((f) => Number(f.fixture_id) === Number(fixtureId));
@@ -622,6 +670,7 @@ function renderArrangeRow(a) {
       </div>
       ${fixtureMetaHtml(a)}
       <div class="mc-next ${cls}"><b>${escapeHtml(label)}</b>${detail ? ` <span class="mc-next-detail">${escapeHtml(detail)}</span>` : ""}</div>
+      ${strikeNoteHtml(fid)}
       ${action ? `<div class="mc-actions"><a class="mc-btn mc-btn-primary" href="fixture_schedule.html?fixture=${fid}">${action}</a></div>` : ""}
     </div>`;
 }
@@ -815,6 +864,7 @@ export function startMatchdayChecklist(clubShortName) {
     if (section) section.hidden = true;
     return;
   }
+  bindHoverTips(section);
   refreshMatchdayChecklist().then(() => {
     if (window.location.hash === "#matchdayChecklist") {
       setCollapsed(false);

@@ -116,12 +116,11 @@ const STYLE = `
   color: #d5e2ee; font-size: 0.75rem; border-bottom: 1px dotted #8aa0b4;
 }
 .cw-tip-box {
-  display: none; position: absolute; z-index: 30; left: 0; top: calc(100% + 6px);
-  width: 260px; padding: 8px 10px; background: #0e1720; border: 1px solid #3d5166;
-  border-radius: 6px; color: #d5e2ee; font-size: 0.75rem; font-weight: 400;
-  line-height: 1.4; white-space: normal; box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+  display: none; position: fixed; z-index: 80; width: 260px; padding: 8px 10px;
+  background: #0e1720; border: 1px solid #3d5166; border-radius: 6px; color: #d5e2ee;
+  font-size: 0.75rem; font-weight: 400; line-height: 1.4; white-space: normal;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.35);
 }
-.cw-tip:hover .cw-tip-box, .cw-tip:focus .cw-tip-box { display: block; }
 .cw-text .cw-unavail {
   color: #ffd0a8; font-size: 0.78rem; display: block; margin-top: 4px;
   font-weight: 600; line-height: 1.35;
@@ -156,11 +155,58 @@ a.nav-club-wire.cw-pulse .nav-club-wire-badge { animation: cwPulse 1s ease-in-ou
 let state = { count: 0, items: [], cutoffs: [] };
 let strikeBoard = null;
 
+function placeHoverBox(tip) {
+  const box = tip.querySelector(":scope > .cw-tip-box, :scope > .mc-tip-box");
+  if (!box) return;
+  const r = tip.getBoundingClientRect();
+  const width = 260;
+  const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - width - 8));
+  box.style.display = "block";
+  box.style.left = `${left}px`;
+  const h = box.offsetHeight || 72;
+  const below = r.bottom + 6;
+  const top = below + h < window.innerHeight - 8 ? below : Math.max(8, r.top - h - 6);
+  box.style.top = `${top}px`;
+}
+
+function hideHoverBox(tip) {
+  const box = tip?.querySelector(":scope > .cw-tip-box, :scope > .mc-tip-box");
+  if (box) box.style.display = "none";
+}
+
+function bindHoverTips(root) {
+  if (!root || root.dataset.hoverTips === "1") return;
+  root.dataset.hoverTips = "1";
+  const tipFrom = (node) => node?.closest?.(".cw-tip");
+  root.addEventListener("mouseover", (e) => {
+    const tip = tipFrom(e.target);
+    if (tip && root.contains(tip)) placeHoverBox(tip);
+  });
+  root.addEventListener("mouseout", (e) => {
+    const tip = tipFrom(e.target);
+    if (!tip || !root.contains(tip)) return;
+    if (e.relatedTarget && tip.contains(e.relatedTarget)) return;
+    hideHoverBox(tip);
+  });
+  root.addEventListener("focusin", (e) => {
+    const tip = tipFrom(e.target);
+    if (tip && root.contains(tip)) placeHoverBox(tip);
+  });
+  root.addEventListener("focusout", (e) => {
+    const tip = tipFrom(e.target);
+    if (!tip || !root.contains(tip)) return;
+    if (e.relatedTarget && tip.contains(e.relatedTarget)) return;
+    hideHoverBox(tip);
+  });
+  root.addEventListener("scroll", () => {
+    root.querySelectorAll(".cw-tip").forEach(hideHoverBox);
+  }, true);
+}
+
 function strikeTipHtml(fixtureId) {
   if (!strikeBoard || strikeBoard.ok === false || fixtureId == null) return "";
   const row = (strikeBoard.fixtures || []).find((f) => Number(f.fixture_id) === Number(fixtureId));
-  if (!row) return "";
-  const matchStrikes = Number(row.fixture_strikes ?? 0);
+  const matchStrikes = Number(row?.fixture_strikes ?? 0);
   const seasonStrikes = Number(strikeBoard.season_strikes ?? 0);
   const help =
     `This match: ${matchStrikes} of 3. A third strike forfeits it and adds ₿1m. ` +
@@ -640,6 +686,7 @@ export function startClubWire() {
   if (started) return;
   started = true;
   ensureStyle();
+  bindHoverTips(document.getElementById("clubWire"));
   void poll();
   setInterval(poll, POLL_MS);
   document.addEventListener("visibilitychange", () => {
