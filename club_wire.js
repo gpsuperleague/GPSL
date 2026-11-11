@@ -143,6 +143,16 @@ a.nav-club-wire.cw-pulse .nav-club-wire-badge { animation: cwPulse 1s ease-in-ou
 `;
 
 let state = { count: 0, items: [], cutoffs: [] };
+let strikeBoard = null;
+
+function strikeSuffix(fixtureId) {
+  if (!strikeBoard || strikeBoard.ok === false || fixtureId == null) return "";
+  const row = (strikeBoard.fixtures || []).find((f) => Number(f.fixture_id) === Number(fixtureId));
+  if (!row) return "";
+  const matchStrikes = Number(row.fixture_strikes ?? 0);
+  const seasonStrikes = Number(strikeBoard.season_strikes ?? 0);
+  return `This match: ${matchStrikes} of 3. A third strike forfeits it and adds ₿1m. Season: ${seasonStrikes}. Each strike is ₿500k. Strike 5, 10, 15… adds ₿1m.`;
+}
 let started = false;
 let seenIds = new Set();
 const listeners = new Set();
@@ -548,10 +558,12 @@ async function poll() {
     } catch (err) {
       console.warn("club wire loadClubsMap:", err);
     }
-    const [wireRes, cutRes] = await Promise.all([
+    const [wireRes, cutRes, strikeRes] = await Promise.all([
       supabase.rpc("club_wire_list", { p_limit: 8 }),
       supabase.rpc("club_wire_cutoffs"),
+      supabase.rpc("my_club_strike_board"),
     ]);
+    if (!strikeRes.error) strikeBoard = strikeRes.data;
     if (wireRes.error) {
       console.warn("club_wire_list:", wireRes.error.message);
     }
@@ -717,7 +729,7 @@ function cutoffRowsHtml(cutoffs) {
           <span class="cw-badge ${cls}">${label}</span>
           <span class="cw-text">
             <b${titleAttr}>${esc(title)}</b>
-            ${c.detail ? `<span class="cw-detail">${esc(c.detail)}</span>` : ""}
+            ${c.detail || strikeSuffix(c.fixture_id) ? `<span class="cw-detail">${esc([c.detail, strikeSuffix(c.fixture_id)].filter(Boolean).join(" "))}</span>` : ""}
             ${
               c.unavailable_line
                 ? `<span class="cw-unavail">${esc(c.unavailable_line)}</span>`

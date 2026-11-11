@@ -1418,7 +1418,7 @@ async function getOwnerClubShort(userFromCaller = null) {
 
 /** Single shared Club Wire module instance (nav badge + dashboard card share one poll). */
 export function loadClubWire() {
-  return import("./club_wire.js?v=20261109-wire-results");
+  return import("./club_wire.js?v=20261111-strikes");
 }
 
 /** Update nav inbox badge after mark-read (no full nav rebuild). */

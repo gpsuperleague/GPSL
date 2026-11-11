@@ -17,8 +17,8 @@ import {
   SECTION_MATCHDAY_CHECKLIST,
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
-} from "./fixtures_results.js?v=20261110-handbook-wire";
-import { SECTION_DISCIPLINE } from "./discipline.js?v=20261110-handbook-rules";
+} from "./fixtures_results.js?v=20261111-strikes";
+import { SECTION_DISCIPLINE } from "./discipline.js?v=20261111-strikes";
 import { SECTION_LEAGUE, SECTION_INTERNATIONAL } from "./league_world.js";
 import {
   SECTION_OWNERS,

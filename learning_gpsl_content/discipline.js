@@ -50,7 +50,7 @@ export const SECTION_DISCIPLINE = {
     {
       type: "ul",
       items: [
-        `<b>₿2.5m</b> — league: home never proposed by the prior-month lock (can <b>repeat each later lock</b> until they propose). Suppressed while home is on a booked holiday.`,
+        `<b>₿500k strike</b> — league: home has not proposed by a month lock (repeats each later lock until someone proposes). <b>3</b> strikes on that fixture → <b>₿1m</b> and the match is forfeited. An away proposal stops further no-proposal strikes. Suppressed while home is on a booked holiday.`,
         `<b>₿2.5m</b> — cups: drawn at month change. Arrange in the round month, then one grace month (May: none). The fine starts only if there is still no proposal when that grace month locks.`,
         `<b>₿1m</b> — league only: home’s first proposal in the last 48h before the play month opened. Cups do not pay this.`,
         `<b>Warning → ₿1m</b> — reply overdue at lock: first lock is Inbox warning only; still overdue at a later lock → fine. Negotiation continues.`,
@@ -137,7 +137,7 @@ export const SECTION_DISCIPLINE = {
     {
       type: "ul",
       items: [
-        `<b>Scheduling — no proposal</b> — the ₿2.5m Match Management fine can land again at <b>every later month lock</b> until home proposes.`,
+        `<b>Scheduling — no proposal</b> — each league lock without a home proposal is a strike (<b>₿500k</b>) until someone proposes. Three on that fixture forfeits it and adds <b>₿1m</b>. Every strike is ₿500k. Every 5th season strike adds <b>₿1m</b>.`,
         `<b>Scheduling — overdue reply</b> — warn once, then fine at later locks while still overdue.`,
         `<b>Missing videos</b> — each full −1 is a strike; <b>third</b> in a season triggers the −9 / −3 carry escalation (once per club per season for that escalate).`,
         `<b>Recording / pitch / eligibility</b> — each upheld report is fined from the tariff. Repeat or aggravated cases can add <b>further fines</b>, <b>manual points deductions</b>, forced rearrangements, or other sanctions decided by league admin.`,

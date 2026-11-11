@@ -861,8 +861,8 @@ function deadlineBoxHtml(f) {
           cupGrace
             ? "This cup tie is drawn when the round month opens, so there is no fine for the month before. Arrange in the round month; the following month is grace (May cups have no extra month). Still no proposal by this lock → ₿2.5m."
             : late
-              ? "The ₿1m late fee now applies — propose now to avoid the ₿2.5m no-proposal fine."
-              : `Proposing after ${formatUkWhen(d.late_fee_from)} costs a ₿1m late fee; no proposal by the deadline is a ₿2.5m fine.`
+              ? "The ₿1m late fee now applies. No proposal when this month locks is a strike: ₿500k. Three strikes on this fixture forfeits it and adds ₿1m."
+              : `Proposing after ${formatUkWhen(d.late_fee_from)} costs a ₿1m late fee. No proposal when this month locks is a strike: ₿500k.`
         }
       </div>`;
     } else {
@@ -964,7 +964,7 @@ function noShowLadderBannerHtml(f) {
 
   const counts = `Fixture no-shows: ${homeName} <b>${homeN}</b>/3 · ${awayName} <b>${awayN}</b>/3. Season strikes: ${homeName} <b>${homeStrikes}</b> · ${awayName} <b>${awayStrikes}</b>.`;
   const fines =
-    "One-sided miss → ₿500k / ₿1m / ₿1.5m by fixture count (+ season strike). 3rd on this fixture → 0–3. Both miss → each ₿500k + 1 strike. Every 3rd season strike → ₿2.5m.";
+    "Each strike is ₿500k. 3 on this fixture → ₿1m and the match is forfeited. Every 5th season strike (5, 10, 15…) adds another ₿1m.";
 
   if (attempt3) {
     return `<div class="catch-up-banner">
@@ -1008,7 +1008,7 @@ function alreadyPlayedPanelHtml() {
       <p class="meta">
         You played this fixture without finishing GPSL arrangement.
         <b>Both clubs must confirm.</b> Then each club pays <b>₿500k</b> and takes
-        <b>1 season no-show strike</b> (counts toward every 3rd → ₿2.5m), and Match Day unlocks for enter result / confirm + stats.
+        <b>1 season strike</b> (every 5th season strike adds ₿1m), and Match Day unlocks for enter result / confirm + stats.
       </p>
       ${statusLine}
       ${actions ? `<div class="actions">${actions}</div>` : ""}

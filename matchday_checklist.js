@@ -83,6 +83,15 @@ const COLLAPSE_KEY = "gpsl_mc_collapsed";
 const UK_TZ = "Europe/London";
 
 let lastData = null;
+let strikeBoard = null;
+
+function strikeNoteHtml(fixtureId) {
+  if (!strikeBoard || strikeBoard.ok === false) return "";
+  const row = (strikeBoard.fixtures || []).find((f) => Number(f.fixture_id) === Number(fixtureId));
+  const matchStrikes = Number(row?.fixture_strikes ?? 0);
+  const seasonStrikes = Number(strikeBoard.season_strikes ?? 0);
+  return `<div class="mc-flags"><span class="mc-flag mc-flag-info">This match: ${matchStrikes} of 3. A third strike forfeits it and adds ₿1m.</span><span class="mc-flag mc-flag-info">Season: ${seasonStrikes}. Each strike is ₿500k. Strike 5, 10, 15… adds ₿1m.</span></div>`;
+}
 let ownerClubShort = "";
 let ownerTz = UK_TZ;
 /** owner_upcoming_arrangements(): next-month fixtures still to arrange */
@@ -553,6 +562,7 @@ function renderFixture(fx) {
       ${status}
       ${showFilename ? `<div class="mc-filename">Filename: <code>${escapeHtml(video.filename)}</code></div>` : ""}
       ${fx.flags?.length ? `<div class="mc-flags">${renderFlags(fx.flags)}</div>` : ""}
+      ${strikeNoteHtml(fid)}
       ${actionNext ? `<div class="mc-actions">${renderActionButton(actionNext, fid)}</div>` : ""}
       ${renderRecordingBlock(fx)}
     </div>`;
@@ -775,6 +785,12 @@ export async function refreshMatchdayChecklist() {
     fetchMatchdayChecklist(),
     fetchUpcomingArrangements(),
   ]);
+  try {
+    const { data, error } = await supabase.rpc("my_club_strike_board");
+    if (!error) strikeBoard = data;
+  } catch (err) {
+    console.warn("strike board:", err);
+  }
   try {
     await enrichChecklistFixturesWithHomeWeather(lastData, lastArrange);
   } catch (err) {
