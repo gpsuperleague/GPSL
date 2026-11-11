@@ -61,10 +61,50 @@ async function loadQuiz(id) {
   document.getElementById("startNow").disabled = locked;
   const { data: missing, error: missErr } = await supabase.rpc("gpsl_pub_quiz_missing", { p_id: Number(id) });
   if (missErr) throw missErr;
+  const readyNote = roundsCanStart(data.rounds || []);
   document.getElementById("missingNote").textContent = missing
-    ? `${missing} still to fill`
+    ? `${missing} still empty. ${readyNote}`
     : "All 50 questions are filled";
   renderRounds(data.rounds || [], locked);
+}
+
+function questionBlank(q) {
+  return !String(q.prompt || "").trim()
+    && !String(q.option_a || "").trim()
+    && !String(q.option_b || "").trim()
+    && !String(q.option_c || "").trim()
+    && !String(q.media_path || "").trim();
+}
+
+function questionReady(round, q) {
+  const text = String(q.prompt || "").trim()
+    && String(q.option_a || "").trim()
+    && String(q.option_b || "").trim()
+    && String(q.option_c || "").trim();
+  if (!text) return false;
+  if (round.kind === "picture" || round.kind === "song") return !!String(q.media_path || "").trim();
+  return true;
+}
+
+function roundsCanStart(rounds) {
+  let full = 0;
+  let gap = false;
+  for (const round of rounds) {
+    const questions = round.questions || [];
+    const ready = questions.filter((q) => questionReady(round, q)).length;
+    const blank = questions.filter((q) => questionBlank(q)).length;
+    if (ready === questions.length && questions.length) {
+      if (gap) return "Fill the rounds in order before scheduling.";
+      full += 1;
+    } else if (blank === questions.length) {
+      gap = true;
+    } else {
+      return `Finish round ${round.round_no}, or clear it. Empty rounds after a finished round are skipped.`;
+    }
+  }
+  if (!full) return "Round 1 needs all 10 questions.";
+  const label = full === 1 ? "Round 1 can run on its own." : `${full} rounds can run. Later empty rounds are skipped.`;
+  return label;
 }
 
 function renderRounds(rounds, locked) {

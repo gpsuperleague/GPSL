@@ -200,15 +200,27 @@ function introText(quiz: Record<string, unknown>): string {
     "• Text questions are 5 seconds. Picture and song questions are 8 seconds.",
     "• When the clock ends, the question is removed and the table is posted here.",
     "• About 10 seconds between questions, and about a minute between rounds.",
-    "• Five rounds, ten questions each.",
+    `• ${quiz.play_rounds || 5} ${Number(quiz.play_rounds) === 1 ? "round" : "rounds"}, ${quiz.play_questions || 50} questions.`,
     `• Prizes go to your Building Society. 1st ${money(prizeFor(1, quiz))}, 2nd ${money(prizeFor(2, quiz))}, 3rd ${money(prizeFor(3, quiz))}. Anyone else who answers at least once gets ${money(prizeFor(4, quiz))}.`,
     "• A tie shares that place. The next score takes the next place.",
     "• The same table is on GPSL: Owners → Games → Pub Quiz.",
   ].join("\n");
 }
 
-async function postIntro(token: string, channelId: string, quiz: Record<string, unknown>) {
-  const id = await postMessage(token, channelId, { content: introText(quiz) });
+async function postIntro(
+  db: SupabaseClient,
+  token: string,
+  channelId: string,
+  quiz: Record<string, unknown>
+) {
+  const summary = await db.rpc("gpsl_pub_quiz_ready_summary", { p_id: Number(quiz.id) });
+  const ready = (summary.data || {}) as Record<string, unknown>;
+  const shown = {
+    ...quiz,
+    play_rounds: Number(ready.rounds) || 5,
+    play_questions: Number(ready.questions) || 50,
+  };
+  const id = await postMessage(token, channelId, { content: introText(shown) });
   await pinMessage(token, channelId, id);
 }
 
@@ -356,7 +368,7 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
     }
     if (!quiz.countdown_message_id) {
       await wipeChannel(token, channelId);
-      await postIntro(token, channelId, quiz);
+      await postIntro(db, token, channelId, quiz);
       const unix = Math.floor(starts / 1000);
       const messageId = await postMessage(token, channelId, {
         content: `**Pub quiz**\nStarts <t:${unix}:R> (<t:${unix}:t> UK).\nStay in this channel.`,
@@ -383,7 +395,7 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
   if (quiz.status === "scheduled" || quiz.phase === "countdown") {
     if (!quiz.countdown_message_id) {
       await wipeChannel(token, channelId);
-      await postIntro(token, channelId, quiz);
+      await postIntro(db, token, channelId, quiz);
       await sleep(30000);
     }
     await deleteMessage(token, channelId, quiz.countdown_message_id ? String(quiz.countdown_message_id) : null);
