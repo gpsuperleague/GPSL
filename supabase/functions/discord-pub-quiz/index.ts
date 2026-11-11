@@ -258,50 +258,56 @@ async function release(db: SupabaseClient, id: number) {
   await db.rpc("gpsl_pub_quiz_runner_release", { p_id: id });
 }
 
-function questionPayload(q: Record<string, unknown>) {
+function questionPayload(q: Record<string, unknown>, fileName?: string) {
   const rounds = Number(q.round_count) || 5;
   const total = Number(q.question_count) || 10;
-  const content = [
-    `**Round ${q.round_no} of ${rounds} · ${q.round_title}**`,
-    `**Question ${q.q_no} of ${total}**`,
-    "",
-    String(q.prompt || ""),
-    "",
-    "Select the correct answer.",
-    `You have ${Number(q.answer_seconds) || 20} seconds.`,
-  ].join("\n");
-  const button = (key: string, word: string) => ({
+  const seconds = Number(q.answer_seconds) || 20;
+  const button = (key: string, word: string, style: number) => ({
     type: 2,
-    style: 2,
-    label: `${key.toUpperCase()}  ${String(word || "").slice(0, 72)}`.slice(0, 80),
+    style,
+    label: `${key.toUpperCase()}   ${String(word || "").slice(0, 70)}`.slice(0, 80),
     custom_id: `pq:${q.question_id}:${key}`,
   });
-  const payload: Record<string, unknown> = {
-    content,
-    components: [{
+  const parts: Record<string, unknown>[] = [
+    { type: 10, content: `## Round ${q.round_no} of ${rounds}\n${q.round_title}` },
+    { type: 14, divider: true, spacing: 1 },
+    { type: 10, content: `### Question ${q.q_no} of ${total}\n\n${String(q.prompt || "")}` },
+  ];
+  if (q.kind === "picture" && q.media_path) {
+    parts.push({
+      type: 12,
+      items: [{ media: { url: publicMediaUrl(String(q.media_path)) } }],
+    });
+  }
+  if (q.kind === "song" && fileName) {
+    parts.push({ type: 13, file: { url: `attachment://${fileName}` } });
+  }
+  parts.push(
+    { type: 14, divider: true, spacing: 1 },
+    { type: 10, content: `You have **${seconds} seconds**.` },
+    {
       type: 1,
       components: [
-        button("a", String(q.option_a || "")),
-        button("b", String(q.option_b || "")),
-        button("c", String(q.option_c || "")),
+        button("a", String(q.option_a || ""), 1),
+        button("b", String(q.option_b || ""), 3),
+        button("c", String(q.option_c || ""), 4),
       ],
-    }],
+    },
+  );
+  return {
+    flags: 32768,
+    components: [{ type: 17, accent_color: 0xff9900, components: parts }],
   };
-  if (q.kind === "picture" && q.media_path) {
-    payload.embeds = [{ image: { url: publicMediaUrl(String(q.media_path)) } }];
-  }
-  return payload;
 }
 
 async function postQuestion(token: string, channelId: string, q: Record<string, unknown>): Promise<string> {
-  const payload = questionPayload(q);
   if (q.kind === "song" && q.media_path) {
     const path = String(q.media_path);
     const bytes = await downloadMedia(path);
     const name = path.split("/").pop() || "clip.mp3";
-    return postMessage(token, channelId, payload, { name, bytes });
+    return postMessage(token, channelId, questionPayload(q, name), { name, bytes });
   }
-  return postMessage(token, channelId, payload);
+  return postMessage(token, channelId, questionPayload(q));
 }
 
 async function ensureHeader(
