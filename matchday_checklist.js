@@ -90,7 +90,10 @@ function strikeNoteHtml(fixtureId) {
   const row = (strikeBoard.fixtures || []).find((f) => Number(f.fixture_id) === Number(fixtureId));
   const matchStrikes = Number(row?.fixture_strikes ?? 0);
   const seasonStrikes = Number(strikeBoard.season_strikes ?? 0);
-  return `<div class="mc-flags"><span class="mc-flag mc-flag-info">This match: ${matchStrikes} of 3. A third strike forfeits it and adds ₿1m.</span><span class="mc-flag mc-flag-info">Season: ${seasonStrikes}. Each strike is ₿500k. Strike 5, 10, 15… adds ₿1m.</span></div>`;
+  const help =
+    `This match: ${matchStrikes} of 3. A third strike forfeits it and adds ₿1m. ` +
+    `Season: ${seasonStrikes}. Each strike is ₿500k. Strike 5, 10, 15… adds ₿1m.`;
+  return `<div class="mc-flags"><span class="mc-flag mc-flag-info mc-tip" tabindex="0">Strikes ${matchStrikes}/3 · season ${seasonStrikes}<span class="mc-tip-box">${escapeHtml(help)}</span></span></div>`;
 }
 let ownerClubShort = "";
 let ownerTz = UK_TZ;

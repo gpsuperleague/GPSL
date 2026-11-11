@@ -10,7 +10,7 @@ import {
   isEmailHidden,
   setEmailHidden,
   loadClubWire,
-} from "./global.js?v=20261111-strikes";
+} from "./global.js?v=20261111-strike-tip";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
 import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js?v=20261108-pin-cache";
@@ -30,7 +30,7 @@ import {
 } from "./club_theme_common.js?v=20261026-theme-vars";
 import { startDashboardMatchday } from "./dashboard_matchday.js?v=20261109-owner-tz";
 import { renderSupportBanner } from "./support_banner.js";
-import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261111-strikes";
+import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261111-strike-tip";
 import { startOwnerReadyChecklist } from "./owner_ready_checklist.js?v=20261015-ready-gate";
 import {
   leagueBadgeSrc,

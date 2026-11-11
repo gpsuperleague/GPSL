@@ -56,7 +56,7 @@ import {
 } from "./matchday_console_rules.js?v=20261106-formation-forfeit";
 import { playerNameLinkHtml } from "./player_links.js";
 import { fullClubName } from "./clubs_lookup.js";
-import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261111-strikes";
+import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261111-strike-tip";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,

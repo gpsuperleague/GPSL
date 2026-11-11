@@ -61,7 +61,7 @@ const CUTOFF_BADGE = {
 
 const STYLE = `
 .cw-card {
-  margin: 10px 0 14px; border-radius: 10px; overflow: hidden;
+  margin: 10px 0 14px; border-radius: 10px; overflow: visible;
   background: #0f1720; border: 1px solid #2c3e50; color: #e6edf3;
   font-size: 0.9rem; box-shadow: 0 2px 10px rgba(0,0,0,0.25);
 }
@@ -111,6 +111,17 @@ const STYLE = `
 .cw-text { flex: 1 1 auto; min-width: 0; line-height: 1.3; }
 .cw-text .cw-market { color: #8aa0b4; font-size: 0.75rem; display: block; }
 .cw-text .cw-detail { color: #8aa0b4; font-size: 0.75rem; display: block; margin-top: 2px; }
+.cw-tip {
+  position: relative; display: inline-block; margin-top: 4px; cursor: help;
+  color: #d5e2ee; font-size: 0.75rem; border-bottom: 1px dotted #8aa0b4;
+}
+.cw-tip-box {
+  display: none; position: absolute; z-index: 30; left: 0; top: calc(100% + 6px);
+  width: 260px; padding: 8px 10px; background: #0e1720; border: 1px solid #3d5166;
+  border-radius: 6px; color: #d5e2ee; font-size: 0.75rem; font-weight: 400;
+  line-height: 1.4; white-space: normal; box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+}
+.cw-tip:hover .cw-tip-box, .cw-tip:focus .cw-tip-box { display: block; }
 .cw-text .cw-unavail {
   color: #ffd0a8; font-size: 0.78rem; display: block; margin-top: 4px;
   font-weight: 600; line-height: 1.35;
@@ -145,13 +156,16 @@ a.nav-club-wire.cw-pulse .nav-club-wire-badge { animation: cwPulse 1s ease-in-ou
 let state = { count: 0, items: [], cutoffs: [] };
 let strikeBoard = null;
 
-function strikeSuffix(fixtureId) {
+function strikeTipHtml(fixtureId) {
   if (!strikeBoard || strikeBoard.ok === false || fixtureId == null) return "";
   const row = (strikeBoard.fixtures || []).find((f) => Number(f.fixture_id) === Number(fixtureId));
   if (!row) return "";
   const matchStrikes = Number(row.fixture_strikes ?? 0);
   const seasonStrikes = Number(strikeBoard.season_strikes ?? 0);
-  return `This match: ${matchStrikes} of 3. A third strike forfeits it and adds ₿1m. Season: ${seasonStrikes}. Each strike is ₿500k. Strike 5, 10, 15… adds ₿1m.`;
+  const help =
+    `This match: ${matchStrikes} of 3. A third strike forfeits it and adds ₿1m. ` +
+    `Season: ${seasonStrikes}. Each strike is ₿500k. Strike 5, 10, 15… adds ₿1m.`;
+  return `<span class="cw-tip" tabindex="0">Strikes ${matchStrikes}/3 · season ${seasonStrikes}<span class="cw-tip-box">${esc(help)}</span></span>`;
 }
 let started = false;
 let seenIds = new Set();
@@ -729,7 +743,8 @@ function cutoffRowsHtml(cutoffs) {
           <span class="cw-badge ${cls}">${label}</span>
           <span class="cw-text">
             <b${titleAttr}>${esc(title)}</b>
-            ${c.detail || strikeSuffix(c.fixture_id) ? `<span class="cw-detail">${esc([c.detail, strikeSuffix(c.fixture_id)].filter(Boolean).join(" "))}</span>` : ""}
+            ${c.detail ? `<span class="cw-detail">${esc(c.detail)}</span>` : ""}
+            ${strikeTipHtml(c.fixture_id)}
             ${
               c.unavailable_line
                 ? `<span class="cw-unavail">${esc(c.unavailable_line)}</span>`
