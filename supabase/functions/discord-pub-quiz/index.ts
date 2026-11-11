@@ -182,6 +182,36 @@ async function wipeChannel(token: string, channelId: string) {
   }
 }
 
+function introText(quiz: Record<string, unknown>): string {
+  if (quiz.is_test === true) {
+    return [
+      "**Test quiz**",
+      "• Three questions, so you can see a text question, a picture, and a sound.",
+      "• Press A, B or C in this channel. You have 8 seconds.",
+      "• Owners only. Link your Discord account on GPSL first.",
+      "• No prizes on a test.",
+    ].join("\n");
+  }
+  return [
+    "**How this quiz works**",
+    "• Owners only. Link your Discord account on GPSL before you press a button.",
+    "• Each question has A, B and C. Press your answer in this channel.",
+    "• You each have the same clock. Being first does not matter. One point if you are right before it ends.",
+    "• Text questions are 5 seconds. Picture and song questions are 8 seconds.",
+    "• When the clock ends, the question is removed and the table is posted here.",
+    "• About 10 seconds between questions, and about a minute between rounds.",
+    "• Five rounds, ten questions each.",
+    `• Prizes go to your Building Society. 1st ${money(prizeFor(1, quiz))}, 2nd ${money(prizeFor(2, quiz))}, 3rd ${money(prizeFor(3, quiz))}. Anyone else who answers at least once gets ${money(prizeFor(4, quiz))}.`,
+    "• A tie shares that place. The next score takes the next place.",
+    "• The same table is on GPSL: Owners → Games → Pub Quiz.",
+  ].join("\n");
+}
+
+async function postIntro(token: string, channelId: string, quiz: Record<string, unknown>) {
+  const id = await postMessage(token, channelId, { content: introText(quiz) });
+  await pinMessage(token, channelId, id);
+}
+
 async function pinMessage(token: string, channelId: string, messageId: string) {
   const res = await discord(token, `/channels/${channelId}/pins/${messageId}`, { method: "PUT" });
   if (!res.ok) console.warn("pin", res.status);
@@ -326,6 +356,7 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
     }
     if (!quiz.countdown_message_id) {
       await wipeChannel(token, channelId);
+      await postIntro(token, channelId, quiz);
       const unix = Math.floor(starts / 1000);
       const messageId = await postMessage(token, channelId, {
         content: `**Pub quiz**\nStarts <t:${unix}:R> (<t:${unix}:t> UK).\nStay in this channel.`,
@@ -350,7 +381,11 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
   }
 
   if (quiz.status === "scheduled" || quiz.phase === "countdown") {
-    if (!quiz.countdown_message_id) await wipeChannel(token, channelId);
+    if (!quiz.countdown_message_id) {
+      await wipeChannel(token, channelId);
+      await postIntro(token, channelId, quiz);
+      await sleep(30000);
+    }
     await deleteMessage(token, channelId, quiz.countdown_message_id ? String(quiz.countdown_message_id) : null);
     const opened = await openAndPost(db, token, id, channelId, quiz);
     await release(db, id);
