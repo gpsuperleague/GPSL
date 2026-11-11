@@ -197,7 +197,7 @@ function introText(quiz: Record<string, unknown>): string {
     "• Owners only. Link your Discord account on GPSL before you press a button.",
     "• Each question has A, B and C. Press your answer in this channel.",
     "• You each have the same clock. Being first does not matter. One point if you are right before it ends.",
-    "• Text questions are 5 seconds. Picture and song questions are 8 seconds.",
+    "• Text, picture, and song questions each give you 20 seconds.",
     "• When the clock ends, the question is removed and the table is posted here.",
     "• About 10 seconds between questions, and about a minute between rounds.",
     `• ${quiz.play_rounds || 5} ${Number(quiz.play_rounds) === 1 ? "round" : "rounds"}, ${quiz.play_questions || 50} questions.`,
@@ -259,7 +259,6 @@ async function release(db: SupabaseClient, id: number) {
 }
 
 function questionPayload(q: Record<string, unknown>) {
-  const closes = Math.floor(new Date(String(q.closes_at)).getTime() / 1000);
   const rounds = Number(q.round_count) || 5;
   const total = Number(q.question_count) || 10;
   const content = [
@@ -269,7 +268,7 @@ function questionPayload(q: Record<string, unknown>) {
     String(q.prompt || ""),
     "",
     "Select the correct answer.",
-    `Time left <t:${closes}:R>`,
+    `You have ${Number(q.answer_seconds) || 20} seconds.`,
   ].join("\n");
   const button = (key: string, word: string) => ({
     type: 2,
@@ -422,19 +421,18 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
     const title = endRound
       ? `**End of round ${body.round_no} · ${body.round_title}**`
       : `**Round ${body.round_no} · ${body.round_title} · after question ${body.q_no}**`;
-    const resumeUnix = Math.floor(new Date(String(body.resume_at)).getTime() / 1000);
+    const gap = Number(body.gap_seconds) || 10;
     const nextLine = body.finish_after
       ? "\n\nFinal table next."
       : endRound
-        ? `\n\nNext round <t:${resumeUnix}:R>.`
-        : `\n\nNext question <t:${resumeUnix}:R>.`;
+        ? "\n\nNext round in one minute."
+        : `\n\nNext question in ${gap} seconds.`;
     const boardId = await postMessage(token, channelId, {
       content: boardText(title, String(body.reveal || ""), (body.rows as Row[]) || [], null) + nextLine,
     });
     await db.rpc("gpsl_pub_quiz_mark_board", { p_id: id, p_message_id: boardId });
     await release(db, id);
-    const gap = Number(body.gap_seconds) || 10;
-    if (gap <= 20) {
+    if (gap <= 70) {
       await sleep(gap * 1000);
       await selfInvoke();
     }
