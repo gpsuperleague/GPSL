@@ -136,6 +136,52 @@ async function deleteMessage(token: string, channelId: string, messageId: string
   if (!res.ok && res.status !== 404) console.warn("delete", res.status);
 }
 
+const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+const DISCORD_EPOCH = 1420070400000n;
+
+function snowflakeMs(id: string): number {
+  try {
+    return Number((BigInt(id) >> 22n) + DISCORD_EPOCH);
+  } catch {
+    return 0;
+  }
+}
+
+/** Empty #pub quiz once, when a quiz first posts. Pins from the previous quiz go too. */
+async function wipeChannel(token: string, channelId: string) {
+  const pins = await discord(token, `/channels/${channelId}/pins`);
+  if (pins.ok) {
+    const rows = (await pins.json()) as { id: string }[];
+    for (const row of rows || []) {
+      await discord(token, `/channels/${channelId}/pins/${row.id}`, { method: "DELETE" });
+    }
+  }
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    const listed = await discord(token, `/channels/${channelId}/messages?limit=100`);
+    if (!listed.ok) break;
+    const msgs = (await listed.json()) as { id: string }[];
+    if (!Array.isArray(msgs) || msgs.length === 0) return;
+    const cutoff = Date.now() - TWO_WEEKS_MS;
+    const recent = msgs.filter((m) => snowflakeMs(m.id) >= cutoff).map((m) => m.id);
+    const older = msgs.filter((m) => snowflakeMs(m.id) < cutoff).map((m) => m.id);
+    if (recent.length >= 2) {
+      const res = await discord(token, `/channels/${channelId}/messages/bulk-delete`, {
+        method: "POST",
+        body: JSON.stringify({ messages: recent.slice(0, 100) }),
+      });
+      if (!res.ok && res.status !== 204) console.warn("bulk delete", res.status);
+      await sleep(450);
+      continue;
+    }
+    const one = recent[0] || older[0];
+    if (!one) return;
+    await deleteMessage(token, channelId, one);
+    await sleep(280);
+    if (!recent.length && older.length <= 1) return;
+  }
+}
+
 async function pinMessage(token: string, channelId: string, messageId: string) {
   const res = await discord(token, `/channels/${channelId}/pins/${messageId}`, { method: "PUT" });
   if (!res.ok) console.warn("pin", res.status);
@@ -279,6 +325,7 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
       });
     }
     if (!quiz.countdown_message_id) {
+      await wipeChannel(token, channelId);
       const unix = Math.floor(starts / 1000);
       const messageId = await postMessage(token, channelId, {
         content: `**Pub quiz**\nStarts <t:${unix}:R> (<t:${unix}:t> UK).\nStay in this channel.`,
@@ -303,6 +350,7 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
   }
 
   if (quiz.status === "scheduled" || quiz.phase === "countdown") {
+    if (!quiz.countdown_message_id) await wipeChannel(token, channelId);
     await deleteMessage(token, channelId, quiz.countdown_message_id ? String(quiz.countdown_message_id) : null);
     const opened = await openAndPost(db, token, id, channelId, quiz);
     await release(db, id);

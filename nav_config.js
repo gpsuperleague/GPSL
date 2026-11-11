@@ -1,6 +1,6 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
-import { APP_VERSION } from "./app_version.js?v=20261111-pubquiz";
+import { APP_VERSION } from "./app_version.js?v=20261111-quiz-menu";
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
 export const NAV_CONFIG_VERSION = APP_VERSION;
@@ -218,12 +218,6 @@ export const NAV_SECTIONS = [
         label: "Discipline",
         page: "league_discipline",
         navIcon: "discipline",
-      },
-      {
-        href: "pub_quiz.html",
-        label: "Pub Quiz",
-        page: "pub_quiz",
-        navIcon: "stats",
       },
       {
         href: "challenges.html",
@@ -516,6 +510,13 @@ export const NAV_SECTIONS = [
         page: "fantasy",
         indent: true,
         navIcon: "fantasy",
+      },
+      {
+        href: "pub_quiz.html",
+        label: "Pub Quiz",
+        page: "pub_quiz",
+        indent: true,
+        navIcon: "stats",
       },
       {
         href: "https://38-0.app/",

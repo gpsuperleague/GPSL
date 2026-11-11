@@ -33,7 +33,7 @@ export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js"
 applyStoredSiteTheme();
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-import { APP_VERSION } from "./app_version.js?v=20261111-pubquiz";
+import { APP_VERSION } from "./app_version.js?v=20261111-quiz-menu";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
 
