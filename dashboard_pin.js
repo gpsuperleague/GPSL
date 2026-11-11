@@ -4,11 +4,11 @@ import {
   getDashboardPanelByHref,
   getPageDashboardPanel,
   normalizePageFile,
-} from "./dashboard_registry.js?v=20261108-pin-cache";
+} from "./dashboard_registry.js?v=20261111-discipline";
 import {
   isPanelOnDashboard,
   togglePanelOnDashboard,
-} from "./dashboard_layout.js?v=20261108-pin-cache";
+} from "./dashboard_layout.js?v=20261111-discipline";
 
 let ownerId = null;
 let layoutTableMissing = false;

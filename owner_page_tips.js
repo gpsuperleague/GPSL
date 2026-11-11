@@ -209,7 +209,7 @@ export const MATCHDAY_TIPS = {
   submit:
     "Pick a scheduled or awaiting-confirm fixture. Enter score (cup may need ET / pens). Optional stats: exactly 11 Started, 0–5 Subbed on, goals must match your open-play total, one POTM.",
   yellow:
-    "Yellow card. Player must have played. Eight yellows in a season = 2-match ban.",
+    "Yellow card. Player must have played. Every 5 yellows in a season = 2-match ban.",
   red: "Red card = 2-match ban. Player must have played. Appeals via Rewards Centre / Squad Action.",
   lineup:
     "Exactly 11 Started required. Subs optional (0–5 Subbed on). Suspended players cannot be selected.",

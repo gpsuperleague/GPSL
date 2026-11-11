@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal } from "./global.js?v=20261111-discipline";
 import {
   loadCurrentSeason,
   loadPlayerSeasonStats,
@@ -351,7 +351,11 @@ function renderDisciplineTable(rows) {
       const mine =
         myClubShort &&
         (r.club_short_name || "").toUpperCase() === myClubShort.toUpperCase();
-      const period = `${r.yellow_period ?? 0}/${r.yellow_period_size ?? 8}`;
+      const size = Number(r.yellow_period_size) || 5;
+      const yCards = Number(r.yellow_cards) || 0;
+      const yRem = yCards % size;
+      const yShown = yCards > 0 && yRem === 0 ? size : yRem;
+      const period = `${yShown}/${size}`;
       return `
         <tr class="${mine ? "highlight" : ""}">
           <td class="num lb-rank">${i + 1}</td>

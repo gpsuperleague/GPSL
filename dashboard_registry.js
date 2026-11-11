@@ -162,6 +162,7 @@ export const DASHBOARD_PANELS = [
     defaultOn: true,
   }),
   p("league_injuries", "League Injuries", "league_injuries.html", { defaultOn: true }),
+  p("league_discipline", "Discipline", "league_discipline.html", { defaultOn: true }),
   p("cups", "Cups", "cups.html", { defaultOn: true }),
   p("world_cup", "World Cup", "world_cup.html", { defaultOn: true }),
   p("challenges", "Season Challenges", "challenges.html"),

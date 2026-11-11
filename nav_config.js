@@ -214,6 +214,12 @@ export const NAV_SECTIONS = [
         navIcon: "injuries",
       },
       {
+        href: "league_discipline.html",
+        label: "Discipline",
+        page: "league_discipline",
+        navIcon: "discipline",
+      },
+      {
         href: "challenges.html",
         label: "Season Challenges",
         page: "challenges",

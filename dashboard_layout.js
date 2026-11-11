@@ -1,7 +1,7 @@
 import {
   DEFAULT_DASHBOARD_PANEL_IDS,
   getDashboardPanel,
-} from "./dashboard_registry.js?v=20261108-pin-cache";
+} from "./dashboard_registry.js?v=20261111-discipline";
 
 const TABLE = "owner_dashboard_layout";
 

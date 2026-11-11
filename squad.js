@@ -7,7 +7,7 @@ import {
   refreshNavClubListingState,
   refreshNavListingIndicators,
   supabase,
-} from "./global.js";
+} from "./global.js?v=20261111-discipline";
 import {
   loadPlayerSeasonStatsForSquad,
   statsMapByPlayerId,
@@ -55,7 +55,10 @@ import {
   formatInjuryStatusHtml,
   formatInjuryMatchFitnessHtml,
   formatCardsStatusHtml,
-} from "./player_discipline.js?v=20261026-miss-labels";
+  yellowBanProgress,
+  yellowBanTitle,
+  YELLOW_BAN_EVERY,
+} from "./player_discipline.js?v=20261111-yc5";
 import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,
@@ -2313,9 +2316,10 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         st?.avg_rating != null ? Number(st.avg_rating).toFixed(2) : "—";
       const yCount = cardRow?.yellows || 0;
 
+      const ycProg = yellowBanProgress(yCount);
       const ycBadge =
         yCount > 0
-          ? `<span class="squad-yc-badge${yCount >= 6 ? " warn" : ""}${yCount >= 8 ? " ban" : ""}" title="Season yellow cards">YC ${yCount}/8</span>`
+          ? `<span class="squad-yc-badge${ycProg.warn ? " warn" : ""}${ycProg.ban ? " ban" : ""}" title="${yellowBanTitle(yCount)}">YC ${ycProg.shown}/${YELLOW_BAN_EVERY}</span>`
           : "";
       const nameExtras = squadPlayerNameExtrasHtml(p);
 

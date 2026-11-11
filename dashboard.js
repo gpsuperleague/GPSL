@@ -10,10 +10,10 @@ import {
   isEmailHidden,
   setEmailHidden,
   loadClubWire,
-} from "./global.js?v=20261111-strike-pop";
+} from "./global.js?v=20261111-discipline";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
-import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js?v=20261108-pin-cache";
+import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js?v=20261111-discipline";
 import {
   loadOwnerDashboardLayout,
   saveOwnerDashboardLayout,
@@ -22,8 +22,8 @@ import {
   resolvePanelLabel,
   defaultPanelLabel,
   PANEL_LABEL_MAX_LEN,
-} from "./dashboard_layout.js?v=20261108-pin-cache";
-import { refreshAllDashboardPins } from "./dashboard_pin.js?v=20261108-pin-cache";
+} from "./dashboard_layout.js?v=20261111-discipline";
+import { refreshAllDashboardPins } from "./dashboard_pin.js?v=20261111-discipline";
 import {
   applyClubDashboardTheme,
   loadClubDashboardTheme,

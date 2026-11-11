@@ -20,7 +20,7 @@ import {
   isValidInstant,
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
-import { initDashboardPinUi } from "./dashboard_pin.js?v=20261108-pin-cache";
+import { initDashboardPinUi } from "./dashboard_pin.js?v=20261111-discipline";
 import { nationFlagSrc } from "./international_flags.js";
 import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
 import {
@@ -33,7 +33,7 @@ export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js"
 applyStoredSiteTheme();
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-import { APP_VERSION } from "./app_version.js?v=20261108-pin-cache";
+import { APP_VERSION } from "./app_version.js?v=20261111-discipline";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
 
@@ -1743,6 +1743,12 @@ const NAV_INLINE_ICONS = {
       `<rect x="2.7" y="2.7" width="14.6" height="14.6" rx="2.4" fill="#a82828"/>` +
       `<rect x="8.5" y="4.6" width="3" height="10.8" rx="0.7" fill="#f5f5f5"/>` +
       `<rect x="4.6" y="8.5" width="10.8" height="3" rx="0.7" fill="#f5f5f5"/>`,
+  },
+  discipline: {
+    title: "Discipline",
+    svg:
+      `<rect x="1.2" y="3.2" width="8.4" height="13.2" rx="1.15" fill="#f5c518"/>` +
+      `<rect x="10.2" y="3.2" width="8.4" height="13.2" rx="1.15" fill="#d32f2f"/>`,
   },
   friendlies: {
     title: "Friendlies",

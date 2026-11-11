@@ -833,18 +833,44 @@ export async function loadActiveInjuriesForPlayers(supabase, playerIds) {
   return map;
 }
 
+/** Season yellows that trigger a 2-match ban: 5, 10, 15, … */
+export const YELLOW_BAN_EVERY = 5;
+
+/** Progress toward the next yellow ban. A multiple of 5 shows as 5/5. */
+export function yellowBanProgress(count) {
+  const y = Math.max(0, Number(count) || 0);
+  if (y <= 0) return { shown: 0, warn: false, ban: false, season: 0 };
+  const rem = y % YELLOW_BAN_EVERY;
+  const shown = rem === 0 ? YELLOW_BAN_EVERY : rem;
+  return {
+    shown,
+    warn: shown === YELLOW_BAN_EVERY - 1,
+    ban: rem === 0,
+    season: y,
+  };
+}
+
+export function yellowBanTitle(count) {
+  const prog = yellowBanProgress(count);
+  return `${prog.season} season yellow${prog.season === 1 ? "" : "s"}. Every ${YELLOW_BAN_EVERY} is a 2-match ban (${prog.shown}/${YELLOW_BAN_EVERY} toward the next).`;
+}
+
 /** @param {{ yellows?: number, reds?: number }|null} cards */
 export function formatCardsStatusHtml(cards) {
   if (!cards) return "";
   const y = Number(cards.yellows) || 0;
   const r = Number(cards.reds) || 0;
   if (y <= 0 && r <= 0) return "";
-  const yClass =
-    y >= 8 ? "status-cards-ban" : y >= 6 ? "status-cards-warn" : "status-cards";
+  const prog = yellowBanProgress(y);
+  const yClass = prog.ban
+    ? "status-cards-ban"
+    : prog.warn
+      ? "status-cards-warn"
+      : "status-cards";
   const parts = [];
   if (y > 0) {
     parts.push(
-      `<span class="status-pill ${yClass}" title="Season yellow cards (ban every 8)">YC ${y}/8</span>`
+      `<span class="status-pill ${yClass}" title="${yellowBanTitle(y)}">YC ${prog.shown}/${YELLOW_BAN_EVERY}</span>`
     );
   }
   if (r > 0) {
