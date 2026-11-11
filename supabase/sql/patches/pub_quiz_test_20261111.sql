@@ -17,7 +17,6 @@ DECLARE
   v_id bigint;
   v_round bigint;
   v_n int := 0;
-  v_missing text := '';
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -39,22 +38,19 @@ BEGIN
   RETURNING id INTO v_id;
 
   FOREACH v_kind IN ARRAY ARRAY['text', 'picture', 'song'] LOOP
+    v_q := NULL;
     SELECT qq.* INTO v_q
     FROM public.gpsl_pub_quiz_question qq
     JOIN public.gpsl_pub_quiz_round r ON r.id = qq.round_id
     WHERE r.quiz_id = p_source_id
       AND r.kind = v_kind
-      AND btrim(qq.prompt) <> ''
-      AND btrim(qq.option_a) <> ''
-      AND btrim(qq.option_b) <> ''
-      AND btrim(qq.option_c) <> ''
+      AND btrim(coalesce(qq.prompt, '')) <> ''
+      AND btrim(coalesce(qq.option_a, '')) <> ''
+      AND btrim(coalesce(qq.option_b, '')) <> ''
+      AND btrim(coalesce(qq.option_c, '')) <> ''
       AND (v_kind = 'text' OR nullif(btrim(coalesce(qq.media_path, '')), '') IS NOT NULL)
     ORDER BY r.round_no, qq.q_no
     LIMIT 1;
-    IF NOT FOUND THEN
-      v_missing := v_missing || v_kind || ' ';
-      CONTINUE;
-    END IF;
     v_n := v_n + 1;
     v_title := CASE v_kind
       WHEN 'picture' THEN 'Picture round'
@@ -64,18 +60,36 @@ BEGIN
     INSERT INTO public.gpsl_pub_quiz_round (quiz_id, round_no, title, kind, answer_seconds)
     VALUES (v_id, v_n, v_title, v_kind, 8)
     RETURNING id INTO v_round;
-    INSERT INTO public.gpsl_pub_quiz_question (
-      round_id, q_no, prompt, option_a, option_b, option_c, correct, media_path
-    )
-    VALUES (
-      v_round, 1, v_q.prompt, v_q.option_a, v_q.option_b, v_q.option_c, v_q.correct, v_q.media_path
-    );
+    IF v_q.id IS NOT NULL THEN
+      INSERT INTO public.gpsl_pub_quiz_question (
+        round_id, q_no, prompt, option_a, option_b, option_c, correct, media_path
+      )
+      VALUES (
+        v_round, 1, v_q.prompt, v_q.option_a, v_q.option_b, v_q.option_c, v_q.correct, v_q.media_path
+      );
+    ELSIF v_kind = 'picture' THEN
+      INSERT INTO public.gpsl_pub_quiz_question (
+        round_id, q_no, prompt, option_a, option_b, option_c, correct, media_path
+      )
+      VALUES (
+        v_round, 1, 'What colour is the card?', 'Red', 'Yellow', 'Blue', 'b', 'samples/yellow-card.png'
+      );
+    ELSIF v_kind = 'song' THEN
+      INSERT INTO public.gpsl_pub_quiz_question (
+        round_id, q_no, prompt, option_a, option_b, option_c, correct, media_path
+      )
+      VALUES (
+        v_round, 1, 'Can you hear a tone?', 'Yes', 'No', 'Silence', 'a', 'samples/tone.wav'
+      );
+    ELSE
+      INSERT INTO public.gpsl_pub_quiz_question (
+        round_id, q_no, prompt, option_a, option_b, option_c, correct, media_path
+      )
+      VALUES (
+        v_round, 1, 'Which answer is the right one?', 'Wrong', 'Correct', 'Also wrong', 'b', NULL
+      );
+    END IF;
   END LOOP;
-
-  IF v_n < 3 THEN
-    DELETE FROM public.gpsl_pub_quiz WHERE id = v_id;
-    RAISE EXCEPTION 'Need one filled text question, one picture with an image, and one song with an audio file. Missing: %', btrim(v_missing);
-  END IF;
 
   RETURN jsonb_build_object('ok', true, 'id', v_id);
 END;

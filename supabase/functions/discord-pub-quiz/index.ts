@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { SAMPLE_PNG, SAMPLE_WAV } from "./samples.ts";
 
 const DISCORD_API = "https://discord.com/api/v10";
 const GUILD_ID_FALLBACK = "1483974134361886802";
@@ -236,8 +237,35 @@ async function ensureHeader(
   return id;
 }
 
+function decode64(value: string): Uint8Array {
+  const bin = atob(value);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function putSample(path: string, bytes: Uint8Array, contentType: string) {
+  const base = Deno.env.get("SUPABASE_URL") || "";
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const headers = { Authorization: `Bearer ${key}`, apikey: key };
+  const existing = await fetch(`${base}/storage/v1/object/pub-quiz/${path}`, { headers });
+  if (existing.ok) return;
+  const sent = await fetch(`${base}/storage/v1/object/pub-quiz/${path}`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": contentType, "x-upsert": "true" },
+    body: bytes,
+  });
+  if (!sent.ok) throw new Error(`Sample upload ${sent.status}`);
+}
+
+async function ensureSamples() {
+  await putSample("samples/yellow-card.png", decode64(SAMPLE_PNG), "image/png");
+  await putSample("samples/tone.wav", decode64(SAMPLE_WAV), "audio/wav");
+}
+
 async function runStep(db: SupabaseClient, token: string, quiz: Record<string, unknown>) {
   const id = Number(quiz.id);
+  if (quiz.is_test === true) await ensureSamples();
   const starts = quiz.starts_at ? new Date(String(quiz.starts_at)).getTime() : 0;
   const now = Date.now();
 

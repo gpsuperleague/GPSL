@@ -228,7 +228,7 @@ document.getElementById("startNow").addEventListener("click", () => schedule(tru
 document.getElementById("testQuiz").addEventListener("click", async () => {
   const id = Number(document.getElementById("quizPick").value);
   if (!id) return;
-  say("Starting a 3-question test from the saved questions…");
+  say("Starting a 3-question test…");
   const { data, error } = await supabase.rpc("gpsl_pub_quiz_start_test", { p_source_id: id });
   if (error) {
     say(error.message, true);
@@ -239,7 +239,7 @@ document.getElementById("testQuiz").addEventListener("click", async () => {
     say(`Test was created, but the runner did not start: ${kick.error.message}`, true);
     return;
   }
-  say("Test posted to #pub quiz. One text question, one picture, one song. No prizes.");
+  say("Test posted to #pub quiz. The new quiz in the list has the three questions. No prizes. Save question on the main quiz stores your own.");
   await refreshList(data?.id);
   await loadQuiz(document.getElementById("quizPick").value);
 });
