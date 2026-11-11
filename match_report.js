@@ -17,7 +17,7 @@ import {
   formatFixtureUnavailableHtml,
   unavailableStatusByPlayerId,
 } from "./player_discipline.js";
-import { prematchConsoleChecklistHtml } from "./matchday_console_rules.js?v=20261106-formation-forfeit";
+import { prematchConsoleChecklistHtml } from "./matchday_console_rules.js?v=20261111-cup-settings";
 
 function unavailableLabel(status) {
   if (status === "injured") return "Injured";
@@ -407,7 +407,7 @@ function renderNotPlayed(fx, myShort, data = {}) {
             <p class="mr-prematch-check-note">No suspended or injured players in the saved Match Day squads.</p>
           </div>`
         : "";
-  const consoleCheck = prematchConsoleChecklistHtml();
+  const consoleCheck = prematchConsoleChecklistHtml({ fixture: fx });
 
   return `
     <div class="mr-scoreboard">

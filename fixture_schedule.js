@@ -43,9 +43,10 @@ import {
 } from "./player_discipline.js?v=20261028-unavail";
 import {
   matchConsoleStripHtml,
+  cupFixtureKind,
   pitchBehaviourPanelHtml,
   wirePitchAck,
-} from "./matchday_console_rules.js?v=20261106-formation-forfeit";
+} from "./matchday_console_rules.js?v=20261111-cup-settings";
 import {
   downloadIcs,
   fixtureKickoffEvent,
@@ -1292,7 +1293,7 @@ function renderAgreedPanel(root, f, sch) {
       <p class="meta" id="checkInSquadGate" style="display:none;color:#f88;"></p>
       <p class="meta">Emergency drops remaining this season: <b>${al.emergency_drops_remaining ?? "—"}</b>/2 · Reschedule this GPSL month: <b>${al.reschedule_used_this_month ? "used" : "available"}</b></p>
       <div id="scheduleConsoleMount">
-        ${matchConsoleStripHtml({ isCup: String(f.competition_type || "").toLowerCase() === "cup" })}
+        ${matchConsoleStripHtml({ kind: cupFixtureKind(f) })}
         ${pitchBehaviourPanelHtml({ fixtureId: f.id, requireAck: true })}
       </div>
       ${missChoicePanelHtml(f, ci, al)}

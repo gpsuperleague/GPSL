@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "./global.js";
+import { cupFixtureKind, cupSwitchNote } from "./matchday_console_rules.js?v=20261111-cup-settings";
 import { fullClubName } from "./clubs_lookup.js";
 import {
   fetchFixturesHomeWeatherMeta,
@@ -330,7 +331,6 @@ const REC_GROUPS = [
   },
   {
     heading: "Pre-Match Settings",
-    note: "Cups: 1-leg KO → ET + pens if level · 2-leg → FT only unless level on agg after 2nd leg → 5-min + ET + pens",
     items: [
       ["rec_room_10min", "10-minute match"],
       ["rec_room_injuries", "Injuries Off"],
@@ -465,8 +465,11 @@ function renderRecordingBlock(fx) {
         </label>`
       )
       .join("");
-    const note = g.note
-      ? `<p class="mc-rec-note">${escapeHtml(g.note)}</p>`
+    const cupNote =
+      g.heading === "Pre-Match Settings" ? cupSwitchNote(cupFixtureKind(fx)) : "";
+    const noteText = cupNote || g.note || "";
+    const note = noteText
+      ? `<p class="mc-rec-note">${escapeHtml(noteText)}</p>`
       : "";
     return `
       <div class="mc-rec-group">

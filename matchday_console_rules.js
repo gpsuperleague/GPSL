@@ -30,32 +30,77 @@ export const PITCH_BEHAVIOUR_ITEMS = [
 ];
 
 /**
- * @param {{ isCup?: boolean, isTwoLegFirst?: boolean, isTwoLegSecond?: boolean, levelOnAggregate?: boolean }} [opts]
+ * How this cup fixture is played.
+ * Super8 and Bowl quarter-finals are the only two-leg ties.
+ * @param {object} [fx]
+ * @returns {"single"|"two-first"|"two-second"|"two"|null}
+ */
+export function cupFixtureKind(fx) {
+  if (!fx || String(fx.competition_type || "").toLowerCase() !== "cup") return null;
+  const code = String(fx.cup_code || "").toLowerCase();
+  const round = Number(fx.cup_round);
+  const hasLeg = fx.cup_leg != null && fx.cup_leg !== "";
+  const leg = hasLeg ? Number(fx.cup_leg) : null;
+  const twoLegRound = (code === "super8" || code === "bowl") && round === 1;
+  if (leg === 2) return "two-second";
+  if (twoLegRound && leg === 1) return "two-first";
+  if (twoLegRound && leg == null) return "two";
+  return "single";
+}
+
+/** Owner-facing switch line for one cup kind. */
+export function cupSwitchNote(kind) {
+  if (kind === "two-first") {
+    return "1st leg: same as a league match. Extra Time off, Penalties off. A draw stands.";
+  }
+  if (kind === "two-second") {
+    return "2nd leg: same as a league match. Extra Time off, Penalties off. If the tie is level on aggregate, play a 5-minute match with Penalties on and Extra Time off. That match is the extra time.";
+  }
+  if (kind === "two") {
+    return "Two-leg quarter-final: both legs are the same as a league match, Extra Time and Penalties off. If level on aggregate after the 2nd leg, play a 5-minute match with Penalties on and Extra Time off. That match is the extra time.";
+  }
+  if (kind === "single") {
+    return "One-leg cup: same as a league match, with Extra Time and Penalties switched on.";
+  }
+  return "";
+}
+
+/**
+ * @param {{ isCup?: boolean, isTwoLegFirst?: boolean, isTwoLegSecond?: boolean, levelOnAggregate?: boolean, kind?: string|null }} [opts]
  */
 export function cupConsoleBadge(opts = {}) {
-  if (!opts.isCup) return null;
-  if (opts.isTwoLegFirst) {
+  let kind = opts.kind || null;
+  if (!kind) {
+    if (opts.isTwoLegFirst) kind = "two-first";
+    else if (opts.isTwoLegSecond) kind = "two-second";
+    else if (opts.isCup) kind = "single";
+  }
+  if (kind === "two-second" && opts.levelOnAggregate) kind = "two-decider";
+  if (kind === "two-first") {
     return {
-      label: "2-leg · 1st leg",
-      detail: "90 min only — draws OK · no ET / pens",
+      label: "Cup · 1st leg",
+      detail: "Same as league · Extra Time off · Penalties off · a draw stands",
     };
   }
-  if (opts.isTwoLegSecond) {
-    if (opts.levelOnAggregate) {
-      return {
-        label: "2-leg · level agg",
-        detail: "5-min match · then ET + pens · scores combine with both legs",
-      };
-    }
+  if (kind === "two-decider") {
     return {
-      label: "2-leg · 2nd leg",
-      detail: "Default FT only · if level on aggregate → 5-min + ET + pens",
+      label: "Cup · 5 min",
+      detail: "Penalties on · Extra Time off · this match is the extra time · goals count with both legs",
     };
   }
-  return {
-    label: "Cup KO",
-    detail: "Extra time + penalties if level after 90",
-  };
+  if (kind === "two-second" || kind === "two") {
+    return {
+      label: "Cup · 2nd leg",
+      detail: "Same as league · Extra Time off · Penalties off · if level on aggregate, a 5-minute match with Penalties on and Extra Time off",
+    };
+  }
+  if (kind === "single") {
+    return {
+      label: "Cup · 1 leg",
+      detail: "Same as league · Extra Time on · Penalties on",
+    };
+  }
+  return null;
 }
 
 /**
@@ -65,6 +110,7 @@ export function cupConsoleBadge(opts = {}) {
  *   isTwoLegFirst?: boolean,
  *   isTwoLegSecond?: boolean,
  *   levelOnAggregate?: boolean,
+ *   kind?: string|null,
  *   className?: string,
  *   chips?: boolean,  // false = cup badge only (no duplicate of Display checks)
  * }} [opts]
@@ -177,12 +223,14 @@ export function wirePitchAck(root, opts = {}) {
 }
 
 /** Prematch checklist for match report (soft honesty items). */
-export function prematchConsoleChecklistHtml() {
+export function prematchConsoleChecklistHtml(opts = {}) {
+  const cupLine = cupSwitchNote(cupFixtureKind(opts.fixture));
   const rows = [
     [
       "Pre-Match Settings",
-      "10 minutes | Injuries off (all other settings default)",
+      "10 minutes | Injuries off | Substitutes 5 | Sub intervals 3 | Form Random",
     ],
+    ...(cupLine ? [["Cup", cupLine]] : []),
     [
       "Personnel",
       "Show Manager · Show Subtactic · Show Squad · Player instructions Blank (blocked if used)",
@@ -228,11 +276,12 @@ export function getMatchdayConsoleRulesCards() {
     cards: [
       {
         heading: "Pre-Match Settings",
-        tip: "Match length and injuries. Cup ET / pens rules when this fixture is a cup.",
+        tip: "Same room settings as a league match. Cup ties only change Extra Time and Penalties.",
         items: [
-          "<b>10-minute</b> match, <b>Injuries off</b> (all other settings default).",
-          "<b>Cup knockout (1-leg):</b> Extra Time and Penalties if level after 90.",
-          "<b>2-legged cups:</b> default 90 min only (no ET/pens). If level on aggregate after the 2nd leg — play a <b>5-minute</b> match with ET + pens; scores combine with both legs to decide the winner.",
+          "<b>10-minute</b> match, <b>Injuries off</b>, <b>5 substitutes</b>, <b>3 sub intervals</b>, <b>Form Random</b>.",
+          "<b>One-leg cup:</b> same match, with <b>Extra Time</b> and <b>Penalties</b> switched on.",
+          "<b>Two-leg cup</b> (Super8 and Bowl quarter-finals): both legs are the same as league. <b>Extra Time</b> and <b>Penalties</b> stay off. A draw stands.",
+          "If the two-leg tie is <b>level on aggregate</b> after the 2nd leg, play a third <b>5-minute</b> match with <b>Penalties on</b> and <b>Extra Time off</b>. That match is the extra time. Still level, the shootout decides it. Its goals count with both legs.",
         ],
       },
       {

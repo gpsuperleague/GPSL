@@ -53,10 +53,10 @@ import {
   pitchBehaviourPanelHtml,
   wirePitchAck,
   getMatchdayConsoleRulesCards,
-} from "./matchday_console_rules.js?v=20261106-formation-forfeit";
+} from "./matchday_console_rules.js?v=20261111-cup-settings";
 import { playerNameLinkHtml } from "./player_links.js";
 import { fullClubName } from "./clubs_lookup.js";
-import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261111-strike-pop";
+import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261111-cup-settings";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -760,8 +760,12 @@ function isTwoLegFirstLeg(fixture, allFixtures = []) {
   ) {
     return true;
   }
-  // Fallback when sibling isn't in this club's open list
-  return fixture.cup_code === "super8" || fixture.cup_code === "bowl";
+  // Fallback when the 2nd leg isn't in this club's open list.
+  // Only Super8 and Bowl quarter-finals are two-legged.
+  return (
+    (fixture.cup_code === "super8" || fixture.cup_code === "bowl") &&
+    Number(fixture.cup_round) === 1
+  );
 }
 
 function isTwoLegSecondLeg(fixture) {
@@ -1087,15 +1091,15 @@ function updateCupScoreSections() {
     } else if (isTwoLegFirstLeg(f, upcomingFixtures)) {
       hint.style.display = "block";
       hint.innerHTML =
-        "1st leg — enter the score after <b>90 minutes</b>. Draws are allowed; no extra time or penalties.";
+        "1st leg — same as a league match. Extra Time off, Penalties off. Enter the score after <b>90 minutes</b>. A draw stands.";
     } else if (isTwoLegSecondLeg(f)) {
       hint.style.display = "block";
       hint.innerHTML =
-        "2nd leg — enter the score after <b>90 minutes</b>. If the <b>tie is level on aggregate</b>, play a <b>5-minute</b> match with ET + pens; enter those scores here (combined with both legs).";
+        "2nd leg — same as a league match. Extra Time off, Penalties off. Enter the score after <b>90 minutes</b>. If the <b>tie is level on aggregate</b>, play a <b>5-minute</b> match with Penalties on and Extra Time off, then enter that total here (it counts with both legs).";
     } else {
       hint.style.display = "block";
       hint.innerHTML =
-        "Cup knockout — enter the score after <b>90 minutes</b> first. Level → Extra Time, then pens if still level.";
+        "One-leg cup — same as a league match, with <b>Extra Time</b> and <b>Penalties</b> on. Enter the score after <b>90 minutes</b> first. If level, enter the total after extra time, then the shootout if still level.";
     }
   }
 
@@ -1121,18 +1125,19 @@ function updateCupScoreSections() {
   if (etHint && isTwoLegSecondLeg(f)) {
     const agg = twoLegAggregate(leg1CompanionFixture, home90, away90);
     etHint.innerHTML =
-      `Level on aggregate${agg ? ` (${agg.tieHome}–${agg.tieAway})` : ""} after 90 min — play a <b>5-minute</b> match with ET (+ pens if needed). ` +
-      `Enter the <b>total score after extra time</b> (90 min goals carry over; e.g. 2–2 then <b>4–4</b> here). Scores combine with the 1st leg.`;
+      `Level on aggregate${agg ? ` (${agg.tieHome}–${agg.tieAway})` : ""} after 90 min. Play a <b>5-minute</b> match: Penalties on, Extra Time off. ` +
+      `Enter the <b>2nd-leg total including those 5 minutes</b> (90 min goals carry over; e.g. 2–2 then <b>3–2</b> here). That total counts with the 1st leg.`;
   } else if (etHint) {
     etHint.innerHTML =
       "Level after 90 min — enter the <b>total score after extra time</b> " +
       "(90 min goals carry over; e.g. 2–2 then <b>4–4</b> here, not 2–2 again).";
   }
 
+  const etTag = isTwoLegSecondLeg(f) ? " after 5 min" : " ET";
   document.getElementById("etHomeLabel").textContent =
-    document.getElementById("homeLabel").textContent + " ET";
+    document.getElementById("homeLabel").textContent + etTag;
   document.getElementById("etAwayLabel").textContent =
-    document.getElementById("awayLabel").textContent + " ET";
+    document.getElementById("awayLabel").textContent + etTag;
 
   const etHome = readScoreInput("etHomeGoals");
   const etAway = readScoreInput("etAwayGoals");
@@ -1157,7 +1162,7 @@ function updateCupScoreSections() {
     if (isTwoLegSecondLeg(f) && leg1CompanionFixture) {
       const aggEt = twoLegAggregate(leg1CompanionFixture, homeTotal, awayTotal);
       preview.textContent =
-        `After extra time: ${homeTotal}–${awayTotal} (90 min was ${home90}–${away90})` +
+        `After the 5-minute match: ${homeTotal}–${awayTotal} (90 min was ${home90}–${away90})` +
         (aggEt ? ` · Aggregate ${aggEt.tieHome}–${aggEt.tieAway}` : "");
     } else {
       preview.textContent = `After extra time: ${homeTotal}–${awayTotal} (90 min was ${home90}–${away90})`;
@@ -1173,7 +1178,7 @@ function updateCupScoreSections() {
     const penHint = penRow.querySelector(".stats-hint");
     if (penHint) {
       penHint.innerHTML = isTwoLegSecondLeg(f)
-        ? "Still level on aggregate after extra time — who won the <b>penalty shootout</b>?"
+        ? "Still level on aggregate after the 5-minute match — who won the <b>penalty shootout</b>?"
         : "Still level on open play — who won the <b>penalty shootout</b>?";
     }
     const homeName = document.getElementById("homeLabel").textContent;
@@ -1221,7 +1226,7 @@ function validateCupScores(fixture, home90, away90, cupExtra, leg1 = null) {
       cupExtra?.etAway != null ||
       cupExtra?.penWinner
     ) {
-      return "Extra time and penalties are only used in the 2nd leg (if aggregate is level).";
+      return "The 5-minute match and penalties are only used in the 2nd leg, if the aggregate is level.";
     }
     return null;
   }
@@ -1235,7 +1240,7 @@ function validateCupScores(fixture, home90, away90, cupExtra, leg1 = null) {
       cupExtra?.penWinner
     ) {
       return isTwoLegSecondLeg(fixture)
-        ? "Extra time and penalties only when the tie is level on aggregate after 90 minutes."
+        ? "The 5-minute match and penalties are only when the tie is level on aggregate after 90 minutes."
         : "Extra time and penalties only when level after 90 minutes.";
     }
     return null;
@@ -1243,7 +1248,7 @@ function validateCupScores(fixture, home90, away90, cupExtra, leg1 = null) {
 
   if (cupExtra?.etHome == null || cupExtra?.etAway == null) {
     return isTwoLegSecondLeg(fixture)
-      ? "Tie level on aggregate after 90 minutes — enter total score after extra time."
+      ? "Tie level on aggregate after 90 minutes — enter the 2nd-leg total including the 5-minute match."
       : "Cup draw after 90 minutes — enter total score after extra time.";
   }
 
@@ -1255,12 +1260,12 @@ function validateCupScores(fixture, home90, away90, cupExtra, leg1 = null) {
 
   if (stillLevel && !cupExtra.penWinner) {
     return isTwoLegSecondLeg(fixture)
-      ? "Still level on aggregate after extra time — select who won the penalty shootout."
+      ? "Still level on aggregate after the 5-minute match — select who won the penalty shootout."
       : "Still level after extra time — select who won the penalty shootout.";
   }
   if (!stillLevel && cupExtra.penWinner) {
     return isTwoLegSecondLeg(fixture)
-      ? "Penalty shootout only when still level on aggregate after extra time."
+      ? "Penalty shootout only when still level on aggregate after the 5-minute match."
       : "Penalty shootout only when still level after extra time.";
   }
   return null;
@@ -1274,7 +1279,11 @@ function buildCupExtraForSubmit(fixture, home90, away90, leg1 = null) {
   const etHome = readScoreInput("etHomeGoals");
   const etAway = readScoreInput("etAwayGoals");
   if (!Number.isFinite(etHome) || !Number.isFinite(etAway)) {
-    return { error: "Enter valid total score after extra time." };
+    return {
+      error: isTwoLegSecondLeg(fixture)
+        ? "Enter the 2nd-leg total including the 5-minute match."
+        : "Enter valid total score after extra time.",
+    };
   }
 
   const etErr = validateEtNotBelow90(home90, away90, etHome, etAway);
