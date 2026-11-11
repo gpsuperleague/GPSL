@@ -30,7 +30,7 @@ export const SECTION_DISCIPLINE = {
       items: [
         `<b>GPSL month</b> — Thursday <b>19:00 UK</b> → next Thursday 19:00 UK. Month lock is when many automatic fines and window checks run.`,
         `<b>Home propose</b> — arrange a kick-off <b>before the prior month locks</b> (e.g. September game → propose before August ends). Last <b>48 hours</b> before the play month opens = late band.`,
-        `<b>Reply / counter</b> — each negotiation turn has a deadline (often <b>24 hours</b>; shown on Schedule and Inbox).`,
+        `<b>Reply / counter</b> — <b>48 hours</b>. That clock can cross a GPSL month. A missed league reply is a strike (<b>₿500k</b>).`,
         `<b>Check-in</b> — from <b>10 minutes before</b> agreed kick-off until <b>10 minutes after</b>.`,
         `<b>Match video</b> — post your YouTube link after the match; missing-video money fine + points ladder start after <b>the month you played in locks + grace</b> (default <b>72 hours</b>). Catch-up / holiday-delayed games use that later month, not the original fixture month.`,
         `<b>New owners</b> — appointed mid-month get a scheduling-fine pass until their first full GPSL month. Arranging waits, and the catch-up window is longer: <a href="#match-scheduling--new-owners">New owners</a>.`,

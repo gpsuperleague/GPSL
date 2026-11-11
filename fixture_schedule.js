@@ -35,7 +35,7 @@ import {
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
   fixtureExpiryWarnings,
-} from "./match_scheduling.js?v=20261110-deadline-warn";
+} from "./match_scheduling.js?v=20261111-reply48";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -1833,7 +1833,7 @@ function render() {
   const compromiseMetaByIso = new Map(
     compromiseCandidates.map((c) => [kickoffIsoKey(c.iso), c])
   );
-  const responseLine = formatResponseDeadlineLine(ctx.response_deadline, myClub.short);
+  const responseLine = formatResponseDeadlineLine(ctx.response_deadline, myClub.short, ctx.competition_type);
   const responseHtml = responseLine
     ? `<p class="meta" style="color:${ctx.response_deadline?.overdue && ctx.response_deadline?.my_turn ? "#f88" : "#fc6"};">${responseLine}</p>`
     : "";

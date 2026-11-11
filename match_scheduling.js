@@ -352,9 +352,15 @@ export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
       operational = {
         kind: "reply",
         text: overdue
-          ? `Reply is overdue (was ${when}). The next month lock warns the first time. Each later lock while still overdue is ₿1,000,000.`
-          : `Reply due ${when}. Miss it and the next month lock warns the first time. Each later lock while still overdue is ₿1,000,000.`,
-        title: "The club that owes the reply is warned at the first overdue month lock. Each later lock while the reply is still overdue charges ₿1,000,000.",
+          ? cup
+            ? `Reply is overdue (was ${when}). The next month lock warns the first time. Each later lock while still overdue is ₿1,000,000.`
+            : `Reply is overdue (was ${when}). That is a strike: ₿500k. Still silent at the next month lock is another strike.`
+          : cup
+            ? `Reply due ${when}. Miss it and the next month lock warns the first time. Each later lock while still overdue is ₿1,000,000.`
+            : `Reply due ${when}. 48 hours, and that can run into the next GPSL month. Missing it is a strike: ₿500k.`,
+        title: cup
+          ? "The club that owes the reply is warned at the first overdue month lock. Each later lock while the reply is still overdue charges ₿1,000,000."
+          : "A league reply is 48 hours and can cross a month lock. Missing it is a ₿500k strike. Still silent at the next lock is another strike. Three on this fixture forfeits it and adds ₿1m.",
       };
     }
   }
@@ -765,18 +771,22 @@ export function catchUpKickoffPrefix() {
 }
 
 /** Human-readable response deadline line for schedule UI. */
-export function formatResponseDeadlineLine(deadline, myClubShort) {
+export function formatResponseDeadlineLine(deadline, myClubShort, competitionType) {
   if (!deadline?.due_at) return "";
+  const cup = String(competitionType || "league").toLowerCase() === "cup";
   const mine = deadline.my_turn === true;
   const overdue = deadline.overdue === true;
   const uk = deadline.due_at_uk || formatKickoff(deadline.due_at, UK_TZ) + " UK";
   const misses = "";
   const dueMs = new Date(deadline.due_at).getTime();
   const soon = Number.isFinite(dueMs) && dueMs - Date.now() <= WARN_48H;
-  const consequence =
-    " The next month lock warns the first time this is overdue. Each later lock while still overdue is ₿1,000,000.";
+  const consequence = cup
+    ? " The next month lock warns the first time this is overdue. Each later lock while still overdue is ₿1,000,000."
+    : " Missing the 48 hours is a strike: ₿500k. Still silent at the next month lock is another strike.";
   if (mine && overdue) {
-    return `Response overdue since ${uk} — reply now. First overdue month lock is a warning only; later locks while still overdue charge ₿1,000,000 (once per lock).`;
+    return cup
+      ? `Response overdue since ${uk} — reply now. First overdue month lock is a warning only; later locks while still overdue charge ₿1,000,000.`
+      : `Response overdue since ${uk} — reply now. That miss is a strike: ₿500k. Still silent at the next month lock is another strike.`;
   }
   if (mine) {
     return `Your response due by ${uk}${misses}.${soon ? consequence : ""}`;
@@ -790,7 +800,9 @@ export function formatResponseDeadlineLine(deadline, myClubShort) {
     if (waiting === "You") return `Your response due by ${uk}${misses}.${soon ? consequence : ""}`;
     return `Waiting for opponent — response due ${uk}${misses}.${
       soon
-        ? " A miss is a warning at the next month lock, then ₿1,000,000 at each later lock while still overdue."
+        ? cup
+          ? " A miss is a warning at the next month lock, then ₿1,000,000 at each later lock while still overdue."
+          : " A miss is a strike: ₿500k. Still silent at the next month lock is another strike."
         : ""
     }`;
   }

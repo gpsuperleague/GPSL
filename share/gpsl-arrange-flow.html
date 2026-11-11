@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>GPSL match arranging</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #1c1c1c;
+      --card: #262626;
+      --fg: #ececec;
+      --muted: #9b9b9b;
+      --line: #3d3d3d;
+      --orange: #3a2a18;
+      --orange-line: #8a5a28;
+      --red: #3a1e1e;
+      --red-line: #8a3a3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 15px/1.35 "Segoe UI", system-ui, sans-serif;
+    }
+    main {
+      width: min(640px, 100%);
+      margin: 0 auto;
+      padding: 28px 22px 40px;
+    }
+    section + section { margin-top: 28px; }
+    header.block {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    header.block p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .legend { display: flex; gap: 12px; font-size: 13px; color: var(--muted); }
+    .swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 6px;
+      border-radius: 2px;
+      vertical-align: -1px;
+    }
+    .swatch.fine { background: #e67e22; }
+    .swatch.forfeit { background: #d4564e; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .card .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .card.fine { background: var(--orange); border-color: var(--orange-line); }
+    .card.forfeit { background: var(--red); border-color: var(--red-line); }
+    .card.fine .sub, .card.forfeit .sub { color: var(--fg); }
+    .join {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .stem { width: 1.5px; height: 12px; background: var(--fg); }
+    .head {
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 7px solid var(--fg);
+    }
+    .row { display: flex; gap: 10px; align-items: stretch; }
+    .row .card { flex: 1 1 0; min-width: 0; }
+    @media (max-width: 520px) {
+      .row { flex-direction: column; }
+    }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section>
+      <header class="block">
+        <div>
+          <h2>League arrange</h2>
+          <p>One fixture, its own month</p>
+        </div>
+        <div class="legend">
+          <span><i class="swatch fine"></i>Fine</span>
+          <span><i class="swatch forfeit"></i>Forfeit</span>
+        </div>
+      </header>
+      <div class="card"><div>Month before</div><div class="sub">Home proposes only</div></div>
+      <div class="join"><span class="stem"></span><span>No proposal at the lock</span><span class="head"></span></div>
+      <div class="card fine"><div>Home strike · ₿500k</div><div class="sub">Repeats each silent lock</div></div>
+      <div class="join"><span class="stem"></span><span>Play month, still silent</span><span class="head"></span></div>
+      <div class="card"><div>Away may propose</div><div class="sub">Away silence stays free</div></div>
+      <div class="join"><span class="stem"></span><span>A proposal is sent</span><span class="head"></span></div>
+      <div class="card">
+        <div>Reply clock</div>
+        <div class="sub">Early proposal: due at month open</div>
+        <div class="sub">Last 24h before open: 48h</div>
+        <div class="sub">After open, or a counter: 24h</div>
+      </div>
+      <div class="join"><span class="stem"></span><span>Overdue at a lock</span><span class="head"></span></div>
+      <div class="card fine"><div>Reply fine</div><div class="sub">First lock: warning</div><div class="sub">Later lock: ₿1m</div></div>
+      <div class="join"><span class="stem"></span><span>Kick-off agreed</span><span class="head"></span></div>
+      <div class="card"><div>Check-in</div><div class="sub">Opens 10 min before</div><div class="sub">Closes 10 min after</div></div>
+      <div class="join"><span class="stem"></span><span>One side missing</span><span class="head"></span></div>
+      <div class="card fine"><div>Check-in strike · ₿500k</div><div class="sub">Same match count</div></div>
+      <div class="join"><span class="stem"></span><span>Third strike on this match</span><span class="head"></span></div>
+      <div class="card forfeit"><div>₿1m and forfeit</div><div class="sub">Instant, either kind of strike</div></div>
+      <div class="join"><span class="stem"></span><span>Still unplayed, strikes level</span><span class="head"></span></div>
+      <div class="card">
+        <div>Window end</div>
+        <div class="sub">Play month + 2</div>
+        <div class="sub">More strikes loses</div>
+        <div class="sub">Then effort</div>
+        <div class="sub">Still level: void, 0 points</div>
+      </div>
+    </section>
+    <section>
+      <header class="block">
+        <div>
+          <h2>Season strikes</h2>
+          <p>Same ladder all year</p>
+        </div>
+      </header>
+      <div class="row">
+        <div class="card"><div>Each strike</div><div class="sub">₿500k</div></div>
+        <div class="card fine"><div>5, 10, 15…</div><div class="sub">Extra ₿1m</div></div>
+        <div class="card forfeit"><div>3 on one match</div><div class="sub">₿1m and forfeit</div></div>
+      </div>
+    </section>
+    <section>
+      <header class="block">
+        <div>
+          <h2>Cups</h2>
+          <p>No month-before strike</p>
+        </div>
+      </header>
+      <div class="row">
+        <div class="card"><div>Round month</div><div class="sub">Arrange after the draw</div></div>
+        <div class="card fine"><div>Grace lock</div><div class="sub">Silent: ₿2.5m</div></div>
+        <div class="card"><div>May cups</div><div class="sub">No grace month</div></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
