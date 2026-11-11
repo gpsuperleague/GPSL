@@ -1,8 +1,13 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { renderMedicalRoomIntros } from "./medical_room_rules.js?v=20261024-half-cap";
+import {
+  resolveAdminClubContext,
+  mountAdminClubPicker,
+} from "./staff_club_preview.js?v=20261111-admin-preview";
 
 let state = null;
+let previewClub = null;
 
 function hireWindowOpen() {
   return state?.hire_window_open !== false;
@@ -138,7 +143,7 @@ async function renderFitnessWatch() {
 
   try {
     const { data, error } = await supabase.rpc("club_match_fitness_map", {
-      p_club: null,
+      p_club: previewClub,
     });
     if (error) {
       if (/club_match_fitness_map|schema cache|Could not find/i.test(error.message || "")) {
@@ -451,7 +456,7 @@ function renderPhysios() {
 
 async function loadState() {
   const { data, error } = await supabase.rpc("medical_room_state", {
-    p_club: null,
+    p_club: previewClub,
   });
   if (error) {
     if (/medical_room_state|schema cache|Could not find/i.test(error.message || "")) {
@@ -502,9 +507,20 @@ async function loadState() {
   renderPhysios();
   renderTokens();
   await renderFitnessWatch();
+  if (previewClub) {
+    document
+      .querySelectorAll(
+        "[data-hire-doctor],[data-hire-physio],button[data-token-injury],select.med-token-pick"
+      )
+      .forEach((el) => {
+        el.disabled = true;
+        el.onclick = null;
+      });
+  }
 }
 
 async function hireDoctor() {
+  if (previewClub) return;
   if (!hireWindowOpen()) {
     setStatus(hireWindowMessage(), "error");
     return;
@@ -526,6 +542,7 @@ async function hireDoctor() {
 }
 
 async function hirePhysio(slot) {
+  if (previewClub) return;
   if (!hireWindowOpen()) {
     setStatus(hireWindowMessage(), "error");
     return;
@@ -583,6 +600,7 @@ function specialistEffectiveCut(tier, remaining) {
 }
 
 async function applyToken(injuryId, pickValue = null) {
+  if (previewClub) return;
   const consults = usableConsults();
   const picked =
     (pickValue && consults.find((c) => c.key === pickValue)) || consults[0] || null;
@@ -648,5 +666,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location = "login.html";
     return;
   }
+  const preview = await resolveAdminClubContext(user, "gpsl_admin_medical_club");
+  await mountAdminClubPicker(preview, {
+    sessionKey: "gpsl_admin_medical_club",
+    label: "Preview club medical room: ",
+  });
+  if (!preview.shortName) {
+    setStatus("No club linked to this account.", "error");
+    return;
+  }
+  previewClub = preview.adminPreview ? preview.shortName : null;
   await loadState();
 });

@@ -15,6 +15,11 @@ import {
   inclusiveDayCountFromDates,
 } from "./owner_holidays.js?v=20261019-supporter-holiday";
 import { wireAvailabilityPanel } from "./owner_availability.js?v=20261020-owner-tz-avail";
+import { loadAvailabilityContextForClub } from "./match_scheduling.js?v=20261111-reply48";
+import {
+  resolveAdminClubContext,
+  mountAdminClubPicker,
+} from "./staff_club_preview.js?v=20261111-admin-preview";
 import {
   ownerBadgePublicUrl,
   ownerBadgeStoragePath,
@@ -484,7 +489,7 @@ function beginHolidayEdit(row) {
     ?.setAttribute("aria-expanded", "true");
 }
 
-function renderHolidayList(holidays) {
+function renderHolidayList(holidays, { readOnly = false } = {}) {
   const list = document.getElementById("holidayList");
   if (!list) return;
 
@@ -503,7 +508,9 @@ function renderHolidayList(holidays) {
         : status === "Active"
           ? "holiday-status holiday-status--active"
           : "holiday-status";
-      const actions = h.is_upcoming
+      const actions = readOnly
+        ? ""
+        : h.is_upcoming
         ? `<span style="display:flex;gap:6px;">
             <button type="button" class="small-btn holiday-amend-btn" data-id="${h.id}">Amend</button>
             <button type="button" class="small-btn holiday-cancel-btn" data-id="${h.id}">Cancel</button>
@@ -1092,6 +1099,97 @@ function wireHolidayBooking() {
   });
 }
 
+async function paintAdminOwnerPreview(shortName, clubLabel) {
+  const h1 = document.querySelector(".page-container h1");
+  if (h1) h1.textContent = `Owner Details — ${clubLabel || shortName}`;
+
+  const { data: club } = await supabase
+    .from("Clubs")
+    .select("ShortName, Club, owner")
+    .eq("ShortName", shortName)
+    .maybeSingle();
+
+  const input = document.getElementById("ownerInput");
+  if (input) {
+    input.value = club?.owner?.trim() || "";
+    input.disabled = true;
+  }
+  for (const id of [
+    "editOwnerTagBtn",
+    "saveOwnerBtn",
+    "toggleHolidayBookingBtn",
+    "bookHolidayBtn",
+    "saveMatchSystemBtn",
+  ]) {
+    const el = document.getElementById(id);
+    if (el) el.hidden = true;
+  }
+  const msChk = document.getElementById("matchSystemOnChk");
+  if (msChk) msChk.disabled = true;
+
+  let avail = null;
+  try {
+    avail = await loadAvailabilityContextForClub(shortName);
+  } catch (err) {
+    console.warn("owner preview availability:", err);
+  }
+
+  const availBtn = document.getElementById("editAvailabilityBtn");
+  if (availBtn) {
+    const n = Number(avail?.slot_count || 0);
+    const tz = avail?.timezone || "timezone not set";
+    availBtn.textContent = `${n} weekly slot${n === 1 ? "" : "s"} · ${tz}`;
+    availBtn.disabled = true;
+  }
+
+  const nowMs = Date.now();
+  const holidays = (Array.isArray(avail?.holidays) ? avail.holidays : []).map((h) => {
+    const start = new Date(h.starts_at).getTime();
+    const end = new Date(h.ends_at).getTime();
+    return {
+      ...h,
+      is_active: start <= nowMs && nowMs < end,
+      is_upcoming: start > nowMs,
+      is_ended: end <= nowMs,
+    };
+  });
+  const used = holidays.reduce((sum, h) => sum + (Number(h.day_count) || 0), 0);
+  const quota = document.getElementById("holidayQuota");
+  if (quota) {
+    quota.textContent = `${used} holiday day${used === 1 ? "" : "s"} booked this season.`;
+  }
+  renderHolidayList(holidays, { readOnly: true });
+
+  const season = await loadCurrentSeason(supabase);
+  let month = "october";
+  if (season?.id) {
+    const { data: months } = await supabase
+      .from("competition_season_calendar")
+      .select("gpsl_month, unlock_at, lock_at")
+      .eq("season_id", season.id);
+    const now = Date.now();
+    const active = (months || []).find((m) => {
+      const unlock = new Date(m.unlock_at).getTime();
+      const lock = new Date(m.lock_at).getTime();
+      return unlock <= now && now < lock;
+    });
+    if (active?.gpsl_month) month = active.gpsl_month;
+    const { data: on } = await supabase.rpc("club_gpsl_match_system_on", {
+      p_club: shortName,
+      p_season_id: season.id,
+      p_gpsl_month: month,
+    });
+    const onNow = on !== false;
+    setMatchSystemSwitch(document.getElementById("matchSystemOnChk"), onNow);
+    paintMatchSystemChrome(onNow);
+  }
+
+  const note = document.getElementById("matchSystemNote");
+  if (note) note.textContent = "Preview only. This switch is not saved from here.";
+  const absence = document.getElementById("seasonAbsenceSummary");
+  if (absence) absence.textContent = "Season absence stays as this owner set it.";
+}
+
 async function initOwnerDetailsPage() {
   initGpslInfoTips();
   await initGlobal();
@@ -1101,6 +1199,16 @@ async function initOwnerDetailsPage() {
   } = await supabase.auth.getUser();
   if (!user) {
     window.location = "login.html";
+    return;
+  }
+
+  const preview = await resolveAdminClubContext(user, "gpsl_admin_owner_details");
+  await mountAdminClubPicker(preview, {
+    sessionKey: "gpsl_admin_owner_details",
+    label: "Preview club owner details: ",
+  });
+  if (preview.adminPreview && preview.shortName) {
+    await paintAdminOwnerPreview(preview.shortName, preview.clubLabel);
     return;
   }
 

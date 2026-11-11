@@ -1,4 +1,8 @@
 import { supabase, initGlobal } from "./global.js?v=20261111-strike-pop";
+import {
+  resolveAdminClubContext,
+  mountAdminClubPicker,
+} from "./staff_club_preview.js?v=20261111-admin-preview";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import {
   loadLeagueFixtures,
@@ -80,6 +84,7 @@ let confirmMode = null;
 let statsEditMode = null;
 let myDivision = null;
 let upcomingFixtures = [];
+let adminPreview = false;
 let allLeagueFixtures = [];
 /** @type {Map<string, import("./player_discipline.js").ActiveSuspension[]>} */
 let suspensionsByPlayer = new Map();
@@ -1704,11 +1709,59 @@ async function loadSquadPlayers() {
   applyMatchdaySquadFilter();
 }
 
+async function loadPreviewFixtureSquads() {
+  if (!adminPreview || !myClub?.short || !upcomingFixtures.length) return;
+  const grouped = new Map();
+  await Promise.all(
+    upcomingFixtures.map(async (f) => {
+      if (f?.id == null) return;
+      const { data, error } = await supabase.rpc("club_matchday_squad_for_fixture", {
+        p_club: myClub.short,
+        p_fixture_id: f.id,
+      });
+      if (error || !Array.isArray(data) || !data.length) return;
+      const rows = data.filter((row) => row.squad_source === "fixture");
+      if (!rows.length) return;
+      grouped.set(String(f.id), { rows, layout: null });
+    })
+  );
+  fixtureSquadOverrides = grouped;
+  const target = squadTargetFixtureId();
+  squadPanelApi?.setSavedRows(rowsForFixture(target), layoutForFixture(target));
+}
+
 async function loadMatchdaySquad() {
   defaultSquadRows = [];
   defaultPitchLayout = null;
   fixtureSquadOverrides = new Map();
   matchdaySavedFormations = [];
+
+  if (adminPreview && myClub?.short) {
+    const [squadRes, layoutRes, formationsRes] = await Promise.all([
+      supabase
+        .from("club_matchday_squad_player")
+        .select("club_short_name, player_id, slot_kind, pitch_slot, sort_order")
+        .eq("club_short_name", myClub.short),
+      supabase
+        .from("club_matchday_squad")
+        .select("pitch_layout")
+        .eq("club_short_name", myClub.short)
+        .maybeSingle(),
+      supabase
+        .from("club_matchday_saved_formation")
+        .select("*")
+        .eq("club_short_name", myClub.short),
+    ]);
+    if (!squadRes.error) defaultSquadRows = squadRes.data || [];
+    if (!layoutRes.error && layoutRes.data?.pitch_layout) {
+      defaultPitchLayout = layoutRes.data.pitch_layout;
+    }
+    if (!formationsRes.error) matchdaySavedFormations = formationsRes.data || [];
+    fixtureSquadReady = true;
+    matchdaySquadRows = defaultSquadRows;
+    matchdayPitchLayout = defaultPitchLayout;
+    return;
+  }
 
   const [squadRes, layoutRes, formationsRes, fixtureRes] = await Promise.all([
     supabase.from("club_matchday_squad_public").select("*"),
@@ -1823,6 +1876,10 @@ function applyDefaultLineupFromSquad() {
 }
 
 async function saveMatchdayFormation(slotNo, name, pitchLayout) {
+  if (adminPreview) {
+    noteSquadSave("Preview only — formations are not saved.");
+    return null;
+  }
   const { data, error } = await supabase.rpc("club_save_matchday_formation", {
     p_slot_no: slotNo,
     p_name: name,
@@ -1835,6 +1892,12 @@ async function saveMatchdayFormation(slotNo, name, pitchLayout) {
 }
 
 async function loadMatchdayFormation(slotNo) {
+  if (adminPreview) {
+    return (
+      matchdaySavedFormations.find((row) => Number(row.slot_no) === Number(slotNo)) ||
+      null
+    );
+  }
   const { data, error } = await supabase
     .from("club_matchday_saved_formation_public")
     .select("slot_no, name, pitch_layout")
@@ -1845,6 +1908,10 @@ async function loadMatchdayFormation(slotNo) {
 }
 
 async function deleteMatchdayFormation(slotNo) {
+  if (adminPreview) {
+    noteSquadSave("Preview only — formations are not changed.");
+    return null;
+  }
   const { data, error } = await supabase.rpc("club_delete_matchday_formation", {
     p_slot_no: slotNo,
   });
@@ -1860,6 +1927,10 @@ function noteSquadSave(message) {
 }
 
 async function saveMatchdaySquad(slots, pitchLayout = null) {
+  if (adminPreview) {
+    noteSquadSave("Preview only — this squad is not saved.");
+    return null;
+  }
   const { data, error } = await supabase.rpc("club_save_matchday_squad", {
     p_slots: slots,
     p_pitch_layout: pitchLayout,
@@ -1879,6 +1950,10 @@ async function saveMatchdaySquad(slots, pitchLayout = null) {
 }
 
 async function saveFixtureMatchdaySquad(fixtureId, slots, pitchLayout = null) {
+  if (adminPreview) {
+    noteSquadSave("Preview only — this lineup is not saved.");
+    return null;
+  }
   if (!fixtureSquadReady) {
     throw new Error(
       "Run fixture_squad_override_20261106.sql in the SQL editor, then reload this page."
@@ -1903,6 +1978,10 @@ async function saveFixtureMatchdaySquad(fixtureId, slots, pitchLayout = null) {
 }
 
 async function clearFixtureMatchdaySquad(fixtureId) {
+  if (adminPreview) {
+    noteSquadSave("Preview only — this lineup is not cleared.");
+    return;
+  }
   const { error } = await supabase.rpc("club_clear_fixture_matchday_squad", {
     p_fixture_id: Number(fixtureId),
   });
@@ -2899,6 +2978,10 @@ async function loadUpcomingFixtures() {
 }
 
 async function confirmPendingResult() {
+  if (adminPreview) {
+    setStatus("submitStatus", "Preview only — results are not confirmed.", true);
+    return;
+  }
   const f = confirmMode?.fixture || selectedFixture();
   if (!f || !confirmMode) {
     setStatus("submitStatus", "Nothing to confirm.", true);
@@ -2953,6 +3036,10 @@ async function confirmPendingResult() {
 }
 
 async function rejectPendingResult() {
+  if (adminPreview) {
+    setStatus("submitStatus", "Preview only — results are not rejected.", true);
+    return;
+  }
   if (!confirmMode?.submissionId) return;
   const fixtureId = confirmMode.fixture?.id || selectedFixture()?.id;
   saveResultDraft(fixtureId);
@@ -2976,6 +3063,10 @@ async function rejectPendingResult() {
 }
 
 async function submitResult() {
+  if (adminPreview) {
+    setStatus("submitStatus", "Preview only — results are not submitted.", true);
+    return;
+  }
   if (statsEditMode) {
     await submitStatsEdit();
     return;
@@ -3180,10 +3271,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  const preview = await resolveAdminClubContext(user, "gpsl_admin_matchday_club");
+  await mountAdminClubPicker(preview, {
+    sessionKey: "gpsl_admin_matchday_club",
+    label: "Preview club matchday: ",
+  });
+  adminPreview = !!preview.adminPreview;
+
   const { data: club, error: clubErr } = await supabase
     .from("Clubs")
     .select("ShortName, Club, Nation")
-    .eq("owner_id", user.id)
+    .eq("ShortName", preview.shortName || "")
     .maybeSingle();
 
   if (clubErr) {
@@ -3216,8 +3314,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  document.getElementById("pageMeta").textContent =
-    `${club.Club} — enter scores below or on Fixtures (highlighted rows)`;
+  document.getElementById("pageMeta").textContent = adminPreview
+    ? `${club.Club} — owner view. Squad saves and results are not sent.`
+    : `${club.Club} — enter scores below or on Fixtures (highlighted rows)`;
+
+  if (adminPreview) {
+    document.getElementById("simulateResultBtn")?.setAttribute("hidden", "");
+    document.getElementById("instantResultBtn")?.setAttribute("hidden", "");
+    const submitBtn = document.getElementById("submitResultBtn");
+    if (submitBtn) submitBtn.disabled = true;
+  }
 
   document.getElementById("submitResultBtn").onclick = submitResult;
   document.getElementById("rejectResultBtn").onclick = rejectPendingResult;
@@ -3228,6 +3334,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     ?.addEventListener("change", onConnectionStarsChange);
   syncConnectionStarsVisual();
   async function runMatchdaySim(mode) {
+    if (adminPreview) return;
     const f = selectedFixture();
     if (!f) return;
     if (
@@ -3333,6 +3440,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   await loadUpcomingFixtures();
+  if (adminPreview) await loadPreviewFixtureSquads();
   const deepLink = fixtureIdFromUrl();
   if (deepLink.fixtureId) {
     await ensureFixtureInUpcomingList(deepLink.fixtureId);

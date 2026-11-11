@@ -25,12 +25,18 @@ import {
 } from "./boardroom_rules.js";
 import { loadSeasonPositionChart } from "./club_season_position_chart.js";
 
+import {
+  resolveAdminClubContext,
+  mountAdminClubPicker,
+} from "./staff_club_preview.js?v=20261111-admin-preview";
+
 let pageClubShort = null;
 let lastFinanceRating = null;
+let boardPreview = false;
 
 function setBtnVisible(btn, visible) {
   if (!btn) return;
-  btn.classList.toggle("is-hidden", !visible);
+  btn.classList.toggle("is-hidden", boardPreview ? true : !visible);
 }
 
 function showLoadError(message) {
@@ -779,6 +785,7 @@ function wireManagerActions() {
   if (renewBtn && !renewBtn.dataset.wired) {
     renewBtn.dataset.wired = "1";
     renewBtn.addEventListener("click", async () => {
+      if (boardPreview) return;
       if (
         !confirm(
           "Renew manager for another 2-season deal?\n\nIf not renewed before August starts they are released for market value."
@@ -807,6 +814,7 @@ function wireManagerActions() {
   if (listBtn && !listBtn.dataset.wired) {
     listBtn.dataset.wired = "1";
     listBtn.addEventListener("click", async () => {
+      if (boardPreview) return;
       const managerId = Number(listBtn.dataset.managerId);
       if (!managerId) return;
       listBtn.disabled = true;
@@ -827,6 +835,7 @@ function wireManagerActions() {
   if (sackBtn && !sackBtn.dataset.wired) {
     sackBtn.dataset.wired = "1";
     sackBtn.addEventListener("click", async () => {
+      if (boardPreview) return;
       if (
         !confirm(
           "Sack manager? You receive half market value, cannot sack again this season, and cannot re-sign this manager until next season."
@@ -876,10 +885,24 @@ async function initBoardroom() {
     return;
   }
 
+  const preview = await resolveAdminClubContext(user, "gpsl_admin_boardroom_club");
+  await mountAdminClubPicker(preview, {
+    sessionKey: "gpsl_admin_boardroom_club",
+    label: "Preview club boardroom: ",
+  });
+  boardPreview = !!preview.adminPreview;
+
+  if (preview.noClub || !preview.shortName) {
+    showLoadError(
+      "No club is linked to your account. Ask an admin to link your club under Owner administration."
+    );
+    return;
+  }
+
   const { data: club, error } = await supabase
     .from("Clubs")
     .select("ShortName, Club")
-    .eq("owner_id", user.id)
+    .eq("ShortName", preview.shortName)
     .maybeSingle();
 
   if (error) {
@@ -888,9 +911,7 @@ async function initBoardroom() {
   }
 
   if (!club?.ShortName) {
-    showLoadError(
-      "No club is linked to your account. Ask an admin to link your club under Owner administration."
-    );
+    showLoadError("Club not found.");
     return;
   }
 

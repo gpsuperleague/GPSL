@@ -8,6 +8,58 @@ import {
   fetchIsGpslModUser,
 } from "./global.js";
 
+/**
+ * Admin-only club preview (not mods). Same picker as squad and finances.
+ * @param {object} user
+ * @param {string} sessionKey
+ */
+export async function resolveAdminClubContext(user, sessionKey) {
+  if (user && isGpslAdminUser(user)) {
+    return resolveStaffClubContext(user, sessionKey);
+  }
+
+  const { data: owned } = await supabase
+    .from("Clubs")
+    .select("ShortName, Club")
+    .eq("owner_id", user?.id || "")
+    .maybeSingle();
+
+  if (owned?.ShortName) {
+    return {
+      shortName: owned.ShortName,
+      clubLabel: owned.Club,
+      adminPreview: false,
+      staffPicker: false,
+      ownedShort: owned.ShortName,
+      ownedLabel: owned.Club,
+    };
+  }
+
+  return {
+    shortName: null,
+    clubLabel: null,
+    adminPreview: false,
+    noClub: true,
+    staffPicker: false,
+  };
+}
+
+export async function mountAdminClubPicker(ctx, opts = {}) {
+  if (!ctx?.staffPicker) return null;
+  return mountStaffClubPicker({
+    sessionKey: opts.sessionKey,
+    hostId: opts.hostId || "staffClubPickerHost",
+    selectId: opts.selectId || "staffClubSelect",
+    label: opts.label || "Preview club: ",
+    hint:
+      opts.hint ||
+      "Admin only. This is the screen that club sees. Clicks are not saved.",
+    selectedShort: ctx.shortName,
+    ownedShort: ctx.ownedShort,
+    ownedLabel: ctx.ownedLabel,
+  });
+}
+
 export async function canStaffPreviewClub(user) {
   if (!user) return false;
   if (isGpslAdminUser(user)) return true;

@@ -1,4 +1,8 @@
 import { supabase, initGlobal } from "./global.js";
+import {
+  resolveAdminClubContext,
+  mountAdminClubPicker,
+} from "./staff_club_preview.js?v=20261111-admin-preview";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { stadiumImageUrl } from "./stadium_images.js";
@@ -380,16 +384,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  const { data: club } = await supabase
-    .from("Clubs")
-    .select("ShortName, Club, Stadium, Capacity, base_capacity")
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  const preview = await resolveAdminClubContext(user, "gpsl_admin_stadium_club");
+  await mountAdminClubPicker(preview, {
+    sessionKey: "gpsl_admin_stadium_club",
+    label: "Preview club stadium: ",
+  });
 
-  if (!club?.ShortName) {
+  if (!preview.shortName) {
     document.getElementById("pageMeta").textContent =
       "No club linked to this account.";
     return;
+  }
+
+  const { data: club } = await supabase
+    .from("Clubs")
+    .select("ShortName, Club, Stadium, Capacity, base_capacity")
+    .eq("ShortName", preview.shortName)
+    .maybeSingle();
+
+  if (!club?.ShortName) {
+    document.getElementById("pageMeta").textContent = "Club not found.";
+    return;
+  }
+
+  if (preview.adminPreview) {
+    const expansion = document.getElementById("expansionPanel");
+    if (expansion) expansion.hidden = true;
   }
 
   await loadClubsMap();
@@ -419,10 +439,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   ).toLocaleString("en-GB");
 
   renderStadiumPhoto(clubShortName, club.Stadium);
-  mountStadiumCommercial(supabase, clubShortName);
+  mountStadiumCommercial(supabase, clubShortName, {
+    readOnly: preview.adminPreview,
+  });
 
-  wireExpansionForm();
-  await refreshExpansionPanel();
+  if (!preview.adminPreview) {
+    wireExpansionForm();
+    await refreshExpansionPanel();
+  }
 
   const estimate = await estimateGateForClub(supabase, clubShortName);
   renderGateBreakdown(estimate);

@@ -4,6 +4,10 @@ import {
   supabase,
   initGlobal,
 } from "./global.js";
+import {
+  resolveAdminClubContext,
+  mountAdminClubPicker,
+} from "./staff_club_preview.js?v=20261111-admin-preview";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
 import {
@@ -112,11 +116,21 @@ function formatDivisionLabel(division) {
   return division;
 }
 
+let clubPreview = false;
+
 async function loadOwnerClub(userId) {
   return supabase
     .from("Clubs")
     .select(CLUB_SELECT_BASE)
     .eq("owner_id", userId)
+    .maybeSingle();
+}
+
+async function loadClubByShort(shortName) {
+  return supabase
+    .from("Clubs")
+    .select(CLUB_SELECT_BASE)
+    .eq("ShortName", shortName)
     .maybeSingle();
 }
 
@@ -230,7 +244,16 @@ async function initClubDetailsPage() {
     return;
   }
 
-  const { data: club, error } = await loadOwnerClub(user.id);
+  const preview = await resolveAdminClubContext(user, "gpsl_admin_club_details");
+  await mountAdminClubPicker(preview, {
+    sessionKey: "gpsl_admin_club_details",
+    label: "Preview club details: ",
+  });
+  clubPreview = !!preview.adminPreview;
+
+  const { data: club, error } = preview.shortName
+    ? await loadClubByShort(preview.shortName)
+    : await loadOwnerClub(user.id);
 
   if (error) {
     console.error("Club Details club load:", error);
@@ -400,6 +423,16 @@ function setThemeStatus(message, kind = "") {
 }
 
 function wireDashboardThemePanel(clubShort) {
+  if (clubPreview) {
+    const save = document.getElementById("themeSaveBtn");
+    if (save) save.hidden = true;
+    document
+      .querySelectorAll("#clubThemePanel input, #clubThemePanel select, #clubThemePanel button")
+      .forEach((el) => {
+        el.disabled = true;
+      });
+    return;
+  }
   if (document.getElementById("clubThemePanel")?.dataset.wired === "1") return;
   const panel = document.getElementById("clubThemePanel");
   if (!panel) return;
@@ -584,6 +617,7 @@ function applySupporterThemeGate(self) {
 }
 
 async function wireClubSwapPanel(fromClub) {
+  if (clubPreview) return;
   const panel = document.getElementById("clubSwapPanel");
   if (!panel || !fromClub) return;
   panel.hidden = false;

@@ -1,4 +1,8 @@
 import { supabase, initGlobal } from "./global.js";
+import {
+  resolveAdminClubContext,
+  mountAdminClubPicker,
+} from "./staff_club_preview.js?v=20261111-admin-preview";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, clubWithOwnerHtml, fixtureOwnerOccupancy } from "./clubs_lookup.js";
 import {
@@ -91,6 +95,7 @@ let holidayContext = null;
 let lastFixtures = [];
 /** @type {{ enabled: boolean, isAdmin: boolean, isStaff?: boolean, error: string|null }} */
 let matchSimStatus = { enabled: false, isAdmin: false, isStaff: false, error: null };
+let adminPreview = false;
 
 function showError(msg) {
   const el = document.getElementById("clubFixturesError");
@@ -275,6 +280,12 @@ async function enrichManualBlackBoxFlags(fixtures) {
 }
 
 function actionHtml(f) {
+  if (adminPreview) {
+    if (f.status === "played") {
+      return `<a href="match_report.html?fixture=${f.id}" class="btn-link secondary">Match details</a>`;
+    }
+    return "";
+  }
   if (!myClub.short || !fixtureInvolvesClub(f, myClub)) return "";
 
   const url = `matchday.html?fixture=${encodeURIComponent(String(f.id))}`;
@@ -947,14 +958,8 @@ function renderFixtures(fixtures) {
   }
 }
 
-async function loadMyClub(user) {
-  const { data: club } = await supabase
-    .from("Clubs")
-    .select("ShortName, Club")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  myClub = { short: club?.ShortName || null, name: club?.Club || null };
+async function loadMyClub(shortName, clubLabel) {
+  myClub = { short: shortName || null, name: clubLabel || null };
 
   if (myClub.short) {
     const { data: reg } = await supabase
@@ -971,6 +976,23 @@ async function loadMyClub(user) {
 
 async function refreshFixtures(seasonId = null) {
   const root = document.getElementById("clubFixturesRoot");
+  if (adminPreview) {
+    let clubFixtures = await loadPublicFixturesForClub();
+    const key = (myClub.short || "").trim().toUpperCase();
+    clubFixtures = clubFixtures.map((f) => ({
+      ...f,
+      is_home: (f.home_club_short_name || "").trim().toUpperCase() === key,
+    }));
+    clubFixtures = await enrichManualBlackBoxFlags(clubFixtures);
+    const fixtures = clubFixtures;
+    ensureMatchVideoStyles();
+    renderFixtures(fixtures);
+    if (root && !fixtures.length) {
+      root.innerHTML =
+        '<p class="empty">No fixtures for this club this season yet.</p>';
+    }
+    return;
+  }
   const { data, error } = await supabase.rpc("club_fixtures_my_club");
   if (error) {
     showError(error.message || "Could not refresh fixtures");
@@ -1029,7 +1051,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    await loadMyClub(user);
+    const preview = await resolveAdminClubContext(user, "gpsl_admin_club_fixtures");
+    await mountAdminClubPicker(preview, {
+      sessionKey: "gpsl_admin_club_fixtures",
+      label: "Preview club fixtures: ",
+    });
+    adminPreview = !!preview.adminPreview;
+    await loadMyClub(preview.shortName, preview.clubLabel);
     if (!myClub.short) {
       root.innerHTML =
         '<p class="empty">Assign a club to your account to see your fixtures here.</p>';

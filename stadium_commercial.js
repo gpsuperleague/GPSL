@@ -158,7 +158,7 @@ function renderMerch(d) {
     between ${money(d.band_min)} and ${money(d.band_max)} depending on league &amp; cup results vs targets and how full your stadium is.</p>`;
 }
 
-async function loadAndRender(supabase, clubShort, root) {
+async function loadAndRender(supabase, clubShort, root, readOnly = false) {
   const { data, error } = await supabase.rpc("club_commercial_get_club", {
     p_club_short_name: clubShort,
   });
@@ -188,6 +188,11 @@ async function loadAndRender(supabase, clubShort, root) {
     ${renderMerch(d)}
     <p id="commercialStatus" class="expansion-hint" role="status"></p>`;
 
+  if (readOnly) {
+    root.querySelectorAll(".comm-accept").forEach((btn) => btn.remove());
+    return;
+  }
+
   root.querySelectorAll(".comm-accept").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const brand = btn.dataset.brand || "this sponsor";
@@ -205,17 +210,17 @@ async function loadAndRender(supabase, clubShort, root) {
         root.querySelectorAll(".comm-accept").forEach((b) => (b.disabled = false));
         return;
       }
-      await loadAndRender(supabase, clubShort, root);
+      await loadAndRender(supabase, clubShort, root, false);
     });
   });
 }
 
-export async function mountStadiumCommercial(supabase, clubShort) {
+export async function mountStadiumCommercial(supabase, clubShort, opts = {}) {
   const root = document.getElementById("commercialContent");
   if (!root || !clubShort) return;
   root.innerHTML = `<p class="empty">Loading…</p>`;
   try {
-    await loadAndRender(supabase, clubShort, root);
+    await loadAndRender(supabase, clubShort, root, !!opts.readOnly);
   } catch (e) {
     root.innerHTML = `<p class="expansion-hint expansion-hint--error">${esc(e?.message || e)}</p>`;
   }
