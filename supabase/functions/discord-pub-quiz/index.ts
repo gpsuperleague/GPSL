@@ -44,10 +44,15 @@ function money(n: number): string {
 }
 
 function prizeFor(place: number, quiz: Record<string, unknown>): number {
-  if (place === 1) return Number(quiz.prize_1) || 5000;
-  if (place === 2) return Number(quiz.prize_2) || 3500;
-  if (place === 3) return Number(quiz.prize_3) || 2000;
-  return Number(quiz.prize_rest) || 1000;
+  const raw = place === 1
+    ? quiz.prize_1
+    : place === 2
+      ? quiz.prize_2
+      : place === 3
+        ? quiz.prize_3
+        : quiz.prize_rest;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
 }
 
 type Row = {
@@ -166,9 +171,11 @@ async function release(db: SupabaseClient, id: number) {
 
 function questionPayload(q: Record<string, unknown>) {
   const closes = Math.floor(new Date(String(q.closes_at)).getTime() / 1000);
+  const rounds = Number(q.round_count) || 5;
+  const total = Number(q.question_count) || 10;
   const content = [
-    `**Round ${q.round_no} of 5 · ${q.round_title}**`,
-    `**Question ${q.q_no} of 10**`,
+    `**Round ${q.round_no} of ${rounds} · ${q.round_title}**`,
+    `**Question ${q.q_no} of ${total}**`,
     "",
     String(q.prompt || ""),
     "",
@@ -214,9 +221,10 @@ async function ensureHeader(
   channelId: string,
   quiz: Record<string, unknown>,
   roundNo: number,
-  roundTitle: string
+  roundTitle: string,
+  roundCount: number
 ): Promise<string> {
-  const content = `**Round ${roundNo} of 5 · ${roundTitle}**`;
+  const content = `**Round ${roundNo} of ${roundCount} · ${roundTitle}**`;
   const existing = String(quiz.header_message_id || "");
   if (existing && Number(quiz.current_round_no) === roundNo) return existing;
   if (existing) {
@@ -347,20 +355,36 @@ async function openAndPost(
     const paid = await db.rpc("gpsl_pub_quiz_pay", { p_id: quizId });
     if (paid.error) throw new Error(paid.error.message);
     const result = paid.data as Record<string, unknown>;
+    const test = result.is_test === true;
     if (quiz.header_message_id) {
-      await editMessage(token, channelId, String(quiz.header_message_id), "**Pub quiz complete**");
+      await editMessage(
+        token,
+        channelId,
+        String(quiz.header_message_id),
+        test ? "**Test complete**" : "**Pub quiz complete**"
+      );
     }
     const rows = (result.rows as Row[]) || [];
     const lines = rows.slice(0, 25).map((r) => {
-      const amount = prizeFor(Number(r.place) || 0, result);
-      return `${r.place}. ${r.owner_tag || "Owner"} — ${r.points ?? 0} — ${money(amount)}`;
+      const score = `${r.place}. ${r.owner_tag || "Owner"} — ${r.points ?? 0}`;
+      return test ? score : `${score} — ${money(prizeFor(Number(r.place) || 0, result))}`;
     });
+    const head = test
+      ? "**Test complete**\nNo prizes. These were saved questions, including any picture and song."
+      : "**Final result**\nPrizes are in the Building Society.";
     await postMessage(token, channelId, {
-      content: `**Final result**\nPrizes are in the Building Society.\n\n${lines.join("\n") || "No one answered."}`.slice(0, 1900),
+      content: `${head}\n\n${lines.join("\n") || "No one answered."}`.slice(0, 1900),
     });
     return null;
   }
-  const headerId = await ensureHeader(token, channelId, quiz, Number(q.round_no), String(q.round_title));
+  const headerId = await ensureHeader(
+    token,
+    channelId,
+    quiz,
+    Number(q.round_no),
+    String(q.round_title),
+    Number(q.round_count) || 5
+  );
   const messageId = await postQuestion(token, channelId, q);
   await db.rpc("gpsl_pub_quiz_mark_question_message", {
     p_question_id: q.question_id,

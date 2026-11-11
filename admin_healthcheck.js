@@ -55,6 +55,8 @@ const CHECK_ABOUT = {
     "The clock that awards a walkover when a club in the fixture is vacant. Last call means it has run in the last 20 minutes.",
   "Commercial income":
     "The clock that posts club commercial income. Last call means it has run in the last 30 minutes.",
+  "Injury rolls":
+    "Confirming a result is what rolls for a new injury. Wired means that call is still in place. Last call means a roll was recorded in the last 3 days. A quiet spell with no new injury can still be green.",
 };
 
 function escapeHtml(value) {

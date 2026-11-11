@@ -225,6 +225,24 @@ document.getElementById("quizPick").addEventListener("change", async (ev) => {
 
 document.getElementById("scheduleBtn").addEventListener("click", () => schedule(false));
 document.getElementById("startNow").addEventListener("click", () => schedule(true));
+document.getElementById("testQuiz").addEventListener("click", async () => {
+  const id = Number(document.getElementById("quizPick").value);
+  if (!id) return;
+  say("Starting a 3-question test from the saved questions…");
+  const { data, error } = await supabase.rpc("gpsl_pub_quiz_start_test", { p_source_id: id });
+  if (error) {
+    say(error.message, true);
+    return;
+  }
+  const kick = await supabase.rpc("gpsl_pub_quiz_admin_kick");
+  if (kick.error) {
+    say(`Test was created, but the runner did not start: ${kick.error.message}`, true);
+    return;
+  }
+  say("Test posted to #pub quiz. One text question, one picture, one song. No prizes.");
+  await refreshList(data?.id);
+  await loadQuiz(document.getElementById("quizPick").value);
+});
 
 initAdminPage().then(async (user) => {
   if (!user) return;
