@@ -59,6 +59,7 @@ export const CLUB_PAGES_THEME_KEYS = new Set([
   "league_records",
   "league_injuries",
   "league_discipline",
+  "pub_quiz",
   "cups",
   "cup_records",
   "playoffs",

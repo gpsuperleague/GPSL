@@ -24,6 +24,7 @@ const EPHEMERAL = 64;
 
 const IX_PING = 1;
 const IX_COMMAND = 2;
+const IX_COMPONENT = 3;
 const IX_AUTOCOMPLETE = 4;
 
 const RESP_PONG = 1;
@@ -129,6 +130,7 @@ type Interaction = {
   user?: { id: string; username?: string; global_name?: string | null };
   data?: {
     name?: string;
+    custom_id?: string;
     target_id?: string;
     options?: { name: string; value?: string; focused?: boolean }[];
     resolved?: { messages?: Record<string, DiscordMessage> };
@@ -274,6 +276,26 @@ async function runToEnglish(ix: Interaction) {
   }
 }
 
+async function runQuizAnswer(ix: Interaction, customId: string) {
+  try {
+    const parts = customId.split(":");
+    const questionId = Number(parts[1]);
+    const choice = String(parts[2] || "").toLowerCase();
+    const { data, error } = await adminClient().rpc("gpsl_pub_quiz_lock_answer", {
+      p_discord_user_id: ix.member?.user?.id || ix.user?.id || "",
+      p_question_id: questionId,
+      p_choice: choice,
+    });
+    if (error) throw new Error(error.message);
+    const res = (data || {}) as { message?: string };
+    await editOriginal(ix, { content: res.message || "Answer received." });
+  } catch (err) {
+    await editOriginal(ix, {
+      content: `Could not save that answer: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300),
+    });
+  }
+}
+
 function deferEphemeral(work: Promise<void>): Response {
   EdgeRuntime.waitUntil(work);
   return json({ type: RESP_DEFERRED, data: { flags: EPHEMERAL } });
@@ -292,6 +314,11 @@ function handleInteraction(ix: Interaction): Response {
       .map((l) => ({ name: `${l.name} — ${l.english}`, value: l.code }));
     choices.push({ name: "English — turn translation off", value: OFF_VALUE });
     return json({ type: RESP_AUTOCOMPLETE, data: { choices } });
+  }
+
+  if (ix.type === IX_COMPONENT) {
+    const customId = String(ix.data?.custom_id || "");
+    if (customId.startsWith("pq:")) return deferEphemeral(runQuizAnswer(ix, customId));
   }
 
   if (ix.type === IX_COMMAND) {

@@ -1,0 +1,62 @@
+<script>window.CURRENT_PAGE = "admin_pub_quiz";</script>
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pub quiz — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .pq-wrap { width: min(980px, 94%); margin: 18px auto 48px; }
+    h1 { color: var(--gpsl-accent, #ff9900); margin: 0 0 8px; }
+    .note { color: #aaa; line-height: 1.45; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 12px 0; }
+    label { display: block; font-size: 12px; color: #aaa; margin-bottom: 4px; }
+    input, select, button.button { padding: 8px 10px; border-radius: 5px; }
+    input, select { background: #222; border: 1px solid #444; color: #ddd; }
+    .q {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+      padding: 10px 12px; margin: 8px 0;
+    }
+    .q-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 90px; gap: 8px; }
+    .q textarea { width: 100%; min-height: 42px; background: #222; color: #ddd; border: 1px solid #444; border-radius: 5px; }
+    details { margin: 14px 0; }
+    summary { cursor: pointer; color: var(--gpsl-accent, #ff9900); font-weight: 700; }
+    .status { min-height: 1.2em; margin: 8px 0; }
+    .err { color: #f88; }
+    .preview { margin-top: 6px; }
+    .preview img { max-width: 220px; border-radius: 6px; }
+    @media (max-width: 800px) { .q-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="pq-wrap">
+    <h1>Pub quiz</h1>
+    <p class="note">
+      Five rounds, ten questions each. Text rounds are 5 seconds. Picture and song rounds are 8 seconds.
+      Prizes: ₿5,000 / ₿3,500 / ₿2,000, and ₿1,000 for everyone else who answers at least once.
+      The quiz posts in the Discord channel named pub quiz.
+    </p>
+    <div class="row">
+      <button type="button" class="button" id="newQuiz">New quiz</button>
+      <label>Quiz
+        <select id="quizPick"></select>
+      </label>
+    </div>
+    <div class="row" id="scheduleRow" hidden>
+      <label>Start
+        <input id="startsAt" type="datetime-local">
+      </label>
+      <button type="button" class="button" id="scheduleBtn">Schedule</button>
+      <button type="button" class="button" id="startNow">Start now</button>
+      <span id="missingNote" class="note"></span>
+    </div>
+    <div id="status" class="status"></div>
+    <div id="rounds"></div>
+  </div>
+  <script type="module" src="admin_pub_quiz.js?v=20261111-pubquiz"></script>
+</body>
+</html>

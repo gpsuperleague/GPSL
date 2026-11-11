@@ -194,6 +194,12 @@ export const ADMIN_MAIN_NAV = [
         "Plan auctions and other events onto the owners' Season Calendar. Auctions can auto-start (switched on + announced ahead, bidding opens at the start time)."
       ),
       link(
+        "Pub quiz",
+        "admin_pub_quiz.html",
+        null,
+        "Write the 50 questions, upload pictures and song clips, and schedule the Discord pub quiz."
+      ),
+      link(
         "Start season (go live)",
         "admin_season.html",
         "wf-kickoff",

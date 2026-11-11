@@ -1,0 +1,31 @@
+<script>window.CURRENT_PAGE = "pub_quiz";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pub Quiz — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <style>
+    body { background:#111; color:#ddd; margin:0; font-family:Arial,sans-serif; }
+    .page-wrap { width:min(860px, 94%); margin:20px auto 40px; }
+    h1 { color:var(--gpsl-accent, #ff9900); margin:0 0 8px; }
+    .note { color:#aaa; line-height:1.45; }
+    table { width:100%; border-collapse:collapse; background:#1a1a1a; }
+    th, td { padding:9px 10px; border-bottom:1px solid #333; text-align:left; }
+    th { color:var(--gpsl-accent, #ff9900); font-size:12px; }
+    td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+    .empty { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:16px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-wrap">
+    <h1>Pub Quiz</h1>
+    <p class="note" id="quizNote">Loading…</p>
+    <div id="board"></div>
+  </div>
+  <script type="module" src="pub_quiz.js?v=20261111-pubquiz"></script>
+</body>
+</html>

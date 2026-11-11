@@ -54,6 +54,10 @@ verify_jwt = false
 [functions.discord-translate]
 verify_jwt = false
 
+# Pub quiz runner. Button clicks arrive via discord-translate.
+[functions.discord-pub-quiz]
+verify_jwt = false
+
 # Auth checked inside (admin/mod JWT / feed invoke key / service_role).
 [functions.discord-sync-roles]
 verify_jwt = false
