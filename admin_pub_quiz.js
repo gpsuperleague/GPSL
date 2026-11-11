@@ -87,24 +87,23 @@ function questionReady(round, q) {
 }
 
 function roundsCanStart(rounds) {
-  let full = 0;
-  let gap = false;
+  let readyCount = 0;
+  let roundsUsed = 0;
   for (const round of rounds) {
     const questions = round.questions || [];
     const ready = questions.filter((q) => questionReady(round, q)).length;
-    const blank = questions.filter((q) => questionBlank(q)).length;
-    if (ready === questions.length && questions.length) {
-      if (gap) return "Fill the rounds in order before scheduling.";
-      full += 1;
-    } else if (blank === questions.length) {
-      gap = true;
-    } else {
-      return `Finish round ${round.round_no}, or clear it. Empty rounds after a finished round are skipped.`;
+    const partial = questions.filter((q) => !questionBlank(q) && !questionReady(round, q));
+    if (partial.length) {
+      const file = round.kind === "picture" || round.kind === "song" ? ", and the file" : "";
+      return `Round ${round.round_no} question ${partial[0].q_no} needs a prompt, A, B and C${file}. Empty questions are skipped.`;
+    }
+    if (ready) {
+      roundsUsed += 1;
+      readyCount += ready;
     }
   }
-  if (!full) return "Round 1 needs all 10 questions.";
-  const label = full === 1 ? "Round 1 can run on its own." : `${full} rounds can run. Later empty rounds are skipped.`;
-  return label;
+  if (!readyCount) return "Save at least one full question.";
+  return `${readyCount} question${readyCount === 1 ? "" : "s"} across ${roundsUsed} round${roundsUsed === 1 ? "" : "s"} will run. Empty boxes are skipped.`;
 }
 
 function renderRounds(rounds, locked) {

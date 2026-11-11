@@ -1,5 +1,5 @@
--- A quiz can start from the rounds that are fully filled.
--- Later rounds that are still empty are skipped. A half-filled round blocks the start.
+-- A quiz plays every finished question. Empty boxes are skipped.
+-- A box that is started but missing an answer or a file still blocks the start.
 
 CREATE OR REPLACE FUNCTION public.gpsl_pub_quiz_ready_summary(p_id bigint)
 RETURNS jsonb
@@ -10,10 +10,8 @@ SET search_path = public
 AS $function$
 DECLARE
   v_round record;
+  v_partial int;
   v_ready int;
-  v_blank int;
-  v_total int;
-  v_gap boolean := false;
   v_rounds int := 0;
   v_questions int := 0;
   v_block text := NULL;
@@ -24,50 +22,61 @@ BEGIN
     WHERE r.quiz_id = p_id
     ORDER BY r.round_no
   LOOP
-    SELECT
-      count(*)::int,
-      count(*) FILTER (
-        WHERE btrim(qq.prompt) <> ''
-          AND btrim(qq.option_a) <> ''
-          AND btrim(qq.option_b) <> ''
-          AND btrim(qq.option_c) <> ''
-          AND (
-            v_round.kind NOT IN ('picture', 'song')
-            OR nullif(btrim(coalesce(qq.media_path, '')), '') IS NOT NULL
-          )
-      )::int,
-      count(*) FILTER (
-        WHERE btrim(qq.prompt) = ''
-          AND btrim(qq.option_a) = ''
-          AND btrim(qq.option_b) = ''
-          AND btrim(qq.option_c) = ''
-          AND nullif(btrim(coalesce(qq.media_path, '')), '') IS NULL
-      )::int
-    INTO v_total, v_ready, v_blank
+    SELECT qq.q_no
+    INTO v_partial
     FROM public.gpsl_pub_quiz_question qq
-    WHERE qq.round_id = v_round.id;
+    WHERE qq.round_id = v_round.id
+      AND NOT (
+        btrim(qq.prompt) = ''
+        AND btrim(qq.option_a) = ''
+        AND btrim(qq.option_b) = ''
+        AND btrim(qq.option_c) = ''
+        AND nullif(btrim(coalesce(qq.media_path, '')), '') IS NULL
+      )
+      AND NOT (
+        btrim(qq.prompt) <> ''
+        AND btrim(qq.option_a) <> ''
+        AND btrim(qq.option_b) <> ''
+        AND btrim(qq.option_c) <> ''
+        AND (
+          v_round.kind NOT IN ('picture', 'song')
+          OR nullif(btrim(coalesce(qq.media_path, '')), '') IS NOT NULL
+        )
+      )
+    ORDER BY qq.q_no
+    LIMIT 1;
 
-    IF v_ready = v_total AND v_total > 0 THEN
-      IF v_gap THEN
-        v_block := format('Round %s is filled after an empty round. Fill the rounds in order.', v_round.round_no);
-        EXIT;
-      END IF;
-      v_rounds := v_rounds + 1;
-      v_questions := v_questions + v_ready;
-    ELSIF v_blank = v_total THEN
-      v_gap := true;
-    ELSE
+    IF FOUND THEN
       v_block := format(
-        'Round %s still has %s question(s) to finish. A later round can stay empty.',
+        'Round %s question %s is started but not finished. It needs a prompt, A, B and C%s. Empty questions are skipped.',
         v_round.round_no,
-        v_total - v_ready
+        v_partial,
+        CASE WHEN v_round.kind IN ('picture', 'song') THEN ', and a file' ELSE '' END
       );
       EXIT;
     END IF;
+
+    SELECT count(*)::int
+    INTO v_ready
+    FROM public.gpsl_pub_quiz_question qq
+    WHERE qq.round_id = v_round.id
+      AND btrim(qq.prompt) <> ''
+      AND btrim(qq.option_a) <> ''
+      AND btrim(qq.option_b) <> ''
+      AND btrim(qq.option_c) <> ''
+      AND (
+        v_round.kind NOT IN ('picture', 'song')
+        OR nullif(btrim(coalesce(qq.media_path, '')), '') IS NOT NULL
+      );
+
+    IF v_ready > 0 THEN
+      v_rounds := v_rounds + 1;
+      v_questions := v_questions + v_ready;
+    END IF;
   END LOOP;
 
-  IF v_block IS NULL AND v_rounds < 1 THEN
-    v_block := 'Round 1 needs all 10 questions before this quiz can start.';
+  IF v_block IS NULL AND v_questions < 1 THEN
+    v_block := 'Save at least one full question before starting.';
   END IF;
 
   RETURN jsonb_build_object(
