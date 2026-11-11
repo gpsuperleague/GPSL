@@ -29,7 +29,28 @@
     .challenge-card {
       background:#222; border:1px solid #333; border-radius:6px; padding:14px;
     }
+    .challenge-card.won { border-color:#3d5a38; }
     .challenge-card h3 { margin:0 0 8px; font-size:15px; color:var(--gpsl-accent-hover, #ffcc66); border:none; padding:0; }
+    .win-story {
+      margin-top:12px; padding-top:10px; border-top:1px solid #333;
+    }
+    .win-story + .win-story { margin-top:14px; }
+    .win-who { font-size:13px; color:#ddd; line-height:1.4; }
+    .win-who a { color:var(--gpsl-accent-hover, #ffcc66); text-decoration:none; }
+    .win-who a:hover { text-decoration:underline; }
+    .win-detail { margin:6px 0 0; font-size:13px; color:#ccc; line-height:1.4; }
+    .win-events { margin:8px 0 0; padding-left:18px; color:#aaa; font-size:12px; line-height:1.45; }
+    .win-more { margin:6px 0 0; color:#888; font-size:12px; }
+    .win-players { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+    .win-player {
+      display:flex; gap:10px; align-items:center;
+      background:#1a1a1a; border:1px solid #333; border-radius:6px; padding:8px;
+    }
+    .win-player-img { width:52px; height:auto; border-radius:4px; display:block; }
+    .win-player-name { font-size:13px; }
+    .win-player-name a { color:#eee; text-decoration:none; }
+    .win-player-name a:hover { text-decoration:underline; }
+    .pack-finish { margin:8px 0 0; padding-left:18px; color:#ccc; font-size:12px; line-height:1.5; }
     .challenge-meta { font-size:12px; color:#888; line-height:1.4; }
     .window-tag {
       display:inline-block; font-size:10px; text-transform:uppercase;
@@ -100,18 +121,20 @@
     <p class="meta" id="challengesIntro"><!-- Filled by challenges_rules.js --></p>
 
     <div class="panel">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="First club to complete the required number of Start or Mid challenges (e.g. 6 of those available) wins that pack. After it is claimed, other clubs can still finish challenges for the individual cash prizes — they just cannot win that window’s big prize." tabindex="0">Big prize (first to complete the target)</h2>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="First club to complete the required number of Start or Mid challenges (e.g. 6 of those available) wins that pack. Once it is claimed, the remaining challenges in that window still pay their cash prizes. Start-of-season challenges pay ₿1,000,000 each." tabindex="0">Big prize (first to complete the target)</h2>
       <div id="challengeBigPrize" class="meta">Loading…</div>
     </div>
 
     <div class="panel">
-      <h2 class="gpsl-has-tip" data-gpsl-tip="Each card is a seasonal target (stat ≥ value in the GPSL month range) with a cash prize. Progress is tracked for your club." tabindex="0">All season targets</h2>
-      <h3>Start of season</h3>
+      <h2 class="gpsl-has-tip" data-gpsl-tip="Each card is a seasonal target with a cash prize. Open a window to see who has won it, when, and the matches or players that did it." tabindex="0">Season targets</h2>
+      <div class="standings-tabs" id="catalogTabs">
+        <button type="button" class="standings-tab active" data-phase="start">Start of season</button>
+        <button type="button" class="standings-tab" data-phase="mid">Mid-season</button>
+      </div>
       <div id="catalogStart" class="challenge-grid">
         <p class="phase-empty">Loading…</p>
       </div>
-      <h3>Mid-season</h3>
-      <div id="catalogMid" class="challenge-grid">
+      <div id="catalogMid" class="challenge-grid" hidden>
         <p class="phase-empty">Loading…</p>
       </div>
     </div>
@@ -133,6 +156,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="challenges.js?v=20261022-challenge-race-pct-5"></script>
+  <script type="module" src="challenges.js?v=20261111-challenge-tabs"></script>
 </body>
 </html>

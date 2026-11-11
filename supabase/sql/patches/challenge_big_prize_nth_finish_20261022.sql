@@ -100,6 +100,7 @@ DECLARE
   v_earliest_club text;
   v_earliest_at timestamptz;
   v_snapshot jsonb;
+  v_other text;
 BEGIN
   IF p_window_phase NOT IN ('start', 'mid') THEN
     RETURN false;
@@ -157,11 +158,15 @@ BEGIN
     now()
   );
 
-  SELECT max(c.gpsl_month_to) INTO v_deadline
+  -- Calendar order. max(text) picks "september" ahead of "december" and
+  -- closes the window as soon as October starts.
+  SELECT c.gpsl_month_to INTO v_deadline
   FROM public.competition_challenge_config c
   WHERE c.season_id = p_season_id
     AND c.window_phase = p_window_phase
-    AND c.is_active = true;
+    AND c.is_active = true
+  ORDER BY public.competition_challenge_month_sort(c.gpsl_month_to) DESC NULLS LAST
+  LIMIT 1;
 
   IF NOT coalesce(p_ignore_window, false)
      AND NOT public.competition_challenge_window_open(p_season_id, p_window_phase, v_deadline) THEN
@@ -281,14 +286,24 @@ BEGIN
   );
 
   v_league_body := format(
-    E'%s have won %s — first club to complete %s of the %s %s challenges (finished %s UK).\n\nPrize: %s',
+    E'%s have won %s — first club to complete %s of the %s %s challenges (finished %s UK).\n\nPrize: %s\n\nThe pack has been won. %s',
     coalesce(v_club_name, p_club_short_name),
     v_pack_name,
     v_required,
     v_total,
     p_window_phase,
     to_char(v_finish_at AT TIME ZONE 'Europe/London', 'DD Mon YYYY HH24:MI'),
-    v_summary
+    v_summary,
+    CASE
+      WHEN (
+        SELECT count(*) = count(*) FILTER (WHERE c.prize_amount = 1000000)
+        FROM public.competition_challenge_config c
+        WHERE c.season_id = p_season_id
+          AND c.window_phase = p_window_phase
+          AND c.is_active
+      ) THEN 'Remaining challenges in this window still pay ₿1,000,000 each.'
+      ELSE 'Remaining challenges in this window still pay their own cash prizes.'
+    END
   );
 
   BEGIN
@@ -308,26 +323,38 @@ BEGIN
   END;
 
   BEGIN
-    PERFORM public.owner_inbox_notify_all_clubs(
-      'challenge_period_bonus',
-      format('%s claimed', v_pack_name),
-      v_league_body,
-      'challenges.html',
-      format('challenge_big_prize_league:%s:%s', p_season_id, p_window_phase),
-      p_season_id
-    );
+    FOR v_other IN
+      SELECT c."ShortName"
+      FROM public."Clubs" c
+      WHERE c.owner_id IS NOT NULL
+        AND upper(btrim(c."ShortName")) IS DISTINCT FROM upper(btrim(p_club_short_name))
+      ORDER BY c."ShortName"
+    LOOP
+      PERFORM public.owner_inbox_send(
+        'challenge_period_bonus',
+        format('%s claimed', v_pack_name),
+        v_league_body,
+        v_other,
+        NULL, NULL, NULL, NULL, NULL,
+        'challenges.html',
+        format('challenge_big_prize_league:%s:%s:%s', p_season_id, p_window_phase, v_other),
+        NULL,
+        p_season_id
+      );
+    END LOOP;
   EXCEPTION WHEN others THEN
     NULL;
   END;
 
   BEGIN
     PERFORM public.gpsl_discord_feed_enqueue(
-      'title',
+      'news',
       format('🏆 %s', v_pack_name),
       v_league_body,
       16766720,
       format('challenge_big_prize:%s:%s', p_season_id, p_window_phase),
       jsonb_build_object(
+        'channel', 'news',
         'club', p_club_short_name,
         'window_phase', p_window_phase,
         'pack_name', v_pack_name,
