@@ -156,29 +156,43 @@ async function wipeChannel(token: string, channelId: string) {
       await discord(token, `/channels/${channelId}/pins/${row.id}`, { method: "DELETE" });
     }
   }
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 25000;
+  let stalled: string | null = null;
   while (Date.now() < deadline) {
     const listed = await discord(token, `/channels/${channelId}/messages?limit=100`);
     if (!listed.ok) break;
-    const msgs = (await listed.json()) as { id: string }[];
+    const msgs = (await listed.json()) as { id: string; type?: number }[];
     if (!Array.isArray(msgs) || msgs.length === 0) return;
+    const deletable = msgs.filter((m) => m.type == null || m.type === 0 || m.type === 19);
+    if (!deletable.length) return;
     const cutoff = Date.now() - TWO_WEEKS_MS;
-    const recent = msgs.filter((m) => snowflakeMs(m.id) >= cutoff).map((m) => m.id);
-    const older = msgs.filter((m) => snowflakeMs(m.id) < cutoff).map((m) => m.id);
+    const recent = deletable.filter((m) => snowflakeMs(m.id) >= cutoff).map((m) => m.id);
+    const older = deletable.filter((m) => snowflakeMs(m.id) < cutoff).map((m) => m.id);
     if (recent.length >= 2) {
       const res = await discord(token, `/channels/${channelId}/messages/bulk-delete`, {
         method: "POST",
         body: JSON.stringify({ messages: recent.slice(0, 100) }),
       });
-      if (!res.ok && res.status !== 204) console.warn("bulk delete", res.status);
-      await sleep(450);
-      continue;
+      if (res.ok || res.status === 204) {
+        stalled = null;
+        await sleep(450);
+        continue;
+      }
     }
-    const one = recent[0] || older[0];
-    if (!one) return;
-    await deleteMessage(token, channelId, one);
-    await sleep(280);
-    if (!recent.length && older.length <= 1) return;
+    const batch = (recent.length ? recent : older).slice(0, 8);
+    const key = batch[0] || "";
+    let removed = 0;
+    for (const id of batch) {
+      const res = await discord(token, `/channels/${channelId}/messages/${id}`, { method: "DELETE" });
+      if (res.ok || res.status === 404) removed += 1;
+      await sleep(200);
+    }
+    if (removed === 0) {
+      if (stalled === key) return;
+      stalled = key;
+    } else {
+      stalled = null;
+    }
   }
 }
 
