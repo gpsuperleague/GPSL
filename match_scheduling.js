@@ -399,8 +399,8 @@ export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
     const when = ukWhen(new Date(lockMs).toISOString());
     operational = {
       kind: "arrange",
-      text: `Still not arranged. No proposal by ${when} is ₿2,500,000. Still unplayed then and the result is awarded on scheduling activity (a tie is 0–0).`,
-      title: "Cups are arranged in the round month. The no-proposal fine starts when the grace month locks. A match still unplayed at that lock is awarded on scheduling activity.",
+      text: `Still not arranged. No proposal by ${when} is ₿2,500,000. Still unplayed then and the result is awarded on strikes, then scheduling activity. If those are level, the match is void.`,
+      title: "Cups are arranged in the round month. The no-proposal fine starts when the grace month locks. A match still unplayed at that lock is awarded on strikes, then scheduling activity. If those are level, the match is void and neither club is given the win.",
     };
   }
 
@@ -408,8 +408,8 @@ export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
     const when = ukWhen(new Date(lockMs).toISOString());
     operational = {
       kind: "last_play",
-      text: `Last chance to play is ${when}. Still unplayed then and the result is awarded on scheduling activity (a tie is 0–0).`,
-      title: "League matches have two extra GPSL months. Cup matches have one, and May cups have none. After that lock an unplayed match is awarded on scheduling activity.",
+      text: `Last chance to play is ${when}. Still unplayed then and the result is awarded on strikes, then scheduling activity. If those are level, the match is void.`,
+      title: "League matches have two extra GPSL months. Cup matches have one, and May cups have none. After that lock an unplayed match is awarded on strikes, then scheduling activity. If those are level, the match is void and neither club is given the win.",
     };
   }
 

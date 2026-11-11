@@ -42,7 +42,7 @@ import {
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261110-deadline-warn";
+} from "./match_scheduling.js?v=20261111-void-tie";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,

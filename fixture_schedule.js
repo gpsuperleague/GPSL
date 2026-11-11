@@ -35,7 +35,7 @@ import {
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
   fixtureExpiryWarnings,
-} from "./match_scheduling.js?v=20261111-reply48";
+} from "./match_scheduling.js?v=20261111-void-tie";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -899,7 +899,7 @@ function finalPlayLineHtml() {
   const soon =
     Number.isFinite(lock) && lock > Date.now() && lock - Date.now() <= 72 * 60 * 60 * 1000;
   const body = `Last chance to play: before <b>${formatUkWhen(d.final_play_lock)}</b>.
-    If it's still unplayed then, the result is awarded on scheduling activity (a true tie is recorded 0–0).`;
+    If it's still unplayed then, the result is awarded on strikes, then scheduling activity. If those are level, the match is void and neither club is given the win.`;
   if (soon) return `<div class="deadline-box deadline-late">${body}</div>`;
   return `<p class="meta">${body}</p>`;
 }

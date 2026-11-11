@@ -390,7 +390,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `<b>Arrange-now reminders</b> — sent in the days before the propose-by date for fixtures you still need to arrange.`,
         `<b>Squad warning</b> — your saved squad would fail check-in for an upcoming kick-off (e.g. injured or suspended player picked).`,
         `<b>Fine applied</b> — scheduling or matchday; the note explains which fixture.`,
-        `<b>Window award / 0–0</b> — play window expired without a result.`,
+        `<b>Window award</b> — play window expired without a result. One club is awarded a 3–0. If strikes and activity are level, the match is void and neither club is given the win.`,
       ],
     },
   ],
