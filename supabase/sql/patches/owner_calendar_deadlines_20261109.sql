@@ -178,8 +178,8 @@ BEGIN
   LOOP
     v_side := CASE WHEN upper(btrim(r.home_club_short_name)) = v_club THEN 'home' ELSE 'away' END;
     v_opp := CASE WHEN v_side = 'home'
-      THEN upper(btrim(r.away_club_short_name))
-      ELSE upper(btrim(r.home_club_short_name)) END;
+      THEN coalesce(public.club_display_name(r.away_club_short_name), r.away_club_short_name)
+      ELSE coalesce(public.club_display_name(r.home_club_short_name), r.home_club_short_name) END;
     v_href := 'fixture_schedule.html?fixture=' || r.id::text;
 
     BEGIN
@@ -268,8 +268,8 @@ BEGIN
   LOOP
     v_side := CASE WHEN upper(btrim(r.home_club_short_name)) = v_club THEN 'home' ELSE 'away' END;
     v_opp := CASE WHEN v_side = 'home'
-      THEN upper(btrim(r.away_club_short_name))
-      ELSE upper(btrim(r.home_club_short_name)) END;
+      THEN coalesce(public.club_display_name(r.away_club_short_name), r.away_club_short_name)
+      ELSE coalesce(public.club_display_name(r.home_club_short_name), r.home_club_short_name) END;
     v_opens := r.agreed_kickoff_at - make_interval(mins => v_before);
     v_closes := r.agreed_kickoff_at + make_interval(mins => v_after);
     v_href := 'matchday.html?fixture=' || r.id::text;
@@ -353,8 +353,8 @@ BEGIN
 
     v_side := CASE WHEN upper(btrim(r.home_club_short_name)) = v_club THEN 'home' ELSE 'away' END;
     v_opp := CASE WHEN v_side = 'home'
-      THEN upper(btrim(r.away_club_short_name))
-      ELSE upper(btrim(r.home_club_short_name)) END;
+      THEN coalesce(public.club_display_name(r.away_club_short_name), r.away_club_short_name)
+      ELSE coalesce(public.club_display_name(r.home_club_short_name), r.home_club_short_name) END;
 
     v_out := v_out || jsonb_build_array(jsonb_build_object(
       'id', 'play_window:' || r.id::text,
@@ -374,8 +374,9 @@ BEGIN
       SELECT
         f.id,
         CASE
-          WHEN upper(btrim(f.home_club_short_name)) = v_club THEN upper(btrim(f.away_club_short_name))
-          ELSE upper(btrim(f.home_club_short_name))
+          WHEN upper(btrim(f.home_club_short_name)) = v_club
+            THEN coalesce(public.club_display_name(f.away_club_short_name), f.away_club_short_name)
+          ELSE coalesce(public.club_display_name(f.home_club_short_name), f.home_club_short_name)
         END AS opp,
         cal.lock_at + make_interval(hours => v_video_grace) AS video_due_at,
         fail.pts_status,
