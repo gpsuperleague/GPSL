@@ -215,6 +215,28 @@ document.getElementById("newQuiz").addEventListener("click", async () => {
   say("Quiz created. Fill all 50 questions, then schedule it.");
 });
 
+document.getElementById("deleteQuiz").addEventListener("click", async () => {
+  const sel = document.getElementById("quizPick");
+  const id = Number(sel.value);
+  if (!id) return;
+  const label = sel.selectedOptions[0]?.textContent || `Quiz ${id}`;
+  if (!window.confirm(`Delete ${label}? Its questions are removed. Posts already in Discord stay.`)) return;
+  say("Deleting…");
+  const { error } = await supabase.rpc("gpsl_pub_quiz_delete", { p_id: id });
+  if (error) {
+    say(error.message, true);
+    return;
+  }
+  const listed = await supabase.storage.from("pub-quiz").list(String(id));
+  const names = (listed.data || [])
+    .filter((file) => file.name && !file.name.startsWith("."))
+    .map((file) => `${id}/${file.name}`);
+  if (names.length) await supabase.storage.from("pub-quiz").remove(names);
+  say("Quiz deleted.");
+  const rows = await refreshList();
+  await loadQuiz(rows[0]?.id || "");
+});
+
 document.getElementById("quizPick").addEventListener("change", async (ev) => {
   try {
     await loadQuiz(ev.target.value);
