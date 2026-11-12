@@ -35,7 +35,7 @@ import {
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
   fixtureExpiryWarnings,
-} from "./match_scheduling.js?v=20261112-cup-strikes";
+} from "./match_scheduling.js?v=20261112-cup-priority";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,

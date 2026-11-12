@@ -393,7 +393,7 @@ export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
     const when = ukWhen(new Date(lockMs).toISOString());
     operational = {
       kind: "arrange",
-      text: `Still not arranged. No proposal at a month lock is a strike. Away can open this tie once the round month has locked. Still unplayed at ${when}: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then scheduling activity. Level on all of that and the match is void.`,
+      text: `Still not arranged. No proposal at a month lock is a strike. Away can open this tie once the round month has locked. An overdue cup is played before other fixtures. Still unplayed at ${when}: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then scheduling activity. Level on all of that and the match is void.`,
       title: "A cup is drawn when the round month opens. No proposal when that month locks is a strike, and each later lock is another. In the extra month the away club can make the first proposal, which stops further no-proposal strikes. A missed reply is a strike. There is no late-arrangement fee. Still unplayed at the end of the window: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then logins, matches played, forfeit losses, reply fines on other fixtures, and check-ins. Level on all of that and the match is void. Neither club is given the win.",
     };
   }
