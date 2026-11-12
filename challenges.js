@@ -12,6 +12,8 @@ let activeStandingsTab = "overall";
 let activeCatalogPhase = "start";
 /** challenge_id -> win story rows from competition_challenge_win_stories */
 let winStories = new Map();
+/** window_phase -> big-prize winner row */
+let bigPrizeWinnerByPhase = new Map();
 /** Big-prize race targets (required_to_win), keyed by window_phase. */
 let raceRequiredByPhase = { start: null, mid: null };
 /** Active challenge counts per window (catalogue size). */
@@ -90,11 +92,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Race targets first so standings never fall back to catalogue size (e.g. 10).
   await loadRaceTargets();
   await loadWinStories();
-  await Promise.all([
-    loadBigPrizePacks(progressItems),
-    loadStandings(),
-    loadCatalog(),
-  ]);
+  await Promise.all([loadBigPrizePacks(progressItems), loadStandings()]);
+  await loadCatalog();
 });
 
 function applyPackRaceRow(p) {
@@ -163,7 +162,10 @@ async function loadCurrentSeasonId() {
 }
 
 async function loadBigPrizeWinners(seasonId) {
-  if (!seasonId) return new Map();
+  if (!seasonId) {
+    bigPrizeWinnerByPhase = new Map();
+    return bigPrizeWinnerByPhase;
+  }
   const { data, error } = await supabase
     .from("competition_challenge_period_bonus_awarded")
     .select("window_phase, club_short_name, amount, awarded_at, pack_snapshot")
@@ -171,13 +173,15 @@ async function loadBigPrizeWinners(seasonId) {
 
   if (error) {
     console.warn("big prize winners:", error.message);
-    return new Map();
+    bigPrizeWinnerByPhase = new Map();
+    return bigPrizeWinnerByPhase;
   }
 
   const map = new Map();
   for (const row of data || []) {
     map.set(row.window_phase, row);
   }
+  bigPrizeWinnerByPhase = map;
   return map;
 }
 
@@ -231,7 +235,6 @@ function renderBigPrizeCard(pack, winner, windowOpen) {
             : "The pack has been claimed. Remaining challenges in this window still pay their own cash prizes."
         }
       </div>
-      ${packFinishListHtml(winner.club_short_name, phase)}
     </div>`;
   } else if (windowOpen === false) {
     statusHtml = `<div class="prize-status-closed">
@@ -332,6 +335,16 @@ function storiesForChallenge(challengeId) {
   return winStories.get(String(challengeId)) || [];
 }
 
+function firstStory(challengeId) {
+  const wins = storiesForChallenge(challengeId);
+  if (!wins.length) return null;
+  return [...wins].sort((a, b) => {
+    const delta = new Date(a.awarded_at) - new Date(b.awarded_at);
+    if (delta) return delta;
+    return String(a.club_short_name).localeCompare(String(b.club_short_name));
+  })[0];
+}
+
 function storiesForClubPhase(club, phase) {
   const rows = [];
   for (const list of winStories.values()) {
@@ -341,19 +354,6 @@ function storiesForClubPhase(club, phase) {
   }
   rows.sort((a, b) => new Date(a.awarded_at) - new Date(b.awarded_at));
   return rows;
-}
-
-function packFinishListHtml(club, phase) {
-  const need = raceRequired(phase) || 6;
-  const rows = storiesForClubPhase(club, phase).slice(0, need);
-  if (!rows.length) return "";
-  const items = rows
-    .map((row) => {
-      const when = formatUk(row.awarded_at);
-      return `<li>${escapePlayerHtml(row.title)}${when ? ` · ${escapePlayerHtml(when)}` : ""}</li>`;
-    })
-    .join("");
-  return `<ul class="pack-finish">${items}</ul>`;
 }
 
 function winPlayerHtml(player) {
@@ -412,45 +412,68 @@ function winStoryHtml(story) {
   </div>`;
 }
 
+function renderChallengeCard(c, story) {
+  const phaseClass = c.window_phase === "mid" ? "mid" : "start";
+  const monthLine =
+    c.gpsl_month_from_label
+      ? `${escapePlayerHtml(c.gpsl_month_from_label)}–${escapePlayerHtml(c.gpsl_month_to_label)}<br>`
+      : "";
+  const target = c.stat_type
+    ? `${escapePlayerHtml(challengeStatDescription(c.stat_type, c.target_value, c.stat_param))} · `
+    : "";
+  return `
+    <div class="challenge-card${story ? " won" : ""}">
+      <span class="window-tag ${phaseClass}">${windowLabel(c.window_phase)}</span>
+      <h3>${escapePlayerHtml(c.title || story?.title || "Challenge")}</h3>
+      <p class="challenge-meta">
+        ${monthLine}
+        ${target}Prize ${formatMoney(Number(c.prize_amount || story?.amount || 0))}
+      </p>
+      ${story ? winStoryHtml(story) : ""}
+    </div>
+  `;
+}
+
 function renderChallengeCards(items) {
   return items
-    .map((c) => {
-      const phaseClass = c.window_phase === "mid" ? "mid" : "start";
-      const wins = storiesForChallenge(c.id);
-      return `
-        <div class="challenge-card${wins.length ? " won" : ""}">
-          <span class="window-tag ${phaseClass}">${windowLabel(c.window_phase)}</span>
-          <h3>${escapePlayerHtml(c.title)}</h3>
-          <p class="challenge-meta">
-            ${
-              c.gpsl_month_from_label
-                ? `${escapePlayerHtml(c.gpsl_month_from_label)}–${escapePlayerHtml(c.gpsl_month_to_label)}<br>`
-                : ""
-            }
-            ${escapePlayerHtml(challengeStatDescription(c.stat_type, c.target_value, c.stat_param))}
-            · Prize ${formatMoney(Number(c.prize_amount || 0))}
-          </p>
-          ${wins.map(winStoryHtml).join("")}
-        </div>
-      `;
+    .map((c) => renderChallengeCard(c, firstStory(c.id)))
+    .join("");
+}
+
+function packPathHtml(items, phase) {
+  const winner = bigPrizeWinnerByPhase.get(phase);
+  if (!winner?.club_short_name) return "";
+  const need = raceRequired(phase) || 6;
+  const rows = storiesForClubPhase(winner.club_short_name, phase).slice(0, need);
+  if (!rows.length) return "";
+  const club = fullClubName(winner.club_short_name) || winner.club_short_name;
+  const cards = rows
+    .map((story) => {
+      const challenge = items.find((item) => String(item.id) === String(story.challenge_id)) || {
+        id: story.challenge_id,
+        title: story.title,
+        window_phase: phase,
+        prize_amount: story.amount,
+      };
+      return renderChallengeCard(challenge, story);
     })
     .join("");
+  return `<h3>How ${escapePlayerHtml(club)} won the pack</h3><div class="challenge-grid">${cards}</div>`;
+}
+
+function phaseCatalogHtml(items, phase, emptyMsg) {
+  if (!items.length) return `<p class="phase-empty">${emptyMsg}</p>`;
+  const lead = packPathHtml(items, phase);
+  const heading = lead ? `<h3>First to each challenge</h3>` : "";
+  return `${lead}${heading}<div class="challenge-grid">${renderChallengeCards(items)}</div>`;
 }
 
 function renderPhaseGrids(items, startId, midId, emptyMsg) {
   const { start, mid } = splitByPhase(items);
   const startEl = document.getElementById(startId);
   const midEl = document.getElementById(midId);
-  if (startEl) {
-    startEl.innerHTML = start.length
-      ? renderChallengeCards(start)
-      : `<p class="phase-empty">${emptyMsg}</p>`;
-  }
-  if (midEl) {
-    midEl.innerHTML = mid.length
-      ? renderChallengeCards(mid)
-      : `<p class="phase-empty">${emptyMsg}</p>`;
-  }
+  if (startEl) startEl.innerHTML = phaseCatalogHtml(start, "start", emptyMsg);
+  if (midEl) midEl.innerHTML = phaseCatalogHtml(mid, "mid", emptyMsg);
 }
 
 function bindCatalogTabs() {
