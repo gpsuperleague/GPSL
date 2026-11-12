@@ -720,6 +720,10 @@ function ledgerBreakdownLabel(row) {
   if (type === "gov_fine_compensation") {
     return compactFineBreakdownLabel(row);
   }
+  if (type === "prize_challenge") {
+    const desc = String(row.description || "").trim();
+    if (desc) return desc;
+  }
   return financeEntryLabel(type);
 }
 
