@@ -35,7 +35,7 @@ import {
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
   fixtureExpiryWarnings,
-} from "./match_scheduling.js?v=20261111-void-tie";
+} from "./match_scheduling.js?v=20261112-reply-48h";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -899,7 +899,7 @@ function finalPlayLineHtml() {
   const soon =
     Number.isFinite(lock) && lock > Date.now() && lock - Date.now() <= 72 * 60 * 60 * 1000;
   const body = `Last chance to play: before <b>${formatUkWhen(d.final_play_lock)}</b>.
-    If it's still unplayed then, the result is awarded on strikes, then scheduling activity. If those are level, the match is void and neither club is given the win.`;
+    If it's still unplayed then, more strikes on the fixture loses. If a kick-off was agreed, the club that failed to check in loses. If a time was still waiting on a reply, and the 48 hours to answer had already finished, the club that left it sitting loses. Then logins, matches played, forfeit losses, reply fines on other fixtures, and check-ins. Level on all of that and the match is void. Neither club is given the win.`;
   if (soon) return `<div class="deadline-box deadline-late">${body}</div>`;
   return `<p class="meta">${body}</p>`;
 }
@@ -972,7 +972,7 @@ function noShowLadderBannerHtml(f) {
       <strong>Attempt 3</strong> — rearrange freely through
       <b>${deadlineLabel || "original month + 2 GPSL months"}</b> (Play now OK).
       ${counts} ${fines}
-      Still unplayed at that lock → awarded to fewer no-shows (activity if tied).
+      Still unplayed at that lock: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then logins, matches, forfeit losses, other reply fines, and check-ins. Level: void, neither club is given the win.
     </div>`;
   }
 

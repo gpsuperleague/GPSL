@@ -383,7 +383,7 @@ const AUTOMATED_TARIFFS = new Set([
 
 const RESULT_ONLY_TARIFFS = {
   match_window_expiry:
-    "Month lock writes a 3–0 when the play window closes unplayed, and the attempt-3 job does the same. ₿0 means the result only. A full tie is still 0–0.",
+    "Month lock writes a 3–0 when the play window closes unplayed, and the attempt-3 job does the same. ₿0 means the result only. A full tie is void. Neither club is given the win.",
   match_no_show_fixture_forfeit:
     "The third no-show on a fixture writes a 3–0 after the ₿1.5m no-show fine. This row adds no extra money.",
 };
