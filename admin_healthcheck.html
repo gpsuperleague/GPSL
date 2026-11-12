@@ -10,23 +10,42 @@
   <link rel="stylesheet" href="admin.css">
   <style>
     .health-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
-    .health-legend span, .health-pill {
+    .health-legend span, .health-summary span {
       display: inline-flex; align-items: center; gap: 8px;
       border-radius: 8px; padding: 8px 12px; border: 1px solid #444;
-      font-size: 13px; font-weight: 700; pointer-events: none; user-select: none;
+      font-size: 13px; font-weight: 700;
     }
     .tone-green { background: #14301f; border-color: #2f8f55; color: #d7ffe6; }
     .tone-amber { background: #33280f; border-color: #c4922a; color: #ffe7b0; }
     .tone-red { background: #331414; border-color: #c45050; color: #ffd0d0; }
-    .health-item { margin: 0 0 12px; }
-    .health-pill { width: 100%; justify-content: space-between; box-sizing: border-box; }
-    .health-facts { display: inline-flex; gap: 6px; font-size: 12px; font-weight: 700; }
+    .health-group { margin: 0 0 22px; }
+    .health-group-title {
+      margin: 0 0 10px; font-size: 13px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #aaa; font-weight: 700;
+    }
+    .health-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+    .health-tile { width: 210px; display: flex; flex-direction: column; gap: 8px; }
+    .health-tile-title {
+      margin: 0; min-height: 2.5em; font-size: 14px; line-height: 1.25; font-weight: 700;
+    }
+    .health-tile-title.tone-green { background: none; border: 0; color: #8fe7b6; padding: 0; }
+    .health-tile-title.tone-amber { background: none; border: 0; color: #ffd27a; padding: 0; }
+    .health-tile-title.tone-red { background: none; border: 0; color: #ff9b9b; padding: 0; }
+    .health-square {
+      border-radius: 14px; border: 1px solid #444; min-height: 92px;
+      padding: 12px; display: flex; flex-direction: column; justify-content: center; gap: 6px;
+      font-size: 12px; font-weight: 700;
+    }
+    .health-square.tone-green { background: #14301f; border-color: #2f8f55; color: #d7ffe6; }
+    .health-square.tone-amber { background: #33280f; border-color: #c4922a; color: #ffe7b0; }
+    .health-square.tone-red { background: #331414; border-color: #c45050; color: #ffd0d0; }
+    .health-facts { display: flex; flex-wrap: wrap; gap: 6px; }
     .health-facts span {
       border: 1px solid currentColor; border-radius: 999px; padding: 2px 8px;
     }
     .fact-off { opacity: 0.55; text-decoration: line-through; }
-    .health-about { margin: 8px 0 0; color: #ddd; font-size: 13px; line-height: 1.45; }
-    .health-detail { margin: 4px 0 0; color: #888; font-size: 12px; line-height: 1.45; }
+    .health-about { margin: 0; color: #ddd; font-size: 12px; line-height: 1.4; }
+    .health-detail { margin: 0; color: #888; font-size: 11px; line-height: 1.4; }
     .health-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
   </style>
 </head>
@@ -64,6 +83,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_healthcheck.js?v=20261112-health-auto"></script>
+  <script type="module" src="admin_healthcheck.js?v=20261112-health-tiles"></script>
 </body>
 </html>

@@ -71,19 +71,29 @@ function firePassed(state) {
   return state === "ok" || state === "not_due";
 }
 
+function tileHtml({ label, about, detail, tone, facts }) {
+  const toneClass = tone ? ` tone-${tone}` : "";
+  const titleTone = tone ? ` tone-${tone}` : "";
+  const factHtml = facts
+    ? `<div class="health-facts">${facts}</div>`
+    : "";
+  return `<article class="health-tile">
+    <h4 class="health-tile-title${titleTone}">${escapeHtml(label)}</h4>
+    <div class="health-square${toneClass}" role="status" aria-label="${escapeHtml(label)}${tone ? ` ${tone}` : ""}">
+      ${factHtml}
+    </div>
+    ${about ? `<p class="health-about">${escapeHtml(about)}</p>` : ""}
+    ${detail ? `<p class="health-detail">${escapeHtml(detail)}</p>` : ""}
+  </article>`;
+}
+
 function renderReasons() {
   const board = document.getElementById("healthBoard");
   if (!board) return;
-  board.innerHTML = Object.entries(CHECK_ABOUT)
-    .map(
-      ([label, about]) => `<div class="health-item">
-      <div class="health-pill" role="status" aria-label="${escapeHtml(label)}">
-        <span>${escapeHtml(label)}</span>
-      </div>
-      <p class="health-about">${escapeHtml(about)}</p>
-    </div>`
-    )
+  const tiles = Object.entries(CHECK_ABOUT)
+    .map(([label, about]) => tileHtml({ label, about }))
     .join("");
+  board.innerHTML = `<div class="health-row">${tiles}</div>`;
 }
 
 function renderBoard(payload) {
@@ -100,31 +110,39 @@ function renderBoard(payload) {
   else seasonBits.push("no month has locked yet");
   if (context) context.textContent = seasonBits.join(" · ");
 
-  let html = "";
-  let group = "";
+  const groups = [];
+  const byName = new Map();
   for (const row of checks) {
     const tone = row?.tone === "green" || row?.tone === "amber" || row?.tone === "red" ? row.tone : "red";
     counts[tone] += 1;
-    if (row.group !== group) {
-      group = row.group || "Other";
-      html += `<h3 class="admin-subheading">${escapeHtml(group)}</h3>`;
+    const name = row.group || "Other";
+    if (!byName.has(name)) {
+      byName.set(name, []);
+      groups.push(name);
     }
     const wiredOn = row.wired === true;
     const firedOn = firePassed(row.fire_state);
     const fireLabel = FIRE_LABEL[row.fire_state] || "Missed";
     const about = CHECK_ABOUT[String(row.label || "").trim()] || "";
-    html += `<div class="health-item">
-      <div class="health-pill tone-${tone}" role="status" aria-label="${escapeHtml(row.label)} ${tone}">
-        <span>${escapeHtml(row.label)}</span>
-        <span class="health-facts">
-          <span class="${wiredOn ? "" : "fact-off"}">${wiredOn ? "Wired" : "Not wired"}</span>
-          <span class="${firedOn ? "" : "fact-off"}">${escapeHtml(fireLabel)}</span>
-        </span>
-      </div>
-      ${about ? `<p class="health-about">${escapeHtml(about)}</p>` : ""}
-      <p class="health-detail">${escapeHtml(row.detail)}</p>
-    </div>`;
+    const facts = `<span class="${wiredOn ? "" : "fact-off"}">${wiredOn ? "Wired" : "Not wired"}</span><span class="${firedOn ? "" : "fact-off"}">${escapeHtml(fireLabel)}</span>`;
+    byName.get(name).push(
+      tileHtml({
+        label: row.label,
+        about,
+        detail: row.detail,
+        tone,
+        facts,
+      })
+    );
   }
+  const html = groups
+    .map(
+      (name) => `<section class="health-group">
+      <h3 class="health-group-title">${escapeHtml(name)}</h3>
+      <div class="health-row">${byName.get(name).join("")}</div>
+    </section>`
+    )
+    .join("");
 
   if (board) board.innerHTML = html || `<p class="note">The read returned no mechanisms.</p>`;
   if (summary) {
