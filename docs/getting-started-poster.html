@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GPSL — Getting started</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,560;0,9..144,680;1,9..144,560&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 1080px;
+      height: 1440px;
+      overflow: hidden;
+      background: #070707;
+      color: #f3f3f3;
+      font-family: Manrope, system-ui, sans-serif;
+    }
+    .poster {
+      position: relative;
+      width: 1080px;
+      height: 1440px;
+      padding: 52px 64px 44px;
+      display: flex;
+      flex-direction: column;
+      background:
+        radial-gradient(ellipse 80% 36% at 50% 0%, rgba(255,153,0,0.16), transparent 62%),
+        radial-gradient(ellipse 40% 28% at 100% 100%, rgba(255,153,0,0.06), transparent 70%),
+        #070707;
+    }
+    .frame {
+      position: absolute;
+      inset: 22px;
+      border: 1px solid rgba(255,255,255,0.08);
+      pointer-events: none;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .logo { height: 54px; width: auto; }
+    .eyebrow {
+      font-size: 13px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.46);
+      font-weight: 600;
+    }
+    h1 {
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 560;
+      font-size: 84px;
+      line-height: 0.92;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+    }
+    h1 em { font-style: italic; color: #ff9900; }
+    .lede {
+      max-width: 760px;
+      font-size: 22px;
+      line-height: 1.4;
+      color: rgba(255,255,255,0.72);
+      margin-bottom: 28px;
+    }
+    .lede strong { color: #fff; font-weight: 700; }
+    .crests {
+      display: flex;
+      gap: 14px;
+      align-items: flex-end;
+      margin-bottom: 26px;
+    }
+    .crest {
+      width: 78px;
+      text-align: center;
+    }
+    .crest img {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 6px;
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,0.45));
+    }
+    .crest span {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.42);
+      font-weight: 600;
+    }
+    .cards {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      height: 360px;
+      margin: 0 8px 22px;
+    }
+    .card {
+      width: 168px;
+      text-align: center;
+    }
+    .card img {
+      width: 168px;
+      height: 240px;
+      object-fit: cover;
+      object-position: top center;
+      border-radius: 12px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+      background: #141414;
+    }
+    .card b {
+      display: block;
+      margin-top: 10px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .card i {
+      display: block;
+      margin-top: 2px;
+      font-style: normal;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.42);
+    }
+    .card:nth-child(1) { transform: rotate(-5deg) translateY(18px); }
+    .card:nth-child(2) { transform: rotate(-2deg) translateY(6px); }
+    .card:nth-child(3) { transform: translateY(-8px); }
+    .card:nth-child(4) { transform: rotate(2deg) translateY(6px); }
+    .card:nth-child(5) { transform: rotate(5deg) translateY(18px); }
+    .facts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: auto;
+    }
+    .fact {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 14px 16px 15px;
+      min-height: 92px;
+    }
+    .fact em {
+      display: block;
+      font-family: Fraunces, Georgia, serif;
+      font-style: italic;
+      color: #ff9900;
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+    .fact p {
+      font-size: 16px;
+      line-height: 1.35;
+      color: rgba(255,255,255,0.86);
+    }
+    .foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 18px;
+    }
+    .pill {
+      background: #ff9900;
+      color: #14110c;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-size: 13px;
+      padding: 14px 22px;
+    }
+    .where {
+      text-align: right;
+      font-size: 14px;
+      line-height: 1.4;
+      color: rgba(255,255,255,0.46);
+    }
+    .where b { color: #fff; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="poster">
+    <div class="frame"></div>
+    <div class="top">
+      <img class="logo" src="https://gpsuperleague.github.io/GPSL/images/League/Logos/GPSL_logo.png" alt="GPSL" />
+      <div class="eyebrow">Owner’s guide</div>
+    </div>
+    <h1>Read this<br><em>before</em> you spend it.</h1>
+    <p class="lede">Twelve short sections are in your inbox. They are the rules that move the money, the points, and the matches.</p>
+    <div class="crests">
+      <div class="crest"><img src="https://gpsuperleague.github.io/GPSL/images/club_badges/LIV.png" alt="" /><span>Liverpool</span></div>
+      <div class="crest"><img src="https://gpsuperleague.github.io/GPSL/images/club_badges/ACM.png" alt="" /><span>Milan</span></div>
+      <div class="crest"><img src="https://gpsuperleague.github.io/GPSL/images/club_badges/JUV.png" alt="" /><span>Juventus</span></div>
+      <div class="crest"><img src="https://gpsuperleague.github.io/GPSL/images/club_badges/DOR.png" alt="" /><span>Dortmund</span></div>
+      <div class="crest"><img src="https://gpsuperleague.github.io/GPSL/images/club_badges/SLB.png" alt="" /><span>Slovan</span></div>
+      <div class="crest"><img src="https://gpsuperleague.github.io/GPSL/images/club_badges/PFC.png" alt="" /><span>Paris FC</span></div>
+      <div class="crest"><img src="https://gpsuperleague.github.io/GPSL/images/club_badges/CVI.png" alt="" /><span>Celta</span></div>
+      <div class="crest"><img src="https://gpsuperleague.github.io/GPSL/images/club_badges/WYD.png" alt="" /><span>Wydad</span></div>
+      <div class="crest"><img src="https://gpsuperleague.github.io/GPSL/images/club_badges/CRI.png" alt="" /><span>Chiang Rai</span></div>
+      <div class="crest"><img src="https://gpsuperleague.github.io/GPSL/images/club_badges/JEJ.png" alt="" /><span>Jeju</span></div>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <img src="https://omyyogfumrjoaweuawjn.supabase.co/storage/v1/object/public/player-cards/110718.png" alt="Kylian Mbappé" />
+        <b>Mbappé</b><i>Slovan · 85</i>
+      </div>
+      <div class="card">
+        <img src="https://omyyogfumrjoaweuawjn.supabase.co/storage/v1/object/public/player-cards/133543.png" alt="Erling Haaland" />
+        <b>Haaland</b><i>Chiang Rai · 84</i>
+      </div>
+      <div class="card">
+        <img src="https://omyyogfumrjoaweuawjn.supabase.co/storage/v1/object/public/player-cards/162114.png" alt="Lamine Yamal" />
+        <b>Yamal</b><i>Slovan · 83</i>
+      </div>
+      <div class="card">
+        <img src="https://omyyogfumrjoaweuawjn.supabase.co/storage/v1/object/public/player-cards/44840.png" alt="Virgil van Dijk" />
+        <b>van Dijk</b><i>Juventus · 83</i>
+      </div>
+      <div class="card">
+        <img src="https://omyyogfumrjoaweuawjn.supabase.co/storage/v1/object/public/player-cards/44383.png" alt="Thibaut Courtois" />
+        <b>Courtois</b><i>SOA · 83</i>
+      </div>
+    </div>
+    <div class="facts">
+      <div class="fact"><em>01 · The club</em><p>On the waiting list you choose a free club. You keep the cash. The old squad is released. You Handpick the new one.</p></div>
+      <div class="fact"><em>02 · The game</em><p>Open eFootball before you tag, bid, or sign. If the player is not in the game, leave them.</p></div>
+      <div class="fact"><em>03 · The squad</em><p>24 to 28 players. 8 home-grown. 5 aged 21 or under. A goalkeeper. Stars from 79 up: 3 in the Super League, 2 in the Championship.</p></div>
+      <div class="fact"><em>04 · The clock</em><p>August to December, then January to May, then playoffs. The month changes on Thursday at 7pm UK.</p></div>
+      <div class="fact"><em>05 · The match</em><p>Home proposes the kick-off. The other club has 48 hours. Check in from 10 minutes before until 10 minutes after.</p></div>
+      <div class="fact"><em>06 · The tape</em><p>Record it. 10 minutes, injuries off, PA3 or PA4. Post the video within 72 hours of the lock. Miss it and the fine is 500,000, plus a point.</p></div>
+    </div>
+    <div class="foot">
+      <div class="pill">Open Getting started</div>
+      <div class="where">In your inbox, and in the nav.<br><b>gpsuperleague.github.io/GPSL</b></div>
+    </div>
+  </div>
+</body>
+</html>

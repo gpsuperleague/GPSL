@@ -71,6 +71,21 @@ function firePassed(state) {
   return state === "ok" || state === "not_due";
 }
 
+function renderReasons() {
+  const board = document.getElementById("healthBoard");
+  if (!board) return;
+  board.innerHTML = Object.entries(CHECK_ABOUT)
+    .map(
+      ([label, about]) => `<div class="health-item">
+      <div class="health-pill" role="status" aria-label="${escapeHtml(label)}">
+        <span>${escapeHtml(label)}</span>
+      </div>
+      <p class="health-about">${escapeHtml(about)}</p>
+    </div>`
+    )
+    .join("");
+}
+
 function renderBoard(payload) {
   const board = document.getElementById("healthBoard");
   const summary = document.getElementById("healthSummary");
@@ -121,17 +136,8 @@ function renderBoard(payload) {
 }
 
 async function runTest() {
-  const button = document.getElementById("runTest");
-  if (button) {
-    button.disabled = true;
-    button.textContent = "Reading…";
-  }
   setStatus("healthStatus", "Reading schedules and the last stamps…", "warn");
   const { data, error } = await supabase.rpc("admin_mechanism_health");
-  if (button) {
-    button.disabled = false;
-    button.textContent = "Run test";
-  }
   if (error) {
     setStatus(
       "healthStatus",
@@ -145,17 +151,14 @@ async function runTest() {
   setStatus("healthStatus", `Read completed ${when}. Nothing was started.`, true);
 }
 
-document.getElementById("runTest")?.addEventListener("click", () => {
-  runTest().catch((err) => {
-    const button = document.getElementById("runTest");
-    if (button) {
-      button.disabled = false;
-      button.textContent = "Run test";
-    }
-    setStatus("healthStatus", err?.message || "The health read failed.", false);
-  });
-});
+renderReasons();
+setStatus("healthStatus", "Reading schedules and the last stamps…", "warn");
 
-initAdminPage().catch(() => {
-  setStatus("healthStatus", "Admin sign-in failed.", false);
-});
+initAdminPage()
+  .then((user) => {
+    if (!user) return;
+    return runTest();
+  })
+  .catch((err) => {
+    setStatus("healthStatus", err?.message || "Admin sign-in failed.", false);
+  });

@@ -28,7 +28,6 @@
     .health-about { margin: 8px 0 0; color: #ddd; font-size: 13px; line-height: 1.45; }
     .health-detail { margin: 4px 0 0; color: #888; font-size: 12px; line-height: 1.45; }
     .health-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
-    #runTest[disabled] { opacity: 0.6; cursor: wait; }
   </style>
 </head>
 <body class="admin-page">
@@ -38,21 +37,21 @@
     <div class="admin-main" id="adminMain">
       <p class="note">
         <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
-        · Read only. Run test looks up each mechanism. It does not start a month, end a season, run transfers, or post a fine.
+        · Read only. Opening this page looks up each mechanism. It does not start a month, end a season, run transfers, or post a fine.
       </p>
 
       <div class="card">
-        <h2>Run test</h2>
+        <h2>Mechanisms</h2>
         <p class="note">
           Green means it is wired and the last time it was due, it succeeded. Not due yet still counts as a pass.
           Amber means one of the two checks failed. Red means both failed. A hook with no written log stays amber.
+          What each one is checking stays on the page.
         </p>
         <div class="health-legend" aria-hidden="true">
           <span class="tone-green">Both ok</span>
           <span class="tone-amber">One check</span>
           <span class="tone-red">Both failed</span>
         </div>
-        <button type="button" class="button" id="runTest">Run test</button>
         <p id="healthStatus" class="status-line"></p>
         <p id="healthContext" class="note"></p>
         <div id="healthSummary" class="health-summary"></div>
@@ -65,6 +64,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_healthcheck.js?v=20261111-injury-health"></script>
+  <script type="module" src="admin_healthcheck.js?v=20261112-health-auto"></script>
 </body>
 </html>

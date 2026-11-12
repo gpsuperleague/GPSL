@@ -2,6 +2,7 @@
 
 export const INBOX_ACTION_DEFAULTS = {
   welcome_gpsl: { label: "Learning GPSL", href: "learning_gpsl.html" },
+  getting_started: { label: "Getting started", href: "getting_started.html" },
   result_submitted: { label: "Match Day", href: "matchday.html" },
   result_to_confirm: { label: "Confirm result", href: "matchday.html" },
   result_confirmed: { label: "Fixtures", href: "fixtures.html" },
