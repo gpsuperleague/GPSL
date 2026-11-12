@@ -1,8 +1,9 @@
 import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
-import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
-import { formatMoney } from "./competition.js";
+import { loadClubsMap, fullClubName, clubPageHref, clubBadgeImgHtml } from "./clubs_lookup.js";
+import { formatMoney, leagueBadgeHtml } from "./competition.js";
 import { escapePlayerHtml, playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
+import { trophyImageForCup } from "./trophy_assets.js";
 import { renderChallengesIntro } from "./challenges_rules.js";
 import { challengeStatDescription } from "./challenge_labels.js";
 
@@ -380,13 +381,30 @@ function winPlayerHtml(player) {
   </div>`;
 }
 
+function compMarkHtml(ev) {
+  const cupCode = String(ev.cup_code || "").trim().toLowerCase();
+  if (ev.competition === "cup" || cupCode) {
+    const src = trophyImageForCup(cupCode);
+    const title = (cupCode || "cup").replace(/_/g, " ");
+    if (!src) return `<span class="win-comp-fallback" title="${escapePlayerHtml(title)}">Cup</span>`;
+    return `<img class="win-comp-mark" src="${src}" alt="" title="${escapePlayerHtml(title)}">`;
+  }
+  return leagueBadgeHtml(ev.division, { size: "sm" });
+}
+
 function winEventHtml(ev) {
   const home = fullClubName(ev.home) || ev.home || "";
   const away = fullClubName(ev.away) || ev.away || "";
-  const comp = ev.competition === "cup" ? "Cup" : "League";
-  const md = ev.matchday ? ` MD${ev.matchday}` : "";
-  const month = ev.month ? `${ev.month} · ` : "";
-  return `<li>${escapePlayerHtml(`${month}${comp}${md}`)} · ${escapePlayerHtml(home)} ${ev.home_goals}–${ev.away_goals} ${escapePlayerHtml(away)}</li>`;
+  const meta = [ev.month, ev.matchday ? `MD${ev.matchday}` : ""]
+    .filter(Boolean)
+    .join(" · ");
+  return `<li class="win-scoreline">
+    <span class="win-score-meta">${escapePlayerHtml(meta)}</span>
+    <span class="win-score-side win-score-side--home">${clubBadgeImgHtml(ev.home, { className: "club-badge-thumb win-crest" })}${escapePlayerHtml(home)}</span>
+    <span class="win-score-num">${ev.home_goals}–${ev.away_goals}</span>
+    <span class="win-score-side win-score-side--away">${escapePlayerHtml(away)}${clubBadgeImgHtml(ev.away, { className: "club-badge-thumb win-crest" })}</span>
+    ${compMarkHtml(ev)}
+  </li>`;
 }
 
 function winStoryHtml(story) {

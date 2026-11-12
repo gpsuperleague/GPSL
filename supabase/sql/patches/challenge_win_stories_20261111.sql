@@ -97,6 +97,8 @@ BEGIN
             'away', f.away_club_short_name,
             'home_goals', f.home_goals,
             'away_goals', f.away_goals,
+            'division', f.division,
+            'cup_code', f.cup_code,
             'note', 'Clean sheet'
           ) AS x, f.result_posted_at AS ord
           FROM public.competition_fixtures f
@@ -129,7 +131,8 @@ BEGIN
             'kind', 'match', 'when', f.result_posted_at, 'month', initcap(f.gpsl_month),
             'competition', f.competition_type, 'matchday', f.matchday,
             'home', f.home_club_short_name, 'away', f.away_club_short_name,
-            'home_goals', f.home_goals, 'away_goals', f.away_goals, 'note', 'Win'
+            'home_goals', f.home_goals, 'away_goals', f.away_goals,
+            'division', f.division, 'cup_code', f.cup_code, 'note', 'Win'
           ) AS x, f.result_posted_at AS ord
           FROM public.competition_fixtures f
           WHERE f.season_id = v_season AND f.status = 'played'
