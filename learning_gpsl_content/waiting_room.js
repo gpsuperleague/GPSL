@@ -53,8 +53,8 @@ export const SECTION_WAITING_ROOM = {
     { type: "h3", html: "Mid-season vacant club (handpick)" },
     {
       type: "p",
-      html: `Sometimes a club becomes vacant mid-season. Admin may invite you to claim it from the waiting list.
-        You keep the club’s cash (minus the takeover / stadium charge when applied), the previous squad is released,
+      html: `Sometimes a club is empty during the season. On the waiting list you choose a free club.
+        You keep the club’s cash, the previous squad is released,
         and you rebuild via <b>Handpick</b> — not a full club auction.`,
     },
     {

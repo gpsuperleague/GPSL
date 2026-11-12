@@ -3,7 +3,7 @@
  * Edit individual modules; this file only assembles order + intro meta.
  */
 
-import { SECTION_WAITING_ROOM } from "./waiting_room.js?v=20261110-handbook-rules";
+import { SECTION_WAITING_ROOM } from "./waiting_room.js?v=20261112-claim-club";
 import { SECTION_NAVIGATION } from "./navigation.js?v=20261110-handbook-wire";
 import {
   SECTION_MY_CLUB,
