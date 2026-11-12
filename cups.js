@@ -41,7 +41,7 @@ import {
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261112-cup-priority";
+} from "./match_scheduling.js?v=20261112-no-late-fee";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,

@@ -35,7 +35,7 @@ import {
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
   fixtureExpiryWarnings,
-} from "./match_scheduling.js?v=20261112-cup-priority";
+} from "./match_scheduling.js?v=20261112-no-late-fee";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -846,24 +846,20 @@ function deadlineBoxHtml(f) {
   if (!d?.ok || ctx?.is_catch_up) return finalPlayLineHtml();
   const now = Date.now();
   const proposeBy = d.propose_by ? new Date(d.propose_by).getTime() : NaN;
-  const lateFrom = d.late_fee_from ? new Date(d.late_fee_from).getTime() : NaN;
   const homeName = fullClubName(f.home_club_short_name) || f.home_club_short_name;
   let html = "";
 
   if (Number.isFinite(proposeBy) && proposeBy > now && !d.home_has_proposed) {
-    const late = Number.isFinite(lateFrom) && now >= lateFrom;
     const cupGrace =
       d.arrangement_rule === "cup_grace" ||
       String(f.competition_type || "").toLowerCase() === "cup";
     if (ctx.my_role === "home") {
-      html = `<div class="deadline-box${late && !cupGrace ? " deadline-late" : ""}">
+      html = `<div class="deadline-box">
         <b>Propose a kick-off by ${formatUkWhen(d.propose_by)}</b> (${relWhen(d.propose_by)}).
         ${
           cupGrace
-            ? "This cup tie is drawn when the round month opens. No proposal when that month locks is a strike, and each later lock is another. In the extra month the away club can make the first proposal, which stops further strikes. A missed reply is a strike too. There is no late-arrangement fee."
-            : late
-              ? "The ₿1m late fee now applies. No proposal when this month locks is a strike: ₿500k. Three strikes on this fixture forfeits it and adds ₿1m."
-              : `Proposing after ${formatUkWhen(d.late_fee_from)} costs a ₿1m late fee. No proposal when this month locks is a strike: ₿500k.`
+            ? "This cup tie is drawn when the round month opens. No proposal when that month locks is a strike, and each later lock is another. In the extra month the away club can make the first proposal, which stops further strikes. A missed reply is a strike too."
+            : "No proposal when this month locks is a strike: ₿500k. Three strikes on this fixture forfeits it and adds ₿1m."
         }
       </div>`;
     } else {

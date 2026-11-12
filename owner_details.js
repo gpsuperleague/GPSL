@@ -15,7 +15,7 @@ import {
   inclusiveDayCountFromDates,
 } from "./owner_holidays.js?v=20261019-supporter-holiday";
 import { wireAvailabilityPanel } from "./owner_availability.js?v=20261020-owner-tz-avail";
-import { loadAvailabilityContextForClub } from "./match_scheduling.js?v=20261112-cup-priority";
+import { loadAvailabilityContextForClub } from "./match_scheduling.js?v=20261112-no-late-fee";
 import {
   resolveAdminClubContext,
   mountAdminClubPicker,

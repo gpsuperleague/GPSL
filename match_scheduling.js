@@ -370,19 +370,12 @@ export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
     Number.isFinite(unlockMs) &&
     unlockMs > nowMs
   ) {
-    const lateFrom = unlockMs - WARN_48H;
     const whenUnlock = ukWhen(new Date(unlockMs).toISOString());
     if (unlockMs - nowMs <= WARN_48H) {
       operational = {
         kind: "propose",
-        text: `No kick-off proposed. A proposal now is a ₿1,000,000 late fee. None by ${whenUnlock} is ₿2,500,000.`,
-        title: "Home has not proposed. The last 48 hours before the month opens is a ₿1,000,000 late arrangement fee. No proposal by the time the month opens is ₿2,500,000.",
-      };
-    } else if (lateFrom > nowMs && lateFrom - nowMs <= WARN_48H) {
-      operational = {
-        kind: "propose",
-        text: `Late fee starts ${ukWhen(new Date(lateFrom).toISOString())}. A first proposal after that is ₿1,000,000. None by ${whenUnlock} is ₿2,500,000.`,
-        title: "Home has not proposed. The last 48 hours before the month opens is a ₿1,000,000 late arrangement fee. No proposal by the time the month opens is ₿2,500,000.",
+        text: `No kick-off proposed. None by ${whenUnlock} is a strike: ₿500,000.`,
+        title: "Home has not proposed. No proposal when this month opens is a strike: ₿500,000. Each later lock with still no proposal is another strike.",
       };
     }
   }
@@ -394,7 +387,7 @@ export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
     operational = {
       kind: "arrange",
       text: `Still not arranged. No proposal at a month lock is a strike. Away can open this tie once the round month has locked. An overdue cup is played before other fixtures. Still unplayed at ${when}: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then scheduling activity. Level on all of that and the match is void.`,
-      title: "A cup is drawn when the round month opens. No proposal when that month locks is a strike, and each later lock is another. In the extra month the away club can make the first proposal, which stops further no-proposal strikes. A missed reply is a strike. There is no late-arrangement fee. Still unplayed at the end of the window: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then logins, matches played, forfeit losses, reply fines on other fixtures, and check-ins. Level on all of that and the match is void. Neither club is given the win.",
+      title: "A cup is drawn when the round month opens. No proposal when that month locks is a strike, and each later lock is another. In the extra month the away club can make the first proposal, which stops further no-proposal strikes. A missed reply is a strike. Still unplayed at the end of the window: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then logins, matches played, forfeit losses, reply fines on other fixtures, and check-ins. Level on all of that and the match is void. Neither club is given the win.",
     };
   }
 
