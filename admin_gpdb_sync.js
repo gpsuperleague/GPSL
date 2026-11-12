@@ -1151,8 +1151,8 @@ async function lookupMarkLegacy() {
   markLegacyPreview = data;
   const where = data.club
     ? `at ${data.club} · ${data.how || "no purchase found"}${data.bought_at ? ` ${fmtLegacyDate(data.bought_at)}` : ""} · refund ${
-        data.already_refunded ? "already done" : fmtLegacyMoney(data.refund)
-      } (fee ${fmtLegacyMoney(data.fee_paid)} + agent ${fmtLegacyMoney(data.agent_fee)} + tax ${fmtLegacyMoney(data.income_tax)})`
+        data.already_refunded ? "already done" : `${fmtLegacyMoney(data.refund)} market value`
+      }`
     : "free agent — nothing to refund";
   setStatus(
     "markLegacyInfo",
