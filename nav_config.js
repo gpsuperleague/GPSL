@@ -453,6 +453,13 @@ export const NAV_SECTIONS = [
     items: [
       { heading: true, label: "Knowledge" },
       {
+        href: "getting_started.html",
+        label: "Getting started",
+        page: "getting_started",
+        indent: true,
+        navIcon: "learning_gpsl",
+      },
+      {
         href: "learning_gpsl.html",
         label: "Learning GPSL",
         page: "learning_gpsl",

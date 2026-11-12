@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261111-quiz-menu";
+export const APP_VERSION = "20261112-getting-started";

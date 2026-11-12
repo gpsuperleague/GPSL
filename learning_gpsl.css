@@ -439,7 +439,8 @@ mark.learning-hit {
   line-height: 1.65;
 }
 
-.learning-section ul {
+.learning-section ul,
+.learning-section ol {
   margin: 8px 0 0;
   padding-left: 1.25em;
 }
