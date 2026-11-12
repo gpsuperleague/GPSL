@@ -686,7 +686,7 @@ function renderArrangeBlock(list) {
         <b>Arrange now — upcoming months + replays</b>
         <ul class="mc-arrange-notes">
           <li><b>League.</b> Home proposes a kick-off before that GPSL month starts. The last 48 hours is a ₿1m late fee. Missing the unlock is ₿2.5m.</li>
-          <li><b>Cups.</b> Drawn when the round month opens. Arrange in that month, then one grace month. No ₿2.5m for the month before the draw. May cups have no extra month.</li>
+          <li><b>Cups.</b> Drawn when the round month opens. No proposal at that lock is a strike, then each later lock. Away can open the tie once the round month has locked. A missed reply is a strike. No late-arrangement fee. May cups have no extra month.</li>
           <li><b>Replay / catch-up.</b> A reset or a closed month also appears here. Re-propose in the current window.</li>
           <li><b>Already agreed on Discord.</b> Use the Discord lock on the schedule page.</li>
           <li><b>Manual.</b> Both clubs with the GPSL match system off do not appear here.</li>

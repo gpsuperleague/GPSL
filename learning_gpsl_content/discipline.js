@@ -50,10 +50,9 @@ export const SECTION_DISCIPLINE = {
     {
       type: "ul",
       items: [
-        `<b>₿500k strike</b> — league: home has not proposed by a month lock (repeats each later lock until someone proposes). <b>3</b> strikes on that fixture → <b>₿1m</b> and the match is forfeited. An away proposal stops further no-proposal strikes. Suppressed while home is on a booked holiday.`,
-        `<b>₿2.5m</b> — cups: drawn at month change. Arrange in the round month, then one grace month (May: none). The fine starts only if there is still no proposal when that grace month locks.`,
+        `<b>₿500k strike</b> — home has not proposed by a month lock (repeats each later lock until someone proposes). League: the lock before the play month. Cups: the round-month lock, because the tie is drawn when that month opens. Away can open a cup once that lock has passed. <b>3</b> strikes on that fixture → <b>₿1m</b> and the match is forfeited. An away proposal stops further no-proposal strikes. Suppressed while home is on a booked holiday.`,
         `<b>₿1m</b> — league only: home’s first proposal in the last 48h before the play month opened. Cups do not pay this.`,
-        `<b>Warning → ₿1m</b> — reply overdue at lock: first lock is Inbox warning only; still overdue at a later lock → fine. Negotiation continues.`,
+        `<b>₿500k strike</b> — missed reply, league and cup. 48 hours, and that clock can cross a month lock. Still silent at the next lock is another strike. The proposal stays open.`,
         `<b>₿2.5m + 3–0</b> — one-sided no-show recorded, match still unfinished at month lock.`,
         `<b>₿3m + 3–0</b> — emergency drop (&lt;24h before KO) with no season allowance left (2 per season).`,
         `<b>₿2.5m each + mutual forfeit</b> — both clubs had GPSL match system OFF and the fixture is still unplayed at that month’s lock (0 points each; cups both out).`,

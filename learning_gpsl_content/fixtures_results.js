@@ -276,11 +276,11 @@ export const SECTION_MATCH_SCHEDULING = {
       type: "ul",
       items: [
         `<b>Home proposes first</b>, in the month before the match — pick a kick-off from times free for <b>both</b> clubs (each owner’s local availability, matched as world time).`,
-        `If the home club has still not proposed when that month locks, the away club can propose as well from the play month on. An away proposal stops further no-proposal strikes. The home club then agrees or counters on the normal reply clock.`,
+        `If home has still not proposed when the round month locks, the away club can make the first proposal from the extra month on. An away proposal stops further no-proposal strikes. Home then agrees or counters on the normal reply clock.`,
         `Away gets an <a href="inbox.html">Inbox</a> message — <b>Accept</b> or <b>counter</b> with their own slot.`,
         `You can’t double-book a 30-minute slot already agreed or pending for either club.`,
         `You can agree on <b>Discord</b> anytime — then use <b>We agreed on Discord — lock this kick-off</b> on the schedule page so both clubs confirm (reply clocks keep running until locked).`,
-        `<b>Reply on time.</b> Each turn is <b>48 hours</b>, and those 48 hours can run into the next GPSL month. A league miss is a <b>strike</b> (<b>₿500k</b>). Still silent at the next month lock is another strike. The proposal stays open.`,
+        `<b>Reply on time.</b> Each turn is <b>48 hours</b>, and those 48 hours can run into the next GPSL month. Missing it is a <b>strike</b> (<b>₿500k</b>), for a league match and a cup. Still silent at the next month lock is another strike. The proposal stays open.`,
       ],
     },
 
@@ -311,9 +311,9 @@ export const SECTION_MATCH_SCHEDULING = {
       items: [
         `<b>Home should propose in the month before</b> the fixture’s play month (e.g. September fixture → propose before August locks). You may propose as early as you like once fixtures exist.`,
         `<b>Last 48h before the play month opens</b> and home only then proposes → <b>₿1m</b> Late Arrangement Fee.`,
-        `<b>No home proposal</b> by a league lock → one <b>strike</b> (<b>₿500k</b>), repeating each later lock until someone proposes. Three strikes on that fixture forfeits it and adds <b>₿1m</b>. An away proposal stops the sequence. Suppressed while home is on a booked holiday. Cups keep the grace-month <b>₿2.5m</b> fine.`,
-        `<b>Cups</b> are drawn when the round month opens, so home is not fined for the month before the tie existed. Arrange in the <b>cup round month</b>, then the <b>following month is grace</b> (May cups: no extra month). Still no proposal when that grace month locks → <b>₿2.5m</b>, then each later lock. The ₿1m last-48h fee does not apply to cups.`,
-        `<b>League reply</b> — 48 hours, and that clock can cross a month lock. Missing it is a <b>strike</b> (<b>₿500k</b>). Still silent at the next lock is another strike. The proposal stays open. <b>Cups</b> stay a warning at the first overdue lock, then <b>₿1m</b> at a later lock.`,
+        `<b>No home proposal</b> by a lock → one <b>strike</b> (<b>₿500k</b>), repeating each later lock until someone proposes. League: that starts at the lock before the play month. Cups: the tie is drawn when the round month opens, so the first strike is that month’s lock, and away can open the tie once that lock has passed. Three strikes on that fixture forfeits it and adds <b>₿1m</b>. An away proposal stops the sequence. Suppressed while home is on a booked holiday.`,
+        `<b>Cups</b> have no fine for the month before the draw, and no <b>₿1m</b> late-arrangement fee. Arrange in the round month. The following month is still there to play the tie (May cups: no extra month).`,
+        `<b>Reply</b> — 48 hours, league and cup, and that clock can cross a month lock. Missing it is a <b>strike</b> (<b>₿500k</b>). Still silent at the next lock is another strike. The proposal stays open.`,
         `<b>League play window</b>: scheduled month <b>+ 2</b> (August → end of October). <b>Cups</b>: scheduled month <b>+ 1</b> (May cups: no extra month).`,
         `<b>After the window</b>, still unplayed → the club with more strikes on that fixture loses. The same steps apply to league and cup. Level strikes and a kick-off was agreed → the club that failed to check in loses (both or neither, this step is skipped). A time still waiting on a reply, and the 48 hours to answer had already finished → the club that left it sitting loses. A reply still inside those 48 hours is skipped. Then fewer logins, fewer matches played, more forfeit losses, more reply fines on other fixtures, fewer check-ins. Level again → the match is <b>void</b> (neither club takes a point). Proposal count is not used. Vacant club loses 3–0. Holiday covering the scheduled month without playing → that club forfeits.`,
         `<b>Recorded one-sided no-show</b> and still unfinished → <b>3–0 + ₿2.5m</b> for the no-show club.`,
@@ -346,12 +346,11 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `<b>₿500k</b> — each strike. League: one strike per lock the home club still has not proposed, until someone proposes.`,
+        `<b>₿500k</b> — each strike. One strike per lock while home has still not proposed, until someone proposes. League starts the lock before the play month. Cups start at the round-month lock. Away can open a cup once that lock has passed.`,
         `<b>₿1m + forfeit</b> — 3 strikes on the same fixture.`,
         `<b>₿1m</b> — every 5th season strike (5, 10, 15…), on top of that strike’s ₿500k.`,
-        `<b>₿2.5m</b> — cups: still no home proposal when the grace month after the round locks (round month to arrange, next month grace; May cups have no extra month). Not charged at the draw.`,
-        `<b>₿1m</b> — league only: home first proposed in the last 48h before the play month opened.`,
-        `<b>Reply strike</b> — league: missing the 48-hour reply is ₿500k and a strike. Still silent at the next lock is another. Cups: first overdue lock warns, a later lock is ₿1m.`,
+        `<b>₿1m</b> — league only: home first proposed in the last 48h before the play month opened. Cups do not pay this.`,
+        `<b>Reply strike</b> — league and cup: missing the 48-hour reply is ₿500k and a strike. Still silent at the next lock is another.`,
         `<b>₿500k</b> — a missed check-in (a strike). Both miss → ₿500k each.`,
         `<b>₿2.5m each + mutual forfeit</b> — manual-arrange fixture still unplayed at month lock.`,
         `<b>₿3m + 3–0</b> — emergency drop with no season allowance left.`,

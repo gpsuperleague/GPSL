@@ -35,7 +35,7 @@ import {
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
   fixtureExpiryWarnings,
-} from "./match_scheduling.js?v=20261112-reply-48h";
+} from "./match_scheduling.js?v=20261112-cup-strikes";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -860,7 +860,7 @@ function deadlineBoxHtml(f) {
         <b>Propose a kick-off by ${formatUkWhen(d.propose_by)}</b> (${relWhen(d.propose_by)}).
         ${
           cupGrace
-            ? "This cup tie is drawn when the round month opens, so there is no fine for the month before. Arrange in the round month; the following month is grace (May cups have no extra month). Still no proposal by this lock → ₿2.5m."
+            ? "This cup tie is drawn when the round month opens. No proposal when that month locks is a strike, and each later lock is another. In the extra month the away club can make the first proposal, which stops further strikes. A missed reply is a strike too. There is no late-arrangement fee."
             : late
               ? "The ₿1m late fee now applies. No proposal when this month locks is a strike: ₿500k. Three strikes on this fixture forfeits it and adds ₿1m."
               : `Proposing after ${formatUkWhen(d.late_fee_from)} costs a ₿1m late fee. No proposal when this month locks is a strike: ₿500k.`

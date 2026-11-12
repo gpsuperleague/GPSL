@@ -352,15 +352,9 @@ export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
       operational = {
         kind: "reply",
         text: overdue
-          ? cup
-            ? `Reply is overdue (was ${when}). The next month lock warns the first time. Each later lock while still overdue is ₿1,000,000.`
-            : `Reply is overdue (was ${when}). That is a strike: ₿500k. Still silent at the next month lock is another strike.`
-          : cup
-            ? `Reply due ${when}. Miss it and the next month lock warns the first time. Each later lock while still overdue is ₿1,000,000.`
-            : `Reply due ${when}. 48 hours, and that can run into the next GPSL month. Missing it is a strike: ₿500k.`,
-        title: cup
-          ? "The club that owes the reply is warned at the first overdue month lock. Each later lock while the reply is still overdue charges ₿1,000,000."
-          : "A league reply is 48 hours and can cross a month lock. Missing it is a ₿500k strike. Still silent at the next lock is another strike. Three on this fixture forfeits it and adds ₿1m.",
+          ? `Reply is overdue (was ${when}). That is a strike: ₿500k. Still silent at the next month lock is another strike.`
+          : `Reply due ${when}. 48 hours, and that can run into the next GPSL month. Missing it is a strike: ₿500k.`,
+        title: "A reply is 48 hours and can cross a month lock. Missing it is a ₿500k strike. Still silent at the next lock is another strike. Three on this fixture forfeits it and adds ₿1m.",
       };
     }
   }
@@ -399,8 +393,8 @@ export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
     const when = ukWhen(new Date(lockMs).toISOString());
     operational = {
       kind: "arrange",
-      text: `Still not arranged. No proposal by ${when} is ₿2,500,000. Still unplayed then: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then scheduling activity. Level on all of that and the match is void.`,
-      title: "Cups are arranged in the round month. The no-proposal fine starts when the grace month locks. A match still unplayed at that lock uses the same decider as a league match: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then logins, matches played, forfeit losses, reply fines on other fixtures, and check-ins. Level on all of that and the match is void. Neither club is given the win.",
+      text: `Still not arranged. No proposal at a month lock is a strike. Away can open this tie once the round month has locked. Still unplayed at ${when}: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then scheduling activity. Level on all of that and the match is void.`,
+      title: "A cup is drawn when the round month opens. No proposal when that month locks is a strike, and each later lock is another. In the extra month the away club can make the first proposal, which stops further no-proposal strikes. A missed reply is a strike. There is no late-arrangement fee. Still unplayed at the end of the window: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then logins, matches played, forfeit losses, reply fines on other fixtures, and check-ins. Level on all of that and the match is void. Neither club is given the win.",
     };
   }
 

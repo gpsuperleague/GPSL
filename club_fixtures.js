@@ -42,7 +42,7 @@ import {
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261112-reply-48h";
+} from "./match_scheduling.js?v=20261112-cup-strikes";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,
