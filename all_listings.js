@@ -45,6 +45,11 @@ import {
   loadMatchFitnessForPlayers,
   formatListingMatchFitnessHtml,
 } from "./player_discipline.js";
+import {
+  loadWagePercentages,
+  wageFromMarketValue,
+  formatWage,
+} from "./wages.js";
 
 // Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
@@ -66,6 +71,9 @@ function isMissingPhysicalColumnError(error) {
 }
 
 let currentUserShort = null;
+let wagePctSettings = { superleague: 5, championship: 4 };
+/** club short name → competition division (superleague | championship) */
+let divisionByClub = new Map();
 let currentUserNation = null;
 let myNationalTeam = null;
 let myClubNation = null;
@@ -178,6 +186,99 @@ function listingBidWarningText(listing) {
   return `Minimum bid is ${formatMoney(min)} (at least market value and ₿500,000 above the current highest).`;
 }
 
+async function loadListingWageContext() {
+  const [settings, seasonRes] = await Promise.all([
+    loadWagePercentages(supabase),
+    supabase
+      .from("competition_seasons")
+      .select("id")
+      .eq("is_current", true)
+      .maybeSingle(),
+  ]);
+  wagePctSettings = settings;
+
+  const seasonId = seasonRes.data?.id;
+  if (seasonRes.error || !seasonId) {
+    if (seasonRes.error) console.warn("listing divisions:", seasonRes.error);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("competition_club_seasons")
+    .select("club_short_name, division")
+    .eq("season_id", seasonId);
+  if (error) {
+    console.warn("listing divisions:", error);
+    return;
+  }
+
+  const next = new Map();
+  for (const row of data || []) {
+    next.set(String(row.club_short_name), row.division);
+  }
+  divisionByClub = next;
+}
+
+function clubDivisionTier(shortName) {
+  return divisionByClub.get(String(shortName || "")) === "superleague"
+    ? "superleague"
+    : "championship";
+}
+
+function listingWageFacts(player, sellerShort, listingMv) {
+  const mv = Number(player?.market_value ?? listingMv) || 0;
+  const sl = wageFromMarketValue(mv, "superleague", wagePctSettings);
+  const ch = wageFromMarketValue(mv, "championship", wagePctSettings);
+  const sellerTier = clubDivisionTier(sellerShort);
+  const sellerDefault = sellerTier === "superleague" ? sl : ch;
+  const storedRaw = Number(player?.contract_wage);
+  const stored = Number.isFinite(storedRaw) && storedRaw > 0 ? storedRaw : null;
+  const negotiated = stored != null && stored > sellerDefault;
+  const myTier = currentUserShort ? clubDivisionTier(currentUserShort) : null;
+  const myDefault = myTier === "superleague" ? sl : ch;
+  return {
+    sl,
+    ch,
+    stored,
+    negotiated,
+    youPay: negotiated ? stored : myDefault,
+    myTier,
+  };
+}
+
+function listingCurrentWageText(wages) {
+  if (wages.stored == null) return "Standard (reset)";
+  if (wages.negotiated) return `${formatWage(wages.stored)} — you pay this`;
+  return `${formatWage(wages.stored)} — standard`;
+}
+
+function listingDefaultWageText(wages) {
+  const both = `SL ${formatWage(wages.sl)} · CH ${formatWage(wages.ch)}`;
+  if (wages.negotiated || !wages.myTier) return both;
+  const mine = wages.myTier === "superleague" ? "Super League" : "Championship";
+  return `${both} — you pay ${mine} ${formatWage(wages.youPay)}`;
+}
+
+function listingWageCellsHtml(player, sellerShort, listingMv) {
+  const wages = listingWageFacts(player, sellerShort, listingMv);
+  const current =
+    wages.stored == null
+      ? "—"
+      : formatWage(wages.stored);
+  const currentNote = wages.negotiated
+    ? "You pay this"
+    : wages.stored == null
+      ? "Reset"
+      : "Standard";
+  const payNote =
+    !wages.negotiated && wages.myTier
+      ? `<span class="wage-note">You pay ${formatWage(wages.youPay)}</span>`
+      : "";
+  return `
+      <td class="money-cell wage-cell">${current}<span class="wage-note">${currentNote}</span></td>
+      <td class="money-cell wage-cell">SL ${formatWage(wages.sl)}<span class="wage-default-line">CH ${formatWage(wages.ch)}</span>${payNote}</td>`;
+}
+
 // ⭐ Convert "1,234,567" → 1234567
 function parseMoneyInput(value) {
   if (!value) return 0;
@@ -224,6 +325,7 @@ function parseMoneyInput(value) {
   wireIncrementButtons();
   wireQuickBidButton();
 
+  await loadListingWageContext();
   await loadListings();
   applyListingsRefreshInterval();
 
@@ -1463,7 +1565,7 @@ async function renderListings() {
     updateListingsFilterSummary(0, 0);
     const tr = document.createElement("tr");
     tr.innerHTML =
-      `<td colspan="13" style="text-align:center;color:#888;">No listings to show.</td>`;
+      `<td colspan="16" style="text-align:center;color:#888;">No listings to show.</td>`;
     tbody.appendChild(tr);
     return;
   }
@@ -1522,7 +1624,7 @@ async function renderListings() {
   if (filteredRows.length === 0) {
     const tr = document.createElement("tr");
     tr.innerHTML =
-      `<td colspan="13" style="text-align:center;color:#888;">No listings match these filters.</td>`;
+      `<td colspan="16" style="text-align:center;color:#888;">No listings match these filters.</td>`;
     tbody.appendChild(tr);
     return;
   }
@@ -1618,6 +1720,7 @@ async function renderListings() {
       <td>${player?.Playstyle || "-"}</td>
       <td>${player?.Rating || "-"}</td>
       <td class="money-cell">${formatMoney(listing.market_value)}</td>
+      ${listingWageCellsHtml(player, listing.seller_club_id, listing.market_value)}
       <td class="money-cell">${formatMoney(listing.reserve_price)}</td>
       <td>${
         (listing.status === "Review" || listing.status === "Seller Review") &&
@@ -1865,6 +1968,11 @@ async function openBidModal(listing, player) {
   document.getElementById("bid-market-value").textContent = formatMoney(
     listing.market_value
   );
+  const wages = listingWageFacts(player, listing.seller_club_id, listing.market_value);
+  const currentWageEl = document.getElementById("bid-current-wage");
+  const defaultWageEl = document.getElementById("bid-default-wage");
+  if (currentWageEl) currentWageEl.textContent = listingCurrentWageText(wages);
+  if (defaultWageEl) defaultWageEl.textContent = listingDefaultWageText(wages);
   document.getElementById("bid-reserve-price").textContent = formatMoney(
     listing.reserve_price
   );
