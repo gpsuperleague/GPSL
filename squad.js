@@ -3268,15 +3268,21 @@ async function unlistPlayerFromTransferMarket(playerId) {
   );
   if (!confirmed) return;
 
-  const { error } = await supabase
+  const { data: closed, error } = await supabase
     .from("Player_Transfer_Listings")
     .update({ status: "Closed", transfer_completed: false })
     .eq("id", listing.id)
-    .eq("status", "Pending Window");
+    .eq("status", "Pending Window")
+    .select("id");
 
   if (error) {
     console.error("unlist update:", error);
     alert(error.message || "Could not remove listing.");
+    return;
+  }
+  if (!closed?.length) {
+    alert("The listing was not removed. Refresh the squad and try again.");
+    await loadSquad();
     return;
   }
 
