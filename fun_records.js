@@ -1,4 +1,4 @@
-import { FUN_RECORD_GROUPS } from "./records_catalog.js";
+import { FUN_RECORD_GROUPS } from "./records_catalog.js?v=20261113-drop-empty";
 import { mountRecordsPage } from "./records_page.js?v=20261113-division-tabs";
 
 mountRecordsPage({
