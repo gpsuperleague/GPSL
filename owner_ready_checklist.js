@@ -5,6 +5,7 @@
  */
 
 import { supabase } from "./global.js";
+import { loadOwnerPreviewBundle, ownerPreviewClub } from "./admin_owner_preview.js?v=20261113-admin-view";
 
 const COLLAPSE_KEY = "gpsl_ready_collapsed";
 const GROUP_ORDER = ["Squad", "Club set-up", "Fixtures", "Matchday ready"];
@@ -116,7 +117,7 @@ function itemHtml(it) {
     return `
       <div class="rc-item ${done ? "done" : "todo"}">
         <label>
-          <input type="checkbox" data-rc-tick="${esc(it.key)}"${done ? " checked" : ""}>
+          <input type="checkbox" data-rc-tick="${esc(it.key)}"${done ? " checked" : ""}${ownerPreviewClub() ? " disabled" : ""}>
           <span class="rc-text">${esc(it.label)}</span>
         </label>
         ${go}
@@ -198,6 +199,7 @@ function render() {
 }
 
 async function onTick(box) {
+  if (ownerPreviewClub()) return;
   const key = box.dataset.rcTick;
   box.disabled = true;
   const { error } = await supabase.rpc("owner_ready_tick", {
@@ -218,6 +220,12 @@ async function onTick(box) {
 }
 
 export async function refreshOwnerReadyChecklist() {
+  if (ownerPreviewClub()) {
+    const pack = await loadOwnerPreviewBundle();
+    lastData = pack?.ready ?? null;
+    render();
+    return;
+  }
   const { data, error } = await supabase.rpc("owner_season_ready_checklist");
   if (error) {
     console.warn("owner_season_ready_checklist:", error.message);

@@ -4,6 +4,11 @@
  */
 
 import { supabase } from "./global.js";
+import {
+  loadOwnerPreviewBundle,
+  ownerPreviewClub,
+  withPreviewClub,
+} from "./admin_owner_preview.js?v=20261113-admin-view";
 import { cupFixtureKind, cupSwitchNote } from "./matchday_console_rules.js?v=20261111-cup-settings";
 import { fullClubName } from "./clubs_lookup.js";
 import {
@@ -451,7 +456,7 @@ function renderRecordingBlock(fx) {
   if (!recordingWindowOpen(fx)) return "";
   const fid = Number(fx.fixture_id);
   const resultLink = enterResultIsOnlyBecauseCheckedIn(fx)
-    ? `<div class="mc-actions"><a class="mc-btn" href="matchday.html?fixture=${fid}">Enter result when the match is played</a></div>`
+    ? `<div class="mc-actions"><a class="mc-btn" href="${withPreviewClub(`matchday.html?fixture=${fid}`)}">Enter result when the match is played</a></div>`
     : "";
   const ticked = expandRecTicks(recTicks.get(fid));
   const done = REC_ITEMS.filter(([k]) => ticked.has(k)).length;
@@ -507,6 +512,7 @@ async function loadRecTicks(fixtures) {
 }
 
 async function onRecTick(box) {
+  if (ownerPreviewClub()) return;
   const fid = Number(box.dataset.mcRec);
   const key = box.dataset.mcRecKey;
   box.disabled = true;
@@ -608,7 +614,7 @@ function renderFixture(fx) {
     <div class="mc-fixture${fx.needs_you > 0 ? " mc-has-todo" : ""}" data-fixture-id="${fid}">
       <div class="mc-fx-head">
         <span class="mc-fx-comp">${escapeHtml(competitionShortLabel(fx))}</span>
-        ${fixtureMatchupHtml(fx, `matchday.html?fixture=${fid}`)}
+        ${fixtureMatchupHtml(fx, withPreviewClub(`matchday.html?fixture=${fid}`))}
         ${fx.agreed_kickoff_at ? `<span class="mc-fx-ko" title="${escapeHtml(clockTitle(fx.agreed_kickoff_at))}">${escapeHtml(formatOwnerClock(fx.agreed_kickoff_at))}</span>` : ""}
       </div>
       ${fixtureMetaHtml(fx)}
@@ -666,13 +672,13 @@ function renderArrangeRow(a) {
     <div class="mc-fixture mc-arrange-row${arrangeNeedsYou(a) ? " mc-has-todo" : ""}">
       <div class="mc-fx-head">
         <span class="mc-fx-comp">${escapeHtml(competitionShortLabel(a))}</span>
-        ${fixtureMatchupHtml(a, `fixture_schedule.html?fixture=${fid}`)}
+        ${fixtureMatchupHtml(a, withPreviewClub(`fixture_schedule.html?fixture=${fid}`))}
         <span class="mc-fx-ko">${replay ? "Replay · " : catchUp ? "Catch-up · " : ""}GPSL ${escapeHtml(monthName(a.gpsl_month))}</span>
       </div>
       ${fixtureMetaHtml(a)}
       <div class="mc-next ${cls}"><b>${escapeHtml(label)}</b>${detail ? ` <span class="mc-next-detail">${escapeHtml(detail)}</span>` : ""}</div>
       ${strikeNoteHtml(fid)}
-      ${action ? `<div class="mc-actions"><a class="mc-btn mc-btn-primary" href="fixture_schedule.html?fixture=${fid}">${action}</a></div>` : ""}
+      ${action ? `<div class="mc-actions"><a class="mc-btn mc-btn-primary" href="${withPreviewClub(`fixture_schedule.html?fixture=${fid}`)}">${action}</a></div>` : ""}
     </div>`;
 }
 
@@ -780,6 +786,11 @@ function render() {
   section.querySelectorAll("[data-mc-rec]").forEach((box) => {
     box.addEventListener("change", () => onRecTick(box));
   });
+  if (ownerPreviewClub()) {
+    section.querySelectorAll("[data-mc-checkin], [data-mc-rec]").forEach((el) => {
+      el.disabled = true;
+    });
+  }
 }
 
 async function onCopy(btn) {
@@ -796,6 +807,7 @@ async function onCopy(btn) {
 }
 
 async function onCheckIn(fixtureId, btn) {
+  if (ownerPreviewClub()) return;
   if (!fixtureId) return;
   btn.disabled = true;
   btn.textContent = "Checking in…";
@@ -815,6 +827,10 @@ async function onCheckIn(fixtureId, btn) {
 }
 
 export async function fetchMatchdayChecklist() {
+  if (ownerPreviewClub()) {
+    const pack = await loadOwnerPreviewBundle();
+    return pack?.checklist ?? null;
+  }
   const { data, error } = await supabase.rpc("dashboard_matchday_checklist");
   if (error) {
     console.warn("dashboard_matchday_checklist:", error.message);
@@ -824,6 +840,10 @@ export async function fetchMatchdayChecklist() {
 }
 
 export async function fetchUpcomingArrangements() {
+  if (ownerPreviewClub()) {
+    const pack = await loadOwnerPreviewBundle();
+    return pack?.arrangements ?? null;
+  }
   const { data, error } = await supabase.rpc("owner_upcoming_arrangements");
   if (error) {
     console.warn("owner_upcoming_arrangements:", error.message);
@@ -839,8 +859,13 @@ export async function refreshMatchdayChecklist() {
     fetchUpcomingArrangements(),
   ]);
   try {
-    const { data, error } = await supabase.rpc("my_club_strike_board");
-    if (!error) strikeBoard = data;
+    if (ownerPreviewClub()) {
+      const pack = await loadOwnerPreviewBundle();
+      if (pack) strikeBoard = pack.strikes;
+    } else {
+      const { data, error } = await supabase.rpc("my_club_strike_board");
+      if (!error) strikeBoard = data;
+    }
   } catch (err) {
     console.warn("strike board:", err);
   }
@@ -854,7 +879,7 @@ export async function refreshMatchdayChecklist() {
   } catch (err) {
     console.warn("checklist owner tags:", err);
   }
-  await loadRecTicks(lastData?.fixtures);
+  await loadRecTicks(ownerPreviewClub() ? null : lastData?.fixtures);
   render();
 }
 

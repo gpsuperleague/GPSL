@@ -796,10 +796,16 @@ export function formatResponseDeadlineLine(deadline, myClubShort, competitionTyp
   return `Response due ${uk}${misses}.${soon ? consequence : ""}`;
 }
 
-export async function loadScheduleContext(fixtureId) {
-  const { data, error } = await supabase.rpc("match_schedule_fixture_context", {
-    p_fixture_id: fixtureId,
-  });
+export async function loadScheduleContext(fixtureId, asClub = null) {
+  const club = String(asClub || "").trim().toUpperCase();
+  const { data, error } = club
+    ? await supabase.rpc("admin_schedule_preview", {
+        p_fixture_id: fixtureId,
+        p_club: club,
+      })
+    : await supabase.rpc("match_schedule_fixture_context", {
+        p_fixture_id: fixtureId,
+      });
   if (error) throw error;
 
   const ctx = data || {};

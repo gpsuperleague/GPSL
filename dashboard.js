@@ -28,16 +28,21 @@ import {
   applyClubDashboardTheme,
   loadClubDashboardTheme,
 } from "./club_theme_common.js?v=20261026-theme-vars";
-import { startDashboardMatchday } from "./dashboard_matchday.js?v=20261109-owner-tz";
+import { startDashboardMatchday } from "./dashboard_matchday.js?v=20261113-admin-view";
 import { renderSupportBanner } from "./support_banner.js";
-import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261112-no-late-fee";
-import { startOwnerReadyChecklist } from "./owner_ready_checklist.js?v=20261015-ready-gate";
+import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261113-admin-view";
+import { startOwnerReadyChecklist } from "./owner_ready_checklist.js?v=20261113-admin-view";
 import {
   leagueBadgeSrc,
   leagueTierForDivision,
   loadActiveSeasonRegistrations,
   divisionSlugForClub,
 } from "./competition.js";
+import {
+  resolveAdminClubContext,
+  mountAdminClubPicker,
+} from "./staff_club_preview.js?v=20261113-admin-view";
+import { setOwnerPreviewClub } from "./admin_owner_preview.js?v=20261113-admin-view";
 
 let ownerId = null;
 let isAdmin = false;
@@ -236,11 +241,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     .then((cw) => cw.mountClubWireCard(document.getElementById("clubWire")))
     .catch((err) => console.warn("Club Wire card skipped:", err));
 
-  const { data: club, error } = await supabase
-    .from("Clubs")
-    .select("*")
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  const preview = await resolveAdminClubContext(user, "gpsl_admin_dashboard_club");
+  await mountAdminClubPicker(preview, {
+    sessionKey: "gpsl_admin_dashboard_club",
+    label: "Preview club dashboard: ",
+    hint: "Admin only. This is the dashboard that club sees. Clicks are not saved.",
+  });
+  if (preview.adminPreview && preview.shortName) setOwnerPreviewClub(preview.shortName);
+
+  const clubQuery = supabase.from("Clubs").select("*");
+  const { data: club, error } = preview.shortName
+    ? await clubQuery.eq("ShortName", preview.shortName).maybeSingle()
+    : await clubQuery.eq("owner_id", user.id).maybeSingle();
 
   if (error) console.error("Club lookup failed:", error);
 

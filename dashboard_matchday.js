@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "./global.js";
+import { loadOwnerPreviewBundle, ownerPreviewClub, withPreviewClub } from "./admin_owner_preview.js?v=20261113-admin-view";
 import { fullClubName } from "./clubs_lookup.js";
 import { loadMatchdayCheckinReadiness } from "./match_scheduling.js";
 import {
@@ -136,8 +137,8 @@ function renderFixtureCard(fx) {
     ? `UK: ${kickUk}`
     : `${zoneShort(ownerTz)}: ${kickOwner}. UK: ${kickUk}`;
   const fid = Number(fx.fixture_id);
-  const scheduleHref = `fixture_schedule.html?fixture=${fid}`;
-  const matchdayHref = `matchday.html?fixture=${fid}`;
+  const scheduleHref = withPreviewClub(`fixture_schedule.html?fixture=${fid}`);
+  const matchdayHref = withPreviewClub(`matchday.html?fixture=${fid}`);
 
   const checks = `
     <span class="dash-md-check ${fx.home_checked_in ? "is-in" : ""}" title="Home check-in">H${fx.home_checked_in ? "✓" : "·"}</span>
@@ -145,7 +146,7 @@ function renderFixtureCard(fx) {
   `;
 
   let actions = "";
-  if (fx.can_check_in) {
+  if (fx.can_check_in && !ownerPreviewClub()) {
     actions += `<button type="button" class="dash-md-btn dash-md-checkin" data-fixture-id="${fid}">Check in</button>`;
   }
   if (fx.can_enter_result) {
@@ -249,6 +250,7 @@ async function applyCheckinReadinessToCards(fixtures) {
 }
 
 async function onCheckIn(fixtureId, btn) {
+  if (ownerPreviewClub()) return;
   if (!fixtureId) return;
   if (btn) {
     btn.disabled = true;
@@ -280,6 +282,15 @@ export async function refreshDashboardMatchday() {
   }
 
   await loadOwnerTimezone();
+  if (ownerPreviewClub()) {
+    const pack = await loadOwnerPreviewBundle();
+    if (!pack) {
+      setPanelVisible(false);
+      return;
+    }
+    renderSynopsis(pack.matchday);
+    return;
+  }
   const { data, error } = await supabase.rpc("dashboard_my_matchday_synopsis");
   if (error) {
     console.warn("dashboard_my_matchday_synopsis:", error.message);

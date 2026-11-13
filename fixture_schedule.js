@@ -1,4 +1,8 @@
 import { supabase, initGlobal } from "./global.js";
+import {
+  resolveAdminClubContext,
+  mountAdminClubPicker,
+} from "./staff_club_preview.js?v=20261113-admin-view";
 import { GPSL_MONTH_LABELS, formatFixtureCompetition } from "./competition.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
@@ -35,7 +39,7 @@ import {
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
   fixtureExpiryWarnings,
-} from "./match_scheduling.js?v=20261112-no-late-fee";
+} from "./match_scheduling.js?v=20261113-admin-view";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -118,6 +122,8 @@ let deadlines = null;
 let fixtureId = null;
 let selectedKickoff = null;
 let myClub = { short: null };
+let adminPreview = false;
+let previewShort = null;
 /** @type {import("./player_discipline.js").FixtureUnavailablePayload|null} */
 let fixtureUnavailable = null;
 
@@ -2271,7 +2277,7 @@ function render() {
 }
 
 async function reload() {
-  ctx = await loadScheduleContext(fixtureId);
+  ctx = await loadScheduleContext(fixtureId, adminPreview ? previewShort : null);
   try {
     const { data: bb } = await supabase.rpc("fixture_is_manual_black_box", {
       p_fixture_id: fixtureId,
@@ -2287,10 +2293,60 @@ async function reload() {
   deadlines = dlErr ? null : dl;
   selectedKickoff = null;
   render();
+  lockPreviewSchedule();
+}
+
+function lockPreviewSchedule() {
+  if (!adminPreview) return;
+  const root = document.getElementById("scheduleRoot");
+  if (!root) return;
+  root.querySelectorAll("button").forEach((btn) => {
+    btn.disabled = true;
+  });
+  root.querySelectorAll("a[href]").forEach((link) => {
+    const href = link.getAttribute("href") || "";
+    if (!/matchday\.html|fixture_schedule\.html/i.test(href) || !previewShort) return;
+    const url = new URL(href, window.location.href);
+    url.searchParams.set("club", previewShort);
+    link.setAttribute("href", `${url.pathname.split("/").pop()}${url.search}`);
+  });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   fixtureId = parseFixtureId();
+
+  await initGlobal();
+  await loadClubsMap();
+  setSeasonCalendarMonths(await loadSeasonCalendarMonths(supabase));
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    window.location = "login.html";
+    return;
+  }
+
+  const preview = await resolveAdminClubContext(user, "gpsl_admin_schedule_club");
+  await mountAdminClubPicker(preview, {
+    sessionKey: "gpsl_admin_schedule_club",
+    label: "Preview club schedule: ",
+    hint: "Admin only. These are the propose, reply, and check-in options that club sees. Clicks are not saved.",
+  });
+  adminPreview = !!preview.adminPreview;
+  previewShort = adminPreview ? preview.shortName : null;
+
+  if (preview.shortName) {
+    myClub.short = preview.shortName;
+  } else {
+    const { data: club } = await supabase
+      .from("Clubs")
+      .select("ShortName")
+      .eq("owner_id", user.id)
+      .maybeSingle();
+    myClub.short = club?.ShortName || null;
+  }
+
   if (!fixtureId) {
     const root = document.getElementById("scheduleRoot");
     if (root) {
@@ -2305,25 +2361,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  await initGlobal();
-  await loadClubsMap();
-  setSeasonCalendarMonths(await loadSeasonCalendarMonths(supabase));
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    window.location = "login.html";
-    return;
-  }
-
-  const { data: club } = await supabase
-    .from("Clubs")
-    .select("ShortName")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-  myClub.short = club?.ShortName || null;
-
   if (!myClub.short) {
     setStatus("No club linked to this account.", true);
     return;
@@ -2334,7 +2371,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (err) {
     const msg = err.message || String(err);
     setStatus(
-      /match_schedule_fixture_context|fixture_check_in|fixture_mutual_override/.test(msg)
+      /match_schedule_fixture_context|admin_schedule_preview|fixture_check_in|fixture_mutual_override/.test(msg)
         ? "Match scheduling is unavailable right now — please tell the league admin."
         : msg,
       true
