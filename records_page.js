@@ -8,6 +8,7 @@ import { escapeHtml } from "./escape_html.js";
  *   catalog: 'league'|'cup'|'fun',
  *   groups: import("./records_catalog.js").RecordGroup[],
  *   siblingLinks?: { href: string, label: string }[],
+ *   tiers?: { id: string, label: string }[],
  * }} opts
  */
 export async function mountRecordsPage(opts) {
@@ -44,24 +45,64 @@ export async function mountRecordsPage(opts) {
   if (!root) return;
   root.innerHTML = `<p class="rec-loading">Loading records…</p>`;
 
-  /** @type {Map<string, object>} */
-  const byId = new Map();
+  /** @type {object[]} */
+  const allRows = [];
   /** @type {Map<string, string>} short → club display name */
   const clubsByShort = new Map();
   let meta = null;
+  const tiers = opts.tiers || [];
+  const tierKey = `gpsl_records_tier:${opts.catalog}`;
+  let activeTier = tiers[0]?.id || "";
+  if (tiers.length) {
+    const saved = sessionStorage.getItem(tierKey);
+    if (saved && tiers.some((t) => t.id === saved)) activeTier = saved;
+  }
 
   const [{ data, error }, clubsRes] = await Promise.all([
-    supabase.rpc("gpsl_records_get", { p_catalog: opts.catalog }),
+    supabase.rpc("gpsl_records_get", {
+      p_catalog: opts.catalog,
+      p_tier: tiers.length ? "all" : null,
+    }),
     supabase.from("Clubs").select("ShortName, Club").neq("ShortName", "FOREIGN"),
   ]);
 
   if (error) console.warn("gpsl_records_get:", error);
   meta = data?.meta || null;
   for (const row of data?.records || []) {
-    if (row?.record_id) byId.set(String(row.record_id), row);
+    if (row?.record_id) allRows.push(row);
   }
   for (const c of clubsRes.data || []) {
     clubsByShort.set(String(c.ShortName).toUpperCase(), c.Club || c.ShortName);
+  }
+
+  let tabsEl = document.getElementById("recordsTabs");
+  if (tiers.length) {
+    if (!tabsEl) {
+      tabsEl = document.createElement("div");
+      tabsEl.id = "recordsTabs";
+      tabsEl.className = "rec-tabs";
+      tabsEl.setAttribute("role", "tablist");
+      tabsEl.setAttribute("aria-label", "Division");
+      (tocEl || root).before(tabsEl);
+    }
+    tabsEl.innerHTML = tiers
+      .map(
+        (t) =>
+          `<button type="button" class="rec-tab${t.id === activeTier ? " active" : ""}" role="tab" data-tier="${escapeHtml(t.id)}" aria-selected="${t.id === activeTier ? "true" : "false"}">${escapeHtml(t.label)}</button>`
+      )
+      .join("");
+    tabsEl.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-tier]");
+      if (!btn) return;
+      activeTier = btn.getAttribute("data-tier") || activeTier;
+      sessionStorage.setItem(tierKey, activeTier);
+      tabsEl.querySelectorAll(".rec-tab").forEach((el) => {
+        const on = el.getAttribute("data-tier") === activeTier;
+        el.classList.toggle("active", on);
+        el.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      paint();
+    });
   }
 
   if (metaEl) {
@@ -123,7 +164,19 @@ export async function mountRecordsPage(opts) {
     return `${primary}${clubBlock}${ownerBlock}`;
   }
 
-  root.innerHTML = opts.groups
+  function rowsById() {
+    const byId = new Map();
+    for (const row of allRows) {
+      const tier = String(row.tier || "shared");
+      if (tiers.length && tier !== activeTier) continue;
+      byId.set(String(row.record_id), row);
+    }
+    return byId;
+  }
+
+  function paint() {
+    const byId = rowsById();
+    root.innerHTML = opts.groups
     .map((g) => {
       const rows = g.records
         .map((r) => {
@@ -166,4 +219,7 @@ export async function mountRecordsPage(opts) {
       </section>`;
     })
     .join("");
+  }
+
+  paint();
 }

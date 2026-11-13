@@ -1,5 +1,5 @@
 import { CUP_RECORD_GROUPS } from "./records_catalog.js";
-import { mountRecordsPage } from "./records_page.js";
+import { mountRecordsPage } from "./records_page.js?v=20261113-division-tabs";
 
 mountRecordsPage({
   title: "Cup Records",
