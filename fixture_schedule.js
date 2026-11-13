@@ -4,6 +4,7 @@ import {
   mountAdminClubPicker,
 } from "./staff_club_preview.js?v=20261113-admin-view";
 import { GPSL_MONTH_LABELS, formatFixtureCompetition } from "./competition.js";
+import { formatKitSeasonLabel } from "./competition_conditions.js?v=20261113-kit-season";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   loadScheduleContext,
@@ -219,6 +220,12 @@ function timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz) {
         (${escapeHtmlLite(localNowInTz(ownerTz || UK_TZ))}).
       </p>
     </div>`;
+}
+
+function kitSeasonLineHtml(f) {
+  const label = formatKitSeasonLabel(f?.kit_season);
+  if (!f?.kit_season || !label || label === "—") return "";
+  return `<p class="meta">Kit: ${escapeHtmlLite(label)}</p>`;
 }
 
 function escapeHtmlLite(text) {
@@ -1265,6 +1272,7 @@ function renderAgreedPanel(root, f, sch) {
     ${noShowLadderBannerHtml(f)}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
+      ${kitSeasonLineHtml(f)}
       ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
       <p class="status-agreed"><b>Kick-off agreed:</b> <span class="kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</span></p>
       <p class="meta" style="margin-top:6px;">
@@ -1719,6 +1727,7 @@ function render() {
     root.innerHTML = `
       <div class="panel">
         <div class="fixture-head">${fixtureTitle(f)}</div>
+        ${kitSeasonLineHtml(f)}
         <p class="status-agreed">${f.is_forfeit ? "<b>Forfeit</b> — result recorded." : "<b>Played</b>."}</p>
         <div class="actions">
           <a href="fixtures.html" class="button secondary" style="text-decoration:none;display:inline-block;">Fixtures</a>
@@ -1733,6 +1742,7 @@ function render() {
     root.innerHTML = `
       <div class="panel">
         <div class="fixture-head">${fixtureTitle(f)}</div>
+        ${kitSeasonLineHtml(f)}
         <p class="status-agreed"><b>Manual arrange</b> — both clubs have GPSL match system OFF.</p>
         <p class="meta">Arrange off-site. No propose / reply deadlines on this fixture. Play and enter the result on Match Day during the GPSL month. Still unplayed at month lock → mutual forfeit (0 pts each) + ₿2.5m each.</p>
         <div class="actions">
@@ -1764,6 +1774,7 @@ function render() {
     root.innerHTML = `
       <div class="panel" style="border-color:#3a5a7a;background:#0c1824;">
         <div class="fixture-head">${fixtureTitle(f)}</div>
+        ${kitSeasonLineHtml(f)}
         <p class="status-agreed"><b>New-owner grace</b> — match arrangement deferred.</p>
         <p class="meta">
           ${clubBit ? `<b>${escapeHtmlLite(clubBit)}</b> took` : "A club took"} charge during
@@ -2109,6 +2120,7 @@ function render() {
     ${noManagerBanner}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
+      ${kitSeasonLineHtml(f)}
       ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
       ${unavailablePanelHtml(f)}
       ${responseHtml}
@@ -2278,6 +2290,14 @@ function render() {
 
 async function reload() {
   ctx = await loadScheduleContext(fixtureId, adminPreview ? previewShort : null);
+  if (ctx?.fixture) {
+    const { data: cond } = await supabase
+      .from("competition_fixtures_public")
+      .select("kit_season")
+      .eq("id", fixtureId)
+      .maybeSingle();
+    if (cond?.kit_season) ctx.fixture.kit_season = cond.kit_season;
+  }
   try {
     const { data: bb } = await supabase.rpc("fixture_is_manual_black_box", {
       p_fixture_id: fixtureId,

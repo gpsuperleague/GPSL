@@ -22,6 +22,7 @@ import {
 import {
   formatWeatherChipHtml,
   formatPitchChipHtml,
+  formatKitSeasonLabel,
   formatFixtureContinentStackedHtml,
   fixtureStadiumLabelStackedHtml,
 } from "./competition_conditions.js?v=20261029-cond-icons";
@@ -366,6 +367,7 @@ function fixtureCardHtml(f) {
   const score = formatFixtureScore(f, myClub);
   const weather = formatWeatherChipHtml(f.weather);
   const pitch = formatPitchChipHtml(f.pitch_condition);
+  const kitLabel = f.kit_season ? formatKitSeasonLabel(f.kit_season) : "";
   const continent = formatFixtureContinentStackedHtml(f);
   const stadium = fixtureStadiumLabelStackedHtml(
     f,
@@ -521,6 +523,7 @@ function fixtureCardHtml(f) {
         <span class="fixture-continent">${continent}</span>
       </div>
       <div class="conditions-row">
+        ${kitLabel ? `<span class="kit">Kit: ${escapeHtml(kitLabel)}</span><span style="color:#555;margin:0 6px;">·</span>` : ""}
         <span class="weather">Weather: ${weather}</span>
         <span style="color:#555;margin:0 6px;">·</span>
         <span class="pitch">Pitch: ${pitch}</span>
