@@ -652,8 +652,17 @@ async function poll() {
     try {
       const results = await loadWireResultDeadlines(clubShort);
       const seen = new Set(cutoffs.map((c) => c?.id).filter(Boolean));
+      const coveredFixture = new Set(
+        cutoffs
+          .filter((c) =>
+            ["result_enter", "result_close", "result_video", "video", "video_suspend"].includes(
+              c?.kind
+            )
+          )
+          .map((c) => String(c.fixture_id))
+      );
       for (const row of results) {
-        if (seen.has(row.id)) continue;
+        if (seen.has(row.id) || coveredFixture.has(String(row.fixture_id))) continue;
         seen.add(row.id);
         cutoffs.push(row);
       }
