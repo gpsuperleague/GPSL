@@ -1595,6 +1595,44 @@ function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } =
   )}</span>`;
 }
 
+const wlColFilters = {};
+
+function wlColFilterRow() {
+  let cells = "";
+  for (let i = 0; i < 32; i += 1) {
+    if (i === 2 || i === 31) {
+      cells += `<th class="wl-col-filter-cell"></th>`;
+      continue;
+    }
+    const val = escapeWl(wlColFilters[i] || "");
+    cells +=
+      `<th class="wl-col-filter-cell">` +
+      `<input class="wl-col-filter" data-col="${i}" value="${val}" ` +
+      `aria-label="Filter column ${i + 1}" ` +
+      `title="Filter this column. Tick boxes: yes or no.">` +
+      `</th>`;
+  }
+  return `<tr class="wl-col-filters">${cells}</tr>`;
+}
+
+function wlCellFilterText(cell) {
+  if (!cell) return "";
+  const box = cell.querySelector('input[type="checkbox"]');
+  if (box) return box.checked ? "yes" : "no";
+  return (cell.innerText || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function rowMatchesColumnFilters(tr) {
+  const table = tr.closest("table");
+  if (!table) return true;
+  for (const input of table.querySelectorAll(".wl-col-filter")) {
+    const q = input.value.trim().toLowerCase();
+    if (!q) continue;
+    if (!wlCellFilterText(tr.children[Number(input.dataset.col)]).includes(q)) return false;
+  }
+  return true;
+}
+
 function filterSeasonOwnerBoard(filterText) {
   const q = String(filterText ?? document.getElementById("wlBoardFilter")?.value ?? "")
     .trim()
@@ -1607,12 +1645,9 @@ function filterSeasonOwnerBoard(filterText) {
 
   for (const wrap of roots) {
     wrap.querySelectorAll("tr[data-owner-id]").forEach((tr) => {
-      if (!q) {
-        tr.classList.remove("wl-filter-hide");
-        return;
-      }
-      const hay = (tr.dataset.filterText || "").toLowerCase();
-      tr.classList.toggle("wl-filter-hide", !hay.includes(q));
+      const textMiss = q && !(tr.dataset.filterText || "").toLowerCase().includes(q);
+      const colMiss = !rowMatchesColumnFilters(tr);
+      tr.classList.toggle("wl-filter-hide", textMiss || colMiss);
     });
   }
 }
@@ -2412,7 +2447,9 @@ async function loadWaitingListAdmin() {
     `<th title="Latest captured login IP address (admin only).">IP</th>` +
     `<th title="Recent shared-IP review signal (admin only).">Shared IP</th>` +
     `<th class="wl-col-actions">Actions</th>` +
-    `</tr></thead><tbody id="wlPriorityTbody">`;
+    `</tr>` +
+    wlColFilterRow() +
+    `</thead><tbody id="wlPriorityTbody">`;
 
   html += sectionRow(
     `Owners (${ownerCount}) — current club owners. Drag handle sets season priority with the waiting list. ${escapeWl(activityNote)}${escapeWl(snapNote)}${escapeWl(homePropHint)}${escapeWl(fineHint)}.`
@@ -2456,7 +2493,16 @@ async function loadWaitingListAdmin() {
   tableWrap.innerHTML = html;
 
   const filterEl = document.getElementById("wlBoardFilter");
-  if (filterEl?.value) filterSeasonOwnerBoard(filterEl.value);
+  filterSeasonOwnerBoard(filterEl?.value);
+  tableWrap.querySelectorAll(".wl-col-filter").forEach((input) => {
+    input.addEventListener("input", () => {
+      wlColFilters[input.dataset.col] = input.value;
+      filterSeasonOwnerBoard();
+    });
+  });
+  tableWrap.addEventListener("change", (e) => {
+    if (e.target?.matches?.('input[type="checkbox"]')) filterSeasonOwnerBoard();
+  });
 
   bindWaitingListPriorityDrag(tableWrap);
   bindWlRowActionSelects(tableWrap);
