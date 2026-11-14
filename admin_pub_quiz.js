@@ -134,6 +134,9 @@ function renderRounds(rounds, locked) {
   host.querySelectorAll("[data-file]").forEach((input) => {
     input.addEventListener("change", () => uploadFile(input));
   });
+  host.querySelectorAll("[data-clear]").forEach((btn) => {
+    btn.addEventListener("click", () => removeFile(btn.dataset.clear));
+  });
 }
 
 function questionCard(round, q, locked) {
@@ -143,7 +146,8 @@ function questionCard(round, q, locked) {
     : `<label>${round.kind === "song" ? "Audio file" : "Picture"}
         <input data-file="${q.id}" type="file" accept="${round.kind === "song" ? "audio/*" : "image/*"}" ${dis}>
       </label>
-      <div class="preview">${previewHtml(round.kind, q.media_path)}</div>`;
+      <div class="preview">${previewHtml(round.kind, q.media_path)}</div>
+      ${q.media_path ? `<button type="button" class="button secondary" data-clear="${q.id}" ${dis}>Remove file</button>` : ""}`;
   const clock = questionBlank(q)
     ? "Clock is 10–14s once the question is saved."
     : `Clock on Discord: ${answerSeconds(round, q)}s.`;
@@ -169,7 +173,7 @@ function questionCard(round, q, locked) {
 
 function previewHtml(kind, path) {
   if (!path) return "";
-  const url = MEDIA_BASE + path.split("/").map(encodeURIComponent).join("/");
+  const url = `${MEDIA_BASE}${path.split("/").map(encodeURIComponent).join("/")}?v=${Date.now()}`;
   if (kind === "song") return `<audio controls src="${escapeHtml(url)}"></audio>`;
   return `<img alt="" src="${escapeHtml(url)}">`;
 }
@@ -204,7 +208,8 @@ async function uploadFile(input) {
   const quizId = document.getElementById("quizPick").value;
   if (!file || !quizId) return;
   const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
-  const path = `${quizId}/${id}.${ext}`;
+  const previous = questionById(id)?.media_path || "";
+  const path = `${quizId}/${id}-${Date.now()}.${ext}`;
   say("Uploading…");
   const { error } = await supabase.storage.from("pub-quiz").upload(path, file, {
     upsert: true,
@@ -222,7 +227,39 @@ async function uploadFile(input) {
     say(saved.error.message, true);
     return;
   }
+  if (previous && previous !== path) await deleteStoredFile(previous);
   say("File saved.");
+  await loadQuiz(quizId);
+}
+
+function questionById(id) {
+  for (const round of bundle?.rounds || []) {
+    const found = (round.questions || []).find((item) => String(item.id) === String(id));
+    if (found) return found;
+  }
+  return null;
+}
+
+async function deleteStoredFile(path) {
+  const { error } = await supabase.storage.from("pub-quiz").remove([path]);
+  if (error && !/not found/i.test(error.message || "")) say(error.message, true);
+}
+
+async function removeFile(id) {
+  const previous = questionById(id)?.media_path || "";
+  const quizId = document.getElementById("quizPick").value;
+  if (!previous || !quizId) return;
+  say("Removing…");
+  await deleteStoredFile(previous);
+  const saved = await supabase.rpc("gpsl_pub_quiz_set_media", {
+    p_question_id: Number(id),
+    p_path: "",
+  });
+  if (saved.error) {
+    say(saved.error.message, true);
+    return;
+  }
+  say("File removed.");
   await loadQuiz(quizId);
 }
 
