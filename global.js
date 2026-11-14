@@ -33,7 +33,7 @@ export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js"
 applyStoredSiteTheme();
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-import { APP_VERSION } from "./app_version.js?v=20261111-quiz-menu";
+import { APP_VERSION } from "./app_version.js?v=20261114-staff-hub";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
 
@@ -1341,7 +1341,7 @@ function renderNavInboxLink(inboxActive, unread) {
 function renderNavStaffAlertsLink(active, unread) {
   const n = Number(unread) || 0;
   return (
-    `<a href="admin_staff_alerts.html" class="nav-shortcut nav-staff-alerts${
+    `<a href="admin_staff_hub.html#alerts" class="nav-shortcut nav-staff-alerts${
       active ? " active" : ""
     }${n > 0 ? " has-unread" : ""}" title="Staff alerts" aria-label="Staff alerts${
       n > 0 ? `, ${n} unread` : ""
@@ -3497,7 +3497,9 @@ export async function buildNav() {
   html += renderNavInboxLink(inboxActive, unread);
   }
   if (isGpslAdminNav || isGpslModOnlyNav) {
-    const staffActive = pathNorm === "admin_staff_alerts.html";
+    const staffActive =
+      pathNorm === "admin_staff_alerts.html" ||
+      (pathNorm === "admin_staff_hub.html" && (location.hash || "") === "#alerts");
     html += renderNavStaffAlertsLink(staffActive, staffAlertsUnread);
   }
   html += renderNavThemeToggle();

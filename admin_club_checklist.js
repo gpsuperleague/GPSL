@@ -138,10 +138,8 @@ const ISSUE_META = {
   fines: { label: "Fines", level: "warn", tip: "Outstanding fines on record" },
 };
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const user = await initAdminPage({ allowMod: true });
-  if (!user) return;
-  if (!isGpslAdminUser(user)) {
+export async function bootClubChecklist(user) {
+  if (user && !isGpslAdminUser(user)) {
     document.querySelectorAll(".admin-hop-links [data-admin-only]").forEach((a) => a.remove());
   }
 
@@ -157,6 +155,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   void loadAuctionReadiness();
   void loadManagerAuctionReadiness();
   await loadTable();
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (window.__gpslStaffHub) return;
+  const user = await initAdminPage({ allowMod: true });
+  if (!user) return;
+  await bootClubChecklist(user);
 });
 
 function escapeHtml(text) {

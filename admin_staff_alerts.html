@@ -1,101 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" class="admin-root">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <meta http-equiv="refresh" content="0;url=admin_staff_hub.html#alerts">
   <title>Staff alerts — GPSL</title>
-  <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="admin.css">
-  <style>
-    .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
-    .alert-list { display:flex; flex-direction:column; gap:10px; }
-    .alert-card {
-      border:1px solid #333; background:#1a1a1a; border-radius:6px; padding:12px 14px;
-    }
-    .alert-card.unread { border-color:#886622; background:#221c12; }
-    .alert-card h3 { margin:0 0 6px; color:#ff9900; font-size:15px; }
-    .alert-meta { color:#888; font-size:12px; margin-bottom:8px; }
-    .alert-body { white-space:pre-wrap; font-size:13px; line-height:1.45; color:#ccc; }
-    .alert-actions { margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
-    .badge-new {
-      display:inline-block; font-size:10px; font-weight:bold; letter-spacing:0.04em;
-      color:#111; background:#ff9900; border-radius:3px; padding:1px 6px; margin-left:8px;
-      vertical-align:middle;
-    }
-    .share-list > summary {
-      cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px; user-select:none;
-    }
-    .share-list > summary::-webkit-details-marker { display:none; }
-    .share-list > summary::before {
-      content:"▸"; color:#ff9900; font-size:14px; width:12px; transition:transform 0.15s;
-    }
-    .share-list[open] > summary::before { transform:rotate(90deg); }
-    .share-list[open] > summary { margin-bottom:10px; }
-    .share-title { color:#ff9900; font-size:16px; font-weight:bold; }
-    .share-count { color:#999; font-size:13px; }
-    .share-actions { margin-bottom:10px; gap:8px; flex-wrap:wrap; }
-    .share-copy { display:inline-flex; flex-wrap:wrap; gap:8px; }
-    .share-text {
-      width:100%; box-sizing:border-box; background:#1a1a1a; color:#ddd;
-      border:1px solid #333; border-radius:6px; padding:10px; font:13px/1.45 Consolas, monospace;
-    }
-  </style>
+  <script>location.replace("admin_staff_hub.html#alerts");</script>
 </head>
-<body class="admin-page">
-  <div id="nav"></div>
-  <h1 class="admin-title">Staff alerts</h1>
-  <div id="adminLayout">
-    <div class="admin-main" id="adminMain">
-      <details class="card share-list" id="vacantClubsBox">
-        <summary>
-          <span class="share-title">Vacant clubs</span>
-          <span class="share-count" id="vacantClubsCount">loading…</span>
-        </summary>
-        <p class="note">
-          Every club in a league this season with no owner — copy and paste into a Discord DM to a
-          member without a club. Needs <code>staff_vacant_clubs_list_20261012.sql</code>.
-        </p>
-        <div class="row share-actions">
-          <span id="vacantClubsCopy" class="share-copy"></span>
-          <button type="button" id="vacantClubsRefresh" class="button secondary">Refresh</button>
-        </div>
-        <div id="vacantClubsStatus" class="status-line"></div>
-        <textarea id="vacantClubsText" class="share-text" rows="12" readonly></textarea>
-      </details>
-
-      <details class="card share-list" id="faManagersBox">
-        <summary>
-          <span class="share-title">Available managers</span>
-          <span class="share-count" id="faManagersCount">loading…</span>
-        </summary>
-        <p class="note">
-          Every manager not contracted to a club, best rating first — copy and paste into a Discord DM.
-        </p>
-        <div class="row share-actions">
-          <span id="faManagersCopy" class="share-copy"></span>
-          <button type="button" id="faManagersRefresh" class="button secondary">Refresh</button>
-        </div>
-        <div id="faManagersStatus" class="status-line"></div>
-        <textarea id="faManagersText" class="share-text" rows="12" readonly></textarea>
-      </details>
-
-      <div class="card">
-        <p class="note">
-          Alerts for league admins and mods — e.g. when someone joins GPSL via Discord.
-          Run <code>supabase/sql/patches/gpsl_staff_alerts.sql</code> then
-          <code>gpsl_staff_alerts_join_trigger_fix.sql</code>. Also redeploy
-          <code>discord-join-complete</code>.
-        </p>
-        <div class="row" style="margin-bottom:12px;">
-          <button type="button" id="refreshBtn" class="button secondary">Refresh</button>
-          <button type="button" id="markAllBtn" class="button secondary">Mark all read</button>
-        </div>
-        <div id="status" class="status-line"></div>
-        <div id="alertList" class="alert-list"></div>
-      </div>
-    </div>
-  </div>
-  <script type="module" src="admin_staff_alerts.js?v=20261012-share-lists"></script>
-</body>
+<body></body>
 </html>

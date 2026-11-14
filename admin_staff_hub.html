@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Staff — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css?v=20260930-hop-links">
+  <style>
+    .staff-hub-tabs {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      width: min(1400px, calc(100% - 28px));
+      margin: 14px auto 0;
+    }
+    .staff-hub-tabs button {
+      background: #161616; color: #ddd; border: 1px solid #444; border-radius: 4px;
+      padding: 8px 12px; cursor: pointer; font: inherit;
+    }
+    .staff-hub-tabs button.is-on { border-color: #ff9900; color: #ff9900; background: #1f1709; }
+    .staff-hub-tabs button[hidden] { display: none !important; }
+    .staff-hub-panel { display: none; }
+    .staff-hub-panel.is-on { display: block; }
+.note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    .alert-list { display:flex; flex-direction:column; gap:10px; }
+    .alert-card {
+      border:1px solid #333; background:#1a1a1a; border-radius:6px; padding:12px 14px;
+    }
+    .alert-card.unread { border-color:#886622; background:#221c12; }
+    .alert-card h3 { margin:0 0 6px; color:#ff9900; font-size:15px; }
+    .alert-meta { color:#888; font-size:12px; margin-bottom:8px; }
+    .alert-body { white-space:pre-wrap; font-size:13px; line-height:1.45; color:#ccc; }
+    .alert-actions { margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+    .badge-new {
+      display:inline-block; font-size:10px; font-weight:bold; letter-spacing:0.04em;
+      color:#111; background:#ff9900; border-radius:3px; padding:1px 6px; margin-left:8px;
+      vertical-align:middle;
+    }
+    .share-list > summary {
+      cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px; user-select:none;
+    }
+    .share-list > summary::-webkit-details-marker { display:none; }
+    .share-list > summary::before {
+      content:"▸"; color:#ff9900; font-size:14px; width:12px; transition:transform 0.15s;
+    }
+    .share-list[open] > summary::before { transform:rotate(90deg); }
+    .share-list[open] > summary { margin-bottom:10px; }
+    .share-title { color:#ff9900; font-size:16px; font-weight:bold; }
+    .share-count { color:#999; font-size:13px; }
+    .share-actions { margin-bottom:10px; gap:8px; flex-wrap:wrap; }
+    .share-copy { display:inline-flex; flex-wrap:wrap; gap:8px; }
+    .share-text {
+      width:100%; box-sizing:border-box; background:#1a1a1a; color:#ddd;
+      border:1px solid #333; border-radius:6px; padding:10px; font:13px/1.45 Consolas, monospace;
+    }
+.card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    .wl-note-grid {
+      display:grid;
+      grid-template-columns:repeat(4, minmax(220px, 1fr));
+      gap:10px;
+      margin:0 0 14px;
+    }
+    .wl-note-tile {
+      background:#171717;
+      border:1px solid #333;
+      border-radius:8px;
+      padding:10px 12px;
+    }
+    .wl-note-tile h3 {
+      margin:0 0 6px;
+      color:#ff9900;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+    .wl-note-tile p {
+      margin:0;
+      color:#aaa;
+      font-size:12px;
+      line-height:1.45;
+    }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+    tr.wl-priority-row { touch-action: pan-y; }
+    tr.wl-priority-row .wl-drag-cell { cursor: grab; touch-action: none; user-select: none; }
+    tr.wl-priority-row.wl-dragging { opacity: 0.45; }
+    tr.wl-priority-row.wl-dragging .wl-drag-cell { cursor: grabbing; }
+    tr.wl-priority-row.wl-dragging td { background: #1c1c1c; }
+    .wl-board-table input[type="checkbox"] { cursor: pointer; position: relative; z-index: 2; }
+    tr.wl-club-owner { opacity: 0.55; color: #888; }
+    tr.wl-club-owner td { border-color: #2a2a2a !important; }
+    tr.wl-club-owner .wl-col-actions { opacity: 1; }
+    .wl-col-actions .wl-row-action {
+      max-width: 11.5em;
+      padding: 5px 6px;
+      font-size: 12px;
+      background: #111;
+      border: 1px solid #555;
+      color: #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    tr.wl-club-owner .wl-col-actions .wl-row-action { color: #ddd; border-color: #666; }
+    .wl-row-action option[value=""] { color: #888; }
+    .wl-archived-table .wl-row-action { max-width: 12em; }
+    .wl-drag-handle {
+      display: inline-block;
+      width: 1.25em;
+      text-align: center;
+      color: #777;
+      user-select: none;
+      font-size: 14px;
+      letter-spacing: -1px;
+    }
+    tr.wl-club-owner .wl-drag-handle { color: #555; }
+    .wl-board-toolbar {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+      margin-bottom: 12px;
+    }
+    .wl-board-toolbar input[type="search"] {
+      padding: 8px 10px; min-width: 220px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .wl-board-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
+    .wl-board-table th,
+    .wl-board-table td {
+      border-bottom: 1px solid #333; padding: 7px 6px; text-align: left; vertical-align: middle;
+    }
+    .wl-board-table thead tr:not(.wl-group-row) th {
+      color: #ff9900;
+      font-weight: 600;
+      font-size: 11px;
+      line-height: 1.25;
+      white-space: normal;
+      vertical-align: bottom;
+    }
+    .wl-board-table .wl-group-row th {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #bbb;
+      background: #181818;
+      border-bottom: 1px solid #444;
+      padding: 6px 8px;
+      white-space: nowrap;
+    }
+    .wl-board-table .wl-group-owner { border-left: 2px solid #555; }
+    .wl-board-table .wl-group-season { border-left: 2px solid #886622; color: #e0b84a; }
+    .wl-board-table .wl-group-activity { border-left: 2px solid #3a6a8a; color: #7eb8d8; }
+    .wl-board-table .wl-group-actions { border-left: 2px solid #444; }
+    .wl-board-table th.wl-col-owner,
+    .wl-board-table td.wl-col-owner { border-left: 2px solid #555; }
+    .wl-board-table th.wl-col-season,
+    .wl-board-table td.wl-col-season { border-left: 2px solid #886622; }
+    .wl-board-table th.wl-col-activity,
+    .wl-board-table td.wl-col-activity { border-left: 2px solid #3a6a8a; }
+    .wl-board-table th.wl-col-actions,
+    .wl-board-table td.wl-col-actions { border-left: 2px solid #444; }
+    .wl-board-table th.num,
+    .wl-board-table td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      padding-left: 8px;
+      padding-right: 8px;
+      min-width: 2.6em;
+    }
+    .wl-board-table th.wl-num-login,
+    .wl-board-table td.wl-num-login { min-width: 3em; }
+    .wl-board-table th.wl-num-unplayed,
+    .wl-board-table td.wl-num-unplayed { min-width: 3.2em; }
+    .wl-board-table th.wl-col-login {
+      white-space: nowrap;
+      min-width: 7.5em;
+    }
+    .wl-board-table .muted { color: #888; font-size: 12px; }
+    .wl-board-table .never { color: #f88; }
+    .wl-board-table .stale { color: #fc6; }
+    .wl-board-table .unplayed-warn { color: #fc6; font-weight: 600; }
+    .wl-board-table .unplayed-bad { color: #f88; font-weight: 700; }
+    .wl-board-table tr.wl-filter-hide { display: none; }
+    /* Archived uses the same wl-board-table layout; keep soft red accents only. */
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) th { color: #e0a0a0; }
+    .wl-board-table.wl-archived-table .wl-group-owner { color: #e0a0a0; }
+    .wl-modal-backdrop {
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0,0,0,0.65);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .wl-modal-backdrop[hidden] { display: none !important; }
+    .wl-modal {
+      width: min(440px, 100%);
+      background: #1a1a1a;
+      border: 1px solid #555;
+      border-radius: 8px;
+      padding: 18px 20px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    }
+    .wl-modal h3 { margin: 0 0 6px; color: #ff9900; font-size: 17px; }
+    .wl-modal .note { margin-bottom: 12px; }
+    .wl-modal label { display: block; margin: 12px 0 4px; font-size: 13px; color: #bbb; }
+    .wl-modal select,
+    .wl-modal input {
+      width: 100%; box-sizing: border-box;
+      padding: 8px 10px; font-size: 14px;
+      background: #111; border: 1px solid #555; color: #eee; border-radius: 4px;
+    }
+    #wlAssignClubSelect {
+      min-height: 16em;
+      font-size: 13px;
+    }
+    #wlAssignClubSelect optgroup {
+      color: #ff9900;
+      font-weight: 700;
+      font-style: normal;
+    }
+    #wlAssignClubSelect option {
+      color: #eee;
+      font-weight: 400;
+      padding: 2px 0;
+    }
+    .wl-modal-actions {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; justify-content: flex-end;
+    }
+    .wl-paid-cell {
+      display: inline-flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 4px 6px; margin: 0; min-width: 5.5em;
+      background: #141414; border: 1px solid #444; border-radius: 4px;
+      color: #ddd; cursor: pointer; font: inherit;
+    }
+    .wl-paid-cell:hover { border-color: #ff9900; }
+    .wl-paid-cell.owes-now { border-color: #a66a1a; background: #1f170c; }
+    .wl-paid-count { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .wl-paid-dots { display: grid; grid-template-columns: repeat(6, 6px); gap: 2px; }
+    .wl-paid-dot { width: 6px; height: 6px; border-radius: 1px; background: #333; }
+    .wl-paid-dot.is-paid { background: #3c3; }
+    .wl-paid-dot.is-now { outline: 1px solid #ff9900; }
+    .wl-paid-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px;
+    }
+    .wl-paid-month {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 8px 4px; background: #111; border: 1px solid #444; border-radius: 6px;
+      color: #ccc; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    .wl-paid-month span { font-size: 11px; font-weight: 400; color: #777; }
+    .wl-paid-month.is-paid { background: #17301a; border-color: #3a7a3a; color: #bfe8bf; }
+    .wl-paid-month.is-paid span { color: #8d8; }
+    .wl-paid-month.is-now { box-shadow: 0 0 0 1px #ff9900 inset; }
+    .wl-paid-month:disabled { opacity: .5; cursor: wait; }
+    .wl-renewal-box {
+      margin-top: 14px; padding: 12px 12px 10px; background: #151515;
+      border: 1px solid #3a3a3a; border-radius: 8px;
+    }
+    .wl-renewal-box h4 {
+      margin: 0 0 6px; font-size: 13px; color: #ff9900; font-weight: 700;
+    }
+    .wl-renewal-status {
+      margin: 0 0 10px; font-size: 12px; color: #aaa; line-height: 1.45;
+    }
+    .wl-renewal-status b.ok { color: #8d8; }
+    .wl-renewal-status b.leeway { color: #e0b050; }
+    .wl-renewal-status b.overdue { color: #f88; }
+    .wl-renewal-status b.unset { color: #888; }
+    .wl-renewal-row {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .wl-renewal-row input[type="date"] {
+      padding: 7px 8px; background: #111; border: 1px solid #444;
+      color: #ddd; border-radius: 4px; font: inherit;
+    }
+    .wl-paid-cell.renewal-leeway { border-color: #a66a1a; }
+    .wl-paid-cell.renewal-overdue { border-color: #a33; background: #1f1010; }
+    .wl-paid-renewal {
+      font-size: 10px; color: #999; font-variant-numeric: tabular-nums; line-height: 1.2;
+    }
+    .wl-paid-cell.renewal-leeway .wl-paid-renewal { color: #e0b050; }
+    .wl-paid-cell.renewal-overdue .wl-paid-renewal { color: #f88; }
+    .wl-board-toolbar .wl-paid-year-wrap { display: inline-flex; gap: 6px; align-items: center; color: #bbb; font-size: 13px; }
+    .wl-board-toolbar select {
+      padding: 7px 8px; background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    @media (max-width: 1100px) {
+      .wl-note-grid { grid-template-columns:repeat(2, minmax(220px, 1fr)); }
+    }
+    @media (max-width: 680px) {
+      .wl-note-grid { grid-template-columns:1fr; }
+    }
+.chk-note { font-size:13px; color:#aaa; line-height:1.5; margin-bottom:14px; max-width:1100px; }
+    .chk-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
+    .chk-summary { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; font-size:13px; }
+    .chk-summary span { padding:6px 10px; background:#1a1a1a; border-radius:4px; }
+    .chk-summary .chk-sum-squad {
+      background: rgba(255, 153, 0, 0.08);
+      border: 1px solid rgba(255, 153, 0, 0.25);
+    }
+    .chk-table-wrap { overflow:auto; max-height:calc(100vh - 240px); border:1px solid #333; border-radius:6px; }
+    .chk-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .chk-table th, .chk-table td { padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left; vertical-align:top; white-space:nowrap; }
+    .chk-table th { position:sticky; top:0; background:#1e1e1e; z-index:1; color:#ff9900; cursor:pointer; user-select:none; }
+    .chk-table th:hover { background:#252525; }
+    .chk-table thead tr.chk-group-row th {
+      top: 0;
+      z-index: 2;
+      cursor: default;
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 5px 8px;
+      border-bottom: 1px solid #333;
+    }
+    .chk-table thead tr.chk-group-row th:hover { background: inherit; }
+    .chk-table thead tr:nth-child(2) th { top: 28px; }
+    .chk-group-club { background:#1a1a1a !important; color:#aaa !important; }
+    .chk-group-squad {
+      background: rgba(255, 153, 0, 0.12) !important;
+      color: #ffcc66 !important;
+      border-left: 2px solid rgba(255, 153, 0, 0.55);
+      border-right: 2px solid rgba(255, 153, 0, 0.55);
+    }
+    .chk-group-fin { background:#1a1a1a !important; color:#aaa !important; }
+    .chk-table th.chk-col-squad,
+    .chk-table td.chk-col-squad.chk-cell-ok {
+      background: rgba(255, 153, 0, 0.04);
+    }
+    .chk-table th.chk-col-squad:first-of-type,
+    .chk-table td.chk-col-squad:first-of-type {
+      border-left: 2px solid rgba(255, 153, 0, 0.35);
+    }
+    .chk-table tbody tr:hover td.chk-col-squad.chk-cell-ok {
+      background: rgba(255, 153, 0, 0.08);
+    }
+    .chk-table th.sorted-asc::after { content:" ▲"; font-size:9px; }
+    .chk-table th.sorted-desc::after { content:" ▼"; font-size:9px; }
+    .chk-table tbody tr:hover { background:#1a1a1a; }
+    .chk-table .club-cell { white-space:normal; min-width:120px; }
+    .chk-table .club-name { font-weight:600; }
+    .chk-table .club-short { color:#888; font-size:11px; }
+    .chk-table .vacant { color:#888; font-style:italic; }
+    .chk-table .money { text-align:right; font-variant-numeric:tabular-nums; }
+    .chk-table .num { text-align:center; font-variant-numeric:tabular-nums; }
+    .chk-cell-ok { color:#bbb; }
+    .chk-cell-warn {
+      background:rgba(232,160,71,0.22) !important;
+      color:#ffd28a;
+      font-weight:600;
+      box-shadow: inset 3px 0 0 #e8a047;
+    }
+    .chk-cell-bad {
+      background:rgba(232,92,92,0.28) !important;
+      color:#ffb0b0;
+      font-weight:700;
+      box-shadow: inset 3px 0 0 #e85c5c;
+    }
+    .chk-table .proj-loading { color:#666; font-style:italic; }
+    /* Row wash must NOT override failing cell colours (specificity was hiding them). */
+    .chk-row-flagged td.chk-cell-ok,
+    .chk-row-flagged td.club-cell {
+      background:rgba(232,92,92,0.04);
+    }
+    .chk-row-flagged:hover td.chk-cell-ok,
+    .chk-row-flagged:hover td.club-cell {
+      background:rgba(232,92,92,0.08);
+    }
+    .chk-issues-cell {
+      white-space: nowrap;
+      width: 1%;
+      min-width: 7.5rem;
+      font-size: 11px;
+      line-height: 1.4;
+      vertical-align: middle;
+    }
+    /* Distinct from per-column red breaches — magenta summary hub */
+    .chk-table td.chk-issues-cell.chk-cell-bad,
+    .chk-table td.chk-issues-cell.chk-issues-hot {
+      background: linear-gradient(
+        110deg,
+        rgba(190, 40, 140, 0.55),
+        rgba(120, 30, 160, 0.42)
+      ) !important;
+      color: #ffe6f7;
+      font-weight: 700;
+      box-shadow:
+        inset 4px 0 0 #ff4fc2,
+        inset 0 0 0 1px rgba(255, 100, 200, 0.35);
+    }
+    .chk-table tbody tr:hover td.chk-issues-cell.chk-cell-bad,
+    .chk-table tbody tr:hover td.chk-issues-cell.chk-issues-hot {
+      background: linear-gradient(
+        110deg,
+        rgba(210, 50, 155, 0.65),
+        rgba(140, 40, 180, 0.5)
+      ) !important;
+    }
+    .chk-issue-tag {
+      display: inline-block;
+      margin: 1px 3px 1px 0;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.35);
+      color: #ffe0f4;
+      border: 1px solid rgba(255, 140, 210, 0.65);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+    }
+    .chk-issue-tag.warn {
+      background: rgba(0, 0, 0, 0.3);
+      color: #ffe9b8;
+      border-color: rgba(255, 200, 100, 0.7);
+    }
+    .chk-legend .lg-issues i {
+      background: linear-gradient(110deg, #be288c, #781ea0);
+      border: 1px solid #ff4fc2;
+    }
+    .chk-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#999; margin-bottom:10px; }
+    .chk-legend span { display:inline-flex; align-items:center; gap:6px; }
+    .chk-legend i { display:inline-block; width:12px; height:12px; border-radius:2px; }
+    .chk-legend .lg-bad i { background:rgba(232,92,92,0.35); border:1px solid #e85c5c; }
+    .chk-legend .lg-warn i { background:rgba(232,160,71,0.25); border:1px solid #e8a047; }
+    .chk-filter { display:inline-flex; align-items:center; gap:6px; color:#ccc; font-size:13px; }
+    .chk-filter select,
+    .chk-filter input[type="search"] {
+      background:#222; color:#ddd; border:1px solid #444; padding:4px 8px; border-radius:4px;
+    }
+    .chk-filter input[type="search"] { min-width:160px; }
+    .chk-filter input[type="checkbox"] { margin:0; }
+    .chk-table .muted { color:#777; }
+    .chk-table .chk-sub { font-size:10px; color:#999; font-weight:500; line-height:1.3; }
+    .chk-table .chk-tag-ok { color:#9fd4b0; font-weight:700; }
+    .chk-table .chk-avail-count { font-weight:600; color:#ccc; }
+    .chk-table .chk-avail-times {
+      font-size:10px; color:#999; font-weight:500; white-space:normal; max-width:220px; line-height:1.35;
+    }
+    .chk-table td.chk-cell-bad .chk-avail-times { color:#ffc8c8; }
+.card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    .mod-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .mod-table th, .mod-table td { border-bottom:1px solid #333; padding:8px 6px; text-align:left; }
+    .mod-table th { color:#aaa; font-weight:600; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+    button.button.danger { background:#722; }
+    button.button.danger:hover { background:#933; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <div class="staff-hub-tabs" role="tablist" aria-label="Staff tools">
+    <button type="button" data-hub-tab="alerts" role="tab">Staff alerts</button>
+    <button type="button" data-hub-tab="owners" role="tab" data-admin-only>Season owner board</button>
+    <button type="button" data-hub-tab="checklist" role="tab">Club checklist</button>
+    <button type="button" data-hub-tab="mods" role="tab" data-admin-only>Manage mods</button>
+  </div>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+    <section class="staff-hub-panel" data-panel="alerts">
+      <h1 class="admin-title">Staff alerts</h1>
+<details class="card share-list" id="vacantClubsBox">
+        <summary>
+          <span class="share-title">Vacant clubs</span>
+          <span class="share-count" id="vacantClubsCount">loading…</span>
+        </summary>
+        <p class="note">
+          Every club in a league this season with no owner — copy and paste into a Discord DM to a
+          member without a club. Needs <code>staff_vacant_clubs_list_20261012.sql</code>.
+        </p>
+        <div class="row share-actions">
+          <span id="vacantClubsCopy" class="share-copy"></span>
+          <button type="button" id="vacantClubsRefresh" class="button secondary">Refresh</button>
+        </div>
+        <div id="vacantClubsStatus" class="status-line"></div>
+        <textarea id="vacantClubsText" class="share-text" rows="12" readonly></textarea>
+      </details>
+
+      <details class="card share-list" id="faManagersBox">
+        <summary>
+          <span class="share-title">Available managers</span>
+          <span class="share-count" id="faManagersCount">loading…</span>
+        </summary>
+        <p class="note">
+          Every manager not contracted to a club, best rating first — copy and paste into a Discord DM.
+        </p>
+        <div class="row share-actions">
+          <span id="faManagersCopy" class="share-copy"></span>
+          <button type="button" id="faManagersRefresh" class="button secondary">Refresh</button>
+        </div>
+        <div id="faManagersStatus" class="status-line"></div>
+        <textarea id="faManagersText" class="share-text" rows="12" readonly></textarea>
+      </details>
+
+      <div class="card">
+        <p class="note">
+          Alerts for league admins and mods — e.g. when someone joins GPSL via Discord.
+          Run <code>supabase/sql/patches/gpsl_staff_alerts.sql</code> then
+          <code>gpsl_staff_alerts_join_trigger_fix.sql</code>. Also redeploy
+          <code>discord-join-complete</code>.
+        </p>
+        <div class="row" style="margin-bottom:12px;">
+          <button type="button" id="refreshBtn" class="button secondary">Refresh</button>
+          <button type="button" id="markAllBtn" class="button secondary">Mark all read</button>
+        </div>
+        <div id="status" class="status-line"></div>
+        <div id="alertList" class="alert-list"></div>
+      </div>
+    </section>
+    <section class="staff-hub-panel" data-panel="owners">
+<nav class="admin-hop-links" aria-label="Related pages">
+        <a href="#owners" aria-current="page">Season owner board</a>
+        <a href="admin_workflow_checklist.html">Admin checklist</a>
+        <a href="#checklist">Club season checklist</a>
+      </nav>
+      <div class="card" id="season-owner-board">
+        <h2>Season owner board</h2>
+        <div class="wl-note-grid">
+          <div class="wl-note-tile">
+            <h3>Sections</h3>
+            <p><b>Owners</b> → <b>Waiting list</b> → <b>Archived</b>, with <b>On break</b> shown separately below.</p>
+          </div>
+          <div class="wl-note-tile">
+            <h3>Priority</h3>
+            <p><b>Supporters</b> sit at the top of each section in the same Season 1 / activity order; when support ends they drop back into that order with everyone else. Drag handles still set saved season priority underneath. <b>Restore join-date order</b> clears manual ranking.</p>
+          </div>
+          <div class="wl-note-tile">
+            <h3>Actions</h3>
+            <p>Owners: <b>Remove club → on break</b> / <b>→ Waiting</b>. Waiting: Add club / absence on-off / archive. On break: return, add club, or archive. Archived: unarchive or delete.</p>
+          </div>
+          <div class="wl-note-tile">
+            <h3>Activity</h3>
+            <p>Site visits include remembered sessions, capped at one count per hour. <b>U prev / U cur</b> are live unplayed league and cup fixtures in that GPSL month. <b>U missed</b> is the running total frozen each month (it still counts after you sim leftovers). <b>H</b> is the home club’s kick-off proposals for the next GPSL month, proposed/total, league and cup. It counts a proposal sent by the home club. League: home proposes in the month before; after that lock, away can open it if nothing is pending, and that opening is not counted here. Cups: either club can propose once the round month opens; an away opening is not counted here. A fixture with a vacant club is left out. <b>V late</b> = match video uploaded after that fixture’s month lock. <b>V fail</b> = still missing 72 hours after that lock (₿500,000). <b>F lock</b> = scheduling strikes on course if the next month locks as things stand. Auto fines are off; this is the projection. No proposal from either club is a ₿500,000 strike on the home club: next month’s homes, plus leftovers still unproposed. A proposal in the last 48 hours is not an extra fee. A reply still overdue at the lock, after the 48-hour strike, is another ₿500,000 on the club who owes the reply. A third strike on the same fixture forfeits it and adds ₿1,000,000; that extra is not in this figure. Holiday, a manual black box, and a new owner’s first partial month are left out. New owners appointed mid-month stay clear until their first full GPSL month, and their unplayed league fixtures stay in the catch-up window through the join month plus three more. <b>F tot</b> = season fines already applied. Use <b>Record unplayed</b> before simulating a month’s leftovers.</p>
+          </div>
+          <div class="wl-note-tile">
+            <h3>Discord Join</h3>
+            <p>Shown only for self-serve Discord joins. Other accounts show account-created as <b>· acct</b>, or <b>—</b> when unavailable.</p>
+          </div>
+        </div>
+        <div class="wl-board-toolbar">
+          <input type="search" id="wlBoardFilter" placeholder="Filter tag / email / club / status (all sections)…">
+          <button type="button" id="wlRefreshBtn" class="button secondary">Refresh</button>
+          <button type="button" id="wlRecordUnplayedBtn" class="button secondary" title="Freeze unplayed counts for locked months (+ current) before you sim leftovers">Record unplayed</button>
+          <button type="button" id="wlRefreshCountryBtn" class="button secondary" data-admin-only>Refresh country</button>
+          <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
+          <span class="wl-paid-year-wrap" title="Supporter payments year shown in the Paid column. Includes next year for annual subscriptions paid early. Rolls to the new year automatically on 1 January.">
+            Paid year <select id="wlPaidYear" aria-label="Supporter payments year"></select>
+          </span>
+          <button type="button" id="wlPaidClearAllBtn" class="button secondary" data-admin-only title="Clear the selected year's paid months for every owner">Reset paid year</button>
+        </div>
+        <div id="wlAdminTableWrap" style="overflow-x:auto;"></div>
+        <div id="wlOnBreakSection" style="margin-top:28px;" hidden>
+          <h3 style="margin:0 0 6px;font-size:15px;color:#e0b84a;">On break</h3>
+          <p class="note" style="margin-bottom:10px;">
+            Club removed without joining the waiting list (<code>on_break</code>).
+            Login still exists. Use <b>→ Waiting</b> to put them back on the list, or <b>Add club</b> / <b>Archive</b>.
+          </p>
+          <div id="wlOnBreakTableWrap" style="overflow-x:auto;"></div>
+        </div>
+        <div id="wlArchivedSection" style="margin-top:28px;" hidden>
+          <h3 style="margin:0 0 6px;font-size:15px;color:#c88;">Archived owners</h3>
+          <p class="note" style="margin-bottom:10px;">
+            Soft-removed from GPSL. <b>Test / Live</b> ticks still apply (same as the board above).
+            <b>Unarchive → waiting</b> puts them back on the waiting list.
+            <b>Delete from GPSL</b> permanently removes their login (Auth + registry). Admin only.
+            Use the filter at the top of this page to search archived rows too.
+          </p>
+          <div id="wlArchivedTableWrap" style="overflow-x:auto;"></div>
+        </div>
+        <div id="wlActionStatus" class="status-line" style="margin-top:14px;"></div>
+      </div>
+    </section>
+    <section class="staff-hub-panel" data-panel="checklist">
+      <h1 class="admin-title">Club season checklist</h1>
+<nav class="admin-hop-links" aria-label="Related pages">
+        <a href="#owners" data-admin-only>Season owner board</a>
+        <a href="admin_workflow_checklist.html" data-admin-only>Admin checklist</a>
+        <a href="#checklist" aria-current="page">Club season checklist</a>
+      </nav>
+      <div class="card">
+        <p class="chk-note">
+          All GPSL clubs at a glance. The highlighted <b>Squad registration</b> block groups
+          <b>Squad</b> (24–28), <b>GK</b> (≥1), <b>HG</b> (≥8), <b>U21</b> (≥5), <b>Stars</b> (SL 3 / Champ 2),
+          <b>OooO</b> and <b>Fan Fav</b> for a quick status check.
+          <b>Discord tag</b> checks registry tag vs <code>Clubs.owner</code> (must match).
+          <b>Availability</b> lists weekly match times for the current season (flagged if unset on owned clubs).
+          <b>Projected EOS</b> loads after the table (same forecast as the club's Finances page).
+          <b>Credit</b> is the live loan credit rating (same labels as Finances / Service Counter), refreshed with Proj. EOS.
+          <b>1st-season releases</b> shows New Owner release/list slots used (of 3) for owners in their first season at the club.
+          Owned clubs without a manager or GK are flagged; a missing nation is flagged from Season 3.
+          Deploy <code>admin_club_season_checklist_avail_tag_20260814.sql</code> in Supabase for tag/availability columns.
+          Nav: <b>Admin → Season Management → Club Season Checklist</b>.
+        </p>
+        <div class="chk-toolbar">
+          <button type="button" id="reloadBtn" class="button">Reload</button>
+          <button type="button" id="notifyIssuesBtn" class="button" style="background:#663333;" title="Inbox each owned club that currently fails checklist rules">
+            Notify owners of issues
+          </button>
+          <label class="chk-filter">
+            Owner
+            <select id="filterOwner">
+              <option value="">All clubs</option>
+              <option value="owned">With owner</option>
+              <option value="vacant">Vacant</option>
+            </select>
+          </label>
+          <label class="chk-filter" title="Substring match on owner tag / email (e.g. bot matches Robot66)">
+            Name
+            <input type="search" id="filterOwnerName" placeholder="e.g. bot…" autocomplete="off" spellcheck="false">
+          </label>
+          <label class="chk-filter">
+            Division
+            <select id="filterDivision">
+              <option value="">All</option>
+              <option value="superleague">SuperLeague</option>
+              <option value="championship_a">Championship A</option>
+              <option value="championship_b">Championship B</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
+          </label>
+          <label class="chk-filter" title="Show clubs with at least one red/amber requirement fail (includes vacant = no owner)">
+            <input type="checkbox" id="filterIssuesOnly"> Issues only
+          </label>
+          <label class="chk-filter" title="When notifying, only message clubs that match the filters above (not every club with issues)">
+            <input type="checkbox" id="notifyFilteredOnly"> Notify filtered only
+          </label>
+          <span id="rowCount" class="note"></span>
+        </div>
+        <div class="chk-legend">
+          <span class="lg-issues"><i></i> Issues column (all deficiencies)</span>
+          <span class="lg-bad"><i></i> Missing / below rule (red column + left bar)</span>
+          <span class="lg-warn"><i></i> Warning (fines, projected EOS −₿100m or worse)</span>
+        </div>
+        <div id="summaryStrip" class="chk-summary"></div>
+        <div id="pageStatus" class="status-line"></div>
+        <div id="tableWrap" class="chk-table-wrap">
+          <p class="note">Loading…</p>
+        </div>
+      </div>
+      <div class="card" id="auctionReadinessCard" style="margin-top:16px;">
+        <h2 style="margin-top:0;color:#ff9900;">Club &amp; manager auction readiness</h2>
+        <h3 style="margin:4px 0 8px;color:#ddd;font-size:15px;">Club auction — owners without a club</h3>
+        <p class="chk-note">
+          Owners invited to the club auction or on the waiting list, checked against the five required
+          entry items on their <b>Awaiting club</b> page: <b>Owner tag</b>, <b>Timezone</b>,
+          <b>Match availability</b>, <b>Primary club</b> interest and <b>Backup club</b>.
+          Invited owners are listed first. <b>Bidding</b> shows the club each owner is currently
+          the highest bidder on, whether they've been outbid, or that they haven't bid yet.
+        </p>
+        <div class="chk-toolbar">
+          <button type="button" id="readyReloadBtn" class="button">Reload</button>
+          <label class="chk-filter"><input type="checkbox" id="readyFilterNotReady"> Not ready only</label>
+          <label class="chk-filter"><input type="checkbox" id="readyFilterInvited"> Invited only</label>
+          <label class="chk-filter"><input type="checkbox" id="readyFilterNotBid"> Not bid yet only</label>
+        </div>
+        <div id="readySummary" class="chk-summary"></div>
+        <div id="readyStatus" class="status-line"></div>
+        <div id="readyTableWrap" class="chk-table-wrap">
+          <p class="note">Loading…</p>
+        </div>
+
+        <h3 style="margin:22px 0 8px;color:#ddd;font-size:15px;">Manager auction — owned clubs</h3>
+        <p class="chk-note">
+          Every club with an owner, whether it has a manager, and its bidding in the current
+          <b>manager draft auction</b>: the managers it's leading (with the current bid), outbid, or not bid yet.
+          Owners may only lead <b>one</b> manager auction at a time — clubs leading 2+ are flagged and listed first.
+          Owners still waiting for a club can't bid on managers until their club is assigned.
+        </p>
+        <div class="chk-toolbar">
+          <button type="button" id="mgrReloadBtn" class="button">Reload</button>
+          <label class="chk-filter"><input type="checkbox" id="mgrFilterVacant" checked> No manager only</label>
+          <label class="chk-filter"><input type="checkbox" id="mgrFilterNotBid"> Not bid yet only</label>
+          <label class="chk-filter"><input type="checkbox" id="mgrFilterLeading"> Leading only</label>
+        </div>
+        <div id="mgrSummary" class="chk-summary"></div>
+        <div id="mgrStatus" class="status-line"></div>
+        <div id="mgrTableWrap" class="chk-table-wrap">
+          <p class="note">Loading…</p>
+        </div>
+      </div>
+    </section>
+    <section class="staff-hub-panel" data-panel="mods">
+      <h1 class="admin-title">Manage mods</h1>
+<div class="card">
+        <h2>Grant mod access</h2>
+        <p class="note">
+          Mods get a <b>Mod</b> menu with community ops (waiting list, Discord feeds, fines,
+          internationals selection, cancel open transfers, etc.). They do <b>not</b> get season
+          lifecycle, fixtures, money, draft, or testing tools.
+          Requires <code>supabase/sql/patches/gpsl_mods.sql</code>.
+        </p>
+        <div class="row">
+          <div style="flex:1; min-width:260px;">
+            <label for="modEmailSelect">Owner</label>
+            <select id="modEmailSelect">
+              <option value="">Loading owners…</option>
+            </select>
+          </div>
+          <div>
+            <label for="modNote">Note (optional)</label>
+            <input id="modNote" type="text" placeholder="e.g. community lead" maxlength="120" autocomplete="off">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" class="button" id="modGrantBtn">Grant mod</button>
+          <button type="button" class="button secondary" id="modRefreshBtn">Refresh list</button>
+        </div>
+        <div id="modStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Current mods</h2>
+        <div id="modListWrap"><p class="note">Loading…</p></div>
+      </div>
+    </section>
+    </div>
+  </div>
+<div id="wlAssignClubModal" class="wl-modal-backdrop" hidden>
+    <div class="wl-modal" role="dialog" aria-modal="true" aria-labelledby="wlAssignClubTitle">
+      <h3 id="wlAssignClubTitle">Add club</h3>
+      <p class="note" id="wlAssignClubWho">Assign a vacant club.</p>
+      <label for="wlAssignClubSelect">Vacant clubs (unowned only)</label>
+      <select id="wlAssignClubSelect" size="14">
+        <option value="">Loading…</option>
+      </select>
+      <label for="wlAssignClubTag">Discord tag (optional — if not set yet)</label>
+      <input id="wlAssignClubTag" type="text" maxlength="64" autocomplete="off" placeholder="Leave blank if already set">
+      <div class="wl-modal-actions">
+        <button type="button" id="wlAssignClubCancel" class="button secondary">Cancel</button>
+        <button type="button" id="wlAssignClubConfirm" class="button">Assign club</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="wlPaidModal" class="wl-modal-backdrop" hidden>
+    <div class="wl-modal" role="dialog" aria-modal="true" aria-labelledby="wlPaidTitle">
+      <h3 id="wlPaidTitle">Supporter payments</h3>
+      <p class="note">Year <b id="wlPaidYearLabel">—</b> · click a month to mark it paid / unpaid, or mark a full-year subscription in one go. <span id="wlPaidSummary"></span></p>
+      <div id="wlPaidGrid" class="wl-paid-grid"></div>
+      <div class="wl-renewal-box">
+        <h4>Ko-fi renewal due</h4>
+        <p class="wl-renewal-status" id="wlRenewalStatus">Not set.</p>
+        <div class="wl-renewal-row">
+          <input type="date" id="wlRenewalDate" aria-label="Renewal due date">
+          <button type="button" id="wlRenewalSave" class="button" title="Save this due date">Save due date</button>
+          <button type="button" id="wlRenewalPlusMonth" class="button secondary" title="Advance due by 1 month from max(due, today)">+1 month</button>
+          <button type="button" id="wlRenewalPlusYear" class="button secondary" title="Advance due by 12 months (annual sub)">+1 year</button>
+          <button type="button" id="wlRenewalClear" class="button secondary" title="Clear renewal due date">Clear</button>
+        </div>
+        <p class="note" style="margin:8px 0 0">Payment should land by the due date. A <b>3-day leeway</b> after that still counts as on time. Month ticks above stay manual.</p>
+      </div>
+      <div class="wl-modal-actions">
+        <button type="button" id="wlPaidMarkYear" class="button" title="Mark all 12 months paid for this year and push renewal +1 year">Mark full year paid</button>
+        <button type="button" id="wlPaidClearYear" class="button secondary">Clear this year</button>
+        <button type="button" id="wlPaidClose" class="button">Done</button>
+      </div>
+    </div>
+  </div>
+  <script>window.__gpslStaffHub = true;</script>
+  <script type="module" src="admin_staff_hub.js?v=20261114-staff-hub"></script>
+</body>
+</html>

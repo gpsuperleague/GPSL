@@ -18,9 +18,7 @@ async function loadClubAuctionConfig() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage({ allowMod: true }))) return;
-
+export async function bootOwnerAdminPage() {
   const needsAuctionConfig = !!document.getElementById("clubAuctionRegisterBtn");
   const needsOwnerList =
     !!document.getElementById("updateOwnerSelect") ||
@@ -107,6 +105,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("season-owner-board")?.scrollIntoView({ behavior: "smooth" });
   }
   if (needsClubOwnerRemove) await loadClubOwnersRemoveList();
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (window.__gpslStaffHub) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
+  await bootOwnerAdminPage();
 });
 
 async function loadOwnerList() {

@@ -1,6 +1,6 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
-import { APP_VERSION } from "./app_version.js?v=20261111-quiz-menu";
+import { APP_VERSION } from "./app_version.js?v=20261114-staff-hub";
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
 export const NAV_CONFIG_VERSION = APP_VERSION;

@@ -215,8 +215,7 @@ function wireShareList({ prefix, noun, emptyText, loadLines }) {
   load();
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage({ allowMod: true }))) return;
+export async function bootStaffAlerts() {
   wireShareList({
     prefix: "vacantClubs",
     noun: "vacant club(s)",
@@ -240,4 +239,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadAlerts();
   });
   await loadAlerts();
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (window.__gpslStaffHub) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
+  await bootStaffAlerts();
 });

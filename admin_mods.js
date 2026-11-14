@@ -182,9 +182,14 @@ async function revokeMod(email) {
   await loadMods();
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage())) return;
+export async function bootManageMods() {
   document.getElementById("modGrantBtn")?.addEventListener("click", grantMod);
   document.getElementById("modRefreshBtn")?.addEventListener("click", loadMods);
   await loadMods();
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (window.__gpslStaffHub) return;
+  if (!(await initAdminPage())) return;
+  await bootManageMods();
 });

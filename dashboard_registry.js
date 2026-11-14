@@ -246,7 +246,7 @@ export const DASHBOARD_PANELS = [
   }),
   p("admin_challenges", "Challenge Admin", "admin_challenges.html", { adminOnly: true }),
   p("admin_prize_appeals", "Red Card Appeals", "admin_prize_appeals.html", { adminOnly: true }),
-  p("admin_club_checklist", "Club Checklist", "admin_club_checklist.html", { adminOnly: true }),
+  p("admin_club_checklist", "Club Checklist", "admin_staff_hub.html#checklist", { adminOnly: true }),
   p("admin_owner_holidays", "Owner holidays", "admin_owner_holidays.html", { adminOnly: true }),
   p("admin_season_absence", "Season absence", "admin_season_absence.html", { adminOnly: true }),
   p("owner_holidays_board", "Owner Holidays", "owner_holidays_board.html"),

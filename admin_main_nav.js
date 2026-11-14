@@ -47,8 +47,8 @@ export const ADMIN_MAIN_NAV = [
     label: "Owners",
     entries: [
       group("Waiting list", [
-        L("Staff alerts", "admin_staff_alerts.html"),
-        L("Season owner board", "admin_owners_waiting_list.html"),
+        L("Staff alerts", "admin_staff_hub.html", "alerts"),
+        L("Season owner board", "admin_staff_hub.html", "owners"),
         L("Discord join order", "admin_owners_discord.html"),
       ]),
       group("Knowledge", [
@@ -68,7 +68,7 @@ export const ADMIN_MAIN_NAV = [
         ),
       ]),
       group("Supporters", [L("Supporters' lottery", "admin_supporter_lottery.html")]),
-      group("Mods", [L("Manage mods", "admin_mods.html")]),
+      group("Mods", [L("Manage mods", "admin_staff_hub.html", "mods")]),
       group("Discord feeds", [
         L("Discord Feeds", "admin_discord_news.html"),
         L("Discord Friendlies", "admin_discord_friendlies.html"),
@@ -557,8 +557,8 @@ export const ADMIN_MAIN_NAV = [
         ),
         L(
           "Club Season Checklist",
-          "admin_club_checklist.html",
-          null,
+          "admin_staff_hub.html",
+          "checklist",
           null,
           "Review owned clubs against season compliance rules (squad, manager, etc.)."
         ),

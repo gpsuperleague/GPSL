@@ -27,7 +27,7 @@ export const MOD_NAV_SECTION = {
   label: "Mod",
   items: [
     H("Owners"),
-    L("Staff alerts", "admin_staff_alerts.html"),
+    L("Staff alerts", "admin_staff_hub.html", "alerts"),
     L("Discord join order", "admin_owners_discord.html"),
     L("Set Owner Tag", "admin_owners_tag.html"),
     L("Owner holidays", "admin_owner_holidays.html"),
@@ -46,7 +46,7 @@ export const MOD_NAV_SECTION = {
     H("Season ops"),
     L("Preview club finances", "finances.html"),
     L("Preview club squad", "squad.html"),
-    L("Club Season Checklist", "admin_club_checklist.html"),
+    L("Club Season Checklist", "admin_staff_hub.html", "checklist"),
     L("Apply fines", "admin_fines.html"),
     L("Red card appeal review", "admin_prize_appeals.html"),
     L("Injuries", "admin_injuries.html"),
