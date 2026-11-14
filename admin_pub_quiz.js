@@ -254,6 +254,23 @@ document.getElementById("newQuiz").addEventListener("click", async () => {
   say("Quiz created. Fill all 50 questions, then schedule it.");
 });
 
+document.getElementById("reuseQuiz").addEventListener("click", async () => {
+  const sel = document.getElementById("quizPick");
+  const id = Number(sel.value);
+  if (!id) return;
+  const label = sel.selectedOptions[0]?.textContent || `Quiz ${id}`;
+  if (!window.confirm(`Copy ${label} into a new draft? Scores and Discord posts stay on the original. Pictures and songs stay linked to it, so leave that quiz in the list.`)) return;
+  say("Copying…");
+  const { data, error } = await supabase.rpc("gpsl_pub_quiz_reuse", { p_id: id });
+  if (error) {
+    say(error.message, true);
+    return;
+  }
+  await refreshList(data?.id);
+  await loadQuiz(data?.id);
+  say("Copied. This draft has the same questions. Schedule it when you want to run it again.");
+});
+
 document.getElementById("deleteQuiz").addEventListener("click", async () => {
   const sel = document.getElementById("quizPick");
   const id = Number(sel.value);
