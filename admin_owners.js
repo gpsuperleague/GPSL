@@ -1604,12 +1604,11 @@ function wlColFilterRow() {
       cells += `<th class="wl-col-filter-cell"></th>`;
       continue;
     }
-    const val = escapeWl(wlColFilters[i] || "");
     cells +=
       `<th class="wl-col-filter-cell">` +
-      `<input class="wl-col-filter" data-col="${i}" value="${val}" ` +
-      `aria-label="Filter column ${i + 1}" ` +
-      `title="Filter this column. Tick boxes: yes or no.">` +
+      `<select class="wl-col-filter" data-col="${i}" aria-label="Filter column ${i + 1}">` +
+      `<option value="">All</option>` +
+      `</select>` +
       `</th>`;
   }
   return `<tr class="wl-col-filters">${cells}</tr>`;
@@ -1619,7 +1618,44 @@ function wlCellFilterText(cell) {
   if (!cell) return "";
   const box = cell.querySelector('input[type="checkbox"]');
   if (box) return box.checked ? "yes" : "no";
-  return (cell.innerText || "").replace(/\s+/g, " ").trim().toLowerCase();
+  return (cell.innerText || "").replace(/\s+/g, " ").trim();
+}
+
+function wlFilterOptionLabel(value) {
+  if (value === "yes") return "Yes";
+  if (value === "no") return "No";
+  return value;
+}
+
+function wlFillColFilterSelects(table) {
+  if (!table) return;
+  const rows = [...table.querySelectorAll("tbody tr[data-owner-id]")];
+  const headerRow = table.querySelectorAll("thead tr")[1];
+  table.querySelectorAll("select.wl-col-filter").forEach((sel) => {
+    const col = Number(sel.dataset.col);
+    const header = (headerRow?.children[col]?.innerText || "").replace(/\s+/g, " ").trim();
+    if (header) {
+      sel.setAttribute("aria-label", `Filter ${header}`);
+      sel.title = `Filter ${header}`;
+    }
+    const seen = new Set();
+    for (const tr of rows) {
+      const text = wlCellFilterText(tr.children[col]);
+      if (text) seen.add(text);
+    }
+    const values = [...seen];
+    const ticks = values.length > 0 && values.every((v) => v === "yes" || v === "no");
+    if (ticks) values.sort((a, b) => (a === "yes" ? -1 : 1));
+    else values.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+    const saved = wlColFilters[col] || "";
+    sel.innerHTML =
+      `<option value="">All</option>` +
+      values
+        .map((value) => `<option value="${escapeWl(value)}">${escapeWl(wlFilterOptionLabel(value))}</option>`)
+        .join("");
+    sel.value = values.includes(saved) ? saved : "";
+    if (sel.value !== saved) wlColFilters[col] = sel.value;
+  });
 }
 
 function rowMatchesColumnFilters(tr) {
@@ -1628,7 +1664,7 @@ function rowMatchesColumnFilters(tr) {
   for (const input of table.querySelectorAll(".wl-col-filter")) {
     const q = input.value.trim().toLowerCase();
     if (!q) continue;
-    if (!wlCellFilterText(tr.children[Number(input.dataset.col)]).includes(q)) return false;
+    if (wlCellFilterText(tr.children[Number(input.dataset.col)]).toLowerCase() !== q) return false;
   }
   return true;
 }
@@ -2493,9 +2529,10 @@ async function loadWaitingListAdmin() {
   tableWrap.innerHTML = html;
 
   const filterEl = document.getElementById("wlBoardFilter");
+  wlFillColFilterSelects(tableWrap.querySelector("table"));
   filterSeasonOwnerBoard(filterEl?.value);
   tableWrap.querySelectorAll(".wl-col-filter").forEach((input) => {
-    input.addEventListener("input", () => {
+    input.addEventListener("change", () => {
       wlColFilters[input.dataset.col] = input.value;
       filterSeasonOwnerBoard();
     });
