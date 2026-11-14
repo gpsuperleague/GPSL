@@ -125,8 +125,14 @@
     .wl-board-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
     .wl-board-table th,
     .wl-board-table td {
-      border-bottom: 1px solid #333; padding: 7px 6px; text-align: left; vertical-align: middle;
+      border-bottom: 1px solid #333;
+      border-right: 1px solid #3a3a3a;
+      padding: 7px 6px;
+      text-align: left;
+      vertical-align: middle;
     }
+    .wl-board-table th:last-child,
+    .wl-board-table td:last-child { border-right: none; }
     .wl-board-table thead tr:not(.wl-group-row) th {
       color: #ff9900;
       font-weight: 600;
