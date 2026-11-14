@@ -221,7 +221,7 @@ export const FIXTURES_TIPS = {
   calendar:
     "Current GPSL play-month / calendar gate for arranging fixtures and submitting results.",
   propose:
-    "Opens match scheduling. Home proposes first, before the GPSL month opens. No proposal at a month lock is a strike (₿500k). A missed reply is a strike too.",
+    "Opens match scheduling. League: home proposes before that GPSL month opens; after the lock, away can open it if nothing is pending. Cups: either club can propose from when the round month opens. No proposal at a lock is a strike on the home club (₿500k). A missed reply is a strike too.",
 };
 
 export const MEDICAL_EXTRA_TIPS = {

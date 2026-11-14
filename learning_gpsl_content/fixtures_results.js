@@ -228,7 +228,7 @@ export const SECTION_MATCH_SCHEDULING = {
       type: "ul",
       items: [
         `<b>1.</b> Set your weekly availability on <a href="owner_details.html">Owner Details</a> (and keep GPSL match system ON unless you want the manual lane).`,
-        `<b>2.</b> <b>Home proposes first</b> on Fixtures → Schedule (or via Inbox). Away accepts or counters.`,
+        `<b>2.</b> <b>League:</b> home proposes first, in the month before the match. After that month locks, away can open it if nothing is waiting on a reply. <b>Cups:</b> either club can propose from when the round month opens. The other club accepts or counters. If nobody proposes, the strike stays on the home club.`,
         `<b>3.</b> Save your Match Day squad, then both <b>check in</b> (10 minutes before to 10 minutes after kick-off) and enter the result on Match Day.`,
         `<b>4.</b> If the month ends and the game still isn’t played, it becomes <b>catch-up</b> — you can still play it later. It is <b>not</b> an automatic 3–0 (unless there was a recorded no-show).`,
       ],
@@ -345,10 +345,9 @@ export const SECTION_MATCH_SCHEDULING = {
     {
       type: "ul",
       items: [
-        `<b>₿500k</b> — each strike. One strike per lock while home has still not proposed, until someone proposes. League starts the lock before the play month. Cups start at the round-month lock. Away can open a cup once that lock has passed.`,
+        `<b>₿500k</b> — each strike. One strike per lock while nobody has proposed, until someone does. It is charged to the home club. League starts at the lock before the play month; after that lock, away can open the match. Cups start at the round-month lock; either club can propose from when that month opens.`,
         `<b>₿1m + forfeit</b> — 3 strikes on the same fixture.`,
         `<b>₿1m</b> — every 5th season strike (5, 10, 15…), on top of that strike’s ₿500k.`,
-        `<b>₿1m</b> — league only: home first proposed in the last 48h before the play month opened. Cups do not pay this.`,
         `<b>Reply strike</b> — league and cup: missing the 48-hour reply is ₿500k and a strike. Still silent at the next lock is another.`,
         `<b>₿500k</b> — a missed check-in (a strike). Both miss → ₿500k each.`,
         `<b>₿2.5m each + mutual forfeit</b> — manual-arrange fixture still unplayed at month lock.`,

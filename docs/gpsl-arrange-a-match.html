@@ -255,9 +255,12 @@
 
       <ol class="steps">
         <li>
-          <strong>Home proposes first.</strong>
-          Home opens Schedule, picks a 30‑minute kick-off from times free for <em>both</em> clubs
-          (each owner’s local availability), and presses Propose.
+          <strong>Someone proposes first.</strong>
+          For a league match, home proposes in the month before it is due. After that month locks, away can open it if nothing is waiting on a reply.
+          For a cup, either club can propose from when the round month opens.
+          Pick a 30‑minute kick-off from times free for <em>both</em> clubs
+          (each owner’s local availability), and press Propose.
+          If nobody proposes, the strike stays on the home club.
         </li>
         <li>
           <strong>Away gets an Inbox message.</strong>
@@ -277,23 +280,19 @@
         <div class="meta-card">
           <h3>Deadlines (reply clocks)</h3>
           <ul>
-            <li><strong>First proposal early</strong> (well before the play month opens) → away must reply by the <strong>play month open</strong> (Thursday 19:00 UK).</li>
-            <li><strong>First proposal in the last 48 hours</strong> before the play month opens → <strong>48 hours</strong> to reply.</li>
-            <li><strong>First proposal after the play month has started</strong> → <strong>48 hours</strong>.</li>
-            <li><strong>Any counter / later offer</strong> → <strong>24 hours</strong>.</li>
-            <li><strong>Catch-up</strong> → always <strong>24 hours</strong> (see pathway 4).</li>
+            <li>Every turn, league and cup, including a counter and a catch-up, is <strong>48 hours</strong>. Those 48 hours can run into the next GPSL month.</li>
           </ul>
         </div>
         <div class="meta-card fines">
           <h3>Fines (home arrangement)</h3>
           <ul>
-            <li>Home should propose in the <strong>month before</strong> the fixture’s play month (e.g. September game → propose before August locks).</li>
-            <li>No home proposal by that lock is a strike: <span class="money">₿500k</span>, and each later lock with still no proposal is another.</li>
+            <li><strong>League:</strong> home should propose in the <strong>month before</strong> the fixture’s play month (e.g. September game → propose before August locks). After that lock, away can open it.</li>
+            <li><strong>Cups:</strong> either club can propose from when the round month opens. The strike, if nobody has proposed, is that month’s lock.</li>
+            <li>No proposal by that lock is a strike on the <strong>home</strong> club: <span class="money">₿500k</span>, and each later lock with still no proposal is another.</li>
           </ul>
           <h3 style="margin-top:12px;">Fines (missed reply)</h3>
           <ul>
-            <li>Still your turn and overdue when a GPSL month locks → <strong>first time: Inbox warning only</strong>.</li>
-            <li>Still overdue at a <em>later</em> month lock → <span class="money">₿1m</span> (can repeat). Negotiation is <strong>not</strong> wiped — reply whenever you can.</li>
+            <li>Missing the 48-hour reply is a strike: <span class="money">₿500k</span>. Still silent at the next lock is another. The proposal stays open.</li>
           </ul>
         </div>
       </div>
@@ -402,7 +401,7 @@
         </li>
         <li>
           <strong>Propose times in the current GPSL month’s slots.</strong>
-          Replies are always due within <strong>24 hours</strong>.
+          Replies are due within <strong>48 hours</strong>.
         </li>
         <li>
           <strong>If an old agreed time went stale</strong>, use the schedule page reset (“pick new time” / catch-up reset) — that does not use your monthly reschedule.
@@ -413,7 +412,7 @@
         <div class="meta-card">
           <h3>Deadlines / window</h3>
           <ul>
-            <li>Every reply: <strong>24 hours</strong>.</li>
+            <li>Every reply: <strong>48 hours</strong>.</li>
             <li><strong>League</strong> play window: scheduled month <strong>+ 2</strong> (e.g. September → through November).</li>
             <li><strong>Cups</strong>: scheduled month <strong>+ 1</strong> (May cups: no extra month).</li>
             <li>After the window, still unplayed → awarded by activity (or 0–0 if tied).</li>
@@ -422,7 +421,7 @@
         <div class="meta-card fines">
           <h3>Fines</h3>
           <ul>
-            <li>Missed reply: same <strong>warn first, then ₿1m</strong> path at month locks.</li>
+            <li>Missed reply: a strike, <span class="money">₿500k</span>. Still silent at the next lock is another.</li>
             <li>Recorded no-show still unresolved at a lock → <span class="money">3–0 + ₿2.5m</span>.</li>
             <li>Voluntary / emergency drops are <strong>not</strong> available on catch-up.</li>
           </ul>
@@ -554,23 +553,13 @@
       </thead>
       <tbody>
         <tr>
-          <td>Home never proposed by the prior-month lock (can repeat)</td>
-          <td class="money">₿2.5m</td>
+          <td>Nobody proposed by the lock. League: the month before the match. Cups: the round-month lock. Repeats until someone proposes. Away can open a league match after its lock. Either club can open a cup from when the round month opens.</td>
+          <td class="money">Strike · ₿500k</td>
           <td>Home</td>
         </tr>
         <tr>
-          <td>Home first proposed only in last 48h before play month opens</td>
-          <td class="money">₿1m</td>
-          <td>Home</td>
-        </tr>
-        <tr>
-          <td>Reply still overdue at month lock — <em>first</em> time</td>
-          <td><strong>Inbox warning only</strong></td>
-          <td>Club that owed the reply</td>
-        </tr>
-        <tr>
-          <td>Reply still overdue at a <em>later</em> month lock</td>
-          <td class="money">₿2.5m</td>
+          <td>Missed the 48-hour reply. Still silent at the next lock is another strike. The proposal stays open.</td>
+          <td class="money">Strike · ₿500k</td>
           <td>Club that owed the reply</td>
         </tr>
         <tr>
@@ -605,12 +594,12 @@
         <p>Yes. Until both confirm on the site, arrangement and reply clocks still run. Lock as soon as you agree.</p>
       </details>
       <details>
-        <summary>I got a reply warning — do I owe money now?</summary>
-        <p>Not for that first lock. Reply as soon as you can. If you are still overdue at a later month lock, then ₿2.5m can apply.</p>
+        <summary>I missed a reply — what happens?</summary>
+        <p>Missing the 48 hours is a strike: ₿500k. Still silent at the next month lock is another strike. The proposal stays open, so reply when you can.</p>
       </details>
       <details>
         <summary>Does this apply to cups?</summary>
-        <p>Yes — same arrange / check-in / fine rules for league and cups (play window length differs for cups).</p>
+        <p>Reply clocks, strikes, and check-in are the same. Who may open the tie is not. League: home first, then away after the month-before lock. Cups: either club from when the round month opens. A cup plays in its round month and the month after. May cups have no extra month. The no-proposal strike stays on the home club either way.</p>
       </details>
     </div>
   </div>
