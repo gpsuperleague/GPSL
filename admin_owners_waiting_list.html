@@ -321,7 +321,7 @@
           </div>
           <div class="wl-note-tile">
             <h3>Activity</h3>
-            <p>Site visits include remembered sessions, capped at one count per hour. <b>U prev / U cur</b> are live unplayed fixtures. <b>U missed</b> is the running total frozen each month (so it still counts after you sim leftovers). <b>V late</b> = match videos uploaded after that month locked. <b>V fail</b> = still missing when lock + grace hours passed (fined). <b>F lock</b> = scheduling fines on course at the next month lock (same rules as auto-fines): next month’s home fixtures with no proposal or a late arrangement in the last 48h before that month unlocks, plus leftover unproposed homes, plus overdue reply after warning. New owners appointed mid-month get a pass until their first full GPSL month (F lock stays clear for the lock that ends the month they joined), and their club’s unplayed fixtures stay in the catch-up play window through the join month plus three more GPSL months. Aligns with the <b>H …</b> home-proposal column. <b>F tot</b> = season fine total applied so far. Use <b>Record unplayed</b> before simulating a month’s leftovers.</p>
+            <p>Site visits include remembered sessions, capped at one count per hour. <b>U prev / U cur</b> are live unplayed league and cup fixtures in that GPSL month. <b>U missed</b> is the running total frozen each month (it still counts after you sim leftovers). <b>H</b> is the home club’s kick-off proposals for the next GPSL month, proposed/total, league and cup. It counts a proposal sent by the home club. League: home proposes in the month before; after that lock, away can open it if nothing is pending, and that opening is not counted here. Cups: either club can propose once the round month opens; an away opening is not counted here. A fixture with a vacant club is left out. <b>V late</b> = match video uploaded after that fixture’s month lock. <b>V fail</b> = still missing 72 hours after that lock (₿500,000). <b>F lock</b> = scheduling strikes on course if the next month locks as things stand. Auto fines are off; this is the projection. No proposal from either club is a ₿500,000 strike on the home club: next month’s homes, plus leftovers still unproposed. A proposal in the last 48 hours is not an extra fee. A reply still overdue at the lock, after the 48-hour strike, is another ₿500,000 on the club who owes the reply. A third strike on the same fixture forfeits it and adds ₿1,000,000; that extra is not in this figure. Holiday, a manual black box, and a new owner’s first partial month are left out. New owners appointed mid-month stay clear until their first full GPSL month, and their unplayed league fixtures stay in the catch-up window through the join month plus three more. <b>F tot</b> = season fines already applied. Use <b>Record unplayed</b> before simulating a month’s leftovers.</p>
           </div>
           <div class="wl-note-tile">
             <h3>Discord Join</h3>
@@ -405,6 +405,6 @@
     </div>
   </div>
 
-  <script type="module" src="admin_owners.js?v=20261103-renewal"></script>
+  <script type="module" src="admin_owners.js?v=20261114-board-rules"></script>
 </body>
 </html>

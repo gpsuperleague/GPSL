@@ -2350,7 +2350,7 @@ async function loadWaitingListAdmin() {
     : "Section sort: supporters first (same order among themselves), then Season 1 rejects at bottom, then login activity";
   const activityNote = activityRes.error
     ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · H ${nextMonthLabel} home proposes · missed running total · V late / V fail (match videos) · F lock (on course at ${fineLockLabel}) · F tot (season fines) · admin IP/country review · supporters at top · S1 rejected at section bottom · sort: last login first unless current month logins are under 4`;
+    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · H ${nextMonthLabel} home proposals (league before the month; cups either club once open) · missed running total · V late / V fail (match videos, ₿500k after 72h) · F lock (₿500k strikes on course at ${fineLockLabel}) · F tot (season fines) · admin IP/country review · supporters at top · S1 rejected at section bottom · sort: last login first unless current month logins are under 4`;
 
   const snapMonths = Number(activityRes.snapshotMonths || 0);
   const snapNote =
@@ -2396,11 +2396,11 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-login" title="${escapeWl(curLabel)} logins">${escapeWl(curLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(prevLabel)} (league + cups)">U ${escapeWl(prevLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">U ${escapeWl(curLabel)}</th>` +
-    `<th class="num wl-num-unplayed" title="Home kick-off proposals for next GPSL month (${escapeWl(nextMonthLabel)}) — league + cup. proposed/total.">H ${escapeWl(nextMonthLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="Home club’s kick-off proposals for ${escapeWl(nextMonthLabel)}, proposed/total, league and cup. Counts a proposal from the home club. League: home proposes in the month before; after that lock, away can open if nothing is pending. Cups: either club can propose once the round month opens. Vacant fixtures are left out.">H ${escapeWl(nextMonthLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Running total of unplayed fixtures frozen at month end / Record unplayed (survives catch-up sims). Includes live current month until that month is snapshotted.">U missed</th>` +
-    `<th class="num wl-num-unplayed" title="Match videos uploaded after that fixture’s GPSL month lock_at">V late</th>` +
-    `<th class="num wl-num-unplayed" title="Match videos still missing when lock_at + grace hours passed (fined / failed)">V fail</th>` +
-    `<th class="num wl-num-fine" title="Projected scheduling fines if ${escapeWl(fineLockLabel)} locks as things stand: next-month homes with no proposal or late arrangement (last 48h before that month unlock), leftover unproposed homes, overdue reply after warning">F lock</th>` +
+    `<th class="num wl-num-unplayed" title="Match video uploaded after that fixture’s GPSL month lock">V late</th>` +
+    `<th class="num wl-num-unplayed" title="Match video still missing 72 hours after that fixture’s month lock (₿500,000)">V fail</th>` +
+    `<th class="num wl-num-fine" title="Projected strikes if ${escapeWl(fineLockLabel)} locks as things stand. ₿500,000 on home for each league or cup fixture still with no proposal from either club (next month, plus leftovers). A proposal in the last 48 hours is not an extra fee. A reply already overdue that takes another strike at the lock is ₿500,000 on the club who owes it. Holiday, a manual black box, and a new owner’s first partial month are left out. The ₿1,000,000 third-strike forfeit is not included.">F lock</th>` +
     `<th class="num wl-num-fine" title="Season fine total applied this competition season (not waived)">F tot</th>` +
     `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord</th>` +
     `<th title="Offset vs British time: saved timezone, else login timezone, else estimated from country (~).">UK +/-</th>` +
@@ -3010,9 +3010,9 @@ async function loadArchivedOwnersSection() {
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(prevLabel)}">U ${escapeWl(prevLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(curLabel)}">U ${escapeWl(curLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Missed running total">U missed</th>` +
-    `<th class="num wl-num-unplayed" title="Match videos uploaded after month lock">V late</th>` +
-    `<th class="num wl-num-unplayed" title="Missing match video past grace">V fail</th>` +
-    `<th class="num wl-num-fine" title="Projected month-lock scheduling fines">F lock</th>` +
+    `<th class="num wl-num-unplayed" title="Match video uploaded after that fixture’s month lock">V late</th>` +
+    `<th class="num wl-num-unplayed" title="Match video still missing 72 hours after that lock (₿500,000)">V fail</th>` +
+    `<th class="num wl-num-fine" title="Projected strikes if the next month locks: ₿500,000 per fixture with no proposal from either club, plus another ₿500,000 for a reply already overdue. No late-arrangement fee. The ₿1,000,000 third-strike forfeit is not included.">F lock</th>` +
     `<th class="num wl-num-fine" title="Season fine total">F tot</th>` +
     `<th title="Discord server join date when known">Discord</th>` +
     `<th title="Offset vs British time">UK +/-</th>` +
@@ -3586,12 +3586,12 @@ function renderWaitingListAdminRow(
     <td class="num wl-num-login">${curN}</td>
     <td class="num wl-num-unplayed" title="Unplayed previous GPSL month">${formatUnplayed(unplayedPrev)}</td>
     <td class="num wl-num-unplayed" title="Unplayed current GPSL month">${formatUnplayed(unplayedCur)}</td>
-    <td class="num wl-num-unplayed" title="Next month home kick-off proposals (league + cup)">${
+    <td class="num wl-num-unplayed" title="Next month proposals sent by the home club (league + cup). Away opening a cup is not counted.">${
       hasClub ? formatHomeProposalRatio(homePropProposed, homePropTotal) : `<span class="muted">—</span>`
     }</td>
     <td class="num wl-num-unplayed" title="Missed running total (month snapshots + live until snapshotted)">${formatUnplayed(unplayedMissed)}</td>
-    <td class="num wl-num-unplayed" title="Match videos uploaded after month lock">${formatUnplayed(hasClub ? videoLate : null)}</td>
-    <td class="num wl-num-unplayed" title="Missing match video past grace (failed / fined)">${formatUnplayed(hasClub ? videoFail : null)}</td>
+    <td class="num wl-num-unplayed" title="Match video uploaded after that fixture’s month lock">${formatUnplayed(hasClub ? videoLate : null)}</td>
+    <td class="num wl-num-unplayed" title="Match video still missing 72 hours after that lock (₿500,000)">${formatUnplayed(hasClub ? videoFail : null)}</td>
     <td class="num wl-num-fine">${
       hasClub
         ? formatFineBoardCell(
