@@ -138,6 +138,40 @@
       font-size:12px;
       line-height:1.45;
     }
+    .wl-col-key { grid-column:1 / -1; }
+    .wl-col-key dl {
+      display:grid;
+      grid-template-columns:repeat(2, minmax(240px, 1fr));
+      gap:8px 18px;
+      margin:0;
+    }
+    .wl-col-key dt {
+      color:#ff9900;
+      font-size:12px;
+      font-weight:700;
+    }
+    .wl-col-key dd {
+      margin:1px 0 0;
+      color:#aaa;
+      font-size:12px;
+      line-height:1.4;
+    }
+    .wl-col-fine {
+      margin-top:10px;
+      padding-top:8px;
+      border-top:1px solid #333;
+    }
+    .wl-col-fine p {
+      margin:0 0 6px;
+    }
+    .wl-col-fine ul {
+      margin:0;
+      padding-left:18px;
+      color:#aaa;
+      font-size:12px;
+      line-height:1.45;
+    }
+    .wl-col-fine li { margin:2px 0; }
     button.button.secondary { background:#444; color:#ddd; }
     button.button.secondary:hover { background:#555; }
     tr.wl-priority-row { touch-action: pan-y; }
@@ -351,6 +385,7 @@
     }
     @media (max-width: 680px) {
       .wl-note-grid { grid-template-columns:1fr; }
+      .wl-col-key dl { grid-template-columns:1fr; }
     }
 .chk-note { font-size:13px; color:#aaa; line-height:1.5; margin-bottom:14px; max-width:1100px; }
     .chk-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
@@ -592,12 +627,51 @@
             <p>Owners: <b>Remove club → on break</b> / <b>→ Waiting</b>. Waiting: Add club / absence on-off / archive. On break: return, add club, or archive. Archived: unarchive or delete.</p>
           </div>
           <div class="wl-note-tile">
-            <h3>Activity</h3>
-            <p>Site visits include remembered sessions, capped at one count per hour. <b>U prev / U cur</b> are live unplayed league and cup fixtures in that GPSL month. <b>U missed</b> is the running total frozen each month (it still counts after you sim leftovers). <b>H</b> is the home club’s kick-off proposals for the next GPSL month, proposed/total, league and cup. It counts a proposal sent by the home club. League: home proposes in the month before; after that lock, away can open it if nothing is pending, and that opening is not counted here. Cups: either club can propose once the round month opens; an away opening is not counted here. A fixture with a vacant club is left out. <b>V late</b> = match video uploaded after that fixture’s month lock. <b>V fail</b> = still missing 72 hours after that lock (₿500,000). <b>F lock</b> = scheduling strikes on course if the next month locks as things stand. Auto fines are off; this is the projection. No proposal from either club is a ₿500,000 strike on the home club: next month’s homes, plus leftovers still unproposed. A proposal in the last 48 hours is not an extra fee. A reply still overdue at the lock, after the 48-hour strike, is another ₿500,000 on the club who owes the reply. A third strike on the same fixture forfeits it and adds ₿1,000,000; that extra is not in this figure. Holiday, a manual black box, and a new owner’s first partial month are left out. New owners appointed mid-month stay clear until their first full GPSL month, and their unplayed league fixtures stay in the catch-up window through the join month plus three more. <b>F tot</b> = season fines already applied. Use <b>Record unplayed</b> before simulating a month’s leftovers.</p>
-          </div>
-          <div class="wl-note-tile">
             <h3>Discord Join</h3>
             <p>Shown only for self-serve Discord joins. Other accounts show account-created as <b>· acct</b>, or <b>—</b> when unavailable.</p>
+          </div>
+          <div class="wl-note-tile wl-col-key">
+            <h3>Column key</h3>
+            <dl>
+              <div>
+                <dt>Visits</dt>
+                <dd>One count per hour, including a remembered login.</dd>
+              </div>
+              <div>
+                <dt>U prev / U cur</dt>
+                <dd>Unplayed league and cup fixtures still live in that GPSL month.</dd>
+              </div>
+              <div>
+                <dt>U missed</dt>
+                <dd>Frozen each month, and it stays after leftovers are simmed. Press <b>Record unplayed</b> before you sim.</dd>
+              </div>
+              <div>
+                <dt>H</dt>
+                <dd>Next month’s fixtures, proposed/total. Only a proposal the home club sent. League homes are proposed in the month before; after the lock, away may open one if nothing is pending, and that is not counted. Either club can open a cup once the round month opens; an away opening is not counted. Vacant clubs are left out.</dd>
+              </div>
+              <div>
+                <dt>V late</dt>
+                <dd>Match video uploaded after that fixture’s month lock.</dd>
+              </div>
+              <div>
+                <dt>V fail</dt>
+                <dd>Still missing 72 hours after that lock. ₿500,000.</dd>
+              </div>
+              <div>
+                <dt>F tot</dt>
+                <dd>Season fines already applied.</dd>
+              </div>
+            </dl>
+            <div class="wl-col-fine">
+              <p><b>F lock</b> is what would be charged if the next month locked now. Auto fines are off, so this is only the projection.</p>
+              <ul>
+                <li>No proposal from either club: ₿500,000 on the home club. Next month’s homes, plus leftovers still unproposed.</li>
+                <li>A proposal in the last 48 hours is not an extra fee.</li>
+                <li>A reply still overdue at the lock, after the 48-hour strike: another ₿500,000 on the club who owes the reply.</li>
+                <li>A third strike on the same fixture forfeits it and adds ₿1,000,000. That extra is not in this figure.</li>
+                <li>Left out: holiday, a manual black box, and a new owner’s first partial month. A mid-month appointment stays clear until their first full GPSL month, and unplayed league fixtures stay in the catch-up window through the join month plus three more.</li>
+              </ul>
+            </div>
           </div>
         </div>
         <div class="wl-board-toolbar">
