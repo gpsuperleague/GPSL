@@ -970,7 +970,16 @@ export async function acceptProposal(proposalId) {
   const { data, error } = await supabase.rpc("fixture_schedule_accept", {
     p_proposal_id: proposalId,
   });
-  if (error) return { ok: false, msg: error.message };
+  if (error) {
+    const raw = error.message || "Could not accept proposal";
+    if (/already passed/i.test(raw)) {
+      return {
+        ok: false,
+        msg: "That kick-off has already passed, so it cannot be accepted. Press Counter / schedule and send a new time.",
+      };
+    }
+    return { ok: false, msg: raw };
+  }
   if (data && data.ok === false) {
     const softCodes = new Set([
       "already_accepted",
@@ -979,9 +988,12 @@ export async function acceptProposal(proposalId) {
       "withdrawn",
       "not_pending",
     ]);
+    const passed = data.code === "kickoff_passed";
     return {
       ok: false,
-      msg: data.message || "Could not accept proposal",
+      msg: passed
+        ? "That kick-off has already passed, so it cannot be accepted. Press Counter / schedule and send a new time."
+        : data.message || "Could not accept proposal",
       soft: softCodes.has(data.code),
     };
   }

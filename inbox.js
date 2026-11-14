@@ -6,7 +6,7 @@ import {
   acceptProposal,
   cancelMutualOverride,
   confirmMutualOverride,
-} from "./match_scheduling.js";
+} from "./match_scheduling.js?v=20261114-accept-past";
 import {
   downloadIcs,
   downloadIcsEach,
@@ -306,7 +306,7 @@ async function loadScheduleProposalProposers(proposalIds) {
 
   const { data, error } = await supabase
     .from("competition_fixture_schedule_proposal")
-    .select("id, proposed_by_club_short_name")
+    .select("id, proposed_by_club_short_name, kickoff_at")
     .in("id", ids);
 
   if (error) {
@@ -315,13 +315,21 @@ async function loadScheduleProposalProposers(proposalIds) {
   }
 
   return new Map(
-    (data || []).map((row) => [Number(row.id), row.proposed_by_club_short_name])
+    (data || []).map((row) => [
+      Number(row.id),
+      { club: row.proposed_by_club_short_name, kickoffAt: row.kickoff_at },
+    ])
   );
+}
+
+function proposalClub(entry) {
+  if (entry && typeof entry === "object") return entry.club;
+  return entry;
 }
 
 function isScheduleProposalRespondent(msg, proposalProposers) {
   if (!msg?.schedule_proposal_id || !myClub.short) return false;
-  const proposer = proposalProposers.get(Number(msg.schedule_proposal_id));
+  const proposer = proposalClub(proposalProposers.get(Number(msg.schedule_proposal_id)));
   if (!proposer) return true;
   return normalizeClubKey(proposer) !== normalizeClubKey(myClub.short);
 }
@@ -805,6 +813,16 @@ async function renderInbox() {
       acceptBtn.textContent = "Accept time";
       acceptBtn.onclick = async () => {
         acceptBtn.disabled = true;
+        const offer = proposalProposers.get(Number(msg.schedule_proposal_id));
+        const kickoffMs = offer?.kickoffAt ? new Date(offer.kickoffAt).getTime() : NaN;
+        if (Number.isFinite(kickoffMs) && kickoffMs <= Date.now()) {
+          setStatus(
+            "That kick-off has already passed, so it cannot be accepted. Press Counter / schedule and send a new time.",
+            true
+          );
+          acceptBtn.disabled = false;
+          return;
+        }
         try {
           const res = await acceptProposal(msg.schedule_proposal_id);
           if (!res.ok) {
