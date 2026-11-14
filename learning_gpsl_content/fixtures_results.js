@@ -276,7 +276,7 @@ export const SECTION_MATCH_SCHEDULING = {
       type: "ul",
       items: [
         `<b>Home proposes first</b>, in the month before the match — pick a kick-off from times free for <b>both</b> clubs (each owner’s local availability, matched as world time).`,
-        `If home has still not proposed when the round month locks, the away club can make the first proposal from the extra month on. An away proposal stops further no-proposal strikes. Home then agrees or counters on the normal reply clock.`,
+        `<b>Cups:</b> either club can propose the kick-off from when the round month opens. If nobody has proposed when that month locks, the strike is on the home club, and each later lock is another until someone proposes. A proposal from either club stops further no-proposal strikes.`,
         `Away gets an <a href="inbox.html">Inbox</a> message — <b>Accept</b> or <b>counter</b> with their own slot.`,
         `You can’t double-book a 30-minute slot already agreed or pending for either club.`,
         `You can agree on <b>Discord</b> anytime — then use <b>We agreed on Discord — lock this kick-off</b> on the schedule page so both clubs confirm (reply clocks keep running until locked).`,
@@ -310,7 +310,7 @@ export const SECTION_MATCH_SCHEDULING = {
       type: "ul",
       items: [
         `<b>Home should propose in the month before</b> the fixture’s play month (e.g. September fixture → propose before August locks). You may propose as early as you like once fixtures exist.`,
-        `<b>No home proposal</b> by a lock → one <b>strike</b> (<b>₿500k</b>), repeating each later lock until someone proposes. League: that starts at the lock before the play month. Cups: the tie is drawn when the round month opens, so the first strike is that month’s lock, and away can open the tie once that lock has passed. Three strikes on that fixture forfeits it and adds <b>₿1m</b>. An away proposal stops the sequence. Suppressed while home is on a booked holiday.`,
+        `<b>No home proposal</b> by a lock → one <b>strike</b> (<b>₿500k</b>), repeating each later lock until someone proposes. League: that starts at the lock before the play month. Cups: the tie is drawn when the round month opens, so either club can propose from then. The first strike, if nobody has proposed, is that month’s lock and it stays on the home club. Three strikes on that fixture forfeits it and adds <b>₿1m</b>. A proposal from either club stops the sequence. Suppressed while home is on a booked holiday.`,
         `<b>Cups</b> are arranged in the round month. The following month is still there to play the tie (May cups: no extra month). A holiday or a new owner does not add any month beyond that. An overdue cup, one whose round month has already locked, is arranged and played before other fixtures.`,
         `<b>Reply</b> — 48 hours, league and cup, and that clock can cross a month lock. Missing it is a <b>strike</b> (<b>₿500k</b>). Still silent at the next lock is another strike. The proposal stays open.`,
         `<b>League play window</b>: scheduled month <b>+ 2</b> (August → end of October). <b>Cups</b>: scheduled month <b>+ 1</b> (May cups: no extra month).`,

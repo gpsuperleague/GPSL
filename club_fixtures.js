@@ -43,7 +43,7 @@ import {
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261112-no-late-fee";
+} from "./match_scheduling.js?v=20261114-cup-both";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,

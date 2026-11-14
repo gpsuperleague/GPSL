@@ -40,7 +40,7 @@ import {
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
   fixtureExpiryWarnings,
-} from "./match_scheduling.js?v=20261113-admin-view";
+} from "./match_scheduling.js?v=20261114-cup-both";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -871,9 +871,14 @@ function deadlineBoxHtml(f) {
         <b>Propose a kick-off by ${formatUkWhen(d.propose_by)}</b> (${relWhen(d.propose_by)}).
         ${
           cupGrace
-            ? "This cup tie is drawn when the round month opens. No proposal when that month locks is a strike, and each later lock is another. In the extra month the away club can make the first proposal, which stops further strikes. A missed reply is a strike too."
+            ? "This cup tie is drawn when the round month opens. Either club can propose the kick-off from then. No proposal when that month locks is a strike on the home club, and each later lock is another. A missed reply is a strike too."
             : "No proposal when this month locks is a strike: ₿500k. Three strikes on this fixture forfeits it and adds ₿1m."
         }
+      </div>`;
+    } else if (cupGrace) {
+      html = `<div class="deadline-box deadline-info">
+        <b>Either club can propose this cup kick-off.</b>
+        If nobody has proposed by ${formatUkWhen(d.propose_by)}, the strike is on ${homeName} (home). You can open it now.
       </div>`;
     } else {
       html = `<div class="deadline-box deadline-info">

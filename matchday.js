@@ -60,7 +60,7 @@ import {
 } from "./matchday_console_rules.js?v=20261111-cup-settings";
 import { playerNameLinkHtml } from "./player_links.js";
 import { fullClubName } from "./clubs_lookup.js";
-import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261112-no-late-fee";
+import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261114-cup-both";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
