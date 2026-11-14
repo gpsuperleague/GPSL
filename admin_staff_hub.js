@@ -31,7 +31,7 @@ async function boot(name) {
       const mod = await import("./admin_owners.js?v=20261114-board-filters");
       await mod.bootOwnerAdminPage();
     } else if (name === "checklist") {
-      const mod = await import("./admin_club_checklist.js?v=20261114-staff-hub");
+      const mod = await import("./admin_club_checklist.js?v=20261114-checklist-fines");
       await mod.bootClubChecklist(adminUser);
     } else if (name === "mods") {
       const mod = await import("./admin_mods.js?v=20261114-staff-hub");

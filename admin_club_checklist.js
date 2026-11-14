@@ -135,7 +135,6 @@ const ISSUE_META = {
     level: "warn",
     tip: "Projected end-of-season balance −₿100,000,000 or worse",
   },
-  fines: { label: "Fines", level: "warn", tip: "Outstanding fines on record" },
 };
 
 export async function bootClubChecklist(user) {
@@ -220,7 +219,6 @@ function evaluateRowIssues(row) {
   ) {
     issues.add("proj");
   }
-  if (Number(row.fines_count) > 0) issues.add("fines");
 
   return issues;
 }
@@ -1016,9 +1014,6 @@ function renderTable() {
               projTip = ISSUE_META.proj.tip;
             }
 
-            const finesLevel = Number(row.fines_count) > 0 ? "warn" : "ok";
-            const finesTip = finesLevel === "warn" ? ISSUE_META.fines.tip : "";
-
             return `
           <tr class="${rowFlagged.trim()}" data-club="${escapeHtml(row.club_short_name)}">
             ${textCell(
@@ -1075,7 +1070,7 @@ function renderTable() {
             ${numCell(row.contract_releases_remaining)}
             ${newOwnerReleasesCell(row)}
             ${numCell(row.foreign_sales_remaining)}
-            ${numCell(row.fines_count, finesLevel, finesTip)}
+            ${numCell(row.fines_count)}
           </tr>`;
           })
           .join("")}
