@@ -122,20 +122,6 @@ async function postMessage(
   return msg.id;
 }
 
-async function editMessage(token: string, channelId: string, messageId: string, content: string) {
-  const res = await discord(token, `/channels/${channelId}/messages/${messageId}`, {
-    method: "PATCH",
-    body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
-  });
-  if (!res.ok) console.warn("edit", res.status);
-}
-
-async function deleteMessage(token: string, channelId: string, messageId: string | null) {
-  if (!channelId || !messageId) return;
-  const res = await discord(token, `/channels/${channelId}/messages/${messageId}`, { method: "DELETE" });
-  if (!res.ok && res.status !== 404) console.warn("delete", res.status);
-}
-
 const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 const DISCORD_EPOCH = 1420070400000n;
 
@@ -147,7 +133,7 @@ function snowflakeMs(id: string): number {
   }
 }
 
-/** Empty #pub quiz once, when a quiz first posts. Pins from the previous quiz go too. */
+/** Empty #pub quiz, including pins, so only the next post is on screen. */
 async function wipeChannel(token: string, channelId: string) {
   const pins = await discord(token, `/channels/${channelId}/pins`);
   if (pins.ok) {
@@ -196,29 +182,23 @@ async function wipeChannel(token: string, channelId: string) {
   }
 }
 
-function introText(quiz: Record<string, unknown>): string {
+function ruleMessages(quiz: Record<string, unknown>): string[] {
+  const rounds = Number(quiz.play_rounds) || 5;
+  const questions = Number(quiz.play_questions) || 50;
+  const roundWord = rounds === 1 ? "round" : "rounds";
   if (quiz.is_test === true) {
     return [
-      "**Test quiz**",
-      "• Three questions, so you can see a text question, a picture, and a sound.",
-      "• Press A, B or C in this channel. You have 8 seconds.",
-      "• Owners only. Link your Discord account on GPSL first.",
-      "• No prizes on a test.",
-    ].join("\n");
+      "**GPSL Pub Quiz · test**\nThree questions: one to read, one picture, one sound. No prizes.",
+      "**How you answer**\nPress A, B or C on the question. Owners only. Link your Discord account on GPSL first, or the button does not count.\nOne answer each. You can change it until the clock ends. Being first does not matter.",
+      "**The clock**\n10 to 14 seconds. A longer question gets the longer clock.\nWhen it ends, this channel is cleared. You see the answer, then only the next question.",
+    ];
   }
   return [
-    "**How this quiz works**",
-    "• Owners only. Link your Discord account on GPSL before you press a button.",
-    "• Each question has A, B and C. Press your answer in this channel.",
-    "• You each have the same clock. Being first does not matter. One point if you are right before it ends.",
-    "• Text, picture, and song questions each give you 20 seconds.",
-    "• When the clock ends, the question is removed and the table is posted here.",
-    "• About 10 seconds between questions, and about a minute between rounds.",
-    `• ${quiz.play_rounds || 5} ${Number(quiz.play_rounds) === 1 ? "round" : "rounds"}, ${quiz.play_questions || 50} questions.`,
-    `• Prizes go to your Building Society. 1st ${money(prizeFor(1, quiz))}, 2nd ${money(prizeFor(2, quiz))}, 3rd ${money(prizeFor(3, quiz))}. Anyone else who answers at least once gets ${money(prizeFor(4, quiz))}.`,
-    "• A tie shares that place. The next score takes the next place.",
-    "• The same table is on GPSL: Owners → Games → Pub Quiz.",
-  ].join("\n");
+    "**GPSL Pub Quiz**\nOwners only, in this channel. Link your Discord account on GPSL before you press a button, or the answer does not count.",
+    "**How you answer**\nEach question is A, B or C. Press one button on that message.\nOne answer each. You can change it until the clock ends.\nBeing first does not score extra. A right answer is one point.",
+    "**The clock**\nYou get 10 to 14 seconds. A longer question gets the longer clock. Everyone has the same time.\nWhen it ends, this channel is cleared. The answer and the table go up on their own, then the next question is the only thing on screen.\nAbout 10 seconds between questions, and about a minute between rounds.",
+    `**The sheet and the prizes**\n${rounds} ${roundWord}, ${questions} questions.\nPrizes go to your Building Society. 1st ${money(prizeFor(1, quiz))}, 2nd ${money(prizeFor(2, quiz))}, 3rd ${money(prizeFor(3, quiz))}. Anyone else who answers at least once gets ${money(prizeFor(4, quiz))}.\nA tie shares that place. The next score takes the next place.\nThe same table is on GPSL: Owners → Games → Pub Quiz.`,
+  ];
 }
 
 async function postIntro(
@@ -234,13 +214,9 @@ async function postIntro(
     play_rounds: Number(ready.rounds) || 5,
     play_questions: Number(ready.questions) || 50,
   };
-  const id = await postMessage(token, channelId, { content: introText(shown) });
-  await pinMessage(token, channelId, id);
-}
-
-async function pinMessage(token: string, channelId: string, messageId: string) {
-  const res = await discord(token, `/channels/${channelId}/pins/${messageId}`, { method: "PUT" });
-  if (!res.ok) console.warn("pin", res.status);
+  for (const content of ruleMessages(shown)) {
+    await postMessage(token, channelId, { content });
+  }
 }
 
 async function downloadMedia(path: string): Promise<Uint8Array> {
@@ -275,7 +251,7 @@ async function release(db: SupabaseClient, id: number) {
 function questionPayload(q: Record<string, unknown>, fileName?: string) {
   const rounds = Number(q.round_count) || 5;
   const total = Number(q.question_count) || 10;
-  const seconds = Number(q.answer_seconds) || 20;
+  const seconds = Number(q.answer_seconds) || 12;
   const button = (key: string, word: string, style: number) => ({
     type: 2,
     style,
@@ -324,26 +300,6 @@ async function postQuestion(token: string, channelId: string, q: Record<string, 
   return postMessage(token, channelId, questionPayload(q));
 }
 
-async function ensureHeader(
-  token: string,
-  channelId: string,
-  quiz: Record<string, unknown>,
-  roundNo: number,
-  roundTitle: string,
-  roundCount: number
-): Promise<string> {
-  const content = `**Round ${roundNo} of ${roundCount} · ${roundTitle}**`;
-  const existing = String(quiz.header_message_id || "");
-  if (existing && Number(quiz.current_round_no) === roundNo) return existing;
-  if (existing) {
-    await editMessage(token, channelId, existing, content);
-    return existing;
-  }
-  const id = await postMessage(token, channelId, { content });
-  await pinMessage(token, channelId, id);
-  return id;
-}
-
 function decode64(value: string): Uint8Array {
   const bin = atob(value);
   const out = new Uint8Array(bin.length);
@@ -390,7 +346,7 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
       await postIntro(db, token, channelId, quiz);
       const unix = Math.floor(starts / 1000);
       const messageId = await postMessage(token, channelId, {
-        content: `**Pub quiz**\nStarts <t:${unix}:R> (<t:${unix}:t> UK).\nStay in this channel.`,
+        content: `**Doors are open**\nFirst question <t:${unix}:R> (<t:${unix}:t> UK).\nRead the rules above. This channel is cleared before that question.`,
       });
       await db.rpc("gpsl_pub_quiz_runner_set_channel", {
         p_id: id,
@@ -415,9 +371,9 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
     if (!quiz.countdown_message_id) {
       await wipeChannel(token, channelId);
       await postIntro(db, token, channelId, quiz);
-      await sleep(30000);
+      await sleep(25000);
     }
-    await deleteMessage(token, channelId, quiz.countdown_message_id ? String(quiz.countdown_message_id) : null);
+    await wipeChannel(token, channelId);
     const opened = await openAndPost(db, token, id, channelId, quiz);
     await release(db, id);
     if (opened) {
@@ -436,17 +392,17 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
     const closed = await db.rpc("gpsl_pub_quiz_close_question", { p_id: id });
     if (closed.error) throw new Error(closed.error.message);
     const body = closed.data as Record<string, unknown>;
-    await deleteMessage(token, channelId, body.question_message_id ? String(body.question_message_id) : null);
+    await wipeChannel(token, channelId);
     const endRound = !body.more_in_round;
     const title = endRound
       ? `**End of round ${body.round_no} · ${body.round_title}**`
-      : `**Round ${body.round_no} · ${body.round_title} · after question ${body.q_no}**`;
+      : `**Answer · round ${body.round_no} · question ${body.q_no}**`;
     const gap = Number(body.gap_seconds) || 10;
     const nextLine = body.finish_after
-      ? "\n\nFinal table next."
+      ? "\n\nFinal table next. This channel will show only that."
       : endRound
-        ? "\n\nNext round in one minute."
-        : `\n\nNext question in ${gap} seconds.`;
+        ? "\n\nNext round in one minute. This channel will show only that question."
+        : `\n\nNext question in ${gap} seconds. This channel will show only that question.`;
     const boardId = await postMessage(token, channelId, {
       content: boardText(title, String(body.reveal || ""), (body.rows as Row[]) || [], null) + nextLine,
     });
@@ -460,7 +416,7 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
   }
 
   if (quiz.phase === "board" || quiz.phase === "break") {
-    await deleteMessage(token, channelId, quiz.board_message_id ? String(quiz.board_message_id) : null);
+    await wipeChannel(token, channelId);
     const opened = await openAndPost(db, token, id, channelId, quiz);
     await release(db, id);
     if (opened === null) return;
@@ -497,14 +453,7 @@ async function openAndPost(
     if (paid.error) throw new Error(paid.error.message);
     const result = paid.data as Record<string, unknown>;
     const test = result.is_test === true;
-    if (quiz.header_message_id) {
-      await editMessage(
-        token,
-        channelId,
-        String(quiz.header_message_id),
-        test ? "**Test complete**" : "**Pub quiz complete**"
-      );
-    }
+    await wipeChannel(token, channelId);
     const rows = (result.rows as Row[]) || [];
     const lines = rows.slice(0, 25).map((r) => {
       const score = `${r.place}. ${r.owner_tag || "Owner"} — ${r.points ?? 0}`;
@@ -518,19 +467,11 @@ async function openAndPost(
     });
     return null;
   }
-  const headerId = await ensureHeader(
-    token,
-    channelId,
-    quiz,
-    Number(q.round_no),
-    String(q.round_title),
-    Number(q.round_count) || 5
-  );
   const messageId = await postQuestion(token, channelId, q);
   await db.rpc("gpsl_pub_quiz_mark_question_message", {
     p_question_id: q.question_id,
     p_message_id: messageId,
-    p_header_message_id: headerId,
+    p_header_message_id: null,
   });
   const closes = new Date(String(q.closes_at)).getTime();
   return Math.max(0, closes - Date.now());

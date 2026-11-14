@@ -68,6 +68,15 @@ async function loadQuiz(id) {
   renderRounds(data.rounds || [], locked);
 }
 
+function answerSeconds(round, q) {
+  const n = [q.prompt, q.option_a, q.option_b, q.option_c]
+    .map((part) => String(part || "").trim().length)
+    .reduce((sum, len) => sum + len, 0);
+  let extra = n <= 80 ? 0 : n <= 130 ? 1 : n <= 190 ? 2 : n <= 250 ? 3 : 4;
+  if (round.kind === "picture" || round.kind === "song") extra += 2;
+  return Math.min(14, Math.max(10, 10 + extra));
+}
+
 function questionBlank(q) {
   return !String(q.prompt || "").trim()
     && !String(q.option_a || "").trim()
@@ -114,7 +123,7 @@ function renderRounds(rounds, locked) {
         .map((q) => questionCard(round, q, locked))
         .join("");
       return `<details open>
-        <summary>Round ${round.round_no} · ${escapeHtml(round.title)} · ${round.answer_seconds}s · ${escapeHtml(round.kind)}</summary>
+        <summary>Round ${round.round_no} · ${escapeHtml(round.title)} · 10–14s · ${escapeHtml(round.kind)}</summary>
         ${questions}
       </details>`;
     })
@@ -135,8 +144,11 @@ function questionCard(round, q, locked) {
         <input data-file="${q.id}" type="file" accept="${round.kind === "song" ? "audio/*" : "image/*"}" ${dis}>
       </label>
       <div class="preview">${previewHtml(round.kind, q.media_path)}</div>`;
+  const clock = questionBlank(q)
+    ? "Clock is 10–14s once the question is saved."
+    : `Clock on Discord: ${answerSeconds(round, q)}s.`;
   return `<div class="q" data-qid="${q.id}">
-    <div class="note">Question ${q.q_no}</div>
+    <div class="note">Question ${q.q_no} · ${clock}</div>
     <textarea data-prompt ${dis}>${escapeHtml(q.prompt)}</textarea>
     <div class="q-grid">
       <label>A <input data-a value="${escapeHtml(q.option_a)}" ${dis}></label>
@@ -237,7 +249,7 @@ async function schedule(startNow) {
     say(`Scheduled, but the quiz runner did not start: ${kick.error.message}`, true);
     return;
   }
-  say(startNow ? "Started. The first question posts in #pub quiz." : "Scheduled. A countdown posts in #pub quiz five minutes before the start.");
+  say(startNow ? "Started. The rules post in #pub quiz, then the channel clears and the first question is the only thing on screen." : "Scheduled. The rules and a countdown post in #pub quiz. The channel clears before the first question.");
   await refreshList(id);
   await loadQuiz(id);
 }
