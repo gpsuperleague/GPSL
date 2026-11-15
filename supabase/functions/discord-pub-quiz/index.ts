@@ -134,6 +134,10 @@ function snowflakeMs(id: string): number {
   }
 }
 
+function canWipe(type: number | undefined): boolean {
+  return type == null || type === 0 || type === 19 || type === 20 || type === 21;
+}
+
 /** Empty #pub quiz, including pins, so only the next post is on screen. */
 async function wipeChannel(token: string, channelId: string) {
   const pins = await discord(token, `/channels/${channelId}/pins`);
@@ -143,14 +147,14 @@ async function wipeChannel(token: string, channelId: string) {
       await discord(token, `/channels/${channelId}/pins/${row.id}`, { method: "DELETE" });
     }
   }
-  const deadline = Date.now() + 25000;
-  let stalled: string | null = null;
+  const deadline = Date.now() + 20000;
+  const skipped = new Set<string>();
   while (Date.now() < deadline) {
     const listed = await discord(token, `/channels/${channelId}/messages?limit=100`);
     if (!listed.ok) break;
     const msgs = (await listed.json()) as { id: string; type?: number }[];
     if (!Array.isArray(msgs) || msgs.length === 0) return;
-    const deletable = msgs.filter((m) => m.type == null || m.type === 0 || m.type === 19);
+    const deletable = msgs.filter((m) => m.id && !skipped.has(m.id) && canWipe(m.type));
     if (!deletable.length) return;
     const cutoff = Date.now() - TWO_WEEKS_MS;
     const recent = deletable.filter((m) => snowflakeMs(m.id) >= cutoff).map((m) => m.id);
@@ -161,45 +165,95 @@ async function wipeChannel(token: string, channelId: string) {
         body: JSON.stringify({ messages: recent.slice(0, 100) }),
       });
       if (res.ok || res.status === 204) {
-        stalled = null;
         await sleep(450);
         continue;
       }
     }
     const batch = (recent.length ? recent : older).slice(0, 8);
-    const key = batch[0] || "";
-    let removed = 0;
     for (const id of batch) {
       const res = await discord(token, `/channels/${channelId}/messages/${id}`, { method: "DELETE" });
-      if (res.ok || res.status === 404) removed += 1;
-      await sleep(200);
-    }
-    if (removed === 0) {
-      if (stalled === key) return;
-      stalled = key;
-    } else {
-      stalled = null;
+      if (res.status === 429) {
+        await sleep(1000);
+        break;
+      }
+      if (!(res.ok || res.status === 404)) skipped.add(id);
+      await sleep(150);
     }
   }
 }
 
-function ruleMessages(quiz: Record<string, unknown>): string[] {
+function panel(accent: number, content: string) {
+  const text = content.replace(/^(## [^\n]+)\n- /, "$1\n\n- ");
+  return { type: 17, accent_color: accent, components: [{ type: 10, content: text }] };
+}
+
+function introPayload(quiz: Record<string, unknown>) {
   const rounds = Number(quiz.play_rounds) || 5;
   const questions = Number(quiz.play_questions) || 50;
   const roundWord = rounds === 1 ? "round" : "rounds";
-  if (quiz.is_test === true) {
-    return [
-      "**GPSL Pub Quiz · test**\nThree questions: one to read, one picture, one sound. No prizes.",
-      "**How you answer**\nPress A, B or C on the question. Owners only. Link your Discord account on GPSL first, or the button does not count.\nOne answer each. You can change it until the clock ends. Being first does not matter.",
-      "**The clock**\n10 to 14 seconds. A longer question gets the longer clock.\nWhen it ends, this channel is cleared. You see the answer, then only the next question.",
+  const panels = quiz.is_test === true
+    ? [
+      panel(0xff9900, [
+        "## GPSL Pub Quiz · test",
+        "- Three questions",
+        "- One to read, one picture, one sound",
+        "- No prizes",
+      ].join("\n")),
+      panel(0x5865f2, [
+        "## How you answer",
+        "- Press **A**, **B** or **C** on the question",
+        "- Owners only",
+        "- Link your Discord account on GPSL first, or the button does not count",
+        "- You can change your answer until the clock ends",
+        "- Being first does not matter",
+      ].join("\n")),
+      panel(0x57f287, [
+        "## The clock",
+        "- 10 to 14 seconds",
+        "- A longer question gets the longer clock",
+        "- The time on the question counts down",
+        "- When it ends, this channel is cleared",
+        "- You see the answer, then only the next question",
+      ].join("\n")),
+    ]
+    : [
+      panel(0xff9900, [
+        "## GPSL Pub Quiz",
+        "- Owners only, in this channel",
+        "- Link your Discord account on GPSL before you press a button, or the answer does not count",
+      ].join("\n")),
+      panel(0x5865f2, [
+        "## How you answer",
+        "- Each question is **A**, **B** or **C**",
+        "- Press one button on that message",
+        "- One answer each",
+        "- You can change it until the clock ends",
+        "- Being first does not score extra",
+        "- A right answer is one point",
+      ].join("\n")),
+      panel(0x57f287, [
+        "## The clock",
+        "- You get 10 to 14 seconds",
+        "- A longer question gets the longer clock",
+        "- Everyone has the same time",
+        "- The time on the question counts down",
+        "- When it ends, this channel is cleared",
+        "- The answer and the table go up on their own",
+        "- About 10 seconds between questions, and about a minute between rounds",
+      ].join("\n")),
+      panel(0xfee75c, [
+        "## The sheet and the prizes",
+        `- ${rounds} ${roundWord}, ${questions} questions`,
+        `- Prizes go to your Building Society`,
+        `- 1st ${money(prizeFor(1, quiz))}`,
+        `- 2nd ${money(prizeFor(2, quiz))}`,
+        `- 3rd ${money(prizeFor(3, quiz))}`,
+        `- Anyone else who answers at least once gets ${money(prizeFor(4, quiz))}`,
+        "- A tie shares that place. The next score takes the next place",
+        "- The same table is on GPSL: Owners → Games → Pub Quiz",
+      ].join("\n")),
     ];
-  }
-  return [
-    "**GPSL Pub Quiz**\nOwners only, in this channel. Link your Discord account on GPSL before you press a button, or the answer does not count.",
-    "**How you answer**\nEach question is A, B or C. Press one button on that message.\nOne answer each. You can change it until the clock ends.\nBeing first does not score extra. A right answer is one point.",
-    "**The clock**\nYou get 10 to 14 seconds. A longer question gets the longer clock. Everyone has the same time.\nWhen it ends, this channel is cleared. The answer and the table go up on their own, then the next question is the only thing on screen.\nAbout 10 seconds between questions, and about a minute between rounds.",
-    `**The sheet and the prizes**\n${rounds} ${roundWord}, ${questions} questions.\nPrizes go to your Building Society. 1st ${money(prizeFor(1, quiz))}, 2nd ${money(prizeFor(2, quiz))}, 3rd ${money(prizeFor(3, quiz))}. Anyone else who answers at least once gets ${money(prizeFor(4, quiz))}.\nA tie shares that place. The next score takes the next place.\nThe same table is on GPSL: Owners → Games → Pub Quiz.`,
-  ];
+  return { flags: 32768, components: panels };
 }
 
 async function postIntro(
@@ -215,9 +269,7 @@ async function postIntro(
     play_rounds: Number(ready.rounds) || 5,
     play_questions: Number(ready.questions) || 50,
   };
-  for (const content of ruleMessages(shown)) {
-    await postMessage(token, channelId, { content });
-  }
+  await postMessage(token, channelId, introPayload(shown));
 }
 
 async function downloadMedia(path: string): Promise<Uint8Array> {
@@ -249,6 +301,13 @@ async function release(db: SupabaseClient, id: number) {
   await db.rpc("gpsl_pub_quiz_runner_release", { p_id: id });
 }
 
+function clockLine(q: Record<string, unknown>, seconds: number, lead: string): string {
+  const closes = q.closes_at ? new Date(String(q.closes_at)).getTime() : 0;
+  if (!closes) return `${lead}**${seconds} seconds**.`;
+  const unix = Math.floor(closes / 1000);
+  return `${lead}**<t:${unix}:R>**.`;
+}
+
 function questionPayload(q: Record<string, unknown>) {
   const rounds = Number(q.round_count) || 5;
   const total = Number(q.question_count) || 10;
@@ -272,7 +331,7 @@ function questionPayload(q: Record<string, unknown>) {
   }
   parts.push(
     { type: 14, divider: true, spacing: 1 },
-    { type: 10, content: `You have **${seconds} seconds**.` },
+    { type: 10, content: clockLine(q, seconds, "You have ") },
     {
       type: 1,
       components: [
@@ -314,7 +373,7 @@ function songPayload(q: Record<string, unknown>, fileName: string) {
       `**Question ${q.q_no} of ${total}**`,
       String(q.prompt || ""),
       "",
-      `Press play on the clip. You have **${seconds} seconds**.`,
+      clockLine(q, seconds, "Press play on the clip. You have "),
     ].join("\n"),
     attachments: [{ id: 0, filename: fileName }],
     components: [{
