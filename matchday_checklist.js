@@ -719,6 +719,18 @@ function setCollapsed(v) {
 function render() {
   const section = document.getElementById("matchdayChecklist");
   if (!section) return;
+  const winX = window.scrollX;
+  const winY = window.scrollY;
+  const bodyScroll = section.querySelector(".mc-body")?.scrollTop || 0;
+  const holdPlace = () => {
+    window.scrollTo(winX, winY);
+    const body = section.querySelector(".mc-body");
+    if (body) body.scrollTop = bodyScroll;
+  };
+  const keepPlace = () => {
+    keepPlace();
+    requestAnimationFrame(holdPlace);
+  };
   const data = lastData;
   const fixtures = Array.isArray(data?.fixtures) ? data.fixtures : [];
   const clubFlags = Array.isArray(data?.flags) ? data.flags : [];
@@ -743,6 +755,7 @@ function render() {
   if (!open.length && !clubFlags.length && !arrange.length) {
     section.className = "mc-panel mc-all-done";
     section.innerHTML = `<div class="mc-head"><h2>✓ Matchday checklist</h2><span class="mc-count mc-count-done">All done${month ? ` for ${escapeHtml(month)}` : ""}</span>${lock}</div>`;
+    keepPlace();
     return;
   }
 
@@ -791,6 +804,7 @@ function render() {
       el.disabled = true;
     });
   }
+  holdPlace();
 }
 
 async function onCopy(btn) {
