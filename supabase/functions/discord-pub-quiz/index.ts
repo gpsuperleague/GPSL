@@ -171,6 +171,19 @@ async function editMessage(token: string, channelId: string, messageId: string, 
   return true;
 }
 
+async function clearAcks(db: SupabaseClient) {
+  const { data, error } = await db.rpc("gpsl_pub_quiz_take_acks");
+  if (error || data == null) return;
+  const rows = Array.isArray(data) ? data : [];
+  for (const row of rows as { application_id?: string; interaction_token?: string }[]) {
+    const app = String(row.application_id || "");
+    const token = String(row.interaction_token || "");
+    if (!app || !token) continue;
+    const res = await fetch(`${DISCORD_API}/webhooks/${app}/${token}/messages/@original`, { method: "DELETE" });
+    if (res.status === 429) await sleep(1000);
+  }
+}
+
 /** One card in the channel. A new question replaces that card, then anything else is deleted. */
 async function showCard(
   db: SupabaseClient,
@@ -179,6 +192,7 @@ async function showCard(
   payload: Record<string, unknown>,
   audio?: { name: string; bytes: Uint8Array; type?: string }
 ): Promise<string> {
+  await clearAcks(db);
   const ids = await screenIds(db);
   if (ids.audio) await deleteMessage(token, channelId, ids.audio);
   let screen = ids.screen;

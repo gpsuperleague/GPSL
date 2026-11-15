@@ -294,6 +294,11 @@ async function runQuizAnswer(ix: Interaction, customId: string) {
       content: `Could not save that answer: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300),
     });
   }
+  const { error } = await adminClient().rpc("gpsl_pub_quiz_save_ack", {
+    p_app: ix.application_id,
+    p_token: ix.token,
+  });
+  if (error) console.error("pub quiz ack", error.message);
 }
 
 function deferEphemeral(work: Promise<void>): Response {
