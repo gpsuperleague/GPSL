@@ -181,7 +181,7 @@ async function showCard(
   const screen = await postMessage(token, channelId, payload);
   let audioId = "";
   if (audio) {
-    audioId = await postMessage(token, channelId, { content: "Play the clip, then press A, B or C on the question above." }, audio);
+    audioId = await postMessage(token, channelId, { content: "**YOU HAVE TO PRESS PLAY ON THE AUDIO FILE.**" }, audio);
   }
   await saveScreen(db, screen, audioId);
   await wipeChannel(token, channelId, new Set([screen, audioId].filter(Boolean)));
@@ -418,7 +418,7 @@ function questionPayload(q: Record<string, unknown>) {
   }
   parts.push(
     { type: 14, divider: true, spacing: 1 },
-    { type: 10, content: clockLine(q, seconds, q.kind === "song" ? "Press play on the clip below. You have " : "You have ") },
+    { type: 10, content: clockLine(q, seconds, q.kind === "song" ? "**YOU HAVE TO PRESS PLAY ON THE AUDIO FILE.** You have " : "You have ") },
     {
       type: 1,
       components: [
