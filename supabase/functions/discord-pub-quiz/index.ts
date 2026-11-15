@@ -152,25 +152,6 @@ async function deleteMessage(token: string, channelId: string, messageId: string
   }
 }
 
-async function editMessage(token: string, channelId: string, messageId: string, payload: Record<string, unknown>): Promise<boolean> {
-  const res = await discord(token, `/channels/${channelId}/messages/${messageId}`, {
-    method: "PATCH",
-    body: JSON.stringify({
-      allowed_mentions: { parse: [] },
-      flags: 32768,
-      content: null,
-      embeds: [],
-      attachments: [],
-      ...payload,
-    }),
-  });
-  if (!res.ok) {
-    await res.text();
-    return false;
-  }
-  return true;
-}
-
 async function clearAcks(db: SupabaseClient) {
   const { data, error } = await db.rpc("gpsl_pub_quiz_take_acks");
   if (error || data == null) return;
@@ -184,7 +165,7 @@ async function clearAcks(db: SupabaseClient) {
   }
 }
 
-/** One card in the channel. A new question replaces that card, then anything else is deleted. */
+/** One card at the bottom of the channel. The previous card is deleted first. */
 async function showCard(
   db: SupabaseClient,
   token: string,
@@ -195,15 +176,9 @@ async function showCard(
   await clearAcks(db);
   const ids = await screenIds(db);
   if (ids.audio) await deleteMessage(token, channelId, ids.audio);
-  let screen = ids.screen;
-  if (screen) {
-    await wipeChannel(token, channelId, new Set([screen]));
-    if (!(await editMessage(token, channelId, screen, payload))) screen = "";
-  }
-  if (!screen) {
-    await wipeChannel(token, channelId);
-    screen = await postMessage(token, channelId, payload);
-  }
+  if (ids.screen) await deleteMessage(token, channelId, ids.screen);
+  await wipeChannel(token, channelId);
+  const screen = await postMessage(token, channelId, payload);
   let audioId = "";
   if (audio) {
     audioId = await postMessage(token, channelId, { content: "Play the clip, then press A, B or C on the question above." }, audio);
