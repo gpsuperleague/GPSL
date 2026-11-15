@@ -550,14 +550,32 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
       ? `End of round ${body.round_no} · ${body.round_title}`
       : `Answer · round ${body.round_no} · question ${body.q_no}`;
     const gap = Number(body.gap_seconds) || 10;
+    const resumeMs = Date.now() + gap * 1000;
+    const unix = Math.floor(resumeMs / 1000);
     const rows = (body.rows as Row[]) || [];
     const scores = rows.slice(0, 25).map((r) => `${r.place}. ${r.owner_tag || "Owner"} — ${r.points ?? 0}`);
     const extra = rows.length > 25 ? `\n… and ${rows.length - 25} more` : "";
+    let nextName = "";
+    if (endRound && body.more_rounds) {
+      const next = await db
+        .from("gpsl_pub_quiz_round")
+        .select("title")
+        .eq("quiz_id", id)
+        .gt("round_no", Number(body.round_no) || 0)
+        .order("round_no", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      nextName = String(next.data?.title || "").trim();
+    }
     const nextLine = body.finish_after
-      ? "Final table next."
+      ? `Final table <t:${unix}:R>.`
       : endRound
-        ? "Next round in one minute."
-        : `Next question in ${gap} seconds.`;
+        ? `${nextName ? `**${nextName}** starts ` : "Next round "}<t:${unix}:R>.`
+        : `Next question <t:${unix}:R>.`;
+    await db.from("gpsl_pub_quiz").update({
+      resume_at: new Date(resumeMs).toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
     const boardId = await showCard(db, token, channelId, noteCard(
       0x57f287,
       [
@@ -573,7 +591,8 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
     await db.rpc("gpsl_pub_quiz_mark_board", { p_id: id, p_message_id: boardId });
     await release(db, id);
     if (gap <= 70) {
-      await sleep(gap * 1000);
+      const wait = resumeMs - Date.now();
+      if (wait > 0) await sleep(wait);
       await selfInvoke();
     }
     return;
