@@ -123,6 +123,7 @@ type Embed = {
 type DiscordMessage = { content?: string; embeds?: Embed[]; author?: { username?: string } };
 
 type Interaction = {
+  id?: string;
   type: number;
   token: string;
   application_id: string;
@@ -276,6 +277,16 @@ async function runToEnglish(ix: Interaction) {
   }
 }
 
+function buttonPressedAt(interactionId: string): string | null {
+  try {
+    const ms = Number((BigInt(interactionId) >> 22n) + 1420070400000n);
+    if (!Number.isFinite(ms) || ms < 1420070400000) return null;
+    return new Date(ms).toISOString();
+  } catch {
+    return null;
+  }
+}
+
 async function runQuizAnswer(ix: Interaction, customId: string) {
   try {
     const parts = customId.split(":");
@@ -285,6 +296,7 @@ async function runQuizAnswer(ix: Interaction, customId: string) {
       p_discord_user_id: ix.member?.user?.id || ix.user?.id || "",
       p_question_id: questionId,
       p_choice: choice,
+      p_clicked_at: buttonPressedAt(ix.id || ""),
     });
     if (error) throw new Error(error.message);
     const res = (data || {}) as { message?: string };

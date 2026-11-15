@@ -565,7 +565,7 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
     const closes = quiz.current_question_id
       ? await questionClosesAt(db, Number(quiz.current_question_id))
       : 0;
-    const wait = closes - Date.now();
+    const wait = closes + 5000 - Date.now();
     if (wait > 0) await sleep(wait);
     const closed = await db.rpc("gpsl_pub_quiz_close_question", { p_id: id });
     if (closed.error) throw new Error(closed.error.message);
