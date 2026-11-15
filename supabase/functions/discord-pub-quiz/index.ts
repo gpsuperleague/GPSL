@@ -405,29 +405,39 @@ function questionPayload(q: Record<string, unknown>) {
     label: `${key.toUpperCase()}   ${String(word || "").slice(0, 70)}`.slice(0, 80),
     custom_id: `pq:${q.question_id}:${key}`,
   });
-  const parts: Record<string, unknown>[] = [
-    { type: 10, content: `## Round ${q.round_no} of ${rounds}\n${q.round_title}` },
-    { type: 14, divider: true, spacing: 1 },
-    { type: 10, content: `### Question ${q.q_no} of ${total}\n\n${String(q.prompt || "")}` },
-  ];
-  if (q.kind === "picture" && q.media_path) {
-    parts.push({
-      type: 12,
-      items: [{ media: { url: publicMediaUrl(String(q.media_path)) } }],
-    });
+  const parts: Record<string, unknown>[] = [];
+  const buttons = {
+    type: 1,
+    components: [
+      button("a", String(q.option_a || ""), 1),
+      button("b", String(q.option_b || ""), 3),
+      button("c", String(q.option_c || ""), 4),
+    ],
+  };
+  if (q.kind === "song") {
+    parts.push(
+      { type: 10, content: `## Round ${q.round_no} of ${rounds} · ${q.round_title}\n### Question ${q.q_no} of ${total}\n${String(q.prompt || "")}` },
+      buttons,
+      { type: 10, content: clockLine(q, seconds, "You have ") },
+    );
+  } else {
+    parts.push(
+      { type: 10, content: `## Round ${q.round_no} of ${rounds}\n${q.round_title}` },
+      { type: 14, divider: true, spacing: 1 },
+      { type: 10, content: `### Question ${q.q_no} of ${total}\n\n${String(q.prompt || "")}` },
+    );
+    if (q.kind === "picture" && q.media_path) {
+      parts.push({
+        type: 12,
+        items: [{ media: { url: publicMediaUrl(String(q.media_path)) } }],
+      });
+    }
+    parts.push(
+      { type: 14, divider: true, spacing: 1 },
+      { type: 10, content: clockLine(q, seconds, "You have ") },
+      buttons,
+    );
   }
-  parts.push(
-    { type: 14, divider: true, spacing: 1 },
-    { type: 10, content: clockLine(q, seconds, q.kind === "song" ? "**YOU HAVE TO PRESS PLAY ON THE AUDIO FILE.** You have " : "You have ") },
-    {
-      type: 1,
-      components: [
-        button("a", String(q.option_a || ""), 1),
-        button("b", String(q.option_b || ""), 3),
-        button("c", String(q.option_c || ""), 4),
-      ],
-    },
-  );
   return {
     flags: 32768,
     components: [{ type: 17, accent_color: 0xff9900, components: parts }],
@@ -636,13 +646,8 @@ async function openAndPost(
     const result = paid.data as Record<string, unknown>;
     const test = result.is_test === true;
     const rows = (result.rows as Row[]) || [];
-    const lines = rows.slice(0, 25).map((r) => {
-      const score = `${r.place}. ${r.owner_tag || "Owner"} — ${r.points ?? 0}`;
-      return test ? score : `${score} — ${money(prizeFor(Number(r.place) || 0, result))}`;
-    });
-    const head = test
-      ? "## Test complete\n\nNo prizes. These were saved questions, including any picture and song."
-      : "## Final result\n\nPrizes are in the Building Society.";
+    const lines = rows.slice(0, 25).map((r) => `${r.place}. ${r.owner_tag || "Owner"} — ${r.points ?? 0}`);
+    const head = test ? "## Test complete" : "## Final result";
     await showCard(db, token, channelId, noteCard(
       0xfee75c,
       `${head}\n\n${lines.join("\n") || "No one answered."}`.slice(0, 1900),
