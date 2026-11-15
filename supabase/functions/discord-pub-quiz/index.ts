@@ -123,6 +123,82 @@ async function postMessage(
   return msg.id;
 }
 
+async function screenIds(db: SupabaseClient): Promise<{ screen: string; audio: string }> {
+  const { data } = await db
+    .from("gpsl_pub_quiz_settings")
+    .select("screen_message_id, audio_message_id")
+    .eq("id", 1)
+    .maybeSingle();
+  return {
+    screen: String(data?.screen_message_id || ""),
+    audio: String(data?.audio_message_id || ""),
+  };
+}
+
+async function saveScreen(db: SupabaseClient, screen: string, audio: string) {
+  await db.from("gpsl_pub_quiz_settings").update({
+    screen_message_id: screen || null,
+    audio_message_id: audio || null,
+    updated_at: new Date().toISOString(),
+  }).eq("id", 1);
+}
+
+async function deleteMessage(token: string, channelId: string, messageId: string) {
+  if (!messageId) return;
+  const res = await discord(token, `/channels/${channelId}/messages/${messageId}`, { method: "DELETE" });
+  if (res.status === 429) {
+    await sleep(1000);
+    await discord(token, `/channels/${channelId}/messages/${messageId}`, { method: "DELETE" });
+  }
+}
+
+async function editMessage(token: string, channelId: string, messageId: string, payload: Record<string, unknown>): Promise<boolean> {
+  const res = await discord(token, `/channels/${channelId}/messages/${messageId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      allowed_mentions: { parse: [] },
+      flags: 32768,
+      content: null,
+      embeds: [],
+      attachments: [],
+      ...payload,
+    }),
+  });
+  if (!res.ok) {
+    await res.text();
+    return false;
+  }
+  return true;
+}
+
+/** One card in the channel. A new question replaces that card, then anything else is deleted. */
+async function showCard(
+  db: SupabaseClient,
+  token: string,
+  channelId: string,
+  payload: Record<string, unknown>,
+  audio?: { name: string; bytes: Uint8Array; type?: string }
+): Promise<string> {
+  const ids = await screenIds(db);
+  if (ids.audio) await deleteMessage(token, channelId, ids.audio);
+  let screen = ids.screen;
+  if (screen) {
+    await wipeChannel(token, channelId, new Set([screen]));
+    if (!(await editMessage(token, channelId, screen, payload))) screen = "";
+  }
+  if (!screen) {
+    await wipeChannel(token, channelId);
+    screen = await postMessage(token, channelId, payload);
+  }
+  let audioId = "";
+  if (audio) {
+    audioId = await postMessage(token, channelId, { content: "Play the clip, then press A, B or C on the question above." }, audio);
+  }
+  await saveScreen(db, screen, audioId);
+  await wipeChannel(token, channelId, new Set([screen, audioId].filter(Boolean)));
+  return screen;
+}
+
 const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 const DISCORD_EPOCH = 1420070400000n;
 
@@ -138,12 +214,13 @@ function canWipe(type: number | undefined): boolean {
   return type == null || type === 0 || type === 19 || type === 20 || type === 21;
 }
 
-/** Empty #pub quiz, including pins, so only the next post is on screen. */
-async function wipeChannel(token: string, channelId: string) {
+/** Empty #pub quiz, including pins. Messages in `keep` stay. */
+async function wipeChannel(token: string, channelId: string, keep?: Set<string>) {
   const pins = await discord(token, `/channels/${channelId}/pins`);
   if (pins.ok) {
     const rows = (await pins.json()) as { id: string }[];
     for (const row of rows || []) {
+      if (keep?.has(row.id)) continue;
       await discord(token, `/channels/${channelId}/pins/${row.id}`, { method: "DELETE" });
     }
   }
@@ -151,23 +228,29 @@ async function wipeChannel(token: string, channelId: string) {
   const skipped = new Set<string>();
   while (Date.now() < deadline) {
     const listed = await discord(token, `/channels/${channelId}/messages?limit=100`);
-    if (!listed.ok) break;
+    if (!listed.ok) {
+      console.error("pub quiz list", listed.status);
+      return;
+    }
     const msgs = (await listed.json()) as { id: string; type?: number }[];
     if (!Array.isArray(msgs) || msgs.length === 0) return;
-    const deletable = msgs.filter((m) => m.id && !skipped.has(m.id) && canWipe(m.type));
+    const deletable = msgs.filter((m) => m.id && !keep?.has(m.id) && !skipped.has(m.id) && canWipe(m.type));
     if (!deletable.length) return;
     const cutoff = Date.now() - TWO_WEEKS_MS;
     const recent = deletable.filter((m) => snowflakeMs(m.id) >= cutoff).map((m) => m.id);
     const older = deletable.filter((m) => snowflakeMs(m.id) < cutoff).map((m) => m.id);
+    let bulkOk = false;
     if (recent.length >= 2) {
       const res = await discord(token, `/channels/${channelId}/messages/bulk-delete`, {
         method: "POST",
         body: JSON.stringify({ messages: recent.slice(0, 100) }),
       });
-      if (res.ok || res.status === 204) {
-        await sleep(450);
-        continue;
-      }
+      bulkOk = res.ok || res.status === 204;
+      if (!bulkOk) await res.text();
+    }
+    if (bulkOk) {
+      await sleep(400);
+      continue;
     }
     const batch = (recent.length ? recent : older).slice(0, 8);
     for (const id of batch) {
@@ -176,8 +259,11 @@ async function wipeChannel(token: string, channelId: string) {
         await sleep(1000);
         break;
       }
-      if (!(res.ok || res.status === 404)) skipped.add(id);
-      await sleep(150);
+      if (!(res.ok || res.status === 404)) {
+        skipped.add(id);
+        console.error("pub quiz delete", id, res.status);
+      }
+      await sleep(120);
     }
   }
 }
@@ -187,7 +273,7 @@ function panel(accent: number, content: string) {
   return { type: 17, accent_color: accent, components: [{ type: 10, content: text }] };
 }
 
-function introPayload(quiz: Record<string, unknown>) {
+function introPayload(quiz: Record<string, unknown>, startsUnix = 0) {
   const rounds = Number(quiz.play_rounds) || 5;
   const questions = Number(quiz.play_questions) || 50;
   const roundWord = rounds === 1 ? "round" : "rounds";
@@ -253,14 +339,26 @@ function introPayload(quiz: Record<string, unknown>) {
         "- The same table is on GPSL: Owners → Games → Pub Quiz",
       ].join("\n")),
     ];
+  if (startsUnix > 0) {
+    panels.push(panel(0xeb459e, [
+      "## Doors are open",
+      `- First question <t:${startsUnix}:R> (<t:${startsUnix}:t> UK)`,
+      "- This card becomes the first question",
+    ].join("\n")));
+  }
   return { flags: 32768, components: panels };
+}
+
+function noteCard(accent: number, content: string) {
+  return { flags: 32768, components: [panel(accent, content)] };
 }
 
 async function postIntro(
   db: SupabaseClient,
   token: string,
   channelId: string,
-  quiz: Record<string, unknown>
+  quiz: Record<string, unknown>,
+  startsUnix = 0
 ) {
   const summary = await db.rpc("gpsl_pub_quiz_ready_summary", { p_id: Number(quiz.id) });
   const ready = (summary.data || {}) as Record<string, unknown>;
@@ -269,7 +367,7 @@ async function postIntro(
     play_rounds: Number(ready.rounds) || 5,
     play_questions: Number(ready.questions) || 50,
   };
-  await postMessage(token, channelId, introPayload(shown));
+  return showCard(db, token, channelId, introPayload(shown, startsUnix));
 }
 
 async function downloadMedia(path: string): Promise<Uint8Array> {
@@ -331,7 +429,7 @@ function questionPayload(q: Record<string, unknown>) {
   }
   parts.push(
     { type: 14, divider: true, spacing: 1 },
-    { type: 10, content: clockLine(q, seconds, "You have ") },
+    { type: 10, content: clockLine(q, seconds, q.kind === "song" ? "Press play on the clip below. You have " : "You have ") },
     {
       type: 1,
       components: [
@@ -357,44 +455,19 @@ function audioType(name: string): string {
   return "application/octet-stream";
 }
 
-function songPayload(q: Record<string, unknown>, fileName: string) {
-  const rounds = Number(q.round_count) || 5;
-  const total = Number(q.question_count) || 10;
-  const seconds = Number(q.answer_seconds) || 12;
-  const button = (key: string, word: string, style: number) => ({
-    type: 2,
-    style,
-    label: `${key.toUpperCase()}   ${String(word || "").slice(0, 70)}`.slice(0, 80),
-    custom_id: `pq:${q.question_id}:${key}`,
-  });
-  return {
-    content: [
-      `**Round ${q.round_no} of ${rounds}** · ${q.round_title}`,
-      `**Question ${q.q_no} of ${total}**`,
-      String(q.prompt || ""),
-      "",
-      clockLine(q, seconds, "Press play on the clip. You have "),
-    ].join("\n"),
-    attachments: [{ id: 0, filename: fileName }],
-    components: [{
-      type: 1,
-      components: [
-        button("a", String(q.option_a || ""), 1),
-        button("b", String(q.option_b || ""), 3),
-        button("c", String(q.option_c || ""), 4),
-      ],
-    }],
-  };
-}
-
-async function postQuestion(token: string, channelId: string, q: Record<string, unknown>): Promise<string> {
+async function showQuestion(
+  db: SupabaseClient,
+  token: string,
+  channelId: string,
+  q: Record<string, unknown>
+): Promise<string> {
   if (q.kind === "song" && q.media_path) {
     const path = String(q.media_path);
     const bytes = await downloadMedia(path);
     const name = path.split("/").pop() || "clip.mp3";
-    return postMessage(token, channelId, songPayload(q, name), { name, bytes, type: audioType(name) });
+    return showCard(db, token, channelId, questionPayload(q), { name, bytes, type: audioType(name) });
   }
-  return postMessage(token, channelId, questionPayload(q));
+  return showCard(db, token, channelId, questionPayload(q));
 }
 
 function decode64(value: string): Uint8Array {
@@ -439,12 +512,8 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
       });
     }
     if (!quiz.countdown_message_id) {
-      await wipeChannel(token, channelId);
-      await postIntro(db, token, channelId, quiz);
       const unix = Math.floor(starts / 1000);
-      const messageId = await postMessage(token, channelId, {
-        content: `**Doors are open**\nFirst question <t:${unix}:R> (<t:${unix}:t> UK).\nRead the rules above. This channel is cleared before that question.`,
-      });
+      const messageId = await postIntro(db, token, channelId, quiz, unix);
       await db.rpc("gpsl_pub_quiz_runner_set_channel", {
         p_id: id,
         p_channel_id: channelId,
@@ -466,11 +535,9 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
 
   if (quiz.status === "scheduled" || quiz.phase === "countdown") {
     if (!quiz.countdown_message_id) {
-      await wipeChannel(token, channelId);
       await postIntro(db, token, channelId, quiz);
       await sleep(25000);
     }
-    await wipeChannel(token, channelId);
     const opened = await openAndPost(db, token, id, channelId, quiz);
     await release(db, id);
     if (opened) {
@@ -489,20 +556,31 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
     const closed = await db.rpc("gpsl_pub_quiz_close_question", { p_id: id });
     if (closed.error) throw new Error(closed.error.message);
     const body = closed.data as Record<string, unknown>;
-    await wipeChannel(token, channelId);
     const endRound = !body.more_in_round;
     const title = endRound
-      ? `**End of round ${body.round_no} · ${body.round_title}**`
-      : `**Answer · round ${body.round_no} · question ${body.q_no}**`;
+      ? `End of round ${body.round_no} · ${body.round_title}`
+      : `Answer · round ${body.round_no} · question ${body.q_no}`;
     const gap = Number(body.gap_seconds) || 10;
+    const rows = (body.rows as Row[]) || [];
+    const scores = rows.slice(0, 25).map((r) => `${r.place}. ${r.owner_tag || "Owner"} — ${r.points ?? 0}`);
+    const extra = rows.length > 25 ? `\n… and ${rows.length - 25} more` : "";
     const nextLine = body.finish_after
-      ? "\n\nFinal table next. This channel will show only that."
+      ? "Final table next."
       : endRound
-        ? "\n\nNext round in one minute. This channel will show only that question."
-        : `\n\nNext question in ${gap} seconds. This channel will show only that question.`;
-    const boardId = await postMessage(token, channelId, {
-      content: boardText(title, String(body.reveal || ""), (body.rows as Row[]) || [], null) + nextLine,
-    });
+        ? "Next round in one minute."
+        : `Next question in ${gap} seconds.`;
+    const boardId = await showCard(db, token, channelId, noteCard(
+      0x57f287,
+      [
+        `## ${title}`,
+        "",
+        `Correct answer: ${String(body.reveal || "")}`,
+        "",
+        scores.length ? scores.join("\n") + extra : "No answers yet.",
+        "",
+        nextLine,
+      ].join("\n"),
+    ));
     await db.rpc("gpsl_pub_quiz_mark_board", { p_id: id, p_message_id: boardId });
     await release(db, id);
     if (gap <= 70) {
@@ -513,7 +591,6 @@ async function runStep(db: SupabaseClient, token: string, quiz: Record<string, u
   }
 
   if (quiz.phase === "board" || quiz.phase === "break") {
-    await wipeChannel(token, channelId);
     const opened = await openAndPost(db, token, id, channelId, quiz);
     await release(db, id);
     if (opened === null) return;
@@ -550,21 +627,21 @@ async function openAndPost(
     if (paid.error) throw new Error(paid.error.message);
     const result = paid.data as Record<string, unknown>;
     const test = result.is_test === true;
-    await wipeChannel(token, channelId);
     const rows = (result.rows as Row[]) || [];
     const lines = rows.slice(0, 25).map((r) => {
       const score = `${r.place}. ${r.owner_tag || "Owner"} — ${r.points ?? 0}`;
       return test ? score : `${score} — ${money(prizeFor(Number(r.place) || 0, result))}`;
     });
     const head = test
-      ? "**Test complete**\nNo prizes. These were saved questions, including any picture and song."
-      : "**Final result**\nPrizes are in the Building Society.";
-    await postMessage(token, channelId, {
-      content: `${head}\n\n${lines.join("\n") || "No one answered."}`.slice(0, 1900),
-    });
+      ? "## Test complete\n\nNo prizes. These were saved questions, including any picture and song."
+      : "## Final result\n\nPrizes are in the Building Society.";
+    await showCard(db, token, channelId, noteCard(
+      0xfee75c,
+      `${head}\n\n${lines.join("\n") || "No one answered."}`.slice(0, 1900),
+    ));
     return null;
   }
-  const messageId = await postQuestion(token, channelId, q);
+  const messageId = await showQuestion(db, token, channelId, q);
   await db.rpc("gpsl_pub_quiz_mark_question_message", {
     p_question_id: q.question_id,
     p_message_id: messageId,
