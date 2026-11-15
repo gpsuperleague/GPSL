@@ -103,13 +103,14 @@ async function postMessage(
   token: string,
   channelId: string,
   payload: Record<string, unknown>,
-  file?: { name: string; bytes: Uint8Array }
+  file?: { name: string; bytes: Uint8Array; type?: string }
 ): Promise<string> {
   let res: Response;
   if (file) {
     const form = new FormData();
     form.append("payload_json", JSON.stringify({ allowed_mentions: { parse: [] }, ...payload }));
-    form.append("files[0]", new Blob([file.bytes]), file.name);
+    const kind = file.type ? { type: file.type } : undefined;
+    form.append("files[0]", new Blob([file.bytes], kind), file.name);
     res = await discord(token, `/channels/${channelId}/messages`, { method: "POST", body: form });
   } else {
     res = await discord(token, `/channels/${channelId}/messages`, {
@@ -248,7 +249,7 @@ async function release(db: SupabaseClient, id: number) {
   await db.rpc("gpsl_pub_quiz_runner_release", { p_id: id });
 }
 
-function questionPayload(q: Record<string, unknown>, fileName?: string) {
+function questionPayload(q: Record<string, unknown>) {
   const rounds = Number(q.round_count) || 5;
   const total = Number(q.question_count) || 10;
   const seconds = Number(q.answer_seconds) || 12;
@@ -269,9 +270,6 @@ function questionPayload(q: Record<string, unknown>, fileName?: string) {
       items: [{ media: { url: publicMediaUrl(String(q.media_path)) } }],
     });
   }
-  if (q.kind === "song" && fileName) {
-    parts.push({ type: 13, file: { url: `attachment://${fileName}` } });
-  }
   parts.push(
     { type: 14, divider: true, spacing: 1 },
     { type: 10, content: `You have **${seconds} seconds**.` },
@@ -290,12 +288,52 @@ function questionPayload(q: Record<string, unknown>, fileName?: string) {
   };
 }
 
+function audioType(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  if (ext === "mp3") return "audio/mpeg";
+  if (ext === "wav") return "audio/wav";
+  if (ext === "ogg") return "audio/ogg";
+  if (ext === "m4a") return "audio/mp4";
+  if (ext === "flac") return "audio/flac";
+  return "application/octet-stream";
+}
+
+function songPayload(q: Record<string, unknown>, fileName: string) {
+  const rounds = Number(q.round_count) || 5;
+  const total = Number(q.question_count) || 10;
+  const seconds = Number(q.answer_seconds) || 12;
+  const button = (key: string, word: string, style: number) => ({
+    type: 2,
+    style,
+    label: `${key.toUpperCase()}   ${String(word || "").slice(0, 70)}`.slice(0, 80),
+    custom_id: `pq:${q.question_id}:${key}`,
+  });
+  return {
+    content: [
+      `**Round ${q.round_no} of ${rounds}** · ${q.round_title}`,
+      `**Question ${q.q_no} of ${total}**`,
+      String(q.prompt || ""),
+      "",
+      `Press play on the clip. You have **${seconds} seconds**.`,
+    ].join("\n"),
+    attachments: [{ id: 0, filename: fileName }],
+    components: [{
+      type: 1,
+      components: [
+        button("a", String(q.option_a || ""), 1),
+        button("b", String(q.option_b || ""), 3),
+        button("c", String(q.option_c || ""), 4),
+      ],
+    }],
+  };
+}
+
 async function postQuestion(token: string, channelId: string, q: Record<string, unknown>): Promise<string> {
   if (q.kind === "song" && q.media_path) {
     const path = String(q.media_path);
     const bytes = await downloadMedia(path);
     const name = path.split("/").pop() || "clip.mp3";
-    return postMessage(token, channelId, questionPayload(q, name), { name, bytes });
+    return postMessage(token, channelId, songPayload(q, name), { name, bytes, type: audioType(name) });
   }
   return postMessage(token, channelId, questionPayload(q));
 }
