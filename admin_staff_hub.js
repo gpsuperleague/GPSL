@@ -1,5 +1,5 @@
-import { initAdminPage } from "./admin_common.js?v=20261114-staff-hub";
-import { isGpslAdminUser } from "./global.js?v=20261116-mod-scope";
+import { initAdminPage, isModView } from "./admin_common.js?v=20261116-mod-view";
+import { isGpslAdminUser } from "./global.js?v=20261116-mod-view";
 
 const TABS = ["alerts", "owners", "checklist", "mods"];
 const ADMIN_TABS = new Set(["owners", "mods"]);
@@ -7,6 +7,7 @@ const booted = new Set();
 let adminUser = null;
 
 function isAdmin() {
+  if (isModView()) return false;
   return !!(adminUser && isGpslAdminUser(adminUser));
 }
 

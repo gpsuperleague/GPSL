@@ -1,4 +1,10 @@
-import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import {
+  initAdminPage,
+  isModView,
+  primeAdminPageChrome,
+  setStatus,
+  supabase,
+} from "./admin_common.js?v=20261116-mod-view";
 import { isGpslAdminUser } from "./global.js";
 import {
   formatMoney,
@@ -138,7 +144,7 @@ const ISSUE_META = {
 };
 
 export async function bootClubChecklist(user) {
-  if (user && !isGpslAdminUser(user)) {
+  if ((user && !isGpslAdminUser(user)) || isModView()) {
     document.querySelectorAll(".admin-hop-links [data-admin-only]").forEach((a) => a.remove());
   }
 

@@ -3,9 +3,9 @@ import {
   initGlobal,
   isGpslAdminUser,
   fetchIsGpslModUser,
-} from "./global.js?v=20261116-mod-scope";
-import { APP_VERSION } from "./app_version.js?v=20261116-mod-scope";
-import { isModAllowedPage } from "./mod_nav.js?v=20261116-mod-scope";
+} from "./global.js?v=20261116-mod-view";
+import { APP_VERSION } from "./app_version.js?v=20261116-mod-view";
+import { isModAllowedPage, isModViewRequest } from "./mod_nav.js?v=20261116-mod-view";
 
 /** Apply dark admin chrome immediately (avoids white flash before module loads). */
 export function primeAdminPageChrome() {
@@ -13,15 +13,31 @@ export function primeAdminPageChrome() {
   document.body.classList.add("admin-page");
 }
 
+/** True when an admin opened this page from the Mod menu. Display only. */
+export function isModView() {
+  return isModViewRequest();
+}
+
 /**
- * Hide [data-admin-only] blocks when the signed-in user is mod-only (not league admin).
+ * Hide [data-admin-only] blocks for mod-only users, and for an admin
+ * who opened the page from the Mod menu.
  */
 export function applyModOnlyPageChrome(user) {
-  if (!user || isGpslAdminUser(user)) return;
+  const preview = isGpslAdminUser(user) && isModView();
+  if (!user || (isGpslAdminUser(user) && !preview)) return;
   document.body.classList.add("mod-only-user");
   document.querySelectorAll("[data-admin-only]").forEach((el) => {
     el.hidden = true;
   });
+  if (!preview || document.getElementById("modViewBanner")) return;
+  const bar = document.createElement("p");
+  bar.id = "modViewBanner";
+  bar.textContent = "Mod view. The Admin menu still opens the full page. Your admin access is unchanged.";
+  bar.style.cssText =
+    "margin:12px 16px;padding:8px 12px;border:1px solid #365;border-radius:6px;background:#102018;color:#cfe;font-size:13px;";
+  const nav = document.getElementById("nav");
+  if (nav?.parentNode) nav.parentNode.insertBefore(bar, nav.nextSibling);
+  else document.body.prepend(bar);
 }
 
 /**

@@ -951,6 +951,7 @@ function entryHasActive(entry, pathname, search) {
 }
 
 export function adminMainSectionHasActive(sectionId, pathname, search = "") {
+  if (new URLSearchParams(search || "").get("as") === "mod") return false;
   const section = getAdminMainSection(sectionId);
   if (!section) return false;
   if ((section.entries || []).some((e) => entryHasActive(e, pathname, search))) {

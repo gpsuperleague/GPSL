@@ -63,6 +63,27 @@ function escapeNavText(text) {
     .replace(/"/g, "&quot;");
 }
 
+/** Admin preview of the Mod menu. Display only — does not change admin rights. */
+export function modViewHref(href) {
+  const raw = String(href || "");
+  const hashAt = raw.indexOf("#");
+  const hash = hashAt >= 0 ? raw.slice(hashAt) : "";
+  const base = hashAt >= 0 ? raw.slice(0, hashAt) : raw;
+  if (/[?&]as=mod(?:&|$)/.test(base)) return raw;
+  return `${base}${base.includes("?") ? "&" : "?"}as=mod${hash}`;
+}
+
+export function isModViewRequest(search = "") {
+  try {
+    const q = new URLSearchParams(
+      search || (typeof window !== "undefined" ? window.location.search : "")
+    );
+    return q.get("as") === "mod";
+  } catch {
+    return false;
+  }
+}
+
 function modItemHref(item) {
   if (!item?.href) return "#";
   if (item.hash) return `${item.href}#${item.hash}`;

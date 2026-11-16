@@ -1,6 +1,7 @@
 import {
   initAdminPage,
   isGpslAdminUser,
+  isModView,
   primeAdminPageChrome,
   setStatus,
   supabase,
@@ -607,7 +608,7 @@ async function syncEntireGuildRoles() {
 document.addEventListener("DOMContentLoaded", async () => {
   const user = await initAdminPage({ allowMod: true });
   if (!user) return;
-  allowCreateLogin = isGpslAdminUser(user);
+  allowCreateLogin = isGpslAdminUser(user) && !isModView();
 
   await loadClubAuctionConfig();
   await loadGpslAudit();

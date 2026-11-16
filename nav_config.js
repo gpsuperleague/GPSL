@@ -1,6 +1,6 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
-import { APP_VERSION } from "./app_version.js?v=20261116-mod-scope";
+import { APP_VERSION } from "./app_version.js?v=20261116-mod-view";
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
 export const NAV_CONFIG_VERSION = APP_VERSION;
@@ -14,13 +14,14 @@ const adminMainNavMod = await import(
 const modNavMod = await import(`./mod_nav.js?v=${NAV_CONFIG_VERSION}`);
 
 export const MOD_NAV_SECTION = modNavMod.MOD_NAV_SECTION;
+export const modViewHref = modNavMod.modViewHref;
 
 const { testingAdminNavHasActive, renderTestingAdminNavHtml } = testingNavMod;
 const {
   renderAdminMainSectionHtml,
   adminMainSectionHasActive,
 } = adminMainNavMod;
-const { renderModMenuPreviewHtml, modMenuPreviewHasActive } = modNavMod;
+const { renderModMenuPreviewHtml, modMenuPreviewHasActive, isModViewRequest } = modNavMod;
 
 /** Render Admin mega-menu blocks (adminMainMega + Testing + Mod preview). */
 export function renderAdminMegaNavHtml(item, pathname, search = "") {
@@ -622,10 +623,6 @@ export const ADMIN_NAV_SECTION = {
     },
     { testingMega: true, label: "Testing" },
     { adminMainMega: true, section: "owners", label: "Owners" },
-    {
-      modPreviewMega: true,
-      label: "Mod menu (preview)",
-    },
     { adminMainMega: true, section: "season_break", label: "Season Break" },
     { adminMainMega: true, section: "create_season", label: "Create Season" },
     { adminMainMega: true, section: "pre_season_setup", label: "Pre-Season setup" },
@@ -644,6 +641,9 @@ export function normalizeNavPath(pathname) {
 
 export function isNavItemActive(item, pathname, search = "") {
   if (!item?.href) return false;
+  const viewingAsMod = isModViewRequest(search);
+  if (item.modView && !viewingAsMod) return false;
+  if (!item.modView && viewingAsMod) return false;
   const file = normalizeNavPath(pathname);
   const itemFile = item.href.split("?")[0].split("#")[0].toLowerCase();
 
@@ -687,6 +687,9 @@ export function isNavItemActive(item, pathname, search = "") {
 export function sectionHasActiveItem(section, pathname, search) {
   if (!section?.items?.length) return false;
   return section.items.some((item) => {
+    if (isModViewRequest(search) && (item.adminMainMega || item.testingMega || item.modPreviewMega)) {
+      return false;
+    }
     if (item.adminMainMega && item.section) {
       return adminMainSectionHasActive(item.section, pathname, search);
     }

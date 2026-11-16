@@ -33,7 +33,7 @@ export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js"
 applyStoredSiteTheme();
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-import { APP_VERSION } from "./app_version.js?v=20261116-mod-scope";
+import { APP_VERSION } from "./app_version.js?v=20261116-mod-view";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
 
@@ -2567,6 +2567,12 @@ function startNavAuctionBadgeRefresh() {
   }, 30000);
 }
 
+function navItemHref(item) {
+  if (!item?.href) return "#";
+  if (item.hash && !String(item.href).includes("#")) return `${item.href}#${item.hash}`;
+  return item.href;
+}
+
 function renderNavDropdownItems(items, pathname, search, isNavItemActive, renderMegaNavHtml) {
   const hasHeadings = items.some(
     (item) =>
@@ -2593,7 +2599,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
       const externalAttr = item.external
         ? ` target="_blank" rel="noopener noreferrer"`
         : "";
-      flat += `<a href="${item.href}" class="nav-link${indent}${
+      flat += `<a href="${navItemHref(item)}" class="nav-link${indent}${
         active ? " active" : ""
       }${navListingPathClass(item, currentFile)}${navAuctionPathClass(
         item,
@@ -2627,7 +2633,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     const externalAttr = item.external
       ? ` target="_blank" rel="noopener noreferrer"`
       : "";
-    return `<a href="${item.href}" class="nav-link${indent}${danger}${checklist}${
+    return `<a href="${navItemHref(item)}" class="nav-link${indent}${danger}${checklist}${
       active ? " active" : ""
     }${navListingPathClass(item, currentFile)}${navAuctionPathClass(
       item,
@@ -2986,11 +2992,13 @@ export async function buildNav() {
   let firstActiveNavSectionId;
   let normalizeNavPath;
   let renderAdminMegaNavHtml;
+  let modViewHref;
   try {
     const navMod = await import(`./nav_config.js?v=${GLOBAL_JS_VERSION}`);
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     MOD_NAV_SECTION = navMod.MOD_NAV_SECTION;
+    modViewHref = navMod.modViewHref;
     isNavItemActive = navMod.isNavItemActive;
     sectionHasActiveItem = navMod.sectionHasActiveItem;
     firstActiveNavSectionId = navMod.firstActiveNavSectionId;
@@ -3282,6 +3290,16 @@ export async function buildNav() {
 
   if (isGpslAdminNav && ADMIN_NAV_SECTION?.items?.length) {
     navSections.push(ADMIN_NAV_SECTION);
+    if (MOD_NAV_SECTION?.items?.length && typeof modViewHref === "function") {
+      navSections.push({
+        ...MOD_NAV_SECTION,
+        items: MOD_NAV_SECTION.items.map((item) =>
+          item?.href && !item.heading
+            ? { ...item, href: modViewHref(item.href), modView: true }
+            : item
+        ),
+      });
+    }
   } else if (isGpslModOnlyNav && MOD_NAV_SECTION?.items?.length) {
     navSections.push(MOD_NAV_SECTION);
   }
