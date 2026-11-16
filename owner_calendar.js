@@ -1778,6 +1778,7 @@ async function loadVideoDeadlines() {
   const out = [];
   const monthMarkerDone = new Set();
   let missingCount = 0;
+  const videoExemptClubs = await loadVideoExemptClubs();
 
   const pushMonthMarker = (monthKey, lockAt, dueIso) => {
     if (!monthKey || monthMarkerDone.has(monthKey)) return;
@@ -1833,6 +1834,15 @@ async function loadVideoDeadlines() {
     if (dueMs < now - 42 * 86400_000) continue;
     if (dueMs > now + 180 * 86400_000) continue;
 
+    const oppShort = String(
+      side === "home"
+        ? f.away_club_short_name || f.away_short
+        : f.home_club_short_name || f.home_short || ""
+    )
+      .trim()
+      .toUpperCase();
+    if (videoExemptClubs.has(oppShort)) continue;
+
     missingCount += 1;
     const dueIso = new Date(dueMs).toISOString();
     const monthLabel =
@@ -1840,10 +1850,6 @@ async function loadVideoDeadlines() {
       monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
     pushMonthMarker(monthKey, lockAt, dueIso);
 
-    const oppShort =
-      side === "home"
-        ? f.away_club_short_name || f.away_short
-        : f.home_club_short_name || f.home_short;
     const oppName =
       side === "home" ? f.away_club_name : f.home_club_name;
     const opp = clubFull(oppShort, oppName);
@@ -1863,6 +1869,25 @@ async function loadVideoDeadlines() {
     );
   }
   return out;
+}
+
+async function loadVideoExemptClubs() {
+  const { data, error } = await supabase
+    .from("Clubs")
+    .select("ShortName, owner_id, is_archived");
+  if (error) {
+    console.warn("owner_calendar video exempt clubs:", error);
+    return new Set();
+  }
+  const exempt = new Set();
+  for (const club of data || []) {
+    const short = String(club.ShortName || "")
+      .trim()
+      .toUpperCase();
+    if (!short) continue;
+    if (!club.owner_id || club.is_archived) exempt.add(short);
+  }
+  return exempt;
 }
 
 /**
