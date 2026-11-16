@@ -58,18 +58,22 @@
       <code>discord-transfer-gossip-ingest</code>. Invoke key is copied from Discord News (not pasted here).
     </p>
     <div class="auto-form">
-      <label>
-        Edge function URL
-        <input type="text" id="autoUrl"
-          placeholder="https://….supabase.co/functions/v1/discord-transfer-gossip-ingest">
-      </label>
-      <p class="note" id="autoKeyStatus" style="margin:0">Invoke key: checking…</p>
-      <label class="check">
-        <input type="checkbox" id="autoEnabled" checked>
-        Auto-poll enabled
-      </label>
+      <div data-admin-only>
+        <label>
+          Edge function URL
+          <input type="text" id="autoUrl"
+            placeholder="https://….supabase.co/functions/v1/discord-transfer-gossip-ingest">
+        </label>
+        <p class="note" id="autoKeyStatus" style="margin:0">Invoke key: checking…</p>
+        <label class="check">
+          <input type="checkbox" id="autoEnabled" checked>
+          Auto-poll enabled
+        </label>
+        <div class="actions" style="margin:0">
+          <button type="button" class="button" id="autoSaveBtn">Save auto-poll</button>
+        </div>
+      </div>
       <div class="actions" style="margin:0">
-        <button type="button" class="button" id="autoSaveBtn">Save auto-poll</button>
         <button type="button" class="button secondary" id="btnPoll">Poll once now</button>
         <button type="button" class="button secondary" id="btnRefresh">Refresh</button>
       </div>
@@ -83,6 +87,6 @@
     <div id="activeWrap"><p class="note">Loading…</p></div>
   </div>
 
-  <script type="module" src="admin_discord_transfer_gossip.js?v=20260904-clearref"></script>
+  <script type="module" src="admin_discord_transfer_gossip.js?v=20261116-mod-scope"></script>
 </body>
 </html>

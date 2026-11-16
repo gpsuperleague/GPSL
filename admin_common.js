@@ -3,9 +3,9 @@ import {
   initGlobal,
   isGpslAdminUser,
   fetchIsGpslModUser,
-} from "./global.js?v=20261114-staff-hub";
-import { APP_VERSION } from "./app_version.js?v=20261108-pin-cache";
-import { isModAllowedPage } from "./mod_nav.js?v=20261114-staff-hub";
+} from "./global.js?v=20261116-mod-scope";
+import { APP_VERSION } from "./app_version.js?v=20261116-mod-scope";
+import { isModAllowedPage } from "./mod_nav.js?v=20261116-mod-scope";
 
 /** Apply dark admin chrome immediately (avoids white flash before module loads). */
 export function primeAdminPageChrome() {
@@ -80,7 +80,7 @@ export function setStatus(elementId, msg, ok = true) {
   }
 }
 
-export { supabase, APP_VERSION };
+export { supabase, APP_VERSION, isGpslAdminUser };
 
 /**
  * Run page boot whether DOMContentLoaded already fired or not.

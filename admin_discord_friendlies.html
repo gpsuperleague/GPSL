@@ -71,17 +71,21 @@
       (schedules cron; copies News key if already saved).
     </p>
     <div class="auto-form">
-      <label>
-        Edge function URL
-        <input type="text" id="autoUrl" placeholder="https://….supabase.co/functions/v1/discord-friendlies-ingest">
-      </label>
-      <p class="note" id="autoKeyStatus" style="margin:0">Invoke key: checking…</p>
-      <label class="check">
-        <input type="checkbox" id="autoEnabled" checked>
-        Auto-poll enabled
-      </label>
+      <div data-admin-only>
+        <label>
+          Edge function URL
+          <input type="text" id="autoUrl" placeholder="https://….supabase.co/functions/v1/discord-friendlies-ingest">
+        </label>
+        <p class="note" id="autoKeyStatus" style="margin:0">Invoke key: checking…</p>
+        <label class="check">
+          <input type="checkbox" id="autoEnabled" checked>
+          Auto-poll enabled
+        </label>
+        <div class="actions" style="margin:0">
+          <button type="button" class="button" id="autoSaveBtn">Save auto-poll settings</button>
+        </div>
+      </div>
       <div class="actions" style="margin:0">
-        <button type="button" class="button" id="autoSaveBtn">Save auto-poll settings</button>
         <button type="button" class="button secondary" id="btnPoll">Poll once now (test)</button>
         <button type="button" class="button secondary" id="btnRefresh">Refresh lists</button>
       </div>
@@ -101,6 +105,6 @@
     <div id="confirmedWrap"><p class="note">Loading…</p></div>
   </div>
 
-  <script type="module" src="admin_discord_friendlies.js?v=20261028-rematch"></script>
+  <script type="module" src="admin_discord_friendlies.js?v=20261116-mod-scope"></script>
 </body>
 </html>

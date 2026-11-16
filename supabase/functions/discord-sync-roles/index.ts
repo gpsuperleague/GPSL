@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { isGpslAdminOrMod } from "../_shared/gpsl_staff.ts";
+import { isGpslAdmin, isGpslAdminOrMod } from "../_shared/gpsl_staff.ts";
 
 /**
  * Sync Discord guild roles from GPSL status.
@@ -427,6 +427,7 @@ Deno.serve(async (req) => {
 
     let authorized = false;
     let isAdminJwt = false;
+    let isLeagueAdmin = false;
     if (feedKey && (invokeHeader === feedKey || authBearer === feedKey)) {
       authorized = true;
     } else if (authBearer && authBearer === serviceRoleKey) {
@@ -441,6 +442,7 @@ Deno.serve(async (req) => {
       if (user && (await isGpslAdminOrMod(userClient, user, ADMIN_EMAIL))) {
         authorized = true;
         isAdminJwt = true;
+        isLeagueAdmin = await isGpslAdmin(userClient, user, ADMIN_EMAIL);
       }
     }
 
@@ -603,6 +605,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === "sync_guild") {
+      if (authBearer.startsWith("eyJ") && !isLeagueAdmin) {
+        return jsonResponse({ ok: false, error: "Admin only" }, 403);
+      }
       // Walk Discord guild members and apply Owner / Member / Visitor.
       // Allows feed key / service role / admin JWT (needed for SQL catch-up).
       // Also tag-matches unlinked GPSL registry rows and writes discord_user_id.

@@ -1,4 +1,10 @@
-import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import {
+  initAdminPage,
+  isGpslAdminUser,
+  primeAdminPageChrome,
+  setStatus,
+  supabase,
+} from "./admin_common.js?v=20261116-mod-scope";
 
 primeAdminPageChrome();
 
@@ -13,6 +19,7 @@ let clubAuctionStartingBalance = 650000000;
 let openPanelId = null;
 /** @type {"add"|"tag"|null} */
 let openPanelKind = null;
+let allowCreateLogin = false;
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -308,13 +315,15 @@ function renderTable() {
             <td>
               <div style="display:flex;flex-wrap:wrap;gap:6px;">
                 ${
-                  onGpsl
+                  onGpsl || !allowCreateLogin
                     ? ""
                     : `<button type="button" class="button secondary discord-add-btn" data-id="${escapeHtml(id)}">Add to waiting list</button>`
                 }
                 <button type="button" class="button secondary discord-tag-btn" data-id="${escapeHtml(id)}">Set owner tag</button>
               </div>
-              <div class="discord-add-panel${addOpen ? " open" : ""}" id="add-panel-${escapeHtml(id)}">
+              ${
+                allowCreateLogin
+                  ? `<div class="discord-add-panel${addOpen ? " open" : ""}" id="add-panel-${escapeHtml(id)}">
                 <div class="row">
                   <input type="email" class="discord-email" data-id="${escapeHtml(id)}" placeholder="Owner email" autocomplete="off">
                   <input type="password" class="discord-password" data-id="${escapeHtml(id)}" placeholder="Temp password (min 6)" autocomplete="new-password">
@@ -322,7 +331,9 @@ function renderTable() {
                 </div>
                 <button type="button" class="button discord-confirm-add" data-id="${escapeHtml(id)}">Create &amp; add to list</button>
                 <button type="button" class="button secondary discord-cancel-panel" data-id="${escapeHtml(id)}">Cancel</button>
-              </div>
+              </div>`
+                  : ""
+              }
               <div class="discord-add-panel${tagOpen ? " open" : ""}" id="tag-panel-${escapeHtml(id)}">
                 <div class="row">
                   <input type="email" class="discord-tag-email" data-id="${escapeHtml(id)}" value="${emailValue}" placeholder="GPSL owner email" autocomplete="off">
@@ -594,7 +605,9 @@ async function syncEntireGuildRoles() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage({ allowMod: true }))) return;
+  const user = await initAdminPage({ allowMod: true });
+  if (!user) return;
+  allowCreateLogin = isGpslAdminUser(user);
 
   await loadClubAuctionConfig();
   await loadGpslAudit();

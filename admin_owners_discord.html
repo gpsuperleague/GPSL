@@ -55,7 +55,7 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <h2>Priority by Discord join date</h2>
-        <p class="note">
+        <p class="note" data-admin-only>
           Oldest members first — use this when deciding club-auction priority.
           <b>Add to waiting list</b> creates a GPSL login (email + temp password) and places them at the
           bottom of the waiting list with their Discord name as owner tag.
@@ -93,7 +93,7 @@
         <div class="discord-filters">
           <button type="button" id="discordRefreshBtn" class="button">Refresh from Discord</button>
           <button type="button" id="discordSyncRolesBtn" class="button secondary" title="Apply Member / Owner / Visitor for GPSL accounts that have discord_user_id">Sync linked</button>
-          <button type="button" id="discordSyncGuildBtn" class="button secondary" title="Walk every Discord member and set Owner / Member / Visitor">Sync entire guild</button>
+          <button type="button" id="discordSyncGuildBtn" class="button secondary" data-admin-only title="Walk every Discord member and set Owner / Member / Visitor">Sync entire guild</button>
           <input type="search" id="discordSearch" placeholder="Filter by name / username…">
           <label class="note" style="display:flex;align-items:center;gap:6px;margin:0;">
             <input type="checkbox" id="discordHideKnown">
@@ -109,6 +109,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners_discord.js?v=20261031-role-audit"></script>
+  <script type="module" src="admin_owners_discord.js?v=20261116-mod-scope"></script>
 </body>
 </html>

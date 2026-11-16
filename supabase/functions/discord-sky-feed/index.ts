@@ -762,6 +762,7 @@ Deno.serve(async (req) => {
       .trim();
 
     let authorized = false;
+    let callerIsModOnly = false;
     if (feedKey && (invokeHeader === feedKey || authBearer === feedKey)) {
       authorized = true;
     } else if (authBearer && authBearer === serviceRoleKey) {
@@ -778,7 +779,11 @@ Deno.serve(async (req) => {
         authorized = true;
       } else if (user) {
         const { data: staffFlag } = await userClient.rpc("is_gpsl_admin_or_mod");
-        if (staffFlag === true) authorized = true;
+        if (staffFlag === true) {
+          authorized = true;
+          const { data: adminFlag } = await userClient.rpc("is_gpsl_admin");
+          callerIsModOnly = adminFlag !== true;
+        }
       }
     }
 
@@ -1078,6 +1083,19 @@ Deno.serve(async (req) => {
         note:
           "Create each webhook inside its Discord channel. Secrets live under Edge Functions → Secrets (project-wide), then redeploy discord-sky-feed.",
       });
+    }
+
+    if (
+      callerIsModOnly &&
+      (body?.action === "whos_who" ||
+        body?.whos_who === true ||
+        body?.publish_whos_who === true ||
+        body?.action === "club_directory" ||
+        body?.club_directory === true ||
+        body?.publish_club_directory === true ||
+        body?.test === true)
+    ) {
+      return jsonResponse({ ok: false, error: "Admin only" }, 403);
     }
 
     // Who's Who roster — post once, then edit daily (no @pings)

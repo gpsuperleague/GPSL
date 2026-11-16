@@ -62,6 +62,7 @@
     }
     #routingStatus .ok { color:#9d9; }
     #routingStatus .bad { color:#f88; }
+    [hidden] { display: none !important; }
     .discord-grid {
       display:grid;
       gap:16px;
@@ -154,7 +155,7 @@
         <div id="newsTableWrap" style="overflow-x:auto;"></div>
       </div>
 
-      <div class="discord-grid discord-grid-2">
+      <div class="discord-grid discord-grid-2" data-admin-only>
         <div class="card">
           <h2>Publish now</h2>
           <p class="note">Force digests / snapshots instead of waiting for cron or month lock.</p>
@@ -233,7 +234,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" data-admin-only>
         <h2>Clear channel</h2>
         <p class="note">
           Deletes messages in a GPSL Discord feed channel via the bot
@@ -394,7 +395,7 @@
         </details>
       </div>
 
-      <div class="card">
+      <div class="card" data-admin-only>
         <h2>Auto-post</h2>
         <p class="note">
           With auto-post enabled, Postgres calls the edge function when something is queued
@@ -422,6 +423,6 @@
 
     </div>
   </div>
-    <script type="module" src="admin_discord_news.js?v=20261011-job-center-now"></script>
+    <script type="module" src="admin_discord_news.js?v=20261116-mod-scope"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 import { initAdminPage } from "./admin_common.js?v=20261114-staff-hub";
-import { isGpslAdminUser } from "./global.js?v=20261114-staff-hub";
+import { isGpslAdminUser } from "./global.js?v=20261116-mod-scope";
 
 const TABS = ["alerts", "owners", "checklist", "mods"];
 const ADMIN_TABS = new Set(["owners", "mods"]);

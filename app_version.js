@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20261114-staff-hub";
+export const APP_VERSION = "20261116-mod-scope";

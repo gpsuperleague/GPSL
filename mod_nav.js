@@ -41,22 +41,12 @@ export const MOD_NAV_SECTION = {
     L("Network incidents", "admin_network_incidents.html"),
     L("Connection ratings", "admin_connection_ratings.html"),
     L("Transfer Gossip", "admin_discord_transfer_gossip.html"),
-    L("Republish GPSL Sport", "admin_gpsl_sport.html"),
 
     H("Season ops"),
     L("Preview club finances", "finances.html"),
     L("Preview club squad", "squad.html"),
     L("Club Season Checklist", "admin_staff_hub.html", "checklist"),
-    L("Apply fines", "admin_fines.html"),
     L("Red card appeal review", "admin_prize_appeals.html"),
-    L("Injuries", "admin_injuries.html"),
-    L("Cancel open listings & bids", "admin_transfers.html", "sb-cancel-open"),
-
-    H("Nations"),
-    L("Open Nation Selection", "admin_international_selection_open.html"),
-    L("Close Nation Selection", "admin_international_selection_close.html"),
-    L("Manual National Team Selection", "admin_international.html", "sb-nation-assign"),
-    L("Verify owner rankings", "admin_international.html", "sb-owner-rankings"),
   ],
 };
 
