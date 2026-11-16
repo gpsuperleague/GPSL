@@ -1723,7 +1723,7 @@ async function loadVideoDeadlines() {
     const { data: rows, error } = await supabase
       .from("competition_fixtures_public")
       .select(
-        "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, status, gpsl_month, competition_type, agreed_kickoff_at"
+        "id, home_club_short_name, away_club_short_name, home_club_name, away_club_name, status, gpsl_month, competition_type, agreed_kickoff_at, is_forfeit"
       )
       .limit(500);
     if (error) {
@@ -1841,7 +1841,7 @@ async function loadVideoDeadlines() {
     )
       .trim()
       .toUpperCase();
-    if (videoExemptClubs.has(oppShort)) continue;
+    if (f.is_forfeit === true || videoExemptClubs.has(oppShort)) continue;
 
     missingCount += 1;
     const dueIso = new Date(dueMs).toISOString();
