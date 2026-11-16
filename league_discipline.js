@@ -1,7 +1,7 @@
 import { supabase, initGlobal } from "./global.js?v=20261111-discipline";
 import { loadCurrentSeason, DIVISION_LABELS } from "./competition.js";
 import { gpslPlayerCareerUrl } from "./player_links.js";
-import { YELLOW_BAN_EVERY } from "./player_discipline.js?v=20261111-yc5";
+import { YELLOW_BAN_EVERY } from "./player_discipline.js?v=20261116-review-fix";
 
 function escapeHtml(text) {
   return String(text ?? "")

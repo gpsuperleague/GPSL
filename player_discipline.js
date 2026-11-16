@@ -325,7 +325,7 @@ export function formatFixtureUnavailableHtml(payload, names = {}) {
   const homeLabel = names.homeName || payload.home_club_short_name || "Home";
   const awayLabel = names.awayName || payload.away_club_short_name || "Away";
   return `<div class="fixture-unavailable has-outs">
-    <div class="fixture-unavailable-title">${title}</div>`
+    <div class="fixture-unavailable-title">${title}</div>
     <div class="fixture-unavailable-grid">
       <div>
         <div class="fixture-unavailable-club">${homeLabel}</div>

@@ -58,7 +58,7 @@ import {
   yellowBanProgress,
   yellowBanTitle,
   YELLOW_BAN_EVERY,
-} from "./player_discipline.js?v=20261111-yc5";
+} from "./player_discipline.js?v=20261116-review-fix";
 import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,

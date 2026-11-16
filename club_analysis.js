@@ -9,7 +9,7 @@ import {
   PITCH_SLOT_IDS,
   resolvePitchLayout,
 } from "./matchday_formations.js";
-import { loadClubActiveInjuries } from "./player_discipline.js?v=20261026-club-squad-lwf";
+import { loadClubActiveInjuries } from "./player_discipline.js?v=20261116-review-fix";
 import { playerNameLinkHtml } from "./player_links.js";
 import { renderFormationPitchHtml } from "./pitch_display.js";
 

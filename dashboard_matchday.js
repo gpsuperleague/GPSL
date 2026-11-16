@@ -10,7 +10,7 @@ import { loadMatchdayCheckinReadiness } from "./match_scheduling.js";
 import {
   loadFixtureUnavailable,
   formatOwnUnavailableLine,
-} from "./player_discipline.js?v=20261028-unavail";
+} from "./player_discipline.js?v=20261116-review-fix";
 
 const REFRESH_MS = 20_000;
 const UK_TZ = "Europe/London";

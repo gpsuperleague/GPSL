@@ -6,7 +6,7 @@ import { supabase } from "./supabase_client.js";
 import {
   loadFixtureUnavailable,
   formatOwnUnavailableLine,
-} from "./player_discipline.js?v=20261028-unavail";
+} from "./player_discipline.js?v=20261116-review-fix";
 import {
   loadClubsMap,
   fullClubName,

@@ -45,7 +45,7 @@ import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
   formatFixtureUnavailableBannerHtml,
-} from "./player_discipline.js?v=20261028-unavail";
+} from "./player_discipline.js?v=20261116-review-fix";
 import {
   matchConsoleStripHtml,
   cupFixtureKind,

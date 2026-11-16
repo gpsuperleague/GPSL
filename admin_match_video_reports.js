@@ -3,7 +3,7 @@ import { DIVISION_LABELS, CUP_LABELS } from "./competition.js";
 import {
   loadFixtureUnavailable,
   formatFixtureUnavailableHtml,
-} from "./player_discipline.js?v=20261116-review-outs";
+} from "./player_discipline.js?v=20261116-review-fix";
 
 primeAdminPageChrome();
 
@@ -99,7 +99,9 @@ function breachesHtml(r) {
             ? `<div class="mvr-note">Drags reported: <b>${escapeHtml(
                 String(b.instances || 1)
               )}</b>. ${escapeHtml(formationDragOutcome(r, b.instances || 1))}</div>`
-            : ""
+            : tariffEffects.get(b.code) === "replay_if_won_or_drew"
+              ? `<div class="mvr-note">${escapeHtml(formationDragOutcome(r, 1))}</div>`
+              : ""
         }
         <div class="mvr-note">${escapeHtml(b.note || "—")}</div>
       </div>`
@@ -167,7 +169,7 @@ async function loadReports() {
           <button type="button" class="button secondary" data-reject="${r.id}">Reject</button>
         </div>
         <p class="note" style="margin:8px 0 0">
-          Approve applies a fine for each listed breach and credits the reporter ₿2,000 Building Society.
+          Approve applies a fine for each listed breach and credits the reporter ₿2,000 Building Society, once per match.
           A formation-drag breach is not a fine: approve replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported.
           Reject closes this match side forever (no re-report).
         </p>`
@@ -221,7 +223,7 @@ async function resolveReport(id, action) {
   if (
     action === "approve" &&
     !confirm(
-      `Approve this report? Fines apply to ordinary breaches. A formation-drag breach replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported. The reporter gets ₿2,000 Building Society.${
+      `Approve this report? Fines apply to ordinary breaches. A formation-drag breach replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported. The reporter gets ₿2,000 Building Society, unless they were already rewarded for the other video of this match.${
         replaySel
           ? replayChoice
             ? " You chose to replay this match."
