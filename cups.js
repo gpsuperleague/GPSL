@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
 import { loadClubsMap, fullClubName, clubWithOwnerHtml } from "./clubs_lookup.js";
 import {
   CUP_CODES,
@@ -46,10 +46,11 @@ import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
   loadMatchVideoReportedSides,
+  loadMatchVideoAdminClearedSides,
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20261106-formation-forfeit";
+} from "./match_videos_ui.js?v=20261116-admin-clear";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 
 function cupFromUrl() {
@@ -71,6 +72,9 @@ let holidayContext = null;
 let matchVideoMap = new Map();
 /** @type {Set<string>} */
 let matchVideoReportedSides = new Set();
+/** @type {Set<string>} */
+let matchVideoAdminCleared = new Set();
+let videoAdmin = false;
 /** @type {Map<number, object>} last fixturesById for report wiring */
 let lastCupFixturesById = new Map();
 let matchVideoReportsWired = false;
@@ -95,6 +99,16 @@ function ensureMatchVideoReportsWired() {
   wireMatchVideoReportButtons(supabase, document.getElementById("bracketRoot"), {
     resolveFixture: (fixtureId) => lastCupFixturesById.get(Number(fixtureId)) || null,
     formatMoney,
+    isAdmin: videoAdmin,
+    onAdminClear: ({ fixtureId, side, cleared }) => {
+      const key = `${fixtureId}:${side}`;
+      if (cleared) matchVideoAdminCleared.add(key);
+      else matchVideoAdminCleared.delete(key);
+    },
+    onSubmitted: ({ fixtureId, side }) => {
+      matchVideoReportedSides.add(`${fixtureId}:${side}`);
+      renderCup();
+    },
   });
 }
 
@@ -222,8 +236,10 @@ function cupVideoTicksHtml(f) {
     fixtureId: f.id,
     fixture: f,
     myClubShort: myClubShort,
-    allowReport: Boolean(myClubShort),
+    allowReport: Boolean(myClubShort) || videoAdmin,
     reportedSides: matchVideoReportedSides,
+    adminView: videoAdmin,
+    clearedSides: matchVideoAdminCleared,
   });
 }
 
@@ -652,13 +668,17 @@ function renderBracketRoundColumn(round_no, matches, extras) {
 }
 
 async function loadCupVideosAndExtras(fixtureIds) {
-  const [extras, videos, reported] = await Promise.all([
+  const [extras, videos, reported, cleared] = await Promise.all([
     loadCupMatchExtras(supabase, fixtureIds),
     loadFixtureMatchVideos(supabase, fixtureIds),
     loadMatchVideoReportedSides(supabase, fixtureIds),
+    videoAdmin
+      ? loadMatchVideoAdminClearedSides(supabase, fixtureIds)
+      : Promise.resolve(new Set()),
   ]);
   matchVideoMap = videos;
   matchVideoReportedSides = reported;
+  matchVideoAdminCleared = cleared;
   lastCupFixturesById = extras.fixturesById || new Map();
   return extras;
 }
@@ -748,6 +768,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     .maybeSingle();
 
   myClubShort = club?.ShortName ?? null;
+  videoAdmin = isGpslAdminUser(user);
 
   const urlCup = cupFromUrl();
   if (urlCup) currentCup = urlCup;

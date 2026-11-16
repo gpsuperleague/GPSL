@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
 import {
   resolveAdminClubContext,
   mountAdminClubPicker,
@@ -65,10 +65,11 @@ import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
   loadMatchVideoReportedSides,
+  loadMatchVideoAdminClearedSides,
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20261106-formation-forfeit";
+} from "./match_videos_ui.js?v=20261116-admin-clear";
 import { resolveKitImageSrc } from "./club_kits_common.js";
 
 let myClub = { short: null, name: null };
@@ -76,6 +77,9 @@ let myClub = { short: null, name: null };
 let matchVideoMap = new Map();
 /** @type {Set<string>} */
 let matchVideoReportedSides = new Set();
+/** @type {Set<string>} */
+let matchVideoAdminCleared = new Set();
+let videoAdmin = false;
 
 function ensureMatchVideoStyles() {
   let el = document.getElementById("matchVideoTickStyles");
@@ -512,8 +516,10 @@ function fixtureCardHtml(f) {
           fixtureId: f.id,
           fixture: f,
           myClubShort: myClub.short,
-          allowReport: Boolean(myClub.short),
+          allowReport: Boolean(myClub.short) || videoAdmin,
           reportedSides: matchVideoReportedSides,
+          adminView: videoAdmin,
+          clearedSides: matchVideoAdminCleared,
         })}</span>
       </div>
       <div class="fixture-meta">
@@ -977,6 +983,26 @@ async function loadMyClub(shortName, clubLabel) {
   }
 }
 
+let clubVideoReportsWired = false;
+
+function wireClubVideoReports() {
+  if (clubVideoReportsWired) return;
+  clubVideoReportsWired = true;
+  wireMatchVideoReportButtons(supabase, document.getElementById("clubFixturesRoot") || document, {
+    resolveFixture: (id) => lastFixtures.find((f) => Number(f.id) === Number(id)),
+    isAdmin: videoAdmin,
+    onAdminClear: ({ fixtureId, side, cleared }) => {
+      const key = `${fixtureId}:${side}`;
+      if (cleared) matchVideoAdminCleared.add(key);
+      else matchVideoAdminCleared.delete(key);
+    },
+    onSubmitted: ({ fixtureId, side }) => {
+      matchVideoReportedSides.add(`${fixtureId}:${side}`);
+      renderFixtures(lastFixtures);
+    },
+  });
+}
+
 async function refreshFixtures(seasonId = null) {
   const root = document.getElementById("clubFixturesRoot");
   if (adminPreview) {
@@ -989,6 +1015,19 @@ async function refreshFixtures(seasonId = null) {
     clubFixtures = await enrichManualBlackBoxFlags(clubFixtures);
     const fixtures = clubFixtures;
     ensureMatchVideoStyles();
+    const previewIds = clubFixtures.map((f) => f.id);
+    const [videos, reportedSides, clearedSides] = await Promise.all([
+      loadFixtureMatchVideos(supabase, previewIds),
+      loadMatchVideoReportedSides(supabase, previewIds),
+      videoAdmin
+        ? loadMatchVideoAdminClearedSides(supabase, previewIds)
+        : Promise.resolve(new Set()),
+    ]);
+    matchVideoMap = videos;
+    matchVideoReportedSides = reportedSides;
+    matchVideoAdminCleared = clearedSides;
+    lastFixtures = fixtures;
+    wireClubVideoReports();
     renderFixtures(fixtures);
     if (root && !fixtures.length) {
       root.innerHTML =
@@ -1011,22 +1050,17 @@ async function refreshFixtures(seasonId = null) {
   const fixtures = [...clubFixtures, ...intlFixtures];
   ensureMatchVideoStyles();
   const clubFixtureIds = clubFixtures.map((f) => f.id);
-  const [videos, reportedSides] = await Promise.all([
+  const [videos, reportedSides, clearedSides] = await Promise.all([
     loadFixtureMatchVideos(supabase, clubFixtureIds),
     loadMatchVideoReportedSides(supabase, clubFixtureIds),
+    videoAdmin
+      ? loadMatchVideoAdminClearedSides(supabase, clubFixtureIds)
+      : Promise.resolve(new Set()),
   ]);
   matchVideoMap = videos;
   matchVideoReportedSides = reportedSides;
-  if (!window.__mvReportWiredClub) {
-    window.__mvReportWiredClub = true;
-    wireMatchVideoReportButtons(supabase, document.getElementById("clubFixturesRoot") || document, {
-      resolveFixture: (id) => lastFixtures.find((f) => Number(f.id) === Number(id)),
-      onSubmitted: ({ fixtureId, side }) => {
-        matchVideoReportedSides.add(`${fixtureId}:${side}`);
-        renderFixtures(lastFixtures);
-      },
-    });
-  }
+  matchVideoAdminCleared = clearedSides;
+  wireClubVideoReports();
   renderFixtures(fixtures);
   if (root && !fixtures.length) {
     root.innerHTML =
@@ -1060,6 +1094,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       label: "Preview club fixtures: ",
     });
     adminPreview = !!preview.adminPreview;
+    videoAdmin = isGpslAdminUser(user);
     await loadMyClub(preview.shortName, preview.clubLabel);
     if (!myClub.short) {
       root.innerHTML =

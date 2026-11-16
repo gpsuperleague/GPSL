@@ -63,16 +63,18 @@ import {
 import {
   loadFixtureMatchVideos,
   loadMatchVideoReportedSides,
+  loadMatchVideoAdminClearedSides,
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20261106-formation-forfeit";
+} from "./match_videos_ui.js?v=20261116-admin-clear";
 
 let calendarStatus = null;
 let holidayContext = null;
 
 let myClub = { short: null, name: null };
 let canReportMatchVideos = false;
+let videoAdmin = false;
 let currentDivision = "superleague";
 let fixtureView = "league";
 let currentCup = "league_cup";
@@ -83,6 +85,8 @@ let allFixtures = [];
 let matchVideoMap = new Map();
 /** @type {Set<string>} */
 let matchVideoReportedSides = new Set();
+/** @type {Set<string>} */
+let matchVideoAdminCleared = new Set();
 
 function ensureMatchVideoStyles() {
   let el = document.getElementById("matchVideoTickStyles");
@@ -372,6 +376,8 @@ function fixtureRowHtml(fixture) {
       myClubShort: myClub.short,
       allowReport: canReportMatchVideos,
       reportedSides: matchVideoReportedSides,
+      adminView: videoAdmin,
+      clearedSides: matchVideoAdminCleared,
     })}${catchUpCell}</td>
     <td>${clubWithOwnerHtml(fixture.away_club_name, fixture.away_club_short_name, "block")}</td>
     <td class="fixture-stadium">${fixtureStadiumCell(fixture)}</td>
@@ -681,6 +687,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     .maybeSingle();
   myClub = { short: club?.ShortName || null, name: club?.Club || null };
   const isStaff = isGpslAdminUser(user) || (await fetchIsGpslModUser());
+  videoAdmin = isGpslAdminUser(user);
   canReportMatchVideos = Boolean(myClub.short) || isStaff;
 
   const season = await loadCurrentSeason(supabase);
@@ -749,14 +756,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadTvFixtureIds(supabase, season.id);
   ensureMatchVideoStyles();
   const allIds = allFixtures.map((f) => f.id);
-  const [videos, reportedSides] = await Promise.all([
+  const [videos, reportedSides, clearedSides] = await Promise.all([
     loadFixtureMatchVideos(supabase, allIds),
     loadMatchVideoReportedSides(supabase, allIds),
+    videoAdmin ? loadMatchVideoAdminClearedSides(supabase, allIds) : Promise.resolve(new Set()),
   ]);
   matchVideoMap = videos;
   matchVideoReportedSides = reportedSides;
+  matchVideoAdminCleared = clearedSides;
   wireMatchVideoReportButtons(supabase, document.getElementById("fixturesRoot") || document, {
     resolveFixture: (id) => allFixtures.find((f) => Number(f.id) === Number(id)),
+    isAdmin: videoAdmin,
+    onAdminClear: ({ fixtureId, side, cleared }) => {
+      const key = `${fixtureId}:${side}`;
+      if (cleared) matchVideoAdminCleared.add(key);
+      else matchVideoAdminCleared.delete(key);
+    },
     onSubmitted: ({ fixtureId, side }) => {
       matchVideoReportedSides.add(`${fixtureId}:${side}`);
       renderFixtures();

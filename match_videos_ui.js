@@ -137,14 +137,15 @@ function tickHtml(sideLabel, url, pending = false, pendingHint = "") {
   return `<span class="mv-tick mv-tick-off" title="${sideLabel} video not uploaded yet">${sideLabel}○</span>`;
 }
 
-function reportBtnHtml(fixtureId, side, mode) {
-  // mode: 'active' | 'no-video' | 'own' | 'locked'
+function reportBtnHtml(fixtureId, side, mode, isOwn = false) {
+  // mode: 'active' | 'no-video' | 'own' | 'locked' | 'clear'
   if (!mode) return "";
   let cls = "mv-report";
   let title = `Report breaches in this ${side} video`;
   let hasVideoAttr = "1";
-  let ownAttr = "0";
+  let ownAttr = isOwn ? "1" : "0";
   let lockedAttr = "0";
+  let clearedAttr = "0";
   if (mode === "no-video") {
     cls = "mv-report mv-report-muted";
     title = `${side} has no video yet — upload required before reporting`;
@@ -152,26 +153,31 @@ function reportBtnHtml(fixtureId, side, mode) {
   } else if (mode === "own") {
     cls = "mv-report mv-report-own";
     title = "Your club — you cannot report your own video";
-    hasVideoAttr = "0";
-    ownAttr = "1";
   } else if (mode === "locked") {
     cls = "mv-report mv-report-locked";
     title = "This match side has already been reported (one report only)";
     hasVideoAttr = "0";
     lockedAttr = "1";
+  } else if (mode === "clear") {
+    cls = "mv-report mv-report-clear";
+    title = "Admin check: no issues on this side. Others can still report.";
+    clearedAttr = "1";
   }
   return (
     `<button type="button" class="${cls}" data-mv-report="1" ` +
     `data-fixture-id="${escapeAttr(fixtureId)}" data-side="${escapeAttr(side)}" ` +
     `data-has-video="${hasVideoAttr}" data-own="${ownAttr}" data-locked="${lockedAttr}" ` +
+    `data-cleared="${clearedAttr}" ` +
     `title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}">R</button>`
   );
 }
 
-function sideReportMode(url, isOwn, alreadyReported) {
+function sideReportMode(url, isOwn, alreadyReported, adminCleared) {
   if (alreadyReported) return "locked";
-  if (isOwn) return "own";
-  return url ? "active" : "no-video";
+  if (!url) return "no-video";
+  if (isOwn && !adminCleared) return "own";
+  if (adminCleared) return "clear";
+  return "active";
 }
 
 /** Skip repeat RPCs after schema-cache miss (undeployed patch) so fixtures stay snappy. */
@@ -217,6 +223,48 @@ export async function loadMatchVideoReportedSides(supabase, fixtureIds) {
   return set;
 }
 
+/** Skip repeat RPCs after schema-cache miss (undeployed patch) so fixtures stay snappy. */
+let matchVideoAdminClearUnavailable = false;
+
+/**
+ * Sides an admin has marked checked. Non-admins always get an empty set.
+ * @param {import("@supabase/supabase-js").SupabaseClient} supabase
+ * @param {Array<number|string>} fixtureIds
+ * @returns {Promise<Set<string>>} keys `${fixtureId}:${side}`
+ */
+export async function loadMatchVideoAdminClearedSides(supabase, fixtureIds) {
+  const set = new Set();
+  if (matchVideoAdminClearUnavailable) return set;
+
+  const ids = [...new Set((fixtureIds || []).map((id) => Number(id)).filter(Boolean))];
+  if (!ids.length) return set;
+
+  const { data, error } = await supabase.rpc("match_video_admin_cleared_sides", {
+    p_fixture_ids: ids,
+  });
+  if (error) {
+    const msg = String(error.message || error.code || "");
+    const missing =
+      error.code === "PGRST202" ||
+      error.code === "42883" ||
+      /could not find the function|schema cache|404/i.test(msg);
+    if (missing) {
+      matchVideoAdminClearUnavailable = true;
+      console.warn("loadMatchVideoAdminClearedSides: RPC missing");
+    } else {
+      console.warn("loadMatchVideoAdminClearedSides:", msg);
+    }
+    return set;
+  }
+  const rows = Array.isArray(data) ? data : [];
+  for (const row of rows) {
+    if (row?.fixture_id != null && row?.side) {
+      set.add(`${row.fixture_id}:${row.side}`);
+    }
+  }
+  return set;
+}
+
 /**
  * Compact home/away ticks for fixtures score cell.
  * Always H+R / A+R on played fixtures (own / locked R stays visible).
@@ -234,14 +282,18 @@ export function matchVideoTicksHtml(videos, opts = {}) {
     opts.fixture?.away_goals != null;
   /** @type {Set<string>|Map<string, unknown>|null|undefined} */
   const reported = opts.reportedSides;
+  const adminView = opts.adminView === true;
+  const cleared = adminView ? opts.clearedSides : null;
 
-  const isReported = (side) => {
-    if (!reported) return false;
+  const sideMarked = (bag, side) => {
+    if (!bag) return false;
     const key = `${fixtureId}:${side}`;
-    if (reported instanceof Set) return reported.has(key);
-    if (typeof reported.has === "function") return reported.has(key);
-    return Boolean(reported[key]);
+    if (bag instanceof Set) return bag.has(key);
+    if (typeof bag.has === "function") return bag.has(key);
+    return Boolean(bag[key]);
   };
+  const isReported = (side) => sideMarked(reported, side);
+  const isCleared = (side) => adminView && sideMarked(cleared, side) && !isReported(side);
 
   const showReports = allowReport && (played || v.home_url || v.away_url);
   const homeOwn = Boolean(my && homeClub && my === homeClub);
@@ -251,14 +303,16 @@ export function matchVideoTicksHtml(videos, opts = {}) {
     ? reportBtnHtml(
         fixtureId,
         "home",
-        sideReportMode(v.home_url, homeOwn, isReported("home"))
+        sideReportMode(v.home_url, homeOwn, isReported("home"), isCleared("home")),
+        homeOwn
       )
     : "";
   const awayReport = showReports
     ? reportBtnHtml(
         fixtureId,
         "away",
-        sideReportMode(v.away_url, awayOwn, isReported("away"))
+        sideReportMode(v.away_url, awayOwn, isReported("away"), isCleared("away")),
+        awayOwn
       )
     : "";
 
@@ -348,6 +402,15 @@ export const MATCH_VIDEO_TICK_CSS = `
   border-color:#446; background:#1a1a28; color:#889; cursor:default; opacity:0.7;
 }
 .mv-report-locked:hover { border-color:#446; background:#1a1a28; color:#889; }
+.mv-report-clear {
+  border-color:#6c6; background:#143214; color:#b6f5b6;
+}
+.mv-report-clear:hover { background:#1c4020; border-color:#8d8; color:#fff; }
+.mv-admin-clear {
+  display:flex; gap:8px; align-items:flex-start; margin:0 0 12px;
+  padding:10px 12px; border:1px solid #365; border-radius:6px; background:#102018;
+  font-size:13px; color:#cfe;
+}
 .mv-report-modal {
   width:min(520px, 100%); max-height:min(90vh, 720px); overflow:auto;
   background:#161616; border:1px solid #444; border-radius:8px;
@@ -426,7 +489,7 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
     const fixture = opts.resolveFixture?.(fixtureId);
     if (!fixtureId || !side) return;
 
-    if (isOwn) {
+    if (isOwn && opts.isAdmin !== true) {
       alert("You cannot report your own club’s match video.");
       return;
     }
@@ -445,33 +508,53 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
 
     closeReportModal();
 
+    const adminView = opts.isAdmin === true;
+    const checkOnly = adminView && isOwn;
     let codes = [];
-    try {
-      codes = await loadBreachCodes(supabase);
-    } catch (err) {
-      alert(err?.message || "Could not load breach list");
-      return;
+    if (!checkOnly) {
+      try {
+        codes = await loadBreachCodes(supabase);
+      } catch (err) {
+        alert(err?.message || "Could not load breach list");
+        return;
+      }
     }
 
     const accused =
       side === "home"
         ? fixture?.home_club_short_name
         : fixture?.away_club_short_name;
+    const alreadyClear = btn.getAttribute("data-cleared") === "1";
 
     const backdrop = document.createElement("div");
     backdrop.id = "mvReportModal";
     backdrop.className = "mv-report-modal-backdrop";
     backdrop.innerHTML = `
       <div class="mv-report-modal" role="dialog" aria-modal="true" aria-labelledby="mvReportTitle">
-        <h3 id="mvReportTitle">Report match video breaches</h3>
+        <h3 id="mvReportTitle">${checkOnly ? "Admin video check" : "Report match video breaches"}</h3>
         <p>
           ${escapeHtml(String(accused || side).toUpperCase())} · ${escapeHtml(side)} video
           ${fixture?.matchday != null ? ` · MD${escapeHtml(fixture.matchday)}` : ""}
-          <br>Select every breach you can see — each one needs a note (e.g. timestamp). One report only per match side.
+          ${
+            checkOnly
+              ? `<br>This is your club’s video, so you cannot file a report on it. You can still mark the side checked.`
+              : `<br>Select every breach you can see — each one needs a note (e.g. timestamp). One report only per match side.
           <br>Includes display rules (e.g. <b>no individual player instructions</b>, <b>no dragging players</b> on a formation that must be set before the match, Red/Blue timing).
-          <br>Staff are notified and must approve the report. Nothing changes until then.
+          <br>Staff are notified and must approve the report. Nothing changes until then.`
+          }
         </p>
-        <div class="mv-breach-list" id="mvBreachList">
+        ${
+          adminView
+            ? `<label class="mv-admin-clear">
+                <input type="checkbox" id="mvAdminClear"${alreadyClear ? " checked" : ""}>
+                <span>Checked, no issues. Owners do not see this, and they can still report this side.</span>
+              </label>`
+            : ""
+        }
+        ${
+          checkOnly
+            ? ""
+            : `<div class="mv-breach-list" id="mvBreachList">
           ${codes
             .map(
               (c) => `
@@ -495,15 +578,61 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
             </div>`
             )
             .join("")}
-        </div>
+        </div>`
+        }
         <div class="mv-report-actions">
-          <button type="button" class="primary" id="mvReportSubmit">Submit report</button>
-          <button type="button" id="mvReportCancel">Cancel</button>
+          ${checkOnly ? "" : `<button type="button" class="primary" id="mvReportSubmit">Submit report</button>`}
+          <button type="button" id="mvReportCancel">${checkOnly ? "Close" : "Cancel"}</button>
         </div>
         <div class="mv-report-status" id="mvReportStatus"></div>
       </div>
     `;
     document.body.appendChild(backdrop);
+
+    backdrop.querySelector("#mvAdminClear")?.addEventListener("change", async (e) => {
+      const box = e.target;
+      const want = box.checked === true;
+      const statusEl = backdrop.querySelector("#mvReportStatus");
+      box.disabled = true;
+      if (statusEl) {
+        statusEl.className = "mv-report-status";
+        statusEl.textContent = want ? "Saving check…" : "Clearing check…";
+      }
+      const { error } = await supabase.rpc("match_video_admin_set_clear", {
+        p_fixture_id: fixtureId,
+        p_side: side,
+        p_cleared: want,
+      });
+      box.disabled = false;
+      if (error) {
+        box.checked = !want;
+        if (statusEl) {
+          statusEl.className = "mv-report-status err";
+          statusEl.textContent = error.message;
+        }
+        return;
+      }
+      btn.classList.toggle("mv-report-clear", want);
+      btn.setAttribute("data-cleared", want ? "1" : "0");
+      const nextTitle = want
+        ? "Admin check: no issues on this side. Others can still report."
+        : `Report breaches in this ${side} video`;
+      btn.title = nextTitle;
+      btn.setAttribute("aria-label", nextTitle);
+      if (typeof opts.onAdminClear === "function") {
+        try {
+          opts.onAdminClear({ fixtureId, side, cleared: want });
+        } catch {
+          /* ignore */
+        }
+      }
+      if (statusEl) {
+        statusEl.className = "mv-report-status ok";
+        statusEl.textContent = want
+          ? "Marked checked. The R button is green for admins."
+          : "Check removed.";
+      }
+    });
 
     backdrop.querySelectorAll("[data-breach-check]").forEach((cb) => {
       cb.addEventListener("change", () => {
