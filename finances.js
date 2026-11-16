@@ -21,7 +21,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20261106-owner-view";
+} from "./finance_page_common.js?v=20261116-fine-matchday";
 import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20261015-short-by";
 import {
   loadListedSaleBids,

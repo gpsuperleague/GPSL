@@ -557,11 +557,16 @@ function compactFineBreakdownLabel(row) {
   }
 
   if (desc) {
-    return desc
+    let label = desc
       .replace(/^Fine\s*[—\-–]\s*/i, "")
       .replace(/^Compensation\s*[—\-–]\s*/i, "")
       .replace(/sched_(?:arrangement|response_lock):[^|]+\|/i, "")
       .trim();
+    if (label && !/MD\s*\d+/i.test(label)) {
+      const mdVs = fineMdVsFromFixture(row);
+      if (mdVs) label = `${label} — ${mdVs}`;
+    }
+    return label;
   }
   if (md.tariff_code) return String(md.tariff_code).replace(/_/g, " ");
   return financeEntryLabel("gov_fine_compensation");
