@@ -8,6 +8,7 @@ import {
   CUP_CODES,
   CUP_LABELS,
   formatFixtureScore,
+  isVoidFixture,
   fixtureInvolvesClub,
   DIVISION_LABELS,
   LEAGUE_DIVISIONS,
@@ -159,9 +160,47 @@ function matchdayUrl(fixtureId) {
   return `matchday.html?fixture=${encodeURIComponent(String(fixtureId))}`;
 }
 
+function escapeStatus(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
+/** Awarded / void results: short label for the score column, full note for the kick-off column. */
+function awardedResultKind(fixture) {
+  if (!fixture || fixture.status !== "played") return null;
+  const note = String(fixture.award_note || "").trim();
+  if (fixture.is_forfeit === true) return { label: "Awarded", note };
+  if (isVoidFixture(fixture)) return { label: "Void", note };
+  const nil =
+    Number(fixture.home_goals) === 0 && Number(fixture.away_goals) === 0 && note;
+  if (nil) return { label: "Awarded 0–0", note };
+  return null;
+}
+
+function catchUpReplyDeadline(fixture) {
+  if (!isCatchUpFixture(fixture) || fixture.status === "played") return "";
+  const status = String(fixture.schedule_status || "unscheduled").toLowerCase();
+  if (status !== "negotiating" || !fixture.schedule_response_due_at) return "";
+  const when = formatKickoff(fixture.schedule_response_due_at, UK_TZ);
+  const dueMs = new Date(fixture.schedule_response_due_at).getTime();
+  const overdue = Number.isFinite(dueMs) && dueMs <= Date.now();
+  return overdue ? `Reply was ${when} UK` : `Reply by ${when} UK`;
+}
+
 /** Small-print schedule status for every fixture (no link). */
 function kickoffStatusNoteHtml(fixture) {
-  if (!fixture || fixture.status === "played") return "";
+  if (!fixture) return "";
+  if (fixture.status === "played") {
+    const awarded = awardedResultKind(fixture);
+    if (!awarded) return "";
+    const title = escapeStatus(awarded.note || awarded.label);
+    const detail = awarded.note
+      ? `<span class="ko-status-detail">${escapeStatus(awarded.note)}</span>`
+      : "";
+    return `<span class="ko-status ko-status--vacant" title="${title}">${awarded.label}</span>${detail}`;
+  }
 
   const catchUp = isCatchUpFixture(fixture);
   const prefix = catchUp ? catchUpKickoffPrefix() : "";
@@ -212,9 +251,11 @@ function kickoffStatusNoteHtml(fixture) {
   }
 
   if (status === "negotiating") {
+    const replyBy = catchUp ? catchUpReplyDeadline(fixture) : "";
+    const dueBit = replyBy ? ` · ${replyBy}` : "";
     return `<span class="ko-status ko-status--pending" title="${
       catchUp ? "Catch-up / replay — accept or counter the proposed kick-off" : ""
-    }">${prefix}Proposal pending</span>`;
+    }">${prefix}Proposal pending${dueBit}</span>`;
   }
 
   const holidayNote = fixtureHolidayArrangeNote(fixture);
@@ -365,9 +406,17 @@ function actionCell(fixture) {
 
 function fixtureRowHtml(fixture) {
   const catchUp = isCatchUpFixture(fixture);
+  const replyBy = catchUpReplyDeadline(fixture);
+  const awarded = awardedResultKind(fixture);
   const catchUpCell = catchUp
-    ? `<span class="catch-up-cell">${catchUpBadgeHtml()}</span>`
-    : "";
+    ? `<span class="catch-up-cell">${catchUpBadgeHtml()}${
+        replyBy
+          ? `<span class="fixture-status-note">${escapeStatus(replyBy)}</span>`
+          : ""
+      }</span>`
+    : awarded
+      ? `<span class="fixture-status-note awarded">${escapeStatus(awarded.label)}</span>`
+      : "";
   return `
     <td>${clubWithOwnerHtml(fixture.home_club_name, fixture.home_club_short_name, "block")}${matchCentreButtonHtml(fixture)}</td>
     <td class="score">${tvFixtureBadgeHtml(fixture.id)}${formatFixtureScore(fixture, myClub)}${matchVideoTicksHtml(matchVideoMap.get(String(fixture.id)), {

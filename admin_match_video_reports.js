@@ -1,5 +1,9 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { DIVISION_LABELS, CUP_LABELS } from "./competition.js";
+import {
+  loadFixtureUnavailable,
+  formatFixtureUnavailableHtml,
+} from "./player_discipline.js?v=20261116-review-outs";
 
 primeAdminPageChrome();
 
@@ -116,6 +120,13 @@ async function loadReports() {
     return;
   }
   const rows = Array.isArray(data) ? data : [];
+  const fixtureIds = [...new Set(rows.map((r) => Number(r.fixture_id)).filter((id) => id > 0))];
+  const unavailableByFixture = new Map();
+  await Promise.all(
+    fixtureIds.map(async (id) => {
+      unavailableByFixture.set(id, await loadFixtureUnavailable(supabase, id));
+    })
+  );
   if (!rows.length) {
     list.innerHTML = `<p class="note">No ${
       filterStatus === "all" ? "" : filterStatus + " "
@@ -166,9 +177,15 @@ async function loadReports() {
               r.review_note ? ` · ${escapeHtml(r.review_note)}` : ""
             }</p>`;
 
+      const outs = formatFixtureUnavailableHtml(unavailableByFixture.get(Number(r.fixture_id)), {
+        homeName: r.home_club_short_name,
+        awayName: r.away_club_short_name,
+        title: "Should not have played",
+      });
       return `
         <article class="mvr-card" data-id="${r.id}">
           <h3>${count} breach${count === 1 ? "" : "es"} ${pill}</h3>
+          <div class="mvr-outs">${outs}</div>
           <div class="mvr-meta">
             #${r.id} · ${escapeHtml(fixtureLabel(r))} · ${escapeHtml(r.side)} ·
             accused <b>${escapeHtml(r.accused_club_short_name)}</b> ·

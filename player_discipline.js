@@ -315,16 +315,17 @@ export function formatFixtureUnavailableHtml(payload, names = {}) {
   if (!payload) return "";
   const home = payload.home || [];
   const away = payload.away || [];
+  const title = names.title || "Unavailable for this match";
   if (!home.length && !away.length) {
     return `<div class="fixture-unavailable">
-      <div class="fixture-unavailable-title">Unavailable for this match</div>
+      <div class="fixture-unavailable-title">${title}</div>
       <p class="unavailable-empty">No suspended or injured players listed for either club.</p>
     </div>`;
   }
   const homeLabel = names.homeName || payload.home_club_short_name || "Home";
   const awayLabel = names.awayName || payload.away_club_short_name || "Away";
   return `<div class="fixture-unavailable has-outs">
-    <div class="fixture-unavailable-title">Unavailable for this match</div>
+    <div class="fixture-unavailable-title">${title}</div>`
     <div class="fixture-unavailable-grid">
       <div>
         <div class="fixture-unavailable-club">${homeLabel}</div>

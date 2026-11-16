@@ -17,6 +17,31 @@
       border:1px solid #333; border-radius:6px; padding:12px 14px; background:#161616;
     }
     .mvr-card h3 { margin:0 0 6px; font-size:15px; color:#ffcc66; }
+    .mvr-outs { margin: 0 0 10px; }
+    .mvr-outs .fixture-unavailable {
+      margin: 0; padding: 8px 10px; background: #1a140f;
+      border: 1px solid #5a3a20; border-radius: 6px;
+    }
+    .mvr-outs .fixture-unavailable-title {
+      color: #ffcc66; font-weight: 700; font-size: 12px; margin-bottom: 6px;
+    }
+    .mvr-outs .fixture-unavailable-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .mvr-outs .fixture-unavailable-club {
+      color: #aaa; font-size: 11px; font-weight: 700; margin-bottom: 4px;
+    }
+    .mvr-outs .unavailable-list { list-style: none; margin: 0; padding: 0; font-size: 12px; }
+    .mvr-outs .unavailable-list li { margin: 3px 0; color: #eee; }
+    .mvr-outs .unavailable-empty, .mvr-outs .unavailable-none { color: #777; font-style: italic; margin: 0; }
+    .mvr-outs .unavailable-tag {
+      display: inline-block; font-size: 10px; font-weight: 700; border-radius: 3px;
+      padding: 1px 5px; margin-right: 4px;
+    }
+    .mvr-outs .unavailable-suspended .unavailable-tag { background: #5a2018; color: #ffd0a8; }
+    .mvr-outs .unavailable-injured .unavailable-tag { background: #1a3a4a; color: #9ed4f0; }
+    .mvr-outs .unavailable-recovery .unavailable-tag { background: #2a3a1a; color: #c8e89a; }
+    .mvr-outs .unavailable-detail, .mvr-outs .unavailable-pos { color: #999; }
     .mvr-meta { font-size:12px; color:#999; margin-bottom:8px; line-height:1.4; }
     .mvr-breaches { display:grid; gap:8px; margin:0 0 12px; }
     .mvr-breach {
@@ -61,6 +86,6 @@
     <div id="reportsList" class="mvr-list"></div>
     <div id="reportsStatus"></div>
   </div>
-  <script type="module" src="admin_match_video_reports.js?v=20261116-admin-replay"></script>
+  <script type="module" src="admin_match_video_reports.js?v=20261116-review-outs"></script>
 </body>
 </html>
