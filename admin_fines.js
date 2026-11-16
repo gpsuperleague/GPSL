@@ -515,7 +515,7 @@ function normaliseTariffCode(raw) {
 
 async function loadTariffs() {
   const [tariffRes, reportRes] = await Promise.all([
-    supabase.from("competition_fine_tariff").select("*").order("category").order("sort_order"),
+    supabase.from("competition_fine_tariff").select("*").order("sort_order").order("label"),
     supabase.rpc("match_video_report_breach_codes"),
   ]);
 
@@ -686,6 +686,7 @@ function renderTariffList() {
         : "";
       return `
         <div class="challenge-admin-item fine-tariff-row${onReport ? " on-video" : ""}" data-tariff-row="${code}" style="${t.is_active ? "" : "opacity:.6;"}">
+          <span class="fine-drag" draggable="true" data-code="${code}" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span>
           <div class="fine-col">
             <b>${escapeHtml(t.label)}</b>
             <span class="fine-col-sub">${code}</span>
@@ -756,6 +757,88 @@ function renderTariffList() {
   list.querySelectorAll(".fine-delete-btn").forEach((btn) => {
     btn.onclick = () => deleteTariff(btn.dataset.code);
   });
+  wireTariffDrag(list);
+}
+
+function tariffSort(a, b) {
+  const d = (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
+  if (d) return d;
+  return String(a.label || "").localeCompare(String(b.label || ""));
+}
+
+function orderAfterDrop(shownCodes) {
+  const full = [...tariffs].sort(tariffSort).map((t) => t.code);
+  const shown = new Set(shownCodes);
+  const queue = shownCodes.filter((code) => full.includes(code));
+  return full.map((code) => (shown.has(code) ? queue.shift() : code));
+}
+
+let tariffDragCode = null;
+let tariffOrderBusy = false;
+
+function wireTariffDrag(list) {
+  list.querySelectorAll(".fine-drag").forEach((handle) => {
+    handle.addEventListener("dragstart", (event) => {
+      tariffDragCode = handle.getAttribute("data-code");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", tariffDragCode || "");
+      handle.closest(".fine-tariff-row")?.classList.add("dragging");
+    });
+    handle.addEventListener("dragend", () => {
+      tariffDragCode = null;
+      list.querySelectorAll(".fine-tariff-row").forEach((row) => {
+        row.classList.remove("dragging", "drag-over");
+      });
+    });
+  });
+
+  list.querySelectorAll(".fine-tariff-row").forEach((row) => {
+    row.addEventListener("dragover", (event) => {
+      if (!tariffDragCode) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      const target = row.getAttribute("data-tariff-row");
+      list.querySelectorAll(".fine-tariff-row").forEach((item) => item.classList.remove("drag-over"));
+      if (target && target !== tariffDragCode) row.classList.add("drag-over");
+    });
+    row.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const target = row.getAttribute("data-tariff-row");
+      const from = tariffDragCode || event.dataTransfer.getData("text/plain");
+      row.classList.remove("drag-over");
+      if (!from || !target || from === target) return;
+      const codes = [...list.querySelectorAll(".fine-tariff-row")].map((item) =>
+        item.getAttribute("data-tariff-row")
+      );
+      const fromIdx = codes.indexOf(from);
+      const toIdx = codes.indexOf(target);
+      if (fromIdx < 0 || toIdx < 0) return;
+      codes.splice(fromIdx, 1);
+      codes.splice(toIdx, 0, from);
+      persistTariffOrder(orderAfterDrop(codes));
+    });
+  });
+}
+
+async function persistTariffOrder(codes) {
+  if (tariffOrderBusy) return;
+  const current = [...tariffs].sort(tariffSort).map((t) => t.code);
+  if (codes.join("\n") === current.join("\n")) return;
+  tariffOrderBusy = true;
+  setStatus("fineTariffStatus", "Saving order…");
+  try {
+    const { error } = await supabase.rpc("competition_admin_reorder_fine_tariffs", {
+      p_codes: codes,
+    });
+    if (error) {
+      setStatus("fineTariffStatus", "❌ " + error.message, false);
+      return;
+    }
+    await loadTariffs();
+    setStatus("fineTariffStatus", "Order saved. The video report list uses this order.", true);
+  } finally {
+    tariffOrderBusy = false;
+  }
 }
 
 async function saveInlineTariff(code) {

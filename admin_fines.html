@@ -54,6 +54,7 @@
     .admin-page .challenge-admin-item.fine-tariff-row {
       display: grid;
       grid-template-columns:
+        28px
         minmax(180px, 1.5fr)
         88px
         72px
@@ -66,7 +67,7 @@
         64px
         108px
         132px;
-      min-width: 1380px;
+      min-width: 1410px;
       column-gap: 10px;
       row-gap: 8px;
       align-items: center;
@@ -83,6 +84,23 @@
     }
     .admin-page .fine-tariff-row.on-video {
       box-shadow: inset 3px 0 0 #e80;
+    }
+    .fine-drag {
+      cursor: grab;
+      color: #888;
+      font-size: 16px;
+      line-height: 1;
+      letter-spacing: -2px;
+      user-select: none;
+      padding: 4px 0;
+    }
+    .fine-drag:active { cursor: grabbing; }
+    .admin-page .fine-tariff-row.dragging { opacity: 0.4; }
+    .admin-page .fine-tariff-row.drag-over {
+      box-shadow: inset 0 2px 0 #e80;
+    }
+    .admin-page .fine-tariff-row.on-video.drag-over {
+      box-shadow: inset 3px 0 0 #e80, inset 0 2px 0 #e80;
     }
     .fine-tariff-actions {
       display: flex;
@@ -227,6 +245,7 @@
           <b>Admin confirmed</b> means it waits for staff to approve a video report.
           <b>✓</b> the charge goes through. <b>✕</b> the charge aborts the result.
           <b>○</b> nothing calls it; an admin can still apply it by hand.
+          Drag the grip on a row to reorder. The video report list uses the same order.
         </p>
         <div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px;">
           <button type="button" id="seedFinesBtn" class="button">Seed Excel tariffs</button>
@@ -326,6 +345,7 @@
 
         <div class="fine-tariff-scroll">
           <div class="fine-tariff-head" aria-hidden="true">
+            <span></span>
             <span>Fine</span>
             <span>Category</span>
             <span>Direction</span>
@@ -350,6 +370,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fines.js?v=20261116-tariff-columns"></script>
+  <script type="module" src="admin_fines.js?v=20261116-tariff-drag"></script>
 </body>
 </html>
