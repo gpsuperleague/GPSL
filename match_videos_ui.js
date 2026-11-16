@@ -589,31 +589,11 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
     `;
     document.body.appendChild(backdrop);
 
-    backdrop.querySelector("#mvAdminClear")?.addEventListener("change", async (e) => {
-      const box = e.target;
-      const want = box.checked === true;
-      const statusEl = backdrop.querySelector("#mvReportStatus");
-      box.disabled = true;
-      if (statusEl) {
-        statusEl.className = "mv-report-status";
-        statusEl.textContent = want ? "Saving check…" : "Clearing check…";
-      }
-      const { error } = await supabase.rpc("match_video_admin_set_clear", {
-        p_fixture_id: fixtureId,
-        p_side: side,
-        p_cleared: want,
-      });
-      box.disabled = false;
-      if (error) {
-        box.checked = !want;
-        if (statusEl) {
-          statusEl.className = "mv-report-status err";
-          statusEl.textContent = error.message;
-        }
-        return;
-      }
+    const paintAdminClear = (want) => {
       btn.classList.toggle("mv-report-clear", want);
+      btn.classList.toggle("mv-report-locked", false);
       btn.setAttribute("data-cleared", want ? "1" : "0");
+      btn.setAttribute("data-locked", "0");
       const nextTitle = want
         ? "Admin check: no issues on this side. Others can still report."
         : `Report breaches in this ${side} video`;
@@ -625,6 +605,38 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
         } catch {
           /* ignore */
         }
+      }
+    };
+
+    const saveAdminClear = async (want) => {
+      const { error } = await supabase.rpc("match_video_admin_set_clear", {
+        p_fixture_id: fixtureId,
+        p_side: side,
+        p_cleared: want,
+      });
+      if (error) return error;
+      paintAdminClear(want);
+      return null;
+    };
+
+    backdrop.querySelector("#mvAdminClear")?.addEventListener("change", async (e) => {
+      const box = e.target;
+      const want = box.checked === true;
+      const statusEl = backdrop.querySelector("#mvReportStatus");
+      box.disabled = true;
+      if (statusEl) {
+        statusEl.className = "mv-report-status";
+        statusEl.textContent = want ? "Saving check…" : "Clearing check…";
+      }
+      const error = await saveAdminClear(want);
+      box.disabled = false;
+      if (error) {
+        box.checked = !want;
+        if (statusEl) {
+          statusEl.className = "mv-report-status err";
+          statusEl.textContent = error.message;
+        }
+        return;
       }
       if (statusEl) {
         statusEl.className = "mv-report-status ok";
@@ -676,6 +688,27 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
         );
       }
       if (!breaches.length) {
+        const adminBox = backdrop.querySelector("#mvAdminClear");
+        if (adminBox?.checked) {
+          if (statusEl) {
+            statusEl.className = "mv-report-status";
+            statusEl.textContent = "Saving check…";
+          }
+          const clearError = await saveAdminClear(true);
+          if (clearError) {
+            if (statusEl) {
+              statusEl.className = "mv-report-status err";
+              statusEl.textContent = clearError.message;
+            }
+            return;
+          }
+          if (statusEl) {
+            statusEl.className = "mv-report-status ok";
+            statusEl.textContent = "Marked checked. The R button is green for admins.";
+          }
+          setTimeout(closeReportModal, 700);
+          return;
+        }
         if (statusEl) {
           statusEl.className = "mv-report-status err";
           statusEl.textContent = "Select at least one breach.";

@@ -50,7 +50,7 @@ import {
   matchVideoTicksHtml,
   MATCH_VIDEO_TICK_CSS,
   wireMatchVideoReportButtons,
-} from "./match_videos_ui.js?v=20261116-admin-clear";
+} from "./match_videos_ui.js?v=20261116-admin-check-only";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 
 function cupFromUrl() {
