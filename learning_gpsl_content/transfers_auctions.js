@@ -58,7 +58,7 @@ export const SECTION_TRANSFERS = {
     {
       type: "ul",
       items: [
-        `<b>3 foreign-club slots</b> a season. Sale is at market value. The player cannot be signed in GPSL until next season. Using one avoids the squad overflow fine when you need to free a place. Details: <a href="#squad--letting-a-player-go">Letting a player go</a>.`,
+        `<b>3 foreign-club slots</b> a season. Sale is at market value. A summer-window sale can be signed from January. A later sale waits until the following summer. Using one avoids the squad overflow fine when you need to free a place. Details: <a href="#squad--letting-a-player-go">Letting a player go</a>.`,
         `Check squad warnings before confirming any signing or winning bid.`,
       ],
     },

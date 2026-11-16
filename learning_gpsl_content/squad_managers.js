@@ -13,7 +13,7 @@ export const SECTION_SQUAD = {
       type: "ul",
       items: [
         `<b>Maximum 28</b> registered players. You can still bid at 28, but a 29th signing triggers an automatic release of your highest-rated player who was <em>not</em> signed this season.`,
-        `If a foreign sale slot is available, that route is used (no fine). Otherwise the player is released for market value, your club is fined <b>₿2,500,000</b>, and the player cannot be signed until next season.`,
+        `If a foreign sale slot is available, that route is used (no fine). Otherwise the player is released for market value and your club is fined <b>₿2,500,000</b>. A summer-window release can be signed from January. A later release waits until the following summer.`,
         `<b>Home-grown</b> — minimum <b>8</b> players whose nation matches your club nation.`,
         `<b>Under-21</b> — minimum <b>5</b> players aged 21 or younger.`,
         `<b>Star players</b> — automatic from rating (OooO excluded from the cap). Super League max <b>3</b>, Championship max <b>2</b>.`,
@@ -25,7 +25,7 @@ export const SECTION_SQUAD = {
             `Emergency loans are rating <b>≤72</b>, prefer home-grown, else any nation; picks favour positional gaps (2 GK / 8 DEF / 8 MID / 6 ATT) for the loan only. Owner emergency loans (fit squad under 24 from August) still work during an <b>FFP buy ban</b> — transfers and free-agent buys do not.`,
             `At 28 players, lowest eligible players are released (100% MV) to make room — never HG when fixing HG, never U21 when fixing U21, and <b>never OooO</b>.`,
             `Over the star cap: lowest-rated stars released at <b>market value</b> + ₿2.5m fine each (OooO protected); if that would drop under 24, a loan is taken first.`,
-            `Released players are unavailable for auction until next season.`,
+            `A summer-window release can be signed from January. A later release waits until the following summer.`,
           ],
         },
       ],
@@ -39,7 +39,7 @@ export const SECTION_SQUAD = {
       type: "ul",
       items: [
         `Use them in <b>pre-season, June, July, August, or January</b>.`,
-        `<b>Release</b> — the player becomes a free agent and cannot be signed again until next season. The Central Bank refunds the fee your club paid for him. If no purchase fee is on record, the refund is nothing.`,
+        `<b>Release</b> — the player becomes a free agent. A summer-window release can be signed from January. A later release waits until the following summer. The Central Bank refunds the fee your club paid for him. If no purchase fee is on record, the refund is nothing.`,
         `<b>Transfer list</b> — he goes on at <b>market value</b>. This can list a player who is still inside the half-season signing lock. If he does not sell, the slot comes back.`,
         `A normal <a href="#squad--letting-a-player-go">contract release</a> or <a href="#transfers--selling-abroad">foreign sale</a> is separate and uses those allowances, not these 3 slots.`,
       ],
@@ -48,8 +48,8 @@ export const SECTION_SQUAD = {
     {
       type: "ul",
       items: [
-        `<b>Release from contract</b> — up to <b>3 a season</b>, from Squad. You pay <b>wage × seasons left</b> on the contract. He is out of the league until next season.`,
-        `<b>Sell to a foreign club</b> — up to <b>3 a season</b>, at market value. He cannot be signed in GPSL until next season. Using a slot can free a squad place without the overflow fine.`,
+        `<b>Release from contract</b> — up to <b>3 a season</b>, from Squad. You pay <b>wage × seasons left</b> on the contract. A summer-window release can be signed from January. A later release waits until the following summer.`,
+        `<b>Sell to a foreign club</b> — up to <b>3 a season</b>, at market value. Same availability: January after a summer sale, the following summer after a later sale. Using a slot can free a squad place without the overflow fine.`,
         `<b>Overflow release</b> — the automatic 29th-player release above. That is not one of your 3 voluntary releases.`,
         `<b>Legacy cards</b> — release for market value only in <b>June and July</b>. That does not use the quota of 3. See below.`,
       ],

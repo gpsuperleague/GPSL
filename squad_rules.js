@@ -16,7 +16,7 @@ export const SQUAD_OVERFLOW_CONFIRM_MESSAGE =
   "player who was not signed this season. If you have foreign club interest remaining, " +
   "that sale will be used (no fine). Otherwise the player is released for market value, " +
   `your club is fined ₿ ${SQUAD_OVERFLOW_MV_FINE.toLocaleString("en-GB")}, and the player ` +
-  "cannot be signed until next season (contract paid up).";
+  "cannot be signed until the January window if this is the summer window, or until the following summer otherwise.";
 
 /**
  * Call before any action that will sign a player to this club.
@@ -47,7 +47,7 @@ export function squadOverflowBidWarningText(squadTotal) {
       "You are at max squad size (28). If you win this player, going over 28 will " +
       "automatically release your highest-rated player (not signed this season) — " +
       "foreign sale if available (no fine), otherwise market value plus a ₿ 2,500,000 fine " +
-      "and the player unavailable until next season."
+      "and the player unavailable until the January window, or the following summer if this is not the summer window."
     );
   }
 
@@ -235,7 +235,7 @@ export function alertOverflowReleaseFromAssign(assignResult) {
   if (rel.method === "foreign" && rel.foreign_buyer_name) {
     const until = rel.unavailable_until_season
       ? ` until ${rel.unavailable_until_season}`
-      : " until next season";
+      : " until the following summer";
     window.alert(
       `Squad was over 28 players.\n\n` +
         `${name}${rating} was sold to ${rel.foreign_buyer_name} (${feeStr}, market value).\n\n` +
@@ -247,7 +247,7 @@ export function alertOverflowReleaseFromAssign(assignResult) {
   const fineStr = `₿ ${SQUAD_OVERFLOW_MV_FINE.toLocaleString("en-GB")}`;
   const until = rel.unavailable_until_season
     ? ` until ${rel.unavailable_until_season}`
-    : " until next season";
+    : " until the following summer";
 
   window.alert(
     `Squad was over 28 players.\n\n` +

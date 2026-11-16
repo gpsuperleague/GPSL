@@ -1051,7 +1051,7 @@ function renderVoluntaryReleaseBadge() {
   }
 
   el.innerHTML = `
-    <span class="foreign-interest-main">${n} voluntary ${n === 1 ? "release" : "releases"} left · max 3/season</span><span class="foreign-interest-hint"> · Wage × seasons buy-out · out until next season</span>`;
+    <span class="foreign-interest-main">${n} voluntary ${n === 1 ? "release" : "releases"} left · max 3/season</span><span class="foreign-interest-hint"> · Wage × seasons buy-out · out until January, or the following summer</span>`;
 }
 
 async function loadNewOwnerReleaseState() {
@@ -3100,7 +3100,7 @@ async function releasePlayerFromContract(playerId) {
   }
 
   const unlockNote =
-    "They become a free agent in GPDB but cannot be signed until next season (contract paid up).";
+    "They become a free agent. A summer-window release can be signed from January. A later release, including January, waits until the following summer.";
   const confirmed = window.confirm(
     `Release ${player.Name} from their contract?\n\n` +
       `No market value received.\n` +
@@ -3190,7 +3190,7 @@ async function releasePlayerNewOwner(playerId) {
     `New Owner release for ${player.Name}?\n\n` +
       `Club is refunded the purchase fee: ${formatMoney(fee)} from the Central Bank.\n` +
       `The original transfer history fee is left unchanged.\n` +
-      `Player becomes a free agent but cannot be signed until next season.\n\n` +
+      `Player becomes a free agent. A summer-window release can be signed from January. A later release waits until the following summer.\n\n` +
       `${newOwnerReleaseState.remaining - 1} first-season slot(s) will remain.`
   );
 
@@ -3520,7 +3520,7 @@ async function sellPlayerToForeignClub(playerId, foreignTeamName) {
     : "a foreign club";
   const confirmed = window.confirm(
     `Sell ${player.Name} to ${buyerLabel}?\n\n` +
-      `They return to the player database as a free agent but stay unavailable to GPSL clubs until next season (contracted abroad).\n` +
+      `They return to the player database as a free agent. A summer-window sale can be signed from January. A later sale waits until the following summer.\n` +
       `Your club will receive ${formatMoney(mv)} (market value).`
   );
 
@@ -3564,7 +3564,7 @@ async function sellPlayerToForeignClub(playerId, foreignTeamName) {
     data?.foreign_buyer_name || foreignTeamName || "a foreign club";
   const untilSeason = data?.unavailable_until_season
     ? `\nUnavailable in GPSL until ${data.unavailable_until_season}.`
-    : "\nUnavailable in GPSL until next season.";
+    : "\nUnavailable in GPSL until the following summer.";
   alert(
     `${data?.player_name || player.Name} sold to ${soldTo}.\n` +
       `${formatMoney(fee)} credited to your club balance.${untilSeason}`

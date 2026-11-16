@@ -105,10 +105,10 @@ export const SQUAD_TIPS = {
     "Renew for another 2-season deal after hitting at least one finish target. Must be done before August starts or they are released for market value.",
 
   foreignInterest:
-    "Foreign club sale slots left this season (max 3). Selling abroad at market value frees a squad place and can avoid overflow fines. Player is unavailable until next season. Use Sell to foreign club in Action.",
+    "Foreign club sale slots left this season (max 3). Selling abroad at market value frees a squad place and can avoid overflow fines. A summer-window sale can be signed from January. A later sale waits until the following summer. Use Sell to foreign club in Action.",
 
   voluntaryRelease:
-    "Voluntary releases left this season (max 3). Buy-out = seasonal wage × seasons remaining (paid immediately, even if overdrawn). Player leaves as a free agent but cannot be signed by anyone until next season. Useful when you cannot sell.",
+    "Voluntary releases left this season (max 3). Buy-out = seasonal wage × seasons remaining (paid immediately, even if overdrawn). He leaves as a free agent: signable from January if released in the summer window, or from the following summer if released later. Useful when you cannot sell.",
 
   newOwnerRelease:
     "First-season owner tools — up to 3 shared slots (release or transfer-list) in your first season at the club.\n\nWindow: pre-season through GPSL August, plus January when the transfer window is open.\n\nRelease refunds the recorded purchase fee. Transfer list at market value (slot returns if unsold). New Owner list can bypass the half-season signing lock.",

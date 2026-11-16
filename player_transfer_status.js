@@ -63,9 +63,9 @@ export const TRANSFER_STATUS_LABELS = {
     "Final half of contract — renew or wage bid in Squad",
   [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "Contract offered — pending expiry",
   [TRANSFER_STATUS.FOREIGN_CONTRACT]:
-    "Unavailable — sold to foreign club until next season",
+    "Unavailable — sold abroad until the January window, or the following summer",
   [TRANSFER_STATUS.OVERFLOW_PAID_UP]:
-    "Unavailable — contract paid up (squad overflow) until next season",
+    "Unavailable — contract paid up until the January window, or the following summer",
   [TRANSFER_STATUS.PESDB_LEGACY]:
     "Legacy card — off pesdb.net; cannot sell or sign until PESDB sync",
 };

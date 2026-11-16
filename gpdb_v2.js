@@ -2562,7 +2562,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (foreignLocked) {
           handpickBlockedTitle =
             playerForeignContractStatusLabel(player) ||
-            "Unavailable until next season";
+            "Unavailable until the January window, or the following summer";
         } else if (auctionBlocked) {
           handpickBlockedTitle = auctionExcludedCoverText(player.Konami_ID);
         } else if (legacyCard) {
