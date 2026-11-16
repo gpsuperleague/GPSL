@@ -149,7 +149,6 @@ async function loadReports() {
           <div class="mvr-meta">
             #${r.id} · ${escapeHtml(fixtureLabel(r))} · ${escapeHtml(r.side)} ·
             accused <b>${escapeHtml(r.accused_club_short_name)}</b> ·
-            reporter ${escapeHtml(r.reporter_club_short_name || "—")} ·
             ${new Date(r.created_at).toLocaleString("en-GB")}<br>
             ${video}
           </div>
