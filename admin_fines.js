@@ -564,6 +564,79 @@ async function loadTariffs() {
   setStatus("fineTariffStatus", `${tariffs.length} tariff(s) loaded.${reportNote}${columnNote}`, !reportRes.error);
 }
 
+function outcomeMeta(t) {
+  const bits = [];
+  if (t.fine_when === "won_or_drew") bits.push("fine if won or drew");
+  if (t.match_effect === "replay_if_won_or_drew") bits.push("replay if won or drew");
+  if (t.points_when && t.points_when !== "never" && Number(t.points_delta)) {
+    const when =
+      t.points_when === "won_or_drew"
+        ? " if won or drew"
+        : t.points_when === "instances"
+          ? ` at ${t.points_min_instances || 2}+`
+          : "";
+    bits.push(`${t.points_delta} pts${when}`);
+  }
+  return bits.length ? ` · ${bits.join(" · ")}` : "";
+}
+
+function outcomeEditHtml(t) {
+  const opt = (value, label, current) =>
+    `<option value="${value}"${value === current ? " selected" : ""}>${label}</option>`;
+  const fineWhen = t.fine_when || "always";
+  const matchEffect = t.match_effect || "none";
+  const pointsWhen = t.points_when || "never";
+  return `
+    <div><label>Fine applies</label><select data-f="fine_when">${opt("always", "Always", fineWhen)}${opt(
+      "won_or_drew",
+      "Only if they won or drew",
+      fineWhen
+    )}</select></div>
+    <div><label>Match</label><select data-f="match_effect">${opt("none", "Leave the result", matchEffect)}${opt(
+      "replay_if_won_or_drew",
+      "Replay if they won or drew",
+      matchEffect
+    )}</select></div>
+    <div><label>Points</label><select data-f="points_when">${opt("never", "None", pointsWhen)}${opt(
+      "always",
+      "On confirm",
+      pointsWhen
+    )}${opt("won_or_drew", "On confirm if they won or drew", pointsWhen)}${opt(
+      "instances",
+      "When the report counts at least",
+      pointsWhen
+    )}</select></div>
+    <div><label>Points amount</label><input type="number" data-f="points_delta" step="1" style="width:80px;" value="${Number(
+      t.points_delta || 0
+    )}"></div>
+    <div><label>Count at least</label><input type="number" data-f="points_min_instances" min="1" max="20" step="1" style="width:70px;" value="${Number(
+      t.points_min_instances || 2
+    )}"></div>`;
+}
+
+function outcomePayload(f) {
+  return {
+    fine_when: f("fine_when")?.value || "always",
+    match_effect: f("match_effect")?.value || "none",
+    points_when: f("points_when")?.value || "never",
+    points_delta: Number(f("points_delta")?.value) || 0,
+    points_min_instances: Number(f("points_min_instances")?.value) || 2,
+  };
+}
+
+function setOutcomeFields(t) {
+  const fineWhen = document.getElementById("fineEditFineWhen");
+  const matchEffect = document.getElementById("fineEditMatchEffect");
+  const pointsWhen = document.getElementById("fineEditPointsWhen");
+  const pointsDelta = document.getElementById("fineEditPointsDelta");
+  const pointsMin = document.getElementById("fineEditPointsMin");
+  if (fineWhen) fineWhen.value = t?.fine_when || "always";
+  if (matchEffect) matchEffect.value = t?.match_effect || "none";
+  if (pointsWhen) pointsWhen.value = t?.points_when || "never";
+  if (pointsDelta) pointsDelta.value = String(t?.points_delta ?? 0);
+  if (pointsMin) pointsMin.value = String(t?.points_min_instances || 2);
+}
+
 function renderTariffList() {
   const list = document.getElementById("fineTariffList");
   if (!list) return;
@@ -601,7 +674,7 @@ function renderTariffList() {
         <div class="challenge-admin-item fine-tariff-row${onReport ? " on-video" : ""}" data-tariff-row="${code}" style="${t.is_active ? "" : "opacity:.6;"}">
           <div style="min-width:0;">
             <b>${escapeHtml(t.label)}</b>
-            <span class="challenge-admin-meta">${code} · ${escapeHtml(t.category)} · ${escapeHtml(t.direction)} · ${amt}${t.is_active ? "" : " · inactive"}</span>
+            <span class="challenge-admin-meta">${code} · ${escapeHtml(t.category)} · ${escapeHtml(t.direction)} · ${amt}${outcomeMeta(t)}${t.is_active ? "" : " · inactive"}</span>
           </div>
           <div class="fine-charge" title="${escapeHtml(wiring.why)}">${escapeHtml(wiring.charge)}</div>
           <div class="fine-state ${wiring.state}" title="${escapeHtml(wiring.why)}">${wiring.mark} ${escapeHtml(wiring.label)}</div>
@@ -621,7 +694,7 @@ function renderTariffList() {
                 "Compensation (credit)",
                 t.direction
               )}</select></div>
-              <div><label>Amount ₿</label><input type="number" data-f="amount" min="0" step="50000" style="width:120px;" value="${
+              <div><label>Amount ₿</label><input type="number" data-f="amount" min="0" step="50000" style="width:140px;" title="Change the amount charged" value="${
                 t.amount != null ? escapeHtml(String(t.amount)) : ""
               }"></div>
               <div><label>Mode</label><select data-f="amount_mode">${opt("fixed", "Fixed", t.amount_mode)}${opt(
@@ -632,6 +705,7 @@ function renderTariffList() {
               <div><label>Sort</label><input type="number" data-f="sort_order" style="width:70px;" value="${Number(t.sort_order) || 0}"></div>
               <div style="align-self:flex-end;"><label><input type="checkbox" data-f="is_active"${t.is_active ? " checked" : ""}> Active</label></div>
               ${videoCheck}
+              ${outcomeEditHtml(t)}
             </div>
             <div class="row" style="margin-top:8px;gap:6px;">
               <button type="button" class="button fine-inline-save" data-code="${code}">Save</button>
@@ -685,6 +759,7 @@ async function saveInlineTariff(code) {
     amount_mode: f("amount_mode").value,
     is_active: f("is_active").checked,
     sort_order: Number(f("sort_order").value) || 0,
+    ...outcomePayload(f),
   };
   if (videoReportColumn) payload.on_video_report = wantedVideo;
   const { error } = await supabase.rpc("competition_admin_save_fine_tariff", {
@@ -755,6 +830,7 @@ function fillEditForm(t) {
   document.getElementById("fineEditDirection").value = t.direction;
   document.getElementById("fineEditAmount").value = t.amount != null ? String(t.amount) : "";
   document.getElementById("fineEditMode").value = t.amount_mode;
+  setOutcomeFields(t);
 }
 
 function clearFineForm() {
@@ -763,6 +839,7 @@ function clearFineForm() {
   document.getElementById("fineEditCodeInput").disabled = false;
   document.getElementById("fineEditLabel").value = "";
   document.getElementById("fineEditAmount").value = "";
+  setOutcomeFields(null);
   const videoBox = document.getElementById("fineEditVideoReport");
   if (videoBox) videoBox.checked = false;
   setStatus("fineFormStatus", "");
@@ -794,6 +871,11 @@ async function saveTariff() {
     amount_mode: document.getElementById("fineEditMode").value,
     is_active: existing?.is_active ?? true,
     sort_order: nextSort,
+    fine_when: document.getElementById("fineEditFineWhen")?.value || "always",
+    match_effect: document.getElementById("fineEditMatchEffect")?.value || "none",
+    points_when: document.getElementById("fineEditPointsWhen")?.value || "never",
+    points_delta: Number(document.getElementById("fineEditPointsDelta")?.value) || 0,
+    points_min_instances: Number(document.getElementById("fineEditPointsMin")?.value) || 2,
   };
   if (videoReportColumn) payload.on_video_report = wantedVideo;
   const { error } = await supabase.rpc("competition_admin_save_fine_tariff", {

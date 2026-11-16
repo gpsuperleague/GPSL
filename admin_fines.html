@@ -155,8 +155,8 @@
         </div>
         <div class="fine-apply-fields">
           <div class="fine-field">
-            <label for="fineAmountOverride">Override ₿ (manual tariffs)</label>
-            <input type="number" id="fineAmountOverride" min="0" step="50000">
+            <label for="fineAmountOverride">Amount ₿</label>
+            <input type="number" id="fineAmountOverride" min="0" step="50000" title="Prefilled from the tariff. Change it to charge a different amount.">
           </div>
           <div class="fine-field" style="flex:1 1 240px;">
             <label for="fineNote">Note</label>
@@ -255,6 +255,40 @@
             </label>
           </div>
         </div>
+        <div class="row gov-subsidy-row" style="margin-top:8px;">
+          <div>
+            <label for="fineEditFineWhen">Fine applies</label>
+            <select id="fineEditFineWhen">
+              <option value="always">Always</option>
+              <option value="won_or_drew">Only if they won or drew</option>
+            </select>
+          </div>
+          <div>
+            <label for="fineEditMatchEffect">Match</label>
+            <select id="fineEditMatchEffect">
+              <option value="none">Leave the result</option>
+              <option value="replay_if_won_or_drew">Replay if they won or drew</option>
+            </select>
+          </div>
+          <div>
+            <label for="fineEditPointsWhen">Points</label>
+            <select id="fineEditPointsWhen">
+              <option value="never">None</option>
+              <option value="always">On confirm</option>
+              <option value="won_or_drew">On confirm if they won or drew</option>
+              <option value="instances">When the report counts at least</option>
+            </select>
+          </div>
+          <div>
+            <label for="fineEditPointsDelta">Points amount</label>
+            <input type="number" id="fineEditPointsDelta" step="1" style="width:80px;" value="0" placeholder="-1">
+          </div>
+          <div>
+            <label for="fineEditPointsMin">Count at least</label>
+            <input type="number" id="fineEditPointsMin" min="1" max="20" step="1" style="width:70px;" value="2">
+          </div>
+        </div>
+        <p class="note">Amount ₿ is the charge. Change it here. A confirmed video report follows Fine applies, Match and Points. A lost match is not fined and is not replayed when those are set to won or drew.</p>
         <div class="row" style="margin-top:12px;">
           <button type="button" id="saveFineTariffBtn" class="button">Save tariff</button>
           <button type="button" id="clearFineFormBtn" class="button">Clear</button>
@@ -278,6 +312,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fines.js?v=20261112-reply-48h"></script>
+  <script type="module" src="admin_fines.js?v=20261116-tariff-outcomes"></script>
 </body>
 </html>
