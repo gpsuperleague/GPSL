@@ -564,21 +564,17 @@ async function loadTariffs() {
   setStatus("fineTariffStatus", `${tariffs.length} tariff(s) loaded.${reportNote}${columnNote}`, !reportRes.error);
 }
 
-function outcomeMeta(t) {
-  const bits = [];
-  if (t.fine_when === "won_or_drew") bits.push("fine if won or drew");
-  if (t.match_effect === "replay_if_won_or_drew") bits.push("replay if won or drew");
-  if (t.match_effect === "admin_decides") bits.push("replay is your decision");
-  if (t.points_when && t.points_when !== "never" && Number(t.points_delta)) {
-    const when =
-      t.points_when === "won_or_drew"
-        ? " if won or drew"
-        : t.points_when === "instances"
-          ? ` at ${t.points_min_instances || 2}+`
-          : "";
-    bits.push(`${t.points_delta} pts${when}`);
-  }
-  return bits.length ? ` · ${bits.join(" · ")}` : "";
+function setupLabel(value, labels, fallback) {
+  return labels[value] || fallback;
+}
+
+function pointsReview(t) {
+  const n = Number(t.points_delta) || 0;
+  if (!t.points_when || t.points_when === "never" || !n) return "None";
+  const amt = n > 0 ? `+${n}` : String(n);
+  if (t.points_when === "won_or_drew") return `${amt} if won or drew`;
+  if (t.points_when === "instances") return `${amt} at ${t.points_min_instances || 2}+`;
+  return `${amt} on confirm`;
 }
 
 function outcomeEditHtml(t) {
@@ -662,24 +658,48 @@ function renderTariffList() {
 
   list.innerHTML = shown
     .map((t) => {
-      const amt =
-        t.amount_mode === "manual" ? "manual" : formatMoney(Number(t.amount || 0));
+      const amt = t.amount != null && t.amount !== "" ? formatMoney(Number(t.amount)) : "—";
       const code = escapeHtml(t.code);
       const onReport = onVideoReport(t);
       const wiring = tariffWiring(t);
       const videoCol = videoReportCell(t);
+      const applies = setupLabel(
+        t.fine_when,
+        { always: "Always", won_or_drew: "Won or drew" },
+        "Always"
+      );
+      const match = setupLabel(
+        t.match_effect,
+        {
+          none: "Leave result",
+          replay_if_won_or_drew: "Replay if won or drew",
+          admin_decides: "You decide",
+        },
+        "Leave result"
+      );
+      const mode = t.amount_mode === "manual" ? "Manual" : "Fixed";
+      const direction = t.direction === "compensation" ? "Credit" : "Fine";
+      const category = t.category ? t.category[0].toUpperCase() + t.category.slice(1) : "—";
+      const points = pointsReview(t);
       const videoCheck = videoReportColumn
         ? `<div style="align-self:flex-end;"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" data-f="on_video_report"${t.on_video_report ? " checked" : ""}> On the video report</label></div>`
         : "";
       return `
         <div class="challenge-admin-item fine-tariff-row${onReport ? " on-video" : ""}" data-tariff-row="${code}" style="${t.is_active ? "" : "opacity:.6;"}">
-          <div style="min-width:0;">
+          <div class="fine-col">
             <b>${escapeHtml(t.label)}</b>
-            <span class="challenge-admin-meta">${code} · ${escapeHtml(t.category)} · ${escapeHtml(t.direction)} · ${amt}${outcomeMeta(t)}${t.is_active ? "" : " · inactive"}</span>
+            <span class="fine-col-sub">${code}</span>
           </div>
-          <div class="fine-charge" title="${escapeHtml(wiring.why)}">${escapeHtml(wiring.charge)}</div>
-          <div class="fine-state ${wiring.state}" title="${escapeHtml(wiring.why)}">${wiring.mark} ${escapeHtml(wiring.label)}</div>
+          <div class="fine-col">${escapeHtml(category)}</div>
+          <div class="fine-col">${escapeHtml(direction)}</div>
+          <div class="fine-charge">${escapeHtml(amt)}</div>
+          <div class="fine-col">${escapeHtml(mode)}</div>
+          <div class="fine-col">${escapeHtml(applies)}</div>
+          <div class="fine-col">${escapeHtml(match)}</div>
+          <div class="fine-col">${escapeHtml(points)}</div>
           <div class="fine-video ${videoCol.cls}" title="${escapeHtml(videoCol.why)}">${escapeHtml(videoCol.text)}</div>
+          <div class="fine-col">${t.is_active ? "Yes" : "No"}</div>
+          <div class="fine-state ${wiring.state}" title="${escapeHtml(wiring.charge + ". " + wiring.why)}">${wiring.mark} ${escapeHtml(wiring.label)}</div>
           <div class="fine-tariff-actions">
             <button type="button" class="button fine-edit-btn" data-code="${code}">Edit</button>
             <button type="button" class="button secondary fine-delete-btn" data-code="${code}" style="color:#f88;">Delete</button>

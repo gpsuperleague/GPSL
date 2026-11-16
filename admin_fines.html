@@ -46,18 +46,35 @@
     .fine-apply-fields .fine-field-fixture select {
       max-width: min(100%, 900px);
     }
+    .fine-tariff-scroll {
+      overflow-x: auto;
+      margin-top: 14px;
+    }
     .fine-tariff-head,
     .admin-page .challenge-admin-item.fine-tariff-row {
       display: grid;
-      grid-template-columns: minmax(160px, 1fr) 148px 112px 124px 156px;
-      column-gap: 12px;
+      grid-template-columns:
+        minmax(180px, 1.5fr)
+        88px
+        72px
+        108px
+        72px
+        108px
+        148px
+        132px
+        100px
+        64px
+        108px
+        132px;
+      min-width: 1380px;
+      column-gap: 10px;
       row-gap: 8px;
       align-items: center;
       justify-content: stretch;
       box-sizing: border-box;
     }
     .fine-tariff-head {
-      margin: 14px 0 6px;
+      margin: 0 0 6px;
       padding: 0 13px;
       font-size: 11px;
       letter-spacing: 0.04em;
@@ -74,6 +91,17 @@
     }
     .fine-tariff-row .fine-inline-edit {
       grid-column: 1 / -1;
+    }
+    .fine-col {
+      font-size: 13px;
+      min-width: 0;
+    }
+    .fine-col-sub {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      font-weight: 400;
+      color: #888;
     }
     .fine-charge {
       font-size: 12px;
@@ -296,14 +324,23 @@
         </div>
         <div id="fineFormStatus" class="status-line"></div>
 
-        <div class="fine-tariff-head" aria-hidden="true">
-          <span>Fine</span>
-          <span>Charge</span>
-          <span>State</span>
-          <span>Video report</span>
-          <span></span>
+        <div class="fine-tariff-scroll">
+          <div class="fine-tariff-head" aria-hidden="true">
+            <span>Fine</span>
+            <span>Category</span>
+            <span>Direction</span>
+            <span>Amount</span>
+            <span>Mode</span>
+            <span>Applies</span>
+            <span>Match</span>
+            <span>Points</span>
+            <span>Video</span>
+            <span>Active</span>
+            <span>State</span>
+            <span></span>
+          </div>
+          <div id="fineTariffList" class="challenge-admin-list"></div>
         </div>
-        <div id="fineTariffList" class="challenge-admin-list"></div>
         <div id="fineTariffStatus" class="status-line"></div>
       </div>
 
@@ -313,6 +350,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fines.js?v=20261116-admin-replay"></script>
+  <script type="module" src="admin_fines.js?v=20261116-tariff-columns"></script>
 </body>
 </html>
