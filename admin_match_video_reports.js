@@ -4,6 +4,7 @@ import { DIVISION_LABELS, CUP_LABELS } from "./competition.js";
 primeAdminPageChrome();
 
 let filterStatus = "open";
+let tariffEffects = new Map();
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage({ allowMod: true }))) return;
@@ -23,8 +24,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     filterStatus = "all";
     loadReports();
   };
+  await loadTariffEffects();
   await loadReports();
 });
+
+async function loadTariffEffects() {
+  const { data } = await supabase.from("competition_fine_tariff").select("code, match_effect");
+  tariffEffects = new Map((data || []).map((t) => [t.code, t.match_effect || "none"]));
+}
+
+function reportNeedsReplayChoice(r) {
+  const list = Array.isArray(r.breaches) ? r.breaches : [];
+  return list.some((b) => tariffEffects.get(b.code) === "admin_decides");
+}
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -122,12 +134,23 @@ async function loadReports() {
         ? `<a href="${escapeHtml(r.video_url)}" target="_blank" rel="noopener noreferrer">Open video</a>`
         : "No URL";
       const count = r.breach_count ?? (Array.isArray(r.breaches) ? r.breaches.length : 0);
+      const replayChoice = reportNeedsReplayChoice(r)
+        ? `
+        <label>This match
+          <select data-replay="${r.id}">
+            <option value="leave">Leave the result</option>
+            <option value="replay">Replay</option>
+          </select>
+        </label>
+        <p class="note" style="margin:8px 0 0">This tariff asks you to decide. Leave the result unless you choose Replay.</p>`
+        : "";
       const openActions =
         status === "open"
           ? `
         <label>Staff note (optional)
           <textarea data-note="${r.id}" maxlength="500" placeholder="Optional review note"></textarea>
         </label>
+        ${replayChoice}
         <div class="mvr-actions">
           <button type="button" class="button" data-approve="${r.id}">OK / Approve</button>
           <button type="button" class="button secondary" data-reject="${r.id}">Reject</button>
@@ -170,6 +193,8 @@ async function loadReports() {
 async function resolveReport(id, action) {
   const card = document.querySelector(`.mvr-card[data-id="${id}"]`);
   const note = card?.querySelector(`[data-note="${id}"]`)?.value || null;
+  const replaySel = card?.querySelector(`[data-replay="${id}"]`);
+  const replayChoice = replaySel ? replaySel.value === "replay" : null;
   if (
     action === "reject" &&
     !confirm("Reject this report? This match side can never be reported again.")
@@ -179,7 +204,13 @@ async function resolveReport(id, action) {
   if (
     action === "approve" &&
     !confirm(
-      "Approve this report? Fines apply to ordinary breaches. A formation-drag breach replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported. The reporter gets ₿2,000 Building Society."
+      `Approve this report? Fines apply to ordinary breaches. A formation-drag breach replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported. The reporter gets ₿2,000 Building Society.${
+        replaySel
+          ? replayChoice
+            ? " You chose to replay this match."
+            : " You chose to leave the result."
+          : ""
+      }`
     )
   ) {
     return;
@@ -194,6 +225,7 @@ async function resolveReport(id, action) {
     p_tariff_code: null,
     p_review_note: note,
     p_amount_override: null,
+    p_replay: replayChoice,
   });
   if (error) {
     setStatus("reportsStatus", error.message, false);

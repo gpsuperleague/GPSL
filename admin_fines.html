@@ -268,6 +268,7 @@
             <select id="fineEditMatchEffect">
               <option value="none">Leave the result</option>
               <option value="replay_if_won_or_drew">Replay if they won or drew</option>
+              <option value="admin_decides">Admin decides on confirm</option>
             </select>
           </div>
           <div>
@@ -288,7 +289,7 @@
             <input type="number" id="fineEditPointsMin" min="1" max="20" step="1" style="width:70px;" value="2">
           </div>
         </div>
-        <p class="note">Amount ₿ is the charge. Change it here. A confirmed video report follows Fine applies, Match and Points. A lost match is not fined and is not replayed when those are set to won or drew.</p>
+        <p class="note">Amount ₿ is the charge. Change it here. A confirmed video report follows Fine applies, Match and Points. A lost match is not fined and is not replayed when those are set to won or drew. Admin decides asks you, on the report, whether to replay.</p>
         <div class="row" style="margin-top:12px;">
           <button type="button" id="saveFineTariffBtn" class="button">Save tariff</button>
           <button type="button" id="clearFineFormBtn" class="button">Clear</button>
@@ -312,6 +313,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fines.js?v=20261116-tariff-outcomes"></script>
+  <script type="module" src="admin_fines.js?v=20261116-admin-replay"></script>
 </body>
 </html>

@@ -568,6 +568,7 @@ function outcomeMeta(t) {
   const bits = [];
   if (t.fine_when === "won_or_drew") bits.push("fine if won or drew");
   if (t.match_effect === "replay_if_won_or_drew") bits.push("replay if won or drew");
+  if (t.match_effect === "admin_decides") bits.push("replay is your decision");
   if (t.points_when && t.points_when !== "never" && Number(t.points_delta)) {
     const when =
       t.points_when === "won_or_drew"
@@ -596,7 +597,7 @@ function outcomeEditHtml(t) {
       "replay_if_won_or_drew",
       "Replay if they won or drew",
       matchEffect
-    )}</select></div>
+    )}${opt("admin_decides", "Admin decides on confirm", matchEffect)}</select></div>
     <div><label>Points</label><select data-f="points_when">${opt("never", "None", pointsWhen)}${opt(
       "always",
       "On confirm",
