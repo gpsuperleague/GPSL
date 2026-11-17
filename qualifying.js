@@ -36,12 +36,16 @@ let intakeMode = "pre_season";
 let waitingList = null;
 
 const RECORDING = [
-  "10-minute match, injuries off.",
-  "PA3 or PA4 before kick-off. PA1 and PA2 are not allowed. Advanced skill only.",
-  "Match-room settings, manager, subtactic, and squad on screen.",
-  "Player instructions on screen, and left blank.",
-  "Sub tactic and Fluid are a default formation, set before the match. Do not drag players.",
-  "Scoreboard and HUD on for the whole match. After the whistle, the ratings and player of the match.",
+  "PA3 or PA4",
+  "Advanced skill only",
+  "Match-room settings shown",
+  "Manager shown",
+  "Subtactic shown",
+  "Fluid formation shown",
+  "Squad shown",
+  "No individual player instructions",
+  "No dragging players on the formation",
+  "Recording runs from the settings through to the ratings",
 ];
 
 function mixGoldGreen(t) {
@@ -316,7 +320,7 @@ function render(s) {
       <div class="step-body">
         ${recordCallout}
         ${videoDeadline}
-        <p>Start before the match-room settings and stop after the player ratings.</p>
+        <p>10-minute match, injuries off. Staff tick these on the open recording:</p>
         <ul class="req">${recordingItems}</ul>
         ${videoBlock}
       </div>

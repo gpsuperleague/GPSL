@@ -8,6 +8,7 @@ const TICKS = [
   ["matchroom", "Match-room settings shown"],
   ["manager", "Manager shown"],
   ["subtactic", "Subtactic shown"],
+  ["fluid", "Fluid formation shown"],
   ["squad", "Squad shown"],
   ["no_individual", "No individual player instructions"],
   ["no_drag", "No dragging players on the formation"],
