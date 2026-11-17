@@ -8,27 +8,97 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <style>
-    main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+    main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; box-sizing: border-box; }
     h1 { color: #ffcc66; font-size: 28px; margin: 0 0 8px; }
     .lead { color: #aaa; line-height: 1.5; margin: 0 0 20px; }
+    .qual-steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border: 1px solid #3a3a3a;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #3a3a3a;
+      gap: 1px;
+    }
     .step {
-      border: 1px solid #333; border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; background: #161616;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      padding: 16px 16px 18px;
+      background: #161616;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 100%;
+      box-sizing: border-box;
     }
-    .step.locked { opacity: 0.55; }
-    .step h2 { margin: 0 0 6px; font-size: 16px; color: #ffcc66; }
-    .step p, .step li { color: #ccc; font-size: 14px; line-height: 1.45; }
-    .step .pill { float: right; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #888; }
+    .step.current { box-shadow: inset 0 3px 0 #ff9900; }
+    .step.locked { background: #141414; }
+    .step.locked .step-body { opacity: 0.72; }
+    .step-head {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      margin: 0 0 12px;
+    }
+    .step-no {
+      width: 28px;
+      height: 28px;
+      border: 1px solid #ff9900;
+      border-radius: 50%;
+      color: #ffcc66;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .step.done .step-no { background: #ff9900; color: #111; }
+    .step.locked .step-no { border-color: #555; color: #888; }
+    .step h2 { margin: 0; font-size: 15px; line-height: 1.25; color: #ffcc66; }
+    .step-body { flex: 1 1 auto; }
+    .step-actions { margin-top: auto; padding-top: 14px; }
+    .step p, .step li { color: #ccc; font-size: 13px; line-height: 1.45; margin: 0 0 8px; }
+    .step .pill {
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #888;
+      white-space: nowrap;
+    }
     .step.done .pill { color: #8d8; }
-    label { display: grid; gap: 4px; font-size: 13px; color: #bbb; margin: 8px 0; }
+    .step.current .pill { color: #ffcc66; }
+    label { display: grid; gap: 4px; font-size: 13px; color: #bbb; margin: 0 0 8px; }
     input[type="text"], input[type="date"] {
-      padding: 8px 10px; background: #1a1a1a; border: 1px solid #333; color: #eee; border-radius: 4px;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #eee;
+      border-radius: 4px;
     }
-    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
-    .friendly-list { list-style: none; padding: 0; margin: 8px 0; }
-    .friendly-list li { padding: 4px 0; border-top: 1px solid #2a2a2a; }
-    .code { font-family: ui-monospace, monospace; color: #ffcc66; font-size: 16px; }
+    .step .row { display: flex; flex-direction: column; align-items: stretch; }
+    .step button.button { width: 100%; box-sizing: border-box; margin: 0; }
+    .friendly-list { list-style: none; padding: 0; margin: 0 0 8px; }
+    .friendly-list li { padding: 6px 0; border-top: 1px solid #2a2a2a; }
+    .code { font-family: ui-monospace, monospace; color: #ffcc66; font-size: 15px; }
+    .qual-avail {
+      margin-top: 12px;
+      border: 1px solid #3a3a3a;
+      border-radius: 10px;
+      padding: 16px;
+      background: #161616;
+      box-sizing: border-box;
+    }
+    .qual-avail h2 { margin: 0 0 4px; font-size: 15px; color: #ffcc66; }
+    .qual-avail > p { color: #ccc; font-size: 13px; line-height: 1.45; margin: 0 0 8px; }
     #status { margin-top: 12px; white-space: pre-wrap; }
     button.button.secondary { background: #444; color: #ddd; }
+    @media (max-width: 980px) {
+      .qual-steps { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -39,6 +109,6 @@
     <div id="steps"></div>
     <div id="status"></div>
   </main>
-  <script type="module" src="qualifying.js?v=20261117-qualifying-gate"></script>
+  <script type="module" src="qualifying.js?v=20261117-qualifying-row"></script>
 </body>
 </html>

@@ -50,8 +50,7 @@ function render(s) {
              rejected
                ? `<p>Last video was sent back.<br>${escapeHtml(s.video?.review_note || "")}</p><p>Play another friendly, log it, and send a new recording with the new code. The five you already logged still count.</p>`
                : ""
-           }
-           <button type="button" class="button" id="submitVideoBtn">I have uploaded this code</button>`;
+           }`;
 
   const door = !approved
     ? ""
@@ -66,46 +65,69 @@ function render(s) {
          <p>When a door opens you will use <a href="club_database.html">Club Database</a>, <a href="GPDB.html">GPDB</a>, <a href="MGDB.html">MGDB</a>, and either the auction or Handpick.</p>
          <p><a href="waiting_list.html">Waiting list</a></p>`;
 
+  const current = !step1 ? 1 : !step2 ? 2 : !approved ? 3 : 4;
+  const stepClass = (n, done, locked) =>
+    `step${done ? " done" : ""}${locked ? " locked" : ""}${current === n && !done ? " current" : ""}`;
+
   document.getElementById("steps").innerHTML = `
-    <section class="step ${step1 ? "done" : ""}">
-      ${pill(step1, false)}
-      <h2>1. Who you are</h2>
-      <p>Set the tag people will see, and the times you can play. Both are required before the friendlies unlock.</p>
-      <label>Owner tag
-        <input id="tagInput" type="text" maxlength="32" value="${escapeHtml(s.owner_tag || "")}">
-      </label>
-      <button type="button" class="button" id="saveTagBtn">Save tag</button>
-      <div id="availRoot" style="margin-top:14px"></div>
+    <div class="qual-steps">
+    <section class="${stepClass(1, step1, false)}">
+      <div class="step-head"><span class="step-no">1</span><h2>Who you are</h2>${pill(step1, false)}</div>
+      <div class="step-body">
+        <p>Set the tag people will see. The times you can play sit in the panel under this row. Both are required before the friendlies unlock.</p>
+        <label>Owner tag
+          <input id="tagInput" type="text" maxlength="32" value="${escapeHtml(s.owner_tag || "")}">
+        </label>
+      </div>
+      <div class="step-actions"><button type="button" class="button" id="saveTagBtn">Save tag</button></div>
     </section>
-    <section class="step ${!step1 ? "locked" : ""} ${step2 ? "done" : ""}">
-      ${pill(step2, !step1)}
-      <h2>2. Five friendlies</h2>
-      <p>Play them in <b>${escapeHtml(s.friendly_channel)}</b>. Practice side only: any players, PA3 or PA4, and the matchday rules. These games do not touch the league. Log each one here. ${count} of 5 logged.</p>
-      <ul class="friendly-list">${friendlyItems}</ul>
+    <section class="${stepClass(2, step2, !step1)}">
+      <div class="step-head"><span class="step-no">2</span><h2>Five friendlies</h2>${pill(step2, !step1)}</div>
+      <div class="step-body">
+        <p>Play them in <b>${escapeHtml(s.friendly_channel)}</b>. Practice side only: any players, PA3 or PA4, and the matchday rules. These games do not touch the league. ${count} of 5 logged.</p>
+        <ul class="friendly-list">${friendlyItems}</ul>
+        ${
+          step1 && !approved
+            ? `<div class="row">
+                <label>Day played<input id="playedOn" type="date"></label>
+                <label>Who you played<input id="opponent" type="text" maxlength="80" placeholder="Practice side"></label>
+              </div>`
+            : ""
+        }
+      </div>
       ${
         step1 && !approved
-          ? `<div class="row">
-              <label>Day played<input id="playedOn" type="date"></label>
-              <label>Who you played<input id="opponent" type="text" maxlength="80" placeholder="Practice side"></label>
-              <button type="button" class="button" id="logFriendlyBtn">Log friendly</button>
-            </div>`
+          ? `<div class="step-actions"><button type="button" class="button" id="logFriendlyBtn">Log friendly</button></div>`
           : ""
       }
     </section>
-    <section class="step ${!step2 ? "locked" : ""} ${approved ? "done" : ""}">
-      ${pill(approved, !step2)}
-      <h2>3. One recording</h2>
-      <p>The fifth match is the one staff watch. The other four are not reviewed. The card is PA3 or PA4, advanced skill, match-room settings, manager, subtactic, squad, no individual player instructions, no dragging a formation, and the recording running from the settings through to the ratings.</p>
-      ${videoBlock}
-    </section>
-    <section class="step ${!approved ? "locked" : "done"}">
-      ${pill(approved, !approved)}
-      <h2>4. A club, when an admin opens one</h2>
+    <section class="${stepClass(3, approved, !step2)}">
+      <div class="step-head"><span class="step-no">3</span><h2>One recording</h2>${pill(approved, !step2)}</div>
+      <div class="step-body">
+        <p>The fifth match is the one staff watch. The other four are not reviewed. The card is PA3 or PA4, advanced skill, match-room settings, manager, subtactic, squad, no individual player instructions, no dragging a formation, and the recording running from the settings through to the ratings.</p>
+        ${videoBlock}
+      </div>
       ${
-        approved
-          ? door
-          : `<p>An approved video puts you on the waiting list. It does not give you a club. Auction and handpick each need an admin tick.</p>`
+        step2 && !open && !approved
+          ? `<div class="step-actions"><button type="button" class="button" id="submitVideoBtn">I have uploaded this code</button></div>`
+          : ""
       }
+    </section>
+    <section class="${stepClass(4, approved, !approved)}">
+      <div class="step-head"><span class="step-no">4</span><h2>Your club</h2>${pill(approved, !approved)}</div>
+      <div class="step-body">
+        ${
+          approved
+            ? door
+            : `<p>An approved video puts you on the waiting list. It does not give you a club. Auction and handpick each need an admin tick.</p>`
+        }
+      </div>
+    </section>
+    </div>
+    <section class="qual-avail">
+      <h2>When you can play</h2>
+      <p>Same step as the tag. Save both before the friendlies unlock.</p>
+      <div id="availRoot"></div>
     </section>`;
 
   document.getElementById("saveTagBtn").onclick = saveTag;
