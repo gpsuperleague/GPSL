@@ -33,6 +33,7 @@ function formatWhen(iso) {
 let state = null;
 let avail = null;
 let intakeMode = "pre_season";
+let waitingList = null;
 
 const RECORDING = [
   "PA3 or PA4",
