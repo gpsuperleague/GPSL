@@ -16,6 +16,20 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+function formatWhen(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 let state = null;
 let avail = null;
 let intakeMode = "pre_season";
@@ -155,6 +169,20 @@ function render(s) {
   const videoLink = videoHref
     ? `<p><a href="${escapeHtml(videoHref)}" target="_blank" rel="noopener">Open recording</a></p>`
     : "";
+  const friendlyDue = formatWhen(s.friendly_deadline);
+  const videoDue = formatWhen(s.video_deadline);
+  const restarted = Number(s.qualifying_resets) > 0;
+  const friendlyDeadline = friendlyDue
+    ? `<p>All five have to be registered by <b>${escapeHtml(friendlyDue)}</b>. ${
+        restarted
+          ? "The previous attempt ran out, so these 7 days started again."
+          : "That is 7 days from the account being created."
+      } Short of five, these results clear and the 7 days start again.</p>`
+    : "";
+  const videoDeadline =
+    videoDue && !approved
+      ? `<p>Post the film by <b>${escapeHtml(videoDue)}</b>. That is 72 hours after the 7-day deadline, once the five results are in. After that the five clear and you start again.</p>`
+      : "";
   const code = escapeHtml(s.upload_code || "");
   const codeBlock = `<p class="friendly-sub">Your recording code</p><p class="recording-code">${code}</p>`;
   const videoBlock = approved
@@ -261,6 +289,7 @@ function render(s) {
         </div>
         <div class="friendly-pips">${pips}</div>
         <p>Post each score in <b>${escapeHtml(s.friendly_channel)}</b>, with your tag or by tagging both owners. The fifth bar is the one you film, in the next step.</p>
+        ${friendlyDeadline}
         ${
           step1 && !tagOk
             ? `<p>The tag in that line has to be letters and numbers only, 2 to 32 characters.</p>`
@@ -286,16 +315,20 @@ function render(s) {
       }</div>
       <div class="step-body">
         ${recordCallout}
+        ${videoDeadline}
         <p>Start before the match-room settings and stop after the player ratings.</p>
         <ul class="req">${recordingItems}</ul>
         ${videoBlock}
       </div>
     </section>
-    <section class="${stepClass(4, approved, false)}">
-      <div class="step-head"><span class="step-no">4</span><h2>The waiting list</h2>${approved || myPlace ? `<span class="pill">On the list</span>` : `<span class="pill">Watching</span>`}</div>
+    <section class="${stepClass(4, approved, !approved)}">
+      <div class="step-head"><span class="step-no">4</span><h2>The waiting list</h2>${approved ? `<span class="pill">On the list</span>` : `<span class="pill">After the film</span>`}</div>
       <div class="step-body">
-        <p>An approved recording puts you here. You do not pick a club from this list.</p>
-        ${waitingHtml}
+        ${
+          approved
+            ? `<p>The recording is approved. This is your place. You do not pick a club from this list.</p>${waitingHtml}`
+            : `<p>This opens when the recording is approved. Until then this account is not on the waiting list.</p>`
+        }
       </div>
     </section>
     <section class="${stepClass(5, false, !approved)}">
@@ -338,8 +371,12 @@ async function refresh() {
     avail = null;
   }
   try {
-    const { data: list, error: listError } = await supabase.rpc("waiting_list_public");
-    waitingList = listError ? null : list;
+    if (data?.video_approved) {
+      const { data: list, error: listError } = await supabase.rpc("waiting_list_public");
+      waitingList = listError ? null : list;
+    } else {
+      waitingList = null;
+    }
   } catch {
     waitingList = null;
   }
