@@ -24,86 +24,52 @@ function packContext(ctx: WelcomePackContext | WelcomePackAudience = "visitor"):
   return typeof ctx === "string" ? { audience: ctx } : ctx || {};
 }
 
-/** Two Discord messages. Part 1 is the qualify path. Part 2 is the club and the week. */
+/** One Discord message. Must stay within 2000 including "Hey <@id>". */
 export function welcomePackParts(ctx: WelcomePackContext | WelcomePackAudience = "visitor"): string[] {
   const opts = packContext(ctx);
   const audience = opts.audience || "visitor";
+  const friendlies = "［𝐆𝐏𝐒𝐋］𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐅𝐫𝐢𝐞𝐧𝐝𝐥𝐢𝐞𝐬";
+  const videos = "𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐕𝐢𝐝𝐞𝐨𝐬";
   const who =
     audience === "member"
       ? "You have a **GPSL account** and no club yet."
-      : "You're in Discord as a **Visitor**. Browse the site read-only until you apply.";
+      : "You're a Discord **Visitor**.";
   const door =
     audience === "member"
-      ? [
-          "**Your account**",
-          `Open ${link("Become an owner", "qualifying.html")} and start at the first step still open. A club stays closed until you pass the steps below.`,
-        ]
-      : [
-          "**Want a club?**",
-          `${link("Apply to join GPSL", "join_gpsl.html")}. That creates your account and opens one page: ${link("Become an owner", "qualifying.html")}. A club stays closed until you pass the steps below.`,
-        ];
+      ? `**Your account.** ${link("Open qualifying", "qualifying.html")}. A club stays closed until the stages below are done.`
+      : `**Want a club?** ${link("Apply to join GPSL", "join_gpsl.html")}. Qualifying opens. A club stays closed until the stages below are done.`;
 
-  const part1 = [
-    "**Welcome**",
-    who,
+  const body = [
+    `**Welcome to the GPSL.** ${who}`,
     "",
-    "**Just looking?**",
-    `${link("Sign in as Visitor", "login.html")} — tables, cups, auctions and the transfer market, read only. No club needed.`,
+    `**Just looking?** ${link("Sign in as Visitor", "login.html")} — tables, cups, auctions, transfer market.`,
+    `**Need help?** ${link("Beginner's guide", "getting_started.html")} · ${link("GPSL handbook", "learning_gpsl.html")} · ask in [Q&A](https://discord.com/channels/1483974134361886802/1536360993368580136).`,
     "",
-    ...door,
+    door,
     "",
-    "**1. Tag and availability**",
-    "Set the owner tag people will see, your timezone, and the times you can play. Nothing else unlocks until both are saved.",
+    "*Stage 1* — **Tag and availability**",
+    "Tag, timezone, and when you can play. Both saved, or nothing else unlocks.",
     "",
-    "**2. Five friendlies**",
-    "Play them in ［𝐆𝐏𝐒𝐋］𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐅𝐫𝐢𝐞𝐧𝐝𝐥𝐢𝐞𝐬. Both owners post the score with their tags. It counts when the other post matches. Practice side, not a league club. Any players. PA3 or PA4. Five finished games. They do not touch league stats, injuries, fitness, or fines. Missing the first week does not delete your account.",
+    "*Stage 2* — **Five friendlies**",
+    `Log them in ${friendlies}. Any club, any players, PA3 or PA4. Five within 7 days of joining the GPSL site.`,
     "",
-    "**3. Film the latest one**",
-    "The page gives you a code. Put it in the filename and post the video in 𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐕𝐢𝐝𝐞𝐨𝐬. Staff tick a card. If something fails, they name the ticks and only the video comes back. Play another friendly, log it, and send a new recording with the new code. The five already logged still count.",
+    "*Stage 3* — **Film the last match**",
+    `Post your page code with the film in ${videos} within 72 hours of day 7. Staff tick the card. A fail returns only the video.`,
+    "Show: settings to ratings, 10 min, injuries off, PA3/PA4 & advanced skill, manager, subtactic, squad, blank instructions, Fluid on screen, no dragging, scoreboard, HUD, ratings.",
     "",
-    "**What the recording has to show**",
-    "Start before the match-room settings and stop after the player ratings.",
-    "• 10-minute match, injuries off",
-    "• PA3 or PA4 before kick-off. PA1 and PA2 are not allowed. Advanced skill only",
-    "• Match-room settings, manager, subtactic, and squad on screen",
-    "• Player instructions on screen, and left blank",
-    "• Sub tactic and Fluid are a default formation, set before the match. Do not drag players",
-    "• Scoreboard and HUD on for the whole match. After the whistle, the ratings and player of the match",
+    "*Stage 4* — **Waiting list**",
+    "An approved video puts you on the list.",
+    "**In season:** pick a vacant division club. 7 days. Keep the cash. GPDB players, one MGDB manager, Handpick green.",
+    "**Between seasons:** club auction, if an admin invites you. First club and a backup. Bid only if invited.",
     "",
-    "**4. The waiting list**",
-    "An approved video puts you on the waiting list. You do not pick a club yourself.",
+    "**Your club**",
+    "Agree kick-offs. Check in from 10 min before to 10 min after. Record the match, post the video, enter the result. Locks Thursday 7pm UK. Fines come off when they happen. August squad 24–28. Star cap 3 Super League, 2 Championship.",
+    "",
+    "**Roles** — **Visitor** no account · **Member** qualifying, then the list · **Owner** has a club.",
+    "Read the handbook before a club. Do not wait for a fine.",
   ].join("\n");
 
-  const part2 = [
-    "**Season in full flow**",
-    "An admin names the one vacant club you can handpick. You have 7 days to take it. You keep that club's cash, the old squad is released, and you build a new one on the site.",
-    "",
-    `• In ${link("GPDB", "GPDB.html")}, tick free agents. Check the player is still in eFootball. A tick is not a signing.`,
-    `• ${link("Handpick Squad", "handpick_squad.html")} has to be green: squad size, home-grown, under-21s, a goalkeeper, the star cap, and the cash.`,
-    `• In ${link("MGDB", "MGDB.html")}, tick one manager.`,
-    "• Submit the squad and the manager together. Staff approve. The fees leave the club then.",
-    "",
-    "**A week, once the club is yours**",
-    "• Agree a kick-off. The other club has 48 hours to accept or send another time. Agreeing in Discord still has to be locked on the site by both clubs.",
-    "• Check in from 10 minutes before kick-off until 10 minutes after.",
-    "• Play it on eFootball.",
-    "• Record it, from the match-room settings through to the ratings, and post your own video. The result only counts if the video does.",
-    "• Enter the result on Match Day.",
-    "",
-    "A GPSL month is about a week. It locks every Thursday at 7pm UK. Fines come off the balance when they happen. From August the squad is 24 to 28, with home-grown, under-21s, a goalkeeper, and a star cap: 3 in the Super League, 2 in the Championship.",
-    "",
-    "**Between seasons**",
-    "Same waiting list. The door is the club auction. An admin invites you. You mark a first club and a backup, and you bid only if invited. The bid pays for the club and the stadium. What is left is your balance. Squad and manager then come through the drafts.",
-    "",
-    "**Roles**",
-    "• **Visitor** — in Discord, no GPSL account yet",
-    "• **Member** — account, then qualifying, then the waiting list",
-    "• **Owner** — has a club",
-    "",
-    `Read the ${link("league handbook", "learning_gpsl.html")} before you take a club. Ask in Discord when something is unclear. Do not wait for a fine to find out.`,
-  ].join("\n");
-
-  return [part1, part2];
+  return [body];
 }
 
 export function welcomePackBody(ctx: WelcomePackContext | WelcomePackAudience = "visitor"): string {
@@ -124,8 +90,8 @@ export function welcomePackMessages(
 ): string[] {
   const id = String(discordUserId || "").trim();
   const hello = id ? `Hey <@${id}>` : "Hey";
-  const [first, second] = welcomePackParts(ctx);
-  return [`${hello}\n\n${first}`, second];
+  const [body] = welcomePackParts(ctx);
+  return [`${hello}\n\n${body}`];
 }
 
 export function welcomePackWithMention(
