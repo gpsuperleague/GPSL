@@ -80,7 +80,12 @@ export async function enforceOwnerClubGate() {
       const { data: qualifying } = await supabase.rpc("owner_qualifying_state");
       if (qualifying?.subject === true && qualifying?.video_approved !== true) {
         markPreClubSession("qualifying.html");
-        const stay = new Set(["qualifying", "learning_gpsl", "video_tutorials"]);
+        const stay = new Set([
+          "qualifying",
+          "learning_gpsl",
+          "getting_started",
+          "video_tutorials",
+        ]);
         if (!stay.has(page)) redirectTo("qualifying.html");
         return;
       }

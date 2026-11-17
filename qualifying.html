@@ -108,9 +108,10 @@
       text-transform: uppercase;
       color: #888;
     }
-    .friendly-pips { display: flex; gap: 4px; margin: 0 0 10px; }
+    .friendly-pips { display: flex; gap: 4px; margin: 0 0 10px; align-items: flex-start; }
+    .friendly-pips .pip { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .friendly-pips i {
-      flex: 1;
+      display: block;
       height: 8px;
       border-radius: 99px;
       background: #2a2a2a;
@@ -118,6 +119,58 @@
     .friendly-pips i.on {
       background: linear-gradient(90deg, var(--from, #ff9900), var(--to, #3ecf6e));
     }
+    .friendly-pips .film i { box-shadow: 0 0 0 1px #ff9900; }
+    .friendly-pips em {
+      font-style: normal;
+      font-size: 9px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #ffcc66;
+      text-align: center;
+    }
+    .record-target {
+      border: 1px solid #3a3a3a;
+      border-left: 3px solid #ff9900;
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin: 0 0 8px;
+      background: #121212;
+    }
+    .record-target span {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #888;
+    }
+    .record-target b { display: block; margin-top: 2px; color: #ffcc66; font-size: 13px; }
+    .record-flag {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #8d8;
+    }
+    .qual-guides {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      margin: 0 0 12px;
+      border: 1px solid #3a3a3a;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #3a3a3a;
+    }
+    .qual-guides a {
+      display: block;
+      background: #161616;
+      color: #ffcc66;
+      text-decoration: none;
+      padding: 12px 16px;
+      font-size: 14px;
+    }
+    .qual-guides a:hover { background: #1c1c1c; }
     .req { list-style: disc; margin: 0 0 8px; padding-left: 16px; }
     .req li { margin: 0 0 6px; }
     .avail-summary { list-style: none; padding: 0; margin: 0 0 8px; }
@@ -161,9 +214,13 @@
   <main>
     <h1>Become an owner</h1>
     <p class="lead" id="lead">Five steps. Each one unlocks the next. A club stays closed until the video is approved and an admin opens a door.</p>
+    <nav class="qual-guides" aria-label="Guides">
+      <a href="getting_started.html">Beginner's guide</a>
+      <a href="learning_gpsl.html">GPSL handbook</a>
+    </nav>
     <div id="steps"></div>
     <div id="status"></div>
   </main>
-  <script type="module" src="qualifying.js?v=20261117-qualifying-steps"></script>
+  <script type="module" src="qualifying.js?v=20261117-qualifying-link"></script>
 </body>
 </html>

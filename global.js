@@ -33,7 +33,7 @@ export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js"
 applyStoredSiteTheme();
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-import { APP_VERSION } from "./app_version.js?v=20261117-qualifying-gate";
+import { APP_VERSION } from "./app_version.js?v=20261117-qualifying-link";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
 
@@ -3182,6 +3182,7 @@ export async function buildNav() {
     const qualifyingAllowed = new Set([
       "qualifying.html",
       "learning_gpsl.html",
+      "getting_started.html",
       "video_tutorials.html",
     ]);
     if (!qualifyingAllowed.has(pathNorm)) {

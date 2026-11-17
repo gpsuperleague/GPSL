@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js?v=20261117-qualifying-gate";
+import { supabase, initGlobal } from "./global.js?v=20261117-qualifying-link";
 import { getAuthUser } from "./supabase_client.js";
 import { mountAvailabilityPanel } from "./owner_availability.js?v=20260930-world-tz";
 import {
@@ -18,6 +18,7 @@ function escapeHtml(s) {
 
 let state = null;
 let avail = null;
+let intakeMode = "pre_season";
 
 const RECORDING = [
   "10-minute match, injuries off.",
@@ -108,26 +109,43 @@ function render(s) {
   const left = Math.max(0, 5 - count);
   const filled = Math.min(count, 5);
   const pips = Array.from({ length: 5 }, (_, i) => {
-    if (i >= filled) return `<i></i>`;
-    const from = mixGoldGreen(i / 4);
-    const to = mixGoldGreen(Math.min(1, (i + 0.85) / 4));
-    return `<i class="on" style="--from:${from};--to:${to}"></i>`;
+    const on = i < filled;
+    const style = on
+      ? ` style="--from:${mixGoldGreen(i / 4)};--to:${mixGoldGreen(Math.min(1, (i + 0.85) / 4))}"`
+      : "";
+    const film = i === 4;
+    return `<span class="pip${film ? " film" : ""}"><i class="${on ? "on" : ""}"${style}></i>${
+      film ? "<em>Film</em>" : ""
+    }</span>`;
   }).join("");
   const tallyColor = filled ? mixGoldGreen((filled - 0.15) / 4) : "#ffcc66";
   const times = availabilityLines(avail);
   const tz = String(avail?.timezone || "").replace(/_/g, " ");
   const recordingItems = RECORDING.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  const latest = friendlies.length ? friendlies[friendlies.length - 1] : null;
+  const recordReady = count >= 5 && latest;
+  const recordCallout = recordReady
+    ? `<p class="record-target"><span>Record this friendly</span><b>${escapeHtml(
+        latest.scoreline || `${latest.played_on} · ${latest.opponent}`
+      )}</b></p>`
+    : `<p class="record-target"><span>Friendly 5</span><b>${
+        count
+          ? `${left} still to play. The latest so far is not the recording.`
+          : "This is the friendly you film. It appears here once five are registered."
+      }</b></p>`;
   const friendlyItems = friendlies.length
     ? [...friendlies]
         .reverse()
-        .map(
-          (f) =>
-            `<li>${
-              f.scoreline
-                ? `<span class="score">${escapeHtml(f.scoreline)}</span>`
-                : ""
-            }${escapeHtml(f.played_on)} · ${escapeHtml(f.opponent)}</li>`
-        )
+        .map((f) => {
+          const recorded = recordReady && String(f.id) === String(latest.id);
+          return `<li>${
+            f.scoreline
+              ? `<span class="score">${escapeHtml(f.scoreline)}${
+                  recorded ? `<span class="record-flag">Record this</span>` : ""
+                }</span>`
+              : ""
+          }${escapeHtml(f.played_on)} · ${escapeHtml(f.opponent)}</li>`;
+        })
         .join("")
     : `<li class="empty">No results captured yet.</li>`;
 
@@ -144,24 +162,37 @@ function render(s) {
                : ""
            }`;
 
-  const door = !approved
-    ? ""
-    : s.handpick_club
-      ? `<p>You can take <b>${escapeHtml(s.handpick_club)}</b> until ${escapeHtml(
-          s.handpick_due_at
-            ? new Date(s.handpick_due_at).toLocaleString("en-GB")
-            : "the deadline"
-        )}. After that the offer closes and you stay on the waiting list.</p>
+  const inSeason = intakeMode === "mid_season";
+  const seasonTitle = s.handpick_club || inSeason ? "Handpick" : "Club auction";
+  const guide = (href, label) => (approved ? `<a href="${href}">${label}</a>` : label);
+  const seasonBody = s.handpick_club
+    ? `<p>You can take <b>${escapeHtml(s.handpick_club)}</b> until ${escapeHtml(
+        s.handpick_due_at
+          ? new Date(s.handpick_due_at).toLocaleString("en-GB")
+          : "the deadline"
+      )}. After that the offer closes and you stay on the waiting list.</p>
+       <ul class="req">
+         <li>You keep the club's cash. The old squad is released.</li>
+         <li>In ${guide("GPDB.html", "GPDB")}, tick free agents. A tick is not a signing.</li>
+         <li>${guide("handpick_squad.html", "Handpick Squad")} has to be green: squad size, home-grown, under-21s, a goalkeeper, the star cap, and the cash.</li>
+         <li>In ${guide("MGDB.html", "MGDB")}, tick one manager.</li>
+         <li>Submit the squad and the manager together. The fees leave when staff approve.</li>
+       </ul>`
+    : inSeason
+      ? `<p>The season is running. An admin names the one vacant club you can handpick. You have 7 days to take it.</p>
          <ul class="req">
-           <li>You keep the club's cash. The old squad is released.</li>
-           <li>In <a href="GPDB.html">GPDB</a>, tick free agents. A tick is not a signing.</li>
-           <li><a href="handpick_squad.html">Handpick Squad</a> has to be green.</li>
-           <li>In <a href="MGDB.html">MGDB</a>, tick one manager.</li>
-           <li>Submit the squad and the manager together. The fees leave when staff approve.</li>
+           <li>You keep that club's cash. The old squad is released.</li>
+           <li>In ${guide("GPDB.html", "GPDB")}, tick free agents. Check the player is still in eFootball. A tick is not a signing.</li>
+           <li>${guide("handpick_squad.html", "Handpick Squad")} has to be green: squad size, home-grown, under-21s, a goalkeeper, the star cap, and the cash.</li>
+           <li>In ${guide("MGDB.html", "MGDB")}, tick one manager.</li>
+           <li>Submit the squad and the manager together. Staff approve. The fees leave then.</li>
          </ul>`
-      : `<p>You are on the waiting list. You do not pick a club.</p>
-         <p>An admin will invite you to the club auction, or name the one club you can handpick. A named club stays open for 7 days.</p>
-         <p><a href="waiting_list.html">Waiting list</a></p>`;
+      : `<p>Between seasons the door is the club auction. An admin invites you. You bid only if invited.</p>
+         <ul class="req">
+           <li>On ${guide("club_database.html", "Club Database")}, mark a first club and a backup.</li>
+           <li>The bid pays for the club and the stadium. What is left is your balance.</li>
+           <li>Squad and manager then come through the drafts.</li>
+         </ul>`;
 
   const tagShown = String(s.owner_tag || "YOURTAG");
   const tagOk = /^[A-Za-z0-9]{2,32}$/.test(tagShown);
@@ -173,7 +204,7 @@ function render(s) {
     )
     .join("");
   const submitted = open || approved;
-  const current = !step1 ? 1 : !step2 ? 2 : !submitted ? 3 : !approved ? 4 : 5;
+  const current = !step1 ? 1 : !step2 ? 2 : !submitted ? 3 : !approved ? 3 : 5;
   const stepClass = (n, done, locked) =>
     `step${done ? " done" : ""}${locked ? " locked" : ""}${current === n && !done ? " current" : ""}`;
 
@@ -202,8 +233,8 @@ function render(s) {
           <div><b style="color:${tallyColor}">${count}</b><span>registered</span></div>
           <div><b>${left}</b><span>${left === 1 ? "fixture left" : "fixtures left"}</span></div>
         </div>
-        <div class="friendly-pips" aria-hidden="true">${pips}</div>
-        <p>Post the score in <b>${escapeHtml(s.friendly_channel)}</b> as <span class="code">${escapeHtml(tagShown)} 2 - 1 OTHERTAG</span>, or by tagging the two owners. The other owner posts the same score. It counts when the two posts match.</p>
+        <div class="friendly-pips">${pips}</div>
+        <p>Post each score in <b>${escapeHtml(s.friendly_channel)}</b>, with your tag or by tagging both owners. The fifth bar is the one you film, in the next step.</p>
         ${
           step1 && !tagOk
             ? `<p>The tag in that line has to be letters and numbers only, 2 to 32 characters.</p>`
@@ -218,10 +249,20 @@ function render(s) {
         }
       </div>
     </section>
-    <section class="${stepClass(3, submitted, !step2)}">
-      <div class="step-head"><span class="step-no">3</span><h2>Film the latest</h2>${pill(submitted, !step2)}</div>
+    <section class="${stepClass(3, submitted, false)}">
+      <div class="step-head"><span class="step-no">3</span><h2>Record friendly 5</h2>${
+        open && !approved
+          ? `<span class="pill">With staff</span>`
+          : submitted
+            ? pill(true, false)
+            : step2
+              ? pill(false, false)
+              : `<span class="pill">After 5</span>`
+      }</div>
       <div class="step-body">
-        <p>Staff watch the latest friendly only. The other four are not reviewed.</p>
+        ${recordCallout}
+        <p>Start before the match-room settings and stop after the player ratings.</p>
+        <ul class="req">${recordingItems}</ul>
         ${videoBlock}
       </div>
       ${
@@ -230,22 +271,18 @@ function render(s) {
           : ""
       }
     </section>
-    <section class="${stepClass(4, approved, !step2)}">
-      <div class="step-head"><span class="step-no">4</span><h2>The recording</h2>${open && !approved ? `<span class="pill">With staff</span>` : pill(approved, !step2)}</div>
+    <section class="${stepClass(4, approved, !approved)}">
+      <div class="step-head"><span class="step-no">4</span><h2>The waiting list</h2>${approved ? `<span class="pill">On the list</span>` : pill(false, !approved)}</div>
       <div class="step-body">
-        <p>Start before the match-room settings and stop after the player ratings.</p>
-        <ul class="req">${recordingItems}</ul>
+        <p>An approved recording puts you on the waiting list. You do not pick a club from here.</p>
+        <p>The way in is the next step, and it follows whether the season is running.</p>
+        ${approved ? `<p><a href="waiting_list.html">Waiting list</a></p>` : ""}
       </div>
     </section>
-    <section class="${stepClass(5, approved, !approved)}">
-      <div class="step-head"><span class="step-no">5</span><h2>The waiting list</h2>${approved ? `<span class="pill">On the list</span>` : pill(false, !approved)}</div>
+    <section class="${stepClass(5, false, !approved)}">
+      <div class="step-head"><span class="step-no">5</span><h2>${escapeHtml(seasonTitle)}</h2>${pill(false, !approved)}</div>
       <div class="step-body">
-        ${
-          approved
-            ? door
-            : `<p>An approved video puts you on the waiting list. You do not pick a club.</p>
-               <p>An admin then opens one door: an invite to the club auction, or one named club to handpick. A named club stays open for 7 days.</p>`
-        }
+        ${seasonBody}
       </div>
     </section>
     </div>
@@ -277,6 +314,12 @@ async function refresh() {
     avail = await loadOnboardingAvailabilityContext();
   } catch {
     avail = null;
+  }
+  try {
+    const { data: mode } = await supabase.rpc("gpsl_owner_intake_mode");
+    intakeMode = mode === "mid_season" ? "mid_season" : "pre_season";
+  } catch {
+    intakeMode = "pre_season";
   }
   if (!data?.subject) {
     document.getElementById("steps").innerHTML =
