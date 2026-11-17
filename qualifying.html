@@ -144,9 +144,20 @@
       color: #888;
     }
     .record-target b { display: block; margin-top: 2px; color: #ffcc66; font-size: 13px; }
+    .match-slots { margin-top: 8px; }
+    .match-slot { padding: 8px 0; }
+    .slot-label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 2px;
+    }
+    .film-slot .slot-label { color: #ffcc66; }
+    .slot-empty { color: #777; }
     .record-flag {
-      display: inline-block;
-      margin-left: 6px;
+      margin-left: 8px;
       font-size: 10px;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -221,6 +232,6 @@
     <div id="steps"></div>
     <div id="status"></div>
   </main>
-  <script type="module" src="qualifying.js?v=20261117-qualifying-link"></script>
+  <script type="module" src="qualifying.js?v=20261117-qualifying-slots"></script>
 </body>
 </html>

@@ -411,6 +411,37 @@ async function resolveQualifyingFriendliesChannelId(
   return hit?.id ? String(hit.id) : null;
 }
 
+async function resolveQualifyingVideosChannelId(
+  botToken: string,
+  guildId: string
+): Promise<string | null> {
+  const fromEnv = (Deno.env.get("DISCORD_QUALIFYING_VIDEOS_CHANNEL_ID") || "").trim();
+  if (fromEnv) return fromEnv;
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+    headers: { Authorization: `Bot ${botToken}` },
+  });
+  if (!res.ok) return null;
+  const channels = (await res.json()) as Array<{ id?: string; name?: string; type?: number }>;
+  const hit = channels.find((c) => {
+    if (!c.id || !c.name || (c.type !== 0 && c.type !== 5)) return false;
+    const name = foldChannelName(c.name);
+    return name.includes("qualifying") && name.includes("video") && !name.includes("friendl");
+  });
+  return hit?.id ? String(hit.id) : null;
+}
+
+function parseQualifyingVideoLink(content: string): { code: string; url: string } | null {
+  const match = String(content || "").match(
+    /\[(QUAL-[A-Fa-f0-9]{8}-\d+)\]+\(\s*(https:\/\/[^)\s]+)\s*\)/i
+  );
+  if (!match) return null;
+  return { code: match[1].toUpperCase(), url: match[2] };
+}
+
+function qualifyingVideoAttempt(content: string): boolean {
+  return /QUAL-[A-Fa-f0-9]{8}-\d+/i.test(content) && /https?:\/\//i.test(content);
+}
+
 async function buildQualifyingOwnerIndex(
   adminClient: ReturnType<typeof createClient>
 ): Promise<{ byDiscord: Map<string, OwnerHit>; byTag: Map<string, OwnerHit> }> {
@@ -598,6 +629,101 @@ async function scanQualifyingFriendlies(
     scanned,
     matched,
     pending,
+    ignored,
+    duplicates,
+    errors,
+  };
+}
+
+async function scanQualifyingVideos(
+  adminClient: ReturnType<typeof createClient>,
+  botToken: string,
+  guildId: string,
+  forceRescan: boolean
+): Promise<Record<string, unknown>> {
+  const channelId = await resolveQualifyingVideosChannelId(botToken, guildId);
+  if (!channelId) {
+    return { ok: false, error: "Qualifying videos channel not found" };
+  }
+
+  const { data: settingsRow } = await adminClient
+    .from("gpsl_qualifying_settings")
+    .select("last_video_message_id")
+    .eq("id", 1)
+    .maybeSingle();
+  const lastIngestedId = forceRescan
+    ? null
+    : ((settingsRow?.last_video_message_id as string | null) || null);
+  const messages = await fetchChannelMessages(botToken, channelId, 40, lastIngestedId);
+  const ordered = lastIngestedId ? [...messages] : [...messages].reverse();
+
+  let watermarkTo = lastIngestedId;
+  let stopWatermark = false;
+  let scanned = 0;
+  let accepted = 0;
+  let ignored = 0;
+  let duplicates = 0;
+  let errors = 0;
+
+  for (const msg of ordered) {
+    if (!msg?.id) continue;
+    const bumpWatermark = () => {
+      if (!stopWatermark) watermarkTo = maxSnowflake(watermarkTo, msg.id);
+    };
+    if (!msg.author || msg.author.bot) {
+      bumpWatermark();
+      continue;
+    }
+    const content = cleanContent(String(msg.content || ""));
+    const link = parseQualifyingVideoLink(content);
+    if (!link) {
+      if (content && qualifyingVideoAttempt(content)) {
+        ignored += 1;
+        await addReaction(botToken, channelId, msg.id, "❌");
+      }
+      bumpWatermark();
+      continue;
+    }
+
+    scanned += 1;
+    const { data, error } = await adminClient.rpc("qualifying_videos_ingest_post", {
+      p_discord_message_id: msg.id,
+      p_discord_user_id: msg.author.id,
+      p_upload_code: link.code,
+      p_video_url: link.url,
+      p_posted_at: msg.timestamp || new Date().toISOString(),
+    });
+    if (error) {
+      errors += 1;
+      stopWatermark = true;
+      await addReaction(botToken, channelId, msg.id, "❌");
+      continue;
+    }
+    const status = String((data as { status?: string } | null)?.status || "");
+    if (status === "accepted") {
+      accepted += 1;
+      await addReaction(botToken, channelId, msg.id, "✅");
+    } else if (status === "duplicate") {
+      duplicates += 1;
+    } else {
+      ignored += 1;
+      await addReaction(botToken, channelId, msg.id, "❌");
+    }
+    bumpWatermark();
+  }
+
+  if (!forceRescan && watermarkTo && watermarkTo !== lastIngestedId) {
+    await adminClient
+      .from("gpsl_qualifying_settings")
+      .update({ last_video_message_id: watermarkTo })
+      .eq("id", 1);
+  }
+
+  return {
+    ok: errors === 0,
+    channel_id: channelId,
+    scanned,
+    accepted,
     ignored,
     duplicates,
     errors,
@@ -861,7 +987,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    let qualifying: Record<string, unknown> = { skipped: true };
+    let qualifyingVideos: Record<string, unknown> = { skipped: true };
     if (!inject?.id) {
       try {
         qualifying = await scanQualifyingFriendlies(
@@ -876,12 +1002,26 @@ Deno.serve(async (req) => {
           error: qErr instanceof Error ? qErr.message : String(qErr),
         };
       }
+      try {
+        qualifyingVideos = await scanQualifyingVideos(
+          adminClient,
+          botToken,
+          guildId,
+          forceRescan
+        );
+      } catch (vErr) {
+        qualifyingVideos = {
+          ok: false,
+          error: vErr instanceof Error ? vErr.message : String(vErr),
+        };
+      }
     }
 
     return jsonResponse({
       ok: true,
       messages_fetched: messages.length,
       qualifying,
+      qualifying_videos: qualifyingVideos,
       scanned,
       matched,
       pending,

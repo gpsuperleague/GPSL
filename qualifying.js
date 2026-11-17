@@ -122,32 +122,31 @@ function render(s) {
   const times = availabilityLines(avail);
   const tz = String(avail?.timezone || "").replace(/_/g, " ");
   const recordingItems = RECORDING.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
-  const latest = friendlies.length ? friendlies[friendlies.length - 1] : null;
-  const recordReady = count >= 5 && latest;
+  const ordered = friendlies.slice(0, 5);
+  const fifth = ordered[4] || null;
+  const recordReady = Boolean(fifth);
   const recordCallout = recordReady
-    ? `<p class="record-target"><span>Record this friendly</span><b>${escapeHtml(
-        latest.scoreline || `${latest.played_on} · ${latest.opponent}`
+    ? `<p class="record-target"><span>Qualifying match 5</span><b>${escapeHtml(
+        fifth.scoreline || `${fifth.played_on} · ${fifth.opponent}`
       )}</b></p>`
-    : `<p class="record-target"><span>Friendly 5</span><b>${
+    : `<p class="record-target"><span>Qualifying match 5</span><b>${
         count
-          ? `${left} still to play. The latest so far is not the recording.`
-          : "This is the friendly you film. It appears here once five are registered."
+          ? `${left} still to play. The recording stays on match 5.`
+          : "This slot is the one you film. The result appears here when it is registered."
       }</b></p>`;
-  const friendlyItems = friendlies.length
-    ? [...friendlies]
-        .reverse()
-        .map((f) => {
-          const recorded = recordReady && String(f.id) === String(latest.id);
-          return `<li>${
-            f.scoreline
-              ? `<span class="score">${escapeHtml(f.scoreline)}${
-                  recorded ? `<span class="record-flag">Record this</span>` : ""
-                }</span>`
-              : ""
-          }${escapeHtml(f.played_on)} · ${escapeHtml(f.opponent)}</li>`;
-        })
-        .join("")
-    : `<li class="empty">No results captured yet.</li>`;
+  const friendlyItems = Array.from({ length: 5 }, (_, i) => {
+    const match = ordered[i];
+    const film = i === 4;
+    const head = `<span class="slot-label">Qualifying match ${i + 1}${
+      film ? `<span class="record-flag">Record this</span>` : ""
+    }</span>`;
+    if (!match) {
+      return `<li class="match-slot${film ? " film-slot" : ""}">${head}<span class="slot-empty">Waiting for the result</span></li>`;
+    }
+    return `<li class="match-slot${film ? " film-slot" : ""}">${head}${
+      match.scoreline ? `<span class="score">${escapeHtml(match.scoreline)}</span>` : ""
+    }${escapeHtml(match.played_on)} · ${escapeHtml(match.opponent)}</li>`;
+  }).join("");
 
   const videoBlock = !step2
     ? ""
@@ -240,8 +239,7 @@ function render(s) {
             ? `<p>The tag in that line has to be letters and numbers only, 2 to 32 characters.</p>`
             : ""
         }
-        <p class="friendly-sub">Results</p>
-        <ul class="friendly-list">${friendlyItems}</ul>
+        <ul class="friendly-list match-slots">${friendlyItems}</ul>
         ${
           pendingItems
             ? `<p class="friendly-sub">Waiting on the other owner</p><ul class="friendly-list">${pendingItems}</ul>`
