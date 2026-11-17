@@ -461,6 +461,43 @@ function viewFromUrl() {
   return null;
 }
 
+function cupFromUrl() {
+  const cup = (new URLSearchParams(window.location.search).get("cup") || "").trim();
+  return CUP_CODES.includes(cup) ? cup : null;
+}
+
+function locateIdFromUrl() {
+  const id = (new URLSearchParams(window.location.search).get("locate") || "").trim();
+  return id || null;
+}
+
+function applyLocateTarget() {
+  const id = locateIdFromUrl();
+  if (!id) return;
+  const fix = allFixtures.find((f) => String(f.id) === id);
+  if (!fix) return;
+  if (fix.competition_type === "cup") {
+    fixtureView = "cups";
+    if (CUP_CODES.includes(fix.cup_code)) currentCup = fix.cup_code;
+    return;
+  }
+  if (LEAGUE_DIVISIONS.includes(fix.division)) {
+    fixtureView = "league";
+    currentDivision = fix.division;
+  }
+}
+
+function scrollToLocatedFixture() {
+  const id = locateIdFromUrl();
+  if (!id) return;
+  const row = document.getElementById(`fixture-${id}`);
+  if (!row) return;
+  row.classList.add("fixture-located");
+  requestAnimationFrame(() => {
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+}
+
 function renderDivisionToolbar() {
   const bar = document.getElementById("divisionToolbar");
   bar.innerHTML = "";
@@ -553,12 +590,14 @@ function renderCupFixtures() {
     const tbody = block.querySelector("tbody");
     for (const f of rows) {
       const tr = document.createElement("tr");
+      tr.id = `fixture-${f.id}`;
       applyFixtureRowClasses(tr, f);
       tr.innerHTML = `<td>M${f.cup_match}</td>${fixtureRowHtml(f)}`;
       tbody.appendChild(tr);
     }
     root.appendChild(block);
   }
+  if (locateIdFromUrl()) scrollToLocatedFixture();
   wireFixtureSimButtons(root);
 }
 
@@ -653,6 +692,7 @@ function renderFixtures() {
     const tbody = block.querySelector("tbody");
     for (const f of rows) {
       const tr = document.createElement("tr");
+      tr.id = `fixture-${f.id}`;
       applyFixtureRowClasses(tr, f);
       tr.innerHTML = fixtureRowHtml(f);
       tbody.appendChild(tr);
@@ -661,7 +701,8 @@ function renderFixtures() {
     root.appendChild(block);
   }
 
-  scrollToActiveMonthFixtures();
+  if (locateIdFromUrl()) scrollToLocatedFixture();
+  else scrollToActiveMonthFixtures();
   wireFixtureSimButtons(root);
 }
 
@@ -781,6 +822,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (urlView) {
     fixtureView = urlView;
   }
+  const urlCup = cupFromUrl();
+  if (urlCup) currentCup = urlCup;
 
   calendarStatus = await loadCalendarStatus(supabase);
   try {
@@ -830,6 +873,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     root.innerHTML =
       '<p class="empty">No fixtures loaded. Check an active season and that admin generated fixtures (GPSL Admin → League Fixtures). If the browser console shows a database error, run <code>competition_phase3_matchday.sql</code> after phase 1.</p>';
   }
+  applyLocateTarget();
   renderDivisionToolbar();
   renderFixtures();
 

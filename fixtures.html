@@ -73,6 +73,8 @@
     }
     table.gpsl-table th { color:var(--gpsl-accent, #ff9900); text-align:left; background:#1a1a1a; }
     table.gpsl-table td { overflow-wrap:anywhere; word-break:break-word; }
+    tr.fixture-located td { background:#3a2a10 !important; }
+    tr.fixture-located { scroll-margin: 80px; box-shadow: inset 3px 0 0 #ff9900; }
     tr.my-fixture td { background:#3d3200 !important; }
     tr.my-fixture { box-shadow: inset 3px 0 0 var(--gpsl-accent, #ff9900); }
     /* Soft highlight: owner vs vacant (simulation) */
@@ -217,6 +219,6 @@
     <div id="fixturesRoot"></div>
   </div>
 
-  <script type="module" src="fixtures.js?v=20261116-status-deadline"></script>
+  <script type="module" src="fixtures.js?v=20261117-report-locate"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
-import { DIVISION_LABELS, CUP_LABELS } from "./competition.js";
+import { DIVISION_LABELS, CUP_LABELS, GPSL_MONTH_LABELS } from "./competition.js";
 import {
   loadFixtureUnavailable,
   formatFixtureUnavailableHtml,
@@ -50,14 +50,37 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
-function fixtureLabel(r) {
-  const ha = `${r.home_club_short_name} vs ${r.away_club_short_name}`;
+function monthLabel(r) {
+  const key = String(r.gpsl_month || "").toLowerCase();
+  return GPSL_MONTH_LABELS[key] || r.gpsl_month || "";
+}
+
+function competitionLine(r) {
+  const month = monthLabel(r);
   if (r.competition_type === "cup") {
     const cup = CUP_LABELS[r.cup_code] || r.cup_code || "Cup";
-    return `${cup} · ${ha}`;
+    const round = r.cup_round != null && r.cup_round !== "" ? `Round ${r.cup_round}` : "";
+    return [cup, round, month].filter(Boolean).join(" · ");
   }
   const div = DIVISION_LABELS[r.division] || r.division || "League";
-  return r.matchday != null ? `${div} MD${r.matchday} · ${ha}` : `${div} · ${ha}`;
+  const md = r.matchday != null && r.matchday !== "" ? `Matchday ${r.matchday}` : "";
+  return [div, md, month].filter(Boolean).join(" · ");
+}
+
+function fixturePageHref(r) {
+  const id = Number(r.fixture_id);
+  if (!id) return "";
+  const params = new URLSearchParams();
+  params.set("locate", String(id));
+  if (r.competition_type === "cup") {
+    params.set("view", "cups");
+    if (r.cup_code) params.set("cup", r.cup_code);
+  } else {
+    params.set("view", "league");
+    if (r.division) params.set("division", r.division);
+    if (r.gpsl_month) params.set("month", String(r.gpsl_month).toLowerCase());
+  }
+  return `fixtures.html?${params.toString()}`;
 }
 
 function formationDragOutcome(r, instances) {
@@ -143,9 +166,16 @@ async function loadReports() {
       const pill = `<span class="status-pill status-${escapeHtml(status)}">${escapeHtml(
         status
       )}</span>`;
-      const video = r.video_url
-        ? `<a href="${escapeHtml(r.video_url)}" target="_blank" rel="noopener noreferrer">Open video</a>`
-        : "No URL";
+      const recording = r.video_url
+        ? `<a href="${escapeHtml(r.video_url)}" target="_blank" rel="noopener noreferrer">Open recording</a>`
+        : "";
+      const fixtureHref = fixturePageHref(r);
+      const fixtureLink = fixtureHref
+        ? `<a href="${escapeHtml(fixtureHref)}">Open fixture</a>`
+        : "";
+      const links = [recording, fixtureLink].filter(Boolean).join("");
+      const sideLabel =
+        String(r.side || "").toLowerCase() === "away" ? "Away video" : "Home video";
       const count = r.breach_count ?? (Array.isArray(r.breaches) ? r.breaches.length : 0);
       const replayChoice = reportNeedsReplayChoice(r)
         ? `
@@ -189,10 +219,12 @@ async function loadReports() {
           <h3>${count} breach${count === 1 ? "" : "es"} ${pill}</h3>
           <div class="mvr-outs">${outs}</div>
           <div class="mvr-meta">
-            #${r.id} · ${escapeHtml(fixtureLabel(r))} · ${escapeHtml(r.side)} ·
+            <div class="mvr-where">${escapeHtml(competitionLine(r))}</div>
+            ${escapeHtml(r.home_club_short_name)} vs ${escapeHtml(r.away_club_short_name)} ·
+            ${escapeHtml(sideLabel)} ·
             accused <b>${escapeHtml(r.accused_club_short_name)}</b> ·
-            ${new Date(r.created_at).toLocaleString("en-GB")}<br>
-            ${video}
+            #${r.id} · ${new Date(r.created_at).toLocaleString("en-GB")}
+            ${links ? `<div class="mvr-links">${links}</div>` : ""}
           </div>
           <div class="mvr-breaches">${breachesHtml(r)}</div>
           ${openActions}
