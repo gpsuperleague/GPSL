@@ -55,7 +55,7 @@ export function welcomePackParts(ctx: WelcomePackContext | WelcomePackAudience =
     "",
     "*Stage 3* — **Film the last match**",
     `Post your page code with the film in ${videos} within 72 hours of day 7. Staff tick the card. A fail returns only the video.`,
-    "Show: settings to ratings, 10 min, injuries off, PA3/PA4 & advanced skill, manager, subtactic, squad, blank instructions, Fluid on screen, no dragging, scoreboard, HUD, ratings.",
+    "Show: All Pre-Match settings, default with injuries off | PA3/PA4 & advanced skill | Manager, subtactic formation, squad (with subs), blank instructions, Fluid formations, no dragging, scoreboard, HUD, ratings.",
     "",
     "*Stage 4* — **Waiting list**",
     "An approved video puts you on the list.",
@@ -66,7 +66,7 @@ export function welcomePackParts(ctx: WelcomePackContext | WelcomePackAudience =
     "Agree kick-offs. Check in from 10 min before to 10 min after. Record the match, post the video, enter the result. Locks Thursday 7pm UK. Fines come off when they happen. August squad 24–28. Star cap 3 Super League, 2 Championship.",
     "",
     "**Roles** — **Visitor** no account · **Member** qualifying, then the list · **Owner** has a club.",
-    "Read the handbook before a club. Do not wait for a fine.",
+    "Do not wait for a fine.",
   ].join("\n");
 
   return [body];
