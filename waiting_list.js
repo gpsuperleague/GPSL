@@ -537,17 +537,9 @@ async function loadMidSeasonClaimCard(self) {
   } catch (qErr) {
     console.warn("owner_qualifying_state", qErr);
   }
-  if (qualifying?.subject === true) {
-    if (qualifying.video_approved !== true) {
-      window.location.replace("qualifying.html");
-      return;
-    }
-    if (!qualifying.handpick_club) {
-      claimCard.hidden = false;
-      listEl.innerHTML =
-        "<p>Your video is approved. An admin still has to name the club you can handpick, or invite you to the auction. Choosing a club yourself stays closed.</p>";
-      return;
-    }
+  if (qualifying?.subject === true && qualifying.video_approved !== true) {
+    window.location.replace("qualifying.html");
+    return;
   }
   if (!(self.is_member || self.status === "member" || self.status === "on_absence")) {
     // still allow awaiting_club_auction to see pre-season card only
@@ -567,19 +559,7 @@ async function loadMidSeasonClaimCard(self) {
 
   const mode = data?.mode || "pre_season";
   const canClaim = data?.can_claim === true;
-  let clubs = Array.isArray(data?.clubs) ? data.clubs : [];
-  if (qualifying?.subject === true && qualifying.handpick_club) {
-    const only = String(qualifying.handpick_club).toUpperCase();
-    clubs = clubs.filter((c) => String(c.short_name || "").toUpperCase() === only);
-    if (introEl) {
-      const due = qualifying.handpick_due_at
-        ? new Date(qualifying.handpick_due_at).toLocaleString("en-GB")
-        : "";
-      introEl.textContent = due
-        ? `You can take ${only} only, until ${due}. After that the offer closes.`
-        : `You can take ${only} only.`;
-    }
-  }
+  const clubs = Array.isArray(data?.clubs) ? data.clubs : [];
 
   if (mode === "pre_season") {
     if (preCard && (self.is_member || self.needs_club_auction || !self.has_club)) {
