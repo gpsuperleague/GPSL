@@ -142,10 +142,10 @@ BEGIN
   RETURNING id INTO v_id;
 
   v_body := format(
-    E'%s posted a qualifying recording.\nCode: %s\nLink: %s\nFriendlies logged: %s\n\nTick the matchday card on Qualifying videos.',
+    E'Video: %s\n%s posted qualifying code %s.\nFriendlies logged: %s\n\nTick the matchday card on Qualifying videos.',
+    v_url,
     v_tag,
     v_code,
-    v_url,
     v_friendlies
   );
 

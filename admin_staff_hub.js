@@ -26,7 +26,7 @@ async function boot(name) {
   if (booted.has(name)) return;
   try {
     if (name === "alerts") {
-      const mod = await import("./admin_staff_alerts.js?v=20261114-staff-hub");
+      const mod = await import("./admin_staff_alerts.js?v=20261117-qualifying-video");
       await mod.bootStaffAlerts();
     } else if (name === "owners") {
       const mod = await import("./admin_owners.js?v=20261114-col-dropdowns");

@@ -56,6 +56,11 @@ async function loadQueue() {
           new Date(r.created_at).toLocaleString("en-GB")
         )}${r.handpick_club ? ` · handpick ${escapeHtml(r.handpick_club)} until ${escapeHtml(due)}` : ""}</p>
         ${
+          /^https:\/\//i.test(String(r.video_url || ""))
+            ? `<p><a href="${escapeHtml(r.video_url)}" target="_blank" rel="noopener">Open recording</a></p>`
+            : ""
+        }
+        ${
           open
             ? `${checklistHtml(r.id)}
                <label>Note <input type="text" data-note="${r.id}" maxlength="400"></label>

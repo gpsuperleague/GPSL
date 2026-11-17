@@ -155,20 +155,19 @@ function render(s) {
   const videoLink = videoHref
     ? `<p><a href="${escapeHtml(videoHref)}" target="_blank" rel="noopener">Open recording</a></p>`
     : "";
-  const videoBlock = !step2
-    ? ""
+  const code = escapeHtml(s.upload_code || "");
+  const codeBlock = `<p class="friendly-sub">Your recording code</p><p class="recording-code">${code}</p>`;
+  const videoBlock = approved
+    ? `${codeBlock}<p>Approved. You are on the waiting list.</p>${videoLink}`
     : open
-      ? `<p>Code <span class="code">${escapeHtml(s.upload_code)}</span> is with staff.</p>${videoLink}`
-      : approved
-        ? `<p>Approved. You are on the waiting list.</p>${videoLink}`
-        : `<p>Post it in <b>${escapeHtml(s.video_channel)}</b> as</p>
-           <p class="code">[${escapeHtml(s.upload_code)}](https://youtu.be/…)</p>
-           <p>YouTube or MEGA, from the Discord account linked to your profile.</p>
-           ${
-             rejected
-               ? `<p>Last video was sent back.<br>${escapeHtml(s.video?.review_note || "")}</p><p>Play another friendly and post the new code. The five you already logged still count.</p>`
-               : ""
-           }`;
+      ? `${codeBlock}<p>Staff have this code and the film. The alert is on the admin desk.</p>${videoLink}`
+      : `${codeBlock}
+         <p>That code is yours. Post it in <b>${escapeHtml(s.video_channel)}</b> as the label of the film link: the code in square brackets, then your YouTube or MEGA address in round brackets. The scan matches this code to you, and only from the Discord account on your profile. Staff get an alert with the film link.</p>
+         ${
+           rejected
+             ? `<p>Last video was sent back.<br>${escapeHtml(s.video?.review_note || "")}</p><p>The five you already logged still count. The code above is the new one. Post that with the new film.</p>`
+             : ""
+         }`;
 
   const queueRows = Array.isArray(waitingList?.rows) ? waitingList.rows : [];
   const myPlace = Number(waitingList?.my_position) || 0;

@@ -987,6 +987,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    let qualifying: Record<string, unknown> = { skipped: true };
     let qualifyingVideos: Record<string, unknown> = { skipped: true };
     if (!inject?.id) {
       try {

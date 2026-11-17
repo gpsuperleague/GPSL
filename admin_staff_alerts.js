@@ -9,6 +9,13 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
+function linkify(text) {
+  return escapeHtml(text).replace(
+    /https:\/\/[^\s&<]+/g,
+    (url) => `<a href="${url}" target="_blank" rel="noopener">${url}</a>`
+  );
+}
+
 function formatWhen(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -63,7 +70,7 @@ async function loadAlerts() {
         <article class="alert-card${r.is_read ? "" : " unread"}" data-id="${r.id}">
           <h3>${escapeHtml(r.title)}${unreadBadge}</h3>
           <div class="alert-meta">${escapeHtml(r.alert_type)} · ${escapeHtml(formatWhen(r.created_at))}</div>
-          <div class="alert-body">${escapeHtml(r.body || "")}</div>
+          <div class="alert-body">${linkify(r.body || "")}</div>
           <div class="alert-actions">${href}${mark}</div>
         </article>`;
     })
