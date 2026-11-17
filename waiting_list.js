@@ -591,6 +591,7 @@ async function loadMidSeasonClaimCard(self) {
   if (!clubs.length) {
     listEl.innerHTML =
       '<p style="color:#888;margin:0;">No free clubs available at the moment.</p>';
+    focusClaimCard();
     return;
   }
 
@@ -653,4 +654,12 @@ async function loadMidSeasonClaimCard(self) {
       window.location.assign(dest);
     });
   });
+  focusClaimCard();
+}
+
+function focusClaimCard() {
+  if (location.hash !== "#wlClaimCard") return;
+  const card = document.getElementById("wlClaimCard");
+  if (!card || card.hidden) return;
+  card.scrollIntoView({ block: "start" });
 }

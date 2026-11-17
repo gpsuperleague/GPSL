@@ -33,7 +33,6 @@ function formatWhen(iso) {
 let state = null;
 let avail = null;
 let intakeMode = "pre_season";
-let vacantClaim = null;
 
 const RECORDING = [
   "PA3 or PA4",
@@ -223,15 +222,6 @@ function render(s) {
   const inSeason = intakeMode === "mid_season";
   const seasonTitle = s.handpick_club || inSeason ? "Handpick" : "Club auction";
   const guide = (href, label) => (approved ? `<a href="${href}">${label}</a>` : label);
-  const clubs = Array.isArray(vacantClaim?.clubs) ? vacantClaim.clubs : [];
-  const clubRows = clubs
-    .map((c) => {
-      const short = escapeHtml(c.short_name || "");
-      const name = escapeHtml(c.club_name || c.short_name || "");
-      const div = escapeHtml(c.division_label || c.division || "");
-      return `<li class="claim-row"><span><b>${name}</b> ${short}${div ? ` · ${div}` : ""}</span><button type="button" class="button" data-claim="${short}">Take this club</button></li>`;
-    })
-    .join("");
   const seasonBody = s.handpick_club && !inSeason
     ? `<p>You can take <b>${escapeHtml(s.handpick_club)}</b> until ${escapeHtml(
         s.handpick_due_at
@@ -248,18 +238,14 @@ function render(s) {
     : inSeason
       ? approved
         ? `<p>Pick an empty club in a division. You keep its cash. The old squad is released, then you handpick.</p>
-           ${
-             clubRows
-               ? `<ul class="claim-list">${clubRows}</ul>`
-               : `<p>No empty club is in a division right now.</p>`
-           }
+           <p><button type="button" class="button" id="chooseClubBtn">Choose a club</button></p>
            <ul class="req">
              <li>In ${guide("GPDB.html", "GPDB")}, tick free agents. Check the player is still in eFootball. A tick is not a signing.</li>
              <li>${guide("handpick_squad.html", "Handpick Squad")} has to be green: squad size, home-grown, under-21s, a goalkeeper, the star cap, and the cash.</li>
              <li>In ${guide("MGDB.html", "MGDB")}, tick one manager.</li>
              <li>Submit the squad and the manager together. The fees leave when staff approve.</li>
            </ul>`
-        : `<p>When this opens, you pick an empty club that is in a division. You keep its cash. The old squad is released, then you handpick.</p>
+        : `<p>When this opens, Choose a club takes you to the empty clubs in a division. You keep the cash. The old squad is released, then you handpick.</p>
            <ul class="req">
              <li>In GPDB, tick free agents. Check the player is still in eFootball. A tick is not a signing.</li>
              <li>Handpick Squad has to be green: squad size, home-grown, under-21s, a goalkeeper, the star cap, and the cash.</li>
@@ -370,9 +356,12 @@ function render(s) {
     </section>`;
 
   document.getElementById("saveTagBtn").onclick = saveTag;
-  document.querySelectorAll("[data-claim]").forEach((btn) => {
-    btn.onclick = () => claimClub(btn.getAttribute("data-claim"));
-  });
+  const chooseBtn = document.getElementById("chooseClubBtn");
+  if (chooseBtn) {
+    chooseBtn.onclick = () => {
+      window.location.assign("waiting_list.html#wlClaimCard");
+    };
+  }
   const youRow = document.querySelector(".wl-queue .you");
   if (youRow?.parentElement) {
     youRow.parentElement.scrollTop = Math.max(0, youRow.offsetTop - 36);
@@ -414,16 +403,6 @@ async function refresh() {
   } catch {
     intakeMode = "pre_season";
   }
-  try {
-    if (data?.video_approved && intakeMode === "mid_season") {
-      const { data: claim, error: claimError } = await supabase.rpc("waiting_list_vacant_clubs_for_claim");
-      vacantClaim = claimError ? null : claim;
-    } else {
-      vacantClaim = null;
-    }
-  } catch {
-    vacantClaim = null;
-  }
   if (!data?.subject) {
     document.getElementById("steps").innerHTML =
       `<p>This account joined before qualifying. Use the waiting list.</p><p><a href="waiting_list.html">Waiting list</a></p>`;
@@ -433,23 +412,6 @@ async function refresh() {
     /* stay */
   }
   render(data);
-}
-
-async function claimClub(shortName) {
-  const short = String(shortName || "").trim();
-  if (!short) return;
-  if (!window.confirm(`Take ${short}?\n\nYou become the owner. The squad is cleared for handpick.`)) return;
-  setStatus(`Taking ${short}…`);
-  const { data, error } = await supabase.rpc("waiting_list_claim_vacant_club", {
-    p_club_short_name: short,
-  });
-  if (error || data?.ok === false) {
-    setStatus(error?.message || data?.detail || data?.reason || "Could not take that club", false);
-    return;
-  }
-  window.location.assign(
-    data?.redirect || `handpick_squad.html?club=${encodeURIComponent(data?.club || short)}`
-  );
 }
 
 async function saveTag() {
