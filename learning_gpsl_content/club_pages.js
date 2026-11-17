@@ -113,7 +113,8 @@ export const SECTION_EXPECTATIONS = {
       items: [
         `<b>Places below your expected finish</b> — level or better = <b>on target</b>; 1–2 places below = <b>slight miss</b>; 3–5 = <b>bad</b>; 6+ = <b>abysmal</b>.`,
         `<b>Super League relegation</b> — if you were expected to finish 15th or higher, being relegated (by any route) is at least a <b>bad</b> season; dropping into 18th–20th when expected top 10 is <b>abysmal</b>.`,
-        `<b>Expected 16th–20th (“Avoid relegation”)</b> — staying up (15th or higher, or surviving the playoffs) is <b>on target</b>. Relegated via the playoffs, or in 18th–20th but no lower than expected = <b>slight</b>; 1–2 places lower = <b>bad</b>; 3+ = <b>abysmal</b>.`,
+        `<b>Expected 16th–17th (“Avoid relegation”)</b> — staying up (15th or higher, or surviving the playoffs) is <b>on target</b>. 16th or 17th before the playoffs is a <b>slight</b> miss until that is settled. Relegated via the playoffs is a <b>slight</b> miss.`,
+        `<b>Expected 18th–20th, low club (“Fight bravely against relegation”)</b> — the target is that place, not staying up. The same place or better is <b>on target</b>, including a finish in the drop. 1–2 places worse is <b>slight</b>; 3–5 is <b>bad</b>; 6+ is <b>abysmal</b>.`,
         `<b>Championship</b> — promotion (top 2 or playoff winner) is always <b>on target</b>.`,
         `<b>Cup backup</b> — meeting your club cup target rescues a <b>slight</b> miss only. If your target is in the Super8 but you are not in it this season, the same stage of the <b>Plate</b> counts instead.`,
       ],
