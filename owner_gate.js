@@ -73,12 +73,12 @@ export async function enforceOwnerClubGate() {
 
   if (self?.has_club) return;
 
-  // New accounts finish qualifying before the waiting list. The list page
-  // sends them here; sending them back is what flashed the two pages.
+  // Qualifying progress stays on the qualifying page until they have a club.
+  // Step 5 sends them on: waiting list to pick a club, or the auction list.
   if (!self?.is_archived) {
     try {
       const { data: qualifying } = await supabase.rpc("owner_qualifying_state");
-      if (qualifying?.subject === true && qualifying?.video_approved !== true) {
+      if (qualifying?.subject === true && self?.has_club !== true) {
         markPreClubSession("qualifying.html");
         const stay = new Set([
           "qualifying",
@@ -86,6 +86,17 @@ export async function enforceOwnerClubGate() {
           "getting_started",
           "video_tutorials",
         ]);
+        if (qualifying.video_approved === true) {
+          [
+            "waiting_list",
+            "awaiting_club",
+            "club_auction",
+            "club_database",
+            "gpdb",
+            "mgdb",
+            "scouting",
+          ].forEach((id) => stay.add(id));
+        }
         if (!stay.has(page)) redirectTo("qualifying.html");
         return;
       }

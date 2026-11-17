@@ -33,7 +33,7 @@ export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js"
 applyStoredSiteTheme();
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-import { APP_VERSION } from "./app_version.js?v=20261117-qualifying-link";
+import { APP_VERSION } from "./app_version.js?v=20261117-qualifying-home";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
 
@@ -3176,8 +3176,10 @@ export async function buildNav() {
       console.warn("Qualifying state skipped:", qErr);
     }
   }
+  const qualifyingSubject =
+    qualifyingState?.subject === true && registrySelf?.has_club !== true;
   const qualifyingOpen =
-    qualifyingState?.subject === true && qualifyingState?.video_approved !== true;
+    qualifyingSubject && qualifyingState?.video_approved !== true;
   if (qualifyingOpen) {
     const qualifyingAllowed = new Set([
       "qualifying.html",
@@ -3195,18 +3197,19 @@ export async function buildNav() {
     !isGpslAdminNav &&
     !isVisitorNav &&
     registrySelf?.has_club !== true &&
-    (qualifyingOpen ||
+    (qualifyingSubject ||
       registrySelf?.is_member === true ||
       registrySelf?.needs_club_auction === true ||
       registrySelf?.status === "awaiting_club_auction");
-  const memberHomeHref = qualifyingOpen ? "qualifying.html" : "waiting_list.html";
   const homeHref = isVisitorNav
     ? "progress.html"
-    : isPreClubOwner
-    ? registrySelf?.needs_club_auction
-      ? "awaiting_club.html"
-      : memberHomeHref
-      : "dashboard.html";
+    : qualifyingSubject
+      ? "qualifying.html"
+      : isPreClubOwner
+        ? registrySelf?.needs_club_auction
+          ? "awaiting_club.html"
+          : "waiting_list.html"
+        : "dashboard.html";
 
   const dashActive = pathNorm === normalizeNavPath(homeHref);
   const inboxActive = pathNorm === "inbox.html";
@@ -3247,7 +3250,12 @@ export async function buildNav() {
         {
           id: "preclub",
           label: "The Waiting Room",
-          items: [...(accessMod.PRE_CLUB_NAV_ITEMS || [])],
+          items: [
+            ...(qualifyingSubject
+              ? [{ href: "qualifying.html", label: "Qualifying", page: "qualifying" }]
+              : []),
+            ...(accessMod.PRE_CLUB_NAV_ITEMS || []),
+          ],
         },
       ];
     } catch (preErr) {

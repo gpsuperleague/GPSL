@@ -17,7 +17,6 @@ export async function initMemberHomePage() {
     const { data: qualifying } = await supabase.rpc("owner_qualifying_state");
     if (
       qualifying?.subject === true &&
-      qualifying?.video_approved !== true &&
       self?.has_club !== true
     ) {
       window.location.assign("qualifying.html");

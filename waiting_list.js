@@ -1,5 +1,5 @@
 import { supabase } from "./supabase_client.js";
-import { initGlobal } from "./global.js?v=20261117-qualifying-gate";
+import { initGlobal } from "./global.js?v=20261117-qualifying-home";
 import {
   loadOwnerSupporterMap,
   ownerTagHtml,

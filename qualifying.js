@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js?v=20261117-qualifying-link";
+import { supabase, initGlobal } from "./global.js?v=20261117-qualifying-home";
 import { getAuthUser } from "./supabase_client.js";
 import { mountAvailabilityPanel } from "./owner_availability.js?v=20260930-world-tz";
 import {
@@ -238,7 +238,7 @@ function render(s) {
     : inSeason
       ? approved
         ? `<p>Pick an empty club in a division. You keep its cash. The old squad is released, then you handpick.</p>
-           <p><button type="button" class="button" id="chooseClubBtn">Choose a club</button></p>
+           <p><button type="button" class="button" id="chooseClubBtn" data-href="waiting_list.html#wlClaimCard">Choose a club</button></p>
            <ul class="req">
              <li>In ${guide("GPDB.html", "GPDB")}, tick free agents. Check the player is still in eFootball. A tick is not a signing.</li>
              <li>${guide("handpick_squad.html", "Handpick Squad")} has to be green: squad size, home-grown, under-21s, a goalkeeper, the star cap, and the cash.</li>
@@ -252,12 +252,21 @@ function render(s) {
              <li>In MGDB, tick one manager.</li>
              <li>Submit the squad and the manager together. Staff approve. The fees leave then.</li>
            </ul>`
-      : `<p>Between seasons the door is the club auction. An admin invites you. You bid only if invited.</p>
-         <ul class="req">
-           <li>On ${guide("club_database.html", "Club Database")}, mark a first club and a backup.</li>
-           <li>The bid pays for the club and the stadium. What is left is your balance.</li>
-           <li>Squad and manager then come through the drafts.</li>
-         </ul>`;
+      : approved
+        ? `<p>Between seasons you are on the next club auction. The waiting list still shows your place.</p>
+           <p><button type="button" class="button" id="chooseClubBtn" data-href="waiting_list.html">Waiting list</button></p>
+           <ul class="req">
+             <li>On ${guide("club_database.html", "Club Database")}, mark a first club and a backup.</li>
+             <li>On ${guide("club_auction.html", "Club auction")}, bid only when that auction is open.</li>
+             <li>The bid pays for the club and the stadium. What is left is your balance.</li>
+             <li>Squad and manager then come through the drafts.</li>
+           </ul>`
+        : `<p>Between seasons the door is the club auction. When this opens you are added to the next one, with a link through to the waiting list.</p>
+           <ul class="req">
+             <li>On Club Database, mark a first club and a backup.</li>
+             <li>The bid pays for the club and the stadium. What is left is your balance.</li>
+             <li>Squad and manager then come through the drafts.</li>
+           </ul>`;
 
   const tagShown = String(s.owner_tag || "YOURTAG");
   const tagOk = /^[A-Za-z0-9]{2,32}$/.test(tagShown);
@@ -359,7 +368,7 @@ function render(s) {
   const chooseBtn = document.getElementById("chooseClubBtn");
   if (chooseBtn) {
     chooseBtn.onclick = () => {
-      window.location.assign("waiting_list.html#wlClaimCard");
+      window.location.assign(chooseBtn.getAttribute("data-href") || "waiting_list.html");
     };
   }
   const youRow = document.querySelector(".wl-queue .you");
