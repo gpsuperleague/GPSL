@@ -19,6 +19,7 @@ function escapeHtml(s) {
 let state = null;
 let avail = null;
 let intakeMode = "pre_season";
+let waitingList = null;
 
 const RECORDING = [
   "10-minute match, injuries off.",
@@ -148,19 +149,46 @@ function render(s) {
     }${escapeHtml(match.played_on)} · ${escapeHtml(match.opponent)}</li>`;
   }).join("");
 
+  const videoHref = /^https:\/\//i.test(String(s.video?.video_url || ""))
+    ? String(s.video.video_url)
+    : "";
+  const videoLink = videoHref
+    ? `<p><a href="${escapeHtml(videoHref)}" target="_blank" rel="noopener">Open recording</a></p>`
+    : "";
   const videoBlock = !step2
     ? ""
     : open
-      ? `<p>Code <span class="code">${escapeHtml(s.upload_code)}</span> is with staff. They are ticking the matchday card.</p>`
+      ? `<p>Code <span class="code">${escapeHtml(s.upload_code)}</span> is with staff.</p>${videoLink}`
       : approved
-        ? `<p>Approved. You are on the waiting list.</p>`
-        : `<p>Film the latest friendly. Put <span class="code">${escapeHtml(s.upload_code)}</span> in the filename and post it in <b>${escapeHtml(s.video_channel)}</b>.</p>
+        ? `<p>Approved. You are on the waiting list.</p>${videoLink}`
+        : `<p>Post it in <b>${escapeHtml(s.video_channel)}</b> as</p>
+           <p class="code">[${escapeHtml(s.upload_code)}](https://youtu.be/…)</p>
+           <p>YouTube or MEGA, from the Discord account linked to your profile.</p>
            ${
              rejected
-               ? `<p>Last video was sent back.<br>${escapeHtml(s.video?.review_note || "")}</p><p>Play another friendly, log it, and send a new recording with the new code. The five you already logged still count.</p>`
+               ? `<p>Last video was sent back.<br>${escapeHtml(s.video?.review_note || "")}</p><p>Play another friendly and post the new code. The five you already logged still count.</p>`
                : ""
            }`;
 
+  const queueRows = Array.isArray(waitingList?.rows) ? waitingList.rows : [];
+  const myPlace = Number(waitingList?.my_position) || 0;
+  const queueTotal = Number(waitingList?.total) || queueRows.length;
+  const queueItems = queueRows
+    .map((row) => {
+      const you = myPlace && Number(row.position) === myPlace;
+      return `<li class="${you ? "you" : ""}"><span>${escapeHtml(row.position)}</span><b>${escapeHtml(
+        row.owner_tag || "—"
+      )}</b>${you ? "<em>You</em>" : ""}</li>`;
+    })
+    .join("");
+  const waitingHtml = waitingList
+    ? `${
+        myPlace
+          ? `<p class="wl-place"><b>#${myPlace}</b><span>of ${queueTotal} on the list</span></p>`
+          : `<p class="wl-place"><b>${queueTotal}</b><span>waiting. You join when the recording is approved.</span></p>`
+      }
+      <ul class="wl-queue">${queueItems || `<li class="empty">The list is empty.</li>`}</ul>`
+    : `<p>The waiting list could not be loaded.</p>`;
   const inSeason = intakeMode === "mid_season";
   const seasonTitle = s.handpick_club || inSeason ? "Handpick" : "Club auction";
   const guide = (href, label) => (approved ? `<a href="${href}">${label}</a>` : label);
@@ -263,18 +291,12 @@ function render(s) {
         <ul class="req">${recordingItems}</ul>
         ${videoBlock}
       </div>
-      ${
-        step2 && !open && !approved
-          ? `<div class="step-actions"><button type="button" class="button" id="submitVideoBtn">I have uploaded this code</button></div>`
-          : ""
-      }
     </section>
-    <section class="${stepClass(4, approved, !approved)}">
-      <div class="step-head"><span class="step-no">4</span><h2>The waiting list</h2>${approved ? `<span class="pill">On the list</span>` : pill(false, !approved)}</div>
+    <section class="${stepClass(4, approved, false)}">
+      <div class="step-head"><span class="step-no">4</span><h2>The waiting list</h2>${approved || myPlace ? `<span class="pill">On the list</span>` : `<span class="pill">Watching</span>`}</div>
       <div class="step-body">
-        <p>An approved recording puts you on the waiting list. You do not pick a club from here.</p>
-        <p>The way in is the next step, and it follows whether the season is running.</p>
-        ${approved ? `<p><a href="waiting_list.html">Waiting list</a></p>` : ""}
+        <p>An approved recording puts you here. You do not pick a club from this list.</p>
+        ${waitingHtml}
       </div>
     </section>
     <section class="${stepClass(5, false, !approved)}">
@@ -291,7 +313,10 @@ function render(s) {
     </section>`;
 
   document.getElementById("saveTagBtn").onclick = saveTag;
-  document.getElementById("submitVideoBtn")?.addEventListener("click", submitVideo);
+  const youRow = document.querySelector(".wl-queue .you");
+  if (youRow?.parentElement) {
+    youRow.parentElement.scrollTop = Math.max(0, youRow.offsetTop - 36);
+  }
   mountAvailability();
 }
 
@@ -312,6 +337,12 @@ async function refresh() {
     avail = await loadOnboardingAvailabilityContext();
   } catch {
     avail = null;
+  }
+  try {
+    const { data: list, error: listError } = await supabase.rpc("waiting_list_public");
+    waitingList = listError ? null : list;
+  } catch {
+    waitingList = null;
   }
   try {
     const { data: mode } = await supabase.rpc("gpsl_owner_intake_mode");
@@ -343,17 +374,6 @@ async function saveTag() {
     return;
   }
   setStatus("Tag saved.", true);
-  await refresh();
-}
-
-async function submitVideo() {
-  setStatus("Sending the video to staff…");
-  const { error } = await supabase.rpc("owner_qualifying_submit_video");
-  if (error) {
-    setStatus(error.message, false);
-    return;
-  }
-  setStatus("Staff have the video.", true);
   await refresh();
 }
 

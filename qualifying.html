@@ -163,6 +163,48 @@
       text-transform: uppercase;
       color: #8d8;
     }
+    .wl-place {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+    .wl-place b { font-size: 28px; line-height: 1; color: #ffcc66; }
+    .wl-place span { color: #aaa; font-size: 12px; }
+    .wl-queue {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 240px;
+      overflow: auto;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      background: #121212;
+    }
+    .wl-queue li {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      gap: 6px;
+      align-items: center;
+      padding: 6px 8px;
+      border-top: 1px solid #2a2a2a;
+      font-size: 12px;
+      color: #ddd;
+    }
+    .wl-queue li:first-child { border-top: 0; }
+    .wl-queue li span { color: #888; }
+    .wl-queue li.you {
+      background: #241c10;
+      box-shadow: inset 3px 0 0 #ff9900;
+      color: #ffcc66;
+    }
+    .wl-queue em {
+      font-style: normal;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #8d8;
+    }
     .qual-guides {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -232,6 +274,6 @@
     <div id="steps"></div>
     <div id="status"></div>
   </main>
-  <script type="module" src="qualifying.js?v=20261117-qualifying-slots"></script>
+  <script type="module" src="qualifying.js?v=20261117-qualifying-list"></script>
 </body>
 </html>
