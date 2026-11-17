@@ -669,6 +669,13 @@ export const ADMIN_MAIN_NAV = [
           "Review owner R-button breach reports on uploaded match videos; uphold fine + Building Society reward."
         ),
         L(
+          "Qualifying videos",
+          "admin_qualifying.html",
+          null,
+          null,
+          "Review new-member qualifying recordings and name a handpick club."
+        ),
+        L(
           "Network incidents",
           "admin_network_incidents.html",
           null,

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Qualifying — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <style>
+    main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+    h1 { color: #ffcc66; font-size: 28px; margin: 0 0 8px; }
+    .lead { color: #aaa; line-height: 1.5; margin: 0 0 20px; }
+    .step {
+      border: 1px solid #333; border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; background: #161616;
+    }
+    .step.locked { opacity: 0.55; }
+    .step h2 { margin: 0 0 6px; font-size: 16px; color: #ffcc66; }
+    .step p, .step li { color: #ccc; font-size: 14px; line-height: 1.45; }
+    .step .pill { float: right; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #888; }
+    .step.done .pill { color: #8d8; }
+    label { display: grid; gap: 4px; font-size: 13px; color: #bbb; margin: 8px 0; }
+    input[type="text"], input[type="date"] {
+      padding: 8px 10px; background: #1a1a1a; border: 1px solid #333; color: #eee; border-radius: 4px;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+    .friendly-list { list-style: none; padding: 0; margin: 8px 0; }
+    .friendly-list li { padding: 4px 0; border-top: 1px solid #2a2a2a; }
+    .code { font-family: ui-monospace, monospace; color: #ffcc66; font-size: 16px; }
+    #status { margin-top: 12px; white-space: pre-wrap; }
+    button.button.secondary { background: #444; color: #ddd; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <main>
+    <h1>Become an owner</h1>
+    <p class="lead" id="lead">Each step unlocks the next. A club stays closed until the video is approved and an admin opens a door.</p>
+    <div id="steps"></div>
+    <div id="status"></div>
+  </main>
+  <script type="module" src="qualifying.js?v=20261117-qualifying"></script>
+</body>
+</html>

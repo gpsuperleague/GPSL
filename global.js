@@ -3167,14 +3167,38 @@ export async function buildNav() {
       (isGpslAdminNav && handpickProcessActive));
 
   // Admins always get full menus (even without a club). Pre-club lock is for owners only.
+  let qualifyingState = null;
+  if (user && !isGpslAdminNav && registrySelf?.has_club !== true) {
+    try {
+      const { data: qState } = await supabase.rpc("owner_qualifying_state");
+      qualifyingState = qState;
+    } catch (qErr) {
+      console.warn("Qualifying state skipped:", qErr);
+    }
+  }
+  const qualifyingOpen =
+    qualifyingState?.subject === true && qualifyingState?.video_approved !== true;
+  if (qualifyingOpen) {
+    const qualifyingAllowed = new Set([
+      "qualifying.html",
+      "learning_gpsl.html",
+      "video_tutorials.html",
+    ]);
+    if (!qualifyingAllowed.has(pathNorm)) {
+      window.location.replace("qualifying.html");
+      return;
+    }
+  }
+
   const isPreClubOwner =
     !isGpslAdminNav &&
     !isVisitorNav &&
     registrySelf?.has_club !== true &&
-    (registrySelf?.is_member === true ||
+    (qualifyingOpen ||
+      registrySelf?.is_member === true ||
       registrySelf?.needs_club_auction === true ||
       registrySelf?.status === "awaiting_club_auction");
-  const memberHomeHref = "waiting_list.html";
+  const memberHomeHref = qualifyingOpen ? "qualifying.html" : "waiting_list.html";
   const homeHref = isVisitorNav
     ? "progress.html"
     : isPreClubOwner

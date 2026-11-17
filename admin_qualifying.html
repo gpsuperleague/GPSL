@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Qualifying videos — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; }
+    .q-list { display:grid; gap:12px; }
+    .q-card { border:1px solid #333; border-radius:6px; padding:12px 14px; background:#161616; }
+    .q-card h3 { margin:0 0 6px; color:#ffcc66; font-size:15px; }
+    .q-card label { display:flex; gap:8px; align-items:center; font-size:13px; margin:4px 0; }
+    .q-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    input[type="text"] { padding:7px 9px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px; }
+    #status { margin-top:10px; white-space:pre-wrap; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Qualifying videos</h1>
+  <div class="card">
+    <p class="note">
+      New accounts only. Tick the matchday card on the recording in <b>𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐕𝐢𝐝𝐞𝐨𝐬</b>.
+      Approve puts them on the waiting list. Name one club if they are handpicking. They have 7 days to take it.
+    </p>
+    <div id="list" class="q-list"></div>
+    <div id="status"></div>
+  </div>
+  <script type="module" src="admin_qualifying.js?v=20261117-qualifying"></script>
+</body>
+</html>

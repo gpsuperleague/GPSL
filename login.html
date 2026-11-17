@@ -169,7 +169,14 @@
       let dest = "dashboard.html";
       try {
         const { data: self } = await supabase.rpc("owner_registry_get_self");
-        if (self?.is_archived) {
+        const { data: qualifying } = await supabase.rpc("owner_qualifying_state");
+        if (
+          qualifying?.subject === true &&
+          qualifying?.video_approved !== true &&
+          self?.has_club !== true
+        ) {
+          dest = "qualifying.html";
+        } else if (self?.is_archived) {
           dest = "member_home.html?archived=1";
         } else if (self && !self.has_club && self.needs_club_auction) {
           dest = "awaiting_club.html";

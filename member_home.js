@@ -14,6 +14,15 @@ export async function initMemberHomePage() {
 
   try {
     const { data: self } = await supabase.rpc("owner_registry_get_self");
+    const { data: qualifying } = await supabase.rpc("owner_qualifying_state");
+    if (
+      qualifying?.subject === true &&
+      qualifying?.video_approved !== true &&
+      self?.has_club !== true
+    ) {
+      window.location.assign("qualifying.html");
+      return;
+    }
 
     if (self?.is_archived || archived) {
       main.hidden = true;
