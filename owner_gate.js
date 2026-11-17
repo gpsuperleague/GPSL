@@ -73,6 +73,22 @@ export async function enforceOwnerClubGate() {
 
   if (self?.has_club) return;
 
+  // New accounts finish qualifying before the waiting list. The list page
+  // sends them here; sending them back is what flashed the two pages.
+  if (!self?.is_archived) {
+    try {
+      const { data: qualifying } = await supabase.rpc("owner_qualifying_state");
+      if (qualifying?.subject === true && qualifying?.video_approved !== true) {
+        markPreClubSession("qualifying.html");
+        const stay = new Set(["qualifying", "learning_gpsl", "video_tutorials"]);
+        if (!stay.has(page)) redirectTo("qualifying.html");
+        return;
+      }
+    } catch (qErr) {
+      console.warn("owner_qualifying_state:", qErr);
+    }
+  }
+
   if (self?.is_archived) {
     if (page === "member_home") return;
     redirectTo(archivedHome());

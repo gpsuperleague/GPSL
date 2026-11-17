@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal } from "./global.js?v=20261117-qualifying-gate";
 import { getAuthUser } from "./supabase_client.js";
 import { mountAvailabilityPanel } from "./owner_availability.js?v=20260930-world-tz";
 import {
