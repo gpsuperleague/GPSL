@@ -109,7 +109,7 @@ function render(s) {
           <div><b>${left}</b><span>${left === 1 ? "fixture left" : "fixtures left"}</span></div>
         </div>
         <div class="friendly-pips" aria-hidden="true">${pips}</div>
-        <p>Post the score in <b>${escapeHtml(s.friendly_channel)}</b> as <span class="code">${escapeHtml(tagShown)} 2 - 1 OTHERTAG</span>. The other owner posts the same score. It counts when the two posts match.</p>
+        <p>Post the score in <b>${escapeHtml(s.friendly_channel)}</b> as <span class="code">${escapeHtml(tagShown)} 2 - 1 OTHERTAG</span>, or by tagging the two owners. The other owner posts the same score. It counts when the two posts match.</p>
         ${
           step1 && !tagOk
             ? `<p>The tag in that line has to be letters and numbers only, 2 to 32 characters.</p>`

@@ -238,6 +238,25 @@ async function addReaction(
   }
 }
 
+async function removeReaction(
+  botToken: string,
+  channelId: string,
+  messageId: string,
+  emoji: string
+) {
+  const encoded = encodeURIComponent(emoji);
+  const url =
+    `${DISCORD_API}/channels/${channelId}/messages/${messageId}/reactions/${encoded}/@me`;
+  try {
+    await fetch(url, {
+      method: "DELETE",
+      headers: { Authorization: `Bot ${botToken}` },
+    });
+  } catch {
+    /* the tick is what matters if the waiting mark stays */
+  }
+}
+
 async function reactMany(
   botToken: string,
   channelId: string,
@@ -360,6 +379,17 @@ function qualifyingScorelineLooksValid(content: string): boolean {
     new RegExp(`^${token}\\s+\\d{1,2}\\s*-\\s*\\d{1,2}\\s+${token}$`).test(c) ||
     new RegExp(`^${token}\\s+\\d{1,2}\\s*-\\s*${token}\\s+\\d{1,2}$`).test(c)
   );
+}
+
+/** <@id> written in the scoreline is that owner's tag, when the id is linked. */
+function expandQualifyingMentions(
+  content: string,
+  byDiscord: Map<string, OwnerHit>
+): string {
+  return content.replace(/<@!?(\d{5,})>/g, (full, id: string) => {
+    const hit = byDiscord.get(String(id));
+    return hit?.tag || full;
+  });
 }
 
 async function resolveQualifyingFriendliesChannelId(
@@ -486,8 +516,14 @@ async function scanQualifyingFriendlies(
       bumpWatermark();
       continue;
     }
-    const content = cleanContent(String(msg.content || ""));
+    const content = expandQualifyingMentions(
+      cleanContent(String(msg.content || "")),
+      byDiscord
+    );
     if (!content || !qualifyingScorelineLooksValid(content)) {
+      if (content && /<@!?\d{5,}>/.test(content) && /\d/.test(content)) {
+        await addReaction(botToken, channelId, msg.id, "❌");
+      }
       bumpWatermark();
       continue;
     }
@@ -534,6 +570,9 @@ async function scanQualifyingFriendlies(
         msg.id
       );
       await reactMany(botToken, channelId, ids, "✅");
+      for (const id of ids) {
+        await removeReaction(botToken, channelId, id, "⏳");
+      }
     } else if (status === "pending") {
       pending += 1;
       await addReaction(botToken, channelId, msg.id, "⏳");
