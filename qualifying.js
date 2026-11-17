@@ -32,14 +32,23 @@ function render(s) {
   const friendlies = Array.isArray(s.friendlies) ? s.friendlies : [];
   const count = Number(s.friendly_count) || 0;
 
-  const friendlyItems = friendlies
-    .map(
-      (f) =>
-        `<li>${escapeHtml(f.played_on)} · ${escapeHtml(f.opponent)}${
-          f.scoreline ? ` · ${escapeHtml(f.scoreline)}` : ""
-        }</li>`
-    )
-    .join("");
+  const left = Math.max(0, 5 - count);
+  const pips = Array.from({ length: 5 }, (_, i) =>
+    `<i class="${i < Math.min(count, 5) ? "on" : ""}"></i>`
+  ).join("");
+  const friendlyItems = friendlies.length
+    ? [...friendlies]
+        .reverse()
+        .map(
+          (f) =>
+            `<li>${
+              f.scoreline
+                ? `<span class="score">${escapeHtml(f.scoreline)}</span>`
+                : ""
+            }${escapeHtml(f.played_on)} · ${escapeHtml(f.opponent)}</li>`
+        )
+        .join("")
+    : `<li class="empty">No results captured yet.</li>`;
 
   const videoBlock = !step2
     ? ""
@@ -73,7 +82,7 @@ function render(s) {
   const pendingItems = pending
     .map(
       (p) =>
-        `<li>Waiting on the other owner · ${escapeHtml(p.scoreline || "")}</li>`
+        `<li><span class="score">${escapeHtml(p.scoreline || "")}</span></li>`
     )
     .join("");
   const current = !step1 ? 1 : !step2 ? 2 : !approved ? 3 : 4;
@@ -95,14 +104,24 @@ function render(s) {
     <section class="${stepClass(2, step2, !step1)}">
       <div class="step-head"><span class="step-no">2</span><h2>Five friendlies</h2>${pill(step2, !step1)}</div>
       <div class="step-body">
-        <p>Post the score in <b>${escapeHtml(s.friendly_channel)}</b> as <span class="code">${escapeHtml(tagShown)} 2 - 1 OTHERTAG</span>. The other owner posts the same score. It counts when the two posts match. ${count} of 5.</p>
-        <p>Practice side only. Any players, PA3 or PA4. These games do not touch the league.</p>
+        <div class="friendly-tally" aria-label="${count} registered, ${left} ${left === 1 ? "fixture" : "fixtures"} left">
+          <div><b>${count}</b><span>registered</span></div>
+          <div><b>${left}</b><span>${left === 1 ? "fixture left" : "fixtures left"}</span></div>
+        </div>
+        <div class="friendly-pips" aria-hidden="true">${pips}</div>
+        <p>Post the score in <b>${escapeHtml(s.friendly_channel)}</b> as <span class="code">${escapeHtml(tagShown)} 2 - 1 OTHERTAG</span>. The other owner posts the same score. It counts when the two posts match.</p>
         ${
           step1 && !tagOk
             ? `<p>The tag in that line has to be letters and numbers only, 2 to 32 characters.</p>`
             : ""
         }
-        <ul class="friendly-list">${friendlyItems}${pendingItems}</ul>
+        <p class="friendly-sub">Results</p>
+        <ul class="friendly-list">${friendlyItems}</ul>
+        ${
+          pendingItems
+            ? `<p class="friendly-sub">Waiting on the other owner</p><ul class="friendly-list">${pendingItems}</ul>`
+            : ""
+        }
       </div>
     </section>
     <section class="${stepClass(3, approved, !step2)}">
