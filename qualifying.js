@@ -35,7 +35,9 @@ function render(s) {
   const friendlyItems = friendlies
     .map(
       (f) =>
-        `<li>${escapeHtml(f.played_on)} · ${escapeHtml(f.opponent)}</li>`
+        `<li>${escapeHtml(f.played_on)} · ${escapeHtml(f.opponent)}${
+          f.scoreline ? ` · ${escapeHtml(f.scoreline)}` : ""
+        }</li>`
     )
     .join("");
 
@@ -65,6 +67,15 @@ function render(s) {
          <p>When a door opens you will use <a href="club_database.html">Club Database</a>, <a href="GPDB.html">GPDB</a>, <a href="MGDB.html">MGDB</a>, and either the auction or Handpick.</p>
          <p><a href="waiting_list.html">Waiting list</a></p>`;
 
+  const tagShown = String(s.owner_tag || "YOURTAG");
+  const tagOk = /^[A-Za-z0-9]{2,32}$/.test(tagShown);
+  const pending = Array.isArray(s.pending) ? s.pending : [];
+  const pendingItems = pending
+    .map(
+      (p) =>
+        `<li>Waiting on the other owner · ${escapeHtml(p.scoreline || "")}</li>`
+    )
+    .join("");
   const current = !step1 ? 1 : !step2 ? 2 : !approved ? 3 : 4;
   const stepClass = (n, done, locked) =>
     `step${done ? " done" : ""}${locked ? " locked" : ""}${current === n && !done ? " current" : ""}`;
@@ -84,22 +95,15 @@ function render(s) {
     <section class="${stepClass(2, step2, !step1)}">
       <div class="step-head"><span class="step-no">2</span><h2>Five friendlies</h2>${pill(step2, !step1)}</div>
       <div class="step-body">
-        <p>Play them in <b>${escapeHtml(s.friendly_channel)}</b>. Practice side only: any players, PA3 or PA4, and the matchday rules. These games do not touch the league. ${count} of 5 logged.</p>
-        <ul class="friendly-list">${friendlyItems}</ul>
+        <p>Post the score in <b>${escapeHtml(s.friendly_channel)}</b> as <span class="code">${escapeHtml(tagShown)} 2 - 1 OTHERTAG</span>. The other owner posts the same score. It counts when the two posts match. ${count} of 5.</p>
+        <p>Practice side only. Any players, PA3 or PA4. These games do not touch the league.</p>
         ${
-          step1 && !approved
-            ? `<div class="row">
-                <label>Day played<input id="playedOn" type="date"></label>
-                <label>Who you played<input id="opponent" type="text" maxlength="80" placeholder="Practice side"></label>
-              </div>`
+          step1 && !tagOk
+            ? `<p>The tag in that line has to be letters and numbers only, 2 to 32 characters.</p>`
             : ""
         }
+        <ul class="friendly-list">${friendlyItems}${pendingItems}</ul>
       </div>
-      ${
-        step1 && !approved
-          ? `<div class="step-actions"><button type="button" class="button" id="logFriendlyBtn">Log friendly</button></div>`
-          : ""
-      }
     </section>
     <section class="${stepClass(3, approved, !step2)}">
       <div class="step-head"><span class="step-no">3</span><h2>One recording</h2>${pill(approved, !step2)}</div>
@@ -131,7 +135,6 @@ function render(s) {
     </section>`;
 
   document.getElementById("saveTagBtn").onclick = saveTag;
-  document.getElementById("logFriendlyBtn")?.addEventListener("click", logFriendly);
   document.getElementById("submitVideoBtn")?.addEventListener("click", submitVideo);
   mountAvailability();
 }
@@ -173,22 +176,6 @@ async function saveTag() {
     return;
   }
   setStatus("Tag saved.", true);
-  await refresh();
-}
-
-async function logFriendly() {
-  const played = document.getElementById("playedOn")?.value;
-  const opponent = document.getElementById("opponent")?.value || "";
-  setStatus("Logging friendly…");
-  const { error } = await supabase.rpc("owner_qualifying_log_friendly", {
-    p_played_on: played || null,
-    p_opponent: opponent,
-  });
-  if (error) {
-    setStatus(error.message, false);
-    return;
-  }
-  setStatus("Friendly logged.", true);
   await refresh();
 }
 

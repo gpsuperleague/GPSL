@@ -56,7 +56,7 @@ export function welcomePackParts(ctx: WelcomePackContext | WelcomePackAudience =
     "Set the owner tag people will see, your timezone, and the times you can play. Nothing else unlocks until both are saved.",
     "",
     "**2. Five friendlies**",
-    "Play them in ［𝐆𝐏𝐒𝐋］𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐅𝐫𝐢𝐞𝐧𝐝𝐥𝐢𝐞𝐬 and log each one on the page. Practice side, not a league club. Any players. PA3 or PA4. Five finished games. They do not touch league stats, injuries, fitness, or fines. Missing the first week does not delete your account.",
+    "Play them in ［𝐆𝐏𝐒𝐋］𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐅𝐫𝐢𝐞𝐧𝐝𝐥𝐢𝐞𝐬. Both owners post the score with their tags. It counts when the other post matches. Practice side, not a league club. Any players. PA3 or PA4. Five finished games. They do not touch league stats, injuries, fitness, or fines. Missing the first week does not delete your account.",
     "",
     "**3. Film the latest one**",
     "The page gives you a code. Put it in the filename and post the video in 𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐕𝐢𝐝𝐞𝐨𝐬. Staff tick a card. If something fails, they name the ticks and only the video comes back. Play another friendly, log it, and send a new recording with the new code. The five already logged still count.",

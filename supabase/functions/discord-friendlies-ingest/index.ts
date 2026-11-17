@@ -322,6 +322,249 @@ function authorized(
   return false;
 }
 
+type OwnerHit = { owner_id: string; tag: string };
+
+function foldChannelName(raw: string): string {
+  let out = "";
+  for (const ch of raw) {
+    const cp = ch.codePointAt(0)!;
+    const blocks: Array<[number, number, number]> = [
+      [0x1d400, 0x1d419, 65],
+      [0x1d41a, 0x1d433, 97],
+      [0x1d434, 0x1d44d, 65],
+      [0x1d44e, 0x1d467, 97],
+      [0x1d468, 0x1d481, 65],
+      [0x1d482, 0x1d49b, 97],
+      [0x1d5d4, 0x1d5ed, 65],
+      [0x1d5ee, 0x1d607, 97],
+      [0x1d63c, 0x1d655, 65],
+      [0x1d656, 0x1d66f, 97],
+    ];
+    let mapped = false;
+    for (const [lo, hi, base] of blocks) {
+      if (cp >= lo && cp <= hi) {
+        out += String.fromCharCode(base + (cp - lo));
+        mapped = true;
+        break;
+      }
+    }
+    if (!mapped) out += ch;
+  }
+  return out.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function qualifyingScorelineLooksValid(content: string): boolean {
+  const c = cleanContent(content);
+  const token = "[A-Za-z0-9]{2,32}";
+  return (
+    new RegExp(`^${token}\\s+\\d{1,2}\\s*-\\s*\\d{1,2}\\s+${token}$`).test(c) ||
+    new RegExp(`^${token}\\s+\\d{1,2}\\s*-\\s*${token}\\s+\\d{1,2}$`).test(c)
+  );
+}
+
+async function resolveQualifyingFriendliesChannelId(
+  botToken: string,
+  guildId: string
+): Promise<string | null> {
+  const fromEnv = (Deno.env.get("DISCORD_QUALIFYING_FRIENDLIES_CHANNEL_ID") || "").trim();
+  if (fromEnv) return fromEnv;
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+    headers: { Authorization: `Bot ${botToken}` },
+  });
+  if (!res.ok) return null;
+  const channels = (await res.json()) as Array<{ id?: string; name?: string; type?: number }>;
+  const hit = channels.find((c) => {
+    if (!c.id || !c.name || (c.type !== 0 && c.type !== 5)) return false;
+    const name = foldChannelName(c.name);
+    return name.includes("qualifying") && name.includes("friendl");
+  });
+  return hit?.id ? String(hit.id) : null;
+}
+
+async function buildQualifyingOwnerIndex(
+  adminClient: ReturnType<typeof createClient>
+): Promise<{ byDiscord: Map<string, OwnerHit>; byTag: Map<string, OwnerHit> }> {
+  const byDiscord = new Map<string, OwnerHit>();
+  const byTag = new Map<string, OwnerHit>();
+  const { data } = await adminClient
+    .from("gpsl_owner_registry")
+    .select("owner_id, owner_tag, discord_user_id");
+  const counts = new Map<string, number>();
+  for (const row of data || []) {
+    const tag = String(row.owner_tag || "").trim().toLowerCase();
+    if (!tag || !row.owner_id) continue;
+    counts.set(tag, (counts.get(tag) || 0) + 1);
+  }
+  for (const row of data || []) {
+    const tag = String(row.owner_tag || "").trim();
+    const key = tag.toLowerCase();
+    if (!tag || !row.owner_id || counts.get(key) !== 1) continue;
+    const hit = { owner_id: String(row.owner_id), tag };
+    byTag.set(key, hit);
+    const discordId = String(row.discord_user_id || "").trim();
+    if (discordId) byDiscord.set(discordId, hit);
+  }
+  return { byDiscord, byTag };
+}
+
+function matchQualifyingOwner(
+  byTag: Map<string, OwnerHit>,
+  byDiscord: Map<string, OwnerHit>,
+  discordId: string,
+  keys: string[]
+): OwnerHit | null {
+  const byId = byDiscord.get(discordId);
+  if (byId) return byId;
+  for (const key of keys) {
+    const hit = byTag.get(key.trim().toLowerCase());
+    if (hit) return hit;
+  }
+  for (const key of keys) {
+    const k = key.trim().toLowerCase();
+    if (!k) continue;
+    const head = k.split(/\s+-\s+/)[0]?.trim();
+    if (head && byTag.get(head)) return byTag.get(head)!;
+    for (const [tag, hit] of byTag) {
+      if (tag.length < 2) continue;
+      if (
+        k === tag ||
+        k.startsWith(`${tag} `) ||
+        k.startsWith(`${tag}-`) ||
+        k.startsWith(`${tag} -`)
+      ) {
+        return hit;
+      }
+    }
+  }
+  return null;
+}
+
+async function scanQualifyingFriendlies(
+  adminClient: ReturnType<typeof createClient>,
+  botToken: string,
+  guildId: string,
+  forceRescan: boolean
+): Promise<Record<string, unknown>> {
+  const channelId = await resolveQualifyingFriendliesChannelId(botToken, guildId);
+  if (!channelId) {
+    return { ok: false, error: "Qualifying friendlies channel not found" };
+  }
+
+  const { byDiscord, byTag } = await buildQualifyingOwnerIndex(adminClient);
+  const { data: settingsRow } = await adminClient
+    .from("gpsl_qualifying_settings")
+    .select("last_ingested_message_id")
+    .eq("id", 1)
+    .maybeSingle();
+  const lastIngestedId = forceRescan
+    ? null
+    : ((settingsRow?.last_ingested_message_id as string | null) || null);
+  const messages = await fetchChannelMessages(
+    botToken,
+    channelId,
+    40,
+    lastIngestedId
+  );
+  const ordered = lastIngestedId ? [...messages] : [...messages].reverse();
+
+  let watermarkTo = lastIngestedId;
+  let stopWatermark = false;
+  let scanned = 0;
+  let matched = 0;
+  let pending = 0;
+  let ignored = 0;
+  let duplicates = 0;
+  let errors = 0;
+  const memberCache = new Map<string, DiscordMember | null>();
+
+  for (const msg of ordered) {
+    if (!msg?.id) continue;
+    const bumpWatermark = () => {
+      if (!stopWatermark) watermarkTo = maxSnowflake(watermarkTo, msg.id);
+    };
+    if (!msg.author || msg.author.bot) {
+      bumpWatermark();
+      continue;
+    }
+    const content = cleanContent(String(msg.content || ""));
+    if (!content || !qualifyingScorelineLooksValid(content)) {
+      bumpWatermark();
+      continue;
+    }
+    scanned += 1;
+    if (!memberCache.has(msg.author.id)) {
+      memberCache.set(
+        msg.author.id,
+        msg.member || (await fetchGuildMember(botToken, guildId, msg.author.id))
+      );
+    }
+    const member = memberCache.get(msg.author.id) || null;
+    const keys = [
+      member?.nick || "",
+      msg.author.global_name || "",
+      usernameTag(msg.author),
+      msg.author.username || "",
+    ];
+    const owner = matchQualifyingOwner(byTag, byDiscord, String(msg.author.id), keys);
+    if (!owner) {
+      ignored += 1;
+      await addReaction(botToken, channelId, msg.id, "❌");
+      bumpWatermark();
+      continue;
+    }
+
+    const { data, error } = await adminClient.rpc("qualifying_friendlies_ingest_post", {
+      p_discord_message_id: msg.id,
+      p_discord_user_id: msg.author.id,
+      p_reporter_owner_id: owner.owner_id,
+      p_content: content,
+      p_posted_at: msg.timestamp || new Date().toISOString(),
+    });
+    if (error) {
+      errors += 1;
+      stopWatermark = true;
+      await addReaction(botToken, channelId, msg.id, "❌");
+      continue;
+    }
+    const status = String((data as { status?: string } | null)?.status || "");
+    if (status === "matched") {
+      matched += 1;
+      const ids = asIdList(
+        (data as { discord_message_ids?: unknown }).discord_message_ids,
+        msg.id
+      );
+      await reactMany(botToken, channelId, ids, "✅");
+    } else if (status === "pending") {
+      pending += 1;
+      await addReaction(botToken, channelId, msg.id, "⏳");
+    } else if (status === "duplicate") {
+      duplicates += 1;
+    } else {
+      ignored += 1;
+      await addReaction(botToken, channelId, msg.id, "❌");
+    }
+    bumpWatermark();
+  }
+
+  if (!forceRescan && watermarkTo && watermarkTo !== lastIngestedId) {
+    await adminClient
+      .from("gpsl_qualifying_settings")
+      .update({ last_ingested_message_id: watermarkTo })
+      .eq("id", 1);
+  }
+
+  return {
+    ok: errors === 0,
+    channel_id: channelId,
+    scanned,
+    matched,
+    pending,
+    ignored,
+    duplicates,
+    errors,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -579,9 +822,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    let qualifying: Record<string, unknown> = { skipped: true };
+    if (!inject?.id) {
+      try {
+        qualifying = await scanQualifyingFriendlies(
+          adminClient,
+          botToken,
+          guildId,
+          forceRescan
+        );
+      } catch (qErr) {
+        qualifying = {
+          ok: false,
+          error: qErr instanceof Error ? qErr.message : String(qErr),
+        };
+      }
+    }
+
     return jsonResponse({
       ok: true,
       messages_fetched: messages.length,
+      qualifying,
       scanned,
       matched,
       pending,
