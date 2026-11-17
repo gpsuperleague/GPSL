@@ -2,6 +2,7 @@ import { supabase, initGlobal } from "./global.js?v=20261117-qualifying-gate";
 import { getAuthUser } from "./supabase_client.js";
 import { mountAvailabilityPanel } from "./owner_availability.js?v=20260930-world-tz";
 import {
+  ISO_DOW_LABELS,
   loadOnboardingAvailabilityContext,
   saveOnboardingWeeklyAvailability,
   setOnboardingTimezone,
@@ -16,6 +17,78 @@ function escapeHtml(s) {
 }
 
 let state = null;
+let avail = null;
+
+const RECORDING = [
+  "10-minute match, injuries off.",
+  "PA3 or PA4 before kick-off. PA1 and PA2 are not allowed. Advanced skill only.",
+  "Match-room settings, manager, subtactic, and squad on screen.",
+  "Player instructions on screen, and left blank.",
+  "Sub tactic and Fluid are a default formation, set before the match. Do not drag players.",
+  "Scoreboard and HUD on for the whole match. After the whistle, the ratings and player of the match.",
+];
+
+function mixGoldGreen(t) {
+  const clamped = Math.max(0, Math.min(1, t));
+  const from = [255, 153, 0];
+  const to = [62, 207, 110];
+  const rgb = from.map((v, i) => Math.round(v + (to[i] - v) * clamped));
+  return `rgb(${rgb.join(",")})`;
+}
+
+function clock(mins) {
+  const h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function availabilityLines(ctx) {
+  const slots = Array.isArray(ctx?.weekly_slots) ? ctx.weekly_slots : [];
+  if (!slots.length) return [];
+  const byDay = new Map();
+  for (const slot of slots) {
+    const dow = Number(slot.iso_dow);
+    const start = Number(slot.hour) * 60 + Number(slot.minute);
+    if (!dow || Number.isNaN(start)) continue;
+    if (!byDay.has(dow)) byDay.set(dow, []);
+    byDay.get(dow).push(start);
+  }
+  const days = [];
+  for (let dow = 1; dow <= 7; dow++) {
+    const starts = (byDay.get(dow) || []).sort((a, b) => a - b);
+    if (!starts.length) continue;
+    const ranges = [];
+    let from = starts[0];
+    let to = starts[0];
+    for (let i = 1; i < starts.length; i++) {
+      if (starts[i] === to + 30) to = starts[i];
+      else {
+        ranges.push([from, to + 30]);
+        from = to = starts[i];
+      }
+    }
+    ranges.push([from, to + 30]);
+    const text = ranges
+      .map(([start, end]) => {
+        const endLabel = end >= 24 * 60 ? "midnight" : clock(end);
+        return `${clock(start)}–${endLabel}`;
+      })
+      .join(", ");
+    days.push({ dow, text });
+  }
+  const groups = [];
+  for (const day of days) {
+    const prev = groups[groups.length - 1];
+    if (prev && prev.text === day.text && prev.end === day.dow - 1) prev.end = day.dow;
+    else groups.push({ start: day.dow, end: day.dow, text: day.text });
+  }
+  return groups.map((group) => {
+    const start = ISO_DOW_LABELS[group.start - 1];
+    const end = ISO_DOW_LABELS[group.end - 1];
+    const label = group.start === group.end ? start : `${start}–${end}`;
+    return `${label} ${group.text}`;
+  });
+}
 
 function pill(done, locked) {
   if (done) return `<span class="pill">Done</span>`;
@@ -33,9 +106,17 @@ function render(s) {
   const count = Number(s.friendly_count) || 0;
 
   const left = Math.max(0, 5 - count);
-  const pips = Array.from({ length: 5 }, (_, i) =>
-    `<i class="${i < Math.min(count, 5) ? "on" : ""}"></i>`
-  ).join("");
+  const filled = Math.min(count, 5);
+  const pips = Array.from({ length: 5 }, (_, i) => {
+    if (i >= filled) return `<i></i>`;
+    const from = mixGoldGreen(i / 4);
+    const to = mixGoldGreen(Math.min(1, (i + 0.85) / 4));
+    return `<i class="on" style="--from:${from};--to:${to}"></i>`;
+  }).join("");
+  const tallyColor = filled ? mixGoldGreen((filled - 0.15) / 4) : "#ffcc66";
+  const times = availabilityLines(avail);
+  const tz = String(avail?.timezone || "").replace(/_/g, " ");
+  const recordingItems = RECORDING.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
   const friendlyItems = friendlies.length
     ? [...friendlies]
         .reverse()
@@ -71,9 +152,15 @@ function render(s) {
             ? new Date(s.handpick_due_at).toLocaleString("en-GB")
             : "the deadline"
         )}. After that the offer closes and you stay on the waiting list.</p>
-         <p><a href="waiting_list.html">Waiting list</a> · <a href="handpick_squad.html">Handpick squad</a></p>`
-      : `<p>You are on the waiting list. An admin will invite you to the club auction, or name the one club you can handpick.</p>
-         <p>When a door opens you will use <a href="club_database.html">Club Database</a>, <a href="GPDB.html">GPDB</a>, <a href="MGDB.html">MGDB</a>, and either the auction or Handpick.</p>
+         <ul class="req">
+           <li>You keep the club's cash. The old squad is released.</li>
+           <li>In <a href="GPDB.html">GPDB</a>, tick free agents. A tick is not a signing.</li>
+           <li><a href="handpick_squad.html">Handpick Squad</a> has to be green.</li>
+           <li>In <a href="MGDB.html">MGDB</a>, tick one manager.</li>
+           <li>Submit the squad and the manager together. The fees leave when staff approve.</li>
+         </ul>`
+      : `<p>You are on the waiting list. You do not pick a club.</p>
+         <p>An admin will invite you to the club auction, or name the one club you can handpick. A named club stays open for 7 days.</p>
          <p><a href="waiting_list.html">Waiting list</a></p>`;
 
   const tagShown = String(s.owner_tag || "YOURTAG");
@@ -85,7 +172,8 @@ function render(s) {
         `<li><span class="score">${escapeHtml(p.scoreline || "")}</span></li>`
     )
     .join("");
-  const current = !step1 ? 1 : !step2 ? 2 : !approved ? 3 : 4;
+  const submitted = open || approved;
+  const current = !step1 ? 1 : !step2 ? 2 : !submitted ? 3 : !approved ? 4 : 5;
   const stepClass = (n, done, locked) =>
     `step${done ? " done" : ""}${locked ? " locked" : ""}${current === n && !done ? " current" : ""}`;
 
@@ -94,10 +182,16 @@ function render(s) {
     <section class="${stepClass(1, step1, false)}">
       <div class="step-head"><span class="step-no">1</span><h2>Who you are</h2>${pill(step1, false)}</div>
       <div class="step-body">
-        <p>Set the tag people will see. The times you can play sit in the panel under this row. Both are required before the friendlies unlock.</p>
+        <p>Set the tag people will see, and the days and times you can play. Both are required before the friendlies unlock.</p>
         <label>Owner tag
           <input id="tagInput" type="text" maxlength="32" value="${escapeHtml(s.owner_tag || "")}">
         </label>
+        ${
+          times.length
+            ? `<p class="friendly-sub">When you can play${tz ? ` · ${escapeHtml(tz)}` : ""}</p>
+               <ul class="avail-summary">${times.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`
+            : `<p>Times are not saved yet. Set them in the panel under this row.</p>`
+        }
       </div>
       <div class="step-actions"><button type="button" class="button" id="saveTagBtn">Save tag</button></div>
     </section>
@@ -105,7 +199,7 @@ function render(s) {
       <div class="step-head"><span class="step-no">2</span><h2>Five friendlies</h2>${pill(step2, !step1)}</div>
       <div class="step-body">
         <div class="friendly-tally" aria-label="${count} registered, ${left} ${left === 1 ? "fixture" : "fixtures"} left">
-          <div><b>${count}</b><span>registered</span></div>
+          <div><b style="color:${tallyColor}">${count}</b><span>registered</span></div>
           <div><b>${left}</b><span>${left === 1 ? "fixture left" : "fixtures left"}</span></div>
         </div>
         <div class="friendly-pips" aria-hidden="true">${pips}</div>
@@ -124,10 +218,10 @@ function render(s) {
         }
       </div>
     </section>
-    <section class="${stepClass(3, approved, !step2)}">
-      <div class="step-head"><span class="step-no">3</span><h2>One recording</h2>${pill(approved, !step2)}</div>
+    <section class="${stepClass(3, submitted, !step2)}">
+      <div class="step-head"><span class="step-no">3</span><h2>Film the latest</h2>${pill(submitted, !step2)}</div>
       <div class="step-body">
-        <p>The fifth match is the one staff watch. The other four are not reviewed. The card is PA3 or PA4, advanced skill, match-room settings, manager, subtactic, squad, no individual player instructions, no dragging a formation, and the recording running from the settings through to the ratings.</p>
+        <p>Staff watch the latest friendly only. The other four are not reviewed.</p>
         ${videoBlock}
       </div>
       ${
@@ -136,13 +230,21 @@ function render(s) {
           : ""
       }
     </section>
-    <section class="${stepClass(4, approved, !approved)}">
-      <div class="step-head"><span class="step-no">4</span><h2>Your club</h2>${pill(approved, !approved)}</div>
+    <section class="${stepClass(4, approved, !step2)}">
+      <div class="step-head"><span class="step-no">4</span><h2>The recording</h2>${open && !approved ? `<span class="pill">With staff</span>` : pill(approved, !step2)}</div>
+      <div class="step-body">
+        <p>Start before the match-room settings and stop after the player ratings.</p>
+        <ul class="req">${recordingItems}</ul>
+      </div>
+    </section>
+    <section class="${stepClass(5, approved, !approved)}">
+      <div class="step-head"><span class="step-no">5</span><h2>The waiting list</h2>${approved ? `<span class="pill">On the list</span>` : pill(false, !approved)}</div>
       <div class="step-body">
         ${
           approved
             ? door
-            : `<p>An approved video puts you on the waiting list. It does not give you a club. Auction and handpick each need an admin tick.</p>`
+            : `<p>An approved video puts you on the waiting list. You do not pick a club.</p>
+               <p>An admin then opens one door: an invite to the club auction, or one named club to handpick. A named club stays open for 7 days.</p>`
         }
       </div>
     </section>
@@ -171,6 +273,11 @@ async function refresh() {
     return;
   }
   state = data;
+  try {
+    avail = await loadOnboardingAvailabilityContext();
+  } catch {
+    avail = null;
+  }
   if (!data?.subject) {
     document.getElementById("steps").innerHTML =
       `<p>This account joined before qualifying. Use the waiting list.</p><p><a href="waiting_list.html">Waiting list</a></p>`;
