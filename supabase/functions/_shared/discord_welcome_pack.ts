@@ -20,84 +20,94 @@ function link(label: string, path: string): string {
   return `[${label}](${href})`;
 }
 
-export function welcomePackBody(ctx: WelcomePackContext | WelcomePackAudience = "visitor"): string {
-  const opts: WelcomePackContext =
-    typeof ctx === "string" ? { audience: ctx } : ctx || {};
-  const audience = opts.audience || "visitor";
-  const mode = opts.intakeMode ?? null;
+function packContext(ctx: WelcomePackContext | WelcomePackAudience = "visitor"): WelcomePackContext {
+  return typeof ctx === "string" ? { audience: ctx } : ctx || {};
+}
 
+/** Two Discord messages. Part 1 is the qualify path. Part 2 is the club and the week. */
+export function welcomePackParts(ctx: WelcomePackContext | WelcomePackAudience = "visitor"): string[] {
+  const opts = packContext(ctx);
+  const audience = opts.audience || "visitor";
   const who =
     audience === "member"
-      ? "You have a **GPSL account** but no club yet (Member)."
-      : "You're in Discord as a **Visitor** — you can hang out here and browse the site read-only until you apply.";
+      ? "You have a **GPSL account** and no club yet."
+      : "You're in Discord as a **Visitor**. Browse the site read-only until you apply.";
+  const door =
+    audience === "member"
+      ? [
+          "**Your account**",
+          `Open ${link("Become an owner", "qualifying.html")} and start at the first step still open. A club stays closed until you pass the steps below.`,
+        ]
+      : [
+          "**Want a club?**",
+          `${link("Apply to join GPSL", "join_gpsl.html")}. That creates your account and opens one page: ${link("Become an owner", "qualifying.html")}. A club stays closed until you pass the steps below.`,
+        ];
 
-  const browse = [
-    "**Casual?**",
-    `${link("Sign in as Visitor", "login.html")} — league tables, cups, auctions and the transfer market (read only). No club needed.`,
-  ];
-
-  const applyBlock = [
-    "**Want a club?**",
-    `${link("Apply to join GPSL", "join_gpsl.html")} — creates your account and puts you on the **waiting list** (order by Discord join date). You do **not** need to DM an admin.`,
-  ];
-
-  let pathDetail: string[];
-  if (mode === "mid_season") {
-    pathDetail = [
-      "",
-      "**What happens next?**",
-      "**(mid-season)** — *the season is still in full flow*",
-      `1. After applying, open the ${link("waiting list", "waiting_list.html")}.`,
-      "2. If a club shows as vacant, claim it.",
-      `3. Fill in your ${link("owner profile", "awaiting_club.html")} (Discord tag, timezone, when you can play).`,
-      `4. ${link("Build your starting squad (handpick)", "handpick_squad.html")} and submit for approval — no auction.`,
-    ];
-  } else if (mode === "pre_season") {
-    pathDetail = [
-      "",
-      "**What happens next?**",
-      "**(end of season)** — *the league is between seasons*",
-      `1. After creating an account, stay on the ${link("waiting list", "waiting_list.html")} — an admin will invite you to a club auction.`,
-      `2. Fill in your ${link("owner profile", "awaiting_club.html")} (Discord tag, timezone, when you can play).`,
-      `3. Join the ${link("club auction", "club_auction.html")} as per the calendar and get yourself a club.`,
-      "4. Build your club via Manager and Player draft auctions.",
-    ];
-  } else {
-    pathDetail = [
-      "",
-      "**What happens next?** (depends on the calendar)",
-      `• **Mid-season** (league in full flow): on the ${link("waiting list", "waiting_list.html")} claim a vacant club → complete your ${link("owner profile", "awaiting_club.html")} → ${link("handpick your squad", "handpick_squad.html")}.`,
-      `• **End of season** (between seasons): stay on the waiting list, complete your ${link("owner profile", "awaiting_club.html")}, then join the ${link("club auction", "club_auction.html")} when invited.`,
-    ];
-  }
-
-  const extras = [
-    "",
-    "**Useful links**",
-    `• ${link("League handbook (how GPSL works)", "learning_gpsl.html")}`,
-    `• ${link("Full welcome page on the site", "welcome_gpsl.html")}`,
-    "",
-    "**Discord roles**",
-    "• **Visitor** — in Discord, no GPSL account yet",
-    "• **Member** — GPSL account, no club yet (waiting list)",
-    "• **Owner** — has a club",
-    "",
-    "**Learning the rules**",
-    "Nobody expects you to know every rule on day one. After a few matches we do expect you to know the basics (scheduling, check-in, results, transfers). Use the handbook, ask in Discord, learn as you play.",
-    "",
-    "Questions → ask in Discord. Applying for a place does **not** need a DM to admin.",
-  ];
-
-  return [
+  const part1 = [
     "**Welcome**",
     who,
     "",
-    ...browse,
+    "**Just looking?**",
+    `${link("Sign in as Visitor", "login.html")} — tables, cups, auctions and the transfer market, read only. No club needed.`,
     "",
-    ...applyBlock,
-    ...pathDetail,
-    ...extras,
+    ...door,
+    "",
+    "**1. Tag and availability**",
+    "Set the owner tag people will see, your timezone, and the times you can play. Nothing else unlocks until both are saved.",
+    "",
+    "**2. Five friendlies**",
+    "Play them in ［𝐆𝐏𝐒𝐋］𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐅𝐫𝐢𝐞𝐧𝐝𝐥𝐢𝐞𝐬 and log each one on the page. Practice side, not a league club. Any players. PA3 or PA4. Five finished games. They do not touch league stats, injuries, fitness, or fines. Missing the first week does not delete your account.",
+    "",
+    "**3. Film the latest one**",
+    "The page gives you a code. Put it in the filename and post the video in 𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐕𝐢𝐝𝐞𝐨𝐬. Staff tick a card. If something fails, they name the ticks and only the video comes back. Play another friendly, log it, and send a new recording with the new code. The five already logged still count.",
+    "",
+    "**What the recording has to show**",
+    "Start before the match-room settings and stop after the player ratings.",
+    "• 10-minute match, injuries off",
+    "• PA3 or PA4 before kick-off. PA1 and PA2 are not allowed. Advanced skill only",
+    "• Match-room settings, manager, subtactic, and squad on screen",
+    "• Player instructions on screen, and left blank",
+    "• Sub tactic and Fluid are a default formation, set before the match. Do not drag players",
+    "• Scoreboard and HUD on for the whole match. After the whistle, the ratings and player of the match",
+    "",
+    "**4. The waiting list**",
+    "An approved video puts you on the waiting list. You do not pick a club yourself.",
   ].join("\n");
+
+  const part2 = [
+    "**Season in full flow**",
+    "An admin names the one vacant club you can handpick. You have 7 days to take it. You keep that club's cash, the old squad is released, and you build a new one on the site.",
+    "",
+    `• In ${link("GPDB", "GPDB.html")}, tick free agents. Check the player is still in eFootball. A tick is not a signing.`,
+    `• ${link("Handpick Squad", "handpick_squad.html")} has to be green: squad size, home-grown, under-21s, a goalkeeper, the star cap, and the cash.`,
+    `• In ${link("MGDB", "MGDB.html")}, tick one manager.`,
+    "• Submit the squad and the manager together. Staff approve. The fees leave the club then.",
+    "",
+    "**A week, once the club is yours**",
+    "• Agree a kick-off. The other club has 48 hours to accept or send another time. Agreeing in Discord still has to be locked on the site by both clubs.",
+    "• Check in from 10 minutes before kick-off until 10 minutes after.",
+    "• Play it on eFootball.",
+    "• Record it, from the match-room settings through to the ratings, and post your own video. The result only counts if the video does.",
+    "• Enter the result on Match Day.",
+    "",
+    "A GPSL month is about a week. It locks every Thursday at 7pm UK. Fines come off the balance when they happen. From August the squad is 24 to 28, with home-grown, under-21s, a goalkeeper, and a star cap: 3 in the Super League, 2 in the Championship.",
+    "",
+    "**Between seasons**",
+    "Same waiting list. The door is the club auction. An admin invites you. You mark a first club and a backup, and you bid only if invited. The bid pays for the club and the stadium. What is left is your balance. Squad and manager then come through the drafts.",
+    "",
+    "**Roles**",
+    "• **Visitor** — in Discord, no GPSL account yet",
+    "• **Member** — account, then qualifying, then the waiting list",
+    "• **Owner** — has a club",
+    "",
+    `Read the ${link("league handbook", "learning_gpsl.html")} before you take a club. Ask in Discord when something is unclear. Do not wait for a fine to find out.`,
+  ].join("\n");
+
+  return [part1, part2];
+}
+
+export function welcomePackBody(ctx: WelcomePackContext | WelcomePackAudience = "visitor"): string {
+  return welcomePackParts(ctx).join("\n\n");
 }
 
 /** Default Visitor copy (static fallback when intake mode unknown). */
@@ -108,24 +118,21 @@ export const WELCOME_PACK_CONTENT = WELCOME_PACK_BODY;
 
 const DISCORD_API = "https://discord.com/api/v10";
 
+export function welcomePackMessages(
+  discordUserId: string,
+  ctx: WelcomePackContext | WelcomePackAudience = "visitor"
+): string[] {
+  const id = String(discordUserId || "").trim();
+  const hello = id ? `Hey <@${id}>` : "Hey";
+  const [first, second] = welcomePackParts(ctx);
+  return [`${hello}\n\n${first}`, second];
+}
+
 export function welcomePackWithMention(
   discordUserId: string,
   ctx: WelcomePackContext | WelcomePackAudience = "visitor"
 ): string {
-  const opts: WelcomePackContext =
-    typeof ctx === "string" ? { audience: ctx } : ctx || {};
-  const audience = opts.audience || "visitor";
-  const id = String(discordUserId || "").trim();
-  const mention = id ? `<@${id}>` : "";
-  const hello =
-    audience === "member"
-      ? mention
-        ? `Hey ${mention}`
-        : "Hey"
-      : mention
-        ? `Hey ${mention}`
-        : "Hey";
-  return [hello, "", welcomePackBody(opts)].join("\n");
+  return welcomePackMessages(discordUserId, ctx).join("\n\n");
 }
 
 export async function discordApi(
@@ -264,18 +271,44 @@ export async function listGreatHallCandidates(
   return { resolved_id, from_env: fromEnv, text_channels };
 }
 
+async function postDiscordMessages(
+  botToken: string,
+  channelId: string,
+  parts: string[],
+  discordUserId: string
+): Promise<{ ok: boolean; error?: string; message_id?: string }> {
+  const errors: string[] = [];
+  let messageId = "";
+  for (let i = 0; i < parts.length; i++) {
+    const msg = await discordApi(botToken, `/channels/${channelId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({
+        content: parts[i],
+        allowed_mentions: { parse: [], users: [discordUserId] },
+      }),
+    });
+    if (!msg.ok && msg.status !== 200) {
+      errors.push(`part${i + 1}_${msg.status}: ${msg.text.slice(0, 120)}`);
+      continue;
+    }
+    messageId = String((msg.json as { id?: string })?.id || messageId);
+  }
+  return {
+    ok: errors.length === 0,
+    error: errors.length ? errors.join(" | ") : undefined,
+    message_id: messageId || undefined,
+  };
+}
+
 export async function sendWelcomeDm(
   botToken: string,
   discordUserId: string,
   content?: string,
   ctx: WelcomePackContext | WelcomePackAudience = "visitor"
 ): Promise<{ ok: boolean; channel_id?: string; error?: string }> {
-  const body =
-    content ||
-    welcomePackWithMention(
-      discordUserId,
-      typeof ctx === "string" ? { audience: ctx } : ctx
-    );
+  const parts = content
+    ? [content]
+    : welcomePackMessages(discordUserId, ctx);
   const dm = await discordApi(botToken, "/users/@me/channels", {
     method: "POST",
     body: JSON.stringify({ recipient_id: discordUserId }),
@@ -293,18 +326,12 @@ export async function sendWelcomeDm(
     return { ok: false, error: "dm_channel_missing" };
   }
 
-  const msg = await discordApi(botToken, `/channels/${channelId}/messages`, {
-    method: "POST",
-    body: JSON.stringify({
-      content: body,
-      allowed_mentions: { users: [discordUserId] },
-    }),
-  });
-  if (!msg.ok && msg.status !== 200) {
+  const posted = await postDiscordMessages(botToken, channelId, parts, discordUserId);
+  if (!posted.ok) {
     return {
       ok: false,
       channel_id: channelId,
-      error: `dm_send_${msg.status}: ${msg.text.slice(0, 160)}`,
+      error: `dm_send_${posted.error}`,
     };
   }
   return { ok: true, channel_id: channelId };
@@ -335,27 +362,20 @@ export async function sendWelcomeChannel(
     };
   }
 
-  const packCtx: WelcomePackContext =
-    typeof ctx === "string" ? { audience: ctx } : ctx || {};
-
-  const msg = await discordApi(botToken, `/channels/${resolved}/messages`, {
-    method: "POST",
-    body: JSON.stringify({
-      content: welcomePackWithMention(discordUserId, packCtx),
-      allowed_mentions: { parse: [], users: [discordUserId] },
-    }),
-  });
-  if (!msg.ok && msg.status !== 200) {
+  const parts = welcomePackMessages(discordUserId, ctx);
+  const posted = await postDiscordMessages(botToken, resolved, parts, discordUserId);
+  if (!posted.ok) {
     return {
       ok: false,
       channel_id: resolved,
-      error: `channel_send_${msg.status}: ${msg.text.slice(0, 160)}`,
+      error: `channel_send_${posted.error}`,
     };
   }
-  const messageId = String(
-    (msg.json as { id?: string })?.id || ""
-  ).trim();
-  return { ok: true, channel_id: resolved, message_id: messageId || undefined };
+  return {
+    ok: true,
+    channel_id: resolved,
+    message_id: posted.message_id,
+  };
 }
 
 export async function ensureVisitorRole(
