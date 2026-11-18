@@ -241,7 +241,7 @@ function watchChecklistHtml(fixtureId, side) {
     <details class="mv-watch" open>
       <summary>Watch checklist <span class="mv-watch-count" id="mvWatchCount">${ticked.size} / ${WATCH_ITEMS.length}</span></summary>
       <p class="mv-watch-note">Tick each line as you go through the video. Kept on this match side in this browser. Not sent with a report.</p>
-      ${groups}
+      <div class="mv-watch-cols">${groups}</div>
     </details>`;
 }
 
@@ -527,6 +527,10 @@ export const MATCH_VIDEO_TICK_CSS = `
 }
 .mv-watch-count { color:#aaa; font-weight:600; margin-left:6px; }
 .mv-watch-note { margin:8px 0; font-size:12px; color:#888; line-height:1.4; }
+.mv-watch-cols { display:grid; grid-template-columns:1fr 1fr; gap:4px 18px; }
+@media (max-width: 640px) {
+  .mv-watch-cols { grid-template-columns:1fr; }
+}
 .mv-watch-group { margin:0 0 8px; }
 .mv-watch-h { font-size:11px; color:#999; text-transform:uppercase; letter-spacing:0.04em; margin:6px 0 4px; }
 .mv-watch-item {
@@ -534,11 +538,17 @@ export const MATCH_VIDEO_TICK_CSS = `
 }
 .mv-watch-item.is-on span { color:#8d8; text-decoration:line-through; }
 .mv-report-modal {
-  width:min(520px, 100%); max-height:min(90vh, 720px); overflow:auto;
+  width:min(760px, 100%); max-height:min(90vh, 760px); overflow:auto;
   background:#161616; border:1px solid #444; border-radius:8px;
   padding:16px 18px; color:#ddd; box-shadow:0 12px 40px rgba(0,0,0,0.45);
 }
+.mv-breach-search {
+  width:100%; box-sizing:border-box; margin:0 0 8px; padding:7px 9px;
+  background:#111; border:1px solid #333; color:#eee; border-radius:4px; font:inherit; font-size:13px;
+}
+.mv-breach-empty { margin:0 0 8px; font-size:12px; color:#888; }
 .mv-breach-list { display:grid; gap:8px; margin:0 0 12px; max-height:340px; overflow:auto; }
+.mv-breach-row.is-filtered { display:none; }
 .mv-breach-row {
   border:1px solid #333; border-radius:6px; padding:8px 10px; background:#1a1a1a;
 }
@@ -677,11 +687,16 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
         ${
           checkOnly
             ? ""
-            : `<div class="mv-breach-list" id="mvBreachList">
+            : `<label class="mv-watch-h" for="mvBreachSearch" style="display:block;margin:0 0 4px;">Breaches</label>
+        <input type="search" id="mvBreachSearch" class="mv-breach-search" placeholder="Search breaches" autocomplete="off">
+        <div class="mv-breach-empty" id="mvBreachEmpty" hidden>No breaches match.</div>
+        <div class="mv-breach-list" id="mvBreachList">
           ${codes
             .map(
               (c) => `
-            <div class="mv-breach-row" data-code="${escapeAttr(c.code)}">
+            <div class="mv-breach-row" data-code="${escapeAttr(c.code)}" data-search="${escapeAttr(
+                `${c.label || ""} ${c.category || ""} ${c.code || ""}`.toLowerCase()
+              )}">
               <label class="check">
                 <input type="checkbox" data-breach-check="${escapeAttr(c.code)}">
                 <span>${escapeHtml(c.label)} <span style="color:#777">(${escapeHtml(
@@ -767,6 +782,20 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
           ? "Marked checked. The R button is green for admins."
           : "Check removed.";
       }
+    });
+
+    const breachSearch = backdrop.querySelector("#mvBreachSearch");
+    const breachEmpty = backdrop.querySelector("#mvBreachEmpty");
+    breachSearch?.addEventListener("input", () => {
+      const q = breachSearch.value.trim().toLowerCase();
+      let shown = 0;
+      backdrop.querySelectorAll(".mv-breach-row").forEach((row) => {
+        const hay = row.getAttribute("data-search") || "";
+        const keep = !q || hay.includes(q);
+        row.classList.toggle("is-filtered", !keep);
+        if (keep) shown += 1;
+      });
+      if (breachEmpty) breachEmpty.hidden = shown > 0;
     });
 
     backdrop.querySelectorAll("[data-watch]").forEach((cb) => {
