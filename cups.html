@@ -12,11 +12,15 @@
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1280px; margin:20px auto 40px; }
     h1 { color:var(--gpsl-accent, #ff9900); }
-    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
-    .toolbar button {
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; align-items:center; }
+    .toolbar button, .toolbar select {
       padding:8px 14px; background:#222; border:1px solid #444; color:#ddd;
       border-radius:6px; cursor:pointer;
     }
+    .toolbar label.cup-filter {
+      display:inline-flex; align-items:center; gap:6px; color:#aaa; font-size:13px;
+    }
+    #cupFilterBar { margin-top:0; }
     .toolbar button.active { background:var(--gpsl-accent, #ff9900); color:#111; border-color:var(--gpsl-accent, #ff9900); font-weight:bold; }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
@@ -164,6 +168,7 @@
     <p id="pageMeta" class="meta">Loading…</p>
 
     <div class="toolbar" id="cupToolbar"></div>
+    <div class="toolbar" id="cupFilterBar"></div>
 
     <div class="panel">
       <h2>Qualified clubs</h2>
@@ -187,6 +192,6 @@
       International: <a href="world_cup.html">World Cup</a> · <a href="nation_select.html">Nation selection</a>.
     </p>
   </div>
-  <script type="module" src="cups.js?v=20261118-watch-no-after"></script>
+  <script type="module" src="cups.js?v=20261118-fixture-filters"></script>
 </body>
 </html>

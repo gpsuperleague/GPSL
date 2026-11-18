@@ -66,6 +66,13 @@ function seasonFromUrl() {
 
 let myClubShort = null;
 let currentCup = "league_cup";
+/** "" = every round. Otherwise the bracket round_no. */
+let cupRoundFilter = "";
+/** "" = every club. Otherwise a club short name in this cup. */
+let cupClubFilter = "";
+/** @type {object[]} */
+let lastBracketNodes = [];
+let lastBracketExtras = null;
 let calendarStatus = null;
 let holidayContext = null;
 /** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
@@ -122,6 +129,8 @@ function renderToolbar() {
     btn.className = currentCup === code ? "active" : "";
     btn.onclick = () => {
       currentCup = code;
+      cupRoundFilter = "";
+      cupClubFilter = "";
       applyCupPageTheme(currentCup);
       const hero = document.getElementById("cupHero");
       if (hero) {
@@ -530,15 +539,145 @@ function renderMatchCard(m, extras, roundNo) {
     </div>`;
 }
 
+function clubsInBracket(nodes) {
+  const map = new Map();
+  for (const m of nodes || []) {
+    for (const [short, name] of [
+      [m.home_club_short_name, m.home_club_name],
+      [m.away_club_short_name, m.away_club_name],
+    ]) {
+      const key = normalizeClubKey(short);
+      if (!key || map.has(key)) continue;
+      map.set(key, { short, name: name || short });
+    }
+  }
+  const mine = normalizeClubKey(myClubShort);
+  return [...map.values()].sort((a, b) => {
+    const aMine = normalizeClubKey(a.short) === mine ? 0 : 1;
+    const bMine = normalizeClubKey(b.short) === mine ? 0 : 1;
+    if (aMine !== bMine) return aMine - bMine;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+}
+
+function roundFilterLabel(round) {
+  const sample = round.matches[0] || {};
+  return sample.round_label || cupRoundLabel(cupRoundTieCount(round.matches));
+}
+
+function matchInvolvesShort(m, key) {
+  if (!m || !key) return false;
+  return [m.home_club_short_name, m.away_club_short_name].some(
+    (s) => normalizeClubKey(s) === key
+  );
+}
+
+function filterCupRounds(rounds) {
+  const key = normalizeClubKey(cupClubFilter);
+  return rounds
+    .filter((r) => !cupRoundFilter || String(r.round_no) === cupRoundFilter)
+    .map((r) => {
+      if (!key) return r;
+      if (isTwoLegCupQuarterFinal(currentCup, r.round_no)) {
+        const ties = groupCupBracketTies(r.matches, currentCup, r.round_no);
+        const keep = new Set(
+          ties
+            .filter(
+              (t) => matchInvolvesShort(t.leg1, key) || matchInvolvesShort(t.leg2, key)
+            )
+            .map((t) => t.match_no)
+        );
+        return { ...r, matches: r.matches.filter((m) => keep.has(m.match_no)) };
+      }
+      return { ...r, matches: r.matches.filter((m) => matchInvolvesShort(m, key)) };
+    })
+    .filter((r) => r.matches.length);
+}
+
+function renderCupFilters(nodes) {
+  const bar = document.getElementById("cupFilterBar");
+  if (!bar) return;
+  const rounds = preprocessCupBracketRounds(nodes || [], currentCup);
+  const clubs = clubsInBracket(nodes || []);
+  if (cupRoundFilter && !rounds.some((r) => String(r.round_no) === cupRoundFilter)) {
+    cupRoundFilter = "";
+  }
+  if (
+    cupClubFilter &&
+    !clubs.some((c) => normalizeClubKey(c.short) === normalizeClubKey(cupClubFilter))
+  ) {
+    cupClubFilter = "";
+  }
+
+  bar.replaceChildren();
+
+  const roundLabel = document.createElement("label");
+  roundLabel.className = "cup-filter";
+  roundLabel.textContent = "Round";
+  const roundSel = document.createElement("select");
+  roundSel.id = "cupRoundFilter";
+  roundSel.title = "Show one round of this cup";
+  const allRounds = document.createElement("option");
+  allRounds.value = "";
+  allRounds.textContent = "All rounds";
+  roundSel.appendChild(allRounds);
+  for (const round of rounds) {
+    const opt = document.createElement("option");
+    opt.value = String(round.round_no);
+    opt.textContent = roundFilterLabel(round);
+    roundSel.appendChild(opt);
+  }
+  roundSel.value = cupRoundFilter;
+  roundSel.onchange = () => {
+    cupRoundFilter = roundSel.value;
+    renderBracket(lastBracketNodes, lastBracketExtras);
+  };
+  roundLabel.appendChild(roundSel);
+
+  const clubLabel = document.createElement("label");
+  clubLabel.className = "cup-filter";
+  clubLabel.textContent = "Club";
+  const clubSel = document.createElement("select");
+  clubSel.id = "cupClubFilter";
+  clubSel.title = "Show ties for one club";
+  const allClubs = document.createElement("option");
+  allClubs.value = "";
+  allClubs.textContent = "All clubs";
+  clubSel.appendChild(allClubs);
+  const mine = normalizeClubKey(myClubShort);
+  for (const club of clubs) {
+    const opt = document.createElement("option");
+    opt.value = club.short;
+    opt.textContent =
+      mine && normalizeClubKey(club.short) === mine ? `${club.name} (my club)` : club.name;
+    clubSel.appendChild(opt);
+  }
+  clubSel.value = cupClubFilter;
+  clubSel.onchange = () => {
+    cupClubFilter = clubSel.value;
+    renderBracket(lastBracketNodes, lastBracketExtras);
+  };
+  clubLabel.appendChild(clubSel);
+
+  bar.append(roundLabel, clubLabel);
+}
+
 function renderBracket(nodes, extras) {
   const root = document.getElementById("bracketRoot");
-  if (!nodes.length) {
+  lastBracketNodes = nodes || [];
+  lastBracketExtras = extras || null;
+  renderCupFilters(lastBracketNodes);
+  if (!lastBracketNodes.length) {
     root.innerHTML =
       '<p class="empty">No bracket yet. Admin draws this cup in GPSL Admin.</p>';
     return;
   }
 
-  const rounds = preprocessCupBracketRounds(nodes, currentCup);
+  const rounds = filterCupRounds(preprocessCupBracketRounds(lastBracketNodes, currentCup));
+  if (!rounds.length) {
+    root.innerHTML = '<p class="empty">No ties match this round and club.</p>';
+    return;
+  }
   const flowClass =
     currentCup === "league_cup" ? "bracket-flow bracket-flow--league-cup" : "bracket-flow";
   root.innerHTML = `

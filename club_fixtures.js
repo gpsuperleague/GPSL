@@ -73,6 +73,10 @@ import {
 import { resolveKitImageSrc } from "./club_kits_common.js";
 
 let myClub = { short: null, name: null };
+/** Clubs in the same division, excluding this club. */
+let leagueMates = [];
+/** "" = every fixture. Otherwise a league club short name: only meetings with them. */
+let opponentFilter = "";
 /** @type {Map<string, { home_url?: string|null, away_url?: string|null }>} */
 let matchVideoMap = new Map();
 /** @type {Set<string>} */
@@ -753,6 +757,95 @@ function requestedClubFixturesMonth() {
   return raw || null;
 }
 
+function activeClubFixturesMonth() {
+  const requested = requestedClubFixturesMonth();
+  if (requested) return requested;
+  if (calendarStatus?.calendar_configured && calendarStatus.active_gpsl_month) {
+    return String(calendarStatus.active_gpsl_month).toLowerCase();
+  }
+  return null;
+}
+
+function clubKey(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function opponentName() {
+  const club = leagueMates.find((c) => clubKey(c.short) === clubKey(opponentFilter));
+  return club?.name || opponentFilter;
+}
+
+function fixturesAgainstOpponent(fixtures) {
+  if (!opponentFilter) return fixtures || [];
+  const opponent = { short: opponentFilter };
+  return (fixtures || []).filter((f) => fixtureInvolvesClub(f, opponent));
+}
+
+function renderOpponentFilter() {
+  const bar = document.getElementById("clubFixtureFilters");
+  if (!bar) return;
+  bar.replaceChildren();
+  const label = document.createElement("label");
+  label.className = "fixture-filter";
+  label.htmlFor = "clubOpponentFilter";
+  label.textContent = "When you play";
+  const sel = document.createElement("select");
+  sel.id = "clubOpponentFilter";
+  sel.title = "Pick a club from your league to see your matches against them.";
+  const all = document.createElement("option");
+  all.value = "";
+  all.textContent = "All opponents";
+  sel.appendChild(all);
+  for (const club of leagueMates) {
+    const opt = document.createElement("option");
+    opt.value = club.short;
+    opt.textContent = club.name;
+    sel.appendChild(opt);
+  }
+  if (
+    opponentFilter &&
+    !leagueMates.some((c) => clubKey(c.short) === clubKey(opponentFilter))
+  ) {
+    opponentFilter = "";
+  }
+  sel.value = opponentFilter;
+  sel.onchange = () => {
+    opponentFilter = sel.value;
+    renderFixtures(lastFixtures);
+  };
+  label.appendChild(sel);
+  bar.appendChild(label);
+}
+
+async function loadLeagueMates() {
+  leagueMates = [];
+  const { data, error } = await supabase
+    .from("competition_club_season_public")
+    .select("club_short_name, club_name, division");
+  if (error) {
+    console.warn("club_fixtures league mates:", error);
+    renderOpponentFilter();
+    return;
+  }
+  const mine = clubKey(myClub.short);
+  const me = (data || []).find((r) => clubKey(r.club_short_name) === mine);
+  const division = me?.division || "";
+  leagueMates = (data || [])
+    .filter(
+      (r) =>
+        r.club_short_name &&
+        division &&
+        r.division === division &&
+        clubKey(r.club_short_name) !== mine
+    )
+    .map((r) => ({
+      short: r.club_short_name,
+      name: r.club_name || r.club_short_name,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  renderOpponentFilter();
+}
+
 function fixtureCalMeta(f) {
   const home = f?.home_club_name || f?.home_club_short_name;
   const away = f?.away_club_name || f?.away_club_short_name;
@@ -917,18 +1010,26 @@ function renderSimBanner() {
 function renderFixtures(fixtures) {
   const root = document.getElementById("clubFixturesRoot");
   lastFixtures = fixtures || [];
-  const agreedCount = lastFixtures.filter(
+  const shown = fixturesAgainstOpponent(lastFixtures);
+  const agreedCount = shown.filter(
     (f) => f.schedule_status === "agreed" && f.agreed_kickoff_at && f.status !== "played"
   ).length;
 
-  if (!fixtures.length) {
+  if (!shown.length) {
+    if (lastFixtures.length && opponentFilter) {
+      const p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = `No fixture against ${opponentName()} this season.`;
+      root.replaceChildren(p);
+      return;
+    }
     root.innerHTML =
       '<p class="empty">No fixtures for your club this season yet.</p>';
     return;
   }
 
-  const groups = groupByMonth(fixtures);
-  const focusMonth = requestedClubFixturesMonth();
+  const groups = groupByMonth(shown);
+  const focusMonth = activeClubFixturesMonth();
   const bulkBar =
     agreedCount > 0
       ? `<p class="cal-toolbar"><button type="button" id="clubFixturesCalBulk" class="btn-link secondary">Download all agreed kick-offs (${agreedCount})</button></p>`
@@ -959,9 +1060,10 @@ function renderFixtures(fixtures) {
     const target = root.querySelector(
       `.month-block[data-gpsl-month="${CSS.escape(focusMonth)}"]`
     );
-    if (target) {
+    const el = target || (opponentFilter ? root.querySelector(".month-block") : null);
+    if (el) {
       requestAnimationFrame(() => {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
   }
@@ -1123,6 +1225,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadNationOwnerClubs();
 
     await loadTvFixtureIds(supabase, season.id);
+    await loadLeagueMates();
     await loadMatchSimEnabled();
 
     calendarStatus = await loadCalendarStatus(supabase);

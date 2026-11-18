@@ -18,6 +18,9 @@
     .toolbar select, .toolbar button {
       padding:8px 12px; background:#222; border:1px solid #444; color:#ddd; border-radius:6px;
     }
+    .toolbar label.fixture-filter {
+      display:inline-flex; align-items:center; gap:6px; color:#aaa; font-size:13px;
+    }
     .toolbar button.active { border-color:var(--gpsl-accent, #ff9900); color:var(--gpsl-accent, #ff9900); }
     .matchday-block {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
@@ -219,6 +222,6 @@
     <div id="fixturesRoot"></div>
   </div>
 
-  <script type="module" src="fixtures.js?v=20261118-watch-no-after"></script>
+  <script type="module" src="fixtures.js?v=20261118-fixture-filters"></script>
 </body>
 </html>

@@ -74,6 +74,10 @@ let calendarStatus = null;
 let holidayContext = null;
 
 let myClub = { short: null, name: null };
+/** @type {{ short: string, name: string, division: string }[]} */
+let seasonClubs = [];
+/** "" all, "__mine__" my club, or an opponent short name (matches against my club). */
+let clubFilter = "";
 let canReportMatchVideos = false;
 let videoAdmin = false;
 let currentDivision = "superleague";
@@ -498,6 +502,56 @@ function scrollToLocatedFixture() {
   });
 }
 
+function clubKey(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function clubsInDivision(division) {
+  const fromSeason = seasonClubs.filter((c) => c.division === division);
+  if (fromSeason.length) return fromSeason;
+  const map = new Map();
+  for (const f of allFixtures) {
+    if (f.division !== division) continue;
+    if (f.competition_type && f.competition_type !== "league") continue;
+    for (const [short, name] of [
+      [f.home_club_short_name, f.home_club_name],
+      [f.away_club_short_name, f.away_club_name],
+    ]) {
+      if (!short || map.has(clubKey(short))) continue;
+      map.set(clubKey(short), { short, name: name || short, division });
+    }
+  }
+  return [...map.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+  );
+}
+
+function opponentClubs(division) {
+  const mine = clubKey(myClub.short);
+  return clubsInDivision(division).filter((c) => clubKey(c.short) !== mine);
+}
+
+function selectedOpponentName() {
+  const club = clubsInDivision(currentDivision).find(
+    (c) => clubKey(c.short) === clubKey(clubFilter)
+  );
+  return club?.name || clubFilter;
+}
+
+function applyLeagueClubFilter(fixtures) {
+  if (!clubFilter) return fixtures;
+  if (clubFilter === "__mine__") {
+    return myClub.short ? fixtures.filter((f) => fixtureInvolvesClub(f, myClub)) : fixtures;
+  }
+  const opponent = { short: clubFilter };
+  if (myClub.short) {
+    return fixtures.filter(
+      (f) => fixtureInvolvesClub(f, myClub) && fixtureInvolvesClub(f, opponent)
+    );
+  }
+  return fixtures.filter((f) => fixtureInvolvesClub(f, opponent));
+}
+
 function renderDivisionToolbar() {
   const bar = document.getElementById("divisionToolbar");
   bar.innerHTML = "";
@@ -548,11 +602,52 @@ function renderDivisionToolbar() {
     btn.className = currentDivision === div ? "active" : "";
     btn.onclick = () => {
       currentDivision = div;
+      if (
+        clubFilter &&
+        clubFilter !== "__mine__" &&
+        !opponentClubs(div).some((c) => clubKey(c.short) === clubKey(clubFilter))
+      ) {
+        clubFilter = "";
+      }
       renderDivisionToolbar();
       renderFixtures();
     };
     bar.appendChild(btn);
   }
+
+  const label = document.createElement("label");
+  label.className = "fixture-filter";
+  label.htmlFor = "fixtureClubFilter";
+  label.textContent = "Show";
+  const sel = document.createElement("select");
+  sel.id = "fixtureClubFilter";
+  sel.title = "My club shows your matches. Another club shows when you play them.";
+  const all = document.createElement("option");
+  all.value = "";
+  all.textContent = "All matches";
+  sel.appendChild(all);
+  if (myClub.short) {
+    const mine = document.createElement("option");
+    mine.value = "__mine__";
+    mine.textContent = "My club";
+    sel.appendChild(mine);
+  }
+  for (const club of opponentClubs(currentDivision)) {
+    const opt = document.createElement("option");
+    opt.value = club.short;
+    opt.textContent = `vs ${club.name}`;
+    sel.appendChild(opt);
+  }
+  if (clubFilter && ![...sel.options].some((opt) => opt.value === clubFilter)) {
+    clubFilter = "";
+  }
+  sel.value = clubFilter;
+  sel.onchange = () => {
+    clubFilter = sel.value;
+    renderFixtures();
+  };
+  label.appendChild(sel);
+  bar.appendChild(label);
 }
 
 function renderCupFixtures() {
@@ -626,7 +721,15 @@ function scrollToActiveMonthFixtures() {
       (el.dataset.gpslMonth || "").toLowerCase() ===
       String(activeMonth).toLowerCase()
   );
-  if (!monthBlocks.length) return;
+  if (!monthBlocks.length) {
+    if (!clubFilter) return;
+    const first = root.querySelector(".matchday-block");
+    if (!first) return;
+    requestAnimationFrame(() => {
+      first.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return;
+  }
 
   // Scroll to the first matchday of the active (or ?month=) GPSL month.
   const target = monthBlocks.reduce((best, el) => {
@@ -648,11 +751,22 @@ function renderFixtures() {
     return;
   }
 
-  const fixtures = allFixtures.filter((f) => f.division === currentDivision);
+  const divisionFixtures = allFixtures.filter((f) => f.division === currentDivision);
+  const fixtures = applyLeagueClubFilter(divisionFixtures);
 
   if (!fixtures.length) {
-    root.innerHTML =
-      '<p class="empty">No league fixtures for this division yet. Ask admin to generate fixtures in <b>GPSL Admin → League Fixtures</b>.</p>';
+    if (!divisionFixtures.length) {
+      root.innerHTML =
+        '<p class="empty">No league fixtures for this division yet. Ask admin to generate fixtures in <b>GPSL Admin → League Fixtures</b>.</p>';
+      return;
+    }
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent =
+      clubFilter === "__mine__"
+        ? "No league matches for your club in this division."
+        : `No league match against ${selectedOpponentName()} in this division.`;
+    root.replaceChildren(p);
     return;
   }
 
@@ -792,19 +906,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  if (myClub.short) {
-    const { data: regs } = await supabase
-      .from("competition_club_season_public")
-      .select("club_short_name, club_name, division");
+  const { data: regs } = await supabase
+    .from("competition_club_season_public")
+    .select("club_short_name, club_name, division");
+  seasonClubs = (regs || [])
+    .filter((r) => r.club_short_name)
+    .map((r) => ({
+      short: r.club_short_name,
+      name: r.club_name || r.club_short_name,
+      division: r.division || "",
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 
-    const key = (myClub.short || "").trim().toUpperCase();
-    const reg = (regs || []).find(
-      (r) => (r.club_short_name || "").trim().toUpperCase() === key
-    );
+  if (myClub.short) {
+    const reg = seasonClubs.find((r) => clubKey(r.short) === clubKey(myClub.short));
 
     if (reg) {
-      myClub.short = reg.club_short_name;
-      myClub.name = reg.club_name || myClub.name;
+      myClub.short = reg.short;
+      myClub.name = reg.name || myClub.name;
       if (LEAGUE_DIVISIONS.includes(reg.division)) {
         currentDivision = reg.division;
       }
