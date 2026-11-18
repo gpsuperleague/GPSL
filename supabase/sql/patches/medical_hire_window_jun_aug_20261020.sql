@@ -1,4 +1,5 @@
 -- =============================================================================
+-- SUPERSEDED by medical_hire_window_january_20261118.sql (January is also open).
 -- Medical staff hiring window: open June–August only (closed September–May)
 -- Applies to doctor + physio hires. Treating injuries / tokens stay available.
 -- Safe re-run.

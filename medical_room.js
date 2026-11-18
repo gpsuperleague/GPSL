@@ -1,6 +1,6 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
-import { renderMedicalRoomIntros } from "./medical_room_rules.js?v=20261024-half-cap";
+import { renderMedicalRoomIntros } from "./medical_room_rules.js?v=20261118-med-january";
 import {
   resolveAdminClubContext,
   mountAdminClubPicker,
@@ -16,7 +16,7 @@ function hireWindowOpen() {
 function hireWindowMessage() {
   return (
     state?.hire_window?.message ||
-    "Medical staff hiring is closed from September through May. Open again in June–August."
+    "Medical staff hiring is closed. Open again in June–August and January."
   );
 }
 

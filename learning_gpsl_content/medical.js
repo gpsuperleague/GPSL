@@ -8,7 +8,7 @@ export const SECTION_MEDICAL = {
       type: "p",
       html: `Open <a href="medical_room.html">Medical Room</a> from My Club. Hire a <b>club doctor</b> and
         <b>physios</b>, then use <b>specialist consultant</b> tokens to shorten injuries.
-        Staff hiring is only open in <b>GPSL June–August</b> (closed September–May).`,
+        Staff hiring is open in <b>GPSL June–August and January</b>.`,
     },
     { type: "h3", html: "How an injury happens" },
     {
@@ -40,7 +40,7 @@ export const SECTION_MEDICAL = {
         `<b>Required</b> before specialist consults will work.`,
         `Assesses each injury. While hired, every <b>new</b> injury is shortened by <b>1 match</b> (out phase).`,
         `Name and gender assigned at random on hire. <b>3-season</b> contract, then retires.`,
-        `Hire only in <b>June–August</b>.`,
+        `Hire in <b>June–August and January</b>.`,
       ],
     },
     { type: "h3", html: "Physiotherapists" },
@@ -48,7 +48,7 @@ export const SECTION_MEDICAL = {
       type: "p",
       html: `Fixed ladder — hire grades <b>1 → 5</b> in order (each unlocks the next). Each grade cuts squad
         injury chance a little more. Name and gender assigned at random. <b>3-season</b> contracts.
-        Hire only in <b>June–August</b>.`,
+        Hire in <b>June–August and January</b>.`,
     },
     {
       type: "ul",

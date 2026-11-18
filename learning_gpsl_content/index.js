@@ -11,7 +11,7 @@ import {
   SECTION_EXPECTATIONS,
 } from "./club_pages.js?v=20261018-syntax";
 import { SECTION_SQUAD, SECTION_MANAGERS } from "./squad_managers.js?v=20261110-handbook-rules";
-import { SECTION_MEDICAL } from "./medical.js?v=20261110-handbook-rules";
+import { SECTION_MEDICAL } from "./medical.js?v=20261118-med-january";
 import { SECTION_TRANSFERS, SECTION_AUCTIONS } from "./transfers_auctions.js?v=20261110-handbook-rules";
 import {
   SECTION_MATCHDAY_CHECKLIST,
