@@ -188,13 +188,6 @@ const WATCH_GROUPS = [
       ["pitch_hud", "HUD on for the whole match"],
     ],
   },
-  {
-    heading: "After the match",
-    items: [
-      ["post_ratings", "Player ratings clearly shown"],
-      ["post_potm", "Player of the match clearly shown"],
-    ],
-  },
 ];
 
 const WATCH_ITEMS = WATCH_GROUPS.flatMap((g) => g.items);
