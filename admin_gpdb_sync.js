@@ -1162,6 +1162,28 @@ async function lookupMarkLegacy() {
   setMarkLegacyButtons(true);
 }
 
+function legacyMarkResultMessage(data, preview, withRefund) {
+  const name = data?.player_name || preview.name;
+  if (!data) {
+    return `${name}: the call returned nothing. Look the Konami ID up again before pressing it a second time.`;
+  }
+  if (data.ok === false) {
+    return data.reason || data.note || `${name}: not completed.`;
+  }
+  const refund = Number(data.refund) || 0;
+  const club = data.club || preview.club;
+  if (withRefund && club && refund > 0) {
+    return `${name} is now legacy.\nReleased from ${club}.\nRefunded ${fmtLegacyMoney(refund)}.`;
+  }
+  if (withRefund) {
+    return `${name} is now legacy.\n${data.note || "No club refund was due."}`;
+  }
+  if (data.already_legacy) {
+    return `${name} was already legacy.`;
+  }
+  return `${name} is now legacy.`;
+}
+
 async function runMarkLegacy(withRefund) {
   const p = markLegacyPreview;
   if (!p) return;
@@ -1170,22 +1192,35 @@ async function runMarkLegacy(withRefund) {
     : `Mark ${p.name} as legacy? He can't be bid on or signed until restored${p.club ? `; ${p.club} will be offered Return & refund` : ""}.`;
   if (!confirm(msg)) return;
   setMarkLegacyButtons(false);
-  const { data, error } = await supabase.rpc(
-    withRefund ? "admin_mark_legacy_and_refund" : "admin_mark_player_legacy",
-    { p_player_id: p.player_id }
-  );
-  if (error) {
-    setStatus("markLegacyInfo", error.message || "Failed.", false);
-    setMarkLegacyButtons(true);
-    return;
-  }
   setStatus(
     "markLegacyInfo",
     withRefund
-      ? `${data?.player_name || p.name} marked legacy and returned from ${data?.club || p.club} — ${fmtLegacyMoney(data?.refund)} refunded.`
-      : `${data?.player_name || p.name} marked legacy.`,
+      ? `Working — marking ${p.name} legacy and refunding ${p.club || "the club"}. This can take a minute. Leave this page open.`
+      : `Working — marking ${p.name} legacy. This can take a minute. Leave this page open.`,
     true
   );
+  let data;
+  let error;
+  try {
+    const res = await supabase.rpc(
+      withRefund ? "admin_mark_legacy_and_refund" : "admin_mark_player_legacy",
+      { p_player_id: p.player_id }
+    );
+    data = res.data;
+    error = res.error;
+  } catch (err) {
+    error = err;
+  }
+  if (error) {
+    const fail = error.message || "Failed.";
+    setStatus("markLegacyInfo", fail, false);
+    setMarkLegacyButtons(true);
+    window.alert(fail);
+    return;
+  }
+  const done = legacyMarkResultMessage(data, p, withRefund);
+  setStatus("markLegacyInfo", done.replace(/\n/g, " "), data?.ok === false ? false : true);
+  window.alert(done);
   markLegacyPreview = null;
   await Promise.all([loadUnavailableList().catch(() => {}), loadLegacyClubsReport()]);
 }
