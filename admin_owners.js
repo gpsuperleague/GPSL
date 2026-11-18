@@ -2096,6 +2096,35 @@ async function markSeason1ResponseOnBehalf({
   await loadWaitingListAdmin();
 }
 
+/** Wipe Season 1 accepted / rejected. Queue number stays. */
+async function clearSeason1InviteStatus({ ownerId, email, tag, existingResponse = "" }) {
+  const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
+  const prev = String(existingResponse || "").toLowerCase();
+  if (
+    !confirm(
+      `Clear the Season 1 status for ${label}?\n\nAccepted or rejected comes off. Their queue number stays.`
+    )
+  ) {
+    return;
+  }
+  setWlActionStatus(`Clearing Season 1 status for ${label}…`);
+  const { data, error } = await supabase.rpc("admin_season1_invite_clear_response", {
+    p_owner_id: ownerId,
+  });
+  if (error) {
+    const detail = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
+    setWlActionStatus("❌ " + detail, false);
+    return;
+  }
+  if (data?.already) {
+    setWlActionStatus(`ℹ️ ${label} has no Season 1 accepted or rejected status`, true);
+    return;
+  }
+  const was = data?.prev_response || prev || "status";
+  setWlActionStatus(`✅ Cleared Season 1 ${was} for ${label}`, true);
+  await loadWaitingListAdmin();
+}
+
 /** Confirm an offered invite whose deadline has passed (no member response). */
 async function markSeason1InviteExpired({ ownerId, email, tag }) {
   const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
@@ -2658,6 +2687,10 @@ async function runWlRowAction(action, { ownerId, email, tag, club, s1Status, s1R
   }
   if (action === "s1_mark_expired") {
     await markSeason1InviteExpired({ ownerId, email, tag });
+    return;
+  }
+  if (action === "s1_clear_status") {
+    await clearSeason1InviteStatus({ ownerId, email, tag, existingResponse: s1Response });
     return;
   }
   if (action === "remove_waiting") {
@@ -3272,6 +3305,7 @@ async function loadArchivedOwnersSection() {
           <option value="invite_season1_mass">${s1Status === "offered" ? "Re-send Season 1 mass invite" : "Invite Mass"}</option>
           <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
           <option value="s1_decline_dm">Mark S1 declined (DM)</option>
+          <option value="s1_clear_status">Clear S1 status</option>
           ${s1ExpireOption}
           <option value="unarchive">Unarchive → waiting</option>
           <option value="delete_gpsl">Delete from GPSL</option>
@@ -3355,6 +3389,7 @@ function renderOnBreakSection(rows) {
           <option value="invite_season1_mass">Invite Mass</option>
           <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
           <option value="s1_decline_dm">Mark S1 declined (DM)</option>
+          <option value="s1_clear_status">Clear S1 status</option>
           <option value="to_waiting">→ Waiting</option>
           <option value="add_club">Add club</option>
           <option value="remove_waiting">Archive</option>
@@ -3601,6 +3636,7 @@ function renderWaitingListAdminRow(
   const s1DmOptions = `
         <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
         <option value="s1_decline_dm">Mark S1 declined (DM)</option>
+        <option value="s1_clear_status">Clear S1 status</option>
         ${s1ExpireOption}`;
   const clubShortRaw = String(row.club_short_name || act.club_short_name || "").trim();
   const clubShort = clubShortRaw.toUpperCase();
