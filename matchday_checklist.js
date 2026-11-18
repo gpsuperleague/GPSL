@@ -9,7 +9,7 @@ import {
   ownerPreviewClub,
   withPreviewClub,
 } from "./admin_owner_preview.js?v=20261113-admin-view";
-import { cupFixtureKind, cupSwitchNote } from "./matchday_console_rules.js?v=20261111-cup-settings";
+import { cupFixtureKind, cupSwitchNote } from "./matchday_console_rules.js?v=20261118-clearly-shown";
 import { fullClubName } from "./clubs_lookup.js";
 import {
   fetchFixturesHomeWeatherMeta,
@@ -347,24 +347,24 @@ const REC_GROUPS = [
   {
     heading: "Prematch config",
     items: [
-      ["rec_cfg_stadium", "Stadium shown"],
-      ["rec_cfg_kits", "Kits shown"],
-      ["rec_cfg_weather", "Weather / Pitch shown"],
+      ["rec_cfg_stadium", "Stadium clearly shown"],
+      ["rec_cfg_kits", "Kits clearly shown"],
+      ["rec_cfg_weather", "Weather / Pitch clearly shown"],
     ],
   },
   {
     heading: "Personnel",
     items: [
-      ["rec_pers_manager", "[show] Manager (GP)"],
-      ["rec_pers_subtactic", "[show] Subtactic"],
-      ["rec_pers_squad", "[show] Squad (incl. substitutes)"],
+      ["rec_pers_manager", "Manager (GP) clearly shown"],
+      ["rec_pers_subtactic", "Subtactic clearly shown"],
+      ["rec_pers_squad", "Squad (incl. substitutes) clearly shown"],
     ],
   },
   {
     heading: "Tactics",
     items: [
-      ["rec_tac_instructions", "[Show] player instructions blank"],
-      ["rec_tac_show_fluid", "show fluid formation"],
+      ["rec_tac_instructions", "Player instructions blank clearly shown"],
+      ["rec_tac_show_fluid", "Fluid formation clearly shown"],
       ["rec_tac_subtactic", "Default Konami formation set before kick-off"],
       ["rec_tac_fluid", "No player dragging (sub tactic and Fluid set before the match)"],
     ],
@@ -372,8 +372,8 @@ const REC_GROUPS = [
   {
     heading: "Pause before kick-off",
     items: [
-      ["rec_pause_pa3", "PA3 or PA4 shown"],
-      ["rec_pause_adv", "Advanced skill shown"],
+      ["rec_pause_pa3", "PA3 or PA4 clearly shown"],
+      ["rec_pause_adv", "Advanced skill clearly shown"],
     ],
   },
   {
@@ -387,8 +387,8 @@ const REC_GROUPS = [
   {
     heading: "After the match",
     items: [
-      ["rec_post_ratings", "Player ratings shown"],
-      ["rec_post_potm", "Player of the match shown"],
+      ["rec_post_ratings", "Player ratings clearly shown"],
+      ["rec_post_potm", "Player of the match clearly shown"],
       ["rec_post_stop", "Recording stopped"],
     ],
   },

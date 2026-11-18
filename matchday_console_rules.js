@@ -9,9 +9,9 @@ const ACK_STORAGE_PREFIX = "gpsl_pitch_ack:";
 /** Compact chips — pre-match / personnel / tactics (boosts live under On the pitch). */
 export const CONSOLE_DISPLAY_CHIPS = [
   "10-min match",
-  "Show Manager",
-  "Show Subtactic",
-  "Show Squad",
+  "Manager clearly shown",
+  "Subtactic clearly shown",
+  "Squad clearly shown",
   "No individual instructions",
   "No player dragging",
 ];
@@ -233,7 +233,7 @@ export function prematchConsoleChecklistHtml(opts = {}) {
     ...(cupLine ? [["Cup", cupLine]] : []),
     [
       "Personnel",
-      "Show Manager · Show Subtactic · Show Squad · Player instructions Blank (blocked if used)",
+      "Manager, Subtactic and Squad clearly shown · Player instructions blank (blocked if used)",
     ],
     [
       "Tactics",
@@ -263,7 +263,7 @@ export function prematchConsoleChecklistHtml(opts = {}) {
   return `
     <div class="mr-prematch-check mr-console-check">
       <div class="mr-prematch-check-title">Prematch console checklist</div>
-      <p class="mr-prematch-check-sub">Show all on recording</p>
+      <p class="mr-prematch-check-sub">Clearly shown on the recording</p>
       <p class="mr-prematch-check-note">Confirm these in eFootball before kick-off (not verified by the site).</p>
       <ul class="mr-console-list">${rows}</ul>
     </div>`;
@@ -296,9 +296,9 @@ export function getMatchdayConsoleRulesCards() {
       },
       {
         heading: "Personnel",
-        tip: "Show Manager, Subtactic and Squad on the recording for the whole match.",
+        tip: "Manager, Subtactic and Squad clearly shown on the recording for the whole match.",
         items: [
-          "<b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b> on — they must stay visible on the match recording or you can be reported and fined.",
+          "<b>Manager</b>, <b>Subtactic</b>, and <b>Squad</b> clearly shown — they must stay visible on the match recording or you can be reported and fined.",
         ],
       },
       {
@@ -314,9 +314,9 @@ export function getMatchdayConsoleRulesCards() {
       },
       {
         heading: "Pause before kick-off",
-        tip: "Pause and show PA3 or PA4 plus Advanced skill before kick-off.",
+        tip: "Pause before kick-off, with PA3 or PA4 and Advanced skill clearly shown.",
         items: [
-          "Show <b>PA level</b> — <b>PA3</b> or <b>PA4</b> only.",
+          "<b>PA level</b> clearly shown — <b>PA3</b> or <b>PA4</b> only.",
           "<b>Advanced</b> skill setting only.",
         ],
       },

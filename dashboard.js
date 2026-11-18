@@ -30,7 +30,7 @@ import {
 } from "./club_theme_common.js?v=20261026-theme-vars";
 import { startDashboardMatchday } from "./dashboard_matchday.js?v=20261113-admin-view";
 import { renderSupportBanner } from "./support_banner.js";
-import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261115-checklist-scroll";
+import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261118-clearly-shown";
 import { startOwnerReadyChecklist } from "./owner_ready_checklist.js?v=20261113-admin-view";
 import {
   leagueBadgeSrc,

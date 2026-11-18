@@ -55,7 +55,7 @@ export function welcomePackParts(ctx: WelcomePackContext | WelcomePackAudience =
     "",
     "*Stage 3* — **Film the last match**",
     `Post your page code with the film in ${videos} within 72 hours of day 7. Staff tick the card. A fail returns only the video.`,
-    "Show: All Pre-Match settings, default with injuries off | PA3/PA4 & advanced skill | Manager, subtactic formation, squad (with subs), blank instructions, Fluid formations, no dragging, scoreboard, HUD, ratings.",
+    "Clearly shown: All Pre-Match settings, default with injuries off | PA3/PA4 & advanced skill | Manager, subtactic formation, squad (with subs), blank instructions, Fluid formations, no dragging, scoreboard, HUD, ratings.",
     "",
     "*Stage 4* — **Waiting list**",
     "An approved video puts you on the list.",

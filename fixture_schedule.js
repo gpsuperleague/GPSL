@@ -51,7 +51,7 @@ import {
   cupFixtureKind,
   pitchBehaviourPanelHtml,
   wirePitchAck,
-} from "./matchday_console_rules.js?v=20261111-cup-settings";
+} from "./matchday_console_rules.js?v=20261118-clearly-shown";
 import {
   downloadIcs,
   fixtureKickoffEvent,

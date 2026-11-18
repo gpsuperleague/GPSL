@@ -137,6 +137,114 @@ function tickHtml(sideLabel, url, pending = false, pendingHint = "") {
   return `<span class="mv-tick mv-tick-off" title="${sideLabel} video not uploaded yet">${sideLabel}○</span>`;
 }
 
+/** Same order as the match checklist. Ticks stay in this browser only. */
+const WATCH_GROUPS = [
+  {
+    heading: "Pre-match settings",
+    items: [
+      ["room_10", "10-minute match"],
+      ["room_inj", "Injuries off"],
+      ["room_subs", "Substitutes: 5"],
+      ["room_int", "Sub intervals: 3"],
+      ["room_form", "Form: Random"],
+    ],
+  },
+  {
+    heading: "Prematch config",
+    items: [
+      ["cfg_stadium", "Stadium clearly shown"],
+      ["cfg_kits", "Kits clearly shown"],
+      ["cfg_weather", "Weather / Pitch clearly shown"],
+    ],
+  },
+  {
+    heading: "Personnel",
+    items: [
+      ["pers_manager", "Manager (GP) clearly shown"],
+      ["pers_sub", "Subtactic clearly shown"],
+      ["pers_squad", "Squad (incl. substitutes) clearly shown"],
+    ],
+  },
+  {
+    heading: "Tactics",
+    items: [
+      ["tac_blank", "Player instructions blank clearly shown"],
+      ["tac_fluid", "Fluid formation clearly shown"],
+      ["tac_default", "Default Konami formation set before kick-off"],
+      ["tac_drag", "No player dragging"],
+    ],
+  },
+  {
+    heading: "Pause before kick-off",
+    items: [
+      ["pause_pa", "PA3 or PA4 clearly shown"],
+      ["pause_adv", "Advanced skill clearly shown"],
+    ],
+  },
+  {
+    heading: "On the pitch",
+    items: [
+      ["pitch_board", "Scoreboard on"],
+      ["pitch_hud", "HUD on for the whole match"],
+    ],
+  },
+  {
+    heading: "After the match",
+    items: [
+      ["post_ratings", "Player ratings clearly shown"],
+      ["post_potm", "Player of the match clearly shown"],
+    ],
+  },
+];
+
+const WATCH_ITEMS = WATCH_GROUPS.flatMap((g) => g.items);
+
+function watchStorageKey(fixtureId, side) {
+  return `gpsl_mv_watch:${fixtureId}:${String(side || "").toLowerCase()}`;
+}
+
+function loadWatchTicks(fixtureId, side) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(watchStorageKey(fixtureId, side)) || "[]");
+    return new Set(Array.isArray(raw) ? raw.filter((k) => typeof k === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveWatchTicks(fixtureId, side, ticked) {
+  try {
+    localStorage.setItem(watchStorageKey(fixtureId, side), JSON.stringify([...ticked]));
+  } catch {
+    /* private mode */
+  }
+}
+
+function watchChecklistHtml(fixtureId, side) {
+  const ticked = loadWatchTicks(fixtureId, side);
+  const groups = WATCH_GROUPS.map(
+    (g) => `
+      <div class="mv-watch-group">
+        <div class="mv-watch-h">${escapeHtml(g.heading)}</div>
+        ${g.items
+          .map(([key, label]) => {
+            const on = ticked.has(key);
+            return `<label class="mv-watch-item${on ? " is-on" : ""}">
+              <input type="checkbox" data-watch="${escapeAttr(key)}"${on ? " checked" : ""}>
+              <span>${escapeHtml(label)}</span>
+            </label>`;
+          })
+          .join("")}
+      </div>`
+  ).join("");
+  return `
+    <details class="mv-watch" open>
+      <summary>Watch checklist <span class="mv-watch-count" id="mvWatchCount">${ticked.size} / ${WATCH_ITEMS.length}</span></summary>
+      <p class="mv-watch-note">Tick each line as you go through the video. Kept on this match side in this browser. Not sent with a report.</p>
+      ${groups}
+    </details>`;
+}
+
 function reportBtnHtml(fixtureId, side, mode, isOwn = false) {
   // mode: 'active' | 'no-video' | 'own' | 'locked' | 'clear'
   if (!mode) return "";
@@ -411,6 +519,20 @@ export const MATCH_VIDEO_TICK_CSS = `
   padding:10px 12px; border:1px solid #365; border-radius:6px; background:#102018;
   font-size:13px; color:#cfe;
 }
+.mv-watch {
+  margin:0 0 12px; border:1px solid #333; border-radius:6px; background:#141414; padding:8px 10px;
+}
+.mv-watch summary {
+  cursor:pointer; color:#ffcc66; font-size:13px; font-weight:700;
+}
+.mv-watch-count { color:#aaa; font-weight:600; margin-left:6px; }
+.mv-watch-note { margin:8px 0; font-size:12px; color:#888; line-height:1.4; }
+.mv-watch-group { margin:0 0 8px; }
+.mv-watch-h { font-size:11px; color:#999; text-transform:uppercase; letter-spacing:0.04em; margin:6px 0 4px; }
+.mv-watch-item {
+  display:flex; gap:8px; align-items:flex-start; font-size:13px; color:#ccc; margin:3px 0;
+}
+.mv-watch-item.is-on span { color:#8d8; text-decoration:line-through; }
 .mv-report-modal {
   width:min(520px, 100%); max-height:min(90vh, 720px); overflow:auto;
   background:#161616; border:1px solid #444; border-radius:8px;
@@ -543,6 +665,7 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
           <br>Staff are notified and must approve the report. Nothing changes until then.`
           }
         </p>
+        ${watchChecklistHtml(fixtureId, side)}
         ${
           adminView
             ? `<label class="mv-admin-clear">
@@ -644,6 +767,21 @@ export function wireMatchVideoReportButtons(supabase, root, opts) {
           ? "Marked checked. The R button is green for admins."
           : "Check removed.";
       }
+    });
+
+    backdrop.querySelectorAll("[data-watch]").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const ticked = loadWatchTicks(fixtureId, side);
+        const key = cb.getAttribute("data-watch");
+        if (key) {
+          if (cb.checked) ticked.add(key);
+          else ticked.delete(key);
+          saveWatchTicks(fixtureId, side, ticked);
+        }
+        cb.closest(".mv-watch-item")?.classList.toggle("is-on", cb.checked);
+        const count = backdrop.querySelector("#mvWatchCount");
+        if (count) count.textContent = `${ticked.size} / ${WATCH_ITEMS.length}`;
+      });
     });
 
     backdrop.querySelectorAll("[data-breach-check]").forEach((cb) => {

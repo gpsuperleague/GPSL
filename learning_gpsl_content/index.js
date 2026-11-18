@@ -17,8 +17,8 @@ import {
   SECTION_MATCHDAY_CHECKLIST,
   SECTION_MATCH_SCHEDULING,
   SECTION_MATCHDAY,
-} from "./fixtures_results.js?v=20261114-cup-both";
-import { SECTION_DISCIPLINE } from "./discipline.js?v=20261114-cup-both";
+} from "./fixtures_results.js?v=20261118-clearly-shown";
+import { SECTION_DISCIPLINE } from "./discipline.js?v=20261118-clearly-shown";
 import { SECTION_LEAGUE, SECTION_INTERNATIONAL } from "./league_world.js";
 import {
   SECTION_OWNERS,

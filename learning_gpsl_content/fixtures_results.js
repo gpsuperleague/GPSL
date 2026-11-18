@@ -132,7 +132,7 @@ export const SECTION_MATCHDAY_CHECKLIST = {
       items: [
         `<b>Start recording</b> — <a href="https://discord.com/channels/1483974134361886802/1549828547814891550" target="_blank" rel="noopener">recording guide on Discord</a>`,
         {
-          html: `Show <b>MATCH ROOM SETTINGS</b> — <em>default except Injuries</em>`,
+          html: `<b>MATCH ROOM SETTINGS</b> clearly shown — <em>default except Injuries</em>`,
           children: [
             `10-minute match`,
             `Injuries: <b>Off</b>`,
@@ -144,11 +144,11 @@ export const SECTION_MATCHDAY_CHECKLIST = {
           ],
         },
         {
-          html: `Show <b>PRE-MATCH CONFIG</b>`,
+          html: `<b>PRE-MATCH CONFIG</b> clearly shown`,
           children: [`Stadium`, `Kits`, `Weather / Pitch`],
         },
         {
-          html: `Show <b>SQUAD &amp; TACTICS</b>`,
+          html: `<b>SQUAD &amp; TACTICS</b> clearly shown`,
           children: [
             `Manager (GP only)`,
             `Sub tactic (default Konami formation, set before kick-off)`,
@@ -158,7 +158,7 @@ export const SECTION_MATCHDAY_CHECKLIST = {
           ],
         },
         {
-          html: `Show <b>PAUSE BEFORE KICKOFF</b>`,
+          html: `<b>PAUSE BEFORE KICKOFF</b> clearly shown`,
           children: [
             `PA level: <b>PA3 or PA4</b> (PA1 and PA2 not allowed)`,
             `Advanced skill`,
@@ -175,7 +175,7 @@ export const SECTION_MATCHDAY_CHECKLIST = {
         },
         {
           html: `After the <b>MATCH</b>`,
-          children: [`Show player ratings`, `Show player of the match`],
+          children: [`Player ratings clearly shown`, `Player of the match clearly shown`],
         },
         `<b>Stop recording</b>`,
       ],
@@ -373,7 +373,7 @@ export const SECTION_MATCH_SCHEDULING = {
         `<code>[HomeShort 2-0 AwayShort [SL-MD5]](https://youtu.be/xxxxx)</code> — https <b>YouTube</b> or <b>MEGA</b> (<code>mega.nz</code>). Division tag required: <b>SL</b> SuperLeague, <b>CA</b> Championship A, <b>CB</b> Championship B. Cups: <b>S8</b>/<b>PL</b>/<b>SH</b>/<b>BO</b>/<b>LC</b>. Score spacing flexible. GPSL verifies the poster is that club’s owner, plus division, matchday/round, clubs, and score.`,
         `GPSL ticks <b>H</b> / <b>A</b> on Fixtures when each side’s video is matched — click the tick to open the video.`,
         `Each club earns Matchday revenue <b>once</b> per fixture when <em>their</em> post is matched (amount set in Admin → Match videos). Prefer <b>enter/confirm the GPSL result first</b>, then post the video — if you post early, GPSL holds it (Discord ⏳ / amber tick) and matches automatically once the result is confirmed. Missing videos after the <b>month you played in</b> locks + grace hours (default 72h; catch-up / holiday-delayed use that later month): <b>₿500k</b> fine (plus the points ladder under <a href="#discipline">Discipline &amp; fines</a>).`,
-        `Do <b>not</b> use <b>individual player instructions</b> (blocked — can be reported and fined ₿10m). HUD should still show <b>Show Manager</b>, <b>Show Subtactic</b>, and <b>Show Squad</b>. <b>Sub tactic and Fluid</b> are default Konami formations, set <b>before</b> the match. <b>No dragging players.</b> Report it from the Fixtures <b>R</b> button with how many times you saw it. <b>Staff must approve</b> before anything changes: offender won or drew → match replayed; opponent won → result stands; 2 or more drags → <b>−1 league point</b> as well. <b>Single Red/Blue</b> only from the <b>80th</b> minute; <b>Double Red/Blue</b> only from the <b>90th</b>.`,
+        `Do <b>not</b> use <b>individual player instructions</b> (blocked — can be reported and fined ₿10m). <b>Manager</b>, <b>Subtactic</b>, and <b>Squad</b> clearly shown on the HUD. <b>Sub tactic and Fluid</b> are default Konami formations, set <b>before</b> the match. <b>No dragging players.</b> Report it from the Fixtures <b>R</b> button with how many times you saw it. <b>Staff must approve</b> before anything changes: offender won or drew → match replayed; opponent won → result stands; 2 or more drags → <b>−1 league point</b> as well. <b>Single Red/Blue</b> only from the <b>80th</b> minute; <b>Double Red/Blue</b> only from the <b>90th</b>.`,
       ],
     },
 
@@ -421,7 +421,7 @@ export const SECTION_MATCHDAY = {
     {
       type: "ul",
       items: [
-        `<b>Display:</b> 10-minute match · <b>Injuries off</b> · show on recording: Manager · Subtactic · Squad · Player instructions (<b>blank</b>). Sub tactic and Fluid are a <b>default Konami formation set before the match</b>. <b>No dragging.</b> Staff-approved report: won or drew → replay; opponent won → result stands; 2+ drags → −1 point.`,
+        `<b>Display:</b> 10-minute match · <b>Injuries off</b> · clearly shown on the recording: Manager · Subtactic · Squad · Player instructions (<b>blank</b>). Sub tactic and Fluid are a <b>default Konami formation set before the match</b>. <b>No dragging.</b> Staff-approved report: won or drew → replay; opponent won → result stands; 2+ drags → −1 point.`,
         `<b>Boosts:</b> Single Red/Blue from the <b>80th</b> minute · Double Red/Blue from the <b>90th</b> only.`,
         `<b>Pause before KO:</b> PA3 or PA4 (PA1 and PA2 not allowed) · Advanced skill only.`,
         `<b>On the pitch:</b> NO DOGSO · NO TIMEWASTING · NO MATCH MANIPULATION.`,
