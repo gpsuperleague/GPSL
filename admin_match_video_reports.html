@@ -58,6 +58,8 @@
       min-height:52px; resize:vertical;
     }
     .mvr-actions { display:flex; flex-wrap:wrap; gap:8px; }
+    .mvr-decide { display:flex; flex-wrap:wrap; gap:14px; margin-top:8px; }
+    .mvr-decide label { display:flex; align-items:center; gap:6px; margin:0; color:#ddd; }
     .status-pill {
       display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600;
       text-transform:uppercase; letter-spacing:0.04em;
@@ -74,7 +76,8 @@
   <div class="card">
     <p class="note">
       Owners submit <b>one report per match side</b>. Home and away are reviewed separately, including when different owners filed them.
-      <b>OK / Approve</b> applies the fines. The reporter gets <b>₿2,000</b> Building Society once per match;
+      <b>OK / Approve</b> applies the fines. On a report with more than one breach, uphold the ones that stand and dismiss the rest — only the upheld breaches are punished.
+      The reporter gets <b>₿2,000</b> Building Society once per match if at least one breach is upheld;
       a second video of the same match by that same owner is still approved, with no second reward.
       <b>Reject</b> closes that side forever — it cannot be re-reported.
     </p>
@@ -89,6 +92,6 @@
     <div id="reportsList" class="mvr-list"></div>
     <div id="reportsStatus"></div>
   </div>
-  <script type="module" src="admin_match_video_reports.js?v=20261117-report-locate"></script>
+  <script type="module" src="admin_match_video_reports.js?v=20261118-breach-split"></script>
 </body>
 </html>

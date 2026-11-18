@@ -103,8 +103,20 @@ function formationDragOutcome(r, instances) {
     : `If you approve: result stands.${points}`;
 }
 
+function breachDecisionHtml(b) {
+  if (b.decision === "dismissed") {
+    return `<div class="mvr-note"><span class="status-pill status-rejected">Dismissed</span> Not punished.</div>`;
+  }
+  if (b.decision === "upheld") {
+    return `<div class="mvr-note"><span class="status-pill status-approved">Upheld</span></div>`;
+  }
+  return "";
+}
+
 function breachesHtml(r) {
   const list = Array.isArray(r.breaches) ? r.breaches : [];
+  const open = (r.status || "open") === "open";
+  const split = open && list.length > 1;
   if (!list.length) {
     return r.note
       ? `<div class="mvr-breach"><b>${escapeHtml(r.breach_tariff_code || "Breach")}</b><br>${escapeHtml(
@@ -113,8 +125,15 @@ function breachesHtml(r) {
       : `<p class="note">No breach details.</p>`;
   }
   return list
-    .map(
-      (b) => `
+    .map((b, i) => {
+      const effect = tariffEffects.get(b.code) || "";
+      const choice = split
+        ? `<div class="mvr-decide">
+            <label><input type="radio" name="breach-${r.id}-${i}" data-uphold="${r.id}" data-index="${i}" data-effect="${escapeHtml(effect)}" data-label="${escapeHtml(b.label || b.code)}" value="uphold" checked> Uphold</label>
+            <label><input type="radio" name="breach-${r.id}-${i}" data-uphold="${r.id}" data-index="${i}" data-label="${escapeHtml(b.label || b.code)}" value="dismiss"> Dismiss</label>
+          </div>`
+        : breachDecisionHtml(b);
+      return `
       <div class="mvr-breach">
         <b>${escapeHtml(b.label || b.code)}</b>
         ${
@@ -122,13 +141,14 @@ function breachesHtml(r) {
             ? `<div class="mvr-note">Drags reported: <b>${escapeHtml(
                 String(b.instances || 1)
               )}</b>. ${escapeHtml(formationDragOutcome(r, b.instances || 1))}</div>`
-            : tariffEffects.get(b.code) === "replay_if_won_or_drew"
+            : effect === "replay_if_won_or_drew"
               ? `<div class="mvr-note">${escapeHtml(formationDragOutcome(r, 1))}</div>`
               : ""
         }
         <div class="mvr-note">${escapeHtml(b.note || "—")}</div>
-      </div>`
-    )
+        ${choice}
+      </div>`;
+    })
     .join("");
 }
 
@@ -177,6 +197,7 @@ async function loadReports() {
       const sideLabel =
         String(r.side || "").toLowerCase() === "away" ? "Away video" : "Home video";
       const count = r.breach_count ?? (Array.isArray(r.breaches) ? r.breaches.length : 0);
+      const split = status === "open" && count > 1;
       const replayChoice = reportNeedsReplayChoice(r)
         ? `
         <label>This match
@@ -195,13 +216,20 @@ async function loadReports() {
         </label>
         ${replayChoice}
         <div class="mvr-actions">
-          <button type="button" class="button" data-approve="${r.id}">OK / Approve</button>
-          <button type="button" class="button secondary" data-reject="${r.id}">Reject</button>
+          ${
+            split
+              ? `<button type="button" class="button" data-confirm="${r.id}">Confirm decisions</button>
+                 <button type="button" class="button secondary" data-reject="${r.id}">Reject all</button>`
+              : `<button type="button" class="button" data-approve="${r.id}">OK / Approve</button>
+                 <button type="button" class="button secondary" data-reject="${r.id}">Reject</button>`
+          }
         </div>
         <p class="note" style="margin:8px 0 0">
-          Approve applies a fine for each listed breach and credits the reporter ₿2,000 Building Society, once per match.
-          A formation-drag breach is not a fine: approve replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported.
-          Reject closes this match side forever (no re-report).
+          ${
+            split
+              ? `Uphold punishes that breach only. Dismiss leaves it unpunished. The reporter gets ₿2,000 Building Society if at least one breach is upheld, once per match. Dismissing every breach rejects the report and closes this side forever.`
+              : `Approve applies a fine for each listed breach and credits the reporter ₿2,000 Building Society, once per match. A formation-drag breach is not a fine: approve replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported. Reject closes this match side forever (no re-report).`
+          }
         </p>`
           : `<p class="note" style="margin:0">Resolved ${
               r.reviewed_at ? new Date(r.reviewed_at).toLocaleString("en-GB") : ""
@@ -235,17 +263,54 @@ async function loadReports() {
   list.querySelectorAll("[data-approve]").forEach((btn) => {
     btn.onclick = () => resolveReport(Number(btn.getAttribute("data-approve")), "approve");
   });
+  list.querySelectorAll("[data-confirm]").forEach((btn) => {
+    btn.onclick = () => confirmDecisions(Number(btn.getAttribute("data-confirm")));
+  });
   list.querySelectorAll("[data-reject]").forEach((btn) => {
     btn.onclick = () => resolveReport(Number(btn.getAttribute("data-reject")), "reject");
   });
   setStatus("reportsStatus", `${rows.length} report(s)`, true);
 }
 
-async function resolveReport(id, action) {
+function splitChoices(card, id) {
+  const picked = [...card.querySelectorAll(`input[data-uphold="${id}"]:checked`)];
+  if (!picked.length) return null;
+  const uphold = [];
+  const dismiss = [];
+  for (const el of picked) {
+    const label = el.getAttribute("data-label") || "Breach";
+    if (el.value === "dismiss") dismiss.push(label);
+    else uphold.push({ index: Number(el.getAttribute("data-index")), label, effect: el.getAttribute("data-effect") || "" });
+  }
+  return { uphold, dismiss };
+}
+
+function confirmDecisions(id) {
+  const card = document.querySelector(`.mvr-card[data-id="${id}"]`);
+  const choices = card ? splitChoices(card, id) : null;
+  if (!choices) return;
+  if (!choices.uphold.length) {
+    resolveReport(id, "reject");
+    return;
+  }
+  const lines = [
+    `Uphold: ${choices.uphold.map((b) => b.label).join(", ")}.`,
+    choices.dismiss.length ? `Dismiss: ${choices.dismiss.join(", ")}.` : "",
+    "Only the upheld breaches are punished.",
+  ].filter(Boolean);
+  resolveReport(id, "approve", {
+    uphold: choices.uphold.map((b) => b.index),
+    replay: choices.uphold.some((b) => b.effect === "admin_decides"),
+    confirmText: lines.join(" "),
+  });
+}
+
+async function resolveReport(id, action, split = null) {
   const card = document.querySelector(`.mvr-card[data-id="${id}"]`);
   const note = card?.querySelector(`[data-note="${id}"]`)?.value || null;
   const replaySel = card?.querySelector(`[data-replay="${id}"]`);
-  const replayChoice = replaySel ? replaySel.value === "replay" : null;
+  const replayApplies = replaySel && (split == null || split.replay);
+  const replayChoice = replayApplies ? replaySel.value === "replay" : null;
   if (
     action === "reject" &&
     !confirm("Reject this report? This match side can never be reported again.")
@@ -255,13 +320,21 @@ async function resolveReport(id, action) {
   if (
     action === "approve" &&
     !confirm(
-      `Approve this report? Fines apply to ordinary breaches. A formation-drag breach replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported. The reporter gets ₿2,000 Building Society, unless they were already rewarded for the other video of this match.${
-        replaySel
-          ? replayChoice
-            ? " You chose to replay this match."
-            : " You chose to leave the result."
-          : ""
-      }`
+      split?.confirmText
+        ? `${split.confirmText} The reporter gets ₿2,000 Building Society, unless they were already rewarded for the other video of this match.${
+            replayApplies
+              ? replayChoice
+                ? " You chose to replay this match."
+                : " You chose to leave the result."
+              : ""
+          }`
+        : `Approve this report? Fines apply to ordinary breaches. A formation-drag breach replays the match if the offender won or drew, leaves the result if the opponent won, and deducts 1 league point when 2 or more drags were reported. The reporter gets ₿2,000 Building Society, unless they were already rewarded for the other video of this match.${
+            replayApplies
+              ? replayChoice
+                ? " You chose to replay this match."
+                : " You chose to leave the result."
+              : ""
+          }`
     )
   ) {
     return;
@@ -277,6 +350,7 @@ async function resolveReport(id, action) {
     p_review_note: note,
     p_amount_override: null,
     p_replay: replayChoice,
+    p_uphold: split?.uphold ?? null,
   });
   if (error) {
     setStatus("reportsStatus", error.message, false);
