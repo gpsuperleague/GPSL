@@ -2958,12 +2958,6 @@ async function initPlanner() {
       : "Save tactic board";
   }
 
-  const formBar = root.querySelector(".squad-formations-bar");
-  if (formBar) {
-    const savedRow = formBar.querySelector(".formation-section-row:nth-child(2)");
-    if (savedRow) savedRow.style.display = "none";
-  }
-
   const hint = root.querySelector(".squad-hint");
   if (hint) {
     hint.innerHTML = multiBoardEnabled
