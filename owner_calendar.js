@@ -78,18 +78,21 @@ const AUCTION_TYPE_LABELS = {
 
 const PLANNED_AUCTION_KINDS = new Set([
   "player_draft",
+  "limited_draft",
   "manager_draft",
   "club_auction",
 ]);
 
 const PLANNED_DEFAULT_LINK = {
   player_draft: { href: "draftauction.html", label: "Draft auction →" },
+  limited_draft: { href: "draftauction.html", label: "Limited draft →" },
   manager_draft: { href: "manager_draftauction.html", label: "Manager draft →" },
   club_auction: { href: "club_auction.html", label: "Club auction →" },
 };
 
 const PLANNED_CHIP = {
   player_draft: "Draft",
+  limited_draft: "Ltd draft",
   manager_draft: "Mgr draft",
   club_auction: "Club auc.",
 };
