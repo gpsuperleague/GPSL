@@ -293,6 +293,15 @@ function playerPreviewLines(players, statusById = null) {
     .join("")}</ul>`;
 }
 
+function fluidFormationText(preview, shown) {
+  const fluid = preview?.fluid;
+  if (!fluid?.on) return shown;
+  const visible = fluid.side === "attacking" ? "Attacking" : "Defensive";
+  const other = fluid.side === "attacking" ? "Defensive" : "Attacking";
+  const otherName = fluid.other_formation_id || "custom";
+  return `Fluid · ${visible} ${shown} · ${other} ${otherName}`;
+}
+
 function clubPreviewPanel(title, preview, statusById = null) {
   const p = preview || {};
   const style = p.strongest_playstyle;
@@ -321,7 +330,7 @@ function clubPreviewPanel(title, preview, statusById = null) {
       : "",
     form
       ? `<div class="mr-preview-meta"><span class="mr-preview-k">Tactic / formation</span><span class="mr-preview-v">${esc(
-          form
+          fluidFormationText(p, form)
         )}</span></div>`
       : `<div class="mr-preview-meta"><span class="mr-preview-k">Tactic / formation</span><span class="mr-preview-v mr-muted">Not set</span></div>`,
     p.squad_source === "fixture"

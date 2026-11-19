@@ -33,6 +33,14 @@ import {
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js?v=20260918-cards-narrow";
 import { analyseMatchdayComposition } from "./squad_rules.js?v=20260925-no-u21-hg-mins";
+import {
+  bestEmptySlot,
+  captureFluidSide,
+  cloneFluidSide,
+  fluidBlockPayload,
+  readFluidBlock,
+  syncFluidPlayers,
+} from "./matchday_fluid.js?v=20261119-fluid";
 
 export { buildPitchLayoutPayload } from "./matchday_formations.js?v=20260918-cards-narrow";
 
@@ -942,6 +950,14 @@ export function initMatchdaySquadPanel({
   let currentFormationId = resolved.formationId;
   let slotPositions = { ...resolved.positions };
   let slotLabels = { ...resolved.labels };
+  const loadedFluid = readFluidBlock(savedPitchLayout);
+  let fluidOn = !!loadedFluid;
+  let activeFluidSide = loadedFluid?.side || "defensive";
+  const fluidSides = { defensive: null, attacking: null };
+  if (loadedFluid?.other) {
+    const hidden = activeFluidSide === "attacking" ? "defensive" : "attacking";
+    fluidSides[hidden] = cloneFluidSide(loadedFluid.other);
+  }
   let state =
     savedRows?.length > 0
       ? buildStateFromSaved(allPlayers, savedRows, benchLimit)
@@ -989,6 +1005,17 @@ export function initMatchdaySquadPanel({
         <select id="squadFormationSelect" class="formation-select" title="Formation template — marker spacing comes from Admin → Formations catalogue"></select>
         <button type="button" class="button secondary" id="squadApplyTemplateBtn" title="Reset markers and default roles from the selected formation template">Apply Formation</button>
       </div>
+      <div class="formation-section-row fluid-row">
+        <label class="fluid-toggle" title="Two shapes, same starting 11. The bench stays one list.">
+          <input type="checkbox" id="squadFluidToggle" ${fluidOn ? "checked" : ""} />
+          Fluid
+        </label>
+        <div class="fluid-flip" id="squadFluidFlip" ${fluidOn ? "" : "hidden"}>
+          <button type="button" class="button secondary" data-fluid-side="defensive">Defensive</button>
+          <button type="button" class="button secondary" data-fluid-side="attacking">Attacking</button>
+        </div>
+        <span class="fluid-hint">Same players on both. A bench change lands on both. Positions stay separate.</span>
+      </div>
     </div>
     <div class="squad-toolbar">
       <button type="button" class="button secondary" id="squadAutoFillBtn">Auto-fill XI</button>
@@ -1008,6 +1035,7 @@ export function initMatchdaySquadPanel({
         <div id="squadPoolList"></div>
       </div>
       <div class="pitch-stage">
+        <p class="pitch-fluid-caption" id="squadFluidCaption" hidden></p>
         <div class="football-pitch" id="footballPitch">
           <div class="pitch-center-circle" aria-hidden="true"></div>
         </div>
@@ -1113,8 +1141,145 @@ export function initMatchdaySquadPanel({
 
   formationSelect.addEventListener("change", () => {
     // Switching tactic in the dropdown immediately uses that template's spacing.
+    // Fluid: this only restyles the shape on screen. The other shape is left as saved.
     applyCataloguePositions({ resetLabels: true });
     updateFormationRulesStatus();
+  });
+
+  function hiddenFluidName() {
+    return activeFluidSide === "attacking" ? "defensive" : "attacking";
+  }
+
+  function chosenFormationId() {
+    if (formationSelect?.value && formationSelect.value !== "custom") {
+      return formationSelect.value;
+    }
+    if (currentFormationId && currentFormationId !== "custom") return currentFormationId;
+    return formationSelect?.value || DEFAULT_FORMATION_ID;
+  }
+
+  function loadFluidFromLayout(layout) {
+    const loaded = readFluidBlock(layout);
+    fluidSides.defensive = null;
+    fluidSides.attacking = null;
+    if (!loaded) {
+      fluidOn = false;
+      activeFluidSide = "defensive";
+      return;
+    }
+    fluidOn = true;
+    activeFluidSide = loaded.side;
+    const hidden = activeFluidSide === "attacking" ? "defensive" : "attacking";
+    fluidSides[hidden] = cloneFluidSide(loaded.other);
+  }
+
+  function syncInactiveFluid() {
+    if (!fluidOn) return;
+    const hidden = fluidSides[hiddenFluidName()];
+    if (!hidden) return;
+    const onPitch = [];
+    for (const player of state.pitch.values()) if (player) onPitch.push(player);
+    hidden.players = syncFluidPlayers(hidden.players, onPitch, hidden.labels);
+  }
+
+  function updateFluidChrome() {
+    const flip = root.querySelector("#squadFluidFlip");
+    const caption = root.querySelector("#squadFluidCaption");
+    const toggle = root.querySelector("#squadFluidToggle");
+    if (toggle) toggle.checked = fluidOn;
+    if (flip) flip.hidden = !fluidOn;
+    if (caption) {
+      caption.hidden = !fluidOn;
+      caption.textContent =
+        activeFluidSide === "attacking" ? "Attacking shape" : "Defensive shape";
+    }
+    root.querySelectorAll("[data-fluid-side]").forEach((btn) => {
+      btn.classList.toggle("is-on", fluidOn && btn.dataset.fluidSide === activeFluidSide);
+    });
+  }
+
+  function applyFluidSide(side) {
+    if (!side) return;
+    currentFormationId = side.formationId || currentFormationId;
+    replaceSlotMap(slotPositions, side.positions || {});
+    replaceSlotMap(slotLabels, side.labels || {});
+    const byId = new Map();
+    for (const player of state.pitch.values()) {
+      if (!player) continue;
+      byId.set(String(player.Konami_ID ?? player.player_id ?? ""), player);
+    }
+    for (const slotId of SLOT_IDS) state.pitch.set(slotId, null);
+    for (const slotId of SLOT_IDS) {
+      const pid = side.players?.[slotId] ? String(side.players[slotId]) : "";
+      const player = pid ? byId.get(pid) : null;
+      if (!player) continue;
+      state.pitch.set(slotId, player);
+      byId.delete(pid);
+    }
+    for (const player of byId.values()) {
+      const occupied = new Set(
+        [...state.pitch.entries()].filter(([, value]) => value).map(([slotId]) => slotId)
+      );
+      const slot = bestEmptySlot(player, slotLabels, occupied);
+      if (slot) state.pitch.set(slot, player);
+    }
+    if (formationSelect && isTemplateFormationId(currentFormationId)) {
+      formationSelect.value = currentFormationId;
+    }
+    buildPitchSlotElements();
+  }
+
+  function currentLayoutPayload() {
+    syncInactiveFluid();
+    const layout = buildPitchLayoutPayload(
+      slotPositions,
+      slotLabels,
+      chosenFormationId()
+    );
+    if (!fluidOn) return layout;
+    const hidden = fluidSides[hiddenFluidName()];
+    if (hidden) layout.fluid = fluidBlockPayload(activeFluidSide, hidden);
+    return layout;
+  }
+
+  root.querySelector("#squadFluidToggle")?.addEventListener("change", (e) => {
+    if (e.target.checked) {
+      const snap = captureFluidSide(
+        chosenFormationId(),
+        slotPositions,
+        slotLabels,
+        state.pitch
+      );
+      fluidSides.defensive = snap;
+      fluidSides.attacking = cloneFluidSide(snap);
+      fluidOn = true;
+      activeFluidSide = "defensive";
+    } else {
+      fluidOn = false;
+    }
+    updateFluidChrome();
+    rerender();
+    if (typeof onChange === "function") onChange(buildSlotsPayload(state), state);
+  });
+
+  root.querySelector("#squadFluidFlip")?.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-fluid-side]");
+    if (!btn || !fluidOn) return;
+    const side = btn.dataset.fluidSide;
+    if (side !== "defensive" && side !== "attacking") return;
+    if (side === activeFluidSide) return;
+    syncInactiveFluid();
+    fluidSides[activeFluidSide] = captureFluidSide(
+      chosenFormationId(),
+      slotPositions,
+      slotLabels,
+      state.pitch
+    );
+    activeFluidSide = side;
+    applyFluidSide(fluidSides[side]);
+    updateFormationRulesStatus();
+    rerender();
+    if (typeof onChange === "function") onChange(buildSlotsPayload(state), state);
   });
 
   function applySlotPositionsToDom() {
@@ -1191,6 +1356,22 @@ export function initMatchdaySquadPanel({
       );
       statusText.textContent = result.message;
       return false;
+    }
+    if (fluidOn) {
+      const hidden = fluidSides[hiddenFluidName()];
+      if (hidden?.labels) {
+        const otherFormation =
+          getSelectableFormation(hidden.formationId) || formation;
+        const other = validateOwnerPitchLabels(otherFormation, hidden.labels);
+        if (!other.ok) {
+          const which = hiddenFluidName() === "attacking" ? "Attacking" : "Defensive";
+          alert(
+            `Cannot save — ${which} shape failed:\n\n${other.errors.join("\n")}`
+          );
+          statusText.textContent = other.message;
+          return false;
+        }
+      }
     }
     return true;
   }
@@ -1380,6 +1561,8 @@ export function initMatchdaySquadPanel({
   }
 
   function rerender() {
+    syncInactiveFluid();
+    updateFluidChrome();
     rerenderPlayerCards();
   }
 
@@ -1527,19 +1710,7 @@ export function initMatchdaySquadPanel({
 
     statusText.textContent = "Saving…";
     try {
-      await onSave(
-        payload,
-        buildPitchLayoutPayload(
-          slotPositions,
-          slotLabels,
-          // Prefer the selected catalogue formation so role rules stay attached
-          formationSelect.value && formationSelect.value !== "custom"
-            ? formationSelect.value
-            : currentFormationId && currentFormationId !== "custom"
-              ? currentFormationId
-              : formationSelect.value || DEFAULT_FORMATION_ID
-        )
-      );
+      await onSave(payload, currentLayoutPayload());
       state = buildStateFromSaved(allPlayers, payload, benchLimit);
       state.maxBench = benchLimit;
       state.maxSquad = effectiveSquadLimit;
@@ -1562,6 +1733,7 @@ export function initMatchdaySquadPanel({
       formationId: currentFormationId,
       labels: { ...slotLabels },
       positions: { ...slotPositions },
+      pitchLayout: currentLayoutPayload(),
     }),
     applyState: (next) => {
       if (!next) return;
@@ -1571,12 +1743,14 @@ export function initMatchdaySquadPanel({
       rerender();
     },
     setSavedRows: (rows, layout) => {
-      state = buildStateFromSaved(allPlayers, rows);
+      state = buildStateFromSaved(allPlayers, rows, benchLimit);
+      state.maxBench = benchLimit;
+      state.maxSquad = effectiveSquadLimit;
+      loadFluidFromLayout(layout);
       if (layout != null) {
         applyLayoutFromResolved(resolveMatchdayPitchLayout(layout));
-      } else {
-        rerender();
       }
+      rerender();
     },
     setPlayerStatuses: (nextMap) => {
       statusById = nextMap instanceof Map ? nextMap : new Map();

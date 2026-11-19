@@ -31,7 +31,7 @@ import {
   setStoredScoutingBoardNo,
   loadScoutingPlannerPlayerBoards,
 } from "./scouting_targets.js?v=20260909-nested-backups";
-import { initMatchdaySquadPanel, buildSlotsPayload, buildPitchLayoutPayload } from "./matchday_squad.js?v=20261009-slot-picker";
+import { initMatchdaySquadPanel, buildSlotsPayload, buildPitchLayoutPayload } from "./matchday_squad.js?v=20261119-fluid";
 import { autoFillScoutingBoard } from "./scouting_autofill.js?v=20260821-autofill";
 import {
   loadScoutingDraftContext,
@@ -195,6 +195,16 @@ function plannerSlotsKey(slots) {
   } catch {
     return "";
   }
+}
+
+function plannerBoardKey(slots) {
+  let fluid = null;
+  try {
+    fluid = plannerApi?.getFormationMeta?.()?.pitchLayout?.fluid || null;
+  } catch {
+    fluid = null;
+  }
+  return `${plannerSlotsKey(slots)}|${JSON.stringify(fluid)}`;
 }
 
 function activeTargetBudgetForPlayer(pid) {
@@ -2615,11 +2625,13 @@ async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = fals
   let baseLayout = pitchLayoutFromPanel;
   if (baseLayout == null) {
     const meta = plannerApi?.getFormationMeta?.() || {};
-    baseLayout = buildPitchLayoutPayload(
-      meta.positions || {},
-      meta.labels || {},
-      meta.formationId
-    );
+    baseLayout =
+      meta.pitchLayout ||
+      buildPitchLayoutPayload(
+        meta.positions || {},
+        meta.labels || {},
+        meta.formationId
+      );
   }
 
   // Preserve list-view meta (nation + active targets) so tactic-board saves
@@ -2708,7 +2720,7 @@ async function persistPlannerBoard(slots, pitchLayoutFromPanel, { remount = fals
 
 function schedulePlannerPromoteAndAutoSave(panelState, slots) {
   if (!plannerAutoSaveEnabled) return;
-  const key = plannerSlotsKey(slots);
+  const key = plannerBoardKey(slots);
   if (key && key === plannerBaselineSlotsKey) return;
 
   if (plannerAutoSaveTimer) {
@@ -2731,7 +2743,7 @@ function schedulePlannerPromoteAndAutoSave(panelState, slots) {
         (panelState ? buildSlotsPayload(panelState) : null);
       if (!payload) return;
       await persistPlannerBoard(payload, null, { remount: false, quiet: true });
-      plannerBaselineSlotsKey = plannerSlotsKey(payload);
+      plannerBaselineSlotsKey = plannerBoardKey(payload);
     } catch (err) {
       setPlannerStatus(err?.message || "Auto-save failed.", true);
     }
@@ -2931,7 +2943,7 @@ async function initPlanner() {
   });
 
   updatePlannerCompositionStrip(plannerApi?.getState?.() || null);
-  plannerBaselineSlotsKey = plannerSlotsKey(
+  plannerBaselineSlotsKey = plannerBoardKey(
     buildSlotsPayload(plannerApi?.getState?.() || { pitch: new Map(), bench: [], pool: [] })
   );
   // Allow auto-save after the initial mount onChange has settled.

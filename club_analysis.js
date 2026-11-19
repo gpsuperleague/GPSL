@@ -276,14 +276,82 @@ function pitchSlotsFromLayout(raw, formationId) {
   }).filter(Boolean);
 }
 
+function formationTitle(id, fallback) {
+  const known = id && getFormation(id)?.id === id ? formationDisplayName(getFormation(id)) : "";
+  return known || fallback || id || "";
+}
+
+function renderOnePitch(title, formationId, members, slots) {
+  return renderFormationPitchHtml({
+    formationId: formationId || undefined,
+    title: title || "Match Day shape",
+    members,
+    slots,
+    showStats: false,
+    showClub: false,
+  });
+}
+
+function renderFluidOtherPitch(preview, pitchLayout, visibleTitle) {
+  const fluid = pitchLayout?.fluid;
+  if (!fluid || fluid.on !== true || !fluid.other) return "";
+  const other = fluid.other;
+  const byId = new Map(
+    (Array.isArray(preview?.xi) ? preview.xi : []).map((p) => [String(p.player_id), p])
+  );
+  const members = Object.entries(other.players || {})
+    .filter(([, id]) => id)
+    .map(([slot, id]) => {
+      const player = byId.get(String(id));
+      return {
+        pitch_slot: slot,
+        slot_label: other.labels?.[slot] || slot,
+        player_id: id,
+        player_name: player?.player_name || id,
+      };
+    });
+  const slots = PITCH_SLOT_IDS.map((id) => {
+    const pos = other.positions?.[id];
+    if (!pos) return null;
+    return { id, x: pos.x, y: pos.y, label: other.labels?.[id] || id };
+  }).filter(Boolean);
+  const otherId = other.formation_id || other.formationId || "";
+  const visibleSide = fluid.side === "attacking" ? "Attacking" : "Defensive";
+  const otherSide = fluid.side === "attacking" ? "Defensive" : "Attacking";
+  return `
+    <div class="club-an-fluid" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+      <div>
+        <h3 style="margin:0 0 6px;font-size:13px;color:var(--gpsl-accent,#ff9900);">${esc(visibleSide)}</h3>
+        ${renderOnePitch(
+          visibleTitle,
+          preview?.formation_id,
+          (preview?.xi || []).map((p) => ({
+            pitch_slot: p.pitch_slot,
+            slot_label: p.role_label || p.player_position || "",
+            player_id: p.player_id,
+            player_name: p.player_name,
+          })),
+          pitchSlotsFromLayout(pitchLayout, preview?.formation_id)
+        )}
+      </div>
+      <div>
+        <h3 style="margin:0 0 6px;font-size:13px;color:var(--gpsl-accent,#ff9900);">${esc(otherSide)}</h3>
+        ${renderOnePitch(formationTitle(otherId, otherSide), otherId, members, slots)}
+      </div>
+    </div>`;
+}
+
 function renderFormation(preview, pitchLayout) {
   const xi = Array.isArray(preview?.xi) ? preview.xi : [];
   const id = String(preview?.formation_id || "").trim();
-  const known = id && getFormation(id)?.id === id ? formationDisplayName(getFormation(id)) : "";
   const named = String(preview?.formation_name || "").trim();
-  const title = named && named !== id ? named : known;
-  if (!title && !xi.length) {
+  const title = named && named !== id ? named : formationTitle(id, "");
+  if (!title && !xi.length && pitchLayout?.fluid?.on !== true) {
     return `<p class="club-an-empty">Not set on Match Day.</p>`;
+  }
+  const shown = title || "Match Day shape";
+  if (pitchLayout?.fluid?.on === true) {
+    return renderFluidOtherPitch(preview, pitchLayout, shown);
   }
   const members = xi.map((p) => ({
     pitch_slot: p.pitch_slot,
@@ -291,14 +359,12 @@ function renderFormation(preview, pitchLayout) {
     player_id: p.player_id,
     player_name: p.player_name,
   }));
-  return renderFormationPitchHtml({
-    formationId: known ? id : undefined,
-    title: title || "Match Day shape",
+  return renderOnePitch(
+    shown,
+    id || undefined,
     members,
-    slots: pitchSlotsFromLayout(pitchLayout, known ? id : undefined),
-    showStats: false,
-    showClub: false,
-  });
+    pitchSlotsFromLayout(pitchLayout, id || undefined)
+  );
 }
 
 async function loadInjuryNames(supabase, injuries) {

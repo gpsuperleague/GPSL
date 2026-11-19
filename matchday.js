@@ -48,7 +48,7 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20261012-md-picker";
+} from "./matchday_squad.js?v=20261119-fluid";
 import { loadGpslFormations } from "./gpsl_formations.js?v=20260926-catalogue-xy";
 import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20261106-formation-forfeit";
 import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
