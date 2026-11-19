@@ -40,8 +40,9 @@ import {
   fixtureHolidayArrangeNote,
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
+  finalPlayCutoffDateHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261119-final-day";
+} from "./match_scheduling.js?v=20261119-cutoff-date";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
@@ -260,7 +261,7 @@ function cupOpsHtml(leg, extras) {
   const involvesMe = isMyMatch(leg);
   const parts = [];
 
-  const ko = cupKickoffHtml(f) + fixtureExpiryWarningHtml(f);
+  const ko = cupKickoffHtml(f) + finalPlayCutoffDateHtml(f) + fixtureExpiryWarningHtml(f);
   const ci = cupCheckInHtml(f);
   if (ko || ci) {
     parts.push(

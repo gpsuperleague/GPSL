@@ -48,8 +48,9 @@ import {
   fixtureHolidayArrangeNote,
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
+  finalPlayCutoffDateHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261119-final-day";
+} from "./match_scheduling.js?v=20261119-cutoff-date";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
@@ -316,7 +317,7 @@ function actionCell(fixture) {
     matchSimStatus.isStaff === true || matchSimStatus.isAdmin === true;
   const vacantPairStaff = occ.isVacantVsVacant && staffOk;
   const involvesMe = Boolean(myClub.short && fixtureInvolvesClub(fixture, myClub));
-  const note = kickoffStatusNoteHtml(fixture) + fixtureExpiryWarningHtml(fixture);
+  const note = kickoffStatusNoteHtml(fixture) + finalPlayCutoffDateHtml(fixture) + fixtureExpiryWarningHtml(fixture);
 
   // Everyone sees kick-off status; only involved clubs get action buttons
   if (!involvesMe && !vacantPairStaff) {

@@ -290,6 +290,17 @@ export function finalPlayCutoffNote(lockIso) {
   return `Latest kick-off is ${prior}. A kick-off on the cutoff day is refused. At least one of the two clubs must enter the result before ${when}.`;
 }
 
+/** Final play-window lock for an unplayed match, shown on the fixture lists. */
+export function finalPlayCutoffDateHtml(fixture) {
+  if (!fixture || fixture.status === "played") return "";
+  const lockMs = finalPlayLockMs(fixture);
+  if (!Number.isFinite(lockMs)) return "";
+  const when = ukWhen(new Date(lockMs).toISOString());
+  if (!when) return "";
+  const text = lockMs <= Date.now() ? `Final cutoff was ${when}` : `Final cutoff ${when}`;
+  return `<span class="ko-status ko-status--pending" title="Latest kick-off is the day before this cutoff. At least one club must enter the result before then.">${text}</span>`;
+}
+
 function playGraceMonths(fixture) {
   const type = String(fixture?.competition_type || "league").toLowerCase();
   const month = String(fixture?.gpsl_month || "").toLowerCase();

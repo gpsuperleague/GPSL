@@ -42,8 +42,9 @@ import {
   fixtureHolidayArrangeNote,
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
+  finalPlayCutoffDateHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261119-final-day";
+} from "./match_scheduling.js?v=20261119-cutoff-date";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,
@@ -449,7 +450,7 @@ function fixtureCardHtml(f) {
             )}</div>`
           : "";
   const expiryWarn =
-    f.status !== "played" ? fixtureExpiryWarningHtml(f) : "";
+    f.status !== "played" ? finalPlayCutoffDateHtml(f) + fixtureExpiryWarningHtml(f) : "";
 
   let playedBlock = "";
   if (f.status === "played") {
