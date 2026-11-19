@@ -2219,20 +2219,27 @@ function syncClubSquadControls() {
     includeCb.disabled = !clubShort;
   }
   const addBtn = document.getElementById("scoutAddClubSquadBtn");
+  const rescoutBtn = document.getElementById("scoutRescoutClubBtn");
+  const ownedN = (ownedSquadPlayers || []).length;
+  const onList = new Set(scoutingRows.map((r) => String(r.player_id)));
+  const missing = (ownedSquadPlayers || []).filter(
+    (p) => !onList.has(String(p.Konami_ID))
+  ).length;
+  const title =
+    missing > 0
+      ? `Add ${missing} club player(s) to your shortlist. Players already scouted stay.`
+      : ownedN
+        ? "All current club players are already on your shortlist"
+        : "No club squad loaded";
   if (addBtn) {
     addBtn.hidden = !clubShort;
-    const ownedN = (ownedSquadPlayers || []).length;
-    const onList = new Set(scoutingRows.map((r) => String(r.player_id)));
-    const missing = (ownedSquadPlayers || []).filter(
-      (p) => !onList.has(String(p.Konami_ID))
-    ).length;
     addBtn.disabled = !ownedN || missing === 0;
-    addBtn.title =
-      missing > 0
-        ? `Add ${missing} club player(s) to your shortlist (not as Active Targets)`
-        : ownedN
-          ? "All current club players are already on your shortlist"
-          : "No club squad loaded";
+    addBtn.title = title;
+  }
+  if (rescoutBtn) {
+    rescoutBtn.hidden = !clubShort;
+    rescoutBtn.disabled = !ownedN || missing === 0;
+    rescoutBtn.title = title;
   }
 }
 
@@ -2252,26 +2259,35 @@ function wireClubSquadControls() {
       void addClubSquadToShortlist();
     });
   }
+  const rescoutBtn = document.getElementById("scoutRescoutClubBtn");
+  if (rescoutBtn && rescoutBtn.dataset.wired !== "1") {
+    rescoutBtn.dataset.wired = "1";
+    rescoutBtn.addEventListener("click", () => {
+      void rescoutClubSquadOnBoard();
+    });
+  }
   syncClubSquadControls();
 }
 
-async function addClubSquadToShortlist() {
-  if (!clubShort) return;
+async function addClubSquadToShortlist({ quiet = false } = {}) {
+  if (!clubShort) return 0;
   const owned = ownedSquadPlayers || [];
   if (!owned.length) {
-    alert("No club squad to add.");
-    return;
+    if (!quiet) alert("No club squad to add.");
+    return 0;
   }
   const onList = new Set(scoutingRows.map((r) => String(r.player_id)));
   const toAdd = owned
     .map((p) => String(p.Konami_ID || "").trim())
     .filter((id) => id && !onList.has(id));
   if (!toAdd.length) {
-    alert("All current club players are already on your shortlist.");
-    return;
+    if (!quiet) alert("All current club players are already on your shortlist.");
+    return 0;
   }
   const btn = document.getElementById("scoutAddClubSquadBtn");
+  const rescoutBtn = document.getElementById("scoutRescoutClubBtn");
   if (btn) btn.disabled = true;
+  if (rescoutBtn) rescoutBtn.disabled = true;
   let added = 0;
   try {
     for (const pid of toAdd) {
@@ -2279,15 +2295,41 @@ async function addClubSquadToShortlist() {
       if (scouted) added += 1;
     }
     await renderScoutingLists();
-    setTimeout(() => {
-      alert(
-        added
-          ? `Added ${added} club player(s) to your shortlist (not Active Targets).`
-          : "No new club players were added."
-      );
-    }, 0);
+    if (!quiet) {
+      setTimeout(() => {
+        alert(
+          added
+            ? `Added ${added} club player(s) to your shortlist. Players already scouted were kept.`
+            : "No new club players were added."
+        );
+      }, 0);
+    }
+    return added;
   } catch (err) {
-    alert(err?.message || "Could not add club squad to shortlist.");
+    if (!quiet) alert(err?.message || "Could not add club squad to shortlist.");
+    syncClubSquadControls();
+    throw err;
+  }
+}
+
+async function rescoutClubSquadOnBoard() {
+  const btn = document.getElementById("scoutRescoutClubBtn");
+  if (btn) btn.disabled = true;
+  try {
+    if (plannerApi?.getState) {
+      const slots = buildSlotsPayload(plannerApi.getState());
+      const layout = plannerApi.getFormationMeta?.()?.pitchLayout || null;
+      await persistPlannerBoard(slots, layout, { remount: false, quiet: true });
+    }
+    const added = await addClubSquadToShortlist({ quiet: true });
+    await initPlanner();
+    setPlannerStatus(
+      added
+        ? `Added ${added} club player${added === 1 ? "" : "s"} to the shortlist. Players already scouted stayed.`
+        : "Every current club player is already on the shortlist."
+    );
+  } catch (err) {
+    setPlannerStatus(err?.message || "Could not rescout the club squad.", true);
     syncClubSquadControls();
   }
 }
