@@ -41,18 +41,30 @@
     .win-detail { margin:6px 0 0; font-size:13px; color:#ccc; line-height:1.4; }
     .win-events { list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:8px; }
     .win-scoreline {
-      display:flex; align-items:center; gap:8px;
+      display:flex; align-items:center; gap:6px;
       background:#1a1a1a; border:1px solid #2e2e2e; border-radius:6px;
       padding:7px 10px; color:#ddd; font-size:13px;
     }
-    .win-score-meta { color:#888; font-size:11px; min-width:78px; }
-    .win-score-side { display:inline-flex; align-items:center; gap:6px; min-width:0; }
-    .win-score-side--home { flex:1; }
-    .win-score-side--away { flex:1; justify-content:flex-end; text-align:right; }
-    .win-score-num { font-weight:bold; color:#fff; letter-spacing:0.03em; white-space:nowrap; }
-    .win-crest { width:28px; height:28px; }
+    .win-score-meta { color:#888; font-size:11px; flex:0 0 4.6rem; line-height:1.2; }
+    .win-score-side {
+      display:flex; align-items:center; gap:4px;
+      flex:1 1 0; min-width:0;
+    }
+    .win-score-side--home { justify-content:flex-start; }
+    .win-score-side--away { justify-content:flex-end; }
+    .win-score-name {
+      min-width:0;
+      overflow-wrap:anywhere;
+      line-height:1.15;
+    }
+    .win-score-side--away .win-score-name { text-align:right; }
+    .win-score-num {
+      flex:0 0 auto;
+      font-weight:bold; color:#fff; letter-spacing:0.03em; white-space:nowrap;
+    }
+    .win-crest { width:22px; height:22px; flex:0 0 22px; }
     .win-scoreline .league-badge,
-    .win-comp-mark { width:30px; height:30px; margin:0; object-fit:contain; }
+    .win-comp-mark { width:26px; height:26px; flex:0 0 26px; margin:0; object-fit:contain; }
     .win-comp-fallback { font-size:10px; color:#bbb; text-transform:uppercase; }
     .win-more { margin:6px 0 0; color:#888; font-size:12px; }
     .win-players { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
@@ -170,6 +182,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="challenges.js?v=20261112-score-badges"></script>
+  <script type="module" src="challenges.js?v=20261119-scoreline"></script>
 </body>
 </html>

@@ -400,9 +400,9 @@ function winEventHtml(ev) {
     .join(" · ");
   return `<li class="win-scoreline">
     <span class="win-score-meta">${escapePlayerHtml(meta)}</span>
-    <span class="win-score-side win-score-side--home">${clubBadgeImgHtml(ev.home, { className: "club-badge-thumb win-crest" })}${escapePlayerHtml(home)}</span>
+    <span class="win-score-side win-score-side--home">${clubBadgeImgHtml(ev.home, { className: "club-badge-thumb win-crest" })}<span class="win-score-name">${escapePlayerHtml(home)}</span></span>
     <span class="win-score-num">${ev.home_goals}–${ev.away_goals}</span>
-    <span class="win-score-side win-score-side--away">${escapePlayerHtml(away)}${clubBadgeImgHtml(ev.away, { className: "club-badge-thumb win-crest" })}</span>
+    <span class="win-score-side win-score-side--away"><span class="win-score-name">${escapePlayerHtml(away)}</span>${clubBadgeImgHtml(ev.away, { className: "club-badge-thumb win-crest" })}</span>
     ${compMarkHtml(ev)}
   </li>`;
 }
