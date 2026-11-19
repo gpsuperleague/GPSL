@@ -120,6 +120,7 @@ export function computeClubPerformanceRating({
   actualPos = null,
   expectedPos = null,
   tier = "",
+  pointsDeducted = 0,
 } = {}) {
   if (!ready || !band) {
     return {
@@ -160,6 +161,9 @@ export function computeClubPerformanceRating({
 
   if (tier === "big" && (band === "bad" || band === "abysmal")) score -= 4;
   if (tier === "low" && band === "on_target") score += 2;
+
+  const deducted = Math.max(0, Math.round(Number(pointsDeducted) || 0));
+  if (deducted > 0) score -= Math.min(24, deducted * 8);
 
   const graded = gradeFromBoardScore(score);
 
@@ -205,6 +209,11 @@ export function computeClubPerformanceRating({
   }
   if (Number.isFinite(gapN)) {
     detailParts.push(`points gap ${gapN >= 0 ? "+" : ""}${gapN.toFixed(1)}`);
+  }
+  if (deducted > 0) {
+    detailParts.push(
+      `${deducted} league point${deducted === 1 ? "" : "s"} deducted`
+    );
   }
 
   return {

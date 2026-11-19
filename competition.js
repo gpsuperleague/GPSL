@@ -1441,6 +1441,25 @@ export function needsInboxConfirm(fixture, clubIdentity) {
   );
 }
 
+/** Clubs whose league-point adjustments still net below zero this season. */
+export async function loadPointsDeductedByClub(supabase) {
+  const { data, error } = await supabase
+    .from("competition_points_deducted_public")
+    .select("season_id, club_short_name, pts_deducted");
+  if (error) {
+    console.error("loadPointsDeductedByClub:", error);
+    return new Map();
+  }
+  const map = new Map();
+  for (const row of data || []) {
+    map.set(
+      `${row.season_id}:${row.club_short_name}`,
+      Number(row.pts_deducted) || 0
+    );
+  }
+  return map;
+}
+
 export async function loadStandings(supabase, division = null) {
   let query = supabase
     .from("competition_standings_public")
@@ -1706,6 +1725,7 @@ export function buildVenueStandings(
       club_short_name: row.club_short_name,
       club_name: row.club_name,
       table_position: row.table_position,
+      pts_deducted: row.pts_deducted,
       league_prize_amount: row.league_prize_amount,
       league_prize_paid: row.league_prize_paid,
       mp: 0,

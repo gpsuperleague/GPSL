@@ -22,7 +22,7 @@ import {
   computeClubPerformanceRating,
   computeManagerBoardRating,
   renderBoardroomIntro,
-} from "./boardroom_rules.js";
+} from "./boardroom_rules.js?v=20261119-pts-star";
 import { loadSeasonPositionChart } from "./club_season_position_chart.js";
 
 import {
@@ -510,7 +510,22 @@ function ratingCardHtml(title, rating, tip) {
   `;
 }
 
-function renderBoardRatings({ financeRating, fill, manager }) {
+async function loadNetPointsDeducted(clubShort, seasonId) {
+  if (!clubShort || !seasonId) return 0;
+  const { data, error } = await supabase
+    .from("competition_points_deducted_public")
+    .select("pts_deducted")
+    .eq("club_short_name", clubShort)
+    .eq("season_id", seasonId)
+    .maybeSingle();
+  if (error) {
+    console.warn("boardroom points deductions:", error);
+    return 0;
+  }
+  return Math.max(0, Number(data?.pts_deducted) || 0);
+}
+
+async function renderBoardRatings({ financeRating, fill, manager }) {
   const el = document.getElementById("boardRatings");
   if (!el) return;
 
@@ -522,6 +537,11 @@ function renderBoardRatings({ financeRating, fill, manager }) {
     fill.performance_status_ready !== false &&
     fill.performance_band != null;
 
+  const pointsDeducted = await loadNetPointsDeducted(
+    fill?.club_short_name || pageClubShort,
+    fill?.season_id
+  );
+
   const club = computeClubPerformanceRating({
     ready: Boolean(statusReady),
     band: fill?.performance_band ?? null,
@@ -529,6 +549,7 @@ function renderBoardRatings({ financeRating, fill, manager }) {
     actualPos: fill?.actual_position,
     expectedPos: fill?.expected_position,
     tier: fill?.club_tier || "",
+    pointsDeducted,
   });
 
   const mgr = computeManagerBoardRating({
@@ -555,7 +576,7 @@ function renderBoardRatings({ financeRating, fill, manager }) {
     ratingCardHtml(
       "Club performance rating",
       club,
-      "Based on season delivery band vs expected finish, prestige tier, and underperformance risk."
+      "Based on season delivery band vs expected finish, prestige tier, underperformance risk, and league points deducted."
     ),
     ratingCardHtml(
       "Manager rating",

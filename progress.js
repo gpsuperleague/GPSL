@@ -4,10 +4,11 @@ import {
   clubWithOwnerHtml,
   clubIsSeasonAbsentCached,
   clubIsVacant,
-} from "./clubs_lookup.js";
+} from "./clubs_lookup.js?v=20261119-pts-star";
 import {
   loadCurrentSeason,
   loadStandingsWithPrizes,
+  loadPointsDeductedByClub,
   loadArchivedSeasonStandings,
   loadLeagueFixtures,
   loadShieldSpoonPlayoffQualifiers,
@@ -26,7 +27,7 @@ import {
   formatMoney,
   divisionLabelWithBadgeHtml,
   normalizeClubKey,
-} from "./competition.js?v=20261102-vacant-sink";
+} from "./competition.js?v=20261119-pts-star";
 import { loadCalendarStatus } from "./competition_calendar.js";
 
 function seasonFromUrl() {
@@ -304,6 +305,11 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
         normalizeClubKey(row.club_short_name) === normalizeClubKey(myClub.short)
           ? " my-club"
           : "";
+      const deducted = Number(row.pts_deducted) || 0;
+      const deductionMark =
+        deducted > 0
+          ? `<sup class="pts-deduction-mark" title="${deducted === 1 ? "1 point deducted" : `${deducted} points deducted`}">*</sup>`
+          : "";
       const absent = clubIsSeasonAbsentCached(row.club_short_name)
         ? " season-absent"
         : "";
@@ -325,7 +331,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
       return `
         <tr class="prestige-${prestigeKey} league-${tintKey}${prestigeBoundary ? " zone-boundary" : ""}${playoffBoundary ? " zone-boundary-playoff" : ""}${relegationBoundary || bowlBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}${absent}">
           <td class="num pos-col">${displayRank}</td>
-          <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
+          <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name, "inline", deductionMark)}</td>
           <td class="status-col">${statusText}</td>
           <td class="num">${row.mp}</td>
           <td class="num">${row.w}</td>
@@ -341,6 +347,10 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
       `;
     })
     .join("");
+
+  const deductionNote = sortedRows.some((row) => Number(row.pts_deducted) > 0)
+    ? `<p class="pts-deduction-note">* = point deduction</p>`
+    : "";
 
   panel.innerHTML = `
     <h2>${divisionLabelWithBadgeHtml(division, { size: "md", label: panelTitle })}</h2>
@@ -367,6 +377,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
       <tbody>${tbody}</tbody>
     </table>
     </div>
+    ${deductionNote}
   `;
 
   panel.dataset.division = division;
@@ -583,14 +594,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       : ""
   } · 3 pts win · 1 pt draw`;
 
-  const [standings, fixtures, playoffQualifiers, calendarStatus] =
+  const [standings, pointsDeducted, fixtures, playoffQualifiers, calendarStatus] =
     await Promise.all([
       loadStandingsWithPrizes(supabase),
+      loadPointsDeductedByClub(supabase),
       loadLeagueFixtures(supabase),
       loadShieldSpoonPlayoffQualifiers(supabase, season.id),
       loadCalendarStatus(supabase),
     ]);
   shieldSpoonPlayoffQualifiers = playoffQualifiers;
+  for (const row of standings) {
+    row.pts_deducted =
+      pointsDeducted.get(`${row.season_id}:${row.club_short_name}`) || 0;
+  }
   standingsGroups = groupStandingsByDivision(standings);
   buildVenueGroups(standings, fixtures, calendarStatus);
 

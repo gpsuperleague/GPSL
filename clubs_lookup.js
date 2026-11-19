@@ -277,7 +277,7 @@ export function clubBadgeImgHtml(shortName, { className = "club-badge-thumb" } =
 
 /** Club name plus optional Discord owner tag (layout: block = fixtures, inline = tables).
  *  Name → club history; tag → owner profile; crest left of the name when ShortName is known. */
-export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
+export function clubWithOwnerHtml(clubName, shortName, layout = "inline", nameSuffix = "") {
   const name = escapeHtml(clubName || shortName || "—");
   const tag = ownerTagForClub(shortName);
   const oid = ownerIdForClub(shortName);
@@ -302,14 +302,14 @@ export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
       : name;
     return (
       `<span class="fixture-club${absentCls}">${badge}` +
-      `<span class="fixture-club-body"><span class="fixture-club-name">${blockName}</span>${tagHtml}</span>` +
+      `<span class="fixture-club-body"><span class="fixture-club-name">${blockName}${nameSuffix || ""}</span>${tagHtml}</span>` +
       `</span>`
     );
   }
 
   return (
     `<span class="standings-club${absentCls}">${badge}` +
-    `<span class="standings-club-text">${linkedName}${tagHtml}</span>` +
+    `<span class="standings-club-text">${linkedName}${nameSuffix || ""}${tagHtml}</span>` +
     `</span>`
   );
 }
