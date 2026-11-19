@@ -41,7 +41,7 @@ import {
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261114-cup-both";
+} from "./match_scheduling.js?v=20261119-final-day";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,

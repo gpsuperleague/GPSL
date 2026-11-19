@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js?v=20261111-strike-pop";
+import { finalPlayCutoffNote } from "./match_scheduling.js?v=20261119-final-day";
 import {
   resolveAdminClubContext,
   mountAdminClubPicker,
@@ -2583,10 +2584,26 @@ async function updateFixturePreview() {
     awayName: f.away_club_name,
   });
 
+  let cutoffHtml = "";
+  if (f.status !== "played") {
+    try {
+      const { data: dl } = await supabase.rpc("match_schedule_fixture_deadlines", {
+        p_fixture_id: f.id,
+      });
+      const cutoff = finalPlayCutoffNote(dl?.final_play_lock);
+      if (cutoff) {
+        cutoffHtml = `<br><span style="color:#fc6;font-size:13px;">${cutoff}</span>`;
+      }
+    } catch (cutoffErr) {
+      console.warn("Final play note:", cutoffErr);
+    }
+  }
+
   preview.innerHTML = `
     ${leagueBadgeHtml(f.division, { size: "sm" })}<b>${comp}</b>${f.competition_type === "league" ? ` · Matchday ${f.matchday}` : ""} · ${month}<br>
     ${f.home_club_name} vs ${f.away_club_name}<br>
     <span style="color:#aaa;font-size:13px;">${formatMatchConditions(f)}</span>${extra}${aggregateHtml}
+    ${cutoffHtml}
     ${unavailableHtml}
   `;
 

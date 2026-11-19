@@ -40,7 +40,8 @@ import {
   kickoffIsoKey,
   buildCompromiseMidpointSlots,
   fixtureExpiryWarnings,
-} from "./match_scheduling.js?v=20261114-cup-both";
+  finalPlayCutoffNote,
+} from "./match_scheduling.js?v=20261119-final-day";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -307,7 +308,7 @@ function appendKickoffSlotButtons(
 ) {
   if (!container) return 0;
 
-  const selectable = filterSelectableKickoffSlots(slots, ownerTz);
+  const selectable = filterSelectableKickoffSlots(slots, ownerTz, deadlines?.final_play_lock);
   let count = 0;
 
   for (const iso of selectable) {
@@ -912,7 +913,9 @@ function finalPlayLineHtml() {
   const lock = new Date(d.final_play_lock).getTime();
   const soon =
     Number.isFinite(lock) && lock > Date.now() && lock - Date.now() <= 72 * 60 * 60 * 1000;
-  const body = `Last chance to play: before <b>${formatUkWhen(d.final_play_lock)}</b>.
+  const cutoff = finalPlayCutoffNote(d.final_play_lock);
+  const rule = cutoff ? `<b>${cutoff}</b> ` : "";
+  const body = `${rule}Last chance to play: before <b>${formatUkWhen(d.final_play_lock)}</b>.
     If it's still unplayed then, more strikes on the fixture loses. If a kick-off was agreed, the club that failed to check in loses. If a time was still waiting on a reply, and the 48 hours to answer had already finished, the club that left it sitting loses. Then logins, matches played, forfeit losses, reply fines on other fixtures, and check-ins. Level on all of that and the match is void. Neither club is given the win.`;
   if (soon) return `<div class="deadline-box deadline-late">${body}</div>`;
   return `<p class="meta">${body}</p>`;
@@ -1822,7 +1825,7 @@ function render() {
     ctx.my_role === "away" &&
     !(ctx.can_propose_first || ctx.can_respond) &&
     !ctx.pending_proposal;
-  const futureIntersection = filterSelectableKickoffSlots(intersectionSlots, ownerTz);
+  const futureIntersection = filterSelectableKickoffSlots(intersectionSlots, ownerTz, deadlines?.final_play_lock);
   // Only when server explicitly allows (schedule_poke_no_overlap patch live).
   // Do not infer poke from empty intersection — that looked allowed before the patch.
   const pokeAllowed = ctx.poke_allowed === true;
@@ -1834,10 +1837,10 @@ function render() {
     !isAwayWaitingPreview &&
     futureIntersection.length === 0 &&
     ctx.poke_allowed == null;
-  const selectableSlots = filterSelectableKickoffSlots(slots, ownerTz);
+  const selectableSlots = filterSelectableKickoffSlots(slots, ownerTz, deadlines?.final_play_lock);
   const pastHidden = slots.length - selectableSlots.length;
-  const selectableOppSlots = filterSelectableKickoffSlots(oppSlots, ownerTz);
-  const selectableOwnSlots = filterSelectableKickoffSlots(ownSlots, ownerTz);
+  const selectableOppSlots = filterSelectableKickoffSlots(oppSlots, ownerTz, deadlines?.final_play_lock);
+  const selectableOwnSlots = filterSelectableKickoffSlots(ownSlots, ownerTz, deadlines?.final_play_lock);
   const usedIsoSet = priorProposedKickoffSet(ctx);
   // Exact mutual kick-offs (both free) — green; never retag as compromise
   const exactMatchIsoSet = new Set(

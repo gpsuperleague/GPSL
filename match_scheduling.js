@@ -253,6 +253,43 @@ function ukWhen(iso) {
   return label && label !== "—" ? `${label} UK` : "";
 }
 
+function ukCalendarDateKey(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: UK_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const pick = (type) => parts.find((p) => p.type === type)?.value || "";
+  return `${pick("year")}-${pick("month")}-${pick("day")}`;
+}
+
+function ukDayBeforeLabel(lockIso) {
+  const key = ukCalendarDateKey(lockIso);
+  if (!key) return "";
+  const [year, month, day] = key.split("-").map(Number);
+  const prior = new Date(Date.UTC(year, month - 1, day) - 24 * 60 * 60 * 1000);
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "UTC",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(prior);
+}
+
+/** Shown on a match inside the last 72 hours of its own play window. */
+export function finalPlayCutoffNote(lockIso) {
+  const lockMs = new Date(lockIso).getTime();
+  if (!Number.isFinite(lockMs) || lockMs <= Date.now()) return "";
+  if (lockMs - Date.now() > WARN_72H) return "";
+  const when = ukWhen(lockIso);
+  const prior = ukDayBeforeLabel(lockIso);
+  if (!when || !prior) return "";
+  return `Latest kick-off is ${prior}. A kick-off on the cutoff day is refused. At least one of the two clubs must enter the result before ${when}.`;
+}
+
 function playGraceMonths(fixture) {
   const type = String(fixture?.competition_type || "league").toLowerCase();
   const month = String(fixture?.gpsl_month || "").toLowerCase();
@@ -391,16 +428,23 @@ export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
     };
   }
 
-  if (!operational && lockSoon) {
-    const when = ukWhen(new Date(lockMs).toISOString());
+  const cutoffNote = lockSoon ? finalPlayCutoffNote(new Date(lockMs).toISOString()) : "";
+  if (!operational && cutoffNote) {
     operational = {
       kind: "last_play",
-      text: `Last chance to play is ${when}. Still unplayed then: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then scheduling activity. Level on all of that and the match is void.`,
-      title: "League matches have two extra GPSL months. Cup matches have one, and May cups have none. After that lock an unplayed match uses the same decider for league and cup: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then logins, matches played, forfeit losses, reply fines on other fixtures, and check-ins. Level on all of that and the match is void. Neither club is given the win.",
+      text: cutoffNote,
+      title: "The latest kick-off is the UK day before this match's own cutoff. At least one club has to enter the result before that cutoff. Still unplayed then: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then logins, matches played, forfeit losses, reply fines on other fixtures, and check-ins. Level on all of that and the match is void. Neither club is given the win.",
     };
   }
 
   if (operational) out.push(operational);
+  if (cutoffNote && operational?.kind !== "last_play") {
+    out.push({
+      kind: "final_day",
+      text: cutoffNote,
+      title: "The latest kick-off is the UK day before this match's own cutoff. At least one club has to enter the result before that cutoff.",
+    });
+  }
   return out;
 }
 
@@ -541,8 +585,13 @@ export function isSelectableKickoffSlot(iso, ownerTimezone = UK_TZ) {
   return localDateTimeKey(kickoff, tz) > localDateTimeKey(new Date(), tz);
 }
 
-export function filterSelectableKickoffSlots(slots, ownerTimezone = UK_TZ) {
-  return (slots || []).filter((iso) => isSelectableKickoffSlot(iso, ownerTimezone));
+export function filterSelectableKickoffSlots(slots, ownerTimezone = UK_TZ, finalPlayLockIso = null) {
+  const lockDay = finalPlayLockIso ? ukCalendarDateKey(finalPlayLockIso) : "";
+  return (slots || []).filter((iso) => {
+    if (!isSelectableKickoffSlot(iso, ownerTimezone)) return false;
+    if (lockDay && ukCalendarDateKey(iso) === lockDay) return false;
+    return true;
+  });
 }
 
 /** Normalize kick-off ISO strings for Set membership (ms precision). */
