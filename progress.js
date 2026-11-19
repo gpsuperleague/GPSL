@@ -4,7 +4,7 @@ import {
   clubWithOwnerHtml,
   clubIsSeasonAbsentCached,
   clubIsVacant,
-} from "./clubs_lookup.js?v=20261119-pts-star";
+} from "./clubs_lookup.js?v=20261119-pts-star-inline";
 import {
   loadCurrentSeason,
   loadStandingsWithPrizes,

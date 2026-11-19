@@ -176,6 +176,12 @@
       gap: 1px;
       min-width: 0;
     }
+    table.standings-table .standings-club-name {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 2px;
+      max-width: 100%;
+    }
     table.standings-table .standings-club .club-badge-thumb {
       width: 22px;
       height: 22px;
@@ -191,9 +197,10 @@
       color: #bbb;
     }
     .pts-deduction-mark {
+      display: inline;
       color: var(--gpsl-accent, #ff9900);
       font-weight: 700;
-      margin-left: 1px;
+      line-height: 1;
       cursor: help;
     }
     .pts-deduction-note {
@@ -424,6 +431,6 @@
       · <a href="league_stats.html" style="color:var(--gpsl-accent, #ff9900);">League stats</a>
     </p>
   </div>
-  <script type="module" src="progress.js?v=20261119-pts-star"></script>
+  <script type="module" src="progress.js?v=20261119-pts-star-inline"></script>
 </body>
 </html>

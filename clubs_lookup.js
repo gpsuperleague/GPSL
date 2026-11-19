@@ -309,7 +309,7 @@ export function clubWithOwnerHtml(clubName, shortName, layout = "inline", nameSu
 
   return (
     `<span class="standings-club${absentCls}">${badge}` +
-    `<span class="standings-club-text">${linkedName}${nameSuffix || ""}${tagHtml}</span>` +
+    `<span class="standings-club-text"><span class="standings-club-name">${linkedName}${nameSuffix || ""}</span>${tagHtml}</span>` +
     `</span>`
   );
 }
