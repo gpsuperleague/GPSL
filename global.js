@@ -3109,12 +3109,13 @@ export async function buildNav() {
   let handpickIntakeClub = null;
   /** True when any club is mid handpick (intake on and/or pending wishlist). Admin menu gate. */
   let handpickProcessActive = false;
-  if (ownerClub?.ShortName) {
+  const ownerShort = ownerClub?.ShortName || ownerClub?.short || null;
+  if (ownerShort) {
     try {
       const { data: hpClub } = await supabase
         .from("Clubs")
         .select("ShortName, handpick_intake")
-        .eq("ShortName", ownerClub.ShortName)
+        .eq("ShortName", ownerShort)
         .maybeSingle();
       if (hpClub?.handpick_intake) {
         handpickIntakeClub = String(hpClub.ShortName).toUpperCase();
@@ -3292,6 +3293,25 @@ export async function buildNav() {
         },
       ];
     }
+  }
+
+  if (handpickIntakeClub && !isGpslAdminNav && !isVisitorNav) {
+    navSections = [
+      {
+        id: "handpick",
+        label: "Handpick",
+        items: [
+          {
+            href: `handpick_squad.html?club=${encodeURIComponent(handpickIntakeClub)}`,
+            label: "Handpick check",
+            page: "handpick_squad",
+          },
+          { href: "GPDB.html", label: "Players", page: "gpdb" },
+          { href: "MGDB.html", label: "Managers", page: "mgdb" },
+          { href: "finances.html", label: "Club cash", page: "finances" },
+        ],
+      },
+    ];
   }
 
   try {
@@ -3503,11 +3523,13 @@ export async function buildNav() {
       `<span class="nav-shortcut" title="You are browsing as a Discord visitor — read only" ` +
       `style="color:#9cf;font-weight:bold;white-space:nowrap;">👁 Visitor</span>`;
   } else if (!isPreClubOwner) {
-    html += renderNavSeasonCalendarLink(calendarActive);
     html += renderNavHandbookLink(handbookActive);
-  html += renderNavNatterLink(natterActive, natterUnread);
-    html += renderNavFantasyLink(fantasyActive);
-  html += renderNavGpslSportButton();
+    if (!handpickIntakeClub) {
+      html += renderNavSeasonCalendarLink(calendarActive);
+      html += renderNavNatterLink(natterActive, natterUnread);
+      html += renderNavFantasyLink(fantasyActive);
+      html += renderNavGpslSportButton();
+    }
   } else {
     html += renderNavHandbookLink(handbookActive);
     const bal = Number(registrySelf?.pending_starting_balance);
@@ -3528,13 +3550,13 @@ export async function buildNav() {
       ? `handpick_squad.html?club=${encodeURIComponent(handpickIntakeClub)}`
       : "handpick_squad.html?admin=1";
     const hpTitle = handpickIntakeClub
-      ? "Mid-season handpick — build wishlist / submit for approval"
+      ? "Handpick check. Click to come back and see what is still to do."
       : "Handpick in progress — open admin approvals / owner preview";
     const hpLabel =
       isGpslAdminNav && !handpickIntakeClub
         ? "Handpick ●"
         : handpickIntakeClub
-          ? "Handpick Squad"
+          ? "Handpick check"
           : "Handpick";
     html +=
       `<a href="${hpHref}" ` +

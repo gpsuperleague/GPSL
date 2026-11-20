@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal } from "./global.js?v=20261120-handpick-nav";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import {
   checkClubLoanCredit,

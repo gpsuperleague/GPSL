@@ -1,4 +1,4 @@
-import { initGlobal, supabase } from "./global.js";
+import { initGlobal, supabase } from "./global.js?v=20261120-handpick-nav";
 import { formatMoney, leagueTierForDivision } from "./competition.js";
 import { gpdbPlayerUrl } from "./player_links.js";
 import {
