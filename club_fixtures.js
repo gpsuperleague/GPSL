@@ -43,6 +43,7 @@ import {
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
   finalPlayCutoffDateHtml,
+  formatKickoff,
   setSeasonCalendarMonths,
 } from "./match_scheduling.js?v=20261119-cutoff-date";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
@@ -367,6 +368,13 @@ function actionHtml(f) {
   return parts.join(" ");
 }
 
+function agreedKickoffHtml(f) {
+  if (!f?.agreed_kickoff_at) return "";
+  const when = formatKickoff(f.agreed_kickoff_at);
+  if (!when || when === "—") return "";
+  return `<div class="fixture-kickoff"><span class="ko-status ko-status--agreed">Kick-off agreed · ${escapeHtml(when)} UK</span></div>`;
+}
+
 function fixtureCardHtml(f) {
   if (f._intl) return intlFixtureCardHtml(f);
 
@@ -533,6 +541,7 @@ function fixtureCardHtml(f) {
         <span>${stadium}</span>
         <span class="fixture-continent">${continent}</span>
       </div>
+      ${agreedKickoffHtml(f)}
       <div class="conditions-row">
         ${kitLabel ? `<span class="kit">Kit: ${escapeHtml(kitLabel)}</span><span style="color:#555;margin:0 6px;">·</span>` : ""}
         <span class="weather">Weather: ${weather}</span>
@@ -573,14 +582,7 @@ function intlFixtureCardHtml(f) {
   const groupBit = f.group_code ? `Group ${f.group_code}` : null;
   const weekBit = f.week_in_month != null ? `Week ${f.week_in_month}` : null;
   const kickoff = f.agreed_kickoff_at
-    ? `${new Date(f.agreed_kickoff_at).toLocaleString("en-GB", {
-        timeZone: "Europe/London",
-        weekday: "short",
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      })} UK`
+    ? `Kick-off agreed · ${formatKickoff(f.agreed_kickoff_at)} UK`
     : f.schedule_status === "agreed"
       ? "Kick-off agreed"
       : "Arrange on matchday";
