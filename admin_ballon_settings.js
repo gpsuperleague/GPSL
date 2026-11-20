@@ -19,6 +19,7 @@ const FIELDS = [
   "trophy_super8",
   "trophy_plate",
   "trophy_shield",
+  "trophy_league_cup",
   "trophy_world_cup",
 ];
 
@@ -43,7 +44,7 @@ function renderRules() {
         {
           heading: "Trophies",
           items: [
-            "Bonuses for Super League, Super 8, Plate, Shield (player must have contributed apps).",
+            "Bonuses for Super League, League Cup, Super 8, Plate, Shield (player must have contributed apps).",
             "World Cup bonus if the player’s nation is recorded as champion.",
             "Mid-season race shows trophies only once they are decided.",
           ],
