@@ -60,7 +60,7 @@
     .step-body { flex: 1 1 auto; }
     .step-actions { margin-top: auto; padding-top: 14px; }
     .step p, .step li { color: #ccc; font-size: 13px; line-height: 1.45; margin: 0 0 8px; }
-    .step a { color: #ffcc66; }
+    .step a { color: #ffcc66; text-decoration: underline; text-underline-offset: 2px; }
     .step .pill {
       font-size: 11px;
       letter-spacing: 0.04em;
@@ -220,12 +220,24 @@
     .qual-guides a {
       display: block;
       background: #161616;
-      color: #ffcc66;
+      color: #ddd;
       text-decoration: none;
-      padding: 12px 16px;
-      font-size: 14px;
+      padding: 14px 16px 16px;
+      font-size: 13px;
+      line-height: 1.45;
     }
     .qual-guides a:hover { background: #1c1c1c; }
+    .qual-guides a.span-2 { grid-column: 1 / -1; }
+    .qual-guide-title {
+      display: inline-block;
+      color: #ffcc66;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    a[target="_blank"] .qual-guide-title::after { content: " ↗"; font-weight: 400; }
+    .qual-guide-note { display: block; margin-top: 6px; color: #bbb; }
     .req { list-style: disc; margin: 0 0 8px; padding-left: 16px; }
     .req li { margin: 0 0 6px; }
     .avail-summary { list-style: none; padding: 0; margin: 0 0 8px; }
@@ -269,6 +281,7 @@
     button.button.secondary { background: #444; color: #ddd; }
     @media (max-width: 1100px) {
       .qual-steps { grid-template-columns: 1fr; }
+      .qual-guides { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -278,14 +291,30 @@
     <h1>Become an owner</h1>
     <p class="lead" id="lead">Five steps. Each one unlocks the next. A club stays closed until the video is approved. During the season you then pick an empty club. Between seasons you join the next auction.</p>
     <nav class="qual-guides" aria-label="Guides">
-      <a href="https://discord.com/channels/1483974134361886802/1572203558500311040" target="_blank" rel="noopener">Qualifying friendlies</a>
-      <a href="https://discord.com/channels/1483974134361886802/1572211108230463639" target="_blank" rel="noopener">Qualifying videos</a>
-      <a href="getting_started.html">Beginner's guide</a>
-      <a href="learning_gpsl.html">GPSL handbook</a>
+      <a href="https://discord.com/channels/1483974134361886802/1572203558500311040" target="_blank" rel="noopener">
+        <span class="qual-guide-title">Qualifying friendlies</span>
+        <span class="qual-guide-note">Post each friendly here. Both of you send the same line: your tag, the score, their tag. Example: YOURTAG 2-1 THEIRTAG. The other owner's matching post is what registers it. Five within 7 days.</span>
+      </a>
+      <a href="https://discord.com/channels/1483974134361886802/1572211108230463639" target="_blank" rel="noopener">
+        <span class="qual-guide-title">Qualifying videos</span>
+        <span class="qual-guide-note">Post the film of friendly 5 here. Your recording code goes in square brackets, then the YouTube or MEGA address in round brackets. Use the Discord account saved on your profile.</span>
+      </a>
+      <a class="span-2" href="https://discord.com/channels/1483974134361886802/1536360993368580136" target="_blank" rel="noopener">
+        <span class="qual-guide-title">Q&amp;A</span>
+        <span class="qual-guide-note">Questions about qualifying go here, not in the friendlies or videos channels. Start a new thread. Write the question in the first message and tag staff, so the people who answer see it.</span>
+      </a>
+      <a href="getting_started.html">
+        <span class="qual-guide-title">Beginner's guide</span>
+        <span class="qual-guide-note">The short version of joining, handpick, money, and match day. Read it before you take a club.</span>
+      </a>
+      <a href="learning_gpsl.html">
+        <span class="qual-guide-title">GPSL handbook</span>
+        <span class="qual-guide-note">The full rules: arranging, fines, videos, and discipline. Open it when a step on this page is not enough.</span>
+      </a>
     </nav>
     <div id="steps"></div>
     <div id="status"></div>
   </main>
-  <script type="module" src="qualifying.js?v=20261120-save-tag"></script>
+  <script type="module" src="qualifying.js?v=20261120-guide-links"></script>
 </body>
 </html>
