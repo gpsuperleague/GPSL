@@ -369,6 +369,15 @@ function render(s) {
       </div>
     </section>
     </div>
+    ${
+      step1 && !approved && !open
+        ? `<section class="qual-reset">
+            <h2>Start the 7 days again</h2>
+            <p>Use this if the deadline is close and you want a new attempt. The friendlies logged so far are deleted, and the 7 days start again from now. Your tag and the times you can play stay.</p>
+            <button type="button" class="button secondary" id="resetAttemptBtn">Reset this attempt</button>
+          </section>`
+        : ""
+    }
     <section class="qual-avail">
       <h2>When you can play</h2>
       <p>Same step as the tag. Save both before the friendlies unlock.</p>
@@ -376,6 +385,8 @@ function render(s) {
     </section>`;
 
   document.getElementById("saveTagBtn").onclick = saveTag;
+  const resetBtn = document.getElementById("resetAttemptBtn");
+  if (resetBtn) resetBtn.onclick = resetAttempt;
   const chooseBtn = document.getElementById("chooseClubBtn");
   if (chooseBtn) {
     chooseBtn.onclick = () => {
@@ -432,6 +443,21 @@ async function refresh() {
     /* stay */
   }
   render(data);
+}
+
+async function resetAttempt() {
+  const ok = window.confirm(
+    "Reset this attempt?\n\nThe friendlies logged so far will be deleted. The 7 days start again from now.\n\nYour tag and the times you can play stay.\n\nThis cannot be undone."
+  );
+  if (!ok) return;
+  setStatus("Resetting this attempt…");
+  const { error } = await supabase.rpc("owner_qualifying_reset_attempt");
+  if (error) {
+    setStatus(error.message, false);
+    return;
+  }
+  setStatus("Attempt reset. The 7 days start again from now.", true);
+  await refresh();
 }
 
 async function saveTag() {
