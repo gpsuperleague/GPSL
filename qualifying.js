@@ -51,6 +51,7 @@ const RECORDING = [
   "Manager clearly shown",
   "Subtactic clearly shown",
   "Fluid formation clearly shown",
+  "Default formations only",
   "Squad clearly shown",
   "No individual player instructions",
   "No dragging players on the formation",

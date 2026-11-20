@@ -9,6 +9,7 @@ const TICKS = [
   ["manager", "Manager clearly shown"],
   ["subtactic", "Subtactic clearly shown"],
   ["fluid", "Fluid formation clearly shown"],
+  ["default_formation", "Default formations only"],
   ["squad", "Squad clearly shown"],
   ["no_individual", "No individual player instructions"],
   ["no_drag", "No dragging players on the formation"],
