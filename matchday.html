@@ -285,32 +285,6 @@
       background: #444;
       border-color: #666;
     }
-    .rating-shots {
-      margin: 0 0 12px;
-      padding: 10px 12px;
-      border: 1px solid #3a4a3a;
-      border-radius: 8px;
-      background: #121814;
-    }
-    .rating-shots-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px 16px;
-    }
-    .rating-shots-row label {
-      color: #ccc;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .rating-shots-row input[type="file"] { max-width: 220px; font-size: 12px; color: #ccc; }
-    .rating-shots-row button { margin: 0; padding: 6px 12px; font-size: 12px; }
-    table.stats-table input.stat-rating.rating-from-shot {
-      outline: 1px solid #c9a227;
-      background: #2a2414;
-    }
     table.stats-table tr.stat-row-started td.name {
       box-shadow: inset 3px 0 0 #8d8;
     }
@@ -467,15 +441,6 @@
             Auto-fill test stats
           </button>
         </div>
-        <div class="rating-shots" id="ratingShots">
-          <p class="stats-hint" style="margin:0 0 8px;">Add the two post-match rating screens. The page reads the names and numbers on this device and matches them to this squad. A name that does not match is left blank. Goals, assists, and cards are not read.</p>
-          <div class="rating-shots-row">
-            <label>Screen 1 <input type="file" id="ratingShot1" accept="image/*"></label>
-            <label>Screen 2 <input type="file" id="ratingShot2" accept="image/*"></label>
-            <button type="button" id="readRatingShotsBtn" class="button secondary">Read ratings</button>
-          </div>
-          <p id="ratingShotStatus" class="stats-hint" style="margin:8px 0 0;"></p>
-        </div>
         <p id="confirmStatsHint" class="stats-hint" style="display:none;color:#9c9;margin-bottom:8px;"></p>
         <div class="stats-tip-strip" id="statsPanelHint" role="note" aria-label="Match stats tips">
           <p class="stats-tip-mod"><strong>Lineup</strong> Tick exactly <b>11 Started</b>. Subs optional: 0–5 <b>Subbed on</b>.</p>
@@ -557,6 +522,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20261120-rating-shots"></script>
+  <script type="module" src="matchday.js?v=20261120-ratings-manual"></script>
 </body>
 </html>
