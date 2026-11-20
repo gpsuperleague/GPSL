@@ -302,6 +302,7 @@ function render(s) {
         <label>Owner tag
           <input id="tagInput" type="text" maxlength="32" value="${escapeHtml(s.owner_tag || "")}">
         </label>
+        <button type="button" class="button" id="saveTagBtn">Save tag</button>
         ${
           times.length
             ? `<p class="friendly-sub">When you can play${tz ? ` · ${escapeHtml(tz)}` : ""}</p>
@@ -309,7 +310,6 @@ function render(s) {
             : `<p>Times are not saved yet. Set them in the panel under this row.</p>`
         }
       </div>
-      <div class="step-actions"><button type="button" class="button" id="saveTagBtn">Save tag</button></div>
     </section>
     <section class="${stepClass(2, step2, !step1)}">
       <div class="step-head"><span class="step-no">2</span><h2>Five friendlies</h2>${pill(step2, !step1)}</div>
