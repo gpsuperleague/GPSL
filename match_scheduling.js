@@ -397,12 +397,17 @@ export function fixtureExpiryWarnings(fixture, nowMs = Date.now()) {
     if (Number.isFinite(dueMs) && dueMs - nowMs <= WARN_48H && nowMs - dueMs < 14 * 24 * 60 * 60 * 1000) {
       const when = ukWhen(fixture.schedule_response_due_at);
       const overdue = dueMs <= nowMs;
+      const who = scheduleReplyOwedBy(fixture);
+      const owed = who ? `${who} owes the reply. ` : "";
+      const strikeOn = who ? ` on ${who}` : "";
       operational = {
         kind: "reply",
         text: overdue
-          ? `Reply is overdue (was ${when}). That is a strike: ₿500k. Still silent at the next month lock is another strike.`
-          : `Reply due ${when}. 48 hours, and that can run into the next GPSL month. Missing it is a strike: ₿500k.`,
-        title: "A reply is 48 hours and can cross a month lock. Missing it is a ₿500k strike. Still silent at the next lock is another strike. Three on this fixture forfeits it and adds ₿1m.",
+          ? `${owed}Reply is overdue (was ${when}). That is a strike${strikeOn}: ₿500k. Still silent at the next month lock is another strike.`
+          : `${owed}Reply due ${when}. 48 hours, and that can run into the next GPSL month. Missing it is a strike${strikeOn}: ₿500k.`,
+        title: who
+          ? `${who} has to accept or counter. A reply is 48 hours and can cross a month lock. Missing it is a ₿500k strike on ${who}. Still silent at the next lock is another strike. Three on this fixture forfeits it and adds ₿1m.`
+          : "A reply is 48 hours and can cross a month lock. Missing it is a ₿500k strike. Still silent at the next lock is another strike. Three on this fixture forfeits it and adds ₿1m.",
       };
     }
   }
@@ -1404,6 +1409,33 @@ export function scheduleActionLabel(fixture, myClubShort) {
     label: catchUp ? "Catch-up / replay · schedule" : "Schedule",
     href: scheduleUrl(fixture.id),
   };
+}
+
+/**
+ * Club that has to accept or counter the open proposal.
+ * Prefers schedule_response_required_club; falls back to proposal counts.
+ * Returns the club's display name when the fixture has it.
+ */
+export function scheduleReplyOwedBy(fixture) {
+  if (!fixture) return "";
+  let short = String(fixture.schedule_response_required_club || "").trim();
+  if (!short) {
+    const homeCount = Number(fixture.schedule_home_proposal_count) || 0;
+    const awayCount = Number(fixture.schedule_away_proposal_count) || 0;
+    if (homeCount === 0 && awayCount === 0) return "";
+    short = homeCount > awayCount
+      ? fixture.away_club_short_name
+      : fixture.home_club_short_name;
+  }
+  const key = String(short || "").trim().toUpperCase();
+  if (!key) return "";
+  if (key === String(fixture.home_club_short_name || "").trim().toUpperCase()) {
+    return fixture.home_club_name || fixture.home_club_short_name || short;
+  }
+  if (key === String(fixture.away_club_short_name || "").trim().toUpperCase()) {
+    return fixture.away_club_name || fixture.away_club_short_name || short;
+  }
+  return short;
 }
 
 /**

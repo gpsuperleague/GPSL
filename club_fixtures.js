@@ -45,7 +45,7 @@ import {
   finalPlayCutoffDateHtml,
   formatKickoff,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261119-cutoff-date";
+} from "./match_scheduling.js?v=20261120-reply-who";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,
@@ -692,6 +692,8 @@ function mergeFixtureActions(rpcRows, publicRows) {
     "schedule_status",
     "agreed_kickoff_at",
     "schedule_pending_proposal_id",
+    "schedule_response_due_at",
+    "schedule_response_required_club",
     "schedule_home_proposal_count",
     "schedule_away_proposal_count",
     "schedule_discord_hint",

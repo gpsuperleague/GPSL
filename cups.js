@@ -41,8 +41,9 @@ import {
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
   finalPlayCutoffDateHtml,
+  scheduleReplyOwedBy,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261119-cutoff-date";
+} from "./match_scheduling.js?v=20261120-reply-who";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
@@ -228,7 +229,9 @@ function cupKickoffHtml(f) {
     return newOwnerGraceKickoffNoteHtml(grace, { catchUp });
   }
   if (status === "negotiating") {
-    return `<span class="cup-ko cup-ko--pending">${catchUpPrefix}Proposal pending</span>`;
+    const who = scheduleReplyOwedBy(f);
+    const whoBit = who ? ` · ${escapeHtml(who)} to reply` : "";
+    return `<span class="cup-ko cup-ko--pending">${catchUpPrefix}Proposal pending${whoBit}</span>`;
   }
   const holidayNote = fixtureHolidayArrangeNote(f);
   if (holidayNote) {

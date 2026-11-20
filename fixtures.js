@@ -49,8 +49,9 @@ import {
   holidayKickoffNoteHtml,
   fixtureExpiryWarningHtml,
   finalPlayCutoffDateHtml,
+  scheduleReplyOwedBy,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261119-cutoff-date";
+} from "./match_scheduling.js?v=20261120-reply-who";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
@@ -258,9 +259,15 @@ function kickoffStatusNoteHtml(fixture) {
   if (status === "negotiating") {
     const replyBy = catchUp ? catchUpReplyDeadline(fixture) : "";
     const dueBit = replyBy ? ` · ${replyBy}` : "";
+    const who = scheduleReplyOwedBy(fixture);
+    const whoBit = who ? ` · ${escapeStatus(who)} to reply` : "";
     return `<span class="ko-status ko-status--pending" title="${
-      catchUp ? "Catch-up / replay — accept or counter the proposed kick-off" : ""
-    }">${prefix}Proposal pending${dueBit}</span>`;
+      who
+        ? `${escapeStatus(who)} has to accept or counter`
+        : catchUp
+          ? "Catch-up / replay — accept or counter the proposed kick-off"
+          : ""
+    }">${prefix}Proposal pending${whoBit}${dueBit}</span>`;
   }
 
   const holidayNote = fixtureHolidayArrangeNote(fixture);
