@@ -35,6 +35,15 @@ let avail = null;
 let intakeMode = "pre_season";
 let waitingList = null;
 
+const FRIENDLIES_CHANNEL_URL =
+  "https://discord.com/channels/1483974134361886802/1572203558500311040";
+const VIDEOS_CHANNEL_URL =
+  "https://discord.com/channels/1483974134361886802/1572211108230463639";
+
+function channelLink(name, url) {
+  return `<a href="${url}" target="_blank" rel="noopener">${escapeHtml(name || "Discord")}</a>`;
+}
+
 const RECORDING = [
   "PA3 or PA4",
   "Advanced skill only",
@@ -194,7 +203,7 @@ function render(s) {
     : open
       ? `${codeBlock}<p>Staff have this code and the film. The alert is on the admin desk.</p>${videoLink}`
       : `${codeBlock}
-         <p>That code is yours. Post it in <b>${escapeHtml(s.video_channel)}</b> as the label of the film link: the code in square brackets, then your YouTube or MEGA address in round brackets. The scan matches this code to you, and only from the Discord account on your profile. Staff get an alert with the film link.</p>
+         <p>That code is yours. Post it in ${channelLink(s.video_channel, VIDEOS_CHANNEL_URL)} as the label of the film link: the code in square brackets, then your YouTube or MEGA address in round brackets. The scan matches this code to you, and only from the Discord account on your profile. Staff get an alert with the film link.</p>
          ${
            rejected
              ? `<p>Last video was sent back.<br>${escapeHtml(s.video?.review_note || "")}</p><p>The five you already logged still count. The code above is the new one. Post that with the new film.</p>`
@@ -309,7 +318,7 @@ function render(s) {
           <div><b>${left}</b><span>${left === 1 ? "fixture left" : "fixtures left"}</span></div>
         </div>
         <div class="friendly-pips">${pips}</div>
-        <p>Post each score in <b>${escapeHtml(s.friendly_channel)}</b>, with your tag or by tagging both owners. The fifth bar is the one you film, in the next step.</p>
+        <p>In ${channelLink(s.friendly_channel, FRIENDLIES_CHANNEL_URL)}, both of you post the same line: your tag, the score, their tag. Example: <span class="code">${escapeHtml(tagShown)} 2-1 THEIRTAG</span>. The other owner's matching post is what registers it. Friendly 5 is the one you film.</p>
         ${friendlyDeadline}
         ${
           step1 && !tagOk
@@ -347,7 +356,7 @@ function render(s) {
       <div class="step-body">
         ${
           approved
-            ? `<p>The recording is approved. This is your place. You do not pick a club from this list.</p>${waitingHtml}`
+            ? `<p>The recording is approved. This is your place in the queue. The club is the next step.</p>${waitingHtml}`
             : `<p>This opens when the recording is approved. Until then this account is not on the waiting list.</p>`
         }
       </div>
