@@ -1210,6 +1210,49 @@ function wireAlreadyPlayedButtons() {
   }
 }
 
+function scheduleStatusPhrase(f) {
+  const sch = ctx?.schedule || {};
+  if (f?.is_forfeit) return "Forfeit";
+  if (f?.status === "played") return "Played";
+  if (ctx?.manual_black_box === true) return "Manual arrange";
+  if (ctx?.new_owner_arrange_grace && sch.status !== "agreed" && !sch.agreed_kickoff_at) {
+    return "New-owner grace";
+  }
+  const sideOf = (short) => {
+    const s = String(short || "").toUpperCase();
+    if (s && s === String(f?.home_club_short_name || "").toUpperCase()) return "home";
+    if (s && s === String(f?.away_club_short_name || "").toUpperCase()) return "away";
+    return "";
+  };
+  const otherSide = (short) => {
+    const side = sideOf(short);
+    if (side === "home") return "away";
+    if (side === "away") return "home";
+    return "";
+  };
+  const mo = ctx?.mutual_override;
+  if (mo) {
+    const mine = myClub?.short || ctx?.my_club_short_name;
+    const side = mo.can_confirm ? sideOf(mine) : otherSide(mo.requested_by_club_short_name);
+    if (side) return `Waiting on ${side}`;
+  }
+  if (sch.status === "agreed" && sch.agreed_kickoff_at) return "Kick-off agreed";
+  const pending = ctx?.pending_proposal;
+  if (pending) {
+    const side = otherSide(pending.proposed_by_club_short_name);
+    if (side) return `Waiting on ${side}`;
+  }
+  if (ctx?.can_propose_first) {
+    const side = sideOf(myClub?.short || ctx?.my_club_short_name);
+    if (side) return `Waiting on ${side}`;
+  }
+  return "Waiting on home";
+}
+
+function scheduleStatusTitle(f) {
+  return `Schedule status: ${scheduleStatusPhrase(f)}`;
+}
+
 function renderAgreedPanel(root, f, sch) {
   const homeTz = ctx.home_timezone || UK_TZ;
   const awayTz = ctx.away_timezone || UK_TZ;
@@ -1454,7 +1497,7 @@ function renderAgreedPanel(root, f, sch) {
     </div>
     ${noShowLadderBannerHtml(f)}
     <div class="panel mutual-panel agreed-card" style="border-color:var(--gpsl-accent, #ff9900);">
-      <h2>Kick-off agreed</h2>
+      <h2>${escapeHtmlLite(scheduleStatusTitle(f))}</h2>
       <p class="agreed-when kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
       <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
       <div class="actions ko-actions">
@@ -2001,6 +2044,7 @@ function render() {
   if (f.status === "played" || f.is_forfeit) {
     root.innerHTML = `
       <div class="panel">
+        <h2>${escapeHtmlLite(scheduleStatusTitle(f))}</h2>
         <div class="fixture-head">${fixtureTitle(f)}</div>
         ${kitSeasonLineHtml(f)}
         <p class="status-agreed">${f.is_forfeit ? "<b>Forfeit</b> — result recorded." : "<b>Played</b>."}</p>
@@ -2016,6 +2060,7 @@ function render() {
     if (discord) discord.hidden = true;
     root.innerHTML = `
       <div class="panel">
+        <h2>${escapeHtmlLite(scheduleStatusTitle(f))}</h2>
         <div class="fixture-head">${fixtureTitle(f)}</div>
         ${kitSeasonLineHtml(f)}
         <p class="status-agreed"><b>Manual arrange</b> — both clubs have GPSL match system OFF.</p>
@@ -2048,6 +2093,7 @@ function render() {
     const clubBit = newOwnerGrace.club_short || newOwnerGrace.clubShort || "";
     root.innerHTML = `
       <div class="panel" style="border-color:#3a5a7a;background:#0c1824;">
+        <h2>${escapeHtmlLite(scheduleStatusTitle(f))}</h2>
         <div class="fixture-head">${fixtureTitle(f)}</div>
         ${kitSeasonLineHtml(f)}
         <p class="status-agreed"><b>New-owner grace</b> — match arrangement deferred.</p>
@@ -2394,6 +2440,7 @@ function render() {
     ${holidayExpiryBannerHtml(f)}
     ${noManagerBanner}
     <div class="panel">
+      <h2>${escapeHtmlLite(scheduleStatusTitle(f))}</h2>
       <div class="fixture-head">${fixtureTitle(f)}</div>
       ${kitSeasonLineHtml(f)}
       ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
