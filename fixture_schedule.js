@@ -891,6 +891,23 @@ function deadlineBoxHtml(f) {
   return html + finalPlayLineHtml();
 }
 
+async function fillAgreedOwners(f) {
+  const homeEl = document.getElementById("agreedHomeOwner");
+  const awayEl = document.getElementById("agreedAwayOwner");
+  if (!homeEl && !awayEl) return;
+  const shorts = [f.home_club_short_name, f.away_club_short_name].filter(Boolean);
+  const { data } = await supabase.from("Clubs").select("ShortName, owner").in("ShortName", shorts);
+  const byShort = new Map((data || []).map((row) => [row.ShortName, String(row.owner || "").trim()]));
+  if (homeEl) {
+    const tag = byShort.get(f.home_club_short_name);
+    homeEl.textContent = tag ? `Owner ${tag}` : "Owner not set";
+  }
+  if (awayEl) {
+    const tag = byShort.get(f.away_club_short_name);
+    awayEl.textContent = tag ? `Owner ${tag}` : "Owner not set";
+  }
+}
+
 async function fillDiscordOpponentTag(f) {
   const el = document.getElementById("discordOpponentTag");
   if (!el || el.dataset.loaded === "1") return;
@@ -1085,12 +1102,13 @@ function renderAgreedPanel(root, f, sch) {
   const al = ctx.allowances || {};
   const mo = ctx.mutual_override;
   const moOpts = ctx.mutual_override_options || {};
-  const homeName = fullClubName(f.home_club_short_name);
-  const awayName = fullClubName(f.away_club_short_name);
+  const homeName = fullClubName(f.home_club_short_name) || f.home_club_short_name || "Home";
+  const awayName = fullClubName(f.away_club_short_name) || f.away_club_short_name || "Away";
 
   const checkinStatus = `Home (${homeName}): ${ci.home_checked_in ? "checked in ✓" : "waiting…"} · Away (${awayName}): ${ci.away_checked_in ? "checked in ✓" : "waiting…"}`;
 
   let mutualHtml = "";
+  let playNowReadyHtml = "";
   const agreedFuture =
     sch.status === "agreed" &&
     sch.agreed_kickoff_at &&
@@ -1104,8 +1122,8 @@ function renderAgreedPanel(root, f, sch) {
   } else if (agreedFuture && ctx.my_has_manager !== false) {
     const canBringForward = moOpts.can_request_play_now === true;
     const freeNewTimeNote = sch.mutual_override_used
-      ? "Free mutual new-time already used for this fixture — Bring KO forward is still available if both agree."
-      : "One free mutual new-time per fixture; Bring KO forward can be used again later if both agree.";
+      ? "The one free change of kick-off for this fixture is already used. An earlier time can still be requested, and that does not need the free change."
+      : "One free change of kick-off per fixture, to a time you are both marked free. An earlier time does not use that free change.";
     const playNowDefaultRaw = moOpts.play_now_kickoff_at
       ? new Date(moOpts.play_now_kickoff_at)
       : new Date(Date.now() + 5 * 60 * 1000);
@@ -1123,9 +1141,9 @@ function renderAgreedPanel(root, f, sch) {
         : "";
     const blockNote =
       !canBringForward && playNowBlockedReason
-        ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Bring KO forward unavailable:</b> ${escapeHtmlLite(playNowBlockedReason)}</p>`
+        ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Earlier time unavailable:</b> ${escapeHtmlLite(playNowBlockedReason)}</p>`
         : !canBringForward
-          ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Bring KO forward unavailable</b> right now (holiday early squad, double-booked, or outside the play window).</p>`
+          ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Earlier time unavailable</b> right now (holiday early squad, double-booked, or outside the play window).</p>`
           : "";
 
     const pnSecs = Number(pn.seconds_remaining ?? 0);
@@ -1138,7 +1156,7 @@ function renderAgreedPanel(root, f, sch) {
       ? `Home: ${pn.home_pressed ? "ready ✓" : "waiting…"} · Away: ${pn.away_pressed ? "ready ✓" : "waiting…"} · Check-ins: Home ${pn.home_checked_in ? "✓" : "—"} · Away ${pn.away_checked_in ? "✓" : "—"}`
       : "";
 
-    let playNowReadyHtml = "";
+    playNowReadyHtml = "";
     if (pnActive && pn.status === "miss_open") {
       const canEnter = pn.can_enter_result === true;
       const canReset = pn.can_reset === true;
@@ -1222,12 +1240,25 @@ function renderAgreedPanel(root, f, sch) {
     }
 
     mutualHtml = `
-      ${playNowReadyHtml}
       <div class="panel mutual-panel">
-        <h2>Bring KO forward (no allowance used)</h2>
+        <h2>Change kick-off</h2>
         <p class="meta">
-          Keep arranging for later, but move the agreed kick-off to an <b>earlier</b> UK <b>10‑minute</b> time.
-          Opponent confirms; then normal check-in ±10 min at the new KO.
+          Both clubs confirm in Inbox within 24 hours. No fine. This is one choice:
+          move the kick-off to another time you are both free, or to an earlier 10-minute time.
+        </p>
+        <p class="meta">${freeNewTimeNote}</p>
+        ${
+          moOpts.can_request_new_time && !pnActive
+            ? `<p class="meta" style="margin-top:12px;">Pick another time you are both marked free. This uses the one free change for this fixture.</p>
+               <div class="slot-list" id="mutualSlotList"></div>
+               <div class="actions">
+                 <button type="button" id="newTimeMutualBtn" class="button secondary" disabled>Change kick-off (both agree)</button>
+               </div>`
+            : `<p class="meta" style="margin-top:12px;">The free change to a mutual time is not available on this fixture right now.</p>`
+        }
+        <p class="meta" style="margin-top:14px;">
+          Or request an <b>earlier</b> UK 10-minute time. The other club still confirms.
+          This does not use the free change, and you can ask again later.
         </p>
         ${blockNote}
         <div class="poke-free-row" style="margin-top:10px;">
@@ -1238,23 +1269,13 @@ function renderAgreedPanel(root, f, sch) {
               : canBringForward
                 ? ""
                 : escapeHtmlLite(playNowBlockedReason || "Unavailable")
-          }">Request Bring KO forward</button>
+          }">Request this earlier time</button>
         </div>
         <p class="meta" id="playNowPreview" hidden></p>
-        <p class="meta" style="margin-top:8px;">${freeNewTimeNote}</p>
-        ${
-          moOpts.can_request_new_time && !pnActive
-            ? `<p class="meta" style="margin-top:12px;">Or change kick-off to another <b>mutual</b> weekly slot:</p>
-               <div class="slot-list" id="mutualSlotList"></div>
-               <div class="actions">
-                 <button type="button" id="newTimeMutualBtn" class="button secondary" disabled>Change kick-off (both agree)</button>
-               </div>`
-            : ""
-        }
       </div>
     `;
   } else if (sch.mutual_override_used) {
-    mutualHtml = `<p class="meta">Free mutual new-time already used for this fixture. Bring KO forward appears again while the agreed kick-off is still in the future.</p>`;
+    mutualHtml = `<p class="meta">The free change of kick-off for this fixture is already used. Change kick-off appears again while the agreed time is still in the future, including an earlier time that does not use that free change.</p>`;
   }
 
   const agreedMeta = document.getElementById("scheduleMeta");
@@ -1273,21 +1294,52 @@ function renderAgreedPanel(root, f, sch) {
     !!(ctx?.no_show_ladder?.ladder_active || ctx?.no_show_ladder?.open_play_active) ||
     Number(sch.play_attempt_count || 0) >= 3;
 
+  const playNowPanel = playNowReadyHtml || `
+    <div class="panel">
+      <h2>Play now</h2>
+      <p class="meta">${
+        agreedFuture
+          ? "Play now is not available on this fixture right now. When it is, the first press opens a shared 20-minute check-in. Both clubs press it, then check in. The agreed kick-off stays unless the match is played."
+          : "Play now sits here while the agreed kick-off is still in the future. The first press opens a shared 20-minute check-in. Both clubs press it, then check in. The agreed time stays unless the match is played."
+      }</p>
+    </div>`;
+
+  const voluntaryLeft = al.reschedule_used_this_month ? "used this GPSL month" : "1 available this GPSL month";
+  const emergencyLeft = `${al.emergency_drops_remaining ?? "—"} of 2 left this season`;
+
   root.innerHTML = `
     ${catchUpBannerHtml()}
     ${holidayEarlyBannerHtml()}
     ${holidayExpiryBannerHtml(f)}
     ${noShowLadderBannerHtml(f)}
+    <div class="agreed-split">
+      <div class="panel agreed-card">
+        <p class="agreed-label">Kick-off agreed</p>
+        <div class="fixture-head">${fixtureTitle(f)}</div>
+        ${kitSeasonLineHtml(f)}
+        <div class="agreed-sides">
+          <div>
+            <div class="agreed-role">Home</div>
+            <div class="agreed-club">${escapeHtmlLite(homeName)}</div>
+            <div class="agreed-owner" id="agreedHomeOwner">Owner …</div>
+          </div>
+          <div>
+            <div class="agreed-role">Away</div>
+            <div class="agreed-club">${escapeHtmlLite(awayName)}</div>
+            <div class="agreed-owner" id="agreedAwayOwner">Owner …</div>
+          </div>
+        </div>
+        <p class="agreed-when kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
+        ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
+        <p class="meta" style="margin-top:6px;">
+          <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
+        </p>
+        ${unavailablePanelHtml(f)}
+        <p class="meta">${checkinStatus}</p>
+      </div>
+      <div class="agreed-play">${playNowPanel}</div>
+    </div>
     <div class="panel">
-      <div class="fixture-head">${fixtureTitle(f)}</div>
-      ${kitSeasonLineHtml(f)}
-      ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
-      <p class="status-agreed"><b>Kick-off agreed:</b> <span class="kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</span></p>
-      <p class="meta" style="margin-top:6px;">
-        <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
-      </p>
-      ${unavailablePanelHtml(f)}
-      <p class="meta">${checkinStatus}</p>
       <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
       <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, 12 subs, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:var(--gpsl-accent, #ff9900);">Check your squad</a> before kick-off.</p>
       <p class="meta">${
@@ -1309,7 +1361,6 @@ function renderAgreedPanel(root, f, sch) {
             : ""
       }
       <p class="meta" id="checkInSquadGate" style="display:none;color:#f88;"></p>
-      <p class="meta">Emergency drops remaining this season: <b>${al.emergency_drops_remaining ?? "—"}</b>/2 · Reschedule this GPSL month: <b>${al.reschedule_used_this_month ? "used" : "available"}</b></p>
       <div id="scheduleConsoleMount">
         ${matchConsoleStripHtml({ kind: cupFixtureKind(f) })}
         ${pitchBehaviourPanelHtml({ fixtureId: f.id, requireAck: true })}
@@ -1335,19 +1386,31 @@ function renderAgreedPanel(root, f, sch) {
             ? '<button type="button" id="catchUpResetBtn" class="button secondary">Reset for catch-up (pick new time)</button>'
             : ""
         }
-        ${al.can_voluntary_drop ? '<button type="button" id="voluntaryDropBtn" class="button secondary">Drop & reschedule (24h+ notice)</button>' : ""}
-        ${al.can_emergency_drop && Number(al.emergency_drops_remaining ?? 1) > 0 ? '<button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (&lt;24h)</button>' : ""}
       </div>
-      ${
-        al.can_emergency_drop && Number(al.emergency_drops_remaining ?? 1) <= 0
-          ? '<p class="meta" style="color:#e8a87c;">No emergency drops left this season — under 24h the kick-off can only change if both clubs agree (below).</p>'
-          : ""
-      }
       ${finalPlayLineHtml()}
+    </div>
+    <div class="panel">
+      <h2>Drops</h2>
+      <p class="meta">A drop throws away the agreed kick-off and sends the match back to arranging. It is for one club. The other club does not have to agree.</p>
+      <div class="drop-row">
+        <h3>Voluntary drop · ${voluntaryLeft}</h3>
+        <p class="meta">Use this when the kick-off is still more than 24 hours away and you already know you cannot play it. One per GPSL month. Not on a catch-up. Example: the match is Sunday and on Thursday you cannot make it. You drop, and both clubs pick a new time. No fine.</p>
+        ${al.can_voluntary_drop ? '<div class="actions"><button type="button" id="voluntaryDropBtn" class="button secondary">Drop and reschedule (24h+ notice)</button></div>' : '<p class="meta">Not available on this fixture right now.</p>'}
+      </div>
+      <div class="drop-row">
+        <h3>Emergency drop · ${emergencyLeft}</h3>
+        <p class="meta">Use this inside the last 24 hours, and only before the kick-off time. Two per season. Not on a catch-up. Example: two hours before kick-off your connection fails. One drop unschedules the match and moves it to the next play attempt. If none are left, the kick-off can only move if both clubs agree a new time.</p>
+        ${
+          al.can_emergency_drop && Number(al.emergency_drops_remaining ?? 1) > 0
+            ? '<div class="actions"><button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (under 24h)</button></div>'
+            : '<p class="meta">Not available on this fixture right now.</p>'
+        }
+      </div>
     </div>
     ${mutualHtml}
   `;
 
+  fillAgreedOwners(f);
   const checkInBtn = document.getElementById("checkInBtn");
   const scheduleConsoleMount = document.getElementById("scheduleConsoleMount");
   if (scheduleConsoleMount) wirePitchAck(scheduleConsoleMount);
