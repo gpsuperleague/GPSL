@@ -1074,7 +1074,7 @@ function noShowLadderBannerHtml(f) {
       ${sub ? `<div class="s">${sub}</div>` : ""}
     </div>`;
   const row = `<div class="ladder-row">
-    ${mod("Attempt", escapeHtmlLite(String(attempt || 1)), attempt3 ? "Open play" : "This fixture")}
+    ${mod("Attempt", escapeHtmlLite(`${attempt || 1} of 3`), attempt3 ? "Open play" : "This fixture")}
     ${mod(
       "Fixture no-shows",
       `${homeN}/3 · ${awayN}/3`,
@@ -1386,6 +1386,7 @@ function renderAgreedPanel(root, f, sch) {
           <div class="agreed-owner" id="agreedHomeOwner">Owner …</div>
           <div class="agreed-zone">${escapeHtmlLite(tzDisplayName(homeTz))}</div>
           <div class="agreed-now">Now ${escapeHtmlLite(localNowInTz(homeTz))}</div>
+          <div class="agreed-checkin">Check-in ${ci.home_checked_in ? "checked in ✓" : "waiting…"}</div>
         </div>
         <div class="side-card">
           <div class="agreed-role">Away${ownerTz === awayTz && ownerTz !== homeTz ? " · your time" : ""}</div>
@@ -1393,6 +1394,7 @@ function renderAgreedPanel(root, f, sch) {
           <div class="agreed-owner" id="agreedAwayOwner">Owner …</div>
           <div class="agreed-zone">${escapeHtmlLite(tzDisplayName(awayTz))}</div>
           <div class="agreed-now">Now ${escapeHtmlLite(localNowInTz(awayTz))}</div>
+          <div class="agreed-checkin">Check-in ${ci.away_checked_in ? "checked in ✓" : "waiting…"}</div>
         </div>
       </div>
       ${
@@ -1408,7 +1410,6 @@ function renderAgreedPanel(root, f, sch) {
         <span class="pitch">Pitch: …</span>
       </div>
       ${unavailablePanelHtml(f)}
-      <p class="meta">Check-in · Home ${ci.home_checked_in ? "checked in ✓" : "waiting…"} · Away ${ci.away_checked_in ? "checked in ✓" : "waiting…"}</p>
     </div>
     ${noShowLadderBannerHtml(f)}
     <div class="panel mutual-panel agreed-card" style="border-color:var(--gpsl-accent, #ff9900);">
