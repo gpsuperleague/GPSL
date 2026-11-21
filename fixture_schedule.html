@@ -97,10 +97,27 @@
     }
     .ladder-mod .v { color: #eee; font-size: 15px; font-weight: 700; margin-top: 4px; }
     .ladder-mod .s { color: #aaa; font-size: 12px; line-height: 1.35; margin-top: 4px; }
+    .match-checks {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin: 4px 0 12px;
+    }
+    .match-check {
+      background: #141414;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .match-check .k {
+      color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .match-check ul { list-style: none; margin: 6px 0 0; padding: 0; }
+    .match-check li { color: #ddd; font-size: 12px; line-height: 1.4; }
     .drop-row { margin-top: 14px; padding-top: 12px; border-top: 1px solid #333; }
     .drop-row h3 { margin: 0 0 6px; font-size: 14px; color: #eee; }
     @media (max-width: 800px) {
-      .agreed-split, .agreed-sides, .ladder-row { grid-template-columns: 1fr 1fr; }
+      .agreed-split, .agreed-sides, .ladder-row, .match-checks { grid-template-columns: 1fr 1fr; }
     }
     .catch-up-banner {
       background:#2a2200; border:1px solid #996600; border-radius:8px;
@@ -305,6 +322,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261121-match-details"></script>
+  <script type="module" src="fixture_schedule.js?v=20261121-match-checks"></script>
 </body>
 </html>

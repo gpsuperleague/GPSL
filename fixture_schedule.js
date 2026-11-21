@@ -52,7 +52,6 @@ import {
   formatFixtureUnavailableBannerHtml,
 } from "./player_discipline.js?v=20261116-review-fix";
 import {
-  matchConsoleStripHtml,
   cupFixtureKind,
   pitchBehaviourPanelHtml,
   wirePitchAck,
@@ -225,6 +224,43 @@ function timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz) {
         (${escapeHtmlLite(localNowInTz(ownerTz || UK_TZ))}).
       </p>
     </div>`;
+}
+
+function scheduleMatchChecksHtml(f) {
+  const kind = cupFixtureKind(f);
+  const pre = ["10-minute match", "Injuries off", "5 substitutes", "3 sub intervals", "Form random"];
+  if (kind === "single") {
+    pre.push("Extra Time on", "Penalties on");
+  } else if (kind === "two-second") {
+    pre.push("Extra Time off", "Penalties off");
+    pre.push("Level on aggregate: 5-minute match, Penalties on, Extra Time off");
+  } else if (kind === "two-first" || kind === "two") {
+    pre.push("Extra Time off", "Penalties off");
+  }
+  const groups = [
+    ["Pre-match", pre],
+    ["Personnel", ["Manager clearly shown", "Subtactic clearly shown", "Squad clearly shown"]],
+    ["Tactics", ["Player instructions blank", "Fluid is a default formation", "No player dragging"]],
+    ["Pause", ["PA3 or PA4", "Advanced skill only"]],
+    [
+      "On the pitch",
+      [
+        "Single Red/Blue from 80'",
+        "Double Red/Blue from 90'",
+        "No DOGSO",
+        "No timewasting",
+        "No match manipulation",
+      ],
+    ],
+  ];
+  return `<div class="match-checks">${groups
+    .map(
+      ([label, items]) => `<div class="match-check">
+        <div class="k">${escapeHtmlLite(label)}</div>
+        <ul>${items.map((item) => `<li>${escapeHtmlLite(item)}</li>`).join("")}</ul>
+      </div>`
+    )
+    .join("")}</div>`;
 }
 
 function kitSeasonLineHtml(f) {
@@ -1391,6 +1427,7 @@ function renderAgreedPanel(root, f, sch) {
       <div class="panel mutual-panel agreed-card" style="border-color:var(--gpsl-accent, #ff9900);">
         <h2>Kick-off agreed</h2>
         <p class="agreed-when kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
+        <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
         <p class="meta" style="margin-top:6px;">
           <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
         </p>
@@ -1401,12 +1438,12 @@ function renderAgreedPanel(root, f, sch) {
       ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
     </div>
     <div class="panel">
-      <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
-      <p class="meta"><b>Your saved Match Day squad is checked when you check in</b> — exactly 11 starters, 12 subs, a goalkeeper, and no injured or suspended players. <a href="${matchdayFixHref(f.id)}" style="color:var(--gpsl-accent, #ff9900);">Check your squad</a> before kick-off.</p>
+      <h2>Checks for this match</h2>
+      <p class="meta">Check-in uses your saved squad: 11 starters, 12 subs, a goalkeeper, and nobody injured or suspended. <a href="${matchdayFixHref(f.id)}" style="color:var(--gpsl-accent, #ff9900);">Check your squad</a>.</p>
       <p class="meta">${
         ladderActive
-          ? "No-show fines apply instantly when the check-in window closes (see banner). After a miss you can still enter a result if you played, or pick a new time. Month-lock no-show 3–0 is not used on GPSL-arranged fixtures."
-          : "If only one club checks in after the window, that is a no-show: instant fine + season strike. Both miss = ₿500k + strike each. Either way you can enter a result if you played, or pick a new time."
+          ? "A missed check-in is fined when the window closes. You can still enter a result if you played, or pick a new time. A month-lock 3–0 is not used on a GPSL-arranged fixture."
+          : "One club missing check-in is a no-show: ₿500k and a season strike. Both missing is ₿500k and a strike each. Either way you can enter a result if you played, or pick a new time."
       }</p>
       ${
         ci.my_has_manager === false
@@ -1423,8 +1460,8 @@ function renderAgreedPanel(root, f, sch) {
       }
       <p class="meta" id="checkInSquadGate" style="display:none;color:#f88;"></p>
       <div id="scheduleConsoleMount">
-        ${matchConsoleStripHtml({ kind: cupFixtureKind(f) })}
-        ${pitchBehaviourPanelHtml({ fixtureId: f.id, requireAck: true })}
+        ${scheduleMatchChecksHtml(f)}
+        ${pitchBehaviourPanelHtml({ fixtureId: f.id, requireAck: true, hideItems: true })}
       </div>
       ${missChoicePanelHtml(f, ci, al)}
       <div class="actions">
