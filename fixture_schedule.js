@@ -1191,8 +1191,6 @@ function renderAgreedPanel(root, f, sch) {
   const homeName = fullClubName(f.home_club_short_name) || f.home_club_short_name || "Home";
   const awayName = fullClubName(f.away_club_short_name) || f.away_club_short_name || "Away";
 
-  const checkinStatus = `Home (${homeName}): ${ci.home_checked_in ? "checked in ✓" : "waiting…"} · Away (${awayName}): ${ci.away_checked_in ? "checked in ✓" : "waiting…"}`;
-
   let mutualHtml = "";
   let playNowReadyHtml = "";
   const agreedFuture =
@@ -1349,14 +1347,8 @@ function renderAgreedPanel(root, f, sch) {
 
   const agreedMeta = document.getElementById("scheduleMeta");
   if (agreedMeta) {
-    agreedMeta.textContent = [
-      formatFixtureCompetition(f),
-      GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month,
-      `Home ${tzDisplayName(homeTz)} · Away ${tzDisplayName(awayTz)}`,
-      formatOwnerNowLine(ownerTz),
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    agreedMeta.textContent = "";
+    agreedMeta.hidden = true;
   }
 
   const ladderActive =
@@ -1382,22 +1374,32 @@ function renderAgreedPanel(root, f, sch) {
     ${holidayExpiryBannerHtml(f)}
     <div class="panel match-details">
       <h2>Match details</h2>
-      <div class="fixture-head">${fixtureTitle(f)}</div>
+      <div class="fixture-head">${escapeHtmlLite(
+        [formatFixtureCompetition(f), GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month]
+          .filter(Boolean)
+          .join(" · ")
+      )}</div>
       <div class="agreed-sides">
-        <div>
-          <div class="agreed-role">Home</div>
+        <div class="side-card">
+          <div class="agreed-role">Home${ownerTz === homeTz ? " · your time" : ""}</div>
           <div class="agreed-club">${escapeHtmlLite(homeName)}</div>
           <div class="agreed-owner" id="agreedHomeOwner">Owner …</div>
+          <div class="agreed-zone">${escapeHtmlLite(tzDisplayName(homeTz))}</div>
+          <div class="agreed-now">Now ${escapeHtmlLite(localNowInTz(homeTz))}</div>
         </div>
-        <div>
-          <div class="agreed-role">Away</div>
+        <div class="side-card">
+          <div class="agreed-role">Away${ownerTz === awayTz && ownerTz !== homeTz ? " · your time" : ""}</div>
           <div class="agreed-club">${escapeHtmlLite(awayName)}</div>
           <div class="agreed-owner" id="agreedAwayOwner">Owner …</div>
+          <div class="agreed-zone">${escapeHtmlLite(tzDisplayName(awayTz))}</div>
+          <div class="agreed-now">Now ${escapeHtmlLite(localNowInTz(awayTz))}</div>
         </div>
       </div>
-      <div class="tz-panel">
-        ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
-      </div>
+      ${
+        ownerTz !== homeTz && ownerTz !== awayTz
+          ? `<p class="meta">${escapeHtmlLite(formatOwnerNowLine(ownerTz))}</p>`
+          : ""
+      }
       <div class="conditions-row" id="agreedConditions">
         <span class="kit" id="agreedKit" hidden></span>
         <span class="cond-gap" id="agreedKitGap" hidden>·</span>
@@ -1406,7 +1408,7 @@ function renderAgreedPanel(root, f, sch) {
         <span class="pitch">Pitch: …</span>
       </div>
       ${unavailablePanelHtml(f)}
-      <p class="meta">${checkinStatus}</p>
+      <p class="meta">Check-in · Home ${ci.home_checked_in ? "checked in ✓" : "waiting…"} · Away ${ci.away_checked_in ? "checked in ✓" : "waiting…"}</p>
     </div>
     ${noShowLadderBannerHtml(f)}
     <div class="panel mutual-panel agreed-card" style="border-color:var(--gpsl-accent, #ff9900);">

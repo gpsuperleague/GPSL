@@ -78,9 +78,17 @@
       gap: 12px;
       margin: 12px 0;
     }
+    .side-card {
+      background: var(--club-panel, #121820);
+      border: 1px solid var(--club-border, #2a3a4a);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
     .agreed-role { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
     .agreed-club { font-size: 16px; font-weight: bold; color: #eee; margin-top: 2px; }
     .agreed-owner { color: #bbb; font-size: 13px; margin-top: 2px; }
+    .agreed-zone { color: var(--club-tile-text, #e8f0ff); font-size: 13px; font-weight: 700; margin-top: 8px; }
+    .agreed-now { color: #8ab; font-size: 12px; margin-top: 3px; }
     .agreed-when { font-size: 18px; color: var(--club-accent, #9fd4b0); margin: 8px 0 12px; }
     .agreed-card h2 { margin-bottom: 12px; }
     .agreed-card { margin-bottom: 16px; }
@@ -376,6 +384,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261121-different-time"></script>
+  <script type="module" src="fixture_schedule.js?v=20261121-match-details-tidy"></script>
 </body>
 </html>
