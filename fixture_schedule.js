@@ -50,6 +50,7 @@ import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
   formatFixtureUnavailableBannerHtml,
+  unavailablePlayersForClub,
 } from "./player_discipline.js?v=20261121-unavailable-always";
 import {
   cupFixtureKind,
@@ -251,8 +252,8 @@ function scheduleMatchChecksHtml(f) {
   const groups = [
     ["Pre-match", pre],
     ["Personnel", ["Manager clearly shown", "Subtactic clearly shown", "Squad clearly shown"]],
-    ["Tactics", ["Player instructions blank", "Fluid is a default formation", "No player dragging"]],
-    ["Pause", ["PA3 or PA4", "Advanced skill only"]],
+    ["Tactics", ["Player instructions clearly shown (blank)", "Fluid formations clearly shown (default formations)", "No player dragging visible"]],
+    ["Pause", ["PA3 or PA4 clearly shown", "Advanced skill clearly shown"]],
     [
       "On the pitch",
       [
