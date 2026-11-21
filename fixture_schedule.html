@@ -54,18 +54,6 @@
       margin-bottom: 16px;
     }
     .agreed-split > .panel { margin-bottom: 0; }
-    .agreed-label {
-      display: inline-block;
-      margin: 0 0 10px;
-      padding: 3px 8px;
-      border-radius: 4px;
-      background: #1c3a28;
-      color: #9fd4b0;
-      font-size: 12px;
-      font-weight: bold;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
     .agreed-sides {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -76,10 +64,43 @@
     .agreed-club { font-size: 16px; font-weight: bold; color: #eee; margin-top: 2px; }
     .agreed-owner { color: #bbb; font-size: 13px; margin-top: 2px; }
     .agreed-when { font-size: 18px; color: #9fd4b0; margin: 8px 0 12px; }
+    .agreed-card h2 { margin-bottom: 12px; }
+    .tz-panel .tz-compare {
+      margin: 0; padding: 0; background: transparent; border: none;
+    }
+    .conditions-row {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px 0;
+      font-size: 13px; color: #bbb; margin: 0 0 10px;
+    }
+    .conditions-row .kit { color: #f90; }
+    .conditions-row .weather { color: #8cf; }
+    .conditions-row .pitch { color: #cf8; }
+    .conditions-row .cond-gap { color: #555; margin: 0 8px; }
+    .conditions-row .cond-chip {
+      display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;
+    }
+    .conditions-row .cond-icon { width: 16px; height: 16px; display: block; }
+    .ladder-row {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .ladder-mod {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .ladder-mod .k {
+      color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .ladder-mod .v { color: #eee; font-size: 15px; font-weight: 700; margin-top: 4px; }
+    .ladder-mod .s { color: #aaa; font-size: 12px; line-height: 1.35; margin-top: 4px; }
     .drop-row { margin-top: 14px; padding-top: 12px; border-top: 1px solid #333; }
     .drop-row h3 { margin: 0 0 6px; font-size: 14px; color: #eee; }
     @media (max-width: 800px) {
-      .agreed-split, .agreed-sides { grid-template-columns: 1fr; }
+      .agreed-split, .agreed-sides, .ladder-row { grid-template-columns: 1fr 1fr; }
     }
     .catch-up-banner {
       background:#2a2200; border:1px solid #996600; border-radius:8px;
@@ -284,6 +305,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261121-agreed-layout"></script>
+  <script type="module" src="fixture_schedule.js?v=20261121-agreed-modules"></script>
 </body>
 </html>

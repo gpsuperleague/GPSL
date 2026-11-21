@@ -4,7 +4,11 @@ import {
   mountAdminClubPicker,
 } from "./staff_club_preview.js?v=20261113-admin-view";
 import { GPSL_MONTH_LABELS, formatFixtureCompetition } from "./competition.js";
-import { formatKitSeasonLabel } from "./competition_conditions.js?v=20261113-kit-season";
+import {
+  formatKitSeasonLabel,
+  formatWeatherChipHtml,
+  formatPitchChipHtml,
+} from "./competition_conditions.js?v=20261113-kit-season";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   loadScheduleContext,
@@ -908,6 +912,34 @@ async function fillAgreedOwners(f) {
   }
 }
 
+async function fillAgreedConditions(f) {
+  const root = document.getElementById("agreedConditions");
+  if (!root || !f?.id) return;
+  const { data, error } = await supabase
+    .from("competition_fixtures")
+    .select("weather, pitch_condition, kit_season")
+    .eq("id", f.id)
+    .maybeSingle();
+  if (!root.isConnected) return;
+  const kitEl = root.querySelector("#agreedKit");
+  const weatherEl = root.querySelector(".weather");
+  const pitchEl = root.querySelector(".pitch");
+  if (error || !data) {
+    if (weatherEl) weatherEl.textContent = "Weather: —";
+    if (pitchEl) pitchEl.textContent = "Pitch: —";
+    return;
+  }
+  const kit = formatKitSeasonLabel(data.kit_season);
+  if (kitEl && data.kit_season && kit && kit !== "—") {
+    kitEl.hidden = false;
+    kitEl.textContent = `Kit: ${kit}`;
+    const gap = root.querySelector("#agreedKitGap");
+    if (gap) gap.hidden = false;
+  }
+  if (weatherEl) weatherEl.innerHTML = `Weather: ${formatWeatherChipHtml(data.weather)}`;
+  if (pitchEl) pitchEl.innerHTML = `Pitch: ${formatPitchChipHtml(data.pitch_condition)}`;
+}
+
 async function fillDiscordOpponentTag(f) {
   const el = document.getElementById("discordOpponentTag");
   if (!el || el.dataset.loaded === "1") return;
@@ -997,22 +1029,40 @@ function noShowLadderBannerHtml(f) {
 
   if (attempt < 1 && !attempt3) return "";
 
-  const counts = `Fixture no-shows: ${homeName} <b>${homeN}</b>/3 · ${awayName} <b>${awayN}</b>/3. Season strikes: ${homeName} <b>${homeStrikes}</b> · ${awayName} <b>${awayStrikes}</b>.`;
-  const fines =
-    "Each strike is ₿500k. 3 on this fixture → ₿1m and the match is forfeited. Every 5th season strike (5, 10, 15…) adds another ₿1m.";
+  const homeLabel = homeName || f.home_club_short_name || "Home";
+  const awayLabel = awayName || f.away_club_short_name || "Away";
+  const mod = (label, value, sub = "") => `
+    <div class="ladder-mod">
+      <div class="k">${label}</div>
+      <div class="v">${value}</div>
+      ${sub ? `<div class="s">${sub}</div>` : ""}
+    </div>`;
+  const row = `<div class="ladder-row">
+    ${mod("Attempt", escapeHtmlLite(String(attempt || 1)), attempt3 ? "Open play" : "This fixture")}
+    ${mod(
+      "Fixture no-shows",
+      `${homeN}/3 · ${awayN}/3`,
+      `${escapeHtmlLite(homeLabel)} ${homeN}/3<br>${escapeHtmlLite(awayLabel)} ${awayN}/3`
+    )}
+    ${mod(
+      "Season strikes",
+      `${homeStrikes} · ${awayStrikes}`,
+      `${escapeHtmlLite(homeLabel)} ${homeStrikes}<br>${escapeHtmlLite(awayLabel)} ${awayStrikes}`
+    )}
+    ${mod("Each strike", "₿500k", "Charged when a no-show strike is given")}
+    ${mod("3 on this fixture", "₿1m", "The match is forfeited")}
+    ${mod("Every 5th strike", "+₿1m", "Season strikes 5, 10, 15…")}
+  </div>`;
 
   if (attempt3) {
-    return `<div class="catch-up-banner">
+    return `${row}<div class="catch-up-banner">
       <strong>Attempt 3</strong> — rearrange freely through
       <b>${deadlineLabel || "original month + 2 GPSL months"}</b> (Play now OK).
-      ${counts} ${fines}
       Still unplayed at that lock: more strikes loses, then a missed check-in, or a kick-off left sitting after the 48-hour reply, then logins, matches, forfeit losses, other reply fines, and check-ins. Level: void, neither club is given the win.
     </div>`;
   }
 
-  return `<div class="catch-up-banner">
-    <strong>Attempt ${attempt || 1}</strong> — ${counts} ${fines}
-  </div>`;
+  return row;
 }
 
 function alreadyPlayedPanelHtml() {
@@ -1295,7 +1345,7 @@ function renderAgreedPanel(root, f, sch) {
     Number(sch.play_attempt_count || 0) >= 3;
 
   const playNowPanel = playNowReadyHtml || `
-    <div class="panel">
+    <div class="panel mutual-panel" style="border-color:var(--gpsl-accent, #ff9900);">
       <h2>Play now</h2>
       <p class="meta">${
         agreedFuture
@@ -1313,10 +1363,9 @@ function renderAgreedPanel(root, f, sch) {
     ${holidayExpiryBannerHtml(f)}
     ${noShowLadderBannerHtml(f)}
     <div class="agreed-split">
-      <div class="panel agreed-card">
-        <p class="agreed-label">Kick-off agreed</p>
+      <div class="panel mutual-panel agreed-card" style="border-color:var(--gpsl-accent, #ff9900);">
+        <h2>Kick-off agreed</h2>
         <div class="fixture-head">${fixtureTitle(f)}</div>
-        ${kitSeasonLineHtml(f)}
         <div class="agreed-sides">
           <div>
             <div class="agreed-role">Home</div>
@@ -1330,7 +1379,13 @@ function renderAgreedPanel(root, f, sch) {
           </div>
         </div>
         <p class="agreed-when kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
-        ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
+        <div class="conditions-row" id="agreedConditions">
+          <span class="kit" id="agreedKit" hidden></span>
+          <span class="cond-gap" id="agreedKitGap" hidden>·</span>
+          <span class="weather">Weather: …</span>
+          <span class="cond-gap">·</span>
+          <span class="pitch">Pitch: …</span>
+        </div>
         <p class="meta" style="margin-top:6px;">
           <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
         </p>
@@ -1338,6 +1393,9 @@ function renderAgreedPanel(root, f, sch) {
         <p class="meta">${checkinStatus}</p>
       </div>
       <div class="agreed-play">${playNowPanel}</div>
+    </div>
+    <div class="panel tz-panel">
+      ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
     </div>
     <div class="panel">
       <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
@@ -1411,6 +1469,7 @@ function renderAgreedPanel(root, f, sch) {
   `;
 
   fillAgreedOwners(f);
+  fillAgreedConditions(f);
   const checkInBtn = document.getElementById("checkInBtn");
   const scheduleConsoleMount = document.getElementById("scheduleConsoleMount");
   if (scheduleConsoleMount) wirePitchAck(scheduleConsoleMount);
