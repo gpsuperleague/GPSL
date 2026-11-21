@@ -1208,8 +1208,8 @@ function renderAgreedPanel(root, f, sch) {
   } else if (agreedFuture && ctx.my_has_manager !== false) {
     const canBringForward = moOpts.can_request_play_now === true;
     const freeNewTimeNote = sch.mutual_override_used
-      ? "The one free change of kick-off for this fixture is already used. An earlier time can still be requested, and that does not need the free change."
-      : "One free change of kick-off per fixture, to a time you are both marked free. An earlier time does not use that free change.";
+      ? "The one free change of kick-off for this fixture is already used. A different time can still be requested from the calendar, and that does not need the free change."
+      : "One free change of kick-off per fixture, to a time you are both marked free. A different time from the calendar does not use that free change.";
     const playNowDefaultRaw = moOpts.play_now_kickoff_at
       ? new Date(moOpts.play_now_kickoff_at)
       : new Date(Date.now() + 5 * 60 * 1000);
@@ -1227,9 +1227,9 @@ function renderAgreedPanel(root, f, sch) {
         : "";
     const blockNote =
       !canBringForward && playNowBlockedReason
-        ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Earlier time unavailable:</b> ${escapeHtmlLite(playNowBlockedReason)}</p>`
+        ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Different time unavailable:</b> ${escapeHtmlLite(playNowBlockedReason)}</p>`
         : !canBringForward
-          ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Earlier time unavailable</b> right now (holiday early squad, double-booked, or outside the play window).</p>`
+          ? `<p class="meta" style="color:#fc6;margin-top:8px;"><b>Different time unavailable</b> right now (holiday early squad, double-booked, or outside the play window).</p>`
           : "";
 
     const pnSecs = Number(pn.seconds_remaining ?? 0);
@@ -1314,7 +1314,7 @@ function renderAgreedPanel(root, f, sch) {
     mutualHtml = `
         <p class="meta">
           Both clubs confirm in Inbox within 24 hours. No fine. This is one choice:
-          move the kick-off to another time you are both free, or to an earlier 10-minute time.
+          move the kick-off to another time you are both free, or request a different 10-minute time.
         </p>
         <p class="meta">${freeNewTimeNote}</p>
         ${
@@ -1327,7 +1327,7 @@ function renderAgreedPanel(root, f, sch) {
             : `<p class="meta" style="margin-top:12px;">The free change to a mutual time is not available on this fixture right now.</p>`
         }
         <p class="meta" style="margin-top:14px;">
-          Or request an <b>earlier</b> UK 10-minute time. The other club still confirms.
+          Or <b>request a different time</b> on the calendar, on a UK 10-minute mark. It has to be earlier than the agreed kick-off. The other club still confirms.
           This does not use the free change, and you can ask again later.
         </p>
         ${blockNote}
@@ -1339,12 +1339,12 @@ function renderAgreedPanel(root, f, sch) {
               : canBringForward
                 ? ""
                 : escapeHtmlLite(playNowBlockedReason || "Unavailable")
-          }">Request this earlier time</button>
+          }">Request different time</button>
         </div>
         <p class="meta" id="playNowPreview" hidden></p>
     `;
   } else if (sch.mutual_override_used) {
-    mutualHtml = `<p class="meta">The free change of kick-off for this fixture is already used. Change kick-off appears again while the agreed time is still in the future, including an earlier time that does not use that free change.</p>`;
+    mutualHtml = `<p class="meta">The free change of kick-off for this fixture is already used. Change kick-off appears again while the agreed time is still in the future, including a different time from the calendar that does not use that free change.</p>`;
   }
 
   const agreedMeta = document.getElementById("scheduleMeta");
@@ -1429,7 +1429,7 @@ function renderAgreedPanel(root, f, sch) {
       </div>
       <div class="ko-pane" data-ko-pane="playnow"${koPane("playnow")}>${playNowTabHtml}</div>
       <div class="ko-pane" data-ko-pane="change"${koPane("change")}>
-        ${mutualHtml || `<p class="meta">Change kick-off is available while this kick-off is still in the future. Both clubs confirm in Inbox within 24 hours. No fine. A mutual time uses the one free change for this fixture. An earlier time does not.</p>`}
+        ${mutualHtml || `<p class="meta">Change kick-off is available while this kick-off is still in the future. Both clubs confirm in Inbox within 24 hours. No fine. A mutual time uses the one free change for this fixture. A different time from the calendar does not.</p>`}
       </div>
       <div class="ko-pane" data-ko-pane="voluntary"${koPane("voluntary")}>
         <h3>Voluntary drop · ${voluntaryLeft}</h3>
@@ -1526,7 +1526,7 @@ function renderAgreedPanel(root, f, sch) {
     koChangeBtn.onclick = () => {
       if (
         !confirm(
-          "Change kick-off?\n\nBoth clubs confirm in Inbox within 24 hours. No fine.\nA time you are both marked free uses the one free change for this fixture.\nAn earlier 10-minute time does not use that free change, and you can ask again.\n\nNothing is sent until you pick a time and confirm the request."
+          "Change kick-off?\n\nBoth clubs confirm in Inbox within 24 hours. No fine.\nA time you are both marked free uses the one free change for this fixture.\nA different time from the calendar does not use that free change, and you can ask again. It has to be earlier than the agreed kick-off.\n\nNothing is sent until you pick a time and confirm the request."
         )
       ) {
         return;
@@ -1853,14 +1853,14 @@ function renderAgreedPanel(root, f, sch) {
       if (moOpts.can_request_play_now !== true) {
         setStatus(
           playNowBlockedReason ||
-            "Bring KO forward is unavailable for this fixture right now.",
+            "A different time is unavailable for this fixture right now.",
           true
         );
         return;
       }
       const iso = readPlayNowIso();
       if (!iso) {
-        setStatus("Pick a Bring KO forward date/time first.", true);
+        setStatus("Pick a different time on the calendar first.", true);
         return;
       }
       if (new Date(iso).getTime() <= Date.now()) {
@@ -1868,18 +1868,18 @@ function renderAgreedPanel(root, f, sch) {
         return;
       }
       if (new Date(iso).getTime() >= new Date(sch.agreed_kickoff_at).getTime()) {
-        setStatus("Bring KO forward must be earlier than the agreed kick-off.", true);
+        setStatus("That time has to be earlier than the agreed kick-off.", true);
         return;
       }
       if (
         !confirm(
-          `Request this earlier time?\n\n${formatKickoffPair(iso, homeTz, awayTz)}\n\nThe other club confirms in Inbox within 24 hours. No fine. This does not use the free change, and you can ask again later.`
+          `Request this different time?\n\n${formatKickoffPair(iso, homeTz, awayTz)}\n\nThe other club confirms in Inbox within 24 hours. No fine. This does not use the free change, and you can ask again later.`
         )
       ) {
         return;
       }
       playNowBtn.disabled = true;
-      setStatus("Sending Bring KO forward request…");
+      setStatus("Sending the different-time request…");
       const res = await requestMutualOverridePlayNow(fixtureId, iso);
       if (!res.ok) {
         setStatus(res.msg, true);
