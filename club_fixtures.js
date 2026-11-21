@@ -45,7 +45,7 @@ import {
   finalPlayCutoffDateHtml,
   formatKickoff,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261120-reply-who";
+} from "./match_scheduling.js?v=20261121-schedule";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   downloadIcs,
@@ -326,6 +326,15 @@ function actionHtml(f) {
     } else if (f.status === "played") {
       parts.push(`<a href="${url}" class="btn-link secondary">Match details</a>`);
     }
+  }
+
+  if (
+    f.status === "scheduled" &&
+    !parts.some((html) => html.includes("fixture_schedule.html"))
+  ) {
+    parts.push(
+      `<a href="fixture_schedule.html?fixture=${encodeURIComponent(String(f.id))}" class="btn-link secondary">Schedule</a>`
+    );
   }
 
   if (

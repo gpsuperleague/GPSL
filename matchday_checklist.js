@@ -583,6 +583,21 @@ function fixtureMetaHtml(fx) {
   return `<div class="mc-fx-meta">${parts.join(`<span class="mc-fx-meta-sep">·</span>`)}</div>`;
 }
 
+function scheduleHrefFor(fid) {
+  return withPreviewClub(`fixture_schedule.html?fixture=${fid}`);
+}
+
+function checklistActionsHtml(fx, actionNext, fid) {
+  const primary = actionNext ? renderActionButton(actionNext, fid) : "";
+  const alreadySchedule = String(actionNext?.href || "").includes("fixture_schedule.html");
+  const schedule =
+    fx.status === "played" || alreadySchedule
+      ? ""
+      : `<a class="mc-btn" href="${scheduleHrefFor(fid)}">Schedule</a>`;
+  if (!primary && !schedule) return "";
+  return `<div class="mc-actions">${primary}${schedule}</div>`;
+}
+
 function renderFixture(fx) {
   const fid = Number(fx.fixture_id);
   const steps = Array.isArray(fx.steps) ? fx.steps : [];
@@ -623,7 +638,7 @@ function renderFixture(fx) {
       ${showFilename ? `<div class="mc-filename">Filename: <code>${escapeHtml(video.filename)}</code></div>` : ""}
       ${fx.flags?.length ? `<div class="mc-flags">${renderFlags(fx.flags)}</div>` : ""}
       ${strikeNoteHtml(fid)}
-      ${actionNext ? `<div class="mc-actions">${renderActionButton(actionNext, fid)}</div>` : ""}
+      ${checklistActionsHtml(fx, actionNext, fid)}
       ${renderRecordingBlock(fx)}
     </div>`;
 }
@@ -678,7 +693,11 @@ function renderArrangeRow(a) {
       ${fixtureMetaHtml(a)}
       <div class="mc-next ${cls}"><b>${escapeHtml(label)}</b>${detail ? ` <span class="mc-next-detail">${escapeHtml(detail)}</span>` : ""}</div>
       ${strikeNoteHtml(fid)}
-      ${action ? `<div class="mc-actions"><a class="mc-btn mc-btn-primary" href="${withPreviewClub(`fixture_schedule.html?fixture=${fid}`)}">${action}</a></div>` : ""}
+      <div class="mc-actions">${
+        action
+          ? `<a class="mc-btn mc-btn-primary" href="${withPreviewClub(`fixture_schedule.html?fixture=${fid}`)}">${action}</a>`
+          : `<a class="mc-btn mc-btn-primary" href="${withPreviewClub(`fixture_schedule.html?fixture=${fid}`)}">Schedule</a>`
+      }</div>
     </div>`;
 }
 

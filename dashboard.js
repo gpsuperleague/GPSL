@@ -28,9 +28,9 @@ import {
   applyClubDashboardTheme,
   loadClubDashboardTheme,
 } from "./club_theme_common.js?v=20261026-theme-vars";
-import { startDashboardMatchday } from "./dashboard_matchday.js?v=20261113-admin-view";
+import { startDashboardMatchday } from "./dashboard_matchday.js?v=20261121-schedule";
 import { renderSupportBanner } from "./support_banner.js";
-import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261118-clearly-shown";
+import { startMatchdayChecklist } from "./matchday_checklist.js?v=20261121-schedule";
 import { startOwnerReadyChecklist } from "./owner_ready_checklist.js?v=20261113-admin-view";
 import {
   leagueBadgeSrc,

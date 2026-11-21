@@ -151,9 +151,8 @@ function renderFixtureCard(fx) {
   }
   if (fx.can_enter_result) {
     actions += `<a class="dash-md-btn dash-md-result" href="${matchdayHref}">Enter result</a>`;
-  } else if (!fx.can_check_in) {
-    actions += `<a class="dash-md-btn dash-md-link" href="${scheduleHref}">Schedule</a>`;
   }
+  actions += `<a class="dash-md-btn dash-md-link" href="${scheduleHref}">Schedule</a>`;
   if (fx.can_check_in || fx.before_kickoff) {
     actions += `<a class="dash-md-btn dash-md-link" href="${matchdayHref}">Match Day</a>`;
   }

@@ -51,7 +51,7 @@ import {
   finalPlayCutoffDateHtml,
   scheduleReplyOwedBy,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261120-reply-who";
+} from "./match_scheduling.js?v=20261121-schedule";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
@@ -371,6 +371,14 @@ function actionCell(fixture) {
           `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>`
         );
       }
+    }
+    if (
+      fixture.status === "scheduled" &&
+      !parts.some((html) => html.includes("fixture_schedule.html"))
+    ) {
+      parts.push(
+        `<a href="fixture_schedule.html?fixture=${encodeURIComponent(String(fixture.id))}" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Schedule</a>`
+      );
     }
   }
 

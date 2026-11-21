@@ -43,7 +43,7 @@ import {
   finalPlayCutoffDateHtml,
   scheduleReplyOwedBy,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261120-reply-who";
+} from "./match_scheduling.js?v=20261121-schedule";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
@@ -305,6 +305,14 @@ function cupOpsHtml(leg, extras) {
         const cls = sched.muted ? "leg-action leg-sched muted" : "leg-action leg-enter";
         actionBits.push(`<a class="${cls}" href="${sched.href}">${escapeHtml(sched.label)}</a>`);
       }
+    }
+    if (
+      f.status === "scheduled" &&
+      !actionBits.some((html) => html.includes("fixture_schedule.html"))
+    ) {
+      actionBits.push(
+        `<a class="leg-action leg-sched muted" href="fixture_schedule.html?fixture=${encodeURIComponent(String(f.id))}">Schedule</a>`
+      );
     }
   } else if (f.status === "played") {
     actionBits.push(`<div class="leg-action played-tag">Played</div>`);

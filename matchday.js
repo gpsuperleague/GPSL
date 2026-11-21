@@ -2601,7 +2601,11 @@ async function updateFixturePreview() {
 
   preview.innerHTML = `
     ${leagueBadgeHtml(f.division, { size: "sm" })}<b>${comp}</b>${f.competition_type === "league" ? ` · Matchday ${f.matchday}` : ""} · ${month}<br>
-    ${f.home_club_name} vs ${f.away_club_name}<br>
+    ${f.home_club_name} vs ${f.away_club_name}${
+      f.status === "played"
+        ? ""
+        : ` · <a href="fixture_schedule.html?fixture=${encodeURIComponent(f.id)}" style="color:var(--gpsl-accent, #ff9900);">Schedule</a>`
+    }<br>
     <span style="color:#aaa;font-size:13px;">${formatMatchConditions(f)}</span>${extra}${aggregateHtml}
     ${cutoffHtml}
     ${unavailableHtml}

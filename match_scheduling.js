@@ -1347,9 +1347,7 @@ export function scheduleActionLabel(fixture, myClubShort) {
       };
     }
     return {
-      label: catchUp
-        ? "Catch-up / replay · kick-off agreed"
-        : "Kick-off agreed",
+      label: "Schedule",
       href: scheduleUrl(fixture.id),
       muted: true,
     };
