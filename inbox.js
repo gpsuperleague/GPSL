@@ -1,7 +1,7 @@
 import { supabase, initGlobal, refreshInboxNavBadge, getAuthUserFast } from "./global.js";
 import { rejectFixtureResult, normalizeClubKey } from "./competition.js";
-import { loadInboxMessages, INBOX_CATEGORY_FILTERS, filterInboxByCategory } from "./competition_inbox.js?v=20260929-mc";
-import { inboxActionForMessage } from "./competition_inbox_actions.js?v=20260929-mc";
+import { loadInboxMessages, INBOX_CATEGORY_FILTERS, filterInboxByCategory } from "./competition_inbox.js?v=20261121-ko-sent";
+import { inboxActionForMessage } from "./competition_inbox_actions.js?v=20261121-ko-sent";
 import {
   acceptProposal,
   cancelMutualOverride,
@@ -896,7 +896,7 @@ async function renderInbox() {
       declineMutualBtn.onclick = async () => {
         if (
           !confirm(
-            "Decline this Discord lock?\n\nUse this if you did not agree that kick-off. They can propose another time on Schedule."
+            "Decline this kick-off change?\n\nThe agreed time stays. They can ask for another time on Schedule."
           )
         ) {
           return;

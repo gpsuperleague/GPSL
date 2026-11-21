@@ -33,6 +33,7 @@ const INBOX_CATEGORY_TYPES = {
     "match_forfeit_applied",
     "match_checkin_open",
     "match_mutual_override_requested",
+    "match_mutual_override_sent",
     "match_mutual_override_applied",
     "owner_holiday",
     "intl_result_to_confirm",

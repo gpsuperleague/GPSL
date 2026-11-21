@@ -36,6 +36,7 @@ export const INBOX_ACTION_DEFAULTS = {
   match_forfeit_applied: { label: "View fixture", href: "fixture_schedule.html" },
   match_checkin_open: { label: "Check in", href: "fixture_schedule.html" },
   match_mutual_override_requested: { label: "Confirm kick-off change", href: "fixture_schedule.html" },
+  match_mutual_override_sent: { label: "View schedule", href: "fixture_schedule.html" },
   match_mutual_override_applied: { label: "View schedule", href: "fixture_schedule.html" },
   intl_kickoff_proposal: { label: "Schedule international", href: "international_matchday.html" },
   intl_kickoff_counter: { label: "Respond to international", href: "international_matchday.html" },
@@ -90,6 +91,7 @@ export function inboxActionForMessage(msg) {
       msg.message_type === "match_forfeit_applied" ||
       msg.message_type === "match_checkin_open" ||
       msg.message_type === "match_mutual_override_requested" ||
+      msg.message_type === "match_mutual_override_sent" ||
       msg.message_type === "match_mutual_override_applied") &&
     msg.fixture_id
   ) {
