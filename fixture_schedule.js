@@ -1374,11 +1374,20 @@ function renderAgreedPanel(root, f, sch) {
     ${holidayExpiryBannerHtml(f)}
     <div class="panel match-details">
       <h2>Match details</h2>
-      <div class="fixture-head">${escapeHtmlLite(
-        [formatFixtureCompetition(f), GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month]
-          .filter(Boolean)
-          .join(" · ")
-      )}</div>
+      <div class="fixture-head-row">
+        <div class="fixture-head">${escapeHtmlLite(
+          [formatFixtureCompetition(f), GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month]
+            .filter(Boolean)
+            .join(" · ")
+        )}</div>
+        <div class="conditions-row" id="agreedConditions">
+          <span class="kit" id="agreedKit" hidden></span>
+          <span class="cond-gap" id="agreedKitGap" hidden>·</span>
+          <span class="weather">Weather: …</span>
+          <span class="cond-gap">·</span>
+          <span class="pitch">Pitch: …</span>
+        </div>
+      </div>
       <div class="agreed-sides">
         <div class="side-card">
           <div class="agreed-role">Home${ownerTz === homeTz ? " · your time" : ""}</div>
@@ -1402,13 +1411,6 @@ function renderAgreedPanel(root, f, sch) {
           ? `<p class="meta">${escapeHtmlLite(formatOwnerNowLine(ownerTz))}</p>`
           : ""
       }
-      <div class="conditions-row" id="agreedConditions">
-        <span class="kit" id="agreedKit" hidden></span>
-        <span class="cond-gap" id="agreedKitGap" hidden>·</span>
-        <span class="weather">Weather: …</span>
-        <span class="cond-gap">·</span>
-        <span class="pitch">Pitch: …</span>
-      </div>
       ${unavailablePanelHtml(f)}
     </div>
     ${noShowLadderBannerHtml(f)}
