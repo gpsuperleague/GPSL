@@ -64,6 +64,15 @@
       border: 1px solid var(--gpsl-accent, #ff9900);
     }
     .button:disabled { opacity:.5; cursor:not-allowed; }
+    .agreed-card .ko-actions .button:disabled,
+    .agreed-card .ko-actions .button.ko-off {
+      background: #3a3a3a;
+      color: #888;
+      border-color: #555;
+      opacity: 1;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
     .mutual-panel {
       border-color: var(--club-border, #446);
       background: var(--club-panel, #151820);
@@ -147,6 +156,8 @@
     }
     .ladder-mod .v { color: #eee; font-size: 15px; font-weight: 700; margin-top: 4px; }
     .ladder-mod .s { color: #aaa; font-size: 12px; line-height: 1.35; margin-top: 4px; }
+    .checks-squad { margin: 0 0 8px; }
+    .checks-squad a { color: var(--gpsl-accent, #ff9900); font-weight: 700; }
     .match-checks {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -394,6 +405,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261121-squad-unavailable"></script>
+  <script type="module" src="fixture_schedule.js?v=20261121-ko-grey"></script>
 </body>
 </html>

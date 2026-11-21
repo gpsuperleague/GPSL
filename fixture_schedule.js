@@ -264,7 +264,10 @@ function scheduleMatchChecksHtml(f) {
       ],
     ],
   ];
-  return `<div class="match-checks">${groups
+  const squadHref = f?.id
+    ? `matchday.html?fixture=${encodeURIComponent(f.id)}&select_squad=1#squadPanel`
+    : "matchday.html#squadPanel";
+  return `<p class="checks-squad"><a href="${squadHref}">Select squad</a></p><div class="match-checks">${groups
     .map(
       ([label, items]) => `<div class="match-check">
         <div class="k">${escapeHtmlLite(label)}</div>
@@ -1375,6 +1378,13 @@ function renderAgreedPanel(root, f, sch) {
 
   const voluntaryLeft = al.reschedule_used_this_month ? "used this GPSL month" : "1 available this GPSL month";
   const emergencyLeft = `${al.emergency_drops_remaining ?? "—"} of 2 left this season`;
+  const canPlayNowPress = pn.can_press === true;
+  const playNowBusy = pnActive;
+  const canChangeKo = !!mo || (agreedFuture && ctx.my_has_manager !== false);
+  const canVoluntary = al.can_voluntary_drop === true;
+  const canEmergency = !!(al.can_emergency_drop && Number(al.emergency_drops_remaining ?? 0) > 0);
+  const off = (unavailable, title) =>
+    unavailable ? ` disabled class="button secondary ko-off" title="${escapeHtmlLite(title)}"` : ` class="button secondary"`;
   const koDefault = mo && !pnActive ? "change" : "playnow";
   const koPane = (key) => (key === koDefault ? "" : " hidden");
   const koTab = (key) => (key === koDefault ? " active" : "");
@@ -1433,10 +1443,10 @@ function renderAgreedPanel(root, f, sch) {
       <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
       <div class="actions ko-actions">
         <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
-        <button type="button" id="${pn.can_press === true ? "playNowReadyBtn" : "koPlayNowBtn"}" class="button">Play now</button>
-        <button type="button" id="koChangeBtn" class="button secondary">Change kick-off</button>
-        <button type="button" id="voluntaryDropBtn" class="button secondary">Voluntary drop</button>
-        <button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop</button>
+        <button type="button" id="${canPlayNowPress ? "playNowReadyBtn" : "koPlayNowBtn"}" class="button${canPlayNowPress || playNowBusy ? "" : " ko-off"}"${canPlayNowPress || playNowBusy ? "" : ` disabled title="${escapeHtmlLite(playNowBlockedReason || "Play now is not available on this fixture right now")}"`}>Play now</button>
+        <button type="button" id="koChangeBtn"${off(!canChangeKo, "Change kick-off is available while the agreed kick-off is still in the future")}>Change kick-off</button>
+        <button type="button" id="voluntaryDropBtn"${off(!canVoluntary, "Voluntary drop is not available on this fixture right now")}>Voluntary drop</button>
+        <button type="button" id="emergencyDropBtn"${off(!canEmergency, "Emergency drop is not available on this fixture right now")}>Emergency drop</button>
       </div>
       <div class="ko-tabs" role="tablist" aria-label="Kick-off options">
         <button type="button" class="ko-tab${koTab("playnow")}" data-ko-tab="playnow" role="tab">Play now</button>
@@ -1553,15 +1563,8 @@ function renderAgreedPanel(root, f, sch) {
     };
   }
   const koPlayNowBtn = document.getElementById("koPlayNowBtn");
-  if (koPlayNowBtn) {
-    koPlayNowBtn.onclick = () => {
-      showKoTab("playnow");
-      window.alert(
-        pnActive
-          ? "Play now is already open. Use this tab to check in, enter the result, or cancel. Pressing it again does not start a second session."
-          : "Play now is not available on this fixture right now.\n\nWhen it is, the first press opens a shared 20-minute check-in. Both clubs press Play now, then check in. No allowance is used. The agreed kick-off stays unless the match is played."
-      );
-    };
+  if (koPlayNowBtn && !koPlayNowBtn.disabled) {
+    koPlayNowBtn.onclick = () => showKoTab("playnow");
   }
   const calBtn = document.getElementById("addKickoffCalendarBtn");
   if (calBtn && sch.agreed_kickoff_at) {
