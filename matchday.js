@@ -3210,6 +3210,7 @@ function fixtureIdFromUrl() {
     fixtureId: fixtureParam ? String(fixtureParam).trim() : null,
     confirmId: confirmParam ? String(confirmParam).trim() : null,
     fixCheckinSquad: params.get("fix_checkin_squad") === "1",
+    selectSquad: params.get("select_squad") === "1",
   };
 }
 
@@ -3241,7 +3242,7 @@ async function ensureFixtureInUpcomingList(fixtureId) {
 }
 
 async function preselectFixtureFromUrl() {
-  const { fixtureId, confirmId, fixCheckinSquad } = fixtureIdFromUrl();
+  const { fixtureId, confirmId, fixCheckinSquad, selectSquad } = fixtureIdFromUrl();
   if (!fixtureId && !confirmId) return;
 
   let targetId = fixtureId;
@@ -3265,6 +3266,15 @@ async function preselectFixtureFromUrl() {
   }
 
   sel.value = String(targetId);
+  if (selectSquad) {
+    setMatchdayTab("squad");
+    const squadSel = document.getElementById("squadTargetSelect");
+    if (squadSel && [...squadSel.options].some((o) => o.value === String(targetId))) {
+      squadSel.value = String(targetId);
+      await applySquadTarget();
+    }
+    return;
+  }
   // Enter/confirm links should land on Submit result — not the squad tab.
   if (!fixCheckinSquad) setMatchdayTab("submit");
   await updateFixturePreview();

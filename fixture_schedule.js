@@ -50,7 +50,7 @@ import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
   formatFixtureUnavailableBannerHtml,
-} from "./player_discipline.js?v=20261116-review-fix";
+} from "./player_discipline.js?v=20261121-unavailable-always";
 import {
   cupFixtureKind,
   pitchBehaviourPanelHtml,
@@ -146,12 +146,23 @@ function matchdayFixHref(fid) {
   return `matchday.html?fixture=${encodeURIComponent(fid)}&fix_checkin_squad=1`;
 }
 
-function unavailablePanelHtml(f) {
+function unavailablePanelHtml(f, { always = false } = {}) {
   return formatFixtureUnavailableBannerHtml(fixtureUnavailable, {
     homeName: fullClubName(f.home_club_short_name) || f.home_club_short_name,
     awayName: fullClubName(f.away_club_short_name) || f.away_club_short_name,
     clubShort: myClub?.short || ctx?.my_club_short_name || null,
+    always,
   });
+}
+
+function squadSelectLinkHtml(f, side) {
+  const mine = String(myClub?.short || ctx?.my_club_short_name || "").toUpperCase();
+  const club = String(
+    (side === "home" ? f.home_club_short_name : f.away_club_short_name) || ""
+  ).toUpperCase();
+  if (!mine || mine !== club || !f?.id) return "";
+  const href = `matchday.html?fixture=${encodeURIComponent(f.id)}&select_squad=1#squadPanel`;
+  return `<a class="agreed-squad" href="${href}">Select matchday squad</a>`;
 }
 
 function setStatus(msg, isError = false) {
@@ -1396,6 +1407,7 @@ function renderAgreedPanel(root, f, sch) {
           <div class="agreed-zone">${escapeHtmlLite(tzDisplayName(homeTz))}</div>
           <div class="agreed-now">Now ${escapeHtmlLite(localNowInTz(homeTz))}</div>
           <div class="agreed-checkin">Check-in ${ci.home_checked_in ? "checked in ✓" : "waiting…"}</div>
+          ${squadSelectLinkHtml(f, "home")}
         </div>
         <div class="side-card">
           <div class="agreed-role">Away${ownerTz === awayTz && ownerTz !== homeTz ? " · your time" : ""}</div>
@@ -1404,6 +1416,7 @@ function renderAgreedPanel(root, f, sch) {
           <div class="agreed-zone">${escapeHtmlLite(tzDisplayName(awayTz))}</div>
           <div class="agreed-now">Now ${escapeHtmlLite(localNowInTz(awayTz))}</div>
           <div class="agreed-checkin">Check-in ${ci.away_checked_in ? "checked in ✓" : "waiting…"}</div>
+          ${squadSelectLinkHtml(f, "away")}
         </div>
       </div>
       ${
@@ -1411,7 +1424,7 @@ function renderAgreedPanel(root, f, sch) {
           ? `<p class="meta">${escapeHtmlLite(formatOwnerNowLine(ownerTz))}</p>`
           : ""
       }
-      ${unavailablePanelHtml(f)}
+      ${unavailablePanelHtml(f, { always: true })}
     </div>
     ${noShowLadderBannerHtml(f)}
     <div class="panel mutual-panel agreed-card" style="border-color:var(--gpsl-accent, #ff9900);">
@@ -2571,7 +2584,7 @@ function lockPreviewSchedule() {
     if (!/matchday\.html|fixture_schedule\.html/i.test(href) || !previewShort) return;
     const url = new URL(href, window.location.href);
     url.searchParams.set("club", previewShort);
-    link.setAttribute("href", `${url.pathname.split("/").pop()}${url.search}`);
+    link.setAttribute("href", `${url.pathname.split("/").pop()}${url.search}${url.hash}`);
   });
 }
 

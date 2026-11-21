@@ -346,22 +346,31 @@ export function formatFixtureUnavailableHtml(payload, names = {}) {
  * @param {{ homeName?: string, awayName?: string, clubShort?: string|null }} opts
  */
 export function formatFixtureUnavailableBannerHtml(payload, opts = {}) {
-  if (!payload) return "";
+  if (!payload) {
+    if (!opts.always) return "";
+    return `<div class="fixture-unavailable" role="status">
+      <div class="fixture-unavailable-title">Unavailable for this match</div>
+      <p class="unavailable-empty">Could not load who is out for this match.</p>
+    </div>`;
+  }
   const home = payload.home || [];
   const away = payload.away || [];
-  if (!home.length && !away.length) return "";
+  if (!home.length && !away.length && !opts.always) return "";
 
   const homeLabel = opts.homeName || payload.home_club_short_name || "Home";
   const awayLabel = opts.awayName || payload.away_club_short_name || "Away";
-  const ownLine = formatOwnUnavailableLine(payload, opts.clubShort);
-  const alert = ownLine
-    ? `<div class="fixture-unavailable-alert">${ownLine
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")}</div>`
-    : `<div class="fixture-unavailable-alert">Players unavailable for this match — check both clubs below before proposing or checking in.</div>`;
+  const hasOuts = home.length > 0 || away.length > 0;
+  const ownLine = hasOuts ? formatOwnUnavailableLine(payload, opts.clubShort) : "";
+  const alert = !hasOuts
+    ? ""
+    : ownLine
+      ? `<div class="fixture-unavailable-alert">${ownLine
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")}</div>`
+      : `<div class="fixture-unavailable-alert">Players unavailable for this match — check both clubs below before proposing or checking in.</div>`;
 
-  return `<div class="fixture-unavailable has-outs" role="status">
+  return `<div class="fixture-unavailable${hasOuts ? " has-outs" : ""}" role="status">
     ${alert}
     <div class="fixture-unavailable-title">Unavailable for this match</div>
     <div class="fixture-unavailable-grid">
