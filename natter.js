@@ -1,6 +1,12 @@
 import { supabase, initGlobal, getAuthUserFast, refreshNatterNavBadge, isGpslAdminUser } from "./global.js";
 
 const MAX_CHARS = 1000;
+const ADMIN_CLUB_CHARS = 1500;
+
+function composeCharLimit() {
+  if (isAdmin && postAs === "club") return ADMIN_CLUB_CHARS;
+  return MAX_CHARS;
+}
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGE_EDGE = 1600;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -146,10 +152,12 @@ function updateCharCount() {
   const input = document.getElementById("natterBody");
   const countEl = document.getElementById("natterCharCount");
   if (!input || !countEl) return;
+  const limit = composeCharLimit();
+  input.maxLength = limit;
   const n = String(input.value || "").length;
-  countEl.textContent = `${n} / ${MAX_CHARS}`;
-  countEl.classList.toggle("is-warn", n >= MAX_CHARS - 80 && n <= MAX_CHARS);
-  countEl.classList.toggle("is-over", n > MAX_CHARS);
+  countEl.textContent = `${n} / ${limit}`;
+  countEl.classList.toggle("is-warn", n >= limit - 80 && n <= limit);
+  countEl.classList.toggle("is-over", n > limit);
   syncPostButton();
 }
 
@@ -161,7 +169,7 @@ function syncPostButton() {
   const ok =
     (postAs === "club" ? Boolean(composeState?.can_compose) : isAdmin) &&
     body.length >= 1 &&
-    body.length <= MAX_CHARS;
+    body.length <= composeCharLimit();
   btn.disabled = !ok;
 }
 
@@ -931,8 +939,8 @@ async function submitPost() {
     setComposeHint("Write something before posting.", true);
     return;
   }
-  if (body.length > MAX_CHARS) {
-    setComposeHint(`Too long — max ${MAX_CHARS} characters.`, true);
+  if (body.length > composeCharLimit()) {
+    setComposeHint(`Too long — max ${composeCharLimit()} characters.`, true);
     return;
   }
 
@@ -970,7 +978,7 @@ async function submitPost() {
             : `You’ve already posted for ${natterWindowLabel(composeState?.context)}.`,
         window_closed: "Compose window is closed.",
         empty: "Write something before posting.",
-        too_long: `Too long — max ${MAX_CHARS} characters.`,
+        too_long: `Too long — max ${Number(data?.max_chars) || composeCharLimit()} characters.`,
         invalid_image_path: "Image path was rejected.",
         no_club: "No club found for your account.",
         admin_only: "Only the GPSL admin can post as the league.",
