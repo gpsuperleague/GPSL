@@ -43,6 +43,14 @@
       border-radius:6px; font-weight:bold; cursor:pointer; font-size:13px;
     }
     .button.secondary { background:#444; color:#eee; }
+    .agreed-card h2,
+    .mutual-panel.agreed-card h2 { color: var(--gpsl-accent, #ff9900); }
+    .agreed-card .button,
+    .agreed-card a.button {
+      background: var(--gpsl-accent, #ff9900);
+      color: #111;
+      border: 1px solid var(--gpsl-accent, #ff9900);
+    }
     .button:disabled { opacity:.5; cursor:not-allowed; }
     .mutual-panel { border-color:#446; background:#151820; }
     .mutual-panel h2 { font-size:15px; color:#9cf; }
@@ -76,7 +84,7 @@
       padding: 8px 12px; color: #aaa; font-size: 13px; font-weight: 700; cursor: pointer;
     }
     .ko-tab:hover { color: #eee; }
-    .ko-tab.active { color: #9cf; border-bottom-color: #9cf; }
+    .ko-tab.active { color: var(--gpsl-accent, #ff9900); border-bottom-color: var(--gpsl-accent, #ff9900); }
     .ko-pane { padding-top: 12px; }
     .ko-pane h3 { margin: 0 0 8px; font-size: 14px; color: #eee; }
     .tz-panel .tz-compare {
