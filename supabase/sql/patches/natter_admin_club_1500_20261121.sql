@@ -37,7 +37,7 @@ BEGIN
   END IF;
 
   v_new := replace(v_def, v_old, v_repl);
-  EXECUTE v_new;
+  EXECUTE v_new || ';';
 
   SELECT replace(pg_get_functiondef('public.natter_get_compose_state()'::regprocedure), E'\r\n', E'\n')
   INTO v_def;
@@ -49,7 +49,7 @@ BEGIN
     RAISE EXCEPTION 'natter_get_compose_state max_chars not found';
   END IF;
 
-  EXECUTE replace(v_def, v_old, v_repl);
+  EXECUTE replace(v_def, v_old, v_repl) || ';';
 END;
 $patch$;
 
