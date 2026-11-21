@@ -1395,6 +1395,9 @@ function renderAgreedPanel(root, f, sch) {
           <div class="agreed-owner" id="agreedAwayOwner">Owner …</div>
         </div>
       </div>
+      <div class="tz-panel">
+        ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
+      </div>
       <div class="conditions-row" id="agreedConditions">
         <span class="kit" id="agreedKit" hidden></span>
         <span class="cond-gap" id="agreedKitGap" hidden>·</span>
@@ -1447,9 +1450,6 @@ function renderAgreedPanel(root, f, sch) {
       <div class="ko-pane" data-ko-pane="calendar"${koPane("calendar")}>
         <p class="meta">Add to calendar downloads a file for this agreed kick-off. It does not change the match, and it does not message the other club.</p>
       </div>
-    </div>
-    <div class="panel tz-panel">
-      ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
     </div>
     <div class="panel">
       <h2>Checks for this match</h2>
