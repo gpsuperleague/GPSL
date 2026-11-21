@@ -1489,15 +1489,15 @@ function renderAgreedPanel(root, f, sch) {
     </div>
     <div class="panel">
       <h2>Drops</h2>
-      <p class="meta">A drop throws away the agreed kick-off and sends the match back to arranging. It is for one club. The other club does not have to agree.</p>
+      <p class="meta">A drop throws away the agreed kick-off and sends the match back to arranging. It is for one club. The other club does not have to agree. If Change kick-off is still available, use that. Use a drop when you cannot reach them, for example they are not answering a Discord DM.</p>
       <div class="drop-row">
         <h3>Voluntary drop · ${voluntaryLeft}</h3>
-        <p class="meta">Use this when the kick-off is still more than 24 hours away and you already know you cannot play it. One per GPSL month. Not on a catch-up. Example: the match is Sunday and on Thursday you cannot make it. You drop, and both clubs pick a new time. No fine.</p>
+        <p class="meta">Use this when the kick-off is still more than 24 hours away and you already know you cannot play it. One per GPSL month. Not on a catch-up. Example: the match is Sunday and on Thursday you cannot make it. If a reschedule is still open, agree a new time that way. If you cannot reach them on Discord, drop it. Both clubs then pick a new time. No fine.</p>
         ${al.can_voluntary_drop ? '<div class="actions"><button type="button" id="voluntaryDropBtn" class="button secondary">Drop and reschedule (24h+ notice)</button></div>' : '<p class="meta">Not available on this fixture right now.</p>'}
       </div>
       <div class="drop-row">
         <h3>Emergency drop · ${emergencyLeft}</h3>
-        <p class="meta">Use this inside the last 24 hours, and only before the kick-off time. Two per season. Not on a catch-up. Example: two hours before kick-off your connection fails. One drop unschedules the match and moves it to the next play attempt. If none are left, the kick-off can only move if both clubs agree a new time.</p>
+        <p class="meta">Use this inside the last 24 hours, and only before the kick-off time. Two per season. Not on a catch-up. Example: two hours before kick-off your connection fails and they are not answering a Discord DM. One drop unschedules the match and moves it to the next play attempt. If a reschedule is still available and they will confirm it, use that instead. If none are left, the kick-off can only move if both clubs agree a new time.</p>
         ${
           al.can_emergency_drop && Number(al.emergency_drops_remaining ?? 1) > 0
             ? '<div class="actions"><button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (under 24h)</button></div>'
