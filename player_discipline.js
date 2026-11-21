@@ -351,6 +351,7 @@ export function formatFixtureUnavailableBannerHtml(payload, opts = {}) {
     return `<div class="fixture-unavailable" role="status">
       <div class="fixture-unavailable-title">Unavailable for this match</div>
       <p class="unavailable-empty">Could not load who is out for this match.</p>
+      ${opts.footerHtml || ""}
     </div>`;
   }
   const home = payload.home || [];
@@ -399,6 +400,7 @@ export function formatFixtureUnavailableBannerHtml(payload, opts = {}) {
         <ul class="unavailable-list">${formatUnavailableSideList(away)}</ul>
       </div>
     </div>
+    ${opts.footerHtml || ""}
   </div>`;
 }
 
