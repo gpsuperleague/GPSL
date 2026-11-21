@@ -1258,11 +1258,9 @@ function renderAgreedPanel(root, f, sch) {
           "Neither checked in during Play now — fines/strikes still apply. Either owner can enter a result or reset.";
       }
       playNowReadyHtml = `
-        <div class="panel mutual-panel" style="border-color:var(--gpsl-accent, #ff9900);">
-          <h2>Play now — window closed</h2>
-          <p class="meta">${blurb}</p>
-          <p class="meta">${readyLine}</p>
-          <div class="actions">
+        <p class="meta"><b>Play now — window closed.</b> ${blurb}</p>
+        <p class="meta">${readyLine}</p>
+        <div class="actions">
             ${
               canEnter
                 ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Match was played — enter result</a>`
@@ -1273,26 +1271,21 @@ function renderAgreedPanel(root, f, sch) {
                 ? '<button type="button" id="playNowResetBtn" class="button secondary">Reset Play now (keep agreed KO)</button>'
                 : ""
             }
-          </div>
-        </div>`;
+          </div>`;
     } else if (pnActive) {
       playNowReadyHtml = `
-        <div class="panel mutual-panel" style="border-color:var(--gpsl-accent, #ff9900);">
-          <h2>Play now</h2>
-          <p class="meta">
-            Both owners press <b>Play now</b>, then check in. Shared window:
-            <b><span id="playNowCountdown">${pnCountdown}</span></b> left
-            (20 min from first press). Agreed KO stays until the match is confirmed played.
-            ${pn.ko_forfeit_suspended ? " Original KO check-in fines are <b>suspended</b> while this session is active." : ""}
-          </p>
-          <p class="meta">${readyLine}</p>
-          <div class="actions">
+        <p class="meta">
+          Both owners press <b>Play now</b>, then check in. Shared window:
+          <b><span id="playNowCountdown">${pnCountdown}</span></b> left
+          (20 min from first press). The agreed kick-off stays until the match is confirmed played.
+          ${pn.ko_forfeit_suspended ? " Original kick-off check-in fines are <b>suspended</b> while this session is active." : ""}
+        </p>
+        <p class="meta">${readyLine}</p>
+        <div class="actions">
             ${
-              pn.can_press
-                ? '<button type="button" id="playNowReadyBtn" class="button">Play now</button>'
-                : pn.my_pressed
-                  ? '<span class="meta">You pressed Play now — waiting for opponent / check-in.</span>'
-                  : ""
+              pn.my_pressed && !pn.can_press
+                ? '<span class="meta">You pressed Play now — waiting for the other club, or check in below.</span>'
+                : ""
             }
             ${
               pn.can_check_in
@@ -1309,24 +1302,16 @@ function renderAgreedPanel(root, f, sch) {
                 ? '<button type="button" id="playNowResetBtn" class="button secondary">Cancel Play now</button>'
                 : ""
             }
-          </div>
-        </div>`;
+          </div>`;
     } else if (pn.can_press === true) {
       playNowReadyHtml = `
-        <div class="panel mutual-panel" style="border-color:var(--gpsl-accent, #ff9900);">
-          <h2>Play now</h2>
-          <p class="meta">
-            Ready to play <b>now</b>? First press starts a shared <b>20‑minute</b> check-in window.
-            Both must press Play now, then check in. No allowance used. Agreed kick-off stays unless the match is confirmed played.
-          </p>
-          <div class="actions">
-            <button type="button" id="playNowReadyBtn" class="button">Play now</button>
-          </div>
-        </div>`;
+        <p class="meta">
+          Ready to play <b>now</b>? The Play now button starts a shared <b>20-minute</b> check-in.
+          Both clubs press it, then check in. No allowance is used. The agreed kick-off stays unless the match is played.
+        </p>`;
     }
 
     mutualHtml = `
-      <div class="ko-fold">
         <p class="meta">
           Both clubs confirm in Inbox within 24 hours. No fine. This is one choice:
           move the kick-off to another time you are both free, or to an earlier 10-minute time.
@@ -1357,7 +1342,6 @@ function renderAgreedPanel(root, f, sch) {
           }">Request this earlier time</button>
         </div>
         <p class="meta" id="playNowPreview" hidden></p>
-      </div>
     `;
   } else if (sch.mutual_override_used) {
     mutualHtml = `<p class="meta">The free change of kick-off for this fixture is already used. Change kick-off appears again while the agreed time is still in the future, including an earlier time that does not use that free change.</p>`;
@@ -1379,18 +1363,18 @@ function renderAgreedPanel(root, f, sch) {
     !!(ctx?.no_show_ladder?.ladder_active || ctx?.no_show_ladder?.open_play_active) ||
     Number(sch.play_attempt_count || 0) >= 3;
 
-  const playNowPanel = playNowReadyHtml || `
-    <div class="panel mutual-panel" style="border-color:var(--gpsl-accent, #ff9900);">
-      <h2>Play now</h2>
-      <p class="meta">${
-        agreedFuture
-          ? "Play now is not available on this fixture right now. When it is, the first press opens a shared 20-minute check-in. Both clubs press it, then check in. The agreed kick-off stays unless the match is played."
-          : "Play now sits here while the agreed kick-off is still in the future. The first press opens a shared 20-minute check-in. Both clubs press it, then check in. The agreed time stays unless the match is played."
-      }</p>
-    </div>`;
+  const playNowTabHtml = playNowReadyHtml || `
+    <p class="meta">${
+      agreedFuture
+        ? "Play now is not available on this fixture right now. When it is, the first press opens a shared 20-minute check-in. Both clubs press it, then check in. No allowance is used. The agreed kick-off stays unless the match is played."
+        : "Play now is here while the agreed kick-off is still in the future. The first press opens a shared 20-minute check-in. Both clubs press it, then check in. No allowance is used. The agreed time stays unless the match is played."
+    }</p>`;
 
   const voluntaryLeft = al.reschedule_used_this_month ? "used this GPSL month" : "1 available this GPSL month";
   const emergencyLeft = `${al.emergency_drops_remaining ?? "—"} of 2 left this season`;
+  const koDefault = mo && !pnActive ? "change" : "playnow";
+  const koPane = (key) => (key === koDefault ? "" : " hidden");
+  const koTab = (key) => (key === koDefault ? " active" : "");
 
   root.innerHTML = `
     ${catchUpBannerHtml()}
@@ -1422,38 +1406,47 @@ function renderAgreedPanel(root, f, sch) {
       <p class="meta">${checkinStatus}</p>
     </div>
     ${noShowLadderBannerHtml(f)}
-    <div class="agreed-split">
-      <div class="panel mutual-panel agreed-card" style="border-color:var(--gpsl-accent, #ff9900);">
-        <h2>Kick-off agreed</h2>
-        <p class="agreed-when kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
-        <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
-        <div class="actions">
-          <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
-          <button type="button" id="changeKickoffToggle" class="button secondary" aria-expanded="${mo ? "true" : "false"}">Change kick-off</button>
-        </div>
-        <div id="changeKickoffBody"${mo ? "" : " hidden"}>
-          ${mutualHtml || `<p class="meta">Change kick-off is available while this kick-off is still in the future.</p>`}
-        </div>
-        <div class="drop-block">
-          <h3>Drops</h3>
-          <p class="meta">A drop throws away the agreed kick-off and sends the match back to arranging. It is for one club. The other club does not have to agree. If Change kick-off is still available, use that. Use a drop when you cannot reach them, for example they are not answering a Discord DM.</p>
-          <div class="drop-row">
-            <h3>Voluntary drop · ${voluntaryLeft}</h3>
-            <p class="meta">Use this when the kick-off is still more than 24 hours away and you already know you cannot play it. One per GPSL month. Not on a catch-up. Example: the match is Sunday and on Thursday you cannot make it. If a reschedule is still open, agree a new time that way. If you cannot reach them on Discord, drop it. Both clubs then pick a new time. No fine.</p>
-            ${al.can_voluntary_drop ? '<div class="actions"><button type="button" id="voluntaryDropBtn" class="button secondary">Drop and reschedule (24h+ notice)</button></div>' : '<p class="meta">Not available on this fixture right now.</p>'}
-          </div>
-          <div class="drop-row">
-            <h3>Emergency drop · ${emergencyLeft}</h3>
-            <p class="meta">Use this inside the last 24 hours, and only before the kick-off time. Two per season. Not on a catch-up. Example: two hours before kick-off your connection fails and they are not answering a Discord DM. One drop unschedules the match and moves it to the next play attempt. If a reschedule is still available and they will confirm it, use that instead. If none are left, the kick-off can only move if both clubs agree a new time.</p>
-            ${
-              al.can_emergency_drop && Number(al.emergency_drops_remaining ?? 1) > 0
-                ? '<div class="actions"><button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (under 24h)</button></div>'
-                : '<p class="meta">Not available on this fixture right now.</p>'
-            }
-          </div>
-        </div>
+    <div class="panel mutual-panel agreed-card" style="border-color:var(--gpsl-accent, #ff9900);">
+      <h2>Kick-off agreed</h2>
+      <p class="agreed-when kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
+      <p class="meta">Check-in opens <b>10 minutes before</b> kick-off and stays open until <b>10 minutes after</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
+      <div class="actions ko-actions">
+        <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
+        <button type="button" id="${pn.can_press === true ? "playNowReadyBtn" : "koPlayNowBtn"}" class="button">Play now</button>
+        <button type="button" id="koChangeBtn" class="button secondary">Change kick-off</button>
+        <button type="button" id="voluntaryDropBtn" class="button secondary">Voluntary drop</button>
+        <button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop</button>
       </div>
-      <div class="agreed-play">${playNowPanel}</div>
+      <div class="ko-tabs" role="tablist" aria-label="Kick-off options">
+        <button type="button" class="ko-tab${koTab("playnow")}" data-ko-tab="playnow" role="tab">Play now</button>
+        <button type="button" class="ko-tab${koTab("change")}" data-ko-tab="change" role="tab">Change kick-off</button>
+        <button type="button" class="ko-tab${koTab("voluntary")}" data-ko-tab="voluntary" role="tab">Voluntary drop</button>
+        <button type="button" class="ko-tab${koTab("emergency")}" data-ko-tab="emergency" role="tab">Emergency drop</button>
+        <button type="button" class="ko-tab${koTab("calendar")}" data-ko-tab="calendar" role="tab">Calendar</button>
+      </div>
+      <div class="ko-pane" data-ko-pane="playnow"${koPane("playnow")}>${playNowTabHtml}</div>
+      <div class="ko-pane" data-ko-pane="change"${koPane("change")}>
+        ${mutualHtml || `<p class="meta">Change kick-off is available while this kick-off is still in the future. Both clubs confirm in Inbox within 24 hours. No fine. A mutual time uses the one free change for this fixture. An earlier time does not.</p>`}
+      </div>
+      <div class="ko-pane" data-ko-pane="voluntary"${koPane("voluntary")}>
+        <h3>Voluntary drop · ${voluntaryLeft}</h3>
+        <p class="meta">Use this when the kick-off is still more than 24 hours away and you already know you cannot play it. One per GPSL month. Not on a catch-up. The other club does not have to agree. No fine. The match goes back to arranging.</p>
+        <p class="meta">Example: the match is Sunday and on Thursday you cannot make it. If Change kick-off is still open, agree a new time that way. If you cannot reach them, for example no answer to a Discord DM, use Voluntary drop.</p>
+        ${al.can_voluntary_drop ? "" : '<p class="meta">Not available on this fixture right now.</p>'}
+      </div>
+      <div class="ko-pane" data-ko-pane="emergency"${koPane("emergency")}>
+        <h3>Emergency drop · ${emergencyLeft}</h3>
+        <p class="meta">Use this inside the last 24 hours, and only before the kick-off time. Two per season. Not on a catch-up. It unschedules the match and moves it to the next play attempt. The other club does not have to agree.</p>
+        <p class="meta">Example: two hours before kick-off your connection fails and they are not answering a Discord DM. If a reschedule is still available and they will confirm it, use Change kick-off instead. If none are left, the kick-off can only move when both clubs agree a new time.</p>
+        ${
+          al.can_emergency_drop && Number(al.emergency_drops_remaining ?? 1) > 0
+            ? ""
+            : '<p class="meta">Not available on this fixture right now.</p>'
+        }
+      </div>
+      <div class="ko-pane" data-ko-pane="calendar"${koPane("calendar")}>
+        <p class="meta">Add to calendar downloads a file for this agreed kick-off. It does not change the match, and it does not message the other club.</p>
+      </div>
     </div>
     <div class="panel tz-panel">
       ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
@@ -1515,17 +1508,54 @@ function renderAgreedPanel(root, f, sch) {
   const checkInBtn = document.getElementById("checkInBtn");
   const scheduleConsoleMount = document.getElementById("scheduleConsoleMount");
   if (scheduleConsoleMount) wirePitchAck(scheduleConsoleMount);
-  const changeToggle = document.getElementById("changeKickoffToggle");
-  const changeBody = document.getElementById("changeKickoffBody");
-  if (changeToggle && changeBody) {
-    changeToggle.onclick = () => {
-      changeBody.hidden = !changeBody.hidden;
-      changeToggle.setAttribute("aria-expanded", changeBody.hidden ? "false" : "true");
+  const showKoTab = (key) => {
+    document.querySelectorAll(".ko-tab").forEach((tab) => {
+      const on = tab.dataset.koTab === key;
+      tab.classList.toggle("active", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    document.querySelectorAll(".ko-pane").forEach((pane) => {
+      pane.hidden = pane.dataset.koPane !== key;
+    });
+  };
+  document.querySelectorAll(".ko-tab").forEach((tab) => {
+    tab.onclick = () => showKoTab(tab.dataset.koTab || "playnow");
+  });
+  const koChangeBtn = document.getElementById("koChangeBtn");
+  if (koChangeBtn) {
+    koChangeBtn.onclick = () => {
+      if (
+        !confirm(
+          "Change kick-off?\n\nBoth clubs confirm in Inbox within 24 hours. No fine.\nA time you are both marked free uses the one free change for this fixture.\nAn earlier 10-minute time does not use that free change, and you can ask again.\n\nNothing is sent until you pick a time and confirm the request."
+        )
+      ) {
+        return;
+      }
+      showKoTab("change");
+    };
+  }
+  const koPlayNowBtn = document.getElementById("koPlayNowBtn");
+  if (koPlayNowBtn) {
+    koPlayNowBtn.onclick = () => {
+      showKoTab("playnow");
+      window.alert(
+        pnActive
+          ? "Play now is already open. Use this tab to check in, enter the result, or cancel. Pressing it again does not start a second session."
+          : "Play now is not available on this fixture right now.\n\nWhen it is, the first press opens a shared 20-minute check-in. Both clubs press Play now, then check in. No allowance is used. The agreed kick-off stays unless the match is played."
+      );
     };
   }
   const calBtn = document.getElementById("addKickoffCalendarBtn");
   if (calBtn && sch.agreed_kickoff_at) {
     calBtn.onclick = () => {
+      showKoTab("calendar");
+      if (
+        !confirm(
+          "Add this kick-off to your calendar?\n\nThis downloads a calendar file for the agreed date and time. It does not change the match, and it does not message the other club."
+        )
+      ) {
+        return;
+      }
       const home = fullClubName(f.home_club_short_name) || f.home_club_short_name;
       const away = fullClubName(f.away_club_short_name) || f.away_club_short_name;
       const calMeta = {
@@ -1569,7 +1599,20 @@ function renderAgreedPanel(root, f, sch) {
   const volBtn = document.getElementById("voluntaryDropBtn");
   if (volBtn) {
     volBtn.onclick = async () => {
-      if (!confirm("Drop the agreed time and return to scheduling? Uses your 1 reschedule for this GPSL month.")) return;
+      showKoTab("voluntary");
+      if (!al.can_voluntary_drop) {
+        window.alert(
+          "Voluntary drop is not available on this fixture right now.\n\nIt is for when the kick-off is still more than 24 hours away, once per GPSL month, and not on a catch-up. It throws away the agreed time. No fine. Use Change kick-off if you can still reach the other club."
+        );
+        return;
+      }
+      if (
+        !confirm(
+          "Voluntary drop?\n\nThis throws away the agreed kick-off and both clubs arrange again. It uses your 1 reschedule for this GPSL month. No fine. The other club does not have to agree.\n\nUse it when you cannot reach them, for example no answer to a Discord DM. If Change kick-off is still open, use that instead."
+        )
+      ) {
+        return;
+      }
       volBtn.disabled = true;
       const res = await voluntaryRescheduleDrop(fixtureId);
       if (!res.ok) {
@@ -1601,10 +1644,17 @@ function renderAgreedPanel(root, f, sch) {
   const emBtn = document.getElementById("emergencyDropBtn");
   if (emBtn) {
     emBtn.onclick = async () => {
+      showKoTab("emergency");
       const left = al.emergency_drops_remaining ?? 0;
+      if (!(al.can_emergency_drop && Number(left) > 0)) {
+        window.alert(
+          "Emergency drop is not available on this fixture right now.\n\nIt is only inside the last 24 hours, before kick-off, twice per season, and not on a catch-up. If none are left, the kick-off can only move when both clubs agree a new time."
+        );
+        return;
+      }
       if (
         !confirm(
-          `Emergency drop (<24h before kick-off)? Uses 1 of ${left} remaining this season and moves the fixture to the next play attempt (1→2→3).`
+          `Emergency drop?\n\nThis is for inside the last 24 hours, before kick-off. It uses 1 of ${left} left this season, unschedules the match, and moves it to the next play attempt. The other club does not have to agree.\n\nExample: your connection fails and they are not answering a Discord DM. If they will confirm a new time, use Change kick-off instead.`
         )
       ) {
         return;
@@ -1702,9 +1752,10 @@ function renderAgreedPanel(root, f, sch) {
   const playNowReadyBtn = document.getElementById("playNowReadyBtn");
   if (playNowReadyBtn) {
     playNowReadyBtn.onclick = async () => {
+      showKoTab("playnow");
       if (
         !confirm(
-          "Press Play now? First press starts a shared 20-minute check-in window. Both owners must press Play now, then check in. No allowance used."
+          "Play now?\n\nThe first press opens a shared 20-minute check-in. Both clubs must press Play now, then check in. No allowance is used. The agreed kick-off stays unless the match is played. Miss the window and the Play now no-show rules apply."
         )
       ) {
         return;
@@ -1738,6 +1789,13 @@ function renderAgreedPanel(root, f, sch) {
   const playNowCheckInBtn = document.getElementById("playNowCheckInBtn");
   if (playNowCheckInBtn) {
     playNowCheckInBtn.onclick = async () => {
+      if (
+        !confirm(
+          "Check in for Play now?\n\nThis says you are here inside the 20-minute window. If you do not check in before it ends, that is a missed Play now."
+        )
+      ) {
+        return;
+      }
       playNowCheckInBtn.disabled = true;
       setStatus("Checking in…");
       const res = await checkInToFixture(fixtureId);
@@ -1815,7 +1873,7 @@ function renderAgreedPanel(root, f, sch) {
       }
       if (
         !confirm(
-          `Request Bring KO forward to ${formatKickoffPair(iso, homeTz, awayTz)}? Opponent must confirm. No reschedule allowance is used.`
+          `Request this earlier time?\n\n${formatKickoffPair(iso, homeTz, awayTz)}\n\nThe other club confirms in Inbox within 24 hours. No fine. This does not use the free change, and you can ask again later.`
         )
       ) {
         return;
@@ -1839,7 +1897,7 @@ function renderAgreedPanel(root, f, sch) {
       if (!mutualSelectedKickoff) return;
       if (
         !confirm(
-          "Request this new kick-off? Your opponent must confirm. No reschedule allowance is used."
+          "Request this kick-off?\n\nBoth clubs confirm in Inbox within 24 hours. No fine. This uses the one free change for this fixture."
         )
       ) {
         return;

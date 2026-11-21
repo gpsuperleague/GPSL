@@ -65,6 +65,20 @@
     .agreed-owner { color: #bbb; font-size: 13px; margin-top: 2px; }
     .agreed-when { font-size: 18px; color: #9fd4b0; margin: 8px 0 12px; }
     .agreed-card h2 { margin-bottom: 12px; }
+    .agreed-card { margin-bottom: 16px; }
+    .ko-tabs {
+      display: flex; flex-wrap: wrap; gap: 0; margin: 14px 0 0;
+      border-bottom: 1px solid #334;
+    }
+    .ko-tab {
+      appearance: none; background: transparent; border: none;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      padding: 8px 12px; color: #aaa; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .ko-tab:hover { color: #eee; }
+    .ko-tab.active { color: #9cf; border-bottom-color: #9cf; }
+    .ko-pane { padding-top: 12px; }
+    .ko-pane h3 { margin: 0 0 8px; font-size: 14px; color: #eee; }
     .tz-panel .tz-compare {
       margin: 0; padding: 0; background: transparent; border: none;
     }
@@ -325,6 +339,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261121-ko-actions"></script>
+  <script type="module" src="fixture_schedule.js?v=20261121-ko-tabs"></script>
 </body>
 </html>
