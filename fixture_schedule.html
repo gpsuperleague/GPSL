@@ -156,11 +156,9 @@
     }
     .ladder-mod .v { color: #eee; font-size: 15px; font-weight: 700; margin-top: 4px; }
     .ladder-mod .s { color: #aaa; font-size: 12px; line-height: 1.35; margin-top: 4px; }
-    .checks-squad { margin: 0 0 8px; }
-    .checks-squad a { color: var(--gpsl-accent, #ff9900); font-weight: 700; }
     .match-checks {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 8px;
       margin: 4px 0 12px;
     }
@@ -173,6 +171,8 @@
     .match-check .k {
       color: var(--club-accent, #888); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
     }
+    .match-check .k a { color: var(--gpsl-accent, #ff9900); text-decoration: underline; }
+    .match-check .v { color: #eee; font-size: 13px; font-weight: 700; margin-top: 6px; }
     .match-check ul { list-style: none; margin: 6px 0 0; padding: 0; }
     .match-check li { color: #ddd; font-size: 12px; line-height: 1.4; }
     .drop-block { margin-top: 14px; padding-top: 12px; border-top: 1px solid #334; }
@@ -405,6 +405,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261121-check-wording"></script>
+  <script type="module" src="fixture_schedule.js?v=20261121-squad-box"></script>
 </body>
 </html>

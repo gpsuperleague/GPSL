@@ -268,7 +268,22 @@ function scheduleMatchChecksHtml(f) {
   const squadHref = f?.id
     ? `matchday.html?fixture=${encodeURIComponent(f.id)}&select_squad=1#squadPanel`
     : "matchday.html#squadPanel";
-  return `<p class="checks-squad"><a href="${squadHref}">Select squad</a></p><div class="match-checks">${groups
+  const mine = String(myClub?.short || ctx?.my_club_short_name || "").toUpperCase();
+  const outs = unavailablePlayersForClub(fixtureUnavailable, mine);
+  const outLabel = outs.length === 1 ? "1 unavailable" : outs.length ? `${outs.length} unavailable` : "None unavailable";
+  const outList = outs
+    .map((p) => {
+      const tag =
+        p.reason === "injured" ? "Injured" : p.reason === "recovery" ? "Gaining match fitness" : "Suspended";
+      return `<li>${escapeHtmlLite(p.player_name || "Player")} — ${escapeHtmlLite(tag)}</li>`;
+    })
+    .join("");
+  const squadBox = `<div class="match-check">
+    <div class="k"><a href="${squadHref}">Select squad</a></div>
+    <div class="v">${escapeHtmlLite(outLabel)}</div>
+    ${outList ? `<ul>${outList}</ul>` : ""}
+  </div>`;
+  return `<div class="match-checks">${squadBox}${groups
     .map(
       ([label, items]) => `<div class="match-check">
         <div class="k">${escapeHtmlLite(label)}</div>
