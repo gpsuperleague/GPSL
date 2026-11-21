@@ -1361,36 +1361,39 @@ function renderAgreedPanel(root, f, sch) {
     ${catchUpBannerHtml()}
     ${holidayEarlyBannerHtml()}
     ${holidayExpiryBannerHtml(f)}
+    <div class="panel match-details">
+      <h2>Match details</h2>
+      <div class="fixture-head">${fixtureTitle(f)}</div>
+      <div class="agreed-sides">
+        <div>
+          <div class="agreed-role">Home</div>
+          <div class="agreed-club">${escapeHtmlLite(homeName)}</div>
+          <div class="agreed-owner" id="agreedHomeOwner">Owner …</div>
+        </div>
+        <div>
+          <div class="agreed-role">Away</div>
+          <div class="agreed-club">${escapeHtmlLite(awayName)}</div>
+          <div class="agreed-owner" id="agreedAwayOwner">Owner …</div>
+        </div>
+      </div>
+      <div class="conditions-row" id="agreedConditions">
+        <span class="kit" id="agreedKit" hidden></span>
+        <span class="cond-gap" id="agreedKitGap" hidden>·</span>
+        <span class="weather">Weather: …</span>
+        <span class="cond-gap">·</span>
+        <span class="pitch">Pitch: …</span>
+      </div>
+      ${unavailablePanelHtml(f)}
+      <p class="meta">${checkinStatus}</p>
+    </div>
     ${noShowLadderBannerHtml(f)}
     <div class="agreed-split">
       <div class="panel mutual-panel agreed-card" style="border-color:var(--gpsl-accent, #ff9900);">
         <h2>Kick-off agreed</h2>
-        <div class="fixture-head">${fixtureTitle(f)}</div>
-        <div class="agreed-sides">
-          <div>
-            <div class="agreed-role">Home</div>
-            <div class="agreed-club">${escapeHtmlLite(homeName)}</div>
-            <div class="agreed-owner" id="agreedHomeOwner">Owner …</div>
-          </div>
-          <div>
-            <div class="agreed-role">Away</div>
-            <div class="agreed-club">${escapeHtmlLite(awayName)}</div>
-            <div class="agreed-owner" id="agreedAwayOwner">Owner …</div>
-          </div>
-        </div>
         <p class="agreed-when kickoff-line">${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
-        <div class="conditions-row" id="agreedConditions">
-          <span class="kit" id="agreedKit" hidden></span>
-          <span class="cond-gap" id="agreedKitGap" hidden>·</span>
-          <span class="weather">Weather: …</span>
-          <span class="cond-gap">·</span>
-          <span class="pitch">Pitch: …</span>
-        </div>
         <p class="meta" style="margin-top:6px;">
           <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
         </p>
-        ${unavailablePanelHtml(f)}
-        <p class="meta">${checkinStatus}</p>
       </div>
       <div class="agreed-play">${playNowPanel}</div>
     </div>
