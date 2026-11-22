@@ -24,7 +24,8 @@
       font-size: 12px;
       color: #bbb;
     }
-    .ballon-grid input {
+    .ballon-grid input,
+    .ps-table input {
       padding: 8px 10px;
       background: #111;
       border: 1px solid #444;
@@ -34,6 +35,12 @@
     }
     .ballon-section { margin: 0 0 18px; padding: 14px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; }
     .ballon-section h2 { margin: 0 0 10px; font-size: 15px; color: #ff9900; }
+    .ballon-note { margin: 0 0 12px; font-size: 12px; color: #aaa; line-height: 1.45; }
+    .ps-wrap { overflow-x: auto; }
+    .ps-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .ps-table th { text-align: left; color: #888; font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #333; }
+    .ps-table td { padding: 4px 8px; border-bottom: 1px solid #2a2a2a; color: #ddd; }
+    .ps-table input { width: 88px; }
   </style>
 </head>
 <body class="admin-page">
@@ -50,31 +57,57 @@
           <div class="ballon-grid">
             <label>Ballon min appearances <input type="number" id="min_appearances" min="1" step="1"></label>
             <label>Championship POTY min apps <input type="number" id="champ_min_appearances" min="1" step="1"></label>
-          </div>
-        </div>
-        <div class="ballon-section">
-          <h2>Stat weights</h2>
-          <div class="ballon-grid">
-            <label>Avg rating <input type="number" id="weight_rating" step="0.1"></label>
-            <label>Goals (ATT / AMF / WG) <input type="number" id="weight_goals_att_am" step="0.1"></label>
-            <label>Goals (other) <input type="number" id="weight_goals_other" step="0.1"></label>
-            <label>Assists (MID / ATT / FB) <input type="number" id="weight_assists_mid_att_fb" step="0.1"></label>
-            <label>Assists (other) <input type="number" id="weight_assists_other" step="0.1"></label>
-            <label>Clean sheets (GK / DEF / DMF) <input type="number" id="weight_cs_gk_def_dmf" step="0.1"></label>
-            <label>Clean sheets (other) <input type="number" id="weight_cs_other" step="0.1"></label>
-            <label>POTM awards <input type="number" id="weight_potm" step="0.1"></label>
             <label>Appearances <input type="number" id="weight_apps" step="0.05"></label>
           </div>
         </div>
         <div class="ballon-section">
-          <h2>Trophy bonuses (points added when earned)</h2>
+          <h2>Stat weights by playstyle</h2>
+          <p class="ballon-note">
+            Average rating, goal contributions (goals + assists, every competition), clean sheets, and each POTM award use the player’s playstyle.
+            A player with no playstyle is treated as a Goal Poacher (forward), Box-to-Box (midfielder), Build Up (defender), or any goalkeeper.
+            The whole total, including trophies and appearances, is then multiplied by the club’s Super League points ÷ 100.
+            54 league points is a 0.54 multiplier. 114 is 1.14.
+          </p>
+          <div class="ps-wrap">
+            <table class="ps-table">
+              <thead>
+                <tr>
+                  <th>Playstyle</th>
+                  <th>Avg rating</th>
+                  <th>Goal contributions</th>
+                  <th>Clean sheet</th>
+                  <th>POTM</th>
+                </tr>
+              </thead>
+              <tbody id="playstyleWeights"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="ballon-section">
+          <h2>Trophy bonuses</h2>
+          <p class="ballon-note">
+            League places need 5 league appearances. Cup places need one appearance in that cup.
+            Premier Challenge Cup is not running yet. Those points apply once a winner is recorded.
+          </p>
           <div class="ballon-grid">
-            <label>Super League title <input type="number" id="trophy_superleague" step="1"></label>
-            <label>Super 8 <input type="number" id="trophy_super8" step="1"></label>
-            <label>Plate <input type="number" id="trophy_plate" step="1"></label>
-            <label>Shield <input type="number" id="trophy_shield" step="1"></label>
-            <label>League Cup <input type="number" id="trophy_league_cup" step="1"></label>
-            <label>World Cup (nation) <input type="number" id="trophy_world_cup" step="1"></label>
+            <label>Super League winner <input type="number" id="trophy_superleague" step="0.1"></label>
+            <label>Super League runner-up <input type="number" id="trophy_superleague_runner_up" step="0.1"></label>
+            <label>Super League third <input type="number" id="trophy_superleague_third" step="0.1"></label>
+            <label>World Cup winner <input type="number" id="trophy_world_cup" step="0.1"></label>
+            <label>World Cup runner-up <input type="number" id="trophy_world_cup_runner_up" step="0.1"></label>
+            <label>World Cup third <input type="number" id="trophy_world_cup_third" step="0.1"></label>
+            <label>Super 8 winner <input type="number" id="trophy_super8" step="0.1"></label>
+            <label>Super 8 runner-up <input type="number" id="trophy_super8_runner_up" step="0.1"></label>
+            <label>League Cup winner <input type="number" id="trophy_league_cup" step="0.1"></label>
+            <label>League Cup runner-up <input type="number" id="trophy_league_cup_runner_up" step="0.1"></label>
+            <label>Plate winner <input type="number" id="trophy_plate" step="0.1"></label>
+            <label>Plate runner-up <input type="number" id="trophy_plate_runner_up" step="0.1"></label>
+            <label>Shield winner <input type="number" id="trophy_shield" step="0.1"></label>
+            <label>Shield runner-up <input type="number" id="trophy_shield_runner_up" step="0.1"></label>
+            <label>Bowl winner <input type="number" id="trophy_bowl" step="0.1"></label>
+            <label>Bowl runner-up <input type="number" id="trophy_bowl_runner_up" step="0.1"></label>
+            <label>Premier Challenge Cup winner <input type="number" id="trophy_premier_challenge" step="0.1"></label>
+            <label>Premier Challenge Cup runner-up <input type="number" id="trophy_premier_challenge_runner_up" step="0.1"></label>
           </div>
         </div>
         <div class="row">
@@ -84,6 +117,6 @@
       </form>
     </div>
   </div>
-  <script type="module" src="admin_ballon_settings.js?v=20261120-league-cup"></script>
+  <script type="module" src="admin_ballon_settings.js?v=20261122-playstyle"></script>
 </body>
 </html>

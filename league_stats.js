@@ -876,11 +876,15 @@ async function loadBallonRace() {
       <tbody>
         ${rows
           .map((r, i) => {
+            const sheets = r.ballon_clean_sheets != null && !isChamp
+              ? r.ballon_clean_sheets
+              : r.clean_sheets;
             const form = [
+              r.playstyle && r.playstyle !== "None" && !isChamp ? r.playstyle : null,
               r.goals != null ? `${r.goals} G` : null,
               r.assists != null ? `${r.assists} A` : null,
               r.avg_rating != null ? `★${r.avg_rating}` : null,
-              r.clean_sheets ? `${r.clean_sheets} CS` : null,
+              sheets ? `${sheets} CS` : null,
               r.trophy_bonus ? `+${r.trophy_bonus} trophies` : null,
             ]
               .filter(Boolean)
