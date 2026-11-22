@@ -1,6 +1,6 @@
 /** Trophy cabinet — honours from archive appear on wooden shelves (one figure per win). */
 
-import { TROPHY_IMAGES } from "./trophy_assets.js?v=20261122-plate";
+import { TROPHY_IMAGES } from "./trophy_assets.js?v=20261122-plate-fit";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 
 export const TROPHY_CABINET_SHELVES = [
