@@ -1,10 +1,10 @@
-/** Trophy cabinet — three shelves, fifteen places, overflow in the store room. */
+/** Trophy cabinet — two shelves, ten places each, overflow in the store room. */
 
 import { TROPHY_IMAGES } from "./trophy_assets.js?v=20261122-plate-fit";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 
-export const CABINET_SHELF_COUNT = 3;
-export const CABINET_SLOTS_PER_SHELF = 5;
+export const CABINET_SHELF_COUNT = 2;
+export const CABINET_SLOTS_PER_SHELF = 10;
 
 const HONOURS_NAMES = {
   superleague: "Super League",
@@ -238,7 +238,7 @@ function renderTrophyFigure(honour, canArrange) {
       ? `View ${seasonLabel} ${name}`
       : `${seasonLabel} ${name}`;
   const picture = image
-    ? `<img class="trophy-png" src="${esc(image)}" alt="${esc(`${seasonLabel} ${name}`)}" width="86" height="116" draggable="false">`
+    ? `<img class="trophy-png" src="${esc(image)}" alt="${esc(`${seasonLabel} ${name}`)}" width="184" height="244" draggable="false">`
     : `<span class="trophy-png trophy-png--blank" aria-hidden="true"></span>`;
   const body = picture;
   const attrs = `class="trophy-on-shelf${href ? " trophy-link" : ""}" data-honour-key="${esc(honourKey(honour))}" title="${esc(title)}"${canArrange ? ' draggable="true"' : ""}`;
@@ -258,11 +258,12 @@ function renderLedgeLabel(honour) {
 }
 
 function renderSlot(shelf, slot, honour, canArrange) {
+  const depth = slot % 2 === 0 ? "is-front" : "is-back";
   const figure = honour
     ? renderTrophyFigure(honour, canArrange)
     : `<span class="trophy-slot-pad" aria-hidden="true"></span>`;
   return `
-    <div class="trophy-slot${honour ? " has-trophy" : " is-empty"}" data-shelf="${shelf}" data-slot="${slot}">
+    <div class="trophy-slot ${depth}${honour ? " has-trophy" : " is-empty"}" data-shelf="${shelf}" data-slot="${slot}">
       <div class="trophy-slot-stand">${figure}</div>
       <div class="shelf-ledge-cell">${renderLedgeLabel(honour)}</div>
     </div>`;
@@ -446,13 +447,13 @@ export const TROPHY_CABINET_PREVIEW_SCENARIOS = [
   {
     id: "empty",
     title: "New club — empty cabinet",
-    blurb: "Three shelves stay bare until a season is archived.",
+    blurb: "Both shelves stay bare until a season is archived.",
     honours: [],
   },
   {
     id: "first_win",
     title: "First honours — one league title and one cup",
-    blurb: "The first wins stand on the top shelf, left to right.",
+    blurb: "The first trophy stands at the front. The next one sits behind it, tucked between the front cups.",
     honours: [
       {
         honour_type: "league_champion",
@@ -486,7 +487,7 @@ export const TROPHY_CABINET_PREVIEW_SCENARIOS = [
   {
     id: "full",
     title: "A cabinet after several seasons",
-    blurb: "Trophies stand in a row. Drag one to another place, or onto the store-room door. This preview is not saved.",
+    blurb: "Front trophies stand on the ledge. The ones between them sit further back. Drag to rearrange. This preview is not saved.",
     honours: [
       { honour_type: "league_champion", division: "superleague", season_label: "5" },
       { honour_type: "league_champion", division: "superleague", season_label: "8" },
@@ -503,13 +504,16 @@ export const TROPHY_CABINET_PREVIEW_SCENARIOS = [
   {
     id: "overflow",
     title: "More wins than places — the store room",
-    blurb: "Fifteen trophies fit on the shelves. The next one waits behind the store-room door until the owner brings it out.",
-    honours: ["league_cup", "super8", "plate", "shield"].flatMap((cup) =>
-      [1, 2, 3, 4].map((season) => ({
-        honour_type: "cup_winner",
-        cup_code: cup,
-        season_label: String(season),
-      }))
-    ),
+    blurb: "Twenty trophies fit on the two shelves. The next one waits behind the store-room door until the owner brings it out.",
+    honours: [
+      ...["league_cup", "super8", "plate", "shield"].flatMap((cup) =>
+        [1, 2, 3, 4, 5].map((season) => ({
+          honour_type: "cup_winner",
+          cup_code: cup,
+          season_label: String(season),
+        }))
+      ),
+      { honour_type: "cup_winner", cup_code: "bowl", season_label: "1" },
+    ],
   },
 ];

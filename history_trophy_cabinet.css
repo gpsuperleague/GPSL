@@ -1,4 +1,4 @@
-/* GPSL Club History — glass-fronted cabinet, three shelves, store-room door */
+/* GPSL Club History — two shelves, front row and a back row tucked between them */
 
 .trophy-cabinet {
   position: relative;
@@ -239,24 +239,37 @@
 
 .shelf-slots {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 0;
   align-items: end;
+  padding-top: 128px;
 }
 
 .trophy-slot {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   min-width: 0;
 }
 
+.trophy-slot.is-front { z-index: 2; }
+.trophy-slot.is-back { z-index: 1; }
+
 .trophy-slot-stand {
-  min-height: 132px;
+  min-height: 244px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 0 2px;
+  pointer-events: none;
+}
+
+.trophy-slot.is-empty .trophy-slot-stand,
+.shelf-ledge-cell { pointer-events: auto; }
+
+.trophy-slot.is-back .trophy-on-shelf,
+.trophy-slot.is-back .trophy-slot-pad {
+  transform: translateY(-120px);
 }
 
 .trophy-slot.is-drop {
@@ -315,9 +328,10 @@
   align-items: center;
   justify-content: flex-end;
   margin: 0;
-  max-width: 100%;
+  max-width: none;
   text-decoration: none;
   color: inherit;
+  pointer-events: auto;
 }
 
 .trophy-cabinet.can-arrange .trophy-on-shelf,
@@ -333,12 +347,14 @@ a.trophy-on-shelf.trophy-link:focus-visible {
 }
 
 .trophy-on-shelf .trophy-png {
-  width: 92px;
-  height: 122px;
+  width: 184px;
+  height: 244px;
+  max-width: none;
   object-fit: contain;
   object-position: center bottom;
   display: block;
-  filter: drop-shadow(0 5px 2px rgba(0, 0, 0, 0.4));
+  pointer-events: auto;
+  filter: drop-shadow(0 8px 3px rgba(0, 0, 0, 0.45));
 }
 
 .trophy-png--blank {
@@ -349,12 +365,12 @@ a.trophy-on-shelf.trophy-link:focus-visible {
   background: linear-gradient(180deg, #d7d7d7, #8d8d8d);
 }
 
-@media (max-width: 720px) {
-  .shelf-slots { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .trophy-slot-stand { min-height: 108px; }
-  .trophy-on-shelf .trophy-png { width: 72px; height: 96px; }
-  .shelf-ledge-name,
-  .shelf-ledge-season { font-size: 9px; }
+.shelf-ledge-name,
+.shelf-ledge-season { font-size: 9px; }
+
+@media (max-width: 900px) {
+  .cabinet-shelf { overflow-x: auto; }
+  .shelf-slots { min-width: 980px; }
   .trophy-store-door { flex-basis: 42px; }
   .trophy-cabinet-plinth { margin-left: -14px; margin-right: -14px; }
 }

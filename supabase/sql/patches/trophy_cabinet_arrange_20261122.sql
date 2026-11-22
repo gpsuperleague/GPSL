@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS public.competition_trophy_cabinet_place (
     (stored AND shelf IS NULL AND slot IS NULL)
     OR (
       NOT stored
-      AND shelf BETWEEN 0 AND 2
-      AND slot BETWEEN 0 AND 4
+      AND shelf BETWEEN 0 AND 1
+      AND slot BETWEEN 0 AND 9
     )
   )
 );
@@ -163,8 +163,8 @@ BEGIN
       v_shelf := NULL;
       v_slot := NULL;
     ELSIF v_shelf IS NULL OR v_slot IS NULL
-      OR v_shelf < 0 OR v_shelf > 2
-      OR v_slot < 0 OR v_slot > 4 THEN
+      OR v_shelf < 0 OR v_shelf > 1
+      OR v_slot < 0 OR v_slot > 9 THEN
       RETURN jsonb_build_object('ok', false, 'reason', 'bad_spot', 'honour_key', v_row.honour_key);
     END IF;
 
