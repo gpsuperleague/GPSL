@@ -242,7 +242,6 @@
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 0;
   align-items: end;
-  padding-top: 128px;
 }
 
 .trophy-slot {
@@ -257,7 +256,8 @@
 .trophy-slot.is-back { z-index: 1; }
 
 .trophy-slot-stand {
-  min-height: 244px;
+  position: relative;
+  min-height: 280px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -267,10 +267,6 @@
 .trophy-slot.is-empty .trophy-slot-stand,
 .shelf-ledge-cell { pointer-events: auto; }
 
-.trophy-slot.is-back .trophy-on-shelf,
-.trophy-slot.is-back .trophy-slot-pad {
-  transform: translateY(-120px);
-}
 
 .trophy-slot.is-drop {
   background: rgba(255, 204, 102, 0.16);
@@ -323,15 +319,17 @@
 }
 
 .trophy-on-shelf {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
+  align-items: flex-end;
+  justify-content: center;
   margin: 0;
-  max-width: none;
   text-decoration: none;
   color: inherit;
   pointer-events: auto;
+  transform: translateX(-50%);
 }
 
 .trophy-cabinet.can-arrange .trophy-on-shelf,
@@ -347,15 +345,20 @@ a.trophy-on-shelf.trophy-link:focus-visible {
 }
 
 .trophy-on-shelf .trophy-png {
-  width: 184px;
-  height: 244px;
   max-width: none;
   object-fit: contain;
   object-position: center bottom;
   display: block;
   pointer-events: auto;
-  filter: drop-shadow(0 8px 3px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 10px 4px rgba(0, 0, 0, 0.4));
 }
+
+.trophy-size-super8 .trophy-png { width: 210px; height: 280px; }
+.trophy-size-superleague .trophy-png { width: 184px; height: 246px; }
+.trophy-size-championship .trophy-png { width: 164px; height: 220px; }
+.trophy-size-cup .trophy-png { width: 150px; height: 200px; }
+.trophy-size-shield .trophy-png { width: 122px; height: 164px; }
+.trophy-size-bowl .trophy-png { width: 96px; height: 128px; }
 
 .trophy-png--blank {
   display: block;

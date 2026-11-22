@@ -227,6 +227,17 @@ export function relocateHonour(honours, places, key, dest) {
   return placesFromLayout(shelves, stored);
 }
 
+function trophySizeClass(honour) {
+  if (honour?.honour_type === "league_champion") {
+    return honour.division === "superleague" ? "trophy-size-superleague" : "trophy-size-championship";
+  }
+  const cup = honour?.cup_code === "spoon" ? "bowl" : honour?.cup_code;
+  if (cup === "super8") return "trophy-size-super8";
+  if (cup === "league_cup" || cup === "plate") return "trophy-size-cup";
+  if (cup === "shield") return "trophy-size-shield";
+  return "trophy-size-bowl";
+}
+
 function renderTrophyFigure(honour, canArrange) {
   const seasonLabel = cabinetSeasonText(honour.season_label);
   const name = honourName(honour);
@@ -241,7 +252,7 @@ function renderTrophyFigure(honour, canArrange) {
     ? `<img class="trophy-png" src="${esc(image)}" alt="${esc(`${seasonLabel} ${name}`)}" width="184" height="244" draggable="false">`
     : `<span class="trophy-png trophy-png--blank" aria-hidden="true"></span>`;
   const body = picture;
-  const attrs = `class="trophy-on-shelf${href ? " trophy-link" : ""}" data-honour-key="${esc(honourKey(honour))}" title="${esc(title)}"${canArrange ? ' draggable="true"' : ""}`;
+  const attrs = `class="trophy-on-shelf ${trophySizeClass(honour)}${href ? " trophy-link" : ""}" data-honour-key="${esc(honourKey(honour))}" title="${esc(title)}"${canArrange ? ' draggable="true"' : ""}`;
   if (href) {
     return `<a ${attrs} href="${esc(href)}">${body}</a>`;
   }
