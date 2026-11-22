@@ -10,7 +10,7 @@ export const TROPHY_IMAGES = {
   shield: "images/trophies/shield.png",
   bowl: "images/trophies/bowl.png",
   spoon: "images/trophies/bowl.png",
-  league_cup: "images/trophies/league_cup.png",
+  league_cup: "images/trophies/league_cup.png?v=20261122-league-cup",
   world_cup: "images/trophies/world_cup.png",
 };
 

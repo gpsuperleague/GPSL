@@ -1696,7 +1696,7 @@ const NAV_MENU_ICON_FILES = {
   injuries: { src: "images/nav/injuries.svg", title: "Injuries" },
   // Real GPSL trophy art (same assets as cup pages)
   league_cup: {
-    src: "images/trophies/league_cup.png",
+    src: "images/trophies/league_cup.png?v=20261122-league-cup",
     title: "League Cup",
     trophy: true,
   },

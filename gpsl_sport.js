@@ -24,7 +24,7 @@ const TROPHY_IMAGES = {
   plate: "images/trophies/plate.png",
   shield: "images/trophies/shield.png",
   bowl: "images/trophies/bowl.png",
-  league_cup: "images/trophies/league_cup.png",
+  league_cup: "images/trophies/league_cup.png?v=20261122-league-cup",
 };
 
 function escapeHtml(s) {
