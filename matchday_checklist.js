@@ -310,7 +310,7 @@ function renderActionButton(step, fixtureId) {
   }
   if (step.href === "discord") {
     return step.filename
-      ? `<button type="button" class="mc-btn mc-btn-primary" data-mc-copy="${escapeHtml(step.filename)}" title="Copy filename, then post the video in the match videos Discord channel">Copy video filename</button>`
+      ? `<button type="button" class="mc-btn mc-btn-primary" data-mc-copy="${escapeHtml(step.filename)}" title="Copy the Discord link, replace PASTE_YOUR_LINK with your YouTube or MEGA url, then post it in the match videos channel">Copy Discord link</button>`
       : "";
   }
   if (!step.href) return "";
@@ -635,7 +635,7 @@ function renderFixture(fx) {
       ${fixtureMetaHtml(fx)}
       <div class="mc-steps">${steps.map(renderStepPill).join("")}</div>
       ${status}
-      ${showFilename ? `<div class="mc-filename">Filename: <code>${escapeHtml(video.filename)}</code></div>` : ""}
+      ${showFilename ? `<div class="mc-filename">Discord: <code>${escapeHtml(video.filename)}</code></div>` : ""}
       ${fx.flags?.length ? `<div class="mc-flags">${renderFlags(fx.flags)}</div>` : ""}
       ${strikeNoteHtml(fid)}
       ${checklistActionsHtml(fx, actionNext, fid)}
@@ -832,10 +832,10 @@ async function onCopy(btn) {
     await navigator.clipboard.writeText(text);
     btn.textContent = "Copied ✓";
   } catch {
-    window.prompt("Copy this filename:", text);
+    window.prompt("Copy this Discord link:", text);
   }
   setTimeout(() => {
-    btn.textContent = "Copy video filename";
+    btn.textContent = "Copy Discord link";
   }, 2000);
 }
 
