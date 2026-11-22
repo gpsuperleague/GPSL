@@ -124,7 +124,7 @@ function renderEmptyBay(slot) {
     <div class="trophy-bay is-empty" data-trophy="${esc(slot.id)}">
       <div class="trophy-bay-label">${esc(slot.label)}</div>
       <div class="trophy-bay-surface">
-        <span class="trophy-bay-empty">—</span>
+        <span class="trophy-bay-empty" aria-hidden="true"></span>
       </div>
     </div>`;
 }
@@ -175,10 +175,22 @@ export function renderTrophyCabinet(honours) {
 
   return `
     <div class="trophy-cabinet${totalWins ? " has-wins" : ""}">
-      <div class="trophy-cabinet-glass">
-        ${emptyNote}
-        ${shelves}
+      <div class="trophy-cabinet-cornice" aria-hidden="true">
+        <span class="trophy-cabinet-nameplate">Honours</span>
       </div>
+      <div class="trophy-cabinet-case">
+        <span class="trophy-cabinet-hinge trophy-cabinet-hinge--left trophy-cabinet-hinge--high" aria-hidden="true"></span>
+        <span class="trophy-cabinet-hinge trophy-cabinet-hinge--left trophy-cabinet-hinge--low" aria-hidden="true"></span>
+        <span class="trophy-cabinet-hinge trophy-cabinet-hinge--right trophy-cabinet-hinge--high" aria-hidden="true"></span>
+        <span class="trophy-cabinet-hinge trophy-cabinet-hinge--right trophy-cabinet-hinge--low" aria-hidden="true"></span>
+        <span class="trophy-cabinet-handle trophy-cabinet-handle--left" aria-hidden="true"></span>
+        <span class="trophy-cabinet-handle trophy-cabinet-handle--right" aria-hidden="true"></span>
+        <div class="trophy-cabinet-glass">
+          ${emptyNote}
+          ${shelves}
+        </div>
+      </div>
+      <div class="trophy-cabinet-plinth" aria-hidden="true"></div>
     </div>`;
 }
 
