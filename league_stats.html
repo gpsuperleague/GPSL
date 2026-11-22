@@ -14,6 +14,18 @@
     .page-container { width:95%; max-width:1320px; margin:20px auto 40px; }
     h1 { color:var(--gpsl-accent, #ff9900); margin-bottom:8px; }
     .meta { color:#aaa; margin-bottom:16px; }
+    .ballon-trophy-note {
+      background:#2a2208;
+      border:1px solid var(--gpsl-accent, #ff9900);
+      border-left:4px solid var(--gpsl-accent, #ff9900);
+      color:#eee;
+      border-radius:6px;
+      padding:10px 12px;
+      margin:0 0 12px;
+      font-size:13px;
+      line-height:1.45;
+    }
+    .ballon-trophy-note strong { color:var(--gpsl-accent, #ff9900); }
     .stats-tabs {
       display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;
     }
@@ -363,6 +375,9 @@
           <button type="button" class="award-month-tab active" data-race="ballon">Ballon d'Or</button>
           <button type="button" class="award-month-tab" data-race="championship">Championship POTY</button>
         </div>
+        <p class="ballon-trophy-note" id="ballonTrophyNote">
+          <strong>Trophies.</strong> Points for trophies won by players are calculated when the competition is finalised.
+        </p>
         <div id="ballonRaceTable"><span class="empty">Loading…</span></div>
       </div>
     </div>
@@ -498,6 +513,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="league_stats.js?v=20261122-cs-gk"></script>
+  <script type="module" src="league_stats.js?v=20261122-ballon-trophies"></script>
 </body>
 </html>

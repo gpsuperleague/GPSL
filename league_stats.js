@@ -828,6 +828,7 @@ function renderAwardSeasonTabs({
 }
 
 async function loadBallonRace() {
+  syncBallonTrophyNote();
   const el = document.getElementById("ballonRaceTable");
   if (!el) return;
   el.innerHTML = `<span class="empty">Loading…</span>`;
@@ -904,6 +905,11 @@ async function loadBallonRace() {
     </table>`;
 }
 
+function syncBallonTrophyNote() {
+  const note = document.getElementById("ballonTrophyNote");
+  if (note) note.hidden = ballonRaceScope !== "ballon";
+}
+
 function wireBallonRaceTabs() {
   document.querySelectorAll("#ballonRaceTabs .award-month-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -911,6 +917,7 @@ function wireBallonRaceTabs() {
       document.querySelectorAll("#ballonRaceTabs .award-month-tab").forEach((b) => {
         b.classList.toggle("active", b === btn);
       });
+      syncBallonTrophyNote();
       void loadBallonRace();
     });
   });
