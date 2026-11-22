@@ -1,6 +1,7 @@
 /** Trophy cabinet — honours from archive appear on wooden shelves (one figure per win). */
 
 import { TROPHY_IMAGES } from "./trophy_assets.js";
+import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 
 export const TROPHY_CABINET_SHELVES = [
   {
@@ -93,8 +94,12 @@ export function trophyHonourHref(honour) {
   return null;
 }
 
+function cabinetSeasonText(raw) {
+  return formatSeasonStripLabel(raw) || String(raw ?? "");
+}
+
 function renderTrophyOnShelf(imageSrc, honour, slotLabel) {
-  const seasonLabel = honour.season_label;
+  const seasonLabel = cabinetSeasonText(honour.season_label);
   const href = trophyHonourHref(honour);
   const title = href
     ? `View ${seasonLabel} ${slotLabel} — final table / cup bracket`
@@ -127,7 +132,11 @@ function renderEmptyBay(slot) {
 function renderBay(slot, honours) {
   const wins = (honours || [])
     .filter(slot.match)
-    .sort((a, b) => String(b.season_label).localeCompare(String(a.season_label)));
+    .sort((a, b) => {
+      const na = Number(String(a.season_label).match(/\d+/)?.[0] || 0);
+      const nb = Number(String(b.season_label).match(/\d+/)?.[0] || 0);
+      return nb - na;
+    });
 
   if (!wins.length) {
     return renderEmptyBay(slot);
@@ -189,12 +198,12 @@ export const TROPHY_CABINET_PREVIEW_SCENARIOS = [
       {
         honour_type: "league_champion",
         division: "superleague",
-        season_label: "2024/25",
+        season_label: "1",
       },
       {
         honour_type: "cup_winner",
         cup_code: "league_cup",
-        season_label: "2024/25",
+        season_label: "1",
       },
     ],
   },
@@ -206,12 +215,12 @@ export const TROPHY_CABINET_PREVIEW_SCENARIOS = [
       {
         honour_type: "cup_winner",
         cup_code: "super8",
-        season_label: "2022/23",
+        season_label: "1",
       },
       {
         honour_type: "cup_winner",
         cup_code: "super8",
-        season_label: "2024/25",
+        season_label: "2",
       },
     ],
   },
@@ -220,16 +229,16 @@ export const TROPHY_CABINET_PREVIEW_SCENARIOS = [
     title: "Full cabinet — multiple seasons and competitions",
     blurb: "How a long-running club might look after several archived seasons.",
     honours: [
-      { honour_type: "league_champion", division: "superleague", season_label: "2020/21" },
-      { honour_type: "league_champion", division: "superleague", season_label: "2023/24" },
-      { honour_type: "league_champion", division: "championship_a", season_label: "2018/19" },
-      { honour_type: "cup_winner", cup_code: "league_cup", season_label: "2019/20" },
-      { honour_type: "cup_winner", cup_code: "league_cup", season_label: "2024/25" },
-      { honour_type: "cup_winner", cup_code: "super8", season_label: "2021/22" },
-      { honour_type: "cup_winner", cup_code: "super8", season_label: "2023/24" },
-      { honour_type: "cup_winner", cup_code: "plate", season_label: "2022/23" },
-      { honour_type: "cup_winner", cup_code: "shield", season_label: "2017/18" },
-      { honour_type: "cup_winner", cup_code: "bowl", season_label: "2016/17" },
+      { honour_type: "league_champion", division: "superleague", season_label: "5" },
+      { honour_type: "league_champion", division: "superleague", season_label: "8" },
+      { honour_type: "league_champion", division: "championship_a", season_label: "3" },
+      { honour_type: "cup_winner", cup_code: "league_cup", season_label: "4" },
+      { honour_type: "cup_winner", cup_code: "league_cup", season_label: "9" },
+      { honour_type: "cup_winner", cup_code: "super8", season_label: "6" },
+      { honour_type: "cup_winner", cup_code: "super8", season_label: "8" },
+      { honour_type: "cup_winner", cup_code: "plate", season_label: "7" },
+      { honour_type: "cup_winner", cup_code: "shield", season_label: "2" },
+      { honour_type: "cup_winner", cup_code: "bowl", season_label: "1" },
     ],
   },
 ];

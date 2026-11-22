@@ -2,7 +2,7 @@ import { initGlobal } from "./global.js";
 import {
   renderTrophyCabinet,
   TROPHY_CABINET_PREVIEW_SCENARIOS,
-} from "./history_trophies.js";
+} from "./history_trophies.js?v=20261122-season";
 
 function esc(text) {
   return String(text ?? "")
