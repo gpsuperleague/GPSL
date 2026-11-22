@@ -20,7 +20,7 @@ let sportRefreshError = null;
 
 const TROPHY_IMAGES = {
   superleague: "images/trophies/superleague.png",
-  super8: "images/trophies/super8.png",
+  super8: "images/trophies/super8.png?v=20261122-silver",
   plate: "images/trophies/plate.png?v=20261122-plate-fit",
   shield: "images/trophies/shield.png",
   bowl: "images/trophies/bowl.png",

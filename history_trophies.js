@@ -1,6 +1,6 @@
 /** Trophy cabinet — two shelves, ten places each, overflow in the store room. */
 
-import { TROPHY_IMAGES } from "./trophy_assets.js?v=20261122-plate-fit";
+import { TROPHY_IMAGES } from "./trophy_assets.js?v=20261122-select";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 
 export const CABINET_SHELF_COUNT = 2;
@@ -252,8 +252,8 @@ function renderTrophyFigure(honour, canArrange) {
     ? `<img class="trophy-png" src="${esc(image)}" alt="${esc(`${seasonLabel} ${name}`)}" width="184" height="244" draggable="false">`
     : `<span class="trophy-png trophy-png--blank" aria-hidden="true"></span>`;
   const body = picture;
-  const attrs = `class="trophy-on-shelf ${trophySizeClass(honour)}${href ? " trophy-link" : ""}" data-honour-key="${esc(honourKey(honour))}" title="${esc(title)}"${canArrange ? ' draggable="true"' : ""}`;
-  if (href) {
+  const attrs = `class="trophy-on-shelf ${trophySizeClass(honour)}${!canArrange && href ? " trophy-link" : ""}" title="${esc(title)}"`;
+  if (!canArrange && href) {
     return `<a ${attrs} href="${esc(href)}">${body}</a>`;
   }
   return `<figure ${attrs}>${body}</figure>`;
@@ -273,8 +273,11 @@ function renderSlot(shelf, slot, honour, canArrange) {
   const figure = honour
     ? renderTrophyFigure(honour, canArrange)
     : `<span class="trophy-slot-pad" aria-hidden="true"></span>`;
+  const drag = honour && canArrange
+    ? ` draggable="true" data-honour-key="${esc(honourKey(honour))}"`
+    : "";
   return `
-    <div class="trophy-slot ${depth}${honour ? " has-trophy" : " is-empty"}" data-shelf="${shelf}" data-slot="${slot}">
+    <div class="trophy-slot ${depth}${honour ? " has-trophy" : " is-empty"}" data-shelf="${shelf}" data-slot="${slot}"${drag}>
       <div class="trophy-slot-stand">${figure}</div>
       <div class="shelf-ledge-cell">${renderLedgeLabel(honour)}</div>
     </div>`;

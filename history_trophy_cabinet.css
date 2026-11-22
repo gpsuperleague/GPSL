@@ -320,16 +320,30 @@
 
 .trophy-on-shelf {
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
+  top: 0;
   bottom: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  display: block;
   margin: 0;
   text-decoration: none;
   color: inherit;
   pointer-events: auto;
-  transform: translateX(-50%);
+}
+
+.trophy-cabinet.can-arrange .trophy-on-shelf { pointer-events: none; }
+
+.trophy-cabinet.can-arrange .trophy-slot.has-trophy { cursor: grab; }
+
+.trophy-cabinet.can-arrange .trophy-slot.has-trophy .trophy-slot-stand,
+.trophy-cabinet.can-arrange .trophy-slot.has-trophy .shelf-ledge-cell { pointer-events: auto; }
+
+.trophy-cabinet.can-arrange .trophy-slot.has-trophy:hover .shelf-ledge-cell,
+.trophy-slot.is-drop .shelf-ledge-cell {
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 153, 0, 0.9),
+    inset 0 2px 0 #ffffff,
+    inset 0 -2px 0 #b7b1a6;
 }
 
 .trophy-cabinet.can-arrange .trophy-on-shelf,
@@ -345,11 +359,15 @@ a.trophy-on-shelf.trophy-link:focus-visible {
 }
 
 .trophy-on-shelf .trophy-png {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
   max-width: none;
   object-fit: contain;
   object-position: center bottom;
   display: block;
-  pointer-events: auto;
+  pointer-events: none;
+  transform: translateX(-50%);
   filter: drop-shadow(0 10px 4px rgba(0, 0, 0, 0.4));
 }
 
