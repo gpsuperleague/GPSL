@@ -143,7 +143,7 @@ BEGIN
     v_def := replace(v_def, v_old, v_new);
   END IF;
 
-  v_old := 'Your match video was uploaded within the suspended-point window. The 1 point deduction will not be applied.';
+  v_old := replace($old$'Your match video was uploaded within the suspended-point window. The 1 point deduction will not be applied.'$old$, E'\r\n', E'\n');
   v_new := replace($new$CASE
           WHEN public.competition_gpsl_month_sort((
             SELECT fx.gpsl_month FROM public.competition_fixtures fx WHERE fx.id = v_fail.fixture_id
