@@ -10,7 +10,7 @@ import {
   resolveClubShortName,
 } from "./clubs_lookup.js";
 import { DIVISION_LABELS } from "./competition.js";
-import { renderTrophyCabinet } from "./history_trophies.js?v=20261122-plate";
+import { renderTrophyCabinet } from "./history_trophies.js?v=20261122-cabinet";
 import { playerNameLinkHtml } from "./player_links.js";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 import {

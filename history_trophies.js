@@ -199,7 +199,7 @@ export const TROPHY_CABINET_PREVIEW_SCENARIOS = [
   {
     id: "empty",
     title: "New club — empty cabinet",
-    blurb: "Every bay shows a dash until you win and the season is archived.",
+    blurb: "Every bay stays bare until you win and the season is archived.",
     honours: [],
   },
   {

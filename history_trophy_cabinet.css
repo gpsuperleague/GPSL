@@ -1,78 +1,199 @@
-/* GPSL Club History — trophy cabinet (wooden shelves, one figure per win) */
+/* GPSL Club History — glass-fronted wooden trophy cabinet */
 
 .trophy-cabinet {
+  position: relative;
+  padding: 0 18px;
+  border-radius: 4px 4px 2px 2px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 35%),
-    linear-gradient(180deg, #2e1c12 0%, #1a1008 100%);
-  border: 3px solid #5c4030;
-  border-radius: 8px;
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 220, 160, 0.05) 0 2px,
+      transparent 2px 7px
+    ),
+    linear-gradient(90deg, #2a180e 0%, #7a4e2c 7%, #4a2e1a 16%, #2a180e 50%, #6b4324 84%, #8b5a34 93%, #2a180e 100%);
   box-shadow:
-    inset 0 0 60px rgba(0, 0, 0, 0.55),
-    0 8px 28px rgba(0, 0, 0, 0.45);
-  overflow: hidden;
+    0 22px 36px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 226, 180, 0.28);
+}
+
+.trophy-cabinet-cornice {
+  position: relative;
+  height: 46px;
+  margin: 0 -18px;
+  background:
+    linear-gradient(180deg, #c4a06a 0%, #8a5a32 28%, #4a2c18 62%, #2a180e 100%);
+  border-radius: 3px 3px 0 0;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 236, 200, 0.45),
+    0 4px 0 #1a0e08;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trophy-cabinet-cornice::before,
+.trophy-cabinet-cornice::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  width: 18%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 230, 180, 0.55), transparent);
+}
+
+.trophy-cabinet-cornice::before { left: 8%; }
+.trophy-cabinet-cornice::after { right: 8%; }
+
+.trophy-cabinet-nameplate {
+  position: relative;
+  z-index: 1;
+  min-width: 148px;
+  padding: 5px 22px 6px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #3a280c;
+  background:
+    linear-gradient(180deg, #f3e2b0 0%, #d4b15a 45%, #a67c32 100%);
+  border-radius: 2px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(90, 50, 10, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.45);
+}
+
+.trophy-cabinet-case {
+  position: relative;
+  margin: 0 -4px;
+  background: #140e0a;
+  box-shadow:
+    inset 0 0 0 3px #1c120c,
+    inset 0 0 28px rgba(0, 0, 0, 0.65);
 }
 
 .trophy-cabinet-glass {
-  padding: 20px 18px 16px;
-  background: linear-gradient(
-    125deg,
-    rgba(255, 255, 255, 0.07) 0%,
-    transparent 38%,
-    rgba(255, 255, 255, 0.02) 72%,
-    transparent 100%
-  );
+  position: relative;
+  padding: 16px 22px 8px;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 214, 150, 0.16), transparent 46%),
+    linear-gradient(180deg, #1a2820 0%, #101612 100%);
+  overflow: hidden;
+}
+
+.trophy-cabinet-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(108deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 12%, transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 18%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.trophy-cabinet-hinge,
+.trophy-cabinet-handle {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.trophy-cabinet-hinge {
+  width: 8px;
+  height: 26px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, #6e5830, #f0e2b4 45%, #6e5830);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.trophy-cabinet-hinge--left { left: 5px; }
+.trophy-cabinet-hinge--right { right: 5px; }
+.trophy-cabinet-hinge--high { top: 14%; }
+.trophy-cabinet-hinge--low { bottom: 16%; }
+
+.trophy-cabinet-handle {
+  top: 46%;
+  width: 8px;
+  height: 54px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #7a6234, #f4e6bc 40%, #8a7040 70%, #5c4824);
+  box-shadow:
+    2px 2px 4px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 240, 200, 0.35);
+}
+
+.trophy-cabinet-handle--left { left: 16px; }
+.trophy-cabinet-handle--right { right: 16px; }
+
+.trophy-cabinet-plinth {
+  height: 26px;
+  margin: 0 -28px 14px;
+  background:
+    linear-gradient(180deg, #a87848 0%, #6b4328 22%, #3a2416 58%, #1a100a 100%);
+  border-radius: 0 0 3px 3px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 220, 170, 0.28),
+    0 10px 0 #100a06,
+    0 16px 18px rgba(0, 0, 0, 0.4);
 }
 
 .trophy-cabinet-empty {
+  position: relative;
+  z-index: 1;
   text-align: center;
-  color: #aaa;
+  color: #cbb892;
   font-style: italic;
   font-size: 13px;
-  padding: 0 12px 18px;
+  padding: 4px 28px 14px;
   margin: 0;
   line-height: 1.45;
 }
 
 .cabinet-shelf {
-  margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 18px;
 }
 
 .cabinet-shelf:last-child {
-  margin-bottom: 0;
+  margin-bottom: 6px;
 }
 
 .shelf-plaque {
-  margin: 0 auto 10px;
-  max-width: 300px;
+  margin: 0 auto 8px;
+  max-width: 280px;
   text-align: center;
   font-size: 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #c9a84c;
-  padding: 5px 14px;
-  border: 1px solid #5c4030;
-  border-radius: 3px;
-  background: linear-gradient(180deg, #3d2818, #24160c);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  color: #f0ddb0;
+  padding: 4px 14px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(255, 220, 160, 0.12), rgba(0, 0, 0, 0.2));
+  box-shadow: inset 0 0 0 1px rgba(212, 176, 96, 0.35);
 }
 
-/* Wooden shelf rail */
 .shelf-board {
   position: relative;
-  padding: 0 8px 14px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, transparent 55%);
+  padding: 6px 10px 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 206, 130, 0.2), transparent 58%);
 }
 
 .shelf-board::after {
   content: "";
   display: block;
-  height: 14px;
-  margin-top: -6px;
-  border-radius: 0 0 4px 4px;
-  background: linear-gradient(180deg, #6b4a32 0%, #4a3020 45%, #2a1a10 100%);
+  height: 16px;
+  margin: 0 -6px;
+  border-radius: 0 0 3px 3px;
+  background:
+    linear-gradient(180deg, #e6c48a 0%, #b4834a 16%, #6d4528 48%, #3a2416 100%);
   box-shadow:
-    0 6px 12px rgba(0, 0, 0, 0.55),
-    inset 0 2px 0 rgba(255, 220, 160, 0.12);
+    0 10px 14px rgba(0, 0, 0, 0.55),
+    inset 0 2px 0 rgba(255, 236, 200, 0.45),
+    inset 0 -3px 4px rgba(0, 0, 0, 0.35);
 }
 
 .shelf-bays {
@@ -80,33 +201,34 @@
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-end;
-  gap: 10px 8px;
-  min-height: 120px;
-  padding: 8px 4px 0;
+  gap: 8px 6px;
+  min-height: 128px;
+  padding: 6px 18px 0;
 }
 
 .trophy-bay {
-  flex: 1 1 118px;
-  max-width: 200px;
-  min-width: 100px;
+  flex: 1 1 108px;
+  max-width: 180px;
+  min-width: 92px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  justify-content: flex-end;
 }
 
 .trophy-bay-label {
   text-align: center;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: bold;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #e8c86a;
+  color: #e7c56a;
   margin-bottom: 6px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 
 .trophy-bay.is-empty .trophy-bay-label {
-  color: #7a6a50;
+  color: #8d7a58;
 }
 
 .trophy-bay-surface {
@@ -114,22 +236,24 @@
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-end;
-  gap: 4px 6px;
-  min-height: 96px;
-  padding: 0 4px 4px;
+  gap: 6px 8px;
+  min-height: 102px;
+  padding: 0 2px;
 }
 
 .trophy-bay-empty {
-  color: #5a4a38;
-  font-size: 18px;
-  line-height: 96px;
-  opacity: 0.5;
+  width: 42px;
+  height: 9px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.12) 68%, transparent 74%);
 }
 
 .trophy-on-shelf {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   margin: 0;
   padding: 0;
   animation: trophy-shelf-in 0.45s ease-out both;
@@ -150,22 +274,14 @@ a.trophy-on-shelf.trophy-link:focus-visible {
   border-radius: 4px;
 }
 
-.trophy-on-shelf:nth-child(2) {
-  animation-delay: 0.06s;
-}
-
-.trophy-on-shelf:nth-child(3) {
-  animation-delay: 0.12s;
-}
-
-.trophy-on-shelf:nth-child(4) {
-  animation-delay: 0.18s;
-}
+.trophy-on-shelf:nth-child(2) { animation-delay: 0.06s; }
+.trophy-on-shelf:nth-child(3) { animation-delay: 0.12s; }
+.trophy-on-shelf:nth-child(4) { animation-delay: 0.18s; }
 
 @keyframes trophy-shelf-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.92);
+    transform: translateY(10px) scale(0.92);
   }
   to {
     opacity: 1;
@@ -174,46 +290,53 @@ a.trophy-on-shelf.trophy-link:focus-visible {
 }
 
 .trophy-on-shelf .trophy-png {
-  width: 56px;
-  height: 72px;
+  width: 62px;
+  height: 80px;
   object-fit: contain;
   display: block;
   filter:
-    drop-shadow(0 0 12px rgba(255, 196, 60, 0.28))
-    drop-shadow(0 4px 8px rgba(0, 0, 0, 0.65));
+    drop-shadow(0 10px 4px rgba(0, 0, 0, 0.45))
+    drop-shadow(0 0 10px rgba(255, 196, 90, 0.18));
   transform-origin: bottom center;
 }
 
 .trophy-bay.has-trophies .trophy-on-shelf:hover .trophy-png,
 .trophy-bay.has-trophies a.trophy-on-shelf.trophy-link:hover .trophy-png {
-  transform: scale(1.06) translateY(-3px);
+  transform: translateY(-4px) scale(1.05);
   filter:
-    drop-shadow(0 0 16px rgba(255, 196, 60, 0.45))
-    drop-shadow(0 6px 10px rgba(0, 0, 0, 0.7));
+    drop-shadow(0 14px 6px rgba(0, 0, 0, 0.5))
+    drop-shadow(0 0 14px rgba(255, 206, 110, 0.4));
 }
 
 .trophy-on-shelf .trophy-season {
-  margin-top: 4px;
-  font-size: 9px;
+  position: relative;
+  z-index: 1;
+  margin-top: 1px;
+  margin-bottom: -6px;
+  padding: 1px 5px 2px;
+  font-size: 8px;
+  font-weight: bold;
+  letter-spacing: 0.03em;
   line-height: 1.2;
-  color: #ccc;
+  color: #3a280c;
   text-align: center;
-  max-width: 64px;
-  word-break: break-word;
+  max-width: 72px;
+  background: linear-gradient(180deg, #f4e4b4, #c4963e);
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
 .trophy-cabinet.has-wins .trophy-bay.has-trophies .trophy-bay-label {
-  color: #ffd878;
+  color: #ffe08a;
 }
 
 @media (max-width: 640px) {
-  .trophy-bay {
-    flex: 1 1 45%;
-    max-width: none;
-  }
-
-  .trophy-on-shelf .trophy-png {
-    width: 48px;
-    height: 62px;
-  }
+  .trophy-cabinet { padding: 0 10px; }
+  .trophy-cabinet-cornice { margin: 0 -10px; height: 40px; }
+  .trophy-cabinet-nameplate { letter-spacing: 0.18em; font-size: 10px; }
+  .trophy-cabinet-plinth { margin: 0 -16px 12px; }
+  .trophy-cabinet-handle { display: none; }
+  .shelf-bays { padding-left: 8px; padding-right: 8px; }
+  .trophy-bay { flex: 1 1 45%; max-width: none; }
+  .trophy-on-shelf .trophy-png { width: 50px; height: 66px; }
 }
