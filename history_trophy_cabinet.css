@@ -257,7 +257,7 @@
 
 .trophy-slot-stand {
   position: relative;
-  min-height: 280px;
+  min-height: 364px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -353,12 +353,12 @@ a.trophy-on-shelf.trophy-link:focus-visible {
   filter: drop-shadow(0 10px 4px rgba(0, 0, 0, 0.4));
 }
 
-.trophy-size-super8 .trophy-png { width: 210px; height: 280px; }
-.trophy-size-superleague .trophy-png { width: 184px; height: 246px; }
-.trophy-size-championship .trophy-png { width: 164px; height: 220px; }
-.trophy-size-cup .trophy-png { width: 150px; height: 200px; }
-.trophy-size-shield .trophy-png { width: 122px; height: 164px; }
-.trophy-size-bowl .trophy-png { width: 96px; height: 128px; }
+.trophy-size-super8 .trophy-png { width: 273px; height: 364px; }
+.trophy-size-superleague .trophy-png { width: 239px; height: 320px; }
+.trophy-size-championship .trophy-png { width: 213px; height: 286px; }
+.trophy-size-plate .trophy-png { width: 195px; height: 260px; }
+.trophy-size-league-cup .trophy-png { width: 180px; height: 240px; }
+.trophy-size-bowl .trophy-png { width: 125px; height: 166px; }
 
 .trophy-png--blank {
   display: block;

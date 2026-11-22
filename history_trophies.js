@@ -233,8 +233,8 @@ function trophySizeClass(honour) {
   }
   const cup = honour?.cup_code === "spoon" ? "bowl" : honour?.cup_code;
   if (cup === "super8") return "trophy-size-super8";
-  if (cup === "league_cup" || cup === "plate") return "trophy-size-cup";
-  if (cup === "shield") return "trophy-size-shield";
+  if (cup === "plate" || cup === "shield") return "trophy-size-plate";
+  if (cup === "league_cup") return "trophy-size-league-cup";
   return "trophy-size-bowl";
 }
 

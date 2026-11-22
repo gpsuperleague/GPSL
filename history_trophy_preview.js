@@ -3,7 +3,7 @@ import {
   renderTrophyCabinet,
   bindTrophyCabinet,
   TROPHY_CABINET_PREVIEW_SCENARIOS,
-} from "./history_trophies.js?v=20261122-trophy-scale";
+} from "./history_trophies.js?v=20261122-trophy-30";
 
 function esc(text) {
   return String(text ?? "")
