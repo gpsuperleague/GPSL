@@ -238,14 +238,9 @@ function renderTrophyFigure(honour, canArrange) {
       ? `View ${seasonLabel} ${name}`
       : `${seasonLabel} ${name}`;
   const picture = image
-    ? `<img class="trophy-png" src="${esc(image)}" alt="" width="56" height="72" draggable="false">`
+    ? `<img class="trophy-png" src="${esc(image)}" alt="${esc(`${seasonLabel} ${name}`)}" width="86" height="116" draggable="false">`
     : `<span class="trophy-png trophy-png--blank" aria-hidden="true"></span>`;
-  const body = `
-      ${picture}
-      <span class="trophy-caption">
-        <span class="trophy-caption-name">${esc(name)}</span>
-        <span class="trophy-season">${esc(seasonLabel)}</span>
-      </span>`;
+  const body = picture;
   const attrs = `class="trophy-on-shelf${href ? " trophy-link" : ""}" data-honour-key="${esc(honourKey(honour))}" title="${esc(title)}"${canArrange ? ' draggable="true"' : ""}`;
   if (href) {
     return `<a ${attrs} href="${esc(href)}">${body}</a>`;
@@ -253,16 +248,23 @@ function renderTrophyFigure(honour, canArrange) {
   return `<figure ${attrs}>${body}</figure>`;
 }
 
-function renderSlot(shelf, slot, honour, canArrange) {
-  if (!honour) {
-    return `
-      <div class="trophy-slot is-empty" data-shelf="${shelf}" data-slot="${slot}">
-        <span class="trophy-slot-pad" aria-hidden="true"></span>
-      </div>`;
-  }
+function renderLedgeLabel(honour) {
+  if (!honour) return `<span class="shelf-ledge-label"></span>`;
   return `
-    <div class="trophy-slot has-trophy" data-shelf="${shelf}" data-slot="${slot}">
-      ${renderTrophyFigure(honour, canArrange)}
+    <span class="shelf-ledge-label">
+      <span class="shelf-ledge-name">${esc(honourName(honour))}</span>
+      <span class="shelf-ledge-season">${esc(cabinetSeasonText(honour.season_label))}</span>
+    </span>`;
+}
+
+function renderSlot(shelf, slot, honour, canArrange) {
+  const figure = honour
+    ? renderTrophyFigure(honour, canArrange)
+    : `<span class="trophy-slot-pad" aria-hidden="true"></span>`;
+  return `
+    <div class="trophy-slot${honour ? " has-trophy" : " is-empty"}" data-shelf="${shelf}" data-slot="${slot}">
+      <div class="trophy-slot-stand">${figure}</div>
+      <div class="shelf-ledge-cell">${renderLedgeLabel(honour)}</div>
     </div>`;
 }
 
@@ -295,9 +297,7 @@ export function renderTrophyCabinet(honours, options = {}) {
       const slots = row.map((honour, slot) => renderSlot(shelf, slot, honour, canArrange)).join("");
       return `
         <section class="cabinet-shelf" aria-label="Shelf ${shelf + 1}">
-          <div class="shelf-board">
-            <div class="shelf-slots">${slots}</div>
-          </div>
+          <div class="shelf-slots">${slots}</div>
         </section>`;
     })
     .join("");
