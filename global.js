@@ -1710,7 +1710,7 @@ const NAV_MENU_ICON_FILES = {
     title: "Super8",
     trophy: true,
   },
-  plate: { src: "images/trophies/plate.png", title: "Plate", trophy: true },
+  plate: { src: "images/trophies/plate.png?v=20261122-plate", title: "Plate", trophy: true },
   shield: { src: "images/trophies/shield.png", title: "Shield", trophy: true },
   bowl: { src: "images/trophies/bowl.png", title: "Bowl", trophy: true },
 };

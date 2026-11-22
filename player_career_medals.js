@@ -1,7 +1,7 @@
 /** Winner medals on player career profiles — ribbon medals per competition. */
 
 import { fullClubName } from "./clubs_lookup.js";
-import { trophyHonourHref } from "./history_trophies.js?v=20261122-league-cup";
+import { trophyHonourHref } from "./history_trophies.js?v=20261122-plate";
 
 function esc(text) {
   return String(text ?? "")

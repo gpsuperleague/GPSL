@@ -3,7 +3,7 @@ import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName, clubPageHref, clubBadgeImgHtml } from "./clubs_lookup.js";
 import { formatMoney, leagueBadgeHtml } from "./competition.js";
 import { escapePlayerHtml, playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
-import { trophyImageForCup } from "./trophy_assets.js?v=20261122-league-cup";
+import { trophyImageForCup } from "./trophy_assets.js?v=20261122-plate";
 import { renderChallengesIntro } from "./challenges_rules.js";
 import { challengeStatDescription } from "./challenge_labels.js";
 

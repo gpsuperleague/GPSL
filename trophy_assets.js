@@ -6,7 +6,7 @@ export const TROPHY_IMAGES = {
   championship_a: "images/trophies/championship.png",
   championship_b: "images/trophies/championship.png",
   super8: "images/trophies/super8.png",
-  plate: "images/trophies/plate.png",
+  plate: "images/trophies/plate.png?v=20261122-plate",
   shield: "images/trophies/shield.png",
   bowl: "images/trophies/bowl.png",
   spoon: "images/trophies/bowl.png",

@@ -1,4 +1,4 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20261122-league-cup";
+import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20261122-plate";
 import { loadClubsMap, fullClubName, clubWithOwnerHtml } from "./clubs_lookup.js";
 import {
   CUP_CODES,
@@ -28,7 +28,7 @@ import {
   isGpslMonthCurrentlyPlayable,
 } from "./competition_calendar.js";
 import { formatMatchConditions } from "./competition_conditions.js";
-import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js?v=20261122-league-cup";
+import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js?v=20261122-plate";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   scheduleActionLabel,
