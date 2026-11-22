@@ -1,8 +1,9 @@
 import { initGlobal } from "./global.js";
 import {
   renderTrophyCabinet,
+  bindTrophyCabinet,
   TROPHY_CABINET_PREVIEW_SCENARIOS,
-} from "./history_trophies.js?v=20261122-plate-fit";
+} from "./history_trophies.js?v=20261122-cabinet-shelves";
 
 function esc(text) {
   return String(text ?? "")
@@ -12,13 +13,50 @@ function esc(text) {
     .replace(/"/g, "&quot;");
 }
 
+const previewPlaces = {};
+const previewOpen = {};
+
 function renderScenarioBlock(scenario) {
   return `
-    <section class="preview-scenario" id="preview-${esc(scenario.id)}">
+    <section class="preview-scenario" id="preview-${esc(scenario.id)}" data-scenario="${esc(scenario.id)}">
       <h2>${esc(scenario.title)}</h2>
       <p class="blurb">${esc(scenario.blurb)}</p>
-      ${renderTrophyCabinet(scenario.honours)}
+      <div class="preview-cabinet">
+        ${renderTrophyCabinet(scenario.honours, {
+          canArrange: true,
+          places: previewPlaces[scenario.id] || [],
+          storeOpen: previewOpen[scenario.id] === true,
+        })}
+      </div>
     </section>`;
+}
+
+function bindScenario(section) {
+  const id = section?.dataset?.scenario;
+  const scenario = TROPHY_CABINET_PREVIEW_SCENARIOS.find((item) => item.id === id);
+  const mount = section?.querySelector(".preview-cabinet");
+  const cabinet = mount?.querySelector(".trophy-cabinet");
+  if (!scenario || !mount || !cabinet) return;
+  bindTrophyCabinet(cabinet, {
+    honours: scenario.honours,
+    places: previewPlaces[id] || [],
+    canArrange: true,
+    onCommit(nextPlaces) {
+      const room = cabinet.querySelector(".trophy-store-room");
+      previewOpen[id] = !!room && !room.hidden;
+      previewPlaces[id] = nextPlaces;
+      mount.innerHTML = renderTrophyCabinet(scenario.honours, {
+        canArrange: true,
+        places: nextPlaces,
+        storeOpen: previewOpen[id],
+      });
+      bindScenario(section);
+    },
+  });
+}
+
+function bindHost(host) {
+  host.querySelectorAll("[data-scenario]").forEach((section) => bindScenario(section));
 }
 
 function renderSingle(scenarioId) {
@@ -44,6 +82,7 @@ function applyScenario(scenarioId) {
   const host = document.getElementById("previewHost");
   if (!host) return;
   host.innerHTML = scenarioId === "all" ? renderAll() : renderSingle(scenarioId);
+  bindHost(host);
 }
 
 function initFromQuery() {

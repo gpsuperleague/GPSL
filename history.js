@@ -10,7 +10,7 @@ import {
   resolveClubShortName,
 } from "./clubs_lookup.js";
 import { DIVISION_LABELS } from "./competition.js";
-import { renderTrophyCabinet } from "./history_trophies.js?v=20261122-plate-fit";
+import { renderTrophyCabinet, bindTrophyCabinet } from "./history_trophies.js?v=20261122-cabinet-shelves";
 import { playerNameLinkHtml } from "./player_links.js";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 import {
@@ -311,10 +311,52 @@ async function loadPositionCharts(shortName) {
   renderMonthlyChart(data || {});
 }
 
-function renderHonours(honours) {
+async function mountTrophyCabinet(shortName, honours) {
   const el = document.getElementById("honoursPanel");
   if (!el) return;
-  el.innerHTML = renderTrophyCabinet(honours || []);
+  const rows = honours || [];
+  let places = [];
+  let canArrange = false;
+  let storeOpen = false;
+  let status = "";
+
+  const { data, error } = await supabase.rpc("competition_trophy_cabinet_get", {
+    p_club_short_name: shortName,
+  });
+  if (!error && data) {
+    places = data.places || [];
+    canArrange = data.can_arrange === true;
+  }
+
+  const paint = () => {
+    el.innerHTML = renderTrophyCabinet(rows, { canArrange, places, storeOpen, status });
+    bindTrophyCabinet(el.querySelector(".trophy-cabinet"), {
+      honours: rows,
+      places,
+      canArrange,
+      onCommit: async (nextPlaces) => {
+        const room = el.querySelector(".trophy-store-room");
+        storeOpen = !!room && !room.hidden;
+        status = "";
+        const { data: saved, error: saveError } = await supabase.rpc(
+          "competition_trophy_cabinet_save",
+          {
+            p_club_short_name: shortName,
+            p_places: nextPlaces,
+          }
+        );
+        if (saveError || saved?.ok === false) {
+          status = "The cabinet could not be saved. The trophies are back where they were.";
+          paint();
+          return;
+        }
+        places = saved?.places || nextPlaces;
+        paint();
+      },
+    });
+  };
+
+  paint();
 }
 
 function renderSeasons(seasons) {
@@ -677,7 +719,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const bundle = data || {};
-  renderHonours(bundle.honours || []);
+  await mountTrophyCabinet(shortName, bundle.honours || []);
   renderSeasons(bundle.seasons || []);
   renderRecords(bundle.records || {});
   renderBallon(bundle.ballon_winners || []);
