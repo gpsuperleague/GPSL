@@ -1,5 +1,10 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
-import { supporterMarkHtml } from "./owner_badge.js";
+import {
+  supporterMarkHtml,
+  holidayStatusMarkHtml,
+  loadOwnerHolidayStatusMap,
+  ownerHolidayStatusForClub,
+} from "./owner_badge.js?v=20261123-holiday-mark";
 
 primeAdminPageChrome();
 
@@ -1276,6 +1281,17 @@ function formatWlUkDate(iso) {
   });
 }
 
+function holidayMarkHtml(entry) {
+  if (!entry?.code) return "";
+  const start = entry.starts_at ? formatWlUkDate(entry.starts_at) : "";
+  const end = entry.ends_at ? formatWlUkDate(entry.ends_at) : "";
+  const when = [start, end].filter((d) => d && d !== "—").join(" – ");
+  const label = entry.code === "OH" ? "On holiday" : "Upcoming holiday";
+  return holidayStatusMarkHtml(entry.code, {
+    title: when ? `${label}: ${when} UK` : label,
+  });
+}
+
 function formatCountryName(code) {
   const cc = String(code || "").trim().toUpperCase();
   if (!cc) return "";
@@ -2324,6 +2340,7 @@ async function loadWaitingListAdmin() {
   if (!tableWrap) return;
 
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
+  await loadOwnerHolidayStatusMap({ force: true });
   const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes, handpickRes] =
     await Promise.all([
       supabase.rpc("waiting_list_admin"),
@@ -2409,6 +2426,10 @@ async function loadWaitingListAdmin() {
       renewal_leeway_until: supp.renewal_leeway_until || null,
       renewal_status: supp.renewal_status || (supp.supporter_renewal_due_on ? "ok" : "unset"),
       paid_months: supporterPaidMonths(r.owner_id),
+      holiday:
+        r.has_club || r.list_kind === "club_owner"
+          ? ownerHolidayStatusForClub(clubKey)
+          : null,
     };
   };
 
@@ -3597,6 +3618,8 @@ function renderWaitingListAdminRow(
     s1Mark?.tagLabel,
     s1Mark?.cellLabel,
     s1Mark?.kind,
+    row.holiday?.code,
+    row.holiday?.code === "OH" ? "on holiday" : row.holiday?.code === "UH" ? "upcoming holiday" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -3682,7 +3705,7 @@ function renderWaitingListAdminRow(
     <td class="wl-col-owner num">${overallIndex ?? "—"}</td>
     <td class="num wl-pos">${pos ?? "—"}</td>
     ${dragCell}
-        <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${season1TagMarkHtml(row)}${handpickMark}</td>
+        <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${holidayMarkHtml(row.holiday)}${season1TagMarkHtml(row)}${handpickMark}</td>
         <td>${escapeWl(email)}</td>
     <td>${escapeWl(hasClub ? "—" : row.tier || "—")}</td>
     <td>${escapeWl(status)}</td>

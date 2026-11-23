@@ -29,7 +29,7 @@ async function boot(name) {
       const mod = await import("./admin_staff_alerts.js?v=20261117-qualifying-video");
       await mod.bootStaffAlerts();
     } else if (name === "owners") {
-      const mod = await import("./admin_owners.js?v=20261118-s1-clear");
+      const mod = await import("./admin_owners.js?v=20261123-holiday-mark");
       await mod.bootOwnerAdminPage();
     } else if (name === "checklist") {
       const mod = await import("./admin_club_checklist.js?v=20261114-checklist-fines");
