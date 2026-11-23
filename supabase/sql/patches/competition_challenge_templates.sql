@@ -184,9 +184,11 @@ BEGIN
 END;
 $function$;
 
--- Apply template into a season for Start or Mid (required).
--- If the template has no targets for that window, the other window's targets
--- are remapped into it with default GPSL months so admin can edit afterwards.
+-- Apply one named target into Start or Mid.
+-- A saved template is a snapshot of every target at save time. Apply adds only
+-- the target whose title matches the template name. It does not copy the rest,
+-- and it does not delete challenges already on the season.
+-- p_replace is ignored. Old pages still send it.
 DROP FUNCTION IF EXISTS public.competition_admin_apply_challenge_template(bigint, bigint, boolean);
 DROP FUNCTION IF EXISTS public.competition_admin_apply_challenge_template(bigint, bigint, boolean, text);
 
@@ -208,7 +210,6 @@ DECLARE
   v_name text;
   v_row jsonb;
   v_inserted int := 0;
-  v_existing int := 0;
   v_default numeric;
   v_title text;
   v_from text;
@@ -218,8 +219,12 @@ DECLARE
   v_target int;
   v_prize numeric;
   v_want text := nullif(lower(btrim(coalesce(p_window_phase, ''))), '');
-  v_matched int := 0;
   v_remapped boolean := false;
+  v_skipped int := 0;
+  v_row_from text;
+  v_row_to text;
+  v_win_lo int;
+  v_win_hi int;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -255,58 +260,34 @@ BEGIN
     RAISE EXCEPTION 'Template "%" has no targets', v_name;
   END IF;
 
-  -- Prefer same-window targets; otherwise remap the other window into this one
+  -- Only the target named like the template. The snapshot's other targets stay put.
   SELECT coalesce(jsonb_agg(x.value), '[]'::jsonb)
   INTO v_source
   FROM jsonb_array_elements(v_targets) x
-  WHERE lower(btrim(coalesce(x.value->>'window_phase', 'start'))) = v_want;
-
-  v_matched := jsonb_array_length(coalesce(v_source, '[]'::jsonb));
-
-  IF v_matched = 0 THEN
-    SELECT coalesce(jsonb_agg(x.value), '[]'::jsonb)
-    INTO v_source
-    FROM jsonb_array_elements(v_targets) x
-    WHERE lower(btrim(coalesce(x.value->>'window_phase', 'start')))
-      IS DISTINCT FROM v_want;
-
-    -- If phases were missing/odd, fall back to entire template
-    IF jsonb_array_length(coalesce(v_source, '[]'::jsonb)) = 0 THEN
-      v_source := v_targets;
-    END IF;
-
-    v_remapped := true;
-  END IF;
+  WHERE lower(btrim(coalesce(x.value->>'title', ''))) = lower(btrim(v_name));
 
   IF jsonb_array_length(coalesce(v_source, '[]'::jsonb)) = 0 THEN
-    RAISE EXCEPTION 'Template "%" has no usable targets to apply', v_name;
+    RAISE EXCEPTION
+      'Template "%" has no target with that name. Nothing was changed.',
+      v_name;
   END IF;
 
-  -- Default months for the destination window
+  v_remapped := EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_source) x
+    WHERE lower(btrim(coalesce(x.value->>'window_phase', 'start'))) IS DISTINCT FROM v_want
+  );
+
   IF v_want = 'mid' THEN
+    v_win_lo := public.competition_challenge_month_sort('january');
+    v_win_hi := public.competition_challenge_month_sort('may');
     v_from := 'january';
     v_to := 'may';
   ELSE
+    v_win_lo := public.competition_challenge_month_sort('june');
+    v_win_hi := public.competition_challenge_month_sort('december');
     v_from := 'august';
     v_to := 'december';
-  END IF;
-
-  SELECT count(*)::int INTO v_existing
-  FROM public.competition_challenge_config
-  WHERE season_id = v_season_id
-    AND window_phase = v_want;
-
-  IF v_existing > 0 AND NOT coalesce(p_replace, false) THEN
-    RAISE EXCEPTION
-      'Season already has % % challenge(s). Pass replace=true to clear them first, or delete manually.',
-      v_existing,
-      CASE v_want WHEN 'mid' THEN 'mid-season' ELSE 'start-of-season' END;
-  END IF;
-
-  IF coalesce(p_replace, false) AND v_existing > 0 THEN
-    DELETE FROM public.competition_challenge_config
-    WHERE season_id = v_season_id
-      AND window_phase = v_want;
   END IF;
 
   v_default := coalesce(
@@ -326,7 +307,33 @@ BEGIN
       CONTINUE;
     END IF;
 
-    -- Force destination window + default months (admin edits afterwards)
+    IF EXISTS (
+      SELECT 1
+      FROM public.competition_challenge_config c
+      WHERE c.season_id = v_season_id
+        AND c.window_phase = v_want
+        AND lower(btrim(c.title)) = lower(btrim(v_title))
+    ) THEN
+      v_skipped := v_skipped + 1;
+      CONTINUE;
+    END IF;
+
+    v_row_from := lower(btrim(coalesce(v_row->>'gpsl_month_from', '')));
+    v_row_to := lower(btrim(coalesce(v_row->>'gpsl_month_to', '')));
+    IF public.competition_challenge_month_sort(v_row_from) BETWEEN v_win_lo AND v_win_hi
+       AND public.competition_challenge_month_sort(v_row_to) BETWEEN v_win_lo AND v_win_hi
+       AND public.competition_challenge_month_sort(v_row_from)
+         <= public.competition_challenge_month_sort(v_row_to) THEN
+      v_from := v_row_from;
+      v_to := v_row_to;
+    ELSIF v_want = 'mid' THEN
+      v_from := 'january';
+      v_to := 'may';
+    ELSE
+      v_from := 'august';
+      v_to := 'december';
+    END IF;
+
     INSERT INTO public.competition_challenge_config (
       season_id, title, description, window_phase,
       gpsl_month_from, gpsl_month_to,
@@ -362,8 +369,9 @@ BEGIN
     'remapped', v_remapped,
     'months_from', v_from,
     'months_to', v_to,
-    'replaced', coalesce(p_replace, false),
-    'inserted', v_inserted
+    'replaced', false,
+    'inserted', v_inserted,
+    'skipped', v_skipped
   );
 END;
 $function$;

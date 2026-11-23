@@ -59,6 +59,84 @@
       min-width: 70px;
       flex: 0 0 auto;
     }
+    .pack-key {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 22px;
+      margin: 0 0 14px;
+    }
+    .pack-key div {
+      display: grid;
+      grid-template-columns: 8.2em 1fr;
+      gap: 8px;
+      align-items: baseline;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .pack-key dt {
+      margin: 0;
+      color: #ccc;
+      font-weight: 600;
+    }
+    .pack-key dd {
+      margin: 0;
+      color: #888;
+    }
+    .pack-board {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .pack-col {
+      background: #141414;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .pack-col h4 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      color: #eee;
+    }
+    .pack-col h4 span {
+      margin-left: 6px;
+      color: #888;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .pack-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 12px;
+    }
+    .pack-field.pack-wide { grid-column: 1 / -1; }
+    .pack-field label {
+      display: block;
+      margin: 0 0 4px;
+      color: #aaa;
+      font-size: 12px;
+    }
+    .pack-field input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 5px;
+    }
+    .pack-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px 18px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .pack-actions .status-line { margin: 0; }
+    @media (max-width: 800px) {
+      .pack-key,
+      .pack-board { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body class="admin-page">
@@ -91,53 +169,88 @@
         <button type="button" id="saveChallengeDefaultsBtn" class="button">Save defaults</button>
         <div id="challengeDefaultsStatus" class="status-line"></div>
 
-        <h3 style="margin-top:18px;">Big prize pack (first to complete the number needed)</h3>
-        <p class="note">
-          Set this before clubs finish the set. Separate Start / Mid pots.
-          Medical tokens: 2,4,6,8,10 matches (Medical room). Fee discounts: % off what the <b>buyer</b> pays (seller still gets full fee; bank tops up). Appeal cards: red-card overturn requests (<a href="admin_prize_appeals.html">admin review</a>).
-          <b>Draft tokens</b>: sign any uncontracted player at market value (Club prizes); if squad is full (28), release a player at MV first.
-          <b>Owner credits</b>: ₿ paid into the winning club owner's personal Building Society wallet (not the club balance).
-          Save packs, then use <b>Recheck all clubs</b> if someone has already completed enough targets.
-        </p>
-        <div class="row gov-subsidy-row" style="align-items:flex-start;">
-          <div style="flex:1;min-width:240px;">
-            <h4>Start (Jun–Dec)</h4>
-            <label>Prize name</label>
-            <input type="text" id="packStartName" placeholder="Start of Season Challenge Prize" style="width:220px;"><br>
-            <label>Cash ₿</label>
-            <input type="text" id="packStartCash" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;"><br>
-            <label>Owner credits ₿ (Building Society)</label>
-            <input type="text" id="packStartCredits" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;"><br>
-            <label>Medical tokens (comma, e.g. 4,6)</label>
-            <input type="text" id="packStartMedical" placeholder="4,6" style="width:160px;"><br>
-            <label>Fee discounts % (comma, e.g. 10,15)</label>
-            <input type="text" id="packStartDiscount" placeholder="10" style="width:160px;"><br>
-            <label>Appeal cards</label>
-            <input type="number" id="packStartAppeals" min="0" max="5" step="1" style="width:80px;"><br>
-            <label>Draft tokens</label>
-            <input type="number" id="packStartDraft" min="0" max="5" step="1" style="width:80px;" title="Free market-value signing of an uncontracted player">
-          </div>
-          <div style="flex:1;min-width:240px;">
-            <h4>Mid (Jan–May)</h4>
-            <label>Prize name</label>
-            <input type="text" id="packMidName" placeholder="Mid-Season Challenge Prize" style="width:220px;"><br>
-            <label>Cash ₿</label>
-            <input type="text" id="packMidCash" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;"><br>
-            <label>Owner credits ₿ (Building Society)</label>
-            <input type="text" id="packMidCredits" class="challenge-money-input" inputmode="numeric" autocomplete="off" style="width:140px;"><br>
-            <label>Medical tokens (comma)</label>
-            <input type="text" id="packMidMedical" placeholder="2,4" style="width:160px;"><br>
-            <label>Fee discounts % (comma)</label>
-            <input type="text" id="packMidDiscount" placeholder="5" style="width:160px;"><br>
-            <label>Appeal cards</label>
-            <input type="number" id="packMidAppeals" min="0" max="5" step="1" style="width:80px;"><br>
-            <label>Draft tokens</label>
-            <input type="number" id="packMidDraft" min="0" max="5" step="1" style="width:80px;">
-          </div>
+        <h3 style="margin-top:18px;">Big prize pack</h3>
+        <p class="note">First club to finish the number needed gets that window’s pack. Save it before anyone finishes. If someone already has, use Recheck all clubs.</p>
+        <dl class="pack-key">
+          <div><dt>Medical tokens</dt><dd>2, 4, 6, 8 or 10 match recoveries</dd></div>
+          <div><dt>Fee discounts</dt><dd>% off the buyer’s fee. The seller still gets the full fee</dd></div>
+          <div><dt>Appeal cards</dt><dd>Red-card overturn requests</dd></div>
+          <div><dt>Draft tokens</dt><dd>Sign an uncontracted player at market value. Release one first if the squad is full (28)</dd></div>
+          <div><dt>Owner credits</dt><dd>Paid to the owner’s Building Society wallet, not the club</dd></div>
+        </dl>
+        <div class="pack-board">
+          <section class="pack-col">
+            <h4>Start <span>Jun–Dec</span></h4>
+            <div class="pack-fields">
+              <div class="pack-field pack-wide">
+                <label for="packStartName">Prize name</label>
+                <input type="text" id="packStartName" placeholder="Start of Season Challenge Prize">
+              </div>
+              <div class="pack-field">
+                <label for="packStartCash">Cash ₿</label>
+                <input type="text" id="packStartCash" class="challenge-money-input" inputmode="numeric" autocomplete="off">
+              </div>
+              <div class="pack-field">
+                <label for="packStartCredits">Owner credits ₿</label>
+                <input type="text" id="packStartCredits" class="challenge-money-input" inputmode="numeric" autocomplete="off">
+              </div>
+              <div class="pack-field">
+                <label for="packStartMedical">Medical tokens</label>
+                <input type="text" id="packStartMedical" placeholder="4, 6">
+              </div>
+              <div class="pack-field">
+                <label for="packStartDiscount">Fee discounts %</label>
+                <input type="text" id="packStartDiscount" placeholder="10, 15">
+              </div>
+              <div class="pack-field">
+                <label for="packStartAppeals">Appeal cards</label>
+                <input type="number" id="packStartAppeals" min="0" max="5" step="1">
+              </div>
+              <div class="pack-field">
+                <label for="packStartDraft">Draft tokens</label>
+                <input type="number" id="packStartDraft" min="0" max="5" step="1" title="Free market-value signing of an uncontracted player">
+              </div>
+            </div>
+          </section>
+          <section class="pack-col">
+            <h4>Mid <span>Jan–May</span></h4>
+            <div class="pack-fields">
+              <div class="pack-field pack-wide">
+                <label for="packMidName">Prize name</label>
+                <input type="text" id="packMidName" placeholder="Mid-Season Challenge Prize">
+              </div>
+              <div class="pack-field">
+                <label for="packMidCash">Cash ₿</label>
+                <input type="text" id="packMidCash" class="challenge-money-input" inputmode="numeric" autocomplete="off">
+              </div>
+              <div class="pack-field">
+                <label for="packMidCredits">Owner credits ₿</label>
+                <input type="text" id="packMidCredits" class="challenge-money-input" inputmode="numeric" autocomplete="off">
+              </div>
+              <div class="pack-field">
+                <label for="packMidMedical">Medical tokens</label>
+                <input type="text" id="packMidMedical" placeholder="2, 4">
+              </div>
+              <div class="pack-field">
+                <label for="packMidDiscount">Fee discounts %</label>
+                <input type="text" id="packMidDiscount" placeholder="5">
+              </div>
+              <div class="pack-field">
+                <label for="packMidAppeals">Appeal cards</label>
+                <input type="number" id="packMidAppeals" min="0" max="5" step="1">
+              </div>
+              <div class="pack-field">
+                <label for="packMidDraft">Draft tokens</label>
+                <input type="number" id="packMidDraft" min="0" max="5" step="1">
+              </div>
+            </div>
+          </section>
         </div>
-        <button type="button" id="saveChallengePacksBtn" class="button" style="margin-top:10px;">Save period packs</button>
-        <div id="challengePacksStatus" class="status-line"></div>
-        <p class="note" style="margin-top:8px;"><a href="admin_prize_appeals.html">Review red-card appeal cards →</a></p>
+        <div class="pack-actions">
+          <button type="button" id="saveChallengePacksBtn" class="button">Save period packs</button>
+          <a href="admin_prize_appeals.html">Review red-card appeal cards</a>
+          <div id="challengePacksStatus" class="status-line"></div>
+        </div>
       </div>
 
       <div class="card challenge-form-card">
@@ -282,9 +395,8 @@
           <b>To save for future seasons:</b> add/edit challenges in the list above first, then enter a
           template name and click <b>Save as template</b>. That snapshots every active target on the
           current season. Templates are <b>not</b> tied to a season, so they survive wipe/reset.
-          Later use <b>Apply → Start</b> or <b>Apply → Mid</b> on a template to load it into this season.
-          If the template only has the other window, those targets are copied across with default months
-          (Start: Aug–Dec, Mid: Jan–May) so you can edit them afterwards.
+          <b>Apply to Start</b> or <b>Apply to Mid</b> adds only the target with the same name as the template.
+          The other targets in that snapshot stay put, and challenges already on the season are not removed.
         </p>
         <div class="row gov-subsidy-row" style="align-items:flex-end;margin-bottom:10px;padding:12px;background:#1a1a1a;border:1px solid #333;border-radius:6px;">
           <div>
@@ -345,6 +457,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_challenges.js?v=20261123-new-challenges"></script>
+  <script type="module" src="admin_challenges.js?v=20261123-apply-one"></script>
 </body>
 </html>

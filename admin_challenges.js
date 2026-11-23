@@ -973,20 +973,19 @@ async function applyChallengeTemplate(templateId, templateName, windowPhase) {
     windowPhase === "mid" ? "January–May" : "August–December";
   if (
     !confirm(
-      `Apply “${templateName || templateId}” → ${phaseLabel}?\n\n` +
-        `• Uses that window’s targets if present, otherwise copies the other window across\n` +
-        `• Months reset to ${monthHint} (edit afterwards)\n` +
-        `• Replaces existing ${phaseLabel.toLowerCase()} targets only`
+      `Add “${templateName || templateId}” to ${phaseLabel}?\n\n` +
+        `Only the target with this name is added. The other targets in that save stay where they are, and nothing already on the season is removed.\n` +
+        `If its months are outside ${monthHint}, they are set to that range. You can edit them afterwards.`
     )
   ) {
     return;
   }
 
-  setStatus("challengeTemplateStatus", `Applying ${phaseLabel} targets…`);
+  setStatus("challengeTemplateStatus", `Adding ${templateName || "target"} to ${phaseLabel}…`);
   const { data, error } = await supabase.rpc("competition_admin_apply_challenge_template", {
     p_template_id: templateId,
     p_season_id: currentSeasonId,
-    p_replace: true,
+    p_replace: false,
     p_window_phase: windowPhase,
   });
   if (error) {
@@ -999,12 +998,18 @@ async function applyChallengeTemplate(templateId, templateName, windowPhase) {
   }
   await loadChallengeList();
   await loadChallengeProgressBoard();
-  const remapNote = data?.remapped
-    ? ` (copied from the other window; months set to ${monthHint})`
-    : ` (months set to ${monthHint})`;
+  if ((data?.inserted ?? 0) === 0 && (data?.skipped ?? 0) > 0) {
+    setStatus(
+      "challengeTemplateStatus",
+      `“${templateName || "That target"}” is already on ${phaseLabel}. Nothing else was changed.`,
+      true
+    );
+    return;
+  }
+  const monthNote = data?.remapped ? ` Months set to ${monthHint} where the saved months sit outside that window.` : "";
   setStatus(
     "challengeTemplateStatus",
-    `✅ Applied ${data?.inserted ?? 0} ${phaseLabel.toLowerCase()} target(s)${remapNote}. Edit them in the Targets list.`,
+    `✅ Added ${data?.inserted ?? 0} target to ${phaseLabel}.${monthNote} The other saved targets were left alone.`,
     true
   );
 }
