@@ -34,7 +34,7 @@ if (!token || !guildId || !supabaseUrl || !invokeKey) {
   process.exit(1);
 }
 
-async function sendWelcome(discordUserId, displayName) {
+async function postWelcome(action, discordUserId, displayName, extra) {
   const res = await fetch(welcomeUrl, {
     method: "POST",
     headers: {
@@ -44,11 +44,12 @@ async function sendWelcome(discordUserId, displayName) {
       "x-discord-feed-key": invokeKey,
     },
     body: JSON.stringify({
-      action: "on_join",
+      action,
       discord_user_id: discordUserId,
-      assign_visitor: true,
+      assign_visitor: action !== "member_left",
       source: "welcome_bot",
       display_name: displayName || null,
+      ...(extra || {}),
     }),
   });
   const text = await res.text();
@@ -59,18 +60,17 @@ async function sendWelcome(discordUserId, displayName) {
     json = { raw: text };
   }
   if (!res.ok) {
-    console.error("welcome failed", discordUserId, res.status, json);
+    console.error(action, "failed", discordUserId, res.status, json);
   } else {
-    console.log("welcome", {
-      user: discordUserId,
-      name: displayName,
-      ok: json?.ok,
-      skipped: json?.skipped,
-      dm: json?.dm?.ok,
-      visitor: json?.visitor_role,
-    });
+    console.log(action, { user: discordUserId, name: displayName, ok: json?.ok });
   }
   return json;
+}
+
+async function sendWelcome(discordUserId, displayName, joinedAt) {
+  return postWelcome("on_join", discordUserId, displayName, {
+    joined_at: joinedAt || null,
+  });
 }
 
 const client = new Client({
@@ -92,9 +92,29 @@ client.on("guildMemberAdd", async (member) => {
       member.user?.username ||
       member.id;
     console.log("guildMemberAdd", name, member.id);
-    await sendWelcome(member.id, name);
+    await sendWelcome(
+      member.id,
+      name,
+      member.joinedAt ? member.joinedAt.toISOString() : null
+    );
   } catch (err) {
     console.error("guildMemberAdd error", err);
+  }
+});
+
+client.on("guildMemberRemove", async (member) => {
+  try {
+    if (member.user?.bot) return;
+    if (member.guild?.id && member.guild.id !== guildId) return;
+    const name =
+      member.displayName ||
+      member.user?.globalName ||
+      member.user?.username ||
+      member.id;
+    console.log("guildMemberRemove", name, member.id);
+    await postWelcome("member_left", member.id, name);
+  } catch (err) {
+    console.error("guildMemberRemove error", err);
   }
 });
 
