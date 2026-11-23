@@ -782,7 +782,14 @@ function discordLockPanelBodyHtml() {
   return `
     <div id="discordLockPanel">
       <h2>Agreed on Discord scheduling</h2>
-      <p class="meta">Use this when you already agreed a time on Discord. Pick <b>any day</b> in this fixture’s GPSL month and a <b>30-minute</b> kick-off. It does not have to be a weekly availability slot. Your opponent still confirms here. Reply and arrangement clocks keep running until both lock.</p>
+      ${infoChipsHtml([
+        "Time already agreed on Discord",
+        "Any day in this fixture’s GPSL month",
+        "<b>30-minute</b> kick-off",
+        "Does not have to be a weekly slot",
+        "Opponent still confirms here",
+        "Reply and arrangement clocks run until both lock",
+      ])}
       <div class="discord-free-row">
         <label>Day <span id="discordTzTag"></span>
           <input type="date" id="discordDate" />
