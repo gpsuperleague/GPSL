@@ -57,6 +57,12 @@ type DiscordMessage = {
   author?: DiscordUser;
   member?: DiscordMember;
   attachments?: DiscordAttachment[];
+  embeds?: {
+    title?: string;
+    description?: string;
+    footer?: { text?: string };
+    fields?: { name?: string; value?: string }[];
+  }[];
 };
 
 type DiscordChannel = {
@@ -343,47 +349,87 @@ function foldChannelName(name: string | undefined | null): string {
     .replace(/[^a-z0-9]+/g, "");
 }
 
-/** Cup-codes supplement only — club/league lists already live in #upload-codes. */
+/** Markers so the daily refresh edits these posts instead of adding new ones. */
 const COMP_CODES_FOOTER = "gpsl-match-video-cup-codes-v1";
+const CLUB_CODES_FOOTER = "gpsl-match-video-club-codes-v1";
+
+const CLUB_LEAGUES: { slug: string; label: string; tag: string }[] = [
+  { slug: "superleague", label: "SuperLeague", tag: "SL" },
+  { slug: "championship_a", label: "Championship A", tag: "CA" },
+  { slug: "championship_b", label: "Championship B", tag: "CB" },
+];
 
 function competitionCodesMessageBody() {
   return {
     content:
-      "**Cup competition codes** (add-on to the club / league list above)\n" +
-      "Same link format: `[HomeShort 2-0 AwayShort [CUP-ROUND]](https://youtu.be/… or https://mega.nz/…)`",
+      "**Cup video tags** (add-on to the club / league list above)\n" +
+      "`[HomeShort 2-0 AwayShort [CUP-ROUND]](https://youtu.be/… or https://mega.nz/…)`\n" +
+      "The round is that cup’s round number, not how many clubs are left. " +
+      "League Cup last 64 is round 1, so the tag is `LC-R1`. `LC-R64` does not match.",
     embeds: [
       {
-        title: "GPSL cups — video tags",
+        title: "GPSL cups — which round tag to use",
         color: 0xff9900,
         description:
-          "League tags (**SL** / **CA** / **CB** + `MD{n}`) stay as already listed in this channel.",
+          "League tags stay **SL** / **CA** / **CB** + `MD{n}`, as already listed in this channel. " +
+          "Match Day → **Copy video filename** builds the exact line. " +
+          "Quarter-final, semi-final and final also accept `QF`, `SF` and `F`.",
         fields: [
           {
             name: "Cup codes",
             value:
-              "**S8** — Super8\n" +
-              "**PL** — Plate\n" +
+              "**LC** — League Cup\n" +
               "**SH** — Shield\n" +
-              "**BO** — Bowl _(BW also accepted)_\n" +
-              "**LC** — League Cup",
-            inline: true,
+              "**PL** — Plate\n" +
+              "**S8** — Super8\n" +
+              "**BO** — Bowl _(BW also accepted)_",
+            inline: false,
           },
           {
-            name: "Round tags",
+            name: "League Cup",
             value:
-              "`F` / `FINAL`\n" +
-              "`SF` — semi\n" +
-              "`QF` — quarter\n" +
-              "`R16` · `R32` · or `R{n}`",
-            inline: true,
+              "Dec · Last 64 · `LC-R1`\n" +
+              "Jan · Last 32 · `LC-R2`\n" +
+              "Feb · Last 16 · `LC-R3`\n" +
+              "Mar · Quarter-final · `LC-R4` or `LC-QF`\n" +
+              "Apr · Semi-final · `LC-R5` or `LC-SF`\n" +
+              "May · Final · `LC-R6` or `LC-F`",
+            inline: false,
+          },
+          {
+            name: "Shield",
+            value:
+              "Aug · Last 32 · `SH-R1`\n" +
+              "Sep · Last 16 · `SH-R2`\n" +
+              "Oct · Quarter-final · `SH-R3` or `SH-QF`\n" +
+              "Nov · Semi-final · `SH-R4` or `SH-SF`\n" +
+              "Dec · Final · `SH-R5` or `SH-F`",
+            inline: false,
+          },
+          {
+            name: "Plate",
+            value:
+              "Sep · Last 16 · `PL-R1`\n" +
+              "Oct · Quarter-final · `PL-R2` or `PL-QF`\n" +
+              "Nov · Semi-final · `PL-R3` or `PL-SF`\n" +
+              "Dec · Final · `PL-R4` or `PL-F`",
+            inline: false,
+          },
+          {
+            name: "Super8 and Bowl",
+            value:
+              "September and October are both the quarter-final (round 1). The month channel separates the two legs.\n" +
+              "Sep–Oct · Quarter-final · `S8-R1` / `BO-R1` or `S8-QF` / `BO-QF`\n" +
+              "Nov · Semi-final · `S8-R2` / `BO-R2` or `S8-SF` / `BO-SF`\n" +
+              "Dec · Final · `S8-R3` / `BO-R3` or `S8-F` / `BO-F`",
+            inline: false,
           },
           {
             name: "Examples",
             value:
+              "`[MON 3-0 ATM [LC-R1]](https://youtu.be/xxxxx)`\n" +
               "`[ARS 2-0 CHE [S8-QF]](https://youtu.be/xxxxx)`\n" +
-              "`[LIV 1-0 MCI [LC-R32]](https://youtu.be/xxxxx)`\n" +
-              "`[MON 0-0 ATA [SH-SF]](https://youtu.be/xxxxx)`\n" +
-              "Match Day → **Copy video filename** builds the exact tag.",
+              "`[LIV 1-0 MCI [SH-SF]](https://youtu.be/xxxxx)`",
             inline: false,
           },
         ],
@@ -391,6 +437,129 @@ function competitionCodesMessageBody() {
       },
     ],
   };
+}
+
+type RosterClub = {
+  short_name?: string;
+  club_name?: string;
+  owner_tag?: string | null;
+  vacant?: boolean;
+};
+
+function clubLine(c: RosterClub): string {
+  const code = String(c.short_name || "").trim().toUpperCase();
+  const name = String(c.club_name || code).trim();
+  const owner = String(c.owner_tag || "").trim();
+  const showOwner =
+    owner &&
+    owner !== "—" &&
+    owner.toUpperCase() !== code;
+  return showOwner ? `\`${code}\` ${name} · ${owner}` : `\`${code}\` ${name}`;
+}
+
+function clubCodesMessageBody(roster: {
+  season_label?: string;
+  divisions?: { slug?: string; label?: string; clubs?: RosterClub[] }[];
+}): Record<string, unknown> {
+  const bySlug = new Map<string, RosterClub[]>();
+  for (const div of roster.divisions || []) {
+    bySlug.set(String(div.slug || ""), div.clubs || []);
+  }
+
+  const fields: { name: string; value: string; inline: boolean }[] = [];
+  const occupied: { name: string; value: string; inline: boolean }[] = [];
+  const empty: { name: string; value: string; inline: boolean }[] = [];
+
+  for (const league of CLUB_LEAGUES) {
+    const clubs = (bySlug.get(league.slug) || [])
+      .filter((c) => String(c.short_name || "").trim())
+      .slice()
+      .sort((a, b) =>
+        String(a.short_name).localeCompare(String(b.short_name))
+      );
+    const taken = clubs.filter((c) => !c.vacant);
+    const open = clubs.filter((c) => c.vacant);
+    const pack = (
+      into: { name: string; value: string; inline: boolean }[],
+      name: string,
+      rows: RosterClub[]
+    ) => {
+      let chunk: string[] = [];
+      let size = 0;
+      let part = 1;
+      const flush = () => {
+        if (!chunk.length) return;
+        into.push({
+          name: part === 1 ? name : `${name} · ${part}`,
+          value: chunk.join("\n"),
+          inline: false,
+        });
+        part += 1;
+        chunk = [];
+        size = 0;
+      };
+      for (const line of rows.map(clubLine)) {
+        if (size + line.length + 1 > 1000 && chunk.length) flush();
+        chunk.push(line);
+        size += line.length + 1;
+      }
+      flush();
+    };
+    if (taken.length) {
+      pack(occupied, `${league.label} · ${league.tag} · ${taken.length}`, taken);
+    }
+    if (open.length) {
+      pack(empty, `Empty · ${league.label} · ${open.length}`, open);
+    }
+  }
+
+  fields.push(...occupied, ...empty);
+  if (!fields.length) {
+    fields.push({
+      name: "Clubs",
+      value: "No clubs are assigned to a league yet.",
+      inline: false,
+    });
+  }
+
+  const updated = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
+
+  return {
+    content:
+      "**Club codes**\n" +
+      "`[HomeShort 2-0 AwayShort [SL-MD5]](https://youtu.be/… or https://mega.nz/…)`\n" +
+      "Occupied clubs are listed first, by league. Empty clubs (no owner) are underneath, still by league.",
+    embeds: [
+      {
+        title: "GPSL club codes",
+        color: 0xff9900,
+        description:
+          "Use the short code in the video link. The league tag is **SL** SuperLeague, **CA** Championship A, or **CB** Championship B, then the matchday (`SL-MD5`). " +
+          "Match Day → **Copy video filename** builds the exact line.\n" +
+          `${roster.season_label || "Season"} · ${updated}`,
+        fields,
+        footer: { text: CLUB_CODES_FOOTER },
+      },
+    ],
+  };
+}
+
+function findClubCodesMessage(recent: DiscordMessage[]): DiscordMessage | null {
+  const marked = recent.find((m) => footerOf(m).includes(CLUB_CODES_FOOTER));
+  if (marked) return marked;
+
+  let best: DiscordMessage | null = null;
+  let bestScore = 0;
+  for (const m of recent) {
+    if (footerOf(m).includes(COMP_CODES_FOOTER)) continue;
+    const blob = messageBlob(m);
+    const codes = blob.match(/\b[A-Z]{2,5}\b/g) || [];
+    if (codes.length >= 15 && codes.length > bestScore) {
+      best = m;
+      bestScore = codes.length;
+    }
+  }
+  return best;
 }
 
 function findUploadCodesChannel(
@@ -425,11 +594,25 @@ function findUploadCodesChannel(
   return null;
 }
 
+function messageBlob(m: DiscordMessage): string {
+  const parts = [m.content || ""];
+  for (const e of m.embeds || []) {
+    parts.push(e.title || "", e.description || "", e.footer?.text || "");
+    for (const f of e.fields || []) parts.push(f.name || "", f.value || "");
+  }
+  return parts.join("\n");
+}
+
+function footerOf(m: DiscordMessage): string {
+  return (m.embeds || []).map((e) => e.footer?.text || "").join(" ");
+}
+
 async function postOrEditChannelMessage(
   botToken: string,
   channelId: string,
   messageId: string | null,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
+  footerMarker: string = COMP_CODES_FOOTER
 ): Promise<{ id: string; edited: boolean }> {
   if (messageId) {
     const res = await fetch(
@@ -455,7 +638,7 @@ async function postOrEditChannelMessage(
     const existing = recent.find((m) => {
       const embeds = (m as { embeds?: { footer?: { text?: string } }[] })
         .embeds;
-      return embeds?.some((e) => e?.footer?.text === COMP_CODES_FOOTER);
+      return embeds?.some((e) => e?.footer?.text === footerMarker);
     });
     if (existing?.id) {
       const res = await fetch(
@@ -546,6 +729,32 @@ async function syncCompetitionCodesGuide(
     console.warn("codes settings save:", saveErr.message);
   }
 
+  const { data: roster, error: rosterErr } = await adminClient.rpc(
+    "competition_whos_who_roster"
+  );
+  let clubs: Record<string, unknown> = { ok: false };
+  if (rosterErr || !roster?.ok) {
+    clubs = {
+      ok: false,
+      error: rosterErr?.message || roster?.reason || "roster unavailable",
+    };
+  } else {
+    const recent = await fetchChannelMessages(botToken, channel.id, 50);
+    const existing = findClubCodesMessage(recent);
+    const posted = await postOrEditChannelMessage(
+      botToken,
+      channel.id,
+      existing?.id || null,
+      clubCodesMessageBody(roster),
+      CLUB_CODES_FOOTER
+    );
+    clubs = {
+      ok: true,
+      message_id: posted.id,
+      edited: posted.edited,
+    };
+  }
+
   return {
     ok: true,
     mode: "sync_codes",
@@ -553,6 +762,7 @@ async function syncCompetitionCodesGuide(
     channel_name: channel.name || channel.id,
     message_id: result.id,
     edited: result.edited,
+    clubs,
   };
 }
 

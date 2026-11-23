@@ -70,16 +70,16 @@
   </div>
 
   <div class="card">
-    <h2 class="section">Discord #upload-codes — cup codes</h2>
+    <h2 class="section">Discord #upload-codes</h2>
     <p class="note">
-      Club short names and league tags (SL/CA/CB) are already in
-      <code>upload-codes</code>. This posts or updates a <b>cup-codes only</b> add-on
-      message (S8 / PL / SH / BO / LC + round tags) — it does not replace the club list.
-      Auto-refreshes daily at <b>21:00 UK</b>. Bot needs <b>Send Messages</b> / <b>Embed Links</b>.
+      Refreshes both posts in <code>upload-codes</code>: club codes (occupied clubs
+      by league, then empty clubs by league) and the cup round tags.
+      Auto-refreshes daily at <b>21:00 UK</b>. Bot needs <b>Send Messages</b>,
+      <b>Embed Links</b>, and <b>Manage Messages</b> if an older club list should be replaced.
       Optional Edge secret: <code>DISCORD_MATCH_VIDEOS_CODES_CHANNEL_ID</code>.
     </p>
     <div class="actions">
-      <button type="button" class="button" id="syncCodesBtn">Post / refresh cup codes</button>
+      <button type="button" class="button" id="syncCodesBtn">Post / refresh upload codes</button>
     </div>
     <div id="codesStatus"></div>
   </div>

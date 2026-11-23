@@ -64,3 +64,7 @@ verify_jwt = false
 
 [functions.discord-welcome-pack]
 verify_jwt = false
+
+# Auth checked inside (admin JWT / match-videos invoke key / service_role).
+[functions.discord-match-videos-ingest]
+verify_jwt = false
