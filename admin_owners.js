@@ -654,6 +654,7 @@ async function removeFromClub({
   }
 
   setStatus(statusEl, "Removing…");
+  document.getElementById(statusEl)?.scrollIntoView({ block: "nearest" });
   const payload = {
     p_add_to_waiting_list: !!addToWaitingList,
   };
@@ -671,6 +672,7 @@ async function removeFromClub({
       }`,
       false
     );
+    document.getElementById(statusEl)?.scrollIntoView({ block: "nearest" });
     return false;
   }
 
@@ -1233,6 +1235,7 @@ async function resetPassword() {
 
 function setWlActionStatus(msg, ok) {
   setStatus("wlActionStatus", msg, ok);
+  document.getElementById("wlActionStatus")?.scrollIntoView({ block: "nearest" });
 }
 
 function formatWlTimeSince(iso, nowMs = Date.now()) {
