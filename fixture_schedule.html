@@ -34,9 +34,18 @@
       font-size: 15px;
       white-space: nowrap;
     }
-    .already-played-bar .already-played-copy { flex: 1 1 18rem; min-width: 0; }
-    .already-played-bar .meta { margin: 0; }
+    .already-played-bar .info-chips { flex: 1 1 16rem; margin: 0; }
+    .already-played-bar .info-chip { background: #24160f; border-color: #6a3a28; }
+    .already-played-bar .info-chip-wait { color: #e8a87c; border-color: #e8a87c; }
     .already-played-bar .actions { margin: 0 0 0 auto; }
+    .info-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+    .info-chip {
+      display: inline-flex; align-items: center;
+      padding: 6px 10px; border-radius: 6px;
+      border: 1px solid var(--club-border, #333); background: #161616;
+      color: #ccc; font-size: 12px; line-height: 1.35;
+    }
+    .info-chip a { color: var(--gpsl-accent, #ff9900); }
     .page-container .panel h2 {
       color: var(--club-accent, var(--gpsl-accent, #ff9900));
       font-size: 16px; margin: 0 0 10px;
@@ -308,13 +317,12 @@
     .tz-compare-now { color:#8ab; font-size:12px; margin-top:3px; }
     .tz-compare-note { color:#8899aa; font-size:12px; line-height:1.4; margin:8px 0 0; }
     .tz-compare-note b { color:#cde; }
-    .schedule-manual-note {
+    .schedule-manual-note { margin: 0 0 14px; }
+    .schedule-manual-note .info-chip {
       background: var(--club-panel, #101c28);
-      border: 1px solid var(--club-border, #2a4a6a);
-      border-radius:6px;
-      padding:10px 12px; color: var(--club-tile-text, #cfe3ff); font-size:13px; line-height:1.45; margin:0 0 14px;
+      border-color: var(--club-border, #2a4a6a);
+      color: var(--club-tile-text, #cfe3ff);
     }
-    .schedule-manual-note a { color:var(--gpsl-accent, #ff9900); }
     .schedule-tabs {
       display:flex; flex-wrap:wrap; gap:0; margin:0 0 14px;
       border-bottom:1px solid var(--club-border, #333);
@@ -438,6 +446,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261123-already-bar"></script>
+  <script type="module" src="fixture_schedule.js?v=20261123-info-chips"></script>
 </body>
 </html>

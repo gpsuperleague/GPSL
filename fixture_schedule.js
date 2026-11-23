@@ -1189,6 +1189,16 @@ function noShowLadderBannerHtml(f) {
   return row;
 }
 
+function infoChipsHtml(items, extraClass = "") {
+  const chips = (items || [])
+    .filter(Boolean)
+    .map((html) => `<span class="info-chip">${html}</span>`)
+    .join("");
+  if (!chips) return "";
+  const cls = extraClass ? `info-chips ${extraClass}` : "info-chips";
+  return `<div class="${cls}">${chips}</div>`;
+}
+
 function alreadyPlayedPanelHtml() {
   const ap = ctx?.already_played;
   if (!ap || ap.completed) return "";
@@ -1205,22 +1215,22 @@ function alreadyPlayedPanelHtml() {
     actions = `<button type="button" id="alreadyPlayedCancelBtn" class="button secondary">Cancel my confirm</button>`;
   }
 
-  const statusLine = bothPending
+  const statusChip = bothPending
     ? ap.my_pressed
-      ? `<p class="meta" style="color:#e8a87c;"><b>Waiting for opponent</b> to confirm Already played.</p>`
-      : `<p class="meta" style="color:#e8a87c;"><b>Opponent confirmed</b> — confirm if you already played too.</p>`
+      ? `<span class="info-chip info-chip-wait"><b>Waiting for opponent</b></span>`
+      : `<span class="info-chip info-chip-wait"><b>Opponent confirmed</b> — confirm if you played too</span>`
     : "";
 
   return `
     <div class="panel already-played-bar">
       <h2>Already played?</h2>
-      <div class="already-played-copy">
-        <p class="meta">
-          You played this fixture without finishing GPSL arrangement.
-          <b>Both clubs must confirm.</b> Then each club pays <b>₿500k</b> and takes
-          <b>1 season strike</b> (every 5th season strike adds ₿1m), and Match Day unlocks for enter result / confirm + stats.
-        </p>
-        ${statusLine}
+      <div class="info-chips">
+        <span class="info-chip">Played before arrangement finished</span>
+        <span class="info-chip"><b>Both</b> must confirm</span>
+        <span class="info-chip"><b>₿500k</b> each</span>
+        <span class="info-chip"><b>1 season strike</b> · 5th adds ₿1m</span>
+        <span class="info-chip">Match Day unlocks for result + stats</span>
+        ${statusChip}
       </div>
       ${actions ? `<div class="actions">${actions}</div>` : ""}
     </div>`;
@@ -2364,14 +2374,47 @@ function render() {
 
   const isAwayWaiting = ctx.my_role === "away" && !canPick;
   const slotIntro = isAwayWaiting
-    ? `Waiting for <b>${fullClubName(f.home_club_short_name)}</b> (home) to propose first — slot buttons below are for reference only and won’t select. Once they propose you can accept or counter (${slotCountLine}). If you already agreed off-site, use the <b>Agreed on Discord</b> tab.`
-      : usingPoke
-      ? `No mutual times this window. <b>Poke</b> up to three kick-offs — use opponent availability, a <b>compromise</b> (their time, yours, or midpoint when under 2h apart), or any free date/time. First click is 1st choice. Already-suggested times are greyed out. Same accept / counter / reply rules after you send.`
+    ? infoChipsHtml([
+        `Waiting for <b>${fullClubName(f.home_club_short_name)}</b> to propose`,
+        "Slots below are reference only",
+        "Then you accept or counter",
+        slotCountLine,
+        "Off-site time: Agreed on Discord tab",
+      ])
+    : usingPoke
+      ? infoChipsHtml([
+          "No mutual times",
+          "Poke up to <b>3</b>",
+          "1st click = 1st choice",
+          "Grey = already suggested",
+          "They accept one or counter with up to 3",
+        ])
       : ctx.can_respond
-        ? `Accept one of the times above, or counter with up to three times free for <b>both</b> clubs in your local timezones (${slotCountLine}). First click is 1st choice. Already-suggested times in this arrangement are greyed out.`
+        ? infoChipsHtml([
+            "Accept one time above",
+            "Or counter with up to <b>3</b>",
+            "1st click = 1st choice",
+            "Free for both clubs",
+            "Grey = already suggested",
+            slotCountLine,
+          ])
         : usingCompatibleSlots
-          ? `Pick up to <b>3</b> kick-offs free for <b>both</b> clubs (each availability is in that owner’s timezone; times below are shown in yours). First click is 1st choice. <b style="color:#a8e06a;">Green = exact match</b> (both free). Nearby exclusive times under 2 hours apart appear as <b style="color:#9ec0ff;">blue compromises</b> (meet them, meet you, and midpoint if novel). Already-suggested times are greyed out (${slotCountLine}).`
-          : `Pick up to 3 blocks from available times (${slotCountLine}). First click is 1st choice. Click a chosen time again to remove it. Already-suggested times are greyed out.`;
+          ? infoChipsHtml([
+              "Up to <b>3</b> kick-offs",
+              "1st click = 1st choice",
+              `<b style="color:#a8e06a;">Green</b> = exact match`,
+              `<b style="color:#9ec0ff;">Blue</b> = compromise under 2h`,
+              "Grey = already suggested",
+              "They accept one or counter with up to 3",
+              slotCountLine,
+            ])
+          : infoChipsHtml([
+              "Up to <b>3</b> times",
+              "1st click = 1st choice",
+              "Click again to remove",
+              "Grey = already suggested",
+              slotCountLine,
+            ]);
 
   const emptySlotsMsg = usingPoke
     ? ""
@@ -2445,20 +2488,7 @@ function render() {
 
   const gpslSlotBody = `
       <h2>${showDiscordTab ? "GPSL Match Scheduling" : gpslSlotsHeading}</h2>
-      ${
-        showDiscordTab
-          ? `<p class="meta">${
-              isAwayWaiting
-                ? "Normal GPSL flow — home proposes from times free for both clubs; you can accept or counter later."
-                : usingPoke
-                  ? "No overlapping weekly times — send an availability poke (free date/time). Opponent still accepts or counters here; Discord remains an off-site option."
-                  : usingCompatibleSlots
-                    ? "Normal GPSL flow — pick up to three kick-offs free for both clubs (each owner’s availability in their timezone). Your opponent accepts one or counters with up to three."
-                    : "Normal GPSL flow — pick up to three 30-minute blocks, then propose."
-            }</p>`
-          : ""
-      }
-      <p class="meta">${slotIntro}</p>
+      ${slotIntro}
       ${emptySlotsMsg}
       ${
         usingPoke
@@ -2482,19 +2512,16 @@ function render() {
       }
   `;
 
-  const manualNoteHtml = `
-    <p class="schedule-manual-note">
-      <b>Preferred:</b> GPSL Match Scheduling (propose / accept / counter).
-      ${
-        showDiscordTab
-          ? "<b>Alternative:</b> Agreed on Discord tab if you already picked a time off-site (both still confirm here)."
-          : ""
-      }
-      <b>Manual arrange</b> (fully off-site, no clocks) only when
-      <b>both</b> owners have <b>GPSL match system OFF</b> on
-      <a href="owner_details.html">Owner Details</a>.
-    </p>
-  `;
+  const manualNoteHtml = infoChipsHtml(
+    [
+      "<b>Preferred</b> GPSL scheduling — propose, accept, or counter",
+      showDiscordTab
+        ? "<b>Alternative</b> Agreed on Discord tab if the time was picked off-site. Both still confirm here."
+        : "",
+      `<b>Manual</b> Fully off-site, no clocks, only when both match systems are OFF on <a href="owner_details.html">Owner Details</a>`,
+    ],
+    "schedule-manual-note"
+  );
 
   const schedulingTabsHtml =
     ctx.my_has_manager === false
