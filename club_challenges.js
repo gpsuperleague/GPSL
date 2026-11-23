@@ -2,7 +2,7 @@ import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, loadCurrentSeason } from "./competition.js";
-import { challengeStatDescription } from "./challenge_labels.js?v=20261123-hold-line";
+import { challengeStatDescription } from "./challenge_labels.js?v=20261123-export-window";
 
 function windowLabel(phase) {
   if (phase === "mid") return "Mid-season";
@@ -98,7 +98,7 @@ function renderChallengeCards(items) {
           <p class="challenge-progress ${st.className}">${st.text}</p>
           <p class="challenge-meta">
             ${months ? `${months}<br>` : ""}
-            ${challengeStatDescription(c.stat_type, c.target_value, c.stat_param)}
+            ${challengeStatDescription(c.stat_type, c.target_value, c.stat_param, c.gpsl_month_from, c.gpsl_month_to)}
             · Prize ${formatMoney(Number(c.prize_amount || 0))}
           </p>
         </div>

@@ -43,13 +43,63 @@ function parseRatedParam(param) {
   }
 }
 
+const MONTH_ORDER = [
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+];
+
+const MONTH_LABELS = {
+  june: "June",
+  july: "July",
+  august: "August",
+  september: "September",
+  october: "October",
+  november: "November",
+  december: "December",
+  january: "January",
+  february: "February",
+  march: "March",
+  april: "April",
+  may: "May",
+};
+
+/** Transfer windows that fall inside the challenge's months, in season order. */
+function transferWindowPhrase(monthFrom, monthTo) {
+  const from = MONTH_ORDER.indexOf(String(monthFrom || "").toLowerCase());
+  const to = MONTH_ORDER.indexOf(String(monthTo || "").toLowerCase());
+  if (from < 0 || to < 0) return "";
+  const lo = Math.min(from, to);
+  const hi = Math.max(from, to);
+  const names = ["june", "july", "august", "january"]
+    .filter((month) => {
+      const i = MONTH_ORDER.indexOf(month);
+      return i >= lo && i <= hi;
+    })
+    .map((month) => MONTH_LABELS[month]);
+  if (!names.length) return "";
+  if (names.length === 1) return `the ${names[0]} window`;
+  return `the ${names.join(", ")} window`;
+}
+
 /**
  * Plain-English description including the real target.
  * @param {string} statType
  * @param {number|string} targetValue
  * @param {string|object|null} statParam
+ * @param {string|null} monthFrom
+ * @param {string|null} monthTo
  */
-export function challengeStatDescription(statType, targetValue, statParam = null) {
+export function challengeStatDescription(statType, targetValue, statParam = null, monthFrom = null, monthTo = null) {
   const t = n(targetValue, 1);
   const type = String(statType || "");
 
@@ -95,8 +145,12 @@ export function challengeStatDescription(statType, targetValue, statParam = null
       return `One goalkeeper to keep ${t} clean ${plural(t, "sheet", "sheets")}`;
     case "match_win_by_3_spread":
       return `Win by 3 or more with 3 different scorers and 3 different assisters, in ${t} ${plural(t, "match", "matches")}`;
-    case "transfer_sell_foreign_window":
-      return `Sell ${t} ${plural(t, "player", "players")} to foreign clubs in the summer window or January`;
+    case "transfer_sell_foreign_window": {
+      const window = transferWindowPhrase(monthFrom, monthTo);
+      return `Sell ${t} ${plural(t, "player", "players")} to foreign clubs in ${
+        window || "the summer window or January"
+      }`;
+    }
     case "unbeaten_run_scheduled":
       return `Go ${t} matches without losing, in fixture order`;
     case "match_u21_xi":

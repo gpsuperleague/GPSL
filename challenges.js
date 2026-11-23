@@ -5,7 +5,7 @@ import { formatMoney, leagueBadgeHtml } from "./competition.js";
 import { escapePlayerHtml, playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { trophyImageForCup } from "./trophy_assets.js?v=20261123-super8";
 import { renderChallengesIntro } from "./challenges_rules.js";
-import { challengeStatDescription } from "./challenge_labels.js?v=20261123-hold-line";
+import { challengeStatDescription } from "./challenge_labels.js?v=20261123-export-window";
 
 let standingsData = null;
 let myClubShort = null;
@@ -437,7 +437,7 @@ function renderChallengeCard(c, story) {
       ? `${escapePlayerHtml(c.gpsl_month_from_label)}–${escapePlayerHtml(c.gpsl_month_to_label)}<br>`
       : "";
   const target = c.stat_type
-    ? `${escapePlayerHtml(challengeStatDescription(c.stat_type, c.target_value, c.stat_param))} · `
+    ? `${escapePlayerHtml(challengeStatDescription(c.stat_type, c.target_value, c.stat_param, c.gpsl_month_from, c.gpsl_month_to))} · `
     : "";
   return `
     <div class="challenge-card${story ? " won" : ""}">

@@ -3,7 +3,7 @@ import { formatMoney, loadCurrentSeason } from "./competition.js";
 import {
   CHALLENGE_STAT_LABELS,
   challengeStatDescription,
-} from "./challenge_labels.js?v=20261123-hold-line";
+} from "./challenge_labels.js?v=20261123-export-window";
 
 primeAdminPageChrome();
 
@@ -434,7 +434,13 @@ async function loadChallengeList() {
 
   function renderRow(row) {
     const comps = [row.include_league && "league", row.include_cup && "cup"].filter(Boolean).join("+");
-    const human = challengeStatDescription(row.stat_type, row.target_value, row.stat_param);
+    const human = challengeStatDescription(
+      row.stat_type,
+      row.target_value,
+      row.stat_param,
+      row.gpsl_month_from,
+      row.gpsl_month_to
+    );
     return `
       <div class="challenge-admin-item">
         <div>
@@ -571,7 +577,9 @@ async function loadChallengeProgressBoard() {
               ${c.window_phase} · ${challengeStatDescription(
                 c.stat_type,
                 c.target_value,
-                c.stat_param
+                c.stat_param,
+                c.gpsl_month_from,
+                c.gpsl_month_to
               )} · ${formatMoney(c.prize_amount)} · ${openTag}
               · ${c.achiever_count || 0} club(s)
             </span>
