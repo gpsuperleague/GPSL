@@ -31,8 +31,83 @@ function checklistHtml(id) {
   ).join("");
 }
 
+const STAGE_LABEL = {
+  who_you_are: "Who you are",
+  friendlies: "Five friendlies",
+  record: "Record friendly 5",
+  with_staff: "With staff",
+  waiting_list: "Waiting list",
+  handpick: "Handpick",
+};
+
+function when(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-GB");
+}
+
+function progressDetail(r) {
+  const bits = [];
+  const stage = r.stage;
+  if (stage === "who_you_are") {
+    if (!r.tag_done) bits.push("Tag not set");
+    if (!Number(r.availability_slots)) bits.push("Times not set");
+  } else if (stage === "friendlies") {
+    bits.push(`${Number(r.friendly_count) || 0}/5 friendlies`);
+    const due = when(r.friendly_deadline);
+    if (due) bits.push(`Friendlies by ${due}`);
+  } else if (stage === "record") {
+    bits.push("5/5 friendlies");
+    if (r.video_status === "rejected") bits.push("Last film sent back");
+    const due = when(r.video_deadline);
+    if (due) bits.push(`Film by ${due}`);
+    if (r.upload_code) bits.push(`Code ${r.upload_code}`);
+  } else if (stage === "with_staff") {
+    if (r.upload_code) bits.push(`Code ${r.upload_code}`);
+    bits.push("Film in for review");
+  } else if (stage === "waiting_list") {
+    bits.push("Approved");
+  } else if (stage === "handpick") {
+    if (r.handpick_club) bits.push(r.handpick_club);
+    const due = when(r.handpick_due_at);
+    if (due) bits.push(`Until ${due}`);
+  }
+  if (Number(r.reset_count) > 0) bits.push(`Restarted ${Number(r.reset_count)}`);
+  return bits.join(" · ");
+}
+
+async function loadProgress() {
+  const box = document.getElementById("progress");
+  if (!box) return { error: null, count: 0 };
+  const { data, error } = await supabase.rpc("admin_qualifying_progress");
+  if (error) {
+    box.innerHTML = `<p class="note">${escapeHtml(error.message)}</p>`;
+    return { error, count: 0 };
+  }
+  const rows = Array.isArray(data) ? data : [];
+  if (!rows.length) {
+    box.innerHTML = `<p class="note">Nobody is in qualifying.</p>`;
+    return { error: null, count: 0 };
+  }
+  box.innerHTML = `<table class="q-board">
+    <thead><tr><th>Owner</th><th>Stage</th><th>Where</th></tr></thead>
+    <tbody>${rows
+      .map(
+        (r) => `<tr>
+          <td>${escapeHtml(r.owner_tag || "—")}</td>
+          <td><span class="q-stage ${escapeHtml(r.stage)}">${escapeHtml(STAGE_LABEL[r.stage] || r.stage)}</span></td>
+          <td>${escapeHtml(progressDetail(r))}</td>
+        </tr>`
+      )
+      .join("")}</tbody>
+  </table>`;
+  return { error: null, count: rows.length };
+}
+
 async function loadQueue() {
   setStatus("status", "Loading…");
+  const progress = await loadProgress();
   const { data, error } = await supabase.rpc("admin_qualifying_queue");
   const list = document.getElementById("list");
   if (error) {
@@ -43,7 +118,12 @@ async function loadQueue() {
   const rows = Array.isArray(data) ? data : [];
   if (!rows.length) {
     list.innerHTML = `<p class="note">No qualifying videos waiting.</p>`;
-    setStatus("status", "", true);
+    const progressNote = progress.error
+      ? ""
+      : progress.count
+        ? `${progress.count} in qualifying.`
+        : "";
+    setStatus("status", progressNote, true);
     return;
   }
   list.innerHTML = rows
@@ -88,7 +168,12 @@ async function loadQueue() {
   list.querySelectorAll("[data-grant]").forEach((btn) => {
     btn.onclick = () => grant(btn.getAttribute("data-grant"));
   });
-  setStatus("status", `${rows.length} on the list`, true);
+  const progressNote = progress.error
+    ? ""
+    : progress.count
+      ? `${progress.count} in qualifying. `
+      : "";
+  setStatus("status", `${progressNote}${rows.length} recording${rows.length === 1 ? "" : "s"} on the list`, true);
 }
 
 function ticksFor(id) {

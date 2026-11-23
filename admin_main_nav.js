@@ -680,7 +680,7 @@ export const ADMIN_MAIN_NAV = [
           "admin_qualifying.html",
           null,
           null,
-          "Review new-member qualifying recordings and name a handpick club."
+          "See which qualifying stage each new member is on, review recordings, and name a handpick club."
         ),
         L(
           "Network incidents",
