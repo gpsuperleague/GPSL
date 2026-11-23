@@ -51,7 +51,7 @@
 
 .trophy-cabinet-glass {
   position: relative;
-  padding: 195px 12px 6px;
+  padding: 18px 12px 6px;
   background:
     radial-gradient(ellipse at 50% -10%, rgba(255, 255, 255, 0.1), transparent 46%),
     linear-gradient(180deg, #1a1d22 0%, #121418 100%);
