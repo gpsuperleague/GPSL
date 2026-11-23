@@ -422,6 +422,8 @@
     .mc-next-detail { color: #999; }
     .mc-filename { font-size: 11px; color: #999; margin-top: 4px; word-break: break-all; }
     .mc-filename code { color: #ddd; background: #222; padding: 1px 4px; border-radius: 3px; }
+    .mc-video-url { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+    .mc-video-url input { flex: 1; min-width: 0; background: #1a1a1a; color: #eee; border: 1px solid #444; border-radius: 3px; padding: 4px 6px; font-size: 12px; }
     .mc-flags { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; }
     .mc-club-flags { margin-top: 8px; }
     .mc-flag {
@@ -803,7 +805,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20261122-discord-link"></script>
+  <script type="module" src="dashboard.js?v=20261123-video-url"></script>
 
 </body>
 </html>

@@ -208,6 +208,15 @@ export function formatGpslMonthRangeList(fromMonth, beforeMonth) {
  * True when a played fixture should already affect league tables / season stats.
  * Early holiday results wait until their gpsl_month is active (or earlier).
  */
+function fixtureMonthIsOpen(fixture, calendarStatus = null) {
+  const active = calendarStatus?.active_gpsl_month;
+  if (!active) return false;
+  const fSort = gpslMonthSortIndex(fixture?.gpsl_month);
+  const aSort = gpslMonthSortIndex(active);
+  if (fSort == null || aSort == null) return true;
+  return fSort <= aSort;
+}
+
 export function fixtureCountsInTables(fixture, calendarStatus = null) {
   if (!fixture || fixture.status !== "played") return false;
   if (fixture.home_goals == null || fixture.away_goals == null) return false;
@@ -904,7 +913,7 @@ export function formatFixtureScore(f, clubIdentity = null) {
   if (
     f.submission_status === "pending" &&
     f.proposed_home_goals != null &&
-    (!clubIdentity || fixtureInvolvesClub(f, clubIdentity))
+    f.proposed_away_goals != null
   ) {
     return `${f.proposed_home_goals} – ${f.proposed_away_goals}?`;
   }
@@ -1493,6 +1502,23 @@ export async function loadStandingsWithPrizes(supabase, division = null) {
   return data || [];
 }
 
+/** League table including a score that one club has entered and the other has not confirmed yet. */
+export async function loadLiveStandingsWithPrizes(supabase, division = null) {
+  let query = supabase
+    .from("competition_standings_prizes_live")
+    .select("*")
+    .order("table_position", { ascending: true });
+
+  if (division) query = query.eq("division", division);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("loadLiveStandingsWithPrizes:", error);
+    return loadStandingsWithPrizes(supabase, division);
+  }
+  return data || [];
+}
+
 /** Prestige cup qualification from final league position. */
 export function prestigeCupForPosition(division, position) {
   if (division === "superleague") {
@@ -1742,9 +1768,17 @@ export function buildVenueStandings(
 
   const homeVenue = venue === "home";
   for (const f of fixtures || []) {
-    if (f.competition_type !== "league" || f.status !== "played") continue;
-    const isVoid = isVoidFixture(f);
-    if (!isVoid && (f.home_goals == null || f.away_goals == null)) continue;
+    if (f.competition_type !== "league") continue;
+    const provisional =
+      f.status !== "played" &&
+      f.submission_status === "pending" &&
+      f.proposed_home_goals != null &&
+      f.proposed_away_goals != null;
+    if (f.status !== "played" && !provisional) continue;
+    const homeGoals = provisional ? Number(f.proposed_home_goals) : f.home_goals;
+    const awayGoals = provisional ? Number(f.proposed_away_goals) : f.away_goals;
+    const isVoid = !provisional && isVoidFixture(f);
+    if (!isVoid && (homeGoals == null || awayGoals == null)) continue;
 
     // Same month-defer rule as the overall league table / season stats.
     if (calendarStatus) {
@@ -1754,6 +1788,8 @@ export function buildVenueStandings(
         const fSort = gpslMonthSortIndex(f.gpsl_month);
         const aSort = gpslMonthSortIndex(active);
         if (fSort != null && aSort != null && fSort > aSort) continue;
+      } else if (provisional) {
+        if (!fixtureMonthIsOpen(f, calendarStatus)) continue;
       } else if (!fixtureCountsInTables(f, calendarStatus)) {
         continue;
       }
@@ -1770,8 +1806,8 @@ export function buildVenueStandings(
       continue;
     }
 
-    const gf = Number(homeVenue ? f.home_goals : f.away_goals);
-    const ga = Number(homeVenue ? f.away_goals : f.home_goals);
+    const gf = Number(homeVenue ? homeGoals : awayGoals);
+    const ga = Number(homeVenue ? awayGoals : homeGoals);
     let r = "L";
     if (gf > ga) r = "W";
     else if (gf === ga) r = "D";

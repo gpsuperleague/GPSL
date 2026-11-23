@@ -7,7 +7,7 @@ import {
 } from "./clubs_lookup.js?v=20261119-pts-star-inline";
 import {
   loadCurrentSeason,
-  loadStandingsWithPrizes,
+  loadLiveStandingsWithPrizes,
   loadPointsDeductedByClub,
   loadArchivedSeasonStandings,
   loadLeagueFixtures,
@@ -27,7 +27,7 @@ import {
   formatMoney,
   divisionLabelWithBadgeHtml,
   normalizeClubKey,
-} from "./competition.js?v=20261119-pts-star";
+} from "./competition.js?v=20261123-live-table";
 import { loadCalendarStatus } from "./competition_calendar.js";
 
 function seasonFromUrl() {
@@ -596,7 +596,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const [standings, pointsDeducted, fixtures, playoffQualifiers, calendarStatus] =
     await Promise.all([
-      loadStandingsWithPrizes(supabase),
+      loadLiveStandingsWithPrizes(supabase),
       loadPointsDeductedByClub(supabase),
       loadLeagueFixtures(supabase),
       loadShieldSpoonPlayoffQualifiers(supabase, season.id),

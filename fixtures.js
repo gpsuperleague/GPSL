@@ -20,7 +20,7 @@ import {
   leagueBadgeHtml,
   divisionLabelWithBadgeHtml,
   isFixtureMonthPlayable,
-} from "./competition.js?v=20261104-miss-result";
+} from "./competition.js?v=20261123-live-table";
 import {
   loadCalendarStatus,
   loadSeasonCalendarMonths,

@@ -28,7 +28,7 @@ import {
   LEAGUE_DIVISIONS,
   deferredResultNote,
   leagueBadgeHtml,
-} from "./competition.js?v=20261104-miss-result";
+} from "./competition.js?v=20261123-live-table";
 import {
   loadCalendarStatus,
   calendarStatusBanner,
@@ -61,7 +61,7 @@ import {
 } from "./matchday_console_rules.js?v=20261118-clearly-shown";
 import { playerNameLinkHtml } from "./player_links.js";
 import { fullClubName } from "./clubs_lookup.js";
-import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261122-discord-link";
+import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261123-video-url";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,

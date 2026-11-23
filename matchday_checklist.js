@@ -310,7 +310,7 @@ function renderActionButton(step, fixtureId) {
   }
   if (step.href === "discord") {
     return step.filename
-      ? `<button type="button" class="mc-btn mc-btn-primary" data-mc-copy="${escapeHtml(step.filename)}" title="Copy the Discord link, replace PASTE_YOUR_LINK with your YouTube or MEGA url, then post it in the match videos channel">Copy Discord link</button>`
+      ? `<button type="button" class="mc-btn mc-btn-primary" data-mc-copy="${escapeHtml(step.filename)}" title="Copy the Discord link and post it in the match videos channel">Copy Discord link</button>`
       : "";
   }
   if (!step.href) return "";
@@ -598,6 +598,12 @@ function checklistActionsHtml(fx, actionNext, fid) {
   return `<div class="mc-actions">${primary}${schedule}</div>`;
 }
 
+function discordUrlFromLine(line) {
+  const m = String(line || "").match(/\((https?:\/\/[^)\s]+)\)/i);
+  if (!m || /PASTE_YOUR_LINK/i.test(m[1])) return "";
+  return m[1];
+}
+
 function renderFixture(fx) {
   const fid = Number(fx.fixture_id);
   const steps = Array.isArray(fx.steps) ? fx.steps : [];
@@ -635,7 +641,12 @@ function renderFixture(fx) {
       ${fixtureMetaHtml(fx)}
       <div class="mc-steps">${steps.map(renderStepPill).join("")}</div>
       ${status}
-      ${showFilename ? `<div class="mc-filename">Discord: <code>${escapeHtml(video.filename)}</code></div>` : ""}
+      ${showFilename ? `<div class="mc-filename">Discord: <code data-mc-discord-line>${escapeHtml(video.filename)}</code>
+        <div class="mc-video-url">
+          <input type="url" data-mc-video-url="${fid}" value="${escapeHtml(discordUrlFromLine(video.filename))}" placeholder="https://youtu.be/… or https://mega.nz/…" autocomplete="off" />
+          <button type="button" class="mc-btn" data-mc-save-video="${fid}">Save url</button>
+        </div>
+      </div>` : ""}
       ${fx.flags?.length ? `<div class="mc-flags">${renderFlags(fx.flags)}</div>` : ""}
       ${strikeNoteHtml(fid)}
       ${checklistActionsHtml(fx, actionNext, fid)}
@@ -815,11 +826,14 @@ function render() {
   section.querySelectorAll("[data-mc-copy]").forEach((btn) => {
     btn.addEventListener("click", () => onCopy(btn));
   });
+  section.querySelectorAll("[data-mc-save-video]").forEach((btn) => {
+    btn.addEventListener("click", () => onSaveVideoUrl(Number(btn.dataset.mcSaveVideo), btn));
+  });
   section.querySelectorAll("[data-mc-rec]").forEach((box) => {
     box.addEventListener("change", () => onRecTick(box));
   });
   if (ownerPreviewClub()) {
-    section.querySelectorAll("[data-mc-checkin], [data-mc-rec]").forEach((el) => {
+    section.querySelectorAll("[data-mc-checkin], [data-mc-rec], [data-mc-save-video], [data-mc-video-url]").forEach((el) => {
       el.disabled = true;
     });
   }
@@ -837,6 +851,33 @@ async function onCopy(btn) {
   setTimeout(() => {
     btn.textContent = "Copy Discord link";
   }, 2000);
+}
+
+async function onSaveVideoUrl(fixtureId, btn) {
+  if (ownerPreviewClub()) return;
+  if (!fixtureId) return;
+  const card = btn.closest(".mc-fixture");
+  const input = card?.querySelector("[data-mc-video-url]");
+  const url = String(input?.value || "").trim();
+  btn.disabled = true;
+  const { data, error } = await supabase.rpc("match_video_save_discord_link", {
+    p_fixture_id: fixtureId,
+    p_url: url,
+  });
+  btn.disabled = false;
+  if (error) {
+    alert(error.message || "Could not save that url.");
+    return;
+  }
+  const line = typeof data === "string" ? data : "";
+  const code = card?.querySelector("[data-mc-discord-line]");
+  if (code && line) code.textContent = line;
+  const copy = card?.querySelector("[data-mc-copy]");
+  if (copy && line) copy.dataset.mcCopy = line;
+  btn.textContent = "Saved";
+  setTimeout(() => {
+    btn.textContent = "Save url";
+  }, 1500);
 }
 
 async function onCheckIn(fixtureId, btn) {
