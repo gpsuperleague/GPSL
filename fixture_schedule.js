@@ -783,10 +783,10 @@ function discordLockPanelBodyHtml() {
     <div id="discordLockPanel">
       <h2>Agreed on Discord scheduling</h2>
       ${infoChipsHtml([
-        "Time already agreed on Discord",
+        "Time already agreed on Discord?",
         "Any day in this fixture’s GPSL month",
-        "<b>30-minute</b> kick-off",
-        "Does not have to be a weekly slot",
+        "30-minute kick-off",
+        "Any kick-off, even outside weekly availability",
         "Opponent still confirms here",
         "Reply and arrangement clocks run until both lock",
       ])}
@@ -2377,7 +2377,7 @@ function render() {
           "Select up to 3 kick-offs",
           ...choiceClicks,
           "Grey = already suggested",
-          "Opponent can accept or counter with up to 3",
+          "Opponent can accept 1 of your proposed date/times or counter with up to 3",
         ])
       : ctx.can_respond
         ? infoChipsHtml([
@@ -2393,7 +2393,7 @@ function render() {
               `<span style="color:#a8e06a;">Green</span> = exact match`,
               `<span style="color:#9ec0ff;">Blue</span> = compromise (within 2 hours)`,
               "Grey = already suggested",
-              "Opponent can accept or counter with up to 3",
+              "Opponent can accept 1 of your proposed date/times or counter with up to 3",
             ])
           : infoChipsHtml([
               "Select up to 3 kick-offs",
