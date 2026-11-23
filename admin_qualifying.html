@@ -15,6 +15,13 @@
     .q-card h3 { margin:0 0 6px; color:#ffcc66; font-size:15px; }
     .q-card label { display:flex; gap:8px; align-items:center; font-size:13px; margin:4px 0; }
     .q-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .q-board { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0 18px; }
+    .q-board th, .q-board td { border-bottom:1px solid #333; padding:8px 10px; text-align:left; vertical-align:top; }
+    .q-board th { color:#ff9900; font-size:12px; text-transform:uppercase; letter-spacing:0.03em; }
+    .q-stage { display:inline-block; padding:2px 8px; border-radius:999px; background:#2a2418; color:#ffcc66; font-weight:700; }
+    .q-stage.with_staff { background:#3a2a00; color:#ffcc33; }
+    .q-stage.waiting_list, .q-stage.handpick { background:#143214; color:#b6f5b6; }
+    h2.section { color:#ffcc66; font-size:16px; margin:18px 0 8px; }
     button.button.secondary { background:#444; color:#ddd; }
     input[type="text"] { padding:7px 9px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px; }
     #status { margin-top:10px; white-space:pre-wrap; }
@@ -28,9 +35,12 @@
       New accounts only. Tick the matchday card on the recording in <b>𝐐𝐮𝐚𝐥𝐢𝐟𝐲𝐢𝐧𝐠-𝐕𝐢𝐝𝐞𝐨𝐬</b>.
       Approve puts them on the waiting list. Name one club if they are handpicking. They have 7 days to take it.
     </p>
+    <h2 class="section">Where they are</h2>
+    <div id="progress"></div>
+    <h2 class="section">Recordings</h2>
     <div id="list" class="q-list"></div>
     <div id="status"></div>
   </div>
-  <script type="module" src="admin_qualifying.js?v=20261120-default-formation"></script>
+  <script type="module" src="admin_qualifying.js?v=20261123-qualifying-stages"></script>
 </body>
 </html>
