@@ -1022,19 +1022,34 @@ export async function setOnboardingTimezone(timezone) {
   return { ok: true };
 }
 
-export async function proposeKickoff(fixtureId, kickoffAt) {
-  const { data, error } = await supabase.rpc("fixture_schedule_propose", {
+export async function proposeKickoff(fixtureId, kickoffAt, kickoffAt2 = null, kickoffAt3 = null) {
+  let first = kickoffAt;
+  let second = kickoffAt2;
+  let third = kickoffAt3;
+  if (Array.isArray(kickoffAt)) {
+    first = kickoffAt[0] || null;
+    second = kickoffAt[1] || null;
+    third = kickoffAt[2] || null;
+  }
+  const args = {
     p_fixture_id: fixtureId,
-    p_kickoff_at: kickoffAt,
-  });
+    p_kickoff_at: first,
+  };
+  if (second) args.p_kickoff_at_2 = second;
+  if (third) args.p_kickoff_at_3 = third;
+  const { data, error } = await supabase.rpc("fixture_schedule_propose", args);
   if (error) return { ok: false, msg: error.message };
   return { ok: true, proposalId: data };
 }
 
-export async function acceptProposal(proposalId) {
-  const { data, error } = await supabase.rpc("fixture_schedule_accept", {
-    p_proposal_id: proposalId,
-  });
+export async function acceptProposal(proposalId, choice = 1) {
+  const picked = Number(choice) || 1;
+  const { data, error } = await supabase.rpc(
+    picked === 1 ? "fixture_schedule_accept" : "fixture_schedule_accept_choice",
+    picked === 1
+      ? { p_proposal_id: proposalId }
+      : { p_proposal_id: proposalId, p_choice: picked }
+  );
   if (error) {
     const raw = error.message || "Could not accept proposal";
     if (/already passed/i.test(raw)) {

@@ -52,6 +52,10 @@
       border-color: var(--club-accent, var(--gpsl-accent, #ff9900));
     }
     .slot-btn.selected .slot-main { color: var(--club-accent, var(--gpsl-accent-hover, #ffcc66)); }
+    .slot-btn .slot-choice-tag {
+      font-size:10px; color: var(--club-accent, var(--gpsl-accent, #ff9900));
+      font-weight:700; margin-top:2px; line-height:1.2;
+    }
     .kickoff-line { line-height:1.35; }
     .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; align-items:center; }
     .button {
@@ -413,6 +417,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261121-status-ladder"></script>
+  <script type="module" src="fixture_schedule.js?v=20261123-three-slots"></script>
 </body>
 </html>
