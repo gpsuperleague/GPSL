@@ -379,15 +379,11 @@ function kitSeasonLineHtml(f) {
   const pitch = formatPitchLabel(f?.pitch_condition);
   const parts = [];
   if (month) parts.push(`GPSL ${escapeHtmlLite(month)}`);
-  if (f?.weather && weather && weather !== "—") {
-    parts.push(`Weather: ${formatWeatherChipHtml(f.weather)}`);
-  }
-  if (f?.pitch_condition && pitch && pitch !== "—") {
-    parts.push(`Pitch: ${formatPitchChipHtml(f.pitch_condition)}`);
-  }
+  if (f?.weather && weather && weather !== "—") parts.push(`Weather: ${escapeHtmlLite(weather)}`);
+  if (f?.pitch_condition && pitch && pitch !== "—") parts.push(`Pitch: ${escapeHtmlLite(pitch)}`);
   if (f?.kit_season && kit && kit !== "—") parts.push(`Kit: ${escapeHtmlLite(kit)}`);
   if (!parts.length) return "";
-  return `<p class="meta fixture-facts">${parts.join(" · ")}</p>`;
+  return `<p class="meta">${parts.join(" · ")}</p>`;
 }
 
 function escapeHtmlLite(text) {
@@ -2287,7 +2283,7 @@ function render() {
             ? `<div class="actions"><button type="button" class="button" data-accept-choice="${choice}">Accept ${
                 multiChoice ? `${rank.toLowerCase()} choice` : "this time"
               }</button></div>`
-            : ok
+            : ok || !anyStillValid
               ? ""
               : `<p class="meta" style="color:#f88;">This time has passed.</p>`;
         return `<p class="status-pending">${
@@ -2311,7 +2307,9 @@ function render() {
         ${unavailablePanelHtml(f)}
         ${
           !anyStillValid
-            ? '<p class="meta" style="color:#f88;">These times have passed — ask your opponent to counter-propose a future slot.</p>'
+            ? `<p class="meta" style="color:#f88;">${
+                multiChoice ? "These times have" : "This time has"
+              } passed — ask your opponent to counter-propose a future slot.</p>`
             : fromOpponent && ctx.can_respond
               ? ""
               : `<p class="meta">Waiting for your opponent to ${multiChoice ? "pick one, or counter" : "respond"}.</p>`
