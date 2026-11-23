@@ -2,7 +2,7 @@ import { supabase, initGlobal } from "./global.js";
 import { initGpslInfoTips } from "./gpsl_info_tips.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, loadCurrentSeason } from "./competition.js";
-import { challengeStatDescription } from "./challenge_labels.js?v=20261123-new-challenges";
+import { challengeStatDescription } from "./challenge_labels.js?v=20261123-hold-line";
 
 function windowLabel(phase) {
   if (phase === "mid") return "Mid-season";

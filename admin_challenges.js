@@ -3,7 +3,7 @@ import { formatMoney, loadCurrentSeason } from "./competition.js";
 import {
   CHALLENGE_STAT_LABELS,
   challengeStatDescription,
-} from "./challenge_labels.js?v=20261123-new-challenges";
+} from "./challenge_labels.js?v=20261123-hold-line";
 
 primeAdminPageChrome();
 

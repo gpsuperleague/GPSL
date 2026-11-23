@@ -90,7 +90,7 @@ export function challengeStatDescription(statType, targetValue, statParam = null
     case "match_defender_goal_unbeaten":
       return `A defender scores and you do not lose, in ${t} ${plural(t, "match", "matches")}`;
     case "league_position_held":
-      return `Hold or improve your league position from the previous month, in ${t} ${plural(t, "month", "months")}`;
+      return `Finish the month level with or above your league position from the end of the previous month, in ${t} ${plural(t, "month", "months")}`;
     case "player_max_gk_clean_sheets":
       return `One goalkeeper to keep ${t} clean ${plural(t, "sheet", "sheets")}`;
     case "match_win_by_3_spread":
