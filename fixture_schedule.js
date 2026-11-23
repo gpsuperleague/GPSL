@@ -2266,7 +2266,6 @@ function render() {
     pendingHtml = `
       <div class="panel">
         <h2>Pending proposal</h2>
-        ${responseHtml}
         <p class="status-pending">
           <b>${fullClubName(pending.proposed_by_club_short_name)}</b>
           ${
