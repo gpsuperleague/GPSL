@@ -33,7 +33,12 @@ import {
   loadCalendarStatus,
   calendarStatusBanner,
 } from "./competition_calendar.js";
-import { formatMatchConditions } from "./competition_conditions.js";
+import {
+  formatKitSeasonLabel,
+  formatMatchConditions,
+  formatPitchLabel,
+  formatWeatherLabel,
+} from "./competition_conditions.js";
 import {
   loadHolidayPlayContext,
   isFixtureHolidayPlayable,
@@ -61,7 +66,7 @@ import {
 } from "./matchday_console_rules.js?v=20261118-clearly-shown";
 import { playerNameLinkHtml } from "./player_links.js";
 import { fullClubName } from "./clubs_lookup.js";
-import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261123-rec-all";
+import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261123-fixture-facts";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
@@ -2518,6 +2523,17 @@ async function loadLeg1Companion(fixture) {
   return leg1CompanionFixture;
 }
 
+function fixtureFactsText(f) {
+  const parts = [];
+  const weather = formatWeatherLabel(f?.weather);
+  const pitch = formatPitchLabel(f?.pitch_condition);
+  const kit = formatKitSeasonLabel(f?.kit_season);
+  if (f?.weather && weather && weather !== "—") parts.push(`Weather: ${weather}`);
+  if (f?.pitch_condition && pitch && pitch !== "—") parts.push(`Pitch: ${pitch}`);
+  if (f?.kit_season && kit && kit !== "—") parts.push(`Kit: ${kit}`);
+  return parts.join(" · ");
+}
+
 async function updateFixturePreview() {
   const f = selectedFixture();
   const preview = document.getElementById("fixturePreview");
@@ -2600,13 +2616,13 @@ async function updateFixturePreview() {
   }
 
   preview.innerHTML = `
-    ${leagueBadgeHtml(f.division, { size: "sm" })}<b>${comp}</b>${f.competition_type === "league" ? ` · Matchday ${f.matchday}` : ""} · ${month}<br>
+    ${leagueBadgeHtml(f.division, { size: "sm" })}<b>${comp}</b>${f.competition_type === "league" ? ` · Matchday ${f.matchday}` : ""} · GPSL ${month}<br>
     ${f.home_club_name} vs ${f.away_club_name}${
       f.status === "played"
         ? ""
         : ` · <a href="fixture_schedule.html?fixture=${encodeURIComponent(f.id)}" style="color:var(--gpsl-accent, #ff9900);">Schedule</a>`
     }<br>
-    <span style="color:#aaa;font-size:13px;">${formatMatchConditions(f)}</span>${extra}${aggregateHtml}
+    <span style="color:#aaa;font-size:13px;">${fixtureFactsText(f) || formatMatchConditions(f)}</span>${extra}${aggregateHtml}
     ${cutoffHtml}
     ${unavailableHtml}
   `;

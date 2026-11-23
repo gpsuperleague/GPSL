@@ -57,6 +57,9 @@
       font-weight:700; margin-top:2px; line-height:1.2;
     }
     .kickoff-line { line-height:1.35; }
+    .fixture-facts { display:flex; flex-wrap:wrap; gap:4px 0; align-items:center; }
+    .fixture-facts .cond-chip { display:inline-flex; align-items:center; gap:4px; vertical-align:middle; }
+    .fixture-facts .cond-icon { width:16px; height:16px; display:block; }
     .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; align-items:center; }
     .button {
       padding:8px 14px; background:var(--gpsl-accent, #ff9900); color:#111; border:none;
@@ -417,6 +420,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261123-schedule-once"></script>
+  <script type="module" src="fixture_schedule.js?v=20261123-fixture-facts"></script>
 </body>
 </html>

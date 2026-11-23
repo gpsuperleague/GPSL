@@ -13,7 +13,10 @@ import { cupFixtureKind, cupSwitchNote } from "./matchday_console_rules.js?v=202
 import { fullClubName } from "./clubs_lookup.js";
 import {
   fetchFixturesHomeWeatherMeta,
+  formatKitSeasonLabel,
   formatMatchConditionsHtml,
+  formatPitchLabel,
+  formatWeatherLabel,
 } from "./competition_conditions.js";
 
 async function enrichChecklistFixturesWithHomeWeather(data, arrange) {
@@ -466,7 +469,7 @@ function renderRecordingBlock(fx) {
         ([k, label]) => `
         <label class="mc-rec-item${ticked.has(k) ? " done" : ""}">
           <input type="checkbox" data-mc-rec="${fid}" data-mc-rec-key="${k}"${ticked.has(k) ? " checked" : ""}>
-          <span>${escapeHtml(label)}</span>
+          <span>${escapeHtml(recItemLabel(k, label, fx))}</span>
         </label>`
       )
       .join("");
@@ -488,6 +491,7 @@ function renderRecordingBlock(fx) {
       <div class="mc-rec-head">🎥 <b>Pre-match checklist</b> <span>${done} / ${REC_ITEMS.length} ticked</span>
         <label class="mc-rec-all"><input type="checkbox" data-mc-rec-all="${fid}"${done === REC_ITEMS.length ? " checked" : ""}> All</label>
         <a href="learning_gpsl.html#matchday-checklist" target="_blank" rel="noopener">Full checklist</a></div>
+      ${recordingFactsHtml(fx)}
       <div class="mc-rec-groups">${groupsHtml}</div>
       ${resultLink}
     </div>`;
@@ -583,11 +587,43 @@ function fixtureMatchupHtml(fx, href) {
   return `<a class="mc-fx-vs" href="${href}">${line}</a>`;
 }
 
+function recItemLabel(key, label, fx) {
+  if (key === "rec_cfg_weather") {
+    const weather = formatWeatherLabel(fx?.weather);
+    const pitch = formatPitchLabel(fx?.pitch_condition);
+    const bits = [];
+    if (fx?.weather && weather && weather !== "—") bits.push(weather);
+    if (fx?.pitch_condition && pitch && pitch !== "—") bits.push(pitch);
+    if (bits.length) return `${label} — ${bits.join(" / ")}`;
+  }
+  if (key === "rec_cfg_kits") {
+    const kit = formatKitSeasonLabel(fx?.kit_season);
+    if (fx?.kit_season && kit && kit !== "—") return `${label} — ${kit}`;
+  }
+  return label;
+}
+
+function recordingFactsHtml(fx) {
+  const month = monthName(fx?.gpsl_month);
+  const weather = formatWeatherLabel(fx?.weather);
+  const pitch = formatPitchLabel(fx?.pitch_condition);
+  const kit = formatKitSeasonLabel(fx?.kit_season);
+  const parts = [];
+  if (month) parts.push(`GPSL ${escapeHtml(month)}`);
+  if (fx?.weather && weather && weather !== "—") parts.push(`Weather: ${escapeHtml(weather)}`);
+  if (fx?.pitch_condition && pitch && pitch !== "—") parts.push(`Pitch: ${escapeHtml(pitch)}`);
+  if (fx?.kit_season && kit && kit !== "—") parts.push(`Kit: ${escapeHtml(kit)}`);
+  if (!parts.length) return "";
+  return `<p class="mc-rec-facts">${parts.join(" · ")}</p>`;
+}
+
 function fixtureMetaHtml(fx) {
   const { home } = resolveHomeAway(fx);
   const homeBit = home
     ? `<span class="mc-fx-meta-home">Home: <b>${escapeHtml(clubLabel(home))}</b></span>`
     : "";
+  const month = monthName(fx?.gpsl_month);
+  const monthBit = month ? `<span class="mc-fx-meta-month">GPSL ${escapeHtml(month)}</span>` : "";
   const condHtml =
     fx.kit_season || fx.weather || fx.pitch_condition
       ? `<span class="mc-fx-meta-wx">${formatMatchConditionsHtml({
@@ -605,7 +641,7 @@ function fixtureMetaHtml(fx) {
       : "",
   ].filter(Boolean);
   const ownerHtml = ownerBits.join(`<span class="mc-fx-meta-sep">·</span>`);
-  const parts = [homeBit, ownerHtml, condHtml].filter(Boolean);
+  const parts = [monthBit, homeBit, ownerHtml, condHtml].filter(Boolean);
   if (!parts.length) return "";
   return `<div class="mc-fx-meta">${parts.join(`<span class="mc-fx-meta-sep">·</span>`)}</div>`;
 }
@@ -726,7 +762,7 @@ function renderArrangeRow(a) {
       <div class="mc-fx-head">
         <span class="mc-fx-comp">${escapeHtml(competitionShortLabel(a))}</span>
         ${fixtureMatchupHtml(a, withPreviewClub(`fixture_schedule.html?fixture=${fid}`))}
-        <span class="mc-fx-ko">${replay ? "Replay · " : catchUp ? "Catch-up · " : ""}GPSL ${escapeHtml(monthName(a.gpsl_month))}</span>
+        ${replay || catchUp ? `<span class="mc-fx-ko">${replay ? "Replay" : "Catch-up"}</span>` : ""}
       </div>
       ${fixtureMetaHtml(a)}
       <div class="mc-next ${cls}"><b>${escapeHtml(label)}</b>${detail ? ` <span class="mc-next-detail">${escapeHtml(detail)}</span>` : ""}</div>

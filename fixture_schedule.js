@@ -8,6 +8,8 @@ import {
   formatKitSeasonLabel,
   formatWeatherChipHtml,
   formatPitchChipHtml,
+  formatWeatherLabel,
+  formatPitchLabel,
 } from "./competition_conditions.js?v=20261113-kit-season";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
@@ -371,9 +373,21 @@ function scheduleMatchChecksHtml(f) {
 }
 
 function kitSeasonLineHtml(f) {
-  const label = formatKitSeasonLabel(f?.kit_season);
-  if (!f?.kit_season || !label || label === "—") return "";
-  return `<p class="meta">Kit: ${escapeHtmlLite(label)}</p>`;
+  const month = GPSL_MONTH_LABELS[f?.gpsl_month] || f?.gpsl_month;
+  const kit = formatKitSeasonLabel(f?.kit_season);
+  const weather = formatWeatherLabel(f?.weather);
+  const pitch = formatPitchLabel(f?.pitch_condition);
+  const parts = [];
+  if (month) parts.push(`GPSL ${escapeHtmlLite(month)}`);
+  if (f?.weather && weather && weather !== "—") {
+    parts.push(`Weather: ${formatWeatherChipHtml(f.weather)}`);
+  }
+  if (f?.pitch_condition && pitch && pitch !== "—") {
+    parts.push(`Pitch: ${formatPitchChipHtml(f.pitch_condition)}`);
+  }
+  if (f?.kit_season && kit && kit !== "—") parts.push(`Kit: ${escapeHtmlLite(kit)}`);
+  if (!parts.length) return "";
+  return `<p class="meta fixture-facts">${parts.join(" · ")}</p>`;
 }
 
 function escapeHtmlLite(text) {
@@ -1500,7 +1514,7 @@ function renderAgreedPanel(root, f, sch) {
       <h2>Match details</h2>
       <div class="fixture-head-row">
         <div class="fixture-head">${escapeHtmlLite(
-          [formatFixtureCompetition(f), GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month]
+          [formatFixtureCompetition(f), f.gpsl_month ? `GPSL ${GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month}` : ""]
             .filter(Boolean)
             .join(" · ")
         )}</div>
@@ -2684,10 +2698,13 @@ async function reload() {
   if (ctx?.fixture) {
     const { data: cond } = await supabase
       .from("competition_fixtures_public")
-      .select("kit_season")
+      .select("kit_season, weather, pitch_condition, gpsl_month")
       .eq("id", fixtureId)
       .maybeSingle();
     if (cond?.kit_season) ctx.fixture.kit_season = cond.kit_season;
+    if (cond?.weather) ctx.fixture.weather = cond.weather;
+    if (cond?.pitch_condition) ctx.fixture.pitch_condition = cond.pitch_condition;
+    if (cond?.gpsl_month) ctx.fixture.gpsl_month = cond.gpsl_month;
   }
   try {
     const { data: bb } = await supabase.rpc("fixture_is_manual_black_box", {
