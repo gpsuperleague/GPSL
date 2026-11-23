@@ -1234,7 +1234,7 @@ function alreadyPlayedPanelHtml() {
       <div class="info-chips">
         <span class="info-chip">Played before arrangement finished</span>
         <span class="info-chip"><b>Both</b> must confirm</span>
-        <span class="info-chip"><b>₿500k</b> each</span>
+        <span class="info-chip"><b>₿500k fine</b> each</span>
         <span class="info-chip"><b>1 season strike</b> · 5th adds ₿1m</span>
         <span class="info-chip">Match Day unlocks for result + stats</span>
         ${statusChip}
