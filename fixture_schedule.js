@@ -1213,7 +1213,7 @@ function alreadyPlayedPanelHtml() {
 
   let actions = "";
   if (ap.can_press) {
-    actions = `<button type="button" id="alreadyPlayedBtn" class="button secondary">Already played</button>`;
+    actions = `<button type="button" id="alreadyPlayedBtn" class="button already-played-go">Already played</button>`;
   } else if (ap.can_cancel) {
     actions = `<button type="button" id="alreadyPlayedCancelBtn" class="button secondary">Cancel my confirm</button>`;
   }

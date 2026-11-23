@@ -34,10 +34,35 @@
       font-size: 15px;
       white-space: nowrap;
     }
-    .already-played-bar .info-chips { flex: 1 1 16rem; margin: 0; }
-    .already-played-bar .info-chip { background: #24160f; border-color: #6a3a28; }
+    .already-played-bar .info-chips {
+      flex: 1 1 20rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+      gap: 8px;
+      margin: 0;
+    }
+    .already-played-bar .info-chip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 3.25rem;
+      padding: 8px 10px;
+      border-radius: 8px;
+      box-sizing: border-box;
+      background: #24160f;
+      border-color: #6a3a28;
+    }
     .already-played-bar .info-chip-wait { color: #e8a87c; border-color: #e8a87c; }
-    .already-played-bar .actions { margin: 0 0 0 auto; }
+    .already-played-bar .actions { margin: 0; align-self: stretch; }
+    .already-played-bar .already-played-go {
+      background: var(--gpsl-accent, #ff9900);
+      color: #1a100c;
+      border-radius: 8px;
+      min-height: 3.25rem;
+      padding: 8px 16px;
+      white-space: nowrap;
+    }
     .info-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
     .info-chip {
       display: inline-block;
@@ -446,6 +471,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261123-one-passed"></script>
+  <script type="module" src="fixture_schedule.js?v=20261123-played-boxes"></script>
 </body>
 </html>
