@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>No-show reports — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    .pr-list { display:grid; gap:12px; }
+    .pr-card {
+      border:1px solid #333; border-radius:6px; padding:12px 14px; background:#161616;
+    }
+    .pr-card h3 { margin:0 0 6px; font-size:15px; color:#ffcc66; }
+    .pr-meta { font-size:12px; color:#999; margin-bottom:8px; line-height:1.45; }
+    .pr-card a { color:#ff9900; }
+    .pr-card label { display:grid; gap:4px; font-size:12px; color:#bbb; margin:8px 0; }
+    .pr-card textarea {
+      padding:7px 9px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
+      min-height:52px; resize:vertical;
+    }
+    .pr-actions { display:flex; flex-wrap:wrap; gap:8px; }
+    .status-pill {
+      display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600;
+      text-transform:uppercase; letter-spacing:0.04em;
+    }
+    .status-open { background:#332200; color:#fc6; }
+    .status-upheld { background:#1a331a; color:#8d8; }
+    .status-dismissed { background:#333; color:#aaa; }
+    #listStatus { margin-top:10px; font-size:13px; white-space:pre-wrap; }
+    h2.section { margin:22px 0 10px; font-size:16px; color:#ffcc66; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">No-show reports</h1>
+  <div class="card">
+    <p class="note">
+      One club reports the other for not turning up, with or without a check-in.
+      <b>Uphold</b> applies ₿500k and a season strike when that kick-off was not already fined.
+      A missed check-in is left as the fine already charged. <b>Dismiss</b> adds nothing.
+      If they say the match was played, the video link is the proof.
+    </p>
+    <div class="actions">
+      <button type="button" class="button" id="filterOpenBtn">Open</button>
+      <button type="button" class="button secondary" id="filterDecidedBtn">Decided</button>
+      <button type="button" class="button secondary" id="filterAllBtn">All</button>
+    </div>
+    <div id="reportsList" class="pr-list"></div>
+    <h2 class="section">Already played videos</h2>
+    <p class="note">One club filed these. Both clubs were already charged ₿500k and a season strike. The link is here so you can check the match.</p>
+    <div id="playedList" class="pr-list"></div>
+    <div id="listStatus"></div>
+  </div>
+  <script type="module" src="admin_play_reports.js?v=20261123-play-coverage"></script>
+</body>
+</html>

@@ -669,6 +669,13 @@ export const ADMIN_MAIN_NAV = [
           "Review owner R-button breach reports on uploaded match videos; uphold fine + Building Society reward."
         ),
         L(
+          "No-show reports",
+          "admin_play_reports.html",
+          null,
+          null,
+          "Review a club reporting the other for not turning up. Uphold applies ₿500k and a strike unless that kick-off was already fined. Already played videos are listed too."
+        ),
+        L(
           "Qualifying videos",
           "admin_qualifying.html",
           null,

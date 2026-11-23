@@ -937,6 +937,17 @@ export async function loadScheduleContext(fixtureId, asClub = null) {
     }
   }
 
+  if (ctx.play_report == null && agreed) {
+    try {
+      const { data: report } = await supabase.rpc("fixture_play_report_state", {
+        p_fixture_id: fixtureId,
+      });
+      if (report && typeof report === "object") ctx.play_report = report;
+    } catch (_) {
+      /* patch may be missing */
+    }
+  }
+
   // Already played mutual bypass (separate RPC so context patch is optional)
   if (ctx.already_played == null && !agreed) {
     try {
@@ -1155,14 +1166,29 @@ export async function resetPlayNowSession(fixtureId) {
   return { ok: true, data };
 }
 
-/** Mutual Already played: both confirm → ₿500k + season strike each + unlock result. */
-export async function pressAlreadyPlayed(fixtureId) {
+/** One club files Already played with a video. Both are charged and Match Day unlocks. */
+export async function pressAlreadyPlayed(fixtureId, videoUrl) {
   const { data, error } = await supabase.rpc("fixture_already_played_press", {
     p_fixture_id: fixtureId,
+    p_video_url: videoUrl || null,
   });
   if (error) return { ok: false, msg: error.message };
   if (data && data.ok === false) {
     return { ok: false, msg: data.message || "Could not confirm Already played" };
+  }
+  return { ok: true, data };
+}
+
+/** Report the other club for not turning up. Video is required when the match was played. */
+export async function filePlayReport(fixtureId, matchPlayed, videoUrl) {
+  const { data, error } = await supabase.rpc("fixture_play_report_file", {
+    p_fixture_id: fixtureId,
+    p_match_played: !!matchPlayed,
+    p_video_url: videoUrl || null,
+  });
+  if (error) return { ok: false, msg: error.message };
+  if (data && data.ok === false) {
+    return { ok: false, msg: data.message || "Could not file the report" };
   }
   return { ok: true, data };
 }

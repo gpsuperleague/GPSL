@@ -448,8 +448,8 @@ export const SECTION_MATCHDAY = {
     {
       type: "ul",
       items: [
-        `You need an <b>agreed kick-off</b> and <b>both check-ins</b> before you can enter a result (see <a href="#match-scheduling">Match scheduling</a>).`,
-        `If you missed check-in, use <b>Pick new time</b> on the schedule page first.`,
+        `Both clubs checked in: enter the result during the <b>30-minute</b> play window.`,
+        `If a check-in was missed, either club can enter the result after that 30-minute window. The fine still stands. If nobody played, pick a new time. One club can report the other for not turning up; admin reviews that.`,
         `<b>Catch-up</b> games can be played in a later GPSL month once re-scheduled.`,
         `Submit score and squad stats on <a href="matchday.html">Match Day</a>. Opponent confirms or rejects via Inbox.`,
         `<b>League:</b> win 3 pts, draw 1, loss 0. <b>One-leg cups</b> cannot draw. <b>Two-leg cups</b> can draw each leg; the 5-minute match is only if the aggregate is level.`,

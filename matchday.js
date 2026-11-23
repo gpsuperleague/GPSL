@@ -28,7 +28,7 @@ import {
   LEAGUE_DIVISIONS,
   deferredResultNote,
   leagueBadgeHtml,
-} from "./competition.js?v=20261123-live-table";
+} from "./competition.js?v=20261123-play-coverage";
 import {
   loadCalendarStatus,
   calendarStatusBanner,
@@ -2748,7 +2748,7 @@ async function updateFixturePreview() {
       holidayEarly
         ? "Holiday unlock — arrange/play this match in the current GPSL week (before its month). Both clubs need min 24 players. Result will not count on the table until that GPSL month."
         : onesided
-          ? "Opponent missed check-in — their no-show fine/strike still apply. You checked in, so you can submit the result. Opponent confirms and enters stats after."
+          ? "A check-in was missed. That fine still applies. Either club can submit the result now the 30-minute play window has ended. Opponent confirms and enters stats after."
           : neither
             ? "Neither club checked in — fines/strikes still apply. If you played, submit the result; opponent confirms and enters stats. Or pick a new time on Schedule if you did not play."
             : restoredDraft

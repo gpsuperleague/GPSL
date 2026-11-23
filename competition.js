@@ -1199,6 +1199,18 @@ export function isFixtureResultMonthOpen(
 /** Default matches public.match_schedule_checkin_minutes() (10). */
 export const MATCH_CHECKIN_MINUTES = 10;
 
+/** Default matches public.match_schedule_block_minutes() (30). */
+export const MATCH_BLOCK_MINUTES = 30;
+
+/** True when the 30-minute play window after kick-off has ended. */
+export function isFixturePlayBlockEnded(fixture, blockMinutes = MATCH_BLOCK_MINUTES) {
+  if (!fixture?.agreed_kickoff_at) return false;
+  const mins = Number(blockMinutes);
+  const block = Number.isFinite(mins) && mins > 0 ? mins : MATCH_BLOCK_MINUTES;
+  const end = new Date(fixture.agreed_kickoff_at).getTime() + block * 60 * 1000;
+  return Date.now() >= end;
+}
+
 /** True when agreed KO + check-in grace has passed. */
 export function isFixtureCheckinWindowClosed(fixture, checkinMinutes = MATCH_CHECKIN_MINUTES) {
   if (!fixture?.agreed_kickoff_at) return false;
@@ -1210,8 +1222,8 @@ export function isFixtureCheckinWindowClosed(fixture, checkinMinutes = MATCH_CHE
 }
 
 /**
- * After check-in window: exactly one side checked in, and that side is me.
- * Server applies no-show fine/strike; this only mirrors the submit unlock.
+ * After the 30-minute play window: exactly one side checked in, and I am in the fixture.
+ * Either club may submit. The missed check-in is already fined.
  */
 export function isOnesidedCheckinSubmitUnlock(fixture, clubIdentity) {
   if (!fixture || !clubIdentity) return false;
@@ -1221,25 +1233,16 @@ export function isOnesidedCheckinSubmitUnlock(fixture, clubIdentity) {
     return false;
   }
   if (!fixture.agreed_kickoff_at) return false;
-  if (!isFixtureCheckinWindowClosed(fixture)) return false;
+  if (!isFixturePlayBlockEnded(fixture)) return false;
 
   const homeIn = !!fixture.home_checked_in;
   const awayIn = !!fixture.away_checked_in;
-  if (homeIn === awayIn) return false; // both or neither
-
-  const myShort = String(clubIdentity.short || clubIdentity.ShortName || "")
-    .trim()
-    .toUpperCase();
-  if (!myShort) return false;
-  const home = String(fixture.home_club_short_name || "").trim().toUpperCase();
-  const away = String(fixture.away_club_short_name || "").trim().toUpperCase();
-  if (homeIn && myShort === home) return true;
-  if (awayIn && myShort === away) return true;
-  return false;
+  if (homeIn === awayIn) return false;
+  return fixtureInvolvesClub(fixture, clubIdentity);
 }
 
 /**
- * After check-in window: neither side checked in, and I am in the fixture.
+ * After the 30-minute play window: neither side checked in, and I am in the fixture.
  * Both no-show penalties still apply; either club may submit if they played.
  */
 export function isNeitherCheckinSubmitUnlock(fixture, clubIdentity) {
@@ -1250,7 +1253,7 @@ export function isNeitherCheckinSubmitUnlock(fixture, clubIdentity) {
     return false;
   }
   if (!fixture.agreed_kickoff_at) return false;
-  if (!isFixtureCheckinWindowClosed(fixture)) return false;
+  if (!isFixturePlayBlockEnded(fixture)) return false;
   if (fixture.home_checked_in || fixture.away_checked_in) return false;
   return fixtureInvolvesClub(fixture, clubIdentity);
 }
@@ -1266,9 +1269,9 @@ export function isCheckinMissSubmitUnlock(fixture, clubIdentity) {
 /**
  * Human reason a result cannot be submitted (or null if it can).
  * Keep in sync with canSubmitResult + match_schedule_assert_ready_to_play.
- * Both checked in → submit immediately (no KO wait / no 30-min block).
- * One checked in after window → that club may submit (no-show still penalised).
- * Neither checked in after window → either club may submit (both still penalised).
+ * Both checked in inside the play window → submit as usual.
+ * After the 30-minute play window, either club may submit a missed check-in.
+ * The missed check-in fine still stands.
  */
 export function whyCantSubmitResult(
   fixture,
@@ -1329,8 +1332,11 @@ export function whyCantSubmitResult(
       ) {
         return "You checked in — waiting for opponent check-in (or for the check-in window to close).";
       }
-      if (oppCheckedIn && isFixtureCheckinWindowClosed(fixture)) {
-        return "You missed check-in — only your opponent can submit the result (your no-show penalty still applies). Or pick a new time on Schedule if the match was not played.";
+      if (isFixtureCheckinWindowClosed(fixture) && !isFixturePlayBlockEnded(fixture)) {
+        return "The 30-minute play window is still open. Result entry opens when it ends. Pick a new time on Schedule if the match was not played.";
+      }
+      if (oppCheckedIn && isFixturePlayBlockEnded(fixture)) {
+        return "You missed check-in. Your fine still applies. Either club can enter the result if the match was played, or pick a new time on Schedule if it was not.";
       }
       if (
         !homeIn &&

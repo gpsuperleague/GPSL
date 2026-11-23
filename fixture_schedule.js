@@ -26,6 +26,7 @@ import {
   resetPlayNowSession,
   pressAlreadyPlayed,
   cancelAlreadyPlayed,
+  filePlayReport,
   requestMutualOverrideNewTime,
   confirmMutualOverride,
   cancelMutualOverride,
@@ -47,7 +48,7 @@ import {
   buildCompromiseMidpointSlots,
   fixtureExpiryWarnings,
   finalPlayCutoffNote,
-} from "./match_scheduling.js?v=20261123-three-slots";
+} from "./match_scheduling.js?v=20261123-play-coverage";
 import { loadSeasonCalendarMonths } from "./competition_calendar.js";
 import {
   loadFixtureUnavailable,
@@ -95,13 +96,13 @@ function missChoicePanelHtml(f, ci, al) {
   let blurb = "";
   if (mode === "onesided_checked") {
     blurb =
-      "Opponent missed check-in — their fine/strike still apply. If you played, enter the result (they confirm + stats). If not, pick a new time.";
+      "Opponent missed check-in — their fine and strike still apply. Result entry opens when the 30-minute play window ends. Either club can enter it if you played. If not, pick a new time.";
   } else if (mode === "onesided_missed") {
     blurb =
-      "You missed check-in — your fine/strike still apply. Only your opponent can enter the result if you played. If the match was not played, pick a new time.";
+      "You missed check-in — your fine and strike still apply. Result entry opens when the 30-minute play window ends. Either club can enter it if you played. If not, pick a new time.";
   } else if (mode === "both_miss") {
     blurb =
-      "Neither club checked in — fines/strikes still apply to both. If you played, either owner can enter the result (opponent confirms + stats). If not, pick a new time.";
+      "Neither club checked in — fines and strikes still apply to both. Result entry opens when the 30-minute play window ends. Either club can enter it if you played. If not, pick a new time.";
   } else {
     return "";
   }
@@ -1208,6 +1209,65 @@ function infoChipsHtml(items, extraClass = "") {
   return `<div class="${cls}">${chips}</div>`;
 }
 
+function playReportPanelHtml(f) {
+  const pr = ctx?.play_report;
+  if (!pr || pr.available === false) return "";
+  const mine = pr.my_report;
+  if (!pr.can_report && !mine) return "";
+
+  let body = "";
+  if (mine?.status === "open") {
+    body = `<p class="meta">Your no-show report is with admin. No extra strike until they uphold it. A missed check-in is already fined, and that is not charged again.</p>`;
+  } else if (mine?.status === "upheld") {
+    body = `<p class="meta">Admin upheld your no-show report.</p>`;
+  } else if (pr.can_report) {
+    body = `<p class="meta">Report the other club for not turning up. This works whether or not they checked in. Admin reviews it. If they missed check-in, that fine already stands and is not charged again. If they checked in, the ₿500k and season strike land only when admin upholds the report.</p>
+      <p class="meta">If the match was still played, add the video link. You can enter the result without waiting for admin. If neither club played, skip this and pick a new time.</p>
+      <label class="already-played-video">Match video link, if you played
+        <input type="url" id="playReportVideo" placeholder="https://youtube.com/… or https://mega.nz/…" />
+      </label>
+      <div class="actions">
+        <button type="button" id="reportNoShowPlayedBtn" class="button">They did not turn up — we played</button>
+        <button type="button" id="reportNoShowBtn" class="button secondary">They did not turn up</button>
+      </div>`;
+  }
+
+  if (!body) return "";
+  return `<div class="panel" style="border-color:#e8a87c;">
+    <h2>Report a no-show</h2>
+    ${body}
+  </div>`;
+}
+
+function wirePlayReportButtons() {
+  const playedBtn = document.getElementById("reportNoShowPlayedBtn");
+  const plainBtn = document.getElementById("reportNoShowBtn");
+  const send = async (matchPlayed) => {
+    const videoUrl = document.getElementById("playReportVideo")?.value || "";
+    if (matchPlayed && !videoUrl.trim()) {
+      setStatus("Add the match video link. Admin uses it as proof the match was played.", true);
+      return;
+    }
+    const label = matchPlayed
+      ? "Report them for not turning up, and send the video?\n\nAdmin reviews it before any extra strike. You can still enter the result."
+      : "Report them for not turning up?\n\nAdmin reviews it before any extra strike. If the match was not played, pick a new time.";
+    if (!confirm(label)) return;
+    if (playedBtn) playedBtn.disabled = true;
+    if (plainBtn) plainBtn.disabled = true;
+    const res = await filePlayReport(fixtureId, matchPlayed, videoUrl.trim());
+    if (!res.ok) {
+      setStatus(res.msg, true);
+      if (playedBtn) playedBtn.disabled = false;
+      if (plainBtn) plainBtn.disabled = false;
+      return;
+    }
+    setStatus("No-show report sent to admin.");
+    await reload();
+  };
+  if (playedBtn) playedBtn.onclick = () => send(true);
+  if (plainBtn) plainBtn.onclick = () => send(false);
+}
+
 function alreadyPlayedPanelHtml() {
   const ap = ctx?.already_played;
   if (!ap || ap.completed) return "";
@@ -1219,7 +1279,7 @@ function alreadyPlayedPanelHtml() {
 
   let actions = "";
   if (ap.can_press) {
-    actions = `<button type="button" id="alreadyPlayedBtn" class="button already-played-go">Already played</button>`;
+    actions = `<button type="button" id="alreadyPlayedBtn" class="button already-played-go">File already played</button>`;
   } else if (ap.can_cancel) {
     actions = `<button type="button" id="alreadyPlayedCancelBtn" class="button secondary">Cancel my confirm</button>`;
   }
@@ -1235,12 +1295,20 @@ function alreadyPlayedPanelHtml() {
       <h2>Already played?</h2>
       <div class="info-chips">
         <span class="info-chip">Played before arrangement finished</span>
-        <span class="info-chip">Both must confirm</span>
+        <span class="info-chip">One club files it</span>
+        <span class="info-chip">Match video required</span>
         <span class="info-chip">₿500k fine each</span>
         <span class="info-chip info-chip-lines"><span>1 season strike</span><span>5th adds ₿1m</span></span>
         <span class="info-chip">Match Day unlocks for result + stats</span>
         ${statusChip}
       </div>
+      ${
+        ap.can_press
+          ? `<label class="already-played-video">Match video link
+              <input type="url" id="alreadyPlayedVideo" placeholder="https://youtube.com/… or https://mega.nz/…" />
+            </label>`
+          : ""
+      }
       ${actions ? `<div class="actions">${actions}</div>` : ""}
     </div>`;
 }
@@ -1251,13 +1319,18 @@ function wireAlreadyPlayedButtons() {
     pressBtn.onclick = async () => {
       if (
         !confirm(
-          "Confirm Already played?\n\nWhen both clubs confirm:\n• ₿500k fine each\n• 1 season no-show strike each\n• Match Day unlocks to enter / confirm the result\n\nContinue?"
+          "File Already played?\n\nThis charges both clubs now:\n• ₿500k fine each\n• 1 season strike each\n• Match Day unlocks for the result\n\nAdmin can see the video link.\n\nContinue?"
         )
       ) {
         return;
       }
+      const videoUrl = document.getElementById("alreadyPlayedVideo")?.value || "";
+      if (!videoUrl.trim()) {
+        setStatus("Add the match video link first.", true);
+        return;
+      }
       pressBtn.disabled = true;
-      const res = await pressAlreadyPlayed(fixtureId);
+      const res = await pressAlreadyPlayed(fixtureId, videoUrl.trim());
       if (!res.ok) {
         setStatus(res.msg, true);
         pressBtn.disabled = false;
@@ -1265,10 +1338,10 @@ function wireAlreadyPlayedButtons() {
       }
       if (res.data?.completed) {
         setStatus(
-          "Both confirmed — ₿500k + strike applied. Enter the result on Match Day."
+          "Filed — ₿500k and a strike applied to both clubs. Enter the result on Match Day."
         );
       } else {
-        setStatus("Confirmed — waiting for opponent (₿500k + strike apply when both confirm).");
+        setStatus("Already played is filed.");
       }
       await reload();
     };
@@ -1399,13 +1472,13 @@ function renderAgreedPanel(root, f, sch) {
       let blurb = "Play now window closed. Fines/strikes already applied. Agreed kick-off stays suspended until you enter a result or reset.";
       if (pn.miss_choice_mode === "onesided_checked") {
         blurb =
-          "Opponent missed Play now check-in — their fine/strike still apply. Enter the result if you played, or reset Play now.";
+          "Opponent missed Play now check-in — their fine and strike still apply. Either club can enter the result if you played, or reset Play now.";
       } else if (pn.miss_choice_mode === "onesided_missed") {
         blurb =
-          "You missed Play now check-in — your fine/strike still apply. Only your opponent can enter the result. You may still reset Play now.";
+          "You missed Play now check-in — your fine and strike still apply. Either club can enter the result if you played, or reset Play now.";
       } else if (pn.miss_choice_mode === "both_miss") {
         blurb =
-          "Neither checked in during Play now — fines/strikes still apply. Either owner can enter a result or reset.";
+          "Neither checked in during Play now — fines and strikes still apply. Either club can enter a result or reset.";
       }
       playNowReadyHtml = `
         <p class="meta"><b>Play now — window closed.</b> ${blurb}</p>
@@ -1620,8 +1693,8 @@ function renderAgreedPanel(root, f, sch) {
       <p class="meta">Check-in uses your saved squad: 11 starters, 12 subs, a goalkeeper, and nobody injured or suspended. <a href="${matchdayFixHref(f.id)}" style="color:var(--gpsl-accent, #ff9900);">Check your squad</a>.</p>
       <p class="meta">${
         ladderActive
-          ? "A missed check-in is fined when the window closes. You can still enter a result if you played, or pick a new time. A month-lock 3–0 is not used on a GPSL-arranged fixture."
-          : "One club missing check-in is a no-show: ₿500k and a season strike. Both missing is ₿500k and a strike each. Either way you can enter a result if you played, or pick a new time."
+          ? "A missed check-in is fined when the window closes. After the 30-minute play window, either club can enter a result if you played, or pick a new time. A month-lock 3–0 is not used on a GPSL-arranged fixture."
+          : "One club missing check-in is a no-show: ₿500k and a season strike. Both missing is ₿500k and a strike each. After the 30-minute play window, either club can enter a result if you played, or pick a new time."
       }</p>
       ${
         ci.my_has_manager === false
@@ -1641,11 +1714,12 @@ function renderAgreedPanel(root, f, sch) {
         ${scheduleMatchChecksHtml(f)}
         ${pitchBehaviourPanelHtml({ fixtureId: f.id, requireAck: true, hideItems: true })}
       </div>
+      ${playReportPanelHtml(f)}
       ${missChoicePanelHtml(f, ci, al)}
       <div class="actions">
         ${ci.can_check_in ? '<button type="button" id="checkInBtn" class="button">Check in now</button>' : ""}
         ${
-          !ci.miss_choice_mode && !ci.result_pending && ci.can_play
+          !ci.miss_choice_mode && !ci.result_pending && (ci.can_play || ci.can_enter_result)
             ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Enter result on Match Day</a>`
             : ""
         }
@@ -1669,6 +1743,7 @@ function renderAgreedPanel(root, f, sch) {
 
   fillAgreedOwners(f);
   fillAgreedConditions(f);
+  wirePlayReportButtons();
   const checkInBtn = document.getElementById("checkInBtn");
   const scheduleConsoleMount = document.getElementById("scheduleConsoleMount");
   if (scheduleConsoleMount) wirePitchAck(scheduleConsoleMount);

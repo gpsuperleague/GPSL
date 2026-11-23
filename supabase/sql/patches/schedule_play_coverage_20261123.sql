@@ -1,8 +1,9 @@
--- After a check-in window: either club can enter a played result.
--- A report that both checked in, then one could not play, waits for admin.
--- A played report needs a match video link. Both "not played" reports
--- strike both clubs immediately. Already played can be filed by one club
--- with a video link; both are charged then.
+-- Exception result entry opens when the 30-minute play window has ended.
+-- Either club may enter, including a club that missed check-in.
+-- One club can report the other for not turning up (checked in or not).
+-- Admin upholds that. A missed check-in is not fined a second time.
+-- Both clubs not playing is a rearrange only. No mutual self-report.
+-- Already played can be filed by one club with a video link.
 -- Safe re-run.
 
 ALTER TABLE public.competition_fixture_already_played
@@ -18,10 +19,11 @@ CREATE TABLE IF NOT EXISTS public.competition_fixture_play_reports (
   kickoff_at timestamptz NOT NULL,
   reporter_club text NOT NULL,
   accused_club text NOT NULL,
-  kind text NOT NULL CHECK (kind IN ('played', 'not_played')),
+  kind text NOT NULL CHECK (kind IN ('no_show')),
+  match_played boolean NOT NULL DEFAULT false,
   video_url text,
   status text NOT NULL DEFAULT 'open'
-    CHECK (status IN ('open', 'upheld', 'dismissed', 'mutual')),
+    CHECK (status IN ('open', 'upheld', 'dismissed')),
   admin_note text,
   decided_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -30,13 +32,13 @@ CREATE TABLE IF NOT EXISTS public.competition_fixture_play_reports (
 
 CREATE UNIQUE INDEX IF NOT EXISTS competition_fixture_play_reports_open_uidx
   ON public.competition_fixture_play_reports (fixture_id, reporter_club, kickoff_at)
-  WHERE status IN ('open', 'upheld', 'mutual');
+  WHERE status IN ('open', 'upheld');
 
 CREATE INDEX IF NOT EXISTS competition_fixture_play_reports_status_idx
   ON public.competition_fixture_play_reports (status, created_at DESC);
 
 COMMENT ON TABLE public.competition_fixture_play_reports IS
-  'After both clubs checked in. One report waits for admin (a played report includes a video). Two not-played reports strike both clubs immediately.';
+  'One club reports the other for not turning up. Admin upholds the strike unless that kick-off was already fined as a missed check-in. A played match needs a video link.';
 
 ALTER TABLE public.competition_fixture_play_reports ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.competition_fixture_play_reports FROM PUBLIC, anon, authenticated;
@@ -48,53 +50,77 @@ GRANT ALL ON TABLE public.competition_fixture_play_reports TO service_role;
 DO $gate$
 DECLARE
   v_def text;
+  v_window text;
+  v_window_new text;
 BEGIN
   v_def := replace(replace(
     pg_get_functiondef('public.match_schedule_assert_ready_to_play(bigint)'::regprocedure),
     E'\r\n', E'\n'), E'\r', E'\n');
 
-  IF position('Either club may submit after a one-sided miss' IN v_def) = 0 THEN
-    IF position('You missed Play now check-in' IN v_def) > 0 THEN
-      v_def := regexp_replace(
-        v_def,
-        'IF v_club <> v_checked THEN\s+RAISE EXCEPTION\s+''You missed Play now check-in[^;]*;\s*END IF;',
-        '-- Either club may submit after a one-sided Play now miss. The fine already stands.',
-        'n'
-      );
-      IF position('You missed Play now check-in' IN v_def) > 0 THEN
-        RAISE EXCEPTION 'Play now one-sided submit gate was not removed';
-      END IF;
-    END IF;
-
-    IF position('You missed check-in' IN v_def) > 0 THEN
-      v_def := regexp_replace(
-        v_def,
-        'IF v_club <> v_checked THEN\s+RAISE EXCEPTION\s+''You missed check-in[^;]*;\s*END IF;',
-        '-- Either club may submit after a one-sided miss. The fine already stands.',
-        'n'
-      );
-      IF position('You missed check-in' IN v_def) > 0 THEN
-        RAISE EXCEPTION 'one-sided submit gate was not removed';
-      END IF;
-    END IF;
-
-    EXECUTE v_def;
+  IF position('30-minute play window has ended' IN v_def) > 0
+     AND position('You missed check-in' IN v_def) = 0 THEN
+    RETURN;
   END IF;
+
+  IF position('You missed Play now check-in' IN v_def) > 0 THEN
+    v_def := regexp_replace(
+      v_def,
+      'IF v_club <> v_checked THEN\s+RAISE EXCEPTION\s+''You missed Play now check-in[^;]*;\s*END IF;',
+      '-- Either club may submit after a one-sided Play now miss. The fine already stands.'
+    );
+    IF position('You missed Play now check-in' IN v_def) > 0 THEN
+      RAISE EXCEPTION 'Play now one-sided submit gate was not removed';
+    END IF;
+  END IF;
+
+  IF position('You missed check-in' IN v_def) > 0 THEN
+    v_def := regexp_replace(
+      v_def,
+      'IF v_club <> v_checked THEN\s+RAISE EXCEPTION\s+''You missed check-in[^;]*;\s*END IF;',
+      '-- Either club may submit after a one-sided miss. The fine already stands.'
+    );
+    IF position('You missed check-in' IN v_def) > 0 THEN
+      RAISE EXCEPTION 'one-sided submit gate was not removed';
+    END IF;
+  END IF;
+
+  v_window := 'IF now() < v_window_end THEN' || E'\n'
+    || '      RAISE EXCEPTION ''Both clubs must check in before entering a result'';' || E'\n'
+    || '    END IF;';
+  v_window_new := v_window || E'\n'
+    || '    IF now() < v_kickoff + (public.match_schedule_block_minutes() || '' minutes'')::interval THEN' || E'\n'
+    || '      RAISE EXCEPTION ''Result entry opens when the 30-minute play window has ended'';' || E'\n'
+    || '    END IF;';
+  IF position('30-minute play window has ended' IN v_def) = 0 THEN
+    IF position(v_window IN v_def) = 0 THEN
+      RAISE EXCEPTION 'check-in window gate not found in assert_ready';
+    END IF;
+    v_def := replace(v_def, v_window, v_window_new);
+  END IF;
+
+  EXECUTE v_def;
 END;
 $gate$;
 
 DO $enter$
 DECLARE
   v_def text;
-  v_old text := 'v_miss_choice IN (''onesided_checked'', ''both_miss'')';
-  v_new text := 'v_miss_choice IN (''onesided_checked'', ''onesided_missed'', ''both_miss'')';
+  v_new text;
 BEGIN
-  v_def := pg_get_functiondef('public.match_schedule_fixture_context(bigint)'::regprocedure);
-  IF position(v_new IN v_def) = 0 THEN
-    IF position(v_old IN v_def) = 0 THEN
+  v_def := replace(replace(
+    pg_get_functiondef('public.match_schedule_fixture_context(bigint)'::regprocedure),
+    E'\r\n', E'\n'), E'\r', E'\n');
+  v_new := $n$OR (v_fixture.status = 'scheduled' AND v_kickoff IS NOT NULL AND now() >= v_kickoff + (public.match_schedule_block_minutes() || ' minutes')::interval AND NOT v_result_pending AND coalesce(v_has_mgr, false) AND ((v_home_in AND v_away_in) OR v_miss_choice IN ('onesided_checked', 'onesided_missed', 'both_miss')))$n$;
+  IF position('onesided_missed' IN v_def) = 0 THEN
+    v_def := regexp_replace(
+      v_def,
+      'OR\s*\(\s*v_miss_choice IN \(''onesided_checked'', ''both_miss''\)\s*AND coalesce\(v_has_mgr, false\)\s*AND NOT v_result_pending\s*\)',
+      v_new,
+      'n'
+    );
+    IF position('onesided_missed' IN v_def) = 0 THEN
       RAISE EXCEPTION 'fixture context enter-result list not found';
     END IF;
-    v_def := replace(v_def, v_old, v_new);
     EXECUTE v_def;
   END IF;
 END;
@@ -173,9 +199,7 @@ DECLARE
   v_club text;
   v_opp text;
   v_kickoff timestamptz;
-  v_home_in boolean;
-  v_away_in boolean;
-  v_closed boolean := false;
+  v_block_ended boolean := false;
   v_mine public.competition_fixture_play_reports;
   v_can boolean := false;
   v_reason text := NULL;
@@ -212,7 +236,7 @@ BEGIN
   WHERE r.fixture_id = p_fixture_id
     AND upper(r.reporter_club) = v_club
     AND r.kickoff_at = v_kickoff
-    AND r.status IN ('open', 'upheld', 'mutual')
+    AND r.status IN ('open', 'upheld')
   ORDER BY r.id DESC
   LIMIT 1;
 
@@ -224,21 +248,10 @@ BEGIN
   ELSIF v_kickoff IS NULL THEN
     v_reason := 'no_kickoff';
   ELSE
-    SELECT EXISTS (
-      SELECT 1 FROM public.competition_fixture_checkin c
-      WHERE c.fixture_id = p_fixture_id
-        AND c.club_short_name = v_fixture.home_club_short_name
-    ) INTO v_home_in;
-    SELECT EXISTS (
-      SELECT 1 FROM public.competition_fixture_checkin c
-      WHERE c.fixture_id = p_fixture_id
-        AND c.club_short_name = v_fixture.away_club_short_name
-    ) INTO v_away_in;
-    v_closed := now() >= v_kickoff + (public.match_schedule_checkin_minutes() || ' minutes')::interval;
-    IF NOT (v_home_in AND v_away_in) THEN
-      v_reason := 'need_both_checkins';
-    ELSIF NOT v_closed THEN
-      v_reason := 'window_open';
+    v_block_ended := now() >= v_kickoff
+      + (public.match_schedule_block_minutes() || ' minutes')::interval;
+    IF NOT v_block_ended THEN
+      v_reason := 'play_window';
     ELSIF v_mine.id IS NOT NULL THEN
       v_reason := 'already_filed';
     ELSE
@@ -251,13 +264,13 @@ BEGIN
     'can_report', v_can,
     'reason', v_reason,
     'kickoff_at', v_kickoff,
-    'mutual', coalesce(v_mine.status = 'mutual', false),
     'my_report', CASE
       WHEN v_mine.id IS NULL THEN NULL
       ELSE jsonb_build_object(
         'id', v_mine.id,
         'kind', v_mine.kind,
         'status', v_mine.status,
+        'match_played', v_mine.match_played,
         'video_url', v_mine.video_url
       )
     END
@@ -267,7 +280,7 @@ $gpsl$;
 
 CREATE OR REPLACE FUNCTION public.fixture_play_report_file(
   p_fixture_id bigint,
-  p_kind text,
+  p_match_played boolean,
   p_video_url text DEFAULT NULL
 )
 RETURNS jsonb
@@ -281,27 +294,19 @@ DECLARE
   v_club text;
   v_opp text;
   v_kickoff timestamptz;
-  v_kind text;
   v_url text;
-  v_other public.competition_fixture_play_reports;
   v_id bigint;
   v_href text;
   v_fmt text;
-  v_home_new boolean := false;
-  v_away_new boolean := false;
+  v_played boolean := coalesce(p_match_played, false);
 BEGIN
-  v_kind := lower(btrim(coalesce(p_kind, '')));
-  IF v_kind NOT IN ('played', 'not_played') THEN
-    RAISE EXCEPTION 'Report must be played or not played';
-  END IF;
-
   v_state := public.fixture_play_report_state(p_fixture_id);
   IF coalesce((v_state->>'can_report')::boolean, false) = false THEN
-    RAISE EXCEPTION 'A check-in report is not open on this fixture right now';
+    RAISE EXCEPTION 'A no-show report is not open on this fixture right now';
   END IF;
 
   v_url := nullif(btrim(p_video_url), '');
-  IF v_kind = 'played' THEN
+  IF v_played THEN
     IF v_url IS NULL OR NOT public.match_video_url_allowed(v_url) THEN
       RAISE EXCEPTION 'Match video link must be https YouTube, MEGA, or a Discord video attachment';
     END IF;
@@ -319,88 +324,20 @@ BEGIN
   v_href := 'fixture_schedule.html?fixture=' || p_fixture_id::text;
   v_fmt := public.match_schedule_format_kickoff_uk(v_kickoff);
 
-  IF v_kind = 'not_played' THEN
-    SELECT * INTO v_other
-    FROM public.competition_fixture_play_reports r
-    WHERE r.fixture_id = p_fixture_id
-      AND r.kickoff_at = v_kickoff
-      AND upper(r.reporter_club) = upper(v_opp)
-      AND r.kind = 'not_played'
-      AND r.status = 'open'
-    FOR UPDATE;
-  END IF;
-
-  IF v_other.id IS NOT NULL THEN
-    UPDATE public.competition_fixture_play_reports
-    SET status = 'mutual', updated_at = now(), decided_at = now()
-    WHERE id = v_other.id;
-
-    INSERT INTO public.competition_fixture_play_reports (
-      fixture_id, kickoff_at, reporter_club, accused_club, kind, video_url, status, decided_at
-    )
-    VALUES (
-      p_fixture_id, v_kickoff, v_club, v_opp, 'not_played', NULL, 'mutual', now()
-    )
-    RETURNING id INTO v_id;
-
-    v_home_new := public.match_schedule_apply_reported_strike(
-      p_fixture_id, v_fixture.home_club_short_name, v_kickoff
-    );
-    v_away_new := public.match_schedule_apply_reported_strike(
-      p_fixture_id, v_fixture.away_club_short_name, v_kickoff
-    );
-
-    IF (v_home_new OR v_away_new)
-       AND EXISTS (
-         SELECT 1 FROM public.competition_fixtures f
-         WHERE f.id = p_fixture_id AND f.status = 'scheduled'
-       )
-    THEN
-      PERFORM public.match_schedule_bump_attempt_on_noshow(p_fixture_id);
-    END IF;
-
-    BEGIN
-      PERFORM public.owner_inbox_send(
-        'match_noshow_fine',
-        'Both could not play — ₿500k each',
-        'Both clubs reported that the match at ' || v_fmt
-          || ' was not played after check-in. ₿500k and a season strike each. Pick a new time on Schedule.',
-        v_fixture.home_club_short_name,
-        NULL, p_fixture_id, NULL, NULL, NULL, v_href,
-        'playreport-mutual:' || p_fixture_id::text || ':' || v_kickoff::text || ':home',
-        v_fixture.gpsl_month, v_fixture.season_id, NULL
-      );
-      PERFORM public.owner_inbox_send(
-        'match_noshow_fine',
-        'Both could not play — ₿500k each',
-        'Both clubs reported that the match at ' || v_fmt
-          || ' was not played after check-in. ₿500k and a season strike each. Pick a new time on Schedule.',
-        v_fixture.away_club_short_name,
-        NULL, p_fixture_id, NULL, NULL, NULL, v_href,
-        'playreport-mutual:' || p_fixture_id::text || ':' || v_kickoff::text || ':away',
-        v_fixture.gpsl_month, v_fixture.season_id, NULL
-      );
-    EXCEPTION WHEN OTHERS THEN
-      NULL;
-    END;
-
-    RETURN jsonb_build_object('ok', true, 'mutual', true, 'id', v_id);
-  END IF;
-
   INSERT INTO public.competition_fixture_play_reports (
-    fixture_id, kickoff_at, reporter_club, accused_club, kind, video_url, status
+    fixture_id, kickoff_at, reporter_club, accused_club, kind, match_played, video_url, status
   )
-  VALUES (p_fixture_id, v_kickoff, v_club, v_opp, v_kind, v_url, 'open')
+  VALUES (p_fixture_id, v_kickoff, v_club, v_opp, 'no_show', v_played, v_url, 'open')
   RETURNING id INTO v_id;
 
   BEGIN
     PERFORM public.owner_inbox_send(
       'match_noshow_fine',
       'Check-in report sent to admin',
-      'Your report is with admin. No strike until they uphold it.'
+      'Your no-show report is with admin. No extra strike until they uphold it.'
         || CASE
-          WHEN v_kind = 'played' THEN ' They have the match video. You can still enter the result on Match Day.'
-          ELSE ' You can still pick a new time on Schedule.'
+          WHEN v_played THEN ' They have the match video. You can still enter the result on Match Day.'
+          ELSE ' If the match was not played, pick a new time on Schedule.'
         END,
       v_club,
       NULL, p_fixture_id, NULL, NULL, NULL, v_href,
@@ -411,7 +348,7 @@ BEGIN
       'match_noshow_fine',
       'Opponent filed a check-in report',
       coalesce(public.club_display_name(v_club), v_club)
-        || ' reported the match at ' || v_fmt || '. Admin reviews it before any strike.'
+        || ' reported you for not turning up at ' || v_fmt || '. Admin reviews it before any extra strike.'
         || CASE WHEN v_url IS NOT NULL THEN E'\nVideo: ' || v_url ELSE '' END,
       v_opp,
       NULL, p_fixture_id, NULL, NULL, NULL, v_href,
@@ -422,7 +359,7 @@ BEGIN
     NULL;
   END;
 
-  RETURN jsonb_build_object('ok', true, 'mutual', false, 'id', v_id, 'status', 'open');
+  RETURN jsonb_build_object('ok', true, 'id', v_id, 'status', 'open');
 END;
 $gpsl$;
 
@@ -440,6 +377,7 @@ DECLARE
   v_row public.competition_fixture_play_reports;
   v_fixture public.competition_fixtures;
   v_new boolean := false;
+  v_already boolean := false;
   v_href text;
   v_fmt text;
 BEGIN
@@ -463,14 +401,17 @@ BEGIN
   v_fmt := public.match_schedule_format_kickoff_uk(v_row.kickoff_at);
 
   IF coalesce(p_uphold, false) THEN
-    v_new := public.match_schedule_apply_reported_strike(
-      v_row.fixture_id, v_row.accused_club, v_row.kickoff_at
+    v_already := EXISTS (
+      SELECT 1
+      FROM public.competition_fixture_no_show_events e
+      WHERE e.fixture_id = v_row.fixture_id
+        AND e.club_short_name = v_row.accused_club
+        AND e.kickoff_at = v_row.kickoff_at
     );
-    IF v_new
-       AND v_row.kind = 'not_played'
-       AND v_fixture.status = 'scheduled'
-    THEN
-      PERFORM public.match_schedule_bump_attempt_on_noshow(v_row.fixture_id);
+    IF NOT v_already THEN
+      v_new := public.match_schedule_apply_reported_strike(
+        v_row.fixture_id, v_row.accused_club, v_row.kickoff_at
+      );
     END IF;
 
     UPDATE public.competition_fixture_play_reports
@@ -485,12 +426,14 @@ BEGIN
       PERFORM public.owner_inbox_send(
         'match_noshow_fine',
         'Check-in report upheld — ₿500k',
-        'Admin upheld the report for ' || v_fmt
-          || '. ₿500k and a season strike.'
-          || CASE
-            WHEN v_row.kind = 'not_played' THEN ' Pick a new time on Schedule if the match was not played.'
-            ELSE ' Enter or confirm the result on Match Day.'
-          END,
+        CASE
+          WHEN v_already THEN
+            'Admin upheld the no-show report for ' || v_fmt
+            || '. That kick-off was already fined, so no second strike.'
+          ELSE
+            'Admin upheld the no-show report for ' || v_fmt
+            || '. ₿500k and a season strike.'
+        END,
         v_row.accused_club,
         NULL, v_row.fixture_id, NULL, NULL, NULL, v_href,
         'playreport-upheld:' || p_id::text || ':accused',
@@ -499,7 +442,14 @@ BEGIN
       PERFORM public.owner_inbox_send(
         'match_noshow_fine',
         'Check-in report upheld',
-        'Admin upheld your report for ' || v_fmt || '. The other club has the ₿500k strike.',
+        CASE
+          WHEN v_already THEN
+            'Admin upheld your no-show report for ' || v_fmt
+            || '. That kick-off was already fined, so no second strike.'
+          ELSE
+            'Admin upheld your no-show report for ' || v_fmt
+            || '. The other club has the ₿500k strike.'
+        END,
         v_row.reporter_club,
         NULL, v_row.fixture_id, NULL, NULL, NULL, v_href,
         'playreport-upheld:' || p_id::text || ':reporter',
@@ -509,7 +459,12 @@ BEGIN
       NULL;
     END;
 
-    RETURN jsonb_build_object('ok', true, 'status', 'upheld', 'strike_new', v_new);
+    RETURN jsonb_build_object(
+      'ok', true,
+      'status', 'upheld',
+      'strike_new', v_new,
+      'already_fined', v_already
+    );
   END IF;
 
   UPDATE public.competition_fixture_play_reports
@@ -572,6 +527,7 @@ BEGIN
           r.reporter_club,
           r.accused_club,
           r.kind,
+          r.match_played,
           r.video_url,
           r.status,
           r.admin_note,
@@ -588,7 +544,7 @@ BEGIN
         JOIN public.competition_fixtures f ON f.id = r.fixture_id
         WHERE v_status = 'all'
            OR (v_status = 'open' AND r.status = 'open')
-           OR (v_status = 'decided' AND r.status IN ('upheld', 'dismissed', 'mutual'))
+           OR (v_status = 'decided' AND r.status IN ('upheld', 'dismissed'))
         ORDER BY r.created_at DESC
         LIMIT 80
       ) q
@@ -625,12 +581,12 @@ END;
 $gpsl$;
 
 REVOKE ALL ON FUNCTION public.fixture_play_report_state(bigint) FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.fixture_play_report_file(bigint, text, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fixture_play_report_file(bigint, boolean, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.admin_play_report_decide(bigint, boolean, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.admin_play_coverage_queue(text) FROM PUBLIC, anon;
 
 GRANT EXECUTE ON FUNCTION public.fixture_play_report_state(bigint) TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.fixture_play_report_file(bigint, text, text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.fixture_play_report_file(bigint, boolean, text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.admin_play_report_decide(bigint, boolean, text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.admin_play_coverage_queue(text) TO authenticated, service_role;
 
@@ -982,5 +938,5 @@ SELECT
     AS play_now_misser_can_enter,
   position('Either club may submit after a one-sided miss' IN pg_get_functiondef('public.match_schedule_assert_ready_to_play(bigint)'::regprocedure)) > 0
     AS server_allows_misser,
-  to_regprocedure('public.fixture_play_report_file(bigint,text,text)') IS NOT NULL AS report_fn,
+  to_regprocedure('public.fixture_play_report_file(bigint,boolean,text)') IS NOT NULL AS report_fn,
   to_regprocedure('public.fixture_already_played_press(bigint,text)') IS NOT NULL AS already_fn;
