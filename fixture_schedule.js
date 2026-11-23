@@ -2226,7 +2226,6 @@ function render() {
     futureIntersection.length === 0 &&
     ctx.poke_allowed == null;
   const selectableSlots = filterSelectableKickoffSlots(slots, ownerTz, deadlines?.final_play_lock);
-  const pastHidden = slots.length - selectableSlots.length;
   const selectableOppSlots = filterSelectableKickoffSlots(oppSlots, ownerTz, deadlines?.final_play_lock);
   const selectableOwnSlots = filterSelectableKickoffSlots(ownSlots, ownerTz, deadlines?.final_play_lock);
   const usedIsoSet = priorProposedKickoffSet(ctx);
@@ -2359,68 +2358,48 @@ function render() {
         </p>`
       : "";
 
-  const holidayEnd = holidayCorridorEndLabel();
-  const propMonth = ctx.is_holiday_early
-    ? holidayEnd &&
-      String(holidayEnd).toLowerCase() !==
-        String(GPSL_MONTH_LABELS[ctx.fixture?.gpsl_month] || ctx.fixture?.gpsl_month || "").toLowerCase()
-      ? `now through ${holidayEnd}`
-      : holidayEnd || "this holiday corridor"
-    : ctx.is_catch_up && holidayEnd
-      ? `through ${holidayEnd}`
-      : ctx.proposal_window?.gpsl_month && GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
-        ? GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
-        : ctx.is_catch_up
-          ? "the current GPSL month"
-          : "this GPSL month";
-
-  const slotCountLine =
-    selectableSlots.length === slots.length
-      ? `${selectableSlots.length} slot${selectableSlots.length === 1 ? "" : "s"} in ${propMonth}`
-      : `${selectableSlots.length} future slot${selectableSlots.length === 1 ? "" : "s"} (${pastHidden} past slot${pastHidden === 1 ? "" : "s"} hidden for your timezone)`;
-
+  const choiceClicks = [
+    "1st click = 1st choice",
+    "2nd click = 2nd choice",
+    "3rd click = 3rd choice",
+  ];
   const isAwayWaiting = ctx.my_role === "away" && !canPick;
   const slotIntro = isAwayWaiting
     ? infoChipsHtml([
-        `Waiting for <b>${fullClubName(f.home_club_short_name)}</b> to propose`,
+        `Waiting for ${fullClubName(f.home_club_short_name)} to propose`,
         "Slots below are reference only",
         "Then you accept or counter",
-        slotCountLine,
         "Off-site time: Agreed on Discord tab",
       ])
     : usingPoke
       ? infoChipsHtml([
           "No mutual times",
-          "Poke up to <b>3</b>",
-          "1st click = 1st choice",
+          "Select up to 3 kick-offs",
+          ...choiceClicks,
           "Grey = already suggested",
-          "They accept one or counter with up to 3",
+          "Opponent can accept or counter with up to 3",
         ])
       : ctx.can_respond
         ? infoChipsHtml([
             "Accept one time above",
-            "Or counter with up to <b>3</b>",
-            "1st click = 1st choice",
-            "Free for both clubs",
+            "Or select up to 3 to counter",
+            ...choiceClicks,
             "Grey = already suggested",
-            slotCountLine,
           ])
         : usingCompatibleSlots
           ? infoChipsHtml([
-              "Up to <b>3</b> kick-offs",
-              "1st click = 1st choice",
-              `<b style="color:#a8e06a;">Green</b> = exact match`,
-              `<b style="color:#9ec0ff;">Blue</b> = compromise under 2h`,
+              "Select up to 3 kick-offs",
+              ...choiceClicks,
+              `<span style="color:#a8e06a;">Green</span> = exact match`,
+              `<span style="color:#9ec0ff;">Blue</span> = compromise (within 2 hours)`,
               "Grey = already suggested",
-              "They accept one or counter with up to 3",
-              slotCountLine,
+              "Opponent can accept or counter with up to 3",
             ])
           : infoChipsHtml([
-              "Up to <b>3</b> times",
-              "1st click = 1st choice",
-              "Click again to remove",
+              "Select up to 3 kick-offs",
+              ...choiceClicks,
+              "Click a chosen time again to remove it",
               "Grey = already suggested",
-              slotCountLine,
             ]);
 
   const emptySlotsMsg = usingPoke
