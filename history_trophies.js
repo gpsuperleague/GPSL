@@ -1,9 +1,9 @@
-/** Trophy cabinet — two shelves, ten places each, overflow in the store room. */
+/** Trophy cabinet — three shelves, ten places each, overflow in the store room. */
 
 import { TROPHY_IMAGES } from "./trophy_assets.js?v=20261122-select";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 
-export const CABINET_SHELF_COUNT = 2;
+export const CABINET_SHELF_COUNT = 3;
 export const CABINET_SLOTS_PER_SHELF = 10;
 
 const HONOURS_NAMES = {
@@ -311,7 +311,7 @@ export function renderTrophyCabinet(honours, options = {}) {
     .map((row, shelf) => {
       const slots = row.map((honour, slot) => renderSlot(shelf, slot, honour, canArrange)).join("");
       return `
-        <section class="cabinet-shelf" aria-label="Shelf ${shelf + 1}">
+        <section class="cabinet-shelf cabinet-shelf-${shelf}" aria-label="Shelf ${shelf + 1}">
           <div class="shelf-slots">${slots}</div>
         </section>`;
     })
@@ -461,7 +461,7 @@ export const TROPHY_CABINET_PREVIEW_SCENARIOS = [
   {
     id: "empty",
     title: "New club — empty cabinet",
-    blurb: "Both shelves stay bare until a season is archived.",
+    blurb: "The shelves stay bare until a season is archived.",
     honours: [],
   },
   {
@@ -518,16 +518,18 @@ export const TROPHY_CABINET_PREVIEW_SCENARIOS = [
   {
     id: "overflow",
     title: "More wins than places — the store room",
-    blurb: "Twenty trophies fit on the two shelves. The next one waits behind the store-room door until the owner brings it out.",
+    blurb: "Thirty trophies fit on the three shelves. The next one waits behind the store-room door until the owner brings it out.",
     honours: [
       ...["league_cup", "super8", "plate", "shield"].flatMap((cup) =>
-        [1, 2, 3, 4, 5].map((season) => ({
+        [1, 2, 3, 4, 5, 6, 7].map((season) => ({
           honour_type: "cup_winner",
           cup_code: cup,
           season_label: String(season),
         }))
       ),
       { honour_type: "cup_winner", cup_code: "bowl", season_label: "1" },
+      { honour_type: "cup_winner", cup_code: "bowl", season_label: "2" },
+      { honour_type: "cup_winner", cup_code: "bowl", season_label: "3" },
     ],
   },
 ];

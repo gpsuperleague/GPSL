@@ -1,4 +1,4 @@
-/* GPSL Club History — two shelves, front row and a back row tucked between them */
+/* GPSL Club History — three shelves in the same case, front row and a back row */
 
 .trophy-cabinet {
   position: relative;
@@ -51,7 +51,7 @@
 
 .trophy-cabinet-glass {
   position: relative;
-  padding: 14px 12px 6px;
+  padding: 195px 12px 6px;
   background:
     radial-gradient(ellipse at 50% -10%, rgba(255, 255, 255, 0.1), transparent 46%),
     linear-gradient(180deg, #1a1d22 0%, #121418 100%);
@@ -234,8 +234,10 @@
   cursor: pointer;
 }
 
-.cabinet-shelf { position: relative; z-index: 1; margin-bottom: 18px; }
-.cabinet-shelf:last-child { margin-bottom: 8px; }
+.cabinet-shelf { position: relative; z-index: 1; margin: 0; overflow: visible; }
+.cabinet-shelf-0 { z-index: 3; }
+.cabinet-shelf-1 { z-index: 2; }
+.cabinet-shelf-2 { z-index: 1; }
 
 .shelf-slots {
   display: grid;
@@ -257,7 +259,7 @@
 
 .trophy-slot-stand {
   position: relative;
-  min-height: 364px;
+  min-height: 183px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -281,7 +283,7 @@
 }
 
 .shelf-ledge-cell {
-  height: 48px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -390,7 +392,7 @@ a.trophy-on-shelf.trophy-link:focus-visible {
 .shelf-ledge-season { font-size: 9px; }
 
 @media (max-width: 900px) {
-  .cabinet-shelf { overflow-x: auto; }
+  .trophy-cabinet-glass { overflow-x: auto; overflow-y: hidden; }
   .shelf-slots { min-width: 980px; }
   .trophy-store-door { flex-basis: 42px; }
   .trophy-cabinet-plinth { margin-left: -14px; margin-right: -14px; }
