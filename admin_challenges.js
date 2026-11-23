@@ -3,7 +3,7 @@ import { formatMoney, loadCurrentSeason } from "./competition.js";
 import {
   CHALLENGE_STAT_LABELS,
   challengeStatDescription,
-} from "./challenge_labels.js";
+} from "./challenge_labels.js?v=20261123-new-challenges";
 
 primeAdminPageChrome();
 
@@ -258,6 +258,42 @@ function syncTargetLabel(stat) {
     club_potm_awards: {
       label: "Target (POTM)",
       hint: "Player-of-the-match awards needed in the window.",
+    },
+    match_hg_xi_unbeaten: {
+      label: "Target (matches)",
+      hint: "Matches with at least 5 home-grown starters in which you do not lose.",
+    },
+    match_defender_goal_unbeaten: {
+      label: "Target (matches)",
+      hint: "Matches in which a defender scores and you do not lose. Defenders are CB, LB, RB, LWB, RWB.",
+    },
+    league_position_held: {
+      label: "Target (months)",
+      hint: "Months in the window where your league place is the same or better than the month before.",
+    },
+    player_max_gk_clean_sheets: {
+      label: "Target (clean sheets)",
+      hint: "Clean sheets by your best goalkeeper in the window. He must have started.",
+    },
+    match_win_by_3_spread: {
+      label: "Target (matches)",
+      hint: "Wins by 3 or more goals, with 3 different scorers and 3 different assisters.",
+    },
+    transfer_sell_foreign_window: {
+      label: "Target (sales)",
+      hint: "Players sold to foreign clubs in June, July, August, or January, inside this window.",
+    },
+    unbeaten_run_scheduled: {
+      label: "Target (matches in a row)",
+      hint: "Longest run without a loss, in kick-off order. A draw keeps the run going.",
+    },
+    match_u21_xi: {
+      label: "Target (matches)",
+      hint: "Matches where 3 or more starters are aged 21 or under.",
+    },
+    match_young_xi: {
+      label: "Target (matches)",
+      hint: "Matches where the average age of the starters is under 25.",
     },
   };
 

@@ -5,7 +5,7 @@ import { formatMoney, leagueBadgeHtml } from "./competition.js";
 import { escapePlayerHtml, playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { trophyImageForCup } from "./trophy_assets.js?v=20261123-super8";
 import { renderChallengesIntro } from "./challenges_rules.js";
-import { challengeStatDescription } from "./challenge_labels.js";
+import { challengeStatDescription } from "./challenge_labels.js?v=20261123-new-challenges";
 
 let standingsData = null;
 let myClubShort = null;
