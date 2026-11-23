@@ -317,6 +317,8 @@
     .mc-rec-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; color: #f99; margin-bottom: 4px; }
     .mc-rec-head span { font-size: 11px; color: #c99; }
     .mc-rec-head a { margin-left: auto; font-size: 11px; color: var(--gpsl-accent, #ff9900); }
+    .mc-rec-all { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: #eee; cursor: pointer; }
+    .mc-rec-all input { accent-color: var(--gpsl-accent, #ff9900); }
     .mc-rec-groups {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -805,7 +807,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20261123-video-url"></script>
+  <script type="module" src="dashboard.js?v=20261123-rec-all"></script>
 
 </body>
 </html>

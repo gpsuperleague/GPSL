@@ -486,6 +486,7 @@ function renderRecordingBlock(fx) {
   return `
     <div class="mc-rec">
       <div class="mc-rec-head">🎥 <b>Pre-match checklist</b> <span>${done} / ${REC_ITEMS.length} ticked</span>
+        <label class="mc-rec-all"><input type="checkbox" data-mc-rec-all="${fid}"${done === REC_ITEMS.length ? " checked" : ""}> All</label>
         <a href="learning_gpsl.html#matchday-checklist" target="_blank" rel="noopener">Full checklist</a></div>
       <div class="mc-rec-groups">${groupsHtml}</div>
       ${resultLink}
@@ -530,6 +531,32 @@ async function onRecTick(box) {
   if (!recTicks.has(fid)) recTicks.set(fid, new Set());
   if (box.checked) recTicks.get(fid).add(key);
   else recTicks.get(fid).delete(key);
+  render();
+}
+
+async function onRecTickAll(box) {
+  if (ownerPreviewClub()) return;
+  const fid = Number(box.dataset.mcRecAll);
+  const want = box.checked;
+  const keys = REC_ITEMS.map(([k]) => k);
+  box.disabled = true;
+  const { error } = await supabase.rpc("owner_ready_tick_many", {
+    p_fixture_id: fid,
+    p_item_keys: keys,
+    p_ticked: want,
+  });
+  if (error) {
+    alert(error.message || "Could not update the checklist.");
+    box.checked = !want;
+    box.disabled = false;
+    return;
+  }
+  if (!recTicks.has(fid)) recTicks.set(fid, new Set());
+  const set = recTicks.get(fid);
+  for (const key of keys) {
+    if (want) set.add(key);
+    else set.delete(key);
+  }
   render();
 }
 
@@ -832,8 +859,11 @@ function render() {
   section.querySelectorAll("[data-mc-rec]").forEach((box) => {
     box.addEventListener("change", () => onRecTick(box));
   });
+  section.querySelectorAll("[data-mc-rec-all]").forEach((box) => {
+    box.addEventListener("change", () => onRecTickAll(box));
+  });
   if (ownerPreviewClub()) {
-    section.querySelectorAll("[data-mc-checkin], [data-mc-rec], [data-mc-save-video], [data-mc-video-url]").forEach((el) => {
+    section.querySelectorAll("[data-mc-checkin], [data-mc-rec], [data-mc-rec-all], [data-mc-save-video], [data-mc-video-url]").forEach((el) => {
       el.disabled = true;
     });
   }

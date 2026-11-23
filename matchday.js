@@ -61,7 +61,7 @@ import {
 } from "./matchday_console_rules.js?v=20261118-clearly-shown";
 import { playerNameLinkHtml } from "./player_links.js";
 import { fullClubName } from "./clubs_lookup.js";
-import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261123-video-url";
+import { fetchMatchdayChecklist } from "./matchday_checklist.js?v=20261123-rec-all";
 import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
