@@ -3,7 +3,7 @@ import {
   renderTrophyCabinet,
   bindTrophyCabinet,
   TROPHY_CABINET_PREVIEW_SCENARIOS,
-} from "./history_trophies.js?v=20261123-shelf3";
+} from "./history_trophies.js?v=20261123-super8";
 
 function esc(text) {
   return String(text ?? "")

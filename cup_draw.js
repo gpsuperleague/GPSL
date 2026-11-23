@@ -1,7 +1,7 @@
 import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
 import { loadClubsMap, fullClubName, clubWithOwnerHtml } from "./clubs_lookup.js";
 import { loadCurrentSeason, CUP_LABELS, loadCupBracket, cupRoundLabel } from "./competition.js";
-import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js?v=20261122-plate-fit";
+import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js?v=20261123-super8";
 
 let isAdmin = false;
 let seasonId = null;

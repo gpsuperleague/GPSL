@@ -28,7 +28,7 @@ import {
   isGpslMonthCurrentlyPlayable,
 } from "./competition_calendar.js";
 import { formatMatchConditions } from "./competition_conditions.js";
-import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js?v=20261122-plate-fit";
+import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js?v=20261123-super8";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import {
   scheduleActionLabel,

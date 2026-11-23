@@ -1706,7 +1706,7 @@ const NAV_MENU_ICON_FILES = {
     trophy: true,
   },
   super8: {
-    src: "images/trophies/super8.png?v=20261122-silver",
+    src: "images/trophies/super8.png?v=20261123-super8",
     title: "Super8",
     trophy: true,
   },

@@ -1,6 +1,6 @@
 /** Trophy cabinet — three shelves, ten places each, overflow in the store room. */
 
-import { TROPHY_IMAGES } from "./trophy_assets.js?v=20261122-select";
+import { TROPHY_IMAGES } from "./trophy_assets.js?v=20261123-super8";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 
 export const CABINET_SHELF_COUNT = 3;
