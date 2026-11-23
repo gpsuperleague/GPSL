@@ -2292,8 +2292,6 @@ function render() {
       })
       .join("");
     pendingHtml = `
-      <div class="panel">
-        <h2>Pending proposal</h2>
         <p class="status-pending">
           <b>${fullClubName(pending.proposed_by_club_short_name)}</b>
           ${
@@ -2304,17 +2302,13 @@ function render() {
         </p>
         ${choiceRows}
         ${pokeIncomingNote}
-        ${unavailablePanelHtml(f)}
         ${
           !anyStillValid
             ? `<p class="meta" style="color:#f88;">${
                 multiChoice ? "These times have" : "This time has"
               } passed — ask your opponent to counter-propose a future slot.</p>`
-            : fromOpponent && ctx.can_respond
-              ? ""
-              : `<p class="meta">Waiting for your opponent to ${multiChoice ? "pick one, or counter" : "respond"}.</p>`
+            : ""
         }
-      </div>
     `;
   }
 
@@ -2544,6 +2538,7 @@ function render() {
       ${timezoneComparePanelHtml(f, homeTz, awayTz, ownerTz)}
       ${unavailablePanelHtml(f)}
       ${responseHtml}
+      ${ctx.my_has_manager === false ? "" : pendingHtml}
       ${deadlineBoxHtml(f)}
       ${
         ctx.my_has_manager !== false &&
@@ -2559,7 +2554,6 @@ function render() {
       }
     </div>
     ${mutualPendingHtml}
-    ${ctx.my_has_manager === false ? "" : pendingHtml}
     ${schedulingTabsHtml}
   `;
 
