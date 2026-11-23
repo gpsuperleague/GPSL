@@ -379,11 +379,10 @@ function kitSeasonLineHtml(f) {
   const pitch = formatPitchLabel(f?.pitch_condition);
   const parts = [];
   if (month) parts.push(`GPSL ${escapeHtmlLite(month)}`);
-  if (f?.weather && weather && weather !== "—") parts.push(`Weather: ${escapeHtmlLite(weather)}`);
-  if (f?.pitch_condition && pitch && pitch !== "—") parts.push(`Pitch: ${escapeHtmlLite(pitch)}`);
+  if (f?.weather && weather && weather !== "—") parts.push(`Weather: ${formatWeatherChipHtml(f.weather)}`);
+  if (f?.pitch_condition && pitch && pitch !== "—") parts.push(`Pitch: ${formatPitchChipHtml(f.pitch_condition)}`);
   if (f?.kit_season && kit && kit !== "—") parts.push(`Kit: ${escapeHtmlLite(kit)}`);
-  if (!parts.length) return "";
-  return `<p class="meta">${parts.join(" · ")}</p>`;
+  return infoChipsHtml(parts, "fixture-facts");
 }
 
 function escapeHtmlLite(text) {
@@ -1090,11 +1089,18 @@ function finalPlayLineHtml() {
   const soon =
     Number.isFinite(lock) && lock > Date.now() && lock - Date.now() <= 72 * 60 * 60 * 1000;
   const cutoff = finalPlayCutoffNote(d.final_play_lock);
-  const rule = cutoff ? `<b>${cutoff}</b> ` : "";
-  const body = `${rule}Last chance to play: before <b>${formatUkWhen(d.final_play_lock)}</b>.
-    If it's still unplayed then, more strikes on the fixture loses. If a kick-off was agreed, the club that failed to check in loses. If a time was still waiting on a reply, and the 48 hours to answer had already finished, the club that left it sitting loses. Then logins, matches played, forfeit losses, reply fines on other fixtures, and check-ins. Level on all of that and the match is void. Neither club is given the win.`;
-  if (soon) return `<div class="deadline-box deadline-late">${body}</div>`;
-  return `<p class="meta">${body}</p>`;
+  return infoChipsHtml(
+    [
+      `Last chance to play: before <b>${formatUkWhen(d.final_play_lock)}</b>`,
+      "Still unplayed: more strikes on the fixture loses",
+      "Agreed kick-off: the club that missed check-in loses",
+      "Reply left after 48 hours: the club that left it loses",
+      "Then logins, matches, forfeit losses, other reply fines, and check-ins",
+      "Level on all of that: void. Neither club is given the win",
+      cutoff || "",
+    ],
+    soon ? "final-play-soon" : ""
+  );
 }
 
 function catchUpBannerHtml() {
