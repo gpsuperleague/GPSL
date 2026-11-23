@@ -66,13 +66,13 @@
       <h1>Account archived</h1>
       <p>
         Your GPSL account is archived. Competition history is retained.
-        If you no longer have a club and want back in, you can rejoin the owner waiting list below.
+        Ask to be unarchived and staff will review it. You stay archived until they approve.
       </p>
       <button type="button" class="button" id="mhRejoinWaitingBtn">
-        Rejoin waiting list
+        Unarchive
       </button>
-      <p class="hint" style="margin-top:10px;font-size:12px;color:#888;line-height:1.45;">
-        You’ll return as a <b>returning</b> member (same as an admin unarchive). Mid-season you may then claim a vacant club when available.
+      <p class="hint" id="mhRejoinHint" style="margin-top:10px;font-size:12px;color:#888;line-height:1.45;">
+        A request goes to staff. You are tagged in the news channel and sent a Discord message when it is in progress, approved, or declined.
       </p>
       <div id="mhRejoinStatus" class="mh-status" hidden></div>
     </div>
@@ -80,7 +80,7 @@
   <script type="module">
     window.CURRENT_PAGE = "member_home";
     import { initGlobal } from "./global.js?v=20261117-qualifying-home";
-    import { initMemberHomePage } from "./member_home.js?v=20261117-qualifying-home";
+    import { initMemberHomePage } from "./member_home.js?v=20261123-unarchive";
     initGlobal().then(() => initMemberHomePage());
   </script>
 </body>

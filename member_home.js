@@ -26,7 +26,7 @@ export async function initMemberHomePage() {
     if (self?.is_archived || archived) {
       main.hidden = true;
       archivedCard.hidden = false;
-      wireRejoinWaitingList(!!self?.has_club);
+      await wireRejoinWaitingList(!!self?.has_club);
       return;
     }
 
@@ -61,66 +61,75 @@ export async function initMemberHomePage() {
   }
 }
 
-function wireRejoinWaitingList(hasClub) {
+const UNARCHIVE_REVIEW =
+  "Your unarchive request is being reviewed. You have been tagged in the news channel and sent a Discord message. Staff will approve or decline it.";
+
+function showRejoinStatus(status, text, isError) {
+  if (!status) return;
+  status.hidden = false;
+  status.className = isError ? "mh-status err" : "mh-status";
+  status.textContent = text;
+}
+
+async function wireRejoinWaitingList(hasClub) {
   const btn = document.getElementById("mhRejoinWaitingBtn");
   const status = document.getElementById("mhRejoinStatus");
+  const hint = document.getElementById("mhRejoinHint");
   if (!btn) return;
 
   if (hasClub) {
     btn.disabled = true;
-    btn.title = "You still have a club linked — contact admin";
-    if (status) {
-      status.hidden = false;
-      status.className = "mh-status err";
-      status.textContent =
-        "Your account still has a club. Contact admin before rejoining the waiting list.";
-    }
+    btn.title = "You still have a club linked — contact staff";
+    showRejoinStatus(
+      status,
+      "Your account still has a club. Contact staff before asking to be unarchived.",
+      true
+    );
     return;
+  }
+
+  const { data: mine } = await supabase.rpc("owner_unarchive_request_mine");
+  if (mine?.status === "pending") {
+    btn.disabled = true;
+    btn.textContent = "Unarchive requested";
+    if (hint) hint.hidden = true;
+    showRejoinStatus(status, UNARCHIVE_REVIEW, false);
+    return;
+  }
+  if (mine?.status === "rejected") {
+    showRejoinStatus(
+      status,
+      "The last request was declined. You can ask again.",
+      false
+    );
   }
 
   btn.addEventListener("click", async () => {
     if (
       !confirm(
-        "Rejoin the owner waiting list?\n\nYou’ll be added as a returning member and can take part in mid-season vacant club claims or the next club auction."
+        "Ask staff to unarchive your account?\n\nYou stay archived until they approve it. You will be tagged in the news channel and sent a Discord message."
       )
     ) {
       return;
     }
     btn.disabled = true;
-    if (status) {
-      status.hidden = false;
-      status.className = "mh-status";
-      status.textContent = "Rejoining waiting list…";
-    }
+    showRejoinStatus(status, "Sending your request…", false);
 
-    const { data, error } = await supabase.rpc(
-      "waiting_list_self_unarchive_to_list"
-    );
+    const { data, error } = await supabase.rpc("owner_unarchive_request");
 
-    if (error) {
+    if (error || data?.ok === false) {
       btn.disabled = false;
-      if (status) {
-        status.className = "mh-status err";
-        status.textContent = error.message;
-      }
+      showRejoinStatus(
+        status,
+        error?.message || data?.detail || data?.reason || "Could not send the request.",
+        true
+      );
       return;
     }
 
-    if (!data?.ok) {
-      btn.disabled = false;
-      if (status) {
-        status.className = "mh-status err";
-        status.textContent =
-          data?.detail || data?.reason || "Could not rejoin waiting list.";
-      }
-      return;
-    }
-
-    if (status) {
-      status.className = "mh-status";
-      status.textContent = "You’re back on the waiting list — redirecting…";
-    }
-    window.location.assign(data.redirect || "waiting_list.html");
+    btn.textContent = "Unarchive requested";
+    if (hint) hint.hidden = true;
+    showRejoinStatus(status, UNARCHIVE_REVIEW, false);
   });
 }
 

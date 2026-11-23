@@ -63,6 +63,13 @@ async function loadAlerts() {
       const href = r.action_href
         ? `<a class="button secondary" href="${escapeHtml(r.action_href)}">Open</a>`
         : "";
+      const unarchive =
+        r.alert_type === "unarchive_request" &&
+        r.metadata?.request_id &&
+        !r.metadata?.resolved
+          ? `<button type="button" class="button" data-unarchive="${r.metadata.request_id}" data-approve="1">Approve</button>
+             <button type="button" class="button secondary" data-unarchive="${r.metadata.request_id}" data-approve="0">Decline</button>`
+          : "";
       const mark = r.is_read
         ? ""
         : `<button type="button" class="button secondary" data-mark="${r.id}">Mark read</button>`;
@@ -71,11 +78,38 @@ async function loadAlerts() {
           <h3>${escapeHtml(r.title)}${unreadBadge}</h3>
           <div class="alert-meta">${escapeHtml(r.alert_type)} · ${escapeHtml(formatWhen(r.created_at))}</div>
           <div class="alert-body">${linkify(r.body || "")}</div>
-          <div class="alert-actions">${href}${mark}</div>
+          <div class="alert-actions">${unarchive}${href}${mark}</div>
         </article>`;
     })
     .join("");
 
+  wrap.querySelectorAll("[data-unarchive]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.getAttribute("data-unarchive"));
+      const approve = btn.getAttribute("data-approve") === "1";
+      const label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = approve ? "Approving…" : "Declining…";
+      const { data, error: err } = await supabase.rpc(
+        "admin_owner_unarchive_request_resolve",
+        { p_request_id: id, p_approve: approve }
+      );
+      if (err || data?.ok === false) {
+        btn.disabled = false;
+        btn.textContent = label;
+        setStatus("status", err?.message || data?.reason || "Could not update the request.", false);
+        return;
+      }
+      setStatus(
+        "status",
+        approve
+          ? "Approved. They are back on the waiting list, and Discord has been told."
+          : "Declined. The account stays archived, and Discord has been told.",
+        true
+      );
+      await loadAlerts();
+    });
+  });
   wrap.querySelectorAll("[data-mark]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const id = Number(btn.getAttribute("data-mark"));
