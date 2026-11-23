@@ -278,6 +278,344 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
+type PresenceTier = "visitor" | "member" | "owner";
+
+type SeenRow = {
+  discord_user_id: string;
+  display_name: string | null;
+  tier: PresenceTier;
+  joined_at: string | null;
+  first_seen_at: string;
+};
+
+function presenceTier(
+  roles: string[],
+  ownerRole: string,
+  memberRole: string
+): PresenceTier {
+  if (ownerRole && roles.includes(ownerRole)) return "owner";
+  if (memberRole && roles.includes(memberRole)) return "member";
+  return "visitor";
+}
+
+function presenceName(raw: string | null | undefined): string {
+  const name = String(raw || "").replace(/^@+/, "").trim();
+  return name || "Someone";
+}
+
+function joinStamp(joinedAt: string | null | undefined): string {
+  const ms = joinedAt ? Date.parse(joinedAt) : NaN;
+  if (!Number.isFinite(ms)) return "first";
+  return String(Math.floor(ms / 1000));
+}
+
+// deno-lint-ignore no-explicit-any
+async function registryForDiscord(admin: any, ids: string[]) {
+  const map = new Map<
+    string,
+    { tag: string | null; club: string | null }
+  >();
+  if (!ids.length) return map;
+  const { data: regs } = await admin
+    .from("gpsl_owner_registry")
+    .select("owner_id, owner_tag, discord_user_id")
+    .in("discord_user_id", ids);
+  const rows = (regs || []) as Array<{
+    owner_id?: string | null;
+    owner_tag?: string | null;
+    discord_user_id?: string | null;
+  }>;
+  const ownerIds = [
+    ...new Set(rows.map((r) => r.owner_id).filter((id): id is string => !!id)),
+  ];
+  const clubByOwner = new Map<string, string>();
+  if (ownerIds.length) {
+    const { data: clubs } = await admin
+      .from("Clubs")
+      .select("owner_id, Club, ShortName")
+      .in("owner_id", ownerIds);
+    for (const club of clubs || []) {
+      const label = String(club.Club || club.ShortName || "").trim();
+      if (club.owner_id && label) clubByOwner.set(String(club.owner_id), label);
+    }
+  }
+  for (const row of rows) {
+    const id = String(row.discord_user_id || "").trim();
+    if (!id) continue;
+    map.set(id, {
+      tag: row.owner_tag ? String(row.owner_tag).replace(/^@+/, "").trim() : null,
+      club: row.owner_id ? clubByOwner.get(String(row.owner_id)) || null : null,
+    });
+  }
+  return map;
+}
+
+function leaveCopy(
+  tier: PresenceTier,
+  name: string,
+  reg: { tag: string | null; club: string | null } | undefined
+): { headline: string; body: string; color: number } {
+  if (tier === "owner") {
+    const who = reg?.tag || name;
+    const club = reg?.club ? ` (${reg.club})` : "";
+    return {
+      headline: "Owner left the server",
+      body: `${who}${club} left the Discord server.`,
+      color: 10038562,
+    };
+  }
+  if (tier === "member") {
+    return {
+      headline: "Member left the server",
+      body: `${reg?.tag || name} left the Discord server.`,
+      color: 16753920,
+    };
+  }
+  return {
+    headline: "Visitor left the server",
+    body: `${name} left the Discord server.`,
+    color: 9807270,
+  };
+}
+
+// deno-lint-ignore no-explicit-any
+async function enqueuePresenceNews(
+  admin: any,
+  eventType: "discord_join" | "discord_leave",
+  headline: string,
+  body: string,
+  color: number,
+  dedupeKey: string
+) {
+  const { error } = await admin.rpc("gpsl_discord_feed_enqueue", {
+    p_event_type: eventType,
+    p_headline: headline,
+    p_body: body,
+    p_color: color,
+    p_dedupe_key: dedupeKey,
+    p_metadata: { channel: "news", ping: false },
+  });
+  if (error) throw new Error(error.message);
+}
+
+// deno-lint-ignore no-explicit-any
+async function flushPresenceNews(admin: any) {
+  try {
+    await admin.rpc("gpsl_discord_feed_request_flush");
+  } catch {
+    /* the news cron will pick the row up */
+  }
+}
+
+// deno-lint-ignore no-explicit-any
+async function upsertSeen(admin: any, rows: Record<string, unknown>[]) {
+  for (let i = 0; i < rows.length; i += 100) {
+    const { error } = await admin
+      .from("gpsl_discord_guild_seen")
+      .upsert(rows.slice(i, i + 100), { onConflict: "discord_user_id" });
+    if (error) throw new Error(error.message);
+  }
+}
+
+/** First successful member list is stored with no news. Later diffs post. */
+// deno-lint-ignore no-explicit-any
+async function syncGuildPresenceNews(
+  admin: any,
+  humans: GuildHuman[],
+  ownerRole: string,
+  memberRole: string
+) {
+  const { data: seenRows, error: seenError } = await admin
+    .from("gpsl_discord_guild_seen")
+    .select("discord_user_id, display_name, tier, joined_at, first_seen_at");
+  if (seenError) {
+    return { ok: false, error: seenError.message };
+  }
+  const seen = (seenRows || []) as SeenRow[];
+  const now = new Date().toISOString();
+
+  if (seen.length === 0) {
+    await upsertSeen(
+      admin,
+      humans.map((h) => ({
+        discord_user_id: h.id,
+        display_name: h.display_name || h.username || null,
+        tier: presenceTier(h.roles, ownerRole, memberRole),
+        joined_at: h.joined_at || null,
+        seen_at: now,
+      }))
+    );
+    return { ok: true, seeded: humans.length, joined: 0, left: 0 };
+  }
+
+  if (seen.length > 30 && humans.length < seen.length * 0.5) {
+    return { ok: true, skipped: "member_list_too_small", joined: 0, left: 0 };
+  }
+
+  const seenById = new Map(seen.map((row) => [row.discord_user_id, row]));
+  const current = new Set(humans.map((h) => h.id));
+  const leavers = seen.filter((row) => !current.has(row.discord_user_id)).slice(0, 20);
+  const joiners = humans.filter((h) => !seenById.has(h.id)).slice(0, 20);
+  const reg = await registryForDiscord(admin, [
+    ...leavers.map((row) => row.discord_user_id),
+    ...joiners.map((h) => h.id),
+  ]);
+
+  let joined = 0;
+  let left = 0;
+
+  for (const row of leavers) {
+    const info = reg.get(row.discord_user_id);
+    const tier: PresenceTier = info?.club
+      ? "owner"
+      : info
+        ? "member"
+        : row.tier;
+    const copy = leaveCopy(tier, presenceName(row.display_name), info);
+    const stamp = row.joined_at || row.first_seen_at;
+    await enqueuePresenceNews(
+      admin,
+      "discord_leave",
+      copy.headline,
+      copy.body,
+      copy.color,
+      `discord_leave:${row.discord_user_id}:${stamp}`
+    );
+    await admin
+      .from("gpsl_discord_guild_seen")
+      .delete()
+      .eq("discord_user_id", row.discord_user_id);
+    left += 1;
+  }
+
+  const postedJoinerIds = new Set<string>();
+  for (const h of joiners) {
+    const info = reg.get(h.id);
+    const tier: PresenceTier = info?.club
+      ? "owner"
+      : info
+        ? "member"
+        : presenceTier(h.roles, ownerRole, memberRole);
+    if (tier === "visitor") {
+      const name = presenceName(h.display_name || h.username);
+      await enqueuePresenceNews(
+        admin,
+        "discord_join",
+        "Visitor joined",
+        `${name} joined the Discord server.`,
+        5763719,
+        `discord_join:${h.id}:${joinStamp(h.joined_at)}`
+      );
+      joined += 1;
+    }
+    postedJoinerIds.add(h.id);
+  }
+
+  const keep = humans.filter(
+    (h) => seenById.has(h.id) || postedJoinerIds.has(h.id)
+  );
+  await upsertSeen(
+    admin,
+    keep.map((h) => ({
+      discord_user_id: h.id,
+      display_name: h.display_name || h.username || null,
+      tier: presenceTier(h.roles, ownerRole, memberRole),
+      joined_at: h.joined_at || null,
+      seen_at: now,
+    }))
+  );
+
+  if (joined || left) await flushPresenceNews(admin);
+  return { ok: true, seeded: 0, joined, left };
+}
+
+// deno-lint-ignore no-explicit-any
+async function announceVisitorJoin(
+  admin: any,
+  person: {
+    id: string;
+    display_name?: string | null;
+    joined_at?: string | null;
+  }
+) {
+  const { data: existing } = await admin
+    .from("gpsl_discord_guild_seen")
+    .select("discord_user_id")
+    .eq("discord_user_id", person.id)
+    .maybeSingle();
+  if (existing) return { skipped: "already_seen" };
+
+  const reg = await registryForDiscord(admin, [person.id]);
+  if (reg.has(person.id)) return { skipped: "not_a_visitor" };
+
+  const name = presenceName(person.display_name);
+  const stamp = joinStamp(person.joined_at);
+  await enqueuePresenceNews(
+    admin,
+    "discord_join",
+    "Visitor joined",
+    `${name} joined the Discord server.`,
+    5763719,
+    `discord_join:${person.id}:${stamp}`
+  );
+  await flushPresenceNews(admin);
+  return { ok: true };
+}
+
+// deno-lint-ignore no-explicit-any
+async function announceMemberLeft(
+  admin: any,
+  person: { id: string; display_name?: string | null }
+) {
+  const { data: row } = await admin
+    .from("gpsl_discord_guild_seen")
+    .select("discord_user_id, display_name, tier, joined_at, first_seen_at")
+    .eq("discord_user_id", person.id)
+    .maybeSingle();
+
+  if (!row) {
+    const since = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    const { data: recent } = await admin
+      .from("gpsl_discord_feed_queue")
+      .select("id")
+      .like("dedupe_key", `discord_leave:${person.id}:%`)
+      .gte("created_at", since)
+      .limit(1);
+    if (recent && recent.length) return { skipped: "already_posted" };
+  }
+
+  const seen = row as SeenRow | null;
+  const reg = await registryForDiscord(admin, [person.id]);
+  const info = reg.get(person.id);
+  const tier: PresenceTier = info?.club
+    ? "owner"
+    : info
+      ? "member"
+      : seen?.tier || "visitor";
+  const copy = leaveCopy(
+    tier,
+    presenceName(person.display_name || seen?.display_name),
+    info
+  );
+  const stamp = seen?.joined_at || seen?.first_seen_at || new Date().toISOString();
+  await enqueuePresenceNews(
+    admin,
+    "discord_leave",
+    copy.headline,
+    copy.body,
+    copy.color,
+    `discord_leave:${person.id}:${stamp}`
+  );
+  if (seen) {
+    await admin
+      .from("gpsl_discord_guild_seen")
+      .delete()
+      .eq("discord_user_id", person.id);
+  }
+  await flushPresenceNews(admin);
+  return { ok: true, tier };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -717,6 +1055,21 @@ Deno.serve(async (req) => {
         });
       }
 
+      let presence: Record<string, unknown> = { ok: false, skipped: "not_run" };
+      try {
+        presence = await syncGuildPresenceNews(
+          admin,
+          humans,
+          ownerRole,
+          memberRole
+        );
+      } catch (err) {
+        presence = {
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+
       // Poll guild for people who never got the welcome pack (Supabase-only; no VPS).
       const limitRaw = Number(body.limit);
       const limit = Math.min(
@@ -770,6 +1123,7 @@ Deno.serve(async (req) => {
       return jsonResponse({
         ok: true,
         action: "welcome_newcomers",
+        presence,
         guild_humans: humanIds.length,
         pending: pendingHumans.length,
         rejoins,
@@ -779,6 +1133,28 @@ Deno.serve(async (req) => {
         remaining: Math.max(pendingHumans.length - batch.length, 0),
         results: results.slice(0, 20),
       });
+    }
+
+    if (action === "member_left") {
+      if (!discordUserId) {
+        return jsonResponse({ error: "discord_user_id required" }, 400);
+      }
+      try {
+        const left = await announceMemberLeft(admin, {
+          id: discordUserId,
+          display_name: body.display_name ? String(body.display_name) : null,
+        });
+        return jsonResponse({ ok: true, action, ...left });
+      } catch (err) {
+        return jsonResponse(
+          {
+            ok: false,
+            action,
+            error: err instanceof Error ? err.message : String(err),
+          },
+          500
+        );
+      }
     }
 
     if (action !== "welcome_one" && action !== "on_join") {
@@ -793,6 +1169,22 @@ Deno.serve(async (req) => {
 
     if (!discordUserId) {
       return jsonResponse({ error: "discord_user_id required" }, 400);
+    }
+
+    let joinNews: Record<string, unknown> | null = null;
+    if (action === "on_join") {
+      try {
+        joinNews = await announceVisitorJoin(admin, {
+          id: discordUserId,
+          display_name: body.display_name ? String(body.display_name) : null,
+          joined_at: body.joined_at ? String(body.joined_at) : null,
+        });
+      } catch (err) {
+        joinNews = {
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
     }
 
     const oneAudience: WelcomePackAudience =
@@ -814,6 +1206,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       ...one,
+      join_news: joinNews,
       action,
       content_preview:
         welcomePackBody({
