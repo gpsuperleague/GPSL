@@ -21,9 +21,9 @@
     }
     .already-played-bar {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px 16px;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 8px;
       border-color: #6a3a28;
       background: #1a100c;
       padding: 10px 14px;
@@ -31,28 +31,42 @@
     .already-played-bar h2 {
       margin: 0;
       flex: 0 0 auto;
+      align-self: center;
       font-size: 15px;
       white-space: nowrap;
     }
     .already-played-bar .info-chips {
-      flex: 1 1 20rem;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-wrap: nowrap;
       gap: 8px;
       margin: 0;
     }
     .already-played-bar .info-chip {
+      flex: 1 1 0;
+      min-width: 0;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
       min-height: 3.25rem;
-      padding: 8px 10px;
+      padding: 6px 8px;
       border-radius: 8px;
       box-sizing: border-box;
       background: #24160f;
       border-color: #6a3a28;
+      font-size: 11px;
+      line-height: 1.25;
+      overflow-wrap: break-word;
     }
+    .already-played-bar .info-chip-lines {
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      gap: 2px;
+    }
+    .already-played-bar .info-chip-lines span::before { content: "• "; }
     .already-played-bar .info-chip-wait { color: #e8a87c; border-color: #e8a87c; }
     .already-played-bar .actions { margin: 0; align-self: stretch; }
     .already-played-bar .already-played-go {
@@ -471,6 +485,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261123-played-boxes"></script>
+  <script type="module" src="fixture_schedule.js?v=20261123-played-line"></script>
 </body>
 </html>
