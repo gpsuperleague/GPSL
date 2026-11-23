@@ -1212,14 +1212,16 @@ function alreadyPlayedPanelHtml() {
     : "";
 
   return `
-    <div class="panel" style="border-color:#6a3a28;background:#1a100c;">
+    <div class="panel already-played-bar">
       <h2>Already played?</h2>
-      <p class="meta">
-        You played this fixture without finishing GPSL arrangement.
-        <b>Both clubs must confirm.</b> Then each club pays <b>₿500k</b> and takes
-        <b>1 season strike</b> (every 5th season strike adds ₿1m), and Match Day unlocks for enter result / confirm + stats.
-      </p>
-      ${statusLine}
+      <div class="already-played-copy">
+        <p class="meta">
+          You played this fixture without finishing GPSL arrangement.
+          <b>Both clubs must confirm.</b> Then each club pays <b>₿500k</b> and takes
+          <b>1 season strike</b> (every 5th season strike adds ₿1m), and Match Day unlocks for enter result / confirm + stats.
+        </p>
+        ${statusLine}
+      </div>
       ${actions ? `<div class="actions">${actions}</div>` : ""}
     </div>`;
 }
@@ -2519,6 +2521,7 @@ function render() {
   const alreadyPlayedHtml = alreadyPlayedPanelHtml();
 
   root.innerHTML = `
+    ${alreadyPlayedHtml}
     ${catchUpBannerHtml()}
     ${holidayEarlyBannerHtml()}
     ${holidayExpiryBannerHtml(f)}
@@ -2544,7 +2547,6 @@ function render() {
           : ""
       }
     </div>
-    ${alreadyPlayedHtml}
     ${mutualPendingHtml}
     ${ctx.my_has_manager === false ? "" : pendingHtml}
     ${schedulingTabsHtml}

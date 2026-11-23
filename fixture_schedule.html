@@ -19,6 +19,24 @@
       border: 1px solid var(--club-border, #333);
       border-radius: 8px; padding: 16px 18px; margin-bottom: 16px;
     }
+    .already-played-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 16px;
+      border-color: #6a3a28;
+      background: #1a100c;
+      padding: 10px 14px;
+    }
+    .already-played-bar h2 {
+      margin: 0;
+      flex: 0 0 auto;
+      font-size: 15px;
+      white-space: nowrap;
+    }
+    .already-played-bar .already-played-copy { flex: 1 1 18rem; min-width: 0; }
+    .already-played-bar .meta { margin: 0; }
+    .already-played-bar .actions { margin: 0 0 0 auto; }
     .page-container .panel h2 {
       color: var(--club-accent, var(--gpsl-accent, #ff9900));
       font-size: 16px; margin: 0 0 10px;
@@ -420,6 +438,6 @@
     <div id="scheduleRoot"></div>
     <p id="scheduleStatus" class="meta" role="status"></p>
   </div>
-  <script type="module" src="fixture_schedule.js?v=20261123-fixture-facts"></script>
+  <script type="module" src="fixture_schedule.js?v=20261123-already-bar"></script>
 </body>
 </html>
