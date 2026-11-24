@@ -254,6 +254,22 @@
             <select id="finBalSeason"></select>
           </div>
           <div>
+            <label for="finBalDivision">Division</label>
+            <select id="finBalDivision">
+              <option value="all">All divisions</option>
+              <option value="superleague">Super League</option>
+              <option value="championship_a">Championship A</option>
+              <option value="championship_b">Championship B</option>
+            </select>
+          </div>
+          <div>
+            <label for="finBalOwned">Clubs</label>
+            <select id="finBalOwned">
+              <option value="all">All clubs</option>
+              <option value="owned">Owned only</option>
+            </select>
+          </div>
+          <div>
             <label class="gpsl-has-tip" data-gpsl-tip="What you want a typical club to make from day-to-day ops this season (gates, prizes, TV, wages, stadium, tax…) — not transfer spending. Default ₿10m." tabindex="0">Healthy profit goal per club (₿)</label>
             <input type="text" id="finBalTarget" value="10,000,000" inputmode="numeric">
           </div>
@@ -289,7 +305,7 @@
             <div class="fin-kpi">
               <span class="lbl gpsl-has-tip" data-gpsl-tip="How many clubs were included in this season’s finance set." tabindex="0">Clubs analysed</span>
               <span class="val" id="kpiClubs">—</span>
-              <span class="sub">Owned + vacant in this season</span>
+              <span class="sub" id="kpiClubsSub">Owned and vacant in this season</span>
             </div>
             <div class="fin-kpi">
               <span class="lbl gpsl-has-tip" data-gpsl-tip="Average day-to-day profit or loss per club (gates, prizes, TV, wages, stadium, tax…). Transfers and loans are ignored." tabindex="0">Average club result</span>
@@ -375,6 +391,13 @@
             </select>
           </div>
           <div>
+            <label for="finFcOwned">Clubs</label>
+            <select id="finFcOwned">
+              <option value="all">All clubs</option>
+              <option value="owned">Owned only</option>
+            </select>
+          </div>
+          <div>
             <label for="finFcMode">Show</label>
             <select id="finFcMode">
               <option value="forecast">Forecast (posted + pending)</option>
@@ -439,6 +462,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_league_finance_balance.js?v=20261124-core-ops"></script>
+  <script type="module" src="admin_league_finance_balance.js?v=20261124-owned-filter"></script>
 </body>
 </html>

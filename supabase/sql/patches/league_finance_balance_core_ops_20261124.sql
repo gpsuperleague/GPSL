@@ -238,6 +238,10 @@ BEGIN
       jsonb_build_object(
         'club', v_club,
         'division', v_division,
+        'owned', EXISTS (
+          SELECT 1 FROM public."Clubs" c
+          WHERE c."ShortName" = v_club AND c.owner_id IS NOT NULL
+        ),
         'opening_balance', v_opening,
         'archive_opening', v_archive_opening,
         'prior_close', v_prior_close,

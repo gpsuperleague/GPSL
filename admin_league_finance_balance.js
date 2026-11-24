@@ -13,6 +13,7 @@ primeAdminPageChrome();
 
 let forecastRows = null;
 let forecastVisibleRows = [];
+let lastBalanceReport = null;
 
 /** Same core lines as the season check. Challenges, transfers, commercial, releases, and FFP stay out. */
 const CORE_PREVIEW_LINE_IDS = [
@@ -106,6 +107,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("finFcRunBtn").onclick = runForecast;
   document.getElementById("finFcDivision").onchange = renderForecast;
   document.getElementById("finFcMode").onchange = renderForecast;
+  document.getElementById("finFcOwned").onchange = renderForecast;
+  document.getElementById("finBalDivision").onchange = refreshBalanceView;
+  document.getElementById("finBalOwned").onchange = refreshBalanceView;
   document.querySelectorAll(".fin-tab").forEach((btn) => {
     btn.addEventListener("click", () => showFinTab(btn.dataset.finTab));
   });
@@ -114,8 +118,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     const el = document.getElementById("finBalTarget");
     const n = parseMoney(el.value);
     if (Number.isFinite(n)) el.value = formatPlain(n);
+    refreshBalanceView();
   });
 });
+
+function medianOf(values) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function clubListFilters(divisionId, ownedId) {
+  return {
+    division: document.getElementById(divisionId)?.value || "all",
+    ownedOnly: document.getElementById(ownedId)?.value === "owned",
+  };
+}
+
+function clubMatchesFilters(club, filters) {
+  if (filters.ownedOnly && !club?.owned) return false;
+  if (filters.division !== "all" && club?.division !== filters.division) return false;
+  return true;
+}
+
+function refreshBalanceView() {
+  if (!lastBalanceReport) return;
+  renderReport(lastBalanceReport);
+}
 
 function showFinTab(name) {
   document.querySelectorAll("[data-fin-panel]").forEach((panel) => {
@@ -215,12 +245,8 @@ async function runAnalysis() {
     return;
   }
 
+  lastBalanceReport = data;
   renderReport(data);
-  setStatus(
-    "finBalStatus",
-    `✅ ${data.season_label || "Season"} — ${data.club_count || 0} clubs analysed.`,
-    true
-  );
 }
 
 async function backfillVacantClubs() {
@@ -280,13 +306,40 @@ function renderReport(data) {
     el.className = "val" + (cls ? " " + cls : "");
   };
 
-  const avg = Number(data.ops_net_avg || 0);
-  const med = Number(data.ops_net_median || 0);
-  const target = Number(data.target_avg_ops_profit || 0);
-  const gapClub = Number(data.gap_vs_target_avg || 0);
-  const gapTotal = Number(data.gap_vs_target_total || 0);
-  const clubs = Number(data.club_count || 0);
-  const cats = data.category_totals || {};
+  const filters = clubListFilters("finBalDivision", "finBalOwned");
+  const matched = (Array.isArray(data.clubs) ? data.clubs : []).filter((c) =>
+    clubMatchesFilters(c, filters)
+  );
+  const targetInput = parseMoney(document.getElementById("finBalTarget").value);
+  const target = Number.isFinite(targetInput)
+    ? targetInput
+    : Number(data.target_avg_ops_profit || 0);
+  const nets = matched.map((c) => Number(c.ops_net || 0));
+  const clubs = matched.length;
+  const avg = clubs ? nets.reduce((sum, n) => sum + n, 0) / clubs : 0;
+  const med = medianOf(nets);
+  const gapClub = target - avg;
+  const gapTotal = gapClub * clubs;
+  const cats = {};
+  for (const key of [
+    "gates",
+    "prize_league",
+    "prize_cup",
+    "tv",
+    "subsidies",
+    "wages",
+    "stadium",
+    "tax_fines",
+    "staff",
+  ]) {
+    cats[key] = matched.reduce((sum, c) => sum + Number(c[key] || 0), 0);
+  }
+  const clubsSub = document.getElementById("kpiClubsSub");
+  if (clubsSub) {
+    const who = filters.ownedOnly ? "Owned clubs" : "Owned and vacant";
+    const where = filters.division === "all" ? "in this season" : `in ${divShort(filters.division)}`;
+    clubsSub.textContent = `${who} ${where}`;
+  }
 
   setKpi("kpiClubs", String(clubs));
   setKpi("kpiAvg", formatB(avg), moneyClass(avg));
@@ -336,14 +389,12 @@ function renderReport(data) {
           : "Little/no league-wide move needed";
   }
 
-  renderVerdict(data, { avg, med, target, gapClub, gapTotal, clubs, cats });
+  const verdict =
+    Math.abs(gapClub) <= 1000000 ? "near_target" : gapClub > 0 ? "under_target" : "over_target";
+  renderVerdict({ ...data, verdict }, { avg, med, target, gapClub, gapTotal, clubs, cats });
 
   const hint = document.getElementById("finBalHint");
-  if (hint) {
-    const text = String(data.tuning_hint || "").trim();
-    hint.textContent = text;
-    hint.hidden = !text;
-  }
+  if (hint) hint.hidden = true;
 
   const divLabel = (d) => {
     if (d === "superleague") return "Super League";
@@ -351,11 +402,35 @@ function renderReport(data) {
     if (d === "championship_b") return "Championship B";
     return d || "Unassigned";
   };
-  const byDiv = Array.isArray(data.by_division) ? data.by_division : [];
+  const divisionOrder = ["superleague", "championship_a", "championship_b"];
+  const byDivisionMap = new Map();
+  for (const club of matched) {
+    const key = club.division || "unassigned";
+    if (!byDivisionMap.has(key)) byDivisionMap.set(key, []);
+    byDivisionMap.get(key).push(Number(club.ops_net || 0));
+  }
+  const byDiv = [...byDivisionMap.keys()]
+    .sort((a, b) => {
+      const ia = divisionOrder.indexOf(a);
+      const ib = divisionOrder.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    })
+    .map((division) => {
+      const values = byDivisionMap.get(division);
+      const total = values.reduce((sum, n) => sum + n, 0);
+      const dAvg = values.length ? total / values.length : 0;
+      return {
+        division,
+        club_count: values.length,
+        ops_net_avg: dAvg,
+        ops_net_median: medianOf(values),
+        gap_vs_target_avg: target - dAvg,
+      };
+    });
   const divEl = document.getElementById("finBalByDivision");
   if (divEl) {
     if (!byDiv.length) {
-      divEl.innerHTML = `<div class="note">No division splits returned — re-run SQL patch league_finance_balance_div_avg_opening_fix_20260925.sql</div>`;
+      divEl.innerHTML = `<div class="note">No clubs match this division and ownership filter.</div>`;
     } else {
       divEl.innerHTML = byDiv
         .map((d) => {
@@ -398,8 +473,7 @@ function renderReport(data) {
     )
     .join("");
 
-  const clubRows = Array.isArray(data.clubs) ? [...data.clubs] : [];
-  clubRows.sort((a, b) => Number(b.ops_net || 0) - Number(a.ops_net || 0));
+  const clubRows = [...matched].sort((a, b) => Number(b.ops_net || 0) - Number(a.ops_net || 0));
 
   const body = document.getElementById("finBalBody");
   body.innerHTML = clubRows
@@ -440,6 +514,14 @@ function renderReport(data) {
     ${fcell(sum("staff"))}
     ${fcell(sum("ops_net"))}
   </tr>`;
+
+  const who = filters.ownedOnly ? "owned" : "all";
+  const where = filters.division === "all" ? "all divisions" : divShort(filters.division);
+  setStatus(
+    "finBalStatus",
+    `✅ ${data.season_label || "Season"} — ${clubs} ${who} clubs · ${where}.`,
+    true
+  );
 }
 
 function renderVerdict(data, { avg, med, target, gapClub, gapTotal, clubs, cats }) {
@@ -545,6 +627,7 @@ async function runForecast() {
         setStatus("finFcStatus", `Forecasting clubs… ${done} / ${total}`),
     });
     forecastRows = result.clubs;
+    await markOwnedClubs(forecastRows);
     renderForecast();
     setStatus(
       "finFcStatus",
@@ -566,8 +649,9 @@ function renderForecast() {
 
   const sections = corePreviewSections();
   const lineIds = sections.flatMap((s) => s.lines.map((l) => l.id));
+  const ownedOnly = document.getElementById("finFcOwned")?.value === "owned";
   const rows = forecastRows
-    .filter((r) => division === "all" || r.division === division)
+    .filter((r) => (division === "all" || r.division === division) && (!ownedOnly || r.owned))
     .map((r) => {
       const vals = r[mode];
       const net = lineIds.reduce((s, id) => s + Number(vals[id] || 0), 0);
@@ -633,13 +717,24 @@ function renderForecast() {
     footRow("AVERAGE", n) + footRow("TOTAL", 1);
 
   wrap.hidden = false;
-  renderPreviewKpis(
-    forecastRows.filter((r) => division === "all" || r.division === division)
+  const visible = forecastRows.filter(
+    (r) => (division === "all" || r.division === division) && (!ownedOnly || r.owned)
   );
-  forecastVisibleRows = forecastRows.filter(
-    (r) => division === "all" || r.division === division
-  );
+  renderPreviewKpis(visible);
+  forecastVisibleRows = visible;
   renderTweaks();
+}
+
+async function markOwnedClubs(rows) {
+  const shorts = [...new Set((rows || []).map((r) => r.club).filter(Boolean))];
+  if (!shorts.length) return;
+  const { data, error } = await supabase.from("Clubs").select("ShortName, owner_id").in("ShortName", shorts);
+  if (error) {
+    for (const row of rows) row.owned = true;
+    return;
+  }
+  const owned = new Set((data || []).filter((c) => c.owner_id).map((c) => c.ShortName));
+  for (const row of rows) row.owned = owned.has(row.club);
 }
 
 function renderPreviewKpis(rows) {
@@ -657,7 +752,14 @@ function renderPreviewKpis(rows) {
     `<div class="fin-kpi"><span class="lbl">${label}</span><span class="val ${cls}">${value}</span><span class="sub">${sub}</span></div>`;
   el.hidden = false;
   el.innerHTML =
-    kpi("Clubs in this preview", String(n), "", "Current season, this division filter") +
+    kpi(
+      "Clubs in this preview",
+      String(n),
+      "",
+      document.getElementById("finFcOwned")?.value === "owned"
+        ? "Owned clubs in this division filter"
+        : "Owned and vacant in this division filter"
+    ) +
     kpi("Average core net", formatB(avgNet), moneyClass(avgNet), "Posted plus still to come") +
     kpi(
       "Core net below zero",
