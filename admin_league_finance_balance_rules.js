@@ -56,7 +56,7 @@ export const FIN_BALANCE_TIPS = {
 export function getLeagueFinanceBalanceRules() {
   return {
     title: "How to use this page",
-    lead: `Every club in the season (owned or vacant). <b>Season check</b> is the posted ops picture. <b>Season-end preview</b> is a separate tab: posted money plus what is already known for the rest of this season. It does not update Season Review. <b>Ops net</b> ignores transfers, loans, fines, and stadium purchases.`,
+    lead: `Every club in the season (owned or vacant). Both tabs use the same <b>core lines</b> as a pre-season check: gates, league prize, cup prize, TV, subsidies, wages, stadium maintenance, emergency tax, and manager salary. Transfers, challenges, fines, commercial, and end-of-season interest are left out. The preview tab does not update Season Review.`,
     cards: [
       {
         heading: "When to trust it",

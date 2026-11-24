@@ -3,9 +3,8 @@ import { initGpslInfoTips, tipDataAttrs } from "./gpsl_info_tips.js";
 import {
   FIN_BALANCE_TIPS,
   renderLeagueFinanceBalanceRules,
-} from "./admin_league_finance_balance_rules.js?v=20261124-eos-preview-tab";
+} from "./admin_league_finance_balance_rules.js?v=20261124-core-ops";
 import {
-  FORECAST_LINE_IDS,
   FORECAST_SECTIONS,
   buildLeagueFinanceForecast,
 } from "./admin_league_finance_forecast.js?v=20261012-monthly-interest";
@@ -14,6 +13,39 @@ primeAdminPageChrome();
 
 let forecastRows = null;
 let forecastVisibleRows = [];
+
+/** Same core lines as the season check. Challenges, transfers, commercial, releases, and FFP stay out. */
+const CORE_PREVIEW_LINE_IDS = [
+  "prize_league",
+  "prize_cup",
+  "prize_tv",
+  "gate_league",
+  "gate_cup",
+  "infra_maintenance",
+  "gov_hg",
+  "gov_youth",
+  "gov_bnb",
+  "gov_emergency_tax",
+  "upkeep_wages",
+  "upkeep_34plus",
+  "upkeep_star_tax",
+  "staff_manager",
+];
+
+function corePreviewSections() {
+  const keep = new Set(CORE_PREVIEW_LINE_IDS);
+  return FORECAST_SECTIONS.map((section) => ({
+    ...section,
+    lines: section.lines.filter((line) => keep.has(line.id)),
+  })).filter((section) => section.lines.length);
+}
+
+function coreForecastNet(row) {
+  return CORE_PREVIEW_LINE_IDS.reduce(
+    (sum, id) => sum + Number(row?.forecast?.[id] || 0),
+    0
+  );
+}
 
 const TWEAK_STORAGE_KEY = "gpsl_fin_balance_tweaks_v1";
 
@@ -349,20 +381,14 @@ function renderReport(data) {
 
   const catOrder = [
     ["gates", "Gates", FIN_BALANCE_TIPS.catGates],
-    ["prizes", "Prizes", FIN_BALANCE_TIPS.catPrizes],
+    ["prize_league", "League prize", "League prize money only. Challenges are not included."],
+    ["prize_cup", "Cup prize", "Cup prize money only."],
     ["tv", "TV", FIN_BALANCE_TIPS.catTv],
     ["subsidies", "Subsidies", FIN_BALANCE_TIPS.catSubsidies],
-    ["wages", "Wages", FIN_BALANCE_TIPS.catWages],
-    ["stadium", "Stadium ops", FIN_BALANCE_TIPS.catStadium],
-    ["tax_fines", "Tax", FIN_BALANCE_TIPS.catTax],
-    ["staff", "Staff", FIN_BALANCE_TIPS.catStaff],
-    ["eos", "EOS", FIN_BALANCE_TIPS.catEos],
-    ["admin_adj", "Admin adj.", FIN_BALANCE_TIPS.catAdmin],
-    ["other_ops", "Other ops", FIN_BALANCE_TIPS.catOther],
-    ["stadium_purchase", "Stadium buy (excl.)", FIN_BALANCE_TIPS.catStadiumPurchase],
-    ["fines", "Fines (excl.)", FIN_BALANCE_TIPS.catFines],
-    ["transfers", "Transfers (excl.)", FIN_BALANCE_TIPS.catTransfers],
-    ["loans", "Loans (excl.)", FIN_BALANCE_TIPS.catLoans],
+    ["wages", "Wages", "Squad wages, 34+ fee, and star tax."],
+    ["stadium", "Maintenance", "Stadium maintenance only."],
+    ["tax_fines", "Emergency tax", "Admin emergency tax. Income tax on transfers is not included."],
+    ["staff", "Manager", "Manager salary only."],
   ];
   const catEl = document.getElementById("finBalCats");
   catEl.innerHTML = catOrder
@@ -383,9 +409,9 @@ function renderReport(data) {
       return `<tr>
         <td>${escapeHtml(c.club || "")}</td>
         <td>${escapeHtml(divShort(c.division))}</td>
-        ${cell(c.opening_balance)}
         ${cell(c.gates)}
-        ${cell(c.prizes)}
+        ${cell(c.prize_league)}
+        ${cell(c.prize_cup)}
         ${cell(c.tv)}
         ${cell(c.subsidies)}
         ${cell(c.wages)}
@@ -393,8 +419,6 @@ function renderReport(data) {
         ${cell(c.tax_fines)}
         ${cell(c.staff)}
         ${cell(c.ops_net)}
-        ${cell(c.transfers_net)}
-        ${cell(c.balance_now)}
       </tr>`;
     })
     .join("");
@@ -405,9 +429,9 @@ function renderReport(data) {
   foot.innerHTML = `<tr>
     <td>TOTAL</td>
     <td></td>
-    ${fcell(sum("opening_balance"))}
     ${fcell(sum("gates"))}
-    ${fcell(sum("prizes"))}
+    ${fcell(sum("prize_league"))}
+    ${fcell(sum("prize_cup"))}
     ${fcell(sum("tv"))}
     ${fcell(sum("subsidies"))}
     ${fcell(sum("wages"))}
@@ -415,8 +439,6 @@ function renderReport(data) {
     ${fcell(sum("tax_fines"))}
     ${fcell(sum("staff"))}
     ${fcell(sum("ops_net"))}
-    ${fcell(sum("transfers_net"))}
-    ${fcell(sum("balance_now"))}
   </tr>`;
 }
 
@@ -524,13 +546,9 @@ async function runForecast() {
     });
     forecastRows = result.clubs;
     renderForecast();
-    const ffpCount = forecastRows.filter((r) => r.ffpRisk).length;
     setStatus(
       "finFcStatus",
-      `✅ ${result.season.label || "Current season"} preview — ${forecastRows.length} clubs · ` +
-        `debt interest ${result.bank.ratePct}% · FFP ${formatB(result.bank.ffpFine)} at ≤ ${formatB(
-          -result.bank.ffpThreshold
-        )} · ${ffpCount} club${ffpCount === 1 ? "" : "s"} on FFP course.`,
+      `✅ ${result.season.label || "Current season"} preview — ${forecastRows.length} clubs, core lines only.`,
       true
     );
   } catch (err) {
@@ -546,57 +564,57 @@ function renderForecast() {
   const division = document.getElementById("finFcDivision").value;
   const mode = document.getElementById("finFcMode").value;
 
+  const sections = corePreviewSections();
+  const lineIds = sections.flatMap((s) => s.lines.map((l) => l.id));
   const rows = forecastRows
     .filter((r) => division === "all" || r.division === division)
     .map((r) => {
       const vals = r[mode];
-      const net = FORECAST_LINE_IDS.reduce((s, id) => s + Number(vals[id] || 0), 0);
+      const net = lineIds.reduce((s, id) => s + Number(vals[id] || 0), 0);
       return { ...r, vals, modeNet: net };
     })
     .sort((a, b) => b.modeNet - a.modeNet);
 
   const netLabel =
-    mode === "posted" ? "Net posted" : mode === "pending" ? "Net to come" : "Net forecast";
+    mode === "posted" ? "Core posted" : mode === "pending" ? "Core still to come" : "Core net";
 
   document.getElementById("finFcHead").innerHTML = `
     <tr class="fc-sections">
       <th colspan="2"></th>
-      ${FORECAST_SECTIONS.map(
-        (s) => `<th colspan="${s.lines.length}">${escapeHtml(s.title)}</th>`
-      ).join("")}
-      <th colspan="3"></th>
+      ${sections
+        .map((s) => `<th colspan="${s.lines.length}">${escapeHtml(s.title)}</th>`)
+        .join("")}
+      <th></th>
     </tr>
     <tr class="fc-lines">
       <th>Club</th>
       <th>Div</th>
-      ${FORECAST_SECTIONS.map((s) =>
-        s.lines
-          .map(
-            (l, i) =>
-              `<th class="${i === 0 ? "fc-sec-start" : ""}">${escapeHtml(l.label)}</th>`
-          )
-          .join("")
-      ).join("")}
+      ${sections
+        .map((s) =>
+          s.lines
+            .map(
+              (l, i) =>
+                `<th class="${i === 0 ? "fc-sec-start" : ""}">${escapeHtml(l.label)}</th>`
+            )
+            .join("")
+        )
+        .join("")}
       <th class="fc-sec-start fc-key">${netLabel}</th>
-      <th>Balance now</th>
-      <th class="fc-key">Projected EOS balance</th>
     </tr>`;
 
-  const sectionStarts = new Set(FORECAST_SECTIONS.map((s) => s.lines[0].id));
+  const sectionStarts = new Set(sections.map((s) => s.lines[0].id));
   const cell = (v, cls = "") =>
     `<td class="${[moneyClass(v), cls].filter(Boolean).join(" ")}">${formatB(v)}</td>`;
 
   document.getElementById("finFcBody").innerHTML = rows
     .map(
-      (r) => `<tr class="${r.ffpRisk ? "fc-ffp" : ""}" title="${escapeHtml(r.clubName)}">
+      (r) => `<tr title="${escapeHtml(r.clubName)}">
         <td>${escapeHtml(r.club)}</td>
         <td>${escapeHtml(divShort(r.division))}</td>
-        ${FORECAST_LINE_IDS.map((id) =>
-          cell(r.vals[id], sectionStarts.has(id) ? "fc-sec-start" : "")
-        ).join("")}
+        ${lineIds
+          .map((id) => cell(r.vals[id], sectionStarts.has(id) ? "fc-sec-start" : ""))
+          .join("")}
         ${cell(r.modeNet, "fc-sec-start fc-key")}
-        ${cell(r.balanceNow)}
-        ${cell(r.projectedBalance, "fc-key")}
       </tr>`
     )
     .join("");
@@ -606,12 +624,10 @@ function renderForecast() {
   const footRow = (label, div) => `<tr>
     <td>${label}</td>
     <td></td>
-    ${FORECAST_LINE_IDS.map((id) =>
-      cell(sum((r) => r.vals[id]) / div, sectionStarts.has(id) ? "fc-sec-start" : "")
-    ).join("")}
+    ${lineIds
+      .map((id) => cell(sum((r) => r.vals[id]) / div, sectionStarts.has(id) ? "fc-sec-start" : ""))
+      .join("")}
     ${cell(sum((r) => r.modeNet) / div, "fc-sec-start fc-key")}
-    ${cell(sum((r) => r.balanceNow) / div)}
-    ${cell(sum((r) => r.projectedBalance) / div, "fc-key")}
   </tr>`;
   document.getElementById("finFcFoot").innerHTML =
     footRow("AVERAGE", n) + footRow("TOTAL", 1);
@@ -635,28 +651,20 @@ function renderPreviewKpis(rows) {
     return;
   }
   const n = rows.length;
-  const avgNet =
-    rows.reduce(
-      (s, r) => s + FORECAST_LINE_IDS.reduce((a, id) => a + Number(r.forecast[id] || 0), 0),
-      0
-    ) / n;
-  const avgClose = rows.reduce((s, r) => s + Number(r.projectedBalance || 0), 0) / n;
-  const inDebt = rows.filter((r) => Number(r.projectedBalance) < 0).length;
-  const ffp = rows.filter((r) => r.ffpRisk).length;
+  const avgNet = rows.reduce((s, r) => s + coreForecastNet(r), 0) / n;
+  const below = rows.filter((r) => coreForecastNet(r) < 0).length;
   const kpi = (label, value, cls, sub) =>
     `<div class="fin-kpi"><span class="lbl">${label}</span><span class="val ${cls}">${value}</span><span class="sub">${sub}</span></div>`;
   el.hidden = false;
   el.innerHTML =
     kpi("Clubs in this preview", String(n), "", "Current season, this division filter") +
-    kpi("Average season-end net", formatB(avgNet), moneyClass(avgNet), "Posted plus still to come") +
+    kpi("Average core net", formatB(avgNet), moneyClass(avgNet), "Posted plus still to come") +
     kpi(
-      "Average projected balance",
-      formatB(avgClose),
-      moneyClass(avgClose),
-      "Cash now plus everything still known"
-    ) +
-    kpi("Projected in debt", String(inDebt), inDebt ? "neg" : "pos", "Balance below zero at close") +
-    kpi("On FFP course", String(ffp), ffp ? "neg" : "pos", "Fine would apply at Close Finances");
+      "Core net below zero",
+      String(below),
+      below ? "neg" : "pos",
+      "Clubs whose core lines do not cover their costs"
+    );
 }
 
 function wireTweakControls() {
@@ -738,7 +746,7 @@ function renderTweaks({ keepFocus = null } = {}) {
   const target = parseMoney(document.getElementById("finBalTarget").value);
   const goal = Number.isFinite(target) ? target : 0;
   const clubs = rows.length;
-  const avgNet = rows.reduce((s, r) => s + Number(r.net || 0), 0) / clubs;
+  const avgNet = rows.reduce((s, r) => s + coreForecastNet(r), 0) / clubs;
   const gapPerClub = goal - avgNet;
   const band = (Math.abs(goal) * tweakSettings.bandPct) / 100;
   const onTarget = Math.abs(gapPerClub) <= band;

@@ -321,13 +321,13 @@
           <div class="fin-div-grid" id="finBalByDivision"></div>
           <div class="fin-hint-box gpsl-has-tip" id="finBalHint" data-gpsl-tip="Shorter auto note from the same calculation." tabindex="0" hidden></div>
 
-          <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:0 0 6px;" data-gpsl-tip="League-wide sums by ledger category. Transfers, loans, fines, and stadium purchases are shown but excluded from ops net." tabindex="0">League category totals (ops)</h3>
+          <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:0 0 6px;" data-gpsl-tip="League-wide sums for the core lines only. Transfers, challenges, fines, commercial, and end-of-season interest are left out." tabindex="0">League category totals</h3>
           <div class="fin-cat-grid" id="finBalCats"></div>
 
           <h3 class="gpsl-has-tip" style="color:#ff9900;font-size:15px;margin:12px 0 6px;" data-gpsl-tip="One row per club. Sort is by ops net (best first). Hover column headers for definitions." tabindex="0">Per club</h3>
           <p class="note" style="margin-bottom:6px;">
-            Ops net = gates + prizes + TV + subsidies + wages + stadium ops + tax + staff + EOS + admin ± other
-            (transfers, loans, fines &amp; stadium purchases shown separately — not in ops net).
+            Core net = gates + league prize + cup prize + TV + subsidies + wages + stadium maintenance + emergency tax + manager salary.
+            Transfers, challenges, fines, income tax, commercial, contract releases, and end-of-season interest are not in this check.
           </p>
           <div class="fin-table-wrap">
             <table class="fin-balance-table">
@@ -335,18 +335,16 @@
                 <tr>
                   <th>Club</th>
                   <th>Div</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Assignment starting budget (usually ₿650m from stadium-purchase trail). Not archive opening math or prior-season closing cash." tabindex="0">Opening</th>
                   <th class="gpsl-has-tip" data-gpsl-tip="Match gate receipts posted this season." tabindex="0">Gates</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="League, cup, challenge, and related prize income." tabindex="0">Prizes</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="League prize money only. Challenge and special-auction prizes are not included." tabindex="0">League prize</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Cup prize money only." tabindex="0">Cup prize</th>
                   <th class="gpsl-has-tip" data-gpsl-tip="TV revenue lines posted this season." tabindex="0">TV</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Government HG / Youth / Weak squad subsidies (usually ₿0 until EOS payout)." tabindex="0">Subsidies</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Player/manager wage bills (usually ₿0 until Close Finances)." tabindex="0">Wages</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Stadium ops in the ecosystem: maintenance, expansions, refunds/penalties. Starting stadium purchases are excluded from ops." tabindex="0">Stadium</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Income tax and emergency tax (fines are excluded from ops and shown in category totals)." tabindex="0">Tax</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Manager salary, medical hires, contract fees/releases, and related staff lines." tabindex="0">Staff</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Operating P&amp;L for the club this season (excludes transfers, loans, fines, and stadium purchases)." tabindex="0">Ops net</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Net transfer market cash (excluded from ops). Large negatives usually mean net buying." tabindex="0">Transfers</th>
-                  <th class="gpsl-has-tip" data-gpsl-tip="Live Club_Finances cash now — often starting money ± transfers, not ops health." tabindex="0">Balance</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Government HG / Youth / Weak squad subsidies." tabindex="0">Subsidies</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Squad wages, 34+ fee, and star tax." tabindex="0">Wages</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Stadium maintenance only. Purchases and expansions are not included." tabindex="0">Maintenance</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Emergency tax set by admin. Income tax on transfers is not included." tabindex="0">Emergency tax</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Manager salary only. Medical hires and contract releases are not included." tabindex="0">Manager</th>
+                  <th class="gpsl-has-tip" data-gpsl-tip="Core season result: the columns to the left. Transfers, challenges, and other one-offs are not in this figure." tabindex="0">Core net</th>
                 </tr>
               </thead>
               <tbody id="finBalBody"></tbody>
@@ -361,10 +359,10 @@
       <div class="card">
         <h2 class="gpsl-has-tip" data-gpsl-tip="If the season ended on what is already known: posted ledger plus remaining gates, TV still to play, league prize at the current table, subsidies, wages, 34+, star tax, manager salary, stadium maintenance, then debt interest and FFP. Does not publish to Season Review." tabindex="0">Season-end preview</h2>
         <p class="note">
-          Current season only, from everything already known. Each cell is posted money plus what is still
-          due on that line. Cup and challenge prizes, income tax, contract releases and contract offers
-          count only what is already posted. Debt interest and FFP are estimated from the projected balance
-          before Close Finances. This tab does not update Season Review.
+          Current season, same core lines as the season check: gates, league prize, cup prize, TV,
+          subsidies, wages, maintenance, emergency tax, and manager salary. Posted money plus what is
+          already known still to come. Challenges, transfers, commercial, fines, and contract releases
+          are left out. This tab does not update Season Review.
         </p>
         <div class="row">
           <div>
@@ -441,6 +439,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_league_finance_balance.js?v=20261124-eos-preview-tab"></script>
+  <script type="module" src="admin_league_finance_balance.js?v=20261124-core-ops"></script>
 </body>
 </html>
