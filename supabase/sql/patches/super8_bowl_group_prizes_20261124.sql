@@ -273,30 +273,10 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.competition_admin_assign_cup_groups(bigint, text, text[])
   TO authenticated;
 
--- Two matches are one tie. 3 points for the aggregate win, 1 each if level.
--- If the aggregate is level, more away goals takes the 3 points.
--- If away goals are also level, it stays a draw.
-CREATE OR REPLACE FUNCTION public.competition_cup_group_tie_result(
-  p_home_leg1 int,
-  p_away_leg1 int,
-  p_home_leg2 int,
-  p_away_leg2 int
-)
-RETURNS text
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT CASE
-    WHEN (p_home_leg1 + p_away_leg2) > (p_away_leg1 + p_home_leg2) THEN 'home'
-    WHEN (p_home_leg1 + p_away_leg2) < (p_away_leg1 + p_home_leg2) THEN 'away'
-    WHEN p_away_leg1 > p_away_leg2 THEN 'away'
-    WHEN p_away_leg2 > p_away_leg1 THEN 'home'
-    ELSE 'draw'
-  END;
-$$;
-
-COMMENT ON FUNCTION public.competition_cup_group_tie_result(int, int, int, int) IS
-  'Leg 1 is the first club at home. Leg 2 is the return. Away goals break a level aggregate. A level away-goals tie stays a draw.';
+-- Two matches are one tie.
+-- Aggregate win 3, loss 0.
+-- Level aggregate stays a draw: 2 for more away goals, 1 for fewer, 1 each if level.
+-- See super8_bowl_group_points_20261124.sql.
 
 NOTIFY pgrst, 'reload schema';
 

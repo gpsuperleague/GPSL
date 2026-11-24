@@ -763,8 +763,8 @@ function syncCupSectionCopy() {
   strip.innerHTML = group
     ? `
       <div class="mod"><div class="k">Groups</div><div class="v">Two groups of four</div><div class="s">Group A is 1st with 6th, 7th and 8th. Group B is 2nd with 3rd, 4th and 5th.</div></div>
-      <div class="mod"><div class="k">Each tie</div><div class="v">Home and away</div><div class="s">Two matches, one tie. Aggregate decides it. If that is level, more away goals wins. If those are level too, it is a draw.</div></div>
-      <div class="mod"><div class="k">Points</div><div class="v">3, 1, 0</div><div class="s">Win 3, draw 1, loss 0. The top two in each group go through.</div></div>
+      <div class="mod"><div class="k">Each tie</div><div class="v">Home and away</div><div class="s">Two matches, one tie. The aggregate sets the points. Away goals only split a level aggregate.</div></div>
+      <div class="mod"><div class="k">Points</div><div class="v">3, 2, 1, 0</div><div class="s">Aggregate win 3, loss 0. Level aggregate: 2 for more away goals, 1 for fewer, 1 each if away goals are level. The top two in each group go through.</div></div>
       <div class="mod"><div class="k">Semis</div><div class="v">Cross</div><div class="s">Winner of A plays runner-up of B, and the other way around. The final is at Wembley.</div></div>
       <div class="mod"><div class="k">Each match</div><div class="v">Kick-off</div><div class="s">Check-in, Match Centre, and video ticks (H/A ✓ · report R).</div></div>`
     : `
