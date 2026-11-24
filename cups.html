@@ -158,6 +158,13 @@
     .bracket-flow.is-preview .bracket-match,
     .bracket-flow.is-preview .bracket-tie { border-style:dashed; }
     .preview-more { color:#888; font-size:11px; text-align:center; margin:4px 0 8px; }
+    .group-seeds { color:#bbb; font-size:11px; margin:0 0 6px; }
+    .group-tie {
+      display:flex; justify-content:space-between; gap:8px; align-items:baseline;
+      color:#eee; font-size:12px; font-weight:700; padding:4px 0;
+      border-bottom:1px solid #2a2a2a;
+    }
+    .group-tie span { color:#888; font-size:10px; font-weight:400; }
     @media (max-width: 900px) {
       .cup-process { grid-template-columns:1fr 1fr; }
     }
@@ -212,8 +219,8 @@
     </div>
 
     <div class="panel">
-      <h2>Knockout bracket</h2>
-      <div class="cup-process" aria-label="How a cup tie is shown">
+      <h2 id="cupSectionTitle">Knockout bracket</h2>
+      <div class="cup-process" id="cupProcess" aria-label="How a cup tie is shown">
         <div class="mod">
           <div class="k">Progression</div>
           <div class="v">Left → right</div>
@@ -250,6 +257,6 @@
       International: <a href="world_cup.html">World Cup</a> · <a href="nation_select.html">Nation selection</a>.
     </p>
   </div>
-  <script type="module" src="cups.js?v=20261124-cup-preview"></script>
+  <script type="module" src="cups.js?v=20261124-group-preview"></script>
 </body>
 </html>

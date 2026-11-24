@@ -750,6 +750,112 @@ function previewNodesFromSchedule() {
   return nodes;
 }
 
+function isGroupStageCup(cup) {
+  return cup === "super8" || cup === "bowl";
+}
+
+function syncCupSectionCopy() {
+  const title = document.getElementById("cupSectionTitle");
+  const strip = document.getElementById("cupProcess");
+  const group = isGroupStageCup(currentCup) && !lastBracketNodes.length;
+  if (title) title.textContent = group ? "Group stage" : "Knockout bracket";
+  if (!strip) return;
+  strip.innerHTML = group
+    ? `
+      <div class="mod"><div class="k">Groups</div><div class="v">Two groups of four</div><div class="s">Group A is 1st with 6th, 7th and 8th. Group B is 2nd with 3rd, 4th and 5th.</div></div>
+      <div class="mod"><div class="k">Each tie</div><div class="v">Home and away</div><div class="s">Two matches, one tie. Aggregate decides it. If that is level, more away goals wins. If those are level too, it is a draw.</div></div>
+      <div class="mod"><div class="k">Points</div><div class="v">3, 1, 0</div><div class="s">Win 3, draw 1, loss 0. The top two in each group go through.</div></div>
+      <div class="mod"><div class="k">Semis</div><div class="v">Cross</div><div class="s">Winner of A plays runner-up of B, and the other way around. The final is at Wembley.</div></div>
+      <div class="mod"><div class="k">Each match</div><div class="v">Kick-off</div><div class="s">Check-in, Match Centre, and video ticks (H/A ✓ · report R).</div></div>`
+    : `
+      <div class="mod"><div class="k">Progression</div><div class="v">Left → right</div><div class="s">Early rounds on the left, the final on the right.</div></div>
+      <div class="mod"><div class="k">Scores</div><div class="v">90, extra time, pens</div><div class="s">90 minutes, after extra time, and the penalty winner.</div></div>
+      <div class="mod"><div class="k">Stadium</div><div class="v">Home venue</div><div class="s">Cup finals are at Wembley.</div></div>
+      <div class="mod"><div class="k">Money</div><div class="v">After the result</div><div class="s">Gate receipts and prize money once the tie is confirmed.</div></div>
+      <div class="mod"><div class="k">Each tie</div><div class="v">Kick-off</div><div class="s">Check-in, Match Centre, and video ticks (H/A ✓ · report R).</div></div>`;
+}
+
+function groupTieLines(pairs) {
+  return pairs
+    .map(
+      ([home, away]) =>
+        `<div class="group-tie">${escapeHtml(home)} vs ${escapeHtml(away)}<span>home and away</span></div>`
+    )
+    .join("");
+}
+
+function groupPreviewColumn(title, seeds, pairs) {
+  return `
+    <div class="bracket-round">
+      <div class="round-title">${escapeHtml(title)}</div>
+      <div class="bracket-match">
+        <div class="group-seeds">${escapeHtml(seeds)}</div>
+        ${groupTieLines(pairs)}
+        <div class="cup-ops-meta"><span class="cup-ko cup-ko--open">Kick-off not set</span> <span class="cup-ci">H○ A○</span> <span class="mv-ticks">H · A · R</span></div>
+      </div>
+    </div>`;
+}
+
+function groupStagePreviewHtml() {
+  const semis = [
+    ["Winner Group A", "Runner-up Group B"],
+    ["Winner Group B", "Runner-up Group A"],
+  ]
+    .map(
+      ([home, away]) => `
+      <div class="bracket-match">
+        <div class="match-status">Sample tie · one match</div>
+        <div class="match-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
+        <div class="match-venue">Home stadium</div>
+        ${previewOpsSampleHtml()}
+      </div>`
+    )
+    .join("");
+  return `
+    <p class="cup-preview-banner">Preview of the group draw. These are last season’s places, not real clubs. Admin has not drawn this cup yet.
+      <button type="button" id="hideCupPreview" class="cup-preview-toggle">Hide preview</button></p>
+    <div class="bracket-flow is-preview">
+      ${groupPreviewColumn(
+        "Group A",
+        "1st, 6th, 7th, 8th",
+        [
+          ["1st", "6th"],
+          ["1st", "7th"],
+          ["1st", "8th"],
+          ["6th", "7th"],
+          ["6th", "8th"],
+          ["7th", "8th"],
+        ]
+      )}
+      ${groupPreviewColumn(
+        "Group B",
+        "2nd, 3rd, 4th, 5th",
+        [
+          ["2nd", "3rd"],
+          ["2nd", "4th"],
+          ["2nd", "5th"],
+          ["3rd", "4th"],
+          ["3rd", "5th"],
+          ["4th", "5th"],
+        ]
+      )}
+      <div class="bracket-round">
+        <div class="round-title">Semi-final · November</div>
+        ${semis}
+      </div>
+      <div class="bracket-round">
+        <div class="round-title">Final · December</div>
+        <div class="bracket-match">
+          <div class="match-status">Sample tie · one match</div>
+          <div class="match-teams">Semi winner<span class="vs">vs</span>Semi winner</div>
+          <div class="match-venue">📺 Wembley</div>
+          ${previewOpsSampleHtml()}
+        </div>
+      </div>
+    </div>
+    <p class="bracket-arrow-hint">← Groups · Final →</p>`;
+}
+
 function wireCupPreviewButtons() {
   document.getElementById("hideCupPreview")?.addEventListener("click", () => {
     previewHiddenCups.add(currentCup);
@@ -765,15 +871,26 @@ function renderBracket(nodes, extras) {
   const root = document.getElementById("bracketRoot");
   lastBracketNodes = nodes || [];
   lastBracketExtras = extras || null;
+  const groupCup = isGroupStageCup(currentCup);
   const showingPreview = !lastBracketNodes.length && !previewHiddenCups.has(currentCup);
+  syncCupSectionCopy();
+  if (showingPreview && groupCup) {
+    renderCupFilters([]);
+    root.innerHTML = groupStagePreviewHtml();
+    wireCupPreviewButtons();
+    return;
+  }
   const source = showingPreview ? previewNodesFromSchedule() : lastBracketNodes;
   renderCupFilters(source);
   if (!source.length) {
-    const canPreview = !lastBracketNodes.length && cupScheduleRows.length > 0;
+    const canPreview = !lastBracketNodes.length && (groupCup || cupScheduleRows.length > 0);
+    const emptyText = groupCup
+      ? "No draw yet. Admin draws this cup in GPSL Admin."
+      : "No bracket yet. Admin draws this cup in GPSL Admin.";
     root.innerHTML = canPreview
-      ? `<p class="empty">No bracket yet. Admin draws this cup in GPSL Admin.</p>
+      ? `<p class="empty">${emptyText}</p>
          <button type="button" id="showCupPreview" class="cup-preview-toggle">Show draw preview</button>`
-      : `<p class="empty">No bracket yet. Admin draws this cup in GPSL Admin.</p>`;
+      : `<p class="empty">${emptyText}</p>`;
     wireCupPreviewButtons();
     return;
   }
