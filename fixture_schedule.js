@@ -1698,7 +1698,7 @@ function renderAgreedPanel(root, f, sch) {
       }</p>
       ${
         ci.my_has_manager === false
-          ? `<p class="meta" style="color:#f88;"><b>No manager signed</b> — you cannot check in or play until you hire one from the <a href="manager_listings.html" style="color:var(--gpsl-accent, #ff9900);">Manager Transfer Market</a>.</p>`
+          ? `<p class="meta" style="color:#f88;"><b>No active manager</b> — this match cannot be played. You cannot check in or enter a result until you hire one from the <a href="manager_listings.html" style="color:var(--gpsl-accent, #ff9900);">Manager Transfer Market</a>.</p>`
           : ci.home_has_manager === false || ci.away_has_manager === false
             ? `<p class="meta" style="color:#e8a87c;"><b>Manager required</b> — ${
                 ci.home_has_manager === false && ci.away_has_manager === false
@@ -2406,9 +2406,9 @@ function render() {
     ctx.my_has_manager === false
       ? `<div class="panel" style="border-color:#662222;background:#1a0a0a;">
           <p style="margin:0;color:#f88;">
-            <b>No manager signed</b> — you cannot arrange kick-off times or play fixtures until you hire one from the
-            <a href="manager_listings.html" style="color:var(--gpsl-accent, #ff9900);">Manager Transfer Market</a>
-            (bidding while vacant is fine; scheduling unlocks once they are signed).
+            <b>No active manager</b> — matches cannot be played. You cannot arrange a kick-off, check in, or enter a result until you hire one from the
+            <a href="manager_listings.html" style="color:var(--gpsl-accent, #ff9900);">Manager Transfer Market</a>.
+            Bidding while vacant is fine. Play unlocks once a manager is signed.
           </p>
         </div>`
       : "";

@@ -1208,6 +1208,23 @@ async function loadSquadManagerState() {
     return;
   }
 
+  let previewState = null;
+  let openListing = null;
+  if (mgr?.manager_id) {
+    const [{ data: preview }, { data: listing }] = await Promise.all([
+      supabase.rpc("manager_preview_list_state", { p_manager_id: mgr.manager_id }),
+      supabase
+        .from("Manager_Transfer_Listings")
+        .select("id, status")
+        .eq("manager_id", mgr.manager_id)
+        .in("status", ["Active", "Pending Window"])
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    previewState = preview;
+    openListing = listing;
+  }
+
   const hasSigned =
     mgr?.manager_id != null &&
     String(mgr?.manager_name || "").trim() !== "";
@@ -1237,6 +1254,14 @@ async function loadSquadManagerState() {
     ghostDraft: Boolean(ghost && !hasSigned),
     ghostBidAmount: ghost?.ghostBidAmount ?? null,
     ghostHref: ghost?.ghostHref ?? null,
+    listMode: openListing?.status === "Pending Window"
+      ? "cancel"
+      : openListing?.status === "Active"
+        ? "listed"
+        : previewState?.available
+          ? "preview"
+          : "none",
+    previewLabel: previewState?.label || "",
   };
 
   renderSquadManagerBadge();
@@ -1339,11 +1364,20 @@ function renderSquadManagerBadge() {
   const windowOpen = !!squadManagerState.sackWindowOpen;
   const tenureOk =
     archived || squadManagerState.sackTenureEligible !== false;
-  const canAct = !pending && windowOpen && tenureOk;
+  const canLive = !pending && windowOpen && tenureOk && squadManagerState.listMode !== "listed";
+  const canPreview = !pending && !archived && squadManagerState.listMode === "preview";
+  const canCancel = squadManagerState.listMode === "cancel";
 
   if (listBtn) {
-    listBtn.hidden = !canAct || archived;
-    listBtn.disabled = !canAct || archived;
+    const show = !archived && (canLive || canPreview || canCancel);
+    listBtn.hidden = !show;
+    listBtn.disabled = !show;
+    listBtn.textContent = canCancel
+      ? "Take off preview"
+      : canPreview
+        ? "List for preview"
+        : "List";
+    listBtn.dataset.mode = canCancel ? "cancel" : canPreview ? "preview" : "live";
     listBtn.dataset.managerId = String(squadManagerState.managerId);
     listBtn.classList.add("gpsl-has-tip");
     listBtn.setAttribute(
@@ -3874,21 +3908,23 @@ function wireManagerListButton() {
     );
     if (!managerId) return;
 
-    if (
-      !window.confirm(
-        `List ${squadManagerState.managerName} on the Manager Transfer Market?\n\n` +
-          `Other clubs can bid. Your club will have no manager once the sale completes.\n` +
-          `Auction runs at least 24 hours and ends at 7pm UK (same as player listings).\n` +
-          `Listing is only available in June, July, August, or January.`
-      )
-    ) {
-      return;
-    }
+    const mode = listBtn.dataset.mode || "live";
+    const previewNote = squadManagerState.previewLabel
+      ? `the ${squadManagerState.previewLabel} window opens`
+      : "the next manager window opens";
+    const confirmText =
+      mode === "cancel"
+        ? `Take ${squadManagerState.managerName} off the preview list?\n\nThey stay at your club. Nothing has gone to auction.`
+        : mode === "preview"
+          ? `List ${squadManagerState.managerName} for preview?\n\nOther clubs can see them. Bidding does not start until ${previewNote}. You can take them off before then.`
+          : `List ${squadManagerState.managerName} on the Manager Transfer Market?\n\nOther clubs can bid. Your club will have no manager once the sale completes.\nAuction runs at least 24 hours and ends at 7pm UK.`;
+    if (!window.confirm(confirmText)) return;
 
     listBtn.disabled = true;
-    const { data, error } = await supabase.rpc("manager_list_for_transfer", {
-      p_manager_id: managerId,
-    });
+    const { data, error } = await supabase.rpc(
+      mode === "cancel" ? "manager_cancel_preview_listing" : "manager_list_for_transfer",
+      { p_manager_id: managerId }
+    );
     listBtn.disabled = false;
 
     if (error) {
@@ -3901,8 +3937,12 @@ function wireManagerListButton() {
       ? new Date(endIso).toLocaleString("en-GB", { timeZone: "Europe/London" })
       : null;
     alert(
-      `${squadManagerState.managerName} listed on the Manager Transfer Market.` +
-        (endLabel ? `\n\nEnds: ${endLabel} UK` : "")
+      mode === "cancel"
+        ? `${squadManagerState.managerName} taken off the preview list.`
+        : data?.preview
+          ? `${squadManagerState.managerName} listed for preview. Bidding starts when ${previewNote}.`
+          : `${squadManagerState.managerName} listed on the Manager Transfer Market.` +
+            (endLabel ? `\n\nEnds: ${endLabel} UK` : "")
     );
     if (currentUserShort) await refreshNavClubListingState(currentUserShort);
     refreshNavListingIndicators();

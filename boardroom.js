@@ -746,11 +746,50 @@ async function loadManagerSection(clubShortName) {
   const tenureOk =
     archived || data.sack_tenure_eligible == null || Boolean(data.sack_tenure_eligible);
 
+  let previewState = null;
+  let openListing = null;
+  if (data.manager_id) {
+    const [{ data: preview }, { data: listing }] = await Promise.all([
+      supabase.rpc("manager_preview_list_state", { p_manager_id: data.manager_id }),
+      supabase
+        .from("Manager_Transfer_Listings")
+        .select("id, status")
+        .eq("manager_id", data.manager_id)
+        .in("status", ["Active", "Pending Window"])
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    previewState = preview;
+    openListing = listing;
+  }
+  const listMode =
+    openListing?.status === "Pending Window"
+      ? "cancel"
+      : openListing?.status === "Active"
+        ? "listed"
+        : previewState?.available
+          ? "preview"
+          : "none";
+
   setBtnVisible(renewBtn, pendingRenewal && !archived);
   setBtnVisible(
     listBtn,
-    januaryWindow && !pendingRenewal && !archived && tenureOk
+    !archived &&
+      !pendingRenewal &&
+      (listMode === "cancel" ||
+        listMode === "preview" ||
+        (januaryWindow && tenureOk && listMode !== "listed"))
   );
+  if (listBtn) {
+    listBtn.dataset.mode = listMode === "cancel" ? "cancel" : listMode === "preview" ? "preview" : "live";
+    listBtn.dataset.previewLabel = previewState?.label || "";
+    listBtn.textContent =
+      listMode === "cancel"
+        ? "Take off preview"
+        : listMode === "preview"
+          ? "List for preview"
+          : "List for transfer";
+  }
   setBtnVisible(
     sackBtn,
     januaryWindow &&
@@ -772,9 +811,13 @@ async function loadManagerSection(clubShortName) {
     } else if (pendingRenewal) {
       hintEl.textContent =
         "Renewal available in June/July only (also on Squad). Must be done before August or they leave for market value.";
+    } else if (listMode === "preview") {
+      hintEl.textContent = `List for preview. Other clubs can see them. Bidding starts when the ${previewState?.label || "next"} window opens.`;
+    } else if (listMode === "cancel") {
+      hintEl.textContent = "Preview listing is up. Take it off any time before the window opens. No bids yet.";
     } else if (!januaryWindow) {
       hintEl.textContent =
-        "List for transfer and sack are available in June, July, and January (not August).";
+        "List for transfer and sack are available in June, July, and January (not August). Eligible managers can be listed for preview before the window opens.";
     } else if (!tenureOk) {
       hintEl.textContent =
         "List and sack: not until mid-season of this spell (summer signing → January; January signing → next June–July).";
@@ -838,17 +881,39 @@ function wireManagerActions() {
       if (boardPreview) return;
       const managerId = Number(listBtn.dataset.managerId);
       if (!managerId) return;
+      const mode = listBtn.dataset.mode || "live";
+      const when = listBtn.dataset.previewLabel
+        ? `the ${listBtn.dataset.previewLabel} window opens`
+        : "the next manager window opens";
+      const confirmText =
+        mode === "cancel"
+          ? "Take this manager off the preview list?\n\nThey stay at your club. Nothing has gone to auction."
+          : mode === "preview"
+            ? `List this manager for preview?\n\nOther clubs can see them. Bidding does not start until ${when}.`
+            : "List this manager on the Manager Transfer Market?\n\nOther clubs can bid. The auction runs at least 24 hours.";
+      if (!confirm(confirmText)) return;
       listBtn.disabled = true;
-      const { error } = await supabase.rpc("manager_list_for_transfer", {
-        p_manager_id: managerId,
-      });
+      const { error } = await supabase.rpc(
+        mode === "cancel" ? "manager_cancel_preview_listing" : "manager_list_for_transfer",
+        { p_manager_id: managerId }
+      );
       listBtn.disabled = false;
       if (error) {
         if (hintEl) hintEl.textContent = error.message;
         return;
       }
-      if (hintEl) hintEl.textContent = "Manager listed — see Manager Transfer Market.";
-      if (pageClubShort) await refreshNavClubListingState(pageClubShort);
+      if (hintEl) {
+        hintEl.textContent =
+          mode === "cancel"
+            ? "Preview listing removed."
+            : mode === "preview"
+              ? `Listed for preview. Bidding starts when ${when}.`
+              : "Manager listed — see Manager Transfer Market.";
+      }
+      if (pageClubShort) {
+        await refreshNavClubListingState(pageClubShort);
+        await loadManagerSection(pageClubShort);
+      }
       refreshNavListingIndicators();
     });
   }

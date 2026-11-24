@@ -97,13 +97,23 @@ async function keepaliveFaBoard() {
 
 async function loadListings() {
   const nowIso = new Date().toISOString();
-  const { data: listings, error } = await supabase
-    .from("Manager_Transfer_Listings")
-    .select("*, Managers(name, rating, market_value)")
-    .eq("status", "Active")
-    .neq("listing_type", "draft")
-    .gt("end_time", nowIso)
-    .order("end_time", { ascending: true });
+  const [activeRes, previewRes] = await Promise.all([
+    supabase
+      .from("Manager_Transfer_Listings")
+      .select("*, Managers(name, rating, market_value)")
+      .eq("status", "Active")
+      .neq("listing_type", "draft")
+      .gt("end_time", nowIso)
+      .order("end_time", { ascending: true }),
+    supabase
+      .from("Manager_Transfer_Listings")
+      .select("*, Managers(name, rating, market_value)")
+      .eq("status", "Pending Window")
+      .eq("listing_type", "standard")
+      .order("created_at", { ascending: true }),
+  ]);
+  const error = activeRes.error || previewRes.error;
+  const listings = [...(previewRes.data || []), ...(activeRes.data || [])];
 
   const body = document.getElementById("listingsBody");
   if (!body) return;
@@ -130,9 +140,14 @@ async function loadListings() {
           ? "League FA"
           : "Free agent";
       const ownListing = currentClub && l.seller_club_id === currentClub;
-      const canBid = currentClub && !ownListing && !clubHasManager;
+      const awaiting = l.status === "Pending Window";
+      const canBid = !awaiting && currentClub && !ownListing && !clubHasManager;
       let actionHtml = "";
-      if (canBid) {
+      if (awaiting && ownListing) {
+        actionHtml = `<button class="button secondary takeoff-btn" data-manager="${l.manager_id}">Take off</button>`;
+      } else if (awaiting) {
+        actionHtml = `<span class="muted" title="Bidding starts when the window opens">Awaiting window</span>`;
+      } else if (canBid) {
         actionHtml = `<button class="button bid-btn" data-id="${l.id}">Bid</button>`;
       } else if (clubHasManager && currentClub && !ownListing) {
         actionHtml = `<span class="muted" title="Sack or transfer your current manager first">Has manager</span>`;
@@ -146,11 +161,29 @@ async function loadListings() {
         <td>${seller}</td>
         <td>${formatMoney(l.market_value ?? mgr.market_value)}</td>
         <td>${l.current_highest_bid ? formatMoney(l.current_highest_bid) : "—"}</td>
-        <td>${formatEndTime(l.end_time)}</td>
+        <td>${awaiting ? `Awaiting ${escapeHtml(l.metadata?.label || "window")}` : formatEndTime(l.end_time)}</td>
         <td>${actionHtml}</td>
       </tr>`;
     })
     .join("");
+
+  body.querySelectorAll(".takeoff-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const managerId = Number(btn.dataset.manager);
+      if (!managerId) return;
+      if (!confirm("Take this manager off the preview list?")) return;
+      btn.disabled = true;
+      const { error: cancelErr } = await supabase.rpc("manager_cancel_preview_listing", {
+        p_manager_id: managerId,
+      });
+      if (cancelErr) {
+        alert(cancelErr.message || "Could not take the listing off.");
+        btn.disabled = false;
+        return;
+      }
+      await loadListings();
+    });
+  });
 
   body.querySelectorAll(".bid-btn").forEach((btn) => {
     btn.addEventListener("click", () =>
@@ -165,7 +198,8 @@ async function loadListings() {
       const listing = listings.find((x) => x.id === Number(a.dataset.listing));
       if (!listing) return;
       const ownListing = currentClub && listing.seller_club_id === currentClub;
-      const canBid = currentClub && !ownListing && !clubHasManager;
+      const awaiting = listing.status === "Pending Window";
+      const canBid = !awaiting && currentClub && !ownListing && !clubHasManager;
       openManagerCard(listing.manager_id, {
         onBid: canBid ? () => openBidModal(listing) : null,
       });
@@ -181,6 +215,10 @@ function listingMinBid(listing) {
 }
 
 function openBidModal(listing) {
+  if (listing?.status === "Pending Window") {
+    alert("This listing is a preview. Bidding starts when the window opens.");
+    return;
+  }
   if (clubHasManager) {
     alert(
       "Your club already has a manager — sack or transfer them before bidding on another."
