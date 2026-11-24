@@ -11,7 +11,11 @@
   <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260915-fin-balance">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260915-fin-balance-tips">
   <style>
-    .admin-layout.fin-balance-layout { max-width: 1200px; }
+    .admin-layout.fin-balance-layout {
+      max-width: none;
+      width: auto;
+      margin: 0 16px 40px;
+    }
     #finBalRules {
       margin: 0 0 16px;
       max-width: none;
@@ -33,10 +37,15 @@
     }
     .fin-kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 12px;
       margin: 14px 0;
+      width: 100%;
     }
+    .fin-cat-grid,
+    .fin-div-grid,
+    .fin-verdict,
+    .fin-hint-box { width: 100%; box-sizing: border-box; }
     .fin-kpi {
       background: #151515;
       border: 1px solid #333;
@@ -166,12 +175,13 @@
     }
     .fin-cat-grid span { color: #888; display: block; font-size: 11px; }
     .fin-cat-grid span.gpsl-has-tip { border-bottom: 1px dotted rgba(255, 153, 0, 0.45); display: inline-block; }
-    .fin-table-wrap { overflow-x: auto; margin-top: 8px; }
+    .fin-table-wrap { overflow-x: auto; margin-top: 8px; max-width: 100%; }
     table.fin-balance-table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       font-size: 12px;
-      min-width: 980px;
+      min-width: 100%;
     }
     table.fin-balance-table th,
     table.fin-balance-table td {
@@ -201,11 +211,11 @@
       font-weight: bold;
       border-top: 1px solid #555;
     }
-    table.fin-forecast-table { min-width: 2200px; }
-    .fin-tweaks { margin-top: 18px; }
+    table.fin-forecast-table { width: max-content; min-width: 100%; }
+    .fin-tweaks { margin-top: 18px; width: 100%; }
     .fin-tweaks h3 { color: #ff9900; font-size: 15px; margin: 0 0 8px; }
-    .fin-tweaks input[type="number"] { width: 90px; }
-    table.fin-tweaks-table { min-width: 900px; }
+    .fin-tweaks .row input[type="number"] { width: 100%; max-width: none; }
+    table.fin-tweaks-table { width: 100%; min-width: 100%; }
     table.fin-tweaks-table td:last-child,
     table.fin-tweaks-table th:last-child { text-align: left; color: #999; white-space: normal; }
     table.fin-tweaks-table input.tw-share { width: 60px; text-align: right; }
