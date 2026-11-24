@@ -228,6 +228,7 @@
       max-height: calc(100vh - 150px);
       border: 1px solid #333;
       border-radius: 6px;
+      container-type: inline-size;
     }
     .wl-board-scroll.wl-panning { cursor: grabbing; user-select: none; }
     .wl-board-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; table-layout: auto; }
@@ -353,8 +354,32 @@
     .wl-board-table td.wl-col-join { border-left: 2px solid #c9b27a; }
     .wl-board-table thead tr:not(.wl-group-row) th.wl-sticky-head { z-index: 2; background-color: #1a1a1a; }
     .wl-board-table thead tr.wl-group-row th.wl-sticky-head { z-index: 2; }
-    .wl-board-table tbody td.wl-sticky-col { z-index: 4; background-color: #161616; }
-    .wl-board-table thead th.wl-sticky-col { z-index: 6; }
+    .wl-board-table thead tr:not(.wl-group-row) th.wl-sticky-head.wl-sticky-col { z-index: 8; }
+    .wl-board-table thead tr.wl-group-row th.wl-sticky-head.wl-sticky-col { z-index: 8; }
+    .wl-board-table tbody td.wl-sticky-col { z-index: 5; background-color: #161616; }
+    .wl-board-table tr.wl-section td,
+    .wl-board-table tr.wl-section-note td {
+      padding: 0;
+      background: #161616;
+      border-right: none;
+    }
+    .wl-board-table .wl-section-label {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      box-sizing: border-box;
+      width: 100cqw;
+      max-width: 100cqw;
+      padding: 10px 12px;
+      background: #161616;
+      white-space: normal;
+      line-height: 1.4;
+    }
+    .wl-board-table tr.wl-section-note .wl-section-label {
+      font-weight: 400;
+      color: #888;
+      padding: 8px 12px;
+    }
     .wl-board-table tr.wl-col-filters th.wl-sticky-head { background-color: #141414; }
     .wl-board-table tr.wl-col-filters th.wl-sticky-col { background-color: #141414; }
     .wl-board-table tr.wl-club-owner td.wl-sticky-col { background: #121212; }
@@ -1007,6 +1032,6 @@
     </div>
   </div>
   <script>window.__gpslStaffHub = true;</script>
-  <script type="module" src="admin_staff_hub.js?v=20261124-owner-qual"></script>
+  <script type="module" src="admin_staff_hub.js?v=20261124-owner-stick"></script>
 </body>
 </html>

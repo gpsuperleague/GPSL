@@ -1863,6 +1863,7 @@ function pinOwnerBoard(root) {
     for (const cell of row.cells) {
       cell.style.position = "sticky";
       cell.style.top = `${top}px`;
+      cell.style.zIndex = "2";
       cell.classList.add("wl-sticky-head");
     }
     top += height;
@@ -1871,10 +1872,11 @@ function pinOwnerBoard(root) {
   if (!titleRow) return;
   let left = 0;
   const widths = [];
-  const mark = (cell, end) => {
+  const mark = (cell, end, layer) => {
     if (!cell || cell.colSpan > 1) return;
     cell.style.position = "sticky";
     cell.style.left = `${left}px`;
+    cell.style.zIndex = layer;
     cell.classList.add("wl-sticky-col");
     cell.classList.toggle("wl-sticky-end", !!end);
   };
@@ -1882,23 +1884,30 @@ function pinOwnerBoard(root) {
     const width = titleRow.cells[i].getBoundingClientRect().width;
     widths.push(width);
     const end = i === WL_FREEZE_COLS - 1;
-    mark(titleRow.cells[i], end);
-    mark(headRows[2]?.cells[i], end);
+    mark(titleRow.cells[i], end, "8");
+    mark(headRows[2]?.cells[i], end, "8");
     for (const body of table.tBodies) {
-      for (const tr of body.rows) mark(tr.cells[i], end);
+      for (const tr of body.rows) mark(tr.cells[i], end, "5");
     }
     left += width;
   }
   const group = headRows[0];
   if (group?.cells[0]) {
     group.cells[0].style.left = "0px";
+    group.cells[0].style.zIndex = "8";
     group.cells[0].classList.add("wl-sticky-col");
   }
   if (group?.cells[1]) {
     const joinLeft = widths.slice(0, 7).reduce((sum, n) => sum + n, 0);
     group.cells[1].style.left = `${joinLeft}px`;
+    group.cells[1].style.zIndex = "8";
     group.cells[1].classList.add("wl-sticky-col", "wl-sticky-end");
   }
+  const visible = `${root.clientWidth}px`;
+  root.querySelectorAll(".wl-section-label").forEach((el) => {
+    el.style.width = visible;
+    el.style.maxWidth = visible;
+  });
   root._wlFitTopScroll?.();
 }
 
@@ -2889,12 +2898,9 @@ async function loadWaitingListAdmin() {
   const ownerCount = ownerRows.length;
   const auctionTotal = invited.length;
   const liveTotal = rows.filter((r) => !!r.confirmed_live_season).length;
-  const sortNote = data?.priority_uses_admin_sort
-    ? "Section sort: supporters first (same order among themselves), then Season 1 rejects at bottom, then login activity; drag still sets saved season priority underneath"
-    : "Section sort: supporters first (same order among themselves), then Season 1 rejects at bottom, then login activity";
-  const activityNote = activityRes.error
-    ? `Activity unavailable: ${activityRes.error.message}`
-    : `${prevLabel} / ${curLabel} logins · live unplayed (prev / cur) · H ${nextMonthLabel} home proposals (league before the month; cups either club once open) · missed running total · V late / V fail (match videos, ₿500k after 72h) · F lock (₿500k strikes on course at ${fineLockLabel}) · F tot (season fines) · admin IP/country review · supporters at top · S1 rejected at section bottom · sort: last login first unless current month logins are under 4`;
+  const activityHint = activityRes.error
+    ? ` Activity unavailable: ${activityRes.error.message}.`
+    : "";
 
   const snapMonths = Number(activityRes.snapshotMonths || 0);
   const snapNote =
@@ -2910,7 +2916,9 @@ async function loadWaitingListAdmin() {
 
   const colSpan = 34;
   const sectionRow = (label) =>
-    `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
+    `<tr class="wl-section"><td colspan="${colSpan}"><div class="wl-section-label">${label}</div></td></tr>`;
+  const noteRow = (label) =>
+    `<tr class="wl-section-note"><td colspan="${colSpan}"><div class="wl-section-label">${label}</div></td></tr>`;
   let overallIndex = 0;
 
   let html =
@@ -2955,16 +2963,16 @@ async function loadWaitingListAdmin() {
 
   const qualNote = qualRes?.error
     ? escapeWl(qualRes.error.message)
-    : `New accounts working toward a club. Friendlies are logged out of five. Film review stays on <a href="admin_qualifying.html">Qualifying videos</a>. Anyone already on the owner or waiting-list rows shows Stage, Friendlies, and Where on that row.`;
-  html += sectionRow(`Qualifying (${qualOnly.length}) — ${qualNote}`);
+    : `New accounts working toward a club. Friendlies are out of five. Film review is on <a href="admin_qualifying.html">Qualifying videos</a>.`;
+  html += sectionRow(`Qualifying (${qualOnly.length}). ${qualNote}`);
   if (qualRes?.error) {
-    html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">Qualifying progress did not load.</td></tr>`;
+    html += noteRow("Qualifying progress did not load.");
   } else if (!qualOnly.length) {
-    html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">${
+    html += noteRow(
       qualList.length
-        ? "Everyone qualifying is already on the owner or waiting-list rows."
+        ? "Everyone qualifying is already on an owner or waiting-list row. Stage, Friendlies, and Where are on that row."
         : "Nobody is qualifying for a club."
-    }</td></tr>`;
+    );
   } else {
     for (let i = 0; i < qualOnly.length; i += 1) {
       overallIndex += 1;
@@ -2978,10 +2986,10 @@ async function loadWaitingListAdmin() {
   }
 
   html += sectionRow(
-    `Owners (${ownerCount}) — current club owners. Drag handle sets season priority with the waiting list. ${escapeWl(activityNote)}${escapeWl(snapNote)}${escapeWl(homePropHint)}${escapeWl(fineHint)}.`
+    `Owners (${ownerCount}). Current club owners. Drag sets season priority with the waiting list.${escapeWl(activityHint)}${escapeWl(snapNote)}${escapeWl(homePropHint)}${escapeWl(fineHint)}`
   );
   if (!ownerCount) {
-    html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No club owners on the board.</td></tr>`;
+    html += noteRow("No club owners on the board.");
   } else {
     for (let i = 0; i < ownerRows.length; i += 1) {
       overallIndex += 1;
@@ -2997,11 +3005,11 @@ async function loadWaitingListAdmin() {
 
   html += sectionRow(
     `Waiting list (${waitingCount}` +
-      (auctionTotal ? `; ${auctionTotal} invited to auction` : "") +
-      `) — reset owners stay grouped at the top. ${escapeWl(sortNote)}. Actions: Add club, absence, or Remove (→ archived).`
+      (auctionTotal ? `, ${auctionTotal} invited to auction` : "") +
+      `). Reset owners stay at the top. Actions: Add club, absence, or Remove.`
   );
   if (!waitingCombined.length) {
-    html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">No one on the waiting list.</td></tr>`;
+    html += noteRow("No one on the waiting list.");
   } else {
     for (let i = 0; i < waitingCombined.length; i += 1) {
       overallIndex += 1;
