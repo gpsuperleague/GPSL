@@ -46,6 +46,45 @@
     .discord-audit .warn { color:#fc9; }
     .discord-status.mismatch { color:#f99; }
     .discord-status.ok-tier { color:#8d8; }
+    .discord-process {
+      display:grid;
+      grid-template-columns:repeat(6, minmax(0, 1fr));
+      gap:6px;
+      margin:0 0 14px;
+    }
+    .discord-process .ladder-mod {
+      background:#171717;
+      border:1px solid #333;
+      border-radius:6px;
+      padding:6px 8px;
+      min-width:0;
+    }
+    .discord-process .k {
+      color:#ff9900;
+      font-size:9px;
+      text-transform:uppercase;
+      letter-spacing:0.03em;
+    }
+    .discord-process .v {
+      color:#eee;
+      font-size:12px;
+      font-weight:700;
+      margin-top:2px;
+    }
+    .discord-process .v a,
+    .discord-process .s a { color:#ff9900; }
+    .discord-process .s {
+      color:#bbb;
+      font-size:10px;
+      line-height:1.3;
+      margin-top:2px;
+    }
+    @media (max-width: 1100px) {
+      .discord-process { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+    }
+    @media (max-width: 680px) {
+      .discord-process { grid-template-columns:1fr 1fr; }
+    }
   </style>
 </head>
 <body class="admin-page">
@@ -55,38 +94,38 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <h2>Priority by Discord join date</h2>
-        <p class="note" data-admin-only>
-          Oldest members first — use this when deciding club-auction priority.
-          <b>Add to waiting list</b> creates a GPSL login (email + temp password) and places them at the
-          bottom of the waiting list with their Discord name as owner tag.
-          <b>Set owner tag</b> updates an existing GPSL account’s Discord tag (email prefilled when matched).
-          Then use <a href="admin_owners_waiting_list.html">Waiting list</a> to invite to auction.
-        </p>
-        <p class="note">
-          <b>Self-serve join:</b> post
-          <a href="join_gpsl.html" style="color:#ff9900;">join_gpsl.html</a>
-          in Discord. Members verify via Discord OAuth, set email/password, accept fair play,
-          and land on the waiting list ordered by Discord join date.
-          Requires SQL <code>discord_join_gpsl.sql</code> plus edge functions
-          <code>discord-join-*</code> and secrets <code>DISCORD_CLIENT_ID</code> /
-          <code>DISCORD_CLIENT_SECRET</code> (OAuth app redirect =
-          <code>https://gpsuperleague.github.io/GPSL/join_gpsl.html</code>).
-        </p>
-        <p class="note">
-          Deploy edge function <code>discord-guild-members</code> and set secrets
-          <code>DISCORD_BOT_TOKEN</code> + <code>DISCORD_GUILD_ID</code>.
-          Also redeploy <code>create-owner-club-auction</code> (supports Discord tag).
-        </p>
-        <p class="note">
-          <b>GPSL → Discord roles:</b> registry (incl. archived / on break) → <b>Member</b>;
-          club owner → <b>Owner</b> + Member; no GPSL account → <b>Visitor</b>.
-          Deploy <code>discord-sync-roles</code>, run <code>discord_role_sync_from_gpsl_20261021.sql</code>,
-          and set <code>DISCORD_ROLE_MEMBER_ID</code> / <code>DISCORD_ROLE_OWNER_ID</code> /
-          <code>DISCORD_ROLE_VISITOR_ID</code> (bot role above those three).
-          <b>Sync linked</b> only updates GPSL accounts with a Discord ID.
-          <b>Sync entire guild</b> walks everyone in Discord (needed for Visitors).
-          Run SQL <code>admin_discord_roles_audit_20261031.sql</code> for GPSL linkage counts.
-        </p>
+        <div class="discord-process" aria-label="Discord join process">
+          <div class="ladder-mod" data-admin-only>
+            <div class="k">Auction priority</div>
+            <div class="v">Oldest first</div>
+            <div class="s">Use this when deciding club-auction priority.</div>
+          </div>
+          <div class="ladder-mod" data-admin-only>
+            <div class="k">Add to waiting list</div>
+            <div class="v">New login</div>
+            <div class="s">Email + temp password. Bottom of the list. Discord name as owner tag.</div>
+          </div>
+          <div class="ladder-mod" data-admin-only>
+            <div class="k">Set owner tag</div>
+            <div class="v">Existing account</div>
+            <div class="s">Updates the Discord tag. Email prefilled when matched. Then <a href="admin_owners_waiting_list.html">Waiting list</a> to invite.</div>
+          </div>
+          <div class="ladder-mod">
+            <div class="k">Self-serve join</div>
+            <div class="v"><a href="join_gpsl.html">join_gpsl.html</a></div>
+            <div class="s">Post in Discord. OAuth, email/password, fair play. Ordered by join date. SQL discord_join_gpsl.sql, discord-join-*, client id and secret.</div>
+          </div>
+          <div class="ladder-mod">
+            <div class="k">Deploy</div>
+            <div class="v">Guild members</div>
+            <div class="s">Bot token + guild id. Redeploy create-owner-club-auction.</div>
+          </div>
+          <div class="ladder-mod">
+            <div class="k">Discord roles</div>
+            <div class="v">Member · Owner · Visitor</div>
+            <div class="s">Registry → Member. Club owner → both. No account → Visitor. discord-sync-roles, role ids, bot above them. Sync linked, or the whole guild for Visitors. Audit SQL for linkage counts.</div>
+          </div>
+        </div>
         <div id="discordAuditPanel" class="discord-audit" aria-live="polite">
           <p class="note" style="margin:0;">Loading membership audit…</p>
         </div>
