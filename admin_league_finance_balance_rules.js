@@ -56,7 +56,7 @@ export const FIN_BALANCE_TIPS = {
 export function getLeagueFinanceBalanceRules() {
   return {
     title: "How to use this page",
-    lead: `Every club in the season (owned or vacant). <b>Ops net</b> ignores transfers, loans, fines, and stadium purchases — those are shown separately so prize/wage tuning is not skewed by one-offs or market spend.`,
+    lead: `Every club in the season (owned or vacant). <b>Season check</b> is the posted ops picture. <b>Season-end preview</b> is a separate tab: posted money plus what is already known for the rest of this season. It does not update Season Review. <b>Ops net</b> ignores transfers, loans, fines, and stadium purchases.`,
     cards: [
       {
         heading: "When to trust it",

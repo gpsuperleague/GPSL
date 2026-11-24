@@ -137,6 +137,26 @@
       font-size: 13px;
       line-height: 1.45;
     }
+    .fin-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0 0 14px;
+    }
+    .fin-tab {
+      padding: 8px 14px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .fin-tab.active {
+      border-color: #ff9900;
+      color: #ff9900;
+      background: #2a1d08;
+    }
     .fin-cat-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -216,6 +236,11 @@
   <div id="adminLayout" class="admin-layout fin-balance-layout">
     <div class="admin-main" id="adminMain">
       <div id="finBalRules" class="info-box info-box--wide" aria-label="How to use League finance balance"></div>
+      <div class="fin-tabs" role="tablist">
+        <button type="button" class="fin-tab active" data-fin-tab="check" role="tab" aria-selected="true">Season check</button>
+        <button type="button" class="fin-tab" data-fin-tab="preview" role="tab" aria-selected="false">Season-end preview</button>
+      </div>
+      <div data-fin-panel="check">
       <div class="card">
         <h2 class="gpsl-has-tip" data-gpsl-tip="Aggregates season ledger categories for every club in the season (owned or vacant)." tabindex="0">Season ecosystem check</h2>
         <p class="note">
@@ -330,13 +355,16 @@
           </div>
         </div>
       </div>
+      </div>
 
+      <div data-fin-panel="preview" hidden>
       <div class="card">
-        <h2 class="gpsl-has-tip" data-gpsl-tip="Full-season forecast per club: what is already posted on the ledger plus what is still expected (remaining gates, TV, league prize at current table position, subsidies, wages, 34+, star tax, manager salary, stadium maintenance, then debt interest and FFP at Close Finances). Same lines as the owner Finances page." tabindex="0">Season forecast per club</h2>
+        <h2 class="gpsl-has-tip" data-gpsl-tip="If the season ended on what is already known: posted ledger plus remaining gates, TV still to play, league prize at the current table, subsidies, wages, 34+, star tax, manager salary, stadium maintenance, then debt interest and FFP. Does not publish to Season Review." tabindex="0">Season-end preview</h2>
         <p class="note">
-          Current season only. Each cell = posted + still to come. Cup and challenge prizes, income tax,
-          contract releases and contract offers only count what is already posted.
-          Debt interest and FFP are estimated from the projected balance before Close Finances.
+          Current season only, from everything already known. Each cell is posted money plus what is still
+          due on that line. Cup and challenge prizes, income tax, contract releases and contract offers
+          count only what is already posted. Debt interest and FFP are estimated from the projected balance
+          before Close Finances. This tab does not update Season Review.
         </p>
         <div class="row">
           <div>
@@ -357,10 +385,11 @@
             </select>
           </div>
           <div style="display:flex;align-items:flex-end;">
-            <button type="button" id="finFcRunBtn" class="button">Forecast every club</button>
+            <button type="button" id="finFcRunBtn" class="button">Preview season end</button>
           </div>
         </div>
         <div id="finFcStatus" class="status-line"></div>
+        <div class="fin-kpi-grid" id="finFcKpis" hidden></div>
         <div id="finFcWrap" class="fin-table-wrap" hidden>
           <table class="fin-balance-table fin-forecast-table">
             <thead id="finFcHead"></thead>
@@ -409,8 +438,9 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_league_finance_balance.js?v=20261012-monthly-interest"></script>
+  <script type="module" src="admin_league_finance_balance.js?v=20261124-eos-preview-tab"></script>
 </body>
 </html>

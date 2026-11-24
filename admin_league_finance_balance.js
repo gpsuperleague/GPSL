@@ -3,7 +3,7 @@ import { initGpslInfoTips, tipDataAttrs } from "./gpsl_info_tips.js";
 import {
   FIN_BALANCE_TIPS,
   renderLeagueFinanceBalanceRules,
-} from "./admin_league_finance_balance_rules.js?v=20260915-vacant-backfill";
+} from "./admin_league_finance_balance_rules.js?v=20261124-eos-preview-tab";
 import {
   FORECAST_LINE_IDS,
   FORECAST_SECTIONS,
@@ -74,6 +74,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("finFcRunBtn").onclick = runForecast;
   document.getElementById("finFcDivision").onchange = renderForecast;
   document.getElementById("finFcMode").onchange = renderForecast;
+  document.querySelectorAll(".fin-tab").forEach((btn) => {
+    btn.addEventListener("click", () => showFinTab(btn.dataset.finTab));
+  });
   wireTweakControls();
   document.getElementById("finBalTarget").addEventListener("blur", () => {
     const el = document.getElementById("finBalTarget");
@@ -81,6 +84,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (Number.isFinite(n)) el.value = formatPlain(n);
   });
 });
+
+function showFinTab(name) {
+  document.querySelectorAll("[data-fin-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.finPanel !== name;
+  });
+  document.querySelectorAll(".fin-tab").forEach((btn) => {
+    const on = btn.dataset.finTab === name;
+    btn.classList.toggle("active", on);
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+  });
+}
 
 function parseMoney(raw) {
   if (raw == null || raw === "") return NaN;
@@ -513,7 +527,7 @@ async function runForecast() {
     const ffpCount = forecastRows.filter((r) => r.ffpRisk).length;
     setStatus(
       "finFcStatus",
-      `✅ ${result.season.label || "Current season"} — ${forecastRows.length} clubs forecast · ` +
+      `✅ ${result.season.label || "Current season"} preview — ${forecastRows.length} clubs · ` +
         `debt interest ${result.bank.ratePct}% · FFP ${formatB(result.bank.ffpFine)} at ≤ ${formatB(
           -result.bank.ffpThreshold
         )} · ${ffpCount} club${ffpCount === 1 ? "" : "s"} on FFP course.`,
@@ -603,10 +617,46 @@ function renderForecast() {
     footRow("AVERAGE", n) + footRow("TOTAL", 1);
 
   wrap.hidden = false;
+  renderPreviewKpis(
+    forecastRows.filter((r) => division === "all" || r.division === division)
+  );
   forecastVisibleRows = forecastRows.filter(
     (r) => division === "all" || r.division === division
   );
   renderTweaks();
+}
+
+function renderPreviewKpis(rows) {
+  const el = document.getElementById("finFcKpis");
+  if (!el) return;
+  if (!rows.length) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  const n = rows.length;
+  const avgNet =
+    rows.reduce(
+      (s, r) => s + FORECAST_LINE_IDS.reduce((a, id) => a + Number(r.forecast[id] || 0), 0),
+      0
+    ) / n;
+  const avgClose = rows.reduce((s, r) => s + Number(r.projectedBalance || 0), 0) / n;
+  const inDebt = rows.filter((r) => Number(r.projectedBalance) < 0).length;
+  const ffp = rows.filter((r) => r.ffpRisk).length;
+  const kpi = (label, value, cls, sub) =>
+    `<div class="fin-kpi"><span class="lbl">${label}</span><span class="val ${cls}">${value}</span><span class="sub">${sub}</span></div>`;
+  el.hidden = false;
+  el.innerHTML =
+    kpi("Clubs in this preview", String(n), "", "Current season, this division filter") +
+    kpi("Average season-end net", formatB(avgNet), moneyClass(avgNet), "Posted plus still to come") +
+    kpi(
+      "Average projected balance",
+      formatB(avgClose),
+      moneyClass(avgClose),
+      "Cash now plus everything still known"
+    ) +
+    kpi("Projected in debt", String(inDebt), inDebt ? "neg" : "pos", "Balance below zero at close") +
+    kpi("On FFP course", String(ffp), ffp ? "neg" : "pos", "Fine would apply at Close Finances");
 }
 
 function wireTweakControls() {
