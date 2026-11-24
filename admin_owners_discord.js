@@ -103,6 +103,22 @@ function roleTierHtml(m) {
   return `<span class="discord-status ${cls}">${escapeHtml(actual)} → want ${escapeHtml(expected)}</span>`;
 }
 
+function memberRoleKey(m) {
+  if (m.actual_tier) return String(m.actual_tier);
+  return String(m.expected_tier || "none");
+}
+
+function memberGpslKey(m) {
+  const status = String(m.gpsl_status || "").toLowerCase();
+  if (status === "archived") return "archived";
+  if (status === "on_break") return "on_break";
+  if (status === "on_absence") return "on_absence";
+  if (m.awaiting_club_auction || status === "awaiting_club_auction") return "auction";
+  if (m.on_waiting_list || status === "member") return "waiting";
+  if (m.gpsl_club || status === "active") return "club";
+  return "none";
+}
+
 function filteredMembers() {
   const q = (document.getElementById("discordSearch")?.value || "")
     .trim()
@@ -110,8 +126,12 @@ function filteredMembers() {
   const hideKnown = document.getElementById("discordHideKnown")?.checked === true;
   const mismatchesOnly =
     document.getElementById("discordShowMismatches")?.checked === true;
+  const roleFilter = document.getElementById("discordRoleFilter")?.value || "";
+  const gpslFilter = document.getElementById("discordGpslFilter")?.value || "";
 
   return allMembers.filter((m) => {
+    if (roleFilter && memberRoleKey(m) !== roleFilter) return false;
+    if (gpslFilter && memberGpslKey(m) !== gpslFilter) return false;
     if (hideKnown && (m.on_waiting_list || m.awaiting_club_auction || m.gpsl_club || m.gpsl_status)) {
       return false;
     }
@@ -257,6 +277,12 @@ function renderTable() {
   if (!wrap) return;
 
   const rows = filteredMembers();
+  const countEl = document.getElementById("discordFilterCount");
+  if (countEl) {
+    countEl.textContent = allMembers.length
+      ? `${rows.length} of ${allMembers.length}`
+      : "";
+  }
   if (!allMembers.length) {
     wrap.innerHTML = `<p class="note">No members loaded yet — click Refresh from Discord.</p>`;
     return;
@@ -862,6 +888,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     .getElementById("discordSyncGuildBtn")
     ?.addEventListener("click", syncEntireGuildRoles);
   document.getElementById("discordSearch")?.addEventListener("input", renderTable);
+  document.getElementById("discordRoleFilter")?.addEventListener("change", renderTable);
+  document.getElementById("discordGpslFilter")?.addEventListener("change", renderTable);
   document.getElementById("discordHideKnown")?.addEventListener("change", renderTable);
   document
     .getElementById("discordShowMismatches")
