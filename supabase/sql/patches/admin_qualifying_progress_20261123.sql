@@ -20,6 +20,7 @@ BEGIN
     FROM (
       SELECT
         s.owner_id,
+        s.email,
         coalesce(nullif(btrim(public.owner_registry_resolve_tag(s.owner_id)), ''), '—') AS owner_tag,
         s.tag_done,
         s.availability_slots,
@@ -50,6 +51,7 @@ BEGIN
       FROM (
         SELECT
           u.id AS owner_id,
+          u.email,
           nullif(btrim(public.owner_registry_resolve_tag(u.id)), '') IS NOT NULL AS tag_done,
           (
             SELECT count(*)::int

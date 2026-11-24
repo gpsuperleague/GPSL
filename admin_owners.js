@@ -1617,10 +1617,11 @@ function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } =
 
 const wlColFilters = { main: {}, archived: {} };
 
-/** Main board, 31 columns. Groups must stay in this order. */
+/** Main board, 34 columns. Groups must stay in this order. */
 const WL_MAIN_GROUPS = [
   { id: "owner", label: "Owner", cols: 7 },
   { id: "join", label: "Join order", cols: 1 },
+  { id: "qualifying", label: "Qualifying", cols: 3 },
   { id: "season", label: "Season", cols: 2 },
   { id: "support", label: "Support", cols: 2 },
   { id: "logins", label: "Logins", cols: 5 },
@@ -1632,7 +1633,7 @@ const WL_MAIN_GROUPS = [
 ];
 const WL_MAIN_FILTERS = [
   "skip", "skip", "skip", "values", "values", "values", "values",
-  "s1", "tick", "tick",
+  "s1", "values", "ratio", "skip", "tick", "tick",
   "tick", "paid",
   "login", "since", "count", "count", "curlogins",
   "count", "count", "ratio", "count",
@@ -1898,10 +1899,88 @@ function pinOwnerBoard(root) {
     group.cells[1].style.left = `${joinLeft}px`;
     group.cells[1].classList.add("wl-sticky-col", "wl-sticky-end");
   }
+  root._wlFitTopScroll?.();
+}
+
+function wireBoardTopScroll(root) {
+  if (!root) return;
+  let bar = root.previousElementSibling;
+  if (!bar?.classList.contains("wl-board-topscroll")) {
+    bar = document.createElement("div");
+    bar.className = "wl-board-topscroll";
+    bar.setAttribute("aria-label", "Scroll the board sideways");
+    const spacer = document.createElement("div");
+    bar.appendChild(spacer);
+    root.parentNode.insertBefore(bar, root);
+  }
+  const spacer = bar.firstElementChild;
+  root._wlFitTopScroll = () => {
+    spacer.style.width = `${root.scrollWidth}px`;
+  };
+  root._wlFitTopScroll();
+  if (root.dataset.topScrollWired) return;
+  root.dataset.topScrollWired = "1";
+  let lock = false;
+  bar.addEventListener("scroll", () => {
+    if (lock) return;
+    lock = true;
+    root.scrollLeft = bar.scrollLeft;
+    lock = false;
+  });
+  root.addEventListener("scroll", () => {
+    if (lock) return;
+    lock = true;
+    bar.scrollLeft = root.scrollLeft;
+    lock = false;
+  });
+}
+
+function wireBoardPan(root) {
+  if (!root || root.dataset.panWired) return;
+  root.dataset.panWired = "1";
+  let pan = null;
+  const end = (e) => {
+    if (!pan || (e && pan.id !== e.pointerId)) return;
+    pan = null;
+    root.classList.remove("wl-panning");
+  };
+  root.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest("input, button, select, a, textarea, label, .wl-drag-cell")) return;
+    pan = {
+      id: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      left: root.scrollLeft,
+      top: root.scrollTop,
+      on: false,
+    };
+  });
+  root.addEventListener("pointermove", (e) => {
+    if (!pan || pan.id !== e.pointerId) return;
+    const dx = e.clientX - pan.x;
+    const dy = e.clientY - pan.y;
+    if (!pan.on) {
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+      pan.on = true;
+      root.classList.add("wl-panning");
+      try {
+        root.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+    root.scrollLeft = pan.left - dx;
+    root.scrollTop = pan.top - dy;
+  });
+  root.addEventListener("pointerup", end);
+  root.addEventListener("pointercancel", end);
 }
 
 let wlBoardPinWired = false;
 function wireOwnerBoardPin(root) {
+  wireBoardTopScroll(root);
+  wireBoardPan(root);
   requestAnimationFrame(() => pinOwnerBoard(root));
   if (wlBoardPinWired) return;
   wlBoardPinWired = true;
@@ -2639,36 +2718,18 @@ function qualifyingBoardWhere(r) {
   return bits.join(" · ");
 }
 
-function renderQualifyingBoard(res) {
-  const box = document.getElementById("wlQualifyingSection");
-  if (!box) return;
-  box.hidden = false;
-  if (res?.error) {
-    box.innerHTML = `<h3 style="margin:0 0 6px;font-size:15px;color:#ffcc66;">Qualifying</h3><p class="note">${escapeWl(res.error.message)}</p>`;
-    return;
+function qualifyingCellsHtml(q) {
+  if (!q) {
+    return `<td class="wl-col-qualifying" style="color:#555">—</td><td class="num" style="color:#555">—</td><td style="color:#555">—</td>`;
   }
-  const rows = Array.isArray(res?.data) ? res.data : [];
-  if (!rows.length) {
-    box.innerHTML = `<h3 style="margin:0 0 6px;font-size:15px;color:#ffcc66;">Qualifying</h3><p class="note" style="margin-bottom:0;">Nobody is qualifying for a club.</p>`;
-    return;
-  }
-  box.innerHTML = `<h3 style="margin:0 0 6px;font-size:15px;color:#ffcc66;">Qualifying (${rows.length})</h3>
-    <p class="note" style="margin-bottom:8px;">New accounts working toward a club. Friendlies are logged out of five. Film review stays on <a href="admin_qualifying.html">Qualifying videos</a>.</p>
-    <div style="overflow-x:auto;">
-    <table class="admin-table">
-      <thead><tr><th>Tag</th><th>Stage</th><th class="num">Friendlies</th><th>Where</th></tr></thead>
-      <tbody>${rows
-        .map((r) => {
-          const where = qualifyingBoardWhere(r);
-          return `<tr>
-            <td>${escapeWl(r.owner_tag || "—")}</td>
-            <td>${escapeWl(QUAL_STAGE_LABEL[r.stage] || r.stage || "—")}</td>
-            <td class="num">${Number(r.friendly_count) || 0}/5</td>
-            <td>${where ? escapeWl(where) : "—"}</td>
-          </tr>`;
-        })
-        .join("")}</tbody>
-    </table></div>`;
+  const stage = QUAL_STAGE_LABEL[q.stage] || q.stage || "—";
+  const where = qualifyingBoardWhere(q);
+  const n = Number(q.friendly_count) || 0;
+  return (
+    `<td class="wl-col-qualifying">${escapeWl(stage)}</td>` +
+    `<td class="num">${n}/5</td>` +
+    `<td>${where ? escapeWl(where) : "—"}</td>`
+  );
 }
 
 async function loadWaitingListAdmin() {
@@ -2688,7 +2749,6 @@ async function loadWaitingListAdmin() {
       supabase.rpc("admin_handpick_intake_map"),
       supabase.rpc("admin_qualifying_progress"),
     ]);
-  renderQualifyingBoard(qualRes);
   window.__wlHandpickMap =
     handpickRes.error || !handpickRes.data || typeof handpickRes.data !== "object"
       ? {}
@@ -2795,6 +2855,28 @@ async function loadWaitingListAdmin() {
     priority.splice(0, priority.length, ...p2);
     invited.splice(0, invited.length, ...i2);
   }
+  const qualList = Array.isArray(qualRes?.data) ? qualRes.data : [];
+  const qualById = new Map(qualList.map((q) => [q.owner_id, q]));
+  for (const row of [...priority, ...invited]) {
+    row.qualifying = qualById.get(row.owner_id) || null;
+  }
+  const onBoard = new Set([...priority, ...invited].map((row) => row.owner_id));
+  const qualOnly = await mergeSeason1InviteStatus(
+    qualList
+      .filter((q) => q?.owner_id && !onBoard.has(q.owner_id))
+      .map((q) =>
+        withActivity({
+          owner_id: q.owner_id,
+          owner_tag: q.owner_tag,
+          email: q.email || "",
+          status: QUAL_STAGE_LABEL[q.stage] || q.stage || "qualifying",
+          tier: "—",
+          has_club: false,
+          invited_auction: false,
+          qualifying: q,
+        })
+      )
+  );
   const rows = [...priority, ...invited];
   const ownerRows = priority.filter((r) => r.has_club).sort(compareRowsBySeason1ThenActivity);
   const waitingRows = priority.filter((r) => !r.has_club).sort(compareRowsBySeason1ThenActivity);
@@ -2826,7 +2908,7 @@ async function loadWaitingListAdmin() {
     ? ` · Fines unavailable (run admin_owner_board_fine_forecast_20261021.sql)`
     : "";
 
-  const colSpan = 31;
+  const colSpan = 34;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
   let overallIndex = 0;
@@ -2841,6 +2923,9 @@ async function loadWaitingListAdmin() {
     `<th style="width:2em"></th>` +
     `<th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>` +
     `<th class="wl-col-join" title="Join order. Click a cell to set or clear the number. Accepted and the other marks stay on the cell." style="text-align:center;line-height:1.25">Join order</th>` +
+    `<th class="wl-col-qualifying" title="Qualifying stage. Film review stays on the Qualifying videos page.">Stage</th>` +
+    `<th class="num" title="Friendlies logged, out of five">Friendlies</th>` +
+    `<th title="What is still outstanding on the qualifying path">Where</th>` +
     `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Ko-fi Supporter (manual). Unset keeps perks until month end." style="text-align:center;line-height:1.25">Supporter</th>` +
@@ -2867,6 +2952,30 @@ async function loadWaitingListAdmin() {
     `</tr>` +
     wlColFilterRow(WL_MAIN_FILTERS) +
     `</thead><tbody id="wlPriorityTbody">`;
+
+  const qualNote = qualRes?.error
+    ? escapeWl(qualRes.error.message)
+    : `New accounts working toward a club. Friendlies are logged out of five. Film review stays on <a href="admin_qualifying.html">Qualifying videos</a>. Anyone already on the owner or waiting-list rows shows Stage, Friendlies, and Where on that row.`;
+  html += sectionRow(`Qualifying (${qualOnly.length}) — ${qualNote}`);
+  if (qualRes?.error) {
+    html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">Qualifying progress did not load.</td></tr>`;
+  } else if (!qualOnly.length) {
+    html += `<tr><td colspan="${colSpan}" class="muted" style="padding:8px 10px">${
+      qualList.length
+        ? "Everyone qualifying is already on the owner or waiting-list rows."
+        : "Nobody is qualifying for a club."
+    }</td></tr>`;
+  } else {
+    for (let i = 0; i < qualOnly.length; i += 1) {
+      overallIndex += 1;
+      html += renderWaitingListAdminRow(qualOnly[i], {
+        invited: false,
+        section: "qualifying",
+        sectionIndex: i + 1,
+        overallIndex,
+      });
+    }
+  }
 
   html += sectionRow(
     `Owners (${ownerCount}) — current club owners. Drag handle sets season priority with the waiting list. ${escapeWl(activityNote)}${escapeWl(snapNote)}${escapeWl(homePropHint)}${escapeWl(fineHint)}.`
@@ -3938,12 +4047,16 @@ function renderWaitingListAdminRow(
     s1Mark?.kind,
     row.holiday?.code,
     row.holiday?.code === "OH" ? "on holiday" : row.holiday?.code === "UH" ? "upcoming holiday" : "",
+    row.qualifying ? QUAL_STAGE_LABEL[row.qualifying.stage] || row.qualifying.stage : "",
+    row.qualifying ? qualifyingBoardWhere(row.qualifying) : "",
+    row.qualifying ? `${Number(row.qualifying.friendly_count) || 0}/5` : "",
   ]
     .filter(Boolean)
     .join(" ");
 
+  const qualifyingRow = section === "qualifying";
   const rowClass = [
-    invited ? "" : "wl-priority-row",
+    invited || qualifyingRow ? "" : "wl-priority-row",
     hasClub ? "wl-club-owner" : "",
     s1Mark?.kind === "expired-pending" ? "wl-s1-expired-pending" : "",
   ]
@@ -3954,11 +4067,11 @@ function renderWaitingListAdminRow(
       ? ' style="background:#3a2414"'
       : ' style="background:#1a1814"'
     : "";
-  const dragCell = invited
+  const dragCell = invited || qualifyingRow
     ? `<td class="wl-col-owner"></td>`
     : `<td class="wl-col-owner wl-drag-cell" title="Drag to reorder"><span class="wl-drag-handle" aria-hidden="true">⠿</span></td>`;
-  const auctionCell = hasClub
-    ? `<td class="wl-col-season" style="text-align:center;color:#555" title="Already owns a club">—</td>`
+  const auctionCell = hasClub || qualifyingRow
+    ? `<td class="wl-col-season" style="text-align:center;color:#555" title="${qualifyingRow ? "Still qualifying" : "Already owns a club"}">—</td>`
     : `<td class="wl-col-season" style="text-align:center">
       <input type="checkbox" class="wl-auction-invite" data-id="${row.owner_id}"
         title="${invited ? "Remove from club auction (back to waiting list)" : "Invite to club auction"}"
@@ -4028,6 +4141,7 @@ function renderWaitingListAdminRow(
     <td>${escapeWl(hasClub ? "—" : row.tier || "—")}</td>
     <td>${escapeWl(status)}</td>
     ${formatSeason1StatusCell(row)}
+    ${qualifyingCellsHtml(row.qualifying)}
     ${auctionCell}
     <td style="text-align:center">
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"

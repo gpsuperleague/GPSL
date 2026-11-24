@@ -216,12 +216,20 @@
       padding: 8px 10px; min-width: 220px;
       background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
     }
+    .wl-board-topscroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      height: 14px;
+      margin: 0 0 4px;
+    }
+    .wl-board-topscroll > div { height: 1px; }
     .wl-board-scroll {
       overflow: auto;
       max-height: calc(100vh - 150px);
       border: 1px solid #333;
       border-radius: 6px;
     }
+    .wl-board-scroll.wl-panning { cursor: grabbing; user-select: none; }
     .wl-board-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; table-layout: auto; }
     .wl-board-table th,
     .wl-board-table td {
@@ -254,6 +262,7 @@
     }
     .wl-board-table .wl-group-owner { border-left: 2px solid #555; background: #1a1a1a; }
     .wl-board-table .wl-group-join { border-left: 2px solid #c9b27a; color: #f0e2b6; background: #221c12; }
+    .wl-board-table .wl-group-qualifying { border-left: 2px solid #c9a227; color: #ffcc66; background: #221c10; }
     .wl-board-table .wl-group-season { border-left: 2px solid #886622; color: #e0b84a; background: #1c1810; }
     .wl-board-table .wl-group-support { border-left: 2px solid #3a6a3a; color: #9d9; background: #142014; }
     .wl-board-table .wl-group-logins { border-left: 2px solid #3a6a8a; color: #7eb8d8; background: #121820; }
@@ -266,38 +275,42 @@
     .wl-board-main tbody tr:not(.wl-section) > :nth-child(8),
     .wl-board-main thead tr:not(.wl-group-row) > :nth-child(9),
     .wl-board-main tbody tr:not(.wl-section) > :nth-child(9),
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(11),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(11),
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(13),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(13),
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(18),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(18),
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(22),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(22),
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(24),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(24),
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(26),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(26),
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(31),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(31) { border-left-width: 2px; border-left-style: solid; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(12),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(12),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(14),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(14),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(16),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(16),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(21),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(21),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(25),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(25),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(27),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(27),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(29),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(29),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(34),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(34) { border-left-width: 2px; border-left-style: solid; }
     .wl-board-main thead tr:not(.wl-group-row) > :nth-child(8),
     .wl-board-main tbody tr:not(.wl-section) > :nth-child(8) { border-left-color: #c9b27a; }
     .wl-board-main thead tr:not(.wl-group-row) > :nth-child(9),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(9) { border-left-color: #886622; }
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(11),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(11) { border-left-color: #3a6a3a; }
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(13),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(13) { border-left-color: #3a6a8a; }
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(18),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(18) { border-left-color: #a86; }
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(22),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(22) { border-left-color: #86a; }
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(24),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(24) { border-left-color: #a55; }
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(26),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(26) { border-left-color: #3a7a7a; }
-    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(31),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(31) { border-left-color: #444; }
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(9) { border-left-color: #c9a227; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(12),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(12) { border-left-color: #886622; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(14),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(14) { border-left-color: #3a6a3a; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(16),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(16) { border-left-color: #3a6a8a; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(21),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(21) { border-left-color: #a86; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(25),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(25) { border-left-color: #86a; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(27),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(27) { border-left-color: #a55; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(29),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(29) { border-left-color: #3a7a7a; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(34),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(34) { border-left-color: #444; }
     .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(8),
     .wl-board-table.wl-archived-table tbody tr > :nth-child(8),
     .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(9),
@@ -786,7 +799,6 @@
           </span>
           <button type="button" id="wlPaidClearAllBtn" class="button secondary" data-admin-only title="Clear the selected year's paid months for every owner">Reset paid year</button>
         </div>
-        <div id="wlQualifyingSection" style="margin:0 0 22px;" hidden></div>
         <div id="wlAdminTableWrap" class="wl-board-scroll"></div>
         <div id="wlOnBreakSection" style="margin-top:28px;" hidden>
           <h3 style="margin:0 0 6px;font-size:15px;color:#e0b84a;">On break</h3>
@@ -995,6 +1007,6 @@
     </div>
   </div>
   <script>window.__gpslStaffHub = true;</script>
-  <script type="module" src="admin_staff_hub.js?v=20261124-owner-screen"></script>
+  <script type="module" src="admin_staff_hub.js?v=20261124-owner-qual"></script>
 </body>
 </html>
