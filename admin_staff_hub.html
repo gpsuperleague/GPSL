@@ -197,7 +197,7 @@
     }
     tr.wl-club-owner .wl-col-actions .wl-row-action { color: #ddd; border-color: #666; }
     .wl-row-action option[value=""] { color: #888; }
-    .wl-archived-table .wl-row-action { max-width: 12em; }
+    .wl-board-table.wl-archived-table .wl-row-action { max-width: 12em; }
     .wl-drag-handle {
       display: inline-block;
       width: 1.25em;
@@ -246,10 +246,79 @@
       padding: 6px 8px;
       white-space: nowrap;
     }
-    .wl-board-table .wl-group-owner { border-left: 2px solid #555; }
-    .wl-board-table .wl-group-season { border-left: 2px solid #886622; color: #e0b84a; }
-    .wl-board-table .wl-group-activity { border-left: 2px solid #3a6a8a; color: #7eb8d8; }
-    .wl-board-table .wl-group-actions { border-left: 2px solid #444; }
+    .wl-board-table .wl-group-owner { border-left: 2px solid #555; background: #1a1a1a; }
+    .wl-board-table .wl-group-season { border-left: 2px solid #886622; color: #e0b84a; background: #1c1810; }
+    .wl-board-table .wl-group-support { border-left: 2px solid #3a6a3a; color: #9d9; background: #142014; }
+    .wl-board-table .wl-group-logins { border-left: 2px solid #3a6a8a; color: #7eb8d8; background: #121820; }
+    .wl-board-table .wl-group-fixtures { border-left: 2px solid #a86; color: #fc9; background: #1c1810; }
+    .wl-board-table .wl-group-videos { border-left: 2px solid #86a; color: #c9f; background: #181420; }
+    .wl-board-table .wl-group-fines { border-left: 2px solid #a55; color: #f99; background: #1c1212; }
+    .wl-board-table .wl-group-place { border-left: 2px solid #3a7a7a; color: #9dd; background: #121c1c; }
+    .wl-board-table .wl-group-actions { border-left: 2px solid #444; background: #1a1a1a; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(8),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(8),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(12),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(12),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(14),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(14),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(19),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(19),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(23),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(23),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(25),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(25),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(27),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(27),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(32),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(32) { border-left-width: 2px; border-left-style: solid; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(8),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(8) { border-left-color: #886622; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(12),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(12) { border-left-color: #3a6a3a; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(14),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(14) { border-left-color: #3a6a8a; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(19),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(19) { border-left-color: #a86; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(23),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(23) { border-left-color: #86a; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(25),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(25) { border-left-color: #a55; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(27),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(27) { border-left-color: #3a7a7a; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(32),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(32) { border-left-color: #444; }
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(8),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(8),
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(12),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(12),
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(13),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(13),
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(18),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(18),
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(21),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(21),
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(23),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(23),
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(25),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(25),
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(30),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(30) { border-left-width: 2px; border-left-style: solid; }
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(8),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(8) { border-left-color: #886622; }
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(12),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(12) { border-left-color: #3a6a3a; }
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(13),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(13) { border-left-color: #3a6a8a; }
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(18),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(18) { border-left-color: #a86; }
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(21),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(21) { border-left-color: #86a; }
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(23),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(23) { border-left-color: #a55; }
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(25),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(25) { border-left-color: #3a7a7a; }
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(30),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(30) { border-left-color: #444; }
     .wl-board-table th.wl-col-owner,
     .wl-board-table td.wl-col-owner { border-left: 2px solid #555; }
     .wl-board-table th.wl-col-season,
@@ -282,7 +351,8 @@
     .wl-board-table tr.wl-filter-hide { display: none; }
     /* Archived uses the same wl-board-table layout; keep soft red accents only. */
     .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) th { color: #e0a0a0; }
-    .wl-board-table.wl-archived-table .wl-group-owner { color: #e0a0a0; }
+    .wl-board-table.wl-archived-table .wl-group-owner,
+    .wl-board-table.wl-archived-table .wl-group-row th { color: #e0a0a0; }
     .wl-modal-backdrop {
       position: fixed; inset: 0; z-index: 2000;
       background: rgba(0,0,0,0.65);
@@ -679,6 +749,7 @@
         <div id="wlActionStatus" class="status-line" style="margin:0 0 10px;"></div>
         <div class="wl-board-toolbar">
           <input type="search" id="wlBoardFilter" placeholder="Filter tag / email / club / status (all sections)…">
+          <button type="button" id="wlClearColFilters" class="button secondary" title="Clear the dropdown under each column">Clear column filters</button>
           <button type="button" id="wlRefreshBtn" class="button secondary">Refresh</button>
           <button type="button" id="wlRecordUnplayedBtn" class="button secondary" title="Freeze unplayed counts for locked months (+ current) before you sim leftovers">Record unplayed</button>
           <button type="button" id="wlRefreshCountryBtn" class="button secondary" data-admin-only>Refresh country</button>
@@ -897,6 +968,6 @@
     </div>
   </div>
   <script>window.__gpslStaffHub = true;</script>
-  <script type="module" src="admin_staff_hub.js?v=20261124-qualifying-board"></script>
+  <script type="module" src="admin_staff_hub.js?v=20261124-owner-groups"></script>
 </body>
 </html>

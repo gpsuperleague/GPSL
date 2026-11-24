@@ -77,6 +77,7 @@ export async function bootOwnerAdminPage() {
   document.getElementById("wlBoardFilter")?.addEventListener("input", (e) => {
     filterSeasonOwnerBoard(e.target.value);
   });
+  document.getElementById("wlClearColFilters")?.addEventListener("click", clearWlColumnFilters);
   document.getElementById("wlPaidYear")?.addEventListener("change", (e) => {
     supporterPayYear = Number(e.target.value) || null;
     loadWaitingListAdmin();
@@ -1614,23 +1615,98 @@ function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } =
   )}</span>`;
 }
 
-const wlColFilters = {};
+const wlColFilters = { main: {}, archived: {} };
 
-function wlColFilterRow() {
-  let cells = "";
-  for (let i = 0; i < 32; i += 1) {
-    if (i === 2 || i === 31) {
-      cells += `<th class="wl-col-filter-cell"></th>`;
-      continue;
-    }
-    cells +=
-      `<th class="wl-col-filter-cell">` +
-      `<select class="wl-col-filter" data-col="${i}" aria-label="Filter column ${i + 1}">` +
-      `<option value="">All</option>` +
-      `</select>` +
-      `</th>`;
-  }
-  return `<tr class="wl-col-filters">${cells}</tr>`;
+/** Main board, 32 columns. Groups must stay in this order. */
+const WL_MAIN_GROUPS = [
+  { id: "owner", label: "Owner", cols: 7 },
+  { id: "season", label: "Season", cols: 4 },
+  { id: "support", label: "Support", cols: 2 },
+  { id: "logins", label: "Logins", cols: 5 },
+  { id: "fixtures", label: "Fixtures", cols: 4 },
+  { id: "videos", label: "Videos", cols: 2 },
+  { id: "fines", label: "Fines", cols: 2 },
+  { id: "place", label: "Place", cols: 5 },
+  { id: "actions", label: "Actions", cols: 1 },
+];
+const WL_MAIN_FILTERS = [
+  "skip", "skip", "skip", "values", "values", "values", "values",
+  "s1", "tick", "tick", "tick",
+  "tick", "paid",
+  "login", "since", "count", "count", "curlogins",
+  "count", "count", "ratio", "count",
+  "count", "count",
+  "money", "money",
+  "discord", "offset", "values", "ip", "shared",
+  "skip",
+];
+
+/** Archived board, 30 columns. No Paid column, and no next-month H column. */
+const WL_ARCHIVED_GROUPS = [
+  { id: "owner", label: "Owner", cols: 7 },
+  { id: "season", label: "Season", cols: 4 },
+  { id: "support", label: "Support", cols: 1 },
+  { id: "logins", label: "Logins", cols: 5 },
+  { id: "fixtures", label: "Fixtures", cols: 3 },
+  { id: "videos", label: "Videos", cols: 2 },
+  { id: "fines", label: "Fines", cols: 2 },
+  { id: "place", label: "Place", cols: 5 },
+  { id: "actions", label: "Actions", cols: 1 },
+];
+const WL_ARCHIVED_FILTERS = [
+  "skip", "skip", "skip", "values", "values", "values", "values",
+  "s1", "tick", "tick", "tick",
+  "tick",
+  "login", "since", "count", "count", "curlogins",
+  "count", "count", "count",
+  "count", "count",
+  "money", "money",
+  "discord", "offset", "values", "ip", "shared",
+  "skip",
+];
+
+const WL_FILTER_OPTIONS = {
+  tick: [["yes", "Yes"], ["no", "No"]],
+  count: [["any", "Any"], ["high", "3 or more"], ["none", "None"]],
+  curlogins: [["under4", "Under 4"], ["ok", "4 or more"], ["none", "None"]],
+  money: [["charged", "Charged"], ["warn", "Warning"], ["clear", "Clear"]],
+  ratio: [["done", "All proposed"], ["partial", "Part done"], ["none", "None proposed"], ["empty", "No fixtures"]],
+  paid: [["owes", "Owes this month"], ["paid", "Some paid"], ["none", "Nothing paid"]],
+  since: [["recent", "This week"], ["older", "Older than a week"], ["never", "Never"]],
+  login: [["has", "Has logged in"], ["never", "Never"]],
+  discord: [["discord", "Discord join"], ["account", "Account date"], ["missing", "Missing"]],
+  offset: [["uk", "Same as UK"], ["ahead", "Ahead of UK"], ["behind", "Behind UK"], ["unknown", "Unknown"]],
+  ip: [["has", "Has IP"], ["missing", "Missing"]],
+  shared: [["yes", "Shared"], ["no", "Not shared"]],
+  s1: [
+    ["numbered", "Has a number"],
+    ["invited", "Invited"],
+    ["accepted", "Accepted"],
+    ["rejected", "Rejected"],
+    ["expired", "Expired"],
+    ["queued", "Queued"],
+    ["none", "Not in the queue"],
+  ],
+};
+
+function wlGroupHeaderHtml(groups) {
+  return `<tr class="wl-group-row">${groups
+    .map((group) => `<th colspan="${group.cols}" class="wl-group-${group.id}">${group.label}</th>`)
+    .join("")}</tr>`;
+}
+
+function wlColFilterRow(kinds) {
+  return `<tr class="wl-col-filters">${kinds
+    .map((kind, i) => {
+      if (!kind || kind === "skip") return `<th class="wl-col-filter-cell"></th>`;
+      return (
+        `<th class="wl-col-filter-cell">` +
+        `<select class="wl-col-filter" data-col="${i}" data-kind="${kind}" aria-label="Filter column ${i + 1}">` +
+        `<option value="">All</option>` +
+        `</select></th>`
+      );
+    })
+    .join("")}</tr>`;
 }
 
 function wlCellFilterText(cell) {
@@ -1646,44 +1722,163 @@ function wlFilterOptionLabel(value) {
   return value;
 }
 
-function wlFillColFilterSelects(table) {
+function wlNumberFromCell(cell) {
+  const text = wlCellFilterText(cell);
+  if (!text || text === "—" || text === "-") return null;
+  const n = Number(String(text).replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+function wlCellMatchesFilter(cell, kind, value) {
+  if (!value) return true;
+  const text = wlCellFilterText(cell);
+  const lower = text.toLowerCase();
+  if (kind === "values" || kind === "tick") return lower === value.toLowerCase();
+  if (kind === "count") {
+    const n = wlNumberFromCell(cell);
+    const none = n == null || n <= 0;
+    if (value === "none") return none;
+    if (value === "high") return n != null && n >= 3;
+    return !none;
+  }
+  if (kind === "curlogins") {
+    const n = wlNumberFromCell(cell) || 0;
+    if (value === "none") return n <= 0;
+    if (value === "under4") return n > 0 && n < 4;
+    return n >= 4;
+  }
+  if (kind === "money") {
+    if (value === "warn") return lower === "warn";
+    if (value === "charged") return text.startsWith("−") || text.startsWith("-");
+    return !text || text === "—" || text === "0" || lower === "0";
+  }
+  if (kind === "ratio") {
+    if (!text || text === "—") return value === "empty";
+    const match = text.match(/(\d+)\s*\/\s*(\d+)/);
+    if (!match) return value === "empty";
+    const proposed = Number(match[1]);
+    const total = Number(match[2]);
+    if (total <= 0) return value === "empty";
+    if (proposed <= 0) return value === "none";
+    if (proposed >= total) return value === "done";
+    return value === "partial";
+  }
+  if (kind === "paid") {
+    const owes = !!cell.querySelector(".owes-now");
+    const countText = cell.querySelector(".wl-paid-count")?.textContent || text;
+    const count = Number(String(countText).match(/(\d+)/)?.[1] || 0);
+    if (value === "owes") return owes;
+    if (value === "paid") return count > 0;
+    return count <= 0 && !owes;
+  }
+  if (kind === "since") {
+    if (!text || text === "—" || lower === "never") return value === "never";
+    if (/\d+\s*w/.test(lower)) return value === "older";
+    return value === "recent";
+  }
+  if (kind === "login") {
+    const never = !text || text === "—" || lower === "never";
+    return value === "never" ? never : !never;
+  }
+  if (kind === "discord") {
+    if (!text || text === "—") return value === "missing";
+    if (lower.includes("acct")) return value === "account";
+    return value === "discord";
+  }
+  if (kind === "offset") {
+    if (!text || text === "—") return value === "unknown";
+    if (lower.includes("same")) return value === "uk";
+    if (text.includes("+")) return value === "ahead";
+    if (text.includes("-") || text.includes("−")) return value === "behind";
+    return value === "unknown";
+  }
+  if (kind === "ip") {
+    const missing = !text || text === "—";
+    return value === "missing" ? missing : !missing;
+  }
+  if (kind === "shared") return lower.startsWith("yes") ? value === "yes" : value === "no";
+  if (kind === "s1") {
+    const num = cell.querySelector(".wl-s1-num");
+    const numbered = !!(num && !num.classList.contains("empty") && /\d/.test(num.textContent || ""));
+    if (value === "numbered") return numbered;
+    if (value === "accepted") return lower.includes("accepted");
+    if (value === "rejected") return lower.includes("rejected") || lower.includes("declined");
+    if (value === "expired") return lower.includes("expired");
+    if (value === "invited") return lower.includes("invited") || lower.includes("offered");
+    if (value === "queued") return lower.includes("queued");
+    return !numbered && !/accepted|rejected|declined|expired|invited|offered|queued/.test(lower);
+  }
+  return true;
+}
+
+function wlFillColFilterSelects(table, board) {
   if (!table) return;
   const rows = [...table.querySelectorAll("tbody tr[data-owner-id]")];
   const headerRow = table.querySelectorAll("thead tr")[1];
+  const savedMap = wlColFilters[board] || {};
   table.querySelectorAll("select.wl-col-filter").forEach((sel) => {
     const col = Number(sel.dataset.col);
+    const kind = sel.dataset.kind || "values";
     const header = (headerRow?.children[col]?.innerText || "").replace(/\s+/g, " ").trim();
     if (header) {
       sel.setAttribute("aria-label", `Filter ${header}`);
       sel.title = `Filter ${header}`;
     }
-    const seen = new Set();
-    for (const tr of rows) {
-      const text = wlCellFilterText(tr.children[col]);
-      if (text) seen.add(text);
+    let options = WL_FILTER_OPTIONS[kind] || [];
+    if (kind === "values" || kind === "tick") {
+      const seen = new Set();
+      for (const tr of rows) {
+        const text = wlCellFilterText(tr.children[col]);
+        if (text) seen.add(text);
+      }
+      const values = [...seen];
+      if (kind === "tick") values.sort((a, b) => (a === "yes" ? -1 : 1));
+      else values.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+      options = values.map((value) => [value, wlFilterOptionLabel(value)]);
     }
-    const values = [...seen];
-    const ticks = values.length > 0 && values.every((v) => v === "yes" || v === "no");
-    if (ticks) values.sort((a, b) => (a === "yes" ? -1 : 1));
-    else values.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
-    const saved = wlColFilters[col] || "";
+    const saved = savedMap[col] || "";
     sel.innerHTML =
       `<option value="">All</option>` +
-      values
-        .map((value) => `<option value="${escapeWl(value)}">${escapeWl(wlFilterOptionLabel(value))}</option>`)
+      options
+        .map(([value, label]) => `<option value="${escapeWl(value)}">${escapeWl(label)}</option>`)
         .join("");
-    sel.value = values.includes(saved) ? saved : "";
-    if (sel.value !== saved) wlColFilters[col] = sel.value;
+    const allowed = options.some(([value]) => value === saved);
+    sel.value = allowed ? saved : "";
+    if (sel.value !== saved) savedMap[col] = sel.value;
   });
+}
+
+function bindWlBoardFilters(root, board) {
+  const table = root?.querySelector?.("table");
+  if (!table) return;
+  table.dataset.board = board;
+  wlFillColFilterSelects(table, board);
+  table.querySelectorAll(".wl-col-filter").forEach((input) => {
+    input.addEventListener("change", () => {
+      wlColFilters[board][input.dataset.col] = input.value;
+      filterSeasonOwnerBoard();
+    });
+  });
+}
+
+function clearWlColumnFilters() {
+  wlColFilters.main = {};
+  wlColFilters.archived = {};
+  document.querySelectorAll("select.wl-col-filter").forEach((sel) => {
+    sel.value = "";
+  });
+  filterSeasonOwnerBoard();
 }
 
 function rowMatchesColumnFilters(tr) {
   const table = tr.closest("table");
   if (!table) return true;
   for (const input of table.querySelectorAll(".wl-col-filter")) {
-    const q = input.value.trim().toLowerCase();
-    if (!q) continue;
-    if (wlCellFilterText(tr.children[Number(input.dataset.col)]).toLowerCase() !== q) return false;
+    const value = input.value.trim();
+    if (!value) continue;
+    if (!wlCellMatchesFilter(tr.children[Number(input.dataset.col)], input.dataset.kind, value)) {
+      return false;
+    }
   }
   return true;
 }
@@ -2574,14 +2769,9 @@ async function loadWaitingListAdmin() {
   let overallIndex = 0;
 
   let html =
-    `<table class="admin-table wl-board-table">` +
+    `<table class="admin-table wl-board-table wl-board-main">` +
     `<thead>` +
-    `<tr class="wl-group-row">` +
-    `<th colspan="7" class="wl-group-owner">Owner</th>` +
-    `<th colspan="6" class="wl-group-season">Season</th>` +
-    `<th colspan="18" class="wl-group-activity">Activity</th>` +
-    `<th colspan="1" class="wl-group-actions">Actions</th>` +
-    `</tr>` +
+    wlGroupHeaderHtml(WL_MAIN_GROUPS) +
     `<tr>` +
     `<th class="wl-col-owner num">Overall</th>` +
     `<th class="num">#</th>` +
@@ -2613,7 +2803,7 @@ async function loadWaitingListAdmin() {
     `<th title="Recent shared-IP review signal (admin only).">Shared IP</th>` +
     `<th class="wl-col-actions">Actions</th>` +
     `</tr>` +
-    wlColFilterRow() +
+    wlColFilterRow(WL_MAIN_FILTERS) +
     `</thead><tbody id="wlPriorityTbody">`;
 
   html += sectionRow(
@@ -2658,14 +2848,8 @@ async function loadWaitingListAdmin() {
   tableWrap.innerHTML = html;
 
   const filterEl = document.getElementById("wlBoardFilter");
-  wlFillColFilterSelects(tableWrap.querySelector("table"));
+  bindWlBoardFilters(tableWrap, "main");
   filterSeasonOwnerBoard(filterEl?.value);
-  tableWrap.querySelectorAll(".wl-col-filter").forEach((input) => {
-    input.addEventListener("change", () => {
-      wlColFilters[input.dataset.col] = input.value;
-      filterSeasonOwnerBoard();
-    });
-  });
   tableWrap.addEventListener("change", (e) => {
     if (e.target?.matches?.('input[type="checkbox"]')) filterSeasonOwnerBoard();
   });
@@ -3204,12 +3388,7 @@ async function loadArchivedOwnersSection() {
     let html =
     `<table class="admin-table wl-board-table wl-archived-table">` +
     `<thead>` +
-    `<tr class="wl-group-row">` +
-    `<th colspan="7" class="wl-group-owner">Owner</th>` +
-    `<th colspan="5" class="wl-group-season">Season</th>` +
-    `<th colspan="17" class="wl-group-activity">Activity</th>` +
-    `<th colspan="1" class="wl-group-actions">Actions</th>` +
-    `</tr>` +
+    wlGroupHeaderHtml(WL_ARCHIVED_GROUPS) +
     `<tr>` +
     `<th class="wl-col-owner num">Overall</th>` +
     `<th class="num">#</th>` +
@@ -3240,7 +3419,9 @@ async function loadArchivedOwnersSection() {
     `<th title="Latest captured login IP (admin only)">IP</th>` +
     `<th title="Recent shared-IP review signal (admin only)">Shared IP</th>` +
     `<th class="wl-col-actions">Actions</th>` +
-    `</tr></thead><tbody>`;
+    `</tr>` +
+    wlColFilterRow(WL_ARCHIVED_FILTERS) +
+    `</thead><tbody>`;
 
   let overallCounter =
     document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id]").length +
@@ -3416,6 +3597,7 @@ async function loadArchivedOwnersSection() {
   html += `</tbody></table>`;
   wrap.innerHTML = html;
 
+  bindWlBoardFilters(wrap, "archived");
   bindWlRowActionSelects(wrap);
   wrap.querySelectorAll(".wl-confirm-season").forEach((cb) => {
     cb.addEventListener("pointerdown", (e) => e.stopPropagation());
