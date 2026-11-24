@@ -114,17 +114,20 @@
           Sent to people who are not Owners, joined the server at least 7 days ago, and have not
           been in charge of a club in the last 3 weeks. Great Hall is not posted.
           Preview first. Send repeats the pack even if they had an older one.
+          If a send already landed in Great Hall, remove those posts from the last 3 days. The DMs stay.
           The <code>discord-welcome-pack</code> function must be deployed for this to run.
         </p>
         <div class="discord-filters">
           <button type="button" id="welcomePreviewBtn" class="button secondary">Preview</button>
           <button type="button" id="welcomeSendBtn" class="button" disabled>Send</button>
+          <button type="button" id="hallRemovePreviewBtn" class="button secondary">Preview Great Hall removals</button>
+          <button type="button" id="hallRemoveBtn" class="button" disabled>Remove Great Hall posts</button>
         </div>
         <div id="welcomeStatus" class="status-line"></div>
         <div id="welcomePreview"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners_discord.js?v=20261124-qualifying-dm"></script>
+  <script type="module" src="admin_owners_discord.js?v=20261124-hall-undo"></script>
 </body>
 </html>

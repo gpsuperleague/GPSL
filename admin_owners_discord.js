@@ -743,6 +743,100 @@ async function sendQualifyingWelcome() {
   }
 }
 
+async function previewGreatHallRemovals() {
+  if (!allowCreateLogin) return;
+  const previewBtn = document.getElementById("hallRemovePreviewBtn");
+  const removeBtn = document.getElementById("hallRemoveBtn");
+  if (previewBtn) previewBtn.disabled = true;
+  if (removeBtn) removeBtn.disabled = true;
+  setStatus("welcomeStatus", "Checking Great Hall posts…");
+  try {
+    const { data, error } = await invokeEdgeFunction("discord-welcome-pack", {
+      action: "remove_great_hall",
+      dry_run: true,
+      via: "welcome_members",
+      within_hours: 72,
+      limit: 200,
+    });
+    if (error || data?.ok === false) {
+      setStatus(
+        "welcomeStatus",
+        error?.message || data?.error || data?.reason || "Could not check Great Hall posts",
+        false
+      );
+      return;
+    }
+    const matching = Number(data?.matching || 0);
+    const box = document.getElementById("welcomePreview");
+    if (box) {
+      box.innerHTML = matching
+        ? `<p class="note">${matching} Great Hall post${matching === 1 ? "" : "s"} from the last 3 days. DMs are not removed.</p>`
+        : `<p class="note">No Great Hall posts from the qualifying send in the last 3 days.</p>`;
+    }
+    setStatus(
+      "welcomeStatus",
+      matching
+        ? `${matching} Great Hall post${matching === 1 ? "" : "s"} can be removed. Nothing deleted yet.`
+        : "Nothing in Great Hall to remove.",
+      true
+    );
+    if (removeBtn) removeBtn.disabled = matching < 1;
+  } finally {
+    if (previewBtn) previewBtn.disabled = false;
+  }
+}
+
+async function removeGreatHallPosts() {
+  if (!allowCreateLogin) return;
+  const previewBtn = document.getElementById("hallRemovePreviewBtn");
+  const removeBtn = document.getElementById("hallRemoveBtn");
+  if (previewBtn) previewBtn.disabled = true;
+  if (removeBtn) removeBtn.disabled = true;
+  let deleted = 0;
+  let missing = 0;
+  let failed = 0;
+  let pages = 0;
+  try {
+    for (;;) {
+      pages += 1;
+      setStatus("welcomeStatus", `Removing Great Hall posts… ${deleted} deleted so far.`);
+      const { data, error } = await invokeEdgeFunction("discord-welcome-pack", {
+        action: "remove_great_hall",
+        dry_run: false,
+        via: "welcome_members",
+        within_hours: 72,
+        limit: 15,
+      });
+      if (error || data?.ok === false) {
+        setStatus(
+          "welcomeStatus",
+          `${error?.message || data?.error || "Remove failed"} · ${deleted} deleted`,
+          false
+        );
+        return;
+      }
+      deleted += Number(data?.deleted || 0);
+      missing += Number(data?.already_gone || 0);
+      failed += Number(data?.errors || 0);
+      const processed = Number(data?.processed || 0);
+      const remaining = Number(data?.remaining || 0);
+      if (processed < 1 || remaining < 1) break;
+      if (pages >= 80) break;
+    }
+    setStatus(
+      "welcomeStatus",
+      `Great Hall posts removed: ${deleted}` +
+        (missing ? ` · ${missing} already gone` : "") +
+        (failed ? ` · ${failed} failed` : "") +
+        ". DMs were left in place.",
+      failed === 0
+    );
+  } finally {
+    if (previewBtn) previewBtn.disabled = false;
+    if (removeBtn) removeBtn.disabled = true;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   const user = await initAdminPage({ allowMod: true });
   if (!user) return;
@@ -769,6 +863,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   document
     .getElementById("welcomeSendBtn")
     ?.addEventListener("click", sendQualifyingWelcome);
+  document
+    .getElementById("hallRemovePreviewBtn")
+    ?.addEventListener("click", previewGreatHallRemovals);
+  document
+    .getElementById("hallRemoveBtn")
+    ?.addEventListener("click", removeGreatHallPosts);
 
   await loadMembers();
 });

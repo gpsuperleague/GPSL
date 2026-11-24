@@ -6,6 +6,8 @@ import {
   welcomePackWithMention,
   ensureVisitorRole,
   listGreatHallCandidates,
+  discordApi,
+  resolveGreatHallChannelId,
   sendWelcomeChannel,
   sendWelcomeDm,
   type WelcomePackAudience,
@@ -1271,11 +1273,151 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (action === "remove_great_hall") {
+      const dryRun = body.dry_run === true || body.preview === true;
+      const via = String(body.via || "welcome_members").trim() || "welcome_members";
+      const hoursRaw = Number(body.within_hours);
+      const withinHours = Number.isFinite(hoursRaw)
+        ? Math.min(Math.max(hoursRaw, 1), 24 * 30)
+        : 72;
+      const since = new Date(Date.now() - withinHours * 60 * 60 * 1000).toISOString();
+      const limitRaw = Number(body.limit);
+      const limit = Math.min(
+        Math.max(Number.isFinite(limitRaw) ? limitRaw : dryRun ? 100 : 15, 1),
+        dryRun ? 200 : 25
+      );
+
+      const base = () =>
+        admin
+          .from("gpsl_discord_welcome_sent")
+          .select("discord_user_id, hall_channel_id, hall_message_id, sent_at, via")
+          .eq("via", via)
+          .not("hall_message_id", "is", null)
+          .gte("sent_at", since);
+
+      const { count: matching } = await admin
+        .from("gpsl_discord_welcome_sent")
+        .select("discord_user_id", { count: "exact", head: true })
+        .eq("via", via)
+        .not("hall_message_id", "is", null)
+        .gte("sent_at", since);
+
+      const { data: rows, error: listError } = await base()
+        .order("sent_at", { ascending: true })
+        .limit(limit);
+      if (listError) {
+        return jsonResponse({ ok: false, error: listError.message }, 500);
+      }
+
+      const posts = (rows || []) as Array<{
+        discord_user_id?: string;
+        hall_channel_id?: string | null;
+        hall_message_id?: string | null;
+        sent_at?: string | null;
+        via?: string | null;
+      }>;
+
+      if (dryRun) {
+        return jsonResponse({
+          ok: true,
+          dry_run: true,
+          action: "remove_great_hall",
+          via,
+          within_hours: withinHours,
+          since,
+          matching: matching ?? posts.length,
+          listed: posts.length,
+          posts: posts.map((row) => ({
+            discord_user_id: row.discord_user_id || null,
+            hall_channel_id: row.hall_channel_id || null,
+            hall_message_id: row.hall_message_id || null,
+            sent_at: row.sent_at || null,
+          })),
+          note: "Dry run — Great Hall posts not deleted. DMs are left as they are.",
+        });
+      }
+
+      let hallChannel = "";
+      try {
+        hallChannel = (await resolveGreatHallChannelId(botToken, guildId)) || "";
+      } catch {
+        hallChannel = "";
+      }
+
+      let deleted = 0;
+      let missing = 0;
+      let errors = 0;
+      const results: Record<string, unknown>[] = [];
+      for (const row of posts) {
+        const messageId = String(row.hall_message_id || "").trim();
+        const channelId = String(row.hall_channel_id || hallChannel || "").trim();
+        const discordUserIdRow = String(row.discord_user_id || "").trim();
+        if (!messageId || !channelId || !discordUserIdRow) {
+          errors += 1;
+          results.push({
+            discord_user_id: discordUserIdRow || null,
+            ok: false,
+            error: "missing_channel_or_message",
+          });
+          continue;
+        }
+        const del = await discordApi(
+          botToken,
+          `/channels/${channelId}/messages/${messageId}`,
+          { method: "DELETE" }
+        );
+        const gone = del.ok || del.status === 404;
+        if (!gone) {
+          errors += 1;
+          results.push({
+            discord_user_id: discordUserIdRow,
+            ok: false,
+            status: del.status,
+            error: del.text.slice(0, 160),
+          });
+        } else {
+          if (del.status === 404) missing += 1;
+          else deleted += 1;
+          await admin
+            .from("gpsl_discord_welcome_sent")
+            .update({
+              hall_channel_id: null,
+              hall_message_id: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("discord_user_id", discordUserIdRow);
+          results.push({
+            discord_user_id: discordUserIdRow,
+            ok: true,
+            already_gone: del.status === 404,
+          });
+        }
+        await new Promise((res) => setTimeout(res, 400));
+      }
+
+      const remaining = Math.max((matching ?? posts.length) - deleted - missing, 0);
+      return jsonResponse({
+        ok: true,
+        action: "remove_great_hall",
+        via,
+        within_hours: withinHours,
+        since,
+        matching: matching ?? posts.length,
+        processed: posts.length,
+        deleted,
+        already_gone: missing,
+        errors,
+        remaining,
+        note: "Great Hall copies removed. Direct messages are left in place.",
+        results: results.slice(0, 20),
+      });
+    }
+
     if (action !== "welcome_one" && action !== "on_join") {
       return jsonResponse(
         {
           error:
-            "Unknown action — use welcome_newcomers, welcome_members, diagnose_pending, resolve_great_hall, on_join, or welcome_one",
+            "Unknown action — use welcome_newcomers, welcome_members, remove_great_hall, diagnose_pending, resolve_great_hall, on_join, or welcome_one",
         },
         400
       );

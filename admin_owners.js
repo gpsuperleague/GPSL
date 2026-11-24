@@ -2338,13 +2338,87 @@ async function recordUnplayedSnapshots() {
   }
 }
 
+const QUAL_STAGE_LABEL = {
+  who_you_are: "Who you are",
+  friendlies: "Five friendlies",
+  record: "Record friendly 5",
+  with_staff: "With staff",
+  waiting_list: "Waiting list",
+  handpick: "Handpick",
+};
+
+function qualifyingWhen(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-GB");
+}
+
+function qualifyingBoardWhere(r) {
+  const bits = [];
+  const stage = r.stage;
+  if (stage === "who_you_are") {
+    if (!r.tag_done) bits.push("Tag not set");
+    if (!Number(r.availability_slots)) bits.push("Times not set");
+  } else if (stage === "friendlies") {
+    const due = qualifyingWhen(r.friendly_deadline);
+    if (due) bits.push(`Friendlies by ${due}`);
+  } else if (stage === "record") {
+    if (r.video_status === "rejected") bits.push("Last film sent back");
+    const due = qualifyingWhen(r.video_deadline);
+    if (due) bits.push(`Film by ${due}`);
+  } else if (stage === "with_staff") {
+    bits.push("Film in for review");
+  } else if (stage === "waiting_list") {
+    bits.push("Approved");
+  } else if (stage === "handpick") {
+    if (r.handpick_club) bits.push(r.handpick_club);
+    const due = qualifyingWhen(r.handpick_due_at);
+    if (due) bits.push(`Until ${due}`);
+  }
+  if (Number(r.reset_count) > 0) bits.push(`Restarted ${Number(r.reset_count)}`);
+  return bits.join(" · ");
+}
+
+function renderQualifyingBoard(res) {
+  const box = document.getElementById("wlQualifyingSection");
+  if (!box) return;
+  box.hidden = false;
+  if (res?.error) {
+    box.innerHTML = `<h3 style="margin:0 0 6px;font-size:15px;color:#ffcc66;">Qualifying</h3><p class="note">${escapeWl(res.error.message)}</p>`;
+    return;
+  }
+  const rows = Array.isArray(res?.data) ? res.data : [];
+  if (!rows.length) {
+    box.innerHTML = `<h3 style="margin:0 0 6px;font-size:15px;color:#ffcc66;">Qualifying</h3><p class="note" style="margin-bottom:0;">Nobody is qualifying for a club.</p>`;
+    return;
+  }
+  box.innerHTML = `<h3 style="margin:0 0 6px;font-size:15px;color:#ffcc66;">Qualifying (${rows.length})</h3>
+    <p class="note" style="margin-bottom:8px;">New accounts working toward a club. Friendlies are logged out of five. Film review stays on <a href="admin_qualifying.html">Qualifying videos</a>.</p>
+    <div style="overflow-x:auto;">
+    <table class="admin-table">
+      <thead><tr><th>Tag</th><th>Stage</th><th class="num">Friendlies</th><th>Where</th></tr></thead>
+      <tbody>${rows
+        .map((r) => {
+          const where = qualifyingBoardWhere(r);
+          return `<tr>
+            <td>${escapeWl(r.owner_tag || "—")}</td>
+            <td>${escapeWl(QUAL_STAGE_LABEL[r.stage] || r.stage || "—")}</td>
+            <td class="num">${Number(r.friendly_count) || 0}/5</td>
+            <td>${where ? escapeWl(where) : "—"}</td>
+          </tr>`;
+        })
+        .join("")}</tbody>
+    </table></div>`;
+}
+
 async function loadWaitingListAdmin() {
   const tableWrap = document.getElementById("wlAdminTableWrap");
   if (!tableWrap) return;
 
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
   await loadOwnerHolidayStatusMap({ force: true });
-  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes, handpickRes] =
+  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes, handpickRes, qualRes] =
     await Promise.all([
       supabase.rpc("waiting_list_admin"),
       fetchOwnerActivityById(),
@@ -2353,7 +2427,9 @@ async function loadWaitingListAdmin() {
       supabase.rpc("admin_supporter_payments_map", { p_year: supporterPayYear }),
       supabase.rpc("admin_owner_board_fine_forecast"),
       supabase.rpc("admin_handpick_intake_map"),
+      supabase.rpc("admin_qualifying_progress"),
     ]);
+  renderQualifyingBoard(qualRes);
   window.__wlHandpickMap =
     handpickRes.error || !handpickRes.data || typeof handpickRes.data !== "object"
       ? {}
