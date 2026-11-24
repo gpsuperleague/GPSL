@@ -7,6 +7,7 @@ import {
   loadCupBracket,
   loadCupBracketForSeason,
   loadCupQualified,
+  loadCurrentSeason,
   loadCupMatchExtras,
   preprocessCupBracketRounds,
   groupCupBracketTies,
@@ -91,6 +92,9 @@ let matchVideoReportsWired = false;
 let cupPrizeByStage = new Map();
 /** @type {Map<number, string>} round_no → prize stage */
 let cupRoundStageByNo = new Map();
+/** @type {Array<Record<string, unknown>>} */
+let cupScheduleRows = [];
+const previewHiddenCups = new Set();
 
 function ensureMatchVideoStyles() {
   let el = document.getElementById("matchVideoTickStyles");
@@ -358,7 +362,9 @@ function renderFinanceHtml(financeRows) {
 }
 
 function legPlayable(leg, extras, { leg1Played = true } = {}) {
-  if (!leg?.fixture_id) return { playable: false, reason: "Awaiting draw / teams" };
+  if (!leg?.fixture_id) {
+    return { playable: false, reason: leg.preview ? "Sample · not a real tie" : "Awaiting draw / teams" };
+  }
   if (leg.fixture_status === "played") return { playable: false, reason: "Played" };
 
   const month = leg.round_gpsl_month || leg.fixture_gpsl_month;
@@ -442,8 +448,13 @@ function renderLegPane(leg, extras, opts) {
       ${conditions ? `<div class="leg-conditions" style="font-size:11px;color:#888;margin:4px 0;">${escapeHtml(conditions)}</div>` : ""}
       ${renderScoreLinesHtml(scoreLines)}
       ${opsHtml || fallbackAction}
+      ${leg?.preview ? previewOpsSampleHtml() : ""}
       ${renderFinanceHtml(finance)}
     </div>`;
+}
+
+function previewOpsSampleHtml() {
+  return `<div class="cup-ops-meta"><span class="cup-ko cup-ko--open">Kick-off not set</span> <span class="cup-ci">H○ A○</span> <span class="mv-ticks">H · A · R</span></div>`;
 }
 
 function renderTwoLegTieCard(tie, extras) {
@@ -511,7 +522,7 @@ function renderMatchCard(m, extras, roundNo) {
   const scoreLines = played ? formatCupScoreLines(m, extras) : null;
   const finance = played ? formatCupMatchFinance(m, extras) : [];
 
-  let status = "Awaiting draw / teams";
+  let status = m.preview ? "Sample tie" : "Awaiting draw / teams";
   if (played) status = "Played";
   else if (m.fixture_id) status = "Scheduled";
   else if (r1Bye || (m.winner_club_name && !m.fixture_id && roundNo === 1))
@@ -546,6 +557,7 @@ function renderMatchCard(m, extras, roundNo) {
       ${conditions ? `<div class="match-conditions" style="font-size:11px;color:#888;margin:4px 0;">${escapeHtml(conditions)}</div>` : ""}
       ${renderScoreLinesHtml(scoreLines)}
       ${opsHtml || fallbackAction}
+      ${m.preview ? previewOpsSampleHtml() : ""}
       ${winnerHtml}
       ${renderFinanceHtml(finance)}
     </div>`;
@@ -674,30 +686,117 @@ function renderCupFilters(nodes) {
   bar.append(roundLabel, clubLabel);
 }
 
+function previewNodesFromSchedule() {
+  const rows = (cupScheduleRows || []).filter((row) => Number(row.matches_in_round) > 0);
+  if (!rows.length) return [];
+  const cap = 4;
+  let nextId = -1;
+  const byRound = new Map();
+  for (const row of rows) {
+    const roundNo = Number(row.round_no);
+    if (!byRound.has(roundNo)) byRound.set(roundNo, []);
+    byRound.get(roundNo).push(row);
+  }
+  const nodes = [];
+  for (const roundNo of [...byRound.keys()].sort((a, b) => a - b)) {
+    const legs = byRound.get(roundNo);
+    const leg1 = legs.find((row) => Number(row.cup_leg) === 1) || legs[0];
+    const leg2 = legs.find((row) => Number(row.cup_leg) === 2);
+    const total = Number(leg1.matches_in_round) || 1;
+    const show = Math.min(total, cap);
+    const isFinal =
+      String(leg1.stage || "").toLowerCase() === "final" ||
+      String(leg1.round_label || "").toLowerCase() === "final";
+    for (let matchNo = 1; matchNo <= show; matchNo += 1) {
+      const home = `Club ${matchNo * 2 - 1}`;
+      const away = `Club ${matchNo * 2}`;
+      const leg1Id = nextId;
+      nextId -= 1;
+      nodes.push({
+        id: leg1Id,
+        preview: true,
+        preview_more: matchNo === show && total > show ? total - show : 0,
+        round_no: roundNo,
+        match_no: matchNo,
+        cup_leg: 1,
+        round_label: leg1.round_label,
+        round_stage: leg1.stage,
+        round_gpsl_month: leg1.gpsl_month,
+        fixture_gpsl_month: leg1.gpsl_month,
+        home_club_name: home,
+        away_club_name: away,
+        venue_name: isFinal ? "Wembley" : "Home stadium",
+      });
+      if (leg2) {
+        nodes.push({
+          id: nextId,
+          preview: true,
+          round_no: roundNo,
+          match_no: matchNo,
+          cup_leg: 2,
+          leg1_node_id: leg1Id,
+          round_label: leg2.round_label || leg1.round_label,
+          round_stage: leg2.stage || leg1.stage,
+          round_gpsl_month: leg2.gpsl_month,
+          fixture_gpsl_month: leg2.gpsl_month,
+          home_club_name: away,
+          away_club_name: home,
+          venue_name: "Home stadium",
+        });
+        nextId -= 1;
+      }
+    }
+  }
+  return nodes;
+}
+
+function wireCupPreviewButtons() {
+  document.getElementById("hideCupPreview")?.addEventListener("click", () => {
+    previewHiddenCups.add(currentCup);
+    renderBracket(lastBracketNodes, lastBracketExtras);
+  });
+  document.getElementById("showCupPreview")?.addEventListener("click", () => {
+    previewHiddenCups.delete(currentCup);
+    renderBracket(lastBracketNodes, lastBracketExtras);
+  });
+}
+
 function renderBracket(nodes, extras) {
   const root = document.getElementById("bracketRoot");
   lastBracketNodes = nodes || [];
   lastBracketExtras = extras || null;
-  renderCupFilters(lastBracketNodes);
-  if (!lastBracketNodes.length) {
-    root.innerHTML =
-      '<p class="empty">No bracket yet. Admin draws this cup in GPSL Admin.</p>';
+  const showingPreview = !lastBracketNodes.length && !previewHiddenCups.has(currentCup);
+  const source = showingPreview ? previewNodesFromSchedule() : lastBracketNodes;
+  renderCupFilters(source);
+  if (!source.length) {
+    const canPreview = !lastBracketNodes.length && cupScheduleRows.length > 0;
+    root.innerHTML = canPreview
+      ? `<p class="empty">No bracket yet. Admin draws this cup in GPSL Admin.</p>
+         <button type="button" id="showCupPreview" class="cup-preview-toggle">Show draw preview</button>`
+      : `<p class="empty">No bracket yet. Admin draws this cup in GPSL Admin.</p>`;
+    wireCupPreviewButtons();
     return;
   }
 
-  const rounds = filterCupRounds(preprocessCupBracketRounds(lastBracketNodes, currentCup));
+  const rounds = filterCupRounds(preprocessCupBracketRounds(source, currentCup));
   if (!rounds.length) {
     root.innerHTML = '<p class="empty">No ties match this round and club.</p>';
     return;
   }
   const flowClass =
     currentCup === "league_cup" ? "bracket-flow bracket-flow--league-cup" : "bracket-flow";
+  const banner = showingPreview
+    ? `<p class="cup-preview-banner">Preview of the draw. These are not real clubs or ties. Admin has not drawn this cup yet.
+         <button type="button" id="hideCupPreview" class="cup-preview-toggle">Hide preview</button></p>`
+    : "";
   root.innerHTML = `
-    <div class="${flowClass}">
+    ${banner}
+    <div class="${flowClass}${showingPreview ? " is-preview" : ""}">
       ${rounds.map(({ round_no, matches }) => renderBracketRoundColumn(round_no, matches, extras)).join("")}
     </div>
     <p class="bracket-arrow-hint">← Early rounds · Final →</p>
   `;
+  wireCupPreviewButtons();
 }
 
 /** Compact prize for round headers, e.g. 10000000 → ₿10m */
@@ -768,18 +867,23 @@ function roundPrizeHint(round_no) {
 async function loadCupPrizeContext(seasonId, cupCode) {
   cupPrizeByStage = new Map();
   cupRoundStageByNo = new Map();
-  if (!seasonId || !cupCode) return;
+  cupScheduleRows = [];
+  if (!cupCode) return;
 
-  const [{ data: prizes, error: prizeErr }, { data: schedule, error: schedErr }] =
-    await Promise.all([
-      supabase
+  const prizeQuery = seasonId
+    ? supabase
         .from("competition_cup_prize_config_public")
         .select("stage, amount")
         .eq("season_id", seasonId)
-        .eq("cup_code", cupCode),
+        .eq("cup_code", cupCode)
+    : Promise.resolve({ data: [], error: null });
+
+  const [{ data: prizes, error: prizeErr }, { data: schedule, error: schedErr }] =
+    await Promise.all([
+      prizeQuery,
       supabase
         .from("competition_cup_round_schedule")
-        .select("round_no, stage, cup_leg")
+        .select("round_no, stage, cup_leg, gpsl_month, round_label, matches_in_round")
         .eq("cup_code", cupCode),
     ]);
 
@@ -795,6 +899,7 @@ async function loadCupPrizeContext(seasonId, cupCode) {
   if (schedErr) {
     console.warn("cups round schedule:", schedErr);
   } else {
+    cupScheduleRows = schedule || [];
     for (const row of schedule || []) {
       if (row?.round_no == null || !row.stage) continue;
       // Prefer leg 1 stage if both legs exist
@@ -822,6 +927,7 @@ function renderBracketRoundColumn(round_no, matches, extras) {
       <div class="bracket-round bracket-round-two-leg" data-round="${round_no}">
         <div class="round-title">${escapeHtml(columnTitle)}</div>
         ${cards}
+        ${previewMoreNote(matches)}
       </div>`;
   }
 
@@ -836,7 +942,14 @@ function renderBracketRoundColumn(round_no, matches, extras) {
     <div class="bracket-round" data-round="${round_no}">
       <div class="round-title">${escapeHtml(columnTitle)}</div>
       ${cards}
+      ${previewMoreNote(matches)}
     </div>`;
+}
+
+function previewMoreNote(matches) {
+  const more = Math.max(0, ...(matches || []).map((m) => Number(m.preview_more) || 0));
+  if (!more) return "";
+  return `<p class="preview-more">+ ${more} more tie${more === 1 ? "" : "s"} in this round</p>`;
 }
 
 async function loadCupVideosAndExtras(fixtureIds) {
@@ -876,16 +989,7 @@ async function renderCup() {
       : `<span class="empty">No archived bracket for ${escapeHtml(archiveSeason)} ${escapeHtml(CUP_LABELS[currentCup] || currentCup)}.</span>`;
     const fixtureIds = nodes.map((n) => n.fixture_id).filter(Boolean);
     const extras = await loadCupVideosAndExtras(fixtureIds);
-    const seasonId = nodes[0]?.season_id;
-    if (seasonId) {
-      await Promise.all([
-        loadTvFixtureIds(supabase, seasonId),
-        loadCupPrizeContext(seasonId, currentCup),
-      ]);
-    } else {
-      cupPrizeByStage = new Map();
-      cupRoundStageByNo = new Map();
-    }
+    await ensureCupDrawContext(nodes[0]?.season_id);
     renderBracket(nodes, extras);
     renderGroupPrizeLine();
     return;
@@ -902,18 +1006,18 @@ async function renderCup() {
   const nodes = await loadCupBracket(supabase, currentCup);
   const fixtureIds = nodes.map((n) => n.fixture_id).filter(Boolean);
   const extras = await loadCupVideosAndExtras(fixtureIds);
-  const seasonId = nodes[0]?.season_id;
-  if (seasonId) {
-    await Promise.all([
-      loadTvFixtureIds(supabase, seasonId),
-      loadCupPrizeContext(seasonId, currentCup),
-    ]);
-  } else {
-    cupPrizeByStage = new Map();
-    cupRoundStageByNo = new Map();
-  }
+  await ensureCupDrawContext(nodes[0]?.season_id);
   renderBracket(nodes, extras);
   renderGroupPrizeLine();
+}
+
+async function ensureCupDrawContext(seasonId) {
+  let id = seasonId || null;
+  if (!id) {
+    id = (await loadCurrentSeason(supabase))?.id || null;
+  }
+  if (id) await loadTvFixtureIds(supabase, id);
+  await loadCupPrizeContext(id, currentCup);
 }
 
 function renderGroupPrizeLine() {
