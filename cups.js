@@ -936,11 +936,10 @@ function formatMoneyCompact(amount) {
 function groupPrizeSummary() {
   if (currentCup !== "super8" && currentCup !== "bowl") return "";
   const lines = [
-    ["appearance", "each match"],
+    ["appearance", "group appearance"],
     ["group_win", "group win"],
     ["group_draw", "group draw"],
-    ["group_qualify", "qualify"],
-    ["group_exit", "did not qualify"],
+    ["group_loss", "group loss"],
     ["sf", "semi-final"],
     ["winner", "winner"],
     ["runner_up", "runner-up"],
@@ -951,7 +950,7 @@ function groupPrizeSummary() {
     if (amt > 0) parts.push(`${label} ${formatMoneyCompact(amt)}`);
   }
   if (!parts.length) return "";
-  return `Prize money: ${parts.join(" · ")}. A loss pays no extra.`;
+  return `Prize money: ${parts.join(" · ")}.`;
 }
 
 function roundPrizeHint(round_no) {

@@ -16,8 +16,7 @@ const STAGE_ORDER = [
   "final",
   "group_win",
   "group_draw",
-  "group_qualify",
-  "group_exit",
+  "group_loss",
 ];
 
 /**
@@ -56,14 +55,13 @@ function stagesForCup(cup) {
   }
   if (cup === "super8" || cup === "bowl") {
     return [
+      { value: "appearance", label: "Group appearance" },
+      { value: "group_win", label: "Group win" },
+      { value: "group_draw", label: "Group draw" },
+      { value: "group_loss", label: "Group loss" },
+      { value: "sf", label: "Semi-final appearance" },
       { value: "winner", label: "Winner" },
       { value: "runner_up", label: "Runner-up" },
-      { value: "sf", label: "Semi-final appearance" },
-      { value: "group_qualify", label: "Qualify from group" },
-      { value: "group_exit", label: "Did not qualify" },
-      { value: "group_win", label: "Group win (extra)" },
-      { value: "group_draw", label: "Group draw (extra)" },
-      { value: "appearance", label: "Appearance (each match)" },
     ];
   }
   return [
@@ -75,7 +73,21 @@ function stagesForCup(cup) {
 }
 
 function stageLabel(cup, stage) {
-  return stagesForCup(cup).find((s) => s.value === stage)?.label || stage;
+  return (
+    stagesForCup(cup).find((s) => s.value === stage)?.label ||
+    {
+      appearance: "Appearance",
+      r1: "Round 1",
+      r2: "Round 2",
+      r32: "Last 32",
+      r16: "Last 16",
+      qf: "Quarter-final",
+      sf: "Semi-final",
+      winner: "Winner",
+      runner_up: "Runner-up",
+    }[stage] ||
+    stage
+  );
 }
 
 function fillStageSelects(cup) {
@@ -205,16 +217,30 @@ async function loadCupPrizeConfig() {
     return;
   }
 
-  const sorted = [...data].sort(
-    (a, b) => STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage)
-  );
+  const order = stagesForCup(cup).map((s) => s.value);
+  const sorted = [...data].sort((a, b) => {
+    const ia = order.indexOf(a.stage);
+    const ib = order.indexOf(b.stage);
+    if (ia === -1 && ib === -1) return STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+  const current = sorted.filter((row) => order.includes(row.stage));
+  const earlier = sorted.filter((row) => !order.includes(row.stage) && Number(row.amount) > 0);
 
-  listEl.innerHTML = sorted
-    .map(
-      (row) =>
-        `<div><b>${escapeHtml(stageLabel(cup, row.stage))}</b>: ${formatMoney(row.amount)}</div>`
-    )
-    .join("");
+  listEl.innerHTML =
+    current
+      .map(
+        (row) =>
+          `<div><b>${escapeHtml(stageLabel(cup, row.stage))}</b>: ${formatMoney(row.amount)}</div>`
+      )
+      .join("") +
+    (earlier.length
+      ? `<div style="margin-top:8px;">Stored knockout amounts: ${earlier
+          .map((row) => `${escapeHtml(stageLabel(cup, row.stage))} ${formatMoney(row.amount)}`)
+          .join(" · ")}</div>`
+      : "");
 }
 
 async function copyCupPrizesFromSeason() {
