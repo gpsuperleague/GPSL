@@ -39,6 +39,7 @@ type SyncResult = {
   tier: Tier;
   added: string[];
   removed: string[];
+  name?: string;
   skipped?: string;
   error?: string;
 };
@@ -78,6 +79,16 @@ function managedRoleIds(roles: ReturnType<typeof roleConfig>): Set<string> {
   return new Set(
     [roles.member, roles.owner, roles.visitor].filter(Boolean)
   );
+}
+
+function discordErr(
+  prefix: string,
+  res: { status: number; text: string; json: unknown }
+): string {
+  const body = res.json as { message?: string; code?: number } | null;
+  const msg = body?.message ? String(body.message) : res.text.slice(0, 140);
+  const code = body?.code != null ? ` ${body.code}` : "";
+  return `${prefix}_${res.status}${code}: ${msg}`.slice(0, 220);
 }
 
 async function discordJson(
@@ -148,72 +159,79 @@ async function syncDiscordUser(
     return result;
   }
 
+  const memberJson = member.json as {
+    roles?: string[];
+    pending?: boolean;
+  };
+  if (memberJson?.pending === true) {
+    result.skipped = "membership_screening";
+    result.error = "Has not accepted the server rules, so Discord will not take a role yet";
+    return result;
+  }
+
   const current = new Set<string>(
-    Array.isArray((member.json as { roles?: string[] })?.roles)
-      ? ((member.json as { roles: string[] }).roles || [])
-      : []
+    Array.isArray(memberJson?.roles) ? memberJson.roles || [] : []
   );
 
+  // Grant the role they should have before taking any role away.
+  // A failed grant must not leave them with nothing.
   for (const roleId of managed) {
-    const shouldHave = want.has(roleId);
-    const has = current.has(roleId);
-    if (shouldHave && !has) {
-      const put = await discordJson(
-        botToken,
-        `/guilds/${guildId}/members/${discordUserId}/roles/${roleId}`,
-        { method: "PUT" }
-      );
-      // 204 No Content = success; 404 role/member missing
-      if (put.ok || put.status === 204) {
-        result.added.push(roleId);
-        // First-time Visitor → welcome pack DM (idempotent edge)
-        if (roles.visitor && roleId === roles.visitor && tier === "visitor") {
-          try {
-            const welcomeUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/discord-welcome-pack`;
-            const feedKey =
-              Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
-              Deno.env.get("CRON_API_KEY") ||
-              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
-              "";
-            if (feedKey) {
-              await fetch(welcomeUrl, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${feedKey}`,
-                  "x-discord-feed-key": feedKey,
-                },
-                body: JSON.stringify({
-                  action: "welcome_one",
-                  discord_user_id: discordUserId,
-                  assign_visitor: false,
-                  source: "discord-sync-roles",
-                }),
-              });
-            }
-          } catch {
-            /* non-fatal */
-          }
-        }
-      } else if (put.status !== 404) {
-        result.error = `add_${roleId}_${put.status}: ${put.text.slice(0, 160)}`;
-        return result;
-      }
-      await sleep(400);
-    } else if (!shouldHave && has) {
-      const del = await discordJson(
-        botToken,
-        `/guilds/${guildId}/members/${discordUserId}/roles/${roleId}`,
-        { method: "DELETE" }
-      );
-      if (del.ok || del.status === 204) {
-        result.removed.push(roleId);
-      } else if (del.status !== 404) {
-        result.error = `remove_${roleId}_${del.status}: ${del.text.slice(0, 160)}`;
-        return result;
-      }
-      await sleep(400);
+    if (!want.has(roleId) || current.has(roleId)) continue;
+    const put = await discordJson(
+      botToken,
+      `/guilds/${guildId}/members/${discordUserId}/roles/${roleId}`,
+      { method: "PUT" }
+    );
+    if (!(put.ok || put.status === 204)) {
+      result.error = discordErr(`add_${roleId}`, put);
+      return result;
     }
+    result.added.push(roleId);
+    current.add(roleId);
+    if (roles.visitor && roleId === roles.visitor && tier === "visitor") {
+      try {
+        const welcomeUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/discord-welcome-pack`;
+        const feedKey =
+          Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
+          Deno.env.get("CRON_API_KEY") ||
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
+          "";
+        if (feedKey) {
+          await fetch(welcomeUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${feedKey}`,
+              "x-discord-feed-key": feedKey,
+            },
+            body: JSON.stringify({
+              action: "welcome_one",
+              discord_user_id: discordUserId,
+              assign_visitor: false,
+              source: "discord-sync-roles",
+            }),
+          });
+        }
+      } catch {
+        /* non-fatal */
+      }
+    }
+    await sleep(400);
+  }
+
+  for (const roleId of managed) {
+    if (want.has(roleId) || !current.has(roleId)) continue;
+    const del = await discordJson(
+      botToken,
+      `/guilds/${guildId}/members/${discordUserId}/roles/${roleId}`,
+      { method: "DELETE" }
+    );
+    if (!(del.ok || del.status === 204)) {
+      result.error = discordErr(`remove_${roleId}`, del);
+      return result;
+    }
+    result.removed.push(roleId);
+    await sleep(400);
   }
 
   return result;
@@ -669,9 +687,15 @@ Deno.serve(async (req) => {
           lookup_tags: memberLookupTags(m),
           auto_link: autoLink,
         });
+        const displayName =
+          (m.nick && String(m.nick).trim()) ||
+          (m.user?.global_name && String(m.user.global_name).trim()) ||
+          (m.user?.username && String(m.user.username).trim()) ||
+          "";
         if ("error" in resolved) {
           results.push({
             discord_user_id: uid,
+            name: displayName,
             tier: "visitor",
             added: [],
             removed: [],
@@ -687,7 +711,11 @@ Deno.serve(async (req) => {
           resolved.tier,
           roles
         );
-        results.push({ ...sync, linked_owner_id: resolved.linked_owner_id || null });
+        results.push({
+          ...sync,
+          name: displayName,
+          linked_owner_id: resolved.linked_owner_id || null,
+        });
         await sleep(350);
       }
 
@@ -696,6 +724,15 @@ Deno.serve(async (req) => {
         (r) => r.added.length || r.removed.length
       ).length;
       const done = batch.length < Math.min(limit, 1000);
+      const failures = results
+        .filter((r) => r.error)
+        .slice(0, 20)
+        .map((r) => ({
+          discord_user_id: r.discord_user_id,
+          name: r.name || null,
+          tier: r.tier,
+          error: r.error,
+        }));
 
       return jsonResponse({
         ok: true,
@@ -704,6 +741,7 @@ Deno.serve(async (req) => {
         changed,
         linked,
         errors,
+        failures,
         next_after: done ? null : lastId,
         done,
         results: results.slice(0, 40),

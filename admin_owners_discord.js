@@ -559,6 +559,7 @@ async function syncEntireGuildRoles() {
   let totalChanged = 0;
   let totalErrors = 0;
   let pages = 0;
+  const failures = [];
 
   try {
     for (;;) {
@@ -587,17 +588,25 @@ async function syncEntireGuildRoles() {
       totalScanned += Number(data?.scanned || 0);
       totalChanged += Number(data?.changed || 0);
       totalErrors += Number(data?.errors || 0);
+      if (Array.isArray(data?.failures)) {
+        for (const row of data.failures) {
+          if (failures.length >= 8) break;
+          const who = row?.name || row?.discord_user_id || "someone";
+          failures.push(`${who}: ${row?.error || "failed"}`);
+        }
+      }
       if (data?.done || !data?.next_after) break;
       after = data.next_after;
       if (pages >= 40) break;
     }
 
+    const failNote = failures.length ? ` — ${failures.join(" · ")}` : "";
     setStatus(
       "discordStatus",
-      `✅ Guild sync: ${totalChanged} updated · ${totalScanned} checked` +
-        (totalErrors ? ` · ${totalErrors} errors` : "") +
-        " (includes Visitors).",
-      true
+      `Guild sync: ${totalChanged} updated · ${totalScanned} checked` +
+        (totalErrors ? ` · ${totalErrors} not changed` : "") +
+        failNote,
+      totalErrors === 0
     );
     await loadMembers();
   } finally {
