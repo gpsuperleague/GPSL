@@ -1617,11 +1617,11 @@ function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } =
 
 const wlColFilters = { main: {}, archived: {} };
 
-/** Main board, 32 columns. Groups must stay in this order. */
+/** Main board, 31 columns. Groups must stay in this order. */
 const WL_MAIN_GROUPS = [
   { id: "owner", label: "Owner", cols: 7 },
   { id: "join", label: "Join order", cols: 1 },
-  { id: "season", label: "Season", cols: 3 },
+  { id: "season", label: "Season", cols: 2 },
   { id: "support", label: "Support", cols: 2 },
   { id: "logins", label: "Logins", cols: 5 },
   { id: "fixtures", label: "Fixtures", cols: 4 },
@@ -1632,7 +1632,7 @@ const WL_MAIN_GROUPS = [
 ];
 const WL_MAIN_FILTERS = [
   "skip", "skip", "skip", "values", "values", "values", "values",
-  "s1", "tick", "tick", "tick",
+  "s1", "tick", "tick",
   "tick", "paid",
   "login", "since", "count", "count", "curlogins",
   "count", "count", "ratio", "count",
@@ -1642,11 +1642,11 @@ const WL_MAIN_FILTERS = [
   "skip",
 ];
 
-/** Archived board, 30 columns. No Paid column, and no next-month H column. */
+/** Archived board, 29 columns. No Paid column, and no next-month H column. */
 const WL_ARCHIVED_GROUPS = [
   { id: "owner", label: "Owner", cols: 7 },
   { id: "join", label: "Join order", cols: 1 },
-  { id: "season", label: "Season", cols: 3 },
+  { id: "season", label: "Season", cols: 2 },
   { id: "support", label: "Support", cols: 1 },
   { id: "logins", label: "Logins", cols: 5 },
   { id: "fixtures", label: "Fixtures", cols: 3 },
@@ -1657,7 +1657,7 @@ const WL_ARCHIVED_GROUPS = [
 ];
 const WL_ARCHIVED_FILTERS = [
   "skip", "skip", "skip", "values", "values", "values", "values",
-  "s1", "tick", "tick", "tick",
+  "s1", "tick", "tick",
   "tick",
   "login", "since", "count", "count", "curlogins",
   "count", "count", "count",
@@ -2806,7 +2806,6 @@ async function loadWaitingListAdmin() {
   const waitingCount = waitingCombined.length;
   const ownerCount = ownerRows.length;
   const auctionTotal = invited.length;
-  const testTotal = rows.filter((r) => !!r.confirmed_test_season).length;
   const liveTotal = rows.filter((r) => !!r.confirmed_live_season).length;
   const sortNote = data?.priority_uses_admin_sort
     ? "Section sort: supporters first (same order among themselves), then Season 1 rejects at bottom, then login activity; drag still sets saved season priority underneath"
@@ -2827,7 +2826,7 @@ async function loadWaitingListAdmin() {
     ? ` · Fines unavailable (run admin_owner_board_fine_forecast_20261021.sql)`
     : "";
 
-  const colSpan = 32;
+  const colSpan = 31;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}" style="padding:10px 10px;color:#ccc;font-size:13px;font-weight:600;border-bottom:1px solid #444;border-top:1px solid #333;background:#161616">${label}</td></tr>`;
   let overallIndex = 0;
@@ -2843,7 +2842,6 @@ async function loadWaitingListAdmin() {
     `<th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>` +
     `<th class="wl-col-join" title="Join order. Click a cell to set or clear the number. Accepted and the other marks stay on the cell." style="text-align:center;line-height:1.25">Join order</th>` +
     `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
-    `<th title="Confirmed for test season" style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Ko-fi Supporter (manual). Unset keeps perks until month end." style="text-align:center;line-height:1.25">Supporter</th>` +
     `<th title="Supporter months paid in ${supporterPayData.year} — click a cell to tick months" style="text-align:center;line-height:1.25">Paid<br><span style="color:#888;font-weight:normal">${supporterPayData.year}</span></th>` +
@@ -3463,7 +3461,6 @@ async function loadArchivedOwnersSection() {
     `<th title="When they were archived (UK)">Archived (UK)</th>` +
     `<th class="wl-col-join" title="Join order. The number and Accepted stay on the cell." style="text-align:center;line-height:1.25">Join order</th>` +
     `<th class="wl-col-season" style="text-align:center;line-height:1.25">Auction</th>` +
-    `<th title="Confirmed for test season" style="text-align:center">Test</th>` +
     `<th title="Confirmed for live season" style="text-align:center">Live</th>` +
     `<th title="Ko-fi Supporter" style="text-align:center">Supporter</th>` +
     `<th class="wl-col-activity wl-col-login">Last login</th>` +
@@ -3497,7 +3494,6 @@ async function loadArchivedOwnersSection() {
     const row = rows[i];
       const email = row.email || "";
     const tag = row.owner_tag || "—";
-    const testOn = !!row.confirmed_test_season;
     const liveOn = !!row.confirmed_live_season;
     const act = row.activity || {};
     const sec = row.security || {};
@@ -3608,10 +3604,6 @@ async function loadArchivedOwnersSection() {
       }</td>
       ${formatSeason1StatusCell(row)}
       <td class="wl-col-season" style="text-align:center;color:#555">—</td>
-      <td style="text-align:center">
-        <input type="checkbox" class="wl-confirm-season" data-id="${escapeWl(row.owner_id)}" data-which="test"
-          title="Confirmed test season" ${testOn ? "checked" : ""}>
-      </td>
       <td style="text-align:center">
         <input type="checkbox" class="wl-confirm-season" data-id="${escapeWl(row.owner_id)}" data-which="live"
           title="Confirmed live season" ${liveOn ? "checked" : ""}>
@@ -3840,7 +3832,6 @@ function renderWaitingListAdminRow(
   { invited, section = "waiting", sectionIndex = null, overallIndex = null }
 ) {
   const email = row.email || "";
-  const testOn = !!row.confirmed_test_season;
   const liveOn = !!row.confirmed_live_season;
   const hasClub = !!row.has_club && !invited;
   const pos = sectionIndex ?? row.displayPosition ?? (invited ? "—" : row.position);
@@ -4039,10 +4030,6 @@ function renderWaitingListAdminRow(
     ${formatSeason1StatusCell(row)}
     ${auctionCell}
     <td style="text-align:center">
-      <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="test"
-        title="Confirmed test season" ${testOn ? "checked" : ""}>
-        </td>
-    <td style="text-align:center">
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"
         title="Confirmed live season" ${liveOn ? "checked" : ""}>
     </td>
@@ -4223,13 +4210,10 @@ function escapeWl(s) {
 function refreshWaitingListConfirmTotals() {
   const wrap = document.getElementById("wlAdminTableWrap");
   if (!wrap) return;
-  const testBoxes = [...wrap.querySelectorAll('.wl-confirm-season[data-which="test"]')];
   const liveBoxes = [...wrap.querySelectorAll('.wl-confirm-season[data-which="live"]')];
   const auctionBoxes = [...wrap.querySelectorAll(".wl-auction-invite")];
-  const testEl = document.getElementById("wlTestTotal");
   const liveEl = document.getElementById("wlLiveTotal");
   const auctionEl = document.getElementById("wlAuctionTotal");
-  if (testEl) testEl.textContent = String(testBoxes.filter((c) => c.checked).length);
   if (liveEl) liveEl.textContent = String(liveBoxes.filter((c) => c.checked).length);
   if (auctionEl) auctionEl.textContent = String(auctionBoxes.filter((c) => c.checked).length);
 }
