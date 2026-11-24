@@ -285,6 +285,8 @@ async function resolveTier(
     discord_user_id?: string | null;
     lookup_tags?: string[];
     auto_link?: boolean;
+    bot_token?: string;
+    guild_id?: string;
   }
 ): Promise<
   | { discord_user_id: string; tier: Tier; linked_owner_id?: string | null }
@@ -336,16 +338,52 @@ async function resolveTier(
       .select("owner_id, owner_tag, discord_user_id");
 
     let matched: { owner_id: string; owner_tag: string } | null = null;
+    let staleLink: { owner_id: string; owner_tag: string; discord_user_id: string } | null =
+      null;
     for (const row of registryRows || []) {
       const tag = normalizeTag(row.owner_tag || "");
       if (!tag || !tags.includes(tag)) continue;
       const existing = String(row.discord_user_id || "").trim();
-      if (existing && existing !== discordUserId) continue; // taken by someone else
+      if (existing && existing !== discordUserId) {
+        // Saved Discord id belongs to someone else. Relink only if that
+        // account has left the server (checked below).
+        if (!staleLink) {
+          staleLink = {
+            owner_id: String(row.owner_id),
+            owner_tag: String(row.owner_tag || ""),
+            discord_user_id: existing,
+          };
+        }
+        continue;
+      }
       matched = {
         owner_id: String(row.owner_id),
         owner_tag: String(row.owner_tag || ""),
       };
       break;
+    }
+
+    if (!matched && staleLink && opts.bot_token && opts.guild_id) {
+      const oldMember = await discordJson(
+        opts.bot_token,
+        `/guilds/${opts.guild_id}/members/${staleLink.discord_user_id}`
+      );
+      if (oldMember.status === 404) {
+        const { error: linkErr } = await admin
+          .from("gpsl_owner_registry")
+          .update({ discord_user_id: discordUserId })
+          .eq("owner_id", staleLink.owner_id)
+          .eq("discord_user_id", staleLink.discord_user_id);
+        if (linkErr) return { error: `relink_failed: ${linkErr.message}` };
+        matched = {
+          owner_id: staleLink.owner_id,
+          owner_tag: staleLink.owner_tag,
+        };
+      } else if (oldMember.ok) {
+        return {
+          error: `${staleLink.owner_tag} is linked to a different Discord account that is still in the server`,
+        };
+      }
     }
 
     if (matched?.owner_id) {
@@ -686,6 +724,8 @@ Deno.serve(async (req) => {
           discord_user_id: uid,
           lookup_tags: memberLookupTags(m),
           auto_link: autoLink,
+          bot_token: botToken,
+          guild_id: guildId,
         });
         const displayName =
           (m.nick && String(m.nick).trim()) ||

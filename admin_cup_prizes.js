@@ -14,6 +14,10 @@ const STAGE_ORDER = [
   "winner",
   "runner_up",
   "final",
+  "group_win",
+  "group_draw",
+  "group_qualify",
+  "group_exit",
 ];
 
 /**
@@ -51,7 +55,16 @@ function stagesForCup(cup) {
     return [...finals, { value: "r2", label: "Last 16" }, appearance];
   }
   if (cup === "super8" || cup === "bowl") {
-    return [...finals, appearance];
+    return [
+      { value: "winner", label: "Winner" },
+      { value: "runner_up", label: "Runner-up" },
+      { value: "sf", label: "Semi-final appearance" },
+      { value: "group_qualify", label: "Qualify from group" },
+      { value: "group_exit", label: "Did not qualify" },
+      { value: "group_win", label: "Group win (extra)" },
+      { value: "group_draw", label: "Group draw (extra)" },
+      { value: "appearance", label: "Appearance (each match)" },
+    ];
   }
   return [
     ...finals,

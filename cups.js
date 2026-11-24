@@ -717,6 +717,27 @@ function formatMoneyCompact(amount) {
   return formatMoney(n);
 }
 
+function groupPrizeSummary() {
+  if (currentCup !== "super8" && currentCup !== "bowl") return "";
+  const lines = [
+    ["appearance", "each match"],
+    ["group_win", "group win"],
+    ["group_draw", "group draw"],
+    ["group_qualify", "qualify"],
+    ["group_exit", "did not qualify"],
+    ["sf", "semi-final"],
+    ["winner", "winner"],
+    ["runner_up", "runner-up"],
+  ];
+  const parts = [];
+  for (const [stage, label] of lines) {
+    const amt = Number(cupPrizeByStage.get(stage) || 0);
+    if (amt > 0) parts.push(`${label} ${formatMoneyCompact(amt)}`);
+  }
+  if (!parts.length) return "";
+  return `Prize money: ${parts.join(" · ")}. A loss pays no extra.`;
+}
+
 function roundPrizeHint(round_no) {
   const stage = cupRoundStageByNo.get(Number(round_no));
   if (!stage) return "";
@@ -866,6 +887,7 @@ async function renderCup() {
       cupRoundStageByNo = new Map();
     }
     renderBracket(nodes, extras);
+    renderGroupPrizeLine();
     return;
   }
 
@@ -891,6 +913,15 @@ async function renderCup() {
     cupRoundStageByNo = new Map();
   }
   renderBracket(nodes, extras);
+  renderGroupPrizeLine();
+}
+
+function renderGroupPrizeLine() {
+  const el = document.getElementById("cupGroupPrizes");
+  if (!el) return;
+  const text = groupPrizeSummary();
+  el.hidden = !text;
+  el.textContent = text;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
