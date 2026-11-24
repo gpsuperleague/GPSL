@@ -31,6 +31,7 @@ const CORE_PREVIEW_LINE_IDS = [
   "upkeep_34plus",
   "upkeep_star_tax",
   "staff_manager",
+  "gov_income_tax",
 ];
 
 function corePreviewSections() {
@@ -48,21 +49,21 @@ function coreForecastNet(row) {
   );
 }
 
-const TWEAK_STORAGE_KEY = "gpsl_fin_balance_tweaks_v1";
+const TWEAK_STORAGE_KEY = "gpsl_fin_balance_tweaks_v2";
 
 /** Levers the admin can actually move. `lines` are forecast line ids summed into the lever base. */
 const TWEAK_LEVERS = [
-  { id: "prize_league", label: "League prize money", lines: ["prize_league"], share: 25, href: "admin_league_prizes.html", where: "League Prize Money" },
-  { id: "prize_cup", label: "Cup prize money", lines: ["prize_cup"], share: 0, href: "admin_cup_prizes.html", where: "Cup Prize Money" },
-  { id: "prize_tv", label: "TV revenue", lines: ["prize_tv"], share: 15, href: "admin_tv_revenue.html", where: "TV Revenue" },
-  { id: "gates", label: "Gate receipts", lines: ["gate_league", "gate_cup"], share: 0, href: "admin_stadium_settings.html", where: "Stadium settings (ticket / gate)" },
+  { id: "prize_league", label: "League prize money", lines: ["prize_league"], share: 20, href: "admin_league_prizes.html", where: "League Prize Money" },
+  { id: "prize_cup", label: "Cup prize money", lines: ["prize_cup"], share: 10, href: "admin_cup_prizes.html", where: "Cup Prize Money" },
+  { id: "prize_tv", label: "TV revenue", lines: ["prize_tv"], share: 10, href: "admin_tv_revenue.html", where: "TV Revenue" },
+  { id: "gates", label: "Gate receipts", lines: ["gate_league", "gate_cup"], share: 10, href: "admin_stadium_settings.html", where: "Stadium settings (ticket / gate)" },
   { id: "gov_hg", label: "HG subsidy", lines: ["gov_hg"], share: 10, href: "admin_gov_subsidies.html", where: "Gov subsidies" },
   { id: "gov_youth", label: "Youth subsidy", lines: ["gov_youth"], share: 5, href: "admin_gov_subsidies.html", where: "Gov subsidies" },
-  { id: "upkeep_wages", label: "Wages", lines: ["upkeep_wages"], share: 30, href: "admin_wage_pct.html", where: "Wage %" },
-  { id: "upkeep_34plus", label: "34+ age fee", lines: ["upkeep_34plus"], share: 0, href: "admin_tax_34.html", where: "34+ age fee" },
+  { id: "upkeep_wages", label: "Wages", lines: ["upkeep_wages"], share: 15, href: "admin_wage_pct.html", where: "Wage %" },
+  { id: "upkeep_34plus", label: "34+ age fee", lines: ["upkeep_34plus"], share: 5, href: "admin_tax_34.html", where: "34+ age fee" },
   { id: "upkeep_star_tax", label: "Star tax", lines: ["upkeep_star_tax"], share: 5, href: "admin_star_tax.html", where: "Star tax" },
-  { id: "infra_maintenance", label: "Stadium maintenance", lines: ["infra_maintenance"], share: 10, href: "admin_stadium_costs.html", where: "Stadium costs (maintenance %)" },
-  { id: "gov_income_tax", label: "Income tax", lines: ["gov_income_tax"], share: 0, href: "admin_tax_pct.html", where: "Tax %" },
+  { id: "infra_maintenance", label: "Stadium maintenance", lines: ["infra_maintenance"], share: 5, href: "admin_stadium_costs.html", where: "Stadium costs (maintenance %)" },
+  { id: "gov_income_tax", label: "Income tax", lines: ["gov_income_tax"], share: 5, href: "admin_tax_pct.html", where: "Tax %" },
 ];
 
 function loadTweakSettings() {
@@ -886,7 +887,7 @@ function renderTweaks({ keepFocus = null } = {}) {
       (Math.abs(unallocated) > 0.5
         ? ` <span class="neg">${formatB(Math.abs(unallocated))} could not be allocated within the ${tweakSettings.capPct}% cap — raise the cap or add shares.</span>`
         : "") +
-      ` Debt interest and FFP are not levers; they move on their own once balances change.`;
+      ` Every line with a forecast is already inside that average, including amounts still to come. A share of 0 keeps the forecast and does not move the line.`;
   }
 
   const pct = (n) => `${n >= 0 ? "+" : "−"}${Math.abs(n).toFixed(1)}%`;
@@ -899,20 +900,24 @@ function renderTweaks({ keepFocus = null } = {}) {
       const newLevel = l.base + effect;
       const changePct = Math.abs(l.base) > 0.5 ? (effect / Math.abs(l.base)) * 100 : 0;
       const levelPct = isIncome ? changePct : -changePct;
-      const off = l.share <= 0 || Math.abs(l.base) < 0.5;
+      const held = l.share <= 0 && Math.abs(l.base) > 0.5;
+      const off = Math.abs(l.base) < 0.5;
       const cls = [off ? "tw-off" : "", capped.has(l.id) ? "tw-capped" : ""]
         .filter(Boolean)
         .join(" ");
-      const changeTxt =
-        off || Math.abs(effect) < 0.5
-          ? "—"
-          : `${pct(levelPct)} ${isIncome ? (levelPct >= 0 ? "raise" : "cut") : levelPct >= 0 ? "cost up" : "cost down"}${capped.has(l.id) ? " (cap)" : ""}`;
+      const changeTxt = off
+        ? "—"
+        : held
+          ? "Counted, not moved"
+          : Math.abs(effect) < 0.5
+            ? "—"
+            : `${pct(levelPct)} ${isIncome ? (levelPct >= 0 ? "raise" : "cut") : levelPct >= 0 ? "cost up" : "cost down"}${capped.has(l.id) ? " (cap)" : ""}`;
       return `<tr class="${cls}">
         <td>${escapeHtml(l.label)}</td>
         <td><input type="number" class="tw-share" data-lever="${l.id}" min="0" step="5" value="${l.share}"></td>
         <td class="${moneyClass(l.base)}">${formatB(l.base)}</td>
         <td>${changeTxt}</td>
-        <td class="${moneyClass(newLevel)}">${off ? "—" : formatB(newLevel)}</td>
+        <td class="${moneyClass(held ? l.base : newLevel)}">${off ? "—" : formatB(held ? l.base : newLevel)}</td>
         <td class="${moneyClass(effect)}">${off ? "—" : formatB(effect)}</td>
         <td class="${moneyClass(effect)}">${off ? "—" : formatB(effect / clubs)}</td>
         <td><a href="${l.href}" style="color:#ff9900;">${escapeHtml(l.where)}</a></td>
