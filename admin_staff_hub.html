@@ -216,7 +216,13 @@
       padding: 8px 10px; min-width: 220px;
       background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
     }
-    .wl-board-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
+    .wl-board-scroll {
+      overflow: auto;
+      max-height: calc(100vh - 150px);
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+    .wl-board-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; table-layout: auto; }
     .wl-board-table th,
     .wl-board-table td {
       border-bottom: 1px solid #333;
@@ -247,6 +253,7 @@
       white-space: nowrap;
     }
     .wl-board-table .wl-group-owner { border-left: 2px solid #555; background: #1a1a1a; }
+    .wl-board-table .wl-group-join { border-left: 2px solid #c9b27a; color: #f0e2b6; background: #221c12; }
     .wl-board-table .wl-group-season { border-left: 2px solid #886622; color: #e0b84a; background: #1c1810; }
     .wl-board-table .wl-group-support { border-left: 2px solid #3a6a3a; color: #9d9; background: #142014; }
     .wl-board-table .wl-group-logins { border-left: 2px solid #3a6a8a; color: #7eb8d8; background: #121820; }
@@ -257,6 +264,8 @@
     .wl-board-table .wl-group-actions { border-left: 2px solid #444; background: #1a1a1a; }
     .wl-board-main thead tr:not(.wl-group-row) > :nth-child(8),
     .wl-board-main tbody tr:not(.wl-section) > :nth-child(8),
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(9),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(9),
     .wl-board-main thead tr:not(.wl-group-row) > :nth-child(12),
     .wl-board-main tbody tr:not(.wl-section) > :nth-child(12),
     .wl-board-main thead tr:not(.wl-group-row) > :nth-child(14),
@@ -272,7 +281,9 @@
     .wl-board-main thead tr:not(.wl-group-row) > :nth-child(32),
     .wl-board-main tbody tr:not(.wl-section) > :nth-child(32) { border-left-width: 2px; border-left-style: solid; }
     .wl-board-main thead tr:not(.wl-group-row) > :nth-child(8),
-    .wl-board-main tbody tr:not(.wl-section) > :nth-child(8) { border-left-color: #886622; }
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(8) { border-left-color: #c9b27a; }
+    .wl-board-main thead tr:not(.wl-group-row) > :nth-child(9),
+    .wl-board-main tbody tr:not(.wl-section) > :nth-child(9) { border-left-color: #886622; }
     .wl-board-main thead tr:not(.wl-group-row) > :nth-child(12),
     .wl-board-main tbody tr:not(.wl-section) > :nth-child(12) { border-left-color: #3a6a3a; }
     .wl-board-main thead tr:not(.wl-group-row) > :nth-child(14),
@@ -289,6 +300,8 @@
     .wl-board-main tbody tr:not(.wl-section) > :nth-child(32) { border-left-color: #444; }
     .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(8),
     .wl-board-table.wl-archived-table tbody tr > :nth-child(8),
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(9),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(9),
     .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(12),
     .wl-board-table.wl-archived-table tbody tr > :nth-child(12),
     .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(13),
@@ -304,7 +317,9 @@
     .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(30),
     .wl-board-table.wl-archived-table tbody tr > :nth-child(30) { border-left-width: 2px; border-left-style: solid; }
     .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(8),
-    .wl-board-table.wl-archived-table tbody tr > :nth-child(8) { border-left-color: #886622; }
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(8) { border-left-color: #c9b27a; }
+    .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(9),
+    .wl-board-table.wl-archived-table tbody tr > :nth-child(9) { border-left-color: #886622; }
     .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(12),
     .wl-board-table.wl-archived-table tbody tr > :nth-child(12) { border-left-color: #3a6a3a; }
     .wl-board-table.wl-archived-table thead tr:not(.wl-group-row) > :nth-child(13),
@@ -321,6 +336,18 @@
     .wl-board-table.wl-archived-table tbody tr > :nth-child(30) { border-left-color: #444; }
     .wl-board-table th.wl-col-owner,
     .wl-board-table td.wl-col-owner { border-left: 2px solid #555; }
+    .wl-board-table th.wl-col-join,
+    .wl-board-table td.wl-col-join { border-left: 2px solid #c9b27a; }
+    .wl-board-table .wl-sticky-head { z-index: 3; }
+    .wl-board-table .wl-sticky-col { z-index: 2; }
+    .wl-board-table .wl-sticky-head.wl-sticky-col { z-index: 5; }
+    .wl-board-table thead tr:not(.wl-group-row) th.wl-sticky-head { background: #1a1a1a; }
+    .wl-board-table tr.wl-col-filters th.wl-sticky-head { background: #141414; }
+    .wl-board-table tbody td.wl-sticky-col { background: #141414; }
+    .wl-board-table tr.wl-club-owner td.wl-sticky-col { background: #121212; }
+    .wl-board-table tr.wl-s1-expired-pending td.wl-sticky-col { background: #2c1c12; }
+    .wl-board-table tbody tr:hover td.wl-sticky-col { background: #222; }
+    .wl-board-table .wl-sticky-end { box-shadow: 6px 0 8px rgba(0, 0, 0, 0.45); }
     .wl-board-table th.wl-col-season,
     .wl-board-table td.wl-col-season { border-left: 2px solid #886622; }
     .wl-board-table th.wl-col-activity,
@@ -760,7 +787,7 @@
           <button type="button" id="wlPaidClearAllBtn" class="button secondary" data-admin-only title="Clear the selected year's paid months for every owner">Reset paid year</button>
         </div>
         <div id="wlQualifyingSection" style="margin:0 0 22px;" hidden></div>
-        <div id="wlAdminTableWrap" style="overflow-x:auto;"></div>
+        <div id="wlAdminTableWrap" class="wl-board-scroll"></div>
         <div id="wlOnBreakSection" style="margin-top:28px;" hidden>
           <h3 style="margin:0 0 6px;font-size:15px;color:#e0b84a;">On break</h3>
           <p class="note" style="margin-bottom:10px;">
@@ -777,7 +804,7 @@
             <b>Delete from GPSL</b> permanently removes their login (Auth + registry). Admin only.
             Use the filter at the top of this page to search archived rows too.
           </p>
-          <div id="wlArchivedTableWrap" style="overflow-x:auto;"></div>
+          <div id="wlArchivedTableWrap" class="wl-board-scroll"></div>
         </div>
       </div>
     </section>
@@ -968,6 +995,6 @@
     </div>
   </div>
   <script>window.__gpslStaffHub = true;</script>
-  <script type="module" src="admin_staff_hub.js?v=20261124-owner-groups"></script>
+  <script type="module" src="admin_staff_hub.js?v=20261124-owner-freeze"></script>
 </body>
 </html>

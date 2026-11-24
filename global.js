@@ -3177,8 +3177,12 @@ export async function buildNav() {
       console.warn("Qualifying state skipped:", qErr);
     }
   }
+  const accountArchived =
+    registrySelf?.is_archived === true || registrySelf?.status === "archived";
   const qualifyingSubject =
-    qualifyingState?.subject === true && registrySelf?.has_club !== true;
+    !accountArchived &&
+    qualifyingState?.subject === true &&
+    registrySelf?.has_club !== true;
   const qualifyingOpen =
     qualifyingSubject && qualifyingState?.video_approved !== true;
   if (qualifyingOpen) {

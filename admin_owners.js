@@ -1620,7 +1620,8 @@ const wlColFilters = { main: {}, archived: {} };
 /** Main board, 32 columns. Groups must stay in this order. */
 const WL_MAIN_GROUPS = [
   { id: "owner", label: "Owner", cols: 7 },
-  { id: "season", label: "Season", cols: 4 },
+  { id: "join", label: "Join order", cols: 1 },
+  { id: "season", label: "Season", cols: 3 },
   { id: "support", label: "Support", cols: 2 },
   { id: "logins", label: "Logins", cols: 5 },
   { id: "fixtures", label: "Fixtures", cols: 4 },
@@ -1644,7 +1645,8 @@ const WL_MAIN_FILTERS = [
 /** Archived board, 30 columns. No Paid column, and no next-month H column. */
 const WL_ARCHIVED_GROUPS = [
   { id: "owner", label: "Owner", cols: 7 },
-  { id: "season", label: "Season", cols: 4 },
+  { id: "join", label: "Join order", cols: 1 },
+  { id: "season", label: "Season", cols: 3 },
   { id: "support", label: "Support", cols: 1 },
   { id: "logins", label: "Logins", cols: 5 },
   { id: "fixtures", label: "Fixtures", cols: 3 },
@@ -1845,6 +1847,68 @@ function wlFillColFilterSelects(table, board) {
     const allowed = options.some(([value]) => value === saved);
     sel.value = allowed ? saved : "";
     if (sel.value !== saved) savedMap[col] = sel.value;
+  });
+}
+
+const WL_FREEZE_COLS = 8;
+
+function pinOwnerBoard(root) {
+  const table = root?.querySelector?.("table.wl-board-table");
+  if (!table?.tHead) return;
+  const headRows = [...table.tHead.rows];
+  let top = 0;
+  for (const row of headRows) {
+    const height = row.getBoundingClientRect().height;
+    for (const cell of row.cells) {
+      cell.style.position = "sticky";
+      cell.style.top = `${top}px`;
+      cell.classList.add("wl-sticky-head");
+    }
+    top += height;
+  }
+  const titleRow = headRows[1];
+  if (!titleRow) return;
+  let left = 0;
+  const widths = [];
+  const mark = (cell, end) => {
+    if (!cell || cell.colSpan > 1) return;
+    cell.style.position = "sticky";
+    cell.style.left = `${left}px`;
+    cell.classList.add("wl-sticky-col");
+    cell.classList.toggle("wl-sticky-end", !!end);
+  };
+  for (let i = 0; i < WL_FREEZE_COLS && i < titleRow.cells.length; i += 1) {
+    const width = titleRow.cells[i].getBoundingClientRect().width;
+    widths.push(width);
+    const end = i === WL_FREEZE_COLS - 1;
+    mark(titleRow.cells[i], end);
+    mark(headRows[2]?.cells[i], end);
+    for (const body of table.tBodies) {
+      for (const tr of body.rows) mark(tr.cells[i], end);
+    }
+    left += width;
+  }
+  const group = headRows[0];
+  if (group?.cells[0]) {
+    group.cells[0].style.left = "0px";
+    group.cells[0].classList.add("wl-sticky-col");
+  }
+  if (group?.cells[1]) {
+    const joinLeft = widths.slice(0, 7).reduce((sum, n) => sum + n, 0);
+    group.cells[1].style.left = `${joinLeft}px`;
+    group.cells[1].classList.add("wl-sticky-col", "wl-sticky-end");
+  }
+}
+
+let wlBoardPinWired = false;
+function wireOwnerBoardPin(root) {
+  requestAnimationFrame(() => pinOwnerBoard(root));
+  if (wlBoardPinWired) return;
+  wlBoardPinWired = true;
+  window.addEventListener("resize", () => {
+    document
+      .querySelectorAll("#wlAdminTableWrap, #wlArchivedTableWrap")
+      .forEach((el) => pinOwnerBoard(el));
   });
 }
 
@@ -2160,7 +2224,7 @@ function formatSeason1StatusCell(row) {
   const tip = m?.title
     ? `${m.title}. Click to assign/clear Season 1 #.`
     : "Click to assign next Season 1 # (click again to clear and bump others)";
-  return `<td class="wl-col-season" style="text-align:center;padding:4px 2px">
+  return `<td class="wl-col-join" style="text-align:center;padding:4px 2px">
     <button type="button" class="wl-s1-cell" data-owner-id="${escapeWl(row.owner_id)}"
       title="${escapeWl(tip)}">
       ${numHtml}${badge}${deadlineHtml}
@@ -2777,7 +2841,7 @@ async function loadWaitingListAdmin() {
     `<th class="num">#</th>` +
     `<th style="width:2em"></th>` +
     `<th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>` +
-    `<th class="wl-col-season" title="Season 1 invite queue — click cell to assign next #" style="text-align:center;line-height:1.25">S1#</th>` +
+    `<th class="wl-col-join" title="Join order. Click a cell to set or clear the number. Accepted and the other marks stay on the cell." style="text-align:center;line-height:1.25">Join order</th>` +
     `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
     `<th title="Confirmed for test season" style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
@@ -2849,6 +2913,7 @@ async function loadWaitingListAdmin() {
 
   const filterEl = document.getElementById("wlBoardFilter");
   bindWlBoardFilters(tableWrap, "main");
+  wireOwnerBoardPin(tableWrap);
   filterSeasonOwnerBoard(filterEl?.value);
   tableWrap.addEventListener("change", (e) => {
     if (e.target?.matches?.('input[type="checkbox"]')) filterSeasonOwnerBoard();
@@ -3396,7 +3461,7 @@ async function loadArchivedOwnersSection() {
     `<th>Tag</th><th>Email</th>` +
     `<th title="Last club before archive">Last club</th>` +
     `<th title="When they were archived (UK)">Archived (UK)</th>` +
-    `<th class="wl-col-season" title="Season 1 invite queue" style="text-align:center;line-height:1.25">S1#</th>` +
+    `<th class="wl-col-join" title="Join order. The number and Accepted stay on the cell." style="text-align:center;line-height:1.25">Join order</th>` +
     `<th class="wl-col-season" style="text-align:center;line-height:1.25">Auction</th>` +
     `<th title="Confirmed for test season" style="text-align:center">Test</th>` +
     `<th title="Confirmed for live season" style="text-align:center">Live</th>` +
@@ -3598,6 +3663,7 @@ async function loadArchivedOwnersSection() {
   wrap.innerHTML = html;
 
   bindWlBoardFilters(wrap, "archived");
+  wireOwnerBoardPin(wrap);
   bindWlRowActionSelects(wrap);
   wrap.querySelectorAll(".wl-confirm-season").forEach((cb) => {
     cb.addEventListener("pointerdown", (e) => e.stopPropagation());

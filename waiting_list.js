@@ -1,5 +1,5 @@
 import { supabase } from "./supabase_client.js";
-import { initGlobal } from "./global.js?v=20261117-qualifying-home";
+import { initGlobal } from "./global.js?v=20261124-archive-qualifying";
 import {
   loadOwnerSupporterMap,
   ownerTagHtml,
@@ -537,6 +537,7 @@ async function loadMidSeasonClaimCard(self) {
   } catch (qErr) {
     console.warn("owner_qualifying_state", qErr);
   }
+  if (self?.is_archived || self?.status === "archived") return;
   if (qualifying?.subject === true && qualifying.video_approved !== true) {
     window.location.replace("qualifying.html");
     return;

@@ -15,18 +15,19 @@ export async function initMemberHomePage() {
   try {
     const { data: self } = await supabase.rpc("owner_registry_get_self");
     const { data: qualifying } = await supabase.rpc("owner_qualifying_state");
+
+    if (self?.is_archived || self?.status === "archived" || archived) {
+      main.hidden = true;
+      archivedCard.hidden = false;
+      await wireRejoinWaitingList(!!self?.has_club);
+      return;
+    }
+
     if (
       qualifying?.subject === true &&
       self?.has_club !== true
     ) {
       window.location.assign("qualifying.html");
-      return;
-    }
-
-    if (self?.is_archived || archived) {
-      main.hidden = true;
-      archivedCard.hidden = false;
-      await wireRejoinWaitingList(!!self?.has_club);
       return;
     }
 
