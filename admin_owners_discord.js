@@ -605,6 +605,144 @@ async function syncEntireGuildRoles() {
   }
 }
 
+let welcomeSendOffset = 0;
+
+const WELCOME_NUDGE = {
+  action: "welcome_members",
+  min_joined_days: 7,
+  exclude_club_within_days: 21,
+  dm_only: true,
+  include_visitors: true,
+};
+
+function welcomeRecipientRows(recipients) {
+  if (!Array.isArray(recipients) || !recipients.length) {
+    return `<p class="note">Nobody matches.</p>`;
+  }
+  return `<table class="discord-table">
+    <thead><tr><th>Name</th><th>Role</th><th>Days in server</th></tr></thead>
+    <tbody>${recipients
+      .map((r) => {
+        const name = r.display_name || r.username || r.discord_user_id || "—";
+        const role = r.audience === "member" ? "Member" : "Visitor";
+        const days = r.days_in_server == null ? "—" : String(r.days_in_server);
+        return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(role)}</td><td>${escapeHtml(days)}</td></tr>`;
+      })
+      .join("")}</tbody>
+  </table>`;
+}
+
+function renderWelcomePreview(data) {
+  const box = document.getElementById("welcomePreview");
+  if (!box) return;
+  const members = Number(data?.member_not_owner || 0);
+  const visitors = Number(data?.visitors_week_plus || 0);
+  const total = Number(data?.matching_total || 0);
+  const listed = Array.isArray(data?.recipients) ? data.recipients.length : 0;
+  box.innerHTML = `<div class="discord-audit">
+    <h3>${total} would get a DM</h3>
+    <div class="discord-audit-grid">
+      <div><div class="k">Members</div><div class="v">${members}</div></div>
+      <div><div class="k">Visitors</div><div class="v">${visitors}</div></div>
+      <div><div class="k">Owner role skipped</div><div class="v">${Number(data?.skipped_owner_role || 0)}</div></div>
+      <div><div class="k">Joined in the last week</div><div class="v">${Number(data?.skipped_recent_join || 0)}</div></div>
+      <div><div class="k">In charge within 3 weeks</div><div class="v">${Number(data?.skipped_club_charge || 0)}</div></div>
+    </div>
+  </div>
+  ${total > listed ? `<p class="note">Showing ${listed} of ${total}.</p>` : ""}
+  ${welcomeRecipientRows(data?.recipients)}`;
+}
+
+async function previewQualifyingWelcome() {
+  if (!allowCreateLogin) return;
+  const btn = document.getElementById("welcomePreviewBtn");
+  const sendBtn = document.getElementById("welcomeSendBtn");
+  welcomeSendOffset = 0;
+  if (btn) btn.disabled = true;
+  if (sendBtn) sendBtn.disabled = true;
+  setStatus("welcomeStatus", "Previewing…");
+  try {
+    const { data, error } = await invokeEdgeFunction("discord-welcome-pack", {
+      ...WELCOME_NUDGE,
+      dry_run: true,
+      limit: 500,
+      offset: 0,
+    });
+    if (error || data?.ok === false) {
+      setStatus("welcomeStatus", error?.message || data?.error || data?.reason || "Preview failed", false);
+      return;
+    }
+    renderWelcomePreview(data);
+    const total = Number(data?.matching_total || 0);
+    setStatus("welcomeStatus", `Preview only. ${total} would be sent. Nothing has been sent.`, true);
+    if (sendBtn) sendBtn.disabled = total < 1;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function sendQualifyingWelcome() {
+  if (!allowCreateLogin) return;
+  const previewBtn = document.getElementById("welcomePreviewBtn");
+  const sendBtn = document.getElementById("welcomeSendBtn");
+  if (previewBtn) previewBtn.disabled = true;
+  if (sendBtn) sendBtn.disabled = true;
+  let offset = welcomeSendOffset;
+  let welcomed = 0;
+  let failed = 0;
+  let pages = 0;
+  let finished = false;
+  try {
+    for (;;) {
+      pages += 1;
+      setStatus("welcomeStatus", `Sending… ${welcomed} sent so far (batch ${pages}).`);
+      const { data, error } = await invokeEdgeFunction("discord-welcome-pack", {
+        ...WELCOME_NUDGE,
+        dry_run: false,
+        limit: 12,
+        offset,
+      });
+      if (error || data?.ok === false) {
+        welcomeSendOffset = offset;
+        setStatus(
+          "welcomeStatus",
+          `${error?.message || data?.error || data?.reason || "Send failed"} · ${welcomed} sent · ${failed} failed. Send again to continue from here.`,
+          false
+        );
+        return;
+      }
+      welcomed += Number(data?.welcomed || 0);
+      failed += Number(data?.errors || 0);
+      const processed = Number(data?.processed || 0);
+      const remaining = Number(data?.remaining || 0);
+      if (processed < 1 || remaining < 1) {
+        finished = true;
+        break;
+      }
+      offset += processed;
+      welcomeSendOffset = offset;
+      if (pages >= 80) break;
+    }
+    if (finished) {
+      welcomeSendOffset = 0;
+      setStatus(
+        "welcomeStatus",
+        `Done. ${welcomed} sent` + (failed ? ` · ${failed} failed` : "") + ".",
+        failed === 0
+      );
+    } else {
+      setStatus(
+        "welcomeStatus",
+        `Stopped after ${welcomed} sent. Send again to continue.`,
+        false
+      );
+    }
+  } finally {
+    if (previewBtn) previewBtn.disabled = false;
+    if (sendBtn) sendBtn.disabled = finished;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   const user = await initAdminPage({ allowMod: true });
   if (!user) return;
@@ -625,6 +763,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   document
     .getElementById("discordShowMismatches")
     ?.addEventListener("change", renderTable);
+  document
+    .getElementById("welcomePreviewBtn")
+    ?.addEventListener("click", previewQualifyingWelcome);
+  document
+    .getElementById("welcomeSendBtn")
+    ?.addEventListener("click", sendQualifyingWelcome);
 
   await loadMembers();
 });

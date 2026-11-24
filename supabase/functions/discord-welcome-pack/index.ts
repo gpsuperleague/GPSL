@@ -44,7 +44,8 @@ async function resolveWelcomeIntake(
  *
  * Actions:
  *   welcome_newcomers — cron/poll (no VPS bot needed)
- *   welcome_members — Members role, exclude Owners (backfill new pack)
+ *   welcome_members — Members role, exclude Owners (backfill new pack).
+ *     Optional: min_joined_days (both roles), exclude_club_within_days, dm_only.
  *   on_join / welcome_one — single user
  *
  * Secrets: DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, DISCORD_ROLE_*,
@@ -126,6 +127,60 @@ function daysInGuild(joinedAt: string | null | undefined): number | null {
   return (Date.now() - t) / (1000 * 60 * 60 * 24);
 }
 
+type ClubCharge = {
+  status: string;
+  statusChangedAt: string | null;
+  hasClub: boolean;
+};
+
+/** Current club, active registry, or left within `withinDays`. No row = never in charge. */
+function recentlyInCharge(
+  charge: ClubCharge | undefined,
+  withinDays: number
+): boolean {
+  if (!charge) return false;
+  if (charge.hasClub || charge.status === "active") return true;
+  if (charge.status !== "on_break" && charge.status !== "archived") return false;
+  const t = charge.statusChangedAt ? Date.parse(charge.statusChangedAt) : NaN;
+  if (!Number.isFinite(t)) return true;
+  const days = (Date.now() - t) / (1000 * 60 * 60 * 24);
+  return days < withinDays;
+}
+
+// deno-lint-ignore no-explicit-any
+async function loadClubChargeByDiscord(admin: any): Promise<Map<string, ClubCharge>> {
+  const map = new Map<string, ClubCharge>();
+  const { data: regs } = await admin
+    .from("gpsl_owner_registry")
+    .select("discord_user_id, status, status_changed_at, owner_id")
+    .not("discord_user_id", "is", null);
+  const rows = (regs || []) as Array<{
+    discord_user_id?: string | null;
+    status?: string | null;
+    status_changed_at?: string | null;
+    owner_id?: string | null;
+  }>;
+  const { data: clubs } = await admin
+    .from("Clubs")
+    .select("owner_id")
+    .not("owner_id", "is", null);
+  const clubOwners = new Set<string>();
+  for (const club of clubs || []) {
+    if (club?.owner_id) clubOwners.add(String(club.owner_id));
+  }
+  for (const row of rows) {
+    const id = String(row.discord_user_id || "").trim();
+    if (!id) continue;
+    const ownerId = row.owner_id ? String(row.owner_id) : null;
+    map.set(id, {
+      status: String(row.status || ""),
+      statusChangedAt: row.status_changed_at ? String(row.status_changed_at) : null,
+      hasClub: !!(ownerId && clubOwners.has(ownerId)),
+    });
+  }
+  return map;
+}
+
 async function fetchGuildHumanIds(
   botToken: string,
   guildId: string
@@ -148,6 +203,7 @@ async function welcomeOneUser(opts: {
   via: string;
   audience?: WelcomePackAudience;
   packCtx?: WelcomePackContext;
+  dmOnly?: boolean;
 }): Promise<Record<string, unknown>> {
   const {
     admin,
@@ -162,6 +218,7 @@ async function welcomeOneUser(opts: {
     via,
     audience = via === "welcome_members" ? "member" : "visitor",
     packCtx,
+    dmOnly = false,
   } = opts;
 
   const intake =
@@ -221,13 +278,21 @@ async function welcomeOneUser(opts: {
   }
 
   const dm = await sendWelcomeDm(botToken, discordUserId, undefined, welcomeCtx);
-  const hall = await sendWelcomeChannel(
-    botToken,
-    guildId,
-    discordUserId,
-    null,
-    welcomeCtx
-  );
+  const hall = dmOnly
+    ? {
+        ok: false,
+        skipped: "dm_only",
+        error: undefined as string | undefined,
+        channel_id: undefined as string | undefined,
+        message_id: undefined as string | undefined,
+      }
+    : await sendWelcomeChannel(
+        botToken,
+        guildId,
+        discordUserId,
+        null,
+        welcomeCtx
+      );
 
   const ok = dm.ok || hall.ok;
   const errParts = [
@@ -897,7 +962,7 @@ Deno.serve(async (req) => {
         // Dry run can list a larger set; live send stays batched.
         const limit = Math.min(
           Math.max(Number.isFinite(limitRaw) ? limitRaw : dryRun ? 100 : 12, 1),
-          dryRun ? 150 : 25
+          dryRun ? 500 : 25
         );
         const offset = Math.max(
           Number.isFinite(offsetRaw) ? Math.floor(offsetRaw) : 0,
@@ -909,38 +974,70 @@ Deno.serve(async (req) => {
           ? Math.max(minVisitorDaysRaw, 0)
           : 7;
         const includeVisitors = body.include_visitors !== false;
+        const minJoinedDaysRaw = Number(body.min_joined_days);
+        const minJoinedDays = Number.isFinite(minJoinedDaysRaw)
+          ? Math.max(minJoinedDaysRaw, 0)
+          : null;
+        const excludeClubRaw = Number(body.exclude_club_within_days);
+        const excludeClubWithinDays = Number.isFinite(excludeClubRaw)
+          ? Math.max(excludeClubRaw, 0)
+          : null;
+        const dmOnly = body.dm_only === true;
+        const clubCharge =
+          excludeClubWithinDays != null
+            ? await loadClubChargeByDiscord(admin)
+            : null;
+        let skippedOwnerRole = 0;
+        let skippedRecentJoin = 0;
+        let skippedClubCharge = 0;
 
         const targets: WelcomeTarget[] = [];
         for (const h of humans) {
           if (onlyUnsent && sent.has(h.id)) continue;
           const roles = new Set(h.roles);
-          if (ownerRole && roles.has(ownerRole)) continue;
-
-          if (memberRole && roles.has(memberRole)) {
-            targets.push({
-              ...h,
-              audience: "member",
-              bucket: "member_not_owner",
-            });
+          if (ownerRole && roles.has(ownerRole)) {
+            skippedOwnerRole += 1;
             continue;
           }
 
-          if (
+          const isMember = !!(memberRole && roles.has(memberRole));
+          const isVisitor =
             includeVisitors &&
-            visitorRole &&
+            !!visitorRole &&
             roles.has(visitorRole) &&
-            !(memberRole && roles.has(memberRole))
-          ) {
+            !isMember;
+          if (!isMember && !isVisitor) continue;
+
+          if (minJoinedDays != null) {
             const days = daysInGuild(h.joined_at);
-            if (days != null && days >= minVisitorDays) {
-              targets.push({
-                ...h,
-                audience: "visitor",
-                bucket: "visitor_week_plus",
-              });
+            if (days == null || days < minJoinedDays) {
+              skippedRecentJoin += 1;
+              continue;
             }
+          } else if (isVisitor) {
+            const days = daysInGuild(h.joined_at);
+            if (days == null || days < minVisitorDays) continue;
           }
+
+          if (
+            excludeClubWithinDays != null &&
+            recentlyInCharge(clubCharge?.get(h.id), excludeClubWithinDays)
+          ) {
+            skippedClubCharge += 1;
+            continue;
+          }
+
+          targets.push({
+            ...h,
+            audience: isMember ? "member" : "visitor",
+            bucket: isMember ? "member_not_owner" : "visitor_week_plus",
+          });
         }
+
+        const filterNote =
+          minJoinedDays != null || excludeClubWithinDays != null || dmOnly
+            ? "Qualifying nudge — Members and Visitors in the server at least min_joined_days, not in charge of a club within exclude_club_within_days. DM only when dm_only."
+            : null;
 
         const memberCount = targets.filter(
           (t) => t.bucket === "member_not_owner"
@@ -975,7 +1072,15 @@ Deno.serve(async (req) => {
             only_unsent: onlyUnsent,
             include_visitors: includeVisitors,
             min_visitor_days: minVisitorDays,
-            delivers_to: ["discord_dm", "great_hall_channel"],
+            min_joined_days: minJoinedDays,
+            exclude_club_within_days: excludeClubWithinDays,
+            dm_only: dmOnly,
+            skipped_owner_role: skippedOwnerRole,
+            skipped_recent_join: skippedRecentJoin,
+            skipped_club_charge: skippedClubCharge,
+            delivers_to: dmOnly
+              ? ["discord_dm"]
+              : ["discord_dm", "great_hall_channel"],
             recipients: batch.map((h) => ({
               discord_user_id: h.id,
               username: h.username || null,
@@ -1001,8 +1106,9 @@ Deno.serve(async (req) => {
             }),
             intake_mode: intake.intakeMode,
             season_label: intake.seasonLabel,
-            note:
-              "Dry run — nothing sent. Members (no Owner) + Visitors in server ≥ min_visitor_days.",
+            note: filterNote
+              ? `Dry run — nothing sent. ${filterNote}`
+              : "Dry run — nothing sent. Members (no Owner) + Visitors in server ≥ min_visitor_days.",
           });
         }
 
@@ -1025,6 +1131,7 @@ Deno.serve(async (req) => {
             via: "welcome_members",
             audience: h.audience,
             packCtx: { audience: h.audience, ...intake },
+            dmOnly,
           });
           results.push(r);
           if (r.ok && !r.skipped) welcomed += 1;
@@ -1049,8 +1156,15 @@ Deno.serve(async (req) => {
           only_unsent: onlyUnsent,
           include_visitors: includeVisitors,
           min_visitor_days: minVisitorDays,
-          note:
-            "Members∩¬Owners + Visitors (≥7d by default). Next batch: pass offset += processed.",
+          min_joined_days: minJoinedDays,
+          exclude_club_within_days: excludeClubWithinDays,
+          dm_only: dmOnly,
+          skipped_owner_role: skippedOwnerRole,
+          skipped_recent_join: skippedRecentJoin,
+          skipped_club_charge: skippedClubCharge,
+          note: filterNote
+            ? `${filterNote} Next batch: pass offset += processed.`
+            : "Members∩¬Owners + Visitors (≥7d by default). Next batch: pass offset += processed.",
           results: results.slice(0, 20),
         });
       }

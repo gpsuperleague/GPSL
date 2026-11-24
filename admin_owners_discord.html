@@ -107,8 +107,24 @@
         <div id="discordStatus" class="status-line"></div>
         <div id="discordTableWrap" style="overflow-x:auto;"></div>
       </div>
+      <div class="card" id="qualifyingWelcomeCard" data-admin-only>
+        <h2>Qualifying welcome DM</h2>
+        <p class="note">
+          Discord DM only. Members get the account wording. Visitors get the apply-to-join wording.
+          Sent to people who are not Owners, joined the server at least 7 days ago, and have not
+          been in charge of a club in the last 3 weeks. Great Hall is not posted.
+          Preview first. Send repeats the pack even if they had an older one.
+          The <code>discord-welcome-pack</code> function must be deployed for this to run.
+        </p>
+        <div class="discord-filters">
+          <button type="button" id="welcomePreviewBtn" class="button secondary">Preview</button>
+          <button type="button" id="welcomeSendBtn" class="button" disabled>Send</button>
+        </div>
+        <div id="welcomeStatus" class="status-line"></div>
+        <div id="welcomePreview"></div>
+      </div>
     </div>
   </div>
-  <script type="module" src="admin_owners_discord.js?v=20261116-mod-scope"></script>
+  <script type="module" src="admin_owners_discord.js?v=20261124-qualifying-dm"></script>
 </body>
 </html>
