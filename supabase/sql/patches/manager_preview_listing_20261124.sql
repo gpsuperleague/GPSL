@@ -94,7 +94,9 @@ BEGIN
 
   v_month := lower(coalesce(public.competition_active_gpsl_month(v_season, now()), ''));
 
-  IF public.manager_list_sack_window_open() AND v_month IN ('june', 'july', 'january') THEN
+  -- Pre-season and an open June / July / January window list live.
+  -- Closed months (including August) stay on the preview path.
+  IF public.manager_list_sack_window_open() THEN
     RETURN jsonb_build_object('available', false, 'live', true, 'reason', 'window_open');
   END IF;
 
@@ -185,7 +187,7 @@ BEGIN
 
   v_month := lower(coalesce(public.competition_active_gpsl_month(v_season_id, v_now), ''));
 
-  IF public.manager_list_sack_window_open() AND v_month IN ('june', 'july', 'january') THEN
+  IF public.manager_list_sack_window_open() THEN
     IF NOT public.manager_sack_tenure_eligible(
       v_mgr.signed_season_id, v_mgr.signed_gpsl_month, v_season_id, v_month
     ) THEN
@@ -291,18 +293,14 @@ SET search_path = public
 AS $function$
 DECLARE
   v_now timestamptz := coalesce(p_now, now());
-  v_open boolean;
   v_season bigint;
   v_month text;
   v_end timestamptz;
   v_count int := 0;
 BEGIN
-  SELECT coalesce(transfer_window_open, false)
-  INTO v_open
-  FROM public.global_settings
-  WHERE id = 1;
-
-  IF NOT coalesce(v_open, false) THEN
+  -- Same gate as a live list: June and July count even before the player
+  -- window flag; January still needs that flag. August never starts these.
+  IF NOT public.manager_list_sack_window_open() THEN
     RETURN jsonb_build_object('ok', true, 'activated', 0, 'reason', 'window_closed');
   END IF;
 
