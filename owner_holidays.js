@@ -106,6 +106,20 @@ export async function amendOwnerHoliday(holidayId, startDate, endDate) {
   return { ok: true };
 }
 
+/** Today's calendar date in Europe/London, as YYYY-MM-DD. */
+export function ukTodayYmd() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const y = parts.find((p) => p.type === "year")?.value;
+  const m = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+  return `${y}-${m}-${day}`;
+}
+
 /** Convert holiday starts_at / ends_at (exclusive end) to UK date inputs YYYY-MM-DD */
 export function holidayRowToDateInputs(row) {
   const opts = {

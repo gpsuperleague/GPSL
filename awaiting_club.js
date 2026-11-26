@@ -8,6 +8,7 @@ import {
 } from "./match_scheduling.js";
 import { renderOwnerSeasonStatus } from "./owner_season_status.js?v=20260930-no-test-season";
 import { mountNextClubAuctionCountdown } from "./next_club_auction_countdown.js?v=20260930-next-auction";
+import { ukTodayYmd } from "./owner_holidays.js?v=20261126-no-past-holiday";
 
 let clubAssignmentPollTimer = null;
 let registrySelf = null;
@@ -197,6 +198,14 @@ async function loadPreclubHolidays() {
   renderEntryChecklist();
 }
 
+function applyPreclubHolidayDateMins() {
+  const min = ukTodayYmd();
+  const start = document.getElementById("holStart");
+  const end = document.getElementById("holEnd");
+  if (start) start.min = min;
+  if (end) end.min = min;
+}
+
 function wirePreclubHolidays() {
   const statusEl = document.getElementById("holStatus");
   const setStatus = (msg, ok) => {
@@ -205,11 +214,18 @@ function wirePreclubHolidays() {
     statusEl.style.color = ok ? "#9f9" : "#f88";
   };
 
+  applyPreclubHolidayDateMins();
+
   document.getElementById("holBookBtn")?.addEventListener("click", async () => {
+    applyPreclubHolidayDateMins();
     const start = document.getElementById("holStart")?.value;
     const end = document.getElementById("holEnd")?.value || start;
     if (!start) {
       setStatus("Pick a start date.", false);
+      return;
+    }
+    if (start < ukTodayYmd()) {
+      setStatus("Holiday cannot start on a past day.", false);
       return;
     }
     const { error } = await supabase.rpc("owner_preclub_holiday_book", {

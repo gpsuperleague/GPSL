@@ -13,7 +13,8 @@ import {
   formatUkDateRange,
   holidayStatusLabel,
   inclusiveDayCountFromDates,
-} from "./owner_holidays.js?v=20261019-supporter-holiday";
+  ukTodayYmd,
+} from "./owner_holidays.js?v=20261126-no-past-holiday";
 import { wireAvailabilityPanel } from "./owner_availability.js?v=20261020-owner-tz-avail";
 import { loadAvailabilityContextForClub } from "./match_scheduling.js?v=20261112-no-late-fee";
 import {
@@ -572,6 +573,11 @@ function updateHolidayDayPreview() {
     return;
   }
 
+  if (start < ukTodayYmd()) {
+    preview.textContent = "Holiday cannot start on a past day.";
+    return;
+  }
+
   const days = inclusiveDayCountFromDates(start, end);
   if (days <= 0) {
     preview.textContent = "End date must be on or after start.";
@@ -780,6 +786,7 @@ function wireHolidayExpandToggle() {
     panel.hidden = !show;
     btn.setAttribute("aria-expanded", show ? "true" : "false");
     if (show) {
+      applyHolidayDateMins();
       document.getElementById("holidayStartDate")?.focus();
     }
   });
@@ -1041,11 +1048,21 @@ function wireSeasonAbsence() {
   });
 }
 
+function applyHolidayDateMins() {
+  const min = ukTodayYmd();
+  const start = document.getElementById("holidayStartDate");
+  const end = document.getElementById("holidayEndDate");
+  if (start) start.min = min;
+  if (end) end.min = min;
+}
+
 function wireHolidayBooking() {
   const startInput = document.getElementById("holidayStartDate");
   const endInput = document.getElementById("holidayEndDate");
   const bookBtn = document.getElementById("bookHolidayBtn");
   const cancelEditBtn = document.getElementById("cancelHolidayEditBtn");
+
+  applyHolidayDateMins();
 
   const onDateChange = () => updateHolidayDayPreview();
   startInput?.addEventListener("change", onDateChange);
@@ -1062,6 +1079,12 @@ function wireHolidayBooking() {
 
     if (!start || !end) {
       setHolidayHint("Choose start and end dates.", true);
+      return;
+    }
+
+    applyHolidayDateMins();
+    if (start < ukTodayYmd()) {
+      setHolidayHint("Holiday cannot start on a past day.", true);
       return;
     }
 
