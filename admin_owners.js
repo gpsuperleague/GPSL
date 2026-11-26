@@ -2947,7 +2947,7 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">U ${escapeWl(curLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Home club’s kick-off proposals for ${escapeWl(nextMonthLabel)}, proposed/total, league and cup. Counts a proposal from the home club. League: home proposes in the month before; after that lock, away can open if nothing is pending. Cups: either club can propose once the round month opens. Vacant fixtures are left out.">H ${escapeWl(nextMonthLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Running total of unplayed fixtures frozen at month end / Record unplayed (survives catch-up sims). Includes live current month until that month is snapshotted.">U missed</th>` +
-    `<th class="num wl-num-unplayed" title="Match video uploaded after that fixture’s GPSL month lock">V late</th>` +
+    `<th class="num wl-num-unplayed" title="Discord upload after the video deadline lock (month the match was played in, or the fixture month if that is later). Confirming the result later does not count.">V late</th>` +
     `<th class="num wl-num-unplayed" title="Match video still missing 72 hours after that fixture’s month lock (₿500,000)">V fail</th>` +
     `<th class="num wl-num-fine" title="Projected strikes if ${escapeWl(fineLockLabel)} locks as things stand. ₿500,000 on home for each league or cup fixture still with no proposal from either club (next month, plus leftovers). A proposal in the last 48 hours is not an extra fee. A reply already overdue that takes another strike at the lock is ₿500,000 on the club who owes it. Holiday, a manual black box, and a new owner’s first partial month are left out. The ₿1,000,000 third-strike forfeit is not included.">F lock</th>` +
     `<th class="num wl-num-fine" title="Season fine total applied this competition season (not waived)">F tot</th>` +
@@ -3588,7 +3588,7 @@ async function loadArchivedOwnersSection() {
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(prevLabel)}">U ${escapeWl(prevLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(curLabel)}">U ${escapeWl(curLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Missed running total">U missed</th>` +
-    `<th class="num wl-num-unplayed" title="Match video uploaded after that fixture’s month lock">V late</th>` +
+    `<th class="num wl-num-unplayed" title="Discord upload after the video deadline lock (month the match was played in, or the fixture month if that is later). Confirming the result later does not count.">V late</th>` +
     `<th class="num wl-num-unplayed" title="Match video still missing 72 hours after that lock (₿500,000)">V fail</th>` +
     `<th class="num wl-num-fine" title="Projected strikes if the next month locks: ₿500,000 per fixture with no proposal from either club, plus another ₿500,000 for a reply already overdue. No late-arrangement fee. The ₿1,000,000 third-strike forfeit is not included.">F lock</th>` +
     `<th class="num wl-num-fine" title="Season fine total">F tot</th>` +
