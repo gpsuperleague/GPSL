@@ -309,6 +309,41 @@ function playGraceMonths(fixture) {
   return 2;
 }
 
+function rangesOverlap(startMs, endMs, unlockMs, lockMs) {
+  if (![startMs, endMs, unlockMs, lockMs].every((n) => Number.isFinite(n))) return false;
+  return startMs < lockMs && endMs > unlockMs;
+}
+
+/** Lock of the GPSL month a club returns into, when a holiday runs past the ordinary deadline. */
+function holidayReturnLockMs(fixture, ordinaryLockMs, playSort, grace) {
+  if (!Number.isFinite(ordinaryLockMs) || !Number.isFinite(playSort)) return null;
+  const endSort = playSort + grace;
+  let returnMs = null;
+  for (const short of [fixture?.home_club_short_name, fixture?.away_club_short_name]) {
+    const hol = ownerHolidayStatusForClub(short);
+    const startMs = hol?.starts_at ? new Date(hol.starts_at).getTime() : NaN;
+    const endMs = hol?.ends_at ? new Date(hol.ends_at).getTime() : NaN;
+    if (!(endMs > ordinaryLockMs)) continue;
+    let overlapsWindow = false;
+    for (const row of seasonCalendarByMonth.values()) {
+      const sort = Number(row.sort_order);
+      if (!Number.isFinite(sort) || sort < playSort || sort > endSort) continue;
+      const unlockMs = row.unlock_at ? new Date(row.unlock_at).getTime() : NaN;
+      const lockMs = row.lock_at ? new Date(row.lock_at).getTime() : NaN;
+      if (rangesOverlap(startMs, endMs, unlockMs, lockMs)) overlapsWindow = true;
+    }
+    if (overlapsWindow && (returnMs == null || endMs > returnMs)) returnMs = endMs;
+  }
+  if (returnMs == null) return null;
+  let hit = null;
+  for (const row of seasonCalendarByMonth.values()) {
+    const unlockMs = row.unlock_at ? new Date(row.unlock_at).getTime() : NaN;
+    const lockMs = row.lock_at ? new Date(row.lock_at).getTime() : NaN;
+    if (unlockMs <= returnMs && returnMs < lockMs && lockMs > ordinaryLockMs) hit = lockMs;
+  }
+  return hit;
+}
+
 function finalPlayLockMs(fixture) {
   const playMonth = String(fixture?.gpsl_month || "").trim().toLowerCase();
   const play = seasonCalendarByMonth.get(playMonth) || null;
@@ -324,10 +359,13 @@ function finalPlayLockMs(fixture) {
       if (!best || sort > best.sort) best = { sort, lock };
     }
   }
-  if (best) return best.lock;
-  if (grace !== 0) return null;
-  const lock = play?.lock_at ? new Date(play.lock_at).getTime() : NaN;
-  return Number.isFinite(lock) ? lock : null;
+  const ordinary = best
+    ? best.lock
+    : grace === 0 && play?.lock_at
+      ? new Date(play.lock_at).getTime()
+      : NaN;
+  if (!Number.isFinite(ordinary)) return null;
+  return holidayReturnLockMs(fixture, ordinary, playSort, grace) || ordinary;
 }
 
 /**

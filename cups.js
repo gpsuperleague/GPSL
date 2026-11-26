@@ -44,7 +44,7 @@ import {
   finalPlayCutoffDateHtml,
   scheduleReplyOwedBy,
   setSeasonCalendarMonths,
-} from "./match_scheduling.js?v=20261121-schedule";
+} from "./match_scheduling.js?v=20261126-holiday-return";
 import { matchCentreButtonHtml } from "./match_centre_link.js";
 import {
   loadFixtureMatchVideos,
