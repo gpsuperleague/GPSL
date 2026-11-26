@@ -1555,6 +1555,8 @@ async function fetchOwnerActivityById() {
     videoByClub.set(String(club).toUpperCase(), {
       video_late_count: Number(stats?.video_late_count) || 0,
       video_failed_count: Number(stats?.video_failed_count) || 0,
+      result_enter_late_count: Number(stats?.result_enter_late_count) || 0,
+      result_confirm_late_count: Number(stats?.result_confirm_late_count) || 0,
     });
   }
   if (!homePropError && homePropData && typeof homePropData === "object") {
@@ -1617,7 +1619,7 @@ function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } =
 
 const wlColFilters = { main: {}, archived: {} };
 
-/** Main board, 34 columns. Groups must stay in this order. */
+/** Main board, 36 columns. Groups must stay in this order. */
 const WL_MAIN_GROUPS = [
   { id: "owner", label: "Owner", cols: 7 },
   { id: "join", label: "Join order", cols: 1 },
@@ -1627,6 +1629,7 @@ const WL_MAIN_GROUPS = [
   { id: "logins", label: "Logins", cols: 5 },
   { id: "fixtures", label: "Fixtures", cols: 4 },
   { id: "videos", label: "Videos", cols: 2 },
+  { id: "results", label: "Results", cols: 2 },
   { id: "fines", label: "Fines", cols: 2 },
   { id: "place", label: "Place", cols: 5 },
   { id: "actions", label: "Actions", cols: 1 },
@@ -1638,12 +1641,13 @@ const WL_MAIN_FILTERS = [
   "login", "since", "count", "count", "curlogins",
   "count", "count", "ratio", "count",
   "count", "count",
+  "count", "count",
   "money", "money",
   "discord", "offset", "values", "ip", "shared",
   "skip",
 ];
 
-/** Archived board, 29 columns. No Paid column, and no next-month H column. */
+/** Archived board, 31 columns. No Paid column, and no next-month H column. */
 const WL_ARCHIVED_GROUPS = [
   { id: "owner", label: "Owner", cols: 7 },
   { id: "join", label: "Join order", cols: 1 },
@@ -1652,6 +1656,7 @@ const WL_ARCHIVED_GROUPS = [
   { id: "logins", label: "Logins", cols: 5 },
   { id: "fixtures", label: "Fixtures", cols: 3 },
   { id: "videos", label: "Videos", cols: 2 },
+  { id: "results", label: "Results", cols: 2 },
   { id: "fines", label: "Fines", cols: 2 },
   { id: "place", label: "Place", cols: 5 },
   { id: "actions", label: "Actions", cols: 1 },
@@ -1662,6 +1667,7 @@ const WL_ARCHIVED_FILTERS = [
   "tick",
   "login", "since", "count", "count", "curlogins",
   "count", "count", "count",
+  "count", "count",
   "count", "count",
   "money", "money",
   "discord", "offset", "values", "ip", "shared",
@@ -2811,6 +2817,8 @@ async function loadWaitingListAdmin() {
         ...(act || {}),
         video_late_count: vid?.video_late_count ?? act?.video_late_count ?? 0,
         video_failed_count: vid?.video_failed_count ?? act?.video_failed_count ?? 0,
+        result_enter_late_count: vid?.result_enter_late_count ?? act?.result_enter_late_count ?? 0,
+        result_confirm_late_count: vid?.result_confirm_late_count ?? act?.result_confirm_late_count ?? 0,
         home_prop_proposed: homeProp?.proposed ?? null,
         home_prop_total: homeProp?.total ?? null,
         ...fineFields,
@@ -2914,7 +2922,7 @@ async function loadWaitingListAdmin() {
     ? ` · Fines unavailable (run admin_owner_board_fine_forecast_20261021.sql)`
     : "";
 
-  const colSpan = 34;
+  const colSpan = 36;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}"><div class="wl-section-label">${label}</div></td></tr>`;
   const noteRow = (label) =>
@@ -2947,8 +2955,10 @@ async function loadWaitingListAdmin() {
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(curLabel)} (league + cups)">U ${escapeWl(curLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Home club’s kick-off proposals for ${escapeWl(nextMonthLabel)}, proposed/total, league and cup. Counts a proposal from the home club. League: home proposes in the month before; after that lock, away can open if nothing is pending. Cups: either club can propose once the round month opens. Vacant fixtures are left out.">H ${escapeWl(nextMonthLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Running total of unplayed fixtures frozen at month end / Record unplayed (survives catch-up sims). Includes live current month until that month is snapshotted.">U missed</th>` +
-    `<th class="num wl-num-unplayed" title="Discord upload after the video deadline lock (month the match was played in, or the fixture month if that is later). Confirming the result later does not count.">V late</th>` +
-    `<th class="num wl-num-unplayed" title="Match video still missing 72 hours after that fixture’s month lock (₿500,000)">V fail</th>` +
+    `<th class="num wl-num-unplayed" title="Discord upload after the video cutoff: lock of the month the match was played in, plus 72 hours. Confirming the result later does not count.">V late</th>` +
+    `<th class="num wl-num-unplayed" title="Match video still missing at that same cutoff (₿500,000)">V fail</th>` +
+    `<th class="num wl-num-unplayed" title="Result not entered by that same cutoff. If the other club had already entered, this is not counted.">R ent</th>` +
+    `<th class="num wl-num-unplayed" title="Other club entered on time, and this club had not confirmed by that same cutoff. The extra 24 hours that closes a one-sided score is not included.">R con</th>` +
     `<th class="num wl-num-fine" title="Projected strikes if ${escapeWl(fineLockLabel)} locks as things stand. ₿500,000 on home for each league or cup fixture still with no proposal from either club (next month, plus leftovers). A proposal in the last 48 hours is not an extra fee. A reply already overdue that takes another strike at the lock is ₿500,000 on the club who owes it. Holiday, a manual black box, and a new owner’s first partial month are left out. The ₿1,000,000 third-strike forfeit is not included.">F lock</th>` +
     `<th class="num wl-num-fine" title="Season fine total applied this competition season (not waived)">F tot</th>` +
     `<th title="Discord server join date when known (self-serve Discord join). Otherwise account created (muted).">Discord</th>` +
@@ -3588,8 +3598,10 @@ async function loadArchivedOwnersSection() {
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(prevLabel)}">U ${escapeWl(prevLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Live unplayed fixtures in ${escapeWl(curLabel)}">U ${escapeWl(curLabel)}</th>` +
     `<th class="num wl-num-unplayed" title="Missed running total">U missed</th>` +
-    `<th class="num wl-num-unplayed" title="Discord upload after the video deadline lock (month the match was played in, or the fixture month if that is later). Confirming the result later does not count.">V late</th>` +
-    `<th class="num wl-num-unplayed" title="Match video still missing 72 hours after that lock (₿500,000)">V fail</th>` +
+    `<th class="num wl-num-unplayed" title="Discord upload after the video cutoff: lock of the month the match was played in, plus 72 hours. Confirming the result later does not count.">V late</th>` +
+    `<th class="num wl-num-unplayed" title="Match video still missing at that same cutoff (₿500,000)">V fail</th>` +
+    `<th class="num wl-num-unplayed" title="Result not entered by that same cutoff. If the other club had already entered, this is not counted.">R ent</th>` +
+    `<th class="num wl-num-unplayed" title="Other club entered on time, and this club had not confirmed by that same cutoff. The extra 24 hours that closes a one-sided score is not included.">R con</th>` +
     `<th class="num wl-num-fine" title="Projected strikes if the next month locks: ₿500,000 per fixture with no proposal from either club, plus another ₿500,000 for a reply already overdue. No late-arrangement fee. The ₿1,000,000 third-strike forfeit is not included.">F lock</th>` +
     `<th class="num wl-num-fine" title="Season fine total">F tot</th>` +
     `<th title="Discord server join date when known">Discord</th>` +
@@ -3633,6 +3645,10 @@ async function loadArchivedOwnersSection() {
     const videoLate = act.video_late_count != null ? Number(act.video_late_count) || 0 : null;
     const videoFail =
       act.video_failed_count != null ? Number(act.video_failed_count) || 0 : null;
+    const resultEnter =
+      act.result_enter_late_count != null ? Number(act.result_enter_late_count) || 0 : null;
+    const resultConfirm =
+      act.result_confirm_late_count != null ? Number(act.result_confirm_late_count) || 0 : null;
 
     const discordJoined = act.discord_joined_at || null;
     const discordSource = act.discord_join_source || (discordJoined ? "discord" : "account");
@@ -3740,6 +3756,8 @@ async function loadArchivedOwnersSection() {
       <td class="num wl-num-unplayed">${formatUnplayed(unplayedMissed)}</td>
       <td class="num wl-num-unplayed">${formatUnplayed(videoLate)}</td>
       <td class="num wl-num-unplayed">${formatUnplayed(videoFail)}</td>
+      <td class="num wl-num-unplayed">${formatUnplayed(resultEnter)}</td>
+      <td class="num wl-num-unplayed">${formatUnplayed(resultConfirm)}</td>
       <td class="num wl-num-fine"><span class="muted" title="No current club">—</span></td>
       <td class="num wl-num-fine"><span class="muted" title="No current club">—</span></td>
       <td>${discordCell}</td>
@@ -3983,6 +4001,14 @@ function renderWaitingListAdminRow(
     act.video_failed_count != null
       ? Number(act.video_failed_count) || 0
       : Number(row.video?.video_failed_count) || 0;
+  const resultEnter =
+    act.result_enter_late_count != null
+      ? Number(act.result_enter_late_count) || 0
+      : Number(row.video?.result_enter_late_count) || 0;
+  const resultConfirm =
+    act.result_confirm_late_count != null
+      ? Number(act.result_confirm_late_count) || 0
+      : Number(row.video?.result_confirm_late_count) || 0;
   const homePropProposed =
     act.home_prop_proposed != null
       ? Number(act.home_prop_proposed) || 0
@@ -4172,8 +4198,10 @@ function renderWaitingListAdminRow(
       hasClub ? formatHomeProposalRatio(homePropProposed, homePropTotal) : `<span class="muted">—</span>`
     }</td>
     <td class="num wl-num-unplayed" title="Missed running total (month snapshots + live until snapshotted)">${formatUnplayed(unplayedMissed)}</td>
-    <td class="num wl-num-unplayed" title="Match video uploaded after that fixture’s month lock">${formatUnplayed(hasClub ? videoLate : null)}</td>
-    <td class="num wl-num-unplayed" title="Match video still missing 72 hours after that lock (₿500,000)">${formatUnplayed(hasClub ? videoFail : null)}</td>
+    <td class="num wl-num-unplayed" title="Discord upload after the video cutoff (month lock plus 72 hours)">${formatUnplayed(hasClub ? videoLate : null)}</td>
+    <td class="num wl-num-unplayed" title="Match video still missing at that cutoff (₿500,000)">${formatUnplayed(hasClub ? videoFail : null)}</td>
+    <td class="num wl-num-unplayed" title="Result not entered by that cutoff">${formatUnplayed(hasClub ? resultEnter : null)}</td>
+    <td class="num wl-num-unplayed" title="Result not confirmed by that cutoff, after the other club entered on time">${formatUnplayed(hasClub ? resultConfirm : null)}</td>
     <td class="num wl-num-fine">${
       hasClub
         ? formatFineBoardCell(
