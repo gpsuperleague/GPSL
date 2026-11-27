@@ -821,7 +821,8 @@ BEGIN
     END IF;
 
     v_shock := greatest(0, v_gap) * greatest(1, v_win - v_lose + 1);
-    IF coalesce(v_f.competition_type, 'league') = 'cup' OR v_f.cup_code IS NOT NULL THEN
+    IF v_gap > 0
+       AND (coalesce(v_f.competition_type, 'league') = 'cup' OR v_f.cup_code IS NOT NULL) THEN
       v_shock := v_shock + 5;
     END IF;
 
