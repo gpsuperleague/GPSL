@@ -48,9 +48,19 @@ body.tm-market::before {
   );
 }
 
-body.tm-market > *:not(#nav) {
+body.tm-market > *:not(#nav):not(#bid-modal):not(#bidModal):not(#clubBidModal):not(#clubInterestModal) {
   position: relative;
   z-index: 1;
+}
+
+/* These overlays sit on body. The rule above must not turn them into
+   in-flow boxes, or a click looks like it did nothing. */
+body.tm-market > #bid-modal,
+body.tm-market > #bidModal,
+body.tm-market > #clubBidModal,
+body.tm-market > #clubInterestModal {
+  position: fixed;
+  z-index: 1000;
 }
 
 body.tm-market #nav {
