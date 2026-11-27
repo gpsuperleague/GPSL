@@ -1,6 +1,6 @@
 // ============================================================
 // TRANSFER CENTRE — Updated JS
-// - Normal listings: 24h + next 19:00 UK, Extend/Remove after cutoff if no bids
+// - Normal listings: 24h + next 19:00 UK. Remove after 24h if no bids. Extend after the 19:00 close if no bids.
 // - Direct bids: Accept -> listing + opening bid, Reject -> mark rejected
 // - Seller Review: below-reserve auctions + direct bids
 // - Active Bids: live auctions only; Awaiting seller: review + direct offers
@@ -589,11 +589,13 @@ async function loadActiveListings(shortName) {
   if (listingIds.length > 0) {
     const { data: bids } = await supabase
       .from("Player_Transfer_Bids")
-      .select("listing_id")
+      .select("listing_id, status")
       .in("listing_id", listingIds);
 
     bids?.forEach((b) => {
       if (!b.listing_id) return;
+      const status = String(b.status || "active").toLowerCase();
+      if (status === "rejected" || status === "cancelled") return;
       const current = bidsCountMap.get(b.listing_id) || 0;
       bidsCountMap.set(b.listing_id, current + 1);
     });
@@ -616,7 +618,12 @@ async function loadActiveListings(shortName) {
           const reserve = Number(row.reserve_price).toLocaleString("en-GB");
           const pendingWindow = row.status === "Pending Window";
           const endTime = row.end_time ? new Date(row.end_time) : null;
+          const started = new Date(row.start_time || row.created_at);
+          const dayOpen =
+            !Number.isNaN(started.getTime()) &&
+            now.getTime() >= started.getTime() + 24 * 60 * 60 * 1000;
           const bidsCount = bidsCountMap.get(row.id) || 0;
+          const noBids = bidsCount === 0 && (row.current_highest_bid == null || row.current_highest_bid === "");
           const forced = row.perpetual_renew === true;
           const injury = injuryMap.get(String(row.player_id));
           const injuryMarker = formatListingInjuryMarkerHtml(injury);
@@ -649,10 +656,14 @@ async function loadActiveListings(shortName) {
             `;
           }
 
-          // Only after cutoff AND no bids: show Extend / Remove (not for forced listings)
-          if (!pendingWindow && !forced && endTime && now > endTime && bidsCount === 0) {
+          // After 24 hours with no bids the seller can remove. Extend waits for the 19:00 close.
+          if (!pendingWindow && !forced && noBids && (dayOpen || (endTime && now > endTime))) {
+            const extend =
+              endTime && now > endTime
+                ? `<button class="extend-listing-btn" data-id="${row.id}">Extend</button>`
+                : "";
             actionsHtml = `
-              <button class="extend-listing-btn" data-id="${row.id}">Extend</button>
+              ${extend}
               <button class="expire-listing-btn" data-id="${row.id}" data-player-id="${row.player_id}">Remove</button>
             `;
           }
@@ -708,29 +719,53 @@ async function extendListing(listingId, shortName) {
 }
 
 async function expireListing(listingId, playerId, shortName) {
-  const { data: row } = await supabase
+  const { data: row, error: loadErr } = await supabase
     .from("Player_Transfer_Listings")
-    .select("perpetual_renew")
+    .select("perpetual_renew, status, start_time, created_at, current_highest_bid")
     .eq("id", listingId)
     .maybeSingle();
 
-  if (row?.perpetual_renew) {
+  if (loadErr || !row) {
+    alert(loadErr?.message || "Could not load the listing.");
+    return;
+  }
+
+  if (row.perpetual_renew) {
     alert(
       "This listing was created after club underperformance. It relists automatically at market value and cannot be removed manually."
     );
     return;
   }
 
-  await supabase
+  if (row.status !== "Pending Window") {
+    const started = new Date(row.start_time || row.created_at);
+    const dayOpen =
+      !Number.isNaN(started.getTime()) &&
+      Date.now() >= started.getTime() + 24 * 60 * 60 * 1000;
+    if (!dayOpen) {
+      alert("This listing can be removed 24 hours after it opened, if nobody has bid.");
+      return;
+    }
+    if (row.current_highest_bid != null && row.current_highest_bid !== "") {
+      alert("This listing has a bid, so it cannot be removed.");
+      return;
+    }
+  }
+
+  const { data: closed, error } = await supabase
     .from("Player_Transfer_Listings")
     .update({ status: "Closed", transfer_completed: false })
-    .eq("id", listingId);
+    .eq("id", listingId)
+    .select("id");
 
-  // If you track a "listed" flag on Players, update it here, e.g.:
-  // await supabase
-  //   .from("Players")
-  //   .update({ listed: false })
-  //   .eq("Konami_ID", playerId);
+  if (error) {
+    alert(error.message || "Could not remove the listing.");
+    return;
+  }
+  if (!closed?.length) {
+    alert("The listing was not removed. Refresh and try again.");
+    return;
+  }
 
   loadActiveListings(shortName);
 }

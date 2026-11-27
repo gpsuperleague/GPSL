@@ -1939,7 +1939,7 @@ async function loadPlayerBidHistory(listingId) {
 
   const { data, error } = await supabase
     .from("Player_Transfer_Bids")
-    .select("id, bidder_club_id, bid_amount, bid_time, status")
+    .select("bid_id, bidder_club_id, bid_amount, bid_time, status")
     .eq("listing_id", listingId)
     .order("bid_time", { ascending: false });
 
@@ -1952,7 +1952,9 @@ async function loadPlayerBidHistory(listingId) {
   const rows = [...(data || [])].sort((a, b) => {
     const t = new Date(b.bid_time).getTime() - new Date(a.bid_time).getTime();
     if (t) return t;
-    return Number(b.bid_amount || 0) - Number(a.bid_amount || 0);
+    const amt = Number(b.bid_amount || 0) - Number(a.bid_amount || 0);
+    if (amt) return amt;
+    return Number(b.bid_id || 0) - Number(a.bid_id || 0);
   });
 
   if (!rows.length) {
