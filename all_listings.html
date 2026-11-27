@@ -516,6 +516,58 @@ a.button:hover, button.button:hover {
       transform: scale(1.05);
     }
 
+    button.high-bid-link {
+      background: none;
+      border: 0;
+      padding: 0;
+      color: var(--tm-gold, var(--gpsl-accent, #ff9900));
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    button.history-btn {
+      display: inline-block;
+      padding: 6px 12px;
+      background: #1a1814;
+      color: #f0d9a8;
+      border: 1px solid #4a4030;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #bid-history-section h3 {
+      margin: 14px 0 6px;
+      font-size: 14px;
+      color: var(--gpsl-accent, #ff9900);
+    }
+
+    table.bid-history {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 8px;
+      font-size: 13px;
+    }
+
+    table.bid-history th,
+    table.bid-history td {
+      border-bottom: 1px solid #333;
+      padding: 6px 4px;
+      text-align: left;
+    }
+
+    table.bid-history th {
+      color: var(--gpsl-accent, #ff9900);
+      font-size: 12px;
+    }
+
+    #bid-input-section[hidden] {
+      display: none;
+    }
+
     button.listing-cal-btn {
       display: block;
       margin-top: 6px;
@@ -1070,6 +1122,22 @@ a.button:hover, button.button:hover {
       <div class="bid-row"><label>Highest Bid:</label><span id="bid-highest-bid"></span></div>
       <div class="bid-row"><label>Highest Club:</label><span id="bid-highest-club"></span></div>
 
+      <div id="bid-history-section">
+        <h3>Bid history</h3>
+        <table class="bid-history">
+          <thead>
+            <tr>
+              <th>Club</th>
+              <th>Bid</th>
+              <th>Time (UK)</th>
+            </tr>
+          </thead>
+          <tbody id="bid-history-body">
+            <tr><td colspan="3">No bids yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <div id="bid-input-section">
 
         <div id="bid-warning"></div>
@@ -1111,7 +1179,7 @@ a.button:hover, button.button:hover {
   <script type="module" src="clubs_lookup.js"></script>
 
   <!-- ALL LISTINGS LOGIC -->
-  <script type="module" src="all_listings.js?v=20261113-listing-wages"></script>
+  <script type="module" src="all_listings.js?v=20261127-bid-history"></script>
 
 </body>
 </html>

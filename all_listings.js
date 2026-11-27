@@ -1687,7 +1687,9 @@ async function renderListings() {
             !!currentUserShort &&
             !transferWindowOpen
           ? `<span class="locked-msg" title="Bidding opens with the transfer window (June–August and January)">Window closed</span>`
-          : "-";
+          : currentUserShort && listing.seller_club_id === currentUserShort
+            ? `<button type="button" class="history-btn" data-id="${listing.id}">History</button>`
+            : "-";
 
     const isFav = favouriteListingIds.has(String(listing.id));
 
@@ -1739,7 +1741,11 @@ async function renderListings() {
           ? `<button type="button" class="listing-cal-btn" data-cal-listing="${listing.id}" title="Add listing end to your calendar (local time)">Calendar</button>`
           : ""
       }</td>
-      <td class="money-cell">${formatMoney(listing.current_highest_bid)}</td>
+      <td class="money-cell">${
+        listing.current_highest_bid != null && listing.current_highest_bid !== ""
+          ? `<button type="button" class="high-bid-link" data-id="${listing.id}" title="View bid history">${formatMoney(listing.current_highest_bid)}</button>`
+          : formatMoney(listing.current_highest_bid)
+      }</td>
       <td>${highestClubText}</td>
       <td>
         ${bidCellHtml}
@@ -1801,6 +1807,18 @@ async function renderListings() {
         `Transfer - ${safeName || "Player"}.ics`,
         [ev]
       );
+    });
+  });
+
+  tbody.querySelectorAll(".high-bid-link, .history-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const listing = allLoadedListings().find(
+        (l) => String(l.id) === String(btn.dataset.id)
+      );
+      if (!listing) return;
+      const player = await fetchPlayerByID(listing.player_id);
+      openBidModal(listing, player);
     });
   });
 
@@ -1907,25 +1925,89 @@ async function fetchPlayerByID(kid) {
 // ======================================================
 // MODULE E: OPEN BID MODAL
 // ======================================================
-async function openBidModal(listing, player) {
-  if (listing.seller_club_id === currentUserShort) {
-    alert("You already own this player. You cannot bid on your own listing.");
+function viewerCanBid(listing) {
+  if (!currentUserShort || !listing) return false;
+  if (listing.seller_club_id === currentUserShort) return false;
+  if (!transferWindowOpen || listing.status !== "Active" || !listing.end_time) return false;
+  return new Date(listing.end_time) > new Date();
+}
+
+async function loadPlayerBidHistory(listingId) {
+  const body = document.getElementById("bid-history-body");
+  if (!body) return;
+  body.innerHTML = `<tr><td colspan="3">Loading…</td></tr>`;
+
+  const { data, error } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("id, bidder_club_id, bid_amount, bid_time, status")
+    .eq("listing_id", listingId)
+    .order("bid_time", { ascending: false });
+
+  if (error) {
+    console.error("Bid history", error);
+    body.innerHTML = `<tr><td colspan="3">Could not load bid history.</td></tr>`;
     return;
   }
 
-  if (!transferWindowOpen) {
-    alert(
-      "Transfer window is closed — bidding opens in June–August and January."
-    );
+  const rows = [...(data || [])].sort((a, b) => {
+    const t = new Date(b.bid_time).getTime() - new Date(a.bid_time).getTime();
+    if (t) return t;
+    return Number(b.bid_amount || 0) - Number(a.bid_amount || 0);
+  });
+
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="3">No bids yet.</td></tr>`;
     return;
   }
 
-  const now = new Date();
-  const end = new Date(listing.end_time);
-  if (end <= now || listing.status !== "Active") {
+  body.innerHTML = rows
+    .map((b) => {
+      const club = fullClubName(b.bidder_club_id) || b.bidder_club_id || "—";
+      const you =
+        currentUserShort && b.bidder_club_id === currentUserShort ? " (you)" : "";
+      const when = b.bid_time
+        ? new Date(b.bid_time).toLocaleString("en-GB", { timeZone: "Europe/London" })
+        : "—";
+      const status = String(b.status || "active").toLowerCase();
+      const note =
+        status && status !== "active"
+          ? ` <span class="muted">(${escapeHtml(status)})</span>`
+          : "";
+      return `<tr>
+        <td>${escapeHtml(club)}${you}${note}</td>
+        <td>${formatMoney(b.bid_amount)}</td>
+        <td>${escapeHtml(when)}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+async function openBidModal(listing, player, opts = {}) {
+  if (opts.placeBid === true && !viewerCanBid(listing)) {
+    if (listing.seller_club_id === currentUserShort) {
+      alert("You already own this player. You cannot bid on your own listing.");
+      return;
+    }
+
+    if (listing.status === "Pending Window") {
+      alert(
+        "This listing is waiting for the transfer window — the auction clock starts when it opens."
+      );
+      return;
+    }
+
+    if (!transferWindowOpen) {
+      alert(
+        "Transfer window is closed — bidding opens in June–August and January."
+      );
+      return;
+    }
+
     alert("This listing has expired or is no longer open for bidding.");
     return;
   }
+
+  const showForm = viewerCanBid(listing);
 
   selectedListing = listing;
   selectedBidPlayer = player ?? null;
@@ -1986,33 +2068,36 @@ async function openBidModal(listing, player) {
   document.getElementById("bid-highest-club").textContent =
     fullClubName(listing.current_highest_bidder) || "-";
 
+  const inputSection = document.getElementById("bid-input-section");
+  if (inputSection) inputSection.hidden = !showForm;
+
   const input = document.getElementById("bid-amount");
-  input.value = "";
-  input.focus();
-  input.select();
+  if (showForm && input) {
+    input.value = "";
+    document.getElementById("bid-error").textContent = "";
 
-  document.getElementById("bid-error").textContent = "";
+    const minBid = listingMinimumBid(listing);
+    let warningText = `⚠️ ${listingBidWarningText(listing)}`;
+    const squadLines = await squadRulesBidWarningLines(
+      supabase,
+      currentUserShort,
+      currentUserNation,
+      player
+    );
+    if (squadLines.length) {
+      warningText += `\n\n⚠️ ${squadLines.join("\n\n⚠️ ")}`;
+    }
+    document.getElementById("bid-warning").textContent = warningText;
 
-  const minBid = listingMinimumBid(listing);
-  let warningText = `⚠️ ${listingBidWarningText(listing)}`;
-  const squadLines = await squadRulesBidWarningLines(
-    supabase,
-    currentUserShort,
-    currentUserNation,
-    player
-  );
-  if (squadLines.length) {
-    warningText += `\n\n⚠️ ${squadLines.join("\n\n⚠️ ")}`;
+    input.placeholder = `Minimum bid: ${formatMoney(minBid)}`;
+    document.getElementById("place-bid-btn").disabled = true;
+    input.oninput = validateBidInput;
+    input.focus();
+    input.select();
   }
-  document.getElementById("bid-warning").textContent = warningText;
-
-  input.placeholder = `Minimum bid: ${formatMoney(minBid)}`;
-
-  document.getElementById("place-bid-btn").disabled = true;
-
-  input.oninput = validateBidInput;
 
   document.getElementById("bid-modal").style.display = "block";
+  await loadPlayerBidHistory(listing.id);
 }
 
 // ======================================================
