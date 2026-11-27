@@ -19,7 +19,7 @@ import {
   getClubLeadingManagerDraftId,
   getClubManagerVacancy,
   submitManagerDraftBid,
-} from "./manager_draft_engine.js?v=20260809-mgr-maxbid";
+} from "./manager_draft_engine.js?v=20261127-no-carry";
 import {
   loadClubsMap,
   fullClubName,

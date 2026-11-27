@@ -101,26 +101,6 @@ export async function fetchManagerDraftBidsGrouped(managerIds, draftAuctionStart
     map.get(mid).push(row);
   }
 
-  // Fallback: window filter missed bids (wrong clock / finish) — pull by listing
-  const missing = ids.filter((id) => !(map.get(id) || []).length);
-  if (missing.length) {
-    const { data: fallback, error: fbErr } = await supabase
-      .from("Manager_Transfer_Bids")
-      .select(
-        "bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time, bid_amount, id, manager_id, listing_id"
-      )
-      .in("manager_id", missing)
-      .eq("is_direct", true)
-      .order("bid_time", { ascending: true });
-    if (!fbErr) {
-      for (const row of fallback || []) {
-        const mid = Number(row.manager_id);
-        if (!map.has(mid)) continue;
-        map.get(mid).push(row);
-      }
-    }
-  }
-
   for (const [mid, rows] of map) {
     map.set(mid, dedupeManagerDraftBidRows(rows));
   }
@@ -189,7 +169,7 @@ export async function getClubLeadingManagerDraftId(
 
     const bids = bidsByManager.get(mid) || [];
     const top = highestManagerDraftBid(bids);
-    const leader = top?.bidder_club_id ?? listing.current_highest_bidder;
+    const leader = top?.bidder_club_id || null;
     if (leader === clubShortName) return mid;
   }
 
@@ -389,19 +369,8 @@ export async function ensureManagerDraftListing(manager) {
 
 export async function syncManagerDraftListingHighBid(listingId, managerId, draftAuctionStartTime) {
   if (!listingId) return;
-  let bids = await fetchCurrentManagerDraftBids(managerId, draftAuctionStartTime);
-  let top = highestManagerDraftBid(bids);
-  if (!top) {
-    const { data } = await supabase
-      .from("Manager_Transfer_Bids")
-      .select("bid_amount, bidder_club_id")
-      .eq("listing_id", listingId)
-      .eq("is_direct", true)
-      .order("bid_amount", { ascending: false })
-      .order("bid_time", { ascending: true })
-      .limit(1);
-    top = data?.[0] || null;
-  }
+  const bids = await fetchCurrentManagerDraftBids(managerId, draftAuctionStartTime);
+  const top = highestManagerDraftBid(bids);
   if (!top) return;
   await supabase
     .from("Manager_Transfer_Listings")

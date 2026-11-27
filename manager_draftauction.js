@@ -15,7 +15,7 @@ import {
   highestManagerDraftBid,
   getManagerDraftBidEligibility,
   getClubLeadingManagerDraftId,
-} from "./manager_draft_engine.js?v=20260809-mgr-maxbid";
+} from "./manager_draft_engine.js?v=20261127-no-carry";
 import {
   loadClubsMap,
   fullClubName,
@@ -211,8 +211,8 @@ async function loadManagerDraftListings(options = {}) {
       if (!mgr) continue;
       const bids = bidsByManager.get(Number(listing.manager_id)) || [];
       const top = highestManagerDraftBid(bids);
-      const high = top?.bid_amount ?? listing.current_highest_bid;
-      const leader = top?.bidder_club_id ?? listing.current_highest_bidder;
+      const high = top?.bid_amount ?? null;
+      const leader = top?.bidder_club_id ?? null;
       const row = rows[i];
       if (!row || row.dataset.managerId !== String(mgr.id)) {
         unchanged = false;
@@ -242,8 +242,8 @@ async function loadManagerDraftListings(options = {}) {
 
     const bids = bidsByManager.get(Number(listing.manager_id)) || [];
     const top = highestManagerDraftBid(bids);
-    const high = top?.bid_amount ?? listing.current_highest_bid;
-    const leader = top?.bidder_club_id ?? listing.current_highest_bidder;
+    const high = top?.bid_amount ?? null;
+    const leader = top?.bidder_club_id ?? null;
     const leaderClub = leader ? fullClubName(leader) || leader : "—";
     const leaderOwner = leader
       ? ownerTagLinkHtml(ownerTagForClub(leader), ownerIdForClub(leader)) || "—"
