@@ -248,13 +248,14 @@ BEGIN
       v_loser := v_f.away_club_short_name;
       v_win := v_f.home_goals;
       v_lose := v_f.away_goals;
-      v_gap := coalesce(v_f.away_prestige, 99) - coalesce(v_f.home_prestige, 99);
+      -- Rank 1 is the biggest club. Positive when the winner is the worse rank.
+      v_gap := coalesce(v_f.home_prestige, 99) - coalesce(v_f.away_prestige, 99);
     ELSIF v_f.away_goals > v_f.home_goals THEN
       v_winner := v_f.away_club_short_name;
       v_loser := v_f.home_club_short_name;
       v_win := v_f.away_goals;
       v_lose := v_f.home_goals;
-      v_gap := coalesce(v_f.home_prestige, 99) - coalesce(v_f.away_prestige, 99);
+      v_gap := coalesce(v_f.away_prestige, 99) - coalesce(v_f.home_prestige, 99);
     ELSE
       CONTINUE;
     END IF;
