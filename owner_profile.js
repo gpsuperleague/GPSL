@@ -105,20 +105,14 @@ function renderHeader(profile, totals) {
           <a class="gpsl-link" href="owners_bank.html" style="margin-left:6px;font-size:12px">Statement</a></span>`
       : "";
   const pct = (v) => (v != null ? v : "—");
+  const seasons = Math.max(Number(t.seasons) || 0, Number(t.managed_seasons) || 0);
   document.getElementById("totalsRow").innerHTML = `
     ${walletBit}
-    <span><b>${t.seasons ?? 0}</b> seasons</span>
+    <span><b>${seasons}</b> season${seasons === 1 ? "" : "s"}</span>
     <span>Played <b>${t.mp ?? 0}</b></span>
     <span><b>${t.won ?? 0}</b>-${t.drawn ?? 0}-${t.lost ?? 0}</span>
     <span>Win % <b>${pct(t.win_pct)}</b></span>
-    <span>Draw % <b>${pct(t.draw_pct)}</b></span>
-    <span>Loss % <b>${pct(t.loss_pct)}</b></span>
-    <span>Clean sheet % <b>${pct(t.clean_sheet_pct)}</b></span>
-    <span>Avg GF <b>${pct(t.avg_gf)}</b></span>
-    <span>Avg GA <b>${pct(t.avg_ga)}</b></span>
-    <span>Pts <b>${t.pts ?? 0}</b></span>
-    <span>GD <b>${t.gd ?? 0}</b></span>
-    <span class="totals-note" title="League, cup and World Cup only — friendlies excluded">League · Cup · WC</span>
+    <span>PPG <b>${pct(t.ppg)}</b></span>
   `;
 
   const edit = document.getElementById("badgeEdit");
@@ -258,6 +252,90 @@ function renderTransfers(transfers, highPaid, highRecv) {
     ${paidLine}
     ${recvLine}
   `;
+}
+
+function recordNum(v) {
+  return v != null && v !== "" ? v : "—";
+}
+
+function recordRow(label, row, { bold = false } = {}) {
+  if (!row || !Number(row.mp)) return "";
+  const name = bold ? `<b>${escapeHtml(label)}</b>` : escapeHtml(label);
+  return `<tr>
+    <td>${name}</td>
+    <td class="num">${row.mp ?? 0}</td>
+    <td class="num">${row.won ?? 0}</td>
+    <td class="num">${row.drawn ?? 0}</td>
+    <td class="num">${row.lost ?? 0}</td>
+    <td class="num">${row.gf ?? 0}</td>
+    <td class="num">${row.ga ?? 0}</td>
+    <td class="num">${row.gd ?? (Number(row.gf) || 0) - (Number(row.ga) || 0)}</td>
+    <td class="num">${recordNum(row.win_pct)}</td>
+  </tr>`;
+}
+
+function resultLine(title, row) {
+  if (!row) return `<div class="highlight"><b>${escapeHtml(title)}</b><div class="note">—</div></div>`;
+  const where = row.venue === "home" ? "Home" : row.venue === "away" ? "Away" : "";
+  const bits = [where, row.competition].filter(Boolean).join(" · ");
+  const knownClub =
+    row.opponent_short &&
+    displayClubName(row.opponent_short) !== row.opponent_short;
+  const opp = knownClub
+    ? clubLink(row.opponent_short, row.opponent)
+    : escapeHtml(row.opponent || row.opponent_short || "—");
+  return `<div class="highlight"><b>${escapeHtml(title)}</b> ${escapeHtml(row.score || "")}
+    <div class="note">vs ${opp}${bits ? ` · ${escapeHtml(bits)}` : ""}</div></div>`;
+}
+
+function renderManagerRecord(totals) {
+  const el = document.getElementById("recordPanel");
+  if (!el) return;
+  const t = totals || {};
+  if (!Number(t.mp)) {
+    el.innerHTML = '<p class="empty">No matches while this owner was in charge yet.</p>';
+    return;
+  }
+  const career = {
+    mp: t.mp,
+    won: t.won,
+    drawn: t.drawn,
+    lost: t.lost,
+    gf: t.gf,
+    ga: t.ga,
+    gd: t.gd,
+    win_pct: t.win_pct,
+  };
+  const splits = Array.isArray(t.splits) ? t.splits : [];
+  el.innerHTML = `
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th class="num">P</th><th class="num">W</th><th class="num">D</th><th class="num">L</th>
+          <th class="num">GF</th><th class="num">GA</th><th class="num">GD</th><th class="num">Win%</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${recordRow("Career", career, { bold: true })}
+        ${recordRow("Home", t.home)}
+        ${recordRow("Away", t.away)}
+        ${splits.map((s) => recordRow(s.label, s)).join("")}
+      </tbody>
+    </table>
+    <div class="totals" style="margin-top:12px">
+      <span>Points <b>${t.pts ?? 0}</b></span>
+      <span>PPG <b>${recordNum(t.ppg)}</b></span>
+      <span>Avg GF <b>${recordNum(t.avg_gf)}</b></span>
+      <span>Avg GA <b>${recordNum(t.avg_ga)}</b></span>
+      <span>Clean sheets <b>${t.clean_sheets ?? 0}</b> (${recordNum(t.clean_sheet_pct)}%)</span>
+      <span>Scored in <b>${t.scored ?? 0}</b></span>
+      <span>Failed to score <b>${t.failed_to_score ?? 0}</b></span>
+    </div>
+    <div class="record-highlights">
+      ${resultLine("Biggest win", t.biggest_win)}
+      ${resultLine("Heaviest defeat", t.heaviest_defeat)}
+    </div>`;
 }
 
 function renderSeasons(rows) {
@@ -489,6 +567,7 @@ async function loadProfile(ownerId) {
     profile.owner_balance = wallet?.balance ?? 0;
   }
   renderHeader(profile, data.career_totals);
+  renderManagerRecord(data.career_totals);
   void loadOwnerHolidaysForProfile(ownerId, { isSelf: !!profile.is_self });
   renderTransfers(data.transfers, data.highest_fee_paid, data.highest_fee_received);
   renderSeasons(data.seasons || []);

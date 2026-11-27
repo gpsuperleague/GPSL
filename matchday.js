@@ -54,7 +54,7 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js?v=20261119-fluid";
+} from "./matchday_squad.js?v=20261127-md-fitness";
 import { loadGpslFormations } from "./gpsl_formations.js?v=20260926-catalogue-xy";
 import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20261106-formation-forfeit";
 import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
@@ -101,6 +101,8 @@ let fixtureUnavailable = null;
 /** @type {Set<string>} */
 let myUnavailableIds = new Set();
 let allSquadPlayers = [];
+/** @type {Map<string, { level?: number, label?: string, consecutive?: number }>} */
+let matchFitnessByPlayer = new Map();
 let squadPlayers = [];
 let matchdaySquadRows = [];
 let matchdayPitchLayout = null;
@@ -2063,6 +2065,7 @@ function initSquadPanel() {
     matchdayComposition: true,
     clubNation: myClub.nation,
     slotPicker: true,
+    fitnessByPlayerId: matchFitnessByPlayer,
     onSave: (slots, layout) => {
       const fixtureId = squadTargetFixtureId();
       if (fixtureId) return saveFixtureMatchdaySquad(fixtureId, slots, layout);
@@ -2109,6 +2112,31 @@ function setMatchdayTab(tab) {
   }
   if (submitPanel) {
     submitPanel.classList.toggle("hidden", tab !== "submit");
+  }
+}
+
+async function loadClubMatchFitness() {
+  matchFitnessByPlayer = new Map();
+  if (!myClub.short) return;
+  try {
+    const { data, error } = await supabase.rpc("club_match_fitness_map", {
+      p_club: myClub.short,
+    });
+    if (error) {
+      console.warn("club_match_fitness_map:", error.message);
+      return;
+    }
+    const by =
+      data?.by_player && typeof data.by_player === "object" ? data.by_player : {};
+    for (const [pid, v] of Object.entries(by)) {
+      matchFitnessByPlayer.set(String(pid), {
+        level: Number(v?.level) || 1,
+        label: v?.label || "",
+        consecutive: Number(v?.consecutive) || 0,
+      });
+    }
+  } catch (err) {
+    console.warn("club_match_fitness_map:", err);
   }
 }
 
@@ -3457,6 +3485,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadMatchdaySquad();
   await loadGpslFormations({ force: true });
   await loadClubSuspensions();
+  await loadClubMatchFitness();
   applyMatchdaySquadFilter();
   initSquadPanel();
   refreshSquadCardStatuses();

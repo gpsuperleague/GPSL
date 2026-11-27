@@ -22,7 +22,8 @@ import {
   wireMatchSimButtons,
   runMatchSimulation,
 } from "./match_sim_ui.js?v=20260908-assist-goal-attach";
-import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20261119-fluid";
+import { initMatchdaySquadPanel } from "./matchday_squad.js?v=20261127-md-fitness";
+import { loadMatchFitnessForPlayers } from "./player_discipline.js";
 
 /** Result entry: from agreed kickoff until +48h (soft guidance). */
 const RESULT_WINDOW_HOURS_AFTER = 48;
@@ -312,7 +313,7 @@ function callupAsMatchdayPlayers() {
   }));
 }
 
-function initOrRefreshSquadPanel() {
+async function initOrRefreshSquadPanel() {
   const root = $("matchdaySquadRoot");
   if (!root) return;
   if (!callupRows.length) {
@@ -322,11 +323,16 @@ function initOrRefreshSquadPanel() {
     return;
   }
   const allPlayers = callupAsMatchdayPlayers();
+  const { byPlayer } = await loadMatchFitnessForPlayers(
+    supabase,
+    allPlayers.map((p) => p.Konami_ID)
+  );
   squadPanelApi = initMatchdaySquadPanel({
     root,
     allPlayers,
     savedRows: savedSquadRows,
     savedPitchLayout,
+    fitnessByPlayerId: byPlayer,
     savedFormations: [],
     maxBench: INTL_MAX_BENCH,
     maxSquad: INTL_MAX_SQUAD,

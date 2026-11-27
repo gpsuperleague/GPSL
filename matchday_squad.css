@@ -383,6 +383,75 @@
   white-space: nowrap;
 }
 .pitch-slot-drop .squad-player-card .spc-pos { display: none; }
+
+/* Match fitness on the selection cards. Pitch chip sits on the photo so the XI does not grow. */
+.md-fit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  max-width: 100%;
+  min-width: 0;
+}
+.md-fit-meter {
+  display: flex;
+  gap: 2px;
+  flex: 1 1 36px;
+  min-width: 34px;
+}
+.md-fit-pip {
+  flex: 1;
+  height: 6px;
+  border-radius: 1px;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+}
+.md-fit-pip.is-on.md-fit-pip-1 { background: #27ae60; border-color: #2ecc71; }
+.md-fit-pip.is-on.md-fit-pip-2 { background: #52b788; border-color: #74c69d; }
+.md-fit-pip.is-on.md-fit-pip-3 { background: #f1c40f; border-color: #f4d03f; }
+.md-fit-pip.is-on.md-fit-pip-4 { background: #e67e22; border-color: #f39c12; }
+.md-fit-pip.is-on.md-fit-pip-5 { background: #e74c3c; border-color: #ff6b5a; }
+.md-fit-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.md-fit-l1 .md-fit-name { color: #2ecc71; }
+.md-fit-l2 .md-fit-name { color: #74c69d; }
+.md-fit-l3 .md-fit-name { color: #f1c40f; }
+.md-fit-l4 .md-fit-name { color: #e67e22; }
+.md-fit-l5 .md-fit-name { color: #e74c3c; }
+.pitch-slot-drop .md-fit {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 86px;
+  z-index: 2;
+  margin: 0;
+  padding: 1px 3px 2px;
+  background: rgba(0, 0, 0, 0.78);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.pitch-slot-drop .md-fit-name { font-size: 8px; }
+.pitch-slot-drop .md-fit-pip { height: 5px; }
+.bench-slot-drop .md-fit-name { font-size: 8px; }
+.spo-fit {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.spo-fit-l1 { color: #2ecc71; }
+.spo-fit-l2 { color: #74c69d; }
+.spo-fit-l3 { color: #f1c40f; }
+.spo-fit-l4 { color: #e67e22; }
+.spo-fit-l5 { color: #e74c3c; }
 .pitch-slot-drop .squad-player-card .spc-remove {
   top: -2px;
   right: -2px;

@@ -334,6 +334,58 @@ function autoFillBestXi(allPlayers, maxBench = MAX_BENCH) {
   return state;
 }
 
+const MATCH_FITNESS_LABELS = {
+  1: "Fully Fit",
+  2: "Match Ready",
+  3: "Managing Load",
+  4: "Fitness Concern",
+  5: "Injury Risk",
+};
+
+const MATCH_FITNESS_SHORT = {
+  1: "Fit",
+  2: "Ready",
+  3: "Load",
+  4: "Concern",
+  5: "Risk",
+};
+
+function fitnessLevelOf(row) {
+  return Math.max(1, Math.min(5, Number(row?.level) || 1));
+}
+
+/** Compact meter. Pitch uses a short word so the card stays the same height. */
+function renderFitnessChip(row, { pitch = false, compact = false, status = null } = {}) {
+  const level = fitnessLevelOf(row);
+  const baseLabel = row?.label || MATCH_FITNESS_LABELS[level];
+  let label = baseLabel;
+  let short = MATCH_FITNESS_SHORT[level];
+  if (status === "injured") {
+    label = "Injured";
+    short = "Out";
+  } else if (status === "recovery") {
+    label = "Regaining fitness";
+    short = "Return";
+  }
+  const shown = pitch || compact ? short : label;
+  const streak = Number(row?.consecutive);
+  const streakNote =
+    Number.isFinite(streak) && streak > 0 ? ` · streak ${streak}` : "";
+  const title = status
+    ? `${label} · meter ${baseLabel} (level ${level}/5)${streakNote}`
+    : `${baseLabel} (level ${level}/5)${streakNote}`;
+  const pips = [1, 2, 3, 4, 5]
+    .map(
+      (n) =>
+        `<span class="md-fit-pip md-fit-pip-${n}${n === level ? " is-on" : ""}" aria-hidden="true"></span>`
+    )
+    .join("");
+  return `<div class="md-fit md-fit-l${level}" title="${escapeText(title)}">
+    <span class="md-fit-meter" aria-hidden="true">${pips}</span>
+    <span class="md-fit-name">${escapeText(shown)}</span>
+  </div>`;
+}
+
 function renderPlayerCard(
   player,
   {
@@ -342,6 +394,7 @@ function renderPlayerCard(
     removable = false,
     status = null,
     showGpdbLink = false,
+    fitness = null,
   } = {}
 ) {
   const id = playerKey(player);
@@ -361,6 +414,12 @@ function renderPlayerCard(
   if (status === "suspended") card.title = "Suspended";
   else if (status === "injured") card.title = "Injured";
   else if (status === "recovery") card.title = "Gaining match fitness";
+  if (fitness) {
+    const level = fitnessLevelOf(fitness);
+    const base = fitness.label || MATCH_FITNESS_LABELS[level];
+    const meter = `${base} (level ${level}/5)`;
+    card.title = card.title ? `${card.title} · ${meter}` : meter;
+  }
   card.draggable = true;
   card.dataset.playerId = id;
   card.innerHTML = `
@@ -383,6 +442,7 @@ function renderPlayerCard(
           ? playerNameStackedLinkHtml(id, name)
           : playerNameLinkHtml(id, name)
       }</div>
+      ${fitness ? renderFitnessChip(fitness, { pitch, compact, status }) : ""}
       ${compact ? "" : `<div class="spc-pos">${pos}${showGpdbLink ? ` · <a href="${gpdbPlayerUrl(id)}" class="gpsl-player-link" draggable="false">GPDB</a>` : ""}</div>`}
     </div>`;
   const removeBtn = card.querySelector(".spc-remove");
@@ -675,7 +735,7 @@ function injectSlotPickerStyles() {
 .slot-pick-btn--pitch { margin-top: 2px; opacity: .85; }
 .pitch-slot:hover .slot-pick-btn--pitch { opacity: 1; }
 .bench-slot-label .slot-pick-btn { padding: 1px 5px; margin-left: 2px; vertical-align: middle; }
-.slot-player-menu { position: fixed; z-index: 1001; width: 280px; max-height: 380px; display: flex; flex-direction: column;
+.slot-player-menu { position: fixed; z-index: 1001; width: 340px; max-height: 380px; display: flex; flex-direction: column;
   background: #1e1e1e; border: 1px solid #555; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.55); color: #ddd; }
 .slot-player-menu[hidden] { display: none; }
 .slot-player-menu-title { padding: 8px 10px 4px; font-size: 12px; font-weight: bold; color: var(--gpsl-accent-hover, #ffcc66); }
@@ -720,7 +780,15 @@ const PICKER_STATUS_LABEL = {
   recovery: "Recovering",
 };
 
-function wireSlotPlayerPicker({ root, getState, rerender, slotName, slotRole, statusFor = null }) {
+function wireSlotPlayerPicker({
+  root,
+  getState,
+  rerender,
+  slotName,
+  slotRole,
+  statusFor = null,
+  fitnessFor = null,
+}) {
   injectSlotPickerStyles();
   let menu = document.querySelector("body > .slot-player-menu");
   if (!menu) {
@@ -811,10 +879,17 @@ function wireSlotPlayerPicker({ root, getState, rerender, slotName, slotRole, st
 
     const optHtml = (p, where = "") => {
       const st = unavailableOf(p);
+      const fit = fitnessFor ? fitnessFor(p) : null;
+      const fitHtml = fit
+        ? `<span class="spo-fit spo-fit-l${fitnessLevelOf(fit)}" title="${escapeText(
+            fit.label || MATCH_FITNESS_LABELS[fitnessLevelOf(fit)]
+          )}">${escapeText(MATCH_FITNESS_SHORT[fitnessLevelOf(fit)])}</span>`
+        : "";
       return `
       <button type="button" class="slot-player-opt${isRoleMatch(p) ? " is-match" : ""}${st ? " is-unavailable" : ""}" data-pid="${escapeText(playerKey(p))}">
         <span class="spo-pos">${escapeText(p.Position || "—")}</span>
         <span class="spo-name">${escapeText(p.Name || p.player_name || playerKey(p))}</span>
+        ${fitHtml}
         ${st ? `<span class="spo-status">${escapeText(PICKER_STATUS_LABEL[st] || st)}</span>` : ""}
         ${where ? `<span class="spo-where">${escapeText(where)}</span>` : ""}
         <span class="spo-rt">${escapeText(p.Rating ?? "")}</span>
@@ -868,7 +943,7 @@ function wireSlotPlayerPicker({ root, getState, rerender, slotName, slotRole, st
 
     menu.hidden = false;
     const a = anchorEl.getBoundingClientRect();
-    const w = menu.offsetWidth || 280;
+    const w = menu.offsetWidth || 340;
     const h = menu.offsetHeight || 380;
     const pad = 8;
     let left = Math.max(pad, Math.min(a.left + a.width / 2 - w / 2, window.innerWidth - w - pad));
@@ -924,14 +999,23 @@ export function initMatchdaySquadPanel({
   clubNation = null,
   /** @type {Map<string, 'suspended'|'injured'|'recovery'>|null} */
   playerStatusById = null,
+  /** When a Map is passed, every card and the pick list shows match fitness. */
+  fitnessByPlayerId = null,
   showGpdbLink = false,
   /** When true, every pitch / sub / squad slot gets a ▾ button to pick a player from a list (drag-drop unchanged). */
   slotPicker = false,
 }) {
   /** @type {Map<string, 'suspended'|'injured'|'recovery'>} */
   let statusById = playerStatusById instanceof Map ? playerStatusById : new Map();
+  const showFitness = fitnessByPlayerId instanceof Map;
+  /** @type {Map<string, { level?: number, label?: string, consecutive?: number }>} */
+  let fitnessById = showFitness ? fitnessByPlayerId : new Map();
 
   const statusFor = (player) => statusById.get(playerKey(player)) || null;
+  const fitnessFor = (player) => {
+    if (!showFitness) return null;
+    return fitnessById.get(playerKey(player)) || { level: 1, label: MATCH_FITNESS_LABELS[1] };
+  };
   const benchLimit = Math.max(1, Number(maxBench) || MAX_BENCH);
   const subSlotCount = Math.max(
     0,
@@ -1515,10 +1599,21 @@ export function initMatchdaySquadPanel({
       .errors;
   }
 
+  function cardFitness(player) {
+    const row = fitnessFor(player);
+    return row ? { fitness: row } : {};
+  }
+
   function rerenderPlayerCards() {
     poolList.innerHTML = "";
     for (const p of state.pool) {
-      poolList.appendChild(renderPlayerCard(p, { status: statusFor(p), showGpdbLink }));
+      poolList.appendChild(
+        renderPlayerCard(p, {
+          status: statusFor(p),
+          showGpdbLink,
+          ...cardFitness(p),
+        })
+      );
     }
 
     for (const slotId of SLOT_IDS) {
@@ -1533,6 +1628,7 @@ export function initMatchdaySquadPanel({
           removable: true,
           status: statusFor(p),
           showGpdbLink,
+          ...cardFitness(p),
         });
         card.draggable = true;
         drop.appendChild(card);
@@ -1552,6 +1648,7 @@ export function initMatchdaySquadPanel({
             removable: true,
             status: statusFor(p),
             showGpdbLink,
+            ...cardFitness(p),
           })
         );
       }
@@ -1585,6 +1682,7 @@ export function initMatchdaySquadPanel({
       slotRole: (target) =>
         target.area === "pitch" ? slotLabels[target.slotId] || target.slotId : null,
       statusFor,
+      fitnessFor: showFitness ? fitnessFor : null,
     });
   }
 
@@ -1754,6 +1852,11 @@ export function initMatchdaySquadPanel({
     },
     setPlayerStatuses: (nextMap) => {
       statusById = nextMap instanceof Map ? nextMap : new Map();
+      rerenderPlayerCards();
+    },
+    setPlayerFitness: (nextMap) => {
+      if (!showFitness) return;
+      fitnessById = nextMap instanceof Map ? nextMap : new Map();
       rerenderPlayerCards();
     },
     reloadFormations: async () => {
