@@ -7,7 +7,7 @@
   <title>Owners Shop — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="owners_shop.css?v=20261020-side-door">
+  <link rel="stylesheet" href="owners_shop.css?v=20261127-medal">
 </head>
 <body class="shop-page">
   <div id="nav"></div>
@@ -71,6 +71,24 @@
     <nav class="shop-aisles" id="shopAisles" aria-label="Shop sections"></nav>
     <div id="shopSections"></div>
 
+    <div id="medalModal" class="medal-modal" hidden>
+      <div class="medal-modal-card">
+        <h2>Winner medal</h2>
+        <p id="medalModalNote"></p>
+        <label>Title
+          <select id="medalTitle"></select>
+        </label>
+        <label>Player from that season’s squad
+          <select id="medalPlayer"></select>
+        </label>
+        <p id="medalModalEmpty" hidden></p>
+        <div class="medal-modal-actions">
+          <button type="button" id="medalConfirm" class="shop-buy">Buy medal</button>
+          <button type="button" id="medalCancel" class="shop-buy shop-buy--disc">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <section class="shop-panel shop-panel--stock" id="shopStockPanel">
       <h2>Stock at <span id="shopStockClub">club</span></h2>
       <p class="shop-panel-intro">
@@ -84,6 +102,7 @@
       <ol class="shop-flow">
         <li><b>Bookies</b> &amp; <b>GPFL prizes</b> → owner balance</li>
         <li><b>Shop buy</b> → debit owner · credit club inventory</li>
+        <li><b>Winner medal</b> → only after a league or cup is archived. Nominate someone from that season’s squad who did not already earn one</li>
         <li><b>Side door</b> → Building Society shows a personal cheque to a made-up name</li>
         <li><b>Use item</b> → consume club stock (Medical / Discipline / Playoff bribe)</li>
         <li>Club transfer budget stays separate</li>
@@ -92,6 +111,6 @@
   </main>
 
   <script type="module" src="global.js?v=20261002-light-mode"></script>
-  <script type="module" src="owners_shop.js?v=20261020-side-door"></script>
+  <script type="module" src="owners_shop.js?v=20261127-medal"></script>
 </body>
 </html>

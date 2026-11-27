@@ -14,6 +14,7 @@ const TYPE_LABELS = {
   bookies_expenditure: "Bookies stake",
   bookies_income: "Bookies win",
   shop_purchase: "Owners Shop",
+  medal_purchase: "Winner medal",
   agent_bribe: "Personal cheque",
   gpfl_prize: "GPFL prize",
   challenge_prize: "Challenge big prize",

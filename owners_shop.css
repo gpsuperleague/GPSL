@@ -490,3 +490,37 @@ body.shop-page {
 }
 
 .shop-flow b { color: #e8c060; }
+
+.medal-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+}
+.medal-modal[hidden] { display: none; }
+.medal-modal-card {
+  width: min(520px, 100%);
+  background: #1a1612;
+  border: 1px solid #8a6a48;
+  border-radius: 8px;
+  padding: 18px 18px 16px;
+  color: #e6d7c3;
+}
+.medal-modal-card h2 { margin: 0 0 8px; color: #e8c060; font-size: 20px; }
+.medal-modal-card p { margin: 0 0 12px; font-size: 13px; line-height: 1.45; color: #c8b090; }
+.medal-modal-card label { display: block; font-size: 12px; color: #e8c060; margin: 0 0 10px; }
+.medal-modal-card select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  background: #111;
+  color: #eee;
+  border: 1px solid #665433;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.medal-modal-actions { display: flex; gap: 8px; margin-top: 8px; }

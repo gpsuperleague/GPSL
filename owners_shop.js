@@ -5,6 +5,7 @@ let currentClub = null;
 let ownerBalance = 0;
 let catalogue = [];
 let stock = [];
+let medalShop = null;
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -101,10 +102,17 @@ async function loadStock() {
     total === 1 ? "1 item" : `${total} items`;
 }
 
+function shelves() {
+  return catalogue.filter((s) => {
+    if (s.code !== "trophy_room") return true;
+    return Array.isArray(medalShop?.honours) && medalShop.honours.length > 0;
+  });
+}
+
 function renderAisles() {
   const nav = document.getElementById("shopAisles");
   if (!nav) return;
-  nav.innerHTML = catalogue
+  nav.innerHTML = shelves()
     .map((s, idx) => {
       const theme = s.theme_key || "default";
       const mark =
@@ -131,7 +139,7 @@ function renderSections() {
   const root = document.getElementById("shopSections");
   if (!root) return;
 
-  root.innerHTML = catalogue
+  root.innerHTML = shelves()
     .map((s) => {
       const theme = s.theme_key || "default";
       const panelMod =
@@ -174,9 +182,11 @@ function renderSections() {
                 ? " shop-buy--shady"
                 : "";
           const badge = i.badge_label || "•";
+          const medal = i.prize_type === "winner_medal" || i.sku_code === "winner_medal";
           const canBuy = currentClub && ownerBalance >= Number(i.price);
-          const buyLabel =
-            theme === "shady"
+          const buyLabel = medal
+            ? "Nominate a player"
+            : theme === "shady"
               ? "Slip cash under the door"
               : `Buy for ${currentClub || "club"}`;
           return `<article class="shop-item${feat}${theme === "shady" ? " shop-item--shady" : ""}">
@@ -228,12 +238,125 @@ function renderStock() {
     .join("");
 }
 
+function medalHonours() {
+  return Array.isArray(medalShop?.honours) ? medalShop.honours : [];
+}
+
+function fillMedalPlayers() {
+  const titleSel = document.getElementById("medalTitle");
+  const playerSel = document.getElementById("medalPlayer");
+  const empty = document.getElementById("medalModalEmpty");
+  const confirm = document.getElementById("medalConfirm");
+  if (!titleSel || !playerSel) return;
+  const honour = medalHonours().find(
+    (h) =>
+      String(h.season_id) === titleSel.value.split("|")[0] &&
+      String(h.honour_type) === titleSel.value.split("|")[1] &&
+      String(h.cup_code || "") === (titleSel.value.split("|")[2] || "")
+  );
+  const players = Array.isArray(honour?.players) ? honour.players : [];
+  playerSel.innerHTML = players
+    .map(
+      (p) =>
+        `<option value="${escapeHtml(p.player_id)}">${escapeHtml(p.name || p.player_id)}</option>`
+    )
+    .join("");
+  const none = players.length === 0;
+  if (empty) {
+    empty.hidden = !none;
+    empty.textContent = none
+      ? "Everyone in that season’s squad who can have this medal already has one."
+      : "";
+  }
+  if (confirm) confirm.disabled = none || ownerBalance < Number(medalShop?.price || 0);
+}
+
+function openMedalModal() {
+  const modal = document.getElementById("medalModal");
+  const titleSel = document.getElementById("medalTitle");
+  const note = document.getElementById("medalModalNote");
+  if (!modal || !titleSel) return;
+  const honours = medalHonours();
+  if (!honours.length) {
+    setStatus("Winner medals open once a league or cup win is archived.", false);
+    return;
+  }
+  titleSel.innerHTML = honours
+    .map((h) => {
+      const key = `${h.season_id}|${h.honour_type}|${h.cup_code || ""}`;
+      const label = `${h.honour_label || "Title"} · ${h.season_label || ""}`;
+      return `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`;
+    })
+    .join("");
+  if (note) {
+    note.textContent =
+      `${formatMoney(medalShop?.price)} from your personal balance. ` +
+      `Only players who were in the squad that season, and who did not already earn the medal.`;
+  }
+  fillMedalPlayers();
+  modal.hidden = false;
+}
+
+function closeMedalModal() {
+  const modal = document.getElementById("medalModal");
+  if (modal) modal.hidden = true;
+}
+
+async function confirmMedal() {
+  const titleSel = document.getElementById("medalTitle");
+  const playerSel = document.getElementById("medalPlayer");
+  const confirm = document.getElementById("medalConfirm");
+  if (!titleSel || !playerSel?.value) return;
+  const [seasonId, honourType, cupCode] = titleSel.value.split("|");
+  const name = playerSel.selectedOptions[0]?.textContent || "this player";
+  const title = titleSel.selectedOptions[0]?.textContent || "this title";
+  if (
+    !window.confirm(
+      `Buy a winner medal for ${name}?\n\n${title}\n${formatMoney(medalShop?.price)} comes off your personal wealth.`
+    )
+  ) {
+    return;
+  }
+  if (confirm) confirm.disabled = true;
+  const { data, error } = await supabase.rpc("owner_buy_winner_medal", {
+    p_player_id: playerSel.value,
+    p_season_id: Number(seasonId),
+    p_honour_type: honourType,
+    p_cup_code: cupCode || null,
+  });
+  if (error || data?.ok === false) {
+    setStatus(error?.message || data?.reason || "Could not buy the medal.", false);
+    if (confirm) confirm.disabled = false;
+    return;
+  }
+  closeMedalModal();
+  setStatus(
+    `Winner medal for ${data?.player_name || name} — ${data?.honour_label || title}.`
+  );
+  await refreshAll();
+}
+
+function wireMedalModal() {
+  document.getElementById("medalTitle")?.addEventListener("change", fillMedalPlayers);
+  document.getElementById("medalCancel")?.addEventListener("click", closeMedalModal);
+  document.getElementById("medalConfirm")?.addEventListener("click", () => {
+    void confirmMedal();
+  });
+  document.getElementById("medalModal")?.addEventListener("click", (e) => {
+    if (e.target?.id === "medalModal") closeMedalModal();
+  });
+}
+
 async function buyItem(itemId) {
   if (!currentClub) {
     setStatus("Link a club before buying — stock delivers to your club.", false);
     return;
   }
   const item = catalogue.flatMap((s) => s.items || []).find((i) => i.id === itemId);
+  if (item?.prize_type === "winner_medal" || item?.sku_code === "winner_medal") {
+    openMedalModal();
+    return;
+  }
   const label = item?.title || "item";
   const shady = item?.prize_type === "agent_bribe";
   if (
@@ -263,10 +386,14 @@ async function buyItem(itemId) {
   await refreshAll();
 }
 
+async function loadMedalShop() {
+  const { data, error } = await supabase.rpc("owner_winner_medal_shop");
+  medalShop = error ? null : data;
+}
+
 async function refreshAll() {
   await loadHeader();
-  await loadCatalogue();
-  await loadStock();
+  await Promise.all([loadCatalogue(), loadStock(), loadMedalShop()]);
   renderAisles();
   renderSections();
   renderStock();
@@ -290,6 +417,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     .maybeSingle();
   currentClub = club?.ShortName || null;
 
+  wireMedalModal();
   await Promise.all([refreshAll(), renderBookiesReminder()]);
 });
 
