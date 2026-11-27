@@ -15,7 +15,7 @@ import {
   leagueTierForDivision,
   loadActiveSeasonRegistrations,
   divisionSlugForClub,
-} from "./competition.js";
+} from "./competition.js?v=20261127-squad-all-comps";
 import {
   analyseSquadComposition,
   analyseSquadCompositionProjected,
@@ -164,7 +164,7 @@ import {
   SQUAD_TIPS,
   SQUAD_COLUMN_TIPS,
   squadContractTip,
-} from "./squad_info_tips.js?v=20261106-overflow-2-5m";
+} from "./squad_info_tips.js?v=20261127-squad-all-comps";
 
 window.supabase = supabase;
 

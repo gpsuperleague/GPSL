@@ -1019,7 +1019,78 @@ export async function loadInternationalPlayerStats(supabase) {
   return data || [];
 }
 
-/** Squad page: only stats for these Konami IDs at one club (fast). */
+function squadStatNum(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** World Cup is international. Club cups stay in the squad totals. */
+function isWorldCupCode(cupCode) {
+  const code = String(cupCode || "")
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  return code === "world_cup" || code === "worldcup" || code.includes("world_cup");
+}
+
+/**
+ * League row plus every domestic cup row for the same player at this club.
+ * Appearances, goals and assists add up. Average rating is weighted by apps.
+ */
+export function mergeSquadCompetitionStats(leagueRows, cupRows) {
+  const map = new Map();
+
+  const add = (row, cup) => {
+    if (!row?.player_id) return;
+    if (cup && isWorldCupCode(row.cup_code)) return;
+    const id = String(row.player_id);
+    let acc = map.get(id);
+    if (!acc) {
+      acc = {
+        ...row,
+        appearances: 0,
+        starts: 0,
+        subs: 0,
+        goals: 0,
+        assists: 0,
+        potm_awards: 0,
+        clean_sheets: 0,
+        avg_rating: null,
+        _ratingWeight: 0,
+        _ratedApps: 0,
+      };
+      map.set(id, acc);
+    }
+    const apps = squadStatNum(row.appearances);
+    acc.appearances += apps;
+    acc.starts += squadStatNum(row.starts);
+    acc.subs += squadStatNum(row.subs);
+    acc.goals += squadStatNum(row.goals);
+    acc.assists += squadStatNum(row.assists);
+    acc.potm_awards += squadStatNum(row.potm_awards);
+    acc.clean_sheets += squadStatNum(row.clean_sheets);
+    if (row.avg_rating != null && row.avg_rating !== "" && apps > 0) {
+      acc._ratingWeight += Number(row.avg_rating) * apps;
+      acc._ratedApps += apps;
+    }
+  };
+
+  for (const row of leagueRows || []) add(row, false);
+  for (const row of cupRows || []) add(row, true);
+
+  const out = [];
+  for (const acc of map.values()) {
+    acc.avg_rating = acc._ratedApps
+      ? Math.round((acc._ratingWeight / acc._ratedApps) * 100) / 100
+      : null;
+    delete acc._ratingWeight;
+    delete acc._ratedApps;
+    delete acc.cup_code;
+    out.push(acc);
+  }
+  return out;
+}
+
+/** Squad page: league + cup stats for these Konami IDs at one club. World Cup excluded. */
 export async function loadPlayerSeasonStatsForSquad(
   supabase,
   playerIds,
@@ -1028,17 +1099,31 @@ export async function loadPlayerSeasonStatsForSquad(
   const ids = (playerIds || []).map((id) => String(id)).filter(Boolean);
   if (!ids.length || !clubShortName) return [];
 
-  const { data, error } = await supabase
-    .from("competition_player_season_stats_public")
-    .select("*")
-    .eq("club_short_name", clubShortName)
-    .in("player_id", ids);
+  const [leagueRes, cupRes] = await Promise.all([
+    supabase
+      .from("competition_player_season_stats_public")
+      .select("*")
+      .eq("club_short_name", clubShortName)
+      .in("player_id", ids),
+    supabase
+      .from("competition_player_cup_stats_public")
+      .select("*")
+      .eq("club_short_name", clubShortName)
+      .in("player_id", ids),
+  ]);
 
-  if (error) {
-    console.error("loadPlayerSeasonStatsForSquad:", error);
+  if (leagueRes.error) {
+    console.error("loadPlayerSeasonStatsForSquad:", leagueRes.error);
     return [];
   }
-  return data || [];
+  if (cupRes.error) {
+    console.error("loadPlayerSeasonStatsForSquad cups:", cupRes.error);
+  }
+
+  return mergeSquadCompetitionStats(
+    leagueRes.data || [],
+    cupRes.error ? [] : cupRes.data || []
+  );
 }
 
 export function statsMapByPlayerId(rows) {
