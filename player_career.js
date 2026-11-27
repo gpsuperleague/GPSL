@@ -1,6 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
-import { DIVISION_LABELS, formatMoney, GPSL_MONTH_LABELS } from "./competition.js";
+import { CUP_LABELS, DIVISION_LABELS, formatMoney, GPSL_MONTH_LABELS } from "./competition.js?v=20261127-career-comps";
 import {
   pesdbPlayerUrl,
   pesdbPlayerCardUrl,
@@ -178,9 +178,50 @@ function transferDestClub(t) {
   return String(t.buyer_club_short_name || t.foreign_buyer_name || "").trim();
 }
 
-function renderStints(stints, transfers = []) {
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function competitionDisplayName(row) {
+  if (row.is_league === true || row.competition_code === "league") {
+    return DIVISION_LABELS[row.division] || "League";
+  }
+  return CUP_LABELS[row.competition_code] || row.competition_code || "Cup";
+}
+
+function sumStat(rows, key) {
+  return (rows || []).reduce((n, row) => n + (Number(row?.[key]) || 0), 0);
+}
+
+function weightedAvg(rows) {
+  let weight = 0;
+  let apps = 0;
+  for (const row of rows || []) {
+    const n = Number(row.appearances) || 0;
+    if (row.avg_rating != null && row.avg_rating !== "" && n > 0) {
+      weight += Number(row.avg_rating) * n;
+      apps += n;
+    }
+  }
+  return apps ? Math.round((weight / apps) * 100) / 100 : null;
+}
+
+function formatAvgCell(value) {
+  return value != null && value !== "" ? Number(value).toFixed(2) : "—";
+}
+
+function renderStints(stints, transfers = [], competitions = []) {
   const el = document.getElementById("stintsPanel");
   if (!el) return;
+
+  if (competitions?.length) {
+    renderSeasonCompetitionHistory(el, stints, transfers, competitions);
+    return;
+  }
 
   const stintRows = (stints || []).map((s) => ({
     kind: "stint",
@@ -276,6 +317,145 @@ function renderStints(stints, transfers = []) {
           })
           .join("")}
       </tbody>
+    </table>`;
+}
+
+function renderSeasonCompetitionHistory(el, stints, transfers, competitions) {
+  const seasons = new Map();
+  const bucket = (label) => {
+    const name = label || "—";
+    if (!seasons.has(name)) {
+      seasons.set(name, {
+        label: name,
+        key: seasonSortKey(name),
+        stints: [],
+        transfers: [],
+        comps: [],
+      });
+    }
+    return seasons.get(name);
+  };
+
+  for (const stint of stints || []) bucket(stint.season_label).stints.push(stint);
+  for (const transfer of transfers || []) bucket(transfer.season_label).transfers.push(transfer);
+  for (const comp of competitions || []) bucket(comp.season_label).comps.push(comp);
+
+  const ordered = [...seasons.values()].sort((a, b) => b.key - a.key);
+  if (!ordered.length) {
+    el.innerHTML =
+      '<p class="empty">No GPSL match stats or transfers yet — stats appear after confirmed league &amp; cup games.</p>';
+    return;
+  }
+
+  const body = ordered
+    .map((season) => {
+      const parts = [];
+      const coveredClubs = new Set(
+        season.comps.map((c) => String(c.club_short_name || "").trim())
+      );
+      const statRows = season.comps.length ? season.comps : season.stints;
+      if (statRows.length) {
+        const live = season.stints.some((s) => s.is_live);
+        parts.push(`
+          <tr class="season-total">
+            <td>${escapeHtml(season.label)}${live ? " <small>(live)</small>" : ""}</td>
+            <td>Season total</td>
+            <td>—</td>
+            <td class="num">${sumStat(statRows, "appearances")}</td>
+            <td class="num">${sumStat(statRows, "goals")}</td>
+            <td class="num">${sumStat(statRows, "assists")}</td>
+            <td class="num">${season.stints.length ? sumStat(season.stints, "potm_awards") : "—"}</td>
+            <td class="num">${season.stints.length ? sumStat(season.stints, "clean_sheets") : "—"}</td>
+            <td class="num">${formatAvgCell(weightedAvg(statRows))}</td>
+          </tr>`);
+      }
+
+      const comps = [...season.comps].sort((a, b) => {
+        const league = Number(b.is_league === true) - Number(a.is_league === true);
+        if (league) return league;
+        const name = competitionDisplayName(a).localeCompare(competitionDisplayName(b));
+        if (name) return name;
+        return String(a.club_short_name || "").localeCompare(String(b.club_short_name || ""));
+      });
+      for (const comp of comps) {
+        const club = clubLink(comp.club_short_name, comp.club_name);
+        parts.push(`
+          <tr class="comp-row">
+            <td></td>
+            <td class="comp-name">${escapeHtml(competitionDisplayName(comp))} · ${club}</td>
+            <td>${comp.is_league ? divisionLabel(comp.division) : "—"}</td>
+            <td class="num">${comp.appearances ?? 0}</td>
+            <td class="num">${comp.goals ?? 0}</td>
+            <td class="num">${comp.assists ?? 0}</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+            <td class="num">${formatAvgCell(comp.avg_rating)}</td>
+          </tr>`);
+      }
+
+      for (const stint of season.stints) {
+        if (coveredClubs.has(String(stint.club_short_name || "").trim())) continue;
+        parts.push(`
+          <tr>
+            <td></td>
+            <td>${clubLink(stint.club_short_name, stint.club_name)}</td>
+            <td>${divisionLabel(stint.division)}</td>
+            <td class="num">${stint.appearances ?? 0}</td>
+            <td class="num">${stint.goals ?? 0}</td>
+            <td class="num">${stint.assists ?? 0}</td>
+            <td class="num">${stint.potm_awards ?? 0}</td>
+            <td class="num">${stint.clean_sheets ?? 0}</td>
+            <td class="num">${formatAvgCell(stint.avg_rating)}</td>
+          </tr>`);
+      }
+
+      const moves = [...season.transfers].sort((a, b) => {
+        const ta = a.transfer_time ? new Date(a.transfer_time).getTime() : 0;
+        const tb = b.transfer_time ? new Date(b.transfer_time).getTime() : 0;
+        return ta - tb;
+      });
+      for (const transfer of moves) {
+        const when = transfer.transfer_time
+          ? new Date(transfer.transfer_time).toLocaleDateString("en-GB")
+          : null;
+        const type = MOVE_LABELS[transfer.move_kind] || transfer.move_kind || "Transfer";
+        const fee = formatTransferFee(transfer);
+        parts.push(`
+          <tr class="move-row">
+            <td>${escapeHtml(transfer.season_label || season.label)}</td>
+            <td>
+              <span class="row-kind">Signed</span>${formatTransferParties(transfer)}
+              <div class="move-meta">${[when, type, fee !== "—" ? fee : null].filter(Boolean).join(" · ")}</div>
+            </td>
+            <td>—</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+          </tr>`);
+      }
+      return parts.join("");
+    })
+    .join("");
+
+  el.innerHTML = `
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Season</th>
+          <th>Club / competition</th>
+          <th>Div</th>
+          <th class="num">Apps</th>
+          <th class="num">G</th>
+          <th class="num">A</th>
+          <th class="num">POTM</th>
+          <th class="num">CS</th>
+          <th class="num">Avg</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
     </table>`;
 }
 
@@ -440,7 +620,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (imgLink) imgLink.href = pesdbPlayerUrl(playerId);
 
   renderTotals(bundle.totals);
-  renderStints(bundle.stints || [], bundle.transfers || []);
+  renderStints(bundle.stints || [], bundle.transfers || [], bundle.competitions || []);
   renderDiscipline(bundle.discipline || []);
   careerHonoursReal = bundle.honours || [];
   setupMedalsPreviewToggle();

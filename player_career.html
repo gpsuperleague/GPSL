@@ -30,6 +30,9 @@
       display:inline-block; font-size:11px; text-transform:uppercase; letter-spacing:0.04em;
       color:#888; margin-right:6px;
     }
+    .gpsl-table tr.season-total td { background:#241f16; font-weight:700; }
+    .gpsl-table tr.comp-row td { color:#ccc; }
+    .gpsl-table tr.comp-row td.comp-name { padding-left:18px; }
     .gpsl-link { color:var(--gpsl-accent, #ff9900); text-decoration:none; }
     .discipline-active { background: rgba(160, 55, 35, 0.2); }
     .card-pill {
@@ -72,7 +75,7 @@
     <div class="panel">
       <h2>GPSL clubs &amp; seasons</h2>
       <p class="sub" style="margin-top:-6px;">
-        Season stints (apps &amp; stats) and completed transfers in one history.
+        Each season’s total, then league and cup appearances. World Cup games are not included. Transfers stay in the same list.
       </p>
       <div id="stintsPanel"><span class="empty">Loading…</span></div>
     </div>
@@ -100,6 +103,6 @@
       <div id="awardsPanel"><span class="empty">Loading…</span></div>
     </div>
   </div>
-  <script type="module" src="player_career.js?v=20260804-career-signed-below"></script>
+  <script type="module" src="player_career.js?v=20261127-career-comps"></script>
 </body>
 </html>
