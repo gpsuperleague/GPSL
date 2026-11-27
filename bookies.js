@@ -72,6 +72,8 @@ let isAdmin = false;
 let markets = [];
 let selectionsByMarket = new Map();
 let myBets = [];
+/** @type {Map<number, { tone: string, line: string }>} */
+let slipProgress = new Map();
 /** @type {Array<Record<string, unknown>>} */
 let allBetsAdmin = [];
 let slipsTab = "mine";
@@ -201,6 +203,23 @@ async function loadMyBets() {
   const openN = myBets.filter((b) => b.status === "open").length;
   const el = document.getElementById("bkOpenCount");
   if (el) el.textContent = String(openN);
+}
+
+async function loadSlipProgress() {
+  slipProgress = new Map();
+  const { data, error } = await supabase.rpc("bookies_my_slip_progress");
+  if (error) {
+    console.warn("bookies_my_slip_progress:", error.message);
+    return;
+  }
+  const rows = Array.isArray(data) ? data : [];
+  for (const row of rows) {
+    if (!row?.line) continue;
+    slipProgress.set(Number(row.bet_id), {
+      tone: String(row.tone || "wait"),
+      line: String(row.line),
+    });
+  }
 }
 
 async function loadAllBetsAdmin() {
@@ -571,9 +590,18 @@ function betCardHtml(b, { showBettor = false } = {}) {
       <div class="bk-muted">${escapeHtml(b.selection_label)}${sel ? selectionOwnerTagHtml(sel) : ""} @ ${escapeHtml(formatFractionalOdds(b.odds_decimal, b.odds_fractional))}</div>
       ${bettor}
       <div>Stake ${formatMoney(b.stake)} · returns ${formatMoney(b.potential_return)}</div>
+      ${slipRunHtml(b)}
     </div>
     <div class="status-${st}">${escapeHtml(st)}</div>
   </div>`;
+}
+
+function slipRunHtml(b) {
+  if (String(b.status || "") !== "open") return "";
+  const run = slipProgress.get(Number(b.id));
+  if (!run?.line) return "";
+  const tone = ["on", "level", "off", "wait"].includes(run.tone) ? run.tone : "wait";
+  return `<div class="bk-slip-run bk-slip-run--${tone}">${escapeHtml(run.line)}</div>`;
 }
 
 function renderMyBets() {
@@ -763,6 +791,7 @@ async function refreshAll() {
   await Promise.all([
     loadMarkets(),
     loadMyBets(),
+    loadSlipProgress(),
     loadAllBetsAdmin(),
     loadHeader(),
     loadMarketStates(),

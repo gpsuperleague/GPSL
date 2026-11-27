@@ -297,6 +297,16 @@ body.bookies-page {
 .bk-bet-card .status-lost { color: #e88; font-weight: 700; }
 .bk-bet-card .status-open { color: var(--gpsl-accent-hover, #ffcc66); font-weight: 700; }
 
+.bk-slip-run {
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+.bk-slip-run--on { color: #9fdf9f; }
+.bk-slip-run--level { color: var(--gpsl-accent-hover, #ffcc66); }
+.bk-slip-run--off { color: #e8b0a0; }
+.bk-slip-run--wait { color: #7a9080; }
+
 .bk-admin {
   border-style: dashed;
   border-color: #5a7a4a;
