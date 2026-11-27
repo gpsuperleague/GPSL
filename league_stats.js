@@ -1293,10 +1293,18 @@ function setActiveTab(tab, { syncHash = true } = {}) {
   }
 }
 
-function tabFromHash() {
-  const raw = String(window.location.hash || "")
+function statsHash() {
+  return String(window.location.hash || "")
     .replace(/^#/, "")
     .toLowerCase();
+}
+
+function tabFromHash() {
+  const raw = statsHash();
+  if (raw === "scorers" || raw === "assists" || raw === "clean-sheets" || raw === "cleansheets") {
+    return "league";
+  }
+  if (raw === "cup-scorers") return "cups";
   if (raw === "ballon" || raw === "ballondor" || raw === "ballon_dor") return "ballon";
   if (raw === "monthly" || raw === "awards" || raw === "ootm" || raw === "totm") {
     return "monthly";
@@ -1305,6 +1313,41 @@ function tabFromHash() {
   if (raw === "cups" || raw === "cup") return "cups";
   if (raw === "worldcup" || raw === "wc" || raw === "international") return "worldcup";
   return "league";
+}
+
+function applyStatsDeepLink() {
+  const params = new URLSearchParams(window.location.search);
+  const cup = params.get("cup")?.trim() || "";
+  const division = params.get("division")?.trim() || "";
+  const cupSel = document.getElementById("cupFilter");
+  if (cup && cupSel && [...cupSel.options].some((o) => o.value === cup)) cupSel.value = cup;
+  const divSel = document.getElementById("divisionFilter");
+  if (division && divSel && [...divSel.options].some((o) => o.value === division)) {
+    divSel.value = division;
+  }
+}
+
+function scrollStatsBoard() {
+  const raw = statsHash();
+  const id =
+    raw === "scorers"
+      ? "scorersTable"
+      : raw === "assists"
+        ? "assistsTable"
+        : raw === "clean-sheets" || raw === "cleansheets"
+          ? "cleanSheetsTable"
+          : raw === "cup-scorers"
+            ? "cupScorersTable"
+            : raw === "worldcup" || raw === "wc" || raw === "international"
+              ? "wcScorersTable"
+              : "";
+  if (!id) return;
+  requestAnimationFrame(() => {
+    document.getElementById(id)?.closest(".panel")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -1362,9 +1405,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   window.addEventListener("hashchange", () => {
     setActiveTab(tabFromHash(), { syncHash: false });
+    scrollStatsBoard();
   });
 
+  applyStatsDeepLink();
   setActiveTab(tabFromHash(), { syncHash: false });
+  scrollStatsBoard();
 
   window.addEventListener("resize", () => {
     scheduleLeaderboardSync();

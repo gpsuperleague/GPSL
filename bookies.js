@@ -364,7 +364,7 @@ function renderMarkets() {
 
       return `<article class="bk-market${marketTaken ? " bk-market--yours" : ""}${state.running ? "" : " bk-market--inactive"}" data-market="${m.id}">
         <div class="bk-market-head" data-toggle="${m.id}">
-          <span class="bk-market-title">${escapeHtml(m.title)}</span>
+          <span class="bk-market-title">${escapeHtml(m.title)} ${progressLinkHtml(m.market_code)}</span>
           ${
             state.running
               ? ""
@@ -416,6 +416,10 @@ function renderMarkets() {
       </article>`;
     })
     .join("");
+
+  root.querySelectorAll("[data-progress-link]").forEach((link) => {
+    link.addEventListener("click", (e) => e.stopPropagation());
+  });
 
   root.querySelectorAll("[data-toggle]").forEach((el) => {
     el.addEventListener("click", () => {
@@ -577,6 +581,33 @@ async function ensurePlayerAndBet(marketId, playerId) {
   }
 }
 
+function progressHref(marketCode) {
+  const code = String(marketCode || "").toLowerCase();
+  const pages = {
+    league_sl_champion: "progress.html?division=superleague",
+    league_ch_a_champion: "progress.html?division=championship_a",
+    league_ch_b_champion: "progress.html?division=championship_b",
+    cup_league_cup: "cups.html?cup=league_cup",
+    cup_super8: "cups.html?cup=super8",
+    cup_plate: "cups.html?cup=plate",
+    cup_shield: "cups.html?cup=shield",
+    cup_bowl: "cups.html?cup=bowl",
+    scorer_overall: "league_stats.html#scorers",
+    assists_overall: "league_stats.html#assists",
+    clean_sheets_gk: "league_stats.html#clean-sheets",
+    scorer_league_cup: "league_stats.html?cup=league_cup#cup-scorers",
+    scorer_prestige: "league_stats.html#cup-scorers",
+    scorer_world_cup: "league_stats.html#worldcup",
+  };
+  return pages[code] || "";
+}
+
+function progressLinkHtml(marketCode) {
+  const href = progressHref(marketCode);
+  if (!href) return "";
+  return `<a class="bk-progress-link" href="${escapeHtml(href)}" data-progress-link="1">Check progress</a>`;
+}
+
 function betCardHtml(b, { showBettor = false } = {}) {
   const st = String(b.status || "open");
   const selById = betCardHtml._selById || new Map();
@@ -586,7 +617,7 @@ function betCardHtml(b, { showBettor = false } = {}) {
     : "";
   return `<div class="bk-bet-card">
     <div>
-      <div><b>${escapeHtml(b.market_title)}</b></div>
+      <div><b>${escapeHtml(b.market_title)}</b> ${progressLinkHtml(b.market_code)}</div>
       <div class="bk-muted">${escapeHtml(b.selection_label)}${sel ? selectionOwnerTagHtml(sel) : ""} @ ${escapeHtml(formatFractionalOdds(b.odds_decimal, b.odds_fractional))}</div>
       ${bettor}
       <div>Stake ${formatMoney(b.stake)} · returns ${formatMoney(b.potential_return)}</div>
@@ -659,8 +690,9 @@ function renderAllBetsAdmin() {
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([title, list]) => {
           const openN = list.filter((x) => x.status === "open").length;
+          const code = list[0]?.market_code;
           return `<div class="bk-admin-market">
-            <h4>${escapeHtml(title)} <span class="bk-muted">(${list.length} slip${list.length === 1 ? "" : "s"}${openN ? ` · ${openN} open` : ""})</span></h4>
+            <h4>${escapeHtml(title)} ${progressLinkHtml(code)} <span class="bk-muted">(${list.length} slip${list.length === 1 ? "" : "s"}${openN ? ` · ${openN} open` : ""})</span></h4>
             ${list.map((b) => betCardHtml(b, { showBettor: true })).join("")}
           </div>`;
         })

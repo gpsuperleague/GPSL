@@ -173,6 +173,15 @@ body.bookies-page {
   font-size: 14px;
 }
 
+.bk-progress-link {
+  margin-left: 8px;
+  color: var(--gpsl-accent-hover, #ffcc66);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .bk-pill {
   font-size: 10px;
   text-transform: uppercase;

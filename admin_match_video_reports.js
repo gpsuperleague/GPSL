@@ -1,5 +1,5 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
-import { DIVISION_LABELS, CUP_LABELS, GPSL_MONTH_LABELS } from "./competition.js";
+import { DIVISION_LABELS, CUP_LABELS, GPSL_MONTH_LABELS, formatMoney } from "./competition.js";
 import {
   loadFixtureUnavailable,
   formatFixtureUnavailableHtml,
@@ -8,7 +8,8 @@ import {
 primeAdminPageChrome();
 
 let filterStatus = "open";
-let tariffEffects = new Map();
+/** @type {Map<string, Record<string, unknown>>} */
+let tariffByCode = new Map();
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage({ allowMod: true }))) return;
@@ -33,13 +34,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function loadTariffEffects() {
-  const { data } = await supabase.from("competition_fine_tariff").select("code, match_effect");
-  tariffEffects = new Map((data || []).map((t) => [t.code, t.match_effect || "none"]));
+  const { data } = await supabase
+    .from("competition_fine_tariff")
+    .select(
+      "code, amount, amount_mode, fine_when, match_effect, points_delta, points_when, points_min_instances"
+    );
+  tariffByCode = new Map((data || []).map((t) => [t.code, t]));
+}
+
+function matchEffect(code) {
+  return String(tariffByCode.get(code)?.match_effect || "none");
 }
 
 function reportNeedsReplayChoice(r) {
   const list = Array.isArray(r.breaches) ? r.breaches : [];
-  return list.some((b) => tariffEffects.get(b.code) === "admin_decides");
+  return list.some((b) => matchEffect(b.code) === "admin_decides");
 }
 
 function escapeHtml(s) {
@@ -83,24 +92,77 @@ function fixturePageHref(r) {
   return `fixtures.html?${params.toString()}`;
 }
 
-function formationDragOutcome(r, instances) {
+function offenderWonOrDrew(r) {
   const accused = String(r.accused_club_short_name || "").toUpperCase();
   const home = String(r.home_club_short_name || "").toUpperCase();
   const hg = Number(r.home_goals);
   const ag = Number(r.away_goals);
   const pen = String(r.cup_pen_winner_club_short_name || "").toUpperCase();
-  let offenderWonOrDrew = false;
-  if (Number.isFinite(hg) && Number.isFinite(ag)) {
-    if (hg === ag && !pen) offenderWonOrDrew = true;
-    else if (hg === ag && pen) offenderWonOrDrew = pen === accused;
-    else if (hg > ag) offenderWonOrDrew = accused === home;
-    else offenderWonOrDrew = accused !== home && accused !== "";
-  }
+  if (!Number.isFinite(hg) || !Number.isFinite(ag)) return false;
+  if (hg === ag && !pen) return true;
+  if (hg === ag && pen) return pen === accused;
+  if (hg > ag) return accused === home;
+  return accused !== home && accused !== "";
+}
+
+function clause(text) {
+  const s = String(text || "");
+  if (!s || /^[₿+\-−]/.test(s)) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formationDragOutcome(r, instances) {
+  const won = offenderWonOrDrew(r);
   const n = Number(instances) || 1;
   const points = n >= 2 ? " −1 league point." : "";
-  return offenderWonOrDrew
-    ? `If you approve: match is replayed.${points}`
-    : `If you approve: result stands.${points}`;
+  return won ? `Match is replayed.${points}` : `Result stands.${points}`;
+}
+
+function tariffPunishment(r, b) {
+  const t = tariffByCode.get(b.code);
+  if (!t) return "The fine on this tariff.";
+  const won = offenderWonOrDrew(r);
+  const amount = Number(t.amount);
+  const bits = [];
+  if (t.fine_when === "won_or_drew" && !won) {
+    bits.push("no fine (they lost)");
+  } else if (Number.isFinite(amount) && amount > 0) {
+    bits.push(`${formatMoney(amount)} fine`);
+  } else if (t.amount_mode === "manual") {
+    bits.push("fine amount is set by hand");
+  }
+
+  const pts = Number(t.points_delta) || 0;
+  if (pts !== 0 && t.points_when && t.points_when !== "never") {
+    const n = Math.abs(pts);
+    const word = `${n} league point${n === 1 ? "" : "s"}`;
+    const phrase = pts < 0 ? `−${word}` : `+${word}`;
+    const instances = Number(b.instances) || 1;
+    const min = Number(t.points_min_instances) || 2;
+    if (t.points_when === "always") bits.push(phrase);
+    else if (t.points_when === "won_or_drew") {
+      bits.push(won ? phrase : "no points change (they lost)");
+    } else if (t.points_when === "instances") {
+      bits.push(
+        instances >= min ? phrase : `no points change (${instances} reported, needs ${min})`
+      );
+    }
+  }
+
+  if (t.match_effect === "replay_if_won_or_drew") {
+    bits.push(won ? "match is replayed" : "result stands");
+  } else if (t.match_effect === "admin_decides") {
+    bits.push("you choose whether to replay");
+  } else {
+    bits.push("result stands");
+  }
+
+  return `${bits.map(clause).join(". ")}.`;
+}
+
+function expectedPunishment(r, b) {
+  if (b.code === "formation_player_drag") return formationDragOutcome(r, b.instances || 1);
+  return tariffPunishment(r, b);
 }
 
 function breachDecisionHtml(b) {
@@ -118,33 +180,36 @@ function breachesHtml(r) {
   const open = (r.status || "open") === "open";
   const split = open && list.length > 1;
   if (!list.length) {
+    const code = r.breach_tariff_code || "";
+    const expect = code
+      ? `<div class="mvr-expect">Expected if approved: ${escapeHtml(
+          expectedPunishment(r, { code, instances: 1 })
+        )}</div>`
+      : "";
     return r.note
-      ? `<div class="mvr-breach"><b>${escapeHtml(r.breach_tariff_code || "Breach")}</b><br>${escapeHtml(
+      ? `<div class="mvr-breach"><b>${escapeHtml(code || "Breach")}</b>${expect}<br>${escapeHtml(
           r.note
         )}</div>`
-      : `<p class="note">No breach details.</p>`;
+      : expect || `<p class="note">No breach details.</p>`;
   }
   return list
     .map((b, i) => {
-      const effect = tariffEffects.get(b.code) || "";
+      const effect = matchEffect(b.code);
       const choice = split
         ? `<div class="mvr-decide">
             <label><input type="radio" name="breach-${r.id}-${i}" data-uphold="${r.id}" data-index="${i}" data-effect="${escapeHtml(effect)}" data-label="${escapeHtml(b.label || b.code)}" value="uphold" checked> Uphold</label>
             <label><input type="radio" name="breach-${r.id}-${i}" data-uphold="${r.id}" data-index="${i}" data-label="${escapeHtml(b.label || b.code)}" value="dismiss"> Dismiss</label>
           </div>`
         : breachDecisionHtml(b);
+      const drags =
+        b.code === "formation_player_drag"
+          ? `<div class="mvr-note">Drags reported: <b>${escapeHtml(String(b.instances || 1))}</b></div>`
+          : "";
       return `
       <div class="mvr-breach">
         <b>${escapeHtml(b.label || b.code)}</b>
-        ${
-          b.code === "formation_player_drag"
-            ? `<div class="mvr-note">Drags reported: <b>${escapeHtml(
-                String(b.instances || 1)
-              )}</b>. ${escapeHtml(formationDragOutcome(r, b.instances || 1))}</div>`
-            : effect === "replay_if_won_or_drew"
-              ? `<div class="mvr-note">${escapeHtml(formationDragOutcome(r, 1))}</div>`
-              : ""
-        }
+        ${drags}
+        <div class="mvr-expect">Expected if approved: ${escapeHtml(expectedPunishment(r, b))}</div>
         <div class="mvr-note">${escapeHtml(b.note || "—")}</div>
         ${choice}
       </div>`;
