@@ -26,11 +26,12 @@ import {
 import { formatMoney } from "./competition.js";
 import { displayClubName } from "./clubs_lookup.js";
 import { loadCurrentGpslSeasonId } from "./player_season_transfer.js";
+import { loadCalendarStatus } from "./competition_calendar.js";
 import {
   playerForeignContractLocked,
   playerForeignContractLockKind,
   playerExpiryFaBlockedForClub,
-} from "./player_foreign_contract.js";
+} from "./player_foreign_contract.js?v=20261127-jan-window";
 
 /** Free agent who cannot be signed by this club right now (null = available). */
 export function scoutingUnavailableReason(player, ctx) {
@@ -41,7 +42,13 @@ export function scoutingUnavailableReason(player, ctx) {
       title: "Legacy card — off pesdb.net; cannot be signed until the next PESDB sync",
     };
   }
-  if (playerForeignContractLocked(player, ctx?.currentSeasonId)) {
+  if (
+    playerForeignContractLocked(
+      player,
+      ctx?.currentSeasonId,
+      ctx?.activeGpslMonth
+    )
+  ) {
     const until =
       String(player.foreign_contract_unlock_season_label ?? "").trim() || "next season";
     const club = String(player.foreign_contract_club ?? "").trim();
@@ -312,16 +319,20 @@ export async function loadScoutingDraftContext(supabase, clubShort, playerIds) {
     }
   }
 
-  const [bidsGrouped, draftCredits, currentSeasonId] = await Promise.all([
+  const [bidsGrouped, draftCredits, currentSeasonId, calendar] = await Promise.all([
     fetchDraftBidsGroupedForPlayers(normalized, draftStart ? new Date(draftStart) : null),
     !auctionEnded && clubShort
       ? getDraftCreditsCount(clubShort, new Date(draftStart)).catch(() => 0)
       : Promise.resolve(0),
     loadCurrentGpslSeasonId(supabase).catch(() => null),
+    loadCalendarStatus(supabase).catch(() => null),
   ]);
 
   return {
     currentSeasonId,
+    activeGpslMonth: calendar?.active_gpsl_month
+      ? String(calendar.active_gpsl_month).toLowerCase()
+      : "",
     draftCredits,
     settings,
     draftStart,

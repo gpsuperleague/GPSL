@@ -21,11 +21,12 @@ import {
   playerSellLockReason,
 } from "./player_contracts.js?v=20261014-ff-wage";
 import { playerSignedCurrentSeason } from "./player_season_transfer.js";
+import { loadCalendarStatus } from "./competition_calendar.js";
 import {
   playerForeignContractLocked,
   playerForeignContractStatusLabel,
   playerForeignContractLockKind,
-} from "./player_foreign_contract.js";
+} from "./player_foreign_contract.js?v=20261127-jan-window";
 
 export const TRANSFER_STATUS = {
   LISTED: "listed",
@@ -216,9 +217,10 @@ export async function loadTransferStatusState(supabase) {
     clubShortByKey
   );
 
-  const [currentSeasonLabel, currentSeasonId] = await Promise.all([
+  const [currentSeasonLabel, currentSeasonId, calendar] = await Promise.all([
     loadCurrentGpslSeasonLabel(supabase),
     loadCurrentGpslSeasonId(supabase),
+    loadCalendarStatus(supabase),
   ]);
 
   return {
@@ -231,12 +233,21 @@ export async function loadTransferStatusState(supabase) {
     myExpiryWageBidPlayerIds,
     currentSeasonLabel,
     currentSeasonId,
+    activeGpslMonth: calendar?.active_gpsl_month
+      ? String(calendar.active_gpsl_month).toLowerCase()
+      : "",
   };
 }
 
 /** GPDB free-agent bid column when player is abroad-locked for the season. */
 export function formatForeignContractGpdbHtml(player, state) {
-  if (!playerForeignContractLocked(player, state?.currentSeasonId)) {
+  if (
+    !playerForeignContractLocked(
+      player,
+      state?.currentSeasonId,
+      state?.activeGpslMonth
+    )
+  ) {
     return null;
   }
   const lockKind = playerForeignContractLockKind(player);

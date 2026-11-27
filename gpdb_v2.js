@@ -44,7 +44,7 @@ import {
   loadTransferStatusState,
   buildGpdbContractedBidCellHtml,
   formatForeignContractGpdbHtml,
-} from "./player_transfer_status.js?v=20261014-ff-wage";
+} from "./player_transfer_status.js?v=20261127-jan-window";
 import { isPesdbLegacyCard } from "./player_contracts.js?v=20261014-ff-wage";
 import { installRangeSteppers } from "./range_filter_steppers.js?v=20260819-contract-steppers";
 import { initGpslInfoTips, tipAttrs } from "./gpsl_info_tips.js";
@@ -58,7 +58,7 @@ import {
   playerForeignContractLocked,
   playerForeignContractStatusLabel,
   playerExpiryFaBlockedForClub,
-} from "./player_foreign_contract.js";
+} from "./player_foreign_contract.js?v=20261127-jan-window";
 import {
   playerBlockedSameSeasonTransfer,
   playerBlockedFromTransferMarket,
@@ -231,6 +231,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "foreign_contract_club",
     "foreign_contract_sold_season_id",
     "foreign_contract_unlock_season_label",
+    "foreign_contract_unlock_window",
     "foreign_contract_lock_kind",
     "pesdb_unavailable",
     "Konami_ID",
@@ -265,6 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "foreign_contract_club",
     "foreign_contract_sold_season_id",
     "foreign_contract_unlock_season_label",
+    "foreign_contract_unlock_window",
     "foreign_contract_lock_kind",
     "pesdb_unavailable",
     "intl_caps",
@@ -3058,7 +3060,8 @@ document.addEventListener("DOMContentLoaded", () => {
       !sellerClub &&
       playerForeignContractLocked(
         CURRENT_OFFER_PLAYER,
-        TRANSFER_STATUS_STATE?.currentSeasonId
+        TRANSFER_STATUS_STATE?.currentSeasonId,
+        TRANSFER_STATUS_STATE?.activeGpslMonth
       )
     ) {
       errorBox.textContent = playerForeignContractStatusLabel(

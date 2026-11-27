@@ -1,10 +1,13 @@
 /**
- * Players sold to foreign clubs reappear in GPDB as free agents but are
- * unavailable for draft / transfer bids until the next competition season.
+ * Players sold abroad or paid up reappear in GPDB as free agents but stay
+ * unsignable until their unlock window: the January window of the same season,
+ * or the following summer. The database rule is player_release_lock_cleared.
  *
  * Contract-expiry FAs (`expiry_fa`) are available to other clubs; only the
  * former club is blocked from re-signing.
  */
+
+import { gpslMonthSortIndex } from "./competition.js";
 
 export function normalizeSeasonId(value) {
   if (value == null || value === "") return null;
@@ -24,10 +27,15 @@ export function playerForeignContractLockKind(player) {
 }
 
 /**
- * Globally locked (no club may draft/sign) while sold season is still current.
+ * Globally locked (no club may draft/sign) until the recorded unlock window.
+ * A January window clears once that season's GPSL month is January or later.
+ * A summer window (and a missing window) stays until the next season.
  * expiry_fa is intentionally excluded — other clubs may sign.
+ *
+ * `activeGpslMonth` is the calendar's active month. Without it, a January
+ * lock stays on, matching a page that has not loaded the calendar yet.
  */
-export function playerForeignContractLocked(player, currentSeasonId) {
+export function playerForeignContractLocked(player, currentSeasonId, activeGpslMonth) {
   const kind = playerForeignContractLockKind(player);
   if (kind === "expiry_fa") return false;
 
@@ -35,7 +43,19 @@ export function playerForeignContractLocked(player, currentSeasonId) {
   const soldId = normalizeSeasonId(player?.foreign_contract_sold_season_id);
   const curId = normalizeSeasonId(currentSeasonId);
   if (!club || soldId == null || curId == null) return false;
-  return soldId === curId;
+  if (soldId !== curId) return false;
+
+  const unlockWindow = String(player?.foreign_contract_unlock_window ?? "")
+    .trim()
+    .toLowerCase();
+  if (unlockWindow === "january") {
+    const monthSort = gpslMonthSortIndex(activeGpslMonth);
+    const januarySort = gpslMonthSortIndex("january");
+    if (monthSort != null && januarySort != null && monthSort >= januarySort) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** Former club short name while player is an expiry free agent. */

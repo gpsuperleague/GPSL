@@ -38,7 +38,7 @@ import {
   buildPlayerDraftUiState,
   renderDraftManageCell,
   submitScoutingDraftBid,
-} from "./scouting_draft_actions.js?v=20261012-unavailable";
+} from "./scouting_draft_actions.js?v=20261127-jan-window";
 import {
   confirmSquadRulesBeforeBid,
   isHomeGrownPlayer,
@@ -103,7 +103,7 @@ function autoBidSeedRows() {
 }
 
 const PLAYER_LOCK_COLUMNS =
-  ", pesdb_unavailable, foreign_contract_club, foreign_contract_sold_season_id, foreign_contract_unlock_season_label, foreign_contract_lock_kind";
+  ", pesdb_unavailable, foreign_contract_club, foreign_contract_sold_season_id, foreign_contract_unlock_season_label, foreign_contract_unlock_window, foreign_contract_lock_kind";
 
 const PLAYER_COLUMNS =
   "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, contract_wage, Playstyle, Contracted_Team" +
