@@ -1,6 +1,12 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
+import { managerWeeklyWage } from "./manager_economics.js";
+
+function managerWageText(mgr) {
+  const weekly = managerWeeklyWage(mgr);
+  return weekly > 0 ? `${formatMoney(weekly)}/wk` : "—";
+}
 import {
   parseMoneyInput,
   setMoneyInputValue,
@@ -29,6 +35,8 @@ let currentClub = null;
 /** True when this club already has a signed manager (cannot bid on market). */
 let clubHasManager = false;
 let selectedListing = null;
+/** Manager ids with a live draft-auction listing. Market rows for these stay grey. */
+let inDraftIds = new Set();
 let currentMinBid = 0;
 let bidAmountControl = null;
 
@@ -97,35 +105,43 @@ async function keepaliveFaBoard() {
 
 async function loadListings() {
   const nowIso = new Date().toISOString();
-  const [activeRes, previewRes] = await Promise.all([
+  const [activeRes, previewRes, draftRes] = await Promise.all([
     supabase
       .from("Manager_Transfer_Listings")
-      .select("*, Managers(name, rating, market_value)")
+      .select("*, Managers(name, rating, market_value, weekly_wage)")
       .eq("status", "Active")
       .neq("listing_type", "draft")
       .gt("end_time", nowIso)
       .order("end_time", { ascending: true }),
     supabase
       .from("Manager_Transfer_Listings")
-      .select("*, Managers(name, rating, market_value)")
+      .select("*, Managers(name, rating, market_value, weekly_wage)")
       .eq("status", "Pending Window")
       .eq("listing_type", "standard")
       .order("created_at", { ascending: true }),
+    supabase
+      .from("Manager_Transfer_Listings")
+      .select("manager_id")
+      .eq("listing_type", "draft")
+      .eq("status", "Active"),
   ]);
   const error = activeRes.error || previewRes.error;
   const listings = [...(previewRes.data || []), ...(activeRes.data || [])];
+  inDraftIds = new Set(
+    (draftRes.data || []).map((row) => Number(row.manager_id)).filter((id) => id > 0)
+  );
 
   const body = document.getElementById("listingsBody");
   if (!body) return;
 
   if (error) {
-    body.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8">Error: ${error.message}</td></tr>`;
     return;
   }
 
   if (!listings?.length) {
     body.innerHTML =
-      `<tr><td colspan="7">No active manager listings. ` +
+      `<tr><td colspan="8">No active manager listings. ` +
       `During June / July / August / January the league FA board should show 10 free agents — ` +
       `refresh in a moment, or ask admin to restock the Manager FA board.</td></tr>`;
     return;
@@ -141,9 +157,12 @@ async function loadListings() {
           : "Free agent";
       const ownListing = currentClub && l.seller_club_id === currentClub;
       const awaiting = l.status === "Pending Window";
-      const canBid = !awaiting && currentClub && !ownListing && !clubHasManager;
+      const drafting = inDraftIds.has(Number(l.manager_id));
+      const canBid = !drafting && !awaiting && currentClub && !ownListing && !clubHasManager;
       let actionHtml = "";
-      if (awaiting && ownListing) {
+      if (drafting) {
+        actionHtml = `<a class="muted mgr-draft-link" href="manager_draftauction_manager.html?manager=${encodeURIComponent(l.manager_id)}&view=1" title="In the manager draft auction. Bidding stays there until that auction ends.">In draft</a>`;
+      } else if (awaiting && ownListing) {
         actionHtml = `<button class="button secondary takeoff-btn" data-manager="${l.manager_id}">Take off</button>`;
       } else if (awaiting) {
         actionHtml = `<span class="muted" title="Bidding starts when the window opens">Awaiting window</span>`;
@@ -155,11 +174,12 @@ async function loadListings() {
       const nameCell = l.manager_id
         ? `<a href="manager_career.html?manager=${encodeURIComponent(l.manager_id)}" class="mgr-card-link" data-listing="${l.id}" title="View manager card">${escapeHtml(mgr.name || "Manager")}</a>`
         : escapeHtml(mgr.name || "—");
-      return `<tr>
+      return `<tr class="${drafting ? "mgr-in-draft" : ""}">
         <td>${nameCell}</td>
         <td>${mgr.rating ?? "—"}</td>
         <td>${seller}</td>
         <td>${formatMoney(l.market_value ?? mgr.market_value)}</td>
+        <td title="Weekly wage. Season salary at Close Finances is this × 52.">${managerWageText(mgr)}</td>
         <td>${l.current_highest_bid ? formatMoney(l.current_highest_bid) : "—"}</td>
         <td>${awaiting ? `Awaiting ${escapeHtml(l.metadata?.label || "window")}` : formatEndTime(l.end_time)}</td>
         <td>${actionHtml}</td>
@@ -199,7 +219,8 @@ async function loadListings() {
       if (!listing) return;
       const ownListing = currentClub && listing.seller_club_id === currentClub;
       const awaiting = listing.status === "Pending Window";
-      const canBid = !awaiting && currentClub && !ownListing && !clubHasManager;
+      const drafting = inDraftIds.has(Number(listing.manager_id));
+      const canBid = !drafting && !awaiting && currentClub && !ownListing && !clubHasManager;
       openManagerCard(listing.manager_id, {
         onBid: canBid ? () => openBidModal(listing) : null,
       });
@@ -215,6 +236,10 @@ function listingMinBid(listing) {
 }
 
 function openBidModal(listing) {
+  if (inDraftIds.has(Number(listing?.manager_id))) {
+    alert("This manager is in the manager draft auction. Bid there until that auction ends.");
+    return;
+  }
   if (listing?.status === "Pending Window") {
     alert("This listing is a preview. Bidding starts when the window opens.");
     return;
@@ -231,7 +256,7 @@ function openBidModal(listing) {
 
   document.getElementById("bidManagerName").textContent = mgr.name || "Manager";
   document.getElementById("bidHint").textContent =
-    `Minimum bid: ${formatMoney(currentMinBid)}`;
+    `Wage: ${managerWageText(mgr)} · Minimum bid: ${formatMoney(currentMinBid)}`;
   setMoneyInputValue(getBidInput(), currentMinBid);
   document.getElementById("bidError").textContent = "";
   document.getElementById("bidModal").classList.add("open");

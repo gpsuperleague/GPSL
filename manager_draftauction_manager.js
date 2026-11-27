@@ -39,6 +39,7 @@ import {
   isValidInstant,
 } from "./countdown_display.js";
 import { formatMoney } from "./competition.js";
+import { managerWeeklyWage } from "./manager_economics.js";
 import {
   managerDraftGetMyMaxBid,
   managerDraftSetMaxBid,
@@ -293,8 +294,10 @@ async function loadManager() {
     name: mgr.name,
   }).catch((err) => console.warn("manager portrait", err));
 
+  const weekly = managerWeeklyWage(mgr);
+  const wageText = weekly > 0 ? `${formatMoney(weekly)}/wk` : "—";
   document.getElementById("managerValue").textContent =
-    `Market value: ${formatMoney(mgr.market_value)}`;
+    `Market value: ${formatMoney(mgr.market_value)} · Wage: ${wageText}`;
 
   await refreshBidEligibility();
   await refreshBids();

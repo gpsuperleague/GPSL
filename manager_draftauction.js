@@ -24,6 +24,12 @@ import {
   ownerTagLinkHtml,
 } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
+import { managerWeeklyWage } from "./manager_economics.js";
+
+function managerWageText(mgr) {
+  const weekly = managerWeeklyWage(mgr);
+  return weekly > 0 ? `${formatMoney(weekly)}/wk` : "—";
+}
 import { managerListCellHtml, loadManagerPortraitManifest } from "./manager_images.js";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js";
 import { downloadIcs, draftAuctionTimelineEvents } from "./calendar_ics.js";
@@ -179,7 +185,7 @@ async function loadManagerDraftListings(options = {}) {
   const managerIds = listings.map((l) => Number(l.manager_id));
   const { data: managers } = await supabase
     .from("Managers")
-    .select("id, slug, name, nation, rating, market_value, contracted_club")
+    .select("id, slug, name, nation, rating, market_value, weekly_wage, contracted_club")
     .in("id", managerIds);
 
   const managerMap = new Map((managers || []).map((m) => [Number(m.id), m]));
@@ -220,8 +226,8 @@ async function loadManagerDraftListings(options = {}) {
       }
       const cells = row.cells;
       if (
-        cells[4]?.textContent !== (high != null ? formatMoney(high) : "—") ||
-        cells[5]?.textContent !== (leader ? fullClubName(leader) || leader : "—")
+        cells[5]?.textContent !== (high != null ? formatMoney(high) : "—") ||
+        cells[6]?.textContent !== (leader ? fullClubName(leader) || leader : "—")
       ) {
         unchanged = false;
         break;
@@ -274,6 +280,7 @@ async function loadManagerDraftListings(options = {}) {
       <td>${mgr.nation || "—"}</td>
       <td>${mgr.rating}</td>
       <td>${formatMoney(mgr.market_value)}</td>
+      <td title="Weekly wage. Season salary at Close Finances is this × 52.">${managerWageText(mgr)}</td>
       <td>${highHtml}</td>
       <td>${leaderClub}</td>
       <td>${leaderOwner}</td>

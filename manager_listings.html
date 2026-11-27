@@ -30,6 +30,9 @@
     .modal-box { padding: 20px; width: 420px; }
     #bidError { color: #f88; font-size: 12px; min-height: 16px; }
     .muted { color: #888; font-size: 12px; }
+    tr.mgr-in-draft td { color: #777; }
+    tr.mgr-in-draft .mgr-card-link { color: #888; }
+    tr.mgr-in-draft a.mgr-draft-link { color: #aaa; }
 
     .mgr-market-toolbar {
       width: 95%;
@@ -129,6 +132,10 @@
       <b>Draft FAs</b>
       Still in <a href="MGDB.html">MGDB</a> when manager draft is on
     </div>
+    <div class="mgr-market-mod">
+      <b>Also in the draft?</b>
+      Greyed here until that auction ends. If they sell there, a new free agent replaces them.
+    </div>
   </div>
 
   <p id="hasManagerBanner" hidden></p>
@@ -140,6 +147,7 @@
         <th>Rating</th>
         <th>Seller</th>
         <th>Market Value</th>
+        <th title="Weekly wage. Season salary at Close Finances is this × 52.">Wage</th>
         <th>Highest Bid</th>
         <th>Ends</th>
         <th></th>
@@ -174,6 +182,6 @@
   </div>
 
   <script type="module" src="global.js?v=20261002-light-mode"></script>
-  <script type="module" src="manager_listings.js?v=20261124-mgr-preview"></script>
+  <script type="module" src="manager_listings.js?v=20261127-draft-hold"></script>
 </body>
 </html>

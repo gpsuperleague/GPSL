@@ -49,3 +49,10 @@ export function managerWeeklyWageFromMarketValue(marketValue, tables = tablesCac
   const pct = Number(tables?.annualWagePctOfMarketValue ?? 50);
   return Math.round((mv * pct) / 100 / 52);
 }
+
+/** Stored weekly wage, or 50% of market value / 52 when the catalog wage is blank. */
+export function managerWeeklyWage(manager, tables = tablesCache) {
+  const stored = Number(manager?.weekly_wage);
+  if (stored > 0) return Math.round(stored);
+  return managerWeeklyWageFromMarketValue(manager?.market_value, tables);
+}

@@ -16,6 +16,7 @@ import {
 } from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
+import { managerWeeklyWage } from "./manager_economics.js";
 import { installRangeSteppers } from "./range_filter_steppers.js?v=20260811-step-pairs";
 import {
   loadHandpickBasketState,
@@ -41,6 +42,11 @@ const TABLE_COLUMNS = [
   { key: "overload", label: "Overload" },
   { key: "age", label: "Age" },
   { key: "market_value", label: "Market Value" },
+  {
+    key: "weekly_wage",
+    label: "Wage",
+    title: "Weekly wage. Season salary at Close Finances is this × 52.",
+  },
 ];
 
 const DROPDOWN_FILTER_COLUMNS = [
@@ -231,11 +237,12 @@ function buildTableHead() {
           : "sort-desc"
         : "";
     const extra = col.key === "handpick" ? " mgdb-handpick-col" : "";
-    return `<th data-col="${col.key}" class="${sortClass}${extra}"${
-      col.key === "handpick"
+    const title = col.title
+      ? ` title="${col.title}"`
+      : col.key === "handpick"
         ? ' title="Temp mid-season handpick tag — free agent until admin approves"'
-        : ""
-    }>${col.label}</th>`;
+        : "";
+    return `<th data-col="${col.key}" class="${sortClass}${extra}"${title}>${col.label}</th>`;
   }).join("")}</tr>`;
 
   head.querySelectorAll("th").forEach((th) => {
@@ -265,7 +272,7 @@ function sortRows(rows) {
   return [...rows].sort((a, b) => {
     const av = a[col];
     const bv = b[col];
-    if (col === "market_value" || col === "age" || col === "rating" || col.includes("counter") || col === "possession" || col === "out_wide" || col === "long_ball" || col === "overload") {
+    if (col === "market_value" || col === "weekly_wage" || col === "age" || col === "rating" || col.includes("counter") || col === "possession" || col === "out_wide" || col === "long_ball" || col === "overload") {
       const an = Number(av) || 0;
       const bn = Number(bv) || 0;
       return asc ? an - bn : bn - an;
@@ -391,8 +398,16 @@ function renderPage() {
         }
         let val = row[col.key];
         if (col.key === "contracted_display") val = displayClub(val);
-        if (col.key === "market_value") {
-          return `<td class="money">${formatMoney(val)}</td>`;
+        if (col.key === "market_value" || col.key === "weekly_wage") {
+          const shown =
+            col.key === "weekly_wage" && Number(val) > 0
+              ? `${formatMoney(val)}/wk`
+              : formatMoney(val);
+          return `<td class="money"${
+            col.key === "weekly_wage"
+              ? ' title="Weekly wage. Season salary at Close Finances is this × 52."'
+              : ""
+          }>${shown}</td>`;
         }
         if (col.key === "expectancy") {
           return `<td class="mgdb-expectancy">${formatExpectancy(row)}</td>`;
@@ -938,6 +953,7 @@ async function loadManagers() {
 
   allRowsCache = (data || []).map((row) => ({
     ...row,
+    weekly_wage: managerWeeklyWage(row),
     contracted_display:
       row.contracted_club && String(row.contracted_club).trim()
         ? row.contracted_club
