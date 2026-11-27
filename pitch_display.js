@@ -69,13 +69,36 @@ function renderPitchPlayerCard(member, { highlight = false, showStats = true, sh
     </div>`;
 }
 
+/** Players within this many pitch-percent of each other share one horizontal row. */
+const ROW_Y_BAND = 8;
+
+function groupSlotsIntoRows(slots) {
+  const sorted = [...slots].sort(
+    (a, b) => (Number(a.y) || 0) - (Number(b.y) || 0) || (Number(a.x) || 0) - (Number(b.x) || 0)
+  );
+  const rows = [];
+  for (const slot of sorted) {
+    const y = Number(slot.y) || 0;
+    const row = rows[rows.length - 1];
+    if (!row || y - row.anchorY > ROW_Y_BAND) {
+      rows.push({ anchorY: y, slots: [slot] });
+    } else {
+      row.slots.push(slot);
+    }
+  }
+  for (const row of rows) {
+    row.slots.sort((a, b) => (Number(a.x) || 0) - (Number(b.x) || 0));
+  }
+  return rows;
+}
+
 function renderPitchSlot(slot, member, opts) {
   const label = member?.slot_label || slot.label;
   const highlight =
     opts.highlightClub && member?.club_short_name === opts.highlightClub;
 
   return `
-    <div class="pitch-slot pitch-slot--readonly" data-slot-id="${escapeHtml(slot.id)}" style="left:${slot.x}%;top:${slot.y}%;">
+    <div class="pitch-slot pitch-slot--readonly" data-slot-id="${escapeHtml(slot.id)}" style="left:${Number(slot.x) || 0}%;">
       <span class="pitch-slot-label pitch-slot-label--readonly">${escapeHtml(label)}</span>
       <div class="pitch-slot-drop pitch-slot-drop--readonly">
         ${
@@ -118,14 +141,26 @@ export function renderFormationPitchHtml({
   const bySlot = new Map(members.map((m) => [m.pitch_slot, m]));
   const slotList = Array.isArray(slots) && slots.length ? slots : formation.slots;
   const caption = title || formationDisplayName(formation);
-  const slotsHtml = slotList
-    .map((slot) =>
-      renderPitchSlot(slot, bySlot.get(slot.id), { highlightClub, showStats, showClub })
+  const slotsHtml = groupSlotsIntoRows(slotList)
+    .map(
+      (row) =>
+        `<div class="pitch-row">${row.slots
+          .map((slot) =>
+            renderPitchSlot(slot, bySlot.get(slot.id), {
+              highlightClub,
+              showStats,
+              showClub,
+            })
+          )
+          .join("")}</div>`
     )
     .join("");
+  const displayClass = showStats
+    ? "pitch-display"
+    : "pitch-display pitch-display--compact";
 
   return `
-    <div class="pitch-display">
+    <div class="${displayClass}">
       ${metaHtml}
       <p class="pitch-display-formation">${escapeHtml(caption)}</p>
       <div class="pitch-stage pitch-stage--readonly">

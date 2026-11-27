@@ -7,7 +7,7 @@ import {
   PESDB_FALLBACK_CARD_IMG,
   playerThumbLinkHtml,
 } from "./player_links.js";
-import { renderFormationPitchHtml } from "./pitch_display.js";
+import { renderFormationPitchHtml } from "./pitch_display.js?v=20261127-totm-rows";
 import { DEFAULT_FORMATION_ID } from "./matchday_formations.js";
 import { renderNationFlag } from "./international_flags.js";
 import { APP_VERSION } from "./app_version.js";
@@ -1629,18 +1629,18 @@ function archiveHasEditionId(editionId) {
 
 export function ensureSportPitchStyles() {
   const sheets = [
-    ["gpsl-matchday-squad-styles", "matchday_squad.css"],
-    ["gpsl-pitch-display-styles", "pitch_display.css"],
+    ["gpsl-matchday-squad-styles", "matchday_squad.css", APP_VERSION],
+    ["gpsl-pitch-display-styles", "pitch_display.css", "20261127-totm-rows"],
   ];
-  for (const [id, file] of sheets) {
+  for (const [id, file, version] of sheets) {
     if (document.getElementById(id)) continue;
     const link = document.createElement("link");
     link.id = id;
     link.rel = "stylesheet";
     try {
-      link.href = new URL(`${file}?v=${APP_VERSION}`, import.meta.url).href;
+      link.href = new URL(`${file}?v=${version}`, import.meta.url).href;
     } catch {
-      link.href = `${file}?v=${APP_VERSION}`;
+      link.href = `${file}?v=${version}`;
     }
     document.head.appendChild(link);
   }

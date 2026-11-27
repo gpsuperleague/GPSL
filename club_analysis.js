@@ -11,7 +11,7 @@ import {
 } from "./matchday_formations.js";
 import { loadClubActiveInjuries } from "./player_discipline.js?v=20261116-review-fix";
 import { playerNameLinkHtml } from "./player_links.js";
-import { renderFormationPitchHtml } from "./pitch_display.js";
+import { renderFormationPitchHtml } from "./pitch_display.js?v=20261127-totm-rows";
 
 const FORM_LIMIT = 5;
 

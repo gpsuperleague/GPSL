@@ -15,7 +15,7 @@ import {
   clubNameWrappedLinkHtml,
   wrapWordsHtml,
 } from "./player_links.js";
-import { renderFormationPitchHtml } from "./pitch_display.js";
+import { renderFormationPitchHtml } from "./pitch_display.js?v=20261127-totm-rows";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 import {
   loadOwnerSupporterMap,

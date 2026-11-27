@@ -12,17 +12,50 @@
 }
 
 .pitch-stage--readonly {
-  max-width: 560px;
+  max-width: 640px;
   margin: 0 auto 12px;
+  overflow-x: auto;
 }
 
 .football-pitch--readonly {
-  max-height: 680px;
+  aspect-ratio: auto;
+  height: auto;
+  max-height: none;
+  min-width: 560px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 10px 0 12px;
+  box-sizing: border-box;
+}
+
+.pitch-row {
+  position: relative;
+  width: 100%;
+  height: 168px;
+  flex: 0 0 168px;
+}
+
+.pitch-display--compact .pitch-row {
+  height: 128px;
+  flex-basis: 128px;
+}
+
+.football-pitch--readonly .pitch-slot.pitch-slot--readonly {
+  position: absolute;
+  top: 0;
+  bottom: auto;
+  transform: translateX(-50%);
+  width: 68px;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .pitch-slot--readonly {
-  width: 88px;
-  min-height: 132px;
+  width: 68px;
+  min-height: 0;
 }
 
 .pitch-slot-label--readonly {
@@ -38,8 +71,8 @@
 }
 
 .pitch-slot-drop--readonly {
-  width: 84px;
-  min-height: 118px;
+  width: 66px;
+  min-height: 0;
   border-style: solid;
   border-color: rgba(255, 255, 255, 0.2);
   background: rgba(0, 0, 0, 0.25);
@@ -61,11 +94,36 @@
   line-height: 0;
 }
 
-.pitch-slot-drop--readonly .squad-player-card img {
-  width: 52px;
-  height: 68px;
+.football-pitch--readonly .pitch-slot-drop--readonly .squad-player-card img,
+.football-pitch--readonly .squad-player-card--pitch img,
+.football-pitch--readonly .squad-player-card-thumb-link img {
+  width: 48px !important;
+  height: 64px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 48px !important;
+  max-height: 64px !important;
   display: block;
   margin: 0 auto;
+}
+
+.football-pitch--readonly .squad-player-card-thumb-link {
+  width: 48px !important;
+  height: 64px !important;
+  max-width: 48px;
+}
+
+.football-pitch--readonly .pitch-slot-drop--readonly .squad-player-card .spc-meta,
+.football-pitch--readonly .pitch-player-meta {
+  width: 64px;
+  max-width: 64px;
+  margin: 2px 0 0;
+}
+
+.football-pitch--readonly .pitch-slot-drop--readonly .spc-name,
+.football-pitch--readonly .pitch-player-name {
+  max-width: 64px;
+  font-size: 9px;
 }
 
 .pitch-player-meta {
@@ -85,6 +143,7 @@
   text-align: center;
 }
 
+.football-pitch--readonly .pitch-slot-drop--readonly .spc-name a,
 .pitch-player-name a.gpsl-player-link {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -92,6 +151,7 @@
   line-clamp: 2;
   overflow: hidden;
   word-break: break-word;
+  max-height: 2.2em;
 }
 
 .pitch-player-club {
@@ -172,23 +232,8 @@
   margin-bottom: 10px;
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .pitch-stage--readonly {
     max-width: 100%;
-  }
-
-  .pitch-slot--readonly {
-    width: 76px;
-    min-height: 120px;
-  }
-
-  .pitch-slot-drop--readonly {
-    width: 72px;
-    min-height: 108px;
-  }
-
-  .pitch-slot-drop--readonly .squad-player-card img {
-    width: 46px;
-    height: 60px;
   }
 }
