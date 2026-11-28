@@ -76,7 +76,7 @@ export async function bootOwnerAdminPage() {
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
   document.getElementById("wlPickVisible")?.addEventListener("change", (e) => {
     const on = !!e.target.checked;
-    document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id]").forEach((tr) => {
+    document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id], #wlArchivedTableWrap tr[data-owner-id]").forEach((tr) => {
       if (tr.classList.contains("wl-filter-hide")) return;
       const box = tr.querySelector(".wl-row-pick");
       if (box) box.checked = on;
@@ -1656,10 +1656,11 @@ const WL_MAIN_FILTERS = [
   "skip",
 ];
 
-/** Archived board, 31 columns. No Paid column, and no next-month H column. */
+/** Archived board, 32 columns. No Paid column, and no next-month H column. */
 const WL_ARCHIVED_GROUPS = [
   { id: "owner", label: "Owner", cols: 7 },
   { id: "join", label: "Join order", cols: 1 },
+  { id: "season2", label: "Season 2", cols: 1 },
   { id: "season", label: "Season", cols: 2 },
   { id: "support", label: "Support", cols: 1 },
   { id: "logins", label: "Logins", cols: 5 },
@@ -1672,7 +1673,7 @@ const WL_ARCHIVED_GROUPS = [
 ];
 const WL_ARCHIVED_FILTERS = [
   "skip", "skip", "skip", "values", "values", "values", "values",
-  "s1", "tick", "tick",
+  "s1", "s2", "tick", "tick",
   "tick",
   "login", "since", "count", "count", "curlogins",
   "count", "count", "count",
@@ -2490,7 +2491,9 @@ async function markSeason1ResponseOnBehalf({
 
 function tickedSeason1OwnerIds() {
   return [
-    ...document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id] .wl-row-pick:checked"),
+    ...document.querySelectorAll(
+      "#wlAdminTableWrap tr[data-owner-id] .wl-row-pick:checked, #wlArchivedTableWrap tr[data-owner-id] .wl-row-pick:checked"
+    ),
   ]
     .filter((box) => !box.closest("tr")?.classList.contains("wl-filter-hide"))
     .map((box) => box.dataset.id)
@@ -3755,12 +3758,14 @@ async function loadArchivedOwnersSection() {
     { data: clubsData },
     timezoneMap,
     { data: supporterData },
+    season2Res,
   ] = await Promise.all([
     supabase.rpc("admin_list_archived_owners"),
     fetchOwnerActivityById(),
     supabase.from("Clubs").select("ShortName, Club"),
     fetchOwnerTimezoneMap(),
     supabase.rpc("admin_owner_supporter_map"),
+    supabase.rpc("admin_owner_season2_check_map"),
   ]);
   if (error) {
     section.hidden = false;
@@ -3784,6 +3789,10 @@ async function loadArchivedOwnersSection() {
   const curLabel = activityRes.currentLabel || "Current month";
   const supporterMap =
     supporterData && typeof supporterData === "object" ? supporterData : {};
+  const season2Map =
+    season2Res.error || !season2Res.data || typeof season2Res.data !== "object"
+      ? {}
+      : season2Res.data;
   const clubNameByShort = new Map(
     (clubsData || []).map((c) => [
       String(c.ShortName || ""),
@@ -3794,6 +3803,7 @@ async function loadArchivedOwnersSection() {
   rows = rows.map((r) => {
     const act = activityById.get(r.owner_id) || null;
     const supp = supporterMap[r.owner_id] || supporterMap[String(r.owner_id)] || {};
+    const check = season2Map[r.owner_id] || season2Map[String(r.owner_id)] || null;
     return {
       ...r,
       activity: act,
@@ -3802,6 +3812,9 @@ async function loadArchivedOwnersSection() {
       is_supporter: !!supp.is_supporter,
       supporter_active: !!supp.supporter_active,
       supporter_grace_until: supp.supporter_grace_until || null,
+      season2_check_status: check?.status || "",
+      season2_check_sent_at: check?.sent_at || null,
+      season2_check_deadline_at: check?.deadline_at || null,
     };
   });
   rows = await mergeSeason1InviteStatus(rows);
@@ -3830,6 +3843,7 @@ async function loadArchivedOwnersSection() {
     `<th title="Last club before archive">Last club</th>` +
     `<th title="When they were archived (UK)">Archived (UK)</th>` +
     `<th class="wl-col-join" title="Join order. The number and Accepted stay on the cell." style="text-align:center;line-height:1.25">Join order</th>` +
+    `<th class="wl-col-season2" title="Discord check for Season 2. Same as the owner rows. Copy DM fills their tag and a reply deadline one week from when the message is marked sent.">Check</th>` +
     `<th class="wl-col-season" style="text-align:center;line-height:1.25">Auction</th>` +
     `<th title="Confirmed for live season" style="text-align:center">Live</th>` +
     `<th title="Ko-fi Supporter" style="text-align:center">Supporter</th>` +
@@ -3962,12 +3976,13 @@ async function loadArchivedOwnersSection() {
       lastIp,
       s1Mark?.tagLabel,
       s1Mark?.cellLabel,
+      row.season2_check_status || "",
     ]
       .filter(Boolean)
       .join(" ");
 
     html += `<tr data-owner-id="${escapeWl(row.owner_id)}" data-filter-text="${escapeWl(filterText)}">
-      <td class="wl-col-owner num">${overallCounter}</td>
+      <td class="wl-col-owner num"><input type="checkbox" class="wl-row-pick" data-id="${escapeWl(row.owner_id)}" title="Tick to change Season 1 or the Season 2 check with other rows" aria-label="Select row">${overallCounter}</td>
       <td class="num">${i + 1}</td>
       <td class="wl-col-owner"></td>
       <td>${escapeWl(tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${season1TagMarkHtml(row)}</td>
@@ -3979,6 +3994,7 @@ async function loadArchivedOwnersSection() {
           : ""
       }</td>
       ${formatSeason1StatusCell(row)}
+      ${season2CheckCell(row)}
       <td class="wl-col-season" style="text-align:center;color:#555">—</td>
       <td style="text-align:center">
         <input type="checkbox" class="wl-confirm-season" data-id="${escapeWl(row.owner_id)}" data-which="live"
@@ -4054,6 +4070,18 @@ async function loadArchivedOwnersSection() {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleSeason1QueueNumber(btn.dataset.ownerId);
+    });
+  });
+  wrap.querySelectorAll(".wl-s2-status").forEach((sel) => {
+    sel.addEventListener("pointerdown", (e) => e.stopPropagation());
+    sel.addEventListener("click", (e) => e.stopPropagation());
+    sel.addEventListener("change", () => setOwnerSeason2Check(sel));
+  });
+  wrap.querySelectorAll(".wl-s2-copy").forEach((btn) => {
+    btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      copySeason2CheckMessage(btn);
     });
   });
 
