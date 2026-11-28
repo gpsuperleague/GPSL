@@ -2070,10 +2070,11 @@ function filterSeasonOwnerBoard(filterText) {
     document.getElementById("wlAdminTableWrap"),
     document.getElementById("wlOnBreakTableWrap"),
     document.getElementById("wlArchivedTableWrap"),
+    document.getElementById("wlVisitorsTableWrap"),
   ].filter(Boolean);
 
   for (const wrap of roots) {
-    wrap.querySelectorAll("tr[data-owner-id]").forEach((tr) => {
+    wrap.querySelectorAll("tr[data-owner-id], tr[data-discord-id]").forEach((tr) => {
       const textMiss = q && !(tr.dataset.filterText || "").toLowerCase().includes(q);
       const colMiss = !rowMatchesColumnFilters(tr);
       tr.classList.toggle("wl-filter-hide", textMiss || colMiss);
@@ -3331,6 +3332,7 @@ async function loadWaitingListAdmin() {
 
   renderOnBreakSection(Array.isArray(data?.on_break) ? data.on_break : []);
   await loadArchivedOwnersSection();
+  await loadDiscordVisitorsSection();
   restoreWlBoardScroll(tableWrap, scrollPos);
 }
 
@@ -4085,6 +4087,52 @@ async function loadArchivedOwnersSection() {
     });
   });
 
+  filterSeasonOwnerBoard();
+}
+
+function discordVisitorRoleLabel(tier) {
+  const t = String(tier || "").toLowerCase();
+  if (t === "visitor") return "Visitor";
+  if (t === "member") return "Member role";
+  if (t === "owner") return "Owner role";
+  return t || "—";
+}
+
+async function loadDiscordVisitorsSection() {
+  const section = document.getElementById("wlVisitorsSection");
+  const wrap = document.getElementById("wlVisitorsTableWrap");
+  if (!section || !wrap) return;
+  section.hidden = false;
+  const { data, error } = await supabase.rpc("admin_owner_board_discord_visitors");
+  if (error) {
+    wrap.innerHTML = `<p class="note" style="color:#f88">❌ ${escapeWl(error.message)}</p>`;
+    return;
+  }
+  const rows = Array.isArray(data) ? data : [];
+  if (!rows.length) {
+    wrap.innerHTML = `<p class="note">Nobody in the Discord snapshot is without a GPSL account.</p>`;
+    return;
+  }
+  let html =
+    `<table class="admin-table"><thead><tr>` +
+    `<th class="num">#</th><th>Discord</th><th>Role</th><th>Joined</th><th>Last seen</th>` +
+    `</tr></thead><tbody>`;
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    const name = row.display_name || row.discord_user_id || "—";
+    const filterText = [name, row.discord_user_id, row.tier, "visitor", "discord"]
+      .filter(Boolean)
+      .join(" ");
+    html += `<tr data-discord-id="${escapeWl(row.discord_user_id || "")}" data-filter-text="${escapeWl(filterText)}">
+      <td class="num">${i + 1}</td>
+      <td>${escapeWl(name)}<div class="muted" style="font-size:11px;margin-top:2px"><code>${escapeWl(row.discord_user_id || "")}</code></div></td>
+      <td>${escapeWl(discordVisitorRoleLabel(row.tier))}</td>
+      <td>${escapeWl(formatWlUkDateTime(row.joined_at))}</td>
+      <td>${escapeWl(formatWlUkDateTime(row.seen_at))}</td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
   filterSeasonOwnerBoard();
 }
 

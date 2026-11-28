@@ -771,7 +771,7 @@
         <div class="wl-note-grid">
           <div class="wl-note-tile">
             <h3>Sections</h3>
-            <p><b>Qualifying</b> (friendlies toward a club) sits above <b>Owners</b> → <b>Waiting list</b> → <b>Archived</b>, with <b>On break</b> shown separately below.</p>
+            <p><b>Qualifying</b> (friendlies toward a club) sits above <b>Owners</b> → <b>Waiting list</b> → <b>Archived</b>, with <b>On break</b> shown separately below. <b>Visitors</b> at the bottom are in Discord and have no GPSL account.</p>
           </div>
           <div class="wl-note-tile">
             <h3>Priority</h3>
@@ -889,6 +889,15 @@
             Use the filter at the top of this page to search archived rows too.
           </p>
           <div id="wlArchivedTableWrap" class="wl-board-scroll"></div>
+        </div>
+        <div id="wlVisitorsSection" style="margin-top:28px;" hidden>
+          <h3 style="margin:0 0 6px;font-size:15px;color:#9ec;">Visitors</h3>
+          <p class="note" style="margin-bottom:10px;">
+            In the Discord server, and no GPSL account. Most have the Visitor role.
+            This is the last presence snapshot, not a live Discord pull.
+            The live list is on <a href="admin_owners_discord.html">Discord join order</a>.
+          </p>
+          <div id="wlVisitorsTableWrap" style="overflow-x:auto;"></div>
         </div>
       </div>
     </section>
@@ -1079,6 +1088,6 @@
     </div>
   </div>
   <script>window.__gpslStaffHub = true;</script>
-  <script type="module" src="admin_staff_hub.js?v=20261128-s2-archived"></script>
+  <script type="module" src="admin_staff_hub.js?v=20261128-visitors"></script>
 </body>
 </html>
