@@ -945,7 +945,7 @@ async function changeOwnerClub() {
   }
   if (
     !confirm(
-      `Move ${email} to ${club.toUpperCase()}?\n\nThe club they leave loses every player and the manager. Its money, results and finance history stay, and it becomes empty.\n\nTheir personal wealth stays with them. ${club.toUpperCase()} must have no owner. Its bank resets to the starting balance. Its results and finance history stay.`
+      `Move ${email} to ${club.toUpperCase()}?\n\nThe club they leave loses every player and the manager. Its money, results and finance history stay, and it becomes empty.\n\nTheir personal wealth stays with them. ${club.toUpperCase()} must have no owner. Its bank resets to the starting balance. Its results and finance history stay.\n\nIf they still have to qualify, tick Skip on the season owner board first.`
     )
   ) {
     return;
@@ -2754,7 +2754,7 @@ function clubMoveMarkHtml(row) {
 
 function qualifyingSkipCell(row) {
   const waived = !!row?.qualifying_waived;
-  return `<td class="wl-col-qualifying" style="text-align:center"><input type="checkbox" class="wl-qual-waive" data-id="${escapeWl(row?.owner_id || "")}" title="Skip qualifying. This person can take a club without the friendlies and the video." ${waived ? "checked" : ""}></td>`;
+  return `<td class="wl-col-qualifying" style="text-align:center"><input type="checkbox" class="wl-qual-waive" data-id="${escapeWl(row?.owner_id || "")}" title="Skip qualifying. They can take a club, and move from one club to another, without the friendlies and the video." ${waived ? "checked" : ""}></td>`;
 }
 
 async function loadWaitingListAdmin() {
@@ -2968,7 +2968,7 @@ async function loadWaitingListAdmin() {
     `<th class="wl-col-qualifying" title="Qualifying stage. Film review stays on the Qualifying videos page.">Stage</th>` +
     `<th class="num" title="Friendlies logged, out of five">Friendlies</th>` +
     `<th title="What is still outstanding on the qualifying path">Where</th>` +
-    `<th class="wl-col-qualifying" title="Tick to skip qualifying. They can take a club without the friendlies and the video." style="text-align:center">Skip</th>` +
+    `<th class="wl-col-qualifying" title="Tick to skip qualifying when they take a club or move from one club to another." style="text-align:center">Skip</th>` +
     `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Ko-fi Supporter (manual). Unset keeps perks until month end." style="text-align:center;line-height:1.25">Supporter</th>` +
@@ -4903,8 +4903,8 @@ async function setOwnerQualifyingWaiver(ownerId, waived, checkboxEl) {
   }
   setWlActionStatus(
     waived
-      ? "✅ Qualifying skipped. They can take a club without the friendlies and the video."
-      : "✅ Qualifying is required again before they take a club.",
+      ? "✅ Qualifying skipped. They can take a club, or move from one club to another, without it."
+      : "✅ Qualifying is required again before they take a club or change clubs.",
     true
   );
   await loadWaitingListAdmin();

@@ -202,6 +202,11 @@ BEGIN
     RAISE EXCEPTION 'Owner is archived — unarchive before changing club';
   END IF;
 
+  IF public.owner_qualifying_is_subject(v_user_id) THEN
+    RAISE EXCEPTION
+      'This owner has to qualify before changing clubs. Tick Skip on the season owner board to let them move without qualifying.';
+  END IF;
+
   SELECT c."ShortName", c."Club", nullif(btrim(c.owner), '')
   INTO v_from, v_from_name, v_tag
   FROM public."Clubs" c
