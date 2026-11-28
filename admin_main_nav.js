@@ -257,13 +257,6 @@ export const ADMIN_MAIN_NAV = [
           "Soft-archive clubs (history kept) or create vacant clubs for assignment / auction."
         ),
         L(
-          "Between-season club swap",
-          "admin_franchise_swap.html",
-          null,
-          null,
-          "After a season is closed, exchange two clubs. Owner, squad, fixtures and results swap. Stadium, kits and badge stay on each code."
-        ),
-        L(
           "Upload Club Badge",
           "admin_club_management.html#upload-badge",
           null,

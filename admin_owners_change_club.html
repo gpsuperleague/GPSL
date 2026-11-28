@@ -22,8 +22,10 @@
       <div class="card" id="ow-change-club">
         <h2>Change owner club</h2>
         <p class="note">
-          Move an owner who <b>already has a club</b> to a different one. Old club is vacated and its nation released.
-          The new club keeps its existing nation assignment. History is retained.
+          Move an owner who already has a club onto an empty one.
+          The club they leave loses its players and manager at once. Its bank, results and finance history stay there, and it is free for a new owner.
+          Their personal wealth stays with them. The club they join does not keep its old cash: the bank resets to the starting balance. That club’s results and finance history stay.
+          The new club must have no owner.
         </p>
         <div class="row">
           <div><input id="changeOwnerEmail" placeholder="Owner email"></div>
@@ -34,6 +36,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js"></script>
+  <script type="module" src="admin_owners.js?v=20261128-owner-move"></script>
 </body>
 </html>

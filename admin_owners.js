@@ -945,7 +945,7 @@ async function changeOwnerClub() {
   }
   if (
     !confirm(
-      `Move ${email} to ${club.toUpperCase()}?\n\nTheir current club will be vacated (nation released). If ${club.toUpperCase()} has another owner, that owner goes on break.`
+      `Move ${email} to ${club.toUpperCase()}?\n\nThe club they leave loses every player and the manager. Its money, results and finance history stay, and it becomes empty.\n\nTheir personal wealth stays with them. ${club.toUpperCase()} must have no owner. Its bank resets to the starting balance. Its results and finance history stay.`
     )
   ) {
     return;
@@ -1619,11 +1619,11 @@ function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } =
 
 const wlColFilters = { main: {}, archived: {} };
 
-/** Main board, 36 columns. Groups must stay in this order. */
+/** Main board, 37 columns. Groups must stay in this order. */
 const WL_MAIN_GROUPS = [
   { id: "owner", label: "Owner", cols: 7 },
   { id: "join", label: "Join order", cols: 1 },
-  { id: "qualifying", label: "Qualifying", cols: 3 },
+  { id: "qualifying", label: "Qualifying", cols: 4 },
   { id: "season", label: "Season", cols: 2 },
   { id: "support", label: "Support", cols: 2 },
   { id: "logins", label: "Logins", cols: 5 },
@@ -1636,7 +1636,7 @@ const WL_MAIN_GROUPS = [
 ];
 const WL_MAIN_FILTERS = [
   "skip", "skip", "skip", "values", "values", "values", "values",
-  "s1", "values", "ratio", "skip", "tick", "tick",
+  "s1", "values", "ratio", "skip", "tick", "tick", "tick",
   "tick", "paid",
   "login", "since", "count", "count", "curlogins",
   "count", "count", "ratio", "count",
@@ -2747,13 +2747,23 @@ function qualifyingCellsHtml(q) {
   );
 }
 
+function clubMoveMarkHtml(row) {
+  const n = Number(row?.club_moves) || 0;
+  return `<span class="tag" style="margin-left:6px;" title="Times an admin has moved this owner onto a new club. Personal wealth stays. The old club is emptied. The new club’s bank resets.">Moves ${n}</span>`;
+}
+
+function qualifyingSkipCell(row) {
+  const waived = !!row?.qualifying_waived;
+  return `<td class="wl-col-qualifying" style="text-align:center"><input type="checkbox" class="wl-qual-waive" data-id="${escapeWl(row?.owner_id || "")}" title="Skip qualifying. This person can take a club without the friendlies and the video." ${waived ? "checked" : ""}></td>`;
+}
+
 async function loadWaitingListAdmin() {
   const tableWrap = document.getElementById("wlAdminTableWrap");
   if (!tableWrap) return;
 
   tableWrap.innerHTML = "<p class='note'>Loading…</p>";
   await loadOwnerHolidayStatusMap({ force: true });
-  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes, handpickRes, qualRes] =
+  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes, handpickRes, qualRes, waiverRes, moveRes] =
     await Promise.all([
       supabase.rpc("waiting_list_admin"),
       fetchOwnerActivityById(),
@@ -2763,6 +2773,8 @@ async function loadWaitingListAdmin() {
       supabase.rpc("admin_owner_board_fine_forecast"),
       supabase.rpc("admin_handpick_intake_map"),
       supabase.rpc("admin_qualifying_progress"),
+      supabase.rpc("admin_owner_qualifying_waiver_map"),
+      supabase.rpc("admin_owner_club_move_counts"),
     ]);
   window.__wlHandpickMap =
     handpickRes.error || !handpickRes.data || typeof handpickRes.data !== "object"
@@ -2872,10 +2884,24 @@ async function loadWaitingListAdmin() {
     priority.splice(0, priority.length, ...p2);
     invited.splice(0, invited.length, ...i2);
   }
+  const waiverMap =
+    waiverRes.error || !waiverRes.data || typeof waiverRes.data !== "object"
+      ? {}
+      : waiverRes.data;
+  const moveMap =
+    moveRes.error || !moveRes.data || typeof moveRes.data !== "object"
+      ? {}
+      : moveRes.data;
+  const applyWaiver = (row) => {
+    row.qualifying_waived = !!waiverMap[row.owner_id];
+    row.club_moves = Number(moveMap[row.owner_id]) || 0;
+    return row;
+  };
   const qualList = Array.isArray(qualRes?.data) ? qualRes.data : [];
   const qualById = new Map(qualList.map((q) => [q.owner_id, q]));
   for (const row of [...priority, ...invited]) {
     row.qualifying = qualById.get(row.owner_id) || null;
+    applyWaiver(row);
   }
   const onBoard = new Set([...priority, ...invited].map((row) => row.owner_id));
   const qualOnly = await mergeSeason1InviteStatus(
@@ -2892,7 +2918,7 @@ async function loadWaitingListAdmin() {
           invited_auction: false,
           qualifying: q,
         })
-      )
+      ).map(applyWaiver)
   );
   const rows = [...priority, ...invited];
   const ownerRows = priority.filter((r) => r.has_club).sort(compareRowsBySeason1ThenActivity);
@@ -2922,7 +2948,7 @@ async function loadWaitingListAdmin() {
     ? ` · Fines unavailable (run admin_owner_board_fine_forecast_20261021.sql)`
     : "";
 
-  const colSpan = 36;
+  const colSpan = 37;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}"><div class="wl-section-label">${label}</div></td></tr>`;
   const noteRow = (label) =>
@@ -2942,6 +2968,7 @@ async function loadWaitingListAdmin() {
     `<th class="wl-col-qualifying" title="Qualifying stage. Film review stays on the Qualifying videos page.">Stage</th>` +
     `<th class="num" title="Friendlies logged, out of five">Friendlies</th>` +
     `<th title="What is still outstanding on the qualifying path">Where</th>` +
+    `<th class="wl-col-qualifying" title="Tick to skip qualifying. They can take a club without the friendlies and the video." style="text-align:center">Skip</th>` +
     `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Ko-fi Supporter (manual). Unset keeps perks until month end." style="text-align:center;line-height:1.25">Supporter</th>` +
@@ -2973,7 +3000,7 @@ async function loadWaitingListAdmin() {
 
   const qualNote = qualRes?.error
     ? escapeWl(qualRes.error.message)
-    : `New accounts working toward a club. Friendlies are out of five. Film review is on <a href="admin_qualifying.html">Qualifying videos</a>.`;
+    : `New accounts working toward a club. Friendlies are out of five. Film review is on <a href="admin_qualifying.html">Qualifying videos</a>. Tick Skip and they can take a club without that.`;
   html += sectionRow(`Qualifying (${qualOnly.length}). ${qualNote}`);
   if (qualRes?.error) {
     html += noteRow("Qualifying progress did not load.");
@@ -3058,6 +3085,13 @@ async function loadWaitingListAdmin() {
     cb.addEventListener("click", (e) => e.stopPropagation());
     cb.addEventListener("change", () =>
       setWaitingListAuctionInvite(cb.dataset.id, cb.checked, cb)
+    );
+  });
+  tableWrap.querySelectorAll(".wl-qual-waive").forEach((cb) => {
+    cb.addEventListener("pointerdown", (e) => e.stopPropagation());
+    cb.addEventListener("click", (e) => e.stopPropagation());
+    cb.addEventListener("change", () =>
+      setOwnerQualifyingWaiver(cb.dataset.id, cb.checked, cb)
     );
   });
   tableWrap.querySelectorAll(".wl-supporter").forEach((cb) => {
@@ -4084,6 +4118,7 @@ function renderWaitingListAdminRow(
     row.qualifying ? QUAL_STAGE_LABEL[row.qualifying.stage] || row.qualifying.stage : "",
     row.qualifying ? qualifyingBoardWhere(row.qualifying) : "",
     row.qualifying ? `${Number(row.qualifying.friendly_count) || 0}/5` : "",
+    row.qualifying_waived ? "skip qualifying" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -4170,12 +4205,13 @@ function renderWaitingListAdminRow(
     <td class="wl-col-owner num">${overallIndex ?? "—"}</td>
     <td class="num wl-pos">${pos ?? "—"}</td>
     ${dragCell}
-        <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${holidayMarkHtml(row.holiday)}${season1TagMarkHtml(row)}${handpickMark}</td>
+        <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${holidayMarkHtml(row.holiday)}${season1TagMarkHtml(row)}${handpickMark}${clubMoveMarkHtml(row)}</td>
         <td>${escapeWl(email)}</td>
     <td>${escapeWl(hasClub ? "—" : row.tier || "—")}</td>
     <td>${escapeWl(status)}</td>
     ${formatSeason1StatusCell(row)}
     ${qualifyingCellsHtml(row.qualifying)}
+    ${qualifyingSkipCell(row)}
     ${auctionCell}
     <td style="text-align:center">
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"
@@ -4852,6 +4888,25 @@ async function clearSupporterPaidYearForAll() {
     return;
   }
   setWlActionStatus(`✅ Cleared ${data?.cleared ?? 0} paid month(s) for ${y}.`, true);
+  await loadWaitingListAdmin();
+}
+
+async function setOwnerQualifyingWaiver(ownerId, waived, checkboxEl) {
+  const { error } = await supabase.rpc("admin_owner_set_qualifying_waiver", {
+    p_owner_id: ownerId,
+    p_waived: !!waived,
+  });
+  if (error) {
+    if (checkboxEl) checkboxEl.checked = !waived;
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  setWlActionStatus(
+    waived
+      ? "✅ Qualifying skipped. They can take a club without the friendlies and the video."
+      : "✅ Qualifying is required again before they take a club.",
+    true
+  );
   await loadWaitingListAdmin();
 }
 

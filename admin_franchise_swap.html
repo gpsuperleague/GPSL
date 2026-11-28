@@ -27,41 +27,19 @@
     <div class="admin-main" id="adminMain">
       <p class="note">
         <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
-        · Available only after a season is closed and before the next one starts.
-        The owner, squad, fixtures, scores, transfers and money swap.
-        The stadium, capacity, nation, kits and badge stay on each code.
-        Past results move with each club and show under the other name.
+        · This swap has been removed. Use
+        <a href="admin_owners_change_club.html" style="color:#ff9900;">Change owner club</a>.
+        The owner’s personal wealth stays with them. The club they leave is emptied and keeps its records.
+        The club they join has its bank reset and keeps its records.
       </p>
-      <p class="note" id="seasonWindow">Checking the season…</p>
 
       <div class="card danger-card">
-        <h2>Swap two clubs between seasons</h2>
-        <div class="form-grid">
-          <label>
-            First club
-            <select id="leftSelect">
-              <option value="">Loading clubs…</option>
-            </select>
-            <div id="leftMeta" class="club-meta"></div>
-          </label>
-          <label>
-            Second club
-            <select id="rightSelect">
-              <option value="">Loading clubs…</option>
-            </select>
-            <div id="rightMeta" class="club-meta"></div>
-          </label>
-        </div>
-        <button type="button" id="swapBtn" class="button" style="background:#990000;">Swap identities</button>
-        <div id="swapStatus" class="status-line"></div>
+        <h2>Club identity swap is closed</h2>
+        <p class="note">Owner, squad, fixtures and money no longer swap between two codes.</p>
       </div>
 
-      <div class="card">
-        <h2>SQL</h2>
-        <p class="note">Run once in the Supabase SQL editor: <code>supabase/sql/patches/swap_cop_to_lyo.sql</code>. That installs the swap. It does not change any club until you press the button above.</p>
-      </div>
     </div>
   </div>
-  <script type="module" src="admin_franchise_swap.js?v=20261108-between-seasons"></script>
+  <script type="module" src="admin_franchise_swap.js?v=20261128-retired"></script>
 </body>
 </html>
