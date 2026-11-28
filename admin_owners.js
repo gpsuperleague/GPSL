@@ -1627,11 +1627,12 @@ function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } =
 
 const wlColFilters = { main: {}, archived: {} };
 
-/** Main board, 37 columns. Groups must stay in this order. */
+/** Main board, 38 columns. Groups must stay in this order. */
 const WL_MAIN_GROUPS = [
   { id: "owner", label: "Owner", cols: 7 },
   { id: "join", label: "Join order", cols: 1 },
   { id: "qualifying", label: "Qualifying", cols: 4 },
+  { id: "season2", label: "Season 2", cols: 1 },
   { id: "season", label: "Season", cols: 2 },
   { id: "support", label: "Support", cols: 2 },
   { id: "logins", label: "Logins", cols: 5 },
@@ -1644,7 +1645,7 @@ const WL_MAIN_GROUPS = [
 ];
 const WL_MAIN_FILTERS = [
   "skip", "skip", "skip", "values", "values", "values", "values",
-  "s1", "values", "ratio", "skip", "tick", "tick", "tick",
+  "s1", "values", "ratio", "skip", "tick", "s2", "tick", "tick",
   "tick", "paid",
   "login", "since", "count", "count", "curlogins",
   "count", "count", "ratio", "count",
@@ -1703,6 +1704,16 @@ const WL_FILTER_OPTIONS = {
     ["expired", "Expired"],
     ["queued", "Queued"],
     ["none", "Not in the queue"],
+  ],
+  s2: [
+    ["none", "Not sent"],
+    ["sent", "Message sent"],
+    ["overdue", "Deadline passed"],
+    ["season2", "Season 2 club"],
+    ["later", "Later season"],
+    ["discord", "Discord only"],
+    ["away", "Stepping away"],
+    ["no_reply", "No reply"],
   ],
 };
 
@@ -1825,6 +1836,7 @@ function wlCellMatchesFilter(cell, kind, value) {
     if (value === "queued") return lower.includes("queued");
     return !numbered && !/accepted|rejected|declined|expired|invited|offered|queued/.test(lower);
   }
+  if (kind === "s2") return (cell?.dataset?.s2 || "none") === value;
   return true;
 }
 
@@ -2489,27 +2501,48 @@ async function applyTickedSeason1Status() {
   const action = document.getElementById("wlBulkS1")?.value || "";
   const ids = tickedSeason1OwnerIds();
   if (!action) {
-    setWlActionStatus("Choose a Season 1 action for the ticked rows.", false);
+    setWlActionStatus("Choose an action for the ticked rows.", false);
     return;
   }
   if (!ids.length) {
     setWlActionStatus("Tick one or more rows first.", false);
     return;
   }
-  const label =
-    action === "clear"
+  const season2Bulk = {
+    s2_sent: ["sent", "mark the Season 2 message sent, with a one-week deadline from now"],
+    s2_season2: ["season2", "mark Season 2 club"],
+    s2_later: ["later", "mark later season"],
+    s2_discord: ["discord", "mark Discord only"],
+    s2_away: ["away", "mark stepping away"],
+    s2_no_reply: ["no_reply", "mark no reply"],
+    s2_clear: ["", "clear the Season 2 check"],
+  };
+  const season2Action = season2Bulk[action];
+  const label = season2Action
+    ? season2Action[1]
+    : action === "clear"
       ? "clear the Season 1 status"
       : action === "accepted"
         ? "mark Season 1 accepted"
-        : "mark Season 1 declined";
+        : action === "declined"
+          ? "mark Season 1 declined"
+          : "";
+  if (!label) {
+    setWlActionStatus("Choose an action for the ticked rows.", false);
+    return;
+  }
   if (!confirm(`${label} on ${ids.length} ticked row${ids.length === 1 ? "" : "s"}?`)) return;
 
   setWlActionStatus(`Updating ${ids.length} row${ids.length === 1 ? "" : "s"}…`);
   let done = 0;
   const failed = [];
   for (const ownerId of ids) {
-    const { error } =
-      action === "clear"
+    const { error } = season2Action
+      ? await supabase.rpc("admin_owner_set_season2_check", {
+          p_owner_id: ownerId,
+          p_status: season2Action[0],
+        })
+      : action === "clear"
         ? await supabase.rpc("admin_season1_invite_clear_response", { p_owner_id: ownerId })
         : await supabase.rpc("admin_season1_invite_respond_on_behalf", {
             p_owner_id: ownerId,
@@ -2530,7 +2563,10 @@ async function applyTickedSeason1Status() {
       false
     );
   } else {
-    setWlActionStatus(`✅ Season 1 updated on ${done} row${done === 1 ? "" : "s"}.`, true);
+    setWlActionStatus(
+      `✅ Updated ${done} row${done === 1 ? "" : "s"}.`,
+      true
+    );
   }
   await loadWaitingListAdmin();
 }
@@ -2824,6 +2860,58 @@ function qualifyingSkipCell(row) {
   return `<td class="wl-col-qualifying" style="text-align:center"><input type="checkbox" class="wl-qual-waive" data-id="${escapeWl(row?.owner_id || "")}" title="Skip qualifying. They can take a club, and move from one club to another, without the friendlies and the video." ${waived ? "checked" : ""}></td>`;
 }
 
+const SEASON2_CHECK_OPTIONS = [
+  ["", "Not sent"],
+  ["sent", "Message sent"],
+  ["season2", "Season 2 club"],
+  ["later", "Later season"],
+  ["discord", "Discord only"],
+  ["away", "Stepping away"],
+  ["no_reply", "No reply"],
+];
+
+function season2CheckMessage(tag, deadlineIso) {
+  const who = tag || "there";
+  const by = formatWlUkDateTime(deadlineIso);
+  return `Hi ${who},
+
+Quick check before Season 2, so I know who to plan for.
+
+Will you be active in Discord for Season 2, or are you looking at a later season?
+
+And do you want to take a club for Season 2, or keep that for a future season? Taking a club for Season 2 means qualifying first, then a club.
+
+A short reply is enough. One of these covers it:
+
+- Season 2: active in Discord, and I want to qualify and take a club
+- Later season: I want to take part, just not Season 2
+- Discord only: active for Season 2, no club yet
+- Stepping away
+
+Please reply by ${by}. That is one week from this message.`;
+}
+
+function season2CheckCell(row) {
+  const status = String(row?.season2_check_status || "");
+  const deadline = row?.season2_check_deadline_at || "";
+  const overdue = status === "sent" && deadline && Date.parse(deadline) < Date.now();
+  const filter = overdue ? "overdue" : status || "none";
+  const options = SEASON2_CHECK_OPTIONS.map(
+    ([value, label]) =>
+      `<option value="${value}"${value === status ? " selected" : ""}>${label}</option>`
+  ).join("");
+  const when = deadline
+    ? overdue
+      ? `<div class="unplayed-warn" title="One week from when the message was marked sent">Passed ${escapeWl(formatWlUkDateTime(deadline))}</div>`
+      : `<div class="muted" title="One week from when the message was marked sent">By ${escapeWl(formatWlUkDateTime(deadline))}</div>`
+    : "";
+  return `<td class="wl-s2" data-s2="${filter}" style="min-width:148px">
+    <select class="wl-s2-status" data-id="${escapeWl(row?.owner_id || "")}" data-deadline="${escapeWl(deadline)}" aria-label="Season 2 check">${options}</select>
+    ${when}
+    <button type="button" class="button secondary wl-s2-copy" data-id="${escapeWl(row?.owner_id || "")}" data-tag="${escapeWl(row?.owner_tag || "")}" data-status="${escapeWl(status)}" data-deadline="${escapeWl(deadline)}" title="Copy the Discord message. The reply date is one week from when it is marked sent." style="margin-top:4px;padding:2px 6px;font-size:11px">Copy DM</button>
+  </td>`;
+}
+
 function wlBoardScrollPos(tableWrap) {
   return {
     top: tableWrap?.scrollTop || 0,
@@ -2850,7 +2938,7 @@ async function loadWaitingListAdmin() {
     tableWrap.innerHTML = "<p class='note'>Loading…</p>";
   }
   await loadOwnerHolidayStatusMap({ force: true });
-  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes, handpickRes, qualRes, waiverRes, moveRes] =
+  const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes, handpickRes, qualRes, waiverRes, moveRes, season2Res] =
     await Promise.all([
       supabase.rpc("waiting_list_admin"),
       fetchOwnerActivityById(),
@@ -2862,6 +2950,7 @@ async function loadWaitingListAdmin() {
       supabase.rpc("admin_qualifying_progress"),
       supabase.rpc("admin_owner_qualifying_waiver_map"),
       supabase.rpc("admin_owner_club_move_counts"),
+      supabase.rpc("admin_owner_season2_check_map"),
     ]);
   window.__wlHandpickMap =
     handpickRes.error || !handpickRes.data || typeof handpickRes.data !== "object"
@@ -2980,9 +3069,17 @@ async function loadWaitingListAdmin() {
     moveRes.error || !moveRes.data || typeof moveRes.data !== "object"
       ? {}
       : moveRes.data;
+  const season2Map =
+    season2Res.error || !season2Res.data || typeof season2Res.data !== "object"
+      ? {}
+      : season2Res.data;
   const applyWaiver = (row) => {
     row.qualifying_waived = !!waiverMap[row.owner_id];
     row.club_moves = Number(moveMap[row.owner_id]) || 0;
+    const check = season2Map[row.owner_id] || season2Map[String(row.owner_id)] || null;
+    row.season2_check_status = check?.status || "";
+    row.season2_check_sent_at = check?.sent_at || null;
+    row.season2_check_deadline_at = check?.deadline_at || null;
     return row;
   };
   const qualList = Array.isArray(qualRes?.data) ? qualRes.data : [];
@@ -3035,8 +3132,11 @@ async function loadWaitingListAdmin() {
   const fineHint = fineRes.error
     ? ` · Fines unavailable (run admin_owner_board_fine_forecast_20261021.sql)`
     : "";
+  const season2Hint = season2Res.error
+    ? ` · Season 2 check unavailable (${season2Res.error.message})`
+    : "";
 
-  const colSpan = 37;
+  const colSpan = 38;
   const sectionRow = (label) =>
     `<tr class="wl-section"><td colspan="${colSpan}"><div class="wl-section-label">${label}</div></td></tr>`;
   const noteRow = (label) =>
@@ -3057,6 +3157,7 @@ async function loadWaitingListAdmin() {
     `<th class="num" title="Friendlies logged, out of five">Friendlies</th>` +
     `<th title="What is still outstanding on the qualifying path">Where</th>` +
     `<th class="wl-col-qualifying" title="Tick to skip qualifying when they take a club or move from one club to another." style="text-align:center">Skip</th>` +
+    `<th class="wl-col-season2" title="Discord check for Season 2. Copy DM fills their tag and a reply deadline one week from when the message is marked sent. You send the DM yourself.">Check</th>` +
     `<th class="wl-col-season" title="Invite to / remove from club draft auction" style="text-align:center;line-height:1.25">Auction<br><span id="wlAuctionTotal" style="color:#ff9900">${auctionTotal}</span><span style="color:#888;font-weight:normal"> invited</span></th>` +
     `<th title="Confirmed for live season" style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
     `<th title="Ko-fi Supporter (manual). Unset keeps perks until month end." style="text-align:center;line-height:1.25">Supporter</th>` +
@@ -3111,7 +3212,7 @@ async function loadWaitingListAdmin() {
   }
 
   html += sectionRow(
-    `Owners (${ownerCount}). Current club owners. Drag sets season priority with the waiting list.${escapeWl(activityHint)}${escapeWl(snapNote)}${escapeWl(homePropHint)}${escapeWl(fineHint)}`
+    `Owners (${ownerCount}). Current club owners. Drag sets season priority with the waiting list.${escapeWl(activityHint)}${escapeWl(snapNote)}${escapeWl(homePropHint)}${escapeWl(fineHint)}${escapeWl(season2Hint)}`
   );
   if (!ownerCount) {
     html += noteRow("No club owners on the board.");
@@ -3188,6 +3289,18 @@ async function loadWaitingListAdmin() {
     cb.addEventListener("change", () =>
       setOwnerQualifyingWaiver(cb.dataset.id, cb.checked, cb)
     );
+  });
+  tableWrap.querySelectorAll(".wl-s2-status").forEach((sel) => {
+    sel.addEventListener("pointerdown", (e) => e.stopPropagation());
+    sel.addEventListener("click", (e) => e.stopPropagation());
+    sel.addEventListener("change", () => setOwnerSeason2Check(sel));
+  });
+  tableWrap.querySelectorAll(".wl-s2-copy").forEach((btn) => {
+    btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      copySeason2CheckMessage(btn);
+    });
   });
   tableWrap.querySelectorAll(".wl-supporter").forEach((cb) => {
     cb.addEventListener("pointerdown", (e) => e.stopPropagation());
@@ -4215,6 +4328,7 @@ function renderWaitingListAdminRow(
     row.qualifying ? qualifyingBoardWhere(row.qualifying) : "",
     row.qualifying ? `${Number(row.qualifying.friendly_count) || 0}/5` : "",
     row.qualifying_waived ? "skip qualifying" : "",
+    row.season2_check_status || "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -4298,7 +4412,7 @@ function renderWaitingListAdminRow(
     : "";
 
   return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" data-filter-text="${escapeWl(filterText)}">
-    <td class="wl-col-owner num"><input type="checkbox" class="wl-row-pick" data-id="${escapeWl(row.owner_id || "")}" title="Tick to change Season 1 status with other rows" aria-label="Select row">${overallIndex ?? "—"}</td>
+    <td class="wl-col-owner num"><input type="checkbox" class="wl-row-pick" data-id="${escapeWl(row.owner_id || "")}" title="Tick to change Season 1 or the Season 2 check with other rows" aria-label="Select row">${overallIndex ?? "—"}</td>
     <td class="num wl-pos">${pos ?? "—"}</td>
     ${dragCell}
         <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${holidayMarkHtml(row.holiday)}${season1TagMarkHtml(row)}${handpickMark}${clubMoveMarkHtml(row)}</td>
@@ -4308,6 +4422,7 @@ function renderWaitingListAdminRow(
     ${formatSeason1StatusCell(row)}
     ${qualifyingCellsHtml(row.qualifying)}
     ${qualifyingSkipCell(row)}
+    ${season2CheckCell(row)}
     ${auctionCell}
     <td style="text-align:center">
       <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"
@@ -4985,6 +5100,88 @@ async function clearSupporterPaidYearForAll() {
   }
   setWlActionStatus(`✅ Cleared ${data?.cleared ?? 0} paid month(s) for ${y}.`, true);
   await loadWaitingListAdmin();
+}
+
+async function writeWlClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.left = "-9999px";
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    area.remove();
+    return ok;
+  }
+}
+
+async function setOwnerSeason2Check(selectEl) {
+  const ownerId = selectEl?.dataset?.id;
+  const next = selectEl?.value || "";
+  const previousDeadline = selectEl?.dataset?.deadline || "";
+  if (next === "sent" && previousDeadline) {
+    if (!confirm("Start a new one-week reply deadline from now?")) {
+      await loadWaitingListAdmin();
+      return;
+    }
+  }
+  const { error } = await supabase.rpc("admin_owner_set_season2_check", {
+    p_owner_id: ownerId,
+    p_status: next,
+  });
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    await loadWaitingListAdmin();
+    return;
+  }
+  setWlActionStatus(
+    next === "sent"
+      ? "✅ Message marked sent. Reply deadline is one week from now."
+      : next
+        ? "✅ Season 2 check updated."
+        : "✅ Season 2 check cleared.",
+    true
+  );
+  await loadWaitingListAdmin();
+}
+
+async function copySeason2CheckMessage(buttonEl) {
+  const ownerId = buttonEl?.dataset?.id;
+  const tag = buttonEl?.dataset?.tag || "";
+  let deadline = buttonEl?.dataset?.deadline || "";
+  let markedSent = false;
+  if (!deadline) {
+    const { data, error } = await supabase.rpc("admin_owner_set_season2_check", {
+      p_owner_id: ownerId,
+      p_status: "sent",
+    });
+    if (error) {
+      setWlActionStatus("❌ " + error.message, false);
+      return;
+    }
+    deadline = data?.deadline_at || "";
+    markedSent = true;
+  }
+  const text = season2CheckMessage(tag, deadline);
+  const copied = await writeWlClipboard(text);
+  const by = formatWlUkDateTime(deadline);
+  setWlActionStatus(
+    copied
+      ? `✅ Copied the DM for ${tag || "that row"}. Reply by ${by}.`
+      : `Could not copy. Reply by ${by}.`,
+    copied
+  );
+  if (markedSent) await loadWaitingListAdmin();
 }
 
 async function setOwnerQualifyingWaiver(ownerId, waived, checkboxEl) {
