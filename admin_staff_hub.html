@@ -836,6 +836,16 @@
           <button type="button" id="wlRecordUnplayedBtn" class="button secondary" title="Freeze unplayed counts for locked months (+ current) before you sim leftovers">Record unplayed</button>
           <button type="button" id="wlRefreshCountryBtn" class="button secondary" data-admin-only>Refresh country</button>
           <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
+          <label class="wl-paid-year-wrap" title="Tick every row that is currently visible">
+            <input type="checkbox" id="wlPickVisible"> Tick visible
+          </label>
+          <select id="wlBulkS1" aria-label="Season 1 action for ticked rows">
+            <option value="">S1 on ticked rows…</option>
+            <option value="clear">Clear S1 status</option>
+            <option value="accepted">Mark accepted</option>
+            <option value="declined">Mark declined</option>
+          </select>
+          <button type="button" id="wlBulkS1Go" class="button secondary">Apply to ticked</button>
           <span class="wl-paid-year-wrap" title="Supporter payments year shown in the Paid column. Includes next year for annual subscriptions paid early. Rolls to the new year automatically on 1 January.">
             Paid year <select id="wlPaidYear" aria-label="Supporter payments year"></select>
           </span>
@@ -1049,6 +1059,6 @@
     </div>
   </div>
   <script>window.__gpslStaffHub = true;</script>
-  <script type="module" src="admin_staff_hub.js?v=20261128-owner-move"></script>
+  <script type="module" src="admin_staff_hub.js?v=20261128-board-place"></script>
 </body>
 </html>

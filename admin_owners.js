@@ -74,6 +74,15 @@ export async function bootOwnerAdminPage() {
   document.getElementById("wlRecordUnplayedBtn")?.addEventListener("click", recordUnplayedSnapshots);
   document.getElementById("wlRefreshCountryBtn")?.addEventListener("click", refreshOwnerCountries);
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
+  document.getElementById("wlPickVisible")?.addEventListener("change", (e) => {
+    const on = !!e.target.checked;
+    document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id]").forEach((tr) => {
+      if (tr.classList.contains("wl-filter-hide")) return;
+      const box = tr.querySelector(".wl-row-pick");
+      if (box) box.checked = on;
+    });
+  });
+  document.getElementById("wlBulkS1Go")?.addEventListener("click", applyTickedSeason1Status);
   document.getElementById("wlBoardFilter")?.addEventListener("input", (e) => {
     filterSeasonOwnerBoard(e.target.value);
   });
@@ -1236,7 +1245,6 @@ async function resetPassword() {
 
 function setWlActionStatus(msg, ok) {
   setStatus("wlActionStatus", msg, ok);
-  document.getElementById("wlActionStatus")?.scrollIntoView({ block: "nearest" });
 }
 
 function formatWlTimeSince(iso, nowMs = Date.now()) {
@@ -2468,6 +2476,65 @@ async function markSeason1ResponseOnBehalf({
   await loadWaitingListAdmin();
 }
 
+function tickedSeason1OwnerIds() {
+  return [
+    ...document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id] .wl-row-pick:checked"),
+  ]
+    .filter((box) => !box.closest("tr")?.classList.contains("wl-filter-hide"))
+    .map((box) => box.dataset.id)
+    .filter(Boolean);
+}
+
+async function applyTickedSeason1Status() {
+  const action = document.getElementById("wlBulkS1")?.value || "";
+  const ids = tickedSeason1OwnerIds();
+  if (!action) {
+    setWlActionStatus("Choose a Season 1 action for the ticked rows.", false);
+    return;
+  }
+  if (!ids.length) {
+    setWlActionStatus("Tick one or more rows first.", false);
+    return;
+  }
+  const label =
+    action === "clear"
+      ? "clear the Season 1 status"
+      : action === "accepted"
+        ? "mark Season 1 accepted"
+        : "mark Season 1 declined";
+  if (!confirm(`${label} on ${ids.length} ticked row${ids.length === 1 ? "" : "s"}?`)) return;
+
+  setWlActionStatus(`Updating ${ids.length} row${ids.length === 1 ? "" : "s"}…`);
+  let done = 0;
+  const failed = [];
+  for (const ownerId of ids) {
+    const { error } =
+      action === "clear"
+        ? await supabase.rpc("admin_season1_invite_clear_response", { p_owner_id: ownerId })
+        : await supabase.rpc("admin_season1_invite_respond_on_behalf", {
+            p_owner_id: ownerId,
+            p_decision: action,
+            p_force: true,
+            p_note: "Recorded from the season owner board",
+          });
+    if (error) failed.push(error.message);
+    else done += 1;
+  }
+  const select = document.getElementById("wlBulkS1");
+  if (select) select.value = "";
+  const pickAll = document.getElementById("wlPickVisible");
+  if (pickAll) pickAll.checked = false;
+  if (failed.length) {
+    setWlActionStatus(
+      `Updated ${done}. ${failed.length} failed: ${failed[0]}`,
+      false
+    );
+  } else {
+    setWlActionStatus(`✅ Season 1 updated on ${done} row${done === 1 ? "" : "s"}.`, true);
+  }
+  await loadWaitingListAdmin();
+}
+
 /** Wipe Season 1 accepted / rejected. Queue number stays. */
 async function clearSeason1InviteStatus({ ownerId, email, tag, existingResponse = "" }) {
   const label = [tag, email].filter(Boolean).join(" — ") || ownerId;
@@ -2757,11 +2824,31 @@ function qualifyingSkipCell(row) {
   return `<td class="wl-col-qualifying" style="text-align:center"><input type="checkbox" class="wl-qual-waive" data-id="${escapeWl(row?.owner_id || "")}" title="Skip qualifying. They can take a club, and move from one club to another, without the friendlies and the video." ${waived ? "checked" : ""}></td>`;
 }
 
+function wlBoardScrollPos(tableWrap) {
+  return {
+    top: tableWrap?.scrollTop || 0,
+    left: tableWrap?.scrollLeft || 0,
+    pageX: window.scrollX,
+    pageY: window.scrollY,
+  };
+}
+
+function restoreWlBoardScroll(tableWrap, pos) {
+  if (!tableWrap || !pos) return;
+  tableWrap.scrollTop = pos.top;
+  tableWrap.scrollLeft = pos.left;
+  window.scrollTo(pos.pageX, pos.pageY);
+}
+
 async function loadWaitingListAdmin() {
   const tableWrap = document.getElementById("wlAdminTableWrap");
   if (!tableWrap) return;
 
-  tableWrap.innerHTML = "<p class='note'>Loading…</p>";
+  const scrollPos = wlBoardScrollPos(tableWrap);
+  const hadTable = !!tableWrap.querySelector("table");
+  if (!hadTable) {
+    tableWrap.innerHTML = "<p class='note'>Loading…</p>";
+  }
   await loadOwnerHolidayStatusMap({ force: true });
   const [boardRes, activityRes, timezoneMap, supporterRes, paidRes, fineRes, handpickRes, qualRes, waiverRes, moveRes] =
     await Promise.all([
@@ -2789,6 +2876,7 @@ async function loadWaitingListAdmin() {
 
   if (boardRes.error) {
     tableWrap.innerHTML = `<p class="note" style="color:#f88">❌ ${boardRes.error.message} — run waiting_list_priority_board_20260829.sql</p>`;
+    restoreWlBoardScroll(tableWrap, scrollPos);
     await loadArchivedOwnersSection();
     return;
   }
@@ -3062,13 +3150,20 @@ async function loadWaitingListAdmin() {
 
   html += "</tbody></table>";
   tableWrap.innerHTML = html;
+  restoreWlBoardScroll(tableWrap, scrollPos);
+  requestAnimationFrame(() => restoreWlBoardScroll(tableWrap, scrollPos));
 
   const filterEl = document.getElementById("wlBoardFilter");
   bindWlBoardFilters(tableWrap, "main");
   wireOwnerBoardPin(tableWrap);
   filterSeasonOwnerBoard(filterEl?.value);
   tableWrap.addEventListener("change", (e) => {
-    if (e.target?.matches?.('input[type="checkbox"]')) filterSeasonOwnerBoard();
+    if (
+      e.target?.matches?.('input[type="checkbox"]') &&
+      !e.target.classList.contains("wl-row-pick")
+    ) {
+      filterSeasonOwnerBoard();
+    }
   });
 
   bindWaitingListPriorityDrag(tableWrap);
@@ -3120,6 +3215,7 @@ async function loadWaitingListAdmin() {
 
   renderOnBreakSection(Array.isArray(data?.on_break) ? data.on_break : []);
   await loadArchivedOwnersSection();
+  restoreWlBoardScroll(tableWrap, scrollPos);
 }
 
 function bindWlRowActionSelects(root) {
@@ -4202,7 +4298,7 @@ function renderWaitingListAdminRow(
     : "";
 
   return `<tr class="${rowClass}"${rowStyle} data-owner-id="${row.owner_id}" data-filter-text="${escapeWl(filterText)}">
-    <td class="wl-col-owner num">${overallIndex ?? "—"}</td>
+    <td class="wl-col-owner num"><input type="checkbox" class="wl-row-pick" data-id="${escapeWl(row.owner_id || "")}" title="Tick to change Season 1 status with other rows" aria-label="Select row">${overallIndex ?? "—"}</td>
     <td class="num wl-pos">${pos ?? "—"}</td>
     ${dragCell}
         <td>${escapeWl(row.owner_tag)}${supporterMarkHtml(!!(row.supporter_active || row.is_supporter))}${holidayMarkHtml(row.holiday)}${season1TagMarkHtml(row)}${handpickMark}${clubMoveMarkHtml(row)}</td>
