@@ -76,7 +76,7 @@ export async function bootOwnerAdminPage() {
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
   document.getElementById("wlPickVisible")?.addEventListener("change", (e) => {
     const on = !!e.target.checked;
-    document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id], #wlArchivedTableWrap tr[data-owner-id]").forEach((tr) => {
+    document.querySelectorAll("#wlAdminTableWrap tr[data-owner-id], #wlArchivedTableWrap tr[data-owner-id], #wlVisitorsTableWrap tr[data-discord-id]").forEach((tr) => {
       if (tr.classList.contains("wl-filter-hide")) return;
       const box = tr.querySelector(".wl-row-pick");
       if (box) box.checked = on;
@@ -1513,6 +1513,8 @@ async function fetchOwnerTimezoneMap() {
   return map;
 }
 
+let wlActivityMonthLabels = { previous: "Prev month", current: "Current month" };
+
 async function fetchOwnerActivityById() {
   const [
     { data, error },
@@ -1533,6 +1535,7 @@ async function fetchOwnerActivityById() {
   let currentLabel = "Current month";
   let nextMonthLabel = null;
   if (error) {
+    wlActivityMonthLabels = { previous: previousLabel, current: currentLabel };
     return {
       byId,
       securityById,
@@ -1580,6 +1583,7 @@ async function fetchOwnerActivityById() {
       });
     }
   }
+  wlActivityMonthLabels = { previous: previousLabel, current: currentLabel };
   return {
     byId,
     securityById,
@@ -1625,7 +1629,7 @@ function formatFineBoardCell(amount, { detail = "", count = 0, empty = "—" } =
   )}</span>`;
 }
 
-const wlColFilters = { main: {}, archived: {} };
+const wlColFilters = { main: {}, archived: {}, visitors: {} };
 
 /** Main board, 38 columns. Groups must stay in this order. */
 const WL_MAIN_GROUPS = [
@@ -1843,7 +1847,7 @@ function wlCellMatchesFilter(cell, kind, value) {
 
 function wlFillColFilterSelects(table, board) {
   if (!table) return;
-  const rows = [...table.querySelectorAll("tbody tr[data-owner-id]")];
+  const rows = [...table.querySelectorAll("tbody tr[data-owner-id], tbody tr[data-discord-id]")];
   const headerRow = table.querySelectorAll("thead tr")[1];
   const savedMap = wlColFilters[board] || {};
   table.querySelectorAll("select.wl-col-filter").forEach((sel) => {
@@ -2022,7 +2026,7 @@ function wireOwnerBoardPin(root) {
   wlBoardPinWired = true;
   window.addEventListener("resize", () => {
     document
-      .querySelectorAll("#wlAdminTableWrap, #wlArchivedTableWrap")
+      .querySelectorAll("#wlAdminTableWrap, #wlArchivedTableWrap, #wlVisitorsTableWrap")
       .forEach((el) => pinOwnerBoard(el));
   });
 }
@@ -2043,6 +2047,7 @@ function bindWlBoardFilters(root, board) {
 function clearWlColumnFilters() {
   wlColFilters.main = {};
   wlColFilters.archived = {};
+  wlColFilters.visitors = {};
   document.querySelectorAll("select.wl-col-filter").forEach((sel) => {
     sel.value = "";
   });
@@ -2490,20 +2495,22 @@ async function markSeason1ResponseOnBehalf({
   await loadWaitingListAdmin();
 }
 
-function tickedSeason1OwnerIds() {
-  return [
+function tickedBoardPicks() {
+  const boxes = [
     ...document.querySelectorAll(
-      "#wlAdminTableWrap tr[data-owner-id] .wl-row-pick:checked, #wlArchivedTableWrap tr[data-owner-id] .wl-row-pick:checked"
+      "#wlAdminTableWrap .wl-row-pick:checked, #wlArchivedTableWrap .wl-row-pick:checked, #wlVisitorsTableWrap .wl-row-pick:checked"
     ),
-  ]
-    .filter((box) => !box.closest("tr")?.classList.contains("wl-filter-hide"))
-    .map((box) => box.dataset.id)
-    .filter(Boolean);
+  ].filter((box) => !box.closest("tr")?.classList.contains("wl-filter-hide"));
+  return {
+    ownerIds: boxes.map((box) => box.dataset.id).filter(Boolean),
+    discordIds: boxes.map((box) => box.dataset.discord).filter(Boolean),
+  };
 }
 
 async function applyTickedSeason1Status() {
   const action = document.getElementById("wlBulkS1")?.value || "";
-  const ids = tickedSeason1OwnerIds();
+  const { ownerIds, discordIds } = tickedBoardPicks();
+  const ids = ownerIds.concat(discordIds);
   if (!action) {
     setWlActionStatus("Choose an action for the ticked rows.", false);
     return;
@@ -2535,21 +2542,42 @@ async function applyTickedSeason1Status() {
     setWlActionStatus("Choose an action for the ticked rows.", false);
     return;
   }
-  if (!confirm(`${label} on ${ids.length} ticked row${ids.length === 1 ? "" : "s"}?`)) return;
+  if (!season2Action && !ownerIds.length) {
+    setWlActionStatus(
+      "Those ticked rows have no GPSL account. Season 1 applies to owners and archived accounts.",
+      false
+    );
+    return;
+  }
+  const visitorNote =
+    !season2Action && discordIds.length
+      ? `\n\n${discordIds.length} visitor row${discordIds.length === 1 ? "" : "s"} have no GPSL account and will be left as they are.`
+      : "";
+  const applyCount = season2Action ? ids.length : ownerIds.length;
+  if (
+    !confirm(
+      `${label} on ${applyCount} ticked row${applyCount === 1 ? "" : "s"}?${visitorNote}`
+    )
+  ) {
+    return;
+  }
 
-  setWlActionStatus(`Updating ${ids.length} row${ids.length === 1 ? "" : "s"}…`);
+  setWlActionStatus(`Updating ${applyCount} row${applyCount === 1 ? "" : "s"}…`);
   let done = 0;
   const failed = [];
-  for (const ownerId of ids) {
+  const targets = season2Action
+    ? [
+        ...ownerIds.map((ownerId) => ({ ownerId, discordId: "" })),
+        ...discordIds.map((discordId) => ({ ownerId: "", discordId })),
+      ]
+    : ownerIds.map((ownerId) => ({ ownerId, discordId: "" }));
+  for (const target of targets) {
     const { error } = season2Action
-      ? await supabase.rpc("admin_owner_set_season2_check", {
-          p_owner_id: ownerId,
-          p_status: season2Action[0],
-        })
+      ? await saveSeason2Check(target.ownerId, target.discordId, season2Action[0])
       : action === "clear"
-        ? await supabase.rpc("admin_season1_invite_clear_response", { p_owner_id: ownerId })
+        ? await supabase.rpc("admin_season1_invite_clear_response", { p_owner_id: target.ownerId })
         : await supabase.rpc("admin_season1_invite_respond_on_behalf", {
-            p_owner_id: ownerId,
+            p_owner_id: target.ownerId,
             p_decision: action,
             p_force: true,
             p_note: "Recorded from the season owner board",
@@ -2909,10 +2937,12 @@ function season2CheckCell(row) {
       ? `<div class="unplayed-warn" title="One week from when the message was marked sent">Passed ${escapeWl(formatWlUkDateTime(deadline))}</div>`
       : `<div class="muted" title="One week from when the message was marked sent">By ${escapeWl(formatWlUkDateTime(deadline))}</div>`
     : "";
+  const ownerId = row?.owner_id || "";
+  const discordId = ownerId ? "" : row?.discord_user_id || "";
   return `<td class="wl-s2" data-s2="${filter}" style="min-width:148px">
-    <select class="wl-s2-status" data-id="${escapeWl(row?.owner_id || "")}" data-deadline="${escapeWl(deadline)}" aria-label="Season 2 check">${options}</select>
+    <select class="wl-s2-status" data-id="${escapeWl(ownerId)}" data-discord="${escapeWl(discordId)}" data-deadline="${escapeWl(deadline)}" aria-label="Season 2 check">${options}</select>
     ${when}
-    <button type="button" class="button secondary wl-s2-copy" data-id="${escapeWl(row?.owner_id || "")}" data-tag="${escapeWl(row?.owner_tag || "")}" data-status="${escapeWl(status)}" data-deadline="${escapeWl(deadline)}" title="Copy the Discord message. The reply date is one week from when it is marked sent." style="margin-top:4px;padding:2px 6px;font-size:11px">Copy DM</button>
+    <button type="button" class="button secondary wl-s2-copy" data-id="${escapeWl(ownerId)}" data-discord="${escapeWl(discordId)}" data-tag="${escapeWl(row?.owner_tag || "")}" data-status="${escapeWl(status)}" data-deadline="${escapeWl(deadline)}" title="Copy the Discord message. The reply date is one week from when it is marked sent." style="margin-top:4px;padding:2px 6px;font-size:11px">Copy DM</button>
   </td>`;
 }
 
@@ -3361,6 +3391,13 @@ function bindWlRowActionSelects(root) {
 
 async function runWlRowAction(action, { ownerId, email, tag, club, s1Status, s1Response, select }) {
   const label = [tag, club ? `(${club})` : "", email].filter(Boolean).join(" ");
+  if (!ownerId) {
+    setWlActionStatus(
+      "No GPSL account on that row, so this action stays on owners and archived accounts.",
+      false
+    );
+    return;
+  }
   if (action === "invite_season1") {
     const alreadyInvited =
       String(s1Status || "").toLowerCase() === "offered" ||
@@ -4113,26 +4150,143 @@ async function loadDiscordVisitorsSection() {
     wrap.innerHTML = `<p class="note">Nobody in the Discord snapshot is without a GPSL account.</p>`;
     return;
   }
+
+  const prevLabel = wlActivityMonthLabels.previous || "Prev month";
+  const curLabel = wlActivityMonthLabels.current || "Current month";
+  const dash = `<span class="muted">—</span>`;
   let html =
-    `<table class="admin-table"><thead><tr>` +
-    `<th class="num">#</th><th>Discord</th><th>Role</th><th>Joined</th><th>Last seen</th>` +
-    `</tr></thead><tbody>`;
+    `<table class="admin-table wl-board-table wl-archived-table">` +
+    `<thead>` +
+    wlGroupHeaderHtml(WL_ARCHIVED_GROUPS) +
+    `<tr>` +
+    `<th class="wl-col-owner num">Overall</th>` +
+    `<th class="num">#</th>` +
+    `<th style="width:2em"></th>` +
+    `<th>Tag</th><th>Email</th>` +
+    `<th title="No GPSL club">Last club</th>` +
+    `<th title="Not a GPSL account">Archived (UK)</th>` +
+    `<th class="wl-col-join" title="No Season 1 queue. They have no GPSL account." style="text-align:center;line-height:1.25">Join order</th>` +
+    `<th class="wl-col-season2" title="Discord check for Season 2. Same as archived owners. Copy DM uses their Discord name and a reply deadline one week from when the message is marked sent.">Check</th>` +
+    `<th class="wl-col-season" style="text-align:center;line-height:1.25">Auction</th>` +
+    `<th title="No GPSL account" style="text-align:center">Live</th>` +
+    `<th title="No GPSL account" style="text-align:center">Supporter</th>` +
+    `<th class="wl-col-activity wl-col-login">Last login</th>` +
+    `<th class="num wl-num-login">Since</th>` +
+    `<th class="num wl-num-login" title="Total GPSL site logins (all time)">Logins</th>` +
+    `<th class="num wl-num-login" title="${escapeWl(prevLabel)} logins">${escapeWl(prevLabel)}</th>` +
+    `<th class="num wl-num-login" title="${escapeWl(curLabel)} logins">${escapeWl(curLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="No GPSL club">U ${escapeWl(prevLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="No GPSL club">U ${escapeWl(curLabel)}</th>` +
+    `<th class="num wl-num-unplayed" title="No GPSL club">U missed</th>` +
+    `<th class="num wl-num-unplayed" title="No GPSL club">V late</th>` +
+    `<th class="num wl-num-unplayed" title="No GPSL club">V fail</th>` +
+    `<th class="num wl-num-unplayed" title="No GPSL club">R ent</th>` +
+    `<th class="num wl-num-unplayed" title="No GPSL club">R con</th>` +
+    `<th class="num wl-num-fine" title="No GPSL club">F lock</th>` +
+    `<th class="num wl-num-fine" title="No GPSL club">F tot</th>` +
+    `<th title="Discord server join date">Discord</th>` +
+    `<th title="No GPSL login">UK +/-</th>` +
+    `<th title="No GPSL login">Country</th>` +
+    `<th title="No GPSL login">IP</th>` +
+    `<th title="No GPSL login">Shared IP</th>` +
+    `<th class="wl-col-actions">Actions</th>` +
+    `</tr>` +
+    wlColFilterRow(WL_ARCHIVED_FILTERS) +
+    `</thead><tbody>`;
+
+  let overallCounter = document.querySelectorAll(
+    "#wlAdminTableWrap tr[data-owner-id], #wlOnBreakTableWrap tr[data-owner-id], #wlArchivedTableWrap tr[data-owner-id]"
+  ).length;
+
   for (let i = 0; i < rows.length; i += 1) {
+    overallCounter += 1;
     const row = rows[i];
-    const name = row.display_name || row.discord_user_id || "—";
-    const filterText = [name, row.discord_user_id, row.tier, "visitor", "discord"]
+    const discordId = row.discord_user_id || "";
+    const name = row.display_name || discordId || "—";
+    const role = discordVisitorRoleLabel(row.tier);
+    const joined = formatWlUkDate(row.joined_at);
+    const checkRow = {
+      owner_id: "",
+      discord_user_id: discordId,
+      owner_tag: name,
+      season2_check_status: row.season2_check_status || "",
+      season2_check_deadline_at: row.season2_check_deadline_at || null,
+    };
+    const filterText = [
+      name,
+      discordId,
+      role,
+      "visitor",
+      "discord",
+      joined,
+      row.season2_check_status || "",
+    ]
       .filter(Boolean)
       .join(" ");
-    html += `<tr data-discord-id="${escapeWl(row.discord_user_id || "")}" data-filter-text="${escapeWl(filterText)}">
+    html += `<tr data-discord-id="${escapeWl(discordId)}" data-filter-text="${escapeWl(filterText)}">
+      <td class="wl-col-owner num"><input type="checkbox" class="wl-row-pick" data-discord="${escapeWl(discordId)}" title="Tick to change the Season 2 check with other rows" aria-label="Select row">${overallCounter}</td>
       <td class="num">${i + 1}</td>
-      <td>${escapeWl(name)}<div class="muted" style="font-size:11px;margin-top:2px"><code>${escapeWl(row.discord_user_id || "")}</code></div></td>
-      <td>${escapeWl(discordVisitorRoleLabel(row.tier))}</td>
-      <td>${escapeWl(formatWlUkDateTime(row.joined_at))}</td>
-      <td>${escapeWl(formatWlUkDateTime(row.seen_at))}</td>
+      <td class="wl-col-owner"></td>
+      <td>${escapeWl(name)}<div class="muted" style="font-size:11px;margin-top:2px">${escapeWl(role)} · <code>${escapeWl(discordId)}</code></div></td>
+      <td><span class="muted" title="No GPSL account">—</span></td>
+      <td>${dash}</td>
+      <td>${dash}</td>
+      <td class="wl-col-join" style="text-align:center">${dash}</td>
+      ${season2CheckCell(checkRow)}
+      <td class="wl-col-season" style="text-align:center;color:#555">—</td>
+      <td style="text-align:center"><input type="checkbox" disabled title="No GPSL account"></td>
+      <td style="text-align:center"><input type="checkbox" disabled title="No GPSL account"></td>
+      <td class="wl-col-activity">${dash}</td>
+      <td class="num wl-num-login never">—</td>
+      <td class="num wl-num-login">0</td>
+      <td class="num wl-num-login">0</td>
+      <td class="num wl-num-login">0</td>
+      <td class="num wl-num-unplayed">${dash}</td>
+      <td class="num wl-num-unplayed">${dash}</td>
+      <td class="num wl-num-unplayed">${dash}</td>
+      <td class="num wl-num-unplayed">${dash}</td>
+      <td class="num wl-num-unplayed">${dash}</td>
+      <td class="num wl-num-unplayed">${dash}</td>
+      <td class="num wl-num-unplayed">${dash}</td>
+      <td class="num wl-num-fine">${dash}</td>
+      <td class="num wl-num-fine">${dash}</td>
+      <td>${joined ? escapeWl(joined) : dash}</td>
+      <td>${dash}</td>
+      <td>${dash}</td>
+      <td>${dash}</td>
+      <td><span class="muted">No</span></td>
+      <td class="wl-col-actions">
+        <select class="wl-row-action" data-tag="${escapeWl(name)}" aria-label="Actions for ${escapeWl(name)}">
+          <option value="">Actions…</option>
+          <option value="invite_season1">Invite to season 1</option>
+          <option value="invite_season1_mass">Invite Mass</option>
+          <option value="s1_accept_dm">Mark S1 accepted (DM)</option>
+          <option value="s1_decline_dm">Mark S1 declined (DM)</option>
+          <option value="s1_clear_status">Clear S1 status</option>
+          <option value="unarchive">Unarchive → waiting</option>
+          <option value="delete_gpsl">Delete from GPSL</option>
+        </select>
+      </td>
     </tr>`;
   }
   html += `</tbody></table>`;
   wrap.innerHTML = html;
+
+  bindWlBoardFilters(wrap, "visitors");
+  wireOwnerBoardPin(wrap);
+  bindWlRowActionSelects(wrap);
+  wrap.querySelectorAll(".wl-s2-status").forEach((sel) => {
+    sel.addEventListener("pointerdown", (e) => e.stopPropagation());
+    sel.addEventListener("click", (e) => e.stopPropagation());
+    sel.addEventListener("change", () => setOwnerSeason2Check(sel));
+  });
+  wrap.querySelectorAll(".wl-s2-copy").forEach((btn) => {
+    btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      copySeason2CheckMessage(btn);
+    });
+  });
   filterSeasonOwnerBoard();
 }
 
@@ -5201,8 +5355,22 @@ async function writeWlClipboard(text) {
   }
 }
 
+function saveSeason2Check(ownerId, discordId, status) {
+  if (discordId && !ownerId) {
+    return supabase.rpc("admin_discord_visitor_set_season2_check", {
+      p_discord_user_id: discordId,
+      p_status: status,
+    });
+  }
+  return supabase.rpc("admin_owner_set_season2_check", {
+    p_owner_id: ownerId,
+    p_status: status,
+  });
+}
+
 async function setOwnerSeason2Check(selectEl) {
-  const ownerId = selectEl?.dataset?.id;
+  const ownerId = selectEl?.dataset?.id || "";
+  const discordId = selectEl?.dataset?.discord || "";
   const next = selectEl?.value || "";
   const previousDeadline = selectEl?.dataset?.deadline || "";
   if (next === "sent" && previousDeadline) {
@@ -5211,10 +5379,7 @@ async function setOwnerSeason2Check(selectEl) {
       return;
     }
   }
-  const { error } = await supabase.rpc("admin_owner_set_season2_check", {
-    p_owner_id: ownerId,
-    p_status: next,
-  });
+  const { error } = await saveSeason2Check(ownerId, discordId, next);
   if (error) {
     setWlActionStatus("❌ " + error.message, false);
     await loadWaitingListAdmin();
@@ -5232,15 +5397,13 @@ async function setOwnerSeason2Check(selectEl) {
 }
 
 async function copySeason2CheckMessage(buttonEl) {
-  const ownerId = buttonEl?.dataset?.id;
+  const ownerId = buttonEl?.dataset?.id || "";
+  const discordId = buttonEl?.dataset?.discord || "";
   const tag = buttonEl?.dataset?.tag || "";
   let deadline = buttonEl?.dataset?.deadline || "";
   let markedSent = false;
   if (!deadline) {
-    const { data, error } = await supabase.rpc("admin_owner_set_season2_check", {
-      p_owner_id: ownerId,
-      p_status: "sent",
-    });
+    const { data, error } = await saveSeason2Check(ownerId, discordId, "sent");
     if (error) {
       setWlActionStatus("❌ " + error.message, false);
       return;
